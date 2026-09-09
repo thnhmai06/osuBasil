@@ -1,6 +1,6 @@
 namespace Basil.Server.Features.Diagnostics;
 
-/// <summary>Registers the Diagnostics slice's services.</summary>
+/// <summary>Registers the Diagnostics slice's services and endpoints.</summary>
 public static class DiagnosticsServiceCollectionExtensions
 {
 	/// <summary>Registers the Diagnostics slice's services into the given service collection.</summary>
@@ -14,7 +14,12 @@ public static class DiagnosticsServiceCollectionExtensions
 
 		services.AddSingleton<ProcessSampler>();
 		services.AddSingleton<GcSampler>();
+		services.AddSingleton<HttpSampler>();
+		services.AddSingleton<ExceptionsSampler>();
 		services.AddSingleton<ApplicationSampler>();
+		services.AddSingleton<DiagnosticOverviewSampler>();
+
+		services.AddHostedService<DiagnosticBroadcastService>();
 
 		return services;
 	}

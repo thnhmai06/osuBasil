@@ -60,9 +60,7 @@ internal sealed class DurationAggregate
 	{
 		lock (_lock)
 		{
-			var snapshot = new DurationAggregateSnapshot(
-				_count, _sumSeconds, _count == 0 ? 0 : _minSeconds, _maxSeconds,
-				BucketUpperBoundsSeconds, [.. _bucketCounts]);
+			var snapshot = BuildSnapshot();
 
 			_count = 0;
 			_sumSeconds = 0;
@@ -73,6 +71,19 @@ internal sealed class DurationAggregate
 			return snapshot;
 		}
 	}
+
+	/// <summary>
+	///     Returns the distribution accumulated so far without resetting it, for a reader that must
+	///     not disturb the interval the resetting <see cref="SnapshotAndReset" /> caller owns.
+	/// </summary>
+	public DurationAggregateSnapshot Peek()
+	{
+		lock (_lock) return BuildSnapshot();
+	}
+
+	private DurationAggregateSnapshot BuildSnapshot() => new(
+		_count, _sumSeconds, _count == 0 ? 0 : _minSeconds, _maxSeconds,
+		BucketUpperBoundsSeconds, [.. _bucketCounts]);
 }
 
 /// <summary>
@@ -110,6 +121,10 @@ public sealed class RuntimeMeterListener : IHostedService, IDisposable
 	private long _connectionsCompleted;
 	private long _activeSseSubscribers;
 	private long _ssePublishesDropped;
+	private long _activeMatches;
+	private long _activeMatchTimers;
+	private long _activeChannels;
+	private long _activeIrcSessions;
 
 	public RuntimeMeterListener()
 	{
@@ -147,11 +162,38 @@ public sealed class RuntimeMeterListener : IHostedService, IDisposable
 	/// </summary>
 	public long SsePublishesDropped => Interlocked.Read(ref _ssePublishesDropped);
 
+	/// <summary>The number of multiplayer matches currently registered, as of the last <see cref="RefreshObservableGauges" /> call.</summary>
+	public long ActiveMatches => Interlocked.Read(ref _activeMatches);
+
+	/// <summary>The number of multiplayer matches with a countdown currently running, as of the last <see cref="RefreshObservableGauges" /> call.</summary>
+	public long ActiveMatchTimers => Interlocked.Read(ref _activeMatchTimers);
+
+	/// <summary>The number of chat channels currently registered, as of the last <see cref="RefreshObservableGauges" /> call.</summary>
+	public long ActiveChannels => Interlocked.Read(ref _activeChannels);
+
+	/// <summary>The number of IRC sessions currently online, as of the last <see cref="RefreshObservableGauges" /> call.</summary>
+	public long ActiveIrcSessions => Interlocked.Read(ref _activeIrcSessions);
+
 	/// <summary>Whether the listener has been stopped and its underlying resources released.</summary>
 	internal bool Disposed { get; private set; }
 
 	/// <summary>Returns the request-duration distribution accumulated since the last call, then clears it.</summary>
 	public DurationAggregateSnapshot SnapshotRequestDuration() => _requestDuration.SnapshotAndReset();
+
+	/// <summary>
+	///     Returns the request-duration distribution accumulated so far without resetting it, for a
+	///     reader that only wants to look at the current window, not own its rotation.
+	/// </summary>
+	public DurationAggregateSnapshot PeekRequestDuration() => _requestDuration.Peek();
+
+	/// <summary>
+	///     Polls every observable gauge this listener is tracking -- <see cref="ActiveMatches" />,
+	///     <see cref="ActiveMatchTimers" />, <see cref="ActiveChannels" /> and
+	///     <see cref="ActiveIrcSessions" /> -- and updates them with the value each gauge's owning
+	///     slice reports right now. Unlike the push-based counters this listener also tracks, an
+	///     observable gauge never calls back on its own; nothing updates until this is called.
+	/// </summary>
+	public void RefreshObservableGauges() => _listener.RecordObservableInstruments();
 
 	/// <inheritdoc />
 	public Task StartAsync(CancellationToken cancellationToken)
@@ -203,7 +245,9 @@ public sealed class RuntimeMeterListener : IHostedService, IDisposable
 			"http.server.active_requests" or "http.server.request.duration",
 		"Microsoft.AspNetCore.Server.Kestrel" => instrument.Name is
 			"kestrel.active_connections" or "kestrel.connection.duration",
-		"Basil" => instrument.Name is "basil.sse.subscribers" or "basil.match.publish.stale_dropped",
+		"Basil" => instrument.Name is "basil.sse.subscribers" or "basil.match.publish.stale_dropped"
+			or "basil.matches.active" or "basil.match.timers.active" or "basil.channels.active"
+			or "basil.irc.sessions.active",
 		_ => false
 	};
 
@@ -227,7 +271,27 @@ public sealed class RuntimeMeterListener : IHostedService, IDisposable
 	private void RecordInt(string instrumentName, int measurement,
 		ReadOnlySpan<KeyValuePair<string, object?>> tags)
 	{
-		if (instrumentName == "basil.sse.subscribers") Interlocked.Add(ref _activeSseSubscribers, measurement);
+		// basil.sse.subscribers is push-based (an UpDownCounter each subscribe/unsubscribe reports as
+		// a delta), so it accumulates. The four gauges below are pull-based: each measurement is the
+		// owning slice's current count as of this poll, not a delta, so it replaces rather than adds.
+		switch (instrumentName)
+		{
+			case "basil.sse.subscribers":
+				Interlocked.Add(ref _activeSseSubscribers, measurement);
+				break;
+			case "basil.matches.active":
+				Interlocked.Exchange(ref _activeMatches, measurement);
+				break;
+			case "basil.match.timers.active":
+				Interlocked.Exchange(ref _activeMatchTimers, measurement);
+				break;
+			case "basil.channels.active":
+				Interlocked.Exchange(ref _activeChannels, measurement);
+				break;
+			case "basil.irc.sessions.active":
+				Interlocked.Exchange(ref _activeIrcSessions, measurement);
+				break;
+		}
 	}
 
 	private void RecordLong(string instrumentName, long measurement,

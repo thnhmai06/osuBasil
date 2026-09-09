@@ -126,4 +126,74 @@ public class RuntimeMeterListenerTests
 		Assert.Equal(2, listener.ActiveSseSubscribers);
 		Assert.Equal(2, listener.SsePublishesDropped);
 	}
+
+	/// <summary>
+	///     Unlike the push-based counters above, the four cross-slice gauges report a slice's current
+	///     count as of the poll, not a delta -- a second measurement must replace the first, not add
+	///     to it, or a match/channel/session count would run away from reality the moment more than
+	///     one poll ever happened.
+	/// </summary>
+	[Fact]
+	public void CrossSliceGaugesReplaceRatherThanAccumulate()
+	{
+		var listener = new RuntimeMeterListener();
+
+		listener.RecordIntForTest("basil.matches.active", 5, []);
+		listener.RecordIntForTest("basil.matches.active", 2, []);
+		listener.RecordIntForTest("basil.match.timers.active", 3, []);
+		listener.RecordIntForTest("basil.channels.active", 4, []);
+		listener.RecordIntForTest("basil.irc.sessions.active", 1, []);
+
+		Assert.Equal(2, listener.ActiveMatches);
+		Assert.Equal(3, listener.ActiveMatchTimers);
+		Assert.Equal(4, listener.ActiveChannels);
+		Assert.Equal(1, listener.ActiveIrcSessions);
+	}
+
+	/// <summary>
+	///     An observable gauge never calls back on its own; nothing updates a cross-slice gauge until
+	///     the process's whole observable set is polled.
+	/// </summary>
+	[Fact]
+	public async Task RefreshObservableGaugesUpdatesAGaugeCreatedAfterTheListenerStarted()
+	{
+		var listener = new RuntimeMeterListener();
+		await listener.StartAsync(default);
+		try
+		{
+			var current = 0;
+			using var meter = new System.Diagnostics.Metrics.Meter("Basil");
+			meter.CreateObservableGauge("basil.matches.active", () => current);
+
+			Assert.Equal(0, listener.ActiveMatches);
+
+			current = 6;
+			listener.RefreshObservableGauges();
+
+			Assert.Equal(6, listener.ActiveMatches);
+		}
+		finally
+		{
+			await listener.StopAsync(default);
+		}
+	}
+
+	/// <summary>
+	///     A plain <c>GET</c> reading the request-duration distribution must not disturb the window
+	///     the live stream is rotating -- <see cref="RuntimeMeterListener.PeekRequestDuration" /> is
+	///     the non-resetting counterpart to the resetting <see cref="RuntimeMeterListener.SnapshotRequestDuration" />
+	///     already pinned above.
+	/// </summary>
+	[Fact]
+	public void PeekRequestDurationDoesNotResetTheWindow()
+	{
+		var listener = new RuntimeMeterListener();
+		listener.RecordForTest("http.server.request.duration", 0.01, []);
+
+		var first = listener.PeekRequestDuration();
+		var second = listener.PeekRequestDuration();
+
+		Assert.Equal(1, first.Count);
+		Assert.Equal(1, second.Count);
+	}
 }

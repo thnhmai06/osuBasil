@@ -64,6 +64,7 @@ internal static class SliceRegistration
 		hosts.Api.MapBeatmapsRoutes();
 		hosts.Api.MapContentRoutes();
 		hosts.Api.MapAuthRoutes();
+		hosts.Api.MapDiagnosticRoutes();
 
 		hosts.Assets.MapAssetsGroup();
 		hosts.Assets.MapMenuAssetRoutes();

@@ -184,6 +184,9 @@ internal static class SliceAdjacency
 		("Multiplayer", "Bot"),
 
 		// AvatarRoutes and UserRoutes skip the bot account by BotBootstrapService.BotId.
-		("Users", "Bot")
+		("Users", "Bot"),
+
+		// DiagnosticRoutes gates every /diagnostic route on AdminKeyDefaults.
+		("Diagnostics", "Auth")
 	];
 }
