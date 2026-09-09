@@ -20,6 +20,7 @@ public static class IrcServiceCollectionExtensions
 		services.AddSingleton<ISessionRegistry<IrcSession>, IrcSessionRegistry>();
 
 		services.AddHostedService<TcpIrcListener>();
+		services.AddHostedService<IrcMetricsPublisher>();
 
 		return services;
 	}

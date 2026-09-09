@@ -30,6 +30,8 @@ public static class ChatServiceCollectionExtensions
 		services.AddSingleton<IPacketHandler, SendPrivateMessageHandler>();
 		services.AddSingleton<IPacketHandler, ToggleBlockNonFriendDmsHandler>();
 
+		services.AddHostedService<ChatMetricsPublisher>();
+
 		return services;
 	}
 
