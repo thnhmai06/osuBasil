@@ -24,7 +24,7 @@ Plan section: `plans/vsa-migration-plan-20260907.md`, Tasks 1.1 through 1.11.
 | Task | Status | Owner | Notes |
 | --- | --- | --- | --- |
 | 1.1 Mutation invariant audit | Done | orchestrator + worker | 40 class A, 7 class B all from one root cause; fixed at source instead of adding `Invalidate()` |
-| 1.2 `MatchMutationScope` (plan B4) | **Lock conversion done** | orchestrator | every one of the 48 lock sites now opens a scope (`02dab44f`); 25 publish sites inside the two services still allocate versions directly |
+| 1.2 `MatchMutationScope` (plan B4) | **Done** | orchestrator + worker | 48 lock sites (`02dab44f`) and all 25 publish sites converted; `NextStateVersion` deleted; verified green at 1654 |
 | 1.3 Adopt the hub | Not started | — | read the Task 0.10 hazard first |
 | 1.4 `MatchSession` encapsulation | Not started | — | unwinds the `Shared.Sessions.*` pin |
 | 1.5 Decompose `MatchControlService` | Not started | — | 1303 lines, 43 members; **also owns audit Observation 1** — `SetHostAsync` and `PUT /matches/{id}/hosts` never check the target is seated |
@@ -103,12 +103,15 @@ also fixed six places that allocated a state version with the lock *not* held �
 allocated one per announce tick with no lock at all — and several that awaited a broadcast while
 still holding it.
 
-**Not done:** `MatchControlService` (24 sites) and `MatchMembershipService.StartAsync` (1) still
-call `NextStateVersion()` and publish directly. This is correct today, because every caller now
-holds the lock through a scope, so the allocation happens under it — but the publish still runs
-locked, and it is the reason `NextStateVersion` cannot be deleted. Fixing it means passing the
-scope into those services, which changes their signatures and every call site, so it is its own
-change.
+**Also done.** `MatchControlService`'s 24 publish sites and `MatchMembershipService.StartAsync`
+take a `MatchMutationScope` and request their publishes through it, so nothing allocates a version
+by hand any more and `MatchSession.NextStateVersion()` is gone — zero occurrences remain in `src/`.
+
+That work was finished by a worker that then died on a session limit before it could commit, and
+the orchestrator swept its eight files into a documentation commit (`ba3de03a`) with `git add -A`.
+The code is correct and verified — build green, 1654 passed, 0 failed — but a reader of that commit
+message would never guess it contains the conversion. Recorded here because the history does not
+say so.
 
 ## The trap in it
 

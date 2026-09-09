@@ -44,6 +44,23 @@ neither touched the other's files — but the working tree itself does not suppo
   restored before dropping the entry — but that is one careless step away from destroying an hour
   of another worker's work.
 
+## Never `git add -A` while a worker owns files in this tree
+
+This has now happened twice, both times to the orchestrator, both times immediately after it had
+written a warning about the same hazard.
+
+* `3140b4a7`, a documentation commit, swallowed the half-written `MatchMutationScope`.
+* `ba3de03a`, another documentation commit, swallowed the eight files a worker left behind when it
+  died on a session limit — which turned out to be the *finished* service conversion.
+
+Nothing was lost either time, but the message describes documentation while the diff contains
+source, and the code went in **unverified**: a documentation commit runs no build. The second batch
+was only confirmed green afterwards, by luck rather than by process.
+
+**Stage explicit paths.** `git add plans/ docs/` for a documentation commit, `git add <file> <file>`
+for a code one. `git add -A` is safe only when `git status` holds nothing you did not write, and the
+cheapest way to be sure of that is not to reach for it.
+
 **So: one worker per tree.** Real parallelism needs `git worktree`, and as of 2026-09-09 the one the
 design always assumed exists:
 
