@@ -375,7 +375,7 @@ public class MatchMembershipServiceTests
 		var match = Create(service, host, MakeMatchData(host.Id))!;
 		host.Dequeue();
 
-		await service.EnqueueStateAsync(match, match.NextStateVersion());
+		await service.EnqueueStateAsync(match, match.AllocateStateVersion());
 		Assert.Empty(lobbyMember.Dequeue()); // nobody in #lobby yet — no broadcast
 
 		var lobby = _channelRegistry.GetByName("#lobby")!;
@@ -383,7 +383,7 @@ public class MatchMembershipServiceTests
 			Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())).Join(lobbyMember, lobby);
 		lobbyMember.Dequeue();
 
-		await service.EnqueueStateAsync(match, match.NextStateVersion());
+		await service.EnqueueStateAsync(match, match.AllocateStateVersion());
 		Assert.NotEmpty(lobbyMember.Dequeue());
 	}
 
@@ -417,11 +417,11 @@ public class MatchMembershipServiceTests
 		// nothing new to report — and, per the ADR-004 "{}" spam fix, produces no publish at all
 		// rather than a no-op "{}" (regression-tested directly in JsonMergePatchTests/
 		// StateStreamTests; this test covers the same behavior at EnqueueStateAsync's call site).
-		await service.EnqueueStateAsync(match, match.NextStateVersion());
+		await service.EnqueueStateAsync(match, match.AllocateStateVersion());
 		Assert.Empty(payloads);
 
 		match.Name = "Renamed";
-		await service.EnqueueStateAsync(match, match.NextStateVersion());
+		await service.EnqueueStateAsync(match, match.AllocateStateVersion());
 
 		var delta = Assert.Single(payloads);
 		var json = Encoding.UTF8.GetString(delta);
@@ -513,7 +513,8 @@ public class MatchMembershipServiceTests
 		var service = MakeService();
 		var match = Create(service, host, MakeMatchData(host.Id))!;
 
-		var started = await service.StartAsync(match);
+		await using var mutation = await match.BeginMutationAsync();
+		var started = await service.StartAsync(match, mutation);
 
 		Assert.True(started);
 		Assert.True(match.InProgress);
@@ -534,7 +535,8 @@ public class MatchMembershipServiceTests
 		var match = Create(service, host, MakeMatchData(host.Id) with { MapId = 0 })!;
 		host.Dequeue();
 
-		var started = await service.StartAsync(match);
+		await using var mutation = await match.BeginMutationAsync();
+		var started = await service.StartAsync(match, mutation);
 
 		Assert.False(started);
 		Assert.False(match.InProgress);
@@ -558,7 +560,8 @@ public class MatchMembershipServiceTests
 			.Returns((Beatmap?)null);
 		host.Dequeue();
 
-		var started = await service.StartAsync(match);
+		await using var mutation = await match.BeginMutationAsync();
+		var started = await service.StartAsync(match, mutation);
 
 		Assert.False(started);
 		Assert.False(match.InProgress);

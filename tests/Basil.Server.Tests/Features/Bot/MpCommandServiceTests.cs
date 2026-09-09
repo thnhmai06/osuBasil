@@ -886,7 +886,8 @@ public class MpCommandServiceTests
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
-		await _fixture.MatchMembership.StartAsync(match);
+		await using (var mutation = await match.BeginMutationAsync())
+			await _fixture.MatchMembership.StartAsync(match, mutation);
 
 		var reply = await Run(MakeService(), host, match, "abort", []);
 

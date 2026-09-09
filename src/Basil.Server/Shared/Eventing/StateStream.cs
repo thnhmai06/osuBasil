@@ -48,15 +48,15 @@ public sealed class StateStream<T> where T : class
 	///     <paramref name="current" /> serialized in full — never <see langword="null" /> on that
 	///     basis, even though no subscriber can realistically exist yet for a match's very first
 	///     state.
-	///     <paramref name="sequence" /> must come from <c>MatchSession.NextStateVersion()</c>,
-	///     allocated while the caller held the match's lock. A call whose sequence does not exceed
-	///     the last one this channel actually applied is dropped (returns <see langword="null" />,
-	///     also incrementing <see cref="EventingMetrics.StalePublishDropped" />) — this happens when an
-	///     older mutation's unlocked build-and-publish finishes after a newer one's, and is a normal,
-	///     benign race outcome rather than a bug.
+	///     <paramref name="sequence" /> must come from the <c>MatchMutationScope</c> that owns this
+	///     publish, allocated once it released the match's lock. A call whose sequence does not
+	///     exceed the last one this channel actually applied is dropped (returns
+	///     <see langword="null" />, also incrementing <see cref="EventingMetrics.StalePublishDropped" />)
+	///     — this happens when an older mutation's unlocked build-and-publish finishes after a newer
+	///     one's, and is a normal, benign race outcome rather than a bug.
 	/// </remarks>
 	/// <param name="current">The new full state.</param>
-	/// <param name="sequence">This publish's state version, from <c>MatchSession.NextStateVersion()</c>.</param>
+	/// <param name="sequence">This publish's state version, allocated by the owning <c>MatchMutationScope</c>.</param>
 	/// <returns>
 	///     The UTF-8 JSON bytes of the delta patch (or the full snapshot on first publication) to
 	///     broadcast, or <see langword="null" /> when nothing changed or this call was superseded.

@@ -354,9 +354,9 @@ internal static class MatchSubResourceRoutes
 				var (targets, error) = ResolveOnlineTargets(body.UserIds, gameRegistry, ircRegistry);
 				if (error is not null) return error;
 
-				await using (await match.BeginMutationAsync(cancellationToken))
+				await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 				{
-					var result = await matchControl.SetRefereesAsync(match, targets, cancellationToken);
+					var result = await matchControl.SetRefereesAsync(match, targets, mutation, cancellationToken);
 					return result switch
 					{
 						MatchControlService.SetRefereesResult.WouldLeaveEmpty =>
@@ -402,12 +402,13 @@ internal static class MatchSubResourceRoutes
 				var (targets, error) = ResolveOnlineTargets(body.UserIds, gameRegistry, ircRegistry);
 				if (error is not null) return error;
 
-				await using (await match.BeginMutationAsync(cancellationToken))
+				await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 				{
 					var results = new List<RefereeAdditionResult>();
 					foreach (var target in targets)
 					{
-						var result = await matchControl.AddRefereeAsync(null, null, match, target, cancellationToken);
+						var result =
+							await matchControl.AddRefereeAsync(null, null, match, target, mutation, cancellationToken);
 						results.Add(result switch
 						{
 							MatchControlService.AddRefereeResult.Ok => new RefereeAdditionResult(target.Id, true, null),
@@ -450,7 +451,7 @@ internal static class MatchSubResourceRoutes
 				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 				if (body.UserIds.Count == 0) return Results.BadRequest(new ErrorResponse("userIds is required."));
 
-				await using (await match.BeginMutationAsync(cancellationToken))
+				await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 				{
 					var results = new List<RefereeRemovalResult>();
 					foreach (var userId in body.UserIds)
@@ -463,7 +464,8 @@ internal static class MatchSubResourceRoutes
 						}
 
 						var result =
-							await matchControl.RemoveOneRefereeAsync(null, null, match, target, cancellationToken);
+							await matchControl.RemoveOneRefereeAsync(null, null, match, target, mutation,
+								cancellationToken);
 						results.Add(result switch
 						{
 							MatchControlService.RemoveRefereeResult.Ok => new RefereeRemovalResult(userId, true, null),
@@ -580,7 +582,7 @@ internal static class MatchSubResourceRoutes
 
 				await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 				{
-					await matchControl.SetBansAsync(match, body.UserIds, cancellationToken);
+					await matchControl.SetBansAsync(match, body.UserIds, mutation, cancellationToken);
 					mutation.PublishState();
 					return Results.Json(
 						await MatchLiveSnapshotBuilder.BuildBans(match, gameRegistry, ircRegistry, users,
@@ -626,7 +628,7 @@ internal static class MatchSubResourceRoutes
 
 				await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 				{
-					await matchControl.AddBansAsync(match, body.UserIds, cancellationToken);
+					await matchControl.AddBansAsync(match, body.UserIds, mutation, cancellationToken);
 					mutation.PublishState();
 					return Results.Json(
 						await MatchLiveSnapshotBuilder.BuildBans(match, gameRegistry, ircRegistry, users,
@@ -660,12 +662,12 @@ internal static class MatchSubResourceRoutes
 				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 				if (body.UserIds.Count == 0) return Results.BadRequest(new ErrorResponse("userIds is required."));
 
-				await using (await match.BeginMutationAsync(cancellationToken))
+				await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 				{
 					var results = new List<BanRemovalResult>();
 					foreach (var userId in body.UserIds)
 					{
-						var result = await matchControl.UnbanAsync(match, userId, cancellationToken);
+						var result = await matchControl.UnbanAsync(match, userId, mutation, cancellationToken);
 						results.Add(result == MatchControlService.UnbanResult.NotBanned
 							? new BanRemovalResult(userId, false, "userId is not banned from this match.")
 							: new BanRemovalResult(userId, true, null));
@@ -982,9 +984,9 @@ internal static class MatchSubResourceRoutes
 
 		var entries = ToPatchEntries(slots);
 
-		await using (await match.BeginMutationAsync(cancellationToken))
+		await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 		{
-			var result = await matchControl.SetSlotsAsync(match, entries, isFullReplace, cancellationToken);
+			var result = await matchControl.SetSlotsAsync(match, entries, isFullReplace, mutation, cancellationToken);
 			return result switch
 			{
 				MatchControlService.SetSlotsResult.PlayerCountMismatch =>
@@ -1068,11 +1070,11 @@ internal static class MatchSubResourceRoutes
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
-				await using (await match.BeginMutationAsync(cancellationToken))
+				await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 				{
 					if (body.AutoStart)
 					{
-						var result = await matchControl.StartAsync(match, body.Seconds, cancellationToken);
+						var result = await matchControl.StartAsync(match, body.Seconds, mutation, cancellationToken);
 						return result switch
 						{
 							MatchControlService.StartResult.AlreadyInProgress =>
@@ -1084,7 +1086,7 @@ internal static class MatchSubResourceRoutes
 						};
 					}
 
-					matchControl.Timer(match, body.Seconds > 0 ? body.Seconds : 30);
+					matchControl.Timer(match, body.Seconds > 0 ? body.Seconds : 30, mutation);
 					return Results.Json(MatchLiveSnapshotBuilder.BuildTimer(match));
 				}
 			})
@@ -1114,9 +1116,9 @@ internal static class MatchSubResourceRoutes
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
-				await using (await match.BeginMutationAsync(cancellationToken))
+				await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 				{
-					var result = matchControl.AbortTimer(match);
+					var result = matchControl.AbortTimer(match, mutation);
 					if (result == MatchControlService.AbortTimerResult.NoTimerRunning)
 						return Results.Conflict(new ErrorResponse("No countdown is running."));
 
@@ -1151,10 +1153,10 @@ internal static class MatchSubResourceRoutes
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
-				await using (await match.BeginMutationAsync(cancellationToken))
+				await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 				{
 					var abortedAt = DateTimeOffset.UtcNow;
-					var result = await matchControl.AbortAsync(match, cancellationToken);
+					var result = await matchControl.AbortAsync(match, mutation, cancellationToken);
 					if (result == MatchControlService.AbortResult.NotInProgress)
 						return Results.Conflict(new ErrorResponse("Match is not in progress."));
 

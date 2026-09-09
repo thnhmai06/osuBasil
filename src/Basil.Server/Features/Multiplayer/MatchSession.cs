@@ -69,32 +69,26 @@ public sealed class MatchSession(
 
 	private long _stateVersion = -1;
 
+	/// <summary>Gets the most recently allocated state version, or -1 if none has been allocated yet.</summary>
+	public long CurrentStateVersion => Interlocked.Read(ref _stateVersion);
+
 	/// <summary>
 	///     Allocates the next state version: a monotonically increasing number identifying this
 	///     match's logical position in mutation order, shared across every live-state channel and
-	///     the packet broadcast (ADR-004 4b).
+	///     the packet broadcast. Called only by <see cref="MatchMutationScope" /> during disposal,
+	///     once for every scope that requested a publish.
 	/// </summary>
 	/// <remarks>
-	///     Ordinarily called while holding <see cref="Lock" />, at the moment a mutation completes and
-	///     before releasing it — the value is only meaningful relative to other callers because
-	///     acquiring <see cref="Lock" /> is itself strictly ordered. A caller that allocates a version
-	///     without holding <see cref="Lock" /> (the countdown loop's periodic announcements are the
-	///     one existing case, by design never taking the lock across their delay) still gets a
-	///     correct, race-free value — the allocation itself is atomic — but its relative ordering
-	///     against a concurrent locked mutation is not guaranteed to reflect which happened "first" in
-	///     wall-clock terms, only that neither is lost or double-counted. The caller then builds and
+	///     Called after <see cref="Lock" /> has already been released, so the value reflects the
+	///     completed mutation's position but its relative ordering against a concurrent locked
+	///     mutation's own allocation is not guaranteed to reflect which happened "first" in
+	///     wall-clock terms — only that neither is lost or double-counted. The scope then builds and
 	///     broadcasts unlocked, passing this version to whichever <see cref="StateStream{T}.Publish" />
 	///     calls or <see cref="PacketBroadcastGate" /> it uses, so a build that finishes out of order
 	///     relative to a newer mutation's build is dropped instead of reverting live state to
 	///     something stale.
 	/// </remarks>
 	/// <returns>The newly allocated version.</returns>
-	public long NextStateVersion() => Interlocked.Increment(ref _stateVersion);
-
-	/// <summary>Gets the most recently allocated state version, or -1 if none has been allocated yet.</summary>
-	public long CurrentStateVersion => Interlocked.Read(ref _stateVersion);
-
-	/// <summary>Allocates the next state version. Called only by <see cref="MatchMutationScope" /> during disposal.</summary>
 	internal long AllocateStateVersion() => Interlocked.Increment(ref _stateVersion);
 
 	/// <summary>
@@ -176,7 +170,7 @@ public sealed class MatchSession(
 	/// <summary>
 	///     Gets the lock-free full-snapshot and delta state for the match's main live channel. Safe
 	///     to publish to without holding <see cref="Lock" /> because it is itself gated by a state
-	///     version drawn from <see cref="NextStateVersion" /> (ADR-004 4b) — see
+	///     version a <see cref="MatchMutationScope" /> allocates once it has released the lock — see
 	///     <see cref="StateStream{T}" />'s doc comment.
 	/// </summary>
 	public StateStream<MatchLiveSnapshot> MainSnapshot { get; } = new("main");

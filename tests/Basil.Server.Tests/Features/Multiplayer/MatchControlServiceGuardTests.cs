@@ -43,7 +43,8 @@ public class MatchControlServiceGuardTests
 		var match = _fixture.CreateMatch(host);
 		var control = MakeService();
 
-		await control.SetNameAsync(match, "Grand Finals");
+		await using var mutation = await match.BeginMutationAsync();
+		await control.SetNameAsync(match, "Grand Finals", mutation);
 
 		Assert.Equal("Grand Finals", match.Name);
 		Assert.Equal("Grand Finals", _fixture.ChannelRegistry.GetByName(match.ChatChannelName)!.Topic);
@@ -57,7 +58,8 @@ public class MatchControlServiceGuardTests
 		var match = _fixture.CreateMatch(host);
 		var control = MakeService();
 
-		var result = await control.SetRefereesAsync(match, []);
+		await using var mutation = await match.BeginMutationAsync();
+		var result = await control.SetRefereesAsync(match, [], mutation);
 
 		Assert.Equal(MatchControlService.SetRefereesResult.WouldLeaveEmpty, result);
 	}
@@ -73,7 +75,8 @@ public class MatchControlServiceGuardTests
 		match.AddReferee(oldRef.Id);
 		var control = MakeService();
 
-		var result = await control.SetRefereesAsync(match, [newRef]);
+		await using var mutation = await match.BeginMutationAsync();
+		var result = await control.SetRefereesAsync(match, [newRef], mutation);
 
 		Assert.Equal(MatchControlService.SetRefereesResult.Ok, result);
 		Assert.DoesNotContain(oldRef.Id, match.Referees);
@@ -89,7 +92,8 @@ public class MatchControlServiceGuardTests
 		var match = _fixture.CreateMatch(host);
 		var control = MakeService();
 
-		var result = await control.SetRefereesAsync(match, [newRef]);
+		await using var mutation = await match.BeginMutationAsync();
+		var result = await control.SetRefereesAsync(match, [newRef], mutation);
 
 		Assert.Equal(MatchControlService.SetRefereesResult.WouldRemoveCreator, result);
 		Assert.Contains(host.Id, match.Referees);
@@ -106,7 +110,8 @@ public class MatchControlServiceGuardTests
 		match.AddReferee(oldRef.Id);
 		var control = MakeService();
 
-		var result = await control.SetRefereesAsync(match, [host, newRef]);
+		await using var mutation = await match.BeginMutationAsync();
+		var result = await control.SetRefereesAsync(match, [host, newRef], mutation);
 
 		Assert.Equal(MatchControlService.SetRefereesResult.Ok, result);
 		Assert.Contains(host.Id, match.Referees);
@@ -129,7 +134,8 @@ public class MatchControlServiceGuardTests
 		match.AddReferee(referee.Id);
 		var control = MakeService();
 
-		var result = await control.AddRefereeAsync(null, null, match, referee);
+		await using var mutation = await match.BeginMutationAsync();
+		var result = await control.AddRefereeAsync(null, null, match, referee, mutation);
 
 		Assert.Equal(MatchControlService.AddRefereeResult.AlreadyReferee, result);
 		Assert.Single(match.Referees);
@@ -143,7 +149,8 @@ public class MatchControlServiceGuardTests
 		var match = _fixture.CreateMatch(host);
 		var control = MakeService();
 
-		var result = await control.RemoveOneRefereeAsync(null, null, match, host);
+		await using var mutation = await match.BeginMutationAsync();
+		var result = await control.RemoveOneRefereeAsync(null, null, match, host, mutation);
 
 		Assert.Equal(MatchControlService.RemoveRefereeResult.TargetIsCreator, result);
 		Assert.Contains(host.Id, match.Referees);
@@ -159,7 +166,8 @@ public class MatchControlServiceGuardTests
 		match.AddReferee(referee.Id);
 		var control = MakeService();
 
-		var result = await control.RemoveOneRefereeAsync(null, null, match, referee);
+		await using var mutation = await match.BeginMutationAsync();
+		var result = await control.RemoveOneRefereeAsync(null, null, match, referee, mutation);
 
 		Assert.Equal(MatchControlService.RemoveRefereeResult.WouldLeaveEmpty, result);
 		Assert.Contains(referee.Id, match.Referees);
@@ -175,7 +183,8 @@ public class MatchControlServiceGuardTests
 		match.AddReferee(referee.Id);
 		var control = MakeService();
 
-		var result = await control.RemoveOneRefereeAsync(null, null, match, host);
+		await using var mutation = await match.BeginMutationAsync();
+		var result = await control.RemoveOneRefereeAsync(null, null, match, host, mutation);
 
 		Assert.Equal(MatchControlService.RemoveRefereeResult.TargetIsCreator, result);
 		Assert.Contains(host.Id, match.Referees);
@@ -195,7 +204,8 @@ public class MatchControlServiceGuardTests
 		Assert.Contains(channel.Name, referee.Channels);
 		var control = MakeService();
 
-		var result = await control.RemoveOneRefereeAsync(null, null, match, referee);
+		await using var mutation = await match.BeginMutationAsync();
+		var result = await control.RemoveOneRefereeAsync(null, null, match, referee, mutation);
 
 		Assert.Equal(MatchControlService.RemoveRefereeResult.Ok, result);
 		Assert.DoesNotContain(channel.Name, referee.Channels);
@@ -215,7 +225,8 @@ public class MatchControlServiceGuardTests
 		Assert.Contains(channel.Name, referee.Channels);
 		var control = MakeService();
 
-		var result = await control.RemoveOneRefereeAsync(null, null, match, referee);
+		await using var mutation = await match.BeginMutationAsync();
+		var result = await control.RemoveOneRefereeAsync(null, null, match, referee, mutation);
 
 		Assert.Equal(MatchControlService.RemoveRefereeResult.Ok, result);
 		Assert.Contains(channel.Name, referee.Channels);
@@ -230,7 +241,8 @@ public class MatchControlServiceGuardTests
 		var match = _fixture.CreateMatch(host);
 		var control = MakeService();
 
-		var result = await control.RemoveOneRefereeAsync(null, null, match, other);
+		await using var mutation = await match.BeginMutationAsync();
+		var result = await control.RemoveOneRefereeAsync(null, null, match, other, mutation);
 
 		Assert.Equal(MatchControlService.RemoveRefereeResult.NotAReferee, result);
 	}
@@ -245,7 +257,8 @@ public class MatchControlServiceGuardTests
 		match.AddReferee(referee.Id);
 		var control = MakeService();
 
-		var result = await control.RemoveOneRefereeAsync(null, null, match, referee);
+		await using var mutation = await match.BeginMutationAsync();
+		var result = await control.RemoveOneRefereeAsync(null, null, match, referee, mutation);
 
 		Assert.Equal(MatchControlService.RemoveRefereeResult.Ok, result);
 		Assert.DoesNotContain(referee.Id, match.Referees);
@@ -261,7 +274,8 @@ public class MatchControlServiceGuardTests
 		Assert.Equal(MatchMembershipService.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(target, match, ""));
 		var control = MakeService();
 
-		await control.SetBansAsync(match, [target.Id]);
+		await using var mutation = await match.BeginMutationAsync();
+		await control.SetBansAsync(match, [target.Id], mutation);
 
 		Assert.Contains(target.Id, match.BannedIds);
 		Assert.Null(target.Match);
@@ -277,7 +291,8 @@ public class MatchControlServiceGuardTests
 		Assert.Equal(MatchMembershipService.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(target, match, ""));
 		var control = MakeService();
 
-		await control.AddBansAsync(match, [target.Id]);
+		await using var mutation = await match.BeginMutationAsync();
+		await control.AddBansAsync(match, [target.Id], mutation);
 
 		Assert.Contains(target.Id, match.BannedIds);
 		Assert.Null(target.Match);
@@ -376,7 +391,8 @@ public class MatchControlServiceGuardTests
 			[1] = new(notInMatch.Id, null, null)
 		};
 
-		var result = await control.SetSlotsAsync(match, entries, true);
+		await using var mutation = await match.BeginMutationAsync();
+		var result = await control.SetSlotsAsync(match, entries, true, mutation);
 
 		Assert.Equal(MatchControlService.SetSlotsResult.UnknownUserId, result);
 	}
@@ -402,7 +418,8 @@ public class MatchControlServiceGuardTests
 			[2] = new(host.Id, null, null)
 		};
 
-		var result = await control.SetSlotsAsync(match, entries, false);
+		await using var mutation = await match.BeginMutationAsync();
+		var result = await control.SetSlotsAsync(match, entries, false, mutation);
 
 		Assert.Equal(MatchControlService.SetSlotsResult.DuplicateUserId, result);
 	}
@@ -424,7 +441,8 @@ public class MatchControlServiceGuardTests
 			[hostSlot] = new(host.Id, "Red", null)
 		};
 
-		var result = await control.SetSlotsAsync(match, entries, true);
+		await using var mutation = await match.BeginMutationAsync();
+		var result = await control.SetSlotsAsync(match, entries, true, mutation);
 
 		Assert.Equal(MatchControlService.SetSlotsResult.PlayerCountMismatch, result);
 	}
@@ -445,7 +463,8 @@ public class MatchControlServiceGuardTests
 			[hostSlot] = new(host.Id, "Red", null)
 		};
 
-		var result = await control.SetSlotsAsync(match, entries, false);
+		await using var mutation = await match.BeginMutationAsync();
+		var result = await control.SetSlotsAsync(match, entries, false, mutation);
 
 		Assert.Equal(MatchControlService.SetSlotsResult.Ok, result);
 		Assert.Equal(MatchTeam.Red, match.Slots[hostSlot].Team);
@@ -465,7 +484,8 @@ public class MatchControlServiceGuardTests
 			[hostSlot] = new(host.Id, null, true)
 		};
 
-		var result = await control.SetSlotsAsync(match, entries, false);
+		await using var mutation = await match.BeginMutationAsync();
+		var result = await control.SetSlotsAsync(match, entries, false, mutation);
 
 		Assert.Equal(MatchControlService.SetSlotsResult.SlotOccupiedAndLocked, result);
 	}
@@ -488,7 +508,8 @@ public class MatchControlServiceGuardTests
 			[otherSlot] = new(host.Id, null, null)
 		};
 
-		var result = await control.SetSlotsAsync(match, entries, true);
+		await using var mutation = await match.BeginMutationAsync();
+		var result = await control.SetSlotsAsync(match, entries, true, mutation);
 
 		Assert.Equal(MatchControlService.SetSlotsResult.Ok, result);
 		Assert.Equal(other.Id, match.Slots[hostSlot].PlayerId);
@@ -510,7 +531,8 @@ public class MatchControlServiceGuardTests
 			[hostSlot] = new(host.Id, "Neutral", null)
 		};
 
-		var result = await control.SetSlotsAsync(match, entries, false);
+		await using var mutation = await match.BeginMutationAsync();
+		var result = await control.SetSlotsAsync(match, entries, false, mutation);
 
 		Assert.Equal(MatchControlService.SetSlotsResult.Ok, result);
 		Assert.Equal(teamBefore, match.Slots[hostSlot].Team);
@@ -527,7 +549,8 @@ public class MatchControlServiceGuardTests
 		match.CurrentRoundId = 5;
 		var control = MakeService();
 
-		var result = await control.AbortAsync(match);
+		await using var mutation = await match.BeginMutationAsync();
+		var result = await control.AbortAsync(match, mutation);
 
 		Assert.Equal(MatchControlService.AbortResult.Ok, result);
 		Assert.Null(match.CurrentRoundId);
@@ -550,7 +573,8 @@ public class MatchControlServiceGuardTests
 		_fixture.RoundEndOutbox.ThrowFull = true;
 		var control = MakeService();
 
-		var result = await control.AbortAsync(match);
+		await using var mutation = await match.BeginMutationAsync();
+		var result = await control.AbortAsync(match, mutation);
 
 		Assert.Equal(MatchControlService.AbortResult.Ok, result);
 		Assert.Null(match.CurrentRoundId);
@@ -576,7 +600,9 @@ public class MatchControlServiceGuardTests
 			[hostSlot] = new(host.Id, "Red", null)
 		};
 
-		var result = await control.SetSlotsAsync(match, entries, false);
+		await using var mutation = await match.BeginMutationAsync();
+		var result = await control.SetSlotsAsync(match, entries, false, mutation);
+		await mutation.CompleteAsync();
 
 		Assert.Equal(MatchControlService.SetSlotsResult.Ok, result);
 		Assert.NotEmpty(_fixture.EventBus.SlotsPublishes);

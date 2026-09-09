@@ -629,16 +629,14 @@ public sealed class MatchMembershipService(
 	///     skipped rather than emitting a no-op patch.
 	/// </remarks>
 	/// <remarks>
-	///     Runs entirely without holding <see cref="MatchSession.Lock" /> (ADR-004 4b) — every build
-	///     and broadcast here is gated by <paramref name="version" /> instead, so a call superseded
-	///     by a newer mutation's is dropped rather than reverting live state to something stale. The
-	///     caller must allocate <paramref name="version" /> from <see cref="MatchSession.NextStateVersion" />
-	///     after the mutation it is reporting has completed; the lock does not need to still be held
-	///     at that point; allocating it slightly later can only produce a newer version, never a stale
-	///     one.
+	///     Runs entirely without holding <see cref="MatchSession.Lock" /> — every build and broadcast
+	///     here is gated by <paramref name="version" /> instead, so a call superseded by a newer
+	///     mutation's is dropped rather than reverting live state to something stale. A
+	///     <see cref="MatchMutationScope" /> allocates <paramref name="version" /> once it has
+	///     released the lock, so the value always reflects a mutation that has already completed.
 	/// </remarks>
 	/// <param name="match">The match whose state to broadcast.</param>
-	/// <param name="version">This call's state version, from <see cref="MatchSession.NextStateVersion" />.</param>
+	/// <param name="version">This call's state version, allocated by the calling <see cref="MatchMutationScope" />.</param>
 	/// <param name="lobby"><see langword="true" /> to also broadcast to the lobby; otherwise, <see langword="false" />.</param>
 	/// <param name="cancellationToken">A token that cancels the snapshot builds.</param>
 	public async Task EnqueueStateAsync(MatchSession match, long version, bool lobby = true,
@@ -682,7 +680,7 @@ public sealed class MatchMembershipService(
 	/// <summary>Rebuilds and republishes the host snapshot channel.</summary>
 	/// <remarks>Runs without holding <see cref="MatchSession.Lock" />, gated by <paramref name="version" /> (ADR-004 4b).</remarks>
 	/// <param name="match">The match whose host to publish.</param>
-	/// <param name="version">This call's state version, from <see cref="MatchSession.NextStateVersion" />.</param>
+	/// <param name="version">This call's state version, allocated by the calling <see cref="MatchMutationScope" />.</param>
 	/// <param name="cancellationToken">A token that cancels the host lookup.</param>
 	public async Task PublishHostAsync(MatchSession match, long version, CancellationToken cancellationToken = default)
 	{
@@ -695,7 +693,7 @@ public sealed class MatchMembershipService(
 	/// <summary>Rebuilds and republishes the referee list snapshot channel.</summary>
 	/// <remarks>Runs without holding <see cref="MatchSession.Lock" />, gated by <paramref name="version" /> (ADR-004 4b).</remarks>
 	/// <param name="match">The match whose referees to publish.</param>
-	/// <param name="version">This call's state version, from <see cref="MatchSession.NextStateVersion" />.</param>
+	/// <param name="version">This call's state version, allocated by the calling <see cref="MatchMutationScope" />.</param>
 	/// <param name="cancellationToken">A token that cancels the referee lookups.</param>
 	public async Task PublishRefsAsync(MatchSession match, long version, CancellationToken cancellationToken = default)
 	{
@@ -708,7 +706,7 @@ public sealed class MatchMembershipService(
 	/// <summary>Rebuilds and republishes the banlist snapshot channel.</summary>
 	/// <remarks>Runs without holding <see cref="MatchSession.Lock" />, gated by <paramref name="version" /> (ADR-004 4b).</remarks>
 	/// <param name="match">The match whose banlist to publish.</param>
-	/// <param name="version">This call's state version, from <see cref="MatchSession.NextStateVersion" />.</param>
+	/// <param name="version">This call's state version, allocated by the calling <see cref="MatchMutationScope" />.</param>
 	/// <param name="cancellationToken">A token that cancels the ban lookups.</param>
 	public async Task PublishBansAsync(MatchSession match, long version, CancellationToken cancellationToken = default)
 	{
@@ -720,7 +718,7 @@ public sealed class MatchMembershipService(
 
 	/// <summary>Republishes the countdown timer snapshot channel.</summary>
 	/// <param name="match">The match whose timer to publish.</param>
-	/// <param name="version">This call's state version, from <see cref="MatchSession.NextStateVersion" />.</param>
+	/// <param name="version">This call's state version, allocated by the calling <see cref="MatchMutationScope" />.</param>
 	public void PublishTimer(MatchSession match, long version)
 	{
 		if (match.TimerSnapshot.Publish(MatchLiveSnapshotBuilder.BuildTimerLive(match), version) is { } delta)

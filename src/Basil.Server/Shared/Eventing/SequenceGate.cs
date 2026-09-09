@@ -5,9 +5,8 @@ namespace Basil.Server.Shared.Eventing;
 ///     reapplying stale state after the lock that established the true order has been released.
 /// </summary>
 /// <remarks>
-///     A caller allocates a sequence number while still holding whatever lock serializes its own
-///     state mutation (see <see cref="Features.Multiplayer.MatchSession.NextStateVersion" />) — at
-///     the moment the mutation completes, before releasing the lock — then does its
+///     A caller allocates a sequence number once it has released whatever lock serialized its own
+///     state mutation (see <see cref="Features.Multiplayer.MatchMutationScope" />), then does its
 ///     build-and-broadcast work unlocked, passing that sequence to <see cref="TryAdvance" />. Two
 ///     unlocked calls can race and complete in either order; whichever carries the higher sequence
 ///     is the one that must win, regardless of which happened to finish last. A call whose sequence

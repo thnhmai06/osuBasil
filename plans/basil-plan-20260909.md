@@ -417,17 +417,34 @@ and is repaid here; the real fix is moving `<SelfContained>` out of the csproj t
 Listed in `plans/architecture-target-20260908.md` §9. They record decisions already taken, so they
 are written from what was built, not from what was planned.
 
-### Task H2: Rewrite `docs/for-developers/architecture.md`
+### Task H2: Localization rules, and consolidate the agent instructions
+
+Two documentation asks the user raised on 2026-09-09, deliberately deferred to this stage rather
+than interleaved with the restructure. The source material is
+`plans/localization-rules-input-20260909.md`, a 1,497-line rule set the user wrote covering
+hierarchy, naming and humanised phrasing for **all** localization, not only bot commands.
+
+- [ ] Turn it into an authoritative document for developers, and a companion for agents. The
+  observed problem it responds to is that the Bot slice's locale sections are muddled, so the
+  document has to be usable as a review checklist, not only as prose.
+- [ ] **Split `CLAUDE.md` into `docs/for-agents/`.** The goal is one place an agent reads,
+  whichever agent it is — Claude, Codex or anything else — instead of instructions scattered
+  between a root file and the docs tree. `CLAUDE.md` keeps only what a harness must load
+  automatically and points at the rest.
+- [ ] Apply the `humanizer` skill to the resulting prose, which the user asked for by name.
+- [ ] Register both in `docs/index.md`, which owns authoritative topic ownership.
+
+### Task H3: Rewrite `docs/for-developers/architecture.md`
 
 It currently carries an "out of date" banner and describes the five-project layout. Rewrite it once,
 against the finished structure — which is why it was deferred rather than edited after each phase.
 
-### Task H3: Full verification
+### Task H4: Full verification
 
 Route table, metric names, OpenAPI documents, schema objects and the full suite against the Phase 0
 baseline, with every difference explained.
 
-### Task H4: Review the whole diff for unrelated changes, then a final advisor review
+### Task H5: Review the whole diff for unrelated changes, then a final advisor review
 
 ---
 
