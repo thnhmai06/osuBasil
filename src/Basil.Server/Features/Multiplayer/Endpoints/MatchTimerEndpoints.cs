@@ -89,6 +89,9 @@ internal static class MatchTimerEndpoints
 							MatchControlService.StartResult.BeatmapMissing =>
 								Results.Conflict(new ErrorResponse(
 									"Match cannot start because the beatmap does not exist on the server.")),
+							MatchControlService.StartResult.NoOccupiedSlots =>
+								Results.Conflict(new ErrorResponse(
+									"Match cannot start because the room has no players.")),
 							_ => Results.Json(MatchLiveSnapshotBuilder.BuildTimer(match))
 						};
 					}
@@ -106,7 +109,7 @@ internal static class MatchTimerEndpoints
 
 			                 `autoStart: true` behaves like `!mp start [seconds]`: a positive `seconds` queues a countdown that starts the match when it finishes, while a non-positive value starts immediately. `autoStart: false` behaves like `!mp timer`: a countdown that never auto-starts (non-positive `seconds` defaults to 30).
 
-			                 Returns `409 Conflict` if the match is already in progress or has no beatmap set, or `404 Not Found` if the match isn't currently live.
+			                 Returns `409 Conflict` if the match is already in progress, has no beatmap set, or has no players seated, or `404 Not Found` if the match isn't currently live.
 			                 """ + AdminKeyNote)
 			.WithTags("Match Timer")
 			.Produces<MatchTimerView>()

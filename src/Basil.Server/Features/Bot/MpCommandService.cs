@@ -720,6 +720,8 @@ public sealed class MpCommandService(
 			return false;
 		}
 
+		// gameTarget.Match != match above already guarantees the target is seated in this match, so
+		// SetHostAsync's own occupancy guard can never reject this call.
 		await _matchControl.SetHostAsync(match, gameTarget, mutation);
 		sink.Reply(string.Format(MpReplies.ChangedMatchHost, gameTarget.Name));
 		return true;
@@ -1210,10 +1212,11 @@ public sealed class MpCommandService(
 				sink.Reply(MpReplies.MatchStarted);
 				return true;
 			case MatchControlService.StartResult.BeatmapMissing:
+			case MatchControlService.StartResult.NoOccupiedSlots:
 			default:
-				// StartResult.BeatmapMissing — MatchMembershipService.StartAsync already announced this
-				// into the match channel itself (the single choke point all 3 start paths share); no
-				// second reply here, or the room sees the same message twice.
+				// BeatmapMissing/NoOccupiedSlots — MatchMembershipService.StartAsync already announced
+				// this into the match channel itself (the single choke point all 3 start paths share);
+				// no second reply here, or the room sees the same message twice.
 				return false;
 		}
 	}

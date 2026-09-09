@@ -51,6 +51,46 @@ public class MatchControlServiceGuardTests
 	}
 
 	[Fact]
+	public async Task SetHostAsync_TargetNotSeatedInThisMatch_ReturnsTargetNotInMatchAndLeavesHostUnchanged()
+	{
+		// Regression: SetHostAsync (and the PUT /matches/{id}/hosts route behind it) never checked
+		// that the target actually occupies a slot in this match, unlike the `!mp host` chat path's
+		// own `gameTarget.Match != match` guard — letting HostId end up naming a userSession seated
+		// nowhere in the room, violating the invariant that HostId is either NoHostId or an occupied
+		// slot's player id.
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		var elsewhere = MultiplayerTestSupport.MakePlayer(2, "elsewhere");
+		_fixture.RegisterAll(host, elsewhere);
+		var match = _fixture.CreateMatch(host);
+		var previousHostId = match.HostId;
+		var control = MakeService();
+
+		await using var mutation = await match.BeginMutationAsync();
+		var result = await control.SetHostAsync(match, elsewhere, mutation);
+
+		Assert.Equal(MatchControlService.SetHostResult.TargetNotInMatch, result);
+		Assert.Equal(previousHostId, match.HostId);
+		Assert.True(match.HostId == MatchSession.NoHostId || match.GetSlot(match.HostId) is not null);
+	}
+
+	[Fact]
+	public async Task SetHostAsync_TargetSeatedInThisMatch_TransfersHost()
+	{
+		var host = MultiplayerTestSupport.MakePlayer(1, "host");
+		var guest = MultiplayerTestSupport.MakePlayer(2, "guest");
+		_fixture.RegisterAll(host, guest);
+		var match = _fixture.CreateMatch(host);
+		await _fixture.MatchMembership.JoinAsync(guest, match, "");
+		var control = MakeService();
+
+		await using var mutation = await match.BeginMutationAsync();
+		var result = await control.SetHostAsync(match, guest, mutation);
+
+		Assert.Equal(MatchControlService.SetHostResult.Ok, result);
+		Assert.Equal(guest.Id, match.HostId);
+	}
+
+	[Fact]
 	public async Task SetRefereesAsync_EmptyTargets_ReturnsWouldLeaveEmpty()
 	{
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");

@@ -529,17 +529,40 @@ public sealed class MatchMembershipService(
 			EnqueueChat(match, bot.Name, bot.Id, "Match start cancelled — room settings changed.");
 	}
 
+	/// <summary>The outcome of a <see cref="StartAsync" /> attempt.</summary>
+	public enum StartOutcome : byte
+	{
+		Started,
+		BeatmapMissing,
+		NoOccupiedSlots
+	}
+
 	/// <summary>Starts the match: validates the beatmap, marks players as playing, creates the round, and broadcasts.</summary>
 	/// <param name="match">The match to start.</param>
 	/// <param name="mutation">The open mutation scope that publishes the resulting state.</param>
 	/// <param name="cancellationToken">A token that cancels the persistence operations.</param>
 	/// <returns>
-	///     <see langword="true" /> when the match started; otherwise, <see langword="false" /> when the assigned beatmap
-	///     no longer exists on the server.
+	///     <see cref="StartOutcome.Started" /> when the match started, <see cref="StartOutcome.BeatmapMissing" />
+	///     when the assigned beatmap no longer exists on the server (or none was ever assigned), or
+	///     <see cref="StartOutcome.NoOccupiedSlots" /> when the room has nobody seated to start with.
 	/// </returns>
-	public async Task<bool> StartAsync(MatchSession match, MatchMutationScope mutation,
+	public async Task<StartOutcome> StartAsync(MatchSession match, MatchMutationScope mutation,
 		CancellationToken cancellationToken = default)
 	{
+		// A queued countdown can outlive every player leaving (nothing cancels it just because the
+		// room emptied out) and fire with zero occupied slots. Without this guard, InProgress would
+		// end up true with every slot Open/Locked, violating the invariant that InProgress implies at
+		// least one occupied slot.
+		if (match.Slots.All(s => s.PlayerId is null))
+		{
+			logger.LogDebug("Match start aborted (no players seated): MatchId={MatchId}", match.DbId);
+			var emptyBot = gameRegistry.GetByUserId(BotBootstrapService.BotId);
+			if (emptyBot is not null)
+				EnqueueChat(match, emptyBot.Name, emptyBot.Id,
+					"Match cannot start because the room has no players.");
+			return StartOutcome.NoOccupiedSlots;
+		}
+
 		if (match.MapId is not { } mapId)
 		{
 			// Without this, a match with no beatmap selected starts every occupied slot as Playing
@@ -551,7 +574,7 @@ public sealed class MatchMembershipService(
 			if (noMapBot is not null)
 				EnqueueChat(match, noMapBot.Name, noMapBot.Id,
 					"Match cannot start because no beatmap has been selected.");
-			return false;
+			return StartOutcome.BeatmapMissing;
 		}
 
 		var beatmap = await beatmapRepo.FetchOneAsync(mapId, cancellationToken: cancellationToken);
@@ -563,7 +586,7 @@ public sealed class MatchMembershipService(
 			if (bot is not null)
 				EnqueueChat(match, bot.Name, bot.Id,
 					"Match cannot start because the beatmap does not exist on the server.");
-			return false;
+			return StartOutcome.BeatmapMissing;
 		}
 
 		var noMap = new List<int>();
@@ -586,7 +609,7 @@ public sealed class MatchMembershipService(
 		Enqueue(match, ServerPacketWriter.MatchStart(match.ToPacket()), false, noMap);
 		mutation.PublishState();
 		logger.LogInformation("~ Match started: MatchId={MatchId} RoundId={RoundId}", match.DbId, match.CurrentRoundId);
-		return true;
+		return StartOutcome.Started;
 	}
 
 	/// <summary>Broadcasts a raw packet to the match channel and, for public rooms, the non-empty lobby.</summary>

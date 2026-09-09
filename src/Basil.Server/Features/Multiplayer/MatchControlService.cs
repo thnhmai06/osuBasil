@@ -106,6 +106,12 @@ public sealed class MatchControlService(
 		TargetIsCreator
 	}
 
+	public enum SetHostResult : byte
+	{
+		Ok,
+		TargetNotInMatch
+	}
+
 	public enum SetMapResult : byte
 	{
 		Ok,
@@ -133,7 +139,8 @@ public sealed class MatchControlService(
 		AlreadyInProgress,
 		Started,
 		CountdownQueued,
-		BeatmapMissing
+		BeatmapMissing,
+		NoOccupiedSlots
 	}
 
 	public enum TeamResult : byte
@@ -273,9 +280,15 @@ public sealed class MatchControlService(
 	/// <param name="target">The userSession who becomes the host.</param>
 	/// <param name="mutation">The open mutation scope that publishes the resulting state and host.</param>
 	/// <param name="cancellationToken">A token that cancels the event write.</param>
-	public async Task SetHostAsync(MatchSession match, GameSession target, MatchMutationScope mutation,
+	/// <returns>
+	///     <see cref="SetHostResult.Ok" /> on success, or <see cref="SetHostResult.TargetNotInMatch" /> when the
+	///     target occupies no slot in this match.
+	/// </returns>
+	public async Task<SetHostResult> SetHostAsync(MatchSession match, GameSession target, MatchMutationScope mutation,
 		CancellationToken cancellationToken = default)
 	{
+		if (match.GetSlot(target.Id) is null) return SetHostResult.TargetNotInMatch;
+
 		var prevHostId = match.HostId;
 		match.HostId = target.Id;
 		logger.LogInformation("Host transferred: MatchId={MatchId} PrevHostId={PrevHostId} NewHostId={NewHostId}",
@@ -290,6 +303,7 @@ public sealed class MatchControlService(
 			DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 
 		mutation.PublishHost();
+		return SetHostResult.Ok;
 	}
 
 	/// <summary>
@@ -787,8 +801,8 @@ public sealed class MatchControlService(
 	/// <returns>
 	///     <see cref="StartResult.AlreadyInProgress" /> when the match is already running,
 	///     <see cref="StartResult.CountdownQueued" /> when a countdown was queued, or
-	///     <see cref="StartResult.Started" /> or <see cref="StartResult.BeatmapMissing" /> for an
-	///     immediate start.
+	///     <see cref="StartResult.Started" />, <see cref="StartResult.BeatmapMissing" />, or
+	///     <see cref="StartResult.NoOccupiedSlots" /> for an immediate start.
 	/// </returns>
 	public async Task<StartResult> StartAsync(MatchSession match, int? countdownSeconds, MatchMutationScope mutation,
 		CancellationToken cancellationToken = default)
@@ -807,8 +821,13 @@ public sealed class MatchControlService(
 		if (CancelPendingTimer(match, announce: false))
 			mutation.PublishTimer();
 
-		var started = await matchMembership.StartAsync(match, mutation, cancellationToken);
-		return started ? StartResult.Started : StartResult.BeatmapMissing;
+		var outcome = await matchMembership.StartAsync(match, mutation, cancellationToken);
+		return outcome switch
+		{
+			MatchMembershipService.StartOutcome.Started => StartResult.Started,
+			MatchMembershipService.StartOutcome.NoOccupiedSlots => StartResult.NoOccupiedSlots,
+			_ => StartResult.BeatmapMissing
+		};
 	}
 
 	/// <summary>Starts a plain countdown that announces but never auto-starts the match when it finishes.</summary>
@@ -983,7 +1002,9 @@ public sealed class MatchControlService(
 
 			if (autoStart)
 			{
-				var started = match.InProgress || await matchMembership.StartAsync(match, mutation, token);
+				var started = match.InProgress ||
+				              await matchMembership.StartAsync(match, mutation, token) ==
+				              MatchMembershipService.StartOutcome.Started;
 				if (started) Announce(match, "Good luck, have fun!");
 			}
 			else

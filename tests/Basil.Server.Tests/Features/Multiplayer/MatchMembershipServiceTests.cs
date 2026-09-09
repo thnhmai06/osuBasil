@@ -516,9 +516,34 @@ public class MatchMembershipServiceTests
 		await using var mutation = await match.BeginMutationAsync();
 		var started = await service.StartAsync(match, mutation);
 
-		Assert.True(started);
+		Assert.Equal(MatchMembershipService.StartOutcome.Started, started);
 		Assert.True(match.InProgress);
 		Assert.NotNull(match.CurrentRoundId);
+	}
+
+	[Fact]
+	public async Task StartAsync_NoPlayersSeated_NeverSetsInProgressWithoutAnOccupiedSlot()
+	{
+		// Regression: a queued `!mp start <seconds>` countdown can outlive every player leaving, so
+		// the countdown's eventual StartAsync call must not be allowed to leave the match InProgress
+		// with nobody seated — that would violate the invariant that InProgress implies at least one
+		// occupied slot. This pins the invariant itself, not the specific leave-then-start sequence.
+		var host = MakePlayer(1, "host");
+		var bot = MakePlayer(BotBootstrapService.BotId, "BasilBot");
+		RegisterAll(host, bot);
+		var service = MakeService();
+		var match = Create(service, host, MakeMatchData(host.Id))!;
+		host.Dequeue();
+
+		await service.LeaveAsync(host, match);
+		host.Dequeue();
+
+		await using var mutation = await match.BeginMutationAsync();
+		var started = await service.StartAsync(match, mutation);
+
+		Assert.Equal(MatchMembershipService.StartOutcome.NoOccupiedSlots, started);
+		Assert.Null(match.CurrentRoundId);
+		Assert.True(!match.InProgress || match.Slots.Any(s => !s.Empty));
 	}
 
 	[Fact]
@@ -538,7 +563,7 @@ public class MatchMembershipServiceTests
 		await using var mutation = await match.BeginMutationAsync();
 		var started = await service.StartAsync(match, mutation);
 
-		Assert.False(started);
+		Assert.Equal(MatchMembershipService.StartOutcome.BeatmapMissing, started);
 		Assert.False(match.InProgress);
 		Assert.Null(match.CurrentRoundId);
 		Assert.Contains(
@@ -563,7 +588,7 @@ public class MatchMembershipServiceTests
 		await using var mutation = await match.BeginMutationAsync();
 		var started = await service.StartAsync(match, mutation);
 
-		Assert.False(started);
+		Assert.Equal(MatchMembershipService.StartOutcome.BeatmapMissing, started);
 		Assert.False(match.InProgress);
 		Assert.Null(match.CurrentRoundId);
 		Assert.Contains(

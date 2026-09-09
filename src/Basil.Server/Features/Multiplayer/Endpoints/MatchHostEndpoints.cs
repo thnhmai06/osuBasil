@@ -89,7 +89,10 @@ internal static class MatchHostEndpoints
 
 				await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 				{
-					await matchControl.SetHostAsync(match, target, mutation, cancellationToken);
+					var result = await matchControl.SetHostAsync(match, target, mutation, cancellationToken);
+					if (result == MatchControlService.SetHostResult.TargetNotInMatch)
+						return Results.BadRequest(new ErrorResponse("userId must be seated in this match."));
+
 					return Results.Json(
 						await MatchLiveSnapshotBuilder.BuildHost(match, gameRegistry, ircRegistry, users,
 							cancellationToken));
@@ -102,7 +105,8 @@ internal static class MatchHostEndpoints
 			.WithDescription("""
 			                 Makes `userId` the match host and returns the updated `{ host }`.
 
-			                 Returns `400 Bad Request` if `userId` isn't online, or `404 Not Found` if the match isn't currently live.
+			                 Returns `400 Bad Request` if `userId` isn't online or isn't seated in this match, or
+			                 `404 Not Found` if the match isn't currently live.
 			                 """ + AdminKeyNote)
 			.WithTags("Match Hosts")
 			.Produces<MatchHostView>()
