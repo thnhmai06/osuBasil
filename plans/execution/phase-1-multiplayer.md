@@ -24,7 +24,7 @@ Plan section: `plans/vsa-migration-plan-20260907.md`, Tasks 1.1 through 1.11.
 | Task | Status | Owner | Notes |
 | --- | --- | --- | --- |
 | 1.1 Mutation invariant audit | Done | orchestrator + worker | 40 class A, 7 class B all from one root cause; fixed at source instead of adding `Invalidate()` |
-| 1.2 `MatchMutationScope` (plan B4) | **Half done** | orchestrator | scope + 6 tests green and committed (`9357b56`); the 47 call sites are not converted yet |
+| 1.2 `MatchMutationScope` (plan B4) | **Lock conversion done** | orchestrator | every one of the 48 lock sites now opens a scope (`02dab44f`); 25 publish sites inside the two services still allocate versions directly |
 | 1.3 Adopt the hub | Not started | — | read the Task 0.10 hazard first |
 | 1.4 `MatchSession` encapsulation | Not started | — | unwinds the `Shared.Sessions.*` pin |
 | 1.5 Decompose `MatchControlService` | Not started | — | 1303 lines, 43 members; **also owns audit Observation 1** — `SetHostAsync` and `PUT /matches/{id}/hosts` never check the target is seated |
@@ -95,7 +95,22 @@ Option 2 is cheaper and keeps the hub a loudspeaker. Not decided yet -- decide i
 1.3, against the real call sites.
 
 
-## Task B4 — where it stands, and the trap in it
+## Task B4 — where it stands
+
+**Done:** the scope is built and correct, and all forty-eight match-lock acquisitions go through
+it. The only `Lock.WaitAsync` left in the server is inside `MatchSession` itself. Converting them
+also fixed six places that allocated a state version with the lock *not* held — the countdown loop
+allocated one per announce tick with no lock at all — and several that awaited a broadcast while
+still holding it.
+
+**Not done:** `MatchControlService` (24 sites) and `MatchMembershipService.StartAsync` (1) still
+call `NextStateVersion()` and publish directly. This is correct today, because every caller now
+holds the lock through a scope, so the allocation happens under it — but the publish still runs
+locked, and it is the reason `NextStateVersion` cannot be deleted. Fixing it means passing the
+scope into those services, which changes their signatures and every call site, so it is its own
+change.
+
+## The trap in it
 
 The scope itself is built, correct and committed at `9357b56`. **The call-site conversion has not
 started**; `grep -rn "Lock.WaitAsync" src/Basil.Server --include=*.cs` still returns 51, of which 3
