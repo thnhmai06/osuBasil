@@ -181,25 +181,37 @@ public sealed class MatchControlService(
 	/// <summary>Sets whether the room is private and broadcasts the resulting state.</summary>
 	/// <param name="match">The match to update.</param>
 	/// <param name="isPrivate"><see langword="true" /> to make the room private; otherwise, <see langword="false" />.</param>
-	/// <param name="cancellationToken">A token that cancels the state broadcast.</param>
-	public async Task SetPrivateAsync(MatchSession match, bool isPrivate, CancellationToken cancellationToken = default)
+	/// <param name="mutation">The open mutation scope that publishes the resulting state.</param>
+	/// <param name="cancellationToken">
+	///     Ignored: the eventual publish is canceled by the token given to
+	///     <see cref="MatchSession.BeginMutationAsync" /> when <paramref name="mutation" /> was opened.
+	/// </param>
+	public Task SetPrivateAsync(MatchSession match, bool isPrivate, MatchMutationScope mutation,
+		CancellationToken cancellationToken = default)
 	{
 		match.IsPrivate = isPrivate;
 		logger.LogDebug("Room settings changed: MatchId={MatchId} IsPrivate={IsPrivate}", match.DbId, isPrivate);
-		await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
+		mutation.PublishState();
+		return Task.CompletedTask;
 	}
 
 	/// <summary>Applies a new room size, clamped to the 1 through 16 range, and broadcasts the resulting state.</summary>
 	/// <param name="match">The match to resize.</param>
 	/// <param name="size">The desired size, clamped to the 1 through 16 range.</param>
-	/// <param name="cancellationToken">A token that cancels the state broadcast.</param>
-	public async Task SetSizeAsync(MatchSession match, int size, CancellationToken cancellationToken = default)
+	/// <param name="mutation">The open mutation scope that publishes the resulting state.</param>
+	/// <param name="cancellationToken">
+	///     Ignored: the eventual publish is canceled by the token given to
+	///     <see cref="MatchSession.BeginMutationAsync" /> when <paramref name="mutation" /> was opened.
+	/// </param>
+	public Task SetSizeAsync(MatchSession match, int size, MatchMutationScope mutation,
+		CancellationToken cancellationToken = default)
 	{
 		size = Math.Clamp(size, 1, 16);
 		ApplySize(match, size);
 		logger.LogDebug("Room settings changed: MatchId={MatchId} Size={Size}", match.DbId, size);
-		await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
+		mutation.PublishState();
 		matchMembership.CancelQueuedAutoStart(match);
+		return Task.CompletedTask;
 	}
 
 	/// <summary>
@@ -225,25 +237,29 @@ public sealed class MatchControlService(
 	/// <param name="match">The match whose slots to rearrange.</param>
 	/// <param name="target">The userSession to move.</param>
 	/// <param name="destSlotIndex">The 0-based index of the destination slot.</param>
-	/// <param name="cancellationToken">A token that cancels the state broadcast.</param>
+	/// <param name="mutation">The open mutation scope that publishes the resulting state.</param>
+	/// <param name="cancellationToken">
+	///     Ignored: the eventual publish is canceled by the token given to
+	///     <see cref="MatchSession.BeginMutationAsync" /> when <paramref name="mutation" /> was opened.
+	/// </param>
 	/// <returns>
 	///     <see cref="MoveResult.Ok" /> on success, <see cref="MoveResult.DestinationNotOpen" /> when the
 	///     destination slot is not open, or <see cref="MoveResult.TargetNotInMatch" /> when the target
 	///     occupies no slot in this match.
 	/// </returns>
-	public async Task<MoveResult> MoveSlotAsync(MatchSession match, UserSession target, int destSlotIndex,
-		CancellationToken cancellationToken = default)
+	public Task<MoveResult> MoveSlotAsync(MatchSession match, UserSession target, int destSlotIndex,
+		MatchMutationScope mutation, CancellationToken cancellationToken = default)
 	{
 		var destSlot = match.Slots[destSlotIndex];
-		if (destSlot.Status != SlotStatus.Open) return MoveResult.DestinationNotOpen;
+		if (destSlot.Status != SlotStatus.Open) return Task.FromResult(MoveResult.DestinationNotOpen);
 
 		var sourceSlot = match.GetSlot(target.Id);
-		if (sourceSlot is null) return MoveResult.TargetNotInMatch;
+		if (sourceSlot is null) return Task.FromResult(MoveResult.TargetNotInMatch);
 
 		destSlot.CopyFrom(sourceSlot);
 		sourceSlot.Reset();
-		await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
-		return MoveResult.Ok;
+		mutation.PublishState();
+		return Task.FromResult(MoveResult.Ok);
 	}
 
 	/// <summary>Transfers hosting to another userSession and records the grant as a match event.</summary>
@@ -290,26 +306,37 @@ public sealed class MatchControlService(
 	/// </summary>
 	/// <param name="match">The match to rename.</param>
 	/// <param name="name">The new room name.</param>
-	/// <param name="cancellationToken">A token that cancels the state broadcast.</param>
-	public async Task SetNameAsync(MatchSession match, string name, CancellationToken cancellationToken = default)
+	/// <param name="mutation">The open mutation scope that publishes the resulting state.</param>
+	/// <param name="cancellationToken">
+	///     Ignored: the eventual publish is canceled by the token given to
+	///     <see cref="MatchSession.BeginMutationAsync" /> when <paramref name="mutation" /> was opened.
+	/// </param>
+	public Task SetNameAsync(MatchSession match, string name, MatchMutationScope mutation,
+		CancellationToken cancellationToken = default)
 	{
 		if (name.Length > MaxMatchNameLength) name = name[..MaxMatchNameLength];
 
 		match.Name = name;
 		matchMembership.SyncChannelTopic(match);
-		await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
+		mutation.PublishState();
+		return Task.CompletedTask;
 	}
 
 	/// <summary>Sets the room password and broadcasts the resulting state.</summary>
 	/// <remarks>An empty string clears the password, matching <c>!mp password</c> with no argument.</remarks>
 	/// <param name="match">The match to update.</param>
 	/// <param name="password">The new password, or an empty string to clear it.</param>
-	/// <param name="cancellationToken">A token that cancels the state broadcast.</param>
-	public async Task SetPasswordAsync(MatchSession match, string password,
+	/// <param name="mutation">The open mutation scope that publishes the resulting state.</param>
+	/// <param name="cancellationToken">
+	///     Ignored: the eventual publish is canceled by the token given to
+	///     <see cref="MatchSession.BeginMutationAsync" /> when <paramref name="mutation" /> was opened.
+	/// </param>
+	public Task SetPasswordAsync(MatchSession match, string password, MatchMutationScope mutation,
 		CancellationToken cancellationToken = default)
 	{
 		match.Password = password;
-		await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
+		mutation.PublishState();
+		return Task.CompletedTask;
 	}
 
 	/// <summary>Sends a match invite to another userSession and records them as invited.</summary>
@@ -482,23 +509,27 @@ public sealed class MatchControlService(
 	/// <param name="match">The match to update.</param>
 	/// <param name="target">The userSession whose team to set.</param>
 	/// <param name="team">The team to assign.</param>
-	/// <param name="cancellationToken">A token that cancels the state broadcast.</param>
+	/// <param name="mutation">The open mutation scope that publishes the resulting state.</param>
+	/// <param name="cancellationToken">
+	///     Ignored: the eventual publish is canceled by the token given to
+	///     <see cref="MatchSession.BeginMutationAsync" /> when <paramref name="mutation" /> was opened.
+	/// </param>
 	/// <returns>
 	///     <see cref="TeamResult.Ok" /> on success, or <see cref="TeamResult.TargetNotInMatch" /> when
 	///     the target occupies no slot in this match.
 	/// </returns>
-	public async Task<TeamResult> SetTeamAsync(MatchSession match, UserSession target, MatchTeam team,
-		CancellationToken cancellationToken = default)
+	public Task<TeamResult> SetTeamAsync(MatchSession match, UserSession target, MatchTeam team,
+		MatchMutationScope mutation, CancellationToken cancellationToken = default)
 	{
 		var slot = match.GetSlot(target.Id);
-		if (slot is null) return TeamResult.TargetNotInMatch;
+		if (slot is null) return Task.FromResult(TeamResult.TargetNotInMatch);
 
 		slot.Team = team;
 		logger.LogDebug("Room settings changed: MatchId={MatchId} UserId={UserId} Team={Team}",
 			match.DbId, target.Id, team);
-		await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(), false, cancellationToken);
+		mutation.PublishState(lobby: false);
 		matchMembership.CancelQueuedAutoStart(match);
-		return TeamResult.Ok;
+		return Task.FromResult(TeamResult.Ok);
 	}
 
 	/// <summary>
@@ -837,7 +868,7 @@ public sealed class MatchControlService(
 
 			if (token.IsCancellationRequested) return;
 			match.PendingTimer = null;
-				match.PendingTimerIsAutoStart = false;
+			match.PendingTimerIsAutoStart = false;
 			match.TimerStartedAt = null;
 			match.TimerTotalSeconds = null;
 

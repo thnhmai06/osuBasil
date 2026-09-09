@@ -44,9 +44,22 @@ neither touched the other's files — but the working tree itself does not suppo
   restored before dropping the entry — but that is one careless step away from destroying an hour
   of another worker's work.
 
-**So: one worker in this tree at a time.** Real parallelism needs `git worktree`, which the design
-already assumes for the Phase 5 diagnostics work. Until a worker is given its own worktree, batch
-more tasks into a single worker rather than running two.
+**So: one worker per tree.** Real parallelism needs `git worktree`, and as of 2026-09-09 the one the
+design always assumed exists:
+
+| Tree | Branch | Track |
+| --- | --- | --- |
+| `V:\Code\cs\osuBasil` | `feat/vsa-migration` | stages A-E, H |
+| `V:\Code\cs\osuBasil-diagnostics` | `feat/vsa-phase-5-diagnostics` | stage F, the Diagnostic API |
+
+Each worktree has its own `bin/` and `obj/`, so concurrent builds and test runs no longer fight over
+file locks, and each has its own index.
+
+**Stage B cannot be parallelised, and that is a symptom rather than an obstacle.** B1/B2, B4, B5 and
+B6 all edit the same five files -- `MatchSubResourceRoutes`, `MatchRoutes`, `MatchControlService`,
+`MatchMembershipService`, `MpCommandService`. They collide because those files are god files, which
+is what B1, B2 and B6 exist to fix. Parallelism inside multiplayer becomes possible after the
+decomposition, not before it, so the stage runs one worker deep on purpose.
 
 ## Execution model
 
