@@ -61,6 +61,7 @@ public class CommandDispatcherTests
 		var options = Options.Create(new BotOptions { CommandPrefix = prefix });
 		fixture ??= new MultiplayerTestSupport.Fixture();
 		var mpCommands = new MpCommandService(fixture.MatchMembership, fixture.MatchLifecycle, fixture.MatchBroadcast,
+			fixture.SetTeamHandler,
 			fixture.MatchRegistry, fixture.MatchRepository,
 			fixture.RoundEndOutbox, _beatmaps,
 			fixture.SessionRegistry, fixture.IrcSessionRegistry, Substitute.For<IUserRepository>(),

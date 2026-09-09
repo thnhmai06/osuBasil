@@ -1,4 +1,5 @@
 using Basil.Server.Features.Multiplayer;
+using Basil.Server.Features.Multiplayer.Handlers.Slots;
 using Basil.Server.Tests.Features.Multiplayer.Packets;
 using Basil.Domain.Multiplayer;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -424,17 +425,16 @@ public class MatchControlServiceGuardTests
 		var notInMatch = MultiplayerTestSupport.MakePlayer(2, "outsider");
 		_fixture.RegisterAll(host, notInMatch);
 		var match = _fixture.CreateMatch(host);
-		var control = MakeService();
 
-		var entries = new Dictionary<int, MatchControlService.SlotPatchEntry>
+		var entries = new Dictionary<int, SetSlotsHandler.SlotPatchEntry>
 		{
 			[1] = new(notInMatch.Id, null, null)
 		};
 
 		await using var mutation = await match.BeginMutationAsync();
-		var result = await control.SetSlotsAsync(match, entries, true, mutation);
+		var result = await _fixture.SetSlotsHandler.SetSlotsAsync(match, entries, true, mutation);
 
-		Assert.Equal(MatchControlService.SetSlotsResult.UnknownUserId, result);
+		Assert.Equal(SetSlotsHandler.SetSlotsResult.UnknownUserId, result);
 	}
 
 	/// <summary>
@@ -450,18 +450,17 @@ public class MatchControlServiceGuardTests
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
-		var control = MakeService();
 
-		var entries = new Dictionary<int, MatchControlService.SlotPatchEntry>
+		var entries = new Dictionary<int, SetSlotsHandler.SlotPatchEntry>
 		{
 			[1] = new(host.Id, null, null),
 			[2] = new(host.Id, null, null)
 		};
 
 		await using var mutation = await match.BeginMutationAsync();
-		var result = await control.SetSlotsAsync(match, entries, false, mutation);
+		var result = await _fixture.SetSlotsHandler.SetSlotsAsync(match, entries, false, mutation);
 
-		Assert.Equal(MatchControlService.SetSlotsResult.DuplicateUserId, result);
+		Assert.Equal(SetSlotsHandler.SetSlotsResult.DuplicateUserId, result);
 	}
 
 	[Fact]
@@ -472,19 +471,18 @@ public class MatchControlServiceGuardTests
 		_fixture.RegisterAll(host, other);
 		var match = _fixture.CreateMatch(host);
 		Assert.Equal(MatchMembership.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(other, match, ""));
-		var control = MakeService();
 
 		// Only re-teams host's slot — doesn't mention `other`, who is also currently seated.
 		var hostSlot = match.GetSlotId(host.Id)!.Value;
-		var entries = new Dictionary<int, MatchControlService.SlotPatchEntry>
+		var entries = new Dictionary<int, SetSlotsHandler.SlotPatchEntry>
 		{
 			[hostSlot] = new(host.Id, "Red", null)
 		};
 
 		await using var mutation = await match.BeginMutationAsync();
-		var result = await control.SetSlotsAsync(match, entries, true, mutation);
+		var result = await _fixture.SetSlotsHandler.SetSlotsAsync(match, entries, true, mutation);
 
-		Assert.Equal(MatchControlService.SetSlotsResult.PlayerCountMismatch, result);
+		Assert.Equal(SetSlotsHandler.SetSlotsResult.PlayerCountMismatch, result);
 	}
 
 	[Fact]
@@ -495,18 +493,17 @@ public class MatchControlServiceGuardTests
 		_fixture.RegisterAll(host, other);
 		var match = _fixture.CreateMatch(host);
 		Assert.Equal(MatchMembership.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(other, match, ""));
-		var control = MakeService();
 
 		var hostSlot = match.GetSlotId(host.Id)!.Value;
-		var entries = new Dictionary<int, MatchControlService.SlotPatchEntry>
+		var entries = new Dictionary<int, SetSlotsHandler.SlotPatchEntry>
 		{
 			[hostSlot] = new(host.Id, "Red", null)
 		};
 
 		await using var mutation = await match.BeginMutationAsync();
-		var result = await control.SetSlotsAsync(match, entries, false, mutation);
+		var result = await _fixture.SetSlotsHandler.SetSlotsAsync(match, entries, false, mutation);
 
-		Assert.Equal(MatchControlService.SetSlotsResult.Ok, result);
+		Assert.Equal(SetSlotsHandler.SetSlotsResult.Ok, result);
 		Assert.Equal(MatchTeam.Red, match.Slots[hostSlot].Team);
 	}
 
@@ -516,18 +513,17 @@ public class MatchControlServiceGuardTests
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
-		var control = MakeService();
 
 		var hostSlot = match.GetSlotId(host.Id)!.Value;
-		var entries = new Dictionary<int, MatchControlService.SlotPatchEntry>
+		var entries = new Dictionary<int, SetSlotsHandler.SlotPatchEntry>
 		{
 			[hostSlot] = new(host.Id, null, true)
 		};
 
 		await using var mutation = await match.BeginMutationAsync();
-		var result = await control.SetSlotsAsync(match, entries, false, mutation);
+		var result = await _fixture.SetSlotsHandler.SetSlotsAsync(match, entries, false, mutation);
 
-		Assert.Equal(MatchControlService.SetSlotsResult.SlotOccupiedAndLocked, result);
+		Assert.Equal(SetSlotsHandler.SetSlotsResult.SlotOccupiedAndLocked, result);
 	}
 
 	[Fact]
@@ -538,20 +534,19 @@ public class MatchControlServiceGuardTests
 		_fixture.RegisterAll(host, other);
 		var match = _fixture.CreateMatch(host);
 		Assert.Equal(MatchMembership.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(other, match, ""));
-		var control = MakeService();
 
 		var hostSlot = match.GetSlotId(host.Id)!.Value;
 		var otherSlot = match.GetSlotId(other.Id)!.Value;
-		var entries = new Dictionary<int, MatchControlService.SlotPatchEntry>
+		var entries = new Dictionary<int, SetSlotsHandler.SlotPatchEntry>
 		{
 			[hostSlot] = new(other.Id, null, null),
 			[otherSlot] = new(host.Id, null, null)
 		};
 
 		await using var mutation = await match.BeginMutationAsync();
-		var result = await control.SetSlotsAsync(match, entries, true, mutation);
+		var result = await _fixture.SetSlotsHandler.SetSlotsAsync(match, entries, true, mutation);
 
-		Assert.Equal(MatchControlService.SetSlotsResult.Ok, result);
+		Assert.Equal(SetSlotsHandler.SetSlotsResult.Ok, result);
 		Assert.Equal(other.Id, match.Slots[hostSlot].PlayerId);
 		Assert.Equal(host.Id, match.Slots[otherSlot].PlayerId);
 	}
@@ -562,19 +557,18 @@ public class MatchControlServiceGuardTests
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host, MatchTeamType.TeamVs);
-		var control = MakeService();
 
 		var hostSlot = match.GetSlotId(host.Id)!.Value;
 		var teamBefore = match.Slots[hostSlot].Team;
-		var entries = new Dictionary<int, MatchControlService.SlotPatchEntry>
+		var entries = new Dictionary<int, SetSlotsHandler.SlotPatchEntry>
 		{
 			[hostSlot] = new(host.Id, "Neutral", null)
 		};
 
 		await using var mutation = await match.BeginMutationAsync();
-		var result = await control.SetSlotsAsync(match, entries, false, mutation);
+		var result = await _fixture.SetSlotsHandler.SetSlotsAsync(match, entries, false, mutation);
 
-		Assert.Equal(MatchControlService.SetSlotsResult.Ok, result);
+		Assert.Equal(SetSlotsHandler.SetSlotsResult.Ok, result);
 		Assert.Equal(teamBefore, match.Slots[hostSlot].Team);
 	}
 
@@ -633,18 +627,17 @@ public class MatchControlServiceGuardTests
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
-		var control = MakeService();
 		var hostSlot = match.GetSlotId(host.Id)!.Value;
-		var entries = new Dictionary<int, MatchControlService.SlotPatchEntry>
+		var entries = new Dictionary<int, SetSlotsHandler.SlotPatchEntry>
 		{
 			[hostSlot] = new(host.Id, "Red", null)
 		};
 
 		await using var mutation = await match.BeginMutationAsync();
-		var result = await control.SetSlotsAsync(match, entries, false, mutation);
+		var result = await _fixture.SetSlotsHandler.SetSlotsAsync(match, entries, false, mutation);
 		await mutation.CompleteAsync();
 
-		Assert.Equal(MatchControlService.SetSlotsResult.Ok, result);
+		Assert.Equal(SetSlotsHandler.SetSlotsResult.Ok, result);
 		Assert.NotEmpty(_fixture.EventBus.SlotsPublishes);
 		Assert.NotEmpty(_fixture.EventBus.SlotPublishes);
 		Assert.NotEmpty(_fixture.EventBus.MainPublishes);

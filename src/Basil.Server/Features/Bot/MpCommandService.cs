@@ -4,6 +4,7 @@ using System.Text;
 using Basil.Server.Features.Beatmaps;
 using Basil.Server.Features.Bot;
 using Basil.Server.Features.Multiplayer;
+using Basil.Server.Features.Multiplayer.Handlers.Slots;
 using Basil.Server.Features.Users;
 using Basil.Server.Features.Chat.Packets;
 using Basil.Server.Shared.Sessions;
@@ -46,6 +47,7 @@ public sealed class MpCommandService(
 	MatchMembership matchMembership,
 	MatchLifecycle matchLifecycle,
 	MatchBroadcast matchBroadcast,
+	SetTeamHandler setTeamHandler,
 	IMatchRegistry matchRegistry,
 	IMatchRepository matchRepository,
 	IMatchRoundEndOutbox roundEndOutbox,
@@ -682,14 +684,14 @@ public sealed class MpCommandService(
 			return false;
 		}
 
-		var result = await _matchControl.MoveSlotAsync(match, target, destSlotId - 1, mutation);
+		var result = await MoveSlotHandler.MoveSlotAsync(match, target, destSlotId - 1, mutation);
 
 		return result switch
 		{
-			MatchControlService.MoveResult.DestinationNotOpen =>
+			MoveSlotHandler.MoveResult.DestinationNotOpen =>
 				Reply(MpReplies.DestinationSlotNotOpen),
 
-			MatchControlService.MoveResult.TargetNotInMatch =>
+			MoveSlotHandler.MoveResult.TargetNotInMatch =>
 				Reply(string.Format(MpReplies.NotInThisMatch, target.Name)),
 
 			_ =>
@@ -699,8 +701,8 @@ public sealed class MpCommandService(
 		bool Reply(string message)
 		{
 			sink.Reply(message);
-			return result is not MatchControlService.MoveResult.DestinationNotOpen
-				and not MatchControlService.MoveResult.TargetNotInMatch;
+			return result is not MoveSlotHandler.MoveResult.DestinationNotOpen
+				and not MoveSlotHandler.MoveResult.TargetNotInMatch;
 		}
 	}
 
@@ -972,8 +974,8 @@ public sealed class MpCommandService(
 		}
 
 		var team = teamArg == "red" ? MatchTeam.Red : MatchTeam.Blue;
-		var result = await _matchControl.SetTeamAsync(match, target, team, mutation);
-		if (result == MatchControlService.TeamResult.TargetNotInMatch)
+		var result = await setTeamHandler.SetTeamAsync(match, target, team, mutation);
+		if (result == SetTeamHandler.TeamResult.TargetNotInMatch)
 		{
 			sink.Reply(string.Format(MpReplies.NotInThisMatch, targetName));
 			return false;

@@ -1,4 +1,5 @@
 using Basil.Server.Features.Irc;
+using Basil.Server.Features.Multiplayer.Handlers.Slots;
 using Basil.Server.Shared.Eventing;
 using Basil.Server.Features.Beatmaps;
 using Basil.Server.Features.Multiplayer;
@@ -489,6 +490,9 @@ internal static class MultiplayerTestSupport
 				MatchRepository, MatchLifecycle, NullLogger<MatchMembership>.Instance);
 
 			ServiceProvider.GetService(typeof(MatchMembership)).Returns(_ => MatchMembership);
+
+			SetTeamHandler = new SetTeamHandler(MatchLifecycle, NullLogger<SetTeamHandler>.Instance);
+			SetSlotsHandler = new SetSlotsHandler(NullLogger<SetSlotsHandler>.Instance);
 		}
 
 		public FakeChannelRegistry ChannelRegistry { get; } = new();
@@ -517,6 +521,8 @@ internal static class MultiplayerTestSupport
 		public MatchMembership MatchMembership { get; }
 		public MatchLifecycle MatchLifecycle { get; }
 		public MatchBroadcast MatchBroadcast { get; }
+		public SetTeamHandler SetTeamHandler { get; }
+		public SetSlotsHandler SetSlotsHandler { get; }
 
 		public void RegisterAll(params GameSession[] sessions)
 		{

@@ -5,6 +5,7 @@ using Basil.Domain.Scores;
 using Basil.Server.Features.Auth;
 using Basil.Server.Features.Bot;
 using Basil.Server.Features.Irc;
+using Basil.Server.Features.Multiplayer.Handlers.Slots;
 using Basil.Server.Features.Users;
 using Basil.Server.Shared.Eventing;
 using Basil.Server.Shared.Http;
@@ -81,10 +82,10 @@ internal static class MatchSlotEndpoints
 		group.MapPut("/matches/{matchId:numericid}/slots", (int matchId, ReplaceSlotsRequest body,
 					IMatchRegistry matchRegistry,
 					ISessionRegistry<GameSession> gameRegistry, ISessionRegistry<IrcSession> ircRegistry,
-					IUserRepository users, MatchControlService matchControl,
+					IUserRepository users, SetSlotsHandler setSlotsHandler,
 					CancellationToken cancellationToken) =>
 				HandleSlotsWrite(matchId, body.Slots, true, matchRegistry, gameRegistry, ircRegistry, users,
-					matchControl, cancellationToken))
+					setSlotsHandler, cancellationToken))
 			.RequireAuthorization(AdminKeyDefaults.Policy)
 			.WithGroupName("basilapi")
 			.WithName("replaceMatchSlots")
@@ -291,12 +292,12 @@ internal static class MatchSlotEndpoints
 	/// <summary>
 	///     Backs `PUT /matches/{matchId}/slots`: validates slot indexes, converts the body to patch
 	///     entries, and applies them under <see cref="MatchSession.Lock" />, mapping
-	///     <see cref="MatchControlService.SetSlotsAsync" /> results onto 200/400/409 responses.
+	///     <see cref="SetSlotsHandler.SetSlotsAsync" /> results onto 200/400/409 responses.
 	/// </summary>
 	private static async Task<IResult> HandleSlotsWrite(int matchId, IReadOnlyList<SlotAssignment> slots,
 		bool isFullReplace, IMatchRegistry matchRegistry, ISessionRegistry<GameSession> gameRegistry,
 		ISessionRegistry<IrcSession> ircRegistry, IUserRepository users,
-		MatchControlService matchControl, CancellationToken cancellationToken)
+		SetSlotsHandler setSlotsHandler, CancellationToken cancellationToken)
 	{
 		var match = matchRegistry.GetByDbId(matchId);
 		if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
@@ -309,18 +310,19 @@ internal static class MatchSlotEndpoints
 
 		await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 		{
-			var result = await matchControl.SetSlotsAsync(match, entries, isFullReplace, mutation, cancellationToken);
+			var result =
+				await setSlotsHandler.SetSlotsAsync(match, entries, isFullReplace, mutation, cancellationToken);
 			return result switch
 			{
-				MatchControlService.SetSlotsResult.PlayerCountMismatch =>
+				SetSlotsHandler.SetSlotsResult.PlayerCountMismatch =>
 					Results.Conflict(
 						new ErrorResponse(
 							"The payload's player set doesn't match this match's current occupants.")),
-				MatchControlService.SetSlotsResult.UnknownUserId =>
+				SetSlotsHandler.SetSlotsResult.UnknownUserId =>
 					Results.Conflict(new ErrorResponse("A referenced userId is not currently seated in this match.")),
-				MatchControlService.SetSlotsResult.DuplicateUserId =>
+				SetSlotsHandler.SetSlotsResult.DuplicateUserId =>
 					Results.BadRequest(new ErrorResponse("A userId cannot be assigned to more than one slot.")),
-				MatchControlService.SetSlotsResult.SlotOccupiedAndLocked =>
+				SetSlotsHandler.SetSlotsResult.SlotOccupiedAndLocked =>
 					Results.BadRequest(new ErrorResponse("An entry cannot set both userId and locked: true.")),
 				_ => Results.Json(
 					await MatchLiveSnapshotBuilder.BuildSlots(match, gameRegistry, ircRegistry, users,
@@ -330,16 +332,16 @@ internal static class MatchSlotEndpoints
 	}
 
 	/// <summary>
-	///     Turns a request's per-slot assignments into the team/lock map <see cref="MatchControlService" />
+	///     Turns a request's per-slot assignments into the team/lock map <see cref="SetSlotsHandler" />
 	///     consumes, translating each <see cref="MatchTeam" /> into the `"Red"`/`"Blue"` strings it
 	///     expects (null for a neutral team), and each 1-based <see cref="SlotAssignment.Index" /> into
 	///     the 0-based index the internal slot array uses.
 	/// </summary>
 	/// <param name="slots">The slot assignments from the request body.</param>
-	private static IReadOnlyDictionary<int, MatchControlService.SlotPatchEntry> ToPatchEntries(
+	private static IReadOnlyDictionary<int, SetSlotsHandler.SlotPatchEntry> ToPatchEntries(
 		IReadOnlyList<SlotAssignment> slots)
 	{
-		var entries = new Dictionary<int, MatchControlService.SlotPatchEntry>();
+		var entries = new Dictionary<int, SetSlotsHandler.SlotPatchEntry>();
 		foreach (var slot in slots)
 		{
 			var team = slot.Team switch
@@ -348,7 +350,7 @@ internal static class MatchSlotEndpoints
 				MatchTeam.Blue => "Blue",
 				_ => null
 			};
-			entries[slot.Index - 1] = new MatchControlService.SlotPatchEntry(slot.UserId, team, slot.Locked);
+			entries[slot.Index - 1] = new SetSlotsHandler.SlotPatchEntry(slot.UserId, team, slot.Locked);
 		}
 
 		return entries;

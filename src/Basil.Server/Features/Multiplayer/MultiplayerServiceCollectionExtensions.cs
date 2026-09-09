@@ -1,3 +1,4 @@
+using Basil.Server.Features.Multiplayer.Handlers.Slots;
 using Basil.Server.Features.Multiplayer.Packets;
 using Basil.Server.Shared.Configuration;
 using Basil.Server.Shared.Eventing;
@@ -20,6 +21,8 @@ public static class MultiplayerServiceCollectionExtensions
 		services.AddSingleton<MatchMembership>();
 		services.AddSingleton<MatchLifecycle>();
 		services.AddSingleton<MatchControlService>();
+		services.AddSingleton<SetTeamHandler>();
+		services.AddSingleton<SetSlotsHandler>();
 		services.AddSingleton<MatchReportService>();
 		services.AddSingleton<MatchRecoveryService>();
 
