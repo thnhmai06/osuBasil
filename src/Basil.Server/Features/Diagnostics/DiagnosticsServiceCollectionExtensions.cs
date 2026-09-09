@@ -12,6 +12,8 @@ public static class DiagnosticsServiceCollectionExtensions
 		services.AddSingleton<RuntimeMeterListener>();
 		services.AddHostedService(sp => sp.GetRequiredService<RuntimeMeterListener>());
 
+		services.AddSingleton<ProcessSampler>();
+
 		return services;
 	}
 }
