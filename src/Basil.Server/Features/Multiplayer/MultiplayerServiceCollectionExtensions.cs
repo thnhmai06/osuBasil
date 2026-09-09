@@ -1,3 +1,4 @@
+using Basil.Server.Features.Multiplayer.Handlers.Countdown;
 using Basil.Server.Features.Multiplayer.Handlers.Slots;
 using Basil.Server.Features.Multiplayer.Packets;
 using Basil.Server.Shared.Configuration;
@@ -23,6 +24,8 @@ public static class MultiplayerServiceCollectionExtensions
 		services.AddSingleton<MatchControlService>();
 		services.AddSingleton<SetTeamHandler>();
 		services.AddSingleton<SetSlotsHandler>();
+		services.AddSingleton<TimerHandler>();
+		services.AddSingleton<AbortTimerHandler>();
 		services.AddSingleton<MatchReportService>();
 		services.AddSingleton<MatchRecoveryService>();
 

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Basil.Server.Features.Auth;
+using Basil.Server.Features.Multiplayer.Handlers.Countdown;
 using Basil.Server.Shared.Eventing;
 using Basil.Server.Shared.Http;
 using Basil.Server.Shared.Http.Middleware;
@@ -72,7 +73,8 @@ internal static class MatchTimerEndpoints
 			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Match is not live"));
 
 		group.MapPost("/matches/{matchId:numericid}/timer", async (int matchId, StartTimerRequest body,
-				IMatchRegistry matchRegistry, MatchControlService matchControl, CancellationToken cancellationToken) =>
+				IMatchRegistry matchRegistry, MatchControlService matchControl, TimerHandler timerHandler,
+				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
@@ -96,7 +98,7 @@ internal static class MatchTimerEndpoints
 						};
 					}
 
-					matchControl.Timer(match, body.Seconds > 0 ? body.Seconds : 30, mutation);
+					timerHandler.Timer(match, body.Seconds > 0 ? body.Seconds : 30, mutation);
 					return Results.Json(MatchLiveSnapshotBuilder.BuildTimer(match));
 				}
 			})
@@ -121,15 +123,16 @@ internal static class MatchTimerEndpoints
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
 		group.MapDelete("/matches/{matchId:numericid}/timer", async (int matchId, HttpContext context,
-				IMatchRegistry matchRegistry, MatchControlService matchControl, CancellationToken cancellationToken) =>
+				IMatchRegistry matchRegistry, AbortTimerHandler abortTimerHandler,
+				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
 				await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 				{
-					var result = matchControl.AbortTimer(match, mutation);
-					if (result == MatchControlService.AbortTimerResult.NoTimerRunning)
+					var result = abortTimerHandler.AbortTimer(match, mutation);
+					if (result == AbortTimerHandler.AbortTimerResult.NoTimerRunning)
 						return Results.Conflict(new ErrorResponse("No countdown is running."));
 
 					context.Items[EnvelopeMiddleware.EnvelopeMessageKey] = "Countdown aborted.";

@@ -179,7 +179,7 @@ internal static class SliceAdjacency
 		// MatchRoutes and MatchSubResourceRoutes gate referee-only operations on AdminKeyDefaults.
 		("Multiplayer", "Auth"),
 
-		// MatchControlService and MatchLiveSnapshotBuilder resolve the bot's session by
+		// MatchControlService, TimerHandler and MatchLiveSnapshotBuilder resolve the bot's session by
 		// BotBootstrapService.BotId; the bot is the match's default host.
 		("Multiplayer", "Bot"),
 

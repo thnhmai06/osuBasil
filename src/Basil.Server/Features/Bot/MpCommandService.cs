@@ -4,6 +4,7 @@ using System.Text;
 using Basil.Server.Features.Beatmaps;
 using Basil.Server.Features.Bot;
 using Basil.Server.Features.Multiplayer;
+using Basil.Server.Features.Multiplayer.Handlers.Countdown;
 using Basil.Server.Features.Multiplayer.Handlers.Slots;
 using Basil.Server.Features.Users;
 using Basil.Server.Features.Chat.Packets;
@@ -48,6 +49,8 @@ public sealed class MpCommandService(
 	MatchLifecycle matchLifecycle,
 	MatchBroadcast matchBroadcast,
 	SetTeamHandler setTeamHandler,
+	TimerHandler timerHandler,
+	AbortTimerHandler abortTimerHandler,
 	IMatchRegistry matchRegistry,
 	IMatchRepository matchRepository,
 	IMatchRoundEndOutbox roundEndOutbox,
@@ -118,8 +121,8 @@ public sealed class MpCommandService(
 	internal static readonly string HelpText = string.Join('\n', Commands.Select(c => $"{c.Usage} - {c.Description}"));
 
 	private readonly MatchControlService _matchControl =
-		new(matchMembership, matchLifecycle, matchBroadcast, matchRepository, roundEndOutbox, beatmapRepository,
-			gameRegistry, ircRegistry, matchControlLogger);
+		new(matchMembership, matchLifecycle, matchBroadcast, timerHandler, matchRepository, roundEndOutbox,
+			beatmapRepository, gameRegistry, ircRegistry, matchControlLogger);
 
 	/// <summary>
 	///     Dispatches a <c>!mp</c> subcommand against a resolved match.
@@ -1236,7 +1239,7 @@ public sealed class MpCommandService(
 			return false;
 		}
 
-		_matchControl.Timer(match, seconds, mutation);
+		timerHandler.Timer(match, seconds, mutation);
 		sink.Reply(string.Format(MpReplies.CountdownStarted, seconds));
 		return true;
 	}
@@ -1244,8 +1247,8 @@ public sealed class MpCommandService(
 	/// <summary>Implements <c>!mp aborttimer</c>, cancelling a running countdown.</summary>
 	private bool AbortTimer(MatchSession match, ICommandReplySink sink, MatchMutationScope mutation)
 	{
-		var result = _matchControl.AbortTimer(match, mutation);
-		if (result == MatchControlService.AbortTimerResult.NoTimerRunning)
+		var result = abortTimerHandler.AbortTimer(match, mutation);
+		if (result == AbortTimerHandler.AbortTimerResult.NoTimerRunning)
 		{
 			sink.Reply(MpReplies.NoCountdownRunning);
 			return false;
@@ -1410,7 +1413,7 @@ public sealed class MpCommandService(
 
 	/// <summary>
 	///     Computes the announcement checkpoints for a countdown, forwarding to
-	///     <see cref="MatchControlService.ComputeAnnounceCheckpoints" />.
+	///     <see cref="TimerHandler.ComputeAnnounceCheckpoints" />.
 	/// </summary>
 	/// <remarks>
 	///     Also kept here so existing tests can reference it as
@@ -1423,7 +1426,7 @@ public sealed class MpCommandService(
 	/// <returns>The countdown checkpoints in seconds.</returns>
 	public static IReadOnlyList<int> ComputeAnnounceCheckpoints(int totalSeconds, bool autoStart = true)
 	{
-		return MatchControlService.ComputeAnnounceCheckpoints(totalSeconds, autoStart);
+		return TimerHandler.ComputeAnnounceCheckpoints(totalSeconds, autoStart);
 	}
 
 	/// <summary>
