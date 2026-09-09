@@ -65,4 +65,49 @@ public class DiagnosticBroadcastServiceTests
 		Assert.True(await events.MoveNextAsync());
 		Assert.NotEmpty(events.Current.Payload.ToArray());
 	}
+
+	/// <summary>
+	///     Pins the design this whole broadcast loop exists for (see <see cref="LiveEventHub" />'s own
+	///     "every subscriber to a stream receives the same immutable event" remark, and Task 5.7's
+	///     overhead measurement): a tick samples one category once and hands the identical payload
+	///     buffer to every subscriber, rather than sampling once per connection.
+	///
+	///     Each subscription opened before the tick already counts as having an (empty) snapshot the
+	///     moment it opens -- see <see cref="RunOnce_CategoryWithASubscriber_DeliversAFreshReading" />
+	///     -- so the tick's publish arrives on <see cref="LiveSubscription.Events" /> for all three,
+	///     not on <see cref="LiveSubscription.Snapshot" />.
+	///
+	///     Compared via <see cref="ReadOnlyMemory{T}.Equals(ReadOnlyMemory{T})" />, which compares the
+	///     underlying buffer reference (plus offset and length), not byte content -- so this fails if
+	///     the implementation ever starts serializing a fresh payload per subscriber, even when two
+	///     independently-sampled readings happen to carry the same values.
+	/// </summary>
+	[Fact]
+	public async Task RunOnce_MultipleSubscribersToOneCategory_AllReceiveTheSamePublishedBuffer()
+	{
+		var hub = new LiveEventHub();
+		var service = CreateService(hub);
+		using var first = hub.Open(DiagnosticStreams.Overview);
+		using var second = hub.Open(DiagnosticStreams.Overview);
+		using var third = hub.Open(DiagnosticStreams.Overview);
+
+		service.RunOnce();
+
+		using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+		var firstEvent = await FirstEventAsync(first, cancellation.Token);
+		var secondEvent = await FirstEventAsync(second, cancellation.Token);
+		var thirdEvent = await FirstEventAsync(third, cancellation.Token);
+
+		Assert.Equal(firstEvent.Version, secondEvent.Version);
+		Assert.Equal(firstEvent.Version, thirdEvent.Version);
+		Assert.True(firstEvent.Payload.Equals(secondEvent.Payload));
+		Assert.True(firstEvent.Payload.Equals(thirdEvent.Payload));
+	}
+
+	private static async Task<LiveEvent> FirstEventAsync(LiveSubscription subscription, CancellationToken cancellationToken)
+	{
+		await using var events = subscription.Events.GetAsyncEnumerator(cancellationToken);
+		Assert.True(await events.MoveNextAsync());
+		return events.Current;
+	}
 }
