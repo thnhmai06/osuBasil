@@ -265,7 +265,9 @@ unfinished, resume from repository state and schedule the next one.
 | 2026-09-08 06:20 UTC+7 | 2026-09-08 11:21 UTC+7 | cancelled — superseded once the pause point moved |
 | 2026-09-08 11:15 UTC+7 | 2026-09-08 16:14 UTC+7 | cancelled — Phase 0 finished and work was paused |
 | 2026-09-08 15:23 UTC+7 | 2026-09-08 20:23 UTC+7 | cancelled — superseded once the reset time was known |
-| 2026-09-08 15:31 UTC+7 | 2026-09-08 19:24 UTC+7 | pending — fires just after the 19:20 reset rather than a flat +5h |
+| 2026-09-08 15:31 UTC+7 | 2026-09-08 19:24 UTC+7 | fired |
+| 2026-09-09 01:20 UTC+7 | 2026-09-09 05:24 UTC+7 | lost — the Claude process exited at 02:22 and took the job with it; nothing resumed until 06:45 |
+| 2026-09-09 06:47 UTC+7 | 2026-09-09 11:47 UTC+7 | pending — the reset is 11:40, so this fires seven minutes into the fresh window |
 
 The usage limit resets at 01:10 UTC+7, so the first continuation fires just after that rather
 than a flat five hours out. Subsequent cycles go back to +5h unless a reset time is known.
@@ -274,7 +276,11 @@ Phase 1 is in flight, and a reminder is scheduled. When a reset time is known it
 firing at 19:24 against a 19:20 reset recovers most of an hour that a 20:23 wake-up would have idled
 away. When no reset time is known, fall back to +5h.
 
-Cron jobs are session-only: they do not survive this Claude session ending.
+Cron jobs are session-only, and on 2026-09-09 that cost four and a half hours: the process exited at
+02:22 with a reminder pending for 05:24, the reminder died with it, and nothing resumed until the
+user returned at 06:45. Scheduling a fresh reminder is therefore the first action of any new
+session, before reading anything else -- a checkpoint nobody wakes up to read is worth nothing.
+Surviving a process restart needs something outside the process, which cron here is not.
 
 ## Task 0.14 — baseline verification
 

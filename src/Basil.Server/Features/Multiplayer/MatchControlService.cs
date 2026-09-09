@@ -265,8 +265,9 @@ public sealed class MatchControlService(
 	/// <summary>Transfers hosting to another userSession and records the grant as a match event.</summary>
 	/// <param name="match">The match whose host changes.</param>
 	/// <param name="target">The userSession who becomes the host.</param>
-	/// <param name="cancellationToken">A token that cancels the state broadcast and host publish.</param>
-	public async Task SetHostAsync(MatchSession match, GameSession target,
+	/// <param name="mutation">The open mutation scope that publishes the resulting state and host.</param>
+	/// <param name="cancellationToken">A token that cancels the event write.</param>
+	public async Task SetHostAsync(MatchSession match, GameSession target, MatchMutationScope mutation,
 		CancellationToken cancellationToken = default)
 	{
 		var prevHostId = match.HostId;
@@ -274,8 +275,7 @@ public sealed class MatchControlService(
 		logger.LogInformation("Host transferred: MatchId={MatchId} PrevHostId={PrevHostId} NewHostId={NewHostId}",
 			match.DbId, prevHostId, target.Id);
 		target.Enqueue(ServerPacketWriter.MatchTransferHost());
-		var version = match.NextStateVersion();
-		await matchMembership.EnqueueStateAsync(match, version, cancellationToken: cancellationToken);
+		mutation.PublishState();
 
 		var prevHostName = gameRegistry.GetByUserId(prevHostId)?.Name;
 		await matchRepository.CreateEventAsync(new MatchEvent(
@@ -283,7 +283,7 @@ public sealed class MatchControlService(
 			prevHostId, prevHostName, target.Id, target.Name,
 			DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 
-		await matchMembership.PublishHostAsync(match, version, cancellationToken);
+		mutation.PublishHost();
 	}
 
 	/// <summary>
@@ -291,13 +291,18 @@ public sealed class MatchControlService(
 	///     and republishes the host state.
 	/// </summary>
 	/// <param name="match">The match whose host to clear.</param>
-	/// <param name="cancellationToken">A token that cancels the state broadcast and host publish.</param>
-	public async Task ClearHostAsync(MatchSession match, CancellationToken cancellationToken = default)
+	/// <param name="mutation">The open mutation scope that publishes the resulting state and host.</param>
+	/// <param name="cancellationToken">
+	///     Ignored: the eventual publish is canceled by the token given to
+	///     <see cref="MatchSession.BeginMutationAsync" /> when <paramref name="mutation" /> was opened.
+	/// </param>
+	public Task ClearHostAsync(MatchSession match, MatchMutationScope mutation,
+		CancellationToken cancellationToken = default)
 	{
 		match.HostId = MatchSession.NoHostId;
-		var version = match.NextStateVersion();
-		await matchMembership.EnqueueStateAsync(match, version, cancellationToken: cancellationToken);
-		await matchMembership.PublishHostAsync(match, version, cancellationToken);
+		mutation.PublishState();
+		mutation.PublishHost();
+		return Task.CompletedTask;
 	}
 
 	/// <summary>
@@ -362,14 +367,15 @@ public sealed class MatchControlService(
 	/// <param name="actorName">The acting userSession's name, or <see langword="null" /> when unknown.</param>
 	/// <param name="match">The match to update.</param>
 	/// <param name="target">The userSession to grant referee status.</param>
-	/// <param name="cancellationToken">A token that cancels the event writes and referee publication.</param>
+	/// <param name="mutation">The open mutation scope that publishes the resulting referee list.</param>
+	/// <param name="cancellationToken">A token that cancels the event write.</param>
 	/// <returns>
 	///     <see cref="AddRefereeResult.Ok" /> on success, <see cref="AddRefereeResult.TargetIsBot" />,
 	///     or <see cref="AddRefereeResult.AlreadyReferee" /> when the target already holds referee
 	///     status (a no-op: no event is recorded and nothing republishes).
 	/// </returns>
 	public async Task<AddRefereeResult> AddRefereeAsync(int? actorId, string? actorName, MatchSession match,
-		UserSession target, CancellationToken cancellationToken = default)
+		UserSession target, MatchMutationScope mutation, CancellationToken cancellationToken = default)
 	{
 		if (target.IsBot) return AddRefereeResult.TargetIsBot;
 		if (match.IsReferee(target.Id)) return AddRefereeResult.AlreadyReferee;
@@ -383,7 +389,7 @@ public sealed class MatchControlService(
 			actorId, actorName, target.Id, target.Name,
 			DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 
-		await matchMembership.PublishRefsAsync(match, match.NextStateVersion(), cancellationToken);
+		mutation.PublishRefs();
 		return AddRefereeResult.Ok;
 	}
 
@@ -399,7 +405,8 @@ public sealed class MatchControlService(
 	/// </remarks>
 	/// <param name="match">The match whose referees to replace.</param>
 	/// <param name="targets">The complete set of players to keep as referees.</param>
-	/// <param name="cancellationToken">A token that cancels the event writes and the referee publishes.</param>
+	/// <param name="mutation">The open mutation scope that publishes the resulting referee list.</param>
+	/// <param name="cancellationToken">A token that cancels the event writes.</param>
 	/// <returns>
 	///     <see cref="SetRefereesResult.Ok" /> on success, <see cref="SetRefereesResult.WouldLeaveEmpty" />
 	///     when <paramref name="targets" /> is empty, or <see cref="SetRefereesResult.WouldRemoveCreator" />
@@ -408,6 +415,7 @@ public sealed class MatchControlService(
 	public async Task<SetRefereesResult> SetRefereesAsync(
 		MatchSession match,
 		IReadOnlyCollection<UserSession> targets,
+		MatchMutationScope mutation,
 		CancellationToken cancellationToken = default)
 	{
 		if (targets.Count == 0) return SetRefereesResult.WouldLeaveEmpty;
@@ -438,7 +446,7 @@ public sealed class MatchControlService(
 				null, null, target.Id, target.Name, DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 		}
 
-		await matchMembership.PublishRefsAsync(match, match.NextStateVersion(), cancellationToken);
+		mutation.PublishRefs();
 		return SetRefereesResult.Ok;
 	}
 
@@ -455,7 +463,8 @@ public sealed class MatchControlService(
 	/// <param name="actorName">The acting userSession's name, or <see langword="null" /> when unknown.</param>
 	/// <param name="match">The match to update.</param>
 	/// <param name="target">The referee to remove.</param>
-	/// <param name="cancellationToken">A token that cancels the event writes and referee publication.</param>
+	/// <param name="mutation">The open mutation scope that publishes the resulting referee list.</param>
+	/// <param name="cancellationToken">A token that cancels the event write.</param>
 	/// <returns>
 	///     <see cref="RemoveRefereeResult.Ok" /> on success,
 	///     <see cref="RemoveRefereeResult.NotAReferee" /> when the target holds no referee status,
@@ -464,7 +473,7 @@ public sealed class MatchControlService(
 	///     without any referees.
 	/// </returns>
 	public async Task<RemoveRefereeResult> RemoveOneRefereeAsync(int? actorId, string? actorName, MatchSession match,
-		UserSession target, CancellationToken cancellationToken = default)
+		UserSession target, MatchMutationScope mutation, CancellationToken cancellationToken = default)
 	{
 		if (!match.Referees.Contains(target.Id)) return RemoveRefereeResult.NotAReferee;
 		if (match.IsCreator(target.Id)) return RemoveRefereeResult.TargetIsCreator;
@@ -480,7 +489,7 @@ public sealed class MatchControlService(
 			actorId, actorName, target.Id, target.Name,
 			DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 
-		await matchMembership.PublishRefsAsync(match, match.NextStateVersion(), cancellationToken);
+		mutation.PublishRefs();
 		return RemoveRefereeResult.Ok;
 	}
 
@@ -567,9 +576,14 @@ public sealed class MatchControlService(
 	/// <param name="teamType">The team type to apply.</param>
 	/// <param name="winCondition">The new win condition, or <see langword="null" /> to leave it unchanged.</param>
 	/// <param name="size">The new size, or <see langword="null" /> to leave it unchanged.</param>
-	/// <param name="cancellationToken">A token that cancels the state broadcast.</param>
-	public async Task SetTeamTypeWinConditionAndSizeAsync(MatchSession match, MatchTeamType teamType,
-		MatchWinCondition? winCondition, int? size, CancellationToken cancellationToken = default)
+	/// <param name="mutation">The open mutation scope that publishes the resulting state.</param>
+	/// <param name="cancellationToken">
+	///     Ignored: the eventual publish is canceled by the token given to
+	///     <see cref="MatchSession.BeginMutationAsync" /> when <paramref name="mutation" /> was opened.
+	/// </param>
+	public Task SetTeamTypeWinConditionAndSizeAsync(MatchSession match, MatchTeamType teamType,
+		MatchWinCondition? winCondition, int? size, MatchMutationScope mutation,
+		CancellationToken cancellationToken = default)
 	{
 		ApplyTeamType(match, teamType);
 		if (winCondition is { } wc) match.WinCondition = wc;
@@ -578,8 +592,9 @@ public sealed class MatchControlService(
 			"Room settings changed: MatchId={MatchId} TeamType={TeamType} WinCondition={WinCondition} Size={Size}",
 			match.DbId, teamType, winCondition, size);
 
-		await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
+		mutation.PublishState();
 		matchMembership.CancelQueuedAutoStart(match);
+		return Task.CompletedTask;
 	}
 
 	/// <summary>Assigns a beatmap to the match, unreadies all players, and broadcasts the resulting state.</summary>
@@ -592,13 +607,14 @@ public sealed class MatchControlService(
 	///     mode osu! can convert into every other ruleset); it is silently ignored for a beatmap
 	///     that's already mode-specific, which then always plays as its own native mode.
 	/// </param>
-	/// <param name="cancellationToken">A token that cancels the beatmap lookup and state broadcast.</param>
+	/// <param name="mutation">The open mutation scope that publishes the resulting state.</param>
+	/// <param name="cancellationToken">A token that cancels the beatmap lookup.</param>
 	/// <returns>
 	///     <see cref="SetMapResult.Ok" /> with the resolved beatmap, or
 	///     <see cref="SetMapResult.BeatmapNotFound" /> with <see langword="null" />.
 	/// </returns>
 	public async Task<(SetMapResult Result, Beatmap? Beatmap)> SetMapAsync(MatchSession match, int beatmapId,
-		GameMode? playmode = null, CancellationToken cancellationToken = default)
+		MatchMutationScope mutation, GameMode? playmode = null, CancellationToken cancellationToken = default)
 	{
 		var beatmap = await beatmapRepository.FetchOneAsync(beatmapId, cancellationToken: cancellationToken);
 		if (beatmap is null) return (SetMapResult.BeatmapNotFound, null);
@@ -611,7 +627,7 @@ public sealed class MatchControlService(
 			? playmode.Value
 			: beatmap.Difficulty.Mode;
 		logger.LogDebug("Room settings changed: MatchId={MatchId} MapId={MapId}", match.DbId, beatmap.Id);
-		await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
+		mutation.PublishState();
 		matchMembership.CancelQueuedAutoStart(match);
 		return (SetMapResult.Ok, beatmap);
 	}
@@ -628,8 +644,12 @@ public sealed class MatchControlService(
 	///     <see langword="true" /> to switch the room into freemod mode; otherwise,
 	///     <see langword="false" />.
 	/// </param>
-	/// <param name="cancellationToken">A token that cancels the state broadcast.</param>
-	public async Task SetModsAsync(MatchSession match, Mods mods, bool enableFreemod,
+	/// <param name="mutation">The open mutation scope that publishes the resulting state.</param>
+	/// <param name="cancellationToken">
+	///     Ignored: the eventual publish is canceled by the token given to
+	///     <see cref="MatchSession.BeginMutationAsync" /> when <paramref name="mutation" /> was opened.
+	/// </param>
+	public Task SetModsAsync(MatchSession match, Mods mods, bool enableFreemod, MatchMutationScope mutation,
 		CancellationToken cancellationToken = default)
 	{
 		if (enableFreemod && !match.Freemods) EnableFreemods(match);
@@ -638,7 +658,8 @@ public sealed class MatchControlService(
 
 		logger.LogDebug("Room settings changed: MatchId={MatchId} Mods={Mods} Freemod={Freemod}",
 			match.DbId, mods, match.Freemods);
-		await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
+		mutation.PublishState();
+		return Task.CompletedTask;
 	}
 
 	/// <summary>Switches the room into freemod mode, stripping speed-changing mods from every occupied slot.</summary>
@@ -676,6 +697,7 @@ public sealed class MatchControlService(
 	/// </remarks>
 	/// <param name="match">The match to start.</param>
 	/// <param name="countdownSeconds">The countdown length in seconds, or <see langword="null" /> to start immediately.</param>
+	/// <param name="mutation">The open mutation scope that publishes the resulting timer or match state.</param>
 	/// <param name="cancellationToken">A token that cancels the immediate start.</param>
 	/// <returns>
 	///     <see cref="StartResult.AlreadyInProgress" /> when the match is already running,
@@ -683,14 +705,14 @@ public sealed class MatchControlService(
 	///     <see cref="StartResult.Started" /> or <see cref="StartResult.BeatmapMissing" /> for an
 	///     immediate start.
 	/// </returns>
-	public async Task<StartResult> StartAsync(MatchSession match, int? countdownSeconds,
+	public async Task<StartResult> StartAsync(MatchSession match, int? countdownSeconds, MatchMutationScope mutation,
 		CancellationToken cancellationToken = default)
 	{
 		if (match.InProgress) return StartResult.AlreadyInProgress;
 
 		if (countdownSeconds is > 0)
 		{
-			BeginCountdown(match, countdownSeconds.Value, true);
+			BeginCountdown(match, countdownSeconds.Value, true, mutation);
 			return StartResult.CountdownQueued;
 		}
 
@@ -698,19 +720,20 @@ public sealed class MatchControlService(
 		// keeps running (and can still fire "Match starts in N seconds"/try to auto-start again) even
 		// though the match started right now through this call instead.
 		if (CancelPendingTimer(match, announce: false))
-			matchMembership.PublishTimer(match, match.NextStateVersion());
+			mutation.PublishTimer();
 
-		var started = await matchMembership.StartAsync(match, cancellationToken);
+		var started = await matchMembership.StartAsync(match, mutation, cancellationToken);
 		return started ? StartResult.Started : StartResult.BeatmapMissing;
 	}
 
 	/// <summary>Starts a plain countdown that announces but never auto-starts the match when it finishes.</summary>
 	/// <param name="match">The match whose timer to start.</param>
 	/// <param name="seconds">The countdown length in seconds.</param>
-	public void Timer(MatchSession match, int seconds)
+	/// <param name="mutation">The open mutation scope that publishes the resulting timer.</param>
+	public void Timer(MatchSession match, int seconds, MatchMutationScope mutation)
 	{
 		logger.LogDebug("Timer started: MatchId={MatchId} Seconds={Seconds}", match.DbId, seconds);
-		BeginCountdown(match, seconds, false);
+		BeginCountdown(match, seconds, false, mutation);
 	}
 
 	/// <summary>Computes the descending list of seconds at which a countdown announces.</summary>
@@ -760,7 +783,8 @@ public sealed class MatchControlService(
 	///     <see langword="true" /> to start the match when the countdown finishes; otherwise,
 	///     <see langword="false" />.
 	/// </param>
-	private void BeginCountdown(MatchSession match, int totalSeconds, bool autoStart)
+	/// <param name="mutation">The open mutation scope that publishes the resulting timer.</param>
+	private void BeginCountdown(MatchSession match, int totalSeconds, bool autoStart, MatchMutationScope mutation)
 	{
 		CancelPendingTimer(match, announce: true);
 
@@ -769,7 +793,7 @@ public sealed class MatchControlService(
 		match.PendingTimerIsAutoStart = autoStart;
 		match.TimerStartedAt = DateTimeOffset.UtcNow;
 		match.TimerTotalSeconds = totalSeconds;
-		matchMembership.PublishTimer(match, match.NextStateVersion());
+		mutation.PublishTimer();
 		logger.LogDebug("Countdown queued: MatchId={MatchId} Seconds={Seconds} AutoStart={AutoStart}",
 			match.DbId, totalSeconds, autoStart);
 
@@ -874,7 +898,7 @@ public sealed class MatchControlService(
 
 			if (autoStart)
 			{
-				var started = match.InProgress || await matchMembership.StartAsync(match, token);
+				var started = match.InProgress || await matchMembership.StartAsync(match, mutation, token);
 				if (started) Announce(match, "Good luck, have fun!");
 			}
 			else
@@ -925,11 +949,12 @@ public sealed class MatchControlService(
 
 	/// <summary>Cancels a pending countdown and republishes the timer state.</summary>
 	/// <param name="match">The match whose timer to abort.</param>
+	/// <param name="mutation">The open mutation scope that publishes the resulting timer.</param>
 	/// <returns>
 	///     <see cref="AbortTimerResult.Ok" /> when a timer was running and was canceled, or
 	///     <see cref="AbortTimerResult.NoTimerRunning" /> when none was.
 	/// </returns>
-	public AbortTimerResult AbortTimer(MatchSession match)
+	public AbortTimerResult AbortTimer(MatchSession match, MatchMutationScope mutation)
 	{
 		if (match.PendingTimer is null) return AbortTimerResult.NoTimerRunning;
 
@@ -939,20 +964,25 @@ public sealed class MatchControlService(
 		match.TimerStartedAt = null;
 		match.TimerTotalSeconds = null;
 		logger.LogDebug("Timer aborted: MatchId={MatchId}", match.DbId);
-		matchMembership.PublishTimer(match, match.NextStateVersion());
+		mutation.PublishTimer();
 		return AbortTimerResult.Ok;
 	}
 
 	/// <summary>Stops an in-progress match, unreadying playing players and ending the current round.</summary>
 	/// <param name="match">The match to abort.</param>
-	/// <param name="cancellationToken">A token that cancels the round-end writer and state broadcast.</param>
+	/// <param name="mutation">The open mutation scope that publishes the resulting state.</param>
+	/// <param name="cancellationToken">
+	///     Ignored: the eventual publish is canceled by the token given to
+	///     <see cref="MatchSession.BeginMutationAsync" /> when <paramref name="mutation" /> was opened.
+	/// </param>
 	/// <returns>
 	///     <see cref="AbortResult.Ok" /> when the match was aborted, or
 	///     <see cref="AbortResult.NotInProgress" /> when it was not running.
 	/// </returns>
-	public async Task<AbortResult> AbortAsync(MatchSession match, CancellationToken cancellationToken = default)
+	public Task<AbortResult> AbortAsync(MatchSession match, MatchMutationScope mutation,
+		CancellationToken cancellationToken = default)
 	{
-		if (!match.InProgress) return AbortResult.NotInProgress;
+		if (!match.InProgress) return Task.FromResult(AbortResult.NotInProgress);
 
 		match.UnreadyPlayers(SlotStatus.Playing);
 		match.ResetPlayersLoadedStatus();
@@ -978,8 +1008,8 @@ public sealed class MatchControlService(
 		logger.LogInformation("Match aborted: MatchId={MatchId} RoundId={RoundId}", match.DbId, roundId);
 		matchMembership.Enqueue(match, ServerPacketWriter.MatchAbort(), false);
 		matchMembership.AnnounceToRoomAndReferees(match, "Match aborted.");
-		await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
-		return AbortResult.Ok;
+		mutation.PublishState();
+		return Task.FromResult(AbortResult.Ok);
 	}
 
 	/// <summary>
@@ -1052,13 +1082,14 @@ public sealed class MatchControlService(
 	/// <param name="match">The match to update.</param>
 	/// <param name="targetUserId">The id of the userSession to ban.</param>
 	/// <param name="targetName">The name of the userSession to ban, recorded on the match event.</param>
-	/// <param name="cancellationToken">A token that cancels the leave, event write, and banlist publish.</param>
+	/// <param name="mutation">The open mutation scope that publishes the resulting banlist.</param>
+	/// <param name="cancellationToken">A token that cancels the leave and event write.</param>
 	/// <returns>
 	///     <see cref="BanResult.Ok" />, <see cref="BanResult.TargetIsReferee" />, or
 	///     <see cref="BanResult.TargetIsBot" />.
 	/// </returns>
 	public async Task<BanResult> BanAsync(int? actorId, string? actorName, MatchSession match, int targetUserId,
-		string? targetName, CancellationToken cancellationToken = default)
+		string? targetName, MatchMutationScope mutation, CancellationToken cancellationToken = default)
 	{
 		if (targetUserId == BotBootstrapService.BotId) return BanResult.TargetIsBot;
 		if (match.IsReferee(targetUserId)) return BanResult.TargetIsReferee;
@@ -1085,27 +1116,31 @@ public sealed class MatchControlService(
 			actorId, actorName, targetUserId, targetName,
 			DateTimeOffset.UtcNow.UtcDateTime, "Banned"), cancellationToken);
 
-		await matchMembership.PublishBansAsync(match, match.NextStateVersion(), cancellationToken);
+		mutation.PublishBans();
 		return BanResult.Ok;
 	}
 
 	/// <summary>Removes a userSession from the banlist and republishes the banlist.</summary>
 	/// <param name="match">The match to update.</param>
 	/// <param name="targetUserId">The banned userSession's id to unban.</param>
-	/// <param name="cancellationToken">A token that cancels the banlist publication.</param>
+	/// <param name="mutation">The open mutation scope that publishes the resulting banlist.</param>
+	/// <param name="cancellationToken">
+	///     Ignored: the eventual publish is canceled by the token given to
+	///     <see cref="MatchSession.BeginMutationAsync" /> when <paramref name="mutation" /> was opened.
+	/// </param>
 	/// <returns>
 	///     <see cref="UnbanResult.Ok" /> when the userSession was unbanned, or
 	///     <see cref="UnbanResult.NotBanned" /> when they were not on the banlist.
 	/// </returns>
-	public async Task<UnbanResult> UnbanAsync(MatchSession match, int targetUserId,
+	public Task<UnbanResult> UnbanAsync(MatchSession match, int targetUserId, MatchMutationScope mutation,
 		CancellationToken cancellationToken = default)
 	{
-		if (!match.BannedIds.Contains(targetUserId)) return UnbanResult.NotBanned;
+		if (!match.BannedIds.Contains(targetUserId)) return Task.FromResult(UnbanResult.NotBanned);
 
 		match.RemoveBan(targetUserId);
 		logger.LogInformation("User unbanned: MatchId={MatchId} TargetId={TargetId}", match.DbId, targetUserId);
-		await matchMembership.PublishBansAsync(match, match.NextStateVersion(), cancellationToken);
-		return UnbanResult.Ok;
+		mutation.PublishBans();
+		return Task.FromResult(UnbanResult.Ok);
 	}
 
 	/// <summary>Replaces the full banlist, kicking any newly banned players who are currently seated.</summary>
@@ -1114,8 +1149,9 @@ public sealed class MatchControlService(
 	/// </remarks>
 	/// <param name="match">The match whose banlist to replace.</param>
 	/// <param name="userIds">The complete set of banned userSession ids.</param>
-	/// <param name="cancellationToken">A token that cancels the kicks and the banlist publication.</param>
-	public async Task SetBansAsync(MatchSession match, IReadOnlyCollection<int> userIds,
+	/// <param name="mutation">The open mutation scope that publishes the resulting banlist.</param>
+	/// <param name="cancellationToken">A token that cancels the kicks.</param>
+	public async Task SetBansAsync(MatchSession match, IReadOnlyCollection<int> userIds, MatchMutationScope mutation,
 		CancellationToken cancellationToken = default)
 	{
 		var newIds = userIds.ToHashSet();
@@ -1125,15 +1161,16 @@ public sealed class MatchControlService(
 		foreach (var id in toRemove) match.RemoveBan(id);
 		foreach (var id in toAdd) await AddBanAndKickIfSeated(match, id, cancellationToken);
 
-		await matchMembership.PublishBansAsync(match, match.NextStateVersion(), cancellationToken);
+		mutation.PublishBans();
 	}
 
 	/// <summary>Adds a batch of bans, kicking any newly banned players who are currently seated.</summary>
 	/// <remarks>This is the PATCH variant; it only ever adds bans.</remarks>
 	/// <param name="match">The match whose banlist to extend.</param>
 	/// <param name="userIds">The userSession ids to ban.</param>
-	/// <param name="cancellationToken">A token that cancels the kicks and the banlist publication.</param>
-	public async Task AddBansAsync(MatchSession match, IReadOnlyCollection<int> userIds,
+	/// <param name="mutation">The open mutation scope that publishes the resulting banlist.</param>
+	/// <param name="cancellationToken">A token that cancels the kicks.</param>
+	public async Task AddBansAsync(MatchSession match, IReadOnlyCollection<int> userIds, MatchMutationScope mutation,
 		CancellationToken cancellationToken = default)
 	{
 		foreach (var id in userIds)
@@ -1142,7 +1179,7 @@ public sealed class MatchControlService(
 			await AddBanAndKickIfSeated(match, id, cancellationToken);
 		}
 
-		await matchMembership.PublishBansAsync(match, match.NextStateVersion(), cancellationToken);
+		mutation.PublishBans();
 	}
 
 	/// <summary>Adds a userSession to the banlist and kicks them from the match if they are currently seated.</summary>
@@ -1210,19 +1247,23 @@ public sealed class MatchControlService(
 	///     <see langword="true" /> to require the entries to cover every occupied slot; otherwise,
 	///     <see langword="false" />.
 	/// </param>
-	/// <param name="cancellationToken">A token that cancels the slot-view publication.</param>
+	/// <param name="mutation">The open mutation scope that publishes the resulting state.</param>
+	/// <param name="cancellationToken">
+	///     Ignored: the eventual publish is canceled by the token given to
+	///     <see cref="MatchSession.BeginMutationAsync" /> when <paramref name="mutation" /> was opened.
+	/// </param>
 	/// <returns>
 	///     <see cref="SetSlotsResult.Ok" /> on success, or <see cref="SetSlotsResult.SlotOccupiedAndLocked" />,
 	///     <see cref="SetSlotsResult.UnknownUserId" />, <see cref="SetSlotsResult.DuplicateUserId" />,
 	///     or <see cref="SetSlotsResult.PlayerCountMismatch" /> on validation failure.
 	/// </returns>
-	public async Task<SetSlotsResult> SetSlotsAsync(MatchSession match,
+	public Task<SetSlotsResult> SetSlotsAsync(MatchSession match,
 		IReadOnlyDictionary<int, SlotPatchEntry> entries,
-		bool isFullReplace, CancellationToken cancellationToken = default)
+		bool isFullReplace, MatchMutationScope mutation, CancellationToken cancellationToken = default)
 	{
 		foreach (var entry in entries.Values)
 			if (entry.UserId is not null && entry.Locked == true)
-				return SetSlotsResult.SlotOccupiedAndLocked;
+				return Task.FromResult(SetSlotsResult.SlotOccupiedAndLocked);
 
 		var currentOccupantIds = match.Slots
 			.Where(s => s.PlayerId is not null)
@@ -1235,20 +1276,20 @@ public sealed class MatchControlService(
 			.ToList();
 
 		if (referencedUserIds.Any(uid => !currentOccupantIds.Contains(uid)))
-			return SetSlotsResult.UnknownUserId;
+			return Task.FromResult(SetSlotsResult.UnknownUserId);
 
 		// PUT already rejects this indirectly (a duplicate collapses the referenced set below its
 		// full-occupant count, tripping PlayerCountMismatch), but PATCH has no equivalent guard --
 		// without this, the same userId assigned to two destination slots would leave both slots
 		// claiming that occupant instead of rejecting the payload outright.
 		if (referencedUserIds.Count != referencedUserIds.Distinct().Count())
-			return SetSlotsResult.DuplicateUserId;
+			return Task.FromResult(SetSlotsResult.DuplicateUserId);
 
 		if (isFullReplace)
 		{
 			var referencedSet = referencedUserIds.ToHashSet();
 			if (referencedSet.Count != currentOccupantIds.Count || !referencedSet.SetEquals(currentOccupantIds))
-				return SetSlotsResult.PlayerCountMismatch;
+				return Task.FromResult(SetSlotsResult.PlayerCountMismatch);
 		}
 
 		// Snapshot every slot's pre-mutation state so a swap (A<->B) can look up each userSession's
@@ -1289,11 +1330,10 @@ public sealed class MatchControlService(
 
 		logger.LogDebug("Room settings changed: MatchId={MatchId} SlotsChanged={SlotsChanged}", match.DbId,
 			entries.Count);
-		// Routes through the same call path every packet-driven slot mutation uses, so `slot` and
-		// `slots` (and main/settings) always fire together for this HTTP-driven path too (ADR-004) —
-		// previously this called PublishSlotsAsync alone, leaving the other channels silent.
-		await matchMembership.EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
-		return SetSlotsResult.Ok;
+		// Routes through the same publish every packet-driven slot mutation uses, so `slot` and
+		// `slots` (and main/settings) always fire together for this HTTP-driven path too.
+		mutation.PublishState();
+		return Task.FromResult(SetSlotsResult.Ok);
 	}
 
 	/// <summary>Closes a match, parting every seated userSession and tearing the room down.</summary>

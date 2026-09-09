@@ -305,17 +305,18 @@ internal static class MatchRoutes
 		var match = await matchMembership.CreateEmptyAsync(data, cancellationToken);
 		if (match is null) return Results.Problem("Couldn't create the match: server is full.", statusCode: 503);
 
-		await using (await match.BeginMutationAsync(cancellationToken))
+		await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 		{
-			await matchControl.SetPrivateAsync(match, body.IsPrivate, cancellationToken);
-			await matchControl.SetSizeAsync(match, body.Size > 0 ? body.Size : DefaultCreateSize, cancellationToken);
+			await matchControl.SetPrivateAsync(match, body.IsPrivate, mutation, cancellationToken);
+			await matchControl.SetSizeAsync(match, body.Size > 0 ? body.Size : DefaultCreateSize, mutation,
+				cancellationToken);
 
 			// The mapId is already known-valid (checked above), so this cannot fail here.
-			await ApplyFullMapAsync(match, body.MapId, matchControl, cancellationToken);
+			await ApplyFullMapAsync(match, body.MapId, matchControl, mutation, cancellationToken);
 
-			await ApplyFullModsAsync(match, body.Mods, body.Freemod, matchControl, cancellationToken);
+			await ApplyFullModsAsync(match, body.Mods, body.Freemod, matchControl, mutation, cancellationToken);
 			await matchControl.SetTeamTypeWinConditionAndSizeAsync(match, body.TeamType, body.WinCondition, null,
-				cancellationToken);
+				mutation, cancellationToken);
 		}
 
 		var settings =
@@ -388,20 +389,20 @@ internal static class MatchRoutes
 		var match = matchRegistry.GetByDbId(matchId);
 		if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
-		await using (await match.BeginMutationAsync(cancellationToken))
+		await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 		{
-			await matchControl.SetNameAsync(match, body.Name, cancellationToken);
-			await matchControl.SetPasswordAsync(match, body.Password ?? "", cancellationToken);
-			await matchControl.SetPrivateAsync(match, body.IsPrivate, cancellationToken);
+			await matchControl.SetNameAsync(match, body.Name, mutation, cancellationToken);
+			await matchControl.SetPasswordAsync(match, body.Password ?? "", mutation, cancellationToken);
+			await matchControl.SetPrivateAsync(match, body.IsPrivate, mutation, cancellationToken);
 			MatchControlService.SetLocked(match, body.IsLocked);
-			await matchControl.SetSizeAsync(match, body.Size, cancellationToken);
+			await matchControl.SetSizeAsync(match, body.Size, mutation, cancellationToken);
 
-			var mapError = await ApplyFullMapAsync(match, body.MapId, matchControl, cancellationToken);
+			var mapError = await ApplyFullMapAsync(match, body.MapId, matchControl, mutation, cancellationToken);
 			if (mapError is not null) return mapError;
 
-			await ApplyFullModsAsync(match, body.Mods, body.Freemod, matchControl, cancellationToken);
+			await ApplyFullModsAsync(match, body.Mods, body.Freemod, matchControl, mutation, cancellationToken);
 			await matchControl.SetTeamTypeWinConditionAndSizeAsync(match, body.TeamType, body.WinCondition, null,
-				cancellationToken);
+				mutation, cancellationToken);
 		}
 
 		return Results.Json(
@@ -417,9 +418,9 @@ internal static class MatchRoutes
 		var match = matchRegistry.GetByDbId(matchId);
 		if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
-		await using (await match.BeginMutationAsync(cancellationToken))
+		await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 		{
-			var applyResult = await ApplySettingsAsync(match, body, matchControl, cancellationToken);
+			var applyResult = await ApplySettingsAsync(match, body, matchControl, mutation, cancellationToken);
 			if (applyResult is not null) return applyResult;
 		}
 
@@ -438,11 +439,12 @@ internal static class MatchRoutes
 	///     confusing "beatmap not found" error for a caller correctly signaling "no map".
 	/// </summary>
 	private static async Task<IResult?> ApplyFullMapAsync(MatchSession match, int? mapId,
-		MatchControlService matchControl, CancellationToken cancellationToken)
+		MatchControlService matchControl, MatchMutationScope mutation, CancellationToken cancellationToken)
 	{
 		if (mapId is null or <= 0) return null;
 
-		var (result, _) = await matchControl.SetMapAsync(match, mapId.Value, cancellationToken: cancellationToken);
+		var (result, _) = await matchControl.SetMapAsync(match, mapId.Value, mutation,
+			cancellationToken: cancellationToken);
 		return result == MatchControlService.SetMapResult.BeatmapNotFound
 			? Results.BadRequest(new ErrorResponse($"No beatmap with id {mapId} found locally."))
 			: null;
@@ -453,41 +455,42 @@ internal static class MatchRoutes
 	///     for that call, matching real Bancho.
 	/// </summary>
 	private static async Task ApplyFullModsAsync(MatchSession match, Mods mods, bool freemod,
-		MatchControlService matchControl, CancellationToken cancellationToken)
+		MatchControlService matchControl, MatchMutationScope mutation, CancellationToken cancellationToken)
 	{
 		if (freemod)
-			await matchControl.SetModsAsync(match, Mods.NoMod, true, cancellationToken);
+			await matchControl.SetModsAsync(match, Mods.NoMod, true, mutation, cancellationToken);
 		else
-			await matchControl.SetModsAsync(match, mods, false, cancellationToken);
+			await matchControl.SetModsAsync(match, mods, false, mutation, cancellationToken);
 	}
 
 	/// <summary>Caller must hold <paramref name="match" />'s Lock. Returns a non-null error IResult on failure.</summary>
 	private static async Task<IResult?> ApplySettingsAsync(MatchSession match, UpdateMatchSettingsRequest body,
-		MatchControlService matchControl, CancellationToken cancellationToken)
+		MatchControlService matchControl, MatchMutationScope mutation, CancellationToken cancellationToken)
 	{
-		if (body.Name is not null) await matchControl.SetNameAsync(match, body.Name, cancellationToken);
-		if (body.Password is not null) await matchControl.SetPasswordAsync(match, body.Password, cancellationToken);
+		if (body.Name is not null) await matchControl.SetNameAsync(match, body.Name, mutation, cancellationToken);
+		if (body.Password is not null)
+			await matchControl.SetPasswordAsync(match, body.Password, mutation, cancellationToken);
 		if (body.IsPrivate is not null)
-			await matchControl.SetPrivateAsync(match, body.IsPrivate.Value, cancellationToken);
+			await matchControl.SetPrivateAsync(match, body.IsPrivate.Value, mutation, cancellationToken);
 		if (body.IsLocked is not null) MatchControlService.SetLocked(match, body.IsLocked.Value);
-		if (body.Size is not null) await matchControl.SetSizeAsync(match, body.Size.Value, cancellationToken);
+		if (body.Size is not null) await matchControl.SetSizeAsync(match, body.Size.Value, mutation, cancellationToken);
 
 		if (body.MapId is not null)
 		{
 			var (result, _) =
-				await matchControl.SetMapAsync(match, body.MapId.Value, cancellationToken: cancellationToken);
+				await matchControl.SetMapAsync(match, body.MapId.Value, mutation, cancellationToken: cancellationToken);
 			if (result == MatchControlService.SetMapResult.BeatmapNotFound)
 				return Results.BadRequest(new ErrorResponse($"No beatmap with id {body.MapId.Value} found locally."));
 		}
 
 		if (body.Freemod == true)
-			await matchControl.SetModsAsync(match, Mods.NoMod, true, cancellationToken);
+			await matchControl.SetModsAsync(match, Mods.NoMod, true, mutation, cancellationToken);
 		else if (body.Mods is not null)
-			await matchControl.SetModsAsync(match, body.Mods.Value, false, cancellationToken);
+			await matchControl.SetModsAsync(match, body.Mods.Value, false, mutation, cancellationToken);
 
 		if (body.TeamType is not null || body.WinCondition is not null)
 			await matchControl.SetTeamTypeWinConditionAndSizeAsync(match,
-				body.TeamType ?? match.TeamType, body.WinCondition, null, cancellationToken);
+				body.TeamType ?? match.TeamType, body.WinCondition, null, mutation, cancellationToken);
 
 		return null;
 	}

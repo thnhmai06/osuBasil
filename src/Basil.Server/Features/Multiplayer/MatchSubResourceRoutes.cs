@@ -228,9 +228,9 @@ internal static class MatchSubResourceRoutes
 					return Results.BadRequest(
 						new ErrorResponse("userId is required and must be online with the osu! client."));
 
-				await using (await match.BeginMutationAsync(cancellationToken))
+				await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 				{
-					await matchControl.SetHostAsync(match, target, cancellationToken);
+					await matchControl.SetHostAsync(match, target, mutation, cancellationToken);
 					return Results.Json(
 						await MatchLiveSnapshotBuilder.BuildHost(match, gameRegistry, ircRegistry, users,
 							cancellationToken));
@@ -260,9 +260,9 @@ internal static class MatchSubResourceRoutes
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
 
-				await using (await match.BeginMutationAsync(cancellationToken))
+				await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 				{
-					await matchControl.ClearHostAsync(match, cancellationToken);
+					await matchControl.ClearHostAsync(match, mutation, cancellationToken);
 					return Results.Json(
 						await MatchLiveSnapshotBuilder.BuildHost(match, gameRegistry, ircRegistry, users,
 							cancellationToken));

@@ -176,28 +176,35 @@ public sealed class MpCommandService(
 			"lock" => await RunLockedAsync(match, _ => Task.FromResult(SetRoomLocked(match, true, sink))),
 			"unlock" => await RunLockedAsync(match, _ => Task.FromResult(SetRoomLocked(match, false, sink))),
 			"private" => await SetPrivate(match, args, sink),
-			"size" => await RunLockedAsync(match, _ => SetSize(match, args, sink)),
-			"move" => await RunLockedAsync(match, _ => MoveSlot(match, args, sink)),
-			"host" => await RunLockedAsync(match, _ => SetHost(match, args, sink)),
-			"clearhost" => await RunLockedAsync(match, _ => ClearHost(match, sink)),
-			"name" => await RunLockedAsync(match, _ => SetName(match, args, sink)),
-			"password" => await RunLockedAsync(match, _ => SetPassword(match, args, sink)),
+			"size" => await RunLockedAsync(match, mutation => SetSize(match, args, sink, mutation)),
+			"move" => await RunLockedAsync(match, mutation => MoveSlot(match, args, sink, mutation)),
+			"host" => await RunLockedAsync(match, mutation => SetHost(match, args, sink, mutation)),
+			"clearhost" => await RunLockedAsync(match, mutation => ClearHost(match, sink, mutation)),
+			"name" => await RunLockedAsync(match, mutation => SetName(match, args, sink, mutation)),
+			"password" => await RunLockedAsync(match, mutation => SetPassword(match, args, sink, mutation)),
 			"invite" => await RunLockedAsync(match, _ => Task.FromResult(Invite(sender, match, args, sink))),
-			"addref" => await RunLockedAsync(match, _ => AddRefereeAsync(sender, match, args, sink, cancellationToken)),
-			"removeref" => await RunLockedAsync(match, _ => RemoveRefereeAsync(sender, match, args, sink, cancellationToken)),
+			"addref" => await RunLockedAsync(match,
+				mutation => AddRefereeAsync(sender, match, args, sink, mutation, cancellationToken)),
+			"removeref" => await RunLockedAsync(match,
+				mutation => RemoveRefereeAsync(sender, match, args, sink, mutation, cancellationToken)),
 			"listrefs" => ListReferees(match, sink),
 			"banlist" => BanListAsync(match, sink),
-			"team" => await RunLockedAsync(match, _ => SetTeam(match, args, sink)),
-			"set" => await RunLockedAsync(match, _ => Set(match, args, sink)),
-			"map" => await RunLockedAsync(match, _ => SetMapAsync(match, args, sink, cancellationToken)),
-			"mods" => await RunLockedAsync(match, _ => SetMods(match, args, sink)),
-			"start" => await RunLockedAsync(match, _ => StartAsync(match, args, sink, cancellationToken)),
-			"timer" => await RunLockedAsync(match, _ => Task.FromResult(Timer(match, args, sink))),
-			"aborttimer" => await RunLockedAsync(match, _ => Task.FromResult(AbortTimer(match, sink))),
-			"abort" => await RunLockedAsync(match, _ => AbortAsync(match, sink, cancellationToken)),
-			"kick" => await RunLockedAsync(match, mutation => KickAsync(sender, match, args, sink, mutation, cancellationToken)),
-			"ban" => await RunLockedAsync(match, mutation => BanAsync(sender, match, args, sink, mutation, cancellationToken)),
-			"unban" => await RunLockedAsync(match, _ => UnbanAsync(match, args, sink, cancellationToken)),
+			"team" => await RunLockedAsync(match, mutation => SetTeam(match, args, sink, mutation)),
+			"set" => await RunLockedAsync(match, mutation => Set(match, args, sink, mutation)),
+			"map" => await RunLockedAsync(match,
+				mutation => SetMapAsync(match, args, sink, mutation, cancellationToken)),
+			"mods" => await RunLockedAsync(match, mutation => SetMods(match, args, sink, mutation)),
+			"start" => await RunLockedAsync(match,
+				mutation => StartAsync(match, args, sink, mutation, cancellationToken)),
+			"timer" => await RunLockedAsync(match, mutation => Task.FromResult(Timer(match, args, sink, mutation))),
+			"aborttimer" => await RunLockedAsync(match, mutation => Task.FromResult(AbortTimer(match, sink, mutation))),
+			"abort" => await RunLockedAsync(match, mutation => AbortAsync(match, sink, mutation, cancellationToken)),
+			"kick" => await RunLockedAsync(match,
+				mutation => KickAsync(sender, match, args, sink, mutation, cancellationToken)),
+			"ban" => await RunLockedAsync(match,
+				mutation => BanAsync(sender, match, args, sink, mutation, cancellationToken)),
+			"unban" => await RunLockedAsync(match,
+				mutation => UnbanAsync(match, args, sink, mutation, cancellationToken)),
 			"close" => await RunLockedAsync(match, _ => CloseAsync(sender, match, sink, cancellationToken)),
 			_ => UnknownSubcommand(sink, subcommand)
 		};
@@ -246,7 +253,9 @@ public sealed class MpCommandService(
 		}
 
 		match.AddReferee(sender.Id);
-		if (isPrivate) await _matchControl.SetPrivateAsync(match, true, cancellationToken);
+		if (isPrivate)
+			await using (var mutation = await match.BeginMutationAsync(cancellationToken))
+				await _matchControl.SetPrivateAsync(match, true, mutation, cancellationToken);
 		sender.MpScopeMatchId = match.DbId;
 		sink.Reply(string.Format(MpReplies.CreatedMatch, match.DbId, match.Name, isPrivate ? " (private)" : ""));
 		return true;
@@ -633,7 +642,8 @@ public sealed class MpCommandService(
 	}
 
 	/// <summary>Implements <c>!mp size &lt;1-16&gt;</c>, resizing the room's slot count.</summary>
-	private async Task<bool> SetSize(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
+	private async Task<bool> SetSize(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink,
+		MatchMutationScope mutation)
 	{
 		if (args.Count < 1 || !int.TryParse(args[0], out var size))
 		{
@@ -642,7 +652,7 @@ public sealed class MpCommandService(
 		}
 
 		size = Math.Clamp(size, 1, 16);
-		await _matchControl.SetSizeAsync(match, size);
+		await _matchControl.SetSizeAsync(match, size, mutation);
 		sink.Reply(string.Format(MpReplies.ChangedMatchSize, size));
 		return true;
 	}
@@ -651,7 +661,8 @@ public sealed class MpCommandService(
 	private async Task<bool> MoveSlot(
 		MatchSession match,
 		IReadOnlyList<string> args,
-		ICommandReplySink sink)
+		ICommandReplySink sink,
+		MatchMutationScope mutation)
 	{
 		if (args.Count < 2 || !int.TryParse(args[^1], out var destSlotId))
 		{
@@ -669,7 +680,7 @@ public sealed class MpCommandService(
 			return false;
 		}
 
-		var result = await _matchControl.MoveSlotAsync(match, target, destSlotId - 1);
+		var result = await _matchControl.MoveSlotAsync(match, target, destSlotId - 1, mutation);
 
 		return result switch
 		{
@@ -692,7 +703,8 @@ public sealed class MpCommandService(
 	}
 
 	/// <summary>Implements <c>!mp host &lt;name&gt;</c>, transferring host to another userSession in the room.</summary>
-	private async Task<bool> SetHost(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
+	private async Task<bool> SetHost(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink,
+		MatchMutationScope mutation)
 	{
 		if (args.Count < 1)
 		{
@@ -708,21 +720,22 @@ public sealed class MpCommandService(
 			return false;
 		}
 
-		await _matchControl.SetHostAsync(match, gameTarget);
+		await _matchControl.SetHostAsync(match, gameTarget, mutation);
 		sink.Reply(string.Format(MpReplies.ChangedMatchHost, gameTarget.Name));
 		return true;
 	}
 
 	/// <summary>Implements <c>!mp clearhost</c>, clearing the match's current host.</summary>
-	private async Task<bool> ClearHost(MatchSession match, ICommandReplySink sink)
+	private async Task<bool> ClearHost(MatchSession match, ICommandReplySink sink, MatchMutationScope mutation)
 	{
-		await _matchControl.ClearHostAsync(match);
+		await _matchControl.ClearHostAsync(match, mutation);
 		sink.Reply(MpReplies.ClearedMatchHost);
 		return true;
 	}
 
 	/// <summary>Implements <c>!mp name &lt;text&gt;</c>, renaming the match.</summary>
-	private async Task<bool> SetName(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
+	private async Task<bool> SetName(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink,
+		MatchMutationScope mutation)
 	{
 		if (args.Count < 1)
 		{
@@ -730,16 +743,17 @@ public sealed class MpCommandService(
 			return false;
 		}
 
-		await _matchControl.SetNameAsync(match, string.Join(' ', args));
+		await _matchControl.SetNameAsync(match, string.Join(' ', args), mutation);
 		sink.Reply(string.Format(MpReplies.RoomNameUpdated, match.Name));
 		return true;
 	}
 
 	/// <summary>Implements <c>!mp password [text]</c>, setting or clearing the room password.</summary>
-	private async Task<bool> SetPassword(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
+	private async Task<bool> SetPassword(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink,
+		MatchMutationScope mutation)
 	{
 		var password = args.Count == 0 ? "" : string.Join(' ', args);
-		await _matchControl.SetPasswordAsync(match, password);
+		await _matchControl.SetPasswordAsync(match, password, mutation);
 		sink.Reply(args.Count == 0 ? MpReplies.RemovedMatchPassword : MpReplies.ChangedMatchPassword);
 		return true;
 	}
@@ -748,8 +762,9 @@ public sealed class MpCommandService(
 	///     Implements <c>!mp private [0|1]</c>, viewing or changing the room's privacy.
 	/// </summary>
 	/// <remarks>
-	///     With no argument it reports the current state. The <c>makeprivate</c> trigger also routes
-	///     here, passing <c>1</c> to force the room private.
+	///     With no argument it reports the current state and takes no lock, matching this
+	///     subcommand's read-only branch. The <c>makeprivate</c> trigger also routes here, passing
+	///     <c>1</c> to force the room private.
 	/// </remarks>
 	private async Task<bool> SetPrivate(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
 	{
@@ -761,7 +776,8 @@ public sealed class MpCommandService(
 
 		if (args[0] is "0" or "1")
 		{
-			await _matchControl.SetPrivateAsync(match, args[0] == "1");
+			await using (var mutation = await match.BeginMutationAsync())
+				await _matchControl.SetPrivateAsync(match, args[0] == "1", mutation);
 			sink.Reply(match.IsPrivate ? MpReplies.MatchNowPrivate : MpReplies.MatchNowPublic);
 			return true;
 		}
@@ -804,7 +820,7 @@ public sealed class MpCommandService(
 
 	/// <summary>Implements <c>!mp addref &lt;name&gt;</c>, adding a referee to the match.</summary>
 	private async Task<bool> AddRefereeAsync(UserSession sender, MatchSession match, IReadOnlyList<string> args,
-		ICommandReplySink sink, CancellationToken cancellationToken)
+		ICommandReplySink sink, MatchMutationScope mutation, CancellationToken cancellationToken)
 	{
 		if (args.Count < 1)
 		{
@@ -820,7 +836,8 @@ public sealed class MpCommandService(
 			return false;
 		}
 
-		var result = await _matchControl.AddRefereeAsync(sender.Id, sender.Name, match, target, cancellationToken);
+		var result =
+			await _matchControl.AddRefereeAsync(sender.Id, sender.Name, match, target, mutation, cancellationToken);
 		switch (result)
 		{
 			case MatchControlService.AddRefereeResult.TargetIsBot:
@@ -845,7 +862,7 @@ public sealed class MpCommandService(
 	///     command in the first place (see <see cref="TryHandleAsync" />).
 	/// </remarks>
 	private async Task<bool> RemoveRefereeAsync(UserSession sender, MatchSession match, IReadOnlyList<string> args,
-		ICommandReplySink sink, CancellationToken cancellationToken)
+		ICommandReplySink sink, MatchMutationScope mutation, CancellationToken cancellationToken)
 	{
 		if (args.Count < 1)
 		{
@@ -862,7 +879,8 @@ public sealed class MpCommandService(
 		}
 
 		var result =
-			await _matchControl.RemoveOneRefereeAsync(sender.Id, sender.Name, match, target, cancellationToken);
+			await _matchControl.RemoveOneRefereeAsync(sender.Id, sender.Name, match, target, mutation,
+				cancellationToken);
 		switch (result)
 		{
 			case MatchControlService.RemoveRefereeResult.WouldLeaveEmpty:
@@ -925,7 +943,8 @@ public sealed class MpCommandService(
 	}
 
 	/// <summary>Implements <c>!mp team &lt;name&gt; &lt;red|blue&gt;</c>, assigning a userSession's team.</summary>
-	private async Task<bool> SetTeam(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
+	private async Task<bool> SetTeam(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink,
+		MatchMutationScope mutation)
 	{
 		if (args.Count < 2)
 		{
@@ -949,7 +968,7 @@ public sealed class MpCommandService(
 		}
 
 		var team = teamArg == "red" ? MatchTeam.Red : MatchTeam.Blue;
-		var result = await _matchControl.SetTeamAsync(match, target, team);
+		var result = await _matchControl.SetTeamAsync(match, target, team, mutation);
 		if (result == MatchControlService.TeamResult.TargetNotInMatch)
 		{
 			sink.Reply(string.Format(MpReplies.NotInThisMatch, targetName));
@@ -965,7 +984,8 @@ public sealed class MpCommandService(
 	///     Implements <c>!mp set &lt;teammode 0-3&gt; [scoremode 0-3] [size 1-16]</c>, setting team
 	///     type, win condition, and size in one call.
 	/// </summary>
-	private async Task<bool> Set(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
+	private async Task<bool> Set(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink,
+		MatchMutationScope mutation)
 	{
 		var usage = MpReplies.SetUsage;
 
@@ -999,7 +1019,7 @@ public sealed class MpCommandService(
 			size = Math.Clamp(parsedSize, 1, 16);
 		}
 
-		await _matchControl.SetTeamTypeWinConditionAndSizeAsync(match, teamType, winCondition, size);
+		await _matchControl.SetTeamTypeWinConditionAndSizeAsync(match, teamType, winCondition, size, mutation);
 		sink.Reply(string.Format(MpReplies.ChangedMatchSettings, match.TeamType, match.WinCondition,
 			size is { } sz ? $", {sz} slots." : "."));
 		return true;
@@ -1046,7 +1066,7 @@ public sealed class MpCommandService(
 	///     <see cref="MatchControlService.SetMapAsync" />'s own remarks for the ignored-otherwise rule.
 	/// </remarks>
 	private async Task<bool> SetMapAsync(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink,
-		CancellationToken cancellationToken)
+		MatchMutationScope mutation, CancellationToken cancellationToken)
 	{
 		if (args.Count < 1 || !int.TryParse(args[0], out var beatmapId))
 		{
@@ -1066,8 +1086,8 @@ public sealed class MpCommandService(
 			playmode = (GameMode)playmodeValue;
 		}
 
-		var (result, beatmap) = await _matchControl.SetMapAsync(match, beatmapId, playmode,
-			cancellationToken: cancellationToken);
+		var (result, beatmap) = await _matchControl.SetMapAsync(match, beatmapId, mutation, playmode,
+			cancellationToken);
 		if (result == MatchControlService.SetMapResult.BeatmapNotFound || beatmap is null)
 		{
 			sink.Reply(string.Format(MpReplies.NoBeatmapWithId, beatmapId));
@@ -1088,7 +1108,8 @@ public sealed class MpCommandService(
 	///     <c>!mp freemods</c> toggle. <c>None</c> clears the mods and also disables freemod when it
 	///     is on.
 	/// </remarks>
-	private async Task<bool> SetMods(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
+	private async Task<bool> SetMods(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink,
+		MatchMutationScope mutation)
 	{
 		if (args.Count < 1)
 		{
@@ -1116,7 +1137,7 @@ public sealed class MpCommandService(
 			mods |= ModsExtensions.FromModString(token);
 		}
 
-		await _matchControl.SetModsAsync(match, mods, freemod);
+		await _matchControl.SetModsAsync(match, mods, freemod, mutation);
 		// match.Mods, not the raw requested `mods`: SetModsAsync silently filters combinations invalid
 		// for the current gamemode (e.g. HTDT keeps only HT), and the reply must describe what was
 		// actually applied, not what was asked for.
@@ -1170,13 +1191,13 @@ public sealed class MpCommandService(
 	///     Implements <c>!mp start [seconds]</c>, starting the match now or queueing a countdown.
 	/// </summary>
 	private async Task<bool> StartAsync(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink,
-		CancellationToken cancellationToken)
+		MatchMutationScope mutation, CancellationToken cancellationToken)
 	{
 		int? countdownSeconds = args.Count > 0 && int.TryParse(args[0], out var seconds) && seconds > 0
 			? seconds
 			: null;
 
-		var result = await _matchControl.StartAsync(match, countdownSeconds, cancellationToken);
+		var result = await _matchControl.StartAsync(match, countdownSeconds, mutation, cancellationToken);
 		switch (result)
 		{
 			case MatchControlService.StartResult.AlreadyInProgress:
@@ -1198,7 +1219,8 @@ public sealed class MpCommandService(
 	}
 
 	/// <summary>Implements <c>!mp timer [seconds]</c>, starting a countdown without auto-starting.</summary>
-	private bool Timer(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink)
+	private bool Timer(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink,
+		MatchMutationScope mutation)
 	{
 		var seconds = 30;
 		if (args.Count > 0 && (!int.TryParse(args[0], out seconds) || seconds <= 0))
@@ -1207,15 +1229,15 @@ public sealed class MpCommandService(
 			return false;
 		}
 
-		_matchControl.Timer(match, seconds);
+		_matchControl.Timer(match, seconds, mutation);
 		sink.Reply(string.Format(MpReplies.CountdownStarted, seconds));
 		return true;
 	}
 
 	/// <summary>Implements <c>!mp aborttimer</c>, cancelling a running countdown.</summary>
-	private bool AbortTimer(MatchSession match, ICommandReplySink sink)
+	private bool AbortTimer(MatchSession match, ICommandReplySink sink, MatchMutationScope mutation)
 	{
-		var result = _matchControl.AbortTimer(match);
+		var result = _matchControl.AbortTimer(match, mutation);
 		if (result == MatchControlService.AbortTimerResult.NoTimerRunning)
 		{
 			sink.Reply(MpReplies.NoCountdownRunning);
@@ -1227,10 +1249,10 @@ public sealed class MpCommandService(
 	}
 
 	/// <summary>Implements <c>!mp abort</c>, aborting a match in progress.</summary>
-	private async Task<bool> AbortAsync(MatchSession match, ICommandReplySink sink,
+	private async Task<bool> AbortAsync(MatchSession match, ICommandReplySink sink, MatchMutationScope mutation,
 		CancellationToken cancellationToken)
 	{
-		var result = await _matchControl.AbortAsync(match, cancellationToken);
+		var result = await _matchControl.AbortAsync(match, mutation, cancellationToken);
 		if (result == MatchControlService.AbortResult.NotInProgress)
 		{
 			sink.Reply(MpReplies.MatchNotInProgress);
@@ -1298,7 +1320,7 @@ public sealed class MpCommandService(
 		}
 
 		var result = await _matchControl.BanAsync(sender.Id, sender.Name, match, targetUser.Id, targetUser.Name,
-			cancellationToken);
+			mutation, cancellationToken);
 		switch (result)
 		{
 			case MatchControlService.BanResult.TargetIsBot:
@@ -1316,7 +1338,7 @@ public sealed class MpCommandService(
 
 	/// <summary>Implements <c>!mp unban &lt;name&gt;</c>, allowing a banned userSession to rejoin.</summary>
 	private async Task<bool> UnbanAsync(MatchSession match, IReadOnlyList<string> args, ICommandReplySink sink,
-		CancellationToken cancellationToken)
+		MatchMutationScope mutation, CancellationToken cancellationToken)
 	{
 		if (args.Count < 1)
 		{
@@ -1332,7 +1354,7 @@ public sealed class MpCommandService(
 			return false;
 		}
 
-		var result = await _matchControl.UnbanAsync(match, targetUser.Id, cancellationToken);
+		var result = await _matchControl.UnbanAsync(match, targetUser.Id, mutation, cancellationToken);
 		if (result == MatchControlService.UnbanResult.NotBanned)
 		{
 			sink.Reply(string.Format(MpReplies.NotBannedFromMatch, targetUser.Name));

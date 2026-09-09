@@ -531,12 +531,14 @@ public sealed class MatchMembershipService(
 
 	/// <summary>Starts the match: validates the beatmap, marks players as playing, creates the round, and broadcasts.</summary>
 	/// <param name="match">The match to start.</param>
-	/// <param name="cancellationToken">A token that cancels the persistence and broadcast operations.</param>
+	/// <param name="mutation">The open mutation scope that publishes the resulting state.</param>
+	/// <param name="cancellationToken">A token that cancels the persistence operations.</param>
 	/// <returns>
 	///     <see langword="true" /> when the match started; otherwise, <see langword="false" /> when the assigned beatmap
 	///     no longer exists on the server.
 	/// </returns>
-	public async Task<bool> StartAsync(MatchSession match, CancellationToken cancellationToken = default)
+	public async Task<bool> StartAsync(MatchSession match, MatchMutationScope mutation,
+		CancellationToken cancellationToken = default)
 	{
 		if (match.MapId is not { } mapId)
 		{
@@ -582,10 +584,7 @@ public sealed class MatchMembershipService(
 			match.Mods, DateTimeOffset.UtcNow.UtcDateTime, cancellationToken);
 
 		Enqueue(match, ServerPacketWriter.MatchStart(match.ToPacket()), false, noMap);
-		// Not hoisted (ADR-004 4b): the round-start write above already holds the lock through a DB
-		// await per ADR-003's decision to keep round-start synchronous, so shrinking just this tail
-		// call's lock scope would not meaningfully reduce hold time.
-		await EnqueueStateAsync(match, match.NextStateVersion(), cancellationToken: cancellationToken);
+		mutation.PublishState();
 		logger.LogInformation("~ Match started: MatchId={MatchId} RoundId={RoundId}", match.DbId, match.CurrentRoundId);
 		return true;
 	}

@@ -31,6 +31,6 @@ public sealed class MatchStartHandler(MatchMembershipService matchMembership) : 
 		// sender who lost host while waiting for it must not still act with host authority.
 		if (gameSession.Id != match.HostId) return;
 
-		await matchMembership.StartAsync(match, cancellationToken);
+		await matchMembership.StartAsync(match, mutation, cancellationToken);
 	}
 }
