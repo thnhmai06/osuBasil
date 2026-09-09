@@ -92,6 +92,14 @@ task shape rather than left at one default.
 Verification is the tier most often over-served: running a suite and reporting six numbers does not
 need a frontier model, and Phase 0 alone has a dozen such checkpoints.
 
+**This table was written and then ignored for most of stages A and B**, which is worth recording
+because the failure was not subtle. Every dispatch went to Sonnet regardless of shape, and the
+orchestrator did roughly two hours of the mechanical lock-site conversion itself — the most
+expensive tier doing the cheapest work, on a Claude Pro plan the user had explicitly said to spend
+carefully. The reason it drifted is that a worker failing looks like evidence the tier is too low,
+when the actual cause was a prompt that did not say how to run a five-minute test command. Diagnose
+the prompt before demoting the task.
+
 ## Branch layout
 
 | Branch | Purpose |
