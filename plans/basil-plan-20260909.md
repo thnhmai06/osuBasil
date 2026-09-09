@@ -263,6 +263,14 @@ rewrites it, and add a regression test that pins the invariant rather than the c
 
 ## Stage C — extract the business layer
 
+**The tasks run C4, C3, C2, C1, C5**, not in numbered order. Every restructuring step happens inside
+`Basil.Server`, where the compiler checks each move and the suite is runnable at every intermediate
+point; the project boundary is crossed once, at the end, on code that has stopped moving. A
+half-finished restructuring is a compiling tree with a measurable edge count. A half-finished
+ninety-six-file project move is not, and four workers on this project have now been killed mid-task.
+The reasoning and C4's measured payoff are in `plans/execution/stage-c-order-decision.md`.
+
+
 ### Task C1: Create `Basil.Domain` as the business layer
 
 The biggest single move. 96 files by measurement: services, live state, contracts.
@@ -314,7 +322,9 @@ write-ownership the code already has:
 | `MpScopeMatchId` | `Basil.Domain/Multiplayer` |
 
 - [ ] Each feature keeps its own map from player id to its state, rather than a field on a shared
-  object.
+  object. **Those maps stay in `Features/<Slice>`.** The destination column above is where each
+  member ends up once C1 has run; C2 splits in place and moves nothing between projects, because
+  C1 is what crosses that boundary and doing half of it early is how the two tasks blur together.
 - [ ] Verify: the `Shared_Should_Not_Reference_Features` pinned list loses its
   `Shared.Sessions.*` entries. The test asserts exact set equality, so the list must be edited
   deliberately — that edit is the proof.
