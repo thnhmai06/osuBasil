@@ -65,7 +65,12 @@ public sealed record GcSample(
 /// </remarks>
 public sealed class GcSampler
 {
-	private static readonly bool ConcurrentGcEnabled = ReadConcurrentGcConfiguration();
+	/// <summary>
+	///     Whether concurrent (background) collection is configured, read once for the process's
+	///     lifetime. Exposed so <see cref="RuntimeSnapshot" /> can report the same fact without
+	///     paying for a second <see cref="GC.GetConfigurationVariables" /> dictionary allocation.
+	/// </summary>
+	internal static readonly bool ConcurrentGcEnabled = ReadConcurrentGcConfiguration();
 
 	private TimeSpan? _lastPauseDuration;
 	private long _lastPauseTimestamp;
