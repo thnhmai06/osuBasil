@@ -54,6 +54,12 @@ public sealed class MatchControlService(
 		AlreadyReferee
 	}
 
+	public enum ApplySettingsResult : byte
+	{
+		Ok,
+		BeatmapNotFound
+	}
+
 	public enum BanResult : byte
 	{
 		Ok,
@@ -660,6 +666,85 @@ public sealed class MatchControlService(
 			match.DbId, mods, match.Freemods);
 		mutation.PublishState();
 		return Task.CompletedTask;
+	}
+
+	/// <summary>
+	///     Sets the match's beatmap from an optional id, leaving the current selection untouched when
+	///     none is given.
+	/// </summary>
+	/// <remarks>
+	///     A <see langword="null" /> or non-positive <paramref name="mapId" /> means "no beatmap
+	///     chosen" -- ids in this schema auto-increment from 1, so 0 can never be a real beatmap, and a
+	///     caller still sending the legacy <c>-1</c> sentinel is treated the same way. All three are
+	///     skipped entirely rather than attempted as a lookup, which would otherwise fail with a
+	///     confusing "beatmap not found" result for a caller correctly signaling "no map".
+	/// </remarks>
+	/// <param name="match">The match to update.</param>
+	/// <param name="mapId">The beatmap id to assign, or <see langword="null" />/non-positive to leave the selection unchanged.</param>
+	/// <param name="mutation">The open mutation scope that publishes the resulting state.</param>
+	/// <param name="cancellationToken">A token that cancels the beatmap lookup.</param>
+	/// <returns><see cref="SetMapResult.Ok" /> when skipped or applied, or <see cref="SetMapResult.BeatmapNotFound" />.</returns>
+	public async Task<SetMapResult> SetMapIfProvidedAsync(MatchSession match, int? mapId, MatchMutationScope mutation,
+		CancellationToken cancellationToken = default)
+	{
+		if (mapId is null or <= 0) return SetMapResult.Ok;
+
+		var (result, _) = await SetMapAsync(match, mapId.Value, mutation, cancellationToken: cancellationToken);
+		return result;
+	}
+
+	/// <summary>Applies match mods, treating <paramref name="freemod" /> as overriding <paramref name="mods" />.</summary>
+	/// <param name="match">The match to update.</param>
+	/// <param name="mods">The mods to apply when not enabling freemod.</param>
+	/// <param name="freemod"><see langword="true" /> to switch the room into freemod mode instead of applying <paramref name="mods" />.</param>
+	/// <param name="mutation">The open mutation scope that publishes the resulting state.</param>
+	/// <param name="cancellationToken">
+	///     Ignored: the eventual publish is canceled by the token given to
+	///     <see cref="MatchSession.BeginMutationAsync" /> when <paramref name="mutation" /> was opened.
+	/// </param>
+	public Task ApplyModsAsync(MatchSession match, Mods mods, bool freemod, MatchMutationScope mutation,
+		CancellationToken cancellationToken = default)
+	{
+		return freemod
+			? SetModsAsync(match, Mods.NoMod, true, mutation, cancellationToken)
+			: SetModsAsync(match, mods, false, mutation, cancellationToken);
+	}
+
+	/// <summary>
+	///     Applies each provided field to the match's room settings, leaving every omitted field
+	///     unchanged.
+	/// </summary>
+	/// <param name="match">The match to update.</param>
+	/// <param name="mutation">The open mutation scope that publishes the resulting state.</param>
+	/// <param name="cancellationToken">A token that cancels the beatmap lookup, when <paramref name="mapId" /> is given.</param>
+	/// <returns><see cref="ApplySettingsResult.Ok" />, or <see cref="ApplySettingsResult.BeatmapNotFound" /> when <paramref name="mapId" /> doesn't resolve.</returns>
+	public async Task<ApplySettingsResult> ApplyPartialSettingsAsync(MatchSession match, string? name,
+		string? password, bool? isPrivate, bool? isLocked, int? size, int? mapId, Mods? mods, bool? freemod,
+		MatchTeamType? teamType, MatchWinCondition? winCondition, MatchMutationScope mutation,
+		CancellationToken cancellationToken = default)
+	{
+		if (name is not null) await SetNameAsync(match, name, mutation, cancellationToken);
+		if (password is not null) await SetPasswordAsync(match, password, mutation, cancellationToken);
+		if (isPrivate is not null) await SetPrivateAsync(match, isPrivate.Value, mutation, cancellationToken);
+		if (isLocked is not null) SetLocked(match, isLocked.Value);
+		if (size is not null) await SetSizeAsync(match, size.Value, mutation, cancellationToken);
+
+		if (mapId is not null)
+		{
+			var (result, _) = await SetMapAsync(match, mapId.Value, mutation, cancellationToken: cancellationToken);
+			if (result == SetMapResult.BeatmapNotFound) return ApplySettingsResult.BeatmapNotFound;
+		}
+
+		if (freemod == true)
+			await SetModsAsync(match, Mods.NoMod, true, mutation, cancellationToken);
+		else if (mods is not null)
+			await SetModsAsync(match, mods.Value, false, mutation, cancellationToken);
+
+		if (teamType is not null || winCondition is not null)
+			await SetTeamTypeWinConditionAndSizeAsync(match, teamType ?? match.TeamType, winCondition, null, mutation,
+				cancellationToken);
+
+		return ApplySettingsResult.Ok;
 	}
 
 	/// <summary>Switches the room into freemod mode, stripping speed-changing mods from every occupied slot.</summary>
