@@ -275,7 +275,7 @@ rewrites it, and add a regression test that pins the invariant rather than the c
 
 ## Stage C — extract the business layer
 
-**The tasks run C4, C3, C2, C6, C1, C5**, not in numbered order. Every restructuring step happens inside
+**The tasks run C4, C3, C6, C1, C5**, not in numbered order. **C2 is off the path** — see below. Every restructuring step happens inside
 `Basil.Server`, where the compiler checks each move and the suite is runnable at every intermediate
 point; the project boundary is crossed once, at the end, on code that has stopped moving. A
 half-finished restructuring is a compiling tree with a measurable edge count. A half-finished
@@ -317,7 +317,31 @@ that by reading its csproj after the move, not by intention: the constraint is a
 `AdminKeyAuthenticationHandler` also lands in this bucket by file classification but is an ASP.NET
 authentication handler; it belongs to `Basil.Hosts.Api`.
 
-### Task C2: Split `GameSession`
+### Task C2: ~~Split `GameSession`~~ — deferred into C1 and Stage D
+
+**Investigated 2026-09-10 and not performed.** Full reasoning in
+`plans/execution/c2-deferred-decision.md`; the short version is that C2's own stated proof is
+unreachable by C2.
+
+The proof was the `Shared_Should_Not_Reference_Features` pinned list losing its `Shared.Sessions.*`
+entries. That list is asserted per type for exact set equality, and `GameSession` is pinned by
+`Features.Irc` **and** `Features.Multiplayer`, so it keeps its entry until both go — and
+`Features.Irc` is Stage D's by C2's own destination table. `UserSession` is pinned by `IIrcConnection`
+alone, also Stage D. Confirmed empirically: deleting the `UserSession` line and running
+`Basil.ArchitectureTests` failed, naming it as an offender from `Irc` alone.
+
+`.Match` is absorbed into C1: `MatchSession` is still one 584-line class holding both the business
+state and the SSE projection machinery, C1 splits it, and once the business half is in `Basil.Domain`
+the `Shared -> Features.Multiplayer` edge goes with it. `.InLobby` and `.MpScopeMatchId` are not
+moved — they move no instrument and would create two logout-cleanup obligations that do not exist
+today, since both currently die with the session object.
+
+Half the finding that motivated C2 has since been measured false: every field already has exactly one
+writing slice, so write ownership was never the problem. What remains true is that **reads** are
+unconstrained, which no instrument measures and no rule expresses — a candidate for Stage E2 rather
+than for forty-five rewrites ahead of C1.
+
+### Task C2 as originally written (kept for the record)
 
 The god object dissolves along the boundaries rather than by decree. Every row below follows the
 write-ownership the code already has:
