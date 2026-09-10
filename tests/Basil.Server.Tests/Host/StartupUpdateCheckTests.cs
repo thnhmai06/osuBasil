@@ -33,6 +33,23 @@ public class StartupUpdateCheckTests
 	}
 
 	/// <summary>
+	///     A host may stop a service twice -- shutting down and then disposing is the ordinary case
+	///     -- and the second stop must not fail.
+	/// </summary>
+	[Fact]
+	public async Task StoppingTwiceSucceeds()
+	{
+		var probe = new RecordingProbe(new UpdateCheckResult(UpdateCheckOutcome.UpToDate));
+		var check = Build(probe, new UpdateCheckOptions { CheckOnStartup = true });
+
+		await check.StartAsync(TestContext.Current.CancellationToken);
+		await check.StopAsync(TestContext.Current.CancellationToken);
+		await check.StopAsync(TestContext.Current.CancellationToken);
+
+		Assert.Equal(1, probe.Checks);
+	}
+
+	/// <summary>
 	///     Reporting a newer release must not install it: installing is what the update command is
 	///     for, and a server that restarts itself mid-tournament is the failure this guards against.
 	/// </summary>

@@ -35,22 +35,31 @@ internal sealed class StartupUpdateCheck(
 	}
 
 	/// <inheritdoc />
+	/// <remarks>Stopping a second time does nothing rather than failing.</remarks>
 	public async Task StopAsync(CancellationToken cancellationToken)
 	{
-		if (_cancellation is null) return;
+		// Taken and cleared together, so a second stop finds nothing to do. A host can stop a
+		// service more than once -- shutting down and then disposing is the ordinary case -- and a
+		// cancellation source that has already been disposed throws when it is cancelled again.
+		var cancellation = _cancellation;
+		var check = _check;
+		_cancellation = null;
+		_check = null;
 
-		await _cancellation.CancelAsync();
-		if (_check is not null)
+		if (cancellation is null) return;
+
+		await cancellation.CancelAsync();
+		if (check is not null)
 			try
 			{
-				await _check;
+				await check;
 			}
 			catch (OperationCanceledException)
 			{
 				// Shutting down before the check finished is not a failure worth reporting.
 			}
 
-		_cancellation.Dispose();
+		cancellation.Dispose();
 	}
 
 	private async Task RunAsync(CancellationToken cancellationToken)
