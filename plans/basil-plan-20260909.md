@@ -84,7 +84,7 @@ Copied verbatim from the specs. Every task's requirements implicitly include thi
 
 | Tree | Branch | Count | As of |
 |---|---|---|---|
-| `V:\Code\cs\osuBasil` | `feat/vsa-migration` | 1657 | `4d669be8` |
+| `V:\Code\cs\osuBasil` | `feat/vsa-migration` | 1658 | `1c29ce45` |
 | `V:\Code\cs\osuBasil-diagnostics` | `feat/vsa-phase-5-diagnostics` | 1699 | `b1904ac3` |
 
 The two counts differ because the diagnostics tree carries Stage F tests the main tree has not

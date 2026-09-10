@@ -27,7 +27,7 @@ Plan section: `plans/vsa-migration-plan-20260907.md`, Tasks 1.1 through 1.11.
 | 1.2 `MatchMutationScope` (plan B4) | **Done** | orchestrator + worker | 48 lock sites (`02dab44f`) and all 25 publish sites converted; `NextStateVersion` deleted; verified green at 1654 |
 | 1.3 Adopt the hub (plan B5) | Not started | — | design decided in `plans/execution/hub-adoption-decision.md`: deltas only, and the seed handshake is deleted because `SeedIfNotSuperseded` has no callers |
 | 1.4 `MatchSession` encapsulation | Not started | — | unwinds the `Shared.Sessions.*` pin |
-| 1.5 Decompose `MatchControlService` (plan B6) | In progress | worker | invariant bug fixed at `b4a95cc4`; slot and countdown handlers committed; lifecycle handlers in flight |
+| 1.5 Decompose `MatchControlService` (plan B6) | **Done** | worker + orchestrator | 1,483 lines to 906 across three handler groups; invariant bug fixed at `b4a95cc4` |
 | 1.6 Decompose `MatchMembershipService` (plan B6) | **Done** | worker | split three ways at `0204b503`; invariant bug fixed at `b4a95cc4` |
 | 1.7 Decompose `MatchSubResourceRoutes` (plan B1) | **Done** | worker | 1,335 lines to 31 across thirteen endpoint files |
 | 1.8 Localize the slice, own `!mp` help | Not started | — | |
@@ -104,7 +104,7 @@ Option 2 is cheaper and keeps the hub a loudspeaker. Not decided yet -- decide i
 | B3 database boundary | Closed — the finding behind it was a measurement error. |
 | B4 `MatchMutationScope` | **Done.** Every lock site and every publish site; `NextStateVersion` deleted. |
 | B5 adopt the event hub | Not started. Carries a design decision recorded below. |
-| B6 decompose the two services | In progress. `MatchMembershipService` is done (`0204b503`). `MatchControlService` is down from 1,483 lines to 921, with the slot group (`52b49d0f`) and countdown group (`4d669be8`) committed and the lifecycle group in flight. Both invariant bugs fixed at `b4a95cc4`. |
+| B6 decompose the two services | **Done.** `MatchMembershipService` split three ways (`0204b503`). `MatchControlService` 1,483 lines to 906: slots (`52b49d0f`), countdown (`4d669be8`), lifecycle (`c2e4be34`). Both invariant bugs fixed at `b4a95cc4`. Route table re-verified byte-identical at 138 entries. |
 
 **The route table was verified byte-identical after B1 and B2**, 138 entries against
 `plans/execution/baseline/routes.txt`. The baseline is derived from source, so it can be re-derived
@@ -177,11 +177,30 @@ Both are the same rule unlearned: **commit the moment a task is green, and treat
 removed but not yet rewired" as a broken tree rather than a work in progress.** A three-handler
 group is three tasks, not one.
 
+## Order-dependent tests, and the one still open
+
+Two tests pass alone and fail inside their project's full run. That shape is worse than a failing
+test, because it teaches a reader to re-run rather than to look, and it is how a real regression gets
+waved through as "the usual flake".
+
+**Fixed.** `CommandLineTests` captured output by redirecting `Console.Out`, which is process-global,
+so anything another test printed in the window landed in its buffer. `CommandLine.TryRunAsync` now
+takes a writer and the test owns it (`1c29ce45`).
+
+**Still open.** `BeatmapDifficultyEndpointTests.GetDifficulty_PrivateBeatmapsetWithoutAdminKey_ReturnsNotFound`
+fails in the full `Basil.IntegrationTests` run and passes with its class alone. This is the class the
+phase 0 checkpoint calls the "Windows file-handle flake" candidate. It has not been diagnosed, only
+observed, and it should be diagnosed rather than tolerated — the `Console.SetOut` one looked
+identical from the outside and turned out to be a straightforward defect.
+
+Not the same thing as `StartupUpdateCheck.StopAsync` throwing `ObjectDisposedException` on a second
+stop, which was a real bug in the update system and is fixed at `dcc63374`. A worker had attributed
+that to this same phase 0 flake note.
+
 ## Next exact step
 
-B6's lifecycle group — `AbortHandler`, `CloseHandler`, `StartHandler` — is with a worker in the main
-tree. When it lands, `MatchControlService` should be well under 921 lines and the suite back at
-1657.
+**B5, adopt the event hub.** B6 is done: `MatchControlService` is 906 lines, the suite is 1658
+(1657 plus one new regression test), and the route table is byte-identical at 138 entries.
 
 Then **B5, adopt the event hub.** The design question this file records under "Task 1.3's design
 question" is already decided, and decided differently than either option sketched here: see
