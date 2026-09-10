@@ -143,7 +143,6 @@ This prevents the documentation from developing multiple competing versions of t
 * [`for-developers/assets.md`](for-developers/assets.md): the `assets.<domain>` host and ImageSharp.Web image serving
 * [`for-developers/diagnostics.md`](for-developers/diagnostics.md): the Diagnostic API's samplers, live streams, and shared per-tick collection
 * [`for-developers/working-scopes.md`](for-developers/working-scopes.md): supported and excluded functionality
-* [`for-developers/known-limitations.md`](for-developers/known-limitations.md): open root causes, unproven hypotheses, and the dependency inventory
 * [`for-technicians/configuration.md`](for-technicians/configuration.md): server configuration
 * [`for-technicians/https.md`](for-technicians/https.md): TLS requirements
 * [`for-agents/guidelines.md`](for-agents/guidelines.md): documentation and repository guidance for agents
