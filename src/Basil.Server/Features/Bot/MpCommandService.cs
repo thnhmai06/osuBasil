@@ -5,6 +5,7 @@ using Basil.Server.Features.Beatmaps;
 using Basil.Server.Features.Bot;
 using Basil.Server.Features.Multiplayer;
 using Basil.Server.Features.Multiplayer.Handlers.Countdown;
+using Basil.Server.Features.Multiplayer.Handlers.Lifecycle;
 using Basil.Server.Features.Multiplayer.Handlers.Slots;
 using Basil.Server.Features.Users;
 using Basil.Server.Features.Chat.Packets;
@@ -47,13 +48,14 @@ namespace Basil.Server.Features.Bot;
 public sealed class MpCommandService(
 	MatchMembership matchMembership,
 	MatchLifecycle matchLifecycle,
-	MatchBroadcast matchBroadcast,
 	SetTeamHandler setTeamHandler,
 	TimerHandler timerHandler,
 	AbortTimerHandler abortTimerHandler,
+	StartHandler startHandler,
+	AbortHandler abortHandler,
+	CloseHandler closeHandler,
 	IMatchRegistry matchRegistry,
 	IMatchRepository matchRepository,
-	IMatchRoundEndOutbox roundEndOutbox,
 	IBeatmapRepository beatmapRepository,
 	ISessionRegistry<GameSession> gameRegistry,
 	ISessionRegistry<IrcSession> ircRegistry,
@@ -121,8 +123,8 @@ public sealed class MpCommandService(
 	internal static readonly string HelpText = string.Join('\n', Commands.Select(c => $"{c.Usage} - {c.Description}"));
 
 	private readonly MatchControlService _matchControl =
-		new(matchMembership, matchLifecycle, matchBroadcast, timerHandler, matchRepository, roundEndOutbox,
-			beatmapRepository, gameRegistry, ircRegistry, matchControlLogger);
+		new(matchMembership, matchLifecycle, matchRepository, beatmapRepository, gameRegistry, ircRegistry,
+			matchControlLogger);
 
 	/// <summary>
 	///     Dispatches a <c>!mp</c> subcommand against a resolved match.
@@ -1206,20 +1208,20 @@ public sealed class MpCommandService(
 			? seconds
 			: null;
 
-		var result = await _matchControl.StartAsync(match, countdownSeconds, mutation, cancellationToken);
+		var result = await startHandler.StartAsync(match, countdownSeconds, mutation, cancellationToken);
 		switch (result)
 		{
-			case MatchControlService.StartResult.AlreadyInProgress:
+			case StartHandler.StartResult.AlreadyInProgress:
 				sink.Reply(MpReplies.MatchAlreadyInProgress);
 				return false;
-			case MatchControlService.StartResult.CountdownQueued:
+			case StartHandler.StartResult.CountdownQueued:
 				sink.Reply(string.Format(MpReplies.MatchStartsInSeconds, countdownSeconds));
 				return true;
-			case MatchControlService.StartResult.Started:
+			case StartHandler.StartResult.Started:
 				sink.Reply(MpReplies.MatchStarted);
 				return true;
-			case MatchControlService.StartResult.BeatmapMissing:
-			case MatchControlService.StartResult.NoOccupiedSlots:
+			case StartHandler.StartResult.BeatmapMissing:
+			case StartHandler.StartResult.NoOccupiedSlots:
 			default:
 				// BeatmapMissing/NoOccupiedSlots — MatchLifecycle.StartAsync already announced
 				// this into the match channel itself (the single choke point all 3 start paths share);
@@ -1262,8 +1264,8 @@ public sealed class MpCommandService(
 	private async Task<bool> AbortAsync(MatchSession match, ICommandReplySink sink, MatchMutationScope mutation,
 		CancellationToken cancellationToken)
 	{
-		var result = await _matchControl.AbortAsync(match, mutation, cancellationToken);
-		if (result == MatchControlService.AbortResult.NotInProgress)
+		var result = await abortHandler.AbortAsync(match, mutation, cancellationToken);
+		if (result == AbortHandler.AbortResult.NotInProgress)
 		{
 			sink.Reply(MpReplies.MatchNotInProgress);
 			return false;
@@ -1379,7 +1381,7 @@ public sealed class MpCommandService(
 	private async Task<bool> CloseAsync(UserSession sender, MatchSession match, ICommandReplySink sink,
 		CancellationToken cancellationToken)
 	{
-		await _matchControl.CloseAsync(sender.Id, sender.Name, match, cancellationToken);
+		await closeHandler.CloseAsync(sender.Id, sender.Name, match, cancellationToken);
 		sink.Reply(MpReplies.ClosedMatch);
 		return true;
 	}

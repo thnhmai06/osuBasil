@@ -2,6 +2,7 @@ using Basil.Server.Shared.Http;
 using Basil.Server.Shared.Http.Middleware;
 using Basil.Server.Shared.Http.OpenApi;
 using Basil.Server.Features.Auth;
+using Basil.Server.Features.Multiplayer.Handlers.Lifecycle;
 
 namespace Basil.Server.Features.Multiplayer.Endpoints;
 
@@ -15,7 +16,7 @@ internal static class MatchCloseEndpoints
 	public static void MapMatchClose(this RouteGroupBuilder group)
 	{
 		group.MapPost("/matches/{matchId:numericid}/close", async (int matchId, HttpContext context,
-				IMatchRegistry matchRegistry, MatchControlService matchControl,
+				IMatchRegistry matchRegistry, CloseHandler closeHandler,
 				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
@@ -24,7 +25,7 @@ internal static class MatchCloseEndpoints
 				await using (await match.BeginMutationAsync(cancellationToken))
 				{
 					var endedAt = DateTimeOffset.UtcNow;
-					await matchControl.CloseAsync(null, null, match, cancellationToken);
+					await closeHandler.CloseAsync(null, null, match, cancellationToken);
 					context.Items[EnvelopeMiddleware.EnvelopeMessageKey] = "Match closed.";
 					return Results.Json(new MatchClosedView(matchId, endedAt));
 				}

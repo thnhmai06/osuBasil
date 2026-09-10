@@ -1,4 +1,5 @@
 using Basil.Server.Features.Multiplayer;
+using Basil.Server.Features.Multiplayer.Handlers.Lifecycle;
 using Basil.Server.Features.Multiplayer.Handlers.Slots;
 using Basil.Server.Tests.Features.Multiplayer.Packets;
 using Basil.Domain.Multiplayer;
@@ -18,9 +19,9 @@ public class MatchControlServiceGuardTests
 
 	private MatchControlService MakeService()
 	{
-		return new MatchControlService(_fixture.MatchMembership, _fixture.MatchLifecycle, _fixture.MatchBroadcast,
-			_fixture.TimerHandler, _fixture.MatchRepository, _fixture.RoundEndOutbox, _fixture.BeatmapRepository,
-			_fixture.SessionRegistry, _fixture.IrcSessionRegistry, NullLogger<MatchControlService>.Instance);
+		return new MatchControlService(_fixture.MatchMembership, _fixture.MatchLifecycle, _fixture.MatchRepository,
+			_fixture.BeatmapRepository, _fixture.SessionRegistry, _fixture.IrcSessionRegistry,
+			NullLogger<MatchControlService>.Instance);
 	}
 
 	[Fact]
@@ -581,12 +582,11 @@ public class MatchControlServiceGuardTests
 		var match = _fixture.CreateMatch(host);
 		match.InProgress = true;
 		match.CurrentRoundId = 5;
-		var control = MakeService();
 
 		await using var mutation = await match.BeginMutationAsync();
-		var result = await control.AbortAsync(match, mutation);
+		var result = await _fixture.AbortHandler.AbortAsync(match, mutation);
 
-		Assert.Equal(MatchControlService.AbortResult.Ok, result);
+		Assert.Equal(AbortHandler.AbortResult.Ok, result);
 		Assert.Null(match.CurrentRoundId);
 		Assert.False(match.InProgress);
 		Assert.Contains(_fixture.RoundEndOutbox.Enqueued, w => w.MatchId == match.DbId && w.RoundId == 5 && w.Aborted);
@@ -605,12 +605,11 @@ public class MatchControlServiceGuardTests
 		match.InProgress = true;
 		match.CurrentRoundId = 5;
 		_fixture.RoundEndOutbox.ThrowFull = true;
-		var control = MakeService();
 
 		await using var mutation = await match.BeginMutationAsync();
-		var result = await control.AbortAsync(match, mutation);
+		var result = await _fixture.AbortHandler.AbortAsync(match, mutation);
 
-		Assert.Equal(MatchControlService.AbortResult.Ok, result);
+		Assert.Equal(AbortHandler.AbortResult.Ok, result);
 		Assert.Null(match.CurrentRoundId);
 		Assert.False(match.InProgress);
 	}

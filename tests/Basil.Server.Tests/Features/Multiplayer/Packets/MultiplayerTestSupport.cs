@@ -1,5 +1,6 @@
 using Basil.Server.Features.Irc;
 using Basil.Server.Features.Multiplayer.Handlers.Countdown;
+using Basil.Server.Features.Multiplayer.Handlers.Lifecycle;
 using Basil.Server.Features.Multiplayer.Handlers.Slots;
 using Basil.Server.Shared.Eventing;
 using Basil.Server.Features.Beatmaps;
@@ -497,6 +498,9 @@ internal static class MultiplayerTestSupport
 			TimerHandler = new TimerHandler(MatchLifecycle, MatchBroadcast, SessionRegistry,
 				NullLogger<TimerHandler>.Instance);
 			AbortTimerHandler = new AbortTimerHandler(NullLogger<AbortTimerHandler>.Instance);
+			StartHandler = new StartHandler(MatchLifecycle, TimerHandler);
+			AbortHandler = new AbortHandler(MatchBroadcast, RoundEndOutbox, NullLogger<AbortHandler>.Instance);
+			CloseHandler = new CloseHandler(MatchLifecycle);
 		}
 
 		public FakeChannelRegistry ChannelRegistry { get; } = new();
@@ -529,6 +533,9 @@ internal static class MultiplayerTestSupport
 		public SetSlotsHandler SetSlotsHandler { get; }
 		public TimerHandler TimerHandler { get; }
 		public AbortTimerHandler AbortTimerHandler { get; }
+		public StartHandler StartHandler { get; }
+		public AbortHandler AbortHandler { get; }
+		public CloseHandler CloseHandler { get; }
 
 		public void RegisterAll(params GameSession[] sessions)
 		{

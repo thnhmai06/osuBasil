@@ -1,4 +1,5 @@
 using Basil.Server.Features.Auth;
+using Basil.Server.Features.Multiplayer.Handlers.Lifecycle;
 using Basil.Server.Shared.Http;
 using Basil.Server.Shared.Http.Middleware;
 using Basil.Server.Shared.Http.OpenApi;
@@ -15,7 +16,7 @@ internal static class MatchAbortEndpoints
 	public static void MapMatchAbort(this RouteGroupBuilder group)
 	{
 		group.MapPost("/matches/{matchId:numericid}/abort", async (int matchId, HttpContext context,
-				IMatchRegistry matchRegistry, MatchControlService matchControl,
+				IMatchRegistry matchRegistry, AbortHandler abortHandler,
 				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
@@ -24,8 +25,8 @@ internal static class MatchAbortEndpoints
 				await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 				{
 					var abortedAt = DateTimeOffset.UtcNow;
-					var result = await matchControl.AbortAsync(match, mutation, cancellationToken);
-					if (result == MatchControlService.AbortResult.NotInProgress)
+					var result = await abortHandler.AbortAsync(match, mutation, cancellationToken);
+					if (result == AbortHandler.AbortResult.NotInProgress)
 						return Results.Conflict(new ErrorResponse("Match is not in progress."));
 
 					context.Items[EnvelopeMiddleware.EnvelopeMessageKey] = "Match aborted.";

@@ -2,7 +2,6 @@ using Basil.Server.Features.Chat;
 using Basil.Server.Features.Irc;
 using Basil.Server.Features.Beatmaps;
 using Basil.Server.Features.Multiplayer;
-using Basil.Server.Features.Multiplayer.Handlers.Countdown;
 using Basil.Server.Features.Bot;
 using Basil.Server.Shared.Sessions;
 using Basil.Domain.Beatmaps;
@@ -30,21 +29,12 @@ namespace Basil.Server.Features.Multiplayer;
 public sealed class MatchControlService(
 	MatchMembership matchMembership,
 	MatchLifecycle matchLifecycle,
-	MatchBroadcast matchBroadcast,
-	TimerHandler timerHandler,
 	IMatchRepository matchRepository,
-	IMatchRoundEndOutbox roundEndOutbox,
 	IBeatmapRepository beatmapRepository,
 	ISessionRegistry<GameSession> gameRegistry,
 	ISessionRegistry<IrcSession> ircRegistry,
 	ILogger<MatchControlService> logger)
 {
-	public enum AbortResult : byte
-	{
-		Ok,
-		NotInProgress
-	}
-
 	public enum AddRefereeResult : byte
 	{
 		Ok,
@@ -114,15 +104,6 @@ public sealed class MatchControlService(
 		Ok,
 		WouldLeaveEmpty,
 		WouldRemoveCreator
-	}
-
-	public enum StartResult : byte
-	{
-		AlreadyInProgress,
-		Started,
-		CountdownQueued,
-		BeatmapMissing,
-		NoOccupiedSlots
 	}
 
 	public enum UnbanResult : byte
@@ -696,91 +677,6 @@ public sealed class MatchControlService(
 				slot.Mods = Mods.NoMod;
 	}
 
-	/// <summary>Starts the match immediately, or queues a countdown when one is requested.</summary>
-	/// <remarks>
-	///     A <see langword="null" /> or non-positive <paramref name="countdownSeconds" /> starts immediately instead of
-	///     queuing.
-	/// </remarks>
-	/// <param name="match">The match to start.</param>
-	/// <param name="countdownSeconds">The countdown length in seconds, or <see langword="null" /> to start immediately.</param>
-	/// <param name="mutation">The open mutation scope that publishes the resulting timer or match state.</param>
-	/// <param name="cancellationToken">A token that cancels the immediate start.</param>
-	/// <returns>
-	///     <see cref="StartResult.AlreadyInProgress" /> when the match is already running,
-	///     <see cref="StartResult.CountdownQueued" /> when a countdown was queued, or
-	///     <see cref="StartResult.Started" />, <see cref="StartResult.BeatmapMissing" />, or
-	///     <see cref="StartResult.NoOccupiedSlots" /> for an immediate start.
-	/// </returns>
-	public async Task<StartResult> StartAsync(MatchSession match, int? countdownSeconds, MatchMutationScope mutation,
-		CancellationToken cancellationToken = default)
-	{
-		if (match.InProgress) return StartResult.AlreadyInProgress;
-
-		if (countdownSeconds is > 0)
-		{
-			timerHandler.BeginCountdown(match, countdownSeconds.Value, true, mutation);
-			return StartResult.CountdownQueued;
-		}
-
-		// An immediate start must stop any countdown/timer already pending, or its background loop
-		// keeps running (and can still fire "Match starts in N seconds"/try to auto-start again) even
-		// though the match started right now through this call instead.
-		if (timerHandler.CancelPendingTimer(match, announce: false))
-			mutation.PublishTimer();
-
-		var outcome = await matchLifecycle.StartAsync(match, mutation, cancellationToken);
-		return outcome switch
-		{
-			MatchLifecycle.StartOutcome.Started => StartResult.Started,
-			MatchLifecycle.StartOutcome.NoOccupiedSlots => StartResult.NoOccupiedSlots,
-			_ => StartResult.BeatmapMissing
-		};
-	}
-
-	/// <summary>Stops an in-progress match, unreadying playing players and ending the current round.</summary>
-	/// <param name="match">The match to abort.</param>
-	/// <param name="mutation">The open mutation scope that publishes the resulting state.</param>
-	/// <param name="cancellationToken">
-	///     Ignored: the eventual publish is canceled by the token given to
-	///     <see cref="MatchSession.BeginMutationAsync" /> when <paramref name="mutation" /> was opened.
-	/// </param>
-	/// <returns>
-	///     <see cref="AbortResult.Ok" /> when the match was aborted, or
-	///     <see cref="AbortResult.NotInProgress" /> when it was not running.
-	/// </returns>
-	public Task<AbortResult> AbortAsync(MatchSession match, MatchMutationScope mutation,
-		CancellationToken cancellationToken = default)
-	{
-		if (!match.InProgress) return Task.FromResult(AbortResult.NotInProgress);
-
-		match.UnreadyPlayers(SlotStatus.Playing);
-		match.ResetPlayersLoadedStatus();
-		match.InProgress = false;
-
-		var roundId = match.CurrentRoundId;
-		if (roundId is { } id)
-		{
-			// The round ends here in memory regardless of whether the queued write persists —
-			// CurrentRoundId is cleared unconditionally, matching the prior synchronous behavior.
-			match.CurrentRoundId = null;
-			try
-			{
-				roundEndOutbox.Enqueue(new RoundEndWrite(match.DbId, id, DateTimeOffset.UtcNow.UtcDateTime, true));
-			}
-			catch (MatchRoundEndOutboxFullException ex)
-			{
-				logger.LogError(ex, "Round-end write rejected, outbox full: MatchId={MatchId} RoundId={RoundId}",
-					match.DbId, id);
-			}
-		}
-
-		logger.LogInformation("Match aborted: MatchId={MatchId} RoundId={RoundId}", match.DbId, roundId);
-		matchBroadcast.Enqueue(match, ServerPacketWriter.MatchAbort(), false);
-		matchBroadcast.AnnounceToRoomAndReferees(match, "Match aborted.");
-		mutation.PublishState();
-		return Task.FromResult(AbortResult.Ok);
-	}
-
 	/// <summary>
 	///     Removes every session (game and IRC alike) a userSession currently has in the match and
 	///     records the kick as a match event.
@@ -996,17 +892,6 @@ public sealed class MatchControlService(
 			MatchMembership.JoinResult.BotCannotSeat => ForceInviteResult.TargetIsBot,
 			_ => ForceInviteResult.NoFreeSlot
 		};
-	}
-
-	/// <summary>Closes a match, parting every seated userSession and tearing the room down.</summary>
-	/// <param name="actorId">The acting userSession's id, or <see langword="null" /> for a system action.</param>
-	/// <param name="actorName">The acting userSession's name, or <see langword="null" /> when unknown.</param>
-	/// <param name="match">The match to close.</param>
-	/// <param name="cancellationToken">A token that cancels the close event writes.</param>
-	public async Task CloseAsync(int? actorId, string? actorName, MatchSession match,
-		CancellationToken cancellationToken = default)
-	{
-		await matchLifecycle.CloseAsync(match, actorId, actorName, cancellationToken);
 	}
 
 	/// <summary>

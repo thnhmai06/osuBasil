@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Basil.Server.Features.Auth;
 using Basil.Server.Features.Multiplayer.Handlers.Countdown;
+using Basil.Server.Features.Multiplayer.Handlers.Lifecycle;
 using Basil.Server.Shared.Eventing;
 using Basil.Server.Shared.Http;
 using Basil.Server.Shared.Http.Middleware;
@@ -73,7 +74,7 @@ internal static class MatchTimerEndpoints
 			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Match is not live"));
 
 		group.MapPost("/matches/{matchId:numericid}/timer", async (int matchId, StartTimerRequest body,
-				IMatchRegistry matchRegistry, MatchControlService matchControl, TimerHandler timerHandler,
+				IMatchRegistry matchRegistry, StartHandler startHandler, TimerHandler timerHandler,
 				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
@@ -83,15 +84,15 @@ internal static class MatchTimerEndpoints
 				{
 					if (body.AutoStart)
 					{
-						var result = await matchControl.StartAsync(match, body.Seconds, mutation, cancellationToken);
+						var result = await startHandler.StartAsync(match, body.Seconds, mutation, cancellationToken);
 						return result switch
 						{
-							MatchControlService.StartResult.AlreadyInProgress =>
+							StartHandler.StartResult.AlreadyInProgress =>
 								Results.Conflict(new ErrorResponse("Match is already in progress.")),
-							MatchControlService.StartResult.BeatmapMissing =>
+							StartHandler.StartResult.BeatmapMissing =>
 								Results.Conflict(new ErrorResponse(
 									"Match cannot start because the beatmap does not exist on the server.")),
-							MatchControlService.StartResult.NoOccupiedSlots =>
+							StartHandler.StartResult.NoOccupiedSlots =>
 								Results.Conflict(new ErrorResponse(
 									"Match cannot start because the room has no players.")),
 							_ => Results.Json(MatchLiveSnapshotBuilder.BuildTimer(match))
