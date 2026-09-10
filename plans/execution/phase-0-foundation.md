@@ -699,33 +699,51 @@ orchestrator's own task) remains before Phase 1 can start. Full suite: **1636/16
     `BeatmapsetManagementEndpointTests` alone: 16/16 passed, confirming the flake.
 
 ## Known issues / blockers
-- **Pre-existing Windows file-lock flake in `Basil.IntegrationTests`, not caused by this move.**
-  Four full-suite runs this session: one clean 1618/1618; the rest each had exactly one failure,
-  never the same test twice with the same signature, never reproducing under `--filter` isolation
-  or a same-file rerun:
-  - `BeatmapDifficultyEndpointTests.GetDifficulty_PrivateBeatmapsetWithoutAdminKey_ReturnsNotFound`:
-    `System.IO.IOException : The process cannot access the file 'vivid.osu' because it is being used
-    by another process.` at `FileSystem.RemoveDirectoryRecursive` inside `Dispose()`.
-  - `BeatmapsetManagementEndpointTests.PutBeatmapset_Valid_ReplacesTheBeatmapsetsFilesAndReturns202`:
-    one run failed only the assert (`Expected: Accepted / Actual: InternalServerError`); a later run
-    failed with the *same* trace shape as the sibling above --
-    `System.IO.IOException : The process cannot access the file 'old.osu' because it is being used
-    by another process.` at `RemoveDirectoryRecursive` inside `Dispose()` (line 100), this time
-    wrapped in an `AggregateException` together with the 500-vs-202 assert failure. Same root class:
-    a Windows file handle (from the endpoint's own file write, HTTP response buffering, or a
-    concurrently-running test class touching a `TestBeatmapsets`-style temp directory) not yet
-    released when the test's `Dispose()` tries a recursive delete; the endpoint's own request
-    occasionally loses the same race and returns 500 instead of 202.
-  - `git diff 91d151f -- tests/Basil.IntegrationTests/BeatmapsetManagementEndpointTests.cs` and the
-    same diff for `BeatmapDifficultyEndpointTests.cs`: only `using` lines changed (the mechanical
-    namespace rewrite); test bodies, `Dispose()` implementations, and fixture handling are
-    byte-identical to the pre-migration baseline. Confirms this is an environmental/Windows
-    scheduling flake surfaced by full-suite parallel execution, not a rename- or move-induced
-    regression.
-  - **For whoever runs the suite next (Task 0.4 and later)**: if you see 1617/1 fail or 1616/2 fail
-    in `Basil.IntegrationTests` on one of these two tests, this is the known flake -- rerun before
-    treating it as a regression. If a *different* test fails, or one of these two fails with a new
-    trace shape, treat it as new and investigate.
+- **`BeatmapDifficultyEndpointTests.GetDifficulty_PrivateBeatmapsetWithoutAdminKey_ReturnsNotFound`
+  was never a Windows file-handle flake -- diagnosed and fixed (this session, see below).** The
+  "process cannot access the file 'vivid.osu'" `IOException` from `Dispose()`'s
+  `Directory.Delete(_dataDir, true)` was `BeatmapsetMigrationService`, a real hosted service the
+  test's `WebApplicationFactory` starts like any other, racing the test's own fixture: the test
+  seeds a legacy on-disk beatmapset folder (`Beatmapsets/9005 FAIRY FORE - Vivid/vivid.osu`) and
+  this service scans that same path on host startup, sees a folder shaped exactly like the
+  legacy layout it exists to convert, and zips + moves it into the asset cache in the background --
+  regardless of whether a database is configured. Proven directly (not inferred from timing):
+  probing the filesystem right after the request in an isolated single-test run showed the legacy
+  folder already gone, a `9005 *.osz` already built, and `vivid.osu` already pre-warmed into
+  `Cache/beatmapset-assets/9005/` -- no suite-wide load needed to trigger the mutation, only to
+  widen the race window enough for it to land inside the test's own `Dispose()`. This test in
+  particular is the one most likely to be caught by the race: its "no admin key" path returns
+  `404` before any file access, so `Dispose()` runs microseconds after the host starts, often while
+  the migration pass is still mid-`ZipFile.CreateFromDirectoryAsync` holding a read handle on
+  `vivid.osu` (`GetDifficulty_InvalidMode_ReturnsBadRequest` also short-circuits before any file
+  access and shares the same exposure; `NoMod`/`HardRock` spend real time in the ppy calculator, by
+  which point migration has long finished, and `UnknownBeatmap` seeds no folder to race at all).
+  Fixed by removing `BeatmapWatcherService` and `BeatmapsetMigrationService` from this test class's
+  `WebApplicationFactory`, the same pattern `BeatmapsetManagementEndpointTests.
+  FactoryWithoutBackgroundBeatmapServices()` already uses for its own file-layout-sensitive tests --
+  this fixture never wanted either service, so it stops sharing its temp directory with them instead
+  of tolerating the race. Not gated behind "no database configured": a global gate looked
+  attractive but was measured and rejected -- it made
+  `BeatmapsetManagementEndpointTests.PutBeatmapset_Valid_ReplacesTheBeatmapsetsFilesAndReturns202`
+  fail deterministically, because that test's own assertions (and its neighboring tests' comments)
+  depend on `BeatmapsetMigrationService` actually running against a no-database host, "matching
+  production" in that file's own words.
+- **A second, genuine finding surfaced while diagnosing the above, left unfixed as out of scope for
+  this task:** `BeatmapsetManagementEndpointTests.PutBeatmapset_Valid_ReplacesTheBeatmapsetsFilesAndReturns202`
+  asserts a canonical `.osz` exists immediately after its `PUT` request, which only holds if
+  `BeatmapsetMigrationService` has already converted the seeded legacy folder to the canonical
+  layout *before* the request runs -- a race the test's own comment acknowledges ("may already be
+  migrated") without actually controlling for it. Confirmed as the same mechanism as above: the
+  observed failure mode this session was `Assert.NotNull() Failure: Value is null` (no `.osz` found)
+  on a full-suite run where the request evidently won the race instead. Phase-0's original notes
+  also recorded this same test failing with an `IOException` on `old.osu` from `Dispose()` and,
+  separately, a 500-vs-202 status mismatch -- three different symptoms of one load-dependent race.
+  Left as a documented, reproducible defect for whoever picks it up next; the fix is likely either
+  giving this one test its own `FactoryWithoutBackgroundBeatmapServices()`-style host (if the
+  legacy-folder branch's behavior is what's meant to be under test) or asserting on the canonical
+  and legacy outcomes both (if either is a valid pass, matching how
+  `DeleteBeatmapset_Valid_RemovesTheBeatmapsetsLocalFilesAndReturns202` already tolerates both
+  layouts).
 
 ## Task 0.4 details (this session)
 - **Method**: started `SliceAdjacency.Allowed` empty, ran
