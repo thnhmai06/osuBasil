@@ -17,11 +17,11 @@ internal static class MatchChatEndpoints
 	public static void MapMatchChat(this RouteGroupBuilder group)
 	{
 		group.MapGet("/matches/{matchId:numericid}/chat/live", (int matchId, HttpContext context,
-				IMatchRegistry matchRegistry, IMatchLiveEvents events, CancellationToken cancellationToken) =>
+				IMatchRegistry matchRegistry, ILiveEventHub hub, CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
 				return match is not null
-					? MatchLiveRoutes.HandleChat(context, match, events, cancellationToken)
+					? MatchLiveRoutes.HandleChat(context, match, hub, cancellationToken)
 					: SseEndpoints.NotLive();
 			})
 			.RequireAuthorization(AdminKeyDefaults.Policy)

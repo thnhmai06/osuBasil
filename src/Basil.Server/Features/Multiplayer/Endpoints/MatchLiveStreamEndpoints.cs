@@ -61,12 +61,12 @@ internal static class MatchLiveStreamEndpoints
 	}
 
 	private static IResult HandleMainLiveStream(int matchId, HttpContext context, IMatchRegistry matchRegistry,
-		IMatchLiveEvents events, CancellationToken cancellationToken)
+		ILiveEventHub hub, CancellationToken cancellationToken)
 	{
 		var match = matchRegistry.GetByDbId(matchId);
 		if (match is null) return SseEndpoints.NotLive();
 
-		return MatchLiveRoutes.HandleMain(context, match, events,
+		return MatchLiveRoutes.HandleMain(context, match, hub,
 			() => match.MainSnapshot.Latest is { } snapshot
 				? JsonSerializer.SerializeToUtf8Bytes(snapshot, BasilJsonOptions.Instance)
 				: null,
@@ -74,7 +74,7 @@ internal static class MatchLiveStreamEndpoints
 	}
 
 	private static IResult HandleLiveSlotStream(int matchId, int slotIndex, HttpContext context,
-		IMatchRegistry matchRegistry, IMatchLiveEvents matchEvents, IPlayerInputEvents inputEvents,
+		IMatchRegistry matchRegistry, ILiveEventHub hub, IPlayerInputEvents inputEvents,
 		ISessionRegistry<GameSession> gameRegistry, CancellationToken cancellationToken)
 	{
 		var match = matchRegistry.GetByDbId(matchId);
@@ -83,7 +83,7 @@ internal static class MatchLiveStreamEndpoints
 				"Match is not currently live, or slotIndex is out of range.");
 
 		var index = slotIndex - 1;
-		return MatchLiveRoutes.HandleLiveSlot(context, match, index, matchEvents, inputEvents, gameRegistry,
+		return MatchLiveRoutes.HandleLiveSlot(context, match, index, hub, inputEvents, gameRegistry,
 			() => match.SlotSnapshots[index].Latest is { } snapshot
 				? JsonSerializer.SerializeToUtf8Bytes(snapshot, BasilJsonOptions.Instance)
 				: null,

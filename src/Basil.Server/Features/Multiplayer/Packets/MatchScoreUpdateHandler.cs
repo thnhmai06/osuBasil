@@ -16,12 +16,12 @@ namespace Basil.Server.Features.Multiplayer.Packets;
 ///     slot id written into the wrapped header, then enqueued for the match channel without any parsing.
 ///     As a secondary, independent read of the same buffer, the frame is decoded into a
 ///     <see cref="ScoreFrame" /> and, when subscribers are connected,
-///     published on the userSession's live score channel through
-///     <see cref="IMatchLiveEvents" />. A malformed or short frame is swallowed so it can never break
+///     published on the occupant's slot-scoped live score channel through
+///     <see cref="ILiveEventHub" />. A malformed or short frame is swallowed so it can never break
 ///     the relay. Both reads happen while holding the match's
 ///     <see cref="Basil.Server.Features.Multiplayer.MatchSession.Lock" />.
 /// </remarks>
-public sealed class MatchScoreUpdateHandler(MatchBroadcast matchBroadcast, IMatchLiveEvents eventBus)
+public sealed class MatchScoreUpdateHandler(MatchBroadcast matchBroadcast, ILiveEventHub hub)
 	: IPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.MatchScoreUpdate;
@@ -48,13 +48,14 @@ public sealed class MatchScoreUpdateHandler(MatchBroadcast matchBroadcast, IMatc
 
 		matchBroadcast.Enqueue(match, packet, false);
 
-		if (eventBus.HasPlayerScoreSubscribers(match.DbId))
+		var scoreKey = MatchStreams.Score(match.DbId, slotId.Value);
+		if (hub.HasSubscribers(scoreKey))
 			try
 			{
 				var frame = new PacketReader(playData).ReadScoreFrame();
 				var payload = JsonSerializer.SerializeToUtf8Bytes(
 					MatchLiveSnapshotBuilder.BuildPlayerScore(gameSession, frame), BasilJsonOptions.Instance);
-				eventBus.PublishPlayer(match.DbId, gameSession.Name, payload);
+				hub.Publish(scoreKey, match.AllocateScoreVersion(), payload);
 			}
 			catch (Exception)
 			{

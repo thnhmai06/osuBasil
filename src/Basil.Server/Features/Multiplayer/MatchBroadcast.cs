@@ -26,7 +26,7 @@ public sealed class MatchBroadcast(
 	ChannelMembershipService channelMembership,
 	ISessionRegistry<GameSession> gameRegistry,
 	ISessionRegistry<IrcSession> ircRegistry,
-	IMatchLiveEvents eventBus,
+	ILiveEventHub hub,
 	IBeatmapRepository beatmapRepo,
 	IUserRepository userRepo) : IMatchMutationPublisher
 {
@@ -67,7 +67,7 @@ public sealed class MatchBroadcast(
 	/// <remarks>
 	///     Sends the <c>UpdateMatch</c> packet to the match channel and, for public rooms, the lobby,
 	///     then rebuilds and publishes the main, settings, per-slot, and whole-arrangement slots
-	///     snapshots through <see cref="IMatchLiveEvents" />. This is the single call path every
+	///     snapshots through <see cref="ILiveEventHub" />. This is the single call path every
 	///     slot-mutating operation (packet-driven or HTTP-driven) routes through, so <c>slot</c> and
 	///     <c>slots</c> always fire together (ADR-004) — no separate path publishes one without the
 	///     other. A channel whose <see cref="StateStream{T}.Publish" /> found nothing changed is
@@ -105,21 +105,21 @@ public sealed class MatchBroadcast(
 		var mainSnapshot = await MatchLiveSnapshotBuilder.BuildMain(
 			match, gameRegistry, ircRegistry, userRepo, beatmapRepo, cancellationToken);
 		if (match.MainSnapshot.Publish(mainSnapshot, version) is { } mainDelta)
-			eventBus.PublishMain(match.DbId, mainDelta);
+			hub.Publish(MatchStreams.Main(match.DbId), version, mainDelta);
 
 		var settings = await MatchLiveSnapshotBuilder.BuildSettings(
 			match, gameRegistry, ircRegistry, userRepo, beatmapRepo, cancellationToken);
 		if (match.SettingsSnapshot.Publish(settings, version) is { } settingsDelta)
-			eventBus.PublishSettings(match.DbId, settingsDelta);
+			hub.Publish(MatchStreams.Settings(match.DbId), version, settingsDelta);
 
 		for (var i = 0; i < match.SlotSnapshots.Count; i++)
 			if (match.SlotSnapshots[i].Publish(mainSnapshot.Slots[i], version) is { } slotDelta)
-				eventBus.PublishSlot(match.DbId, i, slotDelta);
+				hub.Publish(MatchStreams.Slot(match.DbId, i), version, slotDelta);
 
 		// Reuses mainSnapshot.Slots (already resolved above) instead of a second occupant-lookup
 		// pass — MatchSlotsView wraps the exact same per-slot view list BuildSlots itself produces.
 		if (match.SlotsSnapshot.Publish(new MatchSlotsView(mainSnapshot.Slots), version) is { } slotsDelta)
-			eventBus.PublishSlots(match.DbId, slotsDelta);
+			hub.Publish(MatchStreams.Slots(match.DbId), version, slotsDelta);
 	}
 
 	/// <summary>Rebuilds and republishes the host snapshot channel.</summary>
@@ -132,7 +132,7 @@ public sealed class MatchBroadcast(
 		var host = await MatchLiveSnapshotBuilder.BuildHost(match, gameRegistry, ircRegistry, userRepo,
 			cancellationToken);
 		if (match.HostSnapshot.Publish(host, version) is { } delta)
-			eventBus.PublishHost(match.DbId, delta);
+			hub.Publish(MatchStreams.Host(match.DbId), version, delta);
 	}
 
 	/// <summary>Rebuilds and republishes the referee list snapshot channel.</summary>
@@ -145,7 +145,7 @@ public sealed class MatchBroadcast(
 		var refs = await MatchLiveSnapshotBuilder.BuildRefs(
 			match, gameRegistry, ircRegistry, userRepo, cancellationToken);
 		if (match.RefsSnapshot.Publish(refs, version) is { } delta)
-			eventBus.PublishRefs(match.DbId, delta);
+			hub.Publish(MatchStreams.Refs(match.DbId), version, delta);
 	}
 
 	/// <summary>Rebuilds and republishes the banlist snapshot channel.</summary>
@@ -158,7 +158,7 @@ public sealed class MatchBroadcast(
 		var bans = await MatchLiveSnapshotBuilder.BuildBans(match, gameRegistry, ircRegistry, userRepo,
 			cancellationToken);
 		if (match.BansSnapshot.Publish(bans, version) is { } delta)
-			eventBus.PublishBans(match.DbId, delta);
+			hub.Publish(MatchStreams.Bans(match.DbId), version, delta);
 	}
 
 	/// <summary>Republishes the countdown timer snapshot channel.</summary>
@@ -167,7 +167,7 @@ public sealed class MatchBroadcast(
 	public void PublishTimer(MatchSession match, long version)
 	{
 		if (match.TimerSnapshot.Publish(MatchLiveSnapshotBuilder.BuildTimerLive(match), version) is { } delta)
-			eventBus.PublishTimer(match.DbId, delta);
+			hub.Publish(MatchStreams.Timer(match.DbId), version, delta);
 	}
 
 	/// <summary>

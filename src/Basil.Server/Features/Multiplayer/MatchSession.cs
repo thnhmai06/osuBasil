@@ -91,6 +91,22 @@ public sealed class MatchSession(
 	/// <returns>The newly allocated version.</returns>
 	internal long AllocateStateVersion() => Interlocked.Increment(ref _stateVersion);
 
+	private long _scoreVersion;
+
+	/// <summary>
+	///     Allocates the next version for this match's per-slot live-score channels (<see cref="MatchStreams.Score" />).
+	///     Unlike <see cref="AllocateStateVersion" />, these frames carry no state to reconcile against, so this
+	///     counter exists only to give the hub a monotonically increasing version to label each one with.
+	/// </summary>
+	/// <returns>The newly allocated version.</returns>
+	internal long AllocateScoreVersion() => Interlocked.Increment(ref _scoreVersion);
+
+	private long _chatVersion;
+
+	/// <summary>Allocates the next version for this match's live chat channel (<see cref="MatchStreams.Chat" />), for the same reason as <see cref="AllocateScoreVersion" />.</summary>
+	/// <returns>The newly allocated version.</returns>
+	internal long AllocateChatVersion() => Interlocked.Increment(ref _chatVersion);
+
 	/// <summary>
 	///     Gets or sets the object that performs the actual snapshot builds and broadcasts a
 	///     <see cref="MatchMutationScope" /> requests. Set once, right after this match is created.

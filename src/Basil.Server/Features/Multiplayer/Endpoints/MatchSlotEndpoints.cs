@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
@@ -52,16 +51,12 @@ internal static class MatchSlotEndpoints
 
 		group.MapGet("/matches/{matchId:numericid}/slots/live", (int matchId, HttpContext context,
 				IMatchRegistry matchRegistry,
-				IMatchLiveEvents events, CancellationToken cancellationToken) =>
+				ILiveEventHub hub, CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return SseEndpoints.NotLive();
 
-				return MatchLiveRoutes.HandleSlots(context, match, events,
-					() => match.SlotsSnapshot.Latest is { } snapshot
-						? JsonSerializer.SerializeToUtf8Bytes(snapshot, BasilJsonOptions.Instance)
-						: null,
-					cancellationToken);
+				return MatchLiveRoutes.HandleSlots(context, match, hub, cancellationToken);
 			})
 			.WithGroupName("basilapi")
 			.WithName("getMatchSlotsLive")

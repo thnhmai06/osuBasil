@@ -40,6 +40,7 @@ public class MatchMembershipServiceTests
 	private readonly FakeMatchRepository _matchRepository = new();
 	private readonly MultiplayerTestSupport.FakeMatchRoundEndOutbox _roundEndOutbox = new();
 	private readonly MultiplayerTestSupport.FakeMatchLiveEvents _eventBus = new();
+	private readonly ILiveEventHub _hub = new LiveEventHub();
 
 	private readonly IUserRepository _userRepository = Substitute.For<IUserRepository>();
 
@@ -59,9 +60,9 @@ public class MatchMembershipServiceTests
 		IMatchLiveEvents? eventBus = null)
 	{
 		var channelMembership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
-			Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
-		var broadcast = new MatchBroadcast(_channelRegistry, channelMembership, _gameRegistry, _ircRegistry,
-			eventBus ?? _eventBus, _beatmapRepository, _userRepository);
+			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
+		var broadcast = new MatchBroadcast(_channelRegistry, channelMembership, _gameRegistry, _ircRegistry, _hub,
+			_beatmapRepository, _userRepository);
 		var serviceProvider = Substitute.For<IServiceProvider>();
 		var lifecycle = new MatchLifecycle(_matchRegistry, _channelRegistry, channelMembership, _gameRegistry,
 			_matchRepository, _roundEndOutbox, eventBus ?? _eventBus, _beatmapRepository, broadcast, serviceProvider,
@@ -262,7 +263,7 @@ public class MatchMembershipServiceTests
 		var match = Create(lifecycle, host, MakeMatchData(host.Id))!;
 		var lobby = _channelRegistry.GetByName("#lobby")!;
 		var lobbyMembership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
-			Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
+			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
 		lobbyMembership.Join(lobbyMember, lobby);
 		lobbyMember.Dequeue();
 
@@ -396,8 +397,7 @@ public class MatchMembershipServiceTests
 		Assert.Empty(lobbyMember.Dequeue()); // nobody in #lobby yet — no broadcast
 
 		var lobby = _channelRegistry.GetByName("#lobby")!;
-		new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, Substitute.For<IMatchRegistry>(),
-			Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())).Join(lobbyMember, lobby);
+		new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions())).Join(lobbyMember, lobby);
 		lobbyMember.Dequeue();
 
 		await broadcast.EnqueueStateAsync(match, match.AllocateStateVersion());
@@ -418,26 +418,23 @@ public class MatchMembershipServiceTests
 	{
 		var host = MakePlayer(1, "host");
 		RegisterAll(host);
-		var events = Substitute.For<IMatchLiveEvents>();
-		var (_, lifecycle, broadcast) = MakeService(events);
+		var (_, lifecycle, broadcast) = MakeService();
 		var match = Create(lifecycle, host, MakeMatchData(host.Id))!;
-
-		var payloads = new List<byte[]>();
-		events.When(e => e.PublishMain(Arg.Any<int>(), Arg.Any<byte[]>()))
-			.Do(call => payloads.Add(call.ArgAt<byte[]>(1)));
+		using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+		await using var subscription = _hub.Open(MatchStreams.Main(match.DbId));
 
 		// Create already published the initial full snapshot internally, so this first call has
 		// nothing new to report — and, per the ADR-004 "{}" spam fix, produces no publish at all
 		// rather than a no-op "{}" (regression-tested directly in JsonMergePatchTests/
 		// StateStreamTests; this test covers the same behavior at EnqueueStateAsync's call site).
 		await broadcast.EnqueueStateAsync(match, match.AllocateStateVersion());
-		Assert.Empty(payloads);
 
 		match.Name = "Renamed";
 		await broadcast.EnqueueStateAsync(match, match.AllocateStateVersion());
 
-		var delta = Assert.Single(payloads);
-		var json = Encoding.UTF8.GetString(delta);
+		await using var events = subscription.Events.GetAsyncEnumerator(cts.Token);
+		Assert.True(await events.MoveNextAsync());
+		var json = Encoding.UTF8.GetString(events.Current.Payload.Span);
 		Assert.Contains("\"name\":\"Renamed\"", json);
 		Assert.DoesNotContain("\"referees\"", json);
 	}

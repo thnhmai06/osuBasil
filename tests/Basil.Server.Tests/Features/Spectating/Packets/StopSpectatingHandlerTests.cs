@@ -30,7 +30,7 @@ public class StopSpectatingHandlerTests
 		var ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
 		var handler = new StopSpectatingHandler(new SpectatorService(new FakeChannelRegistry(),
 			new ChannelMembershipService(gameRegistry, ircRegistry, new FakeChannelRegistry(),
-				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
+				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions())),
 			NullLogger<SpectatorService>.Instance));
 		var player = MakePlayer(1, "alice");
 
@@ -52,7 +52,7 @@ public class StopSpectatingHandlerTests
 		var spectatorService =
 			new SpectatorService(new FakeChannelRegistry(),
 				new ChannelMembershipService(gameRegistry, ircRegistry, new FakeChannelRegistry(),
-					Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(),
+					Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
 					Options.Create(new IrcOptions())),
 				NullLogger<SpectatorService>.Instance);
 		spectatorService.AddSpectator(host, player);

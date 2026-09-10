@@ -1,6 +1,7 @@
 using Basil.Server.Shared.Http.OpenApi;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Channels;
 using System.Net.ServerSentEvents;
 using Basil.Server.Shared.Http;
@@ -77,15 +78,14 @@ internal static class SseEndpoints
 	}
 
 	/// <summary>
-	///     Registers a channel's completion with a match's subscriber registry, and returns the
+	///     Registers a completion callback with a match's subscriber registry, and returns the
 	///     combined teardown action that both deregisters from the registry and runs the caller's own
 	///     unsubscribe. A <see langword="null" /> registry (a stream that is not match-scoped) skips
 	///     registration entirely.
 	/// </summary>
-	internal static Action RegisterWithMatch(SseSubscriberRegistry? registry, ChannelWriter<SseItem<string>> writer,
-		Action unsubscribe)
+	internal static Action RegisterWithMatch(SseSubscriberRegistry? registry, Action complete, Action unsubscribe)
 	{
-		var registration = registry?.Subscribe(() => writer.TryComplete());
+		var registration = registry?.Subscribe(complete);
 		return () =>
 		{
 			registration?.Dispose();
@@ -117,7 +117,7 @@ internal static class SseEndpoints
 			});
 			EventingMetrics.SseBacklogDepth.Record(channel.Reader.Count, streamTag);
 		});
-		var teardown = RegisterWithMatch(registry, channel.Writer, unsubscribe);
+		var teardown = RegisterWithMatch(registry, () => channel.Writer.TryComplete(), unsubscribe);
 		EventingMetrics.SseActiveSubscribers.Add(1, streamTag);
 		cancellationToken.Register(() =>
 		{
@@ -129,30 +129,24 @@ internal static class SseEndpoints
 	}
 
 	/// <summary>
-	///     Creates an SSE stream that begins with the latest snapshot before forwarding
-	///     the following updates.
+	///     Creates an SSE stream, backed directly by an <see cref="ILiveEventHub" /> stream, that
+	///     begins with the state's own latest snapshot before forwarding the deltas that follow it.
 	/// </summary>
 	/// <remarks>
-	///     The subscription is established before reading the snapshot so that no updates
-	///     published during initialization are missed. Any queued updates older than the
-	///     snapshot are discarded because they are already reflected in that snapshot. Every stream
-	///     built on this helper is state-oriented (ADR-004): items get an SSE <c>retry:</c> hint but
-	///     never an <c>id:</c> -- a fresh snapshot always supersedes anything resumption from an id
-	///     could offer.
+	///     Subscribes to the hub before reading <paramref name="stream" />'s latest state and version,
+	///     so no publish landing in between is missed; the version read alongside that state then
+	///     fences the hub's own events (<see cref="LiveSubscription.EventsAfter" />), so nothing the
+	///     snapshot already reflects is delivered again as if it were new. Every stream built on this
+	///     helper is state-oriented (ADR-004): items get an SSE <c>retry:</c> hint but never an
+	///     <c>id:</c> -- a fresh snapshot always supersedes anything resumption from an id could offer.
 	/// </remarks>
-	internal static async IAsyncEnumerable<SseItem<string>> SubscribeWithSnapshot(string eventType,
-		SseSubscriberRegistry registry, Func<Action<byte[]>, Action> subscribe, Func<byte[]?> readLatestSnapshot,
-		[EnumeratorCancellation] CancellationToken cancellationToken)
+	internal static async IAsyncEnumerable<SseItem<string>> SubscribeWithSnapshot<T>(string eventType,
+		SseSubscriberRegistry registry, ILiveEventHub hub, StreamKey key, StateStream<T> stream,
+		[EnumeratorCancellation] CancellationToken cancellationToken) where T : class
 	{
-		var channel = Channel.CreateUnbounded<SseItem<string>>();
+		var subscription = hub.Open(key);
+		var teardown = RegisterWithMatch(registry, subscription.Dispose, subscription.Dispose);
 		var streamTag = new KeyValuePair<string, object?>("stream", eventType);
-		var unsubscribe = subscribe(payload =>
-		{
-			channel.Writer.TryWrite(new SseItem<string>(Encoding.UTF8.GetString(payload), eventType)
-				{ ReconnectionInterval = ReconnectionInterval });
-			EventingMetrics.SseBacklogDepth.Record(channel.Reader.Count, streamTag);
-		});
-		var teardown = RegisterWithMatch(registry, channel.Writer, unsubscribe);
 		EventingMetrics.SseActiveSubscribers.Add(1, streamTag);
 		cancellationToken.Register(() =>
 		{
@@ -160,17 +154,15 @@ internal static class SseEndpoints
 			EventingMetrics.SseActiveSubscribers.Add(-1, streamTag);
 		});
 
-		while (channel.Reader.TryRead(out _))
-		{
-			// discard: already reflected in the fresh snapshot read below
-		}
+		var (latest, fence) = stream.GetLatestAndVersion();
+		if (latest is not null)
+			yield return new SseItem<string>(
+				Encoding.UTF8.GetString(JsonSerializer.SerializeToUtf8Bytes(latest, BasilJsonOptions.Instance)),
+				eventType) { ReconnectionInterval = ReconnectionInterval };
 
-		if (readLatestSnapshot() is { } snapshotBytes)
-			yield return new SseItem<string>(Encoding.UTF8.GetString(snapshotBytes), eventType)
+		await foreach (var item in subscription.EventsAfter(fence, cancellationToken))
+			yield return new SseItem<string>(Encoding.UTF8.GetString(item.Payload.Span), eventType)
 				{ ReconnectionInterval = ReconnectionInterval };
-
-		await foreach (var item in channel.Reader.ReadAllAsync(cancellationToken))
-			yield return item;
 	}
 
 	/// <summary>
@@ -208,7 +200,7 @@ internal static class SseEndpoints
 				Encoding.UTF8.GetString(payload), eventId, ReconnectionInterval);
 			EventingMetrics.SseBacklogDepth.Record(channel.Reader.Count, streamTag);
 		});
-		var teardown = RegisterWithMatch(registry, channel.Writer, unsubscribe);
+		var teardown = RegisterWithMatch(registry, () => channel.Writer.TryComplete(), unsubscribe);
 		EventingMetrics.SseActiveSubscribers.Add(1, streamTag);
 		cancellationToken.Register(() =>
 		{

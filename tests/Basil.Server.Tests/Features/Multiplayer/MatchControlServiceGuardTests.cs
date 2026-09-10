@@ -631,14 +631,21 @@ public class MatchControlServiceGuardTests
 		{
 			[hostSlot] = new(host.Id, "Red", null)
 		};
+		using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+		await using var slotsSub = _fixture.Hub.Open(MatchStreams.Slots(match.DbId));
+		await using var slotSub = _fixture.Hub.Open(MatchStreams.Slot(match.DbId, hostSlot));
+		await using var mainSub = _fixture.Hub.Open(MatchStreams.Main(match.DbId));
 
 		await using var mutation = await match.BeginMutationAsync();
 		var result = await _fixture.SetSlotsHandler.SetSlotsAsync(match, entries, false, mutation);
 		await mutation.CompleteAsync();
 
 		Assert.Equal(SetSlotsHandler.SetSlotsResult.Ok, result);
-		Assert.NotEmpty(_fixture.EventBus.SlotsPublishes);
-		Assert.NotEmpty(_fixture.EventBus.SlotPublishes);
-		Assert.NotEmpty(_fixture.EventBus.MainPublishes);
+		await using var slotsEvents = slotsSub.Events.GetAsyncEnumerator(cts.Token);
+		await using var slotEvents = slotSub.Events.GetAsyncEnumerator(cts.Token);
+		await using var mainEvents = mainSub.Events.GetAsyncEnumerator(cts.Token);
+		Assert.True(await slotsEvents.MoveNextAsync());
+		Assert.True(await slotEvents.MoveNextAsync());
+		Assert.True(await mainEvents.MoveNextAsync());
 	}
 }

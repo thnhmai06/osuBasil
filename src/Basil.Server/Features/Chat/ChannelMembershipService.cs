@@ -42,7 +42,7 @@ public sealed class ChannelMembershipService(
 	ISessionRegistry<IrcSession> ircRegistry,
 	IChannelRegistry channelRegistry,
 	IMatchRegistry matchRegistry,
-	IMatchLiveEvents matchLiveEvents,
+	ILiveEventHub hub,
 	IOptions<IrcOptions> options)
 {
 	/// <summary>
@@ -375,7 +375,7 @@ public sealed class ChannelMembershipService(
 		var sender = new UserBrief(senderId, session?.Name ?? senderName, session?.Country ?? Country.Xx);
 		var chat = new MatchChatMessage(sender, message.Params[1], DateTimeOffset.UtcNow);
 
-		matchLiveEvents.PublishChat(match.DbId,
+		hub.Publish(MatchStreams.Chat(match.DbId), match.AllocateChatVersion(),
 			JsonSerializer.SerializeToUtf8Bytes(chat, BasilJsonOptions.Instance));
 	}
 

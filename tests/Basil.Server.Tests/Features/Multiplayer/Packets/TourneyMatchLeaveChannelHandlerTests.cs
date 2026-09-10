@@ -32,7 +32,7 @@ public class TourneyMatchLeaveChannelHandlerTests
 		var match = fixture.CreateMatch(host);
 		var handler = new TourneyMatchLeaveChannelHandler(fixture.MatchRegistry, fixture.ChannelRegistry,
 			new ChannelMembershipService(fixture.SessionRegistry, fixture.IrcSessionRegistry, fixture.ChannelRegistry,
-				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
+				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions())),
 			NullLogger<TourneyMatchLeaveChannelHandler>.Instance);
 
 		await handler.HandleAsync(observer, ReaderFor(match.Id));
@@ -50,7 +50,7 @@ public class TourneyMatchLeaveChannelHandlerTests
 		fixture.RegisterAll(host, observer);
 		var match = fixture.CreateMatch(host);
 		var membership = new ChannelMembershipService(fixture.SessionRegistry, fixture.IrcSessionRegistry,
-			fixture.ChannelRegistry, Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(),
+			fixture.ChannelRegistry, Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
 			Options.Create(new IrcOptions()));
 		var joinHandler =
 			new TourneyMatchJoinChannelHandler(fixture.MatchRegistry, fixture.ChannelRegistry, membership,

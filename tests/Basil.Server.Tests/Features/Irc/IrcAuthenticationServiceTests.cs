@@ -41,7 +41,7 @@ public class IrcAuthenticationServiceTests
 		var options = Options.Create(new IrcOptions { Name = "basil.local" });
 		var channelMembership =
 			new ChannelMembershipService(_gameRegistry, _sessionRegistry, _channelRegistry,
-				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
+				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
 		var queries = new IrcQueryService(_channelRegistry, _gameRegistry, _sessionRegistry, channelMembership,
 			new MotdService(_settings), options);
 		return new IrcAuthenticationService(_users, _sessionRegistry, _channelRegistry, channelMembership,

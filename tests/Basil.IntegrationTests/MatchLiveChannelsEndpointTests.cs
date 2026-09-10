@@ -52,14 +52,15 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 	public async Task LiveChannel_ReceivesWhateverIsPublishedForThatMatchId()
 	{
 		var matchId = await CreateMatchAsync();
-		var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
+		var hub = _factory.Services.GetRequiredService<ILiveEventHub>();
 
 		// discardFirst: true — POST /matches warms this match's main StateStream immediately
 		// (same reasoning as LiveSlotChannel_ReceivesSlotEventsForItsOwnSlotOnly below), so the first
 		// event off a fresh connect is that warm full snapshot (inProgress: false), not this test's
 		// manually published delta.
 		var (eventType, data, eventId, retry) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live",
-			() => events.PublishMain(matchId, JsonSerializer.SerializeToUtf8Bytes(new { inProgress = true })),
+			() => hub.Publish(new StreamKey("match", matchId, "main"), 2,
+				JsonSerializer.SerializeToUtf8Bytes(new { inProgress = true })),
 			true);
 
 		Assert.Equal("main", eventType);
@@ -80,10 +81,10 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 	public async Task LiveChannel_ReceivesGameplayEventsPublishedForThatMatch()
 	{
 		var matchId = await CreateMatchAsync();
-		var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
+		var hub = _factory.Services.GetRequiredService<ILiveEventHub>();
 
 		var (eventType, data, eventId, retry) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live",
-			() => events.PublishPlayer(matchId, "alice", [.. "score update"u8]),
+			() => hub.Publish(new StreamKey("match", matchId, "score:0"), 1, "score update"u8.ToArray()),
 			true);
 
 		Assert.Equal("gameplay", eventType);
@@ -138,9 +139,9 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 		sessionRegistry.TryAdd(occupant);
 		Assert.Equal(MatchMembership.JoinResult.Ok, await matchMembership.JoinAsync(occupant, match, ""));
 
-		var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
+		var hub = _factory.Services.GetRequiredService<ILiveEventHub>();
 		var (eventType, data, _, _) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live/1",
-			() => events.PublishPlayer(matchId, "alice", [.. "score update"u8]),
+			() => hub.Publish(new StreamKey("match", matchId, "score:0"), 1, "score update"u8.ToArray()),
 			true);
 
 		Assert.Equal("gameplay", eventType);
@@ -172,7 +173,7 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 		var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
 		var matchId = created.GetProperty("data").GetProperty("id").GetInt32();
 
-		var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
+		var hub = _factory.Services.GetRequiredService<ILiveEventHub>();
 
 		// discardFirst: true — POST /matches now applies every CreateMatchRequest field unconditionally
 		// (SetPrivate/SetSize/... all call EnqueueState), so this slot's StateStream is already warm
@@ -180,8 +181,8 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 		// not a published delta.
 		var (eventType, data, _, _) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live/1", () =>
 		{
-			events.PublishSlot(matchId, 5, [.. "wrong slot"u8]);
-			events.PublishSlot(matchId, 0, [.. "right slot"u8]);
+			hub.Publish(new StreamKey("match", matchId, "slot:5"), 1, "wrong slot"u8.ToArray());
+			hub.Publish(new StreamKey("match", matchId, "slot:0"), 1, "right slot"u8.ToArray());
 		}, true);
 
 		Assert.Equal("slot", eventType);
@@ -371,7 +372,8 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 			return Task.CompletedTask;
 		}
 
-		public Task UpdateSilenceEndAsync(int id, DateTimeOffset? silenceEnd, CancellationToken cancellationToken = default)
+		public Task UpdateSilenceEndAsync(int id, DateTimeOffset? silenceEnd,
+			CancellationToken cancellationToken = default)
 		{
 			return Task.CompletedTask;
 		}

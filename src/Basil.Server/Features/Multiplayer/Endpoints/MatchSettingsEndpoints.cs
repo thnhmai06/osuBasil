@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Server.Features.Auth;
@@ -107,16 +106,12 @@ internal static class MatchSettingsEndpoints
 	}
 
 	private static IResult HandleSettingsStream(int matchId, HttpContext context, IMatchRegistry matchRegistry,
-		IMatchLiveEvents events, CancellationToken cancellationToken)
+		ILiveEventHub hub, CancellationToken cancellationToken)
 	{
 		var match = matchRegistry.GetByDbId(matchId);
 		if (match is null) return SseEndpoints.NotLive();
 
-		return MatchLiveRoutes.HandleSettings(context, match, events,
-			() => match.SettingsSnapshot.Latest is { } snapshot
-				? JsonSerializer.SerializeToUtf8Bytes(snapshot, BasilJsonOptions.Instance)
-				: null,
-			cancellationToken);
+		return MatchLiveRoutes.HandleSettings(context, match, hub, cancellationToken);
 	}
 
 	private static async Task<IResult> HandleSettingsReplace(int matchId, ReplaceMatchSettingsRequest body,

@@ -28,32 +28,43 @@ internal static class MatchLiveRoutes
 	///     high-frequency, so the channel emits a <c>gap</c> marker on eviction rather than growing
 	///     without bound.
 	/// </remarks>
-	public static IResult HandleMain(HttpContext context, MatchSession match, IMatchLiveEvents events,
+	public static IResult HandleMain(HttpContext context, MatchSession match, ILiveEventHub hub,
 		Func<byte[]?> readLatestSnapshot, CancellationToken cancellationToken)
 	{
 		SseEndpoints.SetSseHeaders(context);
 		return TypedResults.ServerSentEvents(SseEndpoints.SubscribeMultiWithSnapshot(match.SseSubscribers,
 			publish =>
 			{
-				var unsubscribeMain = events.SubscribeMain(match.DbId, MainHandler);
-				var unsubscribeGameplay = events.SubscribePlayerScore(match.DbId, GameplayHandler);
+				var mainSubscription = hub.Open(MatchStreams.Main(match.DbId));
+				// Every slot's score channel is subscribed unconditionally: which slots are actually
+				// occupied changes over a match's lifetime, but the fixed 16-slot arrangement doesn't.
+				var scoreSubscriptions = Enumerable.Range(0, 16)
+					.Select(i => hub.Open(MatchStreams.Score(match.DbId, i))).ToArray();
+				_ = ForwardAsync(mainSubscription, "main", publish);
+				foreach (var scoreSubscription in scoreSubscriptions)
+					_ = ForwardAsync(scoreSubscription, "gameplay", publish);
 				return () =>
 				{
-					unsubscribeMain.Dispose();
-					unsubscribeGameplay.Dispose();
+					mainSubscription.Dispose();
+					foreach (var scoreSubscription in scoreSubscriptions) scoreSubscription.Dispose();
 				};
-
-				void MainHandler(byte[] payload)
-				{
-					publish("main", payload);
-				}
-
-				void GameplayHandler(string playerName, byte[] payload)
-				{
-					publish("gameplay", payload);
-				}
 			},
 			"main", readLatestSnapshot, cancellationToken));
+	}
+
+	/// <summary>Forwards every event on <paramref name="subscription" /> to <paramref name="publish" /> as <paramref name="eventType" />.</summary>
+	private static async Task ForwardAsync(LiveSubscription subscription, string eventType,
+		Action<string, byte[]> publish)
+	{
+		await foreach (var item in subscription.Events)
+			publish(eventType, item.Payload.ToArray());
+	}
+
+	/// <summary>Forwards every event on <paramref name="subscription" /> to <paramref name="publish" />.</summary>
+	private static async Task ForwardAsync(LiveSubscription subscription, Action<byte[]> publish)
+	{
+		await foreach (var item in subscription.Events)
+			publish(item.Payload.ToArray());
 	}
 
 	/// <summary>
@@ -62,13 +73,12 @@ internal static class MatchLiveRoutes
 	/// <remarks>
 	///     Clients receive the current settings first, followed by incremental updates.
 	/// </remarks>
-	public static IResult HandleSettings(HttpContext context, MatchSession match, IMatchLiveEvents events,
-		Func<byte[]?> readLatestSnapshot, CancellationToken cancellationToken)
+	public static IResult HandleSettings(HttpContext context, MatchSession match, ILiveEventHub hub,
+		CancellationToken cancellationToken)
 	{
 		SseEndpoints.SetSseHeaders(context);
 		return TypedResults.ServerSentEvents(SseEndpoints.SubscribeWithSnapshot("settings", match.SseSubscribers,
-			publish => events.SubscribeSettings(match.DbId, publish).Dispose,
-			readLatestSnapshot, cancellationToken));
+			hub, MatchStreams.Settings(match.DbId), match.SettingsSnapshot, cancellationToken));
 	}
 
 	/// <summary>
@@ -77,13 +87,12 @@ internal static class MatchLiveRoutes
 	/// <remarks>
 	///     Clients receive the current host list first, followed by incremental updates.
 	/// </remarks>
-	public static IResult HandleHost(HttpContext context, MatchSession match, IMatchLiveEvents events,
-		Func<byte[]?> readLatestSnapshot, CancellationToken cancellationToken)
+	public static IResult HandleHost(HttpContext context, MatchSession match, ILiveEventHub hub,
+		CancellationToken cancellationToken)
 	{
 		SseEndpoints.SetSseHeaders(context);
 		return TypedResults.ServerSentEvents(SseEndpoints.SubscribeWithSnapshot("hosts", match.SseSubscribers,
-			publish => events.SubscribeHost(match.DbId, publish).Dispose,
-			readLatestSnapshot, cancellationToken));
+			hub, MatchStreams.Host(match.DbId), match.HostSnapshot, cancellationToken));
 	}
 
 	/// <summary>
@@ -92,13 +101,12 @@ internal static class MatchLiveRoutes
 	/// <remarks>
 	///     Clients receive the current referee list first, followed by incremental updates.
 	/// </remarks>
-	public static IResult HandleRefs(HttpContext context, MatchSession match, IMatchLiveEvents events,
-		Func<byte[]?> readLatestSnapshot, CancellationToken cancellationToken)
+	public static IResult HandleRefs(HttpContext context, MatchSession match, ILiveEventHub hub,
+		CancellationToken cancellationToken)
 	{
 		SseEndpoints.SetSseHeaders(context);
 		return TypedResults.ServerSentEvents(SseEndpoints.SubscribeWithSnapshot("refs", match.SseSubscribers,
-			publish => events.SubscribeRefs(match.DbId, publish).Dispose,
-			readLatestSnapshot, cancellationToken));
+			hub, MatchStreams.Refs(match.DbId), match.RefsSnapshot, cancellationToken));
 	}
 
 	/// <summary>
@@ -107,13 +115,12 @@ internal static class MatchLiveRoutes
 	/// <remarks>
 	///     Clients receive the current restrictions first, followed by incremental updates.
 	/// </remarks>
-	public static IResult HandleBans(HttpContext context, MatchSession match, IMatchLiveEvents events,
-		Func<byte[]?> readLatestSnapshot, CancellationToken cancellationToken)
+	public static IResult HandleBans(HttpContext context, MatchSession match, ILiveEventHub hub,
+		CancellationToken cancellationToken)
 	{
 		SseEndpoints.SetSseHeaders(context);
 		return TypedResults.ServerSentEvents(SseEndpoints.SubscribeWithSnapshot("ban", match.SseSubscribers,
-			publish => events.SubscribeBans(match.DbId, publish).Dispose,
-			readLatestSnapshot, cancellationToken));
+			hub, MatchStreams.Bans(match.DbId), match.BansSnapshot, cancellationToken));
 	}
 
 	/// <summary>
@@ -122,13 +129,12 @@ internal static class MatchLiveRoutes
 	/// <remarks>
 	///     Clients receive the current timer first, followed by incremental updates.
 	/// </remarks>
-	public static IResult HandleTimer(HttpContext context, MatchSession match, IMatchLiveEvents events,
-		Func<byte[]?> readLatestSnapshot, CancellationToken cancellationToken)
+	public static IResult HandleTimer(HttpContext context, MatchSession match, ILiveEventHub hub,
+		CancellationToken cancellationToken)
 	{
 		SseEndpoints.SetSseHeaders(context);
 		return TypedResults.ServerSentEvents(SseEndpoints.SubscribeWithSnapshot("timer", match.SseSubscribers,
-			publish => events.SubscribeTimer(match.DbId, publish).Dispose,
-			readLatestSnapshot, cancellationToken));
+			hub, MatchStreams.Timer(match.DbId), match.TimerSnapshot, cancellationToken));
 	}
 
 	/// <summary>
@@ -137,13 +143,12 @@ internal static class MatchLiveRoutes
 	/// <remarks>
 	///     Clients receive the current slot state first, followed by incremental updates.
 	/// </remarks>
-	public static IResult HandleSlots(HttpContext context, MatchSession match, IMatchLiveEvents events,
-		Func<byte[]?> readLatestSnapshot, CancellationToken cancellationToken)
+	public static IResult HandleSlots(HttpContext context, MatchSession match, ILiveEventHub hub,
+		CancellationToken cancellationToken)
 	{
 		SseEndpoints.SetSseHeaders(context);
 		return TypedResults.ServerSentEvents(SseEndpoints.SubscribeWithSnapshot("slots", match.SseSubscribers,
-			publish => events.SubscribeSlots(match.DbId, publish).Dispose,
-			readLatestSnapshot, cancellationToken));
+			hub, MatchStreams.Slots(match.DbId), match.SlotsSnapshot, cancellationToken));
 	}
 
 	/// <summary>
@@ -154,35 +159,24 @@ internal static class MatchLiveRoutes
 	///     single Server-Sent Events stream.
 	/// </remarks>
 	public static IResult HandleLiveSlot(HttpContext context, MatchSession match, int slotIndex,
-		IMatchLiveEvents matchEvents, IPlayerInputEvents inputEvents, ISessionRegistry<GameSession> sessionRegistry,
+		ILiveEventHub hub, IPlayerInputEvents inputEvents, ISessionRegistry<GameSession> sessionRegistry,
 		Func<byte[]?> readLatestSlotSnapshot, CancellationToken cancellationToken)
 	{
 		SseEndpoints.SetSseHeaders(context);
 		return TypedResults.ServerSentEvents(SseEndpoints.SubscribeMultiWithSnapshot(match.SseSubscribers,
 			publish =>
 			{
-				var unsubscribeSlot = matchEvents.SubscribeSlot(match.DbId, SlotHandler);
-				var unsubscribeScore = matchEvents.SubscribePlayerScore(match.DbId, ScoreHandler);
+				var slotSubscription = hub.Open(MatchStreams.Slot(match.DbId, slotIndex));
+				var scoreSubscription = hub.Open(MatchStreams.Score(match.DbId, slotIndex));
+				_ = ForwardAsync(slotSubscription, "slot", publish);
+				_ = ForwardAsync(scoreSubscription, "gameplay", publish);
 				inputEvents.InputPublished += InputHandler;
 				return () =>
 				{
-					unsubscribeSlot.Dispose();
-					unsubscribeScore.Dispose();
+					slotSubscription.Dispose();
+					scoreSubscription.Dispose();
 					inputEvents.InputPublished -= InputHandler;
 				};
-
-				void SlotHandler(int idx, byte[] payload)
-				{
-					if (idx == slotIndex) publish("slot", payload);
-				}
-
-				void ScoreHandler(string playerName, byte[] payload)
-				{
-					var occupantName = match.Slots[slotIndex].PlayerId is { } occupantId
-						? sessionRegistry.GetByUserId(occupantId)?.Name
-						: null;
-					if (occupantName is not null && occupantName == playerName) publish("gameplay", payload);
-				}
 
 				void InputHandler(int playerId, byte[] payload)
 				{
@@ -208,13 +202,17 @@ internal static class MatchLiveRoutes
 	///     line is still delivered, in order, just batched to cut how many SSE writes a busy room's
 	///     chat produces.
 	/// </remarks>
-	public static IResult HandleChat(HttpContext context, MatchSession match, IMatchLiveEvents events,
+	public static IResult HandleChat(HttpContext context, MatchSession match, ILiveEventHub hub,
 		CancellationToken cancellationToken)
 	{
 		SseEndpoints.SetSseHeaders(context);
 		return TypedResults.ServerSentEvents(SseEndpoints.Subscribe("chat", match.SseSubscribers,
-			BufferedPublish(publish => events.SubscribeChat(match.DbId, publish).Dispose, ChatFlushInterval,
-				cancellationToken),
+			BufferedPublish(publish =>
+			{
+				var subscription = hub.Open(MatchStreams.Chat(match.DbId));
+				_ = ForwardAsync(subscription, publish);
+				return subscription.Dispose;
+			}, ChatFlushInterval, cancellationToken),
 			cancellationToken));
 	}
 

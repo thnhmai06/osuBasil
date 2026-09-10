@@ -1,4 +1,6 @@
+using Basil.Server.Features.Multiplayer;
 using Basil.Server.Features.Multiplayer.Packets;
+using Basil.Server.Shared.Eventing;
 using Basil.Protocol.Packets;
 using static Basil.Server.Tests.Features.Multiplayer.Packets.MultiplayerTestSupport;
 
@@ -6,7 +8,7 @@ namespace Basil.Server.Tests.Features.Multiplayer.Packets;
 
 /// <summary>
 ///     Verifies the `MatchScoreUpdate` handler forwards the raw score frame (with the slot id injected) and publishes
-///     the player's live score.
+///     the occupant's live score to their slot's score channel.
 /// </summary>
 public class MatchScoreUpdateHandlerTests
 {
@@ -20,7 +22,7 @@ public class MatchScoreUpdateHandlerTests
 		var match = fixture.CreateMatch(host);
 		await fixture.MatchMembership.JoinAsync(guest, match, "");
 		host.Dequeue();
-		var handler = new MatchScoreUpdateHandler(fixture.MatchBroadcast, fixture.EventBus);
+		var handler = new MatchScoreUpdateHandler(fixture.MatchBroadcast, fixture.Hub);
 		var frame = new byte[] { 1, 2, 3, 4, 5, 6 };
 
 		await handler.HandleAsync(guest, new PacketReader(frame));
@@ -42,15 +44,22 @@ public class MatchScoreUpdateHandlerTests
 		fixture.RegisterAll(host, guest);
 		var match = fixture.CreateMatch(host);
 		await fixture.MatchMembership.JoinAsync(guest, match, "");
-		var handler = new MatchScoreUpdateHandler(fixture.MatchBroadcast, fixture.EventBus);
+		var handler = new MatchScoreUpdateHandler(fixture.MatchBroadcast, fixture.Hub);
+		using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+		await using var subscription = fixture.Hub.Open(MatchStreams.Score(match.DbId, 1));
 
 		await handler.HandleAsync(guest, new PacketReader(new byte[] { 1, 2, 3, 4, 5, 6 }));
 
-		Assert.Empty(fixture.EventBus.PlayerPublishes);
+		// Nothing was published to the guest's slot -- prove it by publishing a sentinel afterward
+		// and observing it arrive first, rather than racing an absence with a timeout.
+		fixture.Hub.Publish(MatchStreams.Score(match.DbId, 1), 1, "sentinel"u8.ToArray());
+		await using var events = subscription.Events.GetAsyncEnumerator(cts.Token);
+		Assert.True(await events.MoveNextAsync());
+		Assert.Equal("sentinel"u8.ToArray(), events.Current.Payload.ToArray());
 	}
 
 	[Fact]
-	public async Task Handle_ValidScoreFrame_PublishesPlayerLiveScore()
+	public async Task Handle_ValidScoreFrame_PublishesPlayerLiveScoreToTheOccupantsSlot()
 	{
 		var fixture = new Fixture();
 		var host = MakePlayer(1, "host");
@@ -58,7 +67,9 @@ public class MatchScoreUpdateHandlerTests
 		fixture.RegisterAll(host, guest);
 		var match = fixture.CreateMatch(host);
 		await fixture.MatchMembership.JoinAsync(guest, match, "");
-		var handler = new MatchScoreUpdateHandler(fixture.MatchBroadcast, fixture.EventBus);
+		var handler = new MatchScoreUpdateHandler(fixture.MatchBroadcast, fixture.Hub);
+		using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+		await using var subscription = fixture.Hub.Open(MatchStreams.Score(match.DbId, 1));
 
 		// Matches SCOREFRAME_FMT = "<iBHHHHHHiHH?BB?" (29 bytes), scoreV2 = false (last byte 0).
 		var frame = new byte[29];
@@ -69,8 +80,8 @@ public class MatchScoreUpdateHandlerTests
 
 		await handler.HandleAsync(guest, new PacketReader(frame));
 
-		var publish = Assert.Single(fixture.EventBus.PlayerPublishes);
-		Assert.Equal(match.DbId, publish.MatchDbId);
-		Assert.Equal("guest", publish.PlayerName);
+		await using var events = subscription.Events.GetAsyncEnumerator(cts.Token);
+		Assert.True(await events.MoveNextAsync());
+		Assert.Contains("guest", System.Text.Encoding.UTF8.GetString(events.Current.Payload.Span));
 	}
 }

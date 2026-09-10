@@ -494,7 +494,7 @@ public class MpCommandServiceTests
 	{
 		var channelMembership =
 			new ChannelMembershipService(_fixture.SessionRegistry, _fixture.IrcSessionRegistry,
-				_fixture.ChannelRegistry, Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(),
+				_fixture.ChannelRegistry, Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
 				Options.Create(new IrcOptions()));
 		var channel = _fixture.ChannelRegistry.All.Single(c => c.Name.StartsWith("#mp_"));
 		channelMembership.Join(session, channel);

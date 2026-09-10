@@ -352,23 +352,25 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
 	{
 		var client = _factory.CreateClient();
 		var matchId = await CreateMatchAsync(client);
-		var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
+		var hub = _factory.Services.GetRequiredService<ILiveEventHub>();
+		var chatKey = new StreamKey("match", matchId, "chat");
 		var sender = new UserBrief(1, "Alice", Country.Us);
+		var version = 0L;
 
 		var (eventType, data) = await ReceiveAfterTriggerAsyncNoWarmup($"/matches/{matchId}/chat/live",
 			() =>
 			{
-				events.PublishChat(matchId,
+				hub.Publish(chatKey, ++version,
 					JsonSerializer.SerializeToUtf8Bytes(new MatchChatMessage(sender, "priming",
 						DateTimeOffset.UtcNow), BasilJsonOptions.Instance));
 				return Task.CompletedTask;
 			},
 			() =>
 			{
-				events.PublishChat(matchId,
+				hub.Publish(chatKey, ++version,
 					JsonSerializer.SerializeToUtf8Bytes(new MatchChatMessage(sender, "first",
 						DateTimeOffset.UtcNow), BasilJsonOptions.Instance));
-				events.PublishChat(matchId,
+				hub.Publish(chatKey, ++version,
 					JsonSerializer.SerializeToUtf8Bytes(new MatchChatMessage(sender, "second",
 						DateTimeOffset.UtcNow), BasilJsonOptions.Instance));
 				return Task.CompletedTask;
@@ -506,7 +508,8 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
 			return Task.CompletedTask;
 		}
 
-		public Task UpdateSilenceEndAsync(int id, DateTimeOffset? silenceEnd, CancellationToken cancellationToken = default)
+		public Task UpdateSilenceEndAsync(int id, DateTimeOffset? silenceEnd,
+			CancellationToken cancellationToken = default)
 		{
 			return Task.CompletedTask;
 		}

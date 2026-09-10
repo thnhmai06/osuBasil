@@ -479,10 +479,10 @@ internal static class MultiplayerTestSupport
 				Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(MakeBeatmap());
 
 			ChannelMembership = new ChannelMembershipService(SessionRegistry, IrcSessionRegistry, ChannelRegistry,
-				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
+				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
 
 			MatchBroadcast = new MatchBroadcast(ChannelRegistry, ChannelMembership, SessionRegistry,
-				IrcSessionRegistry, EventBus, BeatmapRepository, UserRepository);
+				IrcSessionRegistry, Hub, BeatmapRepository, UserRepository);
 
 			MatchLifecycle = new MatchLifecycle(MatchRegistry, ChannelRegistry, ChannelMembership, SessionRegistry,
 				MatchRepository, RoundEndOutbox, EventBus, BeatmapRepository, MatchBroadcast, ServiceProvider,
@@ -508,6 +508,7 @@ internal static class MultiplayerTestSupport
 		public FakeMatchRepository MatchRepository { get; } = new();
 		public FakeMatchRoundEndOutbox RoundEndOutbox { get; } = new();
 		public FakeMatchLiveEvents EventBus { get; } = new();
+		public ILiveEventHub Hub { get; } = new LiveEventHub();
 		public ISessionRegistry<GameSession> SessionRegistry { get; } = Substitute.For<ISessionRegistry<GameSession>>();
 
 		public ISessionRegistry<IrcSession> IrcSessionRegistry { get; } =

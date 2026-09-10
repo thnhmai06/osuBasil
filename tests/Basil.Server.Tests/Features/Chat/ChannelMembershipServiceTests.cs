@@ -27,13 +27,13 @@ public class ChannelMembershipServiceTests
 	private readonly IChannelRegistry _channelRegistry = Substitute.For<IChannelRegistry>();
 	private readonly ISessionRegistry<GameSession> _gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
 	private readonly ISessionRegistry<IrcSession> _ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
-	private readonly IMatchLiveEvents _matchLiveEvents = Substitute.For<IMatchLiveEvents>();
+	private readonly ILiveEventHub _hub = Substitute.For<ILiveEventHub>();
 	private readonly IMatchRegistry _matchRegistry = Substitute.For<IMatchRegistry>();
 
 	private ChannelMembershipService MakeService()
 	{
 		return new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
-			_matchRegistry, _matchLiveEvents, Options.Create(new IrcOptions()));
+			_matchRegistry, _hub, Options.Create(new IrcOptions()));
 	}
 
 	private static GameSession MakeGame(int id, string name)
@@ -372,8 +372,10 @@ public class ChannelMembershipServiceTests
 		service.BroadcastPrivmsg(room, IrcMessageWriter.Privmsg("alice", 1, "#mp_5", "glhf"), speaker.Id);
 		service.BroadcastPrivmsg(general, IrcMessageWriter.Privmsg("alice", 1, "#osu", "hello"));
 
-		_matchLiveEvents.Received(1).PublishChat(7, Arg.Any<byte[]>());
-		_matchLiveEvents.DidNotReceive().PublishChat(Arg.Is<int>(id => id != 7), Arg.Any<byte[]>());
+		_hub.Received(1).Publish(new StreamKey("match", 7, "chat"), Arg.Any<long>(), Arg.Any<ReadOnlyMemory<byte>>());
+		_hub.DidNotReceive().Publish(
+			Arg.Is<StreamKey>(k => k != new StreamKey("match", 7, "chat")), Arg.Any<long>(),
+			Arg.Any<ReadOnlyMemory<byte>>());
 	}
 
 	[Fact]

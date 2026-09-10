@@ -48,11 +48,10 @@ public class GhostDisconnectServiceTests
 	{
 		channelRegistry ??= Substitute.For<IChannelRegistry>();
 		var channelMembership = new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry,
-			Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
+			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
 		var spectatorService = new SpectatorService(channelRegistry, channelMembership,
 			NullLogger<SpectatorService>.Instance);
-		var matchBroadcast = new MatchBroadcast(channelRegistry, channelMembership, gameRegistry, ircRegistry,
-			Substitute.For<IMatchLiveEvents>(), Substitute.For<IBeatmapRepository>(),
+		var matchBroadcast = new MatchBroadcast(channelRegistry, channelMembership, gameRegistry, ircRegistry, null, Substitute.For<IBeatmapRepository>(),
 			Substitute.For<IUserRepository>());
 		var matchLifecycle = new MatchLifecycle(Substitute.For<IMatchRegistry>(), channelRegistry, channelMembership,
 			gameRegistry, Substitute.For<IMatchRepository>(), Substitute.For<IMatchRoundEndOutbox>(),
@@ -226,7 +225,7 @@ public class GhostDisconnectServiceTests
 
 		var testChannelMembership = new ChannelMembershipService(fixture.SessionRegistry,
 			fixture.IrcSessionRegistry, fixture.ChannelRegistry,
-			Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
+			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
 		var playerLogout = new PlayerLogoutService(fixture.SessionRegistry, fixture.IrcSessionRegistry,
 			testChannelMembership,
 			new SpectatorService(fixture.ChannelRegistry, testChannelMembership,

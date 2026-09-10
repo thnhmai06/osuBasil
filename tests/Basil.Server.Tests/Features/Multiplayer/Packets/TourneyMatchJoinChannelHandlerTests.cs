@@ -38,7 +38,7 @@ public class TourneyMatchJoinChannelHandlerTests
 		var match = fixture.CreateMatch(host);
 		var handler = new TourneyMatchJoinChannelHandler(fixture.MatchRegistry, fixture.ChannelRegistry,
 			new ChannelMembershipService(fixture.SessionRegistry, fixture.IrcSessionRegistry, fixture.ChannelRegistry,
-				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
+				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions())),
 			NullLogger<TourneyMatchJoinChannelHandler>.Instance);
 		host.Privilege = UserPrivileges.Unrestricted | UserPrivileges.Supporter;
 
@@ -57,7 +57,7 @@ public class TourneyMatchJoinChannelHandlerTests
 		var match = fixture.CreateMatch(host);
 		var handler = new TourneyMatchJoinChannelHandler(fixture.MatchRegistry, fixture.ChannelRegistry,
 			new ChannelMembershipService(fixture.SessionRegistry, fixture.IrcSessionRegistry, fixture.ChannelRegistry,
-				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions())),
+				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions())),
 			NullLogger<TourneyMatchJoinChannelHandler>.Instance);
 
 		await handler.HandleAsync(observer, ReaderFor(match.Id));

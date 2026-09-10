@@ -57,10 +57,11 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Bootstra
 	public async Task MainChannel_ReceivesWhateverIsPublishedForThatMatchId()
 	{
 		var matchId = await RegisterLiveMatch();
-		var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
+		var hub = _factory.Services.GetRequiredService<ILiveEventHub>();
 
 		var (eventType, data, _, _) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live",
-			() => events.PublishMain(matchId, JsonSerializer.SerializeToUtf8Bytes(new { hello = "world" })));
+			() => hub.Publish(new StreamKey("match", matchId, "main"), 1,
+				JsonSerializer.SerializeToUtf8Bytes(new { hello = "world" })));
 
 		Assert.Equal("main", eventType);
 		Assert.Contains("world", data);
@@ -143,12 +144,12 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Bootstra
 	public async Task MainChannel_OnlyReceivesPublishesForItsOwnMatchId_NotOtherMatches()
 	{
 		var matchId = await RegisterLiveMatch();
-		var events = _factory.Services.GetRequiredService<IMatchLiveEvents>();
+		var hub = _factory.Services.GetRequiredService<ILiveEventHub>();
 
 		var (_, data, _, _) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live", () =>
 		{
-			events.PublishMain(12, [.. "wrong match"u8]);
-			events.PublishMain(matchId, [.. "right match"u8]);
+			hub.Publish(new StreamKey("match", 12, "main"), 1, "wrong match"u8.ToArray());
+			hub.Publish(new StreamKey("match", matchId, "main"), 1, "right match"u8.ToArray());
 		});
 
 		Assert.Equal("right match", data);

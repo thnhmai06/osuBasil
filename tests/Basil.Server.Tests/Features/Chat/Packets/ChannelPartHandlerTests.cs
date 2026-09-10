@@ -24,7 +24,7 @@ public class ChannelPartHandlerTests
 	{
 		return new ChannelPartHandler(_channelRegistry,
 			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
-				Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(),
+				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
 				Options.Create(new IrcOptions())));
 	}
 

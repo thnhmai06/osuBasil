@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Basil.Domain.Login;
 using Basil.Server.Features.Auth;
 using Basil.Server.Features.Irc;
@@ -48,16 +47,12 @@ internal static class MatchBanEndpoints
 
 		group.MapGet("/matches/{matchId:numericid}/ban/live", (int matchId, HttpContext context,
 				IMatchRegistry matchRegistry,
-				IMatchLiveEvents events, CancellationToken cancellationToken) =>
+				ILiveEventHub hub, CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return SseEndpoints.NotLive();
 
-				return MatchLiveRoutes.HandleBans(context, match, events,
-					() => match.BansSnapshot.Latest is { } snapshot
-						? JsonSerializer.SerializeToUtf8Bytes(snapshot, BasilJsonOptions.Instance)
-						: null,
-					cancellationToken);
+				return MatchLiveRoutes.HandleBans(context, match, hub, cancellationToken);
 			})
 			.WithGroupName("basilapi")
 			.WithName("getMatchBansLive")

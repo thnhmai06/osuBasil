@@ -25,7 +25,7 @@ public class ChannelDisconnectSemanticsTests
 	private ChannelMembershipService MakeService()
 	{
 		return new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
-			Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
+			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
 	}
 
 	private static GameSession MakeGame(int id, string name)

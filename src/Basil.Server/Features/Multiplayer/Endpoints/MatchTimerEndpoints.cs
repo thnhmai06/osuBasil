@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Basil.Server.Features.Auth;
 using Basil.Server.Features.Multiplayer.Handlers.Countdown;
 using Basil.Server.Features.Multiplayer.Handlers.Lifecycle;
@@ -44,16 +43,12 @@ internal static class MatchTimerEndpoints
 
 		group.MapGet("/matches/{matchId:numericid}/timer/live", (int matchId, HttpContext context,
 				IMatchRegistry matchRegistry,
-				IMatchLiveEvents events, CancellationToken cancellationToken) =>
+				ILiveEventHub hub, CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
 				if (match is null) return SseEndpoints.NotLive();
 
-				return MatchLiveRoutes.HandleTimer(context, match, events,
-					() => match.TimerSnapshot.Latest is { } snapshot
-						? JsonSerializer.SerializeToUtf8Bytes(snapshot, BasilJsonOptions.Instance)
-						: null,
-					cancellationToken);
+				return MatchLiveRoutes.HandleTimer(context, match, hub, cancellationToken);
 			})
 			.WithGroupName("basilapi")
 			.WithName("getMatchTimerLive")

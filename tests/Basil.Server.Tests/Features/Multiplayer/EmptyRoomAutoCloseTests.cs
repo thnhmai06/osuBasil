@@ -37,9 +37,8 @@ public class EmptyRoomAutoCloseTests
 	{
 		_matchRegistry = new MultiplayerTestSupport.FakeMatchRegistry(_channelRegistry, _matchRepository);
 		var channelMembership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
-			Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(), Options.Create(new IrcOptions()));
-		var matchBroadcast = new MatchBroadcast(_channelRegistry, channelMembership, _gameRegistry, _ircRegistry,
-			Substitute.For<IMatchLiveEvents>(), Substitute.For<IBeatmapRepository>(),
+			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
+		var matchBroadcast = new MatchBroadcast(_channelRegistry, channelMembership, _gameRegistry, _ircRegistry, null, Substitute.For<IBeatmapRepository>(),
 			Substitute.For<IUserRepository>());
 		var matchLifecycle = new MatchLifecycle(_matchRegistry, _channelRegistry, channelMembership, _gameRegistry,
 			_matchRepository, Substitute.For<IMatchRoundEndOutbox>(), Substitute.For<IMatchLiveEvents>(),

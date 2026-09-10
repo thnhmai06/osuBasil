@@ -38,7 +38,7 @@ public class StartSpectatingHandlerTests
 		var handler = new StartSpectatingHandler(_sessionRegistry,
 			new SpectatorService(new FakeChannelRegistry(),
 				new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(),
-					new FakeChannelRegistry(), Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(),
+					new FakeChannelRegistry(), Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
 					Options.Create(new IrcOptions())),
 				NullLogger<SpectatorService>.Instance),
 			NullLogger<StartSpectatingHandler>.Instance);
@@ -60,7 +60,7 @@ public class StartSpectatingHandlerTests
 		var handler = new StartSpectatingHandler(_sessionRegistry,
 			new SpectatorService(new FakeChannelRegistry(),
 				new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(),
-					new FakeChannelRegistry(), Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(),
+					new FakeChannelRegistry(), Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
 					Options.Create(new IrcOptions())),
 				NullLogger<SpectatorService>.Instance),
 			NullLogger<StartSpectatingHandler>.Instance);
@@ -82,7 +82,7 @@ public class StartSpectatingHandlerTests
 		var spectatorService =
 			new SpectatorService(new FakeChannelRegistry(),
 				new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(),
-					new FakeChannelRegistry(), Substitute.For<IMatchRegistry>(), Substitute.For<IMatchLiveEvents>(),
+					new FakeChannelRegistry(), Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
 					Options.Create(new IrcOptions())),
 				NullLogger<SpectatorService>.Instance);
 		var handler = new StartSpectatingHandler(_sessionRegistry, spectatorService,
