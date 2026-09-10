@@ -7,6 +7,9 @@ using Basil.Server.Features.Chat.Packets;
 using Basil.Server.Features.Chat;
 using Basil.Server.Shared.Sessions;
 using Basil.Server.Features.Multiplayer;
+using Basil.Domain.Beatmaps;
+using Basil.Domain.Multiplayer;
+using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -200,6 +203,33 @@ public class SendPublicMessageHandlerTests
 		Assert.Equal(
 			ServerPacketWriter.SendMessage("BanchoBot", "cmyui rolls 42 point(s)", "#osu", BotBootstrapService.BotId),
 			sender.Dequeue());
+	}
+
+	[Fact]
+	public async Task Handle_SenderInMatchsOwnChannel_PassesTheMatchsDbIdAsScope()
+	{
+		// Regression test: SendChannelMessageAsync used to resolve the sender's match-channel scope
+		// and then discard it, always passing null — every !mp subcommand sent from inside a match's
+		// own channel (the common case) silently lost its scope. See phase-stage-c.md, Commit 3.
+		var sender = new GameSession(5, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		var match = new MatchSession(0, "Grand Finals", "", "map", 42, "md5", 9, GameMode.Standard,
+			Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead, false, 0, "#mp_5") { DbId = 7 };
+		sender.Match = match;
+		var bot = new GameSession(BotBootstrapService.BotId, "BasilBot", "bot-token", UserPrivileges.Unrestricted,
+				DateTimeOffset.UnixEpoch)
+			{ IsBot = true };
+		var channel = new ChannelSession(1, "#mp_5", 0, 0, true);
+		channel.Join(sender.Id);
+		sender.JoinChannel("#mp_5");
+		_channelRegistry.GetByName("#mp_5").Returns(channel);
+		_gameRegistry.All.Returns([sender]);
+		_gameRegistry.GetByUserId(sender.Id).Returns(sender);
+		_gameRegistry.GetByUserId(BotBootstrapService.BotId).Returns(bot);
+
+		await MakeHandler().HandleAsync(sender, MessageReader("cmyui", "!mp settings", "#mp_5", 5));
+
+		await _commandDispatcher.Received(1).DispatchAsync(sender, "!mp settings", 7, "#mp_5",
+			Arg.Any<ICommandReplySink>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
 	}
 
 	[Fact]

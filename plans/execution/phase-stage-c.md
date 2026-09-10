@@ -252,6 +252,32 @@ Two things needed fixing before this was actually correct:
   ArchitectureTests run above — this is the first commit where deleting that row is actually
   correct, not a workaround.
 
+### Commit 3 follow-up — regression test for the `ChatDispatchService` bug, and one more stale comment
+
+The `ChatDispatchService` bug fixed in Commit 3 (dropped `matchScope?.DbId`, see above) had no
+test covering it either before or after the fix — `CommandDispatcherTests` calls
+`ICommandDispatcher.DispatchAsync` directly with the id already in hand, never going through
+`ChatDispatchService`. Added
+`SendPublicMessageHandlerTests.Handle_SenderInMatchsOwnChannel_PassesTheMatchsDbIdAsScope`
+(`tests/Basil.Server.Tests/Features/Chat/Packets/SendPublicMessageHandlerTests.cs`), which sends a
+`!mp settings` message from a `GameSession` whose `Match.ChatChannelName` matches the channel and
+asserts `ICommandDispatcher.DispatchAsync` receives the match's `DbId`, not `null`. Verified the
+test actually catches the regression: reintroduced the hardcoded `null` and confirmed this test
+fails (`NSubstitute.Exceptions.ReceivedCallsException`, expected `7` got `null`), then restored the
+fix and confirmed it passes again.
+
+Also trimmed `("Bot", "Chat")`'s comment, which still said "BotBootstrapService **and
+CommandDispatcher**" — `CommandDispatcher` dropped its last `Chat` reference in Commit 3.
+`grep -rln "Basil.Server.Features.Chat\|ChannelMembershipService\|IChannelRegistry\|ChannelSession"
+src/Basil.Server/Features/Bot/` now returns only `BotBootstrapService.cs`, so the row itself stays
+(it's still live), just the comment's attribution was stale.
+
+Verification: `dotnet build` 0 errors; `Basil.ArchitectureTests` 6/6 (SliceAdjacency comment-only
+change); `Basil.Server.Tests` **1054**/1054 (1053 + 1 new test). Domain/Protocol/Integration not
+rerun — this follow-up touched a test-only file and a comment in an already-green
+`SliceAdjacency.cs`; no production code changed relative to the `ea6bd277` commit already verified
+against all five projects.
+
 ### Next exact step
 
 C4 is finished. Move to **C3** per `plans/execution/stage-c-order-decision.md` (turn logout into

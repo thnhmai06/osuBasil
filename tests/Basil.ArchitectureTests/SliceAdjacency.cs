@@ -51,7 +51,7 @@ internal static class SliceAdjacency
 		// MirrorService reads the configured mirror endpoint from Content's ISettingsRepository.
 		("Beatmaps", "Content"),
 
-		// BotBootstrapService and CommandDispatcher operate on
+		// BotBootstrapService operates on
 		// ChannelSession/ChannelMembershipService/IChannelRegistry to post replies and manage
 		// channel membership.
 		("Bot", "Chat"),
