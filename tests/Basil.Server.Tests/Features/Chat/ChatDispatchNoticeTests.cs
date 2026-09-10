@@ -64,7 +64,7 @@ public class ChatDispatchNoticeTests
 
 		await MakeService().SendNoticeAsync(sender, "#osu", "!mp start");
 
-		await _commandDispatcher.DidNotReceiveWithAnyArgs().DispatchAsync(default!, default!, default, default,
+		await _commandDispatcher.DidNotReceiveWithAnyArgs().DispatchAsync(default!, default!, null, default,
 			default!);
 		var delivered = Assert.Single(((RecordingIrcConnection)member.IrcConnection).Received);
 		Assert.Equal("NOTICE", delivered.Command);

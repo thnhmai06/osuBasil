@@ -41,6 +41,7 @@ public class MpCommandServiceTests
 			_fixture.StartHandler, _fixture.AbortHandler, _fixture.CloseHandler,
 			_fixture.MatchRegistry, _fixture.MatchRepository, _beatmaps,
 			_fixture.SessionRegistry, _fixture.IrcSessionRegistry, _users, _fixture.ChannelRegistry,
+			_fixture.ChannelMembership,
 			NullLogger<MpCommandService>.Instance,
 			NullLogger<MatchControlService>.Instance);
 	}

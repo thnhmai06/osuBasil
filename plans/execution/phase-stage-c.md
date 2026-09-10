@@ -9,6 +9,10 @@ Order is C4 → C3 → C2 → C1 → C5 (see `plans/execution/stage-c-order-deci
 tracks C4 only; a later worker doing C3/C2/C1/C5 should create sibling sections or a new file
 per the orchestration doc's convention.
 
+**C4 is done — all three commits landed.** The next task in the C4 → C3 → C2 → C1 → C5 order is
+C3 (see `plans/execution/stage-c-order-decision.md`); this file's C4 section is now historical
+record, kept for the reasoning behind the `SliceAdjacency` state C3 inherits.
+
 ### Plan for C4 (three commits)
 
 1. **Commit 1 (done)** — pure move: `MpCommandService`/`MpReplies` relocate to
@@ -17,8 +21,8 @@ per the orchestration doc's convention.
    moved to a new `Bot.BotReplies`, wording and locale keys unchanged. `Features/Bot/Locale/
    bot.en.json` now holds only those eight keys; the rest moved with the code to a new
    `Features/Multiplayer/Locale/mp.en.json`.
-3. **Commit 3 (not started)** — collapse `Bot -> Multiplayer` to one contract. Design decided (see
-   below); not yet implemented.
+3. **Commit 3 (done)** — collapsed `Bot -> Multiplayer` to one contract, `IMpCommandService`. See
+   "Commit 3 — what was done" below.
 
 ### Commit 1 — what was done
 
@@ -179,28 +183,79 @@ own direct use of `MatchSession`/`IMatchRegistry` for scope resolution and refer
   `CommandDispatcher.cs`, which was already there and still is), not a new namespace crossing.
 - `SliceAdjacency.Allowed`: unchanged at 45 tuples (no edge added or removed by this commit).
 
+### Commit 3 — what was done
+
+Picked up mid-flight: the tree was received with steps 1-5 of the six-step order already applied
+in the working copy (uncommitted) — `IMpCommandService` existed, `MpCommandService.cs` had gained
+`DispatchAsync`/`DispatchChainAsync`/`ResolveScope`/`BuildDmRedirectSink`/`ScopedDmReplySink`
+verbatim from `CommandDispatcher`, `CommandDispatcher`'s constructor already depended on
+`IMpCommandService`, `ICommandDispatcher.DispatchAsync` already took `int? matchScopeDbId`, and
+`CommandDispatcherTests` was already updated to match. Build was green (0 errors) before any work
+this session. The actual signature landed slightly differently from the design's sketch —
+`DispatchAsync(UserSession sender, string[] args, ...)` instead of a separate
+`(string subcommand, string[] subArgs)` pair — a harmless simplification (the split into
+subcommand/subArgs happens on the first line of the method body instead), not flagged as a
+problem.
+
+Two things needed fixing before this was actually correct:
+
+1. **A real behavior bug in the in-progress edit.** `ChatDispatchService.SendChannelMessageAsync`
+   computed `matchScope` (the channel-derived `MatchSession`, when the message was sent in that
+   match's own channel) but then called `commandDispatcher.DispatchAsync(sender, truncated, null,
+   ...)` — passing a hardcoded `null` instead of `matchScope?.DbId`. This silently dropped the
+   channel-derived match scope for every `!mp` command sent in a match's own chat channel (the
+   single most common case), which the design explicitly calls out as one of the two call sites
+   that must pass `matchScope?.DbId`. Fixed by passing `matchScope?.DbId` as designed. No test
+   caught this because `CommandDispatcherTests` calls `ICommandDispatcher.DispatchAsync` directly
+   with a `MatchSession`/`.DbId` already in hand, bypassing `ChatDispatchService` entirely — this
+   codepath has no test coverage at the `ChatDispatchService` level either before or after the fix,
+   so nothing regressed, but nothing would have caught the bug either. **Worth a follow-up**: an
+   integration or `ChatDispatchService`-level test exercising a channel-scoped `!mp` command would
+   have caught this and doesn't exist today.
+2. **`SliceAdjacency`: `("Bot", "Irc")` turned out to be genuinely removable**, contradicting
+   Commit 1's finding that it "must stay." That finding was correct *at the time* — the row's real
+   carrier was `CommandDispatcher`'s own `ScopedDmReplySink`, which called
+   `sender.IrcConnection.Send(...)`. Commit 3's Move Method relocated `ScopedDmReplySink` bodily
+   into `MpCommandService` (Multiplayer), which already carries `Multiplayer -> Irc`. Verified
+   `grep -rln "Irc" src/Basil.Server/Features/Bot/` returns nothing at all post-move. Proved it by
+   deleting the row and running `Basil.ArchitectureTests`: still 6/6 (was 5/6 when the same
+   deletion was tried in Commit 1). Deleted the row for real this time and updated the now-stale
+   `("Bot", "Multiplayer")` comment (it referenced `IMatchRegistry`/`MatchSession`, both gone from
+   `CommandDispatcher` since this commit) to name `IMpCommandService` as the sole carrier.
+   `("Bot", "Scores")` was checked too: no such row exists in `SliceAdjacency` at `74980d28` or at
+   any point in C4 — confirmed by `git show 74980d28:tests/Basil.ArchitectureTests/SliceAdjacency.cs`.
+   There is nothing to delete; the script's "gone" report for it was never backed by an allowlist
+   entry in the first place.
+
+### Commit 3 verification (all green)
+
+- `dotnet build --configuration Debug`: 0 errors (both before and after the `ChatDispatchService`
+  fix, and after the `SliceAdjacency` edit).
+- `Basil.ArchitectureTests`: 6/6, including the deliberate `("Bot", "Irc")`-row-deleted probe
+  described above (also 6/6).
+- `Basil.Domain.Tests`: 114/114.
+- `Basil.Protocol.Tests`: 158/158.
+- `Basil.Server.Tests`: 1053/1053 (unchanged from Commit 2 — no test added or removed this
+  commit).
+- `Basil.IntegrationTests`: 363/363 (one benign `[Test Class Cleanup Failure]` from
+  `AnnounceEndpointTests` teardown this run, same pattern as the prior two commits' benign
+  cleanup-failure log lines from different test classes — 0 failed reported).
+- Total: 6 + 114 + 158 + 1053 + 363 = **1694** (oracle 1693 at `74980d28` + 1 new test from
+  Commit 2 = 1694, unchanged by Commit 3 as expected).
+- Route count: 140, unchanged. No route-shaped file touched.
+- `measure-slice-graph.py`: features-only 43, solution-wide 50 — unchanged from Commit 2, as
+  predicted (this commit relocates code already inside the existing `Bot -> Multiplayer`
+  namespace crossing; it doesn't cross a new one). Confirms `("Bot", "Irc")` still reads as
+  "gone" in the text scan (it already did, before this commit — the scanner never saw
+  `ScopedDmReplySink`'s dependency either way).
+- `SliceAdjacency.Allowed`: 45 → **44** tuples. `("Bot", "Irc")` deleted and proved by the
+  ArchitectureTests run above — this is the first commit where deleting that row is actually
+  correct, not a workaround.
+
 ### Next exact step
 
-Start Commit 3: implement the design above. Order of operations:
-1. `mcp__rider__extract_interface` on `MpCommandService` is not the right tool here, because the
-   two contract methods (`DispatchAsync`/`DispatchChainAsync`) don't exist on the class yet — they
-   have to be created (Move Method from `CommandDispatcher`) before there's anything to extract.
-   So: first move `DispatchMpAsync`, `ResolveScope`, `BuildDmRedirectSink`, `ScopedDmReplySink`,
-   and `DispatchChainAsync`'s body from `CommandDispatcher.cs` into `MpCommandService.cs` by hand
-   (same logic, renamed to the two contract method names), adding `ChannelMembershipService` to
-   `MpCommandService`'s constructor.
-2. Run `mcp__rider__extract_interface` on the now-updated `MpCommandService` for exactly those two
-   methods, naming it `IMpCommandService`.
-3. `mcp__rider__change_api_signature` on `ICommandDispatcher.DispatchAsync` (and its
-   `CommandDispatcher` implementation) to replace `MatchSession? matchScope` with
-   `int? matchScopeDbId`; fix the two `ChatDispatchService` call sites to pass `matchScope?.DbId`.
-4. Change `CommandDispatcher`'s constructor to depend on `IMpCommandService` instead of the
-   concrete `MpCommandService`, dropping `IMatchRegistry`/`ChannelMembershipService` if nothing
-   else in the class still needs them directly (check with `mcp__rider__find_references` first).
-5. Update `CommandDispatcherTests.MakeDispatcher`/`Run`/`RunAll` per the note above; rebuild, run
-   all five test projects (IntegrationTests last), update this checkpoint, commit.
-6. Only after Commit 3 is green: re-run `measure-slice-graph.py` one more time (expected
-   unchanged again — this commit doesn't cross a new namespace boundary, it removes one type's
-   worth of direct references and adds an interface, both already within the existing
-   `Bot -> Multiplayer` edge) and write the final report covering both instruments, the
-   `Bot -> Irc` finding, and all commit shas.
+C4 is finished. Move to **C3** per `plans/execution/stage-c-order-decision.md` (turn logout into
+an event) — read that document and `plans/execution/architecture-progress.md` before starting; this
+file does not track C3's plan. If a new section is added for C3, keep the C4 history above intact
+rather than overwriting it — a successor debugging a Bot/Multiplayer/Irc question later may need
+it.

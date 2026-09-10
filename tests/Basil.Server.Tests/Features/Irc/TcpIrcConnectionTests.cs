@@ -565,7 +565,7 @@ public class TcpIrcConnectionTests
 	/// <summary>Never recognises a command — this test's "hello bob" text has no `!` prefix anyway.</summary>
 	private sealed class NullCommandDispatcher : ICommandDispatcher
 	{
-		public Task<bool> DispatchAsync(UserSession sender, string rawMessage, MatchSession? matchScope,
+		public Task<bool> DispatchAsync(UserSession sender, string rawMessage, int? matchScopeDbId,
 			string? channelName, ICommandReplySink sink, bool prefixOptional = false,
 			CancellationToken cancellationToken = default)
 		{

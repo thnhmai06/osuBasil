@@ -217,7 +217,7 @@ public sealed class ChatDispatchService(
 			? senderMatch
 			: null;
 		var sink = new ChannelReplySink(channelMembership, channel, bot, sender);
-		await commandDispatcher.DispatchAsync(sender, truncated, matchScope, channel.Name, sink,
+		await commandDispatcher.DispatchAsync(sender, truncated, matchScope?.DbId, channel.Name, sink,
 			cancellationToken: cancellationToken);
 	}
 

@@ -59,13 +59,8 @@ internal static class SliceAdjacency
 		// CommandDispatcher resolves Content.FaqService for `!faq`.
 		("Bot", "Content"),
 
-		// CommandDispatcher's ScopedDmReplySink replies over a UserSession's IIrcConnection, whose
-		// declared type is Irc's regardless of which command produced the reply.
-		("Bot", "Irc"),
-
-		// CommandDispatcher/ICommandDispatcher are the `!mp` command surface's transport --
-		// they operate directly on IMatchRegistry and MatchSession to route `!mp` subcommands to
-		// Multiplayer.MpCommandService.
+		// CommandDispatcher routes `!mp` subcommands through Multiplayer.IMpCommandService, the
+		// single contract the `!mp` command surface crosses this boundary with.
 		("Bot", "Multiplayer"),
 
 		// BotBootstrapService and CommandDispatcher resolve IUserRepository to look up command

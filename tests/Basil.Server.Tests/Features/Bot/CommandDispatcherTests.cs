@@ -29,7 +29,8 @@ public class CommandDispatcherTests
 		MatchSession? matchScope, bool prefixOptional = false)
 	{
 		var sink = new RecordingReplySink();
-		await dispatcher.DispatchAsync(sender, message, matchScope, matchScope?.ChatChannelName, sink, prefixOptional);
+		await dispatcher.DispatchAsync(sender, message, matchScope?.DbId, matchScope?.ChatChannelName, sink,
+			prefixOptional);
 		return sink.Last;
 	}
 
@@ -41,7 +42,7 @@ public class CommandDispatcherTests
 		string message, MatchSession? matchScope)
 	{
 		var sink = new RecordingReplySink();
-		await dispatcher.DispatchAsync(sender, message, matchScope, matchScope?.ChatChannelName, sink);
+		await dispatcher.DispatchAsync(sender, message, matchScope?.DbId, matchScope?.ChatChannelName, sink);
 		return sink.Replies;
 	}
 
@@ -60,17 +61,16 @@ public class CommandDispatcherTests
 	{
 		var options = Options.Create(new BotOptions { CommandPrefix = prefix });
 		fixture ??= new MultiplayerTestSupport.Fixture();
-		var mpCommands = new MpCommandService(fixture.MatchMembership, fixture.MatchLifecycle,
+		IMpCommandService mpCommands = new MpCommandService(fixture.MatchMembership, fixture.MatchLifecycle,
 			fixture.SetTeamHandler, fixture.TimerHandler, fixture.AbortTimerHandler,
 			fixture.StartHandler, fixture.AbortHandler, fixture.CloseHandler,
 			fixture.MatchRegistry, fixture.MatchRepository, _beatmaps,
 			fixture.SessionRegistry, fixture.IrcSessionRegistry, Substitute.For<IUserRepository>(),
-			fixture.ChannelRegistry,
+			fixture.ChannelRegistry, fixture.ChannelMembership,
 			NullLogger<MpCommandService>.Instance,
 			NullLogger<MatchControlService>.Instance);
 		return new CommandDispatcher(options, mpCommands, _users,
 			Options.Create(storageOptions ?? MakeStorageOptions()),
-			fixture.MatchRegistry, fixture.SessionRegistry, fixture.ChannelRegistry, fixture.ChannelMembership,
 			NullLogger<CommandDispatcher>.Instance);
 	}
 
@@ -622,7 +622,7 @@ public class CommandDispatcherTests
 		var match = fixture.CreateMatch(host);
 
 		var sink = new RecordingReplySink();
-		await dispatcher.DispatchAsync(host, "!mp settings", match, match.ChatChannelName, sink);
+		await dispatcher.DispatchAsync(host, "!mp settings", match.DbId, match.ChatChannelName, sink);
 
 		Assert.NotEmpty(sink.Replies);
 	}
