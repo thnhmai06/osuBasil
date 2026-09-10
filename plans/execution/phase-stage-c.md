@@ -3,12 +3,16 @@
 > Read this file first. It is kept current in the same commit as every green step, so a
 > successor can resume from here without reconstructing state from `git log` and a build.
 
-## Current task: C3 — done. Next is C2
+## Current task: C6 — done. Next is C1
 
 Order is C4 → C3 → C2 → C6 → C1 → C5 (see `plans/execution/stage-c-order-decision.md` and
-`plans/basil-plan-20260909.md`'s Stage C preamble, which adds C6). This file tracks C4 and C3;
-a later worker doing C2/C6/C1/C5 should create sibling sections or a new file per the
-orchestration doc's convention.
+`plans/basil-plan-20260909.md`'s Stage C preamble, which adds C6). C2 is investigated and
+blocked, not started -- see its section near the end of this file. **C6 is done, landed in one
+commit, described in its own section below.** Everything in that section is committed; nothing
+is pending or uncommitted. The next task in the order is **C1** (move ~96 files into
+`Basil.Domain`) -- `DomainBoundaryTests`/`DomainAdjacency` now watch that project's internal
+graph as files land in it, feature by feature. This file tracks C4, C3 and C6; a later worker
+doing C1/C5 should create sibling sections or a new file per the orchestration doc's convention.
 
 **C4 is done — all three commits landed.** Historical record below, kept for the reasoning
 behind the `SliceAdjacency` state C3 inherits.
@@ -427,6 +431,154 @@ logout still completes when one step fails": before this task, it didn't.
 ### Next exact step
 
 C3 is finished and fully committed.
+
+## C6 — give `Basil.Domain` its own graph rule
+
+Done in one commit. Runs before C1 per the order above; C1 is blocked on it, because until this
+rule exists nothing watches the graph inside `Basil.Domain` once files start landing there.
+
+### The rule's shape
+
+Two new files in `tests/Basil.ArchitectureTests/`, mirroring `SliceAdjacency`/`SliceBoundaryTests`
+one level down:
+
+- `DomainAdjacency.cs` — `internal static class DomainAdjacency { public static readonly
+  (string From, string To)[] Allowed = [...] }`, same shape as `SliceAdjacency`, one edge per row
+  with a comment naming the file(s) that carry it.
+- `DomainBoundaryTests.cs` — one `[Fact]`,
+  `Namespaces_Should_Only_Reference_Declared_Namespaces`, built by copying
+  `SliceBoundaryTests.Slices_Should_Only_Reference_Declared_Slices` and substituting
+  `Basil.Domain.` for `Basil.Server.Features.` and `DomainAdjacency.Allowed` for
+  `SliceAdjacency.Allowed`. It discovers the namespace population **dynamically** from
+  `typeof(Basil.Domain.AssemblyMarker).Assembly` (`GetTypes().Where(t => t.Namespace starts with
+  "Basil.Domain.").Select(first segment).Distinct()`), the same way `SliceBoundaryTests` derives
+  `allSlices` — not from a hardcoded directory list. This matters concretely: it is what makes the
+  rule automatically cover C1's ~96 incoming files as they land, and it is what caught the two
+  extra edges below, which a rule scoped to only the directories sharing a name with a
+  `Features/<Slice>` would have missed by construction — the exact blind spot this task exists to
+  close.
+
+`Shared_Should_Not_Reference_Features`'s pinned-offender-list shape has no analog here:
+`SliceAdjacency` has no stale-row assertion either, and rows come off by hand when a carrier is
+confirmed gone (as C4/C3 did) rather than being enforced by a second test.
+
+### How the Domain directories without a `Features/` counterpart are treated
+
+`Basil.Domain`'s eight directories today are `Beatmaps`, `Channels`, `Content`, `Login`,
+`Multiplayer`, `Scores`, `Social`, `Users`. Only five of them (`Beatmaps`, `Content`,
+`Multiplayer`, `Scores`, `Users`) share a name with a `Features/<Slice>`; `Channels`, `Login` and
+`Social` do not — `Channels` is `Chat`'s domain model, `Login` and `Social` have no slice-level
+namesake at all.
+
+They are **not** exempted or treated specially. The rule's population is every first-level
+namespace segment under `Basil.Domain`, discovered from the assembly, full stop — `Channels`,
+`Login` and `Social` are namespaces like any other and need a declared row the same as `Beatmaps`
+or `Users` would. This is a deliberate difference from `SliceBoundaryTests`, whose population is
+implicitly `Features/<Slice>` only because nothing else lives under `Features/` in that shape;
+`Basil.Domain` has no such implicit restriction, and scoping `DomainBoundaryTests` to
+slice-named directories would have reproduced the instrument gap this task exists to close (two of
+the six edges below are exactly the edges that scoping would have missed).
+
+### The measured edge list — six, not three, and why
+
+The task brief's pinned starting point named three edges (`Multiplayer -> Beatmaps`,
+`Multiplayer -> Scores`, `Scores -> Beatmaps`). Re-measuring directly against the current tree (one
+`using`-directive/FQN grep per file under `src/Basil.Domain`, cross-checked against the compiled
+IL via the rule's own first, temporarily-permissive run) found **six**:
+
+| Edge | Carried by | Justification |
+|---|---|---|
+| `Multiplayer -> Beatmaps` | `Multiplayer/Round.cs` | A round has a beatmap. |
+| `Multiplayer -> Scores` | `Multiplayer/Round.cs` | A round carries the `Submission` each player produced. |
+| `Scores -> Beatmaps` | `Scores/Submission.cs`, `HitCounts.cs`, `Mods.cs` | A submission is against a beatmap. |
+| `Scores -> Login` | `Scores/Submission.cs` | `Submission.ValidateClientDetails` checks the submission's `ClientDetails` against the osu! version captured at login. |
+| `Channels -> Users` | `Channels/Channel.cs` | A channel gates read/write access on a `UserPrivileges` level. |
+| `Users -> Login` | `Users/User.cs` | A user carries the `Country` resolved at login. |
+
+The three extras (`Scores -> Login`, `Channels -> Users`, `Users -> Login`) all involve `Channels`
+or `Login` — exactly the two namespaces with no `Features/`-slice namesake. This is consistent with
+`architecture-progress.md`'s note that `measure-slice-graph.py`'s population is "files owned by a
+slice-named directory": the brief's three-edge figure reads as that script's output, and the
+script cannot see `Channels/` or `Login/` by construction — the same instrument gap
+`architecture-progress.md` already documents for `Shared/`. This is the stop condition
+"the measured Domain edge list differing from the three above" firing, reported rather than worked
+around: the extras are not padding, they are what a rule scoped correctly (assembly-discovered,
+not slice-name-matched) was built to catch. None of the three extra edges is implausible as a
+domain relationship (checked against the second stop condition, "needing to declare an edge that
+is not a plausible domain relationship" — it does not fire; a channel's access level, a
+submission's client validation, and a user's country are all ordinary domain data, not accidental
+coupling), so all six are declared in `DomainAdjacency.Allowed` rather than treated as a finding
+that blocks the rule from landing.
+
+Also checked and ruled out: `const`-only crossings, which `SliceBoundaryTests`' IL-based instrument
+cannot see (ADR-008's reasoning). `src/Basil.Domain` has three `const` fields
+(`Beatmap.LocalIdFloor`, `ClientDetails.WineAdapterSentinel` (private), `SystemUserIds.BasilBot`);
+grepped every usage — `LocalIdFloor` is only used within `Beatmaps` itself
+(`Beatmapset.IsLocallyIngested`), `WineAdapterSentinel` is private to `Login`, and `BasilBot` has no
+usage anywhere under `src/Basil.Domain` today. No hidden seventh edge.
+
+### Proof the rule can fail
+
+Added an additive member to `Multiplayer/MatchEvent.cs` (a record with no existing body) —
+`internal static readonly Basil.Domain.Social.Relationship? DeliberateBreak = null;` — a real IL
+field-type reference to an undeclared namespace, not just a `using` with no actual use (a `using`
+alone emits no IL and would have proven nothing). Built and ran
+`Basil.ArchitectureTests` — failed exactly as expected:
+
+```
+Basil.Domain.Multiplayer.MatchEvent -> one of [Basil.Domain.Users, Basil.Domain.Social, Basil.Domain.Login, Basil.Domain.Content, Basil.Domain.Channels] (via Basil.Domain.Multiplayer.MatchEvent)
+```
+
+Reverted the edit; `git diff -- src/Basil.Domain/Multiplayer/MatchEvent.cs` is empty. Rebuilt and
+reran — green again, 7/7.
+
+### Verification (all green)
+
+- `dotnet build --configuration Release`: 0 errors (solution-wide).
+- `Basil.ArchitectureTests`: **7/7** (was 6/6; +1 for the new `DomainBoundaryTests` fact).
+- `Basil.Domain.Tests`: 114/114.
+- `Basil.Protocol.Tests`: 158/158.
+- `Basil.Server.Tests`: 1057/1057.
+- `Basil.IntegrationTests`: 363/363 (same benign `[Test Class Cleanup Failure]` teardown log lines
+  seen in prior commits — `MotdSettingsManagementEndpointTests` and, this run,
+  `MenuBannerEndpointTests` — 0 failed reported, unrelated to this change).
+- Total: 7 + 114 + 158 + 1057 + 363 = **1699** (oracle's 1698 + this task's one new fact).
+- Route count: `grep -rhoE 'Map(Get|Post|Put|Patch|Delete)\("[^"]*"' src/Basil.Server --include=*.cs
+  | sort -u | wc -l` → **140**, unchanged. No route-shaped file touched.
+- `SliceAdjacency.Allowed`: **44** tuples, unchanged (this task adds no cross-slice edge; the task
+  brief's own count of "44" matches what's counted here — the checkpoint's own C4 history above
+  says 46 → 45, which is C4's number after its own commit, not today's; not touched by C6 either
+  way).
+- `Shared_Should_Not_Reference_Features` pinned list: **12** entries by direct count of the
+  `knownOffenders` array (the file's own comment says "11 types" — a pre-existing, one-off
+  discrepancy between the comment and the array, not introduced by this task and not touched by
+  it). Unchanged before/after C6.
+
+### Rider MCP refactorings
+
+None applied. This task is new test code (`DomainAdjacency.cs`, `DomainBoundaryTests.cs`) plus one
+temporary, fully-reverted edit to prove the rule fails — no rename, no namespace move, no signature
+change, nothing a refactoring tool has a target for.
+
+### Applied but not yet committed or verified, at the time this section was written
+
+Nothing. Everything described above (the two new test files, this checkpoint update) lands in one
+commit together, and every verification step above ran against that exact state before the commit
+was made.
+
+### Noted, not this task's to fix
+
+`src/Basil.Server/Features/Chat/ChatDispatchService.cs` shows modified (`M`) in `git status`
+throughout this session, but `git diff` on it is empty — a pre-existing CRLF/index artifact from
+before this task started, not a real change and not something C6 touched. A later worker should not
+attribute it to this commit.
+
+### Next exact step
+
+C6 is finished and fully committed. C1 is next per the order above — move ~96 files into
+`Basil.Domain`, one feature per commit; `DomainBoundaryTests` now fails the build the moment any
+moved feature's file introduces an undeclared cross-namespace reference inside `Basil.Domain`,
+rather than waiting until the whole move is done to find out.
 
 ## C2 -- investigated, not started: the task's own currency cannot move
 
