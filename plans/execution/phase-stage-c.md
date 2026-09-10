@@ -3,15 +3,20 @@
 > Read this file first. It is kept current in the same commit as every green step, so a
 > successor can resume from here without reconstructing state from `git log` and a build.
 
-## Current task: C4 — move `MpCommandService` and `MpReplies` into Multiplayer
+## Current task: C3 — done. Next is C2
 
-Order is C4 → C3 → C2 → C1 → C5 (see `plans/execution/stage-c-order-decision.md`). This file
-tracks C4 only; a later worker doing C3/C2/C1/C5 should create sibling sections or a new file
-per the orchestration doc's convention.
+Order is C4 → C3 → C2 → C6 → C1 → C5 (see `plans/execution/stage-c-order-decision.md` and
+`plans/basil-plan-20260909.md`'s Stage C preamble, which adds C6). This file tracks C4 and C3;
+a later worker doing C2/C6/C1/C5 should create sibling sections or a new file per the
+orchestration doc's convention.
 
-**C4 is done — all three commits landed.** The next task in the C4 → C3 → C2 → C1 → C5 order is
-C3 (see `plans/execution/stage-c-order-decision.md`); this file's C4 section is now historical
-record, kept for the reasoning behind the `SliceAdjacency` state C3 inherits.
+**C4 is done — all three commits landed.** Historical record below, kept for the reasoning
+behind the `SliceAdjacency` state C3 inherits.
+
+**C3 is done — landed in two commits, both described below.** Everything in this section is
+committed; nothing is pending or uncommitted. The next task in the order is **C2** (split
+`GameSession`) — read `plans/execution/stage-c-order-decision.md`'s "What changes in C2"
+section before starting; this file does not track C2's plan.
 
 ### Plan for C4 (three commits)
 
@@ -278,10 +283,151 @@ rerun — this follow-up touched a test-only file and a comment in an already-gr
 `SliceAdjacency.cs`; no production code changed relative to the `ea6bd277` commit already verified
 against all five projects.
 
+## C3 — stop `PlayerLogoutService` importing five feature slices
+
+Design settled before this task started: `plans/execution/logout-as-event-decision.md`. Short
+version — **an ordered handler list, not an event bus.** `Shared/Sessions` gained one new
+abstraction:
+
+```csharp
+public interface IPlayerLogoutHandler
+{
+    int Order { get; }
+    Task OnLogoutAsync(UserSession session, CancellationToken cancellationToken);
+}
+```
+
+`PlayerLogoutService` no longer touches any `Basil.Server.Features.*` type. It holds
+`IEnumerable<IPlayerLogoutHandler>`, sorts once by `Order`, and runs each in turn inside a
+`try/catch (Exception ex) when (ex is not OperationCanceledException)` — catch, log, continue,
+per the decision doc. Cancellation is not caught here; it propagates, mirroring
+`GhostDisconnectService.RunOnce`'s own cancellation filter.
+
+### The seven handlers, in `Order`
+
+| Order | Handler | Slice | What it does |
+|---|---|---|---|
+| 10 | `MatchLeaveLogoutHandler` | Multiplayer | `GameSession` leaves its match under the match lock (`BeginMutationAsync`/`MatchMembership.LeaveAsync`/`PublishState`) |
+| 20 | `SpectatorTeardownLogoutHandler` | Spectating | Removes the departing `GameSession` as someone's spectator, then tears down BasilBot's own watch of it |
+| 30 | `ChannelPartLogoutHandler` | Chat | Parts every joined channel via `ChannelMembershipService.DisconnectFromChannels`, for both session kinds |
+| 40 | `GameSessionRegistryRemovalLogoutHandler` | Shared/Sessions | Removes a departing `GameSession` from `ISessionRegistry<GameSession>` |
+| 40 | `IrcSessionRemovalLogoutHandler` | Irc | Removes a departing `IrcSession` from `ISessionRegistry<IrcSession>` |
+| 50 | `StatusPublishLogoutHandler` | Spectating | Publishes the offline status to `IPlayerStatusEvents` |
+| 60 | `LogoutBroadcastHandler` | Shared/Sessions | Broadcasts the bancho Logout packet to every other online, unrestricted `GameSession` |
+
+The two Order-40 handlers never both apply to the same call (a session is either a `GameSession`
+or an `IrcSession`, never both), so the tie is inert.
+
+Why registry removal and the final broadcast are handlers owned by **Shared**, not inlined back
+into `PlayerLogoutService`: both touch only `GameSession`/`ISessionRegistry<T>`, which are
+already Shared types, so giving them their own `Order` slot is what lets the flat sorted list
+reproduce the original statement order exactly — channel-part, then registry removal, then
+status-publish, then broadcast — with no special-cased code splicing the loop. The alternative
+(keep them inline, run before/after the handler loop) would have been provably safe here (see
+the commit below) but only after reading `ChannelMembershipService.DisconnectFromChannels`'s
+reference-equality check; encoding them as ordered handlers instead means no reader has to
+re-derive that proof.
+
+`SpectatorTeardownLogoutHandler` resolves the bot's session with
+`Basil.Domain.Users.SystemUserIds.BasilBot` instead of `Basil.Server.Features.Bot
+.BotBootstrapService.BotId` (the two are the same value — `BotBootstrapService.BotId` is just
+`SystemUserIds.BasilBot` re-exposed). This is the one substitution that keeps Spectating from
+needing a new `Spectating -> Bot` `SliceAdjacency` row; reaching for `BotBootstrapService`
+instead would have tripped the task's stop condition.
+
+### Login: measured, nothing to invert
+
+`LoginService` and `IrcAuthenticationService` are *Features* types (`Basil.Server.Features.Auth`
+/ `Basil.Server.Features.Irc`), not `Shared` types. Their cross-slice references (`Auth -> Bot`,
+`Auth -> Chat`, `Auth -> Content`, `Auth -> Spectating`, `Auth -> Users`, `Irc -> Auth`, etc.) are
+already declared `SliceAdjacency` rows — the normal, intended mechanism for a Features type,
+unlike `PlayerLogoutService`, which lived in `Shared` and imported `Features` directly, breaking
+the layering rule `Shared_Should_Not_Reference_Features` exists to catch. Grepped
+`src/Basil.Server/Shared` for a login-owning type analogous to `PlayerLogoutService`/
+`GhostDisconnectService`: none exists. Login has nothing to invert for C3; recorded here rather
+than acted on, per the task's explicit instruction not to build one on the strength of the task
+title alone.
+
+### Commit 1 — the handler abstraction, seven handlers, DI wiring, and the pinned-list deletion
+
+- Added `IPlayerLogoutHandler` (`src/Basil.Server/Shared/Sessions/IPlayerLogoutHandler.cs`) and
+  rewrote `PlayerLogoutService` down to a sorted-handler runner (93 lines -> 46 lines -- carries
+  no Features import at all, first time in the file's history).
+- Added the seven handler files listed above, one per file, each in the slice that owns the
+  dependency it wraps.
+- Wired `services.AddSingleton<IPlayerLogoutHandler, X>()` once per handler, in the slice's own
+  `Add<Slice>` extension (`AddSharedInfrastructure` for the two Shared ones, `AddMultiplayer`,
+  `AddSpectating` x2, `AddChat`, `AddIrc`).
+- `SliceBoundaryTests.Shared_Should_Not_Reference_Features`: removed the
+  `"Basil.Server.Shared.Sessions.PlayerLogoutService"` entry from `knownOffenders` (12 -> 11) and
+  corrected the leading comment's count and attribution (it no longer holds a live `MatchSession`
+  or IRC connection; `GhostDisconnectService` is the remaining offender in that family, and only
+  because it still types `ISessionRegistry<IrcSession>` for its own constructor, an unrelated,
+  out-of-scope coupling).
+- Fixed every other production/test call site the constructor-signature change broke:
+  `LoginServiceTests`, `GhostDisconnectServiceTests` (two sites), `LogoutHandlerTests`,
+  `TcpIrcConnectionTests` — each rebuilt as the same seven-handler set, argument-for-argument
+  mapped from the old seven-parameter constructor, so no test's actual wiring changed, only the
+  packaging.
+- Rewrote `PlayerLogoutServiceTests` itself around a `MakeService(matchMembership, extraHandlers)`
+  factory that builds the full real handler set (not mocks of `PlayerLogoutService`'s own
+  internals) — the same shape DI registers — plus two new tests pinning the failure contract:
+  `Logout_WhenAHandlerThrows_LaterHandlersStillRunAndLogoutCompletes` and
+  `Logout_WhenAHandlerThrowsOperationCanceled_PropagatesAndSkipsLaterHandlers`.
+- Added `CompositionRootTests.ResolvesPlayerLogoutServiceWithAllHandlers`, asserting
+  `_provider.GetServices<IPlayerLogoutHandler>().Count() == 7` — the same shape as the existing
+  `ResolvesBanchoPacketDispatcherWithAllHandlers` test for `IPacketHandler`. This is the guard
+  against a silently-missing `AddSingleton<IPlayerLogoutHandler, X>()` line: every hand-wired unit
+  test would still pass even if a slice's DI registration were forgotten, exactly the shape of
+  bug C4's checkpoint flagged in `ChatDispatchService`.
+
+### Commit 2 — the `GhostDisconnectServiceTests` behavioural update
+
+Building the seven-handler set surfaced one **intentional** behavioural change, not a bug: the
+old `PlayerLogoutService` had no internal exception handling, so a single failing step (e.g. a
+channel lookup throwing) aborted the *entire* `LogoutAsync` call for that session, and only
+`GhostDisconnectService.RunOnce`'s own per-session `try/catch` stopped that from aborting the
+whole sweep. The new `PlayerLogoutService` catches per-handler, so a failing step now only skips
+itself — every other step for that same session, including registry removal, still runs.
+
+`GhostDisconnectServiceTests.RunOnce_OneSessionReapThrows_StillReapsTheRest` encoded the *old*
+whole-session-abort behaviour (`Assert.NotNull` on the poisoned session's registry entry, because
+the whole logout used to abort before reaching registry removal). Updated the assertion to
+`Assert.Null` for both sessions -- the poisoned session's channel-part step fails and is logged,
+but its own registry removal (Order 40) still runs -- and updated the doc comment to describe the
+new, more resilient contract. This is exactly what the task's verification line means by "a
+logout still completes when one step fails": before this task, it didn't.
+
+### Verification (all green)
+
+- `dotnet build --configuration Debug`: 0 errors.
+- `Basil.ArchitectureTests`: 6/6.
+- `Basil.Domain.Tests`: 114/114.
+- `Basil.Protocol.Tests`: 158/158.
+- `Basil.Server.Tests`: **1057**/1057 (1054 baseline + 1 `CompositionRootTests` handler-count test
+  + 2 `PlayerLogoutServiceTests` failure-contract tests).
+- `Basil.IntegrationTests`: 363/363 (two benign `[Test Class Cleanup Failure]` log lines from
+  `ScoreListEndpointTests`/`DirectSearchEndpointTests` teardown, same pre-existing pattern as
+  every prior Stage C commit's run against different test classes -- 0 failed reported).
+- Route count: unchanged at 140. No route-shaped file touched.
+- `measure-slice-graph.py`: **43 / 50, unchanged from C4's end state in both counts.** This is not
+  a null result: `PlayerLogoutService` and its new handler files live under `Shared/`, and the
+  script's slice list is derived only from `Basil.Server/Features/<Slice>` directories -- `Shared`
+  was never a tracked source of edges, in either features-only or solution-wide mode, so removing
+  its Features imports was invisible to this script in both directions. The real signal for this
+  task is the `Shared_Should_Not_Reference_Features` pinned-list deletion, not this script.
+- `SliceAdjacency.Allowed`: **untouched, still 44 tuples.** `PlayerLogoutService` was a `Shared`
+  type; none of its five Features imports were ever Features-to-Features edges this allowlist
+  tracks, so there was no row to delete. Checked every new handler file for an accidental new
+  cross-slice edge (e.g. `SpectatorTeardownLogoutHandler` importing `Bot` would have needed a new
+  `Spectating -> Bot` row) -- none exists; each handler only reaches its own slice's
+  already-owned services plus `Shared`/`Basil.Domain` types. No row added, no row removed, exactly
+  as predicted before running the script.
+
 ### Next exact step
 
-C4 is finished. Move to **C3** per `plans/execution/stage-c-order-decision.md` (turn logout into
-an event) — read that document and `plans/execution/architecture-progress.md` before starting; this
-file does not track C3's plan. If a new section is added for C3, keep the C4 history above intact
-rather than overwriting it — a successor debugging a Bot/Multiplayer/Irc question later may need
-it.
+C3 is finished and fully committed. Move to **C2** (split `GameSession`) per
+`plans/execution/stage-c-order-decision.md`'s "What changes in C2" section -- read it before
+starting, along with `plans/basil-plan-20260909.md`'s Task C2 entry; this file does not track
+C2's plan. If a new section is added for C2, keep the C4 and C3 history above intact rather than
+overwriting it.
