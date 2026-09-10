@@ -19,27 +19,32 @@ internal static class CommandLine
 
 	/// <summary>Runs the command named in <paramref name="args" />, if there is one.</summary>
 	/// <param name="args">The process arguments.</param>
+	/// <param name="output">Where a command writes what it did. The console when omitted.</param>
+	/// <param name="error">Where a command reports a failure. The console's error stream when omitted.</param>
 	/// <returns>
 	///     <see langword="true" /> when a command ran and the process should end without starting the
 	///     server; <see langword="false" /> when the arguments name no command.
 	/// </returns>
-	public static async Task<bool> TryRunAsync(string[] args)
+	public static async Task<bool> TryRunAsync(string[] args, TextWriter? output = null, TextWriter? error = null)
 	{
+		output ??= Console.Out;
+		error ??= Console.Error;
+
 		if (Matches(args, HelpFlags))
 		{
-			WriteHelp();
+			WriteHelp(output);
 			return true;
 		}
 
 		if (Matches(args, VersionFlags))
 		{
-			WriteVersion();
+			WriteVersion(output);
 			return true;
 		}
 
 		if (!Matches(args, UpdateFlags)) return false;
 
-		await UpdateAsync(args);
+		await UpdateAsync(args, output, error);
 		return true;
 	}
 
@@ -48,50 +53,50 @@ internal static class CommandLine
 		return args.Any(argument => flags.Contains(argument, StringComparer.OrdinalIgnoreCase));
 	}
 
-	private static void WriteVersion()
+	private static void WriteVersion(TextWriter output)
 	{
-		Console.WriteLine($"Basil {BuildVersion.Informational}");
-		Console.WriteLine($"Running on {Environment.Version} ({Environment.OSVersion})");
+		output.WriteLine($"Basil {BuildVersion.Informational}");
+		output.WriteLine($"Running on {Environment.Version} ({Environment.OSVersion})");
 	}
 
-	private static void WriteHelp()
+	private static void WriteHelp(TextWriter output)
 	{
-		Console.WriteLine($"Basil {BuildVersion.Informational}");
-		Console.WriteLine();
-		Console.WriteLine("Usage: Basil.Server [command]");
-		Console.WriteLine();
-		Console.WriteLine("Commands:");
-		Console.WriteLine("  -u, --update    Check for a newer release, install it, and restart.");
-		Console.WriteLine("  -v, --version   Show the version of this server.");
-		Console.WriteLine("  -h, --help      Show this list.");
-		Console.WriteLine();
-		Console.WriteLine("With no command, the server starts.");
-		Console.WriteLine("Settings come from Data/appsettings.json; see docs/for-technicians/configuration.md.");
+		output.WriteLine($"Basil {BuildVersion.Informational}");
+		output.WriteLine();
+		output.WriteLine("Usage: Basil.Server [command]");
+		output.WriteLine();
+		output.WriteLine("Commands:");
+		output.WriteLine("  -u, --update    Check for a newer release, install it, and restart.");
+		output.WriteLine("  -v, --version   Show the version of this server.");
+		output.WriteLine("  -h, --help      Show this list.");
+		output.WriteLine();
+		output.WriteLine("With no command, the server starts.");
+		output.WriteLine("Settings come from Data/appsettings.json; see docs/for-technicians/configuration.md.");
 	}
 
-	private static async Task UpdateAsync(string[] args)
+	private static async Task UpdateAsync(string[] args, TextWriter output, TextWriter error)
 	{
 		var options = ReadUpdateCheckOptions(args);
 		var probe = new VelopackUpdateProbe(options);
 
-		Console.WriteLine($"Basil {BuildVersion.Informational}, checking {options.Source}");
+		output.WriteLine($"Basil {BuildVersion.Informational}, checking {options.Source}");
 
 		var result = await probe.CheckAsync(CancellationToken.None);
 		switch (result.Outcome)
 		{
 			case UpdateCheckOutcome.UpToDate:
-				Console.WriteLine("Already up to date.");
+				output.WriteLine("Already up to date.");
 				return;
 			case UpdateCheckOutcome.Failed:
-				Console.Error.WriteLine("Could not reach the release feed. Nothing was changed.");
+				error.WriteLine("Could not reach the release feed. Nothing was changed.");
 				return;
 			case UpdateCheckOutcome.NotInstallable:
-				Console.Error.WriteLine(
+				error.WriteLine(
 					"This copy of Basil was not installed by the updater, so it cannot update itself.");
 				return;
 		}
 
-		Console.WriteLine($"Installing {result.AvailableVersion}...");
+		output.WriteLine($"Installing {result.AvailableVersion}...");
 		await probe.ApplyAsync(CancellationToken.None);
 	}
 

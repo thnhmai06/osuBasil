@@ -40,19 +40,15 @@ public class CommandLineTests
 			Assert.Contains(flag, result.Output);
 	}
 
+	// The command writes to a writer this test owns. Redirecting Console.Out instead would capture
+	// whatever any test running beside this one happened to print, which made the assertion that a
+	// non-command produces no output fail depending on scheduling.
 	private static async Task<(bool Handled, string Output)> RunCapturingOutput(string[] args)
 	{
-		var original = Console.Out;
 		await using var captured = new StringWriter();
-		Console.SetOut(captured);
-		try
-		{
-			var handled = await CommandLine.TryRunAsync(args);
-			return (handled, captured.ToString());
-		}
-		finally
-		{
-			Console.SetOut(original);
-		}
+
+		var handled = await CommandLine.TryRunAsync(args, captured, captured);
+
+		return (handled, captured.ToString());
 	}
 }
