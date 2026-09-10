@@ -56,7 +56,7 @@ public class SliceBoundaryTests
 	[Fact]
 	public void Shared_Should_Not_Reference_Features()
 	{
-		// Shared/ still holds 11 types that reach into Features/. Each is a real structural
+		// The types below still reach from Shared/ into Features/. Each is a real structural
 		// coupling that predates this migration and is out of Phase 0's scope to fix:
 		// GameSession/UserSession/GhostDisconnectService hold a live MatchSession and the IRC
 		// bridge connection (Task 1.4 -- MatchSession model encapsulation -- is the task that

@@ -156,8 +156,8 @@ tool, not a gate.
 
 Task C3 added the third case. It inverted `PlayerLogoutService`'s dependency on five slices and
 **every number stayed the same**: `SliceAdjacency` 44, features-only 43, solution-wide 50. The win was
-real and it showed up in a fourth place — the `Shared_Should_Not_Reference_Features` pinned list, 12
-entries down to 11.
+real and it showed up in a fourth place — the `Shared_Should_Not_Reference_Features` pinned list, 13
+entries down to 12.
 
 The script saw nothing because `Shared/Sessions/PlayerLogoutService.cs` was never in its population:
 it counts edges **sourced from** a slice-named directory, and `Shared/` is not one. So:
@@ -176,6 +176,38 @@ was `SliceAdjacency` rows. C2's will be the pinned list again, because what it r
 `Shared/Sessions/GameSession.cs` naming Multiplayer and Spectating types. C5 must state which
 instrument each claim rests on, or a task that moved nothing will read as progress on whichever number
 happened to drift.
+
+### A fourth blind spot, found by C6
+
+`measure-slice-graph.py` derives its slice names from the directories under
+`src/Basil.Server/Features`. `Basil.Domain` has namespaces that are not slices — `Channels`, `Login`
+and `Social` — so the script never looked at them.
+
+Task C6 measured the Domain graph from the assembly instead, and found **six edges where this
+project's own record said three**. All three extras run through exactly those namespaces:
+
+| Edge | Carried by | Why it is a real relationship |
+|---|---|---|
+| `Scores -> Login` | `Submission.cs` | `ValidateClientDetails` checks the submission against the osu! version captured at login |
+| `Channels -> Users` | `Channel.cs` | a channel gates read and write on `UserPrivileges` |
+| `Users -> Login` | `User.cs` | a user carries the `Country` resolved at login |
+
+None is implausible, so all six were declared rather than treated as a design flaw. The point is not
+the three edges — it is that the script's population is derived from a directory listing that has no
+authority over `Basil.Domain`, and C1 is about to move ninety-six files in there.
+
+C6's rule discovers its population from the assembly at run time rather than from a hardcoded list,
+which is why it found this and why it will cover C1's arrivals without being edited.
+
+### The pinned list has been quoted one short since before C3
+
+`SliceBoundaryTests`' comment said "12 types" while the array held 13, so C3's removal of
+`PlayerLogoutService` was recorded here as 12 down to 11 when the true movement was **13 down to 12**.
+The removal is real; only the absolute number was wrong, taken from the comment rather than counted
+from the array.
+
+The count is now out of the comment entirely. A number restated in prose beside the list it counts
+has nothing checking it, and this one drifted for at least two tasks before anyone counted.
 
 ### What C5 gates on, restated
 
