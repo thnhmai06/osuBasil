@@ -107,6 +107,7 @@ When two documents disagree, the authoritative document wins.
 | Privilege flags and their meanings                     | [`for-developers/privileges.md`](for-developers/privileges.md)         |
 | System architecture                                    | [`for-developers/architecture.md`](for-developers/architecture.md)     |
 | Image/asset serving (`assets.<domain>`, ImageSharp.Web) | [`for-developers/assets.md`](for-developers/assets.md)                 |
+| Diagnostic API design (samplers, live streams, shared per-tick collection) | [`for-developers/diagnostics.md`](for-developers/diagnostics.md) |
 
 Other documents may link to or summarize these topics, but they must not silently establish a conflicting definition.
 
@@ -140,6 +141,7 @@ This prevents the documentation from developing multiple competing versions of t
 
 * [`for-developers/architecture.md`](for-developers/architecture.md): system architecture and dependency direction
 * [`for-developers/assets.md`](for-developers/assets.md): the `assets.<domain>` host and ImageSharp.Web image serving
+* [`for-developers/diagnostics.md`](for-developers/diagnostics.md): the Diagnostic API's samplers, live streams, and shared per-tick collection
 * [`for-developers/working-scopes.md`](for-developers/working-scopes.md): supported and excluded functionality
 * [`for-developers/known-limitations.md`](for-developers/known-limitations.md): open root causes, unproven hypotheses, and the dependency inventory
 * [`for-technicians/configuration.md`](for-technicians/configuration.md): server configuration

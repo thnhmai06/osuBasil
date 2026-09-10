@@ -68,6 +68,8 @@ public static class MultiplayerServiceCollectionExtensions
 		services.AddSingleton<IMatchRoundEndOutbox>(sp => sp.GetRequiredService<MatchRoundEndOutbox>());
 		services.AddHostedService(sp => sp.GetRequiredService<MatchRoundEndOutbox>());
 
+		services.AddHostedService<MultiplayerMetricsPublisher>();
+
 		return services;
 	}
 

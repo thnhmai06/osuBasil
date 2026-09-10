@@ -1,4 +1,5 @@
 using Basil.Server.Shared.Configuration;
+using Basil.Server.Shared.Eventing;
 using Basil.Server.Shared.Http.Bancho;
 using Basil.Server.Shared.Media;
 using Basil.Server.Shared.Sessions;
@@ -47,6 +48,8 @@ public static class SharedInfrastructureServiceCollectionExtensions
 
 		services.AddSingleton<ISessionRegistry<GameSession>, GameSessionRegistry>();
 		services.AddSingleton<PlayerLogoutService>();
+
+		services.AddSingleton<ILiveEventHub, LiveEventHub>();
 
 		services.AddSingleton<PacketDispatcher>();
 		services.AddHostedService<GhostDisconnectService>();
