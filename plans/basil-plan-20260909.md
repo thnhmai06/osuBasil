@@ -368,10 +368,11 @@ assessment's definition and is the frame the prediction was made in; it drops wh
 leave `Features/`, which Stage C does ninety-six times. The `solution-wide` count follows a slice
 wherever its files live, so it falls only when a dependency actually goes away.
 
-- [ ] Re-run it. The **Stage C entry baseline**, measured on `4d669be8` and recorded in
-  `plans/execution/architecture-progress.md`, is **44 features-only / 52 solution-wide edges, one
-  component of ten, no slice free.** Stage B's handler splits are intra-slice, so nothing moved,
-  which is what the re-measurement confirms.
+- [ ] Re-run it. The **Stage C entry baseline**, measured on `ef96b008` — the commit that closes
+  Stage B and carries the merged Stage F — and recorded in
+  `plans/execution/architecture-progress.md`, is **45 features-only / 53 solution-wide edges, one
+  component of ten.** Eleven slices now, and the cycle still has ten: Diagnostics sits outside it
+  with one declared outgoing edge and nothing depending on it.
 - [ ] Expected after Stage C: features-only falls to roughly 17, with Auth, Beatmaps, Content,
   Users and Spectating standing free. **Solution-wide must fall with it.** If features-only reaches
   17 while solution-wide sits near 52, the coupling was relocated into `Basil.Domain` rather than

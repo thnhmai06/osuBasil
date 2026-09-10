@@ -32,7 +32,8 @@ first time are worth repeating:
 |---|---|---|---:|---|
 | 2026-09-08 | `e7a1bf7` | assessment measured the baseline | 44 | 1 of 10 |
 | 2026-09-09 | `ed48716` | stage A made constant-mediated coupling visible; 7 edges declared, 1 `Shared` offender pinned | 44 | 1 of 10 |
-| 2026-09-10 | `4d669be8` | **stage C entry baseline**, re-measured with `measure-slice-graph.py` | 44 features-only, 52 solution-wide | 1 of 10 |
+| 2026-09-10 | `4d669be8` | re-measured with `measure-slice-graph.py` | 44 features-only, 52 solution-wide | 1 of 10 |
+| 2026-09-10 | `ef96b008` | **stage C entry baseline**, after stage B closed and stage F merged | 45 features-only, 53 solution-wide | 1 of 10 |
 
 Stage A changed no coupling. It changed what the rule can see, which is why the edge count is
 unchanged while the declared count rose from 38 to 45.
@@ -45,23 +46,39 @@ countdown handlers out of `MatchControlService`, the `const` to `static readonly
 re-measured on `4d669be8`, from source, by `plans/execution/measure-slice-graph.py`:
 
 ```text
+slices: 11 (Auth, Beatmaps, Bot, Chat, Content, Diagnostics, Irc, Multiplayer, Scores, Spectating, Users)
+
 == features-only, comparable to the assessment (src\Basil.Server\Features)
-live edges: 44
+live edges: 45
 mutual pairs: 13
+documentation-only edges: 1
 cycle of 10: Auth, Beatmaps, Bot, Chat, Content, Irc, Multiplayer, Scores, Spectating, Users
 
 == solution-wide, the number C5 gates on (src)
-live edges: 52
+live edges: 53
 mutual pairs: 17
 cycle of 10: Auth, Beatmaps, Bot, Chat, Content, Irc, Multiplayer, Scores, Spectating, Users
 ```
 
+Measured at `ef96b008`, the commit that closes Stage B and carries the merged Stage F. The numbers
+moved by exactly one edge from the 2026-09-09 reading, and the one edge is `Diagnostics -> Auth`.
+
+**There are now eleven slices and the cycle still has ten.** Diagnostics is the first slice to sit
+outside the knot: one outgoing edge, declared, and nothing depends on it. That is the
+published-gauges decision in `plans/execution/diagnostics-boundary-decision.md` showing up in the
+measurement — four edges into Multiplayer, Chat, Irc and Users were refused in favour of each slice
+publishing its own counts as gauges, and the alternative would have put Diagnostics straight into the
+component with everything else.
+
+It is also the only evidence so far that a boundary decision on this migration changes the graph in
+the predicted direction, which is worth holding onto going into C5.
+
 Four things this says, none of which were safe to assume:
 
-* **Still 44 edges by the assessment's definition, still one component of ten.** Nothing the
+* **Still one component of ten, and the edge count moved only by the one authorised edge.** Nothing the
   migration has landed so far has moved a cross-slice edge, and the measurement is now a script
   rather than a transcript, so C5 re-runs the same definition instead of a similar one.
-* **The honest number is 52, not 44.** The assessment matched references written
+* **The honest number is 53, not 45.** The assessment matched references written
   `Basil.Server.Features.<Slice>`, so it never counted the eight edges that run through
   `Basil.Domain.<Slice>` namespaces. Those are real dependencies between slices; they were simply
   outside the frame.
