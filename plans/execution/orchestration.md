@@ -62,6 +62,44 @@ hunting a regression that is not there.
 Note also that the failing run reported 354 tests rather than 355 — a failure there aborts a
 sibling, so a short count is a symptom of the same flake rather than a second problem.
 
+## Tooling: what is worth reaching for, and what is not
+
+Audited 2026-09-10 by running the tools rather than reading their descriptions. The distinction that
+matters is between tools that resolve symbols and tools that claim to analyse architecture — on this
+solution the first group works and the second does not.
+
+### Use
+
+| Tool | For | Evidence it works |
+|---|---|---|
+| `mcp__rider__*` refactorings | every rename, move and delete | already mandatory; see the section below |
+| `cwm-roslyn-navigator get_endpoint_map` | route verification | returned 151 endpoints with full patterns, constraints, file and line, and honestly reported `?` for the two it cannot resolve statically |
+| `cwm-roslyn-navigator find_references` | before deleting anything | on `IMatchLiveEvents` it found 5 references including an `<inheritdoc cref>` that grep reads as a comment |
+| `cwm-roslyn-navigator find_dead_code`, `get_di_registrations`, `get_public_api` | Stage C's dead code, Stage D's three composition roots | untested; same symbol-level layer as the two above |
+| `mcp__codegraph__codegraph_explore` | answering "how does X work" before editing | returns verbatim source plus callers in one call, where the habit on this project has been a grep-then-read loop |
+| `mcp__context7` | NetArchTest, xunit v3, Velopack API questions | Stage E2 writes new architecture rules against NetArchTest 1.3.2 |
+| `mcp__deepwiki__ask_question` on `osuAkatsuki/bancho.py` | scope questions, before porting anything | `docs/for-developers/working-scopes.md` is the authority, but upstream behaviour is a question this answers without cloning |
+
+### Do not trust
+
+`cwm-roslyn-navigator get_dependency_graph` **errors** on this solution, at both `project` and
+`namespace` scope. `detect_circular_dependencies` returns `{"Cycles":[],"Count":0}` at namespace
+scope, which is **wrong**: the feature graph is one strongly connected component of ten slices,
+measured from source and reproducible with `plans/execution/measure-slice-graph.py`. A tool reporting
+zero cycles where ten slices form one is not conservative, it is broken, and a green answer from it
+would be the most expensive kind of false comfort on this migration.
+
+**So `measure-slice-graph.py` remains the C5 measurement.** It was worth checking whether Roslyn could
+replace it — ADR-008 names source-level analysis as the more complete alternative it deferred — and
+the answer is that the part of Roslyn that would have done so is the part that does not work here.
+
+### Agents worth delegating to by shape
+
+`dotnet-claude-kit:build-error-resolver` for a tree that does not compile — that was this morning's
+first task and a general-purpose worker was used instead. `dotnet-claude-kit:test-engineer` for E2 and
+H4. `dotnet-claude-kit:refactor-cleaner` for Stage C's dead code. The model-tier policy still governs:
+these are task shapes, not a reason to spend Opus on mechanical work.
+
 ## Every worker prompt requires the worker to keep its own checkpoint
 
 **The worker writes the checkpoint, not the orchestrator.** A worker updates its phase checkpoint

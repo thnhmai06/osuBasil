@@ -478,6 +478,26 @@ sample up to 13h42m. The harness consumes the Diagnostic API into one timeline.
 The `Basil.LoadTests` duplicated `ReloginGuardWindowSeconds` constant is accepted debt from Phase 0
 and is repaid here; the real fix is moving `<SelfContained>` out of the csproj to publish time.
 
+`Basil.LoadTests` already exists — 65 files, `OutputType=Exe`, `IsTestProject=false`, no `[Fact]`.
+`dotnet test` skips it correctly, so it is absent from the five-project oracle by design rather than
+by oversight. Stage G extends it; it does not create it.
+
+Stage G was blocked on Stage F for the diagnostic client. **F is merged as of `b932f4b4`, so G is
+unblocked.**
+
+### Task G5: the test that passes by winning a race
+
+`BeatmapsetManagementEndpointTests.PutBeatmapset_Valid_ReplacesTheBeatmapsetsFilesAndReturns202`
+passes because `BeatmapsetMigrationService`'s startup sweep usually finishes before the assertion, not
+because anything makes it. Found on 2026-09-10 while fixing the inverse defect in
+`BeatmapDifficultyEndpointTests`, and recorded in `docs/for-developers/testing.md`.
+
+- [ ] Give the test a way to wait for the migration pass to complete, or assert against a signal the
+  service publishes, rather than against the clock. A test whose outcome depends on winning a race
+  passes for the wrong reason and eventually fails for the right one.
+- [ ] It lands here rather than in Stage B because it is load-dependent, and Stage G is where load is
+  generated on purpose.
+
 ---
 
 ## Stage H — close it out
@@ -513,6 +533,19 @@ against the finished structure — which is why it was deferred rather than edit
 
 Route table, metric names, OpenAPI documents, schema objects and the full suite against the Phase 0
 baseline, with every difference explained.
+
+- [ ] **Verify routes with the Roslyn endpoint map, not the grep baseline.** Measured 2026-09-10:
+  `mcp__plugin_dotnet-claude-kit_cwm-roslyn-navigator__get_endpoint_map` reports 151 endpoints with
+  their full patterns, constraints, file and line, where `plans/execution/baseline/routes.txt`
+  holds 140 deduplicated literals. The two are not the same measurement, and the grep one is the
+  weaker of them in three ways that matter for Stage D: it captures only the string written inside
+  the `Map*` call, so for a route mapped inside a `MapGroup` it records the **suffix** rather than
+  the full path and cannot see a changed group prefix; it deduplicates, so two hosts mapping the
+  same suffix collapse to one entry; and it cannot resolve an interpolated pattern at all, which is
+  how most of the diagnostic routes are written. Stage D moves routes into three host projects,
+  which is precisely when group prefixes move.
+- [ ] Keep the grep check as well, for continuity with the Phase 0 baseline, but state which of the
+  two any claim rests on.
 
 ### Task H5: Review the whole diff for unrelated changes, then a final advisor review
 
