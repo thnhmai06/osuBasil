@@ -426,8 +426,159 @@ logout still completes when one step fails": before this task, it didn't.
 
 ### Next exact step
 
-C3 is finished and fully committed. Move to **C2** (split `GameSession`) per
-`plans/execution/stage-c-order-decision.md`'s "What changes in C2" section -- read it before
-starting, along with `plans/basil-plan-20260909.md`'s Task C2 entry; this file does not track
-C2's plan. If a new section is added for C2, keep the C4 and C3 history above intact rather than
-overwriting it.
+C3 is finished and fully committed.
+
+## C2 -- investigated, not started: the task's own currency cannot move
+
+**Nothing in this section is applied to the tree.** The working tree is byte-identical to
+`8f318c8f` (confirmed by `git diff` returning empty). One test file was edited twice and reverted
+to prove a point empirically; the revert is confirmed clean by `git diff --stat` on that file
+returning nothing. No commit was made for C2 -- this write-up is the only output, landing as a
+docs-only commit.
+
+### What was measured (re-confirms the task's own table, does not re-derive it)
+
+Write ownership, grepped fresh on this tree, matches the task's table exactly:
+
+| Field | Sites | Files |
+|---|---|---|
+| `.Match =` | 4 | `MatchLifecycle.cs` (1), `MatchMembership.cs` (3) |
+| `.Spectating =` | 2 | `SpectatorService.cs` |
+| `.InLobby =` | 2 | `LobbyJoinHandler.cs`, `LobbyPartHandler.cs` |
+| `.MpScopeMatchId =` | 4 | `MatchMembership.cs` (1), `MpCommandService.cs` (3) |
+
+Read-site blast radius for `.Match` alone (property reads, not the unrelated `Regex.Match`/method
+calls): **45 sites across 6 files' worth of slices** -- `Auth/ClientIntegrityService.cs`,
+`Chat/ChatDispatchService.cs`, `Irc/BanchoIrcBridgeConnection.cs`,
+`Multiplayer/Endpoints/MatchSlotEndpoints.cs`, `Multiplayer/MatchControlService.cs`,
+`Multiplayer/MatchLifecycle.cs`, `Multiplayer/MatchMembership.cs`, `Multiplayer/MpCommandService.cs`,
+seventeen files under `Multiplayer/Packets/`, `Scores/ScoreSubmissionService.cs`, and
+`Shared/Http/Bancho/PacketDispatcher.cs`. This is why the task called C2 the riskiest task in the
+stage; the number is real.
+
+### The blocking finding: the pinned list cannot lose a `Shared.Sessions.*` entry from this split
+
+The task states success as: *"`Shared/Sessions/GameSession.cs` stops naming
+`Features.Multiplayer` and `Features.Spectating` types. The proof is the
+`Shared_Should_Not_Reference_Features` pinned list losing its `Shared.Sessions.*` entries."*
+
+Two things are wrong with that framing, found by reading the actual file and by running the test,
+not by assumption:
+
+1. **`GameSession.cs` never names `Features.Spectating`.** Its `Spectating` property is typed
+   `GameSession?`, `Spectators` is `IReadOnlyCollection<GameSession>`, and the backing field is
+   `ConcurrentDictionary<int, GameSession>` -- all self-typed `Shared.Sessions` types. The file's
+   only `Features` usings are `Basil.Server.Features.Irc` (for `IIrcConnection` /
+   `BanchoIrcBridgeConnection`) and `Basil.Server.Features.Multiplayer` (for the `Match` field's
+   `MatchSession` type). There is no `Features.Spectating` reference to remove.
+2. **Removing `.Match` does not un-pin `GameSession`, and removing `.MpScopeMatchId` does not
+   un-pin `UserSession`.** `SliceBoundaryTests.Shared_Should_Not_Reference_Features` is a per-type
+   check: any single `Features` dependency keeps a type in `knownOffenders`, checked by exact set
+   equality. `GameSession` keeps `override IIrcConnection IrcConnection` and
+   `new BanchoIrcBridgeConnection(this)` in its constructor -- both `Features.Irc` -- and the
+   task's own destination table defers `IrcConnection` to Stage D, explicitly out of C2's scope.
+   `UserSession`'s *only* `Features` reference is the same abstract `IIrcConnection IrcConnection`
+   property; `MpScopeMatchId` is `int?` and was never a `Features` dependency at all.
+
+**Empirical probe**, run rather than argued: temporarily deleted only
+`"Basil.Server.Shared.Sessions.UserSession"` from `SliceBoundaryTests.knownOffenders`
+(`tests/Basil.ArchitectureTests/SliceBoundaryTests.cs`), ran `dotnet build` (0 errors) then
+`dotnet test tests/Basil.ArchitectureTests --no-build` in the foreground. Result: **failed**,
+naming `UserSession` as an unexpected actual offender -- proof that the `Irc` coupling alone is
+sufficient to keep a `Shared.Sessions` type pinned, with zero contribution from `MpScopeMatchId`.
+Reverted the one-line deletion; `git diff` on the test file now returns empty (byte-identical to
+`8f318c8f`); reran `dotnet test tests/Basil.ArchitectureTests --no-build`: 6/6 passing again.
+
+Since `GameSession` carries a *strictly stronger* `Irc` coupling than `UserSession` (both the
+property override and the constructor's concrete instantiation, vs. `UserSession`'s property alone),
+the same conclusion applies to it a fortiori: removing `Match` cannot remove `GameSession` from the
+list either, because `Irc` alone already pins it.
+
+**Net effect if the four-field split were carried out as specified: `SliceAdjacency` 44 -> 44,
+`measure-slice-graph.py` 43/50 -> 43/50 (unchanged; every read/write site above already lives
+inside a slice that already has a declared edge to the field's owning slice, so no new crossing is
+created, but none is removed either), and the pinned list 11 -> 11.** The one instrument the task
+names as its actual currency does not move. This was checked, not assumed: see the probe above.
+
+### A second, independent problem: the `.Match` half of this split may be redundant before C1 runs
+
+`MatchSession` (`src/Basil.Server/Features/Multiplayer/MatchSession.cs`, 584 lines) is today a
+single `sealed class` that already carries both halves Task C1 plans to separate: business state
+(slots, host, settings, referees, bans, timer, progress) and the SSE projection machinery
+(`StateStream<T>` x9, `SseSubscriberRegistry`, `SequenceGate`), confirmed by reading the file.
+C1's own plan entry says the business half moves to `Basil.Domain.Multiplayer` and the projection
+half stays behind in `Basil.Server`.
+
+If `GameSession.Match` ends up, post-C1, pointing at the *business* half (the natural read of "a
+session's current match" once the split happens), the field's type becomes a `Basil.Domain` type,
+and the `Shared -> Features.Multiplayer` edge from `.Match` disappears as a side effect of C1 --
+for free, with none of the 45-site read-site churn this task would otherwise spend on it. Whether
+that is actually how C1 will split `GameSession.Match`'s reference is C1's design decision, not
+verified here (it depends on whether callers of `.Match` need slot/settings/host state -- Domain
+side -- or SSE snapshot state -- Server side -- and today's 45 call sites are a mix; a worker
+doing C1 needs to check this before assuming it resolves cleanly). Flagged here because, if true,
+doing the `.Match` quarter of C2 now is work C1 either redoes or invalidates.
+
+### Cost the split would add for zero measured benefit
+
+Today all four fields live on the connection object (`GameSession`/`UserSession`) and are
+discarded for free when the object is discarded at logout -- no field-specific cleanup exists or
+is needed. Moving a field to a player-id-keyed map owned by a slice makes that map's entries
+outlive the session object; an entry not explicitly removed at logout leaks and can resurface
+incorrectly if the same player id logs back in. Checked what already clears each field today:
+
+- `.Match`: fully covered by the existing `MatchLeaveLogoutHandler` (Order 10), which already
+  calls `MatchMembership.LeaveAsync` under the match lock -- that method is one of the four writers
+  above, so a map-backed rewrite stays covered by the handler that exists.
+- `.Spectating`: fully covered by the existing `SpectatorTeardownLogoutHandler` (Order 20), which
+  reads `game.Spectating` and calls `SpectatorService.RemoveSpectator` -- also already covered.
+- `.InLobby`: **not covered by anything today.** `ChannelPartLogoutHandler` (Order 30) parts
+  channels; it does not touch `InLobby`. A map-backed rewrite would need a *new* cleanup step that
+  has no reason to exist today (the field just dies with the object).
+- `.MpScopeMatchId`: **not covered by anything today**, same reason -- nothing in the logout path
+  touches it now, and nothing needs to. A map-backed rewrite needs a new handler or an extension of
+  an existing one.
+
+So the four-field split, run as specified, adds two new lifetime obligations to buy zero movement
+on the instrument the task names as its proof.
+
+### Recommendation -- not acted on, orchestrator decision needed
+
+1. **Fold the `.Match` question into C1's `MatchSession` split design**, rather than deciding it
+   here under C2's name (which the stage-C order doc explicitly forbids -- "doing half of C1 early
+   is how the two tasks blur together"). Check whether `GameSession.Match`'s post-split reference
+   naturally lands on the Domain half before spending the 45-site churn under C2.
+2. **`.Spectating`, `.InLobby`, `.MpScopeMatchId` have no such shortcut** -- they were never really
+   pinned-list contributors (Spectating never was; InLobby and MpScopeMatchId are scalar/self-typed
+   and never triggered the rule either). Splitting them into per-slice maps is a legitimate
+   "own your state" cleanup per the plan's write-ownership principle, but it is architecture for
+   its own sake against this task's stated proof, not a step that moves any of the four measured
+   instruments, and it is the source of the two new cleanup obligations above.
+3. **The real, and only, way to move the pinned list for `GameSession`/`UserSession` is the `Irc`
+   coupling** -- `IIrcConnection`/`BanchoIrcBridgeConnection` -- which the task's own destination
+   table places in Stage D, not C2. Moving it now would be taking Stage D's work under C2's name,
+   the same ambiguity the stage-C order doc warns against for C1.
+
+None of the four stop conditions listed in the task's instructions name this situation literally
+(no new `SliceAdjacency` row is needed, no field has more than one writer, no new lock is needed,
+the route count does not move), but the underlying instruction -- *"Stop conditions: report rather
+than work around"* -- applies to the deeper problem: proceeding would produce a compiling four-
+commit split whose own stated proof does not appear, while adding cleanup obligations that do not
+exist today. Reported rather than run.
+
+### Next exact step
+
+Orchestrator decision needed before any C2 commit lands:
+- Confirm whether `.Match` should move under C2 at all, or wait for C1's `MatchSession` split to
+  settle where `GameSession.Match` points.
+- Confirm whether `.Spectating` / `.InLobby` / `.MpScopeMatchId` should still be split into
+  per-slice maps despite moving no instrument, given the new logout-cleanup obligations they would
+  introduce.
+- If the answer to both is "proceed anyway," re-open this section and execute the four-field split
+  as originally specified, including new `IPlayerLogoutHandler` entries for `.InLobby` (a Chat
+  handler) and `.MpScopeMatchId` (a Multiplayer handler, since neither is covered by an existing
+  handler today).
+
+Until that decision lands, treat C2 as **investigated and blocked**, not started. C6 and C1 remain
+next in the order per `plans/execution/stage-c-order-decision.md`; C1 in particular should read the
+"`.Match` half may be redundant" finding above before starting.
