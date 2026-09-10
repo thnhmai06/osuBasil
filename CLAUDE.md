@@ -342,7 +342,11 @@ Project-level dependency direction (Domain stays free of the server and of
 persistence/web frameworks; Protocol depends on neither) is enforced by
 `DependencyDirectionTests`.
 
-> **Migration in progress.** The Clean Architecture layout (`Basil.Application`,
+> **Migration in progress.** An agent picking this up should read
+> [`plans/execution/HANDOVER.md`](plans/execution/HANDOVER.md) first — it carries the current state,
+> the decisions already settled, and the measurement instruments this migration relies on.
+>
+> The Clean Architecture layout (`Basil.Application`,
 > `Basil.Infrastructure`, `Basil.Web`) was merged into `Basil.Server` and is gone.
 > `docs/for-developers/architecture.md` still describes the old five-project
 > structure and is rewritten in the documentation phase of the migration; prefer

@@ -2,6 +2,13 @@
 
 Last updated: 2026-09-08T04:15:00Z (local 2026-09-08 11:15 UTC+7)
 
+## Start here
+
+**`plans/execution/HANDOVER.md`** is written for an agent with no prior context: current state, the
+next task and its traps, the decisions already settled, the four instruments that measure coupling and
+how each one fails, and the operating rules that each cost a worker session. Read it before this
+document.
+
 ## How to resume
 
 **Check the current branch against the Branch layout table below before any push.** Implementation

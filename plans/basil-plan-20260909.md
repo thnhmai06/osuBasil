@@ -1,5 +1,10 @@
 # Basil Implementation Plan — 2026-09-09
 
+> **Resuming with no context? Read `plans/execution/HANDOVER.md` first.** It carries the current
+> state, which stages are done, the instruments that measure this migration and how each one fails,
+> and the rules that were learned by breaking something.
+
+
 > **For agentic workers:** work task by task. Each task ends green and committed. Steps use
 > checkbox (`- [ ]`) syntax for tracking.
 
