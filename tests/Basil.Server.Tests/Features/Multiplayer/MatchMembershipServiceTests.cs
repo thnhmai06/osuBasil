@@ -39,7 +39,6 @@ public class MatchMembershipServiceTests
 
 	private readonly FakeMatchRepository _matchRepository = new();
 	private readonly MultiplayerTestSupport.FakeMatchRoundEndOutbox _roundEndOutbox = new();
-	private readonly MultiplayerTestSupport.FakeMatchLiveEvents _eventBus = new();
 	private readonly ILiveEventHub _hub = new LiveEventHub();
 
 	private readonly IUserRepository _userRepository = Substitute.For<IUserRepository>();
@@ -56,8 +55,7 @@ public class MatchMembershipServiceTests
 	///     Builds the three collaborators the same way DI wires them, sharing the fixture's fakes so a
 	///     mutation made through one is visible through the others.
 	/// </summary>
-	private (MatchMembership Membership, MatchLifecycle Lifecycle, MatchBroadcast Broadcast) MakeService(
-		IMatchLiveEvents? eventBus = null)
+	private (MatchMembership Membership, MatchLifecycle Lifecycle, MatchBroadcast Broadcast) MakeService()
 	{
 		var channelMembership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
 			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
@@ -65,7 +63,7 @@ public class MatchMembershipServiceTests
 			_beatmapRepository, _userRepository);
 		var serviceProvider = Substitute.For<IServiceProvider>();
 		var lifecycle = new MatchLifecycle(_matchRegistry, _channelRegistry, channelMembership, _gameRegistry,
-			_matchRepository, _roundEndOutbox, eventBus ?? _eventBus, _beatmapRepository, broadcast, serviceProvider,
+			_matchRepository, _roundEndOutbox, _hub, _beatmapRepository, broadcast, serviceProvider,
 			NullLogger<MatchLifecycle>.Instance);
 		var membership = new MatchMembership(_channelRegistry, _gameRegistry, channelMembership, _matchRepository,
 			lifecycle, NullLogger<MatchMembership>.Instance);
@@ -277,6 +275,12 @@ public class MatchMembershipServiceTests
 		Assert.NotNull(match.EmptyRoomTimer);
 		lobbyMember.Dequeue(); // drain the lobby's UpdateMatch broadcast from the slot becoming empty
 
+		// Regression test (ADR-004): teardown drops the live-event hub's bookkeeping for this match,
+		// once every subscriber has been completed via SseSubscribers.CompleteAll().
+		var mainStream = MatchStreams.Main(match.DbId);
+		await using var subscription = _hub.Open(mainStream);
+		Assert.True(_hub.HasSubscribers(mainStream));
+
 		await lifecycle.CloseAsync(match);
 
 		Assert.Null(_matchRegistry.GetById(match.Id));
@@ -286,9 +290,7 @@ public class MatchMembershipServiceTests
 		// Regression test (ADR-003): teardown drains the match's round-end outbox before discarding
 		// its in-memory state, so the last round's end is never silently lost to a teardown race.
 		Assert.Contains(match.DbId, _roundEndOutbox.Drained);
-		// Regression test (ADR-004): teardown also drops the live-event hub's bookkeeping for this
-		// match, once every subscriber has been completed via SseSubscribers.CompleteAll().
-		Assert.Contains(match.DbId, _eventBus.Forgotten);
+		Assert.False(_hub.HasSubscribers(mainStream));
 	}
 
 	/// <summary>
@@ -397,7 +399,8 @@ public class MatchMembershipServiceTests
 		Assert.Empty(lobbyMember.Dequeue()); // nobody in #lobby yet — no broadcast
 
 		var lobby = _channelRegistry.GetByName("#lobby")!;
-		new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions())).Join(lobbyMember, lobby);
+		new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, Substitute.For<IMatchRegistry>(),
+			Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions())).Join(lobbyMember, lobby);
 		lobbyMember.Dequeue();
 
 		await broadcast.EnqueueStateAsync(match, match.AllocateStateVersion());

@@ -48,8 +48,7 @@ public class PlayerLogoutServiceTests
 			Substitute.For<IUserRepository>());
 		_matchLifecycle = new MatchLifecycle(Substitute.For<IMatchRegistry>(), Substitute.For<IChannelRegistry>(),
 			_matchChannelMembership, Substitute.For<ISessionRegistry<GameSession>>(),
-			Substitute.For<IMatchRepository>(), Substitute.For<IMatchRoundEndOutbox>(),
-			Substitute.For<IMatchLiveEvents>(), Substitute.For<IBeatmapRepository>(), _matchBroadcast,
+			Substitute.For<IMatchRepository>(), Substitute.For<IMatchRoundEndOutbox>(), null, Substitute.For<IBeatmapRepository>(), _matchBroadcast,
 			Substitute.For<IServiceProvider>(), NullLogger<MatchLifecycle>.Instance);
 		_matchMembership = new MatchMembership(Substitute.For<IChannelRegistry>(),
 			Substitute.For<ISessionRegistry<GameSession>>(), _matchChannelMembership,
@@ -225,7 +224,7 @@ public class PlayerLogoutServiceTests
 			Substitute.For<IUserRepository>());
 		var serviceProvider = Substitute.For<IServiceProvider>();
 		var matchLifecycle = new MatchLifecycle(matchRegistry, channelRegistry, matchChannelMembership, gameRegistry,
-			matchRepository, Substitute.For<IMatchRoundEndOutbox>(), new MultiplayerTestSupport.FakeMatchLiveEvents(),
+			matchRepository, Substitute.For<IMatchRoundEndOutbox>(), null,
 			Substitute.For<IBeatmapRepository>(), matchBroadcast, serviceProvider,
 			NullLogger<MatchLifecycle>.Instance);
 		var matchMembership = new MatchMembership(channelRegistry, gameRegistry, matchChannelMembership,

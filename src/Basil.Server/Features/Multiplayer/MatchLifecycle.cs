@@ -27,7 +27,7 @@ public sealed class MatchLifecycle(
 	ISessionRegistry<GameSession> gameRegistry,
 	IMatchRepository matchRepository,
 	IMatchRoundEndOutbox roundEndOutbox,
-	IMatchLiveEvents eventBus,
+	ILiveEventHub hub,
 	IBeatmapRepository beatmapRepo,
 	MatchBroadcast broadcast,
 	IServiceProvider serviceProvider,
@@ -427,7 +427,7 @@ public sealed class MatchLifecycle(
 		// this, a client connected when the match closes would keep its handler attached to the
 		// live-event hub indefinitely (or until it happens to disconnect on its own).
 		match.SseSubscribers.CompleteAll();
-		eventBus.Forget(match.DbId);
+		hub.Forget(MatchStreams.Category, match.DbId);
 
 		matchRegistry.Remove(match.Id);
 

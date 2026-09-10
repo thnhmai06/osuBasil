@@ -54,8 +54,7 @@ public class GhostDisconnectServiceTests
 		var matchBroadcast = new MatchBroadcast(channelRegistry, channelMembership, gameRegistry, ircRegistry, null, Substitute.For<IBeatmapRepository>(),
 			Substitute.For<IUserRepository>());
 		var matchLifecycle = new MatchLifecycle(Substitute.For<IMatchRegistry>(), channelRegistry, channelMembership,
-			gameRegistry, Substitute.For<IMatchRepository>(), Substitute.For<IMatchRoundEndOutbox>(),
-			Substitute.For<IMatchLiveEvents>(), Substitute.For<IBeatmapRepository>(), matchBroadcast,
+			gameRegistry, Substitute.For<IMatchRepository>(), Substitute.For<IMatchRoundEndOutbox>(), null, Substitute.For<IBeatmapRepository>(), matchBroadcast,
 			Substitute.For<IServiceProvider>(), NullLogger<MatchLifecycle>.Instance);
 		var matchMembership = new MatchMembership(channelRegistry, gameRegistry, channelMembership,
 			Substitute.For<IMatchRepository>(), matchLifecycle, NullLogger<MatchMembership>.Instance);

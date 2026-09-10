@@ -146,7 +146,8 @@ public class TcpIrcConnectionTests
 
 		var matchRegistry = new InMemoryMatchRegistry(channelRegistry, new NotSupportedMatchRepository());
 		var channelMembership =
-			new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry, matchRegistry, new LiveEventHub(), _fakeIrcOptions);
+			new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry, matchRegistry, new LiveEventHub(),
+				_fakeIrcOptions);
 		var chatDispatch = new ChatDispatchService(channelRegistry, gameRegistry, channelMembership, users,
 			new NotSupportedRelationshipRepository(), new NullCommandDispatcher(),
 			matchRegistry, NullLogger<ChatDispatchService>.Instance);
@@ -355,11 +356,13 @@ public class TcpIrcConnectionTests
 	{
 		var spectatorService = new SpectatorService(channelRegistry, channelMembership,
 			NullLogger<SpectatorService>.Instance);
-		var matchBroadcast = new MatchBroadcast(channelRegistry, channelMembership, gameRegistry, ircRegistry, null, new NotSupportedBeatmapRepository(), new FakeUserRepository());
+		var matchBroadcast = new MatchBroadcast(channelRegistry, channelMembership, gameRegistry, ircRegistry, null,
+			new NotSupportedBeatmapRepository(), new FakeUserRepository());
 		var matchLifecycle = new MatchLifecycle(
 			new InMemoryMatchRegistry(channelRegistry, new NotSupportedMatchRepository()), channelRegistry,
 			channelMembership, gameRegistry, new NotSupportedMatchRepository(), new NoOpMatchRoundEndOutbox(),
-			new NoOpMatchLiveEvents(), new NotSupportedBeatmapRepository(), matchBroadcast,
+			null!, // only TeardownMatch calls the hub, which this logout-only test path never reaches
+			new NotSupportedBeatmapRepository(), matchBroadcast,
 			null!, // only resolves MatchMembership from CreateAsync, which this logout-only test path never calls
 			NullLogger<MatchLifecycle>.Instance);
 		var matchMembership = new MatchMembership(channelRegistry, gameRegistry, channelMembership,
@@ -704,115 +707,6 @@ public class TcpIrcConnectionTests
 		public Task DrainAsync(int matchId, CancellationToken cancellationToken = default)
 		{
 			return Task.CompletedTask;
-		}
-	}
-
-	private sealed class NoOpMatchLiveEvents : IMatchLiveEvents
-	{
-		private sealed class NoOpSubscription : IDisposable
-		{
-			public void Dispose()
-			{
-			}
-		}
-
-		public bool HasPlayerScoreSubscribers(int matchDbId)
-		{
-			return false;
-		}
-
-		public IDisposable SubscribeMain(int matchDbId, Action<byte[]> handler)
-		{
-			return new NoOpSubscription();
-		}
-
-		public void PublishMain(int matchDbId, byte[] payload)
-		{
-		}
-
-		public IDisposable SubscribePlayerScore(int matchDbId, Action<string, byte[]> handler)
-		{
-			return new NoOpSubscription();
-		}
-
-		public void PublishPlayer(int matchDbId, string playerName, byte[] payload)
-		{
-		}
-
-		public IDisposable SubscribeSettings(int matchDbId, Action<byte[]> handler)
-		{
-			return new NoOpSubscription();
-		}
-
-		public void PublishSettings(int matchDbId, byte[] payload)
-		{
-		}
-
-		public IDisposable SubscribeSlot(int matchDbId, Action<int, byte[]> handler)
-		{
-			return new NoOpSubscription();
-		}
-
-		public void PublishSlot(int matchDbId, int slotIndex, byte[] payload)
-		{
-		}
-
-		public IDisposable SubscribeHost(int matchDbId, Action<byte[]> handler)
-		{
-			return new NoOpSubscription();
-		}
-
-		public void PublishHost(int matchDbId, byte[] payload)
-		{
-		}
-
-		public IDisposable SubscribeRefs(int matchDbId, Action<byte[]> handler)
-		{
-			return new NoOpSubscription();
-		}
-
-		public void PublishRefs(int matchDbId, byte[] payload)
-		{
-		}
-
-		public IDisposable SubscribeBans(int matchDbId, Action<byte[]> handler)
-		{
-			return new NoOpSubscription();
-		}
-
-		public void PublishBans(int matchDbId, byte[] payload)
-		{
-		}
-
-		public IDisposable SubscribeTimer(int matchDbId, Action<byte[]> handler)
-		{
-			return new NoOpSubscription();
-		}
-
-		public void PublishTimer(int matchDbId, byte[] payload)
-		{
-		}
-
-		public IDisposable SubscribeSlots(int matchDbId, Action<byte[]> handler)
-		{
-			return new NoOpSubscription();
-		}
-
-		public void PublishSlots(int matchDbId, byte[] payload)
-		{
-		}
-
-		public IDisposable SubscribeChat(int matchDbId, Action<byte[]> handler)
-		{
-			return new NoOpSubscription();
-		}
-
-		public void PublishChat(int matchDbId, byte[] payload)
-		{
-		}
-
-		public void Forget(int matchDbId)
-		{
 		}
 	}
 

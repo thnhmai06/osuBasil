@@ -19,7 +19,7 @@ namespace Basil.IntegrationTests;
 /// <summary>
 ///     Covers the live SSE layer end to end over TestServer's in-memory HTTP transport — no real
 ///     osu! client or tourney manager involved, but a real streamed GET request, a real
-///     IMatchLiveEvents/IPlayerInputEvents publish, and a real incremental read of the response
+///     ILiveEventHub/IPlayerInputEvents publish, and a real incremental read of the response
 ///     body. Publishes are retried in a short poll loop rather than fired once: a client's request
 ///     completing does not guarantee the server-side handler has reached the event subscription yet
 ///     (both run in-process with no real network latency between them, so this race is easy to lose

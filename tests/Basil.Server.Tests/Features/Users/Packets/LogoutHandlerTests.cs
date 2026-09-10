@@ -38,7 +38,7 @@ public class LogoutHandlerTests
 			Substitute.For<IUserRepository>());
 		var matchLifecycle = new MatchLifecycle(Substitute.For<IMatchRegistry>(), Substitute.For<IChannelRegistry>(),
 			channelMembership, Substitute.For<ISessionRegistry<GameSession>>(), Substitute.For<IMatchRepository>(),
-			Substitute.For<IMatchRoundEndOutbox>(), Substitute.For<IMatchLiveEvents>(),
+			Substitute.For<IMatchRoundEndOutbox>(), null,
 			Substitute.For<IBeatmapRepository>(), matchBroadcast, Substitute.For<IServiceProvider>(),
 			NullLogger<MatchLifecycle>.Instance);
 		var matchMembership = new MatchMembership(Substitute.For<IChannelRegistry>(),

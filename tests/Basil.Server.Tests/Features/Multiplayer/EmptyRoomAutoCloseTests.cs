@@ -31,6 +31,7 @@ public class EmptyRoomAutoCloseTests
 	private readonly ISessionRegistry<IrcSession> _ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
 	private readonly MultiplayerTestSupport.FakeMatchRepository _matchRepository = new();
 	private readonly IServiceProvider _serviceProvider = Substitute.For<IServiceProvider>();
+	private readonly ILiveEventHub _hub = new LiveEventHub();
 	private MultiplayerTestSupport.FakeMatchRegistry _matchRegistry = null!;
 
 	private (MatchMembership Membership, MatchLifecycle Lifecycle) MakeService()
@@ -38,10 +39,10 @@ public class EmptyRoomAutoCloseTests
 		_matchRegistry = new MultiplayerTestSupport.FakeMatchRegistry(_channelRegistry, _matchRepository);
 		var channelMembership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
 			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
-		var matchBroadcast = new MatchBroadcast(_channelRegistry, channelMembership, _gameRegistry, _ircRegistry, null, Substitute.For<IBeatmapRepository>(),
-			Substitute.For<IUserRepository>());
+		var matchBroadcast = new MatchBroadcast(_channelRegistry, channelMembership, _gameRegistry, _ircRegistry,
+			_hub, Substitute.For<IBeatmapRepository>(), Substitute.For<IUserRepository>());
 		var matchLifecycle = new MatchLifecycle(_matchRegistry, _channelRegistry, channelMembership, _gameRegistry,
-			_matchRepository, Substitute.For<IMatchRoundEndOutbox>(), Substitute.For<IMatchLiveEvents>(),
+			_matchRepository, Substitute.For<IMatchRoundEndOutbox>(), _hub,
 			Substitute.For<IBeatmapRepository>(), matchBroadcast, _serviceProvider,
 			NullLogger<MatchLifecycle>.Instance);
 		var matchMembership = new MatchMembership(_channelRegistry, _gameRegistry, channelMembership,

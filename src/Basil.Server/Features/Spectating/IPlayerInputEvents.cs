@@ -1,8 +1,9 @@
 using Basil.Server.Shared.Eventing;
+
 namespace Basil.Server.Features.Spectating;
 
 /// <summary>
-///     The userSession-scoped sibling of <see cref="IMatchLiveEvents" />, feeding a userSession's
+///     The userSession-scoped sibling of <see cref="ILiveEventHub" />, feeding a userSession's
 ///     live spectating event channel. Keyed by userSession id rather than match id: unlike the match-scoped
 ///     channels, input frames are published for a userSession whether they are currently in a
 ///     multiplayer match (see SpectateFramesHandler).

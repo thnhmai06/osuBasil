@@ -37,7 +37,6 @@ public static class MultiplayerServiceCollectionExtensions
 			new SqliteMatchRepository(BuildConnectionString(sp),
 				sp.GetRequiredService<ILogger<SqliteMatchRepository>>()));
 		services.AddSingleton<IMatchRegistry, InMemoryMatchRegistry>();
-		services.AddSingleton<IMatchLiveEvents, MatchLiveEvents>();
 
 		services.AddSingleton<IPacketHandler, CreateMatchHandler>();
 		services.AddSingleton<IPacketHandler, JoinMatchHandler>();

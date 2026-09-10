@@ -21,7 +21,7 @@ public interface IIrcConnection
 
 	/// <summary>
 	///     Sends an IRC-shaped message to the recipient. Must never block on I/O, matching
-	///     <see cref="IMatchLiveEvents" />'s non-blocking publish contract.
+	///     <see cref="ILiveEventHub" />'s non-blocking publish contract.
 	/// </summary>
 	/// <param name="message">The IRC-shaped message to deliver.</param>
 	void Send(IrcMessage message);

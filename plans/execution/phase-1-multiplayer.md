@@ -25,7 +25,7 @@ Plan section: `plans/vsa-migration-plan-20260907.md`, Tasks 1.1 through 1.11.
 | --- | --- | --- | --- |
 | 1.1 Mutation invariant audit | Done | orchestrator + worker | 40 class A, 7 class B all from one root cause; fixed at source instead of adding `Invalidate()` |
 | 1.2 `MatchMutationScope` (plan B4) | **Done** | orchestrator + worker | 48 lock sites (`02dab44f`) and all 25 publish sites converted; `NextStateVersion` deleted; verified green at 1654 |
-| 1.3 Adopt the hub (plan B5) | Not started | — | design decided in `plans/execution/hub-adoption-decision.md`: deltas only, and the seed handshake is deleted because `SeedIfNotSuperseded` has no callers |
+| 1.3 Adopt the hub (plan B5) | **Done** | worker | `IMatchLiveEvents`/`MatchLiveEvents` retired; design in `plans/execution/hub-adoption-decision.md`: deltas only, seed handshake deleted because `SeedIfNotSuperseded` had no callers |
 | 1.4 `MatchSession` encapsulation | Not started | — | unwinds the `Shared.Sessions.*` pin |
 | 1.5 Decompose `MatchControlService` (plan B6) | **Done** | worker + orchestrator | 1,483 lines to 906 across three handler groups; invariant bug fixed at `b4a95cc4` |
 | 1.6 Decompose `MatchMembershipService` (plan B6) | **Done** | worker | split three ways at `0204b503`; invariant bug fixed at `b4a95cc4` |
@@ -103,7 +103,7 @@ Option 2 is cheaper and keeps the hub a loudspeaker. Not decided yet -- decide i
 | B2 split `MatchRoutes` | **Done.** 611 lines to 27. |
 | B3 database boundary | Closed — the finding behind it was a measurement error. |
 | B4 `MatchMutationScope` | **Done.** Every lock site and every publish site; `NextStateVersion` deleted. |
-| B5 adopt the event hub | Not started. Carries a design decision recorded below. |
+| B5 adopt the event hub | **Done.** `IMatchLiveEvents`/`MatchLiveEvents` retired; see below. |
 | B6 decompose the two services | **Done.** `MatchMembershipService` split three ways (`0204b503`). `MatchControlService` 1,483 lines to 906: slots (`52b49d0f`), countdown (`4d669be8`), lifecycle (`c2e4be34`). Both invariant bugs fixed at `b4a95cc4`. Route table re-verified byte-identical at 138 entries. |
 
 **The route table was verified byte-identical after B1 and B2**, 138 entries against
@@ -199,47 +199,77 @@ that to this same phase 0 flake note.
 
 ## Task B5 — where it stands
 
-Started 2026-09-10 10:20. **Three commits in, one piece left.** The tree compiles at every point
-below; verify with a build before trusting that, since a previous worker here left it not compiling.
+**Done**, closing Stage B. The tree compiles and every test project is green (arithmetic below);
+verify with a build before trusting that, since more than one previous worker here left it not
+compiling.
 
 | Commit | What landed |
 |---|---|
 | `16e02489` | `StateStream` returns `(latest, version)` read together under the lock `Publish` takes, and a subscriber fences hub events against its own state version |
-| `d48dca61` | the seed handshake deleted — `MarkStale`, `IsStale`, `SeedIfNotSuperseded`, `_hasSnapshot`, and the two `LiveEventHubTests` cases that pinned the seed race |
+| `d48dca61` | the seed handshake deleted — `MarkStale`, `IsStale`, `SeedIfNotSuperseded`, `_hasSnapshot`, and the two `LiveEventHubTests` cases that pinned the seed race. **The invariant test also landed in this same commit**, `LiveEventHubTests.SubscriberOpensAtStateVersionAndEveryLaterItemIsStrictlyNewer` — see the correction below. |
 | `8f035ae8` | the match state, score and chat streams moved onto the hub |
+| (this session) | `IMatchLiveEvents`/`MatchLiveEvents` retired outright — the second of the two parallel eventing mechanisms that coexisted since Phase 0. See below for what that touched. |
 
-**Left to do: retire `IMatchLiveEvents` and `MatchLiveEvents`.** This is the second of the two
-parallel eventing mechanisms that have coexisted since Phase 0, and removing it is what closes B5.
-Fifteen files are modified and uncommitted, mid-retirement:
+**Correction to a stale note this file used to carry:** an earlier revision of this section said the
+invariant test — *a subscriber's first item is the state at version N, and every later item has a
+version strictly greater than N* — was still owed. It was not: `git show d48dca61` shows the two
+`LiveEventHubTests` seed-race cases coming out and `SubscriberOpensAtStateVersionAndEveryLaterItemIsStrictlyNewer`
+going in in that same commit, already bounded with a five-second `CancellationTokenSource` per the
+decision document's requirement. Verified passing on its own (`dotnet test tests/Basil.Server.Tests
+--no-build --filter "FullyQualifiedName~LiveEventHubTests"` → 2/2) before touching anything else this
+session. Do not re-add it; if a future reader thinks it's missing, run that filter first.
 
-* `Features/Multiplayer/MatchLifecycle.cs`, `MatchLiveSnapshotBuilder.cs`,
-  `MultiplayerServiceCollectionExtensions.cs`
-* `Features/Irc/IIrcConnection.cs`, `Features/Spectating/IPlayerInputEvents.cs`,
-  `PlayerInputEvents.cs`
-* nine test files, chiefly `MultiplayerTestSupport.cs`, which every multiplayer test builds on
+### What retiring `IMatchLiveEvents`/`MatchLiveEvents` touched
 
-Still referencing the old mechanism: `Features/Multiplayer/MatchLiveEvents.cs`,
-`Shared/Eventing/IMatchLiveEvents.cs`, `MatchLiveEventsTests.cs`, `LiveSseEndpointTests.cs`,
-`TcpIrcConnectionTests.cs`, `MatchMembershipServiceTests.cs`, `MultiplayerTestSupport.cs`.
-`mcp__rider__safe_delete` on the interface is the way to find anything this list misses.
+Production: `Features/Multiplayer/MatchLiveEvents.cs` and `Shared/Eventing/IMatchLiveEvents.cs` are
+deleted outright (both files were left with nothing but a stray `using` once
+`mcp__rider__safe_delete` removed the class and interface, so the files themselves went too).
+`MatchLifecycle.cs`, `MatchLiveSnapshotBuilder.cs`, `MultiplayerServiceCollectionExtensions.cs`,
+`IIrcConnection.cs`, `IPlayerInputEvents.cs` and `PlayerInputEvents.cs` were already migrated to
+`ILiveEventHub` by the prior session; those diffs needed no further work.
 
-**The design is settled** in `plans/execution/hub-adoption-decision.md`. Do not re-derive it, and
-note that this file's own "Task 1.3's design question" section below weighs two candidates the
-decision document rejects in favour of a third. The decision document wins.
+Tests: deleted `MatchLiveEventsTests.cs` outright (10 `[Fact]` cases, no `[Theory]`s — its subject no
+longer exists) and `FakeMatchLiveEvents`/`Fixture.EventBus` from `MultiplayerTestSupport.cs`,
+`NoOpMatchLiveEvents` from `TcpIrcConnectionTests.cs`, and `_eventBus`/the `eventBus` parameter from
+`MatchMembershipServiceTests.cs`, all via `mcp__rider__safe_delete` (each previewed clean — zero
+conflicts — once the call sites below stopped referencing them). `LiveSseEndpointTests.cs` needed
+only a doc-comment fix (it already tests `ILiveEventHub` directly, the `IMatchLiveEvents` mention was
+just stale prose).
 
-**Still owed:** the invariant test the decision document names — *a subscriber's first item is the
-state at version N, and every later item has a version strictly greater than N*. That is what
-replaces the two deleted `LiveEventHubTests` cases, and it is the reason deleting them was safe, so
-B5 is not finished until it exists. Bound it with a `CancellationTokenSource` of a few seconds: two
-tests on this project were written to hang on regression instead of failing, and a hung suite is far
-harder to diagnose.
+**What `safe_delete` surfaced that this file's list missed:** three call sites were passing a bare
+`null` for `MatchLifecycle`'s `hub` parameter instead of a real `ILiveEventHub` — a half-migrated
+state the prior session left mid-flight. `MultiplayerTestSupport.cs` and `MatchMembershipServiceTests.cs`
+already had an unused `Hub`/`_hub` field sitting right there; wiring it in was enough, but it turned
+`MatchMembershipServiceTests.Leave_LastPlayer_StartsEmptyRoomTimerInsteadOfImmediateTeardown` and
+`CloseAsync_CompletesEverySseSubscriberRegisteredOnTheMatch` red first (`hub.Forget` on a null hub —
+confirmed with `dotnet test ... --filter "FullyQualifiedName~MatchMembershipServiceTests"` before
+touching anything, 2 failed / 22 passed). The third site, `TcpIrcConnectionTests.cs`, keeps `null!`
+with a one-line comment — that constructor path is logout-only and never reaches `TeardownMatch`.
+
+A fourth, `EmptyRoomAutoCloseTests.cs`, wasn't on the checkpoint's list at all: deleting
+`IMatchLiveEvents` left its `Substitute.For<IMatchLiveEvents>()` call site referring to a type that no
+longer existed, and it surfaced as a null argument once the interface was gone. Fixed the same way —
+added a real `_hub` field, wired into both `MatchBroadcast` and `MatchLifecycle` — and it now passes
+(197/197 across the Multiplayer + `TcpIrcConnectionTests` filter, up from 196/197 red).
+
+`MatchMembershipServiceTests`'s teardown assertion used to read `_eventBus.Forgotten` (the fake's own
+recorded call log). With the fake gone, it now pins the same observable behaviour a different way:
+open a subscription on the match's `main` stream, assert `_hub.HasSubscribers` is true, run
+`CloseAsync`, assert it's false. Same contract (teardown drops the hub's per-match bookkeeping),
+verified through the real `LiveEventHub` instead of a recorded call.
+
+`MatchLiveEvents.cs`'s private nested `PerMatchHub<T>` was not shared with anything else in the
+codebase (confirmed by grep before deleting the file) — it went with the rest of the file.
 
 ## Next exact step
 
-Finish retiring `IMatchLiveEvents`, add the invariant test, and close B5 — which closes Stage B.
+Stage B is done — B1 through B6 all landed. The next task in the phase table is **Task 1.4,
+`MatchSession` encapsulation**, which unwinds the `Shared.Sessions.*` reaching into `Multiplayer`
+that `Shared_Should_Not_Reference_Features` currently pins as an exact-set-equality allowlist. Read
+that pinned list and the "What Phase 1 inherits from Phase 0" section at the top of this file before
+starting — removing an entry means editing the list, not just the code.
 
-Then **B5, adopt the event hub.** The design question this file records under "Task 1.3's design
-question" is already decided, and decided differently than either option sketched here: see
-`plans/execution/hub-adoption-decision.md`. The hub carries deltas only, and the seed handshake is
-deleted rather than fixed, because `SeedIfNotSuperseded` turned out to have no callers. Do not
-re-derive that; the analysis below is kept for its reasoning, not as an open question.
+Test arithmetic verified this session, run per-project with `--no-build` (`Basil.IntegrationTests`
+last): ArchitectureTests 6/6, Domain.Tests 114/114, Protocol.Tests 158/158, Server.Tests 1052/1052,
+IntegrationTests 362/363 (the one known-unrelated `BeatmapDifficultyEndpointTests` flake, not touched
+here). Route table: 140 literal patterns, unchanged by B5 (it touches no routes).

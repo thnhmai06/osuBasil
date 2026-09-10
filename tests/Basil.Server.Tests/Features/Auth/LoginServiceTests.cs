@@ -59,8 +59,7 @@ public class LoginServiceTests
 			NullLogger<SpectatorService>.Instance);
 		var matchBroadcast = new MatchBroadcast(_channelRegistry, channelMembership, _sessionRegistry, ircRegistry, null, Substitute.For<IBeatmapRepository>(), _users);
 		var matchLifecycle = new MatchLifecycle(Substitute.For<IMatchRegistry>(), _channelRegistry, channelMembership,
-			_sessionRegistry, Substitute.For<IMatchRepository>(), Substitute.For<IMatchRoundEndOutbox>(),
-			Substitute.For<IMatchLiveEvents>(), Substitute.For<IBeatmapRepository>(), matchBroadcast,
+			_sessionRegistry, Substitute.For<IMatchRepository>(), Substitute.For<IMatchRoundEndOutbox>(), null, Substitute.For<IBeatmapRepository>(), matchBroadcast,
 			Substitute.For<IServiceProvider>(), NullLogger<MatchLifecycle>.Instance);
 		var matchMembership = new MatchMembership(_channelRegistry, _sessionRegistry, channelMembership,
 			Substitute.For<IMatchRepository>(), matchLifecycle, NullLogger<MatchMembership>.Instance);

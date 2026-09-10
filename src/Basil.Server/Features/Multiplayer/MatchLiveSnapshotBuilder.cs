@@ -18,7 +18,7 @@ namespace Basil.Server.Features.Multiplayer;
 
 /// <summary>
 ///     Builds the lightweight, in-memory-only payloads pushed over the live event channels
-///     (<see cref="IMatchLiveEvents" />).
+///     (<see cref="ILiveEventHub" />).
 /// </summary>
 /// <remarks>
 ///     These payloads are deliberately cheaper than <see cref="MatchReportService" />'s DB-backed

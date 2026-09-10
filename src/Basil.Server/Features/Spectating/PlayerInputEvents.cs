@@ -7,7 +7,7 @@ namespace Basil.Server.Features.Spectating;
 /// <remarks>
 ///     A single nullable C# event. Publishing invokes whichever subscribers are currently attached,
 ///     synchronously and without any I/O, matching the non-blocking contract shared with
-///     <see cref="IMatchLiveEvents" />.
+///     <see cref="ILiveEventHub" />.
 /// </remarks>
 public sealed class PlayerInputEvents : IPlayerInputEvents
 {
