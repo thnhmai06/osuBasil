@@ -1,5 +1,6 @@
 using Basil.Server.Features.Spectating.Packets;
 using Basil.Server.Shared.Http.Bancho;
+using Basil.Server.Shared.Sessions;
 
 namespace Basil.Server.Features.Spectating;
 
@@ -16,6 +17,9 @@ public static class SpectatingServiceCollectionExtensions
 
 		services.AddSingleton<IPlayerInputEvents, PlayerInputEvents>();
 		services.AddSingleton<IPlayerStatusEvents, PlayerStatusEvents>();
+
+		services.AddSingleton<IPlayerLogoutHandler, SpectatorTeardownLogoutHandler>();
+		services.AddSingleton<IPlayerLogoutHandler, StatusPublishLogoutHandler>();
 
 		services.AddSingleton<IPacketHandler, StartSpectatingHandler>();
 		services.AddSingleton<IPacketHandler, StopSpectatingHandler>();

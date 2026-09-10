@@ -70,6 +70,13 @@ public class CompositionRootTests
 	}
 
 	[Fact]
+	public void ResolvesPlayerLogoutServiceWithAllHandlers()
+	{
+		Assert.NotNull(_provider.GetRequiredService<PlayerLogoutService>());
+		Assert.Equal(7, _provider.GetServices<IPlayerLogoutHandler>().Count());
+	}
+
+	[Fact]
 	public void ResolvesSessionRegistriesAsSharedSingletons()
 	{
 		var gameRegistry1 = _provider.GetRequiredService<ISessionRegistry<GameSession>>();

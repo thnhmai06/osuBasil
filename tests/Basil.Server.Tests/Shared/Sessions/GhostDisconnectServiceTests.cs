@@ -51,15 +51,26 @@ public class GhostDisconnectServiceTests
 			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
 		var spectatorService = new SpectatorService(channelRegistry, channelMembership,
 			NullLogger<SpectatorService>.Instance);
-		var matchBroadcast = new MatchBroadcast(channelRegistry, channelMembership, gameRegistry, ircRegistry, null, Substitute.For<IBeatmapRepository>(),
+		var matchBroadcast = new MatchBroadcast(channelRegistry, channelMembership, gameRegistry, ircRegistry, null,
+			Substitute.For<IBeatmapRepository>(),
 			Substitute.For<IUserRepository>());
 		var matchLifecycle = new MatchLifecycle(Substitute.For<IMatchRegistry>(), channelRegistry, channelMembership,
-			gameRegistry, Substitute.For<IMatchRepository>(), Substitute.For<IMatchRoundEndOutbox>(), null, Substitute.For<IBeatmapRepository>(), matchBroadcast,
+			gameRegistry, Substitute.For<IMatchRepository>(), Substitute.For<IMatchRoundEndOutbox>(), null,
+			Substitute.For<IBeatmapRepository>(), matchBroadcast,
 			Substitute.For<IServiceProvider>(), NullLogger<MatchLifecycle>.Instance);
 		var matchMembership = new MatchMembership(channelRegistry, gameRegistry, channelMembership,
 			Substitute.For<IMatchRepository>(), matchLifecycle, NullLogger<MatchMembership>.Instance);
-		return new PlayerLogoutService(gameRegistry, ircRegistry, channelMembership, spectatorService, matchMembership,
-			Substitute.For<IPlayerStatusEvents>(), NullLogger<PlayerLogoutService>.Instance);
+		return new PlayerLogoutService(
+			[
+				new MatchLeaveLogoutHandler(matchMembership),
+				new SpectatorTeardownLogoutHandler(gameRegistry, spectatorService),
+				new ChannelPartLogoutHandler(channelMembership),
+				new GameSessionRegistryRemovalLogoutHandler(gameRegistry),
+				new IrcSessionRemovalLogoutHandler(ircRegistry),
+				new StatusPublishLogoutHandler(Substitute.For<IPlayerStatusEvents>()),
+				new LogoutBroadcastHandler(gameRegistry)
+			],
+			NullLogger<PlayerLogoutService>.Instance);
 	}
 
 	[Fact]
@@ -153,10 +164,11 @@ public class GhostDisconnectServiceTests
 	}
 
 	/// <summary>
-	///     One session's reap throwing (e.g. a channel lookup blowing up mid-teardown) must not abort
-	///     the sweep for every session after it, and must not propagate out of RunOnce — the default
-	///     BackgroundService exception behavior would otherwise take the whole host down over one bad
-	///     reap.
+	///     A logout step throwing (e.g. a channel lookup blowing up mid-teardown) must not abort the
+	///     rest of that session's own cleanup -- <see cref="PlayerLogoutService" /> catches, logs, and
+	///     continues to the next handler -- nor the sweep for every session after it, and must not
+	///     propagate out of RunOnce — the default BackgroundService exception behavior would otherwise
+	///     take the whole host down over one bad reap.
 	/// </summary>
 	[Fact]
 	public async Task RunOnce_OneSessionReapThrows_StillReapsTheRest()
@@ -177,7 +189,9 @@ public class GhostDisconnectServiceTests
 			MakePlayerLogout(gameRegistry, ircRegistry, channelRegistry),
 			NullLogger<GhostDisconnectService>.Instance).RunOnce();
 
-		Assert.NotNull(gameRegistry.GetByToken("poisoned-token"));
+		// The channel-part step for "poisoned" failed and was logged, but the rest of its own cleanup
+		// (registry removal) still ran -- both sessions end up removed, not just the one after it.
+		Assert.Null(gameRegistry.GetByToken("poisoned-token"));
 		Assert.Null(gameRegistry.GetByToken("stale-token"));
 	}
 
@@ -225,11 +239,19 @@ public class GhostDisconnectServiceTests
 		var testChannelMembership = new ChannelMembershipService(fixture.SessionRegistry,
 			fixture.IrcSessionRegistry, fixture.ChannelRegistry,
 			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
-		var playerLogout = new PlayerLogoutService(fixture.SessionRegistry, fixture.IrcSessionRegistry,
-			testChannelMembership,
-			new SpectatorService(fixture.ChannelRegistry, testChannelMembership,
-				NullLogger<SpectatorService>.Instance),
-			fixture.MatchMembership, Substitute.For<IPlayerStatusEvents>(), NullLogger<PlayerLogoutService>.Instance);
+		var testSpectatorService = new SpectatorService(fixture.ChannelRegistry, testChannelMembership,
+			NullLogger<SpectatorService>.Instance);
+		var playerLogout = new PlayerLogoutService(
+			[
+				new MatchLeaveLogoutHandler(fixture.MatchMembership),
+				new SpectatorTeardownLogoutHandler(fixture.SessionRegistry, testSpectatorService),
+				new ChannelPartLogoutHandler(testChannelMembership),
+				new GameSessionRegistryRemovalLogoutHandler(fixture.SessionRegistry),
+				new IrcSessionRemovalLogoutHandler(fixture.IrcSessionRegistry),
+				new StatusPublishLogoutHandler(Substitute.For<IPlayerStatusEvents>()),
+				new LogoutBroadcastHandler(fixture.SessionRegistry)
+			],
+			NullLogger<PlayerLogoutService>.Instance);
 
 		await new GhostDisconnectService(fixture.SessionRegistry, fixture.IrcSessionRegistry, playerLogout,
 			NullLogger<GhostDisconnectService>.Instance).RunOnce();

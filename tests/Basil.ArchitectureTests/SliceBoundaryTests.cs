@@ -56,11 +56,12 @@ public class SliceBoundaryTests
 	[Fact]
 	public void Shared_Should_Not_Reference_Features()
 	{
-		// Shared/ still holds 12 types that reach into Features/. Each is a real structural
+		// Shared/ still holds 11 types that reach into Features/. Each is a real structural
 		// coupling that predates this migration and is out of Phase 0's scope to fix:
-		// GameSession/UserSession/PlayerLogoutService/GhostDisconnectService hold a live
-		// MatchSession and the IRC bridge connection (Task 1.4 -- MatchSession model
-		// encapsulation -- is the task that owns unwinding this); BanchoHostGroups,
+		// GameSession/UserSession/GhostDisconnectService hold a live MatchSession and the IRC
+		// bridge connection (Task 1.4 -- MatchSession model encapsulation -- is the task that
+		// owns unwinding this; GhostDisconnectService only needs Irc.IrcSession as
+		// ISessionRegistry<IrcSession>'s type argument, the same shape); BanchoHostGroups,
 		// Bancho.PacketDispatcher, OsuWebRoutes and OpenApi.OpenApiExampleExtensions inline slice
 		// logic directly instead of only delegating to it; the Media asset providers and
 		// FileSystemReplayStorage call slice services directly. This test pins the list so it can
@@ -85,7 +86,6 @@ public class SliceBoundaryTests
 			"Basil.Server.Shared.Media.Assets.MenuIconProvider",
 			"Basil.Server.Shared.Sessions.GameSession",
 			"Basil.Server.Shared.Sessions.GhostDisconnectService",
-			"Basil.Server.Shared.Sessions.PlayerLogoutService",
 			"Basil.Server.Shared.Sessions.UserSession",
 			"Basil.Server.Shared.Storage.FileSystemReplayStorage"
 		];

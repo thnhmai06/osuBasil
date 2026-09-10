@@ -48,6 +48,8 @@ public static class SharedInfrastructureServiceCollectionExtensions
 
 		services.AddSingleton<ISessionRegistry<GameSession>, GameSessionRegistry>();
 		services.AddSingleton<PlayerLogoutService>();
+		services.AddSingleton<IPlayerLogoutHandler, GameSessionRegistryRemovalLogoutHandler>();
+		services.AddSingleton<IPlayerLogoutHandler, LogoutBroadcastHandler>();
 
 		services.AddSingleton<ILiveEventHub, LiveEventHub>();
 

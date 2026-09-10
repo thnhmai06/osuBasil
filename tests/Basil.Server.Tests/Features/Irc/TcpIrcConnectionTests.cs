@@ -367,8 +367,17 @@ public class TcpIrcConnectionTests
 			NullLogger<MatchLifecycle>.Instance);
 		var matchMembership = new MatchMembership(channelRegistry, gameRegistry, channelMembership,
 			new NotSupportedMatchRepository(), matchLifecycle, NullLogger<MatchMembership>.Instance);
-		return new PlayerLogoutService(gameRegistry, ircRegistry, channelMembership, spectatorService, matchMembership,
-			new NoOpPlayerStatusEvents(), NullLogger<PlayerLogoutService>.Instance);
+		return new PlayerLogoutService(
+			[
+				new MatchLeaveLogoutHandler(matchMembership),
+				new SpectatorTeardownLogoutHandler(gameRegistry, spectatorService),
+				new ChannelPartLogoutHandler(channelMembership),
+				new GameSessionRegistryRemovalLogoutHandler(gameRegistry),
+				new IrcSessionRemovalLogoutHandler(ircRegistry),
+				new StatusPublishLogoutHandler(new NoOpPlayerStatusEvents()),
+				new LogoutBroadcastHandler(gameRegistry)
+			],
+			NullLogger<PlayerLogoutService>.Instance);
 	}
 
 	private static async Task<byte[]> WaitForNonEmptyDequeueAsync(GameSession session)

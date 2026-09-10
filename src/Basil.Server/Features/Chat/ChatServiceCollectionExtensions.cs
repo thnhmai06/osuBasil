@@ -2,6 +2,7 @@ using Basil.Server.Features.Chat.Packets;
 using Basil.Server.Shared.Configuration;
 using Basil.Server.Shared.Http.Bancho;
 using Basil.Server.Shared.Persistence;
+using Basil.Server.Shared.Sessions;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Server.Features.Chat;
@@ -17,6 +18,7 @@ public static class ChatServiceCollectionExtensions
 	{
 		services.AddSingleton<ChannelMembershipService>();
 		services.AddSingleton<ChatDispatchService>();
+		services.AddSingleton<IPlayerLogoutHandler, ChannelPartLogoutHandler>();
 
 		services.AddSingleton<IChannelRegistry, InMemoryChannelRegistry>();
 

@@ -57,14 +57,25 @@ public class LoginServiceTests
 			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
 		_spectatorService = new SpectatorService(_channelRegistry, channelMembership,
 			NullLogger<SpectatorService>.Instance);
-		var matchBroadcast = new MatchBroadcast(_channelRegistry, channelMembership, _sessionRegistry, ircRegistry, null, Substitute.For<IBeatmapRepository>(), _users);
+		var matchBroadcast = new MatchBroadcast(_channelRegistry, channelMembership, _sessionRegistry, ircRegistry,
+			null, Substitute.For<IBeatmapRepository>(), _users);
 		var matchLifecycle = new MatchLifecycle(Substitute.For<IMatchRegistry>(), _channelRegistry, channelMembership,
-			_sessionRegistry, Substitute.For<IMatchRepository>(), Substitute.For<IMatchRoundEndOutbox>(), null, Substitute.For<IBeatmapRepository>(), matchBroadcast,
+			_sessionRegistry, Substitute.For<IMatchRepository>(), Substitute.For<IMatchRoundEndOutbox>(), null,
+			Substitute.For<IBeatmapRepository>(), matchBroadcast,
 			Substitute.For<IServiceProvider>(), NullLogger<MatchLifecycle>.Instance);
 		var matchMembership = new MatchMembership(_channelRegistry, _sessionRegistry, channelMembership,
 			Substitute.For<IMatchRepository>(), matchLifecycle, NullLogger<MatchMembership>.Instance);
-		_playerLogoutService = new PlayerLogoutService(_sessionRegistry, ircRegistry, channelMembership,
-			_spectatorService, matchMembership, _statusEvents, NullLogger<PlayerLogoutService>.Instance);
+		_playerLogoutService = new PlayerLogoutService(
+			[
+				new MatchLeaveLogoutHandler(matchMembership),
+				new SpectatorTeardownLogoutHandler(_sessionRegistry, _spectatorService),
+				new ChannelPartLogoutHandler(channelMembership),
+				new GameSessionRegistryRemovalLogoutHandler(_sessionRegistry),
+				new IrcSessionRemovalLogoutHandler(ircRegistry),
+				new StatusPublishLogoutHandler(_statusEvents),
+				new LogoutBroadcastHandler(_sessionRegistry)
+			],
+			NullLogger<PlayerLogoutService>.Instance);
 		_menuIconService = new MenuIconService(_settings);
 		_motdService = new MotdService(_settings);
 		// TryAdd's unconfigured NSubstitute default is false — stub it true so the happy

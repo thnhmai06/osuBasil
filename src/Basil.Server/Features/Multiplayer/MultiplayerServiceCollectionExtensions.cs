@@ -6,6 +6,7 @@ using Basil.Server.Shared.Configuration;
 using Basil.Server.Shared.Eventing;
 using Basil.Server.Shared.Http.Bancho;
 using Basil.Server.Shared.Persistence;
+using Basil.Server.Shared.Sessions;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Server.Features.Multiplayer;
@@ -33,6 +34,7 @@ public static class MultiplayerServiceCollectionExtensions
 		services.AddSingleton<MatchReportService>();
 		services.AddSingleton<MatchRecoveryService>();
 		services.AddSingleton<IMpCommandService, MpCommandService>();
+		services.AddSingleton<IPlayerLogoutHandler, MatchLeaveLogoutHandler>();
 
 		services.AddSingleton<IMatchRepository>(sp =>
 			new SqliteMatchRepository(BuildConnectionString(sp),

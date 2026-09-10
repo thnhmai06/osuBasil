@@ -18,6 +18,7 @@ public static class IrcServiceCollectionExtensions
 		services.AddSingleton<IrcQueryService>();
 
 		services.AddSingleton<ISessionRegistry<IrcSession>, IrcSessionRegistry>();
+		services.AddSingleton<IPlayerLogoutHandler, IrcSessionRemovalLogoutHandler>();
 
 		services.AddHostedService<TcpIrcListener>();
 		services.AddHostedService<IrcMetricsPublisher>();
