@@ -1,5 +1,3 @@
-using Basil.Server.Features.Chat.Packets;
-using Basil.Server.Features.Bot;
 using Basil.Server.Shared.Sessions;
 using Basil.Server.Features.Multiplayer;
 
@@ -39,8 +37,8 @@ public interface ICommandDispatcher
 	///     When <see langword="true" />, a message with no command prefix is treated as if it had one
 	///     (for example "help" behaves like "!help"). Only safe for private messages to the bot: every
 	///     DM to the bot is already a command-dispatch attempt with no other fallback (see
-	///     <see cref="SendPrivateMessageHandler" />), so
-	///     relaxing the prefix there does not risk swallowing ordinary chat.
+	///     <c>SendPrivateMessageHandler</c>), so relaxing the prefix there does not risk swallowing
+	///     ordinary chat.
 	/// </param>
 	/// <param name="cancellationToken">
 	///     Propagated to the repository or service calls the matched command needs.

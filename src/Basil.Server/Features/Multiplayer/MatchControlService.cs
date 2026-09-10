@@ -1,14 +1,12 @@
 using Basil.Server.Features.Chat;
 using Basil.Server.Features.Irc;
 using Basil.Server.Features.Beatmaps;
-using Basil.Server.Features.Multiplayer;
 using Basil.Server.Features.Bot;
 using Basil.Server.Shared.Sessions;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Protocol.Packets;
-using Microsoft.Extensions.Logging;
 
 namespace Basil.Server.Features.Multiplayer;
 

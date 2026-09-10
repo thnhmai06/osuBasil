@@ -150,13 +150,13 @@ IL.
 
 **This is an experiment whose result changes the plan. Do not skip to implementing one option.**
 
-- [ ] **Step 1: Reproduce the blind spot**
+- [x] **Step 1: Reproduce the blind spot**
 
 `Features/Multiplayer/MatchRoutes.cs` uses `AdminKeyDefaults.Policy`, a `public const string` in
 `Features/Auth`. `SliceAdjacency` does not declare `Multiplayer -> Auth`. Confirm the architecture
 suite is green anyway.
 
-- [ ] **Step 2: Try the cheap remedy**
+- [x] **Step 2: Try the cheap remedy**
 
 Change `AdminKeyDefaults`'s three members and `BotBootstrapService.BotId` from `const` to
 `static readonly`. Rebuild and re-run `Slices_Should_Only_Reference_Declared_Slices`.
@@ -164,25 +164,25 @@ Change `AdminKeyDefaults`'s three members and `BotBootstrapService.BotId` from `
 Expected: it now fails, naming `Multiplayer -> Auth`, `Beatmaps -> Auth`, `Content -> Auth`,
 `Auth -> Bot`, `Content -> Bot`, `Multiplayer -> Bot`, `Users -> Bot`.
 
-- [ ] **Step 3: If it fails to fail, stop and report**
+- [x] **Step 3: If it fails to fail, stop and report**
 
 If the seven edges stay invisible, `static readonly` is not enough and the rule must be verified
 from source with Roslyn instead. That is a different task and a different ADR; report it rather
 than improvising.
 
-- [ ] **Step 4: Record the result**
+- [x] **Step 4: Record the result**
 
 Write the outcome, with the exact test output, to `plans/execution/const-visibility-experiment.md`.
 Commit.
 
 ### Task A2: Declare the edges the experiment revealed, then decide each one
 
-- [ ] Add the seven now-visible edges to `SliceAdjacency` **with the justification each already
+- [x] Add the seven now-visible edges to `SliceAdjacency` **with the justification each already
   has** (they exist; they were only invisible). The suite goes green.
-- [ ] For each, record whether it survives the migration or is removed by a later task:
+- [x] For each, record whether it survives the migration or is removed by a later task:
   `*/ -> Auth` via `AdminKeyDefaults` and `* -> Bot` via `BotBootstrapService.BotId` are both
   constants that move to `Basil.Domain` in Stage C, which removes the edge entirely.
-- [ ] Commit.
+- [x] Commit.
 
 ### Task A3: Remove the dead and documentation-only imports
 
@@ -196,11 +196,11 @@ Thirteen imports reference a slice whose types the file never uses in code:
   `Irc/BanchoIrcBridgeConnection.cs`, `Irc/IIrcConnection.cs`,
   `Multiplayer/MatchControlService.cs`
 
-- [ ] Delete the dead ones outright.
-- [ ] For the documentation-only ones the `<see cref>` needs the import to resolve. Either keep the
+- [x] Delete the dead ones outright.
+- [x] For the documentation-only ones the `<see cref>` needs the import to resolve. Either keep the
   import and leave a one-line comment saying the reference is documentation only, or change the
   `cref` to plain text. Prefer plain text where the link adds nothing.
-- [ ] Build, run the full suite, commit.
+- [x] Build, run the full suite, commit.
 
 ---
 

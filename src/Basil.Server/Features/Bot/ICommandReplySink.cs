@@ -1,12 +1,10 @@
-using Basil.Server.Features.Chat;
-
 namespace Basil.Server.Features.Bot;
 
 /// <summary>
 ///     Receives the reply text a chat command produces and routes it to the right destination.
 /// </summary>
 /// <remarks>
-///     A sink is constructed by <see cref="ChatDispatchService" /> for each invocation from the
+///     A sink is constructed by <c>ChatDispatchService</c> for each invocation from the
 ///     message's source, either a channel or a DM to the bot, so every command implementation sends
 ///     its own reply instead of returning text for the caller to route. The caller only ever sees a
 ///     success or failure boolean. <see cref="Reply" /> follows the source's normal routing rule,
