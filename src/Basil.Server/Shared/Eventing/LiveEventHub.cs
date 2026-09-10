@@ -7,7 +7,9 @@ namespace Basil.Server.Shared.Eventing;
 ///     SSE is a broadcast: every subscriber to a stream receives the same immutable event. This
 ///     type is explicitly not responsible for, and holds no reference to, a repository, match
 ///     business logic, snapshot construction or a feature DTO — a caller decides whether to build a
-///     payload at all, using <see cref="HasSubscribers" />, and hands the hub only opaque bytes.
+///     payload at all, using <see cref="HasSubscribers" />, and hands the hub only opaque bytes. It
+///     carries deltas, never a snapshot: a fresh subscriber gets its starting state from whatever the
+///     feature's own state store is (see <see cref="StateStream{T}" />), not from this hub.
 /// </remarks>
 public sealed class LiveEventHub : ILiveEventHub
 {
@@ -21,28 +23,11 @@ public sealed class LiveEventHub : ILiveEventHub
 	}
 
 	/// <inheritdoc />
-	public void MarkStale(StreamKey key, long version)
-	{
-		var state = GetOrCreateState(key);
-		lock (state.Sync)
-		{
-			state.Version = version;
-			state.IsStale = true;
-		}
-	}
-
-	/// <inheritdoc />
 	public void Publish(StreamKey key, long version, ReadOnlyMemory<byte> payload)
 	{
 		var state = GetOrCreateState(key);
 		LiveSubscription[] subscribers;
-		lock (state.Sync)
-		{
-			state.Latest = payload;
-			state.Version = version;
-			state.IsStale = false;
-			subscribers = [.. state.Subscribers];
-		}
+		lock (state.Sync) subscribers = [.. state.Subscribers];
 
 		foreach (var subscriber in subscribers) subscriber.OnPublish(version, payload);
 	}
@@ -56,8 +41,7 @@ public sealed class LiveEventHub : ILiveEventHub
 			LiveSubscription? subscription = null;
 			// ReSharper disable once AccessToModifiedClosure -- assigned before the unsubscribe
 			// callback can ever run (only Dispose invokes it, after this constructor returns).
-			subscription = new LiveSubscription(state.Latest, state.Version, state.IsStale,
-				() => Unsubscribe(state, subscription!));
+			subscription = new LiveSubscription(() => Unsubscribe(state, subscription!));
 			state.Subscribers.Add(subscription);
 			return subscription;
 		}
@@ -81,13 +65,10 @@ public sealed class LiveEventHub : ILiveEventHub
 		lock (state.Sync) state.Subscribers.Remove(subscription);
 	}
 
-	/// <summary>Per-stream state: the lock that <see cref="Open" /> and <see cref="Publish" /> share, the latest payload and its version, staleness, and the subscriber list.</summary>
+	/// <summary>Per-stream state: the lock that <see cref="Open" /> and <see cref="Publish" /> share, and the subscriber list.</summary>
 	private sealed class StreamState
 	{
 		public readonly Lock Sync = new();
 		public readonly List<LiveSubscription> Subscribers = [];
-		public bool IsStale;
-		public ReadOnlyMemory<byte>? Latest;
-		public long Version = -1;
 	}
 }

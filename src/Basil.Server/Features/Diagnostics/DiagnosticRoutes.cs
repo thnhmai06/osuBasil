@@ -259,11 +259,15 @@ internal static class DiagnosticRoutes
 	}
 
 	/// <summary>
-	///     Turns one <see cref="LiveSubscription" /> into an SSE event stream: a first-ever subscriber
-	///     to a stream nobody has published to yet builds and seeds its own reading immediately, rather
-	///     than waiting for the next broadcast tick, so connecting is never slower than the category's
-	///     own <c>GET</c>.
+	///     Turns one <see cref="LiveSubscription" /> into an SSE event stream: a subscriber takes its
+	///     own fresh reading immediately on connecting, rather than waiting for the next broadcast
+	///     tick, so connecting is never slower than the category's own <c>GET</c>.
 	/// </summary>
+	/// <remarks>
+	///     Subscribing before sampling means a publish landing in that gap arrives as a second,
+	///     duplicate reading rather than being missed -- harmless here, since every event on this
+	///     stream is already a complete reading rather than a delta.
+	/// </remarks>
 	private static async IAsyncEnumerable<SseItem<string>> StreamCategory<T>(ILiveEventHub hub, StreamKey key,
 		string eventType, Func<T> sample, [EnumeratorCancellation] CancellationToken cancellationToken)
 	{
@@ -272,16 +276,9 @@ internal static class DiagnosticRoutes
 		EventingMetrics.SseActiveSubscribers.Add(1, streamTag);
 		try
 		{
-			if (subscription.Snapshot is null)
-			{
-				var fence = subscription.Version;
-				var seed = JsonSerializer.SerializeToUtf8Bytes(sample(), BasilJsonOptions.Instance);
-				subscription.SeedIfNotSuperseded(seed, fence);
-			}
-
-			if (subscription.Snapshot is { } snapshot)
-				yield return new SseItem<string>(Encoding.UTF8.GetString(snapshot.Span), eventType)
-					{ ReconnectionInterval = SseEndpoints.ReconnectionInterval };
+			var seed = JsonSerializer.SerializeToUtf8Bytes(sample(), BasilJsonOptions.Instance);
+			yield return new SseItem<string>(Encoding.UTF8.GetString(seed), eventType)
+				{ ReconnectionInterval = SseEndpoints.ReconnectionInterval };
 
 			await foreach (var item in subscription.Events.WithCancellation(cancellationToken))
 				yield return new SseItem<string>(Encoding.UTF8.GetString(item.Payload.Span), eventType)

@@ -27,29 +27,25 @@ public class DiagnosticBroadcastServiceTests
 	}
 
 	/// <summary>
-	///     A category nobody is watching is skipped entirely -- proven by opening a subscription only
-	///     after the pass runs and finding the stream still carries no version, rather than by counting
-	///     internal calls into the sampler.
+	///     A category nobody is watching doesn't crash the tick loop. The hub carries no retained
+	///     state to inspect after the fact (it forwards only to subscribers present at publish time),
+	///     so unlike a subscriber-present tick this can't assert delivery -- only that skipping a
+	///     category is not distinguishable from a failure.
 	/// </summary>
 	[Fact]
-	public void RunOnce_CategoryWithNoSubscriber_PublishesNothing()
+	public void RunOnce_CategoryWithNoSubscriber_DoesNotThrow()
 	{
 		var hub = new LiveEventHub();
 		var service = CreateService(hub);
 
-		service.RunOnce();
-		using var subscription = hub.Open(DiagnosticStreams.Process);
+		var exception = Record.Exception(service.RunOnce);
 
-		Assert.Equal(-1, subscription.Version);
-		Assert.Null(subscription.Snapshot);
+		Assert.Null(exception);
 	}
 
 	/// <summary>
-	///     An existing subscriber's stream carries a fresh reading as soon as a pass runs. Read via
-	///     <see cref="LiveSubscription.Events" />, not <see cref="LiveSubscription.Snapshot" />: a
-	///     subscription that opened before anything had ever been published to its stream already
-	///     counts as having "a snapshot" (an empty one) the moment it opens, so the reading this pass
-	///     produces arrives as a queued event rather than replacing that snapshot in place.
+	///     An existing subscriber's stream carries a fresh reading as soon as a pass runs, delivered on
+	///     <see cref="LiveSubscription.Events" /> -- the hub carries no snapshot of its own.
 	/// </summary>
 	[Fact]
 	public async Task RunOnce_CategoryWithASubscriber_DeliversAFreshReading()
@@ -72,10 +68,7 @@ public class DiagnosticBroadcastServiceTests
 	///     overhead measurement): a tick samples one category once and hands the identical payload
 	///     buffer to every subscriber, rather than sampling once per connection.
 	///
-	///     Each subscription opened before the tick already counts as having an (empty) snapshot the
-	///     moment it opens -- see <see cref="RunOnce_CategoryWithASubscriber_DeliversAFreshReading" />
-	///     -- so the tick's publish arrives on <see cref="LiveSubscription.Events" /> for all three,
-	///     not on <see cref="LiveSubscription.Snapshot" />.
+	///     The tick's publish arrives on <see cref="LiveSubscription.Events" /> for all three.
 	///
 	///     Compared via <see cref="ReadOnlyMemory{T}.Equals(ReadOnlyMemory{T})" />, which compares the
 	///     underlying buffer reference (plus offset and length), not byte content -- so this fails if
@@ -104,7 +97,8 @@ public class DiagnosticBroadcastServiceTests
 		Assert.True(firstEvent.Payload.Equals(thirdEvent.Payload));
 	}
 
-	private static async Task<LiveEvent> FirstEventAsync(LiveSubscription subscription, CancellationToken cancellationToken)
+	private static async Task<LiveEvent> FirstEventAsync(LiveSubscription subscription,
+		CancellationToken cancellationToken)
 	{
 		await using var events = subscription.Events.GetAsyncEnumerator(cancellationToken);
 		Assert.True(await events.MoveNextAsync());

@@ -23,12 +23,12 @@ public class LiveEventHubTests
 	}
 
 	/// <summary>
-	///     A subscriber never receives an event the snapshot it opened with already contains, and
-	///     never receives one out of order. This is the SSE contract, not an implementation detail:
-	///     clients apply an item only when its version exceeds the last one they applied.
+	///     A subscriber never receives an event at or below a version it already has, and never
+	///     receives one out of order. This is the SSE contract, not an implementation detail: clients
+	///     apply an item only when its version exceeds the last one they applied.
 	/// </summary>
 	[Fact]
-	public async Task SubscriberNeverReceivesAnEventAtOrBelowItsSnapshotVersion()
+	public async Task SubscriberNeverReceivesAnEventAtOrBelowItsFenceVersion()
 	{
 		var hub = new LiveEventHub();
 		var key = new StreamKey("match", 1, "main");
@@ -39,44 +39,45 @@ public class LiveEventHubTests
 		hub.Publish(key, 43, Bytes("v43"));
 		hub.Publish(key, 44, Bytes("v44"));
 
-		Assert.Equal(42, sub.Version);
-		var received = await TakeAsync(sub.Events, 2);
+		using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+		var received = await TakeAsync(sub.EventsAfter(42, cts.Token), 2);
 		Assert.Equal([43L, 44L], received.Select(e => e.Version));
 	}
 
-	[Fact]
-	public void PublishWithoutSubscribersIsSkippedByTheCallerAndMarksTheStreamStale()
-	{
-		var hub = new LiveEventHub();
-		var key = new StreamKey("match", 1, "main");
-
-		Assert.False(hub.HasSubscribers(key));
-		hub.MarkStale(key, 7);
-
-		using var sub = hub.Open(key);
-		Assert.True(sub.IsStale);
-	}
+	private sealed record TestState(string Value);
 
 	/// <summary>
-	///     A snapshot built while unsubscribed loses to a publish that landed in the meantime, so a
-	///     freshly built but older snapshot can never roll a client back.
+	///     Pins the invariant the deleted seed handshake used to defend: a subscriber's first item is
+	///     the state at the version it read from its own state store, and every later item the hub
+	///     delivers has a version strictly greater than that. The hub itself carries no snapshot -- a
+	///     caller establishes the fence from <see cref="StateStream{T}.GetLatestAndVersion" />, reads
+	///     it as its first item, then drops anything from the hub at or below it.
 	/// </summary>
 	[Fact]
-	public void SeedLosesToAPublishThatLandedWhileTheSnapshotWasBeingBuilt()
+	public async Task SubscriberOpensAtStateVersionAndEveryLaterItemIsStrictlyNewer()
 	{
 		var hub = new LiveEventHub();
+		var stream = new StateStream<TestState>("test");
 		var key = new StreamKey("match", 1, "main");
-		hub.MarkStale(key, 10);
 
-		using var sub = hub.Open(key);
-		var fence = sub.Version;
+		// A publish before anyone subscribes: reflected in the state store, never delivered as an event.
+		var delta1 = stream.Publish(new TestState("a"), 1);
+		Assert.NotNull(delta1);
+		hub.Publish(key, 1, delta1);
 
-		hub.Publish(key, 11, Bytes("published-11"));
-		var seeded = sub.SeedIfNotSuperseded(Bytes("built-from-10"), fence);
+		await using var subscription = hub.Open(key);
+		var (latest, fence) = stream.GetLatestAndVersion();
 
-		Assert.False(seeded);
-		// ReadOnlyMemory<byte>.Equals compares the underlying array reference, not content
-		// (measured directly), so the assertion decodes both sides to compare what they say.
-		Assert.Equal("published-11", Encoding.UTF8.GetString(sub.Snapshot!.Value.Span));
+		Assert.Equal(new TestState("a"), latest);
+		Assert.Equal(1, fence);
+
+		var delta2 = stream.Publish(new TestState("b"), 2);
+		Assert.NotNull(delta2);
+		hub.Publish(key, 2, delta2);
+
+		using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+		var received = await TakeAsync(subscription.EventsAfter(fence, cts.Token), 1);
+
+		Assert.Equal([2L], received.Select(e => e.Version));
 	}
 }
