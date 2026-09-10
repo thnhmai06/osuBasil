@@ -1,6 +1,6 @@
 using System.Reflection;
-using Basil.Server.Features.Bot;
 using Basil.Server.Features.Irc;
+using Basil.Server.Features.Multiplayer;
 
 namespace Basil.Server.Tests.Shared.Localization;
 

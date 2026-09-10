@@ -20,7 +20,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
-namespace Basil.Server.Tests.Features.Bot;
+namespace Basil.Server.Tests.Features.Multiplayer;
 
 /// <summary>
 ///     Every subcommand except "help" requires MatchSession.IsReferee — that gate, plus a

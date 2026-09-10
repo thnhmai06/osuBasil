@@ -14,7 +14,6 @@ public static class BotServiceCollectionExtensions
 		services.Configure<BotOptions>(configuration.GetSection(BotOptions.SectionName));
 
 		services.AddSingleton<BotBootstrapService>();
-		services.AddSingleton<MpCommandService>();
 		services.AddSingleton<ICommandDispatcher, CommandDispatcher>();
 
 		return services;

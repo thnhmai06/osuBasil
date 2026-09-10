@@ -1,5 +1,5 @@
-using Basil.Server.Features.Bot;
 using Basil.Server.Features.Irc;
+using Basil.Server.Features.Multiplayer;
 
 namespace Basil.Server.Host;
 

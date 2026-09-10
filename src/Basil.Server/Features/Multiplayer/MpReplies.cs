@@ -1,6 +1,7 @@
+using Basil.Server.Features.Bot;
 using Basil.Server.Shared.Localization;
 
-namespace Basil.Server.Features.Bot;
+namespace Basil.Server.Features.Multiplayer;
 
 /// <summary>
 ///     The user-visible reply text sent by the BasilBot chat commands, the single source of truth

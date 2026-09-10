@@ -51,10 +51,7 @@ internal static class SliceAdjacency
 		// MirrorService reads the configured mirror endpoint from Content's ISettingsRepository.
 		("Beatmaps", "Content"),
 
-		// MpCommandService resolves IBeatmapRepository for `!mp map`.
-		("Bot", "Beatmaps"),
-
-		// BotBootstrapService, CommandDispatcher and MpCommandService operate on
+		// BotBootstrapService and CommandDispatcher operate on
 		// ChannelSession/ChannelMembershipService/IChannelRegistry to post replies and manage
 		// channel membership.
 		("Bot", "Chat"),
@@ -62,15 +59,17 @@ internal static class SliceAdjacency
 		// CommandDispatcher resolves Content.FaqService for `!faq`.
 		("Bot", "Content"),
 
-		// MpCommandService and CommandDispatcher's ScopedDmReplySink reply over Irc.IIrcConnection.
+		// CommandDispatcher's ScopedDmReplySink replies over a UserSession's IIrcConnection, whose
+		// declared type is Irc's regardless of which command produced the reply.
 		("Bot", "Irc"),
 
-		// CommandDispatcher/ICommandDispatcher/MpCommandService are the `!mp` command surface --
-		// they operate directly on IMatchRegistry, MatchSession and MatchControlService.
+		// CommandDispatcher/ICommandDispatcher are the `!mp` command surface's transport --
+		// they operate directly on IMatchRegistry and MatchSession to route `!mp` subcommands to
+		// Multiplayer.MpCommandService.
 		("Bot", "Multiplayer"),
 
-		// BotBootstrapService, CommandDispatcher and MpCommandService resolve IUserRepository to
-		// look up command targets.
+		// BotBootstrapService and CommandDispatcher resolve IUserRepository to look up command
+		// targets.
 		("Bot", "Users"),
 
 		// ChatDispatchService routes `!`-prefixed messages to Bot.ICommandDispatcher and replies
@@ -109,17 +108,18 @@ internal static class SliceAdjacency
 		// IrcAuthenticationService resolves IUserRepository to authenticate an IRC login.
 		("Irc", "Users"),
 
-		// Match live/report/routing types resolve IBeatmapRepository, BeatmapDetail and
-		// BeatmapsetSummary to describe the map a match is playing.
+		// Match live/report/routing types and MpCommandService (`!mp map`) resolve
+		// IBeatmapRepository, BeatmapDetail and BeatmapsetSummary to describe the map a match is
+		// playing.
 		("Multiplayer", "Beatmaps"),
 
-		// InMemoryMatchRegistry, MatchMembershipService, MatchSubResourceRoutes and the tourney
-		// join/leave packet handlers manage each match's owned chat channel.
+		// InMemoryMatchRegistry, MatchMembershipService, MatchSubResourceRoutes, MpCommandService
+		// and the tourney join/leave packet handlers manage each match's owned chat channel.
 		("Multiplayer", "Chat"),
 
 		// MatchControlService, MatchLiveSnapshotBuilder, MatchMembershipService, MatchReportService,
-		// MatchRoutes, MatchSubResourceRoutes and UserBriefResolver resolve Irc.IrcSession to report
-		// a participant's IRC presence.
+		// MatchRoutes, MatchSubResourceRoutes, MpCommandService (joining an IRC session to a match's
+		// chat) and UserBriefResolver resolve Irc.IrcSession to report a participant's IRC presence.
 		("Multiplayer", "Irc"),
 
 		// MatchReportService writes Scores.ScoreReport/IScoreRepository when a round completes.
@@ -129,7 +129,8 @@ internal static class SliceAdjacency
 		// Spectating.IPlayerInputEvents.
 		("Multiplayer", "Spectating"),
 
-		// Nearly every match type resolves IUserRepository to describe its players.
+		// Nearly every match type, including MpCommandService resolving `!mp` command targets by
+		// name, resolves IUserRepository to describe its players.
 		("Multiplayer", "Users"),
 
 		// ScoreSubmissionService authenticates the submitting player via Auth.AuthenticationService.
@@ -180,7 +181,8 @@ internal static class SliceAdjacency
 		("Multiplayer", "Auth"),
 
 		// MatchControlService, TimerHandler and MatchLiveSnapshotBuilder resolve the bot's session by
-		// BotBootstrapService.BotId; the bot is the match's default host.
+		// BotBootstrapService.BotId; the bot is the match's default host. MpCommandService replies
+		// through Bot.ICommandReplySink.
 		("Multiplayer", "Bot"),
 
 		// AvatarRoutes and UserRoutes skip the bot account by BotBootstrapService.BotId.

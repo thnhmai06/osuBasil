@@ -3,7 +3,6 @@ using System.Collections.Frozen;
 using System.Text;
 using Basil.Server.Features.Beatmaps;
 using Basil.Server.Features.Bot;
-using Basil.Server.Features.Multiplayer;
 using Basil.Server.Features.Multiplayer.Handlers.Countdown;
 using Basil.Server.Features.Multiplayer.Handlers.Lifecycle;
 using Basil.Server.Features.Multiplayer.Handlers.Slots;
@@ -18,7 +17,7 @@ using Basil.Domain.Users;
 using Basil.Protocol.Multiplayer;
 using Microsoft.Extensions.Logging;
 
-namespace Basil.Server.Features.Bot;
+namespace Basil.Server.Features.Multiplayer;
 
 /// <summary>
 ///     Implements the <c>!mp</c> chat subcommands for match control.

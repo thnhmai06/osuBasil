@@ -32,6 +32,7 @@ public static class MultiplayerServiceCollectionExtensions
 		services.AddSingleton<CloseHandler>();
 		services.AddSingleton<MatchReportService>();
 		services.AddSingleton<MatchRecoveryService>();
+		services.AddSingleton<MpCommandService>();
 
 		services.AddSingleton<IMatchRepository>(sp =>
 			new SqliteMatchRepository(BuildConnectionString(sp),
