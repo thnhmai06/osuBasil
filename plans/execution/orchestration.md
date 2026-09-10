@@ -201,8 +201,25 @@ branched from `feat/vsa-migration` once Task 0.10 has landed.
 | — | Tasks 0.10-0.13 | committed |
 | — | Task 0.14 | run by the orchestrator; Phase 0 closed |
 | 2026-09-10 02:40 UTC+7 | Task B6 lifecycle handlers (main tree) and Task 5.6 endpoints (diagnostics tree) | both killed by the session limit with uncommitted work; the diagnostics tree was green and was committed as `b1904ac3`, the main tree **did not compile** |
-| 2026-09-10 05:20 UTC+7 | finish Task B6 (main tree) | running |
-| 2026-09-10 05:25 UTC+7 | Tasks 5.7 and 5.8 (diagnostics tree) | running |
+| 2026-09-10 05:20 UTC+7 | finish Task B6 (main tree) | died twice on backgrounded test runs, then on the session limit, with the work complete but uncommitted; the orchestrator verified and committed it as `c2e4be34` |
+| 2026-09-10 05:25 UTC+7 | Tasks 5.7 and 5.8 (diagnostics tree) | both committed (`1b77b6d9`, `624b665f`); Stage F closed and merged into `feat/vsa-migration` at `b932f4b4` |
+| 2026-09-10 10:20 UTC+7 | Task B5, adopt the event hub (main tree) | running |
+| 2026-09-10 10:22 UTC+7 | diagnose the order-dependent integration test (`fix/integration-test-order-dependence`) | running |
+
+### The second worktree after Stage F
+
+`V:\Code\cs\osuBasil-diagnostics` was created for Stage F and Stage F is merged, so the worktree is
+now a general second lane rather than the diagnostics lane. It is on
+`fix/integration-test-order-dependence`, branched from the merge commit. Rider is still bound to the
+main tree only, so work that needs the refactorings belongs in the main tree and work that does not
+can go here.
+
+### Backgrounded test runs: what finally worked
+
+The rule said "foreground with a 600-second timeout", and following it still failed: `dotnet test`
+over the solution does not finish inside 600 seconds, so the tool backgrounds it. Two workers and
+the orchestrator all hit this on the same day. The working form is one foreground call per test
+project after a single build, integration tests last — recorded in the plan's global constraints.
 
 ### What the 02:40 kill taught
 
