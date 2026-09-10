@@ -10,6 +10,7 @@ using Basil.Server.Shared.Http.OpenApi;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
@@ -216,6 +217,14 @@ public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactor
 					FaqsPath = Path.Combine(_dataDir, "Faqs"),
 					CachePath = Path.Combine(_dataDir, "Cache")
 				}));
+				// These tests seed a legacy on-disk beatmapset folder directly and read it back within
+				// the same request (or expect it to still be there at Dispose()); the live watcher and
+				// the startup migration pass both race that same folder in the background otherwise --
+				// converting or moving it out from under the test -- so, like
+				// BeatmapsetManagementEndpointTests' file-layout-sensitive tests, this host runs
+				// without either.
+				RemoveHostedService<BeatmapWatcherService>(services);
+				RemoveHostedService<BeatmapsetMigrationService>(services);
 			});
 		});
 	}
@@ -223,6 +232,13 @@ public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactor
 	public void Dispose()
 	{
 		if (Directory.Exists(_dataDir)) Directory.Delete(_dataDir, true);
+	}
+
+	private static void RemoveHostedService<T>(IServiceCollection services) where T : class
+	{
+		var descriptor = services.FirstOrDefault(d =>
+			d.ServiceType == typeof(IHostedService) && d.ImplementationType == typeof(T));
+		if (descriptor is not null) services.Remove(descriptor);
 	}
 
 	private static HttpRequestMessage MakeRequest(string path)
