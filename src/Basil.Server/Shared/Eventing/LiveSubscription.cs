@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 
 namespace Basil.Server.Shared.Eventing;
@@ -75,6 +76,26 @@ public sealed class LiveSubscription : IDisposable, IAsyncDisposable
 	///     a version strictly greater than <see cref="Version" /> at the moment it arrived.
 	/// </summary>
 	public IAsyncEnumerable<LiveEvent> Events => _channel.Reader.ReadAllAsync();
+
+	/// <summary>
+	///     Gets this subscription's events strictly newer than <paramref name="fence" />, dropping
+	///     anything at or below it.
+	/// </summary>
+	/// <remarks>
+	///     A caller that opened this subscription before separately reading its own full state (e.g.
+	///     from a <see cref="StateStream{T}" />) uses this to reconcile the two: subscribing first
+	///     guarantees no publish in between is missed, and this filter guarantees a publish already
+	///     reflected in that state is never delivered again as if it were new.
+	/// </remarks>
+	/// <param name="fence">The version already reflected elsewhere; only strictly greater versions are yielded.</param>
+	/// <param name="cancellationToken">Stops enumeration when cancelled.</param>
+	public async IAsyncEnumerable<LiveEvent> EventsAfter(long fence,
+		[EnumeratorCancellation] CancellationToken cancellationToken = default)
+	{
+		await foreach (var item in _channel.Reader.ReadAllAsync(cancellationToken))
+			if (item.Version > fence)
+				yield return item;
+	}
 
 	/// <inheritdoc />
 	public void Dispose()

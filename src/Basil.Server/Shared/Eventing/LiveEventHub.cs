@@ -68,6 +68,14 @@ public sealed class LiveEventHub : ILiveEventHub
 		return _streams.GetOrAdd(key, static _ => new StreamState());
 	}
 
+	/// <inheritdoc />
+	public void Forget(string category, int id)
+	{
+		foreach (var key in _streams.Keys)
+			if (key.Category == category && key.Id == id)
+				_streams.TryRemove(key, out _);
+	}
+
 	private static void Unsubscribe(StreamState state, LiveSubscription subscription)
 	{
 		lock (state.Sync) state.Subscribers.Remove(subscription);

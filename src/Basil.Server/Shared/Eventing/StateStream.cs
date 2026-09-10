@@ -36,6 +36,20 @@ public sealed class StateStream<T> where T : class
 	/// <value>The latest published snapshot, or <see langword="null" /> before the first publication.</value>
 	public T? Latest => Volatile.Read(ref _latest);
 
+	/// <summary>Reads the latest published state together with the version it was published at.</summary>
+	/// <remarks>
+	///     Read together under the same lock <see cref="Publish" /> already takes, so the pair can
+	///     never be observed torn by a concurrent publish -- a caller reading <see cref="Latest" /> and
+	///     a separately-tracked version could otherwise see a state and a version that don't belong
+	///     together. A subscriber uses this to establish the version fence for a live stream: its own
+	///     first item is this state, and only events strictly newer than this version follow it.
+	/// </remarks>
+	/// <returns>The latest published state and its version, or a <see langword="null" /> state and <c>-1</c> before the first publication.</returns>
+	public (T? Latest, long Version) GetLatestAndVersion()
+	{
+		lock (_sync) return (_latest, _lastAppliedSequence);
+	}
+
 	/// <summary>Stores a new snapshot and computes the delta patch from the previous state.</summary>
 	/// <remarks>
 	///     Computes the RFC 7396 JSON Merge Patch from the previously published state to

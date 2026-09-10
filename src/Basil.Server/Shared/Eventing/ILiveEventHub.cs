@@ -41,4 +41,13 @@ public interface ILiveEventHub
 	/// <param name="key">The stream to subscribe to.</param>
 	/// <returns>A subscription handle carrying the captured state and the stream's subsequent events.</returns>
 	LiveSubscription Open(StreamKey key);
+
+	/// <summary>
+	///     Drops every stream whose <see cref="StreamKey.Category" /> and <see cref="StreamKey.Id" />
+	///     match, once nothing can subscribe to them anymore, so a torn-down entity's streams never
+	///     linger in memory past its lifetime.
+	/// </summary>
+	/// <param name="category">The stream family to forget, e.g. <c>"match"</c>.</param>
+	/// <param name="id">The identifier of the specific entity whose streams to forget.</param>
+	void Forget(string category, int id);
 }
