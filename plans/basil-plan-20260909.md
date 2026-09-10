@@ -377,6 +377,15 @@ wherever its files live, so it falls only when a dependency actually goes away.
   Users and Spectating standing free. **Solution-wide must fall with it.** If features-only reaches
   17 while solution-wide sits near 52, the coupling was relocated into `Basil.Domain` rather than
   removed, and Stage D's project split would be made against a graph that is still one component.
+- [ ] **An edge counts as removed only when its `SliceAdjacency` row can be deleted and the
+  architecture suite stays green.** The script is a search tool, not a gate: it reads source text, so
+  it cannot see a dependency whose type name is never spelled — an inferred property type such as
+  `sender.IrcConnection` typed `IIrcConnection`. Task C4 hit exactly that and the edge read as gone
+  while the compiled dependency was still there. `plans/execution/architecture-progress.md` records
+  why the allowlist is the stronger instrument and the script the weaker one.
+- [ ] State C5's result in **allowlist rows removed**, which every build enforces, and record the
+  script's two counts alongside. A script edge that vanishes while its row cannot be deleted is a
+  misattribution, not progress.
 - [ ] Record the actual numbers in `plans/execution/architecture-progress.md`. **If the graph did
   not move as predicted, stop and report before Stage D** — Stage D's project split assumes it did.
 

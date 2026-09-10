@@ -119,6 +119,52 @@ same way in both, which is why it is the only figure in this file that may be co
 assessment's directly. Every other row that pairs an assessment figure with a script figure is a
 comparison between two definitions until proven otherwise.
 
+## The two instruments have opposite blind spots
+
+Found 2026-09-10 during Task C4, by a worker acting on the stop-and-report instruction rather than
+declaring a convenient answer. It changes what C5 is allowed to gate on.
+
+`stage-c-order-decision.md` predicted that moving `MpCommandService` out of `Bot` would remove
+`Bot -> Irc`, because `measure-slice-graph.py` attributed that edge to `MpCommandService` alone. The
+edge did read as gone afterwards. Deleting `("Bot", "Irc")` from the allowlist then **failed**
+`SliceBoundaryTests`, naming `CommandDispatcher.ScopedDmReplySink`.
+
+The dependency is real and it stays behind: `ScopedDmReplySink.Reply()` calls
+`sender.IrcConnection.Send(...)`, and `IrcConnection` is typed `IIrcConnection`, a
+`Features.Irc` type. But that name is **never spelled** in `CommandDispatcher.cs` — no `using`, no
+fully qualified reference, just an inferred property type. A source-text scan cannot see it. The
+compiler emits a reference, so NetArchTest can.
+
+So the two instruments fail in opposite directions:
+
+| | Sees | Blind to |
+|---|---|---|
+| `SliceAdjacency` + NetArchTest, reading IL | inferred types, every reference the compiler emits | `const` values, which C# inlines at the use site |
+| `measure-slice-graph.py`, reading source text | anything whose namespace is spelled, `const` included | inferred types, where the namespace is never written |
+
+**ADR-008 already closed the IL side's blind spot**, by requiring values that cross a boundary to be
+`static readonly` rather than `const`. Nothing has closed the text side's, and nothing cheaply can:
+seeing an inferred type's namespace means resolving symbols, which is the full Roslyn analysis
+ADR-008 deferred and which the available Roslyn tooling does not deliver here — its
+`get_dependency_graph` errors on this solution and its `detect_circular_dependencies` reports zero
+cycles where there are ten slices in one.
+
+That makes the allowlist the stronger instrument today, and the script the weaker one. It is a search
+tool, not a gate.
+
+### What C5 gates on, restated
+
+**An edge counts as removed only when its `SliceAdjacency` row can be deleted and the architecture
+suite stays green.**
+
+The script's falling numbers say where to try. The allowlist says whether it worked. C5's prediction
+is therefore stated in allowlist rows, which are enforced on every build, rather than in script edges,
+which can fall for a reason that is not true.
+
+Both numbers still get recorded, because the pair is more informative than either: a script edge that
+disappears while its allowlist row cannot be deleted is precisely the `Bot -> Irc` case, and knowing
+that shape exists is what stops the next worker from reading a falling count as progress.
+
 ## The rule for stage C
 
 `plans/basil-plan-20260909.md` task C5 says to stop and report if the graph does not move as
