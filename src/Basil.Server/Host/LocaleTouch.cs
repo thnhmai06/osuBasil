@@ -1,3 +1,4 @@
+using Basil.Server.Features.Bot;
 using Basil.Server.Features.Irc;
 using Basil.Server.Features.Multiplayer;
 
@@ -18,6 +19,7 @@ internal static class LocaleTouch
 	public static void AllReplyHolders()
 	{
 		_ = MpReplies.CreateFailed;
+		_ = BotReplies.RollResult;
 		_ = IrcReplies.Welcome;
 	}
 }

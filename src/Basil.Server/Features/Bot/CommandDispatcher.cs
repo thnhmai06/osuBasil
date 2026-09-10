@@ -368,7 +368,7 @@ public sealed class CommandDispatcher(
 		if (args.Length > 0 && int.TryParse(args[0], out var parsed) && parsed > 0) max = Math.Min(parsed, RollMaxCap);
 
 		var roll = (int)Random.Shared.NextInt64(0, (long)max + 1);
-		return string.Format(MpReplies.RollResult, sender.Name, roll);
+		return string.Format(BotReplies.RollResult, sender.Name, roll);
 	}
 
 	/// <summary>Answers <c>!where</c>, reporting the registered country of the named userSession.</summary>
@@ -377,7 +377,7 @@ public sealed class CommandDispatcher(
 	{
 		if (args.Length < 1)
 		{
-			sink.Reply(MpReplies.WhereUsage);
+			sink.Reply(BotReplies.WhereUsage);
 			return false;
 		}
 
@@ -385,11 +385,11 @@ public sealed class CommandDispatcher(
 		var user = await userRepository.FetchByNameAsync(name, cancellationToken);
 		if (user is null)
 		{
-			sink.Reply(string.Format(MpReplies.NotRegistered, name));
+			sink.Reply(string.Format(BotReplies.NotRegistered, name));
 			return false;
 		}
 
-		sink.Reply(string.Format(MpReplies.WhereIsIn, user.Name, user.Country.Describe()));
+		sink.Reply(string.Format(BotReplies.WhereIsIn, user.Name, user.Country.Describe()));
 		return true;
 	}
 
@@ -402,7 +402,7 @@ public sealed class CommandDispatcher(
 		switch (args.Length)
 		{
 			case < 1:
-				sink.Reply(MpReplies.FaqUsage);
+				sink.Reply(BotReplies.FaqUsage);
 				return false;
 			case 1 when args[0].Equals("list", StringComparison.OrdinalIgnoreCase):
 				sink.Reply(ListFaqEntries());
@@ -414,7 +414,7 @@ public sealed class CommandDispatcher(
 		var content = await _faq.ReadEntryAsync(entry, cancellationToken);
 		if (content is null)
 		{
-			sink.Reply(string.Format(MpReplies.NoFaqEntryFound, entry));
+			sink.Reply(string.Format(BotReplies.NoFaqEntryFound, entry));
 			return false;
 		}
 
@@ -432,8 +432,8 @@ public sealed class CommandDispatcher(
 			.ToList();
 
 		return entries.Count == 0
-			? MpReplies.NoFaqEntriesAvailable
-			: string.Format(MpReplies.AvailableFaqEntries, string.Join(", ", entries));
+			? BotReplies.NoFaqEntriesAvailable
+			: string.Format(BotReplies.AvailableFaqEntries, string.Join(", ", entries));
 	}
 
 	/// <summary>Shortens a string for logging, appending an ellipsis when truncated.</summary>

@@ -94,7 +94,7 @@ public class CommandDispatcherTests
 		var reply = await Run(dispatcher, sender, "roll", null, true);
 
 		Assert.NotNull(reply);
-		Assert.Matches(string.Format(MpReplies.RollResult, "cmyui", @"\d+").Replace("(", @"\(").Replace(")", @"\)"),
+		Assert.Matches(string.Format(BotReplies.RollResult, "cmyui", @"\d+").Replace("(", @"\(").Replace(")", @"\)"),
 			reply);
 	}
 
@@ -129,7 +129,7 @@ public class CommandDispatcherTests
 		var reply = await Run(dispatcher, sender, "!roll", null);
 
 		Assert.NotNull(reply);
-		Assert.Matches(string.Format(MpReplies.RollResult, "cmyui", @"\d+").Replace("(", @"\(").Replace(")", @"\)"),
+		Assert.Matches(string.Format(BotReplies.RollResult, "cmyui", @"\d+").Replace("(", @"\(").Replace(")", @"\)"),
 			reply);
 		var pointsToken = reply.Split(' ')[2];
 		var points = int.Parse(pointsToken);
@@ -316,7 +316,7 @@ public class CommandDispatcherTests
 
 		var reply = await Run(dispatcher, sender, "!where peppy", null);
 
-		Assert.Equal(string.Format(MpReplies.WhereIsIn, "peppy", "United States"), reply);
+		Assert.Equal(string.Format(BotReplies.WhereIsIn, "peppy", "United States"), reply);
 	}
 
 	[Fact]
@@ -328,7 +328,7 @@ public class CommandDispatcherTests
 
 		var reply = await Run(dispatcher, sender, "!where ghost", null);
 
-		Assert.Equal(string.Format(MpReplies.NotRegistered, "ghost"), reply);
+		Assert.Equal(string.Format(BotReplies.NotRegistered, "ghost"), reply);
 	}
 
 	[Fact]
@@ -340,7 +340,7 @@ public class CommandDispatcherTests
 
 		var reply = await Run(dispatcher, sender, "!where nobody", null);
 
-		Assert.Equal(string.Format(MpReplies.WhereIsIn, "nobody", "Unknown"), reply);
+		Assert.Equal(string.Format(BotReplies.WhereIsIn, "nobody", "Unknown"), reply);
 	}
 
 	[Fact]
@@ -374,7 +374,7 @@ public class CommandDispatcherTests
 
 			var reply = await Run(dispatcher, sender, "!faq nonexistent", null);
 
-			Assert.Equal(string.Format(MpReplies.NoFaqEntryFound, "nonexistent"), reply);
+			Assert.Equal(string.Format(BotReplies.NoFaqEntryFound, "nonexistent"), reply);
 		}
 		finally
 		{
@@ -396,7 +396,7 @@ public class CommandDispatcherTests
 
 			var reply = await Run(dispatcher, sender, "!faq list", null);
 
-			Assert.Equal(string.Format(MpReplies.AvailableFaqEntries, "peppy, rules"), reply);
+			Assert.Equal(string.Format(BotReplies.AvailableFaqEntries, "peppy, rules"), reply);
 		}
 		finally
 		{
@@ -415,7 +415,7 @@ public class CommandDispatcherTests
 
 			var reply = await Run(dispatcher, sender, "!faq list", null);
 
-			Assert.Equal(MpReplies.NoFaqEntriesAvailable, reply);
+			Assert.Equal(BotReplies.NoFaqEntriesAvailable, reply);
 		}
 		finally
 		{
@@ -439,7 +439,7 @@ public class CommandDispatcherTests
 			var reply = await Run(dispatcher, sender, "!faq ../secret", null);
 
 			Assert.DoesNotContain("TOP SECRET", reply);
-			Assert.Equal(string.Format(MpReplies.NoFaqEntryFound, "secret"), reply);
+			Assert.Equal(string.Format(BotReplies.NoFaqEntryFound, "secret"), reply);
 		}
 		finally
 		{

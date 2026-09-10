@@ -13,16 +13,10 @@ per the orchestration doc's convention.
 
 1. **Commit 1 (done)** — pure move: `MpCommandService`/`MpReplies` relocate to
    `Basil.Server.Features.Multiplayer`, no behavior or signature change.
-2. **Commit 2 (not started)** — split `MpReplies`: the eight members that back `!roll`/`!where`/
-   `!faq` (`RollResult`, `WhereUsage`, `NotRegistered`, `WhereIsIn`, `FaqUsage`, `NoFaqEntryFound`,
-   `NoFaqEntriesAvailable`, `AvailableFaqEntries`) are not `!mp` — rule 9 says each chat surface
-   owns its own reply constants, and `CommandDispatcher` (which stays in Bot) is the surface for
-   those three commands. Move them to a new `Bot.BotReplies`, wording and locale keys unchanged.
-   Also split `Features/Bot/Locale/bot.en.json`: the same eight keys move to a new
-   `Features/Bot/Locale/bot.en.json` residual (or renamed) fragment, the rest moves with the code
-   to `Features/Multiplayer/Locale/mp.en.json`. The csproj glob
-   (`Features\**\Locale\*.json` → `Data/Localization/%(Filename)%(Extension)`) needs no edit —
-   it picks up any `Locale/*.json` under any slice folder.
+2. **Commit 2 (done)** — split `MpReplies`: the eight members that back `!roll`/`!where`/`!faq`
+   moved to a new `Bot.BotReplies`, wording and locale keys unchanged. `Features/Bot/Locale/
+   bot.en.json` now holds only those eight keys; the rest moved with the code to a new
+   `Features/Multiplayer/Locale/mp.en.json`.
 3. **Commit 3 (not started)** — collapse `Bot -> Multiplayer` to one contract. Design decided (see
    below); not yet implemented.
 
@@ -144,12 +138,69 @@ own direct use of `MatchSession`/`IMatchRegistry` for scope resolution and refer
   `DispatchAsync`) — individual test bodies that pass a `MatchSession` into `Run`/`RunAll` should
   not need to change, since the helper does the conversion once.
 
+### Commit 2 — what was done
+
+- New `Basil.Server.Features.Bot.BotReplies` (`src/Basil.Server/Features/Bot/BotReplies.cs`) holds
+  `RollResult`, `WhereUsage`, `NotRegistered`, `WhereIsIn`, `FaqUsage`, `NoFaqEntryFound`,
+  `NoFaqEntriesAvailable`, `AvailableFaqEntries` — moved verbatim (same locale keys, same wording)
+  out of `MpReplies`. This is a member-level move, not a single Rider refactoring tool run: found
+  every reference with `grep -rln "MpReplies\.$member\b"` per member first (only
+  `CommandDispatcher.cs` and `CommandDispatcherTests.cs` had any), then did the move by hand
+  (`sed` for the mechanical `MpReplies.X` → `BotReplies.X` rewrite at those two call sites, since
+  both files are already in the `Basil.Server.Features.Bot`/`Basil.Server.Tests.Features.Bot`
+  namespace and need no new `using`).
+- `MpReplies` keeps everything else, including `ChainMustBeMp`/`CannotChainMp`/
+  `NotScopedToAnyMatchHint`/`UnknownMpSubcommand`/`CreatorOnlyMp`/`MpNotUsableFromLobby`/
+  `MpChainNotUsableFromLobby`/`MpInDmOnly` — these back `!mp`-dispatch logic that Commit 3 moves
+  into `MpCommandService`, so they stay with the code that will end up producing them.
+- `Features/Bot/Locale/bot.en.json` now holds only the eight relocated keys; the rest (all of
+  `Commands.Mp.*` plus the eight `!mp`-dispatch `General.*` keys) moved to a new
+  `Features/Multiplayer/Locale/mp.en.json`. No key text changed. The csproj glob
+  (`Features\**\Locale\*.json` → `Data/Localization/%(Filename)%(Extension)`) needed no edit.
+- `LocaleTouch.AllReplyHolders()` now also touches `BotReplies.RollResult`, and
+  `ReplyLocaleTests.cs` gained a `BotReplies_EveryMemberResolvesToNonEmptyText` test mirroring the
+  existing `MpReplies`/`IrcReplies` ones. `LocaleCatalogTests.EveryReferencedKeyExistsAndEveryKeyIsReferenced`
+  (unmodified) is the real safety net here — it fails if any key went missing or double-defined
+  across the split; it passed.
+
+### Commit 2 verification (all green)
+
+- `dotnet build --configuration Debug`: 0 errors.
+- `Basil.ArchitectureTests`: 6/6.
+- `Basil.Domain.Tests`: 114/114.
+- `Basil.Protocol.Tests`: 158/158.
+- `Basil.Server.Tests`: **1053**/1053 (+1 from the new `BotReplies` locale test; arithmetic:
+  1052 + 1 new test = 1053).
+- `Basil.IntegrationTests`: 363/363 (same benign cleanup-teardown log lines as Commit 1, 0 failed).
+- Route count: 140, unchanged (no route-shaped file touched).
+- `measure-slice-graph.py`: features-only 43, solution-wide 50 — unchanged from Commit 1, as
+  expected: this was a string relocation between two files already inside the same
+  slice-crossing edge (`Bot -> Multiplayer`, via `using Basil.Server.Features.Multiplayer;` in
+  `CommandDispatcher.cs`, which was already there and still is), not a new namespace crossing.
+- `SliceAdjacency.Allowed`: unchanged at 45 tuples (no edge added or removed by this commit).
+
 ### Next exact step
 
-Start Commit 2: create `Basil.Server.Features.Bot.BotReplies` with the eight non-`!mp` members
-moved out of `Basil.Server.Features.Multiplayer.MpReplies` (find every reference with
-`mcp__rider__find_references` first, since member-level moves aren't a single Rider refactoring —
-do it as a manual cut/paste plus reference fixups, not a claimed refactoring tool run). Split
-`Features/Bot/Locale/bot.en.json` accordingly. Update `CommandDispatcher.cs` and any test file
-referencing those eight `MpReplies.*` members to `BotReplies.*`. Rebuild, run all five test
-projects in the order given in the task (IntegrationTests last), then commit.
+Start Commit 3: implement the design above. Order of operations:
+1. `mcp__rider__extract_interface` on `MpCommandService` is not the right tool here, because the
+   two contract methods (`DispatchAsync`/`DispatchChainAsync`) don't exist on the class yet — they
+   have to be created (Move Method from `CommandDispatcher`) before there's anything to extract.
+   So: first move `DispatchMpAsync`, `ResolveScope`, `BuildDmRedirectSink`, `ScopedDmReplySink`,
+   and `DispatchChainAsync`'s body from `CommandDispatcher.cs` into `MpCommandService.cs` by hand
+   (same logic, renamed to the two contract method names), adding `ChannelMembershipService` to
+   `MpCommandService`'s constructor.
+2. Run `mcp__rider__extract_interface` on the now-updated `MpCommandService` for exactly those two
+   methods, naming it `IMpCommandService`.
+3. `mcp__rider__change_api_signature` on `ICommandDispatcher.DispatchAsync` (and its
+   `CommandDispatcher` implementation) to replace `MatchSession? matchScope` with
+   `int? matchScopeDbId`; fix the two `ChatDispatchService` call sites to pass `matchScope?.DbId`.
+4. Change `CommandDispatcher`'s constructor to depend on `IMpCommandService` instead of the
+   concrete `MpCommandService`, dropping `IMatchRegistry`/`ChannelMembershipService` if nothing
+   else in the class still needs them directly (check with `mcp__rider__find_references` first).
+5. Update `CommandDispatcherTests.MakeDispatcher`/`Run`/`RunAll` per the note above; rebuild, run
+   all five test projects (IntegrationTests last), update this checkpoint, commit.
+6. Only after Commit 3 is green: re-run `measure-slice-graph.py` one more time (expected
+   unchanged again — this commit doesn't cross a new namespace boundary, it removes one type's
+   worth of direct references and adds an interface, both already within the existing
+   `Bot -> Multiplayer` edge) and write the final report covering both instruments, the
+   `Bot -> Irc` finding, and all commit shas.
