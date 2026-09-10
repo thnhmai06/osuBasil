@@ -62,6 +62,39 @@ hunting a regression that is not there.
 Note also that the failing run reported 354 tests rather than 355 — a failure there aborts a
 sibling, so a short count is a symptom of the same flake rather than a second problem.
 
+## Every worker prompt requires the worker to keep its own checkpoint
+
+**The worker writes the checkpoint, not the orchestrator.** A worker updates its phase checkpoint
+file in the **same commit** as each green step, saying what it just finished and what the next exact
+step is.
+
+This was the instruction from the start and it was not followed. Three workers were dispatched on
+2026-09-10 and none was told to touch a checkpoint; every prompt said "commit the moment a task is
+green" and "report back", and the orchestrator wrote the checkpoints afterwards from the worker's
+report. That works only while the orchestrator survives. It is the wrong place for the record for a
+simple reason:
+
+* A worker dies mid-task roughly every session here — session limits, backgrounded test runs, a tool
+  ceiling. That is the normal case, not the exception.
+* When the worker dies, its report dies with it. The orchestrator then reconstructs the state by
+  reading `git log`, running a build and grepping the tree — which is exactly the re-investigation a
+  checkpoint exists to make unnecessary.
+* And when the orchestrator's own context is lost as well, nothing on disk says where the work got
+  to. The tree compiles, three commits are in, fifteen files are modified, and the next session has
+  to derive the intent from the diff.
+
+A successor should be able to read one file and continue. So the checkpoint is part of the
+deliverable, not a report about it:
+
+* **In the same commit as the code.** A separate "update the checkpoint" commit is a commit that does
+  not happen when the session ends between the two.
+* **What is done, what is next, and what was decided.** A decision made mid-task and not written down
+  is re-litigated by the successor.
+* **Named in the prompt, with its path.** A worker not told which file to update will not invent one.
+
+The orchestrator still owns cross-phase records — `orchestration.md`, the decision documents, the
+plan itself. It stops owning "where is this task up to".
+
 ## Every worker prompt names the Rider refactorings
 
 Observed on 2026-09-09: a worker was renaming identifiers by hand while

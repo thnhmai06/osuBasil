@@ -197,10 +197,46 @@ Not the same thing as `StartupUpdateCheck.StopAsync` throwing `ObjectDisposedExc
 stop, which was a real bug in the update system and is fixed at `dcc63374`. A worker had attributed
 that to this same phase 0 flake note.
 
+## Task B5 — where it stands
+
+Started 2026-09-10 10:20. **Three commits in, one piece left.** The tree compiles at every point
+below; verify with a build before trusting that, since a previous worker here left it not compiling.
+
+| Commit | What landed |
+|---|---|
+| `16e02489` | `StateStream` returns `(latest, version)` read together under the lock `Publish` takes, and a subscriber fences hub events against its own state version |
+| `d48dca61` | the seed handshake deleted — `MarkStale`, `IsStale`, `SeedIfNotSuperseded`, `_hasSnapshot`, and the two `LiveEventHubTests` cases that pinned the seed race |
+| `8f035ae8` | the match state, score and chat streams moved onto the hub |
+
+**Left to do: retire `IMatchLiveEvents` and `MatchLiveEvents`.** This is the second of the two
+parallel eventing mechanisms that have coexisted since Phase 0, and removing it is what closes B5.
+Fifteen files are modified and uncommitted, mid-retirement:
+
+* `Features/Multiplayer/MatchLifecycle.cs`, `MatchLiveSnapshotBuilder.cs`,
+  `MultiplayerServiceCollectionExtensions.cs`
+* `Features/Irc/IIrcConnection.cs`, `Features/Spectating/IPlayerInputEvents.cs`,
+  `PlayerInputEvents.cs`
+* nine test files, chiefly `MultiplayerTestSupport.cs`, which every multiplayer test builds on
+
+Still referencing the old mechanism: `Features/Multiplayer/MatchLiveEvents.cs`,
+`Shared/Eventing/IMatchLiveEvents.cs`, `MatchLiveEventsTests.cs`, `LiveSseEndpointTests.cs`,
+`TcpIrcConnectionTests.cs`, `MatchMembershipServiceTests.cs`, `MultiplayerTestSupport.cs`.
+`mcp__rider__safe_delete` on the interface is the way to find anything this list misses.
+
+**The design is settled** in `plans/execution/hub-adoption-decision.md`. Do not re-derive it, and
+note that this file's own "Task 1.3's design question" section below weighs two candidates the
+decision document rejects in favour of a third. The decision document wins.
+
+**Still owed:** the invariant test the decision document names — *a subscriber's first item is the
+state at version N, and every later item has a version strictly greater than N*. That is what
+replaces the two deleted `LiveEventHubTests` cases, and it is the reason deleting them was safe, so
+B5 is not finished until it exists. Bound it with a `CancellationTokenSource` of a few seconds: two
+tests on this project were written to hang on regression instead of failing, and a hung suite is far
+harder to diagnose.
+
 ## Next exact step
 
-**B5, adopt the event hub.** B6 is done: `MatchControlService` is 906 lines, the suite is 1658
-(1657 plus one new regression test), and the route table is byte-identical at 138 entries.
+Finish retiring `IMatchLiveEvents`, add the invariant test, and close B5 — which closes Stage B.
 
 Then **B5, adopt the event hub.** The design question this file records under "Task 1.3's design
 question" is already decided, and decided differently than either option sketched here: see
