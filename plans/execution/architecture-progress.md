@@ -152,6 +152,31 @@ cycles where there are ten slices in one.
 That makes the allowlist the stronger instrument today, and the script the weaker one. It is a search
 tool, not a gate.
 
+### Three instruments, three populations
+
+Task C3 added the third case. It inverted `PlayerLogoutService`'s dependency on five slices and
+**every number stayed the same**: `SliceAdjacency` 44, features-only 43, solution-wide 50. The win was
+real and it showed up in a fourth place — the `Shared_Should_Not_Reference_Features` pinned list, 12
+entries down to 11.
+
+The script saw nothing because `Shared/Sessions/PlayerLogoutService.cs` was never in its population:
+it counts edges **sourced from** a slice-named directory, and `Shared/` is not one. So:
+
+| Instrument | Population | Enforced by |
+|---|---|---|
+| `SliceAdjacency` | `Features/<Slice>` → `Features/<Slice>` | NetArchTest, every build |
+| `Shared_Should_Not_Reference_Features` pinned list | `Shared/` → `Features/` | NetArchTest, exact set equality |
+| `measure-slice-graph.py` | files owned by a slice-named directory, in `Features/` or `Domain/` | nothing; it is a report |
+
+Nothing measures `Host/` → anything, and nothing yet measures inside `Basil.Domain` — which is what
+Task C6 adds before C1 moves ninety-six files in there.
+
+**The practical rule: name the currency before claiming a win.** C3's currency is the pinned list. C4's
+was `SliceAdjacency` rows. C2's will be the pinned list again, because what it removes is
+`Shared/Sessions/GameSession.cs` naming Multiplayer and Spectating types. C5 must state which
+instrument each claim rests on, or a task that moved nothing will read as progress on whichever number
+happened to drift.
+
 ### What C5 gates on, restated
 
 **An edge counts as removed only when its `SliceAdjacency` row can be deleted and the architecture
