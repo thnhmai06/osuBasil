@@ -275,7 +275,7 @@ rewrites it, and add a regression test that pins the invariant rather than the c
 
 ## Stage C — extract the business layer
 
-**The tasks run C4, C3, C2, C1, C5**, not in numbered order. Every restructuring step happens inside
+**The tasks run C4, C3, C2, C6, C1, C5**, not in numbered order. Every restructuring step happens inside
 `Basil.Server`, where the compiler checks each move and the suite is runnable at every intermediate
 point; the project boundary is crossed once, at the end, on code that has stopped moving. A
 half-finished restructuring is a compiling tree with a measurable edge count. A half-finished
@@ -341,10 +341,13 @@ write-ownership the code already has:
   `Shared.Sessions.*` entries. The test asserts exact set equality, so the list must be edited
   deliberately — that edit is the proof.
 
-### Task C3: Logout and login become events
+### Task C3: Logout stops importing five slices
 
-`PlayerLogoutService` imports five feature slices. It publishes instead, and Multiplayer,
-Spectating, Chat, Irc and Bot subscribe.
+`PlayerLogoutService` imports five feature slices. **The design is settled in
+`plans/execution/logout-as-event-decision.md`: an ordered handler list, not an event bus.** There is
+no domain-event bus in this codebase — `Shared/Eventing` is entirely SSE machinery — so "becomes an
+event" would have meant building one, and the requirement the verification line actually states is
+dependency inversion, not messaging.
 
 - [ ] Verify: the service imports no feature. Auth leaves the strongly connected component.
 
@@ -355,6 +358,39 @@ keeps the dispatcher and the reply sink — the command transport — and calls 
 contract.
 
 - [ ] Verify: `Bot -> Multiplayer` drops from nineteen types to one contract.
+
+### Task C6: Give `Basil.Domain` its own graph rule, before C1 moves anything into it
+
+**This runs before C1, and C1 is blocked on it.** Measured 2026-09-10, after C4.
+
+Every instrument this migration has loses sight of the moved code at the moment C1 moves it:
+
+| Instrument | What happens at C1 |
+|---|---|
+| `measure-slice-graph.py` features-only | collapses by construction — the files left `Features/` |
+| `SliceAdjacency` + NetArchTest | stops covering them — its rule is scoped to `Features/<Slice>`, so `Basil.Domain.Multiplayer -> Basil.Domain.Users` is invisible to it |
+| `measure-slice-graph.py` solution-wide | still spans them, and is the one instrument with a **proven** blind spot: Task C4 showed it cannot see an inferred type such as `sender.IrcConnection` |
+
+So after C1 the only thing watching ninety-six moved files would be the weakest of the three. C1
+moves per feature, one commit each; a rule that lands first checks each feature's move as it arrives,
+and a rule that lands afterwards finds out at the end, with everything moved and no revertable unit.
+
+Stage E2 already lists this rule — "the feature graph inside `Basil.Domain` is acyclic except for the
+declared relationships". It is pulled forward because C5 cannot gate on an instrument that does not
+exist yet.
+
+- [ ] Add the rule over `Basil.Domain`'s internal namespaces, in `Basil.ArchitectureTests`, in the
+  same declared-allowlist shape as `SliceAdjacency` so both read alike.
+- [ ] **It starts with a pinned list of three, not empty.** Measured on the current tree, three
+  cross-slice edges already have their owning file under `src/Basil.Domain`:
+  `Multiplayer -> Beatmaps` and `Multiplayer -> Scores` (both `Multiplayer/Round.cs`), and
+  `Scores -> Beatmaps` (`Scores/Submission.cs`, `HitCounts.cs`, `Mods.cs`). Each is a plausible
+  domain relationship rather than an accident — a round has a beatmap and produces scores, a
+  submission is against a beatmap — so each is declared with its reason, and that list is C5's honest
+  Domain baseline.
+- [ ] Verify the rule fails when it should: add an edge that is not declared and watch it break,
+  before trusting a green run.
+- [ ] Stage E2 then covers the remaining invariants rather than this one.
 
 ### Task C5: Measure the graph
 

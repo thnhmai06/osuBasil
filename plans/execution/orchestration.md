@@ -129,6 +129,12 @@ deliverable, not a report about it:
 * **What is done, what is next, and what was decided.** A decision made mid-task and not written down
   is re-litigated by the successor.
 * **Named in the prompt, with its path.** A worker not told which file to update will not invent one.
+* **Applied-but-uncommitted is stated separately from what is next.** Observed on 2026-09-10: a C4
+  checkpoint listed six steps under "next exact step" while steps one to five were already applied in
+  the working copy. The successor spent a pass reviewing a diff it believed it was about to write —
+  and the only behavioural bug in all of C4 was sitting in that pre-applied hand-edit, unverified. A
+  "next step" that silently means "already done, not yet checked" is the same class of lie as a stale
+  count.
 
 The orchestrator still owns cross-phase records — `orchestration.md`, the decision documents, the
 plan itself. It stops owning "where is this task up to".
