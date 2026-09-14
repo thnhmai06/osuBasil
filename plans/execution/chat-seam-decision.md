@@ -9,9 +9,16 @@
 >
 > **The three open questions in §6 are settled as follows.** `ChannelNotifier` lives in
 > `Features/Chat/Packets/`, like steps 1 and 2. `ChatLine` is born in `Features/Chat/`, not in
-> `Basil.Domain` — no move without a requirement, and C1b is undecided. The join echo is produced by
-> `ChannelNotifier` calling `IrcQueryService.BuildNamesReply`, so RPL_NAMREPLY is formatted in one
-> file; the `Chat -> Irc` edge is already declared.
+> `Basil.Domain` — no move without a requirement, and C1b is undecided. The join echo: **not** by
+> `ChannelNotifier` calling `IrcQueryService` — that is a constructor cycle once
+> `ChannelMembershipService` takes `IChannelNotifier` (`IrcQueryService` → `ChannelMembershipService`
+> → `IChannelNotifier` → `ChannelNotifier` → `IrcQueryService`). Instead `Joined(self, channel, roster)`
+> takes the roster — the prefixed member names `ChannelMembershipService.Roster(channel)` computes —
+> and one static IRC-side formatter (in `Features/Irc/`, next to `IrcReplies`) builds RPL_NAMREPLY
+> and RPL_ENDOFNAMES for both `ChannelNotifier` and `IrcQueryService.BuildNamesReply`, so the numerics
+> are still formatted in one place. `MemberPrefix` stays public on `ChannelMembershipService`
+> (`IrcQueryService.cs:283` and tests use it). Commits 1–4 landed as written (`c152c026`,
+> `16b53d66`, `cd3edf84`, `087902df`); commit 5 follows this amended shape.
 
 ## 1. Inventory — every protocol use in the five types, by meaning
 
