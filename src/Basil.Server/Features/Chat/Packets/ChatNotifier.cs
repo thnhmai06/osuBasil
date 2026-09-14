@@ -1,0 +1,18 @@
+using Basil.Protocol.Irc;
+using Basil.Server.Shared.Sessions;
+
+namespace Basil.Server.Features.Chat.Packets;
+
+/// <summary>
+///     Delivers chat through the recipient's session connection, which speaks IRC lines to an IRC
+///     client and re-encodes them as bancho packets for an osu! client.
+/// </summary>
+public sealed class ChatNotifier : IChatNotifier
+{
+	public void Deliver(UserSession recipient, ChatLine line)
+	{
+		recipient.IrcConnection.Send(line.Notice
+			? IrcMessageWriter.Notice(line.SenderName, line.SenderId, line.Target, line.Text)
+			: IrcMessageWriter.Privmsg(line.SenderName, line.SenderId, line.Target, line.Text));
+	}
+}

@@ -36,7 +36,6 @@ public class TransportSeamTests
 		// as a reminder to delete its row here.
 		string[] knownOffenders =
 		[
-			"Basil.Server.Features.Auth.ClientIntegrityService",
 			"Basil.Server.Features.Auth.LoginService",
 			"Basil.Server.Features.Chat.ChannelMembershipService",
 			"Basil.Server.Features.Chat.ChatDispatchService",

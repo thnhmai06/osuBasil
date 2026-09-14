@@ -1,9 +1,9 @@
 using Basil.Server.Features.Irc;
 using Basil.Server.Features.Bot;
+using Basil.Server.Features.Chat;
 using Basil.Server.Features.Multiplayer;
 using Basil.Server.Shared.Sessions;
 using Basil.Domain.Scores;
-using Basil.Protocol.Irc;
 using Microsoft.Extensions.Logging;
 
 namespace Basil.Server.Features.Auth;
@@ -33,6 +33,7 @@ public sealed class ClientIntegrityService(
 	ISessionRegistry<GameSession> gameRegistry,
 	ISessionRegistry<IrcSession> ircRegistry,
 	MatchBroadcast matchBroadcast,
+	IChatNotifier chat,
 	ILogger<ClientIntegrityService> logger)
 {
 	/// <summary>
@@ -100,9 +101,9 @@ public sealed class ClientIntegrityService(
 		foreach (var refereeId in match.Referees)
 		{
 			if (gameRegistry.GetByUserId(refereeId) is { } referee)
-				referee.IrcConnection.Send(IrcMessageWriter.Privmsg(bot.Name, bot.Id, referee.Name, dm));
+				chat.Deliver(referee, new ChatLine(bot.Id, bot.Name, referee.Name, dm));
 			if (ircRegistry.GetByUserId(refereeId) is { } irc)
-				irc.IrcConnection.Send(IrcMessageWriter.Privmsg(bot.Name, bot.Id, irc.Name, dm));
+				chat.Deliver(irc, new ChatLine(bot.Id, bot.Name, irc.Name, dm));
 		}
 	}
 }

@@ -3,7 +3,7 @@
 > Read this file first. It is kept current in the same commit as every green step, so a
 > successor can resume from here without reconstructing state from `git log` and a build.
 
-## Current task: C1a — steps 1 and 2 done. Next is step 3 (chat), design first
+## Current task: C1a — step 3 (chat) in progress, commit 1 of 5 done
 
 Order is C4 → C3 → C6 → C1a → C5 (see `plans/execution/stage-c-order-decision.md` for why C1 runs
 last, and `plans/basil-plan-20260909.md`'s Stage C preamble, which adds C6 and splits C1). C2 is
@@ -623,12 +623,24 @@ session limit before the bodies; the orchestrator finished the bodies and the te
 Verification: build green, ArchitectureTests 8, Domain 114, Protocol 158, Server.Tests 1057,
 IntegrationTests 363, all passed (3 min 54 s, no flake this run).
 
+### Step 3, commit 1 — `ClientIntegrityService` (done, 17 to 16)
+
+Adds `ChatLine` and `IChatNotifier` (`Features/Chat/`) and `ChatNotifier`
+(`Features/Chat/Packets/`), which sends through the recipient's `IrcConnection` — the per-session
+routing that already speaks IRC to IRC clients and re-encodes to packets for osu! clients — so every
+test that reads back an `IrcMessage` sees the same message over the same path. The anti-cheat DM to
+referees is the only site; row deleted. One constructor site, in its own test.
+
+Verification: build green, ArchitectureTests 8, Server.Tests 1057, IntegrationTests 363 (3 min
+51 s).
+
 ### Next exact step
 
 Step 3 — the chat seam, designed and decided in `plans/execution/chat-seam-decision.md`. Five
-commits in its §4 order, one pinned row each, tree green after each: (1) `ClientIntegrityService`
-through `IChatNotifier` — this commit also adds `ChatLine`, `IChatNotifier`, `ChatNotifier` and
-the DI registration; (2) `MatchBroadcast`; (3) `MpCommandService+ScopedDmReplySink`;
+commits in its §4 order, one pinned row each, tree green after each: (1) done, above;
+(2) `MatchBroadcast` — add a `BroadcastPrivmsg(channel, ChatLine, skip)` overload on
+`ChannelMembershipService` *beside* the `IrcMessage` one, `PublishMatchChat` reads the record's
+fields, `EnqueueChat`/`AnnounceToRoomAndReferees` go through `IChatNotifier` and the new overload; (3) `MpCommandService+ScopedDmReplySink`;
 (4) `ChatDispatchService` and its two sinks; (5) `ChannelMembershipService`, with `IChannelNotifier`
 and NAMES/LIST moving to `IrcQueryService` — 44 constructor sites, Rider `change_api_signature`.
 Every notifier method stays `void` and synchronous: chat is delivered under `MatchSession.Lock`
