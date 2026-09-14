@@ -6,7 +6,6 @@ using Basil.Server.Shared.Sessions;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
-using Basil.Protocol.Packets;
 
 namespace Basil.Server.Features.Multiplayer;
 
@@ -27,6 +26,7 @@ namespace Basil.Server.Features.Multiplayer;
 public sealed class MatchControlService(
 	MatchMembership matchMembership,
 	MatchLifecycle matchLifecycle,
+	IMatchNotifier notifier,
 	IMatchRepository matchRepository,
 	IBeatmapRepository beatmapRepository,
 	ISessionRegistry<GameSession> gameRegistry,
@@ -206,7 +206,7 @@ public sealed class MatchControlService(
 		match.HostId = target.Id;
 		logger.LogInformation("Host transferred: MatchId={MatchId} PrevHostId={PrevHostId} NewHostId={NewHostId}",
 			match.DbId, prevHostId, target.Id);
-		target.Enqueue(ServerPacketWriter.MatchTransferHost());
+		notifier.HostTransferred(target);
 		mutation.PublishState();
 
 		var prevHostName = gameRegistry.GetByUserId(prevHostId)?.Name;
@@ -285,13 +285,13 @@ public sealed class MatchControlService(
 	///     <see cref="InviteResult.Ok" /> when the invite was sent, or
 	///     <see cref="InviteResult.TargetAlreadyInRoom" /> when the target is already in the match.
 	/// </returns>
-	public static InviteResult Invite(UserSession sender, MatchSession match, GameSession target)
+	public InviteResult Invite(UserSession sender, MatchSession match, GameSession target)
 	{
 		if (target.IsBot) return InviteResult.TargetIsBot;
 		if (target.Match == match) return InviteResult.TargetAlreadyInRoom;
 
 		match.AddInvite(target.Id);
-		target.Enqueue(ServerPacketWriter.MatchInvite(sender.Id, sender.Name, match.Embed, target.Name));
+		notifier.Invited(target, sender, match);
 		return InviteResult.Ok;
 	}
 
@@ -706,7 +706,7 @@ public sealed class MatchControlService(
 			if (session is GameSession { Match: not null } gameSession && gameSession.Match == match)
 			{
 				await matchMembership.LeaveAsync(gameSession, match, cancellationToken);
-				gameSession.Enqueue(ServerPacketWriter.MatchJoinFail());
+				notifier.Removed(gameSession);
 				removedAny = true;
 			}
 			else if (session.InChannel(match.ChatChannelName))
@@ -763,7 +763,7 @@ public sealed class MatchControlService(
 			if (session is GameSession { Match: not null } gameSession && gameSession.Match == match)
 			{
 				await matchMembership.LeaveAsync(gameSession, match, cancellationToken);
-				gameSession.Enqueue(ServerPacketWriter.MatchJoinFail());
+				notifier.Removed(gameSession);
 			}
 			else if (session.InChannel(match.ChatChannelName))
 			{
@@ -858,7 +858,7 @@ public sealed class MatchControlService(
 		if (seated is null || seated.Match != match) return;
 
 		await matchMembership.LeaveAsync(seated, match, cancellationToken);
-		seated.Enqueue(ServerPacketWriter.MatchJoinFail());
+		notifier.Removed(seated);
 	}
 
 	/// <summary>Seats a userSession directly, bypassing password, private, and locked gating.</summary>

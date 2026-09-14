@@ -1,3 +1,4 @@
+using Basil.Server.Features.Multiplayer.Packets;
 using Basil.Server.Shared.Eventing;
 using Basil.Server.Features.Irc;
 using System.Text;
@@ -59,13 +60,13 @@ public class MatchMembershipServiceTests
 	{
 		var channelMembership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
 			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
-		var broadcast = new MatchBroadcast(_channelRegistry, channelMembership, _gameRegistry, _ircRegistry, _hub,
+		var broadcast = new MatchBroadcast(_channelRegistry, channelMembership, new BanchoMatchNotifier(_channelRegistry, channelMembership), _gameRegistry, _ircRegistry, _hub,
 			_beatmapRepository, _userRepository);
 		var serviceProvider = Substitute.For<IServiceProvider>();
-		var lifecycle = new MatchLifecycle(_matchRegistry, _channelRegistry, channelMembership, _gameRegistry,
+		var lifecycle = new MatchLifecycle(_matchRegistry, _channelRegistry, channelMembership, new BanchoMatchNotifier(_channelRegistry, channelMembership), _gameRegistry,
 			_matchRepository, _roundEndOutbox, _hub, _beatmapRepository, broadcast, serviceProvider,
 			NullLogger<MatchLifecycle>.Instance);
-		var membership = new MatchMembership(_channelRegistry, _gameRegistry, channelMembership, _matchRepository,
+		var membership = new MatchMembership(_channelRegistry, _gameRegistry, channelMembership, new BanchoMatchNotifier(_channelRegistry, channelMembership), _matchRepository,
 			lifecycle, NullLogger<MatchMembership>.Instance);
 		serviceProvider.GetService(typeof(MatchMembership)).Returns(membership);
 		return (membership, lifecycle, broadcast);

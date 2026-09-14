@@ -1,3 +1,4 @@
+using Basil.Server.Features.Multiplayer.Packets;
 using Basil.Server.Features.Irc;
 using Basil.Server.Features.Multiplayer.Handlers.Countdown;
 using Basil.Server.Features.Multiplayer.Handlers.Lifecycle;
@@ -344,14 +345,15 @@ internal static class MultiplayerTestSupport
 			ChannelMembership = new ChannelMembershipService(SessionRegistry, IrcSessionRegistry, ChannelRegistry,
 				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
 
-			MatchBroadcast = new MatchBroadcast(ChannelRegistry, ChannelMembership, SessionRegistry,
+			MatchNotifier = new BanchoMatchNotifier(ChannelRegistry, ChannelMembership);
+			MatchBroadcast = new MatchBroadcast(ChannelRegistry, ChannelMembership, MatchNotifier, SessionRegistry,
 				IrcSessionRegistry, Hub, BeatmapRepository, UserRepository);
 
-			MatchLifecycle = new MatchLifecycle(MatchRegistry, ChannelRegistry, ChannelMembership, SessionRegistry,
+			MatchLifecycle = new MatchLifecycle(MatchRegistry, ChannelRegistry, ChannelMembership, MatchNotifier, SessionRegistry,
 				MatchRepository, RoundEndOutbox, Hub, BeatmapRepository, MatchBroadcast, ServiceProvider,
 				NullLogger<MatchLifecycle>.Instance);
 
-			MatchMembership = new MatchMembership(ChannelRegistry, SessionRegistry, ChannelMembership,
+			MatchMembership = new MatchMembership(ChannelRegistry, SessionRegistry, ChannelMembership, MatchNotifier,
 				MatchRepository, MatchLifecycle, NullLogger<MatchMembership>.Instance);
 
 			ServiceProvider.GetService(typeof(MatchMembership)).Returns(_ => MatchMembership);
@@ -362,7 +364,7 @@ internal static class MultiplayerTestSupport
 				NullLogger<TimerHandler>.Instance);
 			AbortTimerHandler = new AbortTimerHandler(NullLogger<AbortTimerHandler>.Instance);
 			StartHandler = new StartHandler(MatchLifecycle, TimerHandler);
-			AbortHandler = new AbortHandler(MatchBroadcast, RoundEndOutbox, NullLogger<AbortHandler>.Instance);
+			AbortHandler = new AbortHandler(MatchBroadcast, MatchNotifier, RoundEndOutbox, NullLogger<AbortHandler>.Instance);
 			CloseHandler = new CloseHandler(MatchLifecycle);
 		}
 
@@ -391,6 +393,7 @@ internal static class MultiplayerTestSupport
 		public ChannelMembershipService ChannelMembership { get; }
 		public MatchMembership MatchMembership { get; }
 		public MatchLifecycle MatchLifecycle { get; }
+		public BanchoMatchNotifier MatchNotifier { get; }
 		public MatchBroadcast MatchBroadcast { get; }
 		public SetTeamHandler SetTeamHandler { get; }
 		public SetSlotsHandler SetSlotsHandler { get; }

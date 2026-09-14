@@ -1,3 +1,4 @@
+using Basil.Server.Features.Multiplayer.Packets;
 using Basil.Server.Features.Multiplayer;
 using Basil.Server.Features.Multiplayer.Handlers.Lifecycle;
 using Basil.Server.Features.Multiplayer.Handlers.Slots;
@@ -19,7 +20,7 @@ public class MatchControlServiceGuardTests
 
 	private MatchControlService MakeService()
 	{
-		return new MatchControlService(_fixture.MatchMembership, _fixture.MatchLifecycle, _fixture.MatchRepository,
+		return new MatchControlService(_fixture.MatchMembership, _fixture.MatchLifecycle, _fixture.MatchNotifier, _fixture.MatchRepository,
 			_fixture.BeatmapRepository, _fixture.SessionRegistry, _fixture.IrcSessionRegistry,
 			NullLogger<MatchControlService>.Instance);
 	}

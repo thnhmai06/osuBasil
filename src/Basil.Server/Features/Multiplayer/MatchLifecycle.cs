@@ -7,7 +7,6 @@ using Basil.Server.Features.Chat;
 using Basil.Server.Features.Bot;
 using Basil.Domain.Multiplayer;
 using Basil.Protocol.Multiplayer;
-using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging;
 
 namespace Basil.Server.Features.Multiplayer;
@@ -24,6 +23,7 @@ public sealed class MatchLifecycle(
 	IMatchRegistry matchRegistry,
 	IChannelRegistry channelRegistry,
 	ChannelMembershipService channelMembership,
+	IMatchNotifier notifier,
 	ISessionRegistry<GameSession> gameRegistry,
 	IMatchRepository matchRepository,
 	IMatchRoundEndOutbox roundEndOutbox,
@@ -206,7 +206,7 @@ public sealed class MatchLifecycle(
 
 			if (channel is not null) channelMembership.Part(player, channel);
 			player.Match = null;
-			player.Enqueue(ServerPacketWriter.MatchJoinFail());
+			notifier.Removed(player);
 		}
 
 		await TeardownMatch(match, cancellationToken);
@@ -307,7 +307,7 @@ public sealed class MatchLifecycle(
 			match.Mode, match.WinCondition, match.TeamType,
 			match.Mods, DateTimeOffset.UtcNow.UtcDateTime, cancellationToken);
 
-		broadcast.Enqueue(match, ServerPacketWriter.MatchStart(match.ToPacket()), false, noMap);
+		notifier.RoundStarted(match, noMap);
 		mutation.PublishState();
 		logger.LogInformation("~ Match started: MatchId={MatchId} RoundId={RoundId}", match.DbId, match.CurrentRoundId);
 		return StartOutcome.Started;
@@ -431,7 +431,6 @@ public sealed class MatchLifecycle(
 
 		matchRegistry.Remove(match.Id);
 
-		var lobby = channelRegistry.GetByName("#lobby");
-		if (lobby is not null) channelMembership.BroadcastToMembers(lobby, ServerPacketWriter.DisposeMatch(match.Id));
+		notifier.Disposed(match);
 	}
 }

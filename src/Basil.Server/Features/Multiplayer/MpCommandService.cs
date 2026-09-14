@@ -48,6 +48,7 @@ namespace Basil.Server.Features.Multiplayer;
 public sealed class MpCommandService(
 	MatchMembership matchMembership,
 	MatchLifecycle matchLifecycle,
+	IMatchNotifier notifier,
 	SetTeamHandler setTeamHandler,
 	TimerHandler timerHandler,
 	AbortTimerHandler abortTimerHandler,
@@ -143,7 +144,7 @@ public sealed class MpCommandService(
 	internal static readonly string HelpText = string.Join('\n', Commands.Select(c => $"{c.Usage} - {c.Description}"));
 
 	private readonly MatchControlService _matchControl =
-		new(matchMembership, matchLifecycle, matchRepository, beatmapRepository, gameRegistry, ircRegistry,
+		new(matchMembership, matchLifecycle, notifier, matchRepository, beatmapRepository, gameRegistry, ircRegistry,
 			matchControlLogger);
 
 	/// <summary>
@@ -1036,7 +1037,7 @@ public sealed class MpCommandService(
 			return false;
 		}
 
-		var result = MatchControlService.Invite(sender, match, target);
+		var result = _matchControl.Invite(sender, match, target);
 		switch (result)
 		{
 			case MatchControlService.InviteResult.TargetAlreadyInRoom:

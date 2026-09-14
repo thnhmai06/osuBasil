@@ -36,7 +36,7 @@ public class MpCommandServiceTests
 
 	private MpCommandService MakeService()
 	{
-		return new MpCommandService(_fixture.MatchMembership, _fixture.MatchLifecycle,
+		return new MpCommandService(_fixture.MatchMembership, _fixture.MatchLifecycle, _fixture.MatchNotifier,
 			_fixture.SetTeamHandler, _fixture.TimerHandler, _fixture.AbortTimerHandler,
 			_fixture.StartHandler, _fixture.AbortHandler, _fixture.CloseHandler,
 			_fixture.MatchRegistry, _fixture.MatchRepository, _beatmaps,

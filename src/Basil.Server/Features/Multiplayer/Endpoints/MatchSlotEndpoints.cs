@@ -174,7 +174,7 @@ internal static class MatchSlotEndpoints
 							continue;
 						}
 
-						var inviteResult = MatchControlService.Invite(sender, match, target);
+						var inviteResult = matchControl.Invite(sender, match, target);
 						results.Add(inviteResult switch
 						{
 							MatchControlService.InviteResult.TargetAlreadyInRoom =>

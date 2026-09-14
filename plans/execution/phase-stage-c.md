@@ -3,7 +3,7 @@
 > Read this file first. It is kept current in the same commit as every green step, so a
 > successor can resume from here without reconstructing state from `git log` and a build.
 
-## Current task: C1a — step 1 done. Next is step 2
+## Current task: C1a — steps 1 and 2 done. Next is step 3 (chat), design first
 
 Order is C4 → C3 → C6 → C1a → C5 (see `plans/execution/stage-c-order-decision.md` for why C1 runs
 last, and `plans/basil-plan-20260909.md`'s Stage C preamble, which adds C6 and splits C1). C2 is
@@ -596,11 +596,46 @@ and `DiagnosticEndpointTests.GetGcLive_FirstEventIsARealGcReading` failed once a
 to do that in two consecutive full runs, unrelated to this change (nothing in Diagnostics or its
 tests moved). Recorded in `HANDOVER.md` §8 with what is known.
 
+### Step 2 — the match services (done, 20 to 17)
+
+`IMatchNotifier` (`Features/Multiplayer/`) carries nine things a match tells clients: join
+rejected, removed, joined, host transferred, invited, round started, round aborted, match disposed,
+and state changed. `BanchoMatchNotifier` (`Features/Multiplayer/Packets/`) encodes each as the
+packet the services used to build, owns the `PacketBroadcastGate` version check and the
+stale-publish metric that `MatchBroadcast.EnqueueStateAsync` used to own, and has its own channel
+and lobby fan-out. Rows deleted: `MatchMembership`, `MatchControlService`,
+`Handlers.Lifecycle.AbortHandler`. Rows kept: `MatchLifecycle` (still `MatchState` from
+`Basil.Protocol.Multiplayer`), `MatchBroadcast` (still `IrcMessageWriter` for chat lines, and it
+keeps `Enqueue(match, byte[])` because seven packet handlers fan out bytes through it — bytes are
+not a protocol type, so the rule does not see them; the handlers move to
+`BanchoMatchNotifier.Broadcast` when the chat step touches `MatchBroadcast`).
+
+Two things were not in the plan for this step. `MatchControlService.Invite` was `static`; it is an
+instance method now, because it notifies, and its two callers (`MatchSlotEndpoints`,
+`MpCommandService`) use the instance. `MpCommandService` builds its own `MatchControlService` in a
+field initialiser, so it gained the notifier parameter too rather than constructing a bancho
+adapter inside a business type.
+
+A worker applied the constructor changes through Rider's `change_api_signature` and died on the
+session limit before the bodies; the orchestrator finished the bodies and the test call sites.
+`MultiplayerTestSupport` exposes one shared `MatchNotifier`.
+
+Verification: build green, ArchitectureTests 8, Domain 114, Protocol 158, Server.Tests 1057,
+IntegrationTests 363, all passed (3 min 54 s, no flake this run).
+
 ### Next exact step
 
-Step 2 — `Multiplayer.Handlers.Lifecycle.AbortHandler`, one `ServerPacketWriter` site. Then
-`MatchMembership` (6 sites), whose notifier will be the one `MatchControlService`, `MatchLifecycle`
-and `MatchBroadcast` also need; decide its shape from those four files together before writing it.
+Step 3 — the chat seam. It is the deepest one and needs a design pass before any edit:
+`ChannelMembershipService.BroadcastToMembers(channel, byte[])` and
+`BroadcastPrivmsg(channel, IrcMessage)` are the fan-out primitives every other chat use goes
+through; `ChannelMembershipService.Join/Part/DisconnectFromChannels` branch on
+`GameSession`/`IrcSession` and encode both transports inline; `BuildNamesReply`/`BuildListReply`
+*return* `IEnumerable<IrcMessage>`; and `GameSession.IrcConnection` is a bridge that re-encodes IRC
+lines into bancho packets, so `IrcMessage` is today the de facto internal chat message model. An
+Opus read-only design agent was dispatched for this on 2026-09-14 with the questions in
+`HANDOVER.md` §2 and died on the session limit before writing anything; re-dispatch it with the same
+brief (the brief is reproduced in `HANDOVER.md` §2, "Step 3 brief"). Do not start editing chat
+before that document exists.
 
 ## C2 -- investigated, not started: the task's own currency cannot move
 

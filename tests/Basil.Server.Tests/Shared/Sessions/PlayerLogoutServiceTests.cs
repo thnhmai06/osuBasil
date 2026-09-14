@@ -1,3 +1,4 @@
+using Basil.Server.Features.Multiplayer.Packets;
 using Basil.Server.Features.Spectating.Packets;
 using Basil.Server.Shared.Eventing;
 using System.Text.Json;
@@ -47,17 +48,17 @@ public class PlayerLogoutServiceTests
 
 	public PlayerLogoutServiceTests()
 	{
-		_matchBroadcast = new MatchBroadcast(Substitute.For<IChannelRegistry>(), _matchChannelMembership,
+		_matchBroadcast = new MatchBroadcast(Substitute.For<IChannelRegistry>(), _matchChannelMembership, new BanchoMatchNotifier(_channelRegistry, _matchChannelMembership),
 			Substitute.For<ISessionRegistry<GameSession>>(), Substitute.For<ISessionRegistry<IrcSession>>(), null,
 			Substitute.For<IBeatmapRepository>(),
 			Substitute.For<IUserRepository>());
 		_matchLifecycle = new MatchLifecycle(Substitute.For<IMatchRegistry>(), Substitute.For<IChannelRegistry>(),
-			_matchChannelMembership, Substitute.For<ISessionRegistry<GameSession>>(),
+			_matchChannelMembership, new BanchoMatchNotifier(_channelRegistry, _matchChannelMembership), Substitute.For<ISessionRegistry<GameSession>>(),
 			Substitute.For<IMatchRepository>(), Substitute.For<IMatchRoundEndOutbox>(), null,
 			Substitute.For<IBeatmapRepository>(), _matchBroadcast,
 			Substitute.For<IServiceProvider>(), NullLogger<MatchLifecycle>.Instance);
 		_matchMembership = new MatchMembership(Substitute.For<IChannelRegistry>(),
-			Substitute.For<ISessionRegistry<GameSession>>(), _matchChannelMembership,
+			Substitute.For<ISessionRegistry<GameSession>>(), _matchChannelMembership, new BanchoMatchNotifier(_channelRegistry, _matchChannelMembership),
 			Substitute.For<IMatchRepository>(), _matchLifecycle, NullLogger<MatchMembership>.Instance);
 	}
 
@@ -243,15 +244,15 @@ public class PlayerLogoutServiceTests
 		var ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
 		var matchChannelMembership = new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry,
 			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
-		var matchBroadcast = new MatchBroadcast(channelRegistry, matchChannelMembership, gameRegistry, ircRegistry,
+		var matchBroadcast = new MatchBroadcast(channelRegistry, matchChannelMembership, new BanchoMatchNotifier(channelRegistry, matchChannelMembership), gameRegistry, ircRegistry,
 			null, Substitute.For<IBeatmapRepository>(),
 			Substitute.For<IUserRepository>());
 		var serviceProvider = Substitute.For<IServiceProvider>();
-		var matchLifecycle = new MatchLifecycle(matchRegistry, channelRegistry, matchChannelMembership, gameRegistry,
+		var matchLifecycle = new MatchLifecycle(matchRegistry, channelRegistry, matchChannelMembership, new BanchoMatchNotifier(channelRegistry, matchChannelMembership), gameRegistry,
 			matchRepository, Substitute.For<IMatchRoundEndOutbox>(), null,
 			Substitute.For<IBeatmapRepository>(), matchBroadcast, serviceProvider,
 			NullLogger<MatchLifecycle>.Instance);
-		var matchMembership = new MatchMembership(channelRegistry, gameRegistry, matchChannelMembership,
+		var matchMembership = new MatchMembership(channelRegistry, gameRegistry, matchChannelMembership, new BanchoMatchNotifier(channelRegistry, matchChannelMembership),
 			matchRepository, matchLifecycle, NullLogger<MatchMembership>.Instance);
 		serviceProvider.GetService(typeof(MatchMembership)).Returns(matchMembership);
 		var host = new GameSession(1, "host", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);

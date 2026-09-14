@@ -1,3 +1,4 @@
+using Basil.Server.Features.Multiplayer.Packets;
 using Basil.Server.Features.Spectating.Packets;
 using Basil.Server.Features.Auth;
 using Basil.Server.Shared.Eventing;
@@ -357,16 +358,16 @@ public class TcpIrcConnectionTests
 	{
 		var spectatorService = new SpectatorService(channelRegistry, channelMembership, new BanchoSpectatorNotifier(),
 			NullLogger<SpectatorService>.Instance);
-		var matchBroadcast = new MatchBroadcast(channelRegistry, channelMembership, gameRegistry, ircRegistry, null,
+		var matchBroadcast = new MatchBroadcast(channelRegistry, channelMembership, new BanchoMatchNotifier(channelRegistry, channelMembership), gameRegistry, ircRegistry, null,
 			new NotSupportedBeatmapRepository(), new FakeUserRepository());
 		var matchLifecycle = new MatchLifecycle(
 			new InMemoryMatchRegistry(channelRegistry, new NotSupportedMatchRepository()), channelRegistry,
-			channelMembership, gameRegistry, new NotSupportedMatchRepository(), new NoOpMatchRoundEndOutbox(),
+			channelMembership, new BanchoMatchNotifier(channelRegistry, channelMembership), gameRegistry, new NotSupportedMatchRepository(), new NoOpMatchRoundEndOutbox(),
 			null!, // only TeardownMatch calls the hub, which this logout-only test path never reaches
 			new NotSupportedBeatmapRepository(), matchBroadcast,
 			null!, // only resolves MatchMembership from CreateAsync, which this logout-only test path never calls
 			NullLogger<MatchLifecycle>.Instance);
-		var matchMembership = new MatchMembership(channelRegistry, gameRegistry, channelMembership,
+		var matchMembership = new MatchMembership(channelRegistry, gameRegistry, channelMembership, new BanchoMatchNotifier(channelRegistry, channelMembership),
 			new NotSupportedMatchRepository(), matchLifecycle, NullLogger<MatchMembership>.Instance);
 		return new PlayerLogoutService(
 			[

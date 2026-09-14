@@ -1,3 +1,4 @@
+using Basil.Server.Features.Multiplayer.Packets;
 using Basil.Server.Features.Spectating.Packets;
 using Basil.Server.Shared.Eventing;
 using Basil.Server.Features.Irc;
@@ -52,14 +53,14 @@ public class GhostDisconnectServiceTests
 			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
 		var spectatorService = new SpectatorService(channelRegistry, channelMembership, new BanchoSpectatorNotifier(),
 			NullLogger<SpectatorService>.Instance);
-		var matchBroadcast = new MatchBroadcast(channelRegistry, channelMembership, gameRegistry, ircRegistry, null,
+		var matchBroadcast = new MatchBroadcast(channelRegistry, channelMembership, new BanchoMatchNotifier(channelRegistry, channelMembership), gameRegistry, ircRegistry, null,
 			Substitute.For<IBeatmapRepository>(),
 			Substitute.For<IUserRepository>());
-		var matchLifecycle = new MatchLifecycle(Substitute.For<IMatchRegistry>(), channelRegistry, channelMembership,
+		var matchLifecycle = new MatchLifecycle(Substitute.For<IMatchRegistry>(), channelRegistry, channelMembership, new BanchoMatchNotifier(channelRegistry, channelMembership),
 			gameRegistry, Substitute.For<IMatchRepository>(), Substitute.For<IMatchRoundEndOutbox>(), null,
 			Substitute.For<IBeatmapRepository>(), matchBroadcast,
 			Substitute.For<IServiceProvider>(), NullLogger<MatchLifecycle>.Instance);
-		var matchMembership = new MatchMembership(channelRegistry, gameRegistry, channelMembership,
+		var matchMembership = new MatchMembership(channelRegistry, gameRegistry, channelMembership, new BanchoMatchNotifier(channelRegistry, channelMembership),
 			Substitute.For<IMatchRepository>(), matchLifecycle, NullLogger<MatchMembership>.Instance);
 		return new PlayerLogoutService(
 			[

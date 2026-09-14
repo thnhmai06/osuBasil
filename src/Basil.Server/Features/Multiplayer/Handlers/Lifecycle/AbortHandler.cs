@@ -1,5 +1,4 @@
 using Basil.Domain.Multiplayer;
-using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging;
 
 namespace Basil.Server.Features.Multiplayer.Handlers.Lifecycle;
@@ -7,6 +6,7 @@ namespace Basil.Server.Features.Multiplayer.Handlers.Lifecycle;
 /// <summary>Stops an in-progress match.</summary>
 public sealed class AbortHandler(
 	MatchBroadcast matchBroadcast,
+	IMatchNotifier notifier,
 	IMatchRoundEndOutbox roundEndOutbox,
 	ILogger<AbortHandler> logger)
 {
@@ -54,7 +54,7 @@ public sealed class AbortHandler(
 		}
 
 		logger.LogInformation("Match aborted: MatchId={MatchId} RoundId={RoundId}", match.DbId, roundId);
-		matchBroadcast.Enqueue(match, ServerPacketWriter.MatchAbort(), false);
+		notifier.RoundAborted(match);
 		matchBroadcast.AnnounceToRoomAndReferees(match, "Match aborted.");
 		mutation.PublishState();
 		return Task.FromResult(AbortResult.Ok);

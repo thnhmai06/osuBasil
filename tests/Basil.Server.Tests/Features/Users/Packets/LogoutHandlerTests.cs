@@ -1,3 +1,4 @@
+using Basil.Server.Features.Multiplayer.Packets;
 using Basil.Server.Features.Spectating.Packets;
 using Basil.Server.Shared.Eventing;
 using Basil.Server.Features.Irc;
@@ -35,17 +36,17 @@ public class LogoutHandlerTests
 			Substitute.For<ISessionRegistry<IrcSession>>(),
 			Substitute.For<IChannelRegistry>(), Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
 			Options.Create(new IrcOptions()));
-		var matchBroadcast = new MatchBroadcast(Substitute.For<IChannelRegistry>(), channelMembership,
+		var matchBroadcast = new MatchBroadcast(Substitute.For<IChannelRegistry>(), channelMembership, new BanchoMatchNotifier(_channelRegistry, channelMembership),
 			Substitute.For<ISessionRegistry<GameSession>>(), Substitute.For<ISessionRegistry<IrcSession>>(), null,
 			Substitute.For<IBeatmapRepository>(),
 			Substitute.For<IUserRepository>());
 		var matchLifecycle = new MatchLifecycle(Substitute.For<IMatchRegistry>(), Substitute.For<IChannelRegistry>(),
-			channelMembership, Substitute.For<ISessionRegistry<GameSession>>(), Substitute.For<IMatchRepository>(),
+			channelMembership, new BanchoMatchNotifier(_channelRegistry, channelMembership), Substitute.For<ISessionRegistry<GameSession>>(), Substitute.For<IMatchRepository>(),
 			Substitute.For<IMatchRoundEndOutbox>(), null,
 			Substitute.For<IBeatmapRepository>(), matchBroadcast, Substitute.For<IServiceProvider>(),
 			NullLogger<MatchLifecycle>.Instance);
 		var matchMembership = new MatchMembership(Substitute.For<IChannelRegistry>(),
-			Substitute.For<ISessionRegistry<GameSession>>(), channelMembership, Substitute.For<IMatchRepository>(),
+			Substitute.For<ISessionRegistry<GameSession>>(), channelMembership, new BanchoMatchNotifier(_channelRegistry, channelMembership), Substitute.For<IMatchRepository>(),
 			matchLifecycle, NullLogger<MatchMembership>.Instance);
 
 		var spectatorService = new SpectatorService(Substitute.For<IChannelRegistry>(),

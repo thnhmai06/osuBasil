@@ -9,13 +9,14 @@ it says so.
 
 ## 1. Where things stand
 
-Branch **`feat/vsa-migration`**, on top of `e286cc26`, pushed. Working tree clean after the
-2026-09-14 commits. A second worktree sits at `V:\Code\cs\osuBasil-diagnostics` on
-`fix/integration-test-order-dependence` at `7b0ea3bd`, already merged — a spare lane, not pending
-work.
+Branch **`feat/vsa-migration`**, five commits past `e286cc26` (see `git log`), **not yet pushed**
+as of the 2026-09-15 checkpoint — push it. A second worktree sits at
+`V:\Code\cs\osuBasil-diagnostics` on `investigate/diagnostic-live-flake`, branched from
+`9a4265ab` on 2026-09-14 for the flake diagnosis in §8; it may hold a Debug build and nothing else
+of value — check `git status` there before using it.
 
-**The suite is green.** Verified 2026-09-14 on `e286cc26` plus the new architecture test, as five
-separate calls (§5):
+**The suite is green.** Verified 2026-09-14 on `e286cc26` plus the new architecture test, and again
+after each C1a step, as five separate calls (§5):
 
 | Project | Count |
 |---|---:|
@@ -42,7 +43,7 @@ Treat that number with suspicion — see §4.
 | **A** — make constant-mediated coupling visible | Done. ADR-008. |
 | **B** — untangle before anything moves | Done, all six tasks. |
 | **F** — the Diagnostic API | Done and merged. |
-| **C** — extract the business layer | C4, C3, C6 done. C2 **off the path**. **C1 split: C1a next, then C5; C1b decided after.** |
+| **C** — extract the business layer | C4, C3, C6 done. C2 **off the path**. **C1 split: C1a in progress (2 of 5 steps, pinned list 21 → 17), then C5; C1b decided after.** |
 | **D** — split the transports | Not started. Gated on C5. |
 | **E** — declare what survives, enforce it | Not started. |
 | **G** — the load harness | Not started. Unblocked since F merged. |
@@ -68,25 +69,53 @@ The plan's sizing table checked five framework packages and never checked the pr
 fails both when a new business type reaches for the protocol and when an entry is removed without
 deleting its row — proven by deleting one row and watching it fail.
 
-**C1a, per service, one commit each, smallest first:**
+**C1a progress (2026-09-15):** step 1 `SpectatorService` (`9a4265ab`, 21 → 20) and step 2 the
+match services (`IMatchNotifier`, rows `MatchMembership`, `MatchControlService`, `AbortHandler`
+deleted, 20 → 17) are committed. `plans/execution/phase-stage-c.md` "C1a" has the per-step record.
 
-1. `Spectating.SpectatorService` (5 `ServerPacketWriter` sites, one transport) and
-   `SpectateFramesEvent`
-2. `Multiplayer.Handlers.Lifecycle.AbortHandler`
-3. `Multiplayer.MatchMembership`, `MatchControlService`, `MatchLifecycle`, `MatchBroadcast`
-4. the dual-transport ones: `Chat.ChatDispatchService`, `Chat.ChannelMembershipService`,
-   `Multiplayer.MpCommandService`, `Auth.ClientIntegrityService`
-5. `Auth.LoginService` last — the login reply is intrinsically a packet sequence and may be
-   classified as an adapter rather than moved
-6. `MatchState`'s three users (`IMatchRegistry`, `InMemoryMatchRegistry`,
-   `MatchLiveSnapshotBuilder`) and the two API route types (`AnnounceRoutes`, `MatchListEndpoints`,
-   already named by Task D3)
+**Remaining, in order:**
+
+3. **The chat seam — design first, then one commit per type.** `Chat.ChatDispatchService`,
+   `Chat.ChannelMembershipService`, `Multiplayer.MatchBroadcast` (its `IrcMessageWriter` lines),
+   `Multiplayer.MpCommandService`, `Auth.ClientIntegrityService`. See "Step 3 brief" below.
+4. `Auth.LoginService` last — the login reply is intrinsically a packet sequence and may be
+   classified as an adapter rather than moved.
+5. `MatchState`'s three users (`IMatchRegistry`, `InMemoryMatchRegistry`,
+   `MatchLiveSnapshotBuilder`, plus `MatchLifecycle` which keeps its row only for this), the two API
+   route types (`AnnounceRoutes`, `MatchListEndpoints`, already named by Task D3), and
+   `Spectating.SpectateFramesEvent` (SSE payload carrying `ReplayFrame`/`ScoreFrame`).
 
 For each: replace the encoder calls with a notification contract the service owns and the bancho or
 IRC side implements; decide the contract's shape at that service from its call sites, the way the
 logout handlers were; keep the match lock discipline (§9) — the notifier is called inside the same
 locked sequence the encoder was; delete the row from the pinned list; run the five test calls;
 commit with the checkpoint in `phase-stage-c.md` updated in the same commit.
+
+**Step 3 brief** — for a read-only Opus design agent, output to a scratch file, then the
+orchestrator moves it to `plans/execution/chat-seam-decision.md`. Inputs: `c1-transport-seam-decision.md`,
+`git show 9a4265ab`, `IMatchNotifier.cs` and `Packets/BanchoMatchNotifier.cs`, `CLAUDE.md` rules
+1–3 and invariants, `docs/for-developers/multiplayer.md`. Types: `Chat/ChannelMembershipService.cs`
+(join/part/quit/topic/names/list/`BroadcastToMembers(channel, byte[])`/`BroadcastPrivmsg(channel,
+IrcMessage)`/channel-info, branching on `GameSession`/`IrcSession` inline, and *returning*
+`IEnumerable<IrcMessage>` from `BuildNamesReply`/`BuildListReply`), `Chat/ChatDispatchService.cs`
+and its nested sinks, `Multiplayer/MatchBroadcast.cs` (`EnqueueChat`, `AnnounceToRoomAndReferees`),
+`Multiplayer/MpCommandService.cs` (`ScopedDmReplySink`), `Auth/ClientIntegrityService.cs`,
+`Shared/Sessions/UserSession.cs`, `GameSession.cs`, `Irc/IIrcConnection.cs`,
+`Irc/BanchoIrcBridgeConnection.cs` (re-encodes IRC lines into bancho packets — so `IrcMessage` is the
+de facto internal chat message model for both transports), `Bot/CommandDispatcher.cs`,
+`Bot/ICommandReplySink.cs`, and the tests under `tests/Basil.Server.Tests/Features/Chat`,
+`.../Irc/TcpIrcConnectionTests.cs`. Settled constraints: Domain never references Protocol; Protocol
+references nothing; reply strings stay in `IrcReplies`/`MpReplies`/`BotReplies`; IRC wire text and
+packet bytes are pinned contracts; no abstraction without a boundary. Deliver: (1) an inventory of
+every `ServerPacketWriter.*`/`IrcMessageWriter.*`/`IrcMessage`/`IrcNumeric` use in those five types
+grouped by meaning with file:line; (2) the central call with evidence — is `IrcMessage` the internal
+chat model (then a Domain-owned record both transports encode from, with a mapper in
+`Basil.Protocol.Irc`'s consumer side) or a leaked wire type (then an `IChatNotifier`-style contract
+per meaning, with NAMES/LIST numerics becoming IRC-side); cost in files/sites/tests; what breaks if
+wrong; (3) the contract shape and where each piece lives, and how a `UserSession` of either
+transport is routed without the service branching on the concrete type; (4) commit order, one row
+deleted per commit, tree compiling after each; (5) risks: `MatchSession.Lock` sites that call into
+chat, the IRC wire-text tests, and the reply sinks that read *back*; (6) explicit uncertainties.
 
 `MatchPacketDataMapper` is an adapter by design and probably keeps its row until C1b decides
 where adapters live.
@@ -255,7 +284,13 @@ caught by someone measuring it.** Prefer a probe to the record — this document
   no integration test uses it. Not yet diagnosed to a cause. A single failure of one of these on a
   full run is not a regression; anything else is. Both items belong to Stage G, and this one is a
   candidate for a first-event-on-subscribe change measured against the SSE contract in
-  `docs/for-developers/sse.md`.
+  `docs/for-developers/sse.md`. A Sonnet diagnosis agent was dispatched into the second worktree on
+  2026-09-14 with a brief (reproduce with `--filter "FullyQualifiedName~DiagnosticEndpointTests"`
+  and one full run with `--logger "console;verbosity=normal"`; distinguish host-startup-inside-the-CTS,
+  headers-not-flushed-until-first-write, subscription-registered-after-the-tick, and thread-pool
+  starvation from startup services; check whether `sse.md` and `hub-adoption-decision.md` permit an
+  immediate first sample on subscribe; propose the smallest deterministic fix and its regression
+  test) and died on the session limit after building. Re-dispatch with the same brief.
 * **Task H2** — the localization rule set the user supplied becomes developer and agent documentation,
   and `CLAUDE.md` splits into `docs/for-agents/`. Deferred by the user to the documentation phase; the
   source is at `C:\Users\haith\Desktop\osuBasil-docs.md`.

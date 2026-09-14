@@ -3,7 +3,6 @@ using Basil.Server.Shared.Sessions;
 using Basil.Server.Features.Chat;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
-using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging;
 
 namespace Basil.Server.Features.Multiplayer;
@@ -19,6 +18,7 @@ public sealed class MatchMembership(
 	IChannelRegistry channelRegistry,
 	ISessionRegistry<GameSession> gameRegistry,
 	ChannelMembershipService channelMembership,
+	IMatchNotifier notifier,
 	IMatchRepository matchRepository,
 	MatchLifecycle lifecycle,
 	ILogger<MatchMembership> logger)
@@ -64,7 +64,7 @@ public sealed class MatchMembership(
 		{
 			logger.LogDebug("Join rejected: MatchId={MatchId} UserId={UserId} Reason={Reason}",
 				match.DbId, userSession.Id, reason);
-			userSession.Enqueue(ServerPacketWriter.MatchJoinFail());
+			notifier.JoinRejected(userSession);
 			return reason;
 		}
 
@@ -73,7 +73,7 @@ public sealed class MatchMembership(
 		{
 			logger.LogDebug("Join rejected: MatchId={MatchId} UserId={UserId} Reason=Private", match.DbId,
 				userSession.Id);
-			userSession.Enqueue(ServerPacketWriter.MatchJoinFail());
+			notifier.JoinRejected(userSession);
 			return JoinResult.Private;
 		}
 
@@ -81,7 +81,7 @@ public sealed class MatchMembership(
 		{
 			logger.LogDebug("Join rejected: MatchId={MatchId} UserId={UserId} Reason=WrongPassword",
 				match.DbId, userSession.Id);
-			userSession.Enqueue(ServerPacketWriter.MatchJoinFail());
+			notifier.JoinRejected(userSession);
 			return JoinResult.WrongPassword;
 		}
 
@@ -90,7 +90,7 @@ public sealed class MatchMembership(
 		{
 			logger.LogDebug("Join rejected: MatchId={MatchId} UserId={UserId} Reason=Full", match.DbId,
 				userSession.Id);
-			userSession.Enqueue(ServerPacketWriter.MatchJoinFail());
+			notifier.JoinRejected(userSession);
 			return JoinResult.NoFreeSlot;
 		}
 
@@ -172,7 +172,7 @@ public sealed class MatchMembership(
 
 		if (!match.HasGameplayHost) match.HostId = userSession.Id;
 
-		userSession.Enqueue(ServerPacketWriter.MatchJoinSuccess(match.ToPacket()));
+		notifier.Joined(userSession, match);
 		// SyncEmptyRoomTimer still needs the caller's lock held. The state publish itself does not
 		// (ADR-004 4b follow-up) -- the caller allocates a version and publishes after releasing the
 		// lock instead, since a version allocated an instant later than the mutation is still correct.
@@ -223,7 +223,7 @@ public sealed class MatchMembership(
 				newHostId = newHostSlot.PlayerId!.Value;
 				match.HostId = newHostId.Value;
 				hostTransfer = true;
-				gameRegistry.GetByUserId(match.HostId)?.Enqueue(ServerPacketWriter.MatchTransferHost());
+				if (gameRegistry.GetByUserId(match.HostId) is { } newHost) notifier.HostTransferred(newHost);
 			}
 			else
 			{

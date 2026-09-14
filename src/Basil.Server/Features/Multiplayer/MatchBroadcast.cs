@@ -7,7 +7,6 @@ using Basil.Server.Features.Bot;
 using Basil.Server.Shared.Sessions;
 using Basil.Server.Features.Chat;
 using Basil.Protocol.Irc;
-using Basil.Protocol.Packets;
 
 namespace Basil.Server.Features.Multiplayer;
 
@@ -24,6 +23,7 @@ namespace Basil.Server.Features.Multiplayer;
 public sealed class MatchBroadcast(
 	IChannelRegistry channelRegistry,
 	ChannelMembershipService channelMembership,
+	IMatchNotifier notifier,
 	ISessionRegistry<GameSession> gameRegistry,
 	ISessionRegistry<IrcSession> ircRegistry,
 	ILiveEventHub hub,
@@ -61,8 +61,6 @@ public sealed class MatchBroadcast(
 			IrcMessageWriter.Privmsg(senderName, senderId, channel.Name, text));
 	}
 
-	private static readonly KeyValuePair<string, object?> PacketStreamTag = new("stream", "packet");
-
 	/// <summary>Broadcasts the match state to the channel and lobby and republishes every live SSE snapshot channel.</summary>
 	/// <remarks>
 	///     Sends the <c>UpdateMatch</c> packet to the match channel and, for public rooms, the lobby,
@@ -87,20 +85,7 @@ public sealed class MatchBroadcast(
 	public async Task EnqueueStateAsync(MatchSession match, long version, bool lobby = true,
 		CancellationToken cancellationToken = default)
 	{
-		if (match.PacketBroadcastGate.TryAdvance(version))
-		{
-			var channel = channelRegistry.GetByName(match.ChatChannelName);
-			if (channel is not null)
-				channelMembership.BroadcastToMembers(channel,
-					ServerPacketWriter.UpdateMatch(match.ToPacket()));
-
-			if (!match.IsPrivate)
-				BroadcastToNonEmptyLobby(ServerPacketWriter.UpdateMatch(match.ToPacket(), false), lobby);
-		}
-		else
-		{
-			EventingMetrics.StalePublishDropped.Add(1, PacketStreamTag);
-		}
+		notifier.StateChanged(match, version, lobby);
 
 		var mainSnapshot = await MatchLiveSnapshotBuilder.BuildMain(
 			match, gameRegistry, ircRegistry, userRepo, beatmapRepo, cancellationToken);
