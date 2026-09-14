@@ -625,17 +625,14 @@ IntegrationTests 363, all passed (3 min 54 s, no flake this run).
 
 ### Next exact step
 
-Step 3 — the chat seam. It is the deepest one and needs a design pass before any edit:
-`ChannelMembershipService.BroadcastToMembers(channel, byte[])` and
-`BroadcastPrivmsg(channel, IrcMessage)` are the fan-out primitives every other chat use goes
-through; `ChannelMembershipService.Join/Part/DisconnectFromChannels` branch on
-`GameSession`/`IrcSession` and encode both transports inline; `BuildNamesReply`/`BuildListReply`
-*return* `IEnumerable<IrcMessage>`; and `GameSession.IrcConnection` is a bridge that re-encodes IRC
-lines into bancho packets, so `IrcMessage` is today the de facto internal chat message model. An
-Opus read-only design agent was dispatched for this on 2026-09-14 with the questions in
-`HANDOVER.md` §2 and died on the session limit before writing anything; re-dispatch it with the same
-brief (the brief is reproduced in `HANDOVER.md` §2, "Step 3 brief"). Do not start editing chat
-before that document exists.
+Step 3 — the chat seam, designed and decided in `plans/execution/chat-seam-decision.md`. Five
+commits in its §4 order, one pinned row each, tree green after each: (1) `ClientIntegrityService`
+through `IChatNotifier` — this commit also adds `ChatLine`, `IChatNotifier`, `ChatNotifier` and
+the DI registration; (2) `MatchBroadcast`; (3) `MpCommandService+ScopedDmReplySink`;
+(4) `ChatDispatchService` and its two sinks; (5) `ChannelMembershipService`, with `IChannelNotifier`
+and NAMES/LIST moving to `IrcQueryService` — 44 constructor sites, Rider `change_api_signature`.
+Every notifier method stays `void` and synchronous: chat is delivered under `MatchSession.Lock`
+(decision §5). Each commit updates this file.
 
 ## C2 -- investigated, not started: the task's own currency cannot move
 

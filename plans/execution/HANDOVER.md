@@ -91,31 +91,10 @@ logout handlers were; keep the match lock discipline (§9) — the notifier is c
 locked sequence the encoder was; delete the row from the pinned list; run the five test calls;
 commit with the checkpoint in `phase-stage-c.md` updated in the same commit.
 
-**Step 3 brief** — for a read-only Opus design agent, output to a scratch file, then the
-orchestrator moves it to `plans/execution/chat-seam-decision.md`. Inputs: `c1-transport-seam-decision.md`,
-`git show 9a4265ab`, `IMatchNotifier.cs` and `Packets/BanchoMatchNotifier.cs`, `CLAUDE.md` rules
-1–3 and invariants, `docs/for-developers/multiplayer.md`. Types: `Chat/ChannelMembershipService.cs`
-(join/part/quit/topic/names/list/`BroadcastToMembers(channel, byte[])`/`BroadcastPrivmsg(channel,
-IrcMessage)`/channel-info, branching on `GameSession`/`IrcSession` inline, and *returning*
-`IEnumerable<IrcMessage>` from `BuildNamesReply`/`BuildListReply`), `Chat/ChatDispatchService.cs`
-and its nested sinks, `Multiplayer/MatchBroadcast.cs` (`EnqueueChat`, `AnnounceToRoomAndReferees`),
-`Multiplayer/MpCommandService.cs` (`ScopedDmReplySink`), `Auth/ClientIntegrityService.cs`,
-`Shared/Sessions/UserSession.cs`, `GameSession.cs`, `Irc/IIrcConnection.cs`,
-`Irc/BanchoIrcBridgeConnection.cs` (re-encodes IRC lines into bancho packets — so `IrcMessage` is the
-de facto internal chat message model for both transports), `Bot/CommandDispatcher.cs`,
-`Bot/ICommandReplySink.cs`, and the tests under `tests/Basil.Server.Tests/Features/Chat`,
-`.../Irc/TcpIrcConnectionTests.cs`. Settled constraints: Domain never references Protocol; Protocol
-references nothing; reply strings stay in `IrcReplies`/`MpReplies`/`BotReplies`; IRC wire text and
-packet bytes are pinned contracts; no abstraction without a boundary. Deliver: (1) an inventory of
-every `ServerPacketWriter.*`/`IrcMessageWriter.*`/`IrcMessage`/`IrcNumeric` use in those five types
-grouped by meaning with file:line; (2) the central call with evidence — is `IrcMessage` the internal
-chat model (then a Domain-owned record both transports encode from, with a mapper in
-`Basil.Protocol.Irc`'s consumer side) or a leaked wire type (then an `IChatNotifier`-style contract
-per meaning, with NAMES/LIST numerics becoming IRC-side); cost in files/sites/tests; what breaks if
-wrong; (3) the contract shape and where each piece lives, and how a `UserSession` of either
-transport is routed without the service branching on the concrete type; (4) commit order, one row
-deleted per commit, tree compiling after each; (5) risks: `MatchSession.Lock` sites that call into
-chat, the IRC wire-text tests, and the reply sinks that read *back*; (6) explicit uncertainties.
+**Step 3 is designed:** `plans/execution/chat-seam-decision.md` — `IrcMessage` is a leaked wire
+type, not the internal chat model; `ChatLine` (five fields) plus `IChatNotifier` for the sayers and
+`IChannelNotifier` for membership, implementations in `Chat/Packets/`, NAMES/LIST to
+`IrcQueryService`; five commits, 17 → 10. Start at its §4 commit 1.
 
 `MatchPacketDataMapper` is an adapter by design and probably keeps its row until C1b decides
 where adapters live.
@@ -137,6 +116,7 @@ usually reaches the same answer.
 | `stage-c-order-decision.md` | the order of Stage C, and the measured payoff of C4 |
 | `c2-deferred-decision.md` | why C2 is off the path — its own proof is unreachable by it |
 | `c1-transport-seam-decision.md` | C1 is split: the seam is cut in place first, the project move is decided after; invariant 9 stays |
+| `chat-seam-decision.md` | `IrcMessage` is a leaked wire type; `ChatLine` + two notifier contracts; the five-commit order for the chat seam |
 | `hub-adoption-decision.md` | the event hub carries deltas only; the seed handshake was deleted because `SeedIfNotSuperseded` had no callers |
 | `logout-as-event-decision.md` | logout uses an ordered handler list, **not** an event bus — there is no domain-event bus in this codebase, and `Shared/Eventing` is entirely SSE machinery |
 | `diagnostics-boundary-decision.md` | `Diagnostics → Auth` authorised; four other edges refused in favour of published gauges |

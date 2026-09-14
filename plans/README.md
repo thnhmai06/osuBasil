@@ -22,6 +22,7 @@ user documentation; `docs/` owns that. **Start at `execution/HANDOVER.md`.**
 | `execution/stage-c-order-decision.md` | Stage C runs in reverse, project boundary crossed last |
 | `execution/c2-deferred-decision.md` | C2 off the path; `.Match` absorbed into C1 |
 | `execution/c1-transport-seam-decision.md` | C1 split: seam first (C1a), move later (C1b); the `TransportSeamTests` instrument |
+| `execution/chat-seam-decision.md` | the chat seam: `ChatLine`, `IChatNotifier`, `IChannelNotifier`, five-commit order |
 | `execution/hub-adoption-decision.md` | the event hub carries deltas only |
 | `execution/logout-as-event-decision.md` | logout is an ordered handler list, not an event bus |
 | `execution/diagnostics-boundary-decision.md` | `Diagnostics -> Auth` only; other edges refused for published gauges |
