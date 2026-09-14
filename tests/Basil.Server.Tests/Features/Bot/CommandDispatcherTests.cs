@@ -1,3 +1,4 @@
+using Basil.Server.Features.Chat.Packets;
 using Basil.Server.Features.Beatmaps;
 using Basil.Server.Features.Bot;
 using Basil.Server.Features.Users;
@@ -61,7 +62,7 @@ public class CommandDispatcherTests
 	{
 		var options = Options.Create(new BotOptions { CommandPrefix = prefix });
 		fixture ??= new MultiplayerTestSupport.Fixture();
-		IMpCommandService mpCommands = new MpCommandService(fixture.MatchMembership, fixture.MatchLifecycle, fixture.MatchNotifier,
+		IMpCommandService mpCommands = new MpCommandService(fixture.MatchMembership, fixture.MatchLifecycle, fixture.MatchNotifier, new ChatNotifier(),
 			fixture.SetTeamHandler, fixture.TimerHandler, fixture.AbortTimerHandler,
 			fixture.StartHandler, fixture.AbortHandler, fixture.CloseHandler,
 			fixture.MatchRegistry, fixture.MatchRepository, _beatmaps,

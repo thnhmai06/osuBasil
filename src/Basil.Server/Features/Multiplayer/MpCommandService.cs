@@ -14,7 +14,6 @@ using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
-using Basil.Protocol.Irc;
 using Basil.Protocol.Multiplayer;
 using Microsoft.Extensions.Logging;
 
@@ -49,6 +48,7 @@ public sealed class MpCommandService(
 	MatchMembership matchMembership,
 	MatchLifecycle matchLifecycle,
 	IMatchNotifier notifier,
+	IChatNotifier chat,
 	SetTeamHandler setTeamHandler,
 	TimerHandler timerHandler,
 	AbortTimerHandler abortTimerHandler,
@@ -1708,7 +1708,7 @@ public sealed class MpCommandService(
 	private ICommandReplySink BuildDmRedirectSink(UserSession sender, MatchSession? scope, ICommandReplySink fallback)
 	{
 		var bot = gameRegistry.GetByUserId(BotBootstrapService.BotId);
-		return bot is null ? fallback : new ScopedDmReplySink(sender, scope, bot, channelMembership, channelRegistry);
+		return bot is null ? fallback : new ScopedDmReplySink(sender, scope, bot, chat, channelMembership, channelRegistry);
 	}
 
 	/// <summary>
@@ -1732,6 +1732,7 @@ public sealed class MpCommandService(
 		UserSession sender,
 		MatchSession? scope,
 		UserSession bot,
+		IChatNotifier chat,
 		ChannelMembershipService channelMembership,
 		IChannelRegistry channelRegistry) : ICommandReplySink
 	{
@@ -1746,13 +1747,12 @@ public sealed class MpCommandService(
 			foreach (var line in text.Split('\n', StringSplitOptions.RemoveEmptyEntries))
 			{
 				var prefixed = scope is not null ? $"[#{scope.DbId}] {line}" : line;
-				sender.IrcConnection.Send(IrcMessageWriter.Privmsg(bot.Name, bot.Id, sender.Name, prefixed));
+				chat.Deliver(sender, new ChatLine(bot.Id, bot.Name, sender.Name, prefixed));
 
 				if (scope is null) continue;
 
 				if (channelRegistry.GetByName(scope.ChatChannelName) is { } channel)
-					channelMembership.BroadcastPrivmsg(channel,
-						IrcMessageWriter.Privmsg(bot.Name, bot.Id, channel.Name, line));
+					channelMembership.BroadcastPrivmsg(channel, new ChatLine(bot.Id, bot.Name, channel.Name, line));
 			}
 		}
 
@@ -1761,7 +1761,7 @@ public sealed class MpCommandService(
 		public void ReplyDm(string text)
 		{
 			foreach (var line in text.Split('\n', StringSplitOptions.RemoveEmptyEntries))
-				sender.IrcConnection.Send(IrcMessageWriter.Privmsg(bot.Name, bot.Id, sender.Name, line));
+				chat.Deliver(sender, new ChatLine(bot.Id, bot.Name, sender.Name, line));
 		}
 	}
 }

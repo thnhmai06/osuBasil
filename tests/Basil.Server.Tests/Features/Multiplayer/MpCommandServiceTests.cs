@@ -1,3 +1,4 @@
+using Basil.Server.Features.Chat.Packets;
 using Basil.Server.Shared.Eventing;
 using System.Text;
 using Basil.Server.Features.Beatmaps;
@@ -36,7 +37,7 @@ public class MpCommandServiceTests
 
 	private MpCommandService MakeService()
 	{
-		return new MpCommandService(_fixture.MatchMembership, _fixture.MatchLifecycle, _fixture.MatchNotifier,
+		return new MpCommandService(_fixture.MatchMembership, _fixture.MatchLifecycle, _fixture.MatchNotifier, new ChatNotifier(),
 			_fixture.SetTeamHandler, _fixture.TimerHandler, _fixture.AbortTimerHandler,
 			_fixture.StartHandler, _fixture.AbortHandler, _fixture.CloseHandler,
 			_fixture.MatchRegistry, _fixture.MatchRepository, _beatmaps,

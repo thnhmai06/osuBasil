@@ -49,7 +49,6 @@ public class TransportSeamTests
 			"Basil.Server.Features.Multiplayer.MatchLiveSnapshotBuilder",
 			"Basil.Server.Features.Multiplayer.MatchPacketDataMapper",
 			"Basil.Server.Features.Multiplayer.MpCommandService",
-			"Basil.Server.Features.Multiplayer.MpCommandService+ScopedDmReplySink",
 			"Basil.Server.Features.Spectating.SpectateFramesEvent"
 		];
 
