@@ -1,6 +1,6 @@
 # Orchestration state
 
-Last updated: 2026-09-08T04:15:00Z (local 2026-09-08 11:15 UTC+7)
+Last updated: 2026-09-14. Operating lessons only; current state is in `HANDOVER.md`.
 
 ## Start here
 
@@ -16,9 +16,8 @@ lands on `feat/vsa-migration`, not on `chore/perf-investigation` -- a push made 
 the whole Phase 0 migration onto PR #7's branch. It was a fast-forward and nothing was lost, but the
 remote branch now carries work that does not belong to it.
 
-Read this file, then `git status`, `git log --oneline -20`, and the checkpoint of whichever
-phase is not `Done`. Continue from that phase's **Next exact step**. Phase 0 is `Done`; Phase 1
-has not started, and starting it is a deliberate act — read the **Pause point** section first. Do not re-investigate
+Read `HANDOVER.md`, then `git status`, `git log --oneline -20`, and the checkpoint of the stage in
+progress (`phase-stage-c.md`). Continue from its **Next exact step**. Do not re-investigate
 anything already recorded here or in `plans/vsa-migration-design-20260907.md`,
 `plans/diagnostic-metric-inventory-20260907.md`, or `plans/execution/baseline/`.
 
@@ -243,37 +242,14 @@ the prompt before demoting the task.
 Phase 5 runs in a worktree at `../osuBasil-diagnostics` on `feat/vsa-phase-5-diagnostics`,
 branched from `feat/vsa-migration` once Task 0.10 has landed.
 
-## Phase status
+## Phase status, dependency edges and running workers
 
-| Phase | Status | Blocked on | Owner |
-| --- | --- | --- | --- |
-| 0 Foundation | Done | — | closed by Task 0.14 on 2026-09-08 |
-| Architecture assessment | Done | — | measured, target agreed, plan rewritten 2026-09-09 |
-| Stage A enforcement | Done | — | `ed48716`; the const blind spot is closed |
-| Stage B untangle | Implementing | nothing | B4 and B3/A3 with workers |
-| Stage C business layer | Not started | Stage B | — |
-| Stage D transports | Not started | Stage C, gated on C5 | — |
-| Stage E declare | Not started | Stage D | — |
-| Stage F diagnostics | Not started | Stage D | — |
-| Stage G load harness | Not started | Stage F | — |
-| Stage H close out | Not started | everything | — |
-| 1 Multiplayer | Not started | Phase 0 | — |
-| 2 Chat/Bot/IRC | Not started | Phase 1 + Task 1.11 gate | — |
-| 3 Users/Auth | Not started | Phase 1 + Task 1.11 gate | — |
-| 4 Beatmaps/Scores/Content | Not started | Phase 1 + Task 1.11 gate | — |
-| 5 Diagnostics | Not started | Task 0.10 only | — |
-| 6 Load harness | Not started | Phase 5 | — |
-| 7 Final sweep | Not started | Phases 1–6 | — |
+Kept in `plans/execution/HANDOVER.md` §1 and §8, and nowhere else. The tables that used to live
+here were a second copy that drifted — they still said Stage B was implementing and two workers were
+running four days after both had finished — so they were removed on 2026-09-14 rather than repaired.
+The per-worker history that follows is kept because the lessons in it are still true.
 
-## Unsatisfied dependency edges
-
-* Phase 0 → everything
-* Task 0.10 → Phase 5
-* Phase 1 → Phases 2, 3, 4 (patterns)
-* Task 1.11 → Phases 2, 3, 4 running in parallel (file-disjointness gate)
-* Phase 5 → Phase 6
-
-## Running workers
+### Worker history, to 2026-09-10
 
 | Started | Scope | Status |
 | --- | --- | --- |
@@ -287,8 +263,8 @@ branched from `feat/vsa-migration` once Task 0.10 has landed.
 | 2026-09-10 02:40 UTC+7 | Task B6 lifecycle handlers (main tree) and Task 5.6 endpoints (diagnostics tree) | both killed by the session limit with uncommitted work; the diagnostics tree was green and was committed as `b1904ac3`, the main tree **did not compile** |
 | 2026-09-10 05:20 UTC+7 | finish Task B6 (main tree) | died twice on backgrounded test runs, then on the session limit, with the work complete but uncommitted; the orchestrator verified and committed it as `c2e4be34` |
 | 2026-09-10 05:25 UTC+7 | Tasks 5.7 and 5.8 (diagnostics tree) | both committed (`1b77b6d9`, `624b665f`); Stage F closed and merged into `feat/vsa-migration` at `b932f4b4` |
-| 2026-09-10 10:20 UTC+7 | Task B5, adopt the event hub (main tree) | running |
-| 2026-09-10 10:22 UTC+7 | diagnose the order-dependent integration test (`fix/integration-test-order-dependence`) | running |
+| 2026-09-10 10:20 UTC+7 | Task B5, adopt the event hub (main tree) | committed as `26ab543d` |
+| 2026-09-10 10:22 UTC+7 | diagnose the order-dependent integration test (`fix/integration-test-order-dependence`) | fixed at `7b0ea3bd`, merged at `ef96b008` |
 
 ### The second worktree after Stage F
 
@@ -530,7 +506,11 @@ publish. That is what Task 0.10 scoped, and it is correct — but it means two p
 mechanisms live in `Shared/Eventing` right now. Task 1.3 replaces the old one. Anyone starting Phase
 5 in a worktree is building on the new hub while Phase 1 has not yet retired the old one.
 
-## Pause point
+## Pause point (historical, 2026-09-08)
+
+This section recorded the pause after Phase 0. It is kept only because the two hazards it names
+were real; both have since been closed (the hub is adopted, B5; `Shared.Sessions` unwinding is
+absorbed into C1/C2, see `c2-deferred-decision.md`). The live state is in `HANDOVER.md`.
 
 **Phase 0 is complete and signed off. Work stops here.** Resuming into Phase 1 is a deliberate act,
 per the standing instruction to pause when the next phase begins.

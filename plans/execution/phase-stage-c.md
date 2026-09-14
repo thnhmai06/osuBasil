@@ -3,24 +3,19 @@
 > Read this file first. It is kept current in the same commit as every green step, so a
 > successor can resume from here without reconstructing state from `git log` and a build.
 
-## Current task: C6 — done. Next is C1
+## Current task: C6 — done. Next is C1a
 
-Order is C4 → C3 → C2 → C6 → C1 → C5 (see `plans/execution/stage-c-order-decision.md` and
-`plans/basil-plan-20260909.md`'s Stage C preamble, which adds C6). C2 is investigated and
-blocked, not started -- see its section near the end of this file. **C6 is done, landed in one
-commit, described in its own section below.** Everything in that section is committed; nothing
-is pending or uncommitted. The next task in the order is **C1** (move ~96 files into
-`Basil.Domain`) -- `DomainBoundaryTests`/`DomainAdjacency` now watch that project's internal
-graph as files land in it, feature by feature. This file tracks C4, C3 and C6; a later worker
-doing C1/C5 should create sibling sections or a new file per the orchestration doc's convention.
+Order is C4 → C3 → C6 → C1a → C5 (see `plans/execution/stage-c-order-decision.md` for why C1 runs
+last, and `plans/basil-plan-20260909.md`'s Stage C preamble, which adds C6 and splits C1). C2 is
+off the path — investigated and blocked, its section is near the end of this file. **C4, C3 and C6
+are done, everything committed, nothing pending.** C1 as written was found unrunnable on
+2026-09-14: the services it would move encode the wire formats inline, so the seam is cut in place
+first as **C1a**, one service per commit, measured by the `TransportSeamTests` pinned list. The
+finding and the order of services are in `plans/execution/c1-transport-seam-decision.md`. A worker
+doing C1a should add a sibling section here per service, in the same commit as the green step.
 
-**C4 is done — all three commits landed.** Historical record below, kept for the reasoning
-behind the `SliceAdjacency` state C3 inherits.
-
-**C3 is done — landed in two commits, both described below.** Everything in this section is
-committed; nothing is pending or uncommitted. The next task in the order is **C2** (split
-`GameSession`) — read `plans/execution/stage-c-order-decision.md`'s "What changes in C2"
-section before starting; this file does not track C2's plan.
+The sections below are the historical record of C4, C3 and C6, kept for the reasoning behind the
+`SliceAdjacency` and pinned-list state that C1a inherits.
 
 ### Plan for C4 (three commits)
 
@@ -575,10 +570,9 @@ attribute it to this commit.
 
 ### Next exact step
 
-C6 is finished and fully committed. C1 is next per the order above — move ~96 files into
-`Basil.Domain`, one feature per commit; `DomainBoundaryTests` now fails the build the moment any
-moved feature's file introduces an undeclared cross-namespace reference inside `Basil.Domain`,
-rather than waiting until the whole move is done to find out.
+C6 is finished and fully committed. C1a is next — see the header of this file. `DomainBoundaryTests`
+is in place for the day C1b moves a feature into `Basil.Domain`; until C1a has emptied the
+`TransportSeamTests` pinned list, nothing moves.
 
 ## C2 -- investigated, not started: the task's own currency cannot move
 

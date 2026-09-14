@@ -2,6 +2,12 @@
 
 > Status: **Decided 2026-09-10.** Supersedes the C1..C5 ordering in
 > `plans/basil-plan-20260909.md`, which is updated to match.
+>
+> **Since then:** C2 came off the path (`c2-deferred-decision.md`), C6 was inserted before C1
+> (the plan's Task C6), and C1 was split into a seam step and a move step
+> (`c1-transport-seam-decision.md`). The live order is **C4 → C3 → C6 → C1a → C5**. The reasoning
+> below — restructure in place, cross the project boundary last — is unchanged and is what produced
+> each of those changes.
 
 ## The problem with the written order
 

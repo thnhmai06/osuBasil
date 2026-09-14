@@ -1,6 +1,7 @@
 # Handover — osuBasil architecture migration
 
-**Written 2026-09-11.** For a successor agent with no prior context. Read this first, then
+**Written 2026-09-11, re-verified and updated 2026-09-14.** For a successor agent with no prior
+context. Read this first, then `plans/README.md` for what every other document is, then
 `plans/basil-plan-20260909.md`. Everything here is verifiable from the repository; where it is not,
 it says so.
 
@@ -8,21 +9,27 @@ it says so.
 
 ## 1. Where things stand
 
-Branch **`feat/vsa-migration`**, HEAD `b42967c0`, pushed. Working tree clean. A second worktree sits
-at `V:\Code\cs\osuBasil-diagnostics` on `fix/integration-test-order-dependence` at `7b0ea3bd`,
-already merged into the main branch — it is a spare lane, not pending work.
+Branch **`feat/vsa-migration`**, on top of `e286cc26`, pushed. Working tree clean after the
+2026-09-14 commits. A second worktree sits at `V:\Code\cs\osuBasil-diagnostics` on
+`fix/integration-test-order-dependence` at `7b0ea3bd`, already merged — a spare lane, not pending
+work.
 
-**The suite is fully green with no known failures**, which has not been true for most of this
-migration. Run it as five separate calls, never as one (§5):
+**The suite is green.** Verified 2026-09-14 on `e286cc26` plus the new architecture test, as five
+separate calls (§5):
 
 | Project | Count |
 |---|---:|
-| `Basil.ArchitectureTests` | 7 |
+| `Basil.ArchitectureTests` | 8 |
 | `Basil.Domain.Tests` | 114 |
 | `Basil.Protocol.Tests` | 158 |
 | `Basil.Server.Tests` | 1057 |
 | `Basil.IntegrationTests` | 363 |
-| **Total** | **1699** |
+| **Total** | **1700** |
+
+One integration test, `DiagnosticEndpointTests.GetOverviewLive_FirstEventCarriesTheCuratedFields`,
+failed once on a slow full run (8 min 02 s where 6 minutes is usual) and passed in isolation. It
+waits ten seconds for a one-second broadcast tick; it is load-sensitive, not broken, and is listed in
+§8 next to the other one.
 
 Route table: **140** literal patterns from
 `grep -rhoE 'Map(Get|Post|Put|Patch|Delete)\("[^"]*"' src/Basil.Server --include=*.cs | sort -u | wc -l`.
@@ -35,38 +42,58 @@ Treat that number with suspicion — see §4.
 | **A** — make constant-mediated coupling visible | Done. ADR-008. |
 | **B** — untangle before anything moves | Done, all six tasks. |
 | **F** — the Diagnostic API | Done and merged. |
-| **C** — extract the business layer | C4 done, C3 done, C2 **off the path**, C6 done. **C1 and C5 remain.** |
-| **D** — split the transports | Not started. 15 plan items. |
-| **E** — declare what survives, enforce it | Not started. 6 items. |
-| **G** — the load harness | Not started. Unblocked now that F is merged. |
+| **C** — extract the business layer | C4, C3, C6 done. C2 **off the path**. **C1 split: C1a next, then C5; C1b decided after.** |
+| **D** — split the transports | Not started. Gated on C5. |
+| **E** — declare what survives, enforce it | Not started. |
+| **G** — the load harness | Not started. Unblocked since F merged. |
 | **H** — documentation and final verification | Not started. |
 
-**Stage C runs C4 → C3 → C6 → C1 → C5.** Not numbered order.
-`plans/execution/stage-c-order-decision.md` says why: a half-finished restructuring is a compiling
-tree with a measurable edge count, and a half-finished ninety-six-file project move is not.
+**Stage C runs C4 → C3 → C6 → C1a → C5.** `plans/execution/stage-c-order-decision.md` says why the
+project boundary is crossed last; `c1-transport-seam-decision.md` says why C1 split.
 
 ---
 
-## 2. The next task: C1
+## 2. The next task: C1a — cut the transport seam, in place
 
-**Move the business layer into `Basil.Domain`.** About ninety-six files. It is the largest single step
-left and the one with the least margin for error.
+**C1 as written cannot run.** Found 2026-09-14, measured from the compiled assembly: the services C1
+would move into `Basil.Domain` — every match, chat, spectating and login service — encode bancho
+packets with `ServerPacketWriter` and IRC lines with `IrcMessageWriter` inline, and take
+`GameSession` (which carries `IIrcConnection` and `MatchSession`) as their parameter type. Domain may
+not reference `Basil.Protocol` (invariant 9), so the first feature moved would fail on arrival.
+The plan's sizing table checked five framework packages and never checked the protocol.
+`plans/execution/c1-transport-seam-decision.md` has the per-type table.
 
-Its blockers are cleared. C6 built the rule that watches the internal graph of `Basil.Domain`, and it
-had to exist *before* C1 rather than after — the reasoning is in `plans/basil-plan-20260909.md` Task
-C6, and it is the single most important thing to understand before starting C1.
+**The instrument already exists.** `tests/Basil.ArchitectureTests/TransportSeamTests.cs` pins the
+21 offending types by exact set equality, in the same shape as the `Shared -> Features` list. It
+fails both when a new business type reaches for the protocol and when an entry is removed without
+deleting its row — proven by deleting one row and watching it fail.
 
-Two things are known about C1 that the original plan text does not say:
+**C1a, per service, one commit each, smallest first:**
 
-* **`MatchSession` is still one 584-line class** holding both the business state of a match and its
-  SSE projection machinery — nine `StateStream<T>` fields, `SseSubscriberRegistry`, `SequenceGate`,
-  sixteen references in all. C1 splits it: business state to `Basil.Domain`, projection stays behind.
-* **C1 absorbs what C2 was going to do to `GameSession.Match`.** Once the business half is a Domain
-  type, `Shared/Sessions/GameSession.cs` stops naming `Features.Multiplayer` and that
-  `Shared → Features` edge goes with it, for free. Do not rewrite forty-five read sites separately.
-  See `plans/execution/c2-deferred-decision.md`.
+1. `Spectating.SpectatorService` (5 `ServerPacketWriter` sites, one transport) and
+   `SpectateFramesEvent`
+2. `Multiplayer.Handlers.Lifecycle.AbortHandler`
+3. `Multiplayer.MatchMembership`, `MatchControlService`, `MatchLifecycle`, `MatchBroadcast`
+4. the dual-transport ones: `Chat.ChatDispatchService`, `Chat.ChannelMembershipService`,
+   `Multiplayer.MpCommandService`, `Auth.ClientIntegrityService`
+5. `Auth.LoginService` last — the login reply is intrinsically a packet sequence and may be
+   classified as an adapter rather than moved
+6. `MatchState`'s three users (`IMatchRegistry`, `InMemoryMatchRegistry`,
+   `MatchLiveSnapshotBuilder`) and the two API route types (`AnnounceRoutes`, `MatchListEndpoints`,
+   already named by Task D3)
 
-Move **one feature per commit**. A type moved and not yet rewired across nine slices is a broken tree.
+For each: replace the encoder calls with a notification contract the service owns and the bancho or
+IRC side implements; decide the contract's shape at that service from its call sites, the way the
+logout handlers were; keep the match lock discipline (§9) — the notifier is called inside the same
+locked sequence the encoder was; delete the row from the pinned list; run the five test calls;
+commit with the checkpoint in `phase-stage-c.md` updated in the same commit.
+
+`MatchPacketDataMapper` is an adapter by design and probably keeps its row until C1b decides
+where adapters live.
+
+**C1b** — the ninety-six-file move — is decided only after C1a's list is empty, with numbers. It may
+turn out not to buy anything the namespace rules do not; that is a legitimate outcome, and it is the
+user's call.
 
 ---
 
@@ -80,6 +107,7 @@ usually reaches the same answer.
 | `docs/adr/ADR-008-dependency-enforcement.md` | values crossing a boundary are `static readonly`, not `const`, because NetArchTest reads IL and C# inlines constants |
 | `stage-c-order-decision.md` | the order of Stage C, and the measured payoff of C4 |
 | `c2-deferred-decision.md` | why C2 is off the path — its own proof is unreachable by it |
+| `c1-transport-seam-decision.md` | C1 is split: the seam is cut in place first, the project move is decided after; invariant 9 stays |
 | `hub-adoption-decision.md` | the event hub carries deltas only; the seed handshake was deleted because `SeedIfNotSuperseded` had no callers |
 | `logout-as-event-decision.md` | logout uses an ordered handler list, **not** an event bus — there is no domain-event bus in this codebase, and `Shared/Eventing` is entirely SSE machinery |
 | `diagnostics-boundary-decision.md` | `Diagnostics → Auth` authorised; four other edges refused in favour of published gauges |
@@ -94,7 +122,7 @@ carries a visible correction block about a measurement error. Prefer the decisio
 
 ## 4. The instrument map — the most expensive knowledge here
 
-Four things measure coupling on this project. **They cover different populations and they fail in
+Five things measure coupling on this project. **They cover different populations and they fail in
 different directions.** Most of a day went into learning this, and a successor who assumes one number
 means "the coupling" will draw a false conclusion.
 
@@ -103,6 +131,7 @@ means "the coupling" will draw a false conclusion.
 | `SliceAdjacency` + `SliceBoundaryTests` | `Features/<Slice>` → `Features/<Slice>` | every build | `const` values, until ADR-008 |
 | `Shared_Should_Not_Reference_Features` pinned list | `Shared/` → `Features/` | every build, exact set equality | nothing known |
 | `DomainAdjacency` + `DomainBoundaryTests` | inside `Basil.Domain`, population read from the assembly at run time | every build | nothing known |
+| `TransportSeamTests` pinned list | `Features/` types outside `.Packets` and outside `Irc` → `Basil.Protocol` | every build, exact set equality | nothing known; added 2026-09-14 |
 | `plans/execution/measure-slice-graph.py` | files owned by a slice-named directory, in `Features/` or `Domain/` | nothing — it is a report | three things, below |
 
 The script has **three proven blind spots**:
@@ -122,8 +151,9 @@ The script has **three proven blind spots**:
 
 * **An edge counts as removed only when its `SliceAdjacency` row can be deleted and the architecture
   suite stays green.** The script says where to look. The allowlist says whether it worked.
-* **Name the currency before claiming a win.** C3's was the pinned list; C4's was allowlist rows;
-  C1's will be the pinned list and `DomainAdjacency`. Without this, a task that moved nothing reads as
+* **Name the currency before claiming a win.** C3's was the `Shared -> Features` pinned list; C4's
+  was allowlist rows; C1a's is the `TransportSeamTests` pinned list; C1b's would be the
+  `Shared -> Features` list and `DomainAdjacency`. Without this, a task that moved nothing reads as
   progress on whichever number happened to drift.
 * **The route grep is weak.** It records only the string inside the `Map*` call, so for a route mapped
   inside a `MapGroup` it captures the *suffix* and cannot see a changed group prefix; it deduplicates;
@@ -196,6 +226,12 @@ gate is a cycle count, that is the most expensive possible false comfort.
   `using Basil.Domain.Scores` — a Domain namespace, never a slice-boundary violation, never an
   allowlist row.
 * I recorded the Domain graph as three edges. It is six; see §4.
+* The plan sized C1 as a file move with a table that checked five framework packages and not the
+  one dependency that actually blocks it. Found 2026-09-14 by measuring from the compiled assembly
+  instead of trusting the table; §2.
+* `architecture-progress.md` carried three values for one number (45/53, 52, 43/50) because the
+  C5 gate line and the log table were not updated when C4 and C3 landed. Now one value, with the
+  commit and the command beside it.
 
 The pattern: **every one of these was a number or a claim written without measuring, and every one was
 caught by someone measuring it.** Prefer a probe to the record — this document included.
@@ -204,18 +240,22 @@ caught by someone measuring it.** Prefer a probe to the record — this document
 
 ## 8. Open items
 
-* **C1, then C5.** C5 gates Stage D: if the graph did not move as predicted, stop and report before
-  Stage D, whose project split assumes it did.
-* **Task G5** — `BeatmapsetManagementEndpointTests.PutBeatmapset_Valid_ReplacesTheBeatmapsetsFilesAndReturns202`
-  passes because a background migration sweep usually finishes in time, not because anything makes it.
-  Recorded in `docs/for-developers/testing.md`.
+* **C1a, then C5.** C5 gates Stage D: if the graph did not move as predicted, stop and report before
+  Stage D, whose project split assumes it did. C5 now also reads the `TransportSeamTests` list.
+* **Two load-sensitive integration tests.** Task G5's
+  `BeatmapsetManagementEndpointTests.PutBeatmapset_Valid_ReplacesTheBeatmapsetsFilesAndReturns202`
+  passes because a background migration sweep usually finishes in time, not because anything makes
+  it (recorded in `docs/for-developers/testing.md`); and
+  `DiagnosticEndpointTests.GetOverviewLive_FirstEventCarriesTheCuratedFields` gives a one-second
+  broadcast tick ten seconds to arrive and failed once on an 8-minute full run. A single failure of
+  either on a slow run is not a regression; anything else is. Both belong to Stage G.
 * **Task H2** — the localization rule set the user supplied becomes developer and agent documentation,
   and `CLAUDE.md` splits into `docs/for-agents/`. Deferred by the user to the documentation phase; the
   source is at `C:\Users\haith\Desktop\osuBasil-docs.md`.
 * **Five documents under `plans/`** still link to `../docs/for-developers/known-limitations.md`. That
   file was deliberately moved to `plans/known-limitations.md` in `8d3e9060` — "It's just local
-  document for implement PR" — so the links are stale, not the file. They are historical records, left
-  for the documentation pass.
+  document for implement PR" — so the links are stale, not the file. They are the pre-migration perf
+  investigation, labelled historical in `plans/README.md`, and are not maintained.
 * **The user owes a force-push** restoring PR #7 to `97e7d56`. Blocked by a hook; the command was
   handed over and only the user can run it.
 

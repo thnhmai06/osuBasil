@@ -34,6 +34,9 @@ first time are worth repeating:
 | 2026-09-09 | `ed48716` | stage A made constant-mediated coupling visible; 7 edges declared, 1 `Shared` offender pinned | 44 | 1 of 10 |
 | 2026-09-10 | `4d669be8` | re-measured with `measure-slice-graph.py` | 44 features-only, 52 solution-wide | 1 of 10 |
 | 2026-09-10 | `ef96b008` | **stage C entry baseline**, after stage B closed and stage F merged | 45 features-only, 53 solution-wide | 1 of 10 |
+| 2026-09-10 | `a936c343` | C4 moved `MpCommandService`/`MpReplies` into Multiplayer; `Bot -> Irc` row kept (see below) | 43 features-only, 50 solution-wide, as recorded by the C3 worker's re-measurement below | 1 of 10 |
+| 2026-09-10 | `a6e12458` | C3 inverted logout; script numbers unchanged, `Shared -> Features` pinned list 13 to 12 | unchanged | 1 of 10 |
+| 2026-09-14 | `e286cc26` | re-measured at the start of the reconciliation session: `python plans/execution/measure-slice-graph.py`; `SliceAdjacency` 44 rows, pinned list 12, `DomainAdjacency` 6 | 43 features-only, 50 solution-wide | 1 of 10 |
 
 Stage A changed no coupling. It changed what the rule can see, which is why the edge count is
 unchanged while the declared count rose from 38 to 45.
@@ -101,7 +104,8 @@ C5 on that number alone and it passes for free, on the very step it exists to ch
 So C5 reads both:
 
 * **features-only** must fall to roughly 17. That is the prediction, in the frame it was made in.
-* **solution-wide** must fall with it. It starts at 52.
+* **solution-wide** must fall with it. It was 53 at the stage C entry baseline and is **50** at
+  `e286cc26`, after C4 and C3.
 
 If features-only drops to 17 while solution-wide stays near 52, the coupling did not go anywhere --
 it moved into `Basil.Domain` and out of the old measurement's view. That is the precise failure this
@@ -168,8 +172,17 @@ it counts edges **sourced from** a slice-named directory, and `Shared/` is not o
 | `Shared_Should_Not_Reference_Features` pinned list | `Shared/` → `Features/` | NetArchTest, exact set equality |
 | `measure-slice-graph.py` | files owned by a slice-named directory, in `Features/` or `Domain/` | nothing; it is a report |
 
-Nothing measures `Host/` → anything, and nothing yet measures inside `Basil.Domain` — which is what
-Task C6 adds before C1 moves ninety-six files in there.
+Nothing measures `Host/` → anything. Inside `Basil.Domain`, C6 added `DomainAdjacency`.
+
+A fifth instrument landed on 2026-09-14, and it is the one C1 is measured by:
+
+| Instrument | Population | Enforced by |
+|---|---|---|
+| `TransportSeamTests` pinned list | `Features/` types outside `.Packets` and outside `Irc` → `Basil.Protocol` | NetArchTest, exact set equality |
+
+It starts at **21 entries**. None of the four instruments above has this dependency in its
+population, so cutting it moves none of their numbers — the C3 shape again. The finding that
+produced it is in `c1-transport-seam-decision.md`.
 
 **The practical rule: name the currency before claiming a win.** C3's currency is the pinned list. C4's
 was `SliceAdjacency` rows. C2's will be the pinned list again, because what it removes is

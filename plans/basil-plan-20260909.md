@@ -85,15 +85,16 @@ Copied verbatim from the specs. Every task's requirements implicitly include thi
 * Commit messages, code comments and documentation are written in normal English prose. Comments
   are self-contained: they explain the reason, never cite a document or ADR number as the reason.
 
-**Test oracle.** Per tree, 0 failed / 0 skipped, and the passing count is:
+**Test oracle.** 0 failed / 0 skipped, and the passing count is:
 
 | Tree | Branch | Count | As of |
 |---|---|---|---|
-| `V:\Code\cs\osuBasil` | `feat/vsa-migration` | 1658 | `1c29ce45` |
-| `V:\Code\cs\osuBasil-diagnostics` | `feat/vsa-phase-5-diagnostics` | 1699 | `b1904ac3` |
+| `V:\Code\cs\osuBasil` | `feat/vsa-migration` | 1700 | the transport-seam commit after `e286cc26` |
 
-The two counts differ because the diagnostics tree carries Stage F tests the main tree has not
-merged yet. A task that changes its tree's count says why, and updates the row.
+Per project: ArchitectureTests 8, Domain.Tests 114, Protocol.Tests 158, Server.Tests 1057,
+IntegrationTests 363. A task that changes the count says why, and updates the row. Two integration
+tests are load-sensitive and can fail on a slow full run without a regression; they are named in
+`plans/execution/HANDOVER.md` §8.
 
 ---
 
@@ -280,7 +281,10 @@ rewrites it, and add a regression test that pins the invariant rather than the c
 
 ## Stage C — extract the business layer
 
-**The tasks run C4, C3, C6, C1, C5**, not in numbered order. **C2 is off the path** — see below. Every restructuring step happens inside
+**The tasks run C4, C3, C6, C1a, C5**, not in numbered order. **C2 is off the path** — see
+below. **C1 is split**: the transport seam is cut in place first (C1a), and the project move (C1b) is
+decided afterwards — see Task C1 and `plans/execution/c1-transport-seam-decision.md`. Every
+restructuring step happens inside
 `Basil.Server`, where the compiler checks each move and the suite is runnable at every intermediate
 point; the project boundary is crossed once, at the end, on code that has stopped moving. A
 half-finished restructuring is a compiling tree with a measurable edge count. A half-finished
@@ -289,6 +293,25 @@ The reasoning and C4's measured payoff are in `plans/execution/stage-c-order-dec
 
 
 ### Task C1: Create `Basil.Domain` as the business layer
+
+**Re-scoped 2026-09-14.** The sizing table below checked the candidates for framework packages and
+never checked `Basil.Protocol`. Measured from the compiled assembly, 21 of the types this task would
+move — every match, chat, spectating and login service — encode bancho packets with
+`ServerPacketWriter` and IRC lines with `IrcMessageWriter` inline, and take `GameSession` as their
+parameter type. None of them can enter a project that may not reference the protocol. Full
+measurement and the reasoning in `plans/execution/c1-transport-seam-decision.md`.
+
+So C1 runs as two tasks, and only the first is scheduled:
+
+* **C1a — cut the transport seam, in place.** One service per commit, smallest first, each replacing
+  its encoder calls with a notification contract the service owns and the transport implements.
+  Currency: `TransportSeamTests.Business_And_Api_Types_Should_Not_Reference_Protocol`'s pinned list,
+  21 entries at the start, each commit deleting its row. The `GameSession` parameter is part of the
+  same seam. Order and per-service notes are in the decision document.
+* **C1b — the project move,** the text below, only once C1a's list is empty and only if the move
+  still buys something the namespace rules do not. Decided then, with numbers.
+
+The original task text follows, for C1b.
 
 The biggest single move. 96 files by measurement: services, live state, contracts.
 
@@ -437,7 +460,9 @@ wherever its files live, so it falls only when a dependency actually goes away.
   Stage B and carries the merged Stage F — and recorded in
   `plans/execution/architecture-progress.md`, is **45 features-only / 53 solution-wide edges, one
   component of ten.** Eleven slices now, and the cycle still has ten: Diagnostics sits outside it
-  with one declared outgoing edge and nothing depending on it.
+  with one declared outgoing edge and nothing depending on it. **At `e286cc26`, after C4 and C3, it
+  reads 43 / 50**, `SliceAdjacency` holds 44 rows, the `Shared -> Features` pinned list 12, and the
+  `TransportSeamTests` pinned list 21 — the number C1a is measured by.
 - [ ] Expected after Stage C: features-only falls to roughly 17, with Auth, Beatmaps, Content,
   Users and Spectating standing free. **Solution-wide must fall with it.** If features-only reaches
   17 while solution-wide sits near 52, the coupling was relocated into `Basil.Domain` rather than
