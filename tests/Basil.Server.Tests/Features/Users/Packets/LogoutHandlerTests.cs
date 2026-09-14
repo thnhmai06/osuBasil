@@ -1,3 +1,4 @@
+using Basil.Server.Features.Chat.Packets;
 using Basil.Server.Features.Multiplayer.Packets;
 using Basil.Server.Features.Spectating.Packets;
 using Basil.Server.Shared.Eventing;
@@ -36,7 +37,7 @@ public class LogoutHandlerTests
 			Substitute.For<ISessionRegistry<IrcSession>>(),
 			Substitute.For<IChannelRegistry>(), Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
 			Options.Create(new IrcOptions()));
-		var matchBroadcast = new MatchBroadcast(Substitute.For<IChannelRegistry>(), channelMembership, new BanchoMatchNotifier(_channelRegistry, channelMembership),
+		var matchBroadcast = new MatchBroadcast(Substitute.For<IChannelRegistry>(), channelMembership, new BanchoMatchNotifier(_channelRegistry, channelMembership), new ChatNotifier(),
 			Substitute.For<ISessionRegistry<GameSession>>(), Substitute.For<ISessionRegistry<IrcSession>>(), null,
 			Substitute.For<IBeatmapRepository>(),
 			Substitute.For<IUserRepository>());

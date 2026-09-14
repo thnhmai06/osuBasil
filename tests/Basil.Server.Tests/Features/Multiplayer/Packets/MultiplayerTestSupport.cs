@@ -1,3 +1,4 @@
+using Basil.Server.Features.Chat.Packets;
 using Basil.Server.Features.Multiplayer.Packets;
 using Basil.Server.Features.Irc;
 using Basil.Server.Features.Multiplayer.Handlers.Countdown;
@@ -346,7 +347,7 @@ internal static class MultiplayerTestSupport
 				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
 
 			MatchNotifier = new BanchoMatchNotifier(ChannelRegistry, ChannelMembership);
-			MatchBroadcast = new MatchBroadcast(ChannelRegistry, ChannelMembership, MatchNotifier, SessionRegistry,
+			MatchBroadcast = new MatchBroadcast(ChannelRegistry, ChannelMembership, MatchNotifier, new ChatNotifier(), SessionRegistry,
 				IrcSessionRegistry, Hub, BeatmapRepository, UserRepository);
 
 			MatchLifecycle = new MatchLifecycle(MatchRegistry, ChannelRegistry, ChannelMembership, MatchNotifier, SessionRegistry,

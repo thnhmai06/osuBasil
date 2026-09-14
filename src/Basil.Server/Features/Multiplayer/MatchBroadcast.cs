@@ -6,7 +6,6 @@ using Basil.Server.Features.Users;
 using Basil.Server.Features.Bot;
 using Basil.Server.Shared.Sessions;
 using Basil.Server.Features.Chat;
-using Basil.Protocol.Irc;
 
 namespace Basil.Server.Features.Multiplayer;
 
@@ -24,6 +23,7 @@ public sealed class MatchBroadcast(
 	IChannelRegistry channelRegistry,
 	ChannelMembershipService channelMembership,
 	IMatchNotifier notifier,
+	IChatNotifier chat,
 	ISessionRegistry<GameSession> gameRegistry,
 	ISessionRegistry<IrcSession> ircRegistry,
 	ILiveEventHub hub,
@@ -57,8 +57,7 @@ public sealed class MatchBroadcast(
 		var channel = channelRegistry.GetByName(match.ChatChannelName);
 		if (channel is null) return;
 
-		channelMembership.BroadcastPrivmsg(channel,
-			IrcMessageWriter.Privmsg(senderName, senderId, channel.Name, text));
+		channelMembership.BroadcastPrivmsg(channel, new ChatLine(senderId, senderName, channel.Name, text));
 	}
 
 	/// <summary>Broadcasts the match state to the channel and lobby and republishes every live SSE snapshot channel.</summary>
@@ -171,9 +170,9 @@ public sealed class MatchBroadcast(
 		{
 			if (channel is not null && channel.Contains(refereeId)) continue;
 			if (gameRegistry.GetByUserId(refereeId) is { } game)
-				game.IrcConnection.Send(IrcMessageWriter.Privmsg(bot.Name, bot.Id, game.Name, text));
+				chat.Deliver(game, new ChatLine(bot.Id, bot.Name, game.Name, text));
 			if (ircRegistry.GetByUserId(refereeId) is { } irc)
-				irc.IrcConnection.Send(IrcMessageWriter.Privmsg(bot.Name, bot.Id, irc.Name, text));
+				chat.Deliver(irc, new ChatLine(bot.Id, bot.Name, irc.Name, text));
 		}
 	}
 

@@ -336,6 +336,28 @@ public sealed class ChannelMembershipService(
 	}
 
 	/// <summary>
+	///     Delivers one line of chat to every session (game and IRC alike) of each member of a
+	///     channel, so an account with both open sees channel chat on either.
+	/// </summary>
+	/// <param name="channel">The channel whose members receive the line.</param>
+	/// <param name="line">The line to deliver.</param>
+	/// <param name="skipMemberId">The id of a member to skip, typically the line's sender, or null to deliver to everyone.</param>
+	public void BroadcastPrivmsg(ChannelSession channel, ChatLine line, int? skipMemberId = null)
+	{
+		var message = line.Notice
+			? IrcMessageWriter.Notice(line.SenderName, line.SenderId, line.Target, line.Text)
+			: IrcMessageWriter.Privmsg(line.SenderName, line.SenderId, line.Target, line.Text);
+		foreach (var memberId in channel.MemberIds)
+		{
+			if (memberId == skipMemberId) continue;
+			if (gameRegistry.GetByUserId(memberId) is { } game) game.IrcConnection.Send(message);
+			if (ircRegistry.GetByUserId(memberId) is { } irc) irc.IrcConnection.Send(message);
+		}
+
+		PublishMatchChat(channel, line.SenderId, line.SenderName, line.Text);
+	}
+
+	/// <summary>
 	///     Updates a channel's topic and pushes the change to every current member — a fresh
 	///     <c>ChannelInfo</c> for bancho clients (whose channel-list entry already carries the topic)
 	///     and a <c>TOPIC</c> line, attributed to BasilBot, for real IRC clients.
@@ -368,12 +390,18 @@ public sealed class ChannelMembershipService(
 	private void PublishMatchChat(ChannelSession channel, IrcMessage message)
 	{
 		if (message.Params.Count < 2) return;
-		if (MatchFor(channel) is not { } match) return;
 		if (!IrcMessageWriter.TryParseUserPrefix(message.Prefix, out var senderName, out var senderId)) return;
+
+		PublishMatchChat(channel, senderId, senderName, message.Params[1]);
+	}
+
+	private void PublishMatchChat(ChannelSession channel, int senderId, string senderName, string text)
+	{
+		if (MatchFor(channel) is not { } match) return;
 
 		var session = (UserSession?)gameRegistry.GetByUserId(senderId) ?? ircRegistry.GetByUserId(senderId);
 		var sender = new UserBrief(senderId, session?.Name ?? senderName, session?.Country ?? Country.Xx);
-		var chat = new MatchChatMessage(sender, message.Params[1], DateTimeOffset.UtcNow);
+		var chat = new MatchChatMessage(sender, text, DateTimeOffset.UtcNow);
 
 		hub.Publish(MatchStreams.Chat(match.DbId), match.AllocateChatVersion(),
 			JsonSerializer.SerializeToUtf8Bytes(chat, BasilJsonOptions.Instance));

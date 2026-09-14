@@ -1,3 +1,4 @@
+using Basil.Server.Features.Chat.Packets;
 using Basil.Server.Features.Multiplayer.Packets;
 using Basil.Server.Shared.Eventing;
 using Basil.Server.Features.Irc;
@@ -60,7 +61,7 @@ public class MatchMembershipServiceTests
 	{
 		var channelMembership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
 			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
-		var broadcast = new MatchBroadcast(_channelRegistry, channelMembership, new BanchoMatchNotifier(_channelRegistry, channelMembership), _gameRegistry, _ircRegistry, _hub,
+		var broadcast = new MatchBroadcast(_channelRegistry, channelMembership, new BanchoMatchNotifier(_channelRegistry, channelMembership), new ChatNotifier(), _gameRegistry, _ircRegistry, _hub,
 			_beatmapRepository, _userRepository);
 		var serviceProvider = Substitute.For<IServiceProvider>();
 		var lifecycle = new MatchLifecycle(_matchRegistry, _channelRegistry, channelMembership, new BanchoMatchNotifier(_channelRegistry, channelMembership), _gameRegistry,
