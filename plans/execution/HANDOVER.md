@@ -246,9 +246,16 @@ caught by someone measuring it.** Prefer a probe to the record — this document
   `BeatmapsetManagementEndpointTests.PutBeatmapset_Valid_ReplacesTheBeatmapsetsFilesAndReturns202`
   passes because a background migration sweep usually finishes in time, not because anything makes
   it (recorded in `docs/for-developers/testing.md`); and
-  `DiagnosticEndpointTests.GetOverviewLive_FirstEventCarriesTheCuratedFields` gives a one-second
-  broadcast tick ten seconds to arrive and failed once on an 8-minute full run. A single failure of
-  either on a slow run is not a regression; anything else is. Both belong to Stage G.
+  `DiagnosticEndpointTests`' live tests (`GetOverviewLive_FirstEventCarriesTheCuratedFields` at
+  20 s on an 8-minute run, then `GetGcLive_FirstEventIsARealGcReading` at 15 s on a 5 min 55 s run,
+  each once, each passing in isolation) give the real one-second broadcast tick ten seconds to
+  deliver a first event. Known facts: the class builds a fresh `WebApplicationFactory` per test
+  because the constructor calls `WithWebHostBuilder`; the host runs its real background services;
+  `DiagnosticBroadcastService.RunOnce()` exists "so tests can drive one pass deterministically" and
+  no integration test uses it. Not yet diagnosed to a cause. A single failure of one of these on a
+  full run is not a regression; anything else is. Both items belong to Stage G, and this one is a
+  candidate for a first-event-on-subscribe change measured against the SSE contract in
+  `docs/for-developers/sse.md`.
 * **Task H2** — the localization rule set the user supplied becomes developer and agent documentation,
   and `CLAUDE.md` splits into `docs/for-agents/`. Deferred by the user to the documentation phase; the
   source is at `C:\Users\haith\Desktop\osuBasil-docs.md`.

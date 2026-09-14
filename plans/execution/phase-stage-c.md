@@ -3,7 +3,7 @@
 > Read this file first. It is kept current in the same commit as every green step, so a
 > successor can resume from here without reconstructing state from `git log` and a build.
 
-## Current task: C6 — done. Next is C1a
+## Current task: C1a — step 1 done. Next is step 2
 
 Order is C4 → C3 → C6 → C1a → C5 (see `plans/execution/stage-c-order-decision.md` for why C1 runs
 last, and `plans/basil-plan-20260909.md`'s Stage C preamble, which adds C6 and splits C1). C2 is
@@ -573,6 +573,34 @@ attribute it to this commit.
 C6 is finished and fully committed. C1a is next — see the header of this file. `DomainBoundaryTests`
 is in place for the day C1b moves a feature into `Basil.Domain`; until C1a has emptied the
 `TransportSeamTests` pinned list, nothing moves.
+
+## C1a — cut the transport seam, one service per commit
+
+Order and reasoning: `plans/execution/c1-transport-seam-decision.md`. Currency: the
+`TransportSeamTests` pinned list, 21 at the start.
+
+### Step 1 — `SpectatorService` (done, 21 to 20)
+
+`ISpectatorNotifier` (`Features/Spectating/`) carries the three things the service tells clients:
+a host that a spectator joined, a spectator that a fellow joined, a spectator that a fellow left.
+`BanchoSpectatorNotifier` (`Features/Spectating/Packets/`, the slice's bancho side) encodes each as
+the packet the service used to build inline. The service no longer imports `Basil.Protocol`; its
+row is deleted. The constructor gained the parameter through Rider's `change_api_signature`, which
+rewrote the twelve call sites, all in tests, with the real bancho notifier — so every existing test
+still asserts the same packet bytes through the same path. `SpectateFramesEvent` keeps its row: it is
+the SSE payload that carries `ReplayFrame`/`ScoreFrame`, Task D3's kind of defect, not a service.
+
+Verification: build green, ArchitectureTests 8, Server.Tests 1057, IntegrationTests 362 passed
+and `DiagnosticEndpointTests.GetGcLive_FirstEventIsARealGcReading` failed once at 15 s on a
+5 min 55 s run, then passed in isolation — the second different `DiagnosticEndpointTests` live test
+to do that in two consecutive full runs, unrelated to this change (nothing in Diagnostics or its
+tests moved). Recorded in `HANDOVER.md` §8 with what is known.
+
+### Next exact step
+
+Step 2 — `Multiplayer.Handlers.Lifecycle.AbortHandler`, one `ServerPacketWriter` site. Then
+`MatchMembership` (6 sites), whose notifier will be the one `MatchControlService`, `MatchLifecycle`
+and `MatchBroadcast` also need; decide its shape from those four files together before writing it.
 
 ## C2 -- investigated, not started: the task's own currency cannot move
 

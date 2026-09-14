@@ -1,6 +1,5 @@
 using Basil.Server.Shared.Sessions;
 using Basil.Server.Features.Chat;
-using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging;
 
 namespace Basil.Server.Features.Spectating;
@@ -20,6 +19,7 @@ namespace Basil.Server.Features.Spectating;
 public sealed class SpectatorService(
 	IChannelRegistry channelRegistry,
 	ChannelMembershipService channelMembership,
+	ISpectatorNotifier notifier,
 	ILogger<SpectatorService> logger)
 {
 	/// <summary>Builds the instance channel name for a spectated userSession.</summary>
@@ -54,21 +54,20 @@ public sealed class SpectatorService(
 
 		if (!spectator.Stealth)
 		{
-			var joinedBySpectator = ServerPacketWriter.FellowSpectatorJoined(spectator.Id);
 			foreach (var existing in host.Spectators)
 			{
-				existing.Enqueue(joinedBySpectator);
-				spectator.Enqueue(ServerPacketWriter.FellowSpectatorJoined(existing.Id));
+				notifier.FellowSpectatorJoined(existing, spectator.Id);
+				notifier.FellowSpectatorJoined(spectator, existing.Id);
 			}
 
-			host.Enqueue(ServerPacketWriter.SpectatorJoined(spectator.Id));
+			notifier.SpectatorJoined(host, spectator.Id);
 		}
 		else
 		{
 			// Stealth: only give the (admin) spectator visibility into existing spectators, not
 			// vice versa: the host and other spectators are never told this userSession joined.
 			foreach (var existing in host.Spectators)
-				spectator.Enqueue(ServerPacketWriter.FellowSpectatorJoined(existing.Id));
+				notifier.FellowSpectatorJoined(spectator, existing.Id);
 		}
 
 		host.AddSpectator(spectator);
@@ -102,7 +101,6 @@ public sealed class SpectatorService(
 		logger.LogDebug("Spectator left: HostId={HostId} SpectatorId={SpectatorId} ChannelTornDown=false",
 			host.Id, spectator.Id);
 
-		var fellowLeft = ServerPacketWriter.FellowSpectatorLeft(spectator.Id);
-		foreach (var remaining in host.Spectators) remaining.Enqueue(fellowLeft);
+		foreach (var remaining in host.Spectators) notifier.FellowSpectatorLeft(remaining, spectator.Id);
 	}
 }

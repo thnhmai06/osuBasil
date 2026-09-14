@@ -1,3 +1,4 @@
+using Basil.Server.Features.Spectating.Packets;
 using Basil.Server.Shared.Eventing;
 using Basil.Server.Features.Irc;
 using Basil.Server.Features.Beatmaps;
@@ -49,7 +50,7 @@ public class GhostDisconnectServiceTests
 		channelRegistry ??= Substitute.For<IChannelRegistry>();
 		var channelMembership = new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry,
 			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
-		var spectatorService = new SpectatorService(channelRegistry, channelMembership,
+		var spectatorService = new SpectatorService(channelRegistry, channelMembership, new BanchoSpectatorNotifier(),
 			NullLogger<SpectatorService>.Instance);
 		var matchBroadcast = new MatchBroadcast(channelRegistry, channelMembership, gameRegistry, ircRegistry, null,
 			Substitute.For<IBeatmapRepository>(),
@@ -239,7 +240,7 @@ public class GhostDisconnectServiceTests
 		var testChannelMembership = new ChannelMembershipService(fixture.SessionRegistry,
 			fixture.IrcSessionRegistry, fixture.ChannelRegistry,
 			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
-		var testSpectatorService = new SpectatorService(fixture.ChannelRegistry, testChannelMembership,
+		var testSpectatorService = new SpectatorService(fixture.ChannelRegistry, testChannelMembership, new BanchoSpectatorNotifier(),
 			NullLogger<SpectatorService>.Instance);
 		var playerLogout = new PlayerLogoutService(
 			[

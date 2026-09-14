@@ -1,3 +1,4 @@
+using Basil.Server.Features.Spectating.Packets;
 using Basil.Server.Shared.Eventing;
 using Basil.Server.Features.Irc;
 using Basil.Server.Features.Beatmaps;
@@ -51,7 +52,7 @@ public class LogoutHandlerTests
 			new ChannelMembershipService(Substitute.For<ISessionRegistry<GameSession>>(),
 				Substitute.For<ISessionRegistry<IrcSession>>(),
 				Substitute.For<IChannelRegistry>(), Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
-				Options.Create(new IrcOptions())),
+				Options.Create(new IrcOptions())), new BanchoSpectatorNotifier(),
 			NullLogger<SpectatorService>.Instance);
 
 		return new LogoutHandler(new PlayerLogoutService(

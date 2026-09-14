@@ -39,7 +39,7 @@ public class StartSpectatingHandlerTests
 			new SpectatorService(new FakeChannelRegistry(),
 				new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(),
 					new FakeChannelRegistry(), Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
-					Options.Create(new IrcOptions())),
+					Options.Create(new IrcOptions())), new BanchoSpectatorNotifier(),
 				NullLogger<SpectatorService>.Instance),
 			NullLogger<StartSpectatingHandler>.Instance);
 		var player = MakePlayer(1, "alice");
@@ -61,7 +61,7 @@ public class StartSpectatingHandlerTests
 			new SpectatorService(new FakeChannelRegistry(),
 				new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(),
 					new FakeChannelRegistry(), Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
-					Options.Create(new IrcOptions())),
+					Options.Create(new IrcOptions())), new BanchoSpectatorNotifier(),
 				NullLogger<SpectatorService>.Instance),
 			NullLogger<StartSpectatingHandler>.Instance);
 
@@ -83,7 +83,7 @@ public class StartSpectatingHandlerTests
 			new SpectatorService(new FakeChannelRegistry(),
 				new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(),
 					new FakeChannelRegistry(), Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
-					Options.Create(new IrcOptions())),
+					Options.Create(new IrcOptions())), new BanchoSpectatorNotifier(),
 				NullLogger<SpectatorService>.Instance);
 		var handler = new StartSpectatingHandler(_sessionRegistry, spectatorService,
 			NullLogger<StartSpectatingHandler>.Instance);

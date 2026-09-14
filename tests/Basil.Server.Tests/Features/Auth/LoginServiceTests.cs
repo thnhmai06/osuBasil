@@ -1,3 +1,4 @@
+using Basil.Server.Features.Spectating.Packets;
 using Basil.Server.Features.Irc;
 using Basil.Server.Shared.Eventing;
 using System.Net;
@@ -55,7 +56,7 @@ public class LoginServiceTests
 		var ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
 		var channelMembership = new ChannelMembershipService(_sessionRegistry, ircRegistry, _channelRegistry,
 			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
-		_spectatorService = new SpectatorService(_channelRegistry, channelMembership,
+		_spectatorService = new SpectatorService(_channelRegistry, channelMembership, new BanchoSpectatorNotifier(),
 			NullLogger<SpectatorService>.Instance);
 		var matchBroadcast = new MatchBroadcast(_channelRegistry, channelMembership, _sessionRegistry, ircRegistry,
 			null, Substitute.For<IBeatmapRepository>(), _users);

@@ -1,3 +1,4 @@
+using Basil.Server.Features.Spectating.Packets;
 using Basil.Server.Features.Auth;
 using Basil.Server.Shared.Eventing;
 using System.Net;
@@ -354,7 +355,7 @@ public class TcpIrcConnectionTests
 		ISessionRegistry<IrcSession> ircRegistry, IChannelRegistry channelRegistry,
 		ChannelMembershipService channelMembership)
 	{
-		var spectatorService = new SpectatorService(channelRegistry, channelMembership,
+		var spectatorService = new SpectatorService(channelRegistry, channelMembership, new BanchoSpectatorNotifier(),
 			NullLogger<SpectatorService>.Instance);
 		var matchBroadcast = new MatchBroadcast(channelRegistry, channelMembership, gameRegistry, ircRegistry, null,
 			new NotSupportedBeatmapRepository(), new FakeUserRepository());

@@ -13,6 +13,7 @@ public static class SpectatingServiceCollectionExtensions
 	/// <returns>The same service collection for chaining further registrations.</returns>
 	public static IServiceCollection AddSpectating(this IServiceCollection services, IConfiguration configuration)
 	{
+		services.AddSingleton<ISpectatorNotifier, BanchoSpectatorNotifier>();
 		services.AddSingleton<SpectatorService>();
 
 		services.AddSingleton<IPlayerInputEvents, PlayerInputEvents>();

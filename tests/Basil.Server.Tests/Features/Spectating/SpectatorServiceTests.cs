@@ -1,3 +1,4 @@
+using Basil.Server.Features.Spectating.Packets;
 using Basil.Server.Shared.Eventing;
 using Basil.Server.Features.Irc;
 using Basil.Server.Shared.Configuration;
@@ -25,7 +26,7 @@ public class SpectatorServiceTests
 	{
 		return new SpectatorService(_channelRegistry,
 			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
-				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions())),
+				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions())), new BanchoSpectatorNotifier(),
 			NullLogger<SpectatorService>.Instance);
 	}
 

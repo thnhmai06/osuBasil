@@ -1,3 +1,4 @@
+using Basil.Server.Features.Spectating.Packets;
 using Basil.Server.Shared.Eventing;
 using System.Text.Json;
 using Basil.Server.Features.Beatmaps;
@@ -63,7 +64,7 @@ public class PlayerLogoutServiceTests
 	private readonly SpectatorService _spectatorService = new(Substitute.For<IChannelRegistry>(),
 		new ChannelMembershipService(Substitute.For<ISessionRegistry<GameSession>>(),
 			Substitute.For<ISessionRegistry<IrcSession>>(), Substitute.For<IChannelRegistry>(),
-			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions())),
+			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions())), new BanchoSpectatorNotifier(),
 		NullLogger<SpectatorService>.Instance);
 
 	private readonly MultiplayerTestSupport.FakePlayerStatusEvents _statusEvents = new();
