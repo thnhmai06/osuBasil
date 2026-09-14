@@ -38,9 +38,6 @@ public class TransportSeamTests
 		[
 			"Basil.Server.Features.Auth.LoginService",
 			"Basil.Server.Features.Chat.ChannelMembershipService",
-			"Basil.Server.Features.Chat.ChatDispatchService",
-			"Basil.Server.Features.Chat.ChatDispatchService+ChannelReplySink",
-			"Basil.Server.Features.Chat.ChatDispatchService+DmReplySink",
 			"Basil.Server.Features.Content.AnnounceRoutes",
 			"Basil.Server.Features.Multiplayer.Endpoints.MatchListEndpoints",
 			"Basil.Server.Features.Multiplayer.IMatchRegistry",

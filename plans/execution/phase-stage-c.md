@@ -3,7 +3,7 @@
 > Read this file first. It is kept current in the same commit as every green step, so a
 > successor can resume from here without reconstructing state from `git log` and a build.
 
-## Current task: C1a — step 3 (chat) in progress, commits 1–3 of 5 done
+## Current task: C1a — step 3 (chat) in progress, commits 1–4 of 5 done
 
 Order is C4 → C3 → C6 → C1a → C5 (see `plans/execution/stage-c-order-decision.md` for why C1 runs
 last, and `plans/basil-plan-20260909.md`'s Stage C preamble, which adds C6 and splits C1). C2 is
@@ -658,10 +658,22 @@ and hands it to the sink. The nested row is deleted; the outer `MpCommandService
 Verification: build green, ArchitectureTests 8, Server.Tests 1057, IntegrationTests 363 (3 min
 40 s).
 
+### Step 3, commit 4 — `ChatDispatchService` and its two sinks (done, 14 to 11)
+
+`IChatNotifier` gained `DmRefused(sender, recipientName, DmRefusal)`; the bancho implementation
+enqueues `UserDmBlocked` or `TargetSilenced` for an osu! sender and tells an IRC sender nothing,
+exactly as the inline `sender is GameSession` branches did. Channel messages, DMs, the away-message
+echo and both reply sinks now build a `ChatLine`; `notice` travels as the record's flag. Three rows
+deleted (the service and its two nested sinks). Seven constructor sites, all in tests, pass the real
+`ChatNotifier`.
+
+Verification: build green, ArchitectureTests 8, Server.Tests 1057, IntegrationTests 363 (7 min
+41 s this run, no failure).
+
 ### Next exact step
 
 Step 3 — the chat seam, designed and decided in `plans/execution/chat-seam-decision.md`. Five
-commits in its §4 order, one pinned row each, tree green after each: (1), (2) and (3) done, above; (3) `MpCommandService+ScopedDmReplySink`;
+commits in its §4 order, one pinned row each, tree green after each: (1) to (4) done, above; (3) `MpCommandService+ScopedDmReplySink`;
 (4) `ChatDispatchService` and its two sinks; (5) `ChannelMembershipService`, with `IChannelNotifier`
 and NAMES/LIST moving to `IrcQueryService` — 44 constructor sites, Rider `change_api_signature`.
 Every notifier method stays `void` and synchronous: chat is delivered under `MatchSession.Lock`

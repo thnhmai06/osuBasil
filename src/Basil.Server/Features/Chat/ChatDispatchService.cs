@@ -6,8 +6,6 @@ using Basil.Server.Features.Chat;
 using Basil.Server.Features.Multiplayer;
 using Basil.Domain.Social;
 using Basil.Domain.Users;
-using Basil.Protocol.Irc;
-using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging;
 
 namespace Basil.Server.Features.Chat;
@@ -29,6 +27,7 @@ public sealed class ChatDispatchService(
 	IChannelRegistry channelRegistry,
 	ISessionRegistry<GameSession> sessionRegistry,
 	ChannelMembershipService channelMembership,
+	IChatNotifier chat,
 	IUserRepository users,
 	IRelationshipRepository relationships,
 	ICommandDispatcher commandDispatcher,
@@ -95,7 +94,7 @@ public sealed class ChatDispatchService(
 
 		var lines = WrapLines(text).ToList();
 		foreach (var line in lines)
-			channelMembership.BroadcastPrivmsg(channel, IrcMessageWriter.Privmsg(bot.Name, bot.Id, channel.Name, line));
+			channelMembership.BroadcastPrivmsg(channel, new ChatLine(bot.Id, bot.Name, channel.Name, line));
 
 		return lines.Count;
 	}
@@ -202,10 +201,7 @@ public sealed class ChatDispatchService(
 		var truncated = text.Length > MaxMessageLength ? text[..MaxMessageLength] : text;
 
 		channelMembership.BroadcastPrivmsg(
-			channel, notice
-				? IrcMessageWriter.Notice(sender.Name, sender.Id, channel.Name, truncated)
-				: IrcMessageWriter.Privmsg(sender.Name, sender.Id, channel.Name, truncated),
-			sender.Id);
+			channel, new ChatLine(sender.Id, sender.Name, channel.Name, truncated, notice), sender.Id);
 
 		if (notice) return;
 
@@ -216,7 +212,7 @@ public sealed class ChatDispatchService(
 		var matchScope = senderMatch is not null && senderMatch.ChatChannelName == channel.Name
 			? senderMatch
 			: null;
-		var sink = new ChannelReplySink(channelMembership, channel, bot, sender);
+		var sink = new ChannelReplySink(channelMembership, chat, channel, bot, sender);
 		await commandDispatcher.DispatchAsync(sender, truncated, matchScope?.DbId, channel.Name, sink,
 			cancellationToken: cancellationToken);
 	}
@@ -224,7 +220,7 @@ public sealed class ChatDispatchService(
 	private async Task SendBotCommandAsync(UserSession sender, UserSession bot, string text,
 		CancellationToken cancellationToken)
 	{
-		var sink = new DmReplySink(sender, bot, channelMembership, channelRegistry, matchRegistry);
+		var sink = new DmReplySink(sender, bot, chat, channelMembership, channelRegistry, matchRegistry);
 		await commandDispatcher.DispatchAsync(sender, text, null, null, sink, true, cancellationToken);
 	}
 
@@ -248,7 +244,7 @@ public sealed class ChatDispatchService(
 		if (relationship?.Type == RelationshipType.Block)
 		{
 			logger.LogDebug("Message dropped: SenderId={SenderId} Reason=Blocked", sender.Id);
-			if (sender is GameSession gameSender) gameSender.Enqueue(ServerPacketWriter.UserDmBlocked(recipientName));
+			chat.DmRefused(sender, recipientName, DmRefusal.Blocked);
 			return;
 		}
 
@@ -257,27 +253,23 @@ public sealed class ChatDispatchService(
 			if (target.PmPrivate && relationship?.Type != RelationshipType.Friend)
 			{
 				logger.LogDebug("Message dropped: SenderId={SenderId} Reason=PmPrivate", sender.Id);
-				if (sender is GameSession gameSender)
-					gameSender.Enqueue(ServerPacketWriter.UserDmBlocked(recipientName));
+				chat.DmRefused(sender, recipientName, DmRefusal.Blocked);
 				return;
 			}
 
 			if (target.Silenced)
 			{
 				logger.LogDebug("Message dropped: SenderId={SenderId} Reason=TargetSilenced", sender.Id);
-				if (sender is GameSession gameSender)
-					gameSender.Enqueue(ServerPacketWriter.TargetSilenced(recipientName));
+				chat.DmRefused(sender, recipientName, DmRefusal.Silenced);
 				return;
 			}
 
-			target.IrcConnection.Send(notice
-				? IrcMessageWriter.Notice(sender.Name, sender.Id, recipientName, text)
-				: IrcMessageWriter.Privmsg(sender.Name, sender.Id, recipientName, text));
+			chat.Deliver(target, new ChatLine(sender.Id, sender.Name, recipientName, text, notice));
 
 			if (notice) return;
 
 			if (target.Status.UserActivity == UserActivity.Afk && target.AwayMessage is { } awayMessage)
-				sender.IrcConnection.Send(IrcMessageWriter.Privmsg(target.Name, target.Id, sender.Name, awayMessage));
+				chat.Deliver(sender, new ChatLine(target.Id, target.Name, sender.Name, awayMessage));
 		}
 	}
 
@@ -292,6 +284,7 @@ public sealed class ChatDispatchService(
 	/// </remarks>
 	private sealed class ChannelReplySink(
 		ChannelMembershipService membership,
+		IChatNotifier chat,
 		ChannelSession channel,
 		UserSession bot,
 		UserSession sender) : ICommandReplySink
@@ -304,7 +297,7 @@ public sealed class ChatDispatchService(
 			// own chat message, matching how a real client displays multiple consecutive lines rather
 			// than one with a visible newline.
 			foreach (var line in text.Split('\n', StringSplitOptions.RemoveEmptyEntries))
-				membership.BroadcastPrivmsg(channel, IrcMessageWriter.Privmsg(bot.Name, bot.Id, channel.Name, line));
+				membership.BroadcastPrivmsg(channel, new ChatLine(bot.Id, bot.Name, channel.Name, line));
 		}
 
 		/// <summary>Sends a reply line to the sender's DM instead of the source channel.</summary>
@@ -312,7 +305,7 @@ public sealed class ChatDispatchService(
 		public void ReplyDm(string text)
 		{
 			foreach (var line in text.Split('\n', StringSplitOptions.RemoveEmptyEntries))
-				sender.IrcConnection.Send(IrcMessageWriter.Privmsg(bot.Name, bot.Id, sender.Name, line));
+				chat.Deliver(sender, new ChatLine(bot.Id, bot.Name, sender.Name, line));
 		}
 	}
 
@@ -332,6 +325,7 @@ public sealed class ChatDispatchService(
 	private sealed class DmReplySink(
 		UserSession sender,
 		UserSession bot,
+		IChatNotifier chat,
 		ChannelMembershipService membership,
 		IChannelRegistry channelRegistry,
 		IMatchRegistry matchRegistry) : ICommandReplySink
@@ -347,14 +341,13 @@ public sealed class ChatDispatchService(
 			foreach (var line in text.Split('\n', StringSplitOptions.RemoveEmptyEntries))
 			{
 				var prefixed = scope is not null ? $"[#{scope.DbId}] {line}" : line;
-				sender.IrcConnection.Send(IrcMessageWriter.Privmsg(bot.Name, bot.Id, sender.Name, prefixed));
+				chat.Deliver(sender, new ChatLine(bot.Id, bot.Name, sender.Name, prefixed));
 
 				if (scope is null) continue;
 
 				var channel = channelRegistry.GetByName(scope.ChatChannelName);
 				if (channel is not null)
-					membership.BroadcastPrivmsg(channel,
-						IrcMessageWriter.Privmsg(bot.Name, bot.Id, channel.Name, line));
+					membership.BroadcastPrivmsg(channel, new ChatLine(bot.Id, bot.Name, channel.Name, line));
 			}
 		}
 
@@ -363,7 +356,7 @@ public sealed class ChatDispatchService(
 		public void ReplyDm(string text)
 		{
 			foreach (var line in text.Split('\n', StringSplitOptions.RemoveEmptyEntries))
-				sender.IrcConnection.Send(IrcMessageWriter.Privmsg(bot.Name, bot.Id, sender.Name, line));
+				chat.Deliver(sender, new ChatLine(bot.Id, bot.Name, sender.Name, line));
 		}
 
 		/// <summary>

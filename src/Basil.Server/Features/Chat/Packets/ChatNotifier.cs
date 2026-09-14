@@ -1,4 +1,5 @@
 using Basil.Protocol.Irc;
+using Basil.Protocol.Packets;
 using Basil.Server.Shared.Sessions;
 
 namespace Basil.Server.Features.Chat.Packets;
@@ -14,5 +15,15 @@ public sealed class ChatNotifier : IChatNotifier
 		recipient.IrcConnection.Send(line.Notice
 			? IrcMessageWriter.Notice(line.SenderName, line.SenderId, line.Target, line.Text)
 			: IrcMessageWriter.Privmsg(line.SenderName, line.SenderId, line.Target, line.Text));
+	}
+
+	/// <remarks>Only an osu! client has a way to hear this; an IRC sender is told nothing, as before.</remarks>
+	public void DmRefused(UserSession sender, string recipientName, DmRefusal reason)
+	{
+		if (sender is not GameSession game) return;
+
+		game.Enqueue(reason == DmRefusal.Silenced
+			? ServerPacketWriter.TargetSilenced(recipientName)
+			: ServerPacketWriter.UserDmBlocked(recipientName));
 	}
 }

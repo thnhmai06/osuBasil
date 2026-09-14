@@ -1,3 +1,4 @@
+using Basil.Server.Features.Chat.Packets;
 using Basil.Server.Shared.Eventing;
 using Basil.Server.Features.Bot;
 using Basil.Server.Features.Users;
@@ -30,7 +31,7 @@ public class ChatDispatchNoticeTests
 	{
 		var membership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
 			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
-		return new ChatDispatchService(_channelRegistry, _gameRegistry, membership,
+		return new ChatDispatchService(_channelRegistry, _gameRegistry, membership, new ChatNotifier(),
 			Substitute.For<IUserRepository>(), Substitute.For<IRelationshipRepository>(), _commandDispatcher,
 			Substitute.For<IMatchRegistry>(), NullLogger<ChatDispatchService>.Instance);
 	}

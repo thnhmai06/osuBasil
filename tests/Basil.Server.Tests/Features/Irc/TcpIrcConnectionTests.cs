@@ -62,7 +62,7 @@ public class TcpIrcConnectionTests
 		var matchRegistry = new InMemoryMatchRegistry(channelRegistry, new NotSupportedMatchRepository());
 		var channelMembership = new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry,
 			matchRegistry, new LiveEventHub(), _fakeIrcOptions);
-		var chatDispatch = new ChatDispatchService(channelRegistry, gameRegistry, channelMembership, users,
+		var chatDispatch = new ChatDispatchService(channelRegistry, gameRegistry, channelMembership, new ChatNotifier(), users,
 			new NotSupportedRelationshipRepository(), new NullCommandDispatcher(),
 			matchRegistry, NullLogger<ChatDispatchService>.Instance);
 		var ircQueries = MakeQueryService(gameRegistry, ircRegistry, channelRegistry, channelMembership);
@@ -151,7 +151,7 @@ public class TcpIrcConnectionTests
 		var channelMembership =
 			new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry, matchRegistry, new LiveEventHub(),
 				_fakeIrcOptions);
-		var chatDispatch = new ChatDispatchService(channelRegistry, gameRegistry, channelMembership, users,
+		var chatDispatch = new ChatDispatchService(channelRegistry, gameRegistry, channelMembership, new ChatNotifier(), users,
 			new NotSupportedRelationshipRepository(), new NullCommandDispatcher(),
 			matchRegistry, NullLogger<ChatDispatchService>.Instance);
 		var ircQueries = MakeQueryService(gameRegistry, ircRegistry, channelRegistry, channelMembership);
@@ -216,7 +216,7 @@ public class TcpIrcConnectionTests
 
 		var channelMembership = new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry,
 			matchRegistry, new LiveEventHub(), _fakeIrcOptions);
-		var chatDispatch = new ChatDispatchService(channelRegistry, gameRegistry, channelMembership, users,
+		var chatDispatch = new ChatDispatchService(channelRegistry, gameRegistry, channelMembership, new ChatNotifier(), users,
 			new NotSupportedRelationshipRepository(), new NullCommandDispatcher(), matchRegistry,
 			NullLogger<ChatDispatchService>.Instance);
 		var ircQueries = MakeQueryService(gameRegistry, ircRegistry, channelRegistry, channelMembership);
@@ -291,7 +291,7 @@ public class TcpIrcConnectionTests
 		var matchRegistry = new InMemoryMatchRegistry(channelRegistry, new NotSupportedMatchRepository());
 		var channelMembership = new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry,
 			matchRegistry, new LiveEventHub(), _fakeIrcOptions);
-		var chatDispatch = new ChatDispatchService(channelRegistry, gameRegistry, channelMembership, users,
+		var chatDispatch = new ChatDispatchService(channelRegistry, gameRegistry, channelMembership, new ChatNotifier(), users,
 			new NotSupportedRelationshipRepository(), new NullCommandDispatcher(),
 			matchRegistry, NullLogger<ChatDispatchService>.Instance);
 		var ircQueries = MakeQueryService(gameRegistry, ircRegistry, channelRegistry, channelMembership);
