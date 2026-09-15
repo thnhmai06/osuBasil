@@ -395,24 +395,73 @@ doc §8 step 5 ("Split `GameSession` per §6"), which is Stage D/E work gated on
 existing, not a C1b prerequisite. Recorded here so a successor does not re-derive this from scratch:
 **`GameSession`'s split is out of scope for C1b.**
 
-## Next exact step
+## Unit 9 — `MpCommandService`/`MpReplies` measured and found blocked; C1b's per-feature table is done (no files moved)
 
-**What's actually left in C1b's per-feature table, now that the packet-handler layer is correctly
-out of scope, is `MpCommandService`/`MpReplies` (target doc §6, "F4, `Bot`") — the same measurement
-Unit 7 used for `AuthenticationService`, not yet applied here.** Before sizing a design: grep
-`MpCommandService`'s actual `GameSession`/`UserSession` member accesses, not its parameter types. If
-they resolve to reads of `.Id`/`.Name` plus replies through `ICommandReplySink` (already in
-`Basil.Domain.Bot` since Unit 6), the seam is small, `CredentialVerifier`-sized. If it mutates
-session state or calls `BeginMutationAsync` itself — plausible, since `!mp` commands mutate match
-state — it stays in `Basil.Server` for the same reason `ScoreSubmissionService` does, and Bot's
-remaining 5 files stay with it. Either way, C1b's per-feature table is close to fully resolved once
-this one measurement is made — Multiplayer's Domain-eligible surface turned out to be `MatchRoomState`
-+ `MatchSlot` (Unit 8) plus whatever this measurement adds, not the full "16 files" the original
-table implied, because most of that count was always the packet-handler layer.
+Applied Unit 7's measurement to `MpCommandService.cs` (1,766 lines) and `MpReplies.cs` (444 lines),
+target doc §6's "F4, `Bot`" pair, before writing any design:
+
+* **`MpCommandService` mutates session state directly.** `grep`-ing every `sender.` access (`sender`
+  is `UserSession`-typed on `IMpCommandService.DispatchAsync`) found 22 reads of `.Id`, 8 of `.Name`
+  — cheap — but also three direct writes, `sender.MpScopeMatchId = match.DbId` /`= dbId`/`= null`
+  (lines 491, 696, 1684). That is the same shape as `ScoreSubmissionService`'s `player.Status.Mods =
+  ...`/`player.ModeStats[...] = ...`: a live session field written mid-method, not a lookup a Domain
+  contract can wrap. Also calls `BeginMutationAsync` directly (11 combined hits for that and
+  `GameSession`), the same pattern `MatchChangeSlotHandler` and the other packet handlers use —
+  `!mp` commands are match-mutation code, not read-only business logic wearing a session type.
+* **`MpReplies` reads through `Basil.Server.Shared.Localization.LocaleCatalog`.** Identical blocker
+  to `BotReplies` in Unit 6: `Basil.Domain` cannot reference `Basil.Server` at all, and the reply
+  wording is deliberately kept in the locale file this type reads through a `Basil.Server.Shared`
+  type. Confirmed by reading the file's own `using` list, not inferred from the `BotReplies`
+  precedent alone.
+
+**Conclusion: both stay in `Basil.Server`, for the reasons `ScoreSubmissionService` and `BotReplies`
+already established. This resolves Bot's remaining five files too** — they were gated on this pair
+moving (Unit 6's finding), and since it doesn't, `CommandDispatcher`, `ICommandDispatcher`,
+`BotBootstrapService` and `BotReplies` have no path into `Basil.Domain` within C1b's scope either.
+No file moved this unit, so there is nothing to build or test — the measurement itself is the
+deliverable.
+
+**Methodology note for whoever sizes Stage D from the same target table next:** this is the third
+and fourth time the table's per-feature counts over-stated what C1b could actually move, after
+Diagnostics (no row in the table at all) and Bot's first pass (6 estimated, blocked entirely pending
+this unit). Multiplayer's 16 landed at 2; Bot's 6 landed at 1. The table was built by a text
+classifier checking framework imports, the same instrument Unit 1's lesson already flagged as
+insufficient — it does not see session-state mutation, `BeginMutationAsync` calls, or a
+`Basil.Server.Shared` dependency reached through a static reply-text holder. Treat every number in
+that table as an upper bound to verify per file, not a count to reach.
+
+**C1b's per-feature table is now fully resolved.** Every slice's Domain-eligible surface has been
+identified and, where safe, moved: Auth (Units 1, 4, 7), Beatmaps (Units 1, 3), Content (Units 1, 2),
+Scores (Units 1, 2), Users (Unit 1), Chat (Unit 5), Spectating (Unit 5), Multiplayer (Unit 8:
+`MatchRoomState` + `MatchSlot`, two files against the original table's estimate of 16 — the
+difference is the 24 packet handlers and `MpCommandService`/`MpReplies`, all transport/session-
+shaped, never real candidates once measured directly), Bot (Unit 6: `ICommandReplySink`, one file
+against an estimate of 6). `ScoreSubmissionService` and `AuthenticationService`'s non-extracted
+remainder stay in `Basil.Server` by the same session-mutation rule. Nothing currently blocked is
+waiting on a design that hasn't been written — every remaining `Basil.Server` file in these slices
+was checked and found to genuinely need the session/transport/framework coupling it has, not merely
+unsurveyed.
+
+**What is left is Stage D and later, not C1b.** `GameSession`'s split (target doc §8 step 5),
+`MatchSession`/`MatchRoomState`'s eventual full separation (the projection machinery moving to a host
+project), and the 24 packet handlers' move into `Basil.Hosts.Bancho` all require the host projects
+Stage D creates to exist first — attempting them now would, per the target doc's own migration-order
+note, move business logic into a host project shape that does not exist yet and require moving it
+again later.
 
 **C5's remeasurement, whenever it runs, will not land at the plan's predicted features-only ≈17.**
-That prediction assumed C1's original, undivided ~96-file move including the 24 Multiplayer handlers
-and the rest of the transport layer. C1b never intended to move those — this section is the record
-of why, the same way `architecture-progress.md`'s "C5, run after C1a" section explains the frozen
-post-C1a numbers. Not a miss; an expected result of C1 having correctly split into C1a/C1b in the
-first place.
+That prediction assumed C1's original, undivided ~96-file move, including the 24 Multiplayer
+handlers and the rest of the transport layer C1b never intended to move. Not a miss; the same
+expected-frozen-number situation `architecture-progress.md`'s "C5, run after C1a" section already
+documents for the post-C1a measurement, now also true of the post-C1b one.
+
+## Next: C5's remeasurement, then Stage D
+
+With C1b's per-feature table resolved, the next action is running C5's own instruments (the
+slice-graph script, `SliceAdjacency`'s edge count, the `Shared -> Features` pinned list) and
+recording the result against the frozen post-C1a baseline in `architecture-progress.md`, the way
+that document's own "C5, run after C1a" section already modeled — expecting the features-only number
+to move from C1a's frozen state but not reach ≈17, for the reason stated above. After that
+measurement, C1b itself is complete; `plans/execution/HANDOVER.md`'s Stage table names Stage D
+(splitting transports into host projects) as the next phase of work, a separate, larger undertaking
+outside C1b's scope.
