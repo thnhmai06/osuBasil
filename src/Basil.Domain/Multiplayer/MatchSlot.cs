@@ -1,13 +1,11 @@
-using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 
-namespace Basil.Server.Features.Multiplayer;
+namespace Basil.Domain.Multiplayer;
 
 /// <summary>
 ///     Represents one of a match's 16 slots, holding the occupant's id, status, team, and mods for
-///     the current round. A plain mutable holder: synchronization is the owning
-///     <see cref="MatchSession" />'s responsibility (its <see cref="MatchSession.Lock" />), not this
-///     type's.
+///     the current round. A plain mutable holder: synchronization is the owning match session's
+///     responsibility, not this type's.
 /// </summary>
 public sealed class MatchSlot
 {

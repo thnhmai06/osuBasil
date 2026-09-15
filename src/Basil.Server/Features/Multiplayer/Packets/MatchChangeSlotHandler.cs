@@ -11,7 +11,7 @@ namespace Basil.Server.Features.Multiplayer.Packets;
 ///     Reads the target slot id and bounds-checks it against the fixed sixteen-slot layout. The move is
 ///     refused if the target slot is not currently open or if the userSession has no slot of their own. The
 ///     userSession's existing slot contents are copied into the target slot via
-///     <see cref="Basil.Server.Features.Multiplayer.MatchSlot.CopyFrom" /> and the old slot is reset
+///     <see cref="MatchSlot.CopyFrom" /> and the old slot is reset
 ///     to open, then the updated state is broadcast. The read-mutate-broadcast sequence runs under the
 ///     match's <see cref="Basil.Server.Features.Multiplayer.MatchSession.Lock" />.
 /// </remarks>

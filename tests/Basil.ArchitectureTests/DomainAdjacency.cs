@@ -61,6 +61,11 @@ internal static class DomainAdjacency
 		("Auth", "Content"),
 
 		// CredentialVerifier fetches a user's stored password hash through IUserRepository.
-		("Auth", "Users")
+		("Auth", "Users"),
+
+		// MatchRoomState.NoHostId reads SystemUserIds.BasilBot. Declared even though the const
+		// inlining ADR-008 documents means NetArchTest cannot currently see this edge on its own --
+		// it is real regardless of whether today's instrument catches its absence.
+		("Multiplayer", "Users")
 	];
 }

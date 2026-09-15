@@ -294,59 +294,111 @@ passed, 6 min 32 s.
 
 One new file, no relocations.
 
+## Unit 8 — the `MatchSession` split, phase 1: `MatchRoomState` extracted, zero call-site changes (done)
+
+Before designing anything, checked what the advisor review at this point in the session flagged:
+the two route files the target doc's §4 named as gating Multiplayer (`MatchRoutes.cs`,
+`MatchSubResourceRoutes.cs`, "1,424" and "627" lines, measured 2026-09-08) are **already
+decomposed** — both are now 27- and 31-line registration facades delegating to thirteen per-resource
+files under `Features/Multiplayer/Endpoints/` (33-375 lines each). That gate is resolved and was not
+a prerequisite here. The real blocker, read directly from `MatchSession.cs` (584 lines) and
+`MatchMutationScope.cs`: **the lock and the live-projection publish are one mechanism, not two.**
+`MatchMutationScope.CompleteAsync` allocates a state version, releases `MatchSession.Lock`, *then*
+hands off to `IMatchMutationPublisher` — under invariant 1 that publisher side can never live in
+`Basil.Domain`. A member-by-member inventory of `MatchSession` written before deciding how to handle
+that entanglement would have been redone once the decision landed, so the design question came
+first: when a Domain-owned match object's locked mutation ends, who allocates the version and
+triggers the publish?
+
+**Decision: move the state, not the mechanism — the lock, the mutation scope, and every SSE/packet
+primitive stay in `Basil.Server` exactly as they are today, unchanged.** Three shapes were possible
+(Domain owns the lock and raises an event a host subscribes to; the host owns the scope over a plain
+Domain state bag; the scope stays in `Basil.Server` and only the state moves). The third was chosen:
+it is the lowest-risk cut available at C1b's stage, because splitting hosts out of `Basil.Server` is
+explicitly Stage D's job, not C1b's — the target doc's own migration order (§8, step 8) warns that
+moving business logic into host projects before the logic itself is settled means moving it back out
+again later. Extracting only the plain state now, and leaving where the projection lives as an open
+question for Stage D, avoids answering that question twice.
+
+**What moved:** a new `Basil.Domain.Multiplayer.MatchRoomState` (named to avoid colliding with the
+existing wire type `Basil.Protocol.Multiplayer.MatchState`) holds every plain business field and
+method verbatim from `MatchSession` — room settings (`Name`, `Password`, `HostId`, `MapId` and
+friends), lifecycle flags (`InProgress`, `IsLocked`, `IsPrivate`, the timer fields), referee/ban/
+invite/tourney-client sets, and the pure slot methods (`GetSlot`, `GetFreeSlotId`, `IsReferee`,
+`UnreadyPlayers`, etc.). `MatchSlot` moved alongside it — already zero-dependency, same as Unit 1's
+repository interfaces. `MatchSession` itself stays in `Basil.Server`, keeps its full public API
+surface (every property and method, unchanged signatures), and now holds a `MatchRoomState State`
+instance internally, forwarding every business-state member to it (`public string Name { get =>
+State.Name; set => State.Name = value; }`) while keeping `Lock`, `PacketBroadcastGate`,
+`SseSubscribers`, every `StateStream<T>`, `MutationPublisher`, `BeginMutationAsync` and
+`MatchMutationScope` exactly as they were.
+
+**This is why it needed zero changes to any of the other 76 Multiplayer files.** `MatchSession`'s
+constructor signature is unchanged (only 1 production call site exists,
+`InMemoryMatchRegistry.cs`, plus 13 test files — none needed to change), and every `match.Name`,
+`match.GetSlot(...)`, `match.Slots[i]` call site anywhere in the codebase keeps compiling and behaving
+identically, because it was already going through `MatchSession`'s public surface, which now just
+delegates one level deeper. The lock-discipline sites `chat-seam-decision.md` §5 named as risks for
+this kind of extraction (`AbortHandler.cs:58`, `MatchLifecycle.cs:368`/`:377`,
+`MatchChangeSettingsHandler.cs:118`) were not touched at all — `Lock`/`BeginMutationAsync`/
+`MatchMutationScope` are bit-for-bit the same code as before this unit, so the thin race-test net
+`MatchSessionRaceTests.cs` provides (3 tests, slot-join concurrency only) was not stretched past what
+it already covered; nothing here changes the answer to "is the lock held correctly," only where the
+data it protects physically lives.
+
+**A `DomainAdjacency` gap surfaced, not from the framework/session checklist but from ADR-008's own
+documented blind spot.** `MatchRoomState.NoHostId` reads `SystemUserIds.BasilBot`
+(`Basil.Domain.Users`), and `Basil.ArchitectureTests` passed with *no* `("Multiplayer", "Users")` edge
+declared. `SystemUserIds.BasilBot` is a `const int` — C# inlines it at the call site, so no IL
+reference to `SystemUserIds` exists for `DomainBoundaryTests` to see, exactly the "nine live edges
+invisible to constant inlining" gap `architecture-target-20260908.md` §5 and ADR-008 already name.
+Declared the edge anyway, with a comment stating why the test cannot currently catch its absence —
+consistent with the project's own principle that a real edge is declared because it is real, not
+because a test demands it.
+
+**Verification:** build green (after one rename — `MatchState` collided with the existing
+`Basil.Protocol.Multiplayer.MatchState` wire type, renamed to `MatchRoomState` via Rider's rename
+refactoring before the first build); `Basil.ArchitectureTests` 8, `Basil.Domain.Tests` 235 (+13, one
+relocated test file — `MatchSessionTests.cs` → `MatchRoomStateTests.cs`, every test unchanged except
+constructing `MatchRoomState` directly instead of through `MatchSession`), `Basil.Server.Tests` 944
+(−13, matching), `Basil.Protocol.Tests` 158; `Basil.IntegrationTests` 363 (including
+`MatchManagementEndpointTests` and `MatchSessionRaceTests`), all passed, 4 min 52 s.
+
+Two files moved (`MatchRoomState` new, `MatchSlot` relocated), one file rewritten
+(`MatchSession.cs`, same public surface), one test file relocated, one `DomainAdjacency` edge added.
+
 ## Next exact step
 
-**One item remains at this granularity: `ScoreSubmissionService`, and it genuinely needs the
-`MatchSession` split first, not a seam of its own.** Measured the same way as `AuthenticationService`
-above: its `GameSession` member accesses are `player.Id`, `player.Client`, `player.OsuVersion`,
-`player.Name` (all cheap, `Login`-typed or scalar), but also `player.Status.Mods`/`.Mode` **written**
-mid-method, `player.ModeStats` **written** (the in-memory stats cache kept in sync with the DB
-write), and `player.Match?.CurrentRoundId` / `player.Match?.GetSlot(player.Id)?.Team` — a live
-`MatchSession` read. The last one is the real blocker: `MatchSession` is entirely
-`Basil.Server.Features.Multiplayer` today, and reading it is not a lookup a Domain contract can wrap
-the way `CredentialVerifier` wrapped `AuthenticateOnlinePlayerAsync`'s single `.Id` read. This one
-does need `chat-seam-decision.md`-scale design, but only after `MatchSession` exists in a form
-`ScoreSubmissionService` could depend on — sizing it before that split is real is guessing at an
-interface that will be dictated by the split's own shape.
+**Phase 1 moved state; it did not move any of the 16 target Domain files themselves, and three
+things are still genuinely blocked, in this order.**
 
-**Multiplayer (16 files) is the remaining slice, `ScoreSubmissionService` and Bot's five blocked
-files ride along with it.** `MpCommandService`/`MpReplies` move into `Basil.Domain/Multiplayer` as
-part of this work (per §6's F4), which then frees `CommandDispatcher`, `ICommandDispatcher`,
-`BotBootstrapService` and `BotReplies` too — Bot is not a separate unit to schedule afterward, it
-falls out of this one. Gated on the `MatchSession` split the original C1 task text already
-describes: business state (slots, host, settings, progress) to Domain, the SSE projection machinery
-(`StateStream<T>`, `SseSubscriberRegistry`, `SequenceGate`) staying behind.
+1. **`GameSession.Match` is still typed `Basil.Server.Features.Multiplayer.MatchSession`.** The
+   target doc's §6 table says this property's ultimate home is `Basil.Domain/Multiplayer` — meaning
+   `ScoreSubmissionService`'s `player.Match?.CurrentRoundId` / `player.Match?.GetSlot(player.Id)?.Team`
+   only becomes a Domain-safe read once `GameSession.Match` itself is retyped to
+   `MatchRoomState` (or a narrower read-only view of it). That retyping is target doc §8 step 5
+   ("Split `GameSession` per §6"), a bigger, separately-scoped piece of work touching `GameSession`
+   directly — not something to fold into this unit casually, since `GameSession` is the 71-file
+   blast-radius type the target doc's own F1 finding is about.
+2. **The "match services"** (`MatchLifecycle`, `MatchMembership`, `MatchControlService`,
+   `MatchBroadcast`, and the ~24 packet handlers) all take the `Basil.Server`-side `MatchSession`
+   directly and call packet writers / notifiers in the same methods that read slot state — the same
+   shape Unit 5 found in Chat's `ChannelMembershipService`/`ChatDispatchService`, which stayed in
+   `Basil.Server` rather than move. Whether any of them can now depend on `MatchRoomState` instead of
+   the full `MatchSession` (now that the two are separable) is worth surveying per-file once
+   `GameSession.Match`'s retyping is scoped, not before — sizing it earlier is guessing at an
+   interface item 1 will dictate.
+3. **Bot's five remaining files and `ScoreSubmissionService`** both still ride on 1 and 2: Bot needs
+   `MpCommandService`/`MpReplies` moved into `Basil.Domain/Multiplayer` (target doc §6 F4), which
+   itself needs the match-services survey; `ScoreSubmissionService` needs `GameSession.Match`'s
+   retyping directly.
 
-**Checked before starting the split design, per the advisor review at this point in the session:**
-the two route files the target doc's §4 flagged as gating Multiplayer (`MatchRoutes.cs`,
-`MatchSubResourceRoutes.cs`, "1,424" and "627" lines respectively, measured 2026-09-08) are **already
-decomposed** — both are now thin registration facades (27 and 31 lines) delegating to thirteen
-per-resource files under `Features/Multiplayer/Endpoints/` (33-375 lines each, 1,998 total). That
-gate is resolved; it is not a prerequisite step for this split. What the split still needs checked:
-whether business decisions have leaked into any of those thirteen endpoint files (invariant 6's
-60-line/no-direct-mutation signal), which the split's own design pass should verify per file, not
-assume clean from line count alone.
-
-**The regression net for the split is thin — a finding, not a blocker to route around.**
-`MatchSessionRaceTests.cs` exists (3 tests: unsynchronized-lookup race, concurrent-join-under-lock
-correctness, full-match rejection) but covers only slot-join concurrency, not the lock-discipline
-sites `chat-seam-decision.md` §5 already named as risks for exactly this kind of extraction
-(`AbortHandler.cs:58` between `notifier.RoundAborted` and `mutation.PublishState()`;
-`MatchLifecycle.cs:368`/`:377` inside `BeginMutationAsync`). 363 green integration tests do not
-prove a race is absent. The split's design doc must either extend this test file's coverage to the
-sites the split touches, or state explicitly which lock-discipline claims it is relying on the
-existing tests for and which it is asserting by inspection only — the same honesty
-`chat-seam-decision.md` §6 already modeled ("nothing was built or run; counts are grep results").
-
-That split is its own scoped unit of work, sized similarly to C1a's chat seam, and should be written
-up on its own before starting, the way `chat-seam-decision.md` was written before its five commits
-landed.
-
-**`Multiplayer` and `MatchSession`'s split are last, not first.** Every Multiplayer handler file
-takes `MatchSession` (still entirely `Basil.Server.Features.Multiplayer`) as a parameter, and
-`MatchSession` itself needs the split the original C1 task text describes — business state
-(slots, host, settings, progress) to Domain, the SSE projection machinery
-(`StateStream<T>`, `SseSubscriberRegistry`, `SequenceGate`) staying behind — before any Multiplayer
-handler can move. That split is its own unit of work, sized similarly to C1a's chat seam, and should
-be scoped and measured on its own before starting, the way `chat-seam-decision.md` was written before
-its five commits landed.
+**Practically: the next unit is scoping `GameSession`'s split (§8 step 5), the same way this unit
+scoped `MatchSession`'s — read `GameSession.cs` in full, inventory every member against the target
+doc's placement table (`Enqueue`/`Dequeue` → `Hosts.Bancho`; `IrcConnection` → `Hosts.Irc`; `Id`/
+`Name`/`Privilege`/`LoginTime`/`Country`/channels → `Basil.Domain`; `Match` → `Basil.Domain/
+Multiplayer`; `Spectating`/`Spectators` → `Basil.Domain/Spectating`; `ModeStats`/`Status` →
+`Basil.Domain/Users`; `InLobby` → `Basil.Domain/Chat`), and write that decision up before touching
+any file — `GameSession` is named in the target doc as a 71-file blast radius, larger than anything
+C1b has moved through so far, and deserves the same design-first discipline this unit and the chat
+seam both used.

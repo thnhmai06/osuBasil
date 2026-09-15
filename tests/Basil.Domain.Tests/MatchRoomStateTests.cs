@@ -1,16 +1,15 @@
-using Basil.Server.Features.Multiplayer;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 
-namespace Basil.Server.Tests.Features.Multiplayer;
+namespace Basil.Domain.Tests;
 
-/// <summary>Verifies `MatchSession`'s slot lookup and match-state helpers.</summary>
-public class MatchSessionTests
+/// <summary>Verifies `MatchRoomState`'s slot lookup and match-state helpers.</summary>
+public class MatchRoomStateTests
 {
-	private static MatchSession MakeMatch(int hostId = 1)
+	private static MatchRoomState MakeMatch(int hostId = 1)
 	{
-		return new MatchSession(
+		return new MatchRoomState(
 			0, "test match", "pw",
 			"Some Map", 100, new string('a', 32), hostId,
 			GameMode.Standard, Mods.NoMod, MatchWinCondition.Score,
