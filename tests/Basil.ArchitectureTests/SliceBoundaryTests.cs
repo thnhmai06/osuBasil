@@ -63,10 +63,10 @@ public class SliceBoundaryTests
 		// owns unwinding this; GhostDisconnectService only needs Irc.IrcSession as
 		// ISessionRegistry<IrcSession>'s type argument, the same shape); BanchoHostGroups,
 		// Bancho.PacketDispatcher, OsuWebRoutes and OpenApi.OpenApiExampleExtensions inline slice
-		// logic directly instead of only delegating to it; the Media asset providers and
-		// FileSystemReplayStorage call slice services directly. This test pins the list so it can
-		// only shrink -- a new Shared -> Features edge fails the build, and removing an offender
-		// (a later phase's real fix) fails too, as a reminder to delete its entry here.
+		// logic directly instead of only delegating to it; the Media asset providers call slice
+		// services directly. This test pins the list so it can only shrink -- a new Shared ->
+		// Features edge fails the build, and removing an offender (a later phase's real fix) fails
+		// too, as a reminder to delete its entry here.
 		//
 		// ApiHostRoutes and AssetsHostRoutes dropped out of this list in Task 0.6: they used to
 		// both hold shared endpoints (health checks, docs, redirects) *and* delegate to slice-owned
@@ -74,6 +74,10 @@ public class SliceBoundaryTests
 		// out to Host/SliceRegistration.MapAll, which is Host composition code, not a Shared type,
 		// so it isn't subject to this rule at all. What's left in both files is genuinely
 		// shared -- no Features reference remains.
+		//
+		// FileSystemReplayStorage dropped out during C1b (2026-09-15): it referenced
+		// Features.Scores.IReplayStorage, and that interface moved into Basil.Domain.Scores, so the
+		// reference now points at Domain instead of a slice.
 		string[] knownOffenders =
 		[
 			"Basil.Server.Shared.Http.Bancho.PacketDispatcher",
@@ -86,8 +90,7 @@ public class SliceBoundaryTests
 			"Basil.Server.Shared.Media.Assets.MenuIconProvider",
 			"Basil.Server.Shared.Sessions.GameSession",
 			"Basil.Server.Shared.Sessions.GhostDisconnectService",
-			"Basil.Server.Shared.Sessions.UserSession",
-			"Basil.Server.Shared.Storage.FileSystemReplayStorage"
+			"Basil.Server.Shared.Sessions.UserSession"
 		];
 
 		var result = Types.InAssembly(typeof(Basil.Server.Host.Bootstrap).Assembly)

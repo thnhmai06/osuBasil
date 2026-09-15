@@ -1,7 +1,4 @@
-using Basil.Domain.Content;
-using Basil.Server.Features.Content;
-
-namespace Basil.Server.Features.Content;
+namespace Basil.Domain.Content;
 
 /// <summary>
 ///     Stores the message-of-the-day text shown to a player as a login notification and by the IRC

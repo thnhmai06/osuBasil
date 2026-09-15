@@ -97,15 +97,55 @@ here rather than silently assumed.
 
 18 files moved total: 14 interfaces, 2 filter/parser pairs (4 files), plus 2 test files relocated.
 
+## Unit 2 — the Content and Scores business logic that survived the filesystem check (done)
+
+A third blocker surfaced here, not caught by anything in Unit 1: **direct filesystem I/O.**
+`FaqService`, `MenuBannerService`, `MenuIconService` and `MenuSeasonalService` all call
+`File.Create`/`File.Delete`/`Directory.CreateDirectory` etc. directly — none of it shows up as a
+`using` for a forbidden namespace (`System.IO` is never forbidden), but it is exactly the kind of
+"external service implementation" CLAUDE.md's business-layer rule already excludes, the same
+category the original C1 table already put `IMemoryCache`/`HttpClient` users in. All four stay in
+`Basil.Server`. Only `MotdService` — reads and writes one setting through `ISettingsRepository`,
+already Domain-owned, no file access — moved.
+
+**Two more response-encoder types were found and correctly left behind.**
+`ScoreSubmissionChartsFormatter` and `ScoreSubmissionResponseBuilder` build the plain-text body the
+osu! client receives after a score submission — the charts formatter's own remarks say it keeps
+"the protocol's fixed key/value shape intact." Same category as `LoginResponseEncoder` (step 4 of
+C1a): the response body *is* the wire payload, not a notification, so encoding it is an adapter's
+job even though neither file imports anything currently forbidden. Left in `Basil.Server`.
+
+From Scores, four files did qualify and moved: `IReplayStorage`, `IScoreDecryptor` (the two
+contracts Unit 1 should have caught but missed — `RijndaelScoreDecryptor`, the BouncyCastle
+implementation, correctly stays), and `ReplayService` with its `ReplayFetchResult`/
+`ReplayFetchResultCode` types (fetches a stored replay through two already-Domain contracts, no
+file access itself — the storage adapter, `FileSystemReplayStorage`, does that and stays behind).
+`Basil.Domain.csproj` gained its first package reference, `Microsoft.Extensions.Logging.Abstractions`
+(already the allowed abstraction package from the original C1 table; `ReplayService` takes
+`ILogger<ReplayService>`).
+
+`FileSystemReplayStorage` (in `Shared/Storage/`, not a C1b candidate itself) referenced
+`Features.Scores.IReplayStorage` and dropped out of the `Shared_Should_Not_Reference_Features`
+pinned list as a side effect — the first pinned-list movement since C3. Row deleted.
+
+**Verification:** build green; `Basil.ArchitectureTests` 8, `Basil.Domain.Tests` 176 (+3, one
+relocated test file, `NSubstitute` added to that project's references), `Basil.Server.Tests` 1000
+(−3, matching), `Basil.Protocol.Tests` 158; `Basil.IntegrationTests` 363, all passed, 6 min 9 s.
+
+Five files moved (`MotdService`, `IReplayStorage`, `IScoreDecryptor`, `ReplayService`, its test
+file), one `Shared -> Features` pinned row deleted.
+
 ## Next exact step
 
-**Unit 2 — pick one slice from the target table and verify its remaining candidates individually.**
-Smallest first is still the safer order: **Content** (8 files target) and **Scores** (10 files
-target, several DTOs already moved in Unit 1 — check what is left) are good next candidates. For
-each remaining file in a slice: check with `move_type_to_namespace preview: true` first — trust its
-`conflicts` field over any text search — and if it reports affected files touching
-`Basil.Server.Shared.*` or a `GameSession`/`UserSession`/`IrcSession` parameter type transitively,
-stop and record why that file is not yet movable rather than forcing it.
+**Unit 3 — Scores' remaining candidate, `ScoreSubmissionService`, and Beatmaps.**
+`ScoreSubmissionService` still needs checking against the same three blockers as every future
+candidate now (framework imports, `GameSession`/`UserSession`/Shared coupling, filesystem I/O) —
+it was flagged as `GameSession`-typed in an earlier pass and may need a smaller Domain-shaped
+parameter before it can move, the same kind of question C1a's chat and match seams already
+answered for their own services. Beatmaps (target: 15 files) is a good parallel slice to size next,
+following the same per-file `move_type_to_namespace preview: true` check — trust its `conflicts`
+field over any text search, and treat direct filesystem I/O as a blocker even where no `using` line
+shows it.
 
 **`Multiplayer` and `MatchSession`'s split are last, not first.** Every Multiplayer handler file
 takes `MatchSession` (still entirely `Basil.Server.Features.Multiplayer`) as a parameter, and

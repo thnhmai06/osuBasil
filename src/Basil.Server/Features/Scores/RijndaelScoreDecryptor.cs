@@ -1,4 +1,5 @@
 using System.Text;
+using Basil.Domain.Scores;
 using Basil.Server.Features.Scores;
 using Org.BouncyCastle.Crypto.Engines;
 using Org.BouncyCastle.Crypto.Modes;

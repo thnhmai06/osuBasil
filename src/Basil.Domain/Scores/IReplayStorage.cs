@@ -1,7 +1,6 @@
 using Basil.Domain.Login;
-using Basil.Domain.Scores;
 
-namespace Basil.Server.Features.Scores;
+namespace Basil.Domain.Scores;
 
 /// <summary>
 ///     Reads and writes full <c>.osr</c> replay files on disk, keyed by score id.

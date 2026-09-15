@@ -1,10 +1,9 @@
-using Basil.Server.Features.Scores;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
-namespace Basil.Server.Tests.Features.Scores;
+namespace Basil.Domain.Tests;
 
 public class ReplayServiceTests
 {

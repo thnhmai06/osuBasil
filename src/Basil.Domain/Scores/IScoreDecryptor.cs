@@ -1,4 +1,4 @@
-namespace Basil.Server.Features.Scores;
+namespace Basil.Domain.Scores;
 
 /// <summary>
 ///     Decrypts the payload the osu! client submits with a score.

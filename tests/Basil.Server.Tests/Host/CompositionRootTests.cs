@@ -1,3 +1,4 @@
+using Basil.Domain.Scores;
 using Basil.Server.Features.Auth;
 using Basil.Server.Features.Beatmaps;
 using Basil.Server.Features.Bot;
