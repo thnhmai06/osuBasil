@@ -1,3 +1,4 @@
+using Basil.Domain.Bot;
 using Basil.Server.Shared.Localization;
 
 namespace Basil.Server.Features.Bot;

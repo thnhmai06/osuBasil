@@ -1,4 +1,4 @@
-namespace Basil.Server.Features.Bot;
+namespace Basil.Domain.Bot;
 
 /// <summary>
 ///     Receives the reply text a chat command produces and routes it to the right destination.

@@ -1,3 +1,4 @@
+using Basil.Domain.Bot;
 using Basil.Domain.Channels;
 using Basil.Server.Features.Bot;
 using Basil.Server.Features.Users;

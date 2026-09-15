@@ -1,3 +1,4 @@
+using Basil.Domain.Bot;
 using Basil.Domain.Channels;
 using Basil.Server.Features.Irc;
 using Basil.Server.Shared.Eventing;

@@ -1,4 +1,5 @@
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Bot;
 using Basil.Server.Features.Chat.Packets;
 using Basil.Server.Features.Beatmaps;
 using Basil.Server.Features.Bot;

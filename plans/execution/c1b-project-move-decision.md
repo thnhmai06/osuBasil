@@ -238,23 +238,55 @@ relocated test files — `ChannelSessionTests`, `InMemoryChannelRegistryTests`,
 
 Ten files moved (7 source, 3 test).
 
+## Unit 6 — Bot's reply sink, and the finding that the rest of Bot is not actually next (done)
+
+Surveyed Bot's 6 files before Multiplayer, per the previous "Next exact step." Found something the
+checklist alone would not have caught: `architecture-target-20260908.md` §6 ("F4, `Bot`") already
+states that `MpCommandService`/`MpReplies` — multiplayer behaviour parked in `Bot` by history — move
+to `Basil.Domain/Multiplayer` first, and only *then* does what remains of `Bot` (the dispatcher and
+reply sink) become Domain-eligible. Checked directly: `ICommandDispatcher.DispatchAsync` takes
+`UserSession sender`, `CommandDispatcher` calls `IMpCommandService` (itself `GameSession`-typed) and
+`BotBootstrapService` boots a live `GameSession` — every one of those is blocked the same way
+`AuthenticationService`/`ScoreSubmissionService` are, and `BotReplies` reads through
+`LocaleCatalog`, a `Basil.Server.Shared` type Domain cannot reference at all. Only
+`ICommandReplySink` — a two-method `string`-only interface, zero dependency in any direction — was
+actually clean. Moved to `Basil.Domain.Bot`, the namespace's first file.
+
+**Conclusion: Bot is not a slice that can run ahead of Multiplayer.** Five of its six files are
+gated on the same `MatchSession`/`MpCommandService` split as Multiplayer itself; there is no
+independent "survey Bot" unit left to do. The per-feature table's remaining work collapses to two
+items, not three.
+
+**Verification:** build green, no stale `using` lines (the move's own edit already caught them); no
+test file to relocate (`ICommandReplySink` has no standalone test, only exercised through
+`CommandDispatcherTests`); `Basil.ArchitectureTests` 8, `Basil.Domain.Tests` 219 (unchanged),
+`Basil.Server.Tests` 957 (unchanged), `Basil.Protocol.Tests` 158; `Basil.IntegrationTests` 363, all
+passed, 6 min 51 s.
+
+One file moved.
+
 ## Next exact step
 
-**`ScoreSubmissionService` and `AuthenticationService` are what remains at this granularity, and
-both need a design pass, not a quick move.** Both are `GameSession`/`UserSession`-typed throughout
-— resolving a player by id or name through the live session registries — alongside real business
-decisions (`ScoreSubmissionService`: duplicate check, grade computation, hardware-ban-adjacent
-validation; `AuthenticationService`: password verification against an online or offline account).
-This is the same shape as C1a's match and chat seams: the service decides and, in the same method,
-reaches for session-held state a plain id or a small Domain-shaped lookup result could carry
-instead. Size each the way `chat-seam-decision.md` sized the chat seam before touching any file,
-rather than attempting either as one more contract-style unit.
+**Two items remain, both gated on real design work, not one more contract-style unit.**
 
-**With Auth, Beatmaps, Content, Scores, Users, Chat and Spectating's contract-level work done,
-Multiplayer and Bot are what remain of the target's per-feature table** (Multiplayer 16, Bot 6
-files). Bot has not been surveyed at all yet and is worth a pass with the same four-blocker
-checklist before Multiplayer. Multiplayer stays last, gated on the `MatchSession` split the
-original C1 task text already describes.
+`ScoreSubmissionService` and `AuthenticationService` need a design pass before any file moves. Both
+are `GameSession`/`UserSession`-typed throughout — resolving a player by id or name through the live
+session registries — alongside real business decisions (`ScoreSubmissionService`: duplicate check,
+grade computation, hardware-ban-adjacent validation; `AuthenticationService`: password verification
+against an online or offline account). Same shape as C1a's match and chat seams: the service
+decides and, in the same method, reaches for session-held state a plain id or a small Domain-shaped
+lookup result could carry instead. Size each the way `chat-seam-decision.md` sized the chat seam
+before touching any file.
+
+**Multiplayer (16 files) is the remaining slice, and Bot's five blocked files ride along with it.**
+`MpCommandService`/`MpReplies` move into `Basil.Domain/Multiplayer` as part of this work (per §6's
+F4), which is what then frees `CommandDispatcher`, `ICommandDispatcher`, `BotBootstrapService` and
+`BotReplies` to move too — Bot is not a separate unit to schedule afterward, it falls out of this
+one. Gated on the `MatchSession` split the original C1 task text already describes: business state
+(slots, host, settings, progress) to Domain, the SSE projection machinery (`StateStream<T>`,
+`SseSubscriberRegistry`, `SequenceGate`) staying behind. That split is its own scoped unit of work,
+sized similarly to C1a's chat seam, and should be measured on its own before starting, the way
+`chat-seam-decision.md` was written before its five commits landed.
 
 **`Multiplayer` and `MatchSession`'s split are last, not first.** Every Multiplayer handler file
 takes `MatchSession` (still entirely `Basil.Server.Features.Multiplayer`) as a parameter, and
