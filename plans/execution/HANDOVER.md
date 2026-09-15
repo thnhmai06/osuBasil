@@ -43,7 +43,7 @@ Treat that number with suspicion — see §4.
 | **A** — make constant-mediated coupling visible | Done. ADR-008. |
 | **B** — untangle before anything moves | Done, all six tasks. |
 | **F** — the Diagnostic API | Done and merged. |
-| **C** — extract the business layer | C4, C3, C6 done. C2 **off the path**. **C1 split: C1a in progress (3 of 5 steps, pinned list 21 → 10), then C5; C1b decided after.** |
+| **C** — extract the business layer | C4, C3, C6 done. C2 **off the path**. **C1 split: C1a in progress (4 of 5 steps, pinned list 21 → 9), then C5; C1b decided after.** |
 | **D** — split the transports | Not started. Gated on C5. |
 | **E** — declare what survives, enforce it | Not started. |
 | **G** — the load harness | Not started. Unblocked since F merged. |
@@ -71,38 +71,27 @@ deleting its row — proven by deleting one row and watching it fail.
 
 **C1a progress (2026-09-15):** step 1 `SpectatorService` (`9a4265ab`, 21 → 20), step 2 the match
 services (`IMatchNotifier`, rows `MatchMembership`, `MatchControlService`, `AbortHandler` deleted,
-20 → 17), and step 3 the whole chat seam (`c152c026`, `16b53d66`, `cd3edf84`, `087902df`,
-`666e704c`; `ChatLine`, `IChatNotifier`, `IChannelNotifier`, NAMES/LIST moved to `IrcQueryService`;
-rows `Auth.ClientIntegrityService`, `Multiplayer.MatchBroadcast`,
-`MpCommandService+ScopedDmReplySink`, `Chat.ChatDispatchService` and its two nested sinks,
-`Chat.ChannelMembershipService` deleted, 17 → 10) are all committed and pushed.
-`plans/execution/phase-stage-c.md` "C1a" has the per-step record, and
-`plans/execution/chat-seam-decision.md` has the design the chat commits followed, including one
-amendment made mid-execution (the join echo takes the roster as a parameter rather than calling
-`IrcQueryService`, which would have been a constructor cycle).
+20 → 17), step 3 the whole chat seam (`c152c026`, `16b53d66`, `cd3edf84`, `087902df`, `666e704c`;
+`ChatLine`, `IChatNotifier`, `IChannelNotifier`, NAMES/LIST moved to `IrcQueryService`; rows
+`Auth.ClientIntegrityService`, `Multiplayer.MatchBroadcast`, `MpCommandService+ScopedDmReplySink`,
+`Chat.ChatDispatchService` and its two nested sinks, `Chat.ChannelMembershipService` deleted,
+17 → 10), and step 4 `Auth.LoginService` (`0cea3160`; not a notifier — 22 of 24
+`ServerPacketWriter` sites were the login response's own body, not a notification, so a concrete,
+interface-free `LoginResponseEncoder` beside `PacketBuilders` replaced them 1:1; row deleted,
+10 → 9) are all committed and pushed. `plans/execution/phase-stage-c.md` "C1a" has the per-step
+record, `plans/execution/chat-seam-decision.md` has the chat design (with one mid-execution
+amendment: the join echo takes the roster as a parameter rather than calling `IrcQueryService`,
+which would have been a constructor cycle).
 
-**Remaining, in order, pinned list at 10:**
-
-4. **`Auth.LoginService` — a design question first, then the commit.** 24 `ServerPacketWriter`
-   sites building one `byte[]` login-response body (`ProtocolVersion`, `LoginReply`,
-   `BanchoPrivileges`, per-channel `ChannelInfo`, `MainMenuIcon`, `FriendsList`, `SilenceEnd`,
-   per-other-player presence/stats via `PacketBuilders`, `AccountRestricted`, a welcome
-   `Notification`) plus `PacketBuilders.BuildUserPresence`/`BuildUserStats`, which other sessions
-   also receive. The open question, stated in `phase-stage-c.md`'s "Next exact step": is this a
-   notifier candidate, or is `LoginService` correctly an adapter (row stays, like
-   `MatchPacketDataMapper`) because assembling a login response **is** encoding rather than
-   deciding? Answer it with evidence before writing a notifier, and record the answer as a decision
-   document the way the chat seam got one.
-5. `MatchState`'s three users (`IMatchRegistry`, `InMemoryMatchRegistry`,
-   `MatchLiveSnapshotBuilder`, plus `MatchLifecycle` which keeps its row only for this), the two API
-   route types (`AnnounceRoutes`, `MatchListEndpoints`, already named by Task D3), and
-   `Spectating.SpectateFramesEvent` (SSE payload carrying `ReplayFrame`/`ScoreFrame`).
-
-For each: replace the encoder calls with a notification contract the service owns and the bancho or
-IRC side implements, or record why the type is correctly an adapter; keep the match lock discipline
-(§9) — a notifier is called inside the same locked sequence the encoder was; delete the row from the
-pinned list where applicable; run the five test calls; commit with the checkpoint in
-`phase-stage-c.md` updated in the same commit.
+**Remaining — step 5, pinned list at 9:** `MatchState`'s three users (`IMatchRegistry`,
+`InMemoryMatchRegistry`, `MatchLiveSnapshotBuilder`, plus `MatchLifecycle` which keeps its row only
+for this), the two API route types (`AnnounceRoutes`, `MatchListEndpoints`, already named by
+Task D3), and `Spectating.SpectateFramesEvent` (SSE payload carrying `ReplayFrame`/`ScoreFrame`).
+None of these four is a "business decides, transport encodes" seam like steps 1-4 — they are
+read-model/view problems, the same shape as `architecture-target-20260908.md` §3.5's finding for
+`MatchRoutes`. Give each a Domain- or API-owned read type and a mapper, not a notifier; read the
+actual field usage first, the way the chat seam was measured before designed. Full brief in
+`phase-stage-c.md`'s "Next exact step".
 
 `MatchPacketDataMapper` is an adapter by design and probably keeps its row until C1b decides
 where adapters live.
