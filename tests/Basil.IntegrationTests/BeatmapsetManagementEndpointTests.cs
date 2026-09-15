@@ -308,6 +308,14 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 	///     legacy folder path's overlay-extract, so a stale file that predates the upload is not
 	///     expected to survive here the way it would for an un-migrated folder.
 	/// </summary>
+	/// <remarks>
+	///     Stage G, Task G5: waits for <see cref="BeatmapsetMigrationService" />'s one-time startup
+	///     sweep to finish before sending the PUT, rather than relying on it usually finishing first.
+	///     Both orderings are safe for this test's own assertion (the PUT always does a clean swap,
+	///     migrated layout or not), but an unordered race can still have the migration pass's own file
+	///     rename land *after* the PUT's, silently reverting the canonical archive to the pre-upload
+	///     content -- forcing the sweep to complete first removes that race instead of outrunning it.
+	/// </remarks>
 	[Fact]
 	public async Task PutBeatmapset_Valid_ReplacesTheBeatmapsetsFilesAndReturns202()
 	{
@@ -315,11 +323,14 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 		var folder = BeatmapsetFolder(701);
 		await File.WriteAllTextAsync(Path.Combine(folder, "old.osu"), "stale content");
 
+		var client = _factory.CreateClient();
+		await WaitForBeatmapsetMigrationAsync();
+
 		var request = MakeRequest(HttpMethod.Put, "/beatmapsets/701");
 		request.Content = new MultipartFormDataContent
 			{ { new ByteArrayContent(await MakeMinimalOszAsync()), "file", "set.osz" } };
 
-		var response = await _factory.CreateClient().SendAsync(request);
+		var response = await client.SendAsync(request);
 
 		Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
 		var beatmapsetsPath = Path.Combine(_dataDir, "Beatmapsets");
@@ -327,6 +338,18 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 		Assert.NotNull(canonicalOsz);
 		await using var archive = await ZipFile.OpenReadAsync(canonicalOsz);
 		Assert.Contains(archive.Entries, e => e.Name == "replacement.osu");
+	}
+
+	/// <summary>
+	///     Awaits <see cref="BeatmapsetMigrationService" />'s one-time startup sweep, so a test that
+	///     seeds a legacy folder before the host's first request can assert against a settled
+	///     filesystem state instead of racing the sweep's own file writes.
+	/// </summary>
+	private Task WaitForBeatmapsetMigrationAsync()
+	{
+		var migration = _factory.Services.GetServices<IHostedService>()
+			.OfType<BeatmapsetMigrationService>().Single();
+		return migration.ExecuteTask ?? Task.CompletedTask;
 	}
 
 	/// <summary>

@@ -592,11 +592,38 @@ passes because `BeatmapsetMigrationService`'s startup sweep usually finishes bef
 because anything makes it. Found on 2026-09-10 while fixing the inverse defect in
 `BeatmapDifficultyEndpointTests`, and recorded in `docs/for-developers/testing.md`.
 
-- [ ] Give the test a way to wait for the migration pass to complete, or assert against a signal the
+- [x] Give the test a way to wait for the migration pass to complete, or assert against a signal the
   service publishes, rather than against the clock. A test whose outcome depends on winning a race
-  passes for the wrong reason and eventually fails for the right one.
-- [ ] It lands here rather than in Stage B because it is load-dependent, and Stage G is where load is
+  passes for the wrong reason and eventually fails for the right one. **Done 2026-09-15:** the test
+  now resolves `BeatmapsetMigrationService` from the host's `IHostedService` registrations and awaits
+  `BackgroundService.ExecuteTask` before sending its PUT, instead of racing the sweep's own file
+  writes. No production code changed — `ExecuteTask` is already public on `BackgroundService`. Passed
+  5/5 in isolation plus the full suite (363/363).
+- [x] It lands here rather than in Stage B because it is load-dependent, and Stage G is where load is
   generated on purpose.
+
+**Task G5 is done.** The other three of the "old Phase 6, four tasks" the section header mentions
+were already resolved before this plan was written.
+
+**The `ReloginGuardWindowSeconds` duplication is not repaid, and the stated "real fix" does not
+work as written.** Tried 2026-09-15: removed `<SelfContained>true</SelfContained>` from
+`Basil.Server.csproj` (both real publish paths, `Dockerfile` and `release.yml`, already pass
+`--self-contained true` explicitly on the command line, so this alone changes nothing about
+production output) and added a compile-only `ProjectReference` (`Private="false"
+ExcludeAssets="runtime;contentFiles"`) from `Basil.LoadTests` to `Basil.Server`, so `LoginSettings`
+could read `LoginService.ReloginGuardWindowSeconds` directly. The self-contained rejection is gone,
+but restore now fails: `NU1202`, dozens of `Humanizer.Core.*` 2.14.1 satellite packages (pulled in
+transitively through `ppy.osu.Game.Rulesets.*`, the same package family already flagged for an
+`AutoMapper` advisory suppression in `Directory.Build.props`) are not compatible with `net10.0`.
+This did not surface before because nothing previously pulled `Basil.Server`'s full package graph
+into the same restore as `Basil.LoadTests`. Reverted both csproj changes and the constant reference
+rather than force a version override on a third-party package family's transitive dependencies for
+a hygiene fix with no functional impact — the duplicated constant already carries a clear doc
+comment explaining why it exists and to keep it in sync. **Left as accepted debt**, now with the
+real blocker recorded instead of the originally-assumed one; revisit only if `ppy.osu.Game.Rulesets.*`
+updates its own `Humanizer` dependency to a `net10.0`-compatible version, or if `Basil.Domain` grows
+its own `IPasswordHasher`-shaped seam `Basil.LoadTests` could reference instead of `Basil.Server`
+directly.
 
 ---
 
