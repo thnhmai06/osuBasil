@@ -1,12 +1,14 @@
 using Basil.Server.Features.Chat.Packets;
 using Basil.Server.Features.Auth;
 using Basil.Server.Features.Bot;
+using Basil.Server.Shared.Configuration;
 using Basil.Server.Shared.Sessions;
 using Basil.Server.Tests.Features.Multiplayer.Packets;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace Basil.Server.Tests.Features.Auth;
 
@@ -22,7 +24,7 @@ public class ClientIntegrityServiceTests
 	private ClientIntegrityService MakeService()
 	{
 		return new ClientIntegrityService(_fixture.SessionRegistry, _fixture.IrcSessionRegistry,
-			_fixture.MatchBroadcast, new ChatNotifier(),
+			_fixture.MatchBroadcast, new ChatNotifier(Options.Create(new IrcOptions())),
 			NullLogger<ClientIntegrityService>.Instance);
 	}
 

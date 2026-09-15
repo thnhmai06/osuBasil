@@ -25,7 +25,7 @@ public sealed class ChannelNotifier(
 				game.Enqueue(ServerPacketWriter.ChannelJoin(channel.DisplayName));
 				break;
 			case IrcSession irc:
-				irc.IrcConnection.Send(IrcMessageWriter.Join(irc.Name, irc.Id, channel.Name));
+				irc.IrcConnection.Send(IrcMessageWriter.Join(options.Value.Name, irc.Name, irc.Id, channel.Name));
 				foreach (var reply in IrcNamesReply.Build(options.Value.Name, irc.Name, channel.Name, roster))
 					irc.IrcConnection.Send(reply);
 				break;
@@ -40,24 +40,26 @@ public sealed class ChannelNotifier(
 				game.Enqueue(ServerPacketWriter.ChannelKick(channel.DisplayName));
 				break;
 			case IrcSession irc:
-				irc.IrcConnection.Send(IrcMessageWriter.Part(irc.Name, irc.Id, channel.Name));
+				irc.IrcConnection.Send(IrcMessageWriter.Part(options.Value.Name, irc.Name, irc.Id, channel.Name));
 				break;
 		}
 	}
 
 	public void MemberJoined(ChannelSession channel, UserSession member)
 	{
-		SendToOtherIrcMembers(channel, member.Id, IrcMessageWriter.Join(member.Name, member.Id, channel.Name));
+		SendToOtherIrcMembers(channel, member.Id,
+			IrcMessageWriter.Join(options.Value.Name, member.Name, member.Id, channel.Name));
 	}
 
 	public void MemberLeft(ChannelSession channel, UserSession member)
 	{
-		SendToOtherIrcMembers(channel, member.Id, IrcMessageWriter.Part(member.Name, member.Id, channel.Name));
+		SendToOtherIrcMembers(channel, member.Id,
+			IrcMessageWriter.Part(options.Value.Name, member.Name, member.Id, channel.Name));
 	}
 
 	public void Quit(UserSession member, IReadOnlyCollection<int> tell, string reason)
 	{
-		var message = IrcMessageWriter.Quit(member.Name, member.Id, reason);
+		var message = IrcMessageWriter.Quit(options.Value.Name, member.Name, member.Id, reason);
 		foreach (var memberId in tell)
 			if (ircRegistry.GetByUserId(memberId) is { } irc)
 				irc.IrcConnection.Send(message);
@@ -65,7 +67,7 @@ public sealed class ChannelNotifier(
 
 	public void TopicChanged(ChannelSession channel, UserSession by, string topic)
 	{
-		var message = IrcMessageWriter.Topic(by.Name, by.Id, channel.Name, topic);
+		var message = IrcMessageWriter.Topic(options.Value.Name, by.Name, by.Id, channel.Name, topic);
 		foreach (var memberId in channel.MemberIds)
 			if (ircRegistry.GetByUserId(memberId) is { } irc)
 				irc.IrcConnection.Send(message);

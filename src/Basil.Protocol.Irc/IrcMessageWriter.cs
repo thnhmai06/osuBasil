@@ -27,20 +27,21 @@ public static class IrcMessageWriter
 	/// <summary>Builds a user hostmask prefix for messages originating from a user.</summary>
 	/// <remarks>
 	///     The prefix has the shape <c>nick!id@host</c>; the <c>user</c> slot carries the sender's
-	///     session id (not a real ident), which IRC clients display as an ordinary hostmask.
+	///     session id (not a real ident), which IRC clients display as an ordinary hostmask. The
+	///     <paramref name="host" /> is the configured server name.
 	/// </remarks>
-	public static string UserPrefix(string nick, int id)
+	public static string UserPrefix(string nick, int id, string host)
 	{
-		return $"{nick}!{id}@basil";
+		return $"{nick}!{id}@{host}";
 	}
 
 	/// <summary>
-	///     Splits a <see cref="UserPrefix" /> back into (nick, id). Returns false for a client-sent (prefix-less)
-	///     message.
+	///     Splits a <see cref="UserPrefix" /> back into (nick, id, host). Returns false for a client-sent
+	///     (prefix-less) message.
 	/// </summary>
-	public static bool TryParseUserPrefix(string? prefix, out string nick, out int id)
+	public static bool TryParseUserPrefix(string? prefix, out string nick, out int id, out string host)
 	{
-		nick = "";
+		nick = host = "";
 		id = 0;
 		if (prefix is null) return false;
 
@@ -49,6 +50,7 @@ public static class IrcMessageWriter
 		if (bang < 0 || at < bang) return false;
 
 		nick = prefix[..bang];
+		host = prefix[(at + 1)..];
 		return int.TryParse(prefix[(bang + 1)..at], out id);
 	}
 
@@ -67,68 +69,74 @@ public static class IrcMessageWriter
 	}
 
 	/// <summary>Builds a PRIVMSG message from a user to a target player or channel.</summary>
+	/// <param name="serverName">The server name used as the host half of the sender's hostmask.</param>
 	/// <param name="senderNick">The nickname of the sending user.</param>
 	/// <param name="senderId">The id of the sending user, embedded in the hostmask.</param>
 	/// <param name="target">The nickname or channel the message is sent to.</param>
 	/// <param name="text">The message body.</param>
 	/// <returns>The PRIVMSG message.</returns>
-	public static IrcMessage Privmsg(string senderNick, int senderId, string target, string text)
+	public static IrcMessage Privmsg(string serverName, string senderNick, int senderId, string target, string text)
 	{
-		return new IrcMessage(UserPrefix(senderNick, senderId), "PRIVMSG", [target, text]);
+		return new IrcMessage(UserPrefix(senderNick, senderId, serverName), "PRIVMSG", [target, text]);
 	}
 
 	/// <summary>Builds a NOTICE message from a user to a target player or channel.</summary>
+	/// <param name="serverName">The server name used as the host half of the sender's hostmask.</param>
 	/// <param name="senderNick">The nickname of the sending user.</param>
 	/// <param name="senderId">The id of the sending user, embedded in the hostmask.</param>
 	/// <param name="target">The nickname or channel the notice is sent to.</param>
 	/// <param name="text">The notice body.</param>
 	/// <returns>The NOTICE message.</returns>
-	public static IrcMessage Notice(string senderNick, int senderId, string target, string text)
+	public static IrcMessage Notice(string serverName, string senderNick, int senderId, string target, string text)
 	{
-		return new IrcMessage(UserPrefix(senderNick, senderId), "NOTICE", [target, text]);
+		return new IrcMessage(UserPrefix(senderNick, senderId, serverName), "NOTICE", [target, text]);
 	}
 
 	/// <summary>Builds a JOIN message announcing that a user entered a channel.</summary>
+	/// <param name="serverName">The server name used as the host half of the sender's hostmask.</param>
 	/// <param name="nick">The nickname of the joining user.</param>
 	/// <param name="id">The id of the joining user, embedded in the hostmask.</param>
 	/// <param name="channel">The name of the channel joined.</param>
 	/// <returns>The JOIN message.</returns>
-	public static IrcMessage Join(string nick, int id, string channel)
+	public static IrcMessage Join(string serverName, string nick, int id, string channel)
 	{
-		return new IrcMessage(UserPrefix(nick, id), "JOIN", [channel]);
+		return new IrcMessage(UserPrefix(nick, id, serverName), "JOIN", [channel]);
 	}
 
 	/// <summary>Builds a PART message announcing that a user left a channel, optionally with a reason.</summary>
+	/// <param name="serverName">The server name used as the host half of the sender's hostmask.</param>
 	/// <param name="nick">The nickname of the leaving user.</param>
 	/// <param name="id">The id of the leaving user, embedded in the hostmask.</param>
 	/// <param name="channel">The name of the channel left.</param>
 	/// <param name="reason">The optional leave reason appended as the trailing parameter.</param>
 	/// <returns>The PART message.</returns>
-	public static IrcMessage Part(string nick, int id, string channel, string? reason = null)
+	public static IrcMessage Part(string serverName, string nick, int id, string channel, string? reason = null)
 	{
 		var parameters = reason is null ? new List<string> { channel } : [channel, reason];
-		return new IrcMessage(UserPrefix(nick, id), "PART", parameters);
+		return new IrcMessage(UserPrefix(nick, id, serverName), "PART", parameters);
 	}
 
 	/// <summary>Builds a TOPIC message announcing a channel's topic changed.</summary>
+	/// <param name="serverName">The server name used as the host half of the sender's hostmask.</param>
 	/// <param name="nick">The nickname attributed as having set the topic.</param>
 	/// <param name="id">The id of the user credited with setting the topic, embedded in the hostmask.</param>
 	/// <param name="channel">The name of the channel whose topic changed.</param>
 	/// <param name="topic">The new topic text.</param>
 	/// <returns>The TOPIC message.</returns>
-	public static IrcMessage Topic(string nick, int id, string channel, string topic)
+	public static IrcMessage Topic(string serverName, string nick, int id, string channel, string topic)
 	{
-		return new IrcMessage(UserPrefix(nick, id), "TOPIC", [channel, topic]);
+		return new IrcMessage(UserPrefix(nick, id, serverName), "TOPIC", [channel, topic]);
 	}
 
 	/// <summary>Builds a QUIT message announcing that a user disconnected.</summary>
+	/// <param name="serverName">The server name used as the host half of the sender's hostmask.</param>
 	/// <param name="nick">The nickname of the disconnecting user.</param>
 	/// <param name="id">The id of the disconnecting user, embedded in the hostmask.</param>
 	/// <param name="reason">The quit message shown to other users.</param>
 	/// <returns>The QUIT message.</returns>
-	public static IrcMessage Quit(string nick, int id, string reason)
+	public static IrcMessage Quit(string serverName, string nick, int id, string reason)
 	{
-		return new IrcMessage(UserPrefix(nick, id), "QUIT", [reason]);
+		return new IrcMessage(UserPrefix(nick, id, serverName), "QUIT", [reason]);
 	}
 
 	/// <summary>Builds a PING message carrying a token for the server to echo back.</summary>

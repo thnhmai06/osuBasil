@@ -31,9 +31,6 @@ public sealed class IrcQueryService(
 	MotdService motdService,
 	IOptions<IrcOptions> options)
 {
-	/// <summary>The hostname half of every hostmask the gateway reports.</summary>
-	private const string Host = "basil";
-
 	/// <summary>The channel modes reported for every channel: no external messages, the topic locked.</summary>
 	private const string BaseChannelModes = "+nt";
 
@@ -179,7 +176,7 @@ public sealed class IrcQueryService(
 		}
 
 		yield return Reply(IrcNumeric.RplWhoIsUser, requester.Name, target.Name,
-			target.Id.ToString(CultureInfo.InvariantCulture), Host, "*", target.Name);
+			target.Id.ToString(CultureInfo.InvariantCulture), options.Value.Name, "*", target.Name);
 
 		var channels = string.Join(' ', VisibleChannels(requester)
 			.Where(channel => channel.Contains(target.Id))
@@ -310,8 +307,8 @@ public sealed class IrcQueryService(
 		            + (channel is null ? "" : channelMembership.MemberPrefix(member, channel));
 
 		return Reply(IrcNumeric.RplWhoReply, requester.Name, channel?.Name ?? "*",
-			member.Id.ToString(CultureInfo.InvariantCulture), Host, options.Value.Name, member.Name, flags,
-			$"0 {member.Name}");
+			member.Id.ToString(CultureInfo.InvariantCulture), options.Value.Name, options.Value.Name, member.Name,
+			flags, $"0 {member.Name}");
 	}
 
 	/// <summary>

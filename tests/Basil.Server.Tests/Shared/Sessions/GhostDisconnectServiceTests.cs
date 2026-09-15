@@ -53,11 +53,11 @@ public class GhostDisconnectServiceTests
 		IChannelRegistry? channelRegistry = null)
 	{
 		channelRegistry ??= Substitute.For<IChannelRegistry>();
-		var channelMembership = new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry, new ChatNotifier(), new ChannelNotifier(gameRegistry,ircRegistry, Options.Create(new IrcOptions())),
+		var channelMembership = new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry, new ChatNotifier(Options.Create(new IrcOptions())), new ChannelNotifier(gameRegistry,ircRegistry, Options.Create(new IrcOptions())),
 			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
 		var spectatorService = new SpectatorService(channelRegistry, channelMembership, new BanchoSpectatorNotifier(),
 			NullLogger<SpectatorService>.Instance);
-		var matchBroadcast = new MatchBroadcast(channelRegistry, channelMembership, new BanchoMatchNotifier(channelRegistry, channelMembership), new ChatNotifier(), gameRegistry, ircRegistry, null,
+		var matchBroadcast = new MatchBroadcast(channelRegistry, channelMembership, new BanchoMatchNotifier(channelRegistry, channelMembership), new ChatNotifier(Options.Create(new IrcOptions())), gameRegistry, ircRegistry, null,
 			Substitute.For<IBeatmapRepository>(),
 			Substitute.For<IUserRepository>());
 		var matchLifecycle = new MatchLifecycle(Substitute.For<IMatchRegistry>(), channelRegistry, channelMembership, new BanchoMatchNotifier(channelRegistry, channelMembership),
@@ -243,7 +243,7 @@ public class GhostDisconnectServiceTests
 		ghostSlot.Status = SlotStatus.Playing;
 
 		var testChannelMembership = new ChannelMembershipService(fixture.SessionRegistry,
-			fixture.IrcSessionRegistry, fixture.ChannelRegistry, new ChatNotifier(), new ChannelNotifier(fixture.SessionRegistry,fixture.IrcSessionRegistry, Options.Create(new IrcOptions())),
+			fixture.IrcSessionRegistry, fixture.ChannelRegistry, new ChatNotifier(Options.Create(new IrcOptions())), new ChannelNotifier(fixture.SessionRegistry,fixture.IrcSessionRegistry, Options.Create(new IrcOptions())),
 			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
 		var testSpectatorService = new SpectatorService(fixture.ChannelRegistry, testChannelMembership, new BanchoSpectatorNotifier(),
 			NullLogger<SpectatorService>.Instance);

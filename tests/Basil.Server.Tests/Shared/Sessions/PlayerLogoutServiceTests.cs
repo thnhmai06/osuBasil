@@ -42,7 +42,7 @@ public class PlayerLogoutServiceTests
 	private readonly ChannelMembershipService _matchChannelMembership = new(
 		Substitute.For<ISessionRegistry<GameSession>>(),
 		Substitute.For<ISessionRegistry<IrcSession>>(), Substitute.For<IChannelRegistry>(),
-		new ChatNotifier(),
+		new ChatNotifier(Options.Create(new IrcOptions())),
 		new ChannelNotifier(Substitute.For<ISessionRegistry<GameSession>>(),
 			Substitute.For<ISessionRegistry<IrcSession>>(), Options.Create(new IrcOptions())),
 		Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
@@ -56,7 +56,7 @@ public class PlayerLogoutServiceTests
 	public PlayerLogoutServiceTests()
 	{
 		_matchBroadcast = new MatchBroadcast(Substitute.For<IChannelRegistry>(), _matchChannelMembership,
-			new BanchoMatchNotifier(_channelRegistry, _matchChannelMembership), new ChatNotifier(),
+			new BanchoMatchNotifier(_channelRegistry, _matchChannelMembership), new ChatNotifier(Options.Create(new IrcOptions())),
 			Substitute.For<ISessionRegistry<GameSession>>(), Substitute.For<ISessionRegistry<IrcSession>>(), null,
 			Substitute.For<IBeatmapRepository>(),
 			Substitute.For<IUserRepository>());
@@ -75,7 +75,7 @@ public class PlayerLogoutServiceTests
 	private readonly SpectatorService _spectatorService = new(Substitute.For<IChannelRegistry>(),
 		new ChannelMembershipService(Substitute.For<ISessionRegistry<GameSession>>(),
 			Substitute.For<ISessionRegistry<IrcSession>>(), Substitute.For<IChannelRegistry>(),
-			new ChatNotifier(),
+			new ChatNotifier(Options.Create(new IrcOptions())),
 			new ChannelNotifier(Substitute.For<ISessionRegistry<GameSession>>(),
 				Substitute.For<ISessionRegistry<IrcSession>>(), Options.Create(new IrcOptions())),
 			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions())),
@@ -95,7 +95,7 @@ public class PlayerLogoutServiceTests
 	{
 		var channelMembership =
 			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
-				new ChatNotifier(),
+				new ChatNotifier(Options.Create(new IrcOptions())),
 				new ChannelNotifier(_gameRegistry, _ircRegistry,
 					Options.Create(new IrcOptions())),
 				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
@@ -260,12 +260,12 @@ public class PlayerLogoutServiceTests
 		var gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
 		var ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
 		var matchChannelMembership = new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry,
-			new ChatNotifier(),
+			new ChatNotifier(Options.Create(new IrcOptions())),
 			new ChannelNotifier(gameRegistry, ircRegistry,
 				Options.Create(new IrcOptions())),
 			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
 		var matchBroadcast = new MatchBroadcast(channelRegistry, matchChannelMembership,
-			new BanchoMatchNotifier(channelRegistry, matchChannelMembership), new ChatNotifier(), gameRegistry,
+			new BanchoMatchNotifier(channelRegistry, matchChannelMembership), new ChatNotifier(Options.Create(new IrcOptions())), gameRegistry,
 			ircRegistry,
 			null, Substitute.For<IBeatmapRepository>(),
 			Substitute.For<IUserRepository>());
@@ -285,7 +285,7 @@ public class PlayerLogoutServiceTests
 		var match = (await matchLifecycle.CreateAsync(host, MultiplayerTestSupport.MakeMatchData(host.Id)))!;
 		var channelMembership =
 			new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry,
-				new ChatNotifier(),
+				new ChatNotifier(Options.Create(new IrcOptions())),
 				new ChannelNotifier(gameRegistry, ircRegistry,
 					Options.Create(new IrcOptions())),
 				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));

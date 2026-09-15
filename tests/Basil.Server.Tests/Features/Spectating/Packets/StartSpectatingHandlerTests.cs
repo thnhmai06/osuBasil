@@ -39,7 +39,7 @@ public class StartSpectatingHandlerTests
 		var handler = new StartSpectatingHandler(_sessionRegistry,
 			new SpectatorService(new FakeChannelRegistry(),
 				new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(),
-					new FakeChannelRegistry(), new ChatNotifier(), new ChannelNotifier(_sessionRegistry,Substitute.For<ISessionRegistry<IrcSession>>(), Options.Create(new IrcOptions())), Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
+					new FakeChannelRegistry(), new ChatNotifier(Options.Create(new IrcOptions())), new ChannelNotifier(_sessionRegistry,Substitute.For<ISessionRegistry<IrcSession>>(), Options.Create(new IrcOptions())), Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
 					Options.Create(new IrcOptions())), new BanchoSpectatorNotifier(),
 				NullLogger<SpectatorService>.Instance),
 			NullLogger<StartSpectatingHandler>.Instance);
@@ -61,7 +61,7 @@ public class StartSpectatingHandlerTests
 		var handler = new StartSpectatingHandler(_sessionRegistry,
 			new SpectatorService(new FakeChannelRegistry(),
 				new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(),
-					new FakeChannelRegistry(), new ChatNotifier(), new ChannelNotifier(_sessionRegistry,Substitute.For<ISessionRegistry<IrcSession>>(), Options.Create(new IrcOptions())), Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
+					new FakeChannelRegistry(), new ChatNotifier(Options.Create(new IrcOptions())), new ChannelNotifier(_sessionRegistry,Substitute.For<ISessionRegistry<IrcSession>>(), Options.Create(new IrcOptions())), Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
 					Options.Create(new IrcOptions())), new BanchoSpectatorNotifier(),
 				NullLogger<SpectatorService>.Instance),
 			NullLogger<StartSpectatingHandler>.Instance);
@@ -83,7 +83,7 @@ public class StartSpectatingHandlerTests
 		var spectatorService =
 			new SpectatorService(new FakeChannelRegistry(),
 				new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(),
-					new FakeChannelRegistry(), new ChatNotifier(), new ChannelNotifier(_sessionRegistry,Substitute.For<ISessionRegistry<IrcSession>>(), Options.Create(new IrcOptions())), Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
+					new FakeChannelRegistry(), new ChatNotifier(Options.Create(new IrcOptions())), new ChannelNotifier(_sessionRegistry,Substitute.For<ISessionRegistry<IrcSession>>(), Options.Create(new IrcOptions())), Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
 					Options.Create(new IrcOptions())), new BanchoSpectatorNotifier(),
 				NullLogger<SpectatorService>.Instance);
 		var handler = new StartSpectatingHandler(_sessionRegistry, spectatorService,

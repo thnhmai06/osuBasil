@@ -34,7 +34,7 @@ public class IrcQueryServiceTests
 	{
 		var options = Options.Create(new IrcOptions { Name = "basil.local" });
 		var membership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
-			new ChatNotifier(),
+			new ChatNotifier(Options.Create(new IrcOptions())),
 			new ChannelNotifier(_gameRegistry, _ircRegistry,
 				Options.Create(new IrcOptions())),
 			_matchRegistry, Substitute.For<ILiveEventHub>(), options);

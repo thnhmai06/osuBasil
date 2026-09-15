@@ -343,11 +343,11 @@ internal static class MultiplayerTestSupport
 			ChannelNotifier =
 				new ChannelNotifier(SessionRegistry, IrcSessionRegistry, Options.Create(new IrcOptions()));
 			ChannelMembership = new ChannelMembershipService(SessionRegistry, IrcSessionRegistry, ChannelRegistry,
-				new ChatNotifier(), ChannelNotifier,
+				new ChatNotifier(Options.Create(new IrcOptions())), ChannelNotifier,
 				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
 
 			MatchNotifier = new BanchoMatchNotifier(ChannelRegistry, ChannelMembership);
-			MatchBroadcast = new MatchBroadcast(ChannelRegistry, ChannelMembership, MatchNotifier, new ChatNotifier(),
+			MatchBroadcast = new MatchBroadcast(ChannelRegistry, ChannelMembership, MatchNotifier, new ChatNotifier(Options.Create(new IrcOptions())),
 				SessionRegistry,
 				IrcSessionRegistry, Hub, BeatmapRepository, UserRepository);
 

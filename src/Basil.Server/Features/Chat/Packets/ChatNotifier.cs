@@ -1,6 +1,8 @@
 using Basil.Protocol.Irc;
 using Basil.Protocol.Packets;
+using Basil.Server.Shared.Configuration;
 using Basil.Server.Shared.Sessions;
+using Microsoft.Extensions.Options;
 
 namespace Basil.Server.Features.Chat.Packets;
 
@@ -8,13 +10,13 @@ namespace Basil.Server.Features.Chat.Packets;
 ///     Delivers chat through the recipient's session connection, which speaks IRC lines to an IRC
 ///     client and re-encodes them as bancho packets for an osu! client.
 /// </summary>
-public sealed class ChatNotifier : IChatNotifier
+public sealed class ChatNotifier(IOptions<IrcOptions> options) : IChatNotifier
 {
 	public void Deliver(UserSession recipient, ChatLine line)
 	{
 		recipient.IrcConnection.Send(line.Notice
-			? IrcMessageWriter.Notice(line.SenderName, line.SenderId, line.Target, line.Text)
-			: IrcMessageWriter.Privmsg(line.SenderName, line.SenderId, line.Target, line.Text));
+			? IrcMessageWriter.Notice(options.Value.Name, line.SenderName, line.SenderId, line.Target, line.Text)
+			: IrcMessageWriter.Privmsg(options.Value.Name, line.SenderName, line.SenderId, line.Target, line.Text));
 	}
 
 	/// <remarks>Only an osu! client has a way to hear this; an IRC sender is told nothing, as before.</remarks>

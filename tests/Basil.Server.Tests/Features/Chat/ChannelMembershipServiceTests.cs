@@ -35,7 +35,7 @@ public class ChannelMembershipServiceTests
 	private ChannelMembershipService MakeService()
 	{
 		return new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
-			new ChatNotifier(),
+			new ChatNotifier(Options.Create(new IrcOptions())),
 			new ChannelNotifier(_gameRegistry, _ircRegistry,
 				Options.Create(new IrcOptions())),
 			_matchRegistry, _hub, Options.Create(new IrcOptions()));

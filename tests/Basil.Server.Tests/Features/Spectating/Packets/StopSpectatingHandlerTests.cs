@@ -30,7 +30,7 @@ public class StopSpectatingHandlerTests
 		var gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
 		var ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
 		var handler = new StopSpectatingHandler(new SpectatorService(new FakeChannelRegistry(),
-			new ChannelMembershipService(gameRegistry, ircRegistry, new FakeChannelRegistry(), new ChatNotifier(), new ChannelNotifier(gameRegistry,ircRegistry, Options.Create(new IrcOptions())),
+			new ChannelMembershipService(gameRegistry, ircRegistry, new FakeChannelRegistry(), new ChatNotifier(Options.Create(new IrcOptions())), new ChannelNotifier(gameRegistry,ircRegistry, Options.Create(new IrcOptions())),
 				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions())), new BanchoSpectatorNotifier(),
 			NullLogger<SpectatorService>.Instance));
 		var player = MakePlayer(1, "alice");
@@ -52,7 +52,7 @@ public class StopSpectatingHandlerTests
 		gameRegistry.GetByUserId(1).Returns(player);
 		var spectatorService =
 			new SpectatorService(new FakeChannelRegistry(),
-				new ChannelMembershipService(gameRegistry, ircRegistry, new FakeChannelRegistry(), new ChatNotifier(), new ChannelNotifier(gameRegistry,ircRegistry, Options.Create(new IrcOptions())),
+				new ChannelMembershipService(gameRegistry, ircRegistry, new FakeChannelRegistry(), new ChatNotifier(Options.Create(new IrcOptions())), new ChannelNotifier(gameRegistry,ircRegistry, Options.Create(new IrcOptions())),
 					Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
 					Options.Create(new IrcOptions())), new BanchoSpectatorNotifier(),
 				NullLogger<SpectatorService>.Instance);

@@ -1,6 +1,6 @@
-using Basil.Server.Shared.Sessions;
 using Basil.Protocol.Irc;
 using Basil.Protocol.Packets;
+using Basil.Server.Shared.Sessions;
 
 namespace Basil.Server.Features.Irc;
 
@@ -30,7 +30,7 @@ public sealed class BanchoIrcBridgeConnection(GameSession userSession) : IIrcCon
 		// A bancho client has no notice concept, so a notice reaches it as an ordinary chat line
 		// rather than not at all.
 		if (message.Command is not ("PRIVMSG" or "NOTICE")) return;
-		if (!IrcMessageWriter.TryParseUserPrefix(message.Prefix, out var senderName, out var senderId)) return;
+		if (!IrcMessageWriter.TryParseUserPrefix(message.Prefix, out var senderName, out var senderId, out _)) return;
 
 		var recipient = TranslateRecipient(message.Params[0]);
 		User.Enqueue(ServerPacketWriter.SendMessage(senderName, message.Params[1], recipient, senderId));

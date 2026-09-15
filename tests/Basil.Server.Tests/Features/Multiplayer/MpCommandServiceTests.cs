@@ -38,7 +38,8 @@ public class MpCommandServiceTests
 
 	private MpCommandService MakeService()
 	{
-		return new MpCommandService(_fixture.MatchMembership, _fixture.MatchLifecycle, _fixture.MatchNotifier, new ChatNotifier(),
+		return new MpCommandService(_fixture.MatchMembership, _fixture.MatchLifecycle, _fixture.MatchNotifier,
+			new ChatNotifier(Options.Create(new IrcOptions())),
 			_fixture.SetTeamHandler, _fixture.TimerHandler, _fixture.AbortTimerHandler,
 			_fixture.StartHandler, _fixture.AbortHandler, _fixture.CloseHandler,
 			_fixture.MatchRegistry, _fixture.MatchRepository, _beatmaps,
@@ -497,7 +498,10 @@ public class MpCommandServiceTests
 	{
 		var channelMembership =
 			new ChannelMembershipService(_fixture.SessionRegistry, _fixture.IrcSessionRegistry,
-				_fixture.ChannelRegistry, new ChatNotifier(), new ChannelNotifier(_fixture.SessionRegistry,_fixture.IrcSessionRegistry, Options.Create(new IrcOptions())), Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
+				_fixture.ChannelRegistry, new ChatNotifier(Options.Create(new IrcOptions())),
+				new ChannelNotifier(_fixture.SessionRegistry, _fixture.IrcSessionRegistry,
+					Options.Create(new IrcOptions())), Substitute.For<IMatchRegistry>(),
+				Substitute.For<ILiveEventHub>(),
 				Options.Create(new IrcOptions()));
 		var channel = _fixture.ChannelRegistry.All.Single(c => c.Name.StartsWith("#mp_"));
 		channelMembership.Join(session, channel);
@@ -562,7 +566,7 @@ public class MpCommandServiceTests
 		foreach (var line in reply!.Split('\n'))
 		{
 			var wireLine = IrcMessageWriter.Format(
-				IrcMessageWriter.Privmsg("BasilBot", 0, match.ChatChannelName, line));
+				IrcMessageWriter.Privmsg("Basil", "BasilBot", 0, match.ChatChannelName, line));
 			Assert.True(Encoding.UTF8.GetByteCount(wireLine) <= 512,
 				$"Line exceeds the 512-byte IRC wire limit once framed: {wireLine}");
 		}

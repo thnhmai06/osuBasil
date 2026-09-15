@@ -31,9 +31,9 @@ public class ChatDispatchNoticeTests
 
 	private ChatDispatchService MakeService()
 	{
-		var membership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, new ChatNotifier(), new ChannelNotifier(_gameRegistry,_ircRegistry, Options.Create(new IrcOptions())),
+		var membership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, new ChatNotifier(Options.Create(new IrcOptions())), new ChannelNotifier(_gameRegistry,_ircRegistry, Options.Create(new IrcOptions())),
 			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
-		return new ChatDispatchService(_channelRegistry, _gameRegistry, membership, new ChatNotifier(),
+		return new ChatDispatchService(_channelRegistry, _gameRegistry, membership, new ChatNotifier(Options.Create(new IrcOptions())),
 			Substitute.For<IUserRepository>(), Substitute.For<IRelationshipRepository>(), _commandDispatcher,
 			Substitute.For<IMatchRegistry>(), NullLogger<ChatDispatchService>.Instance);
 	}

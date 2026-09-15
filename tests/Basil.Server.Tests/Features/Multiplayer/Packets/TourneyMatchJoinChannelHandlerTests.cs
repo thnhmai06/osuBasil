@@ -38,7 +38,7 @@ public class TourneyMatchJoinChannelHandlerTests
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
 		var handler = new TourneyMatchJoinChannelHandler(fixture.MatchRegistry, fixture.ChannelRegistry,
-			new ChannelMembershipService(fixture.SessionRegistry, fixture.IrcSessionRegistry, fixture.ChannelRegistry, new ChatNotifier(), new ChannelNotifier(fixture.SessionRegistry,fixture.IrcSessionRegistry, Options.Create(new IrcOptions())),
+			new ChannelMembershipService(fixture.SessionRegistry, fixture.IrcSessionRegistry, fixture.ChannelRegistry, new ChatNotifier(Options.Create(new IrcOptions())), new ChannelNotifier(fixture.SessionRegistry,fixture.IrcSessionRegistry, Options.Create(new IrcOptions())),
 				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions())),
 			NullLogger<TourneyMatchJoinChannelHandler>.Instance);
 		host.Privilege = UserPrivileges.Unrestricted | UserPrivileges.Supporter;
@@ -57,7 +57,7 @@ public class TourneyMatchJoinChannelHandlerTests
 		fixture.RegisterAll(host, observer);
 		var match = fixture.CreateMatch(host);
 		var handler = new TourneyMatchJoinChannelHandler(fixture.MatchRegistry, fixture.ChannelRegistry,
-			new ChannelMembershipService(fixture.SessionRegistry, fixture.IrcSessionRegistry, fixture.ChannelRegistry, new ChatNotifier(), new ChannelNotifier(fixture.SessionRegistry,fixture.IrcSessionRegistry, Options.Create(new IrcOptions())),
+			new ChannelMembershipService(fixture.SessionRegistry, fixture.IrcSessionRegistry, fixture.ChannelRegistry, new ChatNotifier(Options.Create(new IrcOptions())), new ChannelNotifier(fixture.SessionRegistry,fixture.IrcSessionRegistry, Options.Create(new IrcOptions())),
 				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions())),
 			NullLogger<TourneyMatchJoinChannelHandler>.Instance);
 
