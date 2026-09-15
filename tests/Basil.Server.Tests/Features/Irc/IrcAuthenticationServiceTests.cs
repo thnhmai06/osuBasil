@@ -11,6 +11,7 @@ using Basil.Domain.Login;
 using Basil.Domain.Users;
 using Microsoft.Extensions.Options;
 using NSubstitute;
+using Basil.Server.Features.Chat.Packets;
 
 namespace Basil.Server.Tests.Features.Irc;
 
@@ -40,7 +41,7 @@ public class IrcAuthenticationServiceTests
 	{
 		var options = Options.Create(new IrcOptions { Name = "basil.local" });
 		var channelMembership =
-			new ChannelMembershipService(_gameRegistry, _sessionRegistry, _channelRegistry,
+			new ChannelMembershipService(_gameRegistry, _sessionRegistry, _channelRegistry, new ChatNotifier(), new ChannelNotifier(_gameRegistry,_sessionRegistry, Options.Create(new IrcOptions())),
 				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
 		var queries = new IrcQueryService(_channelRegistry, _gameRegistry, _sessionRegistry, channelMembership,
 			new MotdService(_settings), options);

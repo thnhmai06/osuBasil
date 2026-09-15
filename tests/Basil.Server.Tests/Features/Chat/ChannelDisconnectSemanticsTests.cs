@@ -8,6 +8,7 @@ using Basil.Domain.Users;
 using Basil.Protocol.Irc;
 using Microsoft.Extensions.Options;
 using NSubstitute;
+using Basil.Server.Features.Chat.Packets;
 
 namespace Basil.Server.Tests.Features.Chat;
 
@@ -24,7 +25,7 @@ public class ChannelDisconnectSemanticsTests
 
 	private ChannelMembershipService MakeService()
 	{
-		return new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
+		return new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, new ChatNotifier(), new ChannelNotifier(_gameRegistry,_ircRegistry, Options.Create(new IrcOptions())),
 			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
 	}
 

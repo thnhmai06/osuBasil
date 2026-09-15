@@ -13,6 +13,7 @@ using Basil.Protocol.Irc;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Options;
 using NSubstitute;
+using Basil.Server.Features.Chat.Packets;
 
 namespace Basil.Server.Tests.Features.Chat;
 
@@ -33,6 +34,9 @@ public class ChannelMembershipServiceTests
 	private ChannelMembershipService MakeService()
 	{
 		return new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
+			new ChatNotifier(),
+			new ChannelNotifier(_gameRegistry, _ircRegistry,
+				Options.Create(new IrcOptions())),
 			_matchRegistry, _hub, Options.Create(new IrcOptions()));
 	}
 
@@ -311,26 +315,6 @@ public class ChannelMembershipServiceTests
 	}
 
 	[Fact]
-	public void BuildListReply_MatchChannel_ShowsOnlyToItsParticipantOrReferee()
-	{
-		var referee = MakeIrc(1, "ref");
-		var outsider = MakeIrc(2, "alice");
-		var room = new ChannelSession(0, "#mp_5", 0, 0, false, "#multiplayer", true);
-		var match = new MatchSession(0, "Grand Finals", "", "map", 42, "md5", 9, GameMode.Standard,
-			Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead, false, 0, "#mp_5");
-		match.AddReferee(referee.Id);
-		_matchRegistry.All.Returns([match]);
-		_channelRegistry.All.Returns([room]);
-		var service = MakeService();
-
-		var refereeListing = service.BuildListReply(referee).Where(m => m.Command == "322").ToList();
-		var outsiderListing = service.BuildListReply(outsider).Where(m => m.Command == "322").ToList();
-
-		Assert.Equal(["#mp_5"], refereeListing.Select(m => m.Params[1]));
-		Assert.Empty(outsiderListing);
-	}
-
-	[Fact]
 	public void MemberPrefix_AuthorityIsStaffOutsideAMatchRoomAndTheRoomsRefereesInside()
 	{
 		var staff = MakeIrc(1, "mod", UserPrivileges.Unrestricted | UserPrivileges.Moderator);
@@ -369,48 +353,13 @@ public class ChannelMembershipServiceTests
 		var service = MakeService();
 
 		// skipMemberId is the sender: they must still show up on the stream an observer is watching.
-		service.BroadcastPrivmsg(room, IrcMessageWriter.Privmsg("alice", 1, "#mp_5", "glhf"), speaker.Id);
-		service.BroadcastPrivmsg(general, IrcMessageWriter.Privmsg("alice", 1, "#osu", "hello"));
+		service.BroadcastPrivmsg(room, new ChatLine(1, "alice", "#mp_5", "glhf"), speaker.Id);
+		service.BroadcastPrivmsg(general, new ChatLine(1, "alice", "#osu", "hello"));
 
 		_hub.Received(1).Publish(new StreamKey("match", 7, "chat"), Arg.Any<long>(), Arg.Any<ReadOnlyMemory<byte>>());
 		_hub.DidNotReceive().Publish(
 			Arg.Is<StreamKey>(k => k != new StreamKey("match", 7, "chat")), Arg.Any<long>(),
 			Arg.Any<ReadOnlyMemory<byte>>());
-	}
-
-	[Fact]
-	public void BuildListReply_ListsOnlyReadableNonInstanceChannels()
-	{
-		var requester = MakeIrc(1, "alice");
-		var general = new ChannelSession(1, "#osu", 0, 0, true);
-		var staff = new ChannelSession(2, "#staff", UserPrivileges.Moderator, 0, false);
-		var match = new ChannelSession(0, "#mp_5", 0, 0, false, "#multiplayer", true);
-		general.Join(requester.Id);
-		_channelRegistry.All.Returns([match, staff, general]);
-
-		var replies = MakeService().BuildListReply(requester).ToList();
-
-		Assert.Equal("321", replies[0].Command);
-		Assert.Equal("323", replies[^1].Command);
-		var listed = replies.Where(m => m.Command == "322").ToList();
-		Assert.Equal(["#osu"], listed.Select(m => m.Params[1]));
-		Assert.Equal("1", listed[0].Params[2]);
-	}
-
-	[Fact]
-	public void BuildListReply_ChannelFilter_KeepsOnlyNamedChannelsButIgnoresMasks()
-	{
-		var requester = MakeIrc(1, "alice");
-		var general = new ChannelSession(1, "#osu", 0, 0, true);
-		var announce = new ChannelSession(2, "#announce", 0, 0, true);
-		_channelRegistry.All.Returns([general, announce]);
-		var service = MakeService();
-
-		var filtered = service.BuildListReply(requester, "#osu").Where(m => m.Command == "322").ToList();
-		var masked = service.BuildListReply(requester, ">0").Where(m => m.Command == "322").ToList();
-
-		Assert.Equal(["#osu"], filtered.Select(m => m.Params[1]));
-		Assert.Equal(["#announce", "#osu"], masked.Select(m => m.Params[1]));
 	}
 
 	// Handlers concatenate multiple packets into one Dequeue() call; this splits it back for

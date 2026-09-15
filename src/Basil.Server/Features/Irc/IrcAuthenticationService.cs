@@ -104,7 +104,8 @@ public sealed class IrcAuthenticationService(
 					channel.Name,
 					channel.Topic));
 
-			messages.AddRange(channelMembership.BuildNamesReply(user.Name, channel));
+			messages.AddRange(IrcNamesReply.Build(options.Value.Name, user.Name, channel.Name,
+				channelMembership.Roster(channel)));
 		}
 
 		return IrcLoginOutcome.Ok(session, messages);

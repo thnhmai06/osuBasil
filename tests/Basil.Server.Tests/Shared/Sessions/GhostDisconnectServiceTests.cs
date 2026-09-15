@@ -50,7 +50,7 @@ public class GhostDisconnectServiceTests
 		IChannelRegistry? channelRegistry = null)
 	{
 		channelRegistry ??= Substitute.For<IChannelRegistry>();
-		var channelMembership = new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry,
+		var channelMembership = new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry, new ChatNotifier(), new ChannelNotifier(gameRegistry,ircRegistry, Options.Create(new IrcOptions())),
 			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
 		var spectatorService = new SpectatorService(channelRegistry, channelMembership, new BanchoSpectatorNotifier(),
 			NullLogger<SpectatorService>.Instance);
@@ -240,7 +240,7 @@ public class GhostDisconnectServiceTests
 		ghostSlot.Status = SlotStatus.Playing;
 
 		var testChannelMembership = new ChannelMembershipService(fixture.SessionRegistry,
-			fixture.IrcSessionRegistry, fixture.ChannelRegistry,
+			fixture.IrcSessionRegistry, fixture.ChannelRegistry, new ChatNotifier(), new ChannelNotifier(fixture.SessionRegistry,fixture.IrcSessionRegistry, Options.Create(new IrcOptions())),
 			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
 		var testSpectatorService = new SpectatorService(fixture.ChannelRegistry, testChannelMembership, new BanchoSpectatorNotifier(),
 			NullLogger<SpectatorService>.Instance);

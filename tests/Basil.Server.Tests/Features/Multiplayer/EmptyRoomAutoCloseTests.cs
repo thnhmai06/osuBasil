@@ -39,7 +39,7 @@ public class EmptyRoomAutoCloseTests
 	private (MatchMembership Membership, MatchLifecycle Lifecycle) MakeService()
 	{
 		_matchRegistry = new MultiplayerTestSupport.FakeMatchRegistry(_channelRegistry, _matchRepository);
-		var channelMembership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
+		var channelMembership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, new ChatNotifier(), new ChannelNotifier(_gameRegistry,_ircRegistry, Options.Create(new IrcOptions())),
 			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
 		var matchBroadcast = new MatchBroadcast(_channelRegistry, channelMembership, new BanchoMatchNotifier(_channelRegistry, channelMembership), new ChatNotifier(), _gameRegistry, _ircRegistry,
 			_hub, Substitute.For<IBeatmapRepository>(), Substitute.For<IUserRepository>());

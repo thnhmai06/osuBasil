@@ -1,6 +1,5 @@
 using Basil.Server.Shared.Eventing;
 using Basil.Server.Shared.Sessions;
-using System.Globalization;
 using System.Text.Json;
 using Basil.Server.Shared.Configuration;
 using Basil.Server.Shared.Http;
@@ -9,8 +8,6 @@ using Basil.Server.Features.Irc;
 using Basil.Server.Features.Multiplayer;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
-using Basil.Protocol.Irc;
-using Basil.Protocol.Packets;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Server.Features.Chat;
@@ -41,6 +38,8 @@ public sealed class ChannelMembershipService(
 	ISessionRegistry<GameSession> gameRegistry,
 	ISessionRegistry<IrcSession> ircRegistry,
 	IChannelRegistry channelRegistry,
+	IChatNotifier chat,
+	IChannelNotifier channels,
 	IMatchRegistry matchRegistry,
 	ILiveEventHub hub,
 	IOptions<IrcOptions> options)
@@ -81,8 +80,8 @@ public sealed class ChannelMembershipService(
 	/// <returns><see langword="true" /> if the user session was added to the channel; otherwise, <see langword="false" />.</returns>
 	/// <remarks>
 	///     A match room's channel additionally requires the userSession to be a referee of that match
-	///     or currently seated in it — the same rule <see cref="BuildListReply" /> uses to decide what
-	///     a room shows up as. This is a no-op for every other kind of channel.
+	///     or currently seated in it — the same rule <see cref="Listable" /> uses to decide what a room
+	///     shows up as. This is a no-op for every other kind of channel.
 	/// </remarks>
 	public bool Join(UserSession userSession, ChannelSession channel, bool bypassMatchGate = false)
 	{
@@ -92,22 +91,12 @@ public sealed class ChannelMembershipService(
 
 		var userEnteredRoster = channel.Join(userSession.Id);
 
-		switch (userSession)
-		{
-			case GameSession game:
-				game.Enqueue(ServerPacketWriter.ChannelJoin(channel.DisplayName));
-				break;
-			case IrcSession irc:
-				irc.IrcConnection.Send(IrcMessageWriter.Join(irc.Name, irc.Id, channel.Name));
-				foreach (var reply in BuildNamesReply(irc.Name, channel)) irc.IrcConnection.Send(reply);
-				break;
-		}
+		channels.Joined(userSession, channel, Roster(channel));
 
 		if (userEnteredRoster)
 		{
-			BroadcastChannelInfo(channel);
-			BroadcastToOtherIrcMembers(channel, userSession.Id,
-				IrcMessageWriter.Join(userSession.Name, userSession.Id, channel.Name));
+			channels.RosterChanged(channel);
+			channels.MemberJoined(channel, userSession);
 		}
 
 		return true;
@@ -132,21 +121,12 @@ public sealed class ChannelMembershipService(
 
 		var userLeftRoster = channel.Part(userSession.Id);
 
-		switch (userSession)
-		{
-			case GameSession game when kick:
-				game.Enqueue(ServerPacketWriter.ChannelKick(channel.DisplayName));
-				break;
-			case IrcSession irc:
-				irc.IrcConnection.Send(IrcMessageWriter.Part(irc.Name, irc.Id, channel.Name));
-				break;
-		}
+		channels.Left(userSession, channel, kick);
 
 		if (!userLeftRoster) return;
 
-		BroadcastChannelInfo(channel);
-		BroadcastToOtherIrcMembers(channel, userSession.Id,
-			IrcMessageWriter.Part(userSession.Name, userSession.Id, channel.Name));
+		channels.RosterChanged(channel);
+		channels.MemberLeft(channel, userSession);
 	}
 
 	/// <summary>
@@ -164,7 +144,6 @@ public sealed class ChannelMembershipService(
 		var otherIrc = ircRegistry.GetByUserId(session.Id);
 		var userStillPresent = (otherGame is not null && !ReferenceEquals(otherGame, session))
 		                       || (otherIrc is not null && !ReferenceEquals(otherIrc, session));
-		var quitMessage = IrcMessageWriter.Quit(session.Name, session.Id, quitReason);
 		var quitNotified = new HashSet<int>();
 
 		foreach (var channelName in session.Channels.ToArray())
@@ -173,61 +152,55 @@ public sealed class ChannelMembershipService(
 			if (!session.LeaveChannel(channel.Name)) continue;
 
 			var userLeftRoster = channel.Part(session.Id);
-			BroadcastChannelInfo(channel);
+			channels.RosterChanged(channel);
 			if (!userLeftRoster) continue;
 
 			if (userStillPresent)
-				BroadcastToOtherIrcMembers(channel, session.Id,
-					IrcMessageWriter.Part(session.Name, session.Id, channel.Name));
+			{
+				channels.MemberLeft(channel, session);
+			}
 			else
+			{
 				foreach (var memberId in channel.MemberIds)
-				{
-					if (memberId == session.Id || !quitNotified.Add(memberId)) continue;
-					if (ircRegistry.GetByUserId(memberId) is { } irc)
-						irc.IrcConnection.Send(quitMessage);
-				}
+					if (memberId != session.Id)
+						quitNotified.Add(memberId);
+			}
 		}
+
+		if (!userStillPresent)
+			channels.Quit(session, quitNotified, quitReason);
 	}
 
 	/// <summary>
-	///     Builds the RPL_NAMREPLY and RPL_ENDOFNAMES numeric pair that reports a channel's member
-	///     list, one entry per UserId regardless of how many of its sessions are present.
+	///     Gets a channel's current member list, one prefixed name per UserId regardless of how many
+	///     of its sessions are present, in roster order.
 	/// </summary>
-	/// <param name="requesterName">The nick the reply is addressed to.</param>
-	/// <param name="channel">The channel whose members are listed.</param>
-	/// <returns>The two numerics that form the channel's /NAMES reply.</returns>
-	public IEnumerable<IrcMessage> BuildNamesReply(string requesterName, ChannelSession channel)
+	/// <param name="channel">The channel whose roster is read.</param>
+	/// <returns>The channel's member names, each prefixed by <see cref="MemberPrefix" />.</returns>
+	public IReadOnlyList<string> Roster(ChannelSession channel)
 	{
-		var names = channel.MemberIds
+		return channel.MemberIds
 			.Select(id => (UserSession?)gameRegistry.GetByUserId(id) ?? ircRegistry.GetByUserId(id))
 			.Where(member => member is not null)
-			.Select(member => MemberPrefix(member!, channel) + member!.Name);
-
-		yield return IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.RplNamReply, requesterName, "=",
-			channel.Name, string.Join(' ', names));
-		yield return IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.RplEndOfNames, requesterName,
-			channel.Name, IrcReplies.EndOfNames);
+			.Select(member => MemberPrefix(member!, channel) + member!.Name)
+			.ToList();
 	}
 
 	/// <summary>
-	///     Builds the RPL_LISTSTART, RPL_LIST, and RPL_LISTEND numerics that report the channels the
-	///     requester may read, each with its current member count and topic.
+	///     Gets the channels a requester may be listed, filtered to a matching name when one is given.
 	/// </summary>
-	/// <param name="requester">The session the reply is addressed to, whose privilege decides what is visible.</param>
+	/// <param name="requester">The session whose privilege decides what is visible.</param>
 	/// <param name="channelFilter">
 	///     An optional comma-separated list of channel names to restrict the listing to. A value that
 	///     is not a channel name, such as a client-sent server or member-count mask, lists everything
 	///     visible instead.
 	/// </param>
-	/// <returns>The numerics that form the /LIST reply in wire order.</returns>
-	public IEnumerable<IrcMessage> BuildListReply(UserSession requester, string? channelFilter = null)
+	/// <returns>The channels the requester may be shown, in wire order.</returns>
+	public IEnumerable<ChannelSession> Listable(UserSession requester, string? channelFilter = null)
 	{
 		var filter = channelFilter is not null && channelFilter.StartsWith('#')
 			? channelFilter.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
 			: null;
-
-		yield return IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.RplListStart, requester.Name,
-			IrcReplies.ListChannel, IrcReplies.ListUsers);
 
 		foreach (var channel in channelRegistry.All.OrderBy(channel => channel.Name, StringComparer.Ordinal))
 		{
@@ -240,12 +213,8 @@ public sealed class ChannelMembershipService(
 			if (!channel.CanRead(requester.Privilege)) continue;
 			if (filter is not null && !filter.Contains(channel.Name, StringComparer.OrdinalIgnoreCase)) continue;
 
-			yield return IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.RplList, requester.Name,
-				channel.Name, channel.PlayerCount.ToString(CultureInfo.InvariantCulture), channel.Topic);
+			yield return channel;
 		}
-
-		yield return IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.RplListEnd, requester.Name,
-			IrcReplies.EndOfList);
 	}
 
 	/// <summary>
@@ -314,28 +283,6 @@ public sealed class ChannelMembershipService(
 	}
 
 	/// <summary>
-	///     The IRC-shaped counterpart of <see cref="BroadcastToMembers" /> for chat text specifically.
-	///     Delivers to every session (game and IRC alike) of each member, so an account with both open
-	///     sees channel chat on either.
-	/// </summary>
-	/// <param name="channel">The channel whose members receive the message.</param>
-	/// <param name="message">The IRC-shaped message to deliver.</param>
-	/// <param name="skipMemberId">The id of a member to skip, typically the message's sender, or null to deliver to everyone.</param>
-	public void BroadcastPrivmsg(ChannelSession channel, IrcMessage message, int? skipMemberId = null)
-	{
-		foreach (var memberId in channel.MemberIds)
-		{
-			if (memberId == skipMemberId) continue;
-			if (gameRegistry.GetByUserId(memberId) is { } game)
-				game.IrcConnection.Send(message);
-			if (ircRegistry.GetByUserId(memberId) is { } irc)
-				irc.IrcConnection.Send(message);
-		}
-
-		PublishMatchChat(channel, message);
-	}
-
-	/// <summary>
 	///     Delivers one line of chat to every session (game and IRC alike) of each member of a
 	///     channel, so an account with both open sees channel chat on either.
 	/// </summary>
@@ -344,14 +291,11 @@ public sealed class ChannelMembershipService(
 	/// <param name="skipMemberId">The id of a member to skip, typically the line's sender, or null to deliver to everyone.</param>
 	public void BroadcastPrivmsg(ChannelSession channel, ChatLine line, int? skipMemberId = null)
 	{
-		var message = line.Notice
-			? IrcMessageWriter.Notice(line.SenderName, line.SenderId, line.Target, line.Text)
-			: IrcMessageWriter.Privmsg(line.SenderName, line.SenderId, line.Target, line.Text);
 		foreach (var memberId in channel.MemberIds)
 		{
 			if (memberId == skipMemberId) continue;
-			if (gameRegistry.GetByUserId(memberId) is { } game) game.IrcConnection.Send(message);
-			if (ircRegistry.GetByUserId(memberId) is { } irc) irc.IrcConnection.Send(message);
+			if (gameRegistry.GetByUserId(memberId) is { } game) chat.Deliver(game, line);
+			if (ircRegistry.GetByUserId(memberId) is { } irc) chat.Deliver(irc, line);
 		}
 
 		PublishMatchChat(channel, line.SenderId, line.SenderName, line.Text);
@@ -374,64 +318,25 @@ public sealed class ChannelMembershipService(
 		if (channel.Topic == topic) return;
 		channel.Topic = topic;
 
-		BroadcastChannelInfo(channel);
+		channels.RosterChanged(channel);
 
 		if (gameRegistry.GetByUserId(BotBootstrapService.BotId) is not { } bot) return;
-		var message = IrcMessageWriter.Topic(bot.Name, bot.Id, channel.Name, topic);
-		foreach (var memberId in channel.MemberIds)
-			if (ircRegistry.GetByUserId(memberId) is { } irc)
-				irc.IrcConnection.Send(message);
+		channels.TopicChanged(channel, bot, topic);
 	}
 
 	/// <summary>
 	///     Publishes a line said in a match's own channel to that match's live chat stream. Published
 	///     outside the delivery loop above, so an observer sees the sender's own line too.
 	/// </summary>
-	private void PublishMatchChat(ChannelSession channel, IrcMessage message)
-	{
-		if (message.Params.Count < 2) return;
-		if (!IrcMessageWriter.TryParseUserPrefix(message.Prefix, out var senderName, out var senderId)) return;
-
-		PublishMatchChat(channel, senderId, senderName, message.Params[1]);
-	}
-
 	private void PublishMatchChat(ChannelSession channel, int senderId, string senderName, string text)
 	{
 		if (MatchFor(channel) is not { } match) return;
 
 		var session = (UserSession?)gameRegistry.GetByUserId(senderId) ?? ircRegistry.GetByUserId(senderId);
 		var sender = new UserBrief(senderId, session?.Name ?? senderName, session?.Country ?? Country.Xx);
-		var chat = new MatchChatMessage(sender, text, DateTimeOffset.UtcNow);
+		var chatMessage = new MatchChatMessage(sender, text, DateTimeOffset.UtcNow);
 
 		hub.Publish(MatchStreams.Chat(match.DbId), match.AllocateChatVersion(),
-			JsonSerializer.SerializeToUtf8Bytes(chat, BasilJsonOptions.Instance));
-	}
-
-	private void BroadcastToOtherIrcMembers(ChannelSession channel, int excludeUserId, IrcMessage message)
-	{
-		foreach (var memberId in channel.MemberIds)
-		{
-			if (memberId == excludeUserId) continue;
-			if (ircRegistry.GetByUserId(memberId) is { } irc)
-				irc.IrcConnection.Send(message);
-		}
-	}
-
-	private void BroadcastChannelInfo(ChannelSession channel)
-	{
-		var packet = ServerPacketWriter.ChannelInfo(channel.DisplayName, channel.Topic, channel.PlayerCount);
-
-		if (channel.Instance)
-		{
-			foreach (var memberId in channel.MemberIds)
-				if (gameRegistry.GetByUserId(memberId) is { } game)
-					game.Enqueue(packet);
-		}
-		else
-		{
-			foreach (var session in gameRegistry.All)
-				if (channel.CanRead(session.Privilege))
-					session.Enqueue(packet);
-		}
+			JsonSerializer.SerializeToUtf8Bytes(chatMessage, BasilJsonOptions.Instance));
 	}
 }

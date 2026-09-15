@@ -3,7 +3,7 @@
 > Read this file first. It is kept current in the same commit as every green step, so a
 > successor can resume from here without reconstructing state from `git log` and a build.
 
-## Current task: C1a — step 3 (chat) in progress, commits 1–4 of 5 done
+## Current task: C1a — step 3 (chat) done. Next is step 4 (`Auth.LoginService`)
 
 Order is C4 → C3 → C6 → C1a → C5 (see `plans/execution/stage-c-order-decision.md` for why C1 runs
 last, and `plans/basil-plan-20260909.md`'s Stage C preamble, which adds C6 and splits C1). C2 is
@@ -670,14 +670,46 @@ deleted (the service and its two nested sinks). Seven constructor sites, all in 
 Verification: build green, ArchitectureTests 8, Server.Tests 1057, IntegrationTests 363 (7 min
 41 s this run, no failure).
 
+### Step 3, commit 5 — `ChannelMembershipService` (done, 11 to 10)
+
+`IChannelNotifier` (`Features/Chat/`) carries the six things channel membership tells clients:
+joined-with-roster, left, a member joined/left, quit, topic changed, roster changed.
+`ChannelNotifier` (`Features/Chat/Packets/`) implements it, branching on `GameSession`/`IrcSession`
+once per method instead of inline at each call site. The amended shape from the decision document
+held: the join echo takes the roster as a parameter rather than `ChannelNotifier` calling
+`IrcQueryService`, which would have been a constructor cycle
+(`IrcQueryService -> ChannelMembershipService -> IChannelNotifier -> ChannelNotifier -> IrcQueryService`).
+`IrcNamesReply` (`Features/Irc/`) is the one place that formats RPL_NAMREPLY/RPL_ENDOFNAMES; both
+`ChannelNotifier.Joined` and `IrcQueryService.BuildNamesReply` call it. NAMES and LIST left Chat
+entirely — `IrcQueryService` now builds both replies from `ChannelMembershipService.Roster` and
+`Listable`, and `IrcAuthenticationService`/`TcpIrcConnection` call `IrcQueryService` instead of the
+membership service directly. `BroadcastPrivmsg`'s `IrcMessage` overload and the `IrcMessage`-taking
+`PublishMatchChat` are gone; only the `ChatLine` path remains. `DisconnectFromChannels`' dedup logic
+is unchanged in shape — the same `quitNotified` set, built per channel, notified once at the end
+through `channels.Quit` instead of inline per member. The service takes `IChatNotifier` and
+`IChannelNotifier`; the NAMES/LIST tests moved from `ChannelMembershipServiceTests` to
+`IrcQueryServiceTests` with their assertions unchanged. Row deleted; `Basil.Protocol` no longer
+appears in the file.
+
+Verification: build green, ArchitectureTests 8, Domain 114, Protocol 158, Server.Tests 1057 (three
+tests moved between files, net count unchanged), IntegrationTests 363 (7 min 43 s, no failure).
+
+**Step 3 is complete. The chat seam's pinned-list contribution is done: 21 → 10 across five
+commits.**
+
 ### Next exact step
 
-Step 3 — the chat seam, designed and decided in `plans/execution/chat-seam-decision.md`. Five
-commits in its §4 order, one pinned row each, tree green after each: (1) to (4) done, above; (3) `MpCommandService+ScopedDmReplySink`;
-(4) `ChatDispatchService` and its two sinks; (5) `ChannelMembershipService`, with `IChannelNotifier`
-and NAMES/LIST moving to `IrcQueryService` — 44 constructor sites, Rider `change_api_signature`.
-Every notifier method stays `void` and synchronous: chat is delivered under `MatchSession.Lock`
-(decision §5). Each commit updates this file.
+Step 3 (chat) is done — pinned list 21 → 10 across five commits. **Step 4 is next: `Auth.LoginService`.**
+It is last by design (see `HANDOVER.md` §2 item 4) — the login reply is intrinsically a sequence of
+bancho packets (`ProtocolVersion`, `LoginReply`, `BanchoPrivileges`, per-channel `ChannelInfo`,
+`MainMenuIcon`, `FriendsList`, `SilenceEnd`, per-other-player presence/stats, `AccountRestricted`,
+a welcome `Notification`), assembled into one `byte[]` response body that is the HTTP handshake's
+actual payload, not a side-channel notification. The question step 4 has to answer first: is this a
+notifier candidate at all, or is `LoginService` correctly an adapter (its own row stays, the way
+`MatchPacketDataMapper`'s does) because building a login response *is* encoding, not deciding? Read
+the file's 24 `ServerPacketWriter` sites and `PacketBuilders.BuildUserPresence`/`BuildUserStats`
+before choosing either path; record the decision in `c1-transport-seam-decision.md` or a sibling
+document the way the chat seam got one, since this is a design question, not a mechanical step.
 
 ## C2 -- investigated, not started: the task's own currency cannot move
 

@@ -5,9 +5,13 @@ using Basil.Server.Features.Irc;
 using Basil.Server.Shared.Sessions;
 using Basil.Server.Features.Chat;
 using Basil.Server.Features.Multiplayer;
+using Basil.Domain.Beatmaps;
+using Basil.Domain.Multiplayer;
+using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Microsoft.Extensions.Options;
 using NSubstitute;
+using Basil.Server.Features.Chat.Packets;
 
 namespace Basil.Server.Tests.Features.Irc;
 
@@ -22,12 +26,16 @@ public class IrcQueryServiceTests
 	private readonly ISessionRegistry<GameSession> _gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
 	private readonly ISessionRegistry<IrcSession> _ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
 	private readonly ISettingsRepository _settings = Substitute.For<ISettingsRepository>();
+	private readonly IMatchRegistry _matchRegistry = Substitute.For<IMatchRegistry>();
 
 	private IrcQueryService MakeService()
 	{
 		var options = Options.Create(new IrcOptions { Name = "basil.local" });
 		var membership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
-			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), options);
+			new ChatNotifier(),
+			new ChannelNotifier(_gameRegistry, _ircRegistry,
+				Options.Create(new IrcOptions())),
+			_matchRegistry, Substitute.For<ILiveEventHub>(), options);
 		return new IrcQueryService(_channelRegistry, _gameRegistry, _ircRegistry, membership,
 			new MotdService(_settings), options);
 	}
@@ -216,5 +224,60 @@ public class IrcQueryServiceTests
 		Assert.Equal(["251", "254", "255"], replies.Select(m => m.Command));
 		Assert.Contains("1 users", replies[0].Params[1]);
 		Assert.Equal("1", replies[1].Params[1]);
+	}
+
+	[Fact]
+	public void BuildListReply_MatchChannel_ShowsOnlyToItsParticipantOrReferee()
+	{
+		var referee = MakeIrc(1, "ref");
+		var outsider = MakeIrc(2, "alice");
+		var room = new ChannelSession(0, "#mp_5", 0, 0, false, "#multiplayer", true);
+		var match = new MatchSession(0, "Grand Finals", "", "map", 42, "md5", 9, GameMode.Standard,
+			Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead, false, 0, "#mp_5");
+		match.AddReferee(referee.Id);
+		_matchRegistry.All.Returns([match]);
+		_channelRegistry.All.Returns([room]);
+		var service = MakeService();
+
+		var refereeListing = service.BuildListReply(referee).Where(m => m.Command == "322").ToList();
+		var outsiderListing = service.BuildListReply(outsider).Where(m => m.Command == "322").ToList();
+
+		Assert.Equal(["#mp_5"], refereeListing.Select(m => m.Params[1]));
+		Assert.Empty(outsiderListing);
+	}
+
+	[Fact]
+	public void BuildListReply_ListsOnlyReadableNonInstanceChannels()
+	{
+		var requester = MakeIrc(1, "alice");
+		var general = new ChannelSession(1, "#osu", 0, 0, true);
+		var staff = new ChannelSession(2, "#staff", UserPrivileges.Moderator, 0, false);
+		var match = new ChannelSession(0, "#mp_5", 0, 0, false, "#multiplayer", true);
+		general.Join(requester.Id);
+		_channelRegistry.All.Returns([match, staff, general]);
+
+		var replies = MakeService().BuildListReply(requester).ToList();
+
+		Assert.Equal("321", replies[0].Command);
+		Assert.Equal("323", replies[^1].Command);
+		var listed = replies.Where(m => m.Command == "322").ToList();
+		Assert.Equal(["#osu"], listed.Select(m => m.Params[1]));
+		Assert.Equal("1", listed[0].Params[2]);
+	}
+
+	[Fact]
+	public void BuildListReply_ChannelFilter_KeepsOnlyNamedChannelsButIgnoresMasks()
+	{
+		var requester = MakeIrc(1, "alice");
+		var general = new ChannelSession(1, "#osu", 0, 0, true);
+		var announce = new ChannelSession(2, "#announce", 0, 0, true);
+		_channelRegistry.All.Returns([general, announce]);
+		var service = MakeService();
+
+		var filtered = service.BuildListReply(requester, "#osu").Where(m => m.Command == "322").ToList();
+		var masked = service.BuildListReply(requester, ">0").Where(m => m.Command == "322").ToList();
+
+		Assert.Equal(["#osu"], filtered.Select(m => m.Params[1]));
+		Assert.Equal(["#announce", "#osu"], masked.Select(m => m.Params[1]));
 	}
 }

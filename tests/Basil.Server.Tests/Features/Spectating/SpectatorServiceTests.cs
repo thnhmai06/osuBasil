@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using static Basil.Server.Tests.Features.Multiplayer.Packets.MultiplayerTestSupport;
+using Basil.Server.Features.Chat.Packets;
 
 namespace Basil.Server.Tests.Features.Spectating;
 
@@ -25,7 +26,7 @@ public class SpectatorServiceTests
 	private SpectatorService MakeService()
 	{
 		return new SpectatorService(_channelRegistry,
-			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
+			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, new ChatNotifier(), new ChannelNotifier(_gameRegistry,_ircRegistry, Options.Create(new IrcOptions())),
 				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions())), new BanchoSpectatorNotifier(),
 			NullLogger<SpectatorService>.Instance);
 	}

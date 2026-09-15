@@ -213,7 +213,7 @@ public sealed class TcpIrcConnection(
 				break;
 
 			case "LIST":
-				SendAll(channelMembership.BuildListReply(User, first));
+				SendAll(ircQueries.BuildListReply(User, first));
 				break;
 
 			case "NAMES":

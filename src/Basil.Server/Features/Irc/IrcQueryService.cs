@@ -14,12 +14,12 @@ namespace Basil.Server.Features.Irc;
 ///     numerics, NAMES, TOPIC, WHO, WHOIS, MODE, MOTD, VERSION, TIME, and LUSERS.
 /// </summary>
 /// <remarks>
-///     Membership-derived replies stay with the roster that produces them: NAMES and LIST are built
-///     by <see cref="ChannelMembershipService" /> and reused here. Nothing in this class mutates
-///     state — a command that would change something (setting a topic or a mode) is answered with the
-///     numeric that refuses it. Instance channels such as a match or spectator room are never
-///     enumerated to a user who is not already in them, since joining a channel is gated on read
-///     privilege alone.
+///     NAMES and LIST are wire replies, so they are built here from the roster and listing data
+///     <see cref="ChannelMembershipService" /> exposes (<c>Roster</c>, <c>Listable</c>). Nothing in
+///     this class mutates state — a command that would change something (setting a topic or a mode)
+///     is answered with the numeric that refuses it. Instance channels such as a match or spectator
+///     room are never enumerated to a user who is not already in them, since joining a channel is
+///     gated on read privilege alone.
 /// </remarks>
 public sealed class IrcQueryService(
 	IChannelRegistry channelRegistry,
@@ -76,7 +76,8 @@ public sealed class IrcQueryService(
 		if (channelName is null)
 		{
 			foreach (var channel in VisibleChannels(requester))
-			foreach (var reply in channelMembership.BuildNamesReply(requester.Name, channel))
+			foreach (var reply in IrcNamesReply.Build(options.Value.Name, requester.Name, channel.Name,
+				         channelMembership.Roster(channel)))
 				yield return reply;
 
 			yield break;
@@ -88,7 +89,31 @@ public sealed class IrcQueryService(
 			yield break;
 		}
 
-		foreach (var reply in channelMembership.BuildNamesReply(requester.Name, named)) yield return reply;
+		foreach (var reply in IrcNamesReply.Build(options.Value.Name, requester.Name, named.Name,
+			         channelMembership.Roster(named)))
+			yield return reply;
+	}
+
+	/// <summary>
+	///     Builds the RPL_LISTSTART, RPL_LIST, and RPL_LISTEND numerics that report the channels the
+	///     requester may read, each with its current member count and topic.
+	/// </summary>
+	/// <param name="requester">The session the reply is addressed to, whose privilege decides what is visible.</param>
+	/// <param name="channelFilter">
+	///     An optional comma-separated list of channel names to restrict the listing to. A value that
+	///     is not a channel name, such as a client-sent server or member-count mask, lists everything
+	///     visible instead.
+	/// </param>
+	/// <returns>The numerics that form the /LIST reply in wire order.</returns>
+	public IEnumerable<IrcMessage> BuildListReply(UserSession requester, string? channelFilter = null)
+	{
+		yield return Reply(IrcNumeric.RplListStart, requester.Name, IrcReplies.ListChannel, IrcReplies.ListUsers);
+
+		foreach (var channel in channelMembership.Listable(requester, channelFilter))
+			yield return Reply(IrcNumeric.RplList, requester.Name, channel.Name,
+				channel.PlayerCount.ToString(CultureInfo.InvariantCulture), channel.Topic);
+
+		yield return Reply(IrcNumeric.RplListEnd, requester.Name, IrcReplies.EndOfList);
 	}
 
 	/// <summary>

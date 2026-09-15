@@ -60,7 +60,7 @@ public class TcpIrcConnectionTests
 		channelRegistry.Seed([new Channel(1, "#osu", "General", 0, 0, true)]);
 
 		var matchRegistry = new InMemoryMatchRegistry(channelRegistry, new NotSupportedMatchRepository());
-		var channelMembership = new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry,
+		var channelMembership = new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry, new ChatNotifier(), new ChannelNotifier(gameRegistry,ircRegistry, Options.Create(new IrcOptions())),
 			matchRegistry, new LiveEventHub(), _fakeIrcOptions);
 		var chatDispatch = new ChatDispatchService(channelRegistry, gameRegistry, channelMembership, new ChatNotifier(), users,
 			new NotSupportedRelationshipRepository(), new NullCommandDispatcher(),
@@ -149,7 +149,7 @@ public class TcpIrcConnectionTests
 
 		var matchRegistry = new InMemoryMatchRegistry(channelRegistry, new NotSupportedMatchRepository());
 		var channelMembership =
-			new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry, matchRegistry, new LiveEventHub(),
+			new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry, new ChatNotifier(), new ChannelNotifier(gameRegistry,ircRegistry, Options.Create(new IrcOptions())), matchRegistry, new LiveEventHub(),
 				_fakeIrcOptions);
 		var chatDispatch = new ChatDispatchService(channelRegistry, gameRegistry, channelMembership, new ChatNotifier(), users,
 			new NotSupportedRelationshipRepository(), new NullCommandDispatcher(),
@@ -214,7 +214,7 @@ public class TcpIrcConnectionTests
 			Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead, false, 0, "#mp_5");
 		var matchRegistry = new FakeMatchRegistry(match);
 
-		var channelMembership = new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry,
+		var channelMembership = new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry, new ChatNotifier(), new ChannelNotifier(gameRegistry,ircRegistry, Options.Create(new IrcOptions())),
 			matchRegistry, new LiveEventHub(), _fakeIrcOptions);
 		var chatDispatch = new ChatDispatchService(channelRegistry, gameRegistry, channelMembership, new ChatNotifier(), users,
 			new NotSupportedRelationshipRepository(), new NullCommandDispatcher(), matchRegistry,
@@ -289,7 +289,7 @@ public class TcpIrcConnectionTests
 		channelRegistry.Seed([new Channel(1, "#osu", "General", 0, 0, true)]);
 
 		var matchRegistry = new InMemoryMatchRegistry(channelRegistry, new NotSupportedMatchRepository());
-		var channelMembership = new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry,
+		var channelMembership = new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry, new ChatNotifier(), new ChannelNotifier(gameRegistry,ircRegistry, Options.Create(new IrcOptions())),
 			matchRegistry, new LiveEventHub(), _fakeIrcOptions);
 		var chatDispatch = new ChatDispatchService(channelRegistry, gameRegistry, channelMembership, new ChatNotifier(), users,
 			new NotSupportedRelationshipRepository(), new NullCommandDispatcher(),

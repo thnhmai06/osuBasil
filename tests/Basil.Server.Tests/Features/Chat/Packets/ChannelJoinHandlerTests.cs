@@ -23,7 +23,7 @@ public class ChannelJoinHandlerTests
 	private ChannelJoinHandler MakeHandler()
 	{
 		return new ChannelJoinHandler(_channelRegistry,
-			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
+			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, new ChatNotifier(), new ChannelNotifier(_gameRegistry,_ircRegistry, Options.Create(new IrcOptions())),
 				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
 				Options.Create(new IrcOptions())));
 	}

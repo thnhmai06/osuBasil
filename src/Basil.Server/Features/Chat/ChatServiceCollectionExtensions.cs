@@ -17,6 +17,7 @@ public static class ChatServiceCollectionExtensions
 	public static IServiceCollection AddChat(this IServiceCollection services, IConfiguration configuration)
 	{
 		services.AddSingleton<IChatNotifier, ChatNotifier>();
+		services.AddSingleton<IChannelNotifier, ChannelNotifier>();
 		services.AddSingleton<ChannelMembershipService>();
 		services.AddSingleton<ChatDispatchService>();
 		services.AddSingleton<IPlayerLogoutHandler, ChannelPartLogoutHandler>();

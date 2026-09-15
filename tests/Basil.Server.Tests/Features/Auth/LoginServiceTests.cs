@@ -56,7 +56,7 @@ public class LoginServiceTests
 	public LoginServiceTests()
 	{
 		var ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
-		var channelMembership = new ChannelMembershipService(_sessionRegistry, ircRegistry, _channelRegistry,
+		var channelMembership = new ChannelMembershipService(_sessionRegistry, ircRegistry, _channelRegistry, new ChatNotifier(), new ChannelNotifier(_sessionRegistry,ircRegistry, Options.Create(new IrcOptions())),
 			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
 		_spectatorService = new SpectatorService(_channelRegistry, channelMembership, new BanchoSpectatorNotifier(),
 			NullLogger<SpectatorService>.Instance);

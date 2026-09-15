@@ -343,14 +343,19 @@ internal static class MultiplayerTestSupport
 			BeatmapRepository.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),
 				Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(MakeBeatmap());
 
+			ChannelNotifier =
+				new ChannelNotifier(SessionRegistry, IrcSessionRegistry, Options.Create(new IrcOptions()));
 			ChannelMembership = new ChannelMembershipService(SessionRegistry, IrcSessionRegistry, ChannelRegistry,
+				new ChatNotifier(), ChannelNotifier,
 				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
 
 			MatchNotifier = new BanchoMatchNotifier(ChannelRegistry, ChannelMembership);
-			MatchBroadcast = new MatchBroadcast(ChannelRegistry, ChannelMembership, MatchNotifier, new ChatNotifier(), SessionRegistry,
+			MatchBroadcast = new MatchBroadcast(ChannelRegistry, ChannelMembership, MatchNotifier, new ChatNotifier(),
+				SessionRegistry,
 				IrcSessionRegistry, Hub, BeatmapRepository, UserRepository);
 
-			MatchLifecycle = new MatchLifecycle(MatchRegistry, ChannelRegistry, ChannelMembership, MatchNotifier, SessionRegistry,
+			MatchLifecycle = new MatchLifecycle(MatchRegistry, ChannelRegistry, ChannelMembership, MatchNotifier,
+				SessionRegistry,
 				MatchRepository, RoundEndOutbox, Hub, BeatmapRepository, MatchBroadcast, ServiceProvider,
 				NullLogger<MatchLifecycle>.Instance);
 
@@ -365,7 +370,8 @@ internal static class MultiplayerTestSupport
 				NullLogger<TimerHandler>.Instance);
 			AbortTimerHandler = new AbortTimerHandler(NullLogger<AbortTimerHandler>.Instance);
 			StartHandler = new StartHandler(MatchLifecycle, TimerHandler);
-			AbortHandler = new AbortHandler(MatchBroadcast, MatchNotifier, RoundEndOutbox, NullLogger<AbortHandler>.Instance);
+			AbortHandler = new AbortHandler(MatchBroadcast, MatchNotifier, RoundEndOutbox,
+				NullLogger<AbortHandler>.Instance);
 			CloseHandler = new CloseHandler(MatchLifecycle);
 		}
 
@@ -391,6 +397,7 @@ internal static class MultiplayerTestSupport
 		/// </summary>
 		public IServiceProvider ServiceProvider { get; } = Substitute.For<IServiceProvider>();
 
+		public ChannelNotifier ChannelNotifier { get; }
 		public ChannelMembershipService ChannelMembership { get; }
 		public MatchMembership MatchMembership { get; }
 		public MatchLifecycle MatchLifecycle { get; }

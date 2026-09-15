@@ -39,6 +39,9 @@ public class PlayerLogoutServiceTests
 	private readonly ChannelMembershipService _matchChannelMembership = new(
 		Substitute.For<ISessionRegistry<GameSession>>(),
 		Substitute.For<ISessionRegistry<IrcSession>>(), Substitute.For<IChannelRegistry>(),
+		new ChatNotifier(),
+		new ChannelNotifier(Substitute.For<ISessionRegistry<GameSession>>(),
+			Substitute.For<ISessionRegistry<IrcSession>>(), Options.Create(new IrcOptions())),
 		Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
 
 	private readonly MatchBroadcast _matchBroadcast;
@@ -49,24 +52,31 @@ public class PlayerLogoutServiceTests
 
 	public PlayerLogoutServiceTests()
 	{
-		_matchBroadcast = new MatchBroadcast(Substitute.For<IChannelRegistry>(), _matchChannelMembership, new BanchoMatchNotifier(_channelRegistry, _matchChannelMembership), new ChatNotifier(),
+		_matchBroadcast = new MatchBroadcast(Substitute.For<IChannelRegistry>(), _matchChannelMembership,
+			new BanchoMatchNotifier(_channelRegistry, _matchChannelMembership), new ChatNotifier(),
 			Substitute.For<ISessionRegistry<GameSession>>(), Substitute.For<ISessionRegistry<IrcSession>>(), null,
 			Substitute.For<IBeatmapRepository>(),
 			Substitute.For<IUserRepository>());
 		_matchLifecycle = new MatchLifecycle(Substitute.For<IMatchRegistry>(), Substitute.For<IChannelRegistry>(),
-			_matchChannelMembership, new BanchoMatchNotifier(_channelRegistry, _matchChannelMembership), Substitute.For<ISessionRegistry<GameSession>>(),
+			_matchChannelMembership, new BanchoMatchNotifier(_channelRegistry, _matchChannelMembership),
+			Substitute.For<ISessionRegistry<GameSession>>(),
 			Substitute.For<IMatchRepository>(), Substitute.For<IMatchRoundEndOutbox>(), null,
 			Substitute.For<IBeatmapRepository>(), _matchBroadcast,
 			Substitute.For<IServiceProvider>(), NullLogger<MatchLifecycle>.Instance);
 		_matchMembership = new MatchMembership(Substitute.For<IChannelRegistry>(),
-			Substitute.For<ISessionRegistry<GameSession>>(), _matchChannelMembership, new BanchoMatchNotifier(_channelRegistry, _matchChannelMembership),
+			Substitute.For<ISessionRegistry<GameSession>>(), _matchChannelMembership,
+			new BanchoMatchNotifier(_channelRegistry, _matchChannelMembership),
 			Substitute.For<IMatchRepository>(), _matchLifecycle, NullLogger<MatchMembership>.Instance);
 	}
 
 	private readonly SpectatorService _spectatorService = new(Substitute.For<IChannelRegistry>(),
 		new ChannelMembershipService(Substitute.For<ISessionRegistry<GameSession>>(),
 			Substitute.For<ISessionRegistry<IrcSession>>(), Substitute.For<IChannelRegistry>(),
-			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions())), new BanchoSpectatorNotifier(),
+			new ChatNotifier(),
+			new ChannelNotifier(Substitute.For<ISessionRegistry<GameSession>>(),
+				Substitute.For<ISessionRegistry<IrcSession>>(), Options.Create(new IrcOptions())),
+			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions())),
+		new BanchoSpectatorNotifier(),
 		NullLogger<SpectatorService>.Instance);
 
 	private readonly MultiplayerTestSupport.FakePlayerStatusEvents _statusEvents = new();
@@ -82,6 +92,9 @@ public class PlayerLogoutServiceTests
 	{
 		var channelMembership =
 			new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
+				new ChatNotifier(),
+				new ChannelNotifier(_gameRegistry, _ircRegistry,
+					Options.Create(new IrcOptions())),
 				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
 		IPlayerLogoutHandler[] handlers =
 		[
@@ -244,16 +257,23 @@ public class PlayerLogoutServiceTests
 		var gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
 		var ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
 		var matchChannelMembership = new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry,
+			new ChatNotifier(),
+			new ChannelNotifier(gameRegistry, ircRegistry,
+				Options.Create(new IrcOptions())),
 			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
-		var matchBroadcast = new MatchBroadcast(channelRegistry, matchChannelMembership, new BanchoMatchNotifier(channelRegistry, matchChannelMembership), new ChatNotifier(), gameRegistry, ircRegistry,
+		var matchBroadcast = new MatchBroadcast(channelRegistry, matchChannelMembership,
+			new BanchoMatchNotifier(channelRegistry, matchChannelMembership), new ChatNotifier(), gameRegistry,
+			ircRegistry,
 			null, Substitute.For<IBeatmapRepository>(),
 			Substitute.For<IUserRepository>());
 		var serviceProvider = Substitute.For<IServiceProvider>();
-		var matchLifecycle = new MatchLifecycle(matchRegistry, channelRegistry, matchChannelMembership, new BanchoMatchNotifier(channelRegistry, matchChannelMembership), gameRegistry,
+		var matchLifecycle = new MatchLifecycle(matchRegistry, channelRegistry, matchChannelMembership,
+			new BanchoMatchNotifier(channelRegistry, matchChannelMembership), gameRegistry,
 			matchRepository, Substitute.For<IMatchRoundEndOutbox>(), null,
 			Substitute.For<IBeatmapRepository>(), matchBroadcast, serviceProvider,
 			NullLogger<MatchLifecycle>.Instance);
-		var matchMembership = new MatchMembership(channelRegistry, gameRegistry, matchChannelMembership, new BanchoMatchNotifier(channelRegistry, matchChannelMembership),
+		var matchMembership = new MatchMembership(channelRegistry, gameRegistry, matchChannelMembership,
+			new BanchoMatchNotifier(channelRegistry, matchChannelMembership),
 			matchRepository, matchLifecycle, NullLogger<MatchMembership>.Instance);
 		serviceProvider.GetService(typeof(MatchMembership)).Returns(matchMembership);
 		var host = new GameSession(1, "host", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
@@ -262,6 +282,9 @@ public class PlayerLogoutServiceTests
 		var match = (await matchLifecycle.CreateAsync(host, MultiplayerTestSupport.MakeMatchData(host.Id)))!;
 		var channelMembership =
 			new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry,
+				new ChatNotifier(),
+				new ChannelNotifier(gameRegistry, ircRegistry,
+					Options.Create(new IrcOptions())),
 				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
 		var service = new PlayerLogoutService(
 			[
