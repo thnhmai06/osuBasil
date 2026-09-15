@@ -1,7 +1,4 @@
-using System.Text;
 using Basil.Domain.Auth;
-using Basil.Domain.Users;
-using Basil.Server.Features.Users;
 using Basil.Server.Shared.Sessions;
 using Microsoft.Extensions.Logging;
 
@@ -14,13 +11,13 @@ namespace Basil.Server.Features.Auth;
 ///     The web endpoints that use this service authenticate via a query-string username and
 ///     password MD5 rather than a session token, and they never establish a session of their own,
 ///     so this is not a general login path: the userSession must already hold an online
-///     <see cref="UserSession" />. Password verification reuses <see cref="IPasswordHasher" />, so
-///     repeat checks against the same account's hash cost almost nothing.
+///     <see cref="UserSession" />. Password verification is delegated to
+///     <see cref="CredentialVerifier" />, so repeat checks against the same account's hash cost
+///     almost nothing.
 /// </remarks>
 public sealed class AuthenticationService(
 	ISessionRegistry<GameSession> sessionRegistry,
-	IUserRepository users,
-	IPasswordHasher passwordHasher,
+	CredentialVerifier credentialVerifier,
 	ILogger<AuthenticationService> logger)
 {
 	/// <summary>
@@ -44,17 +41,11 @@ public sealed class AuthenticationService(
 			return null;
 		}
 
-		var passwordHash = await users.FetchPasswordHashAsync(session.Id, cancellationToken);
-		if (passwordHash is null)
-		{
-			logger.LogDebug("Online-userSession authentication failed: Username={Username} (no password hash)",
-				username);
-			return null;
-		}
+		if (await credentialVerifier.VerifyPasswordAsync(session.Id, passwordMd5, cancellationToken))
+			return session;
 
-		if (passwordHasher.Verify(Encoding.UTF8.GetBytes(passwordMd5), passwordHash)) return session;
-
-		logger.LogDebug("Online-userSession authentication failed: Username={Username} (bad password)", username);
+		logger.LogDebug("Online-userSession authentication failed: Username={Username} (bad password or no hash)",
+			username);
 		return null;
 	}
 }

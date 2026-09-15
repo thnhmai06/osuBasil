@@ -17,7 +17,7 @@ public class AuthenticationServiceTests
 
 	private AuthenticationService MakeService()
 	{
-		return new AuthenticationService(_sessionRegistry, _users, _passwordHasher,
+		return new AuthenticationService(_sessionRegistry, new CredentialVerifier(_users, _passwordHasher),
 			NullLogger<AuthenticationService>.Instance);
 	}
 

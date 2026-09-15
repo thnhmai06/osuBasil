@@ -58,6 +58,9 @@ internal static class DomainAdjacency
 		("Beatmaps", "Content"),
 
 		// AdminKeyService stores the admin key hash through ISettingsRepository.
-		("Auth", "Content")
+		("Auth", "Content"),
+
+		// CredentialVerifier fetches a user's stored password hash through IUserRepository.
+		("Auth", "Users")
 	];
 }

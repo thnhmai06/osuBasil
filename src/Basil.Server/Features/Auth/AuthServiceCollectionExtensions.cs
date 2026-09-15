@@ -15,6 +15,7 @@ public static class AuthServiceCollectionExtensions
 	public static IServiceCollection AddAuth(this IServiceCollection services, IConfiguration configuration)
 	{
 		services.AddSingleton<LoginService>();
+		services.AddSingleton<CredentialVerifier>();
 		services.AddSingleton<AuthenticationService>();
 		services.AddSingleton<AdminKeyService>();
 		services.AddSingleton<ClientIntegrityService>();

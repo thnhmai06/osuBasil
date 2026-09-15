@@ -31,7 +31,7 @@ public class ScoreSubmissionServiceTests
 	{
 		return new ScoreSubmissionService(
 			_beatmaps, _scores, _userStatRepository,
-			new AuthenticationService(_sessionRegistry, _users, _passwordHasher,
+			new AuthenticationService(_sessionRegistry, new CredentialVerifier(_users, _passwordHasher),
 				NullLogger<AuthenticationService>.Instance),
 			_replayStorage, NullLogger<ScoreSubmissionService>.Instance);
 	}

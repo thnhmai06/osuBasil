@@ -265,28 +265,82 @@ passed, 6 min 51 s.
 
 One file moved.
 
+## Unit 7 — `AuthenticationService`'s password verification, split from session lookup (done)
+
+Measured before designing anything, per the lesson two units taught: check the actual
+`GameSession`/`UserSession` *member accesses*, not just the parameter type, before assuming a
+service needs a chat-seam-scale design. `AuthenticationService.AuthenticateOnlinePlayerAsync` turned
+out to touch exactly one `GameSession` member for its real business decision — `session.Id`, to look
+up the stored password hash — plus returning the session itself, which every caller (`OsuWebRoutes`,
+`ScoreSubmissionService`) genuinely needs live afterward (`player.Status.Mode = ...`,
+`ClientIntegrityService.HandleLastFmFlagsAsync(player, ...)`). That is a 1-2 commit seam, not a
+design doc: the verification logic (fetch hash, compare) is already expressed entirely through
+`IUserRepository`/`IPasswordHasher`, both Domain contracts.
+
+Extracted `Basil.Domain.Auth.CredentialVerifier` (`VerifyPasswordAsync(int userId, string
+passwordMd5, CancellationToken)`), taking exactly those two contracts. `AuthenticationService` stays
+in `Basil.Server` — session-registry lookup is inherently session-shaped — now delegates to it
+instead of holding `IUserRepository`/`IPasswordHasher` directly. One new `DomainAdjacency` edge,
+`("Auth", "Users")` (`CredentialVerifier` through `IUserRepository`). Existing
+`AuthenticationServiceTests`/`ScoreSubmissionServiceTests` needed only their `MakeService`/`MakeUseCase`
+wiring updated (`new CredentialVerifier(_users, _passwordHasher)` in place of the two direct
+dependencies) — same mocks, same assertions, unchanged behavior. A new `CredentialVerifierTests.cs`
+in `Basil.Domain.Tests` covers the extracted logic directly.
+
+**Verification:** build green; `Basil.ArchitectureTests` 8, `Basil.Domain.Tests` 222 (+3, new
+tests), `Basil.Server.Tests` 957 (unchanged, no relocation — both test files stay, they exercise
+session-registry orchestration), `Basil.Protocol.Tests` 158; `Basil.IntegrationTests` 363, all
+passed, 6 min 32 s.
+
+One new file, no relocations.
+
 ## Next exact step
 
-**Two items remain, both gated on real design work, not one more contract-style unit.**
+**One item remains at this granularity: `ScoreSubmissionService`, and it genuinely needs the
+`MatchSession` split first, not a seam of its own.** Measured the same way as `AuthenticationService`
+above: its `GameSession` member accesses are `player.Id`, `player.Client`, `player.OsuVersion`,
+`player.Name` (all cheap, `Login`-typed or scalar), but also `player.Status.Mods`/`.Mode` **written**
+mid-method, `player.ModeStats` **written** (the in-memory stats cache kept in sync with the DB
+write), and `player.Match?.CurrentRoundId` / `player.Match?.GetSlot(player.Id)?.Team` — a live
+`MatchSession` read. The last one is the real blocker: `MatchSession` is entirely
+`Basil.Server.Features.Multiplayer` today, and reading it is not a lookup a Domain contract can wrap
+the way `CredentialVerifier` wrapped `AuthenticateOnlinePlayerAsync`'s single `.Id` read. This one
+does need `chat-seam-decision.md`-scale design, but only after `MatchSession` exists in a form
+`ScoreSubmissionService` could depend on — sizing it before that split is real is guessing at an
+interface that will be dictated by the split's own shape.
 
-`ScoreSubmissionService` and `AuthenticationService` need a design pass before any file moves. Both
-are `GameSession`/`UserSession`-typed throughout — resolving a player by id or name through the live
-session registries — alongside real business decisions (`ScoreSubmissionService`: duplicate check,
-grade computation, hardware-ban-adjacent validation; `AuthenticationService`: password verification
-against an online or offline account). Same shape as C1a's match and chat seams: the service
-decides and, in the same method, reaches for session-held state a plain id or a small Domain-shaped
-lookup result could carry instead. Size each the way `chat-seam-decision.md` sized the chat seam
-before touching any file.
+**Multiplayer (16 files) is the remaining slice, `ScoreSubmissionService` and Bot's five blocked
+files ride along with it.** `MpCommandService`/`MpReplies` move into `Basil.Domain/Multiplayer` as
+part of this work (per §6's F4), which then frees `CommandDispatcher`, `ICommandDispatcher`,
+`BotBootstrapService` and `BotReplies` too — Bot is not a separate unit to schedule afterward, it
+falls out of this one. Gated on the `MatchSession` split the original C1 task text already
+describes: business state (slots, host, settings, progress) to Domain, the SSE projection machinery
+(`StateStream<T>`, `SseSubscriberRegistry`, `SequenceGate`) staying behind.
 
-**Multiplayer (16 files) is the remaining slice, and Bot's five blocked files ride along with it.**
-`MpCommandService`/`MpReplies` move into `Basil.Domain/Multiplayer` as part of this work (per §6's
-F4), which is what then frees `CommandDispatcher`, `ICommandDispatcher`, `BotBootstrapService` and
-`BotReplies` to move too — Bot is not a separate unit to schedule afterward, it falls out of this
-one. Gated on the `MatchSession` split the original C1 task text already describes: business state
-(slots, host, settings, progress) to Domain, the SSE projection machinery (`StateStream<T>`,
-`SseSubscriberRegistry`, `SequenceGate`) staying behind. That split is its own scoped unit of work,
-sized similarly to C1a's chat seam, and should be measured on its own before starting, the way
-`chat-seam-decision.md` was written before its five commits landed.
+**Checked before starting the split design, per the advisor review at this point in the session:**
+the two route files the target doc's §4 flagged as gating Multiplayer (`MatchRoutes.cs`,
+`MatchSubResourceRoutes.cs`, "1,424" and "627" lines respectively, measured 2026-09-08) are **already
+decomposed** — both are now thin registration facades (27 and 31 lines) delegating to thirteen
+per-resource files under `Features/Multiplayer/Endpoints/` (33-375 lines each, 1,998 total). That
+gate is resolved; it is not a prerequisite step for this split. What the split still needs checked:
+whether business decisions have leaked into any of those thirteen endpoint files (invariant 6's
+60-line/no-direct-mutation signal), which the split's own design pass should verify per file, not
+assume clean from line count alone.
+
+**The regression net for the split is thin — a finding, not a blocker to route around.**
+`MatchSessionRaceTests.cs` exists (3 tests: unsynchronized-lookup race, concurrent-join-under-lock
+correctness, full-match rejection) but covers only slot-join concurrency, not the lock-discipline
+sites `chat-seam-decision.md` §5 already named as risks for exactly this kind of extraction
+(`AbortHandler.cs:58` between `notifier.RoundAborted` and `mutation.PublishState()`;
+`MatchLifecycle.cs:368`/`:377` inside `BeginMutationAsync`). 363 green integration tests do not
+prove a race is absent. The split's design doc must either extend this test file's coverage to the
+sites the split touches, or state explicitly which lock-discipline claims it is relying on the
+existing tests for and which it is asserting by inspection only — the same honesty
+`chat-seam-decision.md` §6 already modeled ("nothing was built or run; counts are grep results").
+
+That split is its own scoped unit of work, sized similarly to C1a's chat seam, and should be written
+up on its own before starting, the way `chat-seam-decision.md` was written before its five commits
+landed.
 
 **`Multiplayer` and `MatchSession`'s split are last, not first.** Every Multiplayer handler file
 takes `MatchSession` (still entirely `Basil.Server.Features.Multiplayer`) as a parameter, and
