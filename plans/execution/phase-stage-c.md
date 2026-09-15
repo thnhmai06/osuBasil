@@ -3,7 +3,7 @@
 > Read this file first. It is kept current in the same commit as every green step, so a
 > successor can resume from here without reconstructing state from `git log` and a build.
 
-## Current task: C1a — step 3 (chat) done. Next is step 4 (`Auth.LoginService`)
+## Current task: C1a — steps 1-4 done. Next is step 5 (the four read-model types)
 
 Order is C4 → C3 → C6 → C1a → C5 (see `plans/execution/stage-c-order-decision.md` for why C1 runs
 last, and `plans/basil-plan-20260909.md`'s Stage C preamble, which adds C6 and splits C1). C2 is
@@ -697,19 +697,50 @@ tests moved between files, net count unchanged), IntegrationTests 363 (7 min 43 
 **Step 3 is complete. The chat seam's pinned-list contribution is done: 21 → 10 across five
 commits.**
 
+### Step 4 — `Auth.LoginService` (done, 10 to 9)
+
+**Decided: neither pure notifier nor pure adapter.** `LoginService`'s 24 `ServerPacketWriter` sites
+split into two kinds, checked by reading every call site: 22 build pieces of the login response's
+own `byte[]` body — the HTTP handshake's actual payload, not a notification to anyone — and the
+remaining two (`other.Enqueue(userPresenceAndStats)`, `other.Enqueue(channelInfo)`) already call
+`GameSession.Enqueue(byte[])`, which takes no protocol type by name and was therefore never part of
+the pinned reason. So there was no genuine "tell someone else" case left to route through a
+notifier interface once the encoding was factored out — the whole file's problem was the 22
+encode-my-own-response sites.
+
+`LoginResponseEncoder` (`Shared/Http/Bancho/`, beside `PacketBuilders`, which `LoginService` already
+called for presence/stats without incident) is a concrete pass-through with no interface — one
+method per packet, taking the same arguments `ServerPacketWriter` did. No interface: one
+implementation, no swap point, matching the rule that an abstraction needs a boundary
+(`PacketBuilders` itself has none either). `LoginFailureReason` — a protocol enum LoginService held
+directly — collapses into two named methods, `AuthenticationFailedReply()` and
+`ServerErrorReply()`, so the wire reason code never has to travel as a value through business code;
+every call site was a 1:1 textual substitution (`ServerPacketWriter.X(...)` → `LoginResponseEncoder.X(...)`),
+order and arguments unchanged, so the login handshake's byte sequence is unchanged for every
+existing test. `ClientPrivileges` was already a `Basil.Domain.Users` type, not protocol, so
+`BanchoPrivileges` takes it directly rather than a pre-cast `int`. `Concat` stays in `LoginService`
+— it only touches `byte[][]`, never a protocol type by name, so it was never the reason.
+
+Row deleted; `LoginService` no longer imports `Basil.Protocol` or `Basil.Protocol.Packets`. No test
+file needed a change — the only construction site (`LoginServiceTests.cs`) never referenced
+`ServerPacketWriter` or `LoginFailureReason` directly.
+
+Verification: build green, ArchitectureTests 8, Domain 114, Protocol 158, Server.Tests 1057,
+IntegrationTests 363 (8 min 37 s, no failure).
+
 ### Next exact step
 
-Step 3 (chat) is done — pinned list 21 → 10 across five commits. **Step 4 is next: `Auth.LoginService`.**
-It is last by design (see `HANDOVER.md` §2 item 4) — the login reply is intrinsically a sequence of
-bancho packets (`ProtocolVersion`, `LoginReply`, `BanchoPrivileges`, per-channel `ChannelInfo`,
-`MainMenuIcon`, `FriendsList`, `SilenceEnd`, per-other-player presence/stats, `AccountRestricted`,
-a welcome `Notification`), assembled into one `byte[]` response body that is the HTTP handshake's
-actual payload, not a side-channel notification. The question step 4 has to answer first: is this a
-notifier candidate at all, or is `LoginService` correctly an adapter (its own row stays, the way
-`MatchPacketDataMapper`'s does) because building a login response *is* encoding, not deciding? Read
-the file's 24 `ServerPacketWriter` sites and `PacketBuilders.BuildUserPresence`/`BuildUserStats`
-before choosing either path; record the decision in `c1-transport-seam-decision.md` or a sibling
-document the way the chat seam got one, since this is a design question, not a mechanical step.
+**Step 5 is next: `MatchState`'s three users, the two API route types, and `SpectateFramesEvent`.**
+`IMatchRegistry`, `InMemoryMatchRegistry` and `MatchLiveSnapshotBuilder` hold `MatchState` — a
+`Basil.Protocol.Multiplayer` wire record — as their read model; `MatchLifecycle` keeps its row only
+for the same reason. `AnnounceRoutes` and `Multiplayer.Endpoints.MatchListEndpoints` are the API
+host describing bancho wire structures, already named as Task D3's kind of defect.
+`Spectating.SpectateFramesEvent` carries `ReplayFrame`/`ScoreFrame` as an SSE payload. None of these
+four is a "business decides, transport encodes" seam like steps 1-4 — they are read-model/view
+problems, closer in shape to the `MatchState`-in-a-view finding `architecture-target-20260908.md`
+§3.5 already made for `MatchRoutes`. The step is to give each a Domain- or API-owned read type and
+a mapper, not a notifier. Read the four files' actual `MatchState`/`ReplayFrame`/`ScoreFrame` field
+usage before designing the replacement type, the way the chat seam was measured before designed.
 
 ## C2 -- investigated, not started: the task's own currency cannot move
 

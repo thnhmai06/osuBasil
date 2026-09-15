@@ -15,8 +15,6 @@ using Basil.Server.Features.Chat;
 using Basil.Domain.Login;
 using Basil.Domain.Social;
 using Basil.Domain.Users;
-using Basil.Protocol;
-using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -97,8 +95,8 @@ public sealed class LoginService(
 			logger.LogError(ex, "Login failed with an unexpected exception: Username={Username}",
 				loginForm.Username);
 			return new LoginResult("server-error", Concat(
-				ServerPacketWriter.Notification("A server error occurred while logging in. Please try again."),
-				ServerPacketWriter.LoginReply((int)LoginFailureReason.ErrorOccurred)));
+				LoginResponseEncoder.Notification("A server error occurred while logging in. Please try again."),
+				LoginResponseEncoder.ServerErrorReply()));
 		}
 	}
 
@@ -119,8 +117,8 @@ public sealed class LoginService(
 		{
 			if (loginTime - existingSession.LastRecvTime < TimeSpan.FromSeconds(ReloginGuardWindowSeconds))
 				return new LoginResult("user-already-logged-in", Concat(
-					ServerPacketWriter.LoginReply((int)LoginFailureReason.AuthenticationFailed),
-					ServerPacketWriter.Notification("User already logged in.")));
+					LoginResponseEncoder.AuthenticationFailedReply(),
+					LoginResponseEncoder.Notification("User already logged in.")));
 
 			// Routes through the same teardown as a normal logout (match leave under lock,
 			// spectator teardown including the bot's #spec_{userId} watch, channel parts, registry
@@ -158,7 +156,7 @@ public sealed class LoginService(
 		{
 			logger.LogDebug("Tourney client rejected: not donator/unrestricted. Username={Username}", user.Name);
 			return new LoginResult("no",
-				ServerPacketWriter.LoginReply((int)LoginFailureReason.AuthenticationFailed));
+				LoginResponseEncoder.AuthenticationFailedReply());
 		}
 
 		/* login credentials verified */
@@ -188,8 +186,8 @@ public sealed class LoginService(
 				"MatchedUserIds={MatchedUserIds}",
 				user.Id, user.Name, hardwareMatches.Select(m => m.UserId));
 			return new LoginResult("contact-staff", Concat(
-				ServerPacketWriter.Notification("Please contact staff directly to create an account."),
-				ServerPacketWriter.LoginReply((int)LoginFailureReason.AuthenticationFailed)));
+				LoginResponseEncoder.Notification("Please contact staff directly to create an account."),
+				LoginResponseEncoder.AuthenticationFailedReply()));
 		}
 
 		/* all checks passed, userSession is safe to login */
@@ -207,9 +205,9 @@ public sealed class LoginService(
 
 		var data = new List<byte[]>
 		{
-			ServerPacketWriter.ProtocolVersion(19),
-			ServerPacketWriter.LoginReply(session.Id),
-			ServerPacketWriter.BanchoPrivileges((int)(session.BanchoPrivilege | ClientPrivileges.Supporter))
+			LoginResponseEncoder.ProtocolVersion(),
+			LoginResponseEncoder.SuccessReply(session.Id),
+			LoginResponseEncoder.BanchoPrivileges(session.BanchoPrivilege | ClientPrivileges.Supporter)
 		};
 
 		if (await WelcomeNotification(cancellationToken) is { } notification)
@@ -224,7 +222,7 @@ public sealed class LoginService(
 			// recipient (channel name/topic/player-count, not who's reading it), and Enqueue never
 			// mutates what it's given, so rebuilding it per recipient was pure allocation waste that
 			// scaled with online session count on every single login.
-			var channelInfo = ServerPacketWriter.ChannelInfo(channel.Name, channel.Topic, channel.PlayerCount);
+			var channelInfo = LoginResponseEncoder.ChannelInfo(channel.Name, channel.Topic, channel.PlayerCount);
 			data.Add(channelInfo);
 
 			foreach (var other in gameSessions.All)
@@ -232,7 +230,7 @@ public sealed class LoginService(
 					other.Enqueue(channelInfo);
 		}
 
-		data.Add(ServerPacketWriter.ChannelInfoEnd());
+		data.Add(LoginResponseEncoder.ChannelInfoEnd());
 
 		// cache stats+rank for all 8 modes in memory (User.stats_from_sql_full) — later packet
 		// handlers (REQUEST_STATUS_UPDATE, USER_STATS_REQUEST, CHANGE_ACTION broadcast) read this
@@ -255,15 +253,15 @@ public sealed class LoginService(
 				: $"https://api.{serverOptions.Value.Domain}/menuicon/icon";
 			var onclickUrl = await menuIconService.ReadUrlAsync(cancellationToken) ??
 			                 "https://github.com/thnhmai06/osuBasil";
-			data.Add(ServerPacketWriter.MainMenuIcon(menuIconUrl, onclickUrl));
+			data.Add(LoginResponseEncoder.MainMenuIcon(menuIconUrl, onclickUrl));
 		}
 		else
 		{
-			data.Add(ServerPacketWriter.MainMenuIcon(string.Empty, string.Empty));
+			data.Add(LoginResponseEncoder.MainMenuIcon(string.Empty, string.Empty));
 		}
 
-		data.Add(ServerPacketWriter.FriendsList(friendIds));
-		data.Add(ServerPacketWriter.SilenceEnd((int)session.RemainingSilence.TotalSeconds));
+		data.Add(LoginResponseEncoder.FriendsList(friendIds));
+		data.Add(LoginResponseEncoder.SilenceEnd((int)session.RemainingSilence.TotalSeconds));
 
 		var userPresenceAndStats =
 			Concat(PacketBuilders.BuildUserPresence(session), PacketBuilders.BuildUserStats(session));
@@ -300,13 +298,13 @@ public sealed class LoginService(
 				data.Add(PacketBuilders.BuildUserStats(other));
 			}
 
-			data.Add(ServerPacketWriter.AccountRestricted());
+			data.Add(LoginResponseEncoder.AccountRestricted());
 		}
 
 		if (!gameSessions.TryAdd(session))
 			return new LoginResult("user-already-logged-in", Concat(
-				ServerPacketWriter.LoginReply((int)LoginFailureReason.AuthenticationFailed),
-				ServerPacketWriter.Notification("User already logged in.")));
+				LoginResponseEncoder.AuthenticationFailedReply(),
+				LoginResponseEncoder.Notification("User already logged in.")));
 
 		// BasilBot spectates every userSession from the moment they log in, so their input can be
 		// exposed externally via the api. host's SSE /spec/{id} channel — the real osu! client only
@@ -346,7 +344,7 @@ public sealed class LoginService(
 	private async Task<byte[]?> WelcomeNotification(CancellationToken cancellationToken)
 	{
 		var text = await motdService.GetTextAsync(cancellationToken);
-		return !string.IsNullOrWhiteSpace(text) ? ServerPacketWriter.Notification(text) : null;
+		return !string.IsNullOrWhiteSpace(text) ? LoginResponseEncoder.Notification(text) : null;
 	}
 
 	/// <summary>
@@ -360,8 +358,8 @@ public sealed class LoginService(
 	{
 		logger.LogDebug("Login request rejected: malformed body. Reason={Reason}", tokenOverride);
 		return new LoginResult(tokenOverride, Concat(
-			ServerPacketWriter.LoginReply((int)LoginFailureReason.AuthenticationFailed),
-			ServerPacketWriter.Notification("Please restart your osu! and try again.")));
+			LoginResponseEncoder.AuthenticationFailedReply(),
+			LoginResponseEncoder.Notification("Please restart your osu! and try again.")));
 	}
 
 	/// <summary>
@@ -377,9 +375,9 @@ public sealed class LoginService(
 	{
 		logger.LogInformation("Login failed: incorrect credentials. Username={Username} Ip={Ip}", username, ip);
 		return new LoginResult("incorrect-credentials", Concat(
-			ServerPacketWriter.Notification(
+			LoginResponseEncoder.Notification(
 				"Incorrect credentials. Please contact to the staffs if you don't know or forget the username/password."),
-			ServerPacketWriter.LoginReply((int)LoginFailureReason.AuthenticationFailed)));
+			LoginResponseEncoder.AuthenticationFailedReply()));
 	}
 
 	/// <summary>Concatenates the given packet byte arrays in order.</summary>
