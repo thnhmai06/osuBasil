@@ -1,11 +1,11 @@
 <Solution>
 	<Folder Name="/Sources/">
 		<Project Path="src/Basil.Domain/Basil.Domain.csproj"/>
-		<Folder Name="/Sources/Protocol/">
-			<Project Path="src/Basil.Protocol.Bancho/Basil.Protocol.Bancho.csproj"/>
-			<Project Path="src/Basil.Protocol.Irc/Basil.Protocol.Irc.csproj"/>
-		</Folder>
 		<Project Path="src/Basil.Server/Basil.Server.csproj"/>
+	</Folder>
+	<Folder Name="/Sources/Protocol/">
+		<Project Path="src/Basil.Protocol.Bancho/Basil.Protocol.Bancho.csproj"/>
+		<Project Path="src/Basil.Protocol.Irc/Basil.Protocol.Irc.csproj"/>
 	</Folder>
 	<Folder Name="/Tests/">
 		<Project

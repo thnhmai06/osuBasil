@@ -6,7 +6,7 @@ namespace Basil.Protocol.Multiplayer;
 ///     are the two keyboard keybinds).
 /// </summary>
 [Flags]
-public enum Keys
+public enum Keys : byte
 {
 	/// <summary>No buttons pressed.</summary>
 	None = 0,

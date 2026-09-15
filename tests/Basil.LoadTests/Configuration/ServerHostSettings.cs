@@ -57,7 +57,7 @@ public sealed class ServerHostSettings
 }
 
 /// <summary>How a locally launched server process is started.</summary>
-public enum DotnetLaunchMode
+public enum DotnetLaunchMode : byte
 {
 	/// <summary><c>dotnet run --project src/Basil.Server</c>. Slower to start, no publish step.</summary>
 	Run,

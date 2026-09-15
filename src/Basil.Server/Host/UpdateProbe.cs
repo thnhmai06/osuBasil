@@ -1,7 +1,7 @@
 namespace Basil.Server.Host;
 
 /// <summary>What a check for a newer release found.</summary>
-internal enum UpdateCheckOutcome
+internal enum UpdateCheckOutcome : byte
 {
 	/// <summary>The server is running the newest release the feed offers.</summary>
 	UpToDate,

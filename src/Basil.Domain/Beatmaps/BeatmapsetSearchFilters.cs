@@ -62,7 +62,7 @@ public sealed record BeatmapsetSearchFilters(
 }
 
 /// <summary>The comparison an individual <see cref="ComparableFilter{T}" /> applies.</summary>
-public enum ComparisonOperator
+public enum ComparisonOperator : byte
 {
 	/// <summary>The stored value must equal the filter's value.</summary>
 	Equal,

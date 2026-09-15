@@ -9,7 +9,7 @@ namespace Basil.Domain.Scores;
 ///     or used solely for telemetry/data collection.
 /// </remarks>
 [Flags]
-public enum ClientFlags : uint
+public enum ClientFlags : ushort
 {
 	/// <summary>
 	///     The client triggered no anticheat flags.
