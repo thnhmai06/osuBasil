@@ -46,7 +46,7 @@ Treat that number with suspicion — see §4.
 | **C** — extract the business layer | C4, C3, C6, **C1a done** (pinned list 21 → 3), **C1b done** (nine units, per-feature table resolved), **C5 run and reported for both**. C2 **off the path**. |
 | **D** — split the transports | Not started. This is now the next stage — see §2's close. |
 | **E** — declare what survives, enforce it | Not started. |
-| **G** — the load harness | Not started. Unblocked since F merged. |
+| **G** — the load harness | **Done.** Task G5 fixed (`e2931b33`); the `ReloginGuardWindowSeconds` duplication stays as accepted debt (see §8); the `DiagnosticEndpointTests` flake investigated, no defect found (see §8). |
 | **H** — documentation and final verification | Not started. |
 
 **Stage C runs C4 → C3 → C6 → C1a → C5.** `plans/execution/stage-c-order-decision.md` says why the
@@ -304,26 +304,34 @@ caught by someone measuring it.** Prefer a probe to the record — this document
 
 * **C1a, then C5.** C5 gates Stage D: if the graph did not move as predicted, stop and report before
   Stage D, whose project split assumes it did. C5 now also reads the `TransportSeamTests` list.
-* **Two load-sensitive integration tests.** Task G5's
-  `BeatmapsetManagementEndpointTests.PutBeatmapset_Valid_ReplacesTheBeatmapsetsFilesAndReturns202`
-  passes because a background migration sweep usually finishes in time, not because anything makes
-  it (recorded in `docs/for-developers/testing.md`); and
-  `DiagnosticEndpointTests`' live tests (`GetOverviewLive_FirstEventCarriesTheCuratedFields` at
-  20 s on an 8-minute run, then `GetGcLive_FirstEventIsARealGcReading` at 15 s on a 5 min 55 s run,
-  each once, each passing in isolation) give the real one-second broadcast tick ten seconds to
-  deliver a first event. Known facts: the class builds a fresh `WebApplicationFactory` per test
-  because the constructor calls `WithWebHostBuilder`; the host runs its real background services;
-  `DiagnosticBroadcastService.RunOnce()` exists "so tests can drive one pass deterministically" and
-  no integration test uses it. Not yet diagnosed to a cause. A single failure of one of these on a
-  full run is not a regression; anything else is. Both items belong to Stage G, and this one is a
-  candidate for a first-event-on-subscribe change measured against the SSE contract in
-  `docs/for-developers/sse.md`. A Sonnet diagnosis agent was dispatched into the second worktree on
-  2026-09-14 with a brief (reproduce with `--filter "FullyQualifiedName~DiagnosticEndpointTests"`
-  and one full run with `--logger "console;verbosity=normal"`; distinguish host-startup-inside-the-CTS,
-  headers-not-flushed-until-first-write, subscription-registered-after-the-tick, and thread-pool
-  starvation from startup services; check whether `sse.md` and `hub-adoption-decision.md` permit an
-  immediate first sample on subscribe; propose the smallest deterministic fix and its regression
-  test) and died on the session limit after building. Re-dispatch with the same brief.
+* **`BeatmapsetManagementEndpointTests`'s migration-sweep race is fixed (Stage G, Task G5,
+  `e2931b33`).** The test now awaits `BeatmapsetMigrationService`'s `BackgroundService.ExecuteTask`
+  before sending its PUT, instead of racing the sweep's own file writes. Attempted the plan's stated
+  "real fix" for the separate `Basil.LoadTests` `ReloginGuardWindowSeconds` duplication in the same
+  pass (drop `<SelfContained>` from `Basil.Server.csproj`, add a real `ProjectReference`) and hit a
+  transitive `NU1202`: `Humanizer.Core.*` 2.14.1, pulled in through `ppy.osu.Game.Rulesets.*`, isn't
+  `net10.0`-compatible once both projects restore together. Reverted; left as accepted debt with the
+  real blocker recorded in `basil-plan-20260909.md`'s Stage G section rather than the originally
+  assumed one.
+
+* **`DiagnosticEndpointTests`' live-test flake (`GetOverviewLive_FirstEventCarriesTheCuratedFields`,
+  `GetGcLive_FirstEventIsARealGcReading`) investigated 2026-09-15; no code defect found, no fix
+  applied.** The prior brief's central hypothesis — that the fix is making the SSE stream deliver an
+  immediate first sample on subscribe, not wait for the shared periodic tick — turned out to already
+  be exactly how `DiagnosticRoutes.StreamCategory` is written: it calls `sample()` synchronously and
+  yields it as the first SSE item *before* ever touching `subscription.Events`, with its own doc
+  comment stating this in as many words ("a subscriber takes its own fresh reading immediately on
+  connecting, rather than waiting for the next broadcast tick"). `hub-adoption-decision.md` confirms
+  this is the decided design ("a subscriber's first item is the state"), not merely permitted by it.
+  That rules out the hypothesis the prior dispatch (died on the session limit after building, nothing
+  landed) was sent to test. With the code path already correct, the remaining explanation for a
+  single failure once on an 8-minute run and once on a 5-min-55s run, always passing in isolation, is
+  ordinary resource contention (hundreds of `WebApplicationFactory` hosts and their background
+  services running across the full suite) delaying the connect-and-first-read sequence past its
+  10-second budget under an unusually loaded run — not a logic bug to patch. **No further action
+  planned**; this matches the test's own already-stated tolerance ("a single failure of one of these
+  on a full run is not a regression; anything else is"). Re-open only if it starts failing more than
+  once per full run, or fails outside a heavy full-suite context.
 * **Task H2** — the localization rule set the user supplied becomes developer and agent documentation,
   and `CLAUDE.md` splits into `docs/for-agents/`. Deferred by the user to the documentation phase; the
   source is at `C:\Users\haith\Desktop\osuBasil-docs.md`.
