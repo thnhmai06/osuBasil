@@ -781,11 +781,16 @@ Verification: build green, ArchitectureTests 8, Domain 114, Protocol 158, Server
 one regression test relocated, two replaced by one at the layer that still owns them, four new
 `MatchCreationDataMapperTests`), IntegrationTests 363 (7 min 42 s, no failure).
 
-**C1a is complete.** Pinned list: 21 → 3. Next is **C5** — re-measure the slice graph (both counts,
-`plans/execution/measure-slice-graph.py`) and the `Shared -> Features` pinned list, record the result
-in `architecture-progress.md` against the baseline there, and report before Stage D if the graph did
-not move as predicted. C1b (whether the ~96-file project move still buys anything beyond the
-namespace rules already in place) is a decision for after C5's numbers, and it is the user's call.
+**C1a is complete.** Pinned list: 21 → 3.
+
+**C5 has run and reported rather than concluded.** Every slice-boundary instrument
+(`SliceAdjacency`, the `Shared -> Features` pinned list, `DomainAdjacency`, the script's two counts)
+reads identical to before C1a — expected, since none of them has `Basil.Protocol` in its population
+and C1a never touched a slice boundary. The plan's C5 prediction (features-only ≈17) was written for
+the original, unsplit C1 — the ~96-file move, which is now C1b and has not run. Full writeup and the
+two legitimate paths (run C1b, or decide C1a's namespace-level separation is enough and adjust
+`architecture-target-20260908.md` to match) are in `architecture-progress.md`'s "C5, run after C1a"
+section. **This is a decision for the user, not the next task an agent should pick for itself.**
 
 ## C2 -- investigated, not started: the task's own currency cannot move
 

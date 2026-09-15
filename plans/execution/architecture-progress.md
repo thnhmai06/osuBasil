@@ -37,6 +37,7 @@ first time are worth repeating:
 | 2026-09-10 | `a936c343` | C4 moved `MpCommandService`/`MpReplies` into Multiplayer; `Bot -> Irc` row kept (see below) | 43 features-only, 50 solution-wide, as recorded by the C3 worker's re-measurement below | 1 of 10 |
 | 2026-09-10 | `a6e12458` | C3 inverted logout; script numbers unchanged, `Shared -> Features` pinned list 13 to 12 | unchanged | 1 of 10 |
 | 2026-09-14 | `e286cc26` | re-measured at the start of the reconciliation session: `python plans/execution/measure-slice-graph.py`; `SliceAdjacency` 44 rows, pinned list 12, `DomainAdjacency` 6 | 43 features-only, 50 solution-wide | 1 of 10 |
+| 2026-09-15 | `32aaed40` | **C5, after C1a closed** (pinned list 21 → 3 across five steps, none of them a slice-boundary edge): `SliceAdjacency` 44 rows, `Shared -> Features` pinned list 12, `DomainAdjacency` 6 — all three unchanged since `e286cc26`; script re-run, unchanged too. See "C5" below. | 43 features-only, 50 solution-wide | 1 of 10 |
 
 Stage A changed no coupling. It changed what the rule can see, which is why the edge count is
 unchanged while the declared count rose from 38 to 45.
@@ -241,3 +242,42 @@ that shape exists is what stops the next worker from reading a falling count as 
 predicted. That is not a formality: stage D splits the code into projects along these boundaries,
 and a project split made against a graph that is still one component produces projects that cannot
 compile without each other.
+
+## C5, run after C1a — reported rather than concluded
+
+C1a closed the `TransportSeamTests` pinned list from 21 to 3, and every one of the four instruments
+that watch slice boundaries — `SliceAdjacency` (44 rows), the `Shared -> Features` pinned list (12),
+`DomainAdjacency` (6), and `measure-slice-graph.py` (43 features-only / 50 solution-wide) — read
+**identical** to `e286cc26`, before C1a started. That is not a failure to move; it is what
+`c1-transport-seam-decision.md` predicted before C1a began: none of those four instruments has
+`Basil.Protocol` in its population, so a task that removes business code's dependency on the
+protocol is invisible to all of them by construction, the same shape C3 already demonstrated for
+the `Shared -> Features` list. C1a's currency was always the pinned list, and that moved by 18 rows.
+
+**What this means for the "stop and report" instruction.** The plan's C5 prediction — features-only
+falling to roughly 17, with Auth, Beatmaps, Content, Users and Spectating standing free — was made
+for the *original*, unsplit C1: the ~96-file move of business code into `Basil.Domain`. That move is
+**C1b**, and C1b has not run; `c1-transport-seam-decision.md` split it off explicitly because the
+services could not have entered `Basil.Domain` with their protocol references still attached. So the
+graph "not moving as predicted" here is not a broken measurement or a missed step — it is C5 being
+run against a prediction whose precondition (C1b) is still an open decision, not a completed task.
+
+**Reported, not decided:** whether C1b still happens. `architecture-target-20260908.md`'s target
+layout and invariant 9 (`Basil.Domain` may not reference `Basil.Protocol`) are unchanged and satisfied
+by C1a's tree as it stands today — every business service that used to reach for
+`ServerPacketWriter`/`IrcMessageWriter` no longer does. Two paths from here, both legitimate,
+neither an agent's call to make alone:
+
+* **Run C1b** — move the ~96 files into `Basil.Domain`, now that C1a has cleared the blocker that
+  stopped it. This is what would actually produce the predicted features-only ≈17 / solution-wide
+  drop, and it is the only way to get `DomainAdjacency` (not `SliceAdjacency`) watching the moved
+  code, as C6 was built to do.
+* **Skip C1b** — decide the namespace-level separation C1a already achieved (`Features/<Slice>` code
+  no longer touches the protocol; `Basil.Domain` already holds the value-object layer) is enough for
+  Stage D's purposes, and that the project-boundary move is not worth its cost. Stage D would then
+  split `Basil.Server` into host projects with the business services still living in
+  `Basil.Server.Features`, not `Basil.Domain` — survivable, but a different target shape than
+  `architecture-target-20260908.md` describes today, and that document would need a matching update.
+
+Either way, **Stage D should not start silently assuming one answer.** This is the decision point the
+original C5 instruction was trying to catch, just for a different reason than the text anticipated.

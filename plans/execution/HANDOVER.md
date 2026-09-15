@@ -43,7 +43,7 @@ Treat that number with suspicion — see §4.
 | **A** — make constant-mediated coupling visible | Done. ADR-008. |
 | **B** — untangle before anything moves | Done, all six tasks. |
 | **F** — the Diagnostic API | Done and merged. |
-| **C** — extract the business layer | C4, C3, C6, **C1a done** (pinned list 21 → 3). C2 **off the path**. **C5 next; C1b decided after.** |
+| **C** — extract the business layer | C4, C3, C6, **C1a done** (pinned list 21 → 3), **C5 run and reported**. C2 **off the path**. **C1b awaits a user decision.** |
 | **D** — split the transports | Not started. Gated on C5. |
 | **E** — declare what survives, enforce it | Not started. |
 | **G** — the load harness | Not started. Unblocked since F merged. |
@@ -54,7 +54,7 @@ project boundary is crossed last; `c1-transport-seam-decision.md` says why C1 sp
 
 ---
 
-## 2. C1a is done. The next task is C5
+## 2. C1a is done. C5 has run and reported a decision the user has to make
 
 **C1 as written cannot run.** Found 2026-09-14, measured from the compiled assembly: the services C1
 would move into `Basil.Domain` — every match, chat, spectating and login service — encode bancho
@@ -88,13 +88,22 @@ only caller; 9 → 3). `plans/execution/phase-stage-c.md` "C1a" has every step's
 * `Multiplayer.MatchPacketDataMapper` — an adapter by design, outside `.Packets` only because C1b
   hasn't decided where adapters live yet.
 
-**C5 is next:** re-measure `plans/execution/measure-slice-graph.py` (features-only and
-solution-wide), the `SliceAdjacency` allowlist row count and the `Shared -> Features` pinned list,
-record the result in `architecture-progress.md` against the entry-baseline numbers there, and
-**stop and report before Stage D if the graph did not move as predicted** — Stage D's project split
-assumes it did. C1b (whether the ~96-file `Basil.Domain` move still buys anything beyond the
-namespace rules already enforced) is a decision for after C5's numbers, and it is the user's call,
-not an agent's to make unilaterally.
+**C5 has run (`32aaed40`) and its verdict is "ask the user," not "proceed."** Every slice-boundary
+instrument — `SliceAdjacency` (44), `Shared -> Features` pinned list (12), `DomainAdjacency` (6),
+the script's two counts (43 features-only / 50 solution-wide) — reads identical to `e286cc26`,
+before C1a started. That is expected, not a failure: none of those four instruments has
+`Basil.Protocol` in its population, and C1a never touched a slice boundary, only the protocol
+dependency inside slices that already existed. The plan's C5 prediction (features-only ≈17) was
+written for the original, unsplit C1 — the ~96-file move into `Basil.Domain` — which is now **C1b**
+and has not run. Full writeup in `plans/execution/architecture-progress.md`, section "C5, run after
+C1a".
+
+**Open decision, the user's to make, not an agent's:** run C1b (the ~96-file move, now unblocked
+since C1a cleared what stopped it — the only way to get the predicted graph reduction and put
+`DomainAdjacency` in charge of the moved code), or decide C1a's namespace-level separation is enough
+for Stage D's purposes and skip C1b — in which case `architecture-target-20260908.md`'s target
+layout needs a matching update, since it currently assumes the business services live in
+`Basil.Domain`. **Do not start Stage D, and do not start C1b, until this is answered.**
 
 ---
 
