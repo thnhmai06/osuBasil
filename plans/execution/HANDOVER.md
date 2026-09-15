@@ -104,10 +104,16 @@ once — see `plans/execution/c1b-project-move-decision.md` for why (a text clas
 files, and once nearly moved the whole Diagnostics slice, which the target architecture never
 scoped as a Domain concern at all — reverted before anything committed).
 
-**Unit 1 is done and pushed:** the fourteen repository/store interfaces across six slices, plus
-their search-filter/query-parser pairs — 18 files, zero new project-boundary risk, the safest
-possible category. Full detail and the exact next unit to pick up in
-`c1b-project-move-decision.md`'s "Next exact step".
+**Units 1-3 are done and pushed** (`214ff845`, `365c351c`, `89cb120a`): the fourteen repository/store
+interfaces plus their filter/parser pairs (18 files), `MotdService`/`IReplayStorage`/
+`IScoreDecryptor`/`ReplayService` (5 files, and the first `Shared -> Features` pinned-list movement
+since C3), and the mirror search contract/`MirrorService`/`MirrorOptions` (5 files, and
+`Basil.Domain`'s second package reference). Four blockers a text classifier cannot see are now
+documented from direct experience: `GameSession`/`UserSession`/Shared-typed parameters with no
+import naming them; peer coupling to a candidate that isn't itself eligible; direct filesystem I/O
+with no forbidden `using`; and an `IOptions<T>`/wrapped type argument that is itself a Server type,
+which only a physical file move plus rebuild — never the namespace edit alone — proves safe. Full
+detail and the exact next unit in `c1b-project-move-decision.md`'s "Next exact step".
 
 ---
 
