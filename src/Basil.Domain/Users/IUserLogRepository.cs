@@ -1,4 +1,4 @@
-namespace Basil.Server.Features.Users;
+namespace Basil.Domain.Users;
 
 /// <summary>
 ///     Records administrative actions against users in the UserLogs table.

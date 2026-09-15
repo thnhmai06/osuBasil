@@ -19,6 +19,7 @@ using Basil.Server.Features.Spectating;
 using Basil.Server.Shared.Sessions;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Channels;
+using Basil.Domain.Content;
 using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;

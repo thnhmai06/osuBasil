@@ -1,6 +1,7 @@
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
+using Basil.Domain.Users;
 using Basil.Server.Features.Auth;
 using Basil.Server.Features.Beatmaps;
 using Basil.Server.Features.Irc;

@@ -54,7 +54,7 @@ project boundary is crossed last; `c1-transport-seam-decision.md` says why C1 sp
 
 ---
 
-## 2. C1a is done. C5 has run and reported a decision the user has to make
+## 2. C1a is done. C1b is running — see `c1b-project-move-decision.md` for where it is
 
 **C1 as written cannot run.** Found 2026-09-14, measured from the compiled assembly: the services C1
 would move into `Basil.Domain` — every match, chat, spectating and login service — encode bancho
@@ -98,12 +98,16 @@ written for the original, unsplit C1 — the ~96-file move into `Basil.Domain` �
 and has not run. Full writeup in `plans/execution/architecture-progress.md`, section "C5, run after
 C1a".
 
-**Open decision, the user's to make, not an agent's:** run C1b (the ~96-file move, now unblocked
-since C1a cleared what stopped it — the only way to get the predicted graph reduction and put
-`DomainAdjacency` in charge of the moved code), or decide C1a's namespace-level separation is enough
-for Stage D's purposes and skip C1b — in which case `architecture-target-20260908.md`'s target
-layout needs a matching update, since it currently assumes the business services live in
-`Basil.Domain`. **Do not start Stage D, and do not start C1b, until this is answered.**
+**The user chose to run C1b.** It is in progress, moved in small verified units rather than all at
+once — see `plans/execution/c1b-project-move-decision.md` for why (a text classifier missed both a
+`GameSession`-typed parameter with no import naming it, and peer coupling between two candidate
+files, and once nearly moved the whole Diagnostics slice, which the target architecture never
+scoped as a Domain concern at all — reverted before anything committed).
+
+**Unit 1 is done and pushed:** the fourteen repository/store interfaces across six slices, plus
+their search-filter/query-parser pairs — 18 files, zero new project-boundary risk, the safest
+possible category. Full detail and the exact next unit to pick up in
+`c1b-project-move-decision.md`'s "Next exact step".
 
 ---
 

@@ -1,4 +1,4 @@
-namespace Basil.Server.Features.Content;
+namespace Basil.Domain.Content;
 
 /// <summary>
 ///     Reads and writes arbitrary key/value configuration rows that need to change at runtime

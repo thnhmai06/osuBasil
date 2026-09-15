@@ -1,21 +1,6 @@
 using Basil.Domain.Beatmaps;
 
-namespace Basil.Server.Features.Users;
-
-/// <summary>
-///     A user's overall stats for one game mode.
-/// </summary>
-/// <param name="Id">The id of the user the stats belong to.</param>
-/// <param name="Mode">The game mode the stats apply to.</param>
-/// <param name="TotalScore">The user's total accumulated score in the mode.</param>
-/// <param name="RankedScore">The user's ranked score in the mode, the basis for leaderboard rank.</param>
-/// <param name="Plays">The number of plays submitted in the mode.</param>
-/// <remarks>
-///     Total score, ranked score, and plays are bumped on every score submission, see
-///     <see cref="IUserStatRepository.IncrementAsync" />. Accuracy is intentionally absent: this
-///     server reports a fixed 100% rather than computing and storing a real weighted accuracy.
-/// </remarks>
-public sealed record Stats(int Id, GameMode Mode, long TotalScore, long RankedScore, int Plays);
+namespace Basil.Domain.Users;
 
 /// <summary>
 ///     Provides per-user, per-mode stats, scoped to what login and score submission need.
@@ -48,3 +33,18 @@ public interface IUserStatRepository
 	Task IncrementAsync(int userId, GameMode mode, long totalScoreDelta, long rankedScoreDelta,
 		CancellationToken cancellationToken = default);
 }
+
+/// <summary>
+///     A user's overall stats for one game mode.
+/// </summary>
+/// <param name="Id">The id of the user the stats belong to.</param>
+/// <param name="Mode">The game mode the stats apply to.</param>
+/// <param name="TotalScore">The user's total accumulated score in the mode.</param>
+/// <param name="RankedScore">The user's ranked score in the mode, the basis for leaderboard rank.</param>
+/// <param name="Plays">The number of plays submitted in the mode.</param>
+/// <remarks>
+///     Total score, ranked score, and plays are bumped on every score submission, see
+///     <see cref="IUserStatRepository.IncrementAsync" />. Accuracy is intentionally absent: this
+///     server reports a fixed 100% rather than computing and storing a real weighted accuracy.
+/// </remarks>
+public sealed record Stats(int Id, GameMode Mode, long TotalScore, long RankedScore, int Plays);

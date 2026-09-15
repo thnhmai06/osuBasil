@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Encodings.Web;
+using Basil.Domain.Content;
 using Basil.Server.Features.Content;
 using Basil.Server.Features.Auth;
 using Microsoft.AspNetCore.Authentication;

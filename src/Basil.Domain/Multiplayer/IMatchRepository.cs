@@ -1,8 +1,7 @@
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 
-namespace Basil.Server.Features.Multiplayer;
+namespace Basil.Domain.Multiplayer;
 
 /// <summary>
 ///     Persists the durable record of a multiplayer room and the beatmaps played within it.
@@ -48,7 +47,7 @@ public interface IMatchRepository
 	/// <remarks>
 	///     Only <paramref name="mapMd5" /> identifies the beatmap played. Every other beatmap fact is
 	///     resolved live at report-build time by looking that md5 up through
-	///     <see cref="Beatmaps.IBeatmapRepository" />, never denormalized onto the round itself.
+	///     <see cref="IBeatmapRepository" />, never denormalized onto the round itself.
 	/// </remarks>
 	Task<int> CreateRoundAsync(
 		int matchId, int roundIndex, string mapMd5,

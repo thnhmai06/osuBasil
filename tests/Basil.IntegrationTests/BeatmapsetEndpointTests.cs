@@ -4,6 +4,7 @@ using Basil.Server.Features.Beatmaps;
 using Basil.Server.Features.Scores;
 using Basil.Server.Shared.Configuration;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Scores;
 using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;

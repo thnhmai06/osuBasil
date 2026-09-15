@@ -1,4 +1,4 @@
-namespace Basil.Server.Features.Auth;
+namespace Basil.Domain.Auth;
 
 /// <summary>
 ///     Records in-game login events in the IngameLogins table.

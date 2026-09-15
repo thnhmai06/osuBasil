@@ -1,3 +1,5 @@
+using Basil.Domain.Beatmaps;
+using Basil.Domain.Multiplayer;
 using Basil.Server.Features.Chat.Packets;
 using Basil.Server.Features.Multiplayer.Packets;
 using Basil.Server.Features.Spectating.Packets;

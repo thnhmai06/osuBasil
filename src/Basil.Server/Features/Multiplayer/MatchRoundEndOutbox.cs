@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Threading.Channels;
+using Basil.Domain.Multiplayer;
 using Basil.Server.Features.Multiplayer;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;

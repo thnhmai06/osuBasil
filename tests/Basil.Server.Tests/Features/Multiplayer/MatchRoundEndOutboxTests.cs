@@ -1,3 +1,4 @@
+using Basil.Domain.Multiplayer;
 using Basil.Server.Features.Multiplayer;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;

@@ -6,6 +6,7 @@ using Basil.Server.Features.Content;
 using Basil.Server.Shared.Sessions;
 using Basil.Server.Features.Multiplayer;
 using Basil.Domain.Login;
+using Basil.Domain.Users;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 

@@ -40,6 +40,15 @@ internal static class DomainAdjacency
 		("Channels", "Users"),
 
 		// User.cs carries the Country resolved at login.
-		("Users", "Login")
+		("Users", "Login"),
+
+		// IUserStatRepository.IncrementAsync and Stats.Mode key a user's per-mode stats by GameMode.
+		("Users", "Beatmaps"),
+
+		// ScoreReport, ScoreInsertRow and ScoreRow carry the team a player scored for.
+		("Scores", "Multiplayer"),
+
+		// ILoginRepository.CreateAsync returns the Login row it persisted.
+		("Auth", "Login")
 	];
 }

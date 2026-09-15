@@ -1,6 +1,7 @@
 using Basil.Server.Features.Auth;
 using System.Net;
 using System.Text;
+using Basil.Domain.Content;
 using Basil.Server.Features.Content;
 using Basil.Server.Shared.Configuration;
 using Basil.Server.Host;

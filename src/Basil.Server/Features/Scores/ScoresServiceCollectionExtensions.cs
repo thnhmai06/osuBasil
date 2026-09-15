@@ -1,3 +1,4 @@
+using Basil.Domain.Scores;
 using Basil.Server.Shared.Configuration;
 using Basil.Server.Shared.Persistence;
 using Basil.Server.Shared.Storage;

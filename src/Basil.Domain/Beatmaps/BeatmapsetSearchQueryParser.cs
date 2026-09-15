@@ -1,9 +1,7 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
-using Basil.Server.Features.Beatmaps;
-using Basil.Domain.Beatmaps;
 
-namespace Basil.Server.Features.Beatmaps;
+namespace Basil.Domain.Beatmaps;
 
 /// <summary>
 ///     Parses osu!'s beatmap search query syntax (<c>key&lt;operator&gt;value</c> tokens mixed with

@@ -1,3 +1,4 @@
+using Basil.Domain.Users;
 using Basil.Server.Features.Irc;
 using Basil.Server.Features.Users;
 using Basil.Server.Shared.Sessions;

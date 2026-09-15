@@ -1,6 +1,4 @@
-using Basil.Domain.Users;
-
-namespace Basil.Server.Features.Users;
+namespace Basil.Domain.Users;
 
 /// <summary>
 ///     Provides access to the ClientHashes table, scoped to what login needs.

@@ -1,6 +1,7 @@
 using Basil.Server.Features.Auth;
 using System.Security.Cryptography;
 using System.Text;
+using Basil.Domain.Users;
 using Basil.Server.Features.Users;
 using Basil.Server.Shared.Configuration;
 using Basil.Server.Shared.Sessions;

@@ -1,6 +1,4 @@
-using Basil.Domain.Beatmaps;
-
-namespace Basil.Server.Features.Beatmaps;
+namespace Basil.Domain.Beatmaps;
 
 /// <summary>
 ///     Provides set-level access to stored beatmap sets.

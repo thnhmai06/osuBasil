@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Text.RegularExpressions;
+using Basil.Domain.Beatmaps;
 using Basil.Server.Features.Beatmaps;
 using Basil.Server.Shared.Configuration;
 using Microsoft.Extensions.Hosting;

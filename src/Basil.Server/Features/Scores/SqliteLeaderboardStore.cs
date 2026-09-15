@@ -1,6 +1,7 @@
 using Basil.Server.Shared.Persistence;
 using Basil.Server.Features.Scores;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Scores;
 using Dapper;
 using Microsoft.Data.Sqlite;
 

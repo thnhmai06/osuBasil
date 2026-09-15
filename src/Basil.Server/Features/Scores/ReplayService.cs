@@ -1,3 +1,4 @@
+using Basil.Domain.Scores;
 using Basil.Server.Features.Scores;
 using Microsoft.Extensions.Logging;
 

@@ -1,3 +1,4 @@
+using Basil.Domain.Beatmaps;
 using Basil.Server.Features.Irc;
 using Basil.Server.Shared.Eventing;
 using Basil.Server.Features.Beatmaps;

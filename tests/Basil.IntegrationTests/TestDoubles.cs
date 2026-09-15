@@ -6,6 +6,7 @@ using Basil.Server.Features.Content;
 using Basil.Server.Features.Users;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Channels;
+using Basil.Domain.Content;
 using Basil.Domain.Users;
 using NSubstitute;
 

@@ -1,3 +1,5 @@
+using Basil.Domain.Social;
+using Basil.Domain.Users;
 using Basil.Server.Features.Users.Packets;
 using Basil.Server.Shared.Configuration;
 using Basil.Server.Shared.Http.Bancho;

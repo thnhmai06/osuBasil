@@ -1,7 +1,6 @@
 using Basil.Domain.Login;
-using Basil.Domain.Users;
 
-namespace Basil.Server.Features.Users;
+namespace Basil.Domain.Users;
 
 /// <summary>
 ///     Provides access to the Users table, scoped to what login needs.

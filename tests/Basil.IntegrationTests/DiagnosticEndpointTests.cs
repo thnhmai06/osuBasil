@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using Basil.Domain.Content;
 using Basil.Server.Features.Content;
 using Basil.Server.Shared.Configuration;
 using Basil.Server.Host;

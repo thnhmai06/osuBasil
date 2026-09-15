@@ -1,3 +1,4 @@
+using Basil.Domain.Content;
 using Basil.Server.Shared.Eventing;
 using Basil.Server.Features.Auth;
 using Basil.Server.Features.Content;

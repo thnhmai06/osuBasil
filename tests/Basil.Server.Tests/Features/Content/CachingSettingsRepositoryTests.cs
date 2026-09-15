@@ -1,3 +1,4 @@
+using Basil.Domain.Content;
 using Basil.Server.Features.Content;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;

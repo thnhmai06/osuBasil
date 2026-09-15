@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Basil.Domain.Content;
 using Basil.Server.Features.Content;
 
 namespace Basil.Server.Features.Auth;

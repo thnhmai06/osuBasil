@@ -1,9 +1,8 @@
 using System.Text.RegularExpressions;
-using Basil.Server.Features.Users;
+using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
-using Basil.Domain.Users;
 
-namespace Basil.Server.Features.Users;
+namespace Basil.Domain.Users;
 
 /// <summary>
 ///     Parses <c>GET /users/search</c>'s query syntax (<c>key&lt;operator&gt;value</c> tokens mixed
@@ -12,7 +11,7 @@ namespace Basil.Server.Features.Users;
 /// </summary>
 /// <remarks>
 ///     Only <c>:</c>/<c>=</c> are accepted operators -- unlike
-///     <see cref="Basil.Server.Features.Beatmaps.BeatmapsetSearchQueryParser" />, neither
+///     <see cref="BeatmapsetSearchQueryParser" />, neither
 ///     supported filter key (<c>country</c>, <c>privilege</c>) has an ordering, so <c>&lt;</c>/<c>&gt;</c>
 ///     tokens are left as free text rather than given comparison semantics they don't have. A token
 ///     naming a key this parser doesn't recognize, or a value that fails to parse for the key it

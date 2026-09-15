@@ -1,6 +1,6 @@
 using Basil.Domain.Beatmaps;
 
-namespace Basil.Server.Features.Scores;
+namespace Basil.Domain.Scores;
 
 /// <summary>
 ///     Provides userSession leaderboard ranks by ranked score per game mode.

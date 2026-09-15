@@ -1,6 +1,4 @@
-using Basil.Domain.Channels;
-
-namespace Basil.Server.Features.Chat;
+namespace Basil.Domain.Channels;
 
 /// <summary>
 ///     Provides read access to the Channels table.

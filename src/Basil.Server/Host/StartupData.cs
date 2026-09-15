@@ -1,4 +1,5 @@
 using Basil.Domain.Channels;
+using Basil.Domain.Content;
 using Basil.Server.Features.Auth;
 using Basil.Server.Features.Beatmaps;
 using Basil.Server.Features.Bot;

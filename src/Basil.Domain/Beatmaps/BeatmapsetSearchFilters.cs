@@ -1,53 +1,4 @@
-using Basil.Domain.Beatmaps;
-
-namespace Basil.Server.Features.Beatmaps;
-
-/// <summary>The comparison an individual <see cref="ComparableFilter{T}" /> applies.</summary>
-public enum ComparisonOperator
-{
-	/// <summary>The stored value must equal the filter's value.</summary>
-	Equal,
-
-	/// <summary>The stored value must be less than the filter's value.</summary>
-	LessThan,
-
-	/// <summary>The stored value must be less than or equal to the filter's value.</summary>
-	LessThanOrEqual,
-
-	/// <summary>The stored value must be greater than the filter's value.</summary>
-	GreaterThan,
-
-	/// <summary>The stored value must be greater than or equal to the filter's value.</summary>
-	GreaterThanOrEqual
-}
-
-/// <summary>A single `key&lt;operator&gt;value` search-query comparison against one stored field.</summary>
-/// <param name="Operator">The comparison to apply.</param>
-/// <param name="Value">The value to compare the stored field against.</param>
-public sealed record ComparableFilter<T>(ComparisonOperator Operator, T Value);
-
-/// <summary>
-///     A `key&lt;operator&gt;value` comparison against a stored instant, where the query's value may
-///     name only a year, a year and month, or a year/month/day -- in which case it names a whole
-///     window of time rather than one precise instant.
-/// </summary>
-/// <param name="Operator">The comparison to apply.</param>
-/// <param name="RangeStart">The start of the window the query's value names (inclusive).</param>
-/// <param name="RangeEnd">
-///     The end of the window the query's value names (exclusive) -- equal to
-///     <paramref name="RangeStart" /> when the query gave a precise instant rather than a
-///     year/month/day.
-/// </param>
-/// <remarks>
-///     <see cref="ComparisonOperator.Equal" /> matches anywhere inside
-///     [<see cref="RangeStart" />, <see cref="RangeEnd" />); <see cref="ComparisonOperator.GreaterThan" />
-///     and <see cref="ComparisonOperator.LessThanOrEqual" /> both anchor to
-///     <see cref="RangeEnd" /> (strictly after the whole window, or anywhere up through it);
-///     <see cref="ComparisonOperator.GreaterThanOrEqual" /> and <see cref="ComparisonOperator.LessThan" />
-///     both anchor to <see cref="RangeStart" /> (at or after the window begins, or strictly before it
-///     begins).
-/// </remarks>
-public sealed record DateFilter(ComparisonOperator Operator, DateTimeOffset RangeStart, DateTimeOffset RangeEnd);
+namespace Basil.Domain.Beatmaps;
 
 /// <summary>
 ///     A parsed beatmapset search query: free-text keywords plus zero or more structured filters,
@@ -109,3 +60,50 @@ public sealed record BeatmapsetSearchFilters(
 	/// <summary>An empty filter set: every beatmapset matches.</summary>
 	public static readonly BeatmapsetSearchFilters Empty = new();
 }
+
+/// <summary>The comparison an individual <see cref="ComparableFilter{T}" /> applies.</summary>
+public enum ComparisonOperator
+{
+	/// <summary>The stored value must equal the filter's value.</summary>
+	Equal,
+
+	/// <summary>The stored value must be less than the filter's value.</summary>
+	LessThan,
+
+	/// <summary>The stored value must be less than or equal to the filter's value.</summary>
+	LessThanOrEqual,
+
+	/// <summary>The stored value must be greater than the filter's value.</summary>
+	GreaterThan,
+
+	/// <summary>The stored value must be greater than or equal to the filter's value.</summary>
+	GreaterThanOrEqual
+}
+
+/// <summary>
+///     A `key&lt;operator&gt;value` comparison against a stored instant, where the query's value may
+///     name only a year, a year and month, or a year/month/day -- in which case it names a whole
+///     window of time rather than one precise instant.
+/// </summary>
+/// <param name="Operator">The comparison to apply.</param>
+/// <param name="RangeStart">The start of the window the query's value names (inclusive).</param>
+/// <param name="RangeEnd">
+///     The end of the window the query's value names (exclusive) -- equal to
+///     <paramref name="RangeStart" /> when the query gave a precise instant rather than a
+///     year/month/day.
+/// </param>
+/// <remarks>
+///     <see cref="ComparisonOperator.Equal" /> matches anywhere inside
+///     [<see cref="RangeStart" />, <see cref="RangeEnd" />); <see cref="ComparisonOperator.GreaterThan" />
+///     and <see cref="ComparisonOperator.LessThanOrEqual" /> both anchor to
+///     <see cref="RangeEnd" /> (strictly after the whole window, or anywhere up through it);
+///     <see cref="ComparisonOperator.GreaterThanOrEqual" /> and <see cref="ComparisonOperator.LessThan" />
+///     both anchor to <see cref="RangeStart" /> (at or after the window begins, or strictly before it
+///     begins).
+/// </remarks>
+public sealed record DateFilter(ComparisonOperator Operator, DateTimeOffset RangeStart, DateTimeOffset RangeEnd);
+
+/// <summary>A single `key&lt;operator&gt;value` search-query comparison against one stored field.</summary>
+/// <param name="Operator">The comparison to apply.</param>
+/// <param name="Value">The value to compare the stored field against.</param>
+public sealed record ComparableFilter<T>(ComparisonOperator Operator, T Value);

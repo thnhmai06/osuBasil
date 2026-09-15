@@ -1,3 +1,4 @@
+using Basil.Domain.Content;
 using Basil.Server.Features.Content;
 
 namespace Basil.Server.Features.Content;

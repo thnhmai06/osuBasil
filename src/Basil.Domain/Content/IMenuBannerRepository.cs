@@ -1,6 +1,4 @@
-using Basil.Domain.Content;
-
-namespace Basil.Server.Features.Content;
+namespace Basil.Domain.Content;
 
 /// <summary>
 ///     Provides CRUD access to the MenuBanners table.

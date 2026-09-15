@@ -1,8 +1,7 @@
-using Basil.Server.Features.Users;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
 
-namespace Basil.Server.Tests.Features.Users;
+namespace Basil.Domain.Tests;
 
 /// <summary>
 ///     Verifies <see cref="UserSearchQueryParser" />'s handling of <c>GET /users/search</c>'s

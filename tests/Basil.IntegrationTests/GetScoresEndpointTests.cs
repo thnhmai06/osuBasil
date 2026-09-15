@@ -5,6 +5,7 @@ using Basil.Server.Features.Users;
 using Basil.Server.Shared.Configuration;
 using Basil.Server.Shared.Sessions;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;

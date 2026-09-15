@@ -1,6 +1,7 @@
 using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
+using Basil.Domain.Users;
 using Basil.Server.Features.Auth;
 using Basil.Server.Features.Bot;
 using Basil.Server.Features.Irc;

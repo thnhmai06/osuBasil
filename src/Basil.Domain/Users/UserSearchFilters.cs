@@ -1,12 +1,12 @@
+using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
-using Basil.Domain.Users;
 
-namespace Basil.Server.Features.Users;
+namespace Basil.Domain.Users;
 
 /// <summary>
 ///     A parsed user search query: a free-text id/username portion plus zero or more structured
 ///     filters, in the same <c>key&lt;operator&gt;value</c> style as
-///     <see cref="Basil.Server.Features.Beatmaps.BeatmapsetSearchFilters" />.
+///     <see cref="BeatmapsetSearchFilters" />.
 /// </summary>
 /// <param name="Keywords">
 ///     The free-text portion of the query. Matched against a numeric user id exactly, or a substring

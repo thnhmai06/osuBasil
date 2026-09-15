@@ -1,6 +1,5 @@
-using Basil.Domain.Beatmaps;
 
-namespace Basil.Server.Features.Beatmaps;
+namespace Basil.Domain.Beatmaps;
 
 /// <summary>
 ///     Provides beatmap resolution: lookup by md5, id, filename, or set, and upsert of a single

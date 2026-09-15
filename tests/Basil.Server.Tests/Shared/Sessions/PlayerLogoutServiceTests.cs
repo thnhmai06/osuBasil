@@ -3,6 +3,8 @@ using Basil.Server.Features.Multiplayer.Packets;
 using Basil.Server.Features.Spectating.Packets;
 using Basil.Server.Shared.Eventing;
 using System.Text.Json;
+using Basil.Domain.Beatmaps;
+using Basil.Domain.Multiplayer;
 using Basil.Server.Features.Beatmaps;
 using Basil.Server.Features.Multiplayer;
 using Basil.Server.Features.Users;

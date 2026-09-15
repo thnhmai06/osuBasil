@@ -1,3 +1,4 @@
+using Basil.Domain.Users;
 using Basil.Server.Shared.Persistence;
 using Basil.Server.Features.Users;
 using Dapper;

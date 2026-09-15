@@ -3,6 +3,7 @@ using Basil.Server.Features.Beatmaps;
 using Basil.Server.Features.Content;
 using Basil.Server.Shared.Configuration;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Content;
 using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;

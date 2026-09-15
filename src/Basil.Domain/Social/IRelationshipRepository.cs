@@ -1,6 +1,4 @@
-using Basil.Domain.Social;
-
-namespace Basil.Server.Features.Users;
+namespace Basil.Domain.Social;
 
 /// <summary>
 ///     Provides access to the Relationships table.

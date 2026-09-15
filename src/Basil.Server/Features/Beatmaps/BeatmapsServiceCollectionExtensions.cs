@@ -1,3 +1,4 @@
+using Basil.Domain.Beatmaps;
 using Basil.Server.Shared.Configuration;
 using Basil.Server.Shared.Persistence;
 using Microsoft.Extensions.Caching.Memory;

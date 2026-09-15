@@ -2,6 +2,7 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Basil.Domain.Auth;
 using Basil.Server.Features.Auth;
 using Basil.Server.Features.Users;
 using Basil.Server.Shared.Configuration;

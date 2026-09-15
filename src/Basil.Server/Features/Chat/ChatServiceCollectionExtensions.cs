@@ -1,3 +1,4 @@
+using Basil.Domain.Channels;
 using Basil.Server.Features.Chat.Packets;
 using Basil.Server.Shared.Configuration;
 using Basil.Server.Shared.Http.Bancho;

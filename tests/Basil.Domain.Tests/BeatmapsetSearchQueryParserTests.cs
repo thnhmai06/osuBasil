@@ -1,7 +1,6 @@
-using Basil.Server.Features.Beatmaps;
 using Basil.Domain.Beatmaps;
 
-namespace Basil.Server.Tests.Features.Beatmaps;
+namespace Basil.Domain.Tests;
 
 /// <summary>
 ///     Verifies <see cref="BeatmapsetSearchQueryParser" />'s handling of osu!'s

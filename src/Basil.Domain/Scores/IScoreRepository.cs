@@ -1,10 +1,7 @@
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Scores;
 
-namespace Basil.Server.Features.Scores;
-
-// TODO: Đưa Score record lên Domain
+namespace Basil.Domain.Scores;
 
 /// <summary>
 ///     Provides access to the Scores table.
@@ -57,7 +54,8 @@ public interface IScoreRepository
 	/// <param name="limit">The maximum number of scores to return.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The requested page of score rows.</returns>
-	Task<IReadOnlyList<ScoreRow>> FetchPageAsync(int offset, int limit, CancellationToken cancellationToken = default);
+	Task<IReadOnlyList<ScoreRow>> FetchPageAsync(int offset, int limit,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>
 	///     Fetches every score linked to a given round.

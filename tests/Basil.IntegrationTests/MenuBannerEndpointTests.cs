@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Basil.Domain.Content;
 using Basil.Server.Features.Content;
 using Basil.Server.Shared.Configuration;
 using Basil.Server.Host;

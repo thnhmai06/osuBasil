@@ -1,3 +1,4 @@
+using Basil.Domain.Content;
 using Basil.Server.Features.Content;
 using Basil.Server.Shared.Configuration;
 using Microsoft.Extensions.Logging;
