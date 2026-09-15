@@ -367,38 +367,52 @@ constructing `MatchRoomState` directly instead of through `MatchSession`), `Basi
 Two files moved (`MatchRoomState` new, `MatchSlot` relocated), one file rewritten
 (`MatchSession.cs`, same public surface), one test file relocated, one `DomainAdjacency` edge added.
 
+## A correction, made before any further file moved: `GameSession.Match` retyping has no beneficiary
+
+The "Next exact step" originally written here (still visible in git history at `928dd1ac`) named
+scoping `GameSession`'s full split — retyping `Match`, `Spectating`, `ModeStats`, etc. per target doc
+§6's table — as C1b's next unit, on the theory that it would unblock `ScoreSubmissionService`. Before
+touching any file, checked every call site of `GameSession.Match`/`UserSession.Match` across the
+codebase (9 outside `Features/Multiplayer`, ~36 across 24 files inside it) and found the theory
+wrong on two counts:
+
+1. **`ScoreSubmissionService` stays in `Basil.Server` regardless of `Match`'s type.** Unit 7 already
+   established this — it writes `player.Status.Mods`/`.Mode` and `player.ModeStats` directly, live
+   session mutation that has nothing to do with `Match`. Retyping `Match` would not move
+   `ScoreSubmissionService` an inch closer to `Basil.Domain`; nothing currently needs it retyped.
+2. **The dominant pattern inside Multiplayer needs the full `MatchSession`, not just its state.**
+   `MatchChangeSlotHandler.HandleAsync` — representative of the ~24 packet handlers — reads
+   `gameSession.Match`, then immediately calls `match.BeginMutationAsync(...)`: it needs the lock and
+   the mutation scope, not a read-only state view. Retyping `Match` to `MatchRoomState` would force
+   every one of those 24 files to re-resolve the full session through
+   `matchRegistry.GetByDbId(...)` (the pattern `ChatDispatchService.ResolveScope` already uses when
+   it needs the same thing) — real, spread-out work with no current beneficiary on the other end.
+
+**The 24 packet handlers were never C1b candidates in the first place.** The target doc's own §3.2
+places them at `Basil.Hosts.Bancho/Multiplayer/` — Stage D's project, not `Basil.Domain`, regardless
+of how `GameSession`/`MatchSession` end up shaped. `GameSession.Match`'s retyping belongs with target
+doc §8 step 5 ("Split `GameSession` per §6"), which is Stage D/E work gated on the host projects
+existing, not a C1b prerequisite. Recorded here so a successor does not re-derive this from scratch:
+**`GameSession`'s split is out of scope for C1b.**
+
 ## Next exact step
 
-**Phase 1 moved state; it did not move any of the 16 target Domain files themselves, and three
-things are still genuinely blocked, in this order.**
+**What's actually left in C1b's per-feature table, now that the packet-handler layer is correctly
+out of scope, is `MpCommandService`/`MpReplies` (target doc §6, "F4, `Bot`") — the same measurement
+Unit 7 used for `AuthenticationService`, not yet applied here.** Before sizing a design: grep
+`MpCommandService`'s actual `GameSession`/`UserSession` member accesses, not its parameter types. If
+they resolve to reads of `.Id`/`.Name` plus replies through `ICommandReplySink` (already in
+`Basil.Domain.Bot` since Unit 6), the seam is small, `CredentialVerifier`-sized. If it mutates
+session state or calls `BeginMutationAsync` itself — plausible, since `!mp` commands mutate match
+state — it stays in `Basil.Server` for the same reason `ScoreSubmissionService` does, and Bot's
+remaining 5 files stay with it. Either way, C1b's per-feature table is close to fully resolved once
+this one measurement is made — Multiplayer's Domain-eligible surface turned out to be `MatchRoomState`
++ `MatchSlot` (Unit 8) plus whatever this measurement adds, not the full "16 files" the original
+table implied, because most of that count was always the packet-handler layer.
 
-1. **`GameSession.Match` is still typed `Basil.Server.Features.Multiplayer.MatchSession`.** The
-   target doc's §6 table says this property's ultimate home is `Basil.Domain/Multiplayer` — meaning
-   `ScoreSubmissionService`'s `player.Match?.CurrentRoundId` / `player.Match?.GetSlot(player.Id)?.Team`
-   only becomes a Domain-safe read once `GameSession.Match` itself is retyped to
-   `MatchRoomState` (or a narrower read-only view of it). That retyping is target doc §8 step 5
-   ("Split `GameSession` per §6"), a bigger, separately-scoped piece of work touching `GameSession`
-   directly — not something to fold into this unit casually, since `GameSession` is the 71-file
-   blast-radius type the target doc's own F1 finding is about.
-2. **The "match services"** (`MatchLifecycle`, `MatchMembership`, `MatchControlService`,
-   `MatchBroadcast`, and the ~24 packet handlers) all take the `Basil.Server`-side `MatchSession`
-   directly and call packet writers / notifiers in the same methods that read slot state — the same
-   shape Unit 5 found in Chat's `ChannelMembershipService`/`ChatDispatchService`, which stayed in
-   `Basil.Server` rather than move. Whether any of them can now depend on `MatchRoomState` instead of
-   the full `MatchSession` (now that the two are separable) is worth surveying per-file once
-   `GameSession.Match`'s retyping is scoped, not before — sizing it earlier is guessing at an
-   interface item 1 will dictate.
-3. **Bot's five remaining files and `ScoreSubmissionService`** both still ride on 1 and 2: Bot needs
-   `MpCommandService`/`MpReplies` moved into `Basil.Domain/Multiplayer` (target doc §6 F4), which
-   itself needs the match-services survey; `ScoreSubmissionService` needs `GameSession.Match`'s
-   retyping directly.
-
-**Practically: the next unit is scoping `GameSession`'s split (§8 step 5), the same way this unit
-scoped `MatchSession`'s — read `GameSession.cs` in full, inventory every member against the target
-doc's placement table (`Enqueue`/`Dequeue` → `Hosts.Bancho`; `IrcConnection` → `Hosts.Irc`; `Id`/
-`Name`/`Privilege`/`LoginTime`/`Country`/channels → `Basil.Domain`; `Match` → `Basil.Domain/
-Multiplayer`; `Spectating`/`Spectators` → `Basil.Domain/Spectating`; `ModeStats`/`Status` →
-`Basil.Domain/Users`; `InLobby` → `Basil.Domain/Chat`), and write that decision up before touching
-any file — `GameSession` is named in the target doc as a 71-file blast radius, larger than anything
-C1b has moved through so far, and deserves the same design-first discipline this unit and the chat
-seam both used.
+**C5's remeasurement, whenever it runs, will not land at the plan's predicted features-only ≈17.**
+That prediction assumed C1's original, undivided ~96-file move including the 24 Multiplayer handlers
+and the rest of the transport layer. C1b never intended to move those — this section is the record
+of why, the same way `architecture-progress.md`'s "C5, run after C1a" section explains the frozen
+post-C1a numbers. Not a miss; an expected result of C1 having correctly split into C1a/C1b in the
+first place.

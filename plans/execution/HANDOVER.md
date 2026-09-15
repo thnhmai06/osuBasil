@@ -126,15 +126,18 @@ crossing a namespace boundary is invisible to `DomainBoundaryTests` (ADR-008's d
 const-inlining gap), so a real edge must be declared even when the instrument cannot yet catch its
 absence.
 
-**What's left is bigger than the original "16 files" framing suggested.** Auth, Beatmaps, Content,
-Scores, Users, Chat and Spectating's contract-level work is done. What remains: `GameSession` itself
-needs the split target doc §8 step 5 describes (`Match` → `Basil.Domain/Multiplayer`,
-`Spectating`/`Spectators` → `Basil.Domain/Spectating`, `ModeStats`/`Status` → `Basil.Domain/Users`,
-etc.) before `ScoreSubmissionService` can move or the ~24 Multiplayer packet handlers can be
-surveyed for Domain eligibility; that retyping is its own scoped design (`GameSession` is the
-71-file blast radius the target doc's F1 finding names, the largest single piece C1b has yet to
-size); Bot's remaining 5 files and `MpCommandService`/`MpReplies`'s move into
-`Basil.Domain/Multiplayer` ride along with it. Full detail and the exact next unit in
+**Correction recorded after Unit 8: `GameSession`'s split is out of scope for C1b, not the next
+gate.** The checkpoint's first draft of this section named retyping `GameSession.Match` (target doc
+§8 step 5) as the next unit. Checked every call site before starting and found it has no current
+beneficiary: `ScoreSubmissionService` stays in `Basil.Server` regardless (it mutates live session
+state, unrelated to `Match`'s type — Unit 7 already established this), and the ~24 Multiplayer packet
+handlers overwhelmingly need the full `MatchSession` (for `BeginMutationAsync`), not a state-only
+view — retyping `Match` would touch all 24 to unblock nothing. Those handlers were never C1b
+candidates anyway: the target doc's own §3.2 places them at `Basil.Hosts.Bancho/Multiplayer/`, Stage
+D's project, independent of how `GameSession` is shaped. What's actually left in Multiplayer's
+per-feature count: `MpCommandService`/`MpReplies` (§6 F4), sized with the same
+member-access-not-parameter-type measurement Unit 7 used for `AuthenticationService`; Bot's remaining
+5 files ride on whatever that measurement decides. Full detail in
 `c1b-project-move-decision.md`'s "Next exact step".
 
 ---
