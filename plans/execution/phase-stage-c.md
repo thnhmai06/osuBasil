@@ -3,7 +3,13 @@
 > Read this file first. It is kept current in the same commit as every green step, so a
 > successor can resume from here without reconstructing state from `git log` and a build.
 
-## Current task: C1a done (pinned list 21 → 3). Next is C5
+## Current task: C1a done (pinned list 21 → 3), C5 reported, user chose to run C1b
+
+C1b (the ~96-file move into `Basil.Domain`) is tracked in
+`plans/execution/c1b-project-move-decision.md`, not in this file — its unit-at-a-time structure
+doesn't fit the per-service checkpoint shape below. Unit 1 (14 repository/store interfaces plus
+their search-filter/query-parser pairs, 18 files) is done and pushed (`214ff845`). See that
+document's "Next exact step" for what unit is next.
 
 Order is C4 → C3 → C6 → C1a → C5 (see `plans/execution/stage-c-order-decision.md` for why C1 runs
 last, and `plans/basil-plan-20260909.md`'s Stage C preamble, which adds C6 and splits C1). C2 is
