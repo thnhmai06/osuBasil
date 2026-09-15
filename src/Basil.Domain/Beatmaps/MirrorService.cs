@@ -1,10 +1,8 @@
 using Basil.Domain.Content;
-using Basil.Server.Features.Content;
-using Basil.Server.Shared.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace Basil.Server.Features.Beatmaps;
+namespace Basil.Domain.Beatmaps;
 
 /// <summary>
 ///     Manages the server's beatmap mirror endpoints: the download and search mirrors used when a

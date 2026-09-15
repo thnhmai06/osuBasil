@@ -1,12 +1,10 @@
+using Basil.Domain.Beatmaps;
 using Basil.Domain.Content;
-using Basil.Server.Features.Content;
-using Basil.Server.Shared.Configuration;
-using Basil.Server.Features.Beatmaps;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
-namespace Basil.Server.Tests.Features.Beatmaps;
+namespace Basil.Domain.Tests;
 
 public class MirrorServiceTests
 {

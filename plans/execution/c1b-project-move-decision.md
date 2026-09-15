@@ -135,17 +135,60 @@ relocated test file, `NSubstitute` added to that project's references), `Basil.S
 Five files moved (`MotdService`, `IReplayStorage`, `IScoreDecryptor`, `ReplayService`, its test
 file), one `Shared -> Features` pinned row deleted.
 
+## Unit 3 — Beatmaps' mirror contracts and service (done)
+
+**A fourth blocker surfaced: an `IOptions<T>` type argument that is itself a Server type.**
+`Microsoft.Extensions.Options`/`ILogger<T>` are allowed abstraction packages, but the config POCO
+they wrap around is not automatically one — `MirrorOptions` lived in
+`Basil.Server.Shared.Configuration`, and `MirrorService` took `IOptions<MirrorOptions>`. The
+namespace-only move compiled fine (the file was still physically in `Basil.Server`, so the type
+reference resolved within the same assembly); only the physical `git mv` — which actually changes
+which project compiles the file — surfaced the real `CS0246`. **The namespace edit alone never
+proves a move is safe; only the physical relocation plus a rebuild does.** `MirrorOptions` is a
+plain POCO with no framework attributes beyond what `Options` binds by reflection, so it moved to
+`Basil.Domain.Beatmaps` alongside `MirrorService`; `Basil.Domain.csproj` gained
+`Microsoft.Extensions.Options` as its second package reference.
+
+`DirectSearchService` and `BeatmapViews.cs` were checked and correctly left behind: the former
+builds the pipe-delimited osu!direct wire response (`Format`/`FormatMirror`, the same
+response-encoder category as `ScoreSubmissionChartsFormatter` and `LoginResponseEncoder`); the
+latter is explicitly, by its own doc comments, the "API-facing view types" mapped from the Domain
+model for the beatmap/beatmapset HTTP endpoints — the same category as `ScoreDetailView`.
+`PpyOsuCalculator` (osu!-framework-backed `IOsuCalculator` implementation, with direct
+`File.OpenRead`) and `BeatmapsetAssetCache` (filesystem/zip extraction) stayed for reasons already
+established.
+
+Four files moved: `IMirrorSearchClient` (+ its `MirrorSearchSet`/`MirrorSearchBeatmap` result DTOs,
+which had to move with it — the interface's own return type made them a hard requirement, not a
+judgment call), `IOsuCalculator` (+ its `BeatmapAnalysis` result type), `MirrorService` (+
+`MirrorEndpoints`), `MirrorOptions`. Two new `DomainAdjacency` edges: `Beatmaps -> Scores`
+(`IOsuCalculator.Analyze` takes `Mods`), `Beatmaps -> Content` (`MirrorService` reads/writes through
+`ISettingsRepository`). `FakeOsuCalculator` (a test double implementing `IOsuCalculator`) stayed in
+`Basil.Server.Tests` — it is consumed only by tests of services that themselves stay in
+`Basil.Server` (`BeatmapIngestionServiceTests` and its two siblings), so moving the interface it
+implements did not require moving it.
+
+**Verification:** build green; `Basil.ArchitectureTests` 8, `Basil.Domain.Tests` 183 (+7, one
+relocated test file), `Basil.Server.Tests` 993 (−7, matching), `Basil.Protocol.Tests` 158;
+`Basil.IntegrationTests` 363, all passed, 8 min 34 s.
+
 ## Next exact step
 
-**Unit 3 — Scores' remaining candidate, `ScoreSubmissionService`, and Beatmaps.**
-`ScoreSubmissionService` still needs checking against the same three blockers as every future
-candidate now (framework imports, `GameSession`/`UserSession`/Shared coupling, filesystem I/O) —
-it was flagged as `GameSession`-typed in an earlier pass and may need a smaller Domain-shaped
-parameter before it can move, the same kind of question C1a's chat and match seams already
-answered for their own services. Beatmaps (target: 15 files) is a good parallel slice to size next,
-following the same per-file `move_type_to_namespace preview: true` check — trust its `conflicts`
-field over any text search, and treat direct filesystem I/O as a blocker even where no `using` line
-shows it.
+**`ScoreSubmissionService` is the last Scores candidate, and it needs a design pass, not a quick
+move.** It takes `Basil.Server.Shared.Sessions` types directly (resolving the submitting player by
+name through the live session registries) alongside its real business decisions (duplicate check,
+grade computation, hardware-ban-adjacent validation). This is the same shape as C1a's match and
+chat seams: the service decides and, in the same method, reaches for session-held state a plain id
+or a small Domain-shaped lookup result could carry instead. Size it the way
+`chat-seam-decision.md` sized the chat seam before touching any file, rather than attempting it as
+one more unit like the contract moves above.
+
+**Otherwise, Users and Content's remaining service-shaped files are the next safe territory** —
+apply the four-blocker checklist (framework imports; `GameSession`/`UserSession`/`IrcSession`
+coupling; direct filesystem I/O; an `IOptions<T>`/other wrapped type argument that is itself a
+Server type) to each remaining candidate with `move_type_to_namespace preview: true`, and confirm
+every move with a physical relocation and rebuild before trusting a clean preview — Unit 3's
+`MirrorOptions` finding shows preview and the namespace-only edit are not enough on their own.
 
 **`Multiplayer` and `MatchSession`'s split are last, not first.** Every Multiplayer handler file
 takes `MatchSession` (still entirely `Basil.Server.Features.Multiplayer`) as a parameter, and

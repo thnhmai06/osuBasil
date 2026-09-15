@@ -1,3 +1,4 @@
+using Basil.Domain.Beatmaps;
 using Basil.Server.Shared.Http;
 using Basil.Server.Features.Beatmaps;
 using Basil.Server.Features.Auth;

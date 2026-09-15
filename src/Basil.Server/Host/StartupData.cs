@@ -1,3 +1,4 @@
+using Basil.Domain.Beatmaps;
 using Basil.Domain.Channels;
 using Basil.Domain.Content;
 using Basil.Server.Features.Auth;

@@ -1,4 +1,4 @@
-namespace Basil.Server.Features.Beatmaps;
+namespace Basil.Domain.Beatmaps;
 
 /// <summary>
 ///     Queries an external osu!direct mirror's search API.

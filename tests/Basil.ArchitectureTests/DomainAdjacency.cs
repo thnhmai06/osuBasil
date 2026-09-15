@@ -49,6 +49,12 @@ internal static class DomainAdjacency
 		("Scores", "Multiplayer"),
 
 		// ILoginRepository.CreateAsync returns the Login row it persisted.
-		("Auth", "Login")
+		("Auth", "Login"),
+
+		// IOsuCalculator.Analyze takes the Mods a beatmap is being analyzed under.
+		("Beatmaps", "Scores"),
+
+		// MirrorService reads and writes its endpoints through ISettingsRepository.
+		("Beatmaps", "Content")
 	];
 }

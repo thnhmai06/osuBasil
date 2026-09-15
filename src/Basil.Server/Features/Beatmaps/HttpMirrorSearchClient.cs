@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using Basil.Domain.Beatmaps;
 using Basil.Server.Features.Beatmaps;
 using Microsoft.Extensions.Logging;
 

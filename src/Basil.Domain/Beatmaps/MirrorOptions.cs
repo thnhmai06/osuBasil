@@ -1,9 +1,9 @@
-namespace Basil.Server.Shared.Configuration;
+namespace Basil.Domain.Beatmaps;
 
 /// <summary>
 ///     The one-time upgrade seed for the beatmap mirror endpoints: an existing deployment's
 ///     <c>appsettings.json</c> value, copied into the database the first time the server starts with
-///     this section present. See <see cref="Basil.Server.Features.Beatmaps.MirrorService" /> for
+///     this section present. See <see cref="MirrorService" /> for
 ///     the live, mutable source of truth read on every request from then on.
 /// </summary>
 public sealed class MirrorOptions
