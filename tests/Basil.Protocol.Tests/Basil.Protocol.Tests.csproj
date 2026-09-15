@@ -22,7 +22,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\src\Basil.Protocol\Basil.Protocol.csproj"/>
+		<ProjectReference Include="..\..\src\Basil.Protocol.Bancho\Basil.Protocol.Bancho.csproj"/>
+		<ProjectReference Include="..\..\src\Basil.Protocol.Irc\Basil.Protocol.Irc.csproj"/>
 	</ItemGroup>
 
 </Project>

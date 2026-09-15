@@ -28,7 +28,8 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\Basil.Server\Basil.Server.csproj"/>
-		<ProjectReference Include="..\..\src\Basil.Protocol\Basil.Protocol.csproj"/>
+		<ProjectReference Include="..\..\src\Basil.Protocol.Bancho\Basil.Protocol.Bancho.csproj"/>
+		<ProjectReference Include="..\..\src\Basil.Protocol.Irc\Basil.Protocol.Irc.csproj"/>
 	</ItemGroup>
 
 	<!-- Fixture files live beside the Beatmaps tests that use them (Features/Beatmaps/Fixtures/),

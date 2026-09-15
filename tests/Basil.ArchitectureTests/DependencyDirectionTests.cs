@@ -18,7 +18,8 @@ namespace Basil.ArchitectureTests;
 public class DependencyDirectionTests
 {
 	private static readonly Assembly DomainAssembly = typeof(AssemblyMarker).Assembly;
-	private static readonly Assembly ProtocolAssembly = typeof(Protocol.AssemblyMarker).Assembly;
+	private static readonly Assembly ProtocolBanchoAssembly = typeof(Protocol.AssemblyMarker).Assembly;
+	private static readonly Assembly ProtocolIrcAssembly = typeof(Protocol.Irc.AssemblyMarker).Assembly;
 
 	[Fact]
 	public void Domain_Should_Not_HaveDependencyOn_Server()
@@ -47,9 +48,20 @@ public class DependencyDirectionTests
 	}
 
 	[Fact]
-	public void Protocol_Should_Not_HaveDependencyOn_AnyOtherBanchoProject()
+	public void ProtocolBancho_Should_Not_HaveDependencyOn_AnyOtherProject()
 	{
-		var result = Types.InAssembly(ProtocolAssembly)
+		var result = Types.InAssembly(ProtocolBanchoAssembly)
+			.Should()
+			.NotHaveDependencyOnAny("Basil.Domain", "Basil.Server")
+			.GetResult();
+
+		Assert.True(result.IsSuccessful, FailureMessage(result));
+	}
+
+	[Fact]
+	public void ProtocolIrc_Should_Not_HaveDependencyOn_AnyOtherProject()
+	{
+		var result = Types.InAssembly(ProtocolIrcAssembly)
 			.Should()
 			.NotHaveDependencyOnAny("Basil.Domain", "Basil.Server")
 			.GetResult();

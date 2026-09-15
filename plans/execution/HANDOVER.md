@@ -20,12 +20,15 @@ touched a source file — Unit 9 changed only documentation:
 
 | Project | Count |
 |---|---:|
-| `Basil.ArchitectureTests` | 8 |
+| `Basil.ArchitectureTests` | 9 |
 | `Basil.Domain.Tests` | 235 |
 | `Basil.Protocol.Tests` | 158 |
 | `Basil.Server.Tests` | 944 |
 | `Basil.IntegrationTests` | 363 |
-| **Total** | **1708** |
+| **Total** | **1709** |
+
+(+1 in `Basil.ArchitectureTests` since D1: `DependencyDirectionTests`' single Protocol check split
+into one per new assembly.)
 
 One integration test, `DiagnosticEndpointTests.GetOverviewLive_FirstEventCarriesTheCuratedFields`,
 failed once on a slow full run (8 min 02 s where 6 minutes is usual) and passed in isolation. It
@@ -44,7 +47,7 @@ Treat that number with suspicion — see §4.
 | **B** — untangle before anything moves | Done, all six tasks. |
 | **F** — the Diagnostic API | Done and merged. |
 | **C** — extract the business layer | C4, C3, C6, **C1a done** (pinned list 21 → 3), **C1b done** (nine units, per-feature table resolved), **C5 run and reported for both**. C2 **off the path**. |
-| **D** — split the transports | Not started. This is now the next stage — see §2's close. |
+| **D** — split the transports | **Running.** D1 done (`Basil.Protocol` split into `.Bancho`/`.Irc`); D2–D4 not started. See `plans/execution/stage-d-progress.md`. |
 | **E** — declare what survives, enforce it | Not started. |
 | **G** — the load harness | **Done.** Task G5 fixed (`e2931b33`); the `ReloginGuardWindowSeconds` duplication stays as accepted debt (see §8); the `DiagnosticEndpointTests` flake investigated, no defect found (see §8). |
 | **H** — documentation and final verification | Not started. |

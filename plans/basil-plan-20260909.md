@@ -485,16 +485,20 @@ wherever its files live, so it falls only when a dependency actually goes away.
 
 Only safe once Stages B and C have taken the business logic out of the files being moved.
 
-### Task D1: Split `Basil.Protocol` in two
+### Task D1: Split `Basil.Protocol` in two — done 2026-09-15
 
 Measured: zero cross-references between the halves, in both directions.
 
-- [ ] `Basil.Protocol.Bancho` takes `Packets/`, `Multiplayer/`, `Binary/`, `BanchoMessage.cs`,
+- [x] `Basil.Protocol.Bancho` takes `Packets/`, `Multiplayer/`, `Binary/`, `BanchoMessage.cs`,
   `LoginFailureReason.cs`.
-- [ ] `Basil.Protocol.Irc` takes `Irc/`.
-- [ ] `Basil.Protocol.Tests` covers both; keep its 158 tests passing with **no `.cs` change** —
-  namespace-only edits at most. The bancho packet layouts are a wire contract.
-- [ ] Update `Basil.slnx` with the `/Sources/Protocol/` folder.
+- [x] `Basil.Protocol.Irc` takes `Irc/`.
+- [x] `Basil.Protocol.Tests` covers both; keep its 158 tests passing with **no `.cs` change** —
+  namespace-only edits at most. The bancho packet layouts are a wire contract. **Achieved literally
+  zero `.cs` change**, including in production code: `Basil.Protocol.Bancho.csproj` pins
+  `RootNamespace` to the pre-split `Basil.Protocol` rather than renaming the 138 files across
+  `Basil.Server` and its tests that reference it. Full rationale in
+  `plans/execution/stage-d-progress.md`.
+- [x] Update `Basil.slnx` with the `/Sources/Protocol/` folder.
 
 ### Task D2: Create the three host projects
 
