@@ -1,7 +1,7 @@
 ﻿using System.Text;
 using Basil.Domain.Login;
 
-namespace Basil.Server.Features.Auth;
+namespace Basil.Domain.Auth;
 
 /// <summary>
 ///     Represents the data an osu! client sends when logging in.

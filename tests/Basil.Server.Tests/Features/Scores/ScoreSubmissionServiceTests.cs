@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Reflection;
+using Basil.Domain.Auth;
 using Basil.Server.Features.Beatmaps;
 using Basil.Server.Features.Scores;
 using Basil.Server.Features.Users;

@@ -2,6 +2,7 @@ using Basil.Server.Shared.Eventing;
 using Basil.Server.Shared.Http;
 using System.Security.Cryptography;
 using System.Text;
+using Basil.Domain.Auth;
 using Basil.Server.Features.Users;
 using Basil.Server.Shared.Configuration;
 using Basil.Server.Features.Bot;

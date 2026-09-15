@@ -1,10 +1,8 @@
+using Basil.Domain.Auth;
 using Basil.Domain.Content;
-using Basil.Server.Features.Content;
-using Basil.Server.Features.Users;
-using Basil.Server.Features.Auth;
 using NSubstitute;
 
-namespace Basil.Server.Tests.Features.Auth;
+namespace Basil.Domain.Tests;
 
 public class AdminKeyServiceTests
 {

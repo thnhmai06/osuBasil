@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using Basil.Domain.Auth;
 using Basil.Server.Shared.Http;
 using Basil.Server.Features.Auth;
 using Basil.Server.Shared.Http.OpenApi;

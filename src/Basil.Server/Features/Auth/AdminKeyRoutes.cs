@@ -1,5 +1,6 @@
 using Basil.Server.Shared.Http;
 using System.Text;
+using Basil.Domain.Auth;
 using Basil.Server.Features.Auth;
 using Basil.Server.Shared.Http.OpenApi;
 

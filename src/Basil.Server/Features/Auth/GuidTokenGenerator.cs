@@ -1,3 +1,5 @@
+using Basil.Domain.Auth;
+
 namespace Basil.Server.Features.Auth;
 
 /// <inheritdoc cref="ITokenGenerator" />

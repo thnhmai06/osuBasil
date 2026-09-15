@@ -77,14 +77,14 @@ public class SliceBoundaryTests
 		//
 		// FileSystemReplayStorage dropped out during C1b (2026-09-15): it referenced
 		// Features.Scores.IReplayStorage, and that interface moved into Basil.Domain.Scores, so the
-		// reference now points at Domain instead of a slice.
+		// reference now points at Domain instead of a slice. OsuWebRoutes dropped out the same way:
+		// its Features.Auth references (AdminKeyService, IPasswordHasher) all moved.
 		string[] knownOffenders =
 		[
 			"Basil.Server.Shared.Http.Bancho.PacketDispatcher",
 			"Basil.Server.Shared.Http.BanchoHostGroups",
 			"Basil.Server.Shared.Http.OpenApi.OpenApiExampleExtensions",
 			"Basil.Server.Shared.Http.OpenApi.SecuritySchemeTransformers",
-			"Basil.Server.Shared.Http.OsuWebRoutes",
 			"Basil.Server.Shared.Media.Assets.BeatmapsetBackgroundProvider",
 			"Basil.Server.Shared.Media.Assets.BeatmapThumbnailProvider",
 			"Basil.Server.Shared.Media.Assets.MenuIconProvider",

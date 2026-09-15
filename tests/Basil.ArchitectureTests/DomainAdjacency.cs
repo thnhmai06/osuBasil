@@ -55,6 +55,9 @@ internal static class DomainAdjacency
 		("Beatmaps", "Scores"),
 
 		// MirrorService reads and writes its endpoints through ISettingsRepository.
-		("Beatmaps", "Content")
+		("Beatmaps", "Content"),
+
+		// AdminKeyService stores the admin key hash through ISettingsRepository.
+		("Auth", "Content")
 	];
 }

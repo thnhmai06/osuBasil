@@ -1,3 +1,4 @@
+using Basil.Domain.Auth;
 using Basil.Server.Features.Users;
 using Basil.Server.Features.Auth;
 using Basil.Server.Shared.Sessions;

@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using Basil.Domain.Auth;
 using Basil.Server.Features.Beatmaps;
 using Basil.Server.Features.Scores;
 using Basil.Server.Features.Users;

@@ -1,4 +1,4 @@
-namespace Basil.Server.Features.Auth;
+namespace Basil.Domain.Auth;
 
 /// <summary>
 ///     Generates session tokens for authenticated client sessions.

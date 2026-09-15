@@ -1,8 +1,8 @@
-﻿using System.Text;
-using Basil.Server.Features.Auth;
+using System.Text;
+using Basil.Domain.Auth;
 using Basil.Domain.Login;
 
-namespace Basil.Server.Tests.Features.Auth;
+namespace Basil.Domain.Tests;
 
 /// <summary>Verifies `LoginForm.From` parses the osu! login POST body into its fields.</summary>
 public class LoginFormTests

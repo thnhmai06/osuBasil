@@ -1,9 +1,8 @@
 using System.Globalization;
 using System.Text;
 using Basil.Domain.Content;
-using Basil.Server.Features.Content;
 
-namespace Basil.Server.Features.Auth;
+namespace Basil.Domain.Auth;
 
 /// <summary>
 ///     Manages the server's admin key: the secret that gates management actions and in-game

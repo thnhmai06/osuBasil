@@ -172,23 +172,49 @@ implements did not require moving it.
 relocated test file), `Basil.Server.Tests` 993 (−7, matching), `Basil.Protocol.Tests` 158;
 `Basil.IntegrationTests` 363, all passed, 8 min 34 s.
 
+## Unit 4 — the remaining Auth contracts and services (done)
+
+`Users` and `Content` had nothing left after Units 1-2: every top-level file in `Features/Users/` is
+now a route, an adapter, a DI registration, or the API-facing `UserView`; `Features/Content/`'s
+remaining services are all the filesystem-I/O ones Unit 2 already confirmed blocked. Auth still had
+four clean candidates: `IPasswordHasher`, `ITokenGenerator` (contracts, zero dependencies — their
+implementations `BCryptPasswordHasher`/`GuidTokenGenerator` stay, same pattern as every other
+contract-versus-adapter split so far), `LoginForm` (parses the raw login POST body into a
+domain-shaped record, only `Basil.Domain.Login` in its dependency list), and `AdminKeyService`
+(reads/writes the admin key hash through `ISettingsRepository` and the now-moved `IPasswordHasher`
+— no session or filesystem touch). `AuthenticationService` stays: confirmed `GameSession`-typed,
+the same category as `ScoreSubmissionService` below.
+
+One new `DomainAdjacency` edge, `Auth -> Content` (`AdminKeyService` through `ISettingsRepository`).
+`OsuWebRoutes` dropped out of the `Shared -> Features` pinned list as a second side effect (its
+`Features.Auth` references all moved) — second pinned-list movement, row deleted.
+
+**Verification:** build green; `Basil.ArchitectureTests` 8, `Basil.Domain.Tests` 197 (+14, two
+relocated test files), `Basil.Server.Tests` 979 (−14, matching), `Basil.Protocol.Tests` 158;
+`Basil.IntegrationTests` 363, all passed, 7 min 32 s.
+
+Six files moved (4 source, 2 test), one more `Shared -> Features` pinned row deleted (two total
+since C1b started).
+
 ## Next exact step
 
-**`ScoreSubmissionService` is the last Scores candidate, and it needs a design pass, not a quick
-move.** It takes `Basil.Server.Shared.Sessions` types directly (resolving the submitting player by
-name through the live session registries) alongside its real business decisions (duplicate check,
-grade computation, hardware-ban-adjacent validation). This is the same shape as C1a's match and
-chat seams: the service decides and, in the same method, reaches for session-held state a plain id
-or a small Domain-shaped lookup result could carry instead. Size it the way
-`chat-seam-decision.md` sized the chat seam before touching any file, rather than attempting it as
-one more unit like the contract moves above.
+**`ScoreSubmissionService` and `AuthenticationService` are what remains at this granularity, and
+both need a design pass, not a quick move.** Both are `GameSession`/`UserSession`-typed throughout
+— resolving a player by id or name through the live session registries — alongside real business
+decisions (`ScoreSubmissionService`: duplicate check, grade computation, hardware-ban-adjacent
+validation; `AuthenticationService`: password verification against an online or offline account).
+This is the same shape as C1a's match and chat seams: the service decides and, in the same method,
+reaches for session-held state a plain id or a small Domain-shaped lookup result could carry
+instead. Size each the way `chat-seam-decision.md` sized the chat seam before touching any file,
+rather than attempting either as one more contract-style unit.
 
-**Otherwise, Users and Content's remaining service-shaped files are the next safe territory** —
-apply the four-blocker checklist (framework imports; `GameSession`/`UserSession`/`IrcSession`
-coupling; direct filesystem I/O; an `IOptions<T>`/other wrapped type argument that is itself a
-Server type) to each remaining candidate with `move_type_to_namespace preview: true`, and confirm
-every move with a physical relocation and rebuild before trusting a clean preview — Unit 3's
-`MirrorOptions` finding shows preview and the namespace-only edit are not enough on their own.
+**With Auth, Beatmaps, Content, Scores and Users' contract-level work done, Chat, Spectating,
+Multiplayer and Bot are what remain of the target's per-feature table** (Chat 6, Spectating 7,
+Multiplayer 16, Bot 6 files). Chat and Spectating are worth surveying next with the same
+four-blocker checklist (framework imports; `GameSession`/`UserSession`/`IrcSession` coupling; direct
+filesystem I/O; a wrapped type argument — `IOptions<T>`'s `T`, etc. — that is itself a Server type);
+Multiplayer stays last, gated on the `MatchSession` split the original C1 task text already
+describes.
 
 **`Multiplayer` and `MatchSession`'s split are last, not first.** Every Multiplayer handler file
 takes `MatchSession` (still entirely `Basil.Server.Features.Multiplayer`) as a parameter, and

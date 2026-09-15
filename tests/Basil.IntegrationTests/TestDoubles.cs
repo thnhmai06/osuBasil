@@ -1,5 +1,6 @@
 using Basil.Server.Features.Auth;
 using System.Text;
+using Basil.Domain.Auth;
 using Basil.Server.Features.Beatmaps;
 using Basil.Server.Features.Chat;
 using Basil.Server.Features.Content;

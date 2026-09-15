@@ -1,4 +1,4 @@
-namespace Basil.Server.Features.Auth;
+namespace Basil.Domain.Auth;
 
 /// <summary>
 ///     Creates and verifies bcrypt hashes for any secret this server stores instead of plaintext:
