@@ -9,11 +9,11 @@ it says so.
 
 ## 1. Where things stand
 
-Branch **`feat/vsa-migration`**, five commits past `e286cc26` (see `git log`), **not yet pushed**
-as of the 2026-09-15 checkpoint — push it. A second worktree sits at
+Branch **`feat/vsa-migration`**, at `666e704c`, pushed. A second worktree sits at
 `V:\Code\cs\osuBasil-diagnostics` on `investigate/diagnostic-live-flake`, branched from
-`9a4265ab` on 2026-09-14 for the flake diagnosis in §8; it may hold a Debug build and nothing else
-of value — check `git status` there before using it.
+`9a4265ab`, for the flake diagnosis in §8. As of this checkpoint it is a clean build with no
+uncommitted investigation output — the diagnosis has not run to completion yet; check `git status`
+there before starting.
 
 **The suite is green.** Verified 2026-09-14 on `e286cc26` plus the new architecture test, and again
 after each C1a step, as five separate calls (§5):
@@ -43,7 +43,7 @@ Treat that number with suspicion — see §4.
 | **A** — make constant-mediated coupling visible | Done. ADR-008. |
 | **B** — untangle before anything moves | Done, all six tasks. |
 | **F** — the Diagnostic API | Done and merged. |
-| **C** — extract the business layer | C4, C3, C6 done. C2 **off the path**. **C1 split: C1a in progress (2 of 5 steps, pinned list 21 → 17), then C5; C1b decided after.** |
+| **C** — extract the business layer | C4, C3, C6 done. C2 **off the path**. **C1 split: C1a in progress (3 of 5 steps, pinned list 21 → 10), then C5; C1b decided after.** |
 | **D** — split the transports | Not started. Gated on C5. |
 | **E** — declare what survives, enforce it | Not started. |
 | **G** — the load harness | Not started. Unblocked since F merged. |
@@ -69,32 +69,40 @@ The plan's sizing table checked five framework packages and never checked the pr
 fails both when a new business type reaches for the protocol and when an entry is removed without
 deleting its row — proven by deleting one row and watching it fail.
 
-**C1a progress (2026-09-15):** step 1 `SpectatorService` (`9a4265ab`, 21 → 20) and step 2 the
-match services (`IMatchNotifier`, rows `MatchMembership`, `MatchControlService`, `AbortHandler`
-deleted, 20 → 17) are committed. `plans/execution/phase-stage-c.md` "C1a" has the per-step record.
+**C1a progress (2026-09-15):** step 1 `SpectatorService` (`9a4265ab`, 21 → 20), step 2 the match
+services (`IMatchNotifier`, rows `MatchMembership`, `MatchControlService`, `AbortHandler` deleted,
+20 → 17), and step 3 the whole chat seam (`c152c026`, `16b53d66`, `cd3edf84`, `087902df`,
+`666e704c`; `ChatLine`, `IChatNotifier`, `IChannelNotifier`, NAMES/LIST moved to `IrcQueryService`;
+rows `Auth.ClientIntegrityService`, `Multiplayer.MatchBroadcast`,
+`MpCommandService+ScopedDmReplySink`, `Chat.ChatDispatchService` and its two nested sinks,
+`Chat.ChannelMembershipService` deleted, 17 → 10) are all committed and pushed.
+`plans/execution/phase-stage-c.md` "C1a" has the per-step record, and
+`plans/execution/chat-seam-decision.md` has the design the chat commits followed, including one
+amendment made mid-execution (the join echo takes the roster as a parameter rather than calling
+`IrcQueryService`, which would have been a constructor cycle).
 
-**Remaining, in order:**
+**Remaining, in order, pinned list at 10:**
 
-3. **The chat seam — design first, then one commit per type.** `Chat.ChatDispatchService`,
-   `Chat.ChannelMembershipService`, `Multiplayer.MatchBroadcast` (its `IrcMessageWriter` lines),
-   `Multiplayer.MpCommandService`, `Auth.ClientIntegrityService`. See "Step 3 brief" below.
-4. `Auth.LoginService` last — the login reply is intrinsically a packet sequence and may be
-   classified as an adapter rather than moved.
+4. **`Auth.LoginService` — a design question first, then the commit.** 24 `ServerPacketWriter`
+   sites building one `byte[]` login-response body (`ProtocolVersion`, `LoginReply`,
+   `BanchoPrivileges`, per-channel `ChannelInfo`, `MainMenuIcon`, `FriendsList`, `SilenceEnd`,
+   per-other-player presence/stats via `PacketBuilders`, `AccountRestricted`, a welcome
+   `Notification`) plus `PacketBuilders.BuildUserPresence`/`BuildUserStats`, which other sessions
+   also receive. The open question, stated in `phase-stage-c.md`'s "Next exact step": is this a
+   notifier candidate, or is `LoginService` correctly an adapter (row stays, like
+   `MatchPacketDataMapper`) because assembling a login response **is** encoding rather than
+   deciding? Answer it with evidence before writing a notifier, and record the answer as a decision
+   document the way the chat seam got one.
 5. `MatchState`'s three users (`IMatchRegistry`, `InMemoryMatchRegistry`,
    `MatchLiveSnapshotBuilder`, plus `MatchLifecycle` which keeps its row only for this), the two API
    route types (`AnnounceRoutes`, `MatchListEndpoints`, already named by Task D3), and
    `Spectating.SpectateFramesEvent` (SSE payload carrying `ReplayFrame`/`ScoreFrame`).
 
 For each: replace the encoder calls with a notification contract the service owns and the bancho or
-IRC side implements; decide the contract's shape at that service from its call sites, the way the
-logout handlers were; keep the match lock discipline (§9) — the notifier is called inside the same
-locked sequence the encoder was; delete the row from the pinned list; run the five test calls;
-commit with the checkpoint in `phase-stage-c.md` updated in the same commit.
-
-**Step 3 is designed:** `plans/execution/chat-seam-decision.md` — `IrcMessage` is a leaked wire
-type, not the internal chat model; `ChatLine` (five fields) plus `IChatNotifier` for the sayers and
-`IChannelNotifier` for membership, implementations in `Chat/Packets/`, NAMES/LIST to
-`IrcQueryService`; five commits, 17 → 10. Start at its §4 commit 1.
+IRC side implements, or record why the type is correctly an adapter; keep the match lock discipline
+(§9) — a notifier is called inside the same locked sequence the encoder was; delete the row from the
+pinned list where applicable; run the five test calls; commit with the checkpoint in
+`phase-stage-c.md` updated in the same commit.
 
 `MatchPacketDataMapper` is an adapter by design and probably keeps its row until C1b decides
 where adapters live.
