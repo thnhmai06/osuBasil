@@ -43,7 +43,7 @@ Treat that number with suspicion — see §4.
 | **A** — make constant-mediated coupling visible | Done. ADR-008. |
 | **B** — untangle before anything moves | Done, all six tasks. |
 | **F** — the Diagnostic API | Done and merged. |
-| **C** — extract the business layer | C4, C3, C6 done. C2 **off the path**. **C1 split: C1a in progress (4 of 5 steps, pinned list 21 → 9), then C5; C1b decided after.** |
+| **C** — extract the business layer | C4, C3, C6, **C1a done** (pinned list 21 → 3). C2 **off the path**. **C5 next; C1b decided after.** |
 | **D** — split the transports | Not started. Gated on C5. |
 | **E** — declare what survives, enforce it | Not started. |
 | **G** — the load harness | Not started. Unblocked since F merged. |
@@ -54,7 +54,7 @@ project boundary is crossed last; `c1-transport-seam-decision.md` says why C1 sp
 
 ---
 
-## 2. The next task: C1a — cut the transport seam, in place
+## 2. C1a is done. The next task is C5
 
 **C1 as written cannot run.** Found 2026-09-14, measured from the compiled assembly: the services C1
 would move into `Basil.Domain` — every match, chat, spectating and login service — encode bancho
@@ -69,36 +69,32 @@ The plan's sizing table checked five framework packages and never checked the pr
 fails both when a new business type reaches for the protocol and when an entry is removed without
 deleting its row — proven by deleting one row and watching it fail.
 
-**C1a progress (2026-09-15):** step 1 `SpectatorService` (`9a4265ab`, 21 → 20), step 2 the match
-services (`IMatchNotifier`, rows `MatchMembership`, `MatchControlService`, `AbortHandler` deleted,
-20 → 17), step 3 the whole chat seam (`c152c026`, `16b53d66`, `cd3edf84`, `087902df`, `666e704c`;
-`ChatLine`, `IChatNotifier`, `IChannelNotifier`, NAMES/LIST moved to `IrcQueryService`; rows
-`Auth.ClientIntegrityService`, `Multiplayer.MatchBroadcast`, `MpCommandService+ScopedDmReplySink`,
-`Chat.ChatDispatchService` and its two nested sinks, `Chat.ChannelMembershipService` deleted,
-17 → 10), and step 4 `Auth.LoginService` (`0cea3160`; not a notifier — 22 of 24
-`ServerPacketWriter` sites were the login response's own body, not a notification, so a concrete,
-interface-free `LoginResponseEncoder` beside `PacketBuilders` replaced them 1:1; row deleted,
-10 → 9) are all committed and pushed. `plans/execution/phase-stage-c.md` "C1a" has the per-step
-record, `plans/execution/chat-seam-decision.md` has the chat design (with one mid-execution
-amendment: the join echo takes the roster as a parameter rather than calling `IrcQueryService`,
-which would have been a constructor cycle).
+**C1a is done (2026-09-15).** All five steps landed: step 1 `SpectatorService` (`9a4265ab`,
+21 → 20), step 2 the match services (`IMatchNotifier`, 20 → 17), step 3 the chat seam (`c152c026`,
+`16b53d66`, `cd3edf84`, `087902df`, `666e704c`; `ChatLine`, `IChatNotifier`, `IChannelNotifier`,
+NAMES/LIST moved to `IrcQueryService`; 17 → 10), step 4 `Auth.LoginService` (`0cea3160`; not a
+notifier — a concrete, interface-free `LoginResponseEncoder` replaced 22 own-response encoder calls
+1:1; 10 → 9), and step 5 (`c0e2f6e3`; `MatchCreationData` + `MatchCreationDataMapper` replace
+`MatchState` as match-creation's input, `MatchLiveSnapshotBuilder.BuildPlayerScore` moved into its
+only caller; 9 → 3). `plans/execution/phase-stage-c.md` "C1a" has every step's record,
+`plans/execution/chat-seam-decision.md` the chat design.
 
-**Remaining — step 5, pinned list at 9:** `MatchState`'s three users (`IMatchRegistry`,
-`InMemoryMatchRegistry`, `MatchLiveSnapshotBuilder`, plus `MatchLifecycle` which keeps its row only
-for this), the two API route types (`AnnounceRoutes`, `MatchListEndpoints`, already named by
-Task D3), and `Spectating.SpectateFramesEvent` (SSE payload carrying `ReplayFrame`/`ScoreFrame`).
-None of these four is a "business decides, transport encodes" seam like steps 1-4 — they are
-read-model/view problems, the same shape as `architecture-target-20260908.md` §3.5's finding for
-`MatchRoutes`. Give each a Domain- or API-owned read type and a mapper, not a notifier; read the
-actual field usage first, the way the chat seam was measured before designed. Full brief in
-`phase-stage-c.md`'s "Next exact step".
+**Pinned list: 3, all staying deliberately, not candidates for a future step:**
 
-`MatchPacketDataMapper` is an adapter by design and probably keeps its row until C1b decides
-where adapters live.
+* `AnnounceRoutes` — needs Stage D's "Domain publishes, Hosts.Bancho encodes" event mechanism,
+  which does not exist until Stage D builds the host split. Task D3's to close.
+* `Spectating.SpectateFramesEvent` — a documented decision in the record's own remarks: it reuses
+  the wire `ReplayFrame`/`ScoreFrame` types deliberately rather than duplicate an API-layer copy.
+* `Multiplayer.MatchPacketDataMapper` — an adapter by design, outside `.Packets` only because C1b
+  hasn't decided where adapters live yet.
 
-**C1b** — the ninety-six-file move — is decided only after C1a's list is empty, with numbers. It may
-turn out not to buy anything the namespace rules do not; that is a legitimate outcome, and it is the
-user's call.
+**C5 is next:** re-measure `plans/execution/measure-slice-graph.py` (features-only and
+solution-wide), the `SliceAdjacency` allowlist row count and the `Shared -> Features` pinned list,
+record the result in `architecture-progress.md` against the entry-baseline numbers there, and
+**stop and report before Stage D if the graph did not move as predicted** — Stage D's project split
+assumes it did. C1b (whether the ~96-file `Basil.Domain` move still buys anything beyond the
+namespace rules already enforced) is a decision for after C5's numbers, and it is the user's call,
+not an agent's to make unilaterally.
 
 ---
 
