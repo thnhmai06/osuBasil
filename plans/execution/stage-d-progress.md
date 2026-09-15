@@ -1,5 +1,11 @@
 # Stage D — split the transports
 
+> **2026-09-16:** D2–D4 below are obsolete — the target changed to Architecture v3
+> (`plans/architecture-v3-migration-plan-20260916.md`), which has no host projects and no
+> `Basil.Host`. D1 stands. The D2 investigation is kept as a record of why a composition root
+> cannot live in a project the hosts reference; under v3 the executable does not move, so the
+> question does not arise.
+
 Tracks `plans/basil-plan-20260909.md`'s Stage D (D1–D4). Started 2026-09-15, after C1b and Stage G
 were both done and C5's post-C1b measurement (recorded in `architecture-progress.md`) was reported to
 the user as Stage D's gate. The user's call: proceed into Stage D, with Task C2's deferred `GameSession`
