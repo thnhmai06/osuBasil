@@ -1,31 +1,31 @@
 # Handover — osuBasil architecture migration
 
-**Written 2026-09-11, re-verified and updated 2026-09-14.** For a successor agent with no prior
-context. Read this first, then `plans/README.md` for what every other document is, then
-`plans/basil-plan-20260909.md`. Everything here is verifiable from the repository; where it is not,
-it says so.
+**Written 2026-09-11, re-verified and updated 2026-09-15 (C1b's completion).** For a successor agent
+with no prior context. Read this first, then `plans/README.md` for what every other document is,
+then `plans/basil-plan-20260909.md`. Everything here is verifiable from the repository; where it is
+not, it says so.
 
 ---
 
 ## 1. Where things stand
 
-Branch **`feat/vsa-migration`**, at `666e704c`, pushed. A second worktree sits at
+Branch **`feat/vsa-migration`**, at `0aaf326a`, pushed. A second worktree sits at
 `V:\Code\cs\osuBasil-diagnostics` on `investigate/diagnostic-live-flake`, branched from
 `9a4265ab`, for the flake diagnosis in §8. As of this checkpoint it is a clean build with no
 uncommitted investigation output — the diagnosis has not run to completion yet; check `git status`
 there before starting.
 
-**The suite is green.** Verified 2026-09-14 on `e286cc26` plus the new architecture test, and again
-after each C1a step, as five separate calls (§5):
+**The suite is green.** Verified 2026-09-15 at Unit 8's commit (`928dd1ac`), the last one that
+touched a source file — Unit 9 changed only documentation:
 
 | Project | Count |
 |---|---:|
 | `Basil.ArchitectureTests` | 8 |
-| `Basil.Domain.Tests` | 114 |
+| `Basil.Domain.Tests` | 235 |
 | `Basil.Protocol.Tests` | 158 |
-| `Basil.Server.Tests` | 1057 |
+| `Basil.Server.Tests` | 944 |
 | `Basil.IntegrationTests` | 363 |
-| **Total** | **1700** |
+| **Total** | **1708** |
 
 One integration test, `DiagnosticEndpointTests.GetOverviewLive_FirstEventCarriesTheCuratedFields`,
 failed once on a slow full run (8 min 02 s where 6 minutes is usual) and passed in isolation. It
@@ -43,8 +43,8 @@ Treat that number with suspicion — see §4.
 | **A** — make constant-mediated coupling visible | Done. ADR-008. |
 | **B** — untangle before anything moves | Done, all six tasks. |
 | **F** — the Diagnostic API | Done and merged. |
-| **C** — extract the business layer | C4, C3, C6, **C1a done** (pinned list 21 → 3), **C5 run and reported**. C2 **off the path**. **C1b awaits a user decision.** |
-| **D** — split the transports | Not started. Gated on C5. |
+| **C** — extract the business layer | C4, C3, C6, **C1a done** (pinned list 21 → 3), **C1b done** (nine units, per-feature table resolved), **C5 run and reported for both**. C2 **off the path**. |
+| **D** — split the transports | Not started. This is now the next stage — see §2's close. |
 | **E** — declare what survives, enforce it | Not started. |
 | **G** — the load harness | Not started. Unblocked since F merged. |
 | **H** — documentation and final verification | Not started. |
@@ -54,7 +54,7 @@ project boundary is crossed last; `c1-transport-seam-decision.md` says why C1 sp
 
 ---
 
-## 2. C1a is done. C1b is running — see `c1b-project-move-decision.md` for where it is
+## 2. C1a and C1b are both done. Stage D is next
 
 **C1 as written cannot run.** Found 2026-09-14, measured from the compiled assembly: the services C1
 would move into `Basil.Domain` — every match, chat, spectating and login service — encode bancho
@@ -126,19 +126,35 @@ crossing a namespace boundary is invisible to `DomainBoundaryTests` (ADR-008's d
 const-inlining gap), so a real edge must be declared even when the instrument cannot yet catch its
 absence.
 
-**Correction recorded after Unit 8: `GameSession`'s split is out of scope for C1b, not the next
-gate.** The checkpoint's first draft of this section named retyping `GameSession.Match` (target doc
-§8 step 5) as the next unit. Checked every call site before starting and found it has no current
-beneficiary: `ScoreSubmissionService` stays in `Basil.Server` regardless (it mutates live session
-state, unrelated to `Match`'s type — Unit 7 already established this), and the ~24 Multiplayer packet
-handlers overwhelmingly need the full `MatchSession` (for `BeginMutationAsync`), not a state-only
-view — retyping `Match` would touch all 24 to unblock nothing. Those handlers were never C1b
-candidates anyway: the target doc's own §3.2 places them at `Basil.Hosts.Bancho/Multiplayer/`, Stage
-D's project, independent of how `GameSession` is shaped. What's actually left in Multiplayer's
-per-feature count: `MpCommandService`/`MpReplies` (§6 F4), sized with the same
-member-access-not-parameter-type measurement Unit 7 used for `AuthenticationService`; Bot's remaining
-5 files ride on whatever that measurement decides. Full detail in
-`c1b-project-move-decision.md`'s "Next exact step".
+**Unit 9 closed C1b: `MpCommandService`/`MpReplies` measured and found blocked, the same as
+`ScoreSubmissionService`.** `MpCommandService` writes `sender.MpScopeMatchId` directly at three sites
+and calls `BeginMutationAsync` — live session/match mutation, not a lookup a Domain contract can
+wrap. `MpReplies` reads through `Basil.Server.Shared.Localization.LocaleCatalog`, the same blocker
+`BotReplies` hit in Unit 6. Both stay in `Basil.Server`, which resolves Bot's remaining five files
+too (`CommandDispatcher`, `ICommandDispatcher`, `BotBootstrapService`, `BotReplies` were gated on this
+pair). **Every C1b slice's Domain-eligible surface is now identified and, where safe, moved.**
+Multiplayer landed at 2 files (`MatchRoomState`, `MatchSlot`) against the target table's estimate of
+16; Bot at 1 (`ICommandReplySink`) against 6 — the third and fourth instance this session of that
+table's per-feature counts over-stating what a text classifier's framework-import check can actually
+verify, after Diagnostics (no row at all) and Bot's own first pass. Treat every number in that table
+as an upper bound to verify per file, not a count to reach — this is the standing lesson for whoever
+scopes Stage D next.
+
+**C5, re-run after C1b (`architecture-progress.md`'s "C5, run after C1b" section has the full
+table):** `SliceAdjacency` and the solution-wide script count are unchanged (44, 50) — expected, C1b
+never touches `Features`-to-`Features` edges. `Shared -> Features` dropped 12 → 10.
+`DomainAdjacency` roughly doubled, 6 → 14 — the instrument built to watch exactly what C1b moved,
+showing the movement. The plan's features-only ≈17 prediction assumed C1's original scope including
+the 24 Multiplayer packet handlers and the `!mp` command surface; those were never real C1b
+candidates once measured directly, so that gap is Stage D's to close, not a miss here.
+
+**Stage D — splitting `Basil.Server` into `Basil.Hosts.Bancho`/`Basil.Hosts.Irc`/`Basil.Hosts.Api`
+(and renaming what remains to `Basil.Infrastructure`) — is the next stage of work**, per
+`architecture-target-20260908.md` §8 step 8. It is a separate, larger undertaking outside C1b's
+scope: it needs the host projects to exist before `GameSession`'s split (§8 step 5), the 24
+Multiplayer packet handlers' relocation, and `MatchSession`/`MatchRoomState`'s eventual full
+separation (the projection machinery moving out) can happen safely. Not scoped or started as of this
+checkpoint.
 
 ---
 
