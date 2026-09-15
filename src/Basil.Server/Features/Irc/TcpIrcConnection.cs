@@ -1,6 +1,7 @@
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Channels;
+using Basil.Domain.Channels;
 using Basil.Server.Shared.Configuration;
 using Basil.Server.Features.Chat;
 using Basil.Server.Features.Irc;
@@ -8,6 +9,7 @@ using Basil.Server.Shared.Sessions;
 using Basil.Protocol.Irc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Channel = System.Threading.Channels.Channel;
 
 namespace Basil.Server.Features.Irc;
 

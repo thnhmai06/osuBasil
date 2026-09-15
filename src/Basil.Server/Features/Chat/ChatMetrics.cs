@@ -1,5 +1,6 @@
 using Basil.Server.Shared;
 using System.Diagnostics.Metrics;
+using Basil.Domain.Channels;
 
 namespace Basil.Server.Features.Chat;
 

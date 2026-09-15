@@ -9,6 +9,7 @@ using Basil.Server.Features.Bot;
 using Basil.Server.Features.Spectating;
 using Basil.Server.Shared.Sessions;
 using Basil.Domain.Login;
+using Basil.Domain.Spectating;
 using Basil.Domain.Users;
 using Basil.Server.Features.Auth;
 using Basil.Server.Shared.Http.OpenApi;

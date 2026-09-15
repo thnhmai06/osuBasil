@@ -7,6 +7,7 @@ using Basil.Server.Features.Spectating;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
+using Basil.Domain.Spectating;
 using Basil.Protocol.Multiplayer;
 using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;

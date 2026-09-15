@@ -1,7 +1,6 @@
-using Basil.Server.Features.Spectating;
-using Basil.Server.Features.Multiplayer;
+using Basil.Domain.Spectating;
 
-namespace Basil.Server.Tests.Features.Spectating;
+namespace Basil.Domain.Tests;
 
 /// <summary>
 ///     User-scoped sibling of the live event hub, feeding the /spec/{id} SSE channel — keyed by

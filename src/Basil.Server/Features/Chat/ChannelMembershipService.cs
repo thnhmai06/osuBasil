@@ -1,6 +1,7 @@
 using Basil.Server.Shared.Eventing;
 using Basil.Server.Shared.Sessions;
 using System.Text.Json;
+using Basil.Domain.Channels;
 using Basil.Server.Shared.Configuration;
 using Basil.Server.Shared.Http;
 using Basil.Server.Features.Bot;

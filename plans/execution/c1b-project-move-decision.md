@@ -196,6 +196,48 @@ relocated test files), `Basil.Server.Tests` 979 (−14, matching), `Basil.Protoc
 Six files moved (4 source, 2 test), one more `Shared -> Features` pinned row deleted (two total
 since C1b started).
 
+## Unit 5 — Chat's channel registry and Spectating's player-event contracts (done)
+
+Both slices surveyed with the four-blocker checklist; each had a clean sub-set and a genuinely
+blocked remainder.
+
+**Chat:** `ChannelSession` (pure `ConcurrentDictionary<int,int>`-backed membership tracker, keyed
+entirely by user id, only a `Basil.Domain.Users.UserPrivileges` dependency), `IChannelRegistry` and
+`InMemoryChannelRegistry` (the registry over it, keyed by channel name, no session types anywhere)
+all moved to `Basil.Domain.Channels`. `ChannelMembershipService`, `ChatDispatchService`,
+`IChannelNotifier`/`ChannelNotifier` and the rest of `Features/Chat/` stay — they are the
+`GameSession`/`IrcSession`-branching notification layer, the same shape C1a's chat seam already
+carved out.
+
+**Spectating:** `IPlayerInputEvents`/`PlayerInputEvents` and `IPlayerStatusEvents`/
+`PlayerStatusEvents` moved together — contract and implementation both, unlike the usual
+contract-only split — because the implementations are trivial `event Action<int,byte[]>` dispatchers
+with zero framework or session dependency, not adapters wrapping an external system. Both moved to
+`Basil.Domain.Spectating`.
+
+Two Spectating files were checked and correctly left behind, for two different reasons:
+
+* `SpectateEvents.cs` (`SpectateEvent`/`SpectateState`/`SpectateStateEvent`) is blocked by **peer
+  coupling**: it carries a `UserBrief`, which lives in `Basil.Server.Features.Multiplayer`
+  (`MatchLiveSnapshotBuilder.cs`) and has not moved, since Multiplayer is deliberately last. Left
+  entirely untouched — a real blocker, not a judgment call.
+* `PlayerStatusView.cs` is an **API-view type**, the same category as `ScoreDetailView` and
+  `BeatmapViews.cs`: its own doc comment calls it "the wire shape of a userSession's live status,
+  published on the `GET /users/{userId}/live` stream's `status` event." Its `Build(GameSession?)`
+  factory is `GameSession`-typed regardless, but even split from the factory the record itself is a
+  presentation shape for the HTTP host, not a business model — stays in `Basil.Server` by category,
+  not merely by the `GameSession` blocker.
+
+No new `DomainAdjacency` edges and no `Shared -> Features` pinned-list movement this unit — both
+moved sub-sets were already self-contained.
+
+**Verification:** build green; `Basil.ArchitectureTests` 8, `Basil.Domain.Tests` 219 (+22, three
+relocated test files — `ChannelSessionTests`, `InMemoryChannelRegistryTests`,
+`PlayerInputEventsTests`), `Basil.Server.Tests` 957 (−22, matching), `Basil.Protocol.Tests` 158;
+`Basil.IntegrationTests` 363, all passed, 6 min 58 s.
+
+Ten files moved (7 source, 3 test).
+
 ## Next exact step
 
 **`ScoreSubmissionService` and `AuthenticationService` are what remains at this granularity, and
@@ -208,13 +250,11 @@ reaches for session-held state a plain id or a small Domain-shaped lookup result
 instead. Size each the way `chat-seam-decision.md` sized the chat seam before touching any file,
 rather than attempting either as one more contract-style unit.
 
-**With Auth, Beatmaps, Content, Scores and Users' contract-level work done, Chat, Spectating,
-Multiplayer and Bot are what remain of the target's per-feature table** (Chat 6, Spectating 7,
-Multiplayer 16, Bot 6 files). Chat and Spectating are worth surveying next with the same
-four-blocker checklist (framework imports; `GameSession`/`UserSession`/`IrcSession` coupling; direct
-filesystem I/O; a wrapped type argument — `IOptions<T>`'s `T`, etc. — that is itself a Server type);
-Multiplayer stays last, gated on the `MatchSession` split the original C1 task text already
-describes.
+**With Auth, Beatmaps, Content, Scores, Users, Chat and Spectating's contract-level work done,
+Multiplayer and Bot are what remain of the target's per-feature table** (Multiplayer 16, Bot 6
+files). Bot has not been surveyed at all yet and is worth a pass with the same four-blocker
+checklist before Multiplayer. Multiplayer stays last, gated on the `MatchSession` split the
+original C1 task text already describes.
 
 **`Multiplayer` and `MatchSession`'s split are last, not first.** Every Multiplayer handler file
 takes `MatchSession` (still entirely `Basil.Server.Features.Multiplayer`) as a parameter, and

@@ -2,6 +2,7 @@ using Basil.Server.Features.Auth;
 using System.Security.Cryptography;
 using System.Text;
 using Basil.Domain.Auth;
+using Basil.Domain.Channels;
 using Basil.Domain.Users;
 using Basil.Server.Features.Users;
 using Basil.Server.Shared.Configuration;

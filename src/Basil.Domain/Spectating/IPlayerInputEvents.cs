@@ -1,6 +1,5 @@
-using Basil.Server.Shared.Eventing;
 
-namespace Basil.Server.Features.Spectating;
+namespace Basil.Domain.Spectating;
 
 /// <summary>
 ///     The userSession-scoped sibling of <see cref="ILiveEventHub" />, feeding a userSession's

@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using Basil.Server.Features.Multiplayer;
 using Basil.Server.Features.Chat;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Channels;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 

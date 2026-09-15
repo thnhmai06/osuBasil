@@ -1,3 +1,4 @@
+using Basil.Domain.Channels;
 using Basil.Server.Shared.Sessions;
 
 namespace Basil.Server.Features.Chat;

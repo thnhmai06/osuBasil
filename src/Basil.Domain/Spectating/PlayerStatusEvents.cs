@@ -1,6 +1,5 @@
-using Basil.Server.Features.Spectating;
 
-namespace Basil.Server.Features.Spectating;
+namespace Basil.Domain.Spectating;
 
 /// <inheritdoc cref="IPlayerStatusEvents" />
 /// <remarks>

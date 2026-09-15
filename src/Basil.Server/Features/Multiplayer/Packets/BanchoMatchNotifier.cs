@@ -1,3 +1,4 @@
+using Basil.Domain.Channels;
 using Basil.Protocol.Packets;
 using Basil.Server.Features.Chat;
 using Basil.Server.Shared.Eventing;

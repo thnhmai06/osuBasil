@@ -1,4 +1,5 @@
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Channels;
 using Basil.Domain.Users;
 using Basil.Server.Features.Irc;
 using Basil.Server.Shared.Eventing;

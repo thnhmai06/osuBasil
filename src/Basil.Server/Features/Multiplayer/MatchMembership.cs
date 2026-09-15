@@ -1,3 +1,4 @@
+using Basil.Domain.Channels;
 using Basil.Server.Features.Multiplayer;
 using Basil.Server.Shared.Sessions;
 using Basil.Server.Features.Chat;

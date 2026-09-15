@@ -25,6 +25,7 @@ using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Social;
+using Basil.Domain.Spectating;
 using Basil.Domain.Users;
 using Basil.Protocol.Multiplayer;
 using Basil.Protocol.Packets;

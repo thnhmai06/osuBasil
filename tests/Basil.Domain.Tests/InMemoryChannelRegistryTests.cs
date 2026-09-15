@@ -1,7 +1,7 @@
-using Basil.Server.Features.Chat;
 using Basil.Domain.Channels;
 using Basil.Domain.Users;
-namespace Basil.Server.Tests.Features.Chat;
+
+namespace Basil.Domain.Tests;
 
 /// <summary>
 ///     Verifies `InMemoryChannelRegistry`'s runtime channel registry: seeding, lookups by name,

@@ -1,3 +1,4 @@
+using Basil.Domain.Spectating;
 using Basil.Server.Features.Spectating.Packets;
 using Basil.Server.Shared.Http.Bancho;
 using Basil.Server.Shared.Sessions;

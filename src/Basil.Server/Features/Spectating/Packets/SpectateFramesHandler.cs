@@ -1,6 +1,7 @@
 using Basil.Server.Features.Multiplayer.Packets;
 using Basil.Server.Shared.Http.Bancho;
 using System.Text.Json;
+using Basil.Domain.Spectating;
 using Basil.Server.Shared.Http;
 using Basil.Server.Features.Multiplayer;
 using Basil.Server.Features.Spectating;

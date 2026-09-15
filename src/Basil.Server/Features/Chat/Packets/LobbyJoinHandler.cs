@@ -1,3 +1,4 @@
+using Basil.Domain.Channels;
 using Basil.Server.Shared.Http.Bancho;
 using Basil.Server.Features.Multiplayer;
 using Basil.Server.Shared.Sessions;

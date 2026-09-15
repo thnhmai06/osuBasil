@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Basil.Domain.Spectating;
 using Basil.Server.Shared;
 using Basil.Server.Shared.Eventing;
 using Basil.Server.Shared.Http;

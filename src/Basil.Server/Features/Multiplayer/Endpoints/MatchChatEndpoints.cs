@@ -1,3 +1,4 @@
+using Basil.Domain.Channels;
 using Basil.Domain.Login;
 using Basil.Server.Features.Auth;
 using Basil.Server.Features.Chat;

@@ -1,4 +1,5 @@
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Channels;
 using Basil.Server.Features.Chat.Packets;
 using Basil.Server.Features.Multiplayer.Packets;
 using Basil.Server.Features.Spectating.Packets;
@@ -14,6 +15,7 @@ using Basil.Server.Shared.Sessions;
 using Basil.Server.Features.Chat;
 using Basil.Server.Tests.Features.Multiplayer.Packets;
 using Basil.Domain.Multiplayer;
+using Basil.Domain.Spectating;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;

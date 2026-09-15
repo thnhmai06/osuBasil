@@ -1,7 +1,5 @@
-using Basil.Server.Shared.Eventing;
-using Basil.Server.Features.Spectating;
 
-namespace Basil.Server.Features.Spectating;
+namespace Basil.Domain.Spectating;
 
 /// <inheritdoc cref="IPlayerInputEvents" />
 /// <remarks>

@@ -104,16 +104,23 @@ once — see `plans/execution/c1b-project-move-decision.md` for why (a text clas
 files, and once nearly moved the whole Diagnostics slice, which the target architecture never
 scoped as a Domain concern at all — reverted before anything committed).
 
-**Units 1-3 are done and pushed** (`214ff845`, `365c351c`, `89cb120a`): the fourteen repository/store
-interfaces plus their filter/parser pairs (18 files), `MotdService`/`IReplayStorage`/
-`IScoreDecryptor`/`ReplayService` (5 files, and the first `Shared -> Features` pinned-list movement
-since C3), and the mirror search contract/`MirrorService`/`MirrorOptions` (5 files, and
-`Basil.Domain`'s second package reference). Four blockers a text classifier cannot see are now
-documented from direct experience: `GameSession`/`UserSession`/Shared-typed parameters with no
-import naming them; peer coupling to a candidate that isn't itself eligible; direct filesystem I/O
-with no forbidden `using`; and an `IOptions<T>`/wrapped type argument that is itself a Server type,
-which only a physical file move plus rebuild — never the namespace edit alone — proves safe. Full
-detail and the exact next unit in `c1b-project-move-decision.md`'s "Next exact step".
+**Units 1-5 are done and pushed** (`214ff845`, `365c351c`, `89cb120a`, `9b498f96`, and this commit):
+the fourteen repository/store interfaces plus their filter/parser pairs (18 files),
+`MotdService`/`IReplayStorage`/`IScoreDecryptor`/`ReplayService` (5 files, first `Shared ->
+Features` pinned-list movement since C3), the mirror search contract/`MirrorService`/`MirrorOptions`
+(5 files, `Basil.Domain`'s second package reference), the password/token contracts plus
+`LoginForm`/`AdminKeyService` (6 files, second pinned-list movement), and Chat's
+`ChannelSession`/`IChannelRegistry`/`InMemoryChannelRegistry` plus Spectating's
+`IPlayerInputEvents`/`IPlayerStatusEvents`/`PlayerInputEvents`/`PlayerStatusEvents` (10 files). Four
+blockers a text classifier cannot see are now documented from direct experience:
+`GameSession`/`UserSession`/Shared-typed parameters with no import naming them; peer coupling to a
+candidate that isn't itself eligible; direct filesystem I/O with no forbidden `using`; and an
+`IOptions<T>`/wrapped type argument that is itself a Server type, which only a physical file move
+plus rebuild — never the namespace edit alone — proves safe. Auth, Beatmaps, Content, Scores, Users,
+Chat and Spectating's contract-level work is done; only Multiplayer (16 files, gated on the
+`MatchSession` split) and Bot (6 files, not yet surveyed) remain of the target's per-feature table,
+plus `ScoreSubmissionService`/`AuthenticationService`, both deferred for a design pass. Full detail
+and the exact next unit in `c1b-project-move-decision.md`'s "Next exact step".
 
 ---
 

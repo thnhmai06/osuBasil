@@ -1,3 +1,4 @@
+using Basil.Domain.Channels;
 using Basil.Protocol.Irc;
 using Basil.Protocol.Packets;
 using Basil.Server.Features.Irc;

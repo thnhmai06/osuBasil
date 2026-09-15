@@ -1,6 +1,4 @@
-using Basil.Domain.Channels;
-
-namespace Basil.Server.Features.Chat;
+namespace Basil.Domain.Channels;
 
 /// <summary>
 ///     Represents the runtime registry of channels: DB-backed channels seeded from the channel

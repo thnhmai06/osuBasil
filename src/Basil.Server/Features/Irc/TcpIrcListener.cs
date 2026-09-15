@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Sockets;
+using Basil.Domain.Channels;
 using Basil.Server.Shared.Configuration;
 using Basil.Server.Features.Chat;
 using Basil.Server.Features.Irc;

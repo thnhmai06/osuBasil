@@ -1,4 +1,5 @@
 using System.Diagnostics.Metrics;
+using Basil.Domain.Channels;
 using Basil.Server.Features.Chat;
 using Basil.Domain.Users;
 using NSubstitute;

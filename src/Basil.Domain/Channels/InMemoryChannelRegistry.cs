@@ -1,8 +1,6 @@
 using System.Collections.Concurrent;
-using Basil.Server.Features.Chat;
-using Basil.Domain.Channels;
 
-namespace Basil.Server.Features.Chat;
+namespace Basil.Domain.Channels;
 
 /// <inheritdoc cref="IChannelRegistry" />
 /// <remarks>

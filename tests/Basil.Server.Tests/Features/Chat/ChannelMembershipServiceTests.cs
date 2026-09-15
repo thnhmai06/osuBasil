@@ -6,6 +6,7 @@ using Basil.Server.Features.Chat;
 using Basil.Server.Features.Irc;
 using Basil.Server.Features.Multiplayer;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Channels;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;

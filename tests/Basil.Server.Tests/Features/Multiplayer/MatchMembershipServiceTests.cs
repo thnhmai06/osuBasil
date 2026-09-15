@@ -12,6 +12,7 @@ using Basil.Server.Shared.Sessions;
 using Basil.Server.Features.Chat;
 using Basil.Server.Tests.Features.Multiplayer.Packets;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Channels;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;

@@ -2,6 +2,7 @@ using Basil.Server.Features.Spectating;
 using Basil.Server.Shared.Sessions;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Basil.Domain.Spectating;
 using Basil.Server.Shared.Eventing;
 using Basil.Server.Shared.Http;
 

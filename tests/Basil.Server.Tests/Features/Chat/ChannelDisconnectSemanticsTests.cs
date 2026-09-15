@@ -1,3 +1,4 @@
+using Basil.Domain.Channels;
 using Basil.Server.Shared.Eventing;
 using Basil.Server.Shared.Configuration;
 using Basil.Server.Shared.Sessions;

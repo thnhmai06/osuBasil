@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using Basil.Domain.Users;
 
-namespace Basil.Server.Features.Chat;
+namespace Basil.Domain.Channels;
 
 /// <summary>
 ///     Represents a single chat channel in memory: the immutable DB-backed metadata plus the live

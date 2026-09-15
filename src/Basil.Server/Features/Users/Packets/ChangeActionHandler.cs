@@ -5,6 +5,7 @@ using Basil.Server.Shared.Sessions;
 using Basil.Server.Features.Spectating;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
+using Basil.Domain.Spectating;
 using Basil.Domain.Users;
 using Basil.Protocol.Packets;
 

@@ -1,4 +1,4 @@
-namespace Basil.Server.Features.Spectating;
+namespace Basil.Domain.Spectating;
 
 /// <summary>
 ///     The status-scoped sibling of <see cref="IPlayerInputEvents" />, feeding a userSession's live

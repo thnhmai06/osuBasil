@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Reflection;
+using Basil.Domain.Channels;
 using Basil.Domain.Content;
 using Basil.Server.Shared.Configuration;
 using Basil.Server.Features.Content;
