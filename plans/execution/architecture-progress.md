@@ -38,6 +38,7 @@ first time are worth repeating:
 | 2026-09-10 | `a6e12458` | C3 inverted logout; script numbers unchanged, `Shared -> Features` pinned list 13 to 12 | unchanged | 1 of 10 |
 | 2026-09-14 | `e286cc26` | re-measured at the start of the reconciliation session: `python plans/execution/measure-slice-graph.py`; `SliceAdjacency` 44 rows, pinned list 12, `DomainAdjacency` 6 | 43 features-only, 50 solution-wide | 1 of 10 |
 | 2026-09-15 | `32aaed40` | **C5, after C1a closed** (pinned list 21 → 3 across five steps, none of them a slice-boundary edge): `SliceAdjacency` 44 rows, `Shared -> Features` pinned list 12, `DomainAdjacency` 6 — all three unchanged since `e286cc26`; script re-run, unchanged too. See "C5" below. | 43 features-only, 50 solution-wide | 1 of 10 |
+| 2026-09-15 | `573f3c0c` | **C5, after C1b's per-feature table resolved** (Units 1-9: `Shared -> Features` pinned list 12 → 10, two rows dropped in Units 2 and 4; `DomainAdjacency` 6 → 14, eight edges added as real business logic moved in; `SliceAdjacency` unchanged at 44, C1b never touches slice-to-slice edges directly): `python plans/execution/measure-slice-graph.py` re-run. See "C5, run after C1b" below. | 42 features-only, 50 solution-wide | 1 of 10 |
 
 Stage A changed no coupling. It changed what the rule can see, which is why the edge count is
 unchanged while the declared count rose from 38 to 45.
@@ -281,3 +282,43 @@ neither an agent's call to make alone:
 
 Either way, **Stage D should not start silently assuming one answer.** This is the decision point the
 original C5 instruction was trying to catch, just for a different reason than the text anticipated.
+
+## C5, run after C1b — the ≈17 prediction did not land, and why that is expected
+
+C1b ran (the user's decision, `c1b-project-move-decision.md` §"Status"), through nine small verified
+units rather than the ~96-file move at once. Re-measured at `573f3c0c`, C1b's last commit:
+
+| Instrument | Post-C1a (`32aaed40`) | Post-C1b (`573f3c0c`) | Moved because |
+|---|---:|---:|---|
+| `SliceAdjacency` declared rows | 44 | 44 | C1b moves files *into* `Basil.Domain`; it does not touch `Basil.Server.Features`-to-`Features` edges |
+| `Shared -> Features` pinned list | 12 | 10 | Units 2 and 4: `FileSystemReplayStorage` and `OsuWebRoutes` stopped referencing `Features` once the interfaces they used moved to `Basil.Domain` |
+| `DomainAdjacency` declared rows | 6 | 14 | Units 1, 3, 4, 7, 8 declared 8 new edges as real cross-namespace business logic arrived inside `Basil.Domain` |
+| `measure-slice-graph.py`, features-only | 43 | 42 | one edge fewer; see below |
+| `measure-slice-graph.py`, solution-wide | 50 | 50 | unchanged |
+
+**The plan's features-only ≈17 prediction was written for a different move than the one that ran.**
+It assumed C1's original, undivided scope: every business service *and* every transport adapter —
+the 24 Multiplayer packet handlers, `MpCommandService`, `MpReplies`, the rest of Bot's dispatcher —
+moving into `Basil.Domain` together. `c1b-project-move-decision.md`'s Unit 9 found, by direct
+measurement rather than by re-deriving the plan's classifier, that none of those transport-shaped
+files were ever real candidates: they mutate live session state, call `MatchSession.BeginMutationAsync`,
+or read through a `Basil.Server.Shared` type, the same category of blocker C1a's own `TransportSeamTests`
+was built to catch for the protocol specifically. What C1b actually moved — repository/store
+contracts, response-encoder-adjacent business services, `ChannelSession`, `MatchRoomState` — mostly
+lived *inside* a slice's own business logic, not across the `Features/<Slice>`-to-`Features/<Slice>`
+boundary `SliceAdjacency`/`measure-slice-graph.py` watch. That is why `SliceAdjacency` and the
+solution-wide script count sit still: the edges C1b removed were never between two slices in the
+first place, they were between a slice and the protocol/session layer underneath it, which these two
+instruments were never built to see (the same blind spot the post-C1a section above already names).
+
+**`DomainAdjacency` is the instrument built to watch exactly this, and it moved as expected.** Its
+row count roughly doubling (6 → 14) is the direct, visible record of business logic actually landing
+inside `Basil.Domain` and forming real cross-namespace relationships there — this is what C6 was
+built for, and it is doing its job.
+
+**Not a miss.** The ≈17 number would only be reachable by also moving the 24 packet handlers and the
+`!mp` command surface — Stage D's `Basil.Hosts.Bancho` work, gated on host projects that do not exist
+yet. Attempting it now would, per `architecture-target-20260908.md` §8's own migration-order note,
+move business logic into a host-project shape before that shape exists, then require moving it again
+once Stage D actually creates `Basil.Hosts.Bancho`. C1b is complete at the scope it was actually run
+at; the ≈17 prediction is Stage D's number to reach, not C1b's.
