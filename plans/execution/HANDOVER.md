@@ -104,23 +104,38 @@ once — see `plans/execution/c1b-project-move-decision.md` for why (a text clas
 files, and once nearly moved the whole Diagnostics slice, which the target architecture never
 scoped as a Domain concern at all — reverted before anything committed).
 
-**Units 1-5 are done and pushed** (`214ff845`, `365c351c`, `89cb120a`, `9b498f96`, and this commit):
-the fourteen repository/store interfaces plus their filter/parser pairs (18 files),
-`MotdService`/`IReplayStorage`/`IScoreDecryptor`/`ReplayService` (5 files, first `Shared ->
-Features` pinned-list movement since C3), the mirror search contract/`MirrorService`/`MirrorOptions`
-(5 files, `Basil.Domain`'s second package reference), the password/token contracts plus
-`LoginForm`/`AdminKeyService` (6 files, second pinned-list movement), and Chat's
-`ChannelSession`/`IChannelRegistry`/`InMemoryChannelRegistry` plus Spectating's
-`IPlayerInputEvents`/`IPlayerStatusEvents`/`PlayerInputEvents`/`PlayerStatusEvents` (10 files). Four
-blockers a text classifier cannot see are now documented from direct experience:
-`GameSession`/`UserSession`/Shared-typed parameters with no import naming them; peer coupling to a
-candidate that isn't itself eligible; direct filesystem I/O with no forbidden `using`; and an
-`IOptions<T>`/wrapped type argument that is itself a Server type, which only a physical file move
-plus rebuild — never the namespace edit alone — proves safe. Auth, Beatmaps, Content, Scores, Users,
-Chat and Spectating's contract-level work is done; only Multiplayer (16 files, gated on the
-`MatchSession` split) and Bot (6 files, not yet surveyed) remain of the target's per-feature table,
-plus `ScoreSubmissionService`/`AuthenticationService`, both deferred for a design pass. Full detail
-and the exact next unit in `c1b-project-move-decision.md`'s "Next exact step".
+**Units 1-8 are done and pushed** (`214ff845`, `365c351c`, `89cb120a`, `9b498f96`, `812b0c2d`,
+`41e57269`, `5b9131c6`, `928dd1ac`): the fourteen repository/store interfaces plus their
+filter/parser pairs (18 files), `MotdService`/`IReplayStorage`/`IScoreDecryptor`/`ReplayService` (5
+files, first `Shared -> Features` pinned-list movement since C3), the mirror search
+contract/`MirrorService`/`MirrorOptions` (5 files, `Basil.Domain`'s second package reference), the
+password/token contracts plus `LoginForm`/`AdminKeyService` (6 files, second pinned-list movement),
+Chat's `ChannelSession`/`IChannelRegistry`/`InMemoryChannelRegistry` plus Spectating's
+`IPlayerInputEvents`/`IPlayerStatusEvents`/`PlayerInputEvents`/`PlayerStatusEvents` (10 files),
+Bot's `ICommandReplySink` (1 file — the finding that Bot's other 5 files gate on Multiplayer, not a
+separate survey), `AuthenticationService`'s `CredentialVerifier` extraction (1 new file, password
+verification split from session lookup), and `MatchSession`'s phase-1 split: a new
+`Basil.Domain.Multiplayer.MatchRoomState` carries every plain business field/method,
+`Basil.Server`'s `MatchSession` keeps its full public surface and forwards to it, the lock/mutation-
+scope/SSE machinery is untouched (2 files). Four blockers a text classifier cannot see are now
+documented from direct experience — `GameSession`/`UserSession`/Shared-typed parameters with no
+import naming them; peer coupling to a candidate that isn't itself eligible; direct filesystem I/O
+with no forbidden `using`; an `IOptions<T>`/wrapped type argument that is itself a Server type, which
+only a physical file move plus rebuild proves safe — plus a fifth found in Unit 8: a `const` field
+crossing a namespace boundary is invisible to `DomainBoundaryTests` (ADR-008's documented
+const-inlining gap), so a real edge must be declared even when the instrument cannot yet catch its
+absence.
+
+**What's left is bigger than the original "16 files" framing suggested.** Auth, Beatmaps, Content,
+Scores, Users, Chat and Spectating's contract-level work is done. What remains: `GameSession` itself
+needs the split target doc §8 step 5 describes (`Match` → `Basil.Domain/Multiplayer`,
+`Spectating`/`Spectators` → `Basil.Domain/Spectating`, `ModeStats`/`Status` → `Basil.Domain/Users`,
+etc.) before `ScoreSubmissionService` can move or the ~24 Multiplayer packet handlers can be
+surveyed for Domain eligibility; that retyping is its own scoped design (`GameSession` is the
+71-file blast radius the target doc's F1 finding names, the largest single piece C1b has yet to
+size); Bot's remaining 5 files and `MpCommandService`/`MpReplies`'s move into
+`Basil.Domain/Multiplayer` ride along with it. Full detail and the exact next unit in
+`c1b-project-move-decision.md`'s "Next exact step".
 
 ---
 
