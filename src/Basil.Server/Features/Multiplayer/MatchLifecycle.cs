@@ -6,7 +6,6 @@ using Basil.Server.Shared.Sessions;
 using Basil.Server.Features.Chat;
 using Basil.Server.Features.Bot;
 using Basil.Domain.Multiplayer;
-using Basil.Protocol.Multiplayer;
 using Microsoft.Extensions.Logging;
 
 namespace Basil.Server.Features.Multiplayer;
@@ -41,7 +40,7 @@ public sealed class MatchLifecycle(
 		NoOccupiedSlots
 	}
 
-	private const int MaxMatchNameLength = 50;
+	internal const int MaxMatchNameLength = 50;
 
 	/* "Match created in 15, invite in 10"
 	 * Matches are usually created 15 minutes before start and players are invited
@@ -49,18 +48,6 @@ public sealed class MatchLifecycle(
 	 */
 	private const int EmptyRoomCloseSeconds = 15 * 60;
 	private const int EmptyRoomWarnAtSeconds = 5 * 60;
-
-	/// <summary>Validates parsed match-create data against the expected host.</summary>
-	/// <param name="data">The parsed match-create data.</param>
-	/// <param name="expectedHostId">The host id the data must claim.</param>
-	/// <returns>
-	///     <see langword="true" /> when the host id matches and the name is short enough; otherwise,
-	///     <see langword="false" />.
-	/// </returns>
-	public static bool ValidateMatchData(MatchState data, int expectedHostId)
-	{
-		return data.HostId == expectedHostId && data.Name.Length <= MaxMatchNameLength;
-	}
 
 	/// <summary>
 	///     Creates a match, persists its row, records the creation event, and — when the creator is a
@@ -86,13 +73,13 @@ public sealed class MatchLifecycle(
 	///     against a room whose data was just used to create it.
 	/// </remarks>
 	/// <param name="creator">The userSession creating the room.</param>
-	/// <param name="data">The parsed match-create data.</param>
+	/// <param name="data">The match-create settings.</param>
 	/// <param name="cancellationToken">A token that cancels the persistence and join operations.</param>
 	/// <returns>
 	///     The new <see cref="MatchSession" />, or <see langword="null" /> when a game-client creator could not be
 	///     seated.
 	/// </returns>
-	public async Task<MatchSession?> CreateAsync(UserSession creator, MatchState data,
+	public async Task<MatchSession?> CreateAsync(UserSession creator, MatchCreationData data,
 		CancellationToken cancellationToken = default)
 	{
 		var match = await matchRegistry.CreateAsync(data, MatchSession.NoHostId, cancellationToken);
@@ -163,10 +150,10 @@ public sealed class MatchLifecycle(
 	///     room), and the referee list stays empty until a caller assigns them via
 	///     <c>PATCH /match/{id}/settings</c>, the <c>host</c> action, or the <c>addref</c> action.
 	/// </remarks>
-	/// <param name="data">The parsed match-create data.</param>
+	/// <param name="data">The match-create settings.</param>
 	/// <param name="cancellationToken">A token that cancels the persistence operations.</param>
 	/// <returns>The new <see cref="MatchSession" />.</returns>
-	public async Task<MatchSession> CreateEmptyAsync(MatchState data,
+	public async Task<MatchSession> CreateEmptyAsync(MatchCreationData data,
 		CancellationToken cancellationToken = default)
 	{
 		var match = await matchRegistry.CreateAsync(data, MatchSession.NoHostId, cancellationToken);

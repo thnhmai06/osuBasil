@@ -14,7 +14,6 @@ using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
-using Basil.Protocol.Multiplayer;
 using Microsoft.Extensions.Logging;
 
 namespace Basil.Server.Features.Multiplayer;
@@ -471,11 +470,10 @@ public sealed class MpCommandService(
 		var name = args.Count > 0 ? string.Join(' ', args) : $"{sender.Name}'s match";
 		if (name.Length > MaxMatchNameLength) name = name[..MaxMatchNameLength];
 
-		var data = new MatchState(
-			0, false, 0, 0, name, "",
-			"", 0, "",
-			[], [], [], sender.Id, 0,
-			0, 0, false, [], 0);
+		var data = new MatchCreationData(
+			name, "", "", null, "", sender.Id,
+			GameMode.Standard, Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead,
+			false, 0);
 
 		var match = await matchLifecycle.CreateAsync(sender, data, cancellationToken);
 		if (match is null)

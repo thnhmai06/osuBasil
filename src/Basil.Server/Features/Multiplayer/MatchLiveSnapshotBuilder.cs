@@ -10,7 +10,6 @@ using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
-using Basil.Protocol.Multiplayer;
 
 // ReSharper disable NotAccessedPositionalProperty.Global
 
@@ -84,19 +83,6 @@ public static class MatchLiveSnapshotBuilder
 			!string.IsNullOrEmpty(match.Password), match.IsPrivate, match.IsLocked, size,
 			beatmap is not null ? match.MapId : null, match.Mods, match.Freemods, match.TeamType,
 			match.WinCondition, match.Mode, match.InProgress, beatmap);
-	}
-
-	/// <summary>Builds the per-userSession live score payload for the SSE <c>/match/{id}/{playerName}</c> channel.</summary>
-	/// <param name="userSession">The userSession whose score frame to broadcast.</param>
-	/// <param name="frame">The decoded score frame from the client.</param>
-	/// <returns>The <see cref="PlayerLiveScore" /> payload.</returns>
-	public static PlayerLiveScore BuildPlayerScore(UserSession userSession, ScoreFrame frame)
-	{
-		return new PlayerLiveScore(
-			new UserBrief(userSession.Id, userSession.Name, userSession.Country),
-			frame.Time, frame.Num300, frame.Num100, frame.Num50, frame.NumGeki, frame.NumKatu,
-			frame.NumMiss, frame.TotalScore, frame.MaxCombo, frame.CurrentCombo, frame.Perfect, frame.CurrentHp,
-			frame.ScoreV2);
 	}
 
 	/// <summary>Builds the settings payload for the SSE <c>/match/{id}/settings</c> channel and for settings writes.</summary>

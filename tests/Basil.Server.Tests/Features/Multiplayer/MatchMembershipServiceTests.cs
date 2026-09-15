@@ -16,7 +16,6 @@ using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Protocol.Irc;
-using Basil.Protocol.Multiplayer;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -77,7 +76,7 @@ public class MatchMembershipServiceTests
 	///     The fake persistence repo completes synchronously, so blocking here is safe and keeps every test's synchronous
 	///     shape.
 	/// </summary>
-	private static MatchSession? Create(MatchLifecycle lifecycle, UserSession host, MatchState data)
+	private static MatchSession? Create(MatchLifecycle lifecycle, UserSession host, MatchCreationData data)
 	{
 		return lifecycle.CreateAsync(host, data).GetAwaiter().GetResult();
 	}
@@ -99,14 +98,13 @@ public class MatchMembershipServiceTests
 		}
 	}
 
-	private static MatchState MakeMatchData(int hostId, string name = "test match", string password = "",
+	private static MatchCreationData MakeMatchData(int hostId, string name = "test match", string password = "",
 		bool freeMods = false)
 	{
-		return new MatchState(
-			0, false, 0, 0, name, password,
-			"Some Map", 100, new string('a', 32),
-			[], [], [], hostId, 0,
-			0, 0, freeMods, [], 0);
+		return new MatchCreationData(
+			name, password, "Some Map", 100, new string('a', 32), hostId,
+			GameMode.Standard, Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead,
+			freeMods, 0);
 	}
 
 	[Fact]
@@ -572,7 +570,7 @@ public class MatchMembershipServiceTests
 		var bot = MakePlayer(BotBootstrapService.BotId, "BasilBot");
 		RegisterAll(host, bot);
 		var (_, lifecycle, _) = MakeService();
-		var match = Create(lifecycle, host, MakeMatchData(host.Id) with { MapId = 0 })!;
+		var match = Create(lifecycle, host, MakeMatchData(host.Id) with { MapId = null })!;
 		host.Dequeue();
 
 		await using var mutation = await match.BeginMutationAsync();

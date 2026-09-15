@@ -3,7 +3,7 @@
 > Read this file first. It is kept current in the same commit as every green step, so a
 > successor can resume from here without reconstructing state from `git log` and a build.
 
-## Current task: C1a — steps 1-4 done. Next is step 5 (the four read-model types)
+## Current task: C1a done (pinned list 21 → 3). Next is C5
 
 Order is C4 → C3 → C6 → C1a → C5 (see `plans/execution/stage-c-order-decision.md` for why C1 runs
 last, and `plans/basil-plan-20260909.md`'s Stage C preamble, which adds C6 and splits C1). C2 is
@@ -728,19 +728,64 @@ file needed a change — the only construction site (`LoginServiceTests.cs`) nev
 Verification: build green, ArchitectureTests 8, Domain 114, Protocol 158, Server.Tests 1057,
 IntegrationTests 363 (8 min 37 s, no failure).
 
-### Next exact step
+### Step 5 — the read-model types (done, 9 to 3)
 
-**Step 5 is next: `MatchState`'s three users, the two API route types, and `SpectateFramesEvent`.**
-`IMatchRegistry`, `InMemoryMatchRegistry` and `MatchLiveSnapshotBuilder` hold `MatchState` — a
-`Basil.Protocol.Multiplayer` wire record — as their read model; `MatchLifecycle` keeps its row only
-for the same reason. `AnnounceRoutes` and `Multiplayer.Endpoints.MatchListEndpoints` are the API
-host describing bancho wire structures, already named as Task D3's kind of defect.
-`Spectating.SpectateFramesEvent` carries `ReplayFrame`/`ScoreFrame` as an SSE payload. None of these
-four is a "business decides, transport encodes" seam like steps 1-4 — they are read-model/view
-problems, closer in shape to the `MatchState`-in-a-view finding `architecture-target-20260908.md`
-§3.5 already made for `MatchRoutes`. The step is to give each a Domain- or API-owned read type and
-a mapper, not a notifier. Read the four files' actual `MatchState`/`ReplayFrame`/`ScoreFrame` field
-usage before designing the replacement type, the way the chat seam was measured before designed.
+Measured before designing, and the measurement changed the scope: `MatchLiveSnapshotBuilder`'s only
+protocol reference turned out to be `ScoreFrame` (not `MatchState`), used by exactly one method,
+`BuildPlayerScore`, called only from `MatchScoreUpdateHandler` (already `.Packets`, exempt). Moving
+that one method into its only caller cleared the row with no new type. `AnnounceRoutes` and
+`Spectating.SpectateFramesEvent` turned out not to be this step's problem at all — see below, both
+stay pinned deliberately.
+
+**`MatchCreationData`** (`Features/Multiplayer/`) is the actual read-model fix: a business-shaped
+record of what a match is created with — name, password, initial map, host id, and the four
+already-Domain ruleset enums (`GameMode`, `Mods`, `MatchWinCondition`, `MatchTeamType`) — carrying
+no slot state, because a match always starts empty. It replaced `MatchState` (a 19-field wire record
+covering a full room, including per-slot arrays no creation path ever reads) as the parameter type of
+`IMatchRegistry.CreateAsync`, `InMemoryMatchRegistry.CreateAsync`/`BuildNew`,
+`MatchLifecycle.CreateAsync`/`CreateEmptyAsync`. **`MatchCreationDataMapper`**
+(`Features/Multiplayer/Packets/`) validates and maps the wire `MatchState` at the boundary: `IsValid`
+(moved verbatim from `MatchLifecycle.ValidateMatchData`, called only from the three `.Packets`
+handlers that already had it) and `ToCreationData` (the wire-to-domain conversion, including the
+0/-1-means-null `MapId` sentinel logic `InMemoryMatchRegistry.BuildNew` used to own). `MpCommandService`
+(`!mp make`) and `MatchListEndpoints` (`POST /match`) — the two non-wire callers — now build
+`MatchCreationData` directly with typed enum literals instead of matching `MatchState`'s int-sentinel
+shape by hand; both got simpler, not just relocated. Five rows deleted: `IMatchRegistry`,
+`InMemoryMatchRegistry`, `MatchLifecycle`, `MpCommandService`, `Multiplayer.Endpoints.MatchListEndpoints`.
+`MatchLiveSnapshotBuilder`'s row deleted too (above), for six total.
+
+**Two rows stay pinned, deliberately, with reasons recorded here rather than guessed at again:**
+
+* **`AnnounceRoutes`** is not a read-model problem. It decides who to notify (every online player, or
+  a given id list) and calls `ServerPacketWriter.Notification` — the exact "API host needs something
+  Hosts.Bancho owns" case `architecture-target-20260908.md` §3.5 and Task D3 already name, with the
+  named resolution "Domain publishes an event, Hosts.Bancho subscribes and encodes it." That
+  mechanism does not exist yet — Stage D has not started and there is no bancho host to subscribe
+  from. Building it now, inside Stage C, would invent Stage D's infrastructure early against a
+  requirement of one route. Left for Task D3, as already planned.
+* **`Spectating.SpectateFramesEvent`** is a deliberate decision already recorded in the record's own
+  remarks: it "reuses the wire-level `ReplayFrame` and `ScoreFrame` protocol types directly...
+  following the same convention as `PlayerLiveScore`... rather than duplicating an API-layer copy of
+  the same fields." Its only producer (`SpectateFramesHandler`) is `.Packets`, exempt; its only other
+  consumers are `OpenApiExampleExtensions` (already an accepted `Shared -> Features` pinned offender)
+  and the SSE serializer. Re-litigating a documented, reasoned tradeoff to shrink a count by one is
+  not this step's job — CLAUDE.md rule 2 argues the other way, against the duplication the remarks
+  already rejected.
+
+A regression test (Issue #4, the wire `MapId` 0/-1 sentinel meaning "no map") moved with the logic it
+covers, from `InMemoryMatchRegistryTests` to the new `MatchCreationDataMapperTests` — the mapper is
+now where that translation happens, and the registry tests were rewritten to check the narrower thing
+they still own (pass-through, not translation).
+
+Verification: build green, ArchitectureTests 8, Domain 114, Protocol 158, Server.Tests 1062 (net +5:
+one regression test relocated, two replaced by one at the layer that still owns them, four new
+`MatchCreationDataMapperTests`), IntegrationTests 363 (7 min 42 s, no failure).
+
+**C1a is complete.** Pinned list: 21 → 3. Next is **C5** — re-measure the slice graph (both counts,
+`plans/execution/measure-slice-graph.py`) and the `Shared -> Features` pinned list, record the result
+in `architecture-progress.md` against the baseline there, and report before Stage D if the graph did
+not move as predicted. C1b (whether the ~96-file project move still buys anything beyond the
+namespace rules already in place) is a decision for after C5's numbers, and it is the user's call.
 
 ## C2 -- investigated, not started: the task's own currency cannot move
 

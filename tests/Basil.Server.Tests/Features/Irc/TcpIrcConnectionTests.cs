@@ -445,7 +445,7 @@ public class TcpIrcConnectionTests
 			return dbId == match.DbId ? match : null;
 		}
 
-		public Task<MatchSession> CreateAsync(MatchState data, int hostId,
+		public Task<MatchSession> CreateAsync(MatchCreationData data, int hostId,
 			CancellationToken cancellationToken = default)
 		{
 			throw new NotSupportedException();

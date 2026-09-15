@@ -4,7 +4,6 @@ using Basil.Server.Features.Chat;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
-using Basil.Protocol.Multiplayer;
 
 namespace Basil.Server.Features.Multiplayer;
 
@@ -35,7 +34,7 @@ public sealed class InMemoryMatchRegistry(IChannelRegistry channelRegistry, IMat
 
 	/// <inheritdoc />
 	/// <remarks>Claims the lowest-numbered id not currently in use.</remarks>
-	public async Task<MatchSession> CreateAsync(MatchState data, int hostId,
+	public async Task<MatchSession> CreateAsync(MatchCreationData data, int hostId,
 		CancellationToken cancellationToken = default)
 	{
 		// The persistent id is claimed first because it names the room's chat channel, which is fixed
@@ -73,21 +72,15 @@ public sealed class InMemoryMatchRegistry(IChannelRegistry channelRegistry, IMat
 	/// <summary>Constructs the in-memory match session for parsed match-create data.</summary>
 	/// <param name="id">The in-memory registry slot id.</param>
 	/// <param name="dbId">The match's persistent database id.</param>
-	/// <param name="data">The parsed match-create data.</param>
+	/// <param name="data">The match-create settings.</param>
 	/// <param name="hostId">The id of the userSession who created the room.</param>
 	/// <returns>The fully constructed <see cref="MatchSession" />.</returns>
-	private static MatchSession BuildNew(int id, int dbId, MatchState data, int hostId)
+	private static MatchSession BuildNew(int id, int dbId, MatchCreationData data, int hostId)
 	{
-		// data.MapId is the wire/protocol value: -1 is a real client's explicit "no beatmap chosen",
-		// and 0 is what an HTTP creation request leaves as an unused placeholder (ids in this schema
-		// auto-increment from 1, so 0 can never be a real beatmap either). Both mean "no map" at this
-		// wire-to-domain boundary; MatchSession.MapId itself is null in that case, not a sentinel.
-		var mapId = data.MapId <= 0 ? null : (int?)data.MapId;
-
 		return new MatchSession(
-			id, data.Name, data.Password, data.MapName, mapId, data.MapMd5,
-			hostId, (GameMode)data.Mode, (Mods)data.Mods, (MatchWinCondition)data.WinCondition,
-			(MatchTeamType)data.TeamType, data.FreeMods, data.Seed, ChannelNameFor(dbId))
+			id, data.Name, data.Password, data.MapName, data.MapId, data.MapMd5,
+			hostId, data.Mode, data.Mods, data.WinCondition,
+			data.TeamType, data.FreeMods, data.Seed, ChannelNameFor(dbId))
 		{
 			DbId = dbId
 		};

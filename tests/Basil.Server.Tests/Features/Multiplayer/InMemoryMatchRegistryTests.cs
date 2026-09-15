@@ -3,19 +3,17 @@ using Basil.Server.Features.Multiplayer;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
-using Basil.Protocol.Multiplayer;
 
 namespace Basil.Server.Tests.Features.Multiplayer;
 
 public class InMemoryMatchRegistryTests
 {
-	private static MatchState MakeMatchState()
+	private static MatchCreationData MakeMatchState()
 	{
-		return new MatchState(
-			0, false, 0, 0, "test", "",
-			"", 0, new string('a', 32),
-			[], [], [], 1, (int)GameMode.Standard, (int)MatchWinCondition.Score,
-			(int)MatchTeamType.HeadToHead, false, [], 0);
+		return new MatchCreationData(
+			"test", "", "", null, new string('a', 32), 1,
+			GameMode.Standard, Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead,
+			false, 0);
 	}
 
 	private static InMemoryMatchRegistry MakeRegistry()
@@ -33,25 +31,18 @@ public class InMemoryMatchRegistryTests
 		Assert.Equal(0, match.Id);
 	}
 
-	/// <summary>
-	///     Regression test (Issue #4): MatchSession.MapId is null domain-side, not the wire's 0/-1
-	///     sentinels. `0` is what an HTTP creation request leaves as an unused placeholder (see
-	///     MatchRoutes.HandleCreate); `-1` is a real client's explicit "no beatmap chosen".
-	/// </summary>
-	[Theory]
-	[InlineData(0)]
-	[InlineData(-1)]
-	public async Task CreateAsync_WireMapIdIsZeroOrNegativeOne_DomainMapIdIsNull(int wireMapId)
+	[Fact]
+	public async Task CreateAsync_NullMapId_MatchHasNoMapId()
 	{
 		var registry = MakeRegistry();
 
-		var match = await registry.CreateAsync(MakeMatchState() with { MapId = wireMapId }, 1);
+		var match = await registry.CreateAsync(MakeMatchState() with { MapId = null }, 1);
 
 		Assert.Null(match.MapId);
 	}
 
 	[Fact]
-	public async Task CreateAsync_WireMapIdIsPositive_DomainMapIdMatches()
+	public async Task CreateAsync_MapIdGiven_MatchHasTheSameMapId()
 	{
 		var registry = MakeRegistry();
 

@@ -8,7 +8,7 @@ namespace Basil.Server.Features.Multiplayer.Packets;
 /// <summary>Handles the client's request to create a new multiplayer match.</summary>
 /// <remarks>
 ///     Reads the match payload from the packet and validates it via
-///     <see cref="MatchLifecycle.ValidateMatchData" /> before doing any work. Invalid payloads,
+///     <see cref="MatchCreationDataMapper.IsValid" /> before doing any work. Invalid payloads,
 ///     restricted players, and silenced players all get a <c>MatchJoinFail</c> response, with a
 ///     notification added for the latter two, and the request is dropped. The room is then created
 ///     through <see cref="MatchLifecycle.CreateAsync" />; if that returns <see langword="null" />
@@ -27,7 +27,7 @@ public sealed class CreateMatchHandler(MatchLifecycle matchLifecycle) : IPacketH
 		CancellationToken cancellationToken = default)
 	{
 		var matchData = reader.ReadMatch();
-		if (!MatchLifecycle.ValidateMatchData(matchData, gameSession.Id)) return;
+		if (!MatchCreationDataMapper.IsValid(matchData, gameSession.Id)) return;
 
 		if (gameSession.Restricted)
 		{
@@ -47,7 +47,7 @@ public sealed class CreateMatchHandler(MatchLifecycle matchLifecycle) : IPacketH
 			return;
 		}
 
-		var match = await matchLifecycle.CreateAsync(gameSession, matchData, cancellationToken);
+		var match = await matchLifecycle.CreateAsync(gameSession, matchData.ToCreationData(), cancellationToken);
 		match?.AddReferee(gameSession.Id);
 	}
 }

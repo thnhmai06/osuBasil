@@ -37,13 +37,7 @@ public class TransportSeamTests
 		string[] knownOffenders =
 		[
 			"Basil.Server.Features.Content.AnnounceRoutes",
-			"Basil.Server.Features.Multiplayer.Endpoints.MatchListEndpoints",
-			"Basil.Server.Features.Multiplayer.IMatchRegistry",
-			"Basil.Server.Features.Multiplayer.InMemoryMatchRegistry",
-			"Basil.Server.Features.Multiplayer.MatchLifecycle",
-			"Basil.Server.Features.Multiplayer.MatchLiveSnapshotBuilder",
 			"Basil.Server.Features.Multiplayer.MatchPacketDataMapper",
-			"Basil.Server.Features.Multiplayer.MpCommandService",
 			"Basil.Server.Features.Spectating.SpectateFramesEvent"
 		];
 

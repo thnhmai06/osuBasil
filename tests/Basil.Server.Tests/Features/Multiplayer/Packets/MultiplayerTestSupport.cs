@@ -37,15 +37,14 @@ internal static class MultiplayerTestSupport
 		return new GameSession(id, name, "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 	}
 
-	public static MatchState MakeMatchData(
+	public static MatchCreationData MakeMatchData(
 		int hostId, string name = "test match", string password = "", bool freeMods = false,
-		int mapId = 100, string mapMd5 = "", MatchTeamType teamType = MatchTeamType.HeadToHead, int winCondition = 0)
+		int mapId = 100, string mapMd5 = "", MatchTeamType teamType = MatchTeamType.HeadToHead,
+		MatchWinCondition winCondition = MatchWinCondition.Score)
 	{
-		return new MatchState(
-			0, false, 0, 0, name, password,
-			"Some Map", mapId, mapMd5.Length == 32 ? mapMd5 : new string('a', 32),
-			[], [], [], hostId, 0,
-			winCondition, (int)teamType, freeMods, [], 0);
+		return new MatchCreationData(
+			name, password, "Some Map", mapId, mapMd5.Length == 32 ? mapMd5 : new string('a', 32), hostId,
+			GameMode.Standard, Mods.NoMod, winCondition, teamType, freeMods, 0);
 	}
 
 	/// <summary>
@@ -156,21 +155,17 @@ internal static class MultiplayerTestSupport
 			return _byId.Values.FirstOrDefault(m => m.DbId == dbId);
 		}
 
-		public Task<MatchSession> CreateAsync(MatchState data, int hostId,
+		public Task<MatchSession> CreateAsync(MatchCreationData data, int hostId,
 			CancellationToken cancellationToken = default)
 		{
 			var id = 0;
 			while (_byId.ContainsKey(id)) id++;
 			var dbId = _nextDbId++;
 
-			// Mirrors InMemoryMatchRegistry.BuildNew: data.MapId is the wire value (0/-1 both mean
-			// "no map" at this boundary); MatchSession.MapId is null in that case, not a sentinel.
-			var mapId = data.MapId <= 0 ? null : (int?)data.MapId;
-
 			var match = new MatchSession(
-				id, data.Name, data.Password, data.MapName, mapId, data.MapMd5,
-				hostId, (GameMode)data.Mode, (Mods)data.Mods, (MatchWinCondition)data.WinCondition,
-				(MatchTeamType)data.TeamType, data.FreeMods, data.Seed, $"#mp_{dbId}")
+				id, data.Name, data.Password, data.MapName, data.MapId, data.MapMd5,
+				hostId, data.Mode, data.Mods, data.WinCondition,
+				data.TeamType, data.FreeMods, data.Seed, $"#mp_{dbId}")
 			{
 				DbId = dbId
 			};

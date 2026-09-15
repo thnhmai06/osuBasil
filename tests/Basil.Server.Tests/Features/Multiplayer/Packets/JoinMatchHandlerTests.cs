@@ -1,3 +1,6 @@
+using Basil.Domain.Beatmaps;
+using Basil.Domain.Multiplayer;
+using Basil.Domain.Scores;
 using Basil.Server.Features.Multiplayer.Packets;
 using Basil.Server.Features.Multiplayer;
 using Basil.Protocol.Multiplayer;
@@ -159,7 +162,9 @@ public class JoinMatchHandlerTests
 	public async Task Handle_ApiCreatedMatch_GuestCanJoin()
 	{
 		var fixture = new Fixture();
-		var data = new MatchState(0, false, 0, 0, "API match", "", "", 0, "", [], [], [], 0, 0, 0, 0, false, [], 0);
+		var data = new MatchCreationData(
+			"API match", "", "", null, "", 0,
+			GameMode.Standard, Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead, false, 0);
 		var match = await fixture.MatchLifecycle.CreateEmptyAsync(data);
 
 		var guest = MakePlayer(1, "guest");

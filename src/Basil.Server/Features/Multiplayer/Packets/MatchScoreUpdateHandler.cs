@@ -54,7 +54,7 @@ public sealed class MatchScoreUpdateHandler(MatchBroadcast matchBroadcast, ILive
 			{
 				var frame = new PacketReader(playData).ReadScoreFrame();
 				var payload = JsonSerializer.SerializeToUtf8Bytes(
-					MatchLiveSnapshotBuilder.BuildPlayerScore(gameSession, frame), BasilJsonOptions.Instance);
+					BuildPlayerScore(gameSession, frame), BasilJsonOptions.Instance);
 				hub.Publish(scoreKey, match.AllocateScoreVersion(), payload);
 			}
 			catch (Exception)
@@ -62,5 +62,18 @@ public sealed class MatchScoreUpdateHandler(MatchBroadcast matchBroadcast, ILive
 				// A malformed or short scoreframe must never break the bancho relay above; the live
 				// score channel just misses this one update.
 			}
+	}
+
+	/// <summary>Builds the per-userSession live score payload for the SSE <c>/match/{id}/{playerName}</c> channel.</summary>
+	/// <param name="userSession">The userSession whose score frame to broadcast.</param>
+	/// <param name="frame">The decoded score frame from the client.</param>
+	/// <returns>The <see cref="PlayerLiveScore" /> payload.</returns>
+	private static PlayerLiveScore BuildPlayerScore(UserSession userSession, ScoreFrame frame)
+	{
+		return new PlayerLiveScore(
+			new UserBrief(userSession.Id, userSession.Name, userSession.Country),
+			frame.Time, frame.Num300, frame.Num100, frame.Num50, frame.NumGeki, frame.NumKatu,
+			frame.NumMiss, frame.TotalScore, frame.MaxCombo, frame.CurrentCombo, frame.Perfect, frame.CurrentHp,
+			frame.ScoreV2);
 	}
 }

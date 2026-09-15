@@ -1,6 +1,6 @@
+using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
-using Basil.Protocol.Multiplayer;
 using Basil.Server.Features.Auth;
 using Basil.Server.Features.Beatmaps;
 using Basil.Server.Features.Irc;
@@ -138,11 +138,10 @@ internal static class MatchListEndpoints
 			    is null)
 			return Results.BadRequest(new ErrorResponse($"No beatmap with id {body.MapId} found locally."));
 
-		var data = new MatchState(
-			0, false, 0, 0, name, body.Password ?? "",
-			MatchControlService.NoBeatmapSelectedName, 0, "",
-			[], [], [], 0, 0,
-			0, 0, false, [], 0);
+		var data = new MatchCreationData(
+			name, body.Password ?? "", MatchControlService.NoBeatmapSelectedName, null, "", 0,
+			GameMode.Standard, Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead,
+			false, 0);
 
 		var match = await matchLifecycle.CreateEmptyAsync(data, cancellationToken);
 		if (match is null) return Results.Problem("Couldn't create the match: server is full.", statusCode: 503);

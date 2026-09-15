@@ -1,3 +1,6 @@
+using Basil.Domain.Beatmaps;
+using Basil.Domain.Multiplayer;
+using Basil.Domain.Scores;
 using Basil.Server.Features.Chat.Packets;
 using Basil.Server.Features.Multiplayer.Packets;
 using Basil.Server.Shared.Eventing;
@@ -11,7 +14,6 @@ using Basil.Server.Shared.Sessions;
 using Basil.Server.Features.Chat;
 using Basil.Server.Tests.Features.Multiplayer.Packets;
 using Basil.Domain.Users;
-using Basil.Protocol.Multiplayer;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -68,13 +70,12 @@ public class EmptyRoomAutoCloseTests
 		}
 	}
 
-	private static MatchState MakeMatchData(int hostId)
+	private static MatchCreationData MakeMatchData(int hostId)
 	{
-		return new MatchState(
-			0, false, 0, 0, "test match", "",
-			"Some Map", 100, new string('a', 32),
-			[], [], [], hostId, 0,
-			0, 0, false, [], 0);
+		return new MatchCreationData(
+			"test match", "", "Some Map", 100, new string('a', 32), hostId,
+			GameMode.Standard, Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead,
+			false, 0);
 	}
 
 	[Fact]

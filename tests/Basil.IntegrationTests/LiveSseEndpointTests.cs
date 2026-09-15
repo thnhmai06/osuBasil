@@ -167,8 +167,9 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Bootstra
 	private async Task<int> RegisterLiveMatch()
 	{
 		var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
-		var data = new MatchState(0, false, 0, 0, "Test Match", "", "", 0, "", [], [], [], 0, 0, 0, 0, false, [],
-			0);
+		var data = new MatchCreationData(
+			"Test Match", "", "", null, "", 0,
+			GameMode.Standard, Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead, false, 0);
 		var match = await matchRegistry.CreateAsync(data, 0);
 		return match.DbId;
 	}

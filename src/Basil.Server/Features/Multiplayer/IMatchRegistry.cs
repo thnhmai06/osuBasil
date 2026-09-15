@@ -1,5 +1,3 @@
-using Basil.Protocol.Multiplayer;
-
 namespace Basil.Server.Features.Multiplayer;
 
 /// <summary>
@@ -35,11 +33,11 @@ public interface IMatchRegistry
 	///     Finding the free id and registering the session must happen as one step: if they were
 	///     separated, two concurrent creations could claim the same id.
 	/// </remarks>
-	/// <param name="data">The parsed match-create data.</param>
+	/// <param name="data">The match-create settings.</param>
 	/// <param name="hostId">The id of the userSession who created the room.</param>
 	/// <param name="cancellationToken">A token that cancels the create operations.</param>
 	/// <returns>The newly registered match.</returns>
-	Task<MatchSession> CreateAsync(MatchState data, int hostId, CancellationToken cancellationToken = default);
+	Task<MatchSession> CreateAsync(MatchCreationData data, int hostId, CancellationToken cancellationToken = default);
 
 	/// <summary>
 	///     Unregisters the match with the wire-protocol id <paramref name="id" />, called when a
