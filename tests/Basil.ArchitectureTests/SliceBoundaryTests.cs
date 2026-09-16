@@ -90,10 +90,11 @@ public class SliceBoundaryTests
 		// entirely, so this test no longer sees them at all. PacketDispatcher and
 		// GhostDisconnectService dropped out the same batch: their only remaining IrcSession/
 		// GameSession dependency is now Basil.Application.Sessions/Irc, not a Features slice.
+		// OpenApiExampleExtensions dropped out in Batch 6: its last Features reference,
+		// Spectating.SpectateFramesEvent, moved to Basil.Application.Spectating.
 		string[] knownOffenders =
 		[
 			"Basil.Infrastructure.Shared.Http.BanchoHostGroups",
-			"Basil.Infrastructure.Shared.Http.OpenApi.OpenApiExampleExtensions",
 			"Basil.Infrastructure.Shared.Http.OpenApi.SecuritySchemeTransformers",
 			"Basil.Infrastructure.Shared.Media.Assets.BeatmapsetBackgroundProvider",
 			"Basil.Infrastructure.Shared.Media.Assets.BeatmapThumbnailProvider",

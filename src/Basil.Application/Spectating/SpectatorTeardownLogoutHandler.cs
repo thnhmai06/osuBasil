@@ -1,8 +1,7 @@
 using Basil.Application.Sessions;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Shared.Sessions;
 
-namespace Basil.Infrastructure.Spectating;
+namespace Basil.Application.Spectating;
 
 /// <summary>
 ///     Tears down the spectator relationships of a departing <see cref="GameSession" />: the session

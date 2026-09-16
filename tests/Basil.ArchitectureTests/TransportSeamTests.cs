@@ -48,8 +48,7 @@ public class TransportSeamTests
 		string[] knownOffenders =
 		[
 			"Basil.Infrastructure.Content.AnnounceRoutes",
-			"Basil.Infrastructure.Multiplayer.MatchPacketDataMapper",
-			"Basil.Infrastructure.Spectating.SpectateFramesEvent"
+			"Basil.Infrastructure.Multiplayer.MatchPacketDataMapper"
 		];
 
 		var result = BusinessAndApiTypes()
@@ -73,7 +72,8 @@ public class TransportSeamTests
 		// list above — deliberately allowed here, pinned so the set can only shrink.
 		// BanchoIrcBridgeConnection, IIrcConnection, IrcAuthenticationService, IrcLoginOutcome,
 		// IrcNamesReply, and IrcQueryService are IRC-side seam types that build or carry IrcMessage,
-		// pinned (U3).
+		// pinned (U3). SpectateFramesEvent moved here from the Infrastructure list in Batch 6 — it
+		// carries the wire-level ReplayFrame/ScoreFrame types directly (see its own doc comment).
 		string[] knownOffenders =
 		[
 			"Basil.Application.Auth.LoginResponseEncoder",
@@ -83,7 +83,8 @@ public class TransportSeamTests
 			"Basil.Application.Irc.IrcAuthenticationService",
 			"Basil.Application.Irc.IrcLoginOutcome",
 			"Basil.Application.Irc.IrcNamesReply",
-			"Basil.Application.Irc.IrcQueryService"
+			"Basil.Application.Irc.IrcQueryService",
+			"Basil.Application.Spectating.SpectateFramesEvent"
 		];
 
 		var result = Types.InAssembly(typeof(GameSession).Assembly)

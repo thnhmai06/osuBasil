@@ -9,7 +9,7 @@ using Basil.Infrastructure.Chat.Packets;
 using Basil.Infrastructure.Irc;
 using Basil.Infrastructure.Multiplayer;
 using Basil.Infrastructure.Shared.Sessions;
-using Basil.Infrastructure.Spectating;
+using Basil.Application.Spectating;
 using Basil.Infrastructure.Spectating.Packets;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;

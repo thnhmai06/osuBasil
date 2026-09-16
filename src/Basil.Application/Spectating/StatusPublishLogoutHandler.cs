@@ -1,11 +1,8 @@
 using System.Text.Json;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Json;
-using Basil.Application.Spectating;
-using Basil.Infrastructure.Shared.Http;
-using Basil.Infrastructure.Shared.Sessions;
 
-namespace Basil.Infrastructure.Spectating;
+namespace Basil.Application.Spectating;
 
 /// <summary>
 ///     Publishes a departing <see cref="GameSession" />'s offline status to its live status stream, so

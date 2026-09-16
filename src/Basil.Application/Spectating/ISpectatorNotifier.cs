@@ -1,7 +1,6 @@
 using Basil.Application.Sessions;
-using Basil.Infrastructure.Shared.Sessions;
 
-namespace Basil.Infrastructure.Spectating;
+namespace Basil.Application.Spectating;
 
 /// <summary>
 ///     Tells connected clients about changes to who is spectating whom. The spectator service

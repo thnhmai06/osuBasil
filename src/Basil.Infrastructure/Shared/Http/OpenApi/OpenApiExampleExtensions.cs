@@ -10,7 +10,6 @@ using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Http.Middleware;
-using Basil.Infrastructure.Spectating;
 using Basil.Protocol.Multiplayer;
 using Microsoft.OpenApi;
 

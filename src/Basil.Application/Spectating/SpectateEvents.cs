@@ -3,7 +3,7 @@ using Basil.Protocol.Multiplayer;
 
 // ReSharper disable NotAccessedPositionalProperty.Global
 
-namespace Basil.Infrastructure.Spectating;
+namespace Basil.Application.Spectating;
 
 /// <summary>Base shape for the live spectating event family.</summary>
 /// <param name="User">The spectated userSession.</param>

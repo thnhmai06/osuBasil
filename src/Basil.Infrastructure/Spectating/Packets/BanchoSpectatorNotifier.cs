@@ -1,5 +1,5 @@
 using Basil.Application.Sessions;
-using Basil.Infrastructure.Shared.Sessions;
+using Basil.Application.Spectating;
 using Basil.Protocol.Packets;
 
 namespace Basil.Infrastructure.Spectating.Packets;

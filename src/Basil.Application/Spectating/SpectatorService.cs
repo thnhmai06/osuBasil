@@ -1,9 +1,8 @@
 using Basil.Application.Sessions;
 using Basil.Domain.Channels;
 using Basil.Application.Chat;
-using Basil.Infrastructure.Shared.Sessions;
 
-namespace Basil.Infrastructure.Spectating;
+namespace Basil.Application.Spectating;
 
 /// <summary>
 ///     Manages the spectating channels that connect a userSession and their spectators.

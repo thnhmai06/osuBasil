@@ -14,6 +14,7 @@ using Basil.Infrastructure.Multiplayer;
 using Basil.Infrastructure.Scores;
 using Basil.Infrastructure.Shared.Http.Bancho;
 using Basil.Infrastructure.Shared.Sessions;
+using Basil.Application.Spectating;
 using Basil.Infrastructure.Spectating;
 using Basil.Infrastructure.Users;
 using Basil.Application.Scores;

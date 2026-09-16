@@ -1,6 +1,6 @@
 using Basil.Application.Sessions;
+using Basil.Application.Spectating;
 using Basil.Infrastructure.Shared.Http.Bancho;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
 
 namespace Basil.Infrastructure.Spectating.Packets;

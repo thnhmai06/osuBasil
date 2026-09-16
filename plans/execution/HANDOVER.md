@@ -96,7 +96,25 @@ not, it says so.
 > movement, no new/removed test cases). Per-project: ArchitectureTests 10, Domain 207, Protocol 158,
 > Application 93, Infrastructure 851, Host 28, Integration 363 (not run this batch — not a milestone;
 > `Basil.Infrastructure.Tests` already covers `LoginServiceTests`/`ClientIntegrityServiceTests` etc.).
-> Next: **Batch 6** — Spectating → Application (5 files, per plan §5).
+> **Batch 6 done**: moved 5 files to `Basil.Application/Spectating` — `ISpectatorNotifier`,
+> `SpectateEvents.cs` (`SpectateEvent`/`SpectateFramesEvent`/`SpectateState`/`SpectateStateEvent`),
+> `SpectatorService`, `SpectatorTeardownLogoutHandler`, `StatusPublishLogoutHandler`. `PlayerLiveRoutes.cs`
+> and `Packets/*` (incl. `BanchoSpectatorNotifier`) stay in Infrastructure (destined `HB`/`HA` at
+> Batches 11/12). DI split: new `AddSpectatingApplication()` in `Basil.Application.Spectating`
+> (registers `SpectatorService`, `IPlayerInputEvents`/`IPlayerStatusEvents` — already Application since
+> Batch 3 — and the two logout handlers), called from the still-Infrastructure `AddSpectating()`, which
+> now registers only `ISpectatorNotifier`/`BanchoSpectatorNotifier` and the 4 packet handlers.
+> `SpectateFramesEvent` carries the wire-level `ReplayFrame`/`ScoreFrame` types directly, so it moved
+> from `TransportSeamTests`' Infrastructure-side pinned list (`Business_And_Api_Types_Should_Not_Reference_Protocol`,
+> now down to 2 offenders) to the Application-side one (`Application_Types_Should_Not_Reference_Protocol`,
+> now 9). Unrelated but exposed by the same move: `SliceBoundaryTests.Shared_Should_Not_Reference_Features`'s
+> pinned list shrank by 1 — `OpenApiExampleExtensions` (`Shared/Http/OpenApi`) built its `/spec/{id}` SSE
+> OpenAPI examples from `SpectateFramesEvent`, which is no longer a Features-slice reference now that the
+> type lives in Application; its now-dead `using Basil.Infrastructure.Spectating;` was removed. Test
+> count unchanged at **1710** (pure code movement). Per-project: ArchitectureTests 10, Domain 207,
+> Protocol 158, Application 93, Infrastructure 851, Host 28, Integration 363 (not run this batch — not a
+> milestone).
+> Next: **Batch 7** — Scores → Application (3 files, per plan §5).
 
 ---
 
