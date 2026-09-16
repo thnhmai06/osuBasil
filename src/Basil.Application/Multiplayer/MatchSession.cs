@@ -27,7 +27,7 @@ namespace Basil.Application.Multiplayer;
 /// <param name="password">The room's password, used in its invitation url.</param>
 /// <param name="mapName">The name of the currently selected beatmap.</param>
 /// <param name="mapId">The id of the currently selected beatmap, or <see langword="null" /> when none is chosen.</param>
-/// <param name="mapMd5">The md5 of the currently selected beatmap.</param>
+/// <param name="mapMd5">The md5 of the currently selected beatmap, or <see langword="null" /> when none is chosen.</param>
 /// <param name="hostId">The id of the userSession hosting the room, or <see langword="null" /> when nobody holds gameplay host.</param>
 /// <param name="mode">The game mode the room plays in.</param>
 /// <param name="mods">The mods applied to the whole room.</param>
@@ -42,7 +42,7 @@ public sealed class MatchSession(
 	string password,
 	string mapName,
 	int? mapId,
-	string mapMd5,
+	string? mapMd5,
 	int? hostId,
 	GameMode mode,
 	Mods mods,
@@ -266,8 +266,8 @@ public sealed class MatchSession(
 		set => State.PrevMapId = value;
 	}
 
-	/// <summary>Gets or sets the md5 of the currently selected beatmap.</summary>
-	public string MapMd5
+	/// <summary>Gets or sets the md5 of the currently selected beatmap, or <see langword="null" /> when none is chosen.</summary>
+	public string? MapMd5
 	{
 		get => State.MapMd5;
 		set => State.MapMd5 = value;

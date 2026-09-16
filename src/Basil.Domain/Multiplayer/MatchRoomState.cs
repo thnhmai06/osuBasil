@@ -22,7 +22,7 @@ namespace Basil.Domain.Multiplayer;
 /// <param name="password">The room's password, used in its invitation url.</param>
 /// <param name="mapName">The name of the currently selected beatmap.</param>
 /// <param name="mapId">The id of the currently selected beatmap, or <see langword="null" /> when none is chosen.</param>
-/// <param name="mapMd5">The md5 of the currently selected beatmap.</param>
+/// <param name="mapMd5">The md5 of the currently selected beatmap, or <see langword="null" /> when none is chosen.</param>
 /// <param name="hostId">The id of the player hosting the room, or <see langword="null" /> when nobody holds gameplay host.</param>
 /// <param name="mode">The game mode the room plays in.</param>
 /// <param name="mods">The mods applied to the whole room.</param>
@@ -37,7 +37,7 @@ public sealed class MatchRoomState(
 	string password,
 	string mapName,
 	int? mapId,
-	string mapMd5,
+	string? mapMd5,
 	int? hostId,
 	GameMode mode,
 	Mods mods,
@@ -80,8 +80,8 @@ public sealed class MatchRoomState(
 	// ReSharper disable once UnusedAutoPropertyAccessor.Global
 	public int? PrevMapId { get; set; }
 
-	/// <summary>Gets or sets the md5 of the currently selected beatmap.</summary>
-	public string MapMd5 { get; set; } = mapMd5;
+	/// <summary>Gets or sets the md5 of the currently selected beatmap, or <see langword="null" /> when none is chosen.</summary>
+	public string? MapMd5 { get; set; } = mapMd5;
 
 	/// <summary>Gets or sets the name of the currently selected beatmap.</summary>
 	public string MapName { get; set; } = mapName;

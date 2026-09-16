@@ -12,7 +12,7 @@ namespace Basil.Application.Multiplayer;
 /// <param name="Password">The room's password, or empty for none.</param>
 /// <param name="MapName">The name of the initially selected beatmap.</param>
 /// <param name="MapId">The id of the initially selected beatmap, or <see langword="null" /> when none is chosen.</param>
-/// <param name="MapMd5">The md5 of the initially selected beatmap.</param>
+/// <param name="MapMd5">The md5 of the initially selected beatmap, or <see langword="null" /> when none is chosen.</param>
 /// <param name="HostId">The id of the player the creation request claims as host.</param>
 /// <param name="Mode">The game mode the room plays in.</param>
 /// <param name="Mods">The mods applied to the whole room.</param>
@@ -25,7 +25,7 @@ public sealed record MatchCreationData(
 	string Password,
 	string MapName,
 	int? MapId,
-	string MapMd5,
+	string? MapMd5,
 	int HostId,
 	GameMode Mode,
 	Mods Mods,

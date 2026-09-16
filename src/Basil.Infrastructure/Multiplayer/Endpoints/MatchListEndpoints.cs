@@ -142,7 +142,7 @@ internal static class MatchListEndpoints
 			return Results.BadRequest(new ErrorResponse($"No beatmap with id {body.MapId} found locally."));
 
 		var data = new MatchCreationData(
-			name, body.Password ?? "", MatchControlService.NoBeatmapSelectedName, null, "", 0,
+			name, body.Password ?? "", MatchControlService.NoBeatmapSelectedName, null, null, 0,
 			GameMode.Standard, Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead,
 			false, 0);
 

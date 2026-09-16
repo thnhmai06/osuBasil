@@ -29,7 +29,9 @@ public static class MatchPacketDataMapper
 			match.Password,
 			match.MapName,
 			match.MapId ?? -1,
-			match.MapMd5,
+			// The wire format has no "no map" concept for md5 either; "" is what the real bancho
+			// protocol sends in that case, matching this server's pre-nullable-MapMd5 behavior on the wire.
+			match.MapMd5 ?? "",
 			[.. match.Slots.Select(s => new MatchSlotPacket((int)s.Status, (int)s.Team, (int)s.Mods, s.PlayerId))],
 			// The wire format has no "no host" concept; BasilBot's id is what the real bancho protocol
 			// sends in that case, matching this server's pre-nullable-HostId behavior on the wire.

@@ -264,7 +264,7 @@ public static class MatchLiveSnapshotBuilder
 	///     The <see cref="BeatmapDetail" /> for the md5, or <see langword="null" /> when the md5 is blank or no longer
 	///     resolves.
 	/// </returns>
-	public static async Task<BeatmapDetail?> ResolveBeatmapAsync(string mapMd5, IBeatmapRepository beatmaps,
+	public static async Task<BeatmapDetail?> ResolveBeatmapAsync(string? mapMd5, IBeatmapRepository beatmaps,
 		CancellationToken cancellationToken = default)
 	{
 		if (string.IsNullOrEmpty(mapMd5)) return null;

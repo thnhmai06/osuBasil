@@ -34,9 +34,11 @@ public static class MatchCreationDataMapper
 		// auto-increment from 1, so 0 can never be a real beatmap either). Both mean "no map" at this
 		// wire-to-domain boundary.
 		var mapId = data.MapId <= 0 ? null : (int?)data.MapId;
+		// Same wire-to-domain boundary for the md5: "" is the wire's own "no beatmap chosen" value.
+		var mapMd5 = string.IsNullOrEmpty(data.MapMd5) ? null : data.MapMd5;
 
 		return new MatchCreationData(
-			data.Name, data.Password, data.MapName, mapId, data.MapMd5, data.HostId,
+			data.Name, data.Password, data.MapName, mapId, mapMd5, data.HostId,
 			(GameMode)data.Mode, (Mods)data.Mods, (MatchWinCondition)data.WinCondition,
 			(MatchTeamType)data.TeamType, data.FreeMods, data.Seed);
 	}

@@ -473,7 +473,7 @@ public sealed class MpCommandService(
 		if (name.Length > MaxMatchNameLength) name = name[..MaxMatchNameLength];
 
 		var data = new MatchCreationData(
-			name, "", "", null, "", sender.Id,
+			name, "", "", null, null, sender.Id,
 			GameMode.Standard, Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead,
 			false, 0);
 

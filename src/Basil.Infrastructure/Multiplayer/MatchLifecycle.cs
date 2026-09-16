@@ -292,7 +292,7 @@ public sealed class MatchLifecycle(
 		match.InProgress = true;
 
 		match.CurrentRoundId = await matchRepository.CreateRoundAsync(
-			match.DbId, match.NextRoundIndex++, match.MapMd5,
+			match.DbId, match.NextRoundIndex++, match.MapMd5 ?? "",
 			match.Mode, match.WinCondition, match.TeamType,
 			match.Mods, DateTimeOffset.UtcNow.UtcDateTime, cancellationToken);
 

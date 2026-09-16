@@ -82,7 +82,7 @@ public sealed class MatchChangeSettingsHandler(
 			match.UnreadyPlayers();
 			match.PrevMapId = match.MapId;
 			match.MapId = null;
-			match.MapMd5 = "";
+			match.MapMd5 = null;
 			match.MapName = MatchControlService.NoBeatmapSelectedName;
 			match.UnresolvedMapMd5 = null;
 			matchLifecycle.CancelQueuedAutoStart(match);
