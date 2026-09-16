@@ -16,7 +16,7 @@ public static class ScoresServiceCollectionExtensions
 	/// <returns>The same service collection for chaining further registrations.</returns>
 	public static IServiceCollection AddScores(this IServiceCollection services, IConfiguration configuration)
 	{
-		services.AddSingleton<ScoreSubmissionService>();
+		services.AddScoresApplication();
 		services.AddSingleton<ReplayService>();
 
 		services.AddSingleton<IScoreRepository>(sp =>

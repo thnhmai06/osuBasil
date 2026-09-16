@@ -1,6 +1,6 @@
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
-using Basil.Infrastructure.Scores;
+using Basil.Application.Scores;
 
 namespace Basil.Infrastructure.Tests.Scores;
 

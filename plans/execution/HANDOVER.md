@@ -114,7 +114,19 @@ not, it says so.
 > count unchanged at **1710** (pure code movement). Per-project: ArchitectureTests 10, Domain 207,
 > Protocol 158, Application 93, Infrastructure 851, Host 28, Integration 363 (not run this batch — not a
 > milestone).
-> Next: **Batch 7** — Scores → Application (3 files, per plan §5).
+> **Batch 7 done**: moved 3 files to `Basil.Application/Scores` — `ScoreSubmissionService`,
+> `ScoreSubmissionResponseBuilder`, `ScoreSubmissionChartsFormatter`. All were already clean (their
+> `Basil.Infrastructure.Auth`/`.Multiplayer` usings were stale leftovers from earlier batches — the real
+> symbols they needed, `AuthenticationService` and `MatchSession`, had already moved to Application in
+> Batches 2/4). `RijndaelScoreDecryptor`, `SqliteLeaderboardStore`, `SqliteScoreRepository`, `ScoreRoutes`,
+> `ScoreDetailView`, `ReplayService`'s DI registration, `FileSystemReplayStorage` stay in Infrastructure.
+> DI split: new `AddScoresApplication()` in `Basil.Application.Scores` (registers only
+> `ScoreSubmissionService`), called from the still-Infrastructure `AddScores()`. Test count unchanged at
+> **1710**. Per-project: ArchitectureTests 10, Domain 207, Protocol 158, Application 93, Infrastructure
+> 851, Host 28, Integration 363 (not run this batch).
+> Next: **Batch 8** — Multiplayer rest → Application (~24 files, per plan §5; also where the deferred
+> `ClientIntegrityService.cs` and `CommandDispatcher.cs` from Batches 4-5 finally move, since their
+> Multiplayer/Bot/Chat dependencies are now all in Application except Multiplayer itself).
 
 ---
 

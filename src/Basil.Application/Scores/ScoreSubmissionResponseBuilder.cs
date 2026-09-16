@@ -1,4 +1,4 @@
-namespace Basil.Infrastructure.Scores;
+namespace Basil.Application.Scores;
 
 /// <summary>
 ///     Builds the plain-text body the osu! client receives after a score submission.

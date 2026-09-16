@@ -2,7 +2,7 @@ using System.Globalization;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
 
-namespace Basil.Infrastructure.Scores;
+namespace Basil.Application.Scores;
 
 /// <summary>
 ///     Formats the chart section of the score submission response.

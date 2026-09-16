@@ -6,9 +6,6 @@ using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Auth;
-using Basil.Infrastructure.Multiplayer;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Application.Scores;
 using Basil.Application.Users;
 using Basil.Application.Beatmaps;
@@ -16,7 +13,7 @@ using Basil.Application.Auth;
 
 // ReSharper disable NotAccessedPositionalProperty.Global
 
-namespace Basil.Infrastructure.Scores;
+namespace Basil.Application.Scores;
 
 /// <summary>
 ///     Identifies the outcome of a score submission attempt.
