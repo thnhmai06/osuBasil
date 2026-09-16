@@ -4,11 +4,11 @@
 > state, which stages are done, the instruments that measure this migration and how each one fails,
 > and the rules that were learned by breaking something.
 
-> **Superseded in part on 2026-09-16.** Stages D2–D4 (three host projects, `Basil.Host`,
-> `AnnounceRoutes` event) and E2 are obsolete: the target is now Architecture v3
-> (`Basil.Domain` / `Basil.Application` / `Basil.Infrastructure`), planned in
-> `plans/architecture-v3-migration-plan-20260916.md` and not yet approved for execution. Stages
-> A–C, D1, F, G are done and stand; E1 and H carry over into that plan's §6 and §9.
+> **Superseded in part on 2026-09-16.** Stages D2–D4 and E2 are replaced by
+> `plans/architecture-v3-migration-plan-20260916.md` (Architecture v3: `Basil.Domain` /
+> `Basil.Application` / `Basil.Infrastructure`, then `Basil.Host.Bancho`/`.Irc`/`.Api` +
+> `Basil.Host`), not yet approved for execution. Stages A–C, D1, F, G are done and stand; E1 and H
+> carry over into that plan's §7 and §9.
 
 
 > **For agentic workers:** work task by task. Each task ends green and committed. Steps use

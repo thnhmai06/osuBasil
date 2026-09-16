@@ -8,7 +8,7 @@ user documentation; `docs/` owns that. **Start at `execution/HANDOVER.md`.**
 | Document | Owns |
 |---|---|
 | `execution/HANDOVER.md` | current state, next task, instrument map, operating rules, open items |
-| `architecture-v3-migration-plan-20260916.md` | **the next plan, awaiting user review**: Domain / Application / Infrastructure split, per-feature ownership, batches, what the old plan loses |
+| `architecture-v3-migration-plan-20260916.md` | **the next plan, awaiting user review**: Domain / Application / Infrastructure split, then `Basil.Host.*` transports; per-feature ownership, 14 batches, what the old plan loses |
 | `basil-plan-20260909.md` | the plan executed through Stage D1 and G; D2–D4/E2 superseded by the v3 plan |
 | `execution/architecture-progress.md` | the coupling numbers, per instrument, with the commit each was measured on |
 | `execution/phase-stage-c.md` | Stage C worker checkpoint: what each task did, what is applied but uncommitted |

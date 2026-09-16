@@ -5,13 +5,14 @@ with no prior context. Read this first, then `plans/README.md` for what every ot
 then `plans/basil-plan-20260909.md`. Everything here is verifiable from the repository; where it is
 not, it says so.
 
-> **2026-09-16 — direction change.** The user replaced the host-split target with
-> *Architecture v3*: `Basil.Domain` + `Basil.Server` reorganise into `Basil.Domain`,
-> `Basil.Application`, `Basil.Infrastructure`, keeping the feature folders. The plan for that is
+> **2026-09-16 — direction change.** The target is now *Architecture v3*: `Basil.Domain` +
+> `Basil.Server` reorganise into `Basil.Domain`, `Basil.Application`, `Basil.Infrastructure`,
+> then the transports split into `Basil.Host.Bancho`/`.Irc`/`.Api` with `Basil.Host` as the entry
+> point — feature folders kept throughout. The plan is
 > `plans/architecture-v3-migration-plan-20260916.md` — **plan only, awaiting the user's review;
-> do not start a batch.** Stage D2–D4 and E2 below are obsolete (that plan's §9); D1 and G are
-> done and stand; everything in §3–§9 of this handover about instruments, rules and pitfalls still
-> applies. Two Phase 1 commits (`04a60fa9` IRC hostmask server name, `52e29999` enum underlying
+> do not start a batch.** Stage D2–D4 and E2 below are superseded by that plan's Batches 10–13;
+> D1 and G are done and stand; everything in §3–§9 of this handover about instruments, rules and
+> pitfalls still applies. Two Phase 1 commits (`04a60fa9` IRC hostmask server name, `52e29999` enum underlying
 > types + slnx flatten) are local, deliberately unpushed until the user reviews.
 
 ---

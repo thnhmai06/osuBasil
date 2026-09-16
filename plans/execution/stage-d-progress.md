@@ -1,10 +1,9 @@
 # Stage D — split the transports
 
-> **2026-09-16:** D2–D4 below are obsolete — the target changed to Architecture v3
-> (`plans/architecture-v3-migration-plan-20260916.md`), which has no host projects and no
-> `Basil.Host`. D1 stands. The D2 investigation is kept as a record of why a composition root
-> cannot live in a project the hosts reference; under v3 the executable does not move, so the
-> question does not arise.
+> **2026-09-16:** D2–D4 below are superseded by `plans/architecture-v3-migration-plan-20260916.md`
+> (Batches 0 and 10–12: `Basil.Host` entry point first, then `Basil.Host.Bancho`/`.Irc`/`.Api` on
+> top of the Application/Infrastructure split). D1 stands. The D2 investigation below is that
+> plan's Batch 0 sizing.
 
 Tracks `plans/basil-plan-20260909.md`'s Stage D (D1–D4). Started 2026-09-15, after C1b and Stage G
 were both done and C5's post-C1b measurement (recorded in `architecture-progress.md`) was reported to
