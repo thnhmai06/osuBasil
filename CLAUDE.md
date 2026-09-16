@@ -342,15 +342,21 @@ Project-level dependency direction (Domain stays free of the server and of
 persistence/web frameworks; Protocol depends on neither) is enforced by
 `DependencyDirectionTests`.
 
-> **Migration in progress.** An agent picking this up should read
-> [`plans/execution/HANDOVER.md`](plans/execution/HANDOVER.md) first — it carries the current state,
-> the decisions already settled, and the measurement instruments this migration relies on.
+> **Migration in progress (Architecture v3, Batches 0-9 of 13 done).** An agent picking this up
+> should read [`plans/execution/HANDOVER.md`](plans/execution/HANDOVER.md) first — it carries the
+> current state, the decisions already settled, and the measurement instruments this migration
+> relies on.
 >
-> The Clean Architecture layout (`Basil.Application`,
-> `Basil.Infrastructure`, `Basil.Web`) was merged into `Basil.Server` and is gone.
-> `docs/for-developers/architecture.md` still describes the old five-project
-> structure and is rewritten in the documentation phase of the migration; prefer
-> this section and the architecture tests over that document until then.
+> The section above describes the pre-v3 `Basil.Server` monolith and is now stale in every
+> particular: `Basil.Server` was renamed `Basil.Infrastructure` and the `Features.` segment
+> dropped (Batch 1); `Basil.Host` was extracted as its own exe project (Batch 0);
+> `Basil.Application` exists again and now holds the reassembled use-case/session/eventing layer —
+> most of Auth, Beatmaps, Bot, Chat, Irc, Multiplayer, Scores, and Spectating's business logic has
+> already moved there, leaving `Basil.Infrastructure` with concrete persistence/storage/media
+> providers and the not-yet-split web/packet layer. `docs/for-developers/architecture.md` still
+> describes the older five-project structure. Neither document is rewritten yet — that is Batch
+> 13's job (the "close" batch) — so until then, prefer `HANDOVER.md` and the architecture tests
+> (`Basil.ArchitectureTests`) over either.
 
 ### Important invariants
 

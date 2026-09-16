@@ -2,7 +2,7 @@ using System.Collections.Frozen;
 using Basil.Domain.Beatmaps;
 using Basil.Application.Beatmaps;
 
-namespace Basil.Infrastructure.Beatmaps;
+namespace Basil.Application.Beatmaps;
 
 /// <summary>
 ///     Queries the local beatmap database or a configured mirror for the osu!direct panel and

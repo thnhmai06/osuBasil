@@ -165,9 +165,43 @@ not, it says so.
 > Test count unchanged at **1710**. Per-project: ArchitectureTests 10, Domain 207, Protocol 158,
 > Application 93, Infrastructure 851, Host 28, Integration 363 (not run this batch — not a milestone;
 > deferred to Batch 9, immediately next, which requires it anyway).
-> Next: **Batch 9** — Beatmaps `DirectSearchService` → Application; DI splits finished; architecture
-> tests pass 1 (Application/Infrastructure rules, §7); `plans/`+`docs/` pass 1. Full suite, Release.
-> **Milestone: v3 without hosts.**
+> **Batch 9 done — Milestone: v3 without hosts.** Moved `DirectSearchService.cs` (Beatmaps) to
+> `Basil.Application` — clean, no blockers. Finished the DI split for the remaining slices with an
+> Application-only piece: `Beatmaps` (`AddBeatmapsApplication`: `DirectSearchService`, `MirrorService`
+> — the latter had stayed registered from Infrastructure since Batch 3 despite being Application
+> already), `Auth` (`AddAuthApplication`: `CredentialVerifier`, `AuthenticationService`,
+> `AdminKeyService`, `ClientIntegrityService` — `LoginService` stays registered from Infrastructure,
+> since the class itself hasn't moved yet, still blocked on the open `MenuIconService` gap), `Content`
+> (`AddContentApplication`: `MotdService` only — everything else in Content is filesystem-permanent or
+> a concrete repository). `Diagnostics` and `Users` need no split ("no Application part" / "nothing →
+> A" per plan §1.2) — confirmed by inspection, no registrations there are Application-only. All 11
+> `*ServiceCollectionExtensions.cs` named in plan §4 are now split.
+>
+> Architecture tests pass 1 (§7's "Application references no Infrastructure and no host" row): added
+> `DependencyDirectionTests.Application_Should_Not_HaveDependencyOn_InfrastructureOrHost`, a NetArchTest
+> assertion over the `Basil.Application` assembly — the compiler already enforced this (no
+> `ProjectReference` from Application to Infrastructure or any Host), this just makes the invariant
+> visible and pinned the same way Domain's isolation already is. +1 test, **1710 → 1711**. The rest of
+> §7's table (`HostBoundaryTests`, per-project `SliceAdjacency`/`SliceBoundaryTests` splits) needs the
+> host projects that don't exist until Batches 10-12, so it's explicitly out of scope for this pass.
+>
+> `plans/`+`docs/` pass 1: `CLAUDE.md`'s Architecture section's migration note was actively wrong —
+> it described the *pre-v3* merge (`Basil.Application`/`Basil.Infrastructure`/`Basil.Web` "merged into
+> `Basil.Server` and gone"), which v3 has since reversed twice over. Rewrote the note to state the
+> actual current status (Batches 0-9 done, what moved where) and point to `HANDOVER.md` + the
+> architecture tests, without touching the stale diagram/prose above it — that full rewrite is
+> explicitly Batch 13's job, not this one.
+>
+> Full `Basil.IntegrationTests`: **363/363**, no failures this run (the known-flaky SSE tests passed
+> cleanly; a `MenuIconManagementEndpointTests` class-cleanup-failure line appeared in the log but did
+> not affect the pass/fail count). Release build: 0 errors. `get_endpoint_map` not checked — not in
+> this batch's milestone list (only 0, 12, 13 per §5).
+>
+> Per-project: ArchitectureTests 11 (was 10), Domain 207, Protocol 158, Application 93, Infrastructure
+> 851, Host 28, Integration 363. **Total 1711.**
+>
+> Next: **Batch 10** — `Basil.Host.Irc`: `TcpIrcListener`, `TcpIrcConnection`, `IrcMetricsPublisher`,
+> `AddIrcHost`; `Basil.Host.Irc.Tests` (`TcpIrcConnectionTests`). `Basil.Host` references it.
 
 ---
 

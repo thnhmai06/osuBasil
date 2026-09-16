@@ -18,8 +18,7 @@ public static class BeatmapsServiceCollectionExtensions
 	{
 		services.Configure<MirrorOptions>(configuration.GetSection(MirrorOptions.SectionName));
 
-		services.AddSingleton<DirectSearchService>();
-		services.AddSingleton<MirrorService>();
+		services.AddBeatmapsApplication();
 
 		services.AddSingleton<IBeatmapRepository>(sp =>
 			new CachingBeatmapRepository(

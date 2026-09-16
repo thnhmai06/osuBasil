@@ -15,11 +15,8 @@ public static class AuthServiceCollectionExtensions
 	/// <returns>The same service collection for chaining further registrations.</returns>
 	public static IServiceCollection AddAuth(this IServiceCollection services, IConfiguration configuration)
 	{
+		services.AddAuthApplication();
 		services.AddSingleton<LoginService>();
-		services.AddSingleton<CredentialVerifier>();
-		services.AddSingleton<AuthenticationService>();
-		services.AddSingleton<AdminKeyService>();
-		services.AddSingleton<ClientIntegrityService>();
 
 		services.AddSingleton<ILoginRepository>(sp =>
 			new SqliteLoginRepository(BuildConnectionString(sp),

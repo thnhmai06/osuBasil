@@ -16,12 +16,13 @@ public static class ContentServiceCollectionExtensions
 	/// <returns>The same service collection for chaining further registrations.</returns>
 	public static IServiceCollection AddContent(this IServiceCollection services, IConfiguration configuration)
 	{
+		services.AddContentApplication();
+
 		services.AddSingleton<FaqService>();
 		services.AddSingleton<IFaqStore>(sp => sp.GetRequiredService<FaqService>());
 		services.AddSingleton<MenuSeasonalService>();
 		services.AddSingleton<MenuIconService>();
 		services.AddSingleton<MenuBannerService>();
-		services.AddSingleton<MotdService>();
 
 		services.AddSingleton<ISettingsRepository>(sp =>
 			new CachingSettingsRepository(

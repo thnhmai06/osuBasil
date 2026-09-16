@@ -1,4 +1,5 @@
 using System.Reflection;
+using Basil.Application.Sessions;
 using Basil.Domain;
 using NetArchTest.Rules;
 
@@ -21,6 +22,7 @@ public class DependencyDirectionTests
 	private static readonly Assembly DomainAssembly = typeof(AssemblyMarker).Assembly;
 	private static readonly Assembly ProtocolBanchoAssembly = typeof(Protocol.AssemblyMarker).Assembly;
 	private static readonly Assembly ProtocolIrcAssembly = typeof(Protocol.Irc.AssemblyMarker).Assembly;
+	private static readonly Assembly ApplicationAssembly = typeof(GameSession).Assembly;
 
 	[Fact]
 	public void Domain_Should_Not_HaveDependencyOn_Server()
@@ -43,6 +45,17 @@ public class DependencyDirectionTests
 				"Microsoft.AspNetCore",
 				"Microsoft.Data.Sqlite",
 				"Dapper")
+			.GetResult();
+
+		Assert.True(result.IsSuccessful, FailureMessage(result));
+	}
+
+	[Fact]
+	public void Application_Should_Not_HaveDependencyOn_InfrastructureOrHost()
+	{
+		var result = Types.InAssembly(ApplicationAssembly)
+			.Should()
+			.NotHaveDependencyOnAny("Basil.Infrastructure", "Basil.Host")
 			.GetResult();
 
 		Assert.True(result.IsSuccessful, FailureMessage(result));
