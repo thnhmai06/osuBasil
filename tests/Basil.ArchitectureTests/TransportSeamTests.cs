@@ -1,4 +1,4 @@
-using Basil.Infrastructure.Shared.Configuration;
+using Basil.Infrastructure.Shared.Persistence;
 using NetArchTest.Rules;
 
 namespace Basil.ArchitectureTests;
@@ -27,7 +27,7 @@ public class TransportSeamTests
 	{
 		var businessSlicePattern = $@"^Basil\.Infrastructure\.({string.Join('|', BusinessSlices)})(\.|$)";
 
-		return Types.InAssembly(typeof(ServerOptions).Assembly)
+		return Types.InAssembly(typeof(SqlMigrationRunner).Assembly)
 			.That().ResideInNamespaceMatching(businessSlicePattern)
 			.And().DoNotResideInNamespaceContaining(".Packets")
 			.Should();

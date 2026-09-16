@@ -1,4 +1,4 @@
-using Basil.Infrastructure.Shared.Configuration;
+using Basil.Infrastructure.Shared.Persistence;
 using NetArchTest.Rules;
 
 namespace Basil.ArchitectureTests;
@@ -18,7 +18,7 @@ public class SliceBoundaryTests
 	[Fact]
 	public void Slices_Should_Only_Reference_Declared_Slices()
 	{
-		var assembly = typeof(ServerOptions).Assembly;
+		var assembly = typeof(SqlMigrationRunner).Assembly;
 		var allSlices = Types.InAssembly(assembly).GetTypes()
 			.Where(t => t.Namespace?.StartsWith(RootPrefix, StringComparison.Ordinal) == true)
 			.Select(t => t.Namespace![RootPrefix.Length..].Split('.')[0])
@@ -107,7 +107,7 @@ public class SliceBoundaryTests
 			.Select(slice => $"{RootPrefix}{slice}")
 			.ToArray();
 
-		var result = Types.InAssembly(typeof(ServerOptions).Assembly)
+		var result = Types.InAssembly(typeof(SqlMigrationRunner).Assembly)
 			.That().ResideInNamespaceStartingWith($"{RootPrefix}Shared")
 			.Should().NotHaveDependencyOnAny(featureNamespaces)
 			.GetResult();
@@ -138,7 +138,7 @@ public class SliceBoundaryTests
 		];
 
 		var prefix = $"{RootPrefix}Shared.";
-		var offenders = Types.InAssembly(typeof(ServerOptions).Assembly).GetTypes()
+		var offenders = Types.InAssembly(typeof(SqlMigrationRunner).Assembly).GetTypes()
 			.Select(t => t.Namespace)
 			// A type declared directly under the bare "Basil.Infrastructure.Shared" namespace (no
 			// segment at all, e.g. BasilMeter.cs) is not a segment and needs no allowlist entry.
