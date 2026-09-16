@@ -12,7 +12,7 @@ using Basil.Domain.Beatmaps;
 using Basil.Application.Bot;
 using Basil.Domain.Channels;
 using Basil.Domain.Content;
-using Basil.Domain.Login;
+using Basil.Domain.Client;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Social;

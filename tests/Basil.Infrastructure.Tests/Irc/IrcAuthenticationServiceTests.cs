@@ -6,7 +6,7 @@ using Basil.Application.Shared.Eventing;
 using Basil.Domain.Auth;
 using Basil.Domain.Channels;
 using Basil.Domain.Content;
-using Basil.Domain.Login;
+using Basil.Domain.Client;
 using Basil.Domain.Users;
 using Basil.Application.Chat;
 using Basil.Infrastructure.Chat.Packets;

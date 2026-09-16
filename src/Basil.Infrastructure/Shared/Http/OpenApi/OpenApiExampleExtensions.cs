@@ -5,7 +5,7 @@ using Basil.Application.Shared.Eventing;
 using Basil.Application.Shared.Json;
 using Basil.Application.Spectating;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Login;
+using Basil.Domain.Client;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;

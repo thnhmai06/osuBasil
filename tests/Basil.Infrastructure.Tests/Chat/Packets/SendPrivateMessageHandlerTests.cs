@@ -5,7 +5,7 @@ using Basil.Application.Shared.Configuration;
 using Basil.Application.Shared.Eventing;
 using Basil.Application.Bot;
 using Basil.Domain.Channels;
-using Basil.Domain.Login;
+using Basil.Domain.Client;
 using Basil.Domain.Social;
 using Basil.Domain.Users;
 using Basil.Application.Bot;

@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace Basil.Domain.Login;
+namespace Basil.Domain.Users;
 
 /// <summary>
 ///     Represents a country by its two-letter ISO code.

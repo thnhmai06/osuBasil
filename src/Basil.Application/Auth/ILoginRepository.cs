@@ -1,4 +1,5 @@
-using Basil.Application.Auth;
+using Basil.Domain.Auth;
+
 namespace Basil.Application.Auth;
 
 /// <summary>
@@ -15,6 +16,6 @@ public interface ILoginRepository
 	/// <param name="osuStream">The osu! release stream of the connecting client.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The newly created login event with its id and timestamp.</returns>
-	Task<Domain.Login.Login> CreateAsync(int userId, string ip, DateOnly osuVersion, string osuStream,
+	Task<LoginEvent> CreateAsync(int userId, string ip, DateOnly osuVersion, string osuStream,
 		CancellationToken cancellationToken = default);
 }

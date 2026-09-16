@@ -1,6 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
-using Basil.Domain.Login;
+using Basil.Domain.Client;
 
 namespace Basil.Domain.Users;
 

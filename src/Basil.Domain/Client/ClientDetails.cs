@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 
-namespace Basil.Domain.Login;
+namespace Basil.Domain.Client;
 
 /// <summary>
 ///     Represents the client details captured from an osu! client at login.

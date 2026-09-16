@@ -38,7 +38,7 @@ public class TransportSeamTests
 	public void Business_And_Api_Types_Should_Not_Reference_Protocol()
 	{
 		// Every type below encodes bancho packets (ServerPacketWriter) or IRC lines
-		// (IrcMessageWriter), or carries a wire record (MatchPacket, MatchState) through business
+		// (IrcMessageWriter), or carries a wire record (MatchPacket, MatchStatePacket) through business
 		// code. Each is a real coupling that predates the migration: the services decide an outcome
 		// and, in the same method, choose the packet that announces it. The two route types are the
 		// API host describing bancho wire structures. This list pins the set so it can only shrink:

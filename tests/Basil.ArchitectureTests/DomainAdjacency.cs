@@ -11,13 +11,19 @@ namespace Basil.ArchitectureTests;
 ///     named here instead, so an undeclared one fails the build.
 /// </remarks>
 /// <remarks>
-///     Measured 2026-09-10, before Task C1 moves any file into <c>Basil.Domain</c>. This list is
-///     Task C6's pinned starting point, not an empty allowlist grown from scratch: every namespace
-///     under <c>Basil.Domain</c> today, including ones with no <c>Features/</c> counterpart
-///     (<c>Channels</c>, <c>Login</c>, <c>Social</c>), is in the population
+///     Measured 2026-09-10, before Task C1 moves any file into <c>Basil.Domain</c>; updated when the
+///     stray <c>Login</c> namespace (holding client/session value types that had nothing to do with
+///     any one slice, plus one Auth-only audit record) was split up: the audit record
+///     (<c>Login</c> record, renamed <c>LoginEvent</c>) merged into <c>Auth</c> since it never needed
+///     its own namespace; <c>Country</c> moved into <c>Users</c>, the one slice it actually
+///     describes; and <c>ClientDetails</c>/<c>Geolocation</c>/<c>OsuVersion</c> — genuinely shared
+///     across Auth, Scores and beyond — got their own <c>Client</c> namespace instead of continuing
+///     to borrow Login's. This list is not an empty allowlist grown from scratch: every namespace
+///     under <c>Basil.Domain</c>, including ones with no <c>Features/</c> counterpart
+///     (<c>Channels</c>, <c>Client</c>, <c>Social</c>), is in the population
 ///     <see cref="DomainBoundaryTests.Namespaces_Should_Only_Reference_Declared_Namespaces" />
-///     checks, and two of the six rows below (<c>Channels -> Users</c>, <c>Users -> Login</c>) exist
-///     precisely because a namespace without a slice counterpart is not exempt.
+///     checks, and <c>Channels -> Users</c> exists precisely because a namespace without a slice
+///     counterpart is not exempt.
 /// </remarks>
 internal static class DomainAdjacency
 {
@@ -34,13 +40,10 @@ internal static class DomainAdjacency
 
 		// Submission.ValidateClientDetails checks the submission's ClientDetails against the
 		// osu! version captured at login.
-		("Scores", "Login"),
+		("Scores", "Client"),
 
 		// Channel.cs gates read/write access on the UserPrivileges level required to use it.
 		("Channels", "Users"),
-
-		// User.cs carries the Country resolved at login.
-		("Users", "Login"),
 
 		// IUserStatRepository.IncrementAsync and Stats.Mode key a user's per-mode stats by GameMode.
 		("Users", "Beatmaps"),
@@ -48,8 +51,8 @@ internal static class DomainAdjacency
 		// ScoreReport, ScoreInsertRow and ScoreRow carry the team a player scored for.
 		("Scores", "Multiplayer"),
 
-		// ILoginRepository.CreateAsync returns the Login row it persisted.
-		("Auth", "Login"),
+		// LoginForm.From parses the ClientDetails and OsuVersion an osu! client sends at login.
+		("Auth", "Client"),
 
 		// IOsuCalculator.Analyze takes the Mods a beatmap is being analyzed under.
 		("Beatmaps", "Scores"),

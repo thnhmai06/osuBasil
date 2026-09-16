@@ -7,9 +7,9 @@ namespace Basil.Infrastructure.Tests.Multiplayer.Packets;
 
 public class MatchCreationDataMapperTests
 {
-	private static MatchState MakeWireData(int mapId, int hostId = 1)
+	private static MatchStatePacket MakeWireData(int mapId, int hostId = 1)
 	{
-		return new MatchState(
+		return new MatchStatePacket(
 			0, false, 0, 0, "test", "",
 			"", mapId, new string('a', 32),
 			[], [], [], hostId, (int)GameMode.Standard, (int)MatchWinCondition.Score,

@@ -1,5 +1,5 @@
 ﻿using System.Text;
-using Basil.Domain.Login;
+using Basil.Domain.Client;
 
 namespace Basil.Domain.Auth;
 

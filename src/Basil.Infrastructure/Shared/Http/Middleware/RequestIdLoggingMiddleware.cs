@@ -1,5 +1,5 @@
 using System.Net;
-using Basil.Domain.Login;
+using Basil.Domain.Client;
 using Serilog.Context;
 
 namespace Basil.Infrastructure.Shared.Http.Middleware;

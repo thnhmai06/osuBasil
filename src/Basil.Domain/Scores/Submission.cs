@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Login;
+using Basil.Domain.Client;
 
 namespace Basil.Domain.Scores;
 

@@ -30,7 +30,7 @@ namespace Basil.Protocol.Multiplayer;
 /// </param>
 /// <param name="SlotMods">The per-slot mods for each of the 16 slots, present only when <see cref="FreeMods" /> is set.</param>
 /// <param name="Seed">The random seed of the match.</param>
-public sealed record MatchState(
+public sealed record MatchStatePacket(
 	int Id,
 	bool InProgress,
 	int Powerplay,

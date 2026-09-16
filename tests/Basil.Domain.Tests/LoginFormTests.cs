@@ -1,6 +1,6 @@
 using System.Text;
 using Basil.Domain.Auth;
-using Basil.Domain.Login;
+using Basil.Domain.Client;
 
 namespace Basil.Domain.Tests;
 

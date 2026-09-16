@@ -1,5 +1,5 @@
 using Basil.Domain.Auth;
-using Basil.Domain.Login;
+using Basil.Domain.Client;
 using Basil.Infrastructure.Shared.Persistence;
 using Basil.Application.Auth;
 using Dapper;
@@ -20,7 +20,7 @@ public sealed class SqliteLoginRepository(string connectionString, ILogger<Sqlit
 	///     UTC and converted back to <see cref="DateOnly" /> on read. The insert and the id read-back
 	///     are one batched statement, so the returned id is always the row just inserted.
 	/// </remarks>
-	public async Task<Login> CreateAsync(int userId, string ip, DateOnly osuVersion, string osuStream,
+	public async Task<LoginEvent> CreateAsync(int userId, string ip, DateOnly osuVersion, string osuStream,
 		CancellationToken cancellationToken = default)
 	{
 		return await SqliteInstrumentation.RecordAsync("login.create", async () =>
@@ -64,13 +64,13 @@ public sealed class SqliteLoginRepository(string connectionString, ILogger<Sqlit
 		public DateTime LoggedInAt { get; set; }
 
 		/// <summary>
-		///     Builds an <see cref="Login" /> from this row, converting the stored version
+		///     Builds a <see cref="LoginEvent" /> from this row, converting the stored version
 		///     date back to a <see cref="DateOnly" />.
 		/// </summary>
 		/// <returns>The domain ingame login record.</returns>
-		public Login ToIngameLogin()
+		public LoginEvent ToIngameLogin()
 		{
-			return new Login(Id, UserId, Ip, DateOnly.FromDateTime(OsuVersion), OsuStream, LoggedInAt);
+			return new LoginEvent(Id, UserId, Ip, DateOnly.FromDateTime(OsuVersion), OsuStream, LoggedInAt);
 		}
 	}
 }

@@ -1,4 +1,4 @@
-using Basil.Domain.Login;
+using Basil.Domain.Users;
 using Basil.Domain.Social;
 using Basil.Infrastructure.Tests.Shared.Persistence;
 using Basil.Infrastructure.Users;

@@ -1,6 +1,6 @@
 using System.Net;
 using Basil.Application.Shared.Configuration;
-using Basil.Domain.Login;
+using Basil.Domain.Client;
 using Basil.Domain.Users;
 using Basil.Host;
 using Basil.Application.Users;

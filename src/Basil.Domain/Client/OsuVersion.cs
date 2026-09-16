@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace Basil.Domain.Login;
+namespace Basil.Domain.Client;
 
 /// <summary>
 ///     Represents the release stream of an osu! client.

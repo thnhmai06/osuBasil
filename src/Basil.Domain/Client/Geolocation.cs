@@ -1,6 +1,6 @@
 using System.Net;
 
-namespace Basil.Domain.Login;
+namespace Basil.Domain.Client;
 
 /// <summary>
 ///     Resolves the client's real IP address from reverse-proxy headers.

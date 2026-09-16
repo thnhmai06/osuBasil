@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Basil.Application.Shared.Configuration;
 using Basil.Application.Shared.Json;
-using Basil.Domain.Login;
+using Basil.Domain.Client;
 using Basil.Domain.Users;
 using Basil.Host;
 using Basil.Infrastructure.Shared.Http;

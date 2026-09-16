@@ -5,7 +5,7 @@ using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
 using Basil.Application.Users;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Login;
+using Basil.Domain.Client;
 using Basil.Domain.Users;
 using Basil.Application.Content;
 using Basil.Infrastructure.Chat.Packets;

@@ -131,7 +131,7 @@ configuration applies whether Basil is running from a development checkout or fr
 A local development server normally runs without a reverse proxy.
 
 When `X-Forwarded-For` and `X-Real-IP` are absent, Basil synthesizes them from the connection's remote address. This is
-required because [`Basil.Domain.Login.Geolocation.PhraseIpAddress`](../../src/Basil.Domain/Login/Geolocation.cs) assumes these headers exist, matching the proxy-based
+required because [`Basil.Domain.Client.Geolocation.PhraseIpAddress`](../../src/Basil.Domain/Client/Geolocation.cs) assumes these headers exist, matching the proxy-based
 setup used by bancho.py in production.
 
 You generally do not need to configure anything manually for local development.

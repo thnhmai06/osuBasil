@@ -1,4 +1,4 @@
-﻿namespace Basil.Domain.Login;
+﻿namespace Basil.Domain.Auth;
 
 /// <summary>
 ///     A single in-game login event, as stored in the IngameLogins table.
@@ -9,4 +9,10 @@
 /// <param name="OsuVersion">The osu! version of the connecting client, as a date.</param>
 /// <param name="OsuStream">The osu! release stream of the connecting client, for example stable or beta.</param>
 /// <param name="LoggedInAt">The time the login occurred, in UTC.</param>
-public sealed record Login(int Id, int UserId, string Ip, DateOnly OsuVersion, string OsuStream, DateTime LoggedInAt);
+public sealed record LoginEvent(
+	int Id,
+	int UserId,
+	string Ip,
+	DateOnly OsuVersion,
+	string OsuStream,
+	DateTime LoggedInAt);

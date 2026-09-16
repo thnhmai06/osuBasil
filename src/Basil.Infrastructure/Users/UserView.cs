@@ -1,4 +1,4 @@
-using Basil.Domain.Login;
+using Basil.Domain.Client;
 using Basil.Domain.Users;
 
 // ReSharper disable NotAccessedPositionalProperty.Global

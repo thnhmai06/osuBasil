@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
-using Basil.Domain.Login;
+using Basil.Domain.Client;
 using Basil.Domain.Scores;
 
 namespace Basil.Domain.Tests;

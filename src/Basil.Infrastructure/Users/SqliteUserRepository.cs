@@ -1,4 +1,3 @@
-using Basil.Domain.Login;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Persistence;
 using Basil.Application.Users;
@@ -267,9 +266,9 @@ public sealed class SqliteUserRepository(string connectionString, ILogger<Sqlite
 		/// </remarks>
 		public User ToUser()
 		{
-			var country = Enum.TryParse<Country>(Country, true, out var parsed)
+			var country = Enum.TryParse<Domain.Users.Country>(Country, true, out var parsed)
 				? parsed
-				: Domain.Login.Country.Xx;
+				: Domain.Users.Country.Xx;
 			return new User(Id, Name, country, (UserPrivileges)Privilege,
 				SilenceEnd is { } silenceEnd
 					? new DateTimeOffset(DateTime.SpecifyKind(silenceEnd, DateTimeKind.Utc))

@@ -204,9 +204,9 @@ public sealed class PacketReader(ReadOnlyMemory<byte> buffer)
 			ReadI32());
 	}
 
-	/// <summary>Reads a multiplayer match from the buffer into a <see cref="MatchState" />.</summary>
+	/// <summary>Reads a multiplayer match from the buffer into a <see cref="MatchStatePacket" />.</summary>
 	/// <returns>The match state read.</returns>
-	public MatchState ReadMatch()
+	public MatchStatePacket ReadMatch()
 	{
 		var id = ReadI16();
 		var inProgress = ReadI8() == 1;
@@ -244,7 +244,7 @@ public sealed class PacketReader(ReadOnlyMemory<byte> buffer)
 
 		var seed = ReadI32();
 
-		return new MatchState(
+		return new MatchStatePacket(
 			id, inProgress, powerplay, mods, name, password, mapName, mapId, mapMd5,
 			slotStatuses, slotTeams, slotIds, hostId, mode, winCondition, teamType, freeMods,
 			slotMods, seed);

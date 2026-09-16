@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 using Basil.Application.Irc;
-using Basil.Domain.Login;
+using Basil.Domain.Client;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Sessions;
