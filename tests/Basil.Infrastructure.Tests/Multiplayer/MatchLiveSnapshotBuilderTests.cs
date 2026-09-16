@@ -3,6 +3,7 @@ using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Infrastructure.Multiplayer;
+using Basil.Application.Beatmaps;
 using NSubstitute;
 
 namespace Basil.Infrastructure.Tests.Multiplayer;

@@ -1,6 +1,8 @@
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Persistence;
+using Basil.Application.Scores;
+using Basil.Application.Users;
 using Dapper;
 using Microsoft.Data.Sqlite;
 

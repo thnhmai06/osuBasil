@@ -1,5 +1,6 @@
 using System.Collections.Frozen;
 using Basil.Domain.Beatmaps;
+using Basil.Application.Beatmaps;
 
 namespace Basil.Infrastructure.Beatmaps;
 

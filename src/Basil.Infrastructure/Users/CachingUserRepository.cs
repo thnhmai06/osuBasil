@@ -1,5 +1,6 @@
 using Basil.Domain.Login;
 using Basil.Domain.Users;
+using Basil.Application.Users;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Basil.Infrastructure.Users;

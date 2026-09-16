@@ -9,6 +9,8 @@ using Basil.Domain.Users;
 using Basil.Infrastructure.Chat;
 using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Irc;
+using Basil.Application.Users;
+using Basil.Application.Auth;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Irc;

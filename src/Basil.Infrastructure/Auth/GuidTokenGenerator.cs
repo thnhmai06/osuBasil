@@ -1,4 +1,5 @@
 using Basil.Domain.Auth;
+using Basil.Application.Auth;
 
 namespace Basil.Infrastructure.Auth;
 

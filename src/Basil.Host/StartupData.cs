@@ -6,6 +6,10 @@ using Basil.Domain.Content;
 using Basil.Infrastructure.Bot;
 using Basil.Infrastructure.Multiplayer;
 using Basil.Infrastructure.Shared.Persistence;
+using Basil.Application.Content;
+using Basil.Application.Auth;
+using Basil.Application.Channels;
+using Basil.Application.Beatmaps;
 using Microsoft.Extensions.Options;
 using BeatmapIngestionService = Basil.Infrastructure.Beatmaps.BeatmapIngestionService;
 

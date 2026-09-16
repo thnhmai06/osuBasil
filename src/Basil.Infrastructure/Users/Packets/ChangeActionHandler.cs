@@ -3,7 +3,7 @@ using Basil.Application.Sessions;
 using Basil.Application.Shared.Json;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
-using Basil.Domain.Spectating;
+using Basil.Application.Spectating;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Http;
 using Basil.Infrastructure.Shared.Http.Bancho;

@@ -10,6 +10,8 @@ using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Http;
 using Basil.Infrastructure.Shared.Http.OpenApi;
+using Basil.Application.Scores;
+using Basil.Application.Users;
 using Microsoft.AspNetCore.Mvc;
 
 // ReSharper disable ClassNeverInstantiated.Global

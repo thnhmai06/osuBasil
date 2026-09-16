@@ -3,6 +3,7 @@ using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
+using Basil.Application.Users;
 using NSubstitute;
 
 namespace Basil.Application.Tests.Multiplayer;

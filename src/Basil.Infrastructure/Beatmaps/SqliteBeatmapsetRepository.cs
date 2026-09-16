@@ -1,5 +1,6 @@
 using Basil.Domain.Beatmaps;
 using Basil.Infrastructure.Shared.Persistence;
+using Basil.Application.Beatmaps;
 using Dapper;
 using Microsoft.Data.Sqlite;
 

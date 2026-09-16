@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Text.RegularExpressions;
 using Basil.Application.Shared.Configuration;
 using Basil.Domain.Beatmaps;
+using Basil.Application.Beatmaps;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Beatmaps;

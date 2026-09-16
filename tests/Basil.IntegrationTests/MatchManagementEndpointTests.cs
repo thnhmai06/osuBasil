@@ -8,6 +8,7 @@ using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Host;
 using Basil.Infrastructure.Auth;
+using Basil.Application.Multiplayer;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

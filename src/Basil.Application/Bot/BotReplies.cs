@@ -1,5 +1,4 @@
 using Basil.Application.Shared.Localization;
-using Basil.Domain.Bot;
 
 namespace Basil.Application.Bot;
 

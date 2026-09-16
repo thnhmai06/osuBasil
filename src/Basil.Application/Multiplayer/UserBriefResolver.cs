@@ -1,6 +1,6 @@
 using Basil.Application.Irc;
 using Basil.Application.Sessions;
-using Basil.Domain.Users;
+using Basil.Application.Users;
 
 namespace Basil.Application.Multiplayer;
 

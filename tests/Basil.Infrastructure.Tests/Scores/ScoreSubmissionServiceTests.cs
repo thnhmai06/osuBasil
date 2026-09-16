@@ -12,6 +12,10 @@ using Basil.Infrastructure.Auth;
 using Basil.Infrastructure.Multiplayer;
 using Basil.Infrastructure.Scores;
 using Basil.Infrastructure.Shared.Sessions;
+using Basil.Application.Scores;
+using Basil.Application.Users;
+using Basil.Application.Auth;
+using Basil.Application.Beatmaps;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 

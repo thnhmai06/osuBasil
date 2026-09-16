@@ -3,6 +3,7 @@ using System.IO.Compression;
 using Basil.Application.Shared.Configuration;
 using Basil.Infrastructure.Shared.Storage;
 using Basil.Infrastructure.Shared.Storage;
+using Basil.Application.Beatmaps;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Beatmaps;

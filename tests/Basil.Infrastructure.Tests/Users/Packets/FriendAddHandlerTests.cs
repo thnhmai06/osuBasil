@@ -4,6 +4,7 @@ using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Sessions;
 using Basil.Infrastructure.Users.Packets;
 using Basil.Protocol.Packets;
+using Basil.Application.Social;
 using NSubstitute;
 using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 

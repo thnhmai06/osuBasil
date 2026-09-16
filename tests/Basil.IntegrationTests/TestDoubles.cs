@@ -7,6 +7,11 @@ using Basil.Domain.Channels;
 using Basil.Domain.Content;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Auth;
+using Basil.Application.Content;
+using Basil.Application.Users;
+using Basil.Application.Auth;
+using Basil.Application.Channels;
+using Basil.Application.Beatmaps;
 using NSubstitute;
 
 namespace Basil.IntegrationTests;

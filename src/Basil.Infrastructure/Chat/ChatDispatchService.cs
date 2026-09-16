@@ -1,6 +1,6 @@
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
-using Basil.Domain.Bot;
+using Basil.Application.Bot;
 using Basil.Domain.Channels;
 using Basil.Domain.Social;
 using Basil.Domain.Users;
@@ -8,6 +8,8 @@ using Basil.Infrastructure.Bot;
 using Basil.Infrastructure.Chat.Packets;
 using Basil.Infrastructure.Multiplayer;
 using Basil.Infrastructure.Shared.Sessions;
+using Basil.Application.Users;
+using Basil.Application.Social;
 
 namespace Basil.Infrastructure.Chat;
 

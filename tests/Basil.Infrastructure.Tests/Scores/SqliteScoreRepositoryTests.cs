@@ -5,6 +5,7 @@ using Basil.Domain.Users;
 using Basil.Infrastructure.Scores;
 using Basil.Infrastructure.Shared.Persistence;
 using Basil.Infrastructure.Tests.Shared.Persistence;
+using Basil.Application.Scores;
 using Dapper;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging.Abstractions;

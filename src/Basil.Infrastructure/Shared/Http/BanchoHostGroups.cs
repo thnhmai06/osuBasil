@@ -6,6 +6,7 @@ using Basil.Domain.Beatmaps;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Shared.Media;
 using Basil.Infrastructure.Shared.Storage;
+using Basil.Application.Beatmaps;
 using Microsoft.Extensions.Options;
 using BeatmapIngestionService = Basil.Infrastructure.Beatmaps.BeatmapIngestionService;
 

@@ -15,6 +15,7 @@ using Basil.Infrastructure.Shared.Http.Bancho;
 using Basil.Infrastructure.Shared.Sessions;
 using Basil.Infrastructure.Spectating;
 using Basil.Infrastructure.Users;
+using Basil.Application.Scores;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;

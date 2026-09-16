@@ -3,6 +3,7 @@ using System.Text;
 using Basil.Application.Shared.Configuration;
 using Basil.Domain.Login;
 using Basil.Domain.Scores;
+using Basil.Application.Scores;
 using Microsoft.Extensions.Options;
 using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 

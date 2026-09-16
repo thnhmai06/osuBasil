@@ -5,6 +5,7 @@ using Basil.Infrastructure.Chat.Packets;
 using Basil.Infrastructure.Shared.Http.Bancho;
 using Basil.Infrastructure.Shared.Persistence;
 using Basil.Infrastructure.Shared.Sessions;
+using Basil.Application.Channels;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Chat;

@@ -5,6 +5,7 @@ using Basil.Infrastructure.Shared.Media;
 using Basil.Domain.Beatmaps;
 using Basil.Host;
 using Basil.Infrastructure.Shared.Media;
+using Basil.Application.Beatmaps;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

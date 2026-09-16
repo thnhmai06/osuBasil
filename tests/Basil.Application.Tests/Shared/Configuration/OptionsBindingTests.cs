@@ -1,5 +1,6 @@
 using Basil.Application.Shared.Configuration;
 using Basil.Domain.Beatmaps;
+using Basil.Application.Beatmaps;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;

@@ -1,5 +1,6 @@
 using Basil.Domain.Content;
 using Basil.Infrastructure.Content;
+using Basil.Application.Content;
 using NSubstitute;
 
 namespace Basil.Infrastructure.Tests.Content;

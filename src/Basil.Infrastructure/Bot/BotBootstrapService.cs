@@ -5,6 +5,7 @@ using Basil.Domain.Login;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Chat;
 using Basil.Infrastructure.Shared.Sessions;
+using Basil.Application.Users;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Bot;

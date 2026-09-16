@@ -9,6 +9,9 @@ using Basil.Domain.Users;
 using Basil.Infrastructure.Irc;
 using Basil.Infrastructure.Multiplayer;
 using Basil.Infrastructure.Shared.Sessions;
+using Basil.Application.Scores;
+using Basil.Application.Users;
+using Basil.Application.Beatmaps;
 using NSubstitute;
 
 namespace Basil.Infrastructure.Tests.Multiplayer;

@@ -1,4 +1,5 @@
 using Basil.Domain.Content;
+using Basil.Application.Content;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Basil.Infrastructure.Content;

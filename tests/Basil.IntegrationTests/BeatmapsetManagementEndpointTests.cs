@@ -7,6 +7,7 @@ using Basil.Infrastructure.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Basil.Host;
 using Basil.Infrastructure.Beatmaps;
+using Basil.Application.Beatmaps;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

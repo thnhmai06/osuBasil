@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Json;
-using Basil.Domain.Spectating;
+using Basil.Application.Spectating;
 using Basil.Infrastructure.Shared.Http;
 using Basil.Infrastructure.Shared.Sessions;
 

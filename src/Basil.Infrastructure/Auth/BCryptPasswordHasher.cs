@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 using Basil.Domain.Auth;
+using Basil.Application.Auth;
 using BC = BCrypt.Net.BCrypt;
 
 namespace Basil.Infrastructure.Auth;

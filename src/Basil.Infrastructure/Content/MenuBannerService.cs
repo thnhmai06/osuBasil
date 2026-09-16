@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Basil.Application.Shared.Configuration;
 using Basil.Domain.Content;
+using Basil.Application.Content;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Content;

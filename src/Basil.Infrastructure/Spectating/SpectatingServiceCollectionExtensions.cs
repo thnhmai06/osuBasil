@@ -1,5 +1,5 @@
 using Basil.Application.Sessions;
-using Basil.Domain.Spectating;
+using Basil.Application.Spectating;
 using Basil.Infrastructure.Shared.Http.Bancho;
 using Basil.Infrastructure.Shared.Sessions;
 using Basil.Infrastructure.Spectating.Packets;

@@ -4,7 +4,7 @@ using Basil.Application.Irc;
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Bot;
+using Basil.Application.Bot;
 using Basil.Domain.Channels;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
@@ -17,6 +17,8 @@ using Basil.Infrastructure.Multiplayer.Handlers.Countdown;
 using Basil.Infrastructure.Multiplayer.Handlers.Lifecycle;
 using Basil.Infrastructure.Multiplayer.Handlers.Slots;
 using Basil.Infrastructure.Shared.Sessions;
+using Basil.Application.Users;
+using Basil.Application.Beatmaps;
 
 namespace Basil.Infrastructure.Multiplayer;
 

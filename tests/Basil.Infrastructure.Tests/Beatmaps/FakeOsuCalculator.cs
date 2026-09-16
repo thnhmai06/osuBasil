@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
+using Basil.Application.Beatmaps;
 
 namespace Basil.Infrastructure.Tests.Beatmaps;
 

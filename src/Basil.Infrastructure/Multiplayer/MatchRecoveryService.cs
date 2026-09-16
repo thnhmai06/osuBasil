@@ -1,4 +1,5 @@
 using Basil.Domain.Multiplayer;
+using Basil.Application.Multiplayer;
 
 namespace Basil.Infrastructure.Multiplayer;
 

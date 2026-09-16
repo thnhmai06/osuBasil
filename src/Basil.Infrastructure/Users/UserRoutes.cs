@@ -5,7 +5,7 @@ using Basil.Application.Shared.Configuration;
 using Basil.Application.Shared.Eventing;
 using Basil.Domain.Auth;
 using Basil.Domain.Login;
-using Basil.Domain.Spectating;
+using Basil.Application.Spectating;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Auth;
 using Basil.Infrastructure.Bot;
@@ -13,6 +13,8 @@ using Basil.Infrastructure.Shared.Http;
 using Basil.Infrastructure.Shared.Http.OpenApi;
 using Basil.Infrastructure.Shared.Sessions;
 using Basil.Infrastructure.Spectating;
+using Basil.Application.Users;
+using Basil.Application.Auth;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 

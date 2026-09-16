@@ -5,6 +5,7 @@ using Basil.Infrastructure.Shared.Media;
 using Basil.Infrastructure.Shared.Storage;
 using Basil.Infrastructure.Shared.Media;
 using Basil.Infrastructure.Shared.Storage;
+using Basil.Application.Beatmaps;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Beatmaps;

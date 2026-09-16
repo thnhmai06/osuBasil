@@ -1,6 +1,7 @@
 using Basil.Domain.Auth;
 using Basil.Domain.Login;
 using Basil.Infrastructure.Shared.Persistence;
+using Basil.Application.Auth;
 using Dapper;
 using Microsoft.Data.Sqlite;
 

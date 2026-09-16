@@ -9,6 +9,8 @@ using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Http;
+using Basil.Application.Scores;
+using Basil.Application.Users;
 
 // ReSharper disable NotAccessedPositionalProperty.Global
 

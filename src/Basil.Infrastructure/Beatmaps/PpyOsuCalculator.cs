@@ -1,5 +1,6 @@
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
+using Basil.Application.Beatmaps;
 using osu.Framework.Audio.Track;
 using osu.Framework.Extensions;
 using osu.Framework.Graphics.Textures;

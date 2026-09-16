@@ -2,6 +2,7 @@ using Basil.Domain.Beatmaps;
 using Basil.Infrastructure.Auth;
 using Basil.Infrastructure.Shared.Http;
 using Basil.Infrastructure.Shared.Http.OpenApi;
+using Basil.Application.Beatmaps;
 
 // ReSharper disable ClassNeverInstantiated.Global
 // ReSharper disable MemberCanBePrivate.Global

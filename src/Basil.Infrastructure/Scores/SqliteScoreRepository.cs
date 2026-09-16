@@ -2,6 +2,7 @@ using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Infrastructure.Shared.Persistence;
+using Basil.Application.Scores;
 using Dapper;
 using Microsoft.Data.Sqlite;
 

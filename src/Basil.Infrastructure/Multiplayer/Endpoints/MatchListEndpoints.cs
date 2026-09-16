@@ -11,6 +11,8 @@ using Basil.Infrastructure.Irc;
 using Basil.Infrastructure.Shared.Http;
 using Basil.Infrastructure.Shared.Http.OpenApi;
 using Basil.Infrastructure.Shared.Sessions;
+using Basil.Application.Users;
+using Basil.Application.Beatmaps;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Basil.Infrastructure.Multiplayer.Endpoints;

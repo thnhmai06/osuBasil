@@ -1,6 +1,8 @@
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Content;
 using Basil.Infrastructure.Beatmaps;
+using Basil.Application.Content;
+using Basil.Application.Beatmaps;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;

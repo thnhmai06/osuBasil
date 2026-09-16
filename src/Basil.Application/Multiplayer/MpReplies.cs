@@ -1,5 +1,5 @@
 using Basil.Application.Shared.Localization;
-using Basil.Domain.Bot;
+using Basil.Application.Bot;
 
 namespace Basil.Application.Multiplayer;
 

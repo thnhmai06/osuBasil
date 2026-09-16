@@ -3,7 +3,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using Basil.Application.Shared.Http;
 using Basil.Application.Shared.Json;
-using Basil.Domain.Auth;
+using Basil.Application.Auth;
 using Basil.Infrastructure.Shared.Http;
 using Basil.Infrastructure.Shared.Http.OpenApi;
 using Microsoft.AspNetCore.Authentication;

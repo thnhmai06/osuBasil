@@ -6,7 +6,7 @@ using Basil.Application.Shared.Eventing;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
-using Basil.Domain.Spectating;
+using Basil.Application.Spectating;
 using Basil.Host;
 using Basil.Infrastructure.Multiplayer;
 using Basil.Protocol.Multiplayer;

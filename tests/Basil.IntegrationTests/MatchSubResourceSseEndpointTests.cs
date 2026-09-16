@@ -15,6 +15,7 @@ using Basil.Host;
 using Basil.Infrastructure.Multiplayer;
 using Basil.Infrastructure.Shared.Http;
 using Basil.Infrastructure.Shared.Sessions;
+using Basil.Application.Users;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

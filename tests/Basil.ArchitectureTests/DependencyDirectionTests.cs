@@ -27,7 +27,7 @@ public class DependencyDirectionTests
 	{
 		var result = Types.InAssembly(DomainAssembly)
 			.Should()
-			.NotHaveDependencyOnAny("Basil.Infrastructure", "Basil.Host")
+			.NotHaveDependencyOnAny("Basil.Application", "Basil.Infrastructure", "Basil.Host")
 			.GetResult();
 
 		Assert.True(result.IsSuccessful, FailureMessage(result));

@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Basil.Domain.Channels;
 using Basil.Domain.Multiplayer;
+using Basil.Application.Multiplayer;
 
 namespace Basil.Application.Multiplayer;
 

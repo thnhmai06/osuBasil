@@ -1,4 +1,5 @@
 using Basil.Domain.Beatmaps;
+using Basil.Application.Beatmaps;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Basil.Infrastructure.Beatmaps;

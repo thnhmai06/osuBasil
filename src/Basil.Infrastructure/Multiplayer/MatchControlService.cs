@@ -8,6 +8,7 @@ using Basil.Infrastructure.Bot;
 using Basil.Infrastructure.Chat;
 using Basil.Infrastructure.Irc;
 using Basil.Infrastructure.Shared.Sessions;
+using Basil.Application.Beatmaps;
 
 namespace Basil.Infrastructure.Multiplayer;
 

@@ -7,6 +7,7 @@ using Basil.Infrastructure.Multiplayer;
 using Basil.Infrastructure.Multiplayer.Packets;
 using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
+using Basil.Application.Beatmaps;
 using NSubstitute;
 using static Basil.Infrastructure.Tests.Multiplayer.Packets.MultiplayerTestSupport;
 

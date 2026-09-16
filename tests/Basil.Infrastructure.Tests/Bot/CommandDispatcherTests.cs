@@ -3,8 +3,8 @@ using Basil.Application.Irc;
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
+using Basil.Application.Users;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Bot;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Bot;
@@ -14,6 +14,7 @@ using Basil.Infrastructure.Multiplayer;
 using Basil.Infrastructure.Shared.Sessions;
 using Basil.Infrastructure.Tests.Multiplayer.Packets;
 using Basil.Protocol.Irc;
+using Basil.Application.Beatmaps;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -66,7 +67,8 @@ public class CommandDispatcherTests
 	{
 		var options = Options.Create(new BotOptions { CommandPrefix = prefix });
 		fixture ??= new MultiplayerTestSupport.Fixture();
-		IMpCommandService mpCommands = new MpCommandService(fixture.MatchMembership, fixture.MatchLifecycle, fixture.MatchNotifier, new ChatNotifier(Options.Create(new IrcOptions())),
+		IMpCommandService mpCommands = new MpCommandService(fixture.MatchMembership, fixture.MatchLifecycle,
+			fixture.MatchNotifier, new ChatNotifier(Options.Create(new IrcOptions())),
 			fixture.SetTeamHandler, fixture.TimerHandler, fixture.AbortTimerHandler,
 			fixture.StartHandler, fixture.AbortHandler, fixture.CloseHandler,
 			fixture.MatchRegistry, fixture.MatchRepository, _beatmaps,

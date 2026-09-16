@@ -46,7 +46,24 @@ not, it says so.
 > same mapper, mirroring `MapId`'s existing `?? -1`). Round/score beatmap md5s and a player's own
 > `UserStatus.MapMd5` are distinct, always-populated fields, untouched. Test suite unchanged at
 > 1709 (one known-flaky SSE test, see §1, unrelated).
-> Next: **Batch 3**.
+> **Batch 3 done**: the 5 services (`AdminKeyService`, `CredentialVerifier`, `MirrorService`
+> +`MirrorOptions`, `MotdService`, `ReplayService`), the 2 event pairs (`I`/`PlayerInputEvents`,
+> `I`/`PlayerStatusEvents`), and the 21 ports named in §1.1 moved `Basil.Domain` → `Basil.Application`
+> (one more than the plan's "20" — the measured count). `IChannelRegistry`/`InMemoryChannelRegistry`
+> stayed in Domain as planned. `Basil.Domain.Bot` and `Basil.Domain.Spectating` are now empty
+> (every file they held moved out); every `using Basil.Domain.Bot;`/`Basil.Domain.Spectating;` became
+> `Basil.Application.*` outright rather than an addition, since nothing else in those namespaces
+> remained to keep. Every other touched namespace (Auth, Beatmaps, Channels, Content, Multiplayer,
+> Scores, Social, Users) kept its Domain entities in place and gained an added `Basil.Application.*`
+> using alongside — Domain still owns `Beatmap`, `Channel`, `MenuBanner`, `Match`/`Round`,
+> `Relationship`, `User`, `Mods`, etc. `DependencyDirectionTests.Domain_Should_Not_HaveDependencyOn_Server`
+> now also asserts `Basil.Application` — passes, confirming no Domain type reaches back into it. The 5
+> Domain tests named in §1.1 moved to `Basil.Application.Tests/{Auth,Beatmaps,Scores,Spectating}/`.
+> Test suite: 9 + 207 (`Basil.Domain.Tests`, down from 235) + 158 + 93 (`Basil.Application.Tests`, up
+> from 65) + 851 + 28 + 363 = **1709**, unchanged. Full `Basil.IntegrationTests` 362/363 (the same
+> known-flaky SSE test, passes alone). Release build succeeds.
+> Next: **Batch 4** — Auth → A (3 services + `LoginResponseEncoder`/`PacketBuilders` +
+> `PlayerStatusView`; `TransportSeamTests` re-scoped and pinned; "the one reasoning batch").
 
 ---
 

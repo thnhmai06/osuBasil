@@ -2,6 +2,7 @@ using System.Text;
 using Basil.Domain.Auth;
 using Basil.Infrastructure.Shared.Http;
 using Basil.Infrastructure.Shared.Http.OpenApi;
+using Basil.Application.Auth;
 
 // ReSharper disable ClassNeverInstantiated.Global
 // ReSharper disable MemberCanBePrivate.Global

@@ -5,6 +5,7 @@ using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
 using Basil.Infrastructure.Shared.Storage;
 using Basil.Infrastructure.Shared.Storage;
+using Basil.Application.Beatmaps;
 using Microsoft.Extensions.Options;
 using osu.Game.Beatmaps.Formats;
 using osu.Game.IO;

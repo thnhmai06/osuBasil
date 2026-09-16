@@ -1,5 +1,6 @@
 using Basil.Domain.Social;
 using Basil.Infrastructure.Shared.Persistence;
+using Basil.Application.Social;
 using Dapper;
 using Microsoft.Data.Sqlite;
 

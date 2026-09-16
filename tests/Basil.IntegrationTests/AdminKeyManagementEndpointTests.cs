@@ -4,6 +4,7 @@ using Basil.Application.Shared.Configuration;
 using Basil.Domain.Content;
 using Basil.Host;
 using Basil.Infrastructure.Content;
+using Basil.Application.Content;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

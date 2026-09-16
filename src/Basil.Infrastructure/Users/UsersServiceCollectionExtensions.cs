@@ -4,6 +4,8 @@ using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Http.Bancho;
 using Basil.Infrastructure.Shared.Persistence;
 using Basil.Infrastructure.Users.Packets;
+using Basil.Application.Users;
+using Basil.Application.Social;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 

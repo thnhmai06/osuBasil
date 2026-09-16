@@ -4,6 +4,8 @@ using Basil.Domain.Auth;
 using Basil.Domain.Content;
 using Basil.Infrastructure.Auth;
 using Basil.Infrastructure.Content;
+using Basil.Application.Content;
+using Basil.Application.Auth;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;

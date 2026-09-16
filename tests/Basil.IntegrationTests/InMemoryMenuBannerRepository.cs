@@ -1,5 +1,6 @@
 using Basil.Infrastructure.Content;
 using Basil.Domain.Content;
+using Basil.Application.Content;
 
 namespace Basil.IntegrationTests;
 

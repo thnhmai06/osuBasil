@@ -14,6 +14,7 @@ using Basil.Infrastructure.Chat.Packets;
 using Basil.Infrastructure.Irc;
 using Basil.Infrastructure.Multiplayer;
 using Basil.Infrastructure.Shared.Sessions;
+using Basil.Application.Content;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
