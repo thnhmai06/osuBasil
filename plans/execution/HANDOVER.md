@@ -38,11 +38,14 @@ not, it says so.
 > needs admin/a URL ACL reservation this background session doesn't have; `Basil.IntegrationTests`
 > boots the same `Bootstrap`/`StartupData`/DI graph through `WebApplicationFactory` (DbUp migrations,
 > `LocaleTouch.AllReplyHolders()` included) and is the stronger signal here. Two follow-up requests
-> from the user during this batch are **not** part of it and need their own commit: making a match's
-> host nullable instead of using `MatchRoomState.NoHostId`/`SystemUserIds.BasilBot` as a sentinel
-> (Bancho wire behavior unchanged when null), and the same nullable-instead-of-sentinel treatment for
-> other places using an out-of-band value to mean "absent" (e.g. a match's current beatmap). Both
-> touch wire-adjacent domain state and want their own protocol-test coverage.
+> from the user during this batch were **not** part of it and got their own commits, done before
+> Batch 3 per the user's explicit choice: **`f4be2c25`** made `MatchSession.HostId` nullable instead
+> of `MatchRoomState.NoHostId`/`SystemUserIds.BasilBot` as a sentinel (wire behavior unchanged:
+> `MatchPacketDataMapper` writes `HostId ?? SystemUserIds.BasilBot`); **`71c70431`** did the same for
+> `MatchSession.MapMd5` (was `""` for "no map", now `null`; wire mapping is `MapMd5 ?? ""` in the
+> same mapper, mirroring `MapId`'s existing `?? -1`). Round/score beatmap md5s and a player's own
+> `UserStatus.MapMd5` are distinct, always-populated fields, untouched. Test suite unchanged at
+> 1709 (one known-flaky SSE test, see §1, unrelated).
 > Next: **Batch 3**.
 
 ---
