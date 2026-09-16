@@ -11,7 +11,7 @@ namespace Basil.Domain.Beatmaps;
 /// <param name="Version">The difficulty name, such as "Insane".</param>
 /// <param name="Filename">The name of the beatmap file on disk.</param>
 /// <param name="Difficulty">The gameplay stats of the beatmap.</param>
-/// <param name="ObjectCounts">The per-mode hit-object counts of the beatmap.</param>
+/// <param name="Objects">The per-mode hit-object counts of the beatmap.</param>
 /// <param name="BackgroundFile">
 ///     The background image file name resolved against the set's storage folder, or
 ///     <see langword="null" /> if the beatmap has no background.
@@ -50,7 +50,7 @@ public sealed record Beatmap(
 	#region Stats
 
 	Difficulty Difficulty,
-	BeatmapObjectCounts ObjectCounts,
+	BeatmapObjects Objects,
 
 	#endregion
 

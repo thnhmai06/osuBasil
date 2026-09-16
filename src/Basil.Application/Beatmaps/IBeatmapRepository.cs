@@ -69,7 +69,7 @@ public interface IBeatmapRepository
 	/// </summary>
 	/// <param name="filters">
 	///     The parsed search query -- free-text keywords plus any structured filters (star rating,
-	///     BPM, artist, etc.); see <see cref="BeatmapsetSearchFilters" />.
+	///     BPM, artist, etc.); see <see cref="Basil.Domain.Beatmaps.BeatmapFilters" />.
 	/// </param>
 	/// <param name="mode">An optional game mode that every returned beatmap must belong to.</param>
 	/// <param name="offset">The number of matching sets to skip before returning results.</param>
@@ -85,7 +85,7 @@ public interface IBeatmapRepository
 	///     excluded, since this is a discovery surface, not a specific-record lookup.
 	/// </remarks>
 	Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(
-		BeatmapsetSearchFilters filters, GameMode? mode, int offset, int amount,
+		BeatmapFilters filters, GameMode? mode, int offset, int amount,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>
@@ -96,7 +96,7 @@ public interface IBeatmapRepository
 	/// <param name="mode">An optional game mode that every counted beatmap must belong to.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The total number of matching sets, across every page.</returns>
-	Task<int> SearchCountAsync(BeatmapsetSearchFilters filters, GameMode? mode,
+	Task<int> SearchCountAsync(BeatmapFilters filters, GameMode? mode,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>

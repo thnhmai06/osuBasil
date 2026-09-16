@@ -1,9 +1,8 @@
+using Basil.Application.Beatmaps;
 using Basil.Application.Multiplayer;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
-using Basil.Infrastructure.Multiplayer;
-using Basil.Application.Beatmaps;
 using NSubstitute;
 
 namespace Basil.Infrastructure.Tests.Multiplayer;
@@ -94,7 +93,7 @@ public class MatchLiveSnapshotBuilderTests
 		var beatmapset = new Beatmapset(1, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
 		var beatmap = new Beatmap(match.MapMd5 ?? "", 42, beatmapset, "Normal", "map.osu",
 			new Difficulty(GameMode.Standard, 180, TimeSpan.FromMinutes(2), 4, 8, 8, 5, 5.0),
-			new OsuBeatmapObjectCounts { MaxCombo = 500 });
+			new OsuObjects { MaxCombo = 500 });
 		_beatmaps.FetchOneAsync(md5: match.MapMd5, includePrivate: true,
 				cancellationToken: Arg.Any<CancellationToken>())
 			.Returns(beatmap);

@@ -82,7 +82,7 @@ public class ScoreSubmissionValidationTests
 	[Fact]
 	public void ValidateScoreChecksum_Mismatch_Throws()
 	{
-		var score = Submission.FromSubmission([
+		var score = Submission.From([
 				"wrong-checksum", "490", "5", "3", "0", "0", "1", "12345678", "500", "False", "S", "0", "True", "0",
 				"210520235959", "20210520 "
 			]) with
@@ -97,7 +97,7 @@ public class ScoreSubmissionValidationTests
 	[Fact]
 	public void ValidateScoreChecksum_Match_DoesNotThrow()
 	{
-		var score = Submission.FromSubmission([
+		var score = Submission.From([
 				"placeholder", "490", "5", "3", "0", "0", "1", "12345678", "500", "False", "S", "0", "True", "0",
 				"210520235959", "20210520 "
 			]) with

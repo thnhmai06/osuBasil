@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
 
 namespace Basil.Domain.Users;
@@ -7,7 +6,7 @@ namespace Basil.Domain.Users;
 /// <summary>
 ///     Parses <c>GET /users/search</c>'s query syntax (<c>key&lt;operator&gt;value</c> tokens mixed
 ///     with a free-text id/username portion, e.g. <c>peppy country=jp</c>) into a structured
-///     <see cref="UserSearchFilters" />.
+///     <see cref="UserFilters" />.
 /// </summary>
 /// <remarks>
 ///     Only <c>:</c>/<c>=</c> are accepted operators -- unlike
@@ -17,7 +16,7 @@ namespace Basil.Domain.Users;
 ///     naming a key this parser doesn't recognize, or a value that fails to parse for the key it
 ///     named, is likewise left untouched in the free-text portion instead of erroring.
 /// </remarks>
-public static partial class UserSearchQueryParser
+public partial record UserFilters
 {
 	/// <summary>
 	///     Matches one <c>key(:|=)value</c> token: a bare word key, then either a single- or
@@ -27,16 +26,19 @@ public static partial class UserSearchQueryParser
 		RegexOptions.IgnoreCase)]
 	private static partial Regex TokenPattern();
 
+	[GeneratedRegex(@"\s+")]
+	private static partial Regex WhitespaceRun();
+
 	/// <summary>Parses a search query string into structured filters plus the remaining free text.</summary>
 	/// <param name="query">The raw query text.</param>
 	/// <returns>
-	///     The parsed <see cref="UserSearchFilters" />, with <see cref="UserSearchFilters.Keywords" />
+	///     The parsed <see cref="UserFilters" />, with <see cref="UserFilters.Keywords" />
 	///     set to whatever text wasn't consumed by a recognized filter token (or <see langword="null" />
 	///     if nothing remains).
 	/// </returns>
-	public static UserSearchFilters Parse(string? query)
+	public static UserFilters From(string? query)
 	{
-		if (string.IsNullOrWhiteSpace(query)) return UserSearchFilters.Empty;
+		if (string.IsNullOrWhiteSpace(query)) return Empty;
 
 		var builder = new Builder();
 		var keywords = TokenPattern().Replace(query, match =>
@@ -47,25 +49,21 @@ public static partial class UserSearchQueryParser
 		});
 
 		return builder.Build(CollapseWhitespace(keywords));
-	}
 
-	private static string Unquote(string value)
-	{
-		if (value.Length < 2) return value;
-		var quote = value[0];
-		if (quote != '"' && quote != '\'') return value;
-		if (value[^1] != quote) return value;
-		return value[1..^1].Replace($"\\{quote}", quote.ToString());
-	}
+		static string Unquote(string value)
+		{
+			if (value.Length < 2) return value;
+			var quote = value[0];
+			if ((quote != '"' && quote != '\'') || value[^1] != quote) return value;
+			return value[1..^1].Replace($"\\{quote}", quote.ToString());
+		}
 
-	private static string? CollapseWhitespace(string text)
-	{
-		var trimmed = WhitespaceRun().Replace(text, " ").Trim();
-		return trimmed.Length == 0 ? null : trimmed;
+		static string? CollapseWhitespace(string text)
+		{
+			var trimmed = WhitespaceRun().Replace(text, " ").Trim();
+			return trimmed.Length == 0 ? null : trimmed;
+		}
 	}
-
-	[GeneratedRegex(@"\s+")]
-	private static partial Regex WhitespaceRun();
 
 	/// <summary>Accumulates parsed filters as <see cref="TokenPattern" />'s matches are visited.</summary>
 	private sealed class Builder
@@ -112,9 +110,9 @@ public static partial class UserSearchQueryParser
 			return true;
 		}
 
-		public UserSearchFilters Build(string? keywords)
+		public UserFilters Build(string? keywords)
 		{
-			return new UserSearchFilters(keywords, _countries, _privilege);
+			return new UserFilters(keywords, _countries, _privilege);
 		}
 	}
 }

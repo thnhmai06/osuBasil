@@ -1,6 +1,5 @@
 using System.Collections.Frozen;
 using Basil.Domain.Beatmaps;
-using Basil.Application.Beatmaps;
 
 namespace Basil.Application.Beatmaps;
 
@@ -55,8 +54,8 @@ public sealed class DirectSearchService(
 		DirectSearchRequest request, CancellationToken cancellationToken = default)
 	{
 		var filters = NonTextQueries.Contains(request.Query)
-			? BeatmapsetSearchFilters.Empty
-			: BeatmapsetSearchQueryParser.Parse(request.Query);
+			? BeatmapFilters.Empty
+			: BeatmapFilters.From(request.Query);
 		GameMode? mode = request.Mode == AnyMode ? null : (GameMode)request.Mode;
 
 		var results = await beatmaps.SearchAsync(filters, mode, request.PageNum * PageSize, PageSize,

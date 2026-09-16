@@ -1,11 +1,10 @@
 using System.IO.Compression;
 using System.Text.RegularExpressions;
+using Basil.Application.Beatmaps;
 using Basil.Application.Shared.Configuration;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
 using Basil.Infrastructure.Shared.Storage;
-using Basil.Infrastructure.Shared.Storage;
-using Basil.Application.Beatmaps;
 using Microsoft.Extensions.Options;
 using osu.Game.Beatmaps.Formats;
 using osu.Game.IO;
@@ -130,7 +129,10 @@ public sealed partial class BeatmapIngestionService(
 			: await assetCache.ResolveAsync(beatmapsetId, entryName, oszPath, cancellationToken);
 	}
 
-	/// <summary>Resolves the path to a beatmap's `.osu` file on disk, or <see langword="null" /> when its beatmapset can't be found.</summary>
+	/// <summary>
+	///     Resolves the path to a beatmap's `.osu` file on disk, or <see langword="null" /> when its beatmapset can't be
+	///     found.
+	/// </summary>
 	public static Task<string?> OsuFilePathAsync(StorageOptions storage, BeatmapsetAssetCache assetCache,
 		Beatmap beatmap, CancellationToken cancellationToken = default)
 	{
@@ -176,7 +178,8 @@ public sealed partial class BeatmapIngestionService(
 
 	/// <summary>
 	///     Null if the beatmap's `.osu` declares no video in `[Events]`, its file is missing, or its
-	///     beatmapset can't be found. Unlike <see cref="BackgroundFilePathAsync(StorageOptions,BeatmapsetAssetCache,Beatmap,CancellationToken)" />/
+	///     beatmapset can't be found. Unlike
+	///     <see cref="BackgroundFilePathAsync(StorageOptions,BeatmapsetAssetCache,Beatmap,CancellationToken)" />/
 	///     <see cref="AudioFilePathAsync(StorageOptions,BeatmapsetAssetCache,Beatmap,CancellationToken)" />, video has
 	///     no ingestion-time DB column: the filename is re-derived from the `.osu`'s own
 	///     <see cref="Storyboard" /> via <see cref="Storyboard.PrimaryVideo" /> on every call.
@@ -418,7 +421,7 @@ public sealed partial class BeatmapIngestionService(
 			var cacheHit = existingByPath is { Difficulty.Sr: > 0 } && existingByPath.Md5 == file.Md5;
 			var analysisPath = await resolveAnalysisPath(file, cancellationToken);
 			var analysis = cacheHit
-				? new BeatmapAnalysis(existingByPath!.Difficulty, existingByPath.ObjectCounts)
+				? new BeatmapAnalysis(existingByPath!.Difficulty, existingByPath.Objects)
 				: analysisPath is null
 					? EmptyAnalysis(mode)
 					: TryAnalyze(analysisPath, mode);
@@ -433,7 +436,7 @@ public sealed partial class BeatmapIngestionService(
 				info.DifficultyName,
 				file.OriginalFilename,
 				analysis.Difficulty,
-				analysis.ObjectCounts,
+				analysis.Objects,
 				backgroundFile,
 				audioFile,
 				previewTime);
@@ -603,15 +606,15 @@ public sealed partial class BeatmapIngestionService(
 	private static BeatmapAnalysis EmptyAnalysis(GameMode mode)
 	{
 		var emptyDifficulty = new Difficulty(mode, 0, TimeSpan.Zero, 0, 0, 0, 0, 0);
-		BeatmapObjectCounts emptyObjectCounts = mode switch
+		BeatmapObjects emptyObjects = mode switch
 		{
-			GameMode.Standard => new OsuBeatmapObjectCounts(),
-			GameMode.Taiko => new TaikoBeatmapObjectCounts(),
-			GameMode.Catch => new CatchBeatmapObjectCounts(),
-			GameMode.Mania => new ManiaBeatmapObjectCounts(),
+			GameMode.Standard => new OsuObjects(),
+			GameMode.Taiko => new TaikoObjects(),
+			GameMode.Catch => new CatchObjects(),
+			GameMode.Mania => new ManiaObjects(),
 			_ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown ruleset for game mode.")
 		};
-		return new BeatmapAnalysis(emptyDifficulty, emptyObjectCounts);
+		return new BeatmapAnalysis(emptyDifficulty, emptyObjects);
 	}
 
 	private static LazerBeatmap? TryDecode(byte[] osuBytes)

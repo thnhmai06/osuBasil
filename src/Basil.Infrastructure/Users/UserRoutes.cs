@@ -1,21 +1,18 @@
 using System.Security.Cryptography;
 using System.Text;
+using Basil.Application.Auth;
 using Basil.Application.Bot;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
 using Basil.Application.Shared.Eventing;
-using Basil.Domain.Auth;
-using Basil.Domain.Login;
 using Basil.Application.Spectating;
+using Basil.Application.Users;
+using Basil.Domain.Login;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Auth;
-using Basil.Infrastructure.Bot;
 using Basil.Infrastructure.Shared.Http;
 using Basil.Infrastructure.Shared.Http.OpenApi;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Infrastructure.Spectating;
-using Basil.Application.Users;
-using Basil.Application.Auth;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
@@ -380,7 +377,7 @@ internal static class UserRoutes
 			return Results.BadRequest(new ErrorResponse("Missing required query parameter 'q'."));
 
 		var (p, ps) = Pagination.Normalize(page, pageSize);
-		var filters = UserSearchQueryParser.Parse(q);
+		var filters = UserFilters.From(q);
 
 		var found = await users.SearchAsync(filters, (p - 1) * ps, ps, cancellationToken);
 		var total = await users.SearchCountAsync(filters, cancellationToken);

@@ -8,7 +8,6 @@ using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
 using Basil.Host;
 using Basil.Infrastructure.Beatmaps;
-using Basil.Infrastructure.Shared.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -205,7 +204,7 @@ public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactor
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton(TestDoubles.FixedAdminKeySettingsRepository());
 				services.AddSingleton(maps);
 				services.AddSingleton(beatmapsets);
@@ -253,7 +252,7 @@ public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactor
 		_beatmapset = new Beatmapset(beatmapsetId, "FAIRY FORE", "Vivid", "Hitoshirenu Shourai", DateTime.UnixEpoch,
 			DateTime.UnixEpoch, IsPrivate: isPrivate);
 		_beatmap = new Beatmap(new string('a', 32), beatmapId, _beatmapset, "Insane", "vivid.osu",
-			new Difficulty(GameMode.Standard, 0, TimeSpan.Zero, 0, 0, 0, 0, 0), new OsuBeatmapObjectCounts());
+			new Difficulty(GameMode.Standard, 0, TimeSpan.Zero, 0, 0, 0, 0, 0), new OsuObjects());
 
 		var folder = Path.Combine(_dataDir, "Beatmapsets", $"{beatmapsetId} FAIRY FORE - Vivid");
 		Directory.CreateDirectory(folder);

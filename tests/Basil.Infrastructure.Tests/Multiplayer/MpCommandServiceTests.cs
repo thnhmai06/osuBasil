@@ -1,25 +1,22 @@
 using System.Text;
+using Basil.Application.Beatmaps;
+using Basil.Application.Bot;
+using Basil.Application.Chat;
 using Basil.Application.Irc;
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
 using Basil.Application.Shared.Eventing;
+using Basil.Application.Users;
 using Basil.Domain.Beatmaps;
-using Basil.Application.Bot;
 using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
-using Basil.Application.Bot;
-using Basil.Application.Chat;
 using Basil.Infrastructure.Chat.Packets;
-using Basil.Infrastructure.Multiplayer;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Infrastructure.Tests.Multiplayer.Packets;
 using Basil.Protocol.Irc;
 using Basil.Protocol.Packets;
-using Basil.Application.Users;
-using Basil.Application.Beatmaps;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -675,7 +672,7 @@ public class MpCommandServiceTests
 		var beatmapset = new Beatmapset(1, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
 		var bmap = new Beatmap(new string('a', 32), 500, beatmapset, "Version", "file.osu",
 			new Difficulty(GameMode.Standard, 180, TimeSpan.FromSeconds(120), 4, 9, 8, 5, 6.5),
-			new OsuBeatmapObjectCounts { MaxCombo = 500 });
+			new OsuObjects { MaxCombo = 500 });
 		_beatmaps.FetchOneAsync(500, cancellationToken: Arg.Any<CancellationToken>()).Returns(bmap);
 
 		var reply = await Run(MakeService(), host, match, "map", ["500"]);
@@ -698,8 +695,11 @@ public class MpCommandServiceTests
 	}
 
 	/// <summary>
-	///     Regression test (Issue #4: "the `[playmode]` field is missing"): `!mp map <id> <mode>` picks
-	///     a converted ruleset for a beatmap whose own mode is osu!/convertible.
+	///     Regression test (Issue #4: "the `[playmode]` field is missing"): `!mp map
+	///     <id>
+	///         <mode>
+	///             ` picks
+	///             a converted ruleset for a beatmap whose own mode is osu!/convertible.
 	/// </summary>
 	[Fact]
 	public async Task HandleAsync_Map_StandardBeatmapWithPlaymode_SetsMatchModeToPlaymode()
@@ -710,7 +710,7 @@ public class MpCommandServiceTests
 		var beatmapset = new Beatmapset(1, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
 		var bmap = new Beatmap(new string('a', 32), 500, beatmapset, "Version", "file.osu",
 			new Difficulty(GameMode.Standard, 180, TimeSpan.FromSeconds(120), 4, 9, 8, 5, 6.5),
-			new OsuBeatmapObjectCounts { MaxCombo = 500 });
+			new OsuObjects { MaxCombo = 500 });
 		_beatmaps.FetchOneAsync(500, cancellationToken: Arg.Any<CancellationToken>()).Returns(bmap);
 
 		await Run(MakeService(), host, match, "map", ["500", "3"]);
@@ -731,7 +731,7 @@ public class MpCommandServiceTests
 		var beatmapset = new Beatmapset(1, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
 		var bmap = new Beatmap(new string('a', 32), 500, beatmapset, "Version", "file.osu",
 			new Difficulty(GameMode.Taiko, 180, TimeSpan.FromSeconds(120), 4, 9, 8, 5, 6.5),
-			new TaikoBeatmapObjectCounts { MaxCombo = 500 });
+			new TaikoObjects { MaxCombo = 500 });
 		_beatmaps.FetchOneAsync(500, cancellationToken: Arg.Any<CancellationToken>()).Returns(bmap);
 
 		await Run(MakeService(), host, match, "map", ["500", "3"]);
@@ -898,7 +898,9 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
 		await using (var mutation = await match.BeginMutationAsync())
+		{
 			await _fixture.MatchLifecycle.StartAsync(match, mutation);
+		}
 
 		var reply = await Run(MakeService(), host, match, "abort", []);
 
@@ -1136,7 +1138,7 @@ public class MpCommandServiceTests
 		var beatmapset = new Beatmapset(1, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
 		var bmap = new Beatmap(new string('a', 32), 500, beatmapset, "Version", "file.osu",
 			new Difficulty(GameMode.Standard, 180, TimeSpan.FromSeconds(120), 4, 9, 8, 5, 6.5),
-			new OsuBeatmapObjectCounts { MaxCombo = 500 });
+			new OsuObjects { MaxCombo = 500 });
 		_beatmaps.FetchOneAsync(500, cancellationToken: Arg.Any<CancellationToken>()).Returns(bmap);
 		var service = MakeService();
 		await Run(service, host, match, "map", ["500"]);

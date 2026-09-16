@@ -19,7 +19,7 @@ public class BeatmapTests
 			"Hyper",
 			"Camellia - Exit This Earth's Atomosphere (cmyui) [Hyper].osu",
 			new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0, 8.0, 5.0, 6.5),
-			new OsuBeatmapObjectCounts { MaxCombo = 500 });
+			new OsuObjects { MaxCombo = 500 });
 	}
 
 	[Fact]

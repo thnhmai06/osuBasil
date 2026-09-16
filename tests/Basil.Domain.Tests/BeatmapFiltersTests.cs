@@ -3,24 +3,24 @@ using Basil.Domain.Beatmaps;
 namespace Basil.Domain.Tests;
 
 /// <summary>
-///     Verifies <see cref="BeatmapsetSearchQueryParser" />'s handling of osu!'s
+///     Verifies <see cref="Basil.Domain.Beatmaps.BeatmapFilters" />'s handling of osu!'s
 ///     <c>key&lt;operator&gt;value</c> search syntax (Issue #4: "Support searching by beatmap ID,
 ///     beatmapset ID, and osu!'s search parameters").
 /// </summary>
-public class BeatmapsetSearchQueryParserTests
+public class BeatmapFiltersTests
 {
 	[Fact]
 	public void Parse_EmptyQuery_ReturnsEmptyFilters()
 	{
-		var result = BeatmapsetSearchQueryParser.Parse("");
+		var result = BeatmapFilters.From("");
 
-		Assert.Equal(BeatmapsetSearchFilters.Empty, result);
+		Assert.Equal(BeatmapFilters.Empty, result);
 	}
 
 	[Fact]
 	public void Parse_PlainText_BecomesKeywords()
 	{
-		var result = BeatmapsetSearchQueryParser.Parse("camellia exit this earth");
+		var result = BeatmapFilters.From("camellia exit this earth");
 
 		Assert.Equal("camellia exit this earth", result.Keywords);
 		Assert.Null(result.Stars);
@@ -35,7 +35,7 @@ public class BeatmapsetSearchQueryParserTests
 	[InlineData("stars:5", ComparisonOperator.Equal, 5.0)]
 	public void Parse_Stars_ParsesOperatorAndValue(string query, ComparisonOperator op, double value)
 	{
-		var result = BeatmapsetSearchQueryParser.Parse(query);
+		var result = BeatmapFilters.From(query);
 
 		Assert.Equal(new ComparableFilter<double>(op, value), result.Stars);
 		Assert.Null(result.Keywords);
@@ -44,7 +44,7 @@ public class BeatmapsetSearchQueryParserTests
 	[Fact]
 	public void Parse_Ar_SetsArFilter()
 	{
-		var result = BeatmapsetSearchQueryParser.Parse("ar=9");
+		var result = BeatmapFilters.From("ar=9");
 
 		Assert.Equal(new ComparableFilter<double>(ComparisonOperator.Equal, 9.0), result.Ar);
 	}
@@ -54,7 +54,7 @@ public class BeatmapsetSearchQueryParserTests
 	[InlineData("dr<4")]
 	public void Parse_HpAndDrAlias_SetHpFilter(string query)
 	{
-		var result = BeatmapsetSearchQueryParser.Parse(query);
+		var result = BeatmapFilters.From(query);
 
 		Assert.Equal(new ComparableFilter<double>(ComparisonOperator.LessThan, 4.0), result.Hp);
 	}
@@ -62,7 +62,7 @@ public class BeatmapsetSearchQueryParserTests
 	[Fact]
 	public void Parse_Cs_SetsCsFilter()
 	{
-		var result = BeatmapsetSearchQueryParser.Parse("cs>5");
+		var result = BeatmapFilters.From("cs>5");
 
 		Assert.Equal(new ComparableFilter<double>(ComparisonOperator.GreaterThan, 5.0), result.Cs);
 	}
@@ -70,7 +70,7 @@ public class BeatmapsetSearchQueryParserTests
 	[Fact]
 	public void Parse_Od_SetsOdFilter()
 	{
-		var result = BeatmapsetSearchQueryParser.Parse("od>=9");
+		var result = BeatmapFilters.From("od>=9");
 
 		Assert.Equal(new ComparableFilter<double>(ComparisonOperator.GreaterThanOrEqual, 9.0), result.Od);
 	}
@@ -78,7 +78,7 @@ public class BeatmapsetSearchQueryParserTests
 	[Fact]
 	public void Parse_Bpm_SetsBpmFilter()
 	{
-		var result = BeatmapsetSearchQueryParser.Parse("bpm<=180");
+		var result = BeatmapFilters.From("bpm<=180");
 
 		Assert.Equal(new ComparableFilter<double>(ComparisonOperator.LessThanOrEqual, 180.0), result.Bpm);
 	}
@@ -88,7 +88,7 @@ public class BeatmapsetSearchQueryParserTests
 	[InlineData("key=7")]
 	public void Parse_KeysAndKeyAlias_SetKeysFilter(string query)
 	{
-		var result = BeatmapsetSearchQueryParser.Parse(query);
+		var result = BeatmapFilters.From(query);
 
 		Assert.Equal(new ComparableFilter<double>(ComparisonOperator.Equal, 7.0), result.Keys);
 	}
@@ -96,7 +96,7 @@ public class BeatmapsetSearchQueryParserTests
 	[Fact]
 	public void Parse_Circles_SetsIntFilter()
 	{
-		var result = BeatmapsetSearchQueryParser.Parse("circles=100");
+		var result = BeatmapFilters.From("circles=100");
 
 		Assert.Equal(new ComparableFilter<int>(ComparisonOperator.Equal, 100), result.Circles);
 	}
@@ -104,7 +104,7 @@ public class BeatmapsetSearchQueryParserTests
 	[Fact]
 	public void Parse_Sliders_SetsIntFilter()
 	{
-		var result = BeatmapsetSearchQueryParser.Parse("sliders>50");
+		var result = BeatmapFilters.From("sliders>50");
 
 		Assert.Equal(new ComparableFilter<int>(ComparisonOperator.GreaterThan, 50), result.Sliders);
 	}
@@ -117,7 +117,7 @@ public class BeatmapsetSearchQueryParserTests
 	[InlineData("length>=70000ms", 70.0)]
 	public void Parse_Length_ConvertsUnitsToSeconds(string query, double expectedSeconds)
 	{
-		var result = BeatmapsetSearchQueryParser.Parse(query);
+		var result = BeatmapFilters.From(query);
 
 		Assert.NotNull(result.LengthSeconds);
 		Assert.Equal(ComparisonOperator.GreaterThanOrEqual, result.LengthSeconds.Operator);
@@ -127,7 +127,7 @@ public class BeatmapsetSearchQueryParserTests
 	[Fact]
 	public void Parse_Creator_SetsTextFilter()
 	{
-		var result = BeatmapsetSearchQueryParser.Parse("creator=hello");
+		var result = BeatmapFilters.From("creator=hello");
 
 		Assert.Equal("hello", result.Creator);
 	}
@@ -135,7 +135,7 @@ public class BeatmapsetSearchQueryParserTests
 	[Fact]
 	public void Parse_QuotedArtist_StripsQuotesAndKeepsSpaces()
 	{
-		var result = BeatmapsetSearchQueryParser.Parse("""artist="hello world" """);
+		var result = BeatmapFilters.From("""artist="hello world" """);
 
 		Assert.Equal("hello world", result.Artist);
 	}
@@ -143,7 +143,7 @@ public class BeatmapsetSearchQueryParserTests
 	[Fact]
 	public void Parse_QuotedValueWithEscapedQuote_Unescapes()
 	{
-		var result = BeatmapsetSearchQueryParser.Parse("""title="nested \"quote\"" """);
+		var result = BeatmapFilters.From("""title="nested \"quote\"" """);
 
 		Assert.Equal("""nested "quote" """.Trim(), result.Title);
 	}
@@ -151,7 +151,7 @@ public class BeatmapsetSearchQueryParserTests
 	[Fact]
 	public void Parse_Difficulty_SetsTextFilter()
 	{
-		var result = BeatmapsetSearchQueryParser.Parse("difficulty=easy");
+		var result = BeatmapFilters.From("difficulty=easy");
 
 		Assert.Equal("easy", result.Difficulty);
 	}
@@ -164,7 +164,7 @@ public class BeatmapsetSearchQueryParserTests
 	[InlineData("status=qual", BeatmapStatus.Qualified)]
 	public void Parse_Status_ResolvesPrefixToStatus(string query, BeatmapStatus expected)
 	{
-		var result = BeatmapsetSearchQueryParser.Parse(query);
+		var result = BeatmapFilters.From(query);
 
 		Assert.Equal(expected, result.Status);
 	}
@@ -172,7 +172,7 @@ public class BeatmapsetSearchQueryParserTests
 	[Fact]
 	public void Parse_UnrecognizedStatusName_LeavesTokenAsKeyword()
 	{
-		var result = BeatmapsetSearchQueryParser.Parse("status=nonsense");
+		var result = BeatmapFilters.From("status=nonsense");
 
 		Assert.Null(result.Status);
 		Assert.Equal("status=nonsense", result.Keywords);
@@ -181,7 +181,7 @@ public class BeatmapsetSearchQueryParserTests
 	[Fact]
 	public void Parse_YearOnlyCreated_SpansWholeYear()
 	{
-		var result = BeatmapsetSearchQueryParser.Parse("created=2017");
+		var result = BeatmapFilters.From("created=2017");
 
 		Assert.NotNull(result.Created);
 		Assert.Equal(ComparisonOperator.Equal, result.Created.Operator);
@@ -192,7 +192,7 @@ public class BeatmapsetSearchQueryParserTests
 	[Fact]
 	public void Parse_YearMonthCreated_SpansWholeMonth()
 	{
-		var result = BeatmapsetSearchQueryParser.Parse("created=2018-05");
+		var result = BeatmapFilters.From("created=2018-05");
 
 		Assert.Equal(new DateTimeOffset(2018, 5, 1, 0, 0, 0, TimeSpan.Zero), result.Created!.RangeStart);
 		Assert.Equal(new DateTimeOffset(2018, 6, 1, 0, 0, 0, TimeSpan.Zero), result.Created.RangeEnd);
@@ -201,7 +201,7 @@ public class BeatmapsetSearchQueryParserTests
 	[Fact]
 	public void Parse_YearMonthDayCreated_SpansWholeDay()
 	{
-		var result = BeatmapsetSearchQueryParser.Parse("created=2018-05-01");
+		var result = BeatmapFilters.From("created=2018-05-01");
 
 		Assert.Equal(new DateTimeOffset(2018, 5, 1, 0, 0, 0, TimeSpan.Zero), result.Created!.RangeStart);
 		Assert.Equal(new DateTimeOffset(2018, 5, 2, 0, 0, 0, TimeSpan.Zero), result.Created.RangeEnd);
@@ -210,7 +210,7 @@ public class BeatmapsetSearchQueryParserTests
 	[Fact]
 	public void Parse_SubmittedAliasesCreated()
 	{
-		var result = BeatmapsetSearchQueryParser.Parse("submitted=2017");
+		var result = BeatmapFilters.From("submitted=2017");
 
 		Assert.NotNull(result.Created);
 	}
@@ -218,7 +218,7 @@ public class BeatmapsetSearchQueryParserTests
 	[Fact]
 	public void Parse_Updated_SetsUpdatedNotCreated()
 	{
-		var result = BeatmapsetSearchQueryParser.Parse("updated<2020");
+		var result = BeatmapFilters.From("updated<2020");
 
 		Assert.Null(result.Created);
 		Assert.NotNull(result.Updated);
@@ -234,7 +234,7 @@ public class BeatmapsetSearchQueryParserTests
 	[InlineData("featured_artist=123")]
 	public void Parse_KeysBasilHasNoDataFor_DegradeToKeywords(string query)
 	{
-		var result = BeatmapsetSearchQueryParser.Parse(query);
+		var result = BeatmapFilters.From(query);
 
 		Assert.Equal(query, result.Keywords);
 	}
@@ -242,7 +242,7 @@ public class BeatmapsetSearchQueryParserTests
 	[Fact]
 	public void Parse_MixedKeywordsAndFilters_SeparatesBoth()
 	{
-		var result = BeatmapsetSearchQueryParser.Parse("hello stars>=1 stars<4 world");
+		var result = BeatmapFilters.From("hello stars>=1 stars<4 world");
 
 		Assert.Equal("hello world", result.Keywords);
 		Assert.Equal(new ComparableFilter<double>(ComparisonOperator.LessThan, 4.0), result.Stars);
@@ -251,7 +251,7 @@ public class BeatmapsetSearchQueryParserTests
 	[Fact]
 	public void Parse_InvalidNumericValue_LeavesTokenAsKeyword()
 	{
-		var result = BeatmapsetSearchQueryParser.Parse("stars>notanumber");
+		var result = BeatmapFilters.From("stars>notanumber");
 
 		Assert.Null(result.Stars);
 		Assert.Equal("stars>notanumber", result.Keywords);
@@ -260,7 +260,7 @@ public class BeatmapsetSearchQueryParserTests
 	[Fact]
 	public void Parse_WhitespaceOnlyResult_KeywordsIsNull()
 	{
-		var result = BeatmapsetSearchQueryParser.Parse("stars>5");
+		var result = BeatmapFilters.From("stars>5");
 
 		Assert.Null(result.Keywords);
 	}

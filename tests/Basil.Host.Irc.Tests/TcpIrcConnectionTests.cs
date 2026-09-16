@@ -540,13 +540,13 @@ public class TcpIrcConnectionTests
 			throw new NotSupportedException();
 		}
 
-		public Task<IReadOnlyList<User>> SearchAsync(UserSearchFilters filters, int offset, int amount,
+		public Task<IReadOnlyList<User>> SearchAsync(UserFilters filters, int offset, int amount,
 			CancellationToken cancellationToken = default)
 		{
 			throw new NotSupportedException();
 		}
 
-		public Task<int> SearchCountAsync(UserSearchFilters filters, CancellationToken cancellationToken = default)
+		public Task<int> SearchCountAsync(UserFilters filters, CancellationToken cancellationToken = default)
 		{
 			throw new NotSupportedException();
 		}
@@ -699,13 +699,13 @@ public class TcpIrcConnectionTests
 			throw new NotSupportedException();
 		}
 
-		public Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(BeatmapsetSearchFilters filters,
+		public Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(BeatmapFilters filters,
 			GameMode? mode, int offset, int amount, CancellationToken cancellationToken = default)
 		{
 			throw new NotSupportedException();
 		}
 
-		public Task<int> SearchCountAsync(BeatmapsetSearchFilters filters, GameMode? mode,
+		public Task<int> SearchCountAsync(BeatmapFilters filters, GameMode? mode,
 			CancellationToken cancellationToken = default)
 		{
 			throw new NotSupportedException();

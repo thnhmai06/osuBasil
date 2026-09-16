@@ -49,15 +49,15 @@ public interface IOsuCalculator
 ///     The result of analyzing a beatmap under a specific mode and mod combination.
 /// </summary>
 /// <param name="Difficulty">The mod- and mode-affected gameplay stats.</param>
-/// <param name="ObjectCounts">The per-mode hit-object counts of the beatmap.</param>
+/// <param name="Objects">The per-mode hit-object counts of the beatmap.</param>
 /// <remarks>
 ///     <see cref="Difficulty" /> already carries every mod- and mode-affected stat (star rating,
 ///     BPM, length, CS/AR/OD/HP) computed for the exact mode and mods passed to
 ///     <see cref="IOsuCalculator.Analyze" />; see the implementation's analysis method for how each
-///     field is derived. <see cref="ObjectCounts" /> is its own concrete subtype per mode and also
+///     field is derived. <see cref="Objects" /> is its own concrete subtype per mode and also
 ///     carries the max combo; it is not part of <see cref="Difficulty" /> because it does not vary
 ///     with mods.
 /// </remarks>
 public sealed record BeatmapAnalysis(
 	Difficulty Difficulty,
-	BeatmapObjectCounts ObjectCounts);
+	BeatmapObjects Objects);

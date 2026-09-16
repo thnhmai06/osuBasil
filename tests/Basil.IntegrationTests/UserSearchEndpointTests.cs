@@ -80,9 +80,9 @@ public class UserSearchEndpointTests : IClassFixture<WebApplicationFactory<Boots
 	public async Task Search_ValidQ_ReturnsPagedResult()
 	{
 		var user = new User(7, "cool_player", Country.Us, UserPrivileges.Unrestricted, default);
-		_users.SearchAsync(Arg.Any<UserSearchFilters>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+		_users.SearchAsync(Arg.Any<UserFilters>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
 			.Returns(Task.FromResult<IReadOnlyList<User>>([user]));
-		_users.SearchCountAsync(Arg.Any<UserSearchFilters>(), Arg.Any<CancellationToken>()).Returns(1);
+		_users.SearchCountAsync(Arg.Any<UserFilters>(), Arg.Any<CancellationToken>()).Returns(1);
 
 		var response = await MakeClient().SendAsync(MakeRequest("/users/search?q=cool"));
 		var body = await response.Content.ReadFromJsonAsync<Envelope<List<UserView>>>(BasilJsonOptions.Instance);
@@ -95,12 +95,12 @@ public class UserSearchEndpointTests : IClassFixture<WebApplicationFactory<Boots
 	[Fact]
 	public async Task Search_PageAndPageSize_PassThroughToRepositoryAsOffsetAndAmount()
 	{
-		_users.SearchAsync(Arg.Any<UserSearchFilters>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+		_users.SearchAsync(Arg.Any<UserFilters>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
 			.Returns(Task.FromResult<IReadOnlyList<User>>([]));
-		_users.SearchCountAsync(Arg.Any<UserSearchFilters>(), Arg.Any<CancellationToken>()).Returns(0);
+		_users.SearchCountAsync(Arg.Any<UserFilters>(), Arg.Any<CancellationToken>()).Returns(0);
 
 		await MakeClient().SendAsync(MakeRequest("/users/search?q=cool&page=3&pageSize=10"));
 
-		await _users.Received(1).SearchAsync(Arg.Any<UserSearchFilters>(), 20, 10, Arg.Any<CancellationToken>());
+		await _users.Received(1).SearchAsync(Arg.Any<UserFilters>(), 20, 10, Arg.Any<CancellationToken>());
 	}
 }

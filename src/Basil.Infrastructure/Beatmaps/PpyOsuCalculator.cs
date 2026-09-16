@@ -1,6 +1,6 @@
+using Basil.Application.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
-using Basil.Application.Beatmaps;
 using osu.Framework.Audio.Track;
 using osu.Framework.Extensions;
 using osu.Framework.Graphics.Textures;
@@ -89,7 +89,7 @@ public sealed class PpyOsuCalculator : IOsuCalculator
 	}
 
 	/// <summary>
-	///     Counts hit objects by concrete type into the per-mode <see cref="BeatmapObjectCounts" />
+	///     Counts hit objects by concrete type into the per-mode <see cref="BeatmapObjects" />
 	///     subtype.
 	/// </summary>
 	/// <remarks>
@@ -99,10 +99,10 @@ public sealed class PpyOsuCalculator : IOsuCalculator
 	///     <see cref="GameMode.Taiko" />/<see cref="GameMode.Mania" /> have no equivalent container objects.
 	///     - <see cref="GameMode.Catch" /> is the exception: <c>JuiceStream</c> and <c>BananaShower</c> are containers
 	///     whose Droplet/TinyDroplet/Banana children only exist in <see cref="HitObject.NestedHitObjects" />,
-	///     so counting recurses. <see cref="CatchBeatmapObjectCounts.TinyDroplets" /> is checked before
-	///     <see cref="CatchBeatmapObjectCounts.Droplets" /> since <c>TinyDroplet</c> derives from <c>Droplet</c>
+	///     so counting recurses. <see cref="CatchObjects.TinyDroplets" /> is checked before
+	///     <see cref="CatchObjects.Droplets" /> since <c>TinyDroplet</c> derives from <c>Droplet</c>
 	/// </remarks>
-	private static BeatmapObjectCounts BuildObjectCounts(
+	private static BeatmapObjects BuildObjectCounts(
 		GameMode mode, IReadOnlyList<HitObject> hitObjects, int maxCombo)
 	{
 		switch (mode)
@@ -118,7 +118,7 @@ public sealed class PpyOsuCalculator : IOsuCalculator
 						case Spinner: spinners++; break;
 					}
 
-				return new OsuBeatmapObjectCounts
+				return new OsuObjects
 				{
 					Total = circles + sliders + spinners, MaxCombo = maxCombo,
 					Circles = circles, Sliders = sliders, Spinners = spinners
@@ -135,7 +135,7 @@ public sealed class PpyOsuCalculator : IOsuCalculator
 						case Hit: hits++; break;
 					}
 
-				return new TaikoBeatmapObjectCounts
+				return new TaikoObjects
 				{
 					Total = hits + drumRolls + dendens, MaxCombo = maxCombo,
 					Hits = hits, DrumRolls = drumRolls, Dendens = dendens
@@ -147,7 +147,7 @@ public sealed class PpyOsuCalculator : IOsuCalculator
 				foreach (var h in hitObjects)
 					CountCatchRecursive(h, ref fruits, ref droplets, ref tinyDroplets, ref bananas);
 
-				return new CatchBeatmapObjectCounts
+				return new CatchObjects
 				{
 					Total = fruits + droplets + tinyDroplets + bananas, MaxCombo = maxCombo,
 					Fruits = fruits, Droplets = droplets, TinyDroplets = tinyDroplets, Bananas = bananas
@@ -163,7 +163,7 @@ public sealed class PpyOsuCalculator : IOsuCalculator
 						case Note: notes++; break;
 					}
 
-				return new ManiaBeatmapObjectCounts
+				return new ManiaObjects
 				{
 					Total = notes + holdNotes, MaxCombo = maxCombo, Notes = notes, HoldNotes = holdNotes
 				};

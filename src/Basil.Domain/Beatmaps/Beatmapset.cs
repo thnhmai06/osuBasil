@@ -45,6 +45,15 @@ public sealed record Beatmapset(
 	string? AudioFile = null)
 {
 	/// <summary>
+	///     The id floor for beatmapset ingested locally without a real osu! online id.
+	/// </summary>
+	/// <remarks>
+	///     Real osu! online ids remain well below this value, so this floor keeps collisions with
+	///     locally assigned ids implausible without a dedicated id-space reservation table.
+	/// </remarks>
+	public const int LocalIdFloor = 1_000_000_000;
+
+	/// <summary>
 	///     Gets the ranked status of the set.
 	/// </summary>
 	/// <value>
@@ -60,5 +69,5 @@ public sealed record Beatmapset(
 	///     <see langword="true" /> if the set's id is at or above <see cref="Beatmap.LocalIdFloor" />;
 	///     otherwise, <see langword="false" />.
 	/// </value>
-	public bool IsLocallyIngested => Id >= Beatmap.LocalIdFloor;
+	public bool IsLocallyIngested => Id >= LocalIdFloor;
 }

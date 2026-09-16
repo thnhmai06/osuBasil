@@ -1,16 +1,12 @@
 using System.Net;
-using Basil.Application.Sessions;
-using Basil.Application.Shared.Configuration;
-using Basil.Infrastructure.Beatmaps;
-using Basil.Infrastructure.Content;
-using Basil.Domain.Beatmaps;
-using Basil.Domain.Content;
-using Basil.Domain.Users;
-using Basil.Host;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Application.Beatmaps;
 using Basil.Application.Content;
+using Basil.Application.Sessions;
+using Basil.Application.Shared.Configuration;
 using Basil.Application.Users;
+using Basil.Domain.Beatmaps;
+using Basil.Domain.Users;
+using Basil.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -35,7 +31,7 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Boo
 	{
 		_beatmaps.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),
 			Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(_ => _setInfo);
-		_beatmaps.SearchAsync(Arg.Any<BeatmapsetSearchFilters>(), Arg.Any<GameMode?>(), Arg.Any<int>(),
+		_beatmaps.SearchAsync(Arg.Any<BeatmapFilters>(), Arg.Any<GameMode?>(), Arg.Any<int>(),
 			Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(_ => _searchResult);
 
 		var users = Substitute.For<IUserRepository>();
@@ -73,7 +69,7 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Boo
 		return new Beatmap(
 			new string('0', 32), id, beatmapset, "Version", "file.osu",
 			new Difficulty(GameMode.Standard, 180, TimeSpan.FromSeconds(100), 4, 9, 8, 5, 6.5),
-			new OsuBeatmapObjectCounts { MaxCombo = 500 });
+			new OsuObjects { MaxCombo = 500 });
 	}
 
 	private static HttpRequestMessage MakeRequest(string path, string queryString)

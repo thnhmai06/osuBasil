@@ -125,16 +125,16 @@ public interface IUserRepository
 	/// <summary>
 	///     Fetches a page of users matching the given search filters.
 	/// </summary>
-	/// <param name="filters">The parsed search query -- see <see cref="UserSearchFilters" />.</param>
+	/// <param name="filters">The parsed search query -- see <see cref="UserFilters" />.</param>
 	/// <param name="offset">The number of matching users to skip.</param>
 	/// <param name="amount">The maximum number of users to return.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The matching users, in ascending id order.</returns>
 	/// <remarks>
-	///     A deleted user matches only when <see cref="UserSearchFilters.IncludeDeleted" /> is
+	///     A deleted user matches only when <see cref="UserFilters.IncludeDeleted" /> is
 	///     <see langword="true" />.
 	/// </remarks>
-	Task<IReadOnlyList<User>> SearchAsync(UserSearchFilters filters, int offset, int amount,
+	Task<IReadOnlyList<User>> SearchAsync(UserFilters filters, int offset, int amount,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>
@@ -144,5 +144,5 @@ public interface IUserRepository
 	/// <param name="filters">The parsed search query -- see <see cref="SearchAsync" />.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The total number of matching users.</returns>
-	Task<int> SearchCountAsync(UserSearchFilters filters, CancellationToken cancellationToken = default);
+	Task<int> SearchCountAsync(UserFilters filters, CancellationToken cancellationToken = default);
 }

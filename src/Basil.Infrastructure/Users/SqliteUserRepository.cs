@@ -158,7 +158,7 @@ public sealed class SqliteUserRepository(string connectionString, ILogger<Sqlite
 	}
 
 	/// <inheritdoc />
-	public async Task<IReadOnlyList<User>> SearchAsync(UserSearchFilters filters, int offset, int amount,
+	public async Task<IReadOnlyList<User>> SearchAsync(UserFilters filters, int offset, int amount,
 		CancellationToken cancellationToken = default)
 	{
 		var whereClause = BuildSearchWhereClause(filters, out var parameters);
@@ -177,7 +177,7 @@ public sealed class SqliteUserRepository(string connectionString, ILogger<Sqlite
 	}
 
 	/// <inheritdoc />
-	public async Task<int> SearchCountAsync(UserSearchFilters filters, CancellationToken cancellationToken = default)
+	public async Task<int> SearchCountAsync(UserFilters filters, CancellationToken cancellationToken = default)
 	{
 		var whereClause = BuildSearchWhereClause(filters, out var parameters);
 
@@ -192,11 +192,11 @@ public sealed class SqliteUserRepository(string connectionString, ILogger<Sqlite
 	///     <see cref="SearchAsync" /> and <see cref="SearchCountAsync" /> both translate.
 	/// </summary>
 	/// <remarks>
-	///     A numeric <see cref="UserSearchFilters.Keywords" /> matches either the id exactly or a
+	///     A numeric <see cref="UserFilters.Keywords" /> matches either the id exactly or a
 	///     username substring -- osu! ids and usernames are drawn from different characters, so both
 	///     can be checked without ambiguity.
 	/// </remarks>
-	private static string BuildSearchWhereClause(UserSearchFilters filters, out DynamicParameters parameters)
+	private static string BuildSearchWhereClause(UserFilters filters, out DynamicParameters parameters)
 	{
 		var conditions = new List<string>();
 		parameters = new DynamicParameters();

@@ -1,12 +1,10 @@
 using System.IO.Compression;
 using System.Net;
-using Basil.Application.Shared.Configuration;
-using Basil.Infrastructure.Beatmaps;
-using Basil.Domain.Beatmaps;
-using Basil.Domain.Scores;
-using Basil.Host;
-using Basil.Application.Scores;
 using Basil.Application.Beatmaps;
+using Basil.Application.Scores;
+using Basil.Application.Shared.Configuration;
+using Basil.Domain.Beatmaps;
+using Basil.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -37,8 +35,8 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 
 	private readonly string _dataDir = Directory.CreateTempSubdirectory("basil-beatmap-tests-").FullName;
 	private readonly WebApplicationFactory<Bootstrap> _factory;
-	private Beatmap? _byFilename;
 	private Beatmapset? _beatmapset;
+	private Beatmap? _byFilename;
 	private Beatmap? _oneBeatmap;
 	private byte[]? _replayBytes;
 	private ScoreOwner? _scoreOwner;
@@ -56,10 +54,10 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 			.Returns(call => _setBeatmaps.Count > 0 && _setBeatmaps[0].Beatmapset.Id == call.ArgAt<int>(0)
 				? _setBeatmaps
 				: []);
-		maps.SearchAsync(Arg.Any<BeatmapsetSearchFilters>(), Arg.Any<GameMode?>(), Arg.Any<int>(), Arg.Any<int>(),
+		maps.SearchAsync(Arg.Any<BeatmapFilters>(), Arg.Any<GameMode?>(), Arg.Any<int>(), Arg.Any<int>(),
 				Arg.Any<CancellationToken>())
 			.Returns(_ => _searchResults);
-		maps.SearchCountAsync(Arg.Any<BeatmapsetSearchFilters>(), Arg.Any<GameMode?>(), Arg.Any<CancellationToken>())
+		maps.SearchCountAsync(Arg.Any<BeatmapFilters>(), Arg.Any<GameMode?>(), Arg.Any<CancellationToken>())
 			.Returns(_ => _searchTotal);
 
 		var beatmapsets = Substitute.For<IBeatmapsetRepository>();
@@ -84,7 +82,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton(TestDoubles.FixedAdminKeySettingsRepository());
 				services.AddSingleton(maps);
 				services.AddSingleton(beatmapsets);
@@ -123,7 +121,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 	{
 		return new Beatmap(new string('a', 32), id, beatmapset, "Normal", filename,
 			new Difficulty(GameMode.Standard, 180, TimeSpan.FromSeconds(100), 4, 9, 8, 5, 6.5),
-			new OsuBeatmapObjectCounts { MaxCombo = 500 });
+			new OsuObjects { MaxCombo = 500 });
 	}
 
 	private string BeatmapsetFolder(int setId)

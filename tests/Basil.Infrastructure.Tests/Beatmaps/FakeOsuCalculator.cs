@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
+using Basil.Application.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
-using Basil.Application.Beatmaps;
 
 namespace Basil.Infrastructure.Tests.Beatmaps;
 
@@ -11,7 +11,7 @@ internal sealed class FakeOsuCalculator : IOsuCalculator
 	public BeatmapAnalysis Analyze(string beatmapFilePath, GameMode mode, Mods mods)
 	{
 		var difficulty = new Difficulty(mode, 180, TimeSpan.FromSeconds(90), 4, 9, 8, 5, 1.23);
-		var objectCounts = new OsuBeatmapObjectCounts { Total = 1, MaxCombo = 150, Circles = 1 };
+		var objectCounts = new OsuObjects { Total = 1, MaxCombo = 150, Circles = 1 };
 		return new BeatmapAnalysis(difficulty, objectCounts);
 	}
 

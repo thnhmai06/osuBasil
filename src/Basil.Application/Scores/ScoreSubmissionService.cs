@@ -166,7 +166,7 @@ public sealed class ScoreSubmissionService(
 			return new ScoreSubmissionOutcome(ScoreSubmissionResultCode.PlayerNotFound);
 		}
 
-		var score = Submission.FromSubmission([.. request.ScoreDataFields.Skip(2)]) with
+		var score = Submission.From([.. request.ScoreDataFields.Skip(2)]) with
 		{
 			BeatmapMd5 = beatmap.Md5,
 			UserId = player.Id,

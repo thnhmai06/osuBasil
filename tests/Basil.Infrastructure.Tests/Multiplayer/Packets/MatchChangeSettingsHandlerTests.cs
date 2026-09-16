@@ -1,13 +1,11 @@
+using Basil.Application.Beatmaps;
+using Basil.Application.Bot;
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
-using Basil.Application.Bot;
-using Basil.Infrastructure.Multiplayer;
 using Basil.Infrastructure.Multiplayer.Packets;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
-using Basil.Application.Beatmaps;
 using NSubstitute;
 using static Basil.Infrastructure.Tests.Multiplayer.Packets.MultiplayerTestSupport;
 
@@ -93,7 +91,7 @@ public class MatchChangeSettingsHandlerTests
 		var bmap = new Beatmap(
 			newMd5, 500, beatmapset, "V", "map.osu",
 			new Difficulty(GameMode.Standard, 120, TimeSpan.FromSeconds(60), 4, 9, 8, 5, 5.0),
-			new OsuBeatmapObjectCounts { MaxCombo = 100 });
+			new OsuObjects { MaxCombo = 100 });
 		_beatmapRepository.FetchOneAsync(md5: newMd5).Returns(bmap);
 		var handler =
 			new MatchChangeSettingsHandler(_beatmapRepository, fixture.SessionRegistry, fixture.MatchMembership,
@@ -192,7 +190,7 @@ public class MatchChangeSettingsHandlerTests
 		var beatmapset = new Beatmapset(1, "A", "T", "C", DateTime.UtcNow, DateTime.UtcNow);
 		var bmap = new Beatmap(md5, 777, beatmapset, "V", "map.osu",
 			new Difficulty(GameMode.Standard, 120, TimeSpan.FromSeconds(60), 4, 9, 8, 5, 5.0),
-			new OsuBeatmapObjectCounts { MaxCombo = 100 });
+			new OsuObjects { MaxCombo = 100 });
 		_beatmapRepository.FetchOneAsync(md5: md5).Returns(bmap);
 
 		await handler.HandleAsync(host, MatchRequestReader(0, match.Name, "", "Unknown Map", 777, md5, host.Id));
@@ -278,7 +276,7 @@ public class MatchChangeSettingsHandlerTests
 		var bmap = new Beatmap(
 			newMd5, 500, beatmapset, "V", "map.osu",
 			new Difficulty(GameMode.Standard, 120, TimeSpan.FromSeconds(60), 4, 9, 8, 5, 5.0),
-			new OsuBeatmapObjectCounts { MaxCombo = 100 });
+			new OsuObjects { MaxCombo = 100 });
 		_beatmapRepository.FetchOneAsync(md5: newMd5).Returns(bmap);
 		var handler =
 			new MatchChangeSettingsHandler(_beatmapRepository, fixture.SessionRegistry, fixture.MatchMembership,

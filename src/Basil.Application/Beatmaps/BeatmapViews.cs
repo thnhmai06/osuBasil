@@ -10,7 +10,7 @@ namespace Basil.Application.Beatmaps;
 /// <param name="Id">The osu! id of the beatmap.</param>
 /// <param name="Version">The difficulty name, such as "Insane".</param>
 /// <param name="Difficulty">The gameplay stats of the beatmap.</param>
-/// <param name="ObjectCounts">The per-mode hit-object counts of the beatmap.</param>
+/// <param name="Objects">The per-mode hit-object counts of the beatmap.</param>
 /// <param name="IsLocallyIngested">Whether the beatmap was ingested without a real osu! online id.</param>
 /// <remarks>
 ///     Never carries the beatmap's internal filename or a parent beatmapset reference. The split
@@ -23,7 +23,7 @@ public abstract record BeatmapView(
 	int Id,
 	string Version,
 	Difficulty Difficulty,
-	BeatmapObjectCounts ObjectCounts,
+	BeatmapObjects Objects,
 	bool IsLocallyIngested);
 
 /// <summary>
@@ -38,9 +38,9 @@ public sealed record BeatmapInSet(
 	int Id,
 	string Version,
 	Difficulty Difficulty,
-	BeatmapObjectCounts ObjectCounts,
+	BeatmapObjects Objects,
 	bool IsLocallyIngested)
-	: BeatmapView(Md5, Id, Version, Difficulty, ObjectCounts, IsLocallyIngested);
+	: BeatmapView(Md5, Id, Version, Difficulty, Objects, IsLocallyIngested);
 
 /// <summary>
 ///     A beatmap embed that carries its parent beatmapset.
@@ -49,7 +49,7 @@ public sealed record BeatmapInSet(
 /// <param name="Id">The osu! id of the beatmap.</param>
 /// <param name="Version">The difficulty name, such as "Insane".</param>
 /// <param name="Difficulty">The gameplay stats of the beatmap.</param>
-/// <param name="ObjectCounts">The per-mode hit-object counts of the beatmap.</param>
+/// <param name="Objects">The per-mode hit-object counts of the beatmap.</param>
 /// <param name="IsLocallyIngested">Whether the beatmap was ingested without a real osu! online id.</param>
 /// <param name="Beatmapset">The beatmapset summary the beatmap belongs to.</param>
 /// <remarks>
@@ -62,10 +62,10 @@ public sealed record BeatmapDetail(
 	int Id,
 	string Version,
 	Difficulty Difficulty,
-	BeatmapObjectCounts ObjectCounts,
+	BeatmapObjects Objects,
 	bool IsLocallyIngested,
 	BeatmapsetSummary Beatmapset)
-	: BeatmapView(Md5, Id, Version, Difficulty, ObjectCounts, IsLocallyIngested);
+	: BeatmapView(Md5, Id, Version, Difficulty, Objects, IsLocallyIngested);
 
 /// <summary>
 ///     API-facing summary of a beatmapset.
@@ -176,7 +176,7 @@ public static class BeatmapViewMapper
 		public BeatmapInSet ToInSet()
 		{
 			return new BeatmapInSet(beatmap.Md5, beatmap.Id, beatmap.Version, beatmap.Difficulty,
-				beatmap.ObjectCounts,
+				beatmap.Objects,
 				beatmap.IsLocallyIngested);
 		}
 
@@ -188,7 +188,7 @@ public static class BeatmapViewMapper
 		public BeatmapDetail ToDetail(BeatmapsetSummary beatmapset)
 		{
 			return new BeatmapDetail(beatmap.Md5, beatmap.Id, beatmap.Version, beatmap.Difficulty,
-				beatmap.ObjectCounts,
+				beatmap.Objects,
 				beatmap.IsLocallyIngested, beatmapset);
 		}
 	}

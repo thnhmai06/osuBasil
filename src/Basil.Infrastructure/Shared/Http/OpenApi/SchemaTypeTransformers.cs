@@ -159,7 +159,7 @@ internal static class SchemaTypeTransformers
 		/// <remarks>
 		///     <para>
 		///         The generator represents a `[JsonPolymorphic]`/`[JsonDerivedType]` base type (e.g.
-		///         <see cref="BeatmapObjectCounts" />) as `anyOf` + `discriminator`. That's technically
+		///         <see cref="BeatmapObjects" />) as `anyOf` + `discriminator`. That's technically
 		///         not wrong, every listed branch is still a valid match, but a discriminated value is
 		///         always exactly one branch, never several at once. `oneOf` is the semantically correct
 		///         keyword, and it's the one Scalar renders as a clean type-switcher.

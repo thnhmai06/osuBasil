@@ -1,25 +1,23 @@
+using Basil.Application.Beatmaps;
+using Basil.Application.Chat;
 using Basil.Application.Irc;
 using Basil.Application.Multiplayer;
+using Basil.Application.Multiplayer.Handlers.Countdown;
+using Basil.Application.Multiplayer.Handlers.Lifecycle;
+using Basil.Application.Multiplayer.Handlers.Slots;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
 using Basil.Application.Shared.Eventing;
+using Basil.Application.Spectating;
+using Basil.Application.Users;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Channels;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
-using Basil.Application.Spectating;
 using Basil.Domain.Users;
-using Basil.Application.Chat;
 using Basil.Infrastructure.Chat.Packets;
-using Basil.Infrastructure.Multiplayer;
-using Basil.Application.Multiplayer.Handlers.Countdown;
-using Basil.Application.Multiplayer.Handlers.Lifecycle;
-using Basil.Application.Multiplayer.Handlers.Slots;
 using Basil.Infrastructure.Multiplayer.Packets;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
-using Basil.Application.Users;
-using Basil.Application.Beatmaps;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -94,7 +92,7 @@ internal static class MultiplayerTestSupport
 		var beatmapset = new Beatmapset(1, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
 		return new Beatmap(actualMd5, id, beatmapset, "Normal", "map.osu",
 			new Difficulty(GameMode.Standard, 180, TimeSpan.FromMinutes(2), 4, 8, 8, 5, 5.0),
-			new OsuBeatmapObjectCounts { MaxCombo = 500 });
+			new OsuObjects { MaxCombo = 500 });
 	}
 
 	public static List<byte[]> Chunk(byte[] data)

@@ -1,21 +1,16 @@
 using System.Collections.Concurrent;
 using System.Reflection;
+using Basil.Application.Auth;
+using Basil.Application.Beatmaps;
 using Basil.Application.Multiplayer;
+using Basil.Application.Scores;
 using Basil.Application.Sessions;
-using Basil.Domain.Auth;
+using Basil.Application.Users;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Auth;
-using Basil.Infrastructure.Multiplayer;
-using Basil.Infrastructure.Scores;
-using Basil.Infrastructure.Shared.Sessions;
-using Basil.Application.Scores;
-using Basil.Application.Users;
-using Basil.Application.Auth;
-using Basil.Application.Beatmaps;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
@@ -46,7 +41,7 @@ public class ScoreSubmissionServiceTests
 		return new Beatmap(
 			new string('a', 32), 42, beatmapset, "c",
 			"f.osu", new Difficulty(GameMode.Standard, 1, TimeSpan.FromSeconds(1), 1, 1, 1, 1, 1),
-			new OsuBeatmapObjectCounts { MaxCombo = 500 });
+			new OsuObjects { MaxCombo = 500 });
 	}
 
 	private GameSession MakePlayer(int id = 7, string name = "cookiezi")
@@ -69,7 +64,7 @@ public class ScoreSubmissionServiceTests
 		userSession.Match = match;
 	}
 
-	/// <summary>16 score fields (after client_checksum/username stripping) — matches the Rijndael/FromSubmission fixture.</summary>
+	/// <summary>16 score fields (after client_checksum/username stripping) — matches the Rijndael/From fixture.</summary>
 	private static string[] MakeScoreFields(
 		string checksum = "chk", long score = 500_000, string grade = "S", bool passed = true, string mods = "0")
 	{
@@ -329,7 +324,7 @@ public class ScoreSubmissionServiceTests
 		StubPersistence();
 		const string checksum = "eviction-test-checksum";
 
-		await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields(checksum: checksum)));
+		await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields(checksum)));
 
 		var field = typeof(ScoreSubmissionService)
 			.GetField("ChecksumLocks", BindingFlags.NonPublic | BindingFlags.Static)!;

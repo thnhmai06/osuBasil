@@ -1,4 +1,3 @@
-using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
 
 namespace Basil.Domain.Users;
@@ -6,7 +5,7 @@ namespace Basil.Domain.Users;
 /// <summary>
 ///     A parsed user search query: a free-text id/username portion plus zero or more structured
 ///     filters, in the same <c>key&lt;operator&gt;value</c> style as
-///     <see cref="BeatmapsetSearchFilters" />.
+///     <see cref="Basil.Domain.Beatmaps.BeatmapFilters" />.
 /// </summary>
 /// <param name="Keywords">
 ///     The free-text portion of the query. Matched against a numeric user id exactly, or a substring
@@ -30,7 +29,7 @@ namespace Basil.Domain.Users;
 ///     When <see langword="true" />, a soft-deleted user can match; otherwise a deleted user never
 ///     matches, regardless of the other filters.
 /// </param>
-public sealed record UserSearchFilters(
+public sealed partial record UserFilters(
 	string? Keywords = null,
 	IReadOnlyList<Country>? Countries = null,
 	UserPrivileges? Privilege = null,
@@ -38,5 +37,5 @@ public sealed record UserSearchFilters(
 	bool IncludeDeleted = false)
 {
 	/// <summary>An empty filter set: every non-deleted user matches.</summary>
-	public static readonly UserSearchFilters Empty = new();
+	public static readonly UserFilters Empty = new();
 }

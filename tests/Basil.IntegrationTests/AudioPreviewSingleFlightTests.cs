@@ -1,11 +1,9 @@
 using System.Net;
+using Basil.Application.Beatmaps;
 using Basil.Application.Shared.Configuration;
-using Basil.Infrastructure.Beatmaps;
-using Basil.Infrastructure.Shared.Media;
 using Basil.Domain.Beatmaps;
 using Basil.Host;
 using Basil.Infrastructure.Shared.Media;
-using Basil.Application.Beatmaps;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,27 +27,13 @@ public class AudioPreviewSingleFlightTests(WebApplicationFactory<Bootstrap> fact
 		if (Directory.Exists(_dataDir)) Directory.Delete(_dataDir, true);
 	}
 
-	/// <summary>Counts and delays extraction calls, long enough for concurrent requests below to queue behind the single-flight lock rather than racing past it before the first call starts.</summary>
-	private sealed class CountingAudioExtractor : IAudioExtractor
-	{
-		public int CallCount;
-
-		public async Task<byte[]> ExtractAsync(string audioFilePath, int startMs, TimeSpan duration,
-			CancellationToken cancellationToken = default)
-		{
-			Interlocked.Increment(ref CallCount);
-			await Task.Delay(200, cancellationToken);
-			return "clip"u8.ToArray();
-		}
-	}
-
 	[Fact]
 	public async Task Preview_ConcurrentRequests_ExtractsOnlyOnce()
 	{
 		var beatmapset = new Beatmapset(901, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
 		var beatmap = new Beatmap(new string('a', 32), 1, beatmapset, "Normal", "diff.osu",
 			new Difficulty(GameMode.Standard, 180, TimeSpan.FromSeconds(100), 4, 9, 8, 5, 6.5),
-			new OsuBeatmapObjectCounts { MaxCombo = 500 }, AudioFile: "audio.mp3");
+			new OsuObjects { MaxCombo = 500 }, AudioFile: "audio.mp3");
 
 		var beatmapsets = Substitute.For<IBeatmapsetRepository>();
 		beatmapsets.FetchByIdAsync(901, Arg.Any<CancellationToken>()).Returns(beatmapset);
@@ -75,7 +59,7 @@ public class AudioPreviewSingleFlightTests(WebApplicationFactory<Bootstrap> fact
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
 				services.AddSingleton(beatmapsets);
 				services.AddSingleton(maps);
@@ -108,5 +92,22 @@ public class AudioPreviewSingleFlightTests(WebApplicationFactory<Bootstrap> fact
 		}
 
 		Assert.Equal(1, extractor.CallCount);
+	}
+
+	/// <summary>
+	///     Counts and delays extraction calls, long enough for concurrent requests below to queue behind the
+	///     single-flight lock rather than racing past it before the first call starts.
+	/// </summary>
+	private sealed class CountingAudioExtractor : IAudioExtractor
+	{
+		public int CallCount;
+
+		public async Task<byte[]> ExtractAsync(string audioFilePath, int startMs, TimeSpan duration,
+			CancellationToken cancellationToken = default)
+		{
+			Interlocked.Increment(ref CallCount);
+			await Task.Delay(200, cancellationToken);
+			return "clip"u8.ToArray();
+		}
 	}
 }

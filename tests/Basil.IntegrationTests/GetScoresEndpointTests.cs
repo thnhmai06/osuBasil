@@ -1,15 +1,12 @@
 using System.Net;
+using Basil.Application.Beatmaps;
+using Basil.Application.Scores;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
-using Basil.Infrastructure.Beatmaps;
+using Basil.Application.Users;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Host;
-using Basil.Infrastructure.Shared.Sessions;
-using Basil.Application.Scores;
-using Basil.Application.Users;
-using Basil.Application.Beatmaps;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,7 +30,7 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Bootst
 
 	private static readonly Beatmap Beatmap = new(
 		KnownMd5, 1, Beatmapset, "Normal", "map.osu",
-		new Difficulty(GameMode.Standard, 0, TimeSpan.Zero, 0, 0, 0, 0, 0), new OsuBeatmapObjectCounts());
+		new Difficulty(GameMode.Standard, 0, TimeSpan.Zero, 0, 0, 0, 0, 0), new OsuObjects());
 
 	private readonly WebApplicationFactory<Bootstrap> _factory;
 
@@ -48,7 +45,7 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Bootst
 		maps.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),
 				Arg.Any<bool>(), Arg.Any<CancellationToken>())
 			.Returns(call => call.ArgAt<string?>(1) == KnownMd5 ? Beatmap : null);
-		maps.SearchAsync(Arg.Any<BeatmapsetSearchFilters>(), Arg.Any<GameMode?>(), Arg.Any<int>(), Arg.Any<int>(),
+		maps.SearchAsync(Arg.Any<BeatmapFilters>(), Arg.Any<GameMode?>(), Arg.Any<int>(), Arg.Any<int>(),
 				Arg.Any<CancellationToken>())
 			.Returns(Task.FromResult<IReadOnlyList<IReadOnlyList<Beatmap>>>([]));
 		maps.FetchAllBySetIdAsync(Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())

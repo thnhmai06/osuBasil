@@ -6,17 +6,17 @@ namespace Basil.Domain.Beatmaps;
 /// <summary>
 ///     Parses osu!'s beatmap search query syntax (<c>key&lt;operator&gt;value</c> tokens mixed with
 ///     free-text keywords, e.g. <c>camellia stars&gt;5 ar=9</c>) into a structured
-///     <see cref="BeatmapsetSearchFilters" />.
+///     <see cref="Basil.Domain.Beatmaps.BeatmapFilters" />.
 /// </summary>
 /// <remarks>
 ///     Backs both <c>GET /web/osu-search.php</c> (the in-game osu!direct panel) and
 ///     <c>GET /beatmapsets/search</c> (the REST equivalent), so the same query text behaves
 ///     identically on both. A token naming a key this parser doesn't recognize -- either a genuine
-///     typo or one of osu!'s keys Basil has no data for (see <see cref="BeatmapsetSearchFilters" />'s
+///     typo or one of osu!'s keys Basil has no data for (see <see cref="Basil.Domain.Beatmaps.BeatmapFilters" />'s
 ///     own remarks) -- is left untouched in the free-text portion rather than rejected, matching
 ///     osu!web's own graceful degradation.
 /// </remarks>
-public static partial class BeatmapsetSearchQueryParser
+public sealed partial record BeatmapFilters
 {
 	/// <summary>
 	///     Matches one <c>key&lt;operator&gt;value</c> token: a bare word key, a <c>:</c>/<c>=</c>/
@@ -27,23 +27,27 @@ public static partial class BeatmapsetSearchQueryParser
 		RegexOptions.IgnoreCase)]
 	private static partial Regex TokenPattern();
 
+	[GeneratedRegex(@"\s+")]
+	private static partial Regex WhitespaceRun();
+
 	/// <summary>Parses a search query string into structured filters plus the remaining free text.</summary>
 	/// <param name="query">The raw query text.</param>
 	/// <returns>
-	///     The parsed <see cref="BeatmapsetSearchFilters" />, with <see cref="BeatmapsetSearchFilters.Keywords" />
+	///     The parsed <see cref="Basil.Domain.Beatmaps.BeatmapFilters" />, with
+	///     <see cref="Basil.Domain.Beatmaps.BeatmapFilters.Keywords" />
 	///     set to whatever text wasn't consumed by a recognized filter token (or <see langword="null" />
 	///     if nothing remains).
 	/// </returns>
-	public static BeatmapsetSearchFilters Parse(string? query)
+	public static BeatmapFilters From(string? query)
 	{
-		if (string.IsNullOrWhiteSpace(query)) return BeatmapsetSearchFilters.Empty;
+		if (string.IsNullOrWhiteSpace(query)) return Empty;
 
 		var builder = new Builder();
 		var keywords = TokenPattern().Replace(query, match =>
 		{
 			var key = match.Groups["key"].Value.ToLowerInvariant();
 			var opText = match.Groups["op"].Value;
-			var op = opText is ":" or "=" ? ComparisonOperator.Equal : ParseOperator(opText);
+			var op = ComparisonOperatorParser.Parse(opText);
 			var rawValue = Unquote(match.Groups["value"].Value);
 
 			// A key this switch doesn't handle, or a value that fails to parse for the key it named,
@@ -53,42 +57,27 @@ public static partial class BeatmapsetSearchQueryParser
 		});
 
 		return builder.Build(CollapseWhitespace(keywords));
-	}
 
-	private static ComparisonOperator ParseOperator(string op)
-	{
-		return op switch
+		static string Unquote(string value)
 		{
-			"<" => ComparisonOperator.LessThan,
-			"<=" => ComparisonOperator.LessThanOrEqual,
-			">" => ComparisonOperator.GreaterThan,
-			">=" => ComparisonOperator.GreaterThanOrEqual,
-			_ => ComparisonOperator.Equal
-		};
-	}
+			if (value.Length < 2) return value;
+			var quote = value[0];
+			if ((quote != '"' && quote != '\'') || value[^1] != quote) return value;
+			return value[1..^1].Replace($"\\{quote}", quote.ToString());
+		}
 
-	private static string Unquote(string value)
-	{
-		if (value.Length < 2) return value;
-		var quote = value[0];
-		if (quote != '"' && quote != '\'') return value;
-		if (value[^1] != quote) return value;
-		return value[1..^1].Replace($"\\{quote}", quote.ToString());
+		static string? CollapseWhitespace(string text)
+		{
+			var trimmed = WhitespaceRun().Replace(text, " ").Trim();
+			return trimmed.Length == 0 ? null : trimmed;
+		}
 	}
-
-	private static string? CollapseWhitespace(string text)
-	{
-		var trimmed = WhitespaceRun().Replace(text, " ").Trim();
-		return trimmed.Length == 0 ? null : trimmed;
-	}
-
-	[GeneratedRegex(@"\s+")]
-	private static partial Regex WhitespaceRun();
 
 	/// <summary>Accumulates parsed filters as <see cref="TokenPattern" />'s matches are visited.</summary>
 	private sealed partial class Builder
 	{
 		private ComparableFilter<double>? _ar;
+		private string? _artist;
 		private ComparableFilter<double>? _bpm;
 		private ComparableFilter<int>? _circles;
 		private DateFilter? _created;
@@ -102,9 +91,8 @@ public static partial class BeatmapsetSearchQueryParser
 		private ComparableFilter<int>? _sliders;
 		private ComparableFilter<double>? _stars;
 		private BeatmapStatus? _status;
-		private DateFilter? _updated;
-		private string? _artist;
 		private string? _title;
+		private DateFilter? _updated;
 
 		public bool TryApply(string key, ComparisonOperator op, string rawValue)
 		{
@@ -139,9 +127,9 @@ public static partial class BeatmapsetSearchQueryParser
 			}
 		}
 
-		public BeatmapsetSearchFilters Build(string? keywords)
+		public BeatmapFilters Build(string? keywords)
 		{
-			return new BeatmapsetSearchFilters(keywords, _stars, _ar, _hp, _cs, _od, _bpm, _lengthSeconds, _keys,
+			return new BeatmapFilters(keywords, _stars, _ar, _hp, _cs, _od, _bpm, _lengthSeconds, _keys,
 				_circles, _sliders, _creator, _artist, _title, _difficulty, _status, _created, _updated);
 		}
 
@@ -191,7 +179,7 @@ public static partial class BeatmapsetSearchQueryParser
 		private bool TrySetStatus(string raw)
 		{
 			// osu!'s own syntax accepts a prefix of the status name; Basil only ever reports one
-			// status for every beatmapset (see BeatmapsetSearchFilters.Status's own remarks), so this
+			// status for every beatmapset (see BeatmapFilters.Status's own remarks), so this
 			// resolves the name to compare against rather than trying to search by it.
 			var name = raw.ToLowerInvariant();
 			_status = name switch
@@ -203,7 +191,7 @@ public static partial class BeatmapsetSearchQueryParser
 				_ when "approved".StartsWith(name, StringComparison.Ordinal) => BeatmapStatus.Approved,
 				_ when "qualified".StartsWith(name, StringComparison.Ordinal) => BeatmapStatus.Qualified,
 				_ when "loved".StartsWith(name, StringComparison.Ordinal) => BeatmapStatus.Loved,
-				_ => (BeatmapStatus?)null
+				_ => null
 			};
 			return _status is not null;
 		}
@@ -261,5 +249,21 @@ public static partial class BeatmapsetSearchQueryParser
 
 		[GeneratedRegex(@"^(\d{4})-(\d{2})-(\d{2})$")]
 		private static partial Regex YearMonthDayPattern();
+	}
+}
+
+public static class ComparisonOperatorParser
+{
+	public static ComparisonOperator Parse(string op)
+	{
+		return op switch
+		{
+			"<" => ComparisonOperator.LessThan,
+			"<=" => ComparisonOperator.LessThanOrEqual,
+			">" => ComparisonOperator.GreaterThan,
+			">=" => ComparisonOperator.GreaterThanOrEqual,
+			"==" or "=" or ":" => ComparisonOperator.Equal,
+			_ => throw new ArgumentOutOfRangeException(nameof(op), op, null)
+		};
 	}
 }

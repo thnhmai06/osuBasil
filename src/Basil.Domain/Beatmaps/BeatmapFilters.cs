@@ -37,7 +37,7 @@ namespace Basil.Domain.Beatmaps;
 /// </param>
 /// <param name="Created">Filters on when the set was first ingested.</param>
 /// <param name="Updated">Filters on when the set was last re-ingested or changed.</param>
-public sealed record BeatmapsetSearchFilters(
+public sealed partial record BeatmapFilters(
 	string? Keywords = null,
 	ComparableFilter<double>? Stars = null,
 	ComparableFilter<double>? Ar = null,
@@ -58,7 +58,7 @@ public sealed record BeatmapsetSearchFilters(
 	DateFilter? Updated = null)
 {
 	/// <summary>An empty filter set: every beatmapset matches.</summary>
-	public static readonly BeatmapsetSearchFilters Empty = new();
+	public static readonly BeatmapFilters Empty = new();
 }
 
 /// <summary>The comparison an individual <see cref="ComparableFilter{T}" /> applies.</summary>

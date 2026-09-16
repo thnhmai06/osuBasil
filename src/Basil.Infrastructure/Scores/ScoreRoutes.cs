@@ -1,17 +1,16 @@
 using Basil.Application.Beatmaps;
 using Basil.Application.Irc;
 using Basil.Application.Multiplayer;
+using Basil.Application.Scores;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Json;
+using Basil.Application.Users;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
-using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Http;
 using Basil.Infrastructure.Shared.Http.OpenApi;
-using Basil.Application.Scores;
-using Basil.Application.Users;
 using Microsoft.AspNetCore.Mvc;
 
 // ReSharper disable ClassNeverInstantiated.Global
@@ -141,7 +140,7 @@ internal static class ScoreRoutes
 			BeatmapStatus.Loved, 1);
 		var beatmap = new BeatmapDetail(row.MapMd5, 654, "Extreme",
 			new Difficulty(GameMode.Standard, 174, TimeSpan.FromSeconds(225), 4, 9, 8, 6, 6.42),
-			new OsuBeatmapObjectCounts { Total = 832, MaxCombo = 1234, Circles = 620, Sliders = 210, Spinners = 2 },
+			new OsuObjects { Total = 832, MaxCombo = 1234, Circles = 620, Sliders = 210, Spinners = 2 },
 			false,
 			beatmapset);
 

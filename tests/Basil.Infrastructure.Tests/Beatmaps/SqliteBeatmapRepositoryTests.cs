@@ -29,7 +29,7 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 		return new Beatmap(md5, id, MakeBeatmapset(1000 + id, isPrivate: isPrivate), "Hyper",
 			$"Camellia - Exit This Earth's Atomosphere (cmyui) [Hyper] {id}.osu",
 			new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0, 8.0, 5.0, 6.5),
-			new OsuBeatmapObjectCounts { MaxCombo = 500 });
+			new OsuObjects { MaxCombo = 500 });
 	}
 
 	private async Task<Beatmap> UpsertBeatmapAsync(Beatmap beatmap)
@@ -56,7 +56,7 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 		var bmap = MakeBeatmap(103, "cccccccccccccccccccccccccccccccc") with
 		{
 			BackgroundFile = "bg.jpg",
-			ObjectCounts = new OsuBeatmapObjectCounts
+			Objects = new OsuObjects
 				{ Total = 167, MaxCombo = 500, Circles = 120, Sliders = 45, Spinners = 2 }
 		};
 
@@ -65,7 +65,7 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 
 		Assert.NotNull(fetched);
 		Assert.Equal("bg.jpg", fetched.BackgroundFile);
-		Assert.Equal(bmap.ObjectCounts, fetched.ObjectCounts);
+		Assert.Equal(bmap.Objects, fetched.Objects);
 	}
 
 	[Fact]
@@ -104,11 +104,11 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 		var bmap = MakeBeatmap(104, "dddddddddddddddddddddddddddddddd");
 		await UpsertBeatmapAsync(bmap);
 
-		var updated = bmap with { ObjectCounts = new OsuBeatmapObjectCounts { MaxCombo = 42 } };
+		var updated = bmap with { Objects = new OsuObjects { MaxCombo = 42 } };
 		await UpsertBeatmapAsync(updated);
 
 		var fetched = await _repository.FetchOneAsync(bmap.Id);
-		Assert.Equal(42, fetched!.ObjectCounts.MaxCombo);
+		Assert.Equal(42, fetched!.Objects.MaxCombo);
 	}
 
 	[Fact]
@@ -132,12 +132,12 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 
 		var reupserted = original with
 		{
-			Id = 999_999, ObjectCounts = new OsuBeatmapObjectCounts { MaxCombo = 7 }
+			Id = 999_999, Objects = new OsuObjects { MaxCombo = 7 }
 		};
 		var secondResolved = await UpsertBeatmapAsync(reupserted);
 
 		Assert.Equal(firstResolved.Id, secondResolved.Id);
-		Assert.Equal(7, secondResolved.ObjectCounts.MaxCombo);
+		Assert.Equal(7, secondResolved.Objects.MaxCombo);
 	}
 
 	[Fact]
@@ -188,10 +188,10 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 		var beatmapset = MakeBeatmapset(setId, isPrivate: true);
 		var first = new Beatmap(new string('n', 32), 250, beatmapset, "Normal", "n.osu",
 			new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(60), 4.0, 9.0, 8.0, 5.0, 3.0),
-			new OsuBeatmapObjectCounts { MaxCombo = 500 });
+			new OsuObjects { MaxCombo = 500 });
 		var second = new Beatmap(new string('o', 32), 251, beatmapset, "Hidden", "o.osu",
 			new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(60), 4.0, 9.0, 8.0, 5.0, 3.0),
-			new OsuBeatmapObjectCounts { MaxCombo = 500 });
+			new OsuObjects { MaxCombo = 500 });
 		await UpsertBeatmapAsync(first);
 		await UpsertBeatmapAsync(second);
 
@@ -208,7 +208,7 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 		return new Beatmap(md5, id, MakeBeatmapset(setId, artist, "Title", isPrivate: isPrivate),
 			$"Diff{id}", $"{artist} - Title (cmyui) [Sr{id}].osu",
 			new Difficulty(mode, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0, 8.0, 5.0, diff),
-			new OsuBeatmapObjectCounts { MaxCombo = 500 });
+			new OsuObjects { MaxCombo = 500 });
 	}
 
 	[Fact]
@@ -220,7 +220,7 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 		await UpsertBeatmapAsync(MakeBeatmap(202, setA, new string('g', 32), "Zeta Artist", 2.0));
 		await UpsertBeatmapAsync(MakeBeatmap(203, setB, new string('h', 32), "Alpha Artist", 3.0));
 
-		var results = await _repository.SearchAsync(BeatmapsetSearchFilters.Empty, null, 0, 100);
+		var results = await _repository.SearchAsync(BeatmapFilters.Empty, null, 0, 100);
 		var relevant = results.Where(set => set[0].Beatmapset.Id is 5001 or 5002).ToList();
 
 		Assert.Equal(5002, relevant[0][0].Beatmapset.Id);
@@ -235,7 +235,7 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 		var setId = 5010;
 		await UpsertBeatmapAsync(MakeBeatmap(210, setId, new string('i', 32), "UniqueArtistName210", 1.0));
 
-		var results = await _repository.SearchAsync(new BeatmapsetSearchFilters("UniqueArtistName210"), null, 0, 100);
+		var results = await _repository.SearchAsync(new BeatmapFilters("UniqueArtistName210"), null, 0, 100);
 
 		Assert.Single(results);
 		Assert.Equal(setId, results[0][0].Beatmapset.Id);
@@ -248,7 +248,7 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 		await UpsertBeatmapAsync(MakeBeatmap(220, setId, new string('j', 32), "ModeFilterArtist220", 1.0,
 			GameMode.Taiko));
 
-		var filters = new BeatmapsetSearchFilters("ModeFilterArtist220");
+		var filters = new BeatmapFilters("ModeFilterArtist220");
 		var matching = await _repository.SearchAsync(filters, GameMode.Taiko, 0, 100);
 		var nonMatching = await _repository.SearchAsync(filters, GameMode.Catch, 0, 100);
 
@@ -262,7 +262,7 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 		await UpsertBeatmapAsync(MakeBeatmap(240, 5040, new string('l', 32), "PagingArtist240A", 1.0));
 		await UpsertBeatmapAsync(MakeBeatmap(241, 5041, new string('m', 32), "PagingArtist240B", 1.0));
 
-		var pagingFilters = new BeatmapsetSearchFilters("PagingArtist240");
+		var pagingFilters = new BeatmapFilters("PagingArtist240");
 		var page1 = await _repository.SearchAsync(pagingFilters, null, 0, 1);
 		var page2 = await _repository.SearchAsync(pagingFilters, null, 1, 1);
 
@@ -279,7 +279,7 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 			isPrivate: true));
 
 		var results =
-			await _repository.SearchAsync(new BeatmapsetSearchFilters("PrivateSearchArtist260"), null, 0, 100);
+			await _repository.SearchAsync(new BeatmapFilters("PrivateSearchArtist260"), null, 0, 100);
 
 		Assert.Empty(results);
 	}
@@ -293,10 +293,10 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 		await UpsertBeatmapAsync(MakeBeatmap(270, setId, new string('q', 32), "StarsFilterArtist270", 3.0));
 
 		var matching = await _repository.SearchAsync(
-			new BeatmapsetSearchFilters(Stars: new ComparableFilter<double>(ComparisonOperator.GreaterThan, 2.0)),
+			new BeatmapFilters(Stars: new ComparableFilter<double>(ComparisonOperator.GreaterThan, 2.0)),
 			null, 0, 100);
 		var nonMatching = await _repository.SearchAsync(
-			new BeatmapsetSearchFilters(Stars: new ComparableFilter<double>(ComparisonOperator.GreaterThan, 5.0)),
+			new BeatmapFilters(Stars: new ComparableFilter<double>(ComparisonOperator.GreaterThan, 5.0)),
 			null, 0, 100);
 
 		Assert.Contains(matching, set => set[0].Beatmapset.Id == setId);
@@ -311,13 +311,13 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 		await UpsertBeatmapAsync(new Beatmap(new string('r', 32), 271, beatmapset, "Diff",
 			"CirclesFilterArtist271 - Title (cmyui) [Diff].osu",
 			new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0, 8.0, 5.0, 3.0),
-			new OsuBeatmapObjectCounts { MaxCombo = 500, Circles = 300, Sliders = 50 }));
+			new OsuObjects { MaxCombo = 500, Circles = 300, Sliders = 50 }));
 
 		var matching = await _repository.SearchAsync(
-			new BeatmapsetSearchFilters(Circles: new ComparableFilter<int>(ComparisonOperator.GreaterThan, 200)),
+			new BeatmapFilters(Circles: new ComparableFilter<int>(ComparisonOperator.GreaterThan, 200)),
 			null, 0, 100);
 		var nonMatching = await _repository.SearchAsync(
-			new BeatmapsetSearchFilters(Circles: new ComparableFilter<int>(ComparisonOperator.GreaterThan, 400)),
+			new BeatmapFilters(Circles: new ComparableFilter<int>(ComparisonOperator.GreaterThan, 400)),
 			null, 0, 100);
 
 		Assert.Contains(matching, set => set[0].Beatmapset.Id == setId);
@@ -327,17 +327,17 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 	[Fact]
 	public async Task SearchAsync_CirclesFilter_ExcludesNonStandardModeBeatmaps()
 	{
-		// TaikoBeatmapObjectCounts has no Circles field, so json_extract(..., '$.Circles') is NULL for
+		// TaikoObjects has no Circles field, so json_extract(..., '$.Circles') is NULL for
 		// it — this must never satisfy a `circles > N` comparison.
 		var setId = 5072;
 		var beatmapset = MakeBeatmapset(setId, "TaikoCirclesArtist272");
 		await UpsertBeatmapAsync(new Beatmap(new string('s', 32), 272, beatmapset, "Diff",
 			"TaikoCirclesArtist272 - Title (cmyui) [Diff].osu",
 			new Difficulty(GameMode.Taiko, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0, 8.0, 5.0, 3.0),
-			new TaikoBeatmapObjectCounts { MaxCombo = 500, Hits = 300 }));
+			new TaikoObjects { MaxCombo = 500, Hits = 300 }));
 
 		var results = await _repository.SearchAsync(
-			new BeatmapsetSearchFilters(Circles: new ComparableFilter<int>(ComparisonOperator.GreaterThanOrEqual,
+			new BeatmapFilters(Circles: new ComparableFilter<int>(ComparisonOperator.GreaterThanOrEqual,
 				0)),
 			null, 0, 100);
 
@@ -352,11 +352,11 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 		await UpsertBeatmapAsync(new Beatmap(new string('t', 32), 273, beatmapset, "Diff",
 			"Artist - Title (SomeCreator273) [Diff].osu",
 			new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0, 8.0, 5.0, 3.0),
-			new OsuBeatmapObjectCounts { MaxCombo = 500 }));
+			new OsuObjects { MaxCombo = 500 }));
 
-		var exactMatch = await _repository.SearchAsync(new BeatmapsetSearchFilters(Creator: "SOMECREATOR273"), null,
+		var exactMatch = await _repository.SearchAsync(new BeatmapFilters(Creator: "SOMECREATOR273"), null,
 			0, 100);
-		var noMatch = await _repository.SearchAsync(new BeatmapsetSearchFilters(Creator: "Some"), null, 0, 100);
+		var noMatch = await _repository.SearchAsync(new BeatmapFilters(Creator: "Some"), null, 0, 100);
 
 		Assert.Contains(exactMatch, set => set[0].Beatmapset.Id == setId);
 		Assert.DoesNotContain(noMatch, set => set[0].Beatmapset.Id == setId);
@@ -368,9 +368,9 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 		var setId = 5074;
 		await UpsertBeatmapAsync(MakeBeatmap(274, setId, new string('u', 32), "StatusFilterArtist274", 1.0));
 
-		var matching = await _repository.SearchAsync(new BeatmapsetSearchFilters(Status: BeatmapStatus.Approved),
+		var matching = await _repository.SearchAsync(new BeatmapFilters(Status: BeatmapStatus.Approved),
 			null, 0, 100);
-		var nonMatching = await _repository.SearchAsync(new BeatmapsetSearchFilters(Status: BeatmapStatus.Ranked),
+		var nonMatching = await _repository.SearchAsync(new BeatmapFilters(Status: BeatmapStatus.Ranked),
 			null, 0, 100);
 
 		Assert.Contains(matching, set => set[0].Beatmapset.Id == setId);
@@ -386,14 +386,14 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 		await UpsertBeatmapAsync(new Beatmap(new string('v', 32), 275, beatmapset, "Diff",
 			"CreatedFilterArtist275 - Title (cmyui) [Diff].osu",
 			new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0, 8.0, 5.0, 3.0),
-			new OsuBeatmapObjectCounts { MaxCombo = 500 }));
+			new OsuObjects { MaxCombo = 500 }));
 
 		var matching = await _repository.SearchAsync(
-			new BeatmapsetSearchFilters(Created: new DateFilter(ComparisonOperator.Equal,
+			new BeatmapFilters(Created: new DateFilter(ComparisonOperator.Equal,
 				new DateTimeOffset(2019, 1, 1, 0, 0, 0, TimeSpan.Zero),
 				new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero))), null, 0, 100);
 		var nonMatching = await _repository.SearchAsync(
-			new BeatmapsetSearchFilters(Created: new DateFilter(ComparisonOperator.Equal,
+			new BeatmapFilters(Created: new DateFilter(ComparisonOperator.Equal,
 				new DateTimeOffset(2021, 1, 1, 0, 0, 0, TimeSpan.Zero),
 				new DateTimeOffset(2022, 1, 1, 0, 0, 0, TimeSpan.Zero))), null, 0, 100);
 
@@ -408,7 +408,7 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 		var setB = 5077;
 		await UpsertBeatmapAsync(MakeBeatmap(276, setA, new string('w', 32), "SearchCountArtist276", 3.0));
 		await UpsertBeatmapAsync(MakeBeatmap(277, setB, new string('x', 32), "SearchCountArtist276", 3.0));
-		var filters = new BeatmapsetSearchFilters("SearchCountArtist276");
+		var filters = new BeatmapFilters("SearchCountArtist276");
 
 		var count = await _repository.SearchCountAsync(filters, null);
 		var page = await _repository.SearchAsync(filters, null, 0, 100);

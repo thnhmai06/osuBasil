@@ -58,7 +58,7 @@ public class SqliteBeatmapsetRepositoryTests(SqliteFixture fixture) : IClassFixt
 
 		var beatmap = new Beatmap(new string('z', 32), 9003001, beatmapset, "Hyper", "z.osu",
 			new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0, 8.0, 5.0, 6.5),
-			new OsuBeatmapObjectCounts { MaxCombo = 500 });
+			new OsuObjects { MaxCombo = 500 });
 		await _beatmapRepository.UpsertAsync(beatmap);
 
 		await _beatmapsetRepository.DeleteAsync(beatmapset.Id);
@@ -112,10 +112,10 @@ public class SqliteBeatmapsetRepositoryTests(SqliteFixture fixture) : IClassFixt
 		await _beatmapsetRepository.UpsertAsync(privateOnly);
 		await _beatmapRepository.UpsertAsync(new Beatmap(new string('y', 32), 9040001, visible, "Hyper", "y.osu",
 			new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0, 8.0, 5.0, 6.5),
-			new OsuBeatmapObjectCounts { MaxCombo = 500 }));
+			new OsuObjects { MaxCombo = 500 }));
 		await _beatmapRepository.UpsertAsync(new Beatmap(new string('x', 32), 9041001, privateOnly, "Hyper", "x.osu",
 			new Difficulty(GameMode.Standard, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0, 8.0, 5.0, 6.5),
-			new OsuBeatmapObjectCounts { MaxCombo = 500 }));
+			new OsuObjects { MaxCombo = 500 }));
 
 		var visibleOnly = await _beatmapsetRepository.FetchPageAsync(0, 100, true);
 		var everything = await _beatmapsetRepository.FetchPageAsync(0, 100, false);

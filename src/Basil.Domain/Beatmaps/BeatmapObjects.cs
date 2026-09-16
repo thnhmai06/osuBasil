@@ -12,11 +12,11 @@ namespace Basil.Domain.Beatmaps;
 ///     values, so a client can dispatch on the same integer either way.
 /// </remarks>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "mode")]
-[JsonDerivedType(typeof(OsuBeatmapObjectCounts), (int)GameMode.Standard)]
-[JsonDerivedType(typeof(TaikoBeatmapObjectCounts), (int)GameMode.Taiko)]
-[JsonDerivedType(typeof(CatchBeatmapObjectCounts), (int)GameMode.Catch)]
-[JsonDerivedType(typeof(ManiaBeatmapObjectCounts), (int)GameMode.Mania)]
-public abstract record BeatmapObjectCounts
+[JsonDerivedType(typeof(OsuObjects), (int)GameMode.Standard)]
+[JsonDerivedType(typeof(TaikoObjects), (int)GameMode.Taiko)]
+[JsonDerivedType(typeof(CatchObjects), (int)GameMode.Catch)]
+[JsonDerivedType(typeof(ManiaObjects), (int)GameMode.Mania)]
+public abstract record BeatmapObjects
 {
 	/// <summary>Gets or sets the total number of hit objects in the beatmap.</summary>
 	public int Total { get; init; }
@@ -28,7 +28,7 @@ public abstract record BeatmapObjectCounts
 /// <summary>
 ///     Represents the hit-object counts of a standard beatmap.
 /// </summary>
-public sealed record OsuBeatmapObjectCounts : BeatmapObjectCounts
+public sealed record OsuObjects : BeatmapObjects
 {
 	/// <summary>Gets or sets the number of circles in the beatmap.</summary>
 	public int Circles { get; init; }
@@ -43,7 +43,7 @@ public sealed record OsuBeatmapObjectCounts : BeatmapObjectCounts
 /// <summary>
 ///     Represents the hit-object counts of an osu!taiko beatmap.
 /// </summary>
-public sealed record TaikoBeatmapObjectCounts : BeatmapObjectCounts
+public sealed record TaikoObjects : BeatmapObjects
 {
 	/// <summary>Gets or sets the number of hit notes in the beatmap.</summary>
 	public int Hits { get; init; }
@@ -58,7 +58,7 @@ public sealed record TaikoBeatmapObjectCounts : BeatmapObjectCounts
 /// <summary>
 ///     Represents the hit-object counts of an osu!catch beatmap.
 /// </summary>
-public sealed record CatchBeatmapObjectCounts : BeatmapObjectCounts
+public sealed record CatchObjects : BeatmapObjects
 {
 	/// <summary>Gets or sets the number of fruits in the beatmap.</summary>
 	public int Fruits { get; init; }
@@ -76,7 +76,7 @@ public sealed record CatchBeatmapObjectCounts : BeatmapObjectCounts
 /// <summary>
 ///     Represents the hit-object counts of an osu!mania beatmap.
 /// </summary>
-public sealed record ManiaBeatmapObjectCounts : BeatmapObjectCounts
+public sealed record ManiaObjects : BeatmapObjects
 {
 	/// <summary>Gets or sets the number of notes in the beatmap.</summary>
 	public int Notes { get; init; }

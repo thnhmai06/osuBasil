@@ -1,6 +1,6 @@
+using Basil.Application.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Basil.Infrastructure.Beatmaps;
-using Basil.Application.Beatmaps;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -10,10 +10,11 @@ public class CachingBeatmapRepositoryTests
 {
 	private static Beatmap MakeBeatmap(int id, string md5)
 	{
-		var beatmapset = new Beatmapset(1000 + id, "Artist", "Title", "Creator", DateTime.UnixEpoch, DateTime.UnixEpoch);
+		var beatmapset =
+			new Beatmapset(1000 + id, "Artist", "Title", "Creator", DateTime.UnixEpoch, DateTime.UnixEpoch);
 		return new Beatmap(md5, id, beatmapset, "Normal", "map.osu",
 			new Difficulty(GameMode.Standard, 180, TimeSpan.FromMinutes(2), 4, 8, 8, 5, 5.0),
-			new OsuBeatmapObjectCounts { MaxCombo = 500 });
+			new OsuObjects { MaxCombo = 500 });
 	}
 
 	[Fact]
@@ -200,13 +201,13 @@ public class CachingBeatmapRepositoryTests
 			return Task.CompletedTask;
 		}
 
-		public Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(BeatmapsetSearchFilters filters,
+		public Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(BeatmapFilters filters,
 			GameMode? mode, int offset, int amount, CancellationToken cancellationToken = default)
 		{
 			return Task.FromResult<IReadOnlyList<IReadOnlyList<Beatmap>>>([]);
 		}
 
-		public Task<int> SearchCountAsync(BeatmapsetSearchFilters filters, GameMode? mode,
+		public Task<int> SearchCountAsync(BeatmapFilters filters, GameMode? mode,
 			CancellationToken cancellationToken = default)
 		{
 			return Task.FromResult(0);

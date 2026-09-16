@@ -1,6 +1,6 @@
+using Basil.Application.Scores;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
-using Basil.Application.Scores;
 
 namespace Basil.Infrastructure.Tests.Scores;
 
@@ -14,7 +14,7 @@ public class ScoreSubmissionChartsFormatterTests
 		return new Beatmap(
 			"md5", 100, beatmapset, "c", "f.osu",
 			new Difficulty(GameMode.Standard, 1, TimeSpan.FromSeconds(1), 1, 1, 1, 1, 1),
-			new OsuBeatmapObjectCounts { MaxCombo = 500 });
+			new OsuObjects { MaxCombo = 500 });
 	}
 
 	private static Submission MakeScore(Beatmap beatmap, long score, int maxCombo, HitCounts hitCounts)

@@ -28,7 +28,7 @@ public sealed record Submission
 	///     the caller does not know the beatmap or player until after the parse completes. They are
 	///     meant to be overwritten immediately after this call.
 	/// </remarks>
-	public static Submission FromSubmission(IReadOnlyList<string> fields)
+	public static Submission From(IReadOnlyList<string> fields)
 	{
 		var mods = (Mods)int.Parse(fields[11], CultureInfo.InvariantCulture);
 

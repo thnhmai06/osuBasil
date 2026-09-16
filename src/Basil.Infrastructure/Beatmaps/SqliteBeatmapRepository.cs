@@ -17,7 +17,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 	private const string SharedColumns = """
 	                                     b.Md5, b.Id, b.Version, b.Filename, b.TotalLength,
 	                                     b.Mode, b.Bpm, b.Cs, b.Ar, b.Od, b.Hp, b.Sr, b.BackgroundFile, b.AudioFile,
-	                                     b.PreviewTime, b.ObjectCounts,
+	                                     b.PreviewTime, b.Objects,
 	                                     m.Id, m.Artist, m.Title, m.Creator, m.LastUpdate, m.CreatedAt, m.IsFrozen, m.IsPrivate
 	                                     """;
 
@@ -82,7 +82,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 	///     identity. Otherwise, the incoming id is used when positive, or a fresh local id is
 	///     allocated from <c>Math.Max(Beatmap.LocalIdFloor, FetchMaxIdAsync() + 1)</c>. The writer is
 	///     a <c>REPLACE INTO</c> that overwrites every column.
-	///     <see cref="BeatmapObjectCounts" /> is serialized to JSON before storage.
+	///     <see cref="BeatmapObjects" /> is serialized to JSON before storage.
 	/// </remarks>
 	public async Task<Beatmap> UpsertAsync(Beatmap beatmap, CancellationToken cancellationToken = default)
 	{
@@ -100,10 +100,10 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 			"""
 			REPLACE INTO Beatmaps (
 			    Md5, Id, BeatmapsetId, Version, Filename, TotalLength,
-			    Mode, Bpm, Cs, Od, Ar, Hp, Sr, BackgroundFile, AudioFile, PreviewTime, ObjectCounts
+			    Mode, Bpm, Cs, Od, Ar, Hp, Sr, BackgroundFile, AudioFile, PreviewTime, Objects
 			) VALUES (
 			    @Md5, @Id, @BeatmapsetId, @Version, @Filename, @TotalLength,
-			    @Mode, @Bpm, @Cs, @Od, @Ar, @Hp, @Sr, @BackgroundFile, @AudioFile, @PreviewTime, @ObjectCounts
+			    @Mode, @Bpm, @Cs, @Od, @Ar, @Hp, @Sr, @BackgroundFile, @AudioFile, @PreviewTime, @Objects
 			)
 			""",
 			new
@@ -124,7 +124,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 				resolved.BackgroundFile,
 				resolved.AudioFile,
 				resolved.PreviewTime,
-				ObjectCounts = JsonSerializer.Serialize(resolved.ObjectCounts)
+				Objects = JsonSerializer.Serialize(resolved.Objects)
 			});
 		logger.LogDebug("Beatmap upserted: Id={Id} Md5={Md5}", resolved.Id, resolved.Md5);
 
@@ -147,7 +147,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 	///     star rating, and only sets whose id survived the first pass are included.
 	/// </remarks>
 	public async Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(
-		BeatmapsetSearchFilters filters, GameMode? mode, int offset, int amount,
+		BeatmapFilters filters, GameMode? mode, int offset, int amount,
 		CancellationToken cancellationToken = default)
 	{
 		var whereClause = BuildSearchWhereClause(filters, mode, out var parameters);
@@ -182,7 +182,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 	}
 
 	/// <inheritdoc />
-	public async Task<int> SearchCountAsync(BeatmapsetSearchFilters filters, GameMode? mode,
+	public async Task<int> SearchCountAsync(BeatmapFilters filters, GameMode? mode,
 		CancellationToken cancellationToken = default)
 	{
 		var whereClause = BuildSearchWhereClause(filters, mode, out var parameters);
@@ -200,7 +200,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 	///     Builds the shared `WHERE` clause and parameters for a beatmapset search, from the same
 	///     filters <see cref="SearchAsync" /> and <see cref="SearchCountAsync" /> both translate.
 	/// </summary>
-	private static string BuildSearchWhereClause(BeatmapsetSearchFilters filters, GameMode? mode,
+	private static string BuildSearchWhereClause(BeatmapFilters filters, GameMode? mode,
 		out DynamicParameters parameters)
 	{
 		var conditions = new List<string> { "m.IsPrivate = 0" };
@@ -227,13 +227,13 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 		AppendNumeric(conditions, parameters, ref p, "b.Bpm", filters.Bpm);
 		AppendNumeric(conditions, parameters, ref p, "b.TotalLength", filters.LengthSeconds);
 		// osu!mania's key count and every other mode's circle size share the same stored field,
-		// matching real osu!'s own convention -- see BeatmapsetSearchFilters.Keys's own remarks.
+		// matching real osu!'s own convention -- see BeatmapFilters.Keys's own remarks.
 		AppendNumeric(conditions, parameters, ref p, "b.Cs", filters.Keys);
-		// Circles/sliders only exist on standard-mode beatmaps (BeatmapObjectCounts's polymorphic
+		// Circles/sliders only exist on standard-mode beatmaps (BeatmapObjects's polymorphic
 		// JSON shape); json_extract returns NULL for every other mode, which naturally excludes them
 		// from these comparisons rather than requiring a separate mode check.
-		AppendNumeric(conditions, parameters, ref p, "json_extract(b.ObjectCounts, '$.Circles')", filters.Circles);
-		AppendNumeric(conditions, parameters, ref p, "json_extract(b.ObjectCounts, '$.Sliders')", filters.Sliders);
+		AppendNumeric(conditions, parameters, ref p, "json_extract(b.Objects, '$.Circles')", filters.Circles);
+		AppendNumeric(conditions, parameters, ref p, "json_extract(b.Objects, '$.Sliders')", filters.Sliders);
 		AppendDate(conditions, parameters, ref p, "m.CreatedAt", filters.Created);
 		AppendDate(conditions, parameters, ref p, "m.LastUpdate", filters.Updated);
 
@@ -426,24 +426,24 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 		public string? BackgroundFile { get; set; }
 		public string? AudioFile { get; set; }
 		public int? PreviewTime { get; set; }
-		public string ObjectCounts { get; set; } = "{}";
+		public string Objects { get; set; } = "{}";
 
 		/// <summary>Builds a <see cref="Beatmap" /> from this row, deserializing the JSON object counts.</summary>
 		/// <param name="beatmapset">The owning beatmapset, built from the Beatmapsets half of the JOIN.</param>
 		/// <returns>The domain beatmap.</returns>
 		/// <exception cref="InvalidOperationException">
-		///     The stored <c>ObjectCounts</c> column is not a valid JSON
+		///     The stored <c>Objects</c> column is not a valid JSON
 		///     object-counts payload.
 		/// </exception>
 		public Beatmap ToBeatmap(Beatmapset beatmapset)
 		{
-			var objectCounts = JsonSerializer.Deserialize<BeatmapObjectCounts>(ObjectCounts)
-			                   ?? throw new InvalidOperationException(
-				                   $"Beatmap {Id}'s ObjectCounts column is not a valid ObjectCounts payload.");
+			var objects = JsonSerializer.Deserialize<BeatmapObjects>(Objects)
+			              ?? throw new InvalidOperationException(
+				              $"Beatmap {Id}'s Objects column is not a valid Objects payload.");
 			return new Beatmap(
 				Md5, Id, beatmapset, Version, Filename,
 				new Difficulty((GameMode)Mode, Bpm, TimeSpan.FromSeconds(TotalLength), Cs, Ar, Od, Hp, Sr),
-				objectCounts, BackgroundFile, AudioFile, PreviewTime);
+				objects, BackgroundFile, AudioFile, PreviewTime);
 		}
 	}
 

@@ -146,7 +146,7 @@ public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
 	{
 		var created = (await _repository.CreateAsync("searchable player", "hash", Country.Xx))!;
 
-		var results = await _repository.SearchAsync(new UserSearchFilters("search"), 0, 50);
+		var results = await _repository.SearchAsync(new UserFilters("search"), 0, 50);
 
 		Assert.Contains(results, u => u.Id == created.Id);
 	}
@@ -156,7 +156,7 @@ public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
 	{
 		var created = (await _repository.CreateAsync("numeric id search user", "hash", Country.Xx))!;
 
-		var results = await _repository.SearchAsync(new UserSearchFilters(created.Id.ToString()), 0, 50);
+		var results = await _repository.SearchAsync(new UserFilters(created.Id.ToString()), 0, 50);
 
 		Assert.Contains(results, u => u.Id == created.Id);
 	}
@@ -167,7 +167,7 @@ public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
 		var jp = (await _repository.CreateAsync("jp search user", "hash", Country.Jp))!;
 		var us = (await _repository.CreateAsync("us search user", "hash", Country.Us))!;
 
-		var results = await _repository.SearchAsync(new UserSearchFilters("search user", [Country.Jp]), 0, 50);
+		var results = await _repository.SearchAsync(new UserFilters("search user", [Country.Jp]), 0, 50);
 
 		Assert.Contains(results, u => u.Id == jp.Id);
 		Assert.DoesNotContain(results, u => u.Id == us.Id);
@@ -181,7 +181,7 @@ public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
 		var vn = (await _repository.CreateAsync("vn multi country user", "hash", Country.Vn))!;
 
 		var results = await _repository.SearchAsync(
-			new UserSearchFilters("multi country user", [Country.Jp, Country.Us]), 0, 50);
+			new UserFilters("multi country user", [Country.Jp, Country.Us]), 0, 50);
 
 		Assert.Contains(results, u => u.Id == jp.Id);
 		Assert.Contains(results, u => u.Id == us.Id);
@@ -197,7 +197,7 @@ public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
 			UserPrivileges.Unrestricted))!;
 
 		var results = await _repository.SearchAsync(
-			new UserSearchFilters("priv mask",
+			new UserFilters("priv mask",
 				Privilege: UserPrivileges.Unrestricted | UserPrivileges.Verified),
 			0, 50);
 
@@ -211,7 +211,7 @@ public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
 		var created = (await _repository.CreateAsync("deleted search user", "hash", Country.Xx))!;
 		await _repository.SoftDeleteAsync(created.Id, DateTimeOffset.UtcNow);
 
-		var results = await _repository.SearchAsync(new UserSearchFilters("deleted search"), 0, 50);
+		var results = await _repository.SearchAsync(new UserFilters("deleted search"), 0, 50);
 
 		Assert.DoesNotContain(results, u => u.Id == created.Id);
 	}
@@ -222,8 +222,8 @@ public class SqliteUserRepositoryTests(SqliteFixture fixture) : IClassFixture<Sq
 		await _repository.CreateAsync("count search user one", "hash", Country.Xx);
 		await _repository.CreateAsync("count search user two", "hash", Country.Xx);
 
-		var page = await _repository.SearchAsync(new UserSearchFilters("count search"), 0, 1);
-		var total = await _repository.SearchCountAsync(new UserSearchFilters("count search"));
+		var page = await _repository.SearchAsync(new UserFilters("count search"), 0, 1);
+		var total = await _repository.SearchCountAsync(new UserFilters("count search"));
 
 		Assert.Single(page);
 		Assert.True(total >= 2);
