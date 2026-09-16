@@ -1,7 +1,6 @@
 using System.Net;
 using Basil.Server.Shared.Http.Bancho;
 using Basil.Server.Features.Auth;
-using Basil.Server.Host;
 using Basil.Server.Shared.Sessions;
 using Basil.Domain.Login;
 using Basil.Protocol;
@@ -172,7 +171,7 @@ internal static class BanchoProtocolRoutes
 					}
 					catch (Exception ex) when (ex is not OperationCanceledException)
 					{
-						context.RequestServices.GetRequiredService<ILogger<Bootstrap>>()
+						context.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Host")
 							.LogError(ex, "Login request failed before a LoginResult could be produced");
 						response.Headers["cho-token"] = "server-error";
 						responseBody = [.. ServerPacketWriter.LoginReply((int)LoginFailureReason.ErrorOccurred)];

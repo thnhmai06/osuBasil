@@ -17,7 +17,7 @@ public class TransportSeamTests
 	///     HTTP surface, and neither has a reason to know a wire format.
 	/// </summary>
 	private static Conditions BusinessAndApiTypes() =>
-		Types.InAssembly(typeof(Basil.Server.Host.Bootstrap).Assembly)
+		Types.InAssembly(typeof(Basil.Server.Shared.Configuration.ServerOptions).Assembly)
 			.That().ResideInNamespaceStartingWith("Basil.Server.Features")
 			.And().DoNotResideInNamespaceContaining(".Packets")
 			.And().DoNotResideInNamespaceStartingWith("Basil.Server.Features.Irc")

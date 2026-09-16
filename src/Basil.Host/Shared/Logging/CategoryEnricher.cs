@@ -35,6 +35,7 @@ public sealed class CategoryEnricher : ILogEventEnricher
 		("Basil.Infrastructure.Caching.", true, "Cache"),
 		("Microsoft.Hosting.Lifetime", false, "Host"),
 		("Basil.Server.Host.Bootstrap", false, "Host"),
+		("Host", false, "Host"),
 		("Basil.Server.Shared.Http.Middleware.ApiRequestLoggingMiddleware", false, "Api")
 	];
 

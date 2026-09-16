@@ -59,14 +59,14 @@ public sealed class ServerHostSettings
 /// <summary>How a locally launched server process is started.</summary>
 public enum DotnetLaunchMode : byte
 {
-	/// <summary><c>dotnet run --project src/Basil.Server</c>. Slower to start, no publish step.</summary>
+	/// <summary><c>dotnet run --project src/Basil.Host</c>. Slower to start, no publish step.</summary>
 	Run,
 
 	/// <summary>A pre-published binary under <see cref="DotnetHostSettings.PublishDirectory" />.</summary>
 	Published
 }
 
-/// <summary>Settings for launching Basil.Server as a local child process.</summary>
+/// <summary>Settings for launching Basil.Host as a local child process.</summary>
 public sealed class DotnetHostSettings
 {
 	/// <summary>Whether to run from a source or from a published binary.</summary>

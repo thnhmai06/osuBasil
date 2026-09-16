@@ -2,7 +2,6 @@
 
 	<PropertyGroup>
 		<IsPackable>false</IsPackable>
-		<RootNamespace>Basil.IntegrationTests</RootNamespace>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -10,7 +9,10 @@
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="Microsoft.AspNetCore.Mvc.Testing"/>
+		<PackageReference Include="Microsoft.Extensions.Configuration"/>
+		<PackageReference Include="Microsoft.Extensions.Configuration.Binder"/>
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection"/>
+		<PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions"/>
 		<PackageReference Include="Microsoft.NET.Test.Sdk"/>
 		<PackageReference Include="NSubstitute"/>
 		<PackageReference Include="xunit.v3"/>
