@@ -1,5 +1,6 @@
+using Basil.Application.Sessions;
+using Basil.Application.Shared.Eventing;
 using Basil.Infrastructure.Diagnostics;
-using Basil.Infrastructure.Shared.Eventing;
 using Basil.Infrastructure.Shared.Sessions;
 using NSubstitute;
 

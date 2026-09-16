@@ -1,5 +1,5 @@
+using Basil.Application.Shared.Configuration;
 using Basil.Infrastructure.Bot;
-using Basil.Infrastructure.Shared.Configuration;
 using Basil.Infrastructure.Shared.Http;
 using Microsoft.Extensions.Options;
 

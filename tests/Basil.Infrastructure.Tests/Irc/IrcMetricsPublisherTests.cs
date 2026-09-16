@@ -1,4 +1,6 @@
 using System.Diagnostics.Metrics;
+using Basil.Application.Irc;
+using Basil.Application.Sessions;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Irc;
 using Basil.Infrastructure.Shared.Sessions;

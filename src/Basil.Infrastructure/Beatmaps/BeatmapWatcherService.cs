@@ -1,5 +1,5 @@
 using System.Collections.Concurrent;
-using Basil.Infrastructure.Shared.Configuration;
+using Basil.Application.Shared.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Beatmaps;

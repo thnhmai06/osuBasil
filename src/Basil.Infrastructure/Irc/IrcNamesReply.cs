@@ -1,3 +1,4 @@
+using Basil.Application.Irc;
 using Basil.Protocol.Irc;
 
 namespace Basil.Infrastructure.Irc;

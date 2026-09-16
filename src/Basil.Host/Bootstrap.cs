@@ -1,4 +1,4 @@
-using Basil.Infrastructure.Shared.Configuration;
+using Basil.Application.Shared.Configuration;
 using Basil.Infrastructure.Shared.Http;
 using Basil.Infrastructure.Shared.Http.Middleware;
 using Microsoft.Extensions.Options;

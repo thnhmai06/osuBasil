@@ -1,3 +1,5 @@
+using Basil.Application.Irc;
+using Basil.Application.Sessions;
 using Basil.Domain.Scores;
 using Basil.Infrastructure.Bot;
 using Basil.Infrastructure.Chat;

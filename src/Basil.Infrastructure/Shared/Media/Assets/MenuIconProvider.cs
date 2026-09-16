@@ -1,5 +1,5 @@
+using Basil.Application.Shared.Configuration;
 using Basil.Infrastructure.Content;
-using Basil.Infrastructure.Shared.Configuration;
 using Microsoft.Extensions.Options;
 using SixLabors.ImageSharp.Web.Providers;
 using SixLabors.ImageSharp.Web.Resolvers;

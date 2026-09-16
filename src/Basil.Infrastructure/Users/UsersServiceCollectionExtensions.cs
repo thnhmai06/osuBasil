@@ -1,6 +1,6 @@
+using Basil.Application.Shared.Configuration;
 using Basil.Domain.Social;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Shared.Configuration;
 using Basil.Infrastructure.Shared.Http.Bancho;
 using Basil.Infrastructure.Shared.Persistence;
 using Basil.Infrastructure.Users.Packets;

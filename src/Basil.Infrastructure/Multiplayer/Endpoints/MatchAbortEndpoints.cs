@@ -1,3 +1,4 @@
+using Basil.Application.Multiplayer;
 using Basil.Infrastructure.Auth;
 using Basil.Infrastructure.Multiplayer.Handlers.Lifecycle;
 using Basil.Infrastructure.Shared.Http;

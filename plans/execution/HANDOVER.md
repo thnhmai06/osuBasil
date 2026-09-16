@@ -17,7 +17,33 @@ not, it says so.
 > batch has since moved the file a rule names. Every batch commit is local only — not pushed until
 > the user says so. **Batch 1 done** (`Basil.Server` renamed to `Basil.Infrastructure`, `Features.`
 > segment dropped, `Basil.Server.Host` → `Basil.Host`, `Basil.Server.Tests` → `Basil.Infrastructure.Tests`).
-> Next: **Batch 2** — create `Basil.Application` and the cross-cutting layer.
+> **Batch 2 done**: `Basil.Application` created (Sessions, Eventing, Configuration, Localization,
+> Json, Irc's `IIrcConnection`/`IrcSession`/`IrcSessionRegistry`, Multiplayer core, the D10
+> reply-constant classes and their locale fragments). The compiler forced additions the plan's file
+> list didn't name, each a framework-free leaf with a real caller in an already-moved type:
+> `MatchCreationData.cs`, `MatchLiveSnapshotBuilder.cs` (+`UserBriefResolver.cs`), `BeatmapViews.cs`
+> (pulled forward from Batch 9 — **Batch 9's row in §5 no longer reads "1 file + tests"**, it's
+> DirectSearchService plus DI splits only), `DateTimeExtensions.cs`, `Envelope.cs`/`PageMeta`/
+> `FieldError`, `BanchoIrcBridgeConnection.cs`. `ChatMetrics.cs`/`IrcMetrics.cs` turned out to be
+> plain renames to `*Publisher.cs`, not D3 splits (only `MatchRoundEndOutbox.cs` and
+> `MultiplayerMetrics.cs` had a real contract half to extract). `BotBootstrapService.BotId` calls in
+> `MatchLiveSnapshotBuilder.BuildSettings` became `MatchSession.NoHostId` (same value, already used
+> elsewhere in the file, removes an Infrastructure dependency). Test suite: 9 + 235 + 158 +
+> 65 (`Basil.Application.Tests`, new) + 851 (`Basil.Infrastructure.Tests`, down from 916 — the 65
+> moved out) + 28 (`Basil.Host.Tests`) + 363 (`Basil.IntegrationTests`) = **1709**, unchanged from
+> Batch 1. `SliceBoundaryTests`'s pinned `Shared_Should_Not_Reference_Features` list shrank by 4
+> (`GameSession`, `UserSession`, `PacketDispatcher`, `GhostDisconnectService` — each now depends on
+> `Basil.Application.*` instead of a Features slice) — the list working as designed, not edited
+> freely. `dotnet run` smoke check could not run in this session: `ServerOptions.Port` is 443, which
+> needs admin/a URL ACL reservation this background session doesn't have; `Basil.IntegrationTests`
+> boots the same `Bootstrap`/`StartupData`/DI graph through `WebApplicationFactory` (DbUp migrations,
+> `LocaleTouch.AllReplyHolders()` included) and is the stronger signal here. Two follow-up requests
+> from the user during this batch are **not** part of it and need their own commit: making a match's
+> host nullable instead of using `MatchRoomState.NoHostId`/`SystemUserIds.BasilBot` as a sentinel
+> (Bancho wire behavior unchanged when null), and the same nullable-instead-of-sentinel treatment for
+> other places using an out-of-band value to mean "absent" (e.g. a match's current beatmap). Both
+> touch wire-adjacent domain state and want their own protocol-test coverage.
+> Next: **Batch 3**.
 
 ---
 

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Basil.Application.Shared.Http;
 using Basil.Infrastructure.Shared.Http.Middleware;
 using Microsoft.AspNetCore.WebUtilities;
 

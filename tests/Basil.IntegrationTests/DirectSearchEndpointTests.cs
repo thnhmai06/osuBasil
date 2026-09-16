@@ -1,11 +1,12 @@
 using System.Net;
+using Basil.Application.Sessions;
+using Basil.Application.Shared.Configuration;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Content;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Content;
 using Basil.Domain.Users;
 using Basil.Host;
-using Basil.Infrastructure.Shared.Configuration;
 using Basil.Infrastructure.Shared.Sessions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;

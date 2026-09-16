@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 using System.IO.Compression;
-using Basil.Infrastructure.Shared.Configuration;
+using Basil.Application.Shared.Configuration;
 using Basil.Infrastructure.Shared.Storage;
 using Basil.Infrastructure.Shared.Storage;
 using Microsoft.Extensions.Options;

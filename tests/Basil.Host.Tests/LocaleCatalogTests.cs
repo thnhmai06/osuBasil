@@ -1,4 +1,4 @@
-using Basil.Infrastructure.Shared.Localization;
+using Basil.Application.Shared.Localization;
 
 namespace Basil.Host.Tests;
 

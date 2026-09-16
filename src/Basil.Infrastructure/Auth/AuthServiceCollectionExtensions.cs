@@ -1,5 +1,5 @@
+using Basil.Application.Shared.Configuration;
 using Basil.Domain.Auth;
-using Basil.Infrastructure.Shared.Configuration;
 using Basil.Infrastructure.Shared.Persistence;
 using Microsoft.Extensions.Options;
 

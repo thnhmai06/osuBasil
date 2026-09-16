@@ -1,3 +1,4 @@
+using Basil.Application.Sessions;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;

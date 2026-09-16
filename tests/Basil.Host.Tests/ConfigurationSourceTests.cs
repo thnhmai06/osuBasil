@@ -1,4 +1,4 @@
-using Basil.Infrastructure.Shared.Configuration;
+using Basil.Application.Shared.Configuration;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.CommandLine;

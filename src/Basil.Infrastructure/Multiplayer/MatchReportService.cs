@@ -1,12 +1,14 @@
+using Basil.Application.Beatmaps;
+using Basil.Application.Irc;
+using Basil.Application.Multiplayer;
+using Basil.Application.Sessions;
+using Basil.Application.Shared.Json;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Beatmaps;
-using Basil.Infrastructure.Irc;
 using Basil.Infrastructure.Shared.Http;
-using Basil.Infrastructure.Shared.Sessions;
 
 // ReSharper disable NotAccessedPositionalProperty.Global
 

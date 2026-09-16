@@ -1,9 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
+using Basil.Application.Sessions;
+using Basil.Application.Shared.Configuration;
 using Basil.Domain.Users;
 using Basil.Host;
-using Basil.Infrastructure.Shared.Configuration;
-using Basil.Infrastructure.Shared.Http.OpenApi;
+using Basil.Application.Shared.Http;
 using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
 using Microsoft.AspNetCore.Mvc.Testing;

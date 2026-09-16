@@ -1,0 +1,44 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<Using Include="Microsoft.AspNetCore.Http"/>
+		<Using Include="Microsoft.Extensions.Logging"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Basil.Domain\Basil.Domain.csproj"/>
+		<ProjectReference Include="..\Basil.Protocol.Bancho\Basil.Protocol.Bancho.csproj"/>
+		<ProjectReference Include="..\Basil.Protocol.Irc\Basil.Protocol.Irc.csproj"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Basil.Application.Tests"/>
+		<InternalsVisibleTo Include="Basil.Infrastructure"/>
+		<InternalsVisibleTo Include="Basil.Infrastructure.Tests"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- LocaleCatalog (Shared/Localization/LocaleCatalog.cs) reads every slice's fragment next to
+		     the running assembly via AppContext.BaseDirectory. Plain Microsoft.NET.Sdk does not
+		     default-glob loose files as Content the way Sdk.Web does, so these are explicitly included;
+		     Link flattens them under Data/Localization/ instead of each slice's own <Slice>/Locale/, and
+		     CopyToOutputDirectory is what makes every project that references Basil.Application,
+		     including the test projects (which never run through Bootstrap.Main's own content-root
+		     setup), get a real copy alongside their own build output. -->
+		<Content Include="*\Locale\*.json" Link="Data\Localization\%(Filename)%(Extension)">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.Options"/>
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions"/>
+	</ItemGroup>
+
+</Project>

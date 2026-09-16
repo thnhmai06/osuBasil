@@ -1,6 +1,6 @@
 using System.IO.Compression;
+using Basil.Application.Shared.Configuration;
 using Basil.Infrastructure.Beatmaps;
-using Basil.Infrastructure.Shared.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Tests.Beatmaps;

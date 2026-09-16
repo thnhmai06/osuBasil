@@ -1,4 +1,5 @@
 using System.Net;
+using Basil.Application.Sessions;
 using Basil.Domain.Login;
 using Basil.Infrastructure.Auth;
 using Basil.Infrastructure.Shared.Http.Bancho;

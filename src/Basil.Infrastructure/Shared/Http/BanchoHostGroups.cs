@@ -1,9 +1,9 @@
 using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.IO.Compression;
+using Basil.Application.Shared.Configuration;
 using Basil.Domain.Beatmaps;
 using Basil.Infrastructure.Beatmaps;
-using Basil.Infrastructure.Shared.Configuration;
 using Basil.Infrastructure.Shared.Media;
 using Basil.Infrastructure.Shared.Storage;
 using Microsoft.Extensions.Options;

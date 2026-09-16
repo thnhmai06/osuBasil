@@ -1,5 +1,5 @@
+using Basil.Application.Shared.Configuration;
 using Basil.Domain.Scores;
-using Basil.Infrastructure.Shared.Configuration;
 using Basil.Infrastructure.Shared.Persistence;
 using Basil.Infrastructure.Shared.Storage;
 using Microsoft.Extensions.Options;

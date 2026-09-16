@@ -1,9 +1,9 @@
 using System.Net;
 using System.Text;
+using Basil.Application.Shared.Configuration;
 using Basil.Domain.Content;
 using Basil.Host;
 using Basil.Infrastructure.Auth;
-using Basil.Infrastructure.Shared.Configuration;
 using Basil.Infrastructure.Content;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;

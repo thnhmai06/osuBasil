@@ -1,4 +1,5 @@
 using System.Diagnostics.Metrics;
+using Basil.Application.Shared;
 
 namespace Basil.Infrastructure.Shared.Http;
 

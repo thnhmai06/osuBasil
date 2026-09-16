@@ -1,3 +1,4 @@
+using Basil.Application.Multiplayer;
 using Basil.Domain.Multiplayer;
 using Basil.Infrastructure.Multiplayer;
 using Microsoft.Extensions.Logging.Abstractions;

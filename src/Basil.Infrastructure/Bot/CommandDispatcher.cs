@@ -1,10 +1,12 @@
 using System.Text;
+using Basil.Application.Bot;
+using Basil.Application.Sessions;
+using Basil.Application.Shared.Configuration;
 using Basil.Domain.Bot;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Content;
 using Basil.Infrastructure.Multiplayer;
-using Basil.Infrastructure.Shared.Configuration;
 using Basil.Infrastructure.Shared.Sessions;
 using Basil.Infrastructure.Content;
 using Microsoft.Extensions.Options;

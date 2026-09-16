@@ -1,8 +1,9 @@
+using Basil.Application.Sessions;
+using Basil.Application.Shared.Configuration;
 using Basil.Domain.Channels;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Chat;
-using Basil.Infrastructure.Shared.Configuration;
 using Basil.Infrastructure.Shared.Sessions;
 using Microsoft.Extensions.Options;
 

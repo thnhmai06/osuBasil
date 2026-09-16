@@ -1,9 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
+using Basil.Application.Shared.Configuration;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Content;
 using Basil.Host;
-using Basil.Infrastructure.Shared.Configuration;
 using Basil.Infrastructure.Content;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;

@@ -65,10 +65,8 @@ public class SliceBoundaryTests
 	{
 		// The types below still reach from Shared/ into Features/. Each is a real structural
 		// coupling that predates this migration and is out of Phase 0's scope to fix:
-		// GameSession/UserSession/GhostDisconnectService hold a live MatchSession and the IRC
-		// bridge connection (Task 1.4 -- MatchSession model encapsulation -- is the task that
-		// owns unwinding this; GhostDisconnectService only needs Irc.IrcSession as
-		// ISessionRegistry<IrcSession>'s type argument, the same shape); BanchoHostGroups,
+		// GhostDisconnectService holds a live IRC bridge connection (GhostDisconnectService only
+		// needs Irc.IrcSession as ISessionRegistry<IrcSession>'s type argument); BanchoHostGroups,
 		// Bancho.PacketDispatcher, OsuWebRoutes and OpenApi.OpenApiExampleExtensions inline slice
 		// logic directly instead of only delegating to it; the Media asset providers call slice
 		// services directly. This test pins the list so it can only shrink -- a new Shared ->
@@ -86,18 +84,20 @@ public class SliceBoundaryTests
 		// Features.Scores.IReplayStorage, and that interface moved into Basil.Domain.Scores, so the
 		// reference now points at Domain instead of a slice. OsuWebRoutes dropped out the same way:
 		// its Features.Auth references (AdminKeyService, IPasswordHasher) all moved.
+		//
+		// GameSession and UserSession dropped out during the Architecture v3 migration's Batch 2
+		// (2026-09-16): both moved to Basil.Application.Sessions, out of Basil.Infrastructure.Shared
+		// entirely, so this test no longer sees them at all. PacketDispatcher and
+		// GhostDisconnectService dropped out the same batch: their only remaining IrcSession/
+		// GameSession dependency is now Basil.Application.Sessions/Irc, not a Features slice.
 		string[] knownOffenders =
 		[
-			"Basil.Infrastructure.Shared.Http.Bancho.PacketDispatcher",
 			"Basil.Infrastructure.Shared.Http.BanchoHostGroups",
 			"Basil.Infrastructure.Shared.Http.OpenApi.OpenApiExampleExtensions",
 			"Basil.Infrastructure.Shared.Http.OpenApi.SecuritySchemeTransformers",
 			"Basil.Infrastructure.Shared.Media.Assets.BeatmapsetBackgroundProvider",
 			"Basil.Infrastructure.Shared.Media.Assets.BeatmapThumbnailProvider",
-			"Basil.Infrastructure.Shared.Media.Assets.MenuIconProvider",
-			"Basil.Infrastructure.Shared.Sessions.GameSession",
-			"Basil.Infrastructure.Shared.Sessions.GhostDisconnectService",
-			"Basil.Infrastructure.Shared.Sessions.UserSession"
+			"Basil.Infrastructure.Shared.Media.Assets.MenuIconProvider"
 		];
 
 		var featureNamespaces = SliceAdjacency.Allowed

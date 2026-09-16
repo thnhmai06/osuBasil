@@ -1,3 +1,4 @@
+using Basil.Application.Sessions;
 using Basil.Domain.Auth;
 using Basil.Infrastructure.Shared.Sessions;
 

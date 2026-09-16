@@ -1,3 +1,4 @@
+using Basil.Application.Multiplayer;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Channels;
 using Basil.Domain.Multiplayer;

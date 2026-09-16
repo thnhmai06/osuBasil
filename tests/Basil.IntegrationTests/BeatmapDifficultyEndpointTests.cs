@@ -1,13 +1,14 @@
 using System.Net;
 using System.Net.Http.Json;
-using Basil.Infrastructure.Beatmaps;
+using Basil.Application.Beatmaps;
+using Basil.Application.Shared.Configuration;
+using Basil.Application.Shared.Http;
+using Basil.Application.Shared.Json;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
 using Basil.Host;
 using Basil.Infrastructure.Beatmaps;
-using Basil.Infrastructure.Shared.Configuration;
 using Basil.Infrastructure.Shared.Http;
-using Basil.Infrastructure.Shared.Http.OpenApi;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

@@ -1,3 +1,4 @@
+using Basil.Application.Multiplayer;
 using Basil.Domain.Multiplayer;
 
 namespace Basil.Infrastructure.Multiplayer.Handlers.Lifecycle;

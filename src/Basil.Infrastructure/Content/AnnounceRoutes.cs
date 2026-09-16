@@ -1,3 +1,4 @@
+using Basil.Application.Sessions;
 using Basil.Infrastructure.Auth;
 using Basil.Infrastructure.Bot;
 using Basil.Infrastructure.Shared.Http;

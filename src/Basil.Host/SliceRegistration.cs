@@ -1,3 +1,4 @@
+using Basil.Application.Shared.Configuration;
 using Basil.Infrastructure.Auth;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Bot;
@@ -7,7 +8,6 @@ using Basil.Infrastructure.Diagnostics;
 using Basil.Infrastructure.Irc;
 using Basil.Infrastructure.Multiplayer;
 using Basil.Infrastructure.Scores;
-using Basil.Infrastructure.Shared.Configuration;
 using Basil.Infrastructure.Shared.Http;
 using Basil.Infrastructure.Spectating;
 using Basil.Infrastructure.Users;

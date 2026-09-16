@@ -1,4 +1,5 @@
-using Basil.Infrastructure.Irc;
+using Basil.Application.Irc;
+using Basil.Application.Sessions;
 
 namespace Basil.Infrastructure.Shared.Sessions;
 

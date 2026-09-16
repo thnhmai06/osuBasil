@@ -1,6 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Basil.Application.Multiplayer;
+using Basil.Application.Sessions;
+using Basil.Application.Shared.Configuration;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
@@ -9,7 +12,6 @@ using Basil.Domain.Users;
 using Basil.Host;
 using Basil.Infrastructure.Bot;
 using Basil.Infrastructure.Multiplayer;
-using Basil.Infrastructure.Shared.Configuration;
 using Basil.Infrastructure.Shared.Sessions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;

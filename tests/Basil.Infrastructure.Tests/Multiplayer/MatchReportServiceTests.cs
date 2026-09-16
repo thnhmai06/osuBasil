@@ -1,3 +1,6 @@
+using Basil.Application.Irc;
+using Basil.Application.Multiplayer;
+using Basil.Application.Sessions;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;

@@ -1,5 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
+using Basil.Application.Sessions;
+using Basil.Application.Shared.Configuration;
 using Basil.Domain.Auth;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
@@ -8,7 +10,6 @@ using Basil.Domain.Users;
 using Basil.Infrastructure.Auth;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Scores;
-using Basil.Infrastructure.Shared.Configuration;
 using Basil.Infrastructure.Shared.Http.Bancho;
 using Basil.Infrastructure.Shared.Sessions;
 using Microsoft.AspNetCore.Mvc;

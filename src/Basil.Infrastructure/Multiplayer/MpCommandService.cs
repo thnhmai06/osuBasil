@@ -1,5 +1,8 @@
 using System.Collections.Frozen;
 using System.Text;
+using Basil.Application.Irc;
+using Basil.Application.Multiplayer;
+using Basil.Application.Sessions;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Bot;
 using Basil.Domain.Channels;

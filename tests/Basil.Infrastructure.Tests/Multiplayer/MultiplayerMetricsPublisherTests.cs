@@ -1,4 +1,5 @@
 using System.Diagnostics.Metrics;
+using Basil.Application.Multiplayer;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;

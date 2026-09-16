@@ -1,10 +1,13 @@
+using Basil.Application.Irc;
+using Basil.Application.Multiplayer;
+using Basil.Application.Sessions;
+using Basil.Application.Shared.Eventing;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Channels;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Bot;
 using Basil.Infrastructure.Chat;
 using Basil.Infrastructure.Irc;
-using Basil.Infrastructure.Shared.Eventing;
 using Basil.Infrastructure.Shared.Sessions;
 
 namespace Basil.Infrastructure.Multiplayer;

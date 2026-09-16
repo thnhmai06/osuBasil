@@ -1,3 +1,4 @@
+using Basil.Application.Sessions;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Chat.Packets;
 using Basil.Infrastructure.Shared.Sessions;

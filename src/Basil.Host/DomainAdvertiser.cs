@@ -1,5 +1,5 @@
 using System.Net.Sockets;
-using Basil.Infrastructure.Shared.Configuration;
+using Basil.Application.Shared.Configuration;
 using Basil.Infrastructure.Shared.Http;
 using Makaretu.Dns;
 using Microsoft.Extensions.Options;

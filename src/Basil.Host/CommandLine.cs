@@ -1,4 +1,4 @@
-using Basil.Infrastructure.Shared.Configuration;
+using Basil.Application.Shared.Configuration;
 
 namespace Basil.Host;
 

@@ -1,9 +1,11 @@
 using System.Globalization;
 using System.Reflection;
+using Basil.Application.Irc;
+using Basil.Application.Sessions;
+using Basil.Application.Shared.Configuration;
 using Basil.Domain.Channels;
 using Basil.Domain.Content;
 using Basil.Infrastructure.Chat;
-using Basil.Infrastructure.Shared.Configuration;
 using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Irc;
 using Microsoft.Extensions.Options;

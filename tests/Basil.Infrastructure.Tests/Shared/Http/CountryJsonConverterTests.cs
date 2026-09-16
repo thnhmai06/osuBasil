@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Basil.Application.Shared.Json;
 using Basil.Domain.Login;
 using Basil.Infrastructure.Shared.Http;
 

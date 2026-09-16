@@ -1,8 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
+using Basil.Application.Shared.Configuration;
 using Basil.Domain.Login;
 using Basil.Domain.Scores;
-using Basil.Infrastructure.Shared.Configuration;
 using Microsoft.Extensions.Options;
 using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 

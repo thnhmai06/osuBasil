@@ -1,6 +1,7 @@
+using Basil.Application.Sessions;
+using Basil.Application.Shared.Configuration;
 using Basil.Domain.Channels;
 using Basil.Infrastructure.Chat.Packets;
-using Basil.Infrastructure.Shared.Configuration;
 using Basil.Infrastructure.Shared.Http.Bancho;
 using Basil.Infrastructure.Shared.Persistence;
 using Basil.Infrastructure.Shared.Sessions;

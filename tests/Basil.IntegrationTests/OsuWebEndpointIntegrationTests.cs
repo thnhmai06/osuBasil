@@ -1,7 +1,7 @@
 using System.Net;
 using System.Text;
+using Basil.Application.Shared.Configuration;
 using Basil.Host;
-using Basil.Infrastructure.Shared.Configuration;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

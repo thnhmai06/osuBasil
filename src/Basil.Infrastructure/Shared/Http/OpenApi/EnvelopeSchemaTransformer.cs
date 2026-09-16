@@ -1,5 +1,5 @@
 using System.Text.Json.Nodes;
-using Basil.Infrastructure.Shared.Eventing;
+using Basil.Application.Shared.Eventing;
 using Basil.Infrastructure.Shared.Http.Middleware;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;

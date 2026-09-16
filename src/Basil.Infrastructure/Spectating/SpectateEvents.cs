@@ -1,4 +1,4 @@
-using Basil.Infrastructure.Multiplayer;
+using Basil.Application.Multiplayer;
 using Basil.Protocol.Multiplayer;
 
 // ReSharper disable NotAccessedPositionalProperty.Global

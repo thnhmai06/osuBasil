@@ -1,3 +1,4 @@
+using Basil.Application.Sessions;
 using Basil.Domain.Social;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Sessions;

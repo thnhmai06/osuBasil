@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using Basil.Infrastructure.Shared.Eventing;
+using Basil.Application.Shared.Eventing;
 
 namespace Basil.Infrastructure.Shared.Http.Middleware;
 

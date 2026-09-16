@@ -1,8 +1,8 @@
 using System.Net;
 using System.Net.Http.Headers;
+using Basil.Application.Shared.Configuration;
 using Basil.Domain.Content;
 using Basil.Host;
-using Basil.Infrastructure.Shared.Configuration;
 using Basil.Infrastructure.Content;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;

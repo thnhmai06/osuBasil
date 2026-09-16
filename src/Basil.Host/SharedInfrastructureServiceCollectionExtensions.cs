@@ -1,5 +1,6 @@
-using Basil.Infrastructure.Shared.Configuration;
-using Basil.Infrastructure.Shared.Eventing;
+using Basil.Application.Sessions;
+using Basil.Application.Shared.Configuration;
+using Basil.Application.Shared.Eventing;
 using Basil.Infrastructure.Shared.Http.Bancho;
 using Basil.Infrastructure.Shared.Media;
 using Basil.Infrastructure.Shared.Sessions;

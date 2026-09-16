@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using Basil.Application.Sessions;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Multiplayer.Packets;

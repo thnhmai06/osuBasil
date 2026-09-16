@@ -1,13 +1,14 @@
 using System.Net.Http.Headers;
 using System.Text.Json;
+using Basil.Application.Multiplayer;
+using Basil.Application.Shared.Configuration;
+using Basil.Application.Shared.Eventing;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Spectating;
 using Basil.Host;
 using Basil.Infrastructure.Multiplayer;
-using Basil.Infrastructure.Shared.Configuration;
-using Basil.Infrastructure.Shared.Eventing;
 using Basil.Protocol.Multiplayer;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;

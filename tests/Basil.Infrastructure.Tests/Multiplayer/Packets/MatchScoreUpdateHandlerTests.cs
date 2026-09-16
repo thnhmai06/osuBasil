@@ -1,3 +1,4 @@
+using Basil.Application.Multiplayer;
 using Basil.Infrastructure.Multiplayer;
 using Basil.Infrastructure.Multiplayer.Packets;
 using Basil.Protocol.Packets;

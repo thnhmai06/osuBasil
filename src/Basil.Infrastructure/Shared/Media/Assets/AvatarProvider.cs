@@ -1,5 +1,5 @@
 using System.Text.RegularExpressions;
-using Basil.Infrastructure.Shared.Configuration;
+using Basil.Application.Shared.Configuration;
 using Microsoft.Extensions.Options;
 using SixLabors.ImageSharp.Web.Providers;
 using SixLabors.ImageSharp.Web.Resolvers;

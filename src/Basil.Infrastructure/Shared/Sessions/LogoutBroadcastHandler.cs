@@ -1,3 +1,4 @@
+using Basil.Application.Sessions;
 using Basil.Protocol.Packets;
 
 namespace Basil.Infrastructure.Shared.Sessions;

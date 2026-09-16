@@ -1,4 +1,9 @@
 using System.Text;
+using Basil.Application.Irc;
+using Basil.Application.Multiplayer;
+using Basil.Application.Sessions;
+using Basil.Application.Shared.Configuration;
+using Basil.Application.Shared.Eventing;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Channels;
 using Basil.Domain.Multiplayer;
@@ -10,11 +15,8 @@ using Basil.Infrastructure.Chat.Packets;
 using Basil.Infrastructure.Irc;
 using Basil.Infrastructure.Multiplayer;
 using Basil.Infrastructure.Multiplayer.Packets;
-using Basil.Infrastructure.Shared.Configuration;
-using Basil.Infrastructure.Shared.Eventing;
 using Basil.Infrastructure.Shared.Sessions;
 using Basil.Infrastructure.Tests.Multiplayer.Packets;
-using Basil.Infrastructure.Tests.Shared.Eventing;
 using Basil.Protocol.Irc;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -58,15 +60,21 @@ public class MatchMembershipServiceTests
 	/// </summary>
 	private (MatchMembership Membership, MatchLifecycle Lifecycle, MatchBroadcast Broadcast) MakeService()
 	{
-		var channelMembership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, new ChatNotifier(Options.Create(new IrcOptions())), new ChannelNotifier(_gameRegistry,_ircRegistry, Options.Create(new IrcOptions())),
+		var channelMembership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
+			new ChatNotifier(Options.Create(new IrcOptions())),
+			new ChannelNotifier(_gameRegistry, _ircRegistry, Options.Create(new IrcOptions())),
 			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
-		var broadcast = new MatchBroadcast(_channelRegistry, channelMembership, new BanchoMatchNotifier(_channelRegistry, channelMembership), new ChatNotifier(Options.Create(new IrcOptions())), _gameRegistry, _ircRegistry, _hub,
+		var broadcast = new MatchBroadcast(_channelRegistry, channelMembership,
+			new BanchoMatchNotifier(_channelRegistry, channelMembership),
+			new ChatNotifier(Options.Create(new IrcOptions())), _gameRegistry, _ircRegistry, _hub,
 			_beatmapRepository, _userRepository);
 		var serviceProvider = Substitute.For<IServiceProvider>();
-		var lifecycle = new MatchLifecycle(_matchRegistry, _channelRegistry, channelMembership, new BanchoMatchNotifier(_channelRegistry, channelMembership), _gameRegistry,
+		var lifecycle = new MatchLifecycle(_matchRegistry, _channelRegistry, channelMembership,
+			new BanchoMatchNotifier(_channelRegistry, channelMembership), _gameRegistry,
 			_matchRepository, _roundEndOutbox, _hub, _beatmapRepository, broadcast, serviceProvider,
 			NullLogger<MatchLifecycle>.Instance);
-		var membership = new MatchMembership(_channelRegistry, _gameRegistry, channelMembership, new BanchoMatchNotifier(_channelRegistry, channelMembership), _matchRepository,
+		var membership = new MatchMembership(_channelRegistry, _gameRegistry, channelMembership,
+			new BanchoMatchNotifier(_channelRegistry, channelMembership), _matchRepository,
 			lifecycle, NullLogger<MatchMembership>.Instance);
 		serviceProvider.GetService(typeof(MatchMembership)).Returns(membership);
 		return (membership, lifecycle, broadcast);
@@ -260,7 +268,9 @@ public class MatchMembershipServiceTests
 		var (membership, lifecycle, _) = MakeService();
 		var match = Create(lifecycle, host, MakeMatchData(host.Id))!;
 		var lobby = _channelRegistry.GetByName("#lobby")!;
-		var lobbyMembership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, new ChatNotifier(Options.Create(new IrcOptions())), new ChannelNotifier(_gameRegistry,_ircRegistry, Options.Create(new IrcOptions())),
+		var lobbyMembership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
+			new ChatNotifier(Options.Create(new IrcOptions())),
+			new ChannelNotifier(_gameRegistry, _ircRegistry, Options.Create(new IrcOptions())),
 			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
 		lobbyMembership.Join(lobbyMember, lobby);
 		lobbyMember.Dequeue();
@@ -399,7 +409,10 @@ public class MatchMembershipServiceTests
 		Assert.Empty(lobbyMember.Dequeue()); // nobody in #lobby yet — no broadcast
 
 		var lobby = _channelRegistry.GetByName("#lobby")!;
-		new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, new ChatNotifier(Options.Create(new IrcOptions())), new ChannelNotifier(_gameRegistry,_ircRegistry, Options.Create(new IrcOptions())), Substitute.For<IMatchRegistry>(),
+		new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
+			new ChatNotifier(Options.Create(new IrcOptions())),
+			new ChannelNotifier(_gameRegistry, _ircRegistry, Options.Create(new IrcOptions())),
+			Substitute.For<IMatchRegistry>(),
 			Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions())).Join(lobbyMember, lobby);
 		lobbyMember.Dequeue();
 

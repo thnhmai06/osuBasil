@@ -1,5 +1,5 @@
+using Basil.Application.Shared.Configuration;
 using Basil.Infrastructure.Beatmaps;
-using Basil.Infrastructure.Shared.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using BeatmapIngestionService = Basil.Infrastructure.Beatmaps.BeatmapIngestionService;

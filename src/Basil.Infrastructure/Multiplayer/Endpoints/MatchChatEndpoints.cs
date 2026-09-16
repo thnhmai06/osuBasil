@@ -1,8 +1,9 @@
+using Basil.Application.Multiplayer;
+using Basil.Application.Shared.Eventing;
 using Basil.Domain.Channels;
 using Basil.Domain.Login;
 using Basil.Infrastructure.Auth;
 using Basil.Infrastructure.Chat;
-using Basil.Infrastructure.Shared.Eventing;
 using Basil.Infrastructure.Shared.Http;
 using Basil.Infrastructure.Shared.Http.OpenApi;
 

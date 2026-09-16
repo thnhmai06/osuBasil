@@ -1,6 +1,6 @@
+using Basil.Application.Shared.Configuration;
 using Basil.Domain.Beatmaps;
 using Basil.Infrastructure.Auth;
-using Basil.Infrastructure.Shared.Configuration;
 using Basil.Infrastructure.Shared.Http;
 using Basil.Infrastructure.Shared.Media;
 using Basil.Infrastructure.Shared.Storage;

@@ -1,3 +1,8 @@
+using Basil.Application.Irc;
+using Basil.Application.Multiplayer;
+using Basil.Application.Sessions;
+using Basil.Application.Shared.Configuration;
+using Basil.Application.Shared.Eventing;
 using Basil.Domain.Auth;
 using Basil.Domain.Channels;
 using Basil.Domain.Content;
@@ -7,8 +12,6 @@ using Basil.Infrastructure.Chat;
 using Basil.Infrastructure.Chat.Packets;
 using Basil.Infrastructure.Irc;
 using Basil.Infrastructure.Multiplayer;
-using Basil.Infrastructure.Shared.Configuration;
-using Basil.Infrastructure.Shared.Eventing;
 using Basil.Infrastructure.Shared.Sessions;
 using Microsoft.Extensions.Options;
 using NSubstitute;

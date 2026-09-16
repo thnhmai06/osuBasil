@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using Basil.Infrastructure.Shared.Configuration;
+using Basil.Application.Shared.Configuration;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 
 namespace Basil.Host;

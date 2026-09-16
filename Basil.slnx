@@ -1,6 +1,7 @@
 <Solution>
 	<Folder Name="/Sources/">
 		<Project Path="src/Basil.Domain/Basil.Domain.csproj"/>
+		<Project Path="src/Basil.Application/Basil.Application.csproj"/>
 		<Project Path="src/Basil.Infrastructure/Basil.Infrastructure.csproj"/>
 		<Project Path="src/Basil.Host/Basil.Host.csproj"/>
 	</Folder>
@@ -19,5 +20,6 @@
 		<Project Path="tests/Basil.Host.Tests/Basil.Host.Tests.csproj"/>
 		<Project Path="tests/Basil.Protocol.Tests/Basil.Protocol.Tests.csproj"/>
 		<Project Path="tests/Basil.Infrastructure.Tests/Basil.Infrastructure.Tests.csproj"/>
+		<Project Path="tests/Basil.Application.Tests/Basil.Application.Tests.csproj"/>
 	</Folder>
 </Solution>

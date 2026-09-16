@@ -1,4 +1,9 @@
 using System.Text;
+using Basil.Application.Irc;
+using Basil.Application.Multiplayer;
+using Basil.Application.Sessions;
+using Basil.Application.Shared.Configuration;
+using Basil.Application.Shared.Eventing;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Bot;
 using Basil.Domain.Login;
@@ -10,8 +15,6 @@ using Basil.Infrastructure.Chat;
 using Basil.Infrastructure.Chat.Packets;
 using Basil.Infrastructure.Irc;
 using Basil.Infrastructure.Multiplayer;
-using Basil.Infrastructure.Shared.Configuration;
-using Basil.Infrastructure.Shared.Eventing;
 using Basil.Infrastructure.Shared.Sessions;
 using Basil.Infrastructure.Tests.Multiplayer.Packets;
 using Basil.Protocol.Irc;

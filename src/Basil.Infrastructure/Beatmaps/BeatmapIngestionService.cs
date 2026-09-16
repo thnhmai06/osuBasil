@@ -1,8 +1,8 @@
 using System.IO.Compression;
 using System.Text.RegularExpressions;
+using Basil.Application.Shared.Configuration;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
-using Basil.Infrastructure.Shared.Configuration;
 using Basil.Infrastructure.Shared.Storage;
 using Basil.Infrastructure.Shared.Storage;
 using Microsoft.Extensions.Options;

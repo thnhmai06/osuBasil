@@ -1,3 +1,6 @@
+using Basil.Application.Bot;
+using Basil.Application.Irc;
+using Basil.Application.Multiplayer;
 using Basil.Infrastructure.Bot;
 using Basil.Infrastructure.Irc;
 using Basil.Infrastructure.Multiplayer;

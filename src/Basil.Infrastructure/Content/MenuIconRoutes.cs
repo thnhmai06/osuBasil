@@ -1,5 +1,5 @@
+using Basil.Application.Shared.Configuration;
 using Basil.Infrastructure.Auth;
-using Basil.Infrastructure.Shared.Configuration;
 using Basil.Infrastructure.Shared.Http;
 using Basil.Infrastructure.Shared.Http.OpenApi;
 using Microsoft.Extensions.Options;

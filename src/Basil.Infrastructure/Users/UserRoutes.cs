@@ -1,13 +1,14 @@
 using System.Security.Cryptography;
 using System.Text;
+using Basil.Application.Sessions;
+using Basil.Application.Shared.Configuration;
+using Basil.Application.Shared.Eventing;
 using Basil.Domain.Auth;
 using Basil.Domain.Login;
 using Basil.Domain.Spectating;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Auth;
 using Basil.Infrastructure.Bot;
-using Basil.Infrastructure.Shared.Configuration;
-using Basil.Infrastructure.Shared.Eventing;
 using Basil.Infrastructure.Shared.Http;
 using Basil.Infrastructure.Shared.Http.OpenApi;
 using Basil.Infrastructure.Shared.Sessions;

@@ -1,6 +1,6 @@
 using System.IO.Compression;
+using Basil.Application.Shared.Configuration;
 using Basil.Infrastructure.Beatmaps;
-using Basil.Infrastructure.Shared.Configuration;
 using Basil.Infrastructure.Shared.Storage;
 using Basil.Infrastructure.Tests.Shared.Persistence;
 using Microsoft.Extensions.Logging.Abstractions;

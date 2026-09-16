@@ -1,4 +1,4 @@
-using Basil.Infrastructure.Shared.Eventing;
+using Basil.Application.Shared.Eventing;
 
 namespace Basil.Infrastructure.Diagnostics;
 

@@ -1,8 +1,8 @@
+using Basil.Application.Beatmaps;
+using Basil.Application.Multiplayer;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
-using Basil.Infrastructure.Beatmaps;
-using Basil.Infrastructure.Multiplayer;
 
 // ReSharper disable NotAccessedPositionalProperty.Global
 

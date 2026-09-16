@@ -1,7 +1,8 @@
+using Basil.Application.Multiplayer;
+using Basil.Application.Shared.Eventing;
 using Basil.Infrastructure.Auth;
 using Basil.Infrastructure.Multiplayer.Handlers.Countdown;
 using Basil.Infrastructure.Multiplayer.Handlers.Lifecycle;
-using Basil.Infrastructure.Shared.Eventing;
 using Basil.Infrastructure.Shared.Http;
 using Basil.Infrastructure.Shared.Http.Middleware;
 using Basil.Infrastructure.Shared.Http.OpenApi;
