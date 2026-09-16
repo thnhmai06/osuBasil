@@ -1,8 +1,8 @@
-using Basil.Server.Shared.Configuration;
-using Basil.Server.Shared.Sessions;
 using Basil.Domain.Users;
+using Basil.Host;
+using Basil.Infrastructure.Shared.Configuration;
+using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
-using Basil.Server.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

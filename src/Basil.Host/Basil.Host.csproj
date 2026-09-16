@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
 	<PropertyGroup>
-		<RootNamespace>Basil.Server.Host</RootNamespace>
+		<RootNamespace>Basil.Host</RootNamespace>
 		<SelfContained>true</SelfContained>
 		<Version>1.0.0</Version>
 		<FileVersion>1.0.0</FileVersion>
@@ -14,7 +14,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\Basil.Server\Basil.Server.csproj"/>
+		<ProjectReference Include="..\Basil.Infrastructure\Basil.Infrastructure.csproj"/>
 	</ItemGroup>
 
 	<ItemGroup>

@@ -1,0 +1,37 @@
+using Basil.Domain.Users;
+using Basil.Infrastructure.Chat.Packets;
+using Basil.Infrastructure.Shared.Sessions;
+using Basil.Protocol.Packets;
+using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
+
+namespace Basil.Infrastructure.Tests.Chat.Packets;
+
+/// <summary>Verifies the `ToggleBlockingDMs` handler toggles whether non-friend DMs are blocked.</summary>
+public class ToggleBlockNonFriendDmsHandlerTests
+{
+	private static PacketReader ValueReader(int value)
+	{
+		return new PacketReader(BinaryWriter.WriteInt32(value));
+	}
+
+	[Fact]
+	public async Task HandleAsync_ValueOne_SetsPmPrivateTrue()
+	{
+		var player = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+
+		await new ToggleBlockNonFriendDmsHandler().HandleAsync(player, ValueReader(1));
+
+		Assert.True(player.PmPrivate);
+	}
+
+	[Fact]
+	public async Task HandleAsync_ValueZero_SetsPmPrivateFalse()
+	{
+		var player = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
+			{ PmPrivate = true };
+
+		await new ToggleBlockNonFriendDmsHandler().HandleAsync(player, ValueReader(0));
+
+		Assert.False(player.PmPrivate);
+	}
+}

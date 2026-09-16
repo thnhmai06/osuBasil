@@ -1,11 +1,10 @@
-using Basil.Server.Features.Users;
-using Basil.Server.Shared.Http;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Basil.Server.Shared.Configuration;
 using Basil.Domain.Users;
-using Basil.Server.Host;
+using Basil.Host;
+using Basil.Infrastructure.Shared.Configuration;
+using Basil.Infrastructure.Users;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

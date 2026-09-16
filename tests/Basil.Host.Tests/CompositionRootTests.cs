@@ -1,0 +1,132 @@
+using Basil.Domain.Scores;
+using Basil.Infrastructure.Auth;
+using Basil.Infrastructure.Beatmaps;
+using Basil.Infrastructure.Bot;
+using Basil.Infrastructure.Chat;
+using Basil.Infrastructure.Content;
+using Basil.Infrastructure.Diagnostics;
+using Basil.Infrastructure.Irc;
+using Basil.Infrastructure.Multiplayer;
+using Basil.Infrastructure.Scores;
+using Basil.Infrastructure.Shared.Http.Bancho;
+using Basil.Infrastructure.Shared.Sessions;
+using Basil.Infrastructure.Spectating;
+using Basil.Infrastructure.Users;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
+namespace Basil.Host.Tests;
+
+/// <summary>
+///     Resolves the full Web-endpoint dependency graph (LoginService's 17 constructor deps,
+///     PacketDispatcher's 9 handlers, session registries) from the real DI container. A
+///     deep constructor graph like this is exactly what silently breaks at runtime without a test
+///     like this one — unit tests on the individual pieces can't see a missing/misconfigured
+///     registration in the composition root itself.
+/// </summary>
+public class CompositionRootTests
+{
+	private readonly ServiceProvider _provider;
+
+	public CompositionRootTests()
+	{
+		var configuration = new ConfigurationBuilder()
+			.AddInMemoryCollection(new Dictionary<string, string?>
+			{
+				["Basil:Server:Domain"] = "test.local",
+				["Basil:Bot:CommandPrefix"] = "!"
+			})
+			.Build();
+
+		var services = new ServiceCollection();
+		services.AddLogging();
+		services.AddSharedInfrastructure(configuration);
+		services.AddAuth(configuration);
+		services.AddUsers(configuration);
+		services.AddChat(configuration);
+		services.AddBot(configuration);
+		services.AddIrc(configuration);
+		services.AddMultiplayer(configuration);
+		services.AddBeatmaps(configuration);
+		services.AddScores(configuration);
+		services.AddSpectating(configuration);
+		services.AddContent(configuration);
+		services.AddDiagnostics(configuration);
+		_provider = services.BuildServiceProvider();
+	}
+
+	[Fact]
+	public void ResolvesOsuLoginUseCase()
+	{
+		Assert.NotNull(_provider.GetRequiredService<LoginService>());
+	}
+
+	[Fact]
+	public void ResolvesBanchoPacketDispatcherWithAllHandlers()
+	{
+		Assert.NotNull(_provider.GetRequiredService<PacketDispatcher>());
+		Assert.Equal(46, _provider.GetServices<IPacketHandler>().Count());
+	}
+
+	[Fact]
+	public void ResolvesPlayerLogoutServiceWithAllHandlers()
+	{
+		Assert.NotNull(_provider.GetRequiredService<PlayerLogoutService>());
+		Assert.Equal(7, _provider.GetServices<IPlayerLogoutHandler>().Count());
+	}
+
+	[Fact]
+	public void ResolvesSessionRegistriesAsSharedSingletons()
+	{
+		var gameRegistry1 = _provider.GetRequiredService<ISessionRegistry<GameSession>>();
+		var gameRegistry2 = _provider.GetRequiredService<ISessionRegistry<GameSession>>();
+		Assert.Same(gameRegistry1, gameRegistry2);
+
+		var ircRegistry1 = _provider.GetRequiredService<ISessionRegistry<IrcSession>>();
+		var ircRegistry2 = _provider.GetRequiredService<ISessionRegistry<IrcSession>>();
+		Assert.Same(ircRegistry1, ircRegistry2);
+	}
+
+	[Fact]
+	public void ResolvesScoreSubmissionUseCase()
+	{
+		Assert.NotNull(_provider.GetRequiredService<ScoreSubmissionService>());
+	}
+
+	[Fact]
+	public void ResolvesReplayServiceAndItsStorage()
+	{
+		Assert.NotNull(_provider.GetRequiredService<ReplayService>());
+		Assert.NotNull(_provider.GetRequiredService<IReplayStorage>());
+	}
+
+	[Fact]
+	public void ResolvesScoreDecryptor()
+	{
+		Assert.NotNull(_provider.GetRequiredService<IScoreDecryptor>());
+	}
+
+	[Fact]
+	public void ResolvesRuntimeMeterListenerAsTheSameHostedServiceInstance()
+	{
+		var listener = _provider.GetRequiredService<RuntimeMeterListener>();
+		Assert.Contains(_provider.GetServices<IHostedService>(), service => ReferenceEquals(service, listener));
+	}
+
+	[Fact]
+	public void ResolvesSpectatorServiceAndChannelMembershipService()
+	{
+		Assert.NotNull(_provider.GetRequiredService<SpectatorService>());
+		Assert.NotNull(_provider.GetRequiredService<ChannelMembershipService>());
+		Assert.NotNull(_provider.GetRequiredService<IrcQueryService>());
+	}
+
+	[Fact]
+	public void ResolvesMatchRegistryAsASharedSingleton()
+	{
+		var registry1 = _provider.GetRequiredService<IMatchRegistry>();
+		var registry2 = _provider.GetRequiredService<IMatchRegistry>();
+		Assert.Same(registry1, registry2);
+	}
+}

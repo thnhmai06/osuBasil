@@ -1,12 +1,13 @@
 using System.Net;
 using System.Net.Http.Json;
-using Basil.Server.Features.Beatmaps;
-using Basil.Server.Shared.Configuration;
-using Basil.Server.Shared.Http;
+using Basil.Infrastructure.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
-using Basil.Server.Host;
-using Basil.Server.Shared.Http.OpenApi;
+using Basil.Host;
+using Basil.Infrastructure.Beatmaps;
+using Basil.Infrastructure.Shared.Configuration;
+using Basil.Infrastructure.Shared.Http;
+using Basil.Infrastructure.Shared.Http.OpenApi;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -321,7 +322,7 @@ public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactor
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
 
-	// Local shadow of BeatmapsetRoutes.BeatmapDifficultyResult — that type is internal to Basil.Server, so
+	// Local shadow of BeatmapsetRoutes.BeatmapDifficultyResult — that type is internal to Basil.Infrastructure, so
 	// the test deserializes into its own matching shape instead (same pattern as ScoreEndpointTests'
 	// ScoreShape), pulling in only the fields these tests actually assert on.
 	private sealed record DifficultyResultShape(Mods Mods, BeatmapShape Beatmap);

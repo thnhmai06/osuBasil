@@ -1,10 +1,10 @@
 using System.Net;
-using Basil.Server.Features.Beatmaps;
-using Basil.Server.Features.Content;
-using Basil.Server.Shared.Configuration;
+using Basil.Infrastructure.Beatmaps;
+using Basil.Infrastructure.Content;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Content;
-using Basil.Server.Host;
+using Basil.Host;
+using Basil.Infrastructure.Shared.Configuration;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

@@ -10,7 +10,7 @@ namespace Basil.Domain.Multiplayer;
 ///     part of a live match that is business state rather than live-projection machinery.
 /// </summary>
 /// <remarks>
-///     Owned by <see cref="Basil.Server.Features.Multiplayer.MatchSession" />, which adds the
+///     Owned by <see cref="Basil.Infrastructure.Multiplayer.MatchSession" />, which adds the
 ///     per-match lock, the SSE snapshot channels and the mutation-scope machinery around it. This
 ///     type has no synchronization of its own: a read-then-mutate sequence across its members is
 ///     only safe under the owning <c>MatchSession</c>'s lock.
@@ -345,7 +345,7 @@ public sealed class MatchRoomState(
 	/// <summary>Gets the index of the first slot with <see cref="SlotStatus.Open" />, or null when every slot is occupied.</summary>
 	/// <remarks>
 	///     Reading this and then occupying the returned slot is not atomic: callers must hold the
-	///     owning <see cref="Basil.Server.Features.Multiplayer.MatchSession" />'s lock across both
+	///     owning <see cref="Basil.Infrastructure.Multiplayer.MatchSession" />'s lock across both
 	///     steps.
 	/// </remarks>
 	/// <returns>The index of a free slot, or null when all slots are occupied.</returns>

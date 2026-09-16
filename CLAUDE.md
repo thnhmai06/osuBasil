@@ -274,7 +274,7 @@ dotnet build --configuration Release
 Run Basil locally:
 
 ```bash
-dotnet run --project src/Basil.Web
+dotnet run --project src/Basil.Host
 ```
 
 Run all tests:

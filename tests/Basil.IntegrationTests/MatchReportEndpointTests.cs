@@ -1,11 +1,10 @@
 using System.Net;
-using Basil.Server.Features.Multiplayer;
-using Basil.Server.Features.Scores;
-using Basil.Server.Shared.Configuration;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
-using Basil.Server.Host;
+using Basil.Host;
+using Basil.Infrastructure.Multiplayer;
+using Basil.Infrastructure.Shared.Configuration;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

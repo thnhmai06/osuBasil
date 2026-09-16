@@ -1,3 +1,4 @@
+using Basil.Infrastructure.Shared.Configuration;
 using NetArchTest.Rules;
 
 namespace Basil.ArchitectureTests;
@@ -10,18 +11,27 @@ namespace Basil.ArchitectureTests;
 /// </summary>
 public class TransportSeamTests
 {
+	/// <summary>Every slice except <c>Irc</c>, which is a transport and not a feature.</summary>
+	private static readonly string[] BusinessSlices =
+	[
+		"Auth", "Beatmaps", "Bot", "Chat", "Content", "Diagnostics",
+		"Multiplayer", "Scores", "Spectating", "Users"
+	];
+
 	/// <summary>
-	///     Everything under <c>Features/</c> except the packet handlers (a <c>.Packets</c> namespace
-	///     in every slice) and the whole <c>Irc</c> slice, which is a transport and not a feature.
-	///     Those are the adapters the protocol exists for; everything else is business code or an
-	///     HTTP surface, and neither has a reason to know a wire format.
+	///     Everything under the business slices except the packet handlers (a <c>.Packets</c>
+	///     namespace in every slice). Those are the adapters the protocol exists for; everything
+	///     else is business code or an HTTP surface, and neither has a reason to know a wire format.
 	/// </summary>
-	private static Conditions BusinessAndApiTypes() =>
-		Types.InAssembly(typeof(Basil.Server.Shared.Configuration.ServerOptions).Assembly)
-			.That().ResideInNamespaceStartingWith("Basil.Server.Features")
+	private static Conditions BusinessAndApiTypes()
+	{
+		var businessSlicePattern = $@"^Basil\.Infrastructure\.({string.Join('|', BusinessSlices)})(\.|$)";
+
+		return Types.InAssembly(typeof(ServerOptions).Assembly)
+			.That().ResideInNamespaceMatching(businessSlicePattern)
 			.And().DoNotResideInNamespaceContaining(".Packets")
-			.And().DoNotResideInNamespaceStartingWith("Basil.Server.Features.Irc")
 			.Should();
+	}
 
 	[Fact]
 	public void Business_And_Api_Types_Should_Not_Reference_Protocol()
@@ -36,9 +46,9 @@ public class TransportSeamTests
 		// as a reminder to delete its row here.
 		string[] knownOffenders =
 		[
-			"Basil.Server.Features.Content.AnnounceRoutes",
-			"Basil.Server.Features.Multiplayer.MatchPacketDataMapper",
-			"Basil.Server.Features.Spectating.SpectateFramesEvent"
+			"Basil.Infrastructure.Content.AnnounceRoutes",
+			"Basil.Infrastructure.Multiplayer.MatchPacketDataMapper",
+			"Basil.Infrastructure.Spectating.SpectateFramesEvent"
 		];
 
 		var result = BusinessAndApiTypes()

@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 using Basil.Domain.Content;
-using Basil.Server.Features.Content;
+using Basil.Infrastructure.Content;
 
 namespace Basil.IntegrationTests;
 

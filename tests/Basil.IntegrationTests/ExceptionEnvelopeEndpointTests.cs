@@ -1,10 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
 using Basil.Domain.Users;
-using Basil.Server.Features.Users;
-using Basil.Server.Shared.Configuration;
-using Basil.Server.Host;
-using Basil.Server.Shared.Http.OpenApi;
+using Basil.Host;
+using Basil.Infrastructure.Shared.Configuration;
+using Basil.Infrastructure.Shared.Http.Middleware;
+using Basil.Infrastructure.Shared.Http.OpenApi;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,7 +15,7 @@ using NSubstitute.ExceptionExtensions;
 namespace Basil.IntegrationTests;
 
 /// <summary>
-///     Covers <see cref="Basil.Server.Shared.Http.Middleware.ExceptionLoggingMiddleware" />: an unhandled
+///     Covers <see cref="ExceptionLoggingMiddleware" />: an unhandled
 ///     exception thrown by a route handler on the <c>api.</c> host must still produce the
 ///     Enveloped Response Standard shape, not a bare, unenveloped 500.
 /// </summary>

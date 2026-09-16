@@ -9,7 +9,7 @@ namespace Basil.ArchitectureTests;
 /// </summary>
 /// <remarks>
 ///     <see cref="SliceBoundaryTests" /> stops covering a type the moment it leaves
-///     <c>Basil.Server.Features.&lt;Slice&gt;</c>, so nothing watched <c>Basil.Domain</c> before this
+///     <c>Basil.Infrastructure.&lt;Slice&gt;</c>, so nothing watched <c>Basil.Domain</c> before this
 ///     rule existed. It exists ahead of Task C1, which moves ninety-six files in there, so every
 ///     feature's move is checked as it arrives instead of all at once at the end.
 /// </remarks>

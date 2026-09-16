@@ -1,3 +1,4 @@
+using Basil.Infrastructure.Shared.Configuration;
 using NetArchTest.Rules;
 
 namespace Basil.ArchitectureTests;
@@ -9,24 +10,30 @@ namespace Basil.ArchitectureTests;
 /// </summary>
 public class SliceBoundaryTests
 {
-	private const string FeaturePrefix = "Basil.Server.Features.";
+	private const string RootPrefix = "Basil.Infrastructure.";
+
+	/// <summary>Top-level segments under <see cref="RootPrefix" /> that are not a slice.</summary>
+	private static readonly string[] NonSliceSegments = ["Shared"];
 
 	[Fact]
 	public void Slices_Should_Only_Reference_Declared_Slices()
 	{
-		var assembly = typeof(Basil.Server.Shared.Configuration.ServerOptions).Assembly;
+		var assembly = typeof(ServerOptions).Assembly;
 		var allSlices = Types.InAssembly(assembly).GetTypes()
-			.Where(t => t.Namespace?.StartsWith(FeaturePrefix, StringComparison.Ordinal) == true)
-			.Select(t => t.Namespace![FeaturePrefix.Length..].Split('.')[0])
+			.Where(t => t.Namespace?.StartsWith(RootPrefix, StringComparison.Ordinal) == true)
+			.Select(t => t.Namespace![RootPrefix.Length..].Split('.')[0])
+			.Where(segment => !NonSliceSegments.Contains(segment))
 			.Distinct()
 			.ToArray();
 
 		var violations = new List<string>();
 
 		foreach (var type in Types.InAssembly(assembly).GetTypes()
-			         .Where(t => t.Namespace?.StartsWith(FeaturePrefix, StringComparison.Ordinal) == true))
+			         .Where(t => t.Namespace?.StartsWith(RootPrefix, StringComparison.Ordinal) == true))
 		{
-			var from = type.Namespace![FeaturePrefix.Length..].Split('.')[0];
+			var from = type.Namespace![RootPrefix.Length..].Split('.')[0];
+			if (NonSliceSegments.Contains(from)) continue;
+
 			var forbidden = OtherSlices(allSlices, from, SliceAdjacency.Allowed);
 			if (forbidden.Length == 0) continue;
 
@@ -43,13 +50,13 @@ public class SliceBoundaryTests
 		Assert.True(violations.Count == 0, string.Join(Environment.NewLine, violations));
 	}
 
-	/// <summary>Returns <c>Basil.Server.Features.&lt;X&gt;</c> for every slice that is neither <paramref name="from" /> nor an allowed target of <paramref name="from" />.</summary>
+	/// <summary>Returns <c>Basil.Infrastructure.&lt;X&gt;</c> for every slice that is neither <paramref name="from" /> nor an allowed target of <paramref name="from" />.</summary>
 	private static string[] OtherSlices(string[] allSlices, string from, (string From, string To)[] allowed)
 	{
 		var allowedTargets = allowed.Where(edge => edge.From == from).Select(edge => edge.To).ToHashSet();
 		return allSlices
 			.Where(slice => slice != from && !allowedTargets.Contains(slice))
-			.Select(slice => $"{FeaturePrefix}{slice}")
+			.Select(slice => $"{RootPrefix}{slice}")
 			.ToArray();
 	}
 
@@ -81,21 +88,28 @@ public class SliceBoundaryTests
 		// its Features.Auth references (AdminKeyService, IPasswordHasher) all moved.
 		string[] knownOffenders =
 		[
-			"Basil.Server.Shared.Http.Bancho.PacketDispatcher",
-			"Basil.Server.Shared.Http.BanchoHostGroups",
-			"Basil.Server.Shared.Http.OpenApi.OpenApiExampleExtensions",
-			"Basil.Server.Shared.Http.OpenApi.SecuritySchemeTransformers",
-			"Basil.Server.Shared.Media.Assets.BeatmapsetBackgroundProvider",
-			"Basil.Server.Shared.Media.Assets.BeatmapThumbnailProvider",
-			"Basil.Server.Shared.Media.Assets.MenuIconProvider",
-			"Basil.Server.Shared.Sessions.GameSession",
-			"Basil.Server.Shared.Sessions.GhostDisconnectService",
-			"Basil.Server.Shared.Sessions.UserSession"
+			"Basil.Infrastructure.Shared.Http.Bancho.PacketDispatcher",
+			"Basil.Infrastructure.Shared.Http.BanchoHostGroups",
+			"Basil.Infrastructure.Shared.Http.OpenApi.OpenApiExampleExtensions",
+			"Basil.Infrastructure.Shared.Http.OpenApi.SecuritySchemeTransformers",
+			"Basil.Infrastructure.Shared.Media.Assets.BeatmapsetBackgroundProvider",
+			"Basil.Infrastructure.Shared.Media.Assets.BeatmapThumbnailProvider",
+			"Basil.Infrastructure.Shared.Media.Assets.MenuIconProvider",
+			"Basil.Infrastructure.Shared.Sessions.GameSession",
+			"Basil.Infrastructure.Shared.Sessions.GhostDisconnectService",
+			"Basil.Infrastructure.Shared.Sessions.UserSession"
 		];
 
-		var result = Types.InAssembly(typeof(Basil.Server.Shared.Configuration.ServerOptions).Assembly)
-			.That().ResideInNamespaceStartingWith("Basil.Server.Shared")
-			.Should().NotHaveDependencyOn("Basil.Server.Features")
+		var featureNamespaces = SliceAdjacency.Allowed
+			.Select(edge => edge.From)
+			.Concat(SliceAdjacency.Allowed.Select(edge => edge.To))
+			.Distinct()
+			.Select(slice => $"{RootPrefix}{slice}")
+			.ToArray();
+
+		var result = Types.InAssembly(typeof(ServerOptions).Assembly)
+			.That().ResideInNamespaceStartingWith($"{RootPrefix}Shared")
+			.Should().NotHaveDependencyOnAny(featureNamespaces)
 			.GetResult();
 
 		var actualOffenders = (result.FailingTypes ?? [])
@@ -123,12 +137,12 @@ public class SliceBoundaryTests
 			"Logging", "Http", "Configuration", "Media", "Storage"
 		];
 
-		const string prefix = "Basil.Server.Shared.";
-		var offenders = Types.InAssembly(typeof(Basil.Server.Shared.Configuration.ServerOptions).Assembly).GetTypes()
+		var prefix = $"{RootPrefix}Shared.";
+		var offenders = Types.InAssembly(typeof(ServerOptions).Assembly).GetTypes()
 			.Select(t => t.Namespace)
-			// A type declared directly under the bare "Basil.Server.Shared" namespace (no
+			// A type declared directly under the bare "Basil.Infrastructure.Shared" namespace (no
 			// segment at all, e.g. BasilMeter.cs) is not a segment and needs no allowlist entry.
-			.Where(n => n is not null && n != "Basil.Server.Shared" &&
+			.Where(n => n is not null && n != $"{RootPrefix}Shared" &&
 			            n.StartsWith(prefix, StringComparison.Ordinal))
 			.Select(n => n![prefix.Length..].Split('.')[0])
 			.Distinct()

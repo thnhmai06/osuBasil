@@ -1,11 +1,10 @@
 using System.IO.Compression;
 using System.Net;
-using Basil.Server.Features.Beatmaps;
-using Basil.Server.Features.Scores;
-using Basil.Server.Shared.Configuration;
+using Basil.Infrastructure.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
-using Basil.Server.Host;
+using Basil.Host;
+using Basil.Infrastructure.Shared.Configuration;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

@@ -6,12 +6,13 @@ namespace Basil.ArchitectureTests;
 
 /// <summary>
 ///     Enforces the two project-level dependency rules that survive the merge of the former
-///     Application, Infrastructure, and Web projects into <c>Basil.Server</c>: Domain stays free of
-///     the server and of persistence/web frameworks, and Protocol depends on neither.
+///     Application, Infrastructure, and Web projects into <c>Basil.Infrastructure</c> and
+///     <c>Basil.Host</c>: Domain stays free of both and of persistence/web frameworks, and
+///     Protocol depends on neither.
 /// </summary>
 /// <remarks>
-///     Rules about the boundaries <em>inside</em> <c>Basil.Server</c> -- which slice may reference
-///     which, and what <c>Shared</c> is allowed to contain -- live in
+///     Rules about the boundaries <em>inside</em> <c>Basil.Infrastructure</c> -- which slice may
+///     reference which, and what <c>Shared</c> is allowed to contain -- live in
 ///     <see cref="SliceBoundaryTests" />, because a single assembly cannot express them as
 ///     assembly-level dependencies.
 /// </remarks>
@@ -26,7 +27,7 @@ public class DependencyDirectionTests
 	{
 		var result = Types.InAssembly(DomainAssembly)
 			.Should()
-			.NotHaveDependencyOn("Basil.Server")
+			.NotHaveDependencyOnAny("Basil.Infrastructure", "Basil.Host")
 			.GetResult();
 
 		Assert.True(result.IsSuccessful, FailureMessage(result));
@@ -52,7 +53,7 @@ public class DependencyDirectionTests
 	{
 		var result = Types.InAssembly(ProtocolBanchoAssembly)
 			.Should()
-			.NotHaveDependencyOnAny("Basil.Domain", "Basil.Server")
+			.NotHaveDependencyOnAny("Basil.Domain", "Basil.Infrastructure", "Basil.Host")
 			.GetResult();
 
 		Assert.True(result.IsSuccessful, FailureMessage(result));
@@ -63,7 +64,7 @@ public class DependencyDirectionTests
 	{
 		var result = Types.InAssembly(ProtocolIrcAssembly)
 			.Should()
-			.NotHaveDependencyOnAny("Basil.Domain", "Basil.Server")
+			.NotHaveDependencyOnAny("Basil.Domain", "Basil.Infrastructure", "Basil.Host")
 			.GetResult();
 
 		Assert.True(result.IsSuccessful, FailureMessage(result));

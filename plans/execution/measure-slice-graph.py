@@ -43,7 +43,8 @@ import sys
 from collections import defaultdict
 
 SRC = "src"
-FEATURES = os.path.join("src", "Basil.Server", "Features")
+FEATURES = os.path.join("src", "Basil.Infrastructure")
+NON_SLICE_DIRS = {"Shared"}
 BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.S)
 LINE_COMMENT = re.compile(r"//[^\n]*")
 
@@ -55,7 +56,10 @@ def strip_comments(text):
 
 def slice_names():
     """The slices, taken from the directories under Features/."""
-    return sorted(d for d in os.listdir(FEATURES) if os.path.isdir(os.path.join(FEATURES, d)))
+    return sorted(
+        d for d in os.listdir(FEATURES)
+        if os.path.isdir(os.path.join(FEATURES, d)) and d not in NON_SLICE_DIRS
+    )
 
 
 def owner_of(path, names):

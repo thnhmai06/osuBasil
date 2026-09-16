@@ -51,9 +51,9 @@ public sealed class StartupSettings
 public sealed class LoginSettings : ScenarioSettings
 {
 	/// <summary>
-	///     Mirrors <c>LoginService.ReloginGuardWindowSeconds</c> in Basil.Server. Duplicated rather
-	///     than referenced: Basil.Server merged the old Application/Infrastructure projects and
-	///     became a self-contained executable, which the SDK refuses to let a non-self-contained
+	///     Mirrors <c>LoginService.ReloginGuardWindowSeconds</c> in Basil.Infrastructure. Duplicated rather
+	///     than referenced: the harness would need to reference Basil.Host to reach it transitively, and
+	///     Basil.Host is a self-contained executable, which the SDK refuses to let a non-self-contained
 	///     project (this harness) reference (see the <c>ProjectReference</c> comment in
 	///     Basil.LoadTests.csproj). Keep this in sync if the server's guard window changes.
 	/// </summary>

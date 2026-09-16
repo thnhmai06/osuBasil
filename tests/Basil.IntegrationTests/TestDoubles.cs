@@ -1,14 +1,12 @@
-using Basil.Server.Features.Auth;
 using System.Text;
 using Basil.Domain.Auth;
-using Basil.Server.Features.Beatmaps;
-using Basil.Server.Features.Chat;
-using Basil.Server.Features.Content;
-using Basil.Server.Features.Users;
+using Basil.Infrastructure.Beatmaps;
+using Basil.Infrastructure.Content;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Channels;
 using Basil.Domain.Content;
 using Basil.Domain.Users;
+using Basil.Infrastructure.Auth;
 using NSubstitute;
 
 namespace Basil.IntegrationTests;

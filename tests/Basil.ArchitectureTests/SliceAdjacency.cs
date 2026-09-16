@@ -13,7 +13,7 @@ namespace Basil.ArchitectureTests;
 /// <remarks>
 ///     This list was derived empirically: starting from an empty allowlist, running
 ///     <see cref="SliceBoundaryTests.Slices_Should_Only_Reference_Declared_Slices" /> against the
-///     real, already-merged <c>Basil.Server</c> assembly, and adding back only the edges the
+///     real, already-merged <c>Basil.Infrastructure</c> assembly, and adding back only the edges the
 ///     codebase actually exercises. Every edge below names the file(s) that need it.
 /// </remarks>
 internal static class SliceAdjacency

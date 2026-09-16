@@ -1,0 +1,115 @@
+using Basil.Domain.Channels;
+using Basil.Domain.Login;
+using Basil.Domain.Users;
+using Basil.Infrastructure.Bot;
+using Basil.Infrastructure.Chat;
+using Basil.Infrastructure.Chat.Packets;
+using Basil.Infrastructure.Irc;
+using Basil.Infrastructure.Multiplayer;
+using Basil.Infrastructure.Shared.Configuration;
+using Basil.Infrastructure.Shared.Eventing;
+using Basil.Infrastructure.Shared.Sessions;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using NSubstitute;
+
+namespace Basil.Infrastructure.Tests.Bot;
+
+public class BotBootstrapServiceTests
+{
+	private readonly IChannelRegistry _channelRegistry = Substitute.For<IChannelRegistry>();
+	private readonly ISessionRegistry<GameSession> _sessionRegistry = Substitute.For<ISessionRegistry<GameSession>>();
+	private readonly IUserRepository _users = Substitute.For<IUserRepository>();
+
+	private static User MakeUser(string name)
+	{
+		return new User(0, name, Country.Xx, UserPrivileges.Unrestricted, default);
+	}
+
+	[Fact]
+	public async Task BootstrapAsync_BotUserMissing_ReturnsNull()
+	{
+		_users.FetchByIdAsync(0, Arg.Any<CancellationToken>()).Returns((User?)null);
+		var service = new BotBootstrapService(_users, _sessionRegistry, _channelRegistry,
+			new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(),
+				_channelRegistry, new ChatNotifier(Options.Create(new IrcOptions())), new ChannelNotifier(_sessionRegistry,Substitute.For<ISessionRegistry<IrcSession>>(), Options.Create(new IrcOptions())), Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
+				Options.Create(new IrcOptions())),
+			Options.Create(new BotOptions { CommandPrefix = "!" }), NullLogger<BotBootstrapService>.Instance);
+
+		var result = await service.BootstrapAsync();
+
+		Assert.Null(result);
+		_sessionRegistry.DidNotReceiveWithAnyArgs().TryAdd(null!);
+	}
+
+	[Fact]
+	public async Task BootstrapAsync_NameMatchesConfig_RegistersSessionMarkedAsBot()
+	{
+		_users.FetchByIdAsync(0, Arg.Any<CancellationToken>()).Returns(MakeUser("BasilBot"));
+		var service = new BotBootstrapService(_users, _sessionRegistry, _channelRegistry,
+			new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(),
+				_channelRegistry, new ChatNotifier(Options.Create(new IrcOptions())), new ChannelNotifier(_sessionRegistry,Substitute.For<ISessionRegistry<IrcSession>>(), Options.Create(new IrcOptions())), Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
+				Options.Create(new IrcOptions())),
+			Options.Create(new BotOptions { CommandPrefix = "!" }), NullLogger<BotBootstrapService>.Instance);
+
+		var result = await service.BootstrapAsync();
+
+		Assert.NotNull(result);
+		Assert.True(result.IsBot);
+		Assert.Equal("BasilBot", result.Name);
+		_sessionRegistry.Received(1).TryAdd(result);
+		await _users.DidNotReceiveWithAnyArgs().UpdateNameAsync(0, null!);
+	}
+
+	[Fact]
+	public async Task BootstrapAsync_ConfiguredNameDiffers_RenamesUserAndUsesNewName()
+	{
+		_users.FetchByIdAsync(0, Arg.Any<CancellationToken>()).Returns(MakeUser("BasilBot"));
+		var service = new BotBootstrapService(_users, _sessionRegistry, _channelRegistry,
+			new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(),
+				_channelRegistry, new ChatNotifier(Options.Create(new IrcOptions())), new ChannelNotifier(_sessionRegistry,Substitute.For<ISessionRegistry<IrcSession>>(), Options.Create(new IrcOptions())), Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
+				Options.Create(new IrcOptions())),
+			Options.Create(new BotOptions { Name = "TourneyBot", CommandPrefix = "!" }),
+			NullLogger<BotBootstrapService>.Instance);
+
+		var result = await service.BootstrapAsync();
+
+		Assert.Equal("TourneyBot", result!.Name);
+		await _users.Received(1).UpdateNameAsync(0, "TourneyBot", Arg.Any<CancellationToken>());
+	}
+
+	[Fact]
+	public async Task BootstrapAsync_JoinsAllAutoJoinChannels()
+	{
+		_users.FetchByIdAsync(0, Arg.Any<CancellationToken>()).Returns(MakeUser("BasilBot"));
+		var osu = new ChannelSession(1, "#osu", 0, 0, true);
+		_channelRegistry.AutoJoinChannels.Returns([osu]);
+		var service = new BotBootstrapService(_users, _sessionRegistry, _channelRegistry,
+			new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(),
+				_channelRegistry, new ChatNotifier(Options.Create(new IrcOptions())), new ChannelNotifier(_sessionRegistry,Substitute.For<ISessionRegistry<IrcSession>>(), Options.Create(new IrcOptions())), Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
+				Options.Create(new IrcOptions())),
+			Options.Create(new BotOptions { CommandPrefix = "!" }), NullLogger<BotBootstrapService>.Instance);
+
+		var result = await service.BootstrapAsync();
+
+		Assert.True(result!.InChannel("#osu"));
+		Assert.True(osu.Contains(0));
+	}
+
+	[Fact]
+	public async Task BootstrapAsync_ConfiguredCountry_SetsCountryOnSession()
+	{
+		_users.FetchByIdAsync(0, Arg.Any<CancellationToken>()).Returns(MakeUser("BasilBot"));
+		var service = new BotBootstrapService(_users, _sessionRegistry, _channelRegistry,
+			new ChannelMembershipService(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(),
+				_channelRegistry, new ChatNotifier(Options.Create(new IrcOptions())), new ChannelNotifier(_sessionRegistry,Substitute.For<ISessionRegistry<IrcSession>>(), Options.Create(new IrcOptions())), Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
+				Options.Create(new IrcOptions())),
+			Options.Create(new BotOptions { Name = "BasilBot", Country = "jp", CommandPrefix = "!" }),
+			NullLogger<BotBootstrapService>.Instance);
+
+		var result = await service.BootstrapAsync();
+
+		Assert.NotNull(result);
+		Assert.Equal(Country.Jp, result.Country);
+	}
+}
