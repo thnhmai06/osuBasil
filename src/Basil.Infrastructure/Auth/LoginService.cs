@@ -19,7 +19,6 @@ using Basil.Domain.Users;
 using Basil.Infrastructure.Bot;
 using Basil.Infrastructure.Content;
 using Basil.Infrastructure.Shared.Http;
-using Basil.Infrastructure.Shared.Http.Bancho;
 using Basil.Infrastructure.Shared.Sessions;
 using Basil.Infrastructure.Spectating;
 using Microsoft.Extensions.Options;

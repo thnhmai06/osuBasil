@@ -1,8 +1,6 @@
 using Basil.Application.Multiplayer;
 using Basil.Application.Shared.Configuration;
 using Basil.Domain.Multiplayer;
-using Basil.Infrastructure.Multiplayer.Packets;
-using Basil.Infrastructure.Shared.Http.Bancho;
 using Basil.Infrastructure.Shared.Persistence;
 using Microsoft.Extensions.Options;
 
@@ -19,36 +17,9 @@ public static class MultiplayerServiceCollectionExtensions
 	{
 		services.AddMultiplayerApplication();
 
-		services.AddSingleton<IMatchNotifier, BanchoMatchNotifier>();
-
 		services.AddSingleton<IMatchRepository>(sp =>
 			new SqliteMatchRepository(BuildConnectionString(sp),
 				sp.GetRequiredService<ILogger<SqliteMatchRepository>>()));
-
-		services.AddSingleton<IPacketHandler, CreateMatchHandler>();
-		services.AddSingleton<IPacketHandler, JoinMatchHandler>();
-		services.AddSingleton<IPacketHandler, PartMatchHandler>();
-		services.AddSingleton<IPacketHandler, MatchChangeSlotHandler>();
-		services.AddSingleton<IPacketHandler, MatchReadyHandler>();
-		services.AddSingleton<IPacketHandler, MatchLockHandler>();
-		services.AddSingleton<IPacketHandler, MatchChangeSettingsHandler>();
-		services.AddSingleton<IPacketHandler, MatchStartHandler>();
-		services.AddSingleton<IPacketHandler, MatchChangeModsHandler>();
-		services.AddSingleton<IPacketHandler, MatchLoadCompleteHandler>();
-		services.AddSingleton<IPacketHandler, MatchNoBeatmapHandler>();
-		services.AddSingleton<IPacketHandler, MatchNotReadyHandler>();
-		services.AddSingleton<IPacketHandler, MatchFailedHandler>();
-		services.AddSingleton<IPacketHandler, MatchHasBeatmapHandler>();
-		services.AddSingleton<IPacketHandler, MatchSkipRequestHandler>();
-		services.AddSingleton<IPacketHandler, MatchTransferHostHandler>();
-		services.AddSingleton<IPacketHandler, MatchChangeTeamHandler>();
-		services.AddSingleton<IPacketHandler, MatchChangePasswordHandler>();
-		services.AddSingleton<IPacketHandler, MatchScoreUpdateHandler>();
-		services.AddSingleton<IPacketHandler, MatchCompleteHandler>();
-		services.AddSingleton<IPacketHandler, MatchInviteHandler>();
-		services.AddSingleton<IPacketHandler, TourneyMatchInfoRequestHandler>();
-		services.AddSingleton<IPacketHandler, TourneyMatchJoinChannelHandler>();
-		services.AddSingleton<IPacketHandler, TourneyMatchLeaveChannelHandler>();
 
 		services.AddSingleton<MatchRoundEndOutbox>();
 		services.AddSingleton<IMatchRoundEndOutbox>(sp => sp.GetRequiredService<MatchRoundEndOutbox>());

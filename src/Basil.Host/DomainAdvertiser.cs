@@ -1,6 +1,5 @@
 using System.Net.Sockets;
 using Basil.Application.Shared.Configuration;
-using Basil.Infrastructure.Shared.Http;
 using Makaretu.Dns;
 using Microsoft.Extensions.Options;
 
@@ -23,7 +22,7 @@ internal sealed class DomainAdvertiser(
 	IOptions<ServerOptions> serverOptions,
 	ILogger<DomainAdvertiser> logger) : IHostedService, IDisposable
 {
-	private readonly string[] _names = [.. BanchoHostGroups.HostNamesFor(serverOptions.Value.Domain)];
+	private readonly string[] _names = [.. HostGroups.HostNamesFor(serverOptions.Value.Domain)];
 	private MulticastService? _mdns;
 
 	/// <inheritdoc />

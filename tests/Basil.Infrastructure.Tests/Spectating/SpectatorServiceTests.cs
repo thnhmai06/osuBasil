@@ -5,11 +5,11 @@ using Basil.Application.Shared.Configuration;
 using Basil.Application.Shared.Eventing;
 using Basil.Domain.Users;
 using Basil.Application.Chat;
-using Basil.Infrastructure.Chat.Packets;
+using Basil.Host.Bancho.Chat.Packets;
 using Basil.Infrastructure.Multiplayer;
 using Basil.Infrastructure.Shared.Sessions;
 using Basil.Application.Spectating;
-using Basil.Infrastructure.Spectating.Packets;
+using Basil.Host.Bancho.Spectating.Packets;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -32,7 +32,7 @@ public class SpectatorServiceTests
 				new ChatNotifier(Options.Create(new IrcOptions())),
 				new ChannelNotifier(_gameRegistry, _ircRegistry, Options.Create(new IrcOptions())),
 				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions())),
-			new BanchoSpectatorNotifier(),
+			new SpectatorNotifier(),
 			NullLogger<SpectatorService>.Instance);
 	}
 

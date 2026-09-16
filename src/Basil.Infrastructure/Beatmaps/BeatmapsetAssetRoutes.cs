@@ -309,9 +309,9 @@ internal static class BeatmapsetAssetRoutes
 	private static async Task<IResult> HandleAudioPreview(int beatmapsetId, IBeatmapRepository beatmaps,
 		IBeatmapsetRepository beatmapsetRepository, IOptions<StorageOptions> storage,
 		BeatmapsetAssetCache assetCache, MirrorService mirror, IResponseCache cache, IAudioExtractor extractor,
-		ILogger<BanchoHostGroupsLog> logger, CancellationToken cancellationToken)
+		ILogger<BeatmapsetAssetBuilderLog> logger, CancellationToken cancellationToken)
 	{
-		var (clip, failed) = await BanchoHostGroups.BuildAudioPreviewAsync(beatmapsetId, beatmaps, beatmapsetRepository,
+		var (clip, failed) = await BeatmapsetAssetBuilder.BuildAudioPreviewAsync(beatmapsetId, beatmaps, beatmapsetRepository,
 			storage, assetCache, cache, extractor, logger, cancellationToken);
 		if (failed) return Results.Problem("Audio preview extraction is temporarily unavailable.", statusCode: 503);
 		if (clip is not null) return Results.File(clip, "audio/mpeg");
@@ -339,7 +339,7 @@ internal static class BeatmapsetAssetRoutes
 		IBeatmapsetRepository beatmapsetRepository, IOptions<StorageOptions> storage, MirrorService mirror,
 		CancellationToken cancellationToken, int noVideo = 0)
 	{
-		var osz = await BanchoHostGroups.BuildBeatmapsetArchiveAsync(beatmaps, storage.Value, beatmapsetId,
+		var osz = await BeatmapsetAssetBuilder.BuildBeatmapsetArchiveAsync(beatmaps, storage.Value, beatmapsetId,
 			noVideo != 0, cancellationToken);
 		if (osz is not null)
 			return Results.File(osz.Value.Bytes, ContentTypes.Resolve(osz.Value.FileName), osz.Value.FileName);

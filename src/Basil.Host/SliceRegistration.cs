@@ -1,5 +1,7 @@
 using Basil.Application.Irc;
 using Basil.Application.Shared.Configuration;
+using Basil.Host.Bancho;
+using Basil.Host.Bancho.Shared.Http;
 using Basil.Host.Irc;
 using Basil.Infrastructure.Auth;
 using Basil.Infrastructure.Beatmaps;
@@ -33,6 +35,7 @@ internal static class SliceRegistration
 		builder.Services.AddBot(builder.Configuration);
 		builder.Services.AddIrcApplication(builder.Configuration);
 		builder.Services.AddIrcHost();
+		builder.Services.AddBanchoHost();
 		builder.Services.AddMultiplayer(builder.Configuration);
 		builder.Services.AddBeatmaps(builder.Configuration);
 		builder.Services.AddScores(builder.Configuration);
@@ -52,7 +55,7 @@ internal static class SliceRegistration
 	public static void MapAll(WebApplication app)
 	{
 		var domain = app.Configuration.GetSection(ServerOptions.SectionName)["Domain"] ?? "localhost";
-		var hosts = BanchoHostGroups.Create(app, domain);
+		var hosts = HostGroups.Create(app, domain);
 
 		hosts.Bancho.MapBanchoGroup();
 		hosts.OsuWeb.MapOsuWebGroup();

@@ -11,6 +11,14 @@ namespace Basil.Application.Irc;
 ///     QUIT, and numerics are IRC-only and ignored here, because bancho clients already receive
 ///     channel presence through ChannelInfo rather than per-user join and part events.
 /// </summary>
+/// <remarks>
+///     Stays in <c>Basil.Application</c> rather than moving to <c>Basil.Host.Bancho</c> with the
+///     rest of the bancho packet-transport seam (Batch 11): <see cref="GameSession" />'s constructor
+///     self-wires this as its default <see cref="IIrcConnection" />, which needs a concrete type
+///     Application can construct directly. Its <c>Basil.Protocol</c> dependency is exactly why it
+///     stays on <see cref="Basil.ArchitectureTests.TransportSeamTests" />'s pinned exception list
+///     instead.
+/// </remarks>
 public sealed class BanchoIrcBridgeConnection(GameSession userSession) : IIrcConnection
 {
 	/// <summary>Gets the user session this bridge sends chat on behalf of.</summary>

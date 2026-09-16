@@ -1,8 +1,6 @@
 using Basil.Application.Chat;
 using Basil.Application.Shared.Configuration;
 using Basil.Domain.Channels;
-using Basil.Infrastructure.Chat.Packets;
-using Basil.Infrastructure.Shared.Http.Bancho;
 using Basil.Infrastructure.Shared.Persistence;
 using Basil.Application.Channels;
 using Microsoft.Extensions.Options;
@@ -20,20 +18,9 @@ public static class ChatServiceCollectionExtensions
 	{
 		services.AddChatApplication();
 
-		services.AddSingleton<IChatNotifier, ChatNotifier>();
-		services.AddSingleton<IChannelNotifier, ChannelNotifier>();
-
 		services.AddSingleton<IChannelRegistry, InMemoryChannelRegistry>();
 
 		services.AddSingleton<IChannelRepository>(sp => new SqliteChannelRepository(BuildConnectionString(sp)));
-
-		services.AddSingleton<IPacketHandler, ChannelJoinHandler>();
-		services.AddSingleton<IPacketHandler, ChannelPartHandler>();
-		services.AddSingleton<IPacketHandler, LobbyJoinHandler>();
-		services.AddSingleton<IPacketHandler, LobbyPartHandler>();
-		services.AddSingleton<IPacketHandler, SendPublicMessageHandler>();
-		services.AddSingleton<IPacketHandler, SendPrivateMessageHandler>();
-		services.AddSingleton<IPacketHandler, ToggleBlockNonFriendDmsHandler>();
 
 		services.AddHostedService<ChatMetricsPublisher>();
 

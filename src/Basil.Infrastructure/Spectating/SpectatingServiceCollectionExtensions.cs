@@ -1,6 +1,4 @@
 using Basil.Application.Spectating;
-using Basil.Infrastructure.Shared.Http.Bancho;
-using Basil.Infrastructure.Spectating.Packets;
 
 namespace Basil.Infrastructure.Spectating;
 
@@ -14,13 +12,6 @@ public static class SpectatingServiceCollectionExtensions
 	public static IServiceCollection AddSpectating(this IServiceCollection services, IConfiguration configuration)
 	{
 		services.AddSpectatingApplication();
-
-		services.AddSingleton<ISpectatorNotifier, BanchoSpectatorNotifier>();
-
-		services.AddSingleton<IPacketHandler, StartSpectatingHandler>();
-		services.AddSingleton<IPacketHandler, StopSpectatingHandler>();
-		services.AddSingleton<IPacketHandler, SpectateFramesHandler>();
-		services.AddSingleton<IPacketHandler, CantSpectateHandler>();
 
 		return services;
 	}

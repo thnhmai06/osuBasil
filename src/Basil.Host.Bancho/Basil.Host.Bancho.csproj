@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<Using Include="Microsoft.AspNetCore.Builder"/>
+		<Using Include="Microsoft.AspNetCore.Http"/>
+		<Using Include="Microsoft.AspNetCore.Routing"/>
+		<Using Include="Microsoft.Extensions.DependencyInjection"/>
+		<Using Include="Microsoft.Extensions.Hosting"/>
+		<Using Include="Microsoft.Extensions.Logging"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Basil.Application\Basil.Application.csproj"/>
+		<ProjectReference Include="..\Basil.Infrastructure\Basil.Infrastructure.csproj"/>
+		<ProjectReference Include="..\Basil.Protocol.Bancho\Basil.Protocol.Bancho.csproj"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Basil.Host.Bancho.Tests"/>
+	</ItemGroup>
+
+</Project>

@@ -15,8 +15,8 @@ using Basil.Domain.Channels;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Chat.Packets;
-using Basil.Infrastructure.Multiplayer.Packets;
+using Basil.Host.Bancho.Chat.Packets;
+using Basil.Host.Bancho.Multiplayer.Packets;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -30,7 +30,7 @@ namespace Basil.Infrastructure.Tests.Multiplayer.Packets;
 ///     Shared fakes/helpers for the ~19 match packet handler test files, avoiding one copy of the same plumbing per
 ///     file.
 /// </summary>
-internal static class MultiplayerTestSupport
+public static class MultiplayerTestSupport
 {
 	public static GameSession MakePlayer(int id, string name)
 	{
@@ -344,7 +344,7 @@ internal static class MultiplayerTestSupport
 				new ChatNotifier(Options.Create(new IrcOptions())), ChannelNotifier,
 				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
 
-			MatchNotifier = new BanchoMatchNotifier(ChannelRegistry, ChannelMembership);
+			MatchNotifier = new Basil.Host.Bancho.Multiplayer.Packets.MatchNotifier(ChannelRegistry, ChannelMembership);
 			MatchBroadcast = new MatchBroadcast(ChannelRegistry, ChannelMembership, MatchNotifier,
 				new ChatNotifier(Options.Create(new IrcOptions())),
 				SessionRegistry,
@@ -397,7 +397,7 @@ internal static class MultiplayerTestSupport
 		public ChannelMembershipService ChannelMembership { get; }
 		public MatchMembership MatchMembership { get; }
 		public MatchLifecycle MatchLifecycle { get; }
-		public BanchoMatchNotifier MatchNotifier { get; }
+		public Basil.Host.Bancho.Multiplayer.Packets.MatchNotifier MatchNotifier { get; }
 		public MatchBroadcast MatchBroadcast { get; }
 		public SetTeamHandler SetTeamHandler { get; }
 		public SetSlotsHandler SetSlotsHandler { get; }

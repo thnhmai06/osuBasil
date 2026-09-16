@@ -99,12 +99,12 @@ internal static class BeatmapAssetRoutes
 	private static async Task<IResult> HandleAudioPreview(int setId, IBeatmapRepository beatmaps,
 		IBeatmapsetRepository beatmapsetRepository, IOptions<StorageOptions> storage,
 		BeatmapsetAssetCache assetCache, MirrorService mirror, IResponseCache cache, IAudioExtractor extractor,
-		HttpRequest request, ILogger<BanchoHostGroupsLog> logger, CancellationToken cancellationToken)
+		HttpRequest request, ILogger<BeatmapsetAssetBuilderLog> logger, CancellationToken cancellationToken)
 	{
 		var beatmapset = await beatmapsetRepository.FetchByIdAsync(setId, cancellationToken);
 		if (beatmapset is null || beatmapset.IsPrivate) return Results.NotFound();
 
-		var (clip, failed) = await BanchoHostGroups.BuildAudioPreviewAsync(setId, beatmaps, beatmapsetRepository,
+		var (clip, failed) = await BeatmapsetAssetBuilder.BuildAudioPreviewAsync(setId, beatmaps, beatmapsetRepository,
 			storage, assetCache, cache, extractor, logger, cancellationToken);
 		if (failed) return Results.Problem("Audio preview extraction is temporarily unavailable.", statusCode: 503);
 		if (clip is not null) return Results.File(clip, ContentTypes.Resolve(ResponseCacheKeys.Preview(setId)));

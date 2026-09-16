@@ -28,6 +28,9 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\Basil.Host.Irc\Basil.Host.Irc.csproj"/>
+		<!-- Wires real bancho packet-transport notifiers (ChatNotifier, ChannelNotifier, MatchNotifier,
+		     SpectatorNotifier) alongside the IRC bridge to test cross-transport chat end to end. -->
+		<ProjectReference Include="..\..\src\Basil.Host.Bancho\Basil.Host.Bancho.csproj"/>
 	</ItemGroup>
 
 </Project>

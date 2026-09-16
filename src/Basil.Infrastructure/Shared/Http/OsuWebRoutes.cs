@@ -189,7 +189,7 @@ internal static class OsuWebRoutes
 					{
 						var maps = context.RequestServices.GetRequiredService<IBeatmapRepository>();
 						var storage = context.RequestServices.GetRequiredService<IOptions<StorageOptions>>().Value;
-						var osz = await BanchoHostGroups.BuildBeatmapsetArchiveAsync(maps, storage, setId, noVideo,
+						var osz = await BeatmapsetAssetBuilder.BuildBeatmapsetArchiveAsync(maps, storage, setId, noVideo,
 							cancellationToken);
 						if (osz is not null)
 							return Results.File(osz.Value.Bytes, ContentTypes.Resolve(osz.Value.FileName),

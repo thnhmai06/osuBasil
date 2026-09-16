@@ -92,9 +92,11 @@ public class SliceBoundaryTests
 		// GameSession dependency is now Basil.Application.Sessions/Irc, not a Features slice.
 		// OpenApiExampleExtensions dropped out in Batch 6: its last Features reference,
 		// Spectating.SpectateFramesEvent, moved to Basil.Application.Spectating.
+		// BanchoHostGroups dropped out during Batch 11: it split into HostGroups (Basil.Host, builds
+		// every route group, out of scope for this test entirely) and BeatmapsetAssetBuilder (stays
+		// here, but its archive/audio-preview work never touched a Features slice to begin with).
 		string[] knownOffenders =
 		[
-			"Basil.Infrastructure.Shared.Http.BanchoHostGroups",
 			"Basil.Infrastructure.Shared.Http.OpenApi.SecuritySchemeTransformers",
 			"Basil.Infrastructure.Shared.Media.Assets.BeatmapsetBackgroundProvider",
 			"Basil.Infrastructure.Shared.Media.Assets.BeatmapThumbnailProvider",

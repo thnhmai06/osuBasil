@@ -1,5 +1,3 @@
-using Basil.Infrastructure.Shared.Http;
-
 namespace Basil.Host.Tests;
 
 /// <summary>
@@ -10,7 +8,7 @@ public class DomainAdvertisementTests
 	[Fact]
 	public void EveryServedHostNameIsOfferedForTheConfiguredDomain()
 	{
-		var names = BanchoHostGroups.HostNamesFor("basil.local");
+		var names = HostGroups.HostNamesFor("basil.local");
 
 		Assert.Equal(
 		[
@@ -27,7 +25,7 @@ public class DomainAdvertisementTests
 	[Fact]
 	public void NoPpyShHostIsEverOffered()
 	{
-		var names = BanchoHostGroups.HostNamesFor("basil.local");
+		var names = HostGroups.HostNamesFor("basil.local");
 
 		Assert.DoesNotContain(names, name => name.EndsWith("ppy.sh", StringComparison.OrdinalIgnoreCase));
 	}

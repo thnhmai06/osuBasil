@@ -1,9 +1,7 @@
 using Basil.Application.Shared.Configuration;
 using Basil.Domain.Social;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Shared.Http.Bancho;
 using Basil.Infrastructure.Shared.Persistence;
-using Basil.Infrastructure.Users.Packets;
 using Basil.Application.Users;
 using Basil.Application.Social;
 using Microsoft.Extensions.Caching.Memory;
@@ -35,18 +33,6 @@ public static class UsersServiceCollectionExtensions
 		services.AddSingleton<IUserLogRepository>(sp =>
 			new SqliteUserLogRepository(BuildConnectionString(sp),
 				sp.GetRequiredService<ILogger<SqliteUserLogRepository>>()));
-
-		services.AddSingleton<IPacketHandler, PingHandler>();
-		services.AddSingleton<IPacketHandler, LogoutHandler>();
-		services.AddSingleton<IPacketHandler, ChangeActionHandler>();
-		services.AddSingleton<IPacketHandler, RequestStatusUpdateHandler>();
-		services.AddSingleton<IPacketHandler, UserStatsRequestHandler>();
-		services.AddSingleton<IPacketHandler, UserPresenceRequestHandler>();
-		services.AddSingleton<IPacketHandler, UserPresenceRequestAllHandler>();
-		services.AddSingleton<IPacketHandler, ReceiveUpdatesHandler>();
-		services.AddSingleton<IPacketHandler, SetAwayMessageHandler>();
-		services.AddSingleton<IPacketHandler, FriendAddHandler>();
-		services.AddSingleton<IPacketHandler, FriendRemoveHandler>();
 
 		return services;
 	}

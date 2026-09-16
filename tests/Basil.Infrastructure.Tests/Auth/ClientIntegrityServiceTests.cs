@@ -4,7 +4,7 @@ using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Application.Auth;
 using Basil.Application.Bot;
-using Basil.Infrastructure.Chat.Packets;
+using Basil.Host.Bancho.Chat.Packets;
 using Basil.Infrastructure.Shared.Sessions;
 using Basil.Infrastructure.Tests.Multiplayer.Packets;
 using Basil.Protocol.Packets;

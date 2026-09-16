@@ -8,7 +8,7 @@ using Basil.Domain.Beatmaps;
 using Basil.Domain.Client;
 using Basil.Domain.Users;
 using Basil.Application.Content;
-using Basil.Infrastructure.Chat.Packets;
+using Basil.Host.Bancho.Chat.Packets;
 using Basil.Infrastructure.Content;
 using Basil.Infrastructure.Tests.Multiplayer.Packets;
 using Basil.Protocol.Irc;

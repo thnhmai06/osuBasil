@@ -11,9 +11,10 @@ using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Application.Bot;
 using Basil.Application.Chat;
-using Basil.Infrastructure.Chat.Packets;
+using Basil.Host.Bancho.Chat.Packets;
 using Basil.Infrastructure.Multiplayer;
-using Basil.Infrastructure.Multiplayer.Packets;
+using Basil.Host.Bancho.Multiplayer;
+using Basil.Host.Bancho.Multiplayer.Packets;
 using Basil.Infrastructure.Shared.Sessions;
 using Basil.Infrastructure.Tests.Multiplayer.Packets;
 using Basil.Protocol.Irc;
@@ -66,16 +67,16 @@ public class MatchMembershipServiceTests
 			new ChannelNotifier(_gameRegistry, _ircRegistry, Options.Create(new IrcOptions())),
 			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
 		var broadcast = new MatchBroadcast(_channelRegistry, channelMembership,
-			new BanchoMatchNotifier(_channelRegistry, channelMembership),
+			new MatchNotifier(_channelRegistry, channelMembership),
 			new ChatNotifier(Options.Create(new IrcOptions())), _gameRegistry, _ircRegistry, _hub,
 			_beatmapRepository, _userRepository);
 		var serviceProvider = Substitute.For<IServiceProvider>();
 		var lifecycle = new MatchLifecycle(_matchRegistry, _channelRegistry, channelMembership,
-			new BanchoMatchNotifier(_channelRegistry, channelMembership), _gameRegistry,
+			new MatchNotifier(_channelRegistry, channelMembership), _gameRegistry,
 			_matchRepository, _roundEndOutbox, _hub, _beatmapRepository, broadcast, serviceProvider,
 			NullLogger<MatchLifecycle>.Instance);
 		var membership = new MatchMembership(_channelRegistry, _gameRegistry, channelMembership,
-			new BanchoMatchNotifier(_channelRegistry, channelMembership), _matchRepository,
+			new MatchNotifier(_channelRegistry, channelMembership), _matchRepository,
 			lifecycle, NullLogger<MatchMembership>.Instance);
 		serviceProvider.GetService(typeof(MatchMembership)).Returns(membership);
 		return (membership, lifecycle, broadcast);

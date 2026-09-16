@@ -1,7 +1,6 @@
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
 using Basil.Application.Shared.Eventing;
-using Basil.Infrastructure.Shared.Http.Bancho;
 using Basil.Infrastructure.Shared.Media;
 using Basil.Infrastructure.Shared.Sessions;
 using Basil.Infrastructure.Shared.Storage;
@@ -14,8 +13,8 @@ public static class SharedInfrastructureServiceCollectionExtensions
 {
 	/// <summary>
 	///     Registers every <c>Shared/</c> service into the container: options binding, the SQLite
-	///     connection string's dependencies, the packet dispatcher, session registries, the shared
-	///     memory cache, and the background services that watch player sessions.
+	///     connection string's dependencies, session registries, the shared memory cache, and the
+	///     background services that watch player sessions.
 	/// </summary>
 	/// <param name="services">The service collection to register into.</param>
 	/// <param name="configuration">The configuration whose option sections the registrations bind to.</param>
@@ -49,11 +48,9 @@ public static class SharedInfrastructureServiceCollectionExtensions
 		services.AddSingleton<ISessionRegistry<GameSession>, GameSessionRegistry>();
 		services.AddSingleton<PlayerLogoutService>();
 		services.AddSingleton<IPlayerLogoutHandler, GameSessionRegistryRemovalLogoutHandler>();
-		services.AddSingleton<IPlayerLogoutHandler, LogoutBroadcastHandler>();
 
 		services.AddSingleton<ILiveEventHub, LiveEventHub>();
 
-		services.AddSingleton<PacketDispatcher>();
 		services.AddHostedService<GhostDisconnectService>();
 
 		return services;

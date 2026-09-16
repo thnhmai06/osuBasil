@@ -20,9 +20,10 @@ public class TransportSeamTests
 	];
 
 	/// <summary>
-	///     Everything under the business slices except the packet handlers (a <c>.Packets</c>
-	///     namespace in every slice). Those are the adapters the protocol exists for; everything
-	///     else is business code or an HTTP surface, and neither has a reason to know a wire format.
+	///     Everything under the business slices. The packet handlers that once lived alongside them
+	///     (a <c>.Packets</c> namespace per slice) moved to <c>Basil.Host.Bancho</c> in Batch 11 --
+	///     they were the adapters the protocol exists for, so their departure is what let this method
+	///     drop its old filter for them.
 	/// </summary>
 	private static Conditions BusinessAndApiTypes()
 	{
@@ -30,25 +31,22 @@ public class TransportSeamTests
 
 		return Types.InAssembly(typeof(SqlMigrationRunner).Assembly)
 			.That().ResideInNamespaceMatching(businessSlicePattern)
-			.And().DoNotResideInNamespaceContaining(".Packets")
 			.Should();
 	}
 
 	[Fact]
 	public void Business_And_Api_Types_Should_Not_Reference_Protocol()
 	{
-		// Every type below encodes bancho packets (ServerPacketWriter) or IRC lines
-		// (IrcMessageWriter), or carries a wire record (MatchPacket, MatchStatePacket) through business
-		// code. Each is a real coupling that predates the migration: the services decide an outcome
-		// and, in the same method, choose the packet that announces it. The two route types are the
-		// API host describing bancho wire structures. This list pins the set so it can only shrink:
-		// a new business type reaching for the protocol fails the build, and removing an entry
-		// (the seam work that replaces an encoder call with a notification contract) fails too,
-		// as a reminder to delete its row here.
+		// AnnounceRoutes builds a ServerPacketWriter announcement packet directly, in the same method
+		// that decides to send one -- a real coupling that predates the migration. It is the last
+		// entry: MatchPacketDataMapper, its former co-tenant here, moved to Basil.Host.Bancho in
+		// Batch 11 along with the packet handlers it served. This pins the set so it can only shrink:
+		// a new business type reaching for the protocol fails the build, and removing this last entry
+		// (D8's IAnnouncementNotifier contract, landing later in Batch 11) fails too, as a reminder to
+		// delete its row here.
 		string[] knownOffenders =
 		[
-			"Basil.Infrastructure.Content.AnnounceRoutes",
-			"Basil.Infrastructure.Multiplayer.MatchPacketDataMapper"
+			"Basil.Infrastructure.Content.AnnounceRoutes"
 		];
 
 		var result = BusinessAndApiTypes()

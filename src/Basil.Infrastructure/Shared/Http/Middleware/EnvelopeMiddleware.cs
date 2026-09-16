@@ -61,8 +61,8 @@ public sealed class EnvelopeMiddleware(RequestDelegate next)
 		// /openapi/*.json, Scalar UI, etc., which must stay unwrapped). Falling straight to "skip"
 		// on a null endpoint left every unmatched-route response an unwrapped, empty body on exactly
 		// the host whose contract promises an envelope on every response. The api. host is
-		// identified by its "api." subdomain prefix (the same convention every host group in
-		// BanchoHostGroups.Create uses), not by re-deriving the configured domain here.
+		// identified by its "api." subdomain prefix (the same convention every host group uses),
+		// not by re-deriving the configured domain here.
 		var isUnmatchedOnApiHost = endpoint is null &&
 		                           context.Request.Host.Host.StartsWith("api.", StringComparison.OrdinalIgnoreCase);
 		if ((groupName != "basilapi" && !isUnmatchedOnApiHost) || isAlwaysSse ||
