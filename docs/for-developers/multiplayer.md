@@ -137,7 +137,8 @@ Referee status is independent of whether the user is currently seated.
 
 ### Host
 
-`MatchSession.HostId` represents transient in-client host authority.
+`MatchSession.HostId` represents transient in-client host authority. It is `null` while nobody
+holds it.
 
 Unlike creator and referee status, host status depends on the live match membership:
 

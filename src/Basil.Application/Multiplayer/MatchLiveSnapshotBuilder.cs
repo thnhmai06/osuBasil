@@ -41,8 +41,8 @@ public static class MatchLiveSnapshotBuilder
 	{
 		var size = match.Slots.Count(s => s.Status != SlotStatus.Locked);
 
-		var host = match.HostId != MatchSession.NoHostId // has real host
-			? await ResolveOrPlaceholder(match.HostId, gameRegistry, ircRegistry, users, cancellationToken)
+		var host = match.HostId is { } hostId
+			? await ResolveOrPlaceholder(hostId, gameRegistry, ircRegistry, users, cancellationToken)
 			: null;
 
 		var referees = new List<UserBrief>();
@@ -102,8 +102,8 @@ public static class MatchLiveSnapshotBuilder
 	{
 		var size = match.Slots.Count(s => s.Status != SlotStatus.Locked);
 
-		var host = match.HostId != MatchSession.NoHostId // a real host: id 0 means none
-			? await ResolveOrPlaceholder(match.HostId, gameRegistry, ircRegistry, users, cancellationToken)
+		var host = match.HostId is { } hostId
+			? await ResolveOrPlaceholder(hostId, gameRegistry, ircRegistry, users, cancellationToken)
 			: null;
 
 		var referees = new List<UserBrief>();
@@ -132,9 +132,9 @@ public static class MatchLiveSnapshotBuilder
 		ISessionRegistry<GameSession> gameRegistry, ISessionRegistry<IrcSession> ircRegistry,
 		IUserRepository users, CancellationToken cancellationToken = default)
 	{
-		if (match.HostId == 0) return new MatchHostView(null);
+		if (match.HostId is not { } hostId) return new MatchHostView(null);
 
-		var host = await ResolveOrPlaceholder(match.HostId, gameRegistry, ircRegistry, users, cancellationToken);
+		var host = await ResolveOrPlaceholder(hostId, gameRegistry, ircRegistry, users, cancellationToken);
 		return new MatchHostView(host);
 	}
 

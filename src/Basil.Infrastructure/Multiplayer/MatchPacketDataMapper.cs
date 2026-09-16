@@ -1,4 +1,5 @@
 using Basil.Application.Multiplayer;
+using Basil.Domain.Users;
 using Basil.Protocol.Multiplayer;
 using Basil.Protocol.Packets;
 
@@ -30,7 +31,9 @@ public static class MatchPacketDataMapper
 			match.MapId ?? -1,
 			match.MapMd5,
 			[.. match.Slots.Select(s => new MatchSlotPacket((int)s.Status, (int)s.Team, (int)s.Mods, s.PlayerId))],
-			match.HostId,
+			// The wire format has no "no host" concept; BasilBot's id is what the real bancho protocol
+			// sends in that case, matching this server's pre-nullable-HostId behavior on the wire.
+			match.HostId ?? SystemUserIds.BasilBot,
 			(int)match.Mode,
 			(int)match.WinCondition,
 			(int)match.TeamType,

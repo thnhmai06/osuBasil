@@ -20,7 +20,8 @@ public class MatchControlServiceGuardTests
 
 	private MatchControlService MakeService()
 	{
-		return new MatchControlService(_fixture.MatchMembership, _fixture.MatchLifecycle, _fixture.MatchNotifier, _fixture.MatchRepository,
+		return new MatchControlService(_fixture.MatchMembership, _fixture.MatchLifecycle, _fixture.MatchNotifier,
+			_fixture.MatchRepository,
 			_fixture.BeatmapRepository, _fixture.SessionRegistry, _fixture.IrcSessionRegistry,
 			NullLogger<MatchControlService>.Instance);
 	}
@@ -59,7 +60,7 @@ public class MatchControlServiceGuardTests
 		// Regression: SetHostAsync (and the PUT /matches/{id}/hosts route behind it) never checked
 		// that the target actually occupies a slot in this match, unlike the `!mp host` chat path's
 		// own `gameTarget.Match != match` guard — letting HostId end up naming a userSession seated
-		// nowhere in the room, violating the invariant that HostId is either NoHostId or an occupied
+		// nowhere in the room, violating the invariant that HostId is either null or an occupied
 		// slot's player id.
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		var elsewhere = MultiplayerTestSupport.MakePlayer(2, "elsewhere");
@@ -73,7 +74,7 @@ public class MatchControlServiceGuardTests
 
 		Assert.Equal(MatchControlService.SetHostResult.TargetNotInMatch, result);
 		Assert.Equal(previousHostId, match.HostId);
-		Assert.True(match.HostId == MatchSession.NoHostId || match.GetSlot(match.HostId) is not null);
+		Assert.True(match.HostId is null || match.GetSlot(match.HostId.Value) is not null);
 	}
 
 	[Fact]

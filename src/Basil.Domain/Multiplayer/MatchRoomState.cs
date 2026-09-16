@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
-using Basil.Domain.Users;
 
 namespace Basil.Domain.Multiplayer;
 
@@ -24,7 +23,7 @@ namespace Basil.Domain.Multiplayer;
 /// <param name="mapName">The name of the currently selected beatmap.</param>
 /// <param name="mapId">The id of the currently selected beatmap, or <see langword="null" /> when none is chosen.</param>
 /// <param name="mapMd5">The md5 of the currently selected beatmap.</param>
-/// <param name="hostId">The id of the player hosting the room.</param>
+/// <param name="hostId">The id of the player hosting the room, or <see langword="null" /> when nobody holds gameplay host.</param>
 /// <param name="mode">The game mode the room plays in.</param>
 /// <param name="mods">The mods applied to the whole room.</param>
 /// <param name="winCondition">The condition that decides the winner of a round.</param>
@@ -39,7 +38,7 @@ public sealed class MatchRoomState(
 	string mapName,
 	int? mapId,
 	string mapMd5,
-	int hostId,
+	int? hostId,
 	GameMode mode,
 	Mods mods,
 	MatchWinCondition winCondition,
@@ -53,9 +52,6 @@ public sealed class MatchRoomState(
 	private readonly ConcurrentDictionary<int, byte> _referees = new();
 	private readonly ConcurrentDictionary<int, byte> _tourneyClients = new();
 
-	/// <summary>The host id a match carries while nobody holds gameplay host.</summary>
-	public static int NoHostId => SystemUserIds.BasilBot;
-
 	/// <summary>
 	///     Gets the 0 to 63 registry slot this match occupies, which is what the bancho wire protocol uses as the match
 	///     id.
@@ -68,11 +64,11 @@ public sealed class MatchRoomState(
 	/// <summary>Gets or sets the room's password, used in its invitation url.</summary>
 	public string Password { get; set; } = password;
 
-	/// <summary>Gets or sets the id of the current host. <see cref="NoHostId" /> means no host.</summary>
-	public int HostId { get; set; } = hostId;
+	/// <summary>Gets or sets the id of the current host, or <see langword="null" /> when nobody holds gameplay host.</summary>
+	public int? HostId { get; set; } = hostId;
 
 	/// <summary>Gets a value that indicates whether a player currently holds a gameplay host.</summary>
-	public bool HasGameplayHost => HostId != NoHostId;
+	public bool HasGameplayHost => HostId is not null;
 
 	/// <summary>Gets or sets the id of the currently selected beatmap, or <see langword="null" /> when none is chosen.</summary>
 	public int? MapId { get; set; } = mapId;
@@ -361,7 +357,7 @@ public sealed class MatchRoomState(
 	/// <returns>The host's slot, or null when the host is not in the match.</returns>
 	public MatchSlot? GetHostSlot()
 	{
-		return GetSlot(HostId);
+		return HostId is { } hostId ? GetSlot(hostId) : null;
 	}
 
 	/// <summary>

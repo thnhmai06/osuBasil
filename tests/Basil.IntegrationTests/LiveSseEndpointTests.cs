@@ -171,7 +171,7 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Bootstra
 		var data = new MatchCreationData(
 			"Test Match", "", "", null, "", 0,
 			GameMode.Standard, Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead, false, 0);
-		var match = await matchRegistry.CreateAsync(data, 0);
+		var match = await matchRegistry.CreateAsync(data, null);
 		return match.DbId;
 	}
 

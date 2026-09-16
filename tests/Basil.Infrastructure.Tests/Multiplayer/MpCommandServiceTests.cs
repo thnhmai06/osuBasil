@@ -216,7 +216,7 @@ public class MpCommandServiceTests
 	}
 
 	[Fact]
-	public async Task HandleAsync_ClearHost_SetsHostIdToZero()
+	public async Task HandleAsync_ClearHost_SetsHostIdToNull()
 	{
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		_fixture.RegisterAll(host);
@@ -224,7 +224,7 @@ public class MpCommandServiceTests
 
 		await Run(MakeService(), host, match, "clearhost", []);
 
-		Assert.Equal(0, match.HostId);
+		Assert.Null(match.HostId);
 	}
 
 	[Fact]

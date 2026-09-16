@@ -153,7 +153,7 @@ public class MatchMembershipServiceTests
 		var match = await lifecycle.CreateEmptyAsync(MakeMatchData(0));
 
 		Assert.NotNull(match);
-		Assert.Equal(0, match.HostId);
+		Assert.Null(match.HostId);
 		Assert.Empty(match.Referees);
 		Assert.All(match.Slots, slot => Assert.True(slot.Empty));
 		Assert.True(match.DbId > 0);
@@ -334,7 +334,7 @@ public class MatchMembershipServiceTests
 		await Assert.ThrowsAsync<InvalidOperationException>(() => membership.LeaveAsync(host, match));
 
 		Assert.True(
-			match.HostId == MatchSession.NoHostId
+			match.HostId is null
 			|| match.Slots.Any(slot => !slot.Empty && slot.PlayerId == match.HostId),
 			$"HostId {match.HostId} names no occupied slot.");
 	}

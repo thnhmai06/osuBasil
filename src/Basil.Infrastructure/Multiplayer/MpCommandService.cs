@@ -769,7 +769,7 @@ public sealed class MpCommandService(
 			.ToList();
 		lines.Add(string.Format(MpReplies.SettingsPlayers, occupied.Count));
 
-		var hostSlotId = match.GetSlotId(match.HostId);
+		var hostSlotId = match.HostId is { } hostId ? match.GetSlotId(hostId) : null;
 		var showTeam = match.TeamType is MatchTeamType.TeamVs or MatchTeamType.TagTeamVs;
 
 		foreach (var (slot, i) in occupied)
@@ -1708,7 +1708,9 @@ public sealed class MpCommandService(
 	private ICommandReplySink BuildDmRedirectSink(UserSession sender, MatchSession? scope, ICommandReplySink fallback)
 	{
 		var bot = gameRegistry.GetByUserId(BotBootstrapService.BotId);
-		return bot is null ? fallback : new ScopedDmReplySink(sender, scope, bot, chat, channelMembership, channelRegistry);
+		return bot is null
+			? fallback
+			: new ScopedDmReplySink(sender, scope, bot, chat, channelMembership, channelRegistry);
 	}
 
 	/// <summary>

@@ -28,7 +28,7 @@ namespace Basil.Application.Multiplayer;
 /// <param name="mapName">The name of the currently selected beatmap.</param>
 /// <param name="mapId">The id of the currently selected beatmap, or <see langword="null" /> when none is chosen.</param>
 /// <param name="mapMd5">The md5 of the currently selected beatmap.</param>
-/// <param name="hostId">The id of the userSession hosting the room.</param>
+/// <param name="hostId">The id of the userSession hosting the room, or <see langword="null" /> when nobody holds gameplay host.</param>
 /// <param name="mode">The game mode the room plays in.</param>
 /// <param name="mods">The mods applied to the whole room.</param>
 /// <param name="winCondition">The condition that decides the winner of a round.</param>
@@ -43,7 +43,7 @@ public sealed class MatchSession(
 	string mapName,
 	int? mapId,
 	string mapMd5,
-	int hostId,
+	int? hostId,
 	GameMode mode,
 	Mods mods,
 	MatchWinCondition winCondition,
@@ -59,9 +59,6 @@ public sealed class MatchSession(
 	public MatchRoomState State { get; } = new(
 		id, name, password, mapName, mapId, mapMd5, hostId, mode, mods, winCondition, teamType, freemods, seed,
 		chatChannelName);
-
-	/// <summary>The host id a match carries while nobody holds gameplay host.</summary>
-	public static int NoHostId => MatchRoomState.NoHostId;
 
 	/// <summary>
 	///     Gets the per-match semaphore that serializes all read-then-mutate-then-broadcast
@@ -242,8 +239,8 @@ public sealed class MatchSession(
 		set => State.Password = value;
 	}
 
-	/// <summary>Gets or sets the id of the current host. <see cref="NoHostId" /> means no host.</summary>
-	public int HostId
+	/// <summary>Gets or sets the id of the current host, or <see langword="null" /> when nobody holds gameplay host.</summary>
+	public int? HostId
 	{
 		get => State.HostId;
 		set => State.HostId = value;

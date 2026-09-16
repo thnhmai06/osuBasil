@@ -138,8 +138,9 @@ internal static class MatchSlotEndpoints
 
 				await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 				{
-					var sender = (UserSession?)gameRegistry.GetByUserId(match.HostId) ??
-					             ircRegistry.GetByUserId(match.HostId) ??
+					var sender = (match.HostId is { } hostId
+						             ? (UserSession?)gameRegistry.GetByUserId(hostId) ?? ircRegistry.GetByUserId(hostId)
+						             : null) ??
 					             (UserSession?)gameRegistry.GetByUserId(BotBootstrapService.BotId) ??
 					             ircRegistry.GetByUserId(BotBootstrapService.BotId);
 

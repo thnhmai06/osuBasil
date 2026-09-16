@@ -211,7 +211,7 @@ public sealed class MatchControlService(
 		notifier.HostTransferred(target);
 		mutation.PublishState();
 
-		var prevHostName = gameRegistry.GetByUserId(prevHostId)?.Name;
+		var prevHostName = prevHostId is { } prevId ? gameRegistry.GetByUserId(prevId)?.Name : null;
 		await matchRepository.CreateEventAsync(new MatchEvent(
 			match.DbId, (int)MatchEventType.HostGranted,
 			prevHostId, prevHostName, target.Id, target.Name,
@@ -222,8 +222,8 @@ public sealed class MatchControlService(
 	}
 
 	/// <summary>
-	///     Clears the host assignment (setting the host id to <see cref="BotBootstrapService.BotId" />)
-	///     and republishes the host state.
+	///     Clears the host assignment (setting the host id to <see langword="null" />) and republishes
+	///     the host state.
 	/// </summary>
 	/// <param name="match">The match whose host to clear.</param>
 	/// <param name="mutation">The open mutation scope that publishes the resulting state and host.</param>
@@ -234,7 +234,7 @@ public sealed class MatchControlService(
 	public Task ClearHostAsync(MatchSession match, MatchMutationScope mutation,
 		CancellationToken cancellationToken = default)
 	{
-		match.HostId = MatchSession.NoHostId;
+		match.HostId = null;
 		mutation.PublishState();
 		mutation.PublishHost();
 		return Task.CompletedTask;

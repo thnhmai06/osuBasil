@@ -101,8 +101,8 @@ public sealed class MatchChangeSettingsHandler(
 				match.MapName = beatmap.FullName;
 				match.UnresolvedMapMd5 = null;
 
-				var host = sessionRegistry.GetByUserId(match.HostId);
-				if (host is not null) match.Mode = host.Status.Mode;
+				// gameSession is the host, verified by the guard above.
+				match.Mode = gameSession.Status.Mode;
 				matchLifecycle.CancelQueuedAutoStart(match);
 			}
 			else if (matchData.MapMd5 != match.UnresolvedMapMd5)

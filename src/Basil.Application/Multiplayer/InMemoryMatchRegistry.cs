@@ -31,7 +31,7 @@ public sealed class InMemoryMatchRegistry(IChannelRegistry channelRegistry, IMat
 
 	/// <inheritdoc />
 	/// <remarks>Claims the lowest-numbered id not currently in use.</remarks>
-	public async Task<MatchSession> CreateAsync(MatchCreationData data, int hostId,
+	public async Task<MatchSession> CreateAsync(MatchCreationData data, int? hostId,
 		CancellationToken cancellationToken = default)
 	{
 		// The persistent id is claimed first because it names the room's chat channel, which is fixed
@@ -70,9 +70,12 @@ public sealed class InMemoryMatchRegistry(IChannelRegistry channelRegistry, IMat
 	/// <param name="id">The in-memory registry slot id.</param>
 	/// <param name="dbId">The match's persistent database id.</param>
 	/// <param name="data">The match-create settings.</param>
-	/// <param name="hostId">The id of the userSession who created the room.</param>
+	/// <param name="hostId">
+	///     The id of the userSession who created the room, or <see langword="null" /> when nobody holds gameplay
+	///     host.
+	/// </param>
 	/// <returns>The fully constructed <see cref="MatchSession" />.</returns>
-	private static MatchSession BuildNew(int id, int dbId, MatchCreationData data, int hostId)
+	private static MatchSession BuildNew(int id, int dbId, MatchCreationData data, int? hostId)
 	{
 		return new MatchSession(
 			id, data.Name, data.Password, data.MapName, data.MapId, data.MapMd5,

@@ -224,11 +224,11 @@ public sealed class MatchMembership(
 				newHostId = newHostSlot.PlayerId!.Value;
 				match.HostId = newHostId.Value;
 				hostTransfer = true;
-				if (gameRegistry.GetByUserId(match.HostId) is { } newHost) notifier.HostTransferred(newHost);
+				if (gameRegistry.GetByUserId(newHostId.Value) is { } newHost) notifier.HostTransferred(newHost);
 			}
 			else
 			{
-				match.HostId = MatchSession.NoHostId;
+				match.HostId = null;
 			}
 		}
 

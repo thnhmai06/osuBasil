@@ -53,7 +53,8 @@ public sealed class MatchTransferHostHandler(
 
 		// Runs here, still under the lock, rather than after: this audit-trail write doesn't read or
 		// depend on live match state beyond values already captured above.
-		var prevHostName = sessionRegistry.GetByUserId(prevHostId)?.Name;
+		// gameSession is prevHostId's session: verified by the guard above.
+		var prevHostName = gameSession.Name;
 		await matchRepository.CreateEventAsync(new MatchEvent(
 			match.DbId, (int)MatchEventType.HostGranted,
 			prevHostId, prevHostName, targetId, targetPlayer?.Name,

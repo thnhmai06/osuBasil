@@ -62,7 +62,7 @@ public sealed class MatchLifecycle(
 	///     <paramref name="creator" /> into the room's own chat channel on every success path — whether
 	///     that happens here directly (an unseated creator) or already happened via seating (see
 	///     <see cref="MatchMembership" />'s <c>OccupySlot</c>). Every match
-	///     starts with <see cref="MatchSession.NoHostId" />; a <see cref="GameSession" />
+	///     starts with a null <see cref="MatchSession.HostId" />; a <see cref="GameSession" />
 	///     creator only becomes host once they actually occupy a slot, via the normal
 	///     <see cref="MatchMembership.JoinAsync" /> path (there is no special host-bypass case anymore). When the
 	///     creator is an <see cref="IrcSession" />, or a <see cref="GameSession" /> already seated in a
@@ -84,7 +84,7 @@ public sealed class MatchLifecycle(
 	public async Task<MatchSession?> CreateAsync(UserSession creator, MatchCreationData data,
 		CancellationToken cancellationToken = default)
 	{
-		var match = await matchRegistry.CreateAsync(data, MatchSession.NoHostId, cancellationToken);
+		var match = await matchRegistry.CreateAsync(data, null, cancellationToken);
 		match.MutationPublisher = broadcast;
 		match.CreatorId = creator.Id;
 		logger.LogInformation(
@@ -147,7 +147,7 @@ public sealed class MatchLifecycle(
 	/// <remarks>
 	///     Backs the <c>api.</c> host's <c>POST /match</c>. No chat "sender" exists over HTTP, so there
 	///     is no <see cref="UserSession" /> to auto-join into slot 0 the way <see cref="CreateAsync" /> does for
-	///     <c>!mp make</c>. <see cref="MatchSession.HostId" /> stays <see cref="MatchSession.NoHostId" />,
+	///     <c>!mp make</c>. <see cref="MatchSession.HostId" /> stays null,
 	///     <see cref="MatchSession.CreatorId" /> stays null (nobody holds creator authority over this
 	///     room), and the referee list stays empty until a caller assigns them via
 	///     <c>PATCH /match/{id}/settings</c>, the <c>host</c> action, or the <c>addref</c> action.
@@ -158,7 +158,7 @@ public sealed class MatchLifecycle(
 	public async Task<MatchSession> CreateEmptyAsync(MatchCreationData data,
 		CancellationToken cancellationToken = default)
 	{
-		var match = await matchRegistry.CreateAsync(data, MatchSession.NoHostId, cancellationToken);
+		var match = await matchRegistry.CreateAsync(data, null, cancellationToken);
 		match.MutationPublisher = broadcast;
 
 		logger.LogInformation("+ Match created: MatchId={MatchId} HostId=NoHost Name={Name} (via HTTP)",

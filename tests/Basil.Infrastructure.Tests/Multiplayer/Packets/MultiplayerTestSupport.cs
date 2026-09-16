@@ -156,7 +156,7 @@ internal static class MultiplayerTestSupport
 			return _byId.Values.FirstOrDefault(m => m.DbId == dbId);
 		}
 
-		public Task<MatchSession> CreateAsync(MatchCreationData data, int hostId,
+		public Task<MatchSession> CreateAsync(MatchCreationData data, int? hostId,
 			CancellationToken cancellationToken = default)
 		{
 			var id = 0;
@@ -346,7 +346,8 @@ internal static class MultiplayerTestSupport
 				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
 
 			MatchNotifier = new BanchoMatchNotifier(ChannelRegistry, ChannelMembership);
-			MatchBroadcast = new MatchBroadcast(ChannelRegistry, ChannelMembership, MatchNotifier, new ChatNotifier(Options.Create(new IrcOptions())),
+			MatchBroadcast = new MatchBroadcast(ChannelRegistry, ChannelMembership, MatchNotifier,
+				new ChatNotifier(Options.Create(new IrcOptions())),
 				SessionRegistry,
 				IrcSessionRegistry, Hub, BeatmapRepository, UserRepository);
 
