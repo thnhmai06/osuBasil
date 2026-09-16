@@ -2,13 +2,10 @@ using Basil.Application.Bot;
 using Basil.Application.Irc;
 using Basil.Application.Sessions;
 using Basil.Domain.Scores;
-using Basil.Infrastructure.Bot;
 using Basil.Application.Chat;
-using Basil.Infrastructure.Irc;
-using Basil.Infrastructure.Multiplayer;
-using Basil.Infrastructure.Shared.Sessions;
+using Basil.Application.Multiplayer;
 
-namespace Basil.Infrastructure.Auth;
+namespace Basil.Application.Auth;
 
 /// <summary>
 ///     Indicates whether a LastFM telemetry report was fully handled.

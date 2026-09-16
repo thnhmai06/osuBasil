@@ -6,13 +6,11 @@ using Basil.Application.Shared.Eventing;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Channels;
 using Basil.Domain.Multiplayer;
-using Basil.Infrastructure.Bot;
 using Basil.Application.Chat;
-using Basil.Infrastructure.Irc;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Application.Beatmaps;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace Basil.Infrastructure.Multiplayer;
+namespace Basil.Application.Multiplayer;
 
 /// <summary>Creates, starts, and tears down matches, including the empty-room auto-close watch.</summary>
 /// <remarks>

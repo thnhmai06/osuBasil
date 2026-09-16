@@ -10,7 +10,7 @@ using Basil.Domain.Users;
 using Basil.Infrastructure.Auth;
 using Basil.Infrastructure.Bot;
 using Basil.Infrastructure.Irc;
-using Basil.Infrastructure.Multiplayer.Handlers.Slots;
+using Basil.Application.Multiplayer.Handlers.Slots;
 using Basil.Infrastructure.Shared.Http;
 using Basil.Infrastructure.Shared.Http.OpenApi;
 using Basil.Infrastructure.Shared.Sessions;

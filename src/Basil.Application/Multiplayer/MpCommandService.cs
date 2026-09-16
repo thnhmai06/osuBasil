@@ -9,18 +9,14 @@ using Basil.Domain.Channels;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Bot;
 using Basil.Application.Chat;
-using Basil.Infrastructure.Chat.Packets;
-using Basil.Infrastructure.Irc;
-using Basil.Infrastructure.Multiplayer.Handlers.Countdown;
-using Basil.Infrastructure.Multiplayer.Handlers.Lifecycle;
-using Basil.Infrastructure.Multiplayer.Handlers.Slots;
-using Basil.Infrastructure.Shared.Sessions;
+using Basil.Application.Multiplayer.Handlers.Countdown;
+using Basil.Application.Multiplayer.Handlers.Lifecycle;
+using Basil.Application.Multiplayer.Handlers.Slots;
 using Basil.Application.Users;
 using Basil.Application.Beatmaps;
 
-namespace Basil.Infrastructure.Multiplayer;
+namespace Basil.Application.Multiplayer;
 
 /// <summary>
 ///     Implements the <c>!mp</c> chat subcommands for match control.

@@ -1,7 +1,7 @@
 using Basil.Application.Multiplayer;
-using Basil.Infrastructure.Multiplayer.Handlers.Countdown;
+using Basil.Application.Multiplayer.Handlers.Countdown;
 
-namespace Basil.Infrastructure.Multiplayer.Handlers.Lifecycle;
+namespace Basil.Application.Multiplayer.Handlers.Lifecycle;
 
 /// <summary>Starts a match immediately, or queues the countdown that starts it later.</summary>
 public sealed class StartHandler(MatchLifecycle matchLifecycle, TimerHandler timerHandler)

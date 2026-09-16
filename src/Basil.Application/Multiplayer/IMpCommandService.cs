@@ -1,9 +1,8 @@
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Bot;
-using Basil.Infrastructure.Shared.Sessions;
 
-namespace Basil.Infrastructure.Multiplayer;
+namespace Basil.Application.Multiplayer;
 
 /// <summary>
 ///     The <c>!mp</c> command surface, as seen by the chat transport that routes to it.

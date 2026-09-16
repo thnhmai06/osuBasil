@@ -1,3 +1,4 @@
+using Basil.Application.Content;
 using Basil.Application.Shared.Configuration;
 using Microsoft.Extensions.Options;
 
@@ -10,7 +11,7 @@ namespace Basil.Infrastructure.Content;
 ///     Every consumer reads the same <c>StorageOptions.FaqsPath</c> folder of <c>.txt</c> files
 ///     through this one implementation rather than duplicating the file logic.
 /// </remarks>
-public sealed class FaqService(IOptions<StorageOptions> storage)
+public sealed class FaqService(IOptions<StorageOptions> storage) : IFaqStore
 {
 	/// <summary>
 	///     Identifies the outcome of a FAQ entry creation.

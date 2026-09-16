@@ -1,3 +1,4 @@
+using Basil.Application.Multiplayer;
 using Basil.Infrastructure.Shared.Http.OpenApi;
 
 namespace Basil.Infrastructure.Multiplayer.Endpoints;

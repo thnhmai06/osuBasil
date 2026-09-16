@@ -7,11 +7,9 @@ using Basil.Application.Users;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Bot;
+using Basil.Application.Content;
 using Basil.Infrastructure.Chat.Packets;
-using Basil.Infrastructure.Irc;
-using Basil.Infrastructure.Multiplayer;
-using Basil.Infrastructure.Shared.Sessions;
+using Basil.Infrastructure.Content;
 using Basil.Infrastructure.Tests.Multiplayer.Packets;
 using Basil.Protocol.Irc;
 using Basil.Application.Beatmaps;
@@ -76,8 +74,8 @@ public class CommandDispatcherTests
 			fixture.ChannelRegistry, fixture.ChannelMembership,
 			NullLogger<MpCommandService>.Instance,
 			NullLogger<MatchControlService>.Instance);
-		return new CommandDispatcher(options, mpCommands, _users,
-			Options.Create(storageOptions ?? MakeStorageOptions()),
+		IFaqStore faq = new FaqService(Options.Create(storageOptions ?? MakeStorageOptions()));
+		return new CommandDispatcher(options, mpCommands, _users, faq,
 			NullLogger<CommandDispatcher>.Instance);
 	}
 

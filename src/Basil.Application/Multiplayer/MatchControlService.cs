@@ -5,13 +5,9 @@ using Basil.Application.Sessions;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
-using Basil.Infrastructure.Bot;
-using Basil.Infrastructure.Chat;
-using Basil.Infrastructure.Irc;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Application.Beatmaps;
 
-namespace Basil.Infrastructure.Multiplayer;
+namespace Basil.Application.Multiplayer;
 
 /// <summary>
 ///     Provides the room-adjustment mutations shared by every <c>!mp</c> subcommand (see

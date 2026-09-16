@@ -124,9 +124,50 @@ not, it says so.
 > `ScoreSubmissionService`), called from the still-Infrastructure `AddScores()`. Test count unchanged at
 > **1710**. Per-project: ArchitectureTests 10, Domain 207, Protocol 158, Application 93, Infrastructure
 > 851, Host 28, Integration 363 (not run this batch).
-> Next: **Batch 8** — Multiplayer rest → Application (~24 files, per plan §5; also where the deferred
-> `ClientIntegrityService.cs` and `CommandDispatcher.cs` from Batches 4-5 finally move, since their
-> Multiplayer/Bot/Chat dependencies are now all in Application except Multiplayer itself).
+> **Batch 8 done**: moved 20 files to `Basil.Application` — the Multiplayer "rest": `MatchControlService`,
+> `MatchLifecycle`, `MatchMembership`, `MatchBroadcast`, `MatchRecoveryService`, `MatchReportService`,
+> `MpCommandService`/`IMpCommandService`, `IMatchNotifier`, `MatchLeaveLogoutHandler`,
+> `Handlers/{Countdown,Lifecycle,Slots}/*` (8 files); plus the two Batch-4/5-deferred files, now
+> unblocked: `ClientIntegrityService.cs` (Auth — its last blocker, `MatchBroadcast`, moved this batch)
+> and `CommandDispatcher.cs` (Bot — its `IMpCommandService` blocker moved this batch; its `FaqService`
+> blocker was permanent-Infrastructure, resolved below). `BanchoMatchNotifier`, `SqliteMatchRepository`,
+> all 26 `Packets/*` handlers, `MatchRoundEndOutbox` (worker half), `MultiplayerMetricsPublisher`,
+> `Endpoints/*`, `MatchLiveRoutes`/`MatchRoutes`/`MatchSubResourceRoutes` stay in Infrastructure.
+> `CommandDispatcherTests.cs` was **not** moved to `Basil.Application.Tests` despite `CommandDispatcher`
+> itself moving — it depends on `MultiplayerTestSupport` (`Basil.Infrastructure.Tests`, `internal`), a
+> fixture builder shared by ~30 other Infrastructure-side packet-handler tests that legitimately stay
+> put; moving the test would have meant either duplicating that fixture builder or an illegal reverse
+> project reference. This matches the precedent already set by `AuthenticationServiceTests.cs` (Batch 4)
+> and `ScoreSubmissionServiceTests.cs` (Batch 7): a moved production type's test stays in
+> `Basil.Infrastructure.Tests` by default — Infrastructure.Tests may freely reference Application types,
+> so nothing here is an architecture violation. Only Batch 3's original 5 test moves were the deliberate
+> exception, made when the test's own dependencies were entirely clean and self-contained.
+>
+> **The `FaqService` gap, resolved**: `CommandDispatcher` directly `new`'d a concrete
+> `Basil.Infrastructure.Content.FaqService` (filesystem-permanent per plan §1.2, same shape as
+> `LoginService`'s still-open `MenuIconService` gap from Batch 4) — worse than injecting it, since a
+> direct `new` cannot be swapped for a contract at the DI layer alone. Fixed the same way §4's D8 extends
+> to this case: added `IFaqStore` (`ListEntries`/`ReadEntryAsync`) to `Basil.Application.Content`,
+> `FaqService : IFaqStore` in Infrastructure, registered `services.AddSingleton<IFaqStore>(sp =>
+> sp.GetRequiredService<FaqService>())` in `ContentServiceCollectionExtensions.AddContent`, and changed
+> `CommandDispatcher`'s constructor to take `IFaqStore faq` instead of `IOptions<StorageOptions>`
+> (dropping the direct `new`). **`LoginService.cs`'s `MenuIconService` gap is now the only thing like
+> this left unresolved** — it needs the identical `IMenuIconStore` treatment before it can move; not done
+> here since `LoginService` is Auth, not Multiplayer, and out of this batch's scope.
+>
+> DI split: new `AddMultiplayerApplication()` in `Basil.Application.Multiplayer` (registers every
+> Application-only type above, plus `IMatchRegistry`/`InMemoryMatchRegistry` which had stayed registered
+> in Infrastructure since Batch 2 despite both halves being Application already), called from the
+> still-Infrastructure `AddMultiplayer()`, which now registers only `IMatchNotifier`/`BanchoMatchNotifier`,
+> `IMatchRepository`/`SqliteMatchRepository`, the 26 packet handlers, the round-end-outbox hosted
+> service, and the metrics publisher.
+>
+> Test count unchanged at **1710**. Per-project: ArchitectureTests 10, Domain 207, Protocol 158,
+> Application 93, Infrastructure 851, Host 28, Integration 363 (not run this batch — not a milestone;
+> deferred to Batch 9, immediately next, which requires it anyway).
+> Next: **Batch 9** — Beatmaps `DirectSearchService` → Application; DI splits finished; architecture
+> tests pass 1 (Application/Infrastructure rules, §7); `plans/`+`docs/` pass 1. Full suite, Release.
+> **Milestone: v3 without hosts.**
 
 ---
 

@@ -1,6 +1,6 @@
 using Basil.Application.Multiplayer;
 
-namespace Basil.Infrastructure.Multiplayer.Handlers.Lifecycle;
+namespace Basil.Application.Multiplayer.Handlers.Lifecycle;
 
 /// <summary>Closes a match, parting every seated userSession and tearing the room down.</summary>
 public sealed class CloseHandler(MatchLifecycle matchLifecycle)

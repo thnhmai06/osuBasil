@@ -1,7 +1,7 @@
 using Basil.Domain.Multiplayer;
 using Basil.Application.Multiplayer;
 
-namespace Basil.Infrastructure.Multiplayer;
+namespace Basil.Application.Multiplayer;
 
 /// <summary>
 ///     Recovers matches and rounds left open by an abnormal shutdown.

@@ -1,9 +1,8 @@
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Domain.Multiplayer;
-using Basil.Infrastructure.Shared.Sessions;
 
-namespace Basil.Infrastructure.Multiplayer.Handlers.Slots;
+namespace Basil.Application.Multiplayer.Handlers.Slots;
 
 /// <summary>Moves a userSession into an open destination slot and vacates their previous one.</summary>
 public static class MoveSlotHandler

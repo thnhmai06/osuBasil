@@ -1,7 +1,7 @@
 using Basil.Application.Multiplayer;
 using Basil.Domain.Multiplayer;
 
-namespace Basil.Infrastructure.Multiplayer.Handlers.Lifecycle;
+namespace Basil.Application.Multiplayer.Handlers.Lifecycle;
 
 /// <summary>Stops an in-progress match.</summary>
 public sealed class AbortHandler(

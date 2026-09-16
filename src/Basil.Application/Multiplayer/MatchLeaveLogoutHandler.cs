@@ -1,7 +1,6 @@
 using Basil.Application.Sessions;
-using Basil.Infrastructure.Shared.Sessions;
 
-namespace Basil.Infrastructure.Multiplayer;
+namespace Basil.Application.Multiplayer;
 
 /// <summary>
 ///     Removes a departing <see cref="GameSession" /> from its multiplayer match, if it was in one.

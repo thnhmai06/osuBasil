@@ -4,9 +4,8 @@ using Basil.Domain.Channels;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Application.Chat;
-using Basil.Infrastructure.Shared.Sessions;
 
-namespace Basil.Infrastructure.Multiplayer;
+namespace Basil.Application.Multiplayer;
 
 /// <summary>Seats and removes players from a match's slots.</summary>
 /// <remarks>

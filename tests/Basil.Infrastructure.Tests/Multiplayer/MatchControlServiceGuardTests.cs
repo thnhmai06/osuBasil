@@ -1,8 +1,8 @@
 using Basil.Application.Multiplayer;
 using Basil.Domain.Multiplayer;
 using Basil.Infrastructure.Multiplayer;
-using Basil.Infrastructure.Multiplayer.Handlers.Lifecycle;
-using Basil.Infrastructure.Multiplayer.Handlers.Slots;
+using Basil.Application.Multiplayer.Handlers.Lifecycle;
+using Basil.Application.Multiplayer.Handlers.Slots;
 using Basil.Infrastructure.Tests.Multiplayer.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
 

@@ -6,14 +6,11 @@ using Basil.Application.Shared.Eventing;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Channels;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Bot;
 using Basil.Application.Chat;
-using Basil.Infrastructure.Irc;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Application.Users;
 using Basil.Application.Beatmaps;
 
-namespace Basil.Infrastructure.Multiplayer;
+namespace Basil.Application.Multiplayer;
 
 /// <summary>
 ///     Broadcasts a match's packets, chat announcements, and live snapshot channels to its chat

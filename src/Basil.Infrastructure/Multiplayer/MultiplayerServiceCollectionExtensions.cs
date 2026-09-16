@@ -1,14 +1,9 @@
 using Basil.Application.Multiplayer;
-using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
 using Basil.Domain.Multiplayer;
-using Basil.Infrastructure.Multiplayer.Handlers.Countdown;
-using Basil.Infrastructure.Multiplayer.Handlers.Lifecycle;
-using Basil.Infrastructure.Multiplayer.Handlers.Slots;
 using Basil.Infrastructure.Multiplayer.Packets;
 using Basil.Infrastructure.Shared.Http.Bancho;
 using Basil.Infrastructure.Shared.Persistence;
-using Basil.Infrastructure.Shared.Sessions;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Multiplayer;
@@ -22,27 +17,13 @@ public static class MultiplayerServiceCollectionExtensions
 	/// <returns>The same service collection for chaining further registrations.</returns>
 	public static IServiceCollection AddMultiplayer(this IServiceCollection services, IConfiguration configuration)
 	{
+		services.AddMultiplayerApplication();
+
 		services.AddSingleton<IMatchNotifier, BanchoMatchNotifier>();
-		services.AddSingleton<MatchBroadcast>();
-		services.AddSingleton<MatchMembership>();
-		services.AddSingleton<MatchLifecycle>();
-		services.AddSingleton<MatchControlService>();
-		services.AddSingleton<SetTeamHandler>();
-		services.AddSingleton<SetSlotsHandler>();
-		services.AddSingleton<TimerHandler>();
-		services.AddSingleton<AbortTimerHandler>();
-		services.AddSingleton<StartHandler>();
-		services.AddSingleton<AbortHandler>();
-		services.AddSingleton<CloseHandler>();
-		services.AddSingleton<MatchReportService>();
-		services.AddSingleton<MatchRecoveryService>();
-		services.AddSingleton<IMpCommandService, MpCommandService>();
-		services.AddSingleton<IPlayerLogoutHandler, MatchLeaveLogoutHandler>();
 
 		services.AddSingleton<IMatchRepository>(sp =>
 			new SqliteMatchRepository(BuildConnectionString(sp),
 				sp.GetRequiredService<ILogger<SqliteMatchRepository>>()));
-		services.AddSingleton<IMatchRegistry, InMemoryMatchRegistry>();
 
 		services.AddSingleton<IPacketHandler, CreateMatchHandler>();
 		services.AddSingleton<IPacketHandler, JoinMatchHandler>();

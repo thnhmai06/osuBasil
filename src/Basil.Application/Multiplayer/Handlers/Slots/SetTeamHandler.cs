@@ -1,9 +1,8 @@
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Domain.Multiplayer;
-using Basil.Infrastructure.Shared.Sessions;
 
-namespace Basil.Infrastructure.Multiplayer.Handlers.Slots;
+namespace Basil.Application.Multiplayer.Handlers.Slots;
 
 /// <summary>Assigns a single userSession's team.</summary>
 public sealed class SetTeamHandler(MatchLifecycle matchLifecycle, ILogger<SetTeamHandler> logger)

@@ -1,6 +1,6 @@
 using Basil.Application.Multiplayer;
 
-namespace Basil.Infrastructure.Multiplayer.Handlers.Countdown;
+namespace Basil.Application.Multiplayer.Handlers.Countdown;
 
 /// <summary>Cancels a match's pending countdown.</summary>
 public sealed class AbortTimerHandler(ILogger<AbortTimerHandler> logger)

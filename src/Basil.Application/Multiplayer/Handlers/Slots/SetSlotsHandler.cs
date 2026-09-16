@@ -1,7 +1,7 @@
 using Basil.Application.Multiplayer;
 using Basil.Domain.Multiplayer;
 
-namespace Basil.Infrastructure.Multiplayer.Handlers.Slots;
+namespace Basil.Application.Multiplayer.Handlers.Slots;
 
 /// <summary>Reassigns, re-teams, and locks match slots in one atomic pass.</summary>
 public sealed class SetSlotsHandler(ILogger<SetSlotsHandler> logger)

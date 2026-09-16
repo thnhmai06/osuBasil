@@ -17,6 +17,7 @@ public static class ContentServiceCollectionExtensions
 	public static IServiceCollection AddContent(this IServiceCollection services, IConfiguration configuration)
 	{
 		services.AddSingleton<FaqService>();
+		services.AddSingleton<IFaqStore>(sp => sp.GetRequiredService<FaqService>());
 		services.AddSingleton<MenuSeasonalService>();
 		services.AddSingleton<MenuIconService>();
 		services.AddSingleton<MenuBannerService>();

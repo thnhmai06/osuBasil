@@ -1,23 +1,21 @@
 using System.Text;
-using Basil.Application.Bot;
+using Basil.Application.Content;
+using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
 using Basil.Application.Users;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Content;
-using Basil.Infrastructure.Multiplayer;
-using Basil.Infrastructure.Shared.Sessions;
 using Microsoft.Extensions.Options;
 
-namespace Basil.Infrastructure.Bot;
+namespace Basil.Application.Bot;
 
 /// <inheritdoc cref="ICommandDispatcher" />
 public sealed class CommandDispatcher(
 	IOptions<BotOptions> botOptions,
 	IMpCommandService mpCommands,
 	IUserRepository userRepository,
-	IOptions<StorageOptions> storageOptions,
+	IFaqStore faq,
 	ILogger<CommandDispatcher> logger)
 	: ICommandDispatcher
 {
@@ -44,8 +42,6 @@ public sealed class CommandDispatcher(
 	];
 
 	private static readonly string HelpText = BuildHelpText(ChatCommands);
-
-	private readonly FaqService _faq = new(storageOptions);
 
 	/// <inheritdoc />
 	public async Task<bool> DispatchAsync(UserSession sender, string rawMessage, int? matchScopeDbId,
@@ -175,7 +171,7 @@ public sealed class CommandDispatcher(
 
 		var requested = string.Join(' ', args);
 		var entry = Path.GetFileName(requested);
-		var content = await _faq.ReadEntryAsync(entry, cancellationToken);
+		var content = await faq.ReadEntryAsync(entry, cancellationToken);
 		if (content is null)
 		{
 			sink.Reply(string.Format(BotReplies.NoFaqEntryFound, entry));
@@ -191,7 +187,7 @@ public sealed class CommandDispatcher(
 	private string ListFaqEntries()
 	{
 		// "list" is the subcommand keyword itself — a stray list.txt in the folder isn't a real entry.
-		var entries = _faq.ListEntries()
+		var entries = faq.ListEntries()
 			.Where(name => !string.Equals(name, "list", StringComparison.OrdinalIgnoreCase))
 			.ToList();
 

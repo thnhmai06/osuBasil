@@ -1,9 +1,8 @@
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Bot;
-using Basil.Infrastructure.Shared.Sessions;
 
-namespace Basil.Infrastructure.Multiplayer.Handlers.Countdown;
+namespace Basil.Application.Multiplayer.Handlers.Countdown;
 
 /// <summary>Runs a match's countdowns, both the plain <c>!mp timer</c> kind and the auto-start kind queued by <c>!mp start</c>.</summary>
 public sealed class TimerHandler(

@@ -1,8 +1,7 @@
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
-using Basil.Infrastructure.Shared.Sessions;
 
-namespace Basil.Infrastructure.Multiplayer;
+namespace Basil.Application.Multiplayer;
 
 /// <summary>
 ///     Tells connected clients what happened to a match. The match services decide the outcome and
