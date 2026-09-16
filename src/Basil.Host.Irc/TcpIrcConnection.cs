@@ -10,7 +10,7 @@ using Basil.Protocol.Irc;
 using Microsoft.Extensions.Options;
 using Channel = System.Threading.Channels.Channel;
 
-namespace Basil.Infrastructure.Irc;
+namespace Basil.Host.Irc;
 
 /// <summary>
 ///     One real TCP IRC client. Owns the socket's read loop (handshake, then chat, membership,

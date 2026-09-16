@@ -11,7 +11,6 @@ using Basil.Application.Spectating;
 using Basil.Domain.Users;
 using Basil.Application.Chat;
 using Basil.Infrastructure.Chat.Packets;
-using Basil.Infrastructure.Irc;
 using Basil.Infrastructure.Multiplayer;
 using Basil.Application.Multiplayer.Handlers.Countdown;
 using Basil.Application.Multiplayer.Handlers.Lifecycle;

@@ -22,7 +22,7 @@ using Basil.Infrastructure.Auth;
 using Basil.Infrastructure.Bot;
 using Basil.Application.Chat;
 using Basil.Infrastructure.Chat.Packets;
-using Basil.Infrastructure.Irc;
+using Basil.Host.Irc;
 using Basil.Infrastructure.Multiplayer;
 using Basil.Infrastructure.Multiplayer.Packets;
 using Basil.Infrastructure.Shared.Sessions;
@@ -37,7 +37,7 @@ using Basil.Application.Beatmaps;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
-namespace Basil.Infrastructure.Tests.Irc;
+namespace Basil.Host.Irc.Tests;
 
 /// <summary>
 ///     Real loopback TCP round trip through <see cref="TcpIrcConnection" /> — proves the IRC core (auth,

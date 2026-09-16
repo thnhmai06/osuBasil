@@ -14,7 +14,6 @@ using Basil.Application.Bot;
 using Basil.Infrastructure.Bot;
 using Basil.Application.Chat;
 using Basil.Infrastructure.Chat.Packets;
-using Basil.Infrastructure.Irc;
 using Basil.Infrastructure.Multiplayer;
 using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;

@@ -1,11 +1,12 @@
+using Basil.Application.Irc;
 using Basil.Application.Shared.Configuration;
+using Basil.Host.Irc;
 using Basil.Infrastructure.Auth;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Bot;
 using Basil.Infrastructure.Chat;
 using Basil.Infrastructure.Content;
 using Basil.Infrastructure.Diagnostics;
-using Basil.Infrastructure.Irc;
 using Basil.Infrastructure.Multiplayer;
 using Basil.Infrastructure.Scores;
 using Basil.Infrastructure.Shared.Http;
@@ -30,7 +31,8 @@ internal static class SliceRegistration
 		builder.Services.AddUsers(builder.Configuration);
 		builder.Services.AddChat(builder.Configuration);
 		builder.Services.AddBot(builder.Configuration);
-		builder.Services.AddIrc(builder.Configuration);
+		builder.Services.AddIrcApplication(builder.Configuration);
+		builder.Services.AddIrcHost();
 		builder.Services.AddMultiplayer(builder.Configuration);
 		builder.Services.AddBeatmaps(builder.Configuration);
 		builder.Services.AddScores(builder.Configuration);

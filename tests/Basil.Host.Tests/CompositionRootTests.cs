@@ -9,7 +9,6 @@ using Basil.Application.Chat;
 using Basil.Infrastructure.Chat;
 using Basil.Infrastructure.Content;
 using Basil.Infrastructure.Diagnostics;
-using Basil.Infrastructure.Irc;
 using Basil.Infrastructure.Multiplayer;
 using Basil.Infrastructure.Scores;
 using Basil.Infrastructure.Shared.Http.Bancho;
@@ -52,7 +51,7 @@ public class CompositionRootTests
 		services.AddUsers(configuration);
 		services.AddChat(configuration);
 		services.AddBot(configuration);
-		services.AddIrc(configuration);
+		services.AddIrcApplication(configuration);
 		services.AddMultiplayer(configuration);
 		services.AddBeatmaps(configuration);
 		services.AddScores(configuration);

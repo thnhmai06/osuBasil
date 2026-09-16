@@ -2,11 +2,9 @@ using System.Diagnostics.Metrics;
 using Basil.Application.Irc;
 using Basil.Application.Sessions;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Irc;
-using Basil.Infrastructure.Shared.Sessions;
 using NSubstitute;
 
-namespace Basil.Infrastructure.Tests.Irc;
+namespace Basil.Host.Irc.Tests;
 
 /// <summary>
 ///     Verifies the observable gauge <see cref="IrcMetricsPublisher" /> publishes reports the

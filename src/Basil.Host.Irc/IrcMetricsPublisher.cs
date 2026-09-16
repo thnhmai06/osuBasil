@@ -1,11 +1,8 @@
 using Basil.Application.Irc;
 using Basil.Application.Sessions;
 using Basil.Application.Shared;
-using Basil.Infrastructure.Shared;
-using Basil.Infrastructure.Shared.Sessions;
-using Basil.Infrastructure.Shared;
 
-namespace Basil.Infrastructure.Irc;
+namespace Basil.Host.Irc;
 
 /// <summary>
 ///     Publishes the live IRC session count <see cref="ISessionRegistry{TSession}" /> owns as an

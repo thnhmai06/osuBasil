@@ -7,7 +7,7 @@ using Basil.Application.Chat;
 using Basil.Application.Irc;
 using Microsoft.Extensions.Options;
 
-namespace Basil.Infrastructure.Irc;
+namespace Basil.Host.Irc;
 
 /// <summary>
 ///     The embedded IRC gateway. Accepts raw TCP connections on <see cref="IrcOptions.Port" /> and

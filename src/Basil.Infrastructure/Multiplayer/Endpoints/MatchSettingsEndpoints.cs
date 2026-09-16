@@ -7,7 +7,6 @@ using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Auth;
-using Basil.Infrastructure.Irc;
 using Basil.Infrastructure.Shared.Http;
 using Basil.Infrastructure.Shared.Http.OpenApi;
 using Basil.Infrastructure.Shared.Sessions;

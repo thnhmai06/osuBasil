@@ -9,7 +9,6 @@ using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Auth;
 using Basil.Infrastructure.Bot;
-using Basil.Infrastructure.Irc;
 using Basil.Application.Multiplayer.Handlers.Slots;
 using Basil.Infrastructure.Shared.Http;
 using Basil.Infrastructure.Shared.Http.OpenApi;

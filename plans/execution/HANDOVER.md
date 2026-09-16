@@ -200,8 +200,37 @@ not, it says so.
 > Per-project: ArchitectureTests 11 (was 10), Domain 207, Protocol 158, Application 93, Infrastructure
 > 851, Host 28, Integration 363. **Total 1711.**
 >
-> Next: **Batch 10** — `Basil.Host.Irc`: `TcpIrcListener`, `TcpIrcConnection`, `IrcMetricsPublisher`,
-> `AddIrcHost`; `Basil.Host.Irc.Tests` (`TcpIrcConnectionTests`). `Basil.Host` references it.
+> **Batch 10 done**: created `Basil.Host.Irc` (`Microsoft.NET.Sdk`, `Hosting.Abstractions`, refs
+> Application/Infrastructure/Protocol.Irc — exactly the project table in plan §2) and moved
+> `TcpIrcListener.cs`, `TcpIrcConnection.cs`, `IrcMetricsPublisher.cs` into it — all three were already
+> clean (only Application/Domain/Protocol.Irc dependencies once the stale `Basil.Infrastructure.Shared`
+> duplicate using in `IrcMetricsPublisher.cs` was dropped). Added `IrcHostServiceCollectionExtensions.AddIrcHost()`
+> registering the two hosted services (`TcpIrcListener`, `IrcMetricsPublisher`). Deleted the now-empty
+> `Basil.Infrastructure/Irc/IrcServiceCollectionExtensions.cs` (after the move it only forwarded to
+> `AddIrcApplication`, which `SliceRegistration.AddAll` now calls directly, followed by `AddIrcHost()`).
+> `Basil.Host.csproj` gained a `ProjectReference` to `Basil.Host.Irc`; `Basil.slnx` gained both new
+> projects under a new `/Sources/Host/` folder and `/Tests/`.
+>
+> Created `Basil.Host.Irc.Tests` (mirrors the other test projects' csproj shape) and moved
+> `TcpIrcConnectionTests.cs` (plan-named) plus `IrcMetricsPublisherTests.cs` (not named in the plan, but
+> moved out of necessity — `Basil.Infrastructure.Tests` has no reference to `Basil.Host.Irc` and never
+> should, so keeping a test of a type that no longer lives reachably from Infrastructure.Tests wasn't an
+> option, unlike the Batch 4/7/9 precedent where Infrastructure.Tests could still reach the moved
+> Application type). `Basil.Host.Tests.CompositionRootTests` was calling the now-deleted `AddIrc()`;
+> switched it to `AddIrcApplication()` (it doesn't need the TCP listener hosted service to resolve
+> `IrcQueryService` etc., matching how it never called `AddIrcHost()` either).
+>
+> Test count unchanged at **1711** — 5 tests moved from `Basil.Infrastructure.Tests` (846, was 851) to
+> the new `Basil.Host.Irc.Tests` (5, new). Per-project: ArchitectureTests 11, Domain 207, Protocol 158,
+> Application 93, Infrastructure 846, Host 28, Host.Irc 5, Integration 363 (not run this batch — not a
+> milestone).
+> Next: **Batch 11** — `Basil.Host.Bancho`: 46 packet handlers + 4 notifier impls +
+> `BanchoIrcBridgeConnection` + `LogoutBroadcastHandler` + `MatchPacketDataMapper` +
+> `MatchCreationDataMapper` + `IPacketHandler`/`PacketDispatcher` + `BanchoProtocolRoutes` +
+> `OsuWebRoutes` + `BeatmapAssetRoutes` + the bancho/osu-web/b. groups from `BanchoHostGroups` (D7) +
+> `BanchoAnnouncementNotifier` (D8, with the Application contract and the `AnnounceRoutes` edit);
+> `Basil.Host.Bancho.Tests` (46 packet tests + dispatcher). Full suite. Two commits: handlers, then
+> routes. The largest batch by file count (~62 + 47 tests), not by difficulty except for D7/D8.
 
 ---
 

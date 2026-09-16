@@ -6,7 +6,6 @@ using Basil.Application.Shared.Eventing;
 using Basil.Domain.Users;
 using Basil.Application.Chat;
 using Basil.Infrastructure.Chat.Packets;
-using Basil.Infrastructure.Irc;
 using Basil.Infrastructure.Multiplayer;
 using Basil.Infrastructure.Shared.Sessions;
 using Basil.Application.Spectating;
