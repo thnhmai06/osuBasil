@@ -18,6 +18,7 @@ using Basil.Infrastructure.Multiplayer.Packets;
 using Basil.Infrastructure.Shared.Http;
 using Basil.Infrastructure.Shared.Sessions;
 using Basil.Infrastructure.Spectating;
+using Basil.Application.Spectating;
 using Basil.Infrastructure.Spectating.Packets;
 using Basil.Infrastructure.Tests.Multiplayer.Packets;
 using Basil.Protocol.Packets;
@@ -60,7 +61,8 @@ public class PlayerLogoutServiceTests
 	public PlayerLogoutServiceTests()
 	{
 		_matchBroadcast = new MatchBroadcast(Substitute.For<IChannelRegistry>(), _matchChannelMembership,
-			new BanchoMatchNotifier(_channelRegistry, _matchChannelMembership), new ChatNotifier(Options.Create(new IrcOptions())),
+			new BanchoMatchNotifier(_channelRegistry, _matchChannelMembership),
+			new ChatNotifier(Options.Create(new IrcOptions())),
 			Substitute.For<ISessionRegistry<GameSession>>(), Substitute.For<ISessionRegistry<IrcSession>>(), null,
 			Substitute.For<IBeatmapRepository>(),
 			Substitute.For<IUserRepository>());
@@ -269,7 +271,8 @@ public class PlayerLogoutServiceTests
 				Options.Create(new IrcOptions())),
 			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
 		var matchBroadcast = new MatchBroadcast(channelRegistry, matchChannelMembership,
-			new BanchoMatchNotifier(channelRegistry, matchChannelMembership), new ChatNotifier(Options.Create(new IrcOptions())), gameRegistry,
+			new BanchoMatchNotifier(channelRegistry, matchChannelMembership),
+			new ChatNotifier(Options.Create(new IrcOptions())), gameRegistry,
 			ircRegistry,
 			null, Substitute.For<IBeatmapRepository>(),
 			Substitute.For<IUserRepository>());

@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using Basil.Application.Multiplayer;
 using Basil.Application.Shared.Eventing;
 using Basil.Application.Shared.Json;
+using Basil.Application.Spectating;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;

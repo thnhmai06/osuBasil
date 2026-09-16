@@ -12,6 +12,7 @@ using Basil.Infrastructure.Shared.Sessions;
 using Basil.Application.Scores;
 using Basil.Application.Users;
 using Basil.Application.Beatmaps;
+using Basil.Application.Auth;
 
 // ReSharper disable NotAccessedPositionalProperty.Global
 

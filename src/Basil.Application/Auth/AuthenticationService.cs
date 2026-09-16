@@ -1,9 +1,8 @@
 using Basil.Application.Sessions;
 using Basil.Domain.Auth;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Application.Auth;
 
-namespace Basil.Infrastructure.Auth;
+namespace Basil.Application.Auth;
 
 /// <summary>
 ///     Authenticates an already-online userSession against query-string credentials.

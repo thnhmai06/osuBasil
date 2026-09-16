@@ -2,7 +2,7 @@ using Basil.Domain.Users;
 using Basil.Protocol;
 using Basil.Protocol.Packets;
 
-namespace Basil.Infrastructure.Shared.Http.Bancho;
+namespace Basil.Application.Auth;
 
 /// <summary>
 ///     Encodes the individual packets that make up a login response: the protocol handshake, the

@@ -2,6 +2,7 @@ using Basil.Application.Sessions;
 using Basil.Infrastructure.Shared.Http.Bancho;
 using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
+using Basil.Application.Auth;
 
 namespace Basil.Infrastructure.Users.Packets;
 

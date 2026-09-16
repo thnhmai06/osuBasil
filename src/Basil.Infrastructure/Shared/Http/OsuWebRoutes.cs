@@ -10,7 +10,6 @@ using Basil.Domain.Users;
 using Basil.Infrastructure.Auth;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Scores;
-using Basil.Infrastructure.Shared.Http.Bancho;
 using Basil.Infrastructure.Shared.Sessions;
 using Basil.Application.Scores;
 using Basil.Application.Users;

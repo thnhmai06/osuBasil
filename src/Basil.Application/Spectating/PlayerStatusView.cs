@@ -2,9 +2,8 @@ using Basil.Application.Sessions;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Shared.Sessions;
 
-namespace Basil.Infrastructure.Spectating;
+namespace Basil.Application.Spectating;
 
 /// <summary>
 ///     The wire shape of a userSession's live status, published on the <c>GET /users/{userId}/live</c>

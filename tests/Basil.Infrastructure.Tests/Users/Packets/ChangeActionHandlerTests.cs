@@ -6,7 +6,7 @@ using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Http;
 using Basil.Infrastructure.Shared.Sessions;
-using Basil.Infrastructure.Spectating;
+using Basil.Application.Spectating;
 using Basil.Infrastructure.Tests.Multiplayer.Packets;
 using Basil.Infrastructure.Users.Packets;
 using Basil.Protocol.Packets;

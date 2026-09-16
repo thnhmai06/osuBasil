@@ -1,4 +1,5 @@
 using Basil.Infrastructure.Shared.Persistence;
+using Basil.Application.Sessions;
 using NetArchTest.Rules;
 
 namespace Basil.ArchitectureTests;
@@ -53,6 +54,35 @@ public class TransportSeamTests
 
 		var result = BusinessAndApiTypes()
 			.NotHaveDependencyOn("Basil.Protocol")
+			.GetResult();
+
+		var actualOffenders = (result.FailingTypes ?? [])
+			.Select(t => t.FullName)
+			.OfType<string>()
+			.OrderBy(name => name, StringComparer.Ordinal)
+			.ToArray();
+
+		Assert.Equal(knownOffenders.OrderBy(name => name, StringComparer.Ordinal), actualOffenders);
+	}
+
+	[Fact]
+	public void Application_Types_Should_Not_Reference_Protocol()
+	{
+		// LoginResponseEncoder/PacketBuilders build bancho packets and are the Application-side
+		// equivalent of Business_And_Api_Types_Should_Not_Reference_Protocol's pinned Infrastructure
+		// list above — deliberately allowed here, pinned so the set can only shrink.
+		// BanchoIrcBridgeConnection and IIrcConnection are IRC-side seam types, pinned (U3).
+		string[] knownOffenders =
+		[
+			"Basil.Application.Auth.LoginResponseEncoder",
+			"Basil.Application.Auth.PacketBuilders",
+			"Basil.Application.Irc.BanchoIrcBridgeConnection",
+			"Basil.Application.Irc.IIrcConnection"
+		];
+
+		var result = Types.InAssembly(typeof(GameSession).Assembly)
+			.That().DoNotResideInNamespaceContaining(".Packets")
+			.ShouldNot().HaveDependencyOn("Basil.Protocol")
 			.GetResult();
 
 		var actualOffenders = (result.FailingTypes ?? [])

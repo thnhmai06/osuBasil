@@ -1,8 +1,7 @@
 using Basil.Application.Sessions;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
 
-namespace Basil.Infrastructure.Shared.Http.Bancho;
+namespace Basil.Application.Auth;
 
 /// <summary>
 ///     Assembles user-presence and user-stats Bancho packets from a session's in-memory state.

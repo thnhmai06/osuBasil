@@ -62,8 +62,18 @@ not, it says so.
 > Test suite: 9 + 207 (`Basil.Domain.Tests`, down from 235) + 158 + 93 (`Basil.Application.Tests`, up
 > from 65) + 851 + 28 + 363 = **1709**, unchanged. Full `Basil.IntegrationTests` 362/363 (the same
 > known-flaky SSE test, passes alone). Release build succeeds.
-> Next: **Batch 4** — Auth → A (3 services + `LoginResponseEncoder`/`PacketBuilders` +
-> `PlayerStatusView`; `TransportSeamTests` re-scoped and pinned; "the one reasoning batch").
+> **Batch 4 done**: moved `AuthenticationService.cs` (Infrastructure.Auth → Application.Auth),
+> `LoginResponseEncoder.cs` and `PacketBuilders.cs` (Infrastructure.Shared.Http.Bancho → Application.Auth),
+> and `PlayerStatusView.cs` (Infrastructure.Spectating → Application.Spectating). `LoginService.cs`
+> and `ClientIntegrityService.cs` were scoped in the plan but deliberately deferred: both depend on
+> Infrastructure types not yet moved (BotBootstrapService, SpectatorService, MatchBroadcast, IChatNotifier
+> — batches 5-8), and `LoginService` also needs a not-yet-created Application contract for `MenuIconService`
+> (filesystem-permanent in Infrastructure). `TransportSeamTests` unchanged for Infrastructure (still pins
+> 3 offenders), re-scoped with a new Application test pinning `LoginResponseEncoder`/`PacketBuilders`
+> plus the IRC seam types (`BanchoIrcBridgeConnection`, `IIrcConnection`) — total test count
+> 1709 → **1710** (+1). Per-project: Basil.ArchitectureTests 10 (was 9), Domain 207, Protocol 158,
+> Application 93, Infrastructure 851, Host 28, Integration 363.
+> Next: **Batch 5** — Chat + Bot + Irc application types.
 
 ---
 
