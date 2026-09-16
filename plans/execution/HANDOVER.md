@@ -73,7 +73,30 @@ not, it says so.
 > plus the IRC seam types (`BanchoIrcBridgeConnection`, `IIrcConnection`) — total test count
 > 1709 → **1710** (+1). Per-project: Basil.ArchitectureTests 10 (was 9), Domain 207, Protocol 158,
 > Application 93, Infrastructure 851, Host 28, Integration 363.
-> Next: **Batch 5** — Chat + Bot + Irc application types.
+> **Batch 5 done**: moved 14 files to `Basil.Application` — Chat (6: `ChannelMembershipService`,
+> `ChatDispatchService`, `ChatLine`, `IChannelNotifier`, `IChatNotifier`, `ChannelPartLogoutHandler`),
+> Bot (2: `BotBootstrapService`, `ICommandDispatcher`), Irc (5: `IrcAuthenticationService`,
+> `IrcQueryService`, `IrcNamesReply`, `IrcLoginOutcome`, `IrcSessionRemovalLogoutHandler`), plus
+> `MatchChatMessage.cs` (Multiplayer, pulled forward from Batch 8 — a pure DTO record with no other
+> Infrastructure dependency, needed by `ChannelMembershipService.PublishMatchChat`). `CommandDispatcher.cs`
+> (the concrete `Basil.Infrastructure.Bot` implementation of `ICommandDispatcher`, moved separately from
+> its interface) was scoped in the plan but deliberately deferred to Batch 8: it depends on
+> `IMpCommandService` (Multiplayer) and `FaqService` (Content, filesystem-permanent in Infrastructure like
+> `MenuIconService`). `ClientIntegrityService.cs` (deferred already in Batch 4) still depends on
+> `MatchBroadcast`/Multiplayer — unchanged, still Batch 8. DI split for Chat/Bot/Irc: new
+> `AddChatApplication()`/`AddBotApplication()`/`AddIrcApplication()` extension methods in
+> `Basil.Application`, called from the still-Infrastructure `AddChat()`/`AddBot()`/`AddIrc()`, which now
+> register only concrete Infrastructure-only types (`ChatNotifier`/`ChannelNotifier`, packet handlers,
+> `SqliteChannelRepository`, `ChatMetricsPublisher`, `CommandDispatcher`, `TcpIrcListener`,
+> `IrcMetricsPublisher`). `TransportSeamTests.Application_Types_Should_Not_Reference_Protocol` (added in
+> Batch 4) gained 4 more pinned offenders once real code (not just moved-file scaffolding) reached the
+> namespace: `IrcAuthenticationService`, `IrcLoginOutcome`, `IrcNamesReply`, `IrcQueryService` — each
+> builds or carries `Basil.Protocol.Irc.IrcMessage`, an IRC-side seam already covered by the existing
+> `BanchoIrcBridgeConnection`/`IIrcConnection` pins (U3). Test count unchanged at **1710** (pure code
+> movement, no new/removed test cases). Per-project: ArchitectureTests 10, Domain 207, Protocol 158,
+> Application 93, Infrastructure 851, Host 28, Integration 363 (not run this batch — not a milestone;
+> `Basil.Infrastructure.Tests` already covers `LoginServiceTests`/`ClientIntegrityServiceTests` etc.).
+> Next: **Batch 6** — Spectating → Application (5 files, per plan §5).
 
 ---
 

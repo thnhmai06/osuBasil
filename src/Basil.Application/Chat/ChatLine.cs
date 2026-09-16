@@ -1,4 +1,4 @@
-namespace Basil.Infrastructure.Chat;
+namespace Basil.Application.Chat;
 
 /// <summary>
 ///     One line of chat as the server understands it, before any transport has encoded it: who

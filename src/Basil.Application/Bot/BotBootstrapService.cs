@@ -3,12 +3,11 @@ using Basil.Application.Shared.Configuration;
 using Basil.Domain.Channels;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Chat;
-using Basil.Infrastructure.Shared.Sessions;
+using Basil.Application.Chat;
 using Basil.Application.Users;
 using Microsoft.Extensions.Options;
 
-namespace Basil.Infrastructure.Bot;
+namespace Basil.Application.Bot;
 
 /// <summary>
 ///     Boots the seeded id=0 bot user into an in-memory <see cref="GameSession" /> at startup.

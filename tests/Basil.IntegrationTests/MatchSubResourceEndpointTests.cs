@@ -10,7 +10,7 @@ using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Host;
-using Basil.Infrastructure.Bot;
+using Basil.Application.Bot;
 using Basil.Infrastructure.Multiplayer;
 using Basil.Infrastructure.Shared.Sessions;
 using Basil.Application.Users;
@@ -815,7 +815,8 @@ public class MatchSubResourceEndpointTests : IClassFixture<WebApplicationFactory
 			return Task.CompletedTask;
 		}
 
-		public Task UpdateSilenceEndAsync(int id, DateTimeOffset? silenceEnd, CancellationToken cancellationToken = default)
+		public Task UpdateSilenceEndAsync(int id, DateTimeOffset? silenceEnd,
+			CancellationToken cancellationToken = default)
 		{
 			return Task.CompletedTask;
 		}

@@ -10,8 +10,9 @@ using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Social;
 using Basil.Domain.Users;
+using Basil.Application.Bot;
 using Basil.Infrastructure.Bot;
-using Basil.Infrastructure.Chat;
+using Basil.Application.Chat;
 using Basil.Infrastructure.Chat.Packets;
 using Basil.Infrastructure.Irc;
 using Basil.Infrastructure.Multiplayer;
@@ -43,9 +44,12 @@ public class SendPublicMessageHandlerTests
 
 	private SendPublicMessageHandler MakeHandler()
 	{
-		var channelMembership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, new ChatNotifier(Options.Create(new IrcOptions())), new ChannelNotifier(_gameRegistry,_ircRegistry, Options.Create(new IrcOptions())),
+		var channelMembership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
+			new ChatNotifier(Options.Create(new IrcOptions())),
+			new ChannelNotifier(_gameRegistry, _ircRegistry, Options.Create(new IrcOptions())),
 			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
-		var chatDispatch = new ChatDispatchService(_channelRegistry, _gameRegistry, channelMembership, new ChatNotifier(Options.Create(new IrcOptions())),
+		var chatDispatch = new ChatDispatchService(_channelRegistry, _gameRegistry, channelMembership,
+			new ChatNotifier(Options.Create(new IrcOptions())),
 			Substitute.For<IUserRepository>(), Substitute.For<IRelationshipRepository>(), _commandDispatcher,
 			Substitute.For<IMatchRegistry>(), NullLogger<ChatDispatchService>.Instance);
 		return new SendPublicMessageHandler(chatDispatch);

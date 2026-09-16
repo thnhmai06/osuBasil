@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using Basil.Application.Bot;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
 using Basil.Application.Shared.Eventing;

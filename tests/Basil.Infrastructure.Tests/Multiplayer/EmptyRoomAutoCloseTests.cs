@@ -7,8 +7,8 @@ using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Bot;
-using Basil.Infrastructure.Chat;
+using Basil.Application.Bot;
+using Basil.Application.Chat;
 using Basil.Infrastructure.Chat.Packets;
 using Basil.Infrastructure.Irc;
 using Basil.Infrastructure.Multiplayer;
@@ -44,15 +44,21 @@ public class EmptyRoomAutoCloseTests
 	private (MatchMembership Membership, MatchLifecycle Lifecycle) MakeService()
 	{
 		_matchRegistry = new MultiplayerTestSupport.FakeMatchRegistry(_channelRegistry, _matchRepository);
-		var channelMembership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry, new ChatNotifier(Options.Create(new IrcOptions())), new ChannelNotifier(_gameRegistry,_ircRegistry, Options.Create(new IrcOptions())),
+		var channelMembership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
+			new ChatNotifier(Options.Create(new IrcOptions())),
+			new ChannelNotifier(_gameRegistry, _ircRegistry, Options.Create(new IrcOptions())),
 			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
-		var matchBroadcast = new MatchBroadcast(_channelRegistry, channelMembership, new BanchoMatchNotifier(_channelRegistry, channelMembership), new ChatNotifier(Options.Create(new IrcOptions())), _gameRegistry, _ircRegistry,
+		var matchBroadcast = new MatchBroadcast(_channelRegistry, channelMembership,
+			new BanchoMatchNotifier(_channelRegistry, channelMembership),
+			new ChatNotifier(Options.Create(new IrcOptions())), _gameRegistry, _ircRegistry,
 			_hub, Substitute.For<IBeatmapRepository>(), Substitute.For<IUserRepository>());
-		var matchLifecycle = new MatchLifecycle(_matchRegistry, _channelRegistry, channelMembership, new BanchoMatchNotifier(_channelRegistry, channelMembership), _gameRegistry,
+		var matchLifecycle = new MatchLifecycle(_matchRegistry, _channelRegistry, channelMembership,
+			new BanchoMatchNotifier(_channelRegistry, channelMembership), _gameRegistry,
 			_matchRepository, Substitute.For<IMatchRoundEndOutbox>(), _hub,
 			Substitute.For<IBeatmapRepository>(), matchBroadcast, _serviceProvider,
 			NullLogger<MatchLifecycle>.Instance);
-		var matchMembership = new MatchMembership(_channelRegistry, _gameRegistry, channelMembership, new BanchoMatchNotifier(_channelRegistry, channelMembership),
+		var matchMembership = new MatchMembership(_channelRegistry, _gameRegistry, channelMembership,
+			new BanchoMatchNotifier(_channelRegistry, channelMembership),
 			_matchRepository, matchLifecycle, NullLogger<MatchMembership>.Instance);
 		_serviceProvider.GetService(typeof(MatchMembership)).Returns(matchMembership);
 		return (matchMembership, matchLifecycle);

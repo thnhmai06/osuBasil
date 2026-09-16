@@ -1,10 +1,9 @@
-using Basil.Application.Sessions;
+using Basil.Application.Chat;
 using Basil.Application.Shared.Configuration;
 using Basil.Domain.Channels;
 using Basil.Infrastructure.Chat.Packets;
 using Basil.Infrastructure.Shared.Http.Bancho;
 using Basil.Infrastructure.Shared.Persistence;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Application.Channels;
 using Microsoft.Extensions.Options;
 
@@ -19,11 +18,10 @@ public static class ChatServiceCollectionExtensions
 	/// <returns>The same service collection for chaining further registrations.</returns>
 	public static IServiceCollection AddChat(this IServiceCollection services, IConfiguration configuration)
 	{
+		services.AddChatApplication();
+
 		services.AddSingleton<IChatNotifier, ChatNotifier>();
 		services.AddSingleton<IChannelNotifier, ChannelNotifier>();
-		services.AddSingleton<ChannelMembershipService>();
-		services.AddSingleton<ChatDispatchService>();
-		services.AddSingleton<IPlayerLogoutHandler, ChannelPartLogoutHandler>();
 
 		services.AddSingleton<IChannelRegistry, InMemoryChannelRegistry>();
 

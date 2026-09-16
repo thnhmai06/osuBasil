@@ -1,3 +1,4 @@
+using Basil.Application.Bot;
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Domain.Beatmaps;

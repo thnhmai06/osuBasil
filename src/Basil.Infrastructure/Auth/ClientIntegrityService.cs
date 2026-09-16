@@ -1,8 +1,9 @@
+using Basil.Application.Bot;
 using Basil.Application.Irc;
 using Basil.Application.Sessions;
 using Basil.Domain.Scores;
 using Basil.Infrastructure.Bot;
-using Basil.Infrastructure.Chat;
+using Basil.Application.Chat;
 using Basil.Infrastructure.Irc;
 using Basil.Infrastructure.Multiplayer;
 using Basil.Infrastructure.Shared.Sessions;

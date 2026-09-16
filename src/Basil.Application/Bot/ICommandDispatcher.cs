@@ -1,8 +1,6 @@
 using Basil.Application.Sessions;
-using Basil.Application.Bot;
-using Basil.Infrastructure.Shared.Sessions;
 
-namespace Basil.Infrastructure.Bot;
+namespace Basil.Application.Bot;
 
 /// <summary>
 ///     Dispatches chat commands, sending each reply through the provided

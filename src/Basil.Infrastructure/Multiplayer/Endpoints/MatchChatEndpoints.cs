@@ -3,7 +3,7 @@ using Basil.Application.Shared.Eventing;
 using Basil.Domain.Channels;
 using Basil.Domain.Login;
 using Basil.Infrastructure.Auth;
-using Basil.Infrastructure.Chat;
+using Basil.Application.Chat;
 using Basil.Infrastructure.Shared.Http;
 using Basil.Infrastructure.Shared.Http.OpenApi;
 

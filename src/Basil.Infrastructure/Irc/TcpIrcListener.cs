@@ -3,8 +3,8 @@ using System.Net.Sockets;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
 using Basil.Domain.Channels;
-using Basil.Infrastructure.Chat;
-using Basil.Infrastructure.Shared.Sessions;
+using Basil.Application.Chat;
+using Basil.Application.Irc;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Irc;

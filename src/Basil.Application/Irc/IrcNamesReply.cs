@@ -1,7 +1,6 @@
-using Basil.Application.Irc;
 using Basil.Protocol.Irc;
 
-namespace Basil.Infrastructure.Irc;
+namespace Basil.Application.Irc;
 
 /// <summary>
 ///     Builds the RPL_NAMREPLY and RPL_ENDOFNAMES numeric pair that reports a channel's member list.

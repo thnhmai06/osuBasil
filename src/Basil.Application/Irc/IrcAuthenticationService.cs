@@ -1,19 +1,17 @@
 using System.Security.Cryptography;
 using System.Text;
-using Basil.Application.Irc;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
 using Basil.Domain.Auth;
 using Basil.Domain.Channels;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Chat;
-using Basil.Infrastructure.Shared.Sessions;
+using Basil.Application.Chat;
 using Basil.Protocol.Irc;
 using Basil.Application.Users;
 using Basil.Application.Auth;
 using Microsoft.Extensions.Options;
 
-namespace Basil.Infrastructure.Irc;
+namespace Basil.Application.Irc;
 
 /// <summary>
 ///     Authenticates a real IRC connection's PASS/NICK/USER handshake and, on success, wires up an

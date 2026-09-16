@@ -1,6 +1,4 @@
-using Basil.Application.Multiplayer;
-
-namespace Basil.Infrastructure.Multiplayer;
+namespace Basil.Application.Multiplayer;
 
 /// <summary>
 ///     One line of chat said in a match's own channel.

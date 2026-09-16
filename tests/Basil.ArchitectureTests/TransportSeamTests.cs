@@ -71,13 +71,19 @@ public class TransportSeamTests
 		// LoginResponseEncoder/PacketBuilders build bancho packets and are the Application-side
 		// equivalent of Business_And_Api_Types_Should_Not_Reference_Protocol's pinned Infrastructure
 		// list above — deliberately allowed here, pinned so the set can only shrink.
-		// BanchoIrcBridgeConnection and IIrcConnection are IRC-side seam types, pinned (U3).
+		// BanchoIrcBridgeConnection, IIrcConnection, IrcAuthenticationService, IrcLoginOutcome,
+		// IrcNamesReply, and IrcQueryService are IRC-side seam types that build or carry IrcMessage,
+		// pinned (U3).
 		string[] knownOffenders =
 		[
 			"Basil.Application.Auth.LoginResponseEncoder",
 			"Basil.Application.Auth.PacketBuilders",
 			"Basil.Application.Irc.BanchoIrcBridgeConnection",
-			"Basil.Application.Irc.IIrcConnection"
+			"Basil.Application.Irc.IIrcConnection",
+			"Basil.Application.Irc.IrcAuthenticationService",
+			"Basil.Application.Irc.IrcLoginOutcome",
+			"Basil.Application.Irc.IrcNamesReply",
+			"Basil.Application.Irc.IrcQueryService"
 		];
 
 		var result = Types.InAssembly(typeof(GameSession).Assembly)

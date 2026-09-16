@@ -8,14 +8,10 @@ using Basil.Application.Shared.Json;
 using Basil.Domain.Channels;
 using Basil.Domain.Login;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Bot;
-using Basil.Infrastructure.Irc;
-using Basil.Infrastructure.Multiplayer;
-using Basil.Infrastructure.Shared.Http;
-using Basil.Infrastructure.Shared.Sessions;
+using Basil.Application.Bot;
 using Microsoft.Extensions.Options;
 
-namespace Basil.Infrastructure.Chat;
+namespace Basil.Application.Chat;
 
 /// <summary>
 ///     Handles the shared join and part workflow for channels. This service is used by both

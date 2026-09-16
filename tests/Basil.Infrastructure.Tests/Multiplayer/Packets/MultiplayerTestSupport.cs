@@ -9,7 +9,7 @@ using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Application.Spectating;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Chat;
+using Basil.Application.Chat;
 using Basil.Infrastructure.Chat.Packets;
 using Basil.Infrastructure.Irc;
 using Basil.Infrastructure.Multiplayer;

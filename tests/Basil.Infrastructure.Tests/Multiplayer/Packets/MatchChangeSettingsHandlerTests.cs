@@ -2,7 +2,7 @@ using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
-using Basil.Infrastructure.Bot;
+using Basil.Application.Bot;
 using Basil.Infrastructure.Multiplayer;
 using Basil.Infrastructure.Multiplayer.Packets;
 using Basil.Infrastructure.Shared.Sessions;

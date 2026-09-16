@@ -1,7 +1,4 @@
 using Basil.Application.Irc;
-using Basil.Application.Sessions;
-using Basil.Application.Shared.Configuration;
-using Basil.Infrastructure.Shared.Sessions;
 
 namespace Basil.Infrastructure.Irc;
 
@@ -14,13 +11,7 @@ public static class IrcServiceCollectionExtensions
 	/// <returns>The same service collection for chaining further registrations.</returns>
 	public static IServiceCollection AddIrc(this IServiceCollection services, IConfiguration configuration)
 	{
-		services.Configure<IrcOptions>(configuration.GetSection(IrcOptions.SectionName));
-
-		services.AddSingleton<IrcAuthenticationService>();
-		services.AddSingleton<IrcQueryService>();
-
-		services.AddSingleton<ISessionRegistry<IrcSession>, IrcSessionRegistry>();
-		services.AddSingleton<IPlayerLogoutHandler, IrcSessionRemovalLogoutHandler>();
+		services.AddIrcApplication(configuration);
 
 		services.AddHostedService<TcpIrcListener>();
 		services.AddHostedService<IrcMetricsPublisher>();

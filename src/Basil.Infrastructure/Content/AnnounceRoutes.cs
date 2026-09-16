@@ -1,6 +1,6 @@
 using Basil.Application.Sessions;
 using Basil.Infrastructure.Auth;
-using Basil.Infrastructure.Bot;
+using Basil.Application.Bot;
 using Basil.Infrastructure.Shared.Http;
 using Basil.Infrastructure.Shared.Http.OpenApi;
 using Basil.Infrastructure.Shared.Sessions;

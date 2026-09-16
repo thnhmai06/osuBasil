@@ -1,3 +1,4 @@
+using Basil.Application.Bot;
 using Basil.Application.Irc;
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;

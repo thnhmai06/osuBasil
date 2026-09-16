@@ -1,8 +1,7 @@
 using Basil.Application.Sessions;
 using Basil.Domain.Channels;
-using Basil.Infrastructure.Shared.Sessions;
 
-namespace Basil.Infrastructure.Chat;
+namespace Basil.Application.Chat;
 
 /// <summary>
 ///     Tells connected players about channel membership and roster changes. The caller decides what

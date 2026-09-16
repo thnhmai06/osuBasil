@@ -1,7 +1,6 @@
-using Basil.Application.Irc;
 using Basil.Protocol.Irc;
 
-namespace Basil.Infrastructure.Irc;
+namespace Basil.Application.Irc;
 
 /// <summary>
 ///     Represents the result of an IRC PASS/NICK/USER handshake attempt.

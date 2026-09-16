@@ -1,8 +1,6 @@
-using Basil.Application.Irc;
 using Basil.Application.Sessions;
-using Basil.Infrastructure.Shared.Sessions;
 
-namespace Basil.Infrastructure.Irc;
+namespace Basil.Application.Irc;
 
 /// <summary>
 ///     Removes a departing <see cref="IrcSession" /> from the live session registry.

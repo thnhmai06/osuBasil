@@ -3,7 +3,7 @@ using Basil.Application.Sessions;
 using Basil.Domain.Channels;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Chat;
+using Basil.Application.Chat;
 using Basil.Infrastructure.Shared.Sessions;
 
 namespace Basil.Infrastructure.Multiplayer;

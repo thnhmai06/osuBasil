@@ -3,7 +3,7 @@ using Basil.Application.Shared.Configuration;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Auth;
-using Basil.Infrastructure.Bot;
+using Basil.Application.Bot;
 using Basil.Infrastructure.Chat.Packets;
 using Basil.Infrastructure.Shared.Sessions;
 using Basil.Infrastructure.Tests.Multiplayer.Packets;

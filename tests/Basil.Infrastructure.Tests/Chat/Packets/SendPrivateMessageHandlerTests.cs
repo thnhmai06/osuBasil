@@ -8,8 +8,8 @@ using Basil.Domain.Channels;
 using Basil.Domain.Login;
 using Basil.Domain.Social;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Bot;
-using Basil.Infrastructure.Chat;
+using Basil.Application.Bot;
+using Basil.Application.Chat;
 using Basil.Infrastructure.Chat.Packets;
 using Basil.Infrastructure.Irc;
 using Basil.Infrastructure.Multiplayer;
@@ -40,9 +40,14 @@ public class SendPrivateMessageHandlerTests
 	{
 		var channelRegistry = Substitute.For<IChannelRegistry>();
 		var channelMembership = new ChannelMembershipService(_sessionRegistry,
-			Substitute.For<ISessionRegistry<IrcSession>>(), channelRegistry, new ChatNotifier(Options.Create(new IrcOptions())), new ChannelNotifier(_sessionRegistry,Substitute.For<ISessionRegistry<IrcSession>>(), Options.Create(new IrcOptions())), Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
+			Substitute.For<ISessionRegistry<IrcSession>>(), channelRegistry,
+			new ChatNotifier(Options.Create(new IrcOptions())),
+			new ChannelNotifier(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(),
+				Options.Create(new IrcOptions())), Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
+			Options.Create(new IrcOptions()));
 		var matchRegistry = Substitute.For<IMatchRegistry>();
-		var chatDispatch = new ChatDispatchService(channelRegistry, _sessionRegistry, channelMembership, new ChatNotifier(Options.Create(new IrcOptions())), _users,
+		var chatDispatch = new ChatDispatchService(channelRegistry, _sessionRegistry, channelMembership,
+			new ChatNotifier(Options.Create(new IrcOptions())), _users,
 			_relationships, _commandDispatcher, matchRegistry, NullLogger<ChatDispatchService>.Instance);
 		return new SendPrivateMessageHandler(chatDispatch);
 	}

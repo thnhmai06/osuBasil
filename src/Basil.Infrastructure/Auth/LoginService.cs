@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Basil.Application.Auth;
+using Basil.Application.Bot;
 using Basil.Application.Content;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;

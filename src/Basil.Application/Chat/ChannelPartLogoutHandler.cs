@@ -1,7 +1,6 @@
 using Basil.Application.Sessions;
-using Basil.Infrastructure.Shared.Sessions;
 
-namespace Basil.Infrastructure.Chat;
+namespace Basil.Application.Chat;
 
 /// <summary>
 ///     Removes a departing session from every channel it had joined, applying the shared PART/QUIT

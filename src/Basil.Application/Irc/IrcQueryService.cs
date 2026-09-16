@@ -1,17 +1,15 @@
 using System.Globalization;
 using System.Reflection;
-using Basil.Application.Irc;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
 using Basil.Domain.Channels;
 using Basil.Domain.Content;
-using Basil.Infrastructure.Chat;
-using Basil.Infrastructure.Shared.Sessions;
+using Basil.Application.Chat;
 using Basil.Protocol.Irc;
 using Basil.Application.Content;
 using Microsoft.Extensions.Options;
 
-namespace Basil.Infrastructure.Irc;
+namespace Basil.Application.Irc;
 
 /// <summary>
 ///     Builds the replies to an IRC client's read-only queries — the post-registration welcome

@@ -3,7 +3,7 @@ using Basil.Domain.Auth;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Channels;
 using Basil.Domain.Content;
-using Basil.Infrastructure.Bot;
+using Basil.Application.Bot;
 using Basil.Infrastructure.Multiplayer;
 using Basil.Infrastructure.Shared.Persistence;
 using Basil.Application.Content;

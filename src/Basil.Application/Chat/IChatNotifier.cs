@@ -1,7 +1,6 @@
 using Basil.Application.Sessions;
-using Basil.Infrastructure.Shared.Sessions;
 
-namespace Basil.Infrastructure.Chat;
+namespace Basil.Application.Chat;
 
 /// <summary>
 ///     Delivers chat to a connected player. The caller decides who hears what; the implementation

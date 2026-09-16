@@ -4,14 +4,10 @@ using Basil.Application.Bot;
 using Basil.Domain.Channels;
 using Basil.Domain.Social;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Bot;
-using Basil.Infrastructure.Chat.Packets;
-using Basil.Infrastructure.Multiplayer;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Application.Users;
 using Basil.Application.Social;
 
-namespace Basil.Infrastructure.Chat;
+namespace Basil.Application.Chat;
 
 /// <summary>
 ///     Routes an outgoing chat message to a channel or a private recipient.

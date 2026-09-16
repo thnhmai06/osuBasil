@@ -5,6 +5,7 @@ using Basil.Domain.Scores;
 using Basil.Infrastructure.Auth;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Bot;
+using Basil.Application.Chat;
 using Basil.Infrastructure.Chat;
 using Basil.Infrastructure.Content;
 using Basil.Infrastructure.Diagnostics;
