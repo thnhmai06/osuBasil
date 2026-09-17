@@ -17,9 +17,15 @@ namespace Basil.Infrastructure.Diagnostics;
 /// <param name="ManagedHeapBytes">The managed heap's estimated size, without forcing a collection first.</param>
 /// <param name="GcHeapSizeBytes">The managed heap's total size as of the most recently completed garbage collection.</param>
 /// <param name="FragmentedBytes">The managed heap's fragmentation as of the most recently completed garbage collection.</param>
-/// <param name="MemoryLoadBytes">The whole system's (or container's) memory in use as of the most recently completed garbage collection.</param>
+/// <param name="MemoryLoadBytes">
+///     The whole system's (or container's) memory in use as of the most recently completed
+///     garbage collection.
+/// </param>
 /// <param name="TotalAvailableMemoryBytes">The memory limit the garbage collector is budgeting against.</param>
-/// <param name="HighMemoryLoadThresholdBytes">The memory-load level above which the garbage collector becomes more aggressive.</param>
+/// <param name="HighMemoryLoadThresholdBytes">
+///     The memory-load level above which the garbage collector becomes more
+///     aggressive.
+/// </param>
 /// <remarks>
 ///     <see cref="GcHeapSizeBytes" />, <see cref="FragmentedBytes" /> and <see cref="MemoryLoadBytes" />
 ///     reflect the state as of the last completed garbage collection rather than this exact instant,
@@ -48,7 +54,6 @@ public sealed record ProcessSample(
 ///     syscall costing several milliseconds, enough on its own to blow past a one-second broadcast
 ///     budget if paid more than once per tick. Every process-derived field this type reports comes
 ///     from that single refresh.
-///
 ///     <see cref="ProcessSample.TotalAvailableMemoryBytes" /> and
 ///     <see cref="ProcessSample.HighMemoryLoadThresholdBytes" /> track the host or container's memory
 ///     configuration, which changes essentially never while the process is running, so this type
@@ -59,13 +64,13 @@ public sealed class ProcessSampler
 	private static readonly TimeSpan SlowFieldRefreshInterval = TimeSpan.FromMinutes(1);
 
 	private readonly Process _process = Process.GetCurrentProcess();
+	private long _highMemoryLoadThresholdBytes;
 
 	private TimeSpan? _lastCpuTime;
 	private long _lastCpuTimestamp;
+	private long? _lastSlowFieldRefreshTimestamp;
 
 	private long _totalAvailableMemoryBytes;
-	private long _highMemoryLoadThresholdBytes;
-	private long? _lastSlowFieldRefreshTimestamp;
 
 	/// <summary>How many times <see cref="Sample" /> has refreshed the held process handle.</summary>
 	internal int RefreshCountForTest { get; private set; }
@@ -110,7 +115,7 @@ public sealed class ProcessSampler
 			var cpuElapsed = cpuTime - lastCpuTime;
 			if (wallElapsed > TimeSpan.Zero)
 				cpuUsagePercent = cpuElapsed.TotalMilliseconds / wallElapsed.TotalMilliseconds
-					/ Environment.ProcessorCount * 100;
+				                                               / Environment.ProcessorCount * 100;
 		}
 
 		_lastCpuTime = cpuTime;
@@ -121,7 +126,7 @@ public sealed class ProcessSampler
 	private void RefreshSlowFieldsIfDue(long now, GCMemoryInfo gcInfo)
 	{
 		if (_lastSlowFieldRefreshTimestamp is { } last &&
-			Stopwatch.GetElapsedTime(last, now) < SlowFieldRefreshInterval)
+		    Stopwatch.GetElapsedTime(last, now) < SlowFieldRefreshInterval)
 			return;
 
 		_totalAvailableMemoryBytes = gcInfo.TotalAvailableMemoryBytes;

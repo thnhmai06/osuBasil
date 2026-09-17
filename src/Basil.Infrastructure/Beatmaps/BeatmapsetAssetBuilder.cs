@@ -1,13 +1,12 @@
 using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.IO.Compression;
+using Basil.Application.Beatmaps;
 using Basil.Application.Shared.Configuration;
 using Basil.Domain.Beatmaps;
 using Basil.Infrastructure.Shared.Media;
 using Basil.Infrastructure.Shared.Storage;
-using Basil.Application.Beatmaps;
 using Microsoft.Extensions.Options;
-using BeatmapIngestionService = Basil.Infrastructure.Beatmaps.BeatmapIngestionService;
 
 namespace Basil.Infrastructure.Beatmaps;
 
@@ -24,6 +23,9 @@ public static class BeatmapsetAssetBuilder
 	private static readonly FrozenSet<string> VideoExtensions =
 		new[] { ".avi", ".flv", ".mkv", ".mov", ".mp4", ".mpeg", ".mpg", ".m4v", ".webm", ".wmv" }.ToFrozenSet(
 			StringComparer.OrdinalIgnoreCase);
+
+	/// <summary>Per-beatmapset single-flight lock guarding <see cref="BuildAudioPreviewAsync" />'s ffmpeg call.</summary>
+	private static readonly ConcurrentDictionary<int, SemaphoreSlim> AudioPreviewLocks = new();
 
 	/// <summary>
 	///     Creates a temporary <c>.osz</c> archive from a locally stored beatmapset.
@@ -135,9 +137,6 @@ public static class BeatmapsetAssetBuilder
 		var name = $"{beatmapset.Id} {beatmapset.Artist} - {beatmapset.Title}{(suffixed ? " [no video]" : "")}.osz";
 		return (zipStream.ToArray(), name);
 	}
-
-	/// <summary>Per-beatmapset single-flight lock guarding <see cref="BuildAudioPreviewAsync" />'s ffmpeg call.</summary>
-	private static readonly ConcurrentDictionary<int, SemaphoreSlim> AudioPreviewLocks = new();
 
 	/// <summary>
 	///     Generates the standard audio preview clip for a beatmapset.

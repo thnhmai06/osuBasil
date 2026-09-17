@@ -1,6 +1,5 @@
-using Basil.Domain.Content;
-using Basil.Infrastructure.Shared.Persistence;
 using Basil.Application.Content;
+using Basil.Infrastructure.Shared.Persistence;
 using Dapper;
 
 namespace Basil.Infrastructure.Content;

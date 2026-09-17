@@ -13,11 +13,9 @@ namespace Basil.Infrastructure.Diagnostics;
 ///     is checked before doing any work, so an idle diagnostic API costs nothing beyond the timer tick
 ///     itself, and the cost of an additional subscriber to an already-watched category is zero -- the
 ///     sample is taken once per tick and broadcast to everyone watching, not once per subscriber.
-///
 ///     <see cref="RuntimeMeterListener" /> keeps running for the process's whole lifetime regardless
 ///     of whether this loop finds any subscribers -- that guard applies to sampling and broadcasting,
 ///     never to the listener whose accumulated baseline would be destroyed by stopping it.
-///
 ///     The <c>http</c> category is the one exception to "sample fresh, independent of everyone else":
 ///     its request-duration distribution resets on read, so this loop is the single caller allowed to
 ///     reset it (<see cref="HttpSampler.SampleAndResetDuration" />), keeping the live stream's
@@ -55,17 +53,20 @@ public sealed class DiagnosticBroadcastService(
 			RunOnce();
 	}
 
-	private List<Action> BuildTicks() =>
-	[
-		Tick(DiagnosticStreams.Process, process.Sample),
-		Tick(DiagnosticStreams.Gc, gc.Sample),
-		Tick(DiagnosticStreams.ThreadPool, ThreadPoolSnapshot.Capture),
-		Tick(DiagnosticStreams.Runtime, RuntimeSnapshot.Capture),
-		Tick(DiagnosticStreams.Exceptions, exceptions.Sample),
-		Tick(DiagnosticStreams.Http, http.SampleAndResetDuration),
-		Tick(DiagnosticStreams.Application, application.Sample),
-		Tick(DiagnosticStreams.Overview, overview.Sample)
-	];
+	private List<Action> BuildTicks()
+	{
+		return
+		[
+			Tick(DiagnosticStreams.Process, process.Sample),
+			Tick(DiagnosticStreams.Gc, gc.Sample),
+			Tick(DiagnosticStreams.ThreadPool, ThreadPoolSnapshot.Capture),
+			Tick(DiagnosticStreams.Runtime, RuntimeSnapshot.Capture),
+			Tick(DiagnosticStreams.Exceptions, exceptions.Sample),
+			Tick(DiagnosticStreams.Http, http.SampleAndResetDuration),
+			Tick(DiagnosticStreams.Application, application.Sample),
+			Tick(DiagnosticStreams.Overview, overview.Sample)
+		];
+	}
 
 	/// <summary>
 	///     Builds one category's per-tick action: skip entirely with no subscriber, otherwise sample,

@@ -3,7 +3,10 @@ namespace Basil.Infrastructure.Diagnostics;
 /// <summary>The web host's live request and connection counters, plus the current request-duration distribution.</summary>
 /// <param name="ActiveRequests">The number of HTTP requests currently being handled.</param>
 /// <param name="RequestsCompleted">The cumulative number of HTTP requests completed since the process started.</param>
-/// <param name="RequestsFailed">The cumulative number of HTTP requests that completed with an error since the process started.</param>
+/// <param name="RequestsFailed">
+///     The cumulative number of HTTP requests that completed with an error since the process
+///     started.
+/// </param>
 /// <param name="ActiveConnections">The number of Kestrel connections currently open.</param>
 /// <param name="ConnectionsCompleted">The cumulative number of Kestrel connections closed since the process started.</param>
 /// <param name="RequestDuration">
@@ -36,16 +39,25 @@ public sealed record HttpSample(
 public sealed class HttpSampler(RuntimeMeterListener meterListener)
 {
 	/// <summary>Takes a sample without disturbing the request-duration window a live stream may be rotating.</summary>
-	public HttpSample Sample() => Build(meterListener.PeekRequestDuration());
+	public HttpSample Sample()
+	{
+		return Build(meterListener.PeekRequestDuration());
+	}
 
 	/// <summary>Takes a sample and resets the request-duration window for the next interval.</summary>
-	internal HttpSample SampleAndResetDuration() => Build(meterListener.SnapshotRequestDuration());
+	internal HttpSample SampleAndResetDuration()
+	{
+		return Build(meterListener.SnapshotRequestDuration());
+	}
 
-	private HttpSample Build(DurationAggregateSnapshot requestDuration) => new(
-		meterListener.ActiveRequests,
-		meterListener.RequestsCompleted,
-		meterListener.RequestsFailed,
-		meterListener.ActiveConnections,
-		meterListener.ConnectionsCompleted,
-		requestDuration);
+	private HttpSample Build(DurationAggregateSnapshot requestDuration)
+	{
+		return new HttpSample(
+			meterListener.ActiveRequests,
+			meterListener.RequestsCompleted,
+			meterListener.RequestsFailed,
+			meterListener.ActiveConnections,
+			meterListener.ConnectionsCompleted,
+			requestDuration);
+	}
 }

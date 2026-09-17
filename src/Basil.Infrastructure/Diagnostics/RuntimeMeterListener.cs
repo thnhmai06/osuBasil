@@ -7,8 +7,14 @@ namespace Basil.Infrastructure.Diagnostics;
 /// <param name="SumSeconds">The sum of every duration, in seconds.</param>
 /// <param name="MinSeconds">The shortest duration observed, or zero when <paramref name="Count" /> is zero.</param>
 /// <param name="MaxSeconds">The longest duration observed.</param>
-/// <param name="BucketUpperBoundsSeconds">The upper bound, in seconds, of each entry in <paramref name="BucketCounts" />, with the last entry covering everything above the second-to-last bound.</param>
-/// <param name="BucketCounts">How many durations fell at or under each of <paramref name="BucketUpperBoundsSeconds" />, in order.</param>
+/// <param name="BucketUpperBoundsSeconds">
+///     The upper bound, in seconds, of each entry in <paramref name="BucketCounts" />,
+///     with the last entry covering everything above the second-to-last bound.
+/// </param>
+/// <param name="BucketCounts">
+///     How many durations fell at or under each of <paramref name="BucketUpperBoundsSeconds" />, in
+///     order.
+/// </param>
 public sealed record DurationAggregateSnapshot(
 	long Count,
 	double SumSeconds,
@@ -31,12 +37,13 @@ internal sealed class DurationAggregate
 	private static readonly double[] BucketUpperBoundsSeconds =
 		[0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10];
 
-	private readonly Lock _lock = new();
 	private readonly long[] _bucketCounts = new long[BucketUpperBoundsSeconds.Length + 1];
+
+	private readonly Lock _lock = new();
 	private long _count;
-	private double _sumSeconds;
-	private double _minSeconds = double.PositiveInfinity;
 	private double _maxSeconds;
+	private double _minSeconds = double.PositiveInfinity;
+	private double _sumSeconds;
 
 	/// <summary>Folds one duration, in seconds, into the histogram.</summary>
 	public void Record(double seconds)
@@ -78,12 +85,18 @@ internal sealed class DurationAggregate
 	/// </summary>
 	public DurationAggregateSnapshot Peek()
 	{
-		lock (_lock) return BuildSnapshot();
+		lock (_lock)
+		{
+			return BuildSnapshot();
+		}
 	}
 
-	private DurationAggregateSnapshot BuildSnapshot() => new(
-		_count, _sumSeconds, _count == 0 ? 0 : _minSeconds, _maxSeconds,
-		BucketUpperBoundsSeconds, [.. _bucketCounts]);
+	private DurationAggregateSnapshot BuildSnapshot()
+	{
+		return new DurationAggregateSnapshot(
+			_count, _sumSeconds, _count == 0 ? 0 : _minSeconds, _maxSeconds,
+			BucketUpperBoundsSeconds, [.. _bucketCounts]);
+	}
 }
 
 /// <summary>
@@ -98,7 +111,6 @@ internal sealed class DurationAggregate
 ///     interval an operator cares about, so exactly one listener runs for the process's whole
 ///     lifetime, owned by the host rather than by whoever happens to be reading it, and every
 ///     consumer reads its accumulated fields instead of standing up a listener of its own.
-///
 ///     Every field this type exposes is a fixed scalar or a fixed-size histogram. Nothing is keyed by
 ///     a tag value: a tag such as a thrown exception's type name can take arbitrarily many distinct
 ///     values over a server's lifetime, and keying an accumulator by it would make this component's
@@ -112,19 +124,19 @@ public sealed class RuntimeMeterListener : IHostedService, IDisposable
 {
 	private readonly MeterListener _listener = new();
 	private readonly DurationAggregate _requestDuration = new();
+	private long _activeChannels;
+	private long _activeConnections;
+	private long _activeIrcSessions;
+	private long _activeMatchTimers;
+	private long _activeMatches;
+	private long _activeRequests;
+	private long _activeSseSubscribers;
+	private long _connectionsCompleted;
 
 	private long _exceptionsThrown;
-	private long _activeRequests;
 	private long _requestsCompleted;
 	private long _requestsFailed;
-	private long _activeConnections;
-	private long _connectionsCompleted;
-	private long _activeSseSubscribers;
 	private long _ssePublishesDropped;
-	private long _activeMatches;
-	private long _activeMatchTimers;
-	private long _activeChannels;
-	private long _activeIrcSessions;
 
 	public RuntimeMeterListener()
 	{
@@ -162,10 +174,16 @@ public sealed class RuntimeMeterListener : IHostedService, IDisposable
 	/// </summary>
 	public long SsePublishesDropped => Interlocked.Read(ref _ssePublishesDropped);
 
-	/// <summary>The number of multiplayer matches currently registered, as of the last <see cref="RefreshObservableGauges" /> call.</summary>
+	/// <summary>
+	///     The number of multiplayer matches currently registered, as of the last <see cref="RefreshObservableGauges" />
+	///     call.
+	/// </summary>
 	public long ActiveMatches => Interlocked.Read(ref _activeMatches);
 
-	/// <summary>The number of multiplayer matches with a countdown currently running, as of the last <see cref="RefreshObservableGauges" /> call.</summary>
+	/// <summary>
+	///     The number of multiplayer matches with a countdown currently running, as of the last
+	///     <see cref="RefreshObservableGauges" /> call.
+	/// </summary>
 	public long ActiveMatchTimers => Interlocked.Read(ref _activeMatchTimers);
 
 	/// <summary>The number of chat channels currently registered, as of the last <see cref="RefreshObservableGauges" /> call.</summary>
@@ -177,23 +195,13 @@ public sealed class RuntimeMeterListener : IHostedService, IDisposable
 	/// <summary>Whether the listener has been stopped and its underlying resources released.</summary>
 	internal bool Disposed { get; private set; }
 
-	/// <summary>Returns the request-duration distribution accumulated since the last call, then clears it.</summary>
-	public DurationAggregateSnapshot SnapshotRequestDuration() => _requestDuration.SnapshotAndReset();
-
-	/// <summary>
-	///     Returns the request-duration distribution accumulated so far without resetting it, for a
-	///     reader that only wants to look at the current window, not own its rotation.
-	/// </summary>
-	public DurationAggregateSnapshot PeekRequestDuration() => _requestDuration.Peek();
-
-	/// <summary>
-	///     Polls every observable gauge this listener is tracking -- <see cref="ActiveMatches" />,
-	///     <see cref="ActiveMatchTimers" />, <see cref="ActiveChannels" /> and
-	///     <see cref="ActiveIrcSessions" /> -- and updates them with the value each gauge's owning
-	///     slice reports right now. Unlike the push-based counters this listener also tracks, an
-	///     observable gauge never calls back on its own; nothing updates until this is called.
-	/// </summary>
-	public void RefreshObservableGauges() => _listener.RecordObservableInstruments();
+	/// <inheritdoc />
+	public void Dispose()
+	{
+		if (Disposed) return;
+		Disposed = true;
+		_listener.Dispose();
+	}
 
 	/// <inheritdoc />
 	public Task StartAsync(CancellationToken cancellationToken)
@@ -209,12 +217,31 @@ public sealed class RuntimeMeterListener : IHostedService, IDisposable
 		return Task.CompletedTask;
 	}
 
-	/// <inheritdoc />
-	public void Dispose()
+	/// <summary>Returns the request-duration distribution accumulated since the last call, then clears it.</summary>
+	public DurationAggregateSnapshot SnapshotRequestDuration()
 	{
-		if (Disposed) return;
-		Disposed = true;
-		_listener.Dispose();
+		return _requestDuration.SnapshotAndReset();
+	}
+
+	/// <summary>
+	///     Returns the request-duration distribution accumulated so far without resetting it, for a
+	///     reader that only wants to look at the current window, not own its rotation.
+	/// </summary>
+	public DurationAggregateSnapshot PeekRequestDuration()
+	{
+		return _requestDuration.Peek();
+	}
+
+	/// <summary>
+	///     Polls every observable gauge this listener is tracking -- <see cref="ActiveMatches" />,
+	///     <see cref="ActiveMatchTimers" />, <see cref="ActiveChannels" /> and
+	///     <see cref="ActiveIrcSessions" /> -- and updates them with the value each gauge's owning
+	///     slice reports right now. Unlike the push-based counters this listener also tracks, an
+	///     observable gauge never calls back on its own; nothing updates until this is called.
+	/// </summary>
+	public void RefreshObservableGauges()
+	{
+		_listener.RecordObservableInstruments();
 	}
 
 	/// <summary>
@@ -225,31 +252,40 @@ public sealed class RuntimeMeterListener : IHostedService, IDisposable
 	///     which accumulator the call updates without a compile error.
 	/// </summary>
 	internal void RecordIntForTest(string instrumentName, int measurement,
-		ReadOnlySpan<KeyValuePair<string, object?>> tags) =>
+		ReadOnlySpan<KeyValuePair<string, object?>> tags)
+	{
 		RecordInt(instrumentName, measurement, tags);
+	}
 
 	/// <summary>Feeds one long-valued measurement through the same routing the live listener uses, for tests.</summary>
 	internal void RecordForTest(string instrumentName, long measurement,
-		ReadOnlySpan<KeyValuePair<string, object?>> tags) =>
+		ReadOnlySpan<KeyValuePair<string, object?>> tags)
+	{
 		RecordLong(instrumentName, measurement, tags);
+	}
 
 	/// <summary>Feeds one double-valued measurement through the same routing the live listener uses, for tests.</summary>
 	internal void RecordForTest(string instrumentName, double measurement,
-		ReadOnlySpan<KeyValuePair<string, object?>> tags) =>
-		RecordDouble(instrumentName, measurement, tags);
-
-	private static bool IsTracked(Instrument instrument) => instrument.Meter.Name switch
+		ReadOnlySpan<KeyValuePair<string, object?>> tags)
 	{
-		"System.Runtime" => instrument.Name is "dotnet.exceptions",
-		"Microsoft.AspNetCore.Hosting" => instrument.Name is
-			"http.server.active_requests" or "http.server.request.duration",
-		"Microsoft.AspNetCore.Server.Kestrel" => instrument.Name is
-			"kestrel.active_connections" or "kestrel.connection.duration",
-		"Basil" => instrument.Name is "basil.sse.subscribers" or "basil.match.publish.stale_dropped"
-			or "basil.matches.active" or "basil.match.timers.active" or "basil.channels.active"
-			or "basil.irc.sessions.active",
-		_ => false
-	};
+		RecordDouble(instrumentName, measurement, tags);
+	}
+
+	private static bool IsTracked(Instrument instrument)
+	{
+		return instrument.Meter.Name switch
+		{
+			"System.Runtime" => instrument.Name is "dotnet.exceptions",
+			"Microsoft.AspNetCore.Hosting" => instrument.Name is
+				"http.server.active_requests" or "http.server.request.duration",
+			"Microsoft.AspNetCore.Server.Kestrel" => instrument.Name is
+				"kestrel.active_connections" or "kestrel.connection.duration",
+			"Basil" => instrument.Name is "basil.sse.subscribers" or "basil.match.publish.stale_dropped"
+				or "basil.matches.active" or "basil.match.timers.active" or "basil.channels.active"
+				or "basil.irc.sessions.active",
+			_ => false
+		};
+	}
 
 	private void OnInstrumentPublished(Instrument instrument, MeterListener listener)
 	{
@@ -257,16 +293,22 @@ public sealed class RuntimeMeterListener : IHostedService, IDisposable
 	}
 
 	private void OnIntMeasurement(Instrument instrument, int measurement,
-		ReadOnlySpan<KeyValuePair<string, object?>> tags, object? state) =>
+		ReadOnlySpan<KeyValuePair<string, object?>> tags, object? state)
+	{
 		RecordInt(instrument.Name, measurement, tags);
+	}
 
 	private void OnLongMeasurement(Instrument instrument, long measurement,
-		ReadOnlySpan<KeyValuePair<string, object?>> tags, object? state) =>
+		ReadOnlySpan<KeyValuePair<string, object?>> tags, object? state)
+	{
 		RecordLong(instrument.Name, measurement, tags);
+	}
 
 	private void OnDoubleMeasurement(Instrument instrument, double measurement,
-		ReadOnlySpan<KeyValuePair<string, object?>> tags, object? state) =>
+		ReadOnlySpan<KeyValuePair<string, object?>> tags, object? state)
+	{
 		RecordDouble(instrument.Name, measurement, tags);
+	}
 
 	private void RecordInt(string instrumentName, int measurement,
 		ReadOnlySpan<KeyValuePair<string, object?>> tags)

@@ -17,5 +17,8 @@ public sealed record ExceptionsSample(long TotalThrown);
 public sealed class ExceptionsSampler(RuntimeMeterListener meterListener)
 {
 	/// <summary>Takes a fresh sample of the process's cumulative thrown-exception count.</summary>
-	public ExceptionsSample Sample() => new(meterListener.ExceptionsThrown);
+	public ExceptionsSample Sample()
+	{
+		return new ExceptionsSample(meterListener.ExceptionsThrown);
+	}
 }

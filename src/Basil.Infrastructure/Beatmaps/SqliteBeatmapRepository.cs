@@ -1,7 +1,7 @@
 using System.Text.Json;
+using Basil.Application.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Basil.Infrastructure.Shared.Persistence;
-using Basil.Application.Beatmaps;
 using Dapper;
 using Microsoft.Data.Sqlite;
 
@@ -16,7 +16,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 {
 	private const string SharedColumns = """
 	                                     b.Md5, b.Id, b.Version, b.Filename, b.TotalLength,
-	                                     b.Mode, b.Bpm, b.Cs, b.Ar, b.Od, b.Hp, b.Sr, b.BackgroundFile, b.AudioFile,
+	                                     b.Mode, b.Bpm, b.Cs, b.Ar, b.Od, b.Hp, b.Star, b.BackgroundFile, b.AudioFile,
 	                                     b.PreviewTime, b.Objects,
 	                                     m.Id, m.Artist, m.Title, m.Creator, m.LastUpdate, m.CreatedAt, m.IsFrozen, m.IsPrivate
 	                                     """;
@@ -100,10 +100,10 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 			"""
 			REPLACE INTO Beatmaps (
 			    Md5, Id, BeatmapsetId, Version, Filename, TotalLength,
-			    Mode, Bpm, Cs, Od, Ar, Hp, Sr, BackgroundFile, AudioFile, PreviewTime, Objects
+			    Mode, Bpm, Cs, Od, Ar, Hp, Star, BackgroundFile, AudioFile, PreviewTime, Objects
 			) VALUES (
 			    @Md5, @Id, @BeatmapsetId, @Version, @Filename, @TotalLength,
-			    @Mode, @Bpm, @Cs, @Od, @Ar, @Hp, @Sr, @BackgroundFile, @AudioFile, @PreviewTime, @Objects
+			    @Mode, @Bpm, @Cs, @Od, @Ar, @Hp, @Star, @BackgroundFile, @AudioFile, @PreviewTime, @Objects
 			)
 			""",
 			new
@@ -120,7 +120,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 				resolved.Difficulty.Od,
 				resolved.Difficulty.Ar,
 				resolved.Difficulty.Hp,
-				resolved.Difficulty.Sr,
+				Sr = resolved.Difficulty.Star,
 				resolved.BackgroundFile,
 				resolved.AudioFile,
 				resolved.PreviewTime,
@@ -169,7 +169,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 			$"""
 			 SELECT {SharedColumns} FROM Beatmaps b JOIN Beatmapsets m ON b.BeatmapsetId = m.Id
 			 WHERE b.BeatmapsetId IN @SetIds AND m.IsPrivate = 0
-			 ORDER BY b.Sr ASC
+			 ORDER BY b.Star ASC
 			 """,
 			(b, m) => b.ToBeatmap(m.ToBeatmapset()),
 			new { SetIds = setIds },
@@ -196,6 +196,65 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 			parameters);
 	}
 
+	/// <inheritdoc />
+	public async Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default)
+	{
+		await using var connection = Connect();
+		return await connection.ExecuteScalarAsync<int>("SELECT COALESCE(MAX(Id), 0) FROM Beatmaps");
+	}
+
+	/// <inheritdoc />
+	public async Task UpdateDiffAsync(int id, double diff, CancellationToken cancellationToken = default)
+	{
+		await using var connection = Connect();
+		await connection.ExecuteAsync("UPDATE Beatmaps SET Star = @Star WHERE Id = @Id", new { Id = id, Sr = diff });
+		logger.LogDebug("Beatmap diff updated: Id={Id} Star={Star}", id, diff);
+	}
+
+	/// <inheritdoc />
+	/// <remarks>
+	///     Applies the same beatmapset-level privacy filter as <see cref="FetchOneAsync" />, excluding
+	///     the set's beatmaps when <paramref name="includePrivate" /> is <see langword="false" />.
+	/// </remarks>
+	public async Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includePrivate = false,
+		CancellationToken cancellationToken = default)
+	{
+		await using var connection = Connect();
+		var whereClause = includePrivate
+			? "WHERE b.BeatmapsetId = @BeatmapsetId"
+			: "WHERE b.BeatmapsetId = @BeatmapsetId AND m.IsPrivate = 0";
+		var rows = await connection.QueryAsync<BeatmapRow, BeatmapsetRow, Beatmap>(
+			$"""
+			 SELECT {SharedColumns} FROM Beatmaps b JOIN Beatmapsets m ON b.BeatmapsetId = m.Id
+			 {whereClause}
+			 """,
+			(b, m) => b.ToBeatmap(m.ToBeatmapset()),
+			new { BeatmapsetId = setId },
+			splitOn: "Id");
+		return [.. rows];
+	}
+
+	/// <inheritdoc />
+	/// <remarks>Applies the same beatmapset-level privacy filter as <see cref="FetchOneAsync" />.</remarks>
+	public async Task<IReadOnlyDictionary<int, int>> FetchCountsBySetIdsAsync(IReadOnlyCollection<int> setIds,
+		bool includePrivate = false, CancellationToken cancellationToken = default)
+	{
+		if (setIds.Count == 0) return new Dictionary<int, int>();
+
+		await using var connection = Connect();
+		var whereClause = includePrivate
+			? "WHERE b.BeatmapsetId IN @SetIds"
+			: "WHERE b.BeatmapsetId IN @SetIds AND m.IsPrivate = 0";
+		var rows = await connection.QueryAsync<SetBeatmapCount>(
+			$"""
+			 SELECT b.BeatmapsetId AS SetId, COUNT(*) AS Count FROM Beatmaps b JOIN Beatmapsets m ON b.BeatmapsetId = m.Id
+			 {whereClause}
+			 GROUP BY b.BeatmapsetId
+			 """,
+			new { SetIds = setIds });
+		return rows.ToDictionary(r => r.SetId, r => r.Count);
+	}
+
 	/// <summary>
 	///     Builds the shared `WHERE` clause and parameters for a beatmapset search, from the same
 	///     filters <see cref="SearchAsync" /> and <see cref="SearchCountAsync" /> both translate.
@@ -219,7 +278,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 			parameters.Add("Mode", (int)mode);
 		}
 
-		AppendNumeric(conditions, parameters, ref p, "b.Sr", filters.Stars);
+		AppendNumeric(conditions, parameters, ref p, "b.Star", filters.Star);
 		AppendNumeric(conditions, parameters, ref p, "b.Ar", filters.Ar);
 		AppendNumeric(conditions, parameters, ref p, "b.Hp", filters.Hp);
 		AppendNumeric(conditions, parameters, ref p, "b.Cs", filters.Cs);
@@ -262,11 +321,9 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 		}
 
 		if (filters.Status is not null)
-		{
 			// Every set on this server reports the same status (Beatmapset.Status is a constant), so
 			// this either matches everything or nothing depending on which status was asked for.
 			conditions.Add(filters.Status == Beatmapset.Status ? "1 = 1" : "1 = 0");
-		}
 
 		return $"WHERE {string.Join(" AND ", conditions)}";
 	}
@@ -331,65 +388,6 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 			ComparisonOperator.GreaterThanOrEqual => ">=",
 			_ => throw new ArgumentOutOfRangeException(nameof(op))
 		};
-	}
-
-	/// <inheritdoc />
-	public async Task<int> FetchMaxIdAsync(CancellationToken cancellationToken = default)
-	{
-		await using var connection = Connect();
-		return await connection.ExecuteScalarAsync<int>("SELECT COALESCE(MAX(Id), 0) FROM Beatmaps");
-	}
-
-	/// <inheritdoc />
-	public async Task UpdateDiffAsync(int id, double diff, CancellationToken cancellationToken = default)
-	{
-		await using var connection = Connect();
-		await connection.ExecuteAsync("UPDATE Beatmaps SET Sr = @Sr WHERE Id = @Id", new { Id = id, Sr = diff });
-		logger.LogDebug("Beatmap diff updated: Id={Id} Sr={Sr}", id, diff);
-	}
-
-	/// <inheritdoc />
-	/// <remarks>
-	///     Applies the same beatmapset-level privacy filter as <see cref="FetchOneAsync" />, excluding
-	///     the set's beatmaps when <paramref name="includePrivate" /> is <see langword="false" />.
-	/// </remarks>
-	public async Task<IReadOnlyList<Beatmap>> FetchAllBySetIdAsync(int setId, bool includePrivate = false,
-		CancellationToken cancellationToken = default)
-	{
-		await using var connection = Connect();
-		var whereClause = includePrivate
-			? "WHERE b.BeatmapsetId = @BeatmapsetId"
-			: "WHERE b.BeatmapsetId = @BeatmapsetId AND m.IsPrivate = 0";
-		var rows = await connection.QueryAsync<BeatmapRow, BeatmapsetRow, Beatmap>(
-			$"""
-			 SELECT {SharedColumns} FROM Beatmaps b JOIN Beatmapsets m ON b.BeatmapsetId = m.Id
-			 {whereClause}
-			 """,
-			(b, m) => b.ToBeatmap(m.ToBeatmapset()),
-			new { BeatmapsetId = setId },
-			splitOn: "Id");
-		return [.. rows];
-	}
-
-	/// <inheritdoc />
-	/// <remarks>Applies the same beatmapset-level privacy filter as <see cref="FetchOneAsync" />.</remarks>
-	public async Task<IReadOnlyDictionary<int, int>> FetchCountsBySetIdsAsync(IReadOnlyCollection<int> setIds,
-		bool includePrivate = false, CancellationToken cancellationToken = default)
-	{
-		if (setIds.Count == 0) return new Dictionary<int, int>();
-
-		await using var connection = Connect();
-		var whereClause = includePrivate
-			? "WHERE b.BeatmapsetId IN @SetIds"
-			: "WHERE b.BeatmapsetId IN @SetIds AND m.IsPrivate = 0";
-		var rows = await connection.QueryAsync<SetBeatmapCount>(
-			$"""
-			 SELECT b.BeatmapsetId AS SetId, COUNT(*) AS Count FROM Beatmaps b JOIN Beatmapsets m ON b.BeatmapsetId = m.Id
-			 {whereClause}
-			 GROUP BY b.BeatmapsetId
-			 """,
-			new { SetIds = setIds });
-		return rows.ToDictionary(r => r.SetId, r => r.Count);
 	}
 
 	/// <summary>Creates a new SQLite connection using the repository's connection string.</summary>

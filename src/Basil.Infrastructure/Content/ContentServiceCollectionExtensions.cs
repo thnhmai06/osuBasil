@@ -1,7 +1,6 @@
-using Basil.Application.Shared.Configuration;
-using Basil.Domain.Content;
-using Basil.Infrastructure.Shared.Persistence;
 using Basil.Application.Content;
+using Basil.Application.Shared.Configuration;
+using Basil.Infrastructure.Shared.Persistence;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 

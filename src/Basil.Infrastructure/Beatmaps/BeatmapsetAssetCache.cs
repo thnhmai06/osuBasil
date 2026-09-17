@@ -2,8 +2,6 @@ using System.Collections.Concurrent;
 using System.IO.Compression;
 using Basil.Application.Shared.Configuration;
 using Basil.Infrastructure.Shared.Storage;
-using Basil.Infrastructure.Shared.Storage;
-using Basil.Application.Beatmaps;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Beatmaps;
@@ -20,8 +18,12 @@ namespace Basil.Infrastructure.Beatmaps;
 ///     <c>{StorageOptions.CachePath}/beatmapset-assets/{beatmapsetId}/{entryName}</c>, one
 ///     subdirectory per beatmapset, so a whole set's cache can be invalidated in a single
 ///     directory delete (<see cref="Invalidate" />). Writes use the same temp-file-then-rename
-///     mechanism as <c>FileSystemResponseCache</c> (ADR-006), and a per-<c>(beatmapsetId,
-///     entryName)</c> lock ensures concurrent misses for the same entry extract exactly once.
+///     mechanism as <c>FileSystemResponseCache</c> (ADR-006), and a per-
+///     <c>
+///         (beatmapsetId,
+///         entryName)
+///     </c>
+///     lock ensures concurrent misses for the same entry extract exactly once.
 /// </remarks>
 public sealed class BeatmapsetAssetCache(IOptions<StorageOptions> options)
 {

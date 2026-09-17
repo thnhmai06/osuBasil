@@ -1,6 +1,6 @@
+using Basil.Application.Content;
 using Basil.Domain.Content;
 using Basil.Infrastructure.Shared.Persistence;
-using Basil.Application.Content;
 using Dapper;
 using Microsoft.Data.Sqlite;
 

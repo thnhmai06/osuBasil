@@ -7,12 +7,12 @@ namespace Basil.Infrastructure.Diagnostics;
 /// <param name="FrameworkDescription">The human-readable .NET runtime name and version, e.g. <c>.NET 10.0.11</c>.</param>
 /// <param name="ProcessorCount">The number of logical processors available to the process.</param>
 /// <param name="ProcessArchitecture">This process's own instruction-set architecture.</param>
-/// <param name="OSArchitecture">The host operating system's instruction-set architecture.</param>
-/// <param name="OSDescription">The host operating system's name and version.</param>
+/// <param name="OsArchitecture">The host operating system's instruction-set architecture.</param>
+/// <param name="OsDescription">The host operating system's name and version.</param>
 /// <param name="IsServerGc">Whether the process is running the server garbage collector.</param>
 /// <param name="IsConcurrentGcEnabled">Whether background (concurrent) collection is configured.</param>
 /// <remarks>
-///     <see cref="ProcessArchitecture" /> and <see cref="OSArchitecture" /> are kept as separate
+///     <see cref="ProcessArchitecture" /> and <see cref="OsArchitecture" /> are kept as separate
 ///     fields rather than collapsed into one: a process can run under emulation (e.g. an x86
 ///     process on an x64 host), so the two can legitimately disagree.
 /// </remarks>
@@ -20,8 +20,8 @@ public sealed record RuntimeSample(
 	string FrameworkDescription,
 	int ProcessorCount,
 	Architecture ProcessArchitecture,
-	Architecture OSArchitecture,
-	string OSDescription,
+	Architecture OsArchitecture,
+	string OsDescription,
 	bool IsServerGc,
 	bool IsConcurrentGcEnabled);
 
@@ -49,5 +49,8 @@ public static class RuntimeSnapshot
 		GcSampler.ConcurrentGcEnabled);
 
 	/// <summary>Returns the runtime and hardware configuration captured once at process start.</summary>
-	public static RuntimeSample Capture() => Cached;
+	public static RuntimeSample Capture()
+	{
+		return Cached;
+	}
 }

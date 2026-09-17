@@ -3,12 +3,18 @@ namespace Basil.Infrastructure.Diagnostics;
 /// <summary>A curated, at-a-glance subset of the full diagnostic categories, for one dashboard screen.</summary>
 /// <param name="CpuUsagePercent">The process's CPU usage, as a share of all available cores, since the previous sample.</param>
 /// <param name="WorkingSetBytes">The process's current physical memory footprint.</param>
-/// <param name="TimeInGcPercent">The share of wall-clock time spent paused for garbage collection since the previous sample.</param>
+/// <param name="TimeInGcPercent">
+///     The share of wall-clock time spent paused for garbage collection since the previous
+///     sample.
+/// </param>
 /// <param name="ActiveHttpRequests">The number of HTTP requests currently being handled.</param>
 /// <param name="ExceptionsThrown">The cumulative number of exceptions thrown since the process started listening for them.</param>
 /// <param name="ActiveGameSessions">The number of osu! client sessions currently logged in.</param>
 /// <param name="ActiveMatches">The number of multiplayer matches currently registered.</param>
-/// <param name="ActiveSseSubscribers">The number of Server-Sent Events connections currently open, across every stream Basil publishes.</param>
+/// <param name="ActiveSseSubscribers">
+///     The number of Server-Sent Events connections currently open, across every stream
+///     Basil publishes.
+/// </param>
 public sealed record DiagnosticOverviewSample(
 	double CpuUsagePercent,
 	long WorkingSetBytes,
@@ -37,7 +43,6 @@ public sealed record DiagnosticOverviewSample(
 ///     Thread pool, Kestrel connection counts, GC generation sizes and the rest are real signals, just
 ///     not ones an operator needs on the first screen; <c>GET /diagnostic/{category}</c> and its
 ///     <c>/live</c> sibling cover them.
-///
 ///     Uses <see cref="HttpSampler.Sample" />, not <see cref="HttpSampler.SampleAndResetDuration" />:
 ///     the overview never reads the request-duration distribution at all, so it has no reason to
 ///     touch the window the <c>http</c> category's own live stream rotates.

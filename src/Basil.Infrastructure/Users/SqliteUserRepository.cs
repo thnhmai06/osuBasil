@@ -1,6 +1,6 @@
+using Basil.Application.Users;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Persistence;
-using Basil.Application.Users;
 using Dapper;
 using Microsoft.Data.Sqlite;
 
@@ -229,11 +229,9 @@ public sealed class SqliteUserRepository(string connectionString, ILogger<Sqlite
 		}
 
 		if (filters.Silenced is not null)
-		{
 			conditions.Add(filters.Silenced.Value
 				? "SilenceEnd > datetime('now')"
 				: "(SilenceEnd IS NULL OR SilenceEnd <= datetime('now'))");
-		}
 
 		return conditions.Count == 0 ? "" : $"WHERE {string.Join(" AND ", conditions)}";
 	}
@@ -266,16 +264,22 @@ public sealed class SqliteUserRepository(string connectionString, ILogger<Sqlite
 		/// </remarks>
 		public User ToUser()
 		{
-			var country = Enum.TryParse<Domain.Users.Country>(Country, true, out var parsed)
+			var country = Enum.TryParse<Country>(Country, true, out var parsed)
 				? parsed
 				: Domain.Users.Country.Xx;
-			return new User(Id, Name, country, (UserPrivileges)Privilege,
-				SilenceEnd is { } silenceEnd
+			return new User
+			{
+				Id = Id,
+				Name = Name,
+				Country = country,
+				Privilege = (UserPrivileges)Privilege,
+				SilenceEnd = SilenceEnd is { } silenceEnd
 					? new DateTimeOffset(DateTime.SpecifyKind(silenceEnd, DateTimeKind.Utc))
 					: null,
-				DeletedAt is { } deletedAt
+				DeletedAt = DeletedAt is { } deletedAt
 					? new DateTimeOffset(DateTime.SpecifyKind(deletedAt, DateTimeKind.Utc))
-					: null);
+					: null
+			};
 		}
 	}
 }

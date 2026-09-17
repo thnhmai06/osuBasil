@@ -190,7 +190,7 @@ public sealed partial class BeatmapIngestionService(
 		var osuPath = await OsuFilePathAsync(storage, assetCache, beatmap, cancellationToken);
 		if (osuPath is null || !File.Exists(osuPath)) return null;
 
-		using var stream = File.OpenRead(osuPath);
+		await using var stream = File.OpenRead(osuPath);
 		using var reader = new LineBufferedReader(stream);
 		var storyboard = Decoder.GetDecoder<Storyboard>(reader).Decode(reader);
 		var videoFilename = storyboard.PrimaryVideo?.Path;
@@ -414,11 +414,11 @@ public sealed partial class BeatmapIngestionService(
 
 			var info = file.Parsed.BeatmapInfo;
 			var mode = (GameMode)info.Ruleset.OnlineID;
-			// Content unchanged (same md5) and already has a cached analysis (matches the "Sr > 0
+			// Content unchanged (same md5) and already has a cached analysis (matches the "Star > 0
 			// means cached" convention /difficulty-rating already uses) -> skip recalculating on
 			// every reconciling pass (server startup, watcher); otherwise compute it, which also
 			// backfills any pre-existing row still sitting at the old default of 0/empty.
-			var cacheHit = existingByPath is { Difficulty.Sr: > 0 } && existingByPath.Md5 == file.Md5;
+			var cacheHit = existingByPath is { Difficulty.Star: > 0 } && existingByPath.Md5 == file.Md5;
 			var analysisPath = await resolveAnalysisPath(file, cancellationToken);
 			var analysis = cacheHit
 				? new BeatmapAnalysis(existingByPath!.Difficulty, existingByPath.Objects)
@@ -590,7 +590,7 @@ public sealed partial class BeatmapIngestionService(
 		catch (Exception e)
 		{
 			// A map whose difficulty can't be calculated (unsupported ruleset content, corrupt
-			// hitobjects) still gets ingested; it just keeps Sr at 0 and empty object counts instead
+			// hitobjects) still gets ingested; it just keeps Star at 0 and empty object counts instead
 			// of aborting.
 			logger.LogWarning(e, "Failed to analyze beatmap {Path}.", osuFilePath);
 			return EmptyAnalysis(mode);

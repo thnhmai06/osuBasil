@@ -1,8 +1,8 @@
+using Basil.Application.Channels;
 using Basil.Application.Chat;
 using Basil.Application.Shared.Configuration;
-using Basil.Domain.Channels;
+using Basil.Infrastructure.Channels;
 using Basil.Infrastructure.Shared.Persistence;
-using Basil.Application.Channels;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Chat;

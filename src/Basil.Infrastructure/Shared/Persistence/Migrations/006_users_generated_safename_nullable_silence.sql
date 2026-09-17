@@ -13,25 +13,30 @@ PRAGMA foreign_keys = off;
 create table Users_new
 (
 	Id         INTEGER PRIMARY KEY AUTOINCREMENT,
-	Name       varchar(32)                                                        not null,
+	Name       varchar(32)          not null,
 	SafeName   varchar(32) generated always as (replace(lower(Name), ' ', '_')) stored,
-	Privilege  int      default 1                                                 not null,
-	PwBcrypt   char(60)                                                           not null,
-	Country    char(2)  default 'xx'                                              not null,
-	SilenceEnd datetime                                                           null,
-	DeletedAt  datetime                                                           null,
+	Privilege  int     default 1    not null,
+	PwBcrypt   char(60)             not null,
+	Country    char(2) default 'xx' not null,
+	SilenceEnd datetime             null,
+	DeletedAt  datetime             null,
 	constraint Users_Name_uindex unique (Name),
 	constraint Users_SafeName_uindex unique (SafeName)
 );
 
 insert into Users_new (Id, Name, Privilege, PwBcrypt, Country, SilenceEnd, DeletedAt)
-select Id, Name, Privilege, PwBcrypt, Country,
-       case when SilenceEnd is null or SilenceEnd <= '1970-01-01 00:00:00' then null else SilenceEnd end,
-       DeletedAt
+select Id,
+       Name,
+       Privilege,
+       PwBcrypt,
+       Country,
+	   case when SilenceEnd is null or SilenceEnd <= '1970-01-01 00:00:00' then null else SilenceEnd end,
+	   DeletedAt
 from Users;
 
 drop table Users;
-alter table Users_new rename to Users;
+alter table Users_new
+	rename to Users;
 create index Users_Privilege_index on Users (Privilege);
 
 PRAGMA foreign_keys = on;

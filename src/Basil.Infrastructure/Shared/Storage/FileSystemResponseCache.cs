@@ -11,6 +11,9 @@ namespace Basil.Infrastructure.Shared.Storage;
 /// </remarks>
 public sealed class FileSystemResponseCache(IOptions<StorageOptions> options) : IResponseCache
 {
+	/// <summary>Bounded retry budget for a rename that fails on a momentary sharing conflict (ADR-006).</summary>
+	private const int MaxRenameAttempts = 3;
+
 	/// <inheritdoc />
 	public async Task<byte[]?> GetAsync(string endpoint, string relativePath,
 		CancellationToken cancellationToken = default)
@@ -18,9 +21,6 @@ public sealed class FileSystemResponseCache(IOptions<StorageOptions> options) : 
 		var path = PathFor(endpoint, relativePath);
 		return File.Exists(path) ? await File.ReadAllBytesAsync(path, cancellationToken) : null;
 	}
-
-	/// <summary>Bounded retry budget for a rename that fails on a momentary sharing conflict (ADR-006).</summary>
-	private const int MaxRenameAttempts = 3;
 
 	/// <inheritdoc />
 	/// <remarks>

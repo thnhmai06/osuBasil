@@ -1,8 +1,9 @@
-using Basil.Domain.Beatmaps;
-using Basil.Domain.Multiplayer;
-using Basil.Domain.Scores;
-using Basil.Infrastructure.Shared.Persistence;
 using Basil.Application.Multiplayer;
+using Basil.Domain.Beatmaps;
+using Basil.Domain.Multiplayer.Records;
+using Basil.Domain.Scores;
+using Basil.Domain.Users;
+using Basil.Infrastructure.Shared.Persistence;
 using Dapper;
 using Microsoft.Data.Sqlite;
 
@@ -33,7 +34,7 @@ public sealed class SqliteMatchRepository(
 			SELECT last_insert_rowid();
 			""",
 			new { Name = name, CreatedAt = createdAt });
-		logger.LogDebug("Match row created: Id={Id}", id);
+		logger.LogDebug("Room row created: Id={Id}", id);
 		return id;
 	}
 
@@ -44,7 +45,7 @@ public sealed class SqliteMatchRepository(
 		await connection.ExecuteAsync(
 			"UPDATE Matches SET EndedAt = @EndedAt WHERE Id = @MatchId",
 			new { MatchId = matchId, EndedAt = endedAt });
-		logger.LogDebug("Match row ended: MatchId={MatchId}", matchId);
+		logger.LogDebug("Room row ended: MatchId={MatchId}", matchId);
 	}
 
 	/// <inheritdoc />
@@ -63,8 +64,8 @@ public sealed class SqliteMatchRepository(
 			await using var connection = Connect();
 			var id = await connection.QuerySingleAsync<int>(
 				"""
-				INSERT INTO Rounds (MatchId, RoundIndex, MapMd5, Mode, WinCondition, TeamType, Mods, StartedAt)
-				VALUES (@MatchId, @RoundIndex, @MapMd5, @Mode, @WinCondition, @TeamType, @Mods, @StartedAt);
+				INSERT INTO Rounds (MatchId, RoundIndex, MapMd5, Mode, WinCondition, TeamType, Mods, OccurredAt)
+				VALUES (@MatchId, @RoundIndex, @MapMd5, @Mode, @WinCondition, @TeamType, @Mods, @OccurredAt);
 				SELECT last_insert_rowid();
 				""",
 				new
@@ -144,7 +145,7 @@ public sealed class SqliteMatchRepository(
 		await connection.ExecuteAsync("DELETE FROM Matches WHERE Id = @MatchId", new { MatchId = matchId },
 			transaction);
 		await transaction.CommitAsync(cancellationToken);
-		logger.LogDebug("Match row deleted (with scores/events/rounds): MatchId={MatchId}", matchId);
+		logger.LogDebug("Room row deleted (with scores/events/rounds): MatchId={MatchId}", matchId);
 	}
 
 	/// <inheritdoc />
@@ -156,21 +157,21 @@ public sealed class SqliteMatchRepository(
 		await using var connection = Connect();
 		await connection.ExecuteAsync(
 			"""
-			INSERT INTO MatchEvents (MatchId, EventType, ActorUserId, ActorUserName, TargetUserId, TargetUserName, Timestamp, Detail)
-			VALUES (@MatchId, @EventType, @ActorUserId, @ActorUserName, @TargetUserId, @TargetUserName, @Timestamp, @Detail)
+			INSERT INTO MatchEvents (MatchId, Type, ActorUserId, ActorUserName, TargetUserId, TargetUserName, OccurredAt, Detail)
+			VALUES (@MatchId, @Type, @ActorUserId, @ActorUserName, @TargetUserId, @TargetUserName, @OccurredAt, @Detail)
 			""",
 			new
 			{
 				row.MatchId,
-				row.EventType,
-				row.ActorUserId,
-				row.ActorUserName,
-				row.TargetUserId,
-				row.TargetUserName,
-				row.Timestamp,
+				EventType = row.Type,
+				ActorUserId = row.Actor?.Id,
+				ActorUserName = row.Actor?.Name,
+				TargetUserId = row.Target?.Id,
+				TargetUserName = row.Target?.Name,
+				Timestamp = row.OccurredAt,
 				row.Detail
 			});
-		logger.LogDebug("MatchEvent row created: MatchId={MatchId} EventType={EventType}", row.MatchId, row.EventType);
+		logger.LogDebug("MatchEvent row created: MatchId={MatchId} Type={Type}", row.MatchId, row.Type);
 	}
 
 	/// <inheritdoc />
@@ -179,7 +180,7 @@ public sealed class SqliteMatchRepository(
 	{
 		await using var connection = Connect();
 		var rows = await connection.QueryAsync<MatchEventRowDto>(
-			"SELECT * FROM MatchEvents WHERE MatchId = @MatchId ORDER BY Timestamp ASC, Id ASC",
+			"SELECT * FROM MatchEvents WHERE MatchId = @MatchId ORDER BY OccurredAt ASC, Id ASC",
 			new { MatchId = matchId });
 		return [.. rows.Select(r => r.ToRow())];
 	}
@@ -277,8 +278,13 @@ public sealed class SqliteMatchRepository(
 		/// <returns>The domain match event row.</returns>
 		public MatchEvent ToRow()
 		{
-			return new MatchEvent(
-				MatchId, EventType, ActorUserId, ActorUserName, TargetUserId, TargetUserName, Timestamp, Detail);
+			var actor = ActorUserId is { } actorId
+				? new User { Id = actorId, Name = ActorUserName ?? $"user#{actorId}" }
+				: null;
+			var target = TargetUserId is { } targetId
+				? new User { Id = targetId, Name = TargetUserName ?? $"user#{targetId}" }
+				: null;
+			return new MatchEvent(MatchId, (MatchEventType)EventType, actor, target, Timestamp, Detail);
 		}
 	}
 }

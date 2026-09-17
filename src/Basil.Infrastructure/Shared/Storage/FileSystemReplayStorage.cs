@@ -1,9 +1,9 @@
 using System.Security.Cryptography;
 using System.Text;
+using Basil.Application.Scores;
 using Basil.Application.Shared.Configuration;
 using Basil.Domain.Client;
 using Basil.Domain.Scores;
-using Basil.Application.Scores;
 using Microsoft.Extensions.Options;
 using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
 
@@ -21,12 +21,12 @@ public sealed class FileSystemReplayStorage(IOptions<StorageOptions> options) : 
 	/// <inheritdoc />
 	/// <remarks>Creates the replays folder when it does not yet exist, then writes the file.</remarks>
 	public async Task WriteAsync(
-		long scoreId, Submission score, string playerName, OsuVersion osuVersion,
+		long scoreId, Submission score, string playerName, ClientVersion clientVersion,
 		byte[] replayData, CancellationToken cancellationToken = default)
 	{
 		Directory.CreateDirectory(options.Value.ReplaysPath);
 		await File.WriteAllBytesAsync(PathFor(scoreId),
-			BuildOsr(scoreId, score, playerName, osuVersion, replayData), cancellationToken);
+			BuildOsr(scoreId, score, playerName, clientVersion, replayData), cancellationToken);
 	}
 
 	/// <inheritdoc />
@@ -43,11 +43,11 @@ public sealed class FileSystemReplayStorage(IOptions<StorageOptions> options) : 
 	/// <param name="scoreId">The id of the score the replay belongs to.</param>
 	/// <param name="score">The submitted score whose stats the header records.</param>
 	/// <param name="playerName">The name of the player who submitted the score.</param>
-	/// <param name="osuVersion">The game version the replay belongs to.</param>
+	/// <param name="clientVersion">The game version the replay belongs to.</param>
 	/// <param name="replayData">The raw LZMA replay bytes from the client's submission.</param>
 	/// <returns>The complete <c>.osr</c> file bytes.</returns>
 	private static byte[] BuildOsr(
-		long scoreId, Submission score, string playerName, OsuVersion osuVersion, byte[] replayData)
+		long scoreId, Submission score, string playerName, ClientVersion clientVersion, byte[] replayData)
 	{
 		var replayMd5 = Convert.ToHexStringLower(MD5.HashData(Encoding.UTF8.GetBytes(
 			$"{score.HitCounts.x100 + score.HitCounts.x300}p{score.HitCounts.x50}o{score.HitCounts.xGeki}" +
@@ -56,7 +56,7 @@ public sealed class FileSystemReplayStorage(IOptions<StorageOptions> options) : 
 
 		var result = new List<byte>();
 		result.AddRange(BinaryWriter.WriteByte((byte)score.Mode));
-		result.AddRange(BinaryWriter.WriteInt32(int.Parse(osuVersion.Date.ToString("yyyyMMdd"))));
+		result.AddRange(BinaryWriter.WriteInt32(int.Parse(clientVersion.Date.ToString("yyyyMMdd"))));
 		result.AddRange(BinaryWriter.WriteString(score.BeatmapMd5));
 		result.AddRange(BinaryWriter.WriteString(playerName));
 		result.AddRange(BinaryWriter.WriteString(replayMd5));

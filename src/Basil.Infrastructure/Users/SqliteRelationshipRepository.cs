@@ -1,6 +1,7 @@
+using Basil.Application.Social;
+using Basil.Application.Users;
 using Basil.Domain.Social;
 using Basil.Infrastructure.Shared.Persistence;
-using Basil.Application.Social;
 using Dapper;
 using Microsoft.Data.Sqlite;
 
@@ -12,7 +13,10 @@ namespace Basil.Infrastructure.Users;
 ///     column and mapped back to <see cref="RelationshipType" /> when read. Rows map through the
 ///     private mutable <c>RelationshipRow</c> DTO.
 /// </remarks>
-public sealed class SqliteRelationshipRepository(string connectionString, ILogger<SqliteRelationshipRepository> logger)
+public sealed class SqliteRelationshipRepository(
+	string connectionString,
+	IUserCache userCache,
+	ILogger<SqliteRelationshipRepository> logger)
 	: IRelationshipRepository
 {
 	/// <inheritdoc />
@@ -43,7 +47,7 @@ public sealed class SqliteRelationshipRepository(string connectionString, ILogge
 		var rows = await connection.QueryAsync<RelationshipRow>(
 			sql,
 			new { User1 = user1, Type = type is null ? null : TypeColumn(type.Value) });
-		return [.. rows.Select(r => r.ToRelationship())];
+		return [.. rows.Select(r => r.ToRelationship(userCache))];
 	}
 
 	/// <inheritdoc />
@@ -53,7 +57,7 @@ public sealed class SqliteRelationshipRepository(string connectionString, ILogge
 		var row = await connection.QuerySingleOrDefaultAsync<RelationshipRow>(
 			"SELECT User1, User2, Type FROM Relationships WHERE User1 = @User1 AND User2 = @User2",
 			new { User1 = user1, User2 = user2 });
-		return row?.ToRelationship();
+		return row?.ToRelationship(userCache);
 	}
 
 	/// <inheritdoc />
@@ -101,10 +105,14 @@ public sealed class SqliteRelationshipRepository(string connectionString, ILogge
 		///     Builds a <see cref="Relationship" /> from this row, converting the stored column
 		///     value.
 		/// </summary>
+		/// <param name="userCache">
+		///     Resolves <see cref="User1" />/<see cref="User2" /> to their
+		///     <see cref="Basil.Domain.Users.User" />.
+		/// </param>
 		/// <returns>The domain relationship.</returns>
-		public Relationship ToRelationship()
+		public Relationship ToRelationship(IUserCache userCache)
 		{
-			return new Relationship(User1, User2, TypeFromColumn(Type));
+			return new Relationship(userCache.Resolve(User1), userCache.Resolve(User2), TypeFromColumn(Type));
 		}
 	}
 }

@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using Basil.Application.Auth;
 using Basil.Application.Bot;
+using Basil.Application.Channels;
 using Basil.Application.Content;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
@@ -12,14 +13,10 @@ using Basil.Application.Social;
 using Basil.Application.Spectating;
 using Basil.Application.Users;
 using Basil.Domain.Auth;
-using Basil.Domain.Channels;
 using Basil.Domain.Client;
 using Basil.Domain.Social;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Bot;
 using Basil.Infrastructure.Content;
-using Basil.Infrastructure.Shared.Sessions;
-using Basil.Infrastructure.Spectating;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Auth;
@@ -117,7 +114,7 @@ public sealed class LoginService(
 		// disallow multiple game sessions from a single user, except tourney spectator clients. An
 		// IrcSession for the same account, if any, is untouched — the two kinds coexist independently.
 		var existingSession = gameSessions.GetByName(loginForm.Username);
-		if (existingSession is not null && loginForm.OsuVersion.Stream != OsuStream.Tourney)
+		if (existingSession is not null && loginForm.ClientVersion.Stream != ClientVersionStream.Tourney)
 		{
 			if (loginTime - existingSession.LastRecvTime < TimeSpan.FromSeconds(ReloginGuardWindowSeconds))
 				return new LoginResult("user-already-logged-in", Concat(
@@ -131,7 +128,7 @@ public sealed class LoginService(
 			// GhostDisconnectService only scans the registries it's still in, so a session already
 			// evicted here could never be reaped — producing duplicate players after a taskkill
 			// reconnect, "match is locked" from a slot nobody can ever free, and !mp make appearing
-			// to kick its own creator (a stale Match reference tripping the AlreadyInMatch
+			// to kick its own creator (a stale Room reference tripping the AlreadyInMatch
 			// tolerance in MatchLifecycle.CreateAsync). See RC3 in the 2026 investigation.
 			logger.LogDebug("Existing session evicted on relogin: UserId={UserId}", existingSession.Id);
 			await playerLogoutService.LogoutAsync(existingSession, cancellationToken);
@@ -155,7 +152,7 @@ public sealed class LoginService(
 			return IncorrectCredentials(loginForm.Username, request.Ip);
 		}
 
-		if (loginForm.OsuVersion.Stream == OsuStream.Tourney
+		if (loginForm.ClientVersion.Stream == ClientVersionStream.Tourney
 		    && !HasPrivileges(user.Privilege, UserPrivileges.Donator, UserPrivileges.Unrestricted))
 		{
 			logger.LogDebug("Tourney client rejected: not donator/unrestricted. Username={Username}", user.Name);
@@ -165,8 +162,8 @@ public sealed class LoginService(
 
 		/* login credentials verified */
 
-		await loginRepository.CreateAsync(user.Id, request.Ip.ToString(), loginForm.OsuVersion.Date,
-			loginForm.OsuVersion.Stream.ToString().ToLowerInvariant(),
+		await loginRepository.CreateAsync(user.Id, request.Ip.ToString(), loginForm.ClientVersion.Date,
+			loginForm.ClientVersion.Stream.ToString().ToLowerInvariant(),
 			cancellationToken);
 
 		await clientHashes.CreateAsync(
@@ -203,7 +200,7 @@ public sealed class LoginService(
 			PmPrivate = loginForm.PmPrivate,
 			SilenceEnd = user.SilenceEnd,
 			Client = clientDetails,
-			OsuVersion = loginForm.OsuVersion,
+			OsuVersion = loginForm.ClientVersion,
 			Country = user.Country
 		};
 
@@ -247,7 +244,8 @@ public sealed class LoginService(
 			session.ModeStats[mode] = new CachedPlayerStats(totalScore, rankedScore, plays, user.Id);
 
 		var userRelationships = await relationships.FetchAllAsync(user.Id, null, cancellationToken);
-		var friendIds = userRelationships.Where(r => r.Type == RelationshipType.Friend).Select(r => r.User2).ToList();
+		var friendIds = userRelationships.Where(r => r.Type == RelationshipType.Friend).Select(r => r.Target.Id)
+			.ToList();
 
 		var menuIconPath = await menuIconService.GetPathAsync(cancellationToken);
 		if (menuIconPath is not null)

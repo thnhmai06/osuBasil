@@ -14,14 +14,20 @@ namespace Basil.Infrastructure.Diagnostics;
 /// <param name="PinnedObjectHeapSizeBytes">The pinned object heap's size as of the most recently completed collection.</param>
 /// <param name="FragmentedBytes">The heap's total fragmentation as of the most recently completed collection.</param>
 /// <param name="IsServerGc">Whether the process is running the server garbage collector, fixed for its whole lifetime.</param>
-/// <param name="IsConcurrentGcEnabled">Whether background (concurrent) collection is configured, fixed for the process's whole lifetime.</param>
+/// <param name="IsConcurrentGcEnabled">
+///     Whether background (concurrent) collection is configured, fixed for the process's
+///     whole lifetime.
+/// </param>
 /// <param name="LatencyMode">The garbage collector's current latency mode.</param>
 /// <param name="TotalPauseDuration">The cumulative time the process has spent paused for collection since it started.</param>
 /// <param name="TimeInGcPercent">
 ///     The share of wall-clock time spent paused for collection since the previous sample, smoothed
 ///     over that interval; zero on the first sample taken from a given <see cref="GcSampler" />.
 /// </param>
-/// <param name="TotalAllocatedBytes">The cumulative number of bytes allocated on the managed heap since the process started.</param>
+/// <param name="TotalAllocatedBytes">
+///     The cumulative number of bytes allocated on the managed heap since the process
+///     started.
+/// </param>
 /// <remarks>
 ///     <see cref="Gen0SizeBytes" />, <see cref="Gen1SizeBytes" />, <see cref="Gen2SizeBytes" />,
 ///     <see cref="LargeObjectHeapSizeBytes" />, <see cref="PinnedObjectHeapSizeBytes" /> and
@@ -51,13 +57,11 @@ public sealed record GcSample(
 ///     already-cached <see cref="GCMemoryInfo" /> struct the runtime keeps regardless of whether
 ///     anything ever reads it, so unlike <see cref="ProcessSampler" /> there is no shared handle to
 ///     hold or refresh here.
-///
 ///     <see cref="GCMemoryInfo.PauseTimePercentage" /> describes only the single most recent
 ///     collection, not an ongoing rate, so it would misrepresent "time in GC" as a rolling figure.
 ///     <see cref="GcSample.TimeInGcPercent" /> is derived instead from the change in
 ///     <see cref="GC.GetTotalPauseDuration" /> between samples, smoothed over the interval between
 ///     them.
-///
 ///     The large object and pinned object heap sizes come from <see cref="GCMemoryInfo.GenerationInfo" />
 ///     slots located relative to <see cref="GC.MaxGeneration" /> rather than a literal index, because
 ///     the position of those two slots in the array is an artifact of how many ordinary generations
@@ -101,7 +105,7 @@ public sealed class GcSampler
 			GCSettings.LatencyMode,
 			pauseDuration,
 			timeInGcPercent,
-			GC.GetTotalAllocatedBytes(false));
+			GC.GetTotalAllocatedBytes());
 	}
 
 	private double ComputeTimeInGcPercent(long now, TimeSpan pauseDuration)
@@ -121,8 +125,10 @@ public sealed class GcSampler
 		return timeInGcPercent;
 	}
 
-	private static long GenerationSize(ReadOnlySpan<GCGenerationInfo> generations, int index) =>
-		index >= 0 && index < generations.Length ? generations[index].SizeAfterBytes : 0;
+	private static long GenerationSize(ReadOnlySpan<GCGenerationInfo> generations, int index)
+	{
+		return index >= 0 && index < generations.Length ? generations[index].SizeAfterBytes : 0;
+	}
 
 	/// <summary>
 	///     Reads whether concurrent (background) collection is configured, once for the process's

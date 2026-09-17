@@ -1,7 +1,6 @@
-using Basil.Application.Shared.Configuration;
-using Basil.Domain.Beatmaps;
-using Basil.Infrastructure.Shared.Persistence;
 using Basil.Application.Beatmaps;
+using Basil.Application.Shared.Configuration;
+using Basil.Infrastructure.Shared.Persistence;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 

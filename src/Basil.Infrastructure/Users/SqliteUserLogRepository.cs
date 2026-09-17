@@ -1,6 +1,5 @@
-using Basil.Domain.Users;
-using Basil.Infrastructure.Shared.Persistence;
 using Basil.Application.Users;
+using Basil.Infrastructure.Shared.Persistence;
 using Dapper;
 
 namespace Basil.Infrastructure.Users;

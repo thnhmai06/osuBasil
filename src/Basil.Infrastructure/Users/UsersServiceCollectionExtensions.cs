@@ -1,9 +1,7 @@
 using Basil.Application.Shared.Configuration;
-using Basil.Domain.Social;
-using Basil.Domain.Users;
-using Basil.Infrastructure.Shared.Persistence;
-using Basil.Application.Users;
 using Basil.Application.Social;
+using Basil.Application.Users;
+using Basil.Infrastructure.Shared.Persistence;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 
@@ -18,17 +16,20 @@ public static class UsersServiceCollectionExtensions
 	/// <returns>The same service collection for chaining further registrations.</returns>
 	public static IServiceCollection AddUsers(this IServiceCollection services, IConfiguration configuration)
 	{
-		services.AddSingleton<IUserRepository>(sp =>
+		services.AddSingleton(sp =>
 			new CachingUserRepository(
 				new SqliteUserRepository(BuildConnectionString(sp),
 					sp.GetRequiredService<ILogger<SqliteUserRepository>>()),
 				sp.GetRequiredService<IMemoryCache>(), sp.GetRequiredService<ILogger<CachingUserRepository>>()));
+		services.AddSingleton<IUserRepository>(sp => sp.GetRequiredService<CachingUserRepository>());
+		services.AddSingleton<IUserCache>(sp => sp.GetRequiredService<CachingUserRepository>());
 		services.AddSingleton<IUserStatRepository>(sp => new SqliteUserStatRepository(BuildConnectionString(sp)));
 		services.AddSingleton<IClientHashRepository>(sp =>
 			new SqliteClientHashRepository(BuildConnectionString(sp),
 				sp.GetRequiredService<ILogger<SqliteClientHashRepository>>()));
 		services.AddSingleton<IRelationshipRepository>(sp =>
 			new SqliteRelationshipRepository(BuildConnectionString(sp),
+				sp.GetRequiredService<IUserCache>(),
 				sp.GetRequiredService<ILogger<SqliteRelationshipRepository>>()));
 		services.AddSingleton<IUserLogRepository>(sp =>
 			new SqliteUserLogRepository(BuildConnectionString(sp),

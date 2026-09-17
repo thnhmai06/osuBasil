@@ -25,6 +25,21 @@ public sealed class MenuSeasonalService(IOptions<StorageOptions> storage)
 	}
 
 	/// <summary>
+	///     Identifies the outcome of a seasonal image rename.
+	/// </summary>
+	public enum RenameResult : byte
+	{
+		/// <summary>The image was renamed.</summary>
+		Renamed,
+
+		/// <summary>No image with the given name exists.</summary>
+		NotFound,
+
+		/// <summary>An image already exists under the requested new name.</summary>
+		TargetAlreadyExists
+	}
+
+	/// <summary>
 	///     Identifies the outcome of a seasonal image replacement.
 	/// </summary>
 	public enum ReplaceResult : byte
@@ -137,20 +152,5 @@ public sealed class MenuSeasonalService(IOptions<StorageOptions> storage)
 
 		File.Move(path, newPath);
 		return RenameResult.Renamed;
-	}
-
-	/// <summary>
-	///     Identifies the outcome of a seasonal image rename.
-	/// </summary>
-	public enum RenameResult : byte
-	{
-		/// <summary>The image was renamed.</summary>
-		Renamed,
-
-		/// <summary>No image with the given name exists.</summary>
-		NotFound,
-
-		/// <summary>An image already exists under the requested new name.</summary>
-		TargetAlreadyExists
 	}
 }

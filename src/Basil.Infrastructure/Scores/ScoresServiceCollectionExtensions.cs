@@ -1,7 +1,7 @@
+using Basil.Application.Scores;
 using Basil.Application.Shared.Configuration;
 using Basil.Infrastructure.Shared.Persistence;
 using Basil.Infrastructure.Shared.Storage;
-using Basil.Application.Scores;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Scores;

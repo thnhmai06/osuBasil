@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Basil.Domain.Beatmaps;
 using Basil.Application.Beatmaps;
 
 // ReSharper disable AutoPropertyCanBeMadeGetOnly.Local

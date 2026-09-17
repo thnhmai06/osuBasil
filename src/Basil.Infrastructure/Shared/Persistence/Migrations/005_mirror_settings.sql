@@ -6,5 +6,5 @@
 -- ever writes must already have a row here.
 insert into Settings (Key, Value)
 values ('Mirror:DownloadEndpoint', null),
-       ('Mirror:SearchEndpoint', null),
-       ('Mirror:Seeded', null);
+	   ('Mirror:SearchEndpoint', null),
+	   ('Mirror:Seeded', null);

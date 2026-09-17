@@ -1,7 +1,5 @@
+using Basil.Application.Channels;
 using Basil.Application.Shared;
-using Basil.Domain.Channels;
-using Basil.Infrastructure.Shared;
-using Basil.Infrastructure.Shared;
 
 namespace Basil.Infrastructure.Chat;
 
@@ -18,7 +16,6 @@ namespace Basil.Infrastructure.Chat;
 /// </remarks>
 public sealed class ChatMetricsPublisher(IChannelRegistry channels) : IHostedService
 {
-
 	/// <inheritdoc />
 	public Task StartAsync(CancellationToken cancellationToken)
 	{

@@ -1,7 +1,6 @@
-using Basil.Domain.Auth;
-using Basil.Domain.Client;
-using Basil.Infrastructure.Shared.Persistence;
 using Basil.Application.Auth;
+using Basil.Domain.Auth;
+using Basil.Infrastructure.Shared.Persistence;
 using Dapper;
 using Microsoft.Data.Sqlite;
 
@@ -30,8 +29,8 @@ public sealed class SqliteLoginRepository(string connectionString, ILogger<Sqlit
 			// of two, halving this call's contribution to write contention (see ADR-001).
 			var row = await connection.QuerySingleAsync<IngameLoginRow>(
 				"""
-				INSERT INTO IngameLogins (UserId, Ip, OsuVersion, OsuStream, LoggedInAt)
-				VALUES (@UserId, @Ip, @OsuVersion, @OsuStream, datetime('now'))
+				INSERT INTO IngameLogins (UserId, Ip, ClientVersion, ClientVersionStream, LoggedInAt)
+				VALUES (@UserId, @Ip, @ClientVersion, @ClientVersionStream, datetime('now'))
 				RETURNING *;
 				""",
 				new

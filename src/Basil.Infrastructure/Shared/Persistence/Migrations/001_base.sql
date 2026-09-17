@@ -263,8 +263,8 @@ create table Counters
 
 insert into Counters (Name, Value)
 values ('Beatmapsets:Total', 0),
-       ('Beatmapsets:Public', 0),
-       ('Scores:Total', 0);
+	   ('Beatmapsets:Public', 0),
+	   ('Scores:Total', 0);
 
 create trigger Counters_Beatmapsets_AfterInsert
 	after insert
@@ -313,10 +313,10 @@ create table Settings
 
 insert into Settings (Key, Value)
 values ('AdminKey:Hash', null),
-       ('AdminKey:LastChanged', null),
-       ('MenuIcon:Path', 'https://raw.githubusercontent.com/thnhmai06/osuBasil/refs/heads/main/assets/icon.png'),
-       ('MenuIcon:Url', 'https://github.com/thnhmai06/osuBasil'),
-       ('Motd', 'Welcome to Basil, the osu! server for tournaments and multiplayer');
+	   ('AdminKey:LastChanged', null),
+	   ('MenuIcon:Path', 'https://raw.githubusercontent.com/thnhmai06/osuBasil/refs/heads/main/assets/icon.png'),
+	   ('MenuIcon:Url', 'https://github.com/thnhmai06/osuBasil'),
+	   ('Motd', 'Welcome to Basil, the osu! server for tournaments and multiplayer');
 
 create trigger Settings_AdminKeyHash_AfterUpdate
 	after update of Value
@@ -332,7 +332,7 @@ end;
 -- see Basil.Domain.Users.UserPrivileges.
 insert into Users (Id, Name, SafeName, Privilege, Country, PwBcrypt)
 values (0, 'BasilBot', 'basilbot', 8211, 'vn',
-        '_______________________my_cool_bcrypt_______________________');
+		'_______________________my_cool_bcrypt_______________________');
 
 insert into UserStats (Id, Mode)
 values (0, 0);
@@ -345,4 +345,4 @@ values (0, 3);
 
 insert into Channels (Name, Topic, ReadPrivilege, WritePrivilege, AutoJoin)
 values ('#osu', 'General discussion.', 1, 2, true),
-       ('#lobby', 'Multiplayer lobby discussion room.', 1, 2, false);
+	   ('#lobby', 'Multiplayer lobby discussion room.', 1, 2, false);

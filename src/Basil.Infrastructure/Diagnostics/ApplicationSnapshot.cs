@@ -1,5 +1,4 @@
 using Basil.Application.Sessions;
-using Basil.Infrastructure.Shared.Sessions;
 
 namespace Basil.Infrastructure.Diagnostics;
 
@@ -44,7 +43,7 @@ public sealed class ApplicationSampler(
 	public ApplicationSample Sample()
 	{
 		meterListener.RefreshObservableGauges();
-		return new(
+		return new ApplicationSample(
 			gameSessions.All.Count,
 			meterListener.ActiveSseSubscribers,
 			meterListener.SsePublishesDropped,

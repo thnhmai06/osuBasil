@@ -1,6 +1,7 @@
+using Basil.Application.Users;
+using Basil.Domain.Client;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Persistence;
-using Basil.Application.Users;
 using Dapper;
 using Microsoft.Data.Sqlite;
 
@@ -58,7 +59,7 @@ public sealed class SqliteClientHashRepository(string connectionString, ILogger<
 	///     carries the other account's name and privileges and always excludes
 	///     <paramref name="userId" /> itself.
 	/// </remarks>
-	public async Task<IReadOnlyList<PlayerClientHash>> FetchAnyHardwareMatchesForUserAsync(
+	public async Task<IReadOnlyList<UserClientHash>> FetchAnyHardwareMatchesForUserAsync(
 		int userId,
 		bool runningUnderWine,
 		string adapters,
@@ -140,13 +141,13 @@ public sealed class SqliteClientHashRepository(string connectionString, ILogger<
 		public int Privilege { get; set; }
 
 		/// <summary>
-		///     Builds a <see cref="PlayerClientHash" /> from this row, casting the stored
+		///     Builds a <see cref="UserClientHash" /> from this row, casting the stored
 		///     privilege column.
 		/// </summary>
 		/// <returns>The domain client hash-with-player record.</returns>
-		public PlayerClientHash ToClientHashWithPlayer()
+		public UserClientHash ToClientHashWithPlayer()
 		{
-			return new PlayerClientHash(
+			return new UserClientHash(
 				UserId, OsuPathMd5, Adapters, UninstallId, DiskSerial, LastSeenAt,
 				Occurrences, Name, (UserPrivileges)Privilege);
 		}

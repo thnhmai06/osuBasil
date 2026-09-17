@@ -1,6 +1,6 @@
+using Basil.Application.Auth;
 using Basil.Application.Shared.Configuration;
 using Basil.Infrastructure.Shared.Persistence;
-using Basil.Application.Auth;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Auth;

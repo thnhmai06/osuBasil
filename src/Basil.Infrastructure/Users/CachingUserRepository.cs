@@ -1,6 +1,5 @@
-using Basil.Domain.Client;
-using Basil.Domain.Users;
 using Basil.Application.Users;
+using Basil.Domain.Users;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Basil.Infrastructure.Users;
@@ -17,10 +16,17 @@ public sealed class CachingUserRepository(
 	IMemoryCache cache,
 	ILogger<CachingUserRepository> logger,
 	TimeSpan? ttl = null)
-	: IUserRepository
+	: IUserRepository, IUserCache
 {
 	/// <summary>The entry TTL: the safety net beneath explicit invalidation.</summary>
 	private readonly TimeSpan _ttl = ttl ?? TimeSpan.FromMinutes(5);
+
+	/// <inheritdoc cref="IUserCache.TryGet" />
+	/// <remarks>Pure cache read: never falls through to the underlying repository.</remarks>
+	public User? TryGet(int id)
+	{
+		return cache.TryGetValue(IdKey(id), out User? cached) ? cached : null;
+	}
 
 	/// <inheritdoc cref="IUserRepository.FetchByIdAsync" />
 	/// <remarks>

@@ -7,7 +7,10 @@ namespace Basil.Infrastructure.Diagnostics;
 /// <param name="AvailableWorkerThreads">The number of additional worker threads the pool could still start.</param>
 /// <param name="PendingWorkItemCount">The number of work items queued but not yet started.</param>
 /// <param name="CompletedWorkItemCount">The cumulative number of work items completed since the process started.</param>
-/// <param name="LockContentionCount">The cumulative number of times a thread had to wait to enter a monitor lock since the process started.</param>
+/// <param name="LockContentionCount">
+///     The cumulative number of times a thread had to wait to enter a monitor lock since the
+///     process started.
+/// </param>
 public sealed record ThreadPoolSample(
 	int ThreadCount,
 	int MinWorkerThreads,
@@ -21,7 +24,6 @@ public sealed record ThreadPoolSample(
 /// <remarks>
 ///     None of these counters require a running listener; every one of them is already a plain,
 ///     always-maintained static property on the runtime.
-///
 ///     Deliberately excludes the legacy I/O completion port thread counts
 ///     (<c>ThreadPool.GetMinThreads</c>/<c>GetMaxThreads</c>/<c>GetAvailableThreads</c>'s
 ///     <c>completionPortThreads</c> out-parameter): on the portable thread pool the runtime uses by
