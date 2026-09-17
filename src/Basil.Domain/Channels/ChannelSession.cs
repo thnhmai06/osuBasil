@@ -20,7 +20,7 @@ namespace Basil.Domain.Channels;
 ///     A value that indicates whether this is a runtime-created instance channel rather than a
 ///     DB-backed one.
 /// </param>
-public sealed class ChannelSession(
+public sealed class ChannelSession( // TODO: Move to Application
 	int id,
 	string name,
 	UserPrivileges readPrivilege,
@@ -46,9 +46,7 @@ public sealed class ChannelSession(
 
 	/// <summary>
 	///     Gets or sets the channel's topic text. Defaults to <see cref="Name" />; a match room's
-	///     channel keeps this synced to the room's current name (see
-	///     <see cref="ChannelMembershipService.SyncTopic" />) rather than ever taking a fixed,
-	///     separately configured topic.
+	///     channel keeps this synced to the room's current name.
 	/// </summary>
 	public string Topic { get; set; } = name;
 

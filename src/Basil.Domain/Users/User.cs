@@ -1,40 +1,29 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
-using Basil.Domain.Client;
 
 namespace Basil.Domain.Users;
 
 /// <summary>
 ///     Represents a registered user of the server.
 /// </summary>
-/// <param name="Id">The unique identifier of the user.</param>
-/// <param name="Name">The username of the user.</param>
-/// <param name="Country">The country of the user.</param>
-/// <param name="Privilege">The server-side privileges granted to the user.</param>
-/// <param name="SilenceEnd">
-///     The time the user's silence expires, in UTC, or <see langword="null" /> when the user has
-///     never been silenced.
-/// </param>
-/// <param name="DeletedAt">
-///     The time the user was deleted, or <see langword="null" /> if the account is active. Deletion
-///     is soft: the row, its score/social/anticheat history, and its name stay intact, and the
-///     name remains reserved (see the <c>Users_Name_uindex</c>/<c>Users_SafeName_uindex</c>
-///     constraints) so a later registration can never claim it.
-/// </param>
-/// <remarks>
-///     Carries only the fields that the server reads back somewhere. Clans, public profiles,
-///     preferred mode, play style, custom badges, and userpages are out of scope (see
-///     docs/for-developers/working-scopes.md) and are not part of this record.
-/// </remarks>
-public sealed partial record User(
-	int Id,
-	string Name,
-	Country Country,
-	UserPrivileges Privilege,
-	DateTimeOffset? SilenceEnd,
-	DateTimeOffset? DeletedAt = null)
+public sealed partial class User : IEquatable<User>
 {
 	private static readonly Regex AllowedUsernameCharacters = OsuUsernamePattern();
+	public required int Id { get; init; }
+	public required string Name { get; set; }
+	public Country Country { get; set; } = Country.Xx;
+	public UserPrivileges Privilege { get; set; } = UserPrivileges.Unrestricted | UserPrivileges.Supporter;
+	public DateTimeOffset? SilenceEnd { get; set; }
+	public DateTimeOffset? DeletedAt { get; set; }
+
+	public bool Equals(User? other)
+	{
+		if (other is null) return false;
+		return Id == other.Id;
+	}
+
+	[GeneratedRegex(@"^[a-zA-Z0-9_\-\[\] ]+$")]
+	private static partial Regex OsuUsernamePattern();
 
 	/// <summary>
 	///     Normalizes a username for case-insensitive and space-insensitive identity comparisons.
@@ -75,6 +64,13 @@ public sealed partial record User(
 		return error is null;
 	}
 
-	[GeneratedRegex(@"^[a-zA-Z0-9_\-\[\] ]+$")]
-	private static partial Regex OsuUsernamePattern();
+	public override bool Equals(object? obj)
+	{
+		return obj is User other && Equals(other);
+	}
+
+	public override int GetHashCode()
+	{
+		return Id;
+	}
 }

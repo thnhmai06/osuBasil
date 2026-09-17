@@ -1,28 +1,10 @@
+using Basil.Domain.Users;
+
 namespace Basil.Domain.Beatmaps;
 
 /// <summary>
 ///     Represents a beatmapset, the shared metadata for a group of beatmap difficulties.
 /// </summary>
-/// <param name="Id">The unique identifier of the set.</param>
-/// <param name="Artist">The artist of the set's music.</param>
-/// <param name="Title">The title of the set's music.</param>
-/// <param name="Creator">The username of the set's creator.</param>
-/// <param name="LastUpdate">The time of the latest re-ingestion or content change, in UTC.</param>
-/// <param name="CreatedAt">The time the set was first ingested, in UTC.</param>
-/// <param name="IsFrozen">
-///     Whether the set is write-locked by an admin. Frozen sets cannot be updated or deleted.
-/// </param>
-/// <param name="IsPrivate">
-///     Whether the set is hidden from non-admin listings and from the public beatmap endpoints.
-/// </param>
-/// <param name="BackgroundFile">
-///     The background image file name resolved against the set's storage folder, or
-///     <see langword="null" /> if the set has no background.
-/// </param>
-/// <param name="AudioFile">
-///     The audio file name resolved against the set's storage folder, or
-///     <see langword="null" /> if the set has no audio.
-/// </param>
 /// <remarks>
 ///     Artist, Title, Creator, and LastUpdate are shared by every difficulty in the set, so they
 ///     live here instead of being duplicated on each <see cref="Beatmap" />.
@@ -32,17 +14,7 @@ namespace Basil.Domain.Beatmaps;
 ///     <see cref="Beatmap.BackgroundFile" /> in the set. It backs the per-set thumbnail on the
 ///     b.&lt;domain&gt; host and the set-level background route on the api. host.
 /// </remarks>
-public sealed record Beatmapset(
-	int Id,
-	string Artist,
-	string Title,
-	string Creator,
-	DateTime LastUpdate,
-	DateTime CreatedAt,
-	bool IsFrozen = false,
-	bool IsPrivate = false,
-	string? BackgroundFile = null,
-	string? AudioFile = null)
+public sealed class Beatmapset : IEquatable<Beatmapset>
 {
 	/// <summary>
 	///     The id floor for beatmapset ingested locally without a real osu! online id.
@@ -51,7 +23,7 @@ public sealed record Beatmapset(
 	///     Real osu! online ids remain well below this value, so this floor keeps collisions with
 	///     locally assigned ids implausible without a dedicated id-space reservation table.
 	/// </remarks>
-	public const int LocalIdFloor = 1_000_000_000;
+	private const int LocalIdFloor = 1_000_000_000;
 
 	/// <summary>
 	///     Gets the ranked status of the set.
@@ -70,4 +42,60 @@ public sealed record Beatmapset(
 	///     otherwise, <see langword="false" />.
 	/// </value>
 	public bool IsLocallyIngested => Id >= LocalIdFloor;
+
+	/// <summary>The unique identifier of the set.</summary>
+	public required int Id { get; init; }
+
+	/// <summary>The artist of the set's music.</summary>
+	public required string Artist { get; set; }
+
+	/// <summary>The title of the set's music.</summary>
+	public required string Title { get; set; }
+
+	/// <summary>The username of the set's creator.</summary>
+	public required User Creator { get; init; }
+
+	/// <summary>The time of the latest re-ingestion or content change, in UTC.</summary>
+	public required DateTimeOffset LastUpdate { get; set; }
+
+	/// <summary>The time the set was first ingested, in UTC.</summary>
+	public required DateTimeOffset CreatedAt { get; init; }
+
+	/// <summary>
+	///     Whether the set is write-locked by an admin. Frozen sets cannot be updated or deleted.
+	/// </summary>
+	public required bool IsFrozen { get; set; }
+
+	/// <summary>
+	///     Whether the set is hidden from non-admin listings and from the public beatmap endpoints.
+	/// </summary>
+	public required bool IsPrivate { get; set; }
+
+	/// <summary>
+	///     The background image file name resolved against the set's storage folder, or
+	///     <see langword="null" /> if the set has no background.
+	/// </summary>
+	public string? BackgroundFile { get; set; }
+
+	/// <summary>
+	///     The audio file name resolved against the set's storage folder, or
+	///     <see langword="null" /> if the set has no audio.
+	/// </summary>
+	public string? AudioFile { get; set; }
+
+	public bool Equals(Beatmapset? other)
+	{
+		if (other is null) return false;
+		return Id == other.Id;
+	}
+
+	public override bool Equals(object? obj)
+	{
+		return obj is Beatmapset other && Equals(other);
+	}
+
+	public override int GetHashCode()
+	{
+		return Id;
+	}
 }

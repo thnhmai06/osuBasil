@@ -13,7 +13,9 @@ namespace Basil.Domain.Scores;
 /// <param name="xGeki">The number of geki judgments.</param>
 /// <param name="xKatu">The number of katu judgments.</param>
 /// <param name="xMiss">The number of miss judgments.</param>
+#pragma warning disable IDE1006
 public record HitCounts(int x300, int x100, int x50, int xGeki, int xKatu, int xMiss)
+#pragma warning restore IDE1006
 {
 	/// <summary>
 	///     Computes the accuracy percentage from the hit counts.

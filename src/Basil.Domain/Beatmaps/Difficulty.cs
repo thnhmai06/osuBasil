@@ -10,7 +10,7 @@ namespace Basil.Domain.Beatmaps;
 /// <param name="Ar">The approach rate setting.</param>
 /// <param name="Od">The overall difficulty setting.</param>
 /// <param name="Hp">The health drain rate setting.</param>
-/// <param name="Sr">The star rating of the beatmap.</param>
+/// <param name="Star">The star rating of the beatmap.</param>
 /// <remarks>
 ///     <see cref="TotalLength" /> serializes as a whole number of seconds on the wire.
 /// </remarks>
@@ -22,4 +22,4 @@ public sealed record Difficulty(
 	double Ar,
 	double Od,
 	double Hp,
-	double Sr);
+	double Star);

@@ -1,5 +1,3 @@
-using Basil.Domain.Client;
-
 namespace Basil.Domain.Users;
 
 /// <summary>

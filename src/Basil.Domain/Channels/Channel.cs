@@ -5,18 +5,41 @@ namespace Basil.Domain.Channels;
 /// <summary>
 ///     Represents a chat channel.
 /// </summary>
-/// <param name="Id">The unique identifier of the channel.</param>
-/// <param name="Name">The channel name as used in chat.</param>
-/// <param name="Topic">The channel topic shown to joining users.</param>
-/// <param name="ReadPrivilege">The minimum privilege required to read the channel.</param>
-/// <param name="WritePrivilege">The minimum privilege required to write to the channel.</param>
-/// <param name="AutoJoin">
-///     A value that indicates whether the channel is joined automatically at login.
-/// </param>
-public sealed record Channel(
-	int Id,
-	string Name,
-	string Topic,
-	UserPrivileges ReadPrivilege,
-	UserPrivileges WritePrivilege,
-	bool AutoJoin);
+public sealed class Channel : IEquatable<Channel>
+{
+	/// <summary>The unique identifier of the channel.</summary>
+	public required int Id { get; init; }
+
+	/// <summary>The channel name as used in chat.</summary>
+	public required string Name { get; set; }
+
+	/// <summary>The channel topic shown to joining users.</summary>
+	public required string Topic { get; set; }
+
+	/// <summary>The minimum privilege required to read the channel.</summary>
+	public required UserPrivileges ReadPrivilege { get; set; }
+
+	/// <summary>The minimum privilege required to write to the channel.</summary>
+	public required UserPrivileges WritePrivilege { get; set; }
+
+	/// <summary>
+	///     A value that indicates whether the channel is joined automatically at login.
+	/// </summary>
+	public bool AutoJoin { get; set; }
+
+	public bool Equals(Channel? other)
+	{
+		if (other is null) return false;
+		return Id == other.Id;
+	}
+
+	public override bool Equals(object? obj)
+	{
+		return obj is Channel other && Equals(other);
+	}
+
+	public override int GetHashCode()
+	{
+		return Id;
+	}
+}

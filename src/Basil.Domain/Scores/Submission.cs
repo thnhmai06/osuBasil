@@ -68,10 +68,10 @@ public sealed record Submission
 	///     The exact format string and field order must be preserved byte-for-byte, because the
 	///     client verifies this value against its own computation. Note that the format-argument
 	///     order does not match the field order in the template: storyboardChecksum appears before
-	///     osuVersion.
+	///     clientVersion.
 	/// </remarks>
-	public string ComputeOnlineChecksum(string playerName, string osuVersion, string osuClientHash,
-		string storyboardChecksum)
+	public string ComputeOnlineChecksum(
+		string playerName, string osuVersion, string osuClientHash, string storyboardChecksum)
 	{
 		var raw =
 			$"chickenmcnuggets{HitCounts.x100 + HitCounts.x300}o15{HitCounts.x50}{HitCounts.xGeki}" +

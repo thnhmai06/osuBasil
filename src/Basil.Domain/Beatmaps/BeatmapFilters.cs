@@ -13,7 +13,7 @@ namespace Basil.Domain.Beatmaps;
 ///     recognized here, it's left in <see cref="Keywords" /> as literal text rather than rejected.
 /// </remarks>
 /// <param name="Keywords">The free-text portion of the query, matched against artist/title/creator.</param>
-/// <param name="Stars">Filters on the beatmap's star rating.</param>
+/// <param name="Star">Filters on the beatmap's star rating.</param>
 /// <param name="Ar">Filters on the beatmap's approach rate.</param>
 /// <param name="Hp">Filters on the beatmap's health drain rate (osu!'s <c>dr</c>/<c>hp</c> keys).</param>
 /// <param name="Cs">Filters on the beatmap's circle size.</param>
@@ -39,13 +39,13 @@ namespace Basil.Domain.Beatmaps;
 /// <param name="Updated">Filters on when the set was last re-ingested or changed.</param>
 public sealed partial record BeatmapFilters(
 	string? Keywords = null,
-	ComparableFilter<double>? Stars = null,
-	ComparableFilter<double>? Ar = null,
-	ComparableFilter<double>? Hp = null,
-	ComparableFilter<double>? Cs = null,
-	ComparableFilter<double>? Od = null,
 	ComparableFilter<double>? Bpm = null,
 	ComparableFilter<double>? LengthSeconds = null,
+	ComparableFilter<double>? Cs = null,
+	ComparableFilter<double>? Ar = null,
+	ComparableFilter<double>? Od = null,
+	ComparableFilter<double>? Hp = null,
+	ComparableFilter<double>? Star = null,
 	ComparableFilter<double>? Keys = null,
 	ComparableFilter<int>? Circles = null,
 	ComparableFilter<int>? Sliders = null,

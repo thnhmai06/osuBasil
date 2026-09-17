@@ -129,8 +129,9 @@ public sealed partial record BeatmapFilters
 
 		public BeatmapFilters Build(string? keywords)
 		{
-			return new BeatmapFilters(keywords, _stars, _ar, _hp, _cs, _od, _bpm, _lengthSeconds, _keys,
-				_circles, _sliders, _creator, _artist, _title, _difficulty, _status, _created, _updated);
+			return new BeatmapFilters(keywords,
+				_bpm, _lengthSeconds, _cs, _ar, _od, _hp, _stars, _keys, _circles, _sliders, _creator, _artist, _title,
+				_difficulty, _status, _created, _updated);
 		}
 
 		private static bool TrySetDouble(string raw, ComparisonOperator op, Action<ComparableFilter<double>> set)

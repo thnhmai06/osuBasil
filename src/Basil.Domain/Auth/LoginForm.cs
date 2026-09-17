@@ -8,7 +8,7 @@ namespace Basil.Domain.Auth;
 /// </summary>
 /// <param name="Username">The username the client sent.</param>
 /// <param name="PasswordMd5">The MD5 hash of the password the client sent.</param>
-/// <param name="OsuVersion">The version of the client.</param>
+/// <param name="ClientVersion">The version of the client.</param>
 /// <param name="UtcOffset">The client's UTC offset, in hours.</param>
 /// <param name="DisplayCity">Whether the client allows its city to be displayed.</param>
 /// <param name="PmPrivate">Whether the client accepts private messages.</param>
@@ -16,8 +16,8 @@ namespace Basil.Domain.Auth;
 public sealed record LoginForm(
 	string Username,
 	string PasswordMd5,
-	OsuVersion OsuVersion,
-	int UtcOffset,
+	ClientVersion ClientVersion,
+	int UtcOffset, // not DateTimeOffset
 	bool DisplayCity,
 	bool PmPrivate,
 	ClientDetails ClientDetails)
@@ -37,7 +37,7 @@ public sealed record LoginForm(
 		var remainder = top[2];
 
 		var fields = remainder.Split('|', 5);
-		var osuVersion = OsuVersion.From(fields[0]);
+		var osuVersion = ClientVersion.From(fields[0]);
 		var utcOffset = int.Parse(fields[1]);
 		var displayCity = fields[2] == "1";
 		var clientHashes = fields[3];
