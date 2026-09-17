@@ -1,10 +1,10 @@
+using Basil.Application.Channels;
+using Basil.Application.Chat;
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
-using Basil.Domain.Channels;
+using Basil.Application.Users;
 using Basil.Domain.Users;
-using Basil.Application.Chat;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
 
 namespace Basil.Host.Bancho.Multiplayer.Packets;
@@ -22,6 +22,7 @@ public sealed class TourneyMatchLeaveChannelHandler(
 	IMatchRegistry matchRegistry,
 	IChannelRegistry channelRegistry,
 	ChannelMembershipService channelMembership,
+	IUserCache userCache,
 	ILogger<TourneyMatchLeaveChannelHandler> logger) : IPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.TournamentLeaveMatchChannel;
@@ -36,14 +37,15 @@ public sealed class TourneyMatchLeaveChannelHandler(
 		if (matchId < 0 || (gameSession.Privilege & UserPrivileges.Donator) == 0) return Task.CompletedTask;
 
 		var match = matchRegistry.GetById(matchId);
-		if (match is null || !match.TourneyClients.Contains(gameSession.Id)) return Task.CompletedTask;
+		var sender = userCache.Resolve(gameSession);
+		if (match is null || !match.TourneyClients.Contains(sender)) return Task.CompletedTask;
 
 		using var _ = logger.BeginScope(new Dictionary<string, object> { ["MatchId"] = match.DbId });
 
 		var channel = channelRegistry.GetByName(match.ChatChannelName);
 		if (channel is not null) channelMembership.Part(gameSession, channel);
 
-		match.RemoveTourneyClient(gameSession.Id);
+		match.RemoveTourneyClient(sender);
 		return Task.CompletedTask;
 	}
 }

@@ -1,14 +1,11 @@
+using Basil.Application.Beatmaps;
 using Basil.Application.Bot;
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
-using Basil.Domain.Beatmaps;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Records;
 using Basil.Domain.Scores;
-using Basil.Infrastructure.Bot;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
-using Basil.Application.Beatmaps;
 
 namespace Basil.Host.Bancho.Multiplayer.Packets;
 
@@ -17,12 +14,12 @@ namespace Basil.Host.Bancho.Multiplayer.Packets;
 ///     Applies a full settings snapshot sent by the host client. Turning freemods on keeps only the
 ///     speed-changing mods on the match and strips them from every occupied slot; turning it off
 ///     restores the host slot's mods to the match and clears the mods of every other occupied slot. The
-///     beatmap selection is handled through a clear-and-resolve handshake: a snapshot with MapId -1
-///     clears the current selection (unready all players, remembering the previous map, and
-///     cancelling a queued auto-start), while a match that currently has no map re-attempts resolution
-///     of the snapshot's md5 against the local repository, applying the resolved beatmap and updating
-///     the game mode from the host's current status, or warning once through a bot chat message when
-///     the beatmap is not found locally. Changing the team type normalizes every occupied slot to
+///     beatmap selection is handled through a clear-and-resolve handshake: a snapshot with Beatmap -1
+///     clears the current selection (unready all players and cancel a queued auto-start), while a
+///     match that currently has no map re-attempts resolution of the snapshot's md5 against the local
+///     repository on every settings packet, applying the resolved beatmap and updating the game mode
+///     from the host's current status, or warning through a bot chat message each time the beatmap is
+///     not found locally. Changing the team type normalizes every occupied slot to
 ///     Neutral (for HeadToHead and TagCoop) or Red (for all other types), and any team-type or
 ///     win-condition change cancels a queued auto-start. The room name is adopted from the snapshot,
 ///     the chat channel's topic is synced to it, and the final state is broadcast. All mutations run
@@ -47,13 +44,13 @@ public sealed class MatchChangeSettingsHandler(
 
 		var match = gameSession.Match;
 		if (!MatchCreationDataMapper.IsValid(matchData, gameSession.Id) || match is null ||
-		    gameSession.Id != match.HostId) return;
+		    gameSession.Id != match.Host?.Id) return;
 
 		await using var mutation = await match.BeginMutationAsync(cancellationToken);
 
 		// Re-checked under the lock: host status can only change under this same lock, so a
 		// sender who lost host while waiting for it must not still act with host authority.
-		if (gameSession.Id != match.HostId) return;
+		if (gameSession.Id != match.Host?.Id) return;
 
 		var freemods = matchData.FreeMods;
 		if (freemods != match.Freemods)
@@ -62,7 +59,7 @@ public sealed class MatchChangeSettingsHandler(
 			if (freemods)
 			{
 				foreach (var slot in match.Slots)
-					if (slot.PlayerId is not null)
+					if (slot.Player is not null)
 						slot.Mods = match.Mods & ~Mods.SpeedChangingMods;
 
 				match.Mods &= Mods.SpeedChangingMods;
@@ -74,7 +71,7 @@ public sealed class MatchChangeSettingsHandler(
 				if (hostSlot is not null) match.Mods |= hostSlot.Mods;
 
 				foreach (var slot in match.Slots)
-					if (slot.PlayerId is not null)
+					if (slot.Player is not null)
 						slot.Mods = Mods.NoMod;
 			}
 		}
@@ -82,40 +79,30 @@ public sealed class MatchChangeSettingsHandler(
 		if (matchData.MapId == -1)
 		{
 			match.UnreadyPlayers();
-			match.PrevMapId = match.MapId;
-			match.MapId = null;
-			match.MapMd5 = null;
-			match.MapName = MatchControlService.NoBeatmapSelectedName;
-			match.UnresolvedMapMd5 = null;
+			match.Beatmap = null;
 			matchLifecycle.CancelQueuedAutoStart(match);
 		}
 		else if (match.MapId is null)
 		{
-			// Always re-attempt the lookup (not gated on UnresolvedMapMd5) so a beatmap ingested
-			// later while the room sits idle resolves silently on the next settings packet. Only
-			// the warning below is deduped, not the lookup itself.
+			// Always re-attempted on every settings packet, not just the first, so a beatmap
+			// ingested later while the room sits idle resolves silently on the next one.
 			var beatmap = await beatmapRepository.FetchOneAsync(
 				md5: matchData.MapMd5, cancellationToken: cancellationToken);
 			if (beatmap is not null)
 			{
-				match.MapId = beatmap.Id;
-				match.MapMd5 = beatmap.Md5;
-				match.MapName = beatmap.FullName;
-				match.UnresolvedMapMd5 = null;
+				match.Beatmap = beatmap;
 
 				// gameSession is the host, verified by the guard above.
 				match.Mode = gameSession.Status.Mode;
 				matchLifecycle.CancelQueuedAutoStart(match);
 			}
-			else if (matchData.MapMd5 != match.UnresolvedMapMd5)
+			else
 			{
 				// The client-supplied id/md5/name is never written into authoritative match state
 				// here: a beatmap absent from this server's local DB would otherwise corrupt round
 				// and match-report data. Osu! clients resend their full settings snapshot on any
-				// room-setting change (freemod, team type, ...), not just a new map pick, so without
-				// UnresolvedMapMd5 this warning would re-fire on every one of those instead of just
-				// the first.
-				match.UnresolvedMapMd5 = matchData.MapMd5;
+				// room-setting change (freemod, team type, ...), not just a new map pick, so this
+				// warning re-fires on every one of those, not just the first.
 				var bot = sessionRegistry.GetByUserId(BotBootstrapService.BotId);
 				if (bot is not null)
 					matchBroadcast.EnqueueChat(match, bot.Name, bot.Id,
@@ -131,7 +118,7 @@ public sealed class MatchChangeSettingsHandler(
 				: MatchTeam.Red;
 
 			foreach (var slot in match.Slots)
-				if (slot.PlayerId is not null)
+				if (slot.Player is not null)
 					slot.Team = newTeam;
 
 			match.TeamType = newTeamType;

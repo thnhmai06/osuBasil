@@ -1,7 +1,6 @@
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
 
 namespace Basil.Host.Bancho.Multiplayer.Packets;
@@ -24,13 +23,13 @@ public sealed class MatchStartHandler(MatchLifecycle matchLifecycle) : IPacketHa
 		CancellationToken cancellationToken = default)
 	{
 		var match = gameSession.Match;
-		if (match is null || gameSession.Id != match.HostId) return;
+		if (match is null || gameSession.Id != match.Host?.Id) return;
 
 		await using var mutation = await match.BeginMutationAsync(cancellationToken);
 
 		// Re-checked under the lock: host status can only change under this same lock, so a
 		// sender who lost host while waiting for it must not still act with host authority.
-		if (gameSession.Id != match.HostId) return;
+		if (gameSession.Id != match.Host?.Id) return;
 
 		await matchLifecycle.StartAsync(match, mutation, cancellationToken);
 	}

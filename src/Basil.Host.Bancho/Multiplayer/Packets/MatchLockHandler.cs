@@ -1,8 +1,7 @@
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Runtime;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
 
 namespace Basil.Host.Bancho.Multiplayer.Packets;
@@ -27,27 +26,27 @@ public sealed class MatchLockHandler : IPacketHandler
 		var slotId = reader.ReadI32();
 
 		var match = gameSession.Match;
-		if (match is null || gameSession.Id != match.HostId || slotId is < 0 or >= 16) return;
+		if (match is null || gameSession.Id != match.Host?.Id || slotId is < 0 or >= 16) return;
 
 		await using var mutation = await match.BeginMutationAsync(cancellationToken);
 
 		// Re-checked under the lock: host status can only change under this same lock, so a
 		// sender who lost host while waiting for it must not still act with host authority.
-		if (gameSession.Id != match.HostId) return;
+		if (gameSession.Id != match.Host?.Id) return;
 
 		var slot = match.Slots[slotId];
 
-		if (slot.Status == SlotStatus.Locked)
+		if (slot.Status == RoomSlotStatus.Locked)
 		{
-			slot.Status = SlotStatus.Open;
+			slot.Status = RoomSlotStatus.Open;
 		}
 		else
 		{
-			if (slot.PlayerId == gameSession.Id)
+			if (slot.Player?.Id == gameSession.Id)
 				// don't allow the host to kick themselves by clicking their own crown.
 				return;
 
-			slot.Status = SlotStatus.Locked;
+			slot.Status = RoomSlotStatus.Locked;
 		}
 
 		mutation.PublishState();

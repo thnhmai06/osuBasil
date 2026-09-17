@@ -1,9 +1,8 @@
 using Basil.Application.Sessions;
+using Basil.Application.Social;
 using Basil.Domain.Social;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
-using Basil.Application.Social;
 
 namespace Basil.Host.Bancho.Users.Packets;
 

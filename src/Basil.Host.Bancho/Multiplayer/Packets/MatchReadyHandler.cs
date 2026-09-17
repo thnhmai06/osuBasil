@@ -1,19 +1,19 @@
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
-using Basil.Domain.Multiplayer;
+using Basil.Application.Users;
+using Basil.Domain.Multiplayer.Runtime;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
 
 namespace Basil.Host.Bancho.Multiplayer.Packets;
 
 /// <summary>Handles the client's notification that the userSession is ready.</summary>
 /// <remarks>
-///     Marks the userSession's slot as <see cref="Basil.Domain.Multiplayer.SlotStatus.Ready" />. The state
+///     Marks the userSession's slot as <see cref="RoomSlotStatus.Ready" />. The state
 ///     update is broadcast to match members but not the lobby. The read-mutate-broadcast sequence runs
 ///     under the match's <see cref="MatchSession.Lock" />.
 /// </remarks>
-public sealed class MatchReadyHandler : IPacketHandler
+public sealed class MatchReadyHandler(IUserCache userCache) : IPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.MatchReady;
 
@@ -27,10 +27,10 @@ public sealed class MatchReadyHandler : IPacketHandler
 
 		await using var mutation = await match.BeginMutationAsync(cancellationToken);
 
-		var slot = match.GetSlot(gameSession.Id);
+		var slot = match.GetSlot(userCache.Resolve(gameSession));
 		if (slot is null) return;
 
-		slot.Status = SlotStatus.Ready;
-		mutation.PublishState(lobby: false);
+		slot.Status = RoomSlotStatus.Ready;
+		mutation.PublishState(false);
 	}
 }

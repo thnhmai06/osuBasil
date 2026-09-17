@@ -1,7 +1,7 @@
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
+using Basil.Application.Users;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
 
 namespace Basil.Host.Bancho.Multiplayer.Packets;
@@ -18,7 +18,7 @@ namespace Basil.Host.Bancho.Multiplayer.Packets;
 ///     <see cref="MatchLifecycle.CreateAsync" /> joins the host into the room under the match's
 ///     <see cref="MatchSession.Lock" />, so no lock is taken here.
 /// </remarks>
-public sealed class CreateMatchHandler(MatchLifecycle matchLifecycle) : IPacketHandler
+public sealed class CreateMatchHandler(MatchLifecycle matchLifecycle, IUserCache userCache) : IPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.CreateMatch;
 
@@ -49,6 +49,6 @@ public sealed class CreateMatchHandler(MatchLifecycle matchLifecycle) : IPacketH
 		}
 
 		var match = await matchLifecycle.CreateAsync(gameSession, matchData.ToCreationData(), cancellationToken);
-		match?.AddReferee(gameSession.Id);
+		match?.AddReferee(userCache.Resolve(gameSession));
 	}
 }

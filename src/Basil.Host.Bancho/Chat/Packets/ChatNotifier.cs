@@ -1,7 +1,6 @@
 using Basil.Application.Chat;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Irc;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Options;

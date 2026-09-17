@@ -1,8 +1,8 @@
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
-using Basil.Domain.Multiplayer;
+using Basil.Application.Users;
+using Basil.Domain.Multiplayer.Runtime;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
 
 namespace Basil.Host.Bancho.Multiplayer.Packets;
@@ -10,8 +10,8 @@ namespace Basil.Host.Bancho.Multiplayer.Packets;
 /// <summary>Handles the client's notification that the userSession has finished the current map.</summary>
 /// <remarks>
 ///     Finalizes a round once every playing userSession has finished. The first completion only marks the
-///     sending userSession's slot as <see cref="Basil.Domain.Multiplayer.SlotStatus.Complete" />; the round is
-///     closed only when no slot is still <see cref="Basil.Domain.Multiplayer.SlotStatus.Playing" />.
+///     sending userSession's slot as <see cref="RoomSlotStatus.Complete" />; the round is
+///     closed only when no slot is still <see cref="RoomSlotStatus.Playing" />.
 ///     Closing queues the round's EndedAt for background persistence (see
 ///     <see cref="IMatchRoundEndOutbox" />, ADR-003) rather than writing it synchronously, clears the
 ///     match's InProgress, unreadies the players, resets their loaded state, and broadcasts a
@@ -28,6 +28,7 @@ namespace Basil.Host.Bancho.Multiplayer.Packets;
 public sealed class MatchCompleteHandler(
 	MatchBroadcast matchBroadcast,
 	IMatchRoundEndOutbox roundEndOutbox,
+	IUserCache userCache,
 	ILogger<MatchCompleteHandler> logger) : IPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.MatchComplete;
@@ -53,7 +54,7 @@ public sealed class MatchCompleteHandler(
 		// once the round has already closed.
 		if (!match.InProgress) return;
 
-		var slot = match.GetSlot(gameSession.Id);
+		var slot = match.GetSlot(userCache.Resolve(gameSession));
 		if (slot is null)
 		{
 			logger.LogWarning(
@@ -62,16 +63,16 @@ public sealed class MatchCompleteHandler(
 			return;
 		}
 
-		slot.Status = SlotStatus.Complete;
+		slot.Status = RoomSlotStatus.Complete;
 
-		if (match.Slots.Any(s => s.Status == SlotStatus.Playing)) return;
+		if (match.Slots.Any(s => s.Status == RoomSlotStatus.Playing)) return;
 
 		var notPlaying = match.Slots
-			.Where(s => s.PlayerId is not null && s.Status != SlotStatus.Complete)
-			.Select(s => s.PlayerId!.Value)
+			.Where(s => s.Player is not null && s.Status != RoomSlotStatus.Complete)
+			.Select(s => s.Player!.Id)
 			.ToList();
 
-		match.UnreadyPlayers(SlotStatus.Complete);
+		match.UnreadyPlayers(RoomSlotStatus.Complete);
 		match.ResetPlayersLoadedStatus();
 		match.InProgress = false;
 

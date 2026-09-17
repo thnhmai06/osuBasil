@@ -1,8 +1,8 @@
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
-using Basil.Domain.Multiplayer;
+using Basil.Application.Users;
+using Basil.Domain.Multiplayer.Runtime;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
 
 namespace Basil.Host.Bancho.Multiplayer.Packets;
@@ -11,12 +11,12 @@ namespace Basil.Host.Bancho.Multiplayer.Packets;
 /// <remarks>
 ///     Marks the userSession's slot as skipped and broadcasts a <c>MatchPlayerSkipped</c> packet for the
 ///     userSession to the match channel. When every slot that is still
-///     <see cref="Basil.Domain.Multiplayer.SlotStatus.Playing" /> has also skipped, a <c>MatchSkip</c>
+///     <see cref="RoomSlotStatus.Playing" /> has also skipped, a <c>MatchSkip</c>
 ///     packet is broadcast so the whole room skips in sync; that final packet excludes the lobby. The
 ///     read-mutate-broadcast sequence runs under the match's
 ///     <see cref="MatchSession.Lock" />.
 /// </remarks>
-public sealed class MatchSkipRequestHandler(MatchBroadcast matchBroadcast) : IPacketHandler
+public sealed class MatchSkipRequestHandler(MatchBroadcast matchBroadcast, IUserCache userCache) : IPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.MatchSkipRequest;
 
@@ -30,13 +30,13 @@ public sealed class MatchSkipRequestHandler(MatchBroadcast matchBroadcast) : IPa
 
 		await using var mutation = await match.BeginMutationAsync(cancellationToken);
 
-		var slot = match.GetSlot(gameSession.Id);
+		var slot = match.GetSlot(userCache.Resolve(gameSession));
 		if (slot is null) return;
 
-		slot.Skipped = true;
+		slot.IntroSkipped = true;
 		matchBroadcast.Enqueue(match, ServerPacketWriter.MatchPlayerSkipped(gameSession.Id));
 
-		var everyoneSkipped = match.Slots.All(s => s.Status != SlotStatus.Playing || s.Skipped);
+		var everyoneSkipped = match.Slots.All(s => s.Status != RoomSlotStatus.Playing || s.IntroSkipped);
 		if (everyoneSkipped) matchBroadcast.Enqueue(match, ServerPacketWriter.MatchSkip(), false);
 	}
 }

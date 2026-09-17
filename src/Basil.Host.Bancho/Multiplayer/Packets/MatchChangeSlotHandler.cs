@@ -1,8 +1,8 @@
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
-using Basil.Domain.Multiplayer;
+using Basil.Application.Users;
+using Basil.Domain.Multiplayer.Runtime;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
 
 namespace Basil.Host.Bancho.Multiplayer.Packets;
@@ -12,11 +12,11 @@ namespace Basil.Host.Bancho.Multiplayer.Packets;
 ///     Reads the target slot id and bounds-checks it against the fixed sixteen-slot layout. The move is
 ///     refused if the target slot is not currently open or if the userSession has no slot of their own. The
 ///     userSession's existing slot contents are copied into the target slot via
-///     <see cref="MatchSlot.CopyFrom" /> and the old slot is reset
+///     <see cref="RoomSlot.CopyFrom" /> and the old slot is reset
 ///     to open, then the updated state is broadcast. The read-mutate-broadcast sequence runs under the
 ///     match's <see cref="MatchSession.Lock" />.
 /// </remarks>
-public sealed class MatchChangeSlotHandler() : IPacketHandler
+public sealed class MatchChangeSlotHandler(IUserCache userCache) : IPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.MatchChangeSlot;
 
@@ -32,9 +32,9 @@ public sealed class MatchChangeSlotHandler() : IPacketHandler
 
 		await using var mutation = await match.BeginMutationAsync(cancellationToken);
 
-		if (match.Slots[slotId].Status != SlotStatus.Open) return;
+		if (match.Slots[slotId].Status != RoomSlotStatus.Open) return;
 
-		var slot = match.GetSlot(gameSession.Id);
+		var slot = match.GetSlot(userCache.Resolve(gameSession));
 		if (slot is null) return;
 
 		match.Slots[slotId].CopyFrom(slot);

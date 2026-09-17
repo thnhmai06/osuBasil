@@ -1,6 +1,6 @@
 using Basil.Application.Multiplayer;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Records;
 using Basil.Domain.Scores;
 using Basil.Protocol.Multiplayer;
 
@@ -29,7 +29,7 @@ public static class MatchCreationDataMapper
 	/// <returns>The equivalent <see cref="MatchCreationData" />.</returns>
 	public static MatchCreationData ToCreationData(this MatchStatePacket data)
 	{
-		// data.MapId is the wire/protocol value: -1 is a real client's explicit "no beatmap chosen",
+		// data.Beatmap is the wire/protocol value: -1 is a real client's explicit "no beatmap chosen",
 		// and 0 is what an HTTP creation request leaves as an unused placeholder (ids in this schema
 		// auto-increment from 1, so 0 can never be a real beatmap either). Both mean "no map" at this
 		// wire-to-domain boundary.

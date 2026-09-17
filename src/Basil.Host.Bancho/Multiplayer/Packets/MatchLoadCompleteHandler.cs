@@ -1,8 +1,8 @@
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
-using Basil.Domain.Multiplayer;
+using Basil.Application.Users;
+using Basil.Domain.Multiplayer.Runtime;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
 
 namespace Basil.Host.Bancho.Multiplayer.Packets;
@@ -10,12 +10,12 @@ namespace Basil.Host.Bancho.Multiplayer.Packets;
 /// <summary>Handles the client's notification that the userSession has finished loading the map.</summary>
 /// <remarks>
 ///     Marks the userSession's slot as loaded. When no slot that is still
-///     <see cref="Basil.Domain.Multiplayer.SlotStatus.Playing" /> remains unloaded, a
+///     <see cref="RoomSlotStatus.Playing" /> remains unloaded, a
 ///     <c>MatchAllPlayersLoaded</c> packet is broadcast to the match channel so the game can start the
 ///     map in sync. The read-mutate-broadcast sequence runs under the match's
 ///     <see cref="MatchSession.Lock" />.
 /// </remarks>
-public sealed class MatchLoadCompleteHandler(MatchBroadcast matchBroadcast) : IPacketHandler
+public sealed class MatchLoadCompleteHandler(MatchBroadcast matchBroadcast, IUserCache userCache) : IPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.MatchLoadComplete;
 
@@ -29,12 +29,12 @@ public sealed class MatchLoadCompleteHandler(MatchBroadcast matchBroadcast) : IP
 
 		await using var mutation = await match.BeginMutationAsync(cancellationToken);
 
-		var slot = match.GetSlot(gameSession.Id);
+		var slot = match.GetSlot(userCache.Resolve(gameSession));
 		if (slot is null) return;
 
-		slot.Loaded = true;
+		slot.BeatmapLoaded = true;
 
-		var stillWaiting = match.Slots.Any(s => s is { Status: SlotStatus.Playing, Loaded: false });
+		var stillWaiting = match.Slots.Any(s => s is { Status: RoomSlotStatus.Playing, BeatmapLoaded: false });
 		if (!stillWaiting) matchBroadcast.Enqueue(match, ServerPacketWriter.MatchAllPlayersLoaded(), false);
 	}
 }

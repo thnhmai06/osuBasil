@@ -1,21 +1,16 @@
 using System.Security.Cryptography;
 using System.Text;
-using Basil.Application.Sessions;
-using Basil.Application.Shared.Configuration;
-using Basil.Domain.Auth;
-using Basil.Domain.Beatmaps;
-using Basil.Domain.Client;
-using Basil.Domain.Scores;
-using Basil.Domain.Users;
-using Basil.Infrastructure.Auth;
-using Basil.Application.Shared.Http;
-using Basil.Infrastructure.Beatmaps;
-using Basil.Infrastructure.Scores;
-using Basil.Infrastructure.Shared.Sessions;
-using Basil.Application.Scores;
-using Basil.Application.Users;
 using Basil.Application.Auth;
 using Basil.Application.Beatmaps;
+using Basil.Application.Scores;
+using Basil.Application.Sessions;
+using Basil.Application.Shared.Configuration;
+using Basil.Application.Shared.Http;
+using Basil.Application.Users;
+using Basil.Domain.Beatmaps;
+using Basil.Domain.Scores;
+using Basil.Domain.Users;
+using Basil.Infrastructure.Beatmaps;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using BeatmapIngestionService = Basil.Infrastructure.Beatmaps.BeatmapIngestionService;
@@ -584,14 +579,14 @@ public static class OsuWebRoutes
 
 				var requestedMods = (Mods)mods;
 				double stars;
-				if (requestedMods == Mods.NoMod && bmap.Difficulty.Sr > 0)
+				if (requestedMods == Mods.NoMod && bmap.Difficulty.Star > 0)
 				{
-					stars = bmap.Difficulty.Sr;
+					stars = bmap.Difficulty.Star;
 				}
 				else
 				{
 					var calculator = context.RequestServices.GetRequiredService<IOsuCalculator>();
-					stars = calculator.Analyze(osuPath, bmap.Difficulty.Mode, requestedMods).Difficulty.Sr;
+					stars = calculator.Analyze(osuPath, bmap.Difficulty.Mode, requestedMods).Difficulty.Star;
 					if (requestedMods == Mods.NoMod)
 						await maps.UpdateDiffAsync(bmap.Id, stars, cancellationToken);
 				}

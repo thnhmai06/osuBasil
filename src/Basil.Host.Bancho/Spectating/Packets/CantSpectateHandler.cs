@@ -1,6 +1,5 @@
 using Basil.Application.Sessions;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
 
 namespace Basil.Host.Bancho.Spectating.Packets;
@@ -28,7 +27,7 @@ public sealed class CantSpectateHandler(ILogger<CantSpectateHandler> logger) : I
 		if (host is null || gameSession.Stealth) return Task.CompletedTask;
 
 		logger.LogDebug(
-			"Client cannot spectate (missing map): UserId={UserId} HostId={HostId}", gameSession.Id, host.Id);
+			"Client cannot spectate (missing map): UserId={UserId} Host={Host}", gameSession.Id, host.Id);
 		var packet = ServerPacketWriter.SpectatorCantSpectate(gameSession.Id);
 		host.Enqueue(packet);
 

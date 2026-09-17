@@ -1,7 +1,6 @@
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
 
 namespace Basil.Host.Bancho.Multiplayer.Packets;
@@ -26,13 +25,13 @@ public sealed class MatchChangePasswordHandler : IPacketHandler
 
 		var match = gameSession.Match;
 		if (!MatchCreationDataMapper.IsValid(matchData, gameSession.Id) || match is null ||
-		    gameSession.Id != match.HostId) return;
+		    gameSession.Id != match.Host?.Id) return;
 
 		await using var mutation = await match.BeginMutationAsync(cancellationToken);
 
 		// Re-checked under the lock: host status can only change under this same lock, so a
 		// sender who lost host while waiting for it must not still act with host authority.
-		if (gameSession.Id != match.HostId) return;
+		if (gameSession.Id != match.Host?.Id) return;
 
 		match.Password = matchData.Password;
 		mutation.PublishState();

@@ -1,7 +1,7 @@
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
+using Basil.Application.Users;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
 
 namespace Basil.Host.Bancho.Multiplayer.Packets;
@@ -13,7 +13,7 @@ namespace Basil.Host.Bancho.Multiplayer.Packets;
 ///     not changed. The relay runs under the match's
 ///     <see cref="MatchSession.Lock" />.
 /// </remarks>
-public sealed class MatchFailedHandler(MatchBroadcast matchBroadcast) : IPacketHandler
+public sealed class MatchFailedHandler(MatchBroadcast matchBroadcast, IUserCache userCache) : IPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.MatchFailed;
 
@@ -27,7 +27,7 @@ public sealed class MatchFailedHandler(MatchBroadcast matchBroadcast) : IPacketH
 
 		await using var mutation = await match.BeginMutationAsync(cancellationToken);
 
-		var slotId = match.GetSlotId(gameSession.Id);
+		var slotId = match.GetSlotId(userCache.Resolve(gameSession));
 		if (slotId is null) return;
 
 		matchBroadcast.Enqueue(match, ServerPacketWriter.MatchPlayerFailed(slotId.Value), false);

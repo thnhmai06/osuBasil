@@ -1,8 +1,8 @@
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
+using Basil.Application.Users;
 using Basil.Domain.Scores;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
 
 namespace Basil.Host.Bancho.Multiplayer.Packets;
@@ -17,7 +17,7 @@ namespace Basil.Host.Bancho.Multiplayer.Packets;
 ///     when the mutation scope completes. The read-mutate-broadcast sequence runs under the match's
 ///     <see cref="MatchSession.Lock" />.
 /// </remarks>
-public sealed class MatchChangeModsHandler : IPacketHandler
+public sealed class MatchChangeModsHandler(IUserCache userCache) : IPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.MatchChangeMods;
 
@@ -33,19 +33,20 @@ public sealed class MatchChangeModsHandler : IPacketHandler
 
 		await using var mutation = await match.BeginMutationAsync(cancellationToken);
 
+		var sender = userCache.Resolve(gameSession);
 		if (match.Freemods)
 		{
-			if (gameSession.Id == match.HostId)
+			if (sender.Equals(match.Host))
 				match.Mods = mods & Mods.SpeedChangingMods;
 
-			var slot = match.GetSlot(gameSession.Id);
+			var slot = match.GetSlot(sender);
 			if (slot is null) return;
 
 			slot.Mods = mods & ~Mods.SpeedChangingMods;
 		}
 		else
 		{
-			if (gameSession.Id != match.HostId) return;
+			if (!sender.Equals(match.Host)) return;
 
 			match.Mods = mods;
 		}

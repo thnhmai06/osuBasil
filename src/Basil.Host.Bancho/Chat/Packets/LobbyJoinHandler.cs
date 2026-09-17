@@ -1,7 +1,7 @@
+using Basil.Application.Channels;
 using Basil.Application.Chat;
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
-using Basil.Domain.Channels;
 using Basil.Host.Bancho.Multiplayer;
 using Basil.Host.Bancho.Shared.Http;
 using Basil.Protocol.Packets;

@@ -1,13 +1,13 @@
 using System.Text.Json;
+using Basil.Application.Auth;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Json;
+using Basil.Application.Spectating;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
-using Basil.Application.Spectating;
 using Basil.Domain.Users;
 using Basil.Host.Bancho.Shared.Http;
 using Basil.Protocol.Packets;
-using Basil.Application.Auth;
 
 namespace Basil.Host.Bancho.Users.Packets;
 

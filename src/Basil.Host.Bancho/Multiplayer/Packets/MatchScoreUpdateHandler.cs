@@ -3,6 +3,7 @@ using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Eventing;
 using Basil.Application.Shared.Json;
+using Basil.Application.Users;
 using Basil.Host.Bancho.Shared.Http;
 using Basil.Protocol.Multiplayer;
 using Basil.Protocol.Packets;
@@ -21,7 +22,7 @@ namespace Basil.Host.Bancho.Multiplayer.Packets;
 ///     the relay. Both reads happen while holding the match's
 ///     <see cref="MatchSession.Lock" />.
 /// </remarks>
-public sealed class MatchScoreUpdateHandler(MatchBroadcast matchBroadcast, ILiveEventHub hub)
+public sealed class MatchScoreUpdateHandler(MatchBroadcast matchBroadcast, ILiveEventHub hub, IUserCache userCache)
 	: IPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.MatchScoreUpdate;
@@ -38,7 +39,7 @@ public sealed class MatchScoreUpdateHandler(MatchBroadcast matchBroadcast, ILive
 
 		await using var mutation = await match.BeginMutationAsync(cancellationToken);
 
-		var slotId = match.GetSlotId(gameSession.Id);
+		var slotId = match.GetSlotId(userCache.Resolve(gameSession));
 		if (slotId is null) return;
 
 		// scorev2 adds an extra 8 bytes to play_data; either way, byte 11 (4 bytes into the

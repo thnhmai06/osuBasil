@@ -1,10 +1,10 @@
+using Basil.Application.Channels;
+using Basil.Application.Chat;
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
-using Basil.Domain.Channels;
+using Basil.Application.Users;
 using Basil.Domain.Users;
-using Basil.Application.Chat;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
 
 namespace Basil.Host.Bancho.Multiplayer.Packets;
@@ -23,6 +23,7 @@ public sealed class TourneyMatchJoinChannelHandler(
 	IMatchRegistry matchRegistry,
 	IChannelRegistry channelRegistry,
 	ChannelMembershipService channelMembership,
+	IUserCache userCache,
 	ILogger<TourneyMatchJoinChannelHandler> logger) : IPacketHandler
 {
 	public ClientPackets PacketId => ClientPackets.TournamentJoinMatchChannel;
@@ -41,14 +42,14 @@ public sealed class TourneyMatchJoinChannelHandler(
 
 		using var _ = logger.BeginScope(new Dictionary<string, object> { ["MatchId"] = match.DbId });
 
-		if (match.Slots.Any(s => s.PlayerId == gameSession.Id))
+		if (match.Slots.Any(s => s.Player?.Id == gameSession.Id))
 			return Task.CompletedTask; // already playing in the match
 
 		var channel = channelRegistry.GetByName(match.ChatChannelName);
 		// bypassMatchGate: a tourney client is a donator-privileged observer, not a seated player or
 		// referee — the donator check above is this join's own authorization.
 		if (channel is not null && channelMembership.Join(gameSession, channel, true))
-			match.AddTourneyClient(gameSession.Id);
+			match.AddTourneyClient(userCache.Resolve(gameSession));
 
 		return Task.CompletedTask;
 	}

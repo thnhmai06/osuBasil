@@ -1,7 +1,6 @@
 using Basil.Application.Sessions;
-using Basil.Domain.Users;
+using Basil.Domain.Social;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
 
 namespace Basil.Host.Bancho.Users.Packets;
@@ -11,9 +10,9 @@ namespace Basil.Host.Bancho.Users.Packets;
 ///     wants to receive.
 /// </summary>
 /// <remarks>
-///     The body carries a 32-bit integer that is interpreted as a <see cref="PresenceFilter" />.
+///     The body carries a 32-bit integer that is interpreted as a <see cref="PresenceVisibility" />.
 ///     Values outside the valid 0..2 range are ignored, leaving the previous filter in place. The
-///     accepted value is stored on <see cref="PresenceFilter" />.
+///     accepted value is stored on <see cref="PresenceVisibility" />.
 /// </remarks>
 public sealed class ReceiveUpdatesHandler : IPacketHandler
 {
@@ -26,7 +25,7 @@ public sealed class ReceiveUpdatesHandler : IPacketHandler
 		var value = reader.ReadI32();
 		if (value is < 0 or >= 3) return Task.CompletedTask;
 
-		gameSession.PresenceFilter = (PresenceFilter)value;
+		gameSession.PresenceVisibility = (PresenceVisibility)value;
 		return Task.CompletedTask;
 	}
 }

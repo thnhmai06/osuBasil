@@ -39,7 +39,7 @@ public sealed class StartSpectatingHandler(
 			{
 				// Host hasn't changed — the client didn't have the map but has now downloaded
 				// it. `userSession` already received the other fellow spectators, so no resend.
-				logger.LogDebug("Spectator map re-download: UserId={UserId} HostId={NewHostId}",
+				logger.LogDebug("Spectator map re-download: UserId={UserId} Host={NewHostId}",
 					gameSession.Id, newHost.Id);
 
 				if (gameSession.Stealth) return Task.CompletedTask;

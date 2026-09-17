@@ -1,8 +1,7 @@
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Records;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
 
 namespace Basil.Host.Bancho.Multiplayer.Packets;
@@ -10,7 +9,7 @@ namespace Basil.Host.Bancho.Multiplayer.Packets;
 /// <summary>Handles the host's request to transfer the host role to another userSession.</summary>
 /// <remarks>
 ///     Reads the target slot id and bounds-checks it against the fixed sixteen-slot layout. Only the
-///     current host may transfer the role, and the target slot must be occupied. The match's HostId is
+///     current host may transfer the role, and the target slot must be occupied. The match's Host is
 ///     updated, a <c>MatchTransferHost</c> packet is enqueued for the new host, the updated state is
 ///     broadcast, and a <c>HostGranted</c> match event is persisted through
 ///     <see cref="IMatchRepository.CreateEventAsync" />. All of
@@ -31,33 +30,32 @@ public sealed class MatchTransferHostHandler(
 		var slotId = reader.ReadI32();
 
 		var match = gameSession.Match;
-		if (match is null || gameSession.Id != match.HostId || slotId is < 0 or >= 16) return;
+		if (match is null || gameSession.Id != match.Host?.Id || slotId is < 0 or >= 16) return;
 
 		await using var mutation = await match.BeginMutationAsync(cancellationToken);
 
 		// Host status is re-checked here, not just before the lock: it can only change under this
 		// same lock (a concurrent leave or transfer), so a sender who lost host while waiting for
 		// it must not still be treated as authoritative once the lock is acquired.
-		if (gameSession.Id != match.HostId) return;
+		if (gameSession.Id != match.Host?.Id) return;
 
-		var targetId = match.Slots[slotId].PlayerId;
-		if (targetId is null) return;
+		var target = match.Slots[slotId].Player;
+		if (target is null) return;
 
-		var prevHostId = match.HostId;
-		match.HostId = targetId.Value;
+		var prevHost = match.Host;
+		match.Host = target;
 		logger.LogInformation("Host transferred: MatchId={MatchId} PrevHostId={PrevHostId} NewHostId={NewHostId}",
-			match.DbId, prevHostId, targetId.Value);
+			match.DbId, prevHost.Id, target.Id);
 
-		var targetPlayer = sessionRegistry.GetByUserId(targetId.Value);
+		var targetPlayer = sessionRegistry.GetByUserId(target.Id);
 		targetPlayer?.Enqueue(ServerPacketWriter.MatchTransferHost());
 
 		// Runs here, still under the lock, rather than after: this audit-trail write doesn't read or
 		// depend on live match state beyond values already captured above.
-		// gameSession is prevHostId's session: verified by the guard above.
-		var prevHostName = gameSession.Name;
+		// gameSession is prevHost's session: verified by the guard above.
 		await matchRepository.CreateEventAsync(new MatchEvent(
-			match.DbId, (int)MatchEventType.HostGranted,
-			prevHostId, prevHostName, targetId, targetPlayer?.Name,
+			match.DbId, MatchEventType.HostGranted,
+			prevHost, target,
 			DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 
 		mutation.PublishState();
