@@ -1,5 +1,3 @@
-using Basil.Application.Multiplayer;
-
 namespace Basil.Application.Multiplayer.Handlers.Countdown;
 
 /// <summary>Cancels a match's pending countdown.</summary>

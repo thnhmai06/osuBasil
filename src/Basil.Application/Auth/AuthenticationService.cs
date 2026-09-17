@@ -1,6 +1,4 @@
 using Basil.Application.Sessions;
-using Basil.Domain.Auth;
-using Basil.Application.Auth;
 
 namespace Basil.Application.Auth;
 

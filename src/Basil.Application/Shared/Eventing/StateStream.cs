@@ -20,8 +20,8 @@ namespace Basil.Application.Shared.Eventing;
 /// <typeparam name="T">The full-state payload type carried by the channel.</typeparam>
 public sealed class StateStream<T> where T : class
 {
-	private readonly Lock _sync = new();
 	private readonly KeyValuePair<string, object?> _streamTag;
+	private readonly Lock _sync = new();
 	private long _lastAppliedSequence = -1;
 	private T? _latest;
 
@@ -43,10 +43,16 @@ public sealed class StateStream<T> where T : class
 	///     together. A subscriber uses this to establish the version fence for a live stream: its own
 	///     first item is this state, and only events strictly newer than this version follow it.
 	/// </remarks>
-	/// <returns>The latest published state and its version, or a <see langword="null" /> state and <c>-1</c> before the first publication.</returns>
+	/// <returns>
+	///     The latest published state and its version, or a <see langword="null" /> state and <c>-1</c> before the first
+	///     publication.
+	/// </returns>
 	public (T? Latest, long Version) GetLatestAndVersion()
 	{
-		lock (_sync) return (_latest, _lastAppliedSequence);
+		lock (_sync)
+		{
+			return (_latest, _lastAppliedSequence);
+		}
 	}
 
 	/// <summary>Stores a new snapshot and computes the delta patch from the previous state.</summary>

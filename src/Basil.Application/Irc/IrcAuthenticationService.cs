@@ -1,14 +1,12 @@
 using System.Security.Cryptography;
 using System.Text;
+using Basil.Application.Auth;
+using Basil.Application.Channels;
+using Basil.Application.Chat;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
-using Basil.Domain.Auth;
-using Basil.Domain.Channels;
-using Basil.Domain.Users;
-using Basil.Application.Chat;
-using Basil.Protocol.Irc;
 using Basil.Application.Users;
-using Basil.Application.Auth;
+using Basil.Protocol.Irc;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Application.Irc;

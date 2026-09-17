@@ -19,7 +19,10 @@ public sealed class LiveEventHub : ILiveEventHub
 	public bool HasSubscribers(StreamKey key)
 	{
 		if (!_streams.TryGetValue(key, out var state)) return false;
-		lock (state.Sync) return state.Subscribers.Count > 0;
+		lock (state.Sync)
+		{
+			return state.Subscribers.Count > 0;
+		}
 	}
 
 	/// <inheritdoc />
@@ -27,7 +30,10 @@ public sealed class LiveEventHub : ILiveEventHub
 	{
 		var state = GetOrCreateState(key);
 		LiveSubscription[] subscribers;
-		lock (state.Sync) subscribers = [.. state.Subscribers];
+		lock (state.Sync)
+		{
+			subscribers = [.. state.Subscribers];
+		}
 
 		foreach (var subscriber in subscribers) subscriber.OnPublish(version, payload);
 	}
@@ -47,11 +53,6 @@ public sealed class LiveEventHub : ILiveEventHub
 		}
 	}
 
-	private StreamState GetOrCreateState(StreamKey key)
-	{
-		return _streams.GetOrAdd(key, static _ => new StreamState());
-	}
-
 	/// <inheritdoc />
 	public void Forget(string category, int id)
 	{
@@ -60,15 +61,23 @@ public sealed class LiveEventHub : ILiveEventHub
 				_streams.TryRemove(key, out _);
 	}
 
+	private StreamState GetOrCreateState(StreamKey key)
+	{
+		return _streams.GetOrAdd(key, static _ => new StreamState());
+	}
+
 	private static void Unsubscribe(StreamState state, LiveSubscription subscription)
 	{
-		lock (state.Sync) state.Subscribers.Remove(subscription);
+		lock (state.Sync)
+		{
+			state.Subscribers.Remove(subscription);
+		}
 	}
 
 	/// <summary>Per-stream state: the lock that <see cref="Open" /> and <see cref="Publish" /> share, and the subscriber list.</summary>
 	private sealed class StreamState
 	{
-		public readonly Lock Sync = new();
 		public readonly List<LiveSubscription> Subscribers = [];
+		public readonly Lock Sync = new();
 	}
 }

@@ -21,7 +21,10 @@ public sealed class SequenceGate
 
 	/// <summary>Records <paramref name="sequence" /> as applied if it is newer than the last one accepted.</summary>
 	/// <param name="sequence">The sequence number to attempt to apply.</param>
-	/// <returns><see langword="true" /> if <paramref name="sequence" /> was newer and is now recorded; otherwise, <see langword="false" />.</returns>
+	/// <returns>
+	///     <see langword="true" /> if <paramref name="sequence" /> was newer and is now recorded; otherwise,
+	///     <see langword="false" />.
+	/// </returns>
 	public bool TryAdvance(long sequence)
 	{
 		while (true)

@@ -1,4 +1,3 @@
-using Basil.Application.Auth;
 namespace Basil.Application.Auth;
 
 /// <summary>

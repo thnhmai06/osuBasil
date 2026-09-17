@@ -1,6 +1,7 @@
+using Basil.Application.Channels;
+using Basil.Application.Chat;
 using Basil.Application.Sessions;
 using Basil.Domain.Channels;
-using Basil.Application.Chat;
 
 namespace Basil.Application.Spectating;
 
@@ -72,7 +73,7 @@ public sealed class SpectatorService(
 
 		host.AddSpectator(spectator);
 		spectator.Spectating = host;
-		logger.LogDebug("Spectator joined: HostId={HostId} SpectatorId={SpectatorId}", host.Id, spectator.Id);
+		logger.LogDebug("Spectator joined: Host={Host} SpectatorId={SpectatorId}", host.Id, spectator.Id);
 	}
 
 	/// <summary>Parts a spectator from a host's spectating channel, notifying the remaining spectators.</summary>
@@ -93,12 +94,12 @@ public sealed class SpectatorService(
 		{
 			channelMembership.Part(host, channel);
 			channelRegistry.Remove(channel.Name);
-			logger.LogDebug("Spectator left: HostId={HostId} SpectatorId={SpectatorId} ChannelTornDown=true",
+			logger.LogDebug("Spectator left: Host={Host} SpectatorId={SpectatorId} ChannelTornDown=true",
 				host.Id, spectator.Id);
 			return;
 		}
 
-		logger.LogDebug("Spectator left: HostId={HostId} SpectatorId={SpectatorId} ChannelTornDown=false",
+		logger.LogDebug("Spectator left: Host={Host} SpectatorId={SpectatorId} ChannelTornDown=false",
 			host.Id, spectator.Id);
 
 		foreach (var remaining in host.Spectators) notifier.FellowSpectatorLeft(remaining, spectator.Id);

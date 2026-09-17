@@ -1,11 +1,11 @@
-using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
-using Basil.Domain.Multiplayer;
+using Basil.Application.Users;
+using Basil.Domain.Multiplayer.Records;
 
 namespace Basil.Application.Multiplayer.Handlers.Slots;
 
 /// <summary>Assigns a single userSession's team.</summary>
-public sealed class SetTeamHandler(MatchLifecycle matchLifecycle, ILogger<SetTeamHandler> logger)
+public sealed class SetTeamHandler(MatchLifecycle matchLifecycle, IUserCache userCache, ILogger<SetTeamHandler> logger)
 {
 	public enum TeamResult : byte
 	{
@@ -29,13 +29,13 @@ public sealed class SetTeamHandler(MatchLifecycle matchLifecycle, ILogger<SetTea
 	public Task<TeamResult> SetTeamAsync(MatchSession match, UserSession target, MatchTeam team,
 		MatchMutationScope mutation, CancellationToken cancellationToken = default)
 	{
-		var slot = match.GetSlot(target.Id);
+		var slot = match.GetSlot(userCache.Resolve(target));
 		if (slot is null) return Task.FromResult(TeamResult.TargetNotInMatch);
 
 		slot.Team = team;
 		logger.LogDebug("Room settings changed: MatchId={MatchId} UserId={UserId} Team={Team}",
 			match.DbId, target.Id, team);
-		mutation.PublishState(lobby: false);
+		mutation.PublishState(false);
 		matchLifecycle.CancelQueuedAutoStart(match);
 		return Task.FromResult(TeamResult.Ok);
 	}

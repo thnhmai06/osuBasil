@@ -4,7 +4,6 @@ using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
 using Basil.Application.Users;
-using Basil.Domain.Client;
 using Basil.Domain.Users;
 using Microsoft.Extensions.Options;
 

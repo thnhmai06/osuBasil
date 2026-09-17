@@ -36,33 +36,30 @@ public interface IMatchMutationPublisher
 ///     Callers used to allocate a version by hand inside the lock and thread it through every
 ///     publish call, which meant every call site could forget to increment, could pass a stale
 ///     value, or could hold the lock across the broadcast. This scope owns that lifecycle instead.
-///
 ///     Disposal does exactly three things, in this order: allocate the version if any publish was
 ///     requested, release the lock, then run the requested publishes unlocked. Building and
 ///     broadcasting outside the lock is what keeps a slow build from serializing the match, and the
 ///     version allocated inside it is what lets a build that finishes out of order be dropped
 ///     rather than reverting live state.
-///
 ///     A scope that requests no publish allocates no version. Repeated publish requests for the
 ///     same stream coalesce into one publish at one version. An exception inside the scope still
 ///     publishes what was requested before it: the state change that happened is real, and hiding
 ///     it would leave every subscriber silently stale. A publish that fails is caught and never
 ///     rethrown -- the mutation has already committed to memory and the live stream is a
 ///     projection of it, not a participant in it.
-///
 ///     The match lock is not reentrant, so a nested scope on the same match would deadlock. It
 ///     throws instead.
 /// </remarks>
 public sealed class MatchMutationScope : IAsyncDisposable
 {
-	private readonly IMatchMutationPublisher? _publisher;
 	private readonly CancellationToken _cancellationToken;
+	private readonly IMatchMutationPublisher? _publisher;
 	private bool _completed;
-	private bool _publishState;
-	private bool _publishStateLobby;
+	private bool _publishBans;
 	private bool _publishHost;
 	private bool _publishRefs;
-	private bool _publishBans;
+	private bool _publishState;
+	private bool _publishStateLobby;
 	private bool _publishTimer;
 
 	internal MatchMutationScope(MatchSession session, IMatchMutationPublisher? publisher,
@@ -85,6 +82,12 @@ public sealed class MatchMutationScope : IAsyncDisposable
 	/// </summary>
 	public long? AllocatedVersion { get; private set; }
 
+	/// <inheritdoc />
+	public async ValueTask DisposeAsync()
+	{
+		await CompleteAsync();
+	}
+
 	/// <summary>Requests that the match state (settings, slots, host) be rebuilt and broadcast when this scope completes.</summary>
 	/// <param name="lobby"><see langword="true" /> to also broadcast to the lobby; otherwise, <see langword="false" />.</param>
 	public void PublishState(bool lobby = true)
@@ -94,16 +97,28 @@ public sealed class MatchMutationScope : IAsyncDisposable
 	}
 
 	/// <summary>Requests that the host snapshot channel be rebuilt and republished when this scope completes.</summary>
-	public void PublishHost() => _publishHost = true;
+	public void PublishHost()
+	{
+		_publishHost = true;
+	}
 
 	/// <summary>Requests that the referee list snapshot channel be rebuilt and republished when this scope completes.</summary>
-	public void PublishRefs() => _publishRefs = true;
+	public void PublishRefs()
+	{
+		_publishRefs = true;
+	}
 
 	/// <summary>Requests that the banlist snapshot channel be rebuilt and republished when this scope completes.</summary>
-	public void PublishBans() => _publishBans = true;
+	public void PublishBans()
+	{
+		_publishBans = true;
+	}
 
 	/// <summary>Requests that the countdown timer snapshot channel be republished when this scope completes.</summary>
-	public void PublishTimer() => _publishTimer = true;
+	public void PublishTimer()
+	{
+		_publishTimer = true;
+	}
 
 	/// <summary>
 	///     Allocates the version if any publish was requested, releases the match's lock, then runs
@@ -124,7 +139,8 @@ public sealed class MatchMutationScope : IAsyncDisposable
 
 		if (version is not { } v || _publisher is null) return;
 
-		if (_publishState) await RunAsync(() => _publisher.PublishStateAsync(Session, v, _publishStateLobby, _cancellationToken));
+		if (_publishState)
+			await RunAsync(() => _publisher.PublishStateAsync(Session, v, _publishStateLobby, _cancellationToken));
 		if (_publishHost) await RunAsync(() => _publisher.PublishHostAsync(Session, v, _cancellationToken));
 		if (_publishRefs) await RunAsync(() => _publisher.PublishRefsAsync(Session, v, _cancellationToken));
 		if (_publishBans) await RunAsync(() => _publisher.PublishBansAsync(Session, v, _cancellationToken));
@@ -152,7 +168,4 @@ public sealed class MatchMutationScope : IAsyncDisposable
 			// memory, and the live stream is a projection of it rather than a participant in it.
 		}
 	}
-
-	/// <inheritdoc />
-	public async ValueTask DisposeAsync() => await CompleteAsync();
 }

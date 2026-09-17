@@ -1,4 +1,3 @@
-using Basil.Application.Bot;
 namespace Basil.Application.Bot;
 
 /// <summary>

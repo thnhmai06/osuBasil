@@ -1,6 +1,5 @@
-using Basil.Application.Multiplayer;
-using Basil.Application.Sessions;
 using Basil.Application.Bot;
+using Basil.Application.Sessions;
 
 namespace Basil.Application.Multiplayer;
 

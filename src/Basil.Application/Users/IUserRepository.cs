@@ -1,6 +1,4 @@
-using Basil.Domain.Client;
 using Basil.Domain.Users;
-using Basil.Application.Users;
 
 namespace Basil.Application.Users;
 

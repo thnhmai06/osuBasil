@@ -164,7 +164,7 @@ public sealed class DirectSearchService(
 
 	private static string FormatDiff(Beatmap beatmap)
 	{
-		return $"[{beatmap.Difficulty.Sr:0.00}⭐] {RemovePipes(beatmap.Version)} " +
+		return $"[{beatmap.Difficulty.Star:0.00}⭐] {RemovePipes(beatmap.Version)} " +
 		       $"{{CS: {beatmap.Difficulty.Cs} / OD: {beatmap.Difficulty.Od} / AR: {beatmap.Difficulty.Ar} / " +
 		       $"HP: {beatmap.Difficulty.Hp}}}@{(int)beatmap.Difficulty.Mode}";
 	}

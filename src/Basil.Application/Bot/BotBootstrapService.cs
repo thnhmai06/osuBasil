@@ -1,10 +1,9 @@
+using Basil.Application.Channels;
+using Basil.Application.Chat;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
-using Basil.Domain.Channels;
-using Basil.Domain.Client;
-using Basil.Domain.Users;
-using Basil.Application.Chat;
 using Basil.Application.Users;
+using Basil.Domain.Users;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Application.Bot;
@@ -29,8 +28,8 @@ public sealed class BotBootstrapService(
 	IOptions<BotOptions> botOptions,
 	ILogger<BotBootstrapService> logger)
 {
-	public static readonly int BotId = SystemUserIds.BasilBot;
 	private const string BotToken = "bancho-bot-session";
+	public static readonly int BotId = SystemUserIds.BasilBot;
 
 	/// <summary>
 	///     Creates the bot's session, synchronizing its stored name and country with the configured

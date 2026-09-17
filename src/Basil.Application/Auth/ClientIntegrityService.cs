@@ -1,9 +1,8 @@
 using Basil.Application.Bot;
-using Basil.Application.Irc;
-using Basil.Application.Sessions;
-using Basil.Domain.Scores;
 using Basil.Application.Chat;
+using Basil.Application.Irc;
 using Basil.Application.Multiplayer;
+using Basil.Application.Sessions;
 
 namespace Basil.Application.Auth;
 
@@ -97,11 +96,11 @@ public sealed class ClientIntegrityService(
 		var dm = $"Anti-cheat flag in match #{match.DbId} {match.Name}: {userSession.Name} — {reason}";
 		logger.LogDebug("Anticheat flag reported: MatchId={MatchId} RefereeIds={RefereeIds}",
 			match.DbId, match.Referees);
-		foreach (var refereeId in match.Referees)
+		foreach (var referee in match.Referees)
 		{
-			if (gameRegistry.GetByUserId(refereeId) is { } referee)
-				chat.Deliver(referee, new ChatLine(bot.Id, bot.Name, referee.Name, dm));
-			if (ircRegistry.GetByUserId(refereeId) is { } irc)
+			if (gameRegistry.GetByUserId(referee.Id) is { } refereeSession)
+				chat.Deliver(refereeSession, new ChatLine(bot.Id, bot.Name, refereeSession.Name, dm));
+			if (ircRegistry.GetByUserId(referee.Id) is { } irc)
 				chat.Deliver(irc, new ChatLine(bot.Id, bot.Name, irc.Name, dm));
 		}
 	}

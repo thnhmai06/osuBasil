@@ -1,15 +1,13 @@
 using Basil.Application.Beatmaps;
 using Basil.Application.Irc;
-using Basil.Application.Multiplayer;
+using Basil.Application.Scores;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Json;
+using Basil.Application.Users;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Client;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Records;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
-using Basil.Application.Scores;
-using Basil.Application.Users;
 
 // ReSharper disable NotAccessedPositionalProperty.Global
 
@@ -63,14 +61,14 @@ public sealed class MatchReportService(
 		var reportEvents = new List<MatchReportEvent>(events.Count);
 		foreach (var e in events)
 		{
-			var actor = e.ActorUserId is { } actorId
-				? await ResolveUserCached(actorId, userCache, cancellationToken) ?? Placeholder(actorId)
+			var actor = e.Actor is { } actorUser
+				? await ResolveUserCached(actorUser.Id, userCache, cancellationToken) ?? Placeholder(actorUser.Id)
 				: null;
-			var target = e.TargetUserId is { } targetId
-				? await ResolveUserCached(targetId, userCache, cancellationToken) ?? Placeholder(targetId)
+			var target = e.Target is { } targetUser
+				? await ResolveUserCached(targetUser.Id, userCache, cancellationToken) ?? Placeholder(targetUser.Id)
 				: null;
-			reportEvents.Add(new MatchReportEvent((MatchEventType)e.EventType, actor, target,
-				e.Timestamp.AsUtcOffset(), e.Detail));
+			reportEvents.Add(new MatchReportEvent(e.Type, actor, target,
+				e.OccurredAt.AsUtcOffset(), e.Detail));
 		}
 
 		var live = matchRegistry.GetByDbId(matchId);
@@ -224,7 +222,7 @@ public sealed class MatchReportService(
 		return new MatchReportRound(
 			round.RoundIndex, round.MapMd5, beatmap,
 			round.Mode, round.WinCondition, round.TeamType, round.Mods, round.Aborted,
-			round.StartedAt.AsUtcOffset(), round.EndedAt?.AsUtcOffset(),
+			round.OccurredAt.AsUtcOffset(), round.EndedAt?.AsUtcOffset(),
 			winner, winnerTeam, winMetric, winDiff, reportScores);
 	}
 

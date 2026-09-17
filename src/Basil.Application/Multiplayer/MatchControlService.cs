@@ -1,11 +1,13 @@
+using Basil.Application.Beatmaps;
 using Basil.Application.Bot;
 using Basil.Application.Irc;
-using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
+using Basil.Application.Users;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Records;
+using Basil.Domain.Multiplayer.Runtime;
 using Basil.Domain.Scores;
-using Basil.Application.Beatmaps;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Multiplayer;
 
@@ -31,6 +33,7 @@ public sealed class MatchControlService(
 	IBeatmapRepository beatmapRepository,
 	ISessionRegistry<GameSession> gameRegistry,
 	ISessionRegistry<IrcSession> ircRegistry,
+	IUserCache userCache,
 	ILogger<MatchControlService> logger)
 {
 	public enum AddRefereeResult : byte
@@ -113,7 +116,7 @@ public sealed class MatchControlService(
 	public const int MaxMatchNameLength = 50;
 
 	/// <summary>
-	///     The match's beatmap-name field (both the bancho <c>Match</c> packet and the room-created
+	///     The match's beatmap-name field (both the bancho <c>Room</c> packet and the room-created
 	///     default) when no beatmap has been selected, or the previous selection was just cleared.
 	/// </summary>
 	/// <remarks>
@@ -181,10 +184,10 @@ public sealed class MatchControlService(
 		for (var i = 0; i < 16; i++)
 		{
 			var slot = match.Slots[i];
-			if (!slot.Empty) continue;
+			if (!slot.IsEmpty) continue;
 
-			if (i >= size && slot.Status == SlotStatus.Open) slot.Status = SlotStatus.Locked;
-			else if (i < size && slot.Status == SlotStatus.Locked) slot.Status = SlotStatus.Open;
+			if (i >= size && slot.Status == RoomSlotStatus.Open) slot.Status = RoomSlotStatus.Locked;
+			else if (i < size && slot.Status == RoomSlotStatus.Locked) slot.Status = RoomSlotStatus.Open;
 		}
 	}
 
@@ -200,19 +203,19 @@ public sealed class MatchControlService(
 	public async Task<SetHostResult> SetHostAsync(MatchSession match, GameSession target, MatchMutationScope mutation,
 		CancellationToken cancellationToken = default)
 	{
-		if (match.GetSlot(target.Id) is null) return SetHostResult.TargetNotInMatch;
+		var targetUser = userCache.Resolve(target);
+		if (match.GetSlot(targetUser) is null) return SetHostResult.TargetNotInMatch;
 
-		var prevHostId = match.HostId;
-		match.HostId = target.Id;
+		var prevHost = match.Host;
+		match.Host = targetUser;
 		logger.LogInformation("Host transferred: MatchId={MatchId} PrevHostId={PrevHostId} NewHostId={NewHostId}",
-			match.DbId, prevHostId, target.Id);
+			match.DbId, prevHost?.Id, target.Id);
 		notifier.HostTransferred(target);
 		mutation.PublishState();
 
-		var prevHostName = prevHostId is { } prevId ? gameRegistry.GetByUserId(prevId)?.Name : null;
 		await matchRepository.CreateEventAsync(new MatchEvent(
-			match.DbId, (int)MatchEventType.HostGranted,
-			prevHostId, prevHostName, target.Id, target.Name,
+			match.DbId, MatchEventType.HostGranted,
+			prevHost, targetUser,
 			DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 
 		mutation.PublishHost();
@@ -232,7 +235,7 @@ public sealed class MatchControlService(
 	public Task ClearHostAsync(MatchSession match, MatchMutationScope mutation,
 		CancellationToken cancellationToken = default)
 	{
-		match.HostId = null;
+		match.Host = null;
 		mutation.PublishState();
 		mutation.PublishHost();
 		return Task.CompletedTask;
@@ -290,7 +293,7 @@ public sealed class MatchControlService(
 		if (target.IsBot) return InviteResult.TargetIsBot;
 		if (target.Match == match) return InviteResult.TargetAlreadyInRoom;
 
-		match.AddInvite(target.Id);
+		match.AddInvite(userCache.Resolve(target));
 		notifier.Invited(target, sender, match);
 		return InviteResult.Ok;
 	}
@@ -311,15 +314,16 @@ public sealed class MatchControlService(
 		UserSession target, MatchMutationScope mutation, CancellationToken cancellationToken = default)
 	{
 		if (target.IsBot) return AddRefereeResult.TargetIsBot;
-		if (match.IsReferee(target.Id)) return AddRefereeResult.AlreadyReferee;
+		var targetUser = userCache.Resolve(target);
+		if (match.IsReferee(targetUser)) return AddRefereeResult.AlreadyReferee;
 
-		match.AddReferee(target.Id);
+		match.AddReferee(targetUser);
 		logger.LogInformation("Referee added: MatchId={MatchId} ActorId={ActorId} TargetId={TargetId}",
 			match.DbId, actorId, target.Id);
 
 		await matchRepository.CreateEventAsync(new MatchEvent(
-			match.DbId, (int)MatchEventType.RefAdded,
-			actorId, actorName, target.Id, target.Name,
+			match.DbId, MatchEventType.RefAdded,
+			ResolveActor(actorId, actorName), targetUser,
 			DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 
 		mutation.PublishRefs();
@@ -354,29 +358,32 @@ public sealed class MatchControlService(
 		if (targets.Count == 0) return SetRefereesResult.WouldLeaveEmpty;
 
 		var newIds = targets.Select(t => t.Id).ToHashSet();
-		if (match.CreatorId is { } creatorId && match.Referees.Contains(creatorId) && !newIds.Contains(creatorId))
+		if (match.Creator is { } creator && match.Referees.Any(r => r.Id == creator.Id) &&
+		    !newIds.Contains(creator.Id))
 			return SetRefereesResult.WouldRemoveCreator;
 
-		var toRemove = match.Referees.Where(id => !newIds.Contains(id)).ToList();
-		var toAdd = targets.Where(t => !match.Referees.Contains(t.Id)).ToList();
+		var toRemove = match.Referees.Where(r => !newIds.Contains(r.Id)).ToList();
+		var toAdd = targets.Where(t => match.Referees.All(r => r.Id != t.Id)).ToList();
 
-		foreach (var id in toRemove)
+		foreach (var referee in toRemove)
 		{
-			var removedName = ((UserSession?)gameRegistry.GetByUserId(id) ?? ircRegistry.GetByUserId(id))?.Name;
-			match.RemoveReferee(id);
-			KickFromChatIfUnseated(match, id);
+			var removedName =
+				((UserSession?)gameRegistry.GetByUserId(referee.Id) ?? ircRegistry.GetByUserId(referee.Id))
+				?.Name ?? referee.Name;
+			match.RemoveReferee(referee);
+			KickFromChatIfUnseated(match, referee.Id);
 			await matchRepository.CreateEventAsync(new MatchEvent(
-					match.DbId, (int)MatchEventType.RefRemoved,
-					null, null, id, removedName, DateTimeOffset.UtcNow.UtcDateTime, null),
+					match.DbId, MatchEventType.RefRemoved,
+					null, userCache.Resolve(referee.Id, removedName), DateTimeOffset.UtcNow.UtcDateTime, null),
 				cancellationToken);
 		}
 
 		foreach (var target in toAdd)
 		{
-			match.AddReferee(target.Id);
+			match.AddReferee(userCache.Resolve(target));
 			await matchRepository.CreateEventAsync(new MatchEvent(
-				match.DbId, (int)MatchEventType.RefAdded,
-				null, null, target.Id, target.Name, DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
+				match.DbId, MatchEventType.RefAdded,
+				null, userCache.Resolve(target), DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 		}
 
 		mutation.PublishRefs();
@@ -408,18 +415,19 @@ public sealed class MatchControlService(
 	public async Task<RemoveRefereeResult> RemoveOneRefereeAsync(int? actorId, string? actorName, MatchSession match,
 		UserSession target, MatchMutationScope mutation, CancellationToken cancellationToken = default)
 	{
-		if (!match.Referees.Contains(target.Id)) return RemoveRefereeResult.NotAReferee;
-		if (match.IsCreator(target.Id)) return RemoveRefereeResult.TargetIsCreator;
+		var targetUser = userCache.Resolve(target);
+		if (!match.Referees.Contains(targetUser)) return RemoveRefereeResult.NotAReferee;
+		if (match.IsCreator(targetUser)) return RemoveRefereeResult.TargetIsCreator;
 		if (match.Referees.Count == 1) return RemoveRefereeResult.WouldLeaveEmpty;
 
-		match.RemoveReferee(target.Id);
+		match.RemoveReferee(targetUser);
 		KickFromChatIfUnseated(match, target.Id);
 		logger.LogInformation("Referee removed: MatchId={MatchId} ActorId={ActorId} TargetId={TargetId}",
 			match.DbId, actorId, target.Id);
 
 		await matchRepository.CreateEventAsync(new MatchEvent(
-			match.DbId, (int)MatchEventType.RefRemoved,
-			actorId, actorName, target.Id, target.Name,
+			match.DbId, MatchEventType.RefRemoved,
+			ResolveActor(actorId, actorName), targetUser,
 			DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 
 		mutation.PublishRefs();
@@ -441,7 +449,7 @@ public sealed class MatchControlService(
 	/// <param name="targetUserId">The id of the userSession who lost referee status.</param>
 	private void KickFromChatIfUnseated(MatchSession match, int targetUserId)
 	{
-		if (match.GetSlot(targetUserId) is not null) return;
+		if (match.GetSlot(userCache.Resolve(targetUserId)) is not null) return;
 
 		foreach (var session in OnlineSessions(targetUserId))
 			matchMembership.LeaveMatchChat(session, match);
@@ -459,16 +467,16 @@ public sealed class MatchControlService(
 
 		if (newType is MatchTeamType.HeadToHead or MatchTeamType.TagCoop)
 		{
-			foreach (var slot in match.Slots.Where(s => s.PlayerId is not null))
+			foreach (var slot in match.Slots.Where(s => s.Player is not null))
 				slot.Team = MatchTeam.Neutral;
 		}
 		else
 		{
 			var occupied = match.Slots
-				.Where(s => s.PlayerId is not null)
+				.Where(s => s.Player is not null)
 				.Select((slot, index) => (slot, index));
 
-			var split = (match.Slots.Count(s => s.PlayerId is not null) + 1) / 2;
+			var split = (match.Slots.Count(s => s.Player is not null) + 1) / 2;
 
 			foreach (var (slot, index) in occupied)
 				slot.Team = index < split ? MatchTeam.Red : MatchTeam.Blue;
@@ -526,13 +534,11 @@ public sealed class MatchControlService(
 		if (beatmap is null) return (SetMapResult.BeatmapNotFound, null);
 
 		match.UnreadyPlayers();
-		match.MapId = beatmap.Id;
-		match.MapMd5 = beatmap.Md5;
-		match.MapName = beatmap.FullName;
+		match.Beatmap = beatmap;
 		match.Mode = playmode is not null && beatmap.Difficulty.Mode == GameMode.Standard
 			? playmode.Value
 			: beatmap.Difficulty.Mode;
-		logger.LogDebug("Room settings changed: MatchId={MatchId} MapId={MapId}", match.DbId, beatmap.Id);
+		logger.LogDebug("Room settings changed: MatchId={MatchId} Beatmap={Beatmap}", match.DbId, beatmap.Id);
 		mutation.PublishState();
 		matchLifecycle.CancelQueuedAutoStart(match);
 		return (SetMapResult.Ok, beatmap);
@@ -596,7 +602,10 @@ public sealed class MatchControlService(
 	/// <summary>Applies match mods, treating <paramref name="freemod" /> as overriding <paramref name="mods" />.</summary>
 	/// <param name="match">The match to update.</param>
 	/// <param name="mods">The mods to apply when not enabling freemod.</param>
-	/// <param name="freemod"><see langword="true" /> to switch the room into freemod mode instead of applying <paramref name="mods" />.</param>
+	/// <param name="freemod">
+	///     <see langword="true" /> to switch the room into freemod mode instead of applying
+	///     <paramref name="mods" />.
+	/// </param>
 	/// <param name="mutation">The open mutation scope that publishes the resulting state.</param>
 	/// <param name="cancellationToken">
 	///     Ignored: the eventual publish is canceled by the token given to
@@ -617,7 +626,10 @@ public sealed class MatchControlService(
 	/// <param name="match">The match to update.</param>
 	/// <param name="mutation">The open mutation scope that publishes the resulting state.</param>
 	/// <param name="cancellationToken">A token that cancels the beatmap lookup, when <paramref name="mapId" /> is given.</param>
-	/// <returns><see cref="ApplySettingsResult.Ok" />, or <see cref="ApplySettingsResult.BeatmapNotFound" /> when <paramref name="mapId" /> doesn't resolve.</returns>
+	/// <returns>
+	///     <see cref="ApplySettingsResult.Ok" />, or <see cref="ApplySettingsResult.BeatmapNotFound" /> when
+	///     <paramref name="mapId" /> doesn't resolve.
+	/// </returns>
 	public async Task<ApplySettingsResult> ApplyPartialSettingsAsync(MatchSession match, string? name,
 		string? password, bool? isPrivate, bool? isLocked, int? size, int? mapId, Mods? mods, bool? freemod,
 		MatchTeamType? teamType, MatchWinCondition? winCondition, MatchMutationScope mutation,
@@ -655,7 +667,7 @@ public sealed class MatchControlService(
 
 		match.Freemods = true;
 		foreach (var slot in match.Slots)
-			if (slot.PlayerId is not null)
+			if (slot.Player is not null)
 				slot.Mods = match.Mods & ~Mods.SpeedChangingMods;
 
 		match.Mods &= Mods.SpeedChangingMods;
@@ -671,7 +683,7 @@ public sealed class MatchControlService(
 		if (hostSlot is not null) match.Mods |= hostSlot.Mods;
 
 		foreach (var slot in match.Slots)
-			if (slot.PlayerId is not null)
+			if (slot.Player is not null)
 				slot.Mods = Mods.NoMod;
 	}
 
@@ -699,7 +711,7 @@ public sealed class MatchControlService(
 		string? targetName, CancellationToken cancellationToken = default)
 	{
 		if (targetUserId == BotBootstrapService.BotId) return KickResult.TargetIsBot;
-		if (match.IsReferee(targetUserId)) return KickResult.TargetIsReferee;
+		if (match.IsReferee(userCache.Resolve(targetUserId, targetName))) return KickResult.TargetIsReferee;
 
 		var removedAny = false;
 		foreach (var session in OnlineSessions(targetUserId))
@@ -722,8 +734,8 @@ public sealed class MatchControlService(
 			match.DbId, actorId, targetUserId);
 
 		await matchRepository.CreateEventAsync(new MatchEvent(
-			match.DbId, (int)MatchEventType.Kicked,
-			actorId, actorName, targetUserId, targetName,
+			match.DbId, MatchEventType.Kicked,
+			ResolveActor(actorId, actorName), userCache.Resolve(targetUserId, targetName),
 			DateTimeOffset.UtcNow.UtcDateTime, "Kicked"), cancellationToken);
 
 		return KickResult.Ok;
@@ -755,9 +767,10 @@ public sealed class MatchControlService(
 		string? targetName, MatchMutationScope mutation, CancellationToken cancellationToken = default)
 	{
 		if (targetUserId == BotBootstrapService.BotId) return BanResult.TargetIsBot;
-		if (match.IsReferee(targetUserId)) return BanResult.TargetIsReferee;
+		var targetUser = userCache.Resolve(targetUserId, targetName);
+		if (match.IsReferee(targetUser)) return BanResult.TargetIsReferee;
 
-		match.AddBan(targetUserId);
+		match.AddBan(targetUser);
 
 		foreach (var session in OnlineSessions(targetUserId))
 			if (session is GameSession { Match: not null } gameSession && gameSession.Match == match)
@@ -775,8 +788,8 @@ public sealed class MatchControlService(
 			match.DbId, actorId, targetUserId);
 
 		await matchRepository.CreateEventAsync(new MatchEvent(
-			match.DbId, (int)MatchEventType.Kicked,
-			actorId, actorName, targetUserId, targetName,
+			match.DbId, MatchEventType.Kicked,
+			ResolveActor(actorId, actorName), targetUser,
 			DateTimeOffset.UtcNow.UtcDateTime, "Banned"), cancellationToken);
 
 		mutation.PublishBans();
@@ -798,9 +811,10 @@ public sealed class MatchControlService(
 	public Task<UnbanResult> UnbanAsync(MatchSession match, int targetUserId, MatchMutationScope mutation,
 		CancellationToken cancellationToken = default)
 	{
-		if (!match.BannedIds.Contains(targetUserId)) return Task.FromResult(UnbanResult.NotBanned);
+		var targetUser = userCache.Resolve(targetUserId);
+		if (!match.BannedUsers.Contains(targetUser)) return Task.FromResult(UnbanResult.NotBanned);
 
-		match.RemoveBan(targetUserId);
+		match.RemoveBan(targetUser);
 		logger.LogInformation("User unbanned: MatchId={MatchId} TargetId={TargetId}", match.DbId, targetUserId);
 		mutation.PublishBans();
 		return Task.FromResult(UnbanResult.Ok);
@@ -818,10 +832,10 @@ public sealed class MatchControlService(
 		CancellationToken cancellationToken = default)
 	{
 		var newIds = userIds.ToHashSet();
-		var toRemove = match.BannedIds.Where(id => !newIds.Contains(id)).ToList();
-		var toAdd = newIds.Where(id => !match.BannedIds.Contains(id)).ToList();
+		var toRemove = match.BannedUsers.Where(u => !newIds.Contains(u.Id)).ToList();
+		var toAdd = newIds.Where(id => match.BannedUsers.All(u => u.Id != id)).ToList();
 
-		foreach (var id in toRemove) match.RemoveBan(id);
+		foreach (var user in toRemove) match.RemoveBan(user);
 		foreach (var id in toAdd) await AddBanAndKickIfSeated(match, id, cancellationToken);
 
 		mutation.PublishBans();
@@ -838,7 +852,7 @@ public sealed class MatchControlService(
 	{
 		foreach (var id in userIds)
 		{
-			if (match.BannedIds.Contains(id)) continue;
+			if (match.BannedUsers.Any(u => u.Id == id)) continue;
 			await AddBanAndKickIfSeated(match, id, cancellationToken);
 		}
 
@@ -852,7 +866,7 @@ public sealed class MatchControlService(
 	private async Task AddBanAndKickIfSeated(MatchSession match, int userId,
 		CancellationToken cancellationToken = default)
 	{
-		match.AddBan(userId);
+		match.AddBan(userCache.Resolve(userId));
 
 		var seated = gameRegistry.GetByUserId(userId);
 		if (seated is null || seated.Match != match) return;
@@ -879,7 +893,7 @@ public sealed class MatchControlService(
 		CancellationToken cancellationToken = default)
 	{
 		if (target.IsBot) return ForceInviteResult.TargetIsBot;
-		if (match.BannedIds.Contains(target.Id)) return ForceInviteResult.TargetBanned;
+		if (match.BannedUsers.Contains(userCache.Resolve(target))) return ForceInviteResult.TargetBanned;
 		if (target.Match == match) return ForceInviteResult.Ok;
 		if (target.Match is not null) return ForceInviteResult.TargetInAnotherMatch;
 
@@ -901,5 +915,14 @@ public sealed class MatchControlService(
 	{
 		if (gameRegistry.GetByUserId(userId) is { } game) yield return game;
 		if (ircRegistry.GetByUserId(userId) is { } irc) yield return irc;
+	}
+
+	/// <summary>
+	///     Resolves an optional actor id/name pair (see the many <c>actorId</c>/<c>actorName</c> parameters above) into a
+	///     <see cref="User" />, or null for a system or HTTP action.
+	/// </summary>
+	private User? ResolveActor(int? actorId, string? actorName)
+	{
+		return actorId is { } id ? userCache.Resolve(id, actorName) : null;
 	}
 }

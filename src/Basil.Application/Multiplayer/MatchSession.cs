@@ -1,8 +1,10 @@
 using System.Runtime.CompilerServices;
 using Basil.Application.Shared.Eventing;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Records;
+using Basil.Domain.Multiplayer.Runtime;
 using Basil.Domain.Scores;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Multiplayer;
 
@@ -12,7 +14,7 @@ namespace Basil.Application.Multiplayer;
 /// </summary>
 /// <remarks>
 ///     The room settings, slots, and lifecycle flags (<see cref="State" />) are plain business
-///     state with no synchronization of their own — see <see cref="MatchRoomState" />'s own doc comment.
+///     state with no synchronization of their own — see <see cref="Room" />'s own doc comment.
 ///     Concurrency model: a read-then-mutate of slot or settings state is not atomic between
 ///     awaits. <see cref="Lock" /> is the per-match answer: callers that read then mutate slot state
 ///     (join, change-slot, part, and so on) must hold it across the whole read-mutate-broadcast
@@ -25,93 +27,27 @@ namespace Basil.Application.Multiplayer;
 /// </param>
 /// <param name="name">The room's name.</param>
 /// <param name="password">The room's password, used in its invitation url.</param>
-/// <param name="mapName">The name of the currently selected beatmap.</param>
-/// <param name="mapId">The id of the currently selected beatmap, or <see langword="null" /> when none is chosen.</param>
-/// <param name="mapMd5">The md5 of the currently selected beatmap, or <see langword="null" /> when none is chosen.</param>
-/// <param name="hostId">The id of the userSession hosting the room, or <see langword="null" /> when nobody holds gameplay host.</param>
+/// <param name="beatmap">The currently selected beatmap, or <see langword="null" /> when none is chosen.</param>
+/// <param name="host">The userSession hosting the room, or <see langword="null" /> when nobody holds gameplay host.</param>
 /// <param name="mode">The game mode the room plays in.</param>
 /// <param name="mods">The mods applied to the whole room.</param>
 /// <param name="winCondition">The condition that decides the winner of a round.</param>
 /// <param name="teamType">The team arrangement used for the room.</param>
 /// <param name="freemods">A value that indicates whether freemod mode is enabled.</param>
 /// <param name="seed">The room's random seed, broadcast to clients as part of the match's data.</param>
-/// <param name="chatChannelName">The name of the chat channel bound to this room.</param>
 public sealed class MatchSession(
 	int id,
 	string name,
 	string password,
-	string mapName,
-	int? mapId,
-	string? mapMd5,
-	int? hostId,
+	Beatmap? beatmap,
+	User? host,
 	GameMode mode,
 	Mods mods,
 	MatchWinCondition winCondition,
 	MatchTeamType teamType,
 	bool freemods,
-	int seed,
-	string chatChannelName)
+	int seed)
 {
-	/// <summary>
-	///     Gets the match's room settings, live slot state, and lifecycle flags — the plain business
-	///     state this session wraps with a lock and the live-projection machinery below.
-	/// </summary>
-	public MatchRoomState State { get; } = new(
-		id, name, password, mapName, mapId, mapMd5, hostId, mode, mods, winCondition, teamType, freemods, seed,
-		chatChannelName);
-
-	/// <summary>
-	///     Gets the per-match semaphore that serializes all read-then-mutate-then-broadcast
-	///     sequences on this match's slots and settings, held for the duration of any such sequence.
-	/// </summary>
-	public InstrumentedMatchLock Lock { get; } = new();
-
-	private long _stateVersion = -1;
-
-	/// <summary>Gets the most recently allocated state version, or -1 if none has been allocated yet.</summary>
-	public long CurrentStateVersion => Interlocked.Read(ref _stateVersion);
-
-	/// <summary>
-	///     Allocates the next state version: a monotonically increasing number identifying this
-	///     match's logical position in mutation order, shared across every live-state channel and
-	///     the packet broadcast. Called only by <see cref="MatchMutationScope" /> during disposal,
-	///     once for every scope that requested a publish.
-	/// </summary>
-	/// <remarks>
-	///     Called after <see cref="Lock" /> has already been released, so the value reflects the
-	///     completed mutation's position but its relative ordering against a concurrent locked
-	///     mutation's own allocation is not guaranteed to reflect which happened "first" in
-	///     wall-clock terms — only that neither is lost or double-counted. The scope then builds and
-	///     broadcasts unlocked, passing this version to whichever <see cref="StateStream{T}.Publish" />
-	///     calls or <see cref="PacketBroadcastGate" /> it uses, so a build that finishes out of order
-	///     relative to a newer mutation's build is dropped instead of reverting live state to
-	///     something stale.
-	/// </remarks>
-	/// <returns>The newly allocated version.</returns>
-	internal long AllocateStateVersion() => Interlocked.Increment(ref _stateVersion);
-
-	private long _scoreVersion;
-
-	/// <summary>
-	///     Allocates the next version for this match's per-slot live-score channels (<see cref="MatchStreams.Score" />).
-	///     Unlike <see cref="AllocateStateVersion" />, these frames carry no state to reconcile against, so this
-	///     counter exists only to give the hub a monotonically increasing version to label each one with.
-	/// </summary>
-	/// <returns>The newly allocated version.</returns>
-	internal long AllocateScoreVersion() => Interlocked.Increment(ref _scoreVersion);
-
-	private long _chatVersion;
-
-	/// <summary>Allocates the next version for this match's live chat channel (<see cref="MatchStreams.Chat" />), for the same reason as <see cref="AllocateScoreVersion" />.</summary>
-	/// <returns>The newly allocated version.</returns>
-	internal long AllocateChatVersion() => Interlocked.Increment(ref _chatVersion);
-
-	/// <summary>
-	///     Gets or sets the object that performs the actual snapshot builds and broadcasts a
-	///     <see cref="MatchMutationScope" /> requests. Set once, right after this match is created.
-	/// </summary>
-	internal IMatchMutationPublisher? MutationPublisher { get; set; }
-
 	// Tracks, per async call flow, whether that flow already holds this match's mutation lock via an
 	// open MatchMutationScope. A plain field would also flag a second, genuinely independent caller
 	// waiting its turn for the lock -- which must keep blocking, not throw -- so this needs to be
@@ -123,50 +59,43 @@ public sealed class MatchSession(
 	// later change mutates the object the caller already holds.
 	private readonly AsyncLocal<StrongBox<bool>?> _mutationOpenInThisFlow = new();
 
+	private long _chatVersion;
+
+	private long _scoreVersion;
+
+	private long _stateVersion = -1;
+
 	/// <summary>
-	///     Begins one read-mutate-broadcast sequence on this match: waits for <see cref="Lock" />, then
-	///     returns a scope that releases it and runs any requested publishes once disposed.
+	///     Gets the match's room settings, live slot state, and lifecycle flags — the plain business
+	///     state this session wraps with a lock and the live-projection machinery below.
 	/// </summary>
-	/// <param name="cancellationToken">A token that cancels waiting for the lock.</param>
-	/// <returns>The mutation scope. Dispose it (typically via <c>await using</c>) to end the mutation.</returns>
-	/// <exception cref="InvalidOperationException">
-	///     A mutation scope for this match is already open on the calling async flow. The match lock is
-	///     not reentrant, so waiting here would deadlock; this is thrown instead.
-	/// </exception>
-	public ValueTask<MatchMutationScope> BeginMutationAsync(CancellationToken cancellationToken = default)
+	public Room State { get; } = new()
 	{
-		if (_mutationOpenInThisFlow.Value is { Value: true })
-			throw new InvalidOperationException(
-				$"A mutation scope for match {Id} is already open on this call flow; nesting it would deadlock the match lock.");
-
-		// Marked before awaiting anything, so the caller's own flow carries the marker.
-		var openMarker = new StrongBox<bool>(true);
-		_mutationOpenInThisFlow.Value = openMarker;
-		return AcquireAsync(openMarker, cancellationToken);
-	}
-
-	private async ValueTask<MatchMutationScope> AcquireAsync(StrongBox<bool> openMarker,
-		CancellationToken cancellationToken)
-	{
-		try
+		SlotId = id,
+		Name = name,
+		Password = password,
+		Host = host,
+		Settings = new MatchSettings
 		{
-			await Lock.WaitAsync(cancellationToken);
+			Beatmap = beatmap, Mode = mode, Mods = mods, WinCondition = winCondition, TeamType = teamType,
+			Freemods = freemods, Seed = seed
 		}
-		catch
-		{
-			openMarker.Value = false;
-			throw;
-		}
+	};
 
-		return new MatchMutationScope(this, MutationPublisher, cancellationToken);
-	}
+	/// <summary>
+	///     Gets the per-match semaphore that serializes all read-then-mutate-then-broadcast
+	///     sequences on this match's slots and settings, held for the duration of any such sequence.
+	/// </summary>
+	public InstrumentedMatchLock Lock { get; } = new();
 
-	/// <summary>Releases the match lock and clears the nesting marker. Called only by <see cref="MatchMutationScope" />.</summary>
-	internal void ReleaseMutation()
-	{
-		if (_mutationOpenInThisFlow.Value is { } openMarker) openMarker.Value = false;
-		Lock.Release();
-	}
+	/// <summary>Gets the most recently allocated state version, or -1 if none has been allocated yet.</summary>
+	public long CurrentStateVersion => Interlocked.Read(ref _stateVersion);
+
+	/// <summary>
+	///     Gets or sets the object that performs the actual snapshot builds and broadcasts a
+	///     <see cref="MatchMutationScope" /> requests. Set once, right after this match is created.
+	/// </summary>
+	internal IMatchMutationPublisher? MutationPublisher { get; set; }
 
 	/// <summary>
 	///     Gets the sequence gate guarding the match's bancho <c>UpdateMatch</c> packet broadcast
@@ -223,7 +152,7 @@ public sealed class MatchSession(
 	///     Gets the 0 to 63 registry slot this match occupies, which is what the bancho wire protocol uses as the match
 	///     id.
 	/// </summary>
-	public int Id => State.Id;
+	public int Id => State.SlotId;
 
 	/// <summary>Gets or sets the room's name.</summary>
 	public string Name
@@ -239,97 +168,65 @@ public sealed class MatchSession(
 		set => State.Password = value;
 	}
 
-	/// <summary>Gets or sets the id of the current host, or <see langword="null" /> when nobody holds gameplay host.</summary>
-	public int? HostId
+	/// <summary>Gets or sets the current host, or <see langword="null" /> when nobody holds gameplay host.</summary>
+	public User? Host
 	{
-		get => State.HostId;
-		set => State.HostId = value;
+		get => State.Host;
+		set => State.Host = value;
 	}
 
-	/// <summary>Gets a value that indicates whether a player currently holds a gameplay host.</summary>
-	public bool HasGameplayHost => State.HasGameplayHost;
-
-	/// <summary>Gets or sets the id of the currently selected beatmap, or <see langword="null" /> when none is chosen.</summary>
-	public int? MapId
+	/// <summary>Gets or sets the currently selected beatmap, or <see langword="null" /> when none is chosen.</summary>
+	public Beatmap? Beatmap
 	{
-		get => State.MapId;
-		set => State.MapId = value;
+		get => State.Settings.Beatmap;
+		set => State.Settings.Beatmap = value;
 	}
 
-	/// <summary>
-	///     Gets or sets the id of the beatmap that was selected before the current one, updated whenever the room's map
-	///     changes.
-	/// </summary>
-	public int? PrevMapId
-	{
-		get => State.PrevMapId;
-		set => State.PrevMapId = value;
-	}
+	/// <summary>Gets the id of the currently selected beatmap, or <see langword="null" /> when none is chosen.</summary>
+	public int? MapId => State.Settings.Beatmap?.Id;
 
-	/// <summary>Gets or sets the md5 of the currently selected beatmap, or <see langword="null" /> when none is chosen.</summary>
-	public string? MapMd5
-	{
-		get => State.MapMd5;
-		set => State.MapMd5 = value;
-	}
+	/// <summary>Gets the md5 of the currently selected beatmap, or <see langword="null" /> when none is chosen.</summary>
+	public string? MapMd5 => State.Settings.Beatmap?.Md5;
 
-	/// <summary>Gets or sets the name of the currently selected beatmap.</summary>
-	public string MapName
-	{
-		get => State.MapName;
-		set => State.MapName = value;
-	}
-
-	/// <summary>
-	///     Gets or sets the md5 of the last client-supplied map selection that failed to resolve
-	///     locally, or null when none is currently pending. Set when the "Beatmap not found locally"
-	///     warning fires, cleared on a successful resolve or an explicit deselecting. Exists solely to
-	///     deduplicate that warning: osu! clients resend their full settings snapshot on any
-	///     unrelated room-setting change, and without this field the warning would re-fire on every
-	///     one of those instead of only the first failed lookup (see MatchChangeSettingsHandler).
-	/// </summary>
-	public string? UnresolvedMapMd5
-	{
-		get => State.UnresolvedMapMd5;
-		set => State.UnresolvedMapMd5 = value;
-	}
+	/// <summary>Gets the name of the currently selected beatmap, or a placeholder when none is chosen.</summary>
+	public string MapName => State.Settings.Beatmap?.FullName ?? MatchControlService.NoBeatmapSelectedName;
 
 	/// <summary>Gets or sets the mods applied to the whole room.</summary>
 	public Mods Mods
 	{
-		get => State.Mods;
-		set => State.Mods = value;
+		get => State.Settings.Mods;
+		set => State.Settings.Mods = value;
 	}
 
 	/// <summary>Gets or sets the game mode the room plays in.</summary>
 	public GameMode Mode
 	{
-		get => State.Mode;
-		set => State.Mode = value;
+		get => State.Settings.Mode;
+		set => State.Settings.Mode = value;
 	}
 
 	/// <summary>Gets or sets a value that indicates whether freemod mode is enabled.</summary>
 	public bool Freemods
 	{
-		get => State.Freemods;
-		set => State.Freemods = value;
+		get => State.Settings.Freemods;
+		set => State.Settings.Freemods = value;
 	}
 
 	/// <summary>Gets the name of the chat channel bound to this room.</summary>
-	public string ChatChannelName => State.ChatChannelName;
+	public string ChatChannelName => $"#mp_{DbId}";
 
 	/// <summary>Gets or sets the team arrangement used for the room.</summary>
 	public MatchTeamType TeamType
 	{
-		get => State.TeamType;
-		set => State.TeamType = value;
+		get => State.Settings.TeamType;
+		set => State.Settings.TeamType = value;
 	}
 
 	/// <summary>Gets or sets the condition that decides the winner of a round.</summary>
 	public MatchWinCondition WinCondition
 	{
-		get => State.WinCondition;
-		set => State.WinCondition = value;
+		get => State.Settings.WinCondition;
+		set => State.Settings.WinCondition = value;
 	}
 
 	/// <summary>Gets or sets a value that indicates whether a round is currently being played.</summary>
@@ -340,13 +237,13 @@ public sealed class MatchSession(
 	}
 
 	/// <summary>Gets the room's random seed, broadcast to clients as part of the match's data.</summary>
-	public int Seed => State.Seed;
+	public int Seed => State.Settings.Seed;
 
 	/// <summary>
 	///     Gets or sets a value that indicates whether the room is locked against new players
 	///     entirely. Set by <c>!mp lock</c> and <c>!mp unlock</c> (without a slot argument),
 	///     matching real Bancho's room-level lock. Distinct from a slot's own
-	///     <see cref="SlotStatus.Locked" />, which is set by the MatchLock wire packet (an in-client
+	///     <see cref="RoomSlotStatus.Locked" />, which is set by the MatchLock wire packet (an in-client
 	///     per-slot lock) and by <c>!mp size</c> shrinking the room.
 	/// </summary>
 	public bool IsLocked
@@ -358,7 +255,7 @@ public sealed class MatchSession(
 	/// <summary>
 	///     Gets or sets a value that indicates whether the room is private. Set by
 	///     <c>!mp private [0|1]</c>; when true, the room cannot be (re)joined by anyone but staff or
-	///     <see cref="InvitedIds" />, through any path (<c>!mp join</c>, the native client join
+	///     <see cref="InvitedUsers" />, through any path (<c>!mp join</c>, the native client join
 	///     packet, or an <c>osump://</c> url), see <see cref="MatchMembership.JoinAsync" />.
 	///     The host is not exempt: hosting only grants in-room settings control, not a standing
 	///     invite, so a host who leaves a private room needs a referee's <c>!mp invite</c> like
@@ -449,19 +346,19 @@ public sealed class MatchSession(
 	/// </summary>
 	public int DbId
 	{
-		get => State.DbId;
-		set => State.DbId = value;
+		get => State.Id;
+		set => State.Id = value;
 	}
 
 	/// <summary>
-	///     Gets or sets the id of the userSession who created this match, or null when the room was
-	///     created via the HTTP API with no session behind it. Set once, right after the room is
-	///     created, by MatchLifecycle.CreateAsync.
+	///     Gets or sets the userSession who created this match, or null when the room was created via
+	///     the HTTP API with no session behind it. Set once, right after the room is created, by
+	///     MatchLifecycle.CreateAsync.
 	/// </summary>
-	public int? CreatorId
+	public User? Creator
 	{
-		get => State.CreatorId;
-		set => State.CreatorId = value;
+		get => State.Creator;
+		set => State.Creator = value;
 	}
 
 	/// <summary>
@@ -492,79 +389,200 @@ public sealed class MatchSession(
 	public string Embed => State.Embed;
 
 	/// <summary>Gets the match's 16 slots, in order.</summary>
-	public IReadOnlyList<MatchSlot> Slots => State.Slots;
+	public IReadOnlyList<RoomSlot> Slots => State.Slots;
 
-	/// <summary>Gets the ids of the players granted referee authority for this match.</summary>
-	public IReadOnlyCollection<int> Referees => State.Referees;
+	/// <summary>Gets the players granted referee authority for this match.</summary>
+	public IReadOnlyCollection<User> Referees => State.Referees;
 
-	/// <summary>Gets the ids of the tourney-client connections attached to this match.</summary>
-	public IReadOnlyCollection<int> TourneyClients => State.TourneyClients;
+	/// <summary>Gets the players whose connections are tourney clients attached to this match.</summary>
+	public IReadOnlyCollection<User> TourneyClients => State.TourneyClients;
 
-	/// <summary>Gets the ids of the players banned from this match.</summary>
-	public IReadOnlyCollection<int> BannedIds => State.BannedIds;
+	/// <summary>Gets the players banned from this match.</summary>
+	public IReadOnlyCollection<User> BannedUsers => State.BannedUsers;
 
-	/// <summary>Gets the ids of the players a referee has invited via <c>!mp invite</c>, see <see cref="IsPrivate" />.</summary>
-	public IReadOnlyCollection<int> InvitedIds => State.InvitedIds;
-
-	/// <summary>Grants referee authority on this match to a userSession.</summary>
-	/// <param name="playerId">The id of the userSession being granted referee authority.</param>
-	public void AddReferee(int playerId) => State.AddReferee(playerId);
-
-	/// <summary>Revokes referee authority on this match from a userSession.</summary>
-	/// <param name="playerId">The id of the userSession whose referee authority is being revoked.</param>
-	public void RemoveReferee(int playerId) => State.RemoveReferee(playerId);
-
-	/// <summary>Adds a userSession to this match's banlist, blocking them from joining.</summary>
-	/// <param name="playerId">The id of the userSession being banned.</param>
-	public void AddBan(int playerId) => State.AddBan(playerId);
-
-	/// <summary>Removes a userSession from this match's banlist.</summary>
-	/// <param name="playerId">The id of the userSession being unbanned.</param>
-	public void RemoveBan(int playerId) => State.RemoveBan(playerId);
-
-	/// <summary>Adds a userSession to this match's invite list, letting them join a private room.</summary>
-	/// <param name="playerId">The id of the userSession being invited.</param>
-	public void AddInvite(int playerId) => State.AddInvite(playerId);
+	/// <summary>Gets the players a referee has invited via <c>!mp invite</c>, see <see cref="IsPrivate" />.</summary>
+	public IReadOnlyCollection<User> InvitedUsers => State.InvitedUsers;
 
 	/// <summary>
-	///     Gets a value that indicates whether <paramref name="playerId" /> may issue <c>!mp</c>
-	///     commands on this match. See <see cref="MatchRoomState.IsReferee" /> for the full rule.
+	///     Allocates the next state version: a monotonically increasing number identifying this
+	///     match's logical position in mutation order, shared across every live-state channel and
+	///     the packet broadcast. Called only by <see cref="MatchMutationScope" /> during disposal,
+	///     once for every scope that requested a publish.
 	/// </summary>
-	/// <param name="playerId">The id of the userSession to check.</param>
-	/// <returns><see langword="true" /> if the userSession is a referee; otherwise, <see langword="false" />.</returns>
-	public bool IsReferee(int playerId) => State.IsReferee(playerId);
-
-	/// <summary>Gets a value that indicates whether <paramref name="playerId" /> created this match.</summary>
-	/// <param name="playerId">The id of the userSession to check.</param>
-	/// <returns><see langword="true" /> if the userSession created this match; otherwise, <see langword="false" />.</returns>
-	public bool IsCreator(int playerId) => State.IsCreator(playerId);
-
-	/// <summary>Adds a userSession to this match's tourney-client set, marking their connection as a tournament client.</summary>
-	/// <param name="playerId">The id of the userSession whose connection is a tourney client.</param>
-	public void AddTourneyClient(int playerId) => State.AddTourneyClient(playerId);
-
-	/// <summary>Removes a userSession from this match's tourney-client set.</summary>
-	/// <param name="playerId">The id of the userSession whose tourney-client connection is being removed.</param>
-	public void RemoveTourneyClient(int playerId) => State.RemoveTourneyClient(playerId);
+	/// <remarks>
+	///     Called after <see cref="Lock" /> has already been released, so the value reflects the
+	///     completed mutation's position but its relative ordering against a concurrent locked
+	///     mutation's own allocation is not guaranteed to reflect which happened "first" in
+	///     wall-clock terms — only that neither is lost or double-counted. The scope then builds and
+	///     broadcasts unlocked, passing this version to whichever <see cref="StateStream{T}.Publish" />
+	///     calls or <see cref="PacketBroadcastGate" /> it uses, so a build that finishes out of order
+	///     relative to a newer mutation's build is dropped instead of reverting live state to
+	///     something stale.
+	/// </remarks>
+	/// <returns>The newly allocated version.</returns>
+	internal long AllocateStateVersion()
+	{
+		return Interlocked.Increment(ref _stateVersion);
+	}
 
 	/// <summary>
-	///     Gets the slot currently occupied by <paramref name="playerId" />, or null when the userSession
+	///     Allocates the next version for this match's per-slot live-score channels (<see cref="MatchStreams.Score" />).
+	///     Unlike <see cref="AllocateStateVersion" />, these frames carry no state to reconcile against, so this
+	///     counter exists only to give the hub a monotonically increasing version to label each one with.
+	/// </summary>
+	/// <returns>The newly allocated version.</returns>
+	internal long AllocateScoreVersion()
+	{
+		return Interlocked.Increment(ref _scoreVersion);
+	}
+
+	/// <summary>
+	///     Allocates the next version for this match's live chat channel (<see cref="MatchStreams.Chat" />), for the same
+	///     reason as <see cref="AllocateScoreVersion" />.
+	/// </summary>
+	/// <returns>The newly allocated version.</returns>
+	internal long AllocateChatVersion()
+	{
+		return Interlocked.Increment(ref _chatVersion);
+	}
+
+	/// <summary>
+	///     Begins one read-mutate-broadcast sequence on this match: waits for <see cref="Lock" />, then
+	///     returns a scope that releases it and runs any requested publishes once disposed.
+	/// </summary>
+	/// <param name="cancellationToken">A token that cancels waiting for the lock.</param>
+	/// <returns>The mutation scope. Dispose it (typically via <c>await using</c>) to end the mutation.</returns>
+	/// <exception cref="InvalidOperationException">
+	///     A mutation scope for this match is already open on the calling async flow. The match lock is
+	///     not reentrant, so waiting here would deadlock; this is thrown instead.
+	/// </exception>
+	public ValueTask<MatchMutationScope> BeginMutationAsync(CancellationToken cancellationToken = default)
+	{
+		if (_mutationOpenInThisFlow.Value is { Value: true })
+			throw new InvalidOperationException(
+				$"A mutation scope for match {Id} is already open on this call flow; nesting it would deadlock the match lock.");
+
+		// Marked before awaiting anything, so the caller's own flow carries the marker.
+		var openMarker = new StrongBox<bool>(true);
+		_mutationOpenInThisFlow.Value = openMarker;
+		return AcquireAsync(openMarker, cancellationToken);
+	}
+
+	private async ValueTask<MatchMutationScope> AcquireAsync(StrongBox<bool> openMarker,
+		CancellationToken cancellationToken)
+	{
+		try
+		{
+			await Lock.WaitAsync(cancellationToken);
+		}
+		catch
+		{
+			openMarker.Value = false;
+			throw;
+		}
+
+		return new MatchMutationScope(this, MutationPublisher, cancellationToken);
+	}
+
+	/// <summary>Releases the match lock and clears the nesting marker. Called only by <see cref="MatchMutationScope" />.</summary>
+	internal void ReleaseMutation()
+	{
+		if (_mutationOpenInThisFlow.Value is { } openMarker) openMarker.Value = false;
+		Lock.Release();
+	}
+
+	/// <summary>Grants referee authority on this match to a player.</summary>
+	/// <param name="player">The player being granted referee authority.</param>
+	public void AddReferee(User player)
+	{
+		State.AddReferee(player);
+	}
+
+	/// <summary>Revokes referee authority on this match from a player.</summary>
+	/// <param name="player">The player whose referee authority is being revoked.</param>
+	public void RemoveReferee(User player)
+	{
+		State.RemoveReferee(player);
+	}
+
+	/// <summary>Adds a player to this match's banlist, blocking them from joining.</summary>
+	/// <param name="player">The player being banned.</param>
+	public void AddBan(User player)
+	{
+		State.AddBan(player);
+	}
+
+	/// <summary>Removes a player from this match's banlist.</summary>
+	/// <param name="player">The player being unbanned.</param>
+	public void RemoveBan(User player)
+	{
+		State.RemoveBan(player);
+	}
+
+	/// <summary>Adds a player to this match's invite list, letting them join a private room.</summary>
+	/// <param name="player">The player being invited.</param>
+	public void AddInvite(User player)
+	{
+		State.AddInvite(player);
+	}
+
+	/// <summary>
+	///     Gets a value that indicates whether <paramref name="player" /> may issue <c>!mp</c>
+	///     commands on this match. See <see cref="Room.IsReferee" /> for the full rule.
+	/// </summary>
+	/// <param name="player">The player to check.</param>
+	/// <returns><see langword="true" /> if the player is a referee; otherwise, <see langword="false" />.</returns>
+	public bool IsReferee(User player)
+	{
+		return State.IsReferee(player);
+	}
+
+	/// <summary>Gets a value that indicates whether <paramref name="player" /> created this match.</summary>
+	/// <param name="player">The player to check.</param>
+	/// <returns><see langword="true" /> if the player created this match; otherwise, <see langword="false" />.</returns>
+	public bool IsCreator(User player)
+	{
+		return State.IsCreator(player);
+	}
+
+	/// <summary>Adds a player to this match's tourney-client set, marking their connection as a tournament client.</summary>
+	/// <param name="player">The player whose connection is a tourney client.</param>
+	public void AddTourneyClient(User player)
+	{
+		State.AddTourneyClient(player);
+	}
+
+	/// <summary>Removes a player from this match's tourney-client set.</summary>
+	/// <param name="player">The player whose tourney-client connection is being removed.</param>
+	public void RemoveTourneyClient(User player)
+	{
+		State.RemoveTourneyClient(player);
+	}
+
+	/// <summary>
+	///     Gets the slot currently occupied by <paramref name="player" />, or null when the userSession
 	///     is not in the match.
 	/// </summary>
-	/// <param name="playerId">The id of the userSession to look up.</param>
+	/// <param name="player">The userSession to look up.</param>
 	/// <returns>The userSession's slot, or null when the userSession is not in the match.</returns>
-	public MatchSlot? GetSlot(int playerId) => State.GetSlot(playerId);
+	public RoomSlot? GetSlot(User player)
+	{
+		return State.GetSlot(player);
+	}
 
 	/// <summary>
-	///     Gets the index of the slot currently occupied by <paramref name="playerId" />, or null
+	///     Gets the index of the slot currently occupied by <paramref name="player" />, or null
 	///     when the userSession is not in the match.
 	/// </summary>
-	/// <param name="playerId">The id of the userSession to look up.</param>
+	/// <param name="player">The userSession to look up.</param>
 	/// <returns>The userSession's slot index, or null when the userSession is not in the match.</returns>
-	public int? GetSlotId(int playerId) => State.GetSlotId(playerId);
+	public int? GetSlotId(User player)
+	{
+		return State.GetSlotId(player);
+	}
 
 	/// <summary>
-	///     Gets the index of the first slot with <see cref="SlotStatus.Open" />, or null when every
+	///     Gets the index of the first slot with <see cref="RoomSlotStatus.Open" />, or null when every
 	///     slot is occupied.
 	/// </summary>
 	/// <remarks>
@@ -572,22 +590,34 @@ public sealed class MatchSession(
 	///     <see cref="Lock" /> across both steps.
 	/// </remarks>
 	/// <returns>The index of a free slot, or null when all slots are occupied.</returns>
-	public int? GetFreeSlotId() => State.GetFreeSlotId();
+	public int? GetFreeSlotId()
+	{
+		return State.GetFreeSlotId();
+	}
 
 	/// <summary>Gets the slot currently occupied by the host, or null when the host is not in the match.</summary>
 	/// <returns>The host's slot, or null when the host is not in the match.</returns>
-	public MatchSlot? GetHostSlot() => State.GetHostSlot();
+	public RoomSlot? GetHostSlot()
+	{
+		return State.GetHostSlot();
+	}
 
 	/// <summary>
 	///     Sets every slot whose status equals <paramref name="expected" /> to
-	///     <see cref="SlotStatus.NotReady" />, used to unready all ready players when a round restarts.
+	///     <see cref="RoomSlotStatus.NotReady" />, used to unready all ready players when a round restarts.
 	/// </summary>
 	/// <param name="expected">The status to reset, defaulting to ready.</param>
-	public void UnreadyPlayers(SlotStatus expected = SlotStatus.Ready) => State.UnreadyPlayers(expected);
+	public void UnreadyPlayers(RoomSlotStatus expected = RoomSlotStatus.Ready)
+	{
+		State.UnreadyPlayers(expected);
+	}
 
 	/// <summary>
 	///     Clears the loaded and skipped flags on every slot, called at the start of a round so the
 	///     match can wait for each userSession's load and skip again.
 	/// </summary>
-	public void ResetPlayersLoadedStatus() => State.ResetPlayersLoadedStatus();
+	public void ResetPlayersLoadedStatus()
+	{
+		State.ResetPlayersLoadedStatus();
+	}
 }

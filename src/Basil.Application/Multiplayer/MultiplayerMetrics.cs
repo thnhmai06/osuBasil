@@ -3,7 +3,7 @@ using Basil.Application.Shared;
 
 namespace Basil.Application.Multiplayer;
 
-/// <summary>Match-lock instruments published on <see cref="BasilMeter" />.</summary>
+/// <summary>Room-lock instruments published on <see cref="BasilMeter" />.</summary>
 public static class MultiplayerMetrics
 {
 	/// <summary>Time spent waiting to acquire a <c>MatchSession.Lock</c>, in milliseconds.</summary>

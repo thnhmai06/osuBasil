@@ -36,6 +36,20 @@ public sealed class LiveSubscription : IDisposable, IAsyncDisposable
 	/// <summary>Gets every event published on this stream since this subscription was opened.</summary>
 	public IAsyncEnumerable<LiveEvent> Events => _channel.Reader.ReadAllAsync();
 
+	/// <inheritdoc />
+	public ValueTask DisposeAsync()
+	{
+		Dispose();
+		return ValueTask.CompletedTask;
+	}
+
+	/// <inheritdoc />
+	public void Dispose()
+	{
+		_unsubscribe();
+		_channel.Writer.TryComplete();
+	}
+
 	/// <summary>
 	///     Gets this subscription's events strictly newer than <paramref name="fence" />, dropping
 	///     anything at or below it.
@@ -54,20 +68,6 @@ public sealed class LiveSubscription : IDisposable, IAsyncDisposable
 		await foreach (var item in _channel.Reader.ReadAllAsync(cancellationToken))
 			if (item.Version > fence)
 				yield return item;
-	}
-
-	/// <inheritdoc />
-	public void Dispose()
-	{
-		_unsubscribe();
-		_channel.Writer.TryComplete();
-	}
-
-	/// <inheritdoc />
-	public ValueTask DisposeAsync()
-	{
-		Dispose();
-		return ValueTask.CompletedTask;
 	}
 
 	/// <summary>Delivers a publish to this subscription.</summary>

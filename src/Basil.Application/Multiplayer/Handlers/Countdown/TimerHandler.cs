@@ -1,10 +1,12 @@
-using Basil.Application.Multiplayer;
-using Basil.Application.Sessions;
 using Basil.Application.Bot;
+using Basil.Application.Sessions;
 
 namespace Basil.Application.Multiplayer.Handlers.Countdown;
 
-/// <summary>Runs a match's countdowns, both the plain <c>!mp timer</c> kind and the auto-start kind queued by <c>!mp start</c>.</summary>
+/// <summary>
+///     Runs a match's countdowns, both the plain <c>!mp timer</c> kind and the auto-start kind queued by
+///     <c>!mp start</c>.
+/// </summary>
 public sealed class TimerHandler(
 	MatchLifecycle matchLifecycle,
 	MatchBroadcast matchBroadcast,
@@ -83,7 +85,7 @@ public sealed class TimerHandler(
 	/// <param name="mutation">The open mutation scope that publishes the resulting timer.</param>
 	internal void BeginCountdown(MatchSession match, int totalSeconds, bool autoStart, MatchMutationScope mutation)
 	{
-		CancelPendingTimer(match, announce: true);
+		CancelPendingTimer(match, true);
 
 		var cts = new CancellationTokenSource();
 		match.PendingTimer = cts;
@@ -125,7 +127,7 @@ public sealed class TimerHandler(
 		if (match.PendingTimer is not { } pending) return false;
 
 		pending.Cancel();
-		var remaining = match.TimerTotalSeconds is { } total && match.TimerStartedAt is { } startedAt
+		var remaining = match is { TimerTotalSeconds: { } total, TimerStartedAt: { } startedAt }
 			? Math.Max(0, total - (int)(DateTimeOffset.UtcNow - startedAt).TotalSeconds)
 			: 0;
 
@@ -170,7 +172,7 @@ public sealed class TimerHandler(
 				if (!await DelayAsync(remaining - checkpoint, token)) return;
 
 				Announce(match, autoStart
-					? $"Match starts in {checkpoint} seconds"
+					? $"Room starts in {checkpoint} seconds"
 					: $"{checkpoint} seconds remaining");
 				// Each tick takes the match lock only long enough to allocate its version. The
 				// version used to be allocated out here with no lock at all, which let a tick

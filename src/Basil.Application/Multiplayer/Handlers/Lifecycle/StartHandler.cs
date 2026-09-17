@@ -1,4 +1,3 @@
-using Basil.Application.Multiplayer;
 using Basil.Application.Multiplayer.Handlers.Countdown;
 
 namespace Basil.Application.Multiplayer.Handlers.Lifecycle;
@@ -42,9 +41,9 @@ public sealed class StartHandler(MatchLifecycle matchLifecycle, TimerHandler tim
 		}
 
 		// An immediate start must stop any countdown/timer already pending, or its background loop
-		// keeps running (and can still fire "Match starts in N seconds"/try to auto-start again) even
+		// keeps running (and can still fire "Room starts in N seconds"/try to auto-start again) even
 		// though the match started right now through this call instead.
-		if (timerHandler.CancelPendingTimer(match, announce: false))
+		if (timerHandler.CancelPendingTimer(match, false))
 			mutation.PublishTimer();
 
 		var outcome = await matchLifecycle.StartAsync(match, mutation, cancellationToken);

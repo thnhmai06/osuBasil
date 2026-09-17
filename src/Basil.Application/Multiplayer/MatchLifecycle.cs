@@ -1,13 +1,13 @@
+using Basil.Application.Beatmaps;
 using Basil.Application.Bot;
+using Basil.Application.Channels;
+using Basil.Application.Chat;
 using Basil.Application.Irc;
-using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Eventing;
-using Basil.Domain.Beatmaps;
-using Basil.Domain.Channels;
-using Basil.Domain.Multiplayer;
-using Basil.Application.Chat;
-using Basil.Application.Beatmaps;
+using Basil.Application.Users;
+using Basil.Domain.Multiplayer.Records;
+using Basil.Domain.Multiplayer.Runtime;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Application.Multiplayer;
@@ -32,6 +32,7 @@ public sealed class MatchLifecycle(
 	IBeatmapRepository beatmapRepo,
 	MatchBroadcast broadcast,
 	IServiceProvider serviceProvider,
+	IUserCache userCache,
 	ILogger<MatchLifecycle> logger)
 {
 	/// <summary>The outcome of a <see cref="StartAsync" /> attempt.</summary>
@@ -44,7 +45,7 @@ public sealed class MatchLifecycle(
 
 	internal const int MaxMatchNameLength = 50;
 
-	/* "Match created in 15, invite in 10"
+	/* "Room created in 15, invite in 10"
 	 * Matches are usually created 15 minutes before start and players are invited
 	 * 10 minutes later, so do not close empty rooms too aggressively.
 	 */
@@ -56,13 +57,13 @@ public sealed class MatchLifecycle(
 	///     real game client not already seated elsewhere — seats them in slot 0.
 	/// </summary>
 	/// <remarks>
-	///     Sets <see cref="MatchSession.CreatorId" /> to <paramref name="creator" />'s id, granting them
+	///     Sets <see cref="MatchSession.Creator" /> to <paramref name="creator" />'s user, granting them
 	///     full, permanent <c>!mp</c> authority over this room regardless of referee status (see
 	///     <see cref="MatchSession.IsReferee" />/<see cref="MatchSession.IsCreator" />), and joins
 	///     <paramref name="creator" /> into the room's own chat channel on every success path — whether
 	///     that happens here directly (an unseated creator) or already happened via seating (see
 	///     <see cref="MatchMembership" />'s <c>OccupySlot</c>). Every match
-	///     starts with a null <see cref="MatchSession.HostId" />; a <see cref="GameSession" />
+	///     starts with a null <see cref="MatchSession.Host" />; a <see cref="GameSession" />
 	///     creator only becomes host once they actually occupy a slot, via the normal
 	///     <see cref="MatchMembership.JoinAsync" /> path (there is no special host-bypass case anymore). When the
 	///     creator is an <see cref="IrcSession" />, or a <see cref="GameSession" /> already seated in a
@@ -86,14 +87,14 @@ public sealed class MatchLifecycle(
 	{
 		var match = await matchRegistry.CreateAsync(data, null, cancellationToken);
 		match.MutationPublisher = broadcast;
-		match.CreatorId = creator.Id;
+		match.Creator = userCache.Resolve(creator);
 		logger.LogInformation(
-			"+ Match created: MatchId={MatchId} CreatorId={CreatorId} Name={Name}", match.DbId, creator.Id,
+			"+ Room created: MatchId={MatchId} Creator={Creator} Name={Name}", match.DbId, creator.Id,
 			match.Name);
 
 		await matchRepository.CreateEventAsync(new MatchEvent(
-			match.DbId, (int)MatchEventType.Created,
-			creator.Id, creator.Name, null, null,
+			match.DbId, MatchEventType.Created,
+			userCache.Resolve(creator), null,
 			DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 
 		if (creator is GameSession gameCreator)
@@ -147,8 +148,8 @@ public sealed class MatchLifecycle(
 	/// <remarks>
 	///     Backs the <c>api.</c> host's <c>POST /match</c>. No chat "sender" exists over HTTP, so there
 	///     is no <see cref="UserSession" /> to auto-join into slot 0 the way <see cref="CreateAsync" /> does for
-	///     <c>!mp make</c>. <see cref="MatchSession.HostId" /> stays null,
-	///     <see cref="MatchSession.CreatorId" /> stays null (nobody holds creator authority over this
+	///     <c>!mp make</c>. <see cref="MatchSession.Host" /> stays null,
+	///     <see cref="MatchSession.Creator" /> stays null (nobody holds creator authority over this
 	///     room), and the referee list stays empty until a caller assigns them via
 	///     <c>PATCH /match/{id}/settings</c>, the <c>host</c> action, or the <c>addref</c> action.
 	/// </remarks>
@@ -161,12 +162,12 @@ public sealed class MatchLifecycle(
 		var match = await matchRegistry.CreateAsync(data, null, cancellationToken);
 		match.MutationPublisher = broadcast;
 
-		logger.LogInformation("+ Match created: MatchId={MatchId} HostId=NoHost Name={Name} (via HTTP)",
+		logger.LogInformation("+ Room created: MatchId={MatchId} Host=NoHost Name={Name} (via HTTP)",
 			match.DbId, match.Name);
 
 		await matchRepository.CreateEventAsync(new MatchEvent(
-			match.DbId, (int)MatchEventType.Created,
-			null, null, null, null, DateTimeOffset.UtcNow.UtcDateTime, "Created via HTTP API"), cancellationToken);
+			match.DbId, MatchEventType.Created,
+			null, null, DateTimeOffset.UtcNow.UtcDateTime, "Created via HTTP API"), cancellationToken);
 
 		await using (await match.BeginMutationAsync(cancellationToken))
 		{
@@ -188,9 +189,9 @@ public sealed class MatchLifecycle(
 
 		foreach (var slot in match.Slots)
 		{
-			if (slot.PlayerId is not { } playerId) continue;
+			if (slot.Player is not { } slotPlayer) continue;
 
-			var player = gameRegistry.GetByUserId(playerId);
+			var player = gameRegistry.GetByUserId(slotPlayer.Id);
 			if (player is null) continue;
 
 			if (channel is not null) channelMembership.Part(player, channel);
@@ -199,11 +200,12 @@ public sealed class MatchLifecycle(
 		}
 
 		await TeardownMatch(match, cancellationToken);
-		logger.LogInformation("- Match closed: MatchId={MatchId} ActorId={ActorId}", match.DbId, actorId);
+		logger.LogInformation("- Room closed: MatchId={MatchId} ActorId={ActorId}", match.DbId, actorId);
 
 		await matchRepository.CreateEventAsync(new MatchEvent(
-			match.DbId, (int)MatchEventType.Closed,
-			actorId, actorName, null, null, DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
+			match.DbId, MatchEventType.Closed,
+			actorId is { } id ? userCache.Resolve(id, actorName) : null, null,
+			DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 	}
 
 	/// <summary>Cancels a pending auto-start countdown when one is queued, announcing why.</summary>
@@ -224,7 +226,7 @@ public sealed class MatchLifecycle(
 
 		var bot = gameRegistry.GetByUserId(BotBootstrapService.BotId);
 		if (bot is not null)
-			broadcast.EnqueueChat(match, bot.Name, bot.Id, "Match start cancelled — room settings changed.");
+			broadcast.EnqueueChat(match, bot.Name, bot.Id, "Room start cancelled — room settings changed.");
 	}
 
 	/// <summary>Starts the match: validates the beatmap, marks players as playing, creates the round, and broadcasts.</summary>
@@ -243,13 +245,13 @@ public sealed class MatchLifecycle(
 		// room emptied out) and fire with zero occupied slots. Without this guard, InProgress would
 		// end up true with every slot Open/Locked, violating the invariant that InProgress implies at
 		// least one occupied slot.
-		if (match.Slots.All(s => s.PlayerId is null))
+		if (match.Slots.All(s => s.Player is null))
 		{
-			logger.LogDebug("Match start aborted (no players seated): MatchId={MatchId}", match.DbId);
+			logger.LogDebug("Room start aborted (no players seated): MatchId={MatchId}", match.DbId);
 			var emptyBot = gameRegistry.GetByUserId(BotBootstrapService.BotId);
 			if (emptyBot is not null)
 				broadcast.EnqueueChat(match, emptyBot.Name, emptyBot.Id,
-					"Match cannot start because the room has no players.");
+					"Room cannot start because the room has no players.");
 			return StartOutcome.NoOccupiedSlots;
 		}
 
@@ -259,34 +261,34 @@ public sealed class MatchLifecycle(
 			// anyway. No client can ever send MatchLoadComplete/MatchComplete for a round it has no
 			// map for, so the round never finishes, and every later !mp start returns
 			// AlreadyInProgress until someone runs !mp abort — see the 2026 investigation's RC4.
-			logger.LogDebug("Match start aborted (no beatmap selected): MatchId={MatchId}", match.DbId);
+			logger.LogDebug("Room start aborted (no beatmap selected): MatchId={MatchId}", match.DbId);
 			var noMapBot = gameRegistry.GetByUserId(BotBootstrapService.BotId);
 			if (noMapBot is not null)
 				broadcast.EnqueueChat(match, noMapBot.Name, noMapBot.Id,
-					"Match cannot start because no beatmap has been selected.");
+					"Room cannot start because no beatmap has been selected.");
 			return StartOutcome.BeatmapMissing;
 		}
 
 		var beatmap = await beatmapRepo.FetchOneAsync(mapId, cancellationToken: cancellationToken);
 		if (beatmap is null)
 		{
-			logger.LogDebug("Match start aborted (beatmap missing): MatchId={MatchId} MapId={MapId}",
+			logger.LogDebug("Room start aborted (beatmap missing): MatchId={MatchId} Beatmap={Beatmap}",
 				match.DbId, match.MapId);
 			var bot = gameRegistry.GetByUserId(BotBootstrapService.BotId);
 			if (bot is not null)
 				broadcast.EnqueueChat(match, bot.Name, bot.Id,
-					"Match cannot start because the beatmap does not exist on the server.");
+					"Room cannot start because the beatmap does not exist on the server.");
 			return StartOutcome.BeatmapMissing;
 		}
 
 		var noMap = new List<int>();
 		foreach (var slot in match.Slots)
-			if (slot.PlayerId is not null)
+			if (slot.Player is { } slotPlayer)
 			{
-				if (slot.Status != SlotStatus.NoMap)
-					slot.Status = SlotStatus.Playing;
+				if (slot.Status != RoomSlotStatus.NoMap)
+					slot.Status = RoomSlotStatus.Playing;
 				else
-					noMap.Add(slot.PlayerId.Value);
+					noMap.Add(slotPlayer.Id);
 			}
 
 		match.InProgress = true;
@@ -298,7 +300,7 @@ public sealed class MatchLifecycle(
 
 		notifier.RoundStarted(match, noMap);
 		mutation.PublishState();
-		logger.LogInformation("~ Match started: MatchId={MatchId} RoundId={RoundId}", match.DbId, match.CurrentRoundId);
+		logger.LogInformation("~ Room started: MatchId={MatchId} RoundId={RoundId}", match.DbId, match.CurrentRoundId);
 		return StartOutcome.Started;
 	}
 
@@ -310,7 +312,7 @@ public sealed class MatchLifecycle(
 	/// <param name="match">The match whose empty state may have just changed.</param>
 	internal void SyncEmptyRoomTimer(MatchSession match)
 	{
-		var empty = match.Slots.All(s => s.Empty);
+		var empty = match.Slots.All(s => s.IsEmpty);
 
 		if (!empty)
 		{
@@ -352,7 +354,7 @@ public sealed class MatchLifecycle(
 
 			await using (await match.BeginMutationAsync(token))
 			{
-				if (token.IsCancellationRequested || !match.Slots.All(s => s.Empty)) return;
+				if (token.IsCancellationRequested || !match.Slots.All(s => s.IsEmpty)) return;
 				match.EmptyRoomWarningSent = true;
 				broadcast.AnnounceToRoomAndReferees(match,
 					$"The room is empty and will be closed in {EmptyRoomWarnAtSeconds} seconds unless a player joins.");
@@ -362,7 +364,7 @@ public sealed class MatchLifecycle(
 
 			await using (await match.BeginMutationAsync(token))
 			{
-				if (token.IsCancellationRequested || !match.Slots.All(s => s.Empty)) return;
+				if (token.IsCancellationRequested || !match.Slots.All(s => s.IsEmpty)) return;
 				broadcast.AnnounceToRoomAndReferees(match,
 					$"Closing the room — it stayed empty for {EmptyRoomCloseSeconds / 60} minutes.");
 				match.EmptyRoomTimer = null;
@@ -372,7 +374,7 @@ public sealed class MatchLifecycle(
 		}
 		catch (Exception ex) when (ex is not OperationCanceledException)
 		{
-			logger.LogError(ex, "Empty-room close loop failed: MatchId={MatchId}", match.DbId);
+			logger.LogError(ex, "IsEmpty-room close loop failed: MatchId={MatchId}", match.DbId);
 		}
 	}
 
@@ -405,9 +407,9 @@ public sealed class MatchLifecycle(
 	/// </remarks>
 	private async Task TeardownMatch(MatchSession match, CancellationToken cancellationToken)
 	{
-		match.PendingTimer?.Cancel();
+		if (match.PendingTimer is { } pendingTimer) await pendingTimer.CancelAsync();
 		match.PendingTimer = null;
-		match.EmptyRoomTimer?.Cancel();
+		if (match.EmptyRoomTimer is { } emptyRoomTimer) await emptyRoomTimer.CancelAsync();
 		match.EmptyRoomTimer = null;
 
 		await roundEndOutbox.DrainAsync(match.DbId, cancellationToken);

@@ -1,9 +1,10 @@
-using Basil.Application.Multiplayer;
-using Basil.Application.Sessions;
-using Basil.Domain.Channels;
-using Basil.Domain.Multiplayer;
-using Basil.Domain.Users;
+using Basil.Application.Channels;
 using Basil.Application.Chat;
+using Basil.Application.Sessions;
+using Basil.Application.Users;
+using Basil.Domain.Multiplayer.Records;
+using Basil.Domain.Multiplayer.Runtime;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Multiplayer;
 
@@ -21,6 +22,7 @@ public sealed class MatchMembership(
 	IMatchNotifier notifier,
 	IMatchRepository matchRepository,
 	MatchLifecycle lifecycle,
+	IUserCache userCache,
 	ILogger<MatchMembership> logger)
 {
 	/// <summary>The outcome of a <see cref="JoinAsync" /> attempt.</summary>
@@ -53,10 +55,11 @@ public sealed class MatchMembership(
 		GameSession userSession, MatchSession match, string password,
 		CancellationToken cancellationToken = default)
 	{
+		var userSessionUser = userCache.Resolve(userSession);
 		JoinResult? rejection = userSession.IsBot ? JoinResult.BotCannotSeat
 			: userSession.Match is not null ? JoinResult.AlreadyInMatch
-			: match.TourneyClients.Contains(userSession.Id) ? JoinResult.TourneyClient
-			: match.BannedIds.Contains(userSession.Id) ? JoinResult.Banned
+			: match.TourneyClients.Contains(userSessionUser) ? JoinResult.TourneyClient
+			: match.BannedUsers.Contains(userSessionUser) ? JoinResult.Banned
 			: match.IsLocked ? JoinResult.Locked
 			: null;
 
@@ -69,7 +72,7 @@ public sealed class MatchMembership(
 		}
 
 		if (match.IsPrivate && (userSession.Privilege & UserPrivileges.Staff) == 0 &&
-		    !match.InvitedIds.Contains(userSession.Id))
+		    !match.InvitedUsers.Contains(userSessionUser))
 		{
 			logger.LogDebug("Join rejected: MatchId={MatchId} UserId={UserId} Reason=Private", match.DbId,
 				userSession.Id);
@@ -158,7 +161,7 @@ public sealed class MatchMembership(
 		if (match.TeamType is MatchTeamType.TeamVs or MatchTeamType.TagTeamVs)
 		{
 			var counts = match.Slots
-				.Where(s => s.PlayerId is not null)
+				.Where(s => s.Player is not null)
 				.GroupBy(s => s.Team)
 				.ToDictionary(g => g.Key, g => g.Count());
 			counts.TryGetValue(MatchTeam.Red, out var redCount);
@@ -166,11 +169,11 @@ public sealed class MatchMembership(
 			slot.Team = redCount <= blueCount ? MatchTeam.Red : MatchTeam.Blue;
 		}
 
-		slot.Status = SlotStatus.NotReady;
-		slot.PlayerId = userSession.Id;
+		slot.Status = RoomSlotStatus.NotReady;
+		slot.Player = userCache.Resolve(userSession);
 		userSession.Match = match;
 
-		if (!match.HasGameplayHost) match.HostId = userSession.Id;
+		if (match.Host is null) match.Host = userCache.Resolve(userSession);
 
 		notifier.Joined(userSession, match);
 		// SyncEmptyRoomTimer still needs the caller's lock held. The state publish itself does not
@@ -182,9 +185,9 @@ public sealed class MatchMembership(
 			match.DbId, userSession.Id, slotId);
 
 		await matchRepository.CreateEventAsync(new MatchEvent(
-			match.DbId, (int)MatchEventType.PlayerJoined,
-			userSession.Id, userSession.Name, null,
-			null, DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
+			match.DbId, MatchEventType.PlayerJoined,
+			userCache.Resolve(userSession), null,
+			DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 
 		return true;
 	}
@@ -201,33 +204,35 @@ public sealed class MatchMembership(
 	public async Task LeaveAsync(GameSession userSession, MatchSession match,
 		CancellationToken cancellationToken = default)
 	{
-		var slot = match.GetSlot(userSession.Id);
+		var userSessionUser = userCache.Resolve(userSession);
+		var slot = match.GetSlot(userSessionUser);
 		if (slot is null)
 		{
 			userSession.Match = null;
 			return;
 		}
 
-		slot.Reset(slot.Status == SlotStatus.Locked ? SlotStatus.Locked : SlotStatus.Open);
+		slot.Reset(slot.Status == RoomSlotStatus.Locked ? RoomSlotStatus.Locked : RoomSlotStatus.Open);
 
 		var hostTransfer = false;
-		int? prevHostId = null;
-		int? newHostId = null;
+		User? prevHost = null;
+		User? newHost = null;
 
-		if (userSession.Id == match.HostId)
+		if (userSessionUser.Equals(match.Host))
 		{
-			prevHostId = match.HostId;
-			var newHostSlot = match.Slots.FirstOrDefault(s => !s.Empty);
+			prevHost = match.Host;
+			var newHostSlot = match.Slots.FirstOrDefault(s => !s.IsEmpty);
 			if (newHostSlot is not null)
 			{
-				newHostId = newHostSlot.PlayerId!.Value;
-				match.HostId = newHostId.Value;
+				newHost = newHostSlot.Player!;
+				match.Host = newHost;
 				hostTransfer = true;
-				if (gameRegistry.GetByUserId(newHostId.Value) is { } newHost) notifier.HostTransferred(newHost);
+				if (gameRegistry.GetByUserId(newHost.Id) is { } newHostSession)
+					notifier.HostTransferred(newHostSession);
 			}
 			else
 			{
-				match.HostId = null;
+				match.Host = null;
 			}
 		}
 
@@ -247,25 +252,19 @@ public sealed class MatchMembership(
 		logger.LogInformation("- User left match: MatchId={MatchId} UserId={UserId}", match.DbId, userSession.Id);
 
 		await matchRepository.CreateEventAsync(new MatchEvent(
-			match.DbId, (int)MatchEventType.PlayerLeft,
-			userSession.Id, userSession.Name, null,
-			null, DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
+			match.DbId, MatchEventType.PlayerLeft,
+			userCache.Resolve(userSession), null,
+			DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 
 		if (hostTransfer)
 		{
 			logger.LogInformation(
 				"Host transferred on leave: MatchId={MatchId} PrevHostId={PrevHostId} NewHostId={NewHostId}",
-				match.DbId, prevHostId, newHostId);
+				match.DbId, prevHost?.Id, newHost?.Id);
 
-			var prevHostName = prevHostId is not null
-				? gameRegistry.GetByUserId(prevHostId.Value)?.Name
-				: null;
-			var newHostName = newHostId is not null
-				? gameRegistry.GetByUserId(newHostId.Value)?.Name
-				: null;
 			await matchRepository.CreateEventAsync(new MatchEvent(
-				match.DbId, (int)MatchEventType.HostGranted,
-				prevHostId, prevHostName, newHostId, newHostName,
+				match.DbId, MatchEventType.HostGranted,
+				prevHost, newHost,
 				DateTimeOffset.UtcNow.UtcDateTime, null), cancellationToken);
 		}
 	}

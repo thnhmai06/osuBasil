@@ -1,5 +1,4 @@
 using Basil.Domain.Social;
-using Basil.Application.Social;
 
 namespace Basil.Application.Social;
 

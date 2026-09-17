@@ -1,11 +1,12 @@
+using Basil.Application.Bot;
+using Basil.Application.Channels;
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
-using Basil.Application.Bot;
+using Basil.Application.Social;
+using Basil.Application.Users;
 using Basil.Domain.Channels;
 using Basil.Domain.Social;
 using Basil.Domain.Users;
-using Basil.Application.Users;
-using Basil.Application.Social;
 
 namespace Basil.Application.Chat;
 

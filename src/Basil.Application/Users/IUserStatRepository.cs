@@ -1,6 +1,4 @@
 using Basil.Domain.Beatmaps;
-using Basil.Application.Scores;
-using Basil.Application.Users;
 
 namespace Basil.Application.Users;
 

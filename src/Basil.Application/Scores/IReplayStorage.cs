@@ -1,6 +1,5 @@
 using Basil.Domain.Client;
 using Basil.Domain.Scores;
-using Basil.Application.Scores;
 
 namespace Basil.Application.Scores;
 
@@ -21,10 +20,10 @@ public interface IReplayStorage
 	/// <param name="scoreId">The id of the score the replay belongs to.</param>
 	/// <param name="score">The submitted score whose stats the <c>.osr</c> header records.</param>
 	/// <param name="playerName">The name of the player who submitted the score.</param>
-	/// <param name="osuVersion">The game version the replay belongs to.</param>
+	/// <param name="clientVersion">The game version the replay belongs to.</param>
 	/// <param name="replayData">The raw LZMA replay bytes from the client's submission.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task WriteAsync(long scoreId, Submission score, string playerName, OsuVersion osuVersion, byte[] replayData,
+	Task WriteAsync(long scoreId, Submission score, string playerName, ClientVersion clientVersion, byte[] replayData,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>

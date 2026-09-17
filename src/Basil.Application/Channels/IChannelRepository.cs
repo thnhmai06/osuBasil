@@ -1,5 +1,4 @@
 using Basil.Domain.Channels;
-using Basil.Application.Channels;
 
 namespace Basil.Application.Channels;
 

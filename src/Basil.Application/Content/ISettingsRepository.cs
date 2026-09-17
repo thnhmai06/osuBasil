@@ -1,4 +1,3 @@
-using Basil.Application.Content;
 namespace Basil.Application.Content;
 
 /// <summary>

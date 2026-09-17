@@ -2,7 +2,6 @@ using Basil.Application.Multiplayer.Handlers.Countdown;
 using Basil.Application.Multiplayer.Handlers.Lifecycle;
 using Basil.Application.Multiplayer.Handlers.Slots;
 using Basil.Application.Sessions;
-using Basil.Domain.Multiplayer;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Application.Multiplayer;

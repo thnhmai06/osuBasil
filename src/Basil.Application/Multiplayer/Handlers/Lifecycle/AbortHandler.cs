@@ -1,5 +1,4 @@
-using Basil.Application.Multiplayer;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Runtime;
 
 namespace Basil.Application.Multiplayer.Handlers.Lifecycle;
 
@@ -32,7 +31,7 @@ public sealed class AbortHandler(
 	{
 		if (!match.InProgress) return Task.FromResult(AbortResult.NotInProgress);
 
-		match.UnreadyPlayers(SlotStatus.Playing);
+		match.UnreadyPlayers(RoomSlotStatus.Playing);
 		match.ResetPlayersLoadedStatus();
 		match.InProgress = false;
 
@@ -53,9 +52,9 @@ public sealed class AbortHandler(
 			}
 		}
 
-		logger.LogInformation("Match aborted: MatchId={MatchId} RoundId={RoundId}", match.DbId, roundId);
+		logger.LogInformation("Room aborted: MatchId={MatchId} RoundId={RoundId}", match.DbId, roundId);
 		notifier.RoundAborted(match);
-		matchBroadcast.AnnounceToRoomAndReferees(match, "Match aborted.");
+		matchBroadcast.AnnounceToRoomAndReferees(match, "Room aborted.");
 		mutation.PublishState();
 		return Task.FromResult(AbortResult.Ok);
 	}

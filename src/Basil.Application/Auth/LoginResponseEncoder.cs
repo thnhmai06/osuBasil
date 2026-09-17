@@ -1,4 +1,4 @@
-using Basil.Domain.Users;
+using Basil.Domain.Client;
 using Basil.Protocol;
 using Basil.Protocol.Packets;
 

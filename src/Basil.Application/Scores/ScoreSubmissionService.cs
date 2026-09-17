@@ -1,15 +1,13 @@
 using System.Collections.Concurrent;
+using Basil.Application.Auth;
+using Basil.Application.Beatmaps;
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
+using Basil.Application.Users;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Client;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Records;
 using Basil.Domain.Scores;
-using Basil.Domain.Users;
-using Basil.Application.Scores;
-using Basil.Application.Users;
-using Basil.Application.Beatmaps;
-using Basil.Application.Auth;
 
 // ReSharper disable NotAccessedPositionalProperty.Global
 
@@ -126,6 +124,7 @@ public sealed class ScoreSubmissionService(
 	IUserStatRepository userStatRepository,
 	AuthenticationService authentication,
 	IReplayStorage replayStorage,
+	IUserCache userCache,
 	ILogger<ScoreSubmissionService> logger)
 {
 	private const int MinReplaySize = 24;
@@ -199,7 +198,7 @@ public sealed class ScoreSubmissionService(
 		// said when gameplay ended.
 		var match = player.Match;
 		var roundId = match?.CurrentRoundId;
-		MatchTeam? team = match?.GetSlot(player.Id)?.Team is { } slotTeam and not MatchTeam.Neutral
+		MatchTeam? team = match?.GetSlot(userCache.Resolve(player))?.Team is { } slotTeam and not MatchTeam.Neutral
 			? slotTeam
 			: null;
 
@@ -242,7 +241,7 @@ public sealed class ScoreSubmissionService(
 			using (logger.BeginScope(new Dictionary<string, object> { ["ScoreId"] = scoreId }))
 			{
 				if (replayData is not null)
-					await replayStorage.WriteAsync(scoreId, score, player.Name, OsuVersion.From(request.OsuVersion),
+					await replayStorage.WriteAsync(scoreId, score, player.Name, ClientVersion.From(request.OsuVersion),
 						replayData, cancellationToken);
 				logger.LogInformation(
 					"+ Score submitted: UserId={UserId} BeatmapMd5={BeatmapMd5} MatchId={MatchId} Score={Score}",

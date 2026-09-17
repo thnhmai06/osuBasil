@@ -1,4 +1,3 @@
-using Basil.Application.Spectating;
 namespace Basil.Application.Spectating;
 
 /// <summary>

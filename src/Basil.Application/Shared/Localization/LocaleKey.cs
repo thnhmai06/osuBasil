@@ -16,15 +16,11 @@ internal static class LocaleKey
 		{
 			var key = prefix.Length == 0 ? property.Name : $"{prefix}.{property.Name}";
 			if (property.Value.ValueKind == JsonValueKind.Object)
-			{
 				foreach (var nested in Flatten(property.Value, key))
 					yield return nested;
-			}
 			else
-			{
 				yield return (key, property.Value.GetString() ??
-					throw new InvalidOperationException($"'{key}' is not a string value."));
-			}
+				                   throw new InvalidOperationException($"'{key}' is not a string value."));
 		}
 	}
 }

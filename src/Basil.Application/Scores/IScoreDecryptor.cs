@@ -1,4 +1,3 @@
-using Basil.Application.Scores;
 namespace Basil.Application.Scores;
 
 /// <summary>

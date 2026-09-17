@@ -3,11 +3,12 @@ using Basil.Application.Beatmaps;
 using Basil.Application.Irc;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Eventing;
+using Basil.Application.Users;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Records;
+using Basil.Domain.Multiplayer.Runtime;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
-using Basil.Application.Users;
 
 // ReSharper disable NotAccessedPositionalProperty.Global
 
@@ -39,15 +40,15 @@ public static class MatchLiveSnapshotBuilder
 		ISessionRegistry<GameSession> gameRegistry, ISessionRegistry<IrcSession> ircRegistry,
 		IUserRepository users, IBeatmapRepository beatmaps, CancellationToken cancellationToken = default)
 	{
-		var size = match.Slots.Count(s => s.Status != SlotStatus.Locked);
+		var size = match.Slots.Count(s => s.Status != RoomSlotStatus.Locked);
 
-		var host = match.HostId is { } hostId
-			? await ResolveOrPlaceholder(hostId, gameRegistry, ircRegistry, users, cancellationToken)
+		var host = match.Host is { } hostUser
+			? await ResolveOrPlaceholder(hostUser.Id, gameRegistry, ircRegistry, users, cancellationToken)
 			: null;
 
 		var referees = new List<UserBrief>();
-		foreach (var id in match.Referees)
-			referees.Add(await ResolveOrPlaceholder(id, gameRegistry, ircRegistry, users, cancellationToken));
+		foreach (var referee in match.Referees)
+			referees.Add(await ResolveOrPlaceholder(referee.Id, gameRegistry, ircRegistry, users, cancellationToken));
 
 		var slots = await BuildSlotViews(match, gameRegistry, ircRegistry, users, cancellationToken);
 		var beatmap = await ResolveBeatmapAsync(match.MapMd5, beatmaps, cancellationToken);
@@ -71,10 +72,10 @@ public static class MatchLiveSnapshotBuilder
 	public static async Task<MatchRoomLive> BuildRoomLive(MatchSession match, IBeatmapRepository beatmaps,
 		CancellationToken cancellationToken = default)
 	{
-		var size = match.Slots.Count(s => s.Status != SlotStatus.Locked);
+		var size = match.Slots.Count(s => s.Status != RoomSlotStatus.Locked);
 		var beatmap = await ResolveBeatmapAsync(match.MapMd5, beatmaps, cancellationToken);
 
-		// mapId mirrors beatmap's presence rather than match.MapId directly (Issue #4): "beatmap"
+		// mapId mirrors beatmap's presence rather than match.Beatmap directly (Issue #4): "beatmap"
 		// already represents the assigned map, so a mapId alongside a null beatmap would be a
 		// redundant, inconsistent id nobody can resolve to anything.
 		return new MatchRoomLive(
@@ -100,15 +101,15 @@ public static class MatchLiveSnapshotBuilder
 		ISessionRegistry<GameSession> gameRegistry, ISessionRegistry<IrcSession> ircRegistry,
 		IUserRepository users, IBeatmapRepository beatmaps, CancellationToken cancellationToken = default)
 	{
-		var size = match.Slots.Count(s => s.Status != SlotStatus.Locked);
+		var size = match.Slots.Count(s => s.Status != RoomSlotStatus.Locked);
 
-		var host = match.HostId is { } hostId
-			? await ResolveOrPlaceholder(hostId, gameRegistry, ircRegistry, users, cancellationToken)
+		var host = match.Host is { } hostUser
+			? await ResolveOrPlaceholder(hostUser.Id, gameRegistry, ircRegistry, users, cancellationToken)
 			: null;
 
 		var referees = new List<UserBrief>();
-		foreach (var id in match.Referees)
-			referees.Add(await ResolveOrPlaceholder(id, gameRegistry, ircRegistry, users, cancellationToken));
+		foreach (var referee in match.Referees)
+			referees.Add(await ResolveOrPlaceholder(referee.Id, gameRegistry, ircRegistry, users, cancellationToken));
 
 		var beatmap = await ResolveBeatmapAsync(match.MapMd5, beatmaps, cancellationToken);
 
@@ -132,9 +133,9 @@ public static class MatchLiveSnapshotBuilder
 		ISessionRegistry<GameSession> gameRegistry, ISessionRegistry<IrcSession> ircRegistry,
 		IUserRepository users, CancellationToken cancellationToken = default)
 	{
-		if (match.HostId is not { } hostId) return new MatchHostView(null);
+		if (match.Host is not { } hostUser) return new MatchHostView(null);
 
-		var host = await ResolveOrPlaceholder(hostId, gameRegistry, ircRegistry, users, cancellationToken);
+		var host = await ResolveOrPlaceholder(hostUser.Id, gameRegistry, ircRegistry, users, cancellationToken);
 		return new MatchHostView(host);
 	}
 
@@ -150,8 +151,8 @@ public static class MatchLiveSnapshotBuilder
 		IUserRepository users, CancellationToken cancellationToken = default)
 	{
 		var referees = new List<UserBrief>();
-		foreach (var id in match.Referees)
-			referees.Add(await ResolveOrPlaceholder(id, gameRegistry, ircRegistry, users, cancellationToken));
+		foreach (var referee in match.Referees)
+			referees.Add(await ResolveOrPlaceholder(referee.Id, gameRegistry, ircRegistry, users, cancellationToken));
 
 		return new MatchRefereesView(referees);
 	}
@@ -168,8 +169,8 @@ public static class MatchLiveSnapshotBuilder
 		IUserRepository users, CancellationToken cancellationToken = default)
 	{
 		var banned = new List<UserBrief>();
-		foreach (var id in match.BannedIds)
-			banned.Add(await ResolveOrPlaceholder(id, gameRegistry, ircRegistry, users, cancellationToken));
+		foreach (var bannedUser in match.BannedUsers)
+			banned.Add(await ResolveOrPlaceholder(bannedUser.Id, gameRegistry, ircRegistry, users, cancellationToken));
 
 		return new MatchBansView(banned);
 	}
@@ -236,13 +237,13 @@ public static class MatchLiveSnapshotBuilder
 		for (var i = 0; i < match.Slots.Count; i++)
 		{
 			var slot = match.Slots[i];
-			var user = slot.PlayerId is { } pid
-				? await ResolveOrPlaceholder(pid, gameRegistry, ircRegistry, users, cancellationToken)
+			var user = slot.Player is { } slotPlayer
+				? await ResolveOrPlaceholder(slotPlayer.Id, gameRegistry, ircRegistry, users, cancellationToken)
 				: null;
 			slots.Add(user is null
 				? new MatchSlotView(i + 1, null, slot.Status, null, null, null, null)
 				: new MatchSlotView(i + 1, user, slot.Status, slot.Team, slot.Mods,
-					slot.Status == SlotStatus.Ready, slot.Loaded));
+					slot.Status == RoomSlotStatus.Ready, slot.BeatmapLoaded));
 		}
 
 		return slots;
@@ -520,11 +521,11 @@ public sealed record MatchTimerLiveView(
 /// <remarks>
 ///     <see cref="Status" />, <see cref="Team" />, and <see cref="Mods" /> serialize as their numeric
 ///     enum values. <see cref="Ready" /> is true exactly when <see cref="Status" /> is
-///     <see cref="SlotStatus.Ready" />. <see cref="Team" />, <see cref="Mods" />, <see cref="Ready" />,
+///     <see cref="RoomSlotStatus.Ready" />. <see cref="Team" />, <see cref="Mods" />, <see cref="Ready" />,
 ///     and <see cref="Loaded" /> are occupant state and only meaningful with one present; each is
 ///     omitted from the JSON entirely (not merely <see langword="null" />) on an empty slot.
 ///     <see cref="Status" /> is not one of them -- an empty slot is still meaningfully
-///     <see cref="SlotStatus.Open" /> or <see cref="SlotStatus.Locked" />, so it always serializes.
+///     <see cref="RoomSlotStatus.Open" /> or <see cref="RoomSlotStatus.Locked" />, so it always serializes.
 /// </remarks>
 /// <param name="Index">The 1-based slot index (1 through 16), matching `!mp move`'s convention.</param>
 /// <param name="User">The occupant, or <see langword="null" /> for an empty slot.</param>
@@ -538,7 +539,7 @@ public sealed record MatchTimerLiveView(
 public sealed record MatchSlotView(
 	int Index,
 	UserBrief? User,
-	SlotStatus Status,
+	RoomSlotStatus Status,
 	[property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
 	MatchTeam? Team,
 	[property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

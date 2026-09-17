@@ -1,4 +1,3 @@
-using Basil.Application.Users;
 namespace Basil.Application.Users;
 
 /// <summary>

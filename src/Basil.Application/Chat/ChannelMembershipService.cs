@@ -1,14 +1,15 @@
 using System.Text.Json;
+using Basil.Application.Bot;
+using Basil.Application.Channels;
 using Basil.Application.Irc;
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
 using Basil.Application.Shared.Eventing;
 using Basil.Application.Shared.Json;
+using Basil.Application.Users;
 using Basil.Domain.Channels;
-using Basil.Domain.Client;
 using Basil.Domain.Users;
-using Basil.Application.Bot;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Application.Chat;
@@ -43,7 +44,8 @@ public sealed class ChannelMembershipService(
 	IChannelNotifier channels,
 	IMatchRegistry matchRegistry,
 	ILiveEventHub hub,
-	IOptions<IrcOptions> options)
+	IOptions<IrcOptions> options,
+	IUserCache userCache)
 {
 	/// <summary>
 	///     Adds a user session to a channel, echoing the join to the session itself and, only when this
@@ -157,15 +159,11 @@ public sealed class ChannelMembershipService(
 			if (!userLeftRoster) continue;
 
 			if (userStillPresent)
-			{
 				channels.MemberLeft(channel, session);
-			}
 			else
-			{
 				foreach (var memberId in channel.MemberIds)
 					if (memberId != session.Id)
 						quitNotified.Add(memberId);
-			}
 		}
 
 		if (!userStillPresent)
@@ -234,7 +232,7 @@ public sealed class ChannelMembershipService(
 	public string MemberPrefix(UserSession member, ChannelSession channel)
 	{
 		var authority = MatchFor(channel) is { } match
-			? match.IsReferee(member.Id)
+			? match.IsReferee(userCache.Resolve(member))
 			: (member.Privilege & UserPrivileges.Staff) != 0;
 
 		if (authority) return "@";
@@ -262,7 +260,8 @@ public sealed class ChannelMembershipService(
 	private bool CanJoinMatchChannel(UserSession userSession, ChannelSession channel)
 	{
 		if (MatchFor(channel) is not { } match) return true;
-		return match.IsReferee(userSession.Id) || match.GetSlot(userSession.Id) is not null;
+		var user = userCache.Resolve(userSession);
+		return match.IsReferee(user) || match.GetSlot(user) is not null;
 	}
 
 	/// <summary>

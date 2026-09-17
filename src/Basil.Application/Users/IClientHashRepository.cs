@@ -1,5 +1,4 @@
-using Basil.Domain.Users;
-using Basil.Application.Users;
+using Basil.Domain.Client;
 
 namespace Basil.Application.Users;
 
@@ -45,7 +44,7 @@ public interface IClientHashRepository
 	/// <param name="diskSerial">A fingerprint of the primary disk's serial number, or <see langword="null" />.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Every other user sharing hardware with the supplied fingerprint, with their names and privileges.</returns>
-	Task<IReadOnlyList<PlayerClientHash>> FetchAnyHardwareMatchesForUserAsync(
+	Task<IReadOnlyList<UserClientHash>> FetchAnyHardwareMatchesForUserAsync(
 		int userId,
 		bool runningUnderWine,
 		string adapters,

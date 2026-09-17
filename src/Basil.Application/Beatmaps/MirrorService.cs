@@ -1,5 +1,4 @@
 using Basil.Application.Content;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Application.Beatmaps;

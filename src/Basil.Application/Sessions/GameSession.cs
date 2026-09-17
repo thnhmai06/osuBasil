@@ -4,6 +4,7 @@ using Basil.Application.Multiplayer;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Client;
 using Basil.Domain.Scores;
+using Basil.Domain.Social;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Sessions;
@@ -52,7 +53,7 @@ public sealed class GameSession : UserSession
 	///     Gets or sets the presence filter preference reported by the client, controlling which users appear in its
 	///     presence list.
 	/// </summary>
-	public PresenceFilter PresenceFilter { get; set; } = PresenceFilter.Nil;
+	public PresenceVisibility PresenceVisibility { get; set; } = PresenceVisibility.Nil;
 
 	/// <summary>
 	///     Gets or sets a value that indicates whether the client is currently viewing the
@@ -73,7 +74,7 @@ public sealed class GameSession : UserSession
 	///     Gets or sets the osu! client version captured at login, kept separate from
 	///     <see cref="Client" />. Score submission's version-mismatch check compares against this.
 	/// </summary>
-	public OsuVersion? OsuVersion { get; init; }
+	public ClientVersion? OsuVersion { get; init; }
 
 	/// <summary>
 	///     Gets or sets the session this userSession is currently spectating, or null when the userSession is not

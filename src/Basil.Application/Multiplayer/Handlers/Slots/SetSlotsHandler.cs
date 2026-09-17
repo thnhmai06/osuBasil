@@ -1,5 +1,5 @@
-using Basil.Application.Multiplayer;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Records;
+using Basil.Domain.Multiplayer.Runtime;
 
 namespace Basil.Application.Multiplayer.Handlers.Slots;
 
@@ -14,22 +14,6 @@ public sealed class SetSlotsHandler(ILogger<SetSlotsHandler> logger)
 		SlotOccupiedAndLocked,
 		DuplicateUserId
 	}
-
-	/// <summary>Represents one entry in a <c>PUT /matches/{matchId}/slots</c> request.</summary>
-	/// <remarks>Each entry is keyed by a slot index (0-based) in the request dictionary.</remarks>
-	/// <param name="UserId">
-	///     The id of the userSession to move into the slot, or <see langword="null" /> to leave occupancy
-	///     alone.
-	/// </param>
-	/// <param name="Team">
-	///     The literal <c>"Red"</c> or <c>"Blue"</c> team to assign, or <see langword="null" /> to keep the
-	///     current team.
-	/// </param>
-	/// <param name="Locked">
-	///     <see langword="true" /> to lock an empty slot, <see langword="false" /> to open it, or
-	///     <see langword="null" /> to leave its status alone.
-	/// </param>
-	public sealed record SlotPatchEntry(int? UserId, string? Team, bool? Locked);
 
 	/// <summary>Reassigns, re-teams, and locks slots in one atomic pass, then republishes the slot views.</summary>
 	/// <remarks>
@@ -68,8 +52,8 @@ public sealed class SetSlotsHandler(ILogger<SetSlotsHandler> logger)
 				return Task.FromResult(SetSlotsResult.SlotOccupiedAndLocked);
 
 		var currentOccupantIds = match.Slots
-			.Where(s => s.PlayerId is not null)
-			.Select(s => s.PlayerId!.Value)
+			.Where(s => s.Player is not null)
+			.Select(s => s.Player!.Id)
 			.ToHashSet();
 
 		var referencedUserIds = entries.Values
@@ -96,7 +80,7 @@ public sealed class SetSlotsHandler(ILogger<SetSlotsHandler> logger)
 
 		// Snapshot every slot's pre-mutation state so a swap (A<->B) can look up each userSession's
 		// origin slot without being affected by the other entry's own mutation.
-		var original = match.Slots.Select(s => (s.PlayerId, s.Status, s.Team, s.Mods)).ToArray();
+		var original = match.Slots.Select(s => (s.Player, s.Status, s.Team, s.Mods)).ToArray();
 		var destinationSlots = entries.Where(kv => kv.Value.UserId is not null).Select(kv => kv.Key).ToHashSet();
 
 		// Vacate the previous slot of every moved userSession, unless that slot is itself a destination
@@ -105,7 +89,7 @@ public sealed class SetSlotsHandler(ILogger<SetSlotsHandler> logger)
 		{
 			if (entry.UserId is not { } uid) continue;
 
-			var oldIndex = Array.FindIndex(original, o => o.PlayerId == uid);
+			var oldIndex = Array.FindIndex(original, o => o.Player?.Id == uid);
 			if (oldIndex >= 0 && oldIndex != slotIndex && !destinationSlots.Contains(oldIndex))
 				match.Slots[oldIndex].Reset();
 		}
@@ -116,9 +100,9 @@ public sealed class SetSlotsHandler(ILogger<SetSlotsHandler> logger)
 
 			if (entry.UserId is { } uid)
 			{
-				var oldIndex = Array.FindIndex(original, o => o.PlayerId == uid);
+				var oldIndex = Array.FindIndex(original, o => o.Player?.Id == uid);
 				var source = original[oldIndex];
-				slot.PlayerId = uid;
+				slot.Player = source.Player;
 				slot.Status = source.Status;
 				slot.Mods = source.Mods;
 			}
@@ -126,8 +110,8 @@ public sealed class SetSlotsHandler(ILogger<SetSlotsHandler> logger)
 			if (entry.Team is "Red" or "Blue")
 				slot.Team = entry.Team == "Red" ? MatchTeam.Red : MatchTeam.Blue;
 
-			if (entry.Locked is { } locked && slot.PlayerId is null)
-				slot.Status = locked ? SlotStatus.Locked : SlotStatus.Open;
+			if (entry.Locked is { } locked && slot.Player is null)
+				slot.Status = locked ? RoomSlotStatus.Locked : RoomSlotStatus.Open;
 		}
 
 		logger.LogDebug("Room settings changed: MatchId={MatchId} SlotsChanged={SlotsChanged}", match.DbId,
@@ -137,4 +121,20 @@ public sealed class SetSlotsHandler(ILogger<SetSlotsHandler> logger)
 		mutation.PublishState();
 		return Task.FromResult(SetSlotsResult.Ok);
 	}
+
+	/// <summary>Represents one entry in a <c>PUT /matches/{matchId}/slots</c> request.</summary>
+	/// <remarks>Each entry is keyed by a slot index (0-based) in the request dictionary.</remarks>
+	/// <param name="UserId">
+	///     The id of the userSession to move into the slot, or <see langword="null" /> to leave occupancy
+	///     alone.
+	/// </param>
+	/// <param name="Team">
+	///     The literal <c>"Red"</c> or <c>"Blue"</c> team to assign, or <see langword="null" /> to keep the
+	///     current team.
+	/// </param>
+	/// <param name="Locked">
+	///     <see langword="true" /> to lock an empty slot, <see langword="false" /> to open it, or
+	///     <see langword="null" /> to leave its status alone.
+	/// </param>
+	public sealed record SlotPatchEntry(int? UserId, string? Team, bool? Locked);
 }

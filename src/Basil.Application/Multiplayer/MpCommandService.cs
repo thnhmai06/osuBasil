@@ -1,20 +1,20 @@
 using System.Collections.Frozen;
 using System.Text;
-using Basil.Application.Irc;
-using Basil.Application.Multiplayer;
-using Basil.Application.Sessions;
-using Basil.Domain.Beatmaps;
+using Basil.Application.Beatmaps;
 using Basil.Application.Bot;
-using Basil.Domain.Channels;
-using Basil.Domain.Multiplayer;
-using Basil.Domain.Scores;
-using Basil.Domain.Users;
+using Basil.Application.Channels;
 using Basil.Application.Chat;
+using Basil.Application.Irc;
 using Basil.Application.Multiplayer.Handlers.Countdown;
 using Basil.Application.Multiplayer.Handlers.Lifecycle;
 using Basil.Application.Multiplayer.Handlers.Slots;
+using Basil.Application.Sessions;
 using Basil.Application.Users;
-using Basil.Application.Beatmaps;
+using Basil.Domain.Beatmaps;
+using Basil.Domain.Multiplayer.Records;
+using Basil.Domain.Multiplayer.Runtime;
+using Basil.Domain.Scores;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Multiplayer;
 
@@ -60,6 +60,7 @@ public sealed class MpCommandService(
 	ISessionRegistry<GameSession> gameRegistry,
 	ISessionRegistry<IrcSession> ircRegistry,
 	IUserRepository userRepository,
+	IUserCache userCache,
 	IChannelRegistry channelRegistry,
 	ChannelMembershipService channelMembership,
 	ILogger<MpCommandService> logger,
@@ -144,7 +145,7 @@ public sealed class MpCommandService(
 
 	private readonly MatchControlService _matchControl =
 		new(matchMembership, matchLifecycle, notifier, matchRepository, beatmapRepository, gameRegistry, ircRegistry,
-			matchControlLogger);
+			userCache, matchControlLogger);
 
 	/// <summary>
 	///     Dispatches a <c>!mp</c> command sent through the chat transport, applying the
@@ -291,7 +292,7 @@ public sealed class MpCommandService(
 			return false;
 		}
 
-		if (!scope.IsReferee(sender.Id))
+		if (!scope.IsReferee(userCache.Resolve(sender)))
 		{
 			effectiveSink.Reply(string.Format(MpReplies.NotARefereeOfMatch, scope.DbId));
 			return false;
@@ -385,7 +386,8 @@ public sealed class MpCommandService(
 		});
 
 		var readOnly = ReadOnlySubcommands.Contains(subcommand) || (subcommand == "private" && args.Count == 0);
-		if (!readOnly && !match.IsReferee(sender.Id))
+		var senderUser = userCache.Resolve(sender);
+		if (!readOnly && !match.IsReferee(senderUser))
 		{
 			logger.LogDebug("Subcommand rejected: {UserId} is not a referee of MatchId={MatchId}", sender.Id,
 				match.DbId);
@@ -393,7 +395,7 @@ public sealed class MpCommandService(
 			return false;
 		}
 
-		if (subcommand is "addref" or "removeref" && !match.IsCreator(sender.Id))
+		if (subcommand is "addref" or "removeref" && !match.IsCreator(senderUser))
 		{
 			logger.LogDebug("Subcommand rejected: {UserId} is not the creator of MatchId={MatchId}", sender.Id,
 				match.DbId);
@@ -482,10 +484,13 @@ public sealed class MpCommandService(
 			return false;
 		}
 
-		match.AddReferee(sender.Id);
+		match.AddReferee(userCache.Resolve(sender));
 		if (isPrivate)
 			await using (var mutation = await match.BeginMutationAsync(cancellationToken))
+			{
 				await _matchControl.SetPrivateAsync(match, true, mutation, cancellationToken);
+			}
+
 		sender.MpScopeMatchId = match.DbId;
 		sink.Reply(string.Format(MpReplies.CreatedMatch, match.DbId, match.Name, isPrivate ? " (private)" : ""));
 		return true;
@@ -529,8 +534,9 @@ public sealed class MpCommandService(
 		if (sender is not GameSession gameSender)
 			return JoinChatOnly(sender, match, args, sink);
 
+		var gameSenderUser = userCache.Resolve(gameSender);
 		if (match.IsPrivate && (gameSender.Privilege & UserPrivileges.Staff) == 0 &&
-		    !match.InvitedIds.Contains(gameSender.Id))
+		    !match.InvitedUsers.Contains(gameSenderUser))
 		{
 			sink.Reply(string.Format(MpReplies.PrivateRoomJoinDenied, matchId));
 			return false;
@@ -542,7 +548,7 @@ public sealed class MpCommandService(
 			return false;
 		}
 
-		if (match.BannedIds.Contains(gameSender.Id))
+		if (match.BannedUsers.Contains(gameSenderUser))
 		{
 			sink.Reply(MpReplies.BannedFromMatch);
 			return false;
@@ -591,26 +597,27 @@ public sealed class MpCommandService(
 	private bool JoinChatOnly(UserSession sender, MatchSession match, IReadOnlyList<string> args,
 		ICommandReplySink sink)
 	{
-		if (match.BannedIds.Contains(sender.Id))
+		var senderUser = userCache.Resolve(sender);
+		if (match.BannedUsers.Contains(senderUser))
 		{
 			sink.Reply(MpReplies.BannedFromMatch);
 			return false;
 		}
 
-		if (match.IsLocked && !match.InvitedIds.Contains(sender.Id))
+		if (match.IsLocked && !match.InvitedUsers.Contains(senderUser))
 		{
 			sink.Reply(MpReplies.MatchIsLocked);
 			return false;
 		}
 
-		if (match.IsPrivate && !match.IsReferee(sender.Id) && !match.InvitedIds.Contains(sender.Id))
+		if (match.IsPrivate && !match.IsReferee(senderUser) && !match.InvitedUsers.Contains(senderUser))
 		{
 			sink.Reply(string.Format(MpReplies.PrivateRoomJoinDenied, match.DbId));
 			return false;
 		}
 
 		var password = args.Count > 1 ? string.Join(' ', args.Skip(1)) : "";
-		if (password != match.Password && !match.IsReferee(sender.Id))
+		if (password != match.Password && !match.IsReferee(senderUser))
 		{
 			sink.Reply(MpReplies.IncorrectPassword);
 			return false;
@@ -664,7 +671,8 @@ public sealed class MpCommandService(
 				scopeValid = current is not null;
 			}
 
-			var refereeMatches = matchRegistry.All.Where(m => m.IsReferee(sender.Id)).ToList();
+			var senderUser = userCache.Resolve(sender);
+			var refereeMatches = matchRegistry.All.Where(m => m.IsReferee(senderUser)).ToList();
 			sink.Reply(refereeMatches.Count == 0
 				? scopeLine
 				: scopeLine + "\n" + MpReplies.YouAreARefereeOf + "\n" +
@@ -685,7 +693,7 @@ public sealed class MpCommandService(
 			return false;
 		}
 
-		if (!match.IsReferee(sender.Id))
+		if (!match.IsReferee(userCache.Resolve(sender)))
 		{
 			sink.Reply(string.Format(MpReplies.NotARefereeOfMatch, dbId));
 			return false;
@@ -753,37 +761,38 @@ public sealed class MpCommandService(
 		if (activeMods.Count > 0)
 			lines.Add(string.Format(MpReplies.SettingsActiveMods, string.Join(", ", activeMods)));
 
-		if (match.CreatorId is { } creatorId)
+		if (match.Creator is { } creator)
 		{
 			var creatorName =
-				((UserSession?)gameRegistry.GetByUserId(creatorId) ?? ircRegistry.GetByUserId(creatorId))?.Name
-				?? (await userRepository.FetchByIdAsync(creatorId, cancellationToken))?.Name; // maybe offline
-			lines.Add(string.Format(MpReplies.SettingsCreator, creatorId, creatorName ?? "?"));
+				((UserSession?)gameRegistry.GetByUserId(creator.Id) ?? ircRegistry.GetByUserId(creator.Id))?.Name
+				?? (await userRepository.FetchByIdAsync(creator.Id, cancellationToken))?.Name; // maybe offline
+			lines.Add(string.Format(MpReplies.SettingsCreator, creator.Id, creatorName ?? "?"));
 		}
 
 		var occupied = match.Slots
 			.Select((slot, i) => (slot, i))
-			.Where(t => !t.slot.Empty)
+			.Where(t => !t.slot.IsEmpty)
 			.ToList();
 		lines.Add(string.Format(MpReplies.SettingsPlayers, occupied.Count));
 
-		var hostSlotId = match.HostId is { } hostId ? match.GetSlotId(hostId) : null;
+		var hostSlotId = match.Host is { } hostUser ? match.GetSlotId(hostUser) : null;
 		var showTeam = match.TeamType is MatchTeamType.TeamVs or MatchTeamType.TagTeamVs;
 
 		foreach (var (slot, i) in occupied)
 		{
+			var slotPlayer = slot.Player!;
 			var tags = new List<string>();
 			if (i == hostSlotId) tags.Add("Host");
 			if (slot.Mods != Mods.NoMod) tags.Add(slot.Mods.ToString());
 			var tagText = tags.Count > 0 ? $" [{string.Join(" / ", tags)}]" : "";
-			var name = ((UserSession?)gameRegistry.GetByUserId(slot.PlayerId!.Value) ??
-			            ircRegistry.GetByUserId(slot.PlayerId!.Value))
+			var name = ((UserSession?)gameRegistry.GetByUserId(slotPlayer.Id) ??
+			            ircRegistry.GetByUserId(slotPlayer.Id))
 			           ?.Name
-			           ?? $"#{slot.PlayerId}";
+			           ?? $"#{slotPlayer.Id}";
 			var teamText = showTeam ? $"{slot.Team,-5} " : string.Empty;
 
 			lines.Add(
-				$"Slot {i + 1,2}  {SlotStatusText(slot.Status),-10} {teamText}{slot.PlayerId,6} {name,-16}{tagText}");
+				$"Slot {i + 1,2}  {SlotStatusText(slot.Status),-10} {teamText}{slotPlayer.Id,6} {name,-16}{tagText}");
 		}
 
 		//* Refs — independent of Players: a referee may or may not also occupy a slot.
@@ -842,17 +851,17 @@ public sealed class MpCommandService(
 		if (line.Length > 0) yield return line;
 	}
 
-	/// <summary>Formats a <see cref="SlotStatus" /> as the friendly text <c>!mp settings</c> displays.</summary>
+	/// <summary>Formats a <see cref="RoomSlotStatus" /> as the friendly text <c>!mp settings</c> displays.</summary>
 	/// <param name="status">The slot status to format.</param>
 	/// <returns>
 	///     The friendly label, or the status's own name when no friendlier label exists.
 	/// </returns>
-	private static string SlotStatusText(SlotStatus status)
+	private static string SlotStatusText(RoomSlotStatus status)
 	{
 		return status switch
 		{
-			SlotStatus.NotReady => "Not Ready",
-			SlotStatus.NoMap => "No Map",
+			RoomSlotStatus.NotReady => "Not Ready",
+			RoomSlotStatus.NoMap => "No Map",
 			_ => status.ToString()
 		};
 	}
@@ -910,7 +919,7 @@ public sealed class MpCommandService(
 			return false;
 		}
 
-		var result = await MoveSlotHandler.MoveSlotAsync(match, target, destSlotId - 1, mutation);
+		var result = await MoveSlotHandler.MoveSlotAsync(match, target, destSlotId - 1, mutation, userCache);
 
 		return result switch
 		{
@@ -950,7 +959,7 @@ public sealed class MpCommandService(
 			return false;
 		}
 
-		// gameTarget.Match != match above already guarantees the target is seated in this match, so
+		// gameTarget.Room != match above already guarantees the target is seated in this match, so
 		// SetHostAsync's own occupancy guard can never reject this call.
 		await _matchControl.SetHostAsync(match, gameTarget, mutation);
 		sink.Reply(string.Format(MpReplies.ChangedMatchHost, gameTarget.Name));
@@ -1009,7 +1018,10 @@ public sealed class MpCommandService(
 		if (args[0] is "0" or "1")
 		{
 			await using (var mutation = await match.BeginMutationAsync())
+			{
 				await _matchControl.SetPrivateAsync(match, args[0] == "1", mutation);
+			}
+
 			sink.Reply(match.IsPrivate ? MpReplies.MatchNowPrivate : MpReplies.MatchNowPublic);
 			return true;
 		}
@@ -1140,12 +1152,12 @@ public sealed class MpCommandService(
 		}
 
 		var referees = match.Referees
-			.Select(id =>
+			.Select(referee =>
 			{
-				var session = (UserSession?)gameRegistry.GetByUserId(id) ?? ircRegistry.GetByUserId(id);
+				var session = (UserSession?)gameRegistry.GetByUserId(referee.Id) ?? ircRegistry.GetByUserId(referee.Id);
 				return session is null
-					? $"#{id}"
-					: $"#{id} {session.Name}";
+					? $"#{referee.Id}"
+					: $"#{referee.Id} {session.Name}";
 			});
 
 		sink.Reply(MpReplies.MatchReferees + "\n" + string.Join('\n', referees));
@@ -1155,19 +1167,20 @@ public sealed class MpCommandService(
 	/// <summary>Implements <c>!mp banlist</c>, listing the players banned from the match.</summary>
 	private bool BanListAsync(MatchSession match, ICommandReplySink sink)
 	{
-		if (match.BannedIds.Count == 0)
+		if (match.BannedUsers.Count == 0)
 		{
 			sink.Reply(MpReplies.NoBannedPlayers);
 			return true;
 		}
 
-		var players = match.BannedIds
-			.Select(id =>
+		var players = match.BannedUsers
+			.Select(bannedUser =>
 			{
-				var session = (UserSession?)gameRegistry.GetByUserId(id) ?? ircRegistry.GetByUserId(id);
+				var session = (UserSession?)gameRegistry.GetByUserId(bannedUser.Id) ??
+				              ircRegistry.GetByUserId(bannedUser.Id);
 				return session is null
-					? $"#{id}"
-					: $"#{id} {session.Name}";
+					? $"#{bannedUser.Id}"
+					: $"#{bannedUser.Id} {session.Name}";
 			});
 
 		sink.Reply(MpReplies.MatchBans + "\n" + string.Join('\n', players));

@@ -1,8 +1,7 @@
-using Basil.Domain.Beatmaps;
-using Basil.Domain.Multiplayer;
-using Basil.Domain.Scores;
-using Basil.Application.Multiplayer;
 using Basil.Application.Beatmaps;
+using Basil.Domain.Beatmaps;
+using Basil.Domain.Multiplayer.Records;
+using Basil.Domain.Scores;
 
 namespace Basil.Application.Multiplayer;
 

@@ -1,4 +1,3 @@
-using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 
 namespace Basil.Application.Multiplayer;

@@ -1,5 +1,4 @@
-using Basil.Domain.Multiplayer;
-using Basil.Application.Multiplayer;
+using Basil.Domain.Multiplayer.Records;
 
 namespace Basil.Application.Multiplayer;
 
@@ -39,8 +38,8 @@ public sealed class MatchRecoveryService(
 			logger.LogInformation("Recovered and closed orphaned match: MatchId={MatchId}", match.Id);
 
 			await persistence.CreateEventAsync(new MatchEvent(
-				match.Id, (int)MatchEventType.Closed,
-				null, null, null, null,
+				match.Id, MatchEventType.Closed,
+				null, null,
 				DateTimeOffset.UtcNow.UtcDateTime, "Server shutdown recovery"), cancellationToken);
 		}
 	}

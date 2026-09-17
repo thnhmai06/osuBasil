@@ -1,12 +1,12 @@
 using System.Globalization;
 using System.Reflection;
+using Basil.Application.Channels;
+using Basil.Application.Chat;
+using Basil.Application.Content;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
 using Basil.Domain.Channels;
-using Basil.Domain.Content;
-using Basil.Application.Chat;
 using Basil.Protocol.Irc;
-using Basil.Application.Content;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Application.Irc;

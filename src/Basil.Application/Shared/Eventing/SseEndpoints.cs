@@ -63,7 +63,7 @@ internal static class SseEndpoints
 	/// <summary>
 	///     Returns a standard SSE error response indicating that no live stream is available.
 	/// </summary>
-	internal static IResult NotLive(string message = "Match is not live")
+	internal static IResult NotLive(string message = "Room is not live")
 	{
 		return SseError(StatusCodes.Status409Conflict, message);
 	}

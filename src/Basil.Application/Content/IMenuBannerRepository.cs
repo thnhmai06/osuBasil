@@ -1,5 +1,4 @@
 using Basil.Domain.Content;
-using Basil.Application.Content;
 
 namespace Basil.Application.Content;
 

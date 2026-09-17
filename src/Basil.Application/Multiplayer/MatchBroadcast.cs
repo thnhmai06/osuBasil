@@ -1,14 +1,11 @@
+using Basil.Application.Beatmaps;
 using Basil.Application.Bot;
+using Basil.Application.Channels;
+using Basil.Application.Chat;
 using Basil.Application.Irc;
-using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Eventing;
-using Basil.Domain.Beatmaps;
-using Basil.Domain.Channels;
-using Basil.Domain.Users;
-using Basil.Application.Chat;
 using Basil.Application.Users;
-using Basil.Application.Beatmaps;
 
 namespace Basil.Application.Multiplayer;
 
@@ -35,7 +32,58 @@ public sealed class MatchBroadcast(
 {
 	/// <inheritdoc />
 	Task IMatchMutationPublisher.PublishStateAsync(MatchSession match, long version, bool lobby,
-		CancellationToken cancellationToken) => EnqueueStateAsync(match, version, lobby, cancellationToken);
+		CancellationToken cancellationToken)
+	{
+		return EnqueueStateAsync(match, version, lobby, cancellationToken);
+	}
+
+	/// <summary>Rebuilds and republishes the host snapshot channel.</summary>
+	/// <remarks>Runs without holding <see cref="MatchSession.Lock" />, gated by <paramref name="version" /> (ADR-004 4b).</remarks>
+	/// <param name="match">The match whose host to publish.</param>
+	/// <param name="version">This call's state version, allocated by the calling <see cref="MatchMutationScope" />.</param>
+	/// <param name="cancellationToken">A token that cancels the host lookup.</param>
+	public async Task PublishHostAsync(MatchSession match, long version, CancellationToken cancellationToken = default)
+	{
+		var host = await MatchLiveSnapshotBuilder.BuildHost(match, gameRegistry, ircRegistry, userRepo,
+			cancellationToken);
+		if (match.HostSnapshot.Publish(host, version) is { } delta)
+			hub.Publish(MatchStreams.Host(match.DbId), version, delta);
+	}
+
+	/// <summary>Rebuilds and republishes the referee list snapshot channel.</summary>
+	/// <remarks>Runs without holding <see cref="MatchSession.Lock" />, gated by <paramref name="version" /> (ADR-004 4b).</remarks>
+	/// <param name="match">The match whose referees to publish.</param>
+	/// <param name="version">This call's state version, allocated by the calling <see cref="MatchMutationScope" />.</param>
+	/// <param name="cancellationToken">A token that cancels the referee lookups.</param>
+	public async Task PublishRefsAsync(MatchSession match, long version, CancellationToken cancellationToken = default)
+	{
+		var refs = await MatchLiveSnapshotBuilder.BuildRefs(
+			match, gameRegistry, ircRegistry, userRepo, cancellationToken);
+		if (match.RefsSnapshot.Publish(refs, version) is { } delta)
+			hub.Publish(MatchStreams.Refs(match.DbId), version, delta);
+	}
+
+	/// <summary>Rebuilds and republishes the banlist snapshot channel.</summary>
+	/// <remarks>Runs without holding <see cref="MatchSession.Lock" />, gated by <paramref name="version" /> (ADR-004 4b).</remarks>
+	/// <param name="match">The match whose banlist to publish.</param>
+	/// <param name="version">This call's state version, allocated by the calling <see cref="MatchMutationScope" />.</param>
+	/// <param name="cancellationToken">A token that cancels the ban lookups.</param>
+	public async Task PublishBansAsync(MatchSession match, long version, CancellationToken cancellationToken = default)
+	{
+		var bans = await MatchLiveSnapshotBuilder.BuildBans(match, gameRegistry, ircRegistry, userRepo,
+			cancellationToken);
+		if (match.BansSnapshot.Publish(bans, version) is { } delta)
+			hub.Publish(MatchStreams.Bans(match.DbId), version, delta);
+	}
+
+	/// <summary>Republishes the countdown timer snapshot channel.</summary>
+	/// <param name="match">The match whose timer to publish.</param>
+	/// <param name="version">This call's state version, allocated by the calling <see cref="MatchMutationScope" />.</param>
+	public void PublishTimer(MatchSession match, long version)
+	{
+		if (match.TimerSnapshot.Publish(MatchLiveSnapshotBuilder.BuildTimerLive(match), version) is { } delta)
+			hub.Publish(MatchStreams.Timer(match.DbId), version, delta);
+	}
 
 	/// <summary>Broadcasts a raw packet to the match channel and, for public rooms, the non-empty lobby.</summary>
 	/// <param name="match">The match whose channel to broadcast into.</param>
@@ -109,54 +157,6 @@ public sealed class MatchBroadcast(
 			hub.Publish(MatchStreams.Slots(match.DbId), version, slotsDelta);
 	}
 
-	/// <summary>Rebuilds and republishes the host snapshot channel.</summary>
-	/// <remarks>Runs without holding <see cref="MatchSession.Lock" />, gated by <paramref name="version" /> (ADR-004 4b).</remarks>
-	/// <param name="match">The match whose host to publish.</param>
-	/// <param name="version">This call's state version, allocated by the calling <see cref="MatchMutationScope" />.</param>
-	/// <param name="cancellationToken">A token that cancels the host lookup.</param>
-	public async Task PublishHostAsync(MatchSession match, long version, CancellationToken cancellationToken = default)
-	{
-		var host = await MatchLiveSnapshotBuilder.BuildHost(match, gameRegistry, ircRegistry, userRepo,
-			cancellationToken);
-		if (match.HostSnapshot.Publish(host, version) is { } delta)
-			hub.Publish(MatchStreams.Host(match.DbId), version, delta);
-	}
-
-	/// <summary>Rebuilds and republishes the referee list snapshot channel.</summary>
-	/// <remarks>Runs without holding <see cref="MatchSession.Lock" />, gated by <paramref name="version" /> (ADR-004 4b).</remarks>
-	/// <param name="match">The match whose referees to publish.</param>
-	/// <param name="version">This call's state version, allocated by the calling <see cref="MatchMutationScope" />.</param>
-	/// <param name="cancellationToken">A token that cancels the referee lookups.</param>
-	public async Task PublishRefsAsync(MatchSession match, long version, CancellationToken cancellationToken = default)
-	{
-		var refs = await MatchLiveSnapshotBuilder.BuildRefs(
-			match, gameRegistry, ircRegistry, userRepo, cancellationToken);
-		if (match.RefsSnapshot.Publish(refs, version) is { } delta)
-			hub.Publish(MatchStreams.Refs(match.DbId), version, delta);
-	}
-
-	/// <summary>Rebuilds and republishes the banlist snapshot channel.</summary>
-	/// <remarks>Runs without holding <see cref="MatchSession.Lock" />, gated by <paramref name="version" /> (ADR-004 4b).</remarks>
-	/// <param name="match">The match whose banlist to publish.</param>
-	/// <param name="version">This call's state version, allocated by the calling <see cref="MatchMutationScope" />.</param>
-	/// <param name="cancellationToken">A token that cancels the ban lookups.</param>
-	public async Task PublishBansAsync(MatchSession match, long version, CancellationToken cancellationToken = default)
-	{
-		var bans = await MatchLiveSnapshotBuilder.BuildBans(match, gameRegistry, ircRegistry, userRepo,
-			cancellationToken);
-		if (match.BansSnapshot.Publish(bans, version) is { } delta)
-			hub.Publish(MatchStreams.Bans(match.DbId), version, delta);
-	}
-
-	/// <summary>Republishes the countdown timer snapshot channel.</summary>
-	/// <param name="match">The match whose timer to publish.</param>
-	/// <param name="version">This call's state version, allocated by the calling <see cref="MatchMutationScope" />.</param>
-	public void PublishTimer(MatchSession match, long version)
-	{
-		if (match.TimerSnapshot.Publish(MatchLiveSnapshotBuilder.BuildTimerLive(match), version) is { } delta)
-			hub.Publish(MatchStreams.Timer(match.DbId), version, delta);
-	}
-
 	/// <summary>
 	///     Announces a message into the match's chat channel and, for any referee not already reached
 	///     through that channel, as a direct message.
@@ -169,12 +169,12 @@ public sealed class MatchBroadcast(
 		EnqueueChat(match, bot.Name, bot.Id, text);
 
 		var channel = channelRegistry.GetByName(match.ChatChannelName);
-		foreach (var refereeId in match.Referees)
+		foreach (var referee in match.Referees)
 		{
-			if (channel is not null && channel.Contains(refereeId)) continue;
-			if (gameRegistry.GetByUserId(refereeId) is { } game)
+			if (channel is not null && channel.Contains(referee.Id)) continue;
+			if (gameRegistry.GetByUserId(referee.Id) is { } game)
 				chat.Deliver(game, new ChatLine(bot.Id, bot.Name, game.Name, text));
-			if (ircRegistry.GetByUserId(refereeId) is { } irc)
+			if (ircRegistry.GetByUserId(referee.Id) is { } irc)
 				chat.Deliver(irc, new ChatLine(bot.Id, bot.Name, irc.Name, text));
 		}
 	}
