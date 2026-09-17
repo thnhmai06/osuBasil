@@ -1,21 +1,20 @@
 using Basil.Application.Shared.Configuration;
 using Basil.Domain.Beatmaps;
+using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Shared.Http;
-using Basil.Infrastructure.Shared.Media;
-using Basil.Infrastructure.Shared.Storage;
 using Basil.Infrastructure.Shared.Media;
 using Basil.Infrastructure.Shared.Storage;
 using Basil.Application.Beatmaps;
 using Microsoft.Extensions.Options;
 
-namespace Basil.Infrastructure.Beatmaps;
+namespace Basil.Host.Bancho.Beatmaps;
 
 /// <summary>
 ///     Registers the `b.{domain}` host's routes: the beatmapset thumbnail mirror-fallback (the
 ///     thumbnails themselves are served by <c>BeatmapThumbnailProvider</c>, ahead of routing)
 ///     and audio previews, trimmed on demand.
 /// </summary>
-internal static class BeatmapAssetRoutes
+public static class BeatmapAssetRoutes
 {
 	/// <summary>
 	///     Registers the `b.{domain}` host's routes.

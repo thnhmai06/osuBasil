@@ -1,14 +1,15 @@
 using Basil.Application.Chat;
+using Basil.Application.Content;
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Spectating;
 using Basil.Host.Bancho.Chat.Packets;
+using Basil.Host.Bancho.Content;
 using Basil.Host.Bancho.Multiplayer.Packets;
 using Basil.Host.Bancho.Shared.Http;
 using Basil.Host.Bancho.Shared.Sessions;
 using Basil.Host.Bancho.Spectating.Packets;
 using Basil.Host.Bancho.Users.Packets;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Bancho;
 
@@ -28,6 +29,7 @@ public static class BanchoHostServiceCollectionExtensions
 		services.AddSingleton<IChannelNotifier, ChannelNotifier>();
 		services.AddSingleton<IMatchNotifier, MatchNotifier>();
 		services.AddSingleton<ISpectatorNotifier, SpectatorNotifier>();
+		services.AddSingleton<IAnnouncementNotifier, AnnouncementNotifier>();
 
 		services.AddSingleton<IPacketHandler, ChannelJoinHandler>();
 		services.AddSingleton<IPacketHandler, ChannelPartHandler>();

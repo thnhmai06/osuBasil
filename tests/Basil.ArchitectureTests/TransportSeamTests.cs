@@ -37,17 +37,13 @@ public class TransportSeamTests
 	[Fact]
 	public void Business_And_Api_Types_Should_Not_Reference_Protocol()
 	{
-		// AnnounceRoutes builds a ServerPacketWriter announcement packet directly, in the same method
-		// that decides to send one -- a real coupling that predates the migration. It is the last
-		// entry: MatchPacketDataMapper, its former co-tenant here, moved to Basil.Host.Bancho in
-		// Batch 11 along with the packet handlers it served. This pins the set so it can only shrink:
-		// a new business type reaching for the protocol fails the build, and removing this last entry
-		// (D8's IAnnouncementNotifier contract, landing later in Batch 11) fails too, as a reminder to
-		// delete its row here.
-		string[] knownOffenders =
-		[
-			"Basil.Infrastructure.Content.AnnounceRoutes"
-		];
+		// Empty as of Batch 11: MatchPacketDataMapper moved to Basil.Host.Bancho with the packet
+		// handlers it served, and AnnounceRoutes -- the list's last entry -- now sends its
+		// notification through the new IAnnouncementNotifier contract (Basil.Application.Content)
+		// instead of building a ServerPacketWriter packet itself (D8). This pins the set so it can
+		// only grow back deliberately: a business type reaching for the protocol directly fails the
+		// build.
+		string[] knownOffenders = [];
 
 		var result = BusinessAndApiTypes()
 			.NotHaveDependencyOn("Basil.Protocol")

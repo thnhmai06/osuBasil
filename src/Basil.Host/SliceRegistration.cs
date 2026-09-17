@@ -1,6 +1,7 @@
 using Basil.Application.Irc;
 using Basil.Application.Shared.Configuration;
 using Basil.Host.Bancho;
+using Basil.Host.Bancho.Beatmaps;
 using Basil.Host.Bancho.Shared.Http;
 using Basil.Host.Irc;
 using Basil.Infrastructure.Auth;

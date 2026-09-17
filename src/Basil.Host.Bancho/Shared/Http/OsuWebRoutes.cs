@@ -10,6 +10,7 @@ using Basil.Domain.Users;
 using Basil.Infrastructure.Auth;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Scores;
+using Basil.Infrastructure.Shared.Http;
 using Basil.Infrastructure.Shared.Sessions;
 using Basil.Application.Scores;
 using Basil.Application.Users;
@@ -19,7 +20,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using BeatmapIngestionService = Basil.Infrastructure.Beatmaps.BeatmapIngestionService;
 
-namespace Basil.Infrastructure.Shared.Http;
+namespace Basil.Host.Bancho.Shared.Http;
 
 /// <summary>A dedicated logger category marker for the static <see cref="OsuWebRoutes" /> class.</summary>
 // ReSharper disable once ClassNeverInstantiated.Global
@@ -30,7 +31,7 @@ internal sealed class OsuWebRoutesLog;
 ///     search and set lookup, beatmapset download, .osu file fetch, score submission, replay download,
 ///     anticheat flag receiver, seasonal backgrounds, client stubs, and in-game registration.
 /// </summary>
-internal static class OsuWebRoutes
+public static class OsuWebRoutes
 {
 	private static readonly string[] MissingUsernamePasswordMsg = ["Username and password are required."];
 
@@ -189,7 +190,8 @@ internal static class OsuWebRoutes
 					{
 						var maps = context.RequestServices.GetRequiredService<IBeatmapRepository>();
 						var storage = context.RequestServices.GetRequiredService<IOptions<StorageOptions>>().Value;
-						var osz = await BeatmapsetAssetBuilder.BuildBeatmapsetArchiveAsync(maps, storage, setId, noVideo,
+						var osz = await BeatmapsetAssetBuilder.BuildBeatmapsetArchiveAsync(maps, storage, setId,
+							noVideo,
 							cancellationToken);
 						if (osz is not null)
 							return Results.File(osz.Value.Bytes, ContentTypes.Resolve(osz.Value.FileName),

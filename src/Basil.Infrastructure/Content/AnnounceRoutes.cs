@@ -1,10 +1,10 @@
+using Basil.Application.Content;
 using Basil.Application.Sessions;
 using Basil.Infrastructure.Auth;
 using Basil.Application.Bot;
 using Basil.Infrastructure.Shared.Http;
 using Basil.Infrastructure.Shared.Http.OpenApi;
 using Basil.Infrastructure.Shared.Sessions;
-using Basil.Protocol.Packets;
 
 // ReSharper disable ClassNeverInstantiated.Global
 // ReSharper disable MemberCanBePrivate.Global
@@ -51,7 +51,7 @@ internal static class AnnounceRoutes
 	}
 
 	private static IResult HandleAnnounce(AnnounceBody body, ISessionRegistry<GameSession> sessionRegistry,
-		ILogger<AnnounceRoutesLog> logger)
+		IAnnouncementNotifier notifier, ILogger<AnnounceRoutesLog> logger)
 	{
 		if (string.IsNullOrWhiteSpace(body.Text))
 			return Results.BadRequest(new ErrorResponse("Text must not be empty."));
@@ -62,11 +62,10 @@ internal static class AnnounceRoutes
 				.Select(sessionRegistry.GetByUserId)
 				.Where(s => s is not null);
 
-		var packet = ServerPacketWriter.Notification(body.Text);
 		var deliveredCount = 0;
 		foreach (var session in targets)
 		{
-			session!.Enqueue(packet);
+			notifier.Announce(session!, body.Text);
 			deliveredCount++;
 		}
 

@@ -5,7 +5,7 @@ namespace Basil.Infrastructure.Shared.Http;
 /// <summary>
 ///     Resolves MIME types from file extensions, including osu!-specific file formats.
 /// </summary>
-internal static class ContentTypes
+public static class ContentTypes
 {
 	private static readonly FileExtensionContentTypeProvider Provider = BuildProvider();
 

@@ -224,13 +224,120 @@ not, it says so.
 > the new `Basil.Host.Irc.Tests` (5, new). Per-project: ArchitectureTests 11, Domain 207, Protocol 158,
 > Application 93, Infrastructure 846, Host 28, Host.Irc 5, Integration 363 (not run this batch — not a
 > milestone).
-> Next: **Batch 11** — `Basil.Host.Bancho`: 46 packet handlers + 4 notifier impls +
-> `BanchoIrcBridgeConnection` + `LogoutBroadcastHandler` + `MatchPacketDataMapper` +
-> `MatchCreationDataMapper` + `IPacketHandler`/`PacketDispatcher` + `BanchoProtocolRoutes` +
-> `OsuWebRoutes` + `BeatmapAssetRoutes` + the bancho/osu-web/b. groups from `BanchoHostGroups` (D7) +
-> `BanchoAnnouncementNotifier` (D8, with the Application contract and the `AnnounceRoutes` edit);
-> `Basil.Host.Bancho.Tests` (46 packet tests + dispatcher). Full suite. Two commits: handlers, then
-> routes. The largest batch by file count (~62 + 47 tests), not by difficulty except for D7/D8.
+> **Two naming-cleanup commits landed between Batch 10 and Batch 11**, per the user's standing
+> instruction to fix naming/terminology on sight while the migration continues, never pausing the
+> batch sequence for it: **`2a8b3c40`** verified and committed renames already staged on disk —
+> `BeatmapsetSearchFilters`/`BeatmapsetSearchQueryParser` → `BeatmapFilters`/`BeatmapFilters.Parser`,
+> `BeatmapObjectCounts`/`Osu-`/`Taiko-`/`Catch-`/`ManiaObjectCounts` → `BeatmapObjects`/`OsuObjects`/
+> etc., `UserSearchFilters`/`UserSearchQueryParser` → `UserFilters`/`UserFilters.Parser`,
+> `Submission.FromSubmission` → `Submission.From`, plus a real pre-existing bug found while
+> verifying it: `SqliteBeatmapRepository`'s SQL used the renamed column `Objects` but the schema
+> migration and an anonymous-object property still said `ObjectCounts` — fixed with a new migration
+> `007_beatmaps_objectcounts_rename.sql` (never edit a shipped migration) and matching property
+> renames. **`9be67c32`** split `Basil.Domain.Login` (a stray namespace with no slice) three ways:
+> the audit record `Login` → `LoginEvent`, merged into `Auth`; `Country` → `Users`, the slice it
+> actually describes; `ClientDetails`/`Geolocation`/`OsuVersion` → a new `Client` namespace (genuinely
+> shared across Auth/Scores/beyond, not owned by either). Also renamed `Basil.Protocol.Bancho`'s
+> `MatchState` → `MatchStatePacket` to match its sibling `MatchPacket`/`MatchSlotPacket`'s
+> "-Packet" wire-type convention. `DomainAdjacency`'s edge list and rationale rewritten to match;
+> `DomainBoundaryTests` needed no changes (fully reflection-based). Both commits re-verified with the
+> full fast suite plus a full `Basil.IntegrationTests` run (363/363) as an extra safety margin, since
+> renames this wide-reaching risk missing a reference the compiler can't catch (a Dapper column name,
+> a migration).
+>
+> **Batch 11 done, two commits (`76f38e5a` handlers, then routes) — largest batch by file count.**
+> Moved into the new `Basil.Host.Bancho` (`Microsoft.NET.Sdk` + `FrameworkReference` to
+> `Microsoft.AspNetCore.App`, project-level `<Using>` items for the ASP.NET Core/DI/Logging/Hosting
+> namespaces Sdk.Web would otherwise have given it implicitly): all 46 packet handlers, the 4
+> packet-transport notifiers (`ChannelNotifier`/`ChatNotifier` unchanged;
+> `BanchoMatchNotifier`/`BanchoSpectatorNotifier` renamed to `MatchNotifier`/`SpectatorNotifier` —
+> the `Bancho` prefix was stutter once they live in a project already named `Basil.Host.Bancho`),
+> `IPacketHandler`/`PacketDispatcher`, `MatchPacketDataMapper`, `LogoutBroadcastHandler`,
+> `BanchoProtocolRoutes`, `OsuWebRoutes`, `BeatmapAssetRoutes`, and the new D8 pair
+> `IAnnouncementNotifier` (`Basil.Application.Content`) / `AnnouncementNotifier`
+> (`Basil.Host.Bancho.Content`).
+>
+> **Three deviations from the plan's file list, each forced by a real constraint found while
+> executing, not a preference:**
+> 1. **`BanchoIrcBridgeConnection` stays in `Basil.Application`**, not `Basil.Host.Bancho` as the
+>    plan named it. `GameSession`'s constructor self-wires it as the default `IIrcConnection`
+>    (`IrcConnection = new BanchoIrcBridgeConnection(this)`); moving the concrete type to a host
+>    project would make `Basil.Application` depend on a host, which is exactly the direction this
+>    whole migration exists to prevent. It stays pinned on
+>    `TransportSeamTests.Application_Types_Should_Not_Reference_Protocol` for the same reason it
+>    always was — its own doc comment now says so explicitly.
+> 2. **`BanchoProtocolRoutes` moved in the *handlers* commit, not the routes commit**, despite the
+>    plan's "two commits: handlers, then routes" implying otherwise. It's `PacketDispatcher`'s only
+>    caller; splitting it into the second commit would have left the tree unbuildable between the two.
+> 3. **`BanchoHostGroups.cs` split three ways**, not moved whole: `Create`/`HostNamesFor`/the
+>    host-group record went to `Basil.Host` as `HostGroups` (renamed — the old name was actively
+>    misleading once you notice it builds all six host groups, not just bancho's three; it's
+>    composition-root code, `SliceRegistration.MapAll`'s exact job, so it was never going to move to
+>    a bancho-specific host regardless). `BuildBeatmapsetArchiveAsync`/`BuildAudioPreviewAsync` and
+>    their helpers extracted into a new `Basil.Infrastructure.Beatmaps.BeatmapsetAssetBuilder`
+>    instead: both `Basil.Host.Bancho`'s `BeatmapAssetRoutes` (this batch) and the still-Infrastructure
+>    `BeatmapsetAssetRoutes` (Batch 12's `api.`-host scope) call them, and neither host may depend on
+>    the other — this is pure filesystem/ffmpeg I/O with no host-shaped concern in it, so it needed an
+>    Infrastructure-owned home rather than living inside either host.
+>
+> **DI split, one level up from the Application/Infrastructure pattern**: unlike `AddXApplication()`
+> (called *from* the outer layer's `AddX()`), `Basil.Infrastructure` cannot call into
+> `Basil.Host.Bancho` — both `AddX()` and the new `Basil.Host.Bancho.AddBanchoHost()` are called
+> side by side from `Basil.Host`'s composition root instead. `AddBanchoHost()` is one method, not
+> one per slice (`AddIrcHost()`'s precedent, one batch old, is the same shape) — every slice's
+> `AddX()` in Infrastructure dropped its packet-handler/notifier registrations down to this one
+> place, since a per-slice split here would only have added five files for no isolation benefit.
+>
+> **Cross-project test references, all pinned on the same underlying fact**: most of
+> `MultiplayerTestSupport.cs`'s ~30 consumers (real-notifier constructor wiring, not mocks — the
+> whole point of the test) stay in `Basil.Infrastructure.Tests`, so the fixture itself stays there
+> too and went `public` (was `internal`) rather than splitting or duplicating it. That forced
+> `Basil.Infrastructure.Tests` → `Basil.Host.Bancho` (for the notifier concrete types) and
+> `Basil.Host.Bancho.Tests` → `Basil.Infrastructure.Tests` (for the fixture) — verified empirically
+> that xunit only discovers a project's own `[Fact]`s even across a `ProjectReference` to another
+> test project, so no double-counting risk. `Basil.Host.Irc.Tests` needed the same `Basil.Host.Bancho`
+> reference for the identical reason (`TcpIrcConnectionTests` wires a real cross-transport chat path).
+> None of this is covered by `HostBoundaryTests` (production assemblies only) or violates any rule —
+> rewriting a dozen tests' real-notifier wiring into mocks to dodge the edges would have been a
+> behavioral change smuggled into a file-move batch, which the naming/quality directive explicitly
+> asks to avoid.
+>
+> **Two new `InternalsVisibleTo` grants on `Basil.Application`** (`Basil.Host.Bancho`,
+> `Basil.Host.Bancho.Tests`), mirroring the existing `Basil.Infrastructure` grant:
+> `MatchScoreUpdateHandler` needs `MatchStreams.Score` and `MatchSession.AllocateScoreVersion`, both
+> `internal` cross-cutting helpers already shared with Infrastructure the same way. Separately,
+> `Basil.Infrastructure.Shared.Http.ContentTypes` went from `internal` to `public` — used by
+> `BeatmapAssetRoutes`/`OsuWebRoutes` (now Host.Bancho) and still by `BeatmapsetAssetRoutes`/
+> `AvatarRoutes`/`UserRoutes` (Infrastructure, Batch 12 scope); a small MIME-lookup helper with no
+> reason to stay artificially internal once genuinely used cross-project.
+>
+> Architecture tests: `TransportSeamTests.Business_And_Api_Types_Should_Not_Reference_Protocol`'s
+> pinned list is now **empty** — `MatchPacketDataMapper` moved out with the handlers it served, and
+> `AnnounceRoutes` (D8) now sends through `IAnnouncementNotifier` instead of building a
+> `ServerPacketWriter` packet itself. Its `BusinessAndApiTypes()` helper also dropped a
+> `.DoNotResideInNamespaceContaining(".Packets")` filter that had gone dead: no `Basil.Infrastructure`
+> namespace contains `.Packets` anymore, all of them moved this batch.
+> `SliceBoundaryTests.Shared_Should_Not_Reference_Features`'s pinned list dropped `BanchoHostGroups`
+> (split away, per above — neither half touches a Features slice).
+>
+> Full `Basil.IntegrationTests`: **362/363** — the one failure was
+> `DiagnosticEndpointTests.GetGcLive_FirstEventIsARealGcReading` (`IOException: client aborted the
+> request`, first-event-timing/connection flake, not a code defect — see §8's already-recorded
+> investigation), under heavier memory pressure than usual on the run machine (two prior attempts
+> this batch were killed outright before completing, by an out-of-memory condition unrelated to this
+> change; a `dotnet build-server shutdown` and a third attempt got a clean run at 10m33s, longer than
+> this suite's usual ~8m30s). Matches the test's own stated tolerance for a full run exactly.
+> `get_endpoint_map`: **151**, matching plan §7's target exactly, routes correctly attributed to
+> their new `Basil.Host.Bancho` files. Build 0 errors.
+> Per-project: ArchitectureTests 11, Domain 207, Protocol 158, Application 93, Infrastructure 689
+> (was 846; 157 moved out), Host.Bancho 157 (new), Host 28, Host.Irc 5, Integration 363. **Total
+> 1711, unchanged** — pure code movement plus the D8 contract swap, no test added or removed.
+>
+> Next: **Batch 12** — `Basil.Host.Api`: every remaining route/endpoint/view, `Shared/Http/**`
+> remainder (`ApiHostRoutes`, `AssetsHostRoutes`, `AbbreviationRedirectRoutes`, `ContentTypes` stays
+> Infrastructure-owned per above), `SseEndpoints`, `Shared/Media/Assets/*`,
+> `AdminKeyAuthenticationHandler`; new `HostBoundaryTests`; `Basil.Infrastructure.csproj` drops
+> `Sdk.Web`; endpoint map must still read 151.
 
 ---
 
