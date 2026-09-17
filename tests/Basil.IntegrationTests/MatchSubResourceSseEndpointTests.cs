@@ -7,13 +7,10 @@ using Basil.Application.Shared.Configuration;
 using Basil.Application.Shared.Eventing;
 using Basil.Application.Shared.Json;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Client;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Host;
-using Basil.Infrastructure.Multiplayer;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Application.Users;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -49,7 +46,7 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton(TestDoubles.FixedAdminKeySettingsRepository());
 				services.AddSingleton<IMatchRepository>(new NoopMatchRepository());
 				services.AddSingleton<IUserRepository>(new NoopUserRepository());
@@ -208,7 +205,7 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
 		// see ReceiveAfterTriggerAsync's doc comment for why an unwarmed channel would deadlock.
 		var warmRequest = MakeRequest(HttpMethod.Put, $"/matches/{matchId}/hosts");
 		warmRequest.Content = JsonContent.Create(new { userId = warmHost.Id });
-		(await client.SendAsync(warmRequest)).EnsureSuccessStatusCode();
+		(await client.SendAsync(warmRequest, TestContext.Current.CancellationToken)).EnsureSuccessStatusCode();
 
 		var (eventType, data) = await ReceiveAfterTriggerAsync($"/matches/{matchId}/hosts/live", async () =>
 		{
@@ -231,7 +228,7 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
 
 		var warmRequest = MakeRequest(HttpMethod.Patch, $"/matches/{matchId}/refs");
 		warmRequest.Content = JsonContent.Create(new { userIds = new[] { warmRef.Id } });
-		(await client.SendAsync(warmRequest)).EnsureSuccessStatusCode();
+		(await client.SendAsync(warmRequest, TestContext.Current.CancellationToken)).EnsureSuccessStatusCode();
 
 		var (eventType, data) = await ReceiveAfterTriggerAsync($"/matches/{matchId}/refs/live", async () =>
 		{
@@ -250,12 +247,12 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
 		var client = _factory.CreateClient();
 		var matchId = await CreateMatchAsync(client);
 		var userRepository = (NoopUserRepository)_factory.Services.GetRequiredService<IUserRepository>();
-		userRepository.Add(new User(111, "warm", Country.Xx, UserPrivileges.Unrestricted, default));
-		userRepository.Add(new User(777, "target", Country.Xx, UserPrivileges.Unrestricted, default));
+		userRepository.Add(new User { Id = 111, Name = "warm" });
+		userRepository.Add(new User { Id = 777, Name = "target" });
 
 		var warmRequest = MakeRequest(HttpMethod.Patch, $"/matches/{matchId}/ban");
 		warmRequest.Content = JsonContent.Create(new { userIds = InputValue });
-		(await client.SendAsync(warmRequest)).EnsureSuccessStatusCode();
+		(await client.SendAsync(warmRequest, TestContext.Current.CancellationToken)).EnsureSuccessStatusCode();
 
 		var (eventType, data) = await ReceiveAfterTriggerAsync($"/matches/{matchId}/ban/live", async () =>
 		{
@@ -275,8 +272,9 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
 		var matchId = await CreateMatchAsync(client);
 		var player = await SeatNewPlayer(3003, "mover", matchId);
 		var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
+		var userCache = _factory.Services.GetRequiredService<IUserCache>();
 		var match = matchRegistry.GetByDbId(matchId)!;
-		var currentSlot = match.GetSlotId(player.Id)!.Value;
+		var currentSlot = match.GetSlotId(userCache.Resolve(player))!.Value;
 		var otherSlot = currentSlot == 0 ? 1 : 0;
 
 		// Warm SlotsSnapshot.Latest with a no-op re-team of the userSession's own current slot.
@@ -285,7 +283,7 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
 		{
 			slots = new[] { new { index = currentSlot + 1, userId = player.Id } }
 		});
-		(await client.SendAsync(warmRequest)).EnsureSuccessStatusCode();
+		(await client.SendAsync(warmRequest, TestContext.Current.CancellationToken)).EnsureSuccessStatusCode();
 
 		var (eventType, data) = await ReceiveAfterTriggerAsync($"/matches/{matchId}/slots/live", async () =>
 		{
@@ -311,7 +309,7 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
 		// before the POST response returns).
 		var warmRequest = MakeRequest(HttpMethod.Post, $"/matches/{matchId}/timer");
 		warmRequest.Content = JsonContent.Create(new { seconds = 120 });
-		(await client.SendAsync(warmRequest)).EnsureSuccessStatusCode();
+		(await client.SendAsync(warmRequest, TestContext.Current.CancellationToken)).EnsureSuccessStatusCode();
 
 		var (eventType, data) = await ReceiveAfterTriggerAsync($"/matches/{matchId}/timer/live",
 			async () => (await client.SendAsync(MakeRequest(HttpMethod.Delete, $"/matches/{matchId}/timer")))
@@ -333,7 +331,7 @@ public class MatchSubResourceSseEndpointTests : IClassFixture<WebApplicationFact
 
 		var startRequest = MakeRequest(HttpMethod.Post, $"/matches/{matchId}/timer");
 		startRequest.Content = JsonContent.Create(new { seconds = 120 });
-		(await client.SendAsync(startRequest)).EnsureSuccessStatusCode();
+		(await client.SendAsync(startRequest, TestContext.Current.CancellationToken)).EnsureSuccessStatusCode();
 
 		var (eventType, data) = await ConnectAndReadOneEventAsync($"/matches/{matchId}/timer/live");
 

@@ -1,8 +1,5 @@
 using Basil.Application.Sessions;
-using Basil.Domain.Auth;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Auth;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Application.Users;
 using Basil.Application.Auth;
 using Microsoft.Extensions.Logging.Abstractions;

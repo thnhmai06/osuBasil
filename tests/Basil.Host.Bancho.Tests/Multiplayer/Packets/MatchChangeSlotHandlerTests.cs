@@ -1,4 +1,6 @@
+using Basil.Application.Users;
 using Basil.Domain.Multiplayer;
+using Basil.Domain.Users;
 using Basil.Host.Bancho.Multiplayer.Packets;
 using Basil.Protocol.Packets;
 using static Basil.Infrastructure.Tests.Multiplayer.Packets.MultiplayerTestSupport;
@@ -21,13 +23,13 @@ public class MatchChangeSlotHandlerTests
 		var host = MakePlayer(1, "host");
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
-		match.Slots[2].Status = SlotStatus.NotReady;
-		match.Slots[2].PlayerId = 99;
-		var handler = new MatchChangeSlotHandler();
+		match.Slots[2].Status = RoomSlotStatus.NotReady;
+		match.Slots[2].Player = new User { Id = 99, Name = "filler" };
+		var handler = new MatchChangeSlotHandler(fixture.UserCache);
 
 		await handler.HandleAsync(host, ReaderFor(2));
 
-		Assert.Equal(0, match.GetSlotId(host.Id));
+		Assert.Equal(0, match.GetSlotId(fixture.UserCache.Resolve(host)));
 	}
 
 	[Fact]
@@ -37,11 +39,11 @@ public class MatchChangeSlotHandlerTests
 		var host = MakePlayer(1, "host");
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
-		var handler = new MatchChangeSlotHandler();
+		var handler = new MatchChangeSlotHandler(fixture.UserCache);
 
 		await handler.HandleAsync(host, ReaderFor(5));
 
-		Assert.Equal(5, match.GetSlotId(host.Id));
-		Assert.True(match.Slots[0].Empty);
+		Assert.Equal(5, match.GetSlotId(fixture.UserCache.Resolve(host)));
+		Assert.True(match.Slots[0].IsEmpty);
 	}
 }

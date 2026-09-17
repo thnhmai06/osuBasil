@@ -141,11 +141,11 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 		Directory.CreateDirectory(Path.Combine(_dataDir, "Beatmapsets"));
 		var oszPath = Path.Combine(_dataDir, "Beatmapsets", $"{setId} Artist - Title.osz");
 		await using var stream = File.Create(oszPath);
-		using var archive = new ZipArchive(stream, ZipArchiveMode.Create);
+		await using var archive = new ZipArchive(stream, ZipArchiveMode.Create);
 		foreach (var (name, content) in entries)
 		{
 			var entry = archive.CreateEntry(name);
-			await using var entryStream = entry.Open();
+			await using var entryStream = await entry.OpenAsync();
 			await entryStream.WriteAsync(content);
 		}
 
@@ -157,7 +157,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 	[Fact]
 	public async Task GetBeatmapset_UnknownId_ReturnsNotFound()
 	{
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/999"));
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/999"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -169,8 +169,8 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 		_beatmapset = beatmapset;
 		_setBeatmaps = [MakeBeatmap(1, beatmapset, "diff1.osu"), MakeBeatmap(2, beatmapset, "diff2.osu")];
 
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100"));
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100"), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.Contains("\"artist\":\"Artist\"", body);
@@ -184,7 +184,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 		_beatmapset = beatmapset;
 		_setBeatmaps = [MakeBeatmap(1, beatmapset)];
 
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/101"));
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/101"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -194,7 +194,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 	[Fact]
 	public async Task BeatmapInfo_UnknownId_ReturnsNotFound()
 	{
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/999"));
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/999"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -205,8 +205,8 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 		var beatmapset = MakeBeatmapset(100);
 		_oneBeatmap = MakeBeatmap(1, beatmapset);
 
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/1"));
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/1"), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.Contains("\"version\":\"Normal\"", body);
@@ -221,7 +221,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 	public async Task DownloadBeatmap_Api_RedirectsToAssetsHost()
 	{
 		var response = await _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false })
-			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/1/download"));
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/1/download"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
 		Assert.Equal("https://assets.test.local/beatmapsets/100/1/download", response.Headers.Location?.ToString());
@@ -231,7 +231,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 	public async Task DownloadBeatmap_UnknownId_ReturnsNotFound()
 	{
 		var response = await _factory.CreateClient()
-			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/999/download", "assets.test.local"));
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/999/download", "assets.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -243,7 +243,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 		_oneBeatmap = MakeBeatmap(1, beatmapset);
 
 		var response = await _factory.CreateClient()
-			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/1/download", "assets.test.local"));
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/1/download", "assets.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -254,10 +254,10 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 		var beatmapset = MakeBeatmapset(100);
 		_oneBeatmap = MakeBeatmap(1, beatmapset);
 		var folder = BeatmapsetFolder(100);
-		await File.WriteAllTextAsync(Path.Combine(folder, "diff.osu"), "osu file format v14");
+		await File.WriteAllTextAsync(Path.Combine(folder, "diff.osu"), "osu file format v14", TestContext.Current.CancellationToken);
 
 		var response = await _factory.CreateClient()
-			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/1/download", "assets.test.local"));
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/1/download", "assets.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.Equal("application/x-osu-beatmap", response.Content.Headers.ContentType?.MediaType);
@@ -267,7 +267,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 	public async Task DownloadVideo_UnknownBeatmap_ReturnsNotFound()
 	{
 		var response = await _factory.CreateClient()
-			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/999/video", "assets.test.local"));
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/100/999/video", "assets.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -278,10 +278,10 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 		var beatmapset = MakeBeatmapset(400);
 		_oneBeatmap = MakeBeatmap(1, beatmapset);
 		var folder = BeatmapsetFolder(400);
-		await File.WriteAllTextAsync(Path.Combine(folder, "diff.osu"), "osu file format v14\n[Events]\n");
+		await File.WriteAllTextAsync(Path.Combine(folder, "diff.osu"), "osu file format v14\n[Events]\n", TestContext.Current.CancellationToken);
 
 		var response = await _factory.CreateClient()
-			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/400/1/video", "assets.test.local"));
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/400/1/video", "assets.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -292,10 +292,10 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 		var beatmapset = MakeBeatmapset(401);
 		_oneBeatmap = MakeBeatmap(1, beatmapset);
 		var folder = BeatmapsetFolder(401);
-		await File.WriteAllTextAsync(Path.Combine(folder, "diff.osu"), OsuFileWithVideo);
+		await File.WriteAllTextAsync(Path.Combine(folder, "diff.osu"), OsuFileWithVideo, TestContext.Current.CancellationToken);
 
 		var response = await _factory.CreateClient()
-			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/401/1/video", "assets.test.local"));
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/401/1/video", "assets.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -306,11 +306,11 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 		var beatmapset = MakeBeatmapset(402);
 		_oneBeatmap = MakeBeatmap(1, beatmapset);
 		var folder = BeatmapsetFolder(402);
-		await File.WriteAllTextAsync(Path.Combine(folder, "diff.osu"), OsuFileWithVideo);
-		await File.WriteAllBytesAsync(Path.Combine(folder, "video.mp4"), [1]);
+		await File.WriteAllTextAsync(Path.Combine(folder, "diff.osu"), OsuFileWithVideo, TestContext.Current.CancellationToken);
+		await File.WriteAllBytesAsync(Path.Combine(folder, "video.mp4"), [1], TestContext.Current.CancellationToken);
 
 		var response = await _factory.CreateClient()
-			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/402/1/video", "assets.test.local"));
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/402/1/video", "assets.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.Equal("video/mp4", response.Content.Headers.ContentType?.MediaType);
@@ -325,7 +325,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 		_setBeatmaps = [MakeBeatmap(1, beatmapset)];
 
 		var response = await _factory.CreateClient()
-			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/200/download", "assets.test.local"));
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/200/download", "assets.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -336,10 +336,10 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 		var beatmapset = MakeBeatmapset(300);
 		_setBeatmaps = [MakeBeatmap(1, beatmapset)];
 		var folder = BeatmapsetFolder(300);
-		await File.WriteAllTextAsync(Path.Combine(folder, "diff.osu"), "osu file format v14");
+		await File.WriteAllTextAsync(Path.Combine(folder, "diff.osu"), "osu file format v14", TestContext.Current.CancellationToken);
 
 		var response = await _factory.CreateClient()
-			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/300/download", "assets.test.local"));
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/300/download", "assets.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.Equal("application/x-osu-beatmap-archive", response.Content.Headers.ContentType?.MediaType);
@@ -354,14 +354,14 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 		var beatmapset = MakeBeatmapset(310);
 		_setBeatmaps = [MakeBeatmap(1, beatmapset)];
 		var folder = BeatmapsetFolder(310);
-		await File.WriteAllTextAsync(Path.Combine(folder, "diff.osu"), "osu file format v14");
-		await File.WriteAllBytesAsync(Path.Combine(folder, "bg.mp4"), [1, 2, 3]);
+		await File.WriteAllTextAsync(Path.Combine(folder, "diff.osu"), "osu file format v14", TestContext.Current.CancellationToken);
+		await File.WriteAllBytesAsync(Path.Combine(folder, "bg.mp4"), [1, 2, 3], TestContext.Current.CancellationToken);
 
 		var response = await _factory.CreateClient()
-			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/310/download?noVideo=1", "assets.test.local"));
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/310/download?noVideo=1", "assets.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-		using var archive = new ZipArchive(await response.Content.ReadAsStreamAsync());
+		await using var archive = new ZipArchive(await response.Content.ReadAsStreamAsync(TestContext.Current.CancellationToken));
 		Assert.Contains(archive.Entries, e => e.Name == "diff.osu");
 		Assert.DoesNotContain(archive.Entries, e => e.Name == "bg.mp4");
 	}
@@ -372,14 +372,14 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 		var beatmapset = MakeBeatmapset(320);
 		_setBeatmaps = [MakeBeatmap(1, beatmapset)];
 		var folder = BeatmapsetFolder(320);
-		await File.WriteAllTextAsync(Path.Combine(folder, "diff.osu"), "osu file format v14");
-		await File.WriteAllBytesAsync(Path.Combine(folder, "bg.mp4"), [1, 2, 3]);
+		await File.WriteAllTextAsync(Path.Combine(folder, "diff.osu"), "osu file format v14", TestContext.Current.CancellationToken);
+		await File.WriteAllBytesAsync(Path.Combine(folder, "bg.mp4"), [1, 2, 3], TestContext.Current.CancellationToken);
 
 		var response = await _factory.CreateClient()
-			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/320/download", "assets.test.local"));
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/320/download", "assets.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-		using var archive = new ZipArchive(await response.Content.ReadAsStreamAsync());
+		await using var archive = new ZipArchive(await response.Content.ReadAsStreamAsync(TestContext.Current.CancellationToken));
 		Assert.Contains(archive.Entries, e => e.Name == "bg.mp4");
 	}
 
@@ -392,14 +392,14 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 	{
 		var beatmapset = MakeBeatmapset(330);
 		_setBeatmaps = [MakeBeatmap(1, beatmapset)];
-		var oszPath = await BeatmapsetOsz(330, ("diff.osu", "osu file format v14"u8.ToArray()),
+		var oszPath = await BeatmapsetOsz(330, ("diff.osu", [.. "osu file format v14"u8]),
 			("bg.mp4", [1, 2, 3]));
 
 		var response = await _factory.CreateClient()
-			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/330/download", "assets.test.local"));
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/330/download", "assets.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-		Assert.Equal(await File.ReadAllBytesAsync(oszPath), await response.Content.ReadAsByteArrayAsync());
+		Assert.Equal(await File.ReadAllBytesAsync(oszPath, TestContext.Current.CancellationToken), await response.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken));
 	}
 
 	/// <summary>Covers the canonical ".osz" storage layout's `noVideo` param: rebuilt without video entries.</summary>
@@ -408,13 +408,13 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 	{
 		var beatmapset = MakeBeatmapset(331);
 		_setBeatmaps = [MakeBeatmap(1, beatmapset)];
-		await BeatmapsetOsz(331, ("diff.osu", "osu file format v14"u8.ToArray()), ("bg.mp4", [1, 2, 3]));
+		await BeatmapsetOsz(331, ("diff.osu", [.. "osu file format v14"u8]), ("bg.mp4", [1, 2, 3]));
 
 		var response = await _factory.CreateClient()
-			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/331/download?noVideo=1", "assets.test.local"));
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/331/download?noVideo=1", "assets.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-		using var archive = new ZipArchive(await response.Content.ReadAsStreamAsync());
+		await using var archive = new ZipArchive(await response.Content.ReadAsStreamAsync(TestContext.Current.CancellationToken));
 		Assert.Contains(archive.Entries, e => e.Name == "diff.osu");
 		Assert.DoesNotContain(archive.Entries, e => e.Name == "bg.mp4");
 	}
@@ -425,7 +425,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 	public async Task BeatmapsetBackground_Api_RedirectsToAssetsHost()
 	{
 		var response = await _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false })
-			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/803/background"));
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/803/background"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
 		Assert.Equal("https://assets.test.local/beatmapsets/803/background", response.Headers.Location?.ToString());
@@ -435,7 +435,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 	public async Task BeatmapsetBackground_UnknownId_ReturnsNotFound()
 	{
 		var response = await _factory.CreateClient()
-			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/800/background", "assets.test.local"));
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/800/background", "assets.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -446,10 +446,10 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 		var beatmapset = MakeBeatmapset(801) with { IsPrivate = true, BackgroundFile = "bg.jpg" };
 		_beatmapset = beatmapset;
 		var folder = BeatmapsetFolder(801);
-		await File.WriteAllBytesAsync(Path.Combine(folder, "bg.jpg"), [1]);
+		await File.WriteAllBytesAsync(Path.Combine(folder, "bg.jpg"), [1], TestContext.Current.CancellationToken);
 
 		var response = await _factory.CreateClient()
-			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/801/background", "assets.test.local"));
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/801/background", "assets.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -461,7 +461,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 		BeatmapsetFolder(802);
 
 		var response = await _factory.CreateClient()
-			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/802/background", "assets.test.local"));
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/802/background", "assets.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -471,10 +471,10 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 	{
 		_beatmapset = MakeBeatmapset(803) with { BackgroundFile = "bg.png" };
 		var folder = BeatmapsetFolder(803);
-		await File.WriteAllBytesAsync(Path.Combine(folder, "bg.png"), [1]);
+		await File.WriteAllBytesAsync(Path.Combine(folder, "bg.png"), [1], TestContext.Current.CancellationToken);
 
 		var response = await _factory.CreateClient()
-			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/803/background", "assets.test.local"));
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/803/background", "assets.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
@@ -486,7 +486,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 	public async Task Storyboard_NoFolder_ReturnsNotFound()
 	{
 		var response = await _factory.CreateClient()
-			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/400/storyboard", "assets.test.local"));
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/400/storyboard", "assets.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -497,7 +497,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 		BeatmapsetFolder(500);
 
 		var response = await _factory.CreateClient()
-			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/500/storyboard", "assets.test.local"));
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/500/storyboard", "assets.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -506,10 +506,10 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 	public async Task Storyboard_FolderHasOsbFile_ReturnsCorrectMimeType()
 	{
 		var folder = BeatmapsetFolder(600);
-		await File.WriteAllTextAsync(Path.Combine(folder, "storyboard.osb"), "[Events]");
+		await File.WriteAllTextAsync(Path.Combine(folder, "storyboard.osb"), "[Events]", TestContext.Current.CancellationToken);
 
 		var response = await _factory.CreateClient()
-			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/600/storyboard", "assets.test.local"));
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/600/storyboard", "assets.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.Equal("application/x-osu-storyboard", response.Content.Headers.ContentType?.MediaType);
@@ -524,7 +524,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 		var request = MakeRequest(HttpMethod.Get, "/beatmaps/1");
 		request.Headers.Add("Authorization", "Bearer correct-key");
 
-		var response = await _factory.CreateClient().SendAsync(request);
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -536,11 +536,11 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 	{
 		_byFilename = MakeBeatmap(1, MakeBeatmapset(700), "Some Map.osu");
 		var folder = BeatmapsetFolder(700);
-		await File.WriteAllTextAsync(Path.Combine(folder, "Some Map.osu"), "osu file format v14");
+		await File.WriteAllTextAsync(Path.Combine(folder, "Some Map.osu"), "osu file format v14", TestContext.Current.CancellationToken);
 
 		var request = new HttpRequestMessage(HttpMethod.Get, "/web/beatmaps/Some%20Map.osu")
 			{ Headers = { Host = "osu.test.local" } };
-		var response = await _factory.CreateClient().SendAsync(request);
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.Equal("application/x-osu-beatmap", response.Content.Headers.ContentType?.MediaType);
@@ -552,7 +552,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 		_scoreOwner = new ScoreOwner(1, GameMode.Standard);
 		_replayBytes = [1, 2, 3];
 
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/scores/1/replay"));
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/scores/1/replay"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.Equal("application/x-osu-replay", response.Content.Headers.ContentType?.MediaType);
@@ -564,7 +564,7 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 	public async Task SearchBeatmapsets_InvalidMode_ReturnsBadRequest()
 	{
 		var response = await _factory.CreateClient()
-			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/search?mode=9"));
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/search?mode=9"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 	}
@@ -577,8 +577,8 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 		_searchTotal = 1;
 
 		var response = await _factory.CreateClient()
-			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/search?q=camellia"));
-		var body = await response.Content.ReadAsStringAsync();
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/search?q=camellia"), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.Contains("\"totalRecords\":1", body);
@@ -593,8 +593,8 @@ public class BeatmapsetEndpointTests : IClassFixture<WebApplicationFactory<Boots
 		_searchTotal = 0;
 
 		var response = await _factory.CreateClient()
-			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/search?q=stars%3E9"));
-		var body = await response.Content.ReadAsStringAsync();
+			.SendAsync(MakeRequest(HttpMethod.Get, "/beatmapsets/search?q=stars%3E9"), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.Contains("\"totalRecords\":0", body);

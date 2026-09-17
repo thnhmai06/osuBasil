@@ -79,7 +79,7 @@ public sealed class BasilApiClient(BasilHttpClientFactory clientFactory)
 	}
 
 	/// <summary>Attaches the given admin key as a Bearer token to every request the returned client sends.</summary>
-	public HttpClient CreateAuthorizedClient(string adminKey)
+	private HttpClient CreateAuthorizedClient(string adminKey)
 	{
 		var client = clientFactory.CreateClient();
 		client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminKey);

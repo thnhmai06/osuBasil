@@ -1,7 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
 using Basil.Application.Shared.Configuration;
-using Basil.Domain.Users;
 using Basil.Host;
 using Basil.Host.Api.Shared.Http.Middleware;
 using Basil.Application.Shared.Http;
@@ -42,7 +41,7 @@ public class ExceptionEnvelopeEndpointTests : IClassFixture<WebApplicationFactor
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
 				services.AddSingleton(users);
 			});
@@ -59,11 +58,11 @@ public class ExceptionEnvelopeEndpointTests : IClassFixture<WebApplicationFactor
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/users/7"));
+		var response = await client.SendAsync(MakeRequest("/users/7"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
 		Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
-		var envelope = await response.Content.ReadFromJsonAsync<Envelope<object?>>();
+		var envelope = await response.Content.ReadFromJsonAsync<Envelope<object?>>(cancellationToken: TestContext.Current.CancellationToken);
 		Assert.NotNull(envelope);
 		Assert.False(envelope.Success);
 		Assert.Equal(500, envelope.Code);

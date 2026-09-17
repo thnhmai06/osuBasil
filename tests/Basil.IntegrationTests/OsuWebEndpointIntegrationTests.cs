@@ -36,7 +36,7 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Bootstrap> fac
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
 				services.AddSingleton(TestDoubles.NullMapRepository());
 				services.AddSingleton(TestDoubles.NullBeatmapsetRepository());
@@ -57,7 +57,7 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Bootstrap> fac
 		var request = MakeRequest(HttpMethod.Post, "/web/osu-getbeatmapinfo.php?u=nobody&h=x");
 		request.Content = JsonContent("""{"Filenames":[],"Ids":[]}""");
 
-		var response = await client.SendAsync(request);
+		var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 	}
@@ -67,7 +67,7 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Bootstrap> fac
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/web/lastfm.php?b=a0&us=nobody&ha=x"));
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/web/lastfm.php?b=a0&us=nobody&ha=x"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 	}
@@ -78,7 +78,7 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Bootstrap> fac
 		var client = _factory.CreateClient();
 
 		var response =
-			await client.SendAsync(MakeRequest(HttpMethod.Get, "/web/osu-markasread.php?u=nobody&h=x"));
+			await client.SendAsync(MakeRequest(HttpMethod.Get, "/web/osu-markasread.php?u=nobody&h=x"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 	}
@@ -88,8 +88,8 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Bootstrap> fac
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/web/osu-getseasonal.php"));
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/web/osu-getseasonal.php"), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.Equal("[]", body);
@@ -100,7 +100,7 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Bootstrap> fac
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/web/bancho_connect.php?v=b20231231"));
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/web/bancho_connect.php?v=b20231231"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 	}
@@ -111,7 +111,7 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Bootstrap> fac
 		var client = _factory.CreateClient();
 
 		var response =
-			await client.SendAsync(MakeRequest(HttpMethod.Get, "/web/check-updates.php?action=check&stream=stable"));
+			await client.SendAsync(MakeRequest(HttpMethod.Get, "/web/check-updates.php?action=check&stream=stable"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 	}
@@ -121,8 +121,8 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Bootstrap> fac
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Post, "/web/osu-screenshot.php"));
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Post, "/web/osu-screenshot.php"), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 		Assert.Contains("not available", body);
@@ -133,8 +133,8 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Bootstrap> fac
 	{
 		var client = _factory.CreateClient();
 
-		var getResponse = await client.SendAsync(MakeRequest(HttpMethod.Get, "/web/osu-getfavourites.php"));
-		var addResponse = await client.SendAsync(MakeRequest(HttpMethod.Get, "/web/osu-addfavourite.php"));
+		var getResponse = await client.SendAsync(MakeRequest(HttpMethod.Get, "/web/osu-getfavourites.php"), TestContext.Current.CancellationToken);
+		var addResponse = await client.SendAsync(MakeRequest(HttpMethod.Get, "/web/osu-addfavourite.php"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
 		Assert.Equal(HttpStatusCode.OK, addResponse.StatusCode);
@@ -145,8 +145,8 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Bootstrap> fac
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/web/osu-rate.php"));
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/web/osu-rate.php"), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal("not ranked", body);
 	}
@@ -156,7 +156,7 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Bootstrap> fac
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Post, "/web/osu-comment.php"));
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Post, "/web/osu-comment.php"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 	}
@@ -172,8 +172,8 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Bootstrap> fac
 			Encoding.UTF8,
 			"application/x-www-form-urlencoded");
 
-		var response = await client.SendAsync(request);
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.Equal("", body);
@@ -190,8 +190,8 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Bootstrap> fac
 			Encoding.UTF8,
 			"application/x-www-form-urlencoded");
 
-		var response = await client.SendAsync(request);
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 		Assert.Contains("between 3 and 15 characters", body);
@@ -202,8 +202,8 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Bootstrap> fac
 	{
 		var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Post, "/difficulty-rating"));
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Post, "/difficulty-rating"), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.Contains("beatmap id", body);
@@ -214,7 +214,7 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Bootstrap> fac
 	{
 		var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Post, "/difficulty-rating?b=999999999"));
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Post, "/difficulty-rating?b=999999999"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -224,7 +224,7 @@ public class OsuWebEndpointIntegrationTests(WebApplicationFactory<Bootstrap> fac
 	{
 		var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/thumb/12345l.jpg", "b.test.local"));
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/thumb/12345l.jpg", "b.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}

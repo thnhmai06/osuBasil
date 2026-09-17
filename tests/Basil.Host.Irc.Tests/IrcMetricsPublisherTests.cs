@@ -33,13 +33,11 @@ public class IrcMetricsPublisherTests
 		try
 		{
 			var values = new Dictionary<string, int>();
-			using var listener = new MeterListener
+			using var listener = new MeterListener();
+			listener.InstrumentPublished = (instrument, l) =>
 			{
-				InstrumentPublished = (instrument, l) =>
-				{
-					if (instrument.Meter.Name == "Basil" && instrument.Name == "basil.irc.sessions.active")
-						l.EnableMeasurementEvents(instrument);
-				}
+				if (instrument.Meter.Name == "Basil" && instrument.Name == "basil.irc.sessions.active")
+					l.EnableMeasurementEvents(instrument);
 			};
 			listener.SetMeasurementEventCallback<int>((instrument, measurement, _, _) =>
 				values[instrument.Name] = measurement);

@@ -43,7 +43,7 @@ public class AudioPreviewSingleFlightTests(WebApplicationFactory<Bootstrap> fact
 
 		var folder = Path.Combine(_dataDir, "Beatmapsets", "901 Artist - Title");
 		Directory.CreateDirectory(folder);
-		await File.WriteAllBytesAsync(Path.Combine(folder, "audio.mp3"), [1, 2, 3]);
+		await File.WriteAllBytesAsync(Path.Combine(folder, "audio.mp3"), [1, 2, 3], TestContext.Current.CancellationToken);
 
 		var extractor = new CountingAudioExtractor();
 
@@ -88,7 +88,7 @@ public class AudioPreviewSingleFlightTests(WebApplicationFactory<Bootstrap> fact
 		foreach (var r in responses)
 		{
 			Assert.Equal(HttpStatusCode.OK, r.StatusCode);
-			Assert.Equal("clip"u8.ToArray(), await r.Content.ReadAsByteArrayAsync());
+			Assert.Equal("clip"u8.ToArray(), await r.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken));
 		}
 
 		Assert.Equal(1, extractor.CallCount);
@@ -107,7 +107,7 @@ public class AudioPreviewSingleFlightTests(WebApplicationFactory<Bootstrap> fact
 		{
 			Interlocked.Increment(ref CallCount);
 			await Task.Delay(200, cancellationToken);
-			return "clip"u8.ToArray();
+			return [.. "clip"u8];
 		}
 	}
 }

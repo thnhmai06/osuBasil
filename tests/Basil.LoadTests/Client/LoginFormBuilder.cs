@@ -6,7 +6,7 @@ namespace Basil.LoadTests.Client;
 
 /// <summary>
 ///     Builds the raw bancho login body:
-///     <c>{username}\n{passwordMd5}\n{osuVersion}|{utcOffset}|{displayCity}|{clientHashes}|{pmPrivate}\n</c>,
+///     <c>{username}\n{passwordMd5}\n{clientVersion}|{utcOffset}|{displayCity}|{clientHashes}|{pmPrivate}\n</c>,
 ///     per <c>LoginForm.From</c> (<c>src/Basil.Application/Abstractions/Login/LoginForm.cs</c>) — field
 ///     order verified directly against that parser, since the docs and adjacent notes disagree on it.
 /// </summary>
@@ -14,7 +14,7 @@ public static class LoginFormBuilder
 {
 	/// <summary>
 	///     A fixed, always-valid client version. <c>b</c> + an 8-digit date parses under
-	///     <c>OsuVersion</c>'s regex and <c>DateTime.ParseExact("yyyyMMdd")</c> without needing a real
+	///     <c>ClientVersion</c>'s regex and <c>DateTime.ParseExact("yyyyMMdd")</c> without needing a real
 	///     osu! release date.
 	/// </summary>
 	private const string OsuVersion = "b20231231";

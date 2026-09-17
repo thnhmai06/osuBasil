@@ -5,7 +5,6 @@ using Basil.Application.Shared.Configuration;
 using Basil.Domain.Users;
 using Basil.Host;
 using Basil.Application.Shared.Http;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -69,8 +68,8 @@ public class AnnounceEndpointTests : IClassFixture<WebApplicationFactory<Bootstr
 		registry.TryAdd(bob);
 		registry.TryAdd(bot);
 
-		var response = await client.SendAsync(MakeRequest(new { text = "server restarting soon" }));
-		var body = await response.Content.ReadFromJsonAsync<Envelope<AnnounceResultData>>();
+		var response = await client.SendAsync(MakeRequest(new { text = "server restarting soon" }), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadFromJsonAsync<Envelope<AnnounceResultData>>(cancellationToken: TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.NotNull(body?.Data);
@@ -90,8 +89,8 @@ public class AnnounceEndpointTests : IClassFixture<WebApplicationFactory<Bootstr
 		var alice = MakeSession(11, "alice2");
 		registry.TryAdd(alice);
 
-		var response = await client.SendAsync(MakeRequest(new { text = "hi", userIds = new[] { 11, 999, 0 } }));
-		var body = await response.Content.ReadFromJsonAsync<Envelope<AnnounceResultData>>();
+		var response = await client.SendAsync(MakeRequest(new { text = "hi", userIds = new[] { 11, 999, 0 } }), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadFromJsonAsync<Envelope<AnnounceResultData>>(cancellationToken: TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.Equal(1, body!.Data!.DeliveredCount);
@@ -103,7 +102,7 @@ public class AnnounceEndpointTests : IClassFixture<WebApplicationFactory<Bootstr
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(new { text = "" }));
+		var response = await client.SendAsync(MakeRequest(new { text = "" }), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 	}
@@ -111,7 +110,7 @@ public class AnnounceEndpointTests : IClassFixture<WebApplicationFactory<Bootstr
 	[Fact]
 	public async Task Announce_MissingAdminKey_ReturnsUnauthorized()
 	{
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(new { text = "hi" }, null));
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(new { text = "hi" }, null), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 	}

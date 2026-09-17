@@ -1,8 +1,10 @@
+using Basil.Application.Users;
 using Basil.Domain.Users;
 using Basil.Domain.Social;
 using Basil.Infrastructure.Tests.Shared.Persistence;
 using Basil.Infrastructure.Users;
 using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
 
 namespace Basil.Infrastructure.Tests.Users;
 
@@ -10,7 +12,7 @@ namespace Basil.Infrastructure.Tests.Users;
 public class SqliteRelationshipRepositoryTests(SqliteFixture fixture) : IClassFixture<SqliteFixture>
 {
 	private readonly SqliteRelationshipRepository _repository = new(fixture.ConnectionString,
-		NullLogger<SqliteRelationshipRepository>.Instance);
+		Substitute.For<IUserCache>(), NullLogger<SqliteRelationshipRepository>.Instance);
 
 	private readonly SqliteUserRepository _users = new(fixture.ConnectionString,
 		NullLogger<SqliteUserRepository>.Instance);
@@ -37,8 +39,8 @@ public class SqliteRelationshipRepositoryTests(SqliteFixture fixture) : IClassFi
 
 		var friends = await _repository.FetchAllAsync(1, RelationshipType.Friend);
 
-		Assert.Contains(friends, r => r.User2 == friend.Id);
-		Assert.DoesNotContain(friends, r => r.User2 == blocked.Id);
+		Assert.Contains(friends, r => r.Target.Id == friend.Id);
+		Assert.DoesNotContain(friends, r => r.Target.Id == blocked.Id);
 	}
 
 	[Fact]

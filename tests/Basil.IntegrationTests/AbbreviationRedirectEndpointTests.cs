@@ -30,7 +30,7 @@ public class AbbreviationRedirectEndpointTests : IClassFixture<WebApplicationFac
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
 			});
 		});
@@ -54,7 +54,7 @@ public class AbbreviationRedirectEndpointTests : IClassFixture<WebApplicationFac
 	[InlineData("/ss", "/menu/seasonals")]
 	public async Task BarePrefix_RedirectsToCanonicalRoot(string prefix, string target)
 	{
-		var response = await MakeClient().SendAsync(MakeRequest(prefix));
+		var response = await MakeClient().SendAsync(MakeRequest(prefix), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
 		Assert.Equal(target, response.Headers.Location?.ToString());
@@ -68,7 +68,7 @@ public class AbbreviationRedirectEndpointTests : IClassFixture<WebApplicationFac
 	[InlineData("/ss/winter.png", "/menu/seasonals/winter.png")]
 	public async Task PrefixWithRest_RedirectsToCanonicalPath(string path, string target)
 	{
-		var response = await MakeClient().SendAsync(MakeRequest(path));
+		var response = await MakeClient().SendAsync(MakeRequest(path), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
 		Assert.Equal(target, response.Headers.Location?.ToString());
@@ -77,7 +77,7 @@ public class AbbreviationRedirectEndpointTests : IClassFixture<WebApplicationFac
 	[Fact]
 	public async Task PrefixWithRest_PreservesQueryString()
 	{
-		var response = await MakeClient().SendAsync(MakeRequest("/m/5/live?foo=bar"));
+		var response = await MakeClient().SendAsync(MakeRequest("/m/5/live?foo=bar"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
 		Assert.Equal("/matches/5/live?foo=bar", response.Headers.Location?.ToString());

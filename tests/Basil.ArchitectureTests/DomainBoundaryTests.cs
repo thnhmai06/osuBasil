@@ -54,9 +54,11 @@ public class DomainBoundaryTests
 	private static string[] OtherNamespaces(string[] allNamespaces, string from, (string From, string To)[] allowed)
 	{
 		var allowedTargets = allowed.Where(edge => edge.From == from).Select(edge => edge.To).ToHashSet();
-		return allNamespaces
-			.Where(ns => ns != from && !allowedTargets.Contains(ns))
-			.Select(ns => $"{DomainPrefix}{ns}")
-			.ToArray();
+		return
+		[
+			.. allNamespaces
+				.Where(ns => ns != from && !allowedTargets.Contains(ns))
+				.Select(ns => $"{DomainPrefix}{ns}")
+		];
 	}
 }

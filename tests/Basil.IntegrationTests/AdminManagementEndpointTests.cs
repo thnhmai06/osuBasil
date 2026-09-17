@@ -5,7 +5,6 @@ using Basil.Application.Shared.Configuration;
 using Basil.Domain.Users;
 using Basil.Host;
 using Basil.Host.Api.Users;
-using Basil.Infrastructure.Users;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -36,7 +35,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton(TestDoubles.FixedAdminKeySettingsRepository());
 				services.AddSingleton(TestDoubles.NullUserRepository());
 			});
@@ -57,7 +56,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/users/1", adminKey));
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/users/1", adminKey), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 	}
@@ -74,8 +73,8 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/users/1", adminKey));
-		var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/users/1", adminKey), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: TestContext.Current.CancellationToken);
 
 		Assert.False(body.GetProperty("success").GetBoolean());
 		Assert.Equal(401, body.GetProperty("code").GetInt32());
@@ -88,7 +87,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/beatmapsets/1", adminKey));
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/beatmapsets/1", adminKey), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 	}
@@ -100,7 +99,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Post, "/users/1/block/2", "correct-key"));
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Post, "/users/1/block/2", "correct-key"), TestContext.Current.CancellationToken);
 
 		Assert.False(response.IsSuccessStatusCode);
 	}
@@ -110,7 +109,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users"));
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 	}
@@ -120,7 +119,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users", "correct-key"));
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users", "correct-key"), TestContext.Current.CancellationToken);
 
 		response.EnsureSuccessStatusCode();
 	}
@@ -135,8 +134,8 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users?page=1&pageSize=10", "correct-key"));
-		var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users?page=1&pageSize=10", "correct-key"), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: TestContext.Current.CancellationToken);
 
 		Assert.Equal(JsonValueKind.Array, body.GetProperty("data").ValueKind);
 		var meta = body.GetProperty("meta");
@@ -159,7 +158,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, $"/users?{query}", "correct-key"));
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, $"/users?{query}", "correct-key"), TestContext.Current.CancellationToken);
 
 		response.EnsureSuccessStatusCode();
 	}
@@ -176,8 +175,8 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
 		request.Content = JsonContent.Create(new
 			{ name = "ab", password = "hunter2", country = "xx", privilege = (int)UserPrivileges.Unrestricted });
 
-		var response = await client.SendAsync(request);
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 		Assert.Contains("between 3 and 15 characters", body);
@@ -188,7 +187,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users/1/avatar"));
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users/1/avatar"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -198,7 +197,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users/1/avatar", "correct-key"));
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users/1/avatar", "correct-key"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -208,7 +207,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/users/0", "correct-key"));
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/users/0", "correct-key"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 	}
@@ -221,7 +220,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
 		var request = MakeRequest(HttpMethod.Patch, "/users/0", "correct-key");
 		request.Content = JsonContent.Create(new UpdateUserRequest("newname"));
 
-		var response = await client.SendAsync(request);
+		var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 	}
@@ -231,7 +230,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users/0/live"));
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users/0/live"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 	}

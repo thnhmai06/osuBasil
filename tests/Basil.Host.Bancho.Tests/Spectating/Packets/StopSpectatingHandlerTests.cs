@@ -3,11 +3,10 @@ using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
 using Basil.Application.Shared.Eventing;
+using Basil.Application.Users;
 using Basil.Domain.Users;
 using Basil.Application.Chat;
 using Basil.Host.Bancho.Chat.Packets;
-using Basil.Host.Bancho.Multiplayer;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Application.Spectating;
 using Basil.Host.Bancho.Spectating.Packets;
 using Basil.Protocol.Packets;
@@ -35,7 +34,7 @@ public class StopSpectatingHandlerTests
 			new ChannelMembershipService(gameRegistry, ircRegistry, new FakeChannelRegistry(),
 				new ChatNotifier(Options.Create(new IrcOptions())),
 				new ChannelNotifier(gameRegistry, ircRegistry, Options.Create(new IrcOptions())),
-				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions())),
+				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()), Substitute.For<IUserCache>()),
 			new SpectatorNotifier(),
 			NullLogger<SpectatorService>.Instance));
 		var player = MakePlayer(1, "alice");
@@ -61,7 +60,7 @@ public class StopSpectatingHandlerTests
 					new ChatNotifier(Options.Create(new IrcOptions())),
 					new ChannelNotifier(gameRegistry, ircRegistry, Options.Create(new IrcOptions())),
 					Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
-					Options.Create(new IrcOptions())), new SpectatorNotifier(),
+					Options.Create(new IrcOptions()), Substitute.For<IUserCache>()), new SpectatorNotifier(),
 				NullLogger<SpectatorService>.Instance);
 		spectatorService.AddSpectator(host, player);
 		var handler = new StopSpectatingHandler(spectatorService);

@@ -83,7 +83,7 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Boo
 	{
 		var request = MakeRequest("/web/osu-search.php", "u=nobody&h=x&r=4&q=Newest&m=-1&p=0");
 
-		var response = await _factory.CreateClient().SendAsync(request);
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 	}
@@ -97,8 +97,8 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Boo
 		_searchResult = [[MakeBeatmap(1, 100)]];
 		var request = MakeRequest("/web/osu-search.php", "u=search-user&h=correct-md5&r=4&q=Newest&m=-1&p=0");
 
-		var response = await _factory.CreateClient().SendAsync(request);
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.StartsWith("1\n100.osz|Artist|Title|cmyui|", body);
 	}
@@ -130,8 +130,8 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Boo
 		_searchResult = [[MakeBeatmap(1, 100)]];
 		var request = MakeRequest("/web/osu-search.php", "u=mirror-user&h=correct-md5&r=4&q=Newest&m=-1&p=0");
 
-		var response = await mirrorFactory.CreateClient().SendAsync(request);
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await mirrorFactory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.StartsWith("1\n200.osz|MirrorArtist|MirrorTitle|MirrorCreator|", body);
 	}
@@ -160,8 +160,8 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Boo
 		_searchResult = [[MakeBeatmap(1, 100)]];
 		var request = MakeRequest("/web/osu-search.php", "u=mirror-fail-user&h=correct-md5&r=4&q=Newest&m=-1&p=0");
 
-		var response = await mirrorFactory.CreateClient().SendAsync(request);
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await mirrorFactory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.StartsWith("1\n100.osz|Artist|Title|cmyui|", body);
 	}
@@ -171,7 +171,7 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Boo
 	{
 		var request = MakeRequest("/web/osu-search-set.php", "u=nobody&h=x&s=100");
 
-		var response = await _factory.CreateClient().SendAsync(request);
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 	}
@@ -185,8 +185,8 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Boo
 		_setInfo = null;
 		var request = MakeRequest("/web/osu-search-set.php", "u=searchset-unknown&h=correct-md5&s=999");
 
-		var response = await _factory.CreateClient().SendAsync(request);
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal("", body);
 	}
@@ -200,8 +200,8 @@ public class DirectSearchEndpointTests : IClassFixture<WebApplicationFactory<Boo
 		_setInfo = MakeBeatmap(1, 100);
 		var request = MakeRequest("/web/osu-search-set.php", "u=searchset-known&h=correct-md5&s=100");
 
-		var response = await _factory.CreateClient().SendAsync(request);
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.StartsWith("100.osz|Artist|Title|cmyui|", body);
 	}

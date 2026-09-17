@@ -25,6 +25,7 @@ public class ScoreSubmissionServiceTests
 	private readonly ISessionRegistry<GameSession> _sessionRegistry = Substitute.For<ISessionRegistry<GameSession>>();
 	private readonly IUserStatRepository _userStatRepository = Substitute.For<IUserStatRepository>();
 	private readonly IUserRepository _users = Substitute.For<IUserRepository>();
+	private readonly IUserCache _userCache = Substitute.For<IUserCache>();
 
 	private ScoreSubmissionService MakeUseCase()
 	{
@@ -32,7 +33,7 @@ public class ScoreSubmissionServiceTests
 			_beatmaps, _scores, _userStatRepository,
 			new AuthenticationService(_sessionRegistry, new CredentialVerifier(_users, _passwordHasher),
 				NullLogger<AuthenticationService>.Instance),
-			_replayStorage, NullLogger<ScoreSubmissionService>.Instance);
+			_replayStorage, _userCache, NullLogger<ScoreSubmissionService>.Instance);
 	}
 
 	private static Beatmap MakeBeatmap()
@@ -56,8 +57,8 @@ public class ScoreSubmissionServiceTests
 	/// <summary>Puts the userSession in an active multiplayer round — the only state that satisfies the multiplayer-only gate.</summary>
 	private static void PutInActiveRound(GameSession userSession, int roundId = 10)
 	{
-		var match = new MatchSession(0, "Grand Finals", "", "map", 1, new string('a', 32), userSession.Id,
-			GameMode.Standard, Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead, false, 0, "#mp_0")
+		var match = new MatchSession(0, "Grand Finals", "", null, null,
+			GameMode.Standard, Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead, false, 0)
 		{
 			CurrentRoundId = roundId
 		};
@@ -131,7 +132,7 @@ public class ScoreSubmissionServiceTests
 		var bmap = MakeBeatmap();
 		_beatmaps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
 			.Returns(bmap);
-		MakePlayer(); // userSession.Match stays null — not in any room
+		MakePlayer(); // userSession.Room stays null — not in any room
 		StubPersistence(321L);
 
 		var result = await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields()));
@@ -149,8 +150,8 @@ public class ScoreSubmissionServiceTests
 		_beatmaps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
 			.Returns(bmap);
 		var player = MakePlayer();
-		player.Match = new MatchSession(0, "Lobby", "", "map", 1, new string('a', 32), player.Id,
-			GameMode.Standard, Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead, false, 0, "#mp_0");
+		player.Match = new MatchSession(0, "Lobby", "", null, null,
+			GameMode.Standard, Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead, false, 0);
 		// CurrentRoundId left null — room exists but no round has started (e.g. before !mp start).
 		StubPersistence();
 
@@ -167,7 +168,7 @@ public class ScoreSubmissionServiceTests
 		var bmap = MakeBeatmap();
 		_beatmaps.FetchOneAsync(null, bmap.Md5, null, null, Arg.Any<bool>(), Arg.Any<CancellationToken>())
 			.Returns(bmap);
-		var player = MakePlayer(); // userSession.Match stays null — not in any room
+		var player = MakePlayer(); // userSession.Room stays null — not in any room
 		StubPersistence();
 
 		await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields(score: 500_000)));
@@ -286,7 +287,7 @@ public class ScoreSubmissionServiceTests
 		Assert.Equal(ScoreSubmissionResultCode.Success, result.Code);
 		await _replayStorage.DidNotReceive()
 			.WriteAsync(Arg.Any<long>(), Arg.Any<Submission>(), Arg.Any<string>(),
-				Arg.Any<OsuVersion>(), Arg.Any<byte[]>(), Arg.Any<CancellationToken>());
+				Arg.Any<ClientVersion>(), Arg.Any<byte[]>(), Arg.Any<CancellationToken>());
 	}
 
 	[Fact]
@@ -304,7 +305,7 @@ public class ScoreSubmissionServiceTests
 		await MakeUseCase().SubmitAsync(MakeRequest(bmap.Md5, "cookiezi ", MakeScoreFields(), replayBytes));
 
 		await _replayStorage.Received(1)
-			.WriteAsync(555L, Arg.Any<Submission>(), "cookiezi", Arg.Any<OsuVersion>(),
+			.WriteAsync(555L, Arg.Any<Submission>(), "cookiezi", Arg.Any<ClientVersion>(),
 				replayBytes, Arg.Any<CancellationToken>());
 	}
 

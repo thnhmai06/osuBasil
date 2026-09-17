@@ -53,6 +53,9 @@ public sealed class BeatmapsetMigrationServiceTests : IDisposable
 			NullLogger<BeatmapIngestionService>.Instance);
 	}
 
+	private static string FixtureSourcePath =>
+		Path.Combine(AppContext.BaseDirectory, "Fixtures", "vivid_osu_file.osu");
+
 	public void Dispose()
 	{
 		Directory.Delete(_beatmapsetsPath, true);
@@ -60,9 +63,6 @@ public sealed class BeatmapsetMigrationServiceTests : IDisposable
 		File.Delete(_dbPath + "-wal");
 		File.Delete(_dbPath + "-shm");
 	}
-
-	private static string FixtureSourcePath =>
-		Path.Combine(AppContext.BaseDirectory, "Fixtures", "vivid_osu_file.osu");
 
 	private BeatmapsetMigrationService MakeService(string cachePath)
 	{
@@ -91,7 +91,7 @@ public sealed class BeatmapsetMigrationServiceTests : IDisposable
 		Assert.NotNull(setId);
 		var renamed = Path.Combine(_beatmapsetsPath, $"{setId} {folderName}");
 		Directory.Move(folder, renamed);
-		return setId!.Value;
+		return setId.Value;
 	}
 
 	private static async Task RunToCompletionAsync(BeatmapsetMigrationService service)
@@ -193,7 +193,10 @@ public sealed class BeatmapsetMigrationServiceTests : IDisposable
 
 		Assert.True(File.Exists(canonicalOszPath));
 		await using (var archive = await ZipFile.OpenReadAsync(canonicalOszPath))
+		{
 			Assert.Contains(archive.Entries, e => e.Name == "VividCrash.osu");
+		}
+
 		Assert.False(File.Exists(canonicalOszPath + ".tmp"));
 	}
 

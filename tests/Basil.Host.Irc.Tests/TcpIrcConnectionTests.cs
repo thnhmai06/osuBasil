@@ -7,27 +7,19 @@ using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
 using Basil.Application.Shared.Eventing;
-using Basil.Domain.Auth;
 using Basil.Domain.Beatmaps;
 using Basil.Application.Bot;
 using Basil.Domain.Channels;
-using Basil.Domain.Content;
-using Basil.Domain.Client;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Social;
 using Basil.Application.Spectating;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Auth;
-using Basil.Infrastructure.Bot;
 using Basil.Application.Chat;
 using Basil.Host.Bancho.Shared.Sessions;
 using Basil.Host.Bancho.Chat.Packets;
-using Basil.Host.Irc;
-using Basil.Infrastructure.Multiplayer;
 using Basil.Host.Bancho.Multiplayer.Packets;
-using Basil.Infrastructure.Shared.Sessions;
-using Basil.Infrastructure.Spectating;
 using Basil.Host.Bancho.Spectating.Packets;
 using Basil.Protocol.Packets;
 using Basil.Application.Content;
@@ -35,8 +27,11 @@ using Basil.Application.Users;
 using Basil.Application.Auth;
 using Basil.Application.Social;
 using Basil.Application.Beatmaps;
+using Basil.Application.Channels;
+using Basil.Infrastructure.Channels;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using NSubstitute;
 
 namespace Basil.Host.Irc.Tests;
 
@@ -58,9 +53,9 @@ public class TcpIrcConnectionTests
 		var tokenGenerator = new GuidTokenGenerator();
 		var hasher = new BCryptPasswordHasher();
 		var users = new FakeUserRepository();
-		users.Add(new User(1, "alice", Country.Xx, 0, default),
+		users.Add(new User { Id = 1, Name = "alice" },
 			HashPassword(hasher, "alice-key"));
-		users.Add(new User(2, "bob", Country.Xx, 0, default),
+		users.Add(new User { Id = 2, Name = "bob" },
 			HashPassword(hasher, "bob-key"));
 
 		var gameRegistry = new GameSessionRegistry();
@@ -68,11 +63,12 @@ public class TcpIrcConnectionTests
 		var channelRegistry = new InMemoryChannelRegistry();
 		channelRegistry.Seed([new Channel(1, "#osu", "General", 0, 0, true)]);
 
-		var matchRegistry = new InMemoryMatchRegistry(channelRegistry, new NotSupportedMatchRepository());
+		var matchRegistry = new InMemoryMatchRegistry(channelRegistry, new NotSupportedMatchRepository(),
+			new NotSupportedBeatmapRepository());
 		var channelMembership = new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry,
 			new ChatNotifier(Options.Create(new IrcOptions())),
 			new ChannelNotifier(gameRegistry, ircRegistry, Options.Create(new IrcOptions())),
-			matchRegistry, new LiveEventHub(), _fakeIrcOptions);
+			matchRegistry, new LiveEventHub(), _fakeIrcOptions, Substitute.For<IUserCache>());
 		var chatDispatch = new ChatDispatchService(channelRegistry, gameRegistry, channelMembership,
 			new ChatNotifier(Options.Create(new IrcOptions())), users,
 			new NotSupportedRelationshipRepository(), new NullCommandDispatcher(),
@@ -159,13 +155,14 @@ public class TcpIrcConnectionTests
 		var channelRegistry = new InMemoryChannelRegistry();
 		channelRegistry.Seed([]);
 
-		var matchRegistry = new InMemoryMatchRegistry(channelRegistry, new NotSupportedMatchRepository());
+		var matchRegistry = new InMemoryMatchRegistry(channelRegistry, new NotSupportedMatchRepository(),
+			new NotSupportedBeatmapRepository());
 		var channelMembership =
 			new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry,
 				new ChatNotifier(Options.Create(new IrcOptions())),
 				new ChannelNotifier(gameRegistry, ircRegistry, Options.Create(new IrcOptions())), matchRegistry,
 				new LiveEventHub(),
-				_fakeIrcOptions);
+				_fakeIrcOptions, Substitute.For<IUserCache>());
 		var chatDispatch = new ChatDispatchService(channelRegistry, gameRegistry, channelMembership,
 			new ChatNotifier(Options.Create(new IrcOptions())), users,
 			new NotSupportedRelationshipRepository(), new NullCommandDispatcher(),
@@ -218,7 +215,7 @@ public class TcpIrcConnectionTests
 	{
 		var hasher = new BCryptPasswordHasher();
 		var users = new FakeUserRepository();
-		users.Add(new User(1, "alice", Country.Xx, 0, default), HashPassword(hasher, "alice-key"));
+		users.Add(new User { Id = 1, Name = "alice" }, HashPassword(hasher, "alice-key"));
 
 		var gameRegistry = new GameSessionRegistry();
 		var ircRegistry = new IrcSessionRegistry();
@@ -226,14 +223,14 @@ public class TcpIrcConnectionTests
 		channelRegistry.Seed([]);
 		channelRegistry.Add(new ChannelSession(0, "#mp_5", 0, 0, false, "#multiplayer", true));
 
-		var match = new MatchSession(0, "Grand Finals", "", "map", 42, "md5", 9, GameMode.Standard,
-			Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead, false, 0, "#mp_5");
+		var match = new MatchSession(0, "Grand Finals", "", null, null, GameMode.Standard,
+			Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead, false, 0) { DbId = 5 };
 		var matchRegistry = new FakeMatchRegistry(match);
 
 		var channelMembership = new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry,
 			new ChatNotifier(Options.Create(new IrcOptions())),
 			new ChannelNotifier(gameRegistry, ircRegistry, Options.Create(new IrcOptions())),
-			matchRegistry, new LiveEventHub(), _fakeIrcOptions);
+			matchRegistry, new LiveEventHub(), _fakeIrcOptions, Substitute.For<IUserCache>());
 		var chatDispatch = new ChatDispatchService(channelRegistry, gameRegistry, channelMembership,
 			new ChatNotifier(Options.Create(new IrcOptions())), users,
 			new NotSupportedRelationshipRepository(), new NullCommandDispatcher(), matchRegistry,
@@ -272,7 +269,7 @@ public class TcpIrcConnectionTests
 		Assert.Contains(" 473 ", denied);
 		Assert.Contains(IrcReplies.CannotJoinChannel, denied);
 
-		match.AddReferee(1);
+		match.AddReferee(new User { Id = 1, Name = "alice" });
 		await WriteLineAsync(aliceStream, "JOIN #mp_5");
 		var allowed = await ReadUntilAsync(aliceReader,
 			line => line.Contains(" 473 ") || line.Contains("JOIN #mp_5"));
@@ -298,7 +295,7 @@ public class TcpIrcConnectionTests
 	{
 		var hasher = new BCryptPasswordHasher();
 		var users = new FakeUserRepository();
-		users.Add(new User(1, "alice", Country.Xx, 0, default),
+		users.Add(new User { Id = 1, Name = "alice" },
 			HashPassword(hasher, "alice-key"));
 
 		var tokenGenerator = new GuidTokenGenerator();
@@ -307,11 +304,12 @@ public class TcpIrcConnectionTests
 		var channelRegistry = new InMemoryChannelRegistry();
 		channelRegistry.Seed([new Channel(1, "#osu", "General", 0, 0, true)]);
 
-		var matchRegistry = new InMemoryMatchRegistry(channelRegistry, new NotSupportedMatchRepository());
+		var matchRegistry = new InMemoryMatchRegistry(channelRegistry, new NotSupportedMatchRepository(),
+			new NotSupportedBeatmapRepository());
 		var channelMembership = new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry,
 			new ChatNotifier(Options.Create(new IrcOptions())),
 			new ChannelNotifier(gameRegistry, ircRegistry, Options.Create(new IrcOptions())),
-			matchRegistry, new LiveEventHub(), _fakeIrcOptions);
+			matchRegistry, new LiveEventHub(), _fakeIrcOptions, Substitute.For<IUserCache>());
 		var chatDispatch = new ChatDispatchService(channelRegistry, gameRegistry, channelMembership,
 			new ChatNotifier(Options.Create(new IrcOptions())), users,
 			new NotSupportedRelationshipRepository(), new NullCommandDispatcher(),
@@ -386,16 +384,18 @@ public class TcpIrcConnectionTests
 			new ChatNotifier(Options.Create(new IrcOptions())), gameRegistry, ircRegistry, null,
 			new NotSupportedBeatmapRepository(), new FakeUserRepository());
 		var matchLifecycle = new MatchLifecycle(
-			new InMemoryMatchRegistry(channelRegistry, new NotSupportedMatchRepository()), channelRegistry,
+			new InMemoryMatchRegistry(channelRegistry, new NotSupportedMatchRepository(),
+				new NotSupportedBeatmapRepository()), channelRegistry,
 			channelMembership, new MatchNotifier(channelRegistry, channelMembership), gameRegistry,
 			new NotSupportedMatchRepository(), new NoOpMatchRoundEndOutbox(),
 			null!, // only TeardownMatch calls the hub, which this logout-only test path never reaches
 			new NotSupportedBeatmapRepository(), matchBroadcast,
 			null!, // only resolves MatchMembership from CreateAsync, which this logout-only test path never calls
-			NullLogger<MatchLifecycle>.Instance);
+			Substitute.For<IUserCache>(), NullLogger<MatchLifecycle>.Instance);
 		var matchMembership = new MatchMembership(channelRegistry, gameRegistry, channelMembership,
 			new MatchNotifier(channelRegistry, channelMembership),
-			new NotSupportedMatchRepository(), matchLifecycle, NullLogger<MatchMembership>.Instance);
+			new NotSupportedMatchRepository(), matchLifecycle, Substitute.For<IUserCache>(),
+			NullLogger<MatchMembership>.Instance);
 		return new PlayerLogoutService(
 			[
 				new MatchLeaveLogoutHandler(matchMembership),
@@ -417,7 +417,7 @@ public class TcpIrcConnectionTests
 			var data = session.Dequeue();
 			if (data.Length > 0) return data;
 
-			await Task.Delay(10);
+			await Task.Delay(10, cts.Token);
 		}
 
 		throw new TimeoutException("No packet arrived in time.");
@@ -471,7 +471,7 @@ public class TcpIrcConnectionTests
 			return dbId == match.DbId ? match : null;
 		}
 
-		public Task<MatchSession> CreateAsync(MatchCreationData data, int? hostId,
+		public Task<MatchSession> CreateAsync(MatchCreationData data, User? host,
 			CancellationToken cancellationToken = default)
 		{
 			throw new NotSupportedException();

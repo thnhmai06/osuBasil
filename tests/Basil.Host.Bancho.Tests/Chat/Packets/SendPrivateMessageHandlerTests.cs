@@ -4,15 +4,12 @@ using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
 using Basil.Application.Shared.Eventing;
 using Basil.Application.Bot;
+using Basil.Application.Channels;
 using Basil.Domain.Channels;
-using Basil.Domain.Client;
 using Basil.Domain.Social;
 using Basil.Domain.Users;
-using Basil.Application.Bot;
 using Basil.Application.Chat;
 using Basil.Host.Bancho.Chat.Packets;
-using Basil.Host.Bancho.Multiplayer;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
 using Basil.Application.Users;
 using Basil.Application.Social;
@@ -43,7 +40,7 @@ public class SendPrivateMessageHandlerTests
 			new ChatNotifier(Options.Create(new IrcOptions())),
 			new ChannelNotifier(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(),
 				Options.Create(new IrcOptions())), Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
-			Options.Create(new IrcOptions()));
+			Options.Create(new IrcOptions()), Substitute.For<IUserCache>());
 		var matchRegistry = Substitute.For<IMatchRegistry>();
 		var chatDispatch = new ChatDispatchService(channelRegistry, _sessionRegistry, channelMembership,
 			new ChatNotifier(Options.Create(new IrcOptions())), _users,
@@ -80,7 +77,8 @@ public class SendPrivateMessageHandlerTests
 		var target = new GameSession(2, "other", "other-token", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch);
 		_sessionRegistry.GetByName("other").Returns(target);
-		_relationships.FetchOneAsync(2, 1).Returns(new Relationship(2, 1, RelationshipType.Block));
+		_relationships.FetchOneAsync(2, 1).Returns(new Relationship(new User { Id = 2, Name = "other" },
+			new User { Id = 1, Name = "cmyui" }, RelationshipType.Block));
 
 		await MakeHandler().HandleAsync(sender, MessageReader("cmyui", "hi", "other", 1));
 
@@ -155,8 +153,7 @@ public class SendPrivateMessageHandlerTests
 	{
 		var sender = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		_sessionRegistry.GetByName("offlineuser").Returns((GameSession?)null);
-		_users.FetchByNameAsync("offlineuser").Returns(new User(
-			5, "offlineuser", Country.Xx, UserPrivileges.Unrestricted, default));
+		_users.FetchByNameAsync("offlineuser").Returns(new User { Id = 5, Name = "offlineuser" });
 
 		await MakeHandler().HandleAsync(sender, MessageReader("cmyui", "hi", "offlineuser", 1));
 

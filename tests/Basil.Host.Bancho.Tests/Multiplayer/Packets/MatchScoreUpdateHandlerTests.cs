@@ -1,5 +1,4 @@
 using Basil.Application.Multiplayer;
-using Basil.Host.Bancho.Multiplayer;
 using Basil.Host.Bancho.Multiplayer.Packets;
 using Basil.Protocol.Packets;
 using static Basil.Infrastructure.Tests.Multiplayer.Packets.MultiplayerTestSupport;
@@ -22,7 +21,7 @@ public class MatchScoreUpdateHandlerTests
 		var match = fixture.CreateMatch(host);
 		await fixture.MatchMembership.JoinAsync(guest, match, "");
 		host.Dequeue();
-		var handler = new MatchScoreUpdateHandler(fixture.MatchBroadcast, fixture.Hub);
+		var handler = new MatchScoreUpdateHandler(fixture.MatchBroadcast, fixture.Hub, fixture.UserCache);
 		var frame = new byte[] { 1, 2, 3, 4, 5, 6 };
 
 		await handler.HandleAsync(guest, new PacketReader(frame));
@@ -44,11 +43,11 @@ public class MatchScoreUpdateHandlerTests
 		fixture.RegisterAll(host, guest);
 		var match = fixture.CreateMatch(host);
 		await fixture.MatchMembership.JoinAsync(guest, match, "");
-		var handler = new MatchScoreUpdateHandler(fixture.MatchBroadcast, fixture.Hub);
+		var handler = new MatchScoreUpdateHandler(fixture.MatchBroadcast, fixture.Hub, fixture.UserCache);
 		using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 		await using var subscription = fixture.Hub.Open(MatchStreams.Score(match.DbId, 1));
 
-		await handler.HandleAsync(guest, new PacketReader(new byte[] { 1, 2, 3, 4, 5, 6 }));
+		await handler.HandleAsync(guest, new PacketReader(new byte[] { 1, 2, 3, 4, 5, 6 }), cts.Token);
 
 		// Nothing was published to the guest's slot -- prove it by publishing a sentinel afterward
 		// and observing it arrive first, rather than racing an absence with a timeout.
@@ -67,7 +66,7 @@ public class MatchScoreUpdateHandlerTests
 		fixture.RegisterAll(host, guest);
 		var match = fixture.CreateMatch(host);
 		await fixture.MatchMembership.JoinAsync(guest, match, "");
-		var handler = new MatchScoreUpdateHandler(fixture.MatchBroadcast, fixture.Hub);
+		var handler = new MatchScoreUpdateHandler(fixture.MatchBroadcast, fixture.Hub, fixture.UserCache);
 		using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 		await using var subscription = fixture.Hub.Open(MatchStreams.Score(match.DbId, 1));
 
@@ -78,7 +77,7 @@ public class MatchScoreUpdateHandlerTests
 		BitConverter.GetBytes((ushort)100).CopyTo(frame, 5); // num300
 		BitConverter.GetBytes(500_000).CopyTo(frame, 17); // totalScore (int, 4 bytes at offset 17)
 
-		await handler.HandleAsync(guest, new PacketReader(frame));
+		await handler.HandleAsync(guest, new PacketReader(frame), cts.Token);
 
 		await using var events = subscription.Events.GetAsyncEnumerator(cts.Token);
 		Assert.True(await events.MoveNextAsync());

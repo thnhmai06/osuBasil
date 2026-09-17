@@ -1,6 +1,5 @@
 using Basil.Application.Sessions;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Host.Bancho.Spectating.Packets;
 using Basil.Infrastructure.Tests.Multiplayer.Packets;
 using Basil.Protocol.Multiplayer;
@@ -17,7 +16,7 @@ public class SpectateFramesHandlerTests
 	/// <summary>
 	///     A minimal but well-formed SpectateFrames bundle (extra=0, 0 frames, action=Standard, an
 	///     all-zero non-scorev2 scoreframe, sequence=0) — see BanchoPacketReaderTests in
-	///     Basil.Protocol.Tests for the full wire-format round-trip coverage; this fixture only needs
+	///     Basil.Protocol.Bancho.Tests for the full wire-format round-trip coverage; this fixture only needs
 	///     to be parseable, not meaningful, since these tests assert on publish behavior, not payload
 	///     content.
 	/// </summary>

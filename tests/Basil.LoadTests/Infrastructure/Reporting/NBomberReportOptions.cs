@@ -1,4 +1,3 @@
-using Basil.Application.Scores;
 using NBomber.Contracts.Stats;
 
 namespace Basil.LoadTests.Infrastructure.Reporting;

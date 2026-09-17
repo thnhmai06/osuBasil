@@ -1,7 +1,6 @@
 using Basil.Application.Irc;
 using Basil.Application.Sessions;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Irc;
 
 namespace Basil.Infrastructure.Tests.Irc;
@@ -113,7 +112,7 @@ public class IrcSessionRegistryTests
 		registry.TryAdd(MakeIrc(1, "a", "irc-1"));
 		registry.TryAdd(MakeIrc(2, "b", "irc-2"));
 
-		Assert.Equal(2, registry.All.Count());
+		Assert.Equal(2, registry.All.Count);
 	}
 
 	[Fact]

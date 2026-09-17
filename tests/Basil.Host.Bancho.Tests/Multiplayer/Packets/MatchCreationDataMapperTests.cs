@@ -17,7 +17,7 @@ public class MatchCreationDataMapperTests
 	}
 
 	/// <summary>
-	///     Regression test (Issue #4): the mapped MapId is null domain-side, not the wire's 0/-1
+	///     Regression test (Issue #4): the mapped Beatmap is null domain-side, not the wire's 0/-1
 	///     sentinels. `0` is what an HTTP creation request leaves as an unused placeholder (see
 	///     MatchListEndpoints.HandleCreate); `-1` is a real client's explicit "no beatmap chosen".
 	/// </summary>

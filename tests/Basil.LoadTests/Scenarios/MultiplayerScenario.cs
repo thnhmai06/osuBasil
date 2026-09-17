@@ -52,7 +52,7 @@ public sealed class MultiplayerScenario : IBasilScenario
 			}
 			catch (Exception ex)
 			{
-				context.LogWarning($"Beatmap fixture ingestion failed ({ex.Message}); rooms will run with MapId = 0.");
+				context.LogWarning($"Beatmap fixture ingestion failed ({ex.Message}); rooms will run with Beatmap = 0.");
 			}
 
 		var props = new List<ScenarioProps>();
@@ -257,7 +257,7 @@ public sealed class MultiplayerScenario : IBasilScenario
 	///     Zips the repo's own protocol-test fixture <c>.osu</c> into an in-memory <c>.osz</c> and
 	///     ingests it via the admin API (bypass mode is assumed — this harness never sets an admin key),
 	///     so multiplayer rooms have a real beatmap to assign instead of always running with
-	///     <c>MapId = 0</c>.
+	///     <c>Beatmap = 0</c>.
 	/// </summary>
 	private static async Task<(int Id, string Md5)?> ResolveOrIngestBeatmapAsync(BasilScenarioContext context)
 	{

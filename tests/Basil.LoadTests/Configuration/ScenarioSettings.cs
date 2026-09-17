@@ -19,10 +19,10 @@ public class ScenarioSettings
 	public int[] ConcurrentUsers { get; init; } = [];
 
 	/// <summary>How long each concurrency level runs, after warm-up.</summary>
-	public int DurationSeconds { get; init; } = 60;
+	private int DurationSeconds { get; init; } = 60;
 
 	/// <summary>How long NBomber's warm-up phase runs before measurements start counting.</summary>
-	public int WarmUpSeconds { get; init; } = 10;
+	private int WarmUpSeconds { get; init; } = 10;
 
 	/// <summary>
 	///     NBomber's per-scenario failure ceiling before it stops the whole test. NBomber's own default
@@ -134,13 +134,13 @@ public sealed class MultiplayerSettings
 
 	/// <summary>
 	///     Path (relative to the executable) to an <c>.osz</c> to ingest and assign as the room's map.
-	///     When <see langword="null" />, rooms run with no map assigned (<c>MapId = 0</c>), which still
+	///     When <see langword="null" />, rooms run with no map assigned (<c>Beatmap = 0</c>), which still
 	///     exercises the full state machine and round-row write.
 	/// </summary>
 	public string? BeatmapsetFixture { get; init; }
 
 	/// <summary>Gets <see cref="RoundsPerRoom" />'s implied match duration budget, used for scenario duration.</summary>
-	public int DurationSeconds { get; init; } = 180;
+	private int DurationSeconds { get; init; } = 180;
 
 	/// <summary>Gets <see cref="DurationSeconds" /> as a <see cref="TimeSpan" />.</summary>
 	public TimeSpan Duration => TimeSpan.FromSeconds(DurationSeconds);
@@ -172,10 +172,10 @@ public sealed class StressSettings
 	public int[] ConcurrentUsers { get; init; } = [];
 
 	/// <summary>How long each ramp between steps takes.</summary>
-	public int RampSeconds { get; init; } = 30;
+	private int RampSeconds { get; init; } = 30;
 
 	/// <summary>How long each step is held at its target concurrency.</summary>
-	public int HoldSeconds { get; init; } = 90;
+	private int HoldSeconds { get; init; } = 90;
 
 	/// <summary>
 	///     The failure ceiling. Phase 3 explicitly requires the run to never stop immediately after a

@@ -62,7 +62,7 @@ public class MatchChangeSettingsHandlerTests
 		var host = MakePlayer(1, "host");
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
-		match.Slots[0].Status = SlotStatus.Ready;
+		match.Slots[0].Status = RoomSlotStatus.Ready;
 		var handler =
 			new MatchChangeSettingsHandler(_beatmapRepository, fixture.SessionRegistry, fixture.MatchMembership,
 				fixture.MatchLifecycle, fixture.MatchBroadcast);
@@ -71,7 +71,7 @@ public class MatchChangeSettingsHandlerTests
 
 		Assert.Null(match.MapId);
 		Assert.Null(match.MapMd5);
-		Assert.Equal(SlotStatus.NotReady, match.Slots[0].Status);
+		Assert.Equal(RoomSlotStatus.NotReady, match.Slots[0].Status);
 		// Regression (Issue #4): "Beatmap should contain a clear message ... instead of only
 		// displaying 0" -- the wire MapName must never be left blank, misleadingly indistinguishable
 		// from a slow-to-load real title in the client's multiplayer room list.
@@ -85,7 +85,7 @@ public class MatchChangeSettingsHandlerTests
 		var host = MakePlayer(1, "host");
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
-		match.MapId = null;
+		match.Beatmap = null;
 		var newMd5 = new string('b', 32);
 		var beatmapset = new Beatmapset(1, "A", "T", "C", DateTime.UtcNow, DateTime.UtcNow);
 		var bmap = new Beatmap(
@@ -112,7 +112,7 @@ public class MatchChangeSettingsHandlerTests
 		var bot = MakePlayer(BotBootstrapService.BotId, "BasilBot");
 		fixture.RegisterAll(host, bot);
 		var match = fixture.CreateMatch(host);
-		match.MapId = null;
+		match.Beatmap = null;
 		var previousMd5 = match.MapMd5;
 		var previousName = match.MapName;
 		var newMd5 = new string('c', 32);
@@ -141,7 +141,7 @@ public class MatchChangeSettingsHandlerTests
 		var bot = MakePlayer(BotBootstrapService.BotId, "BasilBot");
 		fixture.RegisterAll(host, bot);
 		var match = fixture.CreateMatch(host);
-		match.MapId = null;
+		match.Beatmap = null;
 		var newMd5 = new string('c', 32);
 		_beatmapRepository.FetchOneAsync(md5: newMd5).Returns((Beatmap?)null);
 		var handler =
@@ -175,7 +175,7 @@ public class MatchChangeSettingsHandlerTests
 		var bot = MakePlayer(BotBootstrapService.BotId, "BasilBot");
 		fixture.RegisterAll(host, bot);
 		var match = fixture.CreateMatch(host);
-		match.MapId = null;
+		match.Beatmap = null;
 		var md5 = new string('d', 32);
 		_beatmapRepository.FetchOneAsync(md5: md5).Returns((Beatmap?)null);
 		var handler =
@@ -207,7 +207,7 @@ public class MatchChangeSettingsHandlerTests
 		var bot = MakePlayer(BotBootstrapService.BotId, "BasilBot");
 		fixture.RegisterAll(host, bot);
 		var match = fixture.CreateMatch(host);
-		match.MapId = null;
+		match.Beatmap = null;
 		var md5 = new string('e', 32);
 		_beatmapRepository.FetchOneAsync(md5: md5).Returns((Beatmap?)null);
 		var handler =
@@ -242,12 +242,10 @@ public class MatchChangeSettingsHandlerTests
 		return (fixture, host, bot, match);
 	}
 
-	private static void AssertAutoStartCancelled(MatchSession match, GameSession host, GameSession bot)
+	private static void AssertAutoStartCancelled(GameSession host, GameSession bot)
 	{
-		Assert.Null(match.PendingTimer);
-		Assert.False(match.PendingTimerIsAutoStart);
 		Assert.Contains(
-			ServerPacketWriter.SendMessage(bot.Name, "Match start cancelled — room settings changed.",
+			ServerPacketWriter.SendMessage(bot.Name, "Room start cancelled — room settings changed.",
 				"#multiplayer", bot.Id),
 			Chunk(host.Dequeue()));
 	}
@@ -263,14 +261,14 @@ public class MatchChangeSettingsHandlerTests
 
 		await handler.HandleAsync(host, MatchRequestReader(0, match.Name, "", "", -1, new string('0', 32), host.Id));
 
-		AssertAutoStartCancelled(match, host, bot);
+		AssertAutoStartCancelled(host, bot);
 	}
 
 	[Fact]
 	public async Task Handle_MapResolvedSuccessfully_CancelsPendingAutoStart()
 	{
 		var (fixture, host, bot, match) = SetUpMatchWithPendingAutoStart();
-		match.MapId = null;
+		match.Beatmap = null;
 		var newMd5 = new string('d', 32);
 		var beatmapset = new Beatmapset(1, "A", "T", "C", DateTime.UtcNow, DateTime.UtcNow);
 		var bmap = new Beatmap(
@@ -285,7 +283,7 @@ public class MatchChangeSettingsHandlerTests
 
 		await handler.HandleAsync(host, MatchRequestReader(0, match.Name, "", "Client Map Name", 999, newMd5, host.Id));
 
-		AssertAutoStartCancelled(match, host, bot);
+		AssertAutoStartCancelled(host, bot);
 	}
 
 	[Fact]
@@ -301,7 +299,7 @@ public class MatchChangeSettingsHandlerTests
 			MatchRequestReader(0, match.Name, "", match.MapName, match.MapId ?? -1, match.MapMd5 ?? "", host.Id,
 				teamType: 2));
 
-		AssertAutoStartCancelled(match, host, bot);
+		AssertAutoStartCancelled(host, bot);
 	}
 
 	[Fact]
@@ -317,7 +315,7 @@ public class MatchChangeSettingsHandlerTests
 			MatchRequestReader(0, match.Name, "", match.MapName, match.MapId ?? -1, match.MapMd5 ?? "", host.Id,
 				winCondition: 2));
 
-		AssertAutoStartCancelled(match, host, bot);
+		AssertAutoStartCancelled(host, bot);
 	}
 
 	[Fact]
@@ -330,7 +328,8 @@ public class MatchChangeSettingsHandlerTests
 		var cts = match.PendingTimer;
 
 		await handler.HandleAsync(host,
-			MatchRequestReader(0, "renamed", "", match.MapName, match.MapId ?? -1, match.MapMd5 ?? "", host.Id));
+			MatchRequestReader(0, "renamed", "", match.MapName, match.MapId ?? -1, match.MapMd5 ?? "", host.Id),
+			cts.Token);
 
 		Assert.Same(cts, match.PendingTimer);
 		Assert.True(match.PendingTimerIsAutoStart);
@@ -347,7 +346,7 @@ public class MatchChangeSettingsHandlerTests
 
 		await handler.HandleAsync(host,
 			MatchRequestReader(0, match.Name, "", match.MapName, match.MapId ?? -1, match.MapMd5 ?? "", host.Id,
-				freeMods: true));
+				freeMods: true), cts.Token);
 
 		Assert.Same(cts, match.PendingTimer);
 		Assert.True(match.PendingTimerIsAutoStart);

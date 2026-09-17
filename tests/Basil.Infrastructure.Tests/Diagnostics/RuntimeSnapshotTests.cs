@@ -12,7 +12,7 @@ public class RuntimeSnapshotTests
 
 		Assert.True(sample.ProcessorCount > 0);
 		Assert.False(string.IsNullOrWhiteSpace(sample.FrameworkDescription));
-		Assert.False(string.IsNullOrWhiteSpace(sample.OSDescription));
+		Assert.False(string.IsNullOrWhiteSpace(sample.OsDescription));
 	}
 
 	/// <summary>

@@ -26,7 +26,7 @@ namespace Basil.IntegrationTests;
 public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>, IDisposable
 {
 	// Verbatim copy of Basil.Infrastructure.Tests/Fixtures/vivid_osu_file.osu — PpyOsuCalculatorTests
-	// records NoMod Sr=4.8750450142072701 (-> 4.88 rounded) and HardRock Sr=5.9296060838721534 (-> 5.93
+	// records NoMod Star=4.8750450142072701 (-> 4.88 rounded) and HardRock Star=5.9296060838721534 (-> 5.93
 	// rounded) against this exact content.
 	private const string FixtureOsuContent = """
 	                                         osu file format v3
@@ -265,13 +265,15 @@ public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactor
 		SeedBeatmap(9001, 1);
 		using var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/beatmapsets/9001/1/difficulty"));
+		var response = await client.SendAsync(MakeRequest("/beatmapsets/9001/1/difficulty"),
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-		var body = await response.Content.ReadFromJsonAsync<Envelope<DifficultyResultShape>>(BasilJsonOptions.Instance);
+		var body = await response.Content.ReadFromJsonAsync<Envelope<DifficultyResultShape>>(BasilJsonOptions.Instance,
+			TestContext.Current.CancellationToken);
 		Assert.NotNull(body?.Data);
 		Assert.Equal(Mods.NoMod, body.Data.Mods);
-		Assert.Equal(4.88, body.Data.Beatmap.Difficulty.Sr, 2);
+		Assert.Equal(4.88, body.Data.Beatmap.Difficulty.Star, 2);
 	}
 
 	[Fact]
@@ -280,13 +282,15 @@ public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactor
 		SeedBeatmap(9002, 2);
 		using var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/beatmapsets/9002/2/difficulty?mods=16"));
+		var response = await client.SendAsync(MakeRequest("/beatmapsets/9002/2/difficulty?mods=16"),
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-		var body = await response.Content.ReadFromJsonAsync<Envelope<DifficultyResultShape>>(BasilJsonOptions.Instance);
+		var body = await response.Content.ReadFromJsonAsync<Envelope<DifficultyResultShape>>(BasilJsonOptions.Instance,
+			TestContext.Current.CancellationToken);
 		Assert.NotNull(body?.Data);
 		Assert.Equal(Mods.HardRock, body.Data.Mods);
-		Assert.Equal(5.93, body.Data.Beatmap.Difficulty.Sr, 2);
+		Assert.Equal(5.93, body.Data.Beatmap.Difficulty.Star, 2);
 		Assert.Equal(7.8, body.Data.Beatmap.Difficulty.Cs, 1); // raw CS=6 * 1.3
 	}
 
@@ -296,7 +300,8 @@ public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactor
 		SeedBeatmap(9003, 3);
 		using var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/beatmapsets/9003/3/difficulty?mode=9"));
+		var response = await client.SendAsync(MakeRequest("/beatmapsets/9003/3/difficulty?mode=9"),
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 	}
@@ -306,7 +311,8 @@ public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactor
 	{
 		using var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/beatmapsets/9004/999/difficulty"));
+		var response = await client.SendAsync(MakeRequest("/beatmapsets/9004/999/difficulty"),
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -317,7 +323,8 @@ public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactor
 		SeedBeatmap(9005, 5, true);
 		using var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/beatmapsets/9005/5/difficulty"));
+		var response = await client.SendAsync(MakeRequest("/beatmapsets/9005/5/difficulty"),
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}

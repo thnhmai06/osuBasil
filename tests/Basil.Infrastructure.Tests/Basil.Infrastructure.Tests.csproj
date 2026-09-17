@@ -38,7 +38,7 @@
 	     so Link flattens their output location back to Fixtures/ regardless of source path -->
 	<ItemGroup>
 		<None Include="Beatmaps\Fixtures\**" Link="Fixtures\%(Filename)%(Extension)"
-		      CopyToOutputDirectory="PreserveNewest"/>
+			  CopyToOutputDirectory="PreserveNewest"/>
 	</ItemGroup>
 
 </Project>

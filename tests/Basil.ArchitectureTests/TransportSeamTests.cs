@@ -1,5 +1,5 @@
-using Basil.Infrastructure.Shared.Persistence;
 using Basil.Application.Sessions;
+using Basil.Infrastructure.Shared.Persistence;
 using NetArchTest.Rules;
 
 namespace Basil.ArchitectureTests;
@@ -37,7 +37,7 @@ public class TransportSeamTests
 	[Fact]
 	public void Business_And_Api_Types_Should_Not_Reference_Protocol()
 	{
-		// Empty as of Batch 11: MatchPacketDataMapper moved to Basil.Host.Bancho with the packet
+		// IsEmpty as of Batch 11: MatchPacketDataMapper moved to Basil.Host.Bancho with the packet
 		// handlers it served, and AnnounceRoutes -- the list's last entry -- now sends its
 		// notification through the new IAnnouncementNotifier contract (Basil.Application.Content)
 		// instead of building a ServerPacketWriter packet itself (D8). This pins the set so it can

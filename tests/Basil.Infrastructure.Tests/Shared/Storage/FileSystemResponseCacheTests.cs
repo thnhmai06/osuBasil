@@ -80,7 +80,7 @@ public class FileSystemResponseCacheTests : IDisposable
 		// both identically, and the temp-file cleanup applies regardless of which was thrown.
 		var exception = await Record.ExceptionAsync(() => _cache.PutAsync("thumbs", "1.jpg", [1, 2, 3]));
 		Assert.True(exception is IOException or UnauthorizedAccessException,
-			$"Expected IOException or UnauthorizedAccessException, got {exception?.GetType()}");
+			$"Expected IOException or UnauthorizedAccessException, got {exception.GetType()}");
 
 		Assert.DoesNotContain(Directory.GetFiles(entryDir), f => f.EndsWith(".tmp", StringComparison.Ordinal));
 	}

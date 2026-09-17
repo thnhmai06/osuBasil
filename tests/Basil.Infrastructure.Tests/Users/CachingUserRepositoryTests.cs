@@ -1,7 +1,6 @@
-using Basil.Domain.Client;
+using Basil.Application.Users;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Users;
-using Basil.Application.Users;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -11,7 +10,7 @@ public class CachingUserRepositoryTests
 {
 	private static User MakeUser(int id, string name)
 	{
-		return new User(id, name, Country.Vn, UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
+		return new User { Id = id, Name = name, Country = Country.Vn };
 	}
 
 	[Fact]
@@ -117,7 +116,7 @@ public class CachingUserRepositoryTests
 	{
 		public int FetchByIdCalls { get; private set; }
 		public int FetchByNameCalls { get; private set; }
-		public User? UserById { get; set; }
+		public User? UserById { get; init; }
 		public Dictionary<int, User> UsersById { get; } = new();
 		public Dictionary<string, User> UsersByName { get; } = new();
 

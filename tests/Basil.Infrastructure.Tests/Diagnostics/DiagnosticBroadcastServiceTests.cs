@@ -1,7 +1,6 @@
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Eventing;
 using Basil.Infrastructure.Diagnostics;
-using Basil.Infrastructure.Shared.Sessions;
 using NSubstitute;
 
 namespace Basil.Infrastructure.Tests.Diagnostics;
@@ -53,7 +52,7 @@ public class DiagnosticBroadcastServiceTests
 	{
 		var hub = new LiveEventHub();
 		var service = CreateService(hub);
-		using var subscription = hub.Open(DiagnosticStreams.Gc);
+		await using var subscription = hub.Open(DiagnosticStreams.Gc);
 
 		service.RunOnce();
 
@@ -81,9 +80,9 @@ public class DiagnosticBroadcastServiceTests
 	{
 		var hub = new LiveEventHub();
 		var service = CreateService(hub);
-		using var first = hub.Open(DiagnosticStreams.Overview);
-		using var second = hub.Open(DiagnosticStreams.Overview);
-		using var third = hub.Open(DiagnosticStreams.Overview);
+		await using var first = hub.Open(DiagnosticStreams.Overview);
+		await using var second = hub.Open(DiagnosticStreams.Overview);
+		await using var third = hub.Open(DiagnosticStreams.Overview);
 
 		service.RunOnce();
 

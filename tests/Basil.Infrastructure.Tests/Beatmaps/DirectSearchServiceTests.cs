@@ -83,7 +83,7 @@ public class DirectSearchServiceTests
 
 		Assert.Contains("100.osz|Artist|Title|cmyui|", response);
 		await _mirrorClient.DidNotReceiveWithAnyArgs()
-			.SearchAsync(default!, default, default, default, default);
+			.SearchAsync(null!, null, null, 0, 0);
 	}
 
 	[Fact]
@@ -104,7 +104,7 @@ public class DirectSearchServiceTests
 			response);
 		Assert.DoesNotContain("Artist|Title|cmyui", response);
 		await _beatmaps.DidNotReceiveWithAnyArgs()
-			.SearchAsync(default, default, default, default, Arg.Any<CancellationToken>());
+			.SearchAsync(null, null, 0, 0, Arg.Any<CancellationToken>());
 	}
 
 	[Fact]
@@ -182,7 +182,7 @@ public class DirectSearchServiceTests
 	public void Format_100Sets_ReportsCountAs101()
 	{
 		var sets = Enumerable.Range(0, 100)
-			.Select(IReadOnlyList<Beatmap> (i) => new List<Beatmap> { MakeBeatmap(i, i, "Sr", 1.0) }).ToList();
+			.Select(IReadOnlyList<Beatmap> (i) => new List<Beatmap> { MakeBeatmap(i, i, "Star", 1.0) }).ToList();
 
 		var response = DirectSearchService.Format(sets);
 
@@ -193,7 +193,7 @@ public class DirectSearchServiceTests
 	public void Format_99Sets_ReportsLiteralCount()
 	{
 		var sets = Enumerable.Range(0, 99)
-			.Select(IReadOnlyList<Beatmap> (i) => new List<Beatmap> { MakeBeatmap(i, i, "Sr", 1.0) }).ToList();
+			.Select(IReadOnlyList<Beatmap> (i) => new List<Beatmap> { MakeBeatmap(i, i, "Star", 1.0) }).ToList();
 
 		var response = DirectSearchService.Format(sets);
 

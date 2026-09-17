@@ -1,4 +1,5 @@
 using System.Diagnostics.Metrics;
+using Basil.Application.Channels;
 using Basil.Domain.Channels;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Chat;
@@ -20,7 +21,7 @@ public class ChatMetricsPublisherTests
 		var registry = Substitute.For<IChannelRegistry>();
 		registry.All.Returns(
 		[
-			new ChannelSession(1, "#osu", 0, (UserPrivileges)0, true),
+			new ChannelSession(1, "#osu", 0, 0, true),
 			new ChannelSession(2, "#staff", UserPrivileges.Staff, UserPrivileges.Staff, true)
 		]);
 
@@ -29,13 +30,11 @@ public class ChatMetricsPublisherTests
 		try
 		{
 			var values = new Dictionary<string, int>();
-			using var listener = new MeterListener
+			using var listener = new MeterListener();
+			listener.InstrumentPublished = (instrument, l) =>
 			{
-				InstrumentPublished = (instrument, l) =>
-				{
-					if (instrument.Meter.Name == "Basil" && instrument.Name == "basil.channels.active")
-						l.EnableMeasurementEvents(instrument);
-				}
+				if (instrument.Meter.Name == "Basil" && instrument.Name == "basil.channels.active")
+					l.EnableMeasurementEvents(instrument);
 			};
 			listener.SetMeasurementEventCallback<int>((instrument, measurement, _, _) =>
 				values[instrument.Name] = measurement);

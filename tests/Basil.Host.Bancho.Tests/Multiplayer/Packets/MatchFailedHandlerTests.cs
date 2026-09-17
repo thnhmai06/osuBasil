@@ -17,7 +17,7 @@ public class MatchFailedHandlerTests
 		var match = fixture.CreateMatch(host);
 		await fixture.MatchMembership.JoinAsync(guest, match, "");
 		host.Dequeue();
-		var handler = new MatchFailedHandler(fixture.MatchBroadcast);
+		var handler = new MatchFailedHandler(fixture.MatchBroadcast, fixture.UserCache);
 
 		await handler.HandleAsync(guest, new PacketReader(ReadOnlyMemory<byte>.Empty));
 

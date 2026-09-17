@@ -1,4 +1,3 @@
-using Basil.Domain.Client;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Tests.Shared.Persistence;
 using Basil.Infrastructure.Users;

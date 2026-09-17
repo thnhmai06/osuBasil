@@ -119,7 +119,7 @@ public class GameSessionRegistryTests
 		registry.TryAdd(MakeGame(1, "a", "t1"));
 		registry.TryAdd(MakeGame(2, "b", "t2"));
 
-		Assert.Equal(2, registry.All.Count());
+		Assert.Equal(2, registry.All.Count);
 	}
 
 	[Fact]
@@ -144,6 +144,6 @@ public class GameSessionRegistryTests
 		await Task.WhenAll(Enumerable.Range(0, count).Select(i =>
 			Task.Run(() => registry.TryAdd(MakeGame(i, $"player{i}", $"token-{i}")))));
 
-		Assert.Equal(count, registry.All.Count());
+		Assert.Equal(count, registry.All.Count);
 	}
 }

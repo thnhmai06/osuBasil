@@ -1,8 +1,8 @@
 using Basil.Application.Multiplayer;
+using Basil.Application.Users;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
-using Basil.Host.Bancho.Multiplayer;
 using Basil.Host.Bancho.Multiplayer.Packets;
 using Basil.Protocol.Packets;
 using static Basil.Infrastructure.Tests.Multiplayer.Packets.MultiplayerTestSupport;
@@ -125,7 +125,7 @@ public class JoinMatchHandlerTests
 
 		var guest = MakePlayer(2, "guest");
 		fixture.RegisterAll(host, guest);
-		match.AddInvite(guest.Id);
+		match.AddInvite(fixture.UserCache.Resolve(guest));
 		var handler = new JoinMatchHandler(fixture.MatchRegistry, fixture.MatchMembership);
 
 		await handler.HandleAsync(guest, ReaderFor(match.Id, "pw"));
@@ -186,7 +186,7 @@ public class JoinMatchHandlerTests
 			(await fixture.MatchLifecycle.CreateAsync(host, MakeMatchData(host.Id)))!;
 		match.IsPrivate = true;
 		await fixture.MatchMembership.LeaveAsync(host, match);
-		match.AddInvite(host.Id);
+		match.AddInvite(fixture.UserCache.Resolve(host));
 		var handler = new JoinMatchHandler(fixture.MatchRegistry, fixture.MatchMembership);
 
 		await handler.HandleAsync(host, ReaderFor(match.Id, ""));

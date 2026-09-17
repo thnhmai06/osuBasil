@@ -16,7 +16,7 @@ namespace Basil.ArchitectureTests;
 ///     any one slice, plus one Auth-only audit record) was split up: the audit record
 ///     (<c>Login</c> record, renamed <c>LoginEvent</c>) merged into <c>Auth</c> since it never needed
 ///     its own namespace; <c>Country</c> moved into <c>Users</c>, the one slice it actually
-///     describes; and <c>ClientDetails</c>/<c>Geolocation</c>/<c>OsuVersion</c> — genuinely shared
+///     describes; and <c>ClientDetails</c>/<c>Geolocation</c>/<c>ClientVersion</c> — genuinely shared
 ///     across Auth, Scores and beyond — got their own <c>Client</c> namespace instead of continuing
 ///     to borrow Login's. This list is not an empty allowlist grown from scratch: every namespace
 ///     under <c>Basil.Domain</c>, including ones with no <c>Features/</c> counterpart
@@ -51,7 +51,7 @@ internal static class DomainAdjacency
 		// ScoreReport, ScoreInsertRow and ScoreRow carry the team a player scored for.
 		("Scores", "Multiplayer"),
 
-		// LoginForm.From parses the ClientDetails and OsuVersion an osu! client sends at login.
+		// LoginForm.From parses the ClientDetails and ClientVersion an osu! client sends at login.
 		("Auth", "Client"),
 
 		// IOsuCalculator.Analyze takes the Mods a beatmap is being analyzed under.

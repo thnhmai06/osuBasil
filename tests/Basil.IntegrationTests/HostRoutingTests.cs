@@ -1,6 +1,5 @@
 using System.Net;
 using Basil.Application.Shared.Configuration;
-using Basil.Infrastructure.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Basil.Host;
 using Basil.Application.Beatmaps;
@@ -35,7 +34,7 @@ public class HostRoutingTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
 				services.AddSingleton(TestDoubles.NullChannelRepository());
 				services.AddSingleton(TestDoubles.NullBeatmapsetRepository());
@@ -60,7 +59,7 @@ public class HostRoutingTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 		var response = await SendWithHost(client, host);
 
 		response.EnsureSuccessStatusCode();
-		Assert.Equal("cho", await response.Content.ReadAsStringAsync());
+		Assert.Equal("cho", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 	}
 
 	[Theory]
@@ -83,7 +82,7 @@ public class HostRoutingTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 		var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 		var request = new HttpRequestMessage(HttpMethod.Get, "/thumb/1l.jpg");
 		request.Headers.Host = host;
-		var response = await client.SendAsync(request);
+		var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -105,7 +104,7 @@ public class HostRoutingTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 		var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 		var request = new HttpRequestMessage(HttpMethod.Get, "/thumb/1.jpg");
 		request.Headers.Host = host;
-		var response = await client.SendAsync(request);
+		var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -120,7 +119,7 @@ public class HostRoutingTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 
 		response.EnsureSuccessStatusCode();
 		// "/" now serves the generated OpenAPI/Scalar docs site landing page instead of a bare stub.
-		Assert.Contains("Basil Documentation", await response.Content.ReadAsStringAsync());
+		Assert.Contains("Basil Documentation", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 	}
 
 	[Fact]

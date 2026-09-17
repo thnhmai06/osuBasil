@@ -3,11 +3,10 @@ using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
 using Basil.Application.Shared.Eventing;
+using Basil.Application.Users;
 using Basil.Domain.Users;
 using Basil.Application.Chat;
 using Basil.Host.Bancho.Chat.Packets;
-using Basil.Host.Bancho.Multiplayer;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Application.Spectating;
 using Basil.Host.Bancho.Spectating.Packets;
 using Basil.Protocol.Packets;
@@ -45,7 +44,7 @@ public class StartSpectatingHandlerTests
 					new ChannelNotifier(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(),
 						Options.Create(new IrcOptions())), Substitute.For<IMatchRegistry>(),
 					Substitute.For<ILiveEventHub>(),
-					Options.Create(new IrcOptions())), new SpectatorNotifier(),
+					Options.Create(new IrcOptions()), Substitute.For<IUserCache>()), new SpectatorNotifier(),
 				NullLogger<SpectatorService>.Instance),
 			NullLogger<StartSpectatingHandler>.Instance);
 		var player = MakePlayer(1, "alice");
@@ -70,7 +69,7 @@ public class StartSpectatingHandlerTests
 					new ChannelNotifier(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(),
 						Options.Create(new IrcOptions())), Substitute.For<IMatchRegistry>(),
 					Substitute.For<ILiveEventHub>(),
-					Options.Create(new IrcOptions())), new SpectatorNotifier(),
+					Options.Create(new IrcOptions()), Substitute.For<IUserCache>()), new SpectatorNotifier(),
 				NullLogger<SpectatorService>.Instance),
 			NullLogger<StartSpectatingHandler>.Instance);
 
@@ -95,7 +94,7 @@ public class StartSpectatingHandlerTests
 					new ChannelNotifier(_sessionRegistry, Substitute.For<ISessionRegistry<IrcSession>>(),
 						Options.Create(new IrcOptions())), Substitute.For<IMatchRegistry>(),
 					Substitute.For<ILiveEventHub>(),
-					Options.Create(new IrcOptions())), new SpectatorNotifier(),
+					Options.Create(new IrcOptions()), Substitute.For<IUserCache>()), new SpectatorNotifier(),
 				NullLogger<SpectatorService>.Instance);
 		var handler = new StartSpectatingHandler(_sessionRegistry, spectatorService,
 			NullLogger<StartSpectatingHandler>.Instance);

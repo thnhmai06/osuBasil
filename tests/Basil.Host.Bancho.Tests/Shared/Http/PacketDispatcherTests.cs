@@ -4,7 +4,6 @@ using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Host.Bancho.Multiplayer.Packets;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
 using static Basil.Infrastructure.Tests.Multiplayer.Packets.MultiplayerTestSupport;
@@ -110,16 +109,16 @@ public class PacketDispatcherTests
 		fixture.RegisterAll(host, guest);
 		var match = fixture.CreateMatch(host);
 		await fixture.MatchMembership.JoinAsync(guest, match, "");
-		match.Slots[0].Status = SlotStatus.Playing;
-		match.Slots[1].Status = SlotStatus.Playing;
+		match.Slots[0].Status = RoomSlotStatus.Playing;
+		match.Slots[1].Status = RoomSlotStatus.Playing;
 		match.InProgress = true;
 		host.Dequeue();
 		guest.Dequeue();
 
 		var dispatcher = new PacketDispatcher(
 			[
-				new MatchScoreUpdateHandler(fixture.MatchBroadcast, fixture.Hub),
-				new MatchCompleteHandler(fixture.MatchBroadcast, fixture.RoundEndOutbox,
+				new MatchScoreUpdateHandler(fixture.MatchBroadcast, fixture.Hub, fixture.UserCache),
+				new MatchCompleteHandler(fixture.MatchBroadcast, fixture.RoundEndOutbox, fixture.UserCache,
 					NullLogger<MatchCompleteHandler>.Instance)
 			],
 			NullLogger<PacketDispatcher>.Instance);
@@ -132,7 +131,7 @@ public class PacketDispatcherTests
 
 		// The trailing MatchComplete must reach its handler and mark the slot complete rather than
 		// being swallowed by the score-update handler's whole-buffer read.
-		Assert.Equal(SlotStatus.Complete, match.Slots[1].Status);
+		Assert.Equal(RoomSlotStatus.Complete, match.Slots[1].Status);
 		// Host is still playing, so the round is not closed yet.
 		Assert.True(match.InProgress);
 	}

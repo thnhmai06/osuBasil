@@ -1,20 +1,18 @@
+using Basil.Application.Bot;
+using Basil.Application.Channels;
+using Basil.Application.Chat;
 using Basil.Application.Irc;
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
 using Basil.Application.Shared.Eventing;
+using Basil.Application.Social;
+using Basil.Application.Users;
 using Basil.Domain.Channels;
-using Basil.Domain.Social;
 using Basil.Domain.Users;
-using Basil.Application.Bot;
-using Basil.Application.Chat;
 using Basil.Host.Bancho.Chat.Packets;
-using Basil.Infrastructure.Multiplayer;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Irc;
 using Basil.Protocol.Packets;
-using Basil.Application.Users;
-using Basil.Application.Social;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -37,7 +35,8 @@ public class ChatDispatchNoticeTests
 		var membership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
 			new ChatNotifier(Options.Create(new IrcOptions())),
 			new ChannelNotifier(_gameRegistry, _ircRegistry, Options.Create(new IrcOptions())),
-			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
+			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()),
+			Substitute.For<IUserCache>());
 		return new ChatDispatchService(_channelRegistry, _gameRegistry, membership,
 			new ChatNotifier(Options.Create(new IrcOptions())),
 			Substitute.For<IUserRepository>(), Substitute.For<IRelationshipRepository>(), _commandDispatcher,
@@ -73,8 +72,8 @@ public class ChatDispatchNoticeTests
 
 		await MakeService().SendNoticeAsync(sender, "#osu", "!mp start");
 
-		await _commandDispatcher.DidNotReceiveWithAnyArgs().DispatchAsync(default!, default!, null, default,
-			default!);
+		await _commandDispatcher.DidNotReceiveWithAnyArgs().DispatchAsync(null!, null!, null, null,
+			null!);
 		var delivered = Assert.Single(((RecordingIrcConnection)member.IrcConnection).Received);
 		Assert.Equal("NOTICE", delivered.Command);
 		Assert.Equal("!mp start", delivered.Params[1]);
@@ -100,17 +99,17 @@ public class ChatDispatchNoticeTests
 	public void WrapLines_SplitsOnNewlinesAndWrapsALongLineAtAWordBoundaryWithoutLosingText()
 	{
 		var word = new string('a', 100);
-		var long_ = string.Join(' ', Enumerable.Repeat(word, 40)); // 4039 chars: two messages' worth
+		var @long = string.Join(' ', Enumerable.Repeat(word, 40)); // 4039 chars: two messages' worth
 
 		// Blank lines go, trailing whitespace goes, leading indentation is the author's and stays.
 		Assert.Equal(["first", " second"], ChatDispatchService.WrapLines("first\n\n second \r\n").ToArray());
 
-		var wrapped = ChatDispatchService.WrapLines(long_).ToArray();
+		var wrapped = ChatDispatchService.WrapLines(@long).ToArray();
 
 		Assert.Equal(3, wrapped.Length);
 		Assert.All(wrapped, line => Assert.True(line.Length <= ChatDispatchService.MaxMessageLength));
 		// Nothing is dropped and no word is broken: the pieces rejoin into exactly the original text.
-		Assert.Equal(long_, string.Join(' ', wrapped));
+		Assert.Equal(@long, string.Join(' ', wrapped));
 	}
 
 	[Fact]

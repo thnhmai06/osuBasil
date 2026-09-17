@@ -1,6 +1,5 @@
 using Basil.Application.Sessions;
 using Basil.Infrastructure.Diagnostics;
-using Basil.Infrastructure.Shared.Sessions;
 using NSubstitute;
 
 namespace Basil.Infrastructure.Tests.Diagnostics;

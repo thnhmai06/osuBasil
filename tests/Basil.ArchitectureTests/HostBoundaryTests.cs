@@ -26,7 +26,7 @@ namespace Basil.ArchitectureTests;
 ///     builds its `input`-event OpenAPI examples by serializing a real
 ///     <c>SpectateFramesEvent</c> -- itself already pinned there for carrying <c>ReplayFrame</c>/
 ///     <c>ScoreFrame</c> directly -- so the documented example always matches the endpoint's
-///     actual wire shape instead of a hand-written literal that could silently drift from it.
+///     actual wire shape instead of a handwritten literal that could silently drift from it.
 /// </remarks>
 public class HostBoundaryTests
 {

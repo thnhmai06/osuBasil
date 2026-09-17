@@ -20,9 +20,9 @@ public class MultiplayerMetricsPublisherTests
 	{
 		return new MatchSession(
 			id, "test match", "pw",
-			"Some Map", 100, new string('a', 32), 1,
+			null, null,
 			GameMode.Standard, Mods.NoMod, MatchWinCondition.Score,
-			MatchTeamType.HeadToHead, false, 0, "#mp_0");
+			MatchTeamType.HeadToHead, false, 0);
 	}
 
 	[Fact]
@@ -40,14 +40,12 @@ public class MultiplayerMetricsPublisherTests
 		try
 		{
 			var values = new Dictionary<string, int>();
-			using var listener = new MeterListener
+			using var listener = new MeterListener();
+			listener.InstrumentPublished = (instrument, l) =>
 			{
-				InstrumentPublished = (instrument, l) =>
-				{
-					if (instrument.Meter.Name == "Basil" &&
-					    instrument.Name is "basil.matches.active" or "basil.match.timers.active")
-						l.EnableMeasurementEvents(instrument);
-				}
+				if (instrument.Meter.Name == "Basil" &&
+				    instrument.Name is "basil.matches.active" or "basil.match.timers.active")
+					l.EnableMeasurementEvents(instrument);
 			};
 			listener.SetMeasurementEventCallback<int>((instrument, measurement, _, _) =>
 				values[instrument.Name] = measurement);

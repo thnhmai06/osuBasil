@@ -4,8 +4,8 @@ using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Application.Auth;
 using Basil.Application.Bot;
+using Basil.Application.Users;
 using Basil.Host.Bancho.Chat.Packets;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Infrastructure.Tests.Multiplayer.Packets;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -93,7 +93,7 @@ public class ClientIntegrityServiceTests
 			{ IsBot = true };
 		_fixture.RegisterAll(host, referee, bot);
 		var match = _fixture.CreateMatch(host, hostIsReferee: false);
-		match.AddReferee(referee.Id);
+		match.AddReferee(_fixture.UserCache.Resolve(referee));
 		host.Dequeue(); // drop the MatchJoinSuccess/UpdateMatch packets queued by CreateMatch itself
 
 		var flag = $"a{(int)LastFmFlags.HqAssembly}";
@@ -119,7 +119,7 @@ public class ClientIntegrityServiceTests
 				UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 			{ IsBot = true };
 		_fixture.RegisterAll(host, bot);
-		var match = _fixture.CreateMatch(host);
+		_fixture.CreateMatch(host);
 		host.Dequeue();
 
 		var flag = $"a{(int)LastFmFlags.RegistryEdits}";

@@ -2,12 +2,11 @@ using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
 using Basil.Application.Shared.Eventing;
+using Basil.Application.Users;
 using Basil.Domain.Users;
 using Basil.Application.Chat;
 using Basil.Host.Bancho.Chat.Packets;
-using Basil.Host.Bancho.Multiplayer;
 using Basil.Host.Bancho.Multiplayer.Packets;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -44,13 +43,13 @@ public class TourneyMatchJoinChannelHandlerTests
 				new ChatNotifier(Options.Create(new IrcOptions())),
 				new ChannelNotifier(fixture.SessionRegistry, fixture.IrcSessionRegistry,
 					Options.Create(new IrcOptions())),
-				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions())),
-			NullLogger<TourneyMatchJoinChannelHandler>.Instance);
+				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()), fixture.UserCache),
+			fixture.UserCache, NullLogger<TourneyMatchJoinChannelHandler>.Instance);
 		host.Privilege = UserPrivileges.Unrestricted | UserPrivileges.Supporter;
 
 		await handler.HandleAsync(host, ReaderFor(match.Id));
 
-		Assert.DoesNotContain(host.Id, match.TourneyClients);
+		Assert.DoesNotContain(match.TourneyClients, u => u.Id == host.Id);
 	}
 
 	[Fact]
@@ -66,12 +65,12 @@ public class TourneyMatchJoinChannelHandlerTests
 				new ChatNotifier(Options.Create(new IrcOptions())),
 				new ChannelNotifier(fixture.SessionRegistry, fixture.IrcSessionRegistry,
 					Options.Create(new IrcOptions())),
-				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions())),
-			NullLogger<TourneyMatchJoinChannelHandler>.Instance);
+				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()), fixture.UserCache),
+			fixture.UserCache, NullLogger<TourneyMatchJoinChannelHandler>.Instance);
 
 		await handler.HandleAsync(observer, ReaderFor(match.Id));
 
-		Assert.Contains(observer.Id, match.TourneyClients);
+		Assert.Contains(match.TourneyClients, u => u.Id == observer.Id);
 		Assert.True(observer.InChannel(match.ChatChannelName));
 	}
 }

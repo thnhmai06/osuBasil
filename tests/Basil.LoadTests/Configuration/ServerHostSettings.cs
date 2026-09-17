@@ -35,10 +35,10 @@ public sealed class ServerHostSettings
 	public required string CertPassword { get; init; }
 
 	/// <summary>How long to wait for the server to answer before treating startup as failed.</summary>
-	public int StartupTimeoutSeconds { get; init; } = 120;
+	private int StartupTimeoutSeconds { get; init; } = 120;
 
 	/// <summary>How long to let a freshly started server sit idle before the first metrics sample.</summary>
-	public int IdleSettleSeconds { get; init; } = 30;
+	private int IdleSettleSeconds { get; init; } = 30;
 
 	/// <summary>Settings for <see cref="ServerHostKind.Dotnet" />.</summary>
 	public DotnetHostSettings Dotnet { get; init; } = new();

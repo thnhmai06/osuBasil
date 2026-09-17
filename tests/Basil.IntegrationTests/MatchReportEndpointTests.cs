@@ -5,7 +5,6 @@ using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Host;
-using Basil.Infrastructure.Multiplayer;
 using Basil.Application.Scores;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -43,7 +42,7 @@ public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Boot
 		matchPersistence.FetchRoundsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
 			.Returns(Task.FromResult<IReadOnlyList<Round>>([]));
 		matchPersistence.FetchAllMatchesAsync(Arg.Any<CancellationToken>())
-			.Returns(_ => (IReadOnlyList<Match>)(_match is null ? [] : [_match]));
+			.Returns(_ => _match is null ? [] : [_match]);
 		matchPersistence.FetchEventsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
 			.Returns(Task.FromResult<IReadOnlyList<MatchEvent>>([]));
 		matchPersistence.FetchUnrecoveredMatchesAsync(Arg.Any<CancellationToken>())
@@ -82,7 +81,7 @@ public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Boot
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
 				services.AddSingleton(matchPersistence);
 				services.AddSingleton(scores);
@@ -102,7 +101,7 @@ public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Boot
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/matches/999"));
+		var response = await client.SendAsync(MakeRequest("/matches/999"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -114,8 +113,8 @@ public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Boot
 			new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), null);
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/matches/5"));
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await client.SendAsync(MakeRequest("/matches/5"), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		response.EnsureSuccessStatusCode();
 		Assert.Contains("\"Grand Finals\"", body);

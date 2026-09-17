@@ -1,3 +1,4 @@
+using Basil.Application.Users;
 using Basil.Host.Bancho.Multiplayer.Packets;
 using Basil.Protocol.Packets;
 using static Basil.Infrastructure.Tests.Multiplayer.Packets.MultiplayerTestSupport;
@@ -18,7 +19,7 @@ public class CreateMatchHandlerTests
 		var fixture = new Fixture();
 		var host = MakePlayer(1, "host");
 		fixture.RegisterAll(host);
-		var handler = new CreateMatchHandler(fixture.MatchLifecycle);
+		var handler = new CreateMatchHandler(fixture.MatchLifecycle, fixture.UserCache);
 
 		await handler.HandleAsync(host, ReaderFor(999));
 
@@ -32,7 +33,7 @@ public class CreateMatchHandlerTests
 		var host = MakePlayer(1, "host");
 		host.Privilege = 0;
 		fixture.RegisterAll(host);
-		var handler = new CreateMatchHandler(fixture.MatchLifecycle);
+		var handler = new CreateMatchHandler(fixture.MatchLifecycle, fixture.UserCache);
 
 		await handler.HandleAsync(host, ReaderFor(1));
 
@@ -46,12 +47,12 @@ public class CreateMatchHandlerTests
 		var fixture = new Fixture();
 		var host = MakePlayer(1, "host");
 		fixture.RegisterAll(host);
-		var handler = new CreateMatchHandler(fixture.MatchLifecycle);
+		var handler = new CreateMatchHandler(fixture.MatchLifecycle, fixture.UserCache);
 
 		await handler.HandleAsync(host, ReaderFor(1, "my room"));
 
 		Assert.NotNull(host.Match);
 		Assert.Equal("my room", host.Match!.Name);
-		Assert.Equal(0, host.Match.GetSlotId(host.Id));
+		Assert.Equal(0, host.Match.GetSlotId(fixture.UserCache.Resolve(host)));
 	}
 }

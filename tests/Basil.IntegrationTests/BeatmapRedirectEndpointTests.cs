@@ -1,8 +1,6 @@
 using System.Net;
 using Basil.Application.Shared.Configuration;
-using Basil.Infrastructure.Content;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Content;
 using Basil.Host;
 using Basil.Application.Content;
 using Basil.Application.Beatmaps;
@@ -37,7 +35,7 @@ public class BeatmapRedirectEndpointTests(WebApplicationFactory<Bootstrap> facto
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
 				// Real, stateful repository: mirror mode is now read back from here (seeded once at
 				// startup from the MirrorOptions registered below), not from IOptions directly.
 				services.AddSingleton<ISettingsRepository>(new InMemorySettingsRepository());
@@ -60,8 +58,8 @@ public class BeatmapRedirectEndpointTests(WebApplicationFactory<Bootstrap> facto
 		var client = Configure(factory)
 			.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
-		var response = await client.SendAsync(MakeRequest("/d/12345"));
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await client.SendAsync(MakeRequest("/d/12345"), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.Contains("not available", body);
@@ -73,7 +71,7 @@ public class BeatmapRedirectEndpointTests(WebApplicationFactory<Bootstrap> facto
 		var client = Configure(factory, "https://mirror.local/d")
 			.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
-		var response = await client.SendAsync(MakeRequest("/d/12345"));
+		var response = await client.SendAsync(MakeRequest("/d/12345"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.MovedPermanently, response.StatusCode);
 		Assert.Equal("https://mirror.local/d/12345?n=1", response.Headers.Location!.ToString());
@@ -85,7 +83,7 @@ public class BeatmapRedirectEndpointTests(WebApplicationFactory<Bootstrap> facto
 		var client = Configure(factory, "https://mirror.local/d")
 			.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
-		var response = await client.SendAsync(MakeRequest("/d/12345n"));
+		var response = await client.SendAsync(MakeRequest("/d/12345n"), TestContext.Current.CancellationToken);
 
 		Assert.Equal("https://mirror.local/d/12345?n=0", response.Headers.Location!.ToString());
 	}
@@ -96,7 +94,7 @@ public class BeatmapRedirectEndpointTests(WebApplicationFactory<Bootstrap> facto
 		var client = Configure(factory, "https://mirror.local/d")
 			.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
-		var response = await client.SendAsync(MakeRequest($"/d/{Beatmap.LocalIdFloor}"));
+		var response = await client.SendAsync(MakeRequest($"/d/{Beatmap.LocalIdFloor}"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
 	}
@@ -107,7 +105,7 @@ public class BeatmapRedirectEndpointTests(WebApplicationFactory<Bootstrap> facto
 		var client = Configure(factory)
 			.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
-		var response = await client.SendAsync(MakeRequest("/web/beatmaps/Some%20Map.osu"));
+		var response = await client.SendAsync(MakeRequest("/web/beatmaps/Some%20Map.osu"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}

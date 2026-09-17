@@ -10,9 +10,7 @@ using Basil.Domain.Users;
 using Basil.Application.Bot;
 using Basil.Application.Chat;
 using Basil.Host.Bancho.Chat.Packets;
-using Basil.Infrastructure.Multiplayer;
 using Basil.Host.Bancho.Multiplayer.Packets;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Infrastructure.Tests.Multiplayer.Packets;
 using Basil.Application.Users;
 using Basil.Application.Beatmaps;
@@ -46,7 +44,8 @@ public class EmptyRoomAutoCloseTests
 		var channelMembership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
 			new ChatNotifier(Options.Create(new IrcOptions())),
 			new ChannelNotifier(_gameRegistry, _ircRegistry, Options.Create(new IrcOptions())),
-			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
+			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()),
+			Substitute.For<IUserCache>());
 		var matchBroadcast = new MatchBroadcast(_channelRegistry, channelMembership,
 			new MatchNotifier(_channelRegistry, channelMembership),
 			new ChatNotifier(Options.Create(new IrcOptions())), _gameRegistry, _ircRegistry,
@@ -55,10 +54,10 @@ public class EmptyRoomAutoCloseTests
 			new MatchNotifier(_channelRegistry, channelMembership), _gameRegistry,
 			_matchRepository, Substitute.For<IMatchRoundEndOutbox>(), _hub,
 			Substitute.For<IBeatmapRepository>(), matchBroadcast, _serviceProvider,
-			NullLogger<MatchLifecycle>.Instance);
+			Substitute.For<IUserCache>(), NullLogger<MatchLifecycle>.Instance);
 		var matchMembership = new MatchMembership(_channelRegistry, _gameRegistry, channelMembership,
 			new MatchNotifier(_channelRegistry, channelMembership),
-			_matchRepository, matchLifecycle, NullLogger<MatchMembership>.Instance);
+			_matchRepository, matchLifecycle, Substitute.For<IUserCache>(), NullLogger<MatchMembership>.Instance);
 		_serviceProvider.GetService(typeof(MatchMembership)).Returns(matchMembership);
 		return (matchMembership, matchLifecycle);
 	}

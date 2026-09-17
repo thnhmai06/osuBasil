@@ -8,8 +8,6 @@ using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Application.Spectating;
 using Basil.Host;
-using Basil.Infrastructure.Multiplayer;
-using Basil.Protocol.Multiplayer;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -44,7 +42,7 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Bootstra
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
 				// A stub avoids needing a real SQLite file for these plumbing tests. IMatchRegistry.CreateAsync
 				// persists a row for every match it registers, so this stub must actually complete
@@ -163,13 +161,13 @@ public class LiveSseEndpointTests : IClassFixture<WebApplicationFactory<Bootstra
 	///     `POST /matches`, but `GET /matches/{matchId}/live` returns 409 unless the match is actually
 	///     tracked in memory. Returns the real <see cref="MatchSession.DbId" /> the registry assigned
 	///     — it can't be overridden to an arbitrary value without desyncing the registry's own
-	///     DbId-to-wire-id lookup.
+	///     Id-to-wire-id lookup.
 	/// </summary>
 	private async Task<int> RegisterLiveMatch()
 	{
 		var matchRegistry = _factory.Services.GetRequiredService<IMatchRegistry>();
 		var data = new MatchCreationData(
-			"Test Match", "", "", null, "", 0,
+			"Test Room", "", "", null, "", 0,
 			GameMode.Standard, Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead, false, 0);
 		var match = await matchRegistry.CreateAsync(data, null);
 		return match.DbId;

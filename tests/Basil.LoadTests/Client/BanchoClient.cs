@@ -20,7 +20,7 @@ public sealed class BanchoClient(
 	private string? _token;
 
 	/// <summary>Gets a value indicating whether this client currently holds a live session token.</summary>
-	public bool IsLoggedIn => _token is not null;
+	private bool IsLoggedIn => _token is not null;
 
 	public async ValueTask DisposeAsync()
 	{

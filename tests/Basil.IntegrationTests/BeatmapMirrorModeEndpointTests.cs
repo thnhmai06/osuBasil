@@ -1,9 +1,6 @@
 using System.Net;
 using Basil.Application.Shared.Configuration;
-using Basil.Infrastructure.Beatmaps;
-using Basil.Infrastructure.Content;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Content;
 using Basil.Host;
 using Basil.Application.Content;
 using Basil.Application.Beatmaps;
@@ -54,7 +51,7 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Bootstrap> fac
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
 				// Real, stateful repository: mirror mode is now read back from here (seeded once at
 				// startup from the MirrorOptions registered below), not from IOptions directly.
 				services.AddSingleton<ISettingsRepository>(new InMemorySettingsRepository());
@@ -90,7 +87,7 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Bootstrap> fac
 		var client = Configure(null).CreateClient(new WebApplicationFactoryClientOptions
 			{ AllowAutoRedirect = false });
 
-		var response = await client.SendAsync(MakeRequest("/thumb/555.jpg"));
+		var response = await client.SendAsync(MakeRequest("/thumb/555.jpg"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -102,7 +99,7 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Bootstrap> fac
 		var client = Configure("https://mirror.local/d").CreateClient(new WebApplicationFactoryClientOptions
 			{ AllowAutoRedirect = false });
 
-		var response = await client.SendAsync(MakeRequest("/thumb/555.jpg"));
+		var response = await client.SendAsync(MakeRequest("/thumb/555.jpg"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.MovedPermanently, response.StatusCode);
 		Assert.Equal("https://b.ppy.sh/thumb/555.jpg", response.Headers.Location!.ToString());
@@ -116,7 +113,7 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Bootstrap> fac
 		var client = Configure("https://mirror.local/d").CreateClient(new WebApplicationFactoryClientOptions
 			{ AllowAutoRedirect = false });
 
-		var response = await client.SendAsync(MakeRequest($"/thumb/{Beatmap.LocalIdFloor}.jpg"));
+		var response = await client.SendAsync(MakeRequest($"/thumb/{Beatmap.LocalIdFloor}.jpg"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
 	}
@@ -129,14 +126,13 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Bootstrap> fac
 			{ BackgroundFile = "bg.png" };
 		var folder = Path.Combine(_dataDir, "Beatmapsets", $"{beatmapsetId} Artist - Title");
 		Directory.CreateDirectory(folder);
-		await File.WriteAllBytesAsync(Path.Combine(folder, "bg.png"),
-			Convert.FromBase64String(
-				"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="));
+		await File.WriteAllBytesAsync(Path.Combine(folder, "bg.png"), Convert.FromBase64String(
+				"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="), TestContext.Current.CancellationToken);
 
 		var client = Configure("https://mirror.local/d").CreateClient(new WebApplicationFactoryClientOptions
 			{ AllowAutoRedirect = false });
 
-		var response = await client.SendAsync(MakeRequest($"/thumb/{beatmapsetId}.jpg"));
+		var response = await client.SendAsync(MakeRequest($"/thumb/{beatmapsetId}.jpg"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 	}
@@ -149,7 +145,7 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Bootstrap> fac
 		_beatmapset = new Beatmapset(700, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
 		var client = Configure("https://mirror.local/d").CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/beatmapsets/700/background", "assets.test.local"));
+		var response = await client.SendAsync(MakeRequest("/beatmapsets/700/background", "assets.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
 	}
@@ -160,7 +156,7 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Bootstrap> fac
 		_beatmapset = new Beatmapset(701, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
 		var client = Configure(null).CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/beatmapsets/701/background", "assets.test.local"));
+		var response = await client.SendAsync(MakeRequest("/beatmapsets/701/background", "assets.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -174,7 +170,7 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Bootstrap> fac
 		var client = Configure("https://mirror.local/d").CreateClient(new WebApplicationFactoryClientOptions
 			{ AllowAutoRedirect = false });
 
-		var response = await client.SendAsync(MakeRequest("/beatmapsets/800/download", "assets.test.local"));
+		var response = await client.SendAsync(MakeRequest("/beatmapsets/800/download", "assets.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.MovedPermanently, response.StatusCode);
 		Assert.Equal("https://mirror.local/d/800?n=1", response.Headers.Location!.ToString());
@@ -187,8 +183,7 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Bootstrap> fac
 			DateTime.UtcNow);
 		var client = Configure("https://mirror.local/d").CreateClient();
 
-		var response = await client.SendAsync(
-			MakeRequest($"/beatmapsets/{Beatmap.LocalIdFloor}/download", "assets.test.local"));
+		var response = await client.SendAsync(MakeRequest($"/beatmapsets/{Beatmap.LocalIdFloor}/download", "assets.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
 	}
@@ -199,7 +194,7 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Bootstrap> fac
 		_beatmapset = new Beatmapset(801, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
 		var client = Configure(null).CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/beatmapsets/801/download", "assets.test.local"));
+		var response = await client.SendAsync(MakeRequest("/beatmapsets/801/download", "assets.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -211,7 +206,7 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Bootstrap> fac
 		var client = Configure("https://mirror.local/d").CreateClient(new WebApplicationFactoryClientOptions
 			{ AllowAutoRedirect = false });
 
-		var response = await client.SendAsync(MakeRequest("/beatmapsets/900/download", "assets.test.local"));
+		var response = await client.SendAsync(MakeRequest("/beatmapsets/900/download", "assets.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.MovedPermanently, response.StatusCode);
 		Assert.Equal("https://mirror.local/d/900?n=1", response.Headers.Location!.ToString());

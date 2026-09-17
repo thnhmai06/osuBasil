@@ -72,7 +72,7 @@ public class AvatarManagementEndpointTests : IClassFixture<WebApplicationFactory
 	[Fact]
 	public async Task PutAvatar_ValidUpload_ReturnsNoContentAndStoresFile()
 	{
-		var response = await _factory.CreateClient().SendAsync(MakeUploadRequest(HttpMethod.Put, 1));
+		var response = await _factory.CreateClient().SendAsync(MakeUploadRequest(HttpMethod.Put, 1), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.True(File.Exists(Path.Combine(_dataDir, "Avatars", "1.png")));
@@ -84,7 +84,7 @@ public class AvatarManagementEndpointTests : IClassFixture<WebApplicationFactory
 		var request = MakeRequest(HttpMethod.Put, "/users/1/avatar", null);
 		request.Content = new MultipartFormDataContent { { new ByteArrayContent([1, 2, 3]), "file", "avatar.png" } };
 
-		var response = await _factory.CreateClient().SendAsync(request);
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 	}
@@ -93,9 +93,9 @@ public class AvatarManagementEndpointTests : IClassFixture<WebApplicationFactory
 	public async Task DeleteAvatar_ExistingUpload_RemovesFileAndReturnsNoContent()
 	{
 		var client = _factory.CreateClient();
-		await client.SendAsync(MakeUploadRequest(HttpMethod.Put, 2));
+		await client.SendAsync(MakeUploadRequest(HttpMethod.Put, 2), TestContext.Current.CancellationToken);
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/users/2/avatar"));
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/users/2/avatar"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.False(File.Exists(Path.Combine(_dataDir, "Avatars", "2.png")));
@@ -104,7 +104,7 @@ public class AvatarManagementEndpointTests : IClassFixture<WebApplicationFactory
 	[Fact]
 	public async Task DeleteAvatar_NoAvatarUploaded_StillReturnsNoContent()
 	{
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/users/999/avatar"));
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/users/999/avatar"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 	}
@@ -113,7 +113,7 @@ public class AvatarManagementEndpointTests : IClassFixture<WebApplicationFactory
 	public async Task DeleteAvatar_MissingAdminKey_ReturnsUnauthorized()
 	{
 		var response = await _factory.CreateClient()
-			.SendAsync(MakeRequest(HttpMethod.Delete, "/users/1/avatar", null));
+			.SendAsync(MakeRequest(HttpMethod.Delete, "/users/1/avatar", null), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 	}
@@ -121,7 +121,7 @@ public class AvatarManagementEndpointTests : IClassFixture<WebApplicationFactory
 	[Fact]
 	public async Task PostAvatar_NoLongerSupported()
 	{
-		var response = await _factory.CreateClient().SendAsync(MakeUploadRequest(HttpMethod.Post, 3));
+		var response = await _factory.CreateClient().SendAsync(MakeUploadRequest(HttpMethod.Post, 3), TestContext.Current.CancellationToken);
 
 		Assert.False(response.IsSuccessStatusCode);
 	}

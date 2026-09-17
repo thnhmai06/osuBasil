@@ -19,8 +19,8 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 {
 	private readonly SqliteBeatmapRepository _beatmaps;
 	private readonly SqliteBeatmapsetRepository _beatmapsetRepository;
-	private readonly IResponseCache _cache;
 	private readonly string _beatmapsetsPath;
+	private readonly IResponseCache _cache;
 	private readonly BeatmapIngestionService _service;
 
 	public BeatmapIngestionServiceTests(SqliteFixture fixture)
@@ -127,7 +127,7 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 		Assert.False(File.Exists(oszPath));
 		var canonicalOsz = Directory.EnumerateFiles(_beatmapsetsPath, "*.osz").SingleOrDefault();
 		Assert.NotNull(canonicalOsz);
-		Assert.StartsWith(setId!.Value.ToString(), Path.GetFileName(canonicalOsz));
+		Assert.StartsWith(setId.Value.ToString(), Path.GetFileName(canonicalOsz));
 		// "Cache" itself is expected (this fixture roots CachePath under _beatmapsetsPath); no legacy
 		// beatmapset folder should exist alongside it.
 		Assert.DoesNotContain(Directory.EnumerateDirectories(_beatmapsetsPath), d => Path.GetFileName(d) != "Cache");
@@ -215,7 +215,9 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 		// A canonical .osz-based upload, dropped in after the legacy set already existed.
 		var oszPath = Path.Combine(_beatmapsetsPath, "dropped.osz");
 		await using (var archive = await ZipFile.OpenAsync(oszPath, ZipArchiveMode.Create))
+		{
 			await archive.CreateEntryFromFileAsync(FixtureSourcePath, "vivid_osu_file.osu");
+		}
 
 		var ingested = await _service.ReconcileAllAsync();
 
@@ -225,7 +227,7 @@ public class BeatmapIngestionServiceTests : IClassFixture<SqliteFixture>, IDispo
 		Assert.NotNull(await _beatmapsetRepository.FetchByIdAsync(oszSetId));
 		// The actual regression being pinned: the legacy set's row must survive this pass' orphan
 		// sweep even though it exists only under the legacy layout, not as an .osz.
-		Assert.NotNull(await _beatmapsetRepository.FetchByIdAsync(legacySetId!.Value));
+		Assert.NotNull(await _beatmapsetRepository.FetchByIdAsync(legacySetId.Value));
 		Assert.True(Directory.Exists(renamedLegacyFolder), "the legacy folder is untouched until migration reaches it");
 	}
 

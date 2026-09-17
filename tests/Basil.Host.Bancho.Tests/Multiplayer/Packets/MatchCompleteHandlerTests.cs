@@ -1,3 +1,5 @@
+using Basil.Application.Users;
+using Basil.Application.Users;
 using Basil.Domain.Multiplayer;
 using Basil.Host.Bancho.Multiplayer.Packets;
 using Basil.Protocol.Packets;
@@ -21,17 +23,17 @@ public class MatchCompleteHandlerTests
 		fixture.RegisterAll(host, guest);
 		var match = fixture.CreateMatch(host);
 		await fixture.MatchMembership.JoinAsync(guest, match, "");
-		match.Slots[0].Status = SlotStatus.Playing;
-		match.Slots[1].Status = SlotStatus.Playing;
+		match.Slots[0].Status = RoomSlotStatus.Playing;
+		match.Slots[1].Status = RoomSlotStatus.Playing;
 		match.InProgress = true;
 		host.Dequeue();
 		guest.Dequeue();
-		var handler = new MatchCompleteHandler(fixture.MatchBroadcast, fixture.RoundEndOutbox,
+		var handler = new MatchCompleteHandler(fixture.MatchBroadcast, fixture.RoundEndOutbox, fixture.UserCache,
 			NullLogger<MatchCompleteHandler>.Instance);
 
 		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
 
-		Assert.Equal(SlotStatus.Complete, match.Slots[0].Status);
+		Assert.Equal(RoomSlotStatus.Complete, match.Slots[0].Status);
 		Assert.True(match.InProgress);
 		Assert.Empty(host.Dequeue());
 	}
@@ -47,22 +49,22 @@ public class MatchCompleteHandlerTests
 		var match = fixture.CreateMatch(host);
 		await fixture.MatchMembership.JoinAsync(guest, match, "");
 		await fixture.MatchMembership.JoinAsync(spectatorish, match, "");
-		match.Slots[0].Status = SlotStatus.Playing;
-		match.Slots[1].Status = SlotStatus.Playing;
-		match.Slots[2].Status = SlotStatus.NotReady; // never started playing
+		match.Slots[0].Status = RoomSlotStatus.Playing;
+		match.Slots[1].Status = RoomSlotStatus.Playing;
+		match.Slots[2].Status = RoomSlotStatus.NotReady; // never started playing
 		match.InProgress = true;
-		match.Slots[1].Loaded = true;
+		match.Slots[1].BeatmapLoaded = true;
 		host.Dequeue();
 		guest.Dequeue();
 		spectatorish.Dequeue();
-		var handler = new MatchCompleteHandler(fixture.MatchBroadcast, fixture.RoundEndOutbox,
+		var handler = new MatchCompleteHandler(fixture.MatchBroadcast, fixture.RoundEndOutbox, fixture.UserCache,
 			NullLogger<MatchCompleteHandler>.Instance);
 
 		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
 		await handler.HandleAsync(guest, new PacketReader(ReadOnlyMemory<byte>.Empty));
 
 		Assert.False(match.InProgress);
-		Assert.False(match.Slots[1].Loaded);
+		Assert.False(match.Slots[1].BeatmapLoaded);
 		Assert.Contains(ServerPacketWriter.MatchComplete(), Chunk(host.Dequeue()));
 		// immune from match_complete itself (still gets the enqueue_state update, just not this packet)
 		Assert.DoesNotContain(ServerPacketWriter.MatchComplete(), Chunk(spectatorish.Dequeue()));
@@ -80,12 +82,12 @@ public class MatchCompleteHandlerTests
 		var host = MakePlayer(1, "host");
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
-		match.Slots[0].Status = SlotStatus.Playing;
+		match.Slots[0].Status = RoomSlotStatus.Playing;
 		match.InProgress = true;
 		match.CurrentRoundId = 1;
 		fixture.RoundEndOutbox.ThrowFull = true;
 		host.Dequeue();
-		var handler = new MatchCompleteHandler(fixture.MatchBroadcast, fixture.RoundEndOutbox,
+		var handler = new MatchCompleteHandler(fixture.MatchBroadcast, fixture.RoundEndOutbox, fixture.UserCache,
 			NullLogger<MatchCompleteHandler>.Instance);
 
 		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
@@ -108,10 +110,10 @@ public class MatchCompleteHandlerTests
 		var host = MakePlayer(1, "host");
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
-		match.Slots[0].Status = SlotStatus.Complete;
+		match.Slots[0].Status = RoomSlotStatus.Complete;
 		match.InProgress = false;
 		match.CurrentRoundId = 1;
-		var handler = new MatchCompleteHandler(fixture.MatchBroadcast, fixture.RoundEndOutbox,
+		var handler = new MatchCompleteHandler(fixture.MatchBroadcast, fixture.RoundEndOutbox, fixture.UserCache,
 			NullLogger<MatchCompleteHandler>.Instance);
 
 		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));

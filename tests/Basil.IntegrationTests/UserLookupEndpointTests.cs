@@ -1,6 +1,5 @@
 using System.Net;
 using Basil.Application.Shared.Configuration;
-using Basil.Domain.Client;
 using Basil.Domain.Users;
 using Basil.Host;
 using Basil.Application.Users;
@@ -41,7 +40,7 @@ public class UserLookupEndpointTests : IClassFixture<WebApplicationFactory<Boots
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton(TestDoubles.FixedAdminKeySettingsRepository());
 				services.AddSingleton(users);
 			});
@@ -63,9 +62,10 @@ public class UserLookupEndpointTests : IClassFixture<WebApplicationFactory<Boots
 	[Fact]
 	public async Task GetUser_NumericId_ReturnsUser()
 	{
-		_byId[7] = new User(7, "cool_player", Country.Us, UserPrivileges.Unrestricted, default);
+		_byId[7] = new User { Id = 7, Name = "cool_player", Country = Country.Us };
 
-		var response = await MakeClient().SendAsync(MakeRequest("/users/7", "correct-key"));
+		var response = await MakeClient()
+			.SendAsync(MakeRequest("/users/7", "correct-key"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 	}
@@ -73,7 +73,8 @@ public class UserLookupEndpointTests : IClassFixture<WebApplicationFactory<Boots
 	[Fact]
 	public async Task GetUser_UnknownNumericId_ReturnsNotFound()
 	{
-		var response = await MakeClient().SendAsync(MakeRequest("/users/999", "correct-key"));
+		var response = await MakeClient()
+			.SendAsync(MakeRequest("/users/999", "correct-key"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -84,7 +85,8 @@ public class UserLookupEndpointTests : IClassFixture<WebApplicationFactory<Boots
 	[InlineData("/users/cool_player/live")]
 	public async Task GetUser_NonNumericSegment_NeverMatchesRoute(string path)
 	{
-		var response = await MakeClient().SendAsync(MakeRequest(path, "correct-key"));
+		var response = await MakeClient()
+			.SendAsync(MakeRequest(path, "correct-key"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}

@@ -1,26 +1,24 @@
+using Basil.Application.Beatmaps;
+using Basil.Application.Bot;
+using Basil.Application.Channels;
+using Basil.Application.Chat;
 using Basil.Application.Irc;
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
 using Basil.Application.Shared.Eventing;
-using Basil.Domain.Beatmaps;
+using Basil.Application.Spectating;
+using Basil.Application.Users;
 using Basil.Domain.Channels;
 using Basil.Domain.Multiplayer;
-using Basil.Application.Spectating;
 using Basil.Domain.Users;
-using Basil.Application.Bot;
-using Basil.Application.Chat;
-using Basil.Host.Bancho.Shared.Sessions;
 using Basil.Host.Bancho.Chat.Packets;
-using Basil.Infrastructure.Multiplayer;
 using Basil.Host.Bancho.Multiplayer.Packets;
-using Basil.Infrastructure.Shared.Sessions;
-using Basil.Infrastructure.Spectating;
+using Basil.Host.Bancho.Shared.Sessions;
 using Basil.Host.Bancho.Spectating.Packets;
+using Basil.Infrastructure.Shared.Sessions;
 using Basil.Infrastructure.Tests.Multiplayer.Packets;
 using Basil.Protocol.Packets;
-using Basil.Application.Users;
-using Basil.Application.Beatmaps;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -56,10 +54,12 @@ public class GhostDisconnectServiceTests
 		IChannelRegistry? channelRegistry = null)
 	{
 		channelRegistry ??= Substitute.For<IChannelRegistry>();
+		var userCache = Substitute.For<IUserCache>();
 		var channelMembership = new ChannelMembershipService(gameRegistry, ircRegistry, channelRegistry,
 			new ChatNotifier(Options.Create(new IrcOptions())),
 			new ChannelNotifier(gameRegistry, ircRegistry, Options.Create(new IrcOptions())),
-			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
+			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()),
+			userCache);
 		var spectatorService = new SpectatorService(channelRegistry, channelMembership, new SpectatorNotifier(),
 			NullLogger<SpectatorService>.Instance);
 		var matchBroadcast = new MatchBroadcast(channelRegistry, channelMembership,
@@ -71,10 +71,10 @@ public class GhostDisconnectServiceTests
 			new MatchNotifier(channelRegistry, channelMembership),
 			gameRegistry, Substitute.For<IMatchRepository>(), Substitute.For<IMatchRoundEndOutbox>(), null,
 			Substitute.For<IBeatmapRepository>(), matchBroadcast,
-			Substitute.For<IServiceProvider>(), NullLogger<MatchLifecycle>.Instance);
+			Substitute.For<IServiceProvider>(), userCache, NullLogger<MatchLifecycle>.Instance);
 		var matchMembership = new MatchMembership(channelRegistry, gameRegistry, channelMembership,
 			new MatchNotifier(channelRegistry, channelMembership),
-			Substitute.For<IMatchRepository>(), matchLifecycle, NullLogger<MatchMembership>.Instance);
+			Substitute.For<IMatchRepository>(), matchLifecycle, userCache, NullLogger<MatchMembership>.Instance);
 		return new PlayerLogoutService(
 			[
 				new MatchLeaveLogoutHandler(matchMembership),
@@ -234,7 +234,7 @@ public class GhostDisconnectServiceTests
 
 	/// <summary>
 	///     Regression test for the multiplayer-hang bug: a ghosted userSession whose slot is still
-	///     SlotStatus.Playing must leave the match and reset its slot, otherwise the round can never
+	///     RoomSlotStatus.Playing must leave the match and reset its slot, otherwise the round can never
 	///     complete. Uses the real MatchMembershipService (via MultiplayerTestSupport.Fixture)
 	///     so LeaveAsync's actual slot-reset behavior is exercised, not a fake.
 	/// </summary>
@@ -248,13 +248,14 @@ public class GhostDisconnectServiceTests
 		fixture.RegisterAll(ghost, survivor);
 		var match = fixture.CreateMatch(ghost);
 		await fixture.MatchMembership.JoinAsync(survivor, match, "");
-		var ghostSlot = match.GetSlot(ghost.Id)!;
-		ghostSlot.Status = SlotStatus.Playing;
+		var ghostSlot = match.GetSlot(fixture.UserCache.Resolve(ghost))!;
+		ghostSlot.Status = RoomSlotStatus.Playing;
 
 		var testChannelMembership = new ChannelMembershipService(fixture.SessionRegistry,
 			fixture.IrcSessionRegistry, fixture.ChannelRegistry, new ChatNotifier(Options.Create(new IrcOptions())),
 			new ChannelNotifier(fixture.SessionRegistry, fixture.IrcSessionRegistry, Options.Create(new IrcOptions())),
-			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
+			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()),
+			fixture.UserCache);
 		var testSpectatorService = new SpectatorService(fixture.ChannelRegistry, testChannelMembership,
 			new SpectatorNotifier(),
 			NullLogger<SpectatorService>.Instance);
@@ -274,7 +275,7 @@ public class GhostDisconnectServiceTests
 			NullLogger<GhostDisconnectService>.Instance).RunOnce();
 
 		Assert.Null(ghost.Match);
-		Assert.Equal(SlotStatus.Open, ghostSlot.Status);
+		Assert.Equal(RoomSlotStatus.Open, ghostSlot.Status);
 	}
 
 	/// <summary>

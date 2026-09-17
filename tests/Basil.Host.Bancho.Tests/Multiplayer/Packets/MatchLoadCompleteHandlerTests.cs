@@ -17,15 +17,15 @@ public class MatchLoadCompleteHandlerTests
 		fixture.RegisterAll(host, guest);
 		var match = fixture.CreateMatch(host);
 		await fixture.MatchMembership.JoinAsync(guest, match, "");
-		match.Slots[0].Status = SlotStatus.Playing;
-		match.Slots[1].Status = SlotStatus.Playing;
+		match.Slots[0].Status = RoomSlotStatus.Playing;
+		match.Slots[1].Status = RoomSlotStatus.Playing;
 		host.Dequeue();
 		guest.Dequeue();
-		var handler = new MatchLoadCompleteHandler(fixture.MatchBroadcast);
+		var handler = new MatchLoadCompleteHandler(fixture.MatchBroadcast, fixture.UserCache);
 
 		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
 
-		Assert.True(match.Slots[0].Loaded);
+		Assert.True(match.Slots[0].BeatmapLoaded);
 		Assert.Empty(host.Dequeue());
 	}
 
@@ -38,12 +38,12 @@ public class MatchLoadCompleteHandlerTests
 		fixture.RegisterAll(host, guest);
 		var match = fixture.CreateMatch(host);
 		await fixture.MatchMembership.JoinAsync(guest, match, "");
-		match.Slots[0].Status = SlotStatus.Playing;
-		match.Slots[1].Status = SlotStatus.Playing;
-		match.Slots[1].Loaded = true;
+		match.Slots[0].Status = RoomSlotStatus.Playing;
+		match.Slots[1].Status = RoomSlotStatus.Playing;
+		match.Slots[1].BeatmapLoaded = true;
 		host.Dequeue();
 		guest.Dequeue();
-		var handler = new MatchLoadCompleteHandler(fixture.MatchBroadcast);
+		var handler = new MatchLoadCompleteHandler(fixture.MatchBroadcast, fixture.UserCache);
 
 		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
 

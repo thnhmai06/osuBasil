@@ -46,7 +46,7 @@ public class FileSystemReplayStorageTests
 				ClientTime = new DateTime(2021, 5, 20, 23, 59, 59),
 				ServerTime = new DateTime(2021, 5, 20, 23, 59, 59, DateTimeKind.Utc)
 			};
-			var osuVersion = OsuVersion.From("b20260711.1");
+			var osuVersion = ClientVersion.From("b20260711.1");
 			var replayData = Enumerable.Range(0, 30).Select(i => (byte)i).ToArray();
 
 			await storage.WriteAsync(555L, score, "cookiezi", osuVersion, replayData);

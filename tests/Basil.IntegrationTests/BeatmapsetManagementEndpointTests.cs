@@ -6,12 +6,10 @@ using Basil.Application.Shared.Configuration;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Basil.Host;
-using Basil.Infrastructure.Beatmaps;
 using Basil.Application.Beatmaps;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -40,16 +38,16 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 		beatmapsets.FetchByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
 			.Returns(call => _beatmapset?.Id == call.ArgAt<int>(0) ? _beatmapset : null);
 		beatmapsets.FetchAllIdsAsync(Arg.Any<CancellationToken>())
-			.Returns(_ => (IReadOnlyList<int>)(_beatmapset is not null ? [_beatmapset.Id] : []));
+			.Returns(_ => _beatmapset is not null ? [_beatmapset.Id] : []);
 		beatmapsets.FetchPageAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
-			.Returns(_ => (IReadOnlyList<Beatmapset>)(_beatmapset is not null ? [_beatmapset] : []));
-		beatmapsets.WhenForAnyArgs(m => m.SetFrozenAsync(default, default))
+			.Returns(_ => _beatmapset is not null ? [_beatmapset] : []);
+		beatmapsets.WhenForAnyArgs(m => m.SetFrozenAsync(0, false))
 			.Do(call =>
 			{
 				if (_beatmapset?.Id == call.ArgAt<int>(0))
 					_beatmapset = _beatmapset with { IsFrozen = call.ArgAt<bool>(1) };
 			});
-		beatmapsets.WhenForAnyArgs(m => m.SetPrivateAsync(default, default))
+		beatmapsets.WhenForAnyArgs(m => m.SetPrivateAsync(0, false))
 			.Do(call =>
 			{
 				if (_beatmapset?.Id == call.ArgAt<int>(0))
@@ -57,7 +55,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 			});
 		beatmapsets.FetchCountAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>())
 			.Returns(call => _beatmapset is not null && (call.ArgAt<bool>(0) || !_beatmapset.IsPrivate) ? 1 : 0);
-		// Unstubbed NSubstitute methods return null for a reference type -- POST /beatmapsets'
+		// Unstubbed NSubstitute methods return null for a reference type -- POST /beatmapsets
 		// ingestion path resolves/creates a Beatmapset via UpsertAsync and needs a real instance back,
 		// or BeatmapIngestionService.BeatmapsetFolderName throws a NullReferenceException on it.
 		beatmapsets.UpsertAsync(Arg.Any<Beatmapset>(), Arg.Any<CancellationToken>())
@@ -213,14 +211,14 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 		var beatmapsetsDir = Path.Combine(_dataDir, "Beatmapsets");
 		Directory.CreateDirectory(beatmapsetsDir);
 		var strayOszPath = Path.Combine(beatmapsetsDir, "stray.osz");
-		await File.WriteAllBytesAsync(strayOszPath, await MakeMinimalOszAsync());
+		await File.WriteAllBytesAsync(strayOszPath, await MakeMinimalOszAsync(), TestContext.Current.CancellationToken);
 
 		var request = MakeRequest(HttpMethod.Post, "/beatmapsets");
 		request.Content = new MultipartFormDataContent
 			{ { new ByteArrayContent(await MakeDecodableOszAsync("Uploaded Set")), "file", "set.osz" } };
 
-		var response = await _factory.CreateClient().SendAsync(request);
-		var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 		Assert.Equal(1, body.GetProperty("data").GetProperty("beatmapsProcessed").GetInt32());
@@ -233,7 +231,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 		var request = MakeRequest(HttpMethod.Post, "/beatmapsets");
 		request.Content = new MultipartFormDataContent { { new StringContent("no file here"), "note" } };
 
-		var response = await _factory.CreateClient().SendAsync(request);
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 	}
@@ -251,7 +249,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 		var request = MakeRequest(HttpMethod.Post, "/beatmapsets");
 		request.Content = new MultipartFormDataContent();
 
-		var response = await _factory.CreateClient().SendAsync(request);
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 	}
@@ -265,7 +263,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 		request.Content = new MultipartFormDataContent
 			{ { new ByteArrayContent(await MakeMinimalOszAsync()), "file", "set.osz" } };
 
-		var response = await _factory.CreateClient().SendAsync(request);
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -280,7 +278,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 		request.Content = new MultipartFormDataContent
 			{ { new ByteArrayContent(await MakeMinimalOszAsync()), "file", "set.osz" } };
 
-		var response = await _factory.CreateClient().SendAsync(request);
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
 	}
@@ -295,7 +293,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 		var request = MakeRequest(HttpMethod.Put, "/beatmapsets/702");
 		request.Content = new MultipartFormDataContent();
 
-		var response = await _factory.CreateClient().SendAsync(request);
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 	}
@@ -323,7 +321,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 	{
 		_beatmapset = new Beatmapset(701, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
 		var folder = BeatmapsetFolder(701);
-		await File.WriteAllTextAsync(Path.Combine(folder, "old.osu"), "stale content");
+		await File.WriteAllTextAsync(Path.Combine(folder, "old.osu"), "stale content", TestContext.Current.CancellationToken);
 
 		var client = _factory.CreateClient();
 		await WaitForBeatmapsetMigrationAsync();
@@ -332,13 +330,13 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 		request.Content = new MultipartFormDataContent
 			{ { new ByteArrayContent(await MakeMinimalOszAsync()), "file", "set.osz" } };
 
-		var response = await client.SendAsync(request);
+		var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
 		var beatmapsetsPath = Path.Combine(_dataDir, "Beatmapsets");
 		var canonicalOsz = Directory.EnumerateFiles(beatmapsetsPath, "701 *.osz").SingleOrDefault();
 		Assert.NotNull(canonicalOsz);
-		await using var archive = await ZipFile.OpenReadAsync(canonicalOsz);
+		await using var archive = await ZipFile.OpenReadAsync(canonicalOsz, TestContext.Current.CancellationToken);
 		Assert.Contains(archive.Entries, e => e.Name == "replacement.osu");
 	}
 
@@ -369,7 +367,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 
 		var beatmaps = Substitute.For<IBeatmapRepository>();
 		beatmaps.FetchAllBySetIdAsync(Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
-			.Returns((IReadOnlyList<Beatmap>)[]);
+			.Returns([]);
 
 		var factory = FactoryWithoutBackgroundBeatmapServices()
 			.WithWebHostBuilder(builder => builder.ConfigureServices(services => services.AddSingleton(beatmaps)));
@@ -378,7 +376,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 		request.Content = new MultipartFormDataContent
 			{ { new ByteArrayContent(await MakeDecodableOszAsync("Replacement")), "file", "set.osz" } };
 
-		var response = await factory.CreateClient().SendAsync(request);
+		var response = await factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
 		await beatmaps.Received(1).UpsertAsync(Arg.Any<Beatmap>(), Arg.Any<CancellationToken>());
@@ -389,7 +387,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 	[Fact]
 	public async Task DeleteBeatmapset_UnknownId_ReturnsNotFound()
 	{
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/beatmapsets/999999"));
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/beatmapsets/999999"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -408,7 +406,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 		_beatmapset = new Beatmapset(800, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow, true);
 		var folder = BeatmapsetFolder(800);
 
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/beatmapsets/800"));
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/beatmapsets/800"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
 		var beatmapsetsPath = Path.Combine(_dataDir, "Beatmapsets");
@@ -433,7 +431,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 		_beatmapset = new Beatmapset(801, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
 		var folder = BeatmapsetFolder(801);
 
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/beatmapsets/801"));
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/beatmapsets/801"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
 		Assert.False(Directory.Exists(folder));
@@ -459,7 +457,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 		BeatmapsetFolder(802);
 
 		var factory = FactoryWithoutBackgroundBeatmapServices();
-		var response = await factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/beatmapsets/802"));
+		var response = await factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/beatmapsets/802"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
 		await _beatmapsets.Received(1).DeleteAsync(802, Arg.Any<CancellationToken>());
@@ -473,7 +471,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 		var request = MakeRequest(HttpMethod.Patch, "/beatmapsets/999999");
 		request.Content = JsonContent.Create(new { frozen = true });
 
-		var response = await _factory.CreateClient().SendAsync(request);
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -485,7 +483,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 
 		var setRequest = MakeRequest(HttpMethod.Patch, "/beatmapsets/900");
 		setRequest.Content = JsonContent.Create(new { frozen = true, @private = true });
-		var setResponse = await _factory.CreateClient().SendAsync(setRequest);
+		var setResponse = await _factory.CreateClient().SendAsync(setRequest, TestContext.Current.CancellationToken);
 
 		Assert.True(setResponse.IsSuccessStatusCode);
 		Assert.True(_beatmapset!.IsFrozen);
@@ -493,7 +491,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 
 		var clearRequest = MakeRequest(HttpMethod.Patch, "/beatmapsets/900");
 		clearRequest.Content = JsonContent.Create(new { frozen = false, @private = false });
-		await _factory.CreateClient().SendAsync(clearRequest);
+		await _factory.CreateClient().SendAsync(clearRequest, TestContext.Current.CancellationToken);
 
 		Assert.False(_beatmapset!.IsFrozen);
 		Assert.False(_beatmapset!.IsPrivate);
@@ -507,7 +505,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 
 		var request = MakeRequest(HttpMethod.Patch, "/beatmapsets/902");
 		request.Content = JsonContent.Create(new { frozen = true });
-		await _factory.CreateClient().SendAsync(request);
+		await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.True(_beatmapset!.IsFrozen);
 		Assert.True(_beatmapset!.IsPrivate);
@@ -521,7 +519,7 @@ public class BeatmapsetManagementEndpointTests : IClassFixture<WebApplicationFac
 		var request = MakeRequest(HttpMethod.Patch, "/beatmapsets/901", null);
 		request.Content = JsonContent.Create(new { frozen = true });
 
-		var response = await _factory.CreateClient().SendAsync(request);
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 	}

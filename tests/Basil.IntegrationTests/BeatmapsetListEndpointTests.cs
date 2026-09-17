@@ -30,12 +30,11 @@ public class BeatmapsetListEndpointTests : IClassFixture<WebApplicationFactory<B
 		var beatmapsets = Substitute.For<IBeatmapsetRepository>();
 		beatmapsets.FetchCountAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(_ => _sets.Count);
 		beatmapsets.FetchPageAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
-			.Returns(call => (IReadOnlyList<Beatmapset>)
-				[.. _sets.Skip(call.ArgAt<int>(0)).Take(call.ArgAt<int>(1))]);
+			.Returns(call => [.. _sets.Skip(call.ArgAt<int>(0)).Take(call.ArgAt<int>(1))]);
 
 		_maps.FetchCountsBySetIdsAsync(Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<bool>(),
 				Arg.Any<CancellationToken>())
-			.Returns(call => (IReadOnlyDictionary<int, int>)call.ArgAt<IReadOnlyCollection<int>>(0)
+			.Returns(call => call.ArgAt<IReadOnlyCollection<int>>(0)
 				.ToDictionary(id => id, id => id * 10));
 
 		_factory = factory.WithWebHostBuilder(builder =>
@@ -50,7 +49,7 @@ public class BeatmapsetListEndpointTests : IClassFixture<WebApplicationFactory<B
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
 				services.AddSingleton(beatmapsets);
 				services.AddSingleton(_maps);
@@ -73,8 +72,8 @@ public class BeatmapsetListEndpointTests : IClassFixture<WebApplicationFactory<B
 	{
 		_sets = [MakeBeatmapset(1), MakeBeatmapset(2), MakeBeatmapset(3)];
 
-		var response = await _factory.CreateClient().SendAsync(MakeRequest("/beatmapsets"));
-		var body = await response.Content.ReadFromJsonAsync<Envelope<List<BeatmapsetSummary>>>();
+		var response = await _factory.CreateClient().SendAsync(MakeRequest("/beatmapsets"), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadFromJsonAsync<Envelope<List<BeatmapsetSummary>>>(cancellationToken: TestContext.Current.CancellationToken);
 
 		response.EnsureSuccessStatusCode();
 		Assert.Equal([10, 20, 30], body!.Data!.Select(s => s.BeatmapCount));

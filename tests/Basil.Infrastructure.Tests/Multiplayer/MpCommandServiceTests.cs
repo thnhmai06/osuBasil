@@ -9,7 +9,6 @@ using Basil.Application.Shared.Configuration;
 using Basil.Application.Shared.Eventing;
 using Basil.Application.Users;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Client;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
@@ -42,7 +41,7 @@ public class MpCommandServiceTests
 			_fixture.SetTeamHandler, _fixture.TimerHandler, _fixture.AbortTimerHandler,
 			_fixture.StartHandler, _fixture.AbortHandler, _fixture.CloseHandler,
 			_fixture.MatchRegistry, _fixture.MatchRepository, _beatmaps,
-			_fixture.SessionRegistry, _fixture.IrcSessionRegistry, _users, _fixture.ChannelRegistry,
+			_fixture.SessionRegistry, _fixture.IrcSessionRegistry, _users, _fixture.UserCache, _fixture.ChannelRegistry,
 			_fixture.ChannelMembership,
 			NullLogger<MpCommandService>.Instance,
 			NullLogger<MatchControlService>.Instance);
@@ -147,9 +146,9 @@ public class MpCommandServiceTests
 
 		await Run(MakeService(), host, match, "size", ["4"]);
 
-		Assert.Equal(SlotStatus.Open, match.Slots[3].Status);
-		Assert.Equal(SlotStatus.Locked, match.Slots[4].Status);
-		Assert.Equal(SlotStatus.Locked, match.Slots[15].Status);
+		Assert.Equal(RoomSlotStatus.Open, match.Slots[3].Status);
+		Assert.Equal(RoomSlotStatus.Locked, match.Slots[4].Status);
+		Assert.Equal(RoomSlotStatus.Locked, match.Slots[15].Status);
 	}
 
 	[Theory]
@@ -178,8 +177,8 @@ public class MpCommandServiceTests
 
 		var reply = await Run(MakeService(), host, match, "move", ["other", "5"]);
 
-		Assert.Equal(2, match.Slots[4].PlayerId);
-		Assert.True(match.Slots[1].Empty);
+		Assert.Equal(2, match.Slots[4].Player!.Id);
+		Assert.True(match.Slots[1].IsEmpty);
 		Assert.Equal(string.Format(MpReplies.MovedToSlot, "other", 5), reply);
 	}
 
@@ -194,7 +193,7 @@ public class MpCommandServiceTests
 
 		var reply = await Run(MakeService(), host, match, "move", ["other", "99"]);
 
-		Assert.Equal(2, match.Slots[15].PlayerId);
+		Assert.Equal(2, match.Slots[15].Player!.Id);
 		Assert.Equal(string.Format(MpReplies.MovedToSlot, "other", 16), reply);
 	}
 
@@ -209,7 +208,7 @@ public class MpCommandServiceTests
 
 		var reply = await Run(MakeService(), host, match, "host", ["other"]);
 
-		Assert.Equal(2, match.HostId);
+		Assert.Equal(2, match.Host?.Id);
 		Assert.Equal(string.Format(MpReplies.ChangedMatchHost, "other"), reply);
 	}
 
@@ -222,7 +221,7 @@ public class MpCommandServiceTests
 
 		await Run(MakeService(), host, match, "clearhost", []);
 
-		Assert.Null(match.HostId);
+		Assert.Null(match.Host);
 	}
 
 	[Fact]
@@ -273,7 +272,7 @@ public class MpCommandServiceTests
 
 		var reply = await Run(MakeService(), host, match, "addref", ["other"]);
 
-		Assert.Contains(other.Id, match.Referees);
+		Assert.Contains(match.Referees, r => r.Id == other.Id);
 		Assert.Equal(string.Format(MpReplies.AddedReferee, "other"), reply);
 	}
 
@@ -287,11 +286,11 @@ public class MpCommandServiceTests
 		var other = MultiplayerTestSupport.MakePlayer(3, "other");
 		_fixture.RegisterAll(host, referee, other);
 		var match = _fixture.CreateMatch(host);
-		match.AddReferee(referee.Id);
+		match.AddReferee(_fixture.UserCache.Resolve(referee));
 
 		var reply = await Run(MakeService(), referee, match, "addref", ["other"]);
 
-		Assert.DoesNotContain(other.Id, match.Referees);
+		Assert.DoesNotContain(match.Referees, r => r.Id == other.Id);
 		Assert.Equal(string.Format(MpReplies.CreatorOnlyMp, "!mp addref"), reply);
 	}
 
@@ -303,12 +302,12 @@ public class MpCommandServiceTests
 		var other = MultiplayerTestSupport.MakePlayer(3, "other");
 		_fixture.RegisterAll(host, referee, other);
 		var match = _fixture.CreateMatch(host);
-		match.AddReferee(referee.Id);
-		match.AddReferee(other.Id);
+		match.AddReferee(_fixture.UserCache.Resolve(referee));
+		match.AddReferee(_fixture.UserCache.Resolve(other));
 
 		var reply = await Run(MakeService(), referee, match, "removeref", ["other"]);
 
-		Assert.Contains(other.Id, match.Referees);
+		Assert.Contains(match.Referees, r => r.Id == other.Id);
 		Assert.Equal(string.Format(MpReplies.CreatorOnlyMp, "!mp removeref"), reply);
 	}
 
@@ -321,7 +320,7 @@ public class MpCommandServiceTests
 
 		var reply = await Run(MakeService(), host, match, "removeref", ["host"]);
 
-		Assert.Contains(host.Id, match.Referees);
+		Assert.Contains(match.Referees, r => r.Id == host.Id);
 		Assert.Equal(string.Format(MpReplies.CannotRemoveCreator, "host"), reply);
 	}
 
@@ -337,7 +336,7 @@ public class MpCommandServiceTests
 		// "settings" is a read-only subcommand, open to anyone the match resolves for — not gated on
 		// referee status (see MpCommandService.ReadOnlySubcommands).
 		Assert.NotNull(reply);
-		Assert.DoesNotContain(host.Id, match.Referees);
+		Assert.DoesNotContain(match.Referees, r => r.Id == host.Id);
 	}
 
 	[Fact]
@@ -353,7 +352,7 @@ public class MpCommandServiceTests
 		var reply = await Run(MakeService(), outsider, match, "lock", []);
 
 		Assert.Equal(string.Format(MpReplies.NotARefereeOfMatch, match.DbId), reply);
-		Assert.DoesNotContain(outsider.Id, match.Referees);
+		Assert.DoesNotContain(match.Referees, r => r.Id == outsider.Id);
 	}
 
 	[Fact]
@@ -417,7 +416,7 @@ public class MpCommandServiceTests
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
-		match.CreatorId = null;
+		match.Creator = null;
 
 		var reply = await Run(MakeService(), host, match, "settings", []);
 
@@ -430,7 +429,7 @@ public class MpCommandServiceTests
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host, MatchTeamType.TeamVs);
-		var hostSlot = match.GetSlotId(host.Id)!.Value;
+		var hostSlot = match.GetSlotId(_fixture.UserCache.Resolve(host))!.Value;
 		var team = match.Slots[hostSlot].Team;
 
 		var reply = await Run(MakeService(), host, match, "settings", []);
@@ -445,7 +444,7 @@ public class MpCommandServiceTests
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host, MatchTeamType.TagTeamVs);
-		var hostSlot = match.GetSlotId(host.Id)!.Value;
+		var hostSlot = match.GetSlotId(_fixture.UserCache.Resolve(host))!.Value;
 		var team = match.Slots[hostSlot].Team;
 
 		var reply = await Run(MakeService(), host, match, "settings", []);
@@ -501,7 +500,7 @@ public class MpCommandServiceTests
 				new ChannelNotifier(_fixture.SessionRegistry, _fixture.IrcSessionRegistry,
 					Options.Create(new IrcOptions())), Substitute.For<IMatchRegistry>(),
 				Substitute.For<ILiveEventHub>(),
-				Options.Create(new IrcOptions()));
+				Options.Create(new IrcOptions()), _fixture.UserCache);
 		var channel = _fixture.ChannelRegistry.All.Single(c => c.Name.StartsWith("#mp_"));
 		channelMembership.Join(session, channel);
 	}
@@ -516,7 +515,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host);
 		_fixture.IrcSessionRegistry.GetByUserId(2).Returns(refereeIrc);
 		var match = _fixture.CreateMatch(host);
-		match.AddReferee(2);
+		match.AddReferee(_fixture.UserCache.Resolve(refereeIrc));
 		JoinMatchChannel(refereeIrc);
 
 		var reply = await Run(MakeService(), host, match, "settings", []);
@@ -583,7 +582,7 @@ public class MpCommandServiceTests
 		await Run(service, host, match, "addref", ["other"]);
 		var listing = await Run(service, host, match, "listrefs", []);
 
-		Assert.Contains(other.Id, match.Referees);
+		Assert.Contains(match.Referees, r => r.Id == other.Id);
 		Assert.Contains("other", listing);
 	}
 
@@ -594,11 +593,11 @@ public class MpCommandServiceTests
 		var other = MultiplayerTestSupport.MakePlayer(2, "other");
 		_fixture.RegisterAll(host, other);
 		var match = _fixture.CreateMatch(host);
-		match.AddReferee(other.Id);
+		match.AddReferee(_fixture.UserCache.Resolve(other));
 
 		await Run(MakeService(), host, match, "removeref", ["other"]);
 
-		Assert.DoesNotContain(other.Id, match.Referees);
+		Assert.DoesNotContain(match.Referees, r => r.Id == other.Id);
 	}
 
 	[Fact]
@@ -613,7 +612,7 @@ public class MpCommandServiceTests
 		_fixture.IrcSessionRegistry.GetByUserId(2).Returns(refereeIrc);
 		_fixture.IrcSessionRegistry.GetByName("refonirc").Returns(refereeIrc);
 		var match = _fixture.CreateMatch(host);
-		match.AddReferee(2);
+		match.AddReferee(_fixture.UserCache.Resolve(refereeIrc));
 		JoinMatchChannel(refereeIrc);
 		var channel = _fixture.ChannelRegistry.All.Single(c => c.Name.StartsWith("#mp_"));
 		Assert.Contains(channel.Name, refereeIrc.Channels);
@@ -621,7 +620,7 @@ public class MpCommandServiceTests
 		var reply = await Run(MakeService(), host, match, "removeref", ["refonirc"]);
 
 		Assert.Equal(string.Format(MpReplies.RemovedReferee, "refonirc"), reply);
-		Assert.DoesNotContain(2, match.Referees);
+		Assert.DoesNotContain(match.Referees, r => r.Id == 2);
 		Assert.DoesNotContain(channel.Name, refereeIrc.Channels);
 	}
 
@@ -632,7 +631,7 @@ public class MpCommandServiceTests
 		var banned = MultiplayerTestSupport.MakePlayer(2, "banned_guy");
 		_fixture.RegisterAll(host, banned);
 		var match = _fixture.CreateMatch(host);
-		match.AddBan(2);
+		match.AddBan(_fixture.UserCache.Resolve(banned));
 
 		var reply = await Run(MakeService(), host, match, "banlist", []);
 
@@ -695,11 +694,8 @@ public class MpCommandServiceTests
 	}
 
 	/// <summary>
-	///     Regression test (Issue #4: "the `[playmode]` field is missing"): `!mp map
-	///     <id>
-	///         <mode>
-	///             ` picks
-	///             a converted ruleset for a beatmap whose own mode is osu!/convertible.
+	///     Regression test (Issue #4: "the `[playmode]` field is missing"): `!mp map` picks
+	///     a converted ruleset for a beatmap whose own mode is osu!/convertible.
 	/// </summary>
 	[Fact]
 	public async Task HandleAsync_Map_StandardBeatmapWithPlaymode_SetsMatchModeToPlaymode()
@@ -874,7 +870,7 @@ public class MpCommandServiceTests
 		Assert.Empty(sink.DmReplies);
 		Assert.Equal(
 			ServerPacketWriter.SendMessage(bot.Name,
-				"Match cannot start because the beatmap does not exist on the server.",
+				"Room cannot start because the beatmap does not exist on the server.",
 				"#multiplayer", bot.Id),
 			host.Dequeue());
 	}
@@ -1016,7 +1012,7 @@ public class MpCommandServiceTests
 		Assert.False(match.PendingTimerIsAutoStart);
 		Assert.True(cts!.IsCancellationRequested);
 		Assert.Contains(
-			ServerPacketWriter.SendMessage(bot.Name, "Match start cancelled — room settings changed.",
+			ServerPacketWriter.SendMessage(bot.Name, "Room start cancelled — room settings changed.",
 				"#multiplayer", bot.Id),
 			MultiplayerTestSupport.Chunk(host.Dequeue()));
 	}
@@ -1190,7 +1186,7 @@ public class MpCommandServiceTests
 		var target = MultiplayerTestSupport.MakePlayer(3, "target");
 		_fixture.RegisterAll(host, referee, target);
 		var match = _fixture.CreateMatch(host, hostIsReferee: false);
-		match.AddReferee(referee.Id);
+		match.AddReferee(_fixture.UserCache.Resolve(referee));
 		await _fixture.MatchMembership.JoinAsync(target, match, "");
 		_users.FetchByNameAsync("target", Arg.Any<CancellationToken>()).Returns(MakeUser(target.Id, "target"));
 
@@ -1210,13 +1206,13 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host, referee);
 		var match = _fixture.CreateMatch(host);
 		await _fixture.MatchMembership.JoinAsync(referee, match, "");
-		match.AddReferee(referee.Id);
+		match.AddReferee(_fixture.UserCache.Resolve(referee));
 		_users.FetchByNameAsync("referee", Arg.Any<CancellationToken>()).Returns(MakeUser(referee.Id, "referee"));
 
 		var reply = await Run(MakeService(), host, match, "kick", ["referee"]);
 
 		Assert.Same(match, referee.Match);
-		Assert.Contains(referee.Id, match.Referees);
+		Assert.Contains(match.Referees, r => r.Id == referee.Id);
 		Assert.Contains(string.Format(MpReplies.CannotKickReferee, "referee"), reply);
 	}
 
@@ -1249,7 +1245,7 @@ public class MpCommandServiceTests
 		var reply = await Run(MakeService(), host, match, "ban", ["other"]);
 
 		Assert.Null(other.Match);
-		Assert.Contains(other.Id, match.BannedIds);
+		Assert.Contains(match.BannedUsers, u => u.Id == other.Id);
 		Assert.Equal(string.Format(MpReplies.BannedPlayerFromMatch, "other"), reply);
 
 		var rejoined = await _fixture.MatchMembership.JoinAsync(other, match, "");
@@ -1268,7 +1264,7 @@ public class MpCommandServiceTests
 
 		var reply = await Run(MakeService(), host, match, "ban", ["other"]);
 
-		Assert.Contains(other.Id, match.BannedIds);
+		Assert.Contains(match.BannedUsers, u => u.Id == other.Id);
 		Assert.Equal(string.Format(MpReplies.BannedPlayerFromMatch, "other"), reply);
 
 		var rejoined = await _fixture.MatchMembership.JoinAsync(other, match, "");
@@ -1298,13 +1294,13 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host, referee);
 		var match = _fixture.CreateMatch(host);
 		await _fixture.MatchMembership.JoinAsync(referee, match, "");
-		match.AddReferee(referee.Id);
+		match.AddReferee(_fixture.UserCache.Resolve(referee));
 		_users.FetchByNameAsync("referee", Arg.Any<CancellationToken>()).Returns(MakeUser(referee.Id, "referee"));
 
 		var reply = await Run(MakeService(), host, match, "ban", ["referee"]);
 
-		Assert.DoesNotContain(referee.Id, match.BannedIds);
-		Assert.Contains(referee.Id, match.Referees);
+		Assert.DoesNotContain(match.BannedUsers, u => u.Id == referee.Id);
+		Assert.Contains(match.Referees, r => r.Id == referee.Id);
 		Assert.Same(match, referee.Match);
 		Assert.Contains(string.Format(MpReplies.CannotBanReferee, "referee"), reply);
 	}
@@ -1315,12 +1311,12 @@ public class MpCommandServiceTests
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
-		match.AddBan(99);
+		match.AddBan(_fixture.UserCache.Resolve(99, "offline_guy"));
 		_users.FetchByNameAsync("offline_guy", Arg.Any<CancellationToken>()).Returns(MakeUser(99, "offline_guy"));
 
 		var reply = await Run(MakeService(), host, match, "unban", ["offline_guy"]);
 
-		Assert.DoesNotContain(99, match.BannedIds);
+		Assert.DoesNotContain(match.BannedUsers, u => u.Id == 99);
 		Assert.Equal(string.Format(MpReplies.UnbannedFromMatch, "offline_guy"), reply);
 	}
 
@@ -1331,7 +1327,7 @@ public class MpCommandServiceTests
 		var other = MultiplayerTestSupport.MakePlayer(2, "other");
 		_fixture.RegisterAll(host, other);
 		var match = _fixture.CreateMatch(host);
-		match.AddBan(other.Id);
+		match.AddBan(_fixture.UserCache.Resolve(other));
 		_users.FetchByNameAsync("other", Arg.Any<CancellationToken>()).Returns(MakeUser(other.Id, "other"));
 
 		await Run(MakeService(), host, match, "unban", ["other"]);
@@ -1381,7 +1377,7 @@ public class MpCommandServiceTests
 
 		Assert.Equal(MatchTeamType.TeamVs, match.TeamType);
 		Assert.Equal(MatchWinCondition.Accuracy, match.WinCondition);
-		Assert.Equal(SlotStatus.Locked, match.Slots[8].Status);
+		Assert.Equal(RoomSlotStatus.Locked, match.Slots[8].Status);
 		Assert.Equal(string.Format(MpReplies.ChangedMatchSettings, MatchTeamType.TeamVs, MatchWinCondition.Accuracy,
 			", 8 slots."), reply);
 	}
@@ -1423,7 +1419,7 @@ public class MpCommandServiceTests
 
 		var reply = await Run(MakeService(), host, match, "set", ["0", "0", "99"]);
 
-		Assert.Equal(SlotStatus.Open, match.Slots[15].Status);
+		Assert.Equal(RoomSlotStatus.Open, match.Slots[15].Status);
 		Assert.Equal(string.Format(MpReplies.ChangedMatchSettings, MatchTeamType.HeadToHead, MatchWinCondition.Score,
 			", 16 slots."), reply);
 	}
@@ -1437,8 +1433,8 @@ public class MpCommandServiceTests
 		var reply = await RunMake(MakeService(), sender, ["My", "Tournament"]);
 
 		Assert.Same(sender.Match, _fixture.MatchRegistry.All.Single());
-		Assert.Equal(sender.Id, sender.Match!.HostId);
-		Assert.Contains(sender.Id, sender.Match.Referees);
+		Assert.Equal(sender.Id, sender.Match!.Host?.Id);
+		Assert.Contains(sender.Match.Referees, r => r.Id == sender.Id);
 		Assert.Equal("My Tournament", sender.Match.Name);
 		Assert.Contains(string.Format(MpReplies.CreatedMatch, sender.Match!.DbId, sender.Match.Name, ""), reply);
 	}
@@ -1480,7 +1476,7 @@ public class MpCommandServiceTests
 		await _fixture.MatchMembership.LeaveAsync(sender, match);
 
 		Assert.NotNull(_fixture.MatchRegistry.GetById(match.Id));
-		Assert.Contains(sender.Id, match.Referees);
+		Assert.Contains(match.Referees, r => r.Id == sender.Id);
 	}
 
 	[Fact]
@@ -1498,7 +1494,7 @@ public class MpCommandServiceTests
 		var reply = await Run(service, sender, match, "removeref", ["creator"]);
 
 		Assert.NotNull(_fixture.MatchRegistry.GetById(match.Id));
-		Assert.Contains(sender.Id, match.Referees);
+		Assert.Contains(match.Referees, r => r.Id == sender.Id);
 		Assert.Contains(string.Format(MpReplies.CannotRemoveCreator, "creator"), reply);
 	}
 
@@ -1509,11 +1505,11 @@ public class MpCommandServiceTests
 		var referee = MultiplayerTestSupport.MakePlayer(2, "referee");
 		_fixture.RegisterAll(creator, referee);
 		var match = _fixture.CreateMatch(creator, hostIsReferee: false);
-		match.AddReferee(referee.Id);
+		match.AddReferee(_fixture.UserCache.Resolve(referee));
 
 		var reply = await Run(MakeService(), creator, match, "removeref", ["referee"]);
 
-		Assert.Contains(referee.Id, match.Referees);
+		Assert.Contains(match.Referees, r => r.Id == referee.Id);
 		Assert.Contains(string.Format(MpReplies.CannotRemoveLastReferee, "referee"), reply);
 	}
 
@@ -1524,14 +1520,14 @@ public class MpCommandServiceTests
 		var referee = MultiplayerTestSupport.MakePlayer(2, "referee");
 		_fixture.RegisterAll(host, referee);
 		var match = _fixture.CreateMatch(host, hostIsReferee: false);
-		match.AddReferee(host.Id);
-		match.AddReferee(referee.Id);
+		match.AddReferee(_fixture.UserCache.Resolve(host));
+		match.AddReferee(_fixture.UserCache.Resolve(referee));
 		var service = MakeService();
 
 		await Run(service, host, match, "removeref", ["referee"]);
 
 		Assert.NotNull(_fixture.MatchRegistry.GetById(match.Id));
-		Assert.DoesNotContain(referee.Id, match.Referees);
+		Assert.DoesNotContain(match.Referees, r => r.Id == referee.Id);
 	}
 
 	[Fact]
@@ -1596,7 +1592,7 @@ public class MpCommandServiceTests
 		var referee = MultiplayerTestSupport.MakePlayer(2, "ref");
 		_fixture.RegisterAll(host, referee);
 		var match = _fixture.CreateMatch(host);
-		match.AddReferee(referee.Id);
+		match.AddReferee(_fixture.UserCache.Resolve(referee));
 
 		var reply = RunSetScope(MakeService(), referee, [match.DbId.ToString()]);
 
@@ -1743,7 +1739,7 @@ public class MpCommandServiceTests
 		_fixture.RegisterAll(host);
 		_fixture.IrcSessionRegistry.GetByUserId(2).Returns(ircUser);
 		var match = _fixture.CreateMatch(host);
-		match.AddBan(ircUser.Id);
+		match.AddBan(_fixture.UserCache.Resolve(ircUser));
 
 		var reply = await RunJoin(MakeService(), ircUser, [match.DbId.ToString()]);
 
@@ -1776,7 +1772,7 @@ public class MpCommandServiceTests
 		_fixture.IrcSessionRegistry.GetByUserId(2).Returns(ircUser);
 		var match = _fixture.CreateMatch(host);
 		match.IsLocked = true;
-		match.AddInvite(ircUser.Id);
+		match.AddInvite(_fixture.UserCache.Resolve(ircUser));
 
 		var reply = await RunJoin(MakeService(), ircUser, [match.DbId.ToString()]);
 
@@ -1809,7 +1805,7 @@ public class MpCommandServiceTests
 		_fixture.IrcSessionRegistry.GetByUserId(2).Returns(ircReferee);
 		var match = _fixture.CreateMatch(host);
 		match.IsPrivate = true;
-		match.AddReferee(ircReferee.Id);
+		match.AddReferee(_fixture.UserCache.Resolve(ircReferee));
 
 		var reply = await RunJoin(MakeService(), ircReferee, [match.DbId.ToString()]);
 
@@ -1858,7 +1854,7 @@ public class MpCommandServiceTests
 		_fixture.IrcSessionRegistry.GetByUserId(2).Returns(ircReferee);
 		var match = _fixture.CreateMatch(host);
 		match.Password = "secret";
-		match.AddReferee(ircReferee.Id);
+		match.AddReferee(_fixture.UserCache.Resolve(ircReferee));
 
 		var reply = await RunJoin(MakeService(), ircReferee, [match.DbId.ToString(), "wrong"]);
 
@@ -1868,12 +1864,12 @@ public class MpCommandServiceTests
 
 	private static User MakeUser(int id, string name)
 	{
-		return new User(id, name, Country.Xx, UserPrivileges.Unrestricted, default);
+		return new User { Id = id, Name = name };
 	}
 
 	private sealed class RecordingIrcConnection : IIrcConnection
 	{
-		public List<IrcMessage> Received { get; } = [];
+		private List<IrcMessage> Received { get; } = [];
 		public UserSession User => throw new NotImplementedException();
 
 		public void Send(IrcMessage message)

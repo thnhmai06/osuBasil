@@ -7,13 +7,10 @@ using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
 using Basil.Application.Shared.Eventing;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Client;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Host;
-using Basil.Infrastructure.Multiplayer;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Application.Users;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -105,10 +102,10 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 			{ Headers = { Host = "api.test.local" } };
 		request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
 
-		var response = await client.SendAsync(request);
+		var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-		var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+		var body = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: TestContext.Current.CancellationToken);
 		Assert.False(body.GetProperty("success").GetBoolean());
 	}
 
@@ -139,7 +136,7 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 		var match = matchRegistry.GetByDbId(matchId)!;
 		var occupant = new GameSession(9001, "alice", "t9001", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
 		sessionRegistry.TryAdd(occupant);
-		Assert.Equal(MatchMembership.JoinResult.Ok, await matchMembership.JoinAsync(occupant, match, ""));
+		Assert.Equal(MatchMembership.JoinResult.Ok, await matchMembership.JoinAsync(occupant, match, "", TestContext.Current.CancellationToken));
 
 		var hub = _factory.Services.GetRequiredService<ILiveEventHub>();
 		var (eventType, data, _, _) = await ReceiveAfterPublishAsync($"/matches/{matchId}/live/1",
@@ -158,7 +155,7 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 			{ Headers = { Host = "api.test.local" } };
 		request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
 
-		var response = await client.SendAsync(request);
+		var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -171,8 +168,8 @@ public class MatchLiveChannelsEndpointTests : IClassFixture<WebApplicationFactor
 			{ Headers = { Host = "api.test.local" } };
 		createRequest.Headers.Add("Authorization", $"Bearer {AdminKey}");
 		createRequest.Content = JsonContent.Create(new { });
-		var createResponse = await client.SendAsync(createRequest);
-		var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+		var createResponse = await client.SendAsync(createRequest, TestContext.Current.CancellationToken);
+		var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: TestContext.Current.CancellationToken);
 		var matchId = created.GetProperty("data").GetProperty("id").GetInt32();
 
 		var hub = _factory.Services.GetRequiredService<ILiveEventHub>();

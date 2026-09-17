@@ -1,10 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using Basil.Application.Shared.Configuration;
-using Basil.Domain.Content;
 using Basil.Host;
-using Basil.Infrastructure.Content;
-using Basil.Application.Content;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -37,8 +34,8 @@ public class DiagnosticEndpointTests : IClassFixture<WebApplicationFactory<Boots
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
-				services.AddSingleton<ISettingsRepository>(TestDoubles.FixedAdminKeySettingsRepository(CorrectKey));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(TestDoubles.FixedAdminKeySettingsRepository());
 			});
 		});
 	}
@@ -70,7 +67,7 @@ public class DiagnosticEndpointTests : IClassFixture<WebApplicationFactory<Boots
 
 		foreach (var path in PlainReadingPaths)
 		{
-			var response = await client.SendAsync(MakeRequest(HttpMethod.Get, path));
+			var response = await client.SendAsync(MakeRequest(HttpMethod.Get, path), TestContext.Current.CancellationToken);
 			Assert.True(HttpStatusCode.Unauthorized == response.StatusCode, $"{path} did not require the admin key.");
 		}
 	}
@@ -84,7 +81,7 @@ public class DiagnosticEndpointTests : IClassFixture<WebApplicationFactory<Boots
 		{
 			var request = MakeRequest(HttpMethod.Get, path);
 			request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
-			var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+			var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, TestContext.Current.CancellationToken);
 			Assert.True(HttpStatusCode.Unauthorized == response.StatusCode, $"{path} did not require the admin key.");
 		}
 	}
@@ -94,7 +91,8 @@ public class DiagnosticEndpointTests : IClassFixture<WebApplicationFactory<Boots
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Post, "/diagnostic/gc/collect", null));
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Post, "/diagnostic/gc/collect"),
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 	}
@@ -104,8 +102,8 @@ public class DiagnosticEndpointTests : IClassFixture<WebApplicationFactory<Boots
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/diagnostic/process", CorrectKey));
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/diagnostic/process", CorrectKey), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.Contains("\"processId\"", body);
@@ -154,8 +152,8 @@ public class DiagnosticEndpointTests : IClassFixture<WebApplicationFactory<Boots
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Post, "/diagnostic/gc/collect", CorrectKey));
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Post, "/diagnostic/gc/collect", CorrectKey), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.Null(response.Headers.Location);
@@ -168,7 +166,7 @@ public class DiagnosticEndpointTests : IClassFixture<WebApplicationFactory<Boots
 		var client = _factory.CreateClient();
 
 		var response =
-			await client.SendAsync(MakeRequest(HttpMethod.Post, "/diagnostic/process/collect", CorrectKey));
+			await client.SendAsync(MakeRequest(HttpMethod.Post, "/diagnostic/process/collect", CorrectKey), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}

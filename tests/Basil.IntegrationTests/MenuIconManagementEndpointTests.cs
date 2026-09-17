@@ -1,10 +1,8 @@
 using System.Net;
 using System.Text;
 using Basil.Application.Shared.Configuration;
-using Basil.Domain.Content;
 using Basil.Host;
 using Basil.Infrastructure.Auth;
-using Basil.Infrastructure.Content;
 using Basil.Application.Content;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -93,8 +91,8 @@ public class MenuIconManagementEndpointTests : IClassFixture<WebApplicationFacto
 	[Fact]
 	public async Task GetIcon_NotSet_ReturnsNullImageAndUrl()
 	{
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/menu/icon"));
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/menu/icon"), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.Contains("\"image\":null", body);
@@ -106,12 +104,12 @@ public class MenuIconManagementEndpointTests : IClassFixture<WebApplicationFacto
 	{
 		var client = _factory.CreateClient();
 
-		var patchResponse = await client.SendAsync(MakeUploadRequest());
+		var patchResponse = await client.SendAsync(MakeUploadRequest(), TestContext.Current.CancellationToken);
 		Assert.Equal(HttpStatusCode.OK, patchResponse.StatusCode);
 		Assert.True(File.Exists(Path.Combine(MenuDir, "Icon.png")));
 
-		var getResponse = await client.SendAsync(MakeRequest(HttpMethod.Get, "/menu/icon"));
-		var body = await getResponse.Content.ReadAsStringAsync();
+		var getResponse = await client.SendAsync(MakeRequest(HttpMethod.Get, "/menu/icon"), TestContext.Current.CancellationToken);
+		var body = await getResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 		Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
 		Assert.Contains("https://assets.test.local/menu/icon", body);
 	}
@@ -121,8 +119,8 @@ public class MenuIconManagementEndpointTests : IClassFixture<WebApplicationFacto
 	{
 		var client = _factory.CreateClient();
 
-		await client.SendAsync(MakeUploadRequest("first.png"));
-		var response = await client.SendAsync(MakeUploadRequest("second.jpg"));
+		await client.SendAsync(MakeUploadRequest("first.png"), TestContext.Current.CancellationToken);
+		var response = await client.SendAsync(MakeUploadRequest("second.jpg"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.False(File.Exists(Path.Combine(MenuDir, "Icon.png")));
@@ -135,7 +133,7 @@ public class MenuIconManagementEndpointTests : IClassFixture<WebApplicationFacto
 		var request = MakeRequest(HttpMethod.Patch, "/menu/icon", null);
 		request.Content = new MultipartFormDataContent { { new ByteArrayContent([1, 2, 3]), "image", "icon.png" } };
 
-		var response = await _factory.CreateClient().SendAsync(request);
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 	}
@@ -144,22 +142,22 @@ public class MenuIconManagementEndpointTests : IClassFixture<WebApplicationFacto
 	public async Task PatchIcon_ExternalUrl_ReplacesUploadAndIsReflectedInGet()
 	{
 		var client = _factory.CreateClient();
-		await client.SendAsync(MakeUploadRequest());
+		await client.SendAsync(MakeUploadRequest(), TestContext.Current.CancellationToken);
 
-		var patchResponse = await client.SendAsync(MakePatchRequest("https://example.test/icon.png"));
+		var patchResponse = await client.SendAsync(MakePatchRequest("https://example.test/icon.png"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, patchResponse.StatusCode);
 		Assert.Empty(Directory.EnumerateFiles(MenuDir, "Icon.*"));
 
-		var getResponse = await client.SendAsync(MakeRequest(HttpMethod.Get, "/menu/icon"));
-		var body = await getResponse.Content.ReadAsStringAsync();
+		var getResponse = await client.SendAsync(MakeRequest(HttpMethod.Get, "/menu/icon"), TestContext.Current.CancellationToken);
+		var body = await getResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 		Assert.Contains("https://example.test/icon.png", body);
 	}
 
 	[Fact]
 	public async Task PatchIcon_ImageNotAUrl_ReturnsBadRequest()
 	{
-		var response = await _factory.CreateClient().SendAsync(MakePatchRequest("not-a-url"));
+		var response = await _factory.CreateClient().SendAsync(MakePatchRequest("not-a-url"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 	}
@@ -168,7 +166,7 @@ public class MenuIconManagementEndpointTests : IClassFixture<WebApplicationFacto
 	public async Task PatchIcon_MissingAdminKey_ReturnsUnauthorized()
 	{
 		var response = await _factory.CreateClient()
-			.SendAsync(MakePatchRequest("https://example.test/icon.png", adminKey: null));
+			.SendAsync(MakePatchRequest("https://example.test/icon.png", adminKey: null), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 	}
@@ -177,12 +175,12 @@ public class MenuIconManagementEndpointTests : IClassFixture<WebApplicationFacto
 	public async Task PatchIcon_UrlOnly_UpdatesClickThroughWithoutTouchingImage()
 	{
 		var client = _factory.CreateClient();
-		await client.SendAsync(MakeUploadRequest());
+		await client.SendAsync(MakeUploadRequest(), TestContext.Current.CancellationToken);
 
-		await client.SendAsync(MakePatchRequest(url: "https://example.test/click"));
+		await client.SendAsync(MakePatchRequest(url: "https://example.test/click"), TestContext.Current.CancellationToken);
 
-		var getResponse = await client.SendAsync(MakeRequest(HttpMethod.Get, "/menu/icon"));
-		var body = await getResponse.Content.ReadAsStringAsync();
+		var getResponse = await client.SendAsync(MakeRequest(HttpMethod.Get, "/menu/icon"), TestContext.Current.CancellationToken);
+		var body = await getResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 		Assert.Contains("https://example.test/click", body);
 		Assert.Contains("https://assets.test.local/menu/icon", body);
 	}
@@ -191,14 +189,14 @@ public class MenuIconManagementEndpointTests : IClassFixture<WebApplicationFacto
 	public async Task DeleteIcon_ExistingUpload_RemovesFileClearsUrlAndReturnsOk()
 	{
 		var client = _factory.CreateClient();
-		await client.SendAsync(MakeUploadRequest());
+		await client.SendAsync(MakeUploadRequest(), TestContext.Current.CancellationToken);
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/menu/icon"));
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/menu/icon"), TestContext.Current.CancellationToken);
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.Empty(Directory.EnumerateFiles(MenuDir, "Icon.*"));
 
-		var getResponse = await client.SendAsync(MakeRequest(HttpMethod.Get, "/menu/icon"));
-		var body = await getResponse.Content.ReadAsStringAsync();
+		var getResponse = await client.SendAsync(MakeRequest(HttpMethod.Get, "/menu/icon"), TestContext.Current.CancellationToken);
+		var body = await getResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 		Assert.Contains("\"image\":null", body);
 		Assert.Contains("\"url\":null", body);
 	}
@@ -206,7 +204,7 @@ public class MenuIconManagementEndpointTests : IClassFixture<WebApplicationFacto
 	[Fact]
 	public async Task DeleteIcon_NoIconSet_StillReturnsOk_Idempotent()
 	{
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/menu/icon"));
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/menu/icon"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 	}
@@ -214,7 +212,7 @@ public class MenuIconManagementEndpointTests : IClassFixture<WebApplicationFacto
 	[Fact]
 	public async Task DeleteIcon_MissingAdminKey_ReturnsUnauthorized()
 	{
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/menu/icon", null));
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/menu/icon", null), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 	}
@@ -223,15 +221,15 @@ public class MenuIconManagementEndpointTests : IClassFixture<WebApplicationFacto
 	public async Task DeleteIconImage_ExistingUpload_RemovesFileButKeepsUrl()
 	{
 		var client = _factory.CreateClient();
-		await client.SendAsync(MakeUploadRequest());
-		await client.SendAsync(MakePatchRequest(url: "https://example.test/click"));
+		await client.SendAsync(MakeUploadRequest(), TestContext.Current.CancellationToken);
+		await client.SendAsync(MakePatchRequest(url: "https://example.test/click"), TestContext.Current.CancellationToken);
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/menu/icon/image"));
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/menu/icon/image"), TestContext.Current.CancellationToken);
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.Empty(Directory.EnumerateFiles(MenuDir, "Icon.*"));
 
-		var getResponse = await client.SendAsync(MakeRequest(HttpMethod.Get, "/menu/icon"));
-		var body = await getResponse.Content.ReadAsStringAsync();
+		var getResponse = await client.SendAsync(MakeRequest(HttpMethod.Get, "/menu/icon"), TestContext.Current.CancellationToken);
+		var body = await getResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 		Assert.Contains("\"image\":null", body);
 		Assert.Contains("https://example.test/click", body);
 	}
@@ -240,7 +238,7 @@ public class MenuIconManagementEndpointTests : IClassFixture<WebApplicationFacto
 	public async Task DeleteIconImage_MissingAdminKey_ReturnsUnauthorized()
 	{
 		var response =
-			await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/menu/icon/image", null));
+			await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/menu/icon/image", null), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 	}

@@ -1,7 +1,6 @@
 using Basil.Application.Irc;
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
-using Basil.Domain.Client;
 using Basil.Domain.Users;
 using Basil.Application.Users;
 using NSubstitute;
@@ -36,7 +35,11 @@ public class UserBriefResolverTests
 	public async Task ResolveAsync_OfflinePlayer_FallsBackToUserRepository()
 	{
 		_users.FetchByIdAsync(9, Arg.Any<CancellationToken>())
-			.Returns(new User(9, "Carol", Country.Us, UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch));
+			.Returns(new User
+			{
+				Id = 9, Name = "Carol", Country = Country.Us, Privilege = UserPrivileges.Unrestricted,
+				SilenceEnd = DateTimeOffset.UnixEpoch
+			});
 
 		var brief = await UserBriefResolver.ResolveAsync(9, _gameRegistry, _ircRegistry, _users);
 

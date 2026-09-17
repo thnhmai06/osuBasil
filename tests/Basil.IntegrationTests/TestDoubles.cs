@@ -1,10 +1,6 @@
 using System.Text;
-using Basil.Domain.Auth;
-using Basil.Infrastructure.Beatmaps;
-using Basil.Infrastructure.Content;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Channels;
-using Basil.Domain.Content;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Auth;
 using Basil.Application.Content;

@@ -2,7 +2,6 @@ using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
 using Basil.Domain.Users;
 using Basil.Host;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -35,7 +34,7 @@ public class BanchoProtocolEndpointTests : IClassFixture<WebApplicationFactory<B
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
 				services.AddSingleton(TestDoubles.NullChannelRepository());
 			});
@@ -50,8 +49,8 @@ public class BanchoProtocolEndpointTests : IClassFixture<WebApplicationFactory<B
 		request.Headers.Host = "c.test.local";
 		request.Headers.Add("osu-token", "does-not-exist");
 
-		var response = await client.SendAsync(request);
-		var body = await response.Content.ReadAsByteArrayAsync();
+		var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(ServerPacketWriter.RestartServer(0), body);
 	}
@@ -70,8 +69,8 @@ public class BanchoProtocolEndpointTests : IClassFixture<WebApplicationFactory<B
 		request.Headers.Host = "c.test.local";
 		request.Headers.Add("osu-token", "known-token");
 
-		var response = await client.SendAsync(request);
-		var body = await response.Content.ReadAsByteArrayAsync();
+		var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(ServerPacketWriter.Notification("hello"), body);
 	}

@@ -1,6 +1,5 @@
 using Basil.Application.Sessions;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Host.Bancho.Spectating.Packets;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Logging.Abstractions;

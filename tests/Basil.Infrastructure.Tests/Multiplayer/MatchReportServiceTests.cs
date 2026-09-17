@@ -5,7 +5,6 @@ using Basil.Application.Scores;
 using Basil.Application.Sessions;
 using Basil.Application.Users;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Client;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
@@ -28,8 +27,7 @@ public class MatchReportServiceTests
 		// No session-registry setup in these tests means every userSession is "offline" — fall back to a
 		// generic resolvable user so UserBriefResolver never returns null for the ids exercised here.
 		_users.FetchByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-			.Returns(call => new User(call.Arg<int>(), $"player{call.Arg<int>()}", Country.Xx,
-				UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch));
+			.Returns(call => new User { Id = call.Arg<int>(), Name = $"player{call.Arg<int>()}" });
 	}
 
 	private MatchReportService MakeService()
@@ -61,7 +59,7 @@ public class MatchReportServiceTests
 		_matchRepository.FetchRoundsAsync(5, Arg.Any<CancellationToken>())
 			.Returns([]);
 		_matchRepository.FetchEventsAsync(5, Arg.Any<CancellationToken>())
-			.Returns((IReadOnlyList<MatchEvent>)[]);
+			.Returns([]);
 		_matchRegistry.GetByDbId(5).Returns((MatchSession?)null);
 
 		var report = await MakeService().BuildAsync(5);
@@ -77,19 +75,19 @@ public class MatchReportServiceTests
 		_matchRepository.FetchRoundsAsync(5, Arg.Any<CancellationToken>())
 			.Returns([]);
 		_matchRepository.FetchEventsAsync(5, Arg.Any<CancellationToken>())
-			.Returns((IReadOnlyList<MatchEvent>)[]);
-
-		var live = new MatchSession(0, "Grand Finals", "", "map", 42, "md5", 1, GameMode.Standard,
-				Mods.NoMod, MatchWinCondition.Score, MatchTeamType.TeamVs, false, 0, "#mp_0")
-			{ DbId = 5 };
-		live.Slots[0].PlayerId = 7;
-		_matchRegistry.GetByDbId(5).Returns(live);
+			.Returns([]);
 
 		var beatmapset = new Beatmapset(1, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
 		var beatmap = new Beatmap("md5", 42, beatmapset, "Normal", "diff.osu",
 			new Difficulty(GameMode.Standard, 180, TimeSpan.FromSeconds(100), 4, 9, 8, 5, 6.5),
 			new OsuObjects { MaxCombo = 500 });
 		_beatmaps.FetchOneAsync(null, "md5", null, null, true, Arg.Any<CancellationToken>()).Returns(beatmap);
+
+		var live = new MatchSession(0, "Grand Finals", "", beatmap, null, GameMode.Standard,
+				Mods.NoMod, MatchWinCondition.Score, MatchTeamType.TeamVs, false, 0)
+			{ DbId = 5 };
+		live.Slots[0].Player = new User { Id = 7, Name = "player7" };
+		_matchRegistry.GetByDbId(5).Returns(live);
 
 		var report = await MakeService().BuildAsync(5);
 
@@ -108,11 +106,10 @@ public class MatchReportServiceTests
 		_matchRepository.FetchRoundsAsync(5, Arg.Any<CancellationToken>())
 			.Returns([round]);
 		_matchRepository.FetchEventsAsync(5, Arg.Any<CancellationToken>())
-			.Returns((IReadOnlyList<MatchEvent>)[]);
+			.Returns([]);
 		_matchRegistry.GetByDbId(5).Returns((MatchSession?)null);
 
-		_scores.FetchByRoundAsync(10, Arg.Any<CancellationToken>()).Returns((IReadOnlyList<ScoreReport>)
-		[
+		_scores.FetchByRoundAsync(10, Arg.Any<CancellationToken>()).Returns([
 			new ScoreReport(1, 7, "red-userSession", MatchTeam.Red, Mods.NoMod, 500_000, 0.98, 800, 300, 10, 0, 0, 0, 0,
 				"S", true, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)),
 			new ScoreReport(2, 8, "blue-userSession", MatchTeam.Blue, Mods.NoMod, 300_000, 0.90, 700, 250, 20, 5, 0, 0,
@@ -139,11 +136,10 @@ public class MatchReportServiceTests
 		_matchRepository.FetchRoundsAsync(5, Arg.Any<CancellationToken>())
 			.Returns([round]);
 		_matchRepository.FetchEventsAsync(5, Arg.Any<CancellationToken>())
-			.Returns((IReadOnlyList<MatchEvent>)[]);
+			.Returns([]);
 		_matchRegistry.GetByDbId(5).Returns((MatchSession?)null);
 
-		_scores.FetchByRoundAsync(10, Arg.Any<CancellationToken>()).Returns((IReadOnlyList<ScoreReport>)
-		[
+		_scores.FetchByRoundAsync(10, Arg.Any<CancellationToken>()).Returns([
 			new ScoreReport(1, 7, "userSession-one", null, Mods.NoMod, 500_000, 0.98, 800, 300, 10, 0, 0, 0, 0, "S",
 				true,
 				new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)),
@@ -176,13 +172,13 @@ public class MatchReportServiceTests
 		_matchRepository.FetchRoundsAsync(5, Arg.Any<CancellationToken>())
 			.Returns([round1, round2]);
 		_matchRepository.FetchEventsAsync(5, Arg.Any<CancellationToken>())
-			.Returns((IReadOnlyList<MatchEvent>)[]);
+			.Returns([]);
 		_matchRegistry.GetByDbId(5).Returns((MatchSession?)null);
 
 		var score = new ScoreReport(1, 7, "player7", null, Mods.NoMod, 500_000, 0.98, 800, 300, 10, 0, 0, 0, 0, "S",
 			true, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc));
 		_scores.FetchByRoundAsync(10, Arg.Any<CancellationToken>()).Returns([score]);
-		_scores.FetchByRoundAsync(11, Arg.Any<CancellationToken>()).Returns((IReadOnlyList<ScoreReport>)[score]);
+		_scores.FetchByRoundAsync(11, Arg.Any<CancellationToken>()).Returns([score]);
 
 		var beatmapset = new Beatmapset(1, "Artist", "Title", "creator", DateTime.UtcNow, DateTime.UtcNow);
 		var beatmap = new Beatmap(beatmapMd5, 100, beatmapset, "Normal", "diff.osu",

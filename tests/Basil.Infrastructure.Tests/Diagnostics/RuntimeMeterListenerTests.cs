@@ -69,9 +69,9 @@ public class RuntimeMeterListenerTests
 	public async Task StoppingTheHostDisposesTheListener()
 	{
 		var listener = new RuntimeMeterListener();
-		await listener.StartAsync(default);
+		await listener.StartAsync(CancellationToken.None);
 
-		await listener.StopAsync(default);
+		await listener.StopAsync(CancellationToken.None);
 
 		Assert.True(listener.Disposed);
 	}
@@ -158,7 +158,7 @@ public class RuntimeMeterListenerTests
 	public async Task RefreshObservableGaugesUpdatesAGaugeCreatedAfterTheListenerStarted()
 	{
 		var listener = new RuntimeMeterListener();
-		await listener.StartAsync(default);
+		await listener.StartAsync(CancellationToken.None);
 		try
 		{
 			var current = 0;
@@ -174,7 +174,7 @@ public class RuntimeMeterListenerTests
 		}
 		finally
 		{
-			await listener.StopAsync(default);
+			await listener.StopAsync(CancellationToken.None);
 		}
 	}
 

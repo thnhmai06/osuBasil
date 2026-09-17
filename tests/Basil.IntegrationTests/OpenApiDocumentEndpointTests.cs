@@ -4,6 +4,7 @@ using System.Text.Json;
 using Basil.Application.Shared.Configuration;
 using Basil.Host;
 using Basil.Application.Shared.Http;
+using Basil.Host.Api.Shared.Http.OpenApi;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -36,7 +37,7 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
 			});
 		});
@@ -63,10 +64,10 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest($"/openapi/{documentName}.json"));
+		var response = await client.SendAsync(MakeRequest($"/openapi/{documentName}.json"), TestContext.Current.CancellationToken);
 		response.EnsureSuccessStatusCode();
 
-		var document = await response.Content.ReadFromJsonAsync<OpenApiDocumentShape>();
+		var document = await response.Content.ReadFromJsonAsync<OpenApiDocumentShape>(cancellationToken: TestContext.Current.CancellationToken);
 
 		Assert.NotNull(document);
 		Assert.Equal(expectedTitle, document.Info.Title);
@@ -78,8 +79,8 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/openapi/basilapi.json"));
-		var document = await response.Content.ReadFromJsonAsync<OpenApiDocumentShape>();
+		var response = await client.SendAsync(MakeRequest("/openapi/basilapi.json"), TestContext.Current.CancellationToken);
+		var document = await response.Content.ReadFromJsonAsync<OpenApiDocumentShape>(cancellationToken: TestContext.Current.CancellationToken);
 
 		Assert.NotNull(document);
 		Assert.DoesNotContain(document.Paths.Keys, path => path.Contains("{id}") || path.Contains("{id:"));
@@ -90,8 +91,8 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/openapi/bancho.json"));
-		var document = await response.Content.ReadFromJsonAsync<OpenApiDocumentShape>();
+		var response = await client.SendAsync(MakeRequest("/openapi/bancho.json"), TestContext.Current.CancellationToken);
+		var document = await response.Content.ReadFromJsonAsync<OpenApiDocumentShape>(cancellationToken: TestContext.Current.CancellationToken);
 
 		Assert.NotNull(document);
 		Assert.DoesNotContain("/web/osu-search.php", document.Paths.Keys);
@@ -106,7 +107,7 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(path));
+		var response = await client.SendAsync(MakeRequest(path), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 	}
@@ -116,7 +117,7 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
-		var response = await client.SendAsync(MakeRequest("/"));
+		var response = await client.SendAsync(MakeRequest("/"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
 		Assert.Equal("/docs/", response.Headers.Location?.ToString());
@@ -127,8 +128,8 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/health"));
-		var body = await response.Content.ReadFromJsonAsync<Envelope<HealthShape>>();
+		var response = await client.SendAsync(MakeRequest("/health"), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadFromJsonAsync<Envelope<HealthShape>>(cancellationToken: TestContext.Current.CancellationToken);
 
 		response.EnsureSuccessStatusCode();
 		Assert.Equal("ok", body!.Data!.Status);
@@ -145,8 +146,8 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/openapi/basilapi.json"));
-		var document = await response.Content.ReadFromJsonAsync<JsonElement>();
+		var response = await client.SendAsync(MakeRequest("/openapi/basilapi.json"), TestContext.Current.CancellationToken);
+		var document = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: TestContext.Current.CancellationToken);
 
 		var schema = document
 			.GetProperty("paths").GetProperty("/scores").GetProperty("get")
@@ -172,8 +173,8 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/openapi/basilapi.json"));
-		var document = await response.Content.ReadFromJsonAsync<JsonElement>();
+		var response = await client.SendAsync(MakeRequest("/openapi/basilapi.json"), TestContext.Current.CancellationToken);
+		var document = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: TestContext.Current.CancellationToken);
 
 		var responseNode = document
 			.GetProperty("paths").GetProperty("/matches/{matchId}/live").GetProperty("get")
@@ -217,8 +218,8 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/openapi/basilapi.json"));
-		var document = await response.Content.ReadFromJsonAsync<JsonElement>();
+		var response = await client.SendAsync(MakeRequest("/openapi/basilapi.json"), TestContext.Current.CancellationToken);
+		var document = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: TestContext.Current.CancellationToken);
 
 		var matchLiveOneOf = document
 			.GetProperty("paths").GetProperty("/matches/{matchId}/live").GetProperty("get")
@@ -253,7 +254,7 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
 	private static HashSet<string> RequiredFields(JsonElement schema)
 	{
 		return schema.TryGetProperty("required", out var required)
-			? required.EnumerateArray().Select(e => e.GetString()!).ToHashSet()
+			? [.. required.EnumerateArray().Select(e => e.GetString()!)]
 			: [];
 	}
 
@@ -262,8 +263,8 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/openapi/basilapi.json"));
-		var document = await response.Content.ReadFromJsonAsync<JsonElement>();
+		var response = await client.SendAsync(MakeRequest("/openapi/basilapi.json"), TestContext.Current.CancellationToken);
+		var document = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: TestContext.Current.CancellationToken);
 
 		var scheme = document.GetProperty("components").GetProperty("securitySchemes").GetProperty("AdminKey");
 		Assert.Equal("http", scheme.GetProperty("type").GetString());
@@ -289,8 +290,8 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/openapi/basilapi.json"));
-		var document = await response.Content.ReadFromJsonAsync<JsonElement>();
+		var response = await client.SendAsync(MakeRequest("/openapi/basilapi.json"), TestContext.Current.CancellationToken);
+		var document = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: TestContext.Current.CancellationToken);
 
 		var missing = new List<string>();
 		foreach (var pathEntry in document.GetProperty("paths").EnumerateObject())
@@ -338,14 +339,14 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/openapi/basilapi.json"));
-		var document = await response.Content.ReadFromJsonAsync<JsonElement>();
+		var response = await client.SendAsync(MakeRequest("/openapi/basilapi.json"), TestContext.Current.CancellationToken);
+		var document = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: TestContext.Current.CancellationToken);
 
 		var example = document.GetProperty("paths").GetProperty(path).GetProperty(method)
 			.GetProperty("responses").GetProperty("409").GetProperty("content")
 			.GetProperty("application/json").GetProperty("example");
 
-		Assert.Equal("Match is not live", example.GetProperty("message").GetString());
+		Assert.Equal("Room is not live", example.GetProperty("message").GetString());
 	}
 
 	[Fact]
@@ -353,8 +354,8 @@ public class OpenApiDocumentEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/openapi/basilapi.json"));
-		var document = await response.Content.ReadFromJsonAsync<JsonElement>();
+		var response = await client.SendAsync(MakeRequest("/openapi/basilapi.json"), TestContext.Current.CancellationToken);
+		var document = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: TestContext.Current.CancellationToken);
 		var schemas = document.GetProperty("components").GetProperty("schemas");
 
 		Assert.False(schemas.GetProperty("UpdateUserRequest").TryGetProperty("required", out _));

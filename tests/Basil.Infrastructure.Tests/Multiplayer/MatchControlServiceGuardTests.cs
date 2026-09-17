@@ -1,8 +1,8 @@
 using Basil.Application.Multiplayer;
-using Basil.Domain.Multiplayer;
-using Basil.Infrastructure.Multiplayer;
 using Basil.Application.Multiplayer.Handlers.Lifecycle;
 using Basil.Application.Multiplayer.Handlers.Slots;
+using Basil.Application.Users;
+using Basil.Domain.Multiplayer;
 using Basil.Infrastructure.Tests.Multiplayer.Packets;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -23,7 +23,7 @@ public class MatchControlServiceGuardTests
 		return new MatchControlService(_fixture.MatchMembership, _fixture.MatchLifecycle, _fixture.MatchNotifier,
 			_fixture.MatchRepository,
 			_fixture.BeatmapRepository, _fixture.SessionRegistry, _fixture.IrcSessionRegistry,
-			NullLogger<MatchControlService>.Instance);
+			_fixture.UserCache, NullLogger<MatchControlService>.Instance);
 	}
 
 	[Fact]
@@ -59,22 +59,22 @@ public class MatchControlServiceGuardTests
 	{
 		// Regression: SetHostAsync (and the PUT /matches/{id}/hosts route behind it) never checked
 		// that the target actually occupies a slot in this match, unlike the `!mp host` chat path's
-		// own `gameTarget.Match != match` guard — letting HostId end up naming a userSession seated
-		// nowhere in the room, violating the invariant that HostId is either null or an occupied
+		// own `gameTarget.Room != match` guard — letting Host end up naming a userSession seated
+		// nowhere in the room, violating the invariant that Host is either null or an occupied
 		// slot's player id.
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		var elsewhere = MultiplayerTestSupport.MakePlayer(2, "elsewhere");
 		_fixture.RegisterAll(host, elsewhere);
 		var match = _fixture.CreateMatch(host);
-		var previousHostId = match.HostId;
+		var previousHost = match.Host;
 		var control = MakeService();
 
 		await using var mutation = await match.BeginMutationAsync();
 		var result = await control.SetHostAsync(match, elsewhere, mutation);
 
 		Assert.Equal(MatchControlService.SetHostResult.TargetNotInMatch, result);
-		Assert.Equal(previousHostId, match.HostId);
-		Assert.True(match.HostId is null || match.GetSlot(match.HostId.Value) is not null);
+		Assert.Equal(previousHost, match.Host);
+		Assert.True(match.Host is null || match.GetSlot(match.Host) is not null);
 	}
 
 	[Fact]
@@ -91,7 +91,7 @@ public class MatchControlServiceGuardTests
 		var result = await control.SetHostAsync(match, guest, mutation);
 
 		Assert.Equal(MatchControlService.SetHostResult.Ok, result);
-		Assert.Equal(guest.Id, match.HostId);
+		Assert.Equal(guest.Id, match.Host?.Id);
 	}
 
 	[Fact]
@@ -116,15 +116,15 @@ public class MatchControlServiceGuardTests
 		var newRef = MultiplayerTestSupport.MakePlayer(3, "newref");
 		_fixture.RegisterAll(host, oldRef, newRef);
 		var match = _fixture.CreateMatch(host, hostIsReferee: false);
-		match.AddReferee(oldRef.Id);
+		match.AddReferee(_fixture.UserCache.Resolve(oldRef));
 		var control = MakeService();
 
 		await using var mutation = await match.BeginMutationAsync();
 		var result = await control.SetRefereesAsync(match, [newRef], mutation);
 
 		Assert.Equal(MatchControlService.SetRefereesResult.Ok, result);
-		Assert.DoesNotContain(oldRef.Id, match.Referees);
-		Assert.Contains(newRef.Id, match.Referees);
+		Assert.DoesNotContain(match.Referees, r => r.Id == oldRef.Id);
+		Assert.Contains(match.Referees, r => r.Id == newRef.Id);
 	}
 
 	[Fact]
@@ -140,7 +140,7 @@ public class MatchControlServiceGuardTests
 		var result = await control.SetRefereesAsync(match, [newRef], mutation);
 
 		Assert.Equal(MatchControlService.SetRefereesResult.WouldRemoveCreator, result);
-		Assert.Contains(host.Id, match.Referees);
+		Assert.Contains(match.Referees, r => r.Id == host.Id);
 	}
 
 	[Fact]
@@ -151,16 +151,16 @@ public class MatchControlServiceGuardTests
 		var newRef = MultiplayerTestSupport.MakePlayer(3, "newref");
 		_fixture.RegisterAll(host, oldRef, newRef);
 		var match = _fixture.CreateMatch(host);
-		match.AddReferee(oldRef.Id);
+		match.AddReferee(_fixture.UserCache.Resolve(oldRef));
 		var control = MakeService();
 
 		await using var mutation = await match.BeginMutationAsync();
 		var result = await control.SetRefereesAsync(match, [host, newRef], mutation);
 
 		Assert.Equal(MatchControlService.SetRefereesResult.Ok, result);
-		Assert.Contains(host.Id, match.Referees);
-		Assert.Contains(newRef.Id, match.Referees);
-		Assert.DoesNotContain(oldRef.Id, match.Referees);
+		Assert.Contains(match.Referees, r => r.Id == host.Id);
+		Assert.Contains(match.Referees, r => r.Id == newRef.Id);
+		Assert.DoesNotContain(match.Referees, r => r.Id == oldRef.Id);
 	}
 
 	/// <summary>
@@ -175,7 +175,7 @@ public class MatchControlServiceGuardTests
 		var referee = MultiplayerTestSupport.MakePlayer(2, "referee");
 		_fixture.RegisterAll(host, referee);
 		var match = _fixture.CreateMatch(host, hostIsReferee: false);
-		match.AddReferee(referee.Id);
+		match.AddReferee(_fixture.UserCache.Resolve(referee));
 		var control = MakeService();
 
 		await using var mutation = await match.BeginMutationAsync();
@@ -197,7 +197,7 @@ public class MatchControlServiceGuardTests
 		var result = await control.RemoveOneRefereeAsync(null, null, match, host, mutation);
 
 		Assert.Equal(MatchControlService.RemoveRefereeResult.TargetIsCreator, result);
-		Assert.Contains(host.Id, match.Referees);
+		Assert.Contains(match.Referees, r => r.Id == host.Id);
 	}
 
 	[Fact]
@@ -207,14 +207,14 @@ public class MatchControlServiceGuardTests
 		var referee = MultiplayerTestSupport.MakePlayer(2, "referee");
 		_fixture.RegisterAll(host, referee);
 		var match = _fixture.CreateMatch(host, hostIsReferee: false);
-		match.AddReferee(referee.Id);
+		match.AddReferee(_fixture.UserCache.Resolve(referee));
 		var control = MakeService();
 
 		await using var mutation = await match.BeginMutationAsync();
 		var result = await control.RemoveOneRefereeAsync(null, null, match, referee, mutation);
 
 		Assert.Equal(MatchControlService.RemoveRefereeResult.WouldLeaveEmpty, result);
-		Assert.Contains(referee.Id, match.Referees);
+		Assert.Contains(match.Referees, r => r.Id == referee.Id);
 	}
 
 	[Fact]
@@ -224,14 +224,14 @@ public class MatchControlServiceGuardTests
 		var referee = MultiplayerTestSupport.MakePlayer(2, "referee");
 		_fixture.RegisterAll(host, referee);
 		var match = _fixture.CreateMatch(host);
-		match.AddReferee(referee.Id);
+		match.AddReferee(_fixture.UserCache.Resolve(referee));
 		var control = MakeService();
 
 		await using var mutation = await match.BeginMutationAsync();
 		var result = await control.RemoveOneRefereeAsync(null, null, match, host, mutation);
 
 		Assert.Equal(MatchControlService.RemoveRefereeResult.TargetIsCreator, result);
-		Assert.Contains(host.Id, match.Referees);
+		Assert.Contains(match.Referees, r => r.Id == host.Id);
 	}
 
 	[Fact]
@@ -241,7 +241,7 @@ public class MatchControlServiceGuardTests
 		var referee = MultiplayerTestSupport.MakePlayer(2, "referee");
 		_fixture.RegisterAll(host, referee);
 		var match = _fixture.CreateMatch(host);
-		match.AddReferee(referee.Id);
+		match.AddReferee(_fixture.UserCache.Resolve(referee));
 		var channel = _fixture.ChannelRegistry.GetByName(match.ChatChannelName)!;
 		channel.Join(referee.Id);
 		referee.JoinChannel(channel.Name);
@@ -262,7 +262,7 @@ public class MatchControlServiceGuardTests
 		var referee = MultiplayerTestSupport.MakePlayer(2, "referee");
 		_fixture.RegisterAll(host, referee);
 		var match = _fixture.CreateMatch(host);
-		match.AddReferee(referee.Id);
+		match.AddReferee(_fixture.UserCache.Resolve(referee));
 		Assert.Equal(MatchMembership.JoinResult.Ok,
 			await _fixture.MatchMembership.JoinAsync(referee, match, ""));
 		var channel = _fixture.ChannelRegistry.GetByName(match.ChatChannelName)!;
@@ -298,14 +298,14 @@ public class MatchControlServiceGuardTests
 		var referee = MultiplayerTestSupport.MakePlayer(2, "referee");
 		_fixture.RegisterAll(host, referee);
 		var match = _fixture.CreateMatch(host);
-		match.AddReferee(referee.Id);
+		match.AddReferee(_fixture.UserCache.Resolve(referee));
 		var control = MakeService();
 
 		await using var mutation = await match.BeginMutationAsync();
 		var result = await control.RemoveOneRefereeAsync(null, null, match, referee, mutation);
 
 		Assert.Equal(MatchControlService.RemoveRefereeResult.Ok, result);
-		Assert.DoesNotContain(referee.Id, match.Referees);
+		Assert.DoesNotContain(match.Referees, r => r.Id == referee.Id);
 	}
 
 	[Fact]
@@ -321,7 +321,7 @@ public class MatchControlServiceGuardTests
 		await using var mutation = await match.BeginMutationAsync();
 		await control.SetBansAsync(match, [target.Id], mutation);
 
-		Assert.Contains(target.Id, match.BannedIds);
+		Assert.Contains(match.BannedUsers, u => u.Id == target.Id);
 		Assert.Null(target.Match);
 	}
 
@@ -338,7 +338,7 @@ public class MatchControlServiceGuardTests
 		await using var mutation = await match.BeginMutationAsync();
 		await control.AddBansAsync(match, [target.Id], mutation);
 
-		Assert.Contains(target.Id, match.BannedIds);
+		Assert.Contains(match.BannedUsers, u => u.Id == target.Id);
 		Assert.Null(target.Match);
 	}
 
@@ -349,7 +349,7 @@ public class MatchControlServiceGuardTests
 		var target = MultiplayerTestSupport.MakePlayer(2, "target");
 		_fixture.RegisterAll(host, target);
 		var match = _fixture.CreateMatch(host);
-		match.AddBan(target.Id);
+		match.AddBan(_fixture.UserCache.Resolve(target));
 		var control = MakeService();
 
 		var result = await control.ForceInviteAsync(match, target);
@@ -413,7 +413,7 @@ public class MatchControlServiceGuardTests
 		var target = MultiplayerTestSupport.MakePlayer(2, "target");
 		_fixture.RegisterAll(host, target);
 		var match = _fixture.CreateMatch(host);
-		for (var i = 0; i < 16; i++) match.Slots[i].Status = SlotStatus.Locked;
+		for (var i = 0; i < 16; i++) match.Slots[i].Status = RoomSlotStatus.Locked;
 		var control = MakeService();
 
 		var result = await control.ForceInviteAsync(match, target);
@@ -476,7 +476,7 @@ public class MatchControlServiceGuardTests
 		Assert.Equal(MatchMembership.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(other, match, ""));
 
 		// Only re-teams host's slot — doesn't mention `other`, who is also currently seated.
-		var hostSlot = match.GetSlotId(host.Id)!.Value;
+		var hostSlot = match.GetSlotId(_fixture.UserCache.Resolve(host))!.Value;
 		var entries = new Dictionary<int, SetSlotsHandler.SlotPatchEntry>
 		{
 			[hostSlot] = new(host.Id, "Red", null)
@@ -497,7 +497,7 @@ public class MatchControlServiceGuardTests
 		var match = _fixture.CreateMatch(host);
 		Assert.Equal(MatchMembership.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(other, match, ""));
 
-		var hostSlot = match.GetSlotId(host.Id)!.Value;
+		var hostSlot = match.GetSlotId(_fixture.UserCache.Resolve(host))!.Value;
 		var entries = new Dictionary<int, SetSlotsHandler.SlotPatchEntry>
 		{
 			[hostSlot] = new(host.Id, "Red", null)
@@ -517,7 +517,7 @@ public class MatchControlServiceGuardTests
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
 
-		var hostSlot = match.GetSlotId(host.Id)!.Value;
+		var hostSlot = match.GetSlotId(_fixture.UserCache.Resolve(host))!.Value;
 		var entries = new Dictionary<int, SetSlotsHandler.SlotPatchEntry>
 		{
 			[hostSlot] = new(host.Id, null, true)
@@ -538,8 +538,8 @@ public class MatchControlServiceGuardTests
 		var match = _fixture.CreateMatch(host);
 		Assert.Equal(MatchMembership.JoinResult.Ok, await _fixture.MatchMembership.JoinAsync(other, match, ""));
 
-		var hostSlot = match.GetSlotId(host.Id)!.Value;
-		var otherSlot = match.GetSlotId(other.Id)!.Value;
+		var hostSlot = match.GetSlotId(_fixture.UserCache.Resolve(host))!.Value;
+		var otherSlot = match.GetSlotId(_fixture.UserCache.Resolve(other))!.Value;
 		var entries = new Dictionary<int, SetSlotsHandler.SlotPatchEntry>
 		{
 			[hostSlot] = new(other.Id, null, null),
@@ -550,8 +550,8 @@ public class MatchControlServiceGuardTests
 		var result = await _fixture.SetSlotsHandler.SetSlotsAsync(match, entries, true, mutation);
 
 		Assert.Equal(SetSlotsHandler.SetSlotsResult.Ok, result);
-		Assert.Equal(other.Id, match.Slots[hostSlot].PlayerId);
-		Assert.Equal(host.Id, match.Slots[otherSlot].PlayerId);
+		Assert.Equal(other.Id, match.Slots[hostSlot].Player!.Id);
+		Assert.Equal(host.Id, match.Slots[otherSlot].Player!.Id);
 	}
 
 	[Fact]
@@ -561,7 +561,7 @@ public class MatchControlServiceGuardTests
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host, MatchTeamType.TeamVs);
 
-		var hostSlot = match.GetSlotId(host.Id)!.Value;
+		var hostSlot = match.GetSlotId(_fixture.UserCache.Resolve(host))!.Value;
 		var teamBefore = match.Slots[hostSlot].Team;
 		var entries = new Dictionary<int, SetSlotsHandler.SlotPatchEntry>
 		{
@@ -591,7 +591,8 @@ public class MatchControlServiceGuardTests
 		Assert.Equal(AbortHandler.AbortResult.Ok, result);
 		Assert.Null(match.CurrentRoundId);
 		Assert.False(match.InProgress);
-		Assert.Contains(_fixture.RoundEndOutbox.Enqueued, w => w.MatchId == match.DbId && w.RoundId == 5 && w.Aborted);
+		Assert.Contains(_fixture.RoundEndOutbox.Enqueued,
+			w => w.MatchId == match.DbId && w is { RoundId: 5, Aborted: true });
 	}
 
 	/// <summary>
@@ -628,7 +629,7 @@ public class MatchControlServiceGuardTests
 		var host = MultiplayerTestSupport.MakePlayer(1, "host");
 		_fixture.RegisterAll(host);
 		var match = _fixture.CreateMatch(host);
-		var hostSlot = match.GetSlotId(host.Id)!.Value;
+		var hostSlot = match.GetSlotId(_fixture.UserCache.Resolve(host))!.Value;
 		var entries = new Dictionary<int, SetSlotsHandler.SlotPatchEntry>
 		{
 			[hostSlot] = new(host.Id, "Red", null)
@@ -638,8 +639,8 @@ public class MatchControlServiceGuardTests
 		await using var slotSub = _fixture.Hub.Open(MatchStreams.Slot(match.DbId, hostSlot));
 		await using var mainSub = _fixture.Hub.Open(MatchStreams.Main(match.DbId));
 
-		await using var mutation = await match.BeginMutationAsync();
-		var result = await _fixture.SetSlotsHandler.SetSlotsAsync(match, entries, false, mutation);
+		await using var mutation = await match.BeginMutationAsync(cts.Token);
+		var result = await _fixture.SetSlotsHandler.SetSlotsAsync(match, entries, false, mutation, cts.Token);
 		await mutation.CompleteAsync();
 
 		Assert.Equal(SetSlotsHandler.SetSlotsResult.Ok, result);

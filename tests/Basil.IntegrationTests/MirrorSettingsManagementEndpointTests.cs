@@ -1,10 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Basil.Application.Shared.Configuration;
-using Basil.Domain.Beatmaps;
-using Basil.Domain.Content;
 using Basil.Host;
-using Basil.Infrastructure.Content;
 using Basil.Application.Content;
 using Basil.Application.Beatmaps;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -39,7 +36,7 @@ public class MirrorSettingsManagementEndpointTests : IClassFixture<WebApplicatio
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton<ISettingsRepository>(_settings);
 			});
 		});
@@ -55,8 +52,8 @@ public class MirrorSettingsManagementEndpointTests : IClassFixture<WebApplicatio
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/settings/mirror"));
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/settings/mirror"), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.Contains("\"downloadEndpoint\":null", body);
@@ -72,10 +69,10 @@ public class MirrorSettingsManagementEndpointTests : IClassFixture<WebApplicatio
 		setRequest.Content =
 			JsonContent.Create(new
 				{ downloadEndpoint = "https://mirror.local/d", searchEndpoint = "https://mirror.local/s" });
-		await client.SendAsync(setRequest);
+		await client.SendAsync(setRequest, TestContext.Current.CancellationToken);
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/settings/mirror"));
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/settings/mirror"), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.Contains("\"downloadEndpoint\":\"https://mirror.local/d\"", body);
@@ -91,14 +88,14 @@ public class MirrorSettingsManagementEndpointTests : IClassFixture<WebApplicatio
 		setRequest.Content =
 			JsonContent.Create(new
 				{ downloadEndpoint = "https://mirror.local/d", searchEndpoint = "https://mirror.local/s" });
-		await client.SendAsync(setRequest);
+		await client.SendAsync(setRequest, TestContext.Current.CancellationToken);
 
 		var clearRequest = MakeRequest(HttpMethod.Put, "/settings/mirror");
 		clearRequest.Content = JsonContent.Create(new { downloadEndpoint = "https://mirror.local/d" });
-		await client.SendAsync(clearRequest);
+		await client.SendAsync(clearRequest, TestContext.Current.CancellationToken);
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/settings/mirror"));
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/settings/mirror"), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.Contains("\"downloadEndpoint\":\"https://mirror.local/d\"", body);
 		Assert.Contains("\"searchEndpoint\":null", body);
@@ -119,16 +116,16 @@ public class MirrorSettingsManagementEndpointTests : IClassFixture<WebApplicatio
 
 		var firstBoot = _factory.WithWebHostBuilder(builder => builder.ConfigureServices(withMirrorConfig));
 		var firstClient = firstBoot.CreateClient();
-		var seeded = await firstClient.SendAsync(MakeRequest(HttpMethod.Get, "/settings/mirror"));
-		Assert.Contains("\"downloadEndpoint\":\"https://config.local/d\"", await seeded.Content.ReadAsStringAsync());
+		var seeded = await firstClient.SendAsync(MakeRequest(HttpMethod.Get, "/settings/mirror"), TestContext.Current.CancellationToken);
+		Assert.Contains("\"downloadEndpoint\":\"https://config.local/d\"", await seeded.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
 		var clearRequest = MakeRequest(HttpMethod.Put, "/settings/mirror");
 		clearRequest.Content = JsonContent.Create(new { });
-		await firstClient.SendAsync(clearRequest);
+		await firstClient.SendAsync(clearRequest, TestContext.Current.CancellationToken);
 
 		var secondBoot = _factory.WithWebHostBuilder(builder => builder.ConfigureServices(withMirrorConfig));
-		var response = await secondBoot.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/settings/mirror"));
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await secondBoot.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/settings/mirror"), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.Contains("\"downloadEndpoint\":null", body);
 	}

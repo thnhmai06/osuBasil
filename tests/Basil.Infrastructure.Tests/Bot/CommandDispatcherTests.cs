@@ -4,8 +4,6 @@ using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
 using Basil.Application.Users;
-using Basil.Domain.Beatmaps;
-using Basil.Domain.Client;
 using Basil.Domain.Users;
 using Basil.Application.Content;
 using Basil.Host.Bancho.Chat.Packets;
@@ -71,6 +69,7 @@ public class CommandDispatcherTests
 			fixture.StartHandler, fixture.AbortHandler, fixture.CloseHandler,
 			fixture.MatchRegistry, fixture.MatchRepository, _beatmaps,
 			fixture.SessionRegistry, fixture.IrcSessionRegistry, Substitute.For<IUserRepository>(),
+			fixture.UserCache,
 			fixture.ChannelRegistry, fixture.ChannelMembership,
 			NullLogger<MpCommandService>.Instance,
 			NullLogger<MatchControlService>.Instance);
@@ -503,7 +502,7 @@ public class CommandDispatcherTests
 		var referee = MultiplayerTestSupport.MakePlayer(2, "ref");
 		fixture.RegisterAll(host, referee);
 		var match = fixture.CreateMatch(host);
-		match.AddReferee(referee.Id);
+		match.AddReferee(fixture.UserCache.Resolve(referee));
 
 		var inReply = await Run(dispatcher, referee, $"!mp in {match.DbId}", null);
 		Assert.Contains($"#{match.DbId}", inReply);
@@ -541,7 +540,7 @@ public class CommandDispatcherTests
 		fixture.RegisterAll(host);
 		fixture.IrcSessionRegistry.GetByUserId(2).Returns(referee);
 		var match = fixture.CreateMatch(host);
-		match.AddReferee(referee.Id);
+		match.AddReferee(fixture.UserCache.Resolve(referee));
 
 		var sink = new RecordingReplySink();
 		await dispatcher.DispatchAsync(referee, $"!mp in {match.DbId}", null, "#osu", sink);
@@ -593,7 +592,7 @@ public class CommandDispatcherTests
 		fixture.RegisterAll(host);
 		fixture.IrcSessionRegistry.GetByUserId(2).Returns(refereeIrc);
 		var match = fixture.CreateMatch(host);
-		match.AddReferee(refereeIrc.Id);
+		match.AddReferee(fixture.UserCache.Resolve(refereeIrc));
 
 		// !mp in via a genuine DM (channelName null) establishes the scope.
 		var dmSink = new RecordingReplySink();
@@ -728,7 +727,7 @@ public class CommandDispatcherTests
 		fixture.RegisterAll(hostA, hostB);
 		var matchA = fixture.CreateMatch(hostA);
 		var matchB = fixture.CreateMatch(hostB);
-		matchA.AddReferee(hostB.Id);
+		matchA.AddReferee(fixture.UserCache.Resolve(hostB));
 		hostB.MpScopeMatchId = matchA.DbId;
 
 		// hostB is physically sitting in matchB's own channel, but stays scoped to matchA.
@@ -837,7 +836,11 @@ public class CommandDispatcherTests
 
 	private static User MakeUser(string name, string country)
 	{
-		return new User(1, name, Enum.Parse<Country>(country, true), UserPrivileges.Unrestricted, default);
+		return new User
+		{
+			Id = 1, Name = name, Country = Enum.Parse<Country>(country, true),
+			Privilege = UserPrivileges.Unrestricted
+		};
 	}
 
 	/// <summary>Captures what a command sent through <see cref="ICommandReplySink" /> instead of returning it.</summary>

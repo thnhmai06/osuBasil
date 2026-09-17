@@ -2,7 +2,7 @@ using Basil.Application.Multiplayer;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
-using Basil.Infrastructure.Multiplayer;
+using Basil.Domain.Users;
 
 namespace Basil.Infrastructure.Tests.Multiplayer;
 
@@ -17,9 +17,9 @@ public class MatchSessionRaceTests
 	{
 		return new MatchSession(
 			0, "race test", "",
-			"", 0, new string('a', 32), 1,
+			null, null,
 			GameMode.Standard, Mods.NoMod, MatchWinCondition.Score,
-			MatchTeamType.HeadToHead, false, 0, "#mp_0");
+			MatchTeamType.HeadToHead, false, 0);
 	}
 
 	/// <summary>
@@ -37,7 +37,7 @@ public class MatchSessionRaceTests
 		var second = OccupyFreeSlotWithoutLockAsync(match, 2);
 		await Task.WhenAll(first, second);
 
-		var occupiedPlayerIds = match.Slots.Where(s => !s.Empty).Select(s => s.PlayerId).ToList();
+		var occupiedPlayerIds = match.Slots.Where(s => !s.IsEmpty).Select(s => s.Player!.Id).ToList();
 		Assert.Single(occupiedPlayerIds); // one write clobbered the other — exactly the bug the lock fixes
 	}
 
@@ -45,8 +45,8 @@ public class MatchSessionRaceTests
 	{
 		var slotId = match.GetFreeSlotId();
 		await Task.Delay(20); // widen the TOCTOU window between read and write
-		match.Slots[slotId!.Value].PlayerId = playerId;
-		match.Slots[slotId.Value].Status = SlotStatus.NotReady;
+		match.Slots[slotId!.Value].Player = new User { Id = playerId, Name = $"p{playerId}" };
+		match.Slots[slotId.Value].Status = RoomSlotStatus.NotReady;
 	}
 
 	[Fact]
@@ -56,9 +56,9 @@ public class MatchSessionRaceTests
 		var tasks = Enumerable.Range(1, 16).Select(playerId => JoinUnderLockAsync(match, playerId));
 		await Task.WhenAll(tasks);
 
-		var occupied = match.Slots.Where(s => !s.Empty).ToList();
+		var occupied = match.Slots.Where(s => !s.IsEmpty).ToList();
 		Assert.Equal(16, occupied.Count);
-		Assert.Equal(16, occupied.Select(s => s.PlayerId).Distinct().Count());
+		Assert.Equal(16, occupied.Select(s => s.Player!.Id).Distinct().Count());
 	}
 
 	[Fact]
@@ -81,8 +81,8 @@ public class MatchSessionRaceTests
 			if (slotId is null) return false;
 
 			await Task.Delay(1); // still widen the window, but now inside the critical section
-			match.Slots[slotId.Value].PlayerId = playerId;
-			match.Slots[slotId.Value].Status = SlotStatus.NotReady;
+			match.Slots[slotId.Value].Player = new User { Id = playerId, Name = $"p{playerId}" };
+			match.Slots[slotId.Value].Status = RoomSlotStatus.NotReady;
 			return true;
 		}
 		finally

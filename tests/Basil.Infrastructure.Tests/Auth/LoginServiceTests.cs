@@ -1,38 +1,33 @@
 using System.Net;
 using System.Text;
+using Basil.Application.Auth;
+using Basil.Application.Beatmaps;
+using Basil.Application.Bot;
+using Basil.Application.Channels;
+using Basil.Application.Chat;
+using Basil.Application.Content;
 using Basil.Application.Irc;
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
 using Basil.Application.Shared.Eventing;
-using Basil.Domain.Auth;
+using Basil.Application.Social;
+using Basil.Application.Spectating;
+using Basil.Application.Users;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Channels;
-using Basil.Domain.Content;
 using Basil.Domain.Client;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
-using Basil.Domain.Social;
-using Basil.Application.Spectating;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Auth;
-using Basil.Application.Bot;
-using Basil.Application.Chat;
-using Basil.Host.Bancho.Shared.Sessions;
 using Basil.Host.Bancho.Chat.Packets;
-using Basil.Infrastructure.Content;
-using Basil.Infrastructure.Multiplayer;
 using Basil.Host.Bancho.Multiplayer.Packets;
-using Basil.Infrastructure.Shared.Sessions;
-using Basil.Infrastructure.Spectating;
+using Basil.Host.Bancho.Shared.Sessions;
 using Basil.Host.Bancho.Spectating.Packets;
+using Basil.Infrastructure.Auth;
+using Basil.Infrastructure.Content;
 using Basil.Protocol;
 using Basil.Protocol.Packets;
-using Basil.Application.Content;
-using Basil.Application.Users;
-using Basil.Application.Auth;
-using Basil.Application.Social;
-using Basil.Application.Beatmaps;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -53,13 +48,13 @@ public class LoginServiceTests
 	private readonly MenuIconService _menuIconService;
 	private readonly MotdService _motdService;
 	private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();
+
+	private readonly PlayerLogoutService _playerLogoutService;
 	private readonly IRelationshipRepository _relationships = Substitute.For<IRelationshipRepository>();
 	private readonly ISessionRegistry<GameSession> _sessionRegistry = Substitute.For<ISessionRegistry<GameSession>>();
 	private readonly ISettingsRepository _settings = Substitute.For<ISettingsRepository>();
-	private readonly IPlayerStatusEvents _statusEvents = Substitute.For<IPlayerStatusEvents>();
-
-	private readonly PlayerLogoutService _playerLogoutService;
 	private readonly SpectatorService _spectatorService;
+	private readonly IPlayerStatusEvents _statusEvents = Substitute.For<IPlayerStatusEvents>();
 	private readonly ITokenGenerator _tokenGenerator = Substitute.For<ITokenGenerator>();
 	private readonly IUserStatRepository _userStatRepository = Substitute.For<IUserStatRepository>();
 	private readonly IUserRepository _users = Substitute.For<IUserRepository>();
@@ -67,10 +62,12 @@ public class LoginServiceTests
 	public LoginServiceTests()
 	{
 		var ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
+		var userCache = Substitute.For<IUserCache>();
 		var channelMembership = new ChannelMembershipService(_sessionRegistry, ircRegistry, _channelRegistry,
 			new ChatNotifier(Options.Create(new IrcOptions())),
 			new ChannelNotifier(_sessionRegistry, ircRegistry, Options.Create(new IrcOptions())),
-			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
+			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()),
+			userCache);
 		_spectatorService = new SpectatorService(_channelRegistry, channelMembership, new SpectatorNotifier(),
 			NullLogger<SpectatorService>.Instance);
 		var matchBroadcast = new MatchBroadcast(_channelRegistry, channelMembership,
@@ -81,10 +78,10 @@ public class LoginServiceTests
 			new MatchNotifier(_channelRegistry, channelMembership),
 			_sessionRegistry, Substitute.For<IMatchRepository>(), Substitute.For<IMatchRoundEndOutbox>(), null,
 			Substitute.For<IBeatmapRepository>(), matchBroadcast,
-			Substitute.For<IServiceProvider>(), NullLogger<MatchLifecycle>.Instance);
+			Substitute.For<IServiceProvider>(), userCache, NullLogger<MatchLifecycle>.Instance);
 		var matchMembership = new MatchMembership(_channelRegistry, _sessionRegistry, channelMembership,
 			new MatchNotifier(_channelRegistry, channelMembership),
-			Substitute.For<IMatchRepository>(), matchLifecycle, NullLogger<MatchMembership>.Instance);
+			Substitute.For<IMatchRepository>(), matchLifecycle, userCache, NullLogger<MatchMembership>.Instance);
 		_playerLogoutService = new PlayerLogoutService(
 			[
 				new MatchLeaveLogoutHandler(matchMembership),
@@ -250,17 +247,17 @@ public class LoginServiceTests
 		// from the registry, leaving its match slot occupied forever — GhostDisconnectService
 		// only reaps sessions still present in a registry, so the slot could never be freed
 		// (duplicate players after a taskkill reconnect, "match is locked", !mp make appearing
-		// to kick its own creator via a stale Match reference).
-		var match = new MatchSession(0, "test match", "", "Some Map", 100, new string('a', 32),
-			999, GameMode.Standard, Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead,
-			false, 0, "#multiplayer");
+		// to kick its own creator via a stale Room reference).
+		var match = new MatchSession(0, "test match", "", null, new User { Id = 999, Name = "host" },
+			GameMode.Standard, Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead,
+			false, 0);
 		var existing = new GameSession(1, "cmyui", "old-token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch)
 		{
 			LastRecvTime = DateTimeOffset.UtcNow.AddSeconds(-100),
 			Match = match
 		};
-		match.Slots[0].PlayerId = existing.Id;
-		match.Slots[0].Status = SlotStatus.NotReady;
+		match.Slots[0].Player = new User { Id = existing.Id, Name = existing.Name };
+		match.Slots[0].Status = RoomSlotStatus.NotReady;
 		_sessionRegistry.GetByName("cmyui").Returns(existing);
 		_users.FetchByNameAsync("cmyui").Returns((User?)null);
 		var useCase = MakeUseCase();
@@ -268,7 +265,7 @@ public class LoginServiceTests
 
 		await useCase.ExecuteAsync(request);
 
-		Assert.True(match.Slots[0].Empty);
+		Assert.True(match.Slots[0].IsEmpty);
 		Assert.Null(existing.Match);
 	}
 
@@ -374,7 +371,7 @@ public class LoginServiceTests
 		_clientHashes.FetchAnyHardwareMatchesForUserAsync(10, false, Arg.Any<string>(), Arg.Any<string>(),
 				Arg.Any<string?>(), Arg.Any<CancellationToken>())
 			.Returns([
-				new PlayerClientHash(99, "p", "a", "u", "d", DateTime.UtcNow, 1, "banned-user",
+				new UserClientHash(99, "p", "a", "u", "d", DateTime.UtcNow, 1, "banned-user",
 					UserPrivileges.Verified)
 			]);
 		var useCase = MakeUseCase();
@@ -396,7 +393,7 @@ public class LoginServiceTests
 		_clientHashes.FetchAnyHardwareMatchesForUserAsync(user.Id, false, Arg.Any<string>(), Arg.Any<string>(),
 				Arg.Any<string?>(), Arg.Any<CancellationToken>())
 			.Returns([
-				new PlayerClientHash(99, "p", "a", "u", "d", DateTime.UtcNow, 1, "other-account",
+				new UserClientHash(99, "p", "a", "u", "d", DateTime.UtcNow, 1, "other-account",
 					UserPrivileges.Unrestricted)
 			]);
 		var useCase = MakeUseCase();
@@ -644,7 +641,11 @@ public class LoginServiceTests
 
 	private static User MakeUser(int id, UserPrivileges priv, string country = "us", DateTimeOffset? deletedAt = null)
 	{
-		return new User(id, "cmyui", Enum.Parse<Country>(country, true), priv, default, deletedAt);
+		return new User
+		{
+			Id = id, Name = "cmyui", Country = Enum.Parse<Country>(country, true), Privilege = priv,
+			DeletedAt = deletedAt
+		};
 	}
 
 	private static byte[] Concat(params byte[][] parts)

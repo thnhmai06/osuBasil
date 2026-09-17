@@ -1,14 +1,14 @@
+using Basil.Application.Channels;
 using Basil.Application.Irc;
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
 using Basil.Application.Shared.Eventing;
+using Basil.Application.Users;
 using Basil.Domain.Channels;
 using Basil.Domain.Users;
 using Basil.Application.Chat;
 using Basil.Host.Bancho.Chat.Packets;
-using Basil.Host.Bancho.Multiplayer;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -30,7 +30,7 @@ public class ChannelPartHandlerTests
 				new ChatNotifier(Options.Create(new IrcOptions())),
 				new ChannelNotifier(_gameRegistry, _ircRegistry, Options.Create(new IrcOptions())),
 				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
-				Options.Create(new IrcOptions())));
+				Options.Create(new IrcOptions()), Substitute.For<IUserCache>()));
 	}
 
 	private static PacketReader ChannelNameReader(string name)

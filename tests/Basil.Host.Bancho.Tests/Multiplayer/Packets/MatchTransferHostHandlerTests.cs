@@ -28,7 +28,7 @@ public class MatchTransferHostHandlerTests
 
 		await handler.HandleAsync(guest, ReaderFor(1));
 
-		Assert.Equal(host.Id, match.HostId);
+		Assert.Equal(host.Id, match.Host?.Id);
 	}
 
 	[Fact]
@@ -46,7 +46,7 @@ public class MatchTransferHostHandlerTests
 
 		await handler.HandleAsync(host, ReaderFor(1));
 
-		Assert.Equal(guest.Id, match.HostId);
+		Assert.Equal(guest.Id, match.Host?.Id);
 		Assert.Contains(ServerPacketWriter.MatchTransferHost(), Chunk(guest.Dequeue()));
 	}
 
@@ -62,6 +62,6 @@ public class MatchTransferHostHandlerTests
 
 		await handler.HandleAsync(host, ReaderFor(4));
 
-		Assert.Equal(host.Id, match.HostId);
+		Assert.Equal(host.Id, match.Host?.Id);
 	}
 }

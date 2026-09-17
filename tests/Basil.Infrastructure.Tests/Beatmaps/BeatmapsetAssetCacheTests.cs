@@ -13,17 +13,16 @@ namespace Basil.Infrastructure.Tests.Beatmaps;
 /// </summary>
 public sealed class BeatmapsetAssetCacheTests : IDisposable
 {
-	private readonly string _cachePath;
 	private readonly string _dataDir = Directory.CreateTempSubdirectory("basil-asset-cache-tests-").FullName;
 	private readonly BeatmapsetAssetCache _sut;
 
 	public BeatmapsetAssetCacheTests()
 	{
-		_cachePath = Path.Combine(_dataDir, "Cache");
+		var cachePath = Path.Combine(_dataDir, "Cache");
 		var options = Options.Create(new StorageOptions
 		{
 			ReplaysPath = "", AvatarsPath = "", BeatmapsetsPath = "", MenuSeasonalsPath = "", MenuBannersPath = "",
-			FaqsPath = "", CachePath = _cachePath
+			FaqsPath = "", CachePath = cachePath
 		});
 		_sut = new BeatmapsetAssetCache(options);
 	}
@@ -76,7 +75,7 @@ public sealed class BeatmapsetAssetCacheTests : IDisposable
 	[Fact]
 	public async Task ResolveAsync_UnknownEntry_ReturnsNull()
 	{
-		var osz = MakeOsz(("bg.jpg", "x"u8.ToArray()));
+		var osz = MakeOsz(("bg.jpg", [.. "x"u8]));
 
 		var path = await _sut.ResolveAsync(3, "does-not-exist.jpg", osz);
 
@@ -114,7 +113,7 @@ public sealed class BeatmapsetAssetCacheTests : IDisposable
 	[Fact]
 	public async Task Invalidate_RemovesEveryCachedEntryForThatBeatmapsetOnly()
 	{
-		var osz = MakeOsz(("bg.jpg", "a"u8.ToArray()), ("audio.mp3", "b"u8.ToArray()));
+		var osz = MakeOsz(("bg.jpg", [.. "a"u8]), ("audio.mp3", [.. "b"u8]));
 		var bgPath = await _sut.ResolveAsync(6, "bg.jpg", osz);
 		var audioPath = await _sut.ResolveAsync(6, "audio.mp3", osz);
 		var otherSetPath = await _sut.ResolveAsync(7, "bg.jpg", osz);
@@ -137,7 +136,7 @@ public sealed class BeatmapsetAssetCacheTests : IDisposable
 	[Fact]
 	public async Task ResolveAsync_EntryNameEscapingTheCacheDirectory_Throws()
 	{
-		var osz = MakeOsz(("bg.jpg", "x"u8.ToArray()));
+		var osz = MakeOsz(("bg.jpg", [.. "x"u8]));
 
 		await Assert.ThrowsAsync<InvalidOperationException>(() =>
 			_sut.ResolveAsync(8, "../../escaped.jpg", osz));

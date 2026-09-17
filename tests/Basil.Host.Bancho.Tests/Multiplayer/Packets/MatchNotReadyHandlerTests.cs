@@ -1,3 +1,4 @@
+using Basil.Application.Users;
 using Basil.Domain.Multiplayer;
 using Basil.Host.Bancho.Multiplayer.Packets;
 using Basil.Protocol.Packets;
@@ -15,11 +16,11 @@ public class MatchNotReadyHandlerTests
 		var host = MakePlayer(1, "host");
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
-		match.Slots[0].Status = SlotStatus.Ready;
-		var handler = new MatchNotReadyHandler();
+		match.Slots[0].Status = RoomSlotStatus.Ready;
+		var handler = new MatchNotReadyHandler(fixture.UserCache);
 
 		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
 
-		Assert.Equal(SlotStatus.NotReady, match.GetSlot(host.Id)!.Status);
+		Assert.Equal(RoomSlotStatus.NotReady, match.GetSlot(fixture.UserCache.Resolve(host))!.Status);
 	}
 }

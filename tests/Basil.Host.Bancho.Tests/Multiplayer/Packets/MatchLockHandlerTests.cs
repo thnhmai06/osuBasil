@@ -27,7 +27,7 @@ public class MatchLockHandlerTests
 
 		await handler.HandleAsync(guest, ReaderFor(3));
 
-		Assert.Equal(SlotStatus.Open, match.Slots[3].Status);
+		Assert.Equal(RoomSlotStatus.Open, match.Slots[3].Status);
 	}
 
 	[Fact]
@@ -41,7 +41,7 @@ public class MatchLockHandlerTests
 
 		await handler.HandleAsync(host, ReaderFor(3));
 
-		Assert.Equal(SlotStatus.Locked, match.Slots[3].Status);
+		Assert.Equal(RoomSlotStatus.Locked, match.Slots[3].Status);
 	}
 
 	[Fact]
@@ -51,12 +51,12 @@ public class MatchLockHandlerTests
 		var host = MakePlayer(1, "host");
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
-		match.Slots[3].Status = SlotStatus.Locked;
+		match.Slots[3].Status = RoomSlotStatus.Locked;
 		var handler = new MatchLockHandler();
 
 		await handler.HandleAsync(host, ReaderFor(3));
 
-		Assert.Equal(SlotStatus.Open, match.Slots[3].Status);
+		Assert.Equal(RoomSlotStatus.Open, match.Slots[3].Status);
 	}
 
 	[Fact]
@@ -70,7 +70,7 @@ public class MatchLockHandlerTests
 
 		await handler.HandleAsync(host, ReaderFor(0));
 
-		Assert.Equal(SlotStatus.NotReady, match.Slots[0].Status);
-		Assert.Equal(host.Id, match.Slots[0].PlayerId);
+		Assert.Equal(RoomSlotStatus.NotReady, match.Slots[0].Status);
+		Assert.Equal(host.Id, match.Slots[0].Player!.Id);
 	}
 }

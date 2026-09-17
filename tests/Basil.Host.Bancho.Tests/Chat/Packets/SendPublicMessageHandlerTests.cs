@@ -5,17 +5,13 @@ using Basil.Application.Shared.Configuration;
 using Basil.Application.Shared.Eventing;
 using Basil.Domain.Beatmaps;
 using Basil.Application.Bot;
+using Basil.Application.Channels;
 using Basil.Domain.Channels;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
-using Basil.Domain.Social;
 using Basil.Domain.Users;
-using Basil.Application.Bot;
-using Basil.Infrastructure.Bot;
 using Basil.Application.Chat;
 using Basil.Host.Bancho.Chat.Packets;
-using Basil.Host.Bancho.Multiplayer;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Protocol.Packets;
 using Basil.Application.Users;
 using Basil.Application.Social;
@@ -46,7 +42,8 @@ public class SendPublicMessageHandlerTests
 		var channelMembership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
 			new ChatNotifier(Options.Create(new IrcOptions())),
 			new ChannelNotifier(_gameRegistry, _ircRegistry, Options.Create(new IrcOptions())),
-			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
+			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()),
+			Substitute.For<IUserCache>());
 		var chatDispatch = new ChatDispatchService(_channelRegistry, _gameRegistry, channelMembership,
 			new ChatNotifier(Options.Create(new IrcOptions())),
 			Substitute.For<IUserRepository>(), Substitute.For<IRelationshipRepository>(), _commandDispatcher,
@@ -222,8 +219,8 @@ public class SendPublicMessageHandlerTests
 		// and then discard it, always passing null — every !mp subcommand sent from inside a match's
 		// own channel (the common case) silently lost its scope. See phase-stage-c.md, Commit 3.
 		var sender = new GameSession(5, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		var match = new MatchSession(0, "Grand Finals", "", "map", 42, "md5", 9, GameMode.Standard,
-			Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead, false, 0, "#mp_5") { DbId = 7 };
+		var match = new MatchSession(0, "Grand Finals", "", null, null, GameMode.Standard,
+			Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead, false, 0) { DbId = 5 };
 		sender.Match = match;
 		var bot = new GameSession(BotBootstrapService.BotId, "BasilBot", "bot-token", UserPrivileges.Unrestricted,
 				DateTimeOffset.UnixEpoch)
@@ -238,7 +235,7 @@ public class SendPublicMessageHandlerTests
 
 		await MakeHandler().HandleAsync(sender, MessageReader("cmyui", "!mp settings", "#mp_5", 5));
 
-		await _commandDispatcher.Received(1).DispatchAsync(sender, "!mp settings", 7, "#mp_5",
+		await _commandDispatcher.Received(1).DispatchAsync(sender, "!mp settings", 5, "#mp_5",
 			Arg.Any<ICommandReplySink>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
 	}
 

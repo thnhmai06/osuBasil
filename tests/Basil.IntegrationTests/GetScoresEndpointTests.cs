@@ -23,7 +23,7 @@ namespace Basil.IntegrationTests;
 /// </summary>
 public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
-	public const string KnownMd5 = "known-md5";
+	private const string KnownMd5 = "known-md5";
 
 	private static readonly Beatmapset Beatmapset = new(1, "Artist", "Title", "Creator", DateTime.UnixEpoch,
 		DateTime.UnixEpoch);
@@ -92,7 +92,7 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Bootst
 		var client = _factory.CreateClient();
 		var request = MakeRequest("us=nobody&ha=x&m=0&mods=0");
 
-		var response = await client.SendAsync(request);
+		var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 	}
@@ -105,7 +105,7 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Bootst
 			DateTimeOffset.UnixEpoch));
 		var request = MakeRequest("us=cmyui-wrongpw&ha=wrong-md5&m=0&mods=0");
 
-		var response = await _factory.CreateClient().SendAsync(request);
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 	}
@@ -118,8 +118,8 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Bootst
 			DateTimeOffset.UnixEpoch));
 		var request = MakeRequest("us=cmyui-stub&ha=correct-md5&c=unknown-md5&m=0&mods=0");
 
-		var response = await _factory.CreateClient().SendAsync(request);
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal("-1|false", body);
 	}
@@ -132,8 +132,8 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Bootst
 			DateTimeOffset.UnixEpoch));
 		var request = MakeRequest($"us=cmyui-known&ha=correct-md5&c={KnownMd5}&m=0&mods=0");
 
-		var response = await _factory.CreateClient().SendAsync(request);
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal($"{(int)BeatmapStatus.Approved}|false", body);
 	}
@@ -150,7 +150,7 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Bootst
 		sessionRegistry.TryAdd(other);
 		var request = MakeRequest("us=cmyui-status&ha=correct-md5&m=1&mods=8"); // Taiko + Hidden, differs from defaults
 
-		await _factory.CreateClient().SendAsync(request);
+		await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.NotEmpty(other.Dequeue());
 	}
@@ -167,7 +167,7 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Bootst
 		sessionRegistry.TryAdd(other);
 		var request = MakeRequest("us=cmyui-nochange&ha=correct-md5&m=0&mods=0"); // matches UserStatus defaults
 
-		await _factory.CreateClient().SendAsync(request);
+		await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Empty(other.Dequeue());
 	}

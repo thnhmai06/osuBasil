@@ -2,7 +2,6 @@ using Basil.Application.Sessions;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Host.Bancho.Users.Packets;
 using Basil.Protocol.Packets;
 

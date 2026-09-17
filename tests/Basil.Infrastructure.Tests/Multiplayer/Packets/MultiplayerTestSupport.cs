@@ -1,4 +1,5 @@
 using Basil.Application.Beatmaps;
+using Basil.Application.Channels;
 using Basil.Application.Chat;
 using Basil.Application.Irc;
 using Basil.Application.Multiplayer;
@@ -155,17 +156,18 @@ public static class MultiplayerTestSupport
 			return _byId.Values.FirstOrDefault(m => m.DbId == dbId);
 		}
 
-		public Task<MatchSession> CreateAsync(MatchCreationData data, int? hostId,
+		public Task<MatchSession> CreateAsync(MatchCreationData data, User? host,
 			CancellationToken cancellationToken = default)
 		{
 			var id = 0;
 			while (_byId.ContainsKey(id)) id++;
 			var dbId = _nextDbId++;
 
+			var beatmap = data.MapId is { } mapId ? MakeBeatmap(mapId, data.MapMd5 ?? "") : null;
 			var match = new MatchSession(
-				id, data.Name, data.Password, data.MapName, data.MapId, data.MapMd5,
-				hostId, data.Mode, data.Mods, data.WinCondition,
-				data.TeamType, data.FreeMods, data.Seed, $"#mp_{dbId}")
+				id, data.Name, data.Password, beatmap,
+				host, data.Mode, data.Mods, data.WinCondition,
+				data.TeamType, data.FreeMods, data.Seed)
 			{
 				DbId = dbId
 			};
@@ -325,9 +327,9 @@ public static class MultiplayerTestSupport
 
 	/// <summary>
 	///     Bundles the fakes a handler test needs, wired the same way DI wires the real
-	///     <see cref="Infrastructure.Multiplayer.MatchMembership" />,
-	///     <see cref="Infrastructure.Multiplayer.MatchLifecycle" />, and
-	///     <see cref="Infrastructure.Multiplayer.MatchBroadcast" />.
+	///     <see cref="Application.Multiplayer.MatchMembership" />,
+	///     <see cref="Application.Multiplayer.MatchLifecycle" />, and
+	///     <see cref="Application.Multiplayer.MatchBroadcast" />.
 	/// </summary>
 	public sealed class Fixture
 	{
@@ -338,13 +340,16 @@ public static class MultiplayerTestSupport
 			BeatmapRepository.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),
 				Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(MakeBeatmap());
 
+			UserCache = new FakeUserCache(SessionRegistry, IrcSessionRegistry);
+
 			ChannelNotifier =
 				new ChannelNotifier(SessionRegistry, IrcSessionRegistry, Options.Create(new IrcOptions()));
 			ChannelMembership = new ChannelMembershipService(SessionRegistry, IrcSessionRegistry, ChannelRegistry,
 				new ChatNotifier(Options.Create(new IrcOptions())), ChannelNotifier,
-				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
+				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()),
+				UserCache);
 
-			MatchNotifier = new Basil.Host.Bancho.Multiplayer.Packets.MatchNotifier(ChannelRegistry, ChannelMembership);
+			MatchNotifier = new MatchNotifier(ChannelRegistry, ChannelMembership);
 			MatchBroadcast = new MatchBroadcast(ChannelRegistry, ChannelMembership, MatchNotifier,
 				new ChatNotifier(Options.Create(new IrcOptions())),
 				SessionRegistry,
@@ -353,14 +358,14 @@ public static class MultiplayerTestSupport
 			MatchLifecycle = new MatchLifecycle(MatchRegistry, ChannelRegistry, ChannelMembership, MatchNotifier,
 				SessionRegistry,
 				MatchRepository, RoundEndOutbox, Hub, BeatmapRepository, MatchBroadcast, ServiceProvider,
-				NullLogger<MatchLifecycle>.Instance);
+				UserCache, NullLogger<MatchLifecycle>.Instance);
 
 			MatchMembership = new MatchMembership(ChannelRegistry, SessionRegistry, ChannelMembership, MatchNotifier,
-				MatchRepository, MatchLifecycle, NullLogger<MatchMembership>.Instance);
+				MatchRepository, MatchLifecycle, UserCache, NullLogger<MatchMembership>.Instance);
 
 			ServiceProvider.GetService(typeof(MatchMembership)).Returns(_ => MatchMembership);
 
-			SetTeamHandler = new SetTeamHandler(MatchLifecycle, NullLogger<SetTeamHandler>.Instance);
+			SetTeamHandler = new SetTeamHandler(MatchLifecycle, UserCache, NullLogger<SetTeamHandler>.Instance);
 			SetSlotsHandler = new SetSlotsHandler(NullLogger<SetSlotsHandler>.Instance);
 			TimerHandler = new TimerHandler(MatchLifecycle, MatchBroadcast, SessionRegistry,
 				NullLogger<TimerHandler>.Instance);
@@ -383,12 +388,14 @@ public static class MultiplayerTestSupport
 
 		public IUserRepository UserRepository { get; } = Substitute.For<IUserRepository>();
 
+		public IUserCache UserCache { get; }
+
 		/// <summary>Defaults to resolving any lookup to a valid beatmap — override per-test for missing-map scenarios.</summary>
 		public IBeatmapRepository BeatmapRepository { get; } = Substitute.For<IBeatmapRepository>();
 
 		/// <summary>
-		///     Resolves <see cref="Infrastructure.Multiplayer.MatchMembership" /> the same way the real
-		///     <see cref="Infrastructure.Multiplayer.MatchLifecycle" /> does, to break the constructor cycle
+		///     Resolves <see cref="Application.Multiplayer.MatchMembership" /> the same way the real
+		///     <see cref="Application.Multiplayer.MatchLifecycle" /> does, to break the constructor cycle
 		///     between the two.
 		/// </summary>
 		public IServiceProvider ServiceProvider { get; } = Substitute.For<IServiceProvider>();
@@ -397,7 +404,7 @@ public static class MultiplayerTestSupport
 		public ChannelMembershipService ChannelMembership { get; }
 		public MatchMembership MatchMembership { get; }
 		public MatchLifecycle MatchLifecycle { get; }
-		public Basil.Host.Bancho.Multiplayer.Packets.MatchNotifier MatchNotifier { get; }
+		public MatchNotifier MatchNotifier { get; }
 		public MatchBroadcast MatchBroadcast { get; }
 		public SetTeamHandler SetTeamHandler { get; }
 		public SetSlotsHandler SetSlotsHandler { get; }
@@ -430,8 +437,25 @@ public static class MultiplayerTestSupport
 		{
 			var match = MatchLifecycle.CreateAsync(host, MakeMatchData(host.Id, teamType: teamType))
 				.GetAwaiter().GetResult()!;
-			if (hostIsReferee) match.AddReferee(host.Id);
+			if (hostIsReferee) match.AddReferee(UserCache.Resolve(host));
 			return match;
+		}
+	}
+
+	/// <summary>
+	///     Resolves a user from whichever of <see cref="ISessionRegistry{TSession}" /> currently holds
+	///     the id, mirroring the production <c>IUserCache</c>'s role without a real backing store.
+	/// </summary>
+	public sealed class FakeUserCache(
+		ISessionRegistry<GameSession> gameRegistry,
+		ISessionRegistry<IrcSession> ircRegistry)
+		: IUserCache
+	{
+		public User? TryGet(int id)
+		{
+			if (gameRegistry.GetByUserId(id) is { } game) return new User { Id = game.Id, Name = game.Name };
+			if (ircRegistry.GetByUserId(id) is { } irc) return new User { Id = irc.Id, Name = irc.Name };
+			return null;
 		}
 	}
 }

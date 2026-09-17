@@ -18,7 +18,7 @@ public class PpyOsuCalculatorTests
 
 	/// <summary>
 	///     Expected values are the engine's raw (unrounded) output — <see cref="PpyOsuCalculator.Analyze" />
-	///     rounds <c>Sr</c> to 2 decimals before returning it, so the assertion rounds the recorded
+	///     rounds <c>Star</c> to 2 decimals before returning it, so the assertion rounds the recorded
 	///     reference the same way rather than hardcoding a second, hand-rounded literal.
 	/// </summary>
 	[Theory]
@@ -33,7 +33,7 @@ public class PpyOsuCalculatorTests
 		var analysis = calculator.Analyze(FixturePath, GameMode.Standard, mods);
 
 		var expectedRounded = Math.Round(expectedRawStars, 2, MidpointRounding.AwayFromZero);
-		Assert.Equal(expectedRounded, analysis.Difficulty.Sr, 10);
+		Assert.Equal(expectedRounded, analysis.Difficulty.Star, 10);
 	}
 
 	/// <summary>

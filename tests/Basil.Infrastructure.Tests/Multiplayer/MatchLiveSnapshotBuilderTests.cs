@@ -16,8 +16,17 @@ public class MatchLiveSnapshotBuilderTests
 
 	private static MatchSession MakeMatch(string mapMd5 = "", int? mapId = 42)
 	{
-		return new MatchSession(0, "Grand Finals", "hunter2", "map", mapId, mapMd5, 1, GameMode.Standard,
-				Mods.NoMod, MatchWinCondition.Score, MatchTeamType.TeamVs, false, 0, "#mp_0")
+		Beatmap? beatmap = null;
+		if (!string.IsNullOrEmpty(mapMd5))
+		{
+			var beatmapset = new Beatmapset(1, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
+			beatmap = new Beatmap(mapMd5, mapId ?? 0, beatmapset, "Normal", "map.osu",
+				new Difficulty(GameMode.Standard, 180, TimeSpan.FromMinutes(2), 4, 8, 8, 5, 5.0),
+				new OsuObjects { MaxCombo = 500 });
+		}
+
+		return new MatchSession(0, "Grand Finals", "hunter2", beatmap, null, GameMode.Standard,
+				Mods.NoMod, MatchWinCondition.Score, MatchTeamType.TeamVs, false, 0)
 			{ DbId = 5 };
 	}
 
@@ -42,9 +51,9 @@ public class MatchLiveSnapshotBuilderTests
 		var live = await MatchLiveSnapshotBuilder.BuildRoomLive(match, _beatmaps);
 
 		// Id/Name are deliberately absent from MatchRoomLive -- every place it's embedded already
-		// carries those at its own top level (see the type's doc comment). MapId/Beatmap consistency
+		// carries those at its own top level (see the type's doc comment). Beatmap/Beatmap consistency
 		// has its own dedicated tests below (this fixture's default empty MapMd5 never resolves a
-		// beatmap despite MapId being set, so it isn't the right fixture to assert MapId here).
+		// beatmap despite Beatmap being set, so it isn't the right fixture to assert Beatmap here).
 		Assert.True(live.HasPassword);
 		Assert.Equal(MatchTeamType.TeamVs, live.TeamType);
 		Assert.False(live.InProgress);
@@ -69,7 +78,7 @@ public class MatchLiveSnapshotBuilderTests
 	/// <summary>
 	///     Regression test (Issue #4): "mapId is returned even when the beatmap does not exist... return
 	///     null when the beatmap is not set or does not exist." A resolvable-looking `MapMd5` whose
-	///     beatmap has actually been removed locally used to still surface the stale `MapId` alongside a
+	///     beatmap has actually been removed locally used to still surface the stale `Beatmap` alongside a
 	///     null `Beatmap` -- a mapId nothing can resolve to.
 	/// </summary>
 	[Fact]

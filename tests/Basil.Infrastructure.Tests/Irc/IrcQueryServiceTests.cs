@@ -1,3 +1,4 @@
+using Basil.Application.Channels;
 using Basil.Application.Irc;
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
@@ -5,15 +6,13 @@ using Basil.Application.Shared.Configuration;
 using Basil.Application.Shared.Eventing;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Channels;
-using Basil.Domain.Content;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Application.Chat;
 using Basil.Host.Bancho.Chat.Packets;
-using Basil.Infrastructure.Multiplayer;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Application.Content;
+using Basil.Application.Users;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
@@ -39,7 +38,7 @@ public class IrcQueryServiceTests
 			new ChatNotifier(Options.Create(new IrcOptions())),
 			new ChannelNotifier(_gameRegistry, _ircRegistry,
 				Options.Create(new IrcOptions())),
-			_matchRegistry, Substitute.For<ILiveEventHub>(), options);
+			_matchRegistry, Substitute.For<ILiveEventHub>(), options, Substitute.For<IUserCache>());
 		return new IrcQueryService(_channelRegistry, _gameRegistry, _ircRegistry, membership,
 			new MotdService(_settings), options);
 	}
@@ -236,9 +235,9 @@ public class IrcQueryServiceTests
 		var referee = MakeIrc(1, "ref");
 		var outsider = MakeIrc(2, "alice");
 		var room = new ChannelSession(0, "#mp_5", 0, 0, false, "#multiplayer", true);
-		var match = new MatchSession(0, "Grand Finals", "", "map", 42, "md5", 9, GameMode.Standard,
-			Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead, false, 0, "#mp_5");
-		match.AddReferee(referee.Id);
+		var match = new MatchSession(0, "Grand Finals", "", null, null, GameMode.Standard,
+			Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead, false, 0) { DbId = 5 };
+		match.AddReferee(new User { Id = referee.Id, Name = referee.Name });
 		_matchRegistry.All.Returns([match]);
 		_channelRegistry.All.Returns([room]);
 		var service = MakeService();

@@ -1,7 +1,6 @@
 using Basil.Application.Sessions;
 using Basil.Domain.Social;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Host.Bancho.Users.Packets;
 using Basil.Protocol.Packets;
 using Basil.Application.Social;
@@ -40,7 +39,8 @@ public class FriendAddHandlerTests
 	public async Task HandleAsync_RelationshipAlreadyExists_DoesNotCreateAgain()
 	{
 		var player = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, DateTimeOffset.UnixEpoch);
-		_relationships.FetchOneAsync(1, 2).Returns(new Relationship(1, 2, RelationshipType.Block));
+		_relationships.FetchOneAsync(1, 2).Returns(new Relationship(new User { Id = 1, Name = "cmyui" },
+			new User { Id = 2, Name = "target" }, RelationshipType.Block));
 
 		await MakeHandler().HandleAsync(player, TargetReader(2));
 

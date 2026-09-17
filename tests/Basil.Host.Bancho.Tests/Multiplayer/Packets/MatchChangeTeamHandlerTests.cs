@@ -1,3 +1,4 @@
+using Basil.Application.Users;
 using Basil.Domain.Multiplayer;
 using Basil.Host.Bancho.Multiplayer.Packets;
 using Basil.Protocol.Packets;
@@ -15,12 +16,12 @@ public class MatchChangeTeamHandlerTests
 		var host = MakePlayer(1, "host");
 		fixture.RegisterAll(host);
 		var match = fixture.CreateMatch(host);
-		var handler = new MatchChangeTeamHandler();
+		var handler = new MatchChangeTeamHandler(fixture.UserCache);
 
 		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
-		Assert.Equal(MatchTeam.Blue, match.GetSlot(host.Id)!.Team);
+		Assert.Equal(MatchTeam.Blue, match.GetSlot(fixture.UserCache.Resolve(host))!.Team);
 
 		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
-		Assert.Equal(MatchTeam.Red, match.GetSlot(host.Id)!.Team);
+		Assert.Equal(MatchTeam.Red, match.GetSlot(fixture.UserCache.Resolve(host))!.Team);
 	}
 }

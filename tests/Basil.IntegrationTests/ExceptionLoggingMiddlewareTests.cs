@@ -15,10 +15,15 @@ namespace Basil.IntegrationTests;
 /// </summary>
 public class ExceptionLoggingMiddlewareTests
 {
-	private static HttpContext MakeContext(bool responseStarted, string host = "api.test.local")
+	private static DefaultHttpContext MakeContext(bool responseStarted, string host = "api.test.local")
 	{
-		var context = new DefaultHttpContext();
-		context.Request.Host = new HostString(host);
+		var context = new DefaultHttpContext
+		{
+			Request =
+			{
+				Host = new HostString(host)
+			}
+		};
 
 		var responseFeature = Substitute.For<IHttpResponseFeature>();
 		responseFeature.HasStarted.Returns(responseStarted);
@@ -32,7 +37,7 @@ public class ExceptionLoggingMiddlewareTests
 	[Fact]
 	public async Task InvokeAsync_ResponseAlreadyStarted_RethrowsWithoutWritingEnvelope()
 	{
-		var context = MakeContext(responseStarted: true);
+		var context = MakeContext(true);
 		var logger = LoggerFactory.Create(_ => { }).CreateLogger<ExceptionLoggingMiddleware>();
 		var middleware = new ExceptionLoggingMiddleware(_ => throw new InvalidOperationException("boom"), logger);
 
@@ -47,7 +52,7 @@ public class ExceptionLoggingMiddlewareTests
 	[Fact]
 	public async Task InvokeAsync_ResponseNotStarted_WritesEnvelopeInstead()
 	{
-		var context = MakeContext(responseStarted: false);
+		var context = MakeContext(false);
 		context.Response.Body = new MemoryStream();
 		var logger = LoggerFactory.Create(_ => { }).CreateLogger<ExceptionLoggingMiddleware>();
 		var middleware = new ExceptionLoggingMiddleware(_ => throw new InvalidOperationException("boom"), logger);

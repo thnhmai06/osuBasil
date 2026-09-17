@@ -2,12 +2,10 @@ using System.Net;
 using System.Net.Http.Json;
 using Basil.Application.Shared.Configuration;
 using Basil.Application.Shared.Json;
-using Basil.Domain.Client;
 using Basil.Domain.Users;
 using Basil.Host;
 using Basil.Application.Shared.Http;
 using Basil.Host.Api.Users;
-using Basil.Infrastructure.Users;
 using Basil.Application.Users;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -43,7 +41,7 @@ public class UserSearchEndpointTests : IClassFixture<WebApplicationFactory<Boots
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton(TestDoubles.FixedAdminKeySettingsRepository());
 				services.AddSingleton(_users);
 			});
@@ -63,7 +61,8 @@ public class UserSearchEndpointTests : IClassFixture<WebApplicationFactory<Boots
 	[Fact]
 	public async Task Search_MissingQ_ReturnsBadRequest()
 	{
-		var response = await MakeClient().SendAsync(MakeRequest("/users/search"));
+		var response =
+			await MakeClient().SendAsync(MakeRequest("/users/search"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 	}
@@ -71,7 +70,8 @@ public class UserSearchEndpointTests : IClassFixture<WebApplicationFactory<Boots
 	[Fact]
 	public async Task Search_BlankQ_ReturnsBadRequest()
 	{
-		var response = await MakeClient().SendAsync(MakeRequest("/users/search?q=%20"));
+		var response = await MakeClient()
+			.SendAsync(MakeRequest("/users/search?q=%20"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 	}
@@ -79,13 +79,15 @@ public class UserSearchEndpointTests : IClassFixture<WebApplicationFactory<Boots
 	[Fact]
 	public async Task Search_ValidQ_ReturnsPagedResult()
 	{
-		var user = new User(7, "cool_player", Country.Us, UserPrivileges.Unrestricted, default);
+		var user = new User { Id = 7, Name = "cool_player", Country = Country.Us };
 		_users.SearchAsync(Arg.Any<UserFilters>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
 			.Returns(Task.FromResult<IReadOnlyList<User>>([user]));
 		_users.SearchCountAsync(Arg.Any<UserFilters>(), Arg.Any<CancellationToken>()).Returns(1);
 
-		var response = await MakeClient().SendAsync(MakeRequest("/users/search?q=cool"));
-		var body = await response.Content.ReadFromJsonAsync<Envelope<List<UserView>>>(BasilJsonOptions.Instance);
+		var response = await MakeClient()
+			.SendAsync(MakeRequest("/users/search?q=cool"), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadFromJsonAsync<Envelope<List<UserView>>>(BasilJsonOptions.Instance,
+			cancellationToken: TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.Equal(1, body!.Meta!.TotalRecords);
@@ -99,7 +101,8 @@ public class UserSearchEndpointTests : IClassFixture<WebApplicationFactory<Boots
 			.Returns(Task.FromResult<IReadOnlyList<User>>([]));
 		_users.SearchCountAsync(Arg.Any<UserFilters>(), Arg.Any<CancellationToken>()).Returns(0);
 
-		await MakeClient().SendAsync(MakeRequest("/users/search?q=cool&page=3&pageSize=10"));
+		await MakeClient().SendAsync(MakeRequest("/users/search?q=cool&page=3&pageSize=10"),
+			TestContext.Current.CancellationToken);
 
 		await _users.Received(1).SearchAsync(Arg.Any<UserFilters>(), 20, 10, Arg.Any<CancellationToken>());
 	}

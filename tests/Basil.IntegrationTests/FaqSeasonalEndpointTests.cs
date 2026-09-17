@@ -73,8 +73,10 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Boot
 	[Fact]
 	public async Task GetFaqList_NoEntries_ReturnsEmptyArray()
 	{
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/faqs/"));
-		var body = await response.Content.ReadFromJsonAsync<Envelope<string[]>>();
+		var response = await _factory.CreateClient()
+			.SendAsync(MakeRequest(HttpMethod.Get, "/faqs/"), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadFromJsonAsync<Envelope<string[]>>(
+			cancellationToken: TestContext.Current.CancellationToken);
 
 		response.EnsureSuccessStatusCode();
 		Assert.Empty(body!.Data!);
@@ -84,11 +86,14 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Boot
 	public async Task GetFaqList_ReturnsSortedEntryNames()
 	{
 		Directory.CreateDirectory(FaqsDir);
-		await File.WriteAllTextAsync(Path.Combine(FaqsDir, "rules.txt"), "rules");
-		await File.WriteAllTextAsync(Path.Combine(FaqsDir, "faq.txt"), "faq");
+		await File.WriteAllTextAsync(Path.Combine(FaqsDir, "rules.txt"), "rules",
+			TestContext.Current.CancellationToken);
+		await File.WriteAllTextAsync(Path.Combine(FaqsDir, "faq.txt"), "faq", TestContext.Current.CancellationToken);
 
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/faqs/"));
-		var body = await response.Content.ReadFromJsonAsync<Envelope<string[]>>();
+		var response = await _factory.CreateClient()
+			.SendAsync(MakeRequest(HttpMethod.Get, "/faqs/"), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadFromJsonAsync<Envelope<string[]>>(
+			cancellationToken: TestContext.Current.CancellationToken);
 
 		Assert.Equal(["faq", "rules"], body!.Data!);
 	}
@@ -96,7 +101,8 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Boot
 	[Fact]
 	public async Task GetFaqEntry_UnknownEntry_ReturnsNotFound()
 	{
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/faqs/nonexistent"));
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/faqs/nonexistent"),
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -105,10 +111,12 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Boot
 	public async Task GetFaqEntry_KnownEntry_ReturnsContent()
 	{
 		Directory.CreateDirectory(FaqsDir);
-		await File.WriteAllLinesAsync(Path.Combine(FaqsDir, "rules.txt"), ["Line one", "Line two"]);
+		await File.WriteAllLinesAsync(Path.Combine(FaqsDir, "rules.txt"), ["Line one", "Line two"],
+			TestContext.Current.CancellationToken);
 
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/faqs/rules"));
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/faqs/rules"),
+			TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		response.EnsureSuccessStatusCode();
 		Assert.Equal("Line one\nLine two", body);
@@ -123,7 +131,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Boot
 		request.Content = new MultipartFormDataContent
 			{ { new ByteArrayContent([.. "hi"u8]), "file", "rules.txt" } };
 
-		var response = await _factory.CreateClient().SendAsync(request);
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 	}
@@ -136,7 +144,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Boot
 		var request = MakeRequest(HttpMethod.Post, "/faqs/", AdminKey);
 		request.Content = new MultipartFormDataContent { { file, "file", "rules.txt" } };
 
-		var response = await _factory.CreateClient().SendAsync(request);
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 		Assert.True(File.Exists(Path.Combine(FaqsDir, "rules.txt")));
@@ -146,17 +154,19 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Boot
 	public async Task PostFaq_AlreadyExists_ReturnsConflict()
 	{
 		Directory.CreateDirectory(FaqsDir);
-		await File.WriteAllTextAsync(Path.Combine(FaqsDir, "rules.txt"), "original");
+		await File.WriteAllTextAsync(Path.Combine(FaqsDir, "rules.txt"), "original",
+			TestContext.Current.CancellationToken);
 
 		var file = new ByteArrayContent([.. "new"u8])
 			{ Headers = { ContentType = new MediaTypeHeaderValue("text/plain") } };
 		var request = MakeRequest(HttpMethod.Post, "/faqs/", AdminKey);
 		request.Content = new MultipartFormDataContent { { file, "file", "rules.txt" } };
 
-		var response = await _factory.CreateClient().SendAsync(request);
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-		Assert.Equal("original", await File.ReadAllTextAsync(Path.Combine(FaqsDir, "rules.txt")));
+		Assert.Equal("original",
+			await File.ReadAllTextAsync(Path.Combine(FaqsDir, "rules.txt"), TestContext.Current.CancellationToken));
 	}
 
 	[Fact]
@@ -165,7 +175,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Boot
 		var request = MakeRequest(HttpMethod.Put, "/faqs/nonexistent", AdminKey);
 		request.Content = new MultipartFormDataContent { { new ByteArrayContent([.. "new"u8]), "file", "x.txt" } };
 
-		var response = await _factory.CreateClient().SendAsync(request);
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -174,22 +184,24 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Boot
 	public async Task PutFaq_Existing_ReplacesContent()
 	{
 		Directory.CreateDirectory(FaqsDir);
-		await File.WriteAllTextAsync(Path.Combine(FaqsDir, "rules.txt"), "old");
+		await File.WriteAllTextAsync(Path.Combine(FaqsDir, "rules.txt"), "old", TestContext.Current.CancellationToken);
 
 		var request = MakeRequest(HttpMethod.Put, "/faqs/rules", AdminKey);
 		request.Content = new MultipartFormDataContent { { new ByteArrayContent([.. "new"u8]), "file", "x.txt" } };
 
-		var response = await _factory.CreateClient().SendAsync(request);
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-		Assert.Equal("new", await File.ReadAllTextAsync(Path.Combine(FaqsDir, "rules.txt")));
+		Assert.Equal("new",
+			await File.ReadAllTextAsync(Path.Combine(FaqsDir, "rules.txt"), TestContext.Current.CancellationToken));
 	}
 
 	[Fact]
 	public async Task DeleteFaq_NotFound_ReturnsNotFound()
 	{
 		var response = await _factory.CreateClient()
-			.SendAsync(MakeRequest(HttpMethod.Delete, "/faqs/nonexistent", AdminKey));
+			.SendAsync(MakeRequest(HttpMethod.Delete, "/faqs/nonexistent", AdminKey),
+				TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -198,9 +210,11 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Boot
 	public async Task DeleteFaq_Existing_RemovesFile()
 	{
 		Directory.CreateDirectory(FaqsDir);
-		await File.WriteAllTextAsync(Path.Combine(FaqsDir, "rules.txt"), "content");
+		await File.WriteAllTextAsync(Path.Combine(FaqsDir, "rules.txt"), "content",
+			TestContext.Current.CancellationToken);
 
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/faqs/rules", AdminKey));
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Delete, "/faqs/rules", AdminKey),
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.False(File.Exists(Path.Combine(FaqsDir, "rules.txt")));
@@ -213,10 +227,13 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Boot
 	public async Task GetFaqList_NestedEntry_JoinsSegmentsWithColon()
 	{
 		Directory.CreateDirectory(Path.Combine(FaqsDir, "folder1", "folder2"));
-		await File.WriteAllTextAsync(Path.Combine(FaqsDir, "folder1", "folder2", "file3.txt"), "nested");
+		await File.WriteAllTextAsync(Path.Combine(FaqsDir, "folder1", "folder2", "file3.txt"), "nested",
+			TestContext.Current.CancellationToken);
 
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/faqs/"));
-		var body = await response.Content.ReadFromJsonAsync<Envelope<string[]>>();
+		var response = await _factory.CreateClient()
+			.SendAsync(MakeRequest(HttpMethod.Get, "/faqs/"), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadFromJsonAsync<Envelope<string[]>>(
+			cancellationToken: TestContext.Current.CancellationToken);
 
 		Assert.Equal(["folder1:folder2:file3"], body!.Data!);
 	}
@@ -225,11 +242,13 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Boot
 	public async Task GetFaqEntry_NestedEntry_ReturnsContent()
 	{
 		Directory.CreateDirectory(Path.Combine(FaqsDir, "folder1", "folder2"));
-		await File.WriteAllTextAsync(Path.Combine(FaqsDir, "folder1", "folder2", "file3.txt"), "nested content");
+		await File.WriteAllTextAsync(Path.Combine(FaqsDir, "folder1", "folder2", "file3.txt"), "nested content",
+			TestContext.Current.CancellationToken);
 
 		var response = await _factory.CreateClient()
-			.SendAsync(MakeRequest(HttpMethod.Get, "/faqs/folder1:folder2:file3"));
-		var body = await response.Content.ReadAsStringAsync();
+			.SendAsync(MakeRequest(HttpMethod.Get, "/faqs/folder1:folder2:file3"),
+				TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		response.EnsureSuccessStatusCode();
 		Assert.Equal("nested content", body);
@@ -243,7 +262,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Boot
 		var request = MakeRequest(HttpMethod.Post, "/faqs/", AdminKey);
 		request.Content = new MultipartFormDataContent { { file, "file", "folder1:folder2:file3.txt" } };
 
-		var response = await _factory.CreateClient().SendAsync(request);
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 		Assert.True(File.Exists(Path.Combine(FaqsDir, "folder1", "folder2", "file3.txt")));
@@ -255,7 +274,8 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Boot
 	[InlineData("a::b")]
 	public async Task GetFaqEntry_MalformedNestedSeparator_ReturnsNotFound(string entry)
 	{
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, $"/faqs/{entry}"));
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, $"/faqs/{entry}"),
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -265,7 +285,8 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Boot
 	[Fact]
 	public async Task GetSeasonalList_RedirectsToAssetsHost()
 	{
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/menu/seasonals"));
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/menu/seasonals"),
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
 		Assert.Equal("https://assets.test.local/menu/seasonals", response.Headers.Location?.ToString());
@@ -275,7 +296,8 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Boot
 	public async Task GetSeasonalFile_RedirectsToAssetsHost()
 	{
 		var response =
-			await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/menu/seasonals/winter.png"));
+			await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/menu/seasonals/winter.png"),
+				TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
 		Assert.Equal("https://assets.test.local/menu/seasonals/winter.png", response.Headers.Location?.ToString());
@@ -287,7 +309,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Boot
 		var request = MakeRequest(HttpMethod.Post, "/menu/seasonals", AdminKey);
 		request.Content = new MultipartFormDataContent { { new ByteArrayContent([1, 2, 3]), "file", "spring.png" } };
 
-		var response = await _factory.CreateClient().SendAsync(request);
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 		Assert.True(File.Exists(Path.Combine(SeasonalsDir, "spring.png")));
@@ -297,15 +319,19 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Boot
 	public async Task PostSeasonal_AlreadyExists_ReturnsConflict()
 	{
 		Directory.CreateDirectory(SeasonalsDir);
-		await File.WriteAllBytesAsync(Path.Combine(SeasonalsDir, "spring.png"), [9, 9, 9]);
+		await File.WriteAllBytesAsync(Path.Combine(SeasonalsDir, "spring.png"), [.. "\t\t\t"u8],
+			TestContext.Current.CancellationToken);
 
 		var request = MakeRequest(HttpMethod.Post, "/menu/seasonals", AdminKey);
 		request.Content = new MultipartFormDataContent { { new ByteArrayContent([1, 2, 3]), "file", "spring.png" } };
 
-		var response = await _factory.CreateClient().SendAsync(request);
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-		Assert.Equal(new byte[] { 9, 9, 9 }, await File.ReadAllBytesAsync(Path.Combine(SeasonalsDir, "spring.png")));
+		byte[] expected = [.. "\t\t\t"u8];
+		Assert.Equal(expected,
+			await File.ReadAllBytesAsync(Path.Combine(SeasonalsDir, "spring.png"),
+				TestContext.Current.CancellationToken));
 	}
 
 	[Fact]
@@ -314,7 +340,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Boot
 		var request = MakeRequest(HttpMethod.Put, "/menu/seasonals/nope.png", AdminKey);
 		request.Content = new MultipartFormDataContent { { new ByteArrayContent([1, 2, 3]), "file", "nope.png" } };
 
-		var response = await _factory.CreateClient().SendAsync(request);
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -323,15 +349,18 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Boot
 	public async Task PutSeasonal_Existing_ReplacesBytes()
 	{
 		Directory.CreateDirectory(SeasonalsDir);
-		await File.WriteAllBytesAsync(Path.Combine(SeasonalsDir, "spring.png"), [9, 9, 9]);
+		await File.WriteAllBytesAsync(Path.Combine(SeasonalsDir, "spring.png"), [.. "\t\t\t"u8],
+			TestContext.Current.CancellationToken);
 
 		var request = MakeRequest(HttpMethod.Put, "/menu/seasonals/spring.png", AdminKey);
 		request.Content = new MultipartFormDataContent { { new ByteArrayContent([1, 2, 3]), "file", "spring.png" } };
 
-		var response = await _factory.CreateClient().SendAsync(request);
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-		Assert.Equal(new byte[] { 1, 2, 3 }, await File.ReadAllBytesAsync(Path.Combine(SeasonalsDir, "spring.png")));
+		Assert.Equal(new byte[] { 1, 2, 3 },
+			await File.ReadAllBytesAsync(Path.Combine(SeasonalsDir, "spring.png"),
+				TestContext.Current.CancellationToken));
 	}
 
 	/// <summary>
@@ -341,17 +370,19 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Boot
 	public async Task PatchSeasonal_Existing_RenamesFileKeepingContent()
 	{
 		Directory.CreateDirectory(SeasonalsDir);
-		await File.WriteAllBytesAsync(Path.Combine(SeasonalsDir, "spring.png"), [1, 2, 3]);
+		await File.WriteAllBytesAsync(Path.Combine(SeasonalsDir, "spring.png"), [1, 2, 3],
+			TestContext.Current.CancellationToken);
 
 		var request = MakeRequest(HttpMethod.Patch, "/menu/seasonals/spring.png", AdminKey);
 		request.Content = JsonContent.Create(new { newFileName = "spring-final.png" });
 
-		var response = await _factory.CreateClient().SendAsync(request);
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.False(File.Exists(Path.Combine(SeasonalsDir, "spring.png")));
 		Assert.Equal(new byte[] { 1, 2, 3 },
-			await File.ReadAllBytesAsync(Path.Combine(SeasonalsDir, "spring-final.png")));
+			await File.ReadAllBytesAsync(Path.Combine(SeasonalsDir, "spring-final.png"),
+				TestContext.Current.CancellationToken));
 	}
 
 	[Fact]
@@ -360,7 +391,7 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Boot
 		var request = MakeRequest(HttpMethod.Patch, "/menu/seasonals/nope.png", AdminKey);
 		request.Content = JsonContent.Create(new { newFileName = "still-nope.png" });
 
-		var response = await _factory.CreateClient().SendAsync(request);
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -369,24 +400,29 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Boot
 	public async Task PatchSeasonal_TargetAlreadyExists_ReturnsConflict()
 	{
 		Directory.CreateDirectory(SeasonalsDir);
-		await File.WriteAllBytesAsync(Path.Combine(SeasonalsDir, "spring.png"), [1, 2, 3]);
-		await File.WriteAllBytesAsync(Path.Combine(SeasonalsDir, "summer.png"), [9, 9, 9]);
+		await File.WriteAllBytesAsync(Path.Combine(SeasonalsDir, "spring.png"), [1, 2, 3],
+			TestContext.Current.CancellationToken);
+		await File.WriteAllBytesAsync(Path.Combine(SeasonalsDir, "summer.png"), [.. "\t\t\t"u8],
+			TestContext.Current.CancellationToken);
 
 		var request = MakeRequest(HttpMethod.Patch, "/menu/seasonals/spring.png", AdminKey);
 		request.Content = JsonContent.Create(new { newFileName = "summer.png" });
 
-		var response = await _factory.CreateClient().SendAsync(request);
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
 		Assert.True(File.Exists(Path.Combine(SeasonalsDir, "spring.png")));
-		Assert.Equal(new byte[] { 9, 9, 9 }, await File.ReadAllBytesAsync(Path.Combine(SeasonalsDir, "summer.png")));
+		Assert.Equal("\t\t\t"u8.ToArray(),
+			await File.ReadAllBytesAsync(Path.Combine(SeasonalsDir, "summer.png"),
+				TestContext.Current.CancellationToken));
 	}
 
 	[Fact]
 	public async Task DeleteSeasonal_NotFound_ReturnsNotFound()
 	{
 		var response = await _factory.CreateClient()
-			.SendAsync(MakeRequest(HttpMethod.Delete, "/menu/seasonals/nope.png", AdminKey));
+			.SendAsync(MakeRequest(HttpMethod.Delete, "/menu/seasonals/nope.png", AdminKey),
+				TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -395,10 +431,12 @@ public class FaqSeasonalEndpointTests : IClassFixture<WebApplicationFactory<Boot
 	public async Task DeleteSeasonal_Existing_RemovesFile()
 	{
 		Directory.CreateDirectory(SeasonalsDir);
-		await File.WriteAllBytesAsync(Path.Combine(SeasonalsDir, "spring.png"), [1, 2, 3]);
+		await File.WriteAllBytesAsync(Path.Combine(SeasonalsDir, "spring.png"), [1, 2, 3],
+			TestContext.Current.CancellationToken);
 
 		var response = await _factory.CreateClient()
-			.SendAsync(MakeRequest(HttpMethod.Delete, "/menu/seasonals/spring.png", AdminKey));
+			.SendAsync(MakeRequest(HttpMethod.Delete, "/menu/seasonals/spring.png", AdminKey),
+				TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.False(File.Exists(Path.Combine(SeasonalsDir, "spring.png")));

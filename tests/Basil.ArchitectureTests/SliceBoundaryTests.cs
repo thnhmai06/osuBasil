@@ -50,14 +50,19 @@ public class SliceBoundaryTests
 		Assert.True(violations.Count == 0, string.Join(Environment.NewLine, violations));
 	}
 
-	/// <summary>Returns <c>Basil.Infrastructure.&lt;X&gt;</c> for every slice that is neither <paramref name="from" /> nor an allowed target of <paramref name="from" />.</summary>
+	/// <summary>
+	///     Returns <c>Basil.Infrastructure.&lt;X&gt;</c> for every slice that is neither <paramref name="from" /> nor an
+	///     allowed target of <paramref name="from" />.
+	/// </summary>
 	private static string[] OtherSlices(string[] allSlices, string from, (string From, string To)[] allowed)
 	{
 		var allowedTargets = allowed.Where(edge => edge.From == from).Select(edge => edge.To).ToHashSet();
-		return allSlices
-			.Where(slice => slice != from && !allowedTargets.Contains(slice))
-			.Select(slice => $"{RootPrefix}{slice}")
-			.ToArray();
+		return
+		[
+			.. allSlices
+				.Where(slice => slice != from && !allowedTargets.Contains(slice))
+				.Select(slice => $"{RootPrefix}{slice}")
+		];
 	}
 
 	[Fact]
@@ -96,7 +101,7 @@ public class SliceBoundaryTests
 		// every route group, out of scope for this test entirely) and BeatmapsetAssetBuilder (stays
 		// here, but its archive/audio-preview work never touched a Features slice to begin with).
 		//
-		// Empty as of Batch 12: SecuritySchemeTransformers and the three Media asset providers
+		// IsEmpty as of Batch 12: SecuritySchemeTransformers and the three Media asset providers
 		// (BeatmapsetBackgroundProvider, BeatmapThumbnailProvider, MenuIconProvider) all moved to
 		// Basil.Host.Api along with the rest of Shared/Http and Shared/Media/Assets, out of
 		// Basil.Infrastructure entirely -- this test no longer sees them at all.

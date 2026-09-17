@@ -206,7 +206,7 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 		GameMode mode = GameMode.Standard, bool isPrivate = false)
 	{
 		return new Beatmap(md5, id, MakeBeatmapset(setId, artist, "Title", isPrivate: isPrivate),
-			$"Diff{id}", $"{artist} - Title (cmyui) [Sr{id}].osu",
+			$"Diff{id}", $"{artist} - Title (cmyui) [Star{id}].osu",
 			new Difficulty(mode, 180.0, TimeSpan.FromSeconds(120), 4.0, 9.0, 8.0, 5.0, diff),
 			new OsuObjects { MaxCombo = 500 });
 	}
@@ -226,7 +226,7 @@ public class SqliteBeatmapRepositoryTests(SqliteFixture fixture) : IClassFixture
 		Assert.Equal(5002, relevant[0][0].Beatmapset.Id);
 		Assert.Equal(5001, relevant[1][0].Beatmapset.Id);
 		Assert.Equal(2, relevant[1].Count);
-		Assert.True(relevant[1][0].Difficulty.Sr < relevant[1][1].Difficulty.Sr);
+		Assert.True(relevant[1][0].Difficulty.Star < relevant[1][1].Difficulty.Star);
 	}
 
 	[Fact]

@@ -26,9 +26,9 @@ public class LoginFormTests
 
 		Assert.Equal("cmyui", login.Username);
 		Assert.Equal("5f4dcc3b5aa765d61d8327deb882cf99", login.PasswordMd5);
-		Assert.Equal(new DateOnly(2023, 12, 31), login.OsuVersion.Date);
-		Assert.Equal(1, login.OsuVersion.Revision);
-		Assert.Equal(OsuStream.CuttingEdge, login.OsuVersion.Stream);
+		Assert.Equal(new DateOnly(2023, 12, 31), login.ClientVersion.Date);
+		Assert.Equal(1, login.ClientVersion.Revision);
+		Assert.Equal(ClientVersionStream.CuttingEdge, login.ClientVersion.Stream);
 		Assert.Equal(-5, login.UtcOffset);
 		Assert.True(login.DisplayCity);
 		Assert.False(login.PmPrivate);

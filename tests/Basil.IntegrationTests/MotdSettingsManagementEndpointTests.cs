@@ -1,9 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Basil.Application.Shared.Configuration;
-using Basil.Domain.Content;
 using Basil.Host;
-using Basil.Infrastructure.Content;
 using Basil.Application.Content;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -37,7 +35,7 @@ public class MotdSettingsManagementEndpointTests : IClassFixture<WebApplicationF
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton<ISettingsRepository>(_settings);
 			});
 		});
@@ -56,8 +54,8 @@ public class MotdSettingsManagementEndpointTests : IClassFixture<WebApplicationF
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/settings/motd"));
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/settings/motd"), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.Contains("\"text\":null", body);
@@ -70,10 +68,10 @@ public class MotdSettingsManagementEndpointTests : IClassFixture<WebApplicationF
 
 		var setRequest = MakeRequest(HttpMethod.Put, "/settings/motd");
 		setRequest.Content = JsonContent.Create(new { text = "Welcome to Basil!" });
-		await client.SendAsync(setRequest);
+		await client.SendAsync(setRequest, TestContext.Current.CancellationToken);
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/settings/motd"));
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/settings/motd"), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.Contains("\"text\":\"Welcome to Basil!\"", body);
@@ -86,14 +84,14 @@ public class MotdSettingsManagementEndpointTests : IClassFixture<WebApplicationF
 
 		var setRequest = MakeRequest(HttpMethod.Put, "/settings/motd");
 		setRequest.Content = JsonContent.Create(new { text = "Welcome to Basil!" });
-		await client.SendAsync(setRequest);
+		await client.SendAsync(setRequest, TestContext.Current.CancellationToken);
 
 		var clearRequest = MakeRequest(HttpMethod.Put, "/settings/motd");
 		clearRequest.Content = JsonContent.Create(new { text = "" });
-		await client.SendAsync(clearRequest);
+		await client.SendAsync(clearRequest, TestContext.Current.CancellationToken);
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/settings/motd"));
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/settings/motd"), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.Contains("\"text\":null", body);
 	}
@@ -106,9 +104,9 @@ public class MotdSettingsManagementEndpointTests : IClassFixture<WebApplicationF
 		setRequest.Content = JsonContent.Create(new { text = "Welcome to Basil!" });
 		var keySetRequest = MakeRequest(HttpMethod.Put, "/settings/adminkey");
 		keySetRequest.Content = JsonContent.Create(new { key = "an-admin-key" });
-		await client.SendAsync(keySetRequest);
+		await client.SendAsync(keySetRequest, TestContext.Current.CancellationToken);
 
-		var response = await client.SendAsync(setRequest);
+		var response = await client.SendAsync(setRequest, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 	}
@@ -125,9 +123,9 @@ public class MotdSettingsManagementEndpointTests : IClassFixture<WebApplicationF
 		var client = _factory.CreateClient();
 		var keySetRequest = MakeRequest(HttpMethod.Put, "/settings/adminkey");
 		keySetRequest.Content = JsonContent.Create(new { key = "an-admin-key" });
-		await client.SendAsync(keySetRequest);
+		await client.SendAsync(keySetRequest, TestContext.Current.CancellationToken);
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/settings/motd"));
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/settings/motd"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 	}

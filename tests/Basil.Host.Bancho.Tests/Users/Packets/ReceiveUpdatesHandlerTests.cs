@@ -1,6 +1,6 @@
 using Basil.Application.Sessions;
+using Basil.Domain.Social;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Host.Bancho.Users.Packets;
 using Basil.Protocol.Packets;
 using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;

@@ -1,26 +1,24 @@
 using System.Text;
+using Basil.Application.Beatmaps;
+using Basil.Application.Bot;
+using Basil.Application.Chat;
 using Basil.Application.Irc;
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
 using Basil.Application.Shared.Eventing;
+using Basil.Application.Users;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Channels;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
-using Basil.Application.Bot;
-using Basil.Application.Chat;
 using Basil.Host.Bancho.Chat.Packets;
-using Basil.Infrastructure.Multiplayer;
 using Basil.Host.Bancho.Multiplayer;
 using Basil.Host.Bancho.Multiplayer.Packets;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Infrastructure.Tests.Multiplayer.Packets;
 using Basil.Protocol.Irc;
 using Basil.Protocol.Packets;
-using Basil.Application.Users;
-using Basil.Application.Beatmaps;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -39,18 +37,20 @@ public class MatchMembershipServiceTests
 
 	private readonly MultiplayerTestSupport.FakeChannelRegistry _channelRegistry = new();
 	private readonly ISessionRegistry<GameSession> _gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
+	private readonly ILiveEventHub _hub = new LiveEventHub();
 	private readonly ISessionRegistry<IrcSession> _ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
 	private readonly MultiplayerTestSupport.FakeMatchRegistry _matchRegistry;
 
 	private readonly FakeMatchRepository _matchRepository = new();
 	private readonly MultiplayerTestSupport.FakeMatchRoundEndOutbox _roundEndOutbox = new();
-	private readonly ILiveEventHub _hub = new LiveEventHub();
 
 	private readonly IUserRepository _userRepository = Substitute.For<IUserRepository>();
+	private readonly IUserCache _userCache;
 
 	public MatchMembershipServiceTests()
 	{
 		_matchRegistry = new MultiplayerTestSupport.FakeMatchRegistry(_channelRegistry, _matchRepository);
+		_userCache = new MultiplayerTestSupport.FakeUserCache(_gameRegistry, _ircRegistry);
 
 		_beatmapRepository.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),
 			Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(MultiplayerTestSupport.MakeBeatmap());
@@ -65,7 +65,8 @@ public class MatchMembershipServiceTests
 		var channelMembership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
 			new ChatNotifier(Options.Create(new IrcOptions())),
 			new ChannelNotifier(_gameRegistry, _ircRegistry, Options.Create(new IrcOptions())),
-			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
+			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()),
+			_userCache);
 		var broadcast = new MatchBroadcast(_channelRegistry, channelMembership,
 			new MatchNotifier(_channelRegistry, channelMembership),
 			new ChatNotifier(Options.Create(new IrcOptions())), _gameRegistry, _ircRegistry, _hub,
@@ -74,10 +75,10 @@ public class MatchMembershipServiceTests
 		var lifecycle = new MatchLifecycle(_matchRegistry, _channelRegistry, channelMembership,
 			new MatchNotifier(_channelRegistry, channelMembership), _gameRegistry,
 			_matchRepository, _roundEndOutbox, _hub, _beatmapRepository, broadcast, serviceProvider,
-			NullLogger<MatchLifecycle>.Instance);
+			_userCache, NullLogger<MatchLifecycle>.Instance);
 		var membership = new MatchMembership(_channelRegistry, _gameRegistry, channelMembership,
 			new MatchNotifier(_channelRegistry, channelMembership), _matchRepository,
-			lifecycle, NullLogger<MatchMembership>.Instance);
+			lifecycle, _userCache, NullLogger<MatchMembership>.Instance);
 		serviceProvider.GetService(typeof(MatchMembership)).Returns(membership);
 		return (membership, lifecycle, broadcast);
 	}
@@ -128,7 +129,7 @@ public class MatchMembershipServiceTests
 
 		Assert.NotNull(match);
 		Assert.Same(match, host.Match);
-		Assert.Equal(host.Id, match.Slots[0].PlayerId);
+		Assert.Equal(host.Id, match.Slots[0].Player!.Id);
 		// Named from the persistent id, the same one every command and route calls the room by — not
 		// the registry slot id, which is reused once a room closes.
 		Assert.Equal($"#mp_{match.DbId}", match.ChatChannelName);
@@ -155,9 +156,9 @@ public class MatchMembershipServiceTests
 		var match = await lifecycle.CreateEmptyAsync(MakeMatchData(0));
 
 		Assert.NotNull(match);
-		Assert.Null(match.HostId);
+		Assert.Null(match.Host);
 		Assert.Empty(match.Referees);
-		Assert.All(match.Slots, slot => Assert.True(slot.Empty));
+		Assert.All(match.Slots, slot => Assert.True(slot.IsEmpty));
 		Assert.True(match.DbId > 0);
 	}
 
@@ -175,7 +176,7 @@ public class MatchMembershipServiceTests
 
 		Assert.Equal(MatchMembership.JoinResult.Ok, joined);
 		Assert.Same(match, guest.Match);
-		Assert.Equal(1, match.GetSlotId(guest.Id));
+		Assert.Equal(1, match.GetSlotId(_userCache.Resolve(guest)));
 		Assert.Contains(ServerPacketWriter.MatchJoinSuccess(match.ToPacket()),
 			Chunk(guest.Dequeue()));
 	}
@@ -234,8 +235,8 @@ public class MatchMembershipServiceTests
 		var match = Create(lifecycle, host, MakeMatchData(host.Id))!;
 		for (var i = 1; i < 16; i++)
 		{
-			match.Slots[i].Status = SlotStatus.NotReady;
-			match.Slots[i].PlayerId = 100 + i;
+			match.Slots[i].Status = RoomSlotStatus.NotReady;
+			match.Slots[i].Player = new User { Id = 100 + i, Name = $"filler{100 + i}" };
 		}
 
 		var overflow = MakePlayer(2, "overflow");
@@ -257,7 +258,7 @@ public class MatchMembershipServiceTests
 
 		await membership.JoinAsync(guest, match, "");
 
-		Assert.Equal(MatchTeam.Red, match.GetSlot(guest.Id)!.Team);
+		Assert.Equal(MatchTeam.Red, match.GetSlot(_userCache.Resolve(guest))!.Team);
 	}
 
 	[Fact]
@@ -273,7 +274,8 @@ public class MatchMembershipServiceTests
 		var lobbyMembership = new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
 			new ChatNotifier(Options.Create(new IrcOptions())),
 			new ChannelNotifier(_gameRegistry, _ircRegistry, Options.Create(new IrcOptions())),
-			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
+			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()),
+			_userCache);
 		lobbyMembership.Join(lobbyMember, lobby);
 		lobbyMember.Dequeue();
 
@@ -311,7 +313,7 @@ public class MatchMembershipServiceTests
 	/// </summary>
 	/// <remarks>
 	///     Regression test. The channel part used to run between clearing the leaving player's slot
-	///     and reassigning the host, so an IRC send failure in the middle left HostId pointing at a
+	///     and reassigning the host, so an IRC send failure in the middle left Host pointing at a
 	///     player who had already been removed from every slot.
 	/// </remarks>
 	[Fact]
@@ -336,9 +338,9 @@ public class MatchMembershipServiceTests
 		await Assert.ThrowsAsync<InvalidOperationException>(() => membership.LeaveAsync(host, match));
 
 		Assert.True(
-			match.HostId is null
-			|| match.Slots.Any(slot => !slot.Empty && slot.PlayerId == match.HostId),
-			$"HostId {match.HostId} names no occupied slot.");
+			match.Host is null
+			|| match.Slots.Any(slot => !slot.IsEmpty && slot.Player!.Id == match.Host.Id),
+			$"Host {match.Host?.Id} names no occupied slot.");
 	}
 
 
@@ -375,7 +377,7 @@ public class MatchMembershipServiceTests
 
 		await membership.LeaveAsync(host, match);
 
-		Assert.Equal(guest.Id, match.HostId);
+		Assert.Equal(guest.Id, match.Host?.Id);
 		Assert.Contains(ServerPacketWriter.MatchTransferHost(), Chunk(guest.Dequeue()));
 	}
 
@@ -388,12 +390,12 @@ public class MatchMembershipServiceTests
 		var (membership, lifecycle, _) = MakeService();
 		var match = Create(lifecycle, host, MakeMatchData(host.Id))!;
 		await membership.JoinAsync(guest, match, "");
-		match.GetSlot(guest.Id)!.Status = SlotStatus.Locked;
+		match.GetSlot(_userCache.Resolve(guest))!.Status = RoomSlotStatus.Locked;
 
 		await membership.LeaveAsync(guest, match);
 
-		Assert.Equal(SlotStatus.Locked, match.Slots[1].Status);
-		Assert.True(match.Slots[1].Empty);
+		Assert.Equal(RoomSlotStatus.Locked, match.Slots[1].Status);
+		Assert.True(match.Slots[1].IsEmpty);
 	}
 
 	[Fact]
@@ -415,7 +417,7 @@ public class MatchMembershipServiceTests
 			new ChatNotifier(Options.Create(new IrcOptions())),
 			new ChannelNotifier(_gameRegistry, _ircRegistry, Options.Create(new IrcOptions())),
 			Substitute.For<IMatchRegistry>(),
-			Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions())).Join(lobbyMember, lobby);
+			Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()), _userCache).Join(lobbyMember, lobby);
 		lobbyMember.Dequeue();
 
 		await broadcast.EnqueueStateAsync(match, match.AllocateStateVersion());
@@ -445,10 +447,10 @@ public class MatchMembershipServiceTests
 		// nothing new to report — and, per the ADR-004 "{}" spam fix, produces no publish at all
 		// rather than a no-op "{}" (regression-tested directly in JsonMergePatchTests/
 		// StateStreamTests; this test covers the same behavior at EnqueueStateAsync's call site).
-		await broadcast.EnqueueStateAsync(match, match.AllocateStateVersion());
+		await broadcast.EnqueueStateAsync(match, match.AllocateStateVersion(), cancellationToken: cts.Token);
 
 		match.Name = "Renamed";
-		await broadcast.EnqueueStateAsync(match, match.AllocateStateVersion());
+		await broadcast.EnqueueStateAsync(match, match.AllocateStateVersion(), cancellationToken: cts.Token);
 
 		await using var events = subscription.Events.GetAsyncEnumerator(cts.Token);
 		Assert.True(await events.MoveNextAsync());
@@ -471,10 +473,10 @@ public class MatchMembershipServiceTests
 		_gameRegistry.GetByUserId(host.Id).Returns(host);
 		host.Dequeue();
 
-		broadcast.EnqueueChat(match, "BasilBot", BotBootstrapService.BotId, "Match starting soon");
+		broadcast.EnqueueChat(match, "BasilBot", BotBootstrapService.BotId, "Room starting soon");
 
 		Assert.Equal(
-			ServerPacketWriter.SendMessage("BasilBot", "Match starting soon", "#multiplayer",
+			ServerPacketWriter.SendMessage("BasilBot", "Room starting soon", "#multiplayer",
 				BotBootstrapService.BotId),
 			host.Dequeue());
 	}
@@ -498,7 +500,7 @@ public class MatchMembershipServiceTests
 		Assert.False(match.PendingTimerIsAutoStart);
 		Assert.True(cts.IsCancellationRequested);
 		Assert.Contains(
-			ServerPacketWriter.SendMessage(bot.Name, "Match start cancelled — room settings changed.",
+			ServerPacketWriter.SendMessage(bot.Name, "Room start cancelled — room settings changed.",
 				"#multiplayer", bot.Id),
 			Chunk(host.Dequeue()));
 	}
@@ -571,13 +573,13 @@ public class MatchMembershipServiceTests
 
 		Assert.Equal(MatchLifecycle.StartOutcome.NoOccupiedSlots, started);
 		Assert.Null(match.CurrentRoundId);
-		Assert.True(!match.InProgress || match.Slots.Any(s => !s.Empty));
+		Assert.True(!match.InProgress || match.Slots.Any(s => !s.IsEmpty));
 	}
 
 	[Fact]
 	public async Task StartAsync_NoBeatmapSelected_DoesNotStartAndAnnouncesError()
 	{
-		// Regression for RC4: MapId == 0 (no beatmap selected) previously skipped the beatmap-missing
+		// Regression for RC4: Beatmap == 0 (no beatmap selected) previously skipped the beatmap-missing
 		// guard entirely and started the match anyway, leaving every slot permanently "Playing" since
 		// no client can complete a round for a map it never received — every later !mp start then
 		// returned AlreadyInProgress until someone ran !mp abort.
@@ -596,7 +598,7 @@ public class MatchMembershipServiceTests
 		Assert.Null(match.CurrentRoundId);
 		Assert.Contains(
 			ServerPacketWriter.SendMessage(bot.Name,
-				"Match cannot start because no beatmap has been selected.",
+				"Room cannot start because no beatmap has been selected.",
 				"#multiplayer", bot.Id),
 			Chunk(host.Dequeue()));
 	}
@@ -621,7 +623,7 @@ public class MatchMembershipServiceTests
 		Assert.Null(match.CurrentRoundId);
 		Assert.Contains(
 			ServerPacketWriter.SendMessage(bot.Name,
-				"Match cannot start because the beatmap does not exist on the server.",
+				"Room cannot start because the beatmap does not exist on the server.",
 				"#multiplayer", bot.Id),
 			Chunk(host.Dequeue()));
 	}

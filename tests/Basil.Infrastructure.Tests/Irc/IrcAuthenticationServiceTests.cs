@@ -3,18 +3,14 @@ using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
 using Basil.Application.Shared.Eventing;
-using Basil.Domain.Auth;
 using Basil.Domain.Channels;
-using Basil.Domain.Content;
-using Basil.Domain.Client;
 using Basil.Domain.Users;
 using Basil.Application.Chat;
 using Basil.Host.Bancho.Chat.Packets;
-using Basil.Infrastructure.Multiplayer;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Application.Content;
 using Basil.Application.Users;
 using Basil.Application.Auth;
+using Basil.Application.Channels;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
@@ -49,7 +45,8 @@ public class IrcAuthenticationServiceTests
 			new ChannelMembershipService(_gameRegistry, _sessionRegistry, _channelRegistry,
 				new ChatNotifier(Options.Create(new IrcOptions())),
 				new ChannelNotifier(_gameRegistry, _sessionRegistry, Options.Create(new IrcOptions())),
-				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()));
+				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(), Options.Create(new IrcOptions()),
+				Substitute.For<IUserCache>());
 		var queries = new IrcQueryService(_channelRegistry, _gameRegistry, _sessionRegistry, channelMembership,
 			new MotdService(_settings), options);
 		return new IrcAuthenticationService(_users, _sessionRegistry, _channelRegistry, channelMembership,
@@ -59,7 +56,7 @@ public class IrcAuthenticationServiceTests
 	private void StubValidCredentials(int userId, string name)
 	{
 		_users.FetchByNameAsync(name, Arg.Any<CancellationToken>())
-			.Returns(new User(userId, name, Country.Xx, UserPrivileges.Unrestricted, default));
+			.Returns(new User { Id = userId, Name = name });
 		_users.FetchPasswordHashAsync(userId, Arg.Any<CancellationToken>()).Returns("stored-hash");
 		_passwordHasher.Verify(Arg.Any<byte[]>(), "stored-hash").Returns(true);
 	}
@@ -79,7 +76,7 @@ public class IrcAuthenticationServiceTests
 	public async Task AuthenticateAsync_NoStoredPasswordHash_Fails()
 	{
 		_users.FetchByNameAsync("alice", Arg.Any<CancellationToken>())
-			.Returns(new User(1, "alice", Country.Xx, UserPrivileges.Unrestricted, default));
+			.Returns(new User { Id = 1, Name = "alice" });
 		_users.FetchPasswordHashAsync(1, Arg.Any<CancellationToken>()).Returns((string?)null);
 
 		var outcome = await MakeService().AuthenticateAsync("alice", Password, Substitute.For<IIrcConnection>());
@@ -91,7 +88,7 @@ public class IrcAuthenticationServiceTests
 	public async Task AuthenticateAsync_WrongPassword_Fails()
 	{
 		_users.FetchByNameAsync("alice", Arg.Any<CancellationToken>())
-			.Returns(new User(1, "alice", Country.Xx, UserPrivileges.Unrestricted, default));
+			.Returns(new User { Id = 1, Name = "alice" });
 		_users.FetchPasswordHashAsync(1, Arg.Any<CancellationToken>()).Returns("stored-hash");
 		_passwordHasher.Verify(Arg.Any<byte[]>(), "stored-hash").Returns(false);
 
@@ -109,7 +106,7 @@ public class IrcAuthenticationServiceTests
 	public async Task AuthenticateAsync_DeletedAccount_CorrectPassword_Fails()
 	{
 		_users.FetchByNameAsync("alice", Arg.Any<CancellationToken>())
-			.Returns(new User(1, "alice", Country.Xx, UserPrivileges.Unrestricted, default, DateTimeOffset.UnixEpoch));
+			.Returns(new User { Id = 1, Name = "alice", DeletedAt = DateTimeOffset.UnixEpoch });
 		_users.FetchPasswordHashAsync(1, Arg.Any<CancellationToken>()).Returns("stored-hash");
 		_passwordHasher.Verify(Arg.Any<byte[]>(), "stored-hash").Returns(true);
 
@@ -142,8 +139,8 @@ public class IrcAuthenticationServiceTests
 		var outcome = await MakeService().AuthenticateAsync("alice", Password, Substitute.For<IIrcConnection>());
 
 		Assert.True(outcome.Success);
-		_gameRegistry.DidNotReceiveWithAnyArgs().GetByUserId(default);
-		_gameRegistry.DidNotReceiveWithAnyArgs().GetByName(default!);
+		_gameRegistry.DidNotReceiveWithAnyArgs().GetByUserId(0);
+		_gameRegistry.DidNotReceiveWithAnyArgs().GetByName(null!);
 		_gameRegistry.DidNotReceive().Remove(Arg.Any<GameSession>());
 	}
 

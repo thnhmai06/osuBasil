@@ -1,3 +1,4 @@
+using Basil.Application.Users;
 using Basil.Domain.Multiplayer;
 using Basil.Host.Bancho.Multiplayer.Packets;
 using Basil.Protocol.Packets;
@@ -36,14 +37,14 @@ public class MatchStartHandlerTests
 		fixture.RegisterAll(host, guest);
 		var match = fixture.CreateMatch(host);
 		await fixture.MatchMembership.JoinAsync(guest, match, "");
-		match.Slots[1].Status = SlotStatus.NoMap;
+		match.Slots[1].Status = RoomSlotStatus.NoMap;
 		var handler = new MatchStartHandler(fixture.MatchLifecycle);
 
 		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
 
 		Assert.True(match.InProgress);
-		Assert.Equal(SlotStatus.Playing, match.Slots[0].Status);
-		Assert.Equal(SlotStatus.NoMap, match.Slots[1].Status);
+		Assert.Equal(RoomSlotStatus.Playing, match.Slots[0].Status);
+		Assert.Equal(RoomSlotStatus.NoMap, match.Slots[1].Status);
 	}
 
 	/// <summary>
@@ -65,7 +66,7 @@ public class MatchStartHandlerTests
 
 		await match.Lock.WaitAsync();
 		var handleTask = handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
-		match.HostId = guest.Id;
+		match.Host = fixture.UserCache.Resolve(guest);
 		match.Lock.Release();
 		await handleTask;
 

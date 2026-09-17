@@ -25,11 +25,9 @@ namespace Basil.Infrastructure.Tests.Beatmaps;
 public class BeatmapWatcherServiceTests : IDisposable
 {
 	private readonly SqliteBeatmapRepository _beatmaps;
-	private readonly SqliteBeatmapsetRepository _beatmapsets;
+	private readonly string _beatmapsetsPath;
 	private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"basil-watcher-test-{Guid.NewGuid():N}.db");
 	private readonly CapturingLogger<BeatmapIngestionService> _ingestionLog = new();
-	private readonly string _beatmapsetsPath;
-	private readonly IOptions<StorageOptions> _options;
 	private readonly BeatmapWatcherService _watcher;
 	private readonly CapturingLogger<BeatmapWatcherService> _watcherLog = new();
 
@@ -42,12 +40,12 @@ public class BeatmapWatcherServiceTests : IDisposable
 		SqlMigrationRunner.RunMigrations(connectionString);
 
 		_beatmaps = new SqliteBeatmapRepository(connectionString, NullLogger<SqliteBeatmapRepository>.Instance);
-		_beatmapsets =
+		var beatmapsets =
 			new SqliteBeatmapsetRepository(connectionString, NullLogger<SqliteBeatmapsetRepository>.Instance);
 		_beatmapsetsPath = Path.Combine(Path.GetTempPath(), "obt-watcher-tests-" + Guid.NewGuid());
 		Directory.CreateDirectory(_beatmapsetsPath);
 
-		_options = Options.Create(new StorageOptions
+		var options = Options.Create(new StorageOptions
 		{
 			ReplaysPath = "",
 			AvatarsPath = "",
@@ -56,9 +54,9 @@ public class BeatmapWatcherServiceTests : IDisposable
 			MenuBannersPath = "",
 			FaqsPath = "", CachePath = Path.Combine(_beatmapsetsPath, "Cache")
 		});
-		var ingestion = new BeatmapIngestionService(_beatmaps, _beatmapsets, new FakeOsuCalculator(), _options,
-			new FileSystemResponseCache(_options), new BeatmapsetAssetCache(_options), _ingestionLog);
-		_watcher = new BeatmapWatcherService(ingestion, _options, _watcherLog);
+		var ingestion = new BeatmapIngestionService(_beatmaps, beatmapsets, new FakeOsuCalculator(), options,
+			new FileSystemResponseCache(options), new BeatmapsetAssetCache(options), _ingestionLog);
+		_watcher = new BeatmapWatcherService(ingestion, options, _watcherLog);
 	}
 
 	public void Dispose()

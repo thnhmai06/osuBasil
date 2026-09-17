@@ -1,5 +1,4 @@
 using Basil.Application.Multiplayer;
-using Basil.Domain.Multiplayer;
 using Basil.Infrastructure.Multiplayer;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -30,14 +29,14 @@ public class MatchRoundEndOutboxTests : IAsyncDisposable
 	[Fact]
 	public async Task DrainAsync_NoPendingWrites_ReturnsImmediately()
 	{
-		await _outbox.DrainAsync(matchId: 42).WaitAsync(TimeSpan.FromSeconds(1));
+		await _outbox.DrainAsync(42).WaitAsync(TimeSpan.FromSeconds(1));
 	}
 
 	[Fact]
 	public async Task Enqueue_ThenConsumerRuns_PersistsTheWrite()
 	{
 		await _outbox.StartAsync(CancellationToken.None);
-		var write = new RoundEndWrite(MatchId: 1, RoundId: 7, DateTime.UtcNow, Aborted: false);
+		var write = new RoundEndWrite(1, 7, DateTime.UtcNow, false);
 
 		_outbox.Enqueue(write);
 		await _outbox.DrainAsync(write.MatchId).WaitAsync(TimeSpan.FromSeconds(2));
@@ -47,15 +46,23 @@ public class MatchRoundEndOutboxTests : IAsyncDisposable
 	}
 
 	[Fact]
-	public async Task Enqueue_ConsumerNeverStarted_QueueFillsThenRejects()
+	public Task Enqueue_ConsumerNeverStarted_QueueFillsThenRejects()
 	{
-		// No StartAsync: nothing drains the channel, so its bounded capacity (128) is reachable
-		// deterministically without racing a live consumer.
-		for (var i = 0; i < 128; i++)
-			_outbox.Enqueue(new RoundEndWrite(MatchId: 1, RoundId: i, DateTime.UtcNow, Aborted: false));
+		try
+		{
+			// No StartAsync: nothing drains the channel, so its bounded capacity (128) is reachable
+			// deterministically without racing a live consumer.
+			for (var i = 0; i < 128; i++)
+				_outbox.Enqueue(new RoundEndWrite(1, i, DateTime.UtcNow, false));
 
-		Assert.Throws<MatchRoundEndOutboxFullException>(() =>
-			_outbox.Enqueue(new RoundEndWrite(MatchId: 1, RoundId: 999, DateTime.UtcNow, Aborted: false)));
+			Assert.Throws<MatchRoundEndOutboxFullException>(() =>
+				_outbox.Enqueue(new RoundEndWrite(1, 999, DateTime.UtcNow, false)));
+			return Task.CompletedTask;
+		}
+		catch (Exception exception)
+		{
+			return Task.FromException(exception);
+		}
 	}
 
 	[Fact]
@@ -64,7 +71,7 @@ public class MatchRoundEndOutboxTests : IAsyncDisposable
 		_matchRepository.SetRoundEndedAsync(Arg.Any<int>(), Arg.Any<DateTime>(), Arg.Any<bool>(),
 			Arg.Any<CancellationToken>()).ThrowsForAnyArgs(new InvalidOperationException("db down"));
 		await _outbox.StartAsync(CancellationToken.None);
-		var write = new RoundEndWrite(MatchId: 3, RoundId: 9, DateTime.UtcNow, Aborted: true);
+		var write = new RoundEndWrite(3, 9, DateTime.UtcNow, true);
 
 		_outbox.Enqueue(write);
 		// Retry budget is 3 attempts with a short backoff between them; give it generous headroom.

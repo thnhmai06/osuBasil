@@ -155,7 +155,7 @@ public class CachingBeatmapRepositoryTests
 		var inner = new CountingBeatmapRepository
 		{
 			ByMd5 = { [beatmap.Md5] = beatmap },
-			PrivateMd5s = { beatmap.Md5 }
+			PrivateMd5Hashes = { beatmap.Md5 }
 		};
 		var repo = new CachingBeatmapRepository(inner, new MemoryCache(new MemoryCacheOptions()),
 			NullLogger<CachingBeatmapRepository>.Instance);
@@ -173,7 +173,7 @@ public class CachingBeatmapRepositoryTests
 		public Dictionary<int, Beatmap> ById { get; } = new();
 		public Dictionary<string, Beatmap> ByMd5 { get; } = new();
 		public HashSet<int> PrivateIds { get; } = [];
-		public HashSet<string> PrivateMd5s { get; } = [];
+		public HashSet<string> PrivateMd5Hashes { get; } = [];
 		public Beatmap? UpsertResult { get; set; }
 
 		public Task<Beatmap?> FetchOneAsync(int? id = null, string? md5 = null, string? filename = null,
@@ -185,7 +185,7 @@ public class CachingBeatmapRepositoryTests
 					? null
 					: ById.GetValueOrDefault(id.Value));
 			if (md5 is not null)
-				return Task.FromResult(!includePrivate && PrivateMd5s.Contains(md5)
+				return Task.FromResult(!includePrivate && PrivateMd5Hashes.Contains(md5)
 					? null
 					: ByMd5.GetValueOrDefault(md5));
 			return Task.FromResult<Beatmap?>(null);

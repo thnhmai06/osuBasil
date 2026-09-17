@@ -103,7 +103,7 @@ internal static class SliceAdjacency
 		// IrcAuthenticationService resolves IUserRepository to authenticate an IRC login.
 		("Irc", "Users"),
 
-		// Match live/report/routing types and MpCommandService (`!mp map`) resolve
+		// Room live/report/routing types and MpCommandService (`!mp map`) resolve
 		// IBeatmapRepository, BeatmapDetail and BeatmapsetSummary to describe the map a match is
 		// playing.
 		("Multiplayer", "Beatmaps"),
@@ -139,7 +139,7 @@ internal static class SliceAdjacency
 		("Scores", "Irc"),
 
 		// A score belongs to a match: ScoreDetailView/ScoreRoutes/ScoreSubmissionService resolve
-		// UserBrief, MatchSession/MatchSlot and MatchLiveSnapshotBuilder.
+		// UserBrief, MatchSession/Slot and MatchLiveSnapshotBuilder.
 		("Scores", "Multiplayer"),
 
 		// ScoreRoutes and ScoreSubmissionService resolve IUserRepository/IUserStatRepository.

@@ -17,15 +17,15 @@ public class MatchSkipRequestHandlerTests
 		fixture.RegisterAll(host, guest);
 		var match = fixture.CreateMatch(host);
 		await fixture.MatchMembership.JoinAsync(guest, match, "");
-		match.Slots[0].Status = SlotStatus.Playing;
-		match.Slots[1].Status = SlotStatus.Playing;
+		match.Slots[0].Status = RoomSlotStatus.Playing;
+		match.Slots[1].Status = RoomSlotStatus.Playing;
 		host.Dequeue();
 		guest.Dequeue();
-		var handler = new MatchSkipRequestHandler(fixture.MatchBroadcast);
+		var handler = new MatchSkipRequestHandler(fixture.MatchBroadcast, fixture.UserCache);
 
 		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
 
-		Assert.True(match.Slots[0].Skipped);
+		Assert.True(match.Slots[0].IntroSkipped);
 		Assert.Contains(ServerPacketWriter.MatchPlayerSkipped(host.Id), Chunk(host.Dequeue()));
 		Assert.DoesNotContain(ServerPacketWriter.MatchSkip(), Chunk(guest.Dequeue()));
 	}
@@ -39,12 +39,12 @@ public class MatchSkipRequestHandlerTests
 		fixture.RegisterAll(host, guest);
 		var match = fixture.CreateMatch(host);
 		await fixture.MatchMembership.JoinAsync(guest, match, "");
-		match.Slots[0].Status = SlotStatus.Playing;
-		match.Slots[1].Status = SlotStatus.Playing;
-		match.Slots[1].Skipped = true;
+		match.Slots[0].Status = RoomSlotStatus.Playing;
+		match.Slots[1].Status = RoomSlotStatus.Playing;
+		match.Slots[1].IntroSkipped = true;
 		host.Dequeue();
 		guest.Dequeue();
-		var handler = new MatchSkipRequestHandler(fixture.MatchBroadcast);
+		var handler = new MatchSkipRequestHandler(fixture.MatchBroadcast, fixture.UserCache);
 
 		await handler.HandleAsync(host, new PacketReader(ReadOnlyMemory<byte>.Empty));
 
