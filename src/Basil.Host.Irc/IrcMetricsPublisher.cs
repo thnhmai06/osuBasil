@@ -17,7 +17,6 @@ namespace Basil.Host.Irc;
 /// </remarks>
 public sealed class IrcMetricsPublisher(ISessionRegistry<IrcSession> sessions) : IHostedService
 {
-
 	/// <inheritdoc />
 	public Task StartAsync(CancellationToken cancellationToken)
 	{

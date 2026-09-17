@@ -1,11 +1,11 @@
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Channels;
+using Basil.Application.Channels;
+using Basil.Application.Chat;
 using Basil.Application.Irc;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
-using Basil.Domain.Channels;
-using Basil.Application.Chat;
 using Basil.Protocol.Irc;
 using Microsoft.Extensions.Options;
 using Channel = System.Threading.Channels.Channel;

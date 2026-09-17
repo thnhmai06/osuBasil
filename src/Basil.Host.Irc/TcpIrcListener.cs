@@ -1,10 +1,10 @@
 using System.Net;
 using System.Net.Sockets;
-using Basil.Application.Sessions;
-using Basil.Application.Shared.Configuration;
-using Basil.Domain.Channels;
+using Basil.Application.Channels;
 using Basil.Application.Chat;
 using Basil.Application.Irc;
+using Basil.Application.Sessions;
+using Basil.Application.Shared.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Host.Irc;
