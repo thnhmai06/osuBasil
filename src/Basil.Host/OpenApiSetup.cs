@@ -1,5 +1,5 @@
 using System.Text.Json.Nodes;
-using Basil.Infrastructure.Shared.Http.OpenApi;
+using Basil.Host.Api.Shared.Http.OpenApi;
 using Microsoft.OpenApi;
 
 namespace Basil.Host;

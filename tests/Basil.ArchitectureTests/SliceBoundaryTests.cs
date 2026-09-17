@@ -95,13 +95,12 @@ public class SliceBoundaryTests
 		// BanchoHostGroups dropped out during Batch 11: it split into HostGroups (Basil.Host, builds
 		// every route group, out of scope for this test entirely) and BeatmapsetAssetBuilder (stays
 		// here, but its archive/audio-preview work never touched a Features slice to begin with).
-		string[] knownOffenders =
-		[
-			"Basil.Infrastructure.Shared.Http.OpenApi.SecuritySchemeTransformers",
-			"Basil.Infrastructure.Shared.Media.Assets.BeatmapsetBackgroundProvider",
-			"Basil.Infrastructure.Shared.Media.Assets.BeatmapThumbnailProvider",
-			"Basil.Infrastructure.Shared.Media.Assets.MenuIconProvider"
-		];
+		//
+		// Empty as of Batch 12: SecuritySchemeTransformers and the three Media asset providers
+		// (BeatmapsetBackgroundProvider, BeatmapThumbnailProvider, MenuIconProvider) all moved to
+		// Basil.Host.Api along with the rest of Shared/Http and Shared/Media/Assets, out of
+		// Basil.Infrastructure entirely -- this test no longer sees them at all.
+		string[] knownOffenders = [];
 
 		var featureNamespaces = SliceAdjacency.Allowed
 			.Select(edge => edge.From)

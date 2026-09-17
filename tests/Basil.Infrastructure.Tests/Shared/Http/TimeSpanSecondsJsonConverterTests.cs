@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Basil.Application.Shared.Json;
-using Basil.Infrastructure.Shared.Http;
 
 namespace Basil.Infrastructure.Tests.Shared.Http;
 

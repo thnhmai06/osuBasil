@@ -1,9 +1,9 @@
-using Basil.Infrastructure.Shared.Media.Assets;
+using Basil.Host.Api.Shared.Media.Assets;
 using SixLabors.ImageSharp.Web.Caching;
 using SixLabors.ImageSharp.Web.DependencyInjection;
-using AvatarProvider = Basil.Infrastructure.Shared.Media.Assets.AvatarProvider;
-using BeatmapsetBackgroundProvider = Basil.Infrastructure.Shared.Media.Assets.BeatmapsetBackgroundProvider;
-using BeatmapThumbnailProvider = Basil.Infrastructure.Shared.Media.Assets.BeatmapThumbnailProvider;
+using AvatarProvider = Basil.Host.Api.Shared.Media.Assets.AvatarProvider;
+using BeatmapsetBackgroundProvider = Basil.Host.Api.Shared.Media.Assets.BeatmapsetBackgroundProvider;
+using BeatmapThumbnailProvider = Basil.Host.Api.Shared.Media.Assets.BeatmapThumbnailProvider;
 
 namespace Basil.Host;
 

@@ -1,12 +1,11 @@
 using Basil.Application.Multiplayer;
 using Basil.Application.Shared.Configuration;
-using Basil.Domain.Multiplayer;
 using Basil.Infrastructure.Shared.Persistence;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Multiplayer;
 
-/// <summary>Registers the Multiplayer slice's services and endpoints.</summary>
+/// <summary>Registers the Multiplayer slice's services.</summary>
 public static class MultiplayerServiceCollectionExtensions
 {
 	/// <summary>Registers the Multiplayer slice's services into the given service collection.</summary>
@@ -28,13 +27,6 @@ public static class MultiplayerServiceCollectionExtensions
 		services.AddHostedService<MultiplayerMetricsPublisher>();
 
 		return services;
-	}
-
-	/// <summary>Maps the Multiplayer slice's routes onto the `api.` host.</summary>
-	/// <param name="group">The `api.{domain}` route group.</param>
-	public static void MapMultiplayerRoutes(this RouteGroupBuilder group)
-	{
-		group.MapMatchRoutes();
 	}
 
 	private static string BuildConnectionString(IServiceProvider sp)

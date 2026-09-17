@@ -333,11 +333,133 @@ not, it says so.
 > (was 846; 157 moved out), Host.Bancho 157 (new), Host 28, Host.Irc 5, Integration 363. **Total
 > 1711, unchanged** — pure code movement plus the D8 contract swap, no test added or removed.
 >
-> Next: **Batch 12** — `Basil.Host.Api`: every remaining route/endpoint/view, `Shared/Http/**`
-> remainder (`ApiHostRoutes`, `AssetsHostRoutes`, `AbbreviationRedirectRoutes`, `ContentTypes` stays
-> Infrastructure-owned per above), `SseEndpoints`, `Shared/Media/Assets/*`,
-> `AdminKeyAuthenticationHandler`; new `HostBoundaryTests`; `Basil.Infrastructure.csproj` drops
-> `Sdk.Web`; endpoint map must still read 151.
+> **Batch 12 done — the last host extraction, one commit.** Created `Basil.Host.Api`
+> (`Microsoft.NET.Sdk` + `FrameworkReference` to `Microsoft.AspNetCore.App`, the same project-level
+> `<Using>` items `Basil.Host.Bancho` needed, `Microsoft.AspNetCore.OpenApi`/`Microsoft.OpenApi`/
+> `Scalar.AspNetCore`/`SixLabors.ImageSharp.Web`) and `Basil.Host.Api.Tests` (starts with zero
+> tests: no route/endpoint file in this codebase has ever had a unit test outside
+> `Basil.IntegrationTests`, confirmed by search before assuming otherwise). Moved every remaining
+> route/endpoint/view (Auth 2, Beatmaps 2 — see the `BeatmapViews` deviation below, Content 8,
+> Diagnostics 1, Multiplayer 16, Scores 2, Users 3), all of `Shared/Http/**`'s remainder (21 actual
+> files, not the plan's approximate "24" — `ApiHostRoutes`, `AssetsHostRoutes`,
+> `AbbreviationRedirectRoutes`, `Middleware/*` ×5, `OpenApi/*` ×8, `NumericIdRouteConstraint`,
+> `Pagination`, `RouteDocs`, `HttpMetrics`), and `Shared/Media/Assets/*` (8). `AdminKeyRoutes` +
+> `AdminKeyAuthenticationHandler` moved together; `Basil.Host/AuthSetup.cs`'s existing
+> `AddAuthentication().AddScheme<...AdminKeyAuthenticationHandler>()` call — already living in
+> `Basil.Host`, not Infrastructure, since before this batch — just switched its `using` to
+> `Basil.Host.Api.Auth`. `Spectating`'s "1" (`PlayerLiveRoutes`) turned out to already be a plain
+> `internal static class` helper called from `UserRoutes.HandleInput`, not its own route-group
+> mapper, so it moved alongside `UserRoutes` with no separate wiring.
+>
+> **Three deviations from the plan's file list, found before moving anything (not discovered by a
+> broken build) by checking each named file's current location first, per the advisor's own
+> warning about D5's `PlayerStatusView`/`MatchChatMessage` trap:**
+> 1. **`BeatmapViews.cs`** was already in `Basil.Application/Beatmaps` — pulled forward all the way
+>    back in Batch 2, not Batch 12 as the plan's file list still implied. Nothing to move; Beatmaps'
+>    real count this batch is 2 files (`BeatmapsetRoutes`, `BeatmapsetAssetRoutes`), not 3.
+> 2. **`DateTimeExtensions.cs`** was already in `Basil.Application/Shared/Json` — Batch 2 again.
+>    Nothing to move.
+> 3. **`SseEndpoints.cs`/`SseSubscriberRegistry.cs`/`BoundedSseChannel.cs`** were already in
+>    `Basil.Application/Shared/Eventing` — also Batch 2. `SseEndpoints` itself is `internal` and
+>    builds `IResult`/reads `StatusCodes` (legitimate: `Basil.Application` already carries a
+>    `FrameworkReference` to `Microsoft.AspNetCore.App` for exactly this kind of helper, same as the
+>    already-accepted `HttpContext` usings). Every route file calling it
+>    (`MatchLiveRoutes`/`MatchLiveStreamEndpoints`/`PlayerLiveRoutes`/`DiagnosticRoutes`/`UserRoutes`)
+>    moved to `Basil.Host.Api` this batch, so `Basil.Application.csproj` gained
+>    `InternalsVisibleTo Basil.Host.Api`/`.Tests`, mirroring the existing `Basil.Host.Bancho` grant.
+>
+> **A fourth, real one found mid-batch, not before it: `ContentTypes` cannot live in `Basil.Host.Api`
+> at all.** The plan's `Shared/Http/**` table row puts it there, written before Batch 11 existed —
+> but `Basil.Host.Bancho`'s `BeatmapAssetRoutes`/`OsuWebRoutes` (moved Batch 11) also call
+> `ContentTypes.Resolve`, and a host may never depend on another host. Moved it to
+> `Basil.Application.Shared.Http` instead (alongside the existing `Envelope`) — both hosts already
+> depend on Application, `Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider` (its
+> one framework dependency) is already available through Application's existing
+> `FrameworkReference`, and no new package was needed. Same shape as `BeatmapsetAssetBuilder`
+> (Batch 11): a type two mutually-forbidden hosts both need moves to the nearest layer both already
+> depend on, not into either host.
+>
+> **DI split, following Batch 11's route-mapping precedent, not its `AddXHost()` one**: `Basil.Host.Api`
+> needs zero new DI registrations of its own (confirmed by search — nothing in it calls
+> `IServiceCollection`), so there is no `AddApiHost()`. What each of the six route-bearing slices'
+> `*ServiceCollectionExtensions.cs` (Auth, Beatmaps, Content, Multiplayer, Scores, Users) *did* carry
+> was a slice-level `MapXRoutes(RouteGroupBuilder)` aggregator alongside its `AddX()`, now split into
+> a new `<Slice>RouteMapping.cs` file per slice in `Basil.Host.Api` (`AuthRouteMapping`,
+> `BeatmapsRouteMapping`, `ContentRouteMapping`, `MultiplayerRouteMapping`, `ScoresRouteMapping`,
+> `UsersRouteMapping`) — `AddX()` stays in Infrastructure, `MapXRoutes()` moves out, mirroring
+> exactly how `AddXApplication()`/`AddX()` already split one layer up. Diagnostics needed no such
+> split: its one route file (`DiagnosticRoutes`) was always its own `MapDiagnosticRoutes` aggregator
+> with no slice-level wrapper. `Basil.Host/SliceRegistration.cs` now imports six `Basil.Host.Api.*`
+> namespaces alongside the existing `Basil.Host.Bancho`/`Basil.Infrastructure` ones; its `MapAll`
+> body is otherwise unchanged — same calls, same order, matching the endpoint map's unchanged 151.
+>
+> **Nine `internal` classes flipped to `public`** so `Basil.Host`/`Basil.ArchitectureTests` could
+> reach them across the new project boundary, the same requirement Batch 11 hit for
+> `BanchoProtocolRoutes`/`OsuWebRoutes`/`BeatmapAssetRoutes`: `AvatarRoutes`, `ApiHostRoutes`,
+> `AssetsHostRoutes`, `DiagnosticRoutes`, `MenuAssetRoutes`, `BeatmapsetAssetRoutes` (all
+> group-mapper classes `SliceRegistration.MapAll` calls directly), plus `EnvelopeSchemaTransformer`,
+> `SecuritySchemeTransformers`, `SchemaTypeTransformers` (their `AddXTransformer()` C# 14 extension
+> methods were already `public`, but effective accessibility caps at the containing class, which
+> `Basil.Host/OpenApiSetup.cs` needs to call). `Basil.Infrastructure.csproj` gained
+> `InternalsVisibleTo Basil.Host.Api`/`.Tests` for the diagnostics sampler/snapshot types
+> (`DiagnosticStreams`, `HttpSampler.SampleAndResetDuration`, etc.) that `DiagnosticRoutes` still
+> needs but that stayed `internal` on purpose (they're implementation detail, not a public contract).
+>
+> **`Basil.Infrastructure.csproj` dropped `Sdk.Web`** (`Microsoft.NET.Sdk.Web` → plain
+> `Microsoft.NET.Sdk`) and the four ASP.NET-named packages
+> (`Microsoft.AspNetCore.OpenApi`/`Microsoft.OpenApi`/`Scalar.AspNetCore`/`SixLabors.ImageSharp.Web`,
+> all moved to `Basil.Host.Api`) plus `Serilog.AspNetCore` (unused — no
+> `UseSerilog`/`RequestLoggingOptions` call anywhere left in Infrastructure; its three sibling
+> `Serilog.Sinks.*` packages were *also* already unused before this batch, so left alone as
+> out-of-scope pre-existing dead weight, not something this move orphaned). Verified **zero** real
+> ASP.NET framework usage remained first (`grep` for `IResult`/`RouteGroupBuilder`/`HttpContext`/
+> `IEndpointRouteBuilder`/`Microsoft.AspNetCore` across `src/Basil.Infrastructure`; the one hit,
+> `RuntimeMeterListener`'s "ASP.NET Core" mention, is a meter-name string, exactly as plan §1.2
+> already said). No `FrameworkReference` needed either — Infrastructure genuinely has none of the
+> HttpContext-adjacent usage the advisor flagged as a risk (`LoginService`'s
+> `using Basil.Infrastructure.Shared.Http;` turned out to be a stale unused import, not real usage).
+> Plain `Microsoft.NET.Sdk` doesn't provide `Sdk.Web`'s implicit usings, so the csproj gained
+> explicit `<Using>` items for `Microsoft.Extensions.Configuration`/`.DependencyInjection`/
+> `.Hosting`/`.Logging` and `System.Net.Http.Json` (`HttpMirrorSearchClient.ReadFromJsonAsync`),
+> found by build-error iteration exactly like `Basil.Host.Bancho.csproj` needed in Batch 11.
+>
+> **New `HostBoundaryTests.cs`** (plan §7's row): four `NotHaveDependencyOnAny` checks — each host
+> assembly has no dependency on the other two, plus `Basil.Host.Api` has no dependency on
+> `Basil.Protocol` (a plain namespace-prefix check, not `"Basil.Protocol.Bancho"` as first written:
+> `Basil.Protocol.Bancho`'s own root namespace is bare `Basil.Protocol`, no `.Bancho` suffix, so the
+> project name and the namespace diverge — this also catches `Basil.Protocol.Irc`, which is correct,
+> Host.Api has no business with either protocol). Proven to actually fail per the plan's explicit
+> instruction (C6's rule): added a real `ProjectReference` from `Basil.Host.Api` to
+> `Basil.Protocol.Bancho` plus a `using`, watched the check fail, then reverted both. That proof run
+> surfaced a genuine finding, not a false positive: `OpenApiExampleExtensions.cs` legitimately
+> references `Basil.Protocol.Multiplayer` for `ReplayFrame`/`ScoreFrame` — it builds its `input`-event
+> OpenAPI example by serializing a real `SpectateFramesEvent` (the same Application-level type
+> already pinned in `TransportSeamTests.Application_Types_Should_Not_Reference_Protocol` for
+> carrying these exact wire types directly), so the documented example always matches the endpoint's
+> real wire shape instead of a hand-written literal that could silently drift from it. Pinned as one
+> named offender in a `knownOffenders` array (the same exact-equality style as every other pinned
+> list in this codebase, not an exclusion filter — an offender's disappearance fails the test too, as
+> a reminder to delete its row), with the parallel to `SpectateFramesEvent`'s own pin spelled out in
+> the doc comment. `SliceBoundaryTests.Shared_Should_Not_Reference_Features`'s pinned list is now
+> **empty** — all four remaining offenders (`SecuritySchemeTransformers`, and the three Media asset
+> providers) left `Basil.Infrastructure` entirely this batch, so the check no longer sees them.
+>
+> Full `Basil.IntegrationTests`: **363/363**, clean pass, no flake this run (the usually-flaky GC
+> SSE test passed cleanly too). Release build: 0 errors. `get_endpoint_map`: **151**, matching plan
+> §7's target exactly, every route now correctly attributed to its `Basil.Host.Api`/`.Bancho` file.
+> Per-project: ArchitectureTests 15 (was 11, +4 `HostBoundaryTests`), Domain 207, Protocol 158,
+> Application 93, Infrastructure 689 (unchanged — no unit test existed for any moved route file),
+> Host.Bancho 157, Host 28, Host.Irc 5, Host.Api.Tests 0 (new), Integration 363. **Total 1715** (was
+> 1711, +4).
+>
+> Next: **Batch 13** — Close: architecture tests pass 2 (§7 complete); `CLAUDE.md` Architecture
+> section and `docs/for-developers/architecture.md` full rewrite (old Task H3, both currently
+> describe the pre-v3 five-project structure and say so); `HANDOVER.md` itself; full suite, Release,
+> endpoint map, `Basil.LoadTests` publish smoke (`dotnet publish src/Basil.Host` — untested by any
+> batch so far; `Basil.Host.csproj`'s `<SelfContained>true</SelfContained>` and its
+> `RemoveUnusedOsuRulesetRuntimeFiles` post-publish target now also cover two new host assemblies
+> flowing into the publish output, worth running before any doc edits so a publish failure isn't
+> confused with a doc-rewrite mistake).
 
 ---
 

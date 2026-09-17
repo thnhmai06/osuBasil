@@ -1,7 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Basil.Application.Shared.Json;
-using Basil.Infrastructure.Shared.Http;
 
 namespace Basil.Infrastructure.Tests.Shared.Http;
 

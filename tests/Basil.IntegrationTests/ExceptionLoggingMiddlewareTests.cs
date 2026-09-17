@@ -1,4 +1,4 @@
-using Basil.Infrastructure.Shared.Http.Middleware;
+using Basil.Host.Api.Shared.Http.Middleware;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Logging;

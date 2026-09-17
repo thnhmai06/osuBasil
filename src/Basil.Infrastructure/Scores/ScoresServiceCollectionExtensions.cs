@@ -1,5 +1,4 @@
 using Basil.Application.Shared.Configuration;
-using Basil.Domain.Scores;
 using Basil.Infrastructure.Shared.Persistence;
 using Basil.Infrastructure.Shared.Storage;
 using Basil.Application.Scores;
@@ -7,7 +6,7 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Scores;
 
-/// <summary>Registers the Scores slice's services and endpoints.</summary>
+/// <summary>Registers the Scores slice's services.</summary>
 public static class ScoresServiceCollectionExtensions
 {
 	/// <summary>Registers the Scores slice's services into the given service collection.</summary>
@@ -28,13 +27,6 @@ public static class ScoresServiceCollectionExtensions
 		services.AddSingleton<IReplayStorage, FileSystemReplayStorage>();
 
 		return services;
-	}
-
-	/// <summary>Maps the Scores slice's routes onto the `api.` host.</summary>
-	/// <param name="group">The `api.{domain}` route group.</param>
-	public static void MapScoresRoutes(this RouteGroupBuilder group)
-	{
-		group.MapScoreRoutes();
 	}
 
 	private static string BuildConnectionString(IServiceProvider sp)

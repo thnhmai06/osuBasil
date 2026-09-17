@@ -4,6 +4,7 @@ using System.Text.Json;
 using Basil.Application.Shared.Configuration;
 using Basil.Domain.Users;
 using Basil.Host;
+using Basil.Host.Api.Users;
 using Basil.Infrastructure.Users;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;

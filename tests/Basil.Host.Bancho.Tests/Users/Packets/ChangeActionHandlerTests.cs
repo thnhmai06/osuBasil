@@ -4,8 +4,6 @@ using Basil.Application.Shared.Json;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Shared.Http;
-using Basil.Infrastructure.Shared.Sessions;
 using Basil.Application.Spectating;
 using Basil.Infrastructure.Tests.Multiplayer.Packets;
 using Basil.Host.Bancho.Users.Packets;

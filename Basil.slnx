@@ -8,6 +8,7 @@
 	<Folder Name="/Sources/Host/">
 		<Project Path="src/Basil.Host.Bancho/Basil.Host.Bancho.csproj"/>
 		<Project Path="src/Basil.Host.Irc/Basil.Host.Irc.csproj"/>
+		<Project Path="src/Basil.Host.Api/Basil.Host.Api.csproj"/>
 	</Folder>
 	<Folder Name="/Sources/Protocol/">
 		<Project Path="src/Basil.Protocol.Bancho/Basil.Protocol.Bancho.csproj"/>
@@ -24,6 +25,7 @@
 		<Project Path="tests/Basil.Host.Tests/Basil.Host.Tests.csproj"/>
 		<Project Path="tests/Basil.Host.Bancho.Tests/Basil.Host.Bancho.Tests.csproj"/>
 		<Project Path="tests/Basil.Host.Irc.Tests/Basil.Host.Irc.Tests.csproj"/>
+		<Project Path="tests/Basil.Host.Api.Tests/Basil.Host.Api.Tests.csproj"/>
 		<Project Path="tests/Basil.Protocol.Tests/Basil.Protocol.Tests.csproj"/>
 		<Project Path="tests/Basil.Infrastructure.Tests/Basil.Infrastructure.Tests.csproj"/>
 		<Project Path="tests/Basil.Application.Tests/Basil.Application.Tests.csproj"/>

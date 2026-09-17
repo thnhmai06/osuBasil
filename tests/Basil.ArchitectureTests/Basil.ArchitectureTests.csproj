@@ -27,6 +27,9 @@
 		<ProjectReference Include="..\..\src\Basil.Protocol.Bancho\Basil.Protocol.Bancho.csproj"/>
 		<ProjectReference Include="..\..\src\Basil.Protocol.Irc\Basil.Protocol.Irc.csproj"/>
 		<ProjectReference Include="..\..\src\Basil.Infrastructure\Basil.Infrastructure.csproj"/>
+		<ProjectReference Include="..\..\src\Basil.Host.Bancho\Basil.Host.Bancho.csproj"/>
+		<ProjectReference Include="..\..\src\Basil.Host.Irc\Basil.Host.Irc.csproj"/>
+		<ProjectReference Include="..\..\src\Basil.Host.Api\Basil.Host.Api.csproj"/>
 	</ItemGroup>
 
 </Project>

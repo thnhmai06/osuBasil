@@ -1,5 +1,4 @@
 using Basil.Application.Shared.Json;
-using Basil.Infrastructure.Shared.Http;
 
 namespace Basil.Host;
 

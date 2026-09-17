@@ -134,7 +134,9 @@ meter-name string, no framework reference), `DiagnosticBroadcastService`, `Diagn
 `IrcSessionRemovalLogoutHandler`, `IrcAuthenticationService`, `IrcQueryService`, `IrcNamesReply`,
 `IrcLoginOutcome`, `IrcReplies` → A (the `IrcMessage`-returning ones pinned, U3). `IrcMetrics.cs`
 **split**. `TcpIrcConnection`, `TcpIrcListener` → HI. `BanchoIrcBridgeConnection` (adapts a
-`GameSession` to `IIrcConnection` with `ServerPacketWriter`) → HB/Irc. DI ext → split.
+`GameSession` to `IIrcConnection` with `ServerPacketWriter`) **stays in A** (Batch 11: `GameSession`'s
+own constructor self-constructs it, so moving it to HB would force an A→host dependency; reverted,
+documented in code). DI ext → split.
 
 **Multiplayer** (76): `MatchControlService`, `MatchLifecycle`, `MatchMembership`, `MatchBroadcast`,
 `MatchRecoveryService`, `MatchReportService`, `MatchLiveSnapshotBuilder`, `MpCommandService`,
@@ -261,7 +263,7 @@ map (151) after 0, 12, 13.
 | **8** | **Multiplayer** rest → A (~24) — last because `Multiplayer -> Bot/Chat/Irc/Scores/Spectating`. If 5–7 do not compile alone, fold them into 8; no shims. | 24 | yes | **M** |
 | **9** | **Beatmaps** `DirectSearchService` → A; DI splits finished; architecture tests pass 1 (Application/Infrastructure rules, §7); `plans/`+`docs/` pass 1. Full suite, Release. **Milestone: v3 without hosts.** | 1 + tests + docs | tests by hand | **M** |
 | **10** | **`Basil.Host.Irc`**: `TcpIrcListener`, `TcpIrcConnection`, `IrcMetricsPublisher`, `AddIrcHost`; `Basil.Host.Irc.Tests` (`TcpIrcConnectionTests`). `Basil.Host` references it. | 4 + tests | yes | **S** |
-| **11** | **`Basil.Host.Bancho`**: 46 packet handlers + 4 notifier impls + `BanchoIrcBridgeConnection` + `LogoutBroadcastHandler` + `MatchPacketDataMapper` + `MatchCreationDataMapper` + `IPacketHandler`/`PacketDispatcher` + `BanchoProtocolRoutes` + `OsuWebRoutes` + `BeatmapAssetRoutes` + the bancho/osu-web/b. groups from `BanchoHostGroups` (D7) + `BanchoAnnouncementNotifier` (D8, with the Application contract and the `AnnounceRoutes` edit); `Basil.Host.Bancho.Tests` (46 packet tests + dispatcher). Full suite. Two commits: handlers, then routes. | ~62 + 47 tests | yes, except D7/D8 | **L** (count, not difficulty) |
+| **11** | **`Basil.Host.Bancho`**: 46 packet handlers + `MatchNotifier`/`SpectatorNotifier` (renamed from `BanchoMatchNotifier`/`BanchoSpectatorNotifier`) + `LogoutBroadcastHandler` + `MatchPacketDataMapper` + `MatchCreationDataMapper` + `IPacketHandler`/`PacketDispatcher` + `BanchoProtocolRoutes` + `OsuWebRoutes` + `BeatmapAssetRoutes` + the bancho/osu-web/b. groups from `BanchoHostGroups` (D7 — done as a **three-way split**, not a whole move: composition-root half → `Basil.Host` as `HostGroups`, pure-I/O half → new Infrastructure `BeatmapsetAssetBuilder`) + `AnnouncementNotifier` (D8, with the `IAnnouncementNotifier` Application contract and the `AnnounceRoutes` edit). `BanchoIrcBridgeConnection` **stays in A** (see Irc row above — plan deviation, not a move). `Basil.Host.Bancho.Tests` (46 packet tests + dispatcher + `MatchCreationDataMapperTests`). Full suite. Two commits: handlers, then routes. | ~62 + 47 tests | yes, except D7/D8 | **L** (count, not difficulty) |
 | **12** | **`Basil.Host.Api`**: every remaining route/endpoint/view (Auth 2, Beatmaps 3, Content 8, Diagnostics 1, Multiplayer 16, Scores 2, Spectating 1, Users 3), `Shared/Http/**` remainder (24), `SseEndpoints`, `Shared/Media/Assets/*` (8), `AdminKeyAuthenticationHandler`; api./assets./a. groups (D7); the Api-side `*Setup` files stay in `Basil.Host` and now reference Host.Api. `Basil.Infrastructure.csproj` drops `Sdk.Web` and the ASP.NET packages. `Basil.Host.Api.Tests`. `HostBoundaryTests` lands here. Endpoint map must still read 151. | ~70 + tests | yes, except D7 | **L** |
 | **13** | **Close**: architecture tests pass 2 (§7 complete); `CLAUDE.md` Architecture section, `docs/for-developers/architecture.md` rewrite (old Task H3), `HANDOVER.md`; full suite, Release, endpoint map, `Basil.LoadTests` publish smoke (`dotnet publish src/Basil.Host`). | docs + tests | by hand | **M** |
 
@@ -282,7 +284,7 @@ technology-bound file):
 | `MatchChatMessage` | `ChannelMembershipService` | goes to A, not HA (D5) |
 | `RuntimeMeterListener`, `DurationAggregateSnapshot` | Diagnostics snapshots | whole slice is I — not a blocker |
 | `InviteResult` | `MpCommandService` | false positive (`MatchControlService.InviteResult`) |
-| `ServerPacketWriter` in `AnnounceRoutes` | Host.Api | D8 (Batch 11) |
+| `ServerPacketWriter` in `AnnounceRoutes` | resolved: `IAnnouncementNotifier` (A) / `AnnouncementNotifier` (HB) | D8 done, Batch 11 |
 | `ILogger<Bootstrap>` in `BanchoProtocolRoutes` | Infrastructure → Host cycle | Batch 0 edit |
 
 `SliceAdjacency`'s 44 rows and the `Shared -> Features` pinned list (10) are re-homed per
@@ -307,7 +309,7 @@ group prefix move.
 | **No host references another host; `Basil.Host.Api` has no dependency on `Basil.Protocol.Bancho`** | new `HostBoundaryTests`: three `NotHaveDependencyOnAny` checks from each host assembly + the Api/Protocol check. Prove it fails by adding a reference, then remove it (C6's rule). |
 | Slice adjacency inside Application, Infrastructure, and each host | `SliceAdjacency` split into per-project allowlists seeded from today's 44 rows, pruned to rows that resolve |
 | `Shared` never references a feature, per project | `SliceBoundaryTests` pinned list split the same way |
-| Domain internal adjacency | `DomainAdjacency` unchanged (14 rows) |
+| Domain internal adjacency | `DomainAdjacency` 12 rows (down from 14: `9be67c32` folded `Login` into `Auth`/`Users`/`Client`, dropping 2 edges) |
 | Transport adapter size (old E2's "under ~60 lines or listed") | dropped — v3 does not ask for it |
 
 ## 8. Risks

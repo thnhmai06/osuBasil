@@ -13,7 +13,6 @@ using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Host;
 using Basil.Infrastructure.Multiplayer;
-using Basil.Infrastructure.Shared.Http;
 using Basil.Infrastructure.Shared.Sessions;
 using Basil.Application.Users;
 using Microsoft.AspNetCore.Mvc.Testing;

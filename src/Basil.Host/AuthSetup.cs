@@ -1,4 +1,4 @@
-using Basil.Infrastructure.Auth;
+using Basil.Host.Api.Auth;
 using Microsoft.AspNetCore.Authentication;
 
 namespace Basil.Host;

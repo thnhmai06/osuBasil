@@ -7,7 +7,7 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Content;
 
-/// <summary>Registers the Content slice's services and endpoints.</summary>
+/// <summary>Registers the Content slice's services.</summary>
 public static class ContentServiceCollectionExtensions
 {
 	/// <summary>Registers the Content slice's services into the given service collection.</summary>
@@ -31,22 +31,6 @@ public static class ContentServiceCollectionExtensions
 		services.AddSingleton<IMenuBannerRepository>(sp => new SqliteMenuBannerRepository(BuildConnectionString(sp)));
 
 		return services;
-	}
-
-	/// <summary>Maps the Content slice's routes onto the `api.` host.</summary>
-	/// <param name="group">The `api.{domain}` route group.</param>
-	public static void MapContentRoutes(this RouteGroupBuilder group)
-	{
-		group.MapFaqRoutes();
-		group.MapMenuSeasonalRoutes();
-		group.MapMenuBannerRoutes();
-		group.MapMenuIconRoutes();
-
-		var settings = group.MapGroup("/settings");
-		settings.MapMirrorSettingsRoutes();
-		settings.MapMotdSettingsRoutes();
-
-		group.MapAnnounceRoutes();
 	}
 
 	private static string BuildConnectionString(IServiceProvider sp)

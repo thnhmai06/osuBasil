@@ -15,7 +15,6 @@ using Basil.Host.Bancho.Shared.Sessions;
 using Basil.Host.Bancho.Chat.Packets;
 using Basil.Infrastructure.Multiplayer;
 using Basil.Host.Bancho.Multiplayer.Packets;
-using Basil.Infrastructure.Shared.Http;
 using Basil.Infrastructure.Shared.Sessions;
 using Basil.Infrastructure.Spectating;
 using Basil.Application.Spectating;

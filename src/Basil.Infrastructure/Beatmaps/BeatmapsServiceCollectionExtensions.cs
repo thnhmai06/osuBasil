@@ -7,7 +7,7 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Beatmaps;
 
-/// <summary>Registers the Beatmaps slice's services and endpoints.</summary>
+/// <summary>Registers the Beatmaps slice's services.</summary>
 public static class BeatmapsServiceCollectionExtensions
 {
 	/// <summary>Registers the Beatmaps slice's services into the given service collection.</summary>
@@ -42,13 +42,6 @@ public static class BeatmapsServiceCollectionExtensions
 		services.AddHostedService<BeatmapsetMigrationService>();
 
 		return services;
-	}
-
-	/// <summary>Maps the Beatmaps slice's routes onto the `api.` host.</summary>
-	/// <param name="group">The `api.{domain}` route group.</param>
-	public static void MapBeatmapsRoutes(this RouteGroupBuilder group)
-	{
-		group.MapBeatmapsetRoutes();
 	}
 
 	private static string BuildConnectionString(IServiceProvider sp)

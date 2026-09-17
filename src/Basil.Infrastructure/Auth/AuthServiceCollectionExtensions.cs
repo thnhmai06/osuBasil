@@ -1,5 +1,4 @@
 using Basil.Application.Shared.Configuration;
-using Basil.Domain.Auth;
 using Basil.Infrastructure.Shared.Persistence;
 using Basil.Application.Auth;
 using Microsoft.Extensions.Options;
@@ -25,13 +24,6 @@ public static class AuthServiceCollectionExtensions
 		services.AddSingleton<ITokenGenerator, GuidTokenGenerator>();
 
 		return services;
-	}
-
-	/// <summary>Maps the Auth slice's routes onto the `api.` host's `/settings` group.</summary>
-	/// <param name="group">The `api.{domain}` route group.</param>
-	public static void MapAuthRoutes(this RouteGroupBuilder group)
-	{
-		group.MapGroup("/settings").MapAdminKeyRoutes();
 	}
 
 	private static string BuildConnectionString(IServiceProvider sp)

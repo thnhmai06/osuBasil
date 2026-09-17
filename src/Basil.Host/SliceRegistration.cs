@@ -1,5 +1,13 @@
 using Basil.Application.Irc;
 using Basil.Application.Shared.Configuration;
+using Basil.Host.Api.Auth;
+using Basil.Host.Api.Beatmaps;
+using Basil.Host.Api.Content;
+using Basil.Host.Api.Diagnostics;
+using Basil.Host.Api.Multiplayer;
+using Basil.Host.Api.Scores;
+using Basil.Host.Api.Shared.Http;
+using Basil.Host.Api.Users;
 using Basil.Host.Bancho;
 using Basil.Host.Bancho.Beatmaps;
 using Basil.Host.Bancho.Shared.Http;
@@ -12,7 +20,6 @@ using Basil.Infrastructure.Content;
 using Basil.Infrastructure.Diagnostics;
 using Basil.Infrastructure.Multiplayer;
 using Basil.Infrastructure.Scores;
-using Basil.Infrastructure.Shared.Http;
 using Basil.Infrastructure.Spectating;
 using Basil.Infrastructure.Users;
 

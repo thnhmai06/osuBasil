@@ -3,7 +3,7 @@ using System.Net.Http.Json;
 using Basil.Application.Shared.Configuration;
 using Basil.Domain.Users;
 using Basil.Host;
-using Basil.Infrastructure.Shared.Http.Middleware;
+using Basil.Host.Api.Shared.Http.Middleware;
 using Basil.Application.Shared.Http;
 using Basil.Application.Users;
 using Microsoft.AspNetCore.Mvc.Testing;

@@ -17,6 +17,7 @@
 		<ProjectReference Include="..\Basil.Infrastructure\Basil.Infrastructure.csproj"/>
 		<ProjectReference Include="..\Basil.Host.Bancho\Basil.Host.Bancho.csproj"/>
 		<ProjectReference Include="..\Basil.Host.Irc\Basil.Host.Irc.csproj"/>
+		<ProjectReference Include="..\Basil.Host.Api\Basil.Host.Api.csproj"/>
 	</ItemGroup>
 
 	<ItemGroup>

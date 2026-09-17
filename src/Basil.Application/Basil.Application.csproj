@@ -21,6 +21,8 @@
 		<InternalsVisibleTo Include="Basil.Infrastructure.Tests"/>
 		<InternalsVisibleTo Include="Basil.Host.Bancho"/>
 		<InternalsVisibleTo Include="Basil.Host.Bancho.Tests"/>
+		<InternalsVisibleTo Include="Basil.Host.Api"/>
+		<InternalsVisibleTo Include="Basil.Host.Api.Tests"/>
 	</ItemGroup>
 
 	<ItemGroup>

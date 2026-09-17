@@ -1,6 +1,6 @@
 namespace Basil.Infrastructure.Diagnostics;
 
-/// <summary>Registers the Diagnostics slice's services and endpoints.</summary>
+/// <summary>Registers the Diagnostics slice's services.</summary>
 public static class DiagnosticsServiceCollectionExtensions
 {
 	/// <summary>Registers the Diagnostics slice's services into the given service collection.</summary>

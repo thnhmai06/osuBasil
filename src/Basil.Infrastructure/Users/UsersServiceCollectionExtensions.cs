@@ -9,7 +9,7 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Users;
 
-/// <summary>Registers the Users slice's services and endpoints.</summary>
+/// <summary>Registers the Users slice's services.</summary>
 public static class UsersServiceCollectionExtensions
 {
 	/// <summary>Registers the Users slice's services into the given service collection.</summary>
@@ -35,13 +35,6 @@ public static class UsersServiceCollectionExtensions
 				sp.GetRequiredService<ILogger<SqliteUserLogRepository>>()));
 
 		return services;
-	}
-
-	/// <summary>Maps the Users slice's routes onto the `api.` host.</summary>
-	/// <param name="group">The `api.{domain}` route group.</param>
-	public static void MapUsersRoutes(this RouteGroupBuilder group)
-	{
-		group.MapUserRoutes();
 	}
 
 	private static string BuildConnectionString(IServiceProvider sp)
