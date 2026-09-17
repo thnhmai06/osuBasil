@@ -34,13 +34,12 @@ internal sealed record Hosts(
 /// </remarks>
 internal static class HostGroups
 {
-	private static readonly string[] BanchoSubdomains = ["c", "ce", "c4", "c5", "c6"];
-
 	private const string OsuWebSubdomain = "osu";
 	private const string BeatmapAssetSubdomain = "b";
 	private const string AvatarSubdomain = "a";
 	private const string ApiSubdomain = "api";
 	private const string AssetsSubdomain = "assets";
+	private static readonly string[] BanchoSubdomains = ["c", "ce", "c4", "c5", "c6"];
 
 	/// <summary>Every host name the server answers on for the given domain, including the domain itself.</summary>
 	/// <remarks>

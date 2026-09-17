@@ -25,7 +25,7 @@ internal sealed class StartupUpdateCheck(
 	{
 		if (!options.Value.CheckOnStartup)
 		{
-			logger.LogWarning("Skipped checking for updates because checking on startup is disabled.");
+			logger.LogWarning("IntroSkipped checking for updates because checking on startup is disabled.");
 			return Task.CompletedTask;
 		}
 
@@ -71,14 +71,15 @@ internal sealed class StartupUpdateCheck(
 		}
 		catch (OperationCanceledException)
 		{
-			logger.LogWarning("Skipped checking for updates because the release feed could not be reached.");
+			logger.LogWarning("IntroSkipped checking for updates because the release feed could not be reached.");
 			return;
 		}
 		catch (Exception exception)
 		{
 			// A check is a courtesy. Whatever went wrong looking for a newer release -- no network,
 			// a refused connection, a malformed feed -- must not stop the server from serving.
-			logger.LogWarning(exception, "Skipped checking for updates because the release feed could not be reached.");
+			logger.LogWarning(exception,
+				"IntroSkipped checking for updates because the release feed could not be reached.");
 			return;
 		}
 
@@ -100,10 +101,10 @@ internal sealed class StartupUpdateCheck(
 					"A new version of Basil is available. Terminate the server and restart it with --update to update.");
 				break;
 			case UpdateCheckOutcome.Failed:
-				logger.LogWarning("Skipped checking for updates because the release feed could not be reached.");
+				logger.LogWarning("IntroSkipped checking for updates because the release feed could not be reached.");
 				break;
 			case UpdateCheckOutcome.NotInstallable:
-				logger.LogWarning("Skipped checking for updates because Basil was not installed by the updater.");
+				logger.LogWarning("IntroSkipped checking for updates because Basil was not installed by the updater.");
 				break;
 		}
 	}

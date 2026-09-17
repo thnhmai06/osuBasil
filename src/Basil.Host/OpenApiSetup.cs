@@ -17,19 +17,19 @@ internal static class OpenApiSetup
 	[
 		("Matches",
 		[
-			("Matches", "Match listing and creation."),
-			("Match Report", "Tournament match reports (TRT)."),
-			("Match Settings", "Match room configuration."),
-			("Match Live", "Room-wide realtime playing status and merged per-slot live streams."),
-			("Match Hosts", "Match host management."),
-			("Match Referees", "Match referee management."),
-			("Match Bans", "Management of players banned from a match."),
-			("Match Slots",
+			("Matches", "Room listing and creation."),
+			("Room Report", "Tournament match reports (TRT)."),
+			("Room Settings", "Room room configuration."),
+			("Room Live", "Room-wide realtime playing status and merged per-slot live streams."),
+			("Room Hosts", "Room host management."),
+			("Room Referees", "Room referee management."),
+			("Room Bans", "Management of players banned from a match."),
+			("Room Slots",
 				"Management of the match's 16 slots, including assignments, teams, locking, invitations, and kicking players."),
-			("Match Timer", "Match countdown timer."),
-			("Match Abort", "Abort the match currently in progress."),
-			("Match Close", "Close the match immediately."),
-			("Match Chat", "The match room's live chat stream, and saying something in it as BasilBot.")
+			("Room Timer", "Room countdown timer."),
+			("Room Abort", "Abort the match currently in progress."),
+			("Room Close", "Close the match immediately."),
+			("Room Chat", "The match room's live chat stream, and saying something in it as BasilBot.")
 		]),
 		("Users",
 		[

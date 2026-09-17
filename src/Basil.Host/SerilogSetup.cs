@@ -36,7 +36,7 @@ internal static class SerilogSetup
 	{
 		var logsPath = Path.Combine(AppContext.BaseDirectory, "Logs");
 		const string template =
-			"[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} {Level:u3}] [{Category}] {RequestId} {SourceContext}: {Message:lj} {Properties}{NewLine}{Exception}";
+			"[{OccurredAt:yyyy-MM-dd HH:mm:ss.fff zzz} {Level:u3}] [{Category}] {RequestId} {SourceContext}: {Message:lj} {Properties}{NewLine}{Exception}";
 
 		var minimumLevel = Enum.TryParse<LogEventLevel>(
 			builder.Configuration["Basil:Logging:MinimumLevel"], true, out var configuredLevel)

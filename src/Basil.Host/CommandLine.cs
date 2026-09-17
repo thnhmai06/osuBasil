@@ -78,24 +78,24 @@ internal static class CommandLine
 		var options = ReadUpdateCheckOptions(args);
 		var probe = new VelopackUpdateProbe(options);
 
-		output.WriteLine($"Basil {BuildVersion.Informational}, checking {options.Source}");
+		await output.WriteLineAsync($"Basil {BuildVersion.Informational}, checking {options.Source}");
 
 		var result = await probe.CheckAsync(CancellationToken.None);
 		switch (result.Outcome)
 		{
 			case UpdateCheckOutcome.UpToDate:
-				output.WriteLine("Already up to date.");
+				await output.WriteLineAsync("Already up to date.");
 				return;
 			case UpdateCheckOutcome.Failed:
-				error.WriteLine("Could not reach the release feed. Nothing was changed.");
+				await error.WriteLineAsync("Could not reach the release feed. Nothing was changed.");
 				return;
 			case UpdateCheckOutcome.NotInstallable:
-				error.WriteLine(
+				await error.WriteLineAsync(
 					"This copy of Basil was not installed by the updater, so it cannot update itself.");
 				return;
 		}
 
-		output.WriteLine($"Installing {result.AvailableVersion}...");
+		await output.WriteLineAsync($"Installing {result.AvailableVersion}...");
 		await probe.ApplyAsync(CancellationToken.None);
 	}
 
@@ -104,7 +104,7 @@ internal static class CommandLine
 		var configuration = new ConfigurationBuilder();
 		ConfigurationSetup.AddSources(configuration,
 			Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production",
-			args.Where(argument => !argument.StartsWith('-')).ToArray());
+			[.. args.Where(argument => !argument.StartsWith('-'))]);
 
 		return configuration.Build().GetSection(UpdateCheckOptions.SectionName).Get<UpdateCheckOptions>() ??
 		       new UpdateCheckOptions();

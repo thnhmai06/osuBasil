@@ -13,7 +13,6 @@ namespace Basil.Host;
 ///     Only the configured domain and the subdomains this server actually serves are answered. The
 ///     server also serves the equivalent <c>ppy.sh</c> hosts, but claiming those on a shared network
 ///     would answer for traffic that is not this server's, so they are never advertised.
-///
 ///     Multicast DNS is consulted by an operating system only for names it treats as link-local,
 ///     which in practice means names ending in <c>.local</c>. A domain outside that suffix is still
 ///     answered here, but most clients will never ask, and those deployments need the hosts file.
@@ -73,7 +72,6 @@ internal sealed class DomainAdvertiser(
 			if (!_names.Contains(name, StringComparer.OrdinalIgnoreCase)) continue;
 
 			foreach (var address in MulticastService.GetIPAddresses())
-			{
 				if (question.Type is DnsType.A && address.AddressFamily is AddressFamily.InterNetwork)
 					answered.Answers.Add(new ARecord { Name = question.Name, Address = address });
 				else if (question.Type is DnsType.AAAA && address.AddressFamily is AddressFamily.InterNetworkV6)
@@ -82,7 +80,6 @@ internal sealed class DomainAdvertiser(
 					answered.Answers.Add(address.AddressFamily is AddressFamily.InterNetworkV6
 						? new AAAARecord { Name = question.Name, Address = address }
 						: new ARecord { Name = question.Name, Address = address });
-			}
 		}
 
 		if (answered.Answers.Count == 0) return;
