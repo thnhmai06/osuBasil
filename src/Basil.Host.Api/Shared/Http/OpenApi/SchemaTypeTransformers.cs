@@ -2,7 +2,6 @@ using System.Numerics;
 using System.Text.Json.Nodes;
 using Basil.Application.Shared.Json;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Client;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Microsoft.AspNetCore.OpenApi;
@@ -18,7 +17,7 @@ public static class SchemaTypeTransformers
 	///     <see cref="ApplyBitmaskDescription" />'s generated prose.
 	/// </summary>
 	/// <remarks>
-	///     A real userSession can have `Hidden | HardRock` set at once, unlike <c>SlotStatus</c>, which
+	///     A real userSession can have `Hidden | HardRock` set at once, unlike <c>RoomSlotStatus</c>, which
 	///     is `[Flags]` in C# only for internal grouped-comparison convenience (see
 	///     <see cref="AddEnumValuesSchemaTransformer" />'s own doc comment): a slot's serialized
 	///     `status` is always exactly one of its single-bit values, never a combination, so it's
@@ -113,7 +112,7 @@ public static class SchemaTypeTransformers
 		///         these bits": the table lists each single-bit flag's value, a following line notes
 		///         that flags combine via bitwise OR, and a worked example closes it out. Any other
 		///         `[Flags]` enum (currently just
-		///         <c>SlotStatus</c>) is treated as a regular closed enum, since its wire value is
+		///         <c>RoomSlotStatus</c>) is treated as a regular closed enum, since its wire value is
 		///         never actually a combination despite the C# attribute. <see cref="Country" /> is
 		///         excluded entirely: it already gets its own string shape from
 		///         <see cref="AddCustomConverterSchemaTransformer" />, and it has far too many members

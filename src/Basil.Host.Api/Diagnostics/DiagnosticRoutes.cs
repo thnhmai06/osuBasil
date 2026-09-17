@@ -6,11 +6,10 @@ using System.Text;
 using System.Text.Json;
 using Basil.Application.Shared.Eventing;
 using Basil.Application.Shared.Json;
-using Basil.Infrastructure.Auth;
-using Basil.Infrastructure.Diagnostics;
+using Basil.Host.Api.Auth;
 using Basil.Host.Api.Shared.Http;
 using Basil.Host.Api.Shared.Http.OpenApi;
-using Basil.Host.Api.Auth;
+using Basil.Infrastructure.Diagnostics;
 
 // ReSharper disable ClassNeverInstantiated.Global
 // ReSharper disable MemberCanBePrivate.Global
@@ -163,8 +162,10 @@ public static class DiagnosticRoutes
 	///     from the request's own service provider and calls <paramref name="sample" /> on it.
 	/// </summary>
 	private static Func<IServiceProvider, T> SampleWith<TSampler, T>(Func<TSampler, T> sample)
-		where TSampler : notnull =>
-		services => sample(services.GetRequiredService<TSampler>());
+		where TSampler : notnull
+	{
+		return services => sample(services.GetRequiredService<TSampler>());
+	}
 
 	/// <summary>
 	///     Registers a category's `GET /diagnostic/{category}` and `GET /diagnostic/{category}/live`
@@ -275,7 +276,7 @@ public static class DiagnosticRoutes
 		string eventType, Func<T> sample, [EnumeratorCancellation] CancellationToken cancellationToken)
 	{
 		var streamTag = new KeyValuePair<string, object?>("stream", eventType);
-		using var subscription = hub.Open(key);
+		await using var subscription = hub.Open(key);
 		EventingMetrics.SseActiveSubscribers.Add(1, streamTag);
 		try
 		{
@@ -293,5 +294,8 @@ public static class DiagnosticRoutes
 		}
 	}
 
-	private static string Capitalize(string value) => char.ToUpperInvariant(value[0]) + value[1..];
+	private static string Capitalize(string value)
+	{
+		return char.ToUpperInvariant(value[0]) + value[1..];
+	}
 }

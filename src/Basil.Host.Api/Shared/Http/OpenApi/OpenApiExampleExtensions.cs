@@ -5,8 +5,8 @@ using Basil.Application.Shared.Eventing;
 using Basil.Application.Shared.Json;
 using Basil.Application.Spectating;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Client;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Records;
+using Basil.Domain.Multiplayer.Runtime;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Host.Api.Shared.Http.Middleware;
@@ -258,7 +258,7 @@ internal static class OpenApiExampleExtensions
 				{
 					Summary = "event: slot",
 					Value = JsonSerializer.SerializeToNode(
-						new MatchSlotView(1, new UserBrief(7, "Alice", Country.Us), SlotStatus.Playing,
+						new MatchSlotView(1, new UserBrief(7, "Alice", Country.Us), RoomSlotStatus.Playing,
 							MatchTeam.Red, Mods.NoMod, false, true), JsonWebOptions)
 				},
 				["gameplay"] = new OpenApiExample

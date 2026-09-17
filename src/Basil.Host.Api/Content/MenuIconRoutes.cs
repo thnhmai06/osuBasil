@@ -1,10 +1,9 @@
 using Basil.Application.Shared.Configuration;
-using Basil.Infrastructure.Auth;
-using Basil.Infrastructure.Content;
+using Basil.Host.Api.Auth;
 using Basil.Host.Api.Shared.Http;
 using Basil.Host.Api.Shared.Http.OpenApi;
+using Basil.Infrastructure.Content;
 using Microsoft.Extensions.Options;
-using Basil.Host.Api.Auth;
 
 // ReSharper disable ClassNeverInstantiated.Global
 // ReSharper disable MemberCanBePrivate.Global

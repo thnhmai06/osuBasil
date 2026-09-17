@@ -25,7 +25,7 @@ internal static class EnvelopeBuilder
 	/// <param name="body">The serialized response body, or <see langword="null" /> when there is none.</param>
 	/// <param name="options">The serializer options used to serialize pagination metadata.</param>
 	/// <param name="messageOverride">
-	///     A route-supplied success message to use instead of the generic verb-derived one (e.g. "Match
+	///     A route-supplied success message to use instead of the generic verb-derived one (e.g. "Room
 	///     aborted." instead of "Created successfully" for a <c>POST</c> that doesn't create anything).
 	///     Ignored on an error response.
 	/// </param>

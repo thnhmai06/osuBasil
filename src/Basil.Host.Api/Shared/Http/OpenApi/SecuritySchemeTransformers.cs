@@ -1,8 +1,7 @@
-using Basil.Infrastructure.Auth;
+using Basil.Host.Api.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
-using Basil.Host.Api.Auth;
 
 namespace Basil.Host.Api.Shared.Http.OpenApi;
 

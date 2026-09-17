@@ -1,11 +1,9 @@
+using Basil.Application.Bot;
 using Basil.Application.Content;
 using Basil.Application.Sessions;
-using Basil.Infrastructure.Auth;
-using Basil.Application.Bot;
+using Basil.Host.Api.Auth;
 using Basil.Host.Api.Shared.Http;
 using Basil.Host.Api.Shared.Http.OpenApi;
-using Basil.Infrastructure.Shared.Sessions;
-using Basil.Host.Api.Auth;
 
 // ReSharper disable ClassNeverInstantiated.Global
 // ReSharper disable MemberCanBePrivate.Global

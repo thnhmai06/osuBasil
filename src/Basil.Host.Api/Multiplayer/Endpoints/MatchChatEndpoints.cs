@@ -1,12 +1,11 @@
+using Basil.Application.Channels;
+using Basil.Application.Chat;
 using Basil.Application.Multiplayer;
 using Basil.Application.Shared.Eventing;
-using Basil.Domain.Channels;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Auth;
-using Basil.Application.Chat;
+using Basil.Host.Api.Auth;
 using Basil.Host.Api.Shared.Http;
 using Basil.Host.Api.Shared.Http.OpenApi;
-using Basil.Host.Api.Auth;
 
 namespace Basil.Host.Api.Multiplayer.Endpoints;
 
@@ -45,25 +44,25 @@ internal static class MatchChatEndpoints
 
 			                 Returns `409 Conflict` if the match isn't currently live.
 			                 """ + AdminKeyNote)
-			.WithTags("Match Chat")
+			.WithTags("Room Chat")
 			.Produces<MatchChatMessage>()
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
 			.WithExample(StatusCodes.Status200OK,
 				new MatchChatMessage(new UserBrief(8, "Bob", Country.Gb), "glhf",
 					DateTimeOffset.Parse("2026-07-20T14:30:00Z")))
-			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Match is not live"));
+			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Room is not live"));
 
 		group.MapPost("/matches/{matchId:numericid}/chat", (int matchId, SendMatchChatRequest body,
 				IMatchRegistry matchRegistry, IChannelRegistry channelRegistry, ChatDispatchService chatDispatch) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
+				if (match is null) return Results.NotFound(new ErrorResponse("Room not found."));
 
 				if (string.IsNullOrWhiteSpace(body.Text))
 					return Results.BadRequest(new ErrorResponse("text must not be empty."));
 
 				var channel = channelRegistry.GetByName(match.ChatChannelName);
-				if (channel is null) return Results.NotFound(new ErrorResponse("Match chat channel not found."));
+				if (channel is null) return Results.NotFound(new ErrorResponse("Room chat channel not found."));
 
 				var sent = chatDispatch.SendAsBot(channel, body.Text);
 				return sent == 0
@@ -87,7 +86,7 @@ internal static class MatchChatEndpoints
 			                 Returns `400 Bad Request` for empty text, `404 Not Found` if the match isn't
 			                 currently live, and `503 Service Unavailable` if BasilBot is not online.
 			                 """ + AdminKeyNote)
-			.WithTags("Match Chat")
+			.WithTags("Room Chat")
 			.Produces<MatchChatSentView>()
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
 			.Produces<ErrorResponse>(StatusCodes.Status503ServiceUnavailable)

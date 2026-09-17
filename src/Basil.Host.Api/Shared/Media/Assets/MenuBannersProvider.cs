@@ -33,7 +33,7 @@ public sealed class MenuBannersProvider : IImageProvider
 
 		var hosts = AssetsHost.AssetsHostsFor(server.Value.Domain);
 		Match = context => AssetsHost.Matches(context, hosts) &&
-		                  context.Request.Path.StartsWithSegments(BannersPrefix.TrimEnd('/'));
+		                   context.Request.Path.StartsWithSegments(BannersPrefix.TrimEnd('/'));
 	}
 
 	/// <inheritdoc />

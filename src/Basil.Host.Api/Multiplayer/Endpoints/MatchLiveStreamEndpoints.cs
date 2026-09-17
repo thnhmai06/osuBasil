@@ -4,9 +4,7 @@ using Basil.Application.Sessions;
 using Basil.Application.Shared.Eventing;
 using Basil.Application.Shared.Json;
 using Basil.Application.Spectating;
-using Basil.Host.Api.Shared.Http;
 using Basil.Host.Api.Shared.Http.OpenApi;
-using Basil.Infrastructure.Shared.Sessions;
 
 namespace Basil.Host.Api.Multiplayer.Endpoints;
 
@@ -33,12 +31,12 @@ internal static class MatchLiveStreamEndpoints
 
 			                 Returns `409 Conflict` if the match isn't currently live.
 			                 """)
-			.WithTags("Match Live")
+			.WithTags("Room Live")
 			.Produces<MatchLiveSnapshot>()
 			.Produces<PlayerLiveScore>()
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
 			.WithMainLiveExamples(MatchSampleFixtures.SampleLiveSnapshot())
-			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Match is not live"));
+			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Room is not live"));
 
 		group.MapGet("/matches/{matchId:numericid}/live/{slotIndex:int}", HandleLiveSlotStream)
 			.WithGroupName("basilapi")
@@ -57,7 +55,7 @@ internal static class MatchLiveStreamEndpoints
 
 			                 Returns `404 Not Found` if the match isn't currently live or `slotIndex` is out of range.
 			                 """)
-			.WithTags("Match Live")
+			.WithTags("Room Live")
 			.Produces<PlayerLiveScore>()
 			.WithSlotLiveExamples()
 			.ProducesProblem(StatusCodes.Status404NotFound);
@@ -83,7 +81,7 @@ internal static class MatchLiveStreamEndpoints
 		var match = matchRegistry.GetByDbId(matchId);
 		if (match is null || slotIndex is < 1 or > 16)
 			return SseEndpoints.SseError(StatusCodes.Status404NotFound,
-				"Match is not currently live, or slotIndex is out of range.");
+				"Room is not currently live, or slotIndex is out of range.");
 
 		var index = slotIndex - 1;
 		return MatchLiveRoutes.HandleLiveSlot(context, match, index, hub, inputEvents, gameRegistry,

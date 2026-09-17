@@ -1,8 +1,7 @@
 using System.Text.RegularExpressions;
-using Basil.Application.Shared.Configuration;
-using Basil.Domain.Beatmaps;
-using Basil.Infrastructure.Beatmaps;
 using Basil.Application.Beatmaps;
+using Basil.Application.Shared.Configuration;
+using Basil.Infrastructure.Beatmaps;
 using Microsoft.Extensions.Options;
 using SixLabors.ImageSharp.Web.Providers;
 using SixLabors.ImageSharp.Web.Resolvers;

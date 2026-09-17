@@ -1,13 +1,12 @@
+using Basil.Application.Beatmaps;
 using Basil.Application.Shared.Configuration;
 using Basil.Application.Shared.Http;
 using Basil.Domain.Beatmaps;
-using Basil.Infrastructure.Auth;
+using Basil.Host.Api.Auth;
 using Basil.Infrastructure.Beatmaps;
 using Basil.Infrastructure.Shared.Media;
 using Basil.Infrastructure.Shared.Storage;
-using Basil.Application.Beatmaps;
 using Microsoft.Extensions.Options;
-using Basil.Host.Api.Auth;
 
 // ReSharper disable ClassNeverInstantiated.Global
 

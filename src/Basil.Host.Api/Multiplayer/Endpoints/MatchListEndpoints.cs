@@ -1,19 +1,15 @@
+using Basil.Application.Beatmaps;
 using Basil.Application.Irc;
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
-using Basil.Application.Shared.Json;
+using Basil.Application.Users;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Records;
 using Basil.Domain.Scores;
-using Basil.Domain.Users;
-using Basil.Infrastructure.Auth;
+using Basil.Host.Api.Auth;
 using Basil.Host.Api.Shared.Http;
 using Basil.Host.Api.Shared.Http.OpenApi;
-using Basil.Infrastructure.Shared.Sessions;
-using Basil.Application.Users;
-using Basil.Application.Beatmaps;
 using Microsoft.AspNetCore.Mvc;
-using Basil.Host.Api.Auth;
 
 namespace Basil.Host.Api.Multiplayer.Endpoints;
 

@@ -1,10 +1,9 @@
 using Basil.Application.Multiplayer;
-using Basil.Infrastructure.Auth;
 using Basil.Application.Multiplayer.Handlers.Lifecycle;
+using Basil.Host.Api.Auth;
 using Basil.Host.Api.Shared.Http;
 using Basil.Host.Api.Shared.Http.Middleware;
 using Basil.Host.Api.Shared.Http.OpenApi;
-using Basil.Host.Api.Auth;
 
 namespace Basil.Host.Api.Multiplayer.Endpoints;
 
@@ -22,13 +21,13 @@ internal static class MatchCloseEndpoints
 				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
+				if (match is null) return Results.NotFound(new ErrorResponse("Room not found."));
 
 				await using (await match.BeginMutationAsync(cancellationToken))
 				{
 					var endedAt = DateTimeOffset.UtcNow;
 					await closeHandler.CloseAsync(null, null, match, cancellationToken);
-					context.Items[EnvelopeMiddleware.EnvelopeMessageKey] = "Match closed.";
+					context.Items[EnvelopeMiddleware.EnvelopeMessageKey] = "Room closed.";
 					return Results.Json(new MatchClosedView(matchId, endedAt));
 				}
 			})
@@ -41,7 +40,7 @@ internal static class MatchCloseEndpoints
 
 			                 Returns `404 Not Found` if the match isn't currently live.
 			                 """ + AdminKeyNote)
-			.WithTags("Match Close")
+			.WithTags("Room Close")
 			.Produces<MatchClosedView>()
 			.WithExample(StatusCodes.Status200OK, new MatchClosedView(42, DateTimeOffset.Parse("2026-07-20T14:30:00Z")))
 			.ProducesProblem(StatusCodes.Status404NotFound);

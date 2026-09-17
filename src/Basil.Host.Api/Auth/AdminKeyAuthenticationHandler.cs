@@ -1,11 +1,9 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using Basil.Application.Auth;
 using Basil.Application.Shared.Http;
 using Basil.Application.Shared.Json;
-using Basil.Application.Auth;
-using Basil.Host.Api.Shared.Http;
-using Basil.Host.Api.Shared.Http.OpenApi;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 

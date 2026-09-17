@@ -1,21 +1,18 @@
 using Basil.Application.Bot;
 using Basil.Application.Irc;
 using Basil.Application.Multiplayer;
+using Basil.Application.Multiplayer.Handlers.Slots;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Eventing;
-using Basil.Domain.Client;
-using Basil.Domain.Multiplayer;
+using Basil.Application.Users;
+using Basil.Domain.Multiplayer.Records;
+using Basil.Domain.Multiplayer.Runtime;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Auth;
-using Basil.Infrastructure.Bot;
-using Basil.Application.Multiplayer.Handlers.Slots;
+using Basil.Host.Api.Auth;
 using Basil.Host.Api.Shared.Http;
 using Basil.Host.Api.Shared.Http.OpenApi;
-using Basil.Infrastructure.Shared.Sessions;
-using Basil.Application.Users;
 using Microsoft.AspNetCore.Mvc;
-using Basil.Host.Api.Auth;
 
 namespace Basil.Host.Api.Multiplayer.Endpoints;
 
@@ -33,7 +30,7 @@ internal static class MatchSlotEndpoints
 				IUserRepository users, CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
+				if (match is null) return Results.NotFound(new ErrorResponse("Room not found."));
 
 				return Results.Json(
 					await MatchLiveSnapshotBuilder.BuildSlots(match, gameRegistry, ircRegistry, users,
@@ -49,7 +46,7 @@ internal static class MatchSlotEndpoints
 
 			                 Returns `404 Not Found` if the match isn't currently live.
 			                 """)
-			.WithTags("Match Slots")
+			.WithTags("Room Slots")
 			.Produces<MatchSlotsView>()
 			.WithExample(StatusCodes.Status200OK, SampleSlots())
 			.ProducesProblem(StatusCodes.Status404NotFound);
@@ -73,11 +70,11 @@ internal static class MatchSlotEndpoints
 
 			                 Returns `409 Conflict` if the match isn't currently live.
 			                 """)
-			.WithTags("Match Slots")
+			.WithTags("Room Slots")
 			.Produces<MatchSlotsView>()
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
 			.WithExample(StatusCodes.Status200OK, SampleSlots())
-			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Match is not live"));
+			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Room is not live"));
 
 		group.MapPut("/matches/{matchId:numericid}/slots", (int matchId, ReplaceSlotsRequest body,
 					IMatchRegistry matchRegistry,
@@ -97,7 +94,7 @@ internal static class MatchSlotEndpoints
 
 			                 Returns `400 Bad Request` if an entry sets both `userId` and `locked: true` or the same `userId` is assigned to more than one slot, `409 Conflict` if the payload's player set doesn't match the match's current occupants exactly or any `userId` isn't currently seated somewhere in this match, or `404 Not Found` if the match isn't currently live.
 			                 """ + AdminKeyNote)
-			.WithTags("Match Slots")
+			.WithTags("Room Slots")
 			.Produces<MatchSlotsView>()
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
@@ -114,7 +111,7 @@ internal static class MatchSlotEndpoints
 				MatchMembership matchMembership, CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
+				if (match is null) return Results.NotFound(new ErrorResponse("Room not found."));
 
 				var userIds = body.UserIds;
 				if (userIds.Count == 0) return Results.BadRequest(new ErrorResponse("userIds is required."));
@@ -140,8 +137,9 @@ internal static class MatchSlotEndpoints
 
 				await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 				{
-					var sender = (match.HostId is { } hostId
-						             ? (UserSession?)gameRegistry.GetByUserId(hostId) ?? ircRegistry.GetByUserId(hostId)
+					var sender = (match.Host is { } hostUser
+						             ? (UserSession?)gameRegistry.GetByUserId(hostUser.Id) ??
+						               ircRegistry.GetByUserId(hostUser.Id)
 						             : null) ??
 					             (UserSession?)gameRegistry.GetByUserId(BotBootstrapService.BotId) ??
 					             ircRegistry.GetByUserId(BotBootstrapService.BotId);
@@ -211,7 +209,7 @@ internal static class MatchSlotEndpoints
 
 			                 Returns `400 Bad Request` if `userIds` is empty, or `404 Not Found` if the match isn't currently live.
 			                 """ + AdminKeyNote)
-			.WithTags("Match Slots")
+			.WithTags("Room Slots")
 			.Produces<IReadOnlyList<InviteResult>>()
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
 			.WithExample(StatusCodes.Status200OK, new List<InviteResult>
@@ -229,7 +227,7 @@ internal static class MatchSlotEndpoints
 				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
+				if (match is null) return Results.NotFound(new ErrorResponse("Room not found."));
 
 				var targetUser = await users.FetchByIdAsync(body.UserId, cancellationToken);
 				if (targetUser is null)
@@ -269,7 +267,7 @@ internal static class MatchSlotEndpoints
 
 			                 Returns `400 Bad Request` if `userId` is not registered, not currently present in this match, is a referee (remove referee status first), or is BasilBot, or `404 Not Found` if the match isn't currently live.
 			                 """ + AdminKeyNote)
-			.WithTags("Match Slots")
+			.WithTags("Room Slots")
 			.Produces<MatchSlotsView>()
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
 			.WithExample(StatusCodes.Status200OK, SampleSlots())
@@ -281,12 +279,12 @@ internal static class MatchSlotEndpoints
 	{
 		var slots = new List<MatchSlotView>(16);
 		for (var i = 0; i < 16; i++)
-			slots.Add(new MatchSlotView(i + 1, null, SlotStatus.Open, null, null, null, null));
-		slots[0] = new MatchSlotView(1, new UserBrief(7, "Alice", Country.Us), SlotStatus.NotReady, MatchTeam.Red,
+			slots.Add(new MatchSlotView(i + 1, null, RoomSlotStatus.Open, null, null, null, null));
+		slots[0] = new MatchSlotView(1, new UserBrief(7, "Alice", Country.Us), RoomSlotStatus.NotReady, MatchTeam.Red,
 			Mods.NoMod, false, false);
-		slots[1] = new MatchSlotView(2, new UserBrief(9, "Carol", Country.Ca), SlotStatus.Ready, MatchTeam.Blue,
+		slots[1] = new MatchSlotView(2, new UserBrief(9, "Carol", Country.Ca), RoomSlotStatus.Ready, MatchTeam.Blue,
 			Mods.NoMod, true, false);
-		slots[15] = new MatchSlotView(16, null, SlotStatus.Locked, null, null, null, null);
+		slots[15] = new MatchSlotView(16, null, RoomSlotStatus.Locked, null, null, null, null);
 		return new MatchSlotsView(slots);
 	}
 
@@ -301,7 +299,7 @@ internal static class MatchSlotEndpoints
 		SetSlotsHandler setSlotsHandler, CancellationToken cancellationToken)
 	{
 		var match = matchRegistry.GetByDbId(matchId);
-		if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
+		if (match is null) return Results.NotFound(new ErrorResponse("Room not found."));
 
 		foreach (var slot in slots)
 			if (slot.Index is < 1 or > 16)

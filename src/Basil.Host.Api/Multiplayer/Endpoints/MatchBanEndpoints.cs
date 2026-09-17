@@ -2,15 +2,12 @@ using Basil.Application.Irc;
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Eventing;
-using Basil.Domain.Client;
+using Basil.Application.Users;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Auth;
+using Basil.Host.Api.Auth;
 using Basil.Host.Api.Shared.Http;
 using Basil.Host.Api.Shared.Http.OpenApi;
-using Basil.Infrastructure.Shared.Sessions;
-using Basil.Application.Users;
 using Microsoft.AspNetCore.Mvc;
-using Basil.Host.Api.Auth;
 
 namespace Basil.Host.Api.Multiplayer.Endpoints;
 
@@ -28,7 +25,7 @@ internal static class MatchBanEndpoints
 				IUserRepository users, CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
+				if (match is null) return Results.NotFound(new ErrorResponse("Room not found."));
 
 				return Results.Json(
 					await MatchLiveSnapshotBuilder.BuildBans(match, gameRegistry, ircRegistry, users,
@@ -44,7 +41,7 @@ internal static class MatchBanEndpoints
 
 			                 Returns `404 Not Found` if the match isn't currently live.
 			                 """)
-			.WithTags("Match Bans")
+			.WithTags("Room Bans")
 			.Produces<MatchBansView>()
 			.WithExample(StatusCodes.Status200OK, new MatchBansView([new UserBrief(21, "Mallory", Country.Ca)]))
 			.ProducesProblem(StatusCodes.Status404NotFound);
@@ -68,11 +65,11 @@ internal static class MatchBanEndpoints
 
 			                 Returns `409 Conflict` if the match isn't currently live.
 			                 """)
-			.WithTags("Match Bans")
+			.WithTags("Room Bans")
 			.Produces<MatchBansView>()
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
 			.WithExample(StatusCodes.Status200OK, new MatchBansView([new UserBrief(21, "Mallory", Country.Ca)]))
-			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Match is not live"));
+			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Room is not live"));
 
 		group.MapPut("/matches/{matchId:numericid}/ban", async (int matchId, ReplaceBansRequest body,
 				IMatchRegistry matchRegistry, ISessionRegistry<GameSession> gameRegistry,
@@ -81,7 +78,7 @@ internal static class MatchBanEndpoints
 				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
+				if (match is null) return Results.NotFound(new ErrorResponse("Room not found."));
 
 				var unknownId = await FirstUnknownUserIdAsync(body.UserIds, users, cancellationToken);
 				if (unknownId is { } bad)
@@ -113,7 +110,7 @@ internal static class MatchBanEndpoints
 
 			                 Returns `400 Bad Request` if any id is not a registered user or is a referee, or `404 Not Found` if the match isn't currently live.
 			                 """ + AdminKeyNote)
-			.WithTags("Match Bans")
+			.WithTags("Room Bans")
 			.Produces<MatchBansView>()
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
 			.WithExample(StatusCodes.Status200OK, new MatchBansView([new UserBrief(21, "Mallory", Country.Ca)]))
@@ -127,7 +124,7 @@ internal static class MatchBanEndpoints
 				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
+				if (match is null) return Results.NotFound(new ErrorResponse("Room not found."));
 
 				var unknownId = await FirstUnknownUserIdAsync(body.UserIds, users, cancellationToken);
 				if (unknownId is { } bad)
@@ -159,7 +156,7 @@ internal static class MatchBanEndpoints
 
 			                 Returns `400 Bad Request` if any id is not a registered user or is a referee, or `404 Not Found` if the match isn't currently live.
 			                 """ + AdminKeyNote)
-			.WithTags("Match Bans")
+			.WithTags("Room Bans")
 			.Produces<MatchBansView>()
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
 			.WithExample(StatusCodes.Status200OK,
@@ -172,7 +169,7 @@ internal static class MatchBanEndpoints
 				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
+				if (match is null) return Results.NotFound(new ErrorResponse("Room not found."));
 				if (body.UserIds.Count == 0) return Results.BadRequest(new ErrorResponse("userIds is required."));
 
 				await using (var mutation = await match.BeginMutationAsync(cancellationToken))
@@ -198,7 +195,7 @@ internal static class MatchBanEndpoints
 
 			                 Returns `200 OK` even if some targets failed -- see each result's `ok`/`error`. Returns `400 Bad Request` if `userIds` is empty, or `404 Not Found` if the match isn't currently live.
 			                 """ + AdminKeyNote)
-			.WithTags("Match Bans")
+			.WithTags("Room Bans")
 			.Produces<IReadOnlyList<BanRemovalResult>>()
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
 			.WithExample(StatusCodes.Status200OK, new List<BanRemovalResult>
@@ -237,7 +234,7 @@ internal static class MatchBanEndpoints
 	private static int? FirstRefereeUserId(IReadOnlyCollection<int> userIds, MatchSession match)
 	{
 		foreach (var userId in userIds)
-			if (match.IsReferee(userId))
+			if (match.Referees.Any(r => r.Id == userId) || match.Creator?.Id == userId)
 				return userId;
 
 		return null;

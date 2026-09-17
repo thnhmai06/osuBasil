@@ -5,8 +5,6 @@ using Basil.Application.Sessions;
 using Basil.Application.Shared.Eventing;
 using Basil.Application.Shared.Json;
 using Basil.Application.Spectating;
-using Basil.Host.Api.Shared.Http;
-using Basil.Infrastructure.Shared.Sessions;
 
 namespace Basil.Host.Api.Multiplayer;
 
@@ -20,6 +18,12 @@ namespace Basil.Host.Api.Multiplayer;
 /// </remarks>
 internal static class MatchLiveRoutes
 {
+	/// <summary>
+	///     How often buffered chat lines are flushed to each connection (Issue #4: "Buffer messages
+	///     per connection and send them every second to reduce load").
+	/// </summary>
+	private static readonly TimeSpan ChatFlushInterval = TimeSpan.FromSeconds(1);
+
 	/// <summary>
 	///     Streams live match updates for the main match state, interleaved with every player's live
 	///     gameplay updates during a round.
@@ -55,7 +59,10 @@ internal static class MatchLiveRoutes
 			"main", readLatestSnapshot, cancellationToken));
 	}
 
-	/// <summary>Forwards every event on <paramref name="subscription" /> to <paramref name="publish" /> as <paramref name="eventType" />.</summary>
+	/// <summary>
+	///     Forwards every event on <paramref name="subscription" /> to <paramref name="publish" /> as
+	///     <paramref name="eventType" />.
+	/// </summary>
 	private static async Task ForwardAsync(LiveSubscription subscription, string eventType,
 		Action<string, byte[]> publish)
 	{
@@ -183,17 +190,11 @@ internal static class MatchLiveRoutes
 
 				void InputHandler(int playerId, byte[] payload)
 				{
-					if (match.Slots[slotIndex].PlayerId == playerId) publish("input", payload);
+					if (match.Slots[slotIndex].Player?.Id == playerId) publish("input", payload);
 				}
 			},
 			"slot", readLatestSlotSnapshot, cancellationToken));
 	}
-
-	/// <summary>
-	///     How often buffered chat lines are flushed to each connection (Issue #4: "Buffer messages
-	///     per connection and send them every second to reduce load").
-	/// </summary>
-	private static readonly TimeSpan ChatFlushInterval = TimeSpan.FromSeconds(1);
 
 	/// <summary>
 	///     Streams the chat said in a match's own channel.
@@ -242,7 +243,10 @@ internal static class MatchLiveRoutes
 
 			var unsubscribe = subscribe(payload =>
 			{
-				lock (bufferLock) buffer.Add(JsonNode.Parse(payload));
+				lock (bufferLock)
+				{
+					buffer.Add(JsonNode.Parse(payload));
+				}
 			});
 
 			var timer = new PeriodicTimer(flushInterval);

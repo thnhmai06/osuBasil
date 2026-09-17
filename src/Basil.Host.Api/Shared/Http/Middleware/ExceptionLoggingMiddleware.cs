@@ -17,7 +17,6 @@ namespace Basil.Host.Api.Shared.Http.Middleware;
 ///     long-poll clients disconnect constantly, e.g., on game exit or network hiccup. That's
 ///     expected traffic noise, not a bug, so it's logged at Debug and swallowed, not logged as Error
 ///     and rethrown.
-///
 ///     A request parameter that fails to bind (such as a route id overflowing <see cref="int" />)
 ///     surfaces as <see cref="BadHttpRequestException" /> instead of a 500: it carries its own,
 ///     already-correct client-error status code, so it is enveloped with that status and logged at

@@ -8,15 +8,13 @@ using Basil.Application.Shared.Eventing;
 using Basil.Application.Shared.Http;
 using Basil.Application.Spectating;
 using Basil.Application.Users;
-using Basil.Domain.Client;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Auth;
+using Basil.Host.Api.Auth;
 using Basil.Host.Api.Shared.Http;
 using Basil.Host.Api.Shared.Http.OpenApi;
 using Basil.Host.Api.Spectating;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using Basil.Host.Api.Auth;
 
 // ReSharper disable ClassNeverInstantiated.Global
 // ReSharper disable MemberCanBePrivate.Global
@@ -362,7 +360,11 @@ internal static class UserRoutes
 
 	private static User SampleUser()
 	{
-		return new User(7, "Alice", Country.Vn, UserPrivileges.Unrestricted | UserPrivileges.Verified, null);
+		return new User
+		{
+			Id = 7, Name = "Alice", Country = Country.Vn,
+			Privilege = UserPrivileges.Unrestricted | UserPrivileges.Verified
+		};
 	}
 
 	private static async Task<IResult> HandleGetUser(int userId, IUserRepository users,

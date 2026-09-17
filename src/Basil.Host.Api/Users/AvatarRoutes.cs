@@ -1,6 +1,6 @@
+using Basil.Application.Bot;
 using Basil.Application.Shared.Configuration;
 using Basil.Application.Shared.Http;
-using Basil.Application.Bot;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Host.Api.Users;

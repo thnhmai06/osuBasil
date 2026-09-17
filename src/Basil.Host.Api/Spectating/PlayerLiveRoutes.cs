@@ -3,8 +3,6 @@ using Basil.Application.Sessions;
 using Basil.Application.Shared.Eventing;
 using Basil.Application.Shared.Json;
 using Basil.Application.Spectating;
-using Basil.Host.Api.Shared.Http;
-using Basil.Infrastructure.Shared.Sessions;
 
 namespace Basil.Host.Api.Spectating;
 

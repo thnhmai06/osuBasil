@@ -1,10 +1,9 @@
 using Basil.Application.Multiplayer;
-using Basil.Infrastructure.Auth;
 using Basil.Application.Multiplayer.Handlers.Lifecycle;
+using Basil.Host.Api.Auth;
 using Basil.Host.Api.Shared.Http;
 using Basil.Host.Api.Shared.Http.Middleware;
 using Basil.Host.Api.Shared.Http.OpenApi;
-using Basil.Host.Api.Auth;
 
 namespace Basil.Host.Api.Multiplayer.Endpoints;
 
@@ -22,16 +21,16 @@ internal static class MatchAbortEndpoints
 				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
+				if (match is null) return Results.NotFound(new ErrorResponse("Room not found."));
 
 				await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 				{
 					var abortedAt = DateTimeOffset.UtcNow;
 					var result = await abortHandler.AbortAsync(match, mutation, cancellationToken);
 					if (result == AbortHandler.AbortResult.NotInProgress)
-						return Results.Conflict(new ErrorResponse("Match is not in progress."));
+						return Results.Conflict(new ErrorResponse("Room is not in progress."));
 
-					context.Items[EnvelopeMiddleware.EnvelopeMessageKey] = "Match aborted.";
+					context.Items[EnvelopeMiddleware.EnvelopeMessageKey] = "Room aborted.";
 					return Results.Json(new MatchAbortedView(matchId, abortedAt));
 				}
 			})
@@ -46,12 +45,12 @@ internal static class MatchAbortEndpoints
 
 			                 Returns `409 Conflict` if the match is not in progress, or `404 Not Found` if the match isn't currently live.
 			                 """ + AdminKeyNote)
-			.WithTags("Match Abort")
+			.WithTags("Room Abort")
 			.Produces<MatchAbortedView>()
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
 			.WithExample(StatusCodes.Status200OK,
 				new MatchAbortedView(42, DateTimeOffset.Parse("2026-07-20T14:30:00Z")))
-			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Match is not in progress."))
+			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Room is not in progress."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 	}
 }

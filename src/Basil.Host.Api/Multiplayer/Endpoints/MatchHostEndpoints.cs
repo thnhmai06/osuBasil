@@ -2,14 +2,11 @@ using Basil.Application.Irc;
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Eventing;
-using Basil.Domain.Client;
+using Basil.Application.Users;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Auth;
+using Basil.Host.Api.Auth;
 using Basil.Host.Api.Shared.Http;
 using Basil.Host.Api.Shared.Http.OpenApi;
-using Basil.Infrastructure.Shared.Sessions;
-using Basil.Application.Users;
-using Basil.Host.Api.Auth;
 
 namespace Basil.Host.Api.Multiplayer.Endpoints;
 
@@ -27,7 +24,7 @@ internal static class MatchHostEndpoints
 				IUserRepository users, CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
+				if (match is null) return Results.NotFound(new ErrorResponse("Room not found."));
 
 				return Results.Json(
 					await MatchLiveSnapshotBuilder.BuildHost(match, gameRegistry, ircRegistry, users,
@@ -43,7 +40,7 @@ internal static class MatchHostEndpoints
 
 			                 Returns `404 Not Found` if the match isn't currently live.
 			                 """)
-			.WithTags("Match Hosts")
+			.WithTags("Room Hosts")
 			.Produces<MatchHostView>()
 			.WithExample(StatusCodes.Status200OK, new MatchHostView(new UserBrief(7, "Alice", Country.Us)))
 			.ProducesProblem(StatusCodes.Status404NotFound);
@@ -67,11 +64,11 @@ internal static class MatchHostEndpoints
 
 			                 Returns `409 Conflict` if the match isn't currently live.
 			                 """)
-			.WithTags("Match Hosts")
+			.WithTags("Room Hosts")
 			.Produces<MatchHostView>()
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
 			.WithExample(StatusCodes.Status200OK, new MatchHostView(new UserBrief(7, "Alice", Country.Us)))
-			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Match is not live"));
+			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Room is not live"));
 
 		group.MapPut("/matches/{matchId:numericid}/hosts", async (int matchId, SetHostRequest body,
 				IMatchRegistry matchRegistry, ISessionRegistry<GameSession> gameRegistry,
@@ -79,7 +76,7 @@ internal static class MatchHostEndpoints
 				MatchControlService matchControl, CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
+				if (match is null) return Results.NotFound(new ErrorResponse("Room not found."));
 
 				var target = gameRegistry.GetByUserId(body.UserId);
 				if (target is null)
@@ -107,7 +104,7 @@ internal static class MatchHostEndpoints
 			                 Returns `400 Bad Request` if `userId` isn't online or isn't seated in this match, or
 			                 `404 Not Found` if the match isn't currently live.
 			                 """ + AdminKeyNote)
-			.WithTags("Match Hosts")
+			.WithTags("Room Hosts")
 			.Produces<MatchHostView>()
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
 			.WithExample(StatusCodes.Status200OK, new MatchHostView(new UserBrief(7, "Alice", Country.Us)))
@@ -120,7 +117,7 @@ internal static class MatchHostEndpoints
 				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
+				if (match is null) return Results.NotFound(new ErrorResponse("Room not found."));
 
 				await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 				{
@@ -139,7 +136,7 @@ internal static class MatchHostEndpoints
 
 			                 Returns `404 Not Found` if the match isn't currently live.
 			                 """ + AdminKeyNote)
-			.WithTags("Match Hosts")
+			.WithTags("Room Hosts")
 			.Produces<MatchHostView>()
 			.WithExample(StatusCodes.Status200OK, new MatchHostView(null))
 			.ProducesProblem(StatusCodes.Status404NotFound);

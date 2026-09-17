@@ -14,7 +14,7 @@ internal static class MatchReportEndpoints
 				CancellationToken cancellationToken) =>
 			{
 				var report = await reportService.BuildAsync(matchId, cancellationToken);
-				return report is null ? Results.NotFound(new ErrorResponse("Match not found.")) : Results.Json(report);
+				return report is null ? Results.NotFound(new ErrorResponse("Room not found.")) : Results.Json(report);
 			})
 			.WithGroupName("basilapi")
 			.WithName("getMatchReport")
@@ -26,7 +26,7 @@ internal static class MatchReportEndpoints
 
 			                 Returns `404 Not Found` if the match does not exist.
 			                 """)
-			.WithTags("Match Report")
+			.WithTags("Room Report")
 			.Produces<MatchReport>()
 			.WithExample(StatusCodes.Status200OK, MatchSampleFixtures.SampleMatchReport())
 			.ProducesProblem(StatusCodes.Status404NotFound);

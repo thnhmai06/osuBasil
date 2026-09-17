@@ -1,12 +1,11 @@
 using Basil.Application.Multiplayer;
-using Basil.Application.Shared.Eventing;
-using Basil.Infrastructure.Auth;
 using Basil.Application.Multiplayer.Handlers.Countdown;
 using Basil.Application.Multiplayer.Handlers.Lifecycle;
+using Basil.Application.Shared.Eventing;
+using Basil.Host.Api.Auth;
 using Basil.Host.Api.Shared.Http;
 using Basil.Host.Api.Shared.Http.Middleware;
 using Basil.Host.Api.Shared.Http.OpenApi;
-using Basil.Host.Api.Auth;
 
 namespace Basil.Host.Api.Multiplayer.Endpoints;
 
@@ -22,7 +21,7 @@ internal static class MatchTimerEndpoints
 		group.MapGet("/matches/{matchId:numericid}/timer", (int matchId, IMatchRegistry matchRegistry) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
+				if (match is null) return Results.NotFound(new ErrorResponse("Room not found."));
 
 				return Results.Json(MatchLiveSnapshotBuilder.BuildTimer(match));
 			})
@@ -36,7 +35,7 @@ internal static class MatchTimerEndpoints
 
 			                 Returns `404 Not Found` if the match isn't currently live.
 			                 """)
-			.WithTags("Match Timer")
+			.WithTags("Room Timer")
 			.Produces<MatchTimerView>()
 			.WithExample(StatusCodes.Status200OK,
 				new MatchTimerView(true, 25, true, DateTimeOffset.Parse("2026-07-20T14:30:00Z"),
@@ -62,20 +61,20 @@ internal static class MatchTimerEndpoints
 
 			                 Returns `409 Conflict` if the match isn't currently live.
 			                 """)
-			.WithTags("Match Timer")
+			.WithTags("Room Timer")
 			.Produces<MatchTimerLiveView>()
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
 			.WithExample(StatusCodes.Status200OK,
 				new MatchTimerLiveView(true, true, DateTimeOffset.Parse("2026-07-20T14:30:00Z"),
 					DateTimeOffset.Parse("2026-07-20T14:30:30Z")))
-			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Match is not live"));
+			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Room is not live"));
 
 		group.MapPost("/matches/{matchId:numericid}/timer", async (int matchId, StartTimerRequest body,
 				IMatchRegistry matchRegistry, StartHandler startHandler, TimerHandler timerHandler,
 				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
+				if (match is null) return Results.NotFound(new ErrorResponse("Room not found."));
 
 				await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 				{
@@ -85,13 +84,13 @@ internal static class MatchTimerEndpoints
 						return result switch
 						{
 							StartHandler.StartResult.AlreadyInProgress =>
-								Results.Conflict(new ErrorResponse("Match is already in progress.")),
+								Results.Conflict(new ErrorResponse("Room is already in progress.")),
 							StartHandler.StartResult.BeatmapMissing =>
 								Results.Conflict(new ErrorResponse(
-									"Match cannot start because the beatmap does not exist on the server.")),
+									"Room cannot start because the beatmap does not exist on the server.")),
 							StartHandler.StartResult.NoOccupiedSlots =>
 								Results.Conflict(new ErrorResponse(
-									"Match cannot start because the room has no players.")),
+									"Room cannot start because the room has no players.")),
 							_ => Results.Json(MatchLiveSnapshotBuilder.BuildTimer(match))
 						};
 					}
@@ -111,13 +110,13 @@ internal static class MatchTimerEndpoints
 
 			                 Returns `409 Conflict` if the match is already in progress, has no beatmap set, or has no players seated, or `404 Not Found` if the match isn't currently live.
 			                 """ + AdminKeyNote)
-			.WithTags("Match Timer")
+			.WithTags("Room Timer")
 			.Produces<MatchTimerView>()
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
 			.WithExample(StatusCodes.Status200OK,
 				new MatchTimerView(true, 30, true, DateTimeOffset.Parse("2026-07-20T14:30:00Z"),
 					DateTimeOffset.Parse("2026-07-20T14:30:30Z")))
-			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Match is already in progress."))
+			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Room is already in progress."))
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
 		group.MapDelete("/matches/{matchId:numericid}/timer", async (int matchId, HttpContext context,
@@ -125,7 +124,7 @@ internal static class MatchTimerEndpoints
 				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
+				if (match is null) return Results.NotFound(new ErrorResponse("Room not found."));
 
 				await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 				{
@@ -146,7 +145,7 @@ internal static class MatchTimerEndpoints
 
 			                 Returns `409 Conflict` if no countdown is running, or `404 Not Found` if the match isn't currently live.
 			                 """ + AdminKeyNote)
-			.WithTags("Match Timer")
+			.WithTags("Room Timer")
 			.Produces<MatchTimerView>()
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
 			.WithExample(StatusCodes.Status200OK, new MatchTimerView(false, null, false))

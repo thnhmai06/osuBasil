@@ -6,7 +6,7 @@ namespace Basil.Host.Api.Multiplayer;
 ///     Registers the REST endpoints for listing, creating, and streaming multiplayer matches.
 /// </summary>
 /// <remarks>
-///     Match listings, settings, and live streams are publicly readable, while creating a match and
+///     Room listings, settings, and live streams are publicly readable, while creating a match and
 ///     modifying its settings require administrator authorization. Live streams are dedicated
 ///     server-sent-events channels that only open for matches that are currently live.
 /// </remarks>

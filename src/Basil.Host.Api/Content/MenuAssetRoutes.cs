@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
-using Basil.Infrastructure.Content;
 using Basil.Host.Api.Shared.Http;
 using Basil.Host.Api.Shared.Http.OpenApi;
+using Basil.Infrastructure.Content;
 
 // ReSharper disable ClassNeverInstantiated.Global
 

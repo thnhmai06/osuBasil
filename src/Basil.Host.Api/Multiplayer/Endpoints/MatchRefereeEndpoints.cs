@@ -2,15 +2,12 @@ using Basil.Application.Irc;
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Eventing;
-using Basil.Domain.Client;
+using Basil.Application.Users;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Auth;
+using Basil.Host.Api.Auth;
 using Basil.Host.Api.Shared.Http;
 using Basil.Host.Api.Shared.Http.OpenApi;
-using Basil.Infrastructure.Shared.Sessions;
-using Basil.Application.Users;
 using Microsoft.AspNetCore.Mvc;
-using Basil.Host.Api.Auth;
 
 namespace Basil.Host.Api.Multiplayer.Endpoints;
 
@@ -28,7 +25,7 @@ internal static class MatchRefereeEndpoints
 				IUserRepository users, CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
+				if (match is null) return Results.NotFound(new ErrorResponse("Room not found."));
 
 				return Results.Json(
 					await MatchLiveSnapshotBuilder.BuildRefs(match, gameRegistry, ircRegistry, users,
@@ -44,7 +41,7 @@ internal static class MatchRefereeEndpoints
 
 			                 Returns `404 Not Found` if the match isn't currently live.
 			                 """)
-			.WithTags("Match Referees")
+			.WithTags("Room Referees")
 			.Produces<MatchRefereesView>()
 			.WithExample(StatusCodes.Status200OK,
 				new MatchRefereesView([new UserBrief(8, "Bob", Country.Gb), new UserBrief(13, "Erin", Country.Ie)]))
@@ -69,12 +66,12 @@ internal static class MatchRefereeEndpoints
 
 			                 Returns `409 Conflict` if the match isn't currently live.
 			                 """)
-			.WithTags("Match Referees")
+			.WithTags("Room Referees")
 			.Produces<MatchRefereesView>()
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
 			.WithExample(StatusCodes.Status200OK,
 				new MatchRefereesView([new UserBrief(8, "Bob", Country.Gb), new UserBrief(13, "Erin", Country.Ie)]))
-			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Match is not live"));
+			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Room is not live"));
 
 		group.MapPut("/matches/{matchId:numericid}/refs", async (int matchId, ReplaceRefereesRequest body,
 				IMatchRegistry matchRegistry, ISessionRegistry<GameSession> gameRegistry,
@@ -82,7 +79,7 @@ internal static class MatchRefereeEndpoints
 				MatchControlService matchControl, CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
+				if (match is null) return Results.NotFound(new ErrorResponse("Room not found."));
 
 				var (targets, error) = ResolveOnlineTargets(body.UserIds, gameRegistry, ircRegistry);
 				if (error is not null) return error;
@@ -112,7 +109,7 @@ internal static class MatchRefereeEndpoints
 
 			                 Returns `400 Bad Request` if any `userId` isn't online, `409 Conflict` if the result would leave the match with no referees or would drop the match's creator from the list, or `404 Not Found` if the match isn't currently live.
 			                 """ + AdminKeyNote)
-			.WithTags("Match Referees")
+			.WithTags("Room Referees")
 			.Produces<MatchRefereesView>()
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
@@ -130,7 +127,7 @@ internal static class MatchRefereeEndpoints
 				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
+				if (match is null) return Results.NotFound(new ErrorResponse("Room not found."));
 
 				var (targets, error) = ResolveOnlineTargets(body.UserIds, gameRegistry, ircRegistry);
 				if (error is not null) return error;
@@ -163,7 +160,7 @@ internal static class MatchRefereeEndpoints
 
 			                 Returns `200 OK` even if some targets failed -- see each result's `ok`/`error`. Returns `400 Bad Request` if any `userId` isn't online, or `404 Not Found` if the match isn't currently live.
 			                 """ + AdminKeyNote)
-			.WithTags("Match Referees")
+			.WithTags("Room Referees")
 			.Produces<IReadOnlyList<RefereeAdditionResult>>()
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
 			.WithExample(StatusCodes.Status200OK, new List<RefereeAdditionResult>
@@ -181,7 +178,7 @@ internal static class MatchRefereeEndpoints
 				CancellationToken cancellationToken) =>
 			{
 				var match = matchRegistry.GetByDbId(matchId);
-				if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
+				if (match is null) return Results.NotFound(new ErrorResponse("Room not found."));
 				if (body.UserIds.Count == 0) return Results.BadRequest(new ErrorResponse("userIds is required."));
 
 				await using (var mutation = await match.BeginMutationAsync(cancellationToken))
@@ -224,7 +221,7 @@ internal static class MatchRefereeEndpoints
 
 			                 Returns `200 OK` even if some targets failed -- see each result's `ok`/`error`. Returns `400 Bad Request` if `userIds` is empty, or `404 Not Found` if the match isn't currently live.
 			                 """ + AdminKeyNote)
-			.WithTags("Match Referees")
+			.WithTags("Room Referees")
 			.Produces<IReadOnlyList<RefereeRemovalResult>>()
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
 			.WithExample(StatusCodes.Status200OK, new List<RefereeRemovalResult>

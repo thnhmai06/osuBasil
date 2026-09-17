@@ -2,13 +2,12 @@ using Basil.Application.Beatmaps;
 using Basil.Application.Shared.Configuration;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
-using Basil.Infrastructure.Auth;
-using Basil.Infrastructure.Beatmaps;
+using Basil.Host.Api.Auth;
 using Basil.Host.Api.Shared.Http;
 using Basil.Host.Api.Shared.Http.OpenApi;
+using Basil.Infrastructure.Beatmaps;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using Basil.Host.Api.Auth;
 
 // ReSharper disable ClassNeverInstantiated.Global
 // ReSharper disable MemberCanBePrivate.Global

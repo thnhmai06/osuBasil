@@ -1,18 +1,14 @@
+using Basil.Application.Beatmaps;
 using Basil.Application.Irc;
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Eventing;
-using Basil.Domain.Beatmaps;
-using Basil.Domain.Multiplayer;
+using Basil.Application.Users;
+using Basil.Domain.Multiplayer.Records;
 using Basil.Domain.Scores;
-using Basil.Domain.Users;
-using Basil.Infrastructure.Auth;
+using Basil.Host.Api.Auth;
 using Basil.Host.Api.Shared.Http;
 using Basil.Host.Api.Shared.Http.OpenApi;
-using Basil.Infrastructure.Shared.Sessions;
-using Basil.Application.Users;
-using Basil.Application.Beatmaps;
-using Basil.Host.Api.Auth;
 
 namespace Basil.Host.Api.Multiplayer.Endpoints;
 
@@ -38,7 +34,7 @@ internal static class MatchSettingsEndpoints
 
 			                 Returns `404 Not Found` if the match isn't currently live.
 			                 """)
-			.WithTags("Match Settings")
+			.WithTags("Room Settings")
 			.Produces<MatchSettingsView>()
 			.WithExample(StatusCodes.Status200OK, MatchSampleFixtures.SampleSettings())
 			.ProducesProblem(StatusCodes.Status404NotFound);
@@ -54,11 +50,11 @@ internal static class MatchSettingsEndpoints
 
 			                 Returns `409 Conflict` if the match isn't currently live.
 			                 """)
-			.WithTags("Match Settings")
+			.WithTags("Room Settings")
 			.Produces<MatchSettingsView>()
 			.Produces<ErrorResponse>(StatusCodes.Status409Conflict)
 			.WithExample(StatusCodes.Status200OK, MatchSampleFixtures.SampleSettings())
-			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Match is not live"));
+			.WithExample(StatusCodes.Status409Conflict, new ErrorResponse("Room is not live"));
 
 		group.MapPut("/matches/{matchId:numericid}/settings", HandleSettingsReplace)
 			.RequireAuthorization(AdminKeyDefaults.Policy)
@@ -72,7 +68,7 @@ internal static class MatchSettingsEndpoints
 
 			                 Returns `400 Bad Request` if `mapId` doesn't resolve to a known beatmap, or `404 Not Found` if the match isn't currently live.
 			                 """ + AdminKeyNote)
-			.WithTags("Match Settings")
+			.WithTags("Room Settings")
 			.Produces<MatchSettingsView>()
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
 			.WithExample(StatusCodes.Status200OK, MatchSampleFixtures.SampleSettings())
@@ -89,7 +85,7 @@ internal static class MatchSettingsEndpoints
 
 			                 Returns `400 Bad Request` if `mapId` doesn't resolve to a known beatmap, or `404 Not Found` if the match isn't currently live.
 			                 """ + AdminKeyNote)
-			.WithTags("Match Settings")
+			.WithTags("Room Settings")
 			.Produces<MatchSettingsView>()
 			.Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
 			.WithExample(StatusCodes.Status200OK, MatchSampleFixtures.SampleSettings())
@@ -103,7 +99,7 @@ internal static class MatchSettingsEndpoints
 		CancellationToken cancellationToken)
 	{
 		var match = matchRegistry.GetByDbId(matchId);
-		if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
+		if (match is null) return Results.NotFound(new ErrorResponse("Room not found."));
 
 		return Results.Json(
 			await MatchLiveSnapshotBuilder.BuildSettings(match, gameRegistry, ircRegistry, users, beatmaps,
@@ -125,7 +121,7 @@ internal static class MatchSettingsEndpoints
 		IUserRepository users, IBeatmapRepository beatmaps, CancellationToken cancellationToken)
 	{
 		var match = matchRegistry.GetByDbId(matchId);
-		if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
+		if (match is null) return Results.NotFound(new ErrorResponse("Room not found."));
 
 		await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 		{
@@ -155,7 +151,7 @@ internal static class MatchSettingsEndpoints
 		IUserRepository users, IBeatmapRepository beatmaps, CancellationToken cancellationToken)
 	{
 		var match = matchRegistry.GetByDbId(matchId);
-		if (match is null) return Results.NotFound(new ErrorResponse("Match not found."));
+		if (match is null) return Results.NotFound(new ErrorResponse("Room not found."));
 
 		await using (var mutation = await match.BeginMutationAsync(cancellationToken))
 		{
