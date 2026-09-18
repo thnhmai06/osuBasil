@@ -68,8 +68,8 @@ public sealed class MatchCompleteHandler(
 		if (match.Slots.Any(s => s.Status == RoomSlotStatus.Playing)) return;
 
 		var notPlaying = match.Slots
-			.Where(s => s.Player is not null && s.Status != RoomSlotStatus.Complete)
-			.Select(s => s.Player!.Id)
+			.Where(s => s.User is not null && s.Status != RoomSlotStatus.Complete)
+			.Select(s => s.User!.Id)
 			.ToList();
 
 		match.UnreadyPlayers(RoomSlotStatus.Complete);

@@ -39,7 +39,7 @@ public sealed class MatchTransferHostHandler(
 		// it must not still be treated as authoritative once the lock is acquired.
 		if (gameSession.Id != match.Host?.Id) return;
 
-		var target = match.Slots[slotId].Player;
+		var target = match.Slots[slotId].User;
 		if (target is null) return;
 
 		var prevHost = match.Host;

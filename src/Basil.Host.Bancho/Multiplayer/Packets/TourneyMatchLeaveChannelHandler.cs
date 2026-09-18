@@ -38,7 +38,7 @@ public sealed class TourneyMatchLeaveChannelHandler(
 
 		var match = matchRegistry.GetById(matchId);
 		var sender = userCache.Resolve(gameSession);
-		if (match is null || !match.TourneyClients.Contains(sender)) return Task.CompletedTask;
+		if (match is null || !match.TourneyUsers.Contains(sender)) return Task.CompletedTask;
 
 		using var _ = logger.BeginScope(new Dictionary<string, object> { ["MatchId"] = match.DbId });
 

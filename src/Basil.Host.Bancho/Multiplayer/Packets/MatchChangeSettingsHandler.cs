@@ -59,7 +59,7 @@ public sealed class MatchChangeSettingsHandler(
 			if (freemods)
 			{
 				foreach (var slot in match.Slots)
-					if (slot.Player is not null)
+					if (slot.User is not null)
 						slot.Mods = match.Mods & ~Mods.SpeedChangingMods;
 
 				match.Mods &= Mods.SpeedChangingMods;
@@ -71,7 +71,7 @@ public sealed class MatchChangeSettingsHandler(
 				if (hostSlot is not null) match.Mods |= hostSlot.Mods;
 
 				foreach (var slot in match.Slots)
-					if (slot.Player is not null)
+					if (slot.User is not null)
 						slot.Mods = Mods.NoMod;
 			}
 		}
@@ -118,7 +118,7 @@ public sealed class MatchChangeSettingsHandler(
 				: MatchTeam.Red;
 
 			foreach (var slot in match.Slots)
-				if (slot.Player is not null)
+				if (slot.User is not null)
 					slot.Team = newTeam;
 
 			match.TeamType = newTeamType;

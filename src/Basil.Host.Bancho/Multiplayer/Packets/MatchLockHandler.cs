@@ -42,7 +42,7 @@ public sealed class MatchLockHandler : IPacketHandler
 		}
 		else
 		{
-			if (slot.Player?.Id == gameSession.Id)
+			if (slot.User?.Id == gameSession.Id)
 				// don't allow the host to kick themselves by clicking their own crown.
 				return;
 

@@ -42,7 +42,7 @@ public sealed class TourneyMatchJoinChannelHandler(
 
 		using var _ = logger.BeginScope(new Dictionary<string, object> { ["MatchId"] = match.DbId });
 
-		if (match.Slots.Any(s => s.Player?.Id == gameSession.Id))
+		if (match.Slots.Any(s => s.User?.Id == gameSession.Id))
 			return Task.CompletedTask; // already playing in the match
 
 		var channel = channelRegistry.GetByName(match.ChatChannelName);

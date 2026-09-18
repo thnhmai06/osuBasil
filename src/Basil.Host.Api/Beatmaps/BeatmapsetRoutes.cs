@@ -351,7 +351,7 @@ internal static class BeatmapsetRoutes
 		var resolvedMode = mode is { } m ? (GameMode)m : (GameMode?)null;
 
 		var (p, ps) = Pagination.Normalize(page, pageSize);
-		var filters = BeatmapFilters.From(q);
+		var filters = BeatmapsetQuery.From(q);
 
 		var sets = await beatmaps.SearchAsync(filters, resolvedMode, (p - 1) * ps, ps, cancellationToken);
 		var total = await beatmaps.SearchCountAsync(filters, resolvedMode, cancellationToken);

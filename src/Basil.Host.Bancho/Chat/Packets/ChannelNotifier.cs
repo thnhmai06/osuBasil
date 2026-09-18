@@ -1,3 +1,4 @@
+using Basil.Application.Channels;
 using Basil.Application.Chat;
 using Basil.Application.Irc;
 using Basil.Application.Sessions;

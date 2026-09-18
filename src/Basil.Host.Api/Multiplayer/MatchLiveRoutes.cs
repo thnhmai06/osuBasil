@@ -190,7 +190,7 @@ internal static class MatchLiveRoutes
 
 				void InputHandler(int playerId, byte[] payload)
 				{
-					if (match.Slots[slotIndex].Player?.Id == playerId) publish("input", payload);
+					if (match.Slots[slotIndex].User?.Id == playerId) publish("input", payload);
 				}
 			},
 			"slot", readLatestSlotSnapshot, cancellationToken));

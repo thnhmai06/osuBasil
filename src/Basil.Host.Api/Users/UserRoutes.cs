@@ -381,7 +381,7 @@ internal static class UserRoutes
 			return Results.BadRequest(new ErrorResponse("Missing required query parameter 'q'."));
 
 		var (p, ps) = Pagination.Normalize(page, pageSize);
-		var filters = UserFilters.From(q);
+		var filters = UserQuery.From(q);
 
 		var found = await users.SearchAsync(filters, (p - 1) * ps, ps, cancellationToken);
 		var total = await users.SearchCountAsync(filters, cancellationToken);
