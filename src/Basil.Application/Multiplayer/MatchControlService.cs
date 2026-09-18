@@ -149,7 +149,7 @@ public sealed class MatchControlService(
 		CancellationToken cancellationToken = default)
 	{
 		match.IsPrivate = isPrivate;
-		logger.LogDebug("Room settings changed: MatchId={MatchId} IsPrivate={IsPrivate}", match.DbId, isPrivate);
+		logger.LogDebug("Room settings changed: MatchId={MatchId} IsVisible={IsVisible}", match.DbId, isPrivate);
 		mutation.PublishState();
 		return Task.CompletedTask;
 	}
@@ -467,16 +467,16 @@ public sealed class MatchControlService(
 
 		if (newType is MatchTeamType.HeadToHead or MatchTeamType.TagCoop)
 		{
-			foreach (var slot in match.Slots.Where(s => s.Player is not null))
+			foreach (var slot in match.Slots.Where(s => s.User is not null))
 				slot.Team = MatchTeam.Neutral;
 		}
 		else
 		{
 			var occupied = match.Slots
-				.Where(s => s.Player is not null)
+				.Where(s => s.User is not null)
 				.Select((slot, index) => (slot, index));
 
-			var split = (match.Slots.Count(s => s.Player is not null) + 1) / 2;
+			var split = (match.Slots.Count(s => s.User is not null) + 1) / 2;
 
 			foreach (var (slot, index) in occupied)
 				slot.Team = index < split ? MatchTeam.Red : MatchTeam.Blue;
@@ -667,7 +667,7 @@ public sealed class MatchControlService(
 
 		match.Freemods = true;
 		foreach (var slot in match.Slots)
-			if (slot.Player is not null)
+			if (slot.User is not null)
 				slot.Mods = match.Mods & ~Mods.SpeedChangingMods;
 
 		match.Mods &= Mods.SpeedChangingMods;
@@ -683,7 +683,7 @@ public sealed class MatchControlService(
 		if (hostSlot is not null) match.Mods |= hostSlot.Mods;
 
 		foreach (var slot in match.Slots)
-			if (slot.Player is not null)
+			if (slot.User is not null)
 				slot.Mods = Mods.NoMod;
 	}
 

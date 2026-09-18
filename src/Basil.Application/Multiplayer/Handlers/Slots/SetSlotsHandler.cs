@@ -52,8 +52,8 @@ public sealed class SetSlotsHandler(ILogger<SetSlotsHandler> logger)
 				return Task.FromResult(SetSlotsResult.SlotOccupiedAndLocked);
 
 		var currentOccupantIds = match.Slots
-			.Where(s => s.Player is not null)
-			.Select(s => s.Player!.Id)
+			.Where(s => s.User is not null)
+			.Select(s => s.User!.Id)
 			.ToHashSet();
 
 		var referencedUserIds = entries.Values
@@ -80,7 +80,7 @@ public sealed class SetSlotsHandler(ILogger<SetSlotsHandler> logger)
 
 		// Snapshot every slot's pre-mutation state so a swap (A<->B) can look up each userSession's
 		// origin slot without being affected by the other entry's own mutation.
-		var original = match.Slots.Select(s => (s.Player, s.Status, s.Team, s.Mods)).ToArray();
+		var original = match.Slots.Select(s => (Player: s.User, s.Status, s.Team, s.Mods)).ToArray();
 		var destinationSlots = entries.Where(kv => kv.Value.UserId is not null).Select(kv => kv.Key).ToHashSet();
 
 		// Vacate the previous slot of every moved userSession, unless that slot is itself a destination
@@ -102,7 +102,7 @@ public sealed class SetSlotsHandler(ILogger<SetSlotsHandler> logger)
 			{
 				var oldIndex = Array.FindIndex(original, o => o.Player?.Id == uid);
 				var source = original[oldIndex];
-				slot.Player = source.Player;
+				slot.User = source.Player;
 				slot.Status = source.Status;
 				slot.Mods = source.Mods;
 			}
@@ -110,7 +110,7 @@ public sealed class SetSlotsHandler(ILogger<SetSlotsHandler> logger)
 			if (entry.Team is "Red" or "Blue")
 				slot.Team = entry.Team == "Red" ? MatchTeam.Red : MatchTeam.Blue;
 
-			if (entry.Locked is { } locked && slot.Player is null)
+			if (entry.Locked is { } locked && slot.User is null)
 				slot.Status = locked ? RoomSlotStatus.Locked : RoomSlotStatus.Open;
 		}
 

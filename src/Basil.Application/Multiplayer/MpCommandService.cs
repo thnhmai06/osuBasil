@@ -780,7 +780,7 @@ public sealed class MpCommandService(
 
 		foreach (var (slot, i) in occupied)
 		{
-			var slotPlayer = slot.Player!;
+			var slotPlayer = slot.User!;
 			var tags = new List<string>();
 			if (i == hostSlotId) tags.Add("Host");
 			if (slot.Mods != Mods.NoMod) tags.Add(slot.Mods.ToString());

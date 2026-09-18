@@ -71,7 +71,7 @@ public sealed class MatchSession(
 	/// </summary>
 	public Room State { get; } = new()
 	{
-		SlotId = id,
+		Id = id,
 		Name = name,
 		Password = password,
 		Host = host,
@@ -152,7 +152,7 @@ public sealed class MatchSession(
 	///     Gets the 0 to 63 registry slot this match occupies, which is what the bancho wire protocol uses as the match
 	///     id.
 	/// </summary>
-	public int Id => State.SlotId;
+	public int Id => State.Id;
 
 	/// <summary>Gets or sets the room's name.</summary>
 	public string Name
@@ -266,8 +266,8 @@ public sealed class MatchSession(
 	/// </summary>
 	public bool IsPrivate
 	{
-		get => State.IsPrivate;
-		set => State.IsPrivate = value;
+		get => State.IsVisible;
+		set => State.IsVisible = value;
 	}
 
 	/// <summary>
@@ -395,7 +395,7 @@ public sealed class MatchSession(
 	public IReadOnlyCollection<User> Referees => State.Referees;
 
 	/// <summary>Gets the players whose connections are tourney clients attached to this match.</summary>
-	public IReadOnlyCollection<User> TourneyClients => State.TourneyClients;
+	public IReadOnlyCollection<User> TourneyUsers => State.TourneyUsers;
 
 	/// <summary>Gets the players banned from this match.</summary>
 	public IReadOnlyCollection<User> BannedUsers => State.BannedUsers;
@@ -528,13 +528,13 @@ public sealed class MatchSession(
 
 	/// <summary>
 	///     Gets a value that indicates whether <paramref name="player" /> may issue <c>!mp</c>
-	///     commands on this match. See <see cref="Room.IsReferee" /> for the full rule.
+	///     commands on this match. See <see cref="Room.HasRefereePermission" /> for the full rule.
 	/// </summary>
 	/// <param name="player">The player to check.</param>
 	/// <returns><see langword="true" /> if the player is a referee; otherwise, <see langword="false" />.</returns>
 	public bool IsReferee(User player)
 	{
-		return State.IsReferee(player);
+		return State.HasRefereePermission(player);
 	}
 
 	/// <summary>Gets a value that indicates whether <paramref name="player" /> created this match.</summary>

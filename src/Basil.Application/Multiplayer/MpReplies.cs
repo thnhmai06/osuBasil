@@ -30,45 +30,45 @@ public static class MpReplies
 
 	// ── !mp join ─────────────────────────────────────────────────────────────────────────────
 	/// <summary>Usage line for <c>!mp join</c>.</summary>
-	public static readonly string JoinUsage = LocaleCatalog.Get($"Commands.Mp.Join.{nameof(JoinUsage)}");
+	public static readonly string JoinUsage = LocaleCatalog.Get($"Commands.Mp.Url.{nameof(JoinUsage)}");
 
 	/// <summary>Reply when no live match carries the requested id; <c>{0}</c> is the id.</summary>
 	public static readonly string NoActiveMatchWithId =
-		LocaleCatalog.Get($"Commands.Mp.Join.{nameof(NoActiveMatchWithId)}");
+		LocaleCatalog.Get($"Commands.Mp.Url.{nameof(NoActiveMatchWithId)}");
 
 	/// <summary>Reply when a private room rejects a non-invitee; <c>{0}</c> is the room id.</summary>
 	public static readonly string PrivateRoomJoinDenied =
-		LocaleCatalog.Get($"Commands.Mp.Join.{nameof(PrivateRoomJoinDenied)}");
+		LocaleCatalog.Get($"Commands.Mp.Url.{nameof(PrivateRoomJoinDenied)}");
 
 	/// <summary>Reply when the sender is already seated in another match.</summary>
-	public static readonly string AlreadyInAMatch = LocaleCatalog.Get($"Commands.Mp.Join.{nameof(AlreadyInAMatch)}");
+	public static readonly string AlreadyInAMatch = LocaleCatalog.Get($"Commands.Mp.Url.{nameof(AlreadyInAMatch)}");
 
 	/// <summary>Reply when the sender is banned from the match.</summary>
-	public static readonly string BannedFromMatch = LocaleCatalog.Get($"Commands.Mp.Join.{nameof(BannedFromMatch)}");
+	public static readonly string BannedFromMatch = LocaleCatalog.Get($"Commands.Mp.Url.{nameof(BannedFromMatch)}");
 
 	/// <summary>Reply after joining a match's slots; <c>{0}</c> is the room id, <c>{1}</c> its name.</summary>
-	public static readonly string JoinedMatch = LocaleCatalog.Get($"Commands.Mp.Join.{nameof(JoinedMatch)}");
+	public static readonly string JoinedMatch = LocaleCatalog.Get($"Commands.Mp.Url.{nameof(JoinedMatch)}");
 
 	/// <summary>Reply when the supplied password is wrong.</summary>
 	public static readonly string
-		IncorrectPassword = LocaleCatalog.Get($"Commands.Mp.Join.{nameof(IncorrectPassword)}");
+		IncorrectPassword = LocaleCatalog.Get($"Commands.Mp.Url.{nameof(IncorrectPassword)}");
 
 	/// <summary>Reply when every slot is taken.</summary>
-	public static readonly string MatchIsFull = LocaleCatalog.Get($"Commands.Mp.Join.{nameof(MatchIsFull)}");
+	public static readonly string MatchIsFull = LocaleCatalog.Get($"Commands.Mp.Url.{nameof(MatchIsFull)}");
 
 	/// <summary>Reply when the room is locked.</summary>
-	public static readonly string MatchIsLocked = LocaleCatalog.Get($"Commands.Mp.Join.{nameof(MatchIsLocked)}");
+	public static readonly string MatchIsLocked = LocaleCatalog.Get($"Commands.Mp.Url.{nameof(MatchIsLocked)}");
 
 	/// <summary>Reply when the join failed for an otherwise-unreported reason.</summary>
 	public static readonly string
-		FailedToJoinMatch = LocaleCatalog.Get($"Commands.Mp.Join.{nameof(FailedToJoinMatch)}");
+		FailedToJoinMatch = LocaleCatalog.Get($"Commands.Mp.Url.{nameof(FailedToJoinMatch)}");
 
 	/// <summary>Reply when an IRC session could not join the match's chat channel.</summary>
 	public static readonly string FailedToJoinMatchChat =
-		LocaleCatalog.Get($"Commands.Mp.Join.{nameof(FailedToJoinMatchChat)}");
+		LocaleCatalog.Get($"Commands.Mp.Url.{nameof(FailedToJoinMatchChat)}");
 
 	/// <summary>Reply after an IRC session joins a match's chat; <c>{0}</c> is the room id, <c>{1}</c> its name.</summary>
-	public static readonly string JoinedMatchChat = LocaleCatalog.Get($"Commands.Mp.Join.{nameof(JoinedMatchChat)}");
+	public static readonly string JoinedMatchChat = LocaleCatalog.Get($"Commands.Mp.Url.{nameof(JoinedMatchChat)}");
 
 	// ── !mp in ───────────────────────────────────────────────────────────────────────────────
 	/// <summary>Reply when the sender has no stored scope and is not in any match.</summary>

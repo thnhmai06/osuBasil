@@ -189,7 +189,7 @@ public sealed class MatchLifecycle(
 
 		foreach (var slot in match.Slots)
 		{
-			if (slot.Player is not { } slotPlayer) continue;
+			if (slot.User is not { } slotPlayer) continue;
 
 			var player = gameRegistry.GetByUserId(slotPlayer.Id);
 			if (player is null) continue;
@@ -245,7 +245,7 @@ public sealed class MatchLifecycle(
 		// room emptied out) and fire with zero occupied slots. Without this guard, InProgress would
 		// end up true with every slot Open/Locked, violating the invariant that InProgress implies at
 		// least one occupied slot.
-		if (match.Slots.All(s => s.Player is null))
+		if (match.Slots.All(s => s.User is null))
 		{
 			logger.LogDebug("Room start aborted (no players seated): MatchId={MatchId}", match.DbId);
 			var emptyBot = gameRegistry.GetByUserId(BotBootstrapService.BotId);
@@ -283,7 +283,7 @@ public sealed class MatchLifecycle(
 
 		var noMap = new List<int>();
 		foreach (var slot in match.Slots)
-			if (slot.Player is { } slotPlayer)
+			if (slot.User is { } slotPlayer)
 			{
 				if (slot.Status != RoomSlotStatus.NoMap)
 					slot.Status = RoomSlotStatus.Playing;

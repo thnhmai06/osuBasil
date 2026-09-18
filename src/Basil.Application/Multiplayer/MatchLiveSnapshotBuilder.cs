@@ -237,7 +237,7 @@ public static class MatchLiveSnapshotBuilder
 		for (var i = 0; i < match.Slots.Count; i++)
 		{
 			var slot = match.Slots[i];
-			var user = slot.Player is { } slotPlayer
+			var user = slot.User is { } slotPlayer
 				? await ResolveOrPlaceholder(slotPlayer.Id, gameRegistry, ircRegistry, users, cancellationToken)
 				: null;
 			slots.Add(user is null

@@ -58,14 +58,14 @@ public sealed class MatchMembership(
 		var userSessionUser = userCache.Resolve(userSession);
 		JoinResult? rejection = userSession.IsBot ? JoinResult.BotCannotSeat
 			: userSession.Match is not null ? JoinResult.AlreadyInMatch
-			: match.TourneyClients.Contains(userSessionUser) ? JoinResult.TourneyClient
+			: match.TourneyUsers.Contains(userSessionUser) ? JoinResult.TourneyClient
 			: match.BannedUsers.Contains(userSessionUser) ? JoinResult.Banned
 			: match.IsLocked ? JoinResult.Locked
 			: null;
 
 		if (rejection is { } reason)
 		{
-			logger.LogDebug("Join rejected: MatchId={MatchId} UserId={UserId} Reason={Reason}",
+			logger.LogDebug("Url rejected: MatchId={MatchId} UserId={UserId} Reason={Reason}",
 				match.DbId, userSession.Id, reason);
 			notifier.JoinRejected(userSession);
 			return reason;
@@ -74,7 +74,7 @@ public sealed class MatchMembership(
 		if (match.IsPrivate && (userSession.Privilege & UserPrivileges.Staff) == 0 &&
 		    !match.InvitedUsers.Contains(userSessionUser))
 		{
-			logger.LogDebug("Join rejected: MatchId={MatchId} UserId={UserId} Reason=Private", match.DbId,
+			logger.LogDebug("Url rejected: MatchId={MatchId} UserId={UserId} Reason=Private", match.DbId,
 				userSession.Id);
 			notifier.JoinRejected(userSession);
 			return JoinResult.Private;
@@ -82,7 +82,7 @@ public sealed class MatchMembership(
 
 		if (password != match.Password && (userSession.Privilege & UserPrivileges.Staff) == 0)
 		{
-			logger.LogDebug("Join rejected: MatchId={MatchId} UserId={UserId} Reason=WrongPassword",
+			logger.LogDebug("Url rejected: MatchId={MatchId} UserId={UserId} Reason=WrongPassword",
 				match.DbId, userSession.Id);
 			notifier.JoinRejected(userSession);
 			return JoinResult.WrongPassword;
@@ -91,7 +91,7 @@ public sealed class MatchMembership(
 		var free = match.GetFreeSlotId();
 		if (free is null)
 		{
-			logger.LogDebug("Join rejected: MatchId={MatchId} UserId={UserId} Reason=Full", match.DbId,
+			logger.LogDebug("Url rejected: MatchId={MatchId} UserId={UserId} Reason=Full", match.DbId,
 				userSession.Id);
 			notifier.JoinRejected(userSession);
 			return JoinResult.NoFreeSlot;
@@ -161,7 +161,7 @@ public sealed class MatchMembership(
 		if (match.TeamType is MatchTeamType.TeamVs or MatchTeamType.TagTeamVs)
 		{
 			var counts = match.Slots
-				.Where(s => s.Player is not null)
+				.Where(s => s.User is not null)
 				.GroupBy(s => s.Team)
 				.ToDictionary(g => g.Key, g => g.Count());
 			counts.TryGetValue(MatchTeam.Red, out var redCount);
@@ -170,7 +170,7 @@ public sealed class MatchMembership(
 		}
 
 		slot.Status = RoomSlotStatus.NotReady;
-		slot.Player = userCache.Resolve(userSession);
+		slot.User = userCache.Resolve(userSession);
 		userSession.Match = match;
 
 		if (match.Host is null) match.Host = userCache.Resolve(userSession);
@@ -181,7 +181,7 @@ public sealed class MatchMembership(
 		// lock instead, since a version allocated an instant later than the mutation is still correct.
 		lifecycle.SyncEmptyRoomTimer(match);
 
-		logger.LogInformation("+ User joined match: MatchId={MatchId} UserId={UserId} SlotId={SlotId}",
+		logger.LogInformation("+ User joined match: MatchId={MatchId} UserId={UserId} Id={Id}",
 			match.DbId, userSession.Id, slotId);
 
 		await matchRepository.CreateEventAsync(new MatchEvent(
@@ -224,7 +224,7 @@ public sealed class MatchMembership(
 			var newHostSlot = match.Slots.FirstOrDefault(s => !s.IsEmpty);
 			if (newHostSlot is not null)
 			{
-				newHost = newHostSlot.Player!;
+				newHost = newHostSlot.User!;
 				match.Host = newHost;
 				hostTransfer = true;
 				if (gameRegistry.GetByUserId(newHost.Id) is { } newHostSession)
