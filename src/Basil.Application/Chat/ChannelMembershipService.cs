@@ -8,7 +8,6 @@ using Basil.Application.Shared.Configuration;
 using Basil.Application.Shared.Eventing;
 using Basil.Application.Shared.Json;
 using Basil.Application.Users;
-using Basil.Domain.Channels;
 using Basil.Domain.Users;
 using Microsoft.Extensions.Options;
 

@@ -55,7 +55,7 @@ public sealed partial record BeatmapsetQuery(
 	string? Difficulty = null,
 	BeatmapStatus? Status = null,
 	DateFilter? Created = null,
-	DateFilter? Updated = null)
+	DateFilter? Updated = null) : IParsable<BeatmapsetQuery>
 {
 	/// <summary>An empty filter set: every beatmapset matches.</summary>
 	public static readonly BeatmapsetQuery Empty = new();

@@ -31,9 +31,9 @@ public sealed class SqliteClientHashRepository(string connectionString, ILogger<
 			// two, halving this call's contribution to write contention (see ADR-001).
 			var row = await connection.QuerySingleAsync<ClientHashRow>(
 				"""
-				INSERT INTO ClientHashes (UserId, OsuPathMd5, Adapters, UninstallId, DiskSerial, LastSeenAt, Occurrences)
-				VALUES (@UserId, @OsuPathMd5, @Adapters, @UninstallId, @DiskSerial, datetime('now'), 1)
-				ON CONFLICT (UserId, OsuPathMd5, Adapters, UninstallId, DiskSerial)
+				INSERT INTO ClientHashes (UserId, OsuPathMd5, NetworkAdapters, UninstallId, DiskSerial, LastSeenAt, Occurrences)
+				VALUES (@UserId, @OsuPathMd5, @NetworkAdapters, @UninstallId, @DiskSerial, datetime('now'), 1)
+				ON CONFLICT (UserId, OsuPathMd5, NetworkAdapters, UninstallId, DiskSerial)
 				DO UPDATE SET LastSeenAt = datetime('now'), Occurrences = Occurrences + 1
 				RETURNING *;
 				""",
@@ -70,7 +70,7 @@ public sealed class SqliteClientHashRepository(string connectionString, ILogger<
 		await using var connection = Connect();
 
 		var sql = """
-		          SELECT ch.UserId, ch.OsuPathMd5, ch.Adapters, ch.UninstallId,
+		          SELECT ch.UserId, ch.OsuPathMd5, ch.NetworkAdapters, ch.UninstallId,
 		                 ch.DiskSerial, ch.LastSeenAt, ch.Occurrences,
 		                 u.Name, u.Privilege
 		          FROM ClientHashes ch
@@ -84,7 +84,7 @@ public sealed class SqliteClientHashRepository(string connectionString, ILogger<
 		}
 		else
 		{
-			var oneOf = new List<string> { "ch.Adapters = @Adapters", "ch.UninstallId = @UninstallId" };
+			var oneOf = new List<string> { "ch.NetworkAdapters = @NetworkAdapters", "ch.UninstallId = @UninstallId" };
 			if (diskSerial is not null) oneOf.Add("ch.DiskSerial = @DiskSerial");
 
 			sql += $" AND ({string.Join(" OR ", oneOf)})";

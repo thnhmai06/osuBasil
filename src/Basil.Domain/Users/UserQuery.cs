@@ -34,7 +34,7 @@ public sealed partial record UserQuery(
 	IReadOnlyList<Country>? Countries = null,
 	UserPrivileges? Privilege = null,
 	bool? Silenced = null,
-	bool IncludeDeleted = false)
+	bool IncludeDeleted = false) : IParsable<UserQuery>
 {
 	/// <summary>An empty filter set: every non-deleted user matches.</summary>
 	public static readonly UserQuery Empty = new();

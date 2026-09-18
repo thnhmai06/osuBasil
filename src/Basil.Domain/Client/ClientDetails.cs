@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Basil.Domain.Client;
 
@@ -9,7 +10,7 @@ namespace Basil.Domain.Client;
 /// <param name="AdaptersMd5">The MD5 hash of the combined adapter names.</param>
 /// <param name="UninstallMd5">The MD5 hash of the uninstallation identifier.</param>
 /// <param name="DiskSignatureMd5">The MD5 hash of the disk signature.</param>
-/// <param name="Adapters">The list of network adapter names.</param>
+/// <param name="NetworkAdapters">The list of network adapter names.</param>
 /// <remarks>
 ///     Captured once at login and re-checked against every score submission from that session, as
 ///     part of the submission integrity validation.
@@ -19,7 +20,7 @@ public sealed record ClientDetails(
 	string AdaptersMd5,
 	string UninstallMd5,
 	string DiskSignatureMd5,
-	ImmutableList<string> Adapters)
+	ImmutableList<string> NetworkAdapters) : IParsable<ClientDetails>, IFormattable
 {
 	private const string WineAdapterSentinel = "runningunderwine";
 
@@ -30,29 +31,19 @@ public sealed record ClientDetails(
 	///     <see langword="true" /> when the adapter list contains exactly the Wine sentinel adapter;
 	///     otherwise, <see langword="false" />.
 	/// </value>
-	public bool IsRunningUnderWine => Adapters.Contains(WineAdapterSentinel) && Adapters.Count == 1;
+	public bool IsRunningUnderWine => NetworkAdapters.Contains(WineAdapterSentinel) && NetworkAdapters.Count == 1;
 
-	/// <summary>
-	///     Computes the client hash used to verify the client on later requests.
-	/// </summary>
-	/// <returns>The colon-delimited client hash string.</returns>
-	public string Hash()
+	private static ImmutableList<string> ParseAdapters(string adaptersString)
 	{
-		var adaptersString = string.Join('.', Adapters);
-		if (adaptersString != WineAdapterSentinel) adaptersString += ".";
-
-		return $"{OsuPathMd5}:{adaptersString}:{AdaptersMd5}:{UninstallMd5}:{DiskSignatureMd5}:";
+		if (adaptersString == WineAdapterSentinel) return [WineAdapterSentinel];
+		return adaptersString.EndsWith('.')
+			? [.. adaptersString[..^1].Split('.')]
+			: throw new FormatException("Adapter list is missing trailing delimiter");
 	}
 
-	/// <summary>
-	///     Parses a client hash string into <see cref="ClientDetails" />.
-	/// </summary>
-	/// <param name="hash">The colon-delimited client hash string sent by the client.</param>
-	/// <returns>The parsed client details.</returns>
-	/// <exception cref="FormatException">The adapter list is missing its trailing delimiter.</exception>
-	public static ClientDetails From(string hash)
+	public static ClientDetails Parse(string s, IFormatProvider? provider = null)
 	{
-		var hashParts = hash[..^1].Split(':', 5);
+		var hashParts = s[..^1].Split(':', 5);
 
 		var osuPathMd5 = hashParts[0];
 		var adaptersString = hashParts[1];
@@ -62,14 +53,40 @@ public sealed record ClientDetails(
 
 		var adapters = ParseAdapters(adaptersString);
 
-		return new ClientDetails(osuPathMd5, adaptersMd5, uninstallMd5, diskSignatureMd5, adapters);
+		return new ClientDetails(
+			osuPathMd5,
+			adaptersMd5,
+			uninstallMd5,
+			diskSignatureMd5,
+			adapters);
 	}
 
-	private static ImmutableList<string> ParseAdapters(string adaptersString)
+	public static bool TryParse(
+		[NotNullWhen(true)] string? s,
+		IFormatProvider? provider,
+		[MaybeNullWhen(false)] out ClientDetails result)
 	{
-		if (adaptersString == WineAdapterSentinel) return [WineAdapterSentinel];
-		return adaptersString.EndsWith('.')
-			? [.. adaptersString[..^1].Split('.')]
-			: throw new FormatException("Adapter list is missing trailing delimiter");
+		try
+		{
+			result = Parse(s!, provider);
+			return true;
+		}
+		catch (Exception)
+		{
+			result = null;
+			return false;
+		}
+	}
+
+	public string ToString(string? format, IFormatProvider? formatProvider)
+	{
+		var adaptersString = string.Join('.', NetworkAdapters);
+		if (adaptersString != WineAdapterSentinel) adaptersString += ".";
+		return $"{OsuPathMd5}:{adaptersString}:{AdaptersMd5}:{UninstallMd5}:{DiskSignatureMd5}:";
+	}
+
+	public override string ToString()
+	{
+		return ToString(null, null);
 	}
 }

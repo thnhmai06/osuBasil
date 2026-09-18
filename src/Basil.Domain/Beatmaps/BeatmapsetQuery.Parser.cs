@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text.RegularExpressions;
 
@@ -18,36 +19,14 @@ namespace Basil.Domain.Beatmaps;
 /// </remarks>
 public sealed partial record BeatmapsetQuery
 {
-	/// <summary>
-	///     Matches one <c>key&lt;operator&gt;value</c> token: a bare word key, a <c>:</c>/<c>=</c>/
-	///     <c>&lt;</c>/<c>&lt;=</c>/<c>&gt;</c>/<c>&gt;=</c> operator, then either a single- or
-	///     double-quoted value (which may contain spaces) or a run of non-whitespace characters.
-	/// </summary>
-	[GeneratedRegex("""\b(?<key>\w+)(?<op>:|=|[<>]=?)(?<value>"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\S+)""",
-		RegexOptions.IgnoreCase)]
-	private static partial Regex TokenPattern();
-
-	[GeneratedRegex(@"\s+")]
-	private static partial Regex WhitespaceRun();
-
-	/// <summary>Parses a search query string into structured filters plus the remaining free text.</summary>
-	/// <param name="query">The raw query text.</param>
-	/// <returns>
-	///     The parsed <see cref="BeatmapsetQuery" />, with
-	///     <see cref="BeatmapsetQuery.Keywords" />
-	///     set to whatever text wasn't consumed by a recognized filter token (or <see langword="null" />
-	///     if nothing remains).
-	/// </returns>
-	public static BeatmapsetQuery From(string? query)
+	public static BeatmapsetQuery Parse(string query, IFormatProvider? provider)
 	{
-		if (string.IsNullOrWhiteSpace(query)) return Empty;
-
 		var builder = new Builder();
 		var keywords = TokenPattern().Replace(query, match =>
 		{
 			var key = match.Groups["key"].Value.ToLowerInvariant();
 			var opText = match.Groups["op"].Value;
-			var op = ComparisonOperatorParser.Parse(opText);
+			var op = ComparisonOperatorExtensions.Parse(opText);
 			var rawValue = Unquote(match.Groups["value"].Value);
 
 			// A key this switch doesn't handle, or a value that fails to parse for the key it named,
@@ -72,6 +51,33 @@ public sealed partial record BeatmapsetQuery
 			return trimmed.Length == 0 ? null : trimmed;
 		}
 	}
+
+	public static bool TryParse(
+		[NotNullWhen(true)] string? s,
+		IFormatProvider? provider,
+		[MaybeNullWhen(false)] out BeatmapsetQuery result)
+	{
+		if (s is null)
+		{
+			result = Empty;
+			return true;
+		}
+
+		result = Parse(s, provider);
+		return true;
+	}
+
+	/// <summary>
+	///     Matches one <c>key&lt;operator&gt;value</c> token: a bare word key, a <c>:</c>/<c>=</c>/
+	///     <c>&lt;</c>/<c>&lt;=</c>/<c>&gt;</c>/<c>&gt;=</c> operator, then either a single- or
+	///     double-quoted value (which may contain spaces) or a run of non-whitespace characters.
+	/// </summary>
+	[GeneratedRegex("""\b(?<key>\w+)(?<op>:|=|[<>]=?)(?<value>"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\S+)""",
+		RegexOptions.IgnoreCase)]
+	private static partial Regex TokenPattern();
+
+	[GeneratedRegex(@"\s+")]
+	private static partial Regex WhitespaceRun();
 
 	/// <summary>Accumulates parsed filters as <see cref="TokenPattern" />'s matches are visited.</summary>
 	private sealed partial class Builder
@@ -253,7 +259,7 @@ public sealed partial record BeatmapsetQuery
 	}
 }
 
-public static class ComparisonOperatorParser
+public static class ComparisonOperatorExtensions
 {
 	public static ComparisonOperator Parse(string op)
 	{

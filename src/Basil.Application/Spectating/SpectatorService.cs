@@ -1,7 +1,6 @@
 using Basil.Application.Channels;
 using Basil.Application.Chat;
 using Basil.Application.Sessions;
-using Basil.Domain.Channels;
 
 namespace Basil.Application.Spectating;
 

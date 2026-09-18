@@ -15,7 +15,7 @@ public sealed class RequestIdLoggingMiddleware(RequestDelegate next)
 	/// <remarks>
 	///     When the request carries neither a <c>CF-Connecting-IP</c> nor an <c>X-Forwarded-For</c>
 	///     header, the remote IP (falling back to loopback) is written into both headers before the IP
-	///     phrase is resolved. Only the three headers <see cref="Geolocation.PhraseIpAddress" /> reads
+	///     phrase is resolved. Only the three headers <see cref="Geolocation.ParseIpAddress" /> reads
 	///     are copied out of the request — not the full header collection, which every request on every
 	///     host group previously paid to materialize.
 	/// </remarks>
@@ -25,19 +25,19 @@ public sealed class RequestIdLoggingMiddleware(RequestDelegate next)
 		var headers = BuildIpHeaders(context);
 
 		using (LogContext.PushProperty("RequestId", context.TraceIdentifier))
-		using (LogContext.PushProperty("RemoteIp", Geolocation.PhraseIpAddress(headers).ToString()))
+		using (LogContext.PushProperty("RemoteIp", Geolocation.ParseIpAddress(headers).ToString()))
 		{
 			await next(context);
 		}
 	}
 
 	/// <summary>
-	///     Builds the small header set <see cref="Geolocation.PhraseIpAddress" /> reads, synthesizing
+	///     Builds the small header set <see cref="Geolocation.ParseIpAddress" /> reads, synthesizing
 	///     <c>X-Forwarded-For</c>/<c>X-Real-IP</c> from the direct connection when neither it nor
 	///     <c>CF-Connecting-IP</c> was sent.
 	/// </summary>
 	/// <param name="context">The HTTP context whose request headers and connection IP are examined.</param>
-	/// <returns>A small header dictionary with only the keys <see cref="Geolocation.PhraseIpAddress" /> reads.</returns>
+	/// <returns>A small header dictionary with only the keys <see cref="Geolocation.ParseIpAddress" /> reads.</returns>
 	internal static Dictionary<string, string> BuildIpHeaders(HttpContext context)
 	{
 		var requestHeaders = context.Request.Headers;

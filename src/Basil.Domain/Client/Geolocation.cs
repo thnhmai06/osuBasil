@@ -12,7 +12,7 @@ public static class Geolocation
 	/// </summary>
 	/// <param name="headers">The request headers.</param>
 	/// <returns>The real IP address of the client.</returns>
-	public static IPAddress PhraseIpAddress(IReadOnlyDictionary<string, string> headers)
+	public static IPAddress ParseIpAddress(IReadOnlyDictionary<string, string> headers)
 	{
 		if (headers.TryGetValue("CF-Connecting-IP", out var cfIp)) return IPAddress.Parse(cfIp);
 

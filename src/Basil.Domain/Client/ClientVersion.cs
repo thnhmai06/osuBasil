@@ -1,6 +1,94 @@
+using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace Basil.Domain.Client;
+
+public sealed partial record ClientVersion(DateOnly Date, int? Revision, ClientVersionStream Stream)
+	: IParsable<ClientVersion>, IFormattable
+{
+	[GeneratedRegex(
+		@"^(?:b)?(?<date>(?:\d{8}|\d{4}\.\d{3}))(?:\.(?<revision>\d))?(?<stream>beta|cuttingedge|dev|tourney)?$")]
+	private static partial Regex VersionPattern();
+
+	/// <summary>
+	///     Parses an osu! version string into an <see cref="ClientVersion" />.
+	/// </summary>
+	/// <param name="s">The version string reported by the client.</param>
+	/// <param name="provider">The format provider, which is ignored.</param>
+	/// <returns>The parsed version.</returns>
+	/// <exception cref="FormatException">
+	///     <paramref name="s" /> does not match the expected version format.
+	/// </exception>
+	public static ClientVersion Parse(string s, IFormatProvider? provider = null)
+	{
+		ArgumentNullException.ThrowIfNull(s);
+
+		var match = VersionPattern().Match(s);
+		if (!match.Success)
+			throw new FormatException($"Invalid client version: {s}");
+
+		var dateText = match.Groups["date"].Value;
+		var date = DateOnly.ParseExact(dateText, "yyyyMMdd");
+
+		var revisionGroup = match.Groups["revision"];
+		int? revision = revisionGroup.Success
+			? int.Parse(revisionGroup.Value)
+			: null;
+
+		var streamGroup = match.Groups["stream"];
+		var stream = streamGroup.Success
+			? Enum.Parse<ClientVersionStream>(streamGroup.Value, true)
+			: ClientVersionStream.Stable;
+
+		return new ClientVersion(date, revision, stream);
+	}
+
+	/// <summary>
+	///     Attempts to parse an osu! version string.
+	/// </summary>
+	public static bool TryParse(
+		[NotNullWhen(true)] string? s,
+		IFormatProvider? provider,
+		[MaybeNullWhen(false)] out ClientVersion result)
+	{
+		if (s is null)
+		{
+			result = null;
+			return false;
+		}
+
+		try
+		{
+			result = Parse(s, provider);
+			return true;
+		}
+		catch (FormatException)
+		{
+			result = null;
+			return false;
+		}
+	}
+
+	public string ToString(string? format, IFormatProvider? formatProvider)
+	{
+		_ = format;
+		_ = formatProvider;
+
+		var date = Date.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+		var revision = Revision is null ? string.Empty : $".{Revision}";
+		var stream = Stream == ClientVersionStream.Stable
+			? string.Empty
+			: Stream.ToString().ToLowerInvariant();
+
+		return $"b{date}{revision}{stream}";
+	}
+
+	public override string ToString()
+	{
+		return ToString(null, null);
+	}
+}
 
 /// <summary>
 ///     Represents the release stream of an osu! client.
@@ -21,48 +109,4 @@ public enum ClientVersionStream : byte
 
 	/// <summary>The developer release stream.</summary>
 	Dev
-}
-
-/// <summary>
-///     Represents the version of an osu! client.
-/// </summary>
-/// <param name="Date">The build date of the client.</param>
-/// <param name="Revision">
-///     The build revision, or <see langword="null" /> if the version string carried none.
-/// </param>
-/// <param name="Stream">The release stream of the client.</param>
-public sealed partial record ClientVersion(DateOnly Date, int? Revision, ClientVersionStream Stream)
-{
-	[GeneratedRegex(
-		@"^(?:b)?(?<date>(?:\d{8}|\d{4}\.\d{3}))(?:\.(?<revision>\d))?(?<stream>beta|cuttingedge|dev|tourney)?$")]
-	private static partial Regex VersionPattern();
-
-	/// <summary>
-	///     Parses an osu! version string into an <see cref="ClientVersion" />.
-	/// </summary>
-	/// <param name="osuVersionString">
-	///     The version string reported by the client, for example, "b20240801.1beta".
-	/// </param>
-	/// <returns>The parsed version.</returns>
-	/// <exception cref="ArgumentException">
-	///     <paramref name="osuVersionString" /> does not match the expected version format.
-	/// </exception>
-	public static ClientVersion From(string osuVersionString)
-	{
-		var match = VersionPattern().Match(osuVersionString);
-		if (!match.Success) throw new ArgumentException($"Invalid client version: {osuVersionString}");
-
-		var dateText = match.Groups["date"].Value;
-		var date = DateOnly.ParseExact(dateText, "yyyyMMdd");
-
-		var revisionGroup = match.Groups["revision"];
-		int? revision = revisionGroup.Success ? int.Parse(revisionGroup.Value) : null;
-
-		var streamGroup = match.Groups["stream"];
-		var stream = streamGroup.Success
-			? Enum.Parse<ClientVersionStream>(streamGroup.Value, true)
-			: ClientVersionStream.Stable;
-
-		return new ClientVersion(date, revision, stream);
-	}
 }

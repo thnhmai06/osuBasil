@@ -5,7 +5,6 @@ using Basil.Application.Chat;
 using Basil.Application.Content;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
-using Basil.Domain.Channels;
 using Basil.Protocol.Irc;
 using Microsoft.Extensions.Options;
 

@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using Basil.Application.Beatmaps;
 using Basil.Application.Channels;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Channels;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Multiplayer;

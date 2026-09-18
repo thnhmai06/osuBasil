@@ -106,7 +106,7 @@ public sealed class LoginService(
 		CancellationToken cancellationToken)
 	{
 		var clientDetails = loginForm.ClientDetails;
-		if (!(clientDetails.IsRunningUnderWine || clientDetails.Adapters.Any(a => a.Length > 0)))
+		if (!(clientDetails.IsRunningUnderWine || clientDetails.NetworkAdapters.Any(a => a.Length > 0)))
 			return InvalidRequestFailure("empty-adapters");
 
 		var loginTime = DateTimeOffset.UtcNow;

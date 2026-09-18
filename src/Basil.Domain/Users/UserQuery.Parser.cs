@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
 
 namespace Basil.Domain.Users;
@@ -7,16 +8,61 @@ namespace Basil.Domain.Users;
 ///     with a free-text id/username portion, e.g. <c>peppy country=jp</c>) into a structured
 ///     <see cref="UserQuery" />.
 /// </summary>
-/// <remarks>
-///     Only <c>:</c>/<c>=</c> are accepted operators -- unlike
-///     <see cref="BeatmapsetSearchQueryParser" />, neither
-///     supported filter key (<c>country</c>, <c>privilege</c>) has an ordering, so <c>&lt;</c>/<c>&gt;</c>
-///     tokens are left as free text rather than given comparison semantics they don't have. A token
-///     naming a key this parser doesn't recognize, or a value that fails to parse for the key it
-///     named, is likewise left untouched in the free-text portion instead of erroring.
-/// </remarks>
 public partial record UserQuery
 {
+	public static UserQuery Parse(string query, IFormatProvider? provider)
+	{
+		if (string.IsNullOrWhiteSpace(query))
+			return Empty;
+
+		var builder = new Builder();
+
+		var keywords = TokenPattern().Replace(query, match =>
+		{
+			var key = match.Groups["key"].Value.ToLowerInvariant();
+			var rawValue = Unquote(match.Groups["value"].Value);
+
+			return builder.TryApply(key, rawValue)
+				? ""
+				: match.Value;
+		});
+
+		return builder.Build(CollapseWhitespace(keywords));
+
+		static string Unquote(string value)
+		{
+			if (value.Length < 2)
+				return value;
+
+			var quote = value[0];
+
+			if ((quote != '"' && quote != '\'') || value[^1] != quote)
+				return value;
+
+			return value[1..^1].Replace($"\\{quote}", quote.ToString());
+		}
+
+		static string? CollapseWhitespace(string text)
+		{
+			var trimmed = WhitespaceRun().Replace(text, " ").Trim();
+			return trimmed.Length == 0 ? null : trimmed;
+		}
+	}
+
+	public static bool TryParse(
+		[NotNullWhen(true)] string? s, IFormatProvider? provider,
+		[MaybeNullWhen(false)] out UserQuery result)
+	{
+		if (s is null)
+		{
+			result = Empty;
+			return true;
+		}
+
+		result = Parse(s, provider);
+		return true;
+	}
+
 	/// <summary>
 	///     Matches one <c>key(:|=)value</c> token: a bare word key, then either a single- or
 	///     double-quoted value (which may contain spaces) or a run of non-whitespace characters.
@@ -27,42 +73,6 @@ public partial record UserQuery
 
 	[GeneratedRegex(@"\s+")]
 	private static partial Regex WhitespaceRun();
-
-	/// <summary>Parses a search query string into structured filters plus the remaining free text.</summary>
-	/// <param name="query">The raw query text.</param>
-	/// <returns>
-	///     The parsed <see cref="UserQuery" />, with <see cref="UserQuery.Keywords" />
-	///     set to whatever text wasn't consumed by a recognized filter token (or <see langword="null" />
-	///     if nothing remains).
-	/// </returns>
-	public static UserQuery From(string? query)
-	{
-		if (string.IsNullOrWhiteSpace(query)) return Empty;
-
-		var builder = new Builder();
-		var keywords = TokenPattern().Replace(query, match =>
-		{
-			var key = match.Groups["key"].Value.ToLowerInvariant();
-			var rawValue = Unquote(match.Groups["value"].Value);
-			return builder.TryApply(key, rawValue) ? "" : match.Value;
-		});
-
-		return builder.Build(CollapseWhitespace(keywords));
-
-		static string Unquote(string value)
-		{
-			if (value.Length < 2) return value;
-			var quote = value[0];
-			if ((quote != '"' && quote != '\'') || value[^1] != quote) return value;
-			return value[1..^1].Replace($"\\{quote}", quote.ToString());
-		}
-
-		static string? CollapseWhitespace(string text)
-		{
-			var trimmed = WhitespaceRun().Replace(text, " ").Trim();
-			return trimmed.Length == 0 ? null : trimmed;
-		}
-	}
 
 	/// <summary>Accumulates parsed filters as <see cref="TokenPattern" />'s matches are visited.</summary>
 	private sealed class Builder

@@ -130,7 +130,7 @@ public static class BanchoProtocolRoutes
 				byte[] responseBody;
 				if (string.IsNullOrEmpty(token))
 				{
-					// Only the three headers Geolocation.PhraseIpAddress reads are copied out of the
+					// Only the three headers Geolocation.ParseIpAddress reads are copied out of the
 					// request, not the full header collection.
 					var headers = new Dictionary<string, string>(3);
 					var cfConnectingIp = request.Headers["CF-Connecting-IP"];
@@ -161,7 +161,7 @@ public static class BanchoProtocolRoutes
 					// an unhandled exception here.
 					try
 					{
-						var ip = Geolocation.PhraseIpAddress(headers);
+						var ip = Geolocation.ParseIpAddress(headers);
 						var loginUseCase = context.RequestServices.GetRequiredService<LoginService>();
 						var loginResult =
 							await loginUseCase.ExecuteAsync(new LoginRequest(body, ip), cancellationToken);

@@ -22,19 +22,20 @@ public sealed record Submission
 	///     The colon-delimited submission fields, with the leading beatmap MD5 and username entries
 	///     already stripped by the caller, since they are not score fields.
 	/// </param>
+	/// <param name="beatmapMd5">The md5 hash of the beatmap.</param>
 	/// <returns>A submission populated with the parsed values.</returns>
 	/// <remarks>
 	///     <see cref="BeatmapMd5" /> and <see cref="UserId" /> are set to placeholders here, because
 	///     the caller does not know the beatmap or player until after the parse completes. They are
 	///     meant to be overwritten immediately after this call.
 	/// </remarks>
-	public static Submission From(IReadOnlyList<string> fields)
+	public static Submission Parse(IReadOnlyList<string> fields, string? beatmapMd5 = null)
 	{
 		var mods = (Mods)int.Parse(fields[11], CultureInfo.InvariantCulture);
 
 		return new Submission
 		{
-			BeatmapMd5 = string.Empty,
+			BeatmapMd5 = string.IsNullOrWhiteSpace(beatmapMd5) ? string.Empty : beatmapMd5,
 			UserId = 0,
 			ClientChecksum = fields[0],
 			HitCounts = new HitCounts(
@@ -168,7 +169,7 @@ public sealed record Submission
 		if (osuVersion != loginOsuVersionDate.ToString("yyyyMMdd", CultureInfo.InvariantCulture))
 			throw new ScoreSubmissionIntegrityException("osu! version mismatch");
 
-		if (clientHash != clientDetails.Hash()) throw new ScoreSubmissionIntegrityException("client hash mismatch");
+		if (clientHash != clientDetails.ToString()) throw new ScoreSubmissionIntegrityException("client hash mismatch");
 
 		if (uniqueIdHashes.UniqueId1Md5 != clientDetails.UninstallMd5)
 			throw new ScoreSubmissionIntegrityException(

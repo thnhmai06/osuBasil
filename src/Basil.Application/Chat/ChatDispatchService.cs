@@ -4,7 +4,6 @@ using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Social;
 using Basil.Application.Users;
-using Basil.Domain.Channels;
 using Basil.Domain.Social;
 using Basil.Domain.Users;
 

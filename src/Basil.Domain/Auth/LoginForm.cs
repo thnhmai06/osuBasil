@@ -1,4 +1,4 @@
-﻿using System.Text;
+﻿using System.Diagnostics.CodeAnalysis;
 using Basil.Domain.Client;
 
 namespace Basil.Domain.Auth;
@@ -20,30 +20,59 @@ public sealed record LoginForm(
 	int UtcOffset, // not DateTimeOffset
 	bool DisplayCity,
 	bool AcceptPm,
-	ClientDetails ClientDetails)
+	ClientDetails ClientDetails) : IParsable<LoginForm>
 {
 	/// <summary>
-	///     Parses the raw login request into a <see cref="LoginForm" />.
+	///     Parses a raw login request into a <see cref="LoginForm" />.
 	/// </summary>
-	/// <param name="data">The UTF-8 encoded login payload from the client.</param>
+	/// <param name="s">The login payload from the client.</param>
+	/// <param name="provider">The format provider to use for parsing.</param>
 	/// <returns>The parsed login data.</returns>
-	public static LoginForm From(byte[] data)
+	public static LoginForm Parse(string s, IFormatProvider? provider = null)
 	{
-		var decoded = Encoding.UTF8.GetString(data).TrimEnd('\n');
+		var decoded = s.TrimEnd('\n');
 
 		var top = decoded.Split('\n', 3);
+		if (top.Length != 3) throw new FormatException("Invalid login payload.");
+
 		var username = top[0];
 		var passwordMd5 = top[1];
-		var remainder = top[2];
+		var fields = top[2].Split('|', 5);
+		if (fields.Length != 5) throw new FormatException("Invalid login payload.");
 
-		var fields = remainder.Split('|', 5);
-		var osuVersion = ClientVersion.From(fields[0]);
-		var utcOffset = int.Parse(fields[1]);
+		var osuVersion = ClientVersion.Parse(fields[0], provider);
+		if (!int.TryParse(fields[1], out var utcOffset)) throw new FormatException("Invalid UTC offset.");
 		var displayCity = fields[2] == "1";
 		var clientHashes = fields[3];
 		var pmPrivate = fields[4] == "1";
-		var clientDetails = ClientDetails.From(clientHashes);
+		var clientDetails = ClientDetails.Parse(clientHashes, provider);
 
-		return new LoginForm(username, passwordMd5, osuVersion, utcOffset, displayCity, pmPrivate, clientDetails);
+		return new LoginForm(username, passwordMd5, osuVersion, utcOffset,
+			displayCity, pmPrivate, clientDetails);
+	}
+
+	/// <summary>
+	///     Attempts to parse a raw login request into a <see cref="LoginForm" />.
+	/// </summary>
+	public static bool TryParse(
+		[NotNullWhen(true)] string? s, IFormatProvider? provider,
+		[MaybeNullWhen(false)] out LoginForm result)
+	{
+		if (s is null)
+		{
+			result = null;
+			return false;
+		}
+
+		try
+		{
+			result = Parse(s, provider);
+			return true;
+		}
+		catch (FormatException)
+		{
+			result = null;
+			return false;
+		}
 	}
 }
