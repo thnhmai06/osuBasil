@@ -4,7 +4,7 @@ using System.Collections.Concurrent;
 namespace Basil.Domain;
 
 /// <summary>
-///     Represents a thread-safe set of unique values.
+///     Represents a thread-safe set of unique values that can be accessed by multiple threads concurrently..
 /// </summary>
 /// <typeparam name="T">The type of elements in the set.</typeparam>
 public sealed class ConcurrentSet<T> : ISet<T> where T : notnull

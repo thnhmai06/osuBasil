@@ -8,10 +8,10 @@ namespace Basil.Domain.Auth;
 /// </summary>
 /// <param name="Id">The unique identifier of the login event.</param>
 /// <param name="Ip">The IP address the login came from.</param>
-/// <param name="LoggedInAt">The time the login occurred, in UTC.</param>
+/// <param name="OccurredAt">The time the login occurred, in UTC.</param>
 public sealed record LoginEvent(
 	int Id,
 	User User,
 	string Ip,
 	ClientVersion ClientVersion,
-	DateTimeOffset LoggedInAt);
+	DateTimeOffset OccurredAt);

@@ -27,17 +27,17 @@ public sealed class MenuBanner : IEquatable<MenuBanner>
 	/// <summary>The UTC instant the banner was created.</summary>
 	public DateTimeOffset CreatedAt { get; init; }
 
-	public bool Equals(MenuBanner? other)
-	{
-		if (other is null) return false;
-		return Id == other.Id;
-	}
-
 	/// <summary>Gets whether the banner is currently within its display window.</summary>
 	/// <param name="now">The instant to check against, in UTC.</param>
 	public bool IsCurrent(DateTimeOffset now)
 	{
 		return (Begins is null || Begins <= now) && (Expires is null || now <= Expires);
+	}
+
+	public bool Equals(MenuBanner? other)
+	{
+		if (other is null) return false;
+		return Id == other.Id;
 	}
 
 	public override bool Equals(object? obj)

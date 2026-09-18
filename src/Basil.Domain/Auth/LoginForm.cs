@@ -11,7 +11,7 @@ namespace Basil.Domain.Auth;
 /// <param name="ClientVersion">The version of the client.</param>
 /// <param name="UtcOffset">The client's UTC offset, in hours.</param>
 /// <param name="DisplayCity">Whether the client allows its city to be displayed.</param>
-/// <param name="PmPrivate">Whether the client accepts private messages.</param>
+/// <param name="AcceptPm">Whether the client accepts private messages.</param>
 /// <param name="ClientDetails">The client details captured from the login request.</param>
 public sealed record LoginForm(
 	string Username,
@@ -19,7 +19,7 @@ public sealed record LoginForm(
 	ClientVersion ClientVersion,
 	int UtcOffset, // not DateTimeOffset
 	bool DisplayCity,
-	bool PmPrivate,
+	bool AcceptPm,
 	ClientDetails ClientDetails)
 {
 	/// <summary>
