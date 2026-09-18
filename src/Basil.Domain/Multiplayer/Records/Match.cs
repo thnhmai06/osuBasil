@@ -13,6 +13,11 @@ public sealed class Match : IEquatable<Match>
 	public required DateTimeOffset CreatedAt { get; init; }
 	public required DateTimeOffset? EndedAt { get; set; }
 
+	/// <summary>
+	///     Gets or sets a value that indicates whether the match is visible to public.
+	/// </summary>
+	public required bool IsVisible { get; set; } = true;
+
 	public bool Equals(Match? other)
 	{
 		if (other is null) return false;

@@ -8,22 +8,16 @@ namespace Basil.Domain.Users;
 /// </summary>
 public sealed partial class User : IEquatable<User>
 {
-	private static readonly Regex AllowedUsernameCharacters = OsuUsernamePattern();
+	[GeneratedRegex(@"^[a-zA-Z0-9_\-\[\] ]+$")]
+	private static partial Regex OsuUsernamePattern();
+
+	private static readonly Regex ValidUsernamePattern = OsuUsernamePattern();
 	public required int Id { get; init; }
 	public required string Name { get; set; }
 	public Country Country { get; set; } = Country.Xx;
 	public UserPrivileges Privilege { get; set; } = UserPrivileges.Unrestricted | UserPrivileges.Supporter;
 	public DateTimeOffset? SilenceEnd { get; set; }
 	public DateTimeOffset? DeletedAt { get; set; }
-
-	public bool Equals(User? other)
-	{
-		if (other is null) return false;
-		return Id == other.Id;
-	}
-
-	[GeneratedRegex(@"^[a-zA-Z0-9_\-\[\] ]+$")]
-	private static partial Regex OsuUsernamePattern();
 
 	/// <summary>
 	///     Normalizes a username for case-insensitive and space-insensitive identity comparisons.
@@ -57,11 +51,17 @@ public sealed partial class User : IEquatable<User>
 		else if (name.StartsWith(' ') || name.EndsWith(' ')) error = "Username cannot start or end with a space.";
 		else if (name.Contains("  ")) error = "Username cannot contain consecutive spaces.";
 		else if (name.All(char.IsDigit)) error = "Username cannot contain only digits.";
-		else if (!AllowedUsernameCharacters.IsMatch(name))
+		else if (!ValidUsernamePattern.IsMatch(name))
 			error = "Username may only contain letters, numbers, spaces, and _ - [ ].";
 		else error = null;
 
 		return error is null;
+	}
+
+	public bool Equals(User? other)
+	{
+		if (other is null) return false;
+		return Id == other.Id;
 	}
 
 	public override bool Equals(object? obj)

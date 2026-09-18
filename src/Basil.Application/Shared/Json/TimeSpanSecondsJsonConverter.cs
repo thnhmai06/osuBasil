@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Basil.Domain.Beatmaps;
 
 namespace Basil.Application.Shared.Json;
 
@@ -10,7 +11,7 @@ namespace Basil.Application.Shared.Json;
 /// <remarks>
 ///     This is the wire format for TimeSpan fields throughout the JSON API. It is registered once,
 ///     the same as <see cref="CountryJsonConverter" />, so it applies everywhere a TimeSpan is
-///     embedded (for example <see cref="Basil.Domain.Beatmaps.Difficulty.TotalLength" />) without a
+///     embedded (for example <see cref="Difficulty.Length" />) without a
 ///     per-property attribute. Keeping the converter out of Basil.Domain means that project, which
 ///     has no project references, can carry a TimeSpan field without needing this type in scope.
 /// </remarks>

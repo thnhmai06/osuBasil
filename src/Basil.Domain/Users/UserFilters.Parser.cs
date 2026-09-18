@@ -5,7 +5,7 @@ namespace Basil.Domain.Users;
 /// <summary>
 ///     Parses <c>GET /users/search</c>'s query syntax (<c>key&lt;operator&gt;value</c> tokens mixed
 ///     with a free-text id/username portion, e.g. <c>peppy country=jp</c>) into a structured
-///     <see cref="UserFilters" />.
+///     <see cref="UserQuery" />.
 /// </summary>
 /// <remarks>
 ///     Only <c>:</c>/<c>=</c> are accepted operators -- unlike
@@ -15,7 +15,7 @@ namespace Basil.Domain.Users;
 ///     naming a key this parser doesn't recognize, or a value that fails to parse for the key it
 ///     named, is likewise left untouched in the free-text portion instead of erroring.
 /// </remarks>
-public partial record UserFilters
+public partial record UserQuery
 {
 	/// <summary>
 	///     Matches one <c>key(:|=)value</c> token: a bare word key, then either a single- or
@@ -31,11 +31,11 @@ public partial record UserFilters
 	/// <summary>Parses a search query string into structured filters plus the remaining free text.</summary>
 	/// <param name="query">The raw query text.</param>
 	/// <returns>
-	///     The parsed <see cref="UserFilters" />, with <see cref="UserFilters.Keywords" />
+	///     The parsed <see cref="UserQuery" />, with <see cref="UserQuery.Keywords" />
 	///     set to whatever text wasn't consumed by a recognized filter token (or <see langword="null" />
 	///     if nothing remains).
 	/// </returns>
-	public static UserFilters From(string? query)
+	public static UserQuery From(string? query)
 	{
 		if (string.IsNullOrWhiteSpace(query)) return Empty;
 
@@ -109,9 +109,9 @@ public partial record UserFilters
 			return true;
 		}
 
-		public UserFilters Build(string? keywords)
+		public UserQuery Build(string? keywords)
 		{
-			return new UserFilters(keywords, _countries, _privilege);
+			return new UserQuery(keywords, _countries, _privilege);
 		}
 	}
 }

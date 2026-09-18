@@ -11,7 +11,7 @@ namespace Basil.Domain.Multiplayer.Runtime;
 public sealed class RoomSlot
 {
 	/// <summary>Gets the user occupying this slot, or null when the slot is empty.</summary>
-	public User? Player { get; private set; }
+	public User? User { get; private set; }
 
 	/// <summary>Gets the current state of this slot.</summary>
 	public RoomSlotStatus Status { get; private set; } = RoomSlotStatus.Open;
@@ -26,7 +26,7 @@ public sealed class RoomSlot
 	public bool IntroSkipped { get; private set; }
 
 	/// <summary>Gets a value indicating whether the slot is empty.</summary>
-	public bool IsEmpty => Player is null;
+	public bool IsEmpty => User is null;
 
 	/// <summary>
 	///     Assigns a player to this slot and resets its player-specific state.
@@ -41,7 +41,7 @@ public sealed class RoomSlot
 			return;
 		}
 
-		Player = player;
+		User = player;
 		Status = RoomSlotStatus.NotReady;
 		Team = MatchTeam.Neutral;
 		Mods = Mods.NoMod;
@@ -58,7 +58,7 @@ public sealed class RoomSlot
 		{
 			case RoomSlotStatus.Open:
 			case RoomSlotStatus.Locked:
-				Player = null;
+				User = null;
 				Status = status;
 				Team = MatchTeam.Neutral;
 				Mods = Mods.NoMod;
@@ -123,7 +123,7 @@ public sealed class RoomSlot
 			return;
 		}
 
-		Player = other.Player;
+		User = other.User;
 		Status = other.Status;
 		Team = other.Team;
 		Mods = other.Mods;
@@ -140,7 +140,7 @@ public sealed class RoomSlot
 
 	private void EnsureOccupied()
 	{
-		if (Player is null)
+		if (User is null)
 			throw new InvalidOperationException("The slot is empty.");
 	}
 }
