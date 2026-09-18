@@ -67,9 +67,9 @@ public interface IBeatmapRepository
 	/// <summary>
 	///     Searches beatmaps locally and returns the matching sets, grouped by setId.
 	/// </summary>
-	/// <param name="filters">
-	///     The parsed search query -- free-text keywords plus any structured filters (star rating,
-	///     BPM, artist, etc.); see <see cref="Basil.Domain.Beatmaps.BeatmapFilters" />.
+	/// <param name="query">
+	///     The parsed search query -- free-text keywords plus any structured query (star rating,
+	///     BPM, artist, etc.); see <see cref="BeatmapsetQuery" />.
 	/// </param>
 	/// <param name="mode">An optional game mode that every returned beatmap must belong to.</param>
 	/// <param name="offset">The number of matching sets to skip before returning results.</param>
@@ -85,18 +85,18 @@ public interface IBeatmapRepository
 	///     excluded, since this is a discovery surface, not a specific-record lookup.
 	/// </remarks>
 	Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(
-		BeatmapFilters filters, GameMode? mode, int offset, int amount,
+		BeatmapsetQuery query, GameMode? mode, int offset, int amount,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>
-	///     Counts the sets that would be returned by <see cref="SearchAsync" /> for the same filters
+	///     Counts the sets that would be returned by <see cref="SearchAsync" /> for the same query
 	///     and mode, ignoring paging.
 	/// </summary>
-	/// <param name="filters">The parsed search query -- see <see cref="SearchAsync" />.</param>
+	/// <param name="query">The parsed search query -- see <see cref="SearchAsync" />.</param>
 	/// <param name="mode">An optional game mode that every counted beatmap must belong to.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The total number of matching sets, across every page.</returns>
-	Task<int> SearchCountAsync(BeatmapFilters filters, GameMode? mode,
+	Task<int> SearchCountAsync(BeatmapsetQuery query, GameMode? mode,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>

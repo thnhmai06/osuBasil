@@ -252,7 +252,7 @@ public sealed class ChatDispatchService(
 		{
 			if (target.PmPrivate && relationship?.Type != RelationshipType.Friend)
 			{
-				logger.LogDebug("Message dropped: SenderId={SenderId} Reason=PmPrivate", sender.Id);
+				logger.LogDebug("Message dropped: SenderId={SenderId} Reason=AcceptPm", sender.Id);
 				chat.DmRefused(sender, recipientName, DmRefusal.Blocked);
 				return;
 			}

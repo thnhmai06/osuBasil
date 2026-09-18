@@ -1,3 +1,4 @@
+using Basil.Application.Channels;
 using Basil.Application.Sessions;
 using Basil.Domain.Channels;
 

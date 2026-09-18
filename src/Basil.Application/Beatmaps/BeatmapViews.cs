@@ -15,7 +15,7 @@ namespace Basil.Application.Beatmaps;
 ///     Never carries the beatmap's internal filename or a parent beatmapset reference. The split
 ///     between <see cref="BeatmapInSet" /> and <see cref="BeatmapDetail" /> keeps a beatmap from
 ///     referencing its set, which references the beatmap again.
-///     <see cref="Domain.Beatmaps.Difficulty.TotalLength" /> serializes as a whole number of seconds.
+///     <see cref="Domain.Beatmaps.Difficulty.Length" /> serializes as a whole number of seconds.
 /// </remarks>
 public abstract record BeatmapView(
 	string Md5,

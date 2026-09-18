@@ -54,8 +54,8 @@ public sealed class DirectSearchService(
 		DirectSearchRequest request, CancellationToken cancellationToken = default)
 	{
 		var filters = NonTextQueries.Contains(request.Query)
-			? BeatmapFilters.Empty
-			: BeatmapFilters.From(request.Query);
+			? BeatmapsetQuery.Empty
+			: BeatmapsetQuery.From(request.Query);
 		GameMode? mode = request.Mode == AnyMode ? null : (GameMode)request.Mode;
 
 		var results = await beatmaps.SearchAsync(filters, mode, request.PageNum * PageSize, PageSize,
