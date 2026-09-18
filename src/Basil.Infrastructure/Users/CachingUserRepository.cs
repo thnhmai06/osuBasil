@@ -145,16 +145,16 @@ public sealed class CachingUserRepository(
 	}
 
 	/// <summary>Uncached: a list-shaped call, not a single-row lookup.</summary>
-	public Task<IReadOnlyList<User>> SearchAsync(UserFilters filters, int offset, int amount,
+	public Task<IReadOnlyList<User>> SearchAsync(UserQuery query, int offset, int amount,
 		CancellationToken cancellationToken = default)
 	{
-		return inner.SearchAsync(filters, offset, amount, cancellationToken);
+		return inner.SearchAsync(query, offset, amount, cancellationToken);
 	}
 
 	/// <summary>Uncached: a list-shaped call, not a single-row lookup.</summary>
-	public Task<int> SearchCountAsync(UserFilters filters, CancellationToken cancellationToken = default)
+	public Task<int> SearchCountAsync(UserQuery query, CancellationToken cancellationToken = default)
 	{
-		return inner.SearchCountAsync(filters, cancellationToken);
+		return inner.SearchCountAsync(query, cancellationToken);
 	}
 
 	/// <summary>Builds the id-qualified cache key for a user.</summary>

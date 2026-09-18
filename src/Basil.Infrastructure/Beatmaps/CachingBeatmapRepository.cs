@@ -73,17 +73,17 @@ public sealed class CachingBeatmapRepository(
 	}
 
 	/// <summary>Uncached: a discovery/listing surface, not a specific-row lookup.</summary>
-	public Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(BeatmapFilters filters, GameMode? mode,
+	public Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(BeatmapsetQuery query, GameMode? mode,
 		int offset, int amount, CancellationToken cancellationToken = default)
 	{
-		return inner.SearchAsync(filters, mode, offset, amount, cancellationToken);
+		return inner.SearchAsync(query, mode, offset, amount, cancellationToken);
 	}
 
 	/// <summary>Uncached: paired with the uncached <see cref="SearchAsync" />.</summary>
-	public Task<int> SearchCountAsync(BeatmapFilters filters, GameMode? mode,
+	public Task<int> SearchCountAsync(BeatmapsetQuery query, GameMode? mode,
 		CancellationToken cancellationToken = default)
 	{
-		return inner.SearchCountAsync(filters, mode, cancellationToken);
+		return inner.SearchCountAsync(query, mode, cancellationToken);
 	}
 
 	/// <inheritdoc cref="IBeatmapRepository.FetchMaxIdAsync" />

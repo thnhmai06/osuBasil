@@ -39,8 +39,8 @@ public sealed class SqliteBeatmapsetRepository(string connectionString, ILogger<
 		await using var connection = Connect();
 		var row = await connection.QuerySingleAsync<BeatmapsetRow>(
 			"""
-			INSERT INTO Beatmapsets (Id, Artist, Title, Creator, LastUpdate, CreatedAt, IsFrozen, IsPrivate, BackgroundFile, AudioFile)
-			VALUES (@Id, @Artist, @Title, @Creator, @LastUpdate, @CreatedAt, @IsFrozen, @IsPrivate, @BackgroundFile, @AudioFile)
+			INSERT INTO Beatmapsets (Id, Artist, Title, Creator, LastUpdate, CreatedAt, IsFrozen, IsVisible, BackgroundFile, AudioFile)
+			VALUES (@Id, @Artist, @Title, @Creator, @LastUpdate, @CreatedAt, @IsFrozen, @IsVisible, @BackgroundFile, @AudioFile)
 			ON CONFLICT(Id) DO UPDATE SET
 			    Artist = excluded.Artist, Title = excluded.Title, Creator = excluded.Creator,
 			    LastUpdate = excluded.LastUpdate, CreatedAt = excluded.CreatedAt
@@ -77,9 +77,9 @@ public sealed class SqliteBeatmapsetRepository(string connectionString, ILogger<
 	public async Task SetPrivateAsync(int id, bool isPrivate, CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
-		await connection.ExecuteAsync("UPDATE Beatmapsets SET IsPrivate = @IsPrivate WHERE Id = @Id",
+		await connection.ExecuteAsync("UPDATE Beatmapsets SET IsVisible = @IsVisible WHERE Id = @Id",
 			new { Id = id, IsPrivate = isPrivate });
-		logger.LogDebug("Beatmapset private flag set: Id={Id} IsPrivate={IsPrivate}", id, isPrivate);
+		logger.LogDebug("Beatmapset private flag set: Id={Id} IsVisible={IsVisible}", id, isPrivate);
 	}
 
 	/// <inheritdoc />
@@ -131,13 +131,13 @@ public sealed class SqliteBeatmapsetRepository(string connectionString, ILogger<
 	/// <inheritdoc />
 	/// <remarks>
 	///     When <paramref name="onlyWithVisibleBeatmaps" /> is <see langword="true" /> the query adds
-	///     <c>m.IsPrivate = 0</c>; rows are otherwise read back as-is, ordered by id descending.
+	///     <c>m.IsVisible = 0</c>; rows are otherwise read back as-is, ordered by id descending.
 	/// </remarks>
 	public async Task<IReadOnlyList<Beatmapset>> FetchPageAsync(int offset, int limit, bool onlyWithVisibleBeatmaps,
 		CancellationToken cancellationToken = default)
 	{
 		await using var connection = Connect();
-		var whereClause = onlyWithVisibleBeatmaps ? "WHERE m.IsPrivate = 0" : "";
+		var whereClause = onlyWithVisibleBeatmaps ? "WHERE m.IsVisible = 0" : "";
 		var rows = await connection.QueryAsync<BeatmapsetRow>(
 			$"""
 			 SELECT m.* FROM Beatmapsets m

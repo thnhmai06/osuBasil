@@ -157,10 +157,10 @@ public sealed class SqliteUserRepository(string connectionString, ILogger<Sqlite
 	}
 
 	/// <inheritdoc />
-	public async Task<IReadOnlyList<User>> SearchAsync(UserFilters filters, int offset, int amount,
+	public async Task<IReadOnlyList<User>> SearchAsync(UserQuery query, int offset, int amount,
 		CancellationToken cancellationToken = default)
 	{
-		var whereClause = BuildSearchWhereClause(filters, out var parameters);
+		var whereClause = BuildSearchWhereClause(query, out var parameters);
 		parameters.Add("Offset", offset);
 		parameters.Add("Amount", amount);
 
@@ -176,9 +176,9 @@ public sealed class SqliteUserRepository(string connectionString, ILogger<Sqlite
 	}
 
 	/// <inheritdoc />
-	public async Task<int> SearchCountAsync(UserFilters filters, CancellationToken cancellationToken = default)
+	public async Task<int> SearchCountAsync(UserQuery query, CancellationToken cancellationToken = default)
 	{
-		var whereClause = BuildSearchWhereClause(filters, out var parameters);
+		var whereClause = BuildSearchWhereClause(query, out var parameters);
 
 		await using var connection = Connect();
 		return await connection.ExecuteScalarAsync<int>(
@@ -187,25 +187,25 @@ public sealed class SqliteUserRepository(string connectionString, ILogger<Sqlite
 	}
 
 	/// <summary>
-	///     Builds the shared `WHERE` clause and parameters for a user search, from the same filters
+	///     Builds the shared `WHERE` clause and parameters for a user search, from the same query
 	///     <see cref="SearchAsync" /> and <see cref="SearchCountAsync" /> both translate.
 	/// </summary>
 	/// <remarks>
-	///     A numeric <see cref="UserFilters.Keywords" /> matches either the id exactly or a
+	///     A numeric <see cref="UserQuery.Keywords" /> matches either the id exactly or a
 	///     username substring -- osu! ids and usernames are drawn from different characters, so both
 	///     can be checked without ambiguity.
 	/// </remarks>
-	private static string BuildSearchWhereClause(UserFilters filters, out DynamicParameters parameters)
+	private static string BuildSearchWhereClause(UserQuery query, out DynamicParameters parameters)
 	{
 		var conditions = new List<string>();
 		parameters = new DynamicParameters();
 
-		if (!filters.IncludeDeleted) conditions.Add("DeletedAt IS NULL");
+		if (!query.IncludeDeleted) conditions.Add("DeletedAt IS NULL");
 
-		if (filters.Keywords is not null)
+		if (query.Keywords is not null)
 		{
-			parameters.Add("Query", $"%{User.MakeSafeName(filters.Keywords)}%");
-			if (int.TryParse(filters.Keywords, out var id))
+			parameters.Add("Query", $"%{User.MakeSafeName(query.Keywords)}%");
+			if (int.TryParse(query.Keywords, out var id))
 			{
 				conditions.Add("(SafeName LIKE @Query OR Id = @Id)");
 				parameters.Add("Id", id);
@@ -216,20 +216,20 @@ public sealed class SqliteUserRepository(string connectionString, ILogger<Sqlite
 			}
 		}
 
-		if (filters.Countries is { Count: > 0 })
+		if (query.Countries is { Count: > 0 })
 		{
 			conditions.Add("Country IN @Countries");
-			parameters.Add("Countries", filters.Countries.Select(c => c.ToAcronym()).ToList());
+			parameters.Add("Countries", query.Countries.Select(c => c.ToAcronym()).ToList());
 		}
 
-		if (filters.Privilege is not null)
+		if (query.Privilege is not null)
 		{
 			conditions.Add("(Privilege & @Privilege) = @Privilege");
-			parameters.Add("Privilege", (int)filters.Privilege.Value);
+			parameters.Add("Privilege", (int)query.Privilege.Value);
 		}
 
-		if (filters.Silenced is not null)
-			conditions.Add(filters.Silenced.Value
+		if (query.Silenced is not null)
+			conditions.Add(query.Silenced.Value
 				? "SilenceEnd > datetime('now')"
 				: "(SilenceEnd IS NULL OR SilenceEnd <= datetime('now'))");
 

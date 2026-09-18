@@ -29,7 +29,7 @@ public sealed class SqliteLoginRepository(string connectionString, ILogger<Sqlit
 			// of two, halving this call's contribution to write contention (see ADR-001).
 			var row = await connection.QuerySingleAsync<IngameLoginRow>(
 				"""
-				INSERT INTO IngameLogins (UserId, Ip, ClientVersion, ClientVersionStream, LoggedInAt)
+				INSERT INTO IngameLogins (UserId, Ip, ClientVersion, ClientVersionStream, OccurredAt)
 				VALUES (@UserId, @Ip, @ClientVersion, @ClientVersionStream, datetime('now'))
 				RETURNING *;
 				""",

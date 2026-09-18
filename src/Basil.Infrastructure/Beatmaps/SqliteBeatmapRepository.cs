@@ -15,10 +15,10 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 	: IBeatmapRepository
 {
 	private const string SharedColumns = """
-	                                     b.Md5, b.Id, b.Version, b.Filename, b.TotalLength,
+	                                     b.Md5, b.Id, b.Version, b.Filename, b.Length,
 	                                     b.Mode, b.Bpm, b.Cs, b.Ar, b.Od, b.Hp, b.Star, b.BackgroundFile, b.AudioFile,
 	                                     b.PreviewTime, b.Objects,
-	                                     m.Id, m.Artist, m.Title, m.Creator, m.LastUpdate, m.CreatedAt, m.IsFrozen, m.IsPrivate
+	                                     m.Id, m.Artist, m.Title, m.Creator, m.LastUpdate, m.CreatedAt, m.IsFrozen, m.IsVisible
 	                                     """;
 
 	/// <inheritdoc />
@@ -61,7 +61,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 			parameters.Add("BeatmapsetId", setId);
 		}
 
-		if (!includePrivate) conditions.Add("m.IsPrivate = 0");
+		if (!includePrivate) conditions.Add("m.IsVisible = 0");
 
 		await using var connection = Connect();
 		var beatmaps = await connection.QueryAsync<BeatmapRow, BeatmapsetRow, Beatmap>(
@@ -99,10 +99,10 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 		await connection.ExecuteAsync(
 			"""
 			REPLACE INTO Beatmaps (
-			    Md5, Id, BeatmapsetId, Version, Filename, TotalLength,
+			    Md5, Id, BeatmapsetId, Version, Filename, Length,
 			    Mode, Bpm, Cs, Od, Ar, Hp, Star, BackgroundFile, AudioFile, PreviewTime, Objects
 			) VALUES (
-			    @Md5, @Id, @BeatmapsetId, @Version, @Filename, @TotalLength,
+			    @Md5, @Id, @BeatmapsetId, @Version, @Filename, @Length,
 			    @Mode, @Bpm, @Cs, @Od, @Ar, @Hp, @Star, @BackgroundFile, @AudioFile, @PreviewTime, @Objects
 			)
 			""",
@@ -113,7 +113,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 				BeatmapsetId = resolved.Beatmapset.Id,
 				resolved.Version,
 				resolved.Filename,
-				TotalLength = (int)resolved.Difficulty.TotalLength.TotalSeconds,
+				TotalLength = (int)resolved.Difficulty.Length.TotalSeconds,
 				Mode = (int)resolved.Difficulty.Mode,
 				resolved.Difficulty.Bpm,
 				resolved.Difficulty.Cs,
@@ -147,10 +147,10 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 	///     star rating, and only sets whose id survived the first pass are included.
 	/// </remarks>
 	public async Task<IReadOnlyList<IReadOnlyList<Beatmap>>> SearchAsync(
-		BeatmapFilters filters, GameMode? mode, int offset, int amount,
+		BeatmapsetQuery query, GameMode? mode, int offset, int amount,
 		CancellationToken cancellationToken = default)
 	{
-		var whereClause = BuildSearchWhereClause(filters, mode, out var parameters);
+		var whereClause = BuildSearchWhereClause(query, mode, out var parameters);
 		parameters.Add("Offset", offset);
 		parameters.Add("Amount", amount);
 
@@ -168,7 +168,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 		var rows = await connection.QueryAsync<BeatmapRow, BeatmapsetRow, Beatmap>(
 			$"""
 			 SELECT {SharedColumns} FROM Beatmaps b JOIN Beatmapsets m ON b.BeatmapsetId = m.Id
-			 WHERE b.BeatmapsetId IN @SetIds AND m.IsPrivate = 0
+			 WHERE b.BeatmapsetId IN @SetIds AND m.IsVisible = 0
 			 ORDER BY b.Star ASC
 			 """,
 			(b, m) => b.ToBeatmap(m.ToBeatmapset()),
@@ -182,10 +182,10 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 	}
 
 	/// <inheritdoc />
-	public async Task<int> SearchCountAsync(BeatmapFilters filters, GameMode? mode,
+	public async Task<int> SearchCountAsync(BeatmapsetQuery query, GameMode? mode,
 		CancellationToken cancellationToken = default)
 	{
-		var whereClause = BuildSearchWhereClause(filters, mode, out var parameters);
+		var whereClause = BuildSearchWhereClause(query, mode, out var parameters);
 
 		await using var connection = Connect();
 		return await connection.ExecuteScalarAsync<int>(
@@ -222,7 +222,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 		await using var connection = Connect();
 		var whereClause = includePrivate
 			? "WHERE b.BeatmapsetId = @BeatmapsetId"
-			: "WHERE b.BeatmapsetId = @BeatmapsetId AND m.IsPrivate = 0";
+			: "WHERE b.BeatmapsetId = @BeatmapsetId AND m.IsVisible = 0";
 		var rows = await connection.QueryAsync<BeatmapRow, BeatmapsetRow, Beatmap>(
 			$"""
 			 SELECT {SharedColumns} FROM Beatmaps b JOIN Beatmapsets m ON b.BeatmapsetId = m.Id
@@ -244,7 +244,7 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 		await using var connection = Connect();
 		var whereClause = includePrivate
 			? "WHERE b.BeatmapsetId IN @SetIds"
-			: "WHERE b.BeatmapsetId IN @SetIds AND m.IsPrivate = 0";
+			: "WHERE b.BeatmapsetId IN @SetIds AND m.IsVisible = 0";
 		var rows = await connection.QueryAsync<SetBeatmapCount>(
 			$"""
 			 SELECT b.BeatmapsetId AS SetId, COUNT(*) AS Count FROM Beatmaps b JOIN Beatmapsets m ON b.BeatmapsetId = m.Id
@@ -257,19 +257,19 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 
 	/// <summary>
 	///     Builds the shared `WHERE` clause and parameters for a beatmapset search, from the same
-	///     filters <see cref="SearchAsync" /> and <see cref="SearchCountAsync" /> both translate.
+	///     query <see cref="SearchAsync" /> and <see cref="SearchCountAsync" /> both translate.
 	/// </summary>
-	private static string BuildSearchWhereClause(BeatmapFilters filters, GameMode? mode,
+	private static string BuildSearchWhereClause(BeatmapsetQuery query, GameMode? mode,
 		out DynamicParameters parameters)
 	{
-		var conditions = new List<string> { "m.IsPrivate = 0" };
+		var conditions = new List<string> { "m.IsVisible = 0" };
 		parameters = new DynamicParameters();
 		var p = 0;
 
-		if (filters.Keywords is not null)
+		if (query.Keywords is not null)
 		{
 			conditions.Add("(m.Artist LIKE @Query OR m.Title LIKE @Query OR m.Creator LIKE @Query)");
-			parameters.Add("Query", $"%{filters.Keywords}%");
+			parameters.Add("Query", $"%{query.Keywords}%");
 		}
 
 		if (mode is not null)
@@ -278,52 +278,52 @@ public sealed class SqliteBeatmapRepository(string connectionString, ILogger<Sql
 			parameters.Add("Mode", (int)mode);
 		}
 
-		AppendNumeric(conditions, parameters, ref p, "b.Star", filters.Star);
-		AppendNumeric(conditions, parameters, ref p, "b.Ar", filters.Ar);
-		AppendNumeric(conditions, parameters, ref p, "b.Hp", filters.Hp);
-		AppendNumeric(conditions, parameters, ref p, "b.Cs", filters.Cs);
-		AppendNumeric(conditions, parameters, ref p, "b.Od", filters.Od);
-		AppendNumeric(conditions, parameters, ref p, "b.Bpm", filters.Bpm);
-		AppendNumeric(conditions, parameters, ref p, "b.TotalLength", filters.LengthSeconds);
+		AppendNumeric(conditions, parameters, ref p, "b.Star", query.Star);
+		AppendNumeric(conditions, parameters, ref p, "b.Ar", query.Ar);
+		AppendNumeric(conditions, parameters, ref p, "b.Hp", query.Hp);
+		AppendNumeric(conditions, parameters, ref p, "b.Cs", query.Cs);
+		AppendNumeric(conditions, parameters, ref p, "b.Od", query.Od);
+		AppendNumeric(conditions, parameters, ref p, "b.Bpm", query.Bpm);
+		AppendNumeric(conditions, parameters, ref p, "b.Length", query.Length);
 		// osu!mania's key count and every other mode's circle size share the same stored field,
-		// matching real osu!'s own convention -- see BeatmapFilters.Keys's own remarks.
-		AppendNumeric(conditions, parameters, ref p, "b.Cs", filters.Keys);
+		// matching real osu!'s own convention -- see BeatmapsetQuery.Keys's own remarks.
+		AppendNumeric(conditions, parameters, ref p, "b.Cs", query.Keys);
 		// Circles/sliders only exist on standard-mode beatmaps (BeatmapObjects's polymorphic
 		// JSON shape); json_extract returns NULL for every other mode, which naturally excludes them
 		// from these comparisons rather than requiring a separate mode check.
-		AppendNumeric(conditions, parameters, ref p, "json_extract(b.Objects, '$.Circles')", filters.Circles);
-		AppendNumeric(conditions, parameters, ref p, "json_extract(b.Objects, '$.Sliders')", filters.Sliders);
-		AppendDate(conditions, parameters, ref p, "m.CreatedAt", filters.Created);
-		AppendDate(conditions, parameters, ref p, "m.LastUpdate", filters.Updated);
+		AppendNumeric(conditions, parameters, ref p, "json_extract(b.Objects, '$.Circles')", query.Circles);
+		AppendNumeric(conditions, parameters, ref p, "json_extract(b.Objects, '$.Sliders')", query.Sliders);
+		AppendDate(conditions, parameters, ref p, "m.CreatedAt", query.Created);
+		AppendDate(conditions, parameters, ref p, "m.LastUpdate", query.Updated);
 
-		if (filters.Creator is not null)
+		if (query.Creator is not null)
 		{
 			conditions.Add("m.Creator = @Creator COLLATE NOCASE");
-			parameters.Add("Creator", filters.Creator);
+			parameters.Add("Creator", query.Creator);
 		}
 
-		if (filters.Artist is not null)
+		if (query.Artist is not null)
 		{
 			conditions.Add("m.Artist LIKE @ArtistFilter");
-			parameters.Add("ArtistFilter", $"%{filters.Artist}%");
+			parameters.Add("ArtistFilter", $"%{query.Artist}%");
 		}
 
-		if (filters.Title is not null)
+		if (query.Title is not null)
 		{
 			conditions.Add("m.Title LIKE @TitleFilter");
-			parameters.Add("TitleFilter", $"%{filters.Title}%");
+			parameters.Add("TitleFilter", $"%{query.Title}%");
 		}
 
-		if (filters.Difficulty is not null)
+		if (query.Difficulty is not null)
 		{
 			conditions.Add("b.Version LIKE @DifficultyFilter");
-			parameters.Add("DifficultyFilter", $"%{filters.Difficulty}%");
+			parameters.Add("DifficultyFilter", $"%{query.Difficulty}%");
 		}
 
-		if (filters.Status is not null)
+		if (query.Status is not null)
 			// Every set on this server reports the same status (Beatmapset.Status is a constant), so
 			// this either matches everything or nothing depending on which status was asked for.
-			conditions.Add(filters.Status == Beatmapset.Status ? "1 = 1" : "1 = 0");
+			conditions.Add(query.Status == Beatmapset.Status ? "1 = 1" : "1 = 0");
 
 		return $"WHERE {string.Join(" AND ", conditions)}";
 	}

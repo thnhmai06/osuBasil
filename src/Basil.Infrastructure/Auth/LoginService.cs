@@ -197,7 +197,7 @@ public sealed class LoginService(
 			loginTime)
 		{
 			UtcOffset = loginForm.UtcOffset,
-			PmPrivate = loginForm.PmPrivate,
+			PmPrivate = loginForm.AcceptPm,
 			SilenceEnd = user.SilenceEnd,
 			Client = clientDetails,
 			OsuVersion = loginForm.ClientVersion,
