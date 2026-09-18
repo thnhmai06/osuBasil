@@ -8,27 +8,28 @@ namespace Basil.Domain.Auth;
 /// </summary>
 /// <param name="Username">The username the client sent.</param>
 /// <param name="PasswordMd5">The MD5 hash of the password the client sent.</param>
-/// <param name="ClientVersion">The version of the client.</param>
 /// <param name="UtcOffset">The client's UTC offset, in hours.</param>
-/// <param name="DisplayCity">Whether the client allows its city to be displayed.</param>
-/// <param name="AcceptPm">Whether the client accepts private messages.</param>
-/// <param name="ClientDetails">The client details captured from the login request.</param>
-public sealed record LoginForm(
+/// <param name="IsDisplayCity">Whether the client allows its city to be displayed.</param>
+/// <param name="IsAcceptPm">Whether the client accepts private messages.</param>
+/// <param name="ClientVersion">The version of the client.</param>
+/// <param name="ClientFingerprint">The client details captured from the login request.</param>
+public sealed record LoginRequest(
 	string Username,
 	string PasswordMd5,
-	ClientVersion ClientVersion,
 	int UtcOffset, // not DateTimeOffset
-	bool DisplayCity,
-	bool AcceptPm,
-	ClientDetails ClientDetails) : IParsable<LoginForm>
+	bool IsDisplayCity,
+	bool IsAcceptPm,
+	ClientVersion ClientVersion,
+	ClientFingerprint ClientFingerprint
+) : IParsable<LoginRequest>
 {
 	/// <summary>
-	///     Parses a raw login request into a <see cref="LoginForm" />.
+	///     Parses a raw login request into a <see cref="LoginRequest" />.
 	/// </summary>
 	/// <param name="s">The login payload from the client.</param>
 	/// <param name="provider">The format provider to use for parsing.</param>
 	/// <returns>The parsed login data.</returns>
-	public static LoginForm Parse(string s, IFormatProvider? provider = null)
+	public static LoginRequest Parse(string s, IFormatProvider? provider = null)
 	{
 		var decoded = s.TrimEnd('\n');
 
@@ -45,18 +46,18 @@ public sealed record LoginForm(
 		var displayCity = fields[2] == "1";
 		var clientHashes = fields[3];
 		var pmPrivate = fields[4] == "1";
-		var clientDetails = ClientDetails.Parse(clientHashes, provider);
+		var clientDetails = ClientFingerprint.Parse(clientHashes, provider);
 
-		return new LoginForm(username, passwordMd5, osuVersion, utcOffset,
-			displayCity, pmPrivate, clientDetails);
+		return new LoginRequest(username, passwordMd5, utcOffset,
+			displayCity, pmPrivate, osuVersion, clientDetails);
 	}
 
 	/// <summary>
-	///     Attempts to parse a raw login request into a <see cref="LoginForm" />.
+	///     Attempts to parse a raw login request into a <see cref="LoginRequest" />.
 	/// </summary>
 	public static bool TryParse(
 		[NotNullWhen(true)] string? s, IFormatProvider? provider,
-		[MaybeNullWhen(false)] out LoginForm result)
+		[MaybeNullWhen(false)] out LoginRequest result)
 	{
 		if (s is null)
 		{

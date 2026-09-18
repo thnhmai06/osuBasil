@@ -1,6 +1,5 @@
 using Basil.Application.Users;
 using Basil.Domain.Client;
-using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Persistence;
 using Dapper;
 using Microsoft.Data.Sqlite;
@@ -21,7 +20,7 @@ public sealed class SqliteClientHashRepository(string connectionString, ILogger<
 	///     occurrence; a later login with the same fingerprint bumps <c>Occurrences</c> and
 	///     refreshes <c>LastSeenAt</c>. The row is then re-read by that fingerprint and returned.
 	/// </remarks>
-	public async Task<ClientHash> CreateAsync(int userId, string osuPathMd5, string adapters, string uninstallId,
+	public async Task<UserFingerprint> CreateAsync(int userId, string osuPathMd5, string adapters, string uninstallId,
 		string diskSerial, CancellationToken cancellationToken = default)
 	{
 		return await SqliteInstrumentation.RecordAsync("clienthash.create", async () =>
@@ -45,7 +44,7 @@ public sealed class SqliteClientHashRepository(string connectionString, ILogger<
 					UninstallId = uninstallId,
 					DiskSerial = diskSerial
 				});
-			logger.LogDebug("ClientHash upserted for UserId={UserId}", userId);
+			logger.LogDebug("UserFingerprint upserted for UserId={UserId}", userId);
 
 			return row.ToClientHash();
 		});
@@ -59,7 +58,7 @@ public sealed class SqliteClientHashRepository(string connectionString, ILogger<
 	///     carries the other account's name and privileges and always excludes
 	///     <paramref name="userId" /> itself.
 	/// </remarks>
-	public async Task<IReadOnlyList<UserClientHash>> FetchAnyHardwareMatchesForUserAsync(
+	public async Task<IReadOnlyList<UserFingerprint>> FetchAnyHardwareMatchesForUserAsync(
 		int userId,
 		bool runningUnderWine,
 		string adapters,
@@ -116,11 +115,11 @@ public sealed class SqliteClientHashRepository(string connectionString, ILogger<
 		public DateTime LastSeenAt { get; set; }
 		public int Occurrences { get; set; }
 
-		/// <summary>Builds a <see cref="ClientHash" /> from this row.</summary>
+		/// <summary>Builds a <see cref="UserFingerprint" /> from this row.</summary>
 		/// <returns>The domain client hash record.</returns>
-		public ClientHash ToClientHash()
+		public UserFingerprint ToClientHash()
 		{
-			return new ClientHash(UserId, OsuPathMd5, Adapters, UninstallId, DiskSerial, LastSeenAt, Occurrences);
+			return new UserFingerprint(UserId, OsuPathMd5, Adapters, UninstallId, DiskSerial, LastSeenAt, Occurrences);
 		}
 	}
 
@@ -141,13 +140,13 @@ public sealed class SqliteClientHashRepository(string connectionString, ILogger<
 		public int Privilege { get; set; }
 
 		/// <summary>
-		///     Builds a <see cref="UserClientHash" /> from this row, casting the stored
+		///     Builds a <see cref="UserFingerprint" /> from this row, casting the stored
 		///     privilege column.
 		/// </summary>
 		/// <returns>The domain client hash-with-player record.</returns>
-		public UserClientHash ToClientHashWithPlayer()
+		public UserFingerprint ToClientHashWithPlayer()
 		{
-			return new UserClientHash(
+			return new UserFingerprint(
 				UserId, OsuPathMd5, Adapters, UninstallId, DiskSerial, LastSeenAt,
 				Occurrences, Name, (UserPrivileges)Privilege);
 		}

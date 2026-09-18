@@ -1,5 +1,4 @@
 using Basil.Application.Sessions;
-using Basil.Domain.Users;
 
 namespace Basil.Application.Irc;
 

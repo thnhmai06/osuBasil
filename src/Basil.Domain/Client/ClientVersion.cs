@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 
 namespace Basil.Domain.Client;
 
-public sealed partial record ClientVersion(DateOnly Date, int? Revision, ClientVersionStream Stream)
+public readonly partial record struct ClientVersion(DateOnly Date, int? Revision, ClientVersionStream Stream)
 	: IParsable<ClientVersion>, IFormattable
 {
 	[GeneratedRegex(
@@ -22,8 +22,6 @@ public sealed partial record ClientVersion(DateOnly Date, int? Revision, ClientV
 	/// </exception>
 	public static ClientVersion Parse(string s, IFormatProvider? provider = null)
 	{
-		ArgumentNullException.ThrowIfNull(s);
-
 		var match = VersionPattern().Match(s);
 		if (!match.Success)
 			throw new FormatException($"Invalid client version: {s}");
@@ -47,14 +45,11 @@ public sealed partial record ClientVersion(DateOnly Date, int? Revision, ClientV
 	/// <summary>
 	///     Attempts to parse an osu! version string.
 	/// </summary>
-	public static bool TryParse(
-		[NotNullWhen(true)] string? s,
-		IFormatProvider? provider,
-		[MaybeNullWhen(false)] out ClientVersion result)
+	public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, out ClientVersion result)
 	{
 		if (s is null)
 		{
-			result = null;
+			result = default;
 			return false;
 		}
 
@@ -65,16 +60,13 @@ public sealed partial record ClientVersion(DateOnly Date, int? Revision, ClientV
 		}
 		catch (FormatException)
 		{
-			result = null;
+			result = default;
 			return false;
 		}
 	}
 
-	public string ToString(string? format, IFormatProvider? formatProvider)
+	public string ToString(string? format = null, IFormatProvider? formatProvider = null)
 	{
-		_ = format;
-		_ = formatProvider;
-
 		var date = Date.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
 		var revision = Revision is null ? string.Empty : $".{Revision}";
 		var stream = Stream == ClientVersionStream.Stable
@@ -86,7 +78,7 @@ public sealed partial record ClientVersion(DateOnly Date, int? Revision, ClientV
 
 	public override string ToString()
 	{
-		return ToString(null, null);
+		return ToString();
 	}
 }
 

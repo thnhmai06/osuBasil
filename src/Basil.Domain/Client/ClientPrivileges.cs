@@ -22,8 +22,5 @@ public enum ClientPrivileges : byte
 	Owner = 1 << 3,
 
 	/// <summary>Marks the user as a developer.</summary>
-	Developer = 1 << 4,
-
-	/// <summary>Marks the user as a tournament client. Not used in communications with the osu! client.</summary>
-	Tournament = 1 << 5
+	Developer = 1 << 4
 }

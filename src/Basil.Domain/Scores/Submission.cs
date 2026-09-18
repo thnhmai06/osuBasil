@@ -124,7 +124,7 @@ public sealed record Submission
 	/// </remarks>
 	/// <exception cref="ScoreSubmissionIntegrityException">Any of the checks fail.</exception>
 	public void ValidateSubmissionIntegrity(
-		ClientDetails? clientDetails,
+		ClientFingerprint? clientDetails,
 		DateOnly loginOsuVersionDate,
 		string playerName,
 		string osuVersion,
@@ -161,7 +161,7 @@ public sealed record Submission
 	/// <param name="uniqueIdHashes">The hashes parsed from the client's unique-id string.</param>
 	/// <exception cref="ScoreSubmissionIntegrityException">Any of the details do not match.</exception>
 	public static void ValidateClientDetails(
-		ClientDetails? clientDetails, DateOnly loginOsuVersionDate, string osuVersion, string clientHash,
+		ClientFingerprint? clientDetails, DateOnly loginOsuVersionDate, string osuVersion, string clientHash,
 		UniqueIdHashes uniqueIdHashes)
 	{
 		if (clientDetails is null) throw new ScoreSubmissionIntegrityException("missing client details");

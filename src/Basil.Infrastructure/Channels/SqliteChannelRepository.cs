@@ -1,6 +1,5 @@
 using Basil.Application.Channels;
 using Basil.Domain.Channels;
-using Basil.Domain.Users;
 using Basil.Infrastructure.Shared.Persistence;
 using Dapper;
 using Microsoft.Data.Sqlite;

@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using Basil.Domain.Users;
 
 namespace Basil.Application.Channels;
 

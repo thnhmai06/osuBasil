@@ -68,7 +68,7 @@ public sealed class GameSession : UserSession
 	///     score submission's own client hash to catch a submission coming from a different client
 	///     session than the one currently logged in.
 	/// </summary>
-	public ClientDetails? Client { get; init; }
+	public ClientFingerprint? Client { get; init; }
 
 	/// <summary>
 	///     Gets or sets the osu! client version captured at login, kept separate from

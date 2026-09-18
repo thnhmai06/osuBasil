@@ -1,6 +1,4 @@
-﻿using Basil.Domain.Users;
-
-namespace Basil.Domain.Channels;
+﻿namespace Basil.Domain.Channels;
 
 /// <summary>
 ///     Represents a chat channel.

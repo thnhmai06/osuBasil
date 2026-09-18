@@ -26,7 +26,7 @@ public interface IClientHashRepository
 	///     occurrence, and every later login with the same fingerprint bumps the occurrence count
 	///     and refreshes the last-seen time.
 	/// </remarks>
-	Task<ClientHash> CreateAsync(int userId, string osuPathMd5, string adapters, string uninstallId,
+	Task<UserFingerprint> CreateAsync(int userId, string osuPathMd5, string adapters, string uninstallId,
 		string diskSerial, CancellationToken cancellationToken = default);
 
 	/// <summary>
@@ -44,7 +44,7 @@ public interface IClientHashRepository
 	/// <param name="diskSerial">A fingerprint of the primary disk's serial number, or <see langword="null" />.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Every other user sharing hardware with the supplied fingerprint, with their names and privileges.</returns>
-	Task<IReadOnlyList<UserClientHash>> FetchAnyHardwareMatchesForUserAsync(
+	Task<IReadOnlyList<UserFingerprint>> FetchAnyHardwareMatchesForUserAsync(
 		int userId,
 		bool runningUnderWine,
 		string adapters,

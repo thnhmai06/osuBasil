@@ -17,7 +17,7 @@ public sealed class AdminKeyService(ISettingsRepository settings, IPasswordHashe
 	/// <summary>The longest key bcrypt hashes without silently truncating it.</summary>
 	public const int MaxKeyLengthBytes = 72;
 
-	private const string HashSettingKey = "AdminKey:Hash";
+	private const string HashSettingKey = "AdminKey:Md5";
 	private const string LastChangedSettingKey = "AdminKey:LastChanged";
 
 	/// <summary>Gets whether the server is in bypass mode (no admin key hash configured).</summary>

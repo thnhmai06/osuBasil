@@ -15,7 +15,6 @@ using Basil.Application.Users;
 using Basil.Domain.Auth;
 using Basil.Domain.Client;
 using Basil.Domain.Social;
-using Basil.Domain.Users;
 using Basil.Infrastructure.Content;
 using Microsoft.Extensions.Options;
 
@@ -68,10 +67,10 @@ public sealed class LoginService(
 	public async Task<LoginResult> ExecuteAsync(LoginRequest request,
 		CancellationToken cancellationToken = default)
 	{
-		LoginForm loginForm;
+		Domain.Auth.LoginRequest loginRequest;
 		try
 		{
-			loginForm = LoginForm.From(request.Body);
+			loginRequest = Domain.Auth.LoginRequest.From(request.Body);
 		}
 		catch (ArgumentException)
 		{
@@ -84,7 +83,7 @@ public sealed class LoginService(
 
 		try
 		{
-			return await ExecuteAuthenticatedAsync(loginForm, request, cancellationToken);
+			return await ExecuteAuthenticatedAsync(loginRequest, request, cancellationToken);
 		}
 		catch (Exception ex) when (ex is not OperationCanceledException)
 		{
@@ -94,7 +93,7 @@ public sealed class LoginService(
 			// the 2026-08 investigation into missing cho-token headers under SQLite write
 			// contention). ErrorOccurred is the protocol's own "internal error" login-failure code.
 			logger.LogError(ex, "Login failed with an unexpected exception: Username={Username}",
-				loginForm.Username);
+				loginRequest.Username);
 			return new LoginResult("server-error", Concat(
 				LoginResponseEncoder.Notification("A server error occurred while logging in. Please try again."),
 				LoginResponseEncoder.ServerErrorReply()));
@@ -102,10 +101,11 @@ public sealed class LoginService(
 	}
 
 	/// <summary>Runs the login checks and session setup once the raw request has parsed successfully.</summary>
-	private async Task<LoginResult> ExecuteAuthenticatedAsync(LoginForm loginForm, LoginRequest request,
+	private async Task<LoginResult> ExecuteAuthenticatedAsync(Domain.Auth.LoginRequest loginRequest,
+		LoginRequest request,
 		CancellationToken cancellationToken)
 	{
-		var clientDetails = loginForm.ClientDetails;
+		var clientDetails = loginRequest.ClientFingerprint;
 		if (!(clientDetails.IsRunningUnderWine || clientDetails.NetworkAdapters.Any(a => a.Length > 0)))
 			return InvalidRequestFailure("empty-adapters");
 
@@ -113,8 +113,8 @@ public sealed class LoginService(
 
 		// disallow multiple game sessions from a single user, except tourney spectator clients. An
 		// IrcSession for the same account, if any, is untouched — the two kinds coexist independently.
-		var existingSession = gameSessions.GetByName(loginForm.Username);
-		if (existingSession is not null && loginForm.ClientVersion.Stream != ClientVersionStream.Tourney)
+		var existingSession = gameSessions.GetByName(loginRequest.Username);
+		if (existingSession is not null && loginRequest.ClientVersion.Stream != ClientVersionStream.Tourney)
 		{
 			if (loginTime - existingSession.LastRecvTime < TimeSpan.FromSeconds(ReloginGuardWindowSeconds))
 				return new LoginResult("user-already-logged-in", Concat(
@@ -134,13 +134,13 @@ public sealed class LoginService(
 			await playerLogoutService.LogoutAsync(existingSession, cancellationToken);
 		}
 
-		var user = await users.FetchByNameAsync(loginForm.Username, cancellationToken);
-		if (user is null) return IncorrectCredentials(loginForm.Username, request.Ip);
+		var user = await users.FetchByNameAsync(loginRequest.Username, cancellationToken);
+		if (user is null) return IncorrectCredentials(loginRequest.Username, request.Ip);
 
 		var passwordHash = await users.FetchPasswordHashAsync(user.Id, cancellationToken);
 		if (passwordHash is null
-		    || !passwordHasher.Verify(Encoding.UTF8.GetBytes(loginForm.PasswordMd5), passwordHash))
-			return IncorrectCredentials(loginForm.Username, request.Ip);
+		    || !passwordHasher.Verify(Encoding.UTF8.GetBytes(loginRequest.PasswordMd5), passwordHash))
+			return IncorrectCredentials(loginRequest.Username, request.Ip);
 
 		// A deleted account must never be able to log back in, regardless of a correct password
 		// (Issue #4). Reported as ordinary incorrect credentials rather than a distinct reason, so an
@@ -149,10 +149,10 @@ public sealed class LoginService(
 		{
 			logger.LogDebug("Login rejected: account deleted. UserId={UserId} Username={Username}",
 				user.Id, user.Name);
-			return IncorrectCredentials(loginForm.Username, request.Ip);
+			return IncorrectCredentials(loginRequest.Username, request.Ip);
 		}
 
-		if (loginForm.ClientVersion.Stream == ClientVersionStream.Tourney
+		if (loginRequest.ClientVersion.Stream == ClientVersionStream.Tourney
 		    && !HasPrivileges(user.Privilege, UserPrivileges.Donator, UserPrivileges.Unrestricted))
 		{
 			logger.LogDebug("Tourney client rejected: not donator/unrestricted. Username={Username}", user.Name);
@@ -162,8 +162,8 @@ public sealed class LoginService(
 
 		/* login credentials verified */
 
-		await loginRepository.CreateAsync(user.Id, request.Ip.ToString(), loginForm.ClientVersion.Date,
-			loginForm.ClientVersion.Stream.ToString().ToLowerInvariant(),
+		await loginRepository.CreateAsync(user.Id, request.Ip.ToString(), loginRequest.ClientVersion.Date,
+			loginRequest.ClientVersion.Stream.ToString().ToLowerInvariant(),
 			cancellationToken);
 
 		await clientHashes.CreateAsync(
@@ -196,11 +196,11 @@ public sealed class LoginService(
 		var session = new GameSession(user.Id, user.Name, $"osu-{tokenGenerator.GenerateToken()}", user.Privilege,
 			loginTime)
 		{
-			UtcOffset = loginForm.UtcOffset,
-			PmPrivate = loginForm.AcceptPm,
+			UtcOffset = loginRequest.UtcOffset,
+			PmPrivate = loginRequest.AcceptPm,
 			SilenceEnd = user.SilenceEnd,
 			Client = clientDetails,
-			OsuVersion = loginForm.ClientVersion,
+			OsuVersion = loginRequest.ClientVersion,
 			Country = user.Country
 		};
 
@@ -396,7 +396,7 @@ public sealed class LoginService(
 /// </summary>
 /// <remarks>
 ///     The <see cref="Body" /> is the request's raw payload, decoded by
-///     <see cref="LoginForm.From" />; <see cref="Ip" /> identifies the connecting client.
+///     <see cref="Domain.Auth.LoginRequest.From" />; <see cref="Ip" /> identifies the connecting client.
 /// </remarks>
 public sealed record LoginRequest(byte[] Body, IPAddress Ip);
 
