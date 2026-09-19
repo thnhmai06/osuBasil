@@ -1,9 +1,44 @@
 ﻿using System.Globalization;
+using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
+using Basil.Domain.Users;
 
 namespace Basil.Domain.Scores;
 
-public sealed record Score(
+public sealed record VerifiedScore(
+	int Id,
+	User User,
+	Beatmap Beatmap,
+	GameMode Mode,
+	GameMods Mods,
+	HitCounts HitCounts,
+	int TotalScore,
+	short MaxCombo,
+	Grade Grade,
+	bool IsPassed,
+	bool IsFullCombo,
+	DateTimeOffset OccuredAt) :
+	Score(User.Id, Beatmap.Md5, Mode, Mods, HitCounts, TotalScore,
+		MaxCombo, Grade, IsPassed, IsFullCombo, OccuredAt)
+{
+	public VerifiedScore(Score score, int Id, User User, Beatmap Beatmap) : this(
+		Id,
+		User,
+		Beatmap,
+		score.Mode,
+		score.Mods,
+		score.HitCounts,
+		score.TotalScore,
+		score.MaxCombo,
+		score.Grade,
+		score.IsPassed,
+		score.IsFullCombo,
+		score.OccuredAt)
+	{
+	}
+}
+
+public record Score(
 	int? UserId,
 	string? BeatmapMd5,
 	GameMode Mode,
