@@ -16,6 +16,6 @@ public interface ILoginRepository
 	/// <param name="osuStream">The osu! release stream of the connecting client.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The newly created login event with its id and timestamp.</returns>
-	Task<LoginEvent> CreateAsync(int userId, string ip, DateOnly osuVersion, string osuStream,
+	Task<Login> CreateAsync(int userId, string ip, DateOnly osuVersion, string osuStream,
 		CancellationToken cancellationToken = default);
 }

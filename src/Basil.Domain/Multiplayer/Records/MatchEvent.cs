@@ -8,10 +8,10 @@ namespace Basil.Domain.Multiplayer.Records;
 public sealed record MatchEvent(
 	Match Match,
 	MatchEventType Type,
-	User? Actor,
-	User? Target,
 	DateTimeOffset OccurredAt,
-	string? Detail) : IMatchEntry;
+	User? Actor = null,
+	User? Target = null,
+	string? Detail = null) : IMatchEntry;
 
 /// <summary>
 ///     The kinds of match lifecycle events that get recorded against a match.

@@ -1,70 +1,91 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Text.RegularExpressions;
 
 namespace Basil.Domain.Client;
 
 /// <summary>
 ///     Represents the client fingerprint captured from an osu! client at login.
 /// </summary>
-/// <remarks>
-///     Captured once at login and re-checked against every score submission from that session, as
-///     part of the submission integrity validation.
-/// </remarks>
-[method: SetsRequiredMembers]
-public readonly record struct ClientFingerprint(
-	string OsuPathMd5,
-	NetworkAdapters NetworkAdapters,
-	string UninstallMd5,
-	string DiskSignatureMd5)
-	: IParsable<ClientFingerprint>
+public readonly partial record struct ClientFingerprint : IParsable<ClientFingerprint>, IFormattable
 {
-	/// <summary>The MD5 hash of the osu! executable path.</summary>
-	public string OsuPathMd5 { get; init; } = OsuPathMd5;
+	public string OsuPathMd5 { get; }
+	public NetworkAdapters NetworkAdapters { get; }
+	public string UninstallMd5 { get; }
+	public string DiskSignatureMd5 { get; }
 
-	/// <summary>The combined network adapter.</summary>
-	public required NetworkAdapters NetworkAdapters { get; init; } = NetworkAdapters;
+	public ClientFingerprint(string osuPathMd5, NetworkAdapters networkAdapters,
+		string uninstallMd5, string diskSignatureMd5)
+	{
+		ValidateMd5(osuPathMd5, nameof(osuPathMd5));
+		ValidateMd5(uninstallMd5, nameof(uninstallMd5));
+		ValidateMd5(diskSignatureMd5, nameof(diskSignatureMd5));
 
-	/// <summary>The MD5 hash of the uninstallation identifier.</summary>
-	public required string UninstallMd5 { get; init; } = UninstallMd5;
+		OsuPathMd5 = osuPathMd5;
+		NetworkAdapters = networkAdapters;
+		UninstallMd5 = uninstallMd5;
+		DiskSignatureMd5 = diskSignatureMd5;
+	}
 
-	/// <summary>The MD5 hash of the disk signature.</summary>
-	public required string DiskSignatureMd5 { get; init; } = DiskSignatureMd5;
-
-	public bool Match(ClientFingerprint other)
+	public bool MatchWith(ClientFingerprint other)
 	{
 		return NetworkAdapters.IsRunningUnderWine
 			? UninstallMd5 == other.UninstallMd5
-			: UninstallMd5 == other.UninstallMd5 ||
-			  NetworkAdapters == other.NetworkAdapters ||
-			  DiskSignatureMd5 == other.DiskSignatureMd5;
+			: UninstallMd5 == other.UninstallMd5
+			  || NetworkAdapters == other.NetworkAdapters
+			  || DiskSignatureMd5 == other.DiskSignatureMd5;
 	}
 
 	public static ClientFingerprint Parse(string s, IFormatProvider? provider = null)
 	{
-		var hashParts = s[..^1].Split(':', 5);
+		if (!s.EndsWith(':')) throw new FormatException("Client fingerprint is missing trailing delimiter.");
+		var parts = s[..^1].Split(':', 5);
 
-		var osuPathMd5 = hashParts[0];
-		var adaptersString = hashParts[1];
-		var adaptersMd5 = hashParts[2];
-		var uninstallMd5 = hashParts[3];
-		var diskSignatureMd5 = hashParts[4];
+		return parts.Length == 5
+			? new ClientFingerprint(parts[0], new NetworkAdapters(parts[1], parts[2]), parts[3], parts[4])
+			: throw new FormatException("Client fingerprint must contain 5 components.");
+	}
 
-		var adapters = new NetworkAdapters(adaptersString, adaptersMd5);
 
-		return new ClientFingerprint(osuPathMd5, adapters, uninstallMd5,
-			diskSignatureMd5);
+	/// <summary>
+	///     Formats this fingerprint as the osu! client hash used by the protocol.
+	/// </summary>
+	public string ToString(string? format = null, IFormatProvider? formatProvider = null)
+	{
+		return $"{OsuPathMd5}:{NetworkAdapters.Adapters}:{NetworkAdapters.Md5}:" +
+		       $"{UninstallMd5}:{DiskSignatureMd5}:";
 	}
 
 	public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, out ClientFingerprint result)
 	{
-		try
-		{
-			result = Parse(s!, provider);
-			return true;
-		}
-		catch (Exception)
+		if (s is null)
 		{
 			result = default;
 			return false;
 		}
+
+		try
+		{
+			result = Parse(s, provider);
+			return true;
+		}
+		catch (FormatException)
+		{
+			result = default;
+			return false;
+		}
+	}
+
+	public override string ToString()
+	{
+		return ToString();
+	}
+
+	[GeneratedRegex("^[a-fA-F0-9]{32}$")]
+	private static partial Regex Md5Pattern();
+
+	private static void ValidateMd5(string value, string? paramName = null)
+	{
+		paramName ??= nameof(value);
+		if (!Md5Pattern().IsMatch(value)) throw new FormatException($"{paramName} must be a valid MD5.");
 	}
 }

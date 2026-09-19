@@ -1,4 +1,4 @@
-namespace Basil.Domain.Beatmaps;
+namespace Basil.Domain.Mechanics;
 
 /// <summary>
 ///     Represents the four game modes supported by osu!.

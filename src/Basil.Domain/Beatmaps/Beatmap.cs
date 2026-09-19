@@ -33,13 +33,13 @@ public sealed class Beatmap : IEquatable<Beatmap>
 	public required Beatmapset? Beatmapset { get; init; }
 
 	/// <summary>The difficulty name, such as "Insane".</summary>
-	public required string Version { get; init; }
+	public required string? Version { get; init; }
 
 	/// <summary>The gameplay stats of the beatmap.</summary>
-	public required Difficulty Difficulty { get; init; }
+	public required Difficulty? Difficulty { get; init; }
 
 	/// <summary>The per-mode hit-object counts of the beatmap.</summary>
-	public required BeatmapObjects Objects { get; init; }
+	public required BeatmapObjects? Objects { get; init; }
 
 	/// <summary>The name of the beatmap file on disk.</summary>
 	[JsonIgnore]

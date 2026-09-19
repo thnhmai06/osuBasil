@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
+using Basil.Domain.Client;
 
 namespace Basil.Domain.Users;
 
@@ -78,7 +79,7 @@ public partial record UserQuery
 	private sealed class Builder
 	{
 		private IReadOnlyList<Country>? _countries;
-		private UserPrivileges? _privilege;
+		private ClientPrivileges? _privilege;
 
 		public bool TryApply(string key, string rawValue)
 		{
@@ -89,8 +90,8 @@ public partial record UserQuery
 					_countries = countries;
 					return true;
 				case "privilege":
-					if (!ushort.TryParse(rawValue, out var mask)) return false;
-					_privilege = (UserPrivileges)mask;
+					if (Enum.TryParse<ClientPrivileges>(rawValue, true, out var privilege)) return false;
+					_privilege = privilege;
 					return true;
 				default:
 					return false;

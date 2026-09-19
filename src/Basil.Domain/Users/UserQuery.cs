@@ -1,4 +1,5 @@
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Client;
 
 namespace Basil.Domain.Users;
 
@@ -32,7 +33,7 @@ namespace Basil.Domain.Users;
 public sealed partial record UserQuery(
 	string? Keywords = null,
 	IReadOnlyList<Country>? Countries = null,
-	UserPrivileges? Privilege = null,
+	ClientPrivileges? Privilege = null,
 	bool? Silenced = null,
 	bool IncludeDeleted = false) : IParsable<UserQuery>
 {

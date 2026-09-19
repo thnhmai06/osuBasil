@@ -1,4 +1,6 @@
-﻿namespace Basil.Domain.Channels;
+﻿using Basil.Domain.Client;
+
+namespace Basil.Domain.Chat;
 
 /// <summary>
 ///     Represents a chat channel.
@@ -15,15 +17,13 @@ public sealed class Channel : IEquatable<Channel>
 	public required string Topic { get; set; }
 
 	/// <summary>The minimum privilege required to read the channel.</summary>
-	public required UserPrivileges ReadPrivilege { get; set; }
+	public ClientPrivileges ReadPrivilege { get; set; } = ClientPrivileges.Player;
 
 	/// <summary>The minimum privilege required to write to the channel.</summary>
-	public required UserPrivileges WritePrivilege { get; set; }
+	public ClientPrivileges WritePrivilege { get; set; } = ClientPrivileges.Player;
 
-	/// <summary>
-	///     A value that indicates whether the channel is joined automatically at login.
-	/// </summary>
-	public bool AutoJoin { get; set; }
+	/// <summary>A value that indicates whether the channel is joined automatically at login.</summary>
+	public bool AutoJoin { get; set; } = false;
 
 	public bool Equals(Channel? other)
 	{

@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Basil.Domain.Mechanics;
 
 namespace Basil.Domain.Beatmaps;
 

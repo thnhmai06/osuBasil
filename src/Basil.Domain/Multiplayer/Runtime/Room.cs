@@ -19,14 +19,14 @@ public sealed class Room
 	public required Match Match { get; init; }
 
 	/// <summary>Gets or sets the room's password.</summary>
-	public required string Password { private get; set; }
+	public string Password { private get; set; } = string.Empty;
 
 	public bool HasPassword => !string.IsNullOrWhiteSpace(Password);
 
 	/// <summary>Gets or sets a value that indicates whether a round is currently being played.</summary>
-	public bool InProgress { get; set; }
+	public bool InProgress { get; set; } = false;
 
-	public MatchSettings Settings { get; init; } = new();
+	public RoomSettings Settings { get; init; } = new();
 
 	/// <summary>
 	///     Gets or sets a value that indicates whether the room is locked against new players

@@ -1,5 +1,4 @@
-using Basil.Domain.Multiplayer.Records;
-using Basil.Domain.Scores;
+using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 
 namespace Basil.Domain.Multiplayer.Runtime;
@@ -17,10 +16,10 @@ public sealed class RoomSlot
 	public RoomSlotStatus Status { get; private set; } = RoomSlotStatus.Open;
 
 	/// <summary>Gets the team assigned to the occupant.</summary>
-	public MatchTeam Team { get; private set; } = MatchTeam.Neutral;
+	public GameTeam Team { get; private set; } = GameTeam.Neutral;
 
 	/// <summary>Gets the mods assigned to the occupant.</summary>
-	public Mods Mods { get; private set; } = Mods.NoMod;
+	public GameMods GameMods { get; private set; } = GameMods.NoMod;
 
 	/// <summary>Gets a value indicating whether the occupant has skipped the current beatmap's intro.</summary>
 	public bool IntroSkipped { get; private set; }
@@ -43,8 +42,8 @@ public sealed class RoomSlot
 
 		User = player;
 		Status = RoomSlotStatus.NotReady;
-		Team = MatchTeam.Neutral;
-		Mods = Mods.NoMod;
+		Team = GameTeam.Neutral;
+		GameMods = GameMods.NoMod;
 		IntroSkipped = false;
 	}
 
@@ -60,8 +59,8 @@ public sealed class RoomSlot
 			case RoomSlotStatus.Locked:
 				User = null;
 				Status = status;
-				Team = MatchTeam.Neutral;
-				Mods = Mods.NoMod;
+				Team = GameTeam.Neutral;
+				GameMods = GameMods.NoMod;
 				break;
 
 			case RoomSlotStatus.NoMap:
@@ -83,7 +82,7 @@ public sealed class RoomSlot
 	/// <summary>
 	///     Changes the team assigned to the occupant.
 	/// </summary>
-	public void SetTeam(MatchTeam team)
+	public void SetTeam(GameTeam team)
 	{
 		EnsureOccupied();
 		Team = team;
@@ -92,10 +91,10 @@ public sealed class RoomSlot
 	/// <summary>
 	///     Changes the mods assigned to the occupant.
 	/// </summary>
-	public void SetMods(Mods mods)
+	public void SetMods(GameMods gameMods)
 	{
 		EnsureOccupied();
-		Mods = mods;
+		GameMods = gameMods;
 	}
 
 	/// <summary>
@@ -126,7 +125,7 @@ public sealed class RoomSlot
 		User = other.User;
 		Status = other.Status;
 		Team = other.Team;
-		Mods = other.Mods;
+		GameMods = other.GameMods;
 		IntroSkipped = other.IntroSkipped;
 	}
 

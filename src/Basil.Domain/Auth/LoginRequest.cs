@@ -48,8 +48,7 @@ public sealed record LoginRequest(
 		var pmPrivate = fields[4] == "1";
 		var clientDetails = ClientFingerprint.Parse(clientHashes, provider);
 
-		return new LoginRequest(username, passwordMd5, utcOffset,
-			displayCity, pmPrivate, osuVersion, clientDetails);
+		return new LoginRequest(username, passwordMd5, utcOffset, displayCity, pmPrivate, osuVersion, clientDetails);
 	}
 
 	/// <summary>

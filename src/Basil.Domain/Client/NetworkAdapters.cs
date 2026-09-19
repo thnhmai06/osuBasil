@@ -3,51 +3,44 @@ using System.Text.RegularExpressions;
 
 namespace Basil.Domain.Client;
 
-public readonly partial struct NetworkAdapters : IParsable<NetworkAdapters>, IEquatable<NetworkAdapters>, IFormattable
+public readonly partial record struct NetworkAdapters : IParsable<NetworkAdapters>
 {
 	private const string WineAdapterSentinel = "runningunderwine";
 
-	public bool IsRunningUnderWine { get; private init; }
+	public string Adapters { get; }
 
-	public string Md5 { get; private init; }
+	public string Md5 { get; }
 
-	public NetworkAdapters(string adaptersString, string adapterMd5)
+	public bool IsRunningUnderWine => Adapters.Equals(WineAdapterSentinel, StringComparison.OrdinalIgnoreCase);
+
+	public NetworkAdapters(string adapters, string md5)
 	{
-		if (!adaptersString.EndsWith('.'))
-			throw new FormatException("Adapter string is missing trailing delimiter.");
+		if (string.IsNullOrEmpty(adapters))
+			throw new FormatException("Adapter string cannot be empty.");
 
-		if (!Md5Pattern().IsMatch(adapterMd5))
+		if (!IsValidAdaptersString(adapters))
+			throw new FormatException("Adapter string is invalid.");
+
+		if (!Md5Pattern().IsMatch(md5))
 			throw new FormatException("Adapter MD5 is invalid.");
 
-		IsRunningUnderWine = adaptersString[..^1]
-			.Split('.', StringSplitOptions.RemoveEmptyEntries)
-			.Any(a => a.Equals(WineAdapterSentinel, StringComparison.OrdinalIgnoreCase));
-		Md5 = adapterMd5;
+		Adapters = adapters;
+		Md5 = md5.ToLowerInvariant();
 	}
 
-	public static NetworkAdapters Parse(string hash, IFormatProvider? provider = null)
+	public static NetworkAdapters Parse(string s, IFormatProvider? provider = null)
 	{
-		if (string.IsNullOrEmpty(hash))
-			throw new FormatException("Hash cannot be empty.");
-		hash = hash.ToLowerInvariant();
+		var parts = s.Split(':', 2);
 
-		// [n|w][32-char MD5]
-		var wineChar = hash[0];
-		if (hash.Length != 33 || wineChar is not 'n' and 'w')
-			throw new FormatException("Hash is invalid.");
-
-		var md5 = hash[1..];
-		if (!Md5Pattern().IsMatch(md5))
-			throw new FormatException("Hash has invalid MD5.");
-
-		return new NetworkAdapters
-		{
-			IsRunningUnderWine = wineChar == 'w',
-			Md5 = md5
-		};
+		return parts.Length == 2
+			? new NetworkAdapters(parts[0], parts[1])
+			: throw new FormatException("Network adapters value must contain 2 components.");
 	}
 
-	public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, out NetworkAdapters result)
+	public static bool TryParse(
+		[NotNullWhen(true)] string? s,
+		IFormatProvider? provider,
+		out NetworkAdapters result)
 	{
 		if (s is null)
 		{
@@ -67,42 +60,32 @@ public readonly partial struct NetworkAdapters : IParsable<NetworkAdapters>, IEq
 		}
 	}
 
-	public string ToString(string? format, IFormatProvider? formatProvider)
-	{
-		var wineChar = IsRunningUnderWine ? 'w' : 'n';
-		return wineChar + Md5;
-	}
-
 	public override string ToString()
 	{
-		return ToString(null, null);
+		return $"{Adapters}:{Md5}";
 	}
 
 	public bool Equals(NetworkAdapters other)
 	{
-		return Md5 == other.Md5;
-	}
-
-	public override bool Equals(object? obj)
-	{
-		return obj is NetworkAdapters adapters && Equals(adapters);
+		return string.Equals(Md5, other.Md5, StringComparison.OrdinalIgnoreCase);
 	}
 
 	public override int GetHashCode()
 	{
-		return Md5.GetHashCode();
-	}
-
-	public static bool operator ==(NetworkAdapters left, NetworkAdapters right)
-	{
-		return left.Equals(right);
-	}
-
-	public static bool operator !=(NetworkAdapters left, NetworkAdapters right)
-	{
-		return !(left == right);
+		return StringComparer.OrdinalIgnoreCase.GetHashCode(Md5);
 	}
 
 	[GeneratedRegex("^[a-fA-F0-9]{32}$")]
 	private static partial Regex Md5Pattern();
+
+	private static bool IsValidAdaptersString(string value)
+	{
+		if (value.Equals(WineAdapterSentinel, StringComparison.OrdinalIgnoreCase))
+			return true;
+
+		return value.EndsWith('.')
+		       && value[..^1]
+			       .Split('.', StringSplitOptions.RemoveEmptyEntries)
+			       .All(a => !a.Equals(WineAdapterSentinel, StringComparison.OrdinalIgnoreCase));
+	}
 }

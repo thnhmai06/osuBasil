@@ -61,25 +61,6 @@ public sealed partial record BeatmapsetQuery(
 	public static readonly BeatmapsetQuery Empty = new();
 }
 
-/// <summary>The comparison an individual <see cref="ComparableFilter{T}" /> applies.</summary>
-public enum ComparisonOperator : byte
-{
-	/// <summary>The stored value must equal the filter's value.</summary>
-	Equal,
-
-	/// <summary>The stored value must be less than the filter's value.</summary>
-	LessThan,
-
-	/// <summary>The stored value must be less than or equal to the filter's value.</summary>
-	LessThanOrEqual,
-
-	/// <summary>The stored value must be greater than the filter's value.</summary>
-	GreaterThan,
-
-	/// <summary>The stored value must be greater than or equal to the filter's value.</summary>
-	GreaterThanOrEqual
-}
-
 /// <summary>
 ///     A `key&lt;operator&gt;value` comparison against a stored instant, where the query's value may
 ///     name only a year, a year and month, or a year/month/day -- in which case it names a whole
@@ -107,3 +88,22 @@ public sealed record DateFilter(ComparisonOperator Operator, DateTimeOffset Rang
 /// <param name="Operator">The comparison to apply.</param>
 /// <param name="Value">The value to compare the stored field against.</param>
 public sealed record ComparableFilter<T>(ComparisonOperator Operator, T Value);
+
+/// <summary>The comparison an individual filter applies.</summary>
+public enum ComparisonOperator : byte
+{
+	/// <summary>The stored value must equal the filter's value.</summary>
+	Equal,
+
+	/// <summary>The stored value must be less than the filter's value.</summary>
+	LessThan,
+
+	/// <summary>The stored value must be less than or equal to the filter's value.</summary>
+	LessThanOrEqual,
+
+	/// <summary>The stored value must be greater than the filter's value.</summary>
+	GreaterThan,
+
+	/// <summary>The stored value must be greater than or equal to the filter's value.</summary>
+	GreaterThanOrEqual
+}

@@ -5,16 +5,13 @@ namespace Basil.Domain.Content;
 /// </summary>
 public sealed class MenuBanner : IEquatable<MenuBanner>
 {
-	/// <summary>The unique identifier of the banner.</summary>
-	public required int Id { get; init; }
-
 	/// <summary>
-	///     Either a locally stored filename (under `Data/Menu/Banners/`) or an external `http(s)` URL.
+	///     The image source which is displayed.
 	/// </summary>
-	public required string Image { get; set; }
+	public required Uri Image { get; init; }
 
-	/// <summary>The click-through URL opened when the banner is clicked.</summary>
-	public required string Url { get; set; }
+	/// <summary>The click-through URI opened when the banner is clicked.</summary>
+	public required Uri Url { get; set; }
 
 	/// <summary>
 	///     The UTC instant the banner starts being current, or <see langword="null" /> for no lower bound
@@ -37,7 +34,7 @@ public sealed class MenuBanner : IEquatable<MenuBanner>
 	public bool Equals(MenuBanner? other)
 	{
 		if (other is null) return false;
-		return Id == other.Id;
+		return Image == other.Image;
 	}
 
 	public override bool Equals(object? obj)
@@ -47,6 +44,6 @@ public sealed class MenuBanner : IEquatable<MenuBanner>
 
 	public override int GetHashCode()
 	{
-		return Id;
+		return Image.GetHashCode();
 	}
 }

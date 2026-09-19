@@ -1,3 +1,5 @@
+using Basil.Domain.Mechanics;
+
 namespace Basil.Domain.Beatmaps;
 
 /// <summary>
@@ -14,7 +16,7 @@ namespace Basil.Domain.Beatmaps;
 /// <remarks>
 ///     <see cref="Length" /> serializes as a whole number of seconds on the wire.
 /// </remarks>
-public sealed record Difficulty(
+public readonly record struct Difficulty(
 	GameMode Mode,
 	double Bpm,
 	TimeSpan Length,
