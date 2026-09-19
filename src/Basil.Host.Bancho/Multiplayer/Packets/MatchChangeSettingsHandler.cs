@@ -5,7 +5,7 @@ using Basil.Application.Sessions;
 using Basil.Domain.Multiplayer.Records;
 using Basil.Domain.Scores;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Protocol.Packets;
+using Basil.Protocol.Bancho.Packets;
 
 namespace Basil.Host.Bancho.Multiplayer.Packets;
 

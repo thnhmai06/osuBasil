@@ -1,7 +1,7 @@
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Protocol.Packets;
+using Basil.Protocol.Bancho.Packets;
 
 namespace Basil.Host.Bancho.Multiplayer.Packets;
 
@@ -28,7 +28,7 @@ public sealed class MatchInviteHandler(ISessionRegistry<GameSession> sessionRegi
 
 		var target = sessionRegistry.GetByUserId(userId);
 
-		target?.Enqueue(ServerPacketWriter.MatchInvite(gameSession.Id, gameSession.Name, match.Embed, target.Name));
+		target?.Enqueue(PacketWriter.MatchInvite(gameSession.Id, gameSession.Name, match.Embed, target.Name));
 		return Task.CompletedTask;
 	}
 }

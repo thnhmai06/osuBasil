@@ -3,7 +3,7 @@ using Basil.Application.Chat;
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Eventing;
-using Basil.Protocol.Packets;
+using Basil.Protocol.Bancho.Packets;
 
 namespace Basil.Host.Bancho.Multiplayer.Packets;
 
@@ -19,43 +19,43 @@ public sealed class MatchNotifier(
 
 	public void JoinRejected(GameSession player)
 	{
-		player.Enqueue(ServerPacketWriter.MatchJoinFail());
+		player.Enqueue(PacketWriter.MatchJoinFail());
 	}
 
 	public void Removed(GameSession player)
 	{
-		player.Enqueue(ServerPacketWriter.MatchJoinFail());
+		player.Enqueue(PacketWriter.MatchJoinFail());
 	}
 
 	public void Joined(GameSession player, MatchSession match)
 	{
-		player.Enqueue(ServerPacketWriter.MatchJoinSuccess(match.ToPacket()));
+		player.Enqueue(PacketWriter.MatchJoinSuccess(match.ToPacket()));
 	}
 
 	public void HostTransferred(GameSession newHost)
 	{
-		newHost.Enqueue(ServerPacketWriter.MatchTransferHost());
+		newHost.Enqueue(PacketWriter.MatchTransferHost());
 	}
 
 	public void Invited(GameSession target, UserSession sender, MatchSession match)
 	{
-		target.Enqueue(ServerPacketWriter.MatchInvite(sender.Id, sender.Name, match.Embed, target.Name));
+		target.Enqueue(PacketWriter.MatchInvite(sender.Id, sender.Name, match.Embed, target.Name));
 	}
 
 	public void RoundStarted(MatchSession match, IReadOnlyCollection<int> notPlaying)
 	{
-		Broadcast(match, ServerPacketWriter.MatchStart(match.ToPacket()), false, notPlaying);
+		Broadcast(match, PacketWriter.MatchStart(match.ToPacket()), false, notPlaying);
 	}
 
 	public void RoundAborted(MatchSession match)
 	{
-		Broadcast(match, ServerPacketWriter.MatchAbort(), false);
+		Broadcast(match, PacketWriter.MatchAbort(), false);
 	}
 
 	public void Disposed(MatchSession match)
 	{
 		var lobby = channelRegistry.GetByName("#lobby");
-		if (lobby is not null) channelMembership.BroadcastToMembers(lobby, ServerPacketWriter.DisposeMatch(match.Id));
+		if (lobby is not null) channelMembership.BroadcastToMembers(lobby, PacketWriter.DisposeMatch(match.Id));
 	}
 
 	public void StateChanged(MatchSession match, long version, bool lobby)
@@ -68,10 +68,10 @@ public sealed class MatchNotifier(
 
 		var channel = channelRegistry.GetByName(match.ChatChannelName);
 		if (channel is not null)
-			channelMembership.BroadcastToMembers(channel, ServerPacketWriter.UpdateMatch(match.ToPacket()));
+			channelMembership.BroadcastToMembers(channel, PacketWriter.UpdateMatch(match.ToPacket()));
 
 		// The lobby sees the room without its password.
-		if (!match.IsPrivate) BroadcastToNonEmptyLobby(ServerPacketWriter.UpdateMatch(match.ToPacket(), false), lobby);
+		if (!match.IsPrivate) BroadcastToNonEmptyLobby(PacketWriter.UpdateMatch(match.ToPacket(), false), lobby);
 	}
 
 	/// <summary>Sends a packet to the match channel and, for public rooms, the non-empty lobby.</summary>

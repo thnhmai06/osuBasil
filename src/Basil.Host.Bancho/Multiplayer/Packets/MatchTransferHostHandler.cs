@@ -2,7 +2,7 @@ using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Domain.Multiplayer.Records;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Protocol.Packets;
+using Basil.Protocol.Bancho.Packets;
 
 namespace Basil.Host.Bancho.Multiplayer.Packets;
 
@@ -48,7 +48,7 @@ public sealed class MatchTransferHostHandler(
 			match.DbId, prevHost.Id, target.Id);
 
 		var targetPlayer = sessionRegistry.GetByUserId(target.Id);
-		targetPlayer?.Enqueue(ServerPacketWriter.MatchTransferHost());
+		targetPlayer?.Enqueue(PacketWriter.MatchTransferHost());
 
 		// Runs here, still under the lock, rather than after: this audit-trail write doesn't read or
 		// depend on live match state beyond values already captured above.

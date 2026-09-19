@@ -1,8 +1,7 @@
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
-using Basil.Domain.Users;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Protocol.Packets;
+using Basil.Protocol.Bancho.Packets;
 
 namespace Basil.Host.Bancho.Multiplayer.Packets;
 
@@ -10,7 +9,7 @@ namespace Basil.Host.Bancho.Multiplayer.Packets;
 /// <remarks>
 ///     Serves only donator-privileged players. The match is looked up in the registry, and an <c>UpdateMatch</c> packet is
 ///     enqueued for the userSession, built from a read-only snapshot of the match with the password omitted
-///     (see <see cref="ServerPacketWriter.UpdateMatch" />). A logger correlation scope keyed on the
+///     (see <see cref="PacketWriter.UpdateMatch" />). A logger correlation scope keyed on the
 ///     match's database id is opened for the call. Nothing is mutated, so the match's
 ///     <see cref="MatchSession.Lock" /> is not taken.
 /// </remarks>
@@ -34,7 +33,7 @@ public sealed class TourneyMatchInfoRequestHandler(
 
 		using var _ = logger.BeginScope(new Dictionary<string, object> { ["MatchId"] = match.DbId });
 
-		gameSession.Enqueue(ServerPacketWriter.UpdateMatch(match.ToPacket(), false));
+		gameSession.Enqueue(PacketWriter.UpdateMatch(match.ToPacket(), false));
 		return Task.CompletedTask;
 	}
 }

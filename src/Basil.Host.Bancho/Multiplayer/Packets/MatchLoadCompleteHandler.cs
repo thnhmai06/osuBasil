@@ -3,7 +3,7 @@ using Basil.Application.Sessions;
 using Basil.Application.Users;
 using Basil.Domain.Multiplayer.Runtime;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Protocol.Packets;
+using Basil.Protocol.Bancho.Packets;
 
 namespace Basil.Host.Bancho.Multiplayer.Packets;
 
@@ -35,6 +35,6 @@ public sealed class MatchLoadCompleteHandler(MatchBroadcast matchBroadcast, IUse
 		slot.BeatmapLoaded = true;
 
 		var stillWaiting = match.Slots.Any(s => s is { Status: RoomSlotStatus.Playing, BeatmapLoaded: false });
-		if (!stillWaiting) matchBroadcast.Enqueue(match, ServerPacketWriter.MatchAllPlayersLoaded(), false);
+		if (!stillWaiting) matchBroadcast.Enqueue(match, PacketWriter.MatchAllPlayersLoaded(), false);
 	}
 }

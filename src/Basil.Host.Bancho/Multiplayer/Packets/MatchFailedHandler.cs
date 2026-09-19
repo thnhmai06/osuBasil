@@ -2,7 +2,7 @@ using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Users;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Protocol.Packets;
+using Basil.Protocol.Bancho.Packets;
 
 namespace Basil.Host.Bancho.Multiplayer.Packets;
 
@@ -30,6 +30,6 @@ public sealed class MatchFailedHandler(MatchBroadcast matchBroadcast, IUserCache
 		var slotId = match.GetSlotId(userCache.Resolve(gameSession));
 		if (slotId is null) return;
 
-		matchBroadcast.Enqueue(match, ServerPacketWriter.MatchPlayerFailed(slotId.Value), false);
+		matchBroadcast.Enqueue(match, PacketWriter.MatchPlayerFailed(slotId.Value), false);
 	}
 }

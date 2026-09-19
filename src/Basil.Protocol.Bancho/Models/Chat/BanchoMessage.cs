@@ -1,4 +1,4 @@
-namespace Basil.Protocol;
+namespace Basil.Protocol.Bancho.Models.Chat;
 
 /// <summary>Represents a chat message as it is carried by the Bancho send-message packets.</summary>
 /// <param name="Sender">The name of the sending player.</param>

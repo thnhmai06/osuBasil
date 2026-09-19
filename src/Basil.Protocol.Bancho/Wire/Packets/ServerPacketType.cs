@@ -1,7 +1,7 @@
-namespace Basil.Protocol.Packets;
+namespace Basil.Protocol.Bancho.Wire.Packets;
 
 /// <summary>Identifies the packet types the server sends to the osu! client, keyed by their protocol ids.</summary>
-public enum ServerPackets : byte
+public enum ServerPacketType : byte
 {
 	/// <summary>Sends the user id after a successful login, or a negative value identifying the login failure reason.</summary>
 	UserId = 5,

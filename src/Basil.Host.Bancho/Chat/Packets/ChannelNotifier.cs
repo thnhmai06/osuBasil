@@ -3,8 +3,8 @@ using Basil.Application.Chat;
 using Basil.Application.Irc;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
+using Basil.Protocol.Bancho.Packets;
 using Basil.Protocol.Irc;
-using Basil.Protocol.Packets;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Host.Bancho.Chat.Packets;
@@ -23,7 +23,7 @@ public sealed class ChannelNotifier(
 		switch (self)
 		{
 			case GameSession game:
-				game.Enqueue(ServerPacketWriter.ChannelJoin(channel.DisplayName));
+				game.Enqueue(PacketWriter.ChannelJoin(channel.DisplayName));
 				break;
 			case IrcSession irc:
 				irc.IrcConnection.Send(IrcMessageWriter.Join(options.Value.Name, irc.Name, irc.Id, channel.Name));
@@ -38,7 +38,7 @@ public sealed class ChannelNotifier(
 		switch (self)
 		{
 			case GameSession game when kick:
-				game.Enqueue(ServerPacketWriter.ChannelKick(channel.DisplayName));
+				game.Enqueue(PacketWriter.ChannelKick(channel.DisplayName));
 				break;
 			case IrcSession irc:
 				irc.IrcConnection.Send(IrcMessageWriter.Part(options.Value.Name, irc.Name, irc.Id, channel.Name));
@@ -76,7 +76,7 @@ public sealed class ChannelNotifier(
 
 	public void RosterChanged(ChannelSession channel)
 	{
-		var packet = ServerPacketWriter.ChannelInfo(channel.DisplayName, channel.Topic, channel.PlayerCount);
+		var packet = PacketWriter.ChannelInfo(channel.DisplayName, channel.Topic, channel.PlayerCount);
 
 		if (channel.Instance)
 		{

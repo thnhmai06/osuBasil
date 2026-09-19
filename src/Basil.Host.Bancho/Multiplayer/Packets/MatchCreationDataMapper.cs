@@ -2,7 +2,7 @@ using Basil.Application.Multiplayer;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer.Records;
 using Basil.Domain.Scores;
-using Basil.Protocol.Multiplayer;
+using Basil.Protocol.Bancho.Multiplayer;
 
 namespace Basil.Host.Bancho.Multiplayer.Packets;
 

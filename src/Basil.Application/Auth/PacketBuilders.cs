@@ -1,5 +1,5 @@
 using Basil.Application.Sessions;
-using Basil.Protocol.Packets;
+using Basil.Protocol.Bancho.Packets;
 
 namespace Basil.Application.Auth;
 
@@ -19,7 +19,7 @@ public static class PacketBuilders
 	/// <returns>A byte array containing the wrapped presence packet.</returns>
 	public static byte[] BuildUserPresence(GameSession session)
 	{
-		return ServerPacketWriter.UserPresence(
+		return PacketWriter.UserPresence(
 			session.Id, session.Name, session.UtcOffset, (int)session.Country,
 			(int)session.BanchoPrivilege, (int)session.Status.Mode,
 			0.0, 0.0, session.CurrentStats?.Rank ?? 0);
@@ -30,7 +30,7 @@ public static class PacketBuilders
 	/// <returns>A byte array containing the wrapped user-stats packet.</returns>
 	public static byte[] BuildUserStats(GameSession session)
 	{
-		return ServerPacketWriter.UserStats(
+		return PacketWriter.UserStats(
 			session.Id, (int)session.Status.UserActivity, session.Status.InfoText, session.Status.MapMd5,
 			(int)session.Status.Mods, (int)session.Status.Mode, session.Status.MapId,
 			session.CurrentStats?.RankedScore ?? 0, 100.0, session.CurrentStats?.Plays ?? 0,

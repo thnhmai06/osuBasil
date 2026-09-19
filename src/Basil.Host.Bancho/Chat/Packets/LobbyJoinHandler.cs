@@ -4,7 +4,7 @@ using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Host.Bancho.Multiplayer;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Protocol.Packets;
+using Basil.Protocol.Bancho.Packets;
 
 namespace Basil.Host.Bancho.Chat.Packets;
 
@@ -36,7 +36,7 @@ public sealed class LobbyJoinHandler(
 		if (lobby is not null) channelMembership.Join(gameSession, lobby);
 
 		foreach (var match in matchRegistry.All)
-			gameSession.Enqueue(ServerPacketWriter.NewMatch(match.ToPacket()));
+			gameSession.Enqueue(PacketWriter.NewMatch(match.ToPacket()));
 
 		return Task.CompletedTask;
 	}

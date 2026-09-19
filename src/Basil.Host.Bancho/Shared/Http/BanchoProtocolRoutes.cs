@@ -3,7 +3,9 @@ using Basil.Application.Sessions;
 using Basil.Domain.Client;
 using Basil.Infrastructure.Auth;
 using Basil.Protocol;
-using Basil.Protocol.Packets;
+using Basil.Protocol.Bancho;
+using Basil.Protocol.Bancho.Auth;
+using Basil.Protocol.Bancho.Packets;
 using LoginRequest = Basil.Infrastructure.Auth.LoginRequest;
 
 namespace Basil.Host.Bancho.Shared.Http;
@@ -173,7 +175,7 @@ public static class BanchoProtocolRoutes
 						context.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Host")
 							.LogError(ex, "Login request failed before a LoginResult could be produced");
 						response.Headers["cho-token"] = "server-error";
-						responseBody = [.. ServerPacketWriter.LoginReply((int)LoginFailureReason.ErrorOccurred)];
+						responseBody = [.. PacketWriter.LoginReply((int)LoginFailureReason.ErrorOccurred)];
 					}
 				}
 				else
@@ -182,7 +184,7 @@ public static class BanchoProtocolRoutes
 					var session = sessionRegistry.GetByToken(token);
 					if (session is null)
 					{
-						responseBody = [.. ServerPacketWriter.RestartServer(0)];
+						responseBody = [.. PacketWriter.RestartServer(0)];
 					}
 					else
 					{

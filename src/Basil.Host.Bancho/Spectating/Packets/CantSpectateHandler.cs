@@ -1,6 +1,6 @@
 using Basil.Application.Sessions;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Protocol.Packets;
+using Basil.Protocol.Bancho.Packets;
 
 namespace Basil.Host.Bancho.Spectating.Packets;
 
@@ -28,7 +28,7 @@ public sealed class CantSpectateHandler(ILogger<CantSpectateHandler> logger) : I
 
 		logger.LogDebug(
 			"Client cannot spectate (missing map): UserId={UserId} Host={Host}", gameSession.Id, host.Id);
-		var packet = ServerPacketWriter.SpectatorCantSpectate(gameSession.Id);
+		var packet = PacketWriter.SpectatorCantSpectate(gameSession.Id);
 		host.Enqueue(packet);
 
 		foreach (var spectator in host.Spectators)

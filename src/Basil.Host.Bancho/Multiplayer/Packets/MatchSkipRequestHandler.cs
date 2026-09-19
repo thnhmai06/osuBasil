@@ -3,7 +3,7 @@ using Basil.Application.Sessions;
 using Basil.Application.Users;
 using Basil.Domain.Multiplayer.Runtime;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Protocol.Packets;
+using Basil.Protocol.Bancho.Packets;
 
 namespace Basil.Host.Bancho.Multiplayer.Packets;
 
@@ -34,9 +34,9 @@ public sealed class MatchSkipRequestHandler(MatchBroadcast matchBroadcast, IUser
 		if (slot is null) return;
 
 		slot.IntroSkipped = true;
-		matchBroadcast.Enqueue(match, ServerPacketWriter.MatchPlayerSkipped(gameSession.Id));
+		matchBroadcast.Enqueue(match, PacketWriter.MatchPlayerSkipped(gameSession.Id));
 
 		var everyoneSkipped = match.Slots.All(s => s.Status != RoomSlotStatus.Playing || s.IntroSkipped);
-		if (everyoneSkipped) matchBroadcast.Enqueue(match, ServerPacketWriter.MatchSkip(), false);
+		if (everyoneSkipped) matchBroadcast.Enqueue(match, PacketWriter.MatchSkip(), false);
 	}
 }

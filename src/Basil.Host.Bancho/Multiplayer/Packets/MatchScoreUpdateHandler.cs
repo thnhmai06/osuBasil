@@ -5,8 +5,8 @@ using Basil.Application.Shared.Eventing;
 using Basil.Application.Shared.Json;
 using Basil.Application.Users;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Protocol.Multiplayer;
-using Basil.Protocol.Packets;
+using Basil.Protocol.Bancho.Packets;
+using Basil.Protocol.Bancho.Spectating;
 
 namespace Basil.Host.Bancho.Multiplayer.Packets;
 
@@ -32,7 +32,7 @@ public sealed class MatchScoreUpdateHandler(MatchBroadcast matchBroadcast, ILive
 	public async Task HandleAsync(GameSession gameSession, PacketReader reader,
 		CancellationToken cancellationToken = default)
 	{
-		var playData = reader.ReadRaw(reader.RemainingLength);
+		var scoreFrame = reader.ReadScoreFrame();
 
 		var match = gameSession.Match;
 		if (match is null) return;
@@ -40,22 +40,18 @@ public sealed class MatchScoreUpdateHandler(MatchBroadcast matchBroadcast, ILive
 		await using var mutation = await match.BeginMutationAsync(cancellationToken);
 
 		var slotId = match.GetSlotId(userCache.Resolve(gameSession));
-		if (slotId is null) return;
+		if (slotId is not { } sId) return;
+		scoreFrame.Id = sId;
 
-		// scorev2 adds an extra 8 bytes to play_data; either way, byte 11 (4 bytes into the
-		// wrapped body) is overwritten with the slot id so clients can attribute the frame.
-		var packet = PacketWriter.Wrap(ServerPackets.MatchScoreUpdate, playData);
-		packet[11] = (byte)slotId.Value;
-
+		var packet = PacketWriter.WriteScoreFrame(scoreFrame);
 		matchBroadcast.Enqueue(match, packet, false);
 
 		var scoreKey = MatchStreams.Score(match.DbId, slotId.Value);
 		if (hub.HasSubscribers(scoreKey))
 			try
 			{
-				var frame = new PacketReader(playData).ReadScoreFrame();
 				var payload = JsonSerializer.SerializeToUtf8Bytes(
-					BuildPlayerScore(gameSession, frame), BasilJsonOptions.Instance);
+					BuildPlayerScore(gameSession, scoreFrame), BasilJsonOptions.Instance);
 				hub.Publish(scoreKey, match.AllocateScoreVersion(), payload);
 			}
 			catch (Exception)

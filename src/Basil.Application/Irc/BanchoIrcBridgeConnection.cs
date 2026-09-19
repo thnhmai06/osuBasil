@@ -1,6 +1,6 @@
 using Basil.Application.Sessions;
+using Basil.Protocol.Bancho.Packets;
 using Basil.Protocol.Irc;
-using Basil.Protocol.Packets;
 
 namespace Basil.Application.Irc;
 
@@ -41,7 +41,7 @@ public sealed class BanchoIrcBridgeConnection(GameSession userSession) : IIrcCon
 		if (!IrcMessageWriter.TryParseUserPrefix(message.Prefix, out var senderName, out var senderId, out _)) return;
 
 		var recipient = TranslateRecipient(message.Params[0]);
-		User.Enqueue(ServerPacketWriter.SendMessage(senderName, message.Params[1], recipient, senderId));
+		User.Enqueue(PacketWriter.SendMessage(senderName, message.Params[1], recipient, senderId));
 	}
 
 	/// <summary>

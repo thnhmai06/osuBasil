@@ -2,7 +2,7 @@ using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Application.Users;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Protocol.Packets;
+using Basil.Protocol.Bancho.Packets;
 
 namespace Basil.Host.Bancho.Multiplayer.Packets;
 
@@ -33,8 +33,8 @@ public sealed class CreateMatchHandler(MatchLifecycle matchLifecycle, IUserCache
 		if (gameSession.Restricted)
 		{
 			gameSession.Enqueue([
-				.. ServerPacketWriter.MatchJoinFail(),
-				.. ServerPacketWriter.Notification("Multiplayer is not available while restricted.")
+				.. PacketWriter.MatchJoinFail(),
+				.. PacketWriter.Notification("Multiplayer is not available while restricted.")
 			]);
 			return;
 		}
@@ -42,8 +42,8 @@ public sealed class CreateMatchHandler(MatchLifecycle matchLifecycle, IUserCache
 		if (gameSession.Silenced)
 		{
 			gameSession.Enqueue([
-				.. ServerPacketWriter.MatchJoinFail(),
-				.. ServerPacketWriter.Notification("Multiplayer is not available while silenced.")
+				.. PacketWriter.MatchJoinFail(),
+				.. PacketWriter.Notification("Multiplayer is not available while silenced.")
 			]);
 			return;
 		}

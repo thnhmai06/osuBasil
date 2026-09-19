@@ -5,8 +5,8 @@ using Basil.Application.Shared.Json;
 using Basil.Application.Spectating;
 using Basil.Host.Bancho.Multiplayer.Packets;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Protocol.Multiplayer;
-using Basil.Protocol.Packets;
+using Basil.Protocol.Bancho.Packets;
+using Basil.Protocol.Bancho.Spectating;
 
 namespace Basil.Host.Bancho.Spectating.Packets;
 
@@ -38,7 +38,7 @@ public sealed class SpectateFramesHandler(IPlayerInputEvents playerInputEvents) 
 		CancellationToken cancellationToken = default)
 	{
 		var rawData = reader.ReadRaw(reader.RemainingLength);
-		var packet = ServerPacketWriter.SpectateFrames(rawData);
+		var packet = PacketWriter.SpectateFrames(rawData);
 
 		foreach (var spectator in gameSession.Spectators)
 			spectator.Enqueue(packet);

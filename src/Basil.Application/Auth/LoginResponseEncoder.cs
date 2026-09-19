@@ -1,6 +1,8 @@
 using Basil.Domain.Client;
 using Basil.Protocol;
-using Basil.Protocol.Packets;
+using Basil.Protocol.Bancho;
+using Basil.Protocol.Bancho.Auth;
+using Basil.Protocol.Bancho.Packets;
 
 namespace Basil.Application.Auth;
 
@@ -19,7 +21,7 @@ public static class LoginResponseEncoder
 	/// <returns>A byte array containing the wrapped protocol-version packet.</returns>
 	public static byte[] ProtocolVersion()
 	{
-		return ServerPacketWriter.ProtocolVersion(19);
+		return PacketWriter.ProtocolVersion(19);
 	}
 
 	/// <summary>Builds the login-reply packet reporting a new session's id.</summary>
@@ -27,21 +29,21 @@ public static class LoginResponseEncoder
 	/// <returns>A byte array containing the wrapped login-reply packet.</returns>
 	public static byte[] SuccessReply(int userId)
 	{
-		return ServerPacketWriter.LoginReply(userId);
+		return PacketWriter.LoginReply(userId);
 	}
 
 	/// <summary>Builds the login-reply packet reporting that authentication failed.</summary>
 	/// <returns>A byte array containing the wrapped login-reply packet.</returns>
 	public static byte[] AuthenticationFailedReply()
 	{
-		return ServerPacketWriter.LoginReply((int)LoginFailureReason.AuthenticationFailed);
+		return PacketWriter.LoginReply((int)LoginFailureReason.AuthenticationFailed);
 	}
 
 	/// <summary>Builds the login-reply packet reporting an unexpected server error.</summary>
 	/// <returns>A byte array containing the wrapped login-reply packet.</returns>
 	public static byte[] ServerErrorReply()
 	{
-		return ServerPacketWriter.LoginReply((int)LoginFailureReason.ErrorOccurred);
+		return PacketWriter.LoginReply((int)LoginFailureReason.ErrorOccurred);
 	}
 
 	/// <summary>Builds a notification packet carrying the given text.</summary>
@@ -49,7 +51,7 @@ public static class LoginResponseEncoder
 	/// <returns>A byte array containing the wrapped notification packet.</returns>
 	public static byte[] Notification(string text)
 	{
-		return ServerPacketWriter.Notification(text);
+		return PacketWriter.Notification(text);
 	}
 
 	/// <summary>Builds the bancho-privileges packet for a session's client-facing privilege set.</summary>
@@ -57,7 +59,7 @@ public static class LoginResponseEncoder
 	/// <returns>A byte array containing the wrapped bancho-privileges packet.</returns>
 	public static byte[] BanchoPrivileges(ClientPrivileges privileges)
 	{
-		return ServerPacketWriter.BanchoPrivileges((int)privileges);
+		return PacketWriter.BanchoPrivileges((int)privileges);
 	}
 
 	/// <summary>Builds a channel-info packet describing a channel's name, topic and member count.</summary>
@@ -67,14 +69,14 @@ public static class LoginResponseEncoder
 	/// <returns>A byte array containing the wrapped channel-info packet.</returns>
 	public static byte[] ChannelInfo(string name, string topic, int playerCount)
 	{
-		return ServerPacketWriter.ChannelInfo(name, topic, playerCount);
+		return PacketWriter.ChannelInfo(name, topic, playerCount);
 	}
 
 	/// <summary>Builds the packet that marks the end of a login response's channel-info list.</summary>
 	/// <returns>A byte array containing the wrapped channel-info-end packet.</returns>
 	public static byte[] ChannelInfoEnd()
 	{
-		return ServerPacketWriter.ChannelInfoEnd();
+		return PacketWriter.ChannelInfoEnd();
 	}
 
 	/// <summary>Builds the main-menu-icon packet pointing the client at an icon and its click target.</summary>
@@ -83,7 +85,7 @@ public static class LoginResponseEncoder
 	/// <returns>A byte array containing the wrapped main-menu-icon packet.</returns>
 	public static byte[] MainMenuIcon(string iconUrl, string onclickUrl)
 	{
-		return ServerPacketWriter.MainMenuIcon(iconUrl, onclickUrl);
+		return PacketWriter.MainMenuIcon(iconUrl, onclickUrl);
 	}
 
 	/// <summary>Builds the friends-list packet reporting a session's friend ids.</summary>
@@ -91,7 +93,7 @@ public static class LoginResponseEncoder
 	/// <returns>A byte array containing the wrapped friends-list packet.</returns>
 	public static byte[] FriendsList(IReadOnlyList<int> friendIds)
 	{
-		return ServerPacketWriter.FriendsList(friendIds);
+		return PacketWriter.FriendsList(friendIds);
 	}
 
 	/// <summary>Builds the silence-end packet reporting how long a session's remaining silence lasts.</summary>
@@ -99,13 +101,13 @@ public static class LoginResponseEncoder
 	/// <returns>A byte array containing the wrapped silence-end packet.</returns>
 	public static byte[] SilenceEnd(int remainingSeconds)
 	{
-		return ServerPacketWriter.SilenceEnd(remainingSeconds);
+		return PacketWriter.SilenceEnd(remainingSeconds);
 	}
 
 	/// <summary>Builds the packet telling a client its account is restricted.</summary>
 	/// <returns>A byte array containing the wrapped account-restricted packet.</returns>
 	public static byte[] AccountRestricted()
 	{
-		return ServerPacketWriter.AccountRestricted();
+		return PacketWriter.AccountRestricted();
 	}
 }

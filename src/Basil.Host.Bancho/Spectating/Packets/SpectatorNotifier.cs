@@ -1,6 +1,6 @@
 using Basil.Application.Sessions;
 using Basil.Application.Spectating;
-using Basil.Protocol.Packets;
+using Basil.Protocol.Bancho.Packets;
 
 namespace Basil.Host.Bancho.Spectating.Packets;
 
@@ -12,16 +12,16 @@ public sealed class SpectatorNotifier : ISpectatorNotifier
 {
 	public void SpectatorJoined(GameSession host, int spectatorId)
 	{
-		host.Enqueue(ServerPacketWriter.SpectatorJoined(spectatorId));
+		host.Enqueue(PacketWriter.SpectatorJoined(spectatorId));
 	}
 
 	public void FellowSpectatorJoined(GameSession recipient, int fellowId)
 	{
-		recipient.Enqueue(ServerPacketWriter.FellowSpectatorJoined(fellowId));
+		recipient.Enqueue(PacketWriter.FellowSpectatorJoined(fellowId));
 	}
 
 	public void FellowSpectatorLeft(GameSession recipient, int fellowId)
 	{
-		recipient.Enqueue(ServerPacketWriter.FellowSpectatorLeft(fellowId));
+		recipient.Enqueue(PacketWriter.FellowSpectatorLeft(fellowId));
 	}
 }

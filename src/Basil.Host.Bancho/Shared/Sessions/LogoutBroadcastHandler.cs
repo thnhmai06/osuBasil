@@ -1,5 +1,5 @@
 using Basil.Application.Sessions;
-using Basil.Protocol.Packets;
+using Basil.Protocol.Bancho.Packets;
 
 namespace Basil.Host.Bancho.Shared.Sessions;
 
@@ -18,7 +18,7 @@ public sealed class LogoutBroadcastHandler(ISessionRegistry<GameSession> gameReg
 	{
 		if (session is GameSession { Restricted: false } game)
 			foreach (var other in gameRegistry.All)
-				other.Enqueue(ServerPacketWriter.Logout(game.Id));
+				other.Enqueue(PacketWriter.Logout(game.Id));
 
 		return Task.CompletedTask;
 	}

@@ -1,6 +1,6 @@
 using Basil.Application.Content;
 using Basil.Application.Sessions;
-using Basil.Protocol.Packets;
+using Basil.Protocol.Bancho.Packets;
 
 namespace Basil.Host.Bancho.Content;
 
@@ -10,6 +10,6 @@ public sealed class AnnouncementNotifier : IAnnouncementNotifier
 	/// <inheritdoc />
 	public void Announce(GameSession session, string text)
 	{
-		session.Enqueue(ServerPacketWriter.Notification(text));
+		session.Enqueue(PacketWriter.Notification(text));
 	}
 }

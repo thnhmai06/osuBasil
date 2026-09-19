@@ -1,5 +1,5 @@
 using Basil.Application.Sessions;
-using Basil.Protocol.Packets;
+using Basil.Protocol.Bancho.Packets;
 
 namespace Basil.Host.Bancho.Shared.Http;
 

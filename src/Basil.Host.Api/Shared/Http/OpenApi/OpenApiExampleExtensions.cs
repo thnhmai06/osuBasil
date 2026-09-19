@@ -10,7 +10,7 @@ using Basil.Domain.Multiplayer.Runtime;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Host.Api.Shared.Http.Middleware;
-using Basil.Protocol.Multiplayer;
+using Basil.Protocol.Bancho.Spectating;
 using Microsoft.OpenApi;
 
 namespace Basil.Host.Api.Shared.Http.OpenApi;

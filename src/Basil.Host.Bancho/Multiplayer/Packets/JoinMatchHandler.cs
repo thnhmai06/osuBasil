@@ -1,7 +1,7 @@
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Protocol.Packets;
+using Basil.Protocol.Bancho.Packets;
 
 namespace Basil.Host.Bancho.Multiplayer.Packets;
 
@@ -30,15 +30,15 @@ public sealed class JoinMatchHandler(IMatchRegistry matchRegistry, MatchMembersh
 		var match = matchRegistry.GetById(matchId);
 		if (match is null)
 		{
-			gameSession.Enqueue(ServerPacketWriter.MatchJoinFail());
+			gameSession.Enqueue(PacketWriter.MatchJoinFail());
 			return;
 		}
 
 		if (gameSession.Restricted)
 		{
 			gameSession.Enqueue([
-				.. ServerPacketWriter.MatchJoinFail(),
-				.. ServerPacketWriter.Notification("Multiplayer is not available while restricted.")
+				.. PacketWriter.MatchJoinFail(),
+				.. PacketWriter.Notification("Multiplayer is not available while restricted.")
 			]);
 			return;
 		}
@@ -46,8 +46,8 @@ public sealed class JoinMatchHandler(IMatchRegistry matchRegistry, MatchMembersh
 		if (gameSession.Silenced)
 		{
 			gameSession.Enqueue([
-				.. ServerPacketWriter.MatchJoinFail(),
-				.. ServerPacketWriter.Notification("Multiplayer is not available while silenced.")
+				.. PacketWriter.MatchJoinFail(),
+				.. PacketWriter.Notification("Multiplayer is not available while silenced.")
 			]);
 			return;
 		}

@@ -1,13 +1,13 @@
 using Basil.Application.Multiplayer;
 using Basil.Domain.Users;
-using Basil.Protocol.Multiplayer;
-using Basil.Protocol.Packets;
+using Basil.Protocol.Bancho.Multiplayer;
+using Basil.Protocol.Bancho.Packets;
 
 namespace Basil.Host.Bancho.Multiplayer;
 
 /// <summary>
 ///     Maps the richer <see cref="MatchSession" /> model onto the flat wire shape
-///     <see cref="ServerPacketWriter.WriteMatch" /> needs.
+///     <see cref="PacketWriter.WriteMatch" /> needs.
 /// </summary>
 /// <remarks>
 ///     The real password is always passed through unmasked. <c>WriteMatch</c>'s own

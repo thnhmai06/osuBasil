@@ -1,128 +1,34 @@
-using System.Buffers.Binary;
-using Basil.Protocol.Multiplayer;
-using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
+using Basil.Protocol.Bancho.Models.Auth;
+using Basil.Protocol.Bancho.Models.Multiplayer;
+using Basil.Protocol.Bancho.Models.Replay;
+using Basil.Protocol.Bancho.Wire.Binary;
 
-namespace Basil.Protocol.Packets;
+namespace Basil.Protocol.Bancho.Wire.Packets;
 
 /// <summary>Builds the Bancho packets the server sends to the osu! client.</summary>
-public static class ServerPacketWriter
+public sealed partial class PacketWriter(Stream stream)
 {
-	private static byte[] Concat(params ReadOnlySpan<byte[]> parts)
+	private readonly BinaryWriter _writer = new(stream);
+
+	/// <summary>Writes a payload with the 7-byte Bancho packet header (id: u16, padding: u8, length: u32).</summary>
+	/// <param name="packetType">The server packet id to place in the header.</param>
+	/// <param name="writePayload">Writes the payload that follows the header.</param>
+	private void Wrap(ServerPacketType packetType, Action writePayload)
 	{
-		var length = 0;
-		foreach (var part in parts) length += part.Length;
+		var stream = _writer.BaseStream;
 
-		var result = new byte[length];
-		var offset = 0;
-		foreach (var part in parts)
-		{
-			part.CopyTo(result.AsSpan(offset));
-			offset += part.Length;
-		}
+		_writer.Write((ushort)packetType);
+		_writer.Write((byte)0); // padding
+		_writer.Write(0); // length placeholder, patched below
+		var payloadStart = stream.Position;
 
-		return result;
-	}
+		writePayload();
 
-	private static byte[] WriteMessagePayload(string sender, string text, string recipient, int senderId)
-	{
-		return Concat(
-			BinaryWriter.WriteString(sender),
-			BinaryWriter.WriteString(text),
-			BinaryWriter.WriteString(recipient),
-			BinaryWriter.WriteInt32(senderId));
-	}
-
-	private static byte[] WriteChannelPayload(string name, string topic, int playerCount)
-	{
-		var nameBytes = BinaryWriter.WriteString(name);
-		var topicBytes = BinaryWriter.WriteString(topic);
-		var result = new byte[nameBytes.Length + topicBytes.Length + 2];
-		nameBytes.CopyTo(result, 0);
-		topicBytes.CopyTo(result, nameBytes.Length);
-		BinaryPrimitives.WriteUInt16LittleEndian(result.AsSpan(nameBytes.Length + topicBytes.Length),
-			(ushort)playerCount);
-		return result;
-	}
-
-	/// <summary>Builds the payload of a match packet, used by UpdateMatch, NewMatch, MatchJoinSuccess, and MatchStart.</summary>
-	/// <param name="match">The match data to serialize.</param>
-	/// <param name="sendPassword">
-	///     <see langword="true" /> to include the real password; otherwise, <see langword="false" /> to
-	///     send a blank password.
-	/// </param>
-	/// <returns>The match payload bytes, without the packet header.</returns>
-	public static byte[] WriteMatch(MatchPacket match, bool sendPassword)
-	{
-		var parts = new List<byte[]>();
-
-		var header = new byte[8];
-		BinaryPrimitives.WriteUInt16LittleEndian(header, (ushort)match.Id);
-		header[2] = (byte)(match.InProgress ? 1 : 0);
-		header[3] = 0; // match type, always 0
-		BinaryPrimitives.WriteUInt32LittleEndian(header.AsSpan(4), (uint)match.Mods);
-		parts.Add(header);
-
-		parts.Add(BinaryWriter.WriteString(match.Name));
-
-		if (!string.IsNullOrEmpty(match.Password))
-			parts.Add(sendPassword ? BinaryWriter.WriteString(match.Password) : [0x0B, 0x00]);
-		else
-			parts.Add([0x00]);
-
-		parts.Add(BinaryWriter.WriteString(match.MapName));
-		parts.Add(BinaryWriter.WriteInt32(match.MapId));
-		parts.Add(BinaryWriter.WriteString(match.MapMd5));
-
-		parts.Add([.. match.Slots.Select(s => (byte)s.Status)]);
-		parts.Add([.. match.Slots.Select(s => (byte)s.Team)]);
-
-		foreach (var slot in match.Slots)
-			if (slot.HasPlayer)
-				parts.Add(BinaryWriter.WriteUInt32((uint)slot.PlayerId!.Value));
-
-		parts.Add(BinaryWriter.WriteUInt32((uint)match.HostId));
-		parts.Add([(byte)match.Mode, (byte)match.WinCondition, (byte)match.TeamType, (byte)(match.FreeMods ? 1 : 0)]);
-
-		if (match.FreeMods)
-			foreach (var slot in match.Slots)
-				parts.Add(BinaryWriter.WriteUInt32((uint)slot.Mods));
-
-		parts.Add(BinaryWriter.WriteUInt32((uint)match.Seed));
-
-		return Concat([.. parts]);
-	}
-
-	/// <summary>Builds the fixed 29-byte score frame payload, plus two doubles when score v2 is active.</summary>
-	/// <param name="frame">The score frame data to serialize.</param>
-	/// <returns>The score frame payload bytes, without the packet header.</returns>
-	public static byte[] WriteScoreFrame(ScoreFrame frame)
-	{
-		var result = new byte[29];
-		var span = result.AsSpan();
-
-		BinaryPrimitives.WriteInt32LittleEndian(span, frame.Time);
-		span[4] = (byte)frame.Id;
-		BinaryPrimitives.WriteUInt16LittleEndian(span[5..], (ushort)frame.Num300);
-		BinaryPrimitives.WriteUInt16LittleEndian(span[7..], (ushort)frame.Num100);
-		BinaryPrimitives.WriteUInt16LittleEndian(span[9..], (ushort)frame.Num50);
-		BinaryPrimitives.WriteUInt16LittleEndian(span[11..], (ushort)frame.NumGeki);
-		BinaryPrimitives.WriteUInt16LittleEndian(span[13..], (ushort)frame.NumKatu);
-		BinaryPrimitives.WriteUInt16LittleEndian(span[15..], (ushort)frame.NumMiss);
-		BinaryPrimitives.WriteInt32LittleEndian(span[17..], frame.TotalScore);
-		BinaryPrimitives.WriteUInt16LittleEndian(span[21..], (ushort)frame.MaxCombo);
-		BinaryPrimitives.WriteUInt16LittleEndian(span[23..], (ushort)frame.CurrentCombo);
-		span[25] = (byte)(frame.Perfect ? 1 : 0);
-		span[26] = (byte)frame.CurrentHp;
-		span[27] = (byte)frame.TagByte;
-		span[28] = (byte)(frame.ScoreV2 ? 1 : 0);
-
-		if (!frame.ScoreV2) return result;
-
-		var comboPortion = new byte[8];
-		var bonusPortion = new byte[8];
-		BinaryPrimitives.WriteDoubleLittleEndian(comboPortion, frame.ComboPortion ?? 0.0);
-		BinaryPrimitives.WriteDoubleLittleEndian(bonusPortion, frame.BonusPortion ?? 0.0);
-		return Concat(result, comboPortion, bonusPortion);
+		var payloadLength = checked((int)(stream.Position - payloadStart));
+		var endPosition = stream.Position;
+		stream.Position = payloadStart - sizeof(int);
+		_writer.Write(payloadLength);
+		stream.Position = endPosition;
 	}
 
 	// packet id: 5
@@ -132,9 +38,9 @@ public static class ServerPacketWriter
 	/// </summary>
 	/// <param name="userId">The id of the logged-in player, or the negative login failure reason.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] LoginReply(int userId)
+	public void LoginReply(int userId)
 	{
-		return PacketWriter.Wrap(ServerPackets.UserId, BinaryWriter.WriteInt32(userId));
+		Wrap(ServerPacketType.UserId, () => _writer.Write(userId));
 	}
 
 	// packet id: 7
@@ -144,17 +50,18 @@ public static class ServerPacketWriter
 	/// <param name="recipient">The name of the receiving player or channel.</param>
 	/// <param name="senderId">The id of the sending player.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] SendMessage(string sender, string msg, string recipient, int senderId)
+	public void SendMessage(string sender, string msg, string recipient, int senderId)
 	{
-		return PacketWriter.Wrap(ServerPackets.SendMessage, WriteMessagePayload(sender, msg, recipient, senderId));
+		Wrap(ServerPacketType.SendMessage,
+			() => WriteMessagePayload(sender, msg, recipient, senderId));
 	}
 
 	// packet id: 8
 	/// <summary>Builds the empty pong reply packet.</summary>
 	/// <returns>The complete packet.</returns>
-	public static byte[] Pong()
+	public void Pong()
 	{
-		return PacketWriter.Wrap(ServerPackets.Pong, []);
+		Wrap(ServerPacketType.Pong, () => { });
 	}
 
 	// packet id: 9 (deprecated)
@@ -162,10 +69,9 @@ public static class ServerPacketWriter
 	/// <param name="oldName">The name before the change.</param>
 	/// <param name="newName">The name after the change.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] ChangeUsername(string oldName, string newName)
+	public void ChangeUsername(string oldName, string newName)
 	{
-		return PacketWriter.Wrap(ServerPackets.HandleIrcChangeUsername,
-			BinaryWriter.WriteString($"{oldName}>>>>{newName}"));
+		Wrap(ServerPacketType.HandleIrcChangeUsername, () => _writer.WriteOsuString($"{oldName}>>>>{newName}"));
 	}
 
 	// packet id: 11
@@ -187,7 +93,7 @@ public static class ServerPacketWriter
 	///     zero.
 	/// </param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] UserStats(
+	public void UserStats(
 		int userId,
 		int action,
 		string infoText,
@@ -209,234 +115,238 @@ public static class ServerPacketWriter
 			pp = 0;
 		}
 
-		var payload = Concat(
-			BinaryWriter.WriteInt32(userId),
-			[(byte)action],
-			BinaryWriter.WriteString(infoText),
-			BinaryWriter.WriteString(mapMd5),
-			BinaryWriter.WriteInt32(mods),
-			[(byte)mode],
-			BinaryWriter.WriteInt32(mapId),
-			WriteInt64(rankedScore),
-			WriteFloat32((float)(accuracy / 100.0)),
-			BinaryWriter.WriteInt32(plays),
-			WriteInt64(totalScore),
-			BinaryWriter.WriteInt32(globalRank),
-			WriteUInt16((ushort)pp));
-
-		return PacketWriter.Wrap(ServerPackets.UserStats, payload);
+		Wrap(ServerPacketType.UserStats, () =>
+		{
+			_writer.Write(userId);
+			_writer.Write((byte)action);
+			_writer.WriteOsuString(infoText);
+			_writer.WriteOsuString(mapMd5);
+			_writer.Write(mods);
+			_writer.Write((byte)mode);
+			_writer.Write(mapId);
+			_writer.Write(rankedScore);
+			_writer.Write((float)(accuracy / 100.0));
+			_writer.Write(plays);
+			_writer.Write(totalScore);
+			_writer.Write(globalRank);
+			_writer.Write((ushort)pp);
+		});
 	}
 
 	// packet id: 12
 	/// <summary>Builds the user logout packet for a player.</summary>
 	/// <param name="userId">The id of the player who logged out.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] Logout(int userId)
+	public void Logout(int userId)
 	{
-		return PacketWriter.Wrap(ServerPackets.UserLogout, Concat(BinaryWriter.WriteInt32(userId), [0]));
+		Wrap(ServerPacketType.UserLogout, () =>
+		{
+			_writer.Write(userId);
+			_writer.Write((byte)0);
+		});
 	}
 
 	// packet id: 13
 	/// <summary>Builds the packet notifying a spectated player that a spectator joined.</summary>
 	/// <param name="userId">The id of the joining spectator.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] SpectatorJoined(int userId)
+	public void SpectatorJoined(int userId)
 	{
-		return PacketWriter.Wrap(ServerPackets.SpectatorJoined, BinaryWriter.WriteInt32(userId));
+		Wrap(ServerPacketType.SpectatorJoined, () => _writer.Write(userId));
 	}
 
 	// packet id: 14
 	/// <summary>Builds the packet notifying a spectated player that a spectator left.</summary>
 	/// <param name="userId">The id of the leaving spectator.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] SpectatorLeft(int userId)
+	public void SpectatorLeft(int userId)
 	{
-		return PacketWriter.Wrap(ServerPackets.SpectatorLeft, BinaryWriter.WriteInt32(userId));
+		Wrap(ServerPacketType.SpectatorLeft, () => _writer.Write(userId));
 	}
 
 	// packet id: 15
 	/// <summary>Builds the packet forwarding a raw replay frame bundle to spectators.</summary>
 	/// <param name="rawData">The already-serialized frame bundle payload.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] SpectateFrames(byte[] rawData)
+	public void SpectateFrames(byte[] rawData)
 	{
-		return PacketWriter.Wrap(ServerPackets.SpectateFrames, rawData);
+		Wrap(ServerPacketType.SpectateFrames, () => _writer.Write(rawData));
 	}
 
 	// packet id: 19
 	/// <summary>Builds the empty version-update notification packet.</summary>
 	/// <returns>The complete packet.</returns>
-	public static byte[] VersionUpdate()
+	public void VersionUpdate()
 	{
-		return PacketWriter.Wrap(ServerPackets.VersionUpdate, []);
+		Wrap(ServerPacketType.VersionUpdate, () => { });
 	}
 
 	// packet id: 22
 	/// <summary>Builds the packet notifying a spectated player that a spectator cannot spectate.</summary>
 	/// <param name="userId">The id of the spectator who cannot spectate.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] SpectatorCantSpectate(int userId)
+	public void SpectatorCantSpectate(int userId)
 	{
-		return PacketWriter.Wrap(ServerPackets.SpectatorCantSpectate, BinaryWriter.WriteInt32(userId));
+		Wrap(ServerPacketType.SpectatorCantSpectate, () => _writer.Write(userId));
 	}
 
 	// packet id: 23
 	/// <summary>Builds the empty get-attention packet that prompts the client to focus the game window.</summary>
 	/// <returns>The complete packet.</returns>
-	public static byte[] GetAttention()
+	public void GetAttention()
 	{
-		return PacketWriter.Wrap(ServerPackets.GetAttention, []);
+		Wrap(ServerPacketType.GetAttention, () => { });
 	}
 
 	// packet id: 24
 	/// <summary>Builds the notification packet showing a popup message in the client.</summary>
 	/// <param name="msg">The message to display.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] Notification(string msg)
+	public void Notification(string msg)
 	{
-		return PacketWriter.Wrap(ServerPackets.Notification, BinaryWriter.WriteString(msg));
+		Wrap(ServerPacketType.Notification, () => _writer.WriteOsuString(msg));
 	}
 
 	// packet id: 26
-	/// <summary>Builds the update-match packet broadcasting the current match state to its players.</summary>
-	/// <param name="match">The match data to send.</param>
+	/// <summary>Builds the update-room packet broadcasting the current room state to its players.</summary>
+	/// <param name="room">The room data to send.</param>
 	/// <param name="sendPassword">
 	///     <see langword="true" /> to include the real password; otherwise, <see langword="false" /> to
 	///     send a blank password.
 	/// </param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] UpdateMatch(MatchPacket match, bool sendPassword = true)
+	public void UpdateMatch(RoomPacket room, bool sendPassword = true)
 	{
-		return PacketWriter.Wrap(ServerPackets.UpdateMatch, WriteMatch(match, sendPassword));
+		Wrap(ServerPacketType.UpdateMatch, () => WriteMatchPayload(room, sendPassword));
 	}
 
 	// packet id: 27
-	/// <summary>Builds the new-match packet announcing a match to the lobby.</summary>
-	/// <param name="match">The match data to send.</param>
+	/// <summary>Builds the new-room packet announcing a room to the lobby.</summary>
+	/// <param name="room">The room data to send.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] NewMatch(MatchPacket match)
+	public void NewMatch(RoomPacket room)
 	{
-		return PacketWriter.Wrap(ServerPackets.NewMatch, WriteMatch(match, true));
+		Wrap(ServerPacketType.NewMatch, () => WriteMatchPayload(room, true));
 	}
 
 	// packet id: 28
 	/// <summary>Builds the dispose-match packet removing a match from the lobby.</summary>
 	/// <param name="matchId">The id of the match to dispose.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] DisposeMatch(int matchId)
+	public void DisposeMatch(int matchId)
 	{
-		return PacketWriter.Wrap(ServerPackets.DisposeMatch, BinaryWriter.WriteInt32(matchId));
+		Wrap(ServerPacketType.DisposeMatch, () => _writer.Write(matchId));
 	}
 
 	// packet id: 34
 	/// <summary>Builds the empty packet toggling the block-non-friend-DM preference.</summary>
 	/// <returns>The complete packet.</returns>
-	public static byte[] ToggleBlockNonFriendDm()
+	public void ToggleBlockNonFriendDm()
 	{
-		return PacketWriter.Wrap(ServerPackets.ToggleBlockNonFriendDms, []);
+		Wrap(ServerPacketType.ToggleBlockNonFriendDms, () => { });
 	}
 
 	// packet id: 36
-	/// <summary>Builds the match-join-success packet confirming a join with the current match state.</summary>
-	/// <param name="match">The match data to send.</param>
+	/// <summary>Builds the room-join-success packet confirming a join with the current room state.</summary>
+	/// <param name="room">The room data to send.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] MatchJoinSuccess(MatchPacket match)
+	public void MatchJoinSuccess(RoomPacket room)
 	{
-		return PacketWriter.Wrap(ServerPackets.MatchJoinSuccess, WriteMatch(match, true));
+		Wrap(ServerPacketType.MatchJoinSuccess, () => WriteMatchPayload(room, true));
 	}
 
 	// packet id: 37
 	/// <summary>Builds the empty match-join-fail packet.</summary>
 	/// <returns>The complete packet.</returns>
-	public static byte[] MatchJoinFail()
+	public void MatchJoinFail()
 	{
-		return PacketWriter.Wrap(ServerPackets.MatchJoinFail, []);
+		Wrap(ServerPacketType.MatchJoinFail, () => { });
 	}
 
 	// packet id: 42
 	/// <summary>Builds the packet notifying a spectator that another spectator joined.</summary>
 	/// <param name="userId">The id of the joining spectator.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] FellowSpectatorJoined(int userId)
+	public void FellowSpectatorJoined(int userId)
 	{
-		return PacketWriter.Wrap(ServerPackets.FellowSpectatorJoined, BinaryWriter.WriteInt32(userId));
+		Wrap(ServerPacketType.FellowSpectatorJoined, () => _writer.Write(userId));
 	}
 
 	// packet id: 43
 	/// <summary>Builds the packet notifying a spectator that another spectator left.</summary>
 	/// <param name="userId">The id of the leaving spectator.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] FellowSpectatorLeft(int userId)
+	public void FellowSpectatorLeft(int userId)
 	{
-		return PacketWriter.Wrap(ServerPackets.FellowSpectatorLeft, BinaryWriter.WriteInt32(userId));
+		Wrap(ServerPacketType.FellowSpectatorLeft, () => _writer.Write(userId));
 	}
 
 	// packet id: 46
-	/// <summary>Builds the match-start packet beginning the match for all players.</summary>
-	/// <param name="match">The match data to send.</param>
+	/// <summary>Builds the room-start packet beginning the room for all players.</summary>
+	/// <param name="room">The room data to send.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] MatchStart(MatchPacket match)
+	public void MatchStart(RoomPacket room)
 	{
-		return PacketWriter.Wrap(ServerPackets.MatchStart, WriteMatch(match, true));
+		Wrap(ServerPacketType.MatchStart, () => WriteMatchPayload(room, true));
 	}
 
 	// packet id: 48
 	/// <summary>Builds the match-score-update packet broadcasting a player's score frame.</summary>
 	/// <param name="frame">The score frame data to send.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] MatchScoreUpdate(ScoreFrame frame)
+	public void MatchScoreUpdate(ScoreFrame frame)
 	{
-		return PacketWriter.Wrap(ServerPackets.MatchScoreUpdate, WriteScoreFrame(frame));
+		Wrap(ServerPacketType.MatchScoreUpdate, () => WriteScoreFramePayload(frame));
 	}
 
 	// packet id: 50
 	/// <summary>Builds the empty match-transfer-host packet notifying the new host of their role.</summary>
 	/// <returns>The complete packet.</returns>
-	public static byte[] MatchTransferHost()
+	public void MatchTransferHost()
 	{
-		return PacketWriter.Wrap(ServerPackets.MatchTransferHost, []);
+		Wrap(ServerPacketType.MatchTransferHost, () => { });
 	}
 
 	// packet id: 53
 	/// <summary>Builds the empty packet notifying match players that everyone has loaded.</summary>
 	/// <returns>The complete packet.</returns>
-	public static byte[] MatchAllPlayersLoaded()
+	public void MatchAllPlayersLoaded()
 	{
-		return PacketWriter.Wrap(ServerPackets.MatchAllPlayersLoaded, []);
+		Wrap(ServerPacketType.MatchAllPlayersLoaded, () => { });
 	}
 
 	// packet id: 57
 	/// <summary>Builds the match-player-failed packet reporting a player who failed.</summary>
 	/// <param name="slotId">The slot id of the failed player.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] MatchPlayerFailed(int slotId)
+	public void MatchPlayerFailed(int slotId)
 	{
-		return PacketWriter.Wrap(ServerPackets.MatchPlayerFailed, BinaryWriter.WriteInt32(slotId));
+		Wrap(ServerPacketType.MatchPlayerFailed, () => _writer.Write(slotId));
 	}
 
 	// packet id: 58
 	/// <summary>Builds the empty match-complete packet signaling the end of a played map.</summary>
 	/// <returns>The complete packet.</returns>
-	public static byte[] MatchComplete()
+	public void MatchComplete()
 	{
-		return PacketWriter.Wrap(ServerPackets.MatchComplete, []);
+		Wrap(ServerPacketType.MatchComplete, () => { });
 	}
 
 	// packet id: 61
 	/// <summary>Builds the empty match-skip packet telling players that the intro skip is complete.</summary>
 	/// <returns>The complete packet.</returns>
-	public static byte[] MatchSkip()
+	public void MatchSkip()
 	{
-		return PacketWriter.Wrap(ServerPackets.MatchSkip, []);
+		Wrap(ServerPacketType.MatchSkip, () => { });
 	}
 
 	// packet id: 64
 	/// <summary>Builds the channel-join-success packet confirming that the client joined a channel.</summary>
 	/// <param name="name">The name of the channel joined.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] ChannelJoin(string name)
+	public void ChannelJoin(string name)
 	{
-		return PacketWriter.Wrap(ServerPackets.ChannelJoinSuccess, BinaryWriter.WriteString(name));
+		Wrap(ServerPacketType.ChannelJoinSuccess, () => _writer.WriteOsuString(name));
 	}
 
 	// packet id: 65
@@ -445,18 +355,18 @@ public static class ServerPacketWriter
 	/// <param name="topic">The topic of the channel.</param>
 	/// <param name="playerCount">The number of players in the channel.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] ChannelInfo(string name, string topic, int playerCount)
+	public void ChannelInfo(string name, string topic, int playerCount)
 	{
-		return PacketWriter.Wrap(ServerPackets.ChannelInfo, WriteChannelPayload(name, topic, playerCount));
+		Wrap(ServerPacketType.ChannelInfo, () => WriteChannelPayload(name, topic, playerCount));
 	}
 
 	// packet id: 66
 	/// <summary>Builds the channel-kick packet removing the client from a channel.</summary>
 	/// <param name="name">The name of the channel.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] ChannelKick(string name)
+	public void ChannelKick(string name)
 	{
-		return PacketWriter.Wrap(ServerPackets.ChannelKick, BinaryWriter.WriteString(name));
+		Wrap(ServerPacketType.ChannelKick, () => _writer.WriteOsuString(name));
 	}
 
 	// packet id: 67
@@ -465,36 +375,36 @@ public static class ServerPacketWriter
 	/// <param name="topic">The topic of the channel.</param>
 	/// <param name="playerCount">The number of players in the channel.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] ChannelAutoJoin(string name, string topic, int playerCount)
+	public void ChannelAutoJoin(string name, string topic, int playerCount)
 	{
-		return PacketWriter.Wrap(ServerPackets.ChannelAutoJoin, WriteChannelPayload(name, topic, playerCount));
+		Wrap(ServerPacketType.ChannelAutoJoin, () => WriteChannelPayload(name, topic, playerCount));
 	}
 
 	// packet id: 71
 	/// <summary>Builds the privileges packet sending the client's privilege level.</summary>
 	/// <param name="priv">The privilege bitmask of the client.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] BanchoPrivileges(int priv)
+	public void BanchoPrivileges(int priv)
 	{
-		return PacketWriter.Wrap(ServerPackets.Privileges, BinaryWriter.WriteInt32(priv));
+		Wrap(ServerPacketType.Privileges, () => _writer.Write(priv));
 	}
 
 	// packet id: 72
 	/// <summary>Builds the friends-list packet sending the client's friend ids.</summary>
 	/// <param name="friends">The ids of the client's friends.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] FriendsList(IReadOnlyList<int> friends)
+	public void FriendsList(IReadOnlyList<int> friends)
 	{
-		return PacketWriter.Wrap(ServerPackets.FriendsList, BinaryWriter.WriteI32List(friends));
+		Wrap(ServerPacketType.FriendsList, () => _writer.WriteI32ListI16L(friends));
 	}
 
 	// packet id: 75
 	/// <summary>Builds the protocol-version packet sending the negotiated protocol version.</summary>
 	/// <param name="version">The protocol version number.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] ProtocolVersion(int version)
+	public void ProtocolVersion(int version)
 	{
-		return PacketWriter.Wrap(ServerPackets.ProtocolVersion, BinaryWriter.WriteInt32(version));
+		Wrap(ServerPacketType.ProtocolVersion, () => _writer.Write(version));
 	}
 
 	// packet id: 76
@@ -502,26 +412,26 @@ public static class ServerPacketWriter
 	/// <param name="iconUrl">The url of the icon image.</param>
 	/// <param name="onclickUrl">The url opened when the icon is clicked.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] MainMenuIcon(string iconUrl, string onclickUrl)
+	public void MainMenuIcon(string iconUrl, string onclickUrl)
 	{
-		return PacketWriter.Wrap(ServerPackets.MainMenuIcon, BinaryWriter.WriteString($"{iconUrl}|{onclickUrl}"));
+		Wrap(ServerPacketType.MainMenuIcon, () => _writer.WriteOsuString($"{iconUrl}|{onclickUrl}"));
 	}
 
 	// packet id: 80 (deprecated)
 	/// <summary>Builds the deprecated empty monitor packet.</summary>
 	/// <returns>The complete packet.</returns>
-	public static byte[] Monitor()
+	public void Monitor()
 	{
-		return PacketWriter.Wrap(ServerPackets.Monitor, []);
+		Wrap(ServerPacketType.Monitor, () => { });
 	}
 
 	// packet id: 81
 	/// <summary>Builds the match-player-skipped packet reporting a player who skipped the intro.</summary>
 	/// <param name="userId">The id of the player who skipped.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] MatchPlayerSkipped(int userId)
+	public void MatchPlayerSkipped(int userId)
 	{
-		return PacketWriter.Wrap(ServerPackets.MatchPlayerSkipped, BinaryWriter.WriteInt32(userId));
+		Wrap(ServerPacketType.MatchPlayerSkipped, () => _writer.Write(userId));
 	}
 
 	// packet id: 83
@@ -536,7 +446,7 @@ public static class ServerPacketWriter
 	/// <param name="latitude">The player's latitude.</param>
 	/// <param name="globalRank">The player's global rank.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] UserPresence(
+	public void UserPresence(
 		int userId,
 		string name,
 		int utcOffset,
@@ -547,26 +457,26 @@ public static class ServerPacketWriter
 		double latitude,
 		int globalRank)
 	{
-		var payload = Concat(
-			BinaryWriter.WriteInt32(userId),
-			BinaryWriter.WriteString(name),
-			[(byte)(utcOffset + 24)],
-			[(byte)countryCode],
-			[(byte)(banchoPrivileges | (mode << 5))],
-			WriteFloat32((float)longitude),
-			WriteFloat32((float)latitude),
-			BinaryWriter.WriteInt32(globalRank));
-
-		return PacketWriter.Wrap(ServerPackets.UserPresence, payload);
+		Wrap(ServerPacketType.UserPresence, () =>
+		{
+			_writer.Write(userId);
+			_writer.WriteOsuString(name);
+			_writer.Write((byte)(utcOffset + 24));
+			_writer.Write((byte)countryCode);
+			_writer.Write((byte)(banchoPrivileges | (mode << 5)));
+			_writer.Write((float)longitude);
+			_writer.Write((float)latitude);
+			_writer.Write(globalRank);
+		});
 	}
 
 	// packet id: 86
 	/// <summary>Builds the restart packet telling the client to restart after a delay.</summary>
 	/// <param name="ms">The delay in milliseconds before restarting.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] RestartServer(int ms)
+	public void RestartServer(int ms)
 	{
-		return PacketWriter.Wrap(ServerPackets.Restart, BinaryWriter.WriteInt32(ms));
+		Wrap(ServerPacketType.Restart, () => _writer.Write(ms));
 	}
 
 	// packet id: 88
@@ -576,152 +486,132 @@ public static class ServerPacketWriter
 	/// <param name="matchEmbed">The match url embedded in the invite message.</param>
 	/// <param name="targetName">The name of the player invited.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] MatchInvite(int playerId, string playerName, string matchEmbed, string targetName)
+	public void MatchInvite(int playerId, string playerName, string matchEmbed, string targetName)
 	{
 		var msg = $"Come join my game: {matchEmbed}.";
-		return PacketWriter.Wrap(ServerPackets.MatchInvite, WriteMessagePayload(playerName, msg, targetName, playerId));
+		Wrap(ServerPacketType.MatchInvite,
+			() => WriteMessagePayload(playerName, msg, targetName, playerId));
 	}
 
 	// packet id: 89
 	/// <summary>Builds the empty channel-info-end packet marking the end of a channel info batch.</summary>
 	/// <returns>The complete packet.</returns>
-	public static byte[] ChannelInfoEnd()
+	public void ChannelInfoEnd()
 	{
-		return PacketWriter.Wrap(ServerPackets.ChannelInfoEnd, []);
+		Wrap(ServerPacketType.ChannelInfoEnd, () => { });
 	}
 
 	// packet id: 91
 	/// <summary>Builds the match-change-password packet confirming the new match password.</summary>
 	/// <param name="newPassword">The new password of the match.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] MatchChangePassword(string newPassword)
+	public void MatchChangePassword(string newPassword)
 	{
-		return PacketWriter.Wrap(ServerPackets.MatchChangePassword, BinaryWriter.WriteString(newPassword));
+		Wrap(ServerPacketType.MatchChangePassword, () => _writer.WriteOsuString(newPassword));
 	}
 
 	// packet id: 92
 	/// <summary>Builds the silence-end packet reporting the remaining silence time.</summary>
 	/// <param name="delta">The remaining silence duration.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] SilenceEnd(int delta)
+	public void SilenceEnd(int delta)
 	{
-		return PacketWriter.Wrap(ServerPackets.SilenceEnd, BinaryWriter.WriteInt32(delta));
+		Wrap(ServerPacketType.SilenceEnd, () => _writer.Write(delta));
 	}
 
 	// packet id: 94
 	/// <summary>Builds the user-silenced packet notifying a player that they were silenced.</summary>
 	/// <param name="userId">The id of the silenced player.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] UserSilenced(int userId)
+	public void UserSilenced(int userId)
 	{
-		return PacketWriter.Wrap(ServerPackets.UserSilenced, BinaryWriter.WriteInt32(userId));
+		Wrap(ServerPacketType.UserSilenced, () => _writer.Write(userId));
 	}
 
 	// packet id: 95 (unused, kept for parity)
 	/// <summary>Builds the user-presence-single packet for one player, unused by this server and kept for parity.</summary>
 	/// <param name="userId">The id of the player.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] UserPresenceSingle(int userId)
+	public void UserPresenceSingle(int userId)
 	{
-		return PacketWriter.Wrap(ServerPackets.UserPresenceSingle, BinaryWriter.WriteInt32(userId));
+		Wrap(ServerPacketType.UserPresenceSingle, () => _writer.Write(userId));
 	}
 
 	// packet id: 96 (unused, kept for parity)
 	/// <summary>Builds the user-presence-bundle packet for multiple players, unused by this server and kept for parity.</summary>
 	/// <param name="userIds">The ids of the players.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] UserPresenceBundle(IReadOnlyList<int> userIds)
+	public void UserPresenceBundle(IReadOnlyList<int> userIds)
 	{
-		return PacketWriter.Wrap(ServerPackets.UserPresenceBundle, BinaryWriter.WriteI32List(userIds));
+		Wrap(ServerPacketType.UserPresenceBundle, () => _writer.WriteI32ListI16L(userIds));
 	}
 
 	// packet id: 100
 	/// <summary>Builds the user-dm-blocked packet notifying the client that a direct message was blocked.</summary>
 	/// <param name="target">The name of the player whose message was blocked.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] UserDmBlocked(string target)
+	public void UserDmBlocked(string target)
 	{
-		return PacketWriter.Wrap(ServerPackets.UserDmBlocked, WriteMessagePayload("", "", target, 0));
+		Wrap(ServerPacketType.UserDmBlocked, () => WriteMessagePayload("", "", target, 0));
 	}
 
 	// packet id: 101
 	/// <summary>Builds the target-is-silenced packet notifying the client that the message target is silenced.</summary>
 	/// <param name="target">The name of the silenced player.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] TargetSilenced(string target)
+	public void TargetSilenced(string target)
 	{
-		return PacketWriter.Wrap(ServerPackets.TargetIsSilenced, WriteMessagePayload("", "", target, 0));
+		Wrap(ServerPacketType.TargetIsSilenced, () => WriteMessagePayload("", "", target, 0));
 	}
 
 	// packet id: 102
 	/// <summary>Builds the empty forced-version-update packet.</summary>
 	/// <returns>The complete packet.</returns>
-	public static byte[] VersionUpdateForced()
+	public void VersionUpdateForced()
 	{
-		return PacketWriter.Wrap(ServerPackets.VersionUpdateForced, []);
+		Wrap(ServerPacketType.VersionUpdateForced, () => { });
 	}
 
 	// packet id: 103
 	/// <summary>Builds the switch-server packet telling the client to switch servers after a delay.</summary>
 	/// <param name="t">The delay in milliseconds before switching.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] SwitchServer(int t)
+	public void SwitchServer(int t)
 	{
-		return PacketWriter.Wrap(ServerPackets.SwitchServer, BinaryWriter.WriteInt32(t));
+		Wrap(ServerPacketType.SwitchServer, () => _writer.Write(t));
 	}
 
 	// packet id: 104
 	/// <summary>Builds the empty account-restricted packet notifying the client that the account is restricted.</summary>
 	/// <returns>The complete packet.</returns>
-	public static byte[] AccountRestricted()
+	public void AccountRestricted()
 	{
-		return PacketWriter.Wrap(ServerPackets.AccountRestricted, []);
+		Wrap(ServerPacketType.AccountRestricted, () => { });
 	}
 
 	// packet id: 105 (deprecated)
 	/// <summary>Builds the deprecated Rich Text eXchange packet carrying a message to the client.</summary>
 	/// <param name="msg">The message to send.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] Rtx(string msg)
+	public void Rtx(string msg)
 	{
-		return PacketWriter.Wrap(ServerPackets.Rtx, BinaryWriter.WriteString(msg));
+		Wrap(ServerPacketType.Rtx, () => _writer.WriteOsuString(msg));
 	}
 
 	// packet id: 106
 	/// <summary>Builds the empty match-abort packet notifying match players that the match was aborted.</summary>
 	/// <returns>The complete packet.</returns>
-	public static byte[] MatchAbort()
+	public void MatchAbort()
 	{
-		return PacketWriter.Wrap(ServerPackets.MatchAbort, []);
+		Wrap(ServerPacketType.MatchAbort, () => { });
 	}
 
 	// packet id: 107
 	/// <summary>Builds the switch-tournament-server packet telling the client to connect to a tournament server.</summary>
 	/// <param name="ip">The ip or hostname of the tournament server.</param>
 	/// <returns>The complete packet.</returns>
-	public static byte[] SwitchTournamentServer(string ip)
+	public void SwitchTournamentServer(string ip)
 	{
-		return PacketWriter.Wrap(ServerPackets.SwitchTournamentServer, BinaryWriter.WriteString(ip));
-	}
-
-	private static byte[] WriteInt64(long value)
-	{
-		var result = new byte[8];
-		BinaryPrimitives.WriteInt64LittleEndian(result, value);
-		return result;
-	}
-
-	private static byte[] WriteUInt16(ushort value)
-	{
-		var result = new byte[2];
-		BinaryPrimitives.WriteUInt16LittleEndian(result, value);
-		return result;
-	}
-
-	private static byte[] WriteFloat32(float value)
-	{
-		var result = new byte[4];
-		BinaryPrimitives.WriteSingleLittleEndian(result, value);
-		return result;
+		Wrap(ServerPacketType.SwitchTournamentServer, () => _writer.WriteOsuString(ip));
 	}
 }

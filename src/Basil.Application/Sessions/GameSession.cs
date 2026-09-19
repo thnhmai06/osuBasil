@@ -6,6 +6,7 @@ using Basil.Domain.Client;
 using Basil.Domain.Scores;
 using Basil.Domain.Social;
 using Basil.Domain.Users;
+using Basil.Protocol.Bancho.Packets;
 
 namespace Basil.Application.Sessions;
 
@@ -57,8 +58,8 @@ public sealed class GameSession : UserSession
 
 	/// <summary>
 	///     Gets or sets a value that indicates whether the client is currently viewing the
-	///     multiplayer lobby screen, between the <see cref="Basil.Protocol.Packets.ClientPackets.JoinLobby" />
-	///     and <see cref="Basil.Protocol.Packets.ClientPackets.PartLobby" /> packets.
+	///     multiplayer lobby screen, between the <see cref="ClientPackets.JoinLobby" />
+	///     and <see cref="ClientPackets.PartLobby" /> packets.
 	/// </summary>
 	// ReSharper disable once UnusedAutoPropertyAccessor.Global
 	public bool InLobby { get; set; }

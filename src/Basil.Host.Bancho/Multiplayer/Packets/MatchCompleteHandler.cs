@@ -3,7 +3,7 @@ using Basil.Application.Sessions;
 using Basil.Application.Users;
 using Basil.Domain.Multiplayer.Runtime;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Protocol.Packets;
+using Basil.Protocol.Bancho.Packets;
 
 namespace Basil.Host.Bancho.Multiplayer.Packets;
 
@@ -94,7 +94,7 @@ public sealed class MatchCompleteHandler(
 			}
 
 		logger.LogInformation("~ Round complete: MatchId={MatchId} RoundId={RoundId}", match.DbId, roundId);
-		matchBroadcast.Enqueue(match, ServerPacketWriter.MatchComplete(), false, notPlaying);
+		matchBroadcast.Enqueue(match, PacketWriter.MatchComplete(), false, notPlaying);
 		mutation.PublishState();
 	}
 }

@@ -1,4 +1,12 @@
-namespace Basil.Protocol.Multiplayer;
+namespace Basil.Protocol.Bancho.Models.Replay;
+
+/// <summary>Represents a single replay frame's button state and cursor position.</summary>
+/// <param name="ButtonState">The mouse and keyboard button state for the frame.</param>
+/// <param name="TaikoByte">The osu!taiko drum-zone bitfield for the frame.</param>
+/// <param name="X">The horizontal cursor coordinate.</param>
+/// <param name="Y">The vertical cursor coordinate.</param>
+/// <param name="Time">The frame time in milliseconds since the start of the play.</param>
+public readonly record struct ReplayFrame(Keys ButtonState, TaikoByte TaikoByte, float X, float Y, int Time);
 
 /// <summary>
 ///     osu!'s mouse/keyboard button-state bitfield for a replay frame. Values match
@@ -12,19 +20,19 @@ public enum Keys : byte
 	None = 0,
 
 	/// <summary>The left mouse button.</summary>
-	Left1 = 1,
+	Left1 = 1 << 0,
 
 	/// <summary>The right mouse button.</summary>
-	Right1 = 2,
+	Right1 = 1 << 1,
 
 	/// <summary>The first keyboard keybind.</summary>
-	Left2 = 4,
+	Left2 = 1 << 2,
 
 	/// <summary>The second keyboard keybind.</summary>
-	Right2 = 8,
+	Right2 = 1 << 3,
 
 	/// <summary>The smoke key.</summary>
-	Smoke = 16
+	Smoke = 1 << 4
 }
 
 /// <summary>
@@ -53,11 +61,3 @@ public enum TaikoByte : byte
 	/// <summary>The frame is a large double-note press.</summary>
 	LargeDouble = 1 << 4
 }
-
-/// <summary>Represents a single replay frame's button state and cursor position.</summary>
-/// <param name="ButtonState">The mouse and keyboard button state for the frame.</param>
-/// <param name="TaikoByte">The osu!taiko drum-zone bitfield for the frame.</param>
-/// <param name="X">The horizontal cursor coordinate.</param>
-/// <param name="Y">The vertical cursor coordinate.</param>
-/// <param name="Time">The frame time in milliseconds since the start of the play.</param>
-public sealed record ReplayFrame(Keys ButtonState, TaikoByte TaikoByte, float X, float Y, int Time);

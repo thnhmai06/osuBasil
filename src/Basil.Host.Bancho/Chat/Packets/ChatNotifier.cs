@@ -1,8 +1,8 @@
 using Basil.Application.Chat;
 using Basil.Application.Sessions;
 using Basil.Application.Shared.Configuration;
+using Basil.Protocol.Bancho.Packets;
 using Basil.Protocol.Irc;
-using Basil.Protocol.Packets;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Host.Bancho.Chat.Packets;
@@ -26,7 +26,7 @@ public sealed class ChatNotifier(IOptions<IrcOptions> options) : IChatNotifier
 		if (sender is not GameSession game) return;
 
 		game.Enqueue(reason == DmRefusal.Silenced
-			? ServerPacketWriter.TargetSilenced(recipientName)
-			: ServerPacketWriter.UserDmBlocked(recipientName));
+			? PacketWriter.TargetSilenced(recipientName)
+			: PacketWriter.UserDmBlocked(recipientName));
 	}
 }

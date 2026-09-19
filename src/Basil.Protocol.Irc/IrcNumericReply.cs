@@ -1,7 +1,7 @@
 namespace Basil.Protocol.Irc;
 
 /// <summary>RFC 1459/2812 numeric replies actually used by Basil's IRC bridge, not the full table.</summary>
-public enum IrcNumeric : ushort
+public enum IrcNumericReply : ushort
 {
 	/// <summary>Sent as the first reply after successful registration, welcoming the client.</summary>
 	RplWelcome = 1,

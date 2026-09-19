@@ -5,7 +5,7 @@ using Basil.Application.Shared.Configuration;
 using Basil.Domain.Client;
 using Basil.Domain.Scores;
 using Microsoft.Extensions.Options;
-using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
+using BinaryWriter = Basil.Protocol.Bancho.Binary.BinaryWriter;
 
 namespace Basil.Infrastructure.Shared.Storage;
 

@@ -1,4 +1,4 @@
-namespace Basil.Protocol;
+namespace Basil.Protocol.Bancho.Models.Auth;
 
 /// <summary>Specifies why a login attempt was rejected, sent as the user id value of the login reply packet on failure.</summary>
 public enum LoginFailureReason : sbyte

@@ -1,9 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
-	<PropertyGroup>
-		<!-- Keeps the pre-split namespace (Basil.Protocol.*) so D1 moves files without renaming
-		     every consumer; only Basil.Protocol.Irc got a namespace of its own. -->
-		<RootNamespace>Basil.Protocol</RootNamespace>
-	</PropertyGroup>
-
+	<ItemGroup>
+		<Folder Include="Models\"/>
+		<Folder Include="Wire\"/>
+	</ItemGroup>
 </Project>

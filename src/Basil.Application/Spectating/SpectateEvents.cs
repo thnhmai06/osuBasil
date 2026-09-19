@@ -1,5 +1,5 @@
 using Basil.Application.Multiplayer;
-using Basil.Protocol.Multiplayer;
+using Basil.Protocol.Bancho.Spectating;
 
 // ReSharper disable NotAccessedPositionalProperty.Global
 
@@ -15,8 +15,8 @@ public abstract record SpectateEvent(UserBrief User);
 /// </summary>
 /// <remarks>
 ///     Fires once per bundle. It reuses the wire-level <see cref="ReplayFrame" /> and
-///     <see cref="Protocol.Multiplayer.ScoreFrame" /> protocol types directly, following the same convention as
-///     <see cref="PlayerLiveScore" /> (built from <see cref="Protocol.Multiplayer.ScoreFrame" /> elsewhere), rather
+///     <see cref="Protocol.Bancho.Spectating.ScoreFrame" /> protocol types directly, following the same convention as
+///     <see cref="PlayerLiveScore" /> (built from <see cref="Protocol.Bancho.Spectating.ScoreFrame" /> elsewhere), rather
 ///     than duplicating an API-layer copy of the same fields.
 /// </remarks>
 /// <param name="User">The spectated userSession.</param>

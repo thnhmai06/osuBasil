@@ -1,7 +1,7 @@
 using Basil.Application.Sessions;
 using Basil.Application.Spectating;
 using Basil.Host.Bancho.Shared.Http;
-using Basil.Protocol.Packets;
+using Basil.Protocol.Bancho.Packets;
 
 namespace Basil.Host.Bancho.Spectating.Packets;
 
@@ -44,8 +44,8 @@ public sealed class StartSpectatingHandler(
 
 				if (gameSession.Stealth) return Task.CompletedTask;
 
-				newHost.Enqueue(ServerPacketWriter.SpectatorJoined(gameSession.Id));
-				var joined = ServerPacketWriter.FellowSpectatorJoined(gameSession.Id);
+				newHost.Enqueue(PacketWriter.SpectatorJoined(gameSession.Id));
+				var joined = PacketWriter.FellowSpectatorJoined(gameSession.Id);
 				foreach (var spec in newHost.Spectators)
 					if (spec.Id != gameSession.Id)
 						spec.Enqueue(joined);
