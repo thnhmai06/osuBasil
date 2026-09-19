@@ -83,17 +83,35 @@ public sealed class Beatmap : IEquatable<Beatmap>
 		? $"{Beatmapset.Artist} - {Beatmapset.Title} [{Version}]"
 		: null;
 
+	/// <summary>
+	///     Gets a value that indicates whether this beatmap equals another by content hash.
+	/// </summary>
+	/// <param name="other">The beatmap to compare, or <see langword="null" />.</param>
+	/// <returns>
+	///     <see langword="true" /> if <paramref name="other" /> is non-null and has the same
+	///     <see cref="Md5" /> as this beatmap; otherwise, <see langword="false" />.
+	/// </returns>
 	public bool Equals(Beatmap? other)
 	{
 		if (other is null) return false;
 		return Md5 == other.Md5;
 	}
 
+	/// <summary>
+	///     Gets a value that indicates whether this beatmap equals another object by content hash.
+	/// </summary>
+	/// <param name="obj">The object to compare, or <see langword="null" />.</param>
+	/// <returns>
+	///     <see langword="true" /> if <paramref name="obj" /> is a <see cref="Beatmap" /> that equals
+	///     this one; otherwise, <see langword="false" />.
+	/// </returns>
 	public override bool Equals(object? obj)
 	{
 		return obj is Beatmap other && Equals(other);
 	}
 
+	/// <summary>Returns a hash code derived from the beatmap's content hash (<see cref="Md5" />).</summary>
+	/// <returns>A hash code consistent with the beatmap's value equality, which compares <see cref="Md5" />.</returns>
 	public override int GetHashCode()
 	{
 		return Md5.GetHashCode();

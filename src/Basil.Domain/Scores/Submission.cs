@@ -15,6 +15,7 @@ namespace Basil.Domain.Scores;
 /// </remarks>
 public sealed record Submission
 {
+	/// <summary>Gets the parsed score, including its hit counts, total score, and mode.</summary>
 	public required Score Score { get; init; }
 
 	/// <summary>Gets or sets the anticheat flags the client reported with the submission.</summary>
@@ -29,10 +30,12 @@ public sealed record Submission
 	/// </summary>
 	/// <param name="submitFields">
 	///     The colon-delimited submission fields, with the leading beatmap MD5 and username entries
-	///     already stripped by the caller, since they are not score fields.
+	///     already stripped by the caller, since they are not score fields. The first remaining
+	///     entry is the submission MD5 and the final entry carries the client flags encoded as
+	///     spaces.
 	/// </param>
-	/// <param name="beatmapMd5">The md5 hash of the beatmap.</param>
-	/// <param name="userId">The user id of the player.</param>
+	/// <param name="beatmapMd5">The MD5 hash of the beatmap played, carried into the score.</param>
+	/// <param name="userId">The user ID of the player, carried into the score.</param>
 	/// <returns>A submission populated with the parsed values.</returns>
 	public static Submission Parse(IReadOnlyList<string> submitFields, string? beatmapMd5 = null, int? userId = null)
 	{
@@ -44,6 +47,32 @@ public sealed record Submission
 		};
 	}
 
+	/// <summary>
+	///     Verifies that the submission is authentic, recomputing the legacy checksum formulas that
+	///     mirror the osu! server and comparing them with the client-sent values.
+	/// </summary>
+	/// <remarks>
+	///     Checks, in order: that the server knows a fingerprint for the player, that the client's
+	///     version date matches, that the client's fingerprint hash and its serial-derived hashes
+	///     match the server's record, that the submission MD5 matches the recomputed value, and
+	///     that the beatmap MD5 the client claims matches the beatmap the server hands out. On the
+	///     first mismatch the reason is reported in <paramref name="error" /> and validation stops.
+	/// </remarks>
+	/// <param name="server">
+	///     The data known by the server: the stored client fingerprint (if any), the client
+	///     version, the beatmap MD5 and storyboard MD5, and the player's name.
+	/// </param>
+	/// <param name="client">
+	///     The data the client sent with the submission: the fingerprint MD5 and serial, the
+	///     version date, and the beatmap MD5 it claims to have played.
+	/// </param>
+	/// <param name="error">
+	///     When this method returns <see langword="false" />, contains a message describing why the
+	///     submission was rejected.
+	/// </param>
+	/// <returns>
+	///     <see langword="true" /> if every check passes; otherwise, <see langword="false" />.
+	/// </returns>
 	public bool Validate(
 		(ClientFingerprint? Fingerprint, ClientVersion Version,
 			(string Md5, string? StoryboardMd5) Beatmap, string playerName) server,

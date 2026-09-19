@@ -30,6 +30,12 @@ public sealed class RoomSlot
 	/// <summary>
 	///     Assigns a player to this slot and resets its player-specific state.
 	/// </summary>
+	/// <remarks>
+	///     Passing <see langword="null" /> vacates the slot, leaving it open — or locked, when the
+	///     slot was locked. Assigning a player marks the slot not ready and resets the team, mods,
+	///     and intro state.
+	/// </remarks>
+	/// <param name="player">The player to assign, or <see langword="null" /> to vacate the slot.</param>
 	public void Assign(User? player)
 	{
 		if (player is null)
@@ -51,6 +57,20 @@ public sealed class RoomSlot
 	///     Changes the slot's status and automatically adjusts related state
 	///     to maintain the slot's invariants.
 	/// </summary>
+	/// <remarks>
+	///     <see cref="RoomSlotStatus.Open" /> and <see cref="RoomSlotStatus.Locked" /> vacate the
+	///     slot and reset its team, mods, and intro state. The occupied statuses
+	///     (<see cref="RoomSlotStatus.NoMap" />, <see cref="RoomSlotStatus.NotReady" />,
+	///     <see cref="RoomSlotStatus.Ready" />, and <see cref="RoomSlotStatus.Playing" />) require
+	///     an occupant and leave the player-specific state untouched apart from the intro flag.
+	/// </remarks>
+	/// <param name="status">The new status to apply.</param>
+	/// <exception cref="ArgumentOutOfRangeException">
+	///     <paramref name="status" /> is not a defined <see cref="RoomSlotStatus" /> value.
+	/// </exception>
+	/// <exception cref="InvalidOperationException">
+	///     <paramref name="status" /> is an occupied status but the slot is empty.
+	/// </exception>
 	public void SetStatus(RoomSlotStatus status)
 	{
 		switch (status)
@@ -82,6 +102,8 @@ public sealed class RoomSlot
 	/// <summary>
 	///     Changes the team assigned to the occupant.
 	/// </summary>
+	/// <param name="team">The team to assign.</param>
+	/// <exception cref="InvalidOperationException">The slot is empty.</exception>
 	public void SetTeam(GameTeam team)
 	{
 		EnsureOccupied();
@@ -91,6 +113,8 @@ public sealed class RoomSlot
 	/// <summary>
 	///     Changes the mods assigned to the occupant.
 	/// </summary>
+	/// <param name="gameMods">The mods to assign.</param>
+	/// <exception cref="InvalidOperationException">The slot is empty.</exception>
 	public void SetMods(GameMods gameMods)
 	{
 		EnsureOccupied();
@@ -100,6 +124,10 @@ public sealed class RoomSlot
 	/// <summary>
 	///     Marks the occupant as having skipped the current beatmap's intro.
 	/// </summary>
+	/// <exception cref="InvalidOperationException">
+	///     The slot is empty, or the occupant is not in the <see cref="RoomSlotStatus.Playing" />
+	///     state.
+	/// </exception>
 	public void SkipIntro()
 	{
 		EnsureOccupied();
@@ -114,6 +142,7 @@ public sealed class RoomSlot
 	///     Copies the complete state from another slot, or clears this slot when
 	///     <paramref name="other" /> is null.
 	/// </summary>
+	/// <param name="other">The slot to copy from, or <see langword="null" /> to clear this slot.</param>
 	public void CopyFrom(RoomSlot? other)
 	{
 		if (other is null)

@@ -9,7 +9,7 @@
 [Flags]
 public enum ClientPrivileges : byte
 {
-	/// <summary>Client can't do anything. :)</summary>
+	/// <summary>Indicates that no privileges have been granted to the client.</summary>
 	None = 0,
 
 	/// <summary>Marks the client as a regular player.</summary>
@@ -28,8 +28,21 @@ public enum ClientPrivileges : byte
 	Developer = 1 << 4
 }
 
+/// <summary>
+///     Provides extension methods for working with <see cref="ClientPrivileges" /> flag values.
+/// </summary>
 public static class ClientPrivilegesExtensions
 {
+	/// <summary>
+	///     Determines whether <paramref name="target" /> has every flag set in
+	///     <paramref name="requirement" />.
+	/// </summary>
+	/// <param name="target">The flags to test.</param>
+	/// <param name="requirement">The flags that must all be present in <paramref name="target" />.</param>
+	/// <returns>
+	///     <see langword="true" /> if all flags in <paramref name="requirement" /> are set in
+	///     <paramref name="target" />; otherwise, <see langword="false" />.
+	/// </returns>
 	public static bool Has(this ClientPrivileges target, ClientPrivileges requirement)
 	{
 		return (target & requirement) == requirement;

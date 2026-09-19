@@ -2,6 +2,10 @@
 
 namespace Basil.Protocol.Bancho.Wire.Binary;
 
+/// <summary>Provides low-level binary decoding primitives for the Bancho protocol.</summary>
+/// <remarks>
+///     All multi-byte integers are read in little-endian byte order, matching the osu! protocol.
+/// </remarks>
 internal static class BinaryReaderExtensions
 {
 	extension(BinaryReader reader)
@@ -61,8 +65,18 @@ internal static class BinaryReaderExtensions
 			return values;
 		}
 
-		/// <summary>Reads an osu!-format string: an existence byte, a ULEB128 length, then the UTF-8 bytes.</summary>
-		/// <returns>The string value read, or an empty string when the existence byte is <c>0x00</c>.</returns>
+		/// <summary>
+		///     Reads an osu!-format string: an existence byte, a ULEB128 length, then the UTF-8
+		///     bytes.
+		/// </summary>
+		/// <returns>
+		///     The string value read, or an empty string when the existence byte is not
+		///     <c>0x0B</c> (the null marker).
+		/// </returns>
+		/// <exception cref="EndOfStreamException">
+		///     The stream ends before the existence byte, the length, or the string bytes can be
+		///     read.
+		/// </exception>
 		public string ReadOsuString()
 		{
 			var exists = reader.ReadSByte() == 0x0B;

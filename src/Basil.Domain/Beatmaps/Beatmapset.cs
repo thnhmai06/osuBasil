@@ -32,6 +32,10 @@ public sealed class Beatmapset : IEquatable<Beatmapset>
 	/// <summary>
 	///     Gets the ranked status of the set.
 	/// </summary>
+	/// <remarks>
+	///     This member is static because Basil reports every beatmapset as approved; the status is
+	///     not stored per set.
+	/// </remarks>
 	public static BeatmapStatus Status => BeatmapStatus.Approved;
 
 	/// <summary>The artist of the set's music.</summary>
@@ -63,8 +67,8 @@ public sealed class Beatmapset : IEquatable<Beatmapset>
 	///     Gets a value that indicates whether the set was ingested without a real osu! online id.
 	/// </summary>
 	/// <value>
-	///     <see langword="true" /> if the set's id is at or above <see cref="Beatmap.LocalIdFloor" />;
-	///     otherwise, <see langword="false" />.
+	///     <see langword="true" /> if the set's id is at or above the private local id floor of
+	///     1,000,000,000; otherwise, <see langword="false" />.
 	/// </value>
 	public bool IsLocallyIngested => Id >= LocalIdFloor;
 
@@ -82,17 +86,40 @@ public sealed class Beatmapset : IEquatable<Beatmapset>
 	[JsonIgnore]
 	public string? AudioFile { get; set; }
 
+	/// <summary>
+	///     Determines whether another beatmapset refers to the same set.
+	/// </summary>
+	/// <remarks>
+	///     Two sets are considered equal when their <see cref="Id" /> values are equal.
+	/// </remarks>
+	/// <param name="other">The set to compare against, or <see langword="null" />.</param>
+	/// <returns>
+	///     <see langword="true" /> if <paramref name="other" /> has the same <see cref="Id" />;
+	///     otherwise, <see langword="false" />.
+	/// </returns>
 	public bool Equals(Beatmapset? other)
 	{
 		if (other is null) return false;
 		return Id == other.Id;
 	}
 
+	/// <summary>
+	///     Determines whether this beatmapset equals another object.
+	/// </summary>
+	/// <param name="obj">The object to compare against.</param>
+	/// <returns>
+	///     <see langword="true" /> if <paramref name="obj" /> is a <see cref="Beatmapset" /> with
+	///     the same <see cref="Id" />; otherwise, <see langword="false" />.
+	/// </returns>
 	public override bool Equals(object? obj)
 	{
 		return obj is Beatmapset other && Equals(other);
 	}
 
+	/// <summary>
+	///     Returns the hash code of this beatmapset.
+	/// </summary>
+	/// <returns>The <see cref="Id" />, which uniquely identifies the set.</returns>
 	public override int GetHashCode()
 	{
 		return Id;

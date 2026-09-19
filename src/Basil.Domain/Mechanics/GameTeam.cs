@@ -6,7 +6,7 @@
 public enum GameTeam : byte
 {
 	/// <summary>The player is not on a team.</summary>
-	Neutral = 0, // no team
+	Neutral = 0,
 
 	/// <summary>The player is on the blue team.</summary>
 	Blue = 1,

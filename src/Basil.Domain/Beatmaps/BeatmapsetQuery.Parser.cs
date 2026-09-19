@@ -19,6 +19,15 @@ namespace Basil.Domain.Beatmaps;
 /// </remarks>
 public sealed partial record BeatmapsetQuery
 {
+	/// <summary>
+	///     Parses osu!'s beatmap search query syntax into a <see cref="BeatmapsetQuery" />.
+	/// </summary>
+	/// <param name="query">The search query text to parse.</param>
+	/// <param name="provider">Ignored; numeric parsing always uses the invariant culture.</param>
+	/// <returns>
+	///     The parsed query. Tokens that name an unknown key or carry an unparsable value are left
+	///     in the free-text keywords instead of being rejected.
+	/// </returns>
 	public static BeatmapsetQuery Parse(string query, IFormatProvider? provider)
 	{
 		var builder = new Builder();
@@ -52,6 +61,16 @@ public sealed partial record BeatmapsetQuery
 		}
 	}
 
+	/// <summary>
+	///     Attempts to parse a search query.
+	/// </summary>
+	/// <param name="s">The query text, or <see langword="null" /> to represent an empty query.</param>
+	/// <param name="provider">Ignored; numeric parsing always uses the invariant culture.</param>
+	/// <param name="result">The parsed query.</param>
+	/// <returns>
+	///     Always <see langword="true" />: parsing never fails, and a <see langword="null" /> input
+	///     yields <see cref="BeatmapsetQuery.Empty" />.
+	/// </returns>
 	public static bool TryParse(
 		[NotNullWhen(true)] string? s,
 		IFormatProvider? provider,
@@ -259,8 +278,22 @@ public sealed partial record BeatmapsetQuery
 	}
 }
 
+/// <summary>
+///     Provides extension methods for working with <see cref="ComparisonOperator" /> values.
+/// </summary>
 public static class ComparisonOperatorExtensions
 {
+	/// <summary>
+	///     Parses a comparison operator token into a <see cref="ComparisonOperator" />.
+	/// </summary>
+	/// <param name="op">
+	///     The operator token: <c>&lt;</c>, <c>&lt;=</c>, <c>&gt;</c>, <c>&gt;=</c>, <c>==</c>,
+	///     <c>=</c>, or <c>:</c>.
+	/// </param>
+	/// <returns>The corresponding <see cref="ComparisonOperator" /> value.</returns>
+	/// <exception cref="ArgumentOutOfRangeException">
+	///     <paramref name="op" /> is not one of the recognized operator tokens.
+	/// </exception>
 	public static ComparisonOperator Parse(string op)
 	{
 		return op switch

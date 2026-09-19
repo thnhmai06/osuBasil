@@ -109,9 +109,16 @@ public enum GameMods
 	Mirror = 1 << 30,
 
 	// Groups
+	/// <summary>The mods that change the playback rate of the beatmap.</summary>
 	SpeedChangingMods = DoubleTime | Nightcore | HalfTime,
+
+	/// <summary>The mods that restrict the play to a specific key count.</summary>
 	KeyMods = Key1 | Key2 | Key3 | Key4 | Key5 | Key6 | Key7 | Key8 | Key9,
+
+	/// <summary>The mods that only apply to osu!standard.</summary>
 	OsuSpecificMods = Autopilot | SpunOut | Target,
+
+	/// <summary>The mods that only apply to osu!mania.</summary>
 	ManiaSpecificMods = Mirror | Random | FadeIn | KeyMods
 }
 
@@ -292,7 +299,7 @@ public static class ModsExtensions
 	///     Parses a now-playing mod string into a <see cref="GameMods" /> value.
 	/// </summary>
 	/// <param name="s">The space-delimited now-playing mod string, for example, "+Hidden +DoubleTime".</param>
-	/// <param name="mode">The gamemode used</param>
+	/// <param name="mode">The gamemode used to filter the parsed mods.</param>
 	/// <returns>The parsed mod combination, filtered for the given mode.</returns>
 	public static GameMods FromNowPlayingString(string s, GameMode mode)
 	{

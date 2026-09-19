@@ -11,6 +11,17 @@ namespace Basil.Domain.Users;
 /// </summary>
 public partial record UserQuery
 {
+	/// <summary>
+	///     Parses a user search query string into a <see cref="UserQuery" />.
+	/// </summary>
+	/// <param name="query">The raw query text; blank or whitespace-only text yields <see cref="Empty" />.</param>
+	/// <param name="provider">The format provider, which is ignored.</param>
+	/// <returns>The structured query parsed from <paramref name="query" />.</returns>
+	/// <remarks>
+	///     Recognized <c>key:value</c> and <c>key=value</c> tokens (country, privilege) are applied
+	///     as filters; unrecognized tokens remain part of the free-text search. The provider does
+	///     not affect parsing.
+	/// </remarks>
 	public static UserQuery Parse(string query, IFormatProvider? provider)
 	{
 		if (string.IsNullOrWhiteSpace(query))
@@ -50,6 +61,20 @@ public partial record UserQuery
 		}
 	}
 
+	/// <summary>
+	///     Tries to parse a user search query string into a <see cref="UserQuery" />.
+	/// </summary>
+	/// <param name="s">The raw query text, or <see langword="null" />.</param>
+	/// <param name="provider">The format provider, which is ignored.</param>
+	/// <param name="result">
+	///     The parsed query, or <see cref="Empty" /> when <paramref name="s" /> is
+	///     <see langword="null" />.
+	/// </param>
+	/// <returns>Always <see langword="true" />; this method never reports failure.</returns>
+	/// <remarks>
+	///     A <see langword="null" /> input produces <see cref="Empty" />; any other input is parsed
+	///     via <see cref="Parse" />.
+	/// </remarks>
 	public static bool TryParse(
 		[NotNullWhen(true)] string? s, IFormatProvider? provider,
 		[MaybeNullWhen(false)] out UserQuery result)
