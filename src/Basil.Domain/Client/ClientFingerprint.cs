@@ -8,11 +8,6 @@ namespace Basil.Domain.Client;
 /// </summary>
 public readonly partial record struct ClientFingerprint : IParsable<ClientFingerprint>, IFormattable
 {
-	public string OsuPathMd5 { get; }
-	public NetworkAdapters NetworkAdapters { get; }
-	public string UninstallMd5 { get; }
-	public string DiskSignatureMd5 { get; }
-
 	public ClientFingerprint(string osuPathMd5, NetworkAdapters networkAdapters,
 		string uninstallMd5, string diskSignatureMd5)
 	{
@@ -26,13 +21,19 @@ public readonly partial record struct ClientFingerprint : IParsable<ClientFinger
 		DiskSignatureMd5 = diskSignatureMd5;
 	}
 
-	public bool MatchWith(ClientFingerprint other)
+	public string OsuPathMd5 { get; }
+	public NetworkAdapters NetworkAdapters { get; }
+	public string UninstallMd5 { get; }
+	public string DiskSignatureMd5 { get; }
+
+
+	/// <summary>
+	///     Formats this fingerprint as the osu! client hash used by the protocol.
+	/// </summary>
+	public string ToString(string? format = null, IFormatProvider? formatProvider = null)
 	{
-		return NetworkAdapters.IsRunningUnderWine
-			? UninstallMd5 == other.UninstallMd5
-			: UninstallMd5 == other.UninstallMd5
-			  || NetworkAdapters == other.NetworkAdapters
-			  || DiskSignatureMd5 == other.DiskSignatureMd5;
+		return $"{OsuPathMd5}:{NetworkAdapters.Adapters}:{NetworkAdapters.Md5}:" +
+		       $"{UninstallMd5}:{DiskSignatureMd5}:";
 	}
 
 	public static ClientFingerprint Parse(string s, IFormatProvider? provider = null)
@@ -43,16 +44,6 @@ public readonly partial record struct ClientFingerprint : IParsable<ClientFinger
 		return parts.Length == 5
 			? new ClientFingerprint(parts[0], new NetworkAdapters(parts[1], parts[2]), parts[3], parts[4])
 			: throw new FormatException("Client fingerprint must contain 5 components.");
-	}
-
-
-	/// <summary>
-	///     Formats this fingerprint as the osu! client hash used by the protocol.
-	/// </summary>
-	public string ToString(string? format = null, IFormatProvider? formatProvider = null)
-	{
-		return $"{OsuPathMd5}:{NetworkAdapters.Adapters}:{NetworkAdapters.Md5}:" +
-		       $"{UninstallMd5}:{DiskSignatureMd5}:";
 	}
 
 	public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, out ClientFingerprint result)
@@ -73,6 +64,15 @@ public readonly partial record struct ClientFingerprint : IParsable<ClientFinger
 			result = default;
 			return false;
 		}
+	}
+
+	public bool MatchWith(ClientFingerprint other)
+	{
+		return NetworkAdapters.IsRunningUnderWine
+			? UninstallMd5 == other.UninstallMd5
+			: UninstallMd5 == other.UninstallMd5
+			  || NetworkAdapters == other.NetworkAdapters
+			  || DiskSignatureMd5 == other.DiskSignatureMd5;
 	}
 
 	public override string ToString()

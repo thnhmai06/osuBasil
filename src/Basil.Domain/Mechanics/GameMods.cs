@@ -10,7 +10,7 @@ namespace Basil.Domain.Mechanics;
 ///     several mods apply to specific game modes only.
 /// </remarks>
 [Flags]
-public enum GameMods : int
+public enum GameMods
 {
 	/// <summary>No mod is applied.</summary>
 	NoMod = 0,

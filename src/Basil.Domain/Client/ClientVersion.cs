@@ -7,9 +7,16 @@ namespace Basil.Domain.Client;
 public readonly partial record struct ClientVersion(DateOnly Date, int? Revision, ClientVersionStream Stream)
 	: IParsable<ClientVersion>, IFormattable
 {
-	[GeneratedRegex(
-		@"^(?:b)?(?<date>(?:\d{8}|\d{4}\.\d{3}))(?:\.(?<revision>\d))?(?<stream>beta|cuttingedge|dev|tourney)?$")]
-	private static partial Regex VersionPattern();
+	public string ToString(string? format = null, IFormatProvider? formatProvider = null)
+	{
+		var date = Date.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+		var revision = Revision is null ? string.Empty : $".{Revision}";
+		var stream = Stream == ClientVersionStream.Stable
+			? string.Empty
+			: Stream.ToString().ToLowerInvariant();
+
+		return $"b{date}{revision}{stream}";
+	}
 
 	/// <summary>
 	///     Parses an osu! version string into an <see cref="ClientVersion" />.
@@ -65,16 +72,9 @@ public readonly partial record struct ClientVersion(DateOnly Date, int? Revision
 		}
 	}
 
-	public string ToString(string? format = null, IFormatProvider? formatProvider = null)
-	{
-		var date = Date.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
-		var revision = Revision is null ? string.Empty : $".{Revision}";
-		var stream = Stream == ClientVersionStream.Stable
-			? string.Empty
-			: Stream.ToString().ToLowerInvariant();
-
-		return $"b{date}{revision}{stream}";
-	}
+	[GeneratedRegex(
+		@"^(?:b)?(?<date>(?:\d{8}|\d{4}\.\d{3}))(?:\.(?<revision>\d))?(?<stream>beta|cuttingedge|dev|tourney)?$")]
+	private static partial Regex VersionPattern();
 
 	public override string ToString()
 	{

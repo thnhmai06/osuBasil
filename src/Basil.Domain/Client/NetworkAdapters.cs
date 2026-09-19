@@ -7,12 +7,6 @@ public readonly partial record struct NetworkAdapters : IParsable<NetworkAdapter
 {
 	private const string WineAdapterSentinel = "runningunderwine";
 
-	public string Adapters { get; }
-
-	public string Md5 { get; }
-
-	public bool IsRunningUnderWine => Adapters.Equals(WineAdapterSentinel, StringComparison.OrdinalIgnoreCase);
-
 	public NetworkAdapters(string adapters, string md5)
 	{
 		if (string.IsNullOrEmpty(adapters))
@@ -26,6 +20,17 @@ public readonly partial record struct NetworkAdapters : IParsable<NetworkAdapter
 
 		Adapters = adapters;
 		Md5 = md5.ToLowerInvariant();
+	}
+
+	public string Adapters { get; }
+
+	public string Md5 { get; }
+
+	public bool IsRunningUnderWine => Adapters.Equals(WineAdapterSentinel, StringComparison.OrdinalIgnoreCase);
+
+	public bool Equals(NetworkAdapters other)
+	{
+		return string.Equals(Md5, other.Md5, StringComparison.OrdinalIgnoreCase);
 	}
 
 	public static NetworkAdapters Parse(string s, IFormatProvider? provider = null)
@@ -63,11 +68,6 @@ public readonly partial record struct NetworkAdapters : IParsable<NetworkAdapter
 	public override string ToString()
 	{
 		return $"{Adapters}:{Md5}";
-	}
-
-	public bool Equals(NetworkAdapters other)
-	{
-		return string.Equals(Md5, other.Md5, StringComparison.OrdinalIgnoreCase);
 	}
 
 	public override int GetHashCode()

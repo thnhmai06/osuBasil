@@ -16,67 +16,23 @@ namespace Basil.Protocol.Irc;
 public sealed record IrcMessage(string Command, string? Prefix = null, params IReadOnlyList<string> Params)
 	: IParsable<IrcMessage>, IFormattable
 {
-	/// <summary>Builds an IRC numeric reply from a numeric reply code.</summary>
-	/// <param name="serverName">The name of the server, used as the message prefix.</param>
-	/// <param name="numericReply">The numeric reply code.</param>
-	/// <param name="target">The target of the reply, usually the nickname of the recipient.</param>
-	/// <param name="args">The additional parameters that follow the target.</param>
-	/// <returns>The formatted numeric reply message.</returns>
-	public static IrcMessage Numeric(
-		string serverName, IrcNumericReply numericReply, string target, params string[] args)
+	public string ToString(
+		string? format = null,
+		IFormatProvider? formatProvider = null)
 	{
-		var code = ((int)numericReply).ToString("D3", CultureInfo.InvariantCulture);
-		string[] parameters = [target, .. args];
+		var line = Prefix is null ? Command : $":{Prefix} {Command}";
 
-		return new IrcMessage(code, serverName, parameters);
-	}
+		for (var i = 0; i < Params.Count; i++)
+		{
+			var param = Params[i];
+			var isLast = i == Params.Count - 1;
 
-	/// <summary>Builds a PRIVMSG message from a user to a target player or channel.</summary>
-	public static IrcMessage Privmsg(IrcUserPrefix senderPrefix, string target, string text)
-	{
-		return new IrcMessage("PRIVMSG", senderPrefix.ToString(), target, text);
-	}
+			line += isLast && (param.Contains(' ') || param.StartsWith(':') || param.Length == 0)
+				? $" :{param}"
+				: $" {param}";
+		}
 
-	/// <summary>Builds a NOTICE message from a user to a target player or channel.</summary>
-	public static IrcMessage Notice(IrcUserPrefix senderPrefix, string target, string text)
-	{
-		return new IrcMessage("NOTICE", senderPrefix.ToString(), target, text);
-	}
-
-	/// <summary>Builds a JOIN message announcing that a user entered a channel.</summary>
-	public static IrcMessage Join(IrcUserPrefix userPrefix, string channel)
-	{
-		return new IrcMessage("JOIN", userPrefix.ToString(), channel);
-	}
-
-	/// <summary>Builds a PART message announcing that a user left a channel.</summary>
-	public static IrcMessage Part(IrcUserPrefix userPrefix, string channel, string? reason = null)
-	{
-		return new IrcMessage("PART", userPrefix.ToString(), reason is null ? [channel] : [channel, reason]);
-	}
-
-	/// <summary>Builds a TOPIC message announcing that a channel's topic changed.</summary>
-	public static IrcMessage Topic(IrcUserPrefix userPrefix, string channel, string topic)
-	{
-		return new IrcMessage("TOPIC", userPrefix.ToString(), channel, topic);
-	}
-
-	/// <summary>Builds a QUIT message announcing that a user disconnected.</summary>
-	public static IrcMessage Quit(IrcUserPrefix userPrefix, string reason)
-	{
-		return new IrcMessage("QUIT", userPrefix.ToString(), reason);
-	}
-
-	/// <summary>Builds a PING message carrying a token for the server to echo back.</summary>
-	public static IrcMessage Ping(string token)
-	{
-		return new IrcMessage("PING", null, token);
-	}
-
-	/// <summary>Builds a PONG message echoing back a PING token.</summary>
-	public static IrcMessage Pong(string token)
-	{
-		return new IrcMessage("PONG", null, token);
+		return line;
 	}
 
 	/// <summary>
@@ -153,23 +109,67 @@ public sealed record IrcMessage(string Command, string? Prefix = null, params IR
 		return true;
 	}
 
-	public string ToString(
-		string? format = null,
-		IFormatProvider? formatProvider = null)
+	/// <summary>Builds an IRC numeric reply from a numeric reply code.</summary>
+	/// <param name="serverName">The name of the server, used as the message prefix.</param>
+	/// <param name="numericReply">The numeric reply code.</param>
+	/// <param name="target">The target of the reply, usually the nickname of the recipient.</param>
+	/// <param name="args">The additional parameters that follow the target.</param>
+	/// <returns>The formatted numeric reply message.</returns>
+	public static IrcMessage Numeric(
+		string serverName, IrcNumericReply numericReply, string target, params string[] args)
 	{
-		var line = Prefix is null ? Command : $":{Prefix} {Command}";
+		var code = ((int)numericReply).ToString("D3", CultureInfo.InvariantCulture);
+		string[] parameters = [target, .. args];
 
-		for (var i = 0; i < Params.Count; i++)
-		{
-			var param = Params[i];
-			var isLast = i == Params.Count - 1;
+		return new IrcMessage(code, serverName, parameters);
+	}
 
-			line += isLast && (param.Contains(' ') || param.StartsWith(':') || param.Length == 0)
-				? $" :{param}"
-				: $" {param}";
-		}
+	/// <summary>Builds a PRIVMSG message from a user to a target player or channel.</summary>
+	public static IrcMessage Privmsg(IrcUserPrefix senderPrefix, string target, string text)
+	{
+		return new IrcMessage("PRIVMSG", senderPrefix.ToString(), target, text);
+	}
 
-		return line;
+	/// <summary>Builds a NOTICE message from a user to a target player or channel.</summary>
+	public static IrcMessage Notice(IrcUserPrefix senderPrefix, string target, string text)
+	{
+		return new IrcMessage("NOTICE", senderPrefix.ToString(), target, text);
+	}
+
+	/// <summary>Builds a JOIN message announcing that a user entered a channel.</summary>
+	public static IrcMessage Join(IrcUserPrefix userPrefix, string channel)
+	{
+		return new IrcMessage("JOIN", userPrefix.ToString(), channel);
+	}
+
+	/// <summary>Builds a PART message announcing that a user left a channel.</summary>
+	public static IrcMessage Part(IrcUserPrefix userPrefix, string channel, string? reason = null)
+	{
+		return new IrcMessage("PART", userPrefix.ToString(), reason is null ? [channel] : [channel, reason]);
+	}
+
+	/// <summary>Builds a TOPIC message announcing that a channel's topic changed.</summary>
+	public static IrcMessage Topic(IrcUserPrefix userPrefix, string channel, string topic)
+	{
+		return new IrcMessage("TOPIC", userPrefix.ToString(), channel, topic);
+	}
+
+	/// <summary>Builds a QUIT message announcing that a user disconnected.</summary>
+	public static IrcMessage Quit(IrcUserPrefix userPrefix, string reason)
+	{
+		return new IrcMessage("QUIT", userPrefix.ToString(), reason);
+	}
+
+	/// <summary>Builds a PING message carrying a token for the server to echo back.</summary>
+	public static IrcMessage Ping(string token)
+	{
+		return new IrcMessage("PING", null, token);
+	}
+
+	/// <summary>Builds a PONG message echoing back a PING token.</summary>
+	public static IrcMessage Pong(string token)
+	{
+		return new IrcMessage("PONG", null, token);
 	}
 
 	public override string ToString()

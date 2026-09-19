@@ -9,6 +9,18 @@ namespace Basil.Protocol.Irc;
 public readonly record struct IrcUserPrefix(string Nick, string? User = null, string? Host = null)
 	: IParsable<IrcUserPrefix>, IFormattable
 {
+	public string ToString(
+		string? format = null,
+		IFormatProvider? formatProvider = null)
+	{
+		if (User is not null)
+			return Host is not null
+				? $"{Nick}!{User}@{Host}"
+				: throw new InvalidOperationException("An IRC user prefix with a user must have a host.");
+
+		return Host is not null ? $"{Nick}@{Host}" : Nick;
+	}
+
 	public static IrcUserPrefix Parse(string s, IFormatProvider? provider)
 	{
 		return TryParse(s, provider, out var result)
@@ -46,18 +58,6 @@ public readonly record struct IrcUserPrefix(string Nick, string? User = null, st
 
 		result = new IrcUserPrefix(s[..bang], s[(bang + 1)..at], s[(at + 1)..]);
 		return true;
-	}
-
-	public string ToString(
-		string? format = null,
-		IFormatProvider? formatProvider = null)
-	{
-		if (User is not null)
-			return Host is not null
-				? $"{Nick}!{User}@{Host}"
-				: throw new InvalidOperationException("An IRC user prefix with a user must have a host.");
-
-		return Host is not null ? $"{Nick}@{Host}" : Nick;
 	}
 
 	public override string ToString()

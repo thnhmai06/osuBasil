@@ -82,22 +82,22 @@ public sealed partial record BeatmapsetQuery
 	/// <summary>Accumulates parsed filters as <see cref="TokenPattern" />'s matches are visited.</summary>
 	private sealed partial class Builder
 	{
-		private ComparableFilter<double>? _bpm;
-		private ComparableFilter<double>? _lengthSeconds;
-		private ComparableFilter<double>? _cs;
 		private ComparableFilter<double>? _ar;
-		private ComparableFilter<double>? _od;
-		private ComparableFilter<double>? _hp;
-		private ComparableFilter<double>? _star;
-		private ComparableFilter<int>? _circles;
-		private ComparableFilter<int>? _sliders;
-		private string? _creator;
 		private string? _artist;
-		private string? _title;
-		private string? _difficulty;
-		private ComparableFilter<double>? _keys;
-		private BeatmapStatus? _status;
+		private ComparableFilter<double>? _bpm;
+		private ComparableFilter<int>? _circles;
 		private DateFilter? _created;
+		private string? _creator;
+		private ComparableFilter<double>? _cs;
+		private string? _difficulty;
+		private ComparableFilter<double>? _hp;
+		private ComparableFilter<double>? _keys;
+		private ComparableFilter<double>? _lengthSeconds;
+		private ComparableFilter<double>? _od;
+		private ComparableFilter<int>? _sliders;
+		private ComparableFilter<double>? _star;
+		private BeatmapStatus? _status;
+		private string? _title;
 		private DateFilter? _updated;
 
 		public bool TryApply(string key, ComparisonOperator op, string rawValue)
