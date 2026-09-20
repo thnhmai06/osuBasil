@@ -3,7 +3,7 @@
 /// <summary>
 ///     Represents an entry associated with a match that occurred at a specific point in time.
 /// </summary>
-public interface IMatchEntry
+public interface IMatchRecord
 {
 	/// <summary>Gets or sets the match associated with this entry.</summary>
 	Match Match { get; init; }

@@ -56,12 +56,12 @@ public sealed class Beatmapset : IEquatable<Beatmapset>
 	/// <summary>
 	///     Whether the set is write-locked by an admin. Frozen sets cannot be updated or deleted.
 	/// </summary>
-	public required bool IsLocked { get; set; }
+	public bool Locked { get; set; } = false;
 
 	/// <summary>
 	///     Whether the set is hidden from non-admin listings and from the public beatmap endpoints.
 	/// </summary>
-	public required bool IsVisible { get; set; }
+	public bool Visible { get; set; } = true;
 
 	/// <summary>
 	///     Gets a value that indicates whether the set was ingested without a real osu! online id.

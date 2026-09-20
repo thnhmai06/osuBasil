@@ -3,7 +3,7 @@
 /// <summary>
 ///     A round record as read back for report purposes.
 /// </summary>
-public sealed class Round : IMatchEntry, IEquatable<Round>
+public sealed class Round : IMatchRecord, IEquatable<Round>
 {
 	/// <summary>The unique identifier of the round.</summary>
 	public required int Id { get; init; }

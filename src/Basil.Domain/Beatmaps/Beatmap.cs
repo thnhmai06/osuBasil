@@ -41,6 +41,16 @@ public sealed class Beatmap : IEquatable<Beatmap>
 	/// <summary>The per-mode hit-object counts of the beatmap.</summary>
 	public required BeatmapObjects? Objects { get; init; }
 
+	/// <summary>
+	///     Whether the set is write-locked by an admin. Frozen sets cannot be updated or deleted.
+	/// </summary>
+	public bool Locked { get; set; } = false;
+
+	/// <summary>
+	///     Whether the set is hidden from non-admin listings and from the public beatmap endpoints.
+	/// </summary>
+	public bool Visible { get; set; } = true;
+
 	/// <summary>The name of the beatmap file on disk.</summary>
 	[JsonIgnore]
 	public string? Filename { get; init; }
@@ -64,6 +74,16 @@ public sealed class Beatmap : IEquatable<Beatmap>
 	/// </summary>
 	[JsonIgnore]
 	public int? PreviewTime { get; init; }
+
+	public bool IsLocked()
+	{
+		return Locked || (Beatmapset?.Locked ?? false);
+	}
+
+	public bool IsVisible()
+	{
+		return (Beatmapset?.Visible ?? true) && Visible;
+	}
 
 	/// <summary>
 	///     Gets a value that indicates whether the beatmap was ingested without a real osu! online

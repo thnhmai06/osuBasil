@@ -17,7 +17,7 @@ public sealed record MatchEvent(
 	DateTimeOffset OccurredAt,
 	User? Actor = null,
 	User? Target = null,
-	string? Detail = null) : IMatchEntry;
+	string? Detail = null) : IMatchRecord;
 
 /// <summary>
 ///     The kinds of match lifecycle events that get recorded against a match.

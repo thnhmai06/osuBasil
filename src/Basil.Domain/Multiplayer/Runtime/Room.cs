@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using Basil.Domain.Chat;
 using Basil.Domain.Multiplayer.Records;
 using Basil.Domain.Users;
 
@@ -35,6 +36,8 @@ public sealed class Room
 
 	/// <summary>Gets the room's settings, including the selected beatmap, mode, and mods.</summary>
 	public RoomSettings Settings { get; init; } = new();
+
+	public readonly RoomChannel Channel;
 
 	/// <summary>
 	///     Gets or sets a value that indicates whether the room is locked against new players
@@ -81,6 +84,11 @@ public sealed class Room
 
 	/// <summary>Gets a value indicating whether every slot is occupied.</summary>
 	public bool IsFullSlots => !Slots.Any(s => s.IsEmpty);
+
+	public Room()
+	{
+		Channel = new RoomChannel(this);
+	}
 
 	/// <summary>Gets a value that indicates whether <paramref name="player" /> created this match.</summary>
 	/// <param name="player">The player to check.</param>
