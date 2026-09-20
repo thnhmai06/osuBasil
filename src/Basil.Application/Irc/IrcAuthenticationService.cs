@@ -4,7 +4,6 @@ using Basil.Application.Auth;
 using Basil.Application.Channels;
 using Basil.Application.Chat;
 using Basil.Application.Sessions;
-using Basil.Application.Shared.Configuration;
 using Basil.Application.Users;
 using Basil.Protocol.Irc;
 using Microsoft.Extensions.Options;
@@ -28,7 +27,7 @@ public sealed class IrcAuthenticationService(
 	IChannelRegistry channelRegistry,
 	ChannelMembershipService channelMembership,
 	IrcQueryService queries,
-	IOptions<IrcOptions> options,
+	IOptions<IrcSettings> options,
 	IPasswordHasher passwordHasher,
 	ITokenGenerator tokenGenerator)
 {
@@ -50,19 +49,19 @@ public sealed class IrcAuthenticationService(
 		var user = await users.FetchByNameAsync(nick, cancellationToken);
 		if (user is null)
 			return IrcLoginOutcome.Failed(
-				IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.ErrPasswdMismatch, nick,
+				IrcMessageWriter.Numeric(options.Value.ServerName, IrcNumeric.ErrPasswdMismatch, nick,
 					IrcReplies.PasswordIncorrect));
 
 		var storedHash = await users.FetchPasswordHashAsync(user.Id, cancellationToken);
 		if (storedHash is null)
 			return IrcLoginOutcome.Failed(
-				IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.ErrPasswdMismatch, nick,
+				IrcMessageWriter.Numeric(options.Value.ServerName, IrcNumeric.ErrPasswdMismatch, nick,
 					IrcReplies.PasswordIncorrect));
 
 		var md5Hex = Convert.ToHexStringLower(MD5.HashData(Encoding.UTF8.GetBytes(pass)));
 		if (!passwordHasher.Verify(Encoding.UTF8.GetBytes(md5Hex), storedHash))
 			return IrcLoginOutcome.Failed(
-				IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.ErrPasswdMismatch, nick,
+				IrcMessageWriter.Numeric(options.Value.ServerName, IrcNumeric.ErrPasswdMismatch, nick,
 					IrcReplies.PasswordIncorrect));
 
 		// A deleted account must never be able to log back in, regardless of a correct password
@@ -70,7 +69,7 @@ public sealed class IrcAuthenticationService(
 		// than a distinct reason, so an unauthenticated caller can't use login to probe deletion status.
 		if (user.DeletedAt is not null)
 			return IrcLoginOutcome.Failed(
-				IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.ErrPasswdMismatch, nick,
+				IrcMessageWriter.Numeric(options.Value.ServerName, IrcNumeric.ErrPasswdMismatch, nick,
 					IrcReplies.PasswordIncorrect));
 
 		var loginTime = DateTimeOffset.UtcNow;
@@ -83,13 +82,13 @@ public sealed class IrcAuthenticationService(
 
 		if (!ircSessions.TryAdd(session))
 			return IrcLoginOutcome.Failed(
-				IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.ErrNicknameInUse, nick,
+				IrcMessageWriter.Numeric(options.Value.ServerName, IrcNumeric.ErrNicknameInUse, nick,
 					IrcReplies.NicknameInUse));
 
 		var messages = new List<IrcMessage>
 		{
-			IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.RplWelcome, user.Name,
-				string.Format(IrcReplies.Welcome, options.Value.Name, user.Name))
+			IrcMessageWriter.Numeric(options.Value.ServerName, IrcNumeric.RplWelcome, user.Name,
+				string.Format(IrcReplies.Welcome, options.Value.ServerName, user.Name))
 		};
 		messages.AddRange(queries.BuildWelcomeBurst(user.Name));
 
@@ -100,11 +99,11 @@ public sealed class IrcAuthenticationService(
 			channelMembership.Join(session, channel);
 
 			if (!string.IsNullOrEmpty(channel.Topic))
-				messages.Add(IrcMessageWriter.Numeric(options.Value.Name, IrcNumeric.RplTopic, user.Name,
+				messages.Add(IrcMessageWriter.Numeric(options.Value.ServerName, IrcNumeric.RplTopic, user.Name,
 					channel.Name,
 					channel.Topic));
 
-			messages.AddRange(IrcNamesReply.Build(options.Value.Name, user.Name, channel.Name,
+			messages.AddRange(IrcNamesReply.Build(options.Value.ServerName, user.Name, channel.Name,
 				channelMembership.Roster(channel)));
 		}
 

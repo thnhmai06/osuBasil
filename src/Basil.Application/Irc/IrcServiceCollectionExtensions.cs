@@ -1,5 +1,4 @@
 using Basil.Application.Sessions;
-using Basil.Application.Shared.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -14,7 +13,7 @@ public static class IrcServiceCollectionExtensions
 	/// <returns>The same service collection for chaining further registrations.</returns>
 	public static IServiceCollection AddIrcApplication(this IServiceCollection services, IConfiguration configuration)
 	{
-		services.Configure<IrcOptions>(configuration.GetSection(IrcOptions.SectionName));
+		services.Configure<IrcSettings>(configuration.GetSection(IrcSettings.SectionName));
 
 		services.AddSingleton<IrcAuthenticationService>();
 		services.AddSingleton<IrcQueryService>();

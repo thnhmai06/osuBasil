@@ -1,4 +1,3 @@
-using Basil.Application.Shared.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -13,7 +12,7 @@ public static class BotServiceCollectionExtensions
 	/// <returns>The same service collection for chaining further registrations.</returns>
 	public static IServiceCollection AddBotApplication(this IServiceCollection services, IConfiguration configuration)
 	{
-		services.Configure<BotOptions>(configuration.GetSection(BotOptions.SectionName));
+		services.Configure<BotSettings>(configuration.GetSection(BotSettings.SectionName));
 		services.AddSingleton<BotBootstrapService>();
 
 		return services;

@@ -2,7 +2,6 @@ using System.Text;
 using Basil.Application.Content;
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
-using Basil.Application.Shared.Configuration;
 using Basil.Application.Users;
 using Basil.Domain.Users;
 using Microsoft.Extensions.Options;
@@ -11,7 +10,7 @@ namespace Basil.Application.Bot;
 
 /// <inheritdoc cref="ICommandDispatcher" />
 public sealed class CommandDispatcher(
-	IOptions<BotOptions> botOptions,
+	IOptions<BotSettings> botOptions,
 	IMpCommandService mpCommands,
 	IUserRepository userRepository,
 	IFaqStore faq,
@@ -47,7 +46,7 @@ public sealed class CommandDispatcher(
 		string? channelName, ICommandReplySink sink, bool prefixOptional = false,
 		CancellationToken cancellationToken = default)
 	{
-		var prefix = botOptions.Value.CommandPrefix;
+		var prefix = botOptions.Value.Prefix;
 		if (string.IsNullOrEmpty(prefix)) return false;
 
 		string message;

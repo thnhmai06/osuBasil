@@ -4,7 +4,6 @@ using Basil.Application.Channels;
 using Basil.Application.Chat;
 using Basil.Application.Content;
 using Basil.Application.Sessions;
-using Basil.Application.Shared.Configuration;
 using Basil.Protocol.Irc;
 using Microsoft.Extensions.Options;
 
@@ -28,7 +27,7 @@ public sealed class IrcQueryService(
 	ISessionRegistry<IrcSession> ircSessions,
 	ChannelMembershipService channelMembership,
 	MotdService motdService,
-	IOptions<IrcOptions> options)
+	IOptions<IrcSettings> options)
 {
 	/// <summary>The channel modes reported for every channel: no external messages, the topic locked.</summary>
 	private const string BaseChannelModes = "+nt";
@@ -48,7 +47,7 @@ public sealed class IrcQueryService(
 	/// <returns>The numerics that complete the registration handshake in wire order.</returns>
 	public IEnumerable<IrcMessage> BuildWelcomeBurst(string nick)
 	{
-		var server = options.Value.Name;
+		var server = options.Value.ServerName;
 
 		yield return Reply(IrcNumeric.RplYourHost, nick,
 			string.Format(IrcReplies.YourHost, server, Version));
@@ -74,7 +73,7 @@ public sealed class IrcQueryService(
 		if (channelName is null)
 		{
 			foreach (var channel in VisibleChannels(requester))
-			foreach (var reply in IrcNamesReply.Build(options.Value.Name, requester.Name, channel.Name,
+			foreach (var reply in IrcNamesReply.Build(options.Value.ServerName, requester.Name, channel.Name,
 				         channelMembership.Roster(channel)))
 				yield return reply;
 
@@ -87,7 +86,7 @@ public sealed class IrcQueryService(
 			yield break;
 		}
 
-		foreach (var reply in IrcNamesReply.Build(options.Value.Name, requester.Name, named.Name,
+		foreach (var reply in IrcNamesReply.Build(options.Value.ServerName, requester.Name, named.Name,
 			         channelMembership.Roster(named)))
 			yield return reply;
 	}
@@ -175,7 +174,7 @@ public sealed class IrcQueryService(
 		}
 
 		yield return Reply(IrcNumeric.RplWhoIsUser, requester.Name, target.Name,
-			target.Id.ToString(CultureInfo.InvariantCulture), options.Value.Name, "*", target.Name);
+			target.Id.ToString(CultureInfo.InvariantCulture), options.Value.ServerName, "*", target.Name);
 
 		var channels = string.Join(' ', VisibleChannels(requester)
 			.Where(channel => channel.Contains(target.Id))
@@ -183,7 +182,7 @@ public sealed class IrcQueryService(
 		if (channels.Length > 0)
 			yield return Reply(IrcNumeric.RplWhoIsChannels, requester.Name, target.Name, channels);
 
-		yield return Reply(IrcNumeric.RplWhoIsServer, requester.Name, target.Name, options.Value.Name,
+		yield return Reply(IrcNumeric.RplWhoIsServer, requester.Name, target.Name, options.Value.ServerName,
 			IrcReplies.IrcGateway);
 
 		if (target.AwayMessage is { } away)
@@ -253,7 +252,7 @@ public sealed class IrcQueryService(
 		var replies = new List<IrcMessage>
 		{
 			Reply(IrcNumeric.RplMotdStart, requester.Name,
-				string.Format(IrcReplies.MotdStart, options.Value.Name))
+				string.Format(IrcReplies.MotdStart, options.Value.ServerName))
 		};
 		replies.AddRange(text.Split('\n', StringSplitOptions.TrimEntries)
 			.Select(line => Reply(IrcNumeric.RplMotd, requester.Name, $"- {line}")));
@@ -266,7 +265,7 @@ public sealed class IrcQueryService(
 	/// <returns>The numeric that answers the request.</returns>
 	public IrcMessage BuildVersionReply(UserSession requester)
 	{
-		return Reply(IrcNumeric.RplVersion, requester.Name, Version, options.Value.Name, IrcReplies.IrcGateway);
+		return Reply(IrcNumeric.RplVersion, requester.Name, Version, options.Value.ServerName, IrcReplies.IrcGateway);
 	}
 
 	/// <summary>Builds the server's local time reply.</summary>
@@ -274,7 +273,7 @@ public sealed class IrcQueryService(
 	/// <returns>The numeric that answers the request.</returns>
 	public IrcMessage BuildTimeReply(UserSession requester)
 	{
-		return Reply(IrcNumeric.RplTime, requester.Name, options.Value.Name,
+		return Reply(IrcNumeric.RplTime, requester.Name, options.Value.ServerName,
 			DateTimeOffset.Now.ToString("ddd MMM d yyyy HH:mm:ss zzz", CultureInfo.InvariantCulture));
 	}
 
@@ -306,7 +305,8 @@ public sealed class IrcQueryService(
 		            + (channel is null ? "" : channelMembership.MemberPrefix(member, channel));
 
 		return Reply(IrcNumeric.RplWhoReply, requester.Name, channel?.Name ?? "*",
-			member.Id.ToString(CultureInfo.InvariantCulture), options.Value.Name, options.Value.Name, member.Name,
+			member.Id.ToString(CultureInfo.InvariantCulture), options.Value.ServerName, options.Value.ServerName,
+			member.Name,
 			flags, $"0 {member.Name}");
 	}
 
@@ -342,6 +342,6 @@ public sealed class IrcQueryService(
 
 	private IrcMessage Reply(IrcNumeric numeric, string target, params string[] args)
 	{
-		return IrcMessageWriter.Numeric(options.Value.Name, numeric, target, args);
+		return IrcMessageWriter.Numeric(options.Value.ServerName, numeric, target, args);
 	}
 }

@@ -4,7 +4,6 @@ using Basil.Application.Channels;
 using Basil.Application.Irc;
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
-using Basil.Application.Shared.Configuration;
 using Basil.Application.Shared.Eventing;
 using Basil.Application.Shared.Json;
 using Basil.Application.Users;
@@ -43,7 +42,7 @@ public sealed class ChannelMembershipService(
 	IChannelNotifier channels,
 	IMatchRegistry matchRegistry,
 	ILiveEventHub hub,
-	IOptions<IrcOptions> options,
+	IOptions<IrcSettings> options,
 	IUserCache userCache)
 {
 	/// <summary>

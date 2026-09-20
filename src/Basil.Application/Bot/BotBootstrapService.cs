@@ -1,7 +1,6 @@
 using Basil.Application.Channels;
 using Basil.Application.Chat;
 using Basil.Application.Sessions;
-using Basil.Application.Shared.Configuration;
 using Basil.Application.Users;
 using Basil.Domain.Users;
 using Microsoft.Extensions.Options;
@@ -25,7 +24,7 @@ public sealed class BotBootstrapService(
 	ISessionRegistry<GameSession> sessionRegistry,
 	IChannelRegistry channelRegistry,
 	ChannelMembershipService channelMembership,
-	IOptions<BotOptions> botOptions,
+	IOptions<BotSettings> botOptions,
 	ILogger<BotBootstrapService> logger)
 {
 	private const string BotToken = "bancho-bot-session";
