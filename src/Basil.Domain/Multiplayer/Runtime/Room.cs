@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using Basil.Domain.Chat;
 using Basil.Domain.Multiplayer.Records;
 using Basil.Domain.Users;
+using Basil.Domain.Utilities;
 
 namespace Basil.Domain.Multiplayer.Runtime;
 
@@ -12,7 +13,18 @@ namespace Basil.Domain.Multiplayer.Runtime;
 public sealed class Room
 {
 	/// <summary>Gets the registry slot identifier assigned to this room.</summary>
-	public required int Id { get; init; }
+	public required int Id
+	{
+		get;
+		init => field = value > 0
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), "Room Id must be positive.");
+	}
+
+	public Room()
+	{
+		Channel = new RoomChannel(this);
+	}
 
 	#region Settings
 
@@ -84,11 +96,6 @@ public sealed class Room
 
 	/// <summary>Gets a value indicating whether every slot is occupied.</summary>
 	public bool IsFullSlots => !Slots.Any(s => s.IsEmpty);
-
-	public Room()
-	{
-		Channel = new RoomChannel(this);
-	}
 
 	/// <summary>Gets a value that indicates whether <paramref name="player" /> created this match.</summary>
 	/// <param name="player">The player to check.</param>

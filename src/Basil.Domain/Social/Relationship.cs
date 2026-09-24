@@ -14,9 +14,27 @@ public sealed class Relationship : IEquatable<Relationship>
 	public required User Target { get; init; }
 
 	/// <summary>The kind of relationship.</summary>
-	public required RelationshipType Type { get; init; }
+	public required RelationshipType Type
+	{
+		get;
+		init => field = Enum.IsDefined(value)
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), value, "RelationshipType is not a defined value.");
+	}
 
 	public DateTimeOffset Since { get; init; } = DateTimeOffset.UtcNow;
+
+	/// <summary>
+	///     Initializes a new instance of the <see cref="Relationship" /> class.
+	/// </summary>
+	/// <exception cref="ArgumentException">
+	///     <paramref name="Actor" /> and <paramref name="Target" /> are the same user.
+	/// </exception>
+	public Relationship()
+	{
+		if (Actor?.Equals(Target) == true)
+			throw new ArgumentException("Actor and Target cannot be the same user.");
+	}
 
 	public bool Equals(Relationship? other)
 	{

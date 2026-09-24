@@ -1,65 +1,7 @@
 ﻿using System.Globalization;
-using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
-using Basil.Domain.Users;
 
 namespace Basil.Domain.Scores;
-
-/// <summary>
-///     A score whose identity fields have been resolved and stored.
-/// </summary>
-/// <param name="Id">The database ID of the stored score.</param>
-/// <param name="User">The user who achieved the score.</param>
-/// <param name="Beatmap">The beatmap the score was achieved on.</param>
-/// <param name="Mode">The game mode the play used.</param>
-/// <param name="Mods">The mods applied to the play.</param>
-/// <param name="HitCounts">The judgment counts of the play.</param>
-/// <param name="TotalScore">The total score achieved.</param>
-/// <param name="MaxCombo">The maximum combo reached.</param>
-/// <param name="Grade">The grade earned.</param>
-/// <param name="IsPassed">Whether the play was passed.</param>
-/// <param name="IsFullCombo">Whether the play was a full combo.</param>
-/// <param name="OccuredAt">The date and time when the play occurred.</param>
-public sealed record VerifiedScore(
-	int Id,
-	User User,
-	Beatmap Beatmap,
-	GameMode Mode,
-	GameMods Mods,
-	HitCounts HitCounts,
-	int TotalScore,
-	short MaxCombo,
-	Grade Grade,
-	bool IsPassed,
-	bool IsFullCombo,
-	DateTimeOffset OccuredAt) :
-	Score(User.Id, Beatmap.Md5, Mode, Mods, HitCounts, TotalScore,
-		MaxCombo, Grade, IsPassed, IsFullCombo, OccuredAt)
-{
-	/// <summary>
-	///     Creates a verified score from an unverified <see cref="Score" /> and its resolved
-	///     identity.
-	/// </summary>
-	/// <param name="score">The parsed score to carry over.</param>
-	/// <param name="Id">The database ID of the stored score.</param>
-	/// <param name="User">The user who achieved the score.</param>
-	/// <param name="Beatmap">The beatmap the score was achieved on.</param>
-	public VerifiedScore(Score score, int Id, User User, Beatmap Beatmap) : this(
-		Id,
-		User,
-		Beatmap,
-		score.Mode,
-		score.Mods,
-		score.HitCounts,
-		score.TotalScore,
-		score.MaxCombo,
-		score.Grade,
-		score.IsPassed,
-		score.IsFullCombo,
-		score.OccuredAt)
-	{
-	}
-}
 
 /// <summary>
 ///     Represents the scoring fields of a play as submitted by the osu! client.
@@ -75,7 +17,7 @@ public sealed record VerifiedScore(
 /// <param name="IsPassed">Whether the play was passed.</param>
 /// <param name="IsFullCombo">Whether the play was a full combo.</param>
 /// <param name="OccuredAt">The date and time when the play occurred.</param>
-public record Score(
+public sealed record Score(
 	int? UserId,
 	string? BeatmapMd5,
 	GameMode Mode,
@@ -88,6 +30,14 @@ public record Score(
 	bool IsFullCombo,
 	DateTimeOffset OccuredAt)
 {
+	public int TotalScore { get; init; } = TotalScore >= 0
+		? TotalScore
+		: throw new ArgumentOutOfRangeException(nameof(TotalScore), "TotalScore must be non-negative.");
+
+	public short MaxCombo { get; init; } = MaxCombo >= 0
+		? MaxCombo
+		: throw new ArgumentOutOfRangeException(nameof(MaxCombo), "MaxCombo must be non-negative.");
+
 	/// <summary>
 	///     Gets the play's accuracy, computed from its hit counts under its mode and mods.
 	/// </summary>

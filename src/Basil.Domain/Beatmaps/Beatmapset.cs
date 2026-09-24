@@ -1,4 +1,3 @@
-using System.Text.Json.Serialization;
 using Basil.Domain.Users;
 
 namespace Basil.Domain.Beatmaps;
@@ -11,9 +10,6 @@ namespace Basil.Domain.Beatmaps;
 ///     live here instead of being duplicated on each <see cref="Beatmap" />.
 ///     <see cref="CreatedAt" /> records the first ingestion time, distinct from
 ///     <see cref="LastUpdate" />, which changes on every re-ingestion or content change.
-///     <see cref="BackgroundFile" /> is the lowest-id beatmap's
-///     <see cref="Beatmap.BackgroundFile" /> in the set. It backs the per-set thumbnail on the
-///     b.&lt;domain&gt; host and the set-level background route on the api. host.
 /// </remarks>
 public sealed class Beatmapset : IEquatable<Beatmapset>
 {
@@ -27,7 +23,13 @@ public sealed class Beatmapset : IEquatable<Beatmapset>
 	private const int LocalIdFloor = 1_000_000_000;
 
 	/// <summary>The unique identifier of the set.</summary>
-	public required int Id { get; init; }
+	public required int Id
+	{
+		get;
+		init => field = value > 0
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), "Beatmapset Id must be positive.");
+	}
 
 	/// <summary>
 	///     Gets the ranked status of the set.
@@ -39,10 +41,22 @@ public sealed class Beatmapset : IEquatable<Beatmapset>
 	public static BeatmapStatus Status => BeatmapStatus.Approved;
 
 	/// <summary>The artist of the set's music.</summary>
-	public required string Artist { get; set; }
+	public required string Artist
+	{
+		get;
+		set => field = string.IsNullOrWhiteSpace(value)
+			? throw new ArgumentException("Artist cannot be empty.", nameof(value))
+			: value;
+	}
 
 	/// <summary>The title of the set's music.</summary>
-	public required string Title { get; set; }
+	public required string Title
+	{
+		get;
+		set => field = string.IsNullOrWhiteSpace(value)
+			? throw new ArgumentException("Title cannot be empty.", nameof(value))
+			: value;
+	}
 
 	/// <summary>The username of the set's creator.</summary>
 	public required User Creator { get; init; }
@@ -71,20 +85,6 @@ public sealed class Beatmapset : IEquatable<Beatmapset>
 	///     1,000,000,000; otherwise, <see langword="false" />.
 	/// </value>
 	public bool IsLocallyIngested => Id >= LocalIdFloor;
-
-	/// <summary>
-	///     The background image file name resolved against the set's storage folder, or
-	///     <see langword="null" /> if the set has no background.
-	/// </summary>
-	[JsonIgnore]
-	public string? BackgroundFile { get; set; }
-
-	/// <summary>
-	///     The audio file name resolved against the set's storage folder, or
-	///     <see langword="null" /> if the set has no audio.
-	/// </summary>
-	[JsonIgnore]
-	public string? AudioFile { get; set; }
 
 	/// <summary>
 	///     Determines whether another beatmapset refers to the same set.

@@ -6,10 +6,22 @@
 public sealed class Match : IEquatable<Match>
 {
 	/// <summary>Gets the unique identifier of the match.</summary>
-	public required int Id { get; init; }
+	public required int Id
+	{
+		get;
+		init => field = value > 0
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), "Match Id must be positive.");
+	}
 
 	/// <summary>Gets or sets the name of the match.</summary>
-	public required string Name { get; set; }
+	public required string Name
+	{
+		get;
+		set => field = string.IsNullOrWhiteSpace(value)
+			? throw new ArgumentException("Match name cannot be empty.", nameof(value))
+			: value;
+	}
 
 	/// <summary>Gets the date and time when the match was created.</summary>
 	public required DateTimeOffset CreatedAt { get; init; }

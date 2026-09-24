@@ -6,16 +6,28 @@
 public sealed class Round : IMatchRecord, IEquatable<Round>
 {
 	/// <summary>The unique identifier of the round.</summary>
-	public required int Id { get; init; }
+	public required int Id
+	{
+		get;
+		init => field = value > 0
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), "Round Id must be positive.");
+	}
+
+	/// <summary>The match the round belongs to.</summary>
+	public required Match Match { get; init; }
 
 	/// <summary>The match settings the round was played under.</summary>
 	public required MatchSettings Settings { get; init; }
 
-	/// <summary>A value that indicates whether the round was aborted.</summary>
-	public bool Aborted { get; set; } = false;
+	/// <summary>The time the round started.</summary>
+	public required DateTimeOffset OccurredAt { get; init; }
 
 	/// <summary>The time the round ended, or <see langword="null" /> while open.</summary>
-	public DateTimeOffset? EndedAt { get; set; }
+	public required DateTimeOffset? EndedAt { get; set; }
+
+	/// <summary>A value that indicates whether the round was aborted.</summary>
+	public bool Aborted { get; set; } = false;
 
 	/// <summary>Gets a value that indicates whether this round equals another by id.</summary>
 	/// <param name="other">The round to compare, or <see langword="null" />.</param>
@@ -28,12 +40,6 @@ public sealed class Round : IMatchRecord, IEquatable<Round>
 		if (other is null) return false;
 		return Id == other.Id;
 	}
-
-	/// <summary>The match the round belongs to.</summary>
-	public required Match Match { get; init; }
-
-	/// <summary>The time the round started.</summary>
-	public required DateTimeOffset OccurredAt { get; init; }
 
 	/// <summary>Gets a value that indicates whether this round equals another object by id.</summary>
 	/// <param name="obj">The object to compare, or <see langword="null" />.</param>

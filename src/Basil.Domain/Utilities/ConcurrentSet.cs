@@ -1,7 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Concurrent;
 
-namespace Basil.Domain;
+namespace Basil.Domain.Utilities;
 
 /// <summary>
 ///     Represents a thread-safe set of unique values that can be accessed by multiple threads concurrently.

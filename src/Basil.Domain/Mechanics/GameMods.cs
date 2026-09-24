@@ -208,7 +208,7 @@ public static class ModsExtensions
 	///     Resolves conflicts between speed mods, drops mods that do not apply to the given mode,
 	///     and keeps only the first key mod when several are set.
 	/// </remarks>
-	public static GameMods ValidateInvalidCombos(this GameMods gameMods, GameMode mode)
+	public static GameMods RemoveInvalidMods(this GameMods gameMods, GameMode mode)
 	{
 		var result = gameMods;
 
@@ -309,7 +309,7 @@ public static class ModsExtensions
 			if (NpStrToMod.TryGetValue(token, out var mod))
 				mods |= mod;
 
-		return mods.ValidateInvalidCombos(mode);
+		return mods.RemoveInvalidMods(mode);
 	}
 
 	private static int CountSetBits(GameMods value)

@@ -17,71 +17,155 @@ namespace Basil.Domain.Beatmaps;
 [JsonDerivedType(typeof(TaikoObjects), (int)GameMode.Taiko)]
 [JsonDerivedType(typeof(CatchObjects), (int)GameMode.Catch)]
 [JsonDerivedType(typeof(ManiaObjects), (int)GameMode.Mania)]
-public abstract record BeatmapObjects
+public abstract class BeatmapObjects
 {
 	/// <summary>Gets or sets the total number of hit objects in the beatmap.</summary>
-	public int Total { get; init; }
+	public int Total
+	{
+		get;
+		set => field = value >= 0
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), "Total must be non-negative.");
+	}
 
 	/// <summary>Gets or sets the maximum combo achievable on the beatmap.</summary>
-	public int MaxCombo { get; init; }
+	public int MaxCombo
+	{
+		get;
+		set => field = value >= 0
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), "MaxCombo must be non-negative.");
+	}
 }
 
 /// <summary>
 ///     Represents the hit-object counts of a standard beatmap.
 /// </summary>
-public sealed record OsuObjects : BeatmapObjects
+public sealed class OsuObjects : BeatmapObjects
 {
 	/// <summary>Gets or sets the number of circles in the beatmap.</summary>
-	public int Circles { get; init; }
+	public int Circles
+	{
+		get;
+		set => field = value >= 0
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), "Circles must be non-negative.");
+	}
 
 	/// <summary>Gets or sets the number of sliders in the beatmap.</summary>
-	public int Sliders { get; init; }
+	public int Sliders
+	{
+		get;
+		set => field = value >= 0
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), "Sliders must be non-negative.");
+	}
 
 	/// <summary>Gets or sets the number of spinners in the beatmap.</summary>
-	public int Spinners { get; init; }
+	public int Spinners
+	{
+		get;
+		set => field = value >= 0
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), "Spinners must be non-negative.");
+	}
 }
 
 /// <summary>
 ///     Represents the hit-object counts of an osu!taiko beatmap.
 /// </summary>
-public sealed record TaikoObjects : BeatmapObjects
+public sealed class TaikoObjects : BeatmapObjects
 {
 	/// <summary>Gets or sets the number of hit notes in the beatmap.</summary>
-	public int Hits { get; init; }
+	public int Hits
+	{
+		get;
+		set => field = value >= 0
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), "Hits must be non-negative.");
+	}
 
 	/// <summary>Gets or sets the number of drum rolls in the beatmap.</summary>
-	public int DrumRolls { get; init; }
+	public int DrumRolls
+	{
+		get;
+		set => field = value >= 0
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), "DrumRolls must be non-negative.");
+	}
 
 	/// <summary>Gets or sets the number of den-den drums in the beatmap.</summary>
-	public int Dendens { get; init; }
+	public int Dendens
+	{
+		get;
+		set => field = value >= 0
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), "Dendens must be non-negative.");
+	}
 }
 
 /// <summary>
 ///     Represents the hit-object counts of an osu!catch beatmap.
 /// </summary>
-public sealed record CatchObjects : BeatmapObjects
+public sealed class CatchObjects : BeatmapObjects
 {
 	/// <summary>Gets or sets the number of fruits in the beatmap.</summary>
-	public int Fruits { get; init; }
+	public int Fruits
+	{
+		get;
+		set => field = value >= 0
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), "Fruits must be non-negative.");
+	}
 
 	/// <summary>Gets or sets the number of droplets in the beatmap.</summary>
-	public int Droplets { get; init; }
+	public int Droplets
+	{
+		get;
+		set => field = value >= 0
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), "Droplets must be non-negative.");
+	}
 
 	/// <summary>Gets or sets the number of tiny droplets in the beatmap.</summary>
-	public int TinyDroplets { get; init; }
+	public int TinyDroplets
+	{
+		get;
+		set => field = value >= 0
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), "TinyDroplets must be non-negative.");
+	}
 
 	/// <summary>Gets or sets the number of bananas in the beatmap.</summary>
-	public int Bananas { get; init; }
+	public int Bananas
+	{
+		get;
+		set => field = value >= 0
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), "Bananas must be non-negative.");
+	}
 }
 
 /// <summary>
 ///     Represents the hit-object counts of an osu!mania beatmap.
 /// </summary>
-public sealed record ManiaObjects : BeatmapObjects
+public sealed class ManiaObjects : BeatmapObjects
 {
 	/// <summary>Gets or sets the number of notes in the beatmap.</summary>
-	public int Notes { get; init; }
+	public int Notes
+	{
+		get;
+		set => field = value >= 0
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), "Notes must be non-negative.");
+	}
 
 	/// <summary>Gets or sets the number of hold notes in the beatmap.</summary>
-	public int HoldNotes { get; init; }
+	public int HoldNotes
+	{
+		get;
+		set => field = value >= 0
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), "HoldNotes must be non-negative.");
+	}
 }
