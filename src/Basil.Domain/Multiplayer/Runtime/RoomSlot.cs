@@ -5,15 +5,18 @@ namespace Basil.Domain.Multiplayer.Runtime;
 
 /// <summary>
 ///     Represents one of a match's 16 player slots.
-///     The slot maintains the invariants between its occupant and state.
+///     The slot maintains the invariants between its availability, occupant, and state.
 /// </summary>
 public sealed class RoomSlot
 {
-	/// <summary>Gets the user occupying this slot, or null when the slot is empty.</summary>
+	/// <summary>Gets the user occupying this slot, or null when the slot is not occupied.</summary>
 	public User? User { get; private set; }
 
-	/// <summary>Gets the current state of this slot.</summary>
-	public RoomSlotStatus Status { get; private set; } = RoomSlotStatus.Open;
+	/// <summary>Gets the availability of this slot.</summary>
+	public RoomSlotAvailability Availability { get; private set; } = RoomSlotAvailability.Open;
+
+	/// <summary>Gets the occupied-state of this slot, or null when the slot is not occupied.</summary>
+	public RoomSlotStatus? Status { get; private set; }
 
 	/// <summary>Gets the team assigned to the occupant.</summary>
 	public GameTeam Team { get; private set; } = GameTeam.Neutral;
@@ -24,86 +27,69 @@ public sealed class RoomSlot
 	/// <summary>Gets a value indicating whether the occupant has skipped the current beatmap's intro.</summary>
 	public bool IntroSkipped { get; private set; }
 
-	/// <summary>Gets a value indicating whether the slot is empty.</summary>
-	public bool IsEmpty => User is null;
+	/// <summary>Gets a value indicating whether the occupant has finished loading the current beatmap.</summary>
+	public bool BeatmapLoaded { get; private set; }
 
 	/// <summary>
-	///     Assigns a player to this slot and resets its player-specific state.
+	///     Assigns a player to this slot, marking it occupied and resetting its player-specific state.
 	/// </summary>
-	/// <remarks>
-	///     Passing <see langword="null" /> vacates the slot, leaving it open — or locked, when the
-	///     slot was locked. Assigning a player marks the slot not ready and resets the team, mods,
-	///     and intro state.
-	/// </remarks>
-	/// <param name="player">The player to assign, or <see langword="null" /> to vacate the slot.</param>
-	public void Assign(User? player)
+	/// <param name="player">The player to assign.</param>
+	/// <exception cref="InvalidOperationException">The slot is not open.</exception>
+	public void Assign(User player)
 	{
-		if (player is null)
-		{
-			SetStatus(Status == RoomSlotStatus.Locked
-				? RoomSlotStatus.Locked
-				: RoomSlotStatus.Open);
-			return;
-		}
+		if (Availability != RoomSlotAvailability.Open)
+			throw new InvalidOperationException("The slot is not open.");
 
 		User = player;
+		Availability = RoomSlotAvailability.Occupied;
 		Status = RoomSlotStatus.NotReady;
 		Team = GameTeam.Neutral;
 		GameMods = GameMods.NoMod;
 		IntroSkipped = false;
+		BeatmapLoaded = false;
 	}
 
 	/// <summary>
-	///     Changes the slot's status and automatically adjusts related state
-	///     to maintain the slot's invariants.
+	///     Changes the occupied-state of this slot.
 	/// </summary>
-	/// <remarks>
-	///     <see cref="RoomSlotStatus.Open" /> and <see cref="RoomSlotStatus.Locked" /> vacate the
-	///     slot and reset its team, mods, and intro state. The occupied statuses
-	///     (<see cref="RoomSlotStatus.NoMap" />, <see cref="RoomSlotStatus.NotReady" />,
-	///     <see cref="RoomSlotStatus.Ready" />, and <see cref="RoomSlotStatus.Playing" />) require
-	///     an occupant and leave the player-specific state untouched apart from the intro flag.
-	/// </remarks>
 	/// <param name="status">The new status to apply.</param>
 	/// <exception cref="ArgumentOutOfRangeException">
 	///     <paramref name="status" /> is not a defined <see cref="RoomSlotStatus" /> value.
 	/// </exception>
-	/// <exception cref="InvalidOperationException">
-	///     <paramref name="status" /> is an occupied status but the slot is empty.
-	/// </exception>
+	/// <exception cref="InvalidOperationException">The slot is not occupied.</exception>
 	public void SetStatus(RoomSlotStatus status)
 	{
-		switch (status)
-		{
-			case RoomSlotStatus.Open:
-			case RoomSlotStatus.Locked:
-				User = null;
-				Status = status;
-				Team = GameTeam.Neutral;
-				GameMods = GameMods.NoMod;
-				break;
+		if (!Enum.IsDefined(status))
+			throw new ArgumentOutOfRangeException(nameof(status), status, null);
 
-			case RoomSlotStatus.NoMap:
-			case RoomSlotStatus.NotReady:
-			case RoomSlotStatus.Ready:
-			case RoomSlotStatus.Playing:
-				EnsureOccupied();
+		EnsureOccupied();
+		Status = status;
+	}
 
-				Status = status;
-				break;
+	/// <summary>
+	///     Locks the slot, vacating it and preventing anyone from joining until unlocked.
+	/// </summary>
+	public void Lock()
+	{
+		Clear();
+		Availability = RoomSlotAvailability.Locked;
+	}
 
-			default:
-				throw new ArgumentOutOfRangeException(nameof(status), status, null);
-		}
-
-		IntroSkipped = false;
+	/// <summary>
+	///     Unlocks the slot, allowing players to join it again.
+	/// </summary>
+	/// <remarks>Has no effect when the slot is not locked.</remarks>
+	public void Unlock()
+	{
+		if (Availability == RoomSlotAvailability.Locked)
+			Availability = RoomSlotAvailability.Open;
 	}
 
 	/// <summary>
 	///     Changes the team assigned to the occupant.
 	/// </summary>
 	/// <param name="team">The team to assign.</param>
-	/// <exception cref="InvalidOperationException">The slot is empty.</exception>
+	/// <exception cref="InvalidOperationException">The slot is not occupied.</exception>
 	public void SetTeam(GameTeam team)
 	{
 		EnsureOccupied();
@@ -113,19 +99,20 @@ public sealed class RoomSlot
 	/// <summary>
 	///     Changes the mods assigned to the occupant.
 	/// </summary>
+	/// <remarks>Speed-changing mods are always room-wide and are never applied per player.</remarks>
 	/// <param name="gameMods">The mods to assign.</param>
-	/// <exception cref="InvalidOperationException">The slot is empty.</exception>
+	/// <exception cref="InvalidOperationException">The slot is not occupied.</exception>
 	public void SetMods(GameMods gameMods)
 	{
 		EnsureOccupied();
-		GameMods = gameMods;
+		GameMods = gameMods & ~GameMods.SpeedChangingMods;
 	}
 
 	/// <summary>
 	///     Marks the occupant as having skipped the current beatmap's intro.
 	/// </summary>
 	/// <exception cref="InvalidOperationException">
-	///     The slot is empty, or the occupant is not in the <see cref="RoomSlotStatus.Playing" />
+	///     The slot is not occupied, or the occupant is not in the <see cref="RoomSlotStatus.Playing" />
 	///     state.
 	/// </exception>
 	public void SkipIntro()
@@ -139,51 +126,91 @@ public sealed class RoomSlot
 	}
 
 	/// <summary>
-	///     Copies the complete state from another slot, or clears this slot when
-	///     <paramref name="other" /> is null.
+	///     Marks the occupant as having finished loading the current beatmap.
 	/// </summary>
-	/// <param name="other">The slot to copy from, or <see langword="null" /> to clear this slot.</param>
-	public void CopyFrom(RoomSlot? other)
+	/// <exception cref="InvalidOperationException">
+	///     The slot is not occupied, or the occupant is not in the <see cref="RoomSlotStatus.Playing" />
+	///     state.
+	/// </exception>
+	public void MarkLoaded()
 	{
-		if (other is null)
-		{
-			Clear();
-			return;
-		}
+		EnsureOccupied();
 
-		User = other.User;
-		Status = other.Status;
-		Team = other.Team;
-		GameMods = other.GameMods;
-		IntroSkipped = other.IntroSkipped;
+		if (Status is not RoomSlotStatus.Playing)
+			throw new InvalidOperationException("The player is not playing.");
+
+		BeatmapLoaded = true;
 	}
 
 	/// <summary>
-	///     Clears the slot and restores its default open state.
+	///     Resets the per-round flags of the occupant, in preparation for a new round.
 	/// </summary>
+	internal void ResetRoundFlags()
+	{
+		BeatmapLoaded = false;
+		IntroSkipped = false;
+	}
+
+	/// <summary>
+	///     Moves the complete state of this slot to another slot.
+	/// </summary>
+	/// <param name="target">The slot to move the state to.</param>
+	/// <exception cref="InvalidOperationException">
+	///     This slot is not occupied, or <paramref name="target" /> is not open.
+	/// </exception>
+	public void MoveTo(RoomSlot target)
+	{
+		EnsureOccupied();
+		target.Assign(User!);
+		target.Status = Status;
+		target.Team = Team;
+		target.GameMods = GameMods;
+		Clear();
+	}
+
+	/// <summary>
+	///     Clears the slot's occupant and player-specific state.
+	/// </summary>
+	/// <remarks>Leaves the slot open, unless it was locked, in which case the lock is kept.</remarks>
 	public void Clear()
 	{
-		SetStatus(RoomSlotStatus.Open);
+		User = null;
+		if (Availability != RoomSlotAvailability.Locked)
+			Availability = RoomSlotAvailability.Open;
+		Status = null;
+		Team = GameTeam.Neutral;
+		GameMods = GameMods.NoMod;
+		IntroSkipped = false;
+		BeatmapLoaded = false;
 	}
 
 	private void EnsureOccupied()
 	{
-		if (User is null)
-			throw new InvalidOperationException("The slot is empty.");
+		if (Availability != RoomSlotAvailability.Occupied)
+			throw new InvalidOperationException("The slot is not occupied.");
 	}
 }
 
 /// <summary>
-///     Describes the state of a single player slot in a multiplayer match.
+///     Describes the availability of a multiplayer match slot.
+/// </summary>
+public enum RoomSlotAvailability : byte
+{
+	/// <summary>The slot is empty and available for a player to join.</summary>
+	Open,
+
+	/// <summary>The slot is empty and unavailable; no one may join it.</summary>
+	Locked,
+
+	/// <summary>The slot is occupied by a player.</summary>
+	Occupied
+}
+
+/// <summary>
+///     Describes the occupied-state of a player in a multiplayer match slot.
 /// </summary>
 public enum RoomSlotStatus : byte
 {
-	/// <summary>The slot is empty and available.</summary>
-	Open,
-
-	/// <summary>The slot is empty and unavailable.</summary>
-	Locked,
-
 	/// <summary>The player does not have the current beatmap.</summary>
 	NoMap,
 
@@ -194,5 +221,8 @@ public enum RoomSlotStatus : byte
 	Ready,
 
 	/// <summary>The player is currently playing the beatmap.</summary>
-	Playing
+	Playing,
+
+	/// <summary>The player has finished the beatmap and is waiting for the round to end.</summary>
+	Complete
 }

@@ -25,7 +25,10 @@ public enum ClientPrivileges : byte
 	Owner = 1 << 3,
 
 	/// <summary>Marks the client as a developer.</summary>
-	Developer = 1 << 4
+	Developer = 1 << 4,
+
+	/// <summary>The user is a tournament staff member.</summary>
+	Tournament = 1 << 5
 }
 
 /// <summary>

@@ -44,17 +44,14 @@ public sealed partial class User : IEquatable<User>
 	///     Gets or sets the privileges granted to the user.
 	/// </summary>
 	/// <remarks>
-	///     The getter reports <see cref="ClientPrivileges.None" /> when the user is deleted and the
-	///     stored value otherwise. The setter stores <see cref="ClientPrivileges.None" /> when the
-	///     user is not deleted and the assigned value when the user is deleted, so the privileges of
-	///     a live user are effectively fixed by the property initializer. New users default to
-	///     <see cref="ClientPrivileges.Player" /> combined with
-	///     <see cref="ClientPrivileges.Supporter" />.
+	///     The getter reports <see cref="ClientPrivileges.None" /> for a deleted user, regardless of
+	///     the stored value. New users default to <see cref="ClientPrivileges.Player" /> combined
+	///     with <see cref="ClientPrivileges.Supporter" />.
 	/// </remarks>
 	public ClientPrivileges Privilege
 	{
 		get => DeletedAt is not null ? ClientPrivileges.None : field;
-		set => field = DeletedAt is null ? ClientPrivileges.None : value;
+		set;
 	} = ClientPrivileges.Player | ClientPrivileges.Supporter;
 
 	/// <summary>

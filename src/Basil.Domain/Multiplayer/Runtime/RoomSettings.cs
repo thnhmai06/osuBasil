@@ -17,7 +17,7 @@ public class RoomSettings
 	public string? BeatmapMd5
 	{
 		get;
-		set => field = value is null || Md5.IsValid(value)
+		internal set => field = value is null || Md5.IsValid(value)
 			? value?.ToLowerInvariant() ?? null
 			: throw new ArgumentException("The value must be a valid MD5 hash.", nameof(value));
 	} // null = unset (not "Beatmap not found")
@@ -26,7 +26,7 @@ public class RoomSettings
 	public GameMode Mode
 	{
 		get;
-		set => field = Enum.IsDefined(value)
+		internal set => field = Enum.IsDefined(value)
 			? value
 			: throw new ArgumentOutOfRangeException(nameof(value), value, "GameMode is not a defined value.");
 	} = GameMode.Standard;
@@ -35,17 +35,17 @@ public class RoomSettings
 	public GameMods Mods
 	{
 		get;
-		set => field = value.RemoveInvalidMods(Mode);
+		internal set => field = value.RemoveInvalidMods(Mode);
 	} = GameMods.NoMod;
 
 	/// <summary>Gets or sets a value that indicates whether freemod mode is enabled.</summary>
-	public bool Freemods { get; set; } = false;
+	public bool Freemods { get; internal set; } = false;
 
 	/// <summary>Gets or sets the team arrangement used for the room.</summary>
 	public GameTeamType TeamType
 	{
 		get;
-		set => field = Enum.IsDefined(value)
+		internal set => field = Enum.IsDefined(value)
 			? value
 			: throw new ArgumentOutOfRangeException(nameof(value), value, "GameTeamType is not a defined value.");
 	} = GameTeamType.HeadToHead;
