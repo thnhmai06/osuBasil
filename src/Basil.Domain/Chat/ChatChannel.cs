@@ -1,11 +1,12 @@
 ﻿using Basil.Domain.Client;
+using Basil.Domain.Events;
 
 namespace Basil.Domain.Chat;
 
 /// <summary>
 ///     Represents a chat channel.
 /// </summary>
-public sealed class ChatChannel : IChannel
+public sealed class ChatChannel : IChannel, IHasDomainEvents
 {
 	public required string Name
 	{
@@ -16,7 +17,28 @@ public sealed class ChatChannel : IChannel
 	}
 
 	/// <summary>The channel topic shown to joining users.</summary>
-	public string Topic { get; set; } = string.Empty;
+	public string Topic { get; private set; } = string.Empty;
+
+	/// <summary>
+	///     Changes the channel's topic.
+	/// </summary>
+	/// <param name="topic">The new topic to show to joining users.</param>
+	public void ChangeTopic(string topic)
+	{
+		Topic = topic;
+		_events.Record(new ChannelTopicChanged(this));
+	}
+
+	private readonly DomainEventLog _events = new();
+
+	/// <inheritdoc />
+	public IReadOnlyList<IDomainEvent> DomainEvents => _events.Events;
+
+	/// <inheritdoc />
+	public void ClearDomainEvents()
+	{
+		_events.Clear();
+	}
 
 	public string DisplayName => Name;
 
@@ -59,3 +81,6 @@ public sealed class ChatChannel : IChannel
 		return Name.GetHashCode();
 	}
 }
+
+/// <summary>A channel's topic changed.</summary>
+public sealed record ChannelTopicChanged(ChatChannel Channel) : IDomainEvent;

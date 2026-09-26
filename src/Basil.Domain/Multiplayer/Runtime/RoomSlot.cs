@@ -9,6 +9,15 @@ namespace Basil.Domain.Multiplayer.Runtime;
 /// </summary>
 public sealed class RoomSlot
 {
+	private readonly RoomSlots _owner;
+	private readonly int _index;
+
+	internal RoomSlot(RoomSlots owner, int index)
+	{
+		_owner = owner;
+		_index = index;
+	}
+
 	/// <summary>Gets the user occupying this slot, or null when the slot is not occupied.</summary>
 	public User? User { get; private set; }
 
@@ -35,7 +44,7 @@ public sealed class RoomSlot
 	/// </summary>
 	/// <param name="player">The player to assign.</param>
 	/// <exception cref="InvalidOperationException">The slot is not open.</exception>
-	public void Assign(User player)
+	internal void Assign(User player)
 	{
 		if (Availability != RoomSlotAvailability.Open)
 			throw new InvalidOperationException("The slot is not open.");
@@ -64,12 +73,13 @@ public sealed class RoomSlot
 
 		EnsureOccupied();
 		Status = status;
+		_owner.RecordSlotChanged(_index);
 	}
 
 	/// <summary>
 	///     Locks the slot, vacating it and preventing anyone from joining until unlocked.
 	/// </summary>
-	public void Lock()
+	internal void Lock()
 	{
 		Clear();
 		Availability = RoomSlotAvailability.Locked;
@@ -79,7 +89,7 @@ public sealed class RoomSlot
 	///     Unlocks the slot, allowing players to join it again.
 	/// </summary>
 	/// <remarks>Has no effect when the slot is not locked.</remarks>
-	public void Unlock()
+	internal void Unlock()
 	{
 		if (Availability == RoomSlotAvailability.Locked)
 			Availability = RoomSlotAvailability.Open;
@@ -94,6 +104,7 @@ public sealed class RoomSlot
 	{
 		EnsureOccupied();
 		Team = team;
+		_owner.RecordSlotChanged(_index);
 	}
 
 	/// <summary>
@@ -106,6 +117,7 @@ public sealed class RoomSlot
 	{
 		EnsureOccupied();
 		GameMods = gameMods & ~GameMods.SpeedChangingMods;
+		_owner.RecordSlotChanged(_index);
 	}
 
 	/// <summary>
@@ -158,7 +170,7 @@ public sealed class RoomSlot
 	/// <exception cref="InvalidOperationException">
 	///     This slot is not occupied, or <paramref name="target" /> is not open.
 	/// </exception>
-	public void MoveTo(RoomSlot target)
+	internal void MoveTo(RoomSlot target)
 	{
 		EnsureOccupied();
 		target.Assign(User!);
@@ -172,7 +184,7 @@ public sealed class RoomSlot
 	///     Clears the slot's occupant and player-specific state.
 	/// </summary>
 	/// <remarks>Leaves the slot open, unless it was locked, in which case the lock is kept.</remarks>
-	public void Clear()
+	internal void Clear()
 	{
 		User = null;
 		if (Availability != RoomSlotAvailability.Locked)

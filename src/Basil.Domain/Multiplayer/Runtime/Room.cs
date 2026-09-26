@@ -1,9 +1,8 @@
-using System.Collections.Immutable;
 using Basil.Domain.Chat;
+using Basil.Domain.Events;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer.Records;
 using Basil.Domain.Users;
-using Basil.Domain.Utilities;
 
 namespace Basil.Domain.Multiplayer.Runtime;
 
@@ -11,9 +10,13 @@ namespace Basil.Domain.Multiplayer.Runtime;
 ///     Holds an osu! multiplayer match's room settings, live slot state and lifecycle flags — the
 ///     part of a live match that is business state rather than live-projection machinery.
 /// </summary>
-public sealed class Room
+public sealed class Room : IHasDomainEvents
 {
-	/// <summary>Gets the registry slot identifier assigned to this room.</summary>
+	/// <summary>
+	///     Gets the runtime identifier assigned to this room, used by the osu! client to reference
+	///     it while joined. This id only exists for as long as the server is running and is lost on
+	///     restart; use <see cref="Match" />.<see cref="Records.Match.Id" /> to look the match up later.
+	/// </summary>
 	public required int Id
 	{
 		get;
@@ -25,6 +28,25 @@ public sealed class Room
 	public Room()
 	{
 		Channel = new RoomChannel(this);
+		Slots = new RoomSlots(this);
+	}
+
+	private readonly DomainEventLog _events = new();
+
+	/// <inheritdoc />
+	public IReadOnlyList<IDomainEvent> DomainEvents => _events.Events;
+
+	/// <inheritdoc />
+	public void ClearDomainEvents()
+	{
+		_events.Clear();
+	}
+
+	/// <summary>Records a domain event that has occurred to this room or one of its slots.</summary>
+	/// <param name="domainEvent">The event to record.</param>
+	internal void Record(IDomainEvent domainEvent)
+	{
+		_events.Record(domainEvent);
 	}
 
 	#region Settings
@@ -32,20 +54,71 @@ public sealed class Room
 	/// <summary>The match this room refers to.</summary>
 	public required Match Match { get; init; }
 
-	/// <summary>
-	///     Sets the room's password, which a client must supply to join.
-	/// </summary>
+	/// <summary>Gets the room's password, which a client must supply to join.</summary>
 	/// <remarks>
-	///     The getter is private; consumers write the password, and <see cref="Url" /> incorporates
-	///     it into the join URL.
+	///     The getter is private; consumers write the password via <see cref="ChangePassword" />, and
+	///     <see cref="Url" /> incorporates it into the join URL.
 	/// </remarks>
-	public string Password { private get; set; } = string.Empty;
+	public string Password { get; private set; } = string.Empty;
 
 	/// <summary>Gets a value indicating whether the room is protected by a non-empty, non-whitespace password.</summary>
 	public bool HasPassword => !string.IsNullOrWhiteSpace(Password);
 
+	/// <summary>
+	///     Changes the room's name.
+	/// </summary>
+	/// <param name="name">The new name of the match.</param>
+	/// <exception cref="ArgumentException"><paramref name="name" /> is empty or whitespace.</exception>
+	public void Rename(string name)
+	{
+		Match.Name = name;
+		Record(new SettingsChanged(this));
+	}
+
+	/// <summary>
+	///     Changes the room's password.
+	/// </summary>
+	/// <param name="password">The new password, or an empty string to remove password protection.</param>
+	public void ChangePassword(string password)
+	{
+		Password = password;
+		Record(new SettingsChanged(this));
+	}
+
+	/// <summary>
+	///     Checks whether a supplied password satisfies the room's password protection.
+	/// </summary>
+	/// <param name="password">The password to check.</param>
+	/// <returns>
+	///     <see langword="true" /> if the room has no password, or <paramref name="password" />
+	///     matches it; otherwise, <see langword="false" />.
+	/// </returns>
+	public bool CheckPassword(string password)
+	{
+		return !HasPassword || Password == password;
+	}
+
 	/// <summary>Gets a value that indicates whether a round is currently being played.</summary>
-	public bool InProgress { get; private set; } = false;
+	public bool InProgress { get; private set; }
+
+	/// <summary>Gets the record of the round currently being played, or <see langword="null" /> when none is tracked.</summary>
+	/// <remarks>Cleared automatically when the round ends.</remarks>
+	public Round? CurrentRound { get; private set; }
+
+	/// <summary>Associates the record of the round that is currently being played with this room.</summary>
+	/// <param name="round">The round record, belonging to this room's match.</param>
+	/// <exception cref="InvalidOperationException">
+	///     No round is in progress, or <paramref name="round" /> belongs to a different match.
+	/// </exception>
+	public void TrackRound(Round round)
+	{
+		if (!InProgress)
+			throw new InvalidOperationException("No round is currently in progress.");
+		if (!round.Match.Equals(Match))
+			throw new InvalidOperationException("The round belongs to a different match.");
+
+		CurrentRound = round;
+	}
 
 	/// <summary>Gets the room's settings, including the selected beatmap, mode, and mods.</summary>
 	public RoomSettings Settings { get; init; } = new();
@@ -53,15 +126,29 @@ public sealed class Room
 	public readonly RoomChannel Channel;
 
 	/// <summary>
-	///     Gets or sets a value that indicates whether the room is locked against player-initiated
-	///     slot and team changes.
+	///     Gets a value indicating whether the room is locked against player-initiated slot and team
+	///     changes.
 	/// </summary>
 	/// <remarks>
 	///     Corresponds to osu!'s <c>!mp lock</c>. It does not affect joining the room, and referees
 	///     are not restricted by it; enforcing the restriction for player-initiated actions is the
 	///     caller's responsibility.
 	/// </remarks>
-	public bool IsLocked { get; set; }
+	public bool IsLocked { get; private set; }
+
+	/// <summary>Locks the room against player-initiated slot and team changes.</summary>
+	public void Lock()
+	{
+		IsLocked = true;
+		Record(new RoomLockChanged(this, true));
+	}
+
+	/// <summary>Unlocks the room, allowing player-initiated slot and team changes again.</summary>
+	public void Unlock()
+	{
+		IsLocked = false;
+		Record(new RoomLockChanged(this, false));
+	}
 
 	/// <summary>Gets the join URL of this room, in <c>osump://{id}/{password}</c> form.</summary>
 	public string Url => $"osump://{Id}/{Password}";
@@ -85,23 +172,15 @@ public sealed class Room
 	/// <summary>Gets the current room host.</summary>
 	public User? Host { get; private set; }
 
-	/// <summary>The players banned from this match.</summary>
-	public readonly ConcurrentSet<User> BannedUsers = [];
+	private readonly HashSet<User> _bannedUsers = [];
+	private readonly HashSet<User> _invitedUsers = [];
+	private readonly HashSet<User> _referees = [];
 
-	/// <summary>The players a referee has invited via <c>!mp invite</c>.</summary>
-	public readonly ConcurrentSet<User> InvitedUsers = [];
-
-	/// <summary>The players whose connections are tourney clients attached to this match.</summary>
-	public readonly ConcurrentSet<User> TourneyUsers = [];
-
-	/// <summary>The players granted referee authority for this match.</summary>
-	public readonly ConcurrentSet<User> Referees = [];
+	/// <summary>Gets the players granted referee authority for this match.</summary>
+	public IReadOnlyCollection<User> Referees => _referees;
 
 	/// <summary>The match's 16 slots, in order.</summary>
-	public readonly ImmutableList<RoomSlot> Slots = [.. Enumerable.Range(0, 16).Select(_ => new RoomSlot())];
-
-	/// <summary>Gets a value indicating whether every slot is occupied.</summary>
-	public bool IsFull => Slots.All(s => s.Availability != RoomSlotAvailability.Open);
+	public readonly RoomSlots Slots;
 
 	/// <summary>Gets a value that indicates whether <paramref name="player" /> created this match.</summary>
 	/// <param name="player">The player to check.</param>
@@ -119,7 +198,7 @@ public sealed class Room
 	/// </returns>
 	public bool HasRefereePermission(User player)
 	{
-		return Referees.Contains(player) || IsCreator(player);
+		return IsReferee(player) || IsCreator(player);
 	}
 
 	/// <summary>
@@ -132,7 +211,77 @@ public sealed class Room
 	/// </returns>
 	public bool HasJoinPermission(User player)
 	{
-		return !BannedUsers.Contains(player);
+		return !IsBanned(player);
+	}
+
+	/// <summary>Bans a player from the match, removing them from the room if they are currently in it.</summary>
+	/// <param name="player">The player to ban.</param>
+	public void Ban(User player)
+	{
+		_bannedUsers.Add(player);
+		if (Slots.Find(player) is not null)
+			Leave(player);
+
+		Record(new PlayerBanned(this, player));
+	}
+
+	/// <summary>Lifts a player's ban from the match, allowing them to join again.</summary>
+	/// <param name="player">The player to unban.</param>
+	/// <exception cref="InvalidOperationException"><paramref name="player" /> is not banned.</exception>
+	public void Unban(User player)
+	{
+		if (!_bannedUsers.Remove(player))
+			throw new InvalidOperationException("The player is not banned from this match.");
+
+		Record(new PlayerUnbanned(this, player));
+	}
+
+	/// <summary>Gets a value that indicates whether <paramref name="player" /> is banned from the match.</summary>
+	/// <param name="player">The player to check.</param>
+	/// <returns><see langword="true" /> if the player is banned; otherwise, <see langword="false" />.</returns>
+	public bool IsBanned(User player)
+	{
+		return _bannedUsers.Contains(player);
+	}
+
+	/// <summary>Invites a player to the match.</summary>
+	/// <param name="player">The player to invite.</param>
+	public void Invite(User player)
+	{
+		_invitedUsers.Add(player);
+		Record(new PlayerInvited(this, player));
+	}
+
+	/// <summary>Gets a value that indicates whether <paramref name="player" /> has been invited to the match.</summary>
+	/// <param name="player">The player to check.</param>
+	/// <returns><see langword="true" /> if the player was invited; otherwise, <see langword="false" />.</returns>
+	public bool IsInvited(User player)
+	{
+		return _invitedUsers.Contains(player);
+	}
+
+	/// <summary>Grants a player referee authority for this match.</summary>
+	/// <param name="player">The player to grant referee authority to.</param>
+	public void AddReferee(User player)
+	{
+		_referees.Add(player);
+		Record(new RefereeAdded(this, player));
+	}
+
+	/// <summary>Revokes a player's referee authority for this match.</summary>
+	/// <param name="player">The player to revoke referee authority from.</param>
+	public void RemoveReferee(User player)
+	{
+		_referees.Remove(player);
+		Record(new RefereeRemoved(this, player));
+	}
+
+	/// <summary>Gets a value that indicates whether <paramref name="player" /> is a referee for this match.</summary>
+	/// <param name="player">The player to check.</param>
+	/// <returns><see langword="true" /> if the player is a referee; otherwise, <see langword="false" />.</returns>
+	public bool IsReferee(User player)
+	{
+		return _referees.Contains(player);
 	}
 
 	/// <summary>
@@ -142,18 +291,11 @@ public sealed class Room
 	/// <exception cref="InvalidOperationException"><paramref name="player" /> has no slot in this room.</exception>
 	public void TransferHost(User? player)
 	{
-		if (player is not null && GetSlot(player) is null)
+		if (player is not null && Slots.Find(player) is null)
 			throw new InvalidOperationException("The player does not have a slot in this room.");
 
 		Host = player;
-	}
-
-	/// <summary>Gets the slot occupied by <paramref name="player" />, or <see langword="null" /> when they have none.</summary>
-	/// <param name="player">The player to look up.</param>
-	/// <returns>The player's slot, or <see langword="null" />.</returns>
-	public RoomSlot? GetSlot(User player)
-	{
-		return Slots.FirstOrDefault(s => player.Equals(s.User));
+		Record(new HostChanged(this, player));
 	}
 
 	/// <summary>
@@ -164,16 +306,17 @@ public sealed class Room
 	/// <exception cref="InvalidOperationException"><paramref name="player" /> already has a slot in this room.</exception>
 	public RoomSlot? Join(User player)
 	{
-		if (GetSlot(player) is not null)
+		if (Slots.Find(player) is not null)
 			throw new InvalidOperationException("The player already has a slot in this room.");
 
-		var slot = Slots.FirstOrDefault(s => s.Availability == RoomSlotAvailability.Open);
+		var slot = Slots.FindOpen();
 		if (slot is null) return null;
 
 		slot.Assign(player);
 		if (Settings.TeamType is GameTeamType.TeamVs or GameTeamType.TagTeamVs)
 			slot.SetTeam(GameTeam.Red);
 
+		Record(new PlayerJoined(this, player, Slots.IndexOf(slot)));
 		return slot;
 	}
 
@@ -188,14 +331,24 @@ public sealed class Room
 	/// <exception cref="InvalidOperationException"><paramref name="player" /> has no slot in this room.</exception>
 	public void Leave(User player)
 	{
-		var slot = GetSlot(player) ??
+		var slot = Slots.Find(player) ??
 		           throw new InvalidOperationException("The player does not have a slot in this room.");
 		slot.Clear();
 
 		if (Host is not null && Host.Equals(player))
-			Host = Slots.FirstOrDefault(s => s.Availability == RoomSlotAvailability.Occupied)?.User;
+			TransferHost(Slots.FirstOrDefault(s => s.Availability == RoomSlotAvailability.Occupied)?.User);
 
+		Record(new PlayerLeft(this, player));
 		EndRoundIfFinished();
+	}
+
+	/// <summary>Removes a player from the room.</summary>
+	/// <param name="player">The player to remove.</param>
+	/// <exception cref="InvalidOperationException"><paramref name="player" /> has no slot in this room.</exception>
+	public void Kick(User player)
+	{
+		Leave(player);
+		Record(new PlayerKicked(this, player));
 	}
 
 	/// <summary>
@@ -207,15 +360,14 @@ public sealed class Room
 	/// <exception cref="InvalidOperationException">The slot's occupant is the room's host.</exception>
 	public User? LockSlot(int index)
 	{
-		var slot = GetSlotByIndex(index);
-		var occupant = slot.User;
+		var occupant = Slots[index].User;
 
 		if (occupant is not null && Host is not null && Host.Equals(occupant))
 			throw new InvalidOperationException("The host cannot lock their own slot.");
 
-		slot.Lock();
+		var evicted = Slots.Lock(index);
 		EndRoundIfFinished();
-		return occupant;
+		return evicted;
 	}
 
 	/// <summary>
@@ -225,33 +377,17 @@ public sealed class Room
 	/// <exception cref="ArgumentOutOfRangeException"><paramref name="index" /> is not a valid slot index.</exception>
 	public void UnlockSlot(int index)
 	{
-		GetSlotByIndex(index).Unlock();
+		Slots.Unlock(index);
 	}
 
 	/// <summary>
 	///     Resizes the room, locking slots beyond the new size and unlocking slots within it.
 	/// </summary>
-	/// <remarks>Occupied slots beyond the new size are left occupied.</remarks>
 	/// <param name="size">The number of slots the room should have available, from 1 to 16.</param>
 	/// <exception cref="ArgumentOutOfRangeException"><paramref name="size" /> is not between 1 and 16.</exception>
 	public void Resize(int size)
 	{
-		if (size is < 1 or > 16)
-			throw new ArgumentOutOfRangeException(nameof(size), size, "Room size must be between 1 and 16.");
-
-		for (var i = 0; i < Slots.Count; i++)
-		{
-			var slot = Slots[i];
-			if (i < size)
-			{
-				if (slot.Availability == RoomSlotAvailability.Locked)
-					slot.Unlock();
-			}
-			else if (slot.Availability == RoomSlotAvailability.Open)
-			{
-				slot.Lock();
-			}
-		}
+		Slots.Resize(size);
 	}
 
 	/// <summary>
@@ -269,10 +405,7 @@ public sealed class Room
 		if (InProgress)
 			throw new InvalidOperationException("A round is currently in progress.");
 
-		var target = GetSlotByIndex(targetIndex);
-		var slot = GetSlot(player) ??
-		           throw new InvalidOperationException("The player does not have a slot in this room.");
-		slot.MoveTo(target);
+		Slots.Move(player, targetIndex);
 	}
 
 	/// <summary>
@@ -291,7 +424,7 @@ public sealed class Room
 		if (team == GameTeam.Neutral)
 			throw new InvalidOperationException("A player cannot be assigned the neutral team.");
 
-		var slot = GetSlot(player) ??
+		var slot = Slots.Find(player) ??
 		           throw new InvalidOperationException("The player does not have a slot in this room.");
 		slot.SetTeam(team);
 	}
@@ -307,6 +440,8 @@ public sealed class Room
 
 		foreach (var slot in Slots.Where(s => s.Availability == RoomSlotAvailability.Occupied))
 			slot.SetTeam(team);
+
+		Record(new SettingsChanged(this));
 	}
 
 	/// <summary>
@@ -323,6 +458,8 @@ public sealed class Room
 
 		foreach (var slot in Slots.Where(s => s.Status == RoomSlotStatus.Ready))
 			slot.SetStatus(RoomSlotStatus.NotReady);
+
+		Record(new SettingsChanged(this));
 	}
 
 	/// <summary>
@@ -336,6 +473,8 @@ public sealed class Room
 
 		foreach (var slot in Slots.Where(s => s.Availability == RoomSlotAvailability.Occupied))
 			slot.SetMods(slot.GameMods.RemoveInvalidMods(mode));
+
+		Record(new SettingsChanged(this));
 	}
 
 	/// <summary>
@@ -349,6 +488,7 @@ public sealed class Room
 	public void ChangeMods(GameMods mods)
 	{
 		Settings.Mods = Settings.Freemods ? mods & GameMods.SpeedChangingMods : mods;
+		Record(new SettingsChanged(this));
 	}
 
 	/// <summary>
@@ -364,7 +504,7 @@ public sealed class Room
 		if (!Settings.Freemods)
 			throw new InvalidOperationException("Freemods is not enabled.");
 
-		var slot = GetSlot(player) ??
+		var slot = Slots.Find(player) ??
 		           throw new InvalidOperationException("The player does not have a slot in this room.");
 		slot.SetMods(mods.RemoveInvalidMods(Settings.Mode));
 	}
@@ -387,7 +527,7 @@ public sealed class Room
 		}
 		else
 		{
-			var hostMods = Host is not null ? GetSlot(Host)?.GameMods ?? GameMods.NoMod : GameMods.NoMod;
+			var hostMods = Host is not null ? Slots.Find(Host)?.GameMods ?? GameMods.NoMod : GameMods.NoMod;
 			Settings.Mods = (Settings.Mods & GameMods.SpeedChangingMods) | hostMods;
 
 			foreach (var slot in Slots.Where(s => s.Availability == RoomSlotAvailability.Occupied))
@@ -395,6 +535,8 @@ public sealed class Room
 
 			Settings.Freemods = false;
 		}
+
+		Record(new SettingsChanged(this));
 	}
 
 	/// <summary>
@@ -420,13 +562,61 @@ public sealed class Room
 		}
 
 		InProgress = true;
+		Record(new RoundStarted(this));
 	}
 
-	/// <summary>Gets a value indicating whether every playing player has finished loading the beatmap.</summary>
-	public bool AllPlayersLoaded => Slots.All(s => s.Status != RoomSlotStatus.Playing || s.BeatmapLoaded);
+	/// <summary>
+	///     Marks a player as having finished loading the current beatmap.
+	/// </summary>
+	/// <param name="player">The player who finished loading.</param>
+	/// <exception cref="InvalidOperationException">
+	///     <paramref name="player" /> has no slot in this room, or the player is not currently playing.
+	/// </exception>
+	public void MarkLoaded(User player)
+	{
+		var slot = Slots.Find(player) ??
+		           throw new InvalidOperationException("The player does not have a slot in this room.");
+		slot.MarkLoaded();
+		Record(new PlayerLoaded(this, Slots.IndexOf(slot)));
 
-	/// <summary>Gets a value indicating whether every playing player has skipped the beatmap's intro.</summary>
-	public bool AllPlayersSkipped => Slots.All(s => s.Status != RoomSlotStatus.Playing || s.IntroSkipped);
+		if (Slots.AllLoaded)
+			Record(new AllPlayersLoaded(this));
+	}
+
+	/// <summary>
+	///     Marks a player as having skipped the current beatmap's intro.
+	/// </summary>
+	/// <param name="player">The player who skipped the intro.</param>
+	/// <exception cref="InvalidOperationException">
+	///     <paramref name="player" /> has no slot in this room, or the player is not currently playing.
+	/// </exception>
+	public void SkipIntro(User player)
+	{
+		var slot = Slots.Find(player) ??
+		           throw new InvalidOperationException("The player does not have a slot in this room.");
+		slot.SkipIntro();
+		Record(new PlayerSkipped(this, Slots.IndexOf(slot)));
+
+		if (Slots.AllSkipped)
+			Record(new AllPlayersSkipped(this));
+	}
+
+	/// <summary>
+	///     Marks a player as having failed the current round.
+	/// </summary>
+	/// <param name="player">The player who failed.</param>
+	/// <exception cref="InvalidOperationException">
+	///     <paramref name="player" /> has no slot in this room, or the player is not currently playing.
+	/// </exception>
+	public void Fail(User player)
+	{
+		var slot = Slots.Find(player) ??
+		           throw new InvalidOperationException("The player does not have a slot in this room.");
+		if (slot.Status != RoomSlotStatus.Playing)
+			throw new InvalidOperationException("The player is not currently playing.");
+
+		Record(new PlayerFailed(this, Slots.IndexOf(slot)));
+	}
 
 	/// <summary>
 	///     Marks a player as having finished the current round.
@@ -442,12 +632,13 @@ public sealed class Room
 		if (!InProgress)
 			throw new InvalidOperationException("No round is currently in progress.");
 
-		var slot = GetSlot(player) ??
+		var slot = Slots.Find(player) ??
 		           throw new InvalidOperationException("The player does not have a slot in this room.");
 		if (slot.Status != RoomSlotStatus.Playing)
 			throw new InvalidOperationException("The player is not currently playing.");
 
 		slot.SetStatus(RoomSlotStatus.Complete);
+		Record(new PlayerCompleted(this, Slots.IndexOf(slot)));
 		return EndRoundIfFinished();
 	}
 
@@ -460,18 +651,17 @@ public sealed class Room
 		if (!InProgress)
 			throw new InvalidOperationException("No round is currently in progress.");
 
-		EndRound();
+		EndRound(true);
 	}
 
 	private bool EndRoundIfFinished()
 	{
-		if (!InProgress || Slots.Any(s => s.Status == RoomSlotStatus.Playing)) return false;
-		EndRound();
+		if (!InProgress || Slots.AnyPlaying) return false;
+		EndRound(false);
 		return true;
-
 	}
 
-	private void EndRound()
+	private void EndRound(bool aborted)
 	{
 		foreach (var slot in Slots.Where(s => s.Status is RoomSlotStatus.Playing or RoomSlotStatus.Complete))
 			slot.SetStatus(RoomSlotStatus.NotReady);
@@ -480,14 +670,9 @@ public sealed class Room
 			slot.ResetRoundFlags();
 
 		InProgress = false;
-	}
-
-	private RoomSlot GetSlotByIndex(int index)
-	{
-		if (index < 0 || index >= Slots.Count)
-			throw new ArgumentOutOfRangeException(nameof(index), index, "Slot index must be between 0 and 15.");
-
-		return Slots[index];
+		var round = CurrentRound;
+		CurrentRound = null;
+		Record(new RoundEnded(this, aborted, round));
 	}
 
 	#endregion

@@ -5,7 +5,10 @@
 /// </summary>
 public sealed class Match : IEquatable<Match>
 {
-	/// <summary>Gets the unique identifier of the match.</summary>
+	/// <summary>
+	///     Gets the persistent identifier of the match, used to look it up later — for the match
+	///     report, history, or recovery — independent of any live <see cref="Runtime.Room" /> instance.
+	/// </summary>
 	public required int Id
 	{
 		get;
