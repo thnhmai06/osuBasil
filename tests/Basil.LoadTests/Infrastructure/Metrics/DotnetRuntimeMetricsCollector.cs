@@ -94,7 +94,9 @@ public sealed class DotnetRuntimeMetricsCollector(
 				Gen1Collections = ToLong(_latest, "gen-1-gc-count"),
 				Gen2Collections = ToLong(_latest, "gen-2-gc-count"),
 				AllocRateBytesPerSecond = ToDouble(_latest, "alloc-rate"),
-				ThreadPoolThreads = (int?)ToLong(_latest, "threadpool-thread-count")
+				ThreadPoolThreads = (int?)ToLong(_latest, "threadpool-thread-count"),
+				ThreadPoolQueueLength = (int?)ToLong(_latest, "threadpool-queue-length"),
+				GcPausePercent = ToDouble(_latest, "time-in-gc")
 			});
 		}
 	}

@@ -1,8 +1,8 @@
-using Basil.Application.Configurations;
 using Basil.Application.Sessions;
+using Basil.Application.Shared.Configuration;
 using Basil.Domain.Users;
+using Basil.Host;
 using Basil.Protocol.Packets;
-using Basil.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,11 +16,11 @@ namespace Basil.IntegrationTests;
 ///     dispatcher, no DB. The no-token (login) branch is fully covered by LoginService's own unit
 ///     tests and is not re-tested through HTTP here.
 /// </summary>
-public class BanchoProtocolEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class BanchoProtocolEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 
-	public BanchoProtocolEndpointTests(WebApplicationFactory<Program> factory)
+	public BanchoProtocolEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		_factory = factory.WithWebHostBuilder(builder =>
 		{
@@ -34,7 +34,7 @@ public class BanchoProtocolEndpointTests : IClassFixture<WebApplicationFactory<P
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
 				services.AddSingleton(TestDoubles.NullChannelRepository());
 			});
@@ -49,8 +49,8 @@ public class BanchoProtocolEndpointTests : IClassFixture<WebApplicationFactory<P
 		request.Headers.Host = "c.test.local";
 		request.Headers.Add("osu-token", "does-not-exist");
 
-		var response = await client.SendAsync(request);
-		var body = await response.Content.ReadAsByteArrayAsync();
+		var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(ServerPacketWriter.RestartServer(0), body);
 	}
@@ -69,8 +69,8 @@ public class BanchoProtocolEndpointTests : IClassFixture<WebApplicationFactory<P
 		request.Headers.Host = "c.test.local";
 		request.Headers.Add("osu-token", "known-token");
 
-		var response = await client.SendAsync(request);
-		var body = await response.Content.ReadAsByteArrayAsync();
+		var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(ServerPacketWriter.Notification("hello"), body);
 	}

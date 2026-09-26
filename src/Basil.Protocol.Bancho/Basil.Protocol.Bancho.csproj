@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<ItemGroup>
+		<Folder Include="Models\"/>
+		<Folder Include="Wire\"/>
+	</ItemGroup>
+</Project>

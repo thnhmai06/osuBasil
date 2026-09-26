@@ -36,14 +36,14 @@ moved to `assets.<domain>`, a corresponding `GET` on `api.<domain>` redirects to
 * `GET /menu/seasonals` — lists seasonal files by bare filename. `osu.<domain>/web/osu-getseasonal.php` uses this
   listing to construct its URLs.
 
-* `GET /beatmapsets/{mapsetId}/background` — beatmapset background.
+* `GET /beatmapsets/{beatmapsetId}/background` — beatmapset background.
 
 * `GET /beatmapsets/{beatmapId}/background` — beatmap background.
 
-* `GET /beatmapsets/{mapsetId}/covers/{variant}.jpg` — fixed-size cover variants: `cover`, `card`, `list`, and
+* `GET /beatmapsets/{beatmapsetId}/covers/{variant}.jpg` — fixed-size cover variants: `cover`, `card`, `list`, and
   `slimcover`.
 
-* `GET /beatmapsets/{mapsetId}/{audio,video,download,storyboard,audiopreview,...}` — non-image beatmapset files.
+* `GET /beatmapsets/{beatmapsetId}/{audio,video,download,storyboard,audiopreview,...}` — non-image beatmapset files.
 
   These files bypass ImageSharp.Web and are served directly with `Results.File` and `enableRangeProcessing: true`,
   allowing HTTP Range requests and `206 Partial Content` responses for large downloads.
@@ -67,7 +67,7 @@ This follows the project's scope rules documented in [`working-scopes.md`](worki
 `UseImageSharp()` runs as normal middleware before the `RequireHost`-based endpoint routing.
 
 This means an `IImageProvider` cannot rely on the request path alone. The same path may exist on multiple hosts—for
-example, `/beatmapsets/{mapsetId}/background` exists both as a real asset route on `assets.<domain>` and as a redirect
+example, `/beatmapsets/{beatmapsetId}/background` exists both as a real asset route on `assets.<domain>` and as a redirect
 on `api.<domain>`.
 
 Every provider therefore checks the host before matching the path, using `AssetsHost.Matches` from

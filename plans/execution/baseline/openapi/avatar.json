@@ -1,0 +1,41 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "osu! Client API: Avatar Files",
+    "description": "Locally hosted user avatar images.",
+    "version": "v1"
+  },
+  "paths": {
+    "/{userId}": {
+      "get": {
+        "tags": [
+          "Avatars"
+        ],
+        "summary": "Retrieve a user's avatar",
+        "description": "Returns the user's uploaded avatar.\n\nIf the user has not uploaded one, a default avatar is returned: BasilBot's own icon for user id 0, or a generic default avatar for every other id.\n\nThe response Content-Type matches the image format.",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Avatars"
+    }
+  ]
+}

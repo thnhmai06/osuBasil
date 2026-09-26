@@ -1,18 +1,62 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
+		<OutputType>Library</OutputType>
+		<RootNamespace>Basil.Infrastructure</RootNamespace>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	</PropertyGroup>
 
 	<ItemGroup>
+		<Using Include="Microsoft.Extensions.Configuration"/>
+		<Using Include="Microsoft.Extensions.DependencyInjection"/>
+		<Using Include="Microsoft.Extensions.Hosting"/>
+		<Using Include="Microsoft.Extensions.Logging"/>
+		<Using Include="System.Net.Http.Json"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Basil.Domain\Basil.Domain.csproj"/>
+		<ProjectReference Include="..\Basil.Protocol.Bancho\Basil.Protocol.Bancho.csproj"/>
+		<ProjectReference Include="..\Basil.Protocol.Irc\Basil.Protocol.Irc.csproj"/>
 		<ProjectReference Include="..\Basil.Application\Basil.Application.csproj"/>
 	</ItemGroup>
 
 	<ItemGroup>
-		<EmbeddedResource Include="Persistence\Migrations\*.sql"/>
+		<InternalsVisibleTo Include="Basil.Infrastructure.Tests"/>
+		<InternalsVisibleTo Include="Basil.Host"/>
+		<InternalsVisibleTo Include="Basil.Host.Tests"/>
+		<InternalsVisibleTo Include="Basil.Host.Api"/>
+		<InternalsVisibleTo Include="Basil.Host.Api.Tests"/>
 	</ItemGroup>
 
 	<ItemGroup>
+		<EmbeddedResource Include="..\..\assets\avatars\basil.png" Link="Resources\Avatars\basilbot.png"/>
+		<EmbeddedResource Include="..\..\assets\avatars\default.png" Link="Resources\Avatars\default.png"/>
+		<EmbeddedResource Include="Shared\Persistence\Migrations\*.sql"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- LocaleCatalog (Shared/Localization/LocaleCatalog.cs) reads every slice's fragment next to
+		     the running assembly via AppContext.BaseDirectory. Already picked up as Content items by
+		     the SDK's default globbing; Update adds the output Link (so they land flattened under
+		     Data/Localization/, not nested under each slice's own <Slice>/Locale/) and
+		     CopyToOutputDirectory, which is what makes every project that references
+		     Basil.Infrastructure, including the test projects (which never run through
+		     Bootstrap.Main's own content-root setup), get a real copy alongside their own build
+		     output. -->
+		<Content Update="*\Locale\*.json" Link="Data\Localization\%(Filename)%(Extension)">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Serilog.Sinks.Async"/>
+		<PackageReference Include="Serilog.Sinks.Console"/>
+		<PackageReference Include="Serilog.Sinks.File"/>
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.Options"/>
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions"/>
 		<PackageReference Include="BCrypt.Net-Next"/>
 		<PackageReference Include="BouncyCastle.Cryptography"/>
 		<PackageReference Include="Dapper"/>
@@ -22,14 +66,12 @@
 		<PackageReference Include="Microsoft.Extensions.Caching.Memory"/>
 		<PackageReference Include="Microsoft.Extensions.Http"/>
 		<PackageReference Include="Microsoft.Extensions.Configuration.Binder"/>
-		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
 		<PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions"/>
 		<PackageReference Include="ppy.osu.Game.Rulesets.Osu"/>
 		<PackageReference Include="ppy.osu.Game.Rulesets.Taiko"/>
 		<PackageReference Include="ppy.osu.Game.Rulesets.Catch"/>
 		<PackageReference Include="ppy.osu.Game.Rulesets.Mania"/>
 		<PackageReference Include="SixLabors.ImageSharp"/>
-		<PackageReference Include="SixLabors.ImageSharp.Web"/>
 	</ItemGroup>
 
 </Project>

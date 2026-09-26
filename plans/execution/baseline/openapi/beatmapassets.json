@@ -1,0 +1,93 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "osu! Client API: Beatmap Assets",
+    "description": "Beatmapset thumbnail and preview image requests, served from locally stored assets with no dependency on osu.ppy.sh.",
+    "version": "v1"
+  },
+  "paths": {
+    "/thumb/{setId}l.jpg": {
+      "get": {
+        "tags": [
+          "Beatmap Assets"
+        ],
+        "summary": "Retrieve a beatmapset list-icon thumbnail (160x120)",
+        "description": "Returns the beatmapset's cover image resized to 160x120 (cropped to fill).\n\nRedirects to `b.ppy.sh` when the server runs in online mirror mode and this beatmapset has a genuine ppy id but no local background.\n\n404 — Beatmapset not found, private, or has no background image (locally-authored sets have no mirror to fall back to).",
+        "parameters": [
+          {
+            "name": "setId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/thumb/{setId}.jpg": {
+      "get": {
+        "tags": [
+          "Beatmap Assets"
+        ],
+        "summary": "Retrieve a beatmapset cover thumbnail (80x60)",
+        "description": "Returns the beatmapset's cover image resized to 80x60 (cropped to fill).\n\nRedirects to `b.ppy.sh` when the server runs in online mirror mode and this beatmapset has a genuine ppy id but no local background.\n\n404 — Beatmapset not found, private, or has no background image (locally-authored sets have no mirror to fall back to).",
+        "parameters": [
+          {
+            "name": "setId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/preview/{setId}.mp3": {
+      "get": {
+        "tags": [
+          "Beatmap Assets"
+        ],
+        "summary": "Retrieve a beatmapset audio preview (10s mp3 clip)",
+        "description": "Returns a 10-second mp3 clip (128kbps) cut from the beatmapset's preview audio, starting at its recorded preview time.\n\nRedirects to `b.ppy.sh` when the server runs in online mirror mode and this beatmapset has a genuine ppy id but no local preview audio.\n\n404 — Beatmapset not found, private, or has no audio file (locally-authored sets have no mirror to fall back to). 503 — audio extraction is temporarily unavailable.",
+        "parameters": [
+          {
+            "name": "setId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Beatmap Assets"
+    }
+  ]
+}

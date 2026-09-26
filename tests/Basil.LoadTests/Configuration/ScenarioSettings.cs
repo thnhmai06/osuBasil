@@ -1,5 +1,3 @@
-using Basil.Application.Services.Authentication;
-
 namespace Basil.LoadTests.Configuration;
 
 /// <summary>
@@ -21,10 +19,10 @@ public class ScenarioSettings
 	public int[] ConcurrentUsers { get; init; } = [];
 
 	/// <summary>How long each concurrency level runs, after warm-up.</summary>
-	public int DurationSeconds { get; init; } = 60;
+	private int DurationSeconds { get; init; } = 60;
 
 	/// <summary>How long NBomber's warm-up phase runs before measurements start counting.</summary>
-	public int WarmUpSeconds { get; init; } = 10;
+	private int WarmUpSeconds { get; init; } = 10;
 
 	/// <summary>
 	///     NBomber's per-scenario failure ceiling before it stops the whole test. NBomber's own default
@@ -53,6 +51,15 @@ public sealed class StartupSettings
 public sealed class LoginSettings : ScenarioSettings
 {
 	/// <summary>
+	///     Mirrors <c>LoginService.ReloginGuardWindowSeconds</c> in Basil.Infrastructure. Duplicated rather
+	///     than referenced: the harness would need to reference Basil.Host to reach it transitively, and
+	///     Basil.Host is a self-contained executable, which the SDK refuses to let a non-self-contained
+	///     project (this harness) reference (see the <c>ProjectReference</c> comment in
+	///     Basil.LoadTests.csproj). Keep this in sync if the server's guard window changes.
+	/// </summary>
+	private const int ReloginGuardWindowSeconds = 10;
+
+	/// <summary>
 	///     When <see langword="true" />, every seeded account is logged in once before measurement starts,
 	///     so the measured phase hits the bcrypt-verify cache instead of paying full bcrypt cost. When
 	///     <see langword="false" />, the run measures the cold (first-login) cost instead. Both are
@@ -67,7 +74,7 @@ public sealed class LoginSettings : ScenarioSettings
 	///     guard so each account's first measured login evicts its stale session cleanly instead of
 	///     failing with <c>user-already-logged-in</c>.
 	/// </summary>
-	public double PostWarmupSettleSeconds { get; init; } = LoginService.ReloginGuardWindowSeconds + 1;
+	public double PostWarmupSettleSeconds { get; init; } = ReloginGuardWindowSeconds + 1;
 
 	/// <summary>Gets <see cref="PostWarmupSettleSeconds" /> as a <see cref="TimeSpan" />.</summary>
 	public TimeSpan PostWarmupSettle => TimeSpan.FromSeconds(PostWarmupSettleSeconds);
@@ -90,6 +97,18 @@ public sealed class ChatSettings : ScenarioSettings
 
 	/// <summary>Target message payload size in bytes (filler appended to the tracking marker).</summary>
 	public int MessageBytes { get; init; } = 64;
+
+	/// <summary>
+	///     How often a receiver polls while waiting for messages. Deliberately its own setting rather than
+	///     reusing the shared <c>Client:PollIntervalSeconds</c>: that value is tuned for realistic idle
+	///     client behavior (seconds), which would dominate the reported delivery-latency percentiles with
+	///     an artificial client-side wait unrelated to server fan-out speed. Kept short so the measured
+	///     latency approximates actual server delivery time.
+	/// </summary>
+	public int ReceivePollIntervalMs { get; init; } = 200;
+
+	/// <summary>Gets <see cref="ReceivePollIntervalMs" /> as a <see cref="TimeSpan" />.</summary>
+	public TimeSpan ReceivePollInterval => TimeSpan.FromMilliseconds(ReceivePollIntervalMs);
 }
 
 /// <summary>Settings for <see cref="Scenarios.MultiplayerScenario" />. Scale axis is rooms, not users.</summary>
@@ -115,13 +134,13 @@ public sealed class MultiplayerSettings
 
 	/// <summary>
 	///     Path (relative to the executable) to an <c>.osz</c> to ingest and assign as the room's map.
-	///     When <see langword="null" />, rooms run with no map assigned (<c>MapId = 0</c>), which still
+	///     When <see langword="null" />, rooms run with no map assigned (<c>Beatmap = 0</c>), which still
 	///     exercises the full state machine and round-row write.
 	/// </summary>
 	public string? BeatmapsetFixture { get; init; }
 
 	/// <summary>Gets <see cref="RoundsPerRoom" />'s implied match duration budget, used for scenario duration.</summary>
-	public int DurationSeconds { get; init; } = 180;
+	private int DurationSeconds { get; init; } = 180;
 
 	/// <summary>Gets <see cref="DurationSeconds" /> as a <see cref="TimeSpan" />.</summary>
 	public TimeSpan Duration => TimeSpan.FromSeconds(DurationSeconds);
@@ -153,10 +172,10 @@ public sealed class StressSettings
 	public int[] ConcurrentUsers { get; init; } = [];
 
 	/// <summary>How long each ramp between steps takes.</summary>
-	public int RampSeconds { get; init; } = 30;
+	private int RampSeconds { get; init; } = 30;
 
 	/// <summary>How long each step is held at its target concurrency.</summary>
-	public int HoldSeconds { get; init; } = 90;
+	private int HoldSeconds { get; init; } = 90;
 
 	/// <summary>
 	///     The failure ceiling. Phase 3 explicitly requires the run to never stop immediately after a
@@ -201,7 +220,7 @@ public sealed class SoakSettings
 	/// <summary>How often NBomber streams interim stats, so a multi-hour run doesn't report only at the end.</summary>
 	public int ReportingIntervalSeconds { get; init; } = 300;
 
-	/// <summary>Relative weights for each workload mixed into the soak (chat/multiplayer/api/idle).</summary>
+	/// <summary>Relative weights for each workload mixed into the soak (chat/multiplayer/api/sse/idle).</summary>
 	public Dictionary<string, int> Weights { get; init; } = [];
 
 	/// <summary>Per-series leak-slope thresholds; a slope above the threshold with a high R² is reported as a leak.</summary>

@@ -1,8 +1,9 @@
 using System.Net;
-using Basil.Application.Abstractions.Beatmaps;
-using Basil.Application.Configurations;
+using Basil.Application.Shared.Configuration;
 using Basil.Domain.Beatmaps;
-using Basil.Web;
+using Basil.Host;
+using Basil.Application.Content;
+using Basil.Application.Beatmaps;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,26 +15,26 @@ namespace Basil.IntegrationTests;
 /// <summary>
 ///     Covers the online-mirror-mode fallback: local storage is always tried first (see
 ///     <see cref="BeatmapRedirectEndpointTests" /> for `/d/{id}`'s local-first coverage), and only a
-///     beatmapset genuinely missing locally is affected by <see cref="MirrorOptions.IsOnlineMode" />
-///     — a redirect for a genuine ppy id, `503` for a locally-authored (synthesized-id) set or a
-///     route with no mirror equivalent, `404` when offline.
+///     beatmapset genuinely missing locally is affected by online mirror mode — a redirect for a
+///     genuine ppy id, `503` for a locally-authored (synthesized-id) set or a route with no mirror
+///     equivalent, `404` when offline.
 /// </summary>
-public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Program> factory)
-	: IClassFixture<WebApplicationFactory<Program>>, IDisposable
+public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Bootstrap> factory)
+	: IClassFixture<WebApplicationFactory<Bootstrap>>, IDisposable
 {
 	private readonly string _dataDir = Directory.CreateTempSubdirectory("basil-mirror-tests-").FullName;
-	private Beatmapset? _mapset;
+	private Beatmapset? _beatmapset;
 
 	public void Dispose()
 	{
 		if (Directory.Exists(_dataDir)) Directory.Delete(_dataDir, true);
 	}
 
-	private WebApplicationFactory<Program> Configure(string? downloadEndpoint)
+	private WebApplicationFactory<Bootstrap> Configure(string? downloadEndpoint)
 	{
-		var mapsets = Substitute.For<IBeatmapsetRepository>();
-		mapsets.FetchByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-			.Returns(call => _mapset?.Id == call.ArgAt<int>(0) ? _mapset : null);
+		var beatmapsets = Substitute.For<IBeatmapsetRepository>();
+		beatmapsets.FetchByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+			.Returns(call => _beatmapset?.Id == call.ArgAt<int>(0) ? _beatmapset : null);
 		var maps = Substitute.For<IBeatmapRepository>();
 		maps.FetchAllBySetIdAsync(Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
 			.Returns(Task.FromResult<IReadOnlyList<Beatmap>>([]));
@@ -50,9 +51,11 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Program> facto
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
-				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
-				services.AddSingleton(mapsets);
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
+				// Real, stateful repository: mirror mode is now read back from here (seeded once at
+				// startup from the MirrorOptions registered below), not from IOptions directly.
+				services.AddSingleton<ISettingsRepository>(new InMemorySettingsRepository());
+				services.AddSingleton(beatmapsets);
 				services.AddSingleton(maps);
 				if (downloadEndpoint is not null)
 					services.AddSingleton(Options.Create(new MirrorOptions { DownloadEndpoint = downloadEndpoint }));
@@ -60,7 +63,7 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Program> facto
 				{
 					ReplaysPath = Path.Combine(_dataDir, "Replays"),
 					AvatarsPath = Path.Combine(_dataDir, "Avatars"),
-					MapsetsPath = Path.Combine(_dataDir, "Mapsets"),
+					BeatmapsetsPath = Path.Combine(_dataDir, "Beatmapsets"),
 					MenuSeasonalsPath = Path.Combine(_dataDir, "Seasonals"),
 					MenuBannersPath = Path.Combine(_dataDir, "Banners"),
 					FaqsPath = Path.Combine(_dataDir, "Faqs"),
@@ -80,11 +83,11 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Program> facto
 	[Fact]
 	public async Task Thumb_OfflineMode_MissingLocal_ReturnsNotFound()
 	{
-		_mapset = new Beatmapset(555, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
+		_beatmapset = new Beatmapset(555, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
 		var client = Configure(null).CreateClient(new WebApplicationFactoryClientOptions
 			{ AllowAutoRedirect = false });
 
-		var response = await client.SendAsync(MakeRequest("/thumb/555.jpg"));
+		var response = await client.SendAsync(MakeRequest("/thumb/555.jpg"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -92,11 +95,11 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Program> facto
 	[Fact]
 	public async Task Thumb_OnlineMode_GenuinePpyId_MissingLocal_RedirectsToBPpySh()
 	{
-		_mapset = new Beatmapset(555, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
+		_beatmapset = new Beatmapset(555, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
 		var client = Configure("https://mirror.local/d").CreateClient(new WebApplicationFactoryClientOptions
 			{ AllowAutoRedirect = false });
 
-		var response = await client.SendAsync(MakeRequest("/thumb/555.jpg"));
+		var response = await client.SendAsync(MakeRequest("/thumb/555.jpg"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.MovedPermanently, response.StatusCode);
 		Assert.Equal("https://b.ppy.sh/thumb/555.jpg", response.Headers.Location!.ToString());
@@ -105,12 +108,12 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Program> facto
 	[Fact]
 	public async Task Thumb_OnlineMode_LocallySynthesizedId_MissingLocal_ReturnsServiceUnavailable()
 	{
-		_mapset = new Beatmapset(Beatmap.LocalIdFloor, "Artist", "Title", "Creator", DateTime.UtcNow,
+		_beatmapset = new Beatmapset(Beatmap.LocalIdFloor, "Artist", "Title", "Creator", DateTime.UtcNow,
 			DateTime.UtcNow);
 		var client = Configure("https://mirror.local/d").CreateClient(new WebApplicationFactoryClientOptions
 			{ AllowAutoRedirect = false });
 
-		var response = await client.SendAsync(MakeRequest($"/thumb/{Beatmap.LocalIdFloor}.jpg"));
+		var response = await client.SendAsync(MakeRequest($"/thumb/{Beatmap.LocalIdFloor}.jpg"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
 	}
@@ -118,19 +121,18 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Program> facto
 	[Fact]
 	public async Task Thumb_OnlineMode_LocalFileExists_ServesLocalIgnoringMode()
 	{
-		var mapsetId = 556;
-		_mapset = new Beatmapset(mapsetId, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow)
+		var beatmapsetId = 556;
+		_beatmapset = new Beatmapset(beatmapsetId, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow)
 			{ BackgroundFile = "bg.png" };
-		var folder = Path.Combine(_dataDir, "Mapsets", $"{mapsetId} Artist - Title");
+		var folder = Path.Combine(_dataDir, "Beatmapsets", $"{beatmapsetId} Artist - Title");
 		Directory.CreateDirectory(folder);
-		await File.WriteAllBytesAsync(Path.Combine(folder, "bg.png"),
-			Convert.FromBase64String(
-				"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="));
+		await File.WriteAllBytesAsync(Path.Combine(folder, "bg.png"), Convert.FromBase64String(
+				"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="), TestContext.Current.CancellationToken);
 
 		var client = Configure("https://mirror.local/d").CreateClient(new WebApplicationFactoryClientOptions
 			{ AllowAutoRedirect = false });
 
-		var response = await client.SendAsync(MakeRequest($"/thumb/{mapsetId}.jpg"));
+		var response = await client.SendAsync(MakeRequest($"/thumb/{beatmapsetId}.jpg"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 	}
@@ -140,10 +142,10 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Program> facto
 	[Fact]
 	public async Task ApiBackground_OnlineMode_MissingLocal_ReturnsServiceUnavailable()
 	{
-		_mapset = new Beatmapset(700, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
+		_beatmapset = new Beatmapset(700, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
 		var client = Configure("https://mirror.local/d").CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/beatmapsets/700/background", "assets.test.local"));
+		var response = await client.SendAsync(MakeRequest("/beatmapsets/700/background", "assets.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
 	}
@@ -151,10 +153,10 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Program> facto
 	[Fact]
 	public async Task ApiBackground_OfflineMode_MissingLocal_ReturnsNotFound_Unchanged()
 	{
-		_mapset = new Beatmapset(701, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
+		_beatmapset = new Beatmapset(701, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
 		var client = Configure(null).CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/beatmapsets/701/background", "assets.test.local"));
+		var response = await client.SendAsync(MakeRequest("/beatmapsets/701/background", "assets.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -164,11 +166,11 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Program> facto
 	[Fact]
 	public async Task ApiDownload_OnlineMode_GenuinePpyId_MissingLocal_RedirectsToMirror()
 	{
-		_mapset = new Beatmapset(800, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
+		_beatmapset = new Beatmapset(800, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
 		var client = Configure("https://mirror.local/d").CreateClient(new WebApplicationFactoryClientOptions
 			{ AllowAutoRedirect = false });
 
-		var response = await client.SendAsync(MakeRequest("/beatmapsets/800/download", "assets.test.local"));
+		var response = await client.SendAsync(MakeRequest("/beatmapsets/800/download", "assets.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.MovedPermanently, response.StatusCode);
 		Assert.Equal("https://mirror.local/d/800?n=1", response.Headers.Location!.ToString());
@@ -177,12 +179,11 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Program> facto
 	[Fact]
 	public async Task ApiDownload_OnlineMode_LocallySynthesizedId_MissingLocal_ReturnsServiceUnavailable()
 	{
-		_mapset = new Beatmapset(Beatmap.LocalIdFloor, "Artist", "Title", "Creator", DateTime.UtcNow,
+		_beatmapset = new Beatmapset(Beatmap.LocalIdFloor, "Artist", "Title", "Creator", DateTime.UtcNow,
 			DateTime.UtcNow);
 		var client = Configure("https://mirror.local/d").CreateClient();
 
-		var response = await client.SendAsync(
-			MakeRequest($"/beatmapsets/{Beatmap.LocalIdFloor}/download", "assets.test.local"));
+		var response = await client.SendAsync(MakeRequest($"/beatmapsets/{Beatmap.LocalIdFloor}/download", "assets.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
 	}
@@ -190,10 +191,10 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Program> facto
 	[Fact]
 	public async Task ApiDownload_OfflineMode_MissingLocal_ReturnsNotFound_Unchanged()
 	{
-		_mapset = new Beatmapset(801, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
+		_beatmapset = new Beatmapset(801, "Artist", "Title", "Creator", DateTime.UtcNow, DateTime.UtcNow);
 		var client = Configure(null).CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/beatmapsets/801/download", "assets.test.local"));
+		var response = await client.SendAsync(MakeRequest("/beatmapsets/801/download", "assets.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -201,11 +202,11 @@ public class BeatmapMirrorModeEndpointTests(WebApplicationFactory<Program> facto
 	[Fact]
 	public async Task ApiDownload_OnlineMode_UnknownId_GenuinePpyIdSpace_RedirectsToMirror()
 	{
-		_mapset = null; // Basil has never ingested this set — the mirror-search-discovered case.
+		_beatmapset = null; // Basil has never ingested this set — the mirror-search-discovered case.
 		var client = Configure("https://mirror.local/d").CreateClient(new WebApplicationFactoryClientOptions
 			{ AllowAutoRedirect = false });
 
-		var response = await client.SendAsync(MakeRequest("/beatmapsets/900/download", "assets.test.local"));
+		var response = await client.SendAsync(MakeRequest("/beatmapsets/900/download", "assets.test.local"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.MovedPermanently, response.StatusCode);
 		Assert.Equal("https://mirror.local/d/900?n=1", response.Headers.Location!.ToString());

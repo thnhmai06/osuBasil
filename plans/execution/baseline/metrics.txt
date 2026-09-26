@@ -1,0 +1,7 @@
+"basil.db.busy"
+"basil.db.command.duration"
+"basil.http.request.duration"
+"basil.match.lock_wait.duration"
+"basil.match.publish.stale_dropped"
+"basil.sse.backlog_depth"
+"basil.sse.subscribers"

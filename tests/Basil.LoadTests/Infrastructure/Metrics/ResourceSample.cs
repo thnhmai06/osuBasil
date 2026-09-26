@@ -44,6 +44,30 @@ public sealed record ResourceSample(DateTimeOffset TimestampUtc)
 	/// <summary>TCP connections currently open to the server's port.</summary>
 	public int? TcpConnections { get; init; }
 
+	/// <summary>
+	///     ThreadPool work-item queue length (the <c>threadpool-queue-length</c> EventCounter) — work
+	///     items waiting for a free pool thread. A sustained non-zero value alongside a climbing
+	///     <see cref="ThreadPoolThreads" /> is the signature of pool threads blocked in synchronous I/O
+	///     rather than genuine CPU-bound work (see the 2026-08-14 SQLite-writer-serialization
+	///     investigation, which had to infer this from the thread-count slope alone).
+	/// </summary>
+	public int? ThreadPoolQueueLength { get; init; }
+
+	/// <summary>
+	///     Percentage of wall-clock time spent in garbage collection since the last GC (the
+	///     <c>time-in-gc</c> EventCounter) — the cheapest available proxy for GC pause pressure without
+	///     attaching a full GC-events provider.
+	/// </summary>
+	public double? GcPausePercent { get; init; }
+
+	/// <summary>
+	///     Total machine-wide CPU usage (all processes, all cores), 0-100. Distinct from
+	///     <see cref="CpuPercent" />, which is this one process only — needed to rule out the load
+	///     generator itself (co-resident with the server in every recorded run) as a contributor to
+	///     inflated latency percentiles.
+	/// </summary>
+	public double? TotalMachineCpuPercent { get; init; }
+
 	/// <summary>Merges this sample with another, preferring non-null values from <paramref name="other" />.</summary>
 	/// <param name="other">The sample to merge on top of this one.</param>
 	/// <returns>A new sample combining both, keeping this sample's timestamp.</returns>
@@ -62,7 +86,10 @@ public sealed record ResourceSample(DateTimeOffset TimestampUtc)
 			ThreadCount = other.ThreadCount ?? ThreadCount,
 			HandleCount = other.HandleCount ?? HandleCount,
 			ThreadPoolThreads = other.ThreadPoolThreads ?? ThreadPoolThreads,
-			TcpConnections = other.TcpConnections ?? TcpConnections
+			TcpConnections = other.TcpConnections ?? TcpConnections,
+			ThreadPoolQueueLength = other.ThreadPoolQueueLength ?? ThreadPoolQueueLength,
+			GcPausePercent = other.GcPausePercent ?? GcPausePercent,
+			TotalMachineCpuPercent = other.TotalMachineCpuPercent ?? TotalMachineCpuPercent
 		};
 	}
 }

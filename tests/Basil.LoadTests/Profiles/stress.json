@@ -3,7 +3,7 @@
 	"ServerHost": {
 		"Kind": "Dotnet",
 		"Domain": "basil.local",
-		"Port": 8443,
+		"Port": 9443,
 		"IrcPort": 16667,
 		"CertPath": "data/certs/basil.local.pfx",
 		"CertPassword": "your-password",

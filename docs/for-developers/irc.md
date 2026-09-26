@@ -363,7 +363,7 @@ These properties must not be collapsed into a single "match member" concept.
 Every match starts with:
 
 ```text
-MatchSession.NoHostId
+MatchSession.HostId == null
 ```
 
 This means that nobody is currently seated as host. It does not mean that the match has never had a host.

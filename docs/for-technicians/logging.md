@@ -20,7 +20,10 @@ The default layout is:
 | `Logs/errors/basil-*.log` | `Error` and `Fatal` logs only.         |
 | `Logs/errors_latest.log`  | Current day's error log.               |
 
-Logs roll daily and are retained for **30 days**.
+Logs roll daily, or at **256 MB**, whichever comes first, and are retained for **30 days**. A busy
+server producing a lot of request traffic can therefore roll several files within a single day —
+this is expected, and keeps any one file small enough to be a coherent artifact instead of one that
+silently stops mid-incident once it hits a size cap.
 
 `latest.log` and `errors_latest.log` provide stable filenames for monitoring tools and manual troubleshooting without
 needing to know the current date. They are hard-linked to the latest log file.
@@ -49,7 +52,7 @@ The minimum log level is controlled by:
 Basil:Logging:MinimumLevel
 ```
 
-in [`appsettings.json`](../../src/Basil.Web/appsettings.json).
+in [`appsettings.json`](../../src/Basil.Web/Data/appsettings.json).
 
 Example:
 
@@ -97,7 +100,9 @@ When investigating a problem, temporarily change the level to:
 Then restart Basil.
 
 `Debug` produces significantly more output and is useful when investigating packet handling, cache behaviour, room
-changes, and other operational problems.
+changes, and other operational problems. It also turns on a per-request audit trail for the `api.` host — one line per
+completed API request, including every successful one — which is off by default specifically because of the volume it
+produces under real traffic. Expect logs to roll (and grow) noticeably faster while this is enabled.
 
 After troubleshooting, change the level back to `Information` and restart Basil.
 
@@ -194,7 +199,7 @@ Check `Logs/latest.log` as well. Problems that do not produce an `Error` or `Fat
 
 ### Logs are taking too much disk space
 
-Basil automatically retains 30 days of daily log files.
+Basil automatically retains 30 days of log files, rolled daily or at 256 MB, whichever comes first.
 
 If longer-term retention is required, send stdout or the log files to an external log collection system rather than
 relying on Basil's local retention.

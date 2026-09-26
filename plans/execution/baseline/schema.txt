@@ -1,0 +1,339 @@
+-- index Beatmaps_BeatmapsetId_index
+CREATE INDEX Beatmaps_BeatmapsetId_index on Beatmaps (BeatmapsetId)
+
+-- index Beatmaps_Filename_index
+CREATE INDEX Beatmaps_Filename_index on Beatmaps (Filename)
+
+-- index Beatmaps_Mode_index
+CREATE INDEX Beatmaps_Mode_index on Beatmaps (Mode)
+
+-- index Channels_AutoJoin_index
+CREATE INDEX Channels_AutoJoin_index on Channels (AutoJoin)
+
+-- index MatchEvents_MatchId_index
+CREATE INDEX MatchEvents_MatchId_index on MatchEvents (MatchId)
+
+-- index Rounds_MatchId_index
+CREATE INDEX Rounds_MatchId_index on Rounds (MatchId)
+
+-- index Scores_Checksum_index
+CREATE INDEX Scores_Checksum_index on Scores (Checksum)
+
+-- index Scores_MapMd5_index
+CREATE INDEX Scores_MapMd5_index on Scores (MapMd5)
+
+-- index Scores_Mode_index
+CREATE INDEX Scores_Mode_index on Scores (Mode)
+
+-- index Scores_RoundId_index
+CREATE INDEX Scores_RoundId_index on Scores (RoundId)
+
+-- index Scores_Score_index
+CREATE INDEX Scores_Score_index on Scores (Score)
+
+-- index Scores_UserId_index
+CREATE INDEX Scores_UserId_index on Scores (UserId)
+
+-- index Users_Privilege_index
+CREATE INDEX Users_Privilege_index on Users (Privilege)
+
+-- index sqlite_autoindex_Beatmaps_1
+
+
+-- index sqlite_autoindex_Beatmaps_2
+
+
+-- index sqlite_autoindex_Beatmapsets_1
+
+
+-- index sqlite_autoindex_Channels_1
+
+
+-- index sqlite_autoindex_ClientHashes_1
+
+
+-- index sqlite_autoindex_Counters_1
+
+
+-- index sqlite_autoindex_Relationships_1
+
+
+-- index sqlite_autoindex_Settings_1
+
+
+-- index sqlite_autoindex_UserStats_1
+
+
+-- index sqlite_autoindex_Users_1
+
+
+-- index sqlite_autoindex_Users_2
+
+
+-- table Beatmaps
+CREATE TABLE Beatmaps
+(
+	Id             int                                                                                           not null primary key,
+	BeatmapsetId       int                                                                                           not null,
+	Md5            char(32)                                                                                      not null,
+	Version        varchar(128)                                                                                  not null,
+	Filename       varchar(256)                                                                                  not null,
+	TotalLength    int                                                                                           not null,
+	Mode           int                                                                                           not null,
+	Bpm            float(12, 2) default 0.00                                                                     not null,
+	Cs             float(4, 2)  default 0.00                                                                     not null,
+	Ar             float(4, 2)  default 0.00                                                                     not null,
+	Od             float(4, 2)  default 0.00                                                                     not null,
+	Hp             float(4, 2)  default 0.00                                                                     not null,
+	Sr             float(6, 3)  default 0.000                                                                    not null,
+	BackgroundFile text                                                                                          null,
+	AudioFile      text                                                                                          null,
+	PreviewTime    int                                                                                           null,
+	ObjectCounts   text         default '{"mode":0,"Total":0,"MaxCombo":0,"Circles":0,"Sliders":0,"Spinners":0}' not null,
+	constraint Beatmaps_Md5_uindex unique (Md5),
+	constraint Beatmaps_Beatmapsets_Id_fk foreign key (BeatmapsetId) references Beatmapsets (Id) on delete cascade
+)
+
+-- table Beatmapsets
+CREATE TABLE Beatmapsets
+(
+	Id             int                   not null primary key,
+	Artist         varchar(128)          not null,
+	Title          varchar(128)          not null,
+	Creator        varchar(19)           not null,
+	LastUpdate     datetime              not null,
+	CreatedAt      datetime              not null,
+	IsFrozen       boolean default false not null,
+	IsPrivate      boolean default false not null,
+	BackgroundFile text                  null,
+	AudioFile      text                  null
+)
+
+-- table Channels
+CREATE TABLE Channels
+(
+	Id             INTEGER PRIMARY KEY AUTOINCREMENT,
+	Name           varchar(32)           not null,
+	Topic          varchar(256)          not null,
+	ReadPrivilege  int     default 1     not null,
+	WritePrivilege int     default 2     not null,
+	AutoJoin       boolean default false not null,
+	constraint Channels_Name_uindex unique (Name)
+)
+
+-- table ClientHashes
+CREATE TABLE ClientHashes
+(
+	UserId      int           not null,
+	OsuPathMd5  char(32)      not null,
+	Adapters    char(32)      not null,
+	UninstallId char(32)      not null,
+	DiskSerial  char(32)      not null,
+	LastSeenAt  datetime      not null,
+	Occurrences int default 0 not null,
+	primary key (UserId, OsuPathMd5, Adapters, UninstallId, DiskSerial)
+)
+
+-- table Counters
+CREATE TABLE Counters
+(
+	Name  varchar(64)   not null primary key,
+	Value int default 0 not null
+)
+
+-- table IngameLogins
+CREATE TABLE IngameLogins
+(
+	Id         INTEGER PRIMARY KEY AUTOINCREMENT,
+	UserId     int         not null,
+	Ip         varchar(45) not null,
+	OsuVersion date        not null,
+	OsuStream  varchar(11) not null,
+	LoggedInAt datetime    not null
+)
+
+-- table MatchEvents
+CREATE TABLE MatchEvents
+(
+	Id             INTEGER PRIMARY KEY AUTOINCREMENT,
+	MatchId        int          not null,
+	EventType      int          not null,
+	ActorUserId    int          null,
+	ActorUserName  varchar(32)  null,
+	TargetUserId   int          null,
+	TargetUserName varchar(32)  null,
+	Timestamp      datetime     not null,
+	Detail         varchar(512) null,
+	constraint MatchEvents_Matches_Id_fk foreign key (MatchId) references Matches (Id)
+)
+
+-- table Matches
+CREATE TABLE Matches
+(
+	Id        INTEGER PRIMARY KEY AUTOINCREMENT,
+	Name      varchar(50) not null,
+	CreatedAt datetime    not null,
+	EndedAt   datetime    null
+)
+
+-- table MenuBanners
+CREATE TABLE MenuBanners
+(
+	Id        INTEGER PRIMARY KEY AUTOINCREMENT,
+	Image     text          not null,
+	Url       varchar(2048) not null,
+	Begins    datetime      null,
+	Expires   datetime      null,
+	CreatedAt datetime      not null
+)
+
+-- table Relationships
+CREATE TABLE Relationships
+(
+	User1 int         not null,
+	User2 int         not null,
+	Type  varchar(10) not null check (Type in ('friend', 'block')),
+	primary key (User1, User2)
+)
+
+-- table Rounds
+CREATE TABLE Rounds
+(
+	Id           INTEGER PRIMARY KEY AUTOINCREMENT,
+	MatchId      int      not null,
+	RoundIndex   int      not null,
+	MapMd5       char(32) not null,
+	Mode         int      not null,
+	WinCondition int      not null,
+	TeamType     int      not null,
+	Aborted      boolean  not null default 0,
+	Mods         int      not null,
+	StartedAt    datetime not null,
+	EndedAt      datetime null,
+	constraint Rounds_Matches_Id_fk foreign key (MatchId) references Matches (Id)
+)
+
+-- table Scores
+CREATE TABLE Scores
+(
+	Id          INTEGER PRIMARY KEY AUTOINCREMENT,
+	RoundId     int                    null,
+	Team        int                    null,
+	MapMd5      char(32)               not null,
+	Score       bigint                 not null,
+	Accuracy    float(6, 3)            not null,
+	MaxCombo    int                    not null,
+	Mods        int                    not null,
+	N300        int                    not null,
+	N100        int                    not null,
+	N50         int                    not null,
+	NMiss       int                    not null,
+	NGeki       int                    not null,
+	NKatu       int                    not null,
+	Grade       varchar(2) default 'N' not null,
+	Mode        int                    not null,
+	PlayTime    datetime               not null,
+	TimeElapsed int                    not null,
+	ClientFlags int                    not null,
+	UserId      int                    not null,
+	Perfect     boolean                not null,
+	Checksum    char(32)               not null,
+	SubmittedAt datetime               not null,
+	constraint Scores_Rounds_Id_fk foreign key (RoundId) references Rounds (Id)
+)
+
+-- table Settings
+CREATE TABLE Settings
+(
+	Key   varchar(64)   not null primary key,
+	Value varchar(2048) null
+)
+
+-- table UserLogs
+CREATE TABLE UserLogs
+(
+	Id        INTEGER PRIMARY KEY AUTOINCREMENT,
+	FromId    int           not null,
+	ToId      int           not null,
+	Action    varchar(32)   not null,
+	Msg       varchar(2048) null,
+	CreatedAt datetime      not null
+)
+
+-- table UserStats
+CREATE TABLE UserStats
+(
+	Id          int              not null,
+	Mode        int              not null,
+	TotalScore  bigint default 0 not null,
+	RankedScore bigint default 0 not null,
+	Plays       int    default 0 not null,
+	primary key (Id, Mode),
+	constraint UserStats_Users_Id_fk foreign key (Id) references Users (Id)
+)
+
+-- table Users
+CREATE TABLE Users
+(
+	Id         INTEGER PRIMARY KEY AUTOINCREMENT,
+	Name       varchar(32)                            not null,
+	SafeName   varchar(32)                            not null,
+	Privilege  int      default 1                     not null,
+	PwBcrypt   char(60)                               not null,
+	Country    char(2)  default 'xx'                  not null,
+	SilenceEnd datetime default '1970-01-01 00:00:00' not null, DeletedAt datetime null,
+	constraint Users_Name_uindex unique (Name),
+	constraint Users_SafeName_uindex unique (SafeName)
+)
+
+-- table sqlite_sequence
+CREATE TABLE sqlite_sequence(name,seq)
+
+-- trigger Counters_Beatmapsets_AfterDelete
+CREATE TRIGGER Counters_Beatmapsets_AfterDelete
+	after delete
+	on Beatmapsets
+begin
+	update Counters set Value = Value - 1 where Name = 'Beatmapsets:Total';
+	update Counters set Value = Value - 1 where Name = 'Beatmapsets:Public' and OLD.IsPrivate = 0;
+end
+
+-- trigger Counters_Beatmapsets_AfterInsert
+CREATE TRIGGER Counters_Beatmapsets_AfterInsert
+	after insert
+	on Beatmapsets
+begin
+	update Counters set Value = Value + 1 where Name = 'Beatmapsets:Total';
+	update Counters set Value = Value + 1 where Name = 'Beatmapsets:Public' and NEW.IsPrivate = 0;
+end
+
+-- trigger Counters_Beatmapsets_AfterUpdatePrivacy
+CREATE TRIGGER Counters_Beatmapsets_AfterUpdatePrivacy
+	after update of IsPrivate
+	on Beatmapsets
+	when OLD.IsPrivate <> NEW.IsPrivate
+begin
+	update Counters
+	set Value = Value + case when NEW.IsPrivate = 0 then 1 else -1 end
+	where Name = 'Beatmapsets:Public';
+end
+
+-- trigger Counters_Scores_AfterInsert
+CREATE TRIGGER Counters_Scores_AfterInsert
+	after insert
+	on Scores
+begin
+	update Counters set Value = Value + 1 where Name = 'Scores:Total';
+end
+
+-- trigger Settings_AdminKeyHash_AfterUpdate
+CREATE TRIGGER Settings_AdminKeyHash_AfterUpdate
+	after update of Value
+	on Settings
+	when NEW.Key = 'AdminKey:Hash' and NEW.Value is not OLD.Value
+begin
+	update Settings
+	set Value = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+	where Key = 'AdminKey:LastChanged';
+end
+

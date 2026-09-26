@@ -1,9 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
-using Basil.Application.Configurations;
+using System.Text.Json;
+using Basil.Application.Shared.Configuration;
 using Basil.Domain.Users;
-using Basil.Web;
-using Basil.Web.Routing.Api;
+using Basil.Host;
+using Basil.Host.Api.Users;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,11 +17,11 @@ namespace Basil.IntegrationTests;
 ///     rejected with 401 (not 200) across endpoints, the correct key succeeds, and the BasilBot user
 ///     id is protected from edits.
 /// </summary>
-public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 
-	public AdminManagementEndpointTests(WebApplicationFactory<Program> factory)
+	public AdminManagementEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		_factory = factory.WithWebHostBuilder(builder =>
 		{
@@ -34,7 +35,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton(TestDoubles.FixedAdminKeySettingsRepository());
 				services.AddSingleton(TestDoubles.NullUserRepository());
 			});
@@ -55,19 +56,38 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/users/1", adminKey));
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/users/1", adminKey), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4): "401 responses for missing/invalid admin keys should include a
+	///     proper error body instead of being empty" -- the authorization middleware's challenge used
+	///     to write only the status code, leaving the body empty.
+	/// </summary>
+	[Theory]
+	[InlineData(null)]
+	[InlineData("wrong-key")]
+	public async Task DeleteUser_MissingOrWrongAdminKey_ReturnsEnvelopedErrorBody(string? adminKey)
+	{
+		var client = _factory.CreateClient();
+
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/users/1", adminKey), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: TestContext.Current.CancellationToken);
+
+		Assert.False(body.GetProperty("success").GetBoolean());
+		Assert.Equal(401, body.GetProperty("code").GetInt32());
 	}
 
 	[Theory]
 	[InlineData(null)]
 	[InlineData("wrong-key")]
-	public async Task DeleteMapset_MissingOrWrongAdminKey_ReturnsUnauthorized(string? adminKey)
+	public async Task DeleteBeatmapset_MissingOrWrongAdminKey_ReturnsUnauthorized(string? adminKey)
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/beatmapsets/1", adminKey));
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/beatmapsets/1", adminKey), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 	}
@@ -79,7 +99,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Post, "/users/1/block/2", "correct-key"));
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Post, "/users/1/block/2", "correct-key"), TestContext.Current.CancellationToken);
 
 		Assert.False(response.IsSuccessStatusCode);
 	}
@@ -89,7 +109,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users"));
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 	}
@@ -99,7 +119,46 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users", "correct-key"));
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users", "correct-key"), TestContext.Current.CancellationToken);
+
+		response.EnsureSuccessStatusCode();
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4): "GET /users has no pagination metadata; verify whether it
+	///     currently returns all users." It did -- unfiltered and unpaged. Now returns the same
+	///     `PagedResult` shape every other list route (`GET /matches`, `GET /beatmapsets`) does.
+	/// </summary>
+	[Fact]
+	public async Task GetUsers_CorrectAdminKey_ReturnsPaginationMetadata()
+	{
+		var client = _factory.CreateClient();
+
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users?page=1&pageSize=10", "correct-key"), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: TestContext.Current.CancellationToken);
+
+		Assert.Equal(JsonValueKind.Array, body.GetProperty("data").ValueKind);
+		var meta = body.GetProperty("meta");
+		Assert.Equal(1, meta.GetProperty("page").GetInt32());
+		Assert.Equal(10, meta.GetProperty("pageSize").GetInt32());
+		Assert.True(meta.TryGetProperty("totalRecords", out _));
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4): "Invalid pagination ranges should return an empty result instead
+	///     of an error." A negative `page`/`pageSize` never reaches the underlying `Skip`/`Take` as
+	///     given -- `Pagination.Normalize` falls back to the page-1/pageSize-50 defaults for any
+	///     non-positive value, so this never throws regardless of what's requested.
+	/// </summary>
+	[Theory]
+	[InlineData("page=-1&pageSize=-1")]
+	[InlineData("page=0&pageSize=0")]
+	[InlineData("page=999999")]
+	public async Task GetUsers_OutOfRangePagination_ReturnsOkNotError(string query)
+	{
+		var client = _factory.CreateClient();
+
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, $"/users?{query}", "correct-key"), TestContext.Current.CancellationToken);
 
 		response.EnsureSuccessStatusCode();
 	}
@@ -116,8 +175,8 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
 		request.Content = JsonContent.Create(new
 			{ name = "ab", password = "hunter2", country = "xx", privilege = (int)UserPrivileges.Unrestricted });
 
-		var response = await client.SendAsync(request);
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 		Assert.Contains("between 3 and 15 characters", body);
@@ -128,7 +187,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users/1/avatar"));
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users/1/avatar"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -138,7 +197,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users/1/avatar", "correct-key"));
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users/1/avatar", "correct-key"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -148,7 +207,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/users/0", "correct-key"));
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/users/0", "correct-key"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 	}
@@ -161,7 +220,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
 		var request = MakeRequest(HttpMethod.Patch, "/users/0", "correct-key");
 		request.Content = JsonContent.Create(new UpdateUserRequest("newname"));
 
-		var response = await client.SendAsync(request);
+		var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 	}
@@ -171,7 +230,7 @@ public class AdminManagementEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users/0/live"));
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users/0/live"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 	}

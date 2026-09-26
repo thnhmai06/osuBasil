@@ -1,0 +1,641 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "Basil Assets",
+    "description": "Menu banner/icon/seasonal images and beatmapset covers, served through ImageSharp.Web.",
+    "version": "v1"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Get health.",
+        "description": "Returns `{ status: \"ok\" }` while the server is up.",
+        "operationId": "getAssetsHealth",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthStatus"
+                },
+                "example": {
+                  "status": "ok"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/menu/seasonals": {
+      "get": {
+        "tags": [
+          "Menu"
+        ],
+        "summary": "List seasonal backgrounds.",
+        "description": "Returns the bare filenames. Fetch an individual image at `GET /menu/seasonals/{fileName}` on this same host.",
+        "operationId": "listMenuSeasonals",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "example": [
+                  "winter-2026.png",
+                  "summer-2026.jpg"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/menu/icon": {
+      "get": {
+        "tags": [
+          "Menu"
+        ],
+        "summary": "Get menu icon image.",
+        "description": "Serves the icon image directly when it was uploaded to this server. Redirects when it's set to an external URL. Returns `404 Not Found` when no icon is set.",
+        "operationId": "getMenuIconImage",
+        "responses": {
+          "302": {
+            "description": "Found"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/beatmapsets/{beatmapsetId}/{beatmapId}/download": {
+      "get": {
+        "tags": [
+          "Beatmaps"
+        ],
+        "summary": "Download a beatmap.",
+        "description": "Serves the raw `.osu` difficulty file, as `application/x-osu-beatmap`.\r\n\r\nReturns `404 Not Found` if the beatmap doesn't exist, doesn't belong to this beatmapset, its file is missing, or the parent beatmapset is private and the caller isn't admin. Returns `503 Service Unavailable` instead of `404` when the file is missing locally and the server runs in online mirror mode (this route has no mirror equivalent to redirect to).",
+        "operationId": "downloadBeatmapAsset",
+        "parameters": [
+          {
+            "name": "beatmapsetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "beatmapId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/beatmapsets/{beatmapsetId}/{beatmapId}/background": {
+      "get": {
+        "tags": [
+          "Beatmaps"
+        ],
+        "summary": "Download a beatmap background.",
+        "description": "Serves the beatmap's background image. Content-Type is inferred from the file extension.\r\n\r\nReturns `404 Not Found` if the beatmap doesn't exist, doesn't belong to this beatmapset, has no recorded background image, its file is missing, or the parent beatmapset is private and the caller isn't admin. Returns `503 Service Unavailable` instead of `404` when the file is missing locally and the server runs in online mirror mode (this route has no mirror equivalent to redirect to).",
+        "operationId": "downloadBeatmapBackgroundAsset",
+        "parameters": [
+          {
+            "name": "beatmapsetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "beatmapId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/beatmapsets/{beatmapsetId}/background": {
+      "get": {
+        "tags": [
+          "Beatmapsets"
+        ],
+        "summary": "Download beatmapset background.",
+        "description": "Serves the preview background image for this set: the lowest-id beatmap's background. Content-Type is inferred from the file extension.\r\n\r\nReturns `404 Not Found` if the beatmapset doesn't exist, has no recorded preview background, its file is missing, or the beatmapset is private and the caller isn't admin. Returns `503 Service Unavailable` instead of `404` when the file is missing locally and the server runs in online mirror mode (this route has no mirror equivalent to redirect to).",
+        "operationId": "downloadBeatmapsetBackgroundAsset",
+        "parameters": [
+          {
+            "name": "beatmapsetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/beatmapsets/{beatmapsetId}/covers/{variant}.jpg": {
+      "get": {
+        "tags": [
+          "Beatmapsets"
+        ],
+        "summary": "Download a beatmapset cover variant.",
+        "description": "Serves the preview background image for this set, cropped to a fixed size for the given `{variant}`: `cover`, `card`, `list`, or `slimcover`.\r\n\r\nReturns `404 Not Found` if the beatmapset doesn't exist, has no recorded preview background, its file is missing, the beatmapset is private and the caller isn't admin, or `{variant}` isn't one of the four listed above. Returns `503 Service Unavailable` instead of `404` when the file is missing locally and the server runs in online mirror mode (this route has no mirror equivalent to redirect to).",
+        "operationId": "downloadBeatmapsetCoverAsset",
+        "parameters": [
+          {
+            "name": "beatmapsetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "variant",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/beatmapsets/{beatmapsetId}/{beatmapId}/audio": {
+      "get": {
+        "tags": [
+          "Beatmaps"
+        ],
+        "summary": "Download beatmap audio.",
+        "description": "Serves the beatmap's audio file. Content-Type is inferred from the file extension.\r\n\r\nReturns `404 Not Found` if the beatmap doesn't exist, doesn't belong to this beatmapset, has no recorded audio file, its file is missing, or the parent beatmapset is private and the caller isn't admin. Returns `503 Service Unavailable` instead of `404` when the file is missing locally and the server runs in online mirror mode (this route has no mirror equivalent to redirect to).",
+        "operationId": "downloadBeatmapAudioAsset",
+        "parameters": [
+          {
+            "name": "beatmapsetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "beatmapId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/beatmapsets/{beatmapsetId}/audio": {
+      "get": {
+        "tags": [
+          "Beatmapsets"
+        ],
+        "summary": "Download beatmapset audio.",
+        "description": "Serves the preview audio file for this set: the lowest-id beatmap's audio. Content-Type is inferred from the file extension.\r\n\r\nReturns `404 Not Found` if the beatmapset doesn't exist, has no recorded audio file, its file is missing, or the beatmapset is private and the caller isn't admin. Returns `503 Service Unavailable` instead of `404` when the file is missing locally and the server runs in online mirror mode (this route has no mirror equivalent to redirect to).",
+        "operationId": "downloadBeatmapsetAudioAsset",
+        "parameters": [
+          {
+            "name": "beatmapsetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/beatmapsets/{beatmapsetId}/{beatmapId}/video": {
+      "get": {
+        "tags": [
+          "Beatmaps"
+        ],
+        "summary": "Download beatmap video.",
+        "description": "Serves the beatmap's video file. Content-Type is inferred from the file extension.\r\n\r\nReturns `404 Not Found` if the beatmap doesn't exist, doesn't belong to this beatmapset, has no video, the video file is missing, or the parent beatmapset is private and the caller isn't admin. Returns `503 Service Unavailable` instead of `404` when the file is missing locally and the server runs in online mirror mode (this route has no mirror equivalent to redirect to).",
+        "operationId": "downloadBeatmapVideoAsset",
+        "parameters": [
+          {
+            "name": "beatmapsetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "beatmapId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/beatmapsets/{beatmapsetId}/audiopreview": {
+      "get": {
+        "tags": [
+          "Beatmapsets"
+        ],
+        "summary": "Get beatmapset audio preview.",
+        "description": "Serves a 10-second mp3 clip (128kbps) cut from the beatmapset's preview beatmap's audio file, starting at its recorded preview time. This is the same clip the `b.` host serves at `/preview/{beatmapsetId}.mp3`.\r\n\r\nReturns `404 Not Found` if the beatmapset doesn't exist or is private. `503 Service Unavailable` if audio extraction fails, or if no audio file is available locally and the server runs in online mirror mode (this route has no mirror equivalent to redirect to).",
+        "operationId": "getBeatmapsetAudioPreviewAsset",
+        "parameters": [
+          {
+            "name": "beatmapsetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/beatmapsets/{beatmapsetId}/storyboard": {
+      "get": {
+        "tags": [
+          "Beatmapsets"
+        ],
+        "summary": "Download beatmapset storyboard.",
+        "description": "Serves the beatmapset's `.osb` storyboard file, as `application/x-osu-storyboard`. A beatmapset is expected to carry at most one; if more than one is present, the first in filename order is served.\r\n\r\nReturns `404 Not Found` if the beatmapset has no `.osb` file. Returns `503 Service Unavailable` instead of `404` when the file is missing locally and the server runs in online mirror mode (this route has no mirror equivalent to redirect to).",
+        "operationId": "downloadBeatmapsetStoryboardAsset",
+        "parameters": [
+          {
+            "name": "beatmapsetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/beatmapsets/{beatmapsetId}/download": {
+      "get": {
+        "tags": [
+          "Beatmapsets"
+        ],
+        "summary": "Download a beatmapset.",
+        "description": "Serves a `.osz` archive containing every file in the beatmapset: audio, images, video, and every `.osu`/`.osb`. Served as `application/x-osu-beatmap-archive`.\r\n\r\nPass `?noVideo=1` to omit video files from the archive. Only applies when the beatmapset's files are stored locally; a mirror redirect always omits video regardless of this parameter.\r\n\r\nReturns `404 Not Found` if the beatmapset has no files locally and either the server is offline or the beatmapset has no genuine ppy id to redirect a mirror lookup with. Otherwise, when the server runs in online mirror mode, redirects to the configured mirror.",
+        "operationId": "downloadBeatmapsetAsset",
+        "parameters": [
+          {
+            "name": "beatmapsetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "noVideo",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HealthStatus": {
+        "required": [
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Health"
+    },
+    {
+      "name": "Menu"
+    },
+    {
+      "name": "Beatmaps"
+    },
+    {
+      "name": "Beatmapsets"
+    }
+  ]
+}

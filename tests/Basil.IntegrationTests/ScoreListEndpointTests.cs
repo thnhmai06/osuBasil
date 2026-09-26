@@ -1,11 +1,11 @@
 using System.Net.Http.Json;
-using Basil.Application.Abstractions.Scores;
-using Basil.Application.Configurations;
+using Basil.Application.Shared.Configuration;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
-using Basil.Web;
-using Basil.Web.OpenApi;
-using Basil.Web.Routing.Api;
+using Basil.Host;
+using Basil.Host.Api.Shared.Http;
+using Basil.Application.Shared.Http;
+using Basil.Application.Scores;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,18 +19,17 @@ namespace Basil.IntegrationTests;
 ///     <see cref="GetScoresEndpointTests" /> — that file covers the unrelated osu!-client
 ///     `osu-osz2-getscores.php` endpoint, a naming false-friend for this one.
 /// </summary>
-public class ScoreListEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class ScoreListEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 	private IReadOnlyList<ScoreRow> _rows = [];
 
-	public ScoreListEndpointTests(WebApplicationFactory<Program> factory)
+	public ScoreListEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		var scores = Substitute.For<IScoreRepository>();
 		scores.FetchCountAsync(Arg.Any<CancellationToken>()).Returns(_ => _rows.Count);
 		scores.FetchPageAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-			.Returns(call => (IReadOnlyList<ScoreRow>)
-				[.. _rows.Skip(call.ArgAt<int>(0)).Take(call.ArgAt<int>(1))]);
+			.Returns(call => [.. _rows.Skip(call.ArgAt<int>(0)).Take(call.ArgAt<int>(1))]);
 		scores.FetchByRoundAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
 			.Returns(Task.FromResult<IReadOnlyList<ScoreReport>>([]));
 
@@ -46,7 +45,7 @@ public class ScoreListEndpointTests : IClassFixture<WebApplicationFactory<Progra
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
 				services.AddSingleton(scores);
 				services.AddSingleton(TestDoubles.NullUserRepository());
@@ -71,8 +70,8 @@ public class ScoreListEndpointTests : IClassFixture<WebApplicationFactory<Progra
 	[Fact]
 	public async Task GetScores_NoRows_ReturnsEmptyPage()
 	{
-		var response = await _factory.CreateClient().SendAsync(MakeRequest("/scores"));
-		var body = await response.Content.ReadFromJsonAsync<Envelope<List<ScoreListItem>>>();
+		var response = await _factory.CreateClient().SendAsync(MakeRequest("/scores"), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadFromJsonAsync<Envelope<List<ScoreListItem>>>(cancellationToken: TestContext.Current.CancellationToken);
 
 		response.EnsureSuccessStatusCode();
 		Assert.NotNull(body);
@@ -88,8 +87,8 @@ public class ScoreListEndpointTests : IClassFixture<WebApplicationFactory<Progra
 	{
 		_rows = [MakeRow(3), MakeRow(2), MakeRow(1)];
 
-		var response = await _factory.CreateClient().SendAsync(MakeRequest("/scores"));
-		var body = await response.Content.ReadFromJsonAsync<Envelope<List<ScoreListItem>>>();
+		var response = await _factory.CreateClient().SendAsync(MakeRequest("/scores"), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadFromJsonAsync<Envelope<List<ScoreListItem>>>(cancellationToken: TestContext.Current.CancellationToken);
 
 		response.EnsureSuccessStatusCode();
 		Assert.Equal(3, body!.Meta!.TotalRecords);
@@ -102,8 +101,8 @@ public class ScoreListEndpointTests : IClassFixture<WebApplicationFactory<Progra
 	{
 		_rows = [MakeRow(3), MakeRow(2), MakeRow(1)];
 
-		var response = await _factory.CreateClient().SendAsync(MakeRequest("/scores?page=1&pageSize=2"));
-		var body = await response.Content.ReadFromJsonAsync<Envelope<List<ScoreListItem>>>();
+		var response = await _factory.CreateClient().SendAsync(MakeRequest("/scores?page=1&pageSize=2"), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadFromJsonAsync<Envelope<List<ScoreListItem>>>(cancellationToken: TestContext.Current.CancellationToken);
 
 		response.EnsureSuccessStatusCode();
 		Assert.Equal(3, body!.Meta!.TotalRecords);

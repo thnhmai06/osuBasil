@@ -1,0 +1,6 @@
+V:\Code\cs\osuBasil\tests\Basil.Application.Tests\Services\Beatmaps\DirectSearchServiceTests.cs(108,17): warning CS8625: Cannot convert null literal to non-nullable reference type. [V:\Code\cs\osuBasil\tests\Basil.Application.Tests\Basil.Application.Tests.csproj]
+V:\Code\cs\osuBasil\tests\Basil.Infrastructure.Tests\Irc\TcpIrcConnectionTests.cs(823,37): warning CS0067: The event 'TcpIrcConnectionTests.NoOpPlayerStatusEvents.StatusPublished' is never used [V:\Code\cs\osuBasil\tests\Basil.Infrastructure.Tests\Basil.Infrastructure.Tests.csproj]
+    2 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:32.72

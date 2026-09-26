@@ -1,0 +1,18 @@
+Baseline full-suite test result (commit 97e7d5691f63677deb744ac23dc243973ffaffc6)
+Command: dotnet test --configuration Release --logger "trx;LogFileName=baseline.trx"
+
+TOTAL: 1622
+PASSED: 1622
+FAILED: 0
+SKIPPED: 0
+
+Per-project breakdown:
+Passed!  - Failed:     0, Passed:   114, Skipped:     0, Total:   114, Duration: 110 ms - Basil.Domain.Tests.dll (net10.0)
+Passed!  - Failed:     0, Passed:   158, Skipped:     0, Total:   158, Duration: 100 ms - Basil.Protocol.Tests.dll (net10.0)
+Passed!  - Failed:     0, Passed:   723, Skipped:     0, Total:   723, Duration: 5 s - Basil.Application.Tests.dll (net10.0)
+Passed!  - Failed:     0, Passed:   263, Skipped:     0, Total:   263, Duration: 27 s - Basil.Infrastructure.Tests.dll (net10.0)
+Passed!  - Failed:     0, Passed:     9, Skipped:     0, Total:     9, Duration: 1 s - Basil.ArchitectureTests.dll (net10.0)
+Passed!  - Failed:     0, Passed:   355, Skipped:     0, Total:   355, Duration: 3 m 12 s - Basil.IntegrationTests.dll (net10.0)
+
+Note: tests/Basil.LoadTests is IsTestProject=false (an NBomber load-test executable, not a unit
+test project) and is correctly not picked up by `dotnet test`. It is out of this baseline's scope.

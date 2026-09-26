@@ -36,13 +36,13 @@ server, or other external service.
 
 ## Development configuration
 
-Basil uses the same [`appsettings.json`](../../src/Basil.Web/appsettings.json) configuration model in development and production. There is no separate
+Basil uses the same [`appsettings.json`](../../src/Basil.Web/Data/appsettings.json) configuration model in development and production. There is no separate
 development-only configuration file.
 
 The main configuration file is:
 
 ```text
-src/Basil.Web/appsettings.json
+src/Basil.Web/Data/appsettings.json
 ```
 
 For local osu! client testing, set:
@@ -131,7 +131,7 @@ configuration applies whether Basil is running from a development checkout or fr
 A local development server normally runs without a reverse proxy.
 
 When `X-Forwarded-For` and `X-Real-IP` are absent, Basil synthesizes them from the connection's remote address. This is
-required because [`Basil.Domain.Login.Geolocation.PhraseIpAddress`](../../src/Basil.Domain/Login/Geolocation.cs) assumes these headers exist, matching the proxy-based
+required because [`Basil.Domain.Client.Geolocation.PhraseIpAddress`](../../src/Basil.Domain/Client/Geolocation.cs) assumes these headers exist, matching the proxy-based
 setup used by bancho.py in production.
 
 You generally do not need to configure anything manually for local development.

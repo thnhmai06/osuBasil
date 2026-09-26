@@ -1,5 +1,16 @@
 # Architecture
 
+> **Out of date.** This document still describes the five-project Clean Architecture
+> layout. `Basil.Application`, `Basil.Infrastructure`, and `Basil.Web` have since been
+> merged into a single `Basil.Server` project organized as vertical slices, leaving three
+> projects: `Basil.Domain`, `Basil.Protocol`, and `Basil.Server`. Rewriting this document
+> belongs to the documentation phase of that migration, so that it is written once against
+> the finished structure rather than re-edited after every phase.
+>
+> Until then, the accurate description of the current structure is the Architecture section
+> of [`CLAUDE.md`](../../CLAUDE.md), and the enforced rules are the tests in
+> `tests/Basil.ArchitectureTests`. Everything below describes projects that no longer exist.
+
 ## Overview
 
 Basil is a single deployable process organized into five projects with a strictly enforced dependency direction:

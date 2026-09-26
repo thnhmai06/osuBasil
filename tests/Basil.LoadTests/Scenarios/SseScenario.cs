@@ -146,7 +146,7 @@ public sealed class SseScenario : IBasilScenario
 	///     keys on via <c>IMatchRegistry.GetByDbId</c>) — deliberately not the bancho-protocol match id
 	///     from the <c>MatchJoinSuccess</c>/<c>NewMatch</c> packet (a separate, small 0-63 in-memory
 	///     slot-pool index), or <see langword="null" /> if login, creation, or resolving the id failed.
-	///     </summary>
+	/// </returns>
 	private static async Task<int?> CreateAnchorMatchAsync(BanchoClient client, LoadAccount account,
 		BasilApiClient apiClient)
 	{

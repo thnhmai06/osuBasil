@@ -49,7 +49,7 @@ public sealed class StressScenario : IBasilScenario
 		var scenario = Scenario.Create(Id, async ctx =>
 			{
 				var account = accounts[ctx.ScenarioInfo.InstanceNumber % accounts.Count];
-				var currentLevel = ResolveCurrentLevel(boundaries, clock.Elapsed);
+				var currentLevel = ResolveCurrentLevelLabel(boundaries, clock.Elapsed);
 
 				try
 				{
@@ -93,31 +93,40 @@ public sealed class StressScenario : IBasilScenario
 	}
 
 	/// <summary>
-	///     Maps elapsed time to the concurrency level the ramp schedule should be at — an approximation
-	///     of NBomber's own internal scheduling, good enough to label which failure class showed up at
-	///     which load level.
+	///     Maps elapsed time to the schedule phase the ramp should be in — an approximation of NBomber's
+	///     own internal scheduling, good enough to label which failure class showed up during which
+	///     phase. Every phase is tracked explicitly (ramp-up toward a level, holding at a level, or the
+	///     final ramp-down to 0) rather than only the target level, so a failure caught mid-ramp is never
+	///     misattributed to a level the run wasn't actually sustaining yet (or any longer) — see
+	///     2026-08-14's verify-stress run, where failures during the final ramp-down were reported as
+	///     "concurrency level 100" even though the run was already winding down from it.
 	/// </summary>
-	private static List<(TimeSpan End, int Level)> ComputeStepBoundaries(StressSettings settings)
+	private static List<(TimeSpan End, string Label)> ComputeStepBoundaries(StressSettings settings)
 	{
-		var boundaries = new List<(TimeSpan End, int Level)>();
+		var boundaries = new List<(TimeSpan End, string Label)>();
 		var elapsed = TimeSpan.Zero;
+		var previousLevel = 0;
 		foreach (var level in settings.ConcurrentUsers)
 		{
 			elapsed += settings.Ramp;
-			boundaries.Add((elapsed, level));
+			boundaries.Add((elapsed, $"ramp-up {previousLevel}→{level}"));
 			elapsed += settings.Hold;
-			boundaries.Add((elapsed, level));
+			boundaries.Add((elapsed, level.ToString()));
+			previousLevel = level;
 		}
+
+		elapsed += settings.Ramp;
+		boundaries.Add((elapsed, $"ramp-down {previousLevel}→0"));
 
 		return boundaries;
 	}
 
-	private static int ResolveCurrentLevel(List<(TimeSpan End, int Level)> boundaries, TimeSpan elapsed)
+	private static string ResolveCurrentLevelLabel(List<(TimeSpan End, string Label)> boundaries, TimeSpan elapsed)
 	{
-		foreach (var (end, level) in boundaries)
+		foreach (var (end, label) in boundaries)
 			if (elapsed <= end)
-				return level;
+				return label;
 
-		return boundaries.Count > 0 ? boundaries[^1].Level : 0;
+		return boundaries.Count > 0 ? boundaries[^1].Label : "0";
 	}
 }

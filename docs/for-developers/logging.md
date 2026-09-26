@@ -47,7 +47,16 @@ Basil writes to three primary destinations:
 | `Logs/full/`   | Configurable  | Complete application log            |
 | `Logs/errors/` | `Error`       | Errors and fatal failures only      |
 
-The file sinks roll daily and retain 30 days of logs.
+The file sinks roll daily, or at 256 MB, whichever comes first, and retain 30 days of logs. Rolling
+on size as well as on the day exists specifically so a burst of request volume cannot silently
+truncate the log mid-incident the way an unbounded file once did — this happened twice during the
+2026 performance investigation, both times destroying the evidence for the failure under study.
+
+All three sinks are wrapped in `Serilog.Sinks.Async`: a log event is handed to a bounded in-memory
+queue and written by one dedicated background thread, so a slow console pipe or a slow disk can
+never block the thread that produced the event. If the queue fills, the sink drops the newest event
+rather than blocking the caller — logging is diagnostic output, not a channel Basil's request
+handling can depend on staying unblocked.
 
 Two fixed filenames provide stable paths to the currently active files:
 
@@ -68,7 +77,7 @@ The category is derived from the namespace of the class producing the log rather
 
 The currently recognized application categories include:
 
-* `Mapsets`
+* `Beatmapsets`
 * `Matches`
 * `Scores`
 * `Online`
@@ -135,7 +144,7 @@ Logs that represent a resource lifecycle transition use a prefix marker:
 Examples include:
 
 ```text
-+ Mapset ...
++ Beatmapset ...
 ~ Match ...
 - User ...
 ```
@@ -194,6 +203,13 @@ The configured minimum level may be lowered during development or troubleshootin
 
 Do not compensate for a missing log level by logging everything at `Information`. A noisy Information log makes the normal application lifecycle harder to understand and reduces the value of the category and scope system.
 
+A per-request or per-operation event — one line for a completed HTTP request, a completed background
+job iteration, a cache lookup — belongs at `Debug`, not `Information`, regardless of how useful it is
+while troubleshooting: its volume scales with traffic, not with anything a reader needs to see by
+default. `Information` is for the domain lifecycle events this document already describes (a match
+created or closed, a beatmapset ingested, a user registered) — events whose *rate* is itself
+meaningful, not events that fire on every unit of routine throughput.
+
 ## Logging and exceptions
 
 Logs should provide enough context to understand **what operation failed** and **which resource was involved**.
@@ -228,7 +244,8 @@ A hardlink gives both filenames access to the same underlying file.
 
 This avoids writing each log event twice merely to maintain a convenient stable filename.
 
-The lifecycle hook updates the link when the active rolling file changes.
+The lifecycle hook updates the link when the active rolling file changes — a daily rollover, a size
+rollover, or process start all count.
 
 ## Invariants
 
@@ -237,6 +254,7 @@ The logging implementation relies on several architectural rules:
 * Application logging goes through Serilog.
 * The minimum level for stdout and the full log comes from `Basil:Logging:MinimumLevel`.
 * The errors log always records `Error` and `Fatal`, regardless of that configured minimum.
+* Every sink is async-wrapped; no sink write may block the thread that produced the log event.
 * Categories are assigned centrally by `CategoryEnricher`.
 * Request, packet, and IRC correlation data is carried through logging scopes.
 * Domain lifecycle changes use `+`, `-`, or `~` markers.

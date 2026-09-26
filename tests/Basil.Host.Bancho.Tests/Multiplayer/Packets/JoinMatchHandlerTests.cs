@@ -1,0 +1,196 @@
+using Basil.Application.Multiplayer;
+using Basil.Application.Users;
+using Basil.Domain.Beatmaps;
+using Basil.Domain.Multiplayer;
+using Basil.Domain.Scores;
+using Basil.Host.Bancho.Multiplayer.Packets;
+using Basil.Protocol.Packets;
+using static Basil.Infrastructure.Tests.Multiplayer.Packets.MultiplayerTestSupport;
+using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
+
+namespace Basil.Host.Bancho.Tests.Multiplayer.Packets;
+
+/// <summary>
+///     Verifies the `MatchJoin` handler joins the player into the match, honoring password, private-match and invite
+///     rules.
+/// </summary>
+public class JoinMatchHandlerTests
+{
+	private static PacketReader ReaderFor(int matchId, string password)
+	{
+		byte[] body = [.. BinaryWriter.WriteInt32(matchId), .. BinaryWriter.WriteString(password)];
+		return new PacketReader(body);
+	}
+
+	[Fact]
+	public async Task Handle_UnknownMatch_SendsMatchJoinFail()
+	{
+		var fixture = new Fixture();
+		var handler = new JoinMatchHandler(fixture.MatchRegistry, fixture.MatchMembership);
+		var player = MakePlayer(1, "alice");
+		fixture.RegisterAll(player);
+
+		await handler.HandleAsync(player, ReaderFor(0, ""));
+
+		Assert.Contains(ServerPacketWriter.MatchJoinFail(), Chunk(player.Dequeue()));
+	}
+
+	[Fact]
+	public async Task Handle_Restricted_SendsMatchJoinFailWithoutTouchingMatch()
+	{
+		var fixture = new Fixture();
+		var host = MakePlayer(1, "host");
+		fixture.RegisterAll(host);
+		var match = fixture.CreateMatch(host);
+		host.Dequeue();
+
+		var guest = MakePlayer(2, "guest");
+		guest.Privilege = 0;
+		fixture.RegisterAll(host, guest);
+		var handler = new JoinMatchHandler(fixture.MatchRegistry, fixture.MatchMembership);
+
+		await handler.HandleAsync(guest, ReaderFor(match.Id, ""));
+
+		Assert.Null(guest.Match);
+		Assert.Contains(ServerPacketWriter.MatchJoinFail(), Chunk(guest.Dequeue()));
+	}
+
+	[Fact]
+	public async Task Handle_CorrectPassword_JoinsMatch()
+	{
+		var fixture = new Fixture();
+		var host = MakePlayer(1, "host");
+		fixture.RegisterAll(host);
+		var match = (await fixture.MatchLifecycle.CreateAsync(host, MakeMatchData(host.Id, password: "pw")))!;
+
+		var guest = MakePlayer(2, "guest");
+		fixture.RegisterAll(host, guest);
+		var handler = new JoinMatchHandler(fixture.MatchRegistry, fixture.MatchMembership);
+
+		await handler.HandleAsync(guest, ReaderFor(match.Id, "pw"));
+
+		Assert.Same(match, guest.Match);
+	}
+
+	/// <summary>
+	///     Regression test for the ADR-004 4b follow-up: JoinAsync/OccupySlot no longer publish
+	///     internally, so the handler itself must publish after releasing the lock.
+	/// </summary>
+	[Fact]
+	public async Task Handle_CorrectPassword_PublishesUpdatedMainSnapshot()
+	{
+		var fixture = new Fixture();
+		var host = MakePlayer(1, "host");
+		fixture.RegisterAll(host);
+		var match = (await fixture.MatchLifecycle.CreateAsync(host, MakeMatchData(host.Id, password: "pw")))!;
+		var beforeJoin = match.MainSnapshot.Latest;
+
+		var guest = MakePlayer(2, "guest");
+		fixture.RegisterAll(host, guest);
+		var handler = new JoinMatchHandler(fixture.MatchRegistry, fixture.MatchMembership);
+
+		await handler.HandleAsync(guest, ReaderFor(match.Id, "pw"));
+
+		Assert.NotNull(match.MainSnapshot.Latest);
+		Assert.NotSame(beforeJoin, match.MainSnapshot.Latest);
+	}
+
+	[Fact]
+	public async Task Handle_PrivateMatch_CorrectPassword_UninvitedRejected()
+	{
+		var fixture = new Fixture();
+		var host = MakePlayer(1, "host");
+		fixture.RegisterAll(host);
+		var match = (await fixture.MatchLifecycle.CreateAsync(host, MakeMatchData(host.Id, password: "pw")))!;
+		match.IsPrivate = true;
+
+		var guest = MakePlayer(2, "guest");
+		fixture.RegisterAll(host, guest);
+		var handler = new JoinMatchHandler(fixture.MatchRegistry, fixture.MatchMembership);
+
+		await handler.HandleAsync(guest, ReaderFor(match.Id, "pw"));
+
+		Assert.Null(guest.Match);
+		Assert.Contains(ServerPacketWriter.MatchJoinFail(), Chunk(guest.Dequeue()));
+	}
+
+	[Fact]
+	public async Task Handle_PrivateMatch_InvitedGuest_Succeeds()
+	{
+		var fixture = new Fixture();
+		var host = MakePlayer(1, "host");
+		fixture.RegisterAll(host);
+		var match = (await fixture.MatchLifecycle.CreateAsync(host, MakeMatchData(host.Id, password: "pw")))!;
+		match.IsPrivate = true;
+
+		var guest = MakePlayer(2, "guest");
+		fixture.RegisterAll(host, guest);
+		match.AddInvite(fixture.UserCache.Resolve(guest));
+		var handler = new JoinMatchHandler(fixture.MatchRegistry, fixture.MatchMembership);
+
+		await handler.HandleAsync(guest, ReaderFor(match.Id, "pw"));
+
+		Assert.Same(match, guest.Match);
+	}
+
+	[Fact]
+	public async Task Handle_PrivateMatch_HostRejoinsWithoutInvite_Rejected()
+	{
+		var fixture = new Fixture();
+		var host = MakePlayer(1, "host");
+		fixture.RegisterAll(host);
+		var match =
+			(await fixture.MatchLifecycle.CreateAsync(host, MakeMatchData(host.Id)))!;
+		match.IsPrivate = true;
+		await fixture.MatchMembership.LeaveAsync(host, match);
+		var handler = new JoinMatchHandler(fixture.MatchRegistry, fixture.MatchMembership);
+
+		await handler.HandleAsync(host, ReaderFor(match.Id, ""));
+
+		Assert.Null(host.Match);
+		Assert.Contains(ServerPacketWriter.MatchJoinFail(), Chunk(host.Dequeue()));
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4: "CRITICAL: MATCHES CREATED THROUGH THE API CANNOT BE JOINED").
+	///     Mirrors <c>POST /matches</c>' own creation call (<see cref="MatchLifecycle.CreateEmptyAsync" />,
+	///     no host, empty slot-state arrays) rather than the bancho <c>!mp make</c> path every other test
+	///     in this file uses, then joins through the real packet handler -- the same path a real client
+	///     takes -- instead of calling <see cref="MatchMembership.JoinAsync" /> directly.
+	/// </summary>
+	[Fact]
+	public async Task Handle_ApiCreatedMatch_GuestCanJoin()
+	{
+		var fixture = new Fixture();
+		var data = new MatchCreationData(
+			"API match", "", "", null, "", 0,
+			GameMode.Standard, Mods.NoMod, MatchWinCondition.Score, MatchTeamType.HeadToHead, false, 0);
+		var match = await fixture.MatchLifecycle.CreateEmptyAsync(data);
+
+		var guest = MakePlayer(1, "guest");
+		fixture.RegisterAll(guest);
+		var handler = new JoinMatchHandler(fixture.MatchRegistry, fixture.MatchMembership);
+
+		await handler.HandleAsync(guest, ReaderFor(match.Id, ""));
+
+		Assert.Same(match, guest.Match);
+	}
+
+	[Fact]
+	public async Task Handle_PrivateMatch_HostRejoinsWithInvite_Succeeds()
+	{
+		var fixture = new Fixture();
+		var host = MakePlayer(1, "host");
+		fixture.RegisterAll(host);
+		var match =
+			(await fixture.MatchLifecycle.CreateAsync(host, MakeMatchData(host.Id)))!;
+		match.IsPrivate = true;
+		await fixture.MatchMembership.LeaveAsync(host, match);
+		match.AddInvite(fixture.UserCache.Resolve(host));
+		var handler = new JoinMatchHandler(fixture.MatchRegistry, fixture.MatchMembership);
+
+		await handler.HandleAsync(host, ReaderFor(match.Id, ""));
+
+		Assert.Same(match, host.Match);
+	}
+}

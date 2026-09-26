@@ -1,0 +1,97 @@
+using Basil.Application.Sessions;
+using Basil.Infrastructure.Shared.Persistence;
+using NetArchTest.Rules;
+
+namespace Basil.ArchitectureTests;
+
+/// <summary>
+///     Pins the seam between business code and the bancho and IRC wire formats. A type that
+///     decides <em>what</em> happens must not also encode <em>how the client hears about it</em>;
+///     today a fixed set of services does both, and this test makes that set visible so it can
+///     only shrink.
+/// </summary>
+public class TransportSeamTests
+{
+	/// <summary>Every slice except <c>Irc</c>, which is a transport and not a feature.</summary>
+	private static readonly string[] BusinessSlices =
+	[
+		"Auth", "Beatmaps", "Bot", "Chat", "Content", "Diagnostics",
+		"Multiplayer", "Scores", "Spectating", "Users"
+	];
+
+	/// <summary>
+	///     Everything under the business slices. The packet handlers that once lived alongside them
+	///     (a <c>.Packets</c> namespace per slice) moved to <c>Basil.Host.Bancho</c> in Batch 11 --
+	///     they were the adapters the protocol exists for, so their departure is what let this method
+	///     drop its old filter for them.
+	/// </summary>
+	private static Conditions BusinessAndApiTypes()
+	{
+		var businessSlicePattern = $@"^Basil\.Infrastructure\.({string.Join('|', BusinessSlices)})(\.|$)";
+
+		return Types.InAssembly(typeof(SqlMigrationRunner).Assembly)
+			.That().ResideInNamespaceMatching(businessSlicePattern)
+			.Should();
+	}
+
+	[Fact]
+	public void Business_And_Api_Types_Should_Not_Reference_Protocol()
+	{
+		// IsEmpty as of Batch 11: MatchPacketDataMapper moved to Basil.Host.Bancho with the packet
+		// handlers it served, and AnnounceRoutes -- the list's last entry -- now sends its
+		// notification through the new IAnnouncementNotifier contract (Basil.Application.Content)
+		// instead of building a ServerPacketWriter packet itself (D8). This pins the set so it can
+		// only grow back deliberately: a business type reaching for the protocol directly fails the
+		// build.
+		string[] knownOffenders = [];
+
+		var result = BusinessAndApiTypes()
+			.NotHaveDependencyOn("Basil.Protocol")
+			.GetResult();
+
+		var actualOffenders = (result.FailingTypes ?? [])
+			.Select(t => t.FullName)
+			.OfType<string>()
+			.OrderBy(name => name, StringComparer.Ordinal)
+			.ToArray();
+
+		Assert.Equal(knownOffenders.OrderBy(name => name, StringComparer.Ordinal), actualOffenders);
+	}
+
+	[Fact]
+	public void Application_Types_Should_Not_Reference_Protocol()
+	{
+		// LoginResponseEncoder/PacketBuilders build bancho packets and are the Application-side
+		// equivalent of Business_And_Api_Types_Should_Not_Reference_Protocol's pinned Infrastructure
+		// list above — deliberately allowed here, pinned so the set can only shrink.
+		// BanchoIrcBridgeConnection, IIrcConnection, IrcAuthenticationService, IrcLoginOutcome,
+		// IrcNamesReply, and IrcQueryService are IRC-side seam types that build or carry IrcMessage,
+		// pinned (U3). SpectateFramesEvent moved here from the Infrastructure list in Batch 6 — it
+		// carries the wire-level ReplayFrame/ScoreFrame types directly (see its own doc comment).
+		string[] knownOffenders =
+		[
+			"Basil.Application.Auth.LoginResponseEncoder",
+			"Basil.Application.Auth.PacketBuilders",
+			"Basil.Application.Irc.BanchoIrcBridgeConnection",
+			"Basil.Application.Irc.IIrcConnection",
+			"Basil.Application.Irc.IrcAuthenticationService",
+			"Basil.Application.Irc.IrcLoginOutcome",
+			"Basil.Application.Irc.IrcNamesReply",
+			"Basil.Application.Irc.IrcQueryService",
+			"Basil.Application.Spectating.SpectateFramesEvent"
+		];
+
+		var result = Types.InAssembly(typeof(GameSession).Assembly)
+			.That().DoNotResideInNamespaceContaining(".Packets")
+			.ShouldNot().HaveDependencyOn("Basil.Protocol")
+			.GetResult();
+
+		var actualOffenders = (result.FailingTypes ?? [])
+			.Select(t => t.FullName)
+			.OfType<string>()
+			.OrderBy(name => name, StringComparer.Ordinal)
+			.ToArray();
+
+		Assert.Equal(knownOffenders.OrderBy(name => name, StringComparer.Ordinal), actualOffenders);
+	}
+}

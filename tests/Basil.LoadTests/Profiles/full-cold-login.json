@@ -1,0 +1,73 @@
+{
+	"Name": "full-cold-login",
+	"ServerHost": {
+		"Kind": "Dotnet",
+		"Domain": "basil.local",
+		"Port": 8443,
+		"IrcPort": 16667,
+		"CertPath": "data/certs/basil.local.pfx",
+		"CertPassword": "your-password",
+		"StartupTimeoutSeconds": 120,
+		"IdleSettleSeconds": 30,
+		"Dotnet": {
+			"Mode": "Published",
+			"PublishDirectory": ".loadtest/server",
+			"AutoPublish": true
+		}
+	},
+	"Client": {
+		"HttpVersion": "1.1",
+		"ConnectionMode": "Shared",
+		"MaxConnectionsPerServer": 512,
+		"RequestTimeoutSeconds": 30,
+		"PollIntervalSeconds": 60
+	},
+	"Accounts": {
+		"Count": 2000,
+		"NamePrefix": "coldlogin",
+		"Password": "loadtest-pw"
+	},
+	"Metrics": {
+		"SampleIntervalSeconds": 1,
+		"DotnetCounters": {
+			"Enabled": true,
+			"RefreshIntervalSeconds": 1
+		}
+	},
+	"Report": {
+		"Folder": ".loadtest/reports",
+		"Formats": [
+			"Html",
+			"Csv",
+			"Md",
+			"Txt"
+		]
+	},
+	"Scenarios": {
+		"startup": {
+			"Enabled": false
+		},
+		"login": {
+			"Enabled": true,
+			"ConcurrentUsers": [
+				2000,
+				1000,
+				500,
+				250,
+				100
+			],
+			"DurationSeconds": 20,
+			"WarmUpSeconds": 0,
+			"WarmBcryptCache": false,
+			"PostWarmupSettleSeconds": 0,
+			"MaxFailCount": 100000
+		},
+		"idle": { "Enabled": false },
+		"chat": { "Enabled": false },
+		"multiplayer": { "Enabled": false },
+		"api": { "Enabled": false },
+		"sse": { "Enabled": false },
+		"stress": { "Enabled": false },
+		"soak": { "Enabled": false }
+	}
+}

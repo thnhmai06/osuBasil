@@ -1,12 +1,11 @@
 using System.Net;
-using Basil.Application.Abstractions.Multiplayer;
-using Basil.Application.Abstractions.Scores;
-using Basil.Application.Configurations;
-using Basil.Application.Sessions.Multiplayer;
+using Basil.Application.Multiplayer;
+using Basil.Application.Shared.Configuration;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
-using Basil.Web;
+using Basil.Host;
+using Basil.Application.Scores;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,12 +16,12 @@ using NSubstitute.ExceptionExtensions;
 namespace Basil.IntegrationTests;
 
 /// <summary>Covers the read-only slice of the api. host's TRT endpoint, GET /matches/{matchId}.</summary>
-public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 	private Match? _match;
 
-	public MatchReportEndpointTests(WebApplicationFactory<Program> factory)
+	public MatchReportEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		var matchPersistence = Substitute.For<IMatchRepository>();
 		// Never exercised by this read-only report suite -- throw, matching the old fake, instead of
@@ -43,7 +42,7 @@ public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Prog
 		matchPersistence.FetchRoundsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
 			.Returns(Task.FromResult<IReadOnlyList<Round>>([]));
 		matchPersistence.FetchAllMatchesAsync(Arg.Any<CancellationToken>())
-			.Returns(_ => (IReadOnlyList<Match>)(_match is null ? [] : [_match]));
+			.Returns(_ => _match is null ? [] : [_match]);
 		matchPersistence.FetchEventsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
 			.Returns(Task.FromResult<IReadOnlyList<MatchEvent>>([]));
 		matchPersistence.FetchUnrecoveredMatchesAsync(Arg.Any<CancellationToken>())
@@ -82,7 +81,7 @@ public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Prog
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
 				services.AddSingleton(matchPersistence);
 				services.AddSingleton(scores);
@@ -102,7 +101,7 @@ public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Prog
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/matches/999"));
+		var response = await client.SendAsync(MakeRequest("/matches/999"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -114,8 +113,8 @@ public class MatchReportEndpointTests : IClassFixture<WebApplicationFactory<Prog
 			new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), null);
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/matches/5"));
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await client.SendAsync(MakeRequest("/matches/5"), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		response.EnsureSuccessStatusCode();
 		Assert.Contains("\"Grand Finals\"", body);

@@ -1,0 +1,610 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "osu! Client API: osu! Web",
+    "description": "The osu! stable client's HTTP `web/*.php` endpoints, along with beatmap and replay downloads and in-game account registration.",
+    "version": "v1"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "tags": [
+          "Homepage"
+        ],
+        "summary": "Homepage",
+        "description": "Redirects to the project's GitHub repository.",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "Stubs"
+        ],
+        "summary": "Check server availability",
+        "description": "Returns the literal string \"osu\". The real osu! client never calls this endpoint; it is a liveness probe for the `osu.` host.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/web/osu-osz2-getscores.php": {
+      "get": {
+        "tags": [
+          "Beatmaps"
+        ],
+        "summary": "Check a beatmap's leaderboard status",
+        "description": "Called by the client whenever the selected beatmap changes.\n\nAuthenticates with `us`/`ha` (username / password MD5) and updates the player's mode and mods status when they change.\n\nReturns `{rankedStatus}|false` for the map identified by `c` (its MD5 checksum).\n\nThis server does not support leaderboard browsing, so the score rows are always empty.",
+        "parameters": [
+          {
+            "name": "us",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ha",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "c",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "m",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "mods",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/web/osu-search.php": {
+      "get": {
+        "tags": [
+          "Beatmaps"
+        ],
+        "summary": "Search beatmaps (osu!direct)",
+        "description": "Backs the in-game osu!direct search panel. Searches the configured mirror catalog instead of local storage when a search mirror is configured, falling back to local search if the mirror is unreachable; otherwise searches local storage only.\n\nQuery parameters:\n* `q` — free-text query\n* `m` — game-mode filter\n* `p` — zero-based page number\n\nThe response uses osu!'s pipe/newline wire format, not JSON.",
+        "parameters": [
+          {
+            "name": "u",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "h",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "m",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "p",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/web/osu-search-set.php": {
+      "get": {
+        "tags": [
+          "Beatmaps"
+        ],
+        "summary": "Retrieve one beatmap set",
+        "description": "Provide exactly one of the following:\n* `s` — beatmapset id\n* `b` — a beatmap id within the set\n* `c` — a beatmap's MD5 checksum\n\nReturns an empty body if the set cannot be resolved or none of the parameters is present.\n\nThe response is a single pipe-delimited set-info line, not JSON.",
+        "parameters": [
+          {
+            "name": "u",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "h",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "s",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "b",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "c",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/d/{mapSetId}": {
+      "get": {
+        "tags": [
+          "Beatmaps"
+        ],
+        "summary": "Download a beatmapset (osu!direct)",
+        "description": "The in-game download button. `{mapSetId}` may carry a trailing `n` to request a no-video archive.\n\nIf the set is available on this server, a fresh `.osz` is built and returned as `application/x-osu-beatmap-archive`. Otherwise, when the server runs in online mirror mode, the request redirects to the configured mirror (`503` for a locally-authored set with no genuine ppy id to redirect with), or returns a plain-text \"not available\" message when no mirror is configured.\n\nPrefer `GET /beatmapsets/{id}/download` on the Basil API for external tooling; this route exists for the in-game client.",
+        "parameters": [
+          {
+            "name": "mapSetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/web/beatmaps/{mapFilename}": {
+      "get": {
+        "tags": [
+          "Beatmaps"
+        ],
+        "summary": "Download a beatmap's .osu file",
+        "description": "Called by the client when it detects its local copy of a difficulty is stale.\n\n`{mapFilename}` is the exact filename recorded for this difficulty, not a beatmap id.\n\nReturns the file as `application/x-osu-beatmap`.\n\n404 — No matching beatmap, or the file is missing.",
+        "parameters": [
+          {
+            "name": "mapFilename",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/web/osu-submit-modular-selector.php": {
+      "post": {
+        "tags": [
+          "Score Submission"
+        ],
+        "summary": "Submit a completed play",
+        "description": "Multipart form submission the client sends after a play completes.\n\nThe `score` field carries both a base64-encoded, encrypted score payload and, as a file part of the same name, the replay data. `s`, `iv`, and `osuver` hold the decryption key material.\n\nOn success the score is stored and the response carries the post-score screen data.\n\nThe response is always `text/html` in osu!'s own grammar, even on failure.",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/web/osu-getreplay.php": {
+      "get": {
+        "tags": [
+          "Replays"
+        ],
+        "summary": "Download a replay",
+        "description": "The in-game \"View Replay\" action.\n\nAuthenticates with `u`/`h` (username / password MD5), then returns the `.osr` replay for the score identified by `c` as `application/x-osu-replay`.\n\n404 — The score has no stored replay.\n\nPrefer `GET /scores/{scoreId}/replay` on the Basil API for external tooling; this route requires client-style authentication.",
+        "parameters": [
+          {
+            "name": "u",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "h",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "c",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/web/osu-getbeatmapinfo.php": {
+      "post": {
+        "tags": [
+          "Stubs"
+        ],
+        "summary": "Retrieve per-map grades (stub)",
+        "description": "Always returns an empty body after authenticating the caller.\n\nPer-map grade history, used by the real client's Song Select grade icons, is out of scope: this server does not track a leaderboard to grade against.",
+        "parameters": [
+          {
+            "name": "u",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "h",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/web/lastfm.php": {
+      "get": {
+        "tags": [
+          "Anticheat"
+        ],
+        "summary": "Submit anticheat flags",
+        "description": "The osu! client's cheat-tool detection reports land here. `b` is a beatmap id, or a flag string when the client is flagging something other than a beatmap.\n\nFlags are logged for manual review only; there is no automatic restriction pipeline.\n\nReturns `-3` to tell the client to stop sending further flags for this session, or an empty body otherwise.",
+        "parameters": [
+          {
+            "name": "b",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "us",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ha",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/web/osu-markasread.php": {
+      "get": {
+        "tags": [
+          "Mail"
+        ],
+        "summary": "Mark mail as read (no-op)",
+        "description": "Always returns an empty body after authenticating the caller.\n\nThis server has no offline-mail persistence; chat is online only, so there is nothing to mark as read. The route exists only so the client does not treat a missing endpoint as a connectivity failure.",
+        "parameters": [
+          {
+            "name": "u",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "h",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/web/osu-getseasonal.php": {
+      "get": {
+        "tags": [
+          "Seasonal Backgrounds"
+        ],
+        "summary": "List seasonal backgrounds",
+        "description": "Returns a JSON array of full URLs for the login-screen seasonal backgrounds, one per image file added to this server, each pointing at `GET assets.<domain>/menu/seasonals/{fileName}`.\n\nUnlike most routes on this host, the response really is JSON, matching what the osu! client expects here.",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/web/bancho_connect.php": {
+      "get": {
+        "tags": [
+          "Stubs"
+        ],
+        "summary": "Check client connectivity",
+        "description": "Always returns an empty body.\n\nCalled by the client before a bancho session exists, so it is deliberately unauthenticated.",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/web/check-updates.php": {
+      "get": {
+        "tags": [
+          "Stubs"
+        ],
+        "summary": "Check for client updates",
+        "description": "Always returns an empty body. This server does not manage or distribute client updates.",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/web/osu-screenshot.php": {
+      "post": {
+        "tags": [
+          "Stubs"
+        ],
+        "summary": "Upload a screenshot (not supported)",
+        "description": "Always returns 400 with an explanatory message. Screenshot hosting is out of scope for this server.",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/web/osu-getfavourites.php": {
+      "get": {
+        "tags": [
+          "Stubs"
+        ],
+        "summary": "List favourited beatmaps (stub)",
+        "description": "Always returns an empty body. Favourites are out of scope for this server.",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/web/osu-addfavourite.php": {
+      "get": {
+        "tags": [
+          "Stubs"
+        ],
+        "summary": "Add a favourited beatmap (stub)",
+        "description": "Always returns an empty body. Favourites are out of scope for this server.",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/web/osu-rate.php": {
+      "get": {
+        "tags": [
+          "Stubs"
+        ],
+        "summary": "Rate a beatmap (not supported)",
+        "description": "Always returns the literal `not ranked` response osu! uses for beatmaps that cannot be rated. Beatmap rating is out of scope for this server.",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/web/osu-comment.php": {
+      "post": {
+        "tags": [
+          "Stubs"
+        ],
+        "summary": "Post a replay comment (stub)",
+        "description": "Always returns an empty body. In-replay comments are out of scope for this server.",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/users": {
+      "post": {
+        "tags": [
+          "Registration"
+        ],
+        "summary": "Register a player account",
+        "description": "Form fields: `user[username]`, `user[user_email]`, `user[password]`, and `check`.\n\n`check` is `\"0\"` for the real submit. Any other value is a live per-field validation POST the client fires while the form is still being filled in; it runs the same validation but does not create the account.\n\nThe `user_email` field must match the server's admin key, which gates registration. Registration is open to anyone while the server is in bypass mode (no admin key configured).\n\nNew accounts get default privileges (Unrestricted | Verified | Supporter).",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/difficulty-rating": {
+      "post": {
+        "tags": [
+          "Beatmaps"
+        ],
+        "summary": "Retrieve a beatmap's star rating",
+        "description": "The real osu! client normally opens a difficulty-rating webpage in the system browser for this action; this server has no such page and computes the star rating directly.\n\nQuery parameters:\n* `b` (required) — beatmap id\n* `mods` (default 0) — mod bitmask\n\nResponse: `{beatmap_id, mods, rating}` in snake_case.",
+        "parameters": [
+          {
+            "name": "b",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "mods",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Homepage"
+    },
+    {
+      "name": "Stubs"
+    },
+    {
+      "name": "Beatmaps"
+    },
+    {
+      "name": "Score Submission"
+    },
+    {
+      "name": "Replays"
+    },
+    {
+      "name": "Anticheat"
+    },
+    {
+      "name": "Mail"
+    },
+    {
+      "name": "Seasonal Backgrounds"
+    },
+    {
+      "name": "Registration"
+    }
+  ]
+}

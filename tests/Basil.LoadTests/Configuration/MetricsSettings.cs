@@ -14,7 +14,7 @@ public sealed class DotnetCountersSettings
 public sealed class MetricsSettings
 {
 	/// <summary>How often <see cref="Hosting.IServerHost.CollectMetricsAsync" /> is polled during a run.</summary>
-	public int SampleIntervalSeconds { get; init; } = 5;
+	private int SampleIntervalSeconds { get; init; } = 5;
 
 	/// <summary>Settings for the GC/allocation/threadpool counters collector.</summary>
 	public DotnetCountersSettings DotnetCounters { get; init; } = new();

@@ -274,7 +274,7 @@ dotnet build --configuration Release
 Run Basil locally:
 
 ```bash
-dotnet run --project src/Basil.Web
+dotnet run --project src/Basil.Host
 ```
 
 Run all tests:
@@ -304,46 +304,59 @@ See [`docs/for-technicians/docker.md`](docs/for-technicians/docker.md) for Docke
 
 ## Architecture
 
-Basil is a five-project Clean Architecture monolith.
+Basil is a three-project monolith. `Basil.Server` is organized as vertical slices.
 
 ```text
-Basil.Domain
-    ↓
-Basil.Application
-    ↓
-Basil.Infrastructure
-    ↓
-Basil.Web
+Basil.Domain      no project references
+Basil.Protocol    no project references
+Basil.Server      -> Domain, Protocol
 ```
 
-`Basil.Protocol` is an independent protocol layer used by the application and web layers.
+`Basil.Domain` holds the domain model. `Basil.Protocol` is an independent bancho
+protocol layer. Everything else -- endpoints, handlers, persistence, DI, metrics,
+localization -- lives in `Basil.Server`, split by feature rather than by layer.
 
-The intended project dependencies are:
+Inside `Basil.Server`:
 
 ```text
-Basil.Domain
-    no project references
-
-Basil.Protocol
-    no project references
-
-Basil.Application
-    → Domain
-    → Protocol
-
-Basil.Infrastructure
-    → Application
-    → Domain
-
-Basil.Web
-    → Application
-    → Infrastructure
-    → Protocol
+Features/<Slice>   one slice per feature: endpoints, handlers, persistence,
+                   DI registration, metrics, locale fragment, help text
+Shared/            cross-slice infrastructure, one directory per segment
+Host/              composition root: builds the app and maps the slices
 ```
 
-`Basil.ArchitectureTests` enforces these boundaries.
+The slices are `Auth`, `Beatmaps`, `Bot`, `Chat`, `Content`, `Irc`, `Multiplayer`,
+`Scores`, `Spectating`, and `Users`.
 
-Read [`docs/for-developers/architecture.md`](docs/for-developers/architecture.md) before making a cross-layer change.
+Two rules govern the inside of `Basil.Server`, both enforced by
+`Basil.ArchitectureTests`:
+
+* A slice may reference another slice only via an edge declared in
+  `SliceAdjacency`. Every edge carries a one-line justification naming the type
+  that needs it. Adding an edge is a deliberate act, not a build fix.
+* `Shared` must not reference `Features`. A pinned list of pre-existing
+  violations is asserted for exact equality, so the list can only change by
+  editing it on purpose -- and it is meant to shrink.
+
+Project-level dependency direction (Domain stays free of the server and of
+persistence/web frameworks; Protocol depends on neither) is enforced by
+`DependencyDirectionTests`.
+
+> **Migration in progress (Architecture v3, Batches 0-9 of 13 done).** An agent picking this up
+> should read [`plans/execution/HANDOVER.md`](plans/execution/HANDOVER.md) first — it carries the
+> current state, the decisions already settled, and the measurement instruments this migration
+> relies on.
+>
+> The section above describes the pre-v3 `Basil.Server` monolith and is now stale in every
+> particular: `Basil.Server` was renamed `Basil.Infrastructure` and the `Features.` segment
+> dropped (Batch 1); `Basil.Host` was extracted as its own exe project (Batch 0);
+> `Basil.Application` exists again and now holds the reassembled use-case/session/eventing layer —
+> most of Auth, Beatmaps, Bot, Chat, Irc, Multiplayer, Scores, and Spectating's business logic has
+> already moved there, leaving `Basil.Infrastructure` with concrete persistence/storage/media
+> providers and the not-yet-split web/packet layer. `docs/for-developers/architecture.md` still
+> describes the older five-project structure. Neither document is rewritten yet — that is Batch
+> 13's job (the "close" batch) — so until then, prefer `HANDOVER.md` and the architecture tests
+> (`Basil.ArchitectureTests`) over either.
 
 ### Important invariants
 

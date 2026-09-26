@@ -1,0 +1,67 @@
+{
+	"Name": "crash-repro",
+	"ServerHost": {
+		"Kind": "Dotnet",
+		"Domain": "basil.local",
+		"Port": 8443,
+		"IrcPort": 16667,
+		"CertPath": "data/certs/basil.local.pfx",
+		"CertPassword": "your-password",
+		"StartupTimeoutSeconds": 120,
+		"IdleSettleSeconds": 10,
+		"Dotnet": {
+			"Mode": "Published",
+			"PublishDirectory": ".loadtest/server",
+			"AutoPublish": true
+		}
+	},
+	"Client": {
+		"HttpVersion": "1.1",
+		"ConnectionMode": "Shared",
+		"MaxConnectionsPerServer": 512,
+		"RequestTimeoutSeconds": 30,
+		"PollIntervalSeconds": 60
+	},
+	"Accounts": {
+		"Count": 600,
+		"NamePrefix": "crash",
+		"Password": "loadtest-pw"
+	},
+	"Metrics": {
+		"SampleIntervalSeconds": 1,
+		"DotnetCounters": {
+			"Enabled": true,
+			"RefreshIntervalSeconds": 1
+		}
+	},
+	"Report": {
+		"Folder": ".loadtest/reports",
+		"Formats": [
+			"Html",
+			"Csv",
+			"Md",
+			"Txt"
+		]
+	},
+	"Scenarios": {
+		"startup": { "Enabled": false },
+		"login": { "Enabled": false },
+		"idle": { "Enabled": false },
+		"chat": { "Enabled": false },
+		"multiplayer": {
+			"Enabled": true,
+			"Rooms": [
+				64
+			],
+			"PlayersPerRoom": 8,
+			"RoundsPerRoom": 3,
+			"ScoreUpdatesPerSecond": 2,
+			"BeatmapsetFixture": "fixtures/vivid.osz",
+			"DurationSeconds": 180
+		},
+		"api": { "Enabled": false },
+		"sse": { "Enabled": false },
+		"stress": { "Enabled": false },
+		"soak": { "Enabled": false }
+	}
+}

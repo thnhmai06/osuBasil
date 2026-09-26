@@ -1,0 +1,954 @@
+# Stage C worker checkpoint
+
+> Read this file first. It is kept current in the same commit as every green step, so a
+> successor can resume from here without reconstructing state from `git log` and a build.
+
+## Current task: C1a done (pinned list 21 → 3), C5 reported, user chose to run C1b
+
+C1b (the ~96-file move into `Basil.Domain`) is tracked in
+`plans/execution/c1b-project-move-decision.md`, not in this file — its unit-at-a-time structure
+doesn't fit the per-service checkpoint shape below. Unit 1 (14 repository/store interfaces plus
+their search-filter/query-parser pairs, 18 files) is done and pushed (`214ff845`). See that
+document's "Next exact step" for what unit is next.
+
+Order is C4 → C3 → C6 → C1a → C5 (see `plans/execution/stage-c-order-decision.md` for why C1 runs
+last, and `plans/basil-plan-20260909.md`'s Stage C preamble, which adds C6 and splits C1). C2 is
+off the path — investigated and blocked, its section is near the end of this file. **C4, C3 and C6
+are done, everything committed, nothing pending.** C1 as written was found unrunnable on
+2026-09-14: the services it would move encode the wire formats inline, so the seam is cut in place
+first as **C1a**, one service per commit, measured by the `TransportSeamTests` pinned list. The
+finding and the order of services are in `plans/execution/c1-transport-seam-decision.md`. A worker
+doing C1a should add a sibling section here per service, in the same commit as the green step.
+
+The sections below are the historical record of C4, C3 and C6, kept for the reasoning behind the
+`SliceAdjacency` and pinned-list state that C1a inherits.
+
+### Plan for C4 (three commits)
+
+1. **Commit 1 (done)** — pure move: `MpCommandService`/`MpReplies` relocate to
+   `Basil.Server.Features.Multiplayer`, no behavior or signature change.
+2. **Commit 2 (done)** — split `MpReplies`: the eight members that back `!roll`/`!where`/`!faq`
+   moved to a new `Bot.BotReplies`, wording and locale keys unchanged. `Features/Bot/Locale/
+   bot.en.json` now holds only those eight keys; the rest moved with the code to a new
+   `Features/Multiplayer/Locale/mp.en.json`.
+3. **Commit 3 (done)** — collapsed `Bot -> Multiplayer` to one contract, `IMpCommandService`. See
+   "Commit 3 — what was done" below.
+
+### Commit 1 — what was done
+
+- `mcp__rider__move_type_to_namespace` moved `MpCommandService` and `MpReplies` from
+  `Basil.Server.Features.Bot` to `Basil.Server.Features.Multiplayer` (namespace + all
+  references/usings across the solution). Rider does not relocate the physical file, so each was
+  followed by `git mv` into `src/Basil.Server/Features/Multiplayer/`.
+- `mcp__rider__move_type_to_namespace` also moved the test class `MpCommandServiceTests` into
+  `Basil.Server.Tests.Features.Multiplayer`, followed by `git mv` into
+  `tests/Basil.Server.Tests/Features/Multiplayer/MpCommandServiceTests.cs`. (The handler-split
+  precedent of leaving tests in place does not apply here — those splits kept the type in the same
+  slice; this one changes slice.) `CommandDispatcherTests.cs` stays in `Features/Bot/`: it tests
+  `CommandDispatcher`, which stays in Bot.
+- `services.AddSingleton<MpCommandService>()` moved by hand from
+  `BotServiceCollectionExtensions.AddBot` to `MultiplayerServiceCollectionExtensions.AddMultiplayer`
+  — the registration belongs with the type now. `CommandDispatcher` still resolves the concrete
+  `MpCommandService` from DI exactly as before (interface introduction is Commit 3).
+- Removed now-unused `using Basil.Server.Features.Bot;` from `Host/LocaleTouch.cs` and
+  `tests/.../Shared/Localization/ReplyLocaleTests.cs` (both only needed it for `MpReplies`, which
+  moved; both still use `IrcReplies` from `Features.Irc`, already imported).
+- `SliceAdjacency.cs`: removed the `("Bot", "Beatmaps")` row (was carried by `MpCommandService`
+  only; confirmed gone by grep before the move). **Did not remove `("Bot", "Irc")`** — see the
+  finding below. Updated the comments on `("Bot", "Chat")`, `("Bot", "Multiplayer")`,
+  `("Bot", "Users")`, `("Multiplayer", "Beatmaps")`, `("Multiplayer", "Chat")`,
+  `("Multiplayer", "Irc")`, `("Multiplayer", "Users")`, `("Multiplayer", "Bot")` to name
+  `MpCommandService`/drop it as appropriate, so the file stays accurate. Net: 46 → 45 allowed
+  tuples (one row removed).
+- Left `Features/Bot/Locale/bot.en.json` physically in place for this commit — the csproj glob
+  copies it into `Data/Localization/` regardless of which slice folder it lives under, so its
+  location doesn't affect runtime, and splitting its content belongs with Commit 2's `MpReplies`/
+  `BotReplies` split, not this pure move.
+
+### Finding: the `Bot -> Irc` prediction was wrong, and the fix is to keep the row
+
+`plans/execution/stage-c-order-decision.md`'s table says `Bot -> Irc` is carried by
+`MpCommandService` only and should be gone after C4. That table was built from
+`measure-slice-graph.py`, which is a **text scan** for the literal string
+`Basil.Server.Features.Irc`. `CommandDispatcher.cs`'s nested `ScopedDmReplySink.Reply()` calls
+`sender.IrcConnection.Send(...)` — `IrcConnection` is declared `IIrcConnection`, a
+`Basil.Server.Features.Irc` type, but that type name is never spelled in `CommandDispatcher.cs`
+(no `using`, no FQN — it's an inferred property type). The text scanner cannot see this
+dependency; `NetArchTest` (used by `SliceBoundaryTests`, IL-based) can and does — removing
+`("Bot", "Irc")` failed
+`SliceBoundaryTests.Slices_Should_Only_Reference_Declared_Slices` with the failing type
+`CommandDispatcher.ScopedDmReplySink`. **This is a real, pre-existing dependency, unrelated to the
+`MpCommandService` move** — the original row's own comment already said so
+("`MpCommandService and CommandDispatcher's ScopedDmReplySink reply over Irc.IIrcConnection`"),
+which I misread as fully attributable to `MpCommandService` when reading the prediction table.
+
+Consequence for the two instruments:
+- `measure-slice-graph.py` (text-based, what C5 gates on): `Bot -> Irc` reads as **gone** in both
+  features-only and solution-wide counts, because `CommandDispatcher.cs` never spells the
+  namespace. Confirmed empirically — see the numbers below.
+- `SliceAdjacency` (IL-based, what the build enforces): `("Bot", "Irc")` **must stay**, because the
+  compiled dependency is real.
+
+This is not a new `Multiplayer -> X` edge (the task's stop condition) — it is a previously-declared
+`Bot -> Irc` edge whose real carrier was misattributed. Restoring the row was the correct fix, not
+a workaround: removing it would make `SliceBoundaryTests` lie about the actual coupling.
+`Bot -> Beatmaps` and `Bot -> Scores` had no such hidden carrier (verified: no property/field on
+`UserSession`, `ICommandReplySink`, or anything `CommandDispatcher` touches returns a Beatmaps or
+Scores type) and are confirmed genuinely gone by both instruments.
+
+### Commit 1 verification (all green)
+
+- `dotnet build --configuration Debug`: 0 errors.
+- `Basil.ArchitectureTests`: 6/6 (was failing 5/6 before restoring `("Bot", "Irc")` — see above).
+- `Basil.Domain.Tests`: 114/114.
+- `Basil.Protocol.Tests`: 158/158.
+- `Basil.Server.Tests`: 1052/1052.
+- `Basil.IntegrationTests`: 363/363 (one benign `[Test Class Cleanup Failure]` log line from
+  `MotdSettingsManagementEndpointTests` teardown, unrelated to this change — 0 failed reported).
+- Route count: `grep -rhoE 'Map(Get|Post|Put|Patch|Delete)\("[^"]*"' src/Basil.Server --include=*.cs | sort -u | wc -l` → **140**, unchanged. No route-shaped file was touched this commit.
+- `measure-slice-graph.py`: features-only **45 → 43**, solution-wide **53 → 50**. Both counts fell
+  by more than the `SliceAdjacency` row count fell (2 rows' worth of measured edges vs. 1 row
+  actually removed from the allowlist) — expected, since the script and the allowlist count
+  different things (see finding above).
+- `SliceAdjacency.Allowed`: 46 → 45 tuples (`("Bot", "Beatmaps")` removed; `("Bot", "Irc")` kept).
+
+### Commit 3 design (decided, not yet implemented)
+
+Goal: `Bot -> Multiplayer` carried by **one** contract type instead of `MpCommandService`
+(concrete, sealed, 27+ internal Multiplayer types reachable through it) plus `CommandDispatcher`'s
+own direct use of `MatchSession`/`IMatchRegistry` for scope resolution and referee gating.
+
+- New `IMpCommandService` interface in `Basil.Server.Features.Multiplayer`, implemented by
+  `MpCommandService`, with exactly two members:
+  - `Task<bool> DispatchAsync(UserSession sender, string subcommand, string[] subArgs, int? channelScopeMatchDbId, string? channelName, ICommandReplySink sink, CancellationToken cancellationToken = default)`
+  - `Task<bool> DispatchChainAsync(UserSession sender, IReadOnlyList<(string Text, bool RequiresPreviousSuccess)> segments, int? channelScopeMatchDbId, string? channelName, string prefix, ICommandReplySink sink, CancellationToken cancellationToken = default)`
+- `CommandDispatcher.DispatchMpAsync` and `DispatchChainAsync` — including `ResolveScope`,
+  `BuildDmRedirectSink`/`ScopedDmReplySink`, and the chain referee gate — move bodily (Move
+  Method, same logic, same replies) into `MpCommandService`, which already depends on
+  `IMatchRegistry`/`IChannelRegistry`/`ISessionRegistry<GameSession>`; it gains
+  `ChannelMembershipService` as a new constructor dependency (already an allowed
+  `Multiplayer -> Chat` edge) to build the DM-redirect sink.
+  `MakeAsync`/`JoinAsync`/`SetScopeAsync`/`TryHandleAsync`/`HelpText` stay public on the concrete
+  class (unchanged signatures — existing `MpCommandServiceTests.cs` coverage needs no edits) but
+  drop off the public contract, since `CommandDispatcher` no longer calls them directly.
+- `ICommandDispatcher.DispatchAsync`'s `MatchSession? matchScope` parameter becomes
+  `int? matchScopeDbId` via `change_api_signature` — this is what actually removes `MatchSession`
+  from `Bot`'s own public surface. Two call sites in `ChatDispatchService` pass `matchScope?.DbId`
+  instead of the live object (Chat already resolves the real `MatchSession` itself for the
+  channel-match check, so this loses no information there — that's an existing, legitimate
+  `Chat -> Multiplayer` edge, untouched).
+- `(string Text, bool RequiresPreviousSuccess)` tuples (not `ChatCommandChain.Segment`, which is
+  `internal` to Bot and would be a C# accessibility violation to expose on a public Multiplayer
+  interface) carry the already-split chain segments across the boundary; `ChatCommandChain`
+  itself (splitting on `;`/`&&`, quote handling) stays in Bot — it's chat-chaining syntax, not
+  `!mp` semantics.
+- Test impact assessed as bounded: `CommandDispatcherTests.cs` constructs a **real**
+  `MpCommandService` (sealed, so NSubstitute can't mock it) via `MultiplayerTestSupport.Fixture`
+  and calls through the public `DispatchAsync`/`ICommandReplySink` API — it does not mock
+  `IMatchRegistry` separately from what the fixture already wires up. Expected edits: the
+  `MakeDispatcher` factory (drop `IMatchRegistry`/`ChannelMembershipService` from
+  `CommandDispatcher`'s constructor call, add `ChannelMembershipService` to the `MpCommandService`
+  construction instead) and the `Run`/`RunAll` helpers (extract `.DbId` before calling
+  `DispatchAsync`) — individual test bodies that pass a `MatchSession` into `Run`/`RunAll` should
+  not need to change, since the helper does the conversion once.
+
+### Commit 2 — what was done
+
+- New `Basil.Server.Features.Bot.BotReplies` (`src/Basil.Server/Features/Bot/BotReplies.cs`) holds
+  `RollResult`, `WhereUsage`, `NotRegistered`, `WhereIsIn`, `FaqUsage`, `NoFaqEntryFound`,
+  `NoFaqEntriesAvailable`, `AvailableFaqEntries` — moved verbatim (same locale keys, same wording)
+  out of `MpReplies`. This is a member-level move, not a single Rider refactoring tool run: found
+  every reference with `grep -rln "MpReplies\.$member\b"` per member first (only
+  `CommandDispatcher.cs` and `CommandDispatcherTests.cs` had any), then did the move by hand
+  (`sed` for the mechanical `MpReplies.X` → `BotReplies.X` rewrite at those two call sites, since
+  both files are already in the `Basil.Server.Features.Bot`/`Basil.Server.Tests.Features.Bot`
+  namespace and need no new `using`).
+- `MpReplies` keeps everything else, including `ChainMustBeMp`/`CannotChainMp`/
+  `NotScopedToAnyMatchHint`/`UnknownMpSubcommand`/`CreatorOnlyMp`/`MpNotUsableFromLobby`/
+  `MpChainNotUsableFromLobby`/`MpInDmOnly` — these back `!mp`-dispatch logic that Commit 3 moves
+  into `MpCommandService`, so they stay with the code that will end up producing them.
+- `Features/Bot/Locale/bot.en.json` now holds only the eight relocated keys; the rest (all of
+  `Commands.Mp.*` plus the eight `!mp`-dispatch `General.*` keys) moved to a new
+  `Features/Multiplayer/Locale/mp.en.json`. No key text changed. The csproj glob
+  (`Features\**\Locale\*.json` → `Data/Localization/%(Filename)%(Extension)`) needed no edit.
+- `LocaleTouch.AllReplyHolders()` now also touches `BotReplies.RollResult`, and
+  `ReplyLocaleTests.cs` gained a `BotReplies_EveryMemberResolvesToNonEmptyText` test mirroring the
+  existing `MpReplies`/`IrcReplies` ones. `LocaleCatalogTests.EveryReferencedKeyExistsAndEveryKeyIsReferenced`
+  (unmodified) is the real safety net here — it fails if any key went missing or double-defined
+  across the split; it passed.
+
+### Commit 2 verification (all green)
+
+- `dotnet build --configuration Debug`: 0 errors.
+- `Basil.ArchitectureTests`: 6/6.
+- `Basil.Domain.Tests`: 114/114.
+- `Basil.Protocol.Tests`: 158/158.
+- `Basil.Server.Tests`: **1053**/1053 (+1 from the new `BotReplies` locale test; arithmetic:
+  1052 + 1 new test = 1053).
+- `Basil.IntegrationTests`: 363/363 (same benign cleanup-teardown log lines as Commit 1, 0 failed).
+- Route count: 140, unchanged (no route-shaped file touched).
+- `measure-slice-graph.py`: features-only 43, solution-wide 50 — unchanged from Commit 1, as
+  expected: this was a string relocation between two files already inside the same
+  slice-crossing edge (`Bot -> Multiplayer`, via `using Basil.Server.Features.Multiplayer;` in
+  `CommandDispatcher.cs`, which was already there and still is), not a new namespace crossing.
+- `SliceAdjacency.Allowed`: unchanged at 45 tuples (no edge added or removed by this commit).
+
+### Commit 3 — what was done
+
+Picked up mid-flight: the tree was received with steps 1-5 of the six-step order already applied
+in the working copy (uncommitted) — `IMpCommandService` existed, `MpCommandService.cs` had gained
+`DispatchAsync`/`DispatchChainAsync`/`ResolveScope`/`BuildDmRedirectSink`/`ScopedDmReplySink`
+verbatim from `CommandDispatcher`, `CommandDispatcher`'s constructor already depended on
+`IMpCommandService`, `ICommandDispatcher.DispatchAsync` already took `int? matchScopeDbId`, and
+`CommandDispatcherTests` was already updated to match. Build was green (0 errors) before any work
+this session. The actual signature landed slightly differently from the design's sketch —
+`DispatchAsync(UserSession sender, string[] args, ...)` instead of a separate
+`(string subcommand, string[] subArgs)` pair — a harmless simplification (the split into
+subcommand/subArgs happens on the first line of the method body instead), not flagged as a
+problem.
+
+Two things needed fixing before this was actually correct:
+
+1. **A real behavior bug in the in-progress edit.** `ChatDispatchService.SendChannelMessageAsync`
+   computed `matchScope` (the channel-derived `MatchSession`, when the message was sent in that
+   match's own channel) but then called `commandDispatcher.DispatchAsync(sender, truncated, null,
+   ...)` — passing a hardcoded `null` instead of `matchScope?.DbId`. This silently dropped the
+   channel-derived match scope for every `!mp` command sent in a match's own chat channel (the
+   single most common case), which the design explicitly calls out as one of the two call sites
+   that must pass `matchScope?.DbId`. Fixed by passing `matchScope?.DbId` as designed. No test
+   caught this because `CommandDispatcherTests` calls `ICommandDispatcher.DispatchAsync` directly
+   with a `MatchSession`/`.DbId` already in hand, bypassing `ChatDispatchService` entirely — this
+   codepath has no test coverage at the `ChatDispatchService` level either before or after the fix,
+   so nothing regressed, but nothing would have caught the bug either. **Worth a follow-up**: an
+   integration or `ChatDispatchService`-level test exercising a channel-scoped `!mp` command would
+   have caught this and doesn't exist today.
+2. **`SliceAdjacency`: `("Bot", "Irc")` turned out to be genuinely removable**, contradicting
+   Commit 1's finding that it "must stay." That finding was correct *at the time* — the row's real
+   carrier was `CommandDispatcher`'s own `ScopedDmReplySink`, which called
+   `sender.IrcConnection.Send(...)`. Commit 3's Move Method relocated `ScopedDmReplySink` bodily
+   into `MpCommandService` (Multiplayer), which already carries `Multiplayer -> Irc`. Verified
+   `grep -rln "Irc" src/Basil.Server/Features/Bot/` returns nothing at all post-move. Proved it by
+   deleting the row and running `Basil.ArchitectureTests`: still 6/6 (was 5/6 when the same
+   deletion was tried in Commit 1). Deleted the row for real this time and updated the now-stale
+   `("Bot", "Multiplayer")` comment (it referenced `IMatchRegistry`/`MatchSession`, both gone from
+   `CommandDispatcher` since this commit) to name `IMpCommandService` as the sole carrier.
+   `("Bot", "Scores")` was checked too: no such row exists in `SliceAdjacency` at `74980d28` or at
+   any point in C4 — confirmed by `git show 74980d28:tests/Basil.ArchitectureTests/SliceAdjacency.cs`.
+   There is nothing to delete; the script's "gone" report for it was never backed by an allowlist
+   entry in the first place.
+
+### Commit 3 verification (all green)
+
+- `dotnet build --configuration Debug`: 0 errors (both before and after the `ChatDispatchService`
+  fix, and after the `SliceAdjacency` edit).
+- `Basil.ArchitectureTests`: 6/6, including the deliberate `("Bot", "Irc")`-row-deleted probe
+  described above (also 6/6).
+- `Basil.Domain.Tests`: 114/114.
+- `Basil.Protocol.Tests`: 158/158.
+- `Basil.Server.Tests`: 1053/1053 (unchanged from Commit 2 — no test added or removed this
+  commit).
+- `Basil.IntegrationTests`: 363/363 (one benign `[Test Class Cleanup Failure]` from
+  `AnnounceEndpointTests` teardown this run, same pattern as the prior two commits' benign
+  cleanup-failure log lines from different test classes — 0 failed reported).
+- Total: 6 + 114 + 158 + 1053 + 363 = **1694** (oracle 1693 at `74980d28` + 1 new test from
+  Commit 2 = 1694, unchanged by Commit 3 as expected).
+- Route count: 140, unchanged. No route-shaped file touched.
+- `measure-slice-graph.py`: features-only 43, solution-wide 50 — unchanged from Commit 2, as
+  predicted (this commit relocates code already inside the existing `Bot -> Multiplayer`
+  namespace crossing; it doesn't cross a new one). Confirms `("Bot", "Irc")` still reads as
+  "gone" in the text scan (it already did, before this commit — the scanner never saw
+  `ScopedDmReplySink`'s dependency either way).
+- `SliceAdjacency.Allowed`: 45 → **44** tuples. `("Bot", "Irc")` deleted and proved by the
+  ArchitectureTests run above — this is the first commit where deleting that row is actually
+  correct, not a workaround.
+
+### Commit 3 follow-up — regression test for the `ChatDispatchService` bug, and one more stale comment
+
+The `ChatDispatchService` bug fixed in Commit 3 (dropped `matchScope?.DbId`, see above) had no
+test covering it either before or after the fix — `CommandDispatcherTests` calls
+`ICommandDispatcher.DispatchAsync` directly with the id already in hand, never going through
+`ChatDispatchService`. Added
+`SendPublicMessageHandlerTests.Handle_SenderInMatchsOwnChannel_PassesTheMatchsDbIdAsScope`
+(`tests/Basil.Server.Tests/Features/Chat/Packets/SendPublicMessageHandlerTests.cs`), which sends a
+`!mp settings` message from a `GameSession` whose `Match.ChatChannelName` matches the channel and
+asserts `ICommandDispatcher.DispatchAsync` receives the match's `DbId`, not `null`. Verified the
+test actually catches the regression: reintroduced the hardcoded `null` and confirmed this test
+fails (`NSubstitute.Exceptions.ReceivedCallsException`, expected `7` got `null`), then restored the
+fix and confirmed it passes again.
+
+Also trimmed `("Bot", "Chat")`'s comment, which still said "BotBootstrapService **and
+CommandDispatcher**" — `CommandDispatcher` dropped its last `Chat` reference in Commit 3.
+`grep -rln "Basil.Server.Features.Chat\|ChannelMembershipService\|IChannelRegistry\|ChannelSession"
+src/Basil.Server/Features/Bot/` now returns only `BotBootstrapService.cs`, so the row itself stays
+(it's still live), just the comment's attribution was stale.
+
+Verification: `dotnet build` 0 errors; `Basil.ArchitectureTests` 6/6 (SliceAdjacency comment-only
+change); `Basil.Server.Tests` **1054**/1054 (1053 + 1 new test). Domain/Protocol/Integration not
+rerun — this follow-up touched a test-only file and a comment in an already-green
+`SliceAdjacency.cs`; no production code changed relative to the `ea6bd277` commit already verified
+against all five projects.
+
+## C3 — stop `PlayerLogoutService` importing five feature slices
+
+Design settled before this task started: `plans/execution/logout-as-event-decision.md`. Short
+version — **an ordered handler list, not an event bus.** `Shared/Sessions` gained one new
+abstraction:
+
+```csharp
+public interface IPlayerLogoutHandler
+{
+    int Order { get; }
+    Task OnLogoutAsync(UserSession session, CancellationToken cancellationToken);
+}
+```
+
+`PlayerLogoutService` no longer touches any `Basil.Server.Features.*` type. It holds
+`IEnumerable<IPlayerLogoutHandler>`, sorts once by `Order`, and runs each in turn inside a
+`try/catch (Exception ex) when (ex is not OperationCanceledException)` — catch, log, continue,
+per the decision doc. Cancellation is not caught here; it propagates, mirroring
+`GhostDisconnectService.RunOnce`'s own cancellation filter.
+
+### The seven handlers, in `Order`
+
+| Order | Handler | Slice | What it does |
+|---|---|---|---|
+| 10 | `MatchLeaveLogoutHandler` | Multiplayer | `GameSession` leaves its match under the match lock (`BeginMutationAsync`/`MatchMembership.LeaveAsync`/`PublishState`) |
+| 20 | `SpectatorTeardownLogoutHandler` | Spectating | Removes the departing `GameSession` as someone's spectator, then tears down BasilBot's own watch of it |
+| 30 | `ChannelPartLogoutHandler` | Chat | Parts every joined channel via `ChannelMembershipService.DisconnectFromChannels`, for both session kinds |
+| 40 | `GameSessionRegistryRemovalLogoutHandler` | Shared/Sessions | Removes a departing `GameSession` from `ISessionRegistry<GameSession>` |
+| 40 | `IrcSessionRemovalLogoutHandler` | Irc | Removes a departing `IrcSession` from `ISessionRegistry<IrcSession>` |
+| 50 | `StatusPublishLogoutHandler` | Spectating | Publishes the offline status to `IPlayerStatusEvents` |
+| 60 | `LogoutBroadcastHandler` | Shared/Sessions | Broadcasts the bancho Logout packet to every other online, unrestricted `GameSession` |
+
+The two Order-40 handlers never both apply to the same call (a session is either a `GameSession`
+or an `IrcSession`, never both), so the tie is inert.
+
+Why registry removal and the final broadcast are handlers owned by **Shared**, not inlined back
+into `PlayerLogoutService`: both touch only `GameSession`/`ISessionRegistry<T>`, which are
+already Shared types, so giving them their own `Order` slot is what lets the flat sorted list
+reproduce the original statement order exactly — channel-part, then registry removal, then
+status-publish, then broadcast — with no special-cased code splicing the loop. The alternative
+(keep them inline, run before/after the handler loop) would have been provably safe here (see
+the commit below) but only after reading `ChannelMembershipService.DisconnectFromChannels`'s
+reference-equality check; encoding them as ordered handlers instead means no reader has to
+re-derive that proof.
+
+`SpectatorTeardownLogoutHandler` resolves the bot's session with
+`Basil.Domain.Users.SystemUserIds.BasilBot` instead of `Basil.Server.Features.Bot
+.BotBootstrapService.BotId` (the two are the same value — `BotBootstrapService.BotId` is just
+`SystemUserIds.BasilBot` re-exposed). This is the one substitution that keeps Spectating from
+needing a new `Spectating -> Bot` `SliceAdjacency` row; reaching for `BotBootstrapService`
+instead would have tripped the task's stop condition.
+
+### Login: measured, nothing to invert
+
+`LoginService` and `IrcAuthenticationService` are *Features* types (`Basil.Server.Features.Auth`
+/ `Basil.Server.Features.Irc`), not `Shared` types. Their cross-slice references (`Auth -> Bot`,
+`Auth -> Chat`, `Auth -> Content`, `Auth -> Spectating`, `Auth -> Users`, `Irc -> Auth`, etc.) are
+already declared `SliceAdjacency` rows — the normal, intended mechanism for a Features type,
+unlike `PlayerLogoutService`, which lived in `Shared` and imported `Features` directly, breaking
+the layering rule `Shared_Should_Not_Reference_Features` exists to catch. Grepped
+`src/Basil.Server/Shared` for a login-owning type analogous to `PlayerLogoutService`/
+`GhostDisconnectService`: none exists. Login has nothing to invert for C3; recorded here rather
+than acted on, per the task's explicit instruction not to build one on the strength of the task
+title alone.
+
+### Commit 1 — the handler abstraction, seven handlers, DI wiring, and the pinned-list deletion
+
+- Added `IPlayerLogoutHandler` (`src/Basil.Server/Shared/Sessions/IPlayerLogoutHandler.cs`) and
+  rewrote `PlayerLogoutService` down to a sorted-handler runner (93 lines -> 46 lines -- carries
+  no Features import at all, first time in the file's history).
+- Added the seven handler files listed above, one per file, each in the slice that owns the
+  dependency it wraps.
+- Wired `services.AddSingleton<IPlayerLogoutHandler, X>()` once per handler, in the slice's own
+  `Add<Slice>` extension (`AddSharedInfrastructure` for the two Shared ones, `AddMultiplayer`,
+  `AddSpectating` x2, `AddChat`, `AddIrc`).
+- `SliceBoundaryTests.Shared_Should_Not_Reference_Features`: removed the
+  `"Basil.Server.Shared.Sessions.PlayerLogoutService"` entry from `knownOffenders` (12 -> 11) and
+  corrected the leading comment's count and attribution (it no longer holds a live `MatchSession`
+  or IRC connection; `GhostDisconnectService` is the remaining offender in that family, and only
+  because it still types `ISessionRegistry<IrcSession>` for its own constructor, an unrelated,
+  out-of-scope coupling).
+- Fixed every other production/test call site the constructor-signature change broke:
+  `LoginServiceTests`, `GhostDisconnectServiceTests` (two sites), `LogoutHandlerTests`,
+  `TcpIrcConnectionTests` — each rebuilt as the same seven-handler set, argument-for-argument
+  mapped from the old seven-parameter constructor, so no test's actual wiring changed, only the
+  packaging.
+- Rewrote `PlayerLogoutServiceTests` itself around a `MakeService(matchMembership, extraHandlers)`
+  factory that builds the full real handler set (not mocks of `PlayerLogoutService`'s own
+  internals) — the same shape DI registers — plus two new tests pinning the failure contract:
+  `Logout_WhenAHandlerThrows_LaterHandlersStillRunAndLogoutCompletes` and
+  `Logout_WhenAHandlerThrowsOperationCanceled_PropagatesAndSkipsLaterHandlers`.
+- Added `CompositionRootTests.ResolvesPlayerLogoutServiceWithAllHandlers`, asserting
+  `_provider.GetServices<IPlayerLogoutHandler>().Count() == 7` — the same shape as the existing
+  `ResolvesBanchoPacketDispatcherWithAllHandlers` test for `IPacketHandler`. This is the guard
+  against a silently-missing `AddSingleton<IPlayerLogoutHandler, X>()` line: every hand-wired unit
+  test would still pass even if a slice's DI registration were forgotten, exactly the shape of
+  bug C4's checkpoint flagged in `ChatDispatchService`.
+
+### Commit 2 — the `GhostDisconnectServiceTests` behavioural update
+
+Building the seven-handler set surfaced one **intentional** behavioural change, not a bug: the
+old `PlayerLogoutService` had no internal exception handling, so a single failing step (e.g. a
+channel lookup throwing) aborted the *entire* `LogoutAsync` call for that session, and only
+`GhostDisconnectService.RunOnce`'s own per-session `try/catch` stopped that from aborting the
+whole sweep. The new `PlayerLogoutService` catches per-handler, so a failing step now only skips
+itself — every other step for that same session, including registry removal, still runs.
+
+`GhostDisconnectServiceTests.RunOnce_OneSessionReapThrows_StillReapsTheRest` encoded the *old*
+whole-session-abort behaviour (`Assert.NotNull` on the poisoned session's registry entry, because
+the whole logout used to abort before reaching registry removal). Updated the assertion to
+`Assert.Null` for both sessions -- the poisoned session's channel-part step fails and is logged,
+but its own registry removal (Order 40) still runs -- and updated the doc comment to describe the
+new, more resilient contract. This is exactly what the task's verification line means by "a
+logout still completes when one step fails": before this task, it didn't.
+
+### Verification (all green)
+
+- `dotnet build --configuration Debug`: 0 errors.
+- `Basil.ArchitectureTests`: 6/6.
+- `Basil.Domain.Tests`: 114/114.
+- `Basil.Protocol.Tests`: 158/158.
+- `Basil.Server.Tests`: **1057**/1057 (1054 baseline + 1 `CompositionRootTests` handler-count test
+  + 2 `PlayerLogoutServiceTests` failure-contract tests).
+- `Basil.IntegrationTests`: 363/363 (two benign `[Test Class Cleanup Failure]` log lines from
+  `ScoreListEndpointTests`/`DirectSearchEndpointTests` teardown, same pre-existing pattern as
+  every prior Stage C commit's run against different test classes -- 0 failed reported).
+- Route count: unchanged at 140. No route-shaped file touched.
+- `measure-slice-graph.py`: **43 / 50, unchanged from C4's end state in both counts.** This is not
+  a null result: `PlayerLogoutService` and its new handler files live under `Shared/`, and the
+  script's slice list is derived only from `Basil.Server/Features/<Slice>` directories -- `Shared`
+  was never a tracked source of edges, in either features-only or solution-wide mode, so removing
+  its Features imports was invisible to this script in both directions. The real signal for this
+  task is the `Shared_Should_Not_Reference_Features` pinned-list deletion, not this script.
+- `SliceAdjacency.Allowed`: **untouched, still 44 tuples.** `PlayerLogoutService` was a `Shared`
+  type; none of its five Features imports were ever Features-to-Features edges this allowlist
+  tracks, so there was no row to delete. Checked every new handler file for an accidental new
+  cross-slice edge (e.g. `SpectatorTeardownLogoutHandler` importing `Bot` would have needed a new
+  `Spectating -> Bot` row) -- none exists; each handler only reaches its own slice's
+  already-owned services plus `Shared`/`Basil.Domain` types. No row added, no row removed, exactly
+  as predicted before running the script.
+
+### Next exact step
+
+C3 is finished and fully committed.
+
+## C6 — give `Basil.Domain` its own graph rule
+
+Done in one commit. Runs before C1 per the order above; C1 is blocked on it, because until this
+rule exists nothing watches the graph inside `Basil.Domain` once files start landing there.
+
+### The rule's shape
+
+Two new files in `tests/Basil.ArchitectureTests/`, mirroring `SliceAdjacency`/`SliceBoundaryTests`
+one level down:
+
+- `DomainAdjacency.cs` — `internal static class DomainAdjacency { public static readonly
+  (string From, string To)[] Allowed = [...] }`, same shape as `SliceAdjacency`, one edge per row
+  with a comment naming the file(s) that carry it.
+- `DomainBoundaryTests.cs` — one `[Fact]`,
+  `Namespaces_Should_Only_Reference_Declared_Namespaces`, built by copying
+  `SliceBoundaryTests.Slices_Should_Only_Reference_Declared_Slices` and substituting
+  `Basil.Domain.` for `Basil.Server.Features.` and `DomainAdjacency.Allowed` for
+  `SliceAdjacency.Allowed`. It discovers the namespace population **dynamically** from
+  `typeof(Basil.Domain.AssemblyMarker).Assembly` (`GetTypes().Where(t => t.Namespace starts with
+  "Basil.Domain.").Select(first segment).Distinct()`), the same way `SliceBoundaryTests` derives
+  `allSlices` — not from a hardcoded directory list. This matters concretely: it is what makes the
+  rule automatically cover C1's ~96 incoming files as they land, and it is what caught the two
+  extra edges below, which a rule scoped to only the directories sharing a name with a
+  `Features/<Slice>` would have missed by construction — the exact blind spot this task exists to
+  close.
+
+`Shared_Should_Not_Reference_Features`'s pinned-offender-list shape has no analog here:
+`SliceAdjacency` has no stale-row assertion either, and rows come off by hand when a carrier is
+confirmed gone (as C4/C3 did) rather than being enforced by a second test.
+
+### How the Domain directories without a `Features/` counterpart are treated
+
+`Basil.Domain`'s eight directories today are `Beatmaps`, `Channels`, `Content`, `Login`,
+`Multiplayer`, `Scores`, `Social`, `Users`. Only five of them (`Beatmaps`, `Content`,
+`Multiplayer`, `Scores`, `Users`) share a name with a `Features/<Slice>`; `Channels`, `Login` and
+`Social` do not — `Channels` is `Chat`'s domain model, `Login` and `Social` have no slice-level
+namesake at all.
+
+They are **not** exempted or treated specially. The rule's population is every first-level
+namespace segment under `Basil.Domain`, discovered from the assembly, full stop — `Channels`,
+`Login` and `Social` are namespaces like any other and need a declared row the same as `Beatmaps`
+or `Users` would. This is a deliberate difference from `SliceBoundaryTests`, whose population is
+implicitly `Features/<Slice>` only because nothing else lives under `Features/` in that shape;
+`Basil.Domain` has no such implicit restriction, and scoping `DomainBoundaryTests` to
+slice-named directories would have reproduced the instrument gap this task exists to close (two of
+the six edges below are exactly the edges that scoping would have missed).
+
+### The measured edge list — six, not three, and why
+
+The task brief's pinned starting point named three edges (`Multiplayer -> Beatmaps`,
+`Multiplayer -> Scores`, `Scores -> Beatmaps`). Re-measuring directly against the current tree (one
+`using`-directive/FQN grep per file under `src/Basil.Domain`, cross-checked against the compiled
+IL via the rule's own first, temporarily-permissive run) found **six**:
+
+| Edge | Carried by | Justification |
+|---|---|---|
+| `Multiplayer -> Beatmaps` | `Multiplayer/Round.cs` | A round has a beatmap. |
+| `Multiplayer -> Scores` | `Multiplayer/Round.cs` | A round carries the `Submission` each player produced. |
+| `Scores -> Beatmaps` | `Scores/Submission.cs`, `HitCounts.cs`, `Mods.cs` | A submission is against a beatmap. |
+| `Scores -> Login` | `Scores/Submission.cs` | `Submission.ValidateClientDetails` checks the submission's `ClientDetails` against the osu! version captured at login. |
+| `Channels -> Users` | `Channels/Channel.cs` | A channel gates read/write access on a `UserPrivileges` level. |
+| `Users -> Login` | `Users/User.cs` | A user carries the `Country` resolved at login. |
+
+The three extras (`Scores -> Login`, `Channels -> Users`, `Users -> Login`) all involve `Channels`
+or `Login` — exactly the two namespaces with no `Features/`-slice namesake. This is consistent with
+`architecture-progress.md`'s note that `measure-slice-graph.py`'s population is "files owned by a
+slice-named directory": the brief's three-edge figure reads as that script's output, and the
+script cannot see `Channels/` or `Login/` by construction — the same instrument gap
+`architecture-progress.md` already documents for `Shared/`. This is the stop condition
+"the measured Domain edge list differing from the three above" firing, reported rather than worked
+around: the extras are not padding, they are what a rule scoped correctly (assembly-discovered,
+not slice-name-matched) was built to catch. None of the three extra edges is implausible as a
+domain relationship (checked against the second stop condition, "needing to declare an edge that
+is not a plausible domain relationship" — it does not fire; a channel's access level, a
+submission's client validation, and a user's country are all ordinary domain data, not accidental
+coupling), so all six are declared in `DomainAdjacency.Allowed` rather than treated as a finding
+that blocks the rule from landing.
+
+Also checked and ruled out: `const`-only crossings, which `SliceBoundaryTests`' IL-based instrument
+cannot see (ADR-008's reasoning). `src/Basil.Domain` has three `const` fields
+(`Beatmap.LocalIdFloor`, `ClientDetails.WineAdapterSentinel` (private), `SystemUserIds.BasilBot`);
+grepped every usage — `LocalIdFloor` is only used within `Beatmaps` itself
+(`Beatmapset.IsLocallyIngested`), `WineAdapterSentinel` is private to `Login`, and `BasilBot` has no
+usage anywhere under `src/Basil.Domain` today. No hidden seventh edge.
+
+### Proof the rule can fail
+
+Added an additive member to `Multiplayer/MatchEvent.cs` (a record with no existing body) —
+`internal static readonly Basil.Domain.Social.Relationship? DeliberateBreak = null;` — a real IL
+field-type reference to an undeclared namespace, not just a `using` with no actual use (a `using`
+alone emits no IL and would have proven nothing). Built and ran
+`Basil.ArchitectureTests` — failed exactly as expected:
+
+```
+Basil.Domain.Multiplayer.MatchEvent -> one of [Basil.Domain.Users, Basil.Domain.Social, Basil.Domain.Login, Basil.Domain.Content, Basil.Domain.Channels] (via Basil.Domain.Multiplayer.MatchEvent)
+```
+
+Reverted the edit; `git diff -- src/Basil.Domain/Multiplayer/MatchEvent.cs` is empty. Rebuilt and
+reran — green again, 7/7.
+
+### Verification (all green)
+
+- `dotnet build --configuration Release`: 0 errors (solution-wide).
+- `Basil.ArchitectureTests`: **7/7** (was 6/6; +1 for the new `DomainBoundaryTests` fact).
+- `Basil.Domain.Tests`: 114/114.
+- `Basil.Protocol.Tests`: 158/158.
+- `Basil.Server.Tests`: 1057/1057.
+- `Basil.IntegrationTests`: 363/363 (same benign `[Test Class Cleanup Failure]` teardown log lines
+  seen in prior commits — `MotdSettingsManagementEndpointTests` and, this run,
+  `MenuBannerEndpointTests` — 0 failed reported, unrelated to this change).
+- Total: 7 + 114 + 158 + 1057 + 363 = **1699** (oracle's 1698 + this task's one new fact).
+- Route count: `grep -rhoE 'Map(Get|Post|Put|Patch|Delete)\("[^"]*"' src/Basil.Server --include=*.cs
+  | sort -u | wc -l` → **140**, unchanged. No route-shaped file touched.
+- `SliceAdjacency.Allowed`: **44** tuples, unchanged (this task adds no cross-slice edge; the task
+  brief's own count of "44" matches what's counted here — the checkpoint's own C4 history above
+  says 46 → 45, which is C4's number after its own commit, not today's; not touched by C6 either
+  way).
+- `Shared_Should_Not_Reference_Features` pinned list: **12** entries by direct count of the
+  `knownOffenders` array (the file's own comment says "11 types" — a pre-existing, one-off
+  discrepancy between the comment and the array, not introduced by this task and not touched by
+  it). Unchanged before/after C6.
+
+### Rider MCP refactorings
+
+None applied. This task is new test code (`DomainAdjacency.cs`, `DomainBoundaryTests.cs`) plus one
+temporary, fully-reverted edit to prove the rule fails — no rename, no namespace move, no signature
+change, nothing a refactoring tool has a target for.
+
+### Applied but not yet committed or verified, at the time this section was written
+
+Nothing. Everything described above (the two new test files, this checkpoint update) lands in one
+commit together, and every verification step above ran against that exact state before the commit
+was made.
+
+### Noted, not this task's to fix
+
+`src/Basil.Server/Features/Chat/ChatDispatchService.cs` shows modified (`M`) in `git status`
+throughout this session, but `git diff` on it is empty — a pre-existing CRLF/index artifact from
+before this task started, not a real change and not something C6 touched. A later worker should not
+attribute it to this commit.
+
+### Next exact step
+
+C6 is finished and fully committed. C1a is next — see the header of this file. `DomainBoundaryTests`
+is in place for the day C1b moves a feature into `Basil.Domain`; until C1a has emptied the
+`TransportSeamTests` pinned list, nothing moves.
+
+## C1a — cut the transport seam, one service per commit
+
+Order and reasoning: `plans/execution/c1-transport-seam-decision.md`. Currency: the
+`TransportSeamTests` pinned list, 21 at the start.
+
+### Step 1 — `SpectatorService` (done, 21 to 20)
+
+`ISpectatorNotifier` (`Features/Spectating/`) carries the three things the service tells clients:
+a host that a spectator joined, a spectator that a fellow joined, a spectator that a fellow left.
+`BanchoSpectatorNotifier` (`Features/Spectating/Packets/`, the slice's bancho side) encodes each as
+the packet the service used to build inline. The service no longer imports `Basil.Protocol`; its
+row is deleted. The constructor gained the parameter through Rider's `change_api_signature`, which
+rewrote the twelve call sites, all in tests, with the real bancho notifier — so every existing test
+still asserts the same packet bytes through the same path. `SpectateFramesEvent` keeps its row: it is
+the SSE payload that carries `ReplayFrame`/`ScoreFrame`, Task D3's kind of defect, not a service.
+
+Verification: build green, ArchitectureTests 8, Server.Tests 1057, IntegrationTests 362 passed
+and `DiagnosticEndpointTests.GetGcLive_FirstEventIsARealGcReading` failed once at 15 s on a
+5 min 55 s run, then passed in isolation — the second different `DiagnosticEndpointTests` live test
+to do that in two consecutive full runs, unrelated to this change (nothing in Diagnostics or its
+tests moved). Recorded in `HANDOVER.md` §8 with what is known.
+
+### Step 2 — the match services (done, 20 to 17)
+
+`IMatchNotifier` (`Features/Multiplayer/`) carries nine things a match tells clients: join
+rejected, removed, joined, host transferred, invited, round started, round aborted, match disposed,
+and state changed. `BanchoMatchNotifier` (`Features/Multiplayer/Packets/`) encodes each as the
+packet the services used to build, owns the `PacketBroadcastGate` version check and the
+stale-publish metric that `MatchBroadcast.EnqueueStateAsync` used to own, and has its own channel
+and lobby fan-out. Rows deleted: `MatchMembership`, `MatchControlService`,
+`Handlers.Lifecycle.AbortHandler`. Rows kept: `MatchLifecycle` (still `MatchState` from
+`Basil.Protocol.Multiplayer`), `MatchBroadcast` (still `IrcMessageWriter` for chat lines, and it
+keeps `Enqueue(match, byte[])` because seven packet handlers fan out bytes through it — bytes are
+not a protocol type, so the rule does not see them; the handlers move to
+`BanchoMatchNotifier.Broadcast` when the chat step touches `MatchBroadcast`).
+
+Two things were not in the plan for this step. `MatchControlService.Invite` was `static`; it is an
+instance method now, because it notifies, and its two callers (`MatchSlotEndpoints`,
+`MpCommandService`) use the instance. `MpCommandService` builds its own `MatchControlService` in a
+field initialiser, so it gained the notifier parameter too rather than constructing a bancho
+adapter inside a business type.
+
+A worker applied the constructor changes through Rider's `change_api_signature` and died on the
+session limit before the bodies; the orchestrator finished the bodies and the test call sites.
+`MultiplayerTestSupport` exposes one shared `MatchNotifier`.
+
+Verification: build green, ArchitectureTests 8, Domain 114, Protocol 158, Server.Tests 1057,
+IntegrationTests 363, all passed (3 min 54 s, no flake this run).
+
+### Step 3, commit 1 — `ClientIntegrityService` (done, 17 to 16)
+
+Adds `ChatLine` and `IChatNotifier` (`Features/Chat/`) and `ChatNotifier`
+(`Features/Chat/Packets/`), which sends through the recipient's `IrcConnection` — the per-session
+routing that already speaks IRC to IRC clients and re-encodes to packets for osu! clients — so every
+test that reads back an `IrcMessage` sees the same message over the same path. The anti-cheat DM to
+referees is the only site; row deleted. One constructor site, in its own test.
+
+Verification: build green, ArchitectureTests 8, Server.Tests 1057, IntegrationTests 363 (3 min
+51 s).
+
+### Step 3, commit 2 — `MatchBroadcast` (done, 16 to 15)
+
+`ChannelMembershipService` gained a `BroadcastPrivmsg(channel, ChatLine, skip)` overload beside
+the `IrcMessage` one — it still encodes with `IrcMessageWriter` itself for now, so no constructor
+change touched its 44 sites; commit 5 replaces that with `IChatNotifier` and deletes the old
+overload. `PublishMatchChat` reads sender id, name and text as fields. `MatchBroadcast.EnqueueChat`
+builds a `ChatLine`, `AnnounceToRoomAndReferees` delivers to referees through `IChatNotifier`, and
+the last `Basil.Protocol` import leaves the file; row deleted. Rider's `change_api_signature`
+reported the nine constructor sites as applied but wrote none of the test files this time — the
+sites were fixed by hand; check `git diff` after any Rider refactoring before trusting its report.
+
+Verification: build green, ArchitectureTests 8, Domain 114, Protocol 158, Server.Tests 1057,
+IntegrationTests 363 (3 min 41 s).
+
+### Step 3, commit 3 — `MpCommandService+ScopedDmReplySink` (done, 15 to 14)
+
+The scoped `!mp` reply sink delivers its DM lines through `IChatNotifier` and mirrors the channel
+copy through the `ChatLine` overload. `MpCommandService` takes the chat notifier (two test sites)
+and hands it to the sink. The nested row is deleted; the outer `MpCommandService` row stays for
+`new MatchState(...)` — step 5's read-model problem.
+
+Verification: build green, ArchitectureTests 8, Server.Tests 1057, IntegrationTests 363 (3 min
+40 s).
+
+### Step 3, commit 4 — `ChatDispatchService` and its two sinks (done, 14 to 11)
+
+`IChatNotifier` gained `DmRefused(sender, recipientName, DmRefusal)`; the bancho implementation
+enqueues `UserDmBlocked` or `TargetSilenced` for an osu! sender and tells an IRC sender nothing,
+exactly as the inline `sender is GameSession` branches did. Channel messages, DMs, the away-message
+echo and both reply sinks now build a `ChatLine`; `notice` travels as the record's flag. Three rows
+deleted (the service and its two nested sinks). Seven constructor sites, all in tests, pass the real
+`ChatNotifier`.
+
+Verification: build green, ArchitectureTests 8, Server.Tests 1057, IntegrationTests 363 (7 min
+41 s this run, no failure).
+
+### Step 3, commit 5 — `ChannelMembershipService` (done, 11 to 10)
+
+`IChannelNotifier` (`Features/Chat/`) carries the six things channel membership tells clients:
+joined-with-roster, left, a member joined/left, quit, topic changed, roster changed.
+`ChannelNotifier` (`Features/Chat/Packets/`) implements it, branching on `GameSession`/`IrcSession`
+once per method instead of inline at each call site. The amended shape from the decision document
+held: the join echo takes the roster as a parameter rather than `ChannelNotifier` calling
+`IrcQueryService`, which would have been a constructor cycle
+(`IrcQueryService -> ChannelMembershipService -> IChannelNotifier -> ChannelNotifier -> IrcQueryService`).
+`IrcNamesReply` (`Features/Irc/`) is the one place that formats RPL_NAMREPLY/RPL_ENDOFNAMES; both
+`ChannelNotifier.Joined` and `IrcQueryService.BuildNamesReply` call it. NAMES and LIST left Chat
+entirely — `IrcQueryService` now builds both replies from `ChannelMembershipService.Roster` and
+`Listable`, and `IrcAuthenticationService`/`TcpIrcConnection` call `IrcQueryService` instead of the
+membership service directly. `BroadcastPrivmsg`'s `IrcMessage` overload and the `IrcMessage`-taking
+`PublishMatchChat` are gone; only the `ChatLine` path remains. `DisconnectFromChannels`' dedup logic
+is unchanged in shape — the same `quitNotified` set, built per channel, notified once at the end
+through `channels.Quit` instead of inline per member. The service takes `IChatNotifier` and
+`IChannelNotifier`; the NAMES/LIST tests moved from `ChannelMembershipServiceTests` to
+`IrcQueryServiceTests` with their assertions unchanged. Row deleted; `Basil.Protocol` no longer
+appears in the file.
+
+Verification: build green, ArchitectureTests 8, Domain 114, Protocol 158, Server.Tests 1057 (three
+tests moved between files, net count unchanged), IntegrationTests 363 (7 min 43 s, no failure).
+
+**Step 3 is complete. The chat seam's pinned-list contribution is done: 21 → 10 across five
+commits.**
+
+### Step 4 — `Auth.LoginService` (done, 10 to 9)
+
+**Decided: neither pure notifier nor pure adapter.** `LoginService`'s 24 `ServerPacketWriter` sites
+split into two kinds, checked by reading every call site: 22 build pieces of the login response's
+own `byte[]` body — the HTTP handshake's actual payload, not a notification to anyone — and the
+remaining two (`other.Enqueue(userPresenceAndStats)`, `other.Enqueue(channelInfo)`) already call
+`GameSession.Enqueue(byte[])`, which takes no protocol type by name and was therefore never part of
+the pinned reason. So there was no genuine "tell someone else" case left to route through a
+notifier interface once the encoding was factored out — the whole file's problem was the 22
+encode-my-own-response sites.
+
+`LoginResponseEncoder` (`Shared/Http/Bancho/`, beside `PacketBuilders`, which `LoginService` already
+called for presence/stats without incident) is a concrete pass-through with no interface — one
+method per packet, taking the same arguments `ServerPacketWriter` did. No interface: one
+implementation, no swap point, matching the rule that an abstraction needs a boundary
+(`PacketBuilders` itself has none either). `LoginFailureReason` — a protocol enum LoginService held
+directly — collapses into two named methods, `AuthenticationFailedReply()` and
+`ServerErrorReply()`, so the wire reason code never has to travel as a value through business code;
+every call site was a 1:1 textual substitution (`ServerPacketWriter.X(...)` → `LoginResponseEncoder.X(...)`),
+order and arguments unchanged, so the login handshake's byte sequence is unchanged for every
+existing test. `ClientPrivileges` was already a `Basil.Domain.Users` type, not protocol, so
+`BanchoPrivileges` takes it directly rather than a pre-cast `int`. `Concat` stays in `LoginService`
+— it only touches `byte[][]`, never a protocol type by name, so it was never the reason.
+
+Row deleted; `LoginService` no longer imports `Basil.Protocol` or `Basil.Protocol.Packets`. No test
+file needed a change — the only construction site (`LoginServiceTests.cs`) never referenced
+`ServerPacketWriter` or `LoginFailureReason` directly.
+
+Verification: build green, ArchitectureTests 8, Domain 114, Protocol 158, Server.Tests 1057,
+IntegrationTests 363 (8 min 37 s, no failure).
+
+### Step 5 — the read-model types (done, 9 to 3)
+
+Measured before designing, and the measurement changed the scope: `MatchLiveSnapshotBuilder`'s only
+protocol reference turned out to be `ScoreFrame` (not `MatchState`), used by exactly one method,
+`BuildPlayerScore`, called only from `MatchScoreUpdateHandler` (already `.Packets`, exempt). Moving
+that one method into its only caller cleared the row with no new type. `AnnounceRoutes` and
+`Spectating.SpectateFramesEvent` turned out not to be this step's problem at all — see below, both
+stay pinned deliberately.
+
+**`MatchCreationData`** (`Features/Multiplayer/`) is the actual read-model fix: a business-shaped
+record of what a match is created with — name, password, initial map, host id, and the four
+already-Domain ruleset enums (`GameMode`, `Mods`, `MatchWinCondition`, `MatchTeamType`) — carrying
+no slot state, because a match always starts empty. It replaced `MatchState` (a 19-field wire record
+covering a full room, including per-slot arrays no creation path ever reads) as the parameter type of
+`IMatchRegistry.CreateAsync`, `InMemoryMatchRegistry.CreateAsync`/`BuildNew`,
+`MatchLifecycle.CreateAsync`/`CreateEmptyAsync`. **`MatchCreationDataMapper`**
+(`Features/Multiplayer/Packets/`) validates and maps the wire `MatchState` at the boundary: `IsValid`
+(moved verbatim from `MatchLifecycle.ValidateMatchData`, called only from the three `.Packets`
+handlers that already had it) and `ToCreationData` (the wire-to-domain conversion, including the
+0/-1-means-null `MapId` sentinel logic `InMemoryMatchRegistry.BuildNew` used to own). `MpCommandService`
+(`!mp make`) and `MatchListEndpoints` (`POST /match`) — the two non-wire callers — now build
+`MatchCreationData` directly with typed enum literals instead of matching `MatchState`'s int-sentinel
+shape by hand; both got simpler, not just relocated. Five rows deleted: `IMatchRegistry`,
+`InMemoryMatchRegistry`, `MatchLifecycle`, `MpCommandService`, `Multiplayer.Endpoints.MatchListEndpoints`.
+`MatchLiveSnapshotBuilder`'s row deleted too (above), for six total.
+
+**Two rows stay pinned, deliberately, with reasons recorded here rather than guessed at again:**
+
+* **`AnnounceRoutes`** is not a read-model problem. It decides who to notify (every online player, or
+  a given id list) and calls `ServerPacketWriter.Notification` — the exact "API host needs something
+  Hosts.Bancho owns" case `architecture-target-20260908.md` §3.5 and Task D3 already name, with the
+  named resolution "Domain publishes an event, Hosts.Bancho subscribes and encodes it." That
+  mechanism does not exist yet — Stage D has not started and there is no bancho host to subscribe
+  from. Building it now, inside Stage C, would invent Stage D's infrastructure early against a
+  requirement of one route. Left for Task D3, as already planned.
+* **`Spectating.SpectateFramesEvent`** is a deliberate decision already recorded in the record's own
+  remarks: it "reuses the wire-level `ReplayFrame` and `ScoreFrame` protocol types directly...
+  following the same convention as `PlayerLiveScore`... rather than duplicating an API-layer copy of
+  the same fields." Its only producer (`SpectateFramesHandler`) is `.Packets`, exempt; its only other
+  consumers are `OpenApiExampleExtensions` (already an accepted `Shared -> Features` pinned offender)
+  and the SSE serializer. Re-litigating a documented, reasoned tradeoff to shrink a count by one is
+  not this step's job — CLAUDE.md rule 2 argues the other way, against the duplication the remarks
+  already rejected.
+
+A regression test (Issue #4, the wire `MapId` 0/-1 sentinel meaning "no map") moved with the logic it
+covers, from `InMemoryMatchRegistryTests` to the new `MatchCreationDataMapperTests` — the mapper is
+now where that translation happens, and the registry tests were rewritten to check the narrower thing
+they still own (pass-through, not translation).
+
+Verification: build green, ArchitectureTests 8, Domain 114, Protocol 158, Server.Tests 1062 (net +5:
+one regression test relocated, two replaced by one at the layer that still owns them, four new
+`MatchCreationDataMapperTests`), IntegrationTests 363 (7 min 42 s, no failure).
+
+**C1a is complete.** Pinned list: 21 → 3.
+
+**C5 has run and reported rather than concluded.** Every slice-boundary instrument
+(`SliceAdjacency`, the `Shared -> Features` pinned list, `DomainAdjacency`, the script's two counts)
+reads identical to before C1a — expected, since none of them has `Basil.Protocol` in its population
+and C1a never touched a slice boundary. The plan's C5 prediction (features-only ≈17) was written for
+the original, unsplit C1 — the ~96-file move, which is now C1b and has not run. Full writeup and the
+two legitimate paths (run C1b, or decide C1a's namespace-level separation is enough and adjust
+`architecture-target-20260908.md` to match) are in `architecture-progress.md`'s "C5, run after C1a"
+section. **This is a decision for the user, not the next task an agent should pick for itself.**
+
+## C2 -- investigated, not started: the task's own currency cannot move
+
+**Nothing in this section is applied to the tree.** The working tree is byte-identical to
+`8f318c8f` (confirmed by `git diff` returning empty). One test file was edited twice and reverted
+to prove a point empirically; the revert is confirmed clean by `git diff --stat` on that file
+returning nothing. No commit was made for C2 -- this write-up is the only output, landing as a
+docs-only commit.
+
+### What was measured (re-confirms the task's own table, does not re-derive it)
+
+Write ownership, grepped fresh on this tree, matches the task's table exactly:
+
+| Field | Sites | Files |
+|---|---|---|
+| `.Match =` | 4 | `MatchLifecycle.cs` (1), `MatchMembership.cs` (3) |
+| `.Spectating =` | 2 | `SpectatorService.cs` |
+| `.InLobby =` | 2 | `LobbyJoinHandler.cs`, `LobbyPartHandler.cs` |
+| `.MpScopeMatchId =` | 4 | `MatchMembership.cs` (1), `MpCommandService.cs` (3) |
+
+Read-site blast radius for `.Match` alone (property reads, not the unrelated `Regex.Match`/method
+calls): **45 sites across 6 files' worth of slices** -- `Auth/ClientIntegrityService.cs`,
+`Chat/ChatDispatchService.cs`, `Irc/BanchoIrcBridgeConnection.cs`,
+`Multiplayer/Endpoints/MatchSlotEndpoints.cs`, `Multiplayer/MatchControlService.cs`,
+`Multiplayer/MatchLifecycle.cs`, `Multiplayer/MatchMembership.cs`, `Multiplayer/MpCommandService.cs`,
+seventeen files under `Multiplayer/Packets/`, `Scores/ScoreSubmissionService.cs`, and
+`Shared/Http/Bancho/PacketDispatcher.cs`. This is why the task called C2 the riskiest task in the
+stage; the number is real.
+
+### The blocking finding: the pinned list cannot lose a `Shared.Sessions.*` entry from this split
+
+The task states success as: *"`Shared/Sessions/GameSession.cs` stops naming
+`Features.Multiplayer` and `Features.Spectating` types. The proof is the
+`Shared_Should_Not_Reference_Features` pinned list losing its `Shared.Sessions.*` entries."*
+
+Two things are wrong with that framing, found by reading the actual file and by running the test,
+not by assumption:
+
+1. **`GameSession.cs` never names `Features.Spectating`.** Its `Spectating` property is typed
+   `GameSession?`, `Spectators` is `IReadOnlyCollection<GameSession>`, and the backing field is
+   `ConcurrentDictionary<int, GameSession>` -- all self-typed `Shared.Sessions` types. The file's
+   only `Features` usings are `Basil.Server.Features.Irc` (for `IIrcConnection` /
+   `BanchoIrcBridgeConnection`) and `Basil.Server.Features.Multiplayer` (for the `Match` field's
+   `MatchSession` type). There is no `Features.Spectating` reference to remove.
+2. **Removing `.Match` does not un-pin `GameSession`, and removing `.MpScopeMatchId` does not
+   un-pin `UserSession`.** `SliceBoundaryTests.Shared_Should_Not_Reference_Features` is a per-type
+   check: any single `Features` dependency keeps a type in `knownOffenders`, checked by exact set
+   equality. `GameSession` keeps `override IIrcConnection IrcConnection` and
+   `new BanchoIrcBridgeConnection(this)` in its constructor -- both `Features.Irc` -- and the
+   task's own destination table defers `IrcConnection` to Stage D, explicitly out of C2's scope.
+   `UserSession`'s *only* `Features` reference is the same abstract `IIrcConnection IrcConnection`
+   property; `MpScopeMatchId` is `int?` and was never a `Features` dependency at all.
+
+**Empirical probe**, run rather than argued: temporarily deleted only
+`"Basil.Server.Shared.Sessions.UserSession"` from `SliceBoundaryTests.knownOffenders`
+(`tests/Basil.ArchitectureTests/SliceBoundaryTests.cs`), ran `dotnet build` (0 errors) then
+`dotnet test tests/Basil.ArchitectureTests --no-build` in the foreground. Result: **failed**,
+naming `UserSession` as an unexpected actual offender -- proof that the `Irc` coupling alone is
+sufficient to keep a `Shared.Sessions` type pinned, with zero contribution from `MpScopeMatchId`.
+Reverted the one-line deletion; `git diff` on the test file now returns empty (byte-identical to
+`8f318c8f`); reran `dotnet test tests/Basil.ArchitectureTests --no-build`: 6/6 passing again.
+
+Since `GameSession` carries a *strictly stronger* `Irc` coupling than `UserSession` (both the
+property override and the constructor's concrete instantiation, vs. `UserSession`'s property alone),
+the same conclusion applies to it a fortiori: removing `Match` cannot remove `GameSession` from the
+list either, because `Irc` alone already pins it.
+
+**Net effect if the four-field split were carried out as specified: `SliceAdjacency` 44 -> 44,
+`measure-slice-graph.py` 43/50 -> 43/50 (unchanged; every read/write site above already lives
+inside a slice that already has a declared edge to the field's owning slice, so no new crossing is
+created, but none is removed either), and the pinned list 11 -> 11.** The one instrument the task
+names as its actual currency does not move. This was checked, not assumed: see the probe above.
+
+### A second, independent problem: the `.Match` half of this split may be redundant before C1 runs
+
+`MatchSession` (`src/Basil.Server/Features/Multiplayer/MatchSession.cs`, 584 lines) is today a
+single `sealed class` that already carries both halves Task C1 plans to separate: business state
+(slots, host, settings, referees, bans, timer, progress) and the SSE projection machinery
+(`StateStream<T>` x9, `SseSubscriberRegistry`, `SequenceGate`), confirmed by reading the file.
+C1's own plan entry says the business half moves to `Basil.Domain.Multiplayer` and the projection
+half stays behind in `Basil.Server`.
+
+If `GameSession.Match` ends up, post-C1, pointing at the *business* half (the natural read of "a
+session's current match" once the split happens), the field's type becomes a `Basil.Domain` type,
+and the `Shared -> Features.Multiplayer` edge from `.Match` disappears as a side effect of C1 --
+for free, with none of the 45-site read-site churn this task would otherwise spend on it. Whether
+that is actually how C1 will split `GameSession.Match`'s reference is C1's design decision, not
+verified here (it depends on whether callers of `.Match` need slot/settings/host state -- Domain
+side -- or SSE snapshot state -- Server side -- and today's 45 call sites are a mix; a worker
+doing C1 needs to check this before assuming it resolves cleanly). Flagged here because, if true,
+doing the `.Match` quarter of C2 now is work C1 either redoes or invalidates.
+
+### Cost the split would add for zero measured benefit
+
+Today all four fields live on the connection object (`GameSession`/`UserSession`) and are
+discarded for free when the object is discarded at logout -- no field-specific cleanup exists or
+is needed. Moving a field to a player-id-keyed map owned by a slice makes that map's entries
+outlive the session object; an entry not explicitly removed at logout leaks and can resurface
+incorrectly if the same player id logs back in. Checked what already clears each field today:
+
+- `.Match`: fully covered by the existing `MatchLeaveLogoutHandler` (Order 10), which already
+  calls `MatchMembership.LeaveAsync` under the match lock -- that method is one of the four writers
+  above, so a map-backed rewrite stays covered by the handler that exists.
+- `.Spectating`: fully covered by the existing `SpectatorTeardownLogoutHandler` (Order 20), which
+  reads `game.Spectating` and calls `SpectatorService.RemoveSpectator` -- also already covered.
+- `.InLobby`: **not covered by anything today.** `ChannelPartLogoutHandler` (Order 30) parts
+  channels; it does not touch `InLobby`. A map-backed rewrite would need a *new* cleanup step that
+  has no reason to exist today (the field just dies with the object).
+- `.MpScopeMatchId`: **not covered by anything today**, same reason -- nothing in the logout path
+  touches it now, and nothing needs to. A map-backed rewrite needs a new handler or an extension of
+  an existing one.
+
+So the four-field split, run as specified, adds two new lifetime obligations to buy zero movement
+on the instrument the task names as its proof.
+
+### Recommendation -- not acted on, orchestrator decision needed
+
+1. **Fold the `.Match` question into C1's `MatchSession` split design**, rather than deciding it
+   here under C2's name (which the stage-C order doc explicitly forbids -- "doing half of C1 early
+   is how the two tasks blur together"). Check whether `GameSession.Match`'s post-split reference
+   naturally lands on the Domain half before spending the 45-site churn under C2.
+2. **`.Spectating`, `.InLobby`, `.MpScopeMatchId` have no such shortcut** -- they were never really
+   pinned-list contributors (Spectating never was; InLobby and MpScopeMatchId are scalar/self-typed
+   and never triggered the rule either). Splitting them into per-slice maps is a legitimate
+   "own your state" cleanup per the plan's write-ownership principle, but it is architecture for
+   its own sake against this task's stated proof, not a step that moves any of the four measured
+   instruments, and it is the source of the two new cleanup obligations above.
+3. **The real, and only, way to move the pinned list for `GameSession`/`UserSession` is the `Irc`
+   coupling** -- `IIrcConnection`/`BanchoIrcBridgeConnection` -- which the task's own destination
+   table places in Stage D, not C2. Moving it now would be taking Stage D's work under C2's name,
+   the same ambiguity the stage-C order doc warns against for C1.
+
+None of the four stop conditions listed in the task's instructions name this situation literally
+(no new `SliceAdjacency` row is needed, no field has more than one writer, no new lock is needed,
+the route count does not move), but the underlying instruction -- *"Stop conditions: report rather
+than work around"* -- applies to the deeper problem: proceeding would produce a compiling four-
+commit split whose own stated proof does not appear, while adding cleanup obligations that do not
+exist today. Reported rather than run.
+
+### Next exact step
+
+Orchestrator decision needed before any C2 commit lands:
+- Confirm whether `.Match` should move under C2 at all, or wait for C1's `MatchSession` split to
+  settle where `GameSession.Match` points.
+- Confirm whether `.Spectating` / `.InLobby` / `.MpScopeMatchId` should still be split into
+  per-slice maps despite moving no instrument, given the new logout-cleanup obligations they would
+  introduce.
+- If the answer to both is "proceed anyway," re-open this section and execute the four-field split
+  as originally specified, including new `IPlayerLogoutHandler` entries for `.InLobby` (a Chat
+  handler) and `.MpScopeMatchId` (a Multiplayer handler, since neither is covered by an existing
+  handler today).
+
+Until that decision lands, treat C2 as **investigated and blocked**, not started. C6 and C1 remain
+next in the order per `plans/execution/stage-c-order-decision.md`; C1 in particular should read the
+"`.Match` half may be redundant" finding above before starting.
