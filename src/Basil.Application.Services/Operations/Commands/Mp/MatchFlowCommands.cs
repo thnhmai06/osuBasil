@@ -25,7 +25,7 @@ public sealed class MatchFlowCommands(
 		var beatmap = await beatmapsById.LoadAsync(beatmapId, cancellationToken);
 		if (beatmap is null) return localizer.Get(MpReplies.NoBeatmapWithId, beatmapId);
 
-		room.ChangeBeatmap(beatmap.Hash);
+		room.Beatmap = beatmap;
 		return localizer.Get(MpReplies.ChangedBeatmap, beatmap.Beatmapset.Artist, beatmap.Beatmapset.Title,
 			beatmap.Version);
 	}
@@ -39,15 +39,15 @@ public sealed class MatchFlowCommands(
 		switch (text)
 		{
 			case "None":
-				room.ChangeFreemods(false);
-				room.ChangeMods(GameMods.NoMod);
+				room.Settings.Freemods = false;
+				room.Settings.Mods = GameMods.NoMod;
 				return localizer.Get(MpReplies.DisabledFreemod);
 			case "Freemod":
-				room.ChangeFreemods(true);
+				room.Settings.Freemods = true;
 				return localizer.Get(MpReplies.EnabledFreemod);
 			default:
 				var mods = ModsExtensions.FromModString(string.Concat(args));
-				room.ChangeMods(mods);
+				room.Settings.Mods = mods;
 				return localizer.Get(MpReplies.EnabledMods, mods);
 		}
 	}
@@ -58,7 +58,7 @@ public sealed class MatchFlowCommands(
 		if (args.Count < 1 || !int.TryParse(args[0], out var teamMode) || !Enum.IsDefined((GameTeamType)teamMode))
 			return localizer.Get(MpReplies.SetUsage);
 
-		room.ChangeTeamType((GameTeamType)teamMode);
+		room.Settings.TeamType = (GameTeamType)teamMode;
 
 		if (args.Count > 1 && int.TryParse(args[1], out var winCondition) &&
 		    Enum.IsDefined((GameWinCondition)winCondition))
@@ -67,7 +67,7 @@ public sealed class MatchFlowCommands(
 		var sizeSuffix = string.Empty;
 		if (args.Count > 2 && int.TryParse(args[2], out var size) && size is >= 1 and <= 16)
 		{
-			room.Resize(size);
+			room.Slots.Resize(size);
 			sizeSuffix = $", size {size}";
 		}
 

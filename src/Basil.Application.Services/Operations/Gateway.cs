@@ -1,4 +1,3 @@
-using Basil.Application.Contracts.Events;
 using Basil.Application.Contracts.Registries;
 using Basil.Application.Contracts.Repositories;
 using Basil.Application.Models.Auth;
@@ -21,8 +20,7 @@ public sealed class Gateway(
 	IPlayerRegistry playerRegistry,
 	IChannelRegistry channelRegistry,
 	IRepository<string, ChatChannel> channelRepository,
-	IRoomRegistry roomRegistry,
-	IEventDispatcher dispatcher)
+	IRoomRegistry roomRegistry)
 {
 	/// <summary>
 	///     Authenticates a login attempt and, on success, creates and registers the session and joins
@@ -83,7 +81,6 @@ public sealed class Gateway(
 				if (!user.Privilege.Has(channel.ReadPrivilege)) continue;
 
 				channelSession.Join(channel, user, session);
-				await FlushAsync(channelSession, cancellationToken);
 			}
 		}
 		catch
@@ -110,14 +107,10 @@ public sealed class Gateway(
 				if (game.SpectatingUserId is { } hostId &&
 				    playerRegistry.AllById.GetValueOrDefault(hostId) is GameSession host)
 					game.StopSpectating(host);
-				await FlushAsync(game, cancellationToken);
 
 				foreach (var spectatorId in game.SpectatorIds.ToArray())
 					if (playerRegistry.AllById.GetValueOrDefault(spectatorId) is GameSession spectator)
-					{
 						spectator.StopSpectating(game);
-						await FlushAsync(spectator, cancellationToken);
-					}
 
 				if (game.RoomId is { } roomId)
 				{
@@ -126,7 +119,7 @@ public sealed class Gateway(
 						await using (scope)
 						{
 							if (scope.Room.Slots.Find(user) is not null)
-								scope.Room.Leave(user);
+								scope.Room.Slots.Leave(user);
 						}
 				}
 
@@ -135,21 +128,11 @@ public sealed class Gateway(
 
 			foreach (var channelName in session.Channels.ToArray())
 				if (channelRegistry.AllByName.TryGetValue(channelName, out var channelSession))
-				{
 					channelSession.Part(session);
-					await FlushAsync(channelSession, cancellationToken);
-				}
 		}
 		finally
 		{
 			playerRegistry.Remove(session);
 		}
-	}
-
-	private async Task FlushAsync(IEvents subject, CancellationToken cancellationToken)
-	{
-		foreach (var domainEvent in subject.Events)
-			await dispatcher.DispatchAsync(domainEvent, cancellationToken);
-		subject.Clear();
 	}
 }

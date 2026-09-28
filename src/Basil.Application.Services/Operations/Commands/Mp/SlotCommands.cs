@@ -31,12 +31,12 @@ public sealed class SlotCommands(
 			return localizer.Get(MpReplies.MoveUsage);
 
 		var target = await ResolveAsync(args[0], cancellationToken);
-		if (target is null || room.Slots.Find(target) is null)
+		if (target is null || room.Slots.Find(target) is not { } slot)
 			return localizer.Get(MpReplies.UserNotInMatchOrUnregistered);
 
 		try
 		{
-			room.MoveSlot(target, slotNumber - 1);
+			RoomSlots.Move(slot, room.Slots[slotNumber]);
 		}
 		catch (InvalidOperationException)
 		{
@@ -55,30 +55,30 @@ public sealed class SlotCommands(
 		if (target is null || room.Slots.Find(target) is null)
 			return localizer.Get(MpReplies.UserNotInMatchOrUnregistered);
 
-		room.TransferHost(target);
+		room.Host = target;
 		return localizer.Get(MpReplies.ChangedMatchHost, target.Name);
 	}
 
 	/// <summary>Handles <c>!mp clearhost</c>.</summary>
 	public string ClearHost(Room room)
 	{
-		room.TransferHost(null);
+		room.Host = null;
 		return localizer.Get(MpReplies.ClearedMatchHost);
 	}
 
 	/// <summary>Handles <c>!mp team &lt;name/id&gt; &lt;red|blue&gt;</c>.</summary>
 	public async Task<string> TeamAsync(Room room, IReadOnlyList<string> args, CancellationToken cancellationToken)
 	{
-		if (args.Count < 2 || !Enum.TryParse<GameTeam>(args[1], true, out var team) || team == GameTeam.Neutral)
+		if (args.Count < 2 || !Enum.TryParse<GameTeam>(args[1], true, out var team))
 			return localizer.Get(MpReplies.TeamUsage);
 
 		var target = await ResolveAsync(args[0], cancellationToken);
-		if (target is null || room.Slots.Find(target) is null)
+		if (target is null || room.Slots.Find(target) is not { } slot)
 			return localizer.Get(MpReplies.UserNotInMatchOrUnregistered);
 
 		try
 		{
-			room.ChangeTeam(target, team);
+			slot.Team = team;
 		}
 		catch (InvalidOperationException)
 		{
@@ -125,7 +125,7 @@ public sealed class SlotCommands(
 		if (args.Count < 1) return localizer.Get(MpReplies.UnbanUsage);
 
 		var target = await ResolveAsync(args[0], cancellationToken);
-		if (target is null || !room.IsBanned(target))
+		if (target is null || !room.Banned.Contains(target))
 			return localizer.Get(MpReplies.NotBannedFromMatch, args[0]);
 
 		room.Unban(target);

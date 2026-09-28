@@ -1,8 +1,6 @@
 using Basil.Application.Contracts.Ports;
-using Basil.Application.Contracts.Repositories;
 using Basil.Application.Models.Multiplayer;
 using Basil.Application.Services.Operations.Replies;
-using Basil.Domain.Beatmaps;
 
 namespace Basil.Application.Services.Operations.Commands.Mp;
 
@@ -10,20 +8,18 @@ namespace Basil.Application.Services.Operations.Commands.Mp;
 ///     Backs the <c>!mp</c> subcommands that read or change a room's own settings: <c>settings</c>,
 ///     <c>lock</c>/<c>unlock</c>, <c>private</c>, <c>name</c>, and <c>password</c>.
 /// </summary>
-public sealed class RoomSettingsCommands(IRepository<string, Beatmap> beatmapsByMd5, ILocalizer localizer)
+public sealed class RoomSettingsCommands(ILocalizer localizer)
 {
 	/// <summary>Handles <c>!mp settings</c>.</summary>
-	public async Task<string> SettingsAsync(Room room, CancellationToken cancellationToken)
+	public string Settings(Room room)
 	{
 		var lines = new List<string>
 		{
 			localizer.Get(MpReplies.SettingsRoomName, room.Match.Name, room.Id),
-			room.Settings.BeatmapMd5 is not { } md5
+			room.Beatmap is not { } beatmap
 				? localizer.Get(MpReplies.SettingsBeatmapNotSelected)
-				: await beatmapsByMd5.LoadAsync(md5, cancellationToken) is { } beatmap
-					? localizer.Get(MpReplies.SettingsBeatmap, beatmap.Id,
-						$"{beatmap.Beatmapset.Artist} - {beatmap.Beatmapset.Title} [{beatmap.Version}]")
-					: localizer.Get(MpReplies.SettingsBeatmapNotFound),
+				: localizer.Get(MpReplies.SettingsBeatmap, beatmap.Id,
+					$"{beatmap.Beatmapset.Artist} - {beatmap.Beatmapset.Title} [{beatmap.Version}]"),
 			localizer.Get(MpReplies.SettingsTeamMode, room.Settings.TeamType, room.Settings.WinCondition),
 			localizer.Get(MpReplies.SettingsActiveMods, room.Settings.Mods),
 			room.Creator is { } creator
@@ -38,8 +34,7 @@ public sealed class RoomSettingsCommands(IRepository<string, Beatmap> beatmapsBy
 	/// <summary>Handles <c>!mp lock</c> and <c>!mp unlock</c>.</summary>
 	public string SetLocked(Room room, bool locked)
 	{
-		if (locked) room.Lock();
-		else room.Unlock();
+		room.Slots.Locked = locked;
 		return localizer.Get(locked ? MpReplies.LockedMatch : MpReplies.UnlockedMatch);
 	}
 
@@ -62,7 +57,7 @@ public sealed class RoomSettingsCommands(IRepository<string, Beatmap> beatmapsBy
 		if (args.Count == 0) return localizer.Get(MpReplies.NameUsage);
 
 		var name = string.Join(' ', args);
-		room.Rename(name);
+		room.Name = name;
 		return localizer.Get(MpReplies.RoomNameUpdated, name);
 	}
 
@@ -70,7 +65,7 @@ public sealed class RoomSettingsCommands(IRepository<string, Beatmap> beatmapsBy
 	public string ChangePassword(Room room, IReadOnlyList<string> args)
 	{
 		var password = args.Count > 0 ? string.Join(' ', args) : string.Empty;
-		room.ChangePassword(password);
+		room.Password = password;
 		return localizer.Get(password.Length == 0 ? MpReplies.RemovedMatchPassword : MpReplies.ChangedMatchPassword);
 	}
 
@@ -80,7 +75,7 @@ public sealed class RoomSettingsCommands(IRepository<string, Beatmap> beatmapsBy
 		if (args.Count < 1 || !int.TryParse(args[0], out var size) || size is < 1 or > 16)
 			return localizer.Get(MpReplies.SizeUsage);
 
-		room.Resize(size);
+		room.Slots.Resize(size);
 		return localizer.Get(MpReplies.ChangedMatchSize, size);
 	}
 }

@@ -109,7 +109,7 @@ public sealed class MpCommands(
 	{
 		return subcommand switch
 		{
-			"settings" => await settings.SettingsAsync(room, cancellationToken),
+			"settings" => settings.Settings(room),
 			"lock" => settings.SetLocked(room, true),
 			"unlock" => settings.SetLocked(room, false),
 			"private" => settings.Private(room, args),

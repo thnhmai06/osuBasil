@@ -82,8 +82,6 @@ public static class DependencyInjection
 		services.AddSingleton<ChannelEventHandlers>();
 		services.AddSingleton<IDomainEventHandler<ChannelJoined>>(sp => sp.GetRequiredService<ChannelEventHandlers>());
 		services.AddSingleton<IDomainEventHandler<ChannelParted>>(sp => sp.GetRequiredService<ChannelEventHandlers>());
-		services.AddSingleton<IDomainEventHandler<ChannelTopicChanged>>(sp =>
-			sp.GetRequiredService<ChannelEventHandlers>());
 
 		return services;
 	}

@@ -5,14 +5,10 @@ using Notification = Basil.Application.Models.Notifications;
 
 namespace Basil.Application.Services.EventHandlers;
 
-/// <summary>
-///     Reacts to a channel's membership and metadata events: a session joining or parting, and the
-///     channel's topic changing.
-/// </summary>
-public sealed class ChannelEventHandlers(IChannelRegistry channels, IPlayerRegistry players) :
+/// <summary>Reacts to a channel's membership events: a session joining or parting.</summary>
+public sealed class ChannelEventHandlers(IPlayerRegistry players) :
 	IDomainEventHandler<ChannelJoined>,
-	IDomainEventHandler<ChannelParted>,
-	IDomainEventHandler<ChannelTopicChanged>
+	IDomainEventHandler<ChannelParted>
 {
 	/// <inheritdoc />
 	public Task HandleAsync(ChannelJoined domainEvent, CancellationToken cancellationToken = default)
@@ -27,14 +23,6 @@ public sealed class ChannelEventHandlers(IChannelRegistry channels, IPlayerRegis
 	{
 		domainEvent.Session.Notify(new Notification.ChannelParted(domainEvent.Channel.Name));
 		NotifyOtherMembers(domainEvent.Channel, domainEvent.Session.UserId);
-		return Task.CompletedTask;
-	}
-
-	/// <inheritdoc />
-	public Task HandleAsync(ChannelTopicChanged domainEvent, CancellationToken cancellationToken = default)
-	{
-		if (channels.AllByName.TryGetValue(domainEvent.Channel.Name, out var channel))
-			NotifyOtherMembers(channel, null);
 		return Task.CompletedTask;
 	}
 

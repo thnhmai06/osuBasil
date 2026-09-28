@@ -1,4 +1,3 @@
-using Basil.Application.Contracts.Events;
 using Basil.Application.Contracts.Ports;
 using Basil.Application.Contracts.Registries;
 using Basil.Application.Contracts.Repositories;
@@ -19,7 +18,6 @@ public sealed class RoomLifecycleCommands(
 	IRepository<int, Match> matches,
 	IRepository<int, User> usersById,
 	IChannelRegistry channels,
-	IEventDispatcher dispatcher,
 	ILocalizer localizer)
 {
 	/// <summary>Handles <c>!mp make</c> and <c>!mp makeprivate</c>.</summary>
@@ -58,26 +56,23 @@ public sealed class RoomLifecycleCommands(
 			var user = await usersById.LoadAsync(sender.UserId, cancellationToken);
 			if (user is null) return localizer.Get(MpReplies.NoActiveMatchWithId, roomId);
 
-			if (room.IsBanned(user))
+			if (room.Banned.Contains(user))
 				return localizer.Get(MpReplies.BannedFromMatch);
 
-			if (!room.Match.IsVisible && !room.IsInvited(user) && !room.IsReferee(user))
+			if (!room.Match.IsVisible && !room.Invited.Contains(user) && !room.IsReferee(user))
 				return localizer.Get(MpReplies.PrivateRoomJoinDenied, roomId);
 
 			if (!room.VerifyPassword(password))
 				return localizer.Get(MpReplies.IncorrectPassword);
 
-			if (room.Join(user) is null)
+			if (room.Slots.Join(user) is null)
 				return localizer.Get(MpReplies.MatchIsFull);
 
 			if (sender is GameSession game)
 				game.RoomId = room.Id;
 
 			if (channels.AllByName.TryGetValue(room.Channel.Name, out var channelSession))
-			{
 				channelSession.Join(room.Channel, user, sender);
-				await FlushAsync(channelSession, cancellationToken);
-			}
 
 			return localizer.Get(MpReplies.JoinedMatch, room.Id, room.Match.Name);
 		}
@@ -88,12 +83,5 @@ public sealed class RoomLifecycleCommands(
 	{
 		await lobby.CloseRoomAsync(roomId, cancellationToken);
 		return localizer.Get(MpReplies.ClosedMatch);
-	}
-
-	private async Task FlushAsync(IEvents subject, CancellationToken cancellationToken)
-	{
-		foreach (var domainEvent in subject.Events)
-			await dispatcher.DispatchAsync(domainEvent, cancellationToken);
-		subject.Clear();
 	}
 }

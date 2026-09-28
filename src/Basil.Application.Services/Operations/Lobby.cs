@@ -1,4 +1,3 @@
-using Basil.Application.Contracts.Events;
 using Basil.Application.Contracts.Registries;
 using Basil.Application.Contracts.Repositories;
 using Basil.Application.Models.Multiplayer;
@@ -15,8 +14,7 @@ public sealed class Lobby(
 	IPlayerRegistry players,
 	IRepository<int, Match> matchRepository,
 	IIdAllocator<Match> matchIds,
-	IIdAllocator<Room> roomIds,
-	IEventDispatcher dispatcher)
+	IIdAllocator<Room> roomIds)
 {
 	/// <summary>Gets every currently open room, for a lobby listing.</summary>
 	public IEnumerable<Room> Observers => rooms.AllById.Values;
@@ -29,7 +27,7 @@ public sealed class Lobby(
 	/// <param name="cancellationToken">A token that cancels the creation.</param>
 	/// <returns>The newly created room.</returns>
 	public async Task<Room> CreateRoomAsync(User? creator, string name, string password,
-		RoomSettings? settings = null, CancellationToken cancellationToken = default)
+		MatchSettings? settings = null, CancellationToken cancellationToken = default)
 	{
 		var match = new Match
 		{
@@ -39,16 +37,15 @@ public sealed class Lobby(
 		await matchRepository.SaveAsync(match, cancellationToken);
 
 		var id = await roomIds.NextAsync(cancellationToken);
-		var room = new Room { Id = id, Match = match, Creator = creator, Settings = settings ?? new RoomSettings() };
+		var room = new Room { Id = id, Match = match, Creator = creator, Settings = settings ?? new MatchSettings() };
 		if (!string.IsNullOrEmpty(password))
-			room.ChangePassword(password);
+			room.Password = password;
 
 		if (!rooms.TryAdd(room))
 			throw new InvalidOperationException($"A room with id {id} is already registered.");
 
 		channels.TryAdd(new ChannelSession { Name = room.Channel.Name });
 
-		await FlushAsync(room, cancellationToken);
 		return room;
 	}
 
@@ -65,7 +62,7 @@ public sealed class Lobby(
 			room = scope.Room;
 
 			foreach (var player in room.Slots.Where(s => s.User is not null).Select(s => s.User!).ToList())
-				room.Leave(player);
+				room.Slots.Leave(player);
 
 			room.Match.EndedAt = DateTimeOffset.UtcNow;
 			await matchRepository.SaveAsync(room.Match, cancellationToken);
@@ -83,22 +80,7 @@ public sealed class Lobby(
 						game.RoomId = null;
 				}
 
-			await FlushAsync(channelSession, cancellationToken);
 			channels.Remove(room.Channel.Name);
 		}
-	}
-
-	private async Task FlushAsync(Room room, CancellationToken cancellationToken)
-	{
-		foreach (var domainEvent in room.Events)
-			await dispatcher.DispatchAsync(domainEvent, cancellationToken);
-		room.Clear();
-	}
-
-	private async Task FlushAsync(ChannelSession channel, CancellationToken cancellationToken)
-	{
-		foreach (var domainEvent in channel.Events)
-			await dispatcher.DispatchAsync(domainEvent, cancellationToken);
-		channel.Clear();
 	}
 }

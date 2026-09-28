@@ -81,7 +81,7 @@ public sealed class RefereeCommands(SlotCommands targets, IPlayerRegistry player
 	public string BanList(Room room)
 	{
 		var banned = room.Slots.Where(s => s.User is not null).Select(s => s.User!)
-			.Where(room.IsBanned).ToList();
+			.Where(room.Banned.Contains).ToList();
 
 		return banned.Count == 0
 			? localizer.Get(MpReplies.NoBannedPlayers)

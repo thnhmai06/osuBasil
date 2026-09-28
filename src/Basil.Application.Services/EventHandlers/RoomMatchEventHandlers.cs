@@ -92,6 +92,8 @@ public sealed class RoomMatchEventHandlers(
 			await rounds.SaveAsync(round, cancellationToken);
 		}
 
+		domainEvent.Room.CurrentRound = null;
+
 		NotifyRoom(domainEvent.Room,
 			domainEvent.Aborted ? new Notification.RoundAborted() : new Notification.RoundCompleted());
 	}
@@ -99,19 +101,29 @@ public sealed class RoomMatchEventHandlers(
 	/// <inheritdoc />
 	public async Task HandleAsync(RoundStarted domainEvent, CancellationToken cancellationToken = default)
 	{
-		if (domainEvent.Room.Settings.BeatmapMd5 is { } beatmapMd5)
+		if (domainEvent.Room.Beatmap is { } beatmap)
 		{
+			var settings = domainEvent.Room.Settings;
 			var round = new Round
 			{
 				Id = await roundIds.NextAsync(cancellationToken),
 				Match = domainEvent.Room.Match,
-				Settings = new MatchSettings(domainEvent.Room.Settings) { BeatmapMd5 = beatmapMd5 },
+				BeatmapHash = beatmap.Hash,
+				Settings = new MatchSettings
+				{
+					Mode = settings.Mode,
+					Mods = settings.Mods,
+					Freemods = settings.Freemods,
+					TeamType = settings.TeamType,
+					WinCondition = settings.WinCondition,
+					Seed = settings.Seed
+				},
 				OccurredAt = DateTimeOffset.UtcNow,
 				EndedAt = null
 			};
 
 			await rounds.SaveAsync(round, cancellationToken);
-			domainEvent.Room.TrackRound(round);
+			domainEvent.Room.CurrentRound = round;
 		}
 
 		NotifyRoom(domainEvent.Room, new Notification.RoundStarted(domainEvent.Room));

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Threading.Channels;
 using Basil.Domain.Chat;
 using Basil.Domain.Client;
 using Basil.Domain.Events;
@@ -12,10 +13,9 @@ namespace Basil.Application.Models.Sessions;
 ///     keyed to by <see cref="Name" />, not copied here.
 /// </summary>
 /// <remarks>Thread-safe: concurrent joins and parts of the same channel session do not corrupt its state.</remarks>
-public sealed class ChannelSession
+public sealed class ChannelSession : IEventSource<Event>
 {
-	private readonly EventLog _events = new();
-	private readonly Lock _eventsSync = new();
+	private readonly Channel<Event> _events = Channel.CreateUnbounded<Event>();
 	private readonly ConcurrentDictionary<int, byte> _memberIds = new();
 
 	/// <summary>Gets the name of the channel this session tracks membership for.</summary>
@@ -25,25 +25,7 @@ public sealed class ChannelSession
 	public IReadOnlyCollection<int> MemberIds => _memberIds.Keys.ToArray();
 
 	/// <inheritdoc />
-	public IReadOnlyList<Event> Events
-	{
-		get
-		{
-			lock (_eventsSync)
-			{
-				return [.. _events.Events];
-			}
-		}
-	}
-
-	/// <inheritdoc />
-	public void Clear()
-	{
-		lock (_eventsSync)
-		{
-			_events.Clear();
-		}
-	}
+	public ChannelReader<Event> Events => _events.Reader;
 
 	/// <summary>Gets a value that indicates whether <paramref name="user" /> may write to the channel.</summary>
 	/// <param name="channel">The channel's metadata.</param>
@@ -66,10 +48,7 @@ public sealed class ChannelSession
 
 		_memberIds[session.UserId] = 0;
 		session.AddChannel(Name);
-		lock (_eventsSync)
-		{
-			_events.Record(new ChannelJoined(this, session));
-		}
+		_events.Writer.TryWrite(new ChannelJoined(this, session));
 	}
 
 	/// <summary>Parts a session from the channel.</summary>
@@ -78,9 +57,6 @@ public sealed class ChannelSession
 	{
 		_memberIds.TryRemove(session.UserId, out _);
 		session.RemoveChannel(Name);
-		lock (_eventsSync)
-		{
-			_events.Record(new ChannelParted(this, session));
-		}
+		_events.Writer.TryWrite(new ChannelParted(this, session));
 	}
 }

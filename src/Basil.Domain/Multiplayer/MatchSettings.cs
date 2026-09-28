@@ -13,7 +13,7 @@ public sealed class MatchSettings
 	public GameMode Mode
 	{
 		get;
-		internal set
+		set
 		{
 			value.ThrowIfUndefined();
 			field = value;
@@ -24,17 +24,17 @@ public sealed class MatchSettings
 	public GameMods Mods
 	{
 		get;
-		internal set => field = value.RemoveInvalidMods(Mode);
+		set => field = value.RemoveInvalidMods(Mode);
 	} = GameMods.NoMod;
 
 	/// <summary>Gets or sets a value that indicates whether freemod mode is enabled.</summary>
-	public bool Freemods { get; internal set; } = false;
+	public bool Freemods { get; set; } = false;
 
 	/// <summary>Gets or sets the team arrangement used for the room.</summary>
 	public GameTeamType TeamType
 	{
 		get;
-		internal set
+		set
 		{
 			value.ThrowIfUndefined();
 			field = value;

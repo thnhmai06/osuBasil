@@ -36,6 +36,22 @@ public sealed class UserStats : IEquatable<UserStats>
 	/// <summary>The number of plays submitted.</summary>
 	public int PlayCount { get; init; } = 0;
 
+	/// <summary>Returns a copy of these statistics with a submitted score's totals added in.</summary>
+	/// <param name="score">The score to add to <see cref="TotalScore" />.</param>
+	/// <param name="rankedScore">The score to add to <see cref="RankedScore" />.</param>
+	/// <returns>A new <see cref="UserStats" /> with the updated totals and an incremented <see cref="PlayCount" />.</returns>
+	public UserStats WithSubmittedScore(long score, long rankedScore)
+	{
+		return new UserStats
+		{
+			UserId = UserId,
+			Mode = Mode,
+			TotalScore = TotalScore + score,
+			RankedScore = RankedScore + rankedScore,
+			PlayCount = PlayCount + 1
+		};
+	}
+
 	public bool Equals(UserStats? other)
 	{
 		if (other is null) return false;
