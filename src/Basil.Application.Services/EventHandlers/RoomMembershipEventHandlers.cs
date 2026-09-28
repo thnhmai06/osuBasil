@@ -1,10 +1,10 @@
 using Basil.Application.Contracts.Events;
 using Basil.Application.Contracts.Registries;
 using Basil.Application.Contracts.Repositories;
+using Basil.Application.Models.Multiplayer;
 using Basil.Application.Models.Notifications;
 using Basil.Application.Services.Operations;
-using Basil.Domain.Multiplayer.Records;
-using Basil.Domain.Multiplayer.Runtime;
+using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Services.EventHandlers;

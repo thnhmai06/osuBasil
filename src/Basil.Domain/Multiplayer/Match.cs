@@ -1,20 +1,18 @@
-﻿namespace Basil.Domain.Multiplayer.Records;
+﻿namespace Basil.Domain.Multiplayer;
 
 /// <summary>
 ///     A match record as read back for report and management purposes.
 /// </summary>
 public sealed class Match : IEquatable<Match>
 {
-	/// <summary>
-	///     Gets the persistent identifier of the match, used to look it up later — for the match
-	///     report, history, or recovery — independent of any live <see cref="Runtime.Room" /> instance.
-	/// </summary>
 	public required int Id
 	{
 		get;
-		init => field = value > 0
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), "Match Id must be positive.");
+		init
+		{
+			ArgumentOutOfRangeException.ThrowIfNegative(value);
+			field = value;
+		}
 	}
 
 	/// <summary>Gets or sets the name of the match.</summary>
@@ -73,6 +71,6 @@ public sealed class Match : IEquatable<Match>
 	/// <returns>The <see cref="Id" />, which uniquely identifies the match.</returns>
 	public override int GetHashCode()
 	{
-		return Id;
+		return Id.GetHashCode();
 	}
 }

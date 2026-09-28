@@ -27,12 +27,9 @@ public sealed class Relationship : IEquatable<Relationship>
 	/// <summary>
 	///     Initializes a new instance of the <see cref="Relationship" /> class.
 	/// </summary>
-	/// <exception cref="ArgumentException">
-	///     <paramref name="Actor" /> and <paramref name="Target" /> are the same user.
-	/// </exception>
 	public Relationship()
 	{
-		if (Actor?.Equals(Target) == true)
+		if (Equals(Actor, Target))
 			throw new ArgumentException("Actor and Target cannot be the same user.");
 	}
 

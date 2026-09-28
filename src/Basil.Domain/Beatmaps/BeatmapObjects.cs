@@ -23,18 +23,22 @@ public abstract class BeatmapObjects
 	public int Total
 	{
 		get;
-		set => field = value >= 0
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), "Total must be non-negative.");
+		set
+		{
+			ArgumentOutOfRangeException.ThrowIfNegative(value);
+			field = value;
+		}
 	}
 
 	/// <summary>Gets or sets the maximum combo achievable on the beatmap.</summary>
 	public int MaxCombo
 	{
 		get;
-		set => field = value >= 0
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), "MaxCombo must be non-negative.");
+		set
+		{
+			ArgumentOutOfRangeException.ThrowIfNegative(value);
+			field = value;
+		}
 	}
 }
 
@@ -47,27 +51,33 @@ public sealed class OsuObjects : BeatmapObjects
 	public int Circles
 	{
 		get;
-		set => field = value >= 0
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), "Circles must be non-negative.");
+		set
+		{
+			ArgumentOutOfRangeException.ThrowIfNegative(value);
+			field = value;
+		}
 	}
 
 	/// <summary>Gets or sets the number of sliders in the beatmap.</summary>
 	public int Sliders
 	{
 		get;
-		set => field = value >= 0
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), "Sliders must be non-negative.");
+		set
+		{
+			ArgumentOutOfRangeException.ThrowIfNegative(value);
+			field = value;
+		}
 	}
 
 	/// <summary>Gets or sets the number of spinners in the beatmap.</summary>
 	public int Spinners
 	{
 		get;
-		set => field = value >= 0
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), "Spinners must be non-negative.");
+		set
+		{
+			ArgumentOutOfRangeException.ThrowIfNegative(value);
+			field = value;
+		}
 	}
 }
 
@@ -80,27 +90,33 @@ public sealed class TaikoObjects : BeatmapObjects
 	public int Hits
 	{
 		get;
-		set => field = value >= 0
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), "Hits must be non-negative.");
+		set
+		{
+			ArgumentOutOfRangeException.ThrowIfNegative(value);
+			field = value;
+		}
 	}
 
 	/// <summary>Gets or sets the number of drum rolls in the beatmap.</summary>
 	public int DrumRolls
 	{
 		get;
-		set => field = value >= 0
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), "DrumRolls must be non-negative.");
+		set
+		{
+			ArgumentOutOfRangeException.ThrowIfNegative(value);
+			field = value;
+		}
 	}
 
 	/// <summary>Gets or sets the number of den-den drums in the beatmap.</summary>
 	public int Dendens
 	{
 		get;
-		set => field = value >= 0
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), "Dendens must be non-negative.");
+		set
+		{
+			ArgumentOutOfRangeException.ThrowIfNegative(value);
+			field = value;
+		}
 	}
 }
 
@@ -113,36 +129,44 @@ public sealed class CatchObjects : BeatmapObjects
 	public int Fruits
 	{
 		get;
-		set => field = value >= 0
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), "Fruits must be non-negative.");
+		set
+		{
+			ArgumentOutOfRangeException.ThrowIfNegative(value);
+			field = value;
+		}
 	}
 
 	/// <summary>Gets or sets the number of droplets in the beatmap.</summary>
 	public int Droplets
 	{
 		get;
-		set => field = value >= 0
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), "Droplets must be non-negative.");
+		set
+		{
+			ArgumentOutOfRangeException.ThrowIfNegative(value);
+			field = value;
+		}
 	}
 
 	/// <summary>Gets or sets the number of tiny droplets in the beatmap.</summary>
 	public int TinyDroplets
 	{
 		get;
-		set => field = value >= 0
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), "TinyDroplets must be non-negative.");
+		set
+		{
+			ArgumentOutOfRangeException.ThrowIfNegative(value);
+			field = value;
+		}
 	}
 
 	/// <summary>Gets or sets the number of bananas in the beatmap.</summary>
 	public int Bananas
 	{
 		get;
-		set => field = value >= 0
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), "Bananas must be non-negative.");
+		set
+		{
+			ArgumentOutOfRangeException.ThrowIfNegative(value);
+			field = value;
+		}
 	}
 }
 
@@ -155,17 +179,21 @@ public sealed class ManiaObjects : BeatmapObjects
 	public int Notes
 	{
 		get;
-		set => field = value >= 0
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), "Notes must be non-negative.");
+		set
+		{
+			ArgumentOutOfRangeException.ThrowIfNegative(value);
+			field = value;
+		}
 	}
 
 	/// <summary>Gets or sets the number of hold notes in the beatmap.</summary>
 	public int HoldNotes
 	{
 		get;
-		set => field = value >= 0
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), "HoldNotes must be non-negative.");
+		set
+		{
+			ArgumentOutOfRangeException.ThrowIfNegative(value);
+			field = value;
+		}
 	}
 }

@@ -46,7 +46,7 @@ public sealed class BeatmapCatalog(
 			var beatmap = new Beatmap
 			{
 				Id = file.Id,
-				Md5 = calculator.ComputeBeatmapMd5(file.Content),
+				Hash = calculator.ComputeBeatmapMd5(file.Content),
 				Beatmapset = set,
 				Version = file.Version,
 				Difficulty = analysis.Difficulty,
@@ -56,7 +56,7 @@ public sealed class BeatmapCatalog(
 			result.Add(beatmap);
 		}
 
-		await using var content = new MemoryStream(archiveContent, writable: false);
+		await using var content = new MemoryStream(archiveContent, false);
 		await archives.SaveAsync(beatmapsetId, content, cancellationToken);
 
 		return (set, result);

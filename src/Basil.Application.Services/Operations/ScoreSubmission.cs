@@ -31,7 +31,7 @@ public sealed class ScoreSubmission(
 		GameSession session,
 		Submission submission,
 		int scoreId,
-		(string Md5, string? StoryboardMd5) beatmap,
+		(string Hash, string? StoryboardHash) beatmap,
 		string playerName,
 		(string Md5, string Serial) clientFingerprint,
 		string clientVersionDate,
@@ -49,7 +49,7 @@ public sealed class ScoreSubmission(
 
 		if (replay is not null)
 		{
-			await using var content = new MemoryStream(replay, writable: false);
+			await using var content = new MemoryStream(replay, false);
 			await replays.SaveAsync(scoreId, content, cancellationToken);
 		}
 

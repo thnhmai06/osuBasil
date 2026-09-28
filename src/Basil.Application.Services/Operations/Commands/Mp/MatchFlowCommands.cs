@@ -1,9 +1,9 @@
 using Basil.Application.Contracts.Ports;
 using Basil.Application.Contracts.Repositories;
+using Basil.Application.Models.Multiplayer;
 using Basil.Application.Services.Operations.Replies;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
-using Basil.Domain.Multiplayer.Runtime;
 
 namespace Basil.Application.Services.Operations.Commands.Mp;
 
@@ -25,7 +25,7 @@ public sealed class MatchFlowCommands(
 		var beatmap = await beatmapsById.LoadAsync(beatmapId, cancellationToken);
 		if (beatmap is null) return localizer.Get(MpReplies.NoBeatmapWithId, beatmapId);
 
-		room.ChangeBeatmap(beatmap.Md5);
+		room.ChangeBeatmap(beatmap.Hash);
 		return localizer.Get(MpReplies.ChangedBeatmap, beatmap.Beatmapset.Artist, beatmap.Beatmapset.Title,
 			beatmap.Version);
 	}

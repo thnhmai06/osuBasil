@@ -1,6 +1,6 @@
 ﻿using Basil.Domain.Users;
 
-namespace Basil.Domain.Multiplayer.Records;
+namespace Basil.Domain.Multiplayer;
 
 /// <summary>
 ///     A single lifecycle event recorded against a match.

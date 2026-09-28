@@ -1,4 +1,4 @@
-﻿using Basil.Domain.Multiplayer.Runtime;
+﻿using Basil.Application.Models.Multiplayer;
 
 namespace Basil.Application.Models.Notifications;
 

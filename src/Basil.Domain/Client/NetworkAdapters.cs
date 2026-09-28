@@ -1,5 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-using System.Text.RegularExpressions;
+using Basil.Domain.Utilities;
 
 namespace Basil.Domain.Client;
 
@@ -13,7 +13,7 @@ namespace Basil.Domain.Client;
 ///     hardware. Other adapter strings are dot-separated, end with a dot, and contain no empty
 ///     chunks. Comparisons ignore the case of the checksum.
 /// </remarks>
-public readonly partial record struct NetworkAdapters : IParsable<NetworkAdapters>
+public readonly record struct NetworkAdapters : IParsable<NetworkAdapters>
 {
 	private const string WineAdapterSentinel = "runningunderwine";
 
@@ -24,12 +24,12 @@ public readonly partial record struct NetworkAdapters : IParsable<NetworkAdapter
 	///     The raw adapter string: either <c>runningunderwine</c> or a dot-separated,
 	///     dot-terminated list of adapter names.
 	/// </param>
-	/// <param name="md5">The MD5 checksum of the adapter string.</param>
+	/// <param name="hash">The MD5 checksum of the adapter string.</param>
 	/// <exception cref="FormatException">
-	///     <paramref name="adapters" /> is empty or malformed, or <paramref name="md5" /> is not a
+	///     <paramref name="adapters" /> is empty or malformed, or <paramref name="hash" /> is not a
 	///     32-character hexadecimal string.
 	/// </exception>
-	public NetworkAdapters(string adapters, string md5)
+	public NetworkAdapters(string adapters, Md5 hash)
 	{
 		if (string.IsNullOrEmpty(adapters))
 			throw new FormatException("Adapter string cannot be empty.");
@@ -37,11 +37,8 @@ public readonly partial record struct NetworkAdapters : IParsable<NetworkAdapter
 		if (!IsValidAdaptersString(adapters))
 			throw new FormatException("Adapter string is invalid.");
 
-		if (!Md5Pattern().IsMatch(md5))
-			throw new FormatException("Adapter MD5 is invalid.");
-
 		Adapters = adapters;
-		Md5 = md5.ToLowerInvariant();
+		Hash = hash;
 	}
 
 	/// <summary>The raw adapter string reported by the client, without modification.</summary>
@@ -50,7 +47,7 @@ public readonly partial record struct NetworkAdapters : IParsable<NetworkAdapter
 	/// <summary>
 	///     The MD5 checksum of the adapter string, normalized to lowercase.
 	/// </summary>
-	public string Md5 { get; }
+	public Md5 Hash { get; }
 
 	/// <summary>
 	///     Indicates whether the client reported that it is running under Wine.
@@ -66,7 +63,7 @@ public readonly partial record struct NetworkAdapters : IParsable<NetworkAdapter
 	///     <paramref name="other" />.
 	/// </summary>
 	/// <remarks>
-	///     Only <see cref="Md5" /> is compared, ignoring case; the adapter strings themselves are
+	///     Only <see cref="Hash" /> is compared, ignoring case; the adapter strings themselves are
 	///     not compared.
 	/// </remarks>
 	/// <param name="other">The value to compare against.</param>
@@ -76,7 +73,7 @@ public readonly partial record struct NetworkAdapters : IParsable<NetworkAdapter
 	/// </returns>
 	public bool Equals(NetworkAdapters other)
 	{
-		return string.Equals(Md5, other.Md5, StringComparison.OrdinalIgnoreCase);
+		return Hash == other.Hash;
 	}
 
 	/// <summary>
@@ -140,20 +137,22 @@ public readonly partial record struct NetworkAdapters : IParsable<NetworkAdapter
 	/// <returns>The wire representation of this adapter value.</returns>
 	public override string ToString()
 	{
-		return $"{Adapters}:{Md5}";
+		return $"{Adapters}:{Hash}";
+	}
+
+	public static implicit operator NetworkAdapters(string other)
+	{
+		return Parse(other);
 	}
 
 	/// <summary>
 	///     Returns a hash code based on the MD5 checksum, ignoring case.
 	/// </summary>
-	/// <returns>The hash code of <see cref="Md5" /> under ordinal, case-insensitive comparison.</returns>
+	/// <returns>The hash code of <see cref="Hash" /> under ordinal, case-insensitive comparison.</returns>
 	public override int GetHashCode()
 	{
-		return StringComparer.OrdinalIgnoreCase.GetHashCode(Md5);
+		return StringComparer.OrdinalIgnoreCase.GetHashCode(Hash);
 	}
-
-	[GeneratedRegex("^[a-fA-F0-9]{32}$")]
-	private static partial Regex Md5Pattern();
 
 	private static bool IsValidAdaptersString(string value)
 	{

@@ -17,3 +17,11 @@ public enum GameTeamType : byte
 	/// <summary>Players are split into teams that share scores as tag teams.</summary>
 	TagTeamVs = 3
 }
+
+public static class GameTeamTypeExtensions
+{
+	public static bool NeedSplitTeam(this GameTeamType type)
+	{
+		return type is GameTeamType.TeamVs or GameTeamType.TagTeamVs;
+	}
+}

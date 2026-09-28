@@ -1,7 +1,7 @@
-﻿using Basil.Domain.Client;
-using Basil.Domain.Multiplayer.Runtime;
+﻿using Basil.Domain.Chat;
+using Basil.Domain.Client;
 
-namespace Basil.Domain.Chat;
+namespace Basil.Application.Models.Multiplayer;
 
 public sealed class RoomChannel(Room room) : IChannel //! only exist in Registry
 {

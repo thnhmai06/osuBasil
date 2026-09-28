@@ -1,10 +1,9 @@
 using Basil.Application.Contracts.Events;
+using Basil.Application.Models.Multiplayer;
 using Basil.Application.Models.Sessions;
 using Basil.Application.Services.EventHandlers;
 using Basil.Application.Services.Operations;
 using Basil.Application.Services.Operations.Commands.Mp;
-using Basil.Domain.Chat;
-using Basil.Domain.Multiplayer.Runtime;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Application.Services;

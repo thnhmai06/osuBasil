@@ -1,9 +1,9 @@
 using Basil.Application.Contracts.Events;
 using Basil.Application.Contracts.Registries;
 using Basil.Application.Contracts.Repositories;
+using Basil.Application.Models.Multiplayer;
 using Basil.Application.Models.Sessions;
-using Basil.Domain.Multiplayer.Records;
-using Basil.Domain.Multiplayer.Runtime;
+using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Operations;
@@ -90,15 +90,15 @@ public sealed class Lobby(
 
 	private async Task FlushAsync(Room room, CancellationToken cancellationToken)
 	{
-		foreach (var domainEvent in room.DomainEvents)
+		foreach (var domainEvent in room.Events)
 			await dispatcher.DispatchAsync(domainEvent, cancellationToken);
-		room.ClearDomainEvents();
+		room.Clear();
 	}
 
 	private async Task FlushAsync(ChannelSession channel, CancellationToken cancellationToken)
 	{
-		foreach (var domainEvent in channel.DomainEvents)
+		foreach (var domainEvent in channel.Events)
 			await dispatcher.DispatchAsync(domainEvent, cancellationToken);
-		channel.ClearDomainEvents();
+		channel.Clear();
 	}
 }

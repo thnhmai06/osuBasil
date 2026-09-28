@@ -14,7 +14,7 @@ namespace Basil.Application.Contracts.Events;
 public interface IEventDispatcher
 {
 	/// <summary>Dispatches a domain event to every handler registered for its type.</summary>
-	/// <param name="domainEvent">The event to dispatch.</param>
+	/// <param name="event">The event to dispatch.</param>
 	/// <param name="cancellationToken">A token that cancels the dispatch.</param>
-	Task DispatchAsync(IDomainEvent domainEvent, CancellationToken cancellationToken = default);
+	Task DispatchAsync(Event @event, CancellationToken cancellationToken = default);
 }

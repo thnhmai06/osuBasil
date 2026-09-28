@@ -8,7 +8,7 @@ namespace Basil.Application.Contracts.Events;
 ///     rejects it.
 /// </summary>
 /// <typeparam name="TEvent">The concrete domain event type this handler reacts to.</typeparam>
-public interface IDomainEventHandler<in TEvent> where TEvent : IDomainEvent
+public interface IDomainEventHandler<in TEvent> where TEvent : Event
 {
 	/// <summary>Reacts to a domain event that has occurred.</summary>
 	/// <param name="domainEvent">The event to react to.</param>

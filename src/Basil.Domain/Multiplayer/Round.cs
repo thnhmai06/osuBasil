@@ -1,4 +1,6 @@
-﻿namespace Basil.Domain.Multiplayer.Records;
+﻿using Basil.Domain.Utilities;
+
+namespace Basil.Domain.Multiplayer;
 
 /// <summary>
 ///     A round record as read back for report purposes.
@@ -16,6 +18,13 @@ public sealed class Round : IMatchRecord, IEquatable<Round>
 
 	/// <summary>The match the round belongs to.</summary>
 	public required Match Match { get; init; }
+
+	/// <summary>Gets or sets the currently selected beatmap.</summary>
+	/// <remarks>
+	///     A <see langword="null" /> value means that no beatmap has been selected yet — not that a
+	///     selected beatmap could not be found.
+	/// </remarks>
+	public required Md5 BeatmapHash { get; init; }
 
 	/// <summary>The match settings the round was played under.</summary>
 	public required MatchSettings Settings { get; init; }

@@ -16,7 +16,7 @@ public interface IClientConnection
 	/// <summary>Gets a value that indicates whether the connection is currently open.</summary>
 	bool IsOpen { get; }
 
-	/// <summary>Sends a notification to the client.</summary>
-	/// <param name="notification">The notification to send.</param>
+	/// <summary>Sends a message to the client.</summary>
+	/// <param name="notification">The message to send.</param>
 	void Send(Notification notification);
 }

@@ -23,19 +23,15 @@ public sealed record Submission
 	public ClientFlags ClientFlags
 	{
 		get;
-		init => field = Enum.IsDefined(value)
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(ClientFlags), value, "ClientFlags is not a defined value.");
+		init
+		{
+			value.ThrowIfUndefined();
+			field = value;
+		}
 	} = ClientFlags.Clean;
 
 	/// <summary>Gets or sets the submission checksum that the client sent.</summary>
-	public string Md5ByClient
-	{
-		get;
-		init => field = string.IsNullOrEmpty(value) || Md5.IsValid(value)
-			? (value?.ToLowerInvariant() ?? string.Empty)
-			: throw new ArgumentException("The value must be a valid MD5 hash or empty.", nameof(Md5ByClient));
-	} = string.Empty;
+	public required Md5 HashByClient { get; init; }
 
 
 	/// <summary>
@@ -47,15 +43,15 @@ public sealed record Submission
 	///     entry is the submission MD5 and the final entry carries the client flags encoded as
 	///     spaces.
 	/// </param>
-	/// <param name="beatmapMd5">The MD5 hash of the beatmap played, carried into the score.</param>
+	/// <param name="beatmapHash">The MD5 hash of the beatmap played, carried into the score.</param>
 	/// <param name="userId">The user ID of the player, carried into the score.</param>
 	/// <returns>A submission populated with the parsed values.</returns>
-	public static Submission Parse(IReadOnlyList<string> submitFields, string? beatmapMd5 = null, int? userId = null)
+	public static Submission Parse(IReadOnlyList<string> submitFields, Md5? beatmapHash = null, int? userId = null)
 	{
 		return new Submission
 		{
-			Score = Score.Parse(submitFields, beatmapMd5, userId),
-			Md5ByClient = submitFields[0].ToLowerInvariant(),
+			Score = Score.Parse(submitFields, beatmapHash, userId),
+			HashByClient = submitFields[0],
 			ClientFlags = (ClientFlags)(submitFields[15].Count(c => c == ' ') & ~4)
 		};
 	}
@@ -87,24 +83,24 @@ public sealed record Submission
 	///     <see langword="true" /> if every check passes; otherwise, <see langword="false" />.
 	/// </returns>
 	public bool Validate(
-		(ClientFingerprint? Fingerprint, ClientVersion Version,
-			(string Md5, string? StoryboardMd5) Beatmap, string playerName) fromServer,
-		((string Md5, string Serial) Fingerprint, string VersionDate, string beatmapMd5) fromClient,
+		(ClientFingerprint? Fingerprint, ClientVersion Version, (Md5 Hash, Md5? StoryboardHash) Beatmap, string
+			playerName) fromServer,
+		((Md5 Hash, string Serial) Fingerprint, string VersionDate, Md5 beatmapMd5) fromClient,
 		[MaybeNullWhen(true)] out string error)
 	{
 		error = null;
-		var (clientUninstallMd5, clientDiskSignatureMd5) = ComputeSerialMd5();
+		var (clientUninstallHash, clientDiskSignatureHash) = ComputeSerialHash();
 		var md5ByServer = ComputeSubmissionMd5();
 
 		if (fromServer.Fingerprint is not { } serverFingerprint) error = "Client fingerprint is missing.";
 		else if (fromClient.VersionDate != fromServer.Version.Date.ToString("yyyyMMdd", CultureInfo.InvariantCulture))
 			error = "Client version is mismatched.";
-		else if (fromClient.Fingerprint.Md5 != serverFingerprint.ToString()) error = "Client hash is mismatched.";
-		else if (clientUninstallMd5 != serverFingerprint.UninstallMd5) error = "Uninstaller hash is mismatched.";
-		else if (clientDiskSignatureMd5 != serverFingerprint.DiskSignatureMd5)
+		else if (fromClient.Fingerprint.Hash != serverFingerprint.ToString()) error = "Client hash is mismatched.";
+		else if (clientUninstallHash != serverFingerprint.UninstallHash) error = "Uninstaller hash is mismatched.";
+		else if (clientDiskSignatureHash != serverFingerprint.DiskSignatureHash)
 			error = "Disk signature hash is mismatched.";
-		else if (Md5ByClient != md5ByServer) error = "Submission hash is mismatched.";
-		else if (fromClient.beatmapMd5 != fromServer.Beatmap.Md5) error = "Beatmap hash is mismatched.";
+		else if (HashByClient != md5ByServer) error = "Submission hash is mismatched.";
+		else if (fromClient.beatmapMd5 != fromServer.Beatmap.Hash) error = "Beatmap hash is mismatched.";
 
 		return error is null;
 
@@ -116,24 +112,20 @@ public sealed record Submission
 
 			var raw =
 				$"chickenmcnuggets{hitCounts.Num100 + hitCounts.Num300}o15{hitCounts.Num50}{hitCounts.NumGeki}" +
-				$"smustard{hitCounts.NumKatu}{hitCounts.NumMiss}uu{Score.BeatmapMd5}{Score.MaxCombo}" +
+				$"smustard{hitCounts.NumKatu}{hitCounts.NumMiss}uu{Score.BeatmapHash}{Score.MaxCombo}" +
 				$"{Score.IsFullCombo}{fromServer.playerName}{Score}{Score.Grade}{(int)Score.Mods}Q{Score.IsPassed}{(int)Score.Mode}" +
-				$"{fromClient.VersionDate}{Score.OccuredAt:yyMMddHHmmss}{fromClient.Fingerprint.Md5}{fromServer.Beatmap.StoryboardMd5 ?? string.Empty}";
+				$"{fromClient.VersionDate}{Score.OccuredAt:yyMMddHHmmss}{fromClient.Fingerprint.Hash}{fromServer.Beatmap.StoryboardHash ?? string.Empty}";
 			var hash = MD5.HashData(Encoding.UTF8.GetBytes(raw));
 			return Convert.ToHexStringLower(hash);
 		}
 
-		(string UninstallMd5, string DiskSignatureMd5) ComputeSerialMd5()
+		(Md5 UninstallHash, Md5 DiskSignatureHash) ComputeSerialHash()
 		{
 			const char delimiter = '|';
 
 			var parts = fromClient.Fingerprint.Serial.Split(delimiter, 2);
-			return (Md5Hex(parts[0]), Md5Hex(parts[1]));
-
-			static string Md5Hex(string v)
-			{
-				return Convert.ToHexStringLower(MD5.HashData(Encoding.UTF8.GetBytes(v)));
-			}
+			var bytes = (Encoding.UTF8.GetBytes(parts[0]), Encoding.UTF8.GetBytes(parts[1]));
+			return (new Md5(bytes.Item1), new Md5(bytes.Item2));
 		}
 
 		#endregion

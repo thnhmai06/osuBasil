@@ -1,7 +1,6 @@
 using Basil.Application.Contracts.Events;
 using Basil.Application.Contracts.Registries;
 using Basil.Application.Models.Sessions;
-using Basil.Domain.Chat;
 using Notification = Basil.Application.Models.Notifications;
 
 namespace Basil.Application.Services.EventHandlers;

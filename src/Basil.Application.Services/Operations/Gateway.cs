@@ -6,7 +6,6 @@ using Basil.Application.Models.Sessions;
 using Basil.Domain.Auth;
 using Basil.Domain.Chat;
 using Basil.Domain.Client;
-using Basil.Domain.Events;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Operations;
@@ -47,7 +46,7 @@ public sealed class Gateway(
 		bool verified;
 		try
 		{
-			verified = await credentials.VerifyAsync(new Credentials(user, attempt.PasswordMd5), cancellationToken);
+			verified = await credentials.VerifyAsync(new Credentials(user, attempt.PasswordHash), cancellationToken);
 		}
 		catch (ArgumentException)
 		{
@@ -147,10 +146,10 @@ public sealed class Gateway(
 		}
 	}
 
-	private async Task FlushAsync(IHasDomainEvents subject, CancellationToken cancellationToken)
+	private async Task FlushAsync(IEvents subject, CancellationToken cancellationToken)
 	{
-		foreach (var domainEvent in subject.DomainEvents)
+		foreach (var domainEvent in subject.Events)
 			await dispatcher.DispatchAsync(domainEvent, cancellationToken);
-		subject.ClearDomainEvents();
+		subject.Clear();
 	}
 }

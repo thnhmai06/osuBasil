@@ -16,10 +16,10 @@ namespace Basil.Application.Models.Sessions;
 ///     concurrent channel membership changes and event recording on the same session do not corrupt
 ///     its state.
 /// </remarks>
-public abstract class UserSession : IHasDomainEvents
+public abstract class UserSession
 {
 	private readonly ConcurrentDictionary<string, byte> _channels = new();
-	private readonly DomainEventLog _events = new();
+	private readonly EventLog _events = new();
 	private readonly Lock _eventsSync = new();
 
 	/// <summary>Gets the id of the account this session belongs to.</summary>
@@ -41,7 +41,7 @@ public abstract class UserSession : IHasDomainEvents
 	public IReadOnlyCollection<string> Channels => _channels.Keys.ToArray();
 
 	/// <inheritdoc />
-	public IReadOnlyList<IDomainEvent> DomainEvents
+	public IReadOnlyList<Event> Events
 	{
 		get
 		{
@@ -53,7 +53,7 @@ public abstract class UserSession : IHasDomainEvents
 	}
 
 	/// <inheritdoc />
-	public void ClearDomainEvents()
+	public void Clear()
 	{
 		lock (_eventsSync)
 		{
@@ -61,8 +61,8 @@ public abstract class UserSession : IHasDomainEvents
 		}
 	}
 
-	/// <summary>Sends a notification to this session's client.</summary>
-	/// <param name="notification">The notification to send.</param>
+	/// <summary>Sends a message to this session's client.</summary>
+	/// <param name="notification">The message to send.</param>
 	public void Notify(Notification notification)
 	{
 		Connection.Send(notification);
@@ -83,12 +83,12 @@ public abstract class UserSession : IHasDomainEvents
 	}
 
 	/// <summary>Records a runtime event that has occurred to this session.</summary>
-	/// <param name="domainEvent">The event to record.</param>
-	private protected void Record(IDomainEvent domainEvent)
+	/// <param name="event">The event to record.</param>
+	private protected void Record(Event @event)
 	{
 		lock (_eventsSync)
 		{
-			_events.Record(domainEvent);
+			_events.Record(@event);
 		}
 	}
 }

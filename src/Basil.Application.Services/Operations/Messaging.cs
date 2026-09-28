@@ -33,7 +33,7 @@ public sealed class Messaging(
 
 		if (sender.SilenceEnd is { } silenceEnd && silenceEnd > DateTimeOffset.UtcNow)
 		{
-			from.Notify(new MessageRefused(target, RefusalReason.Silenced));
+			from.Notify(new NotificationRefused(target, RefusalReason.Silenced));
 			return;
 		}
 
@@ -52,14 +52,14 @@ public sealed class Messaging(
 		    !membership.MemberIds.Contains(from.UserId) ||
 		    !ChannelSession.CanWrite(channel, sender))
 		{
-			from.Notify(new MessageRefused(channelName, RefusalReason.NoWritePermission));
+			from.Notify(new NotificationRefused(channelName, RefusalReason.NoWritePermission));
 			return;
 		}
 
-		NotifyMembers(membership, from.UserId, new ChatMessage(from.UserId, channelName, text));
+		NotifyMembers(membership, from.UserId, new ChatNotification(from.UserId, channelName, text));
 
 		if (await commands.ExecuteAsync(from, channelName, text, cancellationToken) is { } reply)
-			NotifyMembers(membership, null, new ChatMessage(SystemUserIds.BasilBot, channelName, reply));
+			NotifyMembers(membership, null, new ChatNotification(SystemUserIds.BasilBot, channelName, reply));
 	}
 
 	private async Task SendToUserAsync(UserSession from, string username, string text,
@@ -72,26 +72,26 @@ public sealed class Messaging(
 		var targetUser = await users.LoadAsync(target.UserId, cancellationToken);
 		if (targetUser?.SilenceEnd is { } silenceEnd && silenceEnd > DateTimeOffset.UtcNow)
 		{
-			from.Notify(new MessageRefused(username, RefusalReason.Silenced));
+			from.Notify(new NotificationRefused(username, RefusalReason.Silenced));
 			return;
 		}
 
-		target.Notify(new ChatMessage(from.UserId, username, text));
+		target.Notify(new ChatNotification(from.UserId, username, text));
 
 		if (target.AwayMessage is { } awayMessage)
-			from.Notify(new ChatMessage(target.UserId, from.UserId.ToString(), awayMessage));
+			from.Notify(new ChatNotification(target.UserId, from.UserId.ToString(), awayMessage));
 
 		if (await commands.ExecuteAsync(from, null, text, cancellationToken) is { } reply)
-			from.Notify(new ChatMessage(SystemUserIds.BasilBot, username, reply));
+			from.Notify(new ChatNotification(SystemUserIds.BasilBot, username, reply));
 	}
 
-	private void NotifyMembers(ChannelSession channel, int? skipUserId, ChatMessage message)
+	private void NotifyMembers(ChannelSession channel, int? skipUserId, ChatNotification notification)
 	{
 		foreach (var memberId in channel.MemberIds)
 		{
 			if (memberId == skipUserId) continue;
 			if (players.AllById.TryGetValue(memberId, out var member))
-				member.Notify(message);
+				member.Notify(notification);
 		}
 	}
 }

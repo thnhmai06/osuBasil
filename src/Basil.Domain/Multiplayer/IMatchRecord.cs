@@ -1,4 +1,4 @@
-﻿namespace Basil.Domain.Multiplayer.Records;
+﻿namespace Basil.Domain.Multiplayer;
 
 /// <summary>
 ///     Represents an entry associated with a match that occurred at a specific point in time.

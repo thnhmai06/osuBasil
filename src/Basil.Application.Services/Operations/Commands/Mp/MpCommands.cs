@@ -1,9 +1,9 @@
 using Basil.Application.Contracts.Ports;
 using Basil.Application.Contracts.Registries;
 using Basil.Application.Contracts.Repositories;
+using Basil.Application.Models.Multiplayer;
 using Basil.Application.Models.Sessions;
 using Basil.Application.Services.Operations.Replies;
-using Basil.Domain.Multiplayer.Runtime;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Operations.Commands.Mp;
@@ -76,7 +76,7 @@ public sealed class MpCommands(
 			if (rooms.AllById.TryGetValue(roomId, out var current))
 			{
 				var actor = await usersById.LoadAsync(sender.UserId, cancellationToken);
-				if (actor is null || !current.HasRefereePermission(actor))
+				if (actor is null || !current.IsReferee(actor))
 					return localizer.Get(MpReplies.NotARefereeOfMatch, roomId);
 			}
 
@@ -94,7 +94,7 @@ public sealed class MpCommands(
 
 			var isReadOnly = subcommand is "settings" or "listrefs" or "banlist" ||
 			                 (subcommand == "private" && subArgs.Length == 0);
-			if (!isReadOnly && !room.HasRefereePermission(user))
+			if (!isReadOnly && !room.IsReferee(user))
 				return localizer.Get(MpReplies.NotARefereeOfMatch, room.Id);
 
 			if (subcommand is "addref" or "removeref" && !room.IsCreator(user))

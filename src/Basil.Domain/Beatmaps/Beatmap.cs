@@ -1,10 +1,12 @@
+using Basil.Domain.Utilities;
+
 namespace Basil.Domain.Beatmaps;
 
 /// <summary>
 ///     Represents a single difficulty within a <see cref="Beatmapset" />.
 /// </summary>
 /// <remarks>
-///     Identified by its content hash (<see cref="Md5" />) and its osu! id. The
+///     Identified by its content hash (<see cref="Hash" />) and its osu! id. The
 ///     <see cref="Difficulty" /> value holds the gameplay stats, including the star rating,
 ///     computed by the difficulty analyzer in Basil.Infrastructure. <see cref="Filename" />, the
 ///     background file, and the audio file are resolved against the set's storage folder and are
@@ -25,19 +27,15 @@ public sealed class Beatmap : IEquatable<Beatmap>
 	public required int Id
 	{
 		get;
-		init => field = value > 0
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), "Beatmap Id must be positive.");
+		init
+		{
+			ArgumentOutOfRangeException.ThrowIfNegative(value);
+			field = value;
+		}
 	}
 
 	/// <summary>The MD5 hash of the beatmap file's contents.</summary>
-	public required string Md5
-	{
-		get;
-		init => field = Utilities.Md5.IsValid(value)
-			? value.ToLowerInvariant()
-			: throw new ArgumentException("The value must be a valid MD5 hash.", nameof(value));
-	}
+	public required Md5 Hash { get; init; }
 
 	/// <summary>The set this difficulty belongs to.</summary>
 	public required Beatmapset Beatmapset { get; init; }
@@ -93,7 +91,7 @@ public sealed class Beatmap : IEquatable<Beatmap>
 	/// <param name="other">The beatmap to compare, or <see langword="null" />.</param>
 	/// <returns>
 	///     <see langword="true" /> if <paramref name="other" /> is non-null and has the same
-	///     <see cref="Md5" /> as this beatmap; otherwise, <see langword="false" />.
+	///     <see cref="Hash" /> as this beatmap; otherwise, <see langword="false" />.
 	/// </returns>
 	public bool Equals(Beatmap? other)
 	{
@@ -114,8 +112,8 @@ public sealed class Beatmap : IEquatable<Beatmap>
 		return obj is Beatmap other && Equals(other);
 	}
 
-	/// <summary>Returns a hash code derived from the beatmap's content hash (<see cref="Md5" />).</summary>
-	/// <returns>A hash code consistent with the beatmap's value equality, which compares <see cref="Md5" />.</returns>
+	/// <summary>Returns a hash code derived from the beatmap's content hash (<see cref="Hash" />).</summary>
+	/// <returns>A hash code consistent with the beatmap's value equality, which compares <see cref="Hash" />.</returns>
 	public override int GetHashCode()
 	{
 		return Id.GetHashCode();

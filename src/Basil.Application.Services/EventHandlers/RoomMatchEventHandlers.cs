@@ -1,9 +1,9 @@
 using Basil.Application.Contracts.Events;
 using Basil.Application.Contracts.Registries;
 using Basil.Application.Contracts.Repositories;
+using Basil.Application.Models.Multiplayer;
 using Basil.Application.Models.Sessions;
-using Basil.Domain.Multiplayer.Records;
-using Basil.Domain.Multiplayer.Runtime;
+using Basil.Domain.Multiplayer;
 using Notification = Basil.Application.Models.Notifications;
 
 namespace Basil.Application.Services.EventHandlers;

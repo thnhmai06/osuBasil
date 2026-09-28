@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using Basil.Domain.Mechanics;
+using Basil.Domain.Utilities;
 
 namespace Basil.Domain.Scores;
 
@@ -7,7 +8,7 @@ namespace Basil.Domain.Scores;
 ///     Represents the scoring fields of a play as submitted by the osu! client.
 /// </summary>
 /// <param name="UserId">The user ID of the player, when known.</param>
-/// <param name="BeatmapMd5">The MD5 checksum of the beatmap played, when known.</param>
+/// <param name="BeatmapHash">The MD5 checksum of the beatmap played, when known.</param>
 /// <param name="Mode">The game mode the play used.</param>
 /// <param name="Mods">The mods applied to the play.</param>
 /// <param name="HitCounts">The judgment counts of the play.</param>
@@ -19,7 +20,7 @@ namespace Basil.Domain.Scores;
 /// <param name="OccuredAt">The date and time when the play occurred.</param>
 public sealed record Score(
 	int? UserId,
-	string? BeatmapMd5,
+	Md5? BeatmapHash,
 	GameMode Mode,
 	GameMods Mods,
 	HitCounts HitCounts,
@@ -51,10 +52,10 @@ public sealed record Score(
 	///     through 14 carry the hit counts, total score, max combo, full-combo flag, grade, mods,
 	///     passed flag, mode, and occurrence time.
 	/// </param>
-	/// <param name="beatmapMd5">The beatmap MD5 to carry into the parsed score, if known.</param>
+	/// <param name="beatmapHash">The beatmap MD5 to carry into the parsed score, if known.</param>
 	/// <param name="userId">The user ID to carry into the parsed score, if known.</param>
 	/// <returns>The parsed score.</returns>
-	public static Score Parse(IReadOnlyList<string> submitFields, string? beatmapMd5 = null, int? userId = null)
+	public static Score Parse(IReadOnlyList<string> submitFields, Md5? beatmapHash = null, int? userId = null)
 	{
 		var hitCounts = new HitCounts(
 			int.Parse(submitFields[1], CultureInfo.InvariantCulture),
@@ -67,7 +68,7 @@ public sealed record Score(
 		return new Score
 		(
 			userId,
-			beatmapMd5,
+			beatmapHash,
 			(GameMode)int.Parse(submitFields[13], CultureInfo.InvariantCulture),
 			(GameMods)int.Parse(submitFields[11], CultureInfo.InvariantCulture),
 			hitCounts,

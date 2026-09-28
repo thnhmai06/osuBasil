@@ -7,7 +7,7 @@ namespace Basil.Domain.Utilities;
 ///     Represents a thread-safe set of unique values that can be accessed by multiple threads concurrently.
 /// </summary>
 /// <typeparam name="T">The type of elements in the set.</typeparam>
-public sealed class ConcurrentSet<T> : ISet<T> where T : notnull
+public sealed class ConcurrentSet<T> : ISet<T>, IReadOnlySet<T> where T : notnull
 {
 	private const byte Present = 0;
 	private readonly ConcurrentDictionary<T, byte> _items = new();

@@ -4,8 +4,7 @@ using Basil.Application.Contracts.Registries;
 using Basil.Application.Contracts.Repositories;
 using Basil.Application.Models.Sessions;
 using Basil.Application.Services.Operations.Replies;
-using Basil.Domain.Events;
-using Basil.Domain.Multiplayer.Records;
+using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Operations.Commands.Mp;
@@ -62,10 +61,10 @@ public sealed class RoomLifecycleCommands(
 			if (room.IsBanned(user))
 				return localizer.Get(MpReplies.BannedFromMatch);
 
-			if (!room.Match.IsVisible && !room.IsInvited(user) && !room.HasRefereePermission(user))
+			if (!room.Match.IsVisible && !room.IsInvited(user) && !room.IsReferee(user))
 				return localizer.Get(MpReplies.PrivateRoomJoinDenied, roomId);
 
-			if (!room.CheckPassword(password))
+			if (!room.VerifyPassword(password))
 				return localizer.Get(MpReplies.IncorrectPassword);
 
 			if (room.Join(user) is null)
@@ -91,10 +90,10 @@ public sealed class RoomLifecycleCommands(
 		return localizer.Get(MpReplies.ClosedMatch);
 	}
 
-	private async Task FlushAsync(IHasDomainEvents subject, CancellationToken cancellationToken)
+	private async Task FlushAsync(IEvents subject, CancellationToken cancellationToken)
 	{
-		foreach (var domainEvent in subject.DomainEvents)
+		foreach (var domainEvent in subject.Events)
 			await dispatcher.DispatchAsync(domainEvent, cancellationToken);
-		subject.ClearDomainEvents();
+		subject.Clear();
 	}
 }

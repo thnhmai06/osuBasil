@@ -1,9 +1,9 @@
 using Basil.Application.Contracts.Ports;
 using Basil.Application.Contracts.Registries;
+using Basil.Application.Models.Multiplayer;
 using Basil.Application.Models.Notifications;
 using Basil.Application.Models.Sessions;
 using Basil.Application.Services.Operations.Replies;
-using Basil.Domain.Multiplayer.Runtime;
 
 namespace Basil.Application.Services.Operations.Commands.Mp;
 

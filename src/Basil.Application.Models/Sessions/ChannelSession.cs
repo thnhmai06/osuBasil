@@ -12,9 +12,9 @@ namespace Basil.Application.Models.Sessions;
 ///     keyed to by <see cref="Name" />, not copied here.
 /// </summary>
 /// <remarks>Thread-safe: concurrent joins and parts of the same channel session do not corrupt its state.</remarks>
-public sealed class ChannelSession : IHasDomainEvents
+public sealed class ChannelSession
 {
-	private readonly DomainEventLog _events = new();
+	private readonly EventLog _events = new();
 	private readonly Lock _eventsSync = new();
 	private readonly ConcurrentDictionary<int, byte> _memberIds = new();
 
@@ -25,7 +25,7 @@ public sealed class ChannelSession : IHasDomainEvents
 	public IReadOnlyCollection<int> MemberIds => _memberIds.Keys.ToArray();
 
 	/// <inheritdoc />
-	public IReadOnlyList<IDomainEvent> DomainEvents
+	public IReadOnlyList<Event> Events
 	{
 		get
 		{
@@ -37,7 +37,7 @@ public sealed class ChannelSession : IHasDomainEvents
 	}
 
 	/// <inheritdoc />
-	public void ClearDomainEvents()
+	public void Clear()
 	{
 		lock (_eventsSync)
 		{

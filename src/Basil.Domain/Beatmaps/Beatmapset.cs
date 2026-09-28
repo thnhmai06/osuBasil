@@ -26,9 +26,11 @@ public sealed class Beatmapset : IEquatable<Beatmapset>
 	public required int Id
 	{
 		get;
-		init => field = value > 0
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), "Beatmapset Id must be positive.");
+		init
+		{
+			ArgumentOutOfRangeException.ThrowIfNegative(value);
+			field = value;
+		}
 	}
 
 	/// <summary>

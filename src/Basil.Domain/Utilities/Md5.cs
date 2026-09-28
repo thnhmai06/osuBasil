@@ -1,14 +1,34 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System.Security.Cryptography;
+using System.Text;
 
 namespace Basil.Domain.Utilities;
 
-public static class Md5
+public readonly record struct Md5
 {
-	public static bool IsValid([NotNullWhen(true)] string? md5)
+	public string HashValue { get; }
+
+	public Md5(string hash)
 	{
-		return md5 is { Length: 32 }
-		       && md5.All(static c => c is >= '0' and <= '9'
-			       or >= 'a' and <= 'f'
-			       or >= 'A' and <= 'F');
+		ArgumentNullException.ThrowIfNull(hash);
+		if (hash is not { Length: 32 }
+		    || !hash.All(static c => c is >= '0' and <= '9' or >= 'a' and <= 'f' or >= 'A' and <= 'F'))
+			throw new ArgumentException("The MD5 value is invalid.", nameof(hash));
+
+		HashValue = Convert.ToHexString(Encoding.UTF8.GetBytes(hash)).ToLowerInvariant();
+	}
+
+	public Md5(byte[] value)
+	{
+		HashValue = Convert.ToHexStringLower(MD5.HashData(value));
+	}
+
+	public override string ToString()
+	{
+		return HashValue;
+	}
+
+	public static implicit operator Md5(string hash)
+	{
+		return new Md5(hash);
 	}
 }

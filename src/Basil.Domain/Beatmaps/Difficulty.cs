@@ -33,9 +33,11 @@ public readonly record struct Difficulty(
 	public double Bpm
 	{
 		get;
-		init => field = value > 0
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), "BPM must be positive.");
+		init
+		{
+			ArgumentOutOfRangeException.ThrowIfNegative(value);
+			field = value;
+		}
 	} = Bpm;
 
 	/// <summary>The total length of the beatmap.</summary>
@@ -87,8 +89,10 @@ public readonly record struct Difficulty(
 	public double Star
 	{
 		get;
-		init => field = value >= 0
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), "Star rating cannot be negative.");
+		init
+		{
+			ArgumentOutOfRangeException.ThrowIfNegative(value);
+			field = value;
+		}
 	} = Star;
 }
