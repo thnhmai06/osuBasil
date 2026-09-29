@@ -119,7 +119,9 @@ public sealed class RoomSlot
 				ThrowIfPlaying();
 				if (!Slots.Room.Freemods)
 					throw new InvalidOperationException("The room does not allow players to choose their own mods.");
-				value = v.RemoveInvalidMods(Slots.Room.Mode);
+				if ((v & GameMods.SpeedChangingMods) != GameMods.NoMod)
+					throw new InvalidOperationException("Speed-changing mods are set on the room, not per player.");
+				v.ThrowIfInvalid(Slots.Room.Mode);
 			}
 
 			if (_mods == value) return;

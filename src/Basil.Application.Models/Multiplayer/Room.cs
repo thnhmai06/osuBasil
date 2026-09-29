@@ -117,12 +117,19 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		set
 		{
 			if (Settings.Mods == value) return;
+			if (Freemods && (value & ~GameMods.SpeedChangingMods) != GameMods.NoMod)
+				throw new InvalidOperationException("With freemod on, the room only holds speed-changing mods.");
 			Settings.Mods = value;
 			Emit(new ModsChanged(this, value));
 		}
 	}
 
 	/// <summary>Gets or sets a value that indicates whether freemod mode is enabled.</summary>
+	/// <remarks>
+	///     Turning freemod on hands the room's non-speed-changing mods to every seated player and
+	///     leaves the room with only its speed-changing mods. Turning it off gives the room its
+	///     speed-changing mods plus the host's own mods, and clears every player's own mods.
+	/// </remarks>
 	public bool Freemods
 	{
 		get => Settings.Freemods;
@@ -131,10 +138,24 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 			if (Settings.Freemods == value) return;
 			Settings.Freemods = value;
 
-			// Without freemod, players cannot keep mods of their own.
-			if (!value)
-				foreach (var slot in Slots.Where(s => s.Session is not null))
+			var seated = Slots.Where(s => s.Session is not null).ToList();
+			if (value)
+			{
+				// Players take the room's mods that combine per player; the room keeps only the
+				// speed-changing ones, which must stay the same for everyone.
+				foreach (var slot in seated)
+					slot.SetMods(Settings.Mods & ~GameMods.SpeedChangingMods);
+				Settings.Mods &= GameMods.SpeedChangingMods;
+			}
+			else
+			{
+				// The room keeps its speed-changing mods and takes the host's own mods.
+				var hostMods = Host?.Slot?.Mods ?? GameMods.NoMod;
+				Settings.Mods = (Settings.Mods & GameMods.SpeedChangingMods) | hostMods;
+				foreach (var slot in seated)
 					slot.SetMods(GameMods.NoMod);
+			}
+
 			Emit(new FreemodsChanged(this, value));
 		}
 	}

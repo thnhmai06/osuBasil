@@ -48,7 +48,8 @@ public sealed class MatchFlowCommands(
 				room.Freemods = true;
 				return localizer.Get(MpReplies.EnabledFreemod);
 			default:
-				var mods = ModsExtensions.FromModString(string.Concat(args));
+				var mods = ModsExtensions.FromModString(string.Concat(args)).RemoveInvalidMods(room.Mode);
+				room.Freemods = false;
 				room.Mods = mods;
 				return localizer.Get(MpReplies.EnabledMods, mods);
 		}
