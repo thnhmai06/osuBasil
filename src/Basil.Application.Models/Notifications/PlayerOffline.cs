@@ -1,4 +1,7 @@
-﻿namespace Basil.Application.Models.Notifications;
+﻿using Basil.Domain.Users;
+
+namespace Basil.Application.Models.Notifications;
 
 /// <summary>A user went offline.</summary>
-public sealed record PlayerOffline(int UserId) : Notification;
+/// <param name="User">The user who went offline.</param>
+public sealed record PlayerOffline(User User) : Notification;

@@ -1,4 +1,7 @@
-﻿namespace Basil.Application.Models.Notifications;
+﻿using Basil.Application.Models.Multiplayer;
+
+namespace Basil.Application.Models.Notifications;
 
 /// <summary>A room closed.</summary>
-public sealed record RoomClosed(int RoomId) : Notification;
+/// <param name="Room">The room that closed.</param>
+public sealed record RoomClosed(Room Room) : Notification;

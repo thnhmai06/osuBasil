@@ -1,4 +1,7 @@
-﻿namespace Basil.Application.Models.Notifications;
+﻿using Basil.Application.Models.Sessions;
+
+namespace Basil.Application.Models.Notifications;
 
 /// <summary>The recipient joined a channel.</summary>
-public sealed record ChannelJoined(string Channel) : Notification;
+/// <param name="Channel">The channel the recipient joined.</param>
+public sealed record ChannelJoined(ChannelSession Channel) : Notification;

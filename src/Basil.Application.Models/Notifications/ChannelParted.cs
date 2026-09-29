@@ -1,4 +1,7 @@
-﻿namespace Basil.Application.Models.Notifications;
+﻿using Basil.Application.Models.Sessions;
+
+namespace Basil.Application.Models.Notifications;
 
 /// <summary>The recipient parted a channel.</summary>
-public sealed record ChannelParted(string Channel) : Notification;
+/// <param name="Channel">The channel the recipient parted.</param>
+public sealed record ChannelParted(ChannelSession Channel) : Notification;

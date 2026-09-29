@@ -14,11 +14,11 @@ public sealed class ChannelEventHandlers :
 		switch (domainEvent)
 		{
 			case MemberJoined joined:
-				joined.Member.Notify(new Notification.ChannelJoined(joined.Channel.Name));
+				joined.Member.Notify(new Notification.ChannelJoined(joined.Channel));
 				NotifyOtherMembers(joined.Channel, joined.Member);
 				break;
 			case MemberParted parted:
-				parted.Member.Notify(new Notification.ChannelParted(parted.Channel.Name));
+				parted.Member.Notify(new Notification.ChannelParted(parted.Channel));
 				NotifyOtherMembers(parted.Channel, parted.Member);
 				break;
 		}
@@ -28,7 +28,7 @@ public sealed class ChannelEventHandlers :
 
 	private void NotifyOtherMembers(ChannelSession channel, UserSession skip)
 	{
-		var notification = new Notification.ChannelInfoChanged(channel.Name);
+		var notification = new Notification.ChannelInfoChanged(channel);
 		foreach (var member in channel.Members)
 		{
 			if (ReferenceEquals(member, skip)) continue;

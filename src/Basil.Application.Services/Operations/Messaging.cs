@@ -1,4 +1,5 @@
 using Basil.Application.Contracts.Registries;
+using Basil.Application.Contracts.Repositories;
 using Basil.Application.Models.Notifications;
 using Basil.Application.Models.Sessions;
 using Basil.Domain.Users;
@@ -14,6 +15,7 @@ namespace Basil.Application.Services.Operations;
 public sealed class Messaging(
 	IChannelRegistry channels,
 	ISessionRegistry<GameSession> games,
+	IRepository<int, User> usersById,
 	ChatCommands commands)
 {
 	/// <summary>Sends a chat message from <paramref name="from" /> to a channel or a user.</summary>
@@ -47,10 +49,11 @@ public sealed class Messaging(
 			return;
 		}
 
-		NotifyMembers(membership, from, new ChatNotification(from.User.Id, channelName, text));
+		NotifyMembers(membership, from, new ChatNotification(from.User, channelName, text));
 
-		if (await commands.ExecuteAsync(from, channelName, text, cancellationToken) is { } reply)
-			NotifyMembers(membership, null, new ChatNotification(SystemUserIds.BasilBot, channelName, reply));
+		if (await commands.ExecuteAsync(from, channelName, text, cancellationToken) is { } reply &&
+		    await usersById.LoadAsync(SystemUserIds.BasilBot, cancellationToken) is { } basilBot)
+			NotifyMembers(membership, null, new ChatNotification(basilBot, channelName, reply));
 	}
 
 	private async Task SendToUserAsync(UserSession from, string username, string text,
@@ -67,13 +70,14 @@ public sealed class Messaging(
 			return;
 		}
 
-		target.Notify(new ChatNotification(from.User.Id, username, text));
+		target.Notify(new ChatNotification(from.User, username, text));
 
 		if (target.AwayMessage is { } awayMessage)
-			from.Notify(new ChatNotification(target.User.Id, from.User.Name, awayMessage));
+			from.Notify(new ChatNotification(target.User, from.User.Name, awayMessage));
 
-		if (await commands.ExecuteAsync(from, null, text, cancellationToken) is { } reply)
-			from.Notify(new ChatNotification(SystemUserIds.BasilBot, username, reply));
+		if (await commands.ExecuteAsync(from, null, text, cancellationToken) is { } reply &&
+		    await usersById.LoadAsync(SystemUserIds.BasilBot, cancellationToken) is { } basilBot)
+			from.Notify(new ChatNotification(basilBot, username, reply));
 	}
 
 	private void NotifyMembers(ChannelSession channel, UserSession? skip, ChatNotification notification)

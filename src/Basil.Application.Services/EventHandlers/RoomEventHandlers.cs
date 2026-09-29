@@ -110,7 +110,7 @@ public sealed class RoomEventHandlers(
 				break;
 			case PlayerInvited invited:
 				if (games.AllByUser.TryGetValue(invited.Player, out var gameSession))
-					gameSession.Notify(new Invited(domainEvent.Room, domainEvent.Room.Creator?.Id ?? invited.Player.Id));
+					gameSession.Notify(new Invited(domainEvent.Room, domainEvent.Room.Creator ?? invited.Player));
 				break;
 		}
 
@@ -121,7 +121,7 @@ public sealed class RoomEventHandlers(
 	public Task HandleAsync(Basil.Application.Models.Multiplayer.RoomClosed domainEvent, CancellationToken cancellationToken = default)
 	{
 		foreach (var session in domainEvent.Evicted)
-			session.Notify(new Notification.RoomClosed(domainEvent.Room.Id));
+			session.Notify(new Notification.RoomClosed(domainEvent.Room));
 
 		return Task.CompletedTask;
 	}

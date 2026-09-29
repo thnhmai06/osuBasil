@@ -37,13 +37,13 @@ public sealed class RoundEventHandlers(IRepository<int, Round> rounds) :
 				NotifyRoom(domainEvent.Room, new Notification.AllPlayersLoaded());
 				break;
 			case PlayerSkipped skipped:
-				NotifyRoom(skipped.Room, new Notification.PlayerSkipped(skipped.Slot.Index));
+				NotifyRoom(skipped.Room, new Notification.PlayerSkipped(skipped.Slot));
 				break;
 			case AllPlayersSkipped _:
 				NotifyRoom(domainEvent.Room, new Notification.AllPlayersSkipped());
 				break;
 			case PlayerFailed failed:
-				NotifyRoom(failed.Room, new Notification.PlayerFailed(failed.Slot.Index));
+				NotifyRoom(failed.Room, new Notification.PlayerFailed(failed.Slot));
 				break;
 			case PlayerCompleted completed:
 				NotifyRoom(completed.Room, new Notification.RoomUpdated(completed.Room));

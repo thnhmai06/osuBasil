@@ -19,10 +19,10 @@ public sealed class SessionEventHandlers(ISessionRegistry<GameSession> games) :
 		switch (domainEvent)
 		{
 			case SpectatorAdded added:
-				added.HostSession.Notify(new SpectatorJoined(added.Spectator.User.Id));
+				added.HostSession.Notify(new SpectatorJoined(added.Spectator));
 				break;
 			case SpectatorRemoved removed:
-				removed.HostSession.Notify(new SpectatorLeft(removed.Spectator.User.Id));
+				removed.HostSession.Notify(new SpectatorLeft(removed.Spectator));
 				break;
 		}
 
