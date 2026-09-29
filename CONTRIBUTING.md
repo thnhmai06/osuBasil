@@ -77,9 +77,9 @@ project and guidance on where new code belongs.
 Do not introduce new conventions when an existing project convention already covers the case.
 
 * Formatting and analyzer rules are defined by the repository-level [`.editorconfig`](.editorconfig).
-* Development rules are collected in [`CLAUDE.md`](CLAUDE.md).
+* Development rules are collected in [`AGENTS.md`](AGENTS.md).
 * XML documentation rules, user-visible response strings, and testing conventions are covered by [
-  `CLAUDE.md`](CLAUDE.md).
+  `AGENTS.md`](AGENTS.md).
 * Public members should have XML documentation describing their observable behavior rather than their implementation.
 
 When in doubt, follow the existing architecture and the authoritative developer documentation before introducing a new

@@ -155,7 +155,7 @@ not require Docker or an externally running database.
 See [`testing.md`](testing.md) for test-writing conventions.
 
 For repository-specific development workflow recommendations, including how to run `Basil.Infrastructure.Tests`, see [
-`CLAUDE.md`](../../CLAUDE.md).
+`AGENTS.md`](../../AGENTS.md).
 
 ## Build a standalone executable
 

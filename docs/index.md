@@ -59,7 +59,7 @@ Use this section when working on Basil through an automated coding agent or simi
 
 It contains guidance for navigating the repository, respecting architectural boundaries, and making changes safely.
 
-The authoritative agent instructions remain in [`CLAUDE.md`](../CLAUDE.md). `for-agents/guidelines.md` explains how those instructions relate to the documentation layout.
+The authoritative agent instructions remain in [`AGENTS.md`](../AGENTS.md). `for-agents/guidelines.md` explains how those instructions relate to the documentation layout.
 
 ## API and command reference
 
@@ -146,4 +146,4 @@ This prevents the documentation from developing multiple competing versions of t
 * [`for-technicians/configuration.md`](for-technicians/configuration.md): server configuration
 * [`for-technicians/https.md`](for-technicians/https.md): TLS requirements
 * [`for-agents/guidelines.md`](for-agents/guidelines.md): documentation and repository guidance for agents
-* [`CLAUDE.md`](../CLAUDE.md): authoritative instructions for coding agents
+* [`AGENTS.md`](../AGENTS.md): authoritative instructions for coding agents

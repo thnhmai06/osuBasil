@@ -484,7 +484,7 @@ Do not turn a unit-level behavior into an integration test merely because it eve
 * [`tests/Basil.Infrastructure.Tests/Persistence/SqliteFixture.cs`](../../tests/Basil.Infrastructure.Tests/Persistence/SqliteFixture.cs): temporary SQLite fixture
 * [`tests/Basil.IntegrationTests/TestDoubles.cs`](../../tests/Basil.IntegrationTests/TestDoubles.cs): integration-test doubles
 * [`tests/Basil.IntegrationTests/InMemorySettingsRepository.cs`](../../tests/Basil.IntegrationTests/InMemorySettingsRepository.cs): in-memory settings repository
-* `CLAUDE.md` rule 8: condensed testing rules
+* `AGENTS.md` rule 8: condensed testing rules
 
 ## See also
 

@@ -8,7 +8,7 @@
 > the finished structure rather than re-edited after every phase.
 >
 > Until then, the accurate description of the current structure is the Architecture section
-> of [`CLAUDE.md`](../../CLAUDE.md), and the enforced rules are the tests in
+> of [`AGENTS.md`](../../AGENTS.md), and the enforced rules are the tests in
 > `tests/Basil.ArchitectureTests`. Everything below describes projects that no longer exist.
 
 ## Overview
