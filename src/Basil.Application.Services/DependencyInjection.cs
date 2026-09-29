@@ -34,54 +34,23 @@ public static class DependencyInjection
 		services.AddSingleton<MpCommands>();
 		services.AddSingleton<ChatCommands>();
 
-		services.AddSingleton<RoomMembershipEventHandlers>();
-		services.AddSingleton<IEventHandler<PlayerJoined>>(sp =>
-			sp.GetRequiredService<RoomMembershipEventHandlers>());
-		services.AddSingleton<IEventHandler<PlayerLeft>>(sp =>
-			sp.GetRequiredService<RoomMembershipEventHandlers>());
-		services.AddSingleton<IEventHandler<PlayerKicked>>(sp =>
-			sp.GetRequiredService<RoomMembershipEventHandlers>());
-		services.AddSingleton<IEventHandler<PlayerBanned>>(sp =>
-			sp.GetRequiredService<RoomMembershipEventHandlers>());
-		services.AddSingleton<IEventHandler<PlayerInvited>>(sp =>
-			sp.GetRequiredService<RoomMembershipEventHandlers>());
-		services.AddSingleton<IEventHandler<HostChanged>>(sp =>
-			sp.GetRequiredService<RoomMembershipEventHandlers>());
-		services.AddSingleton<IEventHandler<RefereeAdded>>(sp =>
-			sp.GetRequiredService<RoomMembershipEventHandlers>());
-		services.AddSingleton<IEventHandler<RefereeRemoved>>(sp =>
-			sp.GetRequiredService<RoomMembershipEventHandlers>());
+		services.AddSingleton<RoomEventHandlers>();
+		services.AddSingleton<IEventHandler<RoomSettingsEvent>>(sp => sp.GetRequiredService<RoomEventHandlers>());
+		services.AddSingleton<IEventHandler<RoomSlotsEvent>>(sp => sp.GetRequiredService<RoomEventHandlers>());
+		services.AddSingleton<IEventHandler<RoomMembershipEvent>>(sp => sp.GetRequiredService<RoomEventHandlers>());
+		services.AddSingleton<IEventHandler<RoomAuthorityEvent>>(sp => sp.GetRequiredService<RoomEventHandlers>());
+		services.AddSingleton<IEventHandler<RoomAccessEvent>>(sp => sp.GetRequiredService<RoomEventHandlers>());
+		services.AddSingleton<IEventHandler<RoomClosed>>(sp => sp.GetRequiredService<RoomEventHandlers>());
 
-		services.AddSingleton<RoomMatchEventHandlers>();
-		services.AddSingleton<IEventHandler<SlotChanged>>(sp => sp.GetRequiredService<RoomMatchEventHandlers>());
-		services.AddSingleton<IEventHandler<SlotLocked>>(sp => sp.GetRequiredService<RoomMatchEventHandlers>());
-		services.AddSingleton<IEventHandler<SettingsChanged>>(sp =>
-			sp.GetRequiredService<RoomMatchEventHandlers>());
-		services.AddSingleton<IEventHandler<RoomLockChanged>>(sp =>
-			sp.GetRequiredService<RoomMatchEventHandlers>());
-		services.AddSingleton<IEventHandler<RoundStarted>>(sp => sp.GetRequiredService<RoomMatchEventHandlers>());
-		services.AddSingleton<IEventHandler<PlayerLoaded>>(sp => sp.GetRequiredService<RoomMatchEventHandlers>());
-		services.AddSingleton<IEventHandler<AllPlayersLoaded>>(sp =>
-			sp.GetRequiredService<RoomMatchEventHandlers>());
-		services.AddSingleton<IEventHandler<PlayerSkipped>>(sp =>
-			sp.GetRequiredService<RoomMatchEventHandlers>());
-		services.AddSingleton<IEventHandler<AllPlayersSkipped>>(sp =>
-			sp.GetRequiredService<RoomMatchEventHandlers>());
-		services.AddSingleton<IEventHandler<PlayerFailed>>(sp => sp.GetRequiredService<RoomMatchEventHandlers>());
-		services.AddSingleton<IEventHandler<PlayerCompleted>>(sp =>
-			sp.GetRequiredService<RoomMatchEventHandlers>());
-		services.AddSingleton<IEventHandler<RoundEnded>>(sp => sp.GetRequiredService<RoomMatchEventHandlers>());
+		services.AddSingleton<RoundEventHandlers>();
+		services.AddSingleton<IEventHandler<RoundEvent>>(sp => sp.GetRequiredService<RoundEventHandlers>());
 
 		services.AddSingleton<SessionEventHandlers>();
-		services.AddSingleton<IEventHandler<StatusChanged>>(sp => sp.GetRequiredService<SessionEventHandlers>());
-		services.AddSingleton<IEventHandler<SpectateStarted>>(sp =>
-			sp.GetRequiredService<SessionEventHandlers>());
-		services.AddSingleton<IEventHandler<SpectateStopped>>(sp =>
-			sp.GetRequiredService<SessionEventHandlers>());
+		services.AddSingleton<IEventHandler<PresenceEvent>>(sp => sp.GetRequiredService<SessionEventHandlers>());
+		services.AddSingleton<IEventHandler<SpectatorEvent>>(sp => sp.GetRequiredService<SessionEventHandlers>());
 
 		services.AddSingleton<ChannelEventHandlers>();
-		services.AddSingleton<IEventHandler<ChannelJoined>>(sp => sp.GetRequiredService<ChannelEventHandlers>());
-		services.AddSingleton<IEventHandler<ChannelParted>>(sp => sp.GetRequiredService<ChannelEventHandlers>());
+		services.AddSingleton<IEventHandler<ChannelMembershipEvent>>(sp => sp.GetRequiredService<ChannelEventHandlers>());
 
 		return services;
 	}

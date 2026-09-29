@@ -20,7 +20,16 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 	public readonly Room Room;
 
 	/// <summary>Gets or sets a value that indicates whether the room's slots are locked as a whole.</summary>
-	public bool Locked { get; set; }
+	public bool Locked
+	{
+		get;
+		set
+		{
+			if (field == value) return;
+			field = value;
+			Room.Emit(new RoomLockChanged(Room, value));
+		}
+	}
 
 	internal RoomSlots(Room room)
 	{
@@ -52,11 +61,13 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		ArgumentOutOfRangeException.ThrowIfGreaterThan(size, MaxSlotCount);
 
 		for (var i = 0; i < size; i++)
-			_slots[i].Locked = false;
+			_slots[i].SetLocked(false);
 
 		for (var i = size; i < MaxSlotCount; i++)
 			if (_slots[i].Session is null)
-				_slots[i].Locked = true;
+				_slots[i].SetLocked(true);
+
+		Room.Emit(new RoomResized(Room, size));
 	}
 
 	/// <summary>Seats a session in the lowest-index empty, unlocked slot.</summary>
@@ -90,6 +101,7 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 			slot.SetTeam(redCount <= blueCount ? GameTeam.Red : GameTeam.Blue);
 		}
 
+		Room.Emit(new PlayerJoined(Room, session, slot));
 		return slot;
 	}
 
@@ -102,15 +114,24 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		if (slot is null) return null;
 
 		if (session == Room.Host)
-			Room.Host = null;
+			Room.SetHostSilently(null);
 
 		slot.Clear();
 		return slot;
 	}
 
+	/// <summary>Moves a player from one slot to another.</summary>
+	/// <param name="from">The slot the player currently occupies.</param>
+	/// <param name="to">The destination slot.</param>
+	/// <exception cref="InvalidOperationException">The move is not allowed.</exception>
 	public static void Move(RoomSlot from, RoomSlot to)
 	{
+		if (from.Index == to.Index) return;
+
+		var session = from.Session
+		              ?? throw new InvalidOperationException("The source slot has no player.");
 		from.MoveTo(to);
+		from.Slots.Room.Emit(new PlayerMoved(from.Slots.Room, session, from, to));
 	}
 
 	public int Count => _slots.Length;

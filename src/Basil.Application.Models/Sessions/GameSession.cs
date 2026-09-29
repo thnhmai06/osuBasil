@@ -1,3 +1,4 @@
+using Basil.Application.Models.Multiplayer;
 using Basil.Domain.Auth;
 using Basil.Domain.Client;
 using Basil.Domain.Social;
@@ -50,7 +51,7 @@ public sealed class GameSession : UserSession
 		{
 			if (Equals(field, value)) return;
 			field = value;
-			Record(new StatusChanged(this));
+			Record(new StatusChanged(this, value));
 		}
 	} = PlayerStatus.Idle;
 
@@ -83,7 +84,7 @@ public sealed class GameSession : UserSession
 
 		Spectating = host;
 		host._spectators.Add(this);
-		Record(new SpectateStarted(this, host));
+		host.Record(new SpectatorAdded(host, this));
 	}
 
 	/// <summary>
@@ -97,7 +98,7 @@ public sealed class GameSession : UserSession
 
 		Spectating = null;
 		host._spectators.Remove(this);
-		Record(new SpectateStopped(this, host));
+		host.Record(new SpectatorRemoved(host, this));
 	}
 
 	/// <summary>Joins this session to a room, seating it in the first available slot.</summary>
@@ -114,7 +115,7 @@ public sealed class GameSession : UserSession
 	/// <summary>Leaves the room this session is currently seated in, if any.</summary>
 	public void LeaveRoom()
 	{
-		if (Room is { } room)
-			room.Slots.Vacate(this);
+		if (Room is { } room && room.Slots.Vacate(this) is { } slot)
+			room.Emit(new PlayerLeft(room, this, slot));
 	}
 }

@@ -1,7 +1,6 @@
 using Basil.Application.Contracts.Ports;
 using Basil.Application.Contracts.Registries;
 using Basil.Application.Models.Multiplayer;
-using Basil.Application.Models.Notifications;
 using Basil.Application.Models.Sessions;
 using Basil.Application.Services.Operations.Replies;
 
@@ -29,8 +28,6 @@ public sealed class RefereeCommands(SlotCommands targets, ISessionRegistry<GameS
 			return localizer.Get(MpReplies.UserAlreadyInRoom);
 
 		room.Invite(target);
-		if (games.AllByUser.TryGetValue(target, out var targetSession))
-			targetSession.Notify(new Invited(room, sender.User.Id));
 
 		return localizer.Get(MpReplies.InvitedToRoom, target.Name);
 	}

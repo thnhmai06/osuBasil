@@ -12,6 +12,7 @@ public sealed class RoomSlot
 	private GameTeam? _team;
 	private GameMods? _mods;
 	private bool? _introSkipped;
+	private bool _locked;
 
 	/// <summary>The slot collection this slot belongs to.</summary>
 	public readonly RoomSlots Slots;
@@ -22,19 +23,22 @@ public sealed class RoomSlot
 	/// <summary>Gets or sets whether this slot is locked. Locking an occupied slot evicts its occupant.</summary>
 	public bool Locked
 	{
-		get;
+		get => _locked;
 		set
 		{
-			if (field == value) return;
+			if (_locked == value) return;
 
+			GameSession? evicted = null;
 			if (value && _session is { } session)
 			{
 				if (session == Slots.Room.Host)
-					Slots.Room.Host = null;
+					Slots.Room.SetHostSilently(null);
+				evicted = session;
 				Clear();
 			}
 
-			field = value;
+			_locked = value;
+			Slots.Room.Emit(new SlotLockChanged(this, value, evicted));
 		}
 	}
 
@@ -57,6 +61,7 @@ public sealed class RoomSlot
 
 			_status = value;
 			IntroSkipped = value is RoomSlotStatus.Playing ? false : null;
+			Slots.Room.Emit(new SlotStatusChanged(this, value));
 		}
 	}
 
@@ -98,6 +103,7 @@ public sealed class RoomSlot
 			}
 
 			_team = value;
+			Slots.Room.Emit(new SlotTeamChanged(this, value));
 		}
 	}
 
@@ -117,6 +123,7 @@ public sealed class RoomSlot
 			}
 
 			_mods = value;
+			Slots.Room.Emit(new SlotModsChanged(this, value));
 		}
 	}
 
@@ -158,6 +165,22 @@ public sealed class RoomSlot
 	internal void SetTeam(GameTeam? team)
 	{
 		_team = team;
+	}
+
+	/// <summary>Assigns a status without emitting a <see cref="SlotStatusChanged" /> event.</summary>
+	/// <param name="status">The status to assign, or <see langword="null" /> to clear it.</param>
+	internal void SetStatus(RoomSlotStatus? status)
+	{
+		if (_status == status) return;
+		_status = status;
+		_introSkipped = status is RoomSlotStatus.Playing ? false : null;
+	}
+
+	/// <summary>Locks or unlocks the slot without emitting a <see cref="SlotLockChanged" /> event.</summary>
+	/// <param name="locked">The lock state to assign.</param>
+	internal void SetLocked(bool locked)
+	{
+		_locked = locked;
 	}
 
 	internal void MoveTo(RoomSlot target)

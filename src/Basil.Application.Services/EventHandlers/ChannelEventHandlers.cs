@@ -6,22 +6,23 @@ namespace Basil.Application.Services.EventHandlers;
 
 /// <summary>Reacts to a channel's membership events: a session joining or parting.</summary>
 public sealed class ChannelEventHandlers :
-	IEventHandler<ChannelJoined>,
-	IEventHandler<ChannelParted>
+	IEventHandler<ChannelMembershipEvent>
 {
 	/// <inheritdoc />
-	public Task HandleAsync(ChannelJoined domainEvent, CancellationToken cancellationToken = default)
+	public Task HandleAsync(ChannelMembershipEvent domainEvent, CancellationToken cancellationToken = default)
 	{
-		domainEvent.Session.Notify(new Notification.ChannelJoined(domainEvent.Channel.Name));
-		NotifyOtherMembers(domainEvent.Channel, domainEvent.Session);
-		return Task.CompletedTask;
-	}
+		switch (domainEvent)
+		{
+			case MemberJoined joined:
+				joined.Member.Notify(new Notification.ChannelJoined(joined.Channel.Name));
+				NotifyOtherMembers(joined.Channel, joined.Member);
+				break;
+			case MemberParted parted:
+				parted.Member.Notify(new Notification.ChannelParted(parted.Channel.Name));
+				NotifyOtherMembers(parted.Channel, parted.Member);
+				break;
+		}
 
-	/// <inheritdoc />
-	public Task HandleAsync(ChannelParted domainEvent, CancellationToken cancellationToken = default)
-	{
-		domainEvent.Session.Notify(new Notification.ChannelParted(domainEvent.Channel.Name));
-		NotifyOtherMembers(domainEvent.Channel, domainEvent.Session);
 		return Task.CompletedTask;
 	}
 

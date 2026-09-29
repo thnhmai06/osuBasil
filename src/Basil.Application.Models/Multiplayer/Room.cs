@@ -1,7 +1,7 @@
 using System.Threading.Channels;
-using Basil.Domain.Beatmaps;
 using Basil.Application.Models.Events;
 using Basil.Application.Models.Sessions;
+using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
@@ -19,6 +19,7 @@ public sealed class Room : IEventSource<RoomEvent>, IEquatable<Room>
 	private readonly ConcurrentSet<User> _invited = [];
 	private readonly ConcurrentSet<User> _referees = [];
 	private readonly Channel<RoomEvent> _events = System.Threading.Channels.Channel.CreateUnbounded<RoomEvent>();
+	private GameSession? _host;
 
 	/// <summary>The match this room is a live projection of.</summary>
 	public required Match Match { get; init; }
@@ -53,7 +54,7 @@ public sealed class Room : IEventSource<RoomEvent>, IEquatable<Room>
 		{
 			if (Match.Name == value) return;
 			Match.Name = value;
-			Emit(new SettingsChanged(this));
+			Emit(new RoomNameChanged(this, value));
 		}
 	}
 
@@ -65,7 +66,7 @@ public sealed class Room : IEventSource<RoomEvent>, IEquatable<Room>
 		{
 			if (Match.IsVisible == value) return;
 			Match.IsVisible = value;
-			Emit(new SettingsChanged(this));
+			Emit(new RoomVisibilityChanged(this, value));
 		}
 	}
 
@@ -80,7 +81,7 @@ public sealed class Room : IEventSource<RoomEvent>, IEquatable<Room>
 		{
 			if (field == value) return;
 			field = value;
-			Emit(new SettingsChanged(this));
+			Emit(new RoomPasswordChanged(this, value));
 		}
 	} = string.Empty;
 
@@ -92,7 +93,7 @@ public sealed class Room : IEventSource<RoomEvent>, IEquatable<Room>
 		{
 			if (Equals(field, value)) return;
 			field = value;
-			Emit(new SettingsChanged(this));
+			Emit(new BeatmapChanged(this, value));
 		}
 	}
 
@@ -104,7 +105,7 @@ public sealed class Room : IEventSource<RoomEvent>, IEquatable<Room>
 		{
 			if (Settings.Mode == value) return;
 			Settings.Mode = value;
-			Emit(new SettingsChanged(this));
+			Emit(new GameModeChanged(this, value));
 		}
 	}
 
@@ -116,7 +117,7 @@ public sealed class Room : IEventSource<RoomEvent>, IEquatable<Room>
 		{
 			if (Settings.Mods == value) return;
 			Settings.Mods = value;
-			Emit(new SettingsChanged(this));
+			Emit(new ModsChanged(this, value));
 		}
 	}
 
@@ -128,7 +129,7 @@ public sealed class Room : IEventSource<RoomEvent>, IEquatable<Room>
 		{
 			if (Settings.Freemods == value) return;
 			Settings.Freemods = value;
-			Emit(new SettingsChanged(this));
+			Emit(new FreemodsChanged(this, value));
 		}
 	}
 
@@ -156,7 +157,7 @@ public sealed class Room : IEventSource<RoomEvent>, IEquatable<Room>
 					slot.SetTeam(null);
 			}
 
-			Emit(new SettingsChanged(this));
+			Emit(new TeamTypeChanged(this, value));
 		}
 	}
 
@@ -168,7 +169,7 @@ public sealed class Room : IEventSource<RoomEvent>, IEquatable<Room>
 		{
 			if (Settings.WinCondition == value) return;
 			Settings.WinCondition = value;
-			Emit(new SettingsChanged(this));
+			Emit(new WinConditionChanged(this, value));
 		}
 	}
 
@@ -176,13 +177,14 @@ public sealed class Room : IEventSource<RoomEvent>, IEquatable<Room>
 	/// <remarks>The host must be seated in this room.</remarks>
 	public GameSession? Host
 	{
-		get;
+		get => _host;
 		set
 		{
-			if (ReferenceEquals(field, value)) return;
+			if (ReferenceEquals(_host, value)) return;
 			if (value is not null && Slots.Find(value) is null)
 				throw new InvalidOperationException("The player does not have a slot in this room.");
-			field = value;
+			_host = value;
+			Emit(new HostChanged(this, value));
 		}
 	}
 
@@ -247,7 +249,8 @@ public sealed class Room : IEventSource<RoomEvent>, IEquatable<Room>
 		if (IsReferee(player.User))
 			throw new InvalidOperationException("Cannot kick a referee.");
 
-		Slots.Vacate(player);
+		if (Slots.Vacate(player) is { } slot)
+			Emit(new PlayerKicked(this, player, slot));
 	}
 
 	/// <summary>Bans a player from the match, removing them from the room if they are currently in it.</summary>
@@ -260,8 +263,16 @@ public sealed class Room : IEventSource<RoomEvent>, IEquatable<Room>
 
 		_banned.Add(player);
 
-		if (Slots.Find(player)?.Session is { } session)
+		RoomSlot? vacated = null;
+		GameSession? evicted = null;
+		if (Slots.Find(player) is { } slot && slot.Session is { } session)
+		{
+			vacated = slot;
+			evicted = session;
 			Slots.Vacate(session);
+		}
+
+		Emit(new PlayerBanned(this, player, vacated, evicted));
 	}
 
 	/// <summary>Lifts a player's ban from the match, allowing them to join again.</summary>
@@ -269,6 +280,7 @@ public sealed class Room : IEventSource<RoomEvent>, IEquatable<Room>
 	public void Unban(User player)
 	{
 		_banned.Remove(player);
+		Emit(new PlayerUnbanned(this, player));
 	}
 
 	/// <summary>Invites a player to the room.</summary>
@@ -328,9 +340,9 @@ public sealed class Room : IEventSource<RoomEvent>, IEquatable<Room>
 		CurrentRound = round;
 
 		foreach (var slot in Slots.Where(s => s.Session is not null && s.Status is not RoomSlotStatus.NoMap))
-			slot.Status = RoomSlotStatus.Playing;
+			slot.SetStatus(RoomSlotStatus.Playing);
 
-		Emit(new RoundStarted(this));
+		Emit(new RoundStarted(this, round));
 		return round;
 	}
 
@@ -345,10 +357,10 @@ public sealed class Room : IEventSource<RoomEvent>, IEquatable<Room>
 		round.Aborted = true;
 
 		foreach (var slot in Slots.Where(s => s.Session is not null && s.Status is RoomSlotStatus.Playing or RoomSlotStatus.Complete))
-			slot.Status = RoomSlotStatus.NotReady;
+			slot.SetStatus(RoomSlotStatus.NotReady);
 
 		CurrentRound = null;
-		Emit(new RoundEnded(this, true, round));
+		Emit(new RoundAborted(this, round));
 	}
 
 	/// <summary>Closes the room, ending the match and vacating every slot.</summary>
@@ -360,6 +372,7 @@ public sealed class Room : IEventSource<RoomEvent>, IEquatable<Room>
 			Slots.Vacate(session);
 
 		Match.EndedAt = DateTimeOffset.UtcNow;
+		Emit(new RoomClosed(this, evicted));
 		return evicted;
 	}
 
@@ -368,6 +381,13 @@ public sealed class Room : IEventSource<RoomEvent>, IEquatable<Room>
 	internal void Emit(RoomEvent @event)
 	{
 		_events.Writer.TryWrite(@event);
+	}
+
+	/// <summary>Clears the host without emitting a <see cref="HostChanged" /> event.</summary>
+	/// <param name="host">The host to clear, or <see langword="null" />.</param>
+	internal void SetHostSilently(GameSession? host)
+	{
+		_host = host;
 	}
 
 	/// <inheritdoc />

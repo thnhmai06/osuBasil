@@ -52,7 +52,7 @@ public sealed class ChannelSession : IEventSource<ChannelEvent>, IEquatable<Chan
 	internal void Add(UserSession member)
 	{
 		if (_members.Add(member))
-			_events.Writer.TryWrite(new ChannelJoined(this, member));
+			_events.Writer.TryWrite(new MemberJoined(this, member));
 	}
 
 	/// <summary>Removes <paramref name="member" /> from the channel and records that they parted.</summary>
@@ -60,7 +60,7 @@ public sealed class ChannelSession : IEventSource<ChannelEvent>, IEquatable<Chan
 	internal void Remove(UserSession member)
 	{
 		if (_members.Remove(member))
-			_events.Writer.TryWrite(new ChannelParted(this, member));
+			_events.Writer.TryWrite(new MemberParted(this, member));
 	}
 
 	/// <summary>Determines whether another channel session tracks the same channel.</summary>
