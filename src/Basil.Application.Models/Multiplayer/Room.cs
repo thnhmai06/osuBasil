@@ -279,7 +279,7 @@ public sealed class Room : IEventSource<RoomEvent>, IEquatable<Room>
 	/// <param name="player">The player to unban.</param>
 	public void Unban(User player)
 	{
-		_banned.Remove(player);
+		if (!_banned.Remove(player)) return;
 		Emit(new PlayerUnbanned(this, player));
 	}
 
@@ -295,7 +295,7 @@ public sealed class Room : IEventSource<RoomEvent>, IEquatable<Room>
 	/// <param name="referee">The player to grant referee authority to.</param>
 	public void AddReferee(User referee)
 	{
-		_referees.Add(referee);
+		if (!_referees.Add(referee)) return;
 		Emit(new RefereeAdded(this, referee));
 	}
 
@@ -303,7 +303,7 @@ public sealed class Room : IEventSource<RoomEvent>, IEquatable<Room>
 	/// <param name="referee">The player to revoke referee authority from.</param>
 	public void RemoveReferee(User referee)
 	{
-		_referees.Remove(referee);
+		if (!_referees.Remove(referee)) return;
 		Emit(new RefereeRemoved(this, referee));
 	}
 
