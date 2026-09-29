@@ -28,29 +28,13 @@ public sealed class UserStats : IEquatable<UserStats>
 	public required GameMode Mode { get; init; }
 
 	/// <summary>The cumulative score across every submitted play.</summary>
-	public long TotalScore { get; init; } = 0; // all scores
+	public long TotalScore { get; set; }
 
 	/// <summary>The cumulative score across every submitted play on ranked beatmaps.</summary>
-	public long RankedScore { get; init; } = 0; // multiplayer-only score
+	public long RankedScore { get; set; }
 
 	/// <summary>The number of plays submitted.</summary>
-	public int PlayCount { get; init; } = 0;
-
-	/// <summary>Returns a copy of these statistics with a submitted score's totals added in.</summary>
-	/// <param name="score">The score to add to <see cref="TotalScore" />.</param>
-	/// <param name="rankedScore">The score to add to <see cref="RankedScore" />.</param>
-	/// <returns>A new <see cref="UserStats" /> with the updated totals and an incremented <see cref="PlayCount" />.</returns>
-	public UserStats WithSubmittedScore(long score, long rankedScore)
-	{
-		return new UserStats
-		{
-			UserId = UserId,
-			Mode = Mode,
-			TotalScore = TotalScore + score,
-			RankedScore = RankedScore + rankedScore,
-			PlayCount = PlayCount + 1
-		};
-	}
+	public int PlayCount { get; set; }
 
 	public bool Equals(UserStats? other)
 	{

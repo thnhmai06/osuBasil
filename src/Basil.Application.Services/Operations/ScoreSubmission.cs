@@ -58,8 +58,10 @@ public sealed class ScoreSubmission(
 			var current = await stats.LoadAsync(session.UserId, submission.Score.Mode, cancellationToken);
 			// Every beatmap reports as Approved (see Beatmapset.Status), so every passed score counts
 			// toward ranked score too.
-			var updated = current.WithSubmittedScore(submission.Score.TotalScore, submission.Score.TotalScore);
-			await stats.SaveAsync(updated, cancellationToken);
+			current.TotalScore += submission.Score.TotalScore;
+			current.RankedScore += submission.Score.TotalScore;
+			current.PlayCount++;
+			await stats.SaveAsync(current, cancellationToken);
 		}
 
 		session.Notify(new PresenceChanged(session));
