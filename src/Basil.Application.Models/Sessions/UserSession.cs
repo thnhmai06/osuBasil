@@ -1,7 +1,8 @@
-using System.Collections.Concurrent;
 using System.Threading.Channels;
-using Basil.Application.Models.Notifications;
 using Basil.Application.Models.Events;
+using Basil.Application.Models.Notifications;
+using Basil.Domain.Users;
+using Basil.Domain.Utilities;
 
 namespace Basil.Application.Models.Sessions;
 
@@ -13,22 +14,22 @@ namespace Basil.Application.Models.Sessions;
 /// </summary>
 /// <remarks>
 ///     Holds only runtime state Domain does not have; the account's own data (name, privileges,
-///     country) always comes from the user repository via <see cref="UserId" />. Thread-safe:
-///     concurrent channel membership changes on the same session do not corrupt its state.
+///     country) always comes from <see cref="User" />. Thread-safe: concurrent channel membership
+///     changes on the same session do not corrupt its state.
 /// </remarks>
-public abstract class UserSession : IEventSource<SessionEvent>
+public abstract class UserSession : IEventSource<SessionEvent>, IEquatable<UserSession>
 {
-	private readonly ConcurrentDictionary<string, byte> _channels = new();
+	private readonly ConcurrentSet<ChannelSession> _channels = [];
 	private readonly Channel<SessionEvent> _events = Channel.CreateUnbounded<SessionEvent>();
 
-	/// <summary>Gets the id of the account this session belongs to.</summary>
-	public required int UserId { get; init; }
+	/// <summary>Gets the user this session represents.</summary>
+	public abstract User User { get; }
+
+	/// <summary>Gets the time this session was created.</summary>
+	public abstract DateTimeOffset LoginTime { get; }
 
 	/// <summary>Gets the live transport connection this session sends notifications through.</summary>
 	public required IClientConnection Connection { get; init; }
-
-	/// <summary>Gets the time this session was created.</summary>
-	public required DateTimeOffset LoginTime { get; init; }
 
 	/// <summary>Gets or sets the time of the last activity received from the client.</summary>
 	public DateTimeOffset LastActiveAt { get; set; }
@@ -36,8 +37,8 @@ public abstract class UserSession : IEventSource<SessionEvent>
 	/// <summary>Gets or sets the away message shown to other users, or <see langword="null" /> when not away.</summary>
 	public string? AwayMessage { get; set; }
 
-	/// <summary>Gets the names of the channels this session has joined.</summary>
-	public IReadOnlyCollection<string> Channels => _channels.Keys.ToArray();
+	/// <summary>Gets the channels this session has joined.</summary>
+	public IReadOnlySet<ChannelSession> Channels => _channels;
 
 	/// <inheritdoc />
 	public ChannelReader<SessionEvent> Events => _events.Reader;
@@ -49,18 +50,55 @@ public abstract class UserSession : IEventSource<SessionEvent>
 		Connection.Send(notification);
 	}
 
-	/// <summary>Records that this session joined a channel, for its own channel-membership bookkeeping.</summary>
-	/// <param name="name">The name of the channel joined.</param>
-	internal void AddChannel(string name)
+	/// <summary>
+	///     Joins this session to <paramref name="channel" />, updating both sides of the membership.
+	/// </summary>
+	/// <param name="channel">The channel to join.</param>
+	/// <exception cref="InvalidOperationException">
+	///     <see cref="User" /> lacks read permission on the channel.
+	/// </exception>
+	public void Join(ChannelSession channel)
 	{
-		_channels[name] = 0;
+		if (!channel.CanRead(User))
+			throw new InvalidOperationException("The user does not have permission to read this channel.");
+
+		if (_channels.Add(channel))
+			channel.Add(this);
 	}
 
-	/// <summary>Records that this session parted a channel, for its own channel-membership bookkeeping.</summary>
-	/// <param name="name">The name of the channel parted.</param>
-	internal void RemoveChannel(string name)
+	/// <summary>
+	///     Parts this session from <paramref name="channel" />, updating both sides of the membership.
+	/// </summary>
+	/// <param name="channel">The channel to part.</param>
+	public void Part(ChannelSession channel)
 	{
-		_channels.TryRemove(name, out _);
+		if (_channels.Remove(channel))
+			channel.Remove(this);
+	}
+
+	/// <summary>Determines whether another session represents the same user through the same concrete type.</summary>
+	/// <param name="other">The session to compare against, or <see langword="null" />.</param>
+	/// <returns>
+	///     <see langword="true" /> when <paramref name="other" /> has the same concrete type and the
+	///     same <see cref="User" />; otherwise, <see langword="false" />.
+	/// </returns>
+	public bool Equals(UserSession? other)
+	{
+		if (other is null) return false;
+		if (GetType() != other.GetType()) return false;
+		return User.Equals(other.User);
+	}
+
+	/// <inheritdoc />
+	public override bool Equals(object? obj)
+	{
+		return obj is UserSession other && Equals(other);
+	}
+
+	/// <inheritdoc />
+	public override int GetHashCode()
+	{
+		return HashCode.Combine(GetType(), User);
 	}
 
 	/// <summary>Records a runtime event that has occurred to this session.</summary>

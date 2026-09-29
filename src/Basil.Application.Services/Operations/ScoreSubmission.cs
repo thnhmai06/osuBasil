@@ -46,7 +46,7 @@ public sealed class ScoreSubmission(
 			    out var error))
 			return error;
 
-		await scores.SaveAsync(submission.Score with { UserId = session.UserId }, cancellationToken);
+		await scores.SaveAsync(submission.Score with { UserId = session.User.Id }, cancellationToken);
 
 		if (replay is not null)
 		{
@@ -56,7 +56,7 @@ public sealed class ScoreSubmission(
 
 		if (submission.Score.IsPassed)
 		{
-			var current = await stats.LoadAsync(session.UserId, submission.Score.Mode, cancellationToken);
+			var current = await stats.LoadAsync(session.User.Id, submission.Score.Mode, cancellationToken);
 			// Every beatmap reports as Approved (see Beatmapset.Status), so every passed score counts
 			// toward ranked score too.
 			current.TotalScore += submission.Score.TotalScore;

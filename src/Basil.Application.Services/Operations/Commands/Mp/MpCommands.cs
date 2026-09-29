@@ -1,6 +1,5 @@
 using Basil.Application.Contracts.Ports;
 using Basil.Application.Contracts.Registries;
-using Basil.Application.Contracts.Repositories;
 using Basil.Application.Models.Multiplayer;
 using Basil.Application.Models.Sessions;
 using Basil.Application.Services.Operations.Replies;
@@ -25,7 +24,6 @@ public sealed class MpCommands(
 	RefereeCommands referees,
 	MatchFlowCommands flow,
 	IRoomRegistry rooms,
-	IRepository<int, User> usersById,
 	ILocalizer localizer)
 {
 	private static readonly string HelpText = string.Join('\n',
@@ -74,8 +72,7 @@ public sealed class MpCommands(
 		{
 			if (rooms.AllById.TryGetValue(roomId, out var current))
 			{
-				var actor = await usersById.LoadAsync(sender.UserId, cancellationToken);
-				if (actor is null || !current.IsReferee(actor))
+				if (!current.IsReferee(sender.User))
 					return localizer.Get(MpReplies.NotARefereeOfMatch, roomId);
 			}
 
@@ -88,8 +85,7 @@ public sealed class MpCommands(
 		await using (scope)
 		{
 			var room = scope.Room;
-			var user = await usersById.LoadAsync(sender.UserId, cancellationToken);
-			if (user is null) return localizer.Get(MpReplies.NotInARoom);
+			var user = sender.User;
 
 			var isReadOnly = subcommand is "settings" or "listrefs" or "banlist" ||
 			                 (subcommand == "private" && subArgs.Length == 0);

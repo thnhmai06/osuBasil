@@ -1,8 +1,6 @@
 using Basil.Application.Contracts.Registries;
-using Basil.Application.Contracts.Repositories;
 using Basil.Application.Models.Notifications;
 using Basil.Application.Models.Sessions;
-using Basil.Domain.Chat;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Operations;
@@ -15,9 +13,7 @@ namespace Basil.Application.Services.Operations;
 /// </remarks>
 public sealed class Messaging(
 	IChannelRegistry channels,
-	IRepository<string, ChatChannel> channelRepository,
-	IPlayerRegistry players,
-	IRepository<int, User> users,
+	ISessionRegistry<GameSession> games,
 	ChatCommands commands)
 {
 	/// <summary>Sends a chat message from <paramref name="from" /> to a channel or a user.</summary>
@@ -28,35 +24,30 @@ public sealed class Messaging(
 	public async Task SendAsync(UserSession from, string target, string text,
 		CancellationToken cancellationToken = default)
 	{
-		var sender = await users.LoadAsync(from.UserId, cancellationToken);
-		if (sender is null) return;
-
-		if (sender.SilenceEnd is { } silenceEnd && silenceEnd > DateTimeOffset.UtcNow)
+		if (from.User.SilenceEnd is { } silenceEnd && silenceEnd > DateTimeOffset.UtcNow)
 		{
 			from.Notify(new NotificationRefused(target, RefusalReason.Silenced));
 			return;
 		}
 
 		if (target.StartsWith('#'))
-			await SendToChannelAsync(from, sender, target, text, cancellationToken);
+			await SendToChannelAsync(from, target, text, cancellationToken);
 		else
 			await SendToUserAsync(from, target, text, cancellationToken);
 	}
 
-	private async Task SendToChannelAsync(UserSession from, User sender, string channelName, string text,
+	private async Task SendToChannelAsync(UserSession from, string channelName, string text,
 		CancellationToken cancellationToken)
 	{
-		var channel = await channelRepository.LoadAsync(channelName, cancellationToken);
-		if (channel is null ||
-		    !channels.AllByName.TryGetValue(channelName, out var membership) ||
-		    !membership.MemberIds.Contains(from.UserId) ||
-		    !ChannelSession.CanWrite(channel, sender))
+		if (!channels.AllByName.TryGetValue(channelName, out var membership) ||
+		    !membership.Members.Contains(from) ||
+		    !membership.CanWrite(from.User))
 		{
 			from.Notify(new NotificationRefused(channelName, RefusalReason.NoWritePermission));
 			return;
 		}
 
-		NotifyMembers(membership, from.UserId, new ChatNotification(from.UserId, channelName, text));
+		NotifyMembers(membership, from, new ChatNotification(from.User.Id, channelName, text));
 
 		if (await commands.ExecuteAsync(from, channelName, text, cancellationToken) is { } reply)
 			NotifyMembers(membership, null, new ChatNotification(SystemUserIds.BasilBot, channelName, reply));
@@ -65,33 +56,32 @@ public sealed class Messaging(
 	private async Task SendToUserAsync(UserSession from, string username, string text,
 		CancellationToken cancellationToken)
 	{
-		if (players.FindByName(username) is not GameSession target)
+		if (games.AllByUser.Values.FirstOrDefault(s => s.User.Name.Equals(username, StringComparison.OrdinalIgnoreCase))
+		    is not GameSession target)
 			// Not currently online: nothing to check against, nothing to deliver.
 			return;
 
-		var targetUser = await users.LoadAsync(target.UserId, cancellationToken);
-		if (targetUser?.SilenceEnd is { } silenceEnd && silenceEnd > DateTimeOffset.UtcNow)
+		if (target.User.SilenceEnd is { } silenceEnd && silenceEnd > DateTimeOffset.UtcNow)
 		{
 			from.Notify(new NotificationRefused(username, RefusalReason.Silenced));
 			return;
 		}
 
-		target.Notify(new ChatNotification(from.UserId, username, text));
+		target.Notify(new ChatNotification(from.User.Id, username, text));
 
 		if (target.AwayMessage is { } awayMessage)
-			from.Notify(new ChatNotification(target.UserId, from.UserId.ToString(), awayMessage));
+			from.Notify(new ChatNotification(target.User.Id, from.User.Name, awayMessage));
 
 		if (await commands.ExecuteAsync(from, null, text, cancellationToken) is { } reply)
 			from.Notify(new ChatNotification(SystemUserIds.BasilBot, username, reply));
 	}
 
-	private void NotifyMembers(ChannelSession channel, int? skipUserId, ChatNotification notification)
+	private void NotifyMembers(ChannelSession channel, UserSession? skip, ChatNotification notification)
 	{
-		foreach (var memberId in channel.MemberIds)
+		foreach (var member in channel.Members)
 		{
-			if (memberId == skipUserId) continue;
-			if (players.AllById.TryGetValue(memberId, out var member))
-				member.Notify(notification);
+			if (ReferenceEquals(member, skip)) continue;
+			member.Notify(notification);
 		}
 	}
 }

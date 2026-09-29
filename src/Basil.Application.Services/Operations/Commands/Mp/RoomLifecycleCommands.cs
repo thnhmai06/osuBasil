@@ -16,7 +16,6 @@ public sealed class RoomLifecycleCommands(
 	Lobby lobby,
 	IRoomRegistry rooms,
 	IRepository<int, Match> matches,
-	IRepository<int, User> usersById,
 	IChannelRegistry channels,
 	ILocalizer localizer)
 {
@@ -24,8 +23,8 @@ public sealed class RoomLifecycleCommands(
 	public async Task<string> MakeAsync(UserSession sender, IReadOnlyList<string> args, bool isPrivate,
 		CancellationToken cancellationToken)
 	{
-		var name = args.Count > 0 ? string.Join(' ', args) : $"{sender.UserId}'s room";
-		var creator = await usersById.LoadAsync(sender.UserId, cancellationToken);
+		var name = args.Count > 0 ? string.Join(' ', args) : $"{sender.User.Name}'s room";
+		var creator = sender.User;
 
 		var room = await lobby.CreateRoomAsync(creator, name, string.Empty, cancellationToken: cancellationToken);
 
@@ -53,8 +52,7 @@ public sealed class RoomLifecycleCommands(
 		await using (scope)
 		{
 			var room = scope.Room;
-			var user = await usersById.LoadAsync(sender.UserId, cancellationToken);
-			if (user is null) return localizer.Get(MpReplies.NoActiveMatchWithId, roomId);
+			var user = sender.User;
 
 			if (room.Banned.Contains(user))
 				return localizer.Get(MpReplies.BannedFromMatch);
@@ -72,7 +70,7 @@ public sealed class RoomLifecycleCommands(
 				game.RoomId = room.Id;
 
 			if (channels.AllByName.TryGetValue(room.Channel.Name, out var channelSession))
-				channelSession.Join(room.Channel, user, sender);
+				sender.Join(channelSession);
 
 			return localizer.Get(MpReplies.JoinedMatch, room.Id, room.Match.Name);
 		}

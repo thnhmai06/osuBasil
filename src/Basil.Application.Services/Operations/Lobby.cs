@@ -11,7 +11,6 @@ namespace Basil.Application.Services.Operations;
 public sealed class Lobby(
 	IRoomRegistry rooms,
 	IChannelRegistry channels,
-	IPlayerRegistry players,
 	IRepository<int, Match> matchRepository,
 	IIdAllocator<Match> matchIds,
 	IIdAllocator<Room> roomIds)
@@ -44,7 +43,7 @@ public sealed class Lobby(
 		if (!rooms.TryAdd(room))
 			throw new InvalidOperationException($"A room with id {id} is already registered.");
 
-		channels.TryAdd(new ChannelSession { Name = room.Channel.Name });
+		channels.TryAdd(new ChannelSession { Channel = room.Channel });
 
 		return room;
 	}
@@ -72,13 +71,12 @@ public sealed class Lobby(
 
 		if (channels.AllByName.TryGetValue(room.Channel.Name, out var channelSession))
 		{
-			foreach (var memberId in channelSession.MemberIds)
-				if (players.AllById.TryGetValue(memberId, out var session))
-				{
-					channelSession.Part(session);
-					if (session is GameSession { RoomId: var memberRoomId } game && memberRoomId == roomId)
-						game.RoomId = null;
-				}
+			foreach (var member in channelSession.Members.ToArray())
+			{
+				member.Part(channelSession);
+				if (member is GameSession { RoomId: var memberRoomId } game && memberRoomId == roomId)
+					game.RoomId = null;
+			}
 
 			channels.Remove(room.Channel.Name);
 		}

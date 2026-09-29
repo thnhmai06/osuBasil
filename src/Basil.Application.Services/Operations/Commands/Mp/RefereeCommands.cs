@@ -11,7 +11,7 @@ namespace Basil.Application.Services.Operations.Commands.Mp;
 ///     Backs the <c>!mp</c> subcommands that manage invitations and referee status: <c>invite</c>,
 ///     <c>addref</c>, <c>removeref</c>, <c>listrefs</c>, and <c>banlist</c>.
 /// </summary>
-public sealed class RefereeCommands(SlotCommands targets, IPlayerRegistry players, ILocalizer localizer)
+public sealed class RefereeCommands(SlotCommands targets, ISessionRegistry<GameSession> games, ILocalizer localizer)
 {
 	/// <summary>Handles <c>!mp invite &lt;name&gt;</c>.</summary>
 	public async Task<string> InviteAsync(UserSession sender, Room room, IReadOnlyList<string> args,
@@ -22,15 +22,15 @@ public sealed class RefereeCommands(SlotCommands targets, IPlayerRegistry player
 		var target = await targets.ResolveAsync(args[0], cancellationToken);
 		if (target is null) return localizer.Get(MpReplies.UserNotFound);
 
-		if (players.AllById.GetValueOrDefault(target.Id) is not GameSession)
+		if (!games.AllByUser.ContainsKey(target))
 			return localizer.Get(MpReplies.InviteRequiresClient);
 
 		if (room.Slots.Find(target) is not null)
 			return localizer.Get(MpReplies.UserAlreadyInRoom);
 
 		room.Invite(target);
-		if (players.AllById.GetValueOrDefault(target.Id) is { } targetSession)
-			targetSession.Notify(new Invited(room, sender.UserId));
+		if (games.AllByUser.TryGetValue(target, out var targetSession))
+			targetSession.Notify(new Invited(room, sender.User.Id));
 
 		return localizer.Get(MpReplies.InvitedToRoom, target.Name);
 	}

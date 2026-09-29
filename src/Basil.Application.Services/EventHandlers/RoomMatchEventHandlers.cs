@@ -4,6 +4,7 @@ using Basil.Application.Contracts.Repositories;
 using Basil.Application.Models.Multiplayer;
 using Basil.Application.Models.Sessions;
 using Basil.Domain.Multiplayer;
+using Basil.Domain.Users;
 using Notification = Basil.Application.Models.Notifications;
 
 namespace Basil.Application.Services.EventHandlers;
@@ -17,7 +18,7 @@ namespace Basil.Application.Services.EventHandlers;
 ///     closed out when <see cref="RoundEnded" /> reports it.
 /// </remarks>
 public sealed class RoomMatchEventHandlers(
-	IPlayerRegistry players,
+	ISessionRegistry<GameSession> games,
 	IRepository<int, Round> rounds,
 	IIdAllocator<Round> roundIds) :
 	IEventHandler<SlotChanged>,
@@ -150,7 +151,7 @@ public sealed class RoomMatchEventHandlers(
 
 		// The evicted player no longer holds a slot, so the membership-wide notify above never
 		// reaches them; tell them directly and clear their stale room membership.
-		if (domainEvent.Evicted is { } evicted && players.AllById.TryGetValue(evicted.Id, out var session))
+		if (domainEvent.Evicted is { } evicted && games.AllByUser.TryGetValue(evicted, out var session))
 		{
 			if (session is GameSession { RoomId: { } roomId } game && roomId == domainEvent.Room.Id)
 				game.RoomId = null;
@@ -163,7 +164,7 @@ public sealed class RoomMatchEventHandlers(
 	private void NotifyRoom(Room room, Notification.Notification notification)
 	{
 		foreach (var slot in room.Slots)
-			if (slot.User is { } user && players.AllById.TryGetValue(user.Id, out var session))
+			if (slot.User is { } user && games.AllByUser.TryGetValue(user, out var session))
 				session.Notify(notification);
 	}
 }

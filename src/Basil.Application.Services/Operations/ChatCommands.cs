@@ -64,7 +64,7 @@ public sealed class ChatCommands(
 		if (args.Length > 0 && int.TryParse(args[0], out var parsed) && parsed > 0) max = parsed;
 
 		var roll = (int)Random.Shared.NextInt64(0, (long)max + 1);
-		return $"{sender.UserId} rolls {roll} point(s)";
+		return $"{sender.User.Name} rolls {roll} point(s)";
 	}
 
 	private async Task<string> WhereAsync(string[] args, CancellationToken cancellationToken)

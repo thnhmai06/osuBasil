@@ -1,11 +1,12 @@
 using Basil.Application.Contracts.Registries;
 using Basil.Application.Models;
 using Basil.Application.Models.Notifications;
+using Basil.Application.Models.Sessions;
 
 namespace Basil.Application.Services.Operations;
 
 /// <summary>Runs a room's <c>!mp start</c>/<c>!mp timer</c> countdown, ticking milestones to its players.</summary>
-public sealed class RoomCountdowns(IRoomRegistry rooms, IPlayerRegistry players, TimeProvider timeProvider)
+public sealed class RoomCountdowns(IRoomRegistry rooms, ISessionRegistry<GameSession> games, TimeProvider timeProvider)
 {
 	private static readonly TimeSpan[] TickMarks =
 		[TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(5)];
@@ -88,7 +89,7 @@ public sealed class RoomCountdowns(IRoomRegistry rooms, IPlayerRegistry players,
 		if (!rooms.AllById.TryGetValue(roomId, out var room)) return;
 
 		foreach (var slot in room.Slots)
-			if (slot.User is { } user && players.AllById.TryGetValue(user.Id, out var session))
+			if (slot.User is { } user && games.AllByUser.TryGetValue(user, out var session))
 				session.Notify(notification);
 	}
 }

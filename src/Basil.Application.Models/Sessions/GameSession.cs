@@ -1,6 +1,7 @@
-using System.Collections.Concurrent;
+using Basil.Domain.Auth;
 using Basil.Domain.Client;
 using Basil.Domain.Social;
+using Basil.Domain.Utilities;
 
 namespace Basil.Application.Models.Sessions;
 
@@ -10,17 +11,29 @@ namespace Basil.Application.Models.Sessions;
 /// </summary>
 /// <remarks>
 ///     Thread-safe with respect to spectator bookkeeping: another session starting or stopping
-///     spectating this one does not corrupt <see cref="SpectatorIds" />.
+///     spectating this one does not corrupt <see cref="Spectators" />.
 /// </remarks>
 public sealed class GameSession : UserSession
 {
-	private readonly ConcurrentDictionary<int, byte> _spectatorIds = new();
+	private readonly ConcurrentSet<GameSession> _spectators = [];
+
+	/// <summary>Gets the login that created this session.</summary>
+	public required Login Login { get; init; }
+
+	/// <inheritdoc />
+	public override Domain.Users.User User => Login.User;
+
+	/// <inheritdoc />
+	public override DateTimeOffset LoginTime => Login.OccurredAt;
 
 	/// <summary>Gets the osu! client version reported at login.</summary>
-	public required ClientVersion ClientVersion { get; init; }
+	public ClientVersion ClientVersion => Login.Version;
 
 	/// <summary>Gets the hardware and client fingerprint captured at login.</summary>
-	public required ClientFingerprint ClientFingerprint { get; init; }
+	public ClientFingerprint ClientFingerprint => Login.Fingerprint;
+
+	/// <summary>Gets the IP address this session connected from.</summary>
+	public System.Net.IPAddress Ip => Login.Ip;
 
 	/// <summary>Gets the client's UTC offset reported at login.</summary>
 	public int UtcOffset { get; init; }
@@ -28,53 +41,65 @@ public sealed class GameSession : UserSession
 	/// <summary>Gets or sets the presence-list filter the client requested.</summary>
 	public PresenceVisibility PresenceVisibility { get; set; } = PresenceVisibility.Nil;
 
-	/// <summary>Gets the client's currently reported presence status.</summary>
-	public PlayerStatus Status { get; private set; } = PlayerStatus.Idle;
+	/// <summary>Gets or sets the client's currently reported presence status.</summary>
+	/// <remarks>Changing the value records a <see cref="StatusChanged" /> event only when it actually changes.</remarks>
+	public PlayerStatus Status
+	{
+		get;
+		set
+		{
+			if (Equals(field, value)) return;
+			field = value;
+			Record(new StatusChanged(this));
+		}
+	} = PlayerStatus.Idle;
 
-	/// <summary>Gets the id of the session this client is currently spectating, or <see langword="null" /> if none.</summary>
-	public int? SpectatingUserId { get; private set; }
+	/// <summary>Gets the session this client is currently spectating, or <see langword="null" /> if none.</summary>
+	public GameSession? Spectating { get; private set; }
 
-	/// <summary>Gets the ids of the sessions currently spectating this client.</summary>
-	public IReadOnlyCollection<int> SpectatorIds => _spectatorIds.Keys.ToArray();
+	/// <summary>Gets the sessions currently spectating this client.</summary>
+	public IReadOnlySet<GameSession> Spectators => _spectators;
+
+	/// <summary>Gets or sets the slot this session currently occupies, or <see langword="null" /> if none.</summary>
+	/// <remarks>Only <see cref="Multiplayer.RoomSlot" /> sets this value.</remarks>
+	public Multiplayer.RoomSlot? Slot { get; internal set; }
+
+	/// <summary>Gets the room this session currently sits in, or <see langword="null" /> if none.</summary>
+	public Multiplayer.Room? Room => Slot?.Slots.Room;
 
 	/// <summary>Gets the id of the room this client is currently in, or <see langword="null" /> if none.</summary>
 	public int? RoomId { get; set; }
 
-	/// <summary>Changes this session's reported presence status.</summary>
-	/// <param name="status">The new status to apply.</param>
-	public void ChangeStatus(PlayerStatus status)
-	{
-		Status = status;
-		Record(new StatusChanged(this));
-	}
-
-	/// <summary>Starts spectating another client, keeping both sides of the relationship consistent.</summary>
+	/// <summary>
+	///     Starts spectating another client, keeping both sides of the relationship consistent.
+	/// </summary>
 	/// <param name="host">The session to spectate.</param>
 	/// <exception cref="InvalidOperationException">
 	///     <paramref name="host" /> is this same session, or this session is already spectating someone.
 	/// </exception>
-	public void StartSpectating(GameSession host)
+	public void Spectate(GameSession host)
 	{
-		if (host.UserId == UserId)
+		if (host.User.Equals(User))
 			throw new InvalidOperationException("A session cannot spectate itself.");
-		if (SpectatingUserId is not null)
+		if (Spectating is not null)
 			throw new InvalidOperationException("This session is already spectating someone.");
 
-		SpectatingUserId = host.UserId;
-		host._spectatorIds[UserId] = 0;
+		Spectating = host;
+		host._spectators.Add(this);
 		Record(new SpectateStarted(this, host));
 	}
 
-	/// <summary>Stops spectating, keeping both sides of the relationship consistent.</summary>
-	/// <param name="host">The session currently being spectated, matching <see cref="SpectatingUserId" />.</param>
-	/// <exception cref="InvalidOperationException">This session is not spectating <paramref name="host" />.</exception>
-	public void StopSpectating(GameSession host)
+	/// <summary>
+	///     Stops spectating, keeping both sides of the relationship consistent.
+	/// </summary>
+	/// <exception cref="InvalidOperationException">This session is not spectating anyone.</exception>
+	public void StopSpectating()
 	{
-		if (SpectatingUserId != host.UserId)
-			throw new InvalidOperationException("This session is not spectating the given host.");
+		var host = Spectating
+		           ?? throw new InvalidOperationException("This session is not spectating anyone.");
 
-		SpectatingUserId = null;
-		host._spectatorIds.TryRemove(UserId, out _);
+		Spectating = null;
+		host._spectators.Remove(this);
 		Record(new SpectateStopped(this, host));
 	}
 }

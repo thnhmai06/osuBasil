@@ -3,6 +3,7 @@ using Basil.Application.Contracts.Registries;
 using Basil.Application.Contracts.Repositories;
 using Basil.Application.Models.Multiplayer;
 using Basil.Application.Models.Notifications;
+using Basil.Application.Models.Sessions;
 using Basil.Application.Services.Operations;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
@@ -19,7 +20,7 @@ namespace Basil.Application.Services.EventHandlers;
 ///     A room left with no one seated is closed through <see cref="Lobby" />.
 /// </remarks>
 public sealed class RoomMembershipEventHandlers(
-	IPlayerRegistry players,
+	ISessionRegistry<GameSession> games,
 	Lobby lobby,
 	IRepository<int, MatchEvent> matchEvents) :
 	IEventHandler<PlayerJoined>,
@@ -49,7 +50,7 @@ public sealed class RoomMembershipEventHandlers(
 	/// <inheritdoc />
 	public Task HandleAsync(PlayerInvited domainEvent, CancellationToken cancellationToken = default)
 	{
-		if (players.AllById.TryGetValue(domainEvent.Player.Id, out var session))
+		if (games.AllByUser.TryGetValue(domainEvent.Player, out var session))
 			session.Notify(new Invited(domainEvent.Room, domainEvent.Room.Creator?.Id ?? domainEvent.Player.Id));
 		return Task.CompletedTask;
 	}
@@ -106,7 +107,7 @@ public sealed class RoomMembershipEventHandlers(
 	private void NotifyRoom(Room room, Notification notification)
 	{
 		foreach (var slot in room.Slots)
-			if (slot.User is { } user && players.AllById.TryGetValue(user.Id, out var session))
+			if (slot.User is { } user && games.AllByUser.TryGetValue(user, out var session))
 				session.Notify(notification);
 	}
 }

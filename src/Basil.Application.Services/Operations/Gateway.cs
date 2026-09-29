@@ -1,3 +1,4 @@
+using System.Net;
 using Basil.Application.Contracts.Registries;
 using Basil.Application.Contracts.Repositories;
 using Basil.Application.Models.Auth;
@@ -17,9 +18,9 @@ public sealed class Gateway(
 	IRepository<string, User> usersByName,
 	IRepository<int, User> users,
 	ICredentialRepository credentials,
-	IPlayerRegistry playerRegistry,
+	ISessionRegistry<GameSession> gameRegistry,
+	ISessionRegistry<IrcSession> ircRegistry,
 	IChannelRegistry channelRegistry,
-	IRepository<string, ChatChannel> channelRepository,
 	IRoomRegistry roomRegistry)
 {
 	/// <summary>
@@ -28,13 +29,14 @@ public sealed class Gateway(
 	/// </summary>
 	/// <param name="attempt">The claimed username and password.</param>
 	/// <param name="connection">The transport connection to attach to the new session.</param>
+	/// <param name="ip">The IP address the login came from.</param>
 	/// <param name="clientVersion">The osu! client version reported at login.</param>
 	/// <param name="fingerprint">The hardware and client fingerprint captured at login.</param>
 	/// <param name="utcOffset">The client's UTC offset reported at login.</param>
 	/// <param name="cancellationToken">A token that cancels the login.</param>
 	/// <returns>The login's outcome: a new session on success, or the reason it failed.</returns>
 	public async Task<LoginResult> ConnectAsync(LoginAttempt attempt, IClientConnection connection,
-		ClientVersion clientVersion, ClientFingerprint fingerprint, int utcOffset,
+		IPAddress ip, ClientVersion clientVersion, ClientFingerprint fingerprint, int utcOffset,
 		CancellationToken cancellationToken = default)
 	{
 		var user = await usersByName.LoadAsync(UserSafeName.Of(attempt.Username), cancellationToken);
@@ -57,16 +59,13 @@ public sealed class Gateway(
 		var loginTime = DateTimeOffset.UtcNow;
 		var session = new GameSession
 		{
-			UserId = user.Id,
+			Login = new Login(user, ip, clientVersion, fingerprint, loginTime),
 			Connection = connection,
-			LoginTime = loginTime,
 			LastActiveAt = loginTime,
-			ClientVersion = clientVersion,
-			ClientFingerprint = fingerprint,
 			UtcOffset = utcOffset
 		};
 
-		if (!playerRegistry.TryAdd(session))
+		if (!gameRegistry.TryAdd(session))
 			return LoginResult.Fail(LoginFailure.AlreadyOnline);
 
 		try
@@ -74,18 +73,17 @@ public sealed class Gateway(
 			// Live channels are registered in IChannelRegistry at startup; iterate that set rather
 			// than searching, since auto-join is a lookup over already-known channels, not a search
 			// feature.
-			foreach (var (name, channelSession) in channelRegistry.AllByName)
+			foreach (var channelSession in channelRegistry.AllByName.Values)
 			{
-				var channel = await channelRepository.LoadAsync(name, cancellationToken);
-				if (channel is null || !channel.AutoJoin) continue;
-				if (!user.Privilege.Has(channel.ReadPrivilege)) continue;
+				if (!channelSession.Channel.AutoJoin) continue;
+				if (!channelSession.CanRead(user)) continue;
 
-				channelSession.Join(channel, user, session);
+				session.Join(channelSession);
 			}
 		}
 		catch
 		{
-			playerRegistry.Remove(session);
+			gameRegistry.Remove(session);
 			throw;
 		}
 
@@ -94,7 +92,7 @@ public sealed class Gateway(
 
 	/// <summary>
 	///     Tears a session down: stops any spectating in either direction, leaves its room, parts
-	///     every joined channel, and removes it from the player registry.
+	///     every joined channel, and removes it from the right session registry.
 	/// </summary>
 	/// <param name="session">The session going offline.</param>
 	/// <param name="cancellationToken">A token that cancels the teardown.</param>
@@ -104,17 +102,15 @@ public sealed class Gateway(
 		{
 			if (session is GameSession game)
 			{
-				if (game.SpectatingUserId is { } hostId &&
-				    playerRegistry.AllById.GetValueOrDefault(hostId) is GameSession host)
-					game.StopSpectating(host);
+				if (game.Spectating is not null)
+					game.StopSpectating();
 
-				foreach (var spectatorId in game.SpectatorIds.ToArray())
-					if (playerRegistry.AllById.GetValueOrDefault(spectatorId) is GameSession spectator)
-						spectator.StopSpectating(game);
+				foreach (var spectator in game.Spectators.ToArray())
+					spectator.StopSpectating();
 
 				if (game.RoomId is { } roomId)
 				{
-					var user = await users.LoadAsync(session.UserId, cancellationToken);
+					var user = await users.LoadAsync(session.User.Id, cancellationToken);
 					if (user is not null && await roomRegistry.EnterAsync(roomId, cancellationToken) is { } scope)
 						await using (scope)
 						{
@@ -126,13 +122,15 @@ public sealed class Gateway(
 				game.RoomId = null;
 			}
 
-			foreach (var channelName in session.Channels.ToArray())
-				if (channelRegistry.AllByName.TryGetValue(channelName, out var channelSession))
-					channelSession.Part(session);
+			foreach (var channel in session.Channels.ToArray())
+				session.Part(channel);
 		}
 		finally
 		{
-			playerRegistry.Remove(session);
+			if (session is IrcSession irc)
+				ircRegistry.Remove(irc);
+			else if (session is GameSession gameSession)
+				gameRegistry.Remove(gameSession);
 		}
 	}
 }
