@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Threading.Channels;
 using Basil.Application.Models.Notifications;
-using Basil.Domain.Events;
+using Basil.Application.Models.Events;
 
 namespace Basil.Application.Models.Sessions;
 
@@ -16,10 +16,10 @@ namespace Basil.Application.Models.Sessions;
 ///     country) always comes from the user repository via <see cref="UserId" />. Thread-safe:
 ///     concurrent channel membership changes on the same session do not corrupt its state.
 /// </remarks>
-public abstract class UserSession : IEventSource<Event>
+public abstract class UserSession : IEventSource<SessionEvent>
 {
 	private readonly ConcurrentDictionary<string, byte> _channels = new();
-	private readonly Channel<Event> _events = Channel.CreateUnbounded<Event>();
+	private readonly Channel<SessionEvent> _events = Channel.CreateUnbounded<SessionEvent>();
 
 	/// <summary>Gets the id of the account this session belongs to.</summary>
 	public required int UserId { get; init; }
@@ -40,7 +40,7 @@ public abstract class UserSession : IEventSource<Event>
 	public IReadOnlyCollection<string> Channels => _channels.Keys.ToArray();
 
 	/// <inheritdoc />
-	public ChannelReader<Event> Events => _events.Reader;
+	public ChannelReader<SessionEvent> Events => _events.Reader;
 
 	/// <summary>Sends a message to this session's client.</summary>
 	/// <param name="notification">The message to send.</param>
@@ -65,7 +65,7 @@ public abstract class UserSession : IEventSource<Event>
 
 	/// <summary>Records a runtime event that has occurred to this session.</summary>
 	/// <param name="event">The event to record.</param>
-	private protected void Record(Event @event)
+	private protected void Record(SessionEvent @event)
 	{
 		_events.Writer.TryWrite(@event);
 	}

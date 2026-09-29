@@ -7,8 +7,8 @@ namespace Basil.Application.Services.EventHandlers;
 
 /// <summary>Reacts to a channel's membership events: a session joining or parting.</summary>
 public sealed class ChannelEventHandlers(IPlayerRegistry players) :
-	IDomainEventHandler<ChannelJoined>,
-	IDomainEventHandler<ChannelParted>
+	IEventHandler<ChannelJoined>,
+	IEventHandler<ChannelParted>
 {
 	/// <inheritdoc />
 	public Task HandleAsync(ChannelJoined domainEvent, CancellationToken cancellationToken = default)

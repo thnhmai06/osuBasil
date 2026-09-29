@@ -1,6 +1,6 @@
 using System.Threading.Channels;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Events;
+using Basil.Application.Models.Events;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Domain.Utilities;

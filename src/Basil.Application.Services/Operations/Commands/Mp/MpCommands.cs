@@ -16,8 +16,7 @@ namespace Basil.Application.Services.Operations.Commands.Mp;
 ///     either have no room yet, or manage their own scope through <see cref="Lobby" />. Every other
 ///     subcommand resolves the sender's current room (<see cref="GameSession.RoomId" />) and runs
 ///     inside the single <see cref="IRoomRegistry.EnterAsync" /> scope <see cref="IRoomRegistry" />
-///     grants for it, so its recorded domain events are dispatched exactly once, when the scope is
-///     disposed.
+///     grants for it.
 /// </remarks>
 public sealed class MpCommands(
 	RoomLifecycleCommands lifecycle,

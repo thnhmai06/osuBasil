@@ -20,18 +20,18 @@ public sealed class RoomMatchEventHandlers(
 	IPlayerRegistry players,
 	IRepository<int, Round> rounds,
 	IIdAllocator<Round> roundIds) :
-	IDomainEventHandler<SlotChanged>,
-	IDomainEventHandler<SlotLocked>,
-	IDomainEventHandler<SettingsChanged>,
-	IDomainEventHandler<RoomLockChanged>,
-	IDomainEventHandler<RoundStarted>,
-	IDomainEventHandler<PlayerLoaded>,
-	IDomainEventHandler<AllPlayersLoaded>,
-	IDomainEventHandler<PlayerSkipped>,
-	IDomainEventHandler<AllPlayersSkipped>,
-	IDomainEventHandler<PlayerFailed>,
-	IDomainEventHandler<PlayerCompleted>,
-	IDomainEventHandler<RoundEnded>
+	IEventHandler<SlotChanged>,
+	IEventHandler<SlotLocked>,
+	IEventHandler<SettingsChanged>,
+	IEventHandler<RoomLockChanged>,
+	IEventHandler<RoundStarted>,
+	IEventHandler<PlayerLoaded>,
+	IEventHandler<AllPlayersLoaded>,
+	IEventHandler<PlayerSkipped>,
+	IEventHandler<AllPlayersSkipped>,
+	IEventHandler<PlayerFailed>,
+	IEventHandler<PlayerCompleted>,
+	IEventHandler<RoundEnded>
 {
 	/// <inheritdoc />
 	public Task HandleAsync(AllPlayersLoaded domainEvent, CancellationToken cancellationToken = default)

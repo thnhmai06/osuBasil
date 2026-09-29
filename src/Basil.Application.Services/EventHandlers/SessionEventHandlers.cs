@@ -10,9 +10,9 @@ namespace Basil.Application.Services.EventHandlers;
 ///     or stopping spectating another client.
 /// </summary>
 public sealed class SessionEventHandlers(IPlayerRegistry players) :
-	IDomainEventHandler<StatusChanged>,
-	IDomainEventHandler<SpectateStarted>,
-	IDomainEventHandler<SpectateStopped>
+	IEventHandler<StatusChanged>,
+	IEventHandler<SpectateStarted>,
+	IEventHandler<SpectateStopped>
 {
 	/// <inheritdoc />
 	public Task HandleAsync(SpectateStarted domainEvent, CancellationToken cancellationToken = default)

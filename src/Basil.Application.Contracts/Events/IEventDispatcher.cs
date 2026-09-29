@@ -1,10 +1,10 @@
-using Basil.Domain.Events;
+using Basil.Application.Models.Events;
 
 namespace Basil.Application.Contracts.Events;
 
 /// <summary>
-///     Routes a recorded domain event to every <see cref="IDomainEventHandler{TEvent}" /> registered
-///     for its concrete type.
+///     Routes a recorded event to every <see cref="IEventHandler{TEvent}" /> registered for the
+///     event's concrete type or any category type it derives from.
 /// </summary>
 /// <remarks>
 ///     Handlers for the same event run in the order they were recorded relative to other events. A
@@ -13,7 +13,7 @@ namespace Basil.Application.Contracts.Events;
 /// </remarks>
 public interface IEventDispatcher
 {
-	/// <summary>Dispatches a domain event to every handler registered for its type.</summary>
+	/// <summary>Dispatches an event to every handler registered for its type or a category it inherits.</summary>
 	/// <param name="event">The event to dispatch.</param>
 	/// <param name="cancellationToken">A token that cancels the dispatch.</param>
 	Task DispatchAsync(Event @event, CancellationToken cancellationToken = default);

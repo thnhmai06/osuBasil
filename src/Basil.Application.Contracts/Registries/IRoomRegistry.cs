@@ -31,9 +31,7 @@ public interface IRoomRegistry
 	/// <param name="cancellationToken">A token that cancels the wait.</param>
 	/// <returns>
 	///     A scope holding the room, or <see langword="null" /> when no room with <paramref name="roomId" />
-	///     is registered. Disposing a granted scope dispatches every domain event the room (and its
-	///     slots) recorded while the scope was open, clears them, and only then releases the room for
-	///     the next caller.
+	///     is registered. The scope only grants exclusive permission to mutate the room.
 	/// </returns>
 	Task<IRoomScope?> EnterAsync(int roomId, CancellationToken cancellationToken = default);
 }

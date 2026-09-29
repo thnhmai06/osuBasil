@@ -7,8 +7,8 @@ namespace Basil.Application.Contracts.Caching;
 /// <remarks>
 ///     Only the implementation of a kho may use this: it is not a kho of its own, and no other
 ///     Application code should hold or bypass one. Concurrent calls for the same key that has not
-///     been loaded yet share a single load. An entry is released after five minutes without being
-///     read or written.
+///     been loaded yet share a single load. An entry is released only after five minutes without
+///     being read or written and once the value is no longer referenced elsewhere.
 /// </remarks>
 /// <typeparam name="TKey">The type that uniquely identifies a cached value.</typeparam>
 /// <typeparam name="TValue">The type of value cached.</typeparam>

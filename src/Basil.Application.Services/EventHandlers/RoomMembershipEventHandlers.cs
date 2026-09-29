@@ -22,14 +22,14 @@ public sealed class RoomMembershipEventHandlers(
 	IPlayerRegistry players,
 	Lobby lobby,
 	IRepository<int, MatchEvent> matchEvents) :
-	IDomainEventHandler<PlayerJoined>,
-	IDomainEventHandler<PlayerLeft>,
-	IDomainEventHandler<PlayerKicked>,
-	IDomainEventHandler<PlayerBanned>,
-	IDomainEventHandler<PlayerInvited>,
-	IDomainEventHandler<HostChanged>,
-	IDomainEventHandler<RefereeAdded>,
-	IDomainEventHandler<RefereeRemoved>
+	IEventHandler<PlayerJoined>,
+	IEventHandler<PlayerLeft>,
+	IEventHandler<PlayerKicked>,
+	IEventHandler<PlayerBanned>,
+	IEventHandler<PlayerInvited>,
+	IEventHandler<HostChanged>,
+	IEventHandler<RefereeAdded>,
+	IEventHandler<RefereeRemoved>
 {
 	/// <inheritdoc />
 	public async Task HandleAsync(HostChanged domainEvent, CancellationToken cancellationToken = default)

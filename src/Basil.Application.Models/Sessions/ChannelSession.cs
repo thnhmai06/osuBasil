@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using System.Threading.Channels;
 using Basil.Domain.Chat;
 using Basil.Domain.Client;
-using Basil.Domain.Events;
+using Basil.Application.Models.Events;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Models.Sessions;
@@ -13,9 +13,9 @@ namespace Basil.Application.Models.Sessions;
 ///     keyed to by <see cref="Name" />, not copied here.
 /// </summary>
 /// <remarks>Thread-safe: concurrent joins and parts of the same channel session do not corrupt its state.</remarks>
-public sealed class ChannelSession : IEventSource<Event>
+public sealed class ChannelSession : IEventSource<ChannelEvent>
 {
-	private readonly Channel<Event> _events = Channel.CreateUnbounded<Event>();
+	private readonly Channel<ChannelEvent> _events = Channel.CreateUnbounded<ChannelEvent>();
 	private readonly ConcurrentDictionary<int, byte> _memberIds = new();
 
 	/// <summary>Gets the name of the channel this session tracks membership for.</summary>
@@ -25,7 +25,7 @@ public sealed class ChannelSession : IEventSource<Event>
 	public IReadOnlyCollection<int> MemberIds => _memberIds.Keys.ToArray();
 
 	/// <inheritdoc />
-	public ChannelReader<Event> Events => _events.Reader;
+	public ChannelReader<ChannelEvent> Events => _events.Reader;
 
 	/// <summary>Gets a value that indicates whether <paramref name="user" /> may write to the channel.</summary>
 	/// <param name="channel">The channel's metadata.</param>
