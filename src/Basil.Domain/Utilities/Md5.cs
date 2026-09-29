@@ -1,5 +1,4 @@
 ﻿using System.Security.Cryptography;
-using System.Text;
 
 namespace Basil.Domain.Utilities;
 
@@ -14,7 +13,7 @@ public readonly record struct Md5
 		    || !hash.All(static c => c is >= '0' and <= '9' or >= 'a' and <= 'f' or >= 'A' and <= 'F'))
 			throw new ArgumentException("The MD5 value is invalid.", nameof(hash));
 
-		HashValue = Convert.ToHexString(Encoding.UTF8.GetBytes(hash)).ToLowerInvariant();
+		HashValue = hash.ToLowerInvariant();
 	}
 
 	public Md5(byte[] value)
