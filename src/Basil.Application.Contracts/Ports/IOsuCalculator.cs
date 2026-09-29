@@ -5,8 +5,7 @@ namespace Basil.Application.Contracts.Ports;
 
 /// <summary>
 ///     Computes the beatmap gameplay stats that the server itself cannot derive from the raw
-///     beatmap file: mod- and mode-affected difficulty, per-mode hit-object counts, and the content
-///     MD5.
+///     beatmap file: mod- and mode-affected difficulty and per-mode hit-object counts.
 /// </summary>
 /// <remarks>
 ///     Nothing in scoring, leaderboards, or match win conditions depends on these calculations: they
@@ -20,11 +19,6 @@ public interface IOsuCalculator
 	/// <param name="mods">The mods whose difficulty adjustments the analysis should apply.</param>
 	/// <returns>The analyzed difficulty stats and per-mode hit-object counts.</returns>
 	BeatmapAnalysis Analyze(string beatmapFilePath, GameMode mode, GameMods mods);
-
-	/// <summary>Computes the content MD5 of the given beatmap file bytes.</summary>
-	/// <param name="beatmapBytes">The raw bytes of the .osu file.</param>
-	/// <returns>The lowercase-hex MD5 of the file contents.</returns>
-	string ComputeBeatmapMd5(byte[] beatmapBytes);
 }
 
 /// <summary>The result of analyzing a beatmap under a specific mode and mod combination.</summary>

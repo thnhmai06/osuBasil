@@ -21,7 +21,7 @@ public sealed class ScoreSubmission(
 	/// <param name="playerName">The submitting player's username, as known to the server.</param>
 	/// <param name="clientFingerprint">The fingerprint MD5 and serial the client sent with the submission.</param>
 	/// <param name="clientVersionDate">The client version date the client sent with the submission.</param>
-	/// <param name="clientBeatmapMd5">The beatmap MD5 the client claims to have played.</param>
+	/// <param name="clientBeatmapHash">The beatmap MD5 the client claims to have played.</param>
 	/// <param name="replay">The submission's replay bytes, or <see langword="null" /> for a failed play.</param>
 	/// <param name="cancellationToken">A token that cancels the persistence.</param>
 	/// <returns>
@@ -34,15 +34,15 @@ public sealed class ScoreSubmission(
 		int scoreId,
 		(Md5 Hash, Md5? StoryboardHash) beatmap,
 		string playerName,
-		(string Md5, string Serial) clientFingerprint,
+		(Md5 Hash, string Serial) clientFingerprint,
 		string clientVersionDate,
-		string clientBeatmapMd5,
+		Md5 clientBeatmapHash,
 		byte[]? replay,
 		CancellationToken cancellationToken = default)
 	{
 		if (!submission.Validate(
 			    (session.ClientFingerprint, session.ClientVersion, beatmap, playerName),
-			    (clientFingerprint, clientVersionDate, clientBeatmapMd5),
+			    (clientFingerprint, clientVersionDate, clientBeatmapHash),
 			    out var error))
 			return error;
 

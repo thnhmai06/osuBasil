@@ -1,5 +1,6 @@
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
+using Basil.Domain.Utilities;
 
 namespace Basil.Application.Models.Sessions;
 
@@ -9,14 +10,14 @@ namespace Basil.Application.Models.Sessions;
 /// </summary>
 /// <param name="Activity">The activity the client is currently reporting.</param>
 /// <param name="Text">The free-form status text shown to other players alongside the activity.</param>
-/// <param name="BeatmapMd5">The MD5 of the beatmap being played or selected, or <see langword="null" /> for none.</param>
+/// <param name="BeatmapHash">The MD5 of the beatmap being played or selected, or <see langword="null" /> for none.</param>
 /// <param name="BeatmapId">The id of the beatmap being played or selected, or <see langword="null" /> for none.</param>
 /// <param name="GameMods">The mods currently active.</param>
 /// <param name="GameMode">The game mode currently selected.</param>
 public sealed record PlayerStatus(
 	UserActivity Activity,
 	string Text,
-	string? BeatmapMd5,
+	Md5? BeatmapHash,
 	int? BeatmapId,
 	GameMods GameMods,
 	GameMode GameMode)

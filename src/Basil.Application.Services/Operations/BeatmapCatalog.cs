@@ -4,6 +4,7 @@ using Basil.Application.Contracts.Storages;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
+using Basil.Domain.Utilities;
 
 namespace Basil.Application.Services.Operations;
 
@@ -46,7 +47,7 @@ public sealed class BeatmapCatalog(
 			var beatmap = new Beatmap
 			{
 				Id = file.Id,
-				Hash = calculator.ComputeBeatmapMd5(file.Content),
+				Hash = new Md5(file.Content),
 				Beatmapset = set,
 				Version = file.Version,
 				Difficulty = analysis.Difficulty,
