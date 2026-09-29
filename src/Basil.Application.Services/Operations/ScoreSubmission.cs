@@ -3,6 +3,7 @@ using Basil.Application.Contracts.Storages;
 using Basil.Application.Models.Notifications;
 using Basil.Application.Models.Sessions;
 using Basil.Domain.Scores;
+using Basil.Domain.Utilities;
 
 namespace Basil.Application.Services.Operations;
 
@@ -31,7 +32,7 @@ public sealed class ScoreSubmission(
 		GameSession session,
 		Submission submission,
 		int scoreId,
-		(string Hash, string? StoryboardHash) beatmap,
+		(Md5 Hash, Md5? StoryboardHash) beatmap,
 		string playerName,
 		(string Md5, string Serial) clientFingerprint,
 		string clientVersionDate,

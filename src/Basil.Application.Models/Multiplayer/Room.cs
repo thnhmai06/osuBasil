@@ -206,6 +206,6 @@ public sealed class Room : IEventSource<RoomEvent>
 	/// </returns>
 	public bool VerifyPassword(string password)
 	{
-		return !string.IsNullOrEmpty(Password) || Password == password;
+		return string.IsNullOrEmpty(Password) || Password == password;
 	}
 }
