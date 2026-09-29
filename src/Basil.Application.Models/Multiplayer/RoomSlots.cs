@@ -20,6 +20,7 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 	public readonly Room Room;
 
 	/// <summary>Gets or sets a value that indicates whether the room's slots are locked as a whole.</summary>
+	/// <remarks>A locked room stops players from changing their own slot or team; referees still can.</remarks>
 	public bool Locked
 	{
 		get;
@@ -119,6 +120,7 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 	/// <summary>Moves a player from one slot to another.</summary>
 	/// <param name="from">The slot the player currently occupies.</param>
 	/// <param name="to">The destination slot.</param>
+	/// <remarks>This is a referee operation, so it is allowed while the room is locked.</remarks>
 	/// <exception cref="InvalidOperationException">The move is not allowed.</exception>
 	public static void Move(RoomSlot from, RoomSlot to)
 	{

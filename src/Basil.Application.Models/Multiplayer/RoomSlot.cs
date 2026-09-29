@@ -193,9 +193,6 @@ public sealed class RoomSlot
 	{
 		ThrowIfDifferentRoom(target);
 		if (Index == target.Index) return;
-		if (Slots.Locked)
-			throw new InvalidOperationException("Cannot move a player while the room is locked.");
-
 		ThrowIfEmpty();
 		target.ThrowIfLocked();
 
