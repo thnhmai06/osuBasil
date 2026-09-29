@@ -310,12 +310,8 @@ Basil.Domain                  business model and its own validity        -> (not
 Basil.Protocol.Bancho         bancho wire format                          -> (nothing)
 Basil.Protocol.Irc            IRC wire format                             -> (nothing)
 
-Basil.Application.Models      runtime-only model (Room, sessions),        -> Domain
-                              events, notifications, queries, options
-Basil.Application.Contracts   ports, repositories, registries,            -> Domain, Application.Models
-                              event handler/dispatcher contracts
-Basil.Application.Services    operations, chat commands, event handlers   -> Domain, Application.Models,
-                                                                             Application.Contracts
+Basil.Application             use cases, organized by feature folders     -> Domain
+                              (runtime model, events, ports, operations)
 
 Basil.Infrastructure          persistence, storage, media, background     -> Application, Protocol.*
                               services, concrete providers
@@ -324,21 +320,42 @@ Basil.Host.Bancho / .Irc / .Api  transports                               -> App
 Basil.Host                    entry point and composition                 -> everything
 ```
 
-> **Migration in progress.** The Application layer was split into `Models`, `Contracts` and
-> `Services`, and its runtime model is being reworked — read
+> **Migration in progress.** The Application runtime model is being reworked — read
 > [`plans/application-runtime-model-plan-20260929.md`](plans/application-runtime-model-plan-20260929.md)
-> first. Until the lower projects are migrated, **only `Basil.Domain` and `Basil.Application.*`
-> build**: `Basil.Infrastructure`, `Basil.Host.*` and every test project still reference the
-> removed `Basil.Application` project, so solution-wide `dotnet build`/`dotnet test` and
+> first (its `Models`/`Contracts`/`Services` paths predate the merge into one project; see the
+> feature folders below). Until the lower projects are migrated, **only `Basil.Domain` and
+> `Basil.Application` build**: `Basil.Infrastructure`, `Basil.Host.*` and every test project still
+> use the old Application namespaces, so solution-wide `dotnet build`/`dotnet test` and
 > `Basil.ArchitectureTests` do not run. Verify with
-> `dotnet build src/Basil.Application.Services/Basil.Application.Services.csproj`.
+> `dotnet build src/Basil.Application/Basil.Application.csproj`.
 > `docs/for-developers/architecture.md` still describes an older structure.
+
+### Application feature folders
+
+`Basil.Application` is one project sliced by feature, not by kind of type. Each folder holds its
+runtime model, events, notifications, ports and operations together; namespace = folder.
+
+```text
+Common/        Configuration, Events, Notifications (base), Queries (base), Persistence, ILocalizer
+Users/         login/register attempts, credentials, password hashing, user queries
+Sessions/      UserSession/GameSession/IrcSession, session registry and events, presence, Gateway
+Chat/          ChannelSession, channel registry, Messaging, ChatCommands, BotReplies
+Multiplayer/   Room, RoomSlot(s), room registry, Events/, Commands/ (!mp), Lobby, MpReplies
+Beatmaps/      beatmap queries, mirror and analyser ports, BeatmapCatalog
+Scores/        user stats, ScoreSubmission
+```
+
+* `Common` depends on no feature. `Users`, `Beatmaps` and `Scores` do not depend on `Multiplayer`.
+* `Sessions`, `Chat` and `Multiplayer` reference each other (`GameSession.Room` ↔ `Room.Host`,
+  `Room.Channel`); treat them as one cluster. That is why features are folders, not projects:
+  their invariants rely on `internal` members (`GameSession.Slot` setter, `Room.Emit`) staying
+  inside one assembly.
 
 ### Domain and Application
 
 * **Domain** holds business models that exist beyond runtime (`Match`, `Round`, `MatchSettings`,
   `User`, `Beatmap`, `Login`, …) and guards their own validity. No runtime-only state, no events.
-* **Application.Models** holds what exists only at runtime (`Room`, `RoomSlot(s)`, `UserSession`/
+* **Application** holds what exists only at runtime (`Room`, `RoomSlot(s)`, `UserSession`/
   `GameSession`/`IrcSession`, `ChannelSession`), plus events and notifications.
 * **Derive whatever is derivable.** A property a runtime object co-owns with its domain object
   (truth in Domain) is a forwarding property (`Room.Name => Match.Name`) whose setter emits the
