@@ -1,12 +1,16 @@
 using Basil.Application.Contracts.Registries;
+using Basil.Application.Contracts.Repositories;
 using Basil.Application.Models;
 using Basil.Application.Models.Notifications;
-using Basil.Application.Models.Sessions;
+using Basil.Domain.Multiplayer;
 
 namespace Basil.Application.Services.Operations;
 
 /// <summary>Runs a room's <c>!mp start</c>/<c>!mp timer</c> countdown, ticking milestones to its players.</summary>
-public sealed class RoomCountdowns(IRoomRegistry rooms, ISessionRegistry<GameSession> games, TimeProvider timeProvider)
+public sealed class RoomCountdowns(
+	IRoomRegistry rooms,
+	IIdAllocator<Round> roundIds,
+	TimeProvider timeProvider)
 {
 	private static readonly TimeSpan[] TickMarks =
 		[TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(5)];
@@ -79,8 +83,9 @@ public sealed class RoomCountdowns(IRoomRegistry rooms, ISessionRegistry<GameSes
 		if (await rooms.EnterAsync(roomId) is not { } scope) return;
 		await using (scope)
 		{
-			if (!scope.Room.InProgress)
-				scope.Room.Start();
+			if (scope.Room.InProgress || scope.Room.Beatmap is null) return;
+			var id = await roundIds.NextAsync();
+			scope.Room.Start(id);
 		}
 	}
 
@@ -89,7 +94,6 @@ public sealed class RoomCountdowns(IRoomRegistry rooms, ISessionRegistry<GameSes
 		if (!rooms.AllById.TryGetValue(roomId, out var room)) return;
 
 		foreach (var slot in room.Slots)
-			if (slot.User is { } user && games.AllByUser.TryGetValue(user, out var session))
-				session.Notify(notification);
+			slot.Session?.Notify(notification);
 	}
 }

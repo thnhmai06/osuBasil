@@ -30,20 +30,23 @@ public sealed class Lobby(
 	{
 		var match = new Match
 		{
-			Id = await matchIds.NextAsync(cancellationToken), Name = name, CreatedAt = DateTimeOffset.UtcNow,
-			EndedAt = null
+			Id = await matchIds.NextAsync(cancellationToken),
+			Name = name,
+			CreatedAt = DateTimeOffset.UtcNow,
+			EndedAt = null,
+			Creator = creator
 		};
 		await matchRepository.SaveAsync(match, cancellationToken);
 
 		var id = await roomIds.NextAsync(cancellationToken);
-		var room = new Room { Id = id, Match = match, Creator = creator, Settings = settings ?? new MatchSettings() };
+		var room = new Room { Id = id, Match = match, Settings = settings ?? new MatchSettings() };
 		if (!string.IsNullOrEmpty(password))
 			room.Password = password;
 
 		if (!rooms.TryAdd(room))
 			throw new InvalidOperationException($"A room with id {id} is already registered.");
 
-		channels.TryAdd(new ChannelSession { Channel = room.Channel });
+		channels.TryAdd(room.Channel);
 
 		return room;
 	}
@@ -59,26 +62,14 @@ public sealed class Lobby(
 		await using (scope)
 		{
 			room = scope.Room;
-
-			foreach (var player in room.Slots.Where(s => s.User is not null).Select(s => s.User!).ToList())
-				room.Slots.Leave(player);
-
-			room.Match.EndedAt = DateTimeOffset.UtcNow;
+			room.Close();
 			await matchRepository.SaveAsync(room.Match, cancellationToken);
-
 			rooms.Remove(roomId);
 		}
 
-		if (channels.AllByName.TryGetValue(room.Channel.Name, out var channelSession))
-		{
-			foreach (var member in channelSession.Members.ToArray())
-			{
-				member.Part(channelSession);
-				if (member is GameSession { RoomId: var memberRoomId } game && memberRoomId == roomId)
-					game.RoomId = null;
-			}
+		foreach (var member in room.Channel.Members.ToArray())
+			member.Part(room.Channel);
 
-			channels.Remove(room.Channel.Name);
-		}
+		channels.Remove(room.Channel.Name);
 	}
 }

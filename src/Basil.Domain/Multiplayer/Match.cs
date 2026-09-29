@@ -1,4 +1,6 @@
-﻿namespace Basil.Domain.Multiplayer;
+﻿using Basil.Domain.Users;
+
+namespace Basil.Domain.Multiplayer;
 
 /// <summary>
 ///     A match record as read back for report and management purposes.
@@ -23,6 +25,9 @@ public sealed class Match : IEquatable<Match>
 			? throw new ArgumentException("Match name cannot be empty.", nameof(value))
 			: value;
 	}
+
+	/// <summary>Gets the user who created the match, or <see langword="null" /> for an unattended room.</summary>
+	public User? Creator { get; init; }
 
 	/// <summary>Gets the date and time when the match was created.</summary>
 	public required DateTimeOffset CreatedAt { get; init; }

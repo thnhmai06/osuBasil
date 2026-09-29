@@ -20,12 +20,12 @@ public sealed class RoomSettingsCommands(ILocalizer localizer)
 				? localizer.Get(MpReplies.SettingsBeatmapNotSelected)
 				: localizer.Get(MpReplies.SettingsBeatmap, beatmap.Id,
 					$"{beatmap.Beatmapset.Artist} - {beatmap.Beatmapset.Title} [{beatmap.Version}]"),
-			localizer.Get(MpReplies.SettingsTeamMode, room.Settings.TeamType, room.Settings.WinCondition),
-			localizer.Get(MpReplies.SettingsActiveMods, room.Settings.Mods),
+			localizer.Get(MpReplies.SettingsTeamMode, room.TeamType, room.WinCondition),
+			localizer.Get(MpReplies.SettingsActiveMods, room.Mods),
 			room.Creator is { } creator
 				? localizer.Get(MpReplies.SettingsCreator, creator.Id, creator.Name)
 				: string.Empty,
-			localizer.Get(MpReplies.SettingsPlayers, room.Slots.Count(s => s.User is not null))
+			localizer.Get(MpReplies.SettingsPlayers, room.Slots.Count(s => s.Session is not null))
 		};
 
 		return string.Join('\n', lines.Where(l => l.Length > 0));
@@ -42,13 +42,13 @@ public sealed class RoomSettingsCommands(ILocalizer localizer)
 	public string Private(Room room, IReadOnlyList<string> args)
 	{
 		if (args.Count == 0)
-			return localizer.Get(MpReplies.MatchIsPrivateNow, room.Match.IsVisible ? "not private" : "private");
+			return localizer.Get(MpReplies.MatchIsPrivateNow, room.IsVisible ? "not private" : "private");
 
 		if (args[0] is not ("0" or "1"))
 			return localizer.Get(MpReplies.PrivateUsage);
 
-		room.Match.IsVisible = args[0] == "0";
-		return localizer.Get(room.Match.IsVisible ? MpReplies.MatchNowPublic : MpReplies.MatchNowPrivate);
+		room.IsVisible = args[0] == "0";
+		return localizer.Get(room.IsVisible ? MpReplies.MatchNowPublic : MpReplies.MatchNowPrivate);
 	}
 
 	/// <summary>Handles <c>!mp name &lt;text&gt;</c>.</summary>

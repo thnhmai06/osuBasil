@@ -19,8 +19,7 @@ namespace Basil.Application.Services.EventHandlers;
 /// </remarks>
 public sealed class RoomMatchEventHandlers(
 	ISessionRegistry<GameSession> games,
-	IRepository<int, Round> rounds,
-	IIdAllocator<Round> roundIds) :
+	IRepository<int, Round> rounds) :
 	IEventHandler<SlotChanged>,
 	IEventHandler<SlotLocked>,
 	IEventHandler<SettingsChanged>,
@@ -87,13 +86,7 @@ public sealed class RoomMatchEventHandlers(
 	public async Task HandleAsync(RoundEnded domainEvent, CancellationToken cancellationToken = default)
 	{
 		if (domainEvent.Round is { } round)
-		{
-			round.EndedAt = DateTimeOffset.UtcNow;
-			round.Aborted = domainEvent.Aborted;
 			await rounds.SaveAsync(round, cancellationToken);
-		}
-
-		domainEvent.Room.CurrentRound = null;
 
 		NotifyRoom(domainEvent.Room,
 			domainEvent.Aborted ? new Notification.RoundAborted() : new Notification.RoundCompleted());
@@ -102,30 +95,8 @@ public sealed class RoomMatchEventHandlers(
 	/// <inheritdoc />
 	public async Task HandleAsync(RoundStarted domainEvent, CancellationToken cancellationToken = default)
 	{
-		if (domainEvent.Room.Beatmap is { } beatmap)
-		{
-			var settings = domainEvent.Room.Settings;
-			var round = new Round
-			{
-				Id = await roundIds.NextAsync(cancellationToken),
-				Match = domainEvent.Room.Match,
-				BeatmapHash = beatmap.Hash,
-				Settings = new MatchSettings
-				{
-					Mode = settings.Mode,
-					Mods = settings.Mods,
-					Freemods = settings.Freemods,
-					TeamType = settings.TeamType,
-					WinCondition = settings.WinCondition,
-					Seed = settings.Seed
-				},
-				OccurredAt = DateTimeOffset.UtcNow,
-				EndedAt = null
-			};
-
+		if (domainEvent.Room.CurrentRound is { } round)
 			await rounds.SaveAsync(round, cancellationToken);
-			domainEvent.Room.CurrentRound = round;
-		}
 
 		NotifyRoom(domainEvent.Room, new Notification.RoundStarted(domainEvent.Room));
 	}
@@ -150,13 +121,9 @@ public sealed class RoomMatchEventHandlers(
 		NotifyRoom(domainEvent.Room, new Notification.RoomUpdated(domainEvent.Room));
 
 		// The evicted player no longer holds a slot, so the membership-wide notify above never
-		// reaches them; tell them directly and clear their stale room membership.
+		// reaches them; tell them directly.
 		if (domainEvent.Evicted is { } evicted && games.AllByUser.TryGetValue(evicted, out var session))
-		{
-			if (session is GameSession { RoomId: { } roomId } game && roomId == domainEvent.Room.Id)
-				game.RoomId = null;
 			session.Notify(new Notification.RoomUpdated(domainEvent.Room));
-		}
 
 		return Task.CompletedTask;
 	}
@@ -164,7 +131,6 @@ public sealed class RoomMatchEventHandlers(
 	private void NotifyRoom(Room room, Notification.Notification notification)
 	{
 		foreach (var slot in room.Slots)
-			if (slot.User is { } user && games.AllByUser.TryGetValue(user, out var session))
-				session.Notify(notification);
+			slot.Session?.Notify(notification);
 	}
 }

@@ -67,9 +67,6 @@ public sealed class GameSession : UserSession
 	/// <summary>Gets the room this session currently sits in, or <see langword="null" /> if none.</summary>
 	public Multiplayer.Room? Room => Slot?.Slots.Room;
 
-	/// <summary>Gets the id of the room this client is currently in, or <see langword="null" /> if none.</summary>
-	public int? RoomId { get; set; }
-
 	/// <summary>
 	///     Starts spectating another client, keeping both sides of the relationship consistent.
 	/// </summary>
@@ -101,5 +98,23 @@ public sealed class GameSession : UserSession
 		Spectating = null;
 		host._spectators.Remove(this);
 		Record(new SpectateStopped(this, host));
+	}
+
+	/// <summary>Joins this session to a room, seating it in the first available slot.</summary>
+	/// <param name="room">The room to join.</param>
+	/// <returns>The assigned slot, or <see langword="null" /> when the room is full.</returns>
+	/// <exception cref="InvalidOperationException">
+	///     The user is banned, or the session is already seated in a different room.
+	/// </exception>
+	public Multiplayer.RoomSlot? JoinRoom(Multiplayer.Room room)
+	{
+		return room.Slots.Seat(this);
+	}
+
+	/// <summary>Leaves the room this session is currently seated in, if any.</summary>
+	public void LeaveRoom()
+	{
+		if (Room is { } room)
+			room.Slots.Vacate(this);
 	}
 }

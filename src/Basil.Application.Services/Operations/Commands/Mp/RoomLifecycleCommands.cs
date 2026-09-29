@@ -16,7 +16,6 @@ public sealed class RoomLifecycleCommands(
 	Lobby lobby,
 	IRoomRegistry rooms,
 	IRepository<int, Match> matches,
-	IChannelRegistry channels,
 	ILocalizer localizer)
 {
 	/// <summary>Handles <c>!mp make</c> and <c>!mp makeprivate</c>.</summary>
@@ -30,7 +29,7 @@ public sealed class RoomLifecycleCommands(
 
 		if (isPrivate)
 		{
-			room.Match.IsVisible = false;
+			room.IsVisible = false;
 			await matches.SaveAsync(room.Match, cancellationToken);
 		}
 
@@ -54,6 +53,9 @@ public sealed class RoomLifecycleCommands(
 			var room = scope.Room;
 			var user = sender.User;
 
+			if (sender is not GameSession game)
+				return localizer.Get(MpReplies.JoinRequiresClient);
+
 			if (room.Banned.Contains(user))
 				return localizer.Get(MpReplies.BannedFromMatch);
 
@@ -63,14 +65,13 @@ public sealed class RoomLifecycleCommands(
 			if (!room.VerifyPassword(password))
 				return localizer.Get(MpReplies.IncorrectPassword);
 
-			if (room.Slots.Join(user) is null)
+			if (game.Room is { } other && !ReferenceEquals(other, room))
+				return localizer.Get(MpReplies.AlreadyInAnotherRoom);
+
+			if (game.JoinRoom(room) is null)
 				return localizer.Get(MpReplies.MatchIsFull);
 
-			if (sender is GameSession game)
-				game.RoomId = room.Id;
-
-			if (channels.AllByName.TryGetValue(room.Channel.Name, out var channelSession))
-				sender.Join(channelSession);
+			sender.Join(room.Channel);
 
 			return localizer.Get(MpReplies.JoinedMatch, room.Id, room.Match.Name);
 		}

@@ -4,6 +4,7 @@ using Basil.Application.Models.Multiplayer;
 using Basil.Application.Services.Operations.Replies;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
+using Basil.Domain.Multiplayer;
 
 namespace Basil.Application.Services.Operations.Commands.Mp;
 
@@ -14,6 +15,7 @@ namespace Basil.Application.Services.Operations.Commands.Mp;
 public sealed class MatchFlowCommands(
 	IRepository<int, Beatmap> beatmapsById,
 	RoomCountdowns countdowns,
+	IIdAllocator<Round> roundIds,
 	ILocalizer localizer)
 {
 	/// <summary>Handles <c>!mp map &lt;beatmap id&gt;</c>.</summary>
@@ -39,15 +41,15 @@ public sealed class MatchFlowCommands(
 		switch (text)
 		{
 			case "None":
-				room.Settings.Freemods = false;
-				room.Settings.Mods = GameMods.NoMod;
+				room.Freemods = false;
+				room.Mods = GameMods.NoMod;
 				return localizer.Get(MpReplies.DisabledFreemod);
 			case "Freemod":
-				room.Settings.Freemods = true;
+				room.Freemods = true;
 				return localizer.Get(MpReplies.EnabledFreemod);
 			default:
 				var mods = ModsExtensions.FromModString(string.Concat(args));
-				room.Settings.Mods = mods;
+				room.Mods = mods;
 				return localizer.Get(MpReplies.EnabledMods, mods);
 		}
 	}
@@ -58,11 +60,11 @@ public sealed class MatchFlowCommands(
 		if (args.Count < 1 || !int.TryParse(args[0], out var teamMode) || !Enum.IsDefined((GameTeamType)teamMode))
 			return localizer.Get(MpReplies.SetUsage);
 
-		room.Settings.TeamType = (GameTeamType)teamMode;
+		room.TeamType = (GameTeamType)teamMode;
 
 		if (args.Count > 1 && int.TryParse(args[1], out var winCondition) &&
 		    Enum.IsDefined((GameWinCondition)winCondition))
-			room.Settings.WinCondition = (GameWinCondition)winCondition;
+			room.WinCondition = (GameWinCondition)winCondition;
 
 		var sizeSuffix = string.Empty;
 		if (args.Count > 2 && int.TryParse(args[2], out var size) && size is >= 1 and <= 16)
@@ -71,23 +73,24 @@ public sealed class MatchFlowCommands(
 			sizeSuffix = $", size {size}";
 		}
 
-		return localizer.Get(MpReplies.ChangedMatchSettings, room.Settings.TeamType, room.Settings.WinCondition,
-			sizeSuffix);
+		return localizer.Get(MpReplies.ChangedMatchSettings, room.TeamType, room.WinCondition, sizeSuffix);
 	}
 
 	/// <summary>Handles <c>!mp start [seconds]</c>.</summary>
-	public Task<string> StartAsync(Room room, IReadOnlyList<string> args, CancellationToken cancellationToken)
+	public async Task<string> StartAsync(Room room, IReadOnlyList<string> args, CancellationToken cancellationToken)
 	{
-		if (room.InProgress) return Task.FromResult(localizer.Get(MpReplies.MatchAlreadyInProgress));
+		if (room.InProgress) return localizer.Get(MpReplies.MatchAlreadyInProgress);
+		if (room.Beatmap is null) return localizer.Get(MpReplies.NoBeatmapSelected);
 
 		if (args.Count > 0 && int.TryParse(args[0], out var seconds) && seconds > 0)
 		{
 			countdowns.Start(room.Id, TimeSpan.FromSeconds(seconds), true);
-			return Task.FromResult(localizer.Get(MpReplies.MatchStartsInSeconds, seconds));
+			return localizer.Get(MpReplies.MatchStartsInSeconds, seconds);
 		}
 
-		room.Start();
-		return Task.FromResult(localizer.Get(MpReplies.MatchStarted));
+		var id = await roundIds.NextAsync(cancellationToken);
+		room.Start(id);
+		return localizer.Get(MpReplies.MatchStarted);
 	}
 
 	/// <summary>Handles <c>!mp timer [seconds]</c>.</summary>

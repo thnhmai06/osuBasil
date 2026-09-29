@@ -16,7 +16,6 @@ namespace Basil.Application.Services.Operations;
 /// </summary>
 public sealed class Gateway(
 	IRepository<string, User> usersByName,
-	IRepository<int, User> users,
 	ICredentialRepository credentials,
 	ISessionRegistry<GameSession> gameRegistry,
 	ISessionRegistry<IrcSession> ircRegistry,
@@ -108,18 +107,14 @@ public sealed class Gateway(
 				foreach (var spectator in game.Spectators.ToArray())
 					spectator.StopSpectating();
 
-				if (game.RoomId is { } roomId)
+				if (game.Room is { } room && await roomRegistry.EnterAsync(room.Id, cancellationToken) is { } scope)
 				{
-					var user = await users.LoadAsync(session.User.Id, cancellationToken);
-					if (user is not null && await roomRegistry.EnterAsync(roomId, cancellationToken) is { } scope)
-						await using (scope)
-						{
-							if (scope.Room.Slots.Find(user) is not null)
-								scope.Room.Slots.Leave(user);
-						}
+					await using (scope)
+					{
+						if (scope.Room.Slots.Find(game) is not null)
+							game.LeaveRoom();
+					}
 				}
-
-				game.RoomId = null;
 			}
 
 			foreach (var channel in session.Channels.ToArray())

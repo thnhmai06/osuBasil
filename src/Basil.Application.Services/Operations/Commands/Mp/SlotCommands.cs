@@ -31,12 +31,12 @@ public sealed class SlotCommands(
 			return localizer.Get(MpReplies.MoveUsage);
 
 		var target = await ResolveAsync(args[0], cancellationToken);
-		if (target is null || room.Slots.Find(target) is not { } slot)
+		if (target is null || room.Slots.Find(target) is not { Session: not null } slot)
 			return localizer.Get(MpReplies.UserNotInMatchOrUnregistered);
 
 		try
 		{
-			RoomSlots.Move(slot, room.Slots[slotNumber]);
+			RoomSlots.Move(slot, room.Slots[slotNumber - 1]);
 		}
 		catch (InvalidOperationException)
 		{
@@ -52,10 +52,10 @@ public sealed class SlotCommands(
 		if (args.Count < 1) return localizer.Get(MpReplies.HostUsage);
 
 		var target = await ResolveAsync(args[0], cancellationToken);
-		if (target is null || room.Slots.Find(target) is null)
+		if (target is null || room.Slots.Find(target)?.Session is not { } session)
 			return localizer.Get(MpReplies.UserNotInMatchOrUnregistered);
 
-		room.Host = target;
+		room.Host = session;
 		return localizer.Get(MpReplies.ChangedMatchHost, target.Name);
 	}
 
@@ -94,13 +94,13 @@ public sealed class SlotCommands(
 		if (args.Count < 1) return localizer.Get(MpReplies.KickUsage);
 
 		var target = await ResolveAsync(args[0], cancellationToken);
-		if (target is null || room.Slots.Find(target) is null)
+		if (target is null || room.Slots.Find(target)?.Session is not { } session)
 			return localizer.Get(MpReplies.UserNotInMatchOrUnregistered);
 
 		if (room.IsReferee(target))
 			return localizer.Get(MpReplies.CannotKickReferee, target.Name);
 
-		room.Kick(target);
+		room.Kick(session);
 		return localizer.Get(MpReplies.KickedFromMatch, target.Name);
 	}
 

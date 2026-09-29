@@ -59,7 +59,7 @@ public sealed class RefereeCommands(SlotCommands targets, ISessionRegistry<GameS
 		var target = await targets.ResolveAsync(args[0], cancellationToken);
 		if (target is null) return localizer.Get(MpReplies.UserNotFound);
 
-		if (room.IsCreator(target))
+		if (room.Creator is not null && room.Creator.Equals(target))
 			return localizer.Get(MpReplies.CannotRemoveCreator, target.Name);
 
 		if (!room.IsReferee(target))
@@ -80,8 +80,11 @@ public sealed class RefereeCommands(SlotCommands targets, ISessionRegistry<GameS
 	/// <summary>Handles <c>!mp banlist</c>.</summary>
 	public string BanList(Room room)
 	{
-		var banned = room.Slots.Where(s => s.User is not null).Select(s => s.User!)
-			.Where(room.Banned.Contains).ToList();
+		var banned = room.Slots
+			.Where(s => s.Session is not null)
+			.Select(s => s.Session!.User)
+			.Where(room.Banned.Contains)
+			.ToList();
 
 		return banned.Count == 0
 			? localizer.Get(MpReplies.NoBannedPlayers)

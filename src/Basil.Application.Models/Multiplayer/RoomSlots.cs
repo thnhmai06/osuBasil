@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Immutable;
+using Basil.Application.Models.Sessions;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 
@@ -15,9 +16,11 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 	public const int MaxSlotCount = 16;
 	private readonly ImmutableArray<RoomSlot> _slots;
 
+	/// <summary>The room these slots belong to.</summary>
 	public readonly Room Room;
 
-	public bool Locked { get; set; } // can not move slot
+	/// <summary>Gets or sets a value that indicates whether the room's slots are locked as a whole.</summary>
+	public bool Locked { get; set; }
 
 	internal RoomSlots(Room room)
 	{
@@ -26,65 +29,83 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 	}
 
 	/// <summary>Finds the slot occupied by a player.</summary>
-	/// <param name="who">The player to look up.</param>
+	/// <param name="user">The player to look up.</param>
 	/// <returns>The player's slot, or <see langword="null" /> when they have none.</returns>
-	public RoomSlot? Find(User who)
+	public RoomSlot? Find(User user)
 	{
-		return _slots.FirstOrDefault(s => who.Equals(s.User));
+		return _slots.FirstOrDefault(s => user.Equals(s.Session?.User));
 	}
 
+	/// <summary>Finds the slot occupied by a session.</summary>
+	/// <param name="session">The session to look up.</param>
+	/// <returns>The session's slot, or <see langword="null" /> when they have none.</returns>
+	public RoomSlot? Find(GameSession session)
+	{
+		return _slots.FirstOrDefault(s => s.Session == session);
+	}
+
+	/// <summary>Resizes the room, leaving occupied slots untouched.</summary>
+	/// <param name="size">The new number of available slots, from 1 to 16.</param>
 	public void Resize(int size)
 	{
-		var playerCount = _slots.Count(s => s.User is not null);
-		size = Math.Clamp(size, 1, playerCount);
-		var locked = 0;
+		ArgumentOutOfRangeException.ThrowIfLessThan(size, 1);
+		ArgumentOutOfRangeException.ThrowIfGreaterThan(size, MaxSlotCount);
 
-		foreach (var slot in _slots.Where(s => s.User is null))
-			if (locked < size) // should be locked
-			{
-				slot.Locked = true;
-				++locked;
-			}
-			else
-			{
-				slot.Locked = false;
-			}
+		for (var i = 0; i < size; i++)
+			_slots[i].Locked = false;
+
+		for (var i = size; i < MaxSlotCount; i++)
+			if (_slots[i].Session is null)
+				_slots[i].Locked = true;
 	}
 
-	public RoomSlot? Join(User user)
+	/// <summary>Seats a session in the lowest-index empty, unlocked slot.</summary>
+	/// <param name="session">The session to seat.</param>
+	/// <returns>The assigned slot, or <see langword="null" /> when no slot is available.</returns>
+	/// <exception cref="InvalidOperationException">
+	///     The user is banned, the session is already seated in another room, or the room is full.
+	/// </exception>
+	internal RoomSlot? Seat(GameSession session)
 	{
-		if (Room.Banned.Contains(user))
+		if (Room.Banned.Contains(session.User))
 			throw new InvalidOperationException("The user is banned from this room.");
 
-		var alreadySlot = _slots.FirstOrDefault(s => s is { Locked: false, User: not null });
-		if (alreadySlot is not null) return alreadySlot;
-
-		var slot = Find(user);
-		if (slot is not null)
+		if (session.Slot is { } existing)
 		{
-			slot.User = user;
-			if (Room.Settings.TeamType.NeedSplitTeam())
-			{
-				var redCount = _slots.Count(s => s.Team == GameTeam.Red);
-				var blueCount = _slots.Count(s => s.Team == GameTeam.Blue);
+			if (ReferenceEquals(existing.Slots, this))
+				return existing;
 
-				slot.Team = redCount <= blueCount ? GameTeam.Red : GameTeam.Blue;
-			}
+			throw new InvalidOperationException("The session is already seated in another room.");
+		}
+
+		var slot = _slots.FirstOrDefault(s => s is { Locked: false, Session: null });
+		if (slot is null) return null;
+
+		slot.Occupy(session);
+
+		if (Room.TeamType.NeedSplitTeam())
+		{
+			var redCount = _slots.Count(s => s.Team == GameTeam.Red);
+			var blueCount = _slots.Count(s => s.Team == GameTeam.Blue);
+			slot.SetTeam(redCount <= blueCount ? GameTeam.Red : GameTeam.Blue);
 		}
 
 		return slot;
 	}
 
-	public void Leave(RoomSlot slot)
+	/// <summary>Clears the slot occupied by <paramref name="session" />, if any.</summary>
+	/// <param name="session">The session to remove.</param>
+	/// <returns>The slot that was vacated, or <see langword="null" /> when the session was not seated.</returns>
+	internal RoomSlot? Vacate(GameSession session)
 	{
-		slot.ThrowIfDifferentRoom(this);
-		slot.User = null;
-	}
+		var slot = Find(session);
+		if (slot is null) return null;
 
-	public void Leave(User user)
-	{
-		var slot = Find(user);
-		if (slot is not null) Leave(slot);
+		if (session == Room.Host)
+			Room.Host = null;
+
+		slot.Clear();
+		return slot;
 	}
 
 	public static void Move(RoomSlot from, RoomSlot to)
@@ -99,7 +120,7 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		get
 		{
 			ThrowIfOutOfRangeIndex(index);
-			return _slots[index - 1];
+			return _slots[index];
 		}
 	}
 
@@ -115,8 +136,8 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 
 	private static void ThrowIfOutOfRangeIndex(int index)
 	{
-		if (index is < 1 or > MaxSlotCount)
+		if (index is < 0 or >= MaxSlotCount)
 			throw new ArgumentOutOfRangeException(nameof(index), index,
-				$"Slot index must be between 1 and {MaxSlotCount}.");
+				$"Slot index must be between 0 and {MaxSlotCount - 1}.");
 	}
 }

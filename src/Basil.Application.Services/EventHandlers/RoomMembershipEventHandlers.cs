@@ -77,7 +77,7 @@ public sealed class RoomMembershipEventHandlers(
 			cancellationToken: cancellationToken);
 		NotifyRoom(domainEvent.Room, new RoomUpdated(domainEvent.Room));
 
-		if (domainEvent.Room.Slots.All(s => s.User is null))
+		if (domainEvent.Room.Slots.All(s => s.Session is null))
 			await lobby.CloseRoomAsync(domainEvent.Room.Id, cancellationToken);
 	}
 
@@ -107,7 +107,6 @@ public sealed class RoomMembershipEventHandlers(
 	private void NotifyRoom(Room room, Notification notification)
 	{
 		foreach (var slot in room.Slots)
-			if (slot.User is { } user && games.AllByUser.TryGetValue(user, out var session))
-				session.Notify(notification);
+			slot.Session?.Notify(notification);
 	}
 }

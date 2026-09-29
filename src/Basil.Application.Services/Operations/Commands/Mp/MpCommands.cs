@@ -13,7 +13,7 @@ namespace Basil.Application.Services.Operations.Commands.Mp;
 /// <remarks>
 ///     <c>make</c>, <c>makeprivate</c>, <c>join</c>, and <c>close</c> run outside a room scope: they
 ///     either have no room yet, or manage their own scope through <see cref="Lobby" />. Every other
-///     subcommand resolves the sender's current room (<see cref="GameSession.RoomId" />) and runs
+///     subcommand resolves the sender's current room (<see cref="GameSession.Room" />) and runs
 ///     inside the single <see cref="IRoomRegistry.EnterAsync" /> scope <see cref="IRoomRegistry" />
 ///     grants for it.
 /// </remarks>
@@ -65,26 +65,22 @@ public sealed class MpCommands(
 				return await lifecycle.JoinAsync(sender, subArgs, cancellationToken);
 		}
 
-		if (sender is not GameSession { RoomId: { } roomId })
+		if (sender is not GameSession { Room: { } room })
 			return localizer.Get(MpReplies.NotInARoom);
 
 		if (subcommand == "close")
 		{
-			if (rooms.AllById.TryGetValue(roomId, out var current))
-			{
-				if (!current.IsReferee(sender.User))
-					return localizer.Get(MpReplies.NotARefereeOfMatch, roomId);
-			}
+			if (rooms.AllById.TryGetValue(room.Id, out var current) && !current.IsReferee(sender.User))
+				return localizer.Get(MpReplies.NotARefereeOfMatch, room.Id);
 
-			return await lifecycle.CloseAsync(roomId, cancellationToken);
+			return await lifecycle.CloseAsync(room.Id, cancellationToken);
 		}
 
-		if (await rooms.EnterAsync(roomId, cancellationToken) is not { } scope)
+		if (await rooms.EnterAsync(room.Id, cancellationToken) is not { } scope)
 			return localizer.Get(MpReplies.NotInARoom);
 
 		await using (scope)
 		{
-			var room = scope.Room;
 			var user = sender.User;
 
 			var isReadOnly = subcommand is "settings" or "listrefs" or "banlist" ||
@@ -92,7 +88,7 @@ public sealed class MpCommands(
 			if (!isReadOnly && !room.IsReferee(user))
 				return localizer.Get(MpReplies.NotARefereeOfMatch, room.Id);
 
-			if (subcommand is "addref" or "removeref" && !room.IsCreator(user))
+			if (subcommand is "addref" or "removeref" && (room.Creator is null || !room.Creator.Equals(user)))
 				return localizer.Get(MpReplies.CreatorOnlyMp, $"!mp {subcommand}");
 
 			return await DispatchAsync(sender, room, subcommand, subArgs, cancellationToken);

@@ -17,11 +17,13 @@ public static class MpReplies
 	public const string CreateFailed = "Commands.Mp.Make.CreateFailed";
 	public const string CreatedMatch = "Commands.Mp.Make.CreatedMatch";
 	public const string JoinUsage = "Commands.Mp.Url.JoinUsage";
+	public const string JoinRequiresClient = "Commands.Mp.Url.JoinRequiresClient";
 	public const string NoActiveMatchWithId = "Commands.Mp.Url.NoActiveMatchWithId";
 	public const string PrivateRoomJoinDenied = "Commands.Mp.Url.PrivateRoomJoinDenied";
 	public const string BannedFromMatch = "Commands.Mp.Url.BannedFromMatch";
 	public const string JoinedMatch = "Commands.Mp.Url.JoinedMatch";
 	public const string IncorrectPassword = "Commands.Mp.Url.IncorrectPassword";
+	public const string AlreadyInAnotherRoom = "Commands.Mp.Url.AlreadyInAnotherRoom";
 	public const string MatchIsFull = "Commands.Mp.Url.MatchIsFull";
 	public const string ClosedMatch = "Commands.Mp.Moderation.ClosedMatch";
 
@@ -103,6 +105,7 @@ public static class MpReplies
 
 	// ── !mp start / timer / aborttimer / abort ───────────────────────────────────────────────
 	public const string MatchAlreadyInProgress = "Commands.Mp.Start.MatchAlreadyInProgress";
+	public const string NoBeatmapSelected = "Commands.Mp.Start.NoBeatmapSelected";
 	public const string MatchStartsInSeconds = "Commands.Mp.Start.MatchStartsInSeconds";
 	public const string MatchStarted = "Commands.Mp.Start.MatchStarted";
 	public const string TimerUsage = "Commands.Mp.Start.TimerUsage";
