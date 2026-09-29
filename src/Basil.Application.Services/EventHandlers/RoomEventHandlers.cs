@@ -27,7 +27,7 @@ public sealed class RoomEventHandlers(
 	IEventHandler<RoomMembershipEvent>,
 	IEventHandler<RoomAuthorityEvent>,
 	IEventHandler<RoomAccessEvent>,
-	IEventHandler<Basil.Application.Models.Multiplayer.RoomClosed>
+	IEventHandler<Models.Multiplayer.RoomClosed>
 {
 	/// <inheritdoc />
 	public Task HandleAsync(RoomSettingsEvent domainEvent, CancellationToken cancellationToken = default)
@@ -118,7 +118,7 @@ public sealed class RoomEventHandlers(
 	}
 
 	/// <inheritdoc />
-	public Task HandleAsync(Basil.Application.Models.Multiplayer.RoomClosed domainEvent, CancellationToken cancellationToken = default)
+	public Task HandleAsync(Models.Multiplayer.RoomClosed domainEvent, CancellationToken cancellationToken = default)
 	{
 		foreach (var session in domainEvent.Evicted)
 			session.Notify(new Notification.RoomClosed(domainEvent.Room));

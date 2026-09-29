@@ -13,9 +13,9 @@ namespace Basil.Application.Models.Sessions;
 ///     keyed to by <see cref="Channel" />, not copied here.
 /// </summary>
 /// <remarks>Thread-safe: concurrent joins and parts of the same channel session do not corrupt its state.</remarks>
-public sealed class ChannelSession : IEventSource<ChannelEvent>, IEquatable<ChannelSession>
+public sealed class ChannelSession : IEventPublisher<ChannelEvent>, IEquatable<ChannelSession>
 {
-	private readonly System.Threading.Channels.Channel<ChannelEvent> _events =
+	private readonly Channel<ChannelEvent> _events =
 		System.Threading.Channels.Channel.CreateUnbounded<ChannelEvent>();
 	private readonly ConcurrentSet<UserSession> _members = [];
 

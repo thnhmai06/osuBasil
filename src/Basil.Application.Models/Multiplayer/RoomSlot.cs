@@ -1,13 +1,11 @@
 using Basil.Application.Models.Sessions;
 using Basil.Domain.Mechanics;
-using Basil.Domain.Users;
 
 namespace Basil.Application.Models.Multiplayer;
 
 /// <summary>One of a room's 16 slots, holding its current occupant and per-slot settings.</summary>
 public sealed class RoomSlot
 {
-	private GameSession? _session;
 	private RoomSlotStatus? _status;
 	private GameTeam? _team;
 	private GameMods? _mods;
@@ -17,7 +15,7 @@ public sealed class RoomSlot
 	/// <summary>The slot collection this slot belongs to.</summary>
 	public readonly RoomSlots Slots;
 
-	/// <summary>The zero-based index of this slot.</summary>
+	/// <summary>The number of this slot, from 1 to 16.</summary>
 	public readonly int Index;
 
 	/// <summary>Gets or sets whether this slot is locked. Locking an occupied slot evicts its occupant.</summary>
@@ -29,9 +27,9 @@ public sealed class RoomSlot
 			if (_locked == value) return;
 
 			GameSession? evicted = null;
-			if (value && _session is { } session)
+			if (value && Session is { } session)
 			{
-				if (session == Slots.Room.Host)
+				if (session.Equals(Slots.Room.Host))
 					Slots.Room.SetHostSilently(null);
 				evicted = session;
 				Clear();
@@ -43,7 +41,7 @@ public sealed class RoomSlot
 	}
 
 	/// <summary>Gets the session currently occupying this slot, or <see langword="null" /> when empty.</summary>
-	public GameSession? Session => _session;
+	public GameSession? Session { get; private set; }
 
 	/// <summary>Gets or sets the occupied-state of this slot.</summary>
 	public RoomSlotStatus? Status
@@ -113,15 +111,16 @@ public sealed class RoomSlot
 		get => _mods;
 		set
 		{
-			if (_mods == value) return;
-
 			if (value is { } v)
 			{
 				ThrowIfEmpty();
 				ThrowIfPlaying();
-				ThrowIfUndefined(v);
+				if (!Slots.Room.Freemods)
+					throw new InvalidOperationException("The room does not allow players to choose their own mods.");
+				value = v.RemoveInvalidMods(Slots.Room.Mode);
 			}
 
+			if (_mods == value) return;
 			_mods = value;
 			Slots.Room.Emit(new SlotModsChanged(this, value));
 		}
@@ -139,9 +138,9 @@ public sealed class RoomSlot
 	internal void Occupy(GameSession session)
 	{
 		if (Locked) throw new InvalidOperationException("The slot is locked.");
-		if (_session is not null) throw new InvalidOperationException("The slot is already occupied.");
+		if (Session is not null) throw new InvalidOperationException("The slot is already occupied.");
 
-		_session = session;
+		Session = session;
 		session.Slot = this;
 		_status = RoomSlotStatus.NotReady;
 		_mods = GameMods.NoMod;
@@ -150,14 +149,21 @@ public sealed class RoomSlot
 	/// <summary>Clears this slot, making it empty.</summary>
 	internal void Clear()
 	{
-		if (_session is { } session)
+		if (Session is { } session)
 			session.Slot = null;
 
-		_session = null;
+		Session = null;
 		_status = null;
 		_team = null;
 		_mods = null;
 		_introSkipped = null;
+	}
+
+	/// <summary>Sets the slot's own mods without validating the room's freemod setting or playing state.</summary>
+	/// <param name="mods">The mods to set, or <see langword="null" /> to clear them.</param>
+	internal void SetMods(GameMods? mods)
+	{
+		_mods = mods;
 	}
 
 	/// <summary>Assigns a team without validating the room's team type or playing state.</summary>
@@ -193,15 +199,15 @@ public sealed class RoomSlot
 		ThrowIfEmpty();
 		target.ThrowIfLocked();
 
-		var session = _session!;
-		target._session = session;
+		var session = Session!;
+		target.Session = session;
 		session.Slot = target;
 		target._status = _status;
 		target._team = _team;
 		target._mods = _mods;
 		target._introSkipped = _introSkipped;
 
-		_session = null;
+		Session = null;
 		_status = null;
 		_team = null;
 		_mods = null;
@@ -210,7 +216,7 @@ public sealed class RoomSlot
 
 	public void ThrowIfEmpty()
 	{
-		if (_session is null)
+		if (Session is null)
 			throw new InvalidOperationException("The slot has no player.");
 	}
 

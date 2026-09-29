@@ -10,6 +10,7 @@ namespace Basil.Domain.Multiplayer;
 public sealed class MatchSettings
 {
 	/// <summary>Gets or sets the game mode the room plays in.</summary>
+	/// <remarks>Changing the mode drops any selected mods the new mode does not allow.</remarks>
 	public GameMode Mode
 	{
 		get;
@@ -17,6 +18,7 @@ public sealed class MatchSettings
 		{
 			value.ThrowIfUndefined();
 			field = value;
+			Mods = Mods;
 		}
 	} = GameMode.Standard;
 

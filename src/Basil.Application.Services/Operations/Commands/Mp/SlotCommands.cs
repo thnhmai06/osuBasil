@@ -36,7 +36,7 @@ public sealed class SlotCommands(
 
 		try
 		{
-			RoomSlots.Move(slot, room.Slots[slotNumber - 1]);
+			RoomSlots.Move(slot, room.Slots[slotNumber]);
 		}
 		catch (InvalidOperationException)
 		{

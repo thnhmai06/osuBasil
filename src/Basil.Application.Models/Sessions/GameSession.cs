@@ -63,10 +63,10 @@ public sealed class GameSession : UserSession
 
 	/// <summary>Gets or sets the slot this session currently occupies, or <see langword="null" /> if none.</summary>
 	/// <remarks>Only <see cref="Multiplayer.RoomSlot" /> sets this value.</remarks>
-	public Multiplayer.RoomSlot? Slot { get; internal set; }
+	public RoomSlot? Slot { get; internal set; }
 
 	/// <summary>Gets the room this session currently sits in, or <see langword="null" /> if none.</summary>
-	public Multiplayer.Room? Room => Slot?.Slots.Room;
+	public Room? Room => Slot?.Slots.Room;
 
 	/// <summary>
 	///     Starts spectating another client, keeping both sides of the relationship consistent.
@@ -107,7 +107,7 @@ public sealed class GameSession : UserSession
 	/// <exception cref="InvalidOperationException">
 	///     The user is banned, or the session is already seated in a different room.
 	/// </exception>
-	public Multiplayer.RoomSlot? JoinRoom(Multiplayer.Room room)
+	public RoomSlot? JoinRoom(Room room)
 	{
 		return room.Slots.Seat(this);
 	}

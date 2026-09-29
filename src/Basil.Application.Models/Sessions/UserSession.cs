@@ -17,7 +17,7 @@ namespace Basil.Application.Models.Sessions;
 ///     country) always comes from <see cref="User" />. Thread-safe: concurrent channel membership
 ///     changes on the same session do not corrupt its state.
 /// </remarks>
-public abstract class UserSession : IEventSource<SessionEvent>, IEquatable<UserSession>
+public abstract class UserSession : IEventPublisher<SessionEvent>, IEquatable<UserSession>
 {
 	private readonly ConcurrentSet<ChannelSession> _channels = [];
 	private readonly Channel<SessionEvent> _events = Channel.CreateUnbounded<SessionEvent>();

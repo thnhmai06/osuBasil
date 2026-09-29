@@ -34,7 +34,7 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 	internal RoomSlots(Room room)
 	{
 		Room = room;
-		_slots = [.. Enumerable.Range(0, MaxSlotCount).Select(index => new RoomSlot(this, index))];
+		_slots = [.. Enumerable.Range(1, MaxSlotCount).Select(index => new RoomSlot(this, index))];
 	}
 
 	/// <summary>Finds the slot occupied by a player.</summary>
@@ -50,7 +50,7 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 	/// <returns>The session's slot, or <see langword="null" /> when they have none.</returns>
 	public RoomSlot? Find(GameSession session)
 	{
-		return _slots.FirstOrDefault(s => s.Session == session);
+		return _slots.FirstOrDefault(s => session.Equals(s.Session));
 	}
 
 	/// <summary>Resizes the room, leaving occupied slots untouched.</summary>
@@ -60,12 +60,11 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		ArgumentOutOfRangeException.ThrowIfLessThan(size, 1);
 		ArgumentOutOfRangeException.ThrowIfGreaterThan(size, MaxSlotCount);
 
-		for (var i = 0; i < size; i++)
-			_slots[i].SetLocked(false);
-
-		for (var i = size; i < MaxSlotCount; i++)
-			if (_slots[i].Session is null)
-				_slots[i].SetLocked(true);
+		// Players may sit in any slot, so the size counts usable slots rather than naming a slot
+		// range: keep (size - players) empty slots open and lock the remaining empty ones.
+		var open = size - _slots.Count(s => s.Session is not null);
+		foreach (var slot in _slots.Where(s => s.Session is null))
+			slot.SetLocked(open-- <= 0);
 
 		Room.Emit(new RoomResized(Room, size));
 	}
@@ -82,12 +81,9 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 			throw new InvalidOperationException("The user is banned from this room.");
 
 		if (session.Slot is { } existing)
-		{
-			if (ReferenceEquals(existing.Slots, this))
-				return existing;
-
-			throw new InvalidOperationException("The session is already seated in another room.");
-		}
+			return ReferenceEquals(existing.Slots, this)
+				? existing
+				: throw new InvalidOperationException("The session is already seated in another room.");
 
 		var slot = _slots.FirstOrDefault(s => s is { Locked: false, Session: null });
 		if (slot is null) return null;
@@ -113,7 +109,7 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		var slot = Find(session);
 		if (slot is null) return null;
 
-		if (session == Room.Host)
+		if (session.Equals(Room.Host))
 			Room.SetHostSilently(null);
 
 		slot.Clear();
@@ -127,9 +123,8 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 	public static void Move(RoomSlot from, RoomSlot to)
 	{
 		if (from.Index == to.Index) return;
+		var session = from.Session ?? throw new InvalidOperationException("The source slot has no player.");
 
-		var session = from.Session
-		              ?? throw new InvalidOperationException("The source slot has no player.");
 		from.MoveTo(to);
 		from.Slots.Room.Emit(new PlayerMoved(from.Slots.Room, session, from, to));
 	}
@@ -141,7 +136,7 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		get
 		{
 			ThrowIfOutOfRangeIndex(index);
-			return _slots[index];
+			return _slots[index - 1];
 		}
 	}
 
@@ -157,8 +152,8 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 
 	private static void ThrowIfOutOfRangeIndex(int index)
 	{
-		if (index is < 0 or >= MaxSlotCount)
+		if (index is < 1 or > MaxSlotCount)
 			throw new ArgumentOutOfRangeException(nameof(index), index,
-				$"Slot index must be between 0 and {MaxSlotCount - 1}.");
+				$"Slot index must be between 1 and {MaxSlotCount}.");
 	}
 }

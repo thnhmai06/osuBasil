@@ -13,7 +13,7 @@ namespace Basil.Application.Models.Multiplayer;
 ///     Holds an osu! multiplayer match's live runtime state: the shared settings that are stored on
 ///     the underlying <see cref="Match" />, the 16 player slots, and the round lifecycle.
 /// </summary>
-public sealed class Room : IEventSource<RoomEvent>, IEquatable<Room>
+public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 {
 	private readonly ConcurrentSet<User> _banned = [];
 	private readonly ConcurrentSet<User> _invited = [];
@@ -115,8 +115,9 @@ public sealed class Room : IEventSource<RoomEvent>, IEquatable<Room>
 		get => Settings.Mods;
 		set
 		{
-			if (Settings.Mods == value) return;
+			var before = Settings.Mods;
 			Settings.Mods = value;
+			if (Settings.Mods == before) return;
 			Emit(new ModsChanged(this, value));
 		}
 	}
@@ -129,6 +130,11 @@ public sealed class Room : IEventSource<RoomEvent>, IEquatable<Room>
 		{
 			if (Settings.Freemods == value) return;
 			Settings.Freemods = value;
+
+			// Without freemod, players cannot keep mods of their own.
+			if (!value)
+				foreach (var slot in Slots.Where(s => s.Session is not null))
+					slot.SetMods(GameMods.NoMod);
 			Emit(new FreemodsChanged(this, value));
 		}
 	}
@@ -144,11 +150,18 @@ public sealed class Room : IEventSource<RoomEvent>, IEquatable<Room>
 
 			if (value.NeedSplitTeam())
 			{
-				foreach (var slot in Slots.Where(s => s.Session is not null && s.Team is null))
+				var redCount = 0;
+				var blueCount = 0;
+
+				foreach (var slot in Slots.Where(s => s.Session is not null))
 				{
-					var redCount = Slots.Count(s => s.Team == GameTeam.Red);
-					var blueCount = Slots.Count(s => s.Team == GameTeam.Blue);
-					slot.SetTeam(redCount <= blueCount ? GameTeam.Red : GameTeam.Blue);
+					var team = redCount <= blueCount ? GameTeam.Red : GameTeam.Blue;
+					slot.SetTeam(team);
+
+					if (team == GameTeam.Red)
+						redCount++;
+					else
+						blueCount++;
 				}
 			}
 			else
@@ -180,7 +193,7 @@ public sealed class Room : IEventSource<RoomEvent>, IEquatable<Room>
 		get => _host;
 		set
 		{
-			if (ReferenceEquals(_host, value)) return;
+			if (Equals(_host, value)) return;
 			if (value is not null && Slots.Find(value) is null)
 				throw new InvalidOperationException("The player does not have a slot in this room.");
 			_host = value;
@@ -261,11 +274,11 @@ public sealed class Room : IEventSource<RoomEvent>, IEquatable<Room>
 		if (IsReferee(player))
 			throw new InvalidOperationException("Cannot ban a referee.");
 
-		_banned.Add(player);
+		if (!_banned.Add(player)) return;
 
 		RoomSlot? vacated = null;
 		GameSession? evicted = null;
-		if (Slots.Find(player) is { } slot && slot.Session is { } session)
+		if (Slots.Find(player) is { Session: { } session } slot)
 		{
 			vacated = slot;
 			evicted = session;
@@ -318,7 +331,6 @@ public sealed class Room : IEventSource<RoomEvent>, IEquatable<Room>
 		if (Beatmap is null)
 			throw new InvalidOperationException("No beatmap is selected.");
 
-		var settings = Settings;
 		var round = new Round
 		{
 			Id = roundId,
@@ -326,12 +338,12 @@ public sealed class Room : IEventSource<RoomEvent>, IEquatable<Room>
 			BeatmapHash = Beatmap.Hash,
 			Settings = new MatchSettings
 			{
-				Mode = settings.Mode,
-				Mods = settings.Mods,
-				Freemods = settings.Freemods,
-				TeamType = settings.TeamType,
-				WinCondition = settings.WinCondition,
-				Seed = settings.Seed
+				Mode = Settings.Mode,
+				Mods = Settings.Mods,
+				Freemods = Settings.Freemods,
+				TeamType = Settings.TeamType,
+				WinCondition = Settings.WinCondition,
+				Seed = Settings.Seed
 			},
 			OccurredAt = DateTimeOffset.UtcNow,
 			EndedAt = null
@@ -356,7 +368,8 @@ public sealed class Room : IEventSource<RoomEvent>, IEquatable<Room>
 		round.EndedAt = DateTimeOffset.UtcNow;
 		round.Aborted = true;
 
-		foreach (var slot in Slots.Where(s => s.Session is not null && s.Status is RoomSlotStatus.Playing or RoomSlotStatus.Complete))
+		foreach (var slot in Slots.Where(s =>
+			         s.Session is not null && s.Status is RoomSlotStatus.Playing or RoomSlotStatus.Complete))
 			slot.SetStatus(RoomSlotStatus.NotReady);
 
 		CurrentRound = null;
@@ -368,8 +381,7 @@ public sealed class Room : IEventSource<RoomEvent>, IEquatable<Room>
 	public IReadOnlyList<GameSession> Close()
 	{
 		var evicted = Slots.Where(s => s.Session is not null).Select(s => s.Session!).ToList();
-		foreach (var session in evicted)
-			Slots.Vacate(session);
+		foreach (var session in evicted) Slots.Vacate(session);
 
 		Match.EndedAt = DateTimeOffset.UtcNow;
 		Emit(new RoomClosed(this, evicted));
@@ -393,8 +405,7 @@ public sealed class Room : IEventSource<RoomEvent>, IEquatable<Room>
 	/// <inheritdoc />
 	public bool Equals(Room? other)
 	{
-		if (other is null) return false;
-		return Match.Equals(other.Match);
+		return other is not null && Match.Equals(other.Match);
 	}
 
 	/// <inheritdoc />
