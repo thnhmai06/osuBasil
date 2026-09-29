@@ -198,81 +198,95 @@ public static class ModsExtensions
 			["|18K|"] = GameMods.Key9 | GameMods.KeyCoop
 		});
 
-	/// <summary>
-	///     Removes invalid mod combinations, leaving only the legal ones.
-	/// </summary>
 	/// <param name="gameMods">The mod combination to filter.</param>
-	/// <param name="mode">The gamemode used.</param>
-	/// <returns>The filtered mod combination.</returns>
-	/// <remarks>
-	///     Resolves conflicts between speed mods, drops mods that do not apply to the given mode,
-	///     and keeps only the first key mod when several are set.
-	/// </remarks>
-	public static GameMods RemoveInvalidMods(this GameMods gameMods, GameMode mode)
+	extension(GameMods gameMods)
 	{
-		var result = gameMods;
-
-		// 1. mode-specific mod conflictions
-		var dtNc = result & (GameMods.DoubleTime | GameMods.Nightcore);
-		if (dtNc == (GameMods.DoubleTime | GameMods.Nightcore)) result &= ~GameMods.DoubleTime; // DTNC
-		else if (dtNc != GameMods.NoMod && (result & GameMods.HalfTime) != GameMods.NoMod)
-			result &= ~GameMods.HalfTime; // (DT|NC)HT
-
-		if ((result & GameMods.Easy) != GameMods.NoMod && (result & GameMods.HardRock) != GameMods.NoMod)
-			result &= ~GameMods.HardRock; // EZHR
-
-		if ((result & (GameMods.NoFail | GameMods.Relax | GameMods.Autopilot)) != GameMods.NoMod)
+		/// <summary>
+		///     Removes invalid mod combinations, leaving only the legal ones.
+		/// </summary>
+		/// <param name="mode">The gamemode used.</param>
+		/// <returns>The filtered mod combination.</returns>
+		/// <remarks>
+		///     Resolves conflicts between speed mods, drops mods that do not apply to the given mode,
+		///     and keeps only the first key mod when several are set.
+		/// </remarks>
+		public GameMods RemoveInvalidMods(GameMode mode)
 		{
-			if ((result & GameMods.SuddenDeath) != GameMods.NoMod) result &= ~GameMods.SuddenDeath; // (NF|RX|AP)SD
-			if ((result & GameMods.Perfect) != GameMods.NoMod) result &= ~GameMods.Perfect; // (NF|RX|AP)PF
-		}
+			var result = gameMods;
 
-		if ((result & (GameMods.Relax | GameMods.Autopilot)) != GameMods.NoMod &&
-		    (result & GameMods.NoFail) != GameMods.NoMod)
-			result &= ~GameMods.NoFail; // (RX|AP)NF
+			// 1. mode-specific mod conflictions
+			var dtNc = result & (GameMods.DoubleTime | GameMods.Nightcore);
+			if (dtNc == (GameMods.DoubleTime | GameMods.Nightcore)) result &= ~GameMods.DoubleTime; // DTNC
+			else if (dtNc != GameMods.NoMod && (result & GameMods.HalfTime) != GameMods.NoMod)
+				result &= ~GameMods.HalfTime; // (DT|NC)HT
 
-		if ((result & GameMods.Perfect) != GameMods.NoMod && (result & GameMods.SuddenDeath) != GameMods.NoMod)
-			result &= ~GameMods.SuddenDeath; // PFSD
+			if ((result & GameMods.Easy) != GameMods.NoMod && (result & GameMods.HardRock) != GameMods.NoMod)
+				result &= ~GameMods.HardRock; // EZHR
 
-		// 2. remove mode-unique mods from incorrect gamemodes
-		if (mode != GameMode.Standard) // osu! specific
-			result &= ~GameMods.OsuSpecificMods;
-
-		// ctb & taiko have no unique mods
-		if (mode != GameMode.Mania) // mania specific
-			result &= ~GameMods.ManiaSpecificMods;
-
-		switch (mode)
-		{
-			// 3. mode-specific mod conflictions
-			case GameMode.Standard when (result & GameMods.Autopilot) != GameMods.NoMod
-			                            && (result & (GameMods.SpunOut | GameMods.Relax)) != GameMods.NoMod:
-				result &= ~GameMods.Autopilot; // (SO|RX)AP
-				break;
-			case GameMode.Mania:
+			if ((result & (GameMods.NoFail | GameMods.Relax | GameMods.Autopilot)) != GameMods.NoMod)
 			{
-				result &= ~GameMods.Relax; // rx is std/taiko/ctb common
-				if ((result & GameMods.Hidden) != GameMods.NoMod &&
-				    (result & GameMods.FadeIn) != GameMods.NoMod) result &= ~GameMods.FadeIn; // HDFI
-				break;
+				if ((result & GameMods.SuddenDeath) != GameMods.NoMod) result &= ~GameMods.SuddenDeath; // (NF|RX|AP)SD
+				if ((result & GameMods.Perfect) != GameMods.NoMod) result &= ~GameMods.Perfect; // (NF|RX|AP)PF
 			}
-		}
 
-		// 4. remove multiple keymods, keeping only the first
-		var keymodsUsed = result & GameMods.KeyMods;
-		if (CountSetBits(keymodsUsed) > 1)
-		{
-			var firstKeymod =
-				new[]
+			if ((result & (GameMods.Relax | GameMods.Autopilot)) != GameMods.NoMod &&
+			    (result & GameMods.NoFail) != GameMods.NoMod)
+				result &= ~GameMods.NoFail; // (RX|AP)NF
+
+			if ((result & GameMods.Perfect) != GameMods.NoMod && (result & GameMods.SuddenDeath) != GameMods.NoMod)
+				result &= ~GameMods.SuddenDeath; // PFSD
+
+			// 2. remove mode-unique mods from incorrect gamemodes
+			if (mode != GameMode.Standard) // osu! specific
+				result &= ~GameMods.OsuSpecificMods;
+
+			// ctb & taiko have no unique mods
+			if (mode != GameMode.Mania) // mania specific
+				result &= ~GameMods.ManiaSpecificMods;
+
+			switch (mode)
+			{
+				// 3. mode-specific mod conflictions
+				case GameMode.Standard when (result & GameMods.Autopilot) != GameMods.NoMod
+				                            && (result & (GameMods.SpunOut | GameMods.Relax)) != GameMods.NoMod:
+					result &= ~GameMods.Autopilot; // (SO|RX)AP
+					break;
+				case GameMode.Mania:
 				{
-					GameMods.Key1, GameMods.Key2, GameMods.Key3, GameMods.Key4, GameMods.Key5, GameMods.Key6,
-					GameMods.Key7, GameMods.Key8, GameMods.Key9
-				}.FirstOrDefault(candidate => (keymodsUsed & candidate) != GameMods.NoMod);
+					result &= ~GameMods.Relax; // rx is std/taiko/ctb common
+					if ((result & GameMods.Hidden) != GameMods.NoMod &&
+					    (result & GameMods.FadeIn) != GameMods.NoMod) result &= ~GameMods.FadeIn; // HDFI
+					break;
+				}
+			}
 
-			result &= ~(keymodsUsed & ~firstKeymod);
+			// 4. remove multiple keymods, keeping only the first
+			var keymodsUsed = result & GameMods.KeyMods;
+			if (CountSetBits(keymodsUsed) > 1)
+			{
+				var firstKeymod =
+					new[]
+					{
+						GameMods.Key1, GameMods.Key2, GameMods.Key3, GameMods.Key4, GameMods.Key5, GameMods.Key6,
+						GameMods.Key7, GameMods.Key8, GameMods.Key9
+					}.FirstOrDefault(candidate => (keymodsUsed & candidate) != GameMods.NoMod);
+
+				result &= ~(keymodsUsed & ~firstKeymod);
+			}
+
+			return result;
 		}
 
-		return result;
+		public bool IsValid(GameMode mode)
+		{
+			return gameMods == gameMods.RemoveInvalidMods(mode);
+		}
+
+		public void ThrowIfInvalid(GameMode mode)
+		{
+			if (!gameMods.IsValid(mode))
+				throw new ArgumentException("The specified mods are not valid for the given mode.", nameof(gameMods));
+		}
 	}
 
 	/// <summary>

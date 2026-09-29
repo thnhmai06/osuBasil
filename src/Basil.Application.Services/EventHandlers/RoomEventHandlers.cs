@@ -1,6 +1,8 @@
 using Basil.Application.Contracts.Events;
 using Basil.Application.Contracts.Registries;
 using Basil.Application.Contracts.Repositories;
+using Basil.Application.Models.Events;
+using Basil.Application.Models.Events.Multiplayer;
 using Basil.Application.Models.Multiplayer;
 using Basil.Application.Models.Notifications;
 using Basil.Application.Models.Sessions;
@@ -8,6 +10,7 @@ using Basil.Application.Services.Operations;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 using Notification = Basil.Application.Models.Notifications;
+using RoomClosed = Basil.Application.Models.Events.Multiplayer.RoomClosed;
 
 namespace Basil.Application.Services.EventHandlers;
 
@@ -27,7 +30,7 @@ public sealed class RoomEventHandlers(
 	IEventHandler<RoomMembershipEvent>,
 	IEventHandler<RoomAuthorityEvent>,
 	IEventHandler<RoomAccessEvent>,
-	IEventHandler<Models.Multiplayer.RoomClosed>
+	IEventHandler<RoomClosed>
 {
 	/// <inheritdoc />
 	public Task HandleAsync(RoomSettingsEvent domainEvent, CancellationToken cancellationToken = default)
@@ -68,7 +71,8 @@ public sealed class RoomEventHandlers(
 
 		NotifyRoom(domainEvent.Room, new RoomUpdated(domainEvent.Room));
 
-		if (domainEvent is PlayerKicked kickedEvent && games.AllByUser.TryGetValue(kickedEvent.Player.User, out var kickedSession))
+		if (domainEvent is PlayerKicked kickedEvent &&
+		    games.AllByUser.TryGetValue(kickedEvent.Player.User, out var kickedSession))
 			kickedSession.Notify(new RoomUpdated(domainEvent.Room));
 
 		if (domainEvent.Room.Slots.All(s => s.Session is null))
@@ -118,7 +122,7 @@ public sealed class RoomEventHandlers(
 	}
 
 	/// <inheritdoc />
-	public Task HandleAsync(Models.Multiplayer.RoomClosed domainEvent, CancellationToken cancellationToken = default)
+	public Task HandleAsync(RoomClosed domainEvent, CancellationToken cancellationToken = default)
 	{
 		foreach (var session in domainEvent.Evicted)
 			session.Notify(new Notification.RoomClosed(domainEvent.Room));

@@ -1,5 +1,6 @@
 using Basil.Application.Contracts.Events;
-using Basil.Application.Models.Multiplayer;
+using Basil.Application.Models.Events;
+using Basil.Application.Models.Events.Multiplayer;
 using Basil.Application.Models.Sessions;
 using Basil.Application.Services.EventHandlers;
 using Basil.Application.Services.Operations;
@@ -50,7 +51,8 @@ public static class DependencyInjection
 		services.AddSingleton<IEventHandler<SpectatorEvent>>(sp => sp.GetRequiredService<SessionEventHandlers>());
 
 		services.AddSingleton<ChannelEventHandlers>();
-		services.AddSingleton<IEventHandler<ChannelMembershipEvent>>(sp => sp.GetRequiredService<ChannelEventHandlers>());
+		services.AddSingleton<IEventHandler<ChannelMembershipEvent>>(sp =>
+			sp.GetRequiredService<ChannelEventHandlers>());
 
 		return services;
 	}

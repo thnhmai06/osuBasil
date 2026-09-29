@@ -1,5 +1,7 @@
 using System.Collections;
 using System.Collections.Immutable;
+using Basil.Application.Models.Events;
+using Basil.Application.Models.Events.Multiplayer;
 using Basil.Application.Models.Sessions;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;

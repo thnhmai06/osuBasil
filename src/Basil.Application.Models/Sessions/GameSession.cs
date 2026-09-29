@@ -1,3 +1,5 @@
+using Basil.Application.Models.Events;
+using Basil.Application.Models.Events.Multiplayer;
 using Basil.Application.Models.Multiplayer;
 using Basil.Domain.Auth;
 using Basil.Domain.Client;

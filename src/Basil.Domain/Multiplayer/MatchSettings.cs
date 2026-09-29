@@ -18,7 +18,7 @@ public sealed class MatchSettings
 		{
 			value.ThrowIfUndefined();
 			field = value;
-			Mods = Mods;
+			Mods = Mods.RemoveInvalidMods(value);
 		}
 	} = GameMode.Standard;
 
@@ -26,7 +26,11 @@ public sealed class MatchSettings
 	public GameMods Mods
 	{
 		get;
-		set => field = value.RemoveInvalidMods(Mode);
+		set
+		{
+			value.ThrowIfInvalid(Mode);
+			field = value;
+		}
 	} = GameMods.NoMod;
 
 	/// <summary>Gets or sets a value that indicates whether freemod mode is enabled.</summary>
@@ -55,5 +59,10 @@ public sealed class MatchSettings
 	} = GameWinCondition.Score;
 
 	/// <summary>Gets the room's random seed, broadcast to clients as part of the match's data.</summary>
-	public int Seed { get; init; }
+	public int Seed { get; init; } = 0;
+
+	public MatchSettings Clone()
+	{
+		return (MatchSettings)MemberwiseClone();
+	}
 }

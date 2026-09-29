@@ -1,5 +1,7 @@
 using Basil.Application.Contracts.Events;
 using Basil.Application.Contracts.Repositories;
+using Basil.Application.Models.Events;
+using Basil.Application.Models.Events.Multiplayer;
 using Basil.Application.Models.Multiplayer;
 using Basil.Domain.Multiplayer;
 using Notification = Basil.Application.Models.Notifications;

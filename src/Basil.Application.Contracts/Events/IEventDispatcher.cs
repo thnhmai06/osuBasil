@@ -11,10 +11,10 @@ namespace Basil.Application.Contracts.Events;
 ///     handler that throws is caught and does not prevent the other handlers for the same event from
 ///     running.
 /// </remarks>
-public interface IEventDispatcher
+public interface IEventDispatcher<in TEvent> where TEvent : Event
 {
 	/// <summary>Dispatches an event to every handler registered for its type or a category it inherits.</summary>
 	/// <param name="event">The event to dispatch.</param>
 	/// <param name="cancellationToken">A token that cancels the dispatch.</param>
-	Task DispatchAsync(Event @event, CancellationToken cancellationToken = default);
+	Task DispatchAsync(TEvent @event, CancellationToken cancellationToken = default);
 }

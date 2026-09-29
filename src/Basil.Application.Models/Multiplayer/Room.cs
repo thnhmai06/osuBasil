@@ -1,5 +1,6 @@
 using System.Threading.Channels;
 using Basil.Application.Models.Events;
+using Basil.Application.Models.Events.Multiplayer;
 using Basil.Application.Models.Sessions;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
@@ -115,9 +116,8 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		get => Settings.Mods;
 		set
 		{
-			var before = Settings.Mods;
+			if (Settings.Mods == value) return;
 			Settings.Mods = value;
-			if (Settings.Mods == before) return;
 			Emit(new ModsChanged(this, value));
 		}
 	}
@@ -326,25 +326,15 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	/// <exception cref="InvalidOperationException">A round is already in progress, or no beatmap is selected.</exception>
 	public Round Start(int roundId)
 	{
-		if (InProgress)
-			throw new InvalidOperationException("A round is already in progress.");
-		if (Beatmap is null)
-			throw new InvalidOperationException("No beatmap is selected.");
+		if (InProgress) throw new InvalidOperationException("A round is already in progress.");
+		if (Beatmap is null) throw new InvalidOperationException("No beatmap is selected.");
 
 		var round = new Round
 		{
 			Id = roundId,
 			Match = Match,
 			BeatmapHash = Beatmap.Hash,
-			Settings = new MatchSettings
-			{
-				Mode = Settings.Mode,
-				Mods = Settings.Mods,
-				Freemods = Settings.Freemods,
-				TeamType = Settings.TeamType,
-				WinCondition = Settings.WinCondition,
-				Seed = Settings.Seed
-			},
+			Settings = Settings.Clone(),
 			OccurredAt = DateTimeOffset.UtcNow,
 			EndedAt = null
 		};
@@ -378,14 +368,13 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 
 	/// <summary>Closes the room, ending the match and vacating every slot.</summary>
 	/// <returns>The sessions that were seated when the room closed.</returns>
-	public IReadOnlyList<GameSession> Close()
+	public void Close()
 	{
 		var evicted = Slots.Where(s => s.Session is not null).Select(s => s.Session!).ToList();
 		foreach (var session in evicted) Slots.Vacate(session);
 
 		Match.EndedAt = DateTimeOffset.UtcNow;
 		Emit(new RoomClosed(this, evicted));
-		return evicted;
 	}
 
 	/// <summary>Writes an event to the room's event channel.</summary>
