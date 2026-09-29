@@ -9,7 +9,7 @@ public partial record BasilOptions
 	/// <remarks>
 	///     <see cref="Domain" /> is the apex domain this server's subdomains respond under. There is no
 	///     static menu-icon or menu-click URL setting here; see
-	///     <see cref="MenuIconService" /> for the
+	///     <see cref="Basil.Infrastructure.Content.MenuIconService" /> for the
 	///     runtime-configurable, database-backed replacement.
 	/// </remarks>
 	public sealed record HostOptions(
