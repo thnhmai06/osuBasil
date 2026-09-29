@@ -1,4 +1,4 @@
-namespace Basil.Application.Contracts.Caching;
+namespace Basil.Application.Contracts.Repositories;
 
 /// <summary>
 ///     An explicit, lazily-populated in-memory cache in front of a kho (repository, registry, or

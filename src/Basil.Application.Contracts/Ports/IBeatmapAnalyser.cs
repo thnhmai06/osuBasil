@@ -11,7 +11,7 @@ namespace Basil.Application.Contracts.Ports;
 ///     Nothing in scoring, leaderboards, or match win conditions depends on these calculations: they
 ///     feed star rating and difficulty display only.
 /// </remarks>
-public interface IOsuCalculator
+public interface IBeatmapAnalyser
 {
 	/// <summary>Analyzes the beatmap file at the given path and returns its gameplay stats.</summary>
 	/// <param name="beatmapFilePath">The path to the .osu file on disk.</param>

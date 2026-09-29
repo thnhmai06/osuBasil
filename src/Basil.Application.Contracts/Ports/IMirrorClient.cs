@@ -4,7 +4,7 @@ namespace Basil.Application.Contracts.Ports;
 
 /// <summary>Queries a third-party osu!direct mirror for beatmapsets not known locally.</summary>
 /// <remarks>A network failure is not surfaced as an exception; it is reported as an empty or null result.</remarks>
-public interface IMirrorSearchClient
+public interface IMirrorClient
 {
 	/// <summary>Searches the mirror.</summary>
 	/// <param name="search">The search criteria.</param>
@@ -20,7 +20,7 @@ public interface IMirrorSearchClient
 	Task<MirrorBeatmapset?> GetSetAsync(int setId, CancellationToken cancellationToken = default);
 }
 
-/// <summary>The criteria for an <see cref="IMirrorSearchClient" /> search.</summary>
+/// <summary>The criteria for an <see cref="IMirrorClient" /> search.</summary>
 /// <param name="Query">The free-text query, or <see langword="null" /> for none.</param>
 /// <param name="Mode">The game mode to filter by, or <see langword="null" /> for any mode.</param>
 /// <param name="Amount">The maximum number of results to request.</param>

@@ -10,7 +10,7 @@ namespace Basil.Application.Services.Operations;
 
 /// <summary>Ingests a beatmapset archive: analyzes each difficulty and stores the metadata and the archive.</summary>
 public sealed class BeatmapCatalog(
-	IOsuCalculator calculator,
+	IBeatmapAnalyser calculator,
 	IRepository<int, Beatmapset> beatmapsets,
 	IRepository<int, Beatmap> beatmaps,
 	IBlobStorage<int> archives)
