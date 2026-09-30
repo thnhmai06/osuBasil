@@ -37,7 +37,7 @@ public sealed class ChannelSession : IEventPublisher<ChannelEvent>, IEquatable<C
 	/// <returns><see langword="true" /> if the user may read the channel; otherwise, <see langword="false" />.</returns>
 	public bool CanRead(User user)
 	{
-		return user.Privilege.Has(Channel.ReadPrivilege);
+		return user.Value.Privilege.Has(Channel.ReadPrivilege);
 	}
 
 	/// <summary>Gets a value that indicates whether <paramref name="user" /> may write to the channel.</summary>
@@ -45,7 +45,7 @@ public sealed class ChannelSession : IEventPublisher<ChannelEvent>, IEquatable<C
 	/// <returns><see langword="true" /> if the user may write to the channel; otherwise, <see langword="false" />.</returns>
 	public bool CanWrite(User user)
 	{
-		return user.Privilege.Has(Channel.WritePrivilege);
+		return user.Value.Privilege.Has(Channel.WritePrivilege);
 	}
 
 	/// <summary>Adds <paramref name="member" /> to the channel and records that they joined.</summary>

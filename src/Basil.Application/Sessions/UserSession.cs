@@ -1,10 +1,10 @@
 using System.Threading.Channels;
 using Basil.Domain.Users;
 using Basil.Domain.Utilities;
-
 using Basil.Application.Chat;
 using Basil.Application.Common.Events;
 using Basil.Application.Common.Notifications;
+
 namespace Basil.Application.Sessions;
 
 /// <summary>
@@ -33,7 +33,7 @@ public abstract class UserSession : IEventPublisher<SessionEvent>, IEquatable<Us
 	public required IClientConnection Connection { get; init; }
 
 	/// <summary>Gets or sets the time of the last activity received from the client.</summary>
-	public DateTimeOffset LastActiveAt { get; set; }
+	public DateTimeOffset LastActive { get; set; }
 
 	/// <summary>Gets or sets the away message shown to other users, or <see langword="null" /> when not away.</summary>
 	public string? AwayMessage { get; set; }
@@ -86,8 +86,7 @@ public abstract class UserSession : IEventPublisher<SessionEvent>, IEquatable<Us
 	public bool Equals(UserSession? other)
 	{
 		if (other is null) return false;
-		if (GetType() != other.GetType()) return false;
-		return User.Equals(other.User);
+		return GetType() == other.GetType() && User.Equals(other.User);
 	}
 
 	/// <inheritdoc />

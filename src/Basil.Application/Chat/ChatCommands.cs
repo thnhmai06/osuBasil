@@ -1,5 +1,4 @@
 using Basil.Domain.Users;
-
 using Basil.Application.Common;
 using Basil.Application.Common.Configuration;
 using Basil.Application.Common.Configuration.Options;
@@ -7,6 +6,7 @@ using Basil.Application.Common.Persistence;
 using Basil.Application.Multiplayer.Commands;
 using Basil.Application.Sessions;
 using Basil.Application.Users;
+
 namespace Basil.Application.Chat;
 
 /// <summary>Runs bot and <c>!mp</c> chat commands.</summary>
@@ -17,7 +17,7 @@ namespace Basil.Application.Chat;
 public sealed class ChatCommands(
 	ISettingsRepository settingsRepository,
 	IRepository<string, User> usersByName,
-	IBlobStorage<string> faqStorage,
+	IStorage<string> faqStorage,
 	ISearchable<string> faqSearch,
 	MpCommands mp,
 	ILocalizer localizer)
@@ -63,7 +63,7 @@ public sealed class ChatCommands(
 		if (args.Length > 0 && int.TryParse(args[0], out var parsed) && parsed > 0) max = parsed;
 
 		var roll = (int)Random.Shared.NextInt64(0, (long)max + 1);
-		return $"{sender.User.Name} rolls {roll} point(s)";
+		return $"{sender.User.Value.Name} rolls {roll} point(s)";
 	}
 
 	private async Task<string> WhereAsync(string[] args, CancellationToken cancellationToken)
@@ -71,10 +71,10 @@ public sealed class ChatCommands(
 		if (args.Length < 1) return localizer.Get(BotReplies.WhereUsage);
 
 		var name = string.Join(' ', args);
-		var user = await usersByName.LoadAsync(UserSafeName.Of(name), cancellationToken);
+		var user = await usersByName.GetAsync(UserSafeName.Of(name), cancellationToken);
 		return user is null
 			? localizer.Get(BotReplies.NotRegistered, name)
-			: localizer.Get(BotReplies.WhereIsIn, user.Name, user.Country.Describe());
+			: localizer.Get(BotReplies.WhereIsIn, user.Value.Name, user.Value.Country.Describe());
 	}
 
 	private async Task<string> FaqAsync(string[] args, CancellationToken cancellationToken)
@@ -83,8 +83,7 @@ public sealed class ChatCommands(
 
 		if (args.Length == 1 && args[0].Equals("list", StringComparison.OrdinalIgnoreCase))
 		{
-			var entries = await faqSearch.SearchAsync(new FaqQuery(), cancellationToken: cancellationToken)
-				.ToListAsync(cancellationToken);
+			var entries = await faqSearch.SearchAsync(new FaqQuery(), cancellationToken: cancellationToken);
 			return entries.Count == 0
 				? localizer.Get(BotReplies.NoFaqEntriesAvailable)
 				: localizer.Get(BotReplies.AvailableFaqEntries, string.Join(", ", entries));

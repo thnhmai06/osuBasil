@@ -7,7 +7,7 @@ public sealed class RoomChannel(Room room) : IChannel //! only exist in Registry
 {
 	public string Name => $"mp_{room.Match.Id}";
 
-	public string Topic => room.Match.Name;
+	public string Topic => room.Match.Value.Name;
 
 	public string DisplayName => "multiplayer";
 

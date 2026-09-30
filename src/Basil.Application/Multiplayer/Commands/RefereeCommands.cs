@@ -26,7 +26,7 @@ public sealed class RefereeCommands(SlotCommands targets, ISessionRegistry<GameS
 
 		room.Invite(target);
 
-		return localizer.Get(MpReplies.InvitedToRoom, target.Name);
+		return localizer.Get(MpReplies.InvitedToRoom, target.Value.Name);
 	}
 
 	/// <summary>Handles <c>!mp addref &lt;name&gt;</c>.</summary>
@@ -38,10 +38,10 @@ public sealed class RefereeCommands(SlotCommands targets, ISessionRegistry<GameS
 		if (target is null) return localizer.Get(MpReplies.UserNotFound);
 
 		if (room.IsReferee(target))
-			return localizer.Get(MpReplies.TargetIsAlreadyAReferee, target.Name);
+			return localizer.Get(MpReplies.TargetIsAlreadyAReferee, target.Value.Name);
 
 		room.AddReferee(target);
-		return localizer.Get(MpReplies.AddedReferee, target.Name);
+		return localizer.Get(MpReplies.AddedReferee, target.Value.Name);
 	}
 
 	/// <summary>Handles <c>!mp removeref &lt;name&gt;</c>.</summary>
@@ -54,13 +54,13 @@ public sealed class RefereeCommands(SlotCommands targets, ISessionRegistry<GameS
 		if (target is null) return localizer.Get(MpReplies.UserNotFound);
 
 		if (room.Creator is not null && room.Creator.Equals(target))
-			return localizer.Get(MpReplies.CannotRemoveCreator, target.Name);
+			return localizer.Get(MpReplies.CannotRemoveCreator, target.Value.Name);
 
 		if (!room.IsReferee(target))
-			return localizer.Get(MpReplies.TargetIsNotAReferee, target.Name);
+			return localizer.Get(MpReplies.TargetIsNotAReferee, target.Value.Name);
 
 		room.RemoveReferee(target);
-		return localizer.Get(MpReplies.RemovedReferee, target.Name);
+		return localizer.Get(MpReplies.RemovedReferee, target.Value.Name);
 	}
 
 	/// <summary>Handles <c>!mp listrefs</c>.</summary>
@@ -68,7 +68,7 @@ public sealed class RefereeCommands(SlotCommands targets, ISessionRegistry<GameS
 	{
 		return room.Referees.Count == 0
 			? localizer.Get(MpReplies.NoReferees)
-			: $"{localizer.Get(MpReplies.MatchReferees)} {string.Join(", ", room.Referees.Select(r => r.Name))}";
+			: $"{localizer.Get(MpReplies.MatchReferees)} {string.Join(", ", room.Referees.Select(r => r.Value.Name))}";
 	}
 
 	/// <summary>Handles <c>!mp banlist</c>.</summary>
@@ -82,6 +82,6 @@ public sealed class RefereeCommands(SlotCommands targets, ISessionRegistry<GameS
 
 		return banned.Count == 0
 			? localizer.Get(MpReplies.NoBannedPlayers)
-			: $"{localizer.Get(MpReplies.MatchBans)} {string.Join(", ", banned.Select(u => u.Name))}";
+			: $"{localizer.Get(MpReplies.MatchBans)} {string.Join(", ", banned.Select(u => u.Value.Name))}";
 	}
 }

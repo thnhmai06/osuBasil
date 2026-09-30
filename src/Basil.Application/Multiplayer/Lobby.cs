@@ -1,8 +1,8 @@
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
-
 using Basil.Application.Chat;
 using Basil.Application.Common.Persistence;
+
 namespace Basil.Application.Multiplayer;
 
 /// <summary>Creates and closes multiplayer rooms.</summary>
@@ -10,9 +10,11 @@ public sealed class Lobby(
 	IRoomRegistry rooms,
 	IChannelRegistry channels,
 	IRepository<int, Match> matchRepository,
-	IIdAllocator<Match> matchIds,
-	IIdAllocator<Room> roomIds)
+	ICreatable<MatchData, Match> newMatches)
 {
+	/// <summary>The largest room id; the client protocol carries room ids as unsigned 16-bit values.</summary>
+	private const int MaxRoomId = ushort.MaxValue;
+
 	/// <summary>Gets every currently open room, for a lobby listing.</summary>
 	public IEnumerable<Room> Observers => rooms.AllById.Values;
 
@@ -23,26 +25,25 @@ public sealed class Lobby(
 	/// <param name="settings">The room's initial settings, or <see langword="null" /> for the defaults.</param>
 	/// <param name="cancellationToken">A token that cancels the creation.</param>
 	/// <returns>The newly created room.</returns>
+	/// <exception cref="InvalidOperationException">Every room id is in use.</exception>
 	public async Task<Room> CreateRoomAsync(User? creator, string name, string password,
 		MatchSettings? settings = null, CancellationToken cancellationToken = default)
 	{
-		var match = new Match
+		var match = await newMatches.AddAsync(new MatchData
 		{
-			Id = await matchIds.NextAsync(cancellationToken),
 			Name = name,
 			CreatedAt = DateTimeOffset.UtcNow,
 			EndedAt = null,
 			Creator = creator
-		};
-		await matchRepository.SaveAsync(match, cancellationToken);
+		}, cancellationToken);
 
-		var id = await roomIds.NextAsync(cancellationToken);
-		var room = new Room { Id = id, Match = match, Settings = settings ?? new MatchSettings() };
-		if (!string.IsNullOrEmpty(password))
-			room.Password = password;
-
-		if (!rooms.TryAdd(room))
-			throw new InvalidOperationException($"A room with id {id} is already registered.");
+		Room room;
+		do
+		{
+			room = new Room { Id = FreeRoomId(), Match = match, Settings = settings ?? new MatchSettings() };
+			if (!string.IsNullOrEmpty(password))
+				room.Password = password;
+		} while (!rooms.TryAdd(room));
 
 		channels.TryAdd(room.Channel);
 
@@ -69,5 +70,13 @@ public sealed class Lobby(
 			member.Part(room.Channel);
 
 		channels.Remove(room.Channel.Name);
+	}
+
+	private int FreeRoomId()
+	{
+		var taken = rooms.AllById;
+		for (var id = 1; id <= MaxRoomId; id++)
+			if (!taken.ContainsKey(id)) return id;
+		throw new InvalidOperationException("Every room id is in use.");
 	}
 }

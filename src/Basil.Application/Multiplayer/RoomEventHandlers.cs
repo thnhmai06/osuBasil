@@ -1,12 +1,12 @@
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
-
 using Notification = Basil.Application.Multiplayer;
 using Basil.Application.Common.Events;
 using Basil.Application.Common.Notifications;
 using Basil.Application.Common.Persistence;
 using Basil.Application.Multiplayer.Events;
 using Basil.Application.Sessions;
+
 namespace Basil.Application.Multiplayer;
 
 /// <summary>
@@ -120,7 +120,7 @@ public sealed class RoomEventHandlers(
 	public Task HandleAsync(Events.RoomClosed domainEvent, CancellationToken cancellationToken = default)
 	{
 		foreach (var session in domainEvent.Evicted)
-			session.Notify(new Notification.RoomClosed(domainEvent.Room));
+			session.Notify(new RoomClosed(domainEvent.Room));
 
 		return Task.CompletedTask;
 	}
@@ -132,7 +132,7 @@ public sealed class RoomEventHandlers(
 			new MatchEvent(room.Match, type, DateTimeOffset.UtcNow, actor, target), cancellationToken);
 	}
 
-	private void NotifyRoom(Room room, Common.Notifications.Notification notification)
+	private static void NotifyRoom(Room room, Common.Notifications.Notification notification)
 	{
 		foreach (var slot in room.Slots)
 			slot.Session?.Notify(notification);

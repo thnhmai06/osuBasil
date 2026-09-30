@@ -14,7 +14,7 @@ namespace Basil.LoadTests.Scenarios;
 
 /// <summary>
 ///     Multiplayer tournament-round workload. The scale axis is <b>rooms</b>, not players — the server
-///     allocates match ids from a fixed 64-slot pool and serializes every mutation inside one room
+///     identifies at most 65,535 open rooms and serializes every mutation inside one room
 ///     behind <c>MatchSession.Lock</c>, so "more concurrency" here means more rooms, each capped at 16
 ///     players.
 /// </summary>
@@ -59,9 +59,9 @@ public sealed class MultiplayerScenario : IBasilScenario
 
 		foreach (var roomCount in settings.Rooms)
 		{
-			if (roomCount > 64)
+			if (roomCount > ushort.MaxValue)
 				throw new InvalidOperationException(
-					$"'{Id}' room count {roomCount} exceeds the server's 64-match id pool.");
+					$"'{Id}' room count {roomCount} exceeds the server's {ushort.MaxValue}-room id range.");
 			if (settings.PlayersPerRoom > 16)
 				throw new InvalidOperationException(
 					$"'{Id}' players-per-room {settings.PlayersPerRoom} exceeds the server's 16-slot limit.");

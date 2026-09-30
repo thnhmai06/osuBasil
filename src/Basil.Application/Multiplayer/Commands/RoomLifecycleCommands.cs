@@ -21,7 +21,7 @@ public sealed class RoomLifecycleCommands(
 	public async Task<string> MakeAsync(UserSession sender, IReadOnlyList<string> args, bool isPrivate,
 		CancellationToken cancellationToken)
 	{
-		var name = args.Count > 0 ? string.Join(' ', args) : $"{sender.User.Name}'s room";
+		var name = args.Count > 0 ? string.Join(' ', args) : $"{sender.User.Value.Name}'s room";
 		var creator = sender.User;
 
 		var room = await lobby.CreateRoomAsync(creator, name, string.Empty, cancellationToken: cancellationToken);
@@ -32,7 +32,7 @@ public sealed class RoomLifecycleCommands(
 			await matches.SaveAsync(room.Match, cancellationToken);
 		}
 
-		return localizer.Get(MpReplies.CreatedMatch, room.Id, room.Match.Name, isPrivate ? " (private)" : "");
+		return localizer.Get(MpReplies.CreatedMatch, room.Id, room.Match.Value.Name, isPrivate ? " (private)" : "");
 	}
 
 	/// <summary>Handles <c>!mp join &lt;id&gt; [password]</c>.</summary>
@@ -58,7 +58,7 @@ public sealed class RoomLifecycleCommands(
 			if (room.Banned.Contains(user))
 				return localizer.Get(MpReplies.BannedFromMatch);
 
-			if (!room.Match.IsVisible && !room.Invited.Contains(user) && !room.IsReferee(user))
+			if (!room.Match.Value.IsVisible && !room.Invited.Contains(user) && !room.IsReferee(user))
 				return localizer.Get(MpReplies.PrivateRoomJoinDenied, roomId);
 
 			if (!room.VerifyPassword(password))
@@ -72,7 +72,7 @@ public sealed class RoomLifecycleCommands(
 
 			sender.Join(room.Channel);
 
-			return localizer.Get(MpReplies.JoinedMatch, room.Id, room.Match.Name);
+			return localizer.Get(MpReplies.JoinedMatch, room.Id, room.Match.Value.Name);
 		}
 	}
 

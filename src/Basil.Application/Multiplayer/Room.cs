@@ -51,11 +51,11 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	/// <summary>Gets or sets the name broadcast to clients.</summary>
 	public string Name
 	{
-		get => Match.Name;
+		get => Match.Value.Name;
 		set
 		{
-			if (Match.Name == value) return;
-			Match.Name = value;
+			if (Match.Value.Name == value) return;
+			Match.Value.Name = value;
 			Emit(new RoomNameChanged(this, value));
 		}
 	}
@@ -63,17 +63,17 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	/// <summary>Gets or sets a value that indicates whether the room is publicly visible.</summary>
 	public bool IsVisible
 	{
-		get => Match.IsVisible;
+		get => Match.Value.IsVisible;
 		set
 		{
-			if (Match.IsVisible == value) return;
-			Match.IsVisible = value;
+			if (Match.Value.IsVisible == value) return;
+			Match.Value.IsVisible = value;
 			Emit(new RoomVisibilityChanged(this, value));
 		}
 	}
 
 	/// <summary>Gets the user who created the match.</summary>
-	public User? Creator => Match.Creator;
+	public User? Creator => Match.Value.Creator;
 
 	/// <summary>Gets or sets the room's password.</summary>
 	public string Password
@@ -223,8 +223,12 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		}
 	}
 
+	/// <summary>Gets the most recently started round, or <see langword="null" /> before the first round.</summary>
+	/// <remarks>Stays set after the round ends, until the next round starts.</remarks>
+	public Round? LastRound { get; private set; }
+
 	/// <summary>Gets the round currently being played, or <see langword="null" /> when none is in progress.</summary>
-	public Round? CurrentRound { get; private set; }
+	public Round? CurrentRound => LastRound is { EndedAt: null } round ? round : null;
 
 	/// <summary>Gets a value that indicates whether a round is currently in progress.</summary>
 	public bool InProgress => CurrentRound is not null;
@@ -244,7 +248,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	/// <summary>
 	///     Gets an osu! chat embed for this room, formatted as a clickable name linked to <see cref="Url" />.
 	/// </summary>
-	public string UrlEmbed => $"({Match.Name})[{Url}]";
+	public string UrlEmbed => $"({Match.Value.Name})[{Url}]";
 
 	public Room()
 	{
@@ -342,18 +346,17 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		Emit(new RefereeRemoved(this, referee));
 	}
 
-	/// <summary>Starts a round.</summary>
-	/// <param name="roundId">The id to assign to the new round.</param>
+	/// <summary>Starts the next round of the match.</summary>
 	/// <returns>The round that was started.</returns>
 	/// <exception cref="InvalidOperationException">A round is already in progress, or no beatmap is selected.</exception>
-	public Round Start(int roundId)
+	public Round Start()
 	{
 		if (InProgress) throw new InvalidOperationException("A round is already in progress.");
 		if (Beatmap is null) throw new InvalidOperationException("No beatmap is selected.");
 
 		var round = new Round
 		{
-			Id = roundId,
+			Number = (LastRound?.Number ?? 0) + 1,
 			Match = Match,
 			BeatmapHash = Beatmap.Hash,
 			Settings = Settings.Clone(),
@@ -361,7 +364,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 			EndedAt = null
 		};
 
-		CurrentRound = round;
+		LastRound = round;
 
 		foreach (var slot in Slots.Where(s => s.Session is not null && s.Status is not RoomSlotStatus.NoMap))
 			slot.SetStatus(RoomSlotStatus.Playing);
@@ -384,7 +387,6 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 			         s.Session is not null && s.Status is RoomSlotStatus.Playing or RoomSlotStatus.Complete))
 			slot.SetStatus(RoomSlotStatus.NotReady);
 
-		CurrentRound = null;
 		Emit(new Events.RoundAborted(this, round));
 	}
 
@@ -395,7 +397,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		var evicted = Slots.Where(s => s.Session is not null).Select(s => s.Session!).ToList();
 		foreach (var session in evicted) Slots.Vacate(session);
 
-		Match.EndedAt = DateTimeOffset.UtcNow;
+		Match.Value.EndedAt = DateTimeOffset.UtcNow;
 		Emit(new Events.RoomClosed(this, evicted));
 	}
 

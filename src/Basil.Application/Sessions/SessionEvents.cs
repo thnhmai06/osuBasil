@@ -11,12 +11,7 @@ public abstract record SessionEvent(UserSession Session) : Event;
 public abstract record PresenceEvent(UserSession Session) : SessionEvent(Session);
 
 /// <summary>A game session's reported presence status changed.</summary>
-public sealed record StatusChanged(GameSession GameSession, PlayerStatus Status) : PresenceEvent(GameSession)
-{
-	/// <summary>Gets the game session whose status changed.</summary>
-	public new GameSession Session => GameSession;
-}
-
+public sealed record StatusChanged(GameSession GameSession, PlayerStatus Status) : PresenceEvent(GameSession);
 /// <summary>A session started or stopped spectating another.</summary>
 public abstract record SpectatorEvent(GameSession HostSession) : SessionEvent(HostSession);
 

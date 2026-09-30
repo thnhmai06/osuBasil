@@ -7,13 +7,14 @@ namespace Basil.Domain.Multiplayer;
 /// </summary>
 public sealed class Round : IMatchRecord, IEquatable<Round>
 {
-	/// <summary>The unique identifier of the round.</summary>
-	public required int Id
+	/// <summary>Gets the position of the round within its match, starting at 1.</summary>
+	/// <remarks>An aborted round keeps its number; the next round takes the following one.</remarks>
+	public required int Number
 	{
 		get;
 		init => field = value > 0
 			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), "Round Id must be positive.");
+			: throw new ArgumentOutOfRangeException(nameof(value), "Round number must be positive.");
 	}
 
 	/// <summary>The match the round belongs to.</summary>
@@ -38,19 +39,19 @@ public sealed class Round : IMatchRecord, IEquatable<Round>
 	/// <summary>A value that indicates whether the round was aborted.</summary>
 	public bool Aborted { get; set; } = false;
 
-	/// <summary>Gets a value that indicates whether this round equals another by id.</summary>
+	/// <summary>Determines whether another round is the same round of the same match.</summary>
 	/// <param name="other">The round to compare, or <see langword="null" />.</param>
 	/// <returns>
-	///     <see langword="true" /> if <paramref name="other" /> is non-null and has the same
-	///     <see cref="Id" /> as this round; otherwise, <see langword="false" />.
+	///     <see langword="true" /> if <paramref name="other" /> belongs to the same <see cref="Match" />
+	///     and has the same <see cref="Number" />; otherwise, <see langword="false" />.
 	/// </returns>
 	public bool Equals(Round? other)
 	{
 		if (other is null) return false;
-		return Id == other.Id;
+		return Match.Equals(other.Match) && Number == other.Number;
 	}
 
-	/// <summary>Gets a value that indicates whether this round equals another object by id.</summary>
+	/// <summary>Determines whether this round equals another object.</summary>
 	/// <param name="obj">The object to compare, or <see langword="null" />.</param>
 	/// <returns>
 	///     <see langword="true" /> if <paramref name="obj" /> is a <see cref="Round" /> that equals
@@ -61,10 +62,10 @@ public sealed class Round : IMatchRecord, IEquatable<Round>
 		return obj is Round other && Equals(other);
 	}
 
-	/// <summary>Returns a hash code equal to the round's <see cref="Id" />.</summary>
-	/// <returns>A hash code consistent with the round's value equality, which compares <see cref="Id" />.</returns>
+	/// <summary>Returns a hash code consistent with the round's equality.</summary>
+	/// <returns>A hash code combining the round's match and number.</returns>
 	public override int GetHashCode()
 	{
-		return Id;
+		return HashCode.Combine(Match, Number);
 	}
 }

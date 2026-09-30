@@ -1,23 +1,23 @@
 using Basil.Domain.Scores;
 using Basil.Domain.Utilities;
-
 using Basil.Application.Common.Persistence;
 using Basil.Application.Sessions;
+
 namespace Basil.Application.Scores;
 
 /// <summary>Validates and stores a submitted score, its replay, and the submitter's updated statistics.</summary>
 public sealed class ScoreSubmission(
-	IRepository<int, Score> scores,
-	IBlobStorage<int> replays,
+	ICreatable<ScoreData, Score> scores,
+	IStorage<int> replays,
 	IUserStatsRepository stats)
 {
 	/// <summary>Validates and records a score submission.</summary>
+	/// <remarks>A play on the beatmap of the submitter's room's latest round is recorded against that round.</remarks>
 	/// <param name="session">The session that submitted the score.</param>
 	/// <param name="submission">The parsed submission.</param>
-	/// <param name="scoreId">The id to store the score under.</param>
 	/// <param name="beatmap">The beatmap the server knows for the submission's claimed MD5, and its storyboard MD5, if any.</param>
 	/// <param name="playerName">The submitting player's username, as known to the server.</param>
-	/// <param name="clientFingerprint">The fingerprint MD5 and serial the client sent with the submission.</param>
+	/// <param name="clientFingerprint">The client hash and unique ids the client sent with the submission.</param>
 	/// <param name="clientVersionDate">The client version date the client sent with the submission.</param>
 	/// <param name="clientBeatmapHash">The beatmap MD5 the client claims to have played.</param>
 	/// <param name="replay">The submission's replay bytes, or <see langword="null" /> for a failed play.</param>
@@ -29,10 +29,9 @@ public sealed class ScoreSubmission(
 	public async Task<string?> SubmitAsync(
 		GameSession session,
 		Submission submission,
-		int scoreId,
 		(Md5 Hash, Md5? StoryboardHash) beatmap,
 		string playerName,
-		(Md5 Hash, string Serial) clientFingerprint,
+		(string Hash, string Serial) clientFingerprint,
 		string clientVersionDate,
 		Md5 clientBeatmapHash,
 		byte[]? replay,
@@ -44,12 +43,16 @@ public sealed class ScoreSubmission(
 			    out var error))
 			return error;
 
-		await scores.SaveAsync(submission.Score with { UserId = session.User.Id }, cancellationToken);
+		var round = session.Room?.LastRound is { } last && last.BeatmapHash == submission.Score.BeatmapHash
+			? last
+			: null;
+		var score = await scores.AddAsync(submission.Score with { UserId = session.User.Id, Round = round },
+			cancellationToken);
 
 		if (replay is not null)
 		{
 			await using var content = new MemoryStream(replay, false);
-			await replays.SaveAsync(scoreId, content, cancellationToken);
+			await replays.SaveAsync(score.Id, content, cancellationToken);
 		}
 
 		if (submission.Score.IsPassed)

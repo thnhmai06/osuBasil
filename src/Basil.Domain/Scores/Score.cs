@@ -1,12 +1,57 @@
 ﻿using System.Globalization;
 using Basil.Domain.Mechanics;
+using Basil.Domain.Multiplayer;
 using Basil.Domain.Utilities;
 
 namespace Basil.Domain.Scores;
 
-/// <summary>
-///     Represents the scoring fields of a play as submitted by the osu! client.
-/// </summary>
+/// <summary>A stored score identified by its id.</summary>
+public sealed class Score : IWrapper<ScoreData>, IEquatable<Score>
+{
+	/// <summary>Gets the unique identifier of the score.</summary>
+	public required int Id
+	{
+		get;
+		init => field = value > 0
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), "Score id must be positive.");
+	}
+
+	/// <summary>Gets the score data this identity wraps.</summary>
+	public required ScoreData Value { get; init; }
+
+	/// <summary>Determines whether another score refers to the same stored score.</summary>
+	/// <param name="other">The score to compare against, or <see langword="null" />.</param>
+	/// <returns>
+	///     <see langword="true" /> if <paramref name="other" /> has the same <see cref="Id" />;
+	///     otherwise, <see langword="false" />.
+	/// </returns>
+	public bool Equals(Score? other)
+	{
+		if (other is null) return false;
+		return Id == other.Id;
+	}
+
+	/// <summary>Determines whether this score equals another object.</summary>
+	/// <param name="obj">The object to compare against.</param>
+	/// <returns>
+	///     <see langword="true" /> if <paramref name="obj" /> is a <see cref="Score" /> with the
+	///     same <see cref="Id" />; otherwise, <see langword="false" />.
+	/// </returns>
+	public override bool Equals(object? obj)
+	{
+		return obj is Score other && Equals(other);
+	}
+
+	/// <summary>Returns the hash code of this score.</summary>
+	/// <returns>The <see cref="Id" />, which uniquely identifies the score.</returns>
+	public override int GetHashCode()
+	{
+		return Id;
+	}
+}
+
+/// <summary>Represents the scoring fields of a play as submitted by the osu! client, without a stored identity.</summary>
 /// <param name="UserId">The user ID of the player, when known.</param>
 /// <param name="BeatmapHash">The MD5 checksum of the beatmap played, when known.</param>
 /// <param name="Mode">The game mode the play used.</param>
@@ -18,7 +63,7 @@ namespace Basil.Domain.Scores;
 /// <param name="IsPassed">Whether the play was passed.</param>
 /// <param name="IsFullCombo">Whether the play was a full combo.</param>
 /// <param name="OccuredAt">The date and time when the play occurred.</param>
-public sealed record Score(
+public sealed record ScoreData(
 	int? UserId,
 	Md5? BeatmapHash,
 	GameMode Mode,
@@ -39,13 +84,16 @@ public sealed record Score(
 		? MaxCombo
 		: throw new ArgumentOutOfRangeException(nameof(MaxCombo), "MaxCombo must be non-negative.");
 
+	/// <summary>Gets the multiplayer round the play was made in, or <see langword="null" /> outside a round.</summary>
+	public Round? Round { get; init; }
+
 	/// <summary>
 	///     Gets the play's accuracy, computed from its hit counts under its mode and mods.
 	/// </summary>
 	public double Accuracy => HitCounts.CalculateAccuracy(Mode, Mods);
 
 	/// <summary>
-	///     Parses the scoring fields of a submission into a <see cref="Score" />.
+	///     Parses the scoring fields of a submission into a <see cref="ScoreData" />.
 	/// </summary>
 	/// <param name="submitFields">
 	///     The colon-delimited submission fields that follow the submission MD5 entry. Indexes 1
@@ -55,7 +103,7 @@ public sealed record Score(
 	/// <param name="beatmapHash">The beatmap MD5 to carry into the parsed score, if known.</param>
 	/// <param name="userId">The user ID to carry into the parsed score, if known.</param>
 	/// <returns>The parsed score.</returns>
-	public static Score Parse(IReadOnlyList<string> submitFields, Md5? beatmapHash = null, int? userId = null)
+	public static ScoreData Parse(IReadOnlyList<string> submitFields, Md5? beatmapHash = null, int? userId = null)
 	{
 		var hitCounts = new HitCounts(
 			int.Parse(submitFields[1], CultureInfo.InvariantCulture),
@@ -65,7 +113,7 @@ public sealed record Score(
 			int.Parse(submitFields[5], CultureInfo.InvariantCulture),
 			int.Parse(submitFields[6], CultureInfo.InvariantCulture));
 
-		return new Score
+		return new ScoreData
 		(
 			userId,
 			beatmapHash,

@@ -10,7 +10,7 @@ namespace Basil.Application.Common.Persistence;
 ///     exactly one item and is atomic.
 /// </remarks>
 /// <typeparam name="TKey">The type that uniquely identifies an item.</typeparam>
-public interface IBlobStorage<in TKey>
+public interface IStorage<in TKey>
 {
 	/// <summary>Opens the file identified by <paramref name="key" /> for reading.</summary>
 	/// <param name="key">The item's key.</param>

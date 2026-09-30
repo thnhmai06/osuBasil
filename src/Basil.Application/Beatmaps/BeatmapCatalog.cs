@@ -2,8 +2,8 @@ using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 using Basil.Domain.Utilities;
-
 using Basil.Application.Common.Persistence;
+
 namespace Basil.Application.Beatmaps;
 
 /// <summary>Ingests a beatmapset archive: analyzes each difficulty and stores the metadata and the archive.</summary>
@@ -11,7 +11,7 @@ public sealed class BeatmapCatalog(
 	IBeatmapAnalyser calculator,
 	IRepository<int, Beatmapset> beatmapsets,
 	IRepository<int, Beatmap> beatmaps,
-	IBlobStorage<int> archives)
+	IStorage<int> archives)
 {
 	/// <summary>Imports a beatmapset: stores its metadata, analyzes each difficulty, and stores the archive.</summary>
 	/// <param name="beatmapsetId">The id to store the set under.</param>
@@ -27,7 +27,7 @@ public sealed class BeatmapCatalog(
 		IReadOnlyList<(int Id, string Version, string FilePath, byte[] Content, GameMode Mode)> difficultyFiles,
 		byte[] archiveContent, CancellationToken cancellationToken = default)
 	{
-		var existing = await beatmapsets.LoadAsync(beatmapsetId, cancellationToken);
+		var existing = await beatmapsets.GetAsync(beatmapsetId, cancellationToken);
 		if (existing is { Locked: true }) return null;
 
 		var now = DateTimeOffset.UtcNow;

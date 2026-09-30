@@ -3,11 +3,11 @@ using Basil.Domain.Auth;
 using Basil.Domain.Chat;
 using Basil.Domain.Client;
 using Basil.Domain.Users;
-
 using Basil.Application.Chat;
 using Basil.Application.Common.Persistence;
 using Basil.Application.Multiplayer;
 using Basil.Application.Users;
+
 namespace Basil.Application.Sessions;
 
 /// <summary>
@@ -38,9 +38,9 @@ public sealed class Gateway(
 		IPAddress ip, ClientVersion clientVersion, ClientFingerprint fingerprint, int utcOffset,
 		CancellationToken cancellationToken = default)
 	{
-		var user = await usersByName.LoadAsync(UserSafeName.Of(attempt.Username), cancellationToken);
+		var user = await usersByName.GetAsync(UserSafeName.Of(attempt.Username), cancellationToken);
 		if (user is null) return LoginResult.Fail(LoginFailure.UnknownUser);
-		if (user.DeletedAt is not null) return LoginResult.Fail(LoginFailure.AccountDeleted);
+		if (user.Value.DeletedAt is not null) return LoginResult.Fail(LoginFailure.AccountDeleted);
 
 		bool verified;
 		try
@@ -60,7 +60,7 @@ public sealed class Gateway(
 		{
 			Login = new Login(user, ip, clientVersion, fingerprint, loginTime),
 			Connection = connection,
-			LastActiveAt = loginTime,
+			LastActive = loginTime,
 			UtcOffset = utcOffset
 		};
 
@@ -108,13 +108,11 @@ public sealed class Gateway(
 					spectator.StopSpectating();
 
 				if (game.Room is { } room && await roomRegistry.EnterAsync(room.Id, cancellationToken) is { } scope)
-				{
 					await using (scope)
 					{
 						if (scope.Room.Slots.Find(game) is not null)
 							game.LeaveRoom();
 					}
-				}
 			}
 
 			foreach (var channel in session.Channels.ToArray())

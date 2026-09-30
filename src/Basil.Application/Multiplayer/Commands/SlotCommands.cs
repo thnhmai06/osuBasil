@@ -1,10 +1,10 @@
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
-
 using Basil.Application.Common;
 using Basil.Application.Common.Persistence;
 using Basil.Application.Multiplayer;
 using Basil.Application.Users;
+
 namespace Basil.Application.Multiplayer.Commands;
 
 /// <summary>
@@ -20,8 +20,8 @@ public sealed class SlotCommands(
 	public async Task<User?> ResolveAsync(string token, CancellationToken cancellationToken)
 	{
 		return int.TryParse(token, out var id)
-			? await usersById.LoadAsync(id, cancellationToken)
-			: await usersByName.LoadAsync(UserSafeName.Of(token), cancellationToken);
+			? await usersById.GetAsync(id, cancellationToken)
+			: await usersByName.GetAsync(UserSafeName.Of(token), cancellationToken);
 	}
 
 	/// <summary>Handles <c>!mp move &lt;name/id&gt; &lt;slot 1-16&gt;</c>.</summary>
@@ -43,7 +43,7 @@ public sealed class SlotCommands(
 			return localizer.Get(MpReplies.DestinationSlotNotOpen);
 		}
 
-		return localizer.Get(MpReplies.MovedToSlot, target.Name, slotNumber);
+		return localizer.Get(MpReplies.MovedToSlot, target.Value.Name, slotNumber);
 	}
 
 	/// <summary>Handles <c>!mp host &lt;name/id&gt;</c>.</summary>
@@ -56,7 +56,7 @@ public sealed class SlotCommands(
 			return localizer.Get(MpReplies.UserNotInMatchOrUnregistered);
 
 		room.Host = session;
-		return localizer.Get(MpReplies.ChangedMatchHost, target.Name);
+		return localizer.Get(MpReplies.ChangedMatchHost, target.Value.Name);
 	}
 
 	/// <summary>Handles <c>!mp clearhost</c>.</summary>
@@ -85,7 +85,7 @@ public sealed class SlotCommands(
 			return localizer.Get(MpReplies.TeamUsage);
 		}
 
-		return localizer.Get(MpReplies.MovedToTeam, target.Name, team);
+		return localizer.Get(MpReplies.MovedToTeam, target.Value.Name, team);
 	}
 
 	/// <summary>Handles <c>!mp kick &lt;name/id&gt;</c>.</summary>
@@ -98,10 +98,10 @@ public sealed class SlotCommands(
 			return localizer.Get(MpReplies.UserNotInMatchOrUnregistered);
 
 		if (room.IsReferee(target))
-			return localizer.Get(MpReplies.CannotKickReferee, target.Name);
+			return localizer.Get(MpReplies.CannotKickReferee, target.Value.Name);
 
 		room.Kick(session);
-		return localizer.Get(MpReplies.KickedFromMatch, target.Name);
+		return localizer.Get(MpReplies.KickedFromMatch, target.Value.Name);
 	}
 
 	/// <summary>Handles <c>!mp ban &lt;name/id&gt;</c>.</summary>
@@ -113,10 +113,10 @@ public sealed class SlotCommands(
 		if (target is null) return localizer.Get(MpReplies.UserNotRegistered);
 
 		if (room.IsReferee(target))
-			return localizer.Get(MpReplies.CannotBanReferee, target.Name);
+			return localizer.Get(MpReplies.CannotBanReferee, target.Value.Name);
 
 		room.Ban(target);
-		return localizer.Get(MpReplies.BannedPlayerFromMatch, target.Name);
+		return localizer.Get(MpReplies.BannedPlayerFromMatch, target.Value.Name);
 	}
 
 	/// <summary>Handles <c>!mp unban &lt;name/id&gt;</c>.</summary>
@@ -129,6 +129,6 @@ public sealed class SlotCommands(
 			return localizer.Get(MpReplies.NotBannedFromMatch, args[0]);
 
 		room.Unban(target);
-		return localizer.Get(MpReplies.UnbannedFromMatch, target.Name);
+		return localizer.Get(MpReplies.UnbannedFromMatch, target.Value.Name);
 	}
 }

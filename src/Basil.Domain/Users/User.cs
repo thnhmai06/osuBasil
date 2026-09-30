@@ -1,16 +1,65 @@
 using System.Text.RegularExpressions;
 using Basil.Domain.Client;
+using Basil.Domain.Utilities;
 
 namespace Basil.Domain.Users;
 
 /// <summary>
-///     Represents a registered user of the server.
+///     A registered user identified by their id.
 /// </summary>
-public sealed partial class User : IEquatable<User>
+public sealed class User : IWrapper<UserData>, IEquatable<User>
 {
 	/// <summary>Gets the unique identifier of the user.</summary>
 	public required int Id { get; init; }
 
+	/// <summary>Gets the user data this identity wraps.</summary>
+	public required UserData Value { get; init; }
+
+	/// <summary>
+	///     Determines whether another user refers to the same account.
+	/// </summary>
+	/// <remarks>
+	///     Two users are considered equal when their <see cref="Id" /> values are equal.
+	/// </remarks>
+	/// <param name="other">The user to compare against, or <see langword="null" />.</param>
+	/// <returns>
+	///     <see langword="true" /> if <paramref name="other" /> has the same <see cref="Id" />;
+	///     otherwise, <see langword="false" />.
+	/// </returns>
+	public bool Equals(User? other)
+	{
+		if (other is null) return false;
+		return Id == other.Id;
+	}
+
+	/// <summary>
+	///     Determines whether this user equals another object.
+	/// </summary>
+	/// <param name="obj">The object to compare against.</param>
+	/// <returns>
+	///     <see langword="true" /> if <paramref name="obj" /> is a <see cref="User" /> with the same
+	///     <see cref="Id" />; otherwise, <see langword="false" />.
+	/// </returns>
+	public override bool Equals(object? obj)
+	{
+		return obj is User other && Equals(other);
+	}
+
+	/// <summary>
+	///     Returns the hash code of this user.
+	/// </summary>
+	/// <returns>The <see cref="Id" />, which uniquely identifies the user.</returns>
+	public override int GetHashCode()
+	{
+		return Id;
+	}
+}
+
+/// <summary>
+///     The account data of a registered user, separate from the user's persistent identity.
+/// </summary>
+public sealed partial class UserData
+{
 	/// <summary>
 	///     Gets or sets the username.
 	/// </summary>
@@ -67,43 +116,4 @@ public sealed partial class User : IEquatable<User>
 
 	[GeneratedRegex(@"^[a-zA-Z0-9_\-\[\] ]+$")]
 	private static partial Regex OsuUsernameChars();
-
-	/// <summary>
-	///     Determines whether another user refers to the same account.
-	/// </summary>
-	/// <remarks>
-	///     Two users are considered equal when their <see cref="Id" /> values are equal.
-	/// </remarks>
-	/// <param name="other">The user to compare against, or <see langword="null" />.</param>
-	/// <returns>
-	///     <see langword="true" /> if <paramref name="other" /> has the same <see cref="Id" />;
-	///     otherwise, <see langword="false" />.
-	/// </returns>
-	public bool Equals(User? other)
-	{
-		if (other is null) return false;
-		return Id == other.Id;
-	}
-
-	/// <summary>
-	///     Determines whether this user equals another object.
-	/// </summary>
-	/// <param name="obj">The object to compare against.</param>
-	/// <returns>
-	///     <see langword="true" /> if <paramref name="obj" /> is a <see cref="User" /> with the same
-	///     <see cref="Id" />; otherwise, <see langword="false" />.
-	/// </returns>
-	public override bool Equals(object? obj)
-	{
-		return obj is User other && Equals(other);
-	}
-
-	/// <summary>
-	///     Returns the hash code of this user.
-	/// </summary>
-	/// <returns>The <see cref="Id" />, which uniquely identifies the user.</returns>
-	public override int GetHashCode()
-	{
-		return Id;
-	}
 }

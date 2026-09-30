@@ -1,10 +1,10 @@
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
-
 using Basil.Application.Common;
 using Basil.Application.Common.Persistence;
 using Basil.Application.Multiplayer;
+
 namespace Basil.Application.Multiplayer.Commands;
 
 /// <summary>
@@ -14,7 +14,6 @@ namespace Basil.Application.Multiplayer.Commands;
 public sealed class MatchFlowCommands(
 	IRepository<int, Beatmap> beatmapsById,
 	RoomCountdowns countdowns,
-	IIdAllocator<Round> roundIds,
 	ILocalizer localizer)
 {
 	/// <summary>Handles <c>!mp map &lt;beatmap id&gt;</c>.</summary>
@@ -23,7 +22,7 @@ public sealed class MatchFlowCommands(
 		if (args.Count < 1 || !int.TryParse(args[0], out var beatmapId))
 			return localizer.Get(MpReplies.MapUsage);
 
-		var beatmap = await beatmapsById.LoadAsync(beatmapId, cancellationToken);
+		var beatmap = await beatmapsById.GetAsync(beatmapId, cancellationToken);
 		if (beatmap is null) return localizer.Get(MpReplies.NoBeatmapWithId, beatmapId);
 
 		room.Beatmap = beatmap;
@@ -77,7 +76,7 @@ public sealed class MatchFlowCommands(
 	}
 
 	/// <summary>Handles <c>!mp start [seconds]</c>.</summary>
-	public async Task<string> StartAsync(Room room, IReadOnlyList<string> args, CancellationToken cancellationToken)
+	public string Start(Room room, IReadOnlyList<string> args)
 	{
 		if (room.InProgress) return localizer.Get(MpReplies.MatchAlreadyInProgress);
 		if (room.Beatmap is null) return localizer.Get(MpReplies.NoBeatmapSelected);
@@ -88,8 +87,7 @@ public sealed class MatchFlowCommands(
 			return localizer.Get(MpReplies.MatchStartsInSeconds, seconds);
 		}
 
-		var id = await roundIds.NextAsync(cancellationToken);
-		room.Start(id);
+		room.Start();
 		return localizer.Get(MpReplies.MatchStarted);
 	}
 

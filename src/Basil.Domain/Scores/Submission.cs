@@ -17,7 +17,7 @@ namespace Basil.Domain.Scores;
 public sealed record Submission
 {
 	/// <summary>Gets the parsed score, including its hit counts, total score, and mode.</summary>
-	public required Score Score { get; init; }
+	public required ScoreData Score { get; init; }
 
 	/// <summary>Gets or sets the anticheat flags the client reported with the submission.</summary>
 	public ClientFlags ClientFlags
@@ -50,7 +50,7 @@ public sealed record Submission
 	{
 		return new Submission
 		{
-			Score = Score.Parse(submitFields, beatmapHash, userId),
+			Score = ScoreData.Parse(submitFields, beatmapHash, userId),
 			HashByClient = submitFields[0],
 			ClientFlags = (ClientFlags)(submitFields[15].Count(c => c == ' ') & ~4)
 		};
@@ -72,7 +72,7 @@ public sealed record Submission
 	///     version, the beatmap MD5 and storyboard MD5, and the player's name.
 	/// </param>
 	/// <param name="fromClient">
-	///     The data the client sent with the submission: the fingerprint MD5 and serial, the
+	///     The data the client sent with the submission: the client hash and the unique ids, the
 	///     version date, and the beatmap MD5 it claims to have played.
 	/// </param>
 	/// <param name="error">
@@ -85,19 +85,19 @@ public sealed record Submission
 	public bool Validate(
 		(ClientFingerprint? Fingerprint, ClientVersion Version, (Md5 Hash, Md5? StoryboardHash) Beatmap, string
 			playerName) fromServer,
-		((Md5 Hash, string Serial) Fingerprint, string VersionDate, Md5 beatmapMd5) fromClient,
+		((string Hash, string Serial) Fingerprint, string VersionDate, Md5 beatmapMd5) fromClient,
 		[MaybeNullWhen(true)] out string error)
 	{
 		error = null;
-		var (clientUninstallHash, clientDiskSignatureHash) = ComputeSerialHash();
+		var serialHash = ComputeSerialHash();
 		var md5ByServer = ComputeSubmissionMd5();
 
 		if (fromServer.Fingerprint is not { } serverFingerprint) error = "Client fingerprint is missing.";
 		else if (fromClient.VersionDate != fromServer.Version.Date.ToString("yyyyMMdd", CultureInfo.InvariantCulture))
 			error = "Client version is mismatched.";
 		else if (fromClient.Fingerprint.Hash != serverFingerprint.ToString()) error = "Client hash is mismatched.";
-		else if (clientUninstallHash != serverFingerprint.UninstallHash) error = "Uninstaller hash is mismatched.";
-		else if (clientDiskSignatureHash != serverFingerprint.DiskSignatureHash)
+		else if (serialHash?.UninstallHash != serverFingerprint.UninstallHash) error = "Uninstaller hash is mismatched.";
+		else if (serialHash?.DiskSignatureHash != serverFingerprint.DiskSignatureHash)
 			error = "Disk signature hash is mismatched.";
 		else if (HashByClient != md5ByServer) error = "Submission hash is mismatched.";
 		else if (fromClient.beatmapMd5 != fromServer.Beatmap.Hash) error = "Beatmap hash is mismatched.";
@@ -112,20 +112,21 @@ public sealed record Submission
 
 			var raw =
 				$"chickenmcnuggets{hitCounts.Num100 + hitCounts.Num300}o15{hitCounts.Num50}{hitCounts.NumGeki}" +
-				$"smustard{hitCounts.NumKatu}{hitCounts.NumMiss}uu{Score.BeatmapHash}{Score.MaxCombo}" +
-				$"{Score.IsFullCombo}{fromServer.playerName}{Score}{Score.Grade}{(int)Score.Mods}Q{Score.IsPassed}{(int)Score.Mode}" +
+				$"smustard{hitCounts.NumKatu}{hitCounts.NumMiss}uu{fromServer.Beatmap.Hash}{Score.MaxCombo}" +
+				$"{Score.IsFullCombo}{fromServer.playerName}{Score.TotalScore}{Score.Grade.ToString().ToUpperInvariant()}" +
+				$"{(int)Score.Mods}Q{Score.IsPassed}{(int)Score.Mode}" +
 				$"{fromClient.VersionDate}{Score.OccuredAt:yyMMddHHmmss}{fromClient.Fingerprint.Hash}{fromServer.Beatmap.StoryboardHash ?? string.Empty}";
 			var hash = MD5.HashData(Encoding.UTF8.GetBytes(raw));
 			return Convert.ToHexStringLower(hash);
 		}
 
-		(Md5 UninstallHash, Md5 DiskSignatureHash) ComputeSerialHash()
+		(Md5 UninstallHash, Md5 DiskSignatureHash)? ComputeSerialHash()
 		{
 			const char delimiter = '|';
 
 			var parts = fromClient.Fingerprint.Serial.Split(delimiter, 2);
-			var bytes = (Encoding.UTF8.GetBytes(parts[0]), Encoding.UTF8.GetBytes(parts[1]));
-			return (new Md5(bytes.Item1), new Md5(bytes.Item2));
+			if (parts.Length < 2) return null;
+			return (new Md5(Encoding.UTF8.GetBytes(parts[0])), new Md5(Encoding.UTF8.GetBytes(parts[1])));
 		}
 
 		#endregion

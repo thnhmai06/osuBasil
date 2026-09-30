@@ -117,7 +117,7 @@ public sealed class MpCommands(
 			"set" => flow.Set(room, args),
 			"map" => await flow.MapAsync(room, args, cancellationToken),
 			"mods" => flow.SetMods(room, args),
-			"start" => await flow.StartAsync(room, args, cancellationToken),
+			"start" => flow.Start(room, args),
 			"timer" => flow.Timer(room, args),
 			"aborttimer" => flow.AbortTimer(room),
 			"abort" => flow.Abort(room),

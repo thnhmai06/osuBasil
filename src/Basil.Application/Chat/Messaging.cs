@@ -1,8 +1,8 @@
 using Basil.Domain.Users;
-
 using Basil.Application.Common.Notifications;
 using Basil.Application.Common.Persistence;
 using Basil.Application.Sessions;
+
 namespace Basil.Application.Chat;
 
 /// <summary>Routes an outgoing chat message to a channel or a private recipient.</summary>
@@ -25,7 +25,7 @@ public sealed class Messaging(
 	public async Task SendAsync(UserSession from, string target, string text,
 		CancellationToken cancellationToken = default)
 	{
-		if (from.User.SilenceEnd is { } silenceEnd && silenceEnd > DateTimeOffset.UtcNow)
+		if (from.User.Value.SilenceEnd is { } silenceEnd && silenceEnd > DateTimeOffset.UtcNow)
 		{
 			from.Notify(new NotificationRefused(target, RefusalReason.Silenced));
 			return;
@@ -51,19 +51,19 @@ public sealed class Messaging(
 		NotifyMembers(membership, from, new ChatNotification(from.User, channelName, text));
 
 		if (await commands.ExecuteAsync(from, channelName, text, cancellationToken) is { } reply &&
-		    await usersById.LoadAsync(SystemUserIds.BasilBot, cancellationToken) is { } basilBot)
+		    await usersById.GetAsync(SystemUserIds.BasilBot, cancellationToken) is { } basilBot)
 			NotifyMembers(membership, null, new ChatNotification(basilBot, channelName, reply));
 	}
 
 	private async Task SendToUserAsync(UserSession from, string username, string text,
 		CancellationToken cancellationToken)
 	{
-		if (games.AllByUser.Values.FirstOrDefault(s => s.User.Name.Equals(username, StringComparison.OrdinalIgnoreCase))
+		if (games.AllByUser.Values.FirstOrDefault(s => s.User.Value.Name.Equals(username, StringComparison.OrdinalIgnoreCase))
 		    is not GameSession target)
 			// Not currently online: nothing to check against, nothing to deliver.
 			return;
 
-		if (target.User.SilenceEnd is { } silenceEnd && silenceEnd > DateTimeOffset.UtcNow)
+		if (target.User.Value.SilenceEnd is { } silenceEnd && silenceEnd > DateTimeOffset.UtcNow)
 		{
 			from.Notify(new NotificationRefused(username, RefusalReason.Silenced));
 			return;
@@ -72,14 +72,14 @@ public sealed class Messaging(
 		target.Notify(new ChatNotification(from.User, username, text));
 
 		if (target.AwayMessage is { } awayMessage)
-			from.Notify(new ChatNotification(target.User, from.User.Name, awayMessage));
+			from.Notify(new ChatNotification(target.User, from.User.Value.Name, awayMessage));
 
 		if (await commands.ExecuteAsync(from, null, text, cancellationToken) is { } reply &&
-		    await usersById.LoadAsync(SystemUserIds.BasilBot, cancellationToken) is { } basilBot)
+		    await usersById.GetAsync(SystemUserIds.BasilBot, cancellationToken) is { } basilBot)
 			from.Notify(new ChatNotification(basilBot, username, reply));
 	}
 
-	private void NotifyMembers(ChannelSession channel, UserSession? skip, ChatNotification notification)
+	private static void NotifyMembers(ChannelSession channel, UserSession? skip, ChatNotification notification)
 	{
 		foreach (var member in channel.Members)
 		{

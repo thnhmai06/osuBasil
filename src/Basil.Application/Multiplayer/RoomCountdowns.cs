@@ -1,13 +1,11 @@
 using Basil.Domain.Multiplayer;
-
 using Basil.Application.Common.Notifications;
-using Basil.Application.Common.Persistence;
+
 namespace Basil.Application.Multiplayer;
 
 /// <summary>Runs a room's <c>!mp start</c>/<c>!mp timer</c> countdown, ticking milestones to its players.</summary>
 public sealed class RoomCountdowns(
 	IRoomRegistry rooms,
-	IIdAllocator<Round> roundIds,
 	TimeProvider timeProvider)
 {
 	private static readonly TimeSpan[] TickMarks =
@@ -82,8 +80,7 @@ public sealed class RoomCountdowns(
 		await using (scope)
 		{
 			if (scope.Room.InProgress || scope.Room.Beatmap is null) return;
-			var id = await roundIds.NextAsync();
-			scope.Room.Start(id);
+			scope.Room.Start();
 		}
 	}
 

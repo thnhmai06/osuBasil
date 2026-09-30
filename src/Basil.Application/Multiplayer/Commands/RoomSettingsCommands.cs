@@ -13,7 +13,7 @@ public sealed class RoomSettingsCommands(ILocalizer localizer)
 	{
 		var lines = new List<string>
 		{
-			localizer.Get(MpReplies.SettingsRoomName, room.Match.Name, room.Id),
+			localizer.Get(MpReplies.SettingsRoomName, room.Match.Value.Name, room.Id),
 			room.Beatmap is not { } beatmap
 				? localizer.Get(MpReplies.SettingsBeatmapNotSelected)
 				: localizer.Get(MpReplies.SettingsBeatmap, beatmap.Id,
@@ -21,7 +21,7 @@ public sealed class RoomSettingsCommands(ILocalizer localizer)
 			localizer.Get(MpReplies.SettingsTeamMode, room.TeamType, room.WinCondition),
 			localizer.Get(MpReplies.SettingsActiveMods, room.Mods),
 			room.Creator is { } creator
-				? localizer.Get(MpReplies.SettingsCreator, creator.Id, creator.Name)
+				? localizer.Get(MpReplies.SettingsCreator, creator.Id, creator.Value.Name)
 				: string.Empty,
 			localizer.Get(MpReplies.SettingsPlayers, room.Slots.Count(s => s.Session is not null))
 		};
