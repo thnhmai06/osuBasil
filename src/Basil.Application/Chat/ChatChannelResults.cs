@@ -10,7 +10,10 @@ public enum ChannelJoinResult : byte
 	NoPermission,
 
 	/// <summary>The connection is already a member of the channel.</summary>
-	AlreadyMember
+	AlreadyMember,
+
+	/// <summary>The channel is closed.</summary>
+	Closed
 }
 
 /// <summary>The outcome of leaving a chat channel.</summary>
@@ -42,5 +45,8 @@ public enum ChannelPostResult : byte
 	NoWritePermission,
 
 	/// <summary>The recipient is silenced and the channel refuses messages.</summary>
-	TargetSilenced
+	TargetSilenced,
+
+	/// <summary>The channel is closed.</summary>
+	Closed
 }

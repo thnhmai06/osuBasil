@@ -49,7 +49,7 @@ public sealed class Gateway(
 		var login = new Login { User = user, Ip = ip, Client = client, Timestamp = time.GetUtcNow() };
 		Connection connection = type switch
 		{
-			ConnectionType.Bancho => new BanchoConnection(login, utcOffset),
+			ConnectionType.Bancho => new BanchoConnection(login, utcOffset, time),
 			ConnectionType.Tourney => new TourneyConnection(login),
 			ConnectionType.Irc => new IrcConnection(login),
 			_ => throw new ArgumentOutOfRangeException(nameof(type), type,

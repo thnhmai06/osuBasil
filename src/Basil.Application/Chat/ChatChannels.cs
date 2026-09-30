@@ -6,7 +6,7 @@ namespace Basil.Application.Chat;
 
 /// <summary>The configured chat channels that are open, looked up by name.</summary>
 /// <remarks>Room, spectator and private-message channels belong to their owners and are not listed here.</remarks>
-public sealed class ChatChannels
+public sealed class ChatChannels(TimeProvider time)
 {
 	/// <summary>The lobby channel, which clients join by entering the multiplayer lobby rather than at login.</summary>
 	public const string LobbyChannelName = "lobby";
@@ -27,7 +27,7 @@ public sealed class ChatChannels
 	/// <returns>The open channel, or <see langword="null" /> when a channel with that name is already open.</returns>
 	public GeneralChatChannelSession? Open(GeneralChatChannel channel)
 	{
-		var session = new GeneralChatChannelSession(channel);
+		var session = new GeneralChatChannelSession(channel, time);
 		if (_channels.TryAdd(channel.Name, session)) return session;
 		session.Close();
 		return null;

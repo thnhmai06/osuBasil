@@ -5,7 +5,8 @@ using Basil.Application.Sessions;
 namespace Basil.Application.Chat;
 
 /// <summary>A configured chat channel while it is open.</summary>
-public sealed class GeneralChatChannelSession(GeneralChatChannel channel) : ChatChannelSession(channel)
+public sealed class GeneralChatChannelSession(GeneralChatChannel channel, TimeProvider time)
+	: ChatChannelSession(channel, time)
 {
 	/// <summary>Gets the configured channel this session runs.</summary>
 	public new GeneralChatChannel Channel => channel;

@@ -1529,21 +1529,18 @@ Application xanh (chỉ còn hai CS1574 có từ trước) và qua grep của ph
 
 **Còn để lại, có lý do:**
 
-1. Round bắt đầu khi không ai có map thì không tự kết thúc; quản lý vẫn `Abort` được.
+1. ~~Round không ai chơi không tự kết thúc~~ — đã sửa: kết thúc ngay.
 2. Khi người chơi cuối rời giữa round, room phát `PlayerLeft` rồi `RoundCompleted` (round kết thúc
    là sự việc riêng của round).
-3. `ChatChannelSession.Post` và `Room` dùng `DateTimeOffset.UtcNow` (đánh dấu `ponytail`); chuyển
-   sang `TimeProvider` khi viết test cần giờ cố định.
+3. ~~`DateTimeOffset.UtcNow`~~ — đã sửa: kênh, room và `BeatmapCatalog` dùng `TimeProvider`.
 4. Lỗi trong callback countdown không được ghi log: Application không có logger; thêm khi
    Infrastructure nối countdown vào log.
 5. Referee không tự vào kênh `mp_`; bên ngoài gọi `room.Channel.Join(by)` khi referee cần (quyền đọc
    đã có).
 6. Chưa migrate: Infrastructure, các host, test project (không dựng test project mới theo quyết định
    2026-10-01); `docs/` và XML doc viết lại sau.
-7. Tin gửi vào kênh vừa đóng (ví dụ PM đúng lúc người nhận offline) trả `Posted` nhưng không được
-   phát, vì kênh đã complete writer.
-8. `Room.Join` gọi `Lobby.Unwatch` trực tiếp (object này đổi trạng thái object khác); chờ người dùng
-   chốt có chuyển sang handler ở Infrastructure khi nhận `PlayerJoined` không.
-9. Phase 10 mục 1 (đối chiếu phụ lục D, E) chưa làm từng dòng; rà soát cuối đã sửa hai chỗ:
+7. ~~Tin gửi vào kênh đã đóng bị mất im lặng~~ — đã sửa: `Join`/`Post` trả `Closed`.
+8. Người dùng chốt B: `Room.Join` không còn gọi `Lobby.Unwatch`; **Infrastructure phải gọi `lobby.Unwatch(player)` khi nhận `PlayerJoined`**.
+9. Phase 10 mục 1 (đối chiếu phụ lục D, E) đã làm: mọi mục có thao tác/event, trừ kênh event unbounded (C26, cố ý). Rà soát cuối đã sửa hai chỗ:
    `Lobby.ReleaseAsync` rời kênh `mp_` cho mọi kết nối (người quản lý và referee IRC từng bị kẹt
    lại), `Gateway.ConnectAsync` từ chối login osu!/osu!tourney không có `ClientInfo`.

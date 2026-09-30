@@ -12,7 +12,8 @@ public sealed class BeatmapCatalog(
 	IBeatmapAnalyser calculator,
 	IBeatmapsetRepository beatmapsets,
 	IBeatmapRepository beatmaps,
-	IBeatmapArchiveStorage archives) : IEventPublisher<BeatmapEvent>
+	IBeatmapArchiveStorage archives,
+	TimeProvider time) : IEventPublisher<BeatmapEvent>
 {
 	private readonly Channel<BeatmapEvent> _events = Channel.CreateUnbounded<BeatmapEvent>();
 
@@ -36,7 +37,7 @@ public sealed class BeatmapCatalog(
 		var existing = await beatmapsets.GetAsync(beatmapsetId, cancellationToken);
 		if (existing is { Locked: true }) return null;
 
-		var now = DateTimeOffset.UtcNow;
+		var now = time.GetUtcNow();
 		var set = new Beatmapset
 		{
 			Id = beatmapsetId, Artist = artist, Title = title, Creator = creator, UpdatedAt = now,

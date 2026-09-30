@@ -4,8 +4,8 @@ using Basil.Application.Chat;
 namespace Basil.Application.Sessions;
 
 /// <summary>The chat channel of an osu! client and the users spectating it.</summary>
-public sealed class SpectatorChatChannelSession(BanchoConnection host)
-	: ChatChannelSession(new SpectatorChatChannel(host.User))
+public sealed class SpectatorChatChannelSession(BanchoConnection host, TimeProvider time)
+	: ChatChannelSession(new SpectatorChatChannel(host.User), time)
 {
 	/// <summary>Gets the connection being spectated.</summary>
 	public BanchoConnection Host => host;

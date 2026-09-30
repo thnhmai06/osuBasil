@@ -142,7 +142,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		Settings = settings;
 		IsTournament = isTournament;
 		Slots = new RoomSlots(this);
-		Channel = new RoomChatChannelSession(this);
+		Channel = new RoomChatChannelSession(this, time);
 	}
 
 	/// <summary>Enters the room's exclusive scope; every operation on the room runs inside it.</summary>
@@ -171,7 +171,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	/// <param name="by">The joining player's game client.</param>
 	/// <param name="password">The password the player supplied.</param>
 	/// <returns>Ok, AlreadySeated, Banned, Silenced, NotAuthorized, InAnotherRoom, IsObserver, WrongPassword or Full.</returns>
-	/// <remarks>The caller holds the room's scope. If the same user is seated through a connection that has closed, that connection leaves first. Moderators need no password. The player also joins the room's chat channel and stops watching the lobby.</remarks>
+	/// <remarks>The caller holds the room's scope. If the same user is seated through a connection that has closed, that connection leaves first. Moderators need no password. The player also joins the room's chat channel.</remarks>
 	public RoomResult Join(BanchoConnection by, string password)
 	{
 		if (Slots.Find(by.User) is { Player: { } seated })
@@ -186,7 +186,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		}
 
 		if (_banned.Contains(by.User)) return RoomResult.Banned;
-		if (by.User.Value.SilenceEndsAt > DateTimeOffset.UtcNow) return RoomResult.Silenced;
+		if (by.User.Value.SilenceEndsAt > _time.GetUtcNow()) return RoomResult.Silenced;
 		if (!by.User.Value.Privilege.Has(ClientPrivileges.Player)) return RoomResult.NotAuthorized;
 		if (_lobby.RoomOf(by) is { } other && !ReferenceEquals(other, this)) return RoomResult.InAnotherRoom;
 		if (_observers.Any(observer => observer.User.Equals(by.User))) return RoomResult.IsObserver;
@@ -196,7 +196,6 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		if (Slots.Seat(by) is null) return RoomResult.Full;
 
 		Channel.Join(by);
-		_lobby.Unwatch(by);
 		_lobby.RoomOccupied(this);
 		return RoomResult.Ok;
 	}
@@ -754,7 +753,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		var evicted = Slots.Where(s => s.Player is not null).Select(s => s.Player!).ToList();
 		foreach (var player in evicted) Slots.Vacate(player);
 
-		Match.Value.EndedAt = DateTimeOffset.UtcNow;
+		Match.Value.EndedAt = _time.GetUtcNow();
 		_observers.Clear();
 		_closed = true;
 		Channel.Close();
@@ -898,6 +897,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		}
 
 		Emit(new RoundStarted(this, round, players));
+		if (players.Count == 0) EndRound(round, null);
 	}
 
 	private void AbortRound()

@@ -75,7 +75,7 @@ public sealed class Presence(TimeProvider time) : IEventPublisher<PresenceEvent>
 			}
 
 			var cameOnline = session is null;
-			session ??= new UserSession(connection.User);
+			session ??= new UserSession(connection.User, time);
 			_sessions[connection.User] = session;
 			connection.Session = session;
 			session.Add(connection);

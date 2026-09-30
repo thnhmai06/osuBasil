@@ -17,17 +17,21 @@ public abstract class ChatChannelSession : IEventPublisher<ChatChannelEvent>
 
 	private readonly ConcurrentSet<Connection> _members = [];
 	private readonly Lock _sync = new();
-	private bool _closed;
+	private volatile bool _closed;
 
 	/// <summary>Opens a runtime channel for a chat channel.</summary>
-	protected ChatChannelSession(ChatChannel channel)
+	protected ChatChannelSession(ChatChannel channel, TimeProvider time)
 	{
 		Channel = channel;
+		Time = time;
 		Emit(new ChatChannelOpened(this));
 	}
 
 	/// <summary>Gets the chat channel this session runs.</summary>
 	public ChatChannel Channel { get; }
+
+	/// <summary>Gets the clock the channel reads the current time from.</summary>
+	private protected TimeProvider Time { get; }
 
 	/// <summary>Gets the channel name, without a leading <c>#</c>.</summary>
 	public string Name => Channel.Name;
@@ -57,6 +61,7 @@ public abstract class ChatChannelSession : IEventPublisher<ChatChannelEvent>
 	{
 		lock (_sync)
 		{
+			if (_closed) return ChannelJoinResult.Closed;
 			if (!CanRead(by)) return ChannelJoinResult.NoPermission;
 			if (_members.Contains(by)) return ChannelJoinResult.AlreadyMember;
 
@@ -96,7 +101,9 @@ public abstract class ChatChannelSession : IEventPublisher<ChatChannelEvent>
 	/// <returns>The outcome of the post.</returns>
 	public ChannelPostResult Post(Connection by, string text)
 	{
-		var now = DateTimeOffset.UtcNow; // ponytail: wall clock; inject TimeProvider when tests need a fixed time
+		if (_closed) return ChannelPostResult.Closed;
+
+		var now = Time.GetUtcNow();
 		if (by.User.Value.SilenceEndsAt > now) return ChannelPostResult.Silenced;
 		if (string.IsNullOrWhiteSpace(text)) return ChannelPostResult.Empty;
 		if (PostRequiresMembership && !_members.Contains(by)) return ChannelPostResult.NotMember;
