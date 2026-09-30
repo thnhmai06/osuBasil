@@ -43,6 +43,9 @@ public sealed class Gateway(
 
 		if (!verified) return LoginResult.Fail(LoginFailure.WrongPassword);
 
+		if (type is ConnectionType.Bancho or ConnectionType.Tourney && client is null)
+			throw new ArgumentNullException(nameof(client), "An osu! client login must report its client.");
+
 		var login = new Login { User = user, Ip = ip, Client = client, Timestamp = time.GetUtcNow() };
 		Connection connection = type switch
 		{

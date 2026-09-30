@@ -1,6 +1,6 @@
 # Review toàn bộ `Basil.Application` — 2026-09-30
 
-**Trạng thái:** chỉ là báo cáo, chưa sửa code. Review trên `develop` với working tree chưa commit
+**Trạng thái:** đã xử lý theo `plans/application-environment-plan-20260930.md` (phase 0–10, 2026-10-01, chưa commit); phụ lục F của plan ghi phần còn lại. Review trên `develop` với working tree chưa commit
 (kế hoạch identity-wrapper bước 1–5).
 
 **Phạm vi:** mọi file `.cs` trong `src/Basil.Application` (92 file). **Không review** `docs/` và

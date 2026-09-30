@@ -168,6 +168,10 @@ public sealed class Lobby(IMatchRepository matches, Presence presence, TimeProvi
 				if (scope is not null) room.ObserverLeave(observer);
 			}
 		}
+
+		// Managers stay in a room's channel after leaving their seat, and IRC referees join it directly.
+		foreach (var room in _rooms.Values)
+			room.Channel.Part(connection);
 	}
 
 	/// <summary>Closes an empty room now, or after a while for a tournament room.</summary>

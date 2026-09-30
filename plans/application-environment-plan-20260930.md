@@ -1,6 +1,6 @@
 # Kế hoạch: Application là môi trường — theo phase
 
-**Trạng thái: ĐANG THỰC THI qua OpenCode (từ 2026-10-01), quyết định đã chốt toàn bộ.** Viết
+**Trạng thái: ĐÃ THỰC THI phase 0–10 ngày 2026-10-01 (chưa commit), xem phụ lục F.** Viết
 2026-09-30 trên `develop`, sau `plans/application-review-20260930.md`. Nền là cây làm việc sau
 `plans/identity-wrapper-plan-20260930.md` (chưa commit), ghim ở `refs/basil/pre-phase0`.
 
@@ -1505,3 +1505,45 @@ Lệnh được bot (ngoài Application) phân tích rồi gọi thao tác dư�
 | Upload `.osz` | 9 |
 | Đăng ký trong game | 9 |
 | Bot khởi động | 3 |
+
+---
+
+## F. Phụ lục: kết quả thực thi (2026-10-01)
+
+Phase 0–9 giao OpenCode theo mục "Điều phối OpenCode", phase 10 do người điều phối làm. Mỗi phase
+ghim trước/sau ở `refs/basil/pre-phase<N>` / `refs/basil/post-phase<N>`; mọi phase build Domain và
+Application xanh (chỉ còn hai CS1574 có từ trước) và qua grep của phase. Chưa commit.
+
+| Phase | Model | Ghi chú review |
+|---|---|---|
+| 0 | `deepseek-v4-flash` | đúng 54 file xóa, 5 file sửa |
+| 1 | `minimax-m3` | thêm `MatchSettings.SwitchMode` (setter `Mode` từng tự đổi `Mods`) |
+| 2 | `deepseek-v4-flash` | — |
+| 3 | `kimi-k2.7-code` | `RoomSlot.Session` đổi tên `Player` |
+| 4 | `kimi-k2.7-code` | `Room` dùng constructor tường minh (kênh cần id và match lúc tạo) |
+| 5 | `glm-5.2` | `SpectatorJoined`/`SpectatorLeft` nằm dưới `ChatChannelMembershipEvent` (một thao tác một event), không có nhánh `SpectatorEvent` riêng |
+| 6 | `kimi-k2.7-code` | một enum `RoomResult` chung cho lobby và room |
+| 7 | `opencode/big-pickle` (Go hết hạn mức) | người điều phối sửa `Room.Password` về `private` |
+| 8 | `opencode/big-pickle` | người điều phối bổ sung `<param>` cho event round/countdown |
+| 9 | `opencode/big-pickle` | thêm `IBeatmapRepository.RetainAsync` để bỏ difficulty cũ |
+
+**Còn để lại, có lý do:**
+
+1. Round bắt đầu khi không ai có map thì không tự kết thúc; quản lý vẫn `Abort` được.
+2. Khi người chơi cuối rời giữa round, room phát `PlayerLeft` rồi `RoundCompleted` (round kết thúc
+   là sự việc riêng của round).
+3. `ChatChannelSession.Post` và `Room` dùng `DateTimeOffset.UtcNow` (đánh dấu `ponytail`); chuyển
+   sang `TimeProvider` khi viết test cần giờ cố định.
+4. Lỗi trong callback countdown không được ghi log: Application không có logger; thêm khi
+   Infrastructure nối countdown vào log.
+5. Referee không tự vào kênh `mp_`; bên ngoài gọi `room.Channel.Join(by)` khi referee cần (quyền đọc
+   đã có).
+6. Chưa migrate: Infrastructure, các host, test project (không dựng test project mới theo quyết định
+   2026-10-01); `docs/` và XML doc viết lại sau.
+7. Tin gửi vào kênh vừa đóng (ví dụ PM đúng lúc người nhận offline) trả `Posted` nhưng không được
+   phát, vì kênh đã complete writer.
+8. `Room.Join` gọi `Lobby.Unwatch` trực tiếp (object này đổi trạng thái object khác); chờ người dùng
+   chốt có chuyển sang handler ở Infrastructure khi nhận `PlayerJoined` không.
+9. Phase 10 mục 1 (đối chiếu phụ lục D, E) chưa làm từng dòng; rà soát cuối đã sửa hai chỗ:
+   `Lobby.ReleaseAsync` rời kênh `mp_` cho mọi kết nối (người quản lý và referee IRC từng bị kẹt
+   lại), `Gateway.ConnectAsync` từ chối login osu!/osu!tourney không có `ClientInfo`.

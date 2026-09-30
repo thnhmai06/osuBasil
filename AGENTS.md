@@ -320,9 +320,10 @@ Basil.Host.Bancho / .Irc / .Api  transports                               -> App
 Basil.Host                    entry point and composition                 -> everything
 ```
 
-> **Migration in progress.** The Application runtime model is being reworked. The current plan is
-> [`plans/application-environment-plan-20260930.md`](plans/application-environment-plan-20260930.md)
-> (decisions in part A, phases with call sites in part C); read it first. The older
+> **Migration in progress.** The Application runtime model has been reworked (phases 0–9 of
+> [`plans/application-environment-plan-20260930.md`](plans/application-environment-plan-20260930.md),
+> decisions in part A); read it before touching Application. Infrastructure, the hosts and the
+> tests have not been migrated to it yet. The older
 > [`plans/application-runtime-model-plan-20260929.md`](plans/application-runtime-model-plan-20260929.md)
 > is history. Until the lower projects are migrated, **only `Basil.Domain` and
 > `Basil.Application` build**: `Basil.Infrastructure`, `Basil.Host.*` and every test project still
@@ -344,28 +345,28 @@ Basil.Host                    entry point and composition                 -> eve
 `Basil.Application` is one project sliced by feature, not by kind of type. Each folder holds its
 runtime model, events, ports and operations together; namespace = folder.
 
-The table below is the **current** layout, which is under review. Notifications, event handlers,
-chat-command parsing, reply strings and host/storage configuration still live here but belong
-outside Application (see [Domain and Application](#domain-and-application) and
-[`plans/application-review-20260930.md`](plans/application-review-20260930.md)). Do not add more of
-them.
+Notifications, event handlers, chat commands and their reply strings, host/storage configuration
+and queries do not belong in Application; they live in Infrastructure, the hosts or the bot. Do
+not add them back.
 
 ```text
-Common/        Configuration, Events, Notifications (base), Queries (base), Persistence, ILocalizer
-Users/         login/register attempts, credentials, password hashing, user queries
-Sessions/      UserSession/GameSession/IrcSession, session registry and events, presence, Gateway
-Chat/          ChannelSession, channel registry, Messaging, ChatCommands, BotReplies
-Multiplayer/   Room, RoomSlot(s), room registry, Events/, Commands/ (!mp), Lobby, MpReplies
-Beatmaps/      beatmap queries, mirror and analyser ports, BeatmapCatalog
-Scores/        user stats, ScoreSubmission
+Common/        Event base, IEventPublisher
+Users/         login attempt, IUserRepository, ICredentialRepository, IAdminKeyRepository, Registration
+Sessions/      UserSession, Connection (+ ConnectionType), Presence and its events, Gateway,
+               SpectatorChatChannelSession
+Chat/          ChatChannelSession tree, ChatChannels (configured channels), channel events and results
+Multiplayer/   Lobby, Room (lock, membership, authority, settings, round, countdown), RoomSlot(s),
+               RoomChatChannelSession, RoomResult, Events/, IMatchRepository
+Beatmaps/      BeatmapCatalog and its events, analyser and storage ports
+Scores/        ScoreSubmission, score/replay/stats ports
 ```
 
-* `Common` depends on no feature. `Users`, `Beatmaps` and `Scores` do not depend on `Multiplayer`.
+* `Common` depends on no feature. `Users`, `Beatmaps` and `Scores` do not depend on `Multiplayer`
+  (`ScoreSubmission` is the exception: it records scores against the player's room).
 * `Sessions`, `Chat` and `Multiplayer` reference each other (`Room.Host`, `Room.Channel`,
-  `ChannelSession.Members`); treat them as one cluster. That is why features are folders, not
+  `ChatChannelSession.Members`); treat them as one cluster. That is why features are folders, not
   projects: their invariants rely on `internal` members (`Room.Emit`) staying inside one assembly.
-  References run from the acted-on object to the actor, not back: `GameSession.Slot`/`Room` is an
-  actor-side relation scheduled for removal, not a pattern to copy.
+  References run from the acted-on object to the actor, never back.
 
 ### Domain and Application
 
@@ -476,7 +477,7 @@ Scores/        user stats, ScoreSubmission
 
 `Room` is mutable shared state.
 
-Operations that read and then mutate a room must hold the room's exclusive scope across the complete state transition. Today that scope comes from `IRoomRegistry.EnterAsync`; the plan moves the lock into `Room` itself (see `plans/application-environment-plan-20260930.md`, R13, phase 6).
+Operations that read and then mutate a room must hold the room's exclusive scope across the complete state transition. That scope comes from `Room.EnterAsync()`, which returns `null` once the room is closed; the room owns its lock (plan R13).
 
 Do not introduce a second synchronization mechanism for the same state.
 
