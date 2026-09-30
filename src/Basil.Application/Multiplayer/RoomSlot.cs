@@ -1,8 +1,7 @@
 using Basil.Domain.Mechanics;
-
-using Basil.Application.Common.Events;
 using Basil.Application.Multiplayer.Events;
 using Basil.Application.Sessions;
+
 namespace Basil.Application.Multiplayer;
 
 /// <summary>One of a room's 16 slots, holding its current occupant and per-slot settings.</summary>
@@ -28,12 +27,12 @@ public sealed class RoomSlot
 		{
 			if (_locked == value) return;
 
-			GameSession? evicted = null;
-			if (value && Session is { } session)
+			BanchoConnection? evicted = null;
+			if (value && Player is { } player)
 			{
-				if (session.Equals(Slots.Room.Host))
+				if (player.Equals(Slots.Room.Host))
 					Slots.Room.SetHostSilently(null);
-				evicted = session;
+				evicted = player;
 				Clear();
 			}
 
@@ -42,8 +41,8 @@ public sealed class RoomSlot
 		}
 	}
 
-	/// <summary>Gets the session currently occupying this slot, or <see langword="null" /> when empty.</summary>
-	public GameSession? Session { get; private set; }
+	/// <summary>Gets the connection of the player occupying this slot, or <see langword="null" /> when empty.</summary>
+	public BanchoConnection? Player { get; private set; }
 
 	/// <summary>Gets or sets the occupied-state of this slot.</summary>
 	public RoomSlotStatus? Status
@@ -136,16 +135,15 @@ public sealed class RoomSlot
 		Index = index;
 	}
 
-	/// <summary>Seats <paramref name="session" /> in this slot.</summary>
-	/// <param name="session">The session to seat.</param>
+	/// <summary>Seats <paramref name="player" /> in this slot.</summary>
+	/// <param name="player">The connection to seat.</param>
 	/// <exception cref="InvalidOperationException">The slot is locked or already occupied.</exception>
-	internal void Occupy(GameSession session)
+	internal void Occupy(BanchoConnection player)
 	{
 		if (Locked) throw new InvalidOperationException("The slot is locked.");
-		if (Session is not null) throw new InvalidOperationException("The slot is already occupied.");
+		if (Player is not null) throw new InvalidOperationException("The slot is already occupied.");
 
-		Session = session;
-		session.Slot = this;
+		Player = player;
 		_status = RoomSlotStatus.NotReady;
 		_mods = GameMods.NoMod;
 	}
@@ -153,10 +151,7 @@ public sealed class RoomSlot
 	/// <summary>Clears this slot, making it empty.</summary>
 	internal void Clear()
 	{
-		if (Session is { } session)
-			session.Slot = null;
-
-		Session = null;
+		Player = null;
 		_status = null;
 		_team = null;
 		_mods = null;
@@ -200,15 +195,14 @@ public sealed class RoomSlot
 		ThrowIfEmpty();
 		target.ThrowIfLocked();
 
-		var session = Session!;
-		target.Session = session;
-		session.Slot = target;
+		var player = Player!;
+		target.Player = player;
 		target._status = _status;
 		target._team = _team;
 		target._mods = _mods;
 		target._introSkipped = _introSkipped;
 
-		Session = null;
+		Player = null;
 		_status = null;
 		_team = null;
 		_mods = null;
@@ -217,7 +211,7 @@ public sealed class RoomSlot
 
 	public void ThrowIfEmpty()
 	{
-		if (Session is null)
+		if (Player is null)
 			throw new InvalidOperationException("The slot has no player.");
 	}
 

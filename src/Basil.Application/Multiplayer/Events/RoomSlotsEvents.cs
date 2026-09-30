@@ -1,7 +1,6 @@
 using Basil.Domain.Mechanics;
-
-using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
+
 namespace Basil.Application.Multiplayer.Events;
 
 /// <summary>A room's slots or their lock state changed.</summary>
@@ -17,7 +16,7 @@ public sealed record RoomLockChanged(Room Room, bool Locked) : RoomSlotsEvent(Ro
 public abstract record RoomSlotEvent(RoomSlot Slot) : RoomSlotsEvent(Slot.Slots.Room);
 
 /// <summary>A slot's lock was toggled, evicting any occupant when locked.</summary>
-public sealed record SlotLockChanged(RoomSlot Slot, bool Locked, GameSession? Evicted) : RoomSlotEvent(Slot);
+public sealed record SlotLockChanged(RoomSlot Slot, bool Locked, BanchoConnection? Evicted) : RoomSlotEvent(Slot);
 
 /// <summary>A slot's assigned team changed.</summary>
 public sealed record SlotTeamChanged(RoomSlot Slot, GameTeam? Team) : RoomSlotEvent(Slot);

@@ -4,11 +4,11 @@ using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Domain.Utilities;
-
 using Basil.Application.Chat;
 using Basil.Application.Common.Events;
 using Basil.Application.Multiplayer.Events;
 using Basil.Application.Sessions;
+
 namespace Basil.Application.Multiplayer;
 
 /// <summary>
@@ -21,7 +21,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	private readonly ConcurrentSet<User> _invited = [];
 	private readonly ConcurrentSet<User> _referees = [];
 	private readonly Channel<RoomEvent> _events = System.Threading.Channels.Channel.CreateUnbounded<RoomEvent>();
-	private GameSession? _host;
+	private BanchoConnection? _host;
 
 	/// <summary>The match this room is a live projection of.</summary>
 	public required Match Match { get; init; }
@@ -139,7 +139,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 			if (Settings.Freemods == value) return;
 			Settings.Freemods = value;
 
-			var seated = Slots.Where(s => s.Session is not null).ToList();
+			var seated = Slots.Where(s => s.Player is not null).ToList();
 			if (value)
 			{
 				// Players take the room's mods that combine per player; the room keeps only the
@@ -151,7 +151,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 			else
 			{
 				// The room keeps its speed-changing mods and takes the host's own mods.
-				var hostMods = Host?.Slot?.Mods ?? GameMods.NoMod;
+				var hostMods = (Host is { } host ? Slots.Find(host)?.Mods : null) ?? GameMods.NoMod;
 				Settings.Mods = (Settings.Mods & GameMods.SpeedChangingMods) | hostMods;
 				foreach (var slot in seated)
 					slot.SetMods(GameMods.NoMod);
@@ -175,7 +175,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 				var redCount = 0;
 				var blueCount = 0;
 
-				foreach (var slot in Slots.Where(s => s.Session is not null))
+				foreach (var slot in Slots.Where(s => s.Player is not null))
 				{
 					var team = redCount <= blueCount ? GameTeam.Red : GameTeam.Blue;
 					slot.SetTeam(team);
@@ -188,7 +188,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 			}
 			else
 			{
-				foreach (var slot in Slots.Where(s => s.Session is not null))
+				foreach (var slot in Slots.Where(s => s.Player is not null))
 					slot.SetTeam(null);
 			}
 
@@ -208,9 +208,9 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		}
 	}
 
-	/// <summary>Gets or sets the session currently hosting the room.</summary>
+	/// <summary>Gets or sets the connection currently hosting the room.</summary>
 	/// <remarks>The host must be seated in this room.</remarks>
-	public GameSession? Host
+	public BanchoConnection? Host
 	{
 		get => _host;
 		set
@@ -283,7 +283,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	/// <summary>Removes a seated player from the room.</summary>
 	/// <param name="player">The player to kick.</param>
 	/// <exception cref="InvalidOperationException"><paramref name="player" /> is a referee.</exception>
-	public void Kick(GameSession player)
+	public void Kick(BanchoConnection player)
 	{
 		if (IsReferee(player.User))
 			throw new InvalidOperationException("Cannot kick a referee.");
@@ -303,12 +303,12 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		if (!_banned.Add(player)) return;
 
 		RoomSlot? vacated = null;
-		GameSession? evicted = null;
-		if (Slots.Find(player) is { Session: { } session } slot)
+		BanchoConnection? evicted = null;
+		if (Slots.Find(player) is { Player: { } connection } slot)
 		{
 			vacated = slot;
-			evicted = session;
-			Slots.Vacate(session);
+			evicted = connection;
+			Slots.Vacate(connection);
 		}
 
 		Emit(new PlayerBanned(this, player, vacated, evicted));
@@ -328,6 +328,23 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	{
 		_invited.Add(player);
 		Emit(new PlayerInvited(this, player));
+	}
+
+	/// <summary>Seats a player in the first available slot.</summary>
+	/// <param name="player">The player's game client connection.</param>
+	/// <returns>The assigned slot, or <see langword="null" /> when the room is full.</returns>
+	/// <exception cref="InvalidOperationException">The player is banned from the room.</exception>
+	public RoomSlot? Join(BanchoConnection player)
+	{
+		return Slots.Seat(player);
+	}
+
+	/// <summary>Removes a player from the room, if seated.</summary>
+	/// <param name="player">The player's game client connection.</param>
+	public void Leave(BanchoConnection player)
+	{
+		if (Slots.Vacate(player) is { } slot)
+			Emit(new PlayerLeft(this, player, slot));
 	}
 
 	/// <summary>Grants a player referee authority for the room.</summary>
@@ -366,7 +383,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 
 		LastRound = round;
 
-		foreach (var slot in Slots.Where(s => s.Session is not null && s.Status is not RoomSlotStatus.NoMap))
+		foreach (var slot in Slots.Where(s => s.Player is not null && s.Status is not RoomSlotStatus.NoMap))
 			slot.SetStatus(RoomSlotStatus.Playing);
 
 		Emit(new Events.RoundStarted(this, round));
@@ -384,18 +401,18 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		round.Aborted = true;
 
 		foreach (var slot in Slots.Where(s =>
-			         s.Session is not null && s.Status is RoomSlotStatus.Playing or RoomSlotStatus.Complete))
+			         s.Player is not null && s.Status is RoomSlotStatus.Playing or RoomSlotStatus.Complete))
 			slot.SetStatus(RoomSlotStatus.NotReady);
 
 		Emit(new Events.RoundAborted(this, round));
 	}
 
 	/// <summary>Closes the room, ending the match and vacating every slot.</summary>
-	/// <returns>The sessions that were seated when the room closed.</returns>
+	/// <returns>The connections that were seated when the room closed.</returns>
 	public void Close()
 	{
-		var evicted = Slots.Where(s => s.Session is not null).Select(s => s.Session!).ToList();
-		foreach (var session in evicted) Slots.Vacate(session);
+		var evicted = Slots.Where(s => s.Player is not null).Select(s => s.Player!).ToList();
+		foreach (var player in evicted) Slots.Vacate(player);
 
 		Match.Value.EndedAt = DateTimeOffset.UtcNow;
 		Emit(new Events.RoomClosed(this, evicted));
@@ -410,7 +427,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 
 	/// <summary>Clears the host without emitting a <see cref="HostChanged" /> event.</summary>
 	/// <param name="host">The host to clear, or <see langword="null" />.</param>
-	internal void SetHostSilently(GameSession? host)
+	internal void SetHostSilently(BanchoConnection? host)
 	{
 		_host = host;
 	}

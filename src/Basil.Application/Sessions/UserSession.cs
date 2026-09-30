@@ -1,99 +1,59 @@
-using System.Threading.Channels;
+using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using Basil.Domain.Users;
 using Basil.Domain.Utilities;
-using Basil.Application.Chat;
-using Basil.Application.Common.Events;
 
 namespace Basil.Application.Sessions;
 
-/// <summary>
-///     The server-side runtime identity shared by every online connection for an account, created at
-///     login and discarded at logout. Concrete sessions are either an <see cref="IrcSession" /> (chat
-///     and commands only) or a <see cref="GameSession" /> (a real osu! client) — the same account may
-///     hold one of each at once.
-/// </summary>
-/// <remarks>
-///     Holds only runtime state Domain does not have; the account's own data (name, privileges,
-///     country) always comes from <see cref="User" />. Thread-safe: concurrent channel membership
-///     changes on the same session do not corrupt its state.
-/// </remarks>
-public abstract class UserSession : IEventPublisher<SessionEvent>, IEquatable<UserSession>
+/// <summary>One period during which a user is online, across all the clients they are connected with.</summary>
+public sealed class UserSession
 {
-	private readonly ConcurrentSet<ChannelSession> _channels = [];
-	private readonly Channel<SessionEvent> _events = Channel.CreateUnbounded<SessionEvent>();
+	private readonly ConcurrentDictionary<ConnectionType, ConcurrentSet<Connection>> _connections = new();
 
-	/// <summary>Gets the user this session represents.</summary>
-	public abstract User User { get; }
+	internal UserSession(User user)
+	{
+		User = user;
+	}
 
-	/// <summary>Gets the time this session was created.</summary>
-	public abstract DateTimeOffset LoginTime { get; }
-
-	/// <summary>Gets or sets the time of the last activity received from the client.</summary>
-	public DateTimeOffset LastActive { get; set; }
+	/// <summary>Gets the user who is online.</summary>
+	public User User { get; }
 
 	/// <summary>Gets or sets the away message shown to other users, or <see langword="null" /> when not away.</summary>
 	public string? AwayMessage { get; set; }
 
-	/// <summary>Gets the channels this session has joined.</summary>
-	public IReadOnlySet<ChannelSession> Channels => _channels;
+	/// <summary>Gets the open connections of one kind.</summary>
+	/// <param name="type">The kind of connection.</param>
+	public IReadOnlySet<Connection> this[ConnectionType type] =>
+		_connections.TryGetValue(type, out var set) ? set : ImmutableHashSet<Connection>.Empty;
 
-	/// <inheritdoc />
-	public ChannelReader<SessionEvent> Events => _events.Reader;
+	/// <summary>Gets every open connection of the user.</summary>
+	public IEnumerable<Connection> Connections => _connections.Values.SelectMany(set => set);
 
-	/// <summary>
-	///     Joins this session to <paramref name="channel" />, updating both sides of the membership.
-	/// </summary>
-	/// <param name="channel">The channel to join.</param>
-	/// <exception cref="InvalidOperationException">
-	///     <see cref="User" /> lacks read permission on the channel.
-	/// </exception>
-	public void Join(ChannelSession channel)
+	/// <summary>Gets the user's osu! game client connection, if any.</summary>
+	public BanchoConnection? Bancho => (BanchoConnection?)this[ConnectionType.Bancho].SingleOrDefault();
+
+	/// <summary>Gets the user's IRC connection, if any.</summary>
+	public IrcConnection? Irc => (IrcConnection?)this[ConnectionType.Irc].SingleOrDefault();
+
+	/// <summary>Gets the user's bot connection, if any.</summary>
+	public BotConnection? Bot => (BotConnection?)this[ConnectionType.Bot].SingleOrDefault();
+
+	/// <summary>Gets the user's osu!tourney connections.</summary>
+	public IEnumerable<TourneyConnection> Tourneys => this[ConnectionType.Tourney].Cast<TourneyConnection>();
+
+	/// <summary>Adds a connection; a kind that allows only one connection accepts it only when none is held.</summary>
+	/// <returns><see langword="true" /> if the connection was added.</returns>
+	internal bool Add(Connection connection)
 	{
-		if (!channel.CanRead(User))
-			throw new InvalidOperationException("The user does not have permission to read this channel.");
-
-		if (_channels.Add(channel))
-			channel.Add(this);
+		var set = _connections.GetOrAdd(connection.Type, _ => []);
+		if (!connection.Type.AllowsMany() && set.Count > 0) return false;
+		return set.Add(connection);
 	}
 
-	/// <summary>
-	///     Parts this session from <paramref name="channel" />, updating both sides of the membership.
-	/// </summary>
-	/// <param name="channel">The channel to part.</param>
-	public void Part(ChannelSession channel)
+	/// <summary>Removes a connection.</summary>
+	/// <returns><see langword="true" /> if the connection was held and has been removed.</returns>
+	internal bool Remove(Connection connection)
 	{
-		if (_channels.Remove(channel))
-			channel.Remove(this);
-	}
-
-	/// <summary>Determines whether another session represents the same user through the same concrete type.</summary>
-	/// <param name="other">The session to compare against, or <see langword="null" />.</param>
-	/// <returns>
-	///     <see langword="true" /> when <paramref name="other" /> has the same concrete type and the
-	///     same <see cref="User" />; otherwise, <see langword="false" />.
-	/// </returns>
-	public bool Equals(UserSession? other)
-	{
-		if (other is null) return false;
-		return GetType() == other.GetType() && User.Equals(other.User);
-	}
-
-	/// <inheritdoc />
-	public override bool Equals(object? obj)
-	{
-		return obj is UserSession other && Equals(other);
-	}
-
-	/// <inheritdoc />
-	public override int GetHashCode()
-	{
-		return HashCode.Combine(GetType(), User);
-	}
-
-	/// <summary>Records a runtime event that has occurred to this session.</summary>
-	/// <param name="event">The event to record.</param>
-	private protected void Record(SessionEvent @event)
-	{
-		_events.Writer.TryWrite(@event);
+		return _connections.TryGetValue(connection.Type, out var set) && set.Remove(connection);
 	}
 }

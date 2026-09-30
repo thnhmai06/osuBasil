@@ -1,15 +1,14 @@
 using System.Threading.Channels;
 using Basil.Domain.Chat;
 using Basil.Domain.Client;
-using Basil.Domain.Users;
 using Basil.Domain.Utilities;
-
 using Basil.Application.Common.Events;
 using Basil.Application.Sessions;
+
 namespace Basil.Application.Chat;
 
 /// <summary>
-///     A channel's runtime membership: which sessions currently have it joined. The channel's own
+///     A channel's runtime membership: which connections currently have it joined. The channel's own
 ///     metadata (topic, privileges, auto-join) lives on the <see cref="IChannel" /> this session is
 ///     keyed to by <see cref="Channel" />, not copied here.
 /// </summary>
@@ -18,7 +17,8 @@ public sealed class ChannelSession : IEventPublisher<ChannelEvent>, IEquatable<C
 {
 	private readonly Channel<ChannelEvent> _events =
 		System.Threading.Channels.Channel.CreateUnbounded<ChannelEvent>();
-	private readonly ConcurrentSet<UserSession> _members = [];
+
+	private readonly ConcurrentSet<Connection> _members = [];
 
 	/// <summary>Gets the channel this session tracks membership for.</summary>
 	public required IChannel Channel { get; init; }
@@ -26,42 +26,43 @@ public sealed class ChannelSession : IEventPublisher<ChannelEvent>, IEquatable<C
 	/// <summary>Gets the name of the channel this session tracks membership for.</summary>
 	public string Name => Channel.Name;
 
-	/// <summary>Gets the sessions currently joined to the channel.</summary>
-	public IReadOnlySet<UserSession> Members => _members;
+	/// <summary>Gets the connections currently joined to the channel.</summary>
+	public IReadOnlySet<Connection> Members => _members;
 
 	/// <inheritdoc />
 	public ChannelReader<ChannelEvent> Events => _events.Reader;
 
-	/// <summary>Gets a value that indicates whether <paramref name="user" /> may read the channel.</summary>
-	/// <param name="user">The user to check.</param>
-	/// <returns><see langword="true" /> if the user may read the channel; otherwise, <see langword="false" />.</returns>
-	public bool CanRead(User user)
+	/// <summary>Gets a value that indicates whether <paramref name="connection" /> may read the channel.</summary>
+	/// <param name="connection">The connection to check.</param>
+	/// <returns><see langword="true" /> if the connection may read the channel; otherwise, <see langword="false" />.</returns>
+	public bool CanRead(Connection connection)
 	{
-		return user.Value.Privilege.Has(Channel.ReadPrivilege);
+		return connection.User.Value.Privilege.Has(Channel.ReadPrivilege);
 	}
 
-	/// <summary>Gets a value that indicates whether <paramref name="user" /> may write to the channel.</summary>
-	/// <param name="user">The user to check.</param>
-	/// <returns><see langword="true" /> if the user may write to the channel; otherwise, <see langword="false" />.</returns>
-	public bool CanWrite(User user)
+	/// <summary>Gets a value that indicates whether <paramref name="connection" /> may write to the channel.</summary>
+	/// <param name="connection">The connection to check.</param>
+	/// <returns><see langword="true" /> if the connection may write to the channel; otherwise, <see langword="false" />.</returns>
+	public bool CanWrite(Connection connection)
 	{
-		return user.Value.Privilege.Has(Channel.WritePrivilege);
+		return connection.User.Value.Privilege.Has(Channel.WritePrivilege);
 	}
 
-	/// <summary>Adds <paramref name="member" /> to the channel and records that they joined.</summary>
-	/// <param name="member">The session that joined.</param>
-	internal void Add(UserSession member)
+	/// <summary>Joins a connection to the channel.</summary>
+	/// <param name="by">The connection joining.</param>
+	/// <returns><see langword="true" /> if the connection joined; <see langword="false" /> if it may not read the channel or was already a member.</returns>
+	public bool Join(Connection by)
 	{
-		if (_members.Add(member))
-			_events.Writer.TryWrite(new MemberJoined(this, member));
+		return CanRead(by) && _members.Add(by) && _events.Writer.TryWrite(new MemberJoined(this, by));
 	}
 
-	/// <summary>Removes <paramref name="member" /> from the channel and records that they parted.</summary>
-	/// <param name="member">The session that parted.</param>
-	internal void Remove(UserSession member)
+	/// <summary>Parts a connection from the channel.</summary>
+	/// <param name="by">The connection parting.</param>
+	/// <remarks>Parting a connection that is not a member does nothing.</remarks>
+	public void Part(Connection by)
 	{
-		if (_members.Remove(member))
-			_events.Writer.TryWrite(new MemberParted(this, member));
+		if (_members.Remove(by))
+			_events.Writer.TryWrite(new MemberParted(this, by));
 	}
 
 	/// <summary>Determines whether another channel session tracks the same channel.</summary>

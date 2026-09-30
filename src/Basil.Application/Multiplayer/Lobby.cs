@@ -1,6 +1,7 @@
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Application.Chat;
+using Basil.Application.Sessions;
 
 namespace Basil.Application.Multiplayer;
 
@@ -64,16 +65,26 @@ public sealed class Lobby(
 		}
 
 		foreach (var member in room.Channel.Members.ToArray())
-			member.Part(room.Channel);
+			room.Channel.Part(member);
 
 		channels.Remove(room.Channel.Name);
+	}
+
+	/// <summary>Finds the room a player is seated in.</summary>
+	/// <param name="player">The player's game client connection.</param>
+	/// <returns>The room, or <see langword="null" /> when the player is not in a room.</returns>
+	public Room? RoomOf(BanchoConnection player)
+	{
+		// ponytail: scans every room; replaced by a player index when the lobby owns membership.
+		return rooms.AllById.Values.FirstOrDefault(room => room.Slots.Find(player) is not null);
 	}
 
 	private int FreeRoomId()
 	{
 		var taken = rooms.AllById;
 		for (var id = 1; id <= MaxRoomId; id++)
-			if (!taken.ContainsKey(id)) return id;
+			if (!taken.ContainsKey(id))
+				return id;
 		throw new InvalidOperationException("Every room id is in use.");
 	}
 }

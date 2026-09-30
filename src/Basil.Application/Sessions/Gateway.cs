@@ -1,39 +1,30 @@
 using System.Net;
 using Basil.Domain.Auth;
-using Basil.Domain.Chat;
 using Basil.Domain.Client;
-using Basil.Application.Chat;
-using Basil.Application.Multiplayer;
 using Basil.Application.Users;
 
 namespace Basil.Application.Sessions;
 
-/// <summary>
-///     Owns a client's connection lifecycle: authenticating and seating a login, and tearing
-///     everything down again on disconnect.
-/// </summary>
+/// <summary>Authenticates logins and opens and closes their connections.</summary>
 public sealed class Gateway(
 	IUserRepository users,
 	ICredentialRepository credentials,
-	ISessionRegistry<GameSession> gameRegistry,
-	ISessionRegistry<IrcSession> ircRegistry,
-	IChannelRegistry channelRegistry,
-	IRoomRegistry roomRegistry)
+	Presence presence,
+	TimeProvider time)
 {
-	/// <summary>
-	///     Authenticates a login attempt and, on success, creates and registers the session and joins
-	///     it to every auto-join channel it may read.
-	/// </summary>
+	/// <summary>A logout received this soon after login is ignored.</summary>
+	public static readonly TimeSpan IgnoreLogoutWithin = TimeSpan.FromSeconds(1);
+
+	/// <summary>Authenticates a login attempt and, on success, opens a connection of the requested kind.</summary>
 	/// <param name="attempt">The claimed username and password.</param>
+	/// <param name="type">The kind of client logging in; not <see cref="ConnectionType.Bot" />.</param>
 	/// <param name="ip">The IP address the login came from.</param>
-	/// <param name="clientVersion">The osu! client version reported at login.</param>
-	/// <param name="fingerprint">The hardware and client fingerprint captured at login.</param>
-	/// <param name="utcOffset">The client's UTC offset reported at login.</param>
+	/// <param name="client">The osu! client that logged in, or <see langword="null" /> for IRC.</param>
+	/// <param name="utcOffset">The client's UTC offset reported at login; used only by osu! game clients.</param>
 	/// <param name="cancellationToken">A token that cancels the login.</param>
-	/// <returns>The login's outcome: a new session on success, or the reason it failed.</returns>
-	public async Task<LoginResult> ConnectAsync(LoginAttempt attempt,
-		IPAddress ip, ClientVersion clientVersion, ClientFingerprint fingerprint, int utcOffset,
-		CancellationToken cancellationToken = default)
+	/// <returns>The login's outcome: the new connection on success, or the reason it failed.</returns>
+	public async Task<LoginResult> ConnectAsync(LoginAttempt attempt, ConnectionType type, IPAddress ip,
+		ClientInfo? client, int utcOffset, CancellationToken cancellationToken = default)
 	{
 		var user = await users.FindByNameAsync(attempt.Username, cancellationToken);
 		if (user is null) return LoginResult.Fail(LoginFailure.UnknownUser);
@@ -52,74 +43,31 @@ public sealed class Gateway(
 
 		if (!verified) return LoginResult.Fail(LoginFailure.WrongPassword);
 
-		var loginTime = DateTimeOffset.UtcNow;
-		var session = new GameSession
+		var login = new Login { User = user, Ip = ip, Client = client, Timestamp = time.GetUtcNow() };
+		Connection connection = type switch
 		{
-			Login = new Login { User = user, Ip = ip, Client = new ClientInfo(clientVersion, fingerprint), Timestamp = loginTime },
-			LastActive = loginTime,
-			UtcOffset = utcOffset
+			ConnectionType.Bancho => new BanchoConnection(login, utcOffset),
+			ConnectionType.Tourney => new TourneyConnection(login),
+			ConnectionType.Irc => new IrcConnection(login),
+			_ => throw new ArgumentOutOfRangeException(nameof(type), type,
+				"Only client connections log in through the gateway.")
 		};
 
-		if (!gameRegistry.TryAdd(session))
-			return LoginResult.Fail(LoginFailure.AlreadyOnline);
-
-		try
-		{
-			// Live channels are registered in IChannelRegistry at startup; iterate that set rather
-			// than searching, since auto-join is a lookup over already-known channels, not a search
-			// feature.
-			foreach (var channelSession in channelRegistry.AllByName.Values)
-			{
-				if (!channelSession.Channel.AutoJoin) continue;
-				if (!channelSession.CanRead(user)) continue;
-
-				session.Join(channelSession);
-			}
-		}
-		catch
-		{
-			gameRegistry.Remove(session);
-			throw;
-		}
-
-		return LoginResult.Success(session);
+		return presence.OpenConnection(connection) is { } failure
+			? LoginResult.Fail(failure)
+			: LoginResult.Success(connection);
 	}
 
-	/// <summary>
-	///     Tears a session down: stops any spectating in either direction, leaves its room, parts
-	///     every joined channel, and removes it from the right session registry.
-	/// </summary>
-	/// <param name="session">The session going offline.</param>
-	/// <param name="cancellationToken">A token that cancels the teardown.</param>
-	public async Task DisconnectAsync(UserSession session, CancellationToken cancellationToken = default)
+	/// <summary>Closes a connection.</summary>
+	/// <param name="connection">The connection to close.</param>
+	/// <param name="reason">Why the connection is closed.</param>
+	/// <remarks>A logout within <see cref="IgnoreLogoutWithin" /> of login is ignored.</remarks>
+	public void Disconnect(Connection connection, ConnectionCloseReason reason)
 	{
-		try
-		{
-			if (session is GameSession game)
-			{
-				if (game.Spectating is not null)
-					game.StopSpectating();
+		if (reason is ConnectionCloseReason.LoggedOut &&
+		    time.GetUtcNow() - connection.Login.Timestamp < IgnoreLogoutWithin)
+			return;
 
-				foreach (var spectator in game.Spectators.ToArray())
-					spectator.StopSpectating();
-
-				if (game.Room is { } room && await roomRegistry.EnterAsync(room.Id, cancellationToken) is { } scope)
-					await using (scope)
-					{
-						if (scope.Room.Slots.Find(game) is not null)
-							game.LeaveRoom();
-					}
-			}
-
-			foreach (var channel in session.Channels.ToArray())
-				session.Part(channel);
-		}
-		finally
-		{
-			if (session is IrcSession irc)
-				ircRegistry.Remove(irc);
-			else if (session is GameSession gameSession)
-				gameRegistry.Remove(gameSession);
-		}
+		presence.CloseConnection(connection, reason);
 	}
 }

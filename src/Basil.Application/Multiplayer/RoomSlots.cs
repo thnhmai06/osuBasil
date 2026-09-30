@@ -2,9 +2,9 @@ using System.Collections;
 using System.Collections.Immutable;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
-
 using Basil.Application.Multiplayer.Events;
 using Basil.Application.Sessions;
+
 namespace Basil.Application.Multiplayer;
 
 /// <summary>
@@ -44,15 +44,15 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 	/// <returns>The player's slot, or <see langword="null" /> when they have none.</returns>
 	public RoomSlot? Find(User user)
 	{
-		return _slots.FirstOrDefault(s => user.Equals(s.Session?.User));
+		return _slots.FirstOrDefault(s => user.Equals(s.Player?.User));
 	}
 
-	/// <summary>Finds the slot occupied by a session.</summary>
-	/// <param name="session">The session to look up.</param>
-	/// <returns>The session's slot, or <see langword="null" /> when they have none.</returns>
-	public RoomSlot? Find(GameSession session)
+	/// <summary>Finds the slot occupied by a player connection.</summary>
+	/// <param name="player">The connection to look up.</param>
+	/// <returns>The connection's slot, or <see langword="null" /> when they have none.</returns>
+	public RoomSlot? Find(BanchoConnection player)
 	{
-		return _slots.FirstOrDefault(s => session.Equals(s.Session));
+		return _slots.FirstOrDefault(s => ReferenceEquals(player, s.Player));
 	}
 
 	/// <summary>Resizes the room, leaving occupied slots untouched.</summary>
@@ -64,33 +64,30 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 
 		// Players may sit in any slot, so the size counts usable slots rather than naming a slot
 		// range: keep (size - players) empty slots open and lock the remaining empty ones.
-		var open = size - _slots.Count(s => s.Session is not null);
-		foreach (var slot in _slots.Where(s => s.Session is null))
+		var open = size - _slots.Count(s => s.Player is not null);
+		foreach (var slot in _slots.Where(s => s.Player is null))
 			slot.SetLocked(open-- <= 0);
 
 		Room.Emit(new RoomResized(Room, size));
 	}
 
-	/// <summary>Seats a session in the lowest-index empty, unlocked slot.</summary>
-	/// <param name="session">The session to seat.</param>
+	/// <summary>Seats a player in the lowest-index empty, unlocked slot.</summary>
+	/// <param name="player">The connection to seat.</param>
 	/// <returns>The assigned slot, or <see langword="null" /> when no slot is available.</returns>
 	/// <exception cref="InvalidOperationException">
-	///     The user is banned, the session is already seated in another room, or the room is full.
+	///     The user is banned or the room is full.
 	/// </exception>
-	internal RoomSlot? Seat(GameSession session)
+	internal RoomSlot? Seat(BanchoConnection player)
 	{
-		if (Room.Banned.Contains(session.User))
+		if (Room.Banned.Contains(player.User))
 			throw new InvalidOperationException("The user is banned from this room.");
 
-		if (session.Slot is { } existing)
-			return ReferenceEquals(existing.Slots, this)
-				? existing
-				: throw new InvalidOperationException("The session is already seated in another room.");
+		if (Find(player) is { } existing) return existing;
 
-		var slot = _slots.FirstOrDefault(s => s is { Locked: false, Session: null });
+		var slot = _slots.FirstOrDefault(s => s is { Locked: false, Player: null });
 		if (slot is null) return null;
 
-		slot.Occupy(session);
+		slot.Occupy(player);
 
 		if (Room.TeamType.NeedSplitTeam())
 		{
@@ -99,19 +96,19 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 			slot.SetTeam(redCount <= blueCount ? GameTeam.Red : GameTeam.Blue);
 		}
 
-		Room.Emit(new PlayerJoined(Room, session, slot));
+		Room.Emit(new PlayerJoined(Room, player, slot));
 		return slot;
 	}
 
-	/// <summary>Clears the slot occupied by <paramref name="session" />, if any.</summary>
-	/// <param name="session">The session to remove.</param>
-	/// <returns>The slot that was vacated, or <see langword="null" /> when the session was not seated.</returns>
-	internal RoomSlot? Vacate(GameSession session)
+	/// <summary>Clears the slot occupied by <paramref name="player" />, if any.</summary>
+	/// <param name="player">The connection to remove.</param>
+	/// <returns>The slot that was vacated, or <see langword="null" /> when the connection was not seated.</returns>
+	internal RoomSlot? Vacate(BanchoConnection player)
 	{
-		var slot = Find(session);
+		var slot = Find(player);
 		if (slot is null) return null;
 
-		if (session.Equals(Room.Host))
+		if (player.Equals(Room.Host))
 			Room.SetHostSilently(null);
 
 		slot.Clear();
@@ -126,10 +123,10 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 	public static void Move(RoomSlot from, RoomSlot to)
 	{
 		if (from.Index == to.Index) return;
-		var session = from.Session ?? throw new InvalidOperationException("The source slot has no player.");
+		var player = from.Player ?? throw new InvalidOperationException("The source slot has no player.");
 
 		from.MoveTo(to);
-		from.Slots.Room.Emit(new PlayerMoved(from.Slots.Room, session, from, to));
+		from.Slots.Room.Emit(new PlayerMoved(from.Slots.Room, player, from, to));
 	}
 
 	public int Count => _slots.Length;

@@ -1,5 +1,4 @@
-using Basil.Application.Sessions;
-namespace Basil.Application.Users;
+namespace Basil.Application.Sessions;
 
 /// <summary>The outcome of a <c>Gateway.ConnectAsync</c> login attempt.</summary>
 public sealed record LoginResult
@@ -8,20 +7,20 @@ public sealed record LoginResult
 	{
 	}
 
-	/// <summary>Gets the session created for a successful login, or <see langword="null" /> on failure.</summary>
-	public GameSession? Session { get; private init; }
+	/// <summary>Gets the connection opened for a successful login, or <see langword="null" /> on failure.</summary>
+	public Connection? Connection { get; private init; }
 
 	/// <summary>Gets the reason a login failed, or <see langword="null" /> on success.</summary>
 	public LoginFailure? Failure { get; private init; }
 
 	/// <summary>Gets a value that indicates whether the login succeeded.</summary>
-	public bool Succeeded => Session is not null;
+	public bool Succeeded => Connection is not null;
 
-	/// <summary>Creates a successful result carrying the newly created session.</summary>
-	/// <param name="session">The session created for the login.</param>
-	public static LoginResult Success(GameSession session)
+	/// <summary>Creates a successful result carrying the newly created connection.</summary>
+	/// <param name="connection">The connection opened for the login.</param>
+	public static LoginResult Success(Connection connection)
 	{
-		return new LoginResult { Session = session };
+		return new LoginResult { Connection = connection };
 	}
 
 	/// <summary>Creates a failed result carrying the reason.</summary>
@@ -44,6 +43,9 @@ public enum LoginFailure : byte
 	/// <summary>The account has been deleted.</summary>
 	AccountDeleted,
 
-	/// <summary>The account already has an open game session.</summary>
-	AlreadyOnline
+	/// <summary>The account already has an active connection of the same kind.</summary>
+	AlreadyOnline,
+
+	/// <summary>The account may not connect with an osu!tourney client.</summary>
+	NoTourneyPermission
 }

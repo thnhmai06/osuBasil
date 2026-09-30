@@ -1,5 +1,6 @@
 using Basil.Domain.Scores;
 using Basil.Domain.Utilities;
+using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 
 namespace Basil.Application.Scores;
@@ -8,11 +9,12 @@ namespace Basil.Application.Scores;
 public sealed class ScoreSubmission(
 	IScoreRepository scores,
 	IReplayStorage replays,
-	IUserStatsRepository stats)
+	IUserStatsRepository stats,
+	Lobby lobby)
 {
 	/// <summary>Validates and records a score submission.</summary>
 	/// <remarks>A play on the beatmap of the submitter's room's latest round is recorded against that round.</remarks>
-	/// <param name="session">The session that submitted the score.</param>
+	/// <param name="connection">The game client connection that submitted the score.</param>
 	/// <param name="submission">The parsed submission.</param>
 	/// <param name="beatmap">The beatmap the server knows for the submission's claimed MD5, and its storyboard MD5, if any.</param>
 	/// <param name="playerName">The submitting player's username, as known to the server.</param>
@@ -26,7 +28,7 @@ public sealed class ScoreSubmission(
 	///     it was rejected.
 	/// </returns>
 	public async Task<string?> SubmitAsync(
-		GameSession session,
+		BanchoConnection connection,
 		Submission submission,
 		(Md5 Hash, Md5? StoryboardHash) beatmap,
 		string playerName,
@@ -37,15 +39,15 @@ public sealed class ScoreSubmission(
 		CancellationToken cancellationToken = default)
 	{
 		if (!submission.Validate(
-			    (session.ClientFingerprint, session.ClientVersion, beatmap, playerName),
+			    (connection.Login.Client!.Fingerprint, connection.Login.Client!.Version, beatmap, playerName),
 			    (clientFingerprint, clientVersionDate, clientBeatmapHash),
 			    out var error))
 			return error;
 
-		var round = session.Room?.LastRound is { } last && last.BeatmapHash == submission.Score.BeatmapHash
+		var round = lobby.RoomOf(connection)?.LastRound is { } last && last.BeatmapHash == submission.Score.BeatmapHash
 			? last
 			: null;
-		var score = await scores.AddAsync(submission.Score with { UserId = session.User.Id, Round = round },
+		var score = await scores.AddAsync(submission.Score with { UserId = connection.User.Id, Round = round },
 			cancellationToken);
 
 		if (replay is not null)
@@ -56,7 +58,7 @@ public sealed class ScoreSubmission(
 
 		if (submission.Score.IsPassed)
 		{
-			var current = await stats.LoadAsync(session.User, submission.Score.Mode, cancellationToken);
+			var current = await stats.LoadAsync(connection.User, submission.Score.Mode, cancellationToken);
 			// Every beatmap reports as Approved (see Beatmapset.Status), so every passed score counts
 			// toward ranked score too.
 			current.TotalScore += submission.Score.TotalScore;

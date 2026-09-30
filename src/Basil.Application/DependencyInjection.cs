@@ -1,9 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
-
 using Basil.Application.Beatmaps;
 using Basil.Application.Multiplayer;
 using Basil.Application.Scores;
 using Basil.Application.Sessions;
+
 namespace Basil.Application;
 
 /// <summary>Registers Basil's application-layer operations, chat commands, and domain event handlers.</summary>
@@ -18,6 +18,7 @@ public static class DependencyInjection
 	public static IServiceCollection AddApplication(this IServiceCollection services)
 	{
 		services.AddSingleton<Gateway>();
+		services.AddSingleton<Presence>();
 		services.AddSingleton<Lobby>();
 		services.AddSingleton<RoomCountdowns>();
 		services.AddSingleton<ScoreSubmission>();
