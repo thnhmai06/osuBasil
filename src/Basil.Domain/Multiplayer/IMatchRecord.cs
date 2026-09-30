@@ -8,6 +8,6 @@ public interface IMatchRecord
 	/// <summary>Gets or sets the match associated with this entry.</summary>
 	Match Match { get; init; }
 
-	/// <summary>Gets or sets the date and time when this entry occurred.</summary>
-	DateTimeOffset OccurredAt { get; init; }
+	/// <summary>Gets the date and time of this entry.</summary>
+	DateTimeOffset Timestamp { get; }
 }

@@ -33,7 +33,7 @@ public sealed class BeatmapCatalog(
 		var now = DateTimeOffset.UtcNow;
 		var set = new Beatmapset
 		{
-			Id = beatmapsetId, Artist = artist, Title = title, Creator = creator, LastUpdate = now,
+			Id = beatmapsetId, Artist = artist, Title = title, Creator = creator, UpdatedAt = now,
 			CreatedAt = existing?.CreatedAt ?? now, Visible = existing?.Visible ?? true
 		};
 		await beatmapsets.SaveAsync(set, cancellationToken);

@@ -10,8 +10,8 @@ public abstract record RoomSettingsEvent(Room Room) : RoomEvent(Room);
 /// <summary>The room's name changed.</summary>
 public sealed record RoomNameChanged(Room Room, string Name) : RoomSettingsEvent(Room);
 
-/// <summary>The room's public visibility changed.</summary>
-public sealed record RoomVisibilityChanged(Room Room, bool IsVisible) : RoomSettingsEvent(Room);
+/// <summary>The room's history privacy changed.</summary>
+public sealed record RoomPrivacyChanged(Room Room, bool IsPrivate) : RoomSettingsEvent(Room);
 
 /// <summary>The room's password changed.</summary>
 public sealed record RoomPasswordChanged(Room Room, string Password) : RoomSettingsEvent(Room);

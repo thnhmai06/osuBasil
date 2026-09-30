@@ -4,17 +4,18 @@ using Basil.Domain.Users;
 
 namespace Basil.Domain.Auth;
 
-/// <summary>
-///     A single in-game login.
-/// </summary>
-/// <param name="User">The user who logged in.</param>
-/// <param name="Ip">The IP address the login came from.</param>
-/// <param name="Version">The client version reported at login.</param>
-/// <param name="Fingerprint">The client fingerprint reported at login.</param>
-/// <param name="OccurredAt">The date and time when the login occurred.</param>
-public sealed record Login(
-	User User,
-	IPAddress Ip,
-	ClientVersion Version,
-	ClientFingerprint Fingerprint,
-	DateTimeOffset OccurredAt);
+/// <summary>A single login of a user; two logins are never equal, even with identical data.</summary>
+public sealed class Login
+{
+	/// <summary>Gets the user who logged in.</summary>
+	public required User User { get; init; }
+
+	/// <summary>Gets the IP address the login came from.</summary>
+	public required IPAddress Ip { get; init; }
+
+	/// <summary>Gets the osu! client that logged in, or <see langword="null" /> for a login without an osu! client.</summary>
+	public ClientInfo? Client { get; init; }
+
+	/// <summary>Gets the date and time of the login.</summary>
+	public required DateTimeOffset Timestamp { get; init; }
+}

@@ -9,18 +9,24 @@ namespace Basil.Domain.Multiplayer;
 /// </summary>
 public sealed class MatchSettings
 {
-	/// <summary>Gets or sets the game mode the room plays in.</summary>
-	/// <remarks>Changing the mode drops any selected mods the new mode does not allow.</remarks>
+	/// <summary>Gets the game mode the room plays in.</summary>
 	public GameMode Mode
 	{
 		get;
-		set
+		private set
 		{
 			value.ThrowIfUndefined();
 			field = value;
-			Mods = Mods.RemoveInvalidMods(value);
 		}
 	} = GameMode.Standard;
+
+	/// <summary>Switches the game mode, dropping selected mods the new mode does not allow.</summary>
+	/// <param name="mode">The game mode to switch to.</param>
+	public void SwitchMode(GameMode mode)
+	{
+		Mode = mode;
+		Mods = Mods.RemoveInvalidMods(mode);
+	}
 
 	/// <summary>Gets or sets the mods applied to the whole room.</summary>
 	public GameMods Mods

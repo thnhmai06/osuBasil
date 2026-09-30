@@ -31,7 +31,10 @@ public sealed class Round : IMatchRecord, IEquatable<Round>
 	public required MatchSettings Settings { get; init; }
 
 	/// <summary>The time the round started.</summary>
-	public required DateTimeOffset OccurredAt { get; init; }
+	public required DateTimeOffset StartedAt { get; init; }
+
+	/// <inheritdoc />
+	DateTimeOffset IMatchRecord.Timestamp => StartedAt;
 
 	/// <summary>The time the round ended, or <see langword="null" /> while open.</summary>
 	public required DateTimeOffset? EndedAt { get; set; }

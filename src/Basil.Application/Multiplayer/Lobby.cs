@@ -32,7 +32,7 @@ public sealed class Lobby(
 		var match = await newMatches.AddAsync(new MatchData
 		{
 			Name = name,
-			CreatedAt = DateTimeOffset.UtcNow,
+			StartedAt = DateTimeOffset.UtcNow,
 			EndedAt = null,
 			Creator = creator
 		}, cancellationToken);

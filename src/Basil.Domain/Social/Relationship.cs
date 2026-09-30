@@ -22,7 +22,7 @@ public sealed class Relationship : IEquatable<Relationship>
 			: throw new ArgumentOutOfRangeException(nameof(value), value, "RelationshipType is not a defined value.");
 	}
 
-	public DateTimeOffset Since { get; init; } = DateTimeOffset.UtcNow;
+	public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
 
 	/// <summary>
 	///     Initializes a new instance of the <see cref="Relationship" /> class.

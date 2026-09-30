@@ -57,7 +57,7 @@ public sealed class Gateway(
 		var loginTime = DateTimeOffset.UtcNow;
 		var session = new GameSession
 		{
-			Login = new Login(user, ip, clientVersion, fingerprint, loginTime),
+			Login = new Login { User = user, Ip = ip, Client = new ClientInfo(clientVersion, fingerprint), Timestamp = loginTime },
 			LastActive = loginTime,
 			UtcOffset = utcOffset
 		};

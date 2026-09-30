@@ -60,15 +60,15 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		}
 	}
 
-	/// <summary>Gets or sets a value that indicates whether the room is publicly visible.</summary>
-	public bool IsVisible
+	/// <summary>Gets or sets a value that indicates whether the room's match history is private.</summary>
+	public bool IsPrivate
 	{
-		get => Match.Value.IsVisible;
+		get => Match.Value.IsPrivate;
 		set
 		{
-			if (Match.Value.IsVisible == value) return;
-			Match.Value.IsVisible = value;
-			Emit(new RoomVisibilityChanged(this, value));
+			if (Match.Value.IsPrivate == value) return;
+			Match.Value.IsPrivate = value;
+			Emit(new RoomPrivacyChanged(this, value));
 		}
 	}
 
@@ -106,7 +106,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		set
 		{
 			if (Settings.Mode == value) return;
-			Settings.Mode = value;
+			Settings.SwitchMode(value);
 			Emit(new GameModeChanged(this, value));
 		}
 	}
@@ -360,7 +360,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 			Match = Match,
 			BeatmapHash = Beatmap.Hash,
 			Settings = Settings.Clone(),
-			OccurredAt = DateTimeOffset.UtcNow,
+			StartedAt = DateTimeOffset.UtcNow,
 			EndedAt = null
 		};
 

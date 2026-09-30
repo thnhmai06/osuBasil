@@ -45,7 +45,7 @@ public sealed class Countdown : IDisposable
 
 	public bool IsStarted => StartedAt is not null;
 
-	public DateTimeOffset? EndAt =>
+	public DateTimeOffset? EndsAt =>
 		StartedAt is { } startedAt
 			? startedAt + Length
 			: null;

@@ -109,7 +109,7 @@ public sealed partial class UserData
 	/// <remarks>
 	///     The osu! client enforces the silence itself once it is told about it.
 	/// </remarks>
-	public DateTimeOffset? SilenceEnd { get; set; } = null;
+	public DateTimeOffset? SilenceEndsAt { get; set; } = null;
 
 	/// <summary>Gets or sets the date and time when the user was deleted, if any.</summary>
 	public DateTimeOffset? DeletedAt { get; set; } = null;

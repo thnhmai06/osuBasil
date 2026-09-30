@@ -76,14 +76,12 @@ public sealed class MatchData
 	/// <summary>Gets the user who created the match, or <see langword="null" /> for an unattended room.</summary>
 	public User? Creator { get; init; }
 
-	/// <summary>Gets the date and time when the match was created.</summary>
-	public required DateTimeOffset CreatedAt { get; init; }
+	/// <summary>Gets the date and time when the match started.</summary>
+	public required DateTimeOffset StartedAt { get; init; }
 
 	/// <summary>Gets or sets the date and time when the match ended, if it has ended.</summary>
 	public required DateTimeOffset? EndedAt { get; set; }
 
-	/// <summary>
-	///     Gets or sets a value that indicates whether the match is publicly visible.
-	/// </summary>
-	public bool IsVisible { get; set; } = true;
+	/// <summary>Gets or sets a value that indicates whether the match history is visible only to its creator and participants.</summary>
+	public bool IsPrivate { get; set; } = false;
 }

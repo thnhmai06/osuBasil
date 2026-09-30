@@ -6,10 +6,10 @@ namespace Basil.Domain.Beatmaps;
 ///     Represents a beatmapset, the shared metadata for a group of beatmap difficulties.
 /// </summary>
 /// <remarks>
-///     Artist, Title, Creator, and LastUpdate are shared by every difficulty in the set, so they
+///     Artist, Title, Creator, and UpdatedAt are shared by every difficulty in the set, so they
 ///     live here instead of being duplicated on each <see cref="Beatmap" />.
 ///     <see cref="CreatedAt" /> records the first ingestion time, distinct from
-///     <see cref="LastUpdate" />, which changes on every re-ingestion or content change.
+///     <see cref="UpdatedAt" />, which changes on every re-ingestion or content change.
 /// </remarks>
 public sealed class Beatmapset : IEquatable<Beatmapset>
 {
@@ -64,7 +64,7 @@ public sealed class Beatmapset : IEquatable<Beatmapset>
 	public required User Creator { get; init; }
 
 	/// <summary>The time of the latest re-ingestion or content change, in UTC.</summary>
-	public required DateTimeOffset LastUpdate { get; set; }
+	public required DateTimeOffset UpdatedAt { get; set; }
 
 	/// <summary>The time the set was first ingested, in UTC.</summary>
 	public required DateTimeOffset CreatedAt { get; init; }

@@ -115,7 +115,7 @@ public sealed record Submission
 				$"smustard{hitCounts.NumKatu}{hitCounts.NumMiss}uu{fromServer.Beatmap.Hash}{Score.MaxCombo}" +
 				$"{Score.IsFullCombo}{fromServer.playerName}{Score.TotalScore}{Score.Grade.ToString().ToUpperInvariant()}" +
 				$"{(int)Score.Mods}Q{Score.IsPassed}{(int)Score.Mode}" +
-				$"{fromClient.VersionDate}{Score.OccuredAt:yyMMddHHmmss}{fromClient.Fingerprint.Hash}{fromServer.Beatmap.StoryboardHash ?? string.Empty}";
+				$"{fromClient.VersionDate}{Score.Timestamp:yyMMddHHmmss}{fromClient.Fingerprint.Hash}{fromServer.Beatmap.StoryboardHash ?? string.Empty}";
 			var hash = MD5.HashData(Encoding.UTF8.GetBytes(raw));
 			return Convert.ToHexStringLower(hash);
 		}

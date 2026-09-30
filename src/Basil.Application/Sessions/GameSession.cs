@@ -27,13 +27,13 @@ public sealed class GameSession : UserSession
 	public override Domain.Users.User User => Login.User;
 
 	/// <inheritdoc />
-	public override DateTimeOffset LoginTime => Login.OccurredAt;
+	public override DateTimeOffset LoginTime => Login.Timestamp;
 
 	/// <summary>Gets the osu! client version reported at login.</summary>
-	public ClientVersion ClientVersion => Login.Version;
+	public ClientVersion ClientVersion => Login.Client!.Version;
 
 	/// <summary>Gets the hardware and client fingerprint captured at login.</summary>
-	public ClientFingerprint ClientFingerprint => Login.Fingerprint;
+	public ClientFingerprint ClientFingerprint => Login.Client!.Fingerprint;
 
 	/// <summary>Gets the IP address this session connected from.</summary>
 	public System.Net.IPAddress Ip => Login.Ip;

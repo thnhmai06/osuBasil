@@ -62,7 +62,7 @@ public sealed class Score : IWrapper<ScoreData>, IEquatable<Score>
 /// <param name="Grade">The grade earned.</param>
 /// <param name="IsPassed">Whether the play was passed.</param>
 /// <param name="IsFullCombo">Whether the play was a full combo.</param>
-/// <param name="OccuredAt">The date and time when the play occurred.</param>
+/// <param name="Timestamp">The date and time when the play occurred.</param>
 public sealed record ScoreData(
 	int? UserId,
 	Md5? BeatmapHash,
@@ -74,7 +74,7 @@ public sealed record ScoreData(
 	Grade Grade,
 	bool IsPassed,
 	bool IsFullCombo,
-	DateTimeOffset OccuredAt)
+	DateTimeOffset Timestamp)
 {
 	public int TotalScore { get; init; } = TotalScore >= 0
 		? TotalScore

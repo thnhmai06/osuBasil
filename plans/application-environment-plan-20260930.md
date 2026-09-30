@@ -718,7 +718,13 @@ Không dùng model hiếm (`kimi-k3`, `glm-5.3`, `grok-4.x`, `qwen3.8-max`, `dee
    Application không tiêu thụ event; setter chỉ gán và kiểm hợp lệ (R31); tên theo bảng A2 (R32).
 5. XML doc: không viết hay sửa doc ngoài câu spec đưa (CS1591 đã tắt). Warning mới do `cref` trỏ
    tới type bị xóa hay đổi tên: đổi `<see cref="X" />` thành `<c>X</c>`, không viết lại câu.
-6. Kiểm tra agent phải tự chạy tới khi đạt: hai lệnh build, grep của phase; cuối cùng in danh sách
+6. Công cụ (OpenCode có MCP `rider`, `codegraph` và skill .NET): tìm code bằng `codegraph`
+   (`codegraph_explore`) trước khi grep/đọc file; đổi tên bằng `rider` `rename_refactoring`, xóa
+   type/member bằng `safe_delete`, đổi chữ ký bằng `change_api_signature`, kiểm lỗi từng file bằng
+   `get_file_problems`, dọn using bằng `reformat_file`/`post_edit_quality_check`; chỉ sửa tay khi
+   Rider không làm được. Nạp skill .NET liên quan (`dotnet-backend-patterns`, `csharp-docs` khi
+   spec có doc) nếu có.
+7. Kiểm tra agent phải tự chạy tới khi đạt: hai lệnh build, grep của phase; cuối cùng in danh sách
    file đã đổi và dòng tổng kết build.
 
 **Review trước khi nhận.** Trước mỗi phase ghim trạng thái cây làm việc vào `refs/basil/pre-phase<N>`

@@ -17,13 +17,13 @@ public sealed class MenuBanner : IEquatable<MenuBanner>
 	///     The UTC instant the banner starts being current, or <see langword="null" /> for no lower bound
 	///     (already current).
 	/// </summary>
-	public required DateTimeOffset? Begins { get; set; }
+	public required DateTimeOffset? StartsAt { get; set; }
 
 	/// <summary>
 	///     The UTC instant the banner stops being current, or <see langword="null" /> for no upper
 	///     bound (never expires).
 	/// </summary>
-	public required DateTimeOffset? Expires { get; set; }
+	public required DateTimeOffset? EndsAt { get; set; }
 
 	/// <summary>The UTC instant the banner was created.</summary>
 	public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.Now;
@@ -44,7 +44,7 @@ public sealed class MenuBanner : IEquatable<MenuBanner>
 	/// <param name="now">The instant to check against, in UTC.</param>
 	public bool IsCurrent(DateTimeOffset now)
 	{
-		return (Begins is null || Begins <= now) && (Expires is null || now <= Expires);
+		return (StartsAt is null || StartsAt <= now) && (EndsAt is null || now <= EndsAt);
 	}
 
 	/// <summary>Gets a value that indicates whether this banner equals another object by image.</summary>

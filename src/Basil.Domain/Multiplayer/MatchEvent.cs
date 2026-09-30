@@ -7,14 +7,14 @@ namespace Basil.Domain.Multiplayer;
 /// </summary>
 /// <param name="Match">The match the event is recorded against.</param>
 /// <param name="Type">The kind of lifecycle event.</param>
-/// <param name="OccurredAt">The date and time when the event occurred.</param>
+/// <param name="Timestamp">The date and time when the event occurred.</param>
 /// <param name="Actor">The user who performed the action, if any.</param>
 /// <param name="Target">The user the action affected, if any.</param>
 /// <param name="Detail">Additional detail about the event, if any.</param>
 public sealed record MatchEvent(
 	Match Match,
 	MatchEventType Type,
-	DateTimeOffset OccurredAt,
+	DateTimeOffset Timestamp,
 	User? Actor = null,
 	User? Target = null,
 	string? Detail = null) : IMatchRecord;
