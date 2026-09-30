@@ -109,5 +109,8 @@ public enum RoomResult : byte
 	OutOfRange,
 
 	/// <summary>No countdown is running.</summary>
-	NoCountdown
+	NoCountdown,
+
+	/// <summary>The score was not played in the room's latest round.</summary>
+	RoundMismatch
 }

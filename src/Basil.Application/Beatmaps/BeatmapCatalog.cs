@@ -1,7 +1,9 @@
+using System.Threading.Channels;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 using Basil.Domain.Utilities;
+using Basil.Application.Common.Events;
 
 namespace Basil.Application.Beatmaps;
 
@@ -10,20 +12,25 @@ public sealed class BeatmapCatalog(
 	IBeatmapAnalyser calculator,
 	IBeatmapsetRepository beatmapsets,
 	IBeatmapRepository beatmaps,
-	IBeatmapArchiveStorage archives)
+	IBeatmapArchiveStorage archives) : IEventPublisher<BeatmapEvent>
 {
-	/// <summary>Imports a beatmapset: stores its metadata, analyzes each difficulty, and stores the archive.</summary>
+	private readonly Channel<BeatmapEvent> _events = Channel.CreateUnbounded<BeatmapEvent>();
+
+	/// <inheritdoc />
+	public ChannelReader<BeatmapEvent> Events => _events.Reader;
+
+	/// <summary>Imports a beatmapset: stores its archive, its metadata and each analyzed difficulty, and drops difficulties the new version no longer has.</summary>
 	/// <param name="beatmapsetId">The id to store the set under.</param>
 	/// <param name="artist">The set's artist.</param>
 	/// <param name="title">The set's title.</param>
 	/// <param name="creator">The set's creator.</param>
-	/// <param name="difficultyFiles">Each difficulty's id, version name, decoded .osu file path, and raw bytes.</param>
+	/// <param name="difficultyFiles">Each difficulty's id, version name, .osu file bytes and game mode.</param>
 	/// <param name="archiveContent">The complete .osz archive bytes.</param>
 	/// <param name="cancellationToken">A token that cancels the import.</param>
 	/// <returns>The imported beatmapset and its analyzed difficulties, or <see langword="null" /> when the set is frozen.</returns>
 	public async Task<(Beatmapset Set, IReadOnlyList<Beatmap> Beatmaps)?> ImportAsync(
 		int beatmapsetId, string artist, string title, User creator,
-		IReadOnlyList<(int Id, string Version, string FilePath, byte[] Content, GameMode Mode)> difficultyFiles,
+		IReadOnlyList<(int Id, string Version, byte[] Content, GameMode Mode)> difficultyFiles,
 		byte[] archiveContent, CancellationToken cancellationToken = default)
 	{
 		var existing = await beatmapsets.GetAsync(beatmapsetId, cancellationToken);
@@ -35,12 +42,16 @@ public sealed class BeatmapCatalog(
 			Id = beatmapsetId, Artist = artist, Title = title, Creator = creator, UpdatedAt = now,
 			CreatedAt = existing?.CreatedAt ?? now, Visible = existing?.Visible ?? true
 		};
+
+		await using var content = new MemoryStream(archiveContent, false);
+		await archives.SaveAsync(set, content, cancellationToken);
+
 		await beatmapsets.SaveAsync(set, cancellationToken);
 
 		var result = new List<Beatmap>(difficultyFiles.Count);
 		foreach (var file in difficultyFiles)
 		{
-			var analysis = calculator.Analyze(file.FilePath, file.Mode, GameMods.NoMod);
+			var analysis = calculator.Analyze(file.Content, file.Mode, GameMods.NoMod);
 			var beatmap = new Beatmap
 			{
 				Id = file.Id,
@@ -54,8 +65,9 @@ public sealed class BeatmapCatalog(
 			result.Add(beatmap);
 		}
 
-		await using var content = new MemoryStream(archiveContent, false);
-		await archives.SaveAsync(set, content, cancellationToken);
+		await beatmaps.RetainAsync(set, result, cancellationToken);
+
+		_events.Writer.TryWrite(new BeatmapsetImported(set, result));
 
 		return (set, result);
 	}

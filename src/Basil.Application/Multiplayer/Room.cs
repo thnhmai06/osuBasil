@@ -2,6 +2,7 @@ using System.Threading.Channels;
 using Basil.Domain.Client;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
+using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Domain.Utilities;
 using Basil.Application.Common.Events;
@@ -766,6 +767,19 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	internal void Emit(RoomEvent @event)
 	{
 		_events.Writer.TryWrite(@event);
+	}
+
+	/// <summary>Records a stored score of the room's latest round.</summary>
+	/// <param name="player">The player who submitted the score.</param>
+	/// <param name="score">The stored score.</param>
+	/// <returns>Ok, or RoundMismatch when the score was not played in the latest round.</returns>
+	/// <remarks>The caller holds the room's scope.</remarks>
+	public RoomResult RecordScore(User player, Score score)
+	{
+		if (LastRound is not { } round || !round.Equals(score.Value.Round)) return RoomResult.RoundMismatch;
+
+		Emit(new ScoreSubmitted(this, round, player, score));
+		return RoomResult.Ok;
 	}
 
 	/// <inheritdoc />

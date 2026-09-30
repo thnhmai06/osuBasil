@@ -121,6 +121,13 @@ public sealed class Presence(TimeProvider time) : IEventPublisher<PresenceEvent>
 		_events.Writer.TryWrite(new UserSilenced(user, endsAt));
 	}
 
+	/// <summary>Announces that a user's statistics changed.</summary>
+	/// <param name="user">The user whose statistics changed.</param>
+	public void ReportStatsChanged(User user)
+	{
+		_events.Writer.TryWrite(new StatsChanged(user));
+	}
+
 	private void Close(Connection connection, ConnectionCloseReason reason)
 	{
 		if (!connection.IsOpen) return;

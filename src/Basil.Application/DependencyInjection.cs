@@ -4,6 +4,7 @@ using Basil.Application.Chat;
 using Basil.Application.Multiplayer;
 using Basil.Application.Scores;
 using Basil.Application.Sessions;
+using Basil.Application.Users;
 
 namespace Basil.Application;
 
@@ -24,6 +25,7 @@ public static class DependencyInjection
 		services.AddSingleton<Lobby>();
 		services.AddSingleton<ScoreSubmission>();
 		services.AddSingleton<BeatmapCatalog>();
+		services.AddSingleton<Registration>();
 
 		return services;
 	}

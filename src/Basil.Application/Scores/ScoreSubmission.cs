@@ -10,43 +10,43 @@ public sealed class ScoreSubmission(
 	IScoreRepository scores,
 	IReplayStorage replays,
 	IUserStatsRepository stats,
-	Lobby lobby)
+	Lobby lobby,
+	Presence presence)
 {
 	/// <summary>Validates and records a score submission.</summary>
-	/// <remarks>A play on the beatmap of the submitter's room's latest round is recorded against that round.</remarks>
 	/// <param name="connection">The game client connection that submitted the score.</param>
 	/// <param name="submission">The parsed submission.</param>
-	/// <param name="beatmap">The beatmap the server knows for the submission's claimed MD5, and its storyboard MD5, if any.</param>
-	/// <param name="playerName">The submitting player's username, as known to the server.</param>
-	/// <param name="clientFingerprint">The client hash and unique ids the client sent with the submission.</param>
-	/// <param name="clientVersionDate">The client version date the client sent with the submission.</param>
+	/// <param name="beatmap">The beatmap the server knows for the submission, or <see langword="null" /> when the server does not have it.</param>
+	/// <param name="clientFingerprint">The client hash and unique ids sent with the submission.</param>
+	/// <param name="clientVersionDate">The client version date sent with the submission.</param>
 	/// <param name="clientBeatmapHash">The beatmap MD5 the client claims to have played.</param>
-	/// <param name="replay">The submission's replay bytes, or <see langword="null" /> for a failed play.</param>
-	/// <param name="cancellationToken">A token that cancels the persistence.</param>
-	/// <returns>
-	///     <see langword="null" /> when the submission was validated and stored; otherwise, the reason
-	///     it was rejected.
-	/// </returns>
-	public async Task<string?> SubmitAsync(
+	/// <param name="replay">The replay bytes, or <see langword="null" /> for a failed play.</param>
+	/// <param name="cancellationToken">A token that cancels the submission.</param>
+	/// <returns><see langword="null" /> when the score was stored; otherwise, why it was rejected.</returns>
+	/// <remarks>
+	///     A score on a beatmap the server does not have is accepted only when it is the beatmap of the
+	///     latest round in the player's room. A score played in that round is recorded against it. Every
+	///     accepted play counts toward the play count; passed plays also add to the scores.
+	/// </remarks>
+	public async Task<ScoreRejection?> SubmitAsync(
 		BanchoConnection connection,
 		Submission submission,
-		(Md5 Hash, Md5? StoryboardHash) beatmap,
-		string playerName,
+		(Md5 Hash, Md5? StoryboardHash)? beatmap,
 		(string Hash, string Serial) clientFingerprint,
 		string clientVersionDate,
 		Md5 clientBeatmapHash,
 		byte[]? replay,
 		CancellationToken cancellationToken = default)
 	{
-		if (!submission.Validate(
-			    (connection.Login.Client!.Fingerprint, connection.Login.Client!.Version, beatmap, playerName),
-			    (clientFingerprint, clientVersionDate, clientBeatmapHash),
-			    out var error))
-			return error;
+		var room = lobby.RoomOf(connection);
+		var round = room?.LastRound is { } last && last.BeatmapHash == clientBeatmapHash ? last : null;
+		var checkedBeatmap = beatmap ?? (round is not null ? (clientBeatmapHash, null) : null);
+		if (checkedBeatmap is not { } known) return ScoreRejection.UnknownBeatmap;
 
-		var round = lobby.RoomOf(connection)?.LastRound is { } last && last.BeatmapHash == submission.Score.BeatmapHash
-			? last
-			: null;
+		if (submission.Validate(connection.Login.Client!, known, connection.User.Value.Name, clientFingerprint,
+			    clientVersionDate, clientBeatmapHash) is { } rejection)
+			return rejection;
+
 		var score = await scores.AddAsync(submission.Score with { UserId = connection.User.Id, Round = round },
 			cancellationToken);
 
@@ -56,18 +56,25 @@ public sealed class ScoreSubmission(
 			await replays.SaveAsync(score, content, cancellationToken);
 		}
 
+		var current = await stats.LoadAsync(connection.User, submission.Score.Mode, cancellationToken);
+		current.PlayCount++;
 		if (submission.Score.IsPassed)
 		{
-			var current = await stats.LoadAsync(connection.User, submission.Score.Mode, cancellationToken);
 			// Every beatmap reports as Approved (see Beatmapset.Status), so every passed score counts
 			// toward ranked score too.
 			current.TotalScore += submission.Score.TotalScore;
 			current.RankedScore += submission.Score.TotalScore;
-			current.PlayCount++;
-			await stats.SaveAsync(current, cancellationToken);
 		}
 
-		// TODO(phase 9): StatsChanged
+		await stats.SaveAsync(current, cancellationToken);
+
+		if (room is not null && round is not null)
+		{
+			await using var scope = await room.EnterAsync(cancellationToken);
+			if (scope is not null) room.RecordScore(connection.User, score);
+		}
+
+		presence.ReportStatsChanged(connection.User);
 		return null;
 	}
 }

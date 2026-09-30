@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
@@ -61,48 +60,41 @@ public sealed record Submission
 	///     mirror the osu! server and comparing them with the client-sent values.
 	/// </summary>
 	/// <remarks>
-	///     Checks, in order: that the server knows a fingerprint for the player, that the client's
-	///     version date matches, that the client's fingerprint hash and its serial-derived hashes
-	///     match the server's record, that the submission MD5 matches the recomputed value, and
-	///     that the beatmap MD5 the client claims matches the beatmap the server hands out. On the
-	///     first mismatch the reason is reported in <paramref name="error" /> and validation stops.
+	///     Checks, in order: that the client's version date matches the version the client logged in
+	///     with, that the client's fingerprint hash and its serial-derived hashes match the ones
+	///     reported at login, that the submission MD5 matches the recomputed value, and that the
+	///     beatmap MD5 the client claims matches the beatmap the score is checked against. On the
+	///     first mismatch the reason is returned and validation stops.
 	/// </remarks>
-	/// <param name="fromServer">
-	///     The data known by the server: the stored client fingerprint (if any), the client
-	///     version, the beatmap MD5 and storyboard MD5, and the player's name.
-	/// </param>
-	/// <param name="fromClient">
-	///     The data the client sent with the submission: the client hash and the unique ids, the
-	///     version date, and the beatmap MD5 it claims to have played.
-	/// </param>
-	/// <param name="error">
-	///     When this method returns <see langword="false" />, contains a message describing why the
-	///     submission was rejected.
-	/// </param>
-	/// <returns>
-	///     <see langword="true" /> if every check passes; otherwise, <see langword="false" />.
-	/// </returns>
-	public bool Validate(
-		(ClientFingerprint? Fingerprint, ClientVersion Version, (Md5 Hash, Md5? StoryboardHash) Beatmap, string
-			playerName) fromServer,
-		((string Hash, string Serial) Fingerprint, string VersionDate, Md5 beatmapMd5) fromClient,
-		[MaybeNullWhen(true)] out string error)
+	/// <param name="client">The osu! client the player logged in with.</param>
+	/// <param name="beatmap">The MD5 and storyboard MD5 of the beatmap the score is checked against.</param>
+	/// <param name="playerName">The player's name as the server knows it.</param>
+	/// <param name="clientFingerprint">The client hash and unique ids sent with the submission.</param>
+	/// <param name="clientVersionDate">The client version date sent with the submission.</param>
+	/// <param name="clientBeatmapHash">The beatmap MD5 the client claims to have played.</param>
+	/// <returns><see langword="null" /> if the submission is authentic; otherwise, the first reason it is rejected.</returns>
+	public ScoreRejection? Validate(
+		ClientInfo client,
+		(Md5 Hash, Md5? StoryboardHash) beatmap,
+		string playerName,
+		(string Hash, string Serial) clientFingerprint,
+		string clientVersionDate,
+		Md5 clientBeatmapHash)
 	{
-		error = null;
 		var serialHash = ComputeSerialHash();
 		var md5ByServer = ComputeSubmissionMd5();
 
-		if (fromServer.Fingerprint is not { } serverFingerprint) error = "Client fingerprint is missing.";
-		else if (fromClient.VersionDate != fromServer.Version.Date.ToString("yyyyMMdd", CultureInfo.InvariantCulture))
-			error = "Client version is mismatched.";
-		else if (fromClient.Fingerprint.Hash != serverFingerprint.ToString()) error = "Client hash is mismatched.";
-		else if (serialHash?.UninstallHash != serverFingerprint.UninstallHash) error = "Uninstaller hash is mismatched.";
-		else if (serialHash?.DiskSignatureHash != serverFingerprint.DiskSignatureHash)
-			error = "Disk signature hash is mismatched.";
-		else if (HashByClient != md5ByServer) error = "Submission hash is mismatched.";
-		else if (fromClient.beatmapMd5 != fromServer.Beatmap.Hash) error = "Beatmap hash is mismatched.";
+		if (clientVersionDate != client.Version.Date.ToString("yyyyMMdd", CultureInfo.InvariantCulture))
+			return ScoreRejection.VersionMismatch;
+		if (clientFingerprint.Hash != client.Fingerprint.ToString()) return ScoreRejection.ClientHashMismatch;
+		if (serialHash?.UninstallHash != client.Fingerprint.UninstallHash)
+			return ScoreRejection.UninstallerHashMismatch;
+		if (serialHash?.DiskSignatureHash != client.Fingerprint.DiskSignatureHash)
+			return ScoreRejection.DiskSignatureHashMismatch;
+		if (HashByClient != md5ByServer) return ScoreRejection.SubmissionHashMismatch;
+		if (clientBeatmapHash != beatmap.Hash) return ScoreRejection.BeatmapHashMismatch;
 
-		return error is null;
+		return null;
 
 		#region DON'T CHANGE THESE FORMULA!!!
 
@@ -112,10 +104,10 @@ public sealed record Submission
 
 			var raw =
 				$"chickenmcnuggets{hitCounts.Num100 + hitCounts.Num300}o15{hitCounts.Num50}{hitCounts.NumGeki}" +
-				$"smustard{hitCounts.NumKatu}{hitCounts.NumMiss}uu{fromServer.Beatmap.Hash}{Score.MaxCombo}" +
-				$"{Score.IsFullCombo}{fromServer.playerName}{Score.TotalScore}{Score.Grade.ToString().ToUpperInvariant()}" +
+				$"smustard{hitCounts.NumKatu}{hitCounts.NumMiss}uu{beatmap.Hash}{Score.MaxCombo}" +
+				$"{Score.IsFullCombo}{playerName}{Score.TotalScore}{Score.Grade.ToString().ToUpperInvariant()}" +
 				$"{(int)Score.Mods}Q{Score.IsPassed}{(int)Score.Mode}" +
-				$"{fromClient.VersionDate}{Score.Timestamp:yyMMddHHmmss}{fromClient.Fingerprint.Hash}{fromServer.Beatmap.StoryboardHash ?? string.Empty}";
+				$"{clientVersionDate}{Score.Timestamp:yyMMddHHmmss}{clientFingerprint.Hash}{beatmap.StoryboardHash ?? string.Empty}";
 			var hash = MD5.HashData(Encoding.UTF8.GetBytes(raw));
 			return Convert.ToHexStringLower(hash);
 		}
@@ -124,7 +116,7 @@ public sealed record Submission
 		{
 			const char delimiter = '|';
 
-			var parts = fromClient.Fingerprint.Serial.Split(delimiter, 2);
+			var parts = clientFingerprint.Serial.Split(delimiter, 2);
 			if (parts.Length < 2) return null;
 			return (new Md5(Encoding.UTF8.GetBytes(parts[0])), new Md5(Encoding.UTF8.GetBytes(parts[1])));
 		}

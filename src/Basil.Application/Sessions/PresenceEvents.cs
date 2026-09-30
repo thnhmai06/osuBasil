@@ -28,6 +28,10 @@ public sealed record StatusChanged(BanchoConnection Connection, PlayerStatus Sta
 /// <param name="EndsAt">When the silence ends.</param>
 public sealed record UserSilenced(User User, DateTimeOffset EndsAt) : PresenceEvent;
 
+/// <summary>A user's statistics changed.</summary>
+/// <param name="User">The user whose statistics changed.</param>
+public sealed record StatsChanged(User User) : PresenceEvent;
+
 /// <summary>The reasons a connection is closed.</summary>
 public enum ConnectionCloseReason : byte
 {
