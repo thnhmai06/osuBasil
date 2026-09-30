@@ -94,5 +94,20 @@ public enum RoomResult : byte
 	InvalidMods,
 
 	/// <summary>A setting has a value that is not allowed.</summary>
-	InvalidSettings
+	InvalidSettings,
+
+	/// <summary>No beatmap is selected.</summary>
+	NoBeatmap,
+
+	/// <summary>The caller is not playing in the current round.</summary>
+	NotPlaying,
+
+	/// <summary>No round is in progress.</summary>
+	NotInProgress,
+
+	/// <summary>The countdown length is outside the allowed range.</summary>
+	OutOfRange,
+
+	/// <summary>No countdown is running.</summary>
+	NoCountdown
 }

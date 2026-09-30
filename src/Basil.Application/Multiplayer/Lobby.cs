@@ -94,7 +94,7 @@ public sealed class Lobby(IMatchRepository matches, Presence presence, TimeProvi
 		{
 			if (FreeRoomId() is not { } id) return (null, RoomResult.NoRoomId);
 
-			var room = new Room(this, id, match, settings ?? new MatchSettings(), isTournament);
+			var room = new Room(this, time, id, match, settings ?? new MatchSettings(), isTournament);
 			if (!string.IsNullOrEmpty(password))
 				room.SetInitialPassword(password);
 

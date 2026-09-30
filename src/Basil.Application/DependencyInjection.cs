@@ -22,7 +22,6 @@ public static class DependencyInjection
 		services.AddSingleton<Presence>();
 		services.AddSingleton<ChatChannels>();
 		services.AddSingleton<Lobby>();
-		services.AddSingleton<RoomCountdowns>();
 		services.AddSingleton<ScoreSubmission>();
 		services.AddSingleton<BeatmapCatalog>();
 

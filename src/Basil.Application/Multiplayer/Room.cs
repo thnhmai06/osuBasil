@@ -19,13 +19,25 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	/// <summary>The most referees a room can have.</summary>
 	public const int MaxReferees = 8;
 
+	/// <summary>The remaining times at which a running countdown is announced.</summary>
+	public static readonly TimeSpan[] CountdownMarks =
+		[TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(5)];
+
+	/// <summary>The countdown length used when none is given.</summary>
+	public static readonly TimeSpan DefaultCountdownLength = TimeSpan.FromSeconds(30);
+
+	/// <summary>The longest countdown allowed.</summary>
+	public static readonly TimeSpan MaxCountdownLength = TimeSpan.FromHours(1);
+
 	private readonly Lobby _lobby;
+	private readonly TimeProvider _time;
 	private readonly ConcurrentSet<User> _banned = [];
 	private readonly ConcurrentSet<User> _referees = [];
 	private readonly ConcurrentSet<TourneyConnection> _observers = [];
 	private readonly Channel<RoomEvent> _events = System.Threading.Channels.Channel.CreateUnbounded<RoomEvent>();
 	private readonly SemaphoreSlim _lock = new(1, 1);
 	private BanchoConnection? _host;
+	private Countdown? _countdown;
 	private bool _closed;
 
 	/// <summary>The match this room is a live projection of.</summary>
@@ -92,6 +104,9 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	/// <summary>Gets a value that indicates whether a round is currently in progress.</summary>
 	public bool InProgress => CurrentRound is not null;
 
+	/// <summary>Gets when the running countdown ends, or <see langword="null" /> when none is running.</summary>
+	public DateTimeOffset? CountdownEndsAt => _countdown?.EndsAt;
+
 	/// <summary>Gets the users with referee authority for this room.</summary>
 	public IReadOnlySet<User> Referees => _referees;
 
@@ -111,14 +126,16 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 
 	/// <summary>Opens a room for a match.</summary>
 	/// <param name="lobby">The lobby that owns this room.</param>
+	/// <param name="time">The clock the room's rounds and countdown run on.</param>
 	/// <param name="id">The room id, carried by the client protocol.</param>
 	/// <param name="match">The match the room plays.</param>
 	/// <param name="settings">The room's initial settings.</param>
 	/// <param name="isTournament">Whether the room is a tournament room.</param>
-	internal Room(Lobby lobby, int id, Match match, MatchSettings settings, bool isTournament)
+	internal Room(Lobby lobby, TimeProvider time, int id, Match match, MatchSettings settings, bool isTournament)
 	{
 		ArgumentOutOfRangeException.ThrowIfNegative(id);
 		_lobby = lobby;
+		_time = time;
 		Id = id;
 		Match = match;
 		Settings = settings;
@@ -164,6 +181,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 			var vacated = Slots.Vacate(seated)!;
 			Emit(new PlayerLeft(this, seated, vacated.Index, _host));
 			LeaveChannel(seated);
+			EndRoundIfNobodyPlays();
 		}
 
 		if (_banned.Contains(by.User)) return RoomResult.Banned;
@@ -592,48 +610,136 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		_host = Slots.FirstOrDefault(slot => slot.Player is not null && !ReferenceEquals(slot.Player, leaving))?.Player;
 	}
 
-	/// <summary>Starts the next round of the match.</summary>
-	/// <returns>The round that was started.</returns>
-	/// <exception cref="InvalidOperationException">A round is already in progress, or no beatmap is selected.</exception>
-	public Round Start()
+	/// <summary>Starts the next round; players who have the beatmap start playing.</summary>
+	/// <param name="by">The host or a manager.</param>
+	/// <returns>Ok, NotAuthorized, InProgress or NoBeatmap.</returns>
+	/// <remarks>The caller holds the room's scope. A running countdown is cancelled without a separate event.</remarks>
+	public RoomResult Start(Connection by)
 	{
-		if (InProgress) throw new InvalidOperationException("A round is already in progress.");
-		if (Beatmap is null) throw new InvalidOperationException("No beatmap is selected.");
+		if (!IsHostOrManager(by)) return RoomResult.NotAuthorized;
+		if (InProgress) return RoomResult.InProgress;
+		if (Beatmap is null) return RoomResult.NoBeatmap;
 
-		var round = new Round
-		{
-			Number = (LastRound?.Number ?? 0) + 1,
-			Match = Match,
-			BeatmapHash = Beatmap.Hash,
-			Settings = Settings.Clone(),
-			StartedAt = DateTimeOffset.UtcNow,
-			EndedAt = null
-		};
-
-		LastRound = round;
-
-		foreach (var slot in Slots.Where(s => s.Player is not null && s.Status is not RoomSlotStatus.NoMap))
-			slot.SetStatus(RoomSlotStatus.Playing);
-
-		Emit(new Events.RoundStarted(this, round));
-		return round;
+		StopCountdown();
+		StartRound();
+		return RoomResult.Ok;
 	}
 
-	/// <summary>Aborts the round currently in progress.</summary>
-	/// <exception cref="InvalidOperationException">No round is in progress.</exception>
-	public void Abort()
+	/// <summary>Aborts the round in progress; players go back to not ready.</summary>
+	/// <param name="by">A manager.</param>
+	/// <returns>Ok, NotAuthorized or NotInProgress.</returns>
+	/// <remarks>The caller holds the room's scope.</remarks>
+	public RoomResult Abort(Connection by)
 	{
-		if (CurrentRound is not { } round)
-			throw new InvalidOperationException("No round is in progress.");
+		if (!IsManager(by.User)) return RoomResult.NotAuthorized;
+		if (!InProgress) return RoomResult.NotInProgress;
 
-		round.EndedAt = DateTimeOffset.UtcNow;
-		round.Aborted = true;
+		StopCountdown();
+		AbortRound();
+		return RoomResult.Ok;
+	}
 
-		foreach (var slot in Slots.Where(s =>
-			         s.Player is not null && s.Status is RoomSlotStatus.Playing or RoomSlotStatus.Complete))
-			slot.SetStatus(RoomSlotStatus.NotReady);
+	/// <summary>Reports that the caller finished loading the beatmap.</summary>
+	/// <param name="by">The caller's game client.</param>
+	/// <returns>Ok or NotPlaying; reporting again returns Ok and does nothing.</returns>
+	/// <remarks>The caller holds the room's scope. The last player to load emits <see cref="AllPlayersLoaded" /> instead of <see cref="PlayerLoaded" />.</remarks>
+	public RoomResult MarkLoaded(BanchoConnection by)
+	{
+		if (CurrentRound is not { } round || Slots.Find(by) is not { Status: RoomSlotStatus.Playing } slot) return RoomResult.NotPlaying;
+		if (slot.Loaded is true) return RoomResult.Ok;
 
-		Emit(new Events.RoundAborted(this, round));
+		slot.SetLoaded(true);
+		Emit(Slots.Where(s => s.Status is RoomSlotStatus.Playing).All(s => s.Loaded is true)
+			? new AllPlayersLoaded(this, round, slot.Index)
+			: new PlayerLoaded(this, round, slot.Index));
+		return RoomResult.Ok;
+	}
+
+	/// <summary>Reports that the caller wants to skip the intro.</summary>
+	/// <param name="by">The caller's game client.</param>
+	/// <returns>Ok or NotPlaying; asking again returns Ok and does nothing.</returns>
+	/// <remarks>The caller holds the room's scope. The last player to ask emits <see cref="AllPlayersSkipped" /> instead of <see cref="PlayerSkipped" />.</remarks>
+	public RoomResult Skip(BanchoConnection by)
+	{
+		if (CurrentRound is not { } round || Slots.Find(by) is not { Status: RoomSlotStatus.Playing } slot) return RoomResult.NotPlaying;
+		if (slot.IntroSkipped is true) return RoomResult.Ok;
+
+		slot.SetIntroSkipped(true);
+		Emit(Slots.Where(s => s.Status is RoomSlotStatus.Playing).All(s => s.IntroSkipped is true)
+			? new AllPlayersSkipped(this, round, slot.Index)
+			: new PlayerSkipped(this, round, slot.Index));
+		return RoomResult.Ok;
+	}
+
+	/// <summary>Reports that the caller failed; the player keeps playing until completion.</summary>
+	/// <param name="by">The caller's game client.</param>
+	/// <returns>Ok or NotPlaying.</returns>
+	/// <remarks>The caller holds the room's scope.</remarks>
+	public RoomResult Fail(BanchoConnection by)
+	{
+		if (CurrentRound is not { } round || Slots.Find(by) is not { Status: RoomSlotStatus.Playing } slot) return RoomResult.NotPlaying;
+
+		Emit(new PlayerFailed(this, round, slot.Index));
+		return RoomResult.Ok;
+	}
+
+	/// <summary>Reports that the caller completed the beatmap.</summary>
+	/// <param name="by">The caller's game client.</param>
+	/// <returns>Ok or NotPlaying.</returns>
+	/// <remarks>The caller holds the room's scope. When the last player completes, the round ends and <see cref="RoundCompleted" /> is emitted instead of <see cref="PlayerCompleted" />.</remarks>
+	public RoomResult Complete(BanchoConnection by)
+	{
+		if (CurrentRound is not { } round || Slots.Find(by) is not { Status: RoomSlotStatus.Playing } slot) return RoomResult.NotPlaying;
+
+		slot.SetStatus(RoomSlotStatus.Complete);
+		if (Slots.Any(s => s.Status is RoomSlotStatus.Playing))
+			Emit(new PlayerCompleted(this, round, slot.Index));
+		else
+			EndRound(round, slot.Index);
+		return RoomResult.Ok;
+	}
+
+	/// <summary>Starts a countdown, replacing any running one.</summary>
+	/// <param name="by">A manager.</param>
+	/// <param name="length">The countdown length, more than zero and at most <see cref="MaxCountdownLength" />.</param>
+	/// <param name="startsRound">Whether the round starts when the countdown ends.</param>
+	/// <returns>Ok, NotAuthorized, OutOfRange or InProgress.</returns>
+	/// <remarks>The caller holds the room's scope. The countdown is announced at each of <see cref="CountdownMarks" /> shorter than its length.</remarks>
+	public RoomResult StartCountdown(Connection by, TimeSpan length, bool startsRound)
+	{
+		if (!IsManager(by.User)) return RoomResult.NotAuthorized;
+		if (length <= TimeSpan.Zero || length > MaxCountdownLength) return RoomResult.OutOfRange;
+		if (startsRound && InProgress) return RoomResult.InProgress;
+
+		StopCountdown();
+		Countdown? countdown = null;
+		var milestones = CountdownMarks
+			.Where(mark => mark < length)
+			.Select(mark => new Countdown.Milestone(mark, _ =>
+			{
+				Emit(new CountdownTick(this, mark));
+				return Task.CompletedTask;
+			}))
+			.Append(new Countdown.Milestone(TimeSpan.Zero, _ => ElapseAsync(countdown!, startsRound)));
+		countdown = new Countdown(length, milestones, _time);
+		_countdown = countdown;
+		countdown.Start();
+		Emit(new CountdownStarted(this, length, startsRound, countdown.EndsAt!.Value));
+		return RoomResult.Ok;
+	}
+
+	/// <summary>Cancels the running countdown.</summary>
+	/// <param name="by">A manager.</param>
+	/// <returns>Ok, NotAuthorized or NoCountdown.</returns>
+	/// <remarks>The caller holds the room's scope.</remarks>
+	public RoomResult CancelCountdown(Connection by)
+	{
+		if (!IsManager(by.User)) return RoomResult.NotAuthorized;
+		if (_countdown is null) return RoomResult.NoCountdown;
+
+		StopCountdown();
+		Emit(new CountdownCancelled(this));
+		return RoomResult.Ok;
 	}
 
 	/// <summary>Closes the room, ending the match and vacating every slot.</summary>
@@ -641,7 +747,8 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	internal IReadOnlyList<BanchoConnection> Close()
 	{
 		if (_closed) return [];
-		if (InProgress) Abort();
+		StopCountdown();
+		if (InProgress) AbortRound();
 
 		var evicted = Slots.Where(s => s.Player is not null).Select(s => s.Player!).ToList();
 		foreach (var player in evicted) Slots.Vacate(player);
@@ -747,7 +854,74 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 
 	private void ReportIfEmpty()
 	{
+		EndRoundIfNobodyPlays();
 		if (!Slots.Any(slot => slot.Player is not null)) _lobby.RoomEmptied(this);
+	}
+
+	private void EndRoundIfNobodyPlays()
+	{
+		if (CurrentRound is { } round && !Slots.Any(s => s.Status is RoomSlotStatus.Playing)) EndRound(round, null);
+	}
+
+	private void StartRound()
+	{
+		var round = new Round
+		{
+			Number = (LastRound?.Number ?? 0) + 1,
+			Match = Match,
+			BeatmapHash = Beatmap!.Hash,
+			Settings = Settings.Clone(),
+			StartedAt = _time.GetUtcNow(),
+			EndedAt = null
+		};
+		LastRound = round;
+
+		var players = new List<BanchoConnection>();
+		foreach (var slot in Slots.Where(s => s.Player is not null && s.Status is not RoomSlotStatus.NoMap))
+		{
+			slot.SetStatus(RoomSlotStatus.Playing);
+			players.Add(slot.Player!);
+		}
+
+		Emit(new RoundStarted(this, round, players));
+	}
+
+	private void AbortRound()
+	{
+		var round = CurrentRound!;
+		round.EndedAt = _time.GetUtcNow();
+		round.Aborted = true;
+		ResetPlayers();
+		Emit(new RoundAborted(this, round));
+	}
+
+	private void EndRound(Round round, int? slot)
+	{
+		round.EndedAt = _time.GetUtcNow();
+		ResetPlayers();
+		Emit(new RoundCompleted(this, round, slot));
+	}
+
+	private void ResetPlayers()
+	{
+		foreach (var slot in Slots.Where(s => s.Status is RoomSlotStatus.Playing or RoomSlotStatus.Complete))
+			slot.SetStatus(RoomSlotStatus.NotReady);
+	}
+
+	private void StopCountdown()
+	{
+		_countdown?.Dispose();
+		_countdown = null;
+	}
+
+	private async Task ElapseAsync(Countdown countdown, bool startsRound)
+	{
+		await using var scope = await EnterAsync();
+		if (scope is null || !ReferenceEquals(_countdown, countdown)) return;
+
+		StopCountdown();
+		Emit(new CountdownElapsed(this, startsRound));
+		if (startsRound && !InProgress && Beatmap is not null) StartRound();
 	}
 
 	private sealed class Scope(SemaphoreSlim held) : IAsyncDisposable

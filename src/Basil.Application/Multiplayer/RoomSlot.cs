@@ -11,6 +11,7 @@ public sealed class RoomSlot
 	private GameTeam? _team;
 	private GameMods? _mods;
 	private bool? _introSkipped;
+	private bool? _loaded;
 	private bool _locked;
 
 	/// <summary>The slot collection this slot belongs to.</summary>
@@ -30,6 +31,9 @@ public sealed class RoomSlot
 
 	/// <summary>Gets whether the occupant has skipped the intro of the current beatmap.</summary>
 	public bool? IntroSkipped => _introSkipped;
+
+	/// <summary>Gets whether the player has loaded the beatmap during the current round, or <see langword="null" /> when not playing.</summary>
+	public bool? Loaded => _loaded;
 
 	/// <summary>Gets the team assigned to this slot.</summary>
 	public GameTeam? Team => _team;
@@ -64,6 +68,7 @@ public sealed class RoomSlot
 		_team = null;
 		_mods = null;
 		_introSkipped = null;
+		_loaded = null;
 	}
 
 	/// <summary>Sets the slot's own mods without validating the room's freemod setting or playing state.</summary>
@@ -87,6 +92,7 @@ public sealed class RoomSlot
 		if (_status == status) return;
 		_status = status;
 		_introSkipped = status is RoomSlotStatus.Playing ? false : null;
+		_loaded = status is RoomSlotStatus.Playing ? false : null;
 	}
 
 	/// <summary>Locks or unlocks the slot without emitting a <see cref="SlotLockChanged" /> event.</summary>
@@ -101,6 +107,13 @@ public sealed class RoomSlot
 	internal void SetIntroSkipped(bool? skipped)
 	{
 		_introSkipped = skipped;
+	}
+
+	/// <summary>Sets whether the occupant has loaded the beatmap during the current round.</summary>
+	/// <param name="loaded">The load state to assign.</param>
+	internal void SetLoaded(bool? loaded)
+	{
+		_loaded = loaded;
 	}
 
 	internal void MoveTo(RoomSlot target)
@@ -118,12 +131,14 @@ public sealed class RoomSlot
 		target._team = _team;
 		target._mods = _mods;
 		target._introSkipped = _introSkipped;
+		target._loaded = _loaded;
 
 		Player = null;
 		_status = null;
 		_team = null;
 		_mods = null;
 		_introSkipped = null;
+		_loaded = null;
 	}
 }
 
