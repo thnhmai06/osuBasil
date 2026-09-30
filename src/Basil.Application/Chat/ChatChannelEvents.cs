@@ -35,3 +35,23 @@ public abstract record MessageEvent(ChatChannelSession Channel) : ChatChannelEve
 /// <param name="Truncated">Whether the message was cut to <see cref="ChatChannelSession.MaxMessageLength" /> characters.</param>
 public sealed record MessagePosted(ChatChannelSession Channel, ChatMessage Message, bool Truncated)
 	: MessageEvent(Channel);
+
+/// <summary>A connection started spectating the channel's host.</summary>
+/// <param name="Channel">The channel of the player being spectated.</param>
+/// <param name="Spectator">The connection that started spectating.</param>
+/// <param name="HostJoined">Whether the host joined the channel because this is its first spectator.</param>
+public sealed record SpectatorJoined(ChatChannelSession Channel, Connection Spectator, bool HostJoined)
+	: ChatChannelMembershipEvent(Channel);
+
+/// <summary>A connection stopped spectating the channel's host.</summary>
+/// <param name="Channel">The channel of the player being spectated.</param>
+/// <param name="Spectator">The connection that stopped spectating.</param>
+/// <param name="HostLeft">Whether the host left the channel because this was its last spectator.</param>
+public sealed record SpectatorLeft(ChatChannelSession Channel, Connection Spectator, bool HostLeft)
+	: ChatChannelMembershipEvent(Channel);
+
+/// <summary>A spectator reported that it cannot spectate the host, usually because it lacks the beatmap.</summary>
+/// <param name="Channel">The channel of the player being spectated.</param>
+/// <param name="Spectator">The spectator that cannot spectate.</param>
+public sealed record SpectatorCantSpectate(ChatChannelSession Channel, Connection Spectator)
+	: ChatChannelEvent(Channel);

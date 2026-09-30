@@ -147,5 +147,16 @@ public abstract class ChatChannelSession : IEventPublisher<ChatChannelEvent>
 		}
 	}
 
+	/// <summary>Gets the lock that guards membership changes.</summary>
+	private protected Lock Sync => _sync;
+
+	/// <summary>Adds a member without emitting an event; the caller holds <see cref="Sync" /> and reports the change itself.</summary>
+	/// <returns><see langword="true" /> if the connection was not already a member.</returns>
+	private protected bool AddMember(Connection connection) => _members.Add(connection);
+
+	/// <summary>Removes a member without emitting an event; the caller holds <see cref="Sync" /> and reports the change itself.</summary>
+	/// <returns><see langword="true" /> if the connection was a member.</returns>
+	private protected bool RemoveMember(Connection connection) => _members.Remove(connection);
+
 	private protected void Emit(ChatChannelEvent @event) => _events.Writer.TryWrite(@event);
 }

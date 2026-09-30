@@ -27,6 +27,18 @@ public sealed class Presence(TimeProvider time) : IEventPublisher<PresenceEvent>
 	/// <returns>The user's session, or <see langword="null" /> when the user is offline.</returns>
 	public UserSession? Find(User user) => _sessions.GetValueOrDefault(user);
 
+	/// <summary>Finds the spectator channel a connection is spectating.</summary>
+	/// <param name="connection">The connection to look up.</param>
+	/// <returns>The channel of the player being spectated, or <see langword="null" /> when the connection is not spectating.</returns>
+	public SpectatorChatChannelSession? Watching(Connection connection)
+	{
+		// ponytail: scans every online osu! client; add an index if the online count grows large.
+		return _sessions.Values
+			.Select(session => session.Bancho?.SpectatorChannel)
+			.FirstOrDefault(channel => channel is not null && !ReferenceEquals(channel.Host, connection) &&
+			                           channel.Members.Contains(connection));
+	}
+
 	/// <summary>Opens an authenticated connection, bringing its user online if this is their first.</summary>
 	/// <param name="connection">The new connection.</param>
 	/// <returns><see langword="null" /> on success; otherwise, why the connection was refused.</returns>
@@ -116,6 +128,7 @@ public sealed class Presence(TimeProvider time) : IEventPublisher<PresenceEvent>
 		connection.IsOpen = false;
 		connection.Session.Remove(connection);
 		connection.Session.PmChannel.Part(connection);
+		Watching(connection)?.StopSpectating(connection);
 		if (connection is BanchoConnection bancho)
 			bancho.SpectatorChannel.Close();
 
