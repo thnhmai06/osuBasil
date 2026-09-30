@@ -1,7 +1,6 @@
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Application.Chat;
-using Basil.Application.Common.Persistence;
 
 namespace Basil.Application.Multiplayer;
 
@@ -9,8 +8,7 @@ namespace Basil.Application.Multiplayer;
 public sealed class Lobby(
 	IRoomRegistry rooms,
 	IChannelRegistry channels,
-	IRepository<int, Match> matchRepository,
-	ICreatable<MatchData, Match> newMatches)
+	IMatchRepository matches)
 {
 	/// <summary>The largest room id; the client protocol carries room ids as unsigned 16-bit values.</summary>
 	private const int MaxRoomId = ushort.MaxValue;
@@ -29,7 +27,7 @@ public sealed class Lobby(
 	public async Task<Room> CreateRoomAsync(User? creator, string name, string password,
 		MatchSettings? settings = null, CancellationToken cancellationToken = default)
 	{
-		var match = await newMatches.AddAsync(new MatchData
+		var match = await matches.AddAsync(new MatchData
 		{
 			Name = name,
 			StartedAt = DateTimeOffset.UtcNow,
@@ -62,7 +60,6 @@ public sealed class Lobby(
 		{
 			room = scope.Room;
 			room.Close();
-			await matchRepository.SaveAsync(room.Match, cancellationToken);
 			rooms.Remove(roomId);
 		}
 

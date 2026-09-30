@@ -2,9 +2,7 @@ using System.Net;
 using Basil.Domain.Auth;
 using Basil.Domain.Chat;
 using Basil.Domain.Client;
-using Basil.Domain.Users;
 using Basil.Application.Chat;
-using Basil.Application.Common.Persistence;
 using Basil.Application.Multiplayer;
 using Basil.Application.Users;
 
@@ -15,7 +13,7 @@ namespace Basil.Application.Sessions;
 ///     everything down again on disconnect.
 /// </summary>
 public sealed class Gateway(
-	IRepository<string, User> usersByName,
+	IUserRepository users,
 	ICredentialRepository credentials,
 	ISessionRegistry<GameSession> gameRegistry,
 	ISessionRegistry<IrcSession> ircRegistry,
@@ -37,7 +35,7 @@ public sealed class Gateway(
 		IPAddress ip, ClientVersion clientVersion, ClientFingerprint fingerprint, int utcOffset,
 		CancellationToken cancellationToken = default)
 	{
-		var user = await usersByName.GetAsync(UserSafeName.Of(attempt.Username), cancellationToken);
+		var user = await users.FindByNameAsync(attempt.Username, cancellationToken);
 		if (user is null) return LoginResult.Fail(LoginFailure.UnknownUser);
 		if (user.Value.DeletedAt is not null) return LoginResult.Fail(LoginFailure.AccountDeleted);
 

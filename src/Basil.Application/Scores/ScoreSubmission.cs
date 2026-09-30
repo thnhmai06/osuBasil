@@ -1,14 +1,13 @@
 using Basil.Domain.Scores;
 using Basil.Domain.Utilities;
-using Basil.Application.Common.Persistence;
 using Basil.Application.Sessions;
 
 namespace Basil.Application.Scores;
 
 /// <summary>Validates and stores a submitted score, its replay, and the submitter's updated statistics.</summary>
 public sealed class ScoreSubmission(
-	ICreatable<ScoreData, Score> scores,
-	IStorage<int> replays,
+	IScoreRepository scores,
+	IReplayStorage replays,
 	IUserStatsRepository stats)
 {
 	/// <summary>Validates and records a score submission.</summary>
@@ -52,12 +51,12 @@ public sealed class ScoreSubmission(
 		if (replay is not null)
 		{
 			await using var content = new MemoryStream(replay, false);
-			await replays.SaveAsync(score.Id, content, cancellationToken);
+			await replays.SaveAsync(score, content, cancellationToken);
 		}
 
 		if (submission.Score.IsPassed)
 		{
-			var current = await stats.LoadAsync(session.User.Id, submission.Score.Mode, cancellationToken);
+			var current = await stats.LoadAsync(session.User, submission.Score.Mode, cancellationToken);
 			// Every beatmap reports as Approved (see Beatmapset.Status), so every passed score counts
 			// toward ranked score too.
 			current.TotalScore += submission.Score.TotalScore;
