@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Basil.Application.Beatmaps;
+using Basil.Application.Chat;
 using Basil.Application.Multiplayer;
 using Basil.Application.Scores;
 using Basil.Application.Sessions;
@@ -19,6 +20,7 @@ public static class DependencyInjection
 	{
 		services.AddSingleton<Gateway>();
 		services.AddSingleton<Presence>();
+		services.AddSingleton<ChatChannels>();
 		services.AddSingleton<Lobby>();
 		services.AddSingleton<RoomCountdowns>();
 		services.AddSingleton<ScoreSubmission>();

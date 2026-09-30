@@ -67,6 +67,8 @@ public sealed class Presence(TimeProvider time) : IEventPublisher<PresenceEvent>
 			_sessions[connection.User] = session;
 			connection.Session = session;
 			session.Add(connection);
+			if (connection.Type is not ConnectionType.Tourney)
+				session.PmChannel.Join(connection);
 			connection.IsOpen = true;
 
 			_events.Writer.TryWrite(new ConnectionOpened(connection, cameOnline));
@@ -113,10 +115,16 @@ public sealed class Presence(TimeProvider time) : IEventPublisher<PresenceEvent>
 
 		connection.IsOpen = false;
 		connection.Session.Remove(connection);
+		connection.Session.PmChannel.Part(connection);
+		if (connection is BanchoConnection bancho)
+			bancho.SpectatorChannel.Close();
 
 		var wentOffline = !connection.Session.Connections.Any();
 		if (wentOffline)
+		{
 			_sessions.TryRemove(new KeyValuePair<User, UserSession>(connection.User, connection.Session));
+			connection.Session.PmChannel.Close();
+		}
 
 		_events.Writer.TryWrite(new ConnectionClosed(connection, reason, wentOffline));
 	}

@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using Basil.Domain.Users;
 using Basil.Domain.Utilities;
+using Basil.Application.Chat;
 
 namespace Basil.Application.Sessions;
 
@@ -13,10 +14,14 @@ public sealed class UserSession
 	internal UserSession(User user)
 	{
 		User = user;
+		PmChannel = new PmChatChannelSession(this);
 	}
 
 	/// <summary>Gets the user who is online.</summary>
 	public User User { get; }
+
+	/// <summary>Gets the channel that receives the user's private messages.</summary>
+	public PmChatChannelSession PmChannel { get; }
 
 	/// <summary>Gets or sets the away message shown to other users, or <see langword="null" /> when not away.</summary>
 	public string? AwayMessage { get; set; }

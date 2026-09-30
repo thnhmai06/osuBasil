@@ -23,19 +23,32 @@ public abstract class Connection(Login login)
 }
 
 /// <summary>A connection from an osu! game client.</summary>
-public sealed class BanchoConnection(Login login, int utcOffset) : Connection(login)
+public sealed class BanchoConnection : Connection
 {
+	/// <summary>Initializes a game client connection.</summary>
+	/// <param name="login">The login that opened the connection.</param>
+	/// <param name="utcOffset">The client's UTC offset reported at login.</param>
+	public BanchoConnection(Login login, int utcOffset) : base(login)
+	{
+		LastActiveAt = login.Timestamp;
+		UtcOffset = utcOffset;
+		SpectatorChannel = new SpectatorChatChannelSession(this);
+	}
+
 	/// <inheritdoc />
 	public override ConnectionType Type => ConnectionType.Bancho;
 
 	/// <summary>Gets or sets the time of the last packet received from the client.</summary>
-	public DateTimeOffset LastActiveAt { get; set; } = login.Timestamp;
+	public DateTimeOffset LastActiveAt { get; set; }
 
 	/// <summary>Gets the client's UTC offset reported at login.</summary>
-	public int UtcOffset { get; } = utcOffset;
+	public int UtcOffset { get; }
 
 	/// <summary>Gets the presence status the client last reported.</summary>
 	public PlayerStatus Status { get; internal set; } = PlayerStatus.Idle;
+
+	/// <summary>Gets the chat channel shared with the users spectating this client.</summary>
+	public SpectatorChatChannelSession SpectatorChannel { get; }
 }
 
 /// <summary>A connection from an osu!tourney spectator client.</summary>

@@ -1,6 +1,5 @@
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
-using Basil.Application.Chat;
 using Basil.Application.Sessions;
 
 namespace Basil.Application.Multiplayer;
@@ -8,7 +7,6 @@ namespace Basil.Application.Multiplayer;
 /// <summary>Creates and closes multiplayer rooms.</summary>
 public sealed class Lobby(
 	IRoomRegistry rooms,
-	IChannelRegistry channels,
 	IMatchRepository matches)
 {
 	/// <summary>The largest room id; the client protocol carries room ids as unsigned 16-bit values.</summary>
@@ -39,12 +37,10 @@ public sealed class Lobby(
 		Room room;
 		do
 		{
-			room = new Room { Id = FreeRoomId(), Match = match, Settings = settings ?? new MatchSettings() };
+			room = new Room(FreeRoomId(), match, settings ?? new MatchSettings());
 			if (!string.IsNullOrEmpty(password))
 				room.Password = password;
 		} while (!rooms.TryAdd(room));
-
-		channels.TryAdd(room.Channel);
 
 		return room;
 	}
@@ -63,11 +59,6 @@ public sealed class Lobby(
 			room.Close();
 			rooms.Remove(roomId);
 		}
-
-		foreach (var member in room.Channel.Members.ToArray())
-			room.Channel.Part(member);
-
-		channels.Remove(room.Channel.Name);
 	}
 
 	/// <summary>Finds the room a player is seated in.</summary>

@@ -4,7 +4,6 @@ using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Domain.Utilities;
-using Basil.Application.Chat;
 using Basil.Application.Common.Events;
 using Basil.Application.Multiplayer.Events;
 using Basil.Application.Sessions;
@@ -24,24 +23,16 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	private BanchoConnection? _host;
 
 	/// <summary>The match this room is a live projection of.</summary>
-	public required Match Match { get; init; }
+	public Match Match { get; }
 
 	/// <summary>The match settings this room mutates; only the forwarding properties are public.</summary>
-	public MatchSettings Settings { private get; init; } = new();
+	private MatchSettings Settings { get; }
 
 	/// <summary>Gets the runtime identifier assigned to this room.</summary>
-	public required int Id
-	{
-		get;
-		init
-		{
-			ArgumentOutOfRangeException.ThrowIfNegative(value);
-			field = value;
-		}
-	}
+	public int Id { get; }
 
 	/// <summary>Gets the room's chat channel.</summary>
-	public ChannelSession Channel { get; }
+	public RoomChatChannelSession Channel { get; }
 
 	/// <summary>The match's 16 slots, in order.</summary>
 	public RoomSlots Slots { get; }
@@ -250,10 +241,18 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	/// </summary>
 	public string UrlEmbed => $"({Match.Value.Name})[{Url}]";
 
-	public Room()
+	/// <summary>Opens a room for a match.</summary>
+	/// <param name="id">The room id, carried by the client protocol.</param>
+	/// <param name="match">The match the room plays.</param>
+	/// <param name="settings">The room's initial settings.</param>
+	public Room(int id, Match match, MatchSettings settings)
 	{
-		Channel = new ChannelSession { Channel = new RoomChannel(this) };
+		ArgumentOutOfRangeException.ThrowIfNegative(id);
+		Id = id;
+		Match = match;
+		Settings = settings;
 		Slots = new RoomSlots(this);
+		Channel = new RoomChatChannelSession(this);
 	}
 
 	/// <summary>Gets a value that indicates whether <paramref name="player" /> may issue <c>!mp</c> commands on this match.</summary>
@@ -416,6 +415,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 
 		Match.Value.EndedAt = DateTimeOffset.UtcNow;
 		Emit(new Events.RoomClosed(this, evicted));
+		Channel.Close();
 	}
 
 	/// <summary>Writes an event to the room's event channel.</summary>
