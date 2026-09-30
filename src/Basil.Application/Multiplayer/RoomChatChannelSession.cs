@@ -1,5 +1,4 @@
 using Basil.Domain.Chat;
-using Basil.Domain.Users;
 using Basil.Application.Chat;
 using Basil.Application.Sessions;
 
@@ -12,10 +11,12 @@ public sealed class RoomChatChannelSession(Room room) : ChatChannelSession(new R
 	public Room Room => room;
 
 	/// <inheritdoc />
-	/// <remarks>Seated players, the creator and the referees read the channel.</remarks>
+	/// <remarks>Seated players, observers, the creator, the referees and the server's bot read the channel.</remarks>
 	public override bool CanRead(Connection connection) =>
+		connection.Type is ConnectionType.Bot ||
 		(connection is BanchoConnection player && room.Slots.Find(player) is not null) ||
-		room.IsReferee(connection.User);
+		(connection is TourneyConnection observer && room.Observers.Contains(observer)) ||
+		room.IsManager(connection.User);
 
 	/// <inheritdoc />
 	public override bool CanWrite(Connection connection) => CanRead(connection);

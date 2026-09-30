@@ -30,8 +30,7 @@ public sealed class RoomSlot
 			BanchoConnection? evicted = null;
 			if (value && Player is { } player)
 			{
-				if (player.Equals(Slots.Room.Host))
-					Slots.Room.SetHostSilently(null);
+				Slots.Room.PassHostFrom(player);
 				evicted = player;
 				Clear();
 			}

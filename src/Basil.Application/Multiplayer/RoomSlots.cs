@@ -108,8 +108,7 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		var slot = Find(player);
 		if (slot is null) return null;
 
-		if (player.Equals(Room.Host))
-			Room.SetHostSilently(null);
+		Room.PassHostFrom(player);
 
 		slot.Clear();
 		return slot;

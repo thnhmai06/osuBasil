@@ -1,5 +1,6 @@
 using System.Threading.Channels;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Client;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
@@ -16,11 +17,17 @@ namespace Basil.Application.Multiplayer;
 /// </summary>
 public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 {
+	/// <summary>The most referees a room can have.</summary>
+	public const int MaxReferees = 8;
+
+	private readonly Lobby _lobby;
 	private readonly ConcurrentSet<User> _banned = [];
-	private readonly ConcurrentSet<User> _invited = [];
 	private readonly ConcurrentSet<User> _referees = [];
+	private readonly ConcurrentSet<TourneyConnection> _observers = [];
 	private readonly Channel<RoomEvent> _events = System.Threading.Channels.Channel.CreateUnbounded<RoomEvent>();
+	private readonly SemaphoreSlim _lock = new(1, 1);
 	private BanchoConnection? _host;
+	private bool _closed;
 
 	/// <summary>The match this room is a live projection of.</summary>
 	public Match Match { get; }
@@ -30,6 +37,9 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 
 	/// <summary>Gets the runtime identifier assigned to this room.</summary>
 	public int Id { get; }
+
+	/// <summary>Gets a value that indicates whether the room is a tournament room, which stays open for a while when empty.</summary>
+	public bool IsTournament { get; }
 
 	/// <summary>Gets the room's chat channel.</summary>
 	public RoomChatChannelSession Channel { get; }
@@ -199,20 +209,9 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		}
 	}
 
-	/// <summary>Gets or sets the connection currently hosting the room.</summary>
+	/// <summary>Gets the connection currently hosting the room.</summary>
 	/// <remarks>The host must be seated in this room.</remarks>
-	public BanchoConnection? Host
-	{
-		get => _host;
-		set
-		{
-			if (Equals(_host, value)) return;
-			if (value is not null && Slots.Find(value) is null)
-				throw new InvalidOperationException("The player does not have a slot in this room.");
-			_host = value;
-			Emit(new HostChanged(this, value));
-		}
-	}
+	public BanchoConnection? Host => _host;
 
 	/// <summary>Gets the most recently started round, or <see langword="null" /> before the first round.</summary>
 	/// <remarks>Stays set after the round ends, until the next round starts.</remarks>
@@ -230,8 +229,8 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	/// <summary>Gets the users banned from this room.</summary>
 	public IReadOnlySet<User> Banned => _banned;
 
-	/// <summary>Gets the users invited to this private room.</summary>
-	public IReadOnlySet<User> Invited => _invited;
+	/// <summary>Gets the osu!tourney clients observing the room.</summary>
+	public IReadOnlySet<TourneyConnection> Observers => _observers;
 
 	/// <summary>Gets the join URL of this room, in <c>osump://{id}/{password}</c> form.</summary>
 	public string Url => $"osump://{Id}/{Password}";
@@ -242,124 +241,257 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	public string UrlEmbed => $"({Match.Value.Name})[{Url}]";
 
 	/// <summary>Opens a room for a match.</summary>
+	/// <param name="lobby">The lobby that owns this room.</param>
 	/// <param name="id">The room id, carried by the client protocol.</param>
 	/// <param name="match">The match the room plays.</param>
 	/// <param name="settings">The room's initial settings.</param>
-	public Room(int id, Match match, MatchSettings settings)
+	/// <param name="isTournament">Whether the room is a tournament room.</param>
+	internal Room(Lobby lobby, int id, Match match, MatchSettings settings, bool isTournament)
 	{
 		ArgumentOutOfRangeException.ThrowIfNegative(id);
+		_lobby = lobby;
 		Id = id;
 		Match = match;
 		Settings = settings;
+		IsTournament = isTournament;
 		Slots = new RoomSlots(this);
 		Channel = new RoomChatChannelSession(this);
 	}
 
-	/// <summary>Gets a value that indicates whether <paramref name="player" /> may issue <c>!mp</c> commands on this match.</summary>
-	/// <param name="player">The player to check.</param>
+	/// <summary>Enters the room's exclusive scope; every operation on the room runs inside it.</summary>
+	/// <param name="cancellationToken">A token that cancels the wait.</param>
+	/// <returns>The scope, to dispose when done; or <see langword="null" /> when the room is closed.</returns>
+	public async Task<IAsyncDisposable?> EnterAsync(CancellationToken cancellationToken = default)
+	{
+		await _lock.WaitAsync(cancellationToken);
+		if (!_closed) return new Scope(_lock);
+		_lock.Release();
+		return null;
+	}
+
+	/// <summary>Gets a value that indicates whether a user is the creator or a referee of the room.</summary>
+	/// <param name="user">The user to check.</param>
 	/// <returns>
-	///     <see langword="true" /> if the player is a referee or the creator of this match;
+	///     <see langword="true" /> if the user is the creator or a referee of this match;
 	///     otherwise, <see langword="false" />.
 	/// </returns>
-	public bool IsReferee(User player)
+	public bool IsManager(User user)
 	{
-		return _referees.Contains(player) || (Creator is not null && Creator.Equals(player));
+		return _referees.Contains(user) || (Creator is not null && Creator.Equals(user));
 	}
 
-	/// <summary>
-	///     Checks whether a supplied password satisfies the room's password protection.
-	/// </summary>
-	/// <param name="password">The password to check.</param>
-	/// <returns>
-	///     <see langword="true" /> if the room has no password, or <paramref name="password" />
-	///     matches it; otherwise, <see langword="false" />.
-	/// </returns>
-	public bool VerifyPassword(string password)
+	/// <summary>Seats a player in the first open slot.</summary>
+	/// <param name="by">The joining player's game client.</param>
+	/// <param name="password">The password the player supplied.</param>
+	/// <returns>Ok, AlreadySeated, Banned, Silenced, NotAuthorized, InAnotherRoom, IsObserver, WrongPassword or Full.</returns>
+	/// <remarks>The caller holds the room's scope. If the same user is seated through a connection that has closed, that connection leaves first. Moderators need no password. The player also joins the room's chat channel and stops watching the lobby.</remarks>
+	public RoomResult Join(BanchoConnection by, string password)
 	{
-		return string.IsNullOrEmpty(Password) || Password == password;
+		if (Slots.Find(by.User) is { Player: { } seated })
+		{
+			if (ReferenceEquals(seated, by) || seated.IsOpen) return RoomResult.AlreadySeated;
+
+			// The old connection leaves as an ordinary leave, but the room is not reported empty: the user is coming back.
+			var vacated = Slots.Vacate(seated)!;
+			Emit(new PlayerLeft(this, seated, vacated, _host));
+			LeaveChannel(seated);
+		}
+
+		if (_banned.Contains(by.User)) return RoomResult.Banned;
+		if (by.User.Value.SilenceEndsAt > DateTimeOffset.UtcNow) return RoomResult.Silenced;
+		if (!by.User.Value.Privilege.Has(ClientPrivileges.Player)) return RoomResult.NotAuthorized;
+		if (_lobby.RoomOf(by) is { } other && !ReferenceEquals(other, this)) return RoomResult.InAnotherRoom;
+		if (_observers.Any(observer => observer.User.Equals(by.User))) return RoomResult.IsObserver;
+		if (!string.IsNullOrEmpty(Password) && Password != password &&
+		    !by.User.Value.Privilege.Has(ClientPrivileges.Moderator))
+			return RoomResult.WrongPassword;
+		if (Slots.Seat(by) is null) return RoomResult.Full;
+
+		Channel.Join(by);
+		_lobby.Unwatch(by);
+		_lobby.RoomOccupied(this);
+		return RoomResult.Ok;
 	}
 
-	/// <summary>Removes a seated player from the room.</summary>
-	/// <param name="player">The player to kick.</param>
-	/// <exception cref="InvalidOperationException"><paramref name="player" /> is a referee.</exception>
-	public void Kick(BanchoConnection player)
+	/// <summary>Removes a player from the room.</summary>
+	/// <param name="by">The leaving player's game client.</param>
+	/// <returns>Ok or NotInRoom; leaving again returns NotInRoom and does nothing.</returns>
+	/// <remarks>The caller holds the room's scope. If the host leaves, the next seated player by slot order becomes host. A room left empty is closed by the lobby.</remarks>
+	public RoomResult Leave(BanchoConnection by)
 	{
-		if (IsReferee(player.User))
-			throw new InvalidOperationException("Cannot kick a referee.");
+		if (Slots.Vacate(by) is not { } slot) return RoomResult.NotInRoom;
 
-		if (Slots.Vacate(player) is { } slot)
-			Emit(new PlayerKicked(this, player, slot));
+		Emit(new PlayerLeft(this, by, slot, _host));
+		LeaveChannel(by);
+		ReportIfEmpty();
+		return RoomResult.Ok;
 	}
 
-	/// <summary>Bans a player from the match, removing them from the room if they are currently in it.</summary>
-	/// <param name="player">The player to ban.</param>
-	/// <exception cref="InvalidOperationException"><paramref name="player" /> is a referee.</exception>
-	public void Ban(User player)
+	/// <summary>Removes another player from the room.</summary>
+	/// <param name="by">The host or a manager.</param>
+	/// <param name="player">The user to remove.</param>
+	/// <returns>Ok, NotAuthorized, IsManager or NotInRoom.</returns>
+	/// <remarks>The caller holds the room's scope. The creator and referees cannot be kicked.</remarks>
+	public RoomResult Kick(Connection by, User player)
 	{
-		if (IsReferee(player))
-			throw new InvalidOperationException("Cannot ban a referee.");
+		if (!IsHostOrManager(by)) return RoomResult.NotAuthorized;
+		if (IsManager(player)) return RoomResult.IsManager;
+		if (Slots.Find(player) is not { Player: { } seated }) return RoomResult.NotInRoom;
 
-		if (!_banned.Add(player)) return;
+		var slot = Slots.Vacate(seated)!;
+		Emit(new PlayerKicked(this, seated, slot, _host));
+		LeaveChannel(seated);
+		ReportIfEmpty();
+		return RoomResult.Ok;
+	}
+
+	/// <summary>Bans a user from the room, removing them if seated.</summary>
+	/// <param name="by">A manager.</param>
+	/// <param name="player">The user to ban.</param>
+	/// <returns>Ok, NotAuthorized or IsManager; banning a banned user again returns Ok and does nothing.</returns>
+	/// <remarks>The caller holds the room's scope.</remarks>
+	public RoomResult Ban(Connection by, User player)
+	{
+		if (!IsManager(by.User)) return RoomResult.NotAuthorized;
+		if (IsManager(player)) return RoomResult.IsManager;
+		if (!_banned.Add(player)) return RoomResult.Ok;
 
 		RoomSlot? vacated = null;
 		BanchoConnection? evicted = null;
-		if (Slots.Find(player) is { Player: { } connection } slot)
+		if (Slots.Find(player) is { Player: { } seated })
 		{
-			vacated = slot;
-			evicted = connection;
-			Slots.Vacate(connection);
+			evicted = seated;
+			vacated = Slots.Vacate(seated);
 		}
 
-		Emit(new PlayerBanned(this, player, vacated, evicted));
+		Emit(new PlayerBanned(this, player, vacated, evicted, _host));
+		if (evicted is not null)
+		{
+			LeaveChannel(evicted);
+			ReportIfEmpty();
+		}
+
+		return RoomResult.Ok;
 	}
 
-	/// <summary>Lifts a player's ban from the match, allowing them to join again.</summary>
-	/// <param name="player">The player to unban.</param>
-	public void Unban(User player)
+	/// <summary>Lifts a user's ban.</summary>
+	/// <param name="by">A manager.</param>
+	/// <param name="player">The banned user.</param>
+	/// <returns>Ok, NotAuthorized or NotBanned.</returns>
+	/// <remarks>The caller holds the room's scope.</remarks>
+	public RoomResult Unban(Connection by, User player)
 	{
-		if (!_banned.Remove(player)) return;
+		if (!IsManager(by.User)) return RoomResult.NotAuthorized;
+		if (!_banned.Remove(player)) return RoomResult.NotBanned;
+
 		Emit(new PlayerUnbanned(this, player));
+		return RoomResult.Ok;
 	}
 
-	/// <summary>Invites a player to the room.</summary>
-	/// <param name="player">The player to invite.</param>
-	public void Invite(User player)
+	/// <summary>Invites an online user to the room.</summary>
+	/// <param name="by">A seated player or a manager.</param>
+	/// <param name="target">The online session of the invited user.</param>
+	/// <returns>Ok, NotAuthorized, TargetOffline or AlreadyInRoom.</returns>
+	/// <remarks>The caller holds the room's scope. The server's bot cannot be invited.</remarks>
+	public RoomResult Invite(Connection by, UserSession target)
 	{
-		_invited.Add(player);
-		Emit(new PlayerInvited(this, player));
+		var seated = by is BanchoConnection player && Slots.Find(player) is not null;
+		if (!seated && !IsManager(by.User)) return RoomResult.NotAuthorized;
+		if (target.Bot is not null || !target.Connections.Any(connection => connection.IsOpen))
+			return RoomResult.TargetOffline;
+		if (Slots.Find(target.User) is not null) return RoomResult.AlreadyInRoom;
+
+		Emit(new PlayerInvited(this, by.User, target.User));
+		return RoomResult.Ok;
 	}
 
-	/// <summary>Seats a player in the first available slot.</summary>
-	/// <param name="player">The player's game client connection.</param>
-	/// <returns>The assigned slot, or <see langword="null" /> when the room is full.</returns>
-	/// <exception cref="InvalidOperationException">The player is banned from the room.</exception>
-	public RoomSlot? Join(BanchoConnection player)
+	/// <summary>Makes a user a referee.</summary>
+	/// <param name="by">The creator.</param>
+	/// <param name="user">The user to make referee.</param>
+	/// <returns>Ok, NotAuthorized, IsCreator, AlreadyReferee or TooManyReferees.</returns>
+	/// <remarks>The caller holds the room's scope.</remarks>
+	public RoomResult AddReferee(Connection by, User user)
 	{
-		return Slots.Seat(player);
+		if (Creator is null || !Creator.Equals(by.User)) return RoomResult.NotAuthorized;
+		if (Creator.Equals(user)) return RoomResult.IsCreator;
+		if (_referees.Contains(user)) return RoomResult.AlreadyReferee;
+		if (_referees.Count >= MaxReferees) return RoomResult.TooManyReferees;
+
+		_referees.Add(user);
+		Emit(new RefereeAdded(this, user));
+		return RoomResult.Ok;
 	}
 
-	/// <summary>Removes a player from the room, if seated.</summary>
-	/// <param name="player">The player's game client connection.</param>
-	public void Leave(BanchoConnection player)
+	/// <summary>Removes a user from the referees.</summary>
+	/// <param name="by">The creator.</param>
+	/// <param name="user">The referee to remove.</param>
+	/// <returns>Ok, NotAuthorized or NotReferee.</returns>
+	/// <remarks>The caller holds the room's scope.</remarks>
+	public RoomResult RemoveReferee(Connection by, User user)
 	{
-		if (Slots.Vacate(player) is { } slot)
-			Emit(new PlayerLeft(this, player, slot));
+		if (Creator is null || !Creator.Equals(by.User)) return RoomResult.NotAuthorized;
+		if (!_referees.Remove(user)) return RoomResult.NotReferee;
+
+		Emit(new RefereeRemoved(this, user));
+		return RoomResult.Ok;
 	}
 
-	/// <summary>Grants a player referee authority for the room.</summary>
-	/// <param name="referee">The player to grant referee authority to.</param>
-	public void AddReferee(User referee)
+	/// <summary>Gives host to a seated player, or clears it.</summary>
+	/// <param name="by">The host or a manager.</param>
+	/// <param name="host">The seated player to make host, or <see langword="null" /> to clear the host.</param>
+	/// <returns>Ok, NotAuthorized or NotInRoom.</returns>
+	/// <remarks>The caller holds the room's scope. Giving host to the current host does nothing.</remarks>
+	public RoomResult SetHost(Connection by, BanchoConnection? host)
 	{
-		if (!_referees.Add(referee)) return;
-		Emit(new RefereeAdded(this, referee));
+		if (!IsHostOrManager(by)) return RoomResult.NotAuthorized;
+		if (host is not null && Slots.Find(host) is null) return RoomResult.NotInRoom;
+		if (ReferenceEquals(_host, host)) return RoomResult.Ok;
+
+		_host = host;
+		Emit(new HostChanged(this, host));
+		return RoomResult.Ok;
 	}
 
-	/// <summary>Revokes a player's referee authority for the room.</summary>
-	/// <param name="referee">The player to revoke referee authority from.</param>
-	public void RemoveReferee(User referee)
+	/// <summary>Starts observing the room from an osu!tourney client.</summary>
+	/// <param name="by">The osu!tourney client.</param>
+	/// <returns>Ok or IsPlayer; observing again returns Ok and does nothing.</returns>
+	/// <remarks>The caller holds the room's scope. The observer also joins the room's chat channel.</remarks>
+	public RoomResult ObserverJoin(TourneyConnection by)
 	{
-		if (!_referees.Remove(referee)) return;
-		Emit(new RefereeRemoved(this, referee));
+		if (Slots.Find(by.User) is not null) return RoomResult.IsPlayer;
+		if (!_observers.Add(by)) return RoomResult.Ok;
+
+		Emit(new ObserverJoined(this, by));
+		Channel.Join(by);
+		return RoomResult.Ok;
+	}
+
+	/// <summary>Stops observing the room.</summary>
+	/// <param name="by">The osu!tourney client.</param>
+	/// <returns>Ok or NotObserver.</returns>
+	/// <remarks>The caller holds the room's scope.</remarks>
+	public RoomResult ObserverLeave(TourneyConnection by)
+	{
+		if (!_observers.Remove(by)) return RoomResult.NotObserver;
+
+		Emit(new ObserverLeft(this, by));
+		LeaveChannel(by);
+		return RoomResult.Ok;
+	}
+
+	/// <summary>Seats the creator's game client as the first host when the lobby opens the room.</summary>
+	internal void SeatCreator(BanchoConnection creator)
+	{
+		if (Slots.Seat(creator) is null) return;
+		_host = creator;
+		Channel.Join(creator);
+	}
+
+	/// <summary>Passes host to the next seated player by slot order when the host's slot is emptied.</summary>
+	internal void PassHostFrom(BanchoConnection leaving)
+	{
+		if (!ReferenceEquals(_host, leaving)) return;
+		_host = Slots.FirstOrDefault(slot => slot.Player is not null && !ReferenceEquals(slot.Player, leaving))?.Player;
 	}
 
 	/// <summary>Starts the next round of the match.</summary>
@@ -408,14 +540,20 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 
 	/// <summary>Closes the room, ending the match and vacating every slot.</summary>
 	/// <returns>The connections that were seated when the room closed.</returns>
-	public void Close()
+	internal IReadOnlyList<BanchoConnection> Close()
 	{
+		if (_closed) return [];
+		if (InProgress) Abort();
+
 		var evicted = Slots.Where(s => s.Player is not null).Select(s => s.Player!).ToList();
 		foreach (var player in evicted) Slots.Vacate(player);
 
 		Match.Value.EndedAt = DateTimeOffset.UtcNow;
-		Emit(new Events.RoomClosed(this, evicted));
+		_observers.Clear();
+		_closed = true;
 		Channel.Close();
+		_events.Writer.TryComplete();
+		return evicted;
 	}
 
 	/// <summary>Writes an event to the room's event channel.</summary>
@@ -423,13 +561,6 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	internal void Emit(RoomEvent @event)
 	{
 		_events.Writer.TryWrite(@event);
-	}
-
-	/// <summary>Clears the host without emitting a <see cref="HostChanged" /> event.</summary>
-	/// <param name="host">The host to clear, or <see langword="null" />.</param>
-	internal void SetHostSilently(BanchoConnection? host)
-	{
-		_host = host;
 	}
 
 	/// <inheritdoc />
@@ -448,5 +579,28 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	public override int GetHashCode()
 	{
 		return Match.GetHashCode();
+	}
+
+	private bool IsHostOrManager(Connection by) => ReferenceEquals(by, _host) || IsManager(by.User);
+
+	private void LeaveChannel(Connection connection)
+	{
+		if (!IsManager(connection.User)) Channel.Part(connection);
+	}
+
+	private void ReportIfEmpty()
+	{
+		if (!Slots.Any(slot => slot.Player is not null)) _lobby.RoomEmptied(this);
+	}
+
+	private sealed class Scope(SemaphoreSlim held) : IAsyncDisposable
+	{
+		private int _released;
+
+		public ValueTask DisposeAsync()
+		{
+			if (Interlocked.Exchange(ref _released, 1) == 0) held.Release();
+			return ValueTask.CompletedTask;
+		}
 	}
 }
