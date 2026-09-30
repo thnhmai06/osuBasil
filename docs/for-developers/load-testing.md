@@ -302,10 +302,10 @@ Important settings:
 * `ScoreUpdatesPerSecond`;
 * `BeatmapsetFixture`.
 
-The server currently supports at most 64 match ids and 16 players per match, so:
+The server identifies at most 65,535 open rooms and seats at most 16 players per match, so:
 
 ```text
-Rooms ≤ 64
+Rooms ≤ 65535
 PlayersPerRoom ≤ 16
 ```
 
@@ -572,7 +572,7 @@ This makes the measured workload include protocol parsing, session management, p
 
 ### Why scale multiplayer by rooms?
 
-Basil allocates match ids from a fixed 64-slot pool and each match has at most 16 player slots.
+Each match has at most 16 player slots, while the number of open rooms is only bounded by the 16-bit room id.
 
 The meaningful tournament capacity variable is therefore the number of simultaneous rooms rather than a single global player count.
 
@@ -606,7 +606,7 @@ When enabled, the measured phase represents steady-state login behavior rather t
 
 The following constraints are part of the load-test contract:
 
-* `MultiplayerSettings.Rooms` must be ≤ 64.
+* `MultiplayerSettings.Rooms` must be ≤ 65535.
 * `MultiplayerSettings.PlayersPerRoom` must be ≤ 16.
 * `ClientSettings.PollIntervalSeconds` must remain well below Basil's 300-second ghost-session reaper interval.
 * Every scenario must close every session it opens.
@@ -615,7 +615,7 @@ The following constraints are part of the load-test contract:
 * `PostWarmupSettleSeconds` must therefore be long enough for warm-up sessions to age past that guard.
 * `Dotnet` `Published` mode must be used when process-level resource metrics are part of the result.
 * `Dotnet` `Run` mode does not provide trustworthy Basil process metrics because the wrapper process may be measured instead.
-* Multiplayer load must not configure more than 64 rooms or more than 16 players per room.
+* Multiplayer load must not configure more than 65535 rooms or more than 16 players per room.
 
 ## Related code
 

@@ -65,8 +65,7 @@ There is no persisted report document that can become stale.
 * `POST /matches/{matchId}/abort` and `POST /matches/{matchId}/close` return the resulting match state rather than a
   separate success document.
 * The winning team is derived when the report is built rather than stored as another piece of mutable match state.
-* Match identity is represented by `Matches.Id`; the Bancho protocol's in-memory match slot is a separate implementation
-  detail.
+* Match identity is represented by `Matches.Id`; the Bancho protocol's room id is a separate, short-lived identifier.
 
 ## Match identity
 
@@ -83,19 +82,20 @@ A match has two different identifiers during its lifetime.
 
 It remains valid after the live room has disappeared.
 
-### Bancho match slot
+### Bancho room id
 
-The live Bancho protocol allocates a match slot from a fixed in-memory pool.
+The live Bancho protocol identifies a room by a room id. The lobby hands one out when the room opens: the lowest id
+not held by another open room. The protocol carries it as an unsigned 16-bit value, so at most 65,535 rooms can be
+open at once.
 
-The slot is:
+The room id is:
 
-* short-lived;
-* implementation-specific;
+* short-lived, and reused once its room closes;
 * unrelated to the persistent database id.
 
-Code must not use the slot index as the external identity of a match.
+Code must not use the room id as the external identity of a match.
 
-The database therefore stores the stable match id while the live `MatchSession` owns the protocol-level slot.
+The database therefore stores the stable match id while the live room owns the protocol-level room id.
 
 ## Match roles
 
@@ -168,12 +168,12 @@ Create MatchSession
         ▼
 Create Round
         │
-        └── MatchSession.CurrentRoundId = Round.Id
+        └── latest round = (match, previous number + 1)
         │
         ▼
 Players submit scores
         │
-        └── Scores.RoundId = CurrentRoundId
+        └── score references the latest round
         │
         ▼
 MATCH_COMPLETE
@@ -183,8 +183,8 @@ MATCH_COMPLETE
         ▼
 !mp start again
         │
-        └── create next Round
-            and move CurrentRoundId
+        └── create next Round,
+            which becomes the latest round
         │
         ▼
 !mp close / POST /matches/{id}/close
@@ -198,14 +198,17 @@ GET /matches/{id}
         └── report reconstructed from persisted history
 ```
 
-A match can therefore have multiple rounds, while `MatchSession.CurrentRoundId` identifies the round currently receiving
-score submissions.
+A match can therefore have multiple rounds, while the room's latest round is the one receiving score submissions.
 
 ## Rounds
 
 A `Round` represents one beatmap played inside a match.
 
 It is created when a new round starts, not when the match itself is created.
+
+A round is identified by its match and its number. Rounds are numbered from `1` within each match in the order they
+start. An aborted round is still a round: it keeps its number, is marked as aborted, and the next round takes the
+following number. The live room assigns the number itself, so starting a round does not wait for the database.
 
 A round records information such as:
 
@@ -224,7 +227,7 @@ See [`database.md`](database.md) for the persistent schema.
 
 ## Current round and score submission
 
-`MatchSession.CurrentRoundId` is deliberately not cleared when `MATCH_COMPLETE` arrives.
+The room's latest round is deliberately kept when `MATCH_COMPLETE` arrives.
 
 The reason is a race between two independent transports.
 
@@ -244,7 +247,7 @@ Score submission HTTP request
 
 The two requests have no ordering guarantee.
 
-If `CurrentRoundId` were cleared immediately when `MATCH_COMPLETE` was processed, a score that arrives shortly afterward
+If the latest round were forgotten as soon as `MATCH_COMPLETE` was processed, a score that arrives shortly afterward
 would have no round to attach to, even though it belongs to the round that just finished.
 
 Instead:
@@ -252,21 +255,25 @@ Instead:
 ```text
 start round
     │
-    └── CurrentRoundId = round A
+    └── latest round = round 1
               │
-              ├── score submission → round A
+              ├── score submission → round 1
               │
               ├── MATCH_COMPLETE
               │
-              └── late score submission → still round A
+              └── late score submission → still round 1
                          │
                          ▼
                   next !mp start
                          │
-                         └── CurrentRoundId = round B
+                         └── latest round = round 2
 ```
 
-The current round id therefore advances only when the next round starts.
+The latest round therefore changes only when the next round starts.
+
+A score is attached to the latest round only when it was played on that round's beatmap. A score that arrives after
+the next round has already started on a different beatmap is therefore not attached to the newer round. Two
+consecutive rounds on the same beatmap cannot be told apart this way; such a late score attaches to the newer round.
 
 This removes the race window without requiring score submission and Bancho packet processing to share a connection or
 transaction.
@@ -304,14 +311,14 @@ retry/backoff) that doing it while holding `MatchSession.Lock` would block every
 the duration.
 
 Round-*end* writes are therefore queued and persisted outside the lock, on a single shared, ordered background
-queue: the caller enqueues the fact (match id, round id, end time, whether it was an abort) under the lock, without
+queue: the caller enqueues the fact (match id, round number, end time, whether it was an abort) under the lock, without
 waiting for the write to land, and a dedicated background consumer drains the queue and persists each entry in the
 order it was enqueued. A match's own round-end writes are always enqueued one at a time under that match's own lock,
 so two writes for the same match can never be persisted out of order, even though the queue itself is shared across
 every match.
 
-Round-*start* is not part of this: `MatchSession.CurrentRoundId` is read immediately after a round starts (by score
-submission, see above), so it cannot be deferred and stays a synchronous write.
+Round-*start* does not need a synchronous write either: the room numbers the round itself, so score submission can
+reference it by match and number as soon as the round starts, without waiting for the round to be persisted.
 
 A permanently failed round-end write (retry budget exhausted) is logged with every fact needed to reconstruct it by
 hand rather than silently dropped. This is an accepted gap, not a correctness bug: match reports are generated on
@@ -408,10 +415,11 @@ This also means a report cannot become inconsistent because a separately stored 
 
 The multiplayer/report model depends on several invariants:
 
-* `Matches.Id` is the stable external match identity; the Bancho slot is not.
-* A `Round` represents one beatmap played in a match.
-* A score submitted for an active round is associated with `CurrentRoundId`.
-* `CurrentRoundId` remains valid after `MATCH_COMPLETE` until the next round starts.
+* `Matches.Id` is the stable external match identity; the Bancho room id is not.
+* A `Round` represents one beatmap played in a match, identified by its match and its number.
+* Rounds are numbered from `1` within their match; an aborted round keeps its number.
+* A score played on the beatmap of the room's latest round is associated with that round.
+* The latest round stays set after `MATCH_COMPLETE` until the next round starts.
 * Match mutations are synchronized through `MatchSession.Lock`.
 * Creator, referee, and host are independent roles.
 * Creator status is permanent for the lifetime of the match.

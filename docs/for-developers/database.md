@@ -77,7 +77,7 @@ The schema is divided conceptually into two groups:
 | Table         | Purpose                                                                                                                  |
 |---------------|--------------------------------------------------------------------------------------------------------------------------|
 | `Matches`     | One row per multiplayer room. Stores room identity and lifecycle timestamps. Mutable gameplay state belongs to `Rounds`. |
-| `Rounds`      | One row per beatmap played in a match. Stores mode, win condition, team type, mods, and the beatmap content hash.        |
+| `Rounds`      | One row per beatmap played in a match, identified by match and round number. Stores mode, win condition, team type, mods, and the beatmap content hash. |
 | `Scores`      | Submitted scores, optionally associated with a round. See the score-to-round invariant below.                            |
 | `MatchEvents` | Append-only match lifecycle history, including creation, closure, and referee changes.                                   |
 | `UserStats`   | Per-mode aggregate display statistics. Initialized once and not recomputed from individual scores.                       |
@@ -122,26 +122,29 @@ preserve them.
 
 A score-to-round relationship must not depend on the ordering of network requests.
 
-When a round starts, its id is recorded on the match immediately:
+A round is identified by its match and its number. Rounds are numbered from `1` within each match in the order they
+start, and an aborted round keeps its number. The live room assigns the number when the round starts, so it is known
+before any score is submitted:
 
 ```text
 round starts
     │
     ▼
-match.currentRoundId = new round
+room's latest round = (match, next number)
     │
     ▼
-players submit scores
+players submit scores ──> score references the latest round
 ```
 
 Score submission and the packet that ends a round arrive over independent connections. Their relative ordering is
 therefore not guaranteed.
 
-The current round id is intentionally advanced only when the next round starts. It is not cleared when the current round
-ends.
+The room's latest round is intentionally replaced only when the next round starts. It is not forgotten when the current
+round ends.
 
 As a result, a score submission that arrives slightly after the round-ending packet still resolves to the round that was
-active when the score was produced.
+active when the score was produced. A score is attached only when it was played on the latest round's beatmap, so a
+late score does not attach to a newer round on a different beatmap.
 
 See [`multiplayer.md`](multiplayer.md) for the complete round lifecycle.
 

@@ -320,20 +320,35 @@ Basil.Host.Bancho / .Irc / .Api  transports                               -> App
 Basil.Host                    entry point and composition                 -> everything
 ```
 
-> **Migration in progress.** The Application runtime model is being reworked — read
+> **Migration in progress.** The Application runtime model is being reworked. The current plan is
+> [`plans/application-environment-plan-20260930.md`](plans/application-environment-plan-20260930.md)
+> (decisions in part A, phases with call sites in part C); read it first. The older
 > [`plans/application-runtime-model-plan-20260929.md`](plans/application-runtime-model-plan-20260929.md)
-> first (its `Models`/`Contracts`/`Services` paths predate the merge into one project; see the
-> feature folders below). Until the lower projects are migrated, **only `Basil.Domain` and
+> is history. Until the lower projects are migrated, **only `Basil.Domain` and
 > `Basil.Application` build**: `Basil.Infrastructure`, `Basil.Host.*` and every test project still
 > use the old Application namespaces, so solution-wide `dotnet build`/`dotnet test` and
 > `Basil.ArchitectureTests` do not run. Verify with
 > `dotnet build src/Basil.Application/Basil.Application.csproj`.
 > `docs/for-developers/architecture.md` still describes an older structure.
+>
+> While the source is being reworked, do not review or update `docs/` or XML documentation: they
+> may already be out of date, and they are rewritten once the source is stable.
+>
+> Where a plan conflicts with [Domain and Application](#domain-and-application) below, this file
+> wins. In particular, the older plan's §0.2 item 7 (actions as methods on the session) and §2.5
+> (handlers inside Application) are superseded by "the acted-on object owns the interaction" and
+> "Application emits events; it does not consume them".
 
 ### Application feature folders
 
 `Basil.Application` is one project sliced by feature, not by kind of type. Each folder holds its
-runtime model, events, notifications, ports and operations together; namespace = folder.
+runtime model, events, ports and operations together; namespace = folder.
+
+The table below is the **current** layout, which is under review. Notifications, event handlers,
+chat-command parsing, reply strings and host/storage configuration still live here but belong
+outside Application (see [Domain and Application](#domain-and-application) and
+[`plans/application-review-20260930.md`](plans/application-review-20260930.md)). Do not add more of
+them.
 
 ```text
 Common/        Configuration, Events, Notifications (base), Queries (base), Persistence, ILocalizer
@@ -346,35 +361,114 @@ Scores/        user stats, ScoreSubmission
 ```
 
 * `Common` depends on no feature. `Users`, `Beatmaps` and `Scores` do not depend on `Multiplayer`.
-* `Sessions`, `Chat` and `Multiplayer` reference each other (`GameSession.Room` ↔ `Room.Host`,
-  `Room.Channel`); treat them as one cluster. That is why features are folders, not projects:
-  their invariants rely on `internal` members (`GameSession.Slot` setter, `Room.Emit`) staying
-  inside one assembly.
+* `Sessions`, `Chat` and `Multiplayer` reference each other (`Room.Host`, `Room.Channel`,
+  `ChannelSession.Members`); treat them as one cluster. That is why features are folders, not
+  projects: their invariants rely on `internal` members (`Room.Emit`) staying inside one assembly.
+  References run from the acted-on object to the actor, not back: `GameSession.Slot`/`Room` is an
+  actor-side relation scheduled for removal, not a pattern to copy.
 
 ### Domain and Application
 
 * **Domain** holds business models that exist beyond runtime (`Match`, `Round`, `MatchSettings`,
   `User`, `Beatmap`, `Login`, …) and guards their own validity. No runtime-only state, no events.
-* **Application** holds what exists only at runtime (`Room`, `RoomSlot(s)`, `UserSession`/
-  `GameSession`/`IrcSession`, `ChannelSession`), plus events and notifications.
+* **Application** holds what exists only at runtime (`Room`, `RoomSlot(s)`, `UserSession` and its
+  connections, `ChatChannelSession`s), plus the events they emit.
+* **Application models an environment, not a pipeline.** It simulates the objects that exist while
+  the server runs and the facts that happen to them, so other layers can observe and plug in. It
+  does not script "do this, then notify that, then save this" flows. When a rule belongs to the
+  environment (a room closes when its last player leaves, a room keeps its channel's members in
+  step with its players), the object that owns the state enforces it itself; it is never left to a
+  hook that might not be installed.
 * **Derive whatever is derivable.** A property a runtime object co-owns with its domain object
-  (truth in Domain) is a forwarding property (`Room.Name => Match.Name`) whose setter emits the
-  event. The event writer is never exposed.
-* **Identify by the basis object**, not its id (`GameSession` by `User`, `Room` by `Match`,
-  `ChannelSession` by `IChannel`). Ids are for repository lookups only. Choose object vs identifier
+  (truth in Domain) is a forwarding property (`Room.Name => Match.Name`). The event writer is
+  never exposed.
+* **A user online is one `UserSession`; each place they log in from is a `Connection`.**
+  `UserSession` (sealed) represents the user regardless of where they connect and holds what is
+  shared (`AwayMessage`, `PmChannel`) plus its connections as child data, keyed by
+  `ConnectionType` (`Bancho`, `Tourney`, `Irc`, `Bot`); whether a user may hold several of a kind is
+  the extension method `ConnectionType.AllowsMany()` (only `Tourney` is `true`), with
+  typed accessors (`Bancho`, `Irc`, `Bot`, `Tourneys`). `Connection` is an abstract class
+  (`Session`, `Login`, `IsOpen`, `Type`) with `BanchoConnection`, `TourneyConnection`,
+  `IrcConnection`, `BotConnection`; each holds only what exists for that kind of client
+  (`BanchoConnection.Status`, `BanchoConnection.SpectatorChannel`). Rooms, channels and the lobby
+  hold connections, not sessions. Owned parts (a session's `PmChannel`, a connection's
+  `SpectatorChannel`) are created and destroyed with their owner; they are not relations.
+* **Identify by the basis object**, not its id (`Room` by `Match`, `GeneralChatChannel` by `Name`). Runtime
+  objects that can be recreated with the same user or name compare **by reference**: a connection
+  is one login, a `UserSession` is one period online (look it up by `User` through `Presence`), a
+  runtime channel is one opening (`mp_5` is reused when a room id is reused). Cleanup that carries
+  an old object can never touch its replacement. "Is this user already here?" compares the user
+  and is a separate check from object identity. Ids are for repository lookups only. Choose object vs identifier
   deliberately (`Room.Beatmap` object, `PlayerStatus` beatmap `Md5?`); never `string` for an MD5.
 * **Relations are references** in `ConcurrentSet<T>`, never `ConcurrentDictionary<T, byte>`.
-* **`User` or `GameSession`?** If the information is gone once the user goes offline, store the
-  `GameSession` (slot occupant, host); otherwise the `User` (creator, referees, bans).
-* **Sessions represent the online user**: what the user can do is a method on the session; what is
-  done to them is passive, called from outside.
-* **Event ≠ Notification.** An event is an internal fact; a notification goes to a client. Each
-  runtime object is an event source over its own `Channel<T>`, read by the dispatcher. One
-  operation emits one event carrying its whole consequence. Events sit in a nested category tree
-  (`Event` ← `RoomEvent` ← `RoomSettingsEvent` ← `RoomNameChanged`), and handlers may subscribe to
-  a whole category.
-* Change state by setting properties directly; add a method only for a real operation, never a
-  `Change*`/`Rename`/`With*` wrapper.
+* **`User` or a connection?** If the information is gone once the user goes offline, store the
+  connection (`BanchoConnection` as slot occupant or host); otherwise the `User` (creator, referees,
+  bans).
+* **The acted-on object owns the interaction.** An actor (a user, a session, any active object)
+  only *calls* an action. The object the action is performed on stores the resulting relation and
+  emits the event. A connection joins a channel through `channel.Join(by)`; the channel keeps its
+  members and emits `MemberJoined`. The session does **not** keep a `Channels` set, does **not**
+  have a `Join(ChannelSession)` method, and does **not** emit events: an event always comes from
+  the object that was interacted with. Otherwise every new joinable kind (channel, room, spectator stream, …) forces a new
+  `Join*` method and a new set on the user, which breaks OOP. "Which channels is X in?" is a query
+  over channels, not state on X. Ask "who is acted on?" for every relation, member and event.
+* **Each object manages only what it owns, and reacts to other objects only through events.**
+  `Presence` opens and closes connections and announces `ConnectionOpened`/`ConnectionClosed`; its
+  responsibility ends there. It does not call rooms or channels. Their cleanup
+  (leave the room, part channels) is done by Infrastructure handlers that receive the event and call
+  the owning object's operation. When a second connection of the same kind arrives for a user the owner
+  still holds, the owner **asks the old connection who it is** (`connection.IsOpen`, set by `Presence`):
+  still open, refuse the new one; already closed (cleanup not run yet, or failed), remove the old
+  one as an ordinary leave and admit the new one. Like an exam room that finds someone who looks
+  like you inside: it checks that person before deciding. Cleanup operations must be safe to run
+  again. Rules about an object's own state (a room closes when empty, a room
+  keeps its channel in step with its players) stay inside that object.
+* **Application emits events; it does not consume them.** Each runtime object is an event source
+  over its own `Channel<T>`. One operation emits one event carrying its whole consequence. Events
+  sit in a nested category tree (`Event` ← `RoomEvent` ← `RoomSlotEvent` ← `SlotTeamChanged`)
+  so a consumer can subscribe to a whole category. Event handlers, dispatchers, and event →
+  client-notification routing belong to Infrastructure and the hosts, never to Application.
+* **Repository contracts are written per model** as `IXxxRepository` (`IMatchRepository`,
+  `IScoreRepository`, …), each declaring exactly the operations Application needs, including
+  creation that returns the stored model with its assigned identity. Extract a shared interface
+  only when several repositories genuinely share an operation, and even then keep the
+  `IXxxRepository` contract that callers depend on. Do not add parallel generic ports
+  (`ICreatable`). Key normalization (for example case- and space-insensitive user names) is the
+  repository's own lookup concern, not Application's.
+* **Runtime objects that exist only in memory are not ports.** Online sessions, live channels and
+  rooms are held by concrete Application objects (the environment), which also own the room lock.
+  Ports are for what lies outside the process: storage, files, network, clock.
+* **Naming: Domain model `X`, runtime model `XSession`.** No suffixes such as "Definition". `Room`
+  is the historical name for the runtime of `Match`; the room's channel is named after the room
+  (Domain `RoomChatChannel`, runtime `RoomChatChannelSession`) because the room is where things
+  happen and `Match` is only the record.
+* **Chat channels.** Domain: abstract `ChatChannel` (`Name`, `Topic`, IRC convention; named to avoid
+  C#'s `Channel`) with `GeneralChatChannel` (configured chat; alone carries `ReadPrivilege`,
+  `WritePrivilege`, `AutoJoin`, `Visible`), `RoomChatChannel`, `SpectatorChatChannel`,
+  `PmChatChannel`; messages are the record `ChatMessage`. Runtime: abstract `ChatChannelSession`
+  with `GeneralChatChannelSession`, `RoomChatChannelSession`, `SpectatorChatChannelSession`,
+  `PmChatChannelSession`; each decides who may read and write. **Whoever owns a channel manages
+  it**: `ChatChannels` manages only general channels, a `Room` its room channel, a `UserSession` its PM
+  channel, a `BanchoConnection` its spectator channel. A private message is a post into the
+  recipient's PM channel. Access follows osu!: a user may join a channel (including `/join` over
+  IRC) only if an osu! client doing the matching in-game action would have access.
+* **Privilege checks require every bit.** A user satisfies a `ClientPrivileges` requirement only if
+  every bit set in the requirement is set on the user (`ClientPrivileges.Has`); an empty
+  requirement is always satisfied. This applies everywhere, not only to channels.
+* **Channel names are stored without `#`** (`osu`, `lobby`, `mp_5`). Transports add the prefix
+  when writing and strip it when reading; `#multiplayer`/`#spectator` are resolved by the transport
+  to the sender's room or spectator channel. Do not "fix" stored names to include `#`.
+* **Setters only assign and validate.** A setter stores the value and throws if it is invalid;
+  it never emits an event or changes anything else. A change that has consequences (emits an
+  event, changes other fields, checks authority, groups several fields into one event) is a
+  dedicated method, and the setter gets the visibility that stops outsiders from bypassing it
+  (`private`/`internal`). Such a method is a real operation, not a `Change*`/`Rename`/`With*`
+  wrapper around a single field.
+* **One concept, one name.** Use the same name for the same concept in every model, parameter,
+  event and API: the moment something happened is `Timestamp`, a span is `StartedAt`/`EndedAt`, a
+  future window is `StartsAt`/`EndsAt`, a stored record's lifecycle is
+  `CreatedAt`/`UpdatedAt`/`DeletedAt`, the caller of an operation is `by`. Do not introduce
+  `OccurredAt`, `When`, `Since`, `LoginTime` or similar synonyms.
 
 ### Important invariants
 
@@ -382,7 +476,7 @@ Scores/        user stats, ScoreSubmission
 
 `Room` is mutable shared state.
 
-Operations that read and then mutate a room must hold the exclusive scope granted by `IRoomRegistry.EnterAsync` across the complete state transition.
+Operations that read and then mutate a room must hold the room's exclusive scope across the complete state transition. Today that scope comes from `IRoomRegistry.EnterAsync`; the plan moves the lock into `Room` itself (see `plans/application-environment-plan-20260930.md`, R13, phase 6).
 
 Do not introduce a second synchronization mechanism for the same state.
 
@@ -393,6 +487,15 @@ See [`docs/for-developers/multiplayer.md`](docs/for-developers/multiplayer.md) f
 #### Authority
 
 Referee, host, and creator are separate concepts.
+
+Whoever creates a room is its creator, however it was created (in game, `!mp make`, or the API when
+a creator is given; an API-created room without one has no creator). The creator is remembered on
+the match and ranks above referees; it is not added to the referee list. A creator who created the
+room in game is also its first host. After `!mp make`, a creator whose game client is online and
+not in any room is seated in the new room as host; a creator already in another room stays there
+and does not become host. `!mp` is available only to the creator and the referees; being
+the host does not grant `!mp` rights. Every room operation with a permission rule takes its actor
+and checks authority inside `Room`, not in the transport.
 
 Do not treat them as interchangeable.
 
@@ -522,7 +625,15 @@ Before considering a code change complete:
 2. Run the complete test suite for the final change.
 3. Run a Release build when the change affects production code.
 4. Check architecture tests for cross-layer changes.
-5. Update authoritative documentation when behavior or design changes.
+5. Update authoritative documentation when behavior or design changes (except during the
+   Application rework, see the migration note under [Architecture](#architecture)).
 6. Review the final diff for unrelated changes.
+7. Check every new or changed member in `Basil.Application` against
+   [Domain and Application](#domain-and-application), above all "the acted-on object owns the
+   interaction" and "Application emits events; it does not consume them". This applies to code
+   written by delegated agents too: the orchestrator reviews it against these rules before
+   accepting it. `UserSession.Channels`, `UserSession.Join(ChannelSession)`, sessions emitting
+   events, and event handlers inside Application all got through review once;
+   do not let them back in.
 
 The goal is not merely to produce compiling code. The goal is a verified change that respects Basil's architecture, scope, contracts, and documentation.
