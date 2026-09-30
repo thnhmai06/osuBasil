@@ -3,7 +3,6 @@ using Basil.Domain.Users;
 using Basil.Domain.Utilities;
 using Basil.Application.Chat;
 using Basil.Application.Common.Events;
-using Basil.Application.Common.Notifications;
 
 namespace Basil.Application.Sessions;
 
@@ -29,9 +28,6 @@ public abstract class UserSession : IEventPublisher<SessionEvent>, IEquatable<Us
 	/// <summary>Gets the time this session was created.</summary>
 	public abstract DateTimeOffset LoginTime { get; }
 
-	/// <summary>Gets the live transport connection this session sends notifications through.</summary>
-	public required IClientConnection Connection { get; init; }
-
 	/// <summary>Gets or sets the time of the last activity received from the client.</summary>
 	public DateTimeOffset LastActive { get; set; }
 
@@ -43,13 +39,6 @@ public abstract class UserSession : IEventPublisher<SessionEvent>, IEquatable<Us
 
 	/// <inheritdoc />
 	public ChannelReader<SessionEvent> Events => _events.Reader;
-
-	/// <summary>Sends a message to this session's client.</summary>
-	/// <param name="notification">The message to send.</param>
-	public void Notify(Notification notification)
-	{
-		Connection.Send(notification);
-	}
 
 	/// <summary>
 	///     Joins this session to <paramref name="channel" />, updating both sides of the membership.

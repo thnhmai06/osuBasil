@@ -1,5 +1,4 @@
 using Basil.Domain.Multiplayer;
-using Basil.Application.Common.Notifications;
 
 namespace Basil.Application.Multiplayer;
 
@@ -55,7 +54,7 @@ public sealed class RoomCountdowns(
 			var remaining = mark;
 			yield return new Countdown.Milestone(remaining, _ =>
 			{
-				NotifyRoom(roomId, new CountdownTick(remaining));
+				// TODO(phase 8): CountdownTick
 				return Task.CompletedTask;
 			});
 		}
@@ -67,10 +66,9 @@ public sealed class RoomCountdowns(
 				_countdowns.Remove(roomId);
 			}
 
+			// TODO(phase 8): CountdownTick when the countdown does not start the match
 			if (startsMatch)
 				await StartMatchAsync(roomId);
-			else
-				NotifyRoom(roomId, new CountdownTick(TimeSpan.Zero));
 		});
 	}
 
@@ -82,13 +80,5 @@ public sealed class RoomCountdowns(
 			if (scope.Room.InProgress || scope.Room.Beatmap is null) return;
 			scope.Room.Start();
 		}
-	}
-
-	private void NotifyRoom(int roomId, Notification notification)
-	{
-		if (!rooms.AllById.TryGetValue(roomId, out var room)) return;
-
-		foreach (var slot in room.Slots)
-			slot.Session?.Notify(notification);
 	}
 }

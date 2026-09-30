@@ -66,7 +66,7 @@ public sealed class ScoreSubmission(
 			await stats.SaveAsync(current, cancellationToken);
 		}
 
-		session.Notify(new PresenceChanged(session));
+		// TODO(phase 9): StatsChanged
 		return null;
 	}
 }

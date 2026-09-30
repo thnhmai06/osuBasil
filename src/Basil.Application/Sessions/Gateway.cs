@@ -27,14 +27,13 @@ public sealed class Gateway(
 	///     it to every auto-join channel it may read.
 	/// </summary>
 	/// <param name="attempt">The claimed username and password.</param>
-	/// <param name="connection">The transport connection to attach to the new session.</param>
 	/// <param name="ip">The IP address the login came from.</param>
 	/// <param name="clientVersion">The osu! client version reported at login.</param>
 	/// <param name="fingerprint">The hardware and client fingerprint captured at login.</param>
 	/// <param name="utcOffset">The client's UTC offset reported at login.</param>
 	/// <param name="cancellationToken">A token that cancels the login.</param>
 	/// <returns>The login's outcome: a new session on success, or the reason it failed.</returns>
-	public async Task<LoginResult> ConnectAsync(LoginAttempt attempt, IClientConnection connection,
+	public async Task<LoginResult> ConnectAsync(LoginAttempt attempt,
 		IPAddress ip, ClientVersion clientVersion, ClientFingerprint fingerprint, int utcOffset,
 		CancellationToken cancellationToken = default)
 	{
@@ -59,7 +58,6 @@ public sealed class Gateway(
 		var session = new GameSession
 		{
 			Login = new Login(user, ip, clientVersion, fingerprint, loginTime),
-			Connection = connection,
 			LastActive = loginTime,
 			UtcOffset = utcOffset
 		};
