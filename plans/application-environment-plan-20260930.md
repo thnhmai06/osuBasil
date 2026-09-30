@@ -740,8 +740,10 @@ Sau mỗi task:
 5. Không thêm thứ ngoài spec (member, file, abstraction, comment kể lịch sử).
 
 Sai thì gửi lại cùng session, nêu từng chỗ sai và cách sửa đúng. Tối đa hai lượt sửa mỗi task; vẫn
-sai thì đổi model một lần. Còn sai, hoặc hết hạn mức OpenCode: dừng và đề xuất chuyển sang subagent
-Sonnet/Haiku, trừ khi người dùng đã nói "triển khai liên tục" (khi đó tự chuyển và làm tiếp).
+sai thì đổi model một lần. Hết hạn mức OpenCode Go: thử model miễn phí hoặc provider khác OpenCode
+có (`opencode models`: free, GitHub Copilot, …). Không model nào thay được (hết hạn mức hoặc làm
+không đạt): tự chuyển sang subagent Sonnet/Haiku của Claude Code và làm tiếp, cùng prompt và cùng
+quy trình review (người dùng cho phép 2026-10-01).
 
 **Sau khi nhận phase:** báo người dùng kết quả (file đổi, grep, build, điểm cần họ biết). Không
 commit trừ khi người dùng yêu cầu.

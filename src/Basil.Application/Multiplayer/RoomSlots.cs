@@ -20,18 +20,9 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 	/// <summary>The room these slots belong to.</summary>
 	public readonly Room Room;
 
-	/// <summary>Gets or sets a value that indicates whether the room's slots are locked as a whole.</summary>
+	/// <summary>Gets a value that indicates whether the room's slots are locked as a whole.</summary>
 	/// <remarks>A locked room stops players from changing their own slot or team; referees still can.</remarks>
-	public bool Locked
-	{
-		get;
-		set
-		{
-			if (field == value) return;
-			field = value;
-			Room.Emit(new RoomLockChanged(Room, value));
-		}
-	}
+	public bool Locked { get; internal set; }
 
 	internal RoomSlots(Room room)
 	{
@@ -55,9 +46,12 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		return _slots.FirstOrDefault(s => ReferenceEquals(player, s.Player));
 	}
 
+	/// <summary>Gets the slot with a given number, or <see langword="null" /> when the number is outside 1 to 16.</summary>
+	public RoomSlot? At(int index) => index is >= 1 and <= MaxSlotCount ? _slots[index - 1] : null;
+
 	/// <summary>Resizes the room, leaving occupied slots untouched.</summary>
 	/// <param name="size">The new number of available slots, from 1 to 16.</param>
-	public void Resize(int size)
+	internal void Resize(int size)
 	{
 		ArgumentOutOfRangeException.ThrowIfLessThan(size, 1);
 		ArgumentOutOfRangeException.ThrowIfGreaterThan(size, MaxSlotCount);
@@ -67,8 +61,6 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		var open = size - _slots.Count(s => s.Player is not null);
 		foreach (var slot in _slots.Where(s => s.Player is null))
 			slot.SetLocked(open-- <= 0);
-
-		Room.Emit(new RoomResized(Room, size));
 	}
 
 	/// <summary>Seats a player in the lowest-index empty, unlocked slot.</summary>
@@ -96,7 +88,7 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 			slot.SetTeam(redCount <= blueCount ? GameTeam.Red : GameTeam.Blue);
 		}
 
-		Room.Emit(new PlayerJoined(Room, player, slot));
+		Room.Emit(new PlayerJoined(Room, player, slot.Index));
 		return slot;
 	}
 
@@ -112,20 +104,6 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 
 		slot.Clear();
 		return slot;
-	}
-
-	/// <summary>Moves a player from one slot to another.</summary>
-	/// <param name="from">The slot the player currently occupies.</param>
-	/// <param name="to">The destination slot.</param>
-	/// <remarks>This is a referee operation, so it is allowed while the room is locked.</remarks>
-	/// <exception cref="InvalidOperationException">The move is not allowed.</exception>
-	public static void Move(RoomSlot from, RoomSlot to)
-	{
-		if (from.Index == to.Index) return;
-		var player = from.Player ?? throw new InvalidOperationException("The source slot has no player.");
-
-		from.MoveTo(to);
-		from.Slots.Room.Emit(new PlayerMoved(from.Slots.Room, player, from, to));
 	}
 
 	public int Count => _slots.Length;

@@ -1,5 +1,4 @@
 using System.Threading.Channels;
-using Basil.Domain.Beatmaps;
 using Basil.Domain.Client;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
@@ -49,165 +48,35 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 
 	public ChannelReader<RoomEvent> Events => _events.Reader;
 
-	/// <summary>Gets or sets the name broadcast to clients.</summary>
-	public string Name
-	{
-		get => Match.Value.Name;
-		set
-		{
-			if (Match.Value.Name == value) return;
-			Match.Value.Name = value;
-			Emit(new RoomNameChanged(this, value));
-		}
-	}
+	/// <summary>Gets the name broadcast to clients.</summary>
+	public string Name => Match.Value.Name;
 
-	/// <summary>Gets or sets a value that indicates whether the room's match history is private.</summary>
-	public bool IsPrivate
-	{
-		get => Match.Value.IsPrivate;
-		set
-		{
-			if (Match.Value.IsPrivate == value) return;
-			Match.Value.IsPrivate = value;
-			Emit(new RoomPrivacyChanged(this, value));
-		}
-	}
+	/// <summary>Gets a value that indicates whether the room's match history is private.</summary>
+	public bool IsPrivate => Match.Value.IsPrivate;
 
 	/// <summary>Gets the user who created the match.</summary>
 	public User? Creator => Match.Value.Creator;
 
-	/// <summary>Gets or sets the room's password.</summary>
-	public string Password
-	{
-		private get;
-		set
-		{
-			if (field == value) return;
-			field = value;
-			Emit(new RoomPasswordChanged(this, value));
-		}
-	} = string.Empty;
+	/// <summary>Gets the room's password.</summary>
+	private string Password { get; set; } = string.Empty;
 
-	/// <summary>Gets or sets the currently selected beatmap.</summary>
-	public Beatmap? Beatmap
-	{
-		get;
-		set
-		{
-			if (Equals(field, value)) return;
-			field = value;
-			Emit(new BeatmapChanged(this, value));
-		}
-	}
+	/// <summary>Gets the currently selected beatmap.</summary>
+	public BeatmapReference? Beatmap { get; private set; }
 
-	/// <summary>Gets or sets the game mode played in the room.</summary>
-	public GameMode Mode
-	{
-		get => Settings.Mode;
-		set
-		{
-			if (Settings.Mode == value) return;
-			Settings.SwitchMode(value);
-			Emit(new GameModeChanged(this, value));
-		}
-	}
+	/// <summary>Gets the game mode played in the room.</summary>
+	public GameMode Mode => Settings.Mode;
 
-	/// <summary>Gets or sets the mods applied to the whole room.</summary>
-	public GameMods Mods
-	{
-		get => Settings.Mods;
-		set
-		{
-			if (Settings.Mods == value) return;
-			if (Freemods && (value & ~GameMods.SpeedChangingMods) != GameMods.NoMod)
-				throw new InvalidOperationException("With freemod on, the room only holds speed-changing mods.");
-			Settings.Mods = value;
-			Emit(new ModsChanged(this, value));
-		}
-	}
+	/// <summary>Gets the mods applied to the whole room.</summary>
+	public GameMods Mods => Settings.Mods;
 
-	/// <summary>Gets or sets a value that indicates whether freemod mode is enabled.</summary>
-	/// <remarks>
-	///     Turning freemod on hands the room's non-speed-changing mods to every seated player and
-	///     leaves the room with only its speed-changing mods. Turning it off gives the room its
-	///     speed-changing mods plus the host's own mods, and clears every player's own mods.
-	/// </remarks>
-	public bool Freemods
-	{
-		get => Settings.Freemods;
-		set
-		{
-			if (Settings.Freemods == value) return;
-			Settings.Freemods = value;
+	/// <summary>Gets a value that indicates whether freemod mode is enabled.</summary>
+	public bool Freemods => Settings.Freemods;
 
-			var seated = Slots.Where(s => s.Player is not null).ToList();
-			if (value)
-			{
-				// Players take the room's mods that combine per player; the room keeps only the
-				// speed-changing ones, which must stay the same for everyone.
-				foreach (var slot in seated)
-					slot.SetMods(Settings.Mods & ~GameMods.SpeedChangingMods);
-				Settings.Mods &= GameMods.SpeedChangingMods;
-			}
-			else
-			{
-				// The room keeps its speed-changing mods and takes the host's own mods.
-				var hostMods = (Host is { } host ? Slots.Find(host)?.Mods : null) ?? GameMods.NoMod;
-				Settings.Mods = (Settings.Mods & GameMods.SpeedChangingMods) | hostMods;
-				foreach (var slot in seated)
-					slot.SetMods(GameMods.NoMod);
-			}
+	/// <summary>Gets the team arrangement used for the room.</summary>
+	public GameTeamType TeamType => Settings.TeamType;
 
-			Emit(new FreemodsChanged(this, value));
-		}
-	}
-
-	/// <summary>Gets or sets the team arrangement used for the room.</summary>
-	public GameTeamType TeamType
-	{
-		get => Settings.TeamType;
-		set
-		{
-			if (Settings.TeamType == value) return;
-			Settings.TeamType = value;
-
-			if (value.NeedSplitTeam())
-			{
-				var redCount = 0;
-				var blueCount = 0;
-
-				foreach (var slot in Slots.Where(s => s.Player is not null))
-				{
-					var team = redCount <= blueCount ? GameTeam.Red : GameTeam.Blue;
-					slot.SetTeam(team);
-
-					if (team == GameTeam.Red)
-						redCount++;
-					else
-						blueCount++;
-				}
-			}
-			else
-			{
-				foreach (var slot in Slots.Where(s => s.Player is not null))
-					slot.SetTeam(null);
-			}
-
-			Emit(new TeamTypeChanged(this, value));
-		}
-	}
-
-	/// <summary>Gets or sets the condition that decides the winner of a round.</summary>
-	public GameWinCondition WinCondition
-	{
-		get => Settings.WinCondition;
-		set
-		{
-			if (Settings.WinCondition == value) return;
-			Settings.WinCondition = value;
-			Emit(new WinConditionChanged(this, value));
-		}
-	}
+	/// <summary>Gets the condition that decides the winner of a round.</summary>
+	public GameWinCondition WinCondition => Settings.WinCondition;
 
 	/// <summary>Gets the connection currently hosting the room.</summary>
 	/// <remarks>The host must be seated in this room.</remarks>
@@ -293,7 +162,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 
 			// The old connection leaves as an ordinary leave, but the room is not reported empty: the user is coming back.
 			var vacated = Slots.Vacate(seated)!;
-			Emit(new PlayerLeft(this, seated, vacated, _host));
+			Emit(new PlayerLeft(this, seated, vacated.Index, _host));
 			LeaveChannel(seated);
 		}
 
@@ -321,7 +190,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	{
 		if (Slots.Vacate(by) is not { } slot) return RoomResult.NotInRoom;
 
-		Emit(new PlayerLeft(this, by, slot, _host));
+		Emit(new PlayerLeft(this, by, slot.Index, _host));
 		LeaveChannel(by);
 		ReportIfEmpty();
 		return RoomResult.Ok;
@@ -339,7 +208,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		if (Slots.Find(player) is not { Player: { } seated }) return RoomResult.NotInRoom;
 
 		var slot = Slots.Vacate(seated)!;
-		Emit(new PlayerKicked(this, seated, slot, _host));
+		Emit(new PlayerKicked(this, seated, slot.Index, _host));
 		LeaveChannel(seated);
 		ReportIfEmpty();
 		return RoomResult.Ok;
@@ -356,12 +225,12 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		if (IsManager(player)) return RoomResult.IsManager;
 		if (!_banned.Add(player)) return RoomResult.Ok;
 
-		RoomSlot? vacated = null;
+		int? vacated = null;
 		BanchoConnection? evicted = null;
 		if (Slots.Find(player) is { Player: { } seated })
 		{
 			evicted = seated;
-			vacated = Slots.Vacate(seated);
+			vacated = Slots.Vacate(seated)?.Index;
 		}
 
 		Emit(new PlayerBanned(this, player, vacated, evicted, _host));
@@ -479,6 +348,235 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		return RoomResult.Ok;
 	}
 
+	/// <summary>Changes the room's settings in one step.</summary>
+	/// <param name="by">The host or a manager.</param>
+	/// <param name="change">The settings to change.</param>
+	/// <returns>Ok, NotAuthorized, InProgress, InvalidSettings or InvalidMods.</returns>
+	/// <remarks>
+	///     The caller holds the room's scope. Nothing changes unless every field is valid. Selecting a
+	///     beatmap sets ready players back to not ready. Turning freemod on moves the room's mods that are
+	///     not speed-changing onto each player; turning it off gives the room the host's mods. Changing the
+	///     team type reassigns teams. Changing the mode drops mods the new mode does not allow.
+	/// </remarks>
+	public RoomResult Configure(Connection by, RoomSettingsChange change)
+	{
+		if (!IsHostOrManager(by)) return RoomResult.NotAuthorized;
+		if (InProgress) return RoomResult.InProgress;
+
+		if (change.Name is not null && string.IsNullOrWhiteSpace(change.Name)) return RoomResult.InvalidSettings;
+		if (change.Size is < 1 or > RoomSlots.MaxSlotCount) return RoomResult.InvalidSettings;
+		if (change.Mode is { } requestedMode && !Enum.IsDefined(requestedMode)) return RoomResult.InvalidSettings;
+		if (change.TeamType is { } requestedTeamType && !Enum.IsDefined(requestedTeamType))
+			return RoomResult.InvalidSettings;
+		if (change.WinCondition is { } requestedWinCondition && !Enum.IsDefined(requestedWinCondition))
+			return RoomResult.InvalidSettings;
+
+		var mode = change.Mode ?? Mode;
+		var freemods = change.Freemods ?? Freemods;
+		if (change.Mods is { } requestedMods && !requestedMods.IsValid(mode)) return RoomResult.InvalidMods;
+
+		if (change.Name is { } name) Match.Value.Name = name;
+		if (change.Password is { } password) Password = password;
+		if (change.Beatmap is { } beatmap)
+		{
+			Beatmap = beatmap;
+			foreach (var slot in Slots.Where(s => s.Status is RoomSlotStatus.Ready))
+				slot.SetStatus(RoomSlotStatus.NotReady);
+		}
+
+		if (change.Mode is { } newMode) Settings.SwitchMode(newMode);
+		if (change.Freemods is { } newFreemods && newFreemods != Freemods) ApplyFreemods(newFreemods);
+		if (change.Mods is { } newMods) Settings.Mods = freemods ? newMods & GameMods.SpeedChangingMods : newMods;
+		if (change.TeamType is { } teamType) ApplyTeamType(teamType);
+		if (change.WinCondition is { } winCondition) Settings.WinCondition = winCondition;
+		if (change.Size is { } size) Slots.Resize(size);
+
+		Emit(new RoomSettingsChanged(this, change with { Password = null }, change.Password is not null));
+		return RoomResult.Ok;
+	}
+
+	/// <summary>Moves the caller to another open slot.</summary>
+	/// <param name="by">The caller's game client.</param>
+	/// <param name="index">The slot number, from 1 to 16.</param>
+	/// <returns>Ok, NotInRoom, RoomLocked, InProgress or SlotNotOpen.</returns>
+	/// <remarks>The caller holds the room's scope. Moving to the caller's own slot returns Ok and does nothing.</remarks>
+	public RoomResult ChangeSlot(BanchoConnection by, int index)
+	{
+		if (Slots.Find(by) is not { } from) return RoomResult.NotInRoom;
+		if (Slots.Locked) return RoomResult.RoomLocked;
+		if (InProgress) return RoomResult.InProgress;
+		if (Slots.At(index) is not { } to) return RoomResult.SlotNotOpen;
+		if (ReferenceEquals(from, to)) return RoomResult.Ok;
+		if (to.Locked || to.Player is not null) return RoomResult.SlotNotOpen;
+
+		from.MoveTo(to);
+		Emit(new PlayerMoved(this, by, from.Index, to.Index));
+		return RoomResult.Ok;
+	}
+
+	/// <summary>Moves a player to an empty, unlocked slot.</summary>
+	/// <param name="by">The caller's connection.</param>
+	/// <param name="player">The user to act on.</param>
+	/// <param name="index">The slot number, from 1 to 16.</param>
+	/// <returns>Ok, NotAuthorized, NotInRoom or SlotNotOpen.</returns>
+	/// <remarks>The caller holds the room's scope. This is a referee operation, so it is allowed while the room is locked.</remarks>
+	public RoomResult Move(Connection by, User player, int index)
+	{
+		if (!IsManager(by.User)) return RoomResult.NotAuthorized;
+		if (Slots.Find(player) is not { Player: { } seated } from) return RoomResult.NotInRoom;
+		if (Slots.At(index) is not { } to) return RoomResult.SlotNotOpen;
+		if (ReferenceEquals(from, to)) return RoomResult.Ok;
+		if (to.Locked || to.Player is not null) return RoomResult.SlotNotOpen;
+
+		from.MoveTo(to);
+		Emit(new PlayerMoved(this, seated, from.Index, to.Index));
+		return RoomResult.Ok;
+	}
+
+	/// <summary>Locks or unlocks a slot; locking an occupied slot removes its player.</summary>
+	/// <param name="by">The caller's connection.</param>
+	/// <param name="index">The slot number, from 1 to 16.</param>
+	/// <returns>Ok, NotAuthorized, SlotNotOpen or OwnSlot.</returns>
+	/// <remarks>The caller holds the room's scope. A player cannot lock the slot they occupy.</remarks>
+	public RoomResult ToggleSlotLock(Connection by, int index)
+	{
+		if (!IsHostOrManager(by)) return RoomResult.NotAuthorized;
+		if (Slots.At(index) is not { } slot) return RoomResult.SlotNotOpen;
+		if (ReferenceEquals(slot.Player, by)) return RoomResult.OwnSlot;
+
+		var locking = !slot.Locked;
+
+		BanchoConnection? evicted = null;
+		if (locking && slot.Player is { } player)
+		{
+			evicted = player;
+			Slots.Vacate(player);
+		}
+
+		slot.SetLocked(locking);
+		Emit(new SlotLockChanged(this, slot.Index, locking, evicted, _host));
+
+		if (evicted is not null)
+		{
+			LeaveChannel(evicted);
+			ReportIfEmpty();
+		}
+
+		return RoomResult.Ok;
+	}
+
+	/// <summary>Locks or unlocks the room, which stops players from changing slot or team.</summary>
+	/// <param name="by">The caller's connection.</param>
+	/// <param name="locked">The lock state to set.</param>
+	/// <returns>Ok or NotAuthorized; setting the current state again returns Ok and does nothing.</returns>
+	/// <remarks>The caller holds the room's scope.</remarks>
+	public RoomResult SetLocked(Connection by, bool locked)
+	{
+		if (!IsManager(by.User)) return RoomResult.NotAuthorized;
+		if (Slots.Locked == locked) return RoomResult.Ok;
+
+		Slots.Locked = locked;
+		Emit(new RoomLockChanged(this, locked));
+		return RoomResult.Ok;
+	}
+
+	/// <summary>Marks the caller ready or not ready.</summary>
+	/// <param name="by">The caller's game client.</param>
+	/// <param name="ready">Whether the caller is ready to play.</param>
+	/// <returns>Ok, NotInRoom or InProgress.</returns>
+	/// <remarks>The caller holds the room's scope.</remarks>
+	public RoomResult SetReady(BanchoConnection by, bool ready)
+	{
+		if (Slots.Find(by) is not { } slot) return RoomResult.NotInRoom;
+		if (InProgress) return RoomResult.InProgress;
+
+		var status = ready ? RoomSlotStatus.Ready : RoomSlotStatus.NotReady;
+		if (slot.Status == status) return RoomResult.Ok;
+
+		slot.SetStatus(status);
+		Emit(new SlotStatusChanged(this, slot.Index, status));
+		return RoomResult.Ok;
+	}
+
+	/// <summary>Reports whether the caller has the selected beatmap.</summary>
+	/// <param name="by">The caller's game client.</param>
+	/// <param name="has">Whether the caller has the selected beatmap.</param>
+	/// <returns>Ok or NotInRoom.</returns>
+	/// <remarks>The caller holds the room's scope. The report is ignored while the caller is playing.</remarks>
+	public RoomResult SetHasMap(BanchoConnection by, bool has)
+	{
+		if (Slots.Find(by) is not { } slot) return RoomResult.NotInRoom;
+		if (slot.Status is RoomSlotStatus.Playing) return RoomResult.Ok;
+
+		var status = has ? RoomSlotStatus.NotReady : RoomSlotStatus.NoMap;
+		if (slot.Status == status) return RoomResult.Ok;
+
+		slot.SetStatus(status);
+		Emit(new SlotStatusChanged(this, slot.Index, status));
+		return RoomResult.Ok;
+	}
+
+	/// <summary>Switches the caller to the other team.</summary>
+	/// <param name="by">The caller's game client.</param>
+	/// <returns>Ok, NotInRoom, NoTeams, RoomLocked or InProgress.</returns>
+	/// <remarks>The caller holds the room's scope.</remarks>
+	public RoomResult ToggleTeam(BanchoConnection by)
+	{
+		if (Slots.Find(by) is not { } slot) return RoomResult.NotInRoom;
+		if (!TeamType.NeedSplitTeam()) return RoomResult.NoTeams;
+		if (Slots.Locked) return RoomResult.RoomLocked;
+		if (InProgress) return RoomResult.InProgress;
+
+		var team = slot.Team is GameTeam.Red ? GameTeam.Blue : GameTeam.Red;
+		slot.SetTeam(team);
+		Emit(new SlotTeamChanged(this, slot.Index, team));
+		return RoomResult.Ok;
+	}
+
+	/// <summary>Puts a player on a team.</summary>
+	/// <param name="by">The caller's connection.</param>
+	/// <param name="player">The user to act on.</param>
+	/// <param name="team">The team to assign.</param>
+	/// <returns>Ok, NotAuthorized, NoTeams or NotInRoom.</returns>
+	/// <remarks>The caller holds the room's scope.</remarks>
+	public RoomResult SetTeam(Connection by, User player, GameTeam team)
+	{
+		if (!IsManager(by.User)) return RoomResult.NotAuthorized;
+		if (!TeamType.NeedSplitTeam()) return RoomResult.NoTeams;
+		if (Slots.Find(player) is not { Player: not null } slot) return RoomResult.NotInRoom;
+		if (slot.Team == team) return RoomResult.Ok;
+
+		slot.SetTeam(team);
+		Emit(new SlotTeamChanged(this, slot.Index, team));
+		return RoomResult.Ok;
+	}
+
+	/// <summary>Chooses the caller's own mods while freemod is on.</summary>
+	/// <param name="by">The caller's game client.</param>
+	/// <param name="mods">The mods to select.</param>
+	/// <returns>Ok, NotInRoom, InProgress, NotFreemod, SpeedModNotAllowed or InvalidMods.</returns>
+	/// <remarks>The caller holds the room's scope.</remarks>
+	public RoomResult SetPlayerMods(BanchoConnection by, GameMods mods)
+	{
+		if (Slots.Find(by) is not { } slot) return RoomResult.NotInRoom;
+		if (InProgress) return RoomResult.InProgress;
+		if (!Freemods) return RoomResult.NotFreemod;
+		if ((mods & GameMods.SpeedChangingMods) != GameMods.NoMod) return RoomResult.SpeedModNotAllowed;
+		if (!mods.IsValid(Mode)) return RoomResult.InvalidMods;
+		if (slot.Mods == mods) return RoomResult.Ok;
+
+		slot.SetMods(mods);
+		Emit(new SlotModsChanged(this, slot.Index, mods));
+		return RoomResult.Ok;
+	}
+
+	/// <summary>Sets the room's password when the lobby opens the room.</summary>
+	/// <param name="password">The password the room opens with.</param>
+	internal void SetInitialPassword(string password)
+	{
+		Password = password;
+	}
+
 	/// <summary>Seats the creator's game client as the first host when the lobby opens the room.</summary>
 	internal void SeatCreator(BanchoConnection creator)
 	{
@@ -582,6 +680,65 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	}
 
 	private bool IsHostOrManager(Connection by) => ReferenceEquals(by, _host) || IsManager(by.User);
+
+	/// <summary>Applies the room's freemod setting to the room's own mods and every seated player.</summary>
+	/// <param name="value">Whether freemod is on.</param>
+	/// <remarks>
+	///     Turning freemod on hands the room's non-speed-changing mods to every seated player and
+	///     leaves the room with only its speed-changing mods. Turning it off gives the room its
+	///     speed-changing mods plus the host's own mods, and clears every player's own mods.
+	/// </remarks>
+	private void ApplyFreemods(bool value)
+	{
+		Settings.Freemods = value;
+
+		var seated = Slots.Where(s => s.Player is not null).ToList();
+		if (value)
+		{
+			// Players take the room's mods that combine per player; the room keeps only the
+			// speed-changing ones, which must stay the same for everyone.
+			foreach (var slot in seated)
+				slot.SetMods(Settings.Mods & ~GameMods.SpeedChangingMods);
+			Settings.Mods &= GameMods.SpeedChangingMods;
+		}
+		else
+		{
+			// The room keeps its speed-changing mods and takes the host's own mods.
+			var hostMods = (Host is { } host ? Slots.Find(host)?.Mods : null) ?? GameMods.NoMod;
+			Settings.Mods = (Settings.Mods & GameMods.SpeedChangingMods) | hostMods;
+			foreach (var slot in seated)
+				slot.SetMods(GameMods.NoMod);
+		}
+	}
+
+	/// <summary>Applies the room's team arrangement, reassigning the teams of the seated players.</summary>
+	/// <param name="value">The team arrangement to set.</param>
+	private void ApplyTeamType(GameTeamType value)
+	{
+		Settings.TeamType = value;
+
+		if (value.NeedSplitTeam())
+		{
+			var redCount = 0;
+			var blueCount = 0;
+
+			foreach (var slot in Slots.Where(s => s.Player is not null))
+			{
+				var team = redCount <= blueCount ? GameTeam.Red : GameTeam.Blue;
+				slot.SetTeam(team);
+
+				if (team == GameTeam.Red)
+					redCount++;
+				else
+					blueCount++;
+			}
+		}
+		else
+		{
+			foreach (var slot in Slots.Where(s => s.Player is not null))
+				slot.SetTeam(null);
+		}
+	}
 
 	private void LeaveChannel(Connection connection)
 	{

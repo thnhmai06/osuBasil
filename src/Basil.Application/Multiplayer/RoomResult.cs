@@ -67,5 +67,32 @@ public enum RoomResult : byte
 	TooManyRooms,
 
 	/// <summary>Every room id is in use.</summary>
-	NoRoomId
+	NoRoomId,
+
+	/// <summary>The target slot does not exist, is locked or is occupied.</summary>
+	SlotNotOpen,
+
+	/// <summary>The room is locked, so players cannot change slot or team.</summary>
+	RoomLocked,
+
+	/// <summary>A round is in progress.</summary>
+	InProgress,
+
+	/// <summary>A player cannot lock their own slot.</summary>
+	OwnSlot,
+
+	/// <summary>The room's team type does not use teams.</summary>
+	NoTeams,
+
+	/// <summary>Freemod is off, so players cannot choose their own mods.</summary>
+	NotFreemod,
+
+	/// <summary>Speed-changing mods are chosen for the whole room, not per player.</summary>
+	SpeedModNotAllowed,
+
+	/// <summary>The mods are not valid for the room's game mode.</summary>
+	InvalidMods,
+
+	/// <summary>A setting has a value that is not allowed.</summary>
+	InvalidSettings
 }

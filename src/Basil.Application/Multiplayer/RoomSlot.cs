@@ -19,114 +19,23 @@ public sealed class RoomSlot
 	/// <summary>The number of this slot, from 1 to 16.</summary>
 	public readonly int Index;
 
-	/// <summary>Gets or sets whether this slot is locked. Locking an occupied slot evicts its occupant.</summary>
-	public bool Locked
-	{
-		get => _locked;
-		set
-		{
-			if (_locked == value) return;
-
-			BanchoConnection? evicted = null;
-			if (value && Player is { } player)
-			{
-				Slots.Room.PassHostFrom(player);
-				evicted = player;
-				Clear();
-			}
-
-			_locked = value;
-			Slots.Room.Emit(new SlotLockChanged(this, value, evicted));
-		}
-	}
+	/// <summary>Gets whether this slot is locked.</summary>
+	public bool Locked => _locked;
 
 	/// <summary>Gets the connection of the player occupying this slot, or <see langword="null" /> when empty.</summary>
 	public BanchoConnection? Player { get; private set; }
 
-	/// <summary>Gets or sets the occupied-state of this slot.</summary>
-	public RoomSlotStatus? Status
-	{
-		get => _status;
-		set
-		{
-			if (_status == value) return;
+	/// <summary>Gets the occupied-state of this slot.</summary>
+	public RoomSlotStatus? Status => _status;
 
-			if (value is { } v)
-			{
-				ThrowIfEmpty();
-				ThrowIfUndefined(v);
-			}
+	/// <summary>Gets whether the occupant has skipped the intro of the current beatmap.</summary>
+	public bool? IntroSkipped => _introSkipped;
 
-			_status = value;
-			IntroSkipped = value is RoomSlotStatus.Playing ? false : null;
-			Slots.Room.Emit(new SlotStatusChanged(this, value));
-		}
-	}
+	/// <summary>Gets the team assigned to this slot.</summary>
+	public GameTeam? Team => _team;
 
-	/// <summary>Gets or sets whether the occupant has skipped the intro of the current beatmap.</summary>
-	public bool? IntroSkipped
-	{
-		get => _introSkipped;
-		set
-		{
-			if (_introSkipped == value) return;
-
-			if (value is not null)
-			{
-				ThrowIfEmpty();
-				if (_status is not RoomSlotStatus.Playing)
-					throw new InvalidOperationException("The player is not playing.");
-			}
-
-			_introSkipped = value;
-		}
-	}
-
-	/// <summary>Gets or sets the team assigned to this slot.</summary>
-	public GameTeam? Team
-	{
-		get => _team;
-		set
-		{
-			if (_team == value) return;
-
-			if (value is { } v)
-			{
-				ThrowIfEmpty();
-				ThrowIfPlaying();
-				ThrowIfUndefined(v);
-
-				if (!Slots.Room.TeamType.NeedSplitTeam())
-					throw new InvalidOperationException("The room's team type does not use teams.");
-			}
-
-			_team = value;
-			Slots.Room.Emit(new SlotTeamChanged(this, value));
-		}
-	}
-
-	/// <summary>Gets or sets the mods selected for this slot, used when free mods are enabled.</summary>
-	public GameMods? Mods
-	{
-		get => _mods;
-		set
-		{
-			if (value is { } v)
-			{
-				ThrowIfEmpty();
-				ThrowIfPlaying();
-				if (!Slots.Room.Freemods)
-					throw new InvalidOperationException("The room does not allow players to choose their own mods.");
-				if ((v & GameMods.SpeedChangingMods) != GameMods.NoMod)
-					throw new InvalidOperationException("Speed-changing mods are set on the room, not per player.");
-				v.ThrowIfInvalid(Slots.Room.Mode);
-			}
-
-			if (_mods == value) return;
-			_mods = value;
-			Slots.Room.Emit(new SlotModsChanged(this, value));
-		}
-	}
+	/// <summary>Gets the mods selected for this slot, used when free mods are enabled.</summary>
+	public GameMods? Mods => _mods;
 
 	internal RoomSlot(RoomSlots slots, int index)
 	{
@@ -187,14 +96,23 @@ public sealed class RoomSlot
 		_locked = locked;
 	}
 
+	/// <summary>Sets whether the occupant has skipped the intro of the current beatmap.</summary>
+	/// <param name="skipped">The skip state to assign.</param>
+	internal void SetIntroSkipped(bool? skipped)
+	{
+		_introSkipped = skipped;
+	}
+
 	internal void MoveTo(RoomSlot target)
 	{
-		ThrowIfDifferentRoom(target);
+		if (!ReferenceEquals(Slots, target.Slots))
+			throw new ArgumentException("The target slot belongs to a different room.", nameof(target));
 		if (Index == target.Index) return;
-		ThrowIfEmpty();
-		target.ThrowIfLocked();
+		if (Player is null) throw new InvalidOperationException("The slot has no player.");
+		if (target.Locked || target.Player is not null)
+			throw new InvalidOperationException("The target slot is not open.");
 
-		var player = Player!;
+		var player = Player;
 		target.Player = player;
 		target._status = _status;
 		target._team = _team;
@@ -206,41 +124,6 @@ public sealed class RoomSlot
 		_team = null;
 		_mods = null;
 		_introSkipped = null;
-	}
-
-	public void ThrowIfEmpty()
-	{
-		if (Player is null)
-			throw new InvalidOperationException("The slot has no player.");
-	}
-
-	public void ThrowIfLocked()
-	{
-		if (Locked)
-			throw new InvalidOperationException("The slot is locked.");
-	}
-
-	public void ThrowIfPlaying()
-	{
-		if (_status is RoomSlotStatus.Playing)
-			throw new InvalidOperationException("The player is playing.");
-	}
-
-	public void ThrowIfDifferentRoom(RoomSlots slots)
-	{
-		if (!ReferenceEquals(Slots, slots))
-			throw new ArgumentException("The target slot belongs to a different room.", nameof(slots));
-	}
-
-	public void ThrowIfDifferentRoom(RoomSlot slot)
-	{
-		ThrowIfDifferentRoom(slot.Slots);
-	}
-
-	private static void ThrowIfUndefined<T>(T value) where T : struct, Enum
-	{
-		if (!Enum.IsDefined(value))
-			throw new ArgumentOutOfRangeException(nameof(value), value, null);
 	}
 }
 
