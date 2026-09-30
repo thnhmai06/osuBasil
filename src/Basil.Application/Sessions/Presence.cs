@@ -103,10 +103,10 @@ public sealed class Presence(TimeProvider time) : IEventPublisher<PresenceEvent>
 	/// <summary>Records the presence status an osu! client reported.</summary>
 	/// <param name="by">The client connection that reported it.</param>
 	/// <param name="status">The reported status.</param>
-	/// <remarks>Reporting the status the client already has does nothing.</remarks>
+	/// <remarks>Reporting the status the client already has, or reporting from a closed connection, does nothing.</remarks>
 	public void SetStatus(BanchoConnection by, PlayerStatus status)
 	{
-		if (Equals(by.Status, status)) return;
+		if (!by.IsOpen || Equals(by.Status, status)) return;
 
 		by.Status = status;
 		_events.Writer.TryWrite(new StatusChanged(by, status));

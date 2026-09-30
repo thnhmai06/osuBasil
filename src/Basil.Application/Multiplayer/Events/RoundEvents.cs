@@ -32,8 +32,8 @@ public sealed record PlayerLoaded(Room Room, Round Round, int Slot) : RoundEvent
 /// <summary>The last player finished loading, so every player has loaded.</summary>
 /// <param name="Room">The room.</param>
 /// <param name="Round">The round.</param>
-/// <param name="Slot">The slot number, from 1 to 16.</param>
-public sealed record AllPlayersLoaded(Room Room, Round Round, int Slot) : RoundEvent(Room, Round);
+/// <param name="Slot">The slot of the player whose load completed the set, or <see langword="null" /> when a player who had not loaded left.</param>
+public sealed record AllPlayersLoaded(Room Room, Round Round, int? Slot) : RoundEvent(Room, Round);
 
 /// <summary>A player asked to skip the intro.</summary>
 /// <param name="Room">The room.</param>
@@ -44,8 +44,8 @@ public sealed record PlayerSkipped(Room Room, Round Round, int Slot) : RoundEven
 /// <summary>The last player asked to skip the intro, so the intro is skipped.</summary>
 /// <param name="Room">The room.</param>
 /// <param name="Round">The round.</param>
-/// <param name="Slot">The slot number, from 1 to 16.</param>
-public sealed record AllPlayersSkipped(Room Room, Round Round, int Slot) : RoundEvent(Room, Round);
+/// <param name="Slot">The slot of the player whose request completed the set, or <see langword="null" /> when a player who had not asked left.</param>
+public sealed record AllPlayersSkipped(Room Room, Round Round, int? Slot) : RoundEvent(Room, Round);
 
 /// <summary>A player failed.</summary>
 /// <param name="Room">The room.</param>

@@ -124,17 +124,6 @@ public abstract class ChatChannelSession : IEventPublisher<ChatChannelEvent>
 	{
 	}
 
-	/// <summary>Removes a connection from the channel as a kick.</summary>
-	/// <param name="connection">The connection to remove.</param>
-	internal void Kick(Connection connection)
-	{
-		lock (_sync)
-		{
-			if (_members.Remove(connection))
-				Emit(new MemberParted(this, connection, true));
-		}
-	}
-
 	/// <summary>Closes the channel, removing every member and completing the event channel.</summary>
 	internal void Close()
 	{

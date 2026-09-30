@@ -57,9 +57,15 @@ public sealed class Lobby(IMatchRepository matches, Presence presence, TimeProvi
 	/// <remarks>
 	///     A creator who is silenced or restricted cannot open a room, and a creator can have at most
 	///     <see cref="MaxRoomsPerCreator" /> tournament rooms open. When <paramref name="creatorConnection" />
-	///     is given and not seated in another room, it is seated as the first host. The server's bot joins
-	///     the room's chat channel.
+	///     is given and not seated in another room, it is seated as the first host. A room that is not a
+	///     tournament room is opened in game: it needs the creator's game client and fails with AlreadyInRoom
+	///     when that client already plays in a room. A tournament room opened with nobody seated closes after
+	///     <see cref="EmptyTournamentRoomTimeout" /> unless someone joins. The server's bot joins the room's
+	///     chat channel.
 	/// </remarks>
+	/// <exception cref="ArgumentNullException">
+	///     <paramref name="creatorConnection" /> is <see langword="null" /> for a room that is not a tournament room.
+	/// </exception>
 	public async Task<(Room? Room, RoomResult Result)> OpenAsync(
 		User? creator,
 		BanchoConnection? creatorConnection,
@@ -70,14 +76,18 @@ public sealed class Lobby(IMatchRepository matches, Presence presence, TimeProvi
 		MatchSettings? settings = null,
 		CancellationToken cancellationToken = default)
 	{
+		if (!isTournament && creatorConnection is null)
+			throw new ArgumentNullException(nameof(creatorConnection), "A room opened in game needs the creator's game client.");
+
 		if (creator is not null)
 		{
 			if (creator.Value.SilenceEndsAt > time.GetUtcNow()) return (null, RoomResult.Silenced);
 			if (!creator.Value.Privilege.Has(ClientPrivileges.Player)) return (null, RoomResult.NotAuthorized);
-			if (isTournament && _rooms.Values.Count(room => room.IsTournament && creator.Equals(room.Creator)) >=
-			    MaxRoomsPerCreator)
-				return (null, RoomResult.TooManyRooms);
+			if (isTournament && TooManyRooms(creator)) return (null, RoomResult.TooManyRooms);
 		}
+
+		// A room opened in game seats its creator; one who already plays in a room cannot open another.
+		if (!isTournament && RoomOf(creatorConnection!) is not null) return (null, RoomResult.AlreadyInRoom);
 
 		if (FreeRoomId() is null) return (null, RoomResult.NoRoomId);
 
@@ -93,6 +103,7 @@ public sealed class Lobby(IMatchRepository matches, Presence presence, TimeProvi
 		lock (_openSync)
 		{
 			if (FreeRoomId() is not { } id) return (null, RoomResult.NoRoomId);
+			if (creator is not null && isTournament && TooManyRooms(creator)) return (null, RoomResult.TooManyRooms);
 
 			var room = new Room(this, time, id, match, settings ?? new MatchSettings(), isTournament);
 			if (!string.IsNullOrEmpty(password))
@@ -107,6 +118,9 @@ public sealed class Lobby(IMatchRepository matches, Presence presence, TimeProvi
 				room.Channel.Join(bot);
 
 			_events.Writer.TryWrite(new RoomOpened(room, room.Host));
+
+			// A tournament room opened without a seated player starts its empty-room countdown now.
+			if (!room.Slots.Any(slot => slot.Player is not null)) RoomEmptied(room);
 			return (room, RoomResult.Ok);
 		}
 	}
@@ -210,6 +224,9 @@ public sealed class Lobby(IMatchRepository matches, Presence presence, TimeProvi
 		_rooms.TryRemove(new KeyValuePair<int, Room>(room.Id, room));
 		_events.Writer.TryWrite(new RoomClosed(room, evicted));
 	}
+
+	private bool TooManyRooms(User creator) =>
+		_rooms.Values.Count(room => room.IsTournament && creator.Equals(room.Creator)) >= MaxRoomsPerCreator;
 
 	private int? FreeRoomId()
 	{
