@@ -476,7 +476,7 @@ tự event trong một luồng, thời điểm hẹn giờ) phải giống trư�
 
 Đối chứng ngày 2026-10-01, trên `develop` tại `94d96e6b`.
 
-**Thay đổi chưa commit trong working tree** (do người dùng sửa, không nằm trong commit của kế hoạch này):
+**Thay đổi của người dùng làm sau `94d96e6b`**, đã commit ở `c89ac6ae` để làm nền cho đợt này:
 
 | Thay đổi | Kế hoạch xử lý |
 |---|---|
@@ -486,7 +486,7 @@ tự event trong một luồng, thời điểm hẹn giờ) phải giống trư�
 | `Registration.cs`: dời `RegistrationFailure` xuống cuối file | Pha 2 bỏ `Registration`; `RegistrationFailure` (`InvalidName`, `NameTaken`, `WrongAdminKey`) dời sang `Basil.Services/Auth` |
 | `Lobby.cs`: xuống dòng khai báo lớp | Không ảnh hưởng |
 
-**Build và hành vi trên working tree đó:**
+**Build và hành vi tại `c89ac6ae`:**
 
 * `dotnet build src/Basil.Application/Basil.Application.csproj`: 0 lỗi; cảnh báo CS1574 (cref `Empty`) ở
   `Scores/IUserStatsRepository.cs:17`, sửa ở pha 1 khi đổi chữ ký.
@@ -502,10 +502,9 @@ các route hiện có trong `Basil.Host.Api` (`/users`, `/users/search`, `/match
 
 Cho session agent nhận việc:
 
-1. Đọc `AGENTS.md`, kế hoạch này, bộ nhớ dự án (`MEMORY.md`). Hỏi người dùng hai điều trước khi sửa code:
-   * các thay đổi chưa commit ở mục 10 đã được commit chưa, hay vẫn nằm trong working tree;
-   * mục 8 (tên project, khóa phòng, ghi lịch sử round, record tiêu chí) và `UpdateAsync` của stats (mục 3)
-     có đổi gì không.
+1. Đọc `AGENTS.md`, kế hoạch này, bộ nhớ dự án (`MEMORY.md`). Nền bắt đầu là `c89ac6ae` trên `develop`; nếu
+   `git log` có commit mới hơn, đối chứng lại mục 10. Hỏi người dùng trước khi sửa code: mục 8 (tên project,
+   khóa phòng, ghi lịch sử round, record tiêu chí) và `UpdateAsync` của stats (mục 3) có đổi gì không.
 2. Dựng lại kịch bản phụ lục A trong scratchpad của session, **ngoài repo**: `Directory.Packages.props` ở gốc
    repo bật quản lý package tập trung, xung đột với `#:package`. Chạy `dotnet run check.cs`, phải 31/31 PASS
    trước khi bắt đầu.
