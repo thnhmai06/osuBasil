@@ -13,12 +13,12 @@ public sealed class BeatmapCatalog(
 	IBeatmapsetRepository beatmapsets,
 	IBeatmapRepository beatmaps,
 	IBeatmapArchiveStorage archives,
-	TimeProvider time) : IEventPublisher<BeatmapEvent>
+	TimeProvider time) : IEventPublisher<BeatmapsetEvent>
 {
-	private readonly Channel<BeatmapEvent> _events = Channel.CreateUnbounded<BeatmapEvent>();
+	private readonly Channel<BeatmapsetEvent> _events = Channel.CreateUnbounded<BeatmapsetEvent>();
 
 	/// <inheritdoc />
-	public ChannelReader<BeatmapEvent> Events => _events.Reader;
+	public ChannelReader<BeatmapsetEvent> Events => _events.Reader;
 
 	/// <summary>
 	///     Imports a beatmapset: stores its archive, its metadata and each analyzed difficulty, and drops difficulties

@@ -5,11 +5,11 @@ using Basil.Domain.Client;
 namespace Basil.Application.Chat;
 
 /// <summary>A configured chat channel while it is open.</summary>
-public sealed class GeneralChatChannelSession(GeneralChatChannel channel, TimeProvider time)
-	: ChatChannelSession(channel, time)
+public sealed class GeneralChannelSession(GeneralChannel channel, TimeProvider time)
+	: ChannelSession(channel, time)
 {
 	/// <summary>Gets the configured channel this session runs.</summary>
-	public new GeneralChatChannel Channel => channel;
+	public new GeneralChannel Channel => channel;
 
 	/// <inheritdoc />
 	public override bool CanRead(Connection connection)

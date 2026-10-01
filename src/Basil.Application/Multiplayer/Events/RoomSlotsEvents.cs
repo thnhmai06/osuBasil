@@ -20,7 +20,7 @@ public abstract record RoomSlotEvent(Room Room, int Slot) : RoomSlotsEvent(Room)
 /// <param name="Locked">Whether the slot is locked after the change.</param>
 /// <param name="Evicted">The connection that was removed, or <see langword="null" /> when no player was removed.</param>
 /// <param name="Host">The room's host after the change.</param>
-public sealed record SlotLockChanged(
+public sealed record RoomSlotLockChanged(
 	Room Room,
 	int Slot,
 	bool Locked,
@@ -32,16 +32,16 @@ public sealed record SlotLockChanged(
 /// <param name="Room">The room the slot belongs to.</param>
 /// <param name="Slot">The number of the slot, from 1 to 16.</param>
 /// <param name="Team">The team assigned after the change, or <see langword="null" /> when the slot has none.</param>
-public sealed record SlotTeamChanged(Room Room, int Slot, GameTeam? Team) : RoomSlotEvent(Room, Slot);
+public sealed record RoomSlotTeamChanged(Room Room, int Slot, GameTeam? Team) : RoomSlotEvent(Room, Slot);
 
 /// <summary>A slot's selected mods changed.</summary>
 /// <param name="Room">The room the slot belongs to.</param>
 /// <param name="Slot">The number of the slot, from 1 to 16.</param>
 /// <param name="Mods">The mods selected after the change, or <see langword="null" /> when the slot has none.</param>
-public sealed record SlotModsChanged(Room Room, int Slot, GameMods? Mods) : RoomSlotEvent(Room, Slot);
+public sealed record RoomSlotModsChanged(Room Room, int Slot, GameMods? Mods) : RoomSlotEvent(Room, Slot);
 
 /// <summary>A slot's occupied-status changed.</summary>
 /// <param name="Room">The room the slot belongs to.</param>
 /// <param name="Slot">The number of the slot, from 1 to 16.</param>
 /// <param name="Status">The status after the change, or <see langword="null" /> when the slot is empty.</param>
-public sealed record SlotStatusChanged(Room Room, int Slot, RoomSlotStatus? Status) : RoomSlotEvent(Room, Slot);
+public sealed record RoomSlotStatusChanged(Room Room, int Slot, RoomSlotStatus? Status) : RoomSlotEvent(Room, Slot);

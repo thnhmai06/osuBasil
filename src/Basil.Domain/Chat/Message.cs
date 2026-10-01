@@ -6,4 +6,4 @@ namespace Basil.Domain.Chat;
 /// <param name="From">The user who posted the message.</param>
 /// <param name="Content">The text of the message.</param>
 /// <param name="Timestamp">The date and time the message was posted.</param>
-public sealed record ChatMessage(User From, string Content, DateTimeOffset Timestamp);
+public sealed record Message(User From, string Content, DateTimeOffset Timestamp);

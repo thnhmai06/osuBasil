@@ -113,7 +113,7 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 			slot.SetTeam(redCount <= blueCount ? GameTeam.Red : GameTeam.Blue);
 		}
 
-		Room.Emit(new PlayerJoined(Room, player, slot.Index));
+		Room.Emit(new RoomPlayerJoined(Room, player, slot.Index));
 		return slot;
 	}
 

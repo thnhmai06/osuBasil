@@ -15,7 +15,7 @@ public abstract record RoomAccessEvent(Room Room) : RoomEvent(Room);
 /// </param>
 /// <param name="Evicted">The connection that was removed, or <see langword="null" /> when the player was not seated.</param>
 /// <param name="Host">The room's host after the player left.</param>
-public sealed record PlayerBanned(
+public sealed record RoomPlayerBanned(
 	Room Room,
 	User Player,
 	int? Vacated,
@@ -24,10 +24,10 @@ public sealed record PlayerBanned(
 	: RoomAccessEvent(Room);
 
 /// <summary>A player's ban from the room was lifted.</summary>
-public sealed record PlayerUnbanned(Room Room, User Player) : RoomAccessEvent(Room);
+public sealed record RoomPlayerUnbanned(Room Room, User Player) : RoomAccessEvent(Room);
 
 /// <summary>A player was invited to the room.</summary>
 /// <param name="Room">The room the player was invited to.</param>
 /// <param name="By">The user who sent the invitation.</param>
 /// <param name="Player">The invited user.</param>
-public sealed record PlayerInvited(Room Room, User By, User Player) : RoomAccessEvent(Room);
+public sealed record RoomPlayerInvited(Room Room, User By, User Player) : RoomAccessEvent(Room);

@@ -3,31 +3,32 @@ using Basil.Application.Common.Events;
 using Basil.Application.Sessions;
 using Basil.Domain.Chat;
 using Basil.Domain.Utilities;
+using Channel = Basil.Domain.Chat.Channel;
 
 namespace Basil.Application.Chat;
 
 /// <summary>A chat channel while it is open: its members and what happens in it.</summary>
-public abstract class ChatChannelSession : IEventPublisher<ChatChannelEvent>
+public abstract class ChannelSession : IEventPublisher<ChannelEvent>
 {
 	/// <summary>The longest message kept; longer messages are cut.</summary>
 	public const int MaxMessageLength = 2000;
 
-	private readonly Channel<ChatChannelEvent> _events =
-		System.Threading.Channels.Channel.CreateUnbounded<ChatChannelEvent>();
+	private readonly Channel<ChannelEvent> _events =
+		System.Threading.Channels.Channel.CreateUnbounded<ChannelEvent>();
 
 	private readonly ConcurrentSet<Connection> _members = [];
 	private volatile bool _closed;
 
 	/// <summary>Opens a runtime channel for a chat channel.</summary>
-	protected ChatChannelSession(ChatChannel channel, TimeProvider time)
+	protected ChannelSession(Channel channel, TimeProvider time)
 	{
 		Channel = channel;
 		Time = time;
-		Emit(new ChatChannelOpened(this));
+		Emit(new ChannelOpened(this));
 	}
 
 	/// <summary>Gets the chat channel this session runs.</summary>
-	public ChatChannel Channel { get; }
+	public Channel Channel { get; }
 
 	/// <summary>Gets the clock the channel reads the current time from.</summary>
 	private protected TimeProvider Time { get; }
@@ -48,7 +49,7 @@ public abstract class ChatChannelSession : IEventPublisher<ChatChannelEvent>
 	private protected Lock Sync { get; } = new();
 
 	/// <inheritdoc />
-	public ChannelReader<ChatChannelEvent> Events => _events.Reader;
+	public ChannelReader<ChannelEvent> Events => _events.Reader;
 
 	/// <summary>Gets a value that indicates whether a connection may read the channel.</summary>
 	public abstract bool CanRead(Connection connection);
@@ -74,12 +75,12 @@ public abstract class ChatChannelSession : IEventPublisher<ChatChannelEvent>
 				{
 					if (old.IsOpen) return ChannelJoinResult.AlreadyMember;
 					_members.Remove(old);
-					Emit(new MemberParted(this, old, false));
+					Emit(new ChannelMemberParted(this, old, false));
 				}
 			}
 
 			_members.Add(by);
-			Emit(new MemberJoined(this, by));
+			Emit(new ChannelMemberJoined(this, by));
 			return ChannelJoinResult.Joined;
 		}
 	}
@@ -92,7 +93,7 @@ public abstract class ChatChannelSession : IEventPublisher<ChatChannelEvent>
 		lock (Sync)
 		{
 			if (!_members.Remove(by)) return ChannelPartResult.NotMember;
-			Emit(new MemberParted(this, by, false));
+			Emit(new ChannelMemberParted(this, by, false));
 			return ChannelPartResult.Parted;
 		}
 	}
@@ -113,8 +114,8 @@ public abstract class ChatChannelSession : IEventPublisher<ChatChannelEvent>
 		if (!AcceptsMessages) return ChannelPostResult.TargetSilenced;
 
 		var truncated = text.Length > MaxMessageLength;
-		var message = new ChatMessage(by.User, truncated ? text[..MaxMessageLength] : text, now);
-		Emit(new MessagePosted(this, message, truncated));
+		var message = new Message(by.User, truncated ? text[..MaxMessageLength] : text, now);
+		Emit(new ChannelMessagePosted(this, message, truncated));
 		OnPosted(by, now);
 		return ChannelPostResult.Posted;
 	}
@@ -137,10 +138,10 @@ public abstract class ChatChannelSession : IEventPublisher<ChatChannelEvent>
 			foreach (var member in _members.ToArray())
 			{
 				_members.Remove(member);
-				Emit(new MemberParted(this, member, true));
+				Emit(new ChannelMemberParted(this, member, true));
 			}
 
-			Emit(new ChatChannelClosed(this));
+			Emit(new ChannelClosed(this));
 			_events.Writer.TryComplete();
 		}
 	}
@@ -162,7 +163,7 @@ public abstract class ChatChannelSession : IEventPublisher<ChatChannelEvent>
 		return _members.Remove(connection);
 	}
 
-	private protected void Emit(ChatChannelEvent @event)
+	private protected void Emit(ChannelEvent @event)
 	{
 		_events.Writer.TryWrite(@event);
 	}

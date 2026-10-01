@@ -141,7 +141,7 @@ flowchart TD
 * a tournament room (`!mp make`, the API) seats its creator only when their game client is online and
   not in another room; otherwise it opens empty;
 * the server's bot joins the room's chat channel;
-* the lobby emits `RoomOpened` with the first host, if any.
+* the lobby emits `LobbyRoomOpened` with the first host, if any.
 
 The room's chat channel is named `mp_{room id}` and belongs to the room: it opens and closes with it.
 
@@ -149,7 +149,7 @@ The room's chat channel is named `mp_{room id}` and belongs to the room: it open
 
 A manager closes a room with `Lobby.CloseAsync`. Closing aborts a round in progress, cancels the
 countdown, removes every player and the room's channel, records the match's end time and emits
-`RoomClosed`. Closing a room does not delete its match history.
+`LobbyRoomClosed`. Closing a room does not delete its match history.
 
 ## Joining and leaving
 
@@ -185,24 +185,24 @@ sequenceDiagram
     participant R as Room
     participant P as Players
     H->>R: Start
-    R-->>P: RoundStarted (players with the beatmap)
+    R-->>P: RoomRoundStarted (players with the beatmap)
     P->>R: MarkLoaded (each)
-    R-->>P: PlayerLoaded … AllPlayersLoaded
+    R-->>P: RoomRoundPlayerLoaded … RoomRoundAllLoaded
     P->>R: Skip (each, optional)
-    R-->>P: PlayerSkipped … AllPlayersSkipped
+    R-->>P: RoomRoundPlayerSkipped … RoomRoundAllSkipped
     P->>R: Fail (optional), Complete (each)
-    R-->>P: PlayerCompleted … RoundCompleted
+    R-->>P: RoomRoundPlayerCompleted … RoomRoundCompleted
 ```
 
 * Players who reported not having the beatmap do not take part. A round with no player ends as soon as
   it starts.
-* The last player to load or to ask to skip produces `AllPlayersLoaded` or `AllPlayersSkipped` instead
+* The last player to load or to ask to skip produces `RoomRoundAllLoaded` or `RoomRoundAllSkipped` instead
   of the per-player event, at most once per round.
 * When a player stops playing because they left, were kicked, banned or had their slot locked, the room
   re-checks the round: if every remaining player has loaded or skipped, it announces that; if nobody is
   playing any more, the round ends.
-* The round ends when the last player completes it (`RoundCompleted` carries that player's slot) or
-  when the last remaining player leaves (`RoundCompleted` carries no slot). Players then return to not
+* The round ends when the last player completes it (`RoomRoundCompleted` carries that player's slot) or
+  when the last remaining player leaves (`RoomRoundCompleted` carries no slot). Players then return to not
   ready.
 * A manager can abort a round; players go back to not ready and the round is marked aborted.
 
@@ -210,7 +210,7 @@ sequenceDiagram
 
 A manager can start a countdown (`!mp start <seconds>`, `!mp timer`) of up to one hour; the default is
 30 seconds. It is announced at 60, 30, 10 and 5 seconds remaining when those are shorter than its
-length. When it ends, the room emits `CountdownElapsed` and, if the countdown starts the round, starts
+length. When it ends, the room emits `RoomCountdownElapsed` and, if the countdown starts the round, starts
 it. A new countdown replaces the running one. Starting or aborting a round, and closing the room, cancel
 the countdown.
 
@@ -251,7 +251,7 @@ A score is attached to the latest round of the player's room only when it was pl
 beatmap. Two consecutive rounds on the same beatmap cannot be told apart this way; a late score then
 attaches to the newer round. A score on a beatmap the server does not have is accepted only when it is
 the beatmap of that latest round; otherwise it is rejected as `UnknownBeatmap`. An attached score is
-announced by the room as `ScoreSubmitted`.
+announced by the room as `RoomRoundScoreSubmitted`.
 
 ## Match mutation concurrency
 
@@ -271,7 +271,7 @@ synchronization mechanism for the same state.
 
 > **Pending migration.** The previous implementation persisted round ends on an ordered background
 > queue outside the room's lock. The reworked Application stores nothing itself: the round's history is
-> stored from `RoundStarted`, `RoundCompleted` and `RoundAborted` outside Application. The ordering and
+> stored from `RoomRoundStarted`, `RoomRoundCompleted` and `RoomRoundAborted` outside Application. The ordering and
 > retry rules below still apply to that consumer.
 
 A database write can be slow enough (SQLite lock contention, retry and backoff) that doing it inside
@@ -287,7 +287,7 @@ What happens when a room has no seated player depends on how it was created:
 
 * a room created in game closes as soon as its last player leaves;
 * a tournament room stays open for `Lobby.EmptyTournamentRoomTimeout` (15 minutes) and then closes if
-  it is still empty. The lobby emits `EmptyRoomClosingSoon` twice, carrying the closing time: when the
+  it is still empty. The lobby emits `LobbyRoomClosingAnnounced` twice, carrying the closing time: when the
   room becomes empty (15 minutes left) and 5 minutes before it closes. Both are used to warn the room's
   referees. A player joining at any point cancels the countdown; if the room empties again, it starts
   over at 15 minutes.

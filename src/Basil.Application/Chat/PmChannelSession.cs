@@ -4,8 +4,8 @@ using Basil.Domain.Chat;
 namespace Basil.Application.Chat;
 
 /// <summary>A user's private-message channel: every message posted here is delivered to that user.</summary>
-public sealed class PmChatChannelSession(UserSession owner, TimeProvider time)
-	: ChatChannelSession(new PmChatChannel(owner.User), time)
+public sealed class PmChannelSession(UserSession owner, TimeProvider time)
+	: ChannelSession(new PmChannel(owner.User), time)
 {
 	/// <summary>Gets the online session of the user who receives the messages.</summary>
 	public UserSession Owner => owner;
@@ -34,7 +34,7 @@ public sealed class PmChatChannelSession(UserSession owner, TimeProvider time)
 	private protected override void OnPosted(Connection by, DateTimeOffset now)
 	{
 		if (owner.AwayMessage is { } away && !ReferenceEquals(by.Session, owner))
-			by.Session.PmChannel.Emit(new MessagePosted(by.Session.PmChannel, new ChatMessage(owner.User, away, now),
+			by.Session.PmChannel.Emit(new ChannelMessagePosted(by.Session.PmChannel, new Message(owner.User, away, now),
 				false));
 	}
 }

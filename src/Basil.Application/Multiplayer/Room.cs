@@ -60,7 +60,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		Settings = settings;
 		IsTournament = isTournament;
 		Slots = new RoomSlots(this);
-		Channel = new RoomChatChannelSession(this, time);
+		Channel = new RoomChannelSession(this, time);
 	}
 
 	/// <summary>The match this room is a live projection of.</summary>
@@ -76,7 +76,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	public bool IsTournament { get; }
 
 	/// <summary>Gets the room's chat channel.</summary>
-	public RoomChatChannelSession Channel { get; }
+	public RoomChannelSession Channel { get; }
 
 	/// <summary>The match's 16 slots, in order.</summary>
 	public RoomSlots Slots { get; }
@@ -202,7 +202,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 			// The closed connection leaves as an ordinary leave; the room is not reported empty
 			// because the same user takes a seat right after.
 			var vacated = Slots.Vacate(stale)!;
-			Emit(new PlayerLeft(this, stale, vacated.Index, Host));
+			Emit(new RoomPlayerLeft(this, stale, vacated.Index, Host));
 			LeaveChannel(stale);
 			AnnounceRoundProgress();
 		}
@@ -229,7 +229,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	{
 		if (Slots.Vacate(by) is not { } slot) return RoomResult.NotInRoom;
 
-		Emit(new PlayerLeft(this, by, slot.Index, Host));
+		Emit(new RoomPlayerLeft(this, by, slot.Index, Host));
 		LeaveChannel(by);
 		ReportIfEmpty();
 		return RoomResult.Ok;
@@ -247,7 +247,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		if (Slots.Find(player) is not { Player: { } seated }) return RoomResult.NotInRoom;
 
 		var slot = Slots.Vacate(seated)!;
-		Emit(new PlayerKicked(this, seated, slot.Index, Host));
+		Emit(new RoomPlayerKicked(this, seated, slot.Index, Host));
 		LeaveChannel(seated);
 		ReportIfEmpty();
 		return RoomResult.Ok;
@@ -272,7 +272,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 			vacated = Slots.Vacate(seated)?.Index;
 		}
 
-		Emit(new PlayerBanned(this, player, vacated, evicted, Host));
+		Emit(new RoomPlayerBanned(this, player, vacated, evicted, Host));
 		if (evicted is not null)
 		{
 			LeaveChannel(evicted);
@@ -292,7 +292,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		if (!IsManager(by.User)) return RoomResult.NotAuthorized;
 		if (!_banned.Remove(player)) return RoomResult.NotBanned;
 
-		Emit(new PlayerUnbanned(this, player));
+		Emit(new RoomPlayerUnbanned(this, player));
 		return RoomResult.Ok;
 	}
 
@@ -309,7 +309,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 			return RoomResult.TargetOffline;
 		if (Slots.Find(target.User) is not null) return RoomResult.AlreadyInRoom;
 
-		Emit(new PlayerInvited(this, by.User, target.User));
+		Emit(new RoomPlayerInvited(this, by.User, target.User));
 		return RoomResult.Ok;
 	}
 
@@ -326,7 +326,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		if (_referees.Count >= MaxReferees) return RoomResult.TooManyReferees;
 
 		_referees.Add(user);
-		Emit(new RefereeAdded(this, user));
+		Emit(new RoomRefereeAdded(this, user));
 		return RoomResult.Ok;
 	}
 
@@ -340,7 +340,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		if (Creator is null || !Creator.Equals(by.User)) return RoomResult.NotAuthorized;
 		if (!_referees.Remove(user)) return RoomResult.NotReferee;
 
-		Emit(new RefereeRemoved(this, user));
+		Emit(new RoomRefereeRemoved(this, user));
 		return RoomResult.Ok;
 	}
 
@@ -356,7 +356,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		if (ReferenceEquals(Host, host)) return RoomResult.Ok;
 
 		Host = host;
-		Emit(new HostChanged(this, host));
+		Emit(new RoomHostChanged(this, host));
 		return RoomResult.Ok;
 	}
 
@@ -369,7 +369,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		if (Slots.Find(by.User) is not null) return RoomResult.IsPlayer;
 		if (!_observers.Add(by)) return RoomResult.Ok;
 
-		Emit(new ObserverJoined(this, by));
+		Emit(new RoomObserverJoined(this, by));
 		Channel.Join(by);
 		return RoomResult.Ok;
 	}
@@ -382,7 +382,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	{
 		if (!_observers.Remove(by)) return RoomResult.NotObserver;
 
-		Emit(new ObserverLeft(this, by));
+		Emit(new RoomObserverLeft(this, by));
 		LeaveChannel(by);
 		return RoomResult.Ok;
 	}
@@ -467,7 +467,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		if (to.Locked || to.Player is not null) return RoomResult.SlotNotOpen;
 
 		from.MoveTo(to);
-		Emit(new PlayerMoved(this, by, from.Index, to.Index));
+		Emit(new RoomPlayerMoved(this, by, from.Index, to.Index));
 		return RoomResult.Ok;
 	}
 
@@ -486,7 +486,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		if (to.Locked || to.Player is not null) return RoomResult.SlotNotOpen;
 
 		from.MoveTo(to);
-		Emit(new PlayerMoved(this, seated, from.Index, to.Index));
+		Emit(new RoomPlayerMoved(this, seated, from.Index, to.Index));
 		return RoomResult.Ok;
 	}
 
@@ -511,7 +511,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		}
 
 		slot.SetLocked(locking);
-		Emit(new SlotLockChanged(this, slot.Index, locking, evicted, Host));
+		Emit(new RoomSlotLockChanged(this, slot.Index, locking, evicted, Host));
 
 		if (evicted is not null)
 		{
@@ -551,7 +551,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		if (slot.Status == status) return RoomResult.Ok;
 
 		slot.SetStatus(status);
-		Emit(new SlotStatusChanged(this, slot.Index, status));
+		Emit(new RoomSlotStatusChanged(this, slot.Index, status));
 		return RoomResult.Ok;
 	}
 
@@ -574,7 +574,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		if (slot.Status == status) return RoomResult.Ok;
 
 		slot.SetStatus(status);
-		Emit(new SlotStatusChanged(this, slot.Index, status));
+		Emit(new RoomSlotStatusChanged(this, slot.Index, status));
 		return RoomResult.Ok;
 	}
 
@@ -591,7 +591,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 
 		var team = slot.Team is GameTeam.Red ? GameTeam.Blue : GameTeam.Red;
 		slot.SetTeam(team);
-		Emit(new SlotTeamChanged(this, slot.Index, team));
+		Emit(new RoomSlotTeamChanged(this, slot.Index, team));
 		return RoomResult.Ok;
 	}
 
@@ -609,7 +609,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		if (slot.Team == team) return RoomResult.Ok;
 
 		slot.SetTeam(team);
-		Emit(new SlotTeamChanged(this, slot.Index, team));
+		Emit(new RoomSlotTeamChanged(this, slot.Index, team));
 		return RoomResult.Ok;
 	}
 
@@ -628,7 +628,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		if (slot.Mods == mods) return RoomResult.Ok;
 
 		slot.SetMods(mods);
-		Emit(new SlotModsChanged(this, slot.Index, mods));
+		Emit(new RoomSlotModsChanged(this, slot.Index, mods));
 		return RoomResult.Ok;
 	}
 
@@ -687,8 +687,8 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	/// <param name="by">The caller's game client.</param>
 	/// <returns>Ok or NotPlaying; reporting again returns Ok and does nothing.</returns>
 	/// <remarks>
-	///     The caller holds the room's scope. The last player to load emits <see cref="AllPlayersLoaded" /> instead of
-	///     <see cref="PlayerLoaded" />.
+	///     The caller holds the room's scope. The last player to load emits <see cref="RoomRoundAllLoaded" /> instead of
+	///     <see cref="RoomRoundPlayerLoaded" />.
 	/// </remarks>
 	public RoomResult MarkLoaded(BanchoConnection by)
 	{
@@ -700,11 +700,11 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		if (!_allLoadedAnnounced && Slots.Where(s => s.Status is RoomSlotStatus.Playing).All(s => s.Loaded is true))
 		{
 			_allLoadedAnnounced = true;
-			Emit(new AllPlayersLoaded(this, round, slot.Index));
+			Emit(new RoomRoundAllLoaded(this, round, slot.Index));
 		}
 		else
 		{
-			Emit(new PlayerLoaded(this, round, slot.Index));
+			Emit(new RoomRoundPlayerLoaded(this, round, slot.Index));
 		}
 
 		return RoomResult.Ok;
@@ -714,8 +714,8 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	/// <param name="by">The caller's game client.</param>
 	/// <returns>Ok or NotPlaying; asking again returns Ok and does nothing.</returns>
 	/// <remarks>
-	///     The caller holds the room's scope. The last player to ask emits <see cref="AllPlayersSkipped" /> instead of
-	///     <see cref="PlayerSkipped" />.
+	///     The caller holds the room's scope. The last player to ask emits <see cref="RoomRoundAllSkipped" /> instead of
+	///     <see cref="RoomRoundPlayerSkipped" />.
 	/// </remarks>
 	public RoomResult Skip(BanchoConnection by)
 	{
@@ -728,11 +728,11 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		    Slots.Where(s => s.Status is RoomSlotStatus.Playing).All(s => s.IntroSkipped is true))
 		{
 			_allSkippedAnnounced = true;
-			Emit(new AllPlayersSkipped(this, round, slot.Index));
+			Emit(new RoomRoundAllSkipped(this, round, slot.Index));
 		}
 		else
 		{
-			Emit(new PlayerSkipped(this, round, slot.Index));
+			Emit(new RoomRoundPlayerSkipped(this, round, slot.Index));
 		}
 
 		return RoomResult.Ok;
@@ -747,7 +747,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		if (CurrentRound is not { } round || Slots.Find(by) is not { Status: RoomSlotStatus.Playing } slot)
 			return RoomResult.NotPlaying;
 
-		Emit(new PlayerFailed(this, round, slot.Index));
+		Emit(new RoomRoundPlayerFailed(this, round, slot.Index));
 		return RoomResult.Ok;
 	}
 
@@ -756,7 +756,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	/// <returns>Ok or NotPlaying.</returns>
 	/// <remarks>
 	///     The caller holds the room's scope. When the last player completes, the round ends and
-	///     <see cref="RoundCompleted" /> is emitted instead of <see cref="PlayerCompleted" />.
+	///     <see cref="RoomRoundCompleted" /> is emitted instead of <see cref="RoomRoundPlayerCompleted" />.
 	/// </remarks>
 	public RoomResult Complete(BanchoConnection by)
 	{
@@ -765,7 +765,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 
 		slot.SetStatus(RoomSlotStatus.Complete);
 		if (Slots.Any(s => s.Status is RoomSlotStatus.Playing))
-			Emit(new PlayerCompleted(this, round, slot.Index));
+			Emit(new RoomRoundPlayerCompleted(this, round, slot.Index));
 		else
 			EndRound(round, slot.Index);
 		return RoomResult.Ok;
@@ -793,14 +793,14 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 			.Where(mark => mark < length)
 			.Select(mark => new Countdown.Milestone(mark, _ =>
 			{
-				Emit(new CountdownTick(this, mark));
+				Emit(new RoomCountdownTicked(this, mark));
 				return Task.CompletedTask;
 			}))
 			.Append(new Countdown.Milestone(TimeSpan.Zero, _ => ElapseAsync(countdown!, startsRound)));
 		countdown = new Countdown(length, milestones, _time);
 		_countdown = countdown;
 		countdown.Start();
-		Emit(new CountdownStarted(this, length, startsRound, countdown.EndsAt!.Value));
+		Emit(new RoomCountdownStarted(this, length, startsRound, countdown.EndsAt!.Value));
 		return RoomResult.Ok;
 	}
 
@@ -814,7 +814,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		if (_countdown is null) return RoomResult.NoCountdown;
 
 		StopCountdown();
-		Emit(new CountdownCancelled(this));
+		Emit(new RoomCountdownCancelled(this));
 		return RoomResult.Ok;
 	}
 
@@ -853,7 +853,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	{
 		if (LastRound is not { } round || !round.Equals(score.Value.Round)) return RoomResult.RoundMismatch;
 
-		Emit(new ScoreSubmitted(this, round, player, score));
+		Emit(new RoomRoundScoreSubmitted(this, round, player, score));
 		return RoomResult.Ok;
 	}
 
@@ -963,13 +963,13 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		if (!_allLoadedAnnounced && playing.All(s => s.Loaded is true))
 		{
 			_allLoadedAnnounced = true;
-			Emit(new AllPlayersLoaded(this, round, null));
+			Emit(new RoomRoundAllLoaded(this, round, null));
 		}
 
 		if (!_allSkippedAnnounced && playing.All(s => s.IntroSkipped is true))
 		{
 			_allSkippedAnnounced = true;
-			Emit(new AllPlayersSkipped(this, round, null));
+			Emit(new RoomRoundAllSkipped(this, round, null));
 		}
 	}
 
@@ -995,7 +995,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 			players.Add(slot.Player!);
 		}
 
-		Emit(new RoundStarted(this, round, players));
+		Emit(new RoomRoundStarted(this, round, players));
 		if (players.Count == 0) EndRound(round, null);
 	}
 
@@ -1005,14 +1005,14 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		round.EndedAt = _time.GetUtcNow();
 		round.Aborted = true;
 		ResetPlayers();
-		Emit(new RoundAborted(this, round));
+		Emit(new RoomRoundAborted(this, round));
 	}
 
 	private void EndRound(Round round, int? slot)
 	{
 		round.EndedAt = _time.GetUtcNow();
 		ResetPlayers();
-		Emit(new RoundCompleted(this, round, slot));
+		Emit(new RoomRoundCompleted(this, round, slot));
 	}
 
 	private void ResetPlayers()
@@ -1033,7 +1033,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		if (scope is null || !ReferenceEquals(_countdown, countdown)) return;
 
 		StopCountdown();
-		Emit(new CountdownElapsed(this, startsRound));
+		Emit(new RoomCountdownElapsed(this, startsRound));
 		if (startsRound && !InProgress && Beatmap is not null) StartRound();
 	}
 

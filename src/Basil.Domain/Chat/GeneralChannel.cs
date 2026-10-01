@@ -4,8 +4,8 @@ using Basil.Domain.Utilities;
 namespace Basil.Domain.Chat;
 
 /// <summary>A configured chat channel open to every user with the required privileges.</summary>
-public sealed class GeneralChatChannel(string name, string topic = "")
-	: ChatChannel(name), IEquatable<GeneralChatChannel>
+public sealed class GeneralChannel(string name, string topic = "")
+	: Channel(name), IEquatable<GeneralChannel>
 {
 	/// <inheritdoc />
 	public override string Topic { get; } = topic;
@@ -39,10 +39,10 @@ public sealed class GeneralChatChannel(string name, string topic = "")
 	public bool Visible { get; set; } = true;
 
 	/// <summary>Determines whether another general channel has the same name.</summary>
-	public bool Equals(GeneralChatChannel? other) => other is not null && Name == other.Name;
+	public bool Equals(GeneralChannel? other) => other is not null && Name == other.Name;
 
 	/// <inheritdoc />
-	public override bool Equals(object? obj) => obj is GeneralChatChannel other && Equals(other);
+	public override bool Equals(object? obj) => obj is GeneralChannel other && Equals(other);
 
 	/// <inheritdoc />
 	public override int GetHashCode() => Name.GetHashCode();

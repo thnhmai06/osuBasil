@@ -33,7 +33,7 @@ public sealed class BanchoConnection : Connection
 	{
 		LastActiveAt = login.Timestamp;
 		UtcOffset = utcOffset;
-		SpectatorChannel = new SpectatorChatChannelSession(this, time);
+		SpectatorChannel = new SpectatorChannelSession(this, time);
 	}
 
 	/// <inheritdoc />
@@ -49,7 +49,7 @@ public sealed class BanchoConnection : Connection
 	public PlayerStatus Status { get; internal set; } = PlayerStatus.Idle;
 
 	/// <summary>Gets the chat channel shared with the users spectating this client.</summary>
-	public SpectatorChatChannelSession SpectatorChannel { get; }
+	public SpectatorChannelSession SpectatorChannel { get; }
 }
 
 /// <summary>A connection from an osu!tourney spectator client.</summary>

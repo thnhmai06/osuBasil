@@ -1554,3 +1554,9 @@ Application xanh (chỉ còn hai CS1574 có từ trước) và qua grep của ph
 11. Docs: `architecture.md`, `multiplayer.md`, `chat.md` được viết lại theo code mới; phần ngoài
     Application đánh dấu "Pending migration". Bản do agent miễn phí viết bị loại vì sai sự thật về quyền,
     sai cây kế thừa và xóa mất nội dung.
+12. Đổi tên (người dùng chốt 2026-10-01): mẫu Domain `X` → runtime `XSession` → `XRegistry`;
+    `ChatChannel`→`Channel` (và `General/Room/Spectator/PmChannel`), `ChatMessage`→`Message`,
+    `…ChatChannelSession`→`…ChannelSession`, `ChatChannels`→`GeneralChannelRegistry`, `Presence`→`UserRegistry`;
+    `Match`→`Room`→`Lobby` giữ theo thuật ngữ osu!. Event theo `{Nhóm}{Chủ thể}{Động từ quá khứ}` (AGENTS.md).
+    Kênh `lobby` chỉ là kênh General do `GeneralChannelRegistry` quản lý; bỏ ngoại lệ không auto-join.
+    Các phần trên của plan giữ tên cũ như bản ghi quyết định.

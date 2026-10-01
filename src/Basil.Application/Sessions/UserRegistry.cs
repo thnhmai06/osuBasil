@@ -7,12 +7,12 @@ using Basil.Domain.Users;
 namespace Basil.Application.Sessions;
 
 /// <summary>Who is online: opens and closes connections and announces every change.</summary>
-public sealed class Presence(TimeProvider time) : IEventPublisher<PresenceEvent>
+public sealed class UserRegistry(TimeProvider time) : IEventPublisher<UserEvent>
 {
 	/// <summary>How long a connection must be idle before a new login of the same kind replaces it.</summary>
 	public static readonly TimeSpan ReplaceAfterIdle = TimeSpan.FromSeconds(10);
 
-	private readonly Channel<PresenceEvent> _events = Channel.CreateUnbounded<PresenceEvent>();
+	private readonly Channel<UserEvent> _events = Channel.CreateUnbounded<UserEvent>();
 	private readonly ConcurrentDictionary<User, UserSession> _sessions = new();
 	private readonly Lock _sync = new(); // ponytail: one lock for all logins; per-user locks if login rate ever matters
 
@@ -20,7 +20,7 @@ public sealed class Presence(TimeProvider time) : IEventPublisher<PresenceEvent>
 	public IEnumerable<UserSession> Sessions => _sessions.Values;
 
 	/// <inheritdoc />
-	public ChannelReader<PresenceEvent> Events => _events.Reader;
+	public ChannelReader<UserEvent> Events => _events.Reader;
 
 	/// <summary>Finds the online session of a user.</summary>
 	/// <param name="user">The user to look up.</param>
@@ -33,7 +33,7 @@ public sealed class Presence(TimeProvider time) : IEventPublisher<PresenceEvent>
 	/// <summary>Finds the spectator channel a connection is spectating.</summary>
 	/// <param name="connection">The connection to look up.</param>
 	/// <returns>The channel of the player being spectated, or <see langword="null" /> when the connection is not spectating.</returns>
-	public SpectatorChatChannelSession? Watching(Connection connection)
+	public SpectatorChannelSession? Watching(Connection connection)
 	{
 		// ponytail: scans every online osu! client; add an index if the online count grows large.
 		return _sessions.Values
@@ -86,7 +86,7 @@ public sealed class Presence(TimeProvider time) : IEventPublisher<PresenceEvent>
 				session.PmChannel.Join(connection);
 			connection.IsOpen = true;
 
-			_events.Writer.TryWrite(new ConnectionOpened(connection, cameOnline));
+			_events.Writer.TryWrite(new UserConnectionOpened(connection, cameOnline));
 			return null;
 		}
 	}
@@ -112,7 +112,7 @@ public sealed class Presence(TimeProvider time) : IEventPublisher<PresenceEvent>
 		if (!by.IsOpen || Equals(by.Status, status)) return;
 
 		by.Status = status;
-		_events.Writer.TryWrite(new StatusChanged(by, status));
+		_events.Writer.TryWrite(new UserConnectionStatusChanged(by, status));
 	}
 
 	/// <summary>Silences a user until a given time.</summary>
@@ -128,7 +128,7 @@ public sealed class Presence(TimeProvider time) : IEventPublisher<PresenceEvent>
 	/// <param name="user">The user whose statistics changed.</param>
 	public void ReportStatsChanged(User user)
 	{
-		_events.Writer.TryWrite(new StatsChanged(user));
+		_events.Writer.TryWrite(new UserStatsChanged(user));
 	}
 
 	private void Close(Connection connection, ConnectionCloseReason reason)
@@ -149,6 +149,6 @@ public sealed class Presence(TimeProvider time) : IEventPublisher<PresenceEvent>
 			connection.Session.PmChannel.Close();
 		}
 
-		_events.Writer.TryWrite(new ConnectionClosed(connection, reason, wentOffline));
+		_events.Writer.TryWrite(new UserConnectionClosed(connection, reason, wentOffline));
 	}
 }

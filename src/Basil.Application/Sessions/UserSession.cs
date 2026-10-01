@@ -14,14 +14,14 @@ public sealed class UserSession
 	internal UserSession(User user, TimeProvider time)
 	{
 		User = user;
-		PmChannel = new PmChatChannelSession(this, time);
+		PmChannel = new PmChannelSession(this, time);
 	}
 
 	/// <summary>Gets the user who is online.</summary>
 	public User User { get; }
 
 	/// <summary>Gets the channel that receives the user's private messages.</summary>
-	public PmChatChannelSession PmChannel { get; }
+	public PmChannelSession PmChannel { get; }
 
 	/// <summary>Gets or sets the away message shown to other users, or <see langword="null" /> when not away.</summary>
 	public string? AwayMessage { get; set; }

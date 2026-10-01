@@ -1,12 +1,12 @@
 ﻿namespace Basil.Domain.Chat;
 
 /// <summary>A chat channel, named and described by IRC convention.</summary>
-public abstract class ChatChannel
+public abstract class Channel
 {
 	/// <summary>Initializes a channel with its name.</summary>
 	/// <param name="name">The channel name, without a leading <c>#</c>.</param>
 	/// <exception cref="ArgumentException"><paramref name="name" /> is empty or starts with <c>#</c>.</exception>
-	protected ChatChannel(string name)
+	protected Channel(string name)
 	{
 		if (string.IsNullOrWhiteSpace(name))
 			throw new ArgumentException("Channel name cannot be empty.", nameof(name));

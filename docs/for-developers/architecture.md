@@ -93,9 +93,9 @@ Everything else reacts to the announcement.
 
 * **The acted-on object owns the interaction.** An actor only calls an operation. The object the
   operation acts on stores the resulting relation and emits the event: a connection joins a channel
-  with `channel.Join(by)`, and the channel keeps its members and emits `MemberJoined`. Sessions and
+  with `channel.Join(by)`, and the channel keeps its members and emits `ChannelMemberJoined`. Sessions and
   connections hold no channels, rooms or slots and emit no events.
-* **Each object manages only what it owns.** `Presence` opens and closes connections and announces it;
+* **Each object manages only what it owns.** `UserRegistry` opens and closes connections and announces it;
   it does not touch rooms or channels. Their clean-up is done by Infrastructure handlers that receive
   the event and call the owning object's operation. Rules about an object's own state stay inside it:
   a room closes itself when empty and keeps its channel in step with its players.
@@ -114,14 +114,14 @@ Everything else reacts to the announcement.
 
 ```mermaid
 flowchart LR
-    Presence -->|opens, closes| UserSession
-    UserSession -->|owns| PM[PmChatChannelSession]
+    UserRegistry -->|opens, closes| UserSession
+    UserSession -->|owns| PM[PmChannelSession]
     UserSession -->|holds, by kind| Connection
     Connection --- Bancho[BanchoConnection]
-    Bancho -->|owns| Spec[SpectatorChatChannelSession]
-    ChatChannels -->|owns| General[GeneralChatChannelSession]
+    Bancho -->|owns| Spec[SpectatorChannelSession]
+    GeneralChannelRegistry -->|owns| General[GeneralChannelSession]
     Lobby -->|owns| Room
-    Room -->|owns| RoomChannel[RoomChatChannelSession]
+    Room -->|owns| RoomChannel[RoomChannelSession]
     Room -->|owns| RoomSlots
 ```
 
@@ -135,8 +135,8 @@ Rooms, channels and the lobby hold connections, never sessions: membership is pe
 |---|---|
 | `Common/` | the event base type and `IEventPublisher` |
 | `Users/` | login attempts, user, credential and admin-key repositories, `Registration` |
-| `Sessions/` | `UserSession`, connections, `Presence`, `Gateway`, spectator channels |
-| `Chat/` | the chat channel tree and `ChatChannels` |
+| `Sessions/` | `UserSession`, connections, `UserRegistry`, `Gateway`, spectator channels |
+| `Chat/` | the chat channel tree and `GeneralChannelRegistry` |
 | `Multiplayer/` | `Lobby`, `Room`, slots, room channels, results and events, the match repository |
 | `Beatmaps/` | `BeatmapCatalog` and the beatmap storage and analysis ports |
 | `Scores/` | `ScoreSubmission` and the score, replay and statistics ports |
@@ -151,11 +151,11 @@ Events form a category tree so a consumer can subscribe to a whole category:
 
 ```text
 Event
-├── PresenceEvent       ConnectionOpened, ConnectionClosed, StatusChanged, StatsChanged, UserSilenced
-├── ChatChannelEvent    channel lifecycle, membership, messages, spectating
-├── LobbyEvent          RoomOpened, RoomClosed, EmptyRoomClosingSoon, lobby watchers
+├── UserEvent       UserConnectionOpened, UserConnectionClosed, UserConnectionStatusChanged, UserStatsChanged, UserSilenced
+├── ChannelEvent    channel lifecycle, membership, messages, spectating
+├── LobbyEvent          LobbyRoomOpened, LobbyRoomClosed, LobbyRoomClosingAnnounced, lobby watchers
 ├── RoomEvent           settings, slots, membership, authority, access, rounds, countdown
-└── BeatmapEvent        BeatmapsetImported
+└── BeatmapsetEvent        BeatmapsetImported
 ```
 
 Events carry identities as references and changeable values as values captured when the event was

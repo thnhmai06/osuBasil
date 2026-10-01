@@ -81,7 +81,7 @@ public sealed class RoomSlot
 		Team = team;
 	}
 
-	/// <summary>Assigns a status without emitting a <see cref="SlotStatusChanged" /> event.</summary>
+	/// <summary>Assigns a status without emitting a <see cref="RoomSlotStatusChanged" /> event.</summary>
 	/// <param name="status">The status to assign, or <see langword="null" /> to clear it.</param>
 	internal void SetStatus(RoomSlotStatus? status)
 	{
@@ -91,7 +91,7 @@ public sealed class RoomSlot
 		Loaded = status is RoomSlotStatus.Playing ? false : null;
 	}
 
-	/// <summary>Locks or unlocks the slot without emitting a <see cref="SlotLockChanged" /> event.</summary>
+	/// <summary>Locks or unlocks the slot without emitting a <see cref="RoomSlotLockChanged" /> event.</summary>
 	/// <param name="locked">The lock state to assign.</param>
 	internal void SetLocked(bool locked)
 	{

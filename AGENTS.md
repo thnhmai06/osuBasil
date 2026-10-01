@@ -353,11 +353,11 @@ not add them back.
 ```text
 Common/        Event base, IEventPublisher
 Users/         login attempt, IUserRepository, ICredentialRepository, IAdminKeyRepository, Registration
-Sessions/      UserSession, Connection (+ ConnectionType), Presence and its events, Gateway,
-               SpectatorChatChannelSession
-Chat/          ChatChannelSession tree, ChatChannels (configured channels), channel events and results
+Sessions/      UserSession, Connection (+ ConnectionType), UserRegistry and its events, Gateway,
+               SpectatorChannelSession
+Chat/          ChannelSession tree, GeneralChannelRegistry (configured channels), channel events and results
 Multiplayer/   Lobby, Room (lock, membership, authority, settings, round, countdown), RoomSlot(s),
-               RoomChatChannelSession, RoomResult, Events/, IMatchRepository
+               RoomChannelSession, RoomResult, Events/, IMatchRepository
 Beatmaps/      BeatmapCatalog and its events, analyser and storage ports
 Scores/        ScoreSubmission, score/replay/stats ports
 ```
@@ -365,7 +365,7 @@ Scores/        ScoreSubmission, score/replay/stats ports
 * `Common` depends on no feature. `Users`, `Beatmaps` and `Scores` do not depend on `Multiplayer`
   (`ScoreSubmission` is the exception: it records scores against the player's room).
 * `Sessions`, `Chat` and `Multiplayer` reference each other (`Room.Host`, `Room.Channel`,
-  `ChatChannelSession.Members`); treat them as one cluster. That is why features are folders, not
+  `ChannelSession.Members`); treat them as one cluster. That is why features are folders, not
   projects: their invariants rely on `internal` members (`Room.Emit`) staying inside one assembly.
   References run from the acted-on object to the actor, never back.
 
@@ -374,7 +374,7 @@ Scores/        ScoreSubmission, score/replay/stats ports
 * **Domain** holds business models that exist beyond runtime (`Match`, `Round`, `MatchSettings`,
   `User`, `Beatmap`, `Login`, …) and guards their own validity. No runtime-only state, no events.
 * **Application** holds what exists only at runtime (`Room`, `RoomSlot(s)`, `UserSession` and its
-  connections, `ChatChannelSession`s), plus the events they emit.
+  connections, `ChannelSession`s), plus the events they emit.
 * **Application models an environment, not a pipeline.** It simulates the objects that exist while
   the server runs and the facts that happen to them, so other layers can observe and plug in. It
   does not script "do this, then notify that, then save this" flows. When a rule belongs to the
@@ -395,9 +395,9 @@ Scores/        ScoreSubmission, score/replay/stats ports
   (`BanchoConnection.Status`, `BanchoConnection.SpectatorChannel`). Rooms, channels and the lobby
   hold connections, not sessions. Owned parts (a session's `PmChannel`, a connection's
   `SpectatorChannel`) are created and destroyed with their owner; they are not relations.
-* **Identify by the basis object**, not its id (`Room` by `Match`, `GeneralChatChannel` by `Name`). Runtime
+* **Identify by the basis object**, not its id (`Room` by `Match`, `GeneralChannel` by `Name`). Runtime
   objects that can be recreated with the same user or name compare **by reference**: a connection
-  is one login, a `UserSession` is one period online (look it up by `User` through `Presence`), a
+  is one login, a `UserSession` is one period online (look it up by `User` through `UserRegistry`), a
   runtime channel is one opening (`mp_5` is reused when a room id is reused). Cleanup that carries
   an old object can never touch its replacement. "Is this user already here?" compares the user
   and is a separate check from object identity. Ids are for repository lookups only. Choose object vs identifier
@@ -409,17 +409,17 @@ Scores/        ScoreSubmission, score/replay/stats ports
 * **The acted-on object owns the interaction.** An actor (a user, a session, any active object)
   only *calls* an action. The object the action is performed on stores the resulting relation and
   emits the event. A connection joins a channel through `channel.Join(by)`; the channel keeps its
-  members and emits `MemberJoined`. The session does **not** keep a `Channels` set, does **not**
+  members and emits `ChannelMemberJoined`. The session does **not** keep a `Channels` set, does **not**
   have a `Join(ChannelSession)` method, and does **not** emit events: an event always comes from
   the object that was interacted with. Otherwise every new joinable kind (channel, room, spectator stream, …) forces a new
   `Join*` method and a new set on the user, which breaks OOP. "Which channels is X in?" is a query
   over channels, not state on X. Ask "who is acted on?" for every relation, member and event.
 * **Each object manages only what it owns, and reacts to other objects only through events.**
-  `Presence` opens and closes connections and announces `ConnectionOpened`/`ConnectionClosed`; its
+  `UserRegistry` opens and closes connections and announces `UserConnectionOpened`/`UserConnectionClosed`; its
   responsibility ends there. It does not call rooms or channels. Their cleanup
   (leave the room, part channels) is done by Infrastructure handlers that receive the event and call
   the owning object's operation. When a second connection of the same kind arrives for a user the owner
-  still holds, the owner **asks the old connection who it is** (`connection.IsOpen`, set by `Presence`):
+  still holds, the owner **asks the old connection who it is** (`connection.IsOpen`, set by `UserRegistry`):
   still open, refuse the new one; already closed (cleanup not run yet, or failed), remove the old
   one as an ordinary leave and admit the new one. Like an exam room that finds someone who looks
   like you inside: it checks that person before deciding. Cleanup operations must be safe to run
@@ -427,7 +427,7 @@ Scores/        ScoreSubmission, score/replay/stats ports
   keeps its channel in step with its players) stay inside that object.
 * **Application emits events; it does not consume them.** Each runtime object is an event source
   over its own `Channel<T>`. One operation emits one event carrying its whole consequence. Events
-  sit in a nested category tree (`Event` ← `RoomEvent` ← `RoomSlotEvent` ← `SlotTeamChanged`)
+  sit in a nested category tree (`Event` ← `RoomEvent` ← `RoomSlotEvent` ← `RoomSlotTeamChanged`)
   so a consumer can subscribe to a whole category. Event handlers, dispatchers, and event →
   client-notification routing belong to Infrastructure and the hosts, never to Application.
 * **Repository contracts are written per model** as `IXxxRepository` (`IMatchRepository`,
@@ -440,20 +440,28 @@ Scores/        ScoreSubmission, score/replay/stats ports
 * **Runtime objects that exist only in memory are not ports.** Online sessions, live channels and
   rooms are held by concrete Application objects (the environment), which also own the room lock.
   Ports are for what lies outside the process: storage, files, network, clock.
-* **Naming: Domain model `X`, runtime model `XSession`.** No suffixes such as "Definition". `Room`
-  is the historical name for the runtime of `Match`; the room's channel is named after the room
-  (Domain `RoomChatChannel`, runtime `RoomChatChannelSession`) because the room is where things
-  happen and `Match` is only the record.
-* **Chat channels.** Domain: abstract `ChatChannel` (`Name`, `Topic`, IRC convention; named to avoid
-  C#'s `Channel`) with `GeneralChatChannel` (configured chat; alone carries `ReadPrivilege`,
-  `WritePrivilege`, `AutoJoin`, `Visible`), `RoomChatChannel`, `SpectatorChatChannel`,
-  `PmChatChannel`; messages are the record `ChatMessage`. Runtime: abstract `ChatChannelSession`
-  with `GeneralChatChannelSession`, `RoomChatChannelSession`, `SpectatorChatChannelSession`,
-  `PmChatChannelSession`; each decides who may read and write. **Whoever owns a channel manages
-  it**: `ChatChannels` manages only general channels, a `Room` its room channel, a `UserSession` its PM
-  channel, a `BanchoConnection` its spectator channel. A private message is a post into the
-  recipient's PM channel. Access follows osu!: a user may join a channel (including `/join` over
-  IRC) only if an osu! client doing the matching in-game action would have access.
+* **Naming: Domain model `X`, runtime model `XSession`, the object that holds the live sessions
+  `XRegistry`.** No suffixes such as "Definition". `Channel` → `ChannelSession` →
+  `GeneralChannelRegistry` (it holds only general channels); `User` → `UserSession` →
+  `UserRegistry`. The osu! terms win for matches: `Match` → `Room` → `Lobby`. The room's channel is
+  named after the room (Domain `RoomChannel`, runtime `RoomChannelSession`) because the room is where
+  things happen and `Match` is only the record. `Channel` shares its name with
+  `System.Threading.Channels.Channel<T>` on purpose; the two differ by generic arity.
+* **Event names are `{Group}{Subject}{PastTenseVerb}`.** The group is the category the event belongs
+  to (`Room`, `Channel`, `User`, `Lobby`); when the subject is the group itself it is written once
+  (`ChannelOpened`, `UserSilenced`). A subject that belongs to another is written `{Parent}{Child}`
+  (`RoomRoundPlayerLoaded`, `RoomSlotTeamChanged`, `UserConnectionOpened`). The abstract category
+  records follow the same rule (`RoomRoundEvent`, `ChannelMembershipEvent`).
+* **Chat channels.** Domain: abstract `Channel` (`Name`, `Topic`, IRC convention) with
+  `GeneralChannel` (configured chat; alone carries `ReadPrivilege`, `WritePrivilege`, `AutoJoin`,
+  `Visible`), `RoomChannel`, `SpectatorChannel`, `PmChannel`; messages are the record `Message`.
+  Runtime: abstract `ChannelSession` with `GeneralChannelSession`, `RoomChannelSession`,
+  `SpectatorChannelSession`, `PmChannelSession`; each decides who may read and write. **Whoever
+  owns a channel manages it**: `GeneralChannelRegistry` manages only general channels, a `Room` its
+  room channel, a `UserSession` its PM channel, a `BanchoConnection` its spectator channel. A private
+  message is a post into the recipient's PM channel. Access follows osu!: a user may join a channel
+  (including `/join` over IRC) only if an osu! client doing the matching in-game action would have
+  access.
 * **Privilege checks require every bit.** A user satisfies a `ClientPrivileges` requirement only if
   every bit set in the requirement is set on the user (`ClientPrivileges.Has`); an empty
   requirement is always satisfied. This applies everywhere, not only to channels.

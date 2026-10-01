@@ -7,9 +7,9 @@ namespace Basil.Application.Sessions;
 
 /// <summary>Authenticates logins and opens and closes their connections.</summary>
 public sealed class Gateway(
-	IUserRepository users,
+	IUserRepository usersRepository,
 	ICredentialRepository credentials,
-	Presence presence,
+	UserRegistry usersRegistry,
 	TimeProvider time)
 {
 	/// <summary>A logout an osu! client sends this soon after login is ignored.</summary>
@@ -40,7 +40,7 @@ public sealed class Gateway(
 		if (type is ConnectionType.Bancho or ConnectionType.Tourney && client is null)
 			throw new ArgumentNullException(nameof(client), "An osu! client login must report its client.");
 
-		var user = await users.FindByNameAsync(attempt.Username, cancellationToken);
+		var user = await usersRepository.FindByNameAsync(attempt.Username, cancellationToken);
 		if (user is null) return LoginResult.Fail(LoginFailure.UnknownUser);
 		if (user.Value.DeletedAt is not null) return LoginResult.Fail(LoginFailure.AccountDeleted);
 
@@ -66,7 +66,7 @@ public sealed class Gateway(
 			_ => throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown connection type.")
 		};
 
-		return presence.OpenConnection(connection) is { } failure
+		return usersRegistry.OpenConnection(connection) is { } failure
 			? LoginResult.Fail(failure)
 			: LoginResult.Success(connection);
 	}
@@ -84,6 +84,6 @@ public sealed class Gateway(
 		    time.GetUtcNow() - connection.Login.Timestamp < IgnoreLogoutWithin)
 			return;
 
-		presence.CloseConnection(connection, reason);
+		usersRegistry.CloseConnection(connection, reason);
 	}
 }

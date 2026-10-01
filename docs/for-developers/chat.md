@@ -29,8 +29,8 @@ A user who is online is one `UserSession`. Each place they are logged in from is
 The session holds what is shared by all of a user's clients: the away message and the user's
 private-message channel.
 
-`Presence` is the only object that opens and closes connections. It announces `ConnectionOpened`
-(saying whether the user just came online) and `ConnectionClosed` (saying whether the user went
+`UserRegistry` is the only object that opens and closes connections. It announces `UserConnectionOpened`
+(saying whether the user just came online) and `UserConnectionClosed` (saying whether the user went
 offline). Other objects react to those events; the session and its connections hold no channels,
 rooms or other relations, and emit no events.
 
@@ -39,7 +39,7 @@ rooms or other relations, and emit no events.
 A user can hold one connection of each kind except osu!tourney. When a second connection of the same
 kind logs in:
 
-* if the old one has been idle for at least 10 seconds (`Presence.ReplaceAfterIdle`), the old
+* if the old one has been idle for at least 10 seconds (`UserRegistry.ReplaceAfterIdle`), the old
   connection is closed with reason `Replaced` and the new one opens;
 * otherwise the new login is refused with `AlreadyOnline`.
 
@@ -54,17 +54,17 @@ replacement.
 
 ### Kinds and owners
 
-A channel has a Domain model (`ChatChannel`: name and topic) and a runtime model
-(`ChatChannelSession`: members and events). Each kind is managed by whoever owns it:
+A channel has a Domain model (`Channel`: name and topic) and a runtime model
+(`ChannelSession`: members and events). Each kind is managed by whoever owns it:
 
 | Kind | Domain / runtime | Name | Owner, opened and closed with it |
 |---|---|---|---|
-| General | `GeneralChatChannel` / `GeneralChatChannelSession` | configured (`osu`, `lobby`, …) | `ChatChannels` |
-| Room | `RoomChatChannel` / `RoomChatChannelSession` | `mp_{room id}` | the `Room` |
-| Spectator | `SpectatorChatChannel` / `SpectatorChatChannelSession` | `spec_{host user id}` | the spectated `BanchoConnection` |
-| Private message | `PmChatChannel` / `PmChatChannelSession` | the owner's name | the recipient's `UserSession` |
+| General | `GeneralChannel` / `GeneralChannelSession` | configured (`osu`, `lobby`, …) | `GeneralChannelRegistry` |
+| Room | `RoomChannel` / `RoomChannelSession` | `mp_{room id}` | the `Room` |
+| Spectator | `SpectatorChannel` / `SpectatorChannelSession` | `spec_{host user id}` | the spectated `BanchoConnection` |
+| Private message | `PmChannel` / `PmChannelSession` | the owner's name | the recipient's `UserSession` |
 
-`ChatChannels` lists only general channels. A room channel is found through its room
+`GeneralChannelRegistry` lists only general channels. A room channel is found through its room
 (`lobby.Find(id)?.Channel`); spectator and private-message channels are never looked up by name.
 
 Channel names are stored **without** `#`. Transports add the prefix when writing and strip it when
@@ -92,10 +92,11 @@ member connection of the same kind (osu!tourney excepted), the channel checks th
 is open the join is refused with `AlreadyMember`; once it is closed, it is removed as an ordinary leave
 and the new connection joins. A closed channel refuses joins.
 
-`ChatChannels.JoinAutoChannels` joins a connection to every auto-join channel it may read except
-`lobby`, which clients join by entering the multiplayer lobby. `ChatChannels.PartAll` removes a
-connection from every general channel; both are called when a connection opens or closes and are safe
-to call again.
+`GeneralChannelRegistry.JoinAutoChannels` joins a connection to every auto-join channel it may read, and
+`GeneralChannelRegistry.PartAll` removes a connection from every general channel; both are called when
+a connection opens or closes and are safe to call again. A channel named `lobby` is an ordinary general
+channel: whether it exists and whether it is joined automatically is configuration, and it has no tie
+to the multiplayer `Lobby`.
 
 ### Posting
 
@@ -110,7 +111,7 @@ to call again.
 | `NoWritePermission` | the sender may not write to the channel |
 | `TargetSilenced` | the recipient of a private message is silenced |
 
-A message longer than 2,000 characters is cut, and the `MessagePosted` event says so.
+A message longer than 2,000 characters is cut, and the `ChannelMessagePosted` event says so.
 
 ### Private messages and away replies
 
@@ -130,14 +131,14 @@ are not events.
 ### Events
 
 ```text
-ChatChannelEvent
-├── ChatChannelOpened, ChatChannelClosed
-├── ChatChannelMembershipEvent
-│   ├── MemberJoined, MemberParted (kicked when the owner closed the channel)
-│   └── SpectatorJoined, SpectatorLeft (spectator channels)
-├── MessageEvent
-│   └── MessagePosted
-└── SpectatorCantSpectate
+ChannelEvent
+├── ChannelOpened, ChannelClosed
+├── ChannelMembershipEvent
+│   ├── ChannelMemberJoined, ChannelMemberParted (kicked when the owner closed the channel)
+│   └── ChannelSpectatorJoined, ChannelSpectatorLeft (spectator channels)
+├── ChannelMessageEvent
+│   └── ChannelMessagePosted
+└── ChannelSpectatorCantSpectate
 ```
 
 Each event comes from the channel that was acted on, never from the sender's session.
@@ -159,7 +160,7 @@ PASS + NICK + USER
 Gateway.ConnectAsync (IRC)
       │
       ├── validate account credentials
-      └── Presence opens an IrcConnection ── ConnectionOpened
+      └── UserRegistry opens an IrcConnection ── UserConnectionOpened
                                                 │
                                                 ▼
                                auto-join channels, welcome numerics
@@ -211,21 +212,21 @@ commands stay silent.
 
 > **Pending migration.** BasilBot is being rebuilt on the new model.
 
-BasilBot is a permanent `UserSession` holding a `BotConnection`, opened through `Presence` when the
+BasilBot is a permanent `UserSession` holding a `BotConnection`, opened through `UserRegistry` when the
 server starts and never closed. Because it is a normal connection, it posts through the same
 `channel.Post` as any user, and its replies reach Bancho and IRC users alike. It joins every room's
 channel when the room opens and receives private messages through its own private-message channel.
 
 ## Related code
 
-* [`Basil.Application/Chat/ChatChannelSession.cs`](../../src/Basil.Application/Chat/ChatChannelSession.cs): membership and posting rules shared by every channel
-* [`Basil.Application/Chat/ChatChannels.cs`](../../src/Basil.Application/Chat/ChatChannels.cs): configured channels and auto-join
-* [`Basil.Application/Chat/GeneralChatChannelSession.cs`](../../src/Basil.Application/Chat/GeneralChatChannelSession.cs), [`PmChatChannelSession.cs`](../../src/Basil.Application/Chat/PmChatChannelSession.cs): general and private-message channels
-* [`Basil.Application/Multiplayer/RoomChatChannelSession.cs`](../../src/Basil.Application/Multiplayer/RoomChatChannelSession.cs): room channels
-* [`Basil.Application/Sessions/SpectatorChatChannelSession.cs`](../../src/Basil.Application/Sessions/SpectatorChatChannelSession.cs): spectating
-* [`Basil.Application/Sessions/Presence.cs`](../../src/Basil.Application/Sessions/Presence.cs), [`Gateway.cs`](../../src/Basil.Application/Sessions/Gateway.cs): logging in and out
+* [`Basil.Application/Chat/ChannelSession.cs`](../../src/Basil.Application/Chat/ChannelSession.cs): membership and posting rules shared by every channel
+* [`Basil.Application/Chat/GeneralChannelRegistry.cs`](../../src/Basil.Application/Chat/GeneralChannelRegistry.cs): configured channels and auto-join
+* [`Basil.Application/Chat/GeneralChannelSession.cs`](../../src/Basil.Application/Chat/GeneralChannelSession.cs), [`PmChannelSession.cs`](../../src/Basil.Application/Chat/PmChannelSession.cs): general and private-message channels
+* [`Basil.Application/Multiplayer/RoomChannelSession.cs`](../../src/Basil.Application/Multiplayer/RoomChannelSession.cs): room channels
+* [`Basil.Application/Sessions/SpectatorChannelSession.cs`](../../src/Basil.Application/Sessions/SpectatorChannelSession.cs): spectating
+* [`Basil.Application/Sessions/UserRegistry.cs`](../../src/Basil.Application/Sessions/UserRegistry.cs), [`Gateway.cs`](../../src/Basil.Application/Sessions/Gateway.cs): logging in and out
 * [`Basil.Application/Sessions/UserSession.cs`](../../src/Basil.Application/Sessions/UserSession.cs), [`Connection.cs`](../../src/Basil.Application/Sessions/Connection.cs): sessions and connections
-* [`Basil.Domain/Chat/`](../../src/Basil.Domain/Chat): channel models and `ChatMessage`
+* [`Basil.Domain/Chat/`](../../src/Basil.Domain/Chat): channel models and `Message`
 
 ## See also
 

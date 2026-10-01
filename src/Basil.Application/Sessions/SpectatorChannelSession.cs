@@ -4,8 +4,8 @@ using Basil.Domain.Chat;
 namespace Basil.Application.Sessions;
 
 /// <summary>The chat channel of an osu! client and the users spectating it.</summary>
-public sealed class SpectatorChatChannelSession(BanchoConnection host, TimeProvider time)
-	: ChatChannelSession(new SpectatorChatChannel(host.User), time)
+public sealed class SpectatorChannelSession(BanchoConnection host, TimeProvider time)
+	: ChannelSession(new SpectatorChannel(host.User), time)
 {
 	/// <summary>Gets the connection being spectated.</summary>
 	public BanchoConnection Host => host;
@@ -43,7 +43,7 @@ public sealed class SpectatorChatChannelSession(BanchoConnection host, TimeProvi
 
 			var hostJoined = AddMember(Host);
 			AddMember(by);
-			Emit(new SpectatorJoined(this, by, hostJoined));
+			Emit(new ChannelSpectatorJoined(this, by, hostJoined));
 			return SpectateResult.Spectating;
 		}
 	}
@@ -61,7 +61,7 @@ public sealed class SpectatorChatChannelSession(BanchoConnection host, TimeProvi
 			if (ReferenceEquals(by, Host) || !RemoveMember(by)) return false;
 
 			var hostLeft = !Spectators.Any() && RemoveMember(Host);
-			Emit(new SpectatorLeft(this, by, hostLeft));
+			Emit(new ChannelSpectatorLeft(this, by, hostLeft));
 			return true;
 		}
 	}
@@ -76,7 +76,7 @@ public sealed class SpectatorChatChannelSession(BanchoConnection host, TimeProvi
 	{
 		if (ReferenceEquals(by, Host) || !Members.Contains(by)) return false;
 
-		Emit(new SpectatorCantSpectate(this, by));
+		Emit(new ChannelSpectatorCantSpectate(this, by));
 		return true;
 	}
 }

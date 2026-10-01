@@ -11,7 +11,7 @@ using Basil.Domain.Utilities;
 namespace Basil.Application.Multiplayer;
 
 /// <summary>The open multiplayer rooms and the osu! clients watching the multiplayer lobby.</summary>
-public sealed class Lobby(IMatchRepository matches, Presence presence, TimeProvider time) : IEventPublisher<LobbyEvent>
+public sealed class Lobby(IMatchRepository matches, UserRegistry usersRegistry, TimeProvider time) : IEventPublisher<LobbyEvent>
 {
 	/// <summary>The most tournament rooms one creator can have open.</summary>
 	public const int MaxRoomsPerCreator = 4;
@@ -124,10 +124,10 @@ public sealed class Lobby(IMatchRepository matches, Presence presence, TimeProvi
 			if (creatorConnection is not null && RoomOf(creatorConnection) is null)
 				room.SeatCreator(creatorConnection);
 
-			if (presence.Sessions.Select(session => session.Bot).FirstOrDefault(b => b is not null) is { } bot)
+			if (usersRegistry.Sessions.Select(session => session.Bot).FirstOrDefault(b => b is not null) is { } bot)
 				room.Channel.Join(bot);
 
-			_events.Writer.TryWrite(new RoomOpened(room, room.Host));
+			_events.Writer.TryWrite(new LobbyRoomOpened(room, room.Host));
 
 			// A tournament room opened without a seated player starts its empty-room countdown now.
 			if (!room.Slots.Any(slot => slot.Player is not null)) RoomEmptied(room);
@@ -213,7 +213,7 @@ public sealed class Lobby(IMatchRepository matches, Presence presence, TimeProvi
 		}
 
 		var closesAt = time.GetUtcNow() + EmptyTournamentRoomTimeout;
-		_events.Writer.TryWrite(new EmptyRoomClosingSoon(room, closesAt));
+		_events.Writer.TryWrite(new LobbyRoomClosingAnnounced(room, closesAt));
 		Schedule(room, closesAt - EmptyRoomWarningBefore, () => WarnIfStillEmptyAsync(room, closesAt));
 	}
 
@@ -238,7 +238,7 @@ public sealed class Lobby(IMatchRepository matches, Presence presence, TimeProvi
 		await using var scope = await room.EnterAsync();
 		if (scope is null || room.Slots.Any(slot => slot.Player is not null)) return;
 
-		_events.Writer.TryWrite(new EmptyRoomClosingSoon(room, closesAt));
+		_events.Writer.TryWrite(new LobbyRoomClosingAnnounced(room, closesAt));
 		Schedule(room, closesAt, () => CloseIfStillEmptyAsync(room));
 	}
 
@@ -253,7 +253,7 @@ public sealed class Lobby(IMatchRepository matches, Presence presence, TimeProvi
 		RoomOccupied(room);
 		var evicted = room.Close();
 		_rooms.TryRemove(new KeyValuePair<int, Room>(room.Id, room));
-		_events.Writer.TryWrite(new RoomClosed(room, evicted));
+		_events.Writer.TryWrite(new LobbyRoomClosed(room, evicted));
 	}
 
 	private bool TooManyRooms(User creator)
