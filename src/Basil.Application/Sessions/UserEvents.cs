@@ -1,4 +1,4 @@
-using Basil.Application.Common.Events;
+using Basil.Application.Events;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Sessions;

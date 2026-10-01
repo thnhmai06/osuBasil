@@ -22,5 +22,5 @@ public interface IUserStatsRepository
 	/// <summary>Durably stores <paramref name="stats" />, replacing any existing statistics for its user and mode.</summary>
 	/// <param name="stats">The statistics to store.</param>
 	/// <param name="cancellationToken">A token that cancels the write.</param>
-	Task SaveAsync(UserStats stats, CancellationToken cancellationToken = default);
+	Task UpdateAsync(UserStats stats, CancellationToken cancellationToken = default);
 }

@@ -1,5 +1,5 @@
 using System.Threading.Channels;
-using Basil.Application.Common.Events;
+using Basil.Application.Events;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;

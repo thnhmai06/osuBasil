@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 using System.Threading.Channels;
-using Basil.Application.Common.Events;
+using Basil.Application.Events;
 using Basil.Domain.Client;
 using Basil.Domain.Users;
 

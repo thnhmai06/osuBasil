@@ -1,5 +1,5 @@
 using System.Threading.Channels;
-using Basil.Application.Common.Events;
+using Basil.Application.Events;
 using Basil.Application.Sessions;
 using Basil.Domain.Chat;
 using Basil.Domain.Utilities;

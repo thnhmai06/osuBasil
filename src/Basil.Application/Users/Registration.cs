@@ -4,19 +4,6 @@ using Basil.Domain.Utilities;
 
 namespace Basil.Application.Users;
 
-/// <summary>The reasons a registration is refused.</summary>
-public enum RegistrationFailure : byte
-{
-	/// <summary>The name is not a valid osu! username.</summary>
-	InvalidName,
-
-	/// <summary>Another user already has the name.</summary>
-	NameTaken,
-
-	/// <summary>The administrator key is wrong.</summary>
-	WrongAdminKey
-}
-
 /// <summary>Registers new users.</summary>
 public sealed class Registration(
 	IUserRepository users,
@@ -51,4 +38,17 @@ public sealed class Registration(
 		await credentials.SaveAsync(new Credentials(user, passwordHash), cancellationToken);
 		return (user, null);
 	}
+}
+
+/// <summary>The reasons a registration is refused.</summary>
+public enum RegistrationFailure : byte
+{
+	/// <summary>The name is not a valid osu! username.</summary>
+	InvalidName,
+
+	/// <summary>Another user already has the name.</summary>
+	NameTaken,
+
+	/// <summary>The administrator key is wrong.</summary>
+	WrongAdminKey
 }

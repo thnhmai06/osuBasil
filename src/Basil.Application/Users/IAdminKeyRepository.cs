@@ -8,4 +8,8 @@ public interface IAdminKeyRepository
 	/// <param name="cancellationToken">A token that cancels the check.</param>
 	/// <returns><see langword="true" /> if the key matches, or if no key has been set; otherwise, <see langword="false" />.</returns>
 	Task<bool> VerifyAsync(string key, CancellationToken cancellationToken = default);
+
+	Task<DateTimeOffset?> GetLastChangedAsync(CancellationToken cancellationToken = default);
+
+	Task UpdateAsync(string key, CancellationToken cancellationToken = default);
 }

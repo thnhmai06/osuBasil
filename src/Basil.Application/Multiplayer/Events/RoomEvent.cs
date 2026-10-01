@@ -1,4 +1,4 @@
-using Basil.Application.Common.Events;
+using Basil.Application.Events;
 
 namespace Basil.Application.Multiplayer.Events;
 

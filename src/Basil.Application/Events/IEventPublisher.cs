@@ -1,6 +1,6 @@
 using System.Threading.Channels;
 
-namespace Basil.Application.Common.Events;
+namespace Basil.Application.Events;
 
 /// <summary>
 ///     Exposes a channel of events produced by a runtime object.

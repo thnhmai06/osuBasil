@@ -69,7 +69,7 @@ public sealed class ScoreSubmission(
 			current.RankedScore += submission.Score.TotalScore;
 		}
 
-		await stats.SaveAsync(current, cancellationToken);
+		await stats.UpdateAsync(current, cancellationToken);
 
 		if (room is not null && round is not null)
 		{

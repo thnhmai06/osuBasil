@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 using System.Threading.Channels;
-using Basil.Application.Common.Events;
+using Basil.Application.Events;
 using Basil.Application.Multiplayer.Events;
 using Basil.Application.Sessions;
 using Basil.Domain.Client;
@@ -11,7 +11,8 @@ using Basil.Domain.Utilities;
 namespace Basil.Application.Multiplayer;
 
 /// <summary>The open multiplayer rooms and the osu! clients watching the multiplayer lobby.</summary>
-public sealed class Lobby(IMatchRepository matches, UserRegistry usersRegistry, TimeProvider time) : IEventPublisher<LobbyEvent>
+public sealed class Lobby(IMatchRepository matches, UserRegistry usersRegistry, TimeProvider time)
+	: IEventPublisher<LobbyEvent>
 {
 	/// <summary>The most tournament rooms one creator can have open.</summary>
 	public const int MaxRoomsPerCreator = 4;
