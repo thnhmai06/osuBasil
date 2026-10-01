@@ -16,6 +16,11 @@ public sealed record RoomOpened(Room Room, BanchoConnection? Host) : LobbyEvent;
 /// <param name="Evicted">The players who were still seated.</param>
 public sealed record RoomClosed(Room Room, IReadOnlyList<BanchoConnection> Evicted) : LobbyEvent;
 
+/// <summary>An empty tournament room closes soon unless a player joins.</summary>
+/// <param name="Room">The empty room.</param>
+/// <param name="ClosesAt">When the room closes if it is still empty.</param>
+public sealed record EmptyRoomClosingSoon(Room Room, DateTimeOffset ClosesAt) : LobbyEvent;
+
 /// <summary>An osu! client started watching the multiplayer lobby.</summary>
 public sealed record LobbyWatcherJoined(BanchoConnection Watcher) : LobbyEvent;
 

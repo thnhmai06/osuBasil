@@ -19,6 +19,9 @@ public sealed class Lobby(IMatchRepository matches, Presence presence, TimeProvi
 	/// <summary>How long an empty tournament room stays open.</summary>
 	public static readonly TimeSpan EmptyTournamentRoomTimeout = TimeSpan.FromMinutes(15);
 
+	/// <summary>How long before an empty tournament room closes the lobby announces that it is about to close.</summary>
+	public static readonly TimeSpan EmptyRoomWarningBefore = TimeSpan.FromMinutes(5);
+
 	private const int MaxRoomId = ushort.MaxValue;
 
 	private readonly Channel<LobbyEvent> _events = Channel.CreateUnbounded<LobbyEvent>();
@@ -188,7 +191,7 @@ public sealed class Lobby(IMatchRepository matches, Presence presence, TimeProvi
 			room.Channel.Part(connection);
 	}
 
-	/// <summary>Closes an empty room now, or after a while for a tournament room.</summary>
+	/// <summary>Closes an empty room now; a tournament room is announced as closing soon and closed after <see cref="EmptyTournamentRoomTimeout" /> if still empty.</summary>
 	/// <remarks>The caller holds the room's scope.</remarks>
 	internal void RoomEmptied(Room room)
 	{
@@ -198,10 +201,7 @@ public sealed class Lobby(IMatchRepository matches, Presence presence, TimeProvi
 			return;
 		}
 
-		var timer = time.CreateTimer(state => _ = CloseIfStillEmptyAsync(room), null, EmptyTournamentRoomTimeout,
-			Timeout.InfiniteTimeSpan);
-		if (_emptyTimers.TryRemove(room, out var previous)) previous.Dispose();
-		_emptyTimers[room] = timer;
+		Schedule(room, EmptyTournamentRoomTimeout - EmptyRoomWarningBefore, () => WarnIfStillEmptyAsync(room));
 	}
 
 	/// <summary>Stops the countdown that would close an empty tournament room.</summary>
@@ -209,6 +209,22 @@ public sealed class Lobby(IMatchRepository matches, Presence presence, TimeProvi
 	internal void RoomOccupied(Room room)
 	{
 		if (_emptyTimers.TryRemove(room, out var timer)) timer.Dispose();
+	}
+
+	private void Schedule(Room room, TimeSpan delay, Func<Task> action)
+	{
+		var timer = time.CreateTimer(_ => _ = action(), null, delay, Timeout.InfiniteTimeSpan);
+		if (_emptyTimers.TryRemove(room, out var previous)) previous.Dispose();
+		_emptyTimers[room] = timer;
+	}
+
+	private async Task WarnIfStillEmptyAsync(Room room)
+	{
+		await using var scope = await room.EnterAsync();
+		if (scope is null || room.Slots.Any(slot => slot.Player is not null)) return;
+
+		_events.Writer.TryWrite(new EmptyRoomClosingSoon(room, time.GetUtcNow() + EmptyRoomWarningBefore));
+		Schedule(room, EmptyRoomWarningBefore, () => CloseIfStillEmptyAsync(room));
 	}
 
 	private async Task CloseIfStillEmptyAsync(Room room)
