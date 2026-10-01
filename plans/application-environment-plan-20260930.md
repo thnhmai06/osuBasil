@@ -1548,8 +1548,8 @@ Application xanh (chỉ còn hai CS1574 có từ trước) và qua grep của ph
     sửa `Room.Join` (gỡ ghế cũ chỉ sau khi qua mọi kiểm tra), tiến độ round khi có người rời,
     `Configure` (thay đổi rỗng, mod của người chơi khi đổi mode, mod riêng của host khi freemod,
     `ClearBeatmap`), `SetHasMap`, countdown không map, `Lobby.OpenAsync` (phòng trong game cần
-    client của creator, phòng tournament mở trống bắt đầu đếm), cảnh báo `EmptyRoomClosingSoon` trước khi
-    đóng phòng trống (khôi phục hành vi cũ), `ThrowIfUndefined` hiểu enum `[Flags]`, giữ nguyên cờ
+    client của creator, phòng tournament mở trống bắt đầu đếm), thông báo `EmptyRoomClosingSoon` khi phòng
+    tournament vừa trống (còn 15 phút) và lúc còn 5 phút (người dùng chốt), mọi mốc tính từ một hạn cố định, `ThrowIfUndefined` hiểu enum `[Flags]`, giữ nguyên cờ
     anticheat client gửi, `Gateway` kiểm tham số trước khi chạm storage.
 11. Docs: `architecture.md`, `multiplayer.md`, `chat.md` được viết lại theo code mới; phần ngoài
     Application đánh dấu "Pending migration". Bản do agent miễn phí viết bị loại vì sai sự thật về quyền,

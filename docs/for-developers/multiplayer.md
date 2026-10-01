@@ -286,9 +286,11 @@ hand.
 What happens when a room has no seated player depends on how it was created:
 
 * a room created in game closes as soon as its last player leaves;
-* a tournament room stays open for `Lobby.EmptyTournamentRoomTimeout` (15 minutes). After 10 minutes
-  the lobby emits `EmptyRoomClosingSoon`, which is used to warn its referees; 5 minutes later the room
-  closes if it is still empty. A player joining at any point cancels both steps.
+* a tournament room stays open for `Lobby.EmptyTournamentRoomTimeout` (15 minutes) and then closes if
+  it is still empty. The lobby emits `EmptyRoomClosingSoon` twice, carrying the closing time: when the
+  room becomes empty (15 minutes left) and 5 minutes before it closes. Both are used to warn the room's
+  referees. A player joining at any point cancels the countdown; if the room empties again, it starts
+  over at 15 minutes.
 
 A tournament room can start empty, for example when it is created over IRC or through the API, or when
 its creator already plays in another room. The countdown then starts when the room opens. The creator
@@ -344,8 +346,8 @@ Scores
 * A connection's closed seat is replaced only by the same user's join, after that join passed its
   checks.
 * A round ends when nobody is playing any more; a round nobody plays ends as soon as it starts.
-* A room created in game closes when empty; an empty tournament room closes after 15 minutes, with a
-  warning after 10.
+* A room created in game closes when empty; an empty tournament room closes 15 minutes after it
+  emptied, announced at 15 and at 5 minutes left.
 * The report and the winner are derived, never stored as separate documents.
 * Closing a room does not destroy its match history.
 * Performance points play no part in multiplayer rules.
