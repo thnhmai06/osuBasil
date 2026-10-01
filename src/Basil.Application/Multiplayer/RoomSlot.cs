@@ -1,51 +1,47 @@
-using Basil.Domain.Mechanics;
 using Basil.Application.Multiplayer.Events;
 using Basil.Application.Sessions;
+using Basil.Domain.Mechanics;
 
 namespace Basil.Application.Multiplayer;
 
 /// <summary>One of a room's 16 slots, holding its current occupant and per-slot settings.</summary>
 public sealed class RoomSlot
 {
-	private RoomSlotStatus? _status;
-	private GameTeam? _team;
-	private GameMods? _mods;
-	private bool? _introSkipped;
-	private bool? _loaded;
-	private bool _locked;
-
-	/// <summary>The slot collection this slot belongs to.</summary>
-	public readonly RoomSlots Slots;
-
 	/// <summary>The number of this slot, from 1 to 16.</summary>
 	public readonly int Index;
 
-	/// <summary>Gets whether this slot is locked.</summary>
-	public bool Locked => _locked;
-
-	/// <summary>Gets the connection of the player occupying this slot, or <see langword="null" /> when empty.</summary>
-	public BanchoConnection? Player { get; private set; }
-
-	/// <summary>Gets the occupied-state of this slot.</summary>
-	public RoomSlotStatus? Status => _status;
-
-	/// <summary>Gets whether the occupant has skipped the intro of the current beatmap.</summary>
-	public bool? IntroSkipped => _introSkipped;
-
-	/// <summary>Gets whether the player has loaded the beatmap during the current round, or <see langword="null" /> when not playing.</summary>
-	public bool? Loaded => _loaded;
-
-	/// <summary>Gets the team assigned to this slot.</summary>
-	public GameTeam? Team => _team;
-
-	/// <summary>Gets the mods selected for this slot, used when free mods are enabled.</summary>
-	public GameMods? Mods => _mods;
+	/// <summary>The slot collection this slot belongs to.</summary>
+	public readonly RoomSlots Slots;
 
 	internal RoomSlot(RoomSlots slots, int index)
 	{
 		Slots = slots;
 		Index = index;
 	}
+
+	/// <summary>Gets whether this slot is locked.</summary>
+	public bool Locked { get; private set; }
+
+	/// <summary>Gets the connection of the player occupying this slot, or <see langword="null" /> when empty.</summary>
+	public BanchoConnection? Player { get; private set; }
+
+	/// <summary>Gets the occupied-state of this slot.</summary>
+	public RoomSlotStatus? Status { get; private set; }
+
+	/// <summary>Gets whether the occupant has skipped the intro of the current beatmap.</summary>
+	public bool? IntroSkipped { get; private set; }
+
+	/// <summary>
+	///     Gets whether the player has loaded the beatmap during the current round, or <see langword="null" /> when not
+	///     playing.
+	/// </summary>
+	public bool? Loaded { get; private set; }
+
+	/// <summary>Gets the team assigned to this slot.</summary>
+	public GameTeam? Team { get; private set; }
+
+	/// <summary>Gets the mods selected for this slot, used when free mods are enabled.</summary>
+	public GameMods? Mods { get; private set; }
 
 	/// <summary>Seats <paramref name="player" /> in this slot.</summary>
 	/// <param name="player">The connection to seat.</param>
@@ -56,64 +52,64 @@ public sealed class RoomSlot
 		if (Player is not null) throw new InvalidOperationException("The slot is already occupied.");
 
 		Player = player;
-		_status = RoomSlotStatus.NotReady;
-		_mods = GameMods.NoMod;
+		Status = RoomSlotStatus.NotReady;
+		Mods = GameMods.NoMod;
 	}
 
 	/// <summary>Clears this slot, making it empty.</summary>
 	internal void Clear()
 	{
 		Player = null;
-		_status = null;
-		_team = null;
-		_mods = null;
-		_introSkipped = null;
-		_loaded = null;
+		Status = null;
+		Team = null;
+		Mods = null;
+		IntroSkipped = null;
+		Loaded = null;
 	}
 
 	/// <summary>Sets the slot's own mods without validating the room's freemod setting or playing state.</summary>
 	/// <param name="mods">The mods to set, or <see langword="null" /> to clear them.</param>
 	internal void SetMods(GameMods? mods)
 	{
-		_mods = mods;
+		Mods = mods;
 	}
 
 	/// <summary>Assigns a team without validating the room's team type or playing state.</summary>
 	/// <param name="team">The team to assign, or <see langword="null" /> to clear it.</param>
 	internal void SetTeam(GameTeam? team)
 	{
-		_team = team;
+		Team = team;
 	}
 
 	/// <summary>Assigns a status without emitting a <see cref="SlotStatusChanged" /> event.</summary>
 	/// <param name="status">The status to assign, or <see langword="null" /> to clear it.</param>
 	internal void SetStatus(RoomSlotStatus? status)
 	{
-		if (_status == status) return;
-		_status = status;
-		_introSkipped = status is RoomSlotStatus.Playing ? false : null;
-		_loaded = status is RoomSlotStatus.Playing ? false : null;
+		if (Status == status) return;
+		Status = status;
+		IntroSkipped = status is RoomSlotStatus.Playing ? false : null;
+		Loaded = status is RoomSlotStatus.Playing ? false : null;
 	}
 
 	/// <summary>Locks or unlocks the slot without emitting a <see cref="SlotLockChanged" /> event.</summary>
 	/// <param name="locked">The lock state to assign.</param>
 	internal void SetLocked(bool locked)
 	{
-		_locked = locked;
+		Locked = locked;
 	}
 
 	/// <summary>Sets whether the occupant has skipped the intro of the current beatmap.</summary>
 	/// <param name="skipped">The skip state to assign.</param>
 	internal void SetIntroSkipped(bool? skipped)
 	{
-		_introSkipped = skipped;
+		IntroSkipped = skipped;
 	}
 
 	/// <summary>Sets whether the occupant has loaded the beatmap during the current round.</summary>
 	/// <param name="loaded">The load state to assign.</param>
 	internal void SetLoaded(bool? loaded)
 	{
-		_loaded = loaded;
+		Loaded = loaded;
 	}
 
 	internal void MoveTo(RoomSlot target)
@@ -127,18 +123,18 @@ public sealed class RoomSlot
 
 		var player = Player;
 		target.Player = player;
-		target._status = _status;
-		target._team = _team;
-		target._mods = _mods;
-		target._introSkipped = _introSkipped;
-		target._loaded = _loaded;
+		target.Status = Status;
+		target.Team = Team;
+		target.Mods = Mods;
+		target.IntroSkipped = IntroSkipped;
+		target.Loaded = Loaded;
 
 		Player = null;
-		_status = null;
-		_team = null;
-		_mods = null;
-		_introSkipped = null;
-		_loaded = null;
+		Status = null;
+		Team = null;
+		Mods = null;
+		IntroSkipped = null;
+		Loaded = null;
 	}
 }
 

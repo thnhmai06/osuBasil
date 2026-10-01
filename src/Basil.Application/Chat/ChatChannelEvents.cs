@@ -1,6 +1,6 @@
-using Basil.Domain.Chat;
 using Basil.Application.Common.Events;
 using Basil.Application.Sessions;
+using Basil.Domain.Chat;
 
 namespace Basil.Application.Chat;
 

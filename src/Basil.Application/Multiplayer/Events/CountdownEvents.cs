@@ -8,7 +8,8 @@ public abstract record CountdownEvent(Room Room) : RoomEvent(Room);
 /// <param name="Length">The countdown length.</param>
 /// <param name="StartsRound">Whether the round starts when the countdown ends.</param>
 /// <param name="EndsAt">When the countdown ends.</param>
-public sealed record CountdownStarted(Room Room, TimeSpan Length, bool StartsRound, DateTimeOffset EndsAt) : CountdownEvent(Room);
+public sealed record CountdownStarted(Room Room, TimeSpan Length, bool StartsRound, DateTimeOffset EndsAt)
+	: CountdownEvent(Room);
 
 /// <summary>A countdown reached one of its announced marks.</summary>
 public sealed record CountdownTick(Room Room, TimeSpan Remaining) : CountdownEvent(Room);

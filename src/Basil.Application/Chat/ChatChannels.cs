@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
-using Basil.Domain.Chat;
 using Basil.Application.Sessions;
+using Basil.Domain.Chat;
 
 namespace Basil.Application.Chat;
 
@@ -20,7 +20,10 @@ public sealed class ChatChannels(TimeProvider time)
 	/// <summary>Finds an open configured channel by name, ignoring case.</summary>
 	/// <param name="name">The channel name, without a leading <c>#</c>.</param>
 	/// <returns>The channel, or <see langword="null" /> when no configured channel has that name.</returns>
-	public GeneralChatChannelSession? Find(string name) => _channels.GetValueOrDefault(name);
+	public GeneralChatChannelSession? Find(string name)
+	{
+		return _channels.GetValueOrDefault(name);
+	}
 
 	/// <summary>Opens a configured channel.</summary>
 	/// <param name="channel">The channel to open.</param>

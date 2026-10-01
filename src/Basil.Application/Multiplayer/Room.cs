@@ -1,13 +1,13 @@
 using System.Threading.Channels;
+using Basil.Application.Common.Events;
+using Basil.Application.Multiplayer.Events;
+using Basil.Application.Sessions;
 using Basil.Domain.Client;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Domain.Utilities;
-using Basil.Application.Common.Events;
-using Basil.Application.Multiplayer.Events;
-using Basil.Application.Sessions;
 
 namespace Basil.Application.Multiplayer;
 
@@ -30,18 +30,38 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	/// <summary>The longest countdown allowed.</summary>
 	public static readonly TimeSpan MaxCountdownLength = TimeSpan.FromHours(1);
 
-	private readonly Lobby _lobby;
-	private readonly TimeProvider _time;
 	private readonly ConcurrentSet<User> _banned = [];
-	private readonly ConcurrentSet<User> _referees = [];
-	private readonly ConcurrentSet<TourneyConnection> _observers = [];
 	private readonly Channel<RoomEvent> _events = System.Threading.Channels.Channel.CreateUnbounded<RoomEvent>();
+
+	private readonly Lobby _lobby;
 	private readonly SemaphoreSlim _lock = new(1, 1);
-	private BanchoConnection? _host;
-	private Countdown? _countdown;
+	private readonly ConcurrentSet<TourneyConnection> _observers = [];
+	private readonly ConcurrentSet<User> _referees = [];
+	private readonly TimeProvider _time;
 	private bool _allLoadedAnnounced;
 	private bool _allSkippedAnnounced;
 	private bool _closed;
+	private Countdown? _countdown;
+
+	/// <summary>Opens a room for a match.</summary>
+	/// <param name="lobby">The lobby that owns this room.</param>
+	/// <param name="time">The clock the room's rounds and countdown run on.</param>
+	/// <param name="id">The room id, carried by the client protocol.</param>
+	/// <param name="match">The match the room plays.</param>
+	/// <param name="settings">The room's initial settings.</param>
+	/// <param name="isTournament">Whether the room is a tournament room.</param>
+	internal Room(Lobby lobby, TimeProvider time, int id, Match match, MatchSettings settings, bool isTournament)
+	{
+		ArgumentOutOfRangeException.ThrowIfNegative(id);
+		_lobby = lobby;
+		_time = time;
+		Id = id;
+		Match = match;
+		Settings = settings;
+		IsTournament = isTournament;
+		Slots = new RoomSlots(this);
+		Channel = new RoomChatChannelSession(this, time);
+	}
 
 	/// <summary>The match this room is a live projection of.</summary>
 	public Match Match { get; }
@@ -60,8 +80,6 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 
 	/// <summary>The match's 16 slots, in order.</summary>
 	public RoomSlots Slots { get; }
-
-	public ChannelReader<RoomEvent> Events => _events.Reader;
 
 	/// <summary>Gets the name broadcast to clients.</summary>
 	public string Name => Match.Value.Name;
@@ -95,7 +113,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 
 	/// <summary>Gets the connection currently hosting the room.</summary>
 	/// <remarks>The host must be seated in this room.</remarks>
-	public BanchoConnection? Host => _host;
+	public BanchoConnection? Host { get; private set; }
 
 	/// <summary>Gets the most recently started round, or <see langword="null" /> before the first round.</summary>
 	/// <remarks>Stays set after the round ends, until the next round starts.</remarks>
@@ -127,25 +145,13 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	/// </summary>
 	public string UrlEmbed => $"({Match.Value.Name})[{Url}]";
 
-	/// <summary>Opens a room for a match.</summary>
-	/// <param name="lobby">The lobby that owns this room.</param>
-	/// <param name="time">The clock the room's rounds and countdown run on.</param>
-	/// <param name="id">The room id, carried by the client protocol.</param>
-	/// <param name="match">The match the room plays.</param>
-	/// <param name="settings">The room's initial settings.</param>
-	/// <param name="isTournament">Whether the room is a tournament room.</param>
-	internal Room(Lobby lobby, TimeProvider time, int id, Match match, MatchSettings settings, bool isTournament)
+	/// <inheritdoc />
+	public bool Equals(Room? other)
 	{
-		ArgumentOutOfRangeException.ThrowIfNegative(id);
-		_lobby = lobby;
-		_time = time;
-		Id = id;
-		Match = match;
-		Settings = settings;
-		IsTournament = isTournament;
-		Slots = new RoomSlots(this);
-		Channel = new RoomChatChannelSession(this, time);
+		return other is not null && Match.Equals(other.Match);
 	}
+
+	public ChannelReader<RoomEvent> Events => _events.Reader;
 
 	/// <summary>Enters the room's exclusive scope; every operation on the room runs inside it.</summary>
 	/// <param name="cancellationToken">A token that cancels the wait.</param>
@@ -173,7 +179,10 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	/// <param name="by">The joining player's game client.</param>
 	/// <param name="password">The password the player supplied.</param>
 	/// <returns>Ok, AlreadySeated, Banned, Silenced, NotAuthorized, InAnotherRoom, IsObserver, WrongPassword or Full.</returns>
-	/// <remarks>The caller holds the room's scope. If the same user is seated through a connection that has closed, that connection leaves first. Moderators need no password. The player also joins the room's chat channel.</remarks>
+	/// <remarks>
+	///     The caller holds the room's scope. If the same user is seated through a connection that has closed, that
+	///     connection leaves first. Moderators need no password. The player also joins the room's chat channel.
+	/// </remarks>
 	public RoomResult Join(BanchoConnection by, string password)
 	{
 		var stale = Slots.Find(by.User)?.Player;
@@ -193,7 +202,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 			// The closed connection leaves as an ordinary leave; the room is not reported empty
 			// because the same user takes a seat right after.
 			var vacated = Slots.Vacate(stale)!;
-			Emit(new PlayerLeft(this, stale, vacated.Index, _host));
+			Emit(new PlayerLeft(this, stale, vacated.Index, Host));
 			LeaveChannel(stale);
 			AnnounceRoundProgress();
 		}
@@ -212,12 +221,15 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	/// <summary>Removes a player from the room.</summary>
 	/// <param name="by">The leaving player's game client.</param>
 	/// <returns>Ok or NotInRoom; leaving again returns NotInRoom and does nothing.</returns>
-	/// <remarks>The caller holds the room's scope. If the host leaves, the next seated player by slot order becomes host. A room left empty is closed by the lobby.</remarks>
+	/// <remarks>
+	///     The caller holds the room's scope. If the host leaves, the next seated player by slot order becomes host. A
+	///     room left empty is closed by the lobby.
+	/// </remarks>
 	public RoomResult Leave(BanchoConnection by)
 	{
 		if (Slots.Vacate(by) is not { } slot) return RoomResult.NotInRoom;
 
-		Emit(new PlayerLeft(this, by, slot.Index, _host));
+		Emit(new PlayerLeft(this, by, slot.Index, Host));
 		LeaveChannel(by);
 		ReportIfEmpty();
 		return RoomResult.Ok;
@@ -235,7 +247,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		if (Slots.Find(player) is not { Player: { } seated }) return RoomResult.NotInRoom;
 
 		var slot = Slots.Vacate(seated)!;
-		Emit(new PlayerKicked(this, seated, slot.Index, _host));
+		Emit(new PlayerKicked(this, seated, slot.Index, Host));
 		LeaveChannel(seated);
 		ReportIfEmpty();
 		return RoomResult.Ok;
@@ -260,7 +272,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 			vacated = Slots.Vacate(seated)?.Index;
 		}
 
-		Emit(new PlayerBanned(this, player, vacated, evicted, _host));
+		Emit(new PlayerBanned(this, player, vacated, evicted, Host));
 		if (evicted is not null)
 		{
 			LeaveChannel(evicted);
@@ -341,9 +353,9 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	{
 		if (!IsHostOrManager(by)) return RoomResult.NotAuthorized;
 		if (host is not null && Slots.Find(host) is null) return RoomResult.NotInRoom;
-		if (ReferenceEquals(_host, host)) return RoomResult.Ok;
+		if (ReferenceEquals(Host, host)) return RoomResult.Ok;
 
-		_host = host;
+		Host = host;
 		Emit(new HostChanged(this, host));
 		return RoomResult.Ok;
 	}
@@ -383,7 +395,9 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	///     The caller holds the room's scope. Nothing changes unless every field is valid. Selecting or
 	///     clearing the beatmap sets ready players back to not ready. Turning freemod on moves the room's mods that are
 	///     not speed-changing onto each player; turning it off gives the room the host's mods. Changing the
-	///     team type reassigns teams. Changing the mode drops mods, the room's and the players', that the new mode does not allow. Under freemod, a seated caller's mods that are not speed-changing become that caller's own mods. A change with no field set does nothing.
+	///     team type reassigns teams. Changing the mode drops mods, the room's and the players', that the new mode does not
+	///     allow. Under freemod, a seated caller's mods that are not speed-changing become that caller's own mods. A change
+	///     with no field set does nothing.
 	/// </remarks>
 	public RoomResult Configure(Connection by, RoomSettingsChange change)
 	{
@@ -497,7 +511,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		}
 
 		slot.SetLocked(locking);
-		Emit(new SlotLockChanged(this, slot.Index, locking, evicted, _host));
+		Emit(new SlotLockChanged(this, slot.Index, locking, evicted, Host));
 
 		if (evicted is not null)
 		{
@@ -545,7 +559,10 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	/// <param name="by">The caller's game client.</param>
 	/// <param name="has">Whether the caller has the selected beatmap.</param>
 	/// <returns>Ok or NotInRoom.</returns>
-	/// <remarks>The caller holds the room's scope. The report is ignored while the caller is playing; having the map changes nothing unless the caller had reported not having it.</remarks>
+	/// <remarks>
+	///     The caller holds the room's scope. The report is ignored while the caller is playing; having the map changes
+	///     nothing unless the caller had reported not having it.
+	/// </remarks>
 	public RoomResult SetHasMap(BanchoConnection by, bool has)
 	{
 		if (Slots.Find(by) is not { } slot) return RoomResult.NotInRoom;
@@ -626,15 +643,15 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	internal void SeatCreator(BanchoConnection creator)
 	{
 		if (Slots.Seat(creator) is null) return;
-		_host = creator;
+		Host = creator;
 		Channel.Join(creator);
 	}
 
 	/// <summary>Passes host to the next seated player by slot order when the host's slot is emptied.</summary>
 	internal void PassHostFrom(BanchoConnection leaving)
 	{
-		if (!ReferenceEquals(_host, leaving)) return;
-		_host = Slots.FirstOrDefault(slot => slot.Player is not null && !ReferenceEquals(slot.Player, leaving))?.Player;
+		if (!ReferenceEquals(Host, leaving)) return;
+		Host = Slots.FirstOrDefault(slot => slot.Player is not null && !ReferenceEquals(slot.Player, leaving))?.Player;
 	}
 
 	/// <summary>Starts the next round; players who have the beatmap start playing.</summary>
@@ -669,7 +686,10 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	/// <summary>Reports that the caller finished loading the beatmap.</summary>
 	/// <param name="by">The caller's game client.</param>
 	/// <returns>Ok or NotPlaying; reporting again returns Ok and does nothing.</returns>
-	/// <remarks>The caller holds the room's scope. The last player to load emits <see cref="AllPlayersLoaded" /> instead of <see cref="PlayerLoaded" />.</remarks>
+	/// <remarks>
+	///     The caller holds the room's scope. The last player to load emits <see cref="AllPlayersLoaded" /> instead of
+	///     <see cref="PlayerLoaded" />.
+	/// </remarks>
 	public RoomResult MarkLoaded(BanchoConnection by)
 	{
 		if (CurrentRound is not { } round || Slots.Find(by) is not { Status: RoomSlotStatus.Playing } slot)
@@ -683,14 +703,20 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 			Emit(new AllPlayersLoaded(this, round, slot.Index));
 		}
 		else
+		{
 			Emit(new PlayerLoaded(this, round, slot.Index));
+		}
+
 		return RoomResult.Ok;
 	}
 
 	/// <summary>Reports that the caller wants to skip the intro.</summary>
 	/// <param name="by">The caller's game client.</param>
 	/// <returns>Ok or NotPlaying; asking again returns Ok and does nothing.</returns>
-	/// <remarks>The caller holds the room's scope. The last player to ask emits <see cref="AllPlayersSkipped" /> instead of <see cref="PlayerSkipped" />.</remarks>
+	/// <remarks>
+	///     The caller holds the room's scope. The last player to ask emits <see cref="AllPlayersSkipped" /> instead of
+	///     <see cref="PlayerSkipped" />.
+	/// </remarks>
 	public RoomResult Skip(BanchoConnection by)
 	{
 		if (CurrentRound is not { } round || Slots.Find(by) is not { Status: RoomSlotStatus.Playing } slot)
@@ -698,13 +724,17 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		if (slot.IntroSkipped is true) return RoomResult.Ok;
 
 		slot.SetIntroSkipped(true);
-		if (!_allSkippedAnnounced && Slots.Where(s => s.Status is RoomSlotStatus.Playing).All(s => s.IntroSkipped is true))
+		if (!_allSkippedAnnounced &&
+		    Slots.Where(s => s.Status is RoomSlotStatus.Playing).All(s => s.IntroSkipped is true))
 		{
 			_allSkippedAnnounced = true;
 			Emit(new AllPlayersSkipped(this, round, slot.Index));
 		}
 		else
+		{
 			Emit(new PlayerSkipped(this, round, slot.Index));
+		}
+
 		return RoomResult.Ok;
 	}
 
@@ -724,7 +754,10 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	/// <summary>Reports that the caller completed the beatmap.</summary>
 	/// <param name="by">The caller's game client.</param>
 	/// <returns>Ok or NotPlaying.</returns>
-	/// <remarks>The caller holds the room's scope. When the last player completes, the round ends and <see cref="RoundCompleted" /> is emitted instead of <see cref="PlayerCompleted" />.</remarks>
+	/// <remarks>
+	///     The caller holds the room's scope. When the last player completes, the round ends and
+	///     <see cref="RoundCompleted" /> is emitted instead of <see cref="PlayerCompleted" />.
+	/// </remarks>
 	public RoomResult Complete(BanchoConnection by)
 	{
 		if (CurrentRound is not { } round || Slots.Find(by) is not { Status: RoomSlotStatus.Playing } slot)
@@ -743,7 +776,10 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	/// <param name="length">The countdown length, more than zero and at most <see cref="MaxCountdownLength" />.</param>
 	/// <param name="startsRound">Whether the round starts when the countdown ends.</param>
 	/// <returns>Ok, NotAuthorized, OutOfRange, InProgress or NoBeatmap.</returns>
-	/// <remarks>The caller holds the room's scope. The countdown is announced at each of <see cref="CountdownMarks" /> shorter than its length.</remarks>
+	/// <remarks>
+	///     The caller holds the room's scope. The countdown is announced at each of <see cref="CountdownMarks" /> shorter
+	///     than its length.
+	/// </remarks>
 	public RoomResult StartCountdown(Connection by, TimeSpan length, bool startsRound)
 	{
 		if (!IsManager(by.User)) return RoomResult.NotAuthorized;
@@ -822,12 +858,6 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	}
 
 	/// <inheritdoc />
-	public bool Equals(Room? other)
-	{
-		return other is not null && Match.Equals(other.Match);
-	}
-
-	/// <inheritdoc />
 	public override bool Equals(object? obj)
 	{
 		return obj is Room other && Equals(other);
@@ -839,7 +869,10 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		return Match.GetHashCode();
 	}
 
-	private bool IsHostOrManager(Connection by) => ReferenceEquals(by, _host) || IsManager(by.User);
+	private bool IsHostOrManager(Connection by)
+	{
+		return ReferenceEquals(by, Host) || IsManager(by.User);
+	}
 
 	/// <summary>Applies the room's freemod setting to the room's own mods and every seated player.</summary>
 	/// <param name="value">Whether freemod is on.</param>
@@ -912,7 +945,10 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	}
 
 	/// <summary>Reports what the players who are still playing have all done, after a player stopped playing.</summary>
-	/// <remarks>Ends the round when nobody is playing any more; otherwise announces that every remaining player has loaded or skipped, once per round.</remarks>
+	/// <remarks>
+	///     Ends the round when nobody is playing any more; otherwise announces that every remaining player has loaded or
+	///     skipped, once per round.
+	/// </remarks>
 	private void AnnounceRoundProgress()
 	{
 		if (CurrentRound is not { } round) return;

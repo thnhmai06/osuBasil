@@ -1,5 +1,5 @@
-using Basil.Domain.Chat;
 using Basil.Application.Sessions;
+using Basil.Domain.Chat;
 
 namespace Basil.Application.Chat;
 
@@ -11,19 +11,24 @@ public sealed class PmChatChannelSession(UserSession owner, TimeProvider time)
 	public UserSession Owner => owner;
 
 	/// <inheritdoc />
-	/// <remarks>Only the owner's own connections read the channel, and osu!tourney clients do not receive private messages.</remarks>
-	public override bool CanRead(Connection connection) =>
-		ReferenceEquals(connection.Session, owner) && connection.Type is not ConnectionType.Tourney;
-
-	/// <inheritdoc />
-	/// <remarks>Any open connection may send the owner a private message.</remarks>
-	public override bool CanWrite(Connection connection) => connection.IsOpen;
-
-	/// <inheritdoc />
 	protected override bool PostRequiresMembership => false;
 
 	/// <inheritdoc />
 	protected override bool AcceptsMessages => !(owner.User.Value.SilenceEndsAt > Time.GetUtcNow());
+
+	/// <inheritdoc />
+	/// <remarks>Only the owner's own connections read the channel, and osu!tourney clients do not receive private messages.</remarks>
+	public override bool CanRead(Connection connection)
+	{
+		return ReferenceEquals(connection.Session, owner) && connection.Type is not ConnectionType.Tourney;
+	}
+
+	/// <inheritdoc />
+	/// <remarks>Any open connection may send the owner a private message.</remarks>
+	public override bool CanWrite(Connection connection)
+	{
+		return connection.IsOpen;
+	}
 
 	/// <summary>Replies with the owner's away message, if any, in the sender's own private-message channel.</summary>
 	private protected override void OnPosted(Connection by, DateTimeOffset now)

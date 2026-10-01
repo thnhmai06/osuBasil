@@ -18,7 +18,10 @@ public enum RegistrationFailure : byte
 }
 
 /// <summary>Registers new users.</summary>
-public sealed class Registration(IUserRepository users, ICredentialRepository credentials, IAdminKeyRepository adminKeys)
+public sealed class Registration(
+	IUserRepository users,
+	ICredentialRepository credentials,
+	IAdminKeyRepository adminKeys)
 {
 	/// <summary>Registers a new user with a password.</summary>
 	/// <param name="name">The requested username.</param>
@@ -41,7 +44,8 @@ public sealed class Registration(IUserRepository users, ICredentialRepository cr
 			return (null, RegistrationFailure.InvalidName);
 		}
 
-		if (await users.FindByNameAsync(name, cancellationToken) is not null) return (null, RegistrationFailure.NameTaken);
+		if (await users.FindByNameAsync(name, cancellationToken) is not null)
+			return (null, RegistrationFailure.NameTaken);
 
 		var user = await users.AddAsync(data, cancellationToken);
 		await credentials.SaveAsync(new Credentials(user, passwordHash), cancellationToken);

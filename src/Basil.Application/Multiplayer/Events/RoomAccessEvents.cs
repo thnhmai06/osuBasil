@@ -1,5 +1,5 @@
-using Basil.Domain.Users;
 using Basil.Application.Sessions;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Multiplayer.Events;
 
@@ -9,7 +9,10 @@ public abstract record RoomAccessEvent(Room Room) : RoomEvent(Room);
 /// <summary>A player was banned from the room, evicting them if they were seated.</summary>
 /// <param name="Room">The room the player was banned from.</param>
 /// <param name="Player">The player who was banned.</param>
-/// <param name="Vacated">The number of the slot that was vacated, or <see langword="null" /> when the player was not seated.</param>
+/// <param name="Vacated">
+///     The number of the slot that was vacated, or <see langword="null" /> when the player was not
+///     seated.
+/// </param>
 /// <param name="Evicted">The connection that was removed, or <see langword="null" /> when the player was not seated.</param>
 /// <param name="Host">The room's host after the player left.</param>
 public sealed record PlayerBanned(

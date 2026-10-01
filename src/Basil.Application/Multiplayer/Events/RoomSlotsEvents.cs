@@ -1,5 +1,5 @@
-using Basil.Domain.Mechanics;
 using Basil.Application.Sessions;
+using Basil.Domain.Mechanics;
 
 namespace Basil.Application.Multiplayer.Events;
 
@@ -20,7 +20,12 @@ public abstract record RoomSlotEvent(Room Room, int Slot) : RoomSlotsEvent(Room)
 /// <param name="Locked">Whether the slot is locked after the change.</param>
 /// <param name="Evicted">The connection that was removed, or <see langword="null" /> when no player was removed.</param>
 /// <param name="Host">The room's host after the change.</param>
-public sealed record SlotLockChanged(Room Room, int Slot, bool Locked, BanchoConnection? Evicted, BanchoConnection? Host)
+public sealed record SlotLockChanged(
+	Room Room,
+	int Slot,
+	bool Locked,
+	BanchoConnection? Evicted,
+	BanchoConnection? Host)
 	: RoomSlotEvent(Room, Slot);
 
 /// <summary>A slot's assigned team changed.</summary>

@@ -1,8 +1,8 @@
 using System.Threading.Channels;
-using Basil.Domain.Chat;
-using Basil.Domain.Utilities;
 using Basil.Application.Common.Events;
 using Basil.Application.Sessions;
+using Basil.Domain.Chat;
+using Basil.Domain.Utilities;
 
 namespace Basil.Application.Chat;
 
@@ -16,7 +16,6 @@ public abstract class ChatChannelSession : IEventPublisher<ChatChannelEvent>
 		System.Threading.Channels.Channel.CreateUnbounded<ChatChannelEvent>();
 
 	private readonly ConcurrentSet<Connection> _members = [];
-	private readonly Lock _sync = new();
 	private volatile bool _closed;
 
 	/// <summary>Opens a runtime channel for a chat channel.</summary>
@@ -39,6 +38,15 @@ public abstract class ChatChannelSession : IEventPublisher<ChatChannelEvent>
 	/// <summary>Gets the connections currently in the channel.</summary>
 	public IReadOnlySet<Connection> Members => _members;
 
+	/// <summary>Gets a value that indicates whether only members may post.</summary>
+	protected virtual bool PostRequiresMembership => true;
+
+	/// <summary>Gets a value that indicates whether the channel currently accepts messages.</summary>
+	protected virtual bool AcceptsMessages => true;
+
+	/// <summary>Gets the lock that guards membership changes.</summary>
+	private protected Lock Sync { get; } = new();
+
 	/// <inheritdoc />
 	public ChannelReader<ChatChannelEvent> Events => _events.Reader;
 
@@ -48,18 +56,12 @@ public abstract class ChatChannelSession : IEventPublisher<ChatChannelEvent>
 	/// <summary>Gets a value that indicates whether a connection may write to the channel.</summary>
 	public abstract bool CanWrite(Connection connection);
 
-	/// <summary>Gets a value that indicates whether only members may post.</summary>
-	protected virtual bool PostRequiresMembership => true;
-
-	/// <summary>Gets a value that indicates whether the channel currently accepts messages.</summary>
-	protected virtual bool AcceptsMessages => true;
-
 	/// <summary>Joins a connection to the channel.</summary>
 	/// <param name="by">The connection joining.</param>
 	/// <returns>The outcome of the join.</returns>
 	public ChannelJoinResult Join(Connection by)
 	{
-		lock (_sync)
+		lock (Sync)
 		{
 			if (_closed) return ChannelJoinResult.Closed;
 			if (!CanRead(by)) return ChannelJoinResult.NoPermission;
@@ -87,7 +89,7 @@ public abstract class ChatChannelSession : IEventPublisher<ChatChannelEvent>
 	/// <returns>The outcome of the part.</returns>
 	public ChannelPartResult Part(Connection by)
 	{
-		lock (_sync)
+		lock (Sync)
 		{
 			if (!_members.Remove(by)) return ChannelPartResult.NotMember;
 			Emit(new MemberParted(this, by, false));
@@ -127,7 +129,7 @@ public abstract class ChatChannelSession : IEventPublisher<ChatChannelEvent>
 	/// <summary>Closes the channel, removing every member and completing the event channel.</summary>
 	internal void Close()
 	{
-		lock (_sync)
+		lock (Sync)
 		{
 			if (_closed) return;
 			_closed = true;
@@ -143,16 +145,25 @@ public abstract class ChatChannelSession : IEventPublisher<ChatChannelEvent>
 		}
 	}
 
-	/// <summary>Gets the lock that guards membership changes.</summary>
-	private protected Lock Sync => _sync;
-
 	/// <summary>Adds a member without emitting an event; the caller holds <see cref="Sync" /> and reports the change itself.</summary>
 	/// <returns><see langword="true" /> if the connection was not already a member.</returns>
-	private protected bool AddMember(Connection connection) => _members.Add(connection);
+	private protected bool AddMember(Connection connection)
+	{
+		return _members.Add(connection);
+	}
 
-	/// <summary>Removes a member without emitting an event; the caller holds <see cref="Sync" /> and reports the change itself.</summary>
+	/// <summary>
+	///     Removes a member without emitting an event; the caller holds <see cref="Sync" /> and reports the change
+	///     itself.
+	/// </summary>
 	/// <returns><see langword="true" /> if the connection was a member.</returns>
-	private protected bool RemoveMember(Connection connection) => _members.Remove(connection);
+	private protected bool RemoveMember(Connection connection)
+	{
+		return _members.Remove(connection);
+	}
 
-	private protected void Emit(ChatChannelEvent @event) => _events.Writer.TryWrite(@event);
+	private protected void Emit(ChatChannelEvent @event)
+	{
+		_events.Writer.TryWrite(@event);
+	}
 }

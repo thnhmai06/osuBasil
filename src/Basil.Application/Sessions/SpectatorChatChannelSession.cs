@@ -1,5 +1,5 @@
-using Basil.Domain.Chat;
 using Basil.Application.Chat;
+using Basil.Domain.Chat;
 
 namespace Basil.Application.Sessions;
 
@@ -10,15 +10,21 @@ public sealed class SpectatorChatChannelSession(BanchoConnection host, TimeProvi
 	/// <summary>Gets the connection being spectated.</summary>
 	public BanchoConnection Host => host;
 
-	/// <inheritdoc />
-	/// <remarks>The host and its spectators read the channel while it has spectators.</remarks>
-	public override bool CanRead(Connection connection) => Members.Contains(connection);
-
-	/// <inheritdoc />
-	public override bool CanWrite(Connection connection) => CanRead(connection);
-
 	/// <summary>Gets the connections spectating the host.</summary>
 	public IEnumerable<Connection> Spectators => Members.Where(member => !ReferenceEquals(member, Host));
+
+	/// <inheritdoc />
+	/// <remarks>The host and its spectators read the channel while it has spectators.</remarks>
+	public override bool CanRead(Connection connection)
+	{
+		return Members.Contains(connection);
+	}
+
+	/// <inheritdoc />
+	public override bool CanWrite(Connection connection)
+	{
+		return CanRead(connection);
+	}
 
 	/// <summary>Starts spectating the host; the first spectator brings the host into the channel.</summary>
 	/// <param name="by">The osu! or osu!tourney client that starts spectating.</param>
@@ -44,7 +50,10 @@ public sealed class SpectatorChatChannelSession(BanchoConnection host, TimeProvi
 
 	/// <summary>Stops spectating the host; the last spectator takes the host out of the channel.</summary>
 	/// <param name="by">The spectator that stops.</param>
-	/// <returns><see langword="true" /> if the connection was spectating; calling it again returns <see langword="false" /> and does nothing.</returns>
+	/// <returns>
+	///     <see langword="true" /> if the connection was spectating; calling it again returns <see langword="false" />
+	///     and does nothing.
+	/// </returns>
 	public bool StopSpectating(Connection by)
 	{
 		lock (Sync)
@@ -59,7 +68,10 @@ public sealed class SpectatorChatChannelSession(BanchoConnection host, TimeProvi
 
 	/// <summary>Reports that a spectator cannot spectate the host.</summary>
 	/// <param name="by">The spectator reporting it.</param>
-	/// <returns><see langword="true" /> if the connection is spectating; otherwise, <see langword="false" /> and nothing is reported.</returns>
+	/// <returns>
+	///     <see langword="true" /> if the connection is spectating; otherwise, <see langword="false" /> and nothing is
+	///     reported.
+	/// </returns>
 	public bool CantSpectate(Connection by)
 	{
 		if (ReferenceEquals(by, Host) || !Members.Contains(by)) return false;

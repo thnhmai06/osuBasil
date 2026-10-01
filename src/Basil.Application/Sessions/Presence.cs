@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
 using System.Threading.Channels;
+using Basil.Application.Common.Events;
 using Basil.Domain.Client;
 using Basil.Domain.Users;
-using Basil.Application.Common.Events;
 
 namespace Basil.Application.Sessions;
 
@@ -16,16 +16,19 @@ public sealed class Presence(TimeProvider time) : IEventPublisher<PresenceEvent>
 	private readonly ConcurrentDictionary<User, UserSession> _sessions = new();
 	private readonly Lock _sync = new(); // ponytail: one lock for all logins; per-user locks if login rate ever matters
 
-	/// <inheritdoc />
-	public ChannelReader<PresenceEvent> Events => _events.Reader;
-
 	/// <summary>Gets every online session.</summary>
 	public IEnumerable<UserSession> Sessions => _sessions.Values;
+
+	/// <inheritdoc />
+	public ChannelReader<PresenceEvent> Events => _events.Reader;
 
 	/// <summary>Finds the online session of a user.</summary>
 	/// <param name="user">The user to look up.</param>
 	/// <returns>The user's session, or <see langword="null" /> when the user is offline.</returns>
-	public UserSession? Find(User user) => _sessions.GetValueOrDefault(user);
+	public UserSession? Find(User user)
+	{
+		return _sessions.GetValueOrDefault(user);
+	}
 
 	/// <summary>Finds the spectator channel a connection is spectating.</summary>
 	/// <param name="connection">The connection to look up.</param>

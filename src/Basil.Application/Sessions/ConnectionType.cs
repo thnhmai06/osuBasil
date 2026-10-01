@@ -22,5 +22,8 @@ public static class ConnectionTypeExtensions
 	/// <summary>Gets a value that indicates whether one user may hold several connections of this kind at once.</summary>
 	/// <param name="type">The kind of connection.</param>
 	/// <returns><see langword="true" /> only for <see cref="ConnectionType.Tourney" />.</returns>
-	public static bool AllowsMany(this ConnectionType type) => type is ConnectionType.Tourney;
+	public static bool AllowsMany(this ConnectionType type)
+	{
+		return type is ConnectionType.Tourney;
+	}
 }

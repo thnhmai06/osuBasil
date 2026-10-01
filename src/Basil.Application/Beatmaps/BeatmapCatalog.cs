@@ -1,9 +1,9 @@
 using System.Threading.Channels;
+using Basil.Application.Common.Events;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 using Basil.Domain.Utilities;
-using Basil.Application.Common.Events;
 
 namespace Basil.Application.Beatmaps;
 
@@ -20,7 +20,10 @@ public sealed class BeatmapCatalog(
 	/// <inheritdoc />
 	public ChannelReader<BeatmapEvent> Events => _events.Reader;
 
-	/// <summary>Imports a beatmapset: stores its archive, its metadata and each analyzed difficulty, and drops difficulties the new version no longer has.</summary>
+	/// <summary>
+	///     Imports a beatmapset: stores its archive, its metadata and each analyzed difficulty, and drops difficulties
+	///     the new version no longer has.
+	/// </summary>
 	/// <param name="beatmapsetId">The id to store the set under.</param>
 	/// <param name="artist">The set's artist.</param>
 	/// <param name="title">The set's title.</param>

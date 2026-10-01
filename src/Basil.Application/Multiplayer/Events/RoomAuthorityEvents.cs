@@ -1,5 +1,5 @@
-using Basil.Domain.Users;
 using Basil.Application.Sessions;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Multiplayer.Events;
 

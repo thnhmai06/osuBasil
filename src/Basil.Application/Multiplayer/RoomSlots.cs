@@ -1,9 +1,9 @@
 using System.Collections;
 using System.Collections.Immutable;
-using Basil.Domain.Mechanics;
-using Basil.Domain.Users;
 using Basil.Application.Multiplayer.Events;
 using Basil.Application.Sessions;
+using Basil.Domain.Mechanics;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Multiplayer;
 
@@ -15,19 +15,41 @@ namespace Basil.Application.Multiplayer;
 public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 {
 	public const int MaxSlotCount = 16;
-	private readonly ImmutableArray<RoomSlot> _slots;
 
 	/// <summary>The room these slots belong to.</summary>
 	public readonly Room Room;
 
-	/// <summary>Gets a value that indicates whether the room's slots are locked as a whole.</summary>
-	/// <remarks>A locked room stops players from changing their own slot or team; referees still can.</remarks>
-	public bool Locked { get; internal set; }
+	private readonly ImmutableArray<RoomSlot> _slots;
 
 	internal RoomSlots(Room room)
 	{
 		Room = room;
 		_slots = [.. Enumerable.Range(1, MaxSlotCount).Select(index => new RoomSlot(this, index))];
+	}
+
+	/// <summary>Gets a value that indicates whether the room's slots are locked as a whole.</summary>
+	/// <remarks>A locked room stops players from changing their own slot or team; referees still can.</remarks>
+	public bool Locked { get; internal set; }
+
+	public int Count => _slots.Length;
+
+	public RoomSlot this[int index]
+	{
+		get
+		{
+			ThrowIfOutOfRangeIndex(index);
+			return _slots[index - 1];
+		}
+	}
+
+	public IEnumerator<RoomSlot> GetEnumerator()
+	{
+		return ((IEnumerable<RoomSlot>)_slots).GetEnumerator();
+	}
+
+	IEnumerator IEnumerable.GetEnumerator()
+	{
+		return GetEnumerator();
 	}
 
 	/// <summary>Finds the slot occupied by a player.</summary>
@@ -47,7 +69,10 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 	}
 
 	/// <summary>Gets the slot with a given number, or <see langword="null" /> when the number is outside 1 to 16.</summary>
-	public RoomSlot? At(int index) => index is >= 1 and <= MaxSlotCount ? _slots[index - 1] : null;
+	public RoomSlot? At(int index)
+	{
+		return index is >= 1 and <= MaxSlotCount ? _slots[index - 1] : null;
+	}
 
 	/// <summary>Resizes the room, leaving occupied slots untouched.</summary>
 	/// <param name="size">The new number of available slots, from 1 to 16.</param>
@@ -104,27 +129,6 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 
 		slot.Clear();
 		return slot;
-	}
-
-	public int Count => _slots.Length;
-
-	public RoomSlot this[int index]
-	{
-		get
-		{
-			ThrowIfOutOfRangeIndex(index);
-			return _slots[index - 1];
-		}
-	}
-
-	public IEnumerator<RoomSlot> GetEnumerator()
-	{
-		return ((IEnumerable<RoomSlot>)_slots).GetEnumerator();
-	}
-
-	IEnumerator IEnumerable.GetEnumerator()
-	{
-		return GetEnumerator();
 	}
 
 	private static void ThrowIfOutOfRangeIndex(int index)

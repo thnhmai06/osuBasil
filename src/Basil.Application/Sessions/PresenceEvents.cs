@@ -1,5 +1,5 @@
-using Basil.Domain.Users;
 using Basil.Application.Common.Events;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Sessions;
 

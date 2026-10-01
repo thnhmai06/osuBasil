@@ -1,7 +1,7 @@
+using Basil.Application.Sessions;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
-using Basil.Application.Sessions;
 
 namespace Basil.Application.Multiplayer.Events;
 
@@ -12,7 +12,8 @@ public abstract record RoundEvent(Room Room, Round Round) : RoomEvent(Room);
 /// <param name="Room">The room.</param>
 /// <param name="Round">The round.</param>
 /// <param name="Players">The players taking part.</param>
-public sealed record RoundStarted(Room Room, Round Round, IReadOnlyList<BanchoConnection> Players) : RoundEvent(Room, Round);
+public sealed record RoundStarted(Room Room, Round Round, IReadOnlyList<BanchoConnection> Players)
+	: RoundEvent(Room, Round);
 
 /// <summary>A round was aborted.</summary>
 public sealed record RoundAborted(Room Room, Round Round) : RoundEvent(Room, Round);
@@ -20,7 +21,10 @@ public sealed record RoundAborted(Room Room, Round Round) : RoundEvent(Room, Rou
 /// <summary>A round ended because every player completed it or left.</summary>
 /// <param name="Room">The room.</param>
 /// <param name="Round">The round.</param>
-/// <param name="Slot">The slot of the player whose completion ended the round, or <see langword="null" /> when the last remaining player left.</param>
+/// <param name="Slot">
+///     The slot of the player whose completion ended the round, or <see langword="null" /> when the last
+///     remaining player left.
+/// </param>
 public sealed record RoundCompleted(Room Room, Round Round, int? Slot) : RoundEvent(Room, Round);
 
 /// <summary>A player finished loading the beatmap.</summary>
@@ -32,7 +36,10 @@ public sealed record PlayerLoaded(Room Room, Round Round, int Slot) : RoundEvent
 /// <summary>The last player finished loading, so every player has loaded.</summary>
 /// <param name="Room">The room.</param>
 /// <param name="Round">The round.</param>
-/// <param name="Slot">The slot of the player whose load completed the set, or <see langword="null" /> when a player who had not loaded left.</param>
+/// <param name="Slot">
+///     The slot of the player whose load completed the set, or <see langword="null" /> when a player who
+///     had not loaded left.
+/// </param>
 public sealed record AllPlayersLoaded(Room Room, Round Round, int? Slot) : RoundEvent(Room, Round);
 
 /// <summary>A player asked to skip the intro.</summary>
@@ -44,7 +51,10 @@ public sealed record PlayerSkipped(Room Room, Round Round, int Slot) : RoundEven
 /// <summary>The last player asked to skip the intro, so the intro is skipped.</summary>
 /// <param name="Room">The room.</param>
 /// <param name="Round">The round.</param>
-/// <param name="Slot">The slot of the player whose request completed the set, or <see langword="null" /> when a player who had not asked left.</param>
+/// <param name="Slot">
+///     The slot of the player whose request completed the set, or <see langword="null" /> when a player who
+///     had not asked left.
+/// </param>
 public sealed record AllPlayersSkipped(Room Room, Round Round, int? Slot) : RoundEvent(Room, Round);
 
 /// <summary>A player failed.</summary>

@@ -1,5 +1,5 @@
-using Basil.Domain.Beatmaps;
 using Basil.Application.Common.Events;
+using Basil.Domain.Beatmaps;
 
 namespace Basil.Application.Beatmaps;
 

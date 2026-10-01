@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using Basil.Application.Chat;
 using Basil.Domain.Users;
 using Basil.Domain.Utilities;
-using Basil.Application.Chat;
 
 namespace Basil.Application.Sessions;
 

@@ -1,12 +1,12 @@
 using System.Collections.Concurrent;
 using System.Threading.Channels;
+using Basil.Application.Common.Events;
+using Basil.Application.Multiplayer.Events;
+using Basil.Application.Sessions;
 using Basil.Domain.Client;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Domain.Utilities;
-using Basil.Application.Common.Events;
-using Basil.Application.Multiplayer.Events;
-using Basil.Application.Sessions;
 
 namespace Basil.Application.Multiplayer;
 
@@ -16,22 +16,20 @@ public sealed class Lobby(IMatchRepository matches, Presence presence, TimeProvi
 	/// <summary>The most tournament rooms one creator can have open.</summary>
 	public const int MaxRoomsPerCreator = 4;
 
+	private const int MaxRoomId = ushort.MaxValue;
+
 	/// <summary>How long an empty tournament room stays open.</summary>
 	public static readonly TimeSpan EmptyTournamentRoomTimeout = TimeSpan.FromMinutes(15);
 
 	/// <summary>How long before an empty tournament room closes the lobby announces its closing a second time.</summary>
 	public static readonly TimeSpan EmptyRoomWarningBefore = TimeSpan.FromMinutes(5);
 
-	private const int MaxRoomId = ushort.MaxValue;
+	private readonly ConcurrentDictionary<Room, ITimer> _emptyTimers = new();
 
 	private readonly Channel<LobbyEvent> _events = Channel.CreateUnbounded<LobbyEvent>();
-	private readonly ConcurrentDictionary<int, Room> _rooms = new();
-	private readonly ConcurrentDictionary<Room, ITimer> _emptyTimers = new();
-	private readonly ConcurrentSet<BanchoConnection> _watchers = [];
 	private readonly Lock _openSync = new();
-
-	/// <inheritdoc />
-	public ChannelReader<LobbyEvent> Events => _events.Reader;
+	private readonly ConcurrentDictionary<int, Room> _rooms = new();
+	private readonly ConcurrentSet<BanchoConnection> _watchers = [];
 
 	/// <summary>Gets every open room.</summary>
 	public IEnumerable<Room> Rooms => _rooms.Values;
@@ -39,13 +37,21 @@ public sealed class Lobby(IMatchRepository matches, Presence presence, TimeProvi
 	/// <summary>Gets the osu! clients watching the multiplayer lobby.</summary>
 	public IReadOnlySet<BanchoConnection> Watchers => _watchers;
 
+	/// <inheritdoc />
+	public ChannelReader<LobbyEvent> Events => _events.Reader;
+
 	/// <summary>Finds an open room by id.</summary>
-	public Room? Find(int id) => _rooms.GetValueOrDefault(id);
+	public Room? Find(int id)
+	{
+		return _rooms.GetValueOrDefault(id);
+	}
 
 	/// <summary>Finds the room a player is seated in.</summary>
-	public Room? RoomOf(BanchoConnection player) =>
+	public Room? RoomOf(BanchoConnection player)
+	{
 		// ponytail: scans every room; add a player index if room counts grow large.
-		_rooms.Values.FirstOrDefault(room => room.Slots.Find(player) is not null);
+		return _rooms.Values.FirstOrDefault(room => room.Slots.Find(player) is not null);
+	}
 
 	/// <summary>Opens a room for a new match.</summary>
 	/// <param name="creator">The user creating the room, or <see langword="null" /> for an unattended room.</param>
@@ -80,7 +86,8 @@ public sealed class Lobby(IMatchRepository matches, Presence presence, TimeProvi
 		CancellationToken cancellationToken = default)
 	{
 		if (!isTournament && creatorConnection is null)
-			throw new ArgumentNullException(nameof(creatorConnection), "A room opened in game needs the creator's game client.");
+			throw new ArgumentNullException(nameof(creatorConnection),
+				"A room opened in game needs the creator's game client.");
 
 		if (creator is not null)
 		{
@@ -249,8 +256,10 @@ public sealed class Lobby(IMatchRepository matches, Presence presence, TimeProvi
 		_events.Writer.TryWrite(new RoomClosed(room, evicted));
 	}
 
-	private bool TooManyRooms(User creator) =>
-		_rooms.Values.Count(room => room.IsTournament && creator.Equals(room.Creator)) >= MaxRoomsPerCreator;
+	private bool TooManyRooms(User creator)
+	{
+		return _rooms.Values.Count(room => room.IsTournament && creator.Equals(room.Creator)) >= MaxRoomsPerCreator;
+	}
 
 	private int? FreeRoomId()
 	{

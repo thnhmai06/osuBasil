@@ -1,7 +1,7 @@
-using Basil.Domain.Scores;
-using Basil.Domain.Utilities;
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
+using Basil.Domain.Scores;
+using Basil.Domain.Utilities;
 
 namespace Basil.Application.Scores;
 
@@ -16,7 +16,10 @@ public sealed class ScoreSubmission(
 	/// <summary>Validates and records a score submission.</summary>
 	/// <param name="connection">The game client connection that submitted the score.</param>
 	/// <param name="submission">The parsed submission.</param>
-	/// <param name="beatmap">The beatmap the server knows for the submission, or <see langword="null" /> when the server does not have it.</param>
+	/// <param name="beatmap">
+	///     The beatmap the server knows for the submission, or <see langword="null" /> when the server does
+	///     not have it.
+	/// </param>
 	/// <param name="clientFingerprint">The client hash and unique ids sent with the submission.</param>
 	/// <param name="clientVersionDate">The client version date sent with the submission.</param>
 	/// <param name="clientBeatmapHash">The beatmap MD5 the client claims to have played.</param>

@@ -1,10 +1,10 @@
-using Microsoft.Extensions.DependencyInjection;
 using Basil.Application.Beatmaps;
 using Basil.Application.Chat;
 using Basil.Application.Multiplayer;
 using Basil.Application.Scores;
 using Basil.Application.Sessions;
 using Basil.Application.Users;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Application;
 
