@@ -6,7 +6,7 @@ namespace Basil.Application.Multiplayer;
 
 /// <summary>A multiplayer room's chat channel while the room is open.</summary>
 public sealed class RoomChannelSession(Room room, TimeProvider time)
-	: ChannelSession(new RoomChannel(room.Id, room.Match), time)
+	: ChannelSession(new RoomChannel(room.Id, room.Name), time)
 {
 	/// <summary>Gets the room that owns this channel.</summary>
 	public Room Room => room;

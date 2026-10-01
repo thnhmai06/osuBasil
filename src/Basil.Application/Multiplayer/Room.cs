@@ -419,7 +419,12 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		var freemods = change.Freemods ?? Freemods;
 		if (change.Mods is { } requestedMods && !requestedMods.IsValid(mode)) return RoomResult.InvalidMods;
 
-		if (change.Name is { } name) Match.Value.Name = name;
+		if (change.Name is { } name)
+		{
+			Match.Value.Name = name;
+			Channel.Channel.Topic = name;
+		}
+
 		if (change.Password is { } password) Password = password;
 		if (change.Beatmap is not null || change.ClearBeatmap)
 		{

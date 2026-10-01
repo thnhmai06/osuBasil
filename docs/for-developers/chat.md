@@ -67,8 +67,10 @@ A channel has a Domain model (`Channel`: name and topic) and a runtime model
 `GeneralChannelRegistry` lists only general channels. A room channel is found through its room
 (`lobby.Find(id)?.Channel`); spectator and private-message channels are never looked up by name.
 
-Channel names are stored **without** `#`. Transports add the prefix when writing and strip it when
-reading, and resolve `#multiplayer` and `#spectator` to the sender's room or spectator channel.
+Channel names are stored **without** `#`: a channel drops one leading `#` from the name it is given,
+so `#osu` and `osu` are the same channel. Transports add the prefix when writing and resolve
+`#multiplayer` and `#spectator` to the sender's room or spectator channel. A room channel's topic is the
+room's name and follows it when the room is renamed.
 
 ### Who may read and write
 

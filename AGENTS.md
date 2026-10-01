@@ -465,9 +465,11 @@ Scores/        ScoreSubmission, score/replay/stats ports
 * **Privilege checks require every bit.** A user satisfies a `ClientPrivileges` requirement only if
   every bit set in the requirement is set on the user (`ClientPrivileges.Has`); an empty
   requirement is always satisfied. This applies everywhere, not only to channels.
-* **Channel names are stored without `#`** (`osu`, `lobby`, `mp_5`). Transports add the prefix
-  when writing and strip it when reading; `#multiplayer`/`#spectator` are resolved by the transport
-  to the sender's room or spectator channel. Do not "fix" stored names to include `#`.
+* **Channel names are stored without `#`** (`osu`, `lobby`, `mp_5`). `Channel.Name` drops one
+  leading `#` when it is set, so `#osu` and `osu` name the same channel; transports add the prefix
+  when writing. `#multiplayer`/`#spectator` are resolved by the transport to the sender's room or
+  spectator channel. Do not "fix" stored names to include `#`. This normalization is the one
+  exception to "setters only assign and validate".
 * **Setters only assign and validate.** A setter stores the value and throws if it is invalid;
   it never emits an event or changes anything else. A change that has consequences (emits an
   event, changes other fields, checks authority, groups several fields into one event) is a

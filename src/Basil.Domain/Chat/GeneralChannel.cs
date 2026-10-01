@@ -4,12 +4,8 @@ using Basil.Domain.Utilities;
 namespace Basil.Domain.Chat;
 
 /// <summary>A configured chat channel open to every user with the required privileges.</summary>
-public sealed class GeneralChannel(string name, string topic = "")
-	: Channel(name), IEquatable<GeneralChannel>
+public sealed class GeneralChannel : Channel, IEquatable<GeneralChannel>
 {
-	/// <inheritdoc />
-	public override string Topic { get; } = topic;
-
 	/// <summary>Gets or sets the privileges a user must all hold to read the channel.</summary>
 	public ClientPrivileges ReadPrivilege
 	{
@@ -39,11 +35,20 @@ public sealed class GeneralChannel(string name, string topic = "")
 	public bool Visible { get; set; } = true;
 
 	/// <summary>Determines whether another general channel has the same name.</summary>
-	public bool Equals(GeneralChannel? other) => other is not null && Name == other.Name;
+	public bool Equals(GeneralChannel? other)
+	{
+		return other is not null && Name == other.Name;
+	}
 
 	/// <inheritdoc />
-	public override bool Equals(object? obj) => obj is GeneralChannel other && Equals(other);
+	public override bool Equals(object? obj)
+	{
+		return obj is GeneralChannel other && Equals(other);
+	}
 
 	/// <inheritdoc />
-	public override int GetHashCode() => Name.GetHashCode();
+	public override int GetHashCode()
+	{
+		return Name.GetHashCode();
+	}
 }
