@@ -6,7 +6,7 @@ public enum ChannelJoinResult : byte
 	/// <summary>The connection joined the channel.</summary>
 	Joined,
 
-	/// <summary>The connection lacks the privilege required to read the channel.</summary>
+	/// <summary>The connection may not read the channel.</summary>
 	NoPermission,
 
 	/// <summary>The connection is already a member of the channel.</summary>
@@ -41,7 +41,7 @@ public enum ChannelPostResult : byte
 	/// <summary>The sender is not a member of a channel that requires membership to post.</summary>
 	NotMember,
 
-	/// <summary>The sender lacks the privilege required to write to the channel.</summary>
+	/// <summary>The sender may not write to the channel.</summary>
 	NoWritePermission,
 
 	/// <summary>The recipient is silenced and the channel refuses messages.</summary>

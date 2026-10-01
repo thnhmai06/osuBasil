@@ -8,12 +8,12 @@ using Basil.Application.Users;
 
 namespace Basil.Application;
 
-/// <summary>Registers Basil's application-layer operations, chat commands, and domain event handlers.</summary>
+/// <summary>Registers the objects that make up Basil's application environment.</summary>
 public static class DependencyInjection
 {
 	/// <summary>
-	///     Adds every concrete Application operation, chat command, and domain event handler, along
-	///     with the Models and Contracts projects' own (currently empty) registrations.
+	///     Adds the environment objects (presence, chat channels, lobby) and the operations that use the
+	///     repository and storage ports, which the caller registers.
 	/// </summary>
 	/// <param name="services">The service collection to add to.</param>
 	/// <returns><paramref name="services" />, for chaining.</returns>

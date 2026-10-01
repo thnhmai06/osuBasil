@@ -380,8 +380,8 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	/// <param name="change">The settings to change.</param>
 	/// <returns>Ok, NotAuthorized, InProgress, InvalidSettings or InvalidMods.</returns>
 	/// <remarks>
-	///     The caller holds the room's scope. Nothing changes unless every field is valid. Selecting a
-	///     beatmap sets ready players back to not ready. Turning freemod on moves the room's mods that are
+	///     The caller holds the room's scope. Nothing changes unless every field is valid. Selecting or
+	///     clearing the beatmap sets ready players back to not ready. Turning freemod on moves the room's mods that are
 	///     not speed-changing onto each player; turning it off gives the room the host's mods. Changing the
 	///     team type reassigns teams. Changing the mode drops mods, the room's and the players', that the new mode does not allow. Under freemod, a seated caller's mods that are not speed-changing become that caller's own mods. A change with no field set does nothing.
 	/// </remarks>
@@ -392,6 +392,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 
 		if (change.Name is not null && string.IsNullOrWhiteSpace(change.Name)) return RoomResult.InvalidSettings;
 		if (change.Size is < 1 or > RoomSlots.MaxSlotCount) return RoomResult.InvalidSettings;
+		if (change.ClearBeatmap && change.Beatmap is not null) return RoomResult.InvalidSettings;
 		if (change.Mode is { } requestedMode && !Enum.IsDefined(requestedMode)) return RoomResult.InvalidSettings;
 		if (change.TeamType is { } requestedTeamType && !Enum.IsDefined(requestedTeamType))
 			return RoomResult.InvalidSettings;
@@ -406,9 +407,9 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 
 		if (change.Name is { } name) Match.Value.Name = name;
 		if (change.Password is { } password) Password = password;
-		if (change.Beatmap is { } beatmap)
+		if (change.Beatmap is not null || change.ClearBeatmap)
 		{
-			Beatmap = beatmap;
+			Beatmap = change.Beatmap;
 			foreach (var slot in Slots.Where(s => s.Status is RoomSlotStatus.Ready))
 				slot.SetStatus(RoomSlotStatus.NotReady);
 		}

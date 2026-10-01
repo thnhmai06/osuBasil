@@ -26,7 +26,7 @@ public sealed record MemberJoined(ChatChannelSession Channel, Connection Member)
 public sealed record MemberParted(ChatChannelSession Channel, Connection Member, bool Kicked)
 	: ChatChannelMembershipEvent(Channel);
 
-/// <summary>A message was posted to a chat channel.</summary>
+/// <summary>Something happened to the messages of a chat channel.</summary>
 public abstract record MessageEvent(ChatChannelSession Channel) : ChatChannelEvent(Channel);
 
 /// <summary>A message was posted to a chat channel.</summary>

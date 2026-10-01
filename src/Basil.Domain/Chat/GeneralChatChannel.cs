@@ -10,7 +10,7 @@ public sealed class GeneralChatChannel(string name, string topic = "")
 	/// <inheritdoc />
 	public override string Topic { get; } = topic;
 
-	/// <summary>The minimum privilege required to read the channel.</summary>
+	/// <summary>Gets or sets the privileges a user must all hold to read the channel.</summary>
 	public ClientPrivileges ReadPrivilege
 	{
 		get;
@@ -21,7 +21,7 @@ public sealed class GeneralChatChannel(string name, string topic = "")
 		}
 	} = ClientPrivileges.Player;
 
-	/// <summary>The minimum privilege required to write to the channel.</summary>
+	/// <summary>Gets or sets the privileges a user must all hold to write to the channel.</summary>
 	public ClientPrivileges WritePrivilege
 	{
 		get;

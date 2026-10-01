@@ -18,16 +18,9 @@ public sealed record Submission
 	/// <summary>Gets the parsed score, including its hit counts, total score, and mode.</summary>
 	public required ScoreData Score { get; init; }
 
-	/// <summary>Gets or sets the anticheat flags the client reported with the submission.</summary>
-	public ClientFlags ClientFlags
-	{
-		get;
-		init
-		{
-			value.ThrowIfUndefined();
-			field = value;
-		}
-	} = ClientFlags.Clean;
+	/// <summary>Gets the anticheat flags the client reported with the submission.</summary>
+	/// <remarks>Kept as reported, including bits that no <see cref="Client.ClientFlags" /> member names.</remarks>
+	public ClientFlags ClientFlags { get; init; } = ClientFlags.Clean;
 
 	/// <summary>Gets or sets the submission checksum that the client sent.</summary>
 	public required Md5 HashByClient { get; init; }

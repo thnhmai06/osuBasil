@@ -12,6 +12,7 @@ namespace Basil.Application.Multiplayer;
 /// <param name="WinCondition">The condition that decides the winner of a round.</param>
 /// <param name="Password">The room's new password.</param>
 /// <param name="Size">The number of usable slots, from 1 to 16.</param>
+/// <param name="ClearBeatmap">Whether the room drops its beatmap while the host chooses another one.</param>
 public sealed record RoomSettingsChange(
 	string? Name = null,
 	BeatmapReference? Beatmap = null,
@@ -21,4 +22,5 @@ public sealed record RoomSettingsChange(
 	GameTeamType? TeamType = null,
 	GameWinCondition? WinCondition = null,
 	string? Password = null,
-	int? Size = null);
+	int? Size = null,
+	bool ClearBeatmap = false);

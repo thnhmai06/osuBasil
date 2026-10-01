@@ -6,7 +6,7 @@ namespace Basil.Application.Multiplayer.Events;
 /// <summary>A room's slots or their lock state changed.</summary>
 public abstract record RoomSlotsEvent(Room Room) : RoomEvent(Room);
 
-/// <summary>The room's player-initiated slot lock (<c>!mp lock</c>) was toggled.</summary>
+/// <summary>The room was locked or unlocked; while locked, players cannot change slot or team.</summary>
 public sealed record RoomLockChanged(Room Room, bool Locked) : RoomSlotsEvent(Room);
 
 /// <summary>Something happened to one of a room's slots.</summary>
