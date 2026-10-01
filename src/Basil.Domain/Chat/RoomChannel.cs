@@ -11,7 +11,7 @@ public sealed class RoomChannel : Channel
 	[SetsRequiredMembers]
 	public RoomChannel(int roomId, string topic)
 	{
-		Name = $"mp_{roomId}";
+		Name = $"#mp_{roomId}";
 		Topic = topic;
 	}
 }

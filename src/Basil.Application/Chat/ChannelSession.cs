@@ -33,7 +33,7 @@ public abstract class ChannelSession : IEventPublisher<ChannelEvent>
 	/// <summary>Gets the clock the channel reads the current time from.</summary>
 	private protected TimeProvider Time { get; }
 
-	/// <summary>Gets the channel name, without a leading <c>#</c>.</summary>
+	/// <summary>Gets the channel name: <c>#name</c> for a channel several users take part in, the owner's name for a private-message channel.</summary>
 	public string Name => Channel.Name;
 
 	/// <summary>Gets the connections currently in the channel.</summary>

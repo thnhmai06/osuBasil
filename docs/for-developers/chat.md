@@ -59,18 +59,19 @@ A channel has a Domain model (`Channel`: name and topic) and a runtime model
 
 | Kind | Domain / runtime | Name | Owner, opened and closed with it |
 |---|---|---|---|
-| General | `GeneralChannel` / `GeneralChannelSession` | configured (`osu`, `lobby`, …) | `GeneralChannelRegistry` |
-| Room | `RoomChannel` / `RoomChannelSession` | `mp_{room id}` | the `Room` |
-| Spectator | `SpectatorChannel` / `SpectatorChannelSession` | `spec_{host user id}` | the spectated `BanchoConnection` |
+| General | `GeneralChannel` / `GeneralChannelSession` | configured (`#osu`, `#lobby`, …) | `GeneralChannelRegistry` |
+| Room | `RoomChannel` / `RoomChannelSession` | `#mp_{room id}` | the `Room` |
+| Spectator | `SpectatorChannel` / `SpectatorChannelSession` | `#spec_{host user id}` | the spectated `BanchoConnection` |
 | Private message | `PmChannel` / `PmChannelSession` | the owner's name | the recipient's `UserSession` |
 
 `GeneralChannelRegistry` lists only general channels. A room channel is found through its room
 (`lobby.Find(id)?.Channel`); spectator and private-message channels are never looked up by name.
 
-Channel names are stored **without** `#`: a channel drops one leading `#` from the name it is given,
-so `#osu` and `osu` are the same channel. Transports add the prefix when writing and resolve
-`#multiplayer` and `#spectator` to the sender's room or spectator channel. A room channel's topic is the
-room's name and follows it when the room is renamed.
+A channel's name tells its kind, as in IRC: a channel several users take part in is named `#name`,
+and a private-message channel carries its owner's name without `#`. Each kind of channel follows
+this convention when it names itself. Transports resolve the aliases `#multiplayer` and `#spectator`
+to the sender's room or spectator channel. A room channel's topic is the room's name and follows it
+when the room is renamed.
 
 ### Who may read and write
 
@@ -96,7 +97,7 @@ and the new connection joins. A closed channel refuses joins.
 
 `GeneralChannelRegistry.JoinAutoChannels` joins a connection to every auto-join channel it may read, and
 `GeneralChannelRegistry.PartAll` removes a connection from every general channel; both are called when
-a connection opens or closes and are safe to call again. A channel named `lobby` is an ordinary general
+a connection opens or closes and are safe to call again. A channel named `#lobby` is an ordinary general
 channel: whether it exists and whether it is joined automatically is configuration, and it has no tie
 to the multiplayer `Lobby`.
 

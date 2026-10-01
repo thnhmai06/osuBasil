@@ -3,16 +3,19 @@
 /// <summary>A chat channel, named and described by IRC convention.</summary>
 public abstract class Channel
 {
-	/// <summary>Gets the channel name, without a leading <c>#</c>.</summary>
+	/// <summary>
+	///     Gets the channel name: a channel several users take part in is named <c>#name</c>; a
+	///     private-message channel is named after its owner, without <c>#</c>.
+	/// </summary>
+	/// <exception cref="ArgumentException">The name is empty.</exception>
 	public required string Name
 	{
 		get;
 		init
 		{
-			var name = value.StartsWith('#') ? value[1..] : value;
-			if (string.IsNullOrWhiteSpace(name))
-				throw new ArgumentException("Channel name cannot be empty.", nameof(name));
-			field = name;
+			if (string.IsNullOrWhiteSpace(value.TrimStart('#')))
+				throw new ArgumentException("Channel name cannot be empty.", nameof(value));
+			field = value;
 		}
 	}
 

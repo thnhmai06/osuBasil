@@ -143,7 +143,7 @@ flowchart TD
 * the server's bot joins the room's chat channel;
 * the lobby emits `LobbyRoomOpened` with the first host, if any.
 
-The room's chat channel is named `mp_{room id}` and belongs to the room: it opens and closes with it.
+The room's chat channel is named `#mp_{room id}` and belongs to the room: it opens and closes with it.
 
 ### Closing a room
 

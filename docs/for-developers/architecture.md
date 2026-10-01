@@ -225,7 +225,7 @@ OpenAPI contract with the route rather than maintaining a separate specification
 * Application emits events and never consumes them.
 * Every room operation holds the room's scope (`Room.EnterAsync`) across the complete transition.
 * Privilege checks require every bit of the requirement.
-* Channel names are stored without `#`.
+* A shared channel is named `#name`; a private-message channel carries its owner's name without `#`.
 * Privilege is named `Privilege`, never `Priv`.
 * User-visible reply strings are centralized rather than duplicated.
 * Performance points are not part of gameplay.

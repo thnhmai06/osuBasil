@@ -15,7 +15,7 @@ public sealed class GeneralChannelRegistry(TimeProvider time)
 	public IEnumerable<GeneralChannelSession> All => _channels.Values;
 
 	/// <summary>Finds an open configured channel by name, ignoring case.</summary>
-	/// <param name="name">The channel name, without a leading <c>#</c>.</param>
+	/// <param name="name">The channel name, including its leading <c>#</c>.</param>
 	/// <returns>The channel, or <see langword="null" /> when no configured channel has that name.</returns>
 	public GeneralChannelSession? Find(string name)
 	{

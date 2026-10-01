@@ -398,7 +398,7 @@ Scores/        ScoreSubmission, score/replay/stats ports
 * **Identify by the basis object**, not its id (`Room` by `Match`, `GeneralChannel` by `Name`). Runtime
   objects that can be recreated with the same user or name compare **by reference**: a connection
   is one login, a `UserSession` is one period online (look it up by `User` through `UserRegistry`), a
-  runtime channel is one opening (`mp_5` is reused when a room id is reused). Cleanup that carries
+  runtime channel is one opening (`#mp_5` is reused when a room id is reused). Cleanup that carries
   an old object can never touch its replacement. "Is this user already here?" compares the user
   and is a separate check from object identity. Ids are for repository lookups only. Choose object vs identifier
   deliberately (`Room.Beatmap` object, `PlayerStatus` beatmap `Md5?`); never `string` for an MD5.
@@ -465,11 +465,11 @@ Scores/        ScoreSubmission, score/replay/stats ports
 * **Privilege checks require every bit.** A user satisfies a `ClientPrivileges` requirement only if
   every bit set in the requirement is set on the user (`ClientPrivileges.Has`); an empty
   requirement is always satisfied. This applies everywhere, not only to channels.
-* **Channel names are stored without `#`** (`osu`, `lobby`, `mp_5`). `Channel.Name` drops one
-  leading `#` when it is set, so `#osu` and `osu` name the same channel; transports add the prefix
-  when writing. `#multiplayer`/`#spectator` are resolved by the transport to the sender's room or
-  spectator channel. Do not "fix" stored names to include `#`. This normalization is the one
-  exception to "setters only assign and validate".
+* **A channel's name tells its kind.** A channel several users take part in (general, room,
+  spectator) is named `#name` (`#osu`, `#lobby`, `#mp_5`, `#spec_7`); a private-message channel is
+  named after its owner, without `#`, as an IRC nick is. This is a naming convention each kind of
+  channel follows when it names itself; nothing else checks it. `#multiplayer`/`#spectator` are
+  aliases the transport resolves to the sender's room or spectator channel.
 * **Setters only assign and validate.** A setter stores the value and throws if it is invalid;
   it never emits an event or changes anything else. A change that has consequences (emits an
   event, changes other fields, checks authority, groups several fields into one event) is a

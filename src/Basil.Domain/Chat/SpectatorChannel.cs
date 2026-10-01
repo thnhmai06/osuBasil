@@ -11,7 +11,7 @@ public sealed class SpectatorChannel : Channel
 	[SetsRequiredMembers]
 	public SpectatorChannel(User host)
 	{
-		Name = $"spec_{host.Id}";
+		Name = $"#spec_{host.Id}";
 		Topic = $"{host.Value.Name}'s spectator channel";
 	}
 }
