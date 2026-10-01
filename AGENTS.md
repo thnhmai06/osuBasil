@@ -332,8 +332,9 @@ Basil.Host                    entry point and composition                 -> eve
 > `dotnet build src/Basil.Application/Basil.Application.csproj`.
 > `docs/for-developers/architecture.md` still describes an older structure.
 >
-> While the source is being reworked, do not review or update `docs/` or XML documentation: they
-> may already be out of date, and they are rewritten once the source is stable.
+> `architecture.md`, `multiplayer.md` and `chat.md` describe the reworked Application and mark
+> what is still pending. Other documents may still describe the previous model; rewrite each one when
+> the code it describes is migrated, not before.
 >
 > Where a plan conflicts with [Domain and Application](#domain-and-application) below, this file
 > wins. In particular, the older plan's §0.2 item 7 (actions as methods on the session) and §2.5

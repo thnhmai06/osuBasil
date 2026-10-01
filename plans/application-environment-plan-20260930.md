@@ -1544,3 +1544,13 @@ Application xanh (chỉ còn hai CS1574 có từ trước) và qua grep của ph
 9. Phase 10 mục 1 (đối chiếu phụ lục D, E) đã làm: mọi mục có thao tác/event, trừ kênh event unbounded (C26, cố ý). Rà soát cuối đã sửa hai chỗ:
    `Lobby.ReleaseAsync` rời kênh `mp_` cho mọi kết nối (người quản lý và referee IRC từng bị kẹt
    lại), `Gateway.ConnectAsync` từ chối login osu!/osu!tourney không có `ClientInfo`.
+10. Rà soát chất lượng lần hai (2026-10-01), đọc từng dòng và chạy kịch bản trên `FakeTimeProvider`:
+    sửa `Room.Join` (gỡ ghế cũ chỉ sau khi qua mọi kiểm tra), tiến độ round khi có người rời,
+    `Configure` (thay đổi rỗng, mod của người chơi khi đổi mode, mod riêng của host khi freemod,
+    `ClearBeatmap`), `SetHasMap`, countdown không map, `Lobby.OpenAsync` (phòng trong game cần
+    client của creator, phòng tournament mở trống bắt đầu đếm), cảnh báo `EmptyRoomClosingSoon` trước khi
+    đóng phòng trống (khôi phục hành vi cũ), `ThrowIfUndefined` hiểu enum `[Flags]`, giữ nguyên cờ
+    anticheat client gửi, `Gateway` kiểm tham số trước khi chạm storage.
+11. Docs: `architecture.md`, `multiplayer.md`, `chat.md` được viết lại theo code mới; phần ngoài
+    Application đánh dấu "Pending migration". Bản do agent miễn phí viết bị loại vì sai sự thật về quyền,
+    sai cây kế thừa và xóa mất nội dung.
