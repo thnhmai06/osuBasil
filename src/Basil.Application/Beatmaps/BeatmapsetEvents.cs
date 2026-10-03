@@ -10,3 +10,7 @@ public abstract record BeatmapsetEvent : Event;
 /// <param name="Set">The imported beatmapset.</param>
 /// <param name="Beatmaps">Its difficulties after the import.</param>
 public sealed record BeatmapsetImported(Beatmapset Set, IReadOnlyList<Beatmap> Beatmaps) : BeatmapsetEvent;
+
+/// <summary>A beatmapset was deleted with its beatmaps and archive.</summary>
+/// <param name="Set">The deleted beatmapset.</param>
+public sealed record BeatmapsetDeleted(Beatmapset Set) : BeatmapsetEvent;

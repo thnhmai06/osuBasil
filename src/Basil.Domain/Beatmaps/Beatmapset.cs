@@ -1,5 +1,3 @@
-using Basil.Domain.Users;
-
 namespace Basil.Domain.Beatmaps;
 
 /// <summary>
@@ -60,8 +58,14 @@ public sealed class Beatmapset : IEquatable<Beatmapset>
 			: value;
 	}
 
-	/// <summary>The username of the set's creator.</summary>
-	public required User Creator { get; init; }
+	/// <summary>The name of the beatmapset's mapper.</summary>
+	public required string Creator
+	{
+		get;
+		set => field = string.IsNullOrWhiteSpace(value)
+			? throw new ArgumentException("Creator cannot be empty.", nameof(value))
+			: value;
+	}
 
 	/// <summary>The time of the latest re-ingestion or content change, in UTC.</summary>
 	public required DateTimeOffset UpdatedAt { get; set; }

@@ -90,29 +90,6 @@ public readonly record struct ClientFingerprint(
 	}
 
 	/// <summary>
-	///     Determines whether this fingerprint matches <paramref name="other" /> closely enough to
-	///     represent the same osu! installation.
-	/// </summary>
-	/// <remarks>
-	///     When this fingerprint's client is running under Wine, only the uninstall MD5 must match.
-	///     Otherwise the fingerprints match when the uninstall MD5, the network adapters, or the
-	///     disk signature MD5 agree.
-	/// </remarks>
-	/// <param name="other">The fingerprint to compare against.</param>
-	/// <returns>
-	///     <see langword="true" /> if the fingerprints match under the Wine-aware comparison rules;
-	///     otherwise, <see langword="false" />.
-	/// </returns>
-	public bool MatchWith(ClientFingerprint other)
-	{
-		return NetworkAdapters.IsRunningUnderWine
-			? UninstallHash == other.UninstallHash
-			: UninstallHash == other.UninstallHash
-			  || NetworkAdapters == other.NetworkAdapters
-			  || DiskSignatureHash == other.DiskSignatureHash;
-	}
-
-	/// <summary>
 	///     Returns the fingerprint in the canonical protocol format, with no format specification or
 	///     provider.
 	/// </summary>

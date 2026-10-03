@@ -7,7 +7,7 @@ namespace Basil.Application.Beatmaps;
 /// <summary>Stores beatmap difficulties.</summary>
 public interface IBeatmapRepository
 {
-	/// <summary>Stores a beatmap under its id, adding it when no beatmap has that id and replacing the stored beatmap otherwise.</summary>
+	/// <summary>Stores a beatmap under the MD5 of its file, adding it when no beatmap has that hash and replacing the stored beatmap otherwise.</summary>
 	/// <param name="beatmap">The beatmap to store.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	Task CreateOrUpdateAsync(Beatmap beatmap, CancellationToken cancellationToken = default);

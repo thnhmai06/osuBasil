@@ -94,6 +94,11 @@ public sealed record ScoreData(
 	public Md5? Checksum { get; init; }
 
 	/// <summary>
+	///     Gets the team the player was on in the round, or <see langword="null" /> outside a team round.
+	/// </summary>
+	public GameTeam? Team { get; init; }
+
+	/// <summary>
 	///     Gets the play's accuracy, computed from its hit counts under its mode and mods.
 	/// </summary>
 	public double Accuracy => HitCounts.CalculateAccuracy(Mode, Mods);

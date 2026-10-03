@@ -1,13 +1,17 @@
 using Basil.Application.Beatmaps;
 using Basil.Application.Chat;
+using Basil.Application.Contracts.Beatmaps;
 using Basil.Application.Contracts.Chat;
 using Basil.Application.Contracts.Multiplayer;
+using Basil.Application.Contracts.Scores;
 using Basil.Application.Contracts.Sessions;
 using Basil.Application.Contracts.Users;
 using Basil.Application.Multiplayer;
 using Basil.Application.Scores;
+using Basil.Application.Services.Beatmaps;
 using Basil.Application.Services.Chat;
 using Basil.Application.Services.Multiplayer;
+using Basil.Application.Services.Scores;
 using Basil.Application.Services.Sessions;
 using Basil.Application.Services.Users;
 using Basil.Application.Sessions;
@@ -30,8 +34,6 @@ public static class DependencyInjection
 		services.AddSingleton<UserRegistry>();
 		services.AddSingleton<GeneralChannelRegistry>();
 		services.AddSingleton<Lobby>();
-		services.AddSingleton<ScoreSubmission>();
-		services.AddSingleton<BeatmapCatalog>();
 
 		services.AddSingleton<SessionService>();
 		services.AddSingleton<ISessionService>(sp => sp.GetRequiredService<SessionService>());
@@ -50,6 +52,15 @@ public static class DependencyInjection
 
 		services.AddSingleton<RoomService>();
 		services.AddSingleton<IRoomService>(sp => sp.GetRequiredService<RoomService>());
+
+		services.AddSingleton<MatchService>();
+		services.AddSingleton<IMatchService>(sp => sp.GetRequiredService<MatchService>());
+
+		services.AddSingleton<ScoreService>();
+		services.AddSingleton<IScoreService>(sp => sp.GetRequiredService<ScoreService>());
+
+		services.AddSingleton<BeatmapService>();
+		services.AddSingleton<IBeatmapService>(sp => sp.GetRequiredService<BeatmapService>());
 
 		return services;
 	}

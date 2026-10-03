@@ -1,7 +1,7 @@
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
 
-namespace Basil.Application.Beatmaps;
+namespace Basil.Application.Contracts.Beatmaps;
 
 /// <summary>
 ///     Computes the beatmap gameplay stats that the server itself cannot derive from the raw

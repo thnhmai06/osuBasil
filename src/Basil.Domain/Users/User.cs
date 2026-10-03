@@ -93,15 +93,10 @@ public sealed partial class UserData
 	///     Gets or sets the privileges granted to the user.
 	/// </summary>
 	/// <remarks>
-	///     The getter reports <see cref="ClientPrivileges.None" /> for a deleted user, regardless of
-	///     the stored value. New users default to <see cref="ClientPrivileges.Player" /> combined
+	///     New users default to <see cref="ClientPrivileges.Player" /> combined
 	///     with <see cref="ClientPrivileges.Supporter" />.
 	/// </remarks>
-	public ClientPrivileges Privilege
-	{
-		get => DeletedAt is not null ? ClientPrivileges.None : field;
-		set;
-	} = ClientPrivileges.Player | ClientPrivileges.Supporter;
+	public ClientPrivileges Privilege { get; set; } = ClientPrivileges.Player | ClientPrivileges.Supporter;
 
 	/// <summary>
 	///     Gets or sets the date and time when the user's silence expires, if the user is silenced.
