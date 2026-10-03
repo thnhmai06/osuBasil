@@ -31,11 +31,10 @@ public sealed class BanchoConnection : Connection
 	/// <summary>Initializes a game client connection.</summary>
 	/// <param name="login">The login that opened the connection.</param>
 	/// <param name="utcOffset">The client's UTC offset reported at login.</param>
-	/// <param name="time">The clock the connection's spectator channel reads the current time from.</param>
-	internal BanchoConnection(Login login, int utcOffset, TimeProvider time) : base(login)
+	internal BanchoConnection(Login login, int utcOffset) : base(login)
 	{
 		UtcOffset = utcOffset;
-		SpectatorChannel = new SpectatorChannelSession(this, time);
+		SpectatorChannel = new SpectatorChannelSession(this);
 	}
 
 	/// <inheritdoc />

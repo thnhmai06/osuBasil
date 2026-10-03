@@ -1,12 +1,11 @@
 using System.Collections.Concurrent;
-using Basil.Application.Sessions;
 using Basil.Domain.Chat;
 
 namespace Basil.Application.Chat;
 
 /// <summary>The configured chat channels that are open, looked up by name.</summary>
 /// <remarks>Room, spectator and private-message channels belong to their owners and are not listed here.</remarks>
-public sealed class GeneralChannelRegistry(TimeProvider time)
+public sealed class GeneralChannelRegistry
 {
 	private readonly ConcurrentDictionary<string, GeneralChannelSession> _channels =
 		new(StringComparer.OrdinalIgnoreCase);
@@ -22,39 +21,19 @@ public sealed class GeneralChannelRegistry(TimeProvider time)
 		return _channels.GetValueOrDefault(name);
 	}
 
-	/// <summary>Opens a configured channel.</summary>
-	/// <param name="channel">The channel to open.</param>
-	/// <returns>The open channel, or <see langword="null" /> when a channel with that name is already open.</returns>
-	public GeneralChannelSession? Open(GeneralChannel channel)
+	/// <summary>Adds a configured channel.</summary>
+	/// <param name="channel">The channel to add.</param>
+	/// <returns><see langword="true" /> if the channel was added; <see langword="false" /> when a channel with that name already exists.</returns>
+	internal bool Add(GeneralChannelSession channel)
 	{
-		var session = new GeneralChannelSession(channel, time);
-		if (_channels.TryAdd(channel.Name, session)) return session;
-		session.Close();
-		return null;
+		return _channels.TryAdd(channel.Name, channel);
 	}
 
-	/// <summary>Closes an open configured channel, removing every member.</summary>
-	/// <param name="channel">The channel to close.</param>
-	public void Close(GeneralChannelSession channel)
+	/// <summary>Removes a configured channel.</summary>
+	/// <param name="channel">The channel to remove.</param>
+	/// <returns><see langword="true" /> if the channel was removed.</returns>
+	internal bool Remove(GeneralChannelSession channel)
 	{
-		if (_channels.TryRemove(new KeyValuePair<string, GeneralChannelSession>(channel.Name, channel)))
-			channel.Close();
-	}
-
-	/// <summary>Joins a connection to every auto-join channel it may read.</summary>
-	/// <param name="connection">The connection that just opened.</param>
-	public void JoinAutoChannels(Connection connection)
-	{
-		foreach (var channel in _channels.Values)
-			if (channel.Channel.AutoJoin)
-				channel.Join(connection);
-	}
-
-	/// <summary>Removes a connection from every configured channel; calling it again does nothing.</summary>
-	/// <param name="connection">The connection that closed.</param>
-	public void PartAll(Connection connection)
-	{
-		foreach (var channel in _channels.Values)
-			channel.Part(connection);
+		return _channels.TryRemove(new KeyValuePair<string, GeneralChannelSession>(channel.Name, channel));
 	}
 }

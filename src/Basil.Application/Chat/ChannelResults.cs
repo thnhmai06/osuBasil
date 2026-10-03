@@ -47,6 +47,25 @@ public enum ChannelPostResult : byte
 	/// <summary>The recipient is silenced and the channel refuses messages.</summary>
 	TargetSilenced,
 
+	/// <summary>The recipient does not accept private messages from the author.</summary>
+	Blocked,
+
 	/// <summary>The channel is closed.</summary>
 	Closed
+}
+
+/// <summary>The outcome of starting to spectate a player.</summary>
+public enum SpectateResult : byte
+{
+	/// <summary>The connection is now spectating the host.</summary>
+	Spectating,
+
+	/// <summary>The host's connection is closed.</summary>
+	TargetOffline,
+
+	/// <summary>A user cannot spectate themselves.</summary>
+	Self,
+
+	/// <summary>The connection is already spectating this host.</summary>
+	AlreadySpectating
 }

@@ -1,6 +1,6 @@
 using System.Net;
 using System.Threading.Channels;
-using Basil.Application.Chat;
+using Basil.Application.Contracts.Chat;
 using Basil.Application.Contracts.Sessions;
 using Basil.Application.Contracts.Users;
 using Basil.Application.Sessions;
@@ -14,7 +14,7 @@ namespace Basil.Application.Services.Sessions;
 /// <summary>Opens and closes the connections of online users and changes what they share.</summary>
 internal sealed class SessionService(
 	UserRegistry registry,
-	GeneralChannelRegistry generalChannels,
+	IChannelService channels,
 	IUserRepository users,
 	TimeProvider time) : ISessionService
 {
@@ -73,14 +73,14 @@ internal sealed class SessionService(
 		var cameOnline = session is null;
 		if (session is null)
 		{
-			session = new UserSession(connection.User, time);
+			session = new UserSession(connection.User);
 			registry.Add(session);
 		}
 
 		connection.Session = session;
 		session.Add(connection);
 		if (connection.Type is not ConnectionType.Tourney)
-			session.PmChannel.Join(connection);
+			channels.Join(session.PmChannel, connection);
 		connection.IsOpen = true;
 
 		_events.Writer.TryWrite(new UserConnectionOpened(connection, cameOnline));
@@ -195,7 +195,7 @@ internal sealed class SessionService(
 		if (failure is not null)
 			throw new InvalidOperationException($"BasilBot could not come online: {failure}");
 
-		generalChannels.JoinAutoChannels(connection);
+		channels.JoinAutoChannels(connection);
 		return connection;
 	}
 
@@ -205,16 +205,16 @@ internal sealed class SessionService(
 
 		connection.IsOpen = false;
 		connection.Session.Remove(connection);
-		connection.Session.PmChannel.Part(connection);
-		registry.FindSpectating(connection)?.StopSpectating(connection);
+		channels.Part(connection.Session.PmChannel, connection);
+		channels.StopSpectating(connection);
 		if (connection is BanchoConnection bancho)
-			bancho.SpectatorChannel.Close();
+			channels.Close(bancho.SpectatorChannel);
 
 		var wentOffline = !connection.Session.Connections.Any();
 		if (wentOffline)
 		{
 			registry.Remove(connection.Session);
-			connection.Session.PmChannel.Close();
+			channels.Close(connection.Session.PmChannel);
 		}
 
 		_events.Writer.TryWrite(new UserConnectionClosed(connection, reason, wentOffline));

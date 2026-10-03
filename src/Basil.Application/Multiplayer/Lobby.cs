@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
 using System.Threading.Channels;
+using Basil.Application.Chat;
+using Basil.Application.Contracts.Chat;
 using Basil.Application.Events;
 using Basil.Application.Multiplayer.Events;
 using Basil.Application.Sessions;
@@ -11,7 +13,7 @@ using Basil.Domain.Utilities;
 namespace Basil.Application.Multiplayer;
 
 /// <summary>The open multiplayer rooms and the osu! clients watching the multiplayer lobby.</summary>
-public sealed class Lobby(IMatchRepository matches, UserRegistry usersRegistry, TimeProvider time)
+public sealed class Lobby(IMatchRepository matches, UserRegistry usersRegistry, IChannelService channels, TimeProvider time)
 	: IEventPublisher<LobbyEvent>
 {
 	/// <summary>The most tournament rooms one creator can have open.</summary>
@@ -40,6 +42,9 @@ public sealed class Lobby(IMatchRepository matches, UserRegistry usersRegistry, 
 
 	/// <inheritdoc />
 	public ChannelReader<LobbyEvent> Events => _events.Reader;
+
+	/// <summary>The channel service the room behaviour uses until it moves to the room service.</summary>
+	internal IChannelService Channels => channels;
 
 	/// <summary>Finds an open room by id.</summary>
 	public Room? Find(int id)
@@ -126,7 +131,7 @@ public sealed class Lobby(IMatchRepository matches, UserRegistry usersRegistry, 
 				room.SeatCreator(creatorConnection);
 
 			if (usersRegistry.Sessions.Select(session => session.Bot).FirstOrDefault(b => b is not null) is { } bot)
-				room.Channel.Join(bot);
+				channels.Join(room.Channel, bot);
 
 			_events.Writer.TryWrite(new LobbyRoomOpened(room, room.Host));
 
@@ -196,7 +201,7 @@ public sealed class Lobby(IMatchRepository matches, UserRegistry usersRegistry, 
 
 		// Managers stay in a room's channel after leaving their seat, and IRC referees join it directly.
 		foreach (var room in _rooms.Values)
-			room.Channel.Part(connection);
+			channels.Part(room.Channel, connection);
 	}
 
 	/// <summary>

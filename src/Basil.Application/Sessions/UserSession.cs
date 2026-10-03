@@ -11,10 +11,10 @@ public sealed class UserSession
 {
 	private readonly ConcurrentDictionary<ConnectionType, ConcurrentSet<Connection>> _connections = new();
 
-	internal UserSession(User user, TimeProvider time)
+	internal UserSession(User user)
 	{
 		User = user;
-		PmChannel = new PmChannelSession(this, time);
+		PmChannel = new PmChannelSession(this);
 	}
 
 	/// <summary>Gets the user who is online.</summary>

@@ -8,10 +8,24 @@ namespace Basil.Domain.Social;
 public sealed class Relationship : IEquatable<Relationship>
 {
 	/// <summary>The user who holds the relationship.</summary>
-	public required User Actor { get; init; }
+	/// <exception cref="ArgumentException">The value is the same user as <see cref="Target" />.</exception>
+	public required User Actor
+	{
+		get;
+		init => field = value.Equals(Target)
+			? throw new ArgumentException("Actor and Target cannot be the same user.", nameof(value))
+			: value;
+	}
 
 	/// <summary>The user the relationship is held toward.</summary>
-	public required User Target { get; init; }
+	/// <exception cref="ArgumentException">The value is the same user as <see cref="Actor" />.</exception>
+	public required User Target
+	{
+		get;
+		init => field = value.Equals(Actor)
+			? throw new ArgumentException("Actor and Target cannot be the same user.", nameof(value))
+			: value;
+	}
 
 	/// <summary>The kind of relationship.</summary>
 	public required RelationshipType Type
@@ -23,15 +37,6 @@ public sealed class Relationship : IEquatable<Relationship>
 	}
 
 	public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
-
-	/// <summary>
-	///     Initializes a new instance of the <see cref="Relationship" /> class.
-	/// </summary>
-	public Relationship()
-	{
-		if (Equals(Actor, Target))
-			throw new ArgumentException("Actor and Target cannot be the same user.");
-	}
 
 	public bool Equals(Relationship? other)
 	{

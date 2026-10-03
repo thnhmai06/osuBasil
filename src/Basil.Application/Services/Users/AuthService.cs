@@ -47,7 +47,7 @@ internal sealed class AuthService(
 		var login = new Login { User = user, Ip = ip, Client = client, Timestamp = time.GetUtcNow() };
 		Connection connection = type switch
 		{
-			ConnectionType.Bancho => new BanchoConnection(login, utcOffset, time),
+			ConnectionType.Bancho => new BanchoConnection(login, utcOffset),
 			ConnectionType.Tourney => new TourneyConnection(login),
 			ConnectionType.Irc => new IrcConnection(login),
 			_ => throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown connection type.")

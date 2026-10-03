@@ -1,9 +1,11 @@
 using Basil.Application.Beatmaps;
 using Basil.Application.Chat;
+using Basil.Application.Contracts.Chat;
 using Basil.Application.Contracts.Sessions;
 using Basil.Application.Contracts.Users;
 using Basil.Application.Multiplayer;
 using Basil.Application.Scores;
+using Basil.Application.Services.Chat;
 using Basil.Application.Services.Sessions;
 using Basil.Application.Services.Users;
 using Basil.Application.Sessions;
@@ -37,6 +39,9 @@ public static class DependencyInjection
 
 		services.AddSingleton<UserService>();
 		services.AddSingleton<IUserService>(sp => sp.GetRequiredService<UserService>());
+
+		services.AddSingleton<ChannelService>();
+		services.AddSingleton<IChannelService>(sp => sp.GetRequiredService<ChannelService>());
 
 		return services;
 	}

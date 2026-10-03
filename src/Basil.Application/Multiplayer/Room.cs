@@ -60,7 +60,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		Settings = settings;
 		IsTournament = isTournament;
 		Slots = new RoomSlots(this);
-		Channel = new RoomChannelSession(this, time);
+		Channel = new RoomChannelSession(this);
 	}
 
 	/// <summary>The match this room is a live projection of.</summary>
@@ -213,7 +213,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 			return RoomResult.Full;
 		}
 
-		Channel.Join(by);
+		_lobby.Channels.Join(Channel, by);
 		_lobby.RoomOccupied(this);
 		return RoomResult.Ok;
 	}
@@ -370,7 +370,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		if (!_observers.Add(by)) return RoomResult.Ok;
 
 		Emit(new RoomObserverJoined(this, by));
-		Channel.Join(by);
+		_lobby.Channels.Join(Channel, by);
 		return RoomResult.Ok;
 	}
 
@@ -649,7 +649,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 	{
 		if (Slots.Seat(creator) is null) return;
 		Host = creator;
-		Channel.Join(creator);
+		_lobby.Channels.Join(Channel, creator);
 	}
 
 	/// <summary>Passes host to the next seated player by slot order when the host's slot is emptied.</summary>
@@ -837,7 +837,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 		Match.Value.EndedAt = _time.GetUtcNow();
 		_observers.Clear();
 		_closed = true;
-		Channel.Close();
+		_lobby.Channels.Close(Channel);
 		_events.Writer.TryComplete();
 		return evicted;
 	}
@@ -940,7 +940,7 @@ public sealed class Room : IEventPublisher<RoomEvent>, IEquatable<Room>
 
 	private void LeaveChannel(Connection connection)
 	{
-		if (!IsManager(connection.User)) Channel.Part(connection);
+		if (!IsManager(connection.User)) _lobby.Channels.Part(Channel, connection);
 	}
 
 	private void ReportIfEmpty()
