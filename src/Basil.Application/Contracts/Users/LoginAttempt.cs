@@ -1,6 +1,6 @@
 using Basil.Domain.Utilities;
 
-namespace Basil.Application.Users;
+namespace Basil.Application.Contracts.Users;
 
 /// <summary>A login attempt as submitted by a client.</summary>
 /// <param name="Username">The claimed username.</param>

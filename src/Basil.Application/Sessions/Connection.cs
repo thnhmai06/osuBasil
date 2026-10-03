@@ -20,6 +20,9 @@ public abstract class Connection(Login login)
 
 	/// <summary>Gets a value that indicates whether the connection is still open.</summary>
 	public bool IsOpen { get; internal set; }
+
+	/// <summary>Gets the time of the last message received from the client.</summary>
+	public DateTimeOffset LastActiveAt { get; internal set; } = login.Timestamp;
 }
 
 /// <summary>A connection from an osu! game client.</summary>
@@ -29,18 +32,14 @@ public sealed class BanchoConnection : Connection
 	/// <param name="login">The login that opened the connection.</param>
 	/// <param name="utcOffset">The client's UTC offset reported at login.</param>
 	/// <param name="time">The clock the connection's spectator channel reads the current time from.</param>
-	public BanchoConnection(Login login, int utcOffset, TimeProvider time) : base(login)
+	internal BanchoConnection(Login login, int utcOffset, TimeProvider time) : base(login)
 	{
-		LastActiveAt = login.Timestamp;
 		UtcOffset = utcOffset;
 		SpectatorChannel = new SpectatorChannelSession(this, time);
 	}
 
 	/// <inheritdoc />
 	public override ConnectionType Type => ConnectionType.Bancho;
-
-	/// <summary>Gets or sets the time of the last packet received from the client.</summary>
-	public DateTimeOffset LastActiveAt { get; set; }
 
 	/// <summary>Gets the client's UTC offset reported at login.</summary>
 	public int UtcOffset { get; }
@@ -53,25 +52,40 @@ public sealed class BanchoConnection : Connection
 }
 
 /// <summary>A connection from an osu!tourney spectator client.</summary>
-public sealed class TourneyConnection(Login login) : Connection(login)
+public sealed class TourneyConnection : Connection
 {
+	/// <summary>Initializes the connection a login opened.</summary>
+	/// <param name="login">The login that opened the connection.</param>
+	internal TourneyConnection(Login login) : base(login)
+	{
+	}
+
 	/// <inheritdoc />
 	public override ConnectionType Type => ConnectionType.Tourney;
 }
 
 /// <summary>A connection from an IRC client.</summary>
-public sealed class IrcConnection(Login login) : Connection(login)
+public sealed class IrcConnection : Connection
 {
+	/// <summary>Initializes the connection a login opened.</summary>
+	/// <param name="login">The login that opened the connection.</param>
+	internal IrcConnection(Login login) : base(login)
+	{
+	}
+
 	/// <inheritdoc />
 	public override ConnectionType Type => ConnectionType.Irc;
-
-	/// <summary>Gets or sets the time of the last message received from the client.</summary>
-	public DateTimeOffset LastActiveAt { get; set; } = login.Timestamp;
 }
 
 /// <summary>The connection of the server's own bot.</summary>
-public sealed class BotConnection(Login login) : Connection(login)
+public sealed class BotConnection : Connection
 {
+	/// <summary>Initializes the connection a login opened.</summary>
+	/// <param name="login">The login that opened the connection.</param>
+	internal BotConnection(Login login) : base(login)
+	{
+	}
+
 	/// <inheritdoc />
 	public override ConnectionType Type => ConnectionType.Bot;
 }

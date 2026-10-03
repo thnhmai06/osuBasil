@@ -28,9 +28,10 @@ public sealed record UserConnectionStatusChanged(BanchoConnection Connection, Pl
 /// <param name="EndsAt">When the silence ends.</param>
 public sealed record UserSilenced(User User, DateTimeOffset EndsAt) : UserEvent;
 
-/// <summary>A user's statistics changed.</summary>
-/// <param name="User">The user whose statistics changed.</param>
-public sealed record UserStatsChanged(User User) : UserEvent;
+/// <summary>A notification was shown to online users.</summary>
+/// <param name="Recipients">The osu! clients that were sent the notification.</param>
+/// <param name="Text">The text of the notification.</param>
+public sealed record UserNotificationSent(IReadOnlyList<BanchoConnection> Recipients, string Text) : UserEvent;
 
 /// <summary>The reasons a connection is closed.</summary>
 public enum ConnectionCloseReason : byte
@@ -45,5 +46,8 @@ public enum ConnectionCloseReason : byte
 	TimedOut,
 
 	/// <summary>A new login of the same kind replaced this idle connection.</summary>
-	Replaced
+	Replaced,
+
+	/// <summary>The user's account was deleted.</summary>
+	Deleted
 }

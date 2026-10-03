@@ -10,8 +10,7 @@ public sealed class ScoreSubmission(
 	IScoreRepository scores,
 	IReplayStorage replays,
 	IUserStatsRepository stats,
-	Lobby lobby,
-	UserRegistry usersRegistry)
+	Lobby lobby)
 {
 	/// <summary>Validates and records a score submission.</summary>
 	/// <param name="connection">The game client connection that submitted the score.</param>
@@ -79,7 +78,6 @@ public sealed class ScoreSubmission(
 			if (scope is not null) room.RecordScore(connection.User, score);
 		}
 
-		usersRegistry.ReportStatsChanged(connection.User);
 		return null;
 	}
 }

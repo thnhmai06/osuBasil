@@ -1,6 +1,9 @@
-namespace Basil.Application.Sessions;
+using Basil.Application.Sessions;
+using Basil.Domain.Utilities;
 
-/// <summary>The outcome of a <c>Gateway.ConnectAsync</c> login attempt.</summary>
+namespace Basil.Application.Contracts.Users;
+
+/// <summary>The outcome of a login attempt.</summary>
 public sealed record LoginResult
 {
 	private LoginResult()

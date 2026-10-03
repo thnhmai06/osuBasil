@@ -24,7 +24,10 @@ public sealed class UserSession
 	public PmChannelSession PmChannel { get; }
 
 	/// <summary>Gets or sets the away message shown to other users, or <see langword="null" /> when not away.</summary>
-	public string? AwayMessage { get; set; }
+	public string? AwayMessage { get; internal set; }
+
+	/// <summary>Gets a value that indicates whether the user accepts private messages only from their friends.</summary>
+	public bool PmPrivate { get; internal set; }
 
 	/// <summary>Gets the open connections of one kind.</summary>
 	/// <param name="type">The kind of connection.</param>
@@ -46,13 +49,11 @@ public sealed class UserSession
 	/// <summary>Gets the user's osu!tourney connections.</summary>
 	public IEnumerable<TourneyConnection> Tourneys => this[ConnectionType.Tourney].Cast<TourneyConnection>();
 
-	/// <summary>Adds a connection; a kind that allows only one connection accepts it only when none is held.</summary>
-	/// <returns><see langword="true" /> if the connection was added.</returns>
-	internal bool Add(Connection connection)
+	/// <summary>Adds a connection.</summary>
+	internal void Add(Connection connection)
 	{
 		var set = _connections.GetOrAdd(connection.Type, _ => []);
-		if (!connection.Type.AllowsMany() && set.Count > 0) return false;
-		return set.Add(connection);
+		set.Add(connection);
 	}
 
 	/// <summary>Removes a connection.</summary>
