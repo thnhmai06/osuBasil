@@ -1,5 +1,6 @@
 using Basil.Application.Events;
 using Basil.Application.Sessions;
+using Basil.Domain.Multiplayer;
 
 namespace Basil.Application.Multiplayer.Events;
 
@@ -14,7 +15,9 @@ public sealed record LobbyRoomOpened(Room Room, BanchoConnection? Host) : LobbyE
 /// <summary>A room was closed; it emits nothing afterwards.</summary>
 /// <param name="Room">The room that was closed.</param>
 /// <param name="Evicted">The players who were still seated.</param>
-public sealed record LobbyRoomClosed(Room Room, IReadOnlyList<BanchoConnection> Evicted) : LobbyEvent;
+/// <param name="AbortedRound">The round that was in progress and ended as aborted when the room closed, or <see langword="null" /> when none was.</param>
+public sealed record LobbyRoomClosed(Room Room, IReadOnlyList<BanchoConnection> Evicted, Round? AbortedRound)
+	: LobbyEvent;
 
 /// <summary>An empty tournament room will close unless a player joins.</summary>
 /// <remarks>Announced when the room becomes empty and again shortly before it closes.</remarks>

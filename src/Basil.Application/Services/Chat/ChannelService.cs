@@ -3,6 +3,7 @@ using Basil.Application.Chat;
 using Basil.Application.Contracts.Chat;
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
+using Basil.Application.Services.Multiplayer;
 using Basil.Application.Services.Sessions;
 using Basil.Application.Users;
 using Basil.Domain.Chat;
@@ -85,7 +86,8 @@ internal sealed class ChannelService(
 	}
 
 	/// <inheritdoc />
-	public async Task<ChannelPostResult> PostAsync(ChannelSession channel, Connection by, string text, bool notice = false, CancellationToken cancellationToken = default)
+	public async Task<ChannelPostResult> PostAsync(ChannelSession channel, Connection by, string text,
+		bool notice = false, CancellationToken cancellationToken = default)
 	{
 		if (channel.IsClosed) return ChannelPostResult.Closed;
 
@@ -189,12 +191,13 @@ internal sealed class ChannelService(
 		return channel switch
 		{
 			GeneralChannelSession g => connection.User.Value.Privilege.Has(g.Channel.ReadPrivilege),
-			PmChannelSession p => ReferenceEquals(connection.Session, p.Owner) && connection.Type is not ConnectionType.Tourney,
+			PmChannelSession p => ReferenceEquals(connection.Session, p.Owner) &&
+			                      connection.Type is not ConnectionType.Tourney,
 			SpectatorChannelSession s => s.Members.Contains(connection),
 			RoomChannelSession r => connection.Type is ConnectionType.Bot
-				|| (connection is BanchoConnection player && r.Room.Slots.Find(player) is not null)
-				|| (connection is TourneyConnection observer && r.Room.Observers.Contains(observer))
-				|| r.Room.IsManager(connection.User),
+			                        || (connection is BanchoConnection player && r.Room.Slots.Find(player) is not null)
+			                        || (connection is TourneyConnection observer && r.Room.Observers.Contains(observer))
+			                        || RoomRules.IsManager(r.Room, connection.User),
 			_ => false
 		};
 	}

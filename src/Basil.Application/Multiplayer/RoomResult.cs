@@ -112,5 +112,8 @@ public enum RoomResult : byte
 	NoCountdown,
 
 	/// <summary>The score was not played in the room's latest round.</summary>
-	RoundMismatch
+	RoundMismatch,
+
+	/// <summary>The room has closed.</summary>
+	RoomClosed
 }

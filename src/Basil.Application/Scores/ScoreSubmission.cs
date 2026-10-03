@@ -1,3 +1,4 @@
+using Basil.Application.Contracts.Multiplayer;
 using Basil.Application.Multiplayer;
 using Basil.Application.Sessions;
 using Basil.Domain.Scores;
@@ -10,7 +11,8 @@ public sealed class ScoreSubmission(
 	IScoreRepository scores,
 	IReplayStorage replays,
 	IUserStatsRepository stats,
-	Lobby lobby)
+	Lobby lobby,
+	IRoomService rooms)
 {
 	/// <summary>Validates and records a score submission.</summary>
 	/// <param name="connection">The game client connection that submitted the score.</param>
@@ -73,10 +75,7 @@ public sealed class ScoreSubmission(
 		await stats.CreateOrUpdateAsync(current, cancellationToken);
 
 		if (room is not null && round is not null)
-		{
-			await using var scope = await room.EnterAsync(cancellationToken);
-			if (scope is not null) room.RecordScore(connection.User, score);
-		}
+			await rooms.RecordScoreAsync(room, connection.User, score, cancellationToken);
 
 		return null;
 	}

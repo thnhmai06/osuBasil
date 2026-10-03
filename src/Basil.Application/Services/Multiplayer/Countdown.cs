@@ -1,6 +1,6 @@
-namespace Basil.Application.Multiplayer;
+namespace Basil.Application.Services.Multiplayer;
 
-public sealed class Countdown : IDisposable
+internal sealed class Countdown : IDisposable
 {
 	private readonly Milestone[] _milestones;
 	private readonly Lock _sync = new();
