@@ -78,13 +78,13 @@ flowchart BT
 |-------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------|-------------------------------------------------------------|
 | `Basil.Application.Storage`   | cổng bền vững, `XRegistry`, model runtime, `PageRequest`, `Page<T>`, query record                                                                                                                                                                       | Domain                                             | Contracts, Services, Infrastructure                         |
 | `Basil.Application.Contracts` | `IXService`; cổng năng lực do Infrastructure cài (mục 3); `Event`, `IEventPublisher<T>`, mọi record event; input và kết quả (`LoginAttempt`, `RegisterAttempt`, `LoginResult`, `LoginFailure`, `RegistrationFailure`, `ConnectionCloseReason`, `RoomResult`, `RoomSettingsChange`, kết quả kênh) | Storage                                            | Services, Infrastructure                                    |
-| `Basil.Application.Services`  | `public sealed class XService : IXService`, `RoomRules`, `Countdown`, `AddApplicationServices()` (đăng ký registry và service)                                                                                                                          | Contracts                                          | Infrastructure, package ngoài trừ `Microsoft.Extensions.*.Abstractions` |
+| `Basil.Application.Services`  | `internal sealed class XService : IXService`, `RoomRules`, `Countdown`, `AddApplicationServices()` (đăng ký registry và service)                                                                                                                          | Contracts                                          | Infrastructure, package ngoài trừ `Microsoft.Extensions.*.Abstractions` |
 | `Basil.Infrastructure`        | cài đặt cổng bền vững và cổng năng lực; vòng lặp nền; dispatcher event và handler                                                                                                                                                                      | Contracts, `Basil.Protocol.*`                      | **Services**                                                |
 | `Basil.Host.*`                | transport                                                                                                                                                                                                                                               | Contracts, Services, Infrastructure, Protocol      | —                                                           |
 
 Chiều phụ thuộc: `Domain ← Storage ← Contracts ← Services`; Infrastructure và host phụ thuộc Contracts. Hướng này
-được kiểm bằng `ProjectReference` (sai là lỗi compile). Lớp cài đặt trong Services là `public` như lớp của
-Infrastructure, vì host được tham chiếu Services; mọi nơi vẫn lấy dịch vụ qua DI theo contract. Tầng ngoài dùng
+được kiểm bằng `ProjectReference` (sai là lỗi compile). Lớp cài đặt trong Services là `internal sealed`; host
+tham chiếu Services chỉ để gọi `AddApplicationServices()`, mọi nơi lấy dịch vụ qua DI theo contract. Tầng ngoài dùng
 lớp lưu trữ trực tiếp và gọi contract khi cần một hành động:
 
 | Việc                                                                                                                             | Đi đâu                                                           |
@@ -230,7 +230,7 @@ ghi đơn thuần: không có `ScoreService.GetAsync` chuyển tiếp sang `ISco
 
 | Contract / cài đặt                   | Thay cho                                                                                                                                                                                                                | Phụ thuộc                                                                                                       | Luồng event                                              |
 |--------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------|----------------------------------------------------------|
-| `IAuthService` / `AuthService`       | `Gateway.ConnectAsync`, `Registration`                                                                                                                                                                                  | `IUserRepository`, `ICredentialRepository`, `ILoginRepository`, `SessionService`                                 | không                                                    |
+| `IAuthService` / `AuthService`       | `Gateway.ConnectAsync`, `Registration`                                                                                                                                                                                  | `IUserRepository`, `ICredentialRepository`, `SessionService`                                                    | không                                                    |
 | `ISessionService` / `SessionService` | `UserRegistry.OpenConnection/CloseConnection/SetStatus`, `Gateway.Disconnect`, gán `AwayMessage`, `LastActiveAt`                                                                                                        | `UserRegistry`, `IUserRepository`, `IChannelService`                                                                             | `UserEvent` (kết nối mở/đóng, đổi trạng thái)            |
 | `IUserService` / `UserService`       | `UserRegistry.Silence`; xóa mềm người dùng (đặt `DeletedAt`, đóng kết nối đang mở)                                                                                                                                      | `IUserRepository`, `UserRegistry`, `ISessionService`                                                            | `UserEvent` (`UserSilenced`)                             |
 | `IChannelService` / `ChannelService` | `ChannelSession.Join/Part/Post/Close/CanRead/CanWrite`, `PmChannelSession` (trả lời away), `SpectatorChannelSession.Spectate/StopSpectating/CantSpectate`, `GeneralChannelRegistry.Open/Close/JoinAutoChannels/PartAll` | `GeneralChannelRegistry`, `UserRegistry`, `IRelationshipRepository`                                             | `ChannelEvent`                                           |
@@ -244,8 +244,8 @@ Hành động bổ sung từ kiểm kê (mục 12), ngoài các thao tác đã c
 
 | Contract          | Thêm                                                                                                                                                                                                                                                  |
 |-------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `IAuthService`    | `CheckRegistrationAsync(RegisterAttempt)` (chỉ kiểm tra, cho `check != 0` của form đăng ký), `CreateAccountAsync(UserData, Md5 passwordHash)` (admin tạo user, không cần khóa admin); `LoginAsync` thêm luật adapter rỗng, chặn phần cứng, ghi lịch sử đăng nhập, luôn từ chối BasilBot (mục 2.7) |
-| `ISessionService` | `OpenBotAsync()` (mục 2.7), `SetPmPrivate(UserSession, bool)`, `MarkActive(Connection)`, `CloseIdle()` [nền], `Announce(string text, IReadOnlyCollection<User>? to)`, `ReportClientFlags(BanchoConnection, ClientFlags)`                                            |
+| `IAuthService`    | `CheckRegistrationAsync(RegisterAttempt)` (chỉ kiểm tra, cho `check != 0` của form đăng ký), `CreateAccountAsync(UserData, Md5 passwordHash)` (admin tạo user, không cần khóa admin); `LoginAsync` luôn từ chối BasilBot (mục 2.7) |
+| `ISessionService` | `OpenBotAsync()` (mục 2.7), `SetPmPrivate(UserSession, bool)`, `MarkActive(Connection)`, `CloseIdle()` [nền], `Announce(string text, IReadOnlyCollection<User>? to)`                                                                                       |
 | `IUserService`    | `SetPrivilegeAsync(User, ClientPrivileges)` (đổi quyền là hành động có luật, không ghi thẳng repository); `DeleteAsync`, `SilenceAsync`, `SetPrivilegeAsync` từ chối BasilBot (mục 2.7)                                                               |
 | `IChannelService` | `PostAsync` (bất đồng bộ vì đọc quan hệ): PM bị chặn, PM-privacy chỉ bạn bè, NOTICE không có trả lời away                                                                                                                                              |
 | `IRoomService`    | `SeatAsync` (API ép xếp chỗ: bỏ qua mật khẩu và khóa, không bỏ qua cấm, rời phòng cũ trước), `ArrangeSlotsAsync` (API xếp lại toàn bộ slot trong một phạm vi), `Configure` thêm `IsPrivate`; route API truyền kết nối BasilBot làm `by`                |
@@ -413,7 +413,6 @@ BasilBot là một người dùng bình thường trong `IUserRepository`, với
 | `IBeatmapsetRepository`  | `GetAsync`, `SaveAsync`                                     | `GetAsync(id)`, `CreateOrUpdateAsync(Beatmapset)`, `ListAsync(BeatmapsetQuery, PageRequest)`, `DeleteAsync(Beatmapset)`                                                                |
 | `IBeatmapArchiveStorage` | `SaveAsync`                                                 | `SaveAsync(Beatmapset, Stream)`, `OpenAsync(Beatmapset)`, `DeleteAsync(Beatmapset)`                                                                                                    |
 | `IScoreRepository.CreateAsync` | (chưa kiểm trùng)                                     | trả `Score?`: `null` khi đã có điểm cùng checksum. Ràng buộc duy nhất nằm ở kho; service không giữ khóa                                                                               |
-| `ILoginRepository`       | (chưa có; Infra cũ có `IngameLogins`, `ClientHashes`)       | `CreateAsync(Login)`, `ListAsync(LoginQuery, PageRequest)`: lịch sử đăng nhập kèm vân tay máy, chặn phần cứng                                                                          |
 | `IRelationshipRepository` | (chưa có; Domain có `Relationship`)                        | `CreateOrUpdateAsync(Relationship)`, `DeleteAsync(Relationship)`, `ListAsync(User)`: friends và chặn                                                                                  |
 | `IChannelRepository`     | (chưa có; Infra cũ đọc bảng `Channels`)                     | `ListAsync()`: các kênh chung được cấu hình (`#osu`, `#lobby`)                                                                                                                         |
 | `IServerSettingsRepository` | (chưa có; Infra cũ dùng bảng `Settings`)                 | `GetAsync()`, `CreateOrUpdateAsync(ServerSettings)`: MOTD, menu icon, endpoint mirror                                                                                                  |
@@ -433,7 +432,6 @@ Tiêu chí truy vấn, chỉ gồm các field mà API và web osu! dùng (kể c
 * `BeatmapQuery(string? Text, GameMode? Mode, bool IncludeHidden, ...khoảng giá trị)`: `/beatmapsets/search`,
   `osu-search.php`.
 * `BeatmapsetQuery(string? Text, bool IncludeHidden, ...)`: `/beatmapsets`.
-* `LoginQuery(User? User, Md5? Adapters, Md5? UninstallId, Md5? DiskSignature)`: các trường vân tay khớp theo OR.
 
 Cú pháp tìm kiếm kiểu osu!web bị xóa khỏi Application ở `d9b6620d`; Infra cũ và API vẫn dùng nên khôi phục, nhưng
 không dựng lại hệ truy vấn tổng quát. `BeatmapQuery`/`BeatmapsetQuery` thêm khoảng giá trị cho `stars`, `ar`, `cs`,
@@ -604,7 +602,7 @@ nguyên vào project cùng tên, không đổi namespace; phần còn lại dờ
 | Pha | Việc                                                                                                                                                                                                                                                                                                       | Kiểm chứng                                                                                                                                                       |
 |-----|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 1   | Cập nhật AGENTS.md theo mục 5 (kể cả danh sách feature folder và ghi chú migration trỏ sang kế hoạch này). Thêm `PageRequest`, `Page<T>`, các `XQuery` kèm `Parse`. Đổi cổng theo mục 3: động từ, đọc, tìm kiếm, gộp khóa admin vào `ICredentialRepository`, `IRoundRepository`, `OpenAsync` cho storage, các cổng mới từ kiểm kê. Domain: `ServerSettings`, `Message.IsNotice`, `ScoreRejection.Duplicate` | build `Basil.Application`; grep không còn `SaveAsync` trên repository, không còn `IAdminKeyRepository`; kịch bản phụ lục A                                      |
-| 2   | `IAuthService`, `ISessionService`, `IUserService` và cài đặt; `LoginAttempt`, `RegisterAttempt`. Bỏ `Gateway`, `Registration`. `UserRegistry`, `UserSession`, `Connection` chỉ còn dữ liệu (`LastActiveAt` lên `Connection`). Bổ sung từ kiểm kê: adapter rỗng, chặn phần cứng, lịch sử đăng nhập, `OpenBotAsync` (tự tạo user 0), từ chối đăng nhập BasilBot, `SetPrivilegeAsync`, `CloseIdle`, `Announce`, cờ anticheat, `SetPmPrivate`, `CheckRegistrationAsync`, `CreateAccountAsync` | build; kịch bản: thay kết nối sau 10 s rảnh, logout trong 1 s bị bỏ qua, quyền tourney, đăng ký có/không khóa admin, tên trùng, chặn phần cứng, `CloseIdle` 300 s, BasilBot không đăng nhập được với mọi mật khẩu, tự tạo user 0 |
+| 2   | `IAuthService`, `ISessionService`, `IUserService` và cài đặt; `LoginAttempt`, `RegisterAttempt`. Bỏ `Gateway`, `Registration`. `UserRegistry`, `UserSession`, `Connection` chỉ còn dữ liệu (`LastActiveAt` lên `Connection`). Bổ sung từ kiểm kê: `OpenBotAsync` (tự tạo user 0), từ chối đăng nhập BasilBot, `SetPrivilegeAsync`, `CloseIdle`, `Announce`, `SetPmPrivate`, `CheckRegistrationAsync`, `CreateAccountAsync` | build; kịch bản: thay kết nối sau 10 s rảnh, logout trong 1 s bị bỏ qua, quyền tourney, đăng ký có/không khóa admin, tên trùng, `CloseIdle` 300 s, BasilBot không đăng nhập được với mọi mật khẩu, tự tạo user 0 |
 | 3   | `IChannelService` (gồm spectate). Cây `ChannelSession` và `GeneralChannelRegistry` chỉ còn dữ liệu. Bổ sung: PM bị chặn, PM-privacy, NOTICE                                                                                                                                                              | build; kịch bản: thứ tự từ chối khi post, trả lời away, cắt 2000 ký tự, chặn, notice, spectate/stop, đóng kênh spectator khi chủ rời                             |
 | 4a  | `ILobbyService`; `Lobby` chỉ còn dữ liệu, `Lobby.EnterAsync(room)`; `IRoomService` phần thành viên và quyền (join, leave, kick, ban, ref, host, observer, invite, `ReleaseAsync`); route API truyền kết nối BasilBot làm `by`; bot không bị kick, ban, làm referee                                                                              | build; kịch bản phòng: mở, đóng, chuyển host, phòng trống 15/5 phút, API qua kết nối bot                                                                            |
 | 4b  | `IRoomService` phần cài đặt và slot (`Configure` thêm `IsPrivate`, slot, đội, mod, ready, có map, `SeatAsync`, `ArrangeSlotsAsync`); `MatchSettings.SwitchMode` bỏ                                                                                                                                      | build; kịch bản freemod, đổi mode bỏ mod, resize theo số lượng, ép xếp chỗ, xếp lại slot                                                                         |
@@ -644,19 +642,21 @@ Chốt ngày 2026-10-03:
 6. Cổng bền vững (`IXxxRepository`, `IXxxStorage`) ở Storage; Contracts chỉ chứa contract dịch vụ, cổng năng lực,
    event, input và kết quả.
 7. Host được tham chiếu Services (Services song song với Infrastructure). Chỉ Infrastructure bị cấm. Lớp cài đặt
-   trong Services là `public`.
+   trong Services là `internal sealed`; host tham chiếu Services chỉ để gọi `AddApplicationServices()`.
 8. Hẹn giờ một lần (phòng trống, countdown) ở Services qua `TimeProvider`; việc chạy liên tục ở Infrastructure.
 9. Năng lực nghiệp vụ nào cũng có contract, kể cả khi Infrastructure cài đặt hoàn toàn; hạ tầng thuần thì không.
 10. Tên contract trung lập với cơ chế.
 11. Thao tác từ API (khóa admin) dùng kết nối BasilBot làm `by`, mang quyền server (thay `by = null` cùng ngày).
 12. Giữ friends, chặn, PM-privacy; sửa `working-scopes.md`.
 13. Verified là trạng thái riêng của bancho.py ("đã đăng nhập in-game ít nhất một lần"), không phải bit của osu!
-    nên bỏ. Chặn phần cứng giữ, với "chưa verified" hiểu là "chưa có lần đăng nhập in-game nào trong lịch sử đăng
-    nhập" (suy luận của agent, chờ người dùng xác nhận).
+    nên bỏ. Bỏ mọi cơ chế tự động chặn hay gắn cờ: chặn phần cứng, từ chối adapter rỗng, báo cờ anticheat. Không
+    theo dõi đa tài khoản, nên không lưu lịch sử đăng nhập và vân tay máy (`ILoginRepository` bỏ). `lastfm.php` thành
+    stub.
 14. `IUserStatsRepository` ghi bằng `CreateOrUpdateAsync`.
 15. BasilBot là người dùng bình thường trong `IUserRepository` với id cố định 0, tự tạo khi khởi động nếu chưa có; tên
     và quốc gia sửa qua repository (cấu hình chỉ còn `Basil:Bot:CommandPrefix`); không xóa, im lặng, đổi quyền hay
     đăng nhập bằng client được, kể cả khi mật khẩu bị sửa thẳng trong DB (mục 2.7).
+16. `Basil.Host` có tùy chọn `--reset-admin-key` để xóa khóa admin lúc khởi động (mục 12.9).
 
 ## 9. Ngoài phạm vi
 
@@ -737,11 +737,8 @@ Domain.
 | Chức năng                                                                                   | Chỗ mới                                                                 | Pha  |
 |---------------------------------------------------------------------------------------------|-------------------------------------------------------------------------|------|
 | Đăng nhập osu!, tourney, IRC; sai tên, sai mật khẩu, tài khoản đã xóa                       | Sv `AuthService.LoginAsync`                                             | 2    |
-| Danh sách adapter rỗng bị từ chối, trừ khi chạy dưới Wine                                   | Sv `AuthService` (`LoginFailure.InvalidClient`); H parse body           | 2    |
 | Đăng nhập lại: thay kết nối cùng loại đã rảnh ≥ 10 s, nếu không thì từ chối                 | Sv `SessionService` (đã có)                                             | 2    |
 | osu!tourney cần quyền                                                                       | Sv `SessionService` (luật hiện tại theo `ClientPrivileges`)             | 2    |
-| Ghi lịch sử đăng nhập (IP, phiên bản, stream) và vân tay máy                                | S `ILoginRepository`; Sv `AuthService`                                  | 1, 2 |
-| Chặn tài khoản chưa từng đăng nhập in-game dùng chung phần cứng với tài khoản bị hạn chế    | Sv `AuthService` (mục 8.13)                                             | 2    |
 | Bot (user 0) lên mạng lúc khởi động, vào các kênh tự động                                   | Sv `SessionService.OpenBotAsync` (tự tạo user 0 nếu chưa có); I gọi lúc khởi động | 2    |
 | BasilBot không đăng nhập bằng client (osu!, tourney, IRC) với bất kỳ mật khẩu nào         | Sv `AuthService.LoginAsync` từ chối user 0 trước khi kiểm mật khẩu      | 2    |
 | Đóng kết nối im lặng quá 300 s, quét mỗi 100 s, trừ bot                                     | Sv `CloseIdle`; I vòng lặp                                              | 2    |
@@ -753,7 +750,6 @@ Domain.
 | Xóa mềm, im lặng người dùng; không áp cho BasilBot                                                    | Sv `UserService.DeleteAsync`, `SilenceAsync`                            | 2    |
 | Im lặng: chặn chat, mở và vào phòng                                                         | Sv `UserService.SilenceAsync`; kiểm ở Channel, Lobby, Room              | 2–4  |
 | Thông báo popup tới người online, không gửi bot                                             | Sv `SessionService.Announce` → `UserNotificationSent`                   | 2    |
-| Cờ anticheat (`lastfm.php`): báo vào phòng, DM referee                                      | Sv `ReportClientFlags` → `UserConnectionFlagged`; I bot gửi tin         | 2    |
 | Friends: thêm, bỏ, danh sách khi đăng nhập                                                  | S `IRelationshipRepository`, ghi thẳng; H gửi danh sách                 | 1    |
 | Avatar: tải lên, xóa, lấy; ảnh mặc định                                                     | S `IAvatarStorage`; H ảnh mặc định                                      | 1    |
 | Khóa admin: thời điểm đổi, đặt, xóa (về chế độ bypass)                                      | S `ICredentialRepository`                                               | 1    |
@@ -826,11 +822,11 @@ Domain.
   `IServerSettingsRepository`.
 * **Stub tương thích** (H, không Application): `osu-screenshot.php` (400), `osu-getfavourites.php`,
   `osu-addfavourite.php`, `osu-rate.php` (`not ranked`), `osu-comment.php`, `osu-getbeatmapinfo.php`,
-  `osu-markasread.php`, `bancho_connect.php`, `check-updates.php`.
+  `osu-markasread.php`, `bancho_connect.php`, `check-updates.php`, `lastfm.php` (trả rỗng, không xử lý cờ).
 
 ### 12.6 Khác biệt có chủ đích giữa `develop` và `main`
 
-Giữ theo `develop`; liệt kê để người dùng xác nhận.
+Giữ theo `develop` (người dùng xác nhận 2026-10-03).
 
 | `main`                                                       | `develop` (giữ)                                                            |
 |--------------------------------------------------------------|----------------------------------------------------------------------------|
@@ -849,10 +845,20 @@ Lỗi hoặc không ai dùng: `ILeaderboardStore` (rank trên `main` là user id
 `PresenceFilter`/`ReceiveUpdates` (đặt nhưng không đọc), `Stealth`, URL menu icon sai lúc đăng nhập, khóa admin ghi sai
 tên setting, route storyboard bỏ sót set đã migrate, `NewMatch` lộ mật khẩu cho lobby.
 
+Bỏ theo quyết định 2026-10-03 (mục 8.13): chặn phần cứng, từ chối adapter rỗng, lịch sử đăng nhập và vân tay máy
+(`IngameLogins`, `ClientHashes`), báo cờ anticheat từ `lastfm.php`, bit Verified.
+
 ### 12.8 Hạ tầng thuần (Infrastructure, host; không contract)
 
 Transport Bancho/IRC/HTTP, envelope, OpenAPI, docs site, CORS, log (Serilog), diagnostics và metrics, SSE hub,
 ImageSharp, TLS/Kestrel, mDNS, kiểm tra cập nhật, Velopack, migration DB, cache, Docker, load test.
+
+### 12.9 Ghi chú cho host (làm khi migrate host)
+
+* Thêm tùy chọn dòng lệnh `--reset-admin-key` cho `Basil.Host`, cạnh `-u/--update`, `-v/--version`, `-h/--help`.
+  Khi có tùy chọn này, lúc khởi động host gọi `ICredentialRepository.DeleteAdminKeyAsync()` trước khi nhận request:
+  server về chế độ bypass (không có khóa admin) và ghi cảnh báo như khi khởi động không có khóa. Người vận hành sau đó
+  đặt khóa mới qua `PUT /settings/adminkey`. Dùng khi quên khóa admin.
 
 ## Phụ lục A. Kịch bản mốc hành vi
 
@@ -986,17 +992,17 @@ migrate Infrastructure sau này cần. Đường dẫn `main` viết tắt: `A/`
 
 * Body đăng nhập: `user\npwmd5\nversion|utcoffset|displaycity|clienthashes|pmprivate`. Body hỏng: token
   `invalid-request` hoặc `invalid-adapters`, thông báo "Please restart your osu! and try again".
-* Adapter rỗng: `empty-adapters`, trừ khi chạy dưới Wine (khi đó chỉ so `uninstall id` lúc tìm phần cứng trùng).
+* (Bỏ, mục 8.13) Adapter rỗng: `empty-adapters`, trừ khi chạy dưới Wine (khi đó chỉ so `uninstall id` lúc tìm phần cứng trùng).
 * Đăng nhập lại: từ chối "User already logged in." (token `user-already-logged-in`) nếu phiên cũ gửi gói tin chưa tới
   10 s; quá 10 s thì đá phiên cũ qua toàn bộ pipeline logout.
 * Sai tên, sai mật khẩu, tài khoản đã xóa: `incorrect-credentials` ("Incorrect credentials…"). Mật khẩu: bcrypt của
   MD5 hex do client gửi; Infra cũ cache SHA-256 sau lần verify thành công.
 * Tourney: `main` cần Donator (Supporter|Premium) và Unrestricted, sai thì token `no`. `develop` dùng
   `ClientPrivileges` (giữ).
-* Chặn phần cứng: tài khoản chưa verified, phần cứng trùng (adapters MD5, uninstall MD5, disk signature; bỏ qua disk
+* (Bỏ, mục 8.13) Chặn phần cứng: tài khoản chưa verified, phần cứng trùng (adapters MD5, uninstall MD5, disk signature; bỏ qua disk
   signature bằng md5("0")) với tài khoản bị hạn chế → token `contact-staff`, "Please contact staff directly to create
-  an account". Kế hoạch: "chưa verified" = chưa có lần đăng nhập in-game nào (mục 8.13).
-* Ghi khi thành công: một dòng `IngameLogins` (user, IP, ngày phiên bản client, stream) và upsert `ClientHashes`
+  an account".
+* (Bỏ, mục 8.13) Ghi khi thành công: một dòng `IngameLogins` (user, IP, ngày phiên bản client, stream) và upsert `ClientHashes`
   (osu path md5, adapters, uninstall id, disk serial, số lần gặp).
 * Gói tin trả về khi đăng nhập (H, thứ tự): ProtocolVersion 19; LoginReply(userId); BanchoPrivileges luôn OR thêm
   Supporter (để osu!direct chạy); MOTD dạng Notification nếu có; ChannelInfo của mọi kênh tự động đọc được trừ
@@ -1143,7 +1149,7 @@ migrate Infrastructure sau này cần. Đường dẫn `main` viết tắt: `A/`
 * `osu-getreplay.php` (`u`, `h`, `c`): `application/x-osu-replay` hoặc 404. `osu-osz2-getscores.php` (`us`, `ha`,
   `c`, `m`, `mods`): xác thực, cập nhật và broadcast mode/mod, trả `{status}|false` (Approved 3 cho md5 đã biết,
   NotSubmitted -1), không có bảng điểm.
-* `lastfm.php` (`b`, `us`, `ha`): chỉ giá trị bắt đầu bằng `a` là cờ; HqAssembly, HqFile, RegistryEdits gây báo cáo
+* (Bỏ, thành stub, mục 8.13) `lastfm.php` (`b`, `us`, `ha`): chỉ giá trị bắt đầu bằng `a` là cờ; HqAssembly, HqFile, RegistryEdits gây báo cáo
   (bot nói trong phòng và DM mọi referee; ngoài phòng thì không làm gì; không hạn chế); trả `-3` để client ngừng gửi
   hoặc rỗng.
 
@@ -1224,7 +1230,6 @@ Logic khôi phục lấy từ code cũ thay vì thiết kế lại. Prompt các 
 |---------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Cú pháp tìm kiếm beatmap, beatmapset, user              | `git show d9b6620d^:src/Basil.Application/Beatmaps/BeatmapQuery.Parser.cs`, `.../Beatmaps/BeatmapsetQuery.Parser.cs`, `.../Users/UserQuery.Parser.cs` (thay `ComparableFilter<T>` và `DateQuery` bằng một kiểu khoảng tối thiểu) |
 | Chọn người hoặc đội thắng                               | `git show main:src/Basil.Application/Services/Multiplayer/MatchReportService.cs`                                                                                                                                             |
-| Chặn phần cứng, ghi lịch sử đăng nhập                   | `src/Basil.Infrastructure/Auth/LoginService.cs`, `src/Basil.Infrastructure/Users/SqliteClientHashRepository.cs` (develop)                                                                                                     |
 | Mirror                                                  | `git show d9b6620d^:src/Basil.Application/Beatmaps/IMirrorClient.cs`, `src/Basil.Infrastructure/Beatmaps/HttpMirrorSearchClient.cs`                                                                                          |
 | Nhập beatmap, chọn set id                               | `src/Basil.Infrastructure/Beatmaps/BeatmapIngestionService.cs` (develop)                                                                                                                                                      |
 | Nộp điểm (trùng checksum, replay, stats)                | `git show 6931bd32:src/Basil.Application/Scores/ScoreSubmissionService.cs`                                                                                                                                                   |
@@ -1232,4 +1237,3 @@ Logic khôi phục lấy từ code cũ thay vì thiết kế lại. Prompt các 
 | Ghost disconnect                                        | `src/Basil.Infrastructure/Shared/Sessions/GhostDisconnectService.cs` (develop)                                                                                                                                                |
 | Bot bootstrap                                           | `git show 6931bd32:src/Basil.Application/Bot/BotBootstrapService.cs`                                                                                                                                                          |
 | Luật PM (chặn, PM-privacy, away)                        | `git show 6931bd32:src/Basil.Application/Chat/ChatDispatchService.cs`                                                                                                                                                         |
-| Cờ anticheat                                            | `git show 6931bd32:src/Basil.Application/Auth/ClientIntegrityService.cs`                                                                                                                                                      |
