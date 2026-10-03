@@ -2,6 +2,7 @@ using Basil.Application.Events;
 using Basil.Application.Multiplayer;
 using Basil.Application.Multiplayer.Events;
 using Basil.Application.Sessions;
+using Basil.Domain.Client;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
@@ -22,6 +23,15 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	///     Moderators need no password. The player also joins the room's chat channel.
 	/// </remarks>
 	Task<RoomResult> JoinAsync(Room room, BanchoConnection by, string password, CancellationToken cancellationToken = default);
+
+	/// <summary>Seats an online player in a room on behalf of its managers, leaving any other room first.</summary>
+	/// <param name="room">The room to seat the player in.</param>
+	/// <param name="by">The creator, a referee or BasilBot.</param>
+	/// <param name="player">The player's osu! client.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>Ok, NotAuthorized, TargetOffline, AlreadySeated, Banned, InAnotherRoom when the player sat down elsewhere meanwhile, IsObserver, Full or RoomClosed.</returns>
+	/// <remarks>The room's password is not asked for; a ban still applies.</remarks>
+	Task<RoomResult> SeatAsync(Room room, Connection by, BanchoConnection player, CancellationToken cancellationToken = default);
 
 	/// <summary>Removes a player from the room.</summary>
 	/// <param name="room">The room to leave.</param>
@@ -48,6 +58,7 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	/// <param name="player">The user to ban.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, IsManager or RoomClosed when the room has closed; banning a banned user again returns Ok and does nothing.</returns>
+	/// <remarks>BasilBot cannot be banned.</remarks>
 	Task<RoomResult> BanAsync(Room room, Connection by, User player, CancellationToken cancellationToken = default);
 
 	/// <summary>Lifts a user's ban.</summary>
@@ -73,6 +84,7 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	/// <param name="user">The user to make referee.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, IsCreator, AlreadyReferee, TooManyReferees or RoomClosed when the room has closed.</returns>
+	/// <remarks>BasilBot cannot be made a referee.</remarks>
 	Task<RoomResult> AddRefereeAsync(Room room, Connection by, User user, CancellationToken cancellationToken = default);
 
 	/// <summary>Removes a user from the referees.</summary>
@@ -118,7 +130,7 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	///     Turning freemod on moves the room's mods that are not speed-changing onto each player; turning it off gives the
 	///     room the host's mods. Changing the team type reassigns teams. Changing the mode drops mods, the room's and the
 	///     players', that the new mode does not allow. Under freemod, a seated caller's mods that are not speed-changing become
-	///     that caller's own mods. A change with no field set does nothing.
+	///     that caller's own mods. A change with no field set does nothing. Only the creator, a referee or BasilBot can change whether the history is private.
 	/// </remarks>
 	Task<RoomResult> ConfigureAsync(Room room, Connection by, RoomSettingsChange change, CancellationToken cancellationToken = default);
 
@@ -140,6 +152,18 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	/// <returns>Ok, NotAuthorized, NotInRoom, SlotNotOpen or RoomClosed when the room has closed.</returns>
 	/// <remarks>This is a referee operation, so it is allowed while the room is locked.</remarks>
 	Task<RoomResult> MoveAsync(Room room, Connection by, User player, int index, CancellationToken cancellationToken = default);
+
+	/// <summary>Arranges every slot of a room at once.</summary>
+	/// <param name="room">The room.</param>
+	/// <param name="by">The creator, a referee or BasilBot.</param>
+	/// <param name="arrangement">The slots to set; slots not listed end up empty and keep their lock.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>Ok, NotAuthorized, InProgress, InvalidSettings or RoomClosed.</returns>
+	/// <remarks>
+	///     Every seated player must appear exactly once, slot numbers must be distinct and from 1 to 16, and a slot
+	///     with a player cannot be locked. A team is applied only while the room plays in teams.
+	/// </remarks>
+	Task<RoomResult> ArrangeSlotsAsync(Room room, Connection by, IReadOnlyList<SlotArrangement> arrangement, CancellationToken cancellationToken = default);
 
 	/// <summary>Locks or unlocks a slot; locking an occupied slot removes its player.</summary>
 	/// <param name="room">The room.</param>
@@ -269,6 +293,14 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, NoCountdown or RoomClosed when the room has closed.</returns>
 	Task<RoomResult> CancelCountdownAsync(Room room, Connection by, CancellationToken cancellationToken = default);
+
+	/// <summary>Reports the anticheat flags a player's client sent, warning the player's room when they show signs of cheating.</summary>
+	/// <param name="player">The player's osu! client.</param>
+	/// <param name="flags">The flags the client reported.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>Ok, or NotInRoom when the player does not sit in a room.</returns>
+	/// <remarks>Nothing is blocked; the warning is <see cref="RoomPlayerFlagged" />, carrying only the flags that are signs of cheating.</remarks>
+	Task<RoomResult> ReportClientFlagsAsync(BanchoConnection player, ClientFlags flags, CancellationToken cancellationToken = default);
 
 	/// <summary>Records a stored score of the room's latest round.</summary>
 	/// <param name="room">The room.</param>

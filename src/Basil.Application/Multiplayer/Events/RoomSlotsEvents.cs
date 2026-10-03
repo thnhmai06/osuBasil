@@ -45,3 +45,7 @@ public sealed record RoomSlotModsChanged(Room Room, int Slot, GameMods? Mods) : 
 /// <param name="Slot">The number of the slot, from 1 to 16.</param>
 /// <param name="Status">The status after the change, or <see langword="null" /> when the slot is empty.</param>
 public sealed record RoomSlotStatusChanged(Room Room, int Slot, RoomSlotStatus? Status) : RoomSlotEvent(Room, Slot);
+
+/// <summary>The slots of a room were arranged at once.</summary>
+/// <param name="Room">The room.</param>
+public sealed record RoomSlotsArranged(Room Room) : RoomSlotsEvent(Room);

@@ -9,24 +9,19 @@ namespace Basil.Domain.Multiplayer;
 /// </summary>
 public sealed class MatchSettings
 {
-	/// <summary>Gets the game mode the room plays in.</summary>
+	/// <summary>Gets or sets the game mode the room plays in.</summary>
+	/// <exception cref="ArgumentException">The current <see cref="Mods" /> are not valid in the new mode.</exception>
 	public GameMode Mode
 	{
 		get;
-		private set
+		set
 		{
 			value.ThrowIfUndefined();
+			if (!Mods.IsValid(value))
+				throw new ArgumentException("The current mods are not valid in that mode.", nameof(value));
 			field = value;
 		}
 	} = GameMode.Standard;
-
-	/// <summary>Switches the game mode, dropping selected mods the new mode does not allow.</summary>
-	/// <param name="mode">The game mode to switch to.</param>
-	public void SwitchMode(GameMode mode)
-	{
-		Mode = mode;
-		Mods = Mods.RemoveInvalidMods(mode);
-	}
 
 	/// <summary>Gets or sets the mods applied to the whole room.</summary>
 	public GameMods Mods

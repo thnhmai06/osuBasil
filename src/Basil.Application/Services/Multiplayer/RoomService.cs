@@ -29,6 +29,18 @@ internal sealed class RoomService(
 	/// <summary>The longest countdown allowed.</summary>
 	internal static readonly TimeSpan MaxCountdownLength = TimeSpan.FromHours(1);
 
+	/// <summary>The client flags that are signs of cheating.</summary>
+	internal const ClientFlags CheatSigns = ClientFlags.SpeedHackDetected | ClientFlags.IncorrectModValue |
+	                                        ClientFlags.MultipleOsuClients | ClientFlags.ChecksumFailure |
+	                                        ClientFlags.FlashlightChecksumIncorrect |
+	                                        ClientFlags.OsuExecutableChecksum | ClientFlags.MissingProcessesInList |
+	                                        ClientFlags.FlashlightImageHack |
+	                                        ClientFlags.SpinnerHack | ClientFlags.TransparentWindow |
+	                                        ClientFlags.FastPress |
+	                                        ClientFlags.RawMouseDiscrepancy | ClientFlags.RawKeyboardDiscrepancy |
+	                                        ClientFlags.HqAssembly |
+	                                        ClientFlags.HqFile | ClientFlags.RegistryEdits;
+
 	private readonly Channel<RoomEvent> _events = Channel.CreateUnbounded<RoomEvent>();
 
 	/// <inheritdoc />
@@ -45,6 +57,19 @@ internal sealed class RoomService(
 	public Task<RoomResult> LeaveAsync(Room room, BanchoConnection by, CancellationToken cancellationToken = default)
 	{
 		return InScopeAsync(room, () => Leave(room, by), cancellationToken);
+	}
+
+	/// <inheritdoc />
+	public async Task<RoomResult> SeatAsync(Room room, Connection by, BanchoConnection player,
+		CancellationToken cancellationToken = default)
+	{
+		if (!RoomRules.CanManage(room, by)) return RoomResult.NotAuthorized;
+		if (!player.IsOpen) return RoomResult.TargetOffline;
+
+		if (lobby.RoomOf(player) is { } other && !ReferenceEquals(other, room))
+			await LeaveAsync(other, player, cancellationToken);
+
+		return await InScopeAsync(room, () => Seat(room, by, player), cancellationToken);
 	}
 
 	/// <inheritdoc />
@@ -129,6 +154,13 @@ internal sealed class RoomService(
 		CancellationToken cancellationToken = default)
 	{
 		return InScopeAsync(room, () => Move(room, by, player, index), cancellationToken);
+	}
+
+	/// <inheritdoc />
+	public Task<RoomResult> ArrangeSlotsAsync(Room room, Connection by, IReadOnlyList<SlotArrangement> arrangement,
+		CancellationToken cancellationToken = default)
+	{
+		return InScopeAsync(room, () => ArrangeSlots(room, by, arrangement), cancellationToken);
 	}
 
 	/// <inheritdoc />
@@ -233,6 +265,23 @@ internal sealed class RoomService(
 	}
 
 	/// <inheritdoc />
+	public async Task<RoomResult> ReportClientFlagsAsync(BanchoConnection player, ClientFlags flags,
+		CancellationToken cancellationToken = default)
+	{
+		if (lobby.RoomOf(player) is not { } room) return RoomResult.NotInRoom;
+
+		var signs = flags & CheatSigns;
+		if (signs == ClientFlags.Clean) return RoomResult.Ok;
+
+		await using var scope = await lobby.EnterAsync(room, cancellationToken);
+		if (scope is null) return RoomResult.RoomClosed;
+		if (room.Slots.Find(player) is null) return RoomResult.NotInRoom;
+
+		Emit(new RoomPlayerFlagged(room, player, signs));
+		return RoomResult.Ok;
+	}
+
+	/// <inheritdoc />
 	public Task<RoomResult> RecordScoreAsync(Room room, User player, Score score,
 		CancellationToken cancellationToken = default)
 	{
@@ -298,6 +347,27 @@ internal sealed class RoomService(
 		    !by.User.Value.Privilege.Has(ClientPrivileges.Moderator))
 			return RoomResult.WrongPassword;
 
+		return TakeSeat(room, by, stale);
+	}
+
+	private RoomResult Seat(Room room, Connection by, BanchoConnection player)
+	{
+		if (!RoomRules.CanManage(room, by)) return RoomResult.NotAuthorized;
+		if (!player.IsOpen) return RoomResult.TargetOffline;
+
+		var stale = room.Slots.Find(player.User)?.Player;
+		if (stale is not null && (ReferenceEquals(stale, player) || stale.IsOpen)) return RoomResult.AlreadySeated;
+
+		if (room.Banned.Contains(player.User)) return RoomResult.Banned;
+		if (lobby.RoomOf(player) is { } other && !ReferenceEquals(other, room)) return RoomResult.InAnotherRoom;
+		if (room.Observers.Any(observer => observer.User.Equals(player.User))) return RoomResult.IsObserver;
+
+		return TakeSeat(room, player, stale);
+	}
+
+	/// <summary>Seats a player who passed the room's checks, first removing a closed connection of the same user.</summary>
+	private RoomResult TakeSeat(Room room, BanchoConnection player, BanchoConnection? stale)
+	{
 		if (stale is not null)
 		{
 			// The closed connection leaves as an ordinary leave; the room is not reported empty
@@ -308,14 +378,14 @@ internal sealed class RoomService(
 			AnnounceRoundProgress(room);
 		}
 
-		if (RoomSlotsMechanics.Seat(room, by) is not { } slot)
+		if (RoomSlotsMechanics.Seat(room, player) is not { } slot)
 		{
 			ReportIfEmpty(room);
 			return RoomResult.Full;
 		}
 
-		Emit(new RoomPlayerJoined(room, by, slot.Index));
-		channels.Join(room.Channel, by);
+		Emit(new RoomPlayerJoined(room, player, slot.Index));
+		channels.Join(room.Channel, player);
 		lobbyService.RoomOccupied(room);
 		return RoomResult.Ok;
 	}
@@ -346,6 +416,7 @@ internal sealed class RoomService(
 	private RoomResult Ban(Room room, Connection by, User player)
 	{
 		if (!RoomRules.CanManage(room, by)) return RoomResult.NotAuthorized;
+		if (player.Id == SystemUserIds.BasilBot) return RoomResult.NotAuthorized;
 		if (RoomRules.IsManager(room, player)) return RoomResult.IsManager;
 		if (!room.AddBanned(player)) return RoomResult.Ok;
 
@@ -392,6 +463,7 @@ internal sealed class RoomService(
 	{
 		if (by is not BotConnection && (room.Creator is null || !room.Creator.Equals(by.User)))
 			return RoomResult.NotAuthorized;
+		if (user.Id == SystemUserIds.BasilBot) return RoomResult.NotAuthorized;
 		if (room.Creator is not null && room.Creator.Equals(user)) return RoomResult.IsCreator;
 		if (room.Referees.Contains(user)) return RoomResult.AlreadyReferee;
 		if (room.Referees.Count >= Room.MaxReferees) return RoomResult.TooManyReferees;
@@ -446,6 +518,8 @@ internal sealed class RoomService(
 		if (!RoomRules.IsHostOrManager(room, by)) return RoomResult.NotAuthorized;
 		if (room.InProgress) return RoomResult.InProgress;
 
+		if (change.IsPrivate is not null && !RoomRules.CanManage(room, by)) return RoomResult.NotAuthorized;
+
 		if (change.Name is not null && string.IsNullOrWhiteSpace(change.Name)) return RoomResult.InvalidSettings;
 		if (change.Size is < 1 or > RoomSlots.MaxSlotCount) return RoomResult.InvalidSettings;
 		if (change.ClearBeatmap && change.Beatmap is not null) return RoomResult.InvalidSettings;
@@ -477,7 +551,8 @@ internal sealed class RoomService(
 
 		if (change.Mode is { } newMode)
 		{
-			room.Settings.SwitchMode(newMode);
+			room.Settings.Mods = room.Settings.Mods.RemoveInvalidMods(newMode);
+			room.Settings.Mode = newMode;
 			foreach (var slot in room.Slots.Where(s => s.Mods is not null))
 				slot.Mods = slot.Mods!.Value.RemoveInvalidMods(newMode);
 		}
@@ -494,6 +569,7 @@ internal sealed class RoomService(
 		if (change.TeamType is { } teamType) ApplyTeamType(room, teamType);
 		if (change.WinCondition is { } winCondition) room.Settings.WinCondition = winCondition;
 		if (change.Size is { } size) RoomSlotsMechanics.Resize(room.Slots, size);
+		if (change.IsPrivate is { } isPrivate) room.Match.Value.IsPrivate = isPrivate;
 
 		Emit(new RoomSettingsChanged(room, change with { Password = null }, change.Password is not null));
 		return RoomResult.Ok;
@@ -525,6 +601,37 @@ internal sealed class RoomService(
 		Emit(new RoomPlayerMoved(room, seated, from.Index, to.Index));
 		return RoomResult.Ok;
 	}
+
+	private RoomResult ArrangeSlots(Room room, Connection by, IReadOnlyList<SlotArrangement> arrangement)
+	{
+		if (!RoomRules.CanManage(room, by)) return RoomResult.NotAuthorized;
+		if (room.InProgress) return RoomResult.InProgress;
+
+		var seated = room.Slots.Where(s => s.Player is not null).ToDictionary(s => s.Player!.User,
+			s => (s.Player, s.Status, s.Team, s.Mods, s.IntroSkipped, s.Loaded));
+		var named = arrangement.Where(e => e.Player is not null).Select(e => e.Player!).ToList();
+		if (arrangement.Any(e => e.Index is < 1 or > RoomSlots.MaxSlotCount || (e.Player is not null && e.Locked)) ||
+		    arrangement.DistinctBy(e => e.Index).Count() != arrangement.Count ||
+		    named.Count != seated.Count || !seated.Keys.ToHashSet().SetEquals(named))
+			return RoomResult.InvalidSettings;
+
+		foreach (var slot in room.Slots)
+			RoomSlotsMechanics.Clear(slot);
+
+		foreach (var entry in arrangement)
+		{
+			var slot = room.Slots.At(entry.Index)!;
+			slot.Locked = entry.Locked;
+			if (entry.Player is null) continue;
+
+			(slot.Player, slot.Status, slot.Team, slot.Mods, slot.IntroSkipped, slot.Loaded) = seated[entry.Player];
+			if (entry.Team is { } team && room.TeamType.NeedSplitTeam()) slot.Team = team;
+		}
+
+		Emit(new RoomSlotsArranged(room));
+		return RoomResult.Ok;
+	}
+
 
 	private RoomResult ToggleSlotLock(Room room, Connection by, int index)
 	{
