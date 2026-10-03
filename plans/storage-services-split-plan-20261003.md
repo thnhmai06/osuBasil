@@ -221,8 +221,9 @@ ghi đơn thuần: không có `ScoreService.GetAsync` chuyển tiếp sang `ISco
 13. **Dịch vụ nền.** Contract khai báo một lần chạy (`CloseIdle()`, `ScanAsync()`); Services cài đặt; Infrastructure
     giữ vòng lặp, trigger, chu kỳ và cấu hình (mục 2.6). Hẹn giờ một lần sinh ra như hệ quả của một thao tác (phòng
     trống, countdown) vẫn ở Services qua `TimeProvider`.
-14. **Server làm actor.** Thao tác có route API (khóa admin, không có người dùng) nhận `Connection? by`; `null` nghĩa
-    là server và bỏ qua kiểm quyền. Thao tác chỉ người dùng gọi giữ `by` không null.
+14. **API hành động với tư cách BasilBot.** Route API (khóa admin, không có người dùng) gọi service với `by` là kết
+    nối của BasilBot; `by` không bao giờ null. Kết nối bot mang quyền server: qua mọi kiểm quyền của phòng và kênh.
+    Bot không thể bị kick, ban, làm referee. Bot offline thì route trả 503. Xem mục 2.7.
 15. **Một bộ phân phối cho mỗi luồng event.** Mỗi item của `Channel<T>` chỉ đến một reader. Infrastructure có đúng một
     dispatcher đọc tuần tự luồng của mỗi service rồi chia cho các handler (dọn kết nối, bot spectate, hàng đợi round,
     ghi `MatchEvent`, SSE, gói tin). Không host hay handler nào khác đọc `Events` trực tiếp.
@@ -230,7 +231,7 @@ ghi đơn thuần: không có `ScoreService.GetAsync` chuyển tiếp sang `ISco
 | Contract / cài đặt                   | Thay cho                                                                                                                                                                                                                | Phụ thuộc                                                                                                       | Luồng event                                              |
 |--------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------|----------------------------------------------------------|
 | `IAuthService` / `AuthService`       | `Gateway.ConnectAsync`, `Registration`                                                                                                                                                                                  | `IUserRepository`, `ICredentialRepository`, `ILoginRepository`, `SessionService`                                 | không                                                    |
-| `ISessionService` / `SessionService` | `UserRegistry.OpenConnection/CloseConnection/SetStatus`, `Gateway.Disconnect`, gán `AwayMessage`, `LastActiveAt`                                                                                                        | `UserRegistry`, `IChannelService`                                                                               | `UserEvent` (kết nối mở/đóng, đổi trạng thái)            |
+| `ISessionService` / `SessionService` | `UserRegistry.OpenConnection/CloseConnection/SetStatus`, `Gateway.Disconnect`, gán `AwayMessage`, `LastActiveAt`                                                                                                        | `UserRegistry`, `IUserRepository`, `IChannelService`                                                                             | `UserEvent` (kết nối mở/đóng, đổi trạng thái)            |
 | `IUserService` / `UserService`       | `UserRegistry.Silence`; xóa mềm người dùng (đặt `DeletedAt`, đóng kết nối đang mở)                                                                                                                                      | `IUserRepository`, `UserRegistry`, `ISessionService`                                                            | `UserEvent` (`UserSilenced`)                             |
 | `IChannelService` / `ChannelService` | `ChannelSession.Join/Part/Post/Close/CanRead/CanWrite`, `PmChannelSession` (trả lời away), `SpectatorChannelSession.Spectate/StopSpectating/CantSpectate`, `GeneralChannelRegistry.Open/Close/JoinAutoChannels/PartAll` | `GeneralChannelRegistry`, `UserRegistry`, `IRelationshipRepository`                                             | `ChannelEvent`                                           |
 | `ILobbyService` / `LobbyService`     | `Lobby.OpenAsync/CloseAsync/Watch/Unwatch`, vòng đời phòng trống                                                                                                                                                        | `Lobby`, `IMatchRepository`, `UserRegistry`, `IChannelService`, `RoomRules`                                     | `LobbyEvent`                                             |
@@ -243,11 +244,11 @@ Hành động bổ sung từ kiểm kê (mục 12), ngoài các thao tác đã c
 
 | Contract          | Thêm                                                                                                                                                                                                                                                  |
 |-------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `IAuthService`    | `CheckRegistrationAsync(RegisterAttempt)` (chỉ kiểm tra, cho `check != 0` của form đăng ký), `CreateAccountAsync(UserData, Md5 passwordHash)` (admin tạo user, không cần khóa admin); `LoginAsync` thêm luật adapter rỗng, chặn phần cứng, ghi lịch sử đăng nhập |
-| `ISessionService` | `OpenBot(User)`, `SetPmPrivate(UserSession, bool)`, `MarkActive(Connection)`, `CloseIdle()` [nền], `Announce(string text, IReadOnlyCollection<User>? to)`, `ReportClientFlags(BanchoConnection, ClientFlags)`                                            |
-| `IUserService`    | `DeleteAsync` từ chối user đang giữ kết nối bot                                                                                                                                                                                                       |
+| `IAuthService`    | `CheckRegistrationAsync(RegisterAttempt)` (chỉ kiểm tra, cho `check != 0` của form đăng ký), `CreateAccountAsync(UserData, Md5 passwordHash)` (admin tạo user, không cần khóa admin); `LoginAsync` thêm luật adapter rỗng, chặn phần cứng, ghi lịch sử đăng nhập, luôn từ chối BasilBot (mục 2.7) |
+| `ISessionService` | `OpenBotAsync()` (mục 2.7), `SetPmPrivate(UserSession, bool)`, `MarkActive(Connection)`, `CloseIdle()` [nền], `Announce(string text, IReadOnlyCollection<User>? to)`, `ReportClientFlags(BanchoConnection, ClientFlags)`                                            |
+| `IUserService`    | `SetPrivilegeAsync(User, ClientPrivileges)` (đổi quyền là hành động có luật, không ghi thẳng repository); `DeleteAsync`, `SilenceAsync`, `SetPrivilegeAsync` từ chối BasilBot (mục 2.7)                                                               |
 | `IChannelService` | `PostAsync` (bất đồng bộ vì đọc quan hệ): PM bị chặn, PM-privacy chỉ bạn bè, NOTICE không có trả lời away                                                                                                                                              |
-| `IRoomService`    | `SeatAsync` (API ép xếp chỗ: bỏ qua mật khẩu và khóa, không bỏ qua cấm, rời phòng cũ trước), `ArrangeSlotsAsync` (API xếp lại toàn bộ slot trong một phạm vi), `Configure` thêm `IsPrivate`; `by` nullable cho thao tác có route API                  |
+| `IRoomService`    | `SeatAsync` (API ép xếp chỗ: bỏ qua mật khẩu và khóa, không bỏ qua cấm, rời phòng cũ trước), `ArrangeSlotsAsync` (API xếp lại toàn bộ slot trong một phạm vi), `Configure` thêm `IsPrivate`; route API truyền kết nối BasilBot làm `by`                |
 | `IMatchService`   | `CloseUnfinishedAsync()` [khởi động]                                                                                                                                                                                                                  |
 | `IScoreService`   | `SubmitAsync` từ chối trùng checksum, chỉ lưu replay của lần qua màn dài ít nhất 24 byte                                                                                                                                                               |
 | `IBeatmapService` | `ImportAsync(Stream archive, int? beatmapsetId)` nhận archive thô (đọc qua `IBeatmapArchiveReader`, chọn set id), `DeleteAsync(Beatmapset)`, `ScanAsync()` [nền/khởi động]                                                                           |
@@ -363,7 +364,7 @@ Application định nghĩa một lần chạy; Infrastructure quyết định kh
 | Việc                                                       | Method (contract)                                                                    | Trigger ở Infrastructure                                                                   |
 |------------------------------------------------------------|--------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
 | Đóng kết nối im lặng quá 300 s, trừ bot (`TimedOut`)       | `ISessionService.CloseIdle()`                                                        | mỗi 100 s                                                                                  |
-| Bot lên mạng                                               | `ISessionService.OpenBot(User)`                                                      | khởi động, sau khi đồng bộ tên và quốc gia của user 0 từ cấu hình (ghi thẳng repository)   |
+| Bot lên mạng (tự tạo user 0 nếu chưa có)                   | `ISessionService.OpenBotAsync()`                                                     | khởi động                                                                                  |
 | Mở kênh chung                                              | `IChannelService.Open(GeneralChannel)`                                               | khởi động, từ `IChannelRepository.ListAsync()`                                             |
 | Đóng trận và round dở dang sau khi server dừng đột ngột    | `IMatchService.CloseUnfinishedAsync()`                                               | khởi động                                                                                  |
 | Ghi lịch sử round theo thứ tự                              | `IMatchService.RecordRoundAsync(Round)`                                              | hàng đợi có thứ tự đọc `RoomRound*` (128 phần tử, thử lại 3 lần, lùi 50·n ms)              |
@@ -375,6 +376,26 @@ Application định nghĩa một lần chạy; Infrastructure quyết định kh
 | GC thư mục `.deleted_`, migrate layout cũ, metrics, diagnostics, SSE, kiểm tra cập nhật, mDNS | không có (hạ tầng thuần)                                          | Infrastructure, host                                                                       |
 
 Mọi handler nhận event qua dispatcher duy nhất của luồng đó (quy tắc 15).
+
+### 2.7 BasilBot
+
+BasilBot là một người dùng bình thường trong `IUserRepository`, với các ràng buộc riêng do Application giữ:
+
+* **Định danh cố định.** BasilBot luôn là user id `0` (`SystemUserIds.BasilBot`). Kho không cấp id `0` cho người
+  dùng mới.
+* **Tự tạo khi khởi động.** `ISessionService.OpenBotAsync()` đọc user `0`; nếu chưa có thì tạo bằng
+  `IUserRepository.CreateOrUpdateAsync` với dữ liệu mặc định (tên `BasilBot`, quốc gia và quyền theo dòng seed hiện
+  có ở `001_base.sql`), rồi mở `BotConnection` và vào các kênh tự động. Infrastructure chỉ gọi method này lúc khởi
+  động.
+* **Sửa thông tin như người thường.** Tên và quốc gia sửa qua `IUserRepository` (route `PUT/PATCH /users/0` được
+  phép cho các trường này), avatar qua `IAvatarStorage`. Cấu hình không còn `Basil:Bot:Name`, `Basil:Bot:Country`;
+  trong file cấu hình chỉ còn `Basil:Bot:CommandPrefix`.
+* **Không thao tác quản trị đặc biệt.** `IUserService.DeleteAsync`, `SilenceAsync`, `SetPrivilegeAsync` từ chối user
+  `0`. `IRoomService` từ chối kick, ban, thêm referee cho bot.
+* **Không đăng nhập bằng client.** `IAuthService.LoginAsync` từ chối user `0` trước khi kiểm mật khẩu, với cùng lỗi
+  như sai thông tin đăng nhập, cho mọi loại kết nối (osu!, tourney, IRC). Mật khẩu lưu trong kho, kể cả khi bị sửa
+  thẳng trong DB, không bao giờ cho đăng nhập.
+* **Tư cách server cho API.** Route API gọi service với kết nối bot làm `by` (quy tắc 14).
 
 ## 3. Hợp đồng lưu trữ mới
 
@@ -540,7 +561,7 @@ ngoài gọi `IBeatmapAssets`, `IBeatmapMirror`. osu!direct ghép mirror và fal
 | Menu banner, seasonal, FAQ, avatar                       | repository và storage ở mục 3, ghi thẳng                                                           |
 | Khóa admin (thời điểm đổi, đặt, xóa để vào chế độ bypass) | `ICredentialRepository`, ghi thẳng                                                                |
 | Thông báo popup tới người online                         | `ISessionService.Announce` → event `UserNotificationSent`                                          |
-| Admin tạo, sửa, xóa người dùng                            | `IAuthService.CreateAccountAsync`; sửa tên/quốc gia/quyền ghi thẳng `IUserRepository`; `IUserService.DeleteAsync` |
+| Admin tạo, sửa, xóa người dùng                            | `IAuthService.CreateAccountAsync`; sửa tên/quốc gia ghi thẳng `IUserRepository` (kể cả BasilBot); đổi quyền qua `IUserService.SetPrivilegeAsync`; `IUserService.DeleteAsync` |
 | Friends (thêm, bỏ, danh sách khi đăng nhập)              | `IRelationshipRepository`, ghi thẳng; PM-privacy là `ISessionService.SetPmPrivate`                 |
 
 ## 5. Các quy tắc AGENTS.md phải viết lại
@@ -561,7 +582,7 @@ ngoài gọi `IBeatmapAssets`, `IBeatmapMirror`. osu!direct ghép mirror và fal
 | (chưa có)                                                                             | Tầng ngoài truy cập lớp lưu trữ trực tiếp; Services chỉ cho hành động, không bọc đọc/ghi đơn thuần                            |
 | Đặt tên X / XSession / XRegistry                                                      | Giữ; thêm `IXService` (contract) và `XService` (cài đặt)                                                                       |
 | (chưa có)                                                                             | Ba project và bảng tham chiếu ở mục 2.1; Infrastructure không tham chiếu `Basil.Application.Services`                         |
-| (chưa có)                                                                             | Quy tắc 8–15 ở mục 2.4 (một contract mỗi dịch vụ, gọi chéo qua contract, không interface cho registry, cổng năng lực, tên trung lập cơ chế, dịch vụ nền, server làm actor, một dispatcher mỗi luồng) |
+| (chưa có)                                                                             | Quy tắc 8–15 ở mục 2.4 (một contract mỗi dịch vụ, gọi chéo qua contract, không interface cho registry, cổng năng lực, tên trung lập cơ chế, dịch vụ nền, API hành động với tư cách BasilBot, một dispatcher mỗi luồng) |
 | "queries … do not belong in Application"                                              | Query record (tiêu chí lọc của kho, kèm `Parse` cú pháp tìm kiếm) thuộc Storage; handler và route truy vấn vẫn ở ngoài          |
 | "host/storage configuration … do not belong in Application"                           | `ServerSettings` là dữ liệu bền vững trong Domain; cấu hình host (cổng, TLS, đường dẫn dữ liệu) vẫn ở ngoài                    |
 
@@ -583,9 +604,9 @@ nguyên vào project cùng tên, không đổi namespace; phần còn lại dờ
 | Pha | Việc                                                                                                                                                                                                                                                                                                       | Kiểm chứng                                                                                                                                                       |
 |-----|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 1   | Cập nhật AGENTS.md theo mục 5 (kể cả danh sách feature folder và ghi chú migration trỏ sang kế hoạch này). Thêm `PageRequest`, `Page<T>`, các `XQuery` kèm `Parse`. Đổi cổng theo mục 3: động từ, đọc, tìm kiếm, gộp khóa admin vào `ICredentialRepository`, `IRoundRepository`, `OpenAsync` cho storage, các cổng mới từ kiểm kê. Domain: `ServerSettings`, `Message.IsNotice`, `ScoreRejection.Duplicate` | build `Basil.Application`; grep không còn `SaveAsync` trên repository, không còn `IAdminKeyRepository`; kịch bản phụ lục A                                      |
-| 2   | `IAuthService`, `ISessionService`, `IUserService` và cài đặt; `LoginAttempt`, `RegisterAttempt`. Bỏ `Gateway`, `Registration`. `UserRegistry`, `UserSession`, `Connection` chỉ còn dữ liệu (`LastActiveAt` lên `Connection`). Bổ sung từ kiểm kê: adapter rỗng, chặn phần cứng, lịch sử đăng nhập, `OpenBot`, `CloseIdle`, `Announce`, cờ anticheat, `SetPmPrivate`, `CheckRegistrationAsync`, `CreateAccountAsync` | build; kịch bản: thay kết nối sau 10 s rảnh, logout trong 1 s bị bỏ qua, quyền tourney, đăng ký có/không khóa admin, tên trùng, chặn phần cứng, `CloseIdle` 300 s |
+| 2   | `IAuthService`, `ISessionService`, `IUserService` và cài đặt; `LoginAttempt`, `RegisterAttempt`. Bỏ `Gateway`, `Registration`. `UserRegistry`, `UserSession`, `Connection` chỉ còn dữ liệu (`LastActiveAt` lên `Connection`). Bổ sung từ kiểm kê: adapter rỗng, chặn phần cứng, lịch sử đăng nhập, `OpenBotAsync` (tự tạo user 0), từ chối đăng nhập BasilBot, `SetPrivilegeAsync`, `CloseIdle`, `Announce`, cờ anticheat, `SetPmPrivate`, `CheckRegistrationAsync`, `CreateAccountAsync` | build; kịch bản: thay kết nối sau 10 s rảnh, logout trong 1 s bị bỏ qua, quyền tourney, đăng ký có/không khóa admin, tên trùng, chặn phần cứng, `CloseIdle` 300 s, BasilBot không đăng nhập được với mọi mật khẩu, tự tạo user 0 |
 | 3   | `IChannelService` (gồm spectate). Cây `ChannelSession` và `GeneralChannelRegistry` chỉ còn dữ liệu. Bổ sung: PM bị chặn, PM-privacy, NOTICE                                                                                                                                                              | build; kịch bản: thứ tự từ chối khi post, trả lời away, cắt 2000 ký tự, chặn, notice, spectate/stop, đóng kênh spectator khi chủ rời                             |
-| 4a  | `ILobbyService`; `Lobby` chỉ còn dữ liệu, `Lobby.EnterAsync(room)`; `IRoomService` phần thành viên và quyền (join, leave, kick, ban, ref, host, observer, invite, `ReleaseAsync`); `by` nullable cho thao tác có route API                                                                              | build; kịch bản phòng: mở, đóng, chuyển host, phòng trống 15/5 phút, server làm actor                                                                            |
+| 4a  | `ILobbyService`; `Lobby` chỉ còn dữ liệu, `Lobby.EnterAsync(room)`; `IRoomService` phần thành viên và quyền (join, leave, kick, ban, ref, host, observer, invite, `ReleaseAsync`); route API truyền kết nối BasilBot làm `by`; bot không bị kick, ban, làm referee                                                                              | build; kịch bản phòng: mở, đóng, chuyển host, phòng trống 15/5 phút, API qua kết nối bot                                                                            |
 | 4b  | `IRoomService` phần cài đặt và slot (`Configure` thêm `IsPrivate`, slot, đội, mod, ready, có map, `SeatAsync`, `ArrangeSlotsAsync`); `MatchSettings.SwitchMode` bỏ                                                                                                                                      | build; kịch bản freemod, đổi mode bỏ mod, resize theo số lượng, ép xếp chỗ, xếp lại slot                                                                         |
 | 4c  | `IRoomService` phần round và countdown; `Countdown` sang Services; `Room`, `RoomSlots`, `RoomSlot` chỉ còn dữ liệu                                                                                                                                                                                       | build; kịch bản round: AllLoaded, AllSkipped, round không người chơi, countdown bắt đầu round                                                                    |
 | 5   | `IScoreService` (nhận `Validate`, `MatchWith`; trùng checksum; luật replay), `IBeatmapService` (`ImportAsync` từ archive, `DeleteAsync`, `ScanAsync`), `IMatchService` (`CloseUnfinishedAsync`); cổng năng lực mục 3.1; hàm chọn người thắng; getter `Privilege` thành thuộc tính thường                | build; kịch bản nộp điểm: beatmap lạ, vân tay sai, trùng, replay ngắn, ghi vào round của phòng; chọn set id; frozen; đóng trận dở dang; người thắng               |
@@ -627,12 +648,15 @@ Chốt ngày 2026-10-03:
 8. Hẹn giờ một lần (phòng trống, countdown) ở Services qua `TimeProvider`; việc chạy liên tục ở Infrastructure.
 9. Năng lực nghiệp vụ nào cũng có contract, kể cả khi Infrastructure cài đặt hoàn toàn; hạ tầng thuần thì không.
 10. Tên contract trung lập với cơ chế.
-11. Thao tác từ API (khóa admin) dùng `by = null`, nghĩa là server.
+11. Thao tác từ API (khóa admin) dùng kết nối BasilBot làm `by`, mang quyền server (thay `by = null` cùng ngày).
 12. Giữ friends, chặn, PM-privacy; sửa `working-scopes.md`.
 13. Verified là trạng thái riêng của bancho.py ("đã đăng nhập in-game ít nhất một lần"), không phải bit của osu!
     nên bỏ. Chặn phần cứng giữ, với "chưa verified" hiểu là "chưa có lần đăng nhập in-game nào trong lịch sử đăng
     nhập" (suy luận của agent, chờ người dùng xác nhận).
 14. `IUserStatsRepository` ghi bằng `CreateOrUpdateAsync`.
+15. BasilBot là người dùng bình thường trong `IUserRepository` với id cố định 0, tự tạo khi khởi động nếu chưa có; tên
+    và quốc gia sửa qua repository (cấu hình chỉ còn `Basil:Bot:CommandPrefix`); không xóa, im lặng, đổi quyền hay
+    đăng nhập bằng client được, kể cả khi mật khẩu bị sửa thẳng trong DB (mục 2.7).
 
 ## 9. Ngoài phạm vi
 
@@ -718,14 +742,15 @@ Domain.
 | osu!tourney cần quyền                                                                       | Sv `SessionService` (luật hiện tại theo `ClientPrivileges`)             | 2    |
 | Ghi lịch sử đăng nhập (IP, phiên bản, stream) và vân tay máy                                | S `ILoginRepository`; Sv `AuthService`                                  | 1, 2 |
 | Chặn tài khoản chưa từng đăng nhập in-game dùng chung phần cứng với tài khoản bị hạn chế    | Sv `AuthService` (mục 8.13)                                             | 2    |
-| Bot (user 0) lên mạng lúc khởi động, vào các kênh tự động                                   | Sv `SessionService.OpenBot`; I đồng bộ tên và quốc gia từ cấu hình      | 2    |
+| Bot (user 0) lên mạng lúc khởi động, vào các kênh tự động                                   | Sv `SessionService.OpenBotAsync` (tự tạo user 0 nếu chưa có); I gọi lúc khởi động | 2    |
+| BasilBot không đăng nhập bằng client (osu!, tourney, IRC) với bất kỳ mật khẩu nào         | Sv `AuthService.LoginAsync` từ chối user 0 trước khi kiểm mật khẩu      | 2    |
 | Đóng kết nối im lặng quá 300 s, quét mỗi 100 s, trừ bot                                     | Sv `CloseIdle`; I vòng lặp                                              | 2    |
 | Bỏ qua logout trong 1 s đầu sau đăng nhập (`develop` thêm)                                  | Sv `SessionService.Close`                                               | 2    |
 | Trạng thái, away, chỉ nhận PM từ bạn bè                                                     | Sv `SetStatus`, `SetAway`, `SetPmPrivate`                               | 2    |
 | Đăng ký in-game: kiểm tra (`check != 0`) và tạo; khóa admin trong ô email; quyền mặc định   | Sv `CheckRegistrationAsync`, `RegisterAsync`                            | 2    |
 | Admin tạo người dùng (tên, mật khẩu, quốc gia, quyền)                                       | Sv `CreateAccountAsync`                                                 | 2    |
-| Admin sửa tên, quốc gia, quyền                                                              | S `IUserRepository`, ghi thẳng                                          | 1    |
-| Xóa mềm người dùng, không áp cho bot                                                        | Sv `UserService.DeleteAsync`                                            | 2    |
+| Admin sửa tên, quốc gia (kể cả BasilBot); đổi quyền (không áp cho BasilBot)                 | S `IUserRepository` ghi thẳng; Sv `UserService.SetPrivilegeAsync`        | 1, 2 |
+| Xóa mềm, im lặng người dùng; không áp cho BasilBot                                                    | Sv `UserService.DeleteAsync`, `SilenceAsync`                            | 2    |
 | Im lặng: chặn chat, mở và vào phòng                                                         | Sv `UserService.SilenceAsync`; kiểm ở Channel, Lobby, Room              | 2–4  |
 | Thông báo popup tới người online, không gửi bot                                             | Sv `SessionService.Announce` → `UserNotificationSent`                   | 2    |
 | Cờ anticheat (`lastfm.php`): báo vào phòng, DM referee                                      | Sv `ReportClientFlags` → `UserConnectionFlagged`; I bot gửi tin         | 2    |
@@ -755,7 +780,7 @@ Domain.
 |-------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|-------|
 | Mở phòng in-game, `!mp make`, API (không creator); tối đa 4 phòng giải mỗi creator                          | Sv `LobbyService.OpenAsync`                                                   | 4a    |
 | Join (cấm, im lặng, quyền, phòng khác, observer, mật khẩu; Moderator bỏ qua mật khẩu), leave, chuyển host   | Sv `RoomService`                                                              | 4a    |
-| Kick, ban/unban (không áp referee, creator), invite, addref/removeref (chỉ creator), host/clearhost         | Sv `RoomService`, `by` nullable cho API                                       | 4a    |
+| Kick, ban/unban (không áp referee, creator), invite, addref/removeref (chỉ creator), host/clearhost         | Sv `RoomService`; API dùng kết nối bot                                            | 4a    |
 | Observer osu!tourney (vào kênh phòng, xem thông tin trận)                                                   | Sv `RoomService`                                                              | 4a    |
 | Đóng phòng; phòng thường đóng khi trống; phòng giải báo lúc trống và lúc còn 5 phút, đóng sau 15 phút        | Sv `LobbyService` (đã có)                                                     | 4a    |
 | Cài đặt: tên, map, mode, mod, freemod, team type, win condition, mật khẩu, size, private                    | Sv `RoomService.Configure`                                                    | 4b    |
@@ -982,9 +1007,10 @@ migrate Infrastructure sau này cần. Đường dẫn `main` viết tắt: `A/`
 * Ghost disconnect: mỗi 100 s, đóng phiên game và IRC im lặng quá 300 s, trừ bot; một lỗi không dừng cả lượt quét.
 * Logout: rời phòng, ngừng spectate, bỏ bot khỏi kênh spectate của người đó, rời mọi kênh (gửi đúng một QUIT khi đó là
   phiên cuối của người dùng), bỏ khỏi registry, broadcast Logout nếu không bị hạn chế.
-* Bot: user id 0 phải có trong DB, tên và quốc gia đồng bộ từ `Basil:Bot` (`Name` mặc định BasilBot, `Country` mặc
-  định vn, `CommandPrefix` bắt buộc), vào mọi kênh tự động; spectate mọi người vừa đăng nhập để client gửi
-  SpectateFrames (nguồn input cho `/users/{id}/live`).
+* Bot (hành vi cũ): user id 0 phải có trong DB, tên và quốc gia đồng bộ từ `Basil:Bot` (`Name` mặc định BasilBot,
+  `Country` mặc định vn, `CommandPrefix` bắt buộc), vào mọi kênh tự động; spectate mọi người vừa đăng nhập để client
+  gửi SpectateFrames (nguồn input cho `/users/{id}/live`). Kế hoạch mới (mục 2.7): tự tạo user 0 nếu thiếu, tên và
+  quốc gia sửa qua repository, cấu hình chỉ còn `CommandPrefix`.
 * Restricted (không có bit Unrestricted): ẩn với người khác, chỉ một số gói được xử lý (`AllowedWhenRestricted`),
   không multiplayer ("Multiplayer is not available while restricted."), nhận AccountRestricted.
 * Silence: lấy `SilenceEnd` từ DB lúc đăng nhập; chat bị bỏ im lặng; không mở hay vào phòng ("Multiplayer is not
@@ -998,7 +1024,7 @@ migrate Infrastructure sau này cần. Đường dẫn `main` viết tắt: `A/`
 * Luật tên: 3–15 ký tự, chữ, số, khoảng trắng và `_ - [ ]`; không khoảng trắng đầu, cuối hay kép; không toàn số.
 * Tài khoản mới: quốc gia `xx`, quyền Unrestricted | Verified | Supporter (19 trên `main`); mật khẩu bcrypt(md5).
 * Admin API: `POST /users {name, password, country, privilege}` (409 khi trùng tên); `PUT/PATCH /users/{id}` (tên,
-  quốc gia, quyền; bot id 0 bị từ chối 400); `DELETE /users/{id}` xóa mềm (đặt `DeletedAt`, quyền về 0; bot bị từ
+  quốc gia, quyền; bot id 0 bị từ chối 400 — kế hoạch mới cho sửa tên và quốc gia của bot, vẫn cấm đổi quyền); `DELETE /users/{id}` xóa mềm (đặt `DeletedAt`, quyền về 0; bot bị từ
   chối); avatar `PUT/DELETE/GET /users/{id}/avatar` (multipart `file`; GET trả tệp gốc, không ảnh mặc định).
 * Khóa admin: bcrypt của khóa, 1–72 byte trên `main` (plan mới: host băm MD5 khóa rồi so qua
   `ICredentialRepository`); không có khóa = bypass (mọi request là admin); `GET /settings/adminkey`
@@ -1178,7 +1204,7 @@ migrate Infrastructure sau này cần. Đường dẫn `main` viết tắt: `A/`
 ### B.9 Cấu hình và hạ tầng (để migrate Infrastructure/host sau)
 
 * `Basil:Server` {Domain (bắt buộc, phải là FQDN có dấu chấm, không `localhost`, không IP), Port 443, CertPath,
-  CertPassword, AdvertiseDomain true}; `Basil:Update` {CheckOnStartup, Source}; `Basil:Mirror`; `Basil:Bot`;
+  CertPassword, AdvertiseDomain true}; `Basil:Update` {CheckOnStartup, Source}; `Basil:Mirror`; `Basil:Bot` (kế hoạch mới: chỉ còn `CommandPrefix`);
   `Basil:Irc` {Name mặc định Basil, Port 6667}; `Basil:Logging:MinimumLevel`. Nguồn cấu hình chỉ
   `Data/appsettings.json`, `Data/appsettings.{env}.json` và dòng lệnh.
 * DB SQLite `Data/Basil.db` (WAL, foreign key, busy timeout 5 s, migration DbUp nhúng). Cache bộ nhớ 10 000 mục, TTL
