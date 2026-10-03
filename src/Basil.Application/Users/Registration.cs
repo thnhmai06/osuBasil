@@ -7,19 +7,20 @@ namespace Basil.Application.Users;
 /// <summary>Registers new users.</summary>
 public sealed class Registration(
 	IUserRepository users,
-	ICredentialRepository credentials,
-	IAdminKeyRepository adminKeys)
+	ICredentialRepository credentials)
 {
 	/// <summary>Registers a new user with a password.</summary>
 	/// <param name="name">The requested username.</param>
 	/// <param name="passwordHash">The MD5 of the password.</param>
-	/// <param name="adminKey">The administrator key.</param>
+	/// <param name="adminKey">The MD5 of the administrator key the registrant supplied, or <see langword="null" /> when none was supplied; required only while an administrator key is set.</param>
 	/// <param name="cancellationToken">A token that cancels the registration.</param>
 	/// <returns>The new user, or why the registration was refused.</returns>
 	public async Task<(User? User, RegistrationFailure? Failure)> RegisterAsync(string name, Md5 passwordHash,
-		string adminKey, CancellationToken cancellationToken = default)
+		Md5? adminKey, CancellationToken cancellationToken = default)
 	{
-		if (!await adminKeys.VerifyAsync(adminKey, cancellationToken)) return (null, RegistrationFailure.WrongAdminKey);
+		if (await credentials.GetAdminKeyUpdatedAtAsync(cancellationToken) is not null &&
+		    (adminKey is not { } key || !await credentials.VerifyAdminKeyAsync(key, cancellationToken)))
+			return (null, RegistrationFailure.WrongAdminKey);
 
 		UserData data;
 		try
@@ -31,11 +32,11 @@ public sealed class Registration(
 			return (null, RegistrationFailure.InvalidName);
 		}
 
-		if (await users.FindByNameAsync(name, cancellationToken) is not null)
+		if (await users.GetByNameAsync(name, cancellationToken) is not null)
 			return (null, RegistrationFailure.NameTaken);
 
-		var user = await users.AddAsync(data, cancellationToken);
-		await credentials.SaveAsync(new Credentials(user, passwordHash), cancellationToken);
+		var user = await users.CreateAsync(data, cancellationToken);
+		await credentials.CreateOrUpdateAsync(new Credentials(user, passwordHash), cancellationToken);
 		return (user, null);
 	}
 }

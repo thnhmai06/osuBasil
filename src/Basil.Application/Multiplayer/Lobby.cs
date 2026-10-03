@@ -102,7 +102,7 @@ public sealed class Lobby(IMatchRepository matches, UserRegistry usersRegistry, 
 
 		if (FreeRoomId() is null) return (null, RoomResult.NoRoomId);
 
-		var match = await matches.AddAsync(new MatchData
+		var match = await matches.CreateAsync(new MatchData
 		{
 			Name = name,
 			StartedAt = time.GetUtcNow(),

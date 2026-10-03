@@ -410,7 +410,7 @@ BasilBot là một người dùng bình thường trong `IUserRepository`, với
 | `IReplayStorage`         | `SaveAsync`                                                 | `SaveAsync(Score, Stream)`, `OpenAsync(Score)`                                                                                                                                         |
 | `IUserStatsRepository`   | `LoadAsync`, `UpdateAsync`                                  | `GetAsync(User, GameMode)`, `CreateOrUpdateAsync(UserStats)`                                                                                                                           |
 | `IBeatmapRepository`     | `SaveAsync`, `RetainAsync`                                  | `CreateOrUpdateAsync(Beatmap)`, `GetAsync(id)`, `GetByHashAsync(Md5)`, `ListAsync(Beatmapset)`, `ListAsync(BeatmapQuery, PageRequest)`, `RetainAsync(Beatmapset, keep)`                |
-| `IBeatmapsetRepository`  | `GetAsync`, `SaveAsync`                                     | `GetAsync(id)`, `CreateOrUpdateAsync(Beatmapset)`, `ListAsync(BeatmapsetQuery, PageRequest)`, `DeleteAsync(Beatmapset)`                                                                |
+| `IBeatmapsetRepository`  | `GetAsync`, `SaveAsync`                                     | `GetAsync(id)`, `CreateOrUpdateAsync(Beatmapset)`, `ListAsync(BeatmapQuery, PageRequest)` (các set có ít nhất một beatmap khớp), `DeleteAsync(Beatmapset)`                                                                |
 | `IBeatmapArchiveStorage` | `SaveAsync`                                                 | `SaveAsync(Beatmapset, Stream)`, `OpenAsync(Beatmapset)`, `DeleteAsync(Beatmapset)`                                                                                                    |
 | `IScoreRepository.CreateAsync` | (chưa kiểm trùng)                                     | trả `Score?`: `null` khi đã có điểm cùng checksum. Ràng buộc duy nhất nằm ở kho; service không giữ khóa                                                                               |
 | `ILoginRepository`       | (chưa có; Infra cũ có `IngameLogins`, `ClientHashes`)       | `CreateAsync(Login)`, `ListAsync(LoginQuery, PageRequest)` (mới nhất trước): lịch sử đăng nhập kèm client và vân tay máy; `ScoreService` đối chiếu khi kiểm tra bài nộp |
@@ -433,10 +433,10 @@ Tiêu chí truy vấn, chỉ gồm các field mà API và web osu! dùng (kể c
 * `ScoreQuery(User? Player, Md5? BeatmapHash, Match? Match)`: `/scores`, bảng điểm theo beatmap.
 * `BeatmapQuery(string? Text, GameMode? Mode, bool IncludeHidden, ...khoảng giá trị)`: `/beatmapsets/search`,
   `osu-search.php`.
-* `BeatmapsetQuery(string? Text, bool IncludeHidden, ...)`: `/beatmapsets`.
+* `BeatmapsetQuery` gộp vào `BeatmapQuery` (2026-10-03, pha 1): kho beatmapset liệt kê các set có ít nhất một beatmap khớp `BeatmapQuery`; `/beatmapsets` dùng truy vấn rỗng.
 
 Cú pháp tìm kiếm kiểu osu!web bị xóa khỏi Application ở `d9b6620d`; Infra cũ và API vẫn dùng nên khôi phục, nhưng
-không dựng lại hệ truy vấn tổng quát. `BeatmapQuery`/`BeatmapsetQuery` thêm khoảng giá trị cho `stars`, `ar`, `cs`,
+không dựng lại hệ truy vấn tổng quát. `BeatmapQuery` thêm khoảng giá trị cho `stars`, `ar`, `cs`,
 `od`, `hp`/`dr`, `bpm`, `length`, `keys`, `circles`, `sliders`, `created`, `updated` và trường văn bản `creator`,
 `artist`, `title`, `difficulty`, `status`. Mỗi record có `Parse(string)` cho cú pháp đó: toán tử `: = < <= > >=`,
 giá trị trong ngoặc kép được chứa khoảng trắng, khóa lạ hoặc giá trị không parse được thành từ khóa. Một kiểu khoảng

@@ -40,10 +40,11 @@ public sealed record Submission
 	/// <returns>A submission populated with the parsed values.</returns>
 	public static Submission Parse(IReadOnlyList<string> submitFields, Md5? beatmapHash = null, int? userId = null)
 	{
+		Md5 checksum = submitFields[0];
 		return new Submission
 		{
-			Score = ScoreData.Parse(submitFields, beatmapHash, userId),
-			HashByClient = submitFields[0],
+			Score = ScoreData.Parse(submitFields, beatmapHash, userId) with { Checksum = checksum },
+			HashByClient = checksum,
 			ClientFlags = (ClientFlags)(submitFields[15].Count(c => c == ' ') & ~4)
 		};
 	}

@@ -50,7 +50,7 @@ public sealed class BeatmapCatalog(
 		await using var content = new MemoryStream(archiveContent, false);
 		await archives.SaveAsync(set, content, cancellationToken);
 
-		await beatmapsets.SaveAsync(set, cancellationToken);
+		await beatmapsets.CreateOrUpdateAsync(set, cancellationToken);
 
 		var result = new List<Beatmap>(difficultyFiles.Count);
 		foreach (var file in difficultyFiles)
@@ -65,7 +65,7 @@ public sealed class BeatmapCatalog(
 				Difficulty = analysis.Difficulty,
 				Objects = analysis.Objects
 			};
-			await beatmaps.SaveAsync(beatmap, cancellationToken);
+			await beatmaps.CreateOrUpdateAsync(beatmap, cancellationToken);
 			result.Add(beatmap);
 		}
 

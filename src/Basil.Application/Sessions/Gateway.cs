@@ -40,7 +40,7 @@ public sealed class Gateway(
 		if (type is ConnectionType.Bancho or ConnectionType.Tourney && client is null)
 			throw new ArgumentNullException(nameof(client), "An osu! client login must report its client.");
 
-		var user = await usersRepository.FindByNameAsync(attempt.Username, cancellationToken);
+		var user = await usersRepository.GetByNameAsync(attempt.Username, cancellationToken);
 		if (user is null) return LoginResult.Fail(LoginFailure.UnknownUser);
 		if (user.Value.DeletedAt is not null) return LoginResult.Fail(LoginFailure.AccountDeleted);
 

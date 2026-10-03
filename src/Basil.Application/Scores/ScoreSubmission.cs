@@ -50,8 +50,9 @@ public sealed class ScoreSubmission(
 			    clientVersionDate, clientBeatmapHash) is { } rejection)
 			return rejection;
 
-		var score = await scores.AddAsync(submission.Score with { UserId = connection.User.Id, Round = round },
+		var score = await scores.CreateAsync(submission.Score with { UserId = connection.User.Id, Round = round },
 			cancellationToken);
+		if (score is null) return ScoreRejection.Duplicate;
 
 		if (replay is not null)
 		{
@@ -59,7 +60,8 @@ public sealed class ScoreSubmission(
 			await replays.SaveAsync(score, content, cancellationToken);
 		}
 
-		var current = await stats.LoadAsync(connection.User, submission.Score.Mode, cancellationToken);
+		// ponytail: get-then-write per user; add an atomic increment to the contract if one user's submissions can overlap.
+		var current = await stats.GetAsync(connection.User, submission.Score.Mode, cancellationToken);
 		current.PlayCount++;
 		if (submission.Score.IsPassed)
 		{
@@ -69,7 +71,7 @@ public sealed class ScoreSubmission(
 			current.RankedScore += submission.Score.TotalScore;
 		}
 
-		await stats.UpdateAsync(current, cancellationToken);
+		await stats.CreateOrUpdateAsync(current, cancellationToken);
 
 		if (room is not null && round is not null)
 		{

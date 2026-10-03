@@ -6,4 +6,5 @@ namespace Basil.Domain.Chat;
 /// <param name="Author">The user who posted the message.</param>
 /// <param name="Content">The text of the message.</param>
 /// <param name="Timestamp">The date and time the message was posted.</param>
-public sealed record Message(User Author, string Content, DateTimeOffset Timestamp);
+/// <param name="IsNotice">Whether the message is a notice, which never triggers an automatic reply.</param>
+public sealed record Message(User Author, string Content, DateTimeOffset Timestamp, bool IsNotice = false);

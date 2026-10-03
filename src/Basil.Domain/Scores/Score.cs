@@ -88,6 +88,12 @@ public sealed record ScoreData(
 	public Round? Round { get; init; }
 
 	/// <summary>
+	///     Gets the checksum the client computed for the submission of this score, which identifies the submission,
+	///     or <see langword="null" /> when it is not known.
+	/// </summary>
+	public Md5? Checksum { get; init; }
+
+	/// <summary>
 	///     Gets the play's accuracy, computed from its hit counts under its mode and mods.
 	/// </summary>
 	public double Accuracy => HitCounts.CalculateAccuracy(Mode, Mods);

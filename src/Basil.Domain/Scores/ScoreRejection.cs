@@ -22,5 +22,8 @@ public enum ScoreRejection : byte
 	BeatmapHashMismatch,
 
 	/// <summary>The server does not know the beatmap and it is not the beatmap of the player's current round.</summary>
-	UnknownBeatmap
+	UnknownBeatmap,
+
+	/// <summary>A score with the same checksum was already submitted.</summary>
+	Duplicate
 }
