@@ -24,13 +24,20 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	/// </remarks>
 	Task<RoomResult> JoinAsync(Room room, BanchoConnection by, string password, CancellationToken cancellationToken = default);
 
-	/// <summary>Seats an online player in a room on behalf of its managers, leaving any other room first.</summary>
+	/// <summary>Seats an online player in a room on behalf of its managers.</summary>
 	/// <param name="room">The room to seat the player in.</param>
 	/// <param name="by">The creator, a referee or BasilBot.</param>
 	/// <param name="player">The player's osu! client.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>Ok, NotAuthorized, TargetOffline, AlreadySeated, Banned, InAnotherRoom when the player sat down elsewhere meanwhile, IsObserver, Full or RoomClosed.</returns>
-	/// <remarks>The room's password is not asked for; a ban still applies.</remarks>
+	/// <returns>
+	///     Ok, NotAuthorized when the caller does not manage the room or the player may not play, TargetOffline,
+	///     AlreadySeated, Banned, Silenced, InAnotherRoom when the player sits in a room the caller does not manage,
+	///     IsObserver, Full or RoomClosed.
+	/// </returns>
+	/// <remarks>
+	///     The room's password is not asked for; a ban, a silence and the player's privileges still apply. A player in another
+	///     room is moved only when the caller manages that room too.
+	/// </remarks>
 	Task<RoomResult> SeatAsync(Room room, Connection by, BanchoConnection player, CancellationToken cancellationToken = default);
 
 	/// <summary>Removes a player from the room.</summary>

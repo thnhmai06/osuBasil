@@ -65,9 +65,15 @@ internal sealed class RoomService(
 	{
 		if (!RoomRules.CanManage(room, by)) return RoomResult.NotAuthorized;
 		if (!player.IsOpen) return RoomResult.TargetOffline;
+		if (player.User.Value.SilenceEndsAt > time.GetUtcNow()) return RoomResult.Silenced;
+		if (!player.User.Value.Privilege.Has(ClientPrivileges.Player)) return RoomResult.NotAuthorized;
+		if (room.Banned.Contains(player.User)) return RoomResult.Banned;
 
 		if (lobby.RoomOf(player) is { } other && !ReferenceEquals(other, room))
+		{
+			if (!RoomRules.CanManage(other, by)) return RoomResult.InAnotherRoom;
 			await LeaveAsync(other, player, cancellationToken);
+		}
 
 		return await InScopeAsync(room, () => Seat(room, by, player), cancellationToken);
 	}
