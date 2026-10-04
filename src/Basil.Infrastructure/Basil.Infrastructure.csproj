@@ -18,7 +18,7 @@
 		<ProjectReference Include="..\Basil.Domain\Basil.Domain.csproj"/>
 		<ProjectReference Include="..\Basil.Protocol.Bancho\Basil.Protocol.Bancho.csproj"/>
 		<ProjectReference Include="..\Basil.Protocol.Irc\Basil.Protocol.Irc.csproj"/>
-		<ProjectReference Include="..\Basil.Application\Basil.Application.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Contracts\Basil.Application.Contracts.csproj"/>
 	</ItemGroup>
 
 	<ItemGroup>

@@ -10,7 +10,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\Basil.Application\Basil.Application.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Contracts\Basil.Application.Contracts.csproj"/>
+		<ProjectReference Include="..\Basil.Application.Services\Basil.Application.Services.csproj"/>
 		<ProjectReference Include="..\Basil.Infrastructure\Basil.Infrastructure.csproj"/>
 		<ProjectReference Include="..\Basil.Protocol.Irc\Basil.Protocol.Irc.csproj"/>
 	</ItemGroup>
