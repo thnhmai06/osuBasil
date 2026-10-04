@@ -58,9 +58,13 @@ internal sealed class UserService(
 
 		var now = time.GetUtcNow();
 		user.Value.DeletedAt = now;
+		user.Value.Privilege = ClientPrivileges.None;
 		var session = registry.Find(user);
 		if (session is not null && !ReferenceEquals(session.User, user))
+		{
 			session.User.Value.DeletedAt = now;
+			session.User.Value.Privilege = ClientPrivileges.None;
+		}
 
 		await users.CreateOrUpdateAsync(user, cancellationToken);
 

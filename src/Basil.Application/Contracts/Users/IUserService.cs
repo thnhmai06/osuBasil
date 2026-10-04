@@ -27,6 +27,6 @@ public interface IUserService : IEventPublisher<UserEvent>
 	/// <param name="user">The user to delete.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns><see langword="true" /> if the user was changed; <see langword="false" /> for BasilBot, which cannot be changed this way.</returns>
-	/// <remarks>The user's open connections are closed.</remarks>
+	/// <remarks>The user loses every privilege and their open connections are closed.</remarks>
 	Task<bool> DeleteAsync(User user, CancellationToken cancellationToken = default);
 }
