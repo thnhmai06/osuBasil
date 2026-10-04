@@ -1,6 +1,5 @@
 using Basil.Application.Storage.Multiplayer;
 using Basil.Application.Storage.Sessions;
-using Basil.Domain.Users;
 
 namespace Basil.Application.Contracts.Multiplayer.Events;
 
@@ -16,7 +15,10 @@ public abstract record RoomAccessEvent(Room Room) : RoomEvent(Room);
 /// </param>
 /// <param name="Evicted">The connection that was removed, or <see langword="null" /> when the player was not seated.</param>
 /// <param name="Host">The room's host after the player left.</param>
-/// <param name="RoundProgress">What the departure did to the round in progress, or <see langword="null" /> when no round was in progress or nothing changed.</param>
+/// <param name="RoundProgress">
+///     What the departure did to the round in progress, or <see langword="null" /> when no round
+///     was in progress or nothing changed.
+/// </param>
 public sealed record RoomPlayerBanned(
 	Room Room,
 	User Player,

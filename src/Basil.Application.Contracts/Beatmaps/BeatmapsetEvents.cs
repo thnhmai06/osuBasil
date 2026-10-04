@@ -1,5 +1,4 @@
 using Basil.Application.Contracts.Events;
-using Basil.Domain.Beatmaps;
 
 namespace Basil.Application.Contracts.Beatmaps;
 

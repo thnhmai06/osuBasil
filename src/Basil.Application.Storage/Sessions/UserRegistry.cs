@@ -15,7 +15,10 @@ public sealed class UserRegistry
 	/// <summary>Finds the online session of a user.</summary>
 	/// <param name="user">The user to look up.</param>
 	/// <returns>The user's session, or <see langword="null" /> when the user is offline.</returns>
-	public UserSession? Find(User user) => _sessions.GetValueOrDefault(user);
+	public UserSession? Find(User user)
+	{
+		return _sessions.GetValueOrDefault(user);
+	}
 
 	/// <summary>Finds the spectator channel a connection is spectating.</summary>
 	/// <param name="connection">The connection to look up.</param>
@@ -30,11 +33,20 @@ public sealed class UserRegistry
 	}
 
 	/// <summary>Adds an online session.</summary>
-	internal void Add(UserSession session) => _sessions[session.User] = session;
+	internal void Add(UserSession session)
+	{
+		_sessions[session.User] = session;
+	}
 
 	/// <summary>Removes an online session; a different session of the same user is left in place.</summary>
-	internal bool Remove(UserSession session) => _sessions.TryRemove(new KeyValuePair<User, UserSession>(session.User, session));
+	internal bool Remove(UserSession session)
+	{
+		return _sessions.TryRemove(new KeyValuePair<User, UserSession>(session.User, session));
+	}
 
 	/// <summary>Enters the scope in which connections are opened and closed one at a time.</summary>
-	internal Lock.Scope Enter() => _sync.EnterScope();
+	internal Lock.Scope Enter()
+	{
+		return _sync.EnterScope();
+	}
 }

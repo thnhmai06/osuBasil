@@ -15,7 +15,8 @@ internal sealed partial class RoomService
 	/// <param name="length">The countdown's length.</param>
 	/// <param name="startsRound">Whether the countdown starts the round when it ends.</param>
 	/// <returns>
-	///     Every mark is strictly below <paramref name="length" />. A countdown that starts the round announces at 60, 30, 10, 5,
+	///     Every mark is strictly below <paramref name="length" />. A countdown that starts the round announces at 60, 30, 10,
+	///     5,
 	///     4 and 3 seconds and at every whole minute (120, 180, ...), skipping any whole-minute mark, 60 included, within 5
 	///     seconds of the length. Any other countdown announces at 60, 30, 10 and 5 seconds.
 	/// </returns>
@@ -157,7 +158,10 @@ internal sealed partial class RoomService
 	/// <param name="by">The connection to look for.</param>
 	/// <param name="round">The round in progress, when the connection is playing it.</param>
 	/// <param name="slot">The connection's slot, when it is playing.</param>
-	/// <returns><see langword="true" /> if a round is in progress and the connection is playing it; otherwise, <see langword="false" />.</returns>
+	/// <returns>
+	///     <see langword="true" /> if a round is in progress and the connection is playing it; otherwise,
+	///     <see langword="false" />.
+	/// </returns>
 	private static bool TryGetPlayingSlot(Room room, BanchoConnection by, [MaybeNullWhen(false)] out Round round,
 		[MaybeNullWhen(false)] out RoomSlot slot)
 	{

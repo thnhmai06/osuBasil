@@ -1,4 +1,3 @@
-using System.Globalization;
 using Basil.Domain.Client;
 using Basil.Domain.Utilities;
 

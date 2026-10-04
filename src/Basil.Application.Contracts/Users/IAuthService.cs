@@ -1,9 +1,5 @@
 using System.Net;
-using Basil.Application.Contracts.Sessions;
 using Basil.Application.Storage.Sessions;
-using Basil.Domain.Client;
-using Basil.Domain.Users;
-using Basil.Domain.Utilities;
 
 namespace Basil.Application.Contracts.Users;
 
@@ -29,7 +25,8 @@ public interface IAuthService
 	/// <remarks>
 	///     BasilBot can never log in, whatever password is stored for it. A successful login is recorded in the login history.
 	/// </remarks>
-	Task<LoginResult> LoginAsync(LoginAttempt attempt, ConnectionType type, IPAddress ip, ClientInfo? client, int utcOffset, CancellationToken cancellationToken = default);
+	Task<LoginResult> LoginAsync(LoginAttempt attempt, ConnectionType type, IPAddress ip, ClientInfo? client,
+		int utcOffset, CancellationToken cancellationToken = default);
 
 	/// <summary>Checks a registration attempt without creating the account.</summary>
 	/// <param name="attempt">The registration attempt to check.</param>
@@ -38,7 +35,8 @@ public interface IAuthService
 	/// <remarks>
 	///     While an administrator key is set, the attempt must carry a matching one.
 	/// </remarks>
-	Task<RegistrationFailure?> CheckRegistrationAsync(RegisterAttempt attempt, CancellationToken cancellationToken = default);
+	Task<RegistrationFailure?> CheckRegistrationAsync(RegisterAttempt attempt,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>Creates the account a registration attempt asks for.</summary>
 	/// <param name="attempt">The registration attempt.</param>
@@ -47,12 +45,14 @@ public interface IAuthService
 	/// <remarks>
 	///     While an administrator key is set, the attempt must carry a matching one.
 	/// </remarks>
-	Task<(User? User, RegistrationFailure? Failure)> RegisterAsync(RegisterAttempt attempt, CancellationToken cancellationToken = default);
+	Task<(User? User, RegistrationFailure? Failure)> RegisterAsync(RegisterAttempt attempt,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>Creates an account on behalf of an administrator, without an administrator key.</summary>
 	/// <param name="data">The account data.</param>
 	/// <param name="passwordHash">The MD5 digest of the password.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The new user, or why the account could not be created (<see cref="RegistrationFailure.NameTaken" />).</returns>
-	Task<(User? User, RegistrationFailure? Failure)> CreateAccountAsync(UserData data, Md5 passwordHash, CancellationToken cancellationToken = default);
+	Task<(User? User, RegistrationFailure? Failure)> CreateAccountAsync(UserData data, Md5 passwordHash,
+		CancellationToken cancellationToken = default);
 }

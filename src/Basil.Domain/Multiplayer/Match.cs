@@ -18,9 +18,6 @@ public sealed class Match : IWrapper<MatchData>, IEquatable<Match>
 		}
 	}
 
-	/// <summary>Gets the match data this identity wraps.</summary>
-	public required MatchData Value { get; init; }
-
 	/// <summary>
 	///     Determines whether another match refers to the same persisted match.
 	/// </summary>
@@ -37,6 +34,9 @@ public sealed class Match : IWrapper<MatchData>, IEquatable<Match>
 		if (other is null) return false;
 		return Id == other.Id;
 	}
+
+	/// <summary>Gets the match data this identity wraps.</summary>
+	public required MatchData Value { get; init; }
 
 	/// <summary>
 	///     Determines whether this match equals another object.

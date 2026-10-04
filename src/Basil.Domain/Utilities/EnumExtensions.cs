@@ -9,7 +9,10 @@ public static class EnumExtensions
 	/// </summary>
 	/// <param name="value">The value to check.</param>
 	/// <typeparam name="TEnum">The enum type.</typeparam>
-	/// <exception cref="ArgumentOutOfRangeException"><paramref name="value" /> is not a valid value of <typeparamref name="TEnum" />.</exception>
+	/// <exception cref="ArgumentOutOfRangeException">
+	///     <paramref name="value" /> is not a valid value of
+	///     <typeparamref name="TEnum" />.
+	/// </exception>
 	public static void ThrowIfUndefined<TEnum>(this TEnum value) where TEnum : struct, Enum
 	{
 		if (!IsValid(value))

@@ -10,6 +10,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<InternalsVisibleTo Include="Basil.Application.Services" />
+		<InternalsVisibleTo Include="Basil.Application.Services"/>
 	</ItemGroup>
 </Project>

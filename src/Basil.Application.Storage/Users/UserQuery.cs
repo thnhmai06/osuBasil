@@ -6,7 +6,10 @@ using Basil.Domain.Users;
 namespace Basil.Application.Storage.Users;
 
 /// <summary>Which users a user listing includes.</summary>
-/// <param name="Text">Text matched against the user's id exactly or contained in the name (ignoring case and spaces), or <see langword="null" /> for any.</param>
+/// <param name="Text">
+///     Text matched against the user's id exactly or contained in the name (ignoring case and spaces), or
+///     <see langword="null" /> for any.
+/// </param>
 /// <param name="Countries">The countries a user may be from, or <see langword="null" /> for any.</param>
 /// <param name="Privilege">Privileges a user must all hold, or <see langword="null" /> for any.</param>
 /// <param name="IncludeDeleted">Whether deleted users are included.</param>

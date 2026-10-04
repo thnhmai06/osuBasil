@@ -9,6 +9,7 @@ using Basil.Application.Storage.Users;
 using Basil.Domain.Chat;
 using Basil.Domain.Client;
 using Basil.Domain.Social;
+using Channel = System.Threading.Channels.Channel;
 
 namespace Basil.Application.Services.Chat;
 
@@ -19,19 +20,10 @@ internal sealed class ChannelService(
 	IRelationshipRepository relationships,
 	TimeProvider time) : IChannelService
 {
-	private readonly Channel<ChannelEvent> _events = System.Threading.Channels.Channel.CreateUnbounded<ChannelEvent>();
+	private readonly Channel<ChannelEvent> _events = Channel.CreateUnbounded<ChannelEvent>();
 
 	/// <inheritdoc />
 	public ChannelReader<ChannelEvent> Events => _events.Reader;
-
-	/// <inheritdoc />
-	public GeneralChannelSession? Open(GeneralChannel channel)
-	{
-		var session = new GeneralChannelSession(channel);
-		if (!generalChannels.Add(session)) return null;
-		Emit(new ChannelOpened(session));
-		return session;
-	}
 
 	/// <inheritdoc />
 	public void Close(ChannelSession channel)
@@ -179,6 +171,15 @@ internal sealed class ChannelService(
 
 		Emit(new ChannelSpectatorFailed(spectatorChannel, by));
 		return true;
+	}
+
+	/// <inheritdoc />
+	public GeneralChannelSession? Open(GeneralChannel channel)
+	{
+		var session = new GeneralChannelSession(channel);
+		if (!generalChannels.Add(session)) return null;
+		Emit(new ChannelOpened(session));
+		return session;
 	}
 
 	/// <summary>Checks whether a connection may read a channel.</summary>

@@ -4,9 +4,18 @@ using Basil.Domain.Scores;
 namespace Basil.Domain.Multiplayer;
 
 /// <summary>Who won a round and by how much.</summary>
-/// <param name="WinningTeam">The winning team in a team round, or <see langword="null" /> for a round without teams or a draw.</param>
-/// <param name="WinningUserId">The id of the winning player, or <see langword="null" /> when a team beat another team or the round is a draw.</param>
-/// <param name="Margin">How far the winner is ahead of the runner-up in the round's win metric; zero for a draw or an unopposed winner.</param>
+/// <param name="WinningTeam">
+///     The winning team in a team round, or <see langword="null" /> for a round without teams or a
+///     draw.
+/// </param>
+/// <param name="WinningUserId">
+///     The id of the winning player, or <see langword="null" /> when a team beat another team or
+///     the round is a draw.
+/// </param>
+/// <param name="Margin">
+///     How far the winner is ahead of the runner-up in the round's win metric; zero for a draw or an
+///     unopposed winner.
+/// </param>
 public sealed record RoundResult(GameTeam? WinningTeam, int? WinningUserId, double Margin)
 {
 	/// <summary>Decides the result of a round from its scores.</summary>

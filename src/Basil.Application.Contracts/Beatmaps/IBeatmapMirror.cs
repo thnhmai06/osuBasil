@@ -1,5 +1,4 @@
 using Basil.Application.Storage.Common;
-using Basil.Domain.Mechanics;
 
 namespace Basil.Application.Contracts.Beatmaps;
 
@@ -12,7 +11,8 @@ public interface IBeatmapMirror
 	/// <param name="page">Which part of the results to return.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The matching beatmapsets, or <see langword="null" /> when no mirror is set or the mirror failed.</returns>
-	Task<IReadOnlyList<MirrorBeatmapset>?> SearchAsync(string? text, GameMode? mode, PageRequest page, CancellationToken cancellationToken = default);
+	Task<IReadOnlyList<MirrorBeatmapset>?> SearchAsync(string? text, GameMode? mode, PageRequest page,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>Gets where a beatmapset can be downloaded from the mirror.</summary>
 	/// <param name="beatmapsetId">The beatmapset id.</param>

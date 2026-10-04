@@ -1,5 +1,4 @@
 using Basil.Application.Storage.Sessions;
-using Basil.Domain.Utilities;
 
 namespace Basil.Application.Contracts.Users;
 

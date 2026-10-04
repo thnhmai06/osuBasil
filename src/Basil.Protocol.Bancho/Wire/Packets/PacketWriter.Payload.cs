@@ -6,7 +6,10 @@ namespace Basil.Protocol.Bancho.Wire.Packets;
 
 public partial class PacketWriter
 {
-	/// <summary>Writes a chat message payload: sender, text, and recipient as osu! strings, then the sender's ID as a 32-bit integer.</summary>
+	/// <summary>
+	///     Writes a chat message payload: sender, text, and recipient as osu! strings, then the sender's ID as a 32-bit
+	///     integer.
+	/// </summary>
 	/// <param name="sender">The sender's username.</param>
 	/// <param name="text">The message body.</param>
 	/// <param name="recipient">The receiving channel name or username.</param>

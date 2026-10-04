@@ -1,5 +1,4 @@
 using Basil.Application.Storage.Multiplayer;
-using Basil.Domain.Mechanics;
 
 namespace Basil.Application.Contracts.Multiplayer;
 

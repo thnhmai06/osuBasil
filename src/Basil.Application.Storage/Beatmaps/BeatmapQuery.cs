@@ -6,7 +6,10 @@ using Basil.Domain.Mechanics;
 namespace Basil.Application.Storage.Beatmaps;
 
 /// <summary>Which beatmaps a beatmap or beatmapset listing includes.</summary>
-/// <param name="Text">Free text matched against the artist, title, creator and difficulty name, or <see langword="null" /> for any.</param>
+/// <param name="Text">
+///     Free text matched against the artist, title, creator and difficulty name, or <see langword="null" />
+///     for any.
+/// </param>
 /// <param name="Mode">The game mode a beatmap must be for, or <see langword="null" /> for any.</param>
 /// <param name="IncludeHidden">Whether hidden beatmaps and beatmapsets are included.</param>
 /// <param name="Stars">The star rating range, or <see langword="null" /> for any.</param>

@@ -33,6 +33,31 @@ internal sealed class LobbyService(
 	public ChannelReader<LobbyEvent> Events => _events.Reader;
 
 	/// <inheritdoc />
+	public async Task<RoomResult> CloseAsync(Room room, Connection by, CancellationToken cancellationToken = default)
+	{
+		await using var scope = await lobby.EnterAsync(room, cancellationToken);
+		if (scope is null) return RoomResult.Ok;
+		if (!RoomRules.CanManage(room, by)) return RoomResult.NotAuthorized;
+
+		Close(room);
+		return RoomResult.Ok;
+	}
+
+	/// <inheritdoc />
+	public void Watch(BanchoConnection by)
+	{
+		if (lobby.AddWatcher(by))
+			Emit(new LobbyWatcherJoined(by));
+	}
+
+	/// <inheritdoc />
+	public void Unwatch(BanchoConnection by)
+	{
+		if (lobby.RemoveWatcher(by))
+			Emit(new LobbyWatcherLeft(by));
+	}
+
+	/// <inheritdoc />
 	public async Task<(Room? Room, RoomResult Result)> OpenAsync(
 		User? creator,
 		BanchoConnection? creatorConnection,
@@ -90,31 +115,6 @@ internal sealed class LobbyService(
 			: null;
 		Emit(new LobbyRoomOpened(room, room.Host, closesAt));
 		return (room, RoomResult.Ok);
-	}
-
-	/// <inheritdoc />
-	public async Task<RoomResult> CloseAsync(Room room, Connection by, CancellationToken cancellationToken = default)
-	{
-		await using var scope = await lobby.EnterAsync(room, cancellationToken);
-		if (scope is null) return RoomResult.Ok;
-		if (!RoomRules.CanManage(room, by)) return RoomResult.NotAuthorized;
-
-		Close(room);
-		return RoomResult.Ok;
-	}
-
-	/// <inheritdoc />
-	public void Watch(BanchoConnection by)
-	{
-		if (lobby.AddWatcher(by))
-			Emit(new LobbyWatcherJoined(by));
-	}
-
-	/// <inheritdoc />
-	public void Unwatch(BanchoConnection by)
-	{
-		if (lobby.RemoveWatcher(by))
-			Emit(new LobbyWatcherLeft(by));
 	}
 
 	/// <summary>

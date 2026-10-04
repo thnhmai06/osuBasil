@@ -96,6 +96,6 @@ public readonly record struct ClientFingerprint(
 	/// <returns>The client hash string.</returns>
 	public override string ToString()
 	{
-		return ToString(null, null);
+		return ToString();
 	}
 }

@@ -18,11 +18,13 @@ public readonly record struct Interval<T>(T? Min, T? Max, bool MinInclusive = tr
 			var cmp = value.CompareTo(Min.Value);
 			if (MinInclusive ? cmp < 0 : cmp <= 0) return false;
 		}
+
 		if (Max is not null)
 		{
 			var cmp = value.CompareTo(Max.Value);
 			if (MaxInclusive ? cmp > 0 : cmp >= 0) return false;
 		}
+
 		return true;
 	}
 }

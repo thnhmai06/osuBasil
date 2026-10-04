@@ -18,6 +18,12 @@ internal sealed class SessionService(
 	IUserRepository users,
 	TimeProvider time) : ISessionService
 {
+	/// <summary>The default name for BasilBot.</summary>
+	internal const string BotName = "BasilBot";
+
+	/// <summary>The default country for BasilBot.</summary>
+	internal const Country BotCountry = Country.Vn;
+
 	/// <summary>How long a connection must be idle before a new login of the same kind replaces it.</summary>
 	internal static readonly TimeSpan ReplaceAfterIdle = TimeSpan.FromSeconds(10);
 
@@ -27,12 +33,6 @@ internal sealed class SessionService(
 	/// <summary>How long a client connection may send nothing before it is closed.</summary>
 	internal static readonly TimeSpan IdleTimeout = TimeSpan.FromSeconds(300);
 
-	/// <summary>The default name for BasilBot.</summary>
-	internal const string BotName = "BasilBot";
-
-	/// <summary>The default country for BasilBot.</summary>
-	internal const Country BotCountry = Country.Vn;
-
 	/// <summary>The default privileges for BasilBot.</summary>
 	internal static readonly ClientPrivileges BotPrivilege =
 		ClientPrivileges.Player | ClientPrivileges.Moderator | ClientPrivileges.Supporter;
@@ -41,51 +41,6 @@ internal sealed class SessionService(
 
 	/// <inheritdoc />
 	public ChannelReader<UserEvent> Events => _events.Reader;
-
-	/// <summary>Opens an authenticated connection, bringing its user online if this is their first.</summary>
-	/// <param name="connection">The new connection.</param>
-	/// <returns><see langword="null" /> on success; otherwise, why the connection was refused.</returns>
-	/// <remarks>
-	///     A kind that allows one connection per user replaces a connection of the same kind that has been
-	///     idle for at least <see cref="ReplaceAfterIdle" />, and refuses the new one otherwise. osu!tourney
-	///     connections require the Player and Supporter privileges.
-	/// </remarks>
-	internal LoginFailure? Open(Connection connection)
-	{
-		using var scope = registry.Enter();
-
-		if (connection.Type is ConnectionType.Tourney &&
-		    !connection.User.Value.Privilege.Has(ClientPrivileges.Player | ClientPrivileges.Supporter))
-			return LoginFailure.NoTourneyPermission;
-
-		var session = registry.Find(connection.User);
-
-		if (session is not null && !connection.Type.AllowsMany() &&
-		    session[connection.Type].FirstOrDefault() is { } old)
-		{
-			if (time.GetUtcNow() - old.LastActiveAt < ReplaceAfterIdle)
-				return LoginFailure.AlreadyOnline;
-
-			CloseCore(old, ConnectionCloseReason.Replaced);
-			session = registry.Find(connection.User);
-		}
-
-		var cameOnline = session is null;
-		if (session is null)
-		{
-			session = new UserSession(connection.User);
-			registry.Add(session);
-		}
-
-		connection.Session = session;
-		session.Add(connection);
-		if (connection.Type is not ConnectionType.Tourney)
-			channels.Join(session.PmChannel, connection);
-		connection.IsOpen = true;
-
-		_events.Writer.TryWrite(new UserConnectionOpened(connection, cameOnline));
-		return null;
-	}
 
 	/// <inheritdoc />
 	public void Close(Connection connection, ConnectionCloseReason reason)
@@ -142,23 +97,6 @@ internal sealed class SessionService(
 	}
 
 	/// <inheritdoc />
-	public int Announce(string text, IReadOnlyCollection<User>? to = null)
-	{
-		var recipients = registry.Sessions
-			.Where(s => to is null || to.Contains(s.User))
-			.Select(s => s.Bancho)
-			.Where(c => c is not null && c.IsOpen)
-			.Cast<BanchoConnection>()
-			.ToList();
-
-		if (recipients.Count == 0)
-			return 0;
-
-		_events.Writer.TryWrite(new UserNotificationSent(recipients, text));
-		return recipients.Count;
-	}
-
-	/// <inheritdoc />
 	public async Task<BotConnection> OpenBotAsync(CancellationToken cancellationToken = default)
 	{
 		var existingBot = registry.Sessions
@@ -196,6 +134,68 @@ internal sealed class SessionService(
 			throw new InvalidOperationException($"BasilBot could not come online: {failure}");
 
 		return connection;
+	}
+
+	/// <summary>Opens an authenticated connection, bringing its user online if this is their first.</summary>
+	/// <param name="connection">The new connection.</param>
+	/// <returns><see langword="null" /> on success; otherwise, why the connection was refused.</returns>
+	/// <remarks>
+	///     A kind that allows one connection per user replaces a connection of the same kind that has been
+	///     idle for at least <see cref="ReplaceAfterIdle" />, and refuses the new one otherwise. osu!tourney
+	///     connections require the Player and Supporter privileges.
+	/// </remarks>
+	internal LoginFailure? Open(Connection connection)
+	{
+		using var scope = registry.Enter();
+
+		if (connection.Type is ConnectionType.Tourney &&
+		    !connection.User.Value.Privilege.Has(ClientPrivileges.Player | ClientPrivileges.Supporter))
+			return LoginFailure.NoTourneyPermission;
+
+		var session = registry.Find(connection.User);
+
+		if (session is not null && !connection.Type.AllowsMany() &&
+		    session[connection.Type].FirstOrDefault() is { } old)
+		{
+			if (time.GetUtcNow() - old.LastActiveAt < ReplaceAfterIdle)
+				return LoginFailure.AlreadyOnline;
+
+			CloseCore(old, ConnectionCloseReason.Replaced);
+			session = registry.Find(connection.User);
+		}
+
+		var cameOnline = session is null;
+		if (session is null)
+		{
+			session = new UserSession(connection.User);
+			registry.Add(session);
+		}
+
+		connection.Session = session;
+		session.Add(connection);
+		if (connection.Type is not ConnectionType.Tourney)
+			channels.Join(session.PmChannel, connection);
+		connection.IsOpen = true;
+
+		_events.Writer.TryWrite(new UserConnectionOpened(connection, cameOnline));
+		return null;
+	}
+
+	/// <inheritdoc />
+	public int Announce(string text, IReadOnlyCollection<User>? to = null)
+	{
+		var recipients = registry.Sessions
+			.Where(s => to is null || to.Contains(s.User))
+			.Select(s => s.Bancho)
+			.Where(c => c is not null && c.IsOpen)
+			.Cast<BanchoConnection>()
+			.ToList();
+
+		if (recipients.Count == 0)
+			return 0;
+
+		_events.Writer.TryWrite(new UserNotificationSent(recipients, text));
+		return recipients.Count;
 	}
 
 	private void CloseCore(Connection connection, ConnectionCloseReason reason)

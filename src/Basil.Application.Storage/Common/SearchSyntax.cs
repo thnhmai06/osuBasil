@@ -8,7 +8,10 @@ internal static partial class SearchSyntax
 {
 	/// <summary>Scans text with the token regex and applies each token via the callback.</summary>
 	/// <param name="text">The search text to parse.</param>
-	/// <param name="apply">Callback invoked for each token with (key, operator, unquoted value). Return true to consume the token, false to leave it in the text.</param>
+	/// <param name="apply">
+	///     Callback invoked for each token with (key, operator, unquoted value). Return true to consume the
+	///     token, false to leave it in the text.
+	/// </param>
 	/// <returns>The remaining text with whitespace collapsed, or null when nothing remains.</returns>
 	public static string? Parse(string text, Func<string, string, string, bool> apply)
 	{

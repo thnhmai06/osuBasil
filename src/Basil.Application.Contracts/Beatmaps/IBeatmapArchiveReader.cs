@@ -1,5 +1,3 @@
-using Basil.Domain.Mechanics;
-
 namespace Basil.Application.Contracts.Beatmaps;
 
 /// <summary>Reads what a beatmapset archive contains.</summary>
@@ -13,7 +11,10 @@ public interface IBeatmapArchiveReader
 }
 
 /// <summary>What a beatmapset archive contains.</summary>
-/// <param name="OnlineSetId">The beatmapset id the difficulties declare, or <see langword="null" /> when they declare none.</param>
+/// <param name="OnlineSetId">
+///     The beatmapset id the difficulties declare, or <see langword="null" /> when they declare
+///     none.
+/// </param>
 /// <param name="Artist">The artist.</param>
 /// <param name="Title">The title.</param>
 /// <param name="Creator">The mapper's name.</param>

@@ -4,8 +4,6 @@ namespace Basil.Domain.Utilities;
 
 public readonly record struct Md5
 {
-	public string HashValue { get; }
-
 	public Md5(string hash)
 	{
 		ArgumentNullException.ThrowIfNull(hash);
@@ -20,6 +18,8 @@ public readonly record struct Md5
 	{
 		HashValue = Convert.ToHexStringLower(MD5.HashData(value));
 	}
+
+	public string HashValue { get; }
 
 	public override string ToString()
 	{

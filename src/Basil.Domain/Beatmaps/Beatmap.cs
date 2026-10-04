@@ -59,16 +59,6 @@ public sealed class Beatmap : IEquatable<Beatmap>
 	/// </summary>
 	public bool Visible { get; set; } = true;
 
-	public bool IsLocked()
-	{
-		return Locked || Beatmapset.Locked;
-	}
-
-	public bool IsVisible()
-	{
-		return Visible && Beatmapset.Visible;
-	}
-
 	/// <summary>
 	///     Gets a value that indicates whether the beatmap was ingested without a real osu! online
 	///     id.
@@ -97,6 +87,16 @@ public sealed class Beatmap : IEquatable<Beatmap>
 	{
 		if (other is null) return false;
 		return Id == other.Id;
+	}
+
+	public bool IsLocked()
+	{
+		return Locked || Beatmapset.Locked;
+	}
+
+	public bool IsVisible()
+	{
+		return Visible && Beatmapset.Visible;
 	}
 
 	/// <summary>

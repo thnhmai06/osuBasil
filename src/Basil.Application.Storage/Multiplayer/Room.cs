@@ -145,7 +145,10 @@ public sealed class Room : IEquatable<Room>
 	}
 
 	/// <summary>Checks whether a user is the room's creator or one of its referees.</summary>
-	public bool IsManagedBy(User user) => (Creator is not null && Creator.Equals(user)) || Referees.Contains(user);
+	public bool IsManagedBy(User user)
+	{
+		return (Creator is not null && Creator.Equals(user)) || Referees.Contains(user);
+	}
 
 	/// <summary>Makes a user a referee of the room.</summary>
 	/// <param name="user">The user to add.</param>

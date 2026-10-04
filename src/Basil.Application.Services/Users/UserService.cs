@@ -1,10 +1,10 @@
+using System.Threading.Channels;
 using Basil.Application.Contracts.Sessions;
 using Basil.Application.Contracts.Users;
 using Basil.Application.Storage.Sessions;
 using Basil.Application.Storage.Users;
 using Basil.Domain.Client;
 using Basil.Domain.Users;
-using System.Threading.Channels;
 
 namespace Basil.Application.Services.Users;
 

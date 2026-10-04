@@ -96,7 +96,10 @@ internal static class RoomSlotsMechanics
 	/// <summary>Assigns a slot's status without reporting a <see cref="RoomSlotStatusChanged" /> event.</summary>
 	/// <param name="slot">The slot to change.</param>
 	/// <param name="status">The status to assign, or <see langword="null" /> to clear it.</param>
-	/// <remarks>Playing starts the slot's intro-skipped and loaded flags as false; any other status clears them. Assigning the current status does nothing.</remarks>
+	/// <remarks>
+	///     Playing starts the slot's intro-skipped and loaded flags as false; any other status clears them. Assigning the
+	///     current status does nothing.
+	/// </remarks>
 	internal static void SetStatus(RoomSlot slot, RoomSlotStatus? status)
 	{
 		if (slot.Status == status) return;
@@ -123,21 +126,6 @@ internal static class RoomSlotsMechanics
 		Restore(to, Capture(from));
 		Clear(from);
 	}
-
-	/// <summary>Everything that belongs to a seated player, as it is carried from one slot to another.</summary>
-	/// <param name="Player">The seated connection.</param>
-	/// <param name="Status">The player's status.</param>
-	/// <param name="Team">The player's team.</param>
-	/// <param name="Mods">The player's own mods.</param>
-	/// <param name="IntroSkipped">Whether the player skipped the intro.</param>
-	/// <param name="Loaded">Whether the player loaded the beatmap.</param>
-	internal readonly record struct RoomSlotState(
-		BanchoConnection Player,
-		RoomSlotStatus? Status,
-		GameTeam? Team,
-		GameMods? Mods,
-		bool? IntroSkipped,
-		bool? Loaded);
 
 	/// <summary>Reads everything that belongs to the player seated in a slot.</summary>
 	/// <param name="slot">The occupied slot.</param>
@@ -174,4 +162,19 @@ internal static class RoomSlotsMechanics
 		room.Host = room.Slots.FirstOrDefault(slot => slot.Player is not null && !ReferenceEquals(slot.Player, leaving))
 			?.Player;
 	}
+
+	/// <summary>Everything that belongs to a seated player, as it is carried from one slot to another.</summary>
+	/// <param name="Player">The seated connection.</param>
+	/// <param name="Status">The player's status.</param>
+	/// <param name="Team">The player's team.</param>
+	/// <param name="Mods">The player's own mods.</param>
+	/// <param name="IntroSkipped">Whether the player skipped the intro.</param>
+	/// <param name="Loaded">Whether the player loaded the beatmap.</param>
+	internal readonly record struct RoomSlotState(
+		BanchoConnection Player,
+		RoomSlotStatus? Status,
+		GameTeam? Team,
+		GameMods? Mods,
+		bool? IntroSkipped,
+		bool? Loaded);
 }

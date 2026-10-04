@@ -1,9 +1,5 @@
-using System.Collections.Generic;
-using System.Net;
 using Basil.Application.Contracts.Events;
 using Basil.Application.Storage.Sessions;
-using Basil.Domain.Client;
-using Basil.Domain.Users;
 
 namespace Basil.Application.Contracts.Sessions;
 
@@ -13,7 +9,8 @@ public interface ISessionService : IEventPublisher<UserEvent>
 	/// <summary>Brings BasilBot online.</summary>
 	/// <returns>BasilBot's connection.</returns>
 	/// <remarks>
-	///     BasilBot is the user with id <see cref="Basil.Domain.Users.SystemUserIds.BasilBot" />; it is created with its default data when it does not exist. Calling it again while BasilBot is online returns the open connection.
+	///     BasilBot is the user with id <see cref="Basil.Domain.Users.SystemUserIds.BasilBot" />; it is created with its
+	///     default data when it does not exist. Calling it again while BasilBot is online returns the open connection.
 	/// </remarks>
 	Task<BotConnection> OpenBotAsync(CancellationToken cancellationToken = default);
 

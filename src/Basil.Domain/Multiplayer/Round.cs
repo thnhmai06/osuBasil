@@ -17,9 +17,6 @@ public sealed class Round : IMatchRecord, IEquatable<Round>
 			: throw new ArgumentOutOfRangeException(nameof(value), "Round number must be positive.");
 	}
 
-	/// <summary>The match the round belongs to.</summary>
-	public required Match Match { get; init; }
-
 	/// <summary>Gets or sets the currently selected beatmap.</summary>
 	/// <remarks>
 	///     A <see langword="null" /> value means that no beatmap has been selected yet — not that a
@@ -32,9 +29,6 @@ public sealed class Round : IMatchRecord, IEquatable<Round>
 
 	/// <summary>The time the round started.</summary>
 	public required DateTimeOffset StartedAt { get; init; }
-
-	/// <inheritdoc />
-	DateTimeOffset IMatchRecord.Timestamp => StartedAt;
 
 	/// <summary>The time the round ended, or <see langword="null" /> while open.</summary>
 	public required DateTimeOffset? EndedAt { get; set; }
@@ -53,6 +47,12 @@ public sealed class Round : IMatchRecord, IEquatable<Round>
 		if (other is null) return false;
 		return Match.Equals(other.Match) && Number == other.Number;
 	}
+
+	/// <summary>The match the round belongs to.</summary>
+	public required Match Match { get; init; }
+
+	/// <inheritdoc />
+	DateTimeOffset IMatchRecord.Timestamp => StartedAt;
 
 	/// <summary>Determines whether this round equals another object.</summary>
 	/// <param name="obj">The object to compare, or <see langword="null" />.</param>

@@ -13,7 +13,10 @@ public interface IUserStatsRepository
 	/// <param name="user">The user.</param>
 	/// <param name="mode">The game mode.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>The stored statistics, or statistics with zero totals when the user has not submitted a score in that mode yet. Never <see langword="null" />.</returns>
+	/// <returns>
+	///     The stored statistics, or statistics with zero totals when the user has not submitted a score in that mode
+	///     yet. Never <see langword="null" />.
+	/// </returns>
 	ValueTask<UserStats> GetAsync(User user, GameMode mode, CancellationToken cancellationToken = default);
 
 	/// <summary>Stores statistics, replacing any statistics stored for the same user and mode.</summary>

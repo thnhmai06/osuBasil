@@ -1,5 +1,4 @@
 using System.Net;
-using Basil.Application.Contracts.Sessions;
 using Basil.Application.Contracts.Users;
 using Basil.Application.Services.Sessions;
 using Basil.Application.Storage.Sessions;
@@ -20,7 +19,31 @@ internal sealed class AuthService(
 	TimeProvider time) : IAuthService
 {
 	/// <inheritdoc />
-	public async Task<LoginResult> LoginAsync(LoginAttempt attempt, ConnectionType type, IPAddress ip, ClientInfo? client, int utcOffset, CancellationToken cancellationToken = default)
+	public async Task<RegistrationFailure?> CheckRegistrationAsync(RegisterAttempt attempt,
+		CancellationToken cancellationToken = default)
+	{
+		if (await credentials.GetAdminKeyUpdatedAtAsync(cancellationToken) is not null &&
+		    (attempt.AdminKey is not { } key || !await credentials.VerifyAdminKeyAsync(key, cancellationToken)))
+			return RegistrationFailure.WrongAdminKey;
+
+		try
+		{
+			_ = new UserData { Name = attempt.Username };
+		}
+		catch (ArgumentException)
+		{
+			return RegistrationFailure.InvalidName;
+		}
+
+		if (await users.GetByNameAsync(attempt.Username, cancellationToken) is not null)
+			return RegistrationFailure.NameTaken;
+
+		return null;
+	}
+
+	/// <inheritdoc />
+	public async Task<LoginResult> LoginAsync(LoginAttempt attempt, ConnectionType type, IPAddress ip,
+		ClientInfo? client, int utcOffset, CancellationToken cancellationToken = default)
 	{
 		if (type is ConnectionType.Bot)
 			throw new ArgumentOutOfRangeException(nameof(type), type, "Only client connections log in.");
@@ -62,29 +85,8 @@ internal sealed class AuthService(
 	}
 
 	/// <inheritdoc />
-	public async Task<RegistrationFailure?> CheckRegistrationAsync(RegisterAttempt attempt, CancellationToken cancellationToken = default)
-	{
-		if (await credentials.GetAdminKeyUpdatedAtAsync(cancellationToken) is not null &&
-		    (attempt.AdminKey is not { } key || !await credentials.VerifyAdminKeyAsync(key, cancellationToken)))
-			return RegistrationFailure.WrongAdminKey;
-
-		try
-		{
-			_ = new UserData { Name = attempt.Username };
-		}
-		catch (ArgumentException)
-		{
-			return RegistrationFailure.InvalidName;
-		}
-
-		if (await users.GetByNameAsync(attempt.Username, cancellationToken) is not null)
-			return RegistrationFailure.NameTaken;
-
-		return null;
-	}
-
-	/// <inheritdoc />
-	public async Task<(User? User, RegistrationFailure? Failure)> RegisterAsync(RegisterAttempt attempt, CancellationToken cancellationToken = default)
+	public async Task<(User? User, RegistrationFailure? Failure)> RegisterAsync(RegisterAttempt attempt,
+		CancellationToken cancellationToken = default)
 	{
 		var failure = await CheckRegistrationAsync(attempt, cancellationToken);
 		if (failure is not null) return (null, failure);
@@ -93,7 +95,8 @@ internal sealed class AuthService(
 	}
 
 	/// <inheritdoc />
-	public async Task<(User? User, RegistrationFailure? Failure)> CreateAccountAsync(UserData data, Md5 passwordHash, CancellationToken cancellationToken = default)
+	public async Task<(User? User, RegistrationFailure? Failure)> CreateAccountAsync(UserData data, Md5 passwordHash,
+		CancellationToken cancellationToken = default)
 	{
 		if (await users.GetByNameAsync(data.Name, cancellationToken) is not null)
 			return (null, RegistrationFailure.NameTaken);
@@ -101,7 +104,8 @@ internal sealed class AuthService(
 		return await CreateCoreAsync(data, passwordHash, cancellationToken);
 	}
 
-	private async Task<(User? User, RegistrationFailure? Failure)> CreateCoreAsync(UserData data, Md5 passwordHash, CancellationToken cancellationToken)
+	private async Task<(User? User, RegistrationFailure? Failure)> CreateCoreAsync(UserData data, Md5 passwordHash,
+		CancellationToken cancellationToken)
 	{
 		var user = await users.CreateAsync(data, cancellationToken);
 		await credentials.CreateOrUpdateAsync(new Credentials(user, passwordHash), cancellationToken);

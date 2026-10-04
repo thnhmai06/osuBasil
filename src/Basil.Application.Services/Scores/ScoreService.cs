@@ -10,7 +10,6 @@ using Basil.Application.Storage.Sessions;
 using Basil.Application.Storage.Users;
 using Basil.Domain.Client;
 using Basil.Domain.Scores;
-using Basil.Domain.Users;
 using Basil.Domain.Utilities;
 
 namespace Basil.Application.Services.Scores;
@@ -25,13 +24,13 @@ internal sealed class ScoreService(
 	ILoginRepository logins,
 	Lobby lobby) : IScoreService
 {
+	/// <summary>The shortest replay, in bytes, that is kept.</summary>
+	internal const int MinReplayLength = 24;
+
 	private readonly Channel<ScoreEvent> _events = Channel.CreateUnbounded<ScoreEvent>();
 
 	/// <inheritdoc />
 	public ChannelReader<ScoreEvent> Events => _events.Reader;
-
-	/// <summary>The shortest replay, in bytes, that is kept.</summary>
-	internal const int MinReplayLength = 24;
 
 	/// <inheritdoc />
 	public async Task<ScoreRejection?> SubmitAsync(
@@ -69,10 +68,8 @@ internal sealed class ScoreService(
 		current.PlayCount++;
 		current.TotalScore += submission.Score.TotalScore;
 		if (submission.Score.IsPassed)
-		{
 			// Every beatmap reports as Approved (see Beatmapset.Status), so every passed score counts toward ranked score.
 			current.RankedScore += submission.Score.TotalScore;
-		}
 
 		await stats.CreateOrUpdateAsync(current, cancellationToken);
 

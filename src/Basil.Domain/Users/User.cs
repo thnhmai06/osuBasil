@@ -12,9 +12,6 @@ public sealed class User : IWrapper<UserData>, IEquatable<User>
 	/// <summary>Gets the unique identifier of the user.</summary>
 	public required int Id { get; init; }
 
-	/// <summary>Gets the user data this identity wraps.</summary>
-	public required UserData Value { get; init; }
-
 	/// <summary>
 	///     Determines whether another user refers to the same account.
 	/// </summary>
@@ -31,6 +28,9 @@ public sealed class User : IWrapper<UserData>, IEquatable<User>
 		if (other is null) return false;
 		return Id == other.Id;
 	}
+
+	/// <summary>Gets the user data this identity wraps.</summary>
+	public required UserData Value { get; init; }
 
 	/// <summary>
 	///     Determines whether this user equals another object.

@@ -1,6 +1,3 @@
-using Basil.Domain.Beatmaps;
-using Basil.Domain.Mechanics;
-
 namespace Basil.Application.Contracts.Beatmaps;
 
 /// <summary>

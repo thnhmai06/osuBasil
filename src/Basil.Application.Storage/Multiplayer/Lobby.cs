@@ -8,9 +8,9 @@ namespace Basil.Application.Storage.Multiplayer;
 public sealed class Lobby
 {
 	private const int MaxRoomId = ushort.MaxValue;
+	private readonly ConcurrentDictionary<int, Room> _rooms = new();
 
 	private readonly Lock _sync = new();
-	private readonly ConcurrentDictionary<int, Room> _rooms = new();
 	private readonly ConcurrentSet<BanchoConnection> _watchers = [];
 
 	/// <summary>Gets every open room.</summary>

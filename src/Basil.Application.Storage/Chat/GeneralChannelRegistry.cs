@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using Basil.Domain.Chat;
 
 namespace Basil.Application.Storage.Chat;
 
@@ -23,7 +22,10 @@ public sealed class GeneralChannelRegistry
 
 	/// <summary>Adds a configured channel.</summary>
 	/// <param name="channel">The channel to add.</param>
-	/// <returns><see langword="true" /> if the channel was added; <see langword="false" /> when a channel with that name already exists.</returns>
+	/// <returns>
+	///     <see langword="true" /> if the channel was added; <see langword="false" /> when a channel with that name
+	///     already exists.
+	/// </returns>
 	internal bool Add(GeneralChannelSession channel)
 	{
 		return _channels.TryAdd(channel.Name, channel);

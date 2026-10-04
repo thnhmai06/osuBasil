@@ -1,8 +1,6 @@
-using System.Threading.Channels;
 using Basil.Application.Contracts.Events;
 using Basil.Application.Storage.Chat;
 using Basil.Application.Storage.Sessions;
-using Basil.Domain.Chat;
 
 namespace Basil.Application.Contracts.Chat;
 
@@ -12,19 +10,29 @@ public interface IChannelService : IEventPublisher<ChannelEvent>
 	/// <summary>Opens a general channel.</summary>
 	/// <param name="channel">The channel to open.</param>
 	/// <returns>The open channel, or <see langword="null" /> when a general channel with that name is already open.</returns>
-	/// <remarks>Announces <see cref="ChannelOpened" />; channels owned by a session, a connection or a room exist with their owner and are not announced.</remarks>
+	/// <remarks>
+	///     Announces <see cref="ChannelOpened" />; channels owned by a session, a connection or a room exist with their
+	///     owner and are not announced.
+	/// </remarks>
 	GeneralChannelSession? Open(GeneralChannel channel);
 
 	/// <summary>Closes a channel, removing every member.</summary>
 	/// <param name="channel">The channel to close.</param>
-	/// <remarks>Announces one <see cref="ChannelClosed" /> carrying every member that was removed. A general channel also stops being listed. Closing a closed channel does nothing.</remarks>
+	/// <remarks>
+	///     Announces one <see cref="ChannelClosed" /> carrying every member that was removed. A general channel also
+	///     stops being listed. Closing a closed channel does nothing.
+	/// </remarks>
 	void Close(ChannelSession channel);
 
 	/// <summary>Adds a connection to a channel's members.</summary>
 	/// <param name="channel">The channel to join.</param>
 	/// <param name="by">The connection joining.</param>
 	/// <returns>The outcome of the join.</returns>
-	/// <remarks>A connection may join only a channel it may read. If the same user is a member through a closed connection of a kind that allows one connection, that connection is replaced by the new one, which <see cref="ChannelMemberJoined" /> reports.</remarks>
+	/// <remarks>
+	///     A connection may join only a channel it may read. If the same user is a member through a closed connection of
+	///     a kind that allows one connection, that connection is replaced by the new one, which
+	///     <see cref="ChannelMemberJoined" /> reports.
+	/// </remarks>
 	ChannelJoinResult Join(ChannelSession channel, Connection by);
 
 	/// <summary>Removes a connection from a channel's members.</summary>
@@ -40,7 +48,11 @@ public interface IChannelService : IEventPublisher<ChannelEvent>
 	/// <param name="notice">Whether the message is a notice, which never triggers an automatic reply.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of the post.</returns>
-	/// <remarks>A message longer than <see cref="ChannelSession.MaxMessageLength" /> characters is cut. A private message is a post into the recipient's private-message channel; the recipient's away message is sent back to the author, carried by the same <see cref="ChannelMessagePosted" />.</remarks>
+	/// <remarks>
+	///     A message longer than <see cref="ChannelSession.MaxMessageLength" /> characters is cut. A private message is a
+	///     post into the recipient's private-message channel; the recipient's away message is sent back to the author, carried
+	///     by the same <see cref="ChannelMessagePosted" />.
+	/// </remarks>
 	Task<ChannelPostResult> PostAsync(ChannelSession channel, Connection by, string text, bool notice = false,
 		CancellationToken cancellationToken = default);
 

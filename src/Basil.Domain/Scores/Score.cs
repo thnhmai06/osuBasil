@@ -17,9 +17,6 @@ public sealed class Score : IWrapper<ScoreData>, IEquatable<Score>
 			: throw new ArgumentOutOfRangeException(nameof(value), "Score id must be positive.");
 	}
 
-	/// <summary>Gets the score data this identity wraps.</summary>
-	public required ScoreData Value { get; init; }
-
 	/// <summary>Determines whether another score refers to the same stored score.</summary>
 	/// <param name="other">The score to compare against, or <see langword="null" />.</param>
 	/// <returns>
@@ -31,6 +28,9 @@ public sealed class Score : IWrapper<ScoreData>, IEquatable<Score>
 		if (other is null) return false;
 		return Id == other.Id;
 	}
+
+	/// <summary>Gets the score data this identity wraps.</summary>
+	public required ScoreData Value { get; init; }
 
 	/// <summary>Determines whether this score equals another object.</summary>
 	/// <param name="obj">The object to compare against.</param>

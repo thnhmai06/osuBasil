@@ -12,7 +12,10 @@ public interface IBeatmapsetRepository
 	/// <returns>The beatmapset, or <see langword="null" /> when none has that id.</returns>
 	ValueTask<Beatmapset?> GetAsync(int id, CancellationToken cancellationToken = default);
 
-	/// <summary>Stores a beatmapset under its id, adding it when no beatmapset has that id and replacing the stored beatmapset otherwise.</summary>
+	/// <summary>
+	///     Stores a beatmapset under its id, adding it when no beatmapset has that id and replacing the stored beatmapset
+	///     otherwise.
+	/// </summary>
 	/// <param name="set">The beatmapset to store.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	Task CreateOrUpdateAsync(Beatmapset set, CancellationToken cancellationToken = default);
@@ -22,7 +25,8 @@ public interface IBeatmapsetRepository
 	/// <param name="page">Which part of the listing to return.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>A page of beatmapsets.</returns>
-	Task<Page<Beatmapset>> ListAsync(BeatmapQuery query, PageRequest page, CancellationToken cancellationToken = default);
+	Task<Page<Beatmapset>> ListAsync(BeatmapQuery query, PageRequest page,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>Deletes a beatmapset together with its beatmaps.</summary>
 	/// <param name="set">The beatmapset to delete.</param>

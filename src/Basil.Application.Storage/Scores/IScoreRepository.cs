@@ -9,7 +9,10 @@ public interface IScoreRepository
 	/// <summary>Stores a new score and assigns its id.</summary>
 	/// <param name="data">The data of the new score.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>The stored score, or <see langword="null" /> when a score with the same <see cref="ScoreData.Checksum" /> is already stored.</returns>
+	/// <returns>
+	///     The stored score, or <see langword="null" /> when a score with the same <see cref="ScoreData.Checksum" /> is
+	///     already stored.
+	/// </returns>
 	Task<Score?> CreateAsync(ScoreData data, CancellationToken cancellationToken = default);
 
 	/// <summary>Gets a score by id.</summary>

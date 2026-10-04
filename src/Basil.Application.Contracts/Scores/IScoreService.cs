@@ -1,9 +1,5 @@
 using Basil.Application.Contracts.Events;
-using Basil.Application.Storage.Scores;
 using Basil.Application.Storage.Sessions;
-using Basil.Domain.Client;
-using Basil.Domain.Scores;
-using Basil.Domain.Utilities;
 
 namespace Basil.Application.Contracts.Scores;
 
@@ -23,7 +19,8 @@ public interface IScoreService : IEventPublisher<ScoreEvent>
 	/// <returns><see langword="null" /> when the score was stored; otherwise, why it was rejected.</returns>
 	/// <remarks>
 	///     A score on a beatmap the server does not have is accepted only when it is the beatmap of the
-	///     latest round in the player's room. A score played in that round carries the round, and <see cref="ScoreSubmitted" /> names the room so the round can record it. Every
+	///     latest round in the player's room. A score played in that round carries the round, and
+	///     <see cref="ScoreSubmitted" /> names the room so the round can record it. Every
 	///     accepted play adds to the play count and the total score; passed plays also add to the ranked score.
 	///     The submission is checked against the player's latest recorded login. A submission whose
 	///     checksum was already stored is refused. Only a passed play keeps its replay, and only when

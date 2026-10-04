@@ -2,9 +2,6 @@ using Basil.Application.Contracts.Events;
 using Basil.Application.Contracts.Multiplayer.Events;
 using Basil.Application.Storage.Multiplayer;
 using Basil.Application.Storage.Sessions;
-using Basil.Domain.Mechanics;
-using Basil.Domain.Scores;
-using Basil.Domain.Users;
 
 namespace Basil.Application.Contracts.Multiplayer;
 
@@ -16,7 +13,10 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	/// <param name="by">The joining player's game client.</param>
 	/// <param name="password">The password the player supplied.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>Ok, AlreadySeated, Banned, Silenced, NotAuthorized, InAnotherRoom, IsObserver, WrongPassword, Full or RoomClosed when the room has closed.</returns>
+	/// <returns>
+	///     Ok, AlreadySeated, Banned, Silenced, NotAuthorized, InAnotherRoom, IsObserver, WrongPassword, Full or
+	///     RoomClosed when the room has closed.
+	/// </returns>
 	/// <remarks>
 	///     If the same user is seated through a connection that has closed, that connection leaves first.
 	///     Moderators need no password. The player also joins the room's chat channel.
@@ -66,7 +66,10 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	/// <param name="by">A manager.</param>
 	/// <param name="player">The user to ban.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>Ok, NotAuthorized, IsManager or RoomClosed when the room has closed; banning a banned user again returns Ok and does nothing.</returns>
+	/// <returns>
+	///     Ok, NotAuthorized, IsManager or RoomClosed when the room has closed; banning a banned user again returns Ok
+	///     and does nothing.
+	/// </returns>
 	/// <remarks>BasilBot cannot be banned.</remarks>
 	Task<RoomResult> BanAsync(Room room, Connection by, User player, CancellationToken cancellationToken = default);
 
@@ -139,12 +142,16 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, InProgress, InvalidSettings, InvalidMods or RoomClosed when the room has closed.</returns>
 	/// <remarks>
-	///     Nothing changes unless every field is valid. Selecting or clearing the beatmap sets ready players back to not ready.
+	///     Nothing changes unless every field is valid. Selecting or clearing the beatmap sets ready players back to not
+	///     ready.
 	///     Turning freemod on moves the room's mods that are not speed-changing onto each player; turning it off gives the
 	///     room the host's mods. Changing the team type reassigns teams. Changing the mode drops mods, the room's and the
-	///     players', that the new mode does not allow. Under freemod, a seated caller's mods that are not speed-changing become
-	///     that caller's own mods. A change with no field set does nothing. Only the creator, a referee or BasilBot can change whether the history is private.
-	///     A change to the beatmap, mode, mods, freemod, team type or win condition cancels a countdown that would start the round.
+	///     players', that the new mode does not allow. Under freemod, a seated caller's mods that are not speed-changing
+	///     become
+	///     that caller's own mods. A change with no field set does nothing. Only the creator, a referee or BasilBot can change
+	///     whether the history is private.
+	///     A change to the beatmap, mode, mods, freemod, team type or win condition cancels a countdown that would start the
+	///     round.
 	/// </remarks>
 	Task<RoomResult> ConfigureAsync(Room room, Connection by, RoomSettingsChange change,
 		CancellationToken cancellationToken = default);
@@ -198,7 +205,10 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	/// <param name="by">The caller's connection.</param>
 	/// <param name="locked">The lock state to set.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>Ok, NotAuthorized or RoomClosed when the room has closed; setting the current state again returns Ok and does nothing.</returns>
+	/// <returns>
+	///     Ok, NotAuthorized or RoomClosed when the room has closed; setting the current state again returns Ok and does
+	///     nothing.
+	/// </returns>
 	Task<RoomResult> SetLockedAsync(Room room, Connection by, bool locked,
 		CancellationToken cancellationToken = default);
 
@@ -218,7 +228,8 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotInRoom or RoomClosed when the room has closed.</returns>
 	/// <remarks>
-	///     The report is ignored while the caller is playing; having the map changes nothing unless the caller had reported not having it.
+	///     The report is ignored while the caller is playing; having the map changes nothing unless the caller had reported
+	///     not having it.
 	/// </remarks>
 	Task<RoomResult> SetHasMapAsync(Room room, BanchoConnection by, bool has,
 		CancellationToken cancellationToken = default);
@@ -297,7 +308,8 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotPlaying or RoomClosed when the room has closed.</returns>
 	/// <remarks>
-	///     When the last player completes, the round ends and <see cref="RoomRoundCompleted" /> is emitted instead of <see cref="RoomRoundPlayerCompleted" />.
+	///     When the last player completes, the round ends and <see cref="RoomRoundCompleted" /> is emitted instead of
+	///     <see cref="RoomRoundPlayerCompleted" />.
 	/// </remarks>
 	Task<RoomResult> CompleteAsync(Room room, BanchoConnection by, CancellationToken cancellationToken = default);
 

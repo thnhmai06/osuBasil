@@ -1,6 +1,5 @@
 using System.Threading.Channels;
 using Basil.Application.Contracts.Beatmaps;
-using Basil.Application.Services.Common;
 using Basil.Application.Storage.Beatmaps;
 using Basil.Application.Storage.Common;
 using Basil.Domain.Beatmaps;
@@ -87,27 +86,6 @@ internal sealed class BeatmapService(
 		return new BeatmapImportResult(set, result, null);
 	}
 
-	/// <summary>Picks an id for a beatmapset that is known nowhere else: above every stored id and at least 1 000 000 000.</summary>
-	private async Task<int> NewLocalIdAsync(CancellationToken cancellationToken)
-	{
-		var newest = await beatmapsets.ListAsync(new BeatmapQuery(IncludeHidden: true), new PageRequest(0, 1),
-			cancellationToken);
-		return Math.Max(1_000_000_000, (newest.Items.FirstOrDefault()?.Id ?? 0) + 1);
-	}
-
-
-	/// <inheritdoc />
-	public async Task<bool> DeleteAsync(Beatmapset set, CancellationToken cancellationToken = default)
-	{
-		if (set.Locked)
-			return false;
-
-		await archives.DeleteAsync(set, cancellationToken);
-		await beatmapsets.DeleteAsync(set, cancellationToken);
-		_events.Writer.TryWrite(new BeatmapsetDeleted(set));
-		return true;
-	}
-
 	/// <inheritdoc />
 	public async Task<int> ScanAsync(CancellationToken cancellationToken = default)
 	{
@@ -134,7 +112,31 @@ internal sealed class BeatmapService(
 		return forgotten;
 	}
 
-	/// <summary>Analyses a difficulty, reusing the analysis of the stored beatmap with the same file when it has a star rating.</summary>
+	/// <summary>Picks an id for a beatmapset that is known nowhere else: above every stored id and at least 1 000 000 000.</summary>
+	private async Task<int> NewLocalIdAsync(CancellationToken cancellationToken)
+	{
+		var newest = await beatmapsets.ListAsync(new BeatmapQuery(IncludeHidden: true), new PageRequest(0, 1),
+			cancellationToken);
+		return Math.Max(1_000_000_000, (newest.Items.FirstOrDefault()?.Id ?? 0) + 1);
+	}
+
+
+	/// <inheritdoc />
+	public async Task<bool> DeleteAsync(Beatmapset set, CancellationToken cancellationToken = default)
+	{
+		if (set.Locked)
+			return false;
+
+		await archives.DeleteAsync(set, cancellationToken);
+		await beatmapsets.DeleteAsync(set, cancellationToken);
+		_events.Writer.TryWrite(new BeatmapsetDeleted(set));
+		return true;
+	}
+
+	/// <summary>
+	///     Analyses a difficulty, reusing the analysis of the stored beatmap with the same file when it has a star
+	///     rating.
+	/// </summary>
 	/// <remarks>A difficulty that cannot be analysed gets a zero star rating and no objects.</remarks>
 	private BeatmapAnalysis Analyse(BeatmapArchiveDifficulty difficulty, Beatmap? stored)
 	{

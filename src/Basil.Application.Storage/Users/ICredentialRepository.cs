@@ -26,7 +26,10 @@ public interface ICredentialRepository
 	/// <summary>Verifies a candidate administrator key.</summary>
 	/// <param name="key">The candidate key.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns><see langword="true" /> if an administrator key is set and matches <paramref name="key" />; otherwise, <see langword="false" />.</returns>
+	/// <returns>
+	///     <see langword="true" /> if an administrator key is set and matches <paramref name="key" />; otherwise,
+	///     <see langword="false" />.
+	/// </returns>
 	Task<bool> VerifyAdminKeyAsync(Md5 key, CancellationToken cancellationToken = default);
 
 	/// <summary>Gets when the administrator key was last set.</summary>

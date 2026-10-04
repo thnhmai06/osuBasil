@@ -1,5 +1,4 @@
 using Basil.Application.Storage.Sessions;
-using Basil.Domain.Chat;
 using Basil.Domain.Utilities;
 using Channel = Basil.Domain.Chat.Channel;
 
@@ -25,7 +24,10 @@ public abstract class ChannelSession
 	/// <summary>Gets the chat channel this session runs.</summary>
 	public Channel Channel { get; }
 
-	/// <summary>Gets the channel name: <c>#name</c> for a channel several users take part in, the owner's name for a private-message channel.</summary>
+	/// <summary>
+	///     Gets the channel name: <c>#name</c> for a channel several users take part in, the owner's name for a
+	///     private-message channel.
+	/// </summary>
 	public string Name => Channel.Name;
 
 	/// <summary>Gets the connections currently in the channel.</summary>

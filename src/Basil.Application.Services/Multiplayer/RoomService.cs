@@ -64,45 +64,10 @@ internal sealed partial class RoomService(
 	}
 
 	/// <inheritdoc />
-	public Task<RoomResult> KickAsync(Room room, Connection by, User player,
-		CancellationToken cancellationToken = default)
-	{
-		return InScopeAsync(room, () => Kick(room, by, player), cancellationToken);
-	}
-
-	/// <inheritdoc />
-	public Task<RoomResult> BanAsync(Room room, Connection by, User player,
-		CancellationToken cancellationToken = default)
-	{
-		return InScopeAsync(room, () => Ban(room, by, player), cancellationToken);
-	}
-
-	/// <inheritdoc />
-	public Task<RoomResult> UnbanAsync(Room room, Connection by, User player,
-		CancellationToken cancellationToken = default)
-	{
-		return InScopeAsync(room, () => Unban(room, by, player), cancellationToken);
-	}
-
-	/// <inheritdoc />
 	public Task<RoomResult> InviteAsync(Room room, Connection by, UserSession target,
 		CancellationToken cancellationToken = default)
 	{
 		return InScopeAsync(room, () => Invite(room, by, target), cancellationToken);
-	}
-
-	/// <inheritdoc />
-	public Task<RoomResult> AddRefereeAsync(Room room, Connection by, User user,
-		CancellationToken cancellationToken = default)
-	{
-		return InScopeAsync(room, () => AddReferee(room, by, user), cancellationToken);
-	}
-
-	/// <inheritdoc />
-	public Task<RoomResult> RemoveRefereeAsync(Room room, Connection by, User user,
-		CancellationToken cancellationToken = default)
-	{
-		return InScopeAsync(room, () => RemoveReferee(room, by, user), cancellationToken);
 	}
 
 	/// <inheritdoc />
@@ -138,13 +103,6 @@ internal sealed partial class RoomService(
 		CancellationToken cancellationToken = default)
 	{
 		return InScopeAsync(room, () => ChangeSlot(room, by, index), cancellationToken);
-	}
-
-	/// <inheritdoc />
-	public Task<RoomResult> MoveAsync(Room room, Connection by, User player, int index,
-		CancellationToken cancellationToken = default)
-	{
-		return InScopeAsync(room, () => Move(room, by, player, index), cancellationToken);
 	}
 
 	/// <inheritdoc />
@@ -187,20 +145,6 @@ internal sealed partial class RoomService(
 		CancellationToken cancellationToken = default)
 	{
 		return InScopeAsync(room, () => ToggleTeam(room, by), cancellationToken);
-	}
-
-	/// <inheritdoc />
-	public Task<RoomResult> SetTeamAsync(Room room, Connection by, User player, GameTeam team,
-		CancellationToken cancellationToken = default)
-	{
-		return InScopeAsync(room, () => SetTeam(room, by, player, team), cancellationToken);
-	}
-
-	/// <inheritdoc />
-	public Task<RoomResult> SetPlayerModsAsync(Room room, BanchoConnection by, GameMods mods,
-		CancellationToken cancellationToken = default)
-	{
-		return InScopeAsync(room, () => SetPlayerMods(room, by, mods), cancellationToken);
 	}
 
 	/// <inheritdoc />
@@ -256,13 +200,6 @@ internal sealed partial class RoomService(
 	}
 
 	/// <inheritdoc />
-	public Task<RoomResult> RecordScoreAsync(Room room, User player, Score score,
-		CancellationToken cancellationToken = default)
-	{
-		return InScopeAsync(room, () => RecordScore(room, player, score), cancellationToken);
-	}
-
-	/// <inheritdoc />
 	public async Task ReleaseAsync(Connection connection, CancellationToken cancellationToken = default)
 	{
 		if (connection is BanchoConnection player)
@@ -285,6 +222,69 @@ internal sealed partial class RoomService(
 		// Managers stay in a room's channel after leaving their seat, and IRC referees join it directly.
 		foreach (var room in lobby.Rooms)
 			channels.Part(room.Channel, connection);
+	}
+
+	/// <inheritdoc />
+	public Task<RoomResult> KickAsync(Room room, Connection by, User player,
+		CancellationToken cancellationToken = default)
+	{
+		return InScopeAsync(room, () => Kick(room, by, player), cancellationToken);
+	}
+
+	/// <inheritdoc />
+	public Task<RoomResult> BanAsync(Room room, Connection by, User player,
+		CancellationToken cancellationToken = default)
+	{
+		return InScopeAsync(room, () => Ban(room, by, player), cancellationToken);
+	}
+
+	/// <inheritdoc />
+	public Task<RoomResult> UnbanAsync(Room room, Connection by, User player,
+		CancellationToken cancellationToken = default)
+	{
+		return InScopeAsync(room, () => Unban(room, by, player), cancellationToken);
+	}
+
+	/// <inheritdoc />
+	public Task<RoomResult> AddRefereeAsync(Room room, Connection by, User user,
+		CancellationToken cancellationToken = default)
+	{
+		return InScopeAsync(room, () => AddReferee(room, by, user), cancellationToken);
+	}
+
+	/// <inheritdoc />
+	public Task<RoomResult> RemoveRefereeAsync(Room room, Connection by, User user,
+		CancellationToken cancellationToken = default)
+	{
+		return InScopeAsync(room, () => RemoveReferee(room, by, user), cancellationToken);
+	}
+
+	/// <inheritdoc />
+	public Task<RoomResult> MoveAsync(Room room, Connection by, User player, int index,
+		CancellationToken cancellationToken = default)
+	{
+		return InScopeAsync(room, () => Move(room, by, player, index), cancellationToken);
+	}
+
+	/// <inheritdoc />
+	public Task<RoomResult> SetTeamAsync(Room room, Connection by, User player, GameTeam team,
+		CancellationToken cancellationToken = default)
+	{
+		return InScopeAsync(room, () => SetTeam(room, by, player, team), cancellationToken);
+	}
+
+	/// <inheritdoc />
+	public Task<RoomResult> SetPlayerModsAsync(Room room, BanchoConnection by, GameMods mods,
+		CancellationToken cancellationToken = default)
+	{
+		return InScopeAsync(room, () => SetPlayerMods(room, by, mods), cancellationToken);
+	}
+
+	/// <inheritdoc />
+	public Task<RoomResult> RecordScoreAsync(Room room, User player, Score score,
+		CancellationToken cancellationToken = default)
+	{
+		return InScopeAsync(room, () => RecordScore(room, player, score), cancellationToken);
 	}
 
 	/// <summary>Runs one state transition of a room inside the room's exclusive scope.</summary>
