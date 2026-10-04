@@ -10,6 +10,7 @@ using Basil.Application.Services;
 using Basil.Application.Storage.Common;
 using Basil.Application.Storage.Beatmaps;
 using Basil.Application.Storage.Chat;
+using Basil.Application.Contracts.Anticheat;
 using Basil.Application.Contracts.Beatmaps;
 using Basil.Application.Contracts.Scores;
 using Basil.Application.Storage.Scores;
@@ -309,9 +310,11 @@ Check("P4b arrange duplicate slot refused", await roomService.ArrangeSlotsAsync(
 Check("P4b arrange swaps and locks", await roomService.ArrangeSlotsAsync(q1!, botConn, [new SlotArrangement(1, sam, null, false), new SlotArrangement(2, rex, null, false), new SlotArrangement(3, null, null, true)]) == RoomResult.Ok
 	&& q1!.Slots.Find(samConn)?.Index == 1 && q1.Slots.Find(rexConn)?.Index == 2 && q1.Slots.At(3)!.Locked && ReferenceEquals(q1.Host, rexConn)
 	&& Drain(roomService.Events).OfType<RoomSlotsArranged>().Count() == 1);
-Check("P4b clean flags emit nothing", await roomService.ReportClientFlagsAsync(rexConn, ClientFlags.Clean) == RoomResult.Ok && Drain(roomService.Events).Count == 0);
-Check("P4b cheat flags warn the room", await roomService.ReportClientFlagsAsync(rexConn, ClientFlags.SpeedHackDetected) == RoomResult.Ok && Drain(roomService.Events).OfType<RoomPlayerFlagged>().Single().Flags == ClientFlags.SpeedHackDetected);
-Check("P4b flags outside a room", await roomService.ReportClientFlagsAsync(oliConn, ClientFlags.SpeedHackDetected) == RoomResult.NotInRoom);
+var anticheat = provider.GetRequiredService<IAnticheatService>();
+Check("AC clean flags emit nothing", anticheat.Report(rexConn, ClientFlags.Clean) == ClientFlags.Clean && Drain(anticheat.Events).Count == 0);
+Check("AC cheat signs announced with the room", anticheat.Report(rexConn, ClientFlags.SpeedHackDetected | ClientFlags.SpinnerHack) == (ClientFlags.SpeedHackDetected | ClientFlags.SpinnerHack)
+	&& Drain(anticheat.Events).OfType<AnticheatPlayerFlagged>().Single() is { Room: { } flaggedRoom, Signs: ClientFlags.SpeedHackDetected | ClientFlags.SpinnerHack } && ReferenceEquals(flaggedRoom, q1));
+Check("AC flags outside a room carry no room", anticheat.Report(oliConn, ClientFlags.SpeedHackDetected) != ClientFlags.Clean && Drain(anticheat.Events).OfType<AnticheatPlayerFlagged>().Single().Room is null);
 var tom = NewUser("Tom"); var tomConn = Online(tom);
 var (q3, _) = await lobbyService.OpenAsync(sam, null, "Q3", "", true, false);
 await roomService.JoinAsync(q3!, tomConn, "");
@@ -349,7 +352,7 @@ Check("P5a score carries round and team", scoreStore.Items[^1].Value is { Round:
 Check("P5a submitted event with stats", Drain(scoreService.Events).OfType<ScoreSubmitted>().Single().Stats.PlayCount == 1);
 Check("P5b replay of 24+ bytes kept", await Submit(Sub(2000), new byte[30]) is null && replayStore.Saved == replaysBefore + 1);
 Check("P5c duplicate checksum refused", await Submit(Sub(2000), new byte[30]) == ScoreRejection.Duplicate);
-Check("P5d submission flags are left to the host", await Submit(Sub(3000, ClientFlags.SpeedHackDetected), null) is null && !Drain(roomService.Events).OfType<RoomPlayerFlagged>().Any());
+Check("P5d submission flags reported to the anticheat", await Submit(Sub(3000, ClientFlags.SpeedHackDetected), null) is null && Drain(anticheat.Events).OfType<AnticheatPlayerFlagged>().Single().Room == r5);
 Check("P5e tampered submission refused", await Submit(Sub(4000) with { HashByClient = zero }, null) == ScoreRejection.SubmissionHashMismatch);
 Check("P5f unknown beatmap refused", await Submit(Sub(5000), null, zero) == ScoreRejection.UnknownBeatmap);
 

@@ -866,9 +866,10 @@ ImageSharp, TLS/Kestrel, mDNS, kiểm tra cập nhật, Velopack, migration DB, 
   Khi có tùy chọn này, lúc khởi động host gọi `ICredentialRepository.DeleteAdminKeyAsync()` trước khi nhận request:
   server về chế độ bypass (không có khóa admin) và ghi cảnh báo như khi khởi động không có khóa. Người vận hành sau đó
   đặt khóa mới qua `PUT /settings/adminkey`. Dùng khi quên khóa admin.
-* **Bắt buộc trước khi chạy lại server** (mục 13.1): host Bancho gọi `IRoomService.ReportClientFlagsAsync` với
-  `Submission.ClientFlags` của mọi bài nộp và với cờ của `lastfm.php`, nếu không cảnh báo anticheat cho phòng sẽ mất;
-  handler `UserConnectionClosed` gọi `IChannelService.StopSpectating`, `IRoomService.ReleaseAsync`,
+* **Bắt buộc trước khi chạy lại server** (mục 13.1, 13.2): host Bancho gọi `IAnticheatService.Report` với cờ của
+  `lastfm.php` (bài nộp đã do `ScoreService` báo); dispatcher của luồng `AnticheatEvent` giao
+  `AnticheatPlayerFlagged` có `Room` tới handler: BasilBot đăng cảnh báo vào kênh phòng và nhắn riêng referee và
+  creator; nếu thiếu, cảnh báo anticheat sẽ mất. Handler `UserConnectionClosed` gọi `IChannelService.StopSpectating`, `IRoomService.ReleaseAsync`,
   `ILobbyService.Unwatch`, `IChannelService.PartAll`, nếu không kết nối đã đóng sẽ còn trong kênh spectator, phòng và
   lobby. Các thao tác này chạy lại được an toàn. Kịch bản kiểm thử của host phải có hai trường hợp này.
 
@@ -960,6 +961,15 @@ Review Standards (AGENTS.md) và Spec (kế hoạch này) trên toàn bộ commi
 * **Gọn code:** `IRoomService.IsManager` thay bằng `Room.IsManagedBy`; topic kênh phòng là tên trận (`RoomChannel`
   chuyển tiếp `Match.Value.Name`); `RoundMechanics`, `RoomRules.IsCreatorOrBot`, `RoomSlotState`, `Paging.ListAllAsync`;
   `SubmitAsync` nhận `BeatmapChecksums` và `SubmittedClient` thay cho tuple; `RoomService` tách thành các file partial.
+
+### 13.2 Dịch vụ anticheat (2026-10-04)
+
+Theo yêu cầu người dùng, cờ anticheat có một service riêng làm nguồn event duy nhất: `IAnticheatService.Report(player,
+flags)` (feature `Anticheat`) lọc các cờ thuộc `CheatSigns` và phát `AnticheatPlayerFlagged(Player, Signs, Room?)`
+mang phòng người chơi đang ngồi. Dispatcher của Infrastructure giao event này tới nơi cần: kênh chat của phòng,
+referee và creator (BasilBot gửi tin). `IRoomService.ReportClientFlagsAsync` và `RoomPlayerFlagged` bị xóa;
+`ScoreService` báo cờ của bài nộp qua `IAnticheatService` (Scores không phụ thuộc Multiplayer); host Bancho báo cờ
+của `lastfm.php`. Thay các dòng về `RoomService.ReportClientFlagsAsync` ở mục 2.4, 8.13, 12.1 và 13.
 
 ## Phụ lục A. Kịch bản mốc hành vi
 

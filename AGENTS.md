@@ -368,6 +368,7 @@ Beatmaps/      beatmap and beatmapset repositories, IBeatmapArchiveStorage, Beat
                IBeatmapAssets, IBeatmapMirror, beatmapset events
 Scores/        IScoreRepository, IReplayStorage, IUserStatsRepository, ScoreQuery;
                IScoreService and its events
+Anticheat/     IAnticheatService (judges client flags) and its events
 Content/       IServerSettingsRepository, IMenuBannerRepository, menu image, seasonal background and
                FAQ storages
 ```
@@ -379,7 +380,9 @@ the search syntax) belong to Storage; the routes and handlers that answer querie
 changed at runtime (`ServerSettings`) are persistent Domain data, not host configuration.
 
 * `Common` and `Events` depend on no feature. `Users`, `Beatmaps` and `Scores` do not depend on
-  `Multiplayer`, except that the score service records scores against the player's room.
+  `Multiplayer`, except that the score service records scores against the player's room. Anticheat flags,
+  wherever they arrive (score submission, `lastfm.php`), go to `IAnticheatService`, the single source of anticheat
+  events; Infrastructure's dispatcher delivers its warnings (room chat, referees, creator).
 * `Sessions`, `Chat` and `Multiplayer` reference each other (`Room.Host`, `Room.Channel`,
   `ChannelSession.Members`); treat them as one cluster. Their runtime models live together in Storage, and
   Services changes them through `internal` members (`InternalsVisibleTo("Basil.Application.Services")`).

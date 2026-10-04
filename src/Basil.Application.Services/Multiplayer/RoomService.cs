@@ -24,18 +24,6 @@ internal sealed partial class RoomService(
 	/// <summary>The longest countdown allowed.</summary>
 	internal static readonly TimeSpan MaxCountdownLength = TimeSpan.FromHours(1);
 
-	/// <summary>The client flags that are signs of cheating.</summary>
-	internal const ClientFlags CheatSigns = ClientFlags.SpeedHackDetected | ClientFlags.IncorrectModValue |
-	                                        ClientFlags.MultipleOsuClients | ClientFlags.ChecksumFailure |
-	                                        ClientFlags.FlashlightChecksumIncorrect |
-	                                        ClientFlags.OsuExecutableChecksum | ClientFlags.MissingProcessesInList |
-	                                        ClientFlags.FlashlightImageHack |
-	                                        ClientFlags.SpinnerHack | ClientFlags.TransparentWindow |
-	                                        ClientFlags.FastPress |
-	                                        ClientFlags.RawMouseDiscrepancy | ClientFlags.RawKeyboardDiscrepancy |
-	                                        ClientFlags.HqAssembly |
-	                                        ClientFlags.HqFile | ClientFlags.RegistryEdits;
-
 	private readonly Channel<RoomEvent> _events = Channel.CreateUnbounded<RoomEvent>();
 
 	/// <inheritdoc />
@@ -265,23 +253,6 @@ internal sealed partial class RoomService(
 		CancellationToken cancellationToken = default)
 	{
 		return InScopeAsync(room, () => CancelCountdown(room, by), cancellationToken);
-	}
-
-	/// <inheritdoc />
-	public async Task<RoomResult> ReportClientFlagsAsync(BanchoConnection player, ClientFlags flags,
-		CancellationToken cancellationToken = default)
-	{
-		if (lobby.RoomOf(player) is not { } room) return RoomResult.NotInRoom;
-
-		var signs = flags & CheatSigns;
-		if (signs == ClientFlags.Clean) return RoomResult.Ok;
-
-		await using var scope = await lobby.EnterAsync(room, cancellationToken);
-		if (scope is null) return RoomResult.RoomClosed;
-		if (room.Slots.Find(player) is null) return RoomResult.NotInRoom;
-
-		Emit(new RoomPlayerFlagged(room, player, signs));
-		return RoomResult.Ok;
 	}
 
 	/// <inheritdoc />

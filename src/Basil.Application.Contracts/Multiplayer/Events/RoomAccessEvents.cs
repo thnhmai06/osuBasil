@@ -1,6 +1,5 @@
 using Basil.Application.Storage.Multiplayer;
 using Basil.Application.Storage.Sessions;
-using Basil.Domain.Client;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Contracts.Multiplayer.Events;
@@ -35,9 +34,3 @@ public sealed record RoomPlayerUnbanned(Room Room, User Player) : RoomAccessEven
 /// <param name="By">The user who sent the invitation.</param>
 /// <param name="Player">The invited user.</param>
 public sealed record RoomPlayerInvited(Room Room, User By, User Player) : RoomAccessEvent(Room);
-
-/// <summary>A seated player's client reported signs of cheating.</summary>
-/// <param name="Room">The room.</param>
-/// <param name="Player">The player's osu! client.</param>
-/// <param name="Flags">The reported signs of cheating.</param>
-public sealed record RoomPlayerFlagged(Room Room, BanchoConnection Player, ClientFlags Flags) : RoomAccessEvent(Room);

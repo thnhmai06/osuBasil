@@ -27,7 +27,8 @@ public interface IScoreService : IEventPublisher<ScoreEvent>
 	///     accepted play adds to the play count and the total score; passed plays also add to the ranked score.
 	///     The submission is checked against the player's latest recorded login. A submission whose
 	///     checksum was already stored is refused. Only a passed play keeps its replay, and only when
-	///     the replay is at least 24 bytes long.
+	///     the replay is at least 24 bytes long. Anticheat flags sent with the submission are reported to the
+	///     anticheat.
 	/// </remarks>
 	Task<ScoreRejection?> SubmitAsync(
 		BanchoConnection connection,

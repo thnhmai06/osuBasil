@@ -2,7 +2,6 @@ using Basil.Application.Contracts.Events;
 using Basil.Application.Contracts.Multiplayer.Events;
 using Basil.Application.Storage.Multiplayer;
 using Basil.Application.Storage.Sessions;
-using Basil.Domain.Client;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
@@ -324,15 +323,6 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, NoCountdown or RoomClosed when the room has closed.</returns>
 	Task<RoomResult> CancelCountdownAsync(Room room, Connection by, CancellationToken cancellationToken = default);
-
-	/// <summary>Reports the anticheat flags a player's client sent, warning the player's room when they show signs of cheating.</summary>
-	/// <param name="player">The player's osu! client.</param>
-	/// <param name="flags">The flags the client reported.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>Ok, or NotInRoom when the player does not sit in a room.</returns>
-	/// <remarks>Nothing is blocked; the warning is <see cref="RoomPlayerFlagged" />, carrying only the flags that are signs of cheating.</remarks>
-	Task<RoomResult> ReportClientFlagsAsync(BanchoConnection player, ClientFlags flags,
-		CancellationToken cancellationToken = default);
 
 	/// <summary>Records a stored score of the room's latest round.</summary>
 	/// <param name="room">The room.</param>

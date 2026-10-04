@@ -1,9 +1,11 @@
+using Basil.Application.Contracts.Anticheat;
 using Basil.Application.Contracts.Beatmaps;
 using Basil.Application.Contracts.Chat;
 using Basil.Application.Contracts.Multiplayer;
 using Basil.Application.Contracts.Scores;
 using Basil.Application.Contracts.Sessions;
 using Basil.Application.Contracts.Users;
+using Basil.Application.Services.Anticheat;
 using Basil.Application.Services.Beatmaps;
 using Basil.Application.Services.Chat;
 using Basil.Application.Services.Multiplayer;
@@ -49,6 +51,9 @@ public static class ServiceCollectionExtensions
 
 		services.AddSingleton<RoomService>();
 		services.AddSingleton<IRoomService>(sp => sp.GetRequiredService<RoomService>());
+
+		services.AddSingleton<AnticheatService>();
+		services.AddSingleton<IAnticheatService>(sp => sp.GetRequiredService<AnticheatService>());
 
 		services.AddSingleton<MatchService>();
 		services.AddSingleton<IMatchService>(sp => sp.GetRequiredService<MatchService>());
