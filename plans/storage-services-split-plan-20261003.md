@@ -867,11 +867,12 @@ ImageSharp, TLS/Kestrel, mDNS, kiểm tra cập nhật, Velopack, migration DB, 
   server về chế độ bypass (không có khóa admin) và ghi cảnh báo như khi khởi động không có khóa. Người vận hành sau đó
   đặt khóa mới qua `PUT /settings/adminkey`. Dùng khi quên khóa admin.
 * **Bắt buộc trước khi chạy lại server** (mục 13.1, 13.2): host Bancho gọi `IAnticheatService.Report` với cờ của
-  `lastfm.php` (bài nộp đã do `ScoreService` báo); dispatcher của luồng `AnticheatEvent` giao
+  bài nộp và của `lastfm.php`; dispatcher của luồng `AnticheatEvent` giao
   `AnticheatPlayerFlagged` có `Room` tới handler: BasilBot đăng cảnh báo vào kênh phòng và nhắn riêng referee và
   creator; nếu thiếu, cảnh báo anticheat sẽ mất. Handler `UserConnectionClosed` gọi `IChannelService.StopSpectating`, `IRoomService.ReleaseAsync`,
   `ILobbyService.Unwatch`, `IChannelService.PartAll`, nếu không kết nối đã đóng sẽ còn trong kênh spectator, phòng và
-  lobby. Các thao tác này chạy lại được an toàn. Kịch bản kiểm thử của host phải có hai trường hợp này.
+  lobby; dispatcher giao `ScoreSubmitted` có `Room` tới `IRoomService.RecordScoreAsync`, và handler `UserConnectionOpened` gọi
+  `IChannelService.JoinAutoChannels` cho mọi kết nối mới, kể cả BasilBot. Các thao tác này chạy lại được an toàn. Kịch bản kiểm thử của host phải có hai trường hợp này.
 
 ## 13. Nhật ký triển khai
 
@@ -970,6 +971,15 @@ mang phòng người chơi đang ngồi. Dispatcher của Infrastructure giao ev
 referee và creator (BasilBot gửi tin). `IRoomService.ReportClientFlagsAsync` và `RoomPlayerFlagged` bị xóa;
 `ScoreService` báo cờ của bài nộp qua `IAnticheatService` (Scores không phụ thuộc Multiplayer); host Bancho báo cờ
 của `lastfm.php`. Thay các dòng về `RoomService.ReportClientFlagsAsync` ở mục 2.4, 8.13, 12.1 và 13.
+
+### 13.3 Service ngang hàng giao tiếp qua event (2026-10-04)
+
+Quyết định của người dùng: service ngang hàng (không sở hữu nhau, luật của bên này không phụ thuộc bên kia) không gọi
+nhau; bên hành động chỉ phát event, dispatcher của Infrastructure giao tới contract của bên nhận. Quan hệ cha–con hoặc
+sở hữu (service → storage, phòng → kênh của phòng, session → kênh PM/spectator, phòng → lobby cho luật phòng trống,
+đăng nhập → mở kết nối, xóa user → đóng kết nối ngay vì là luật bảo mật) vẫn gọi trực tiếp. AGENTS.md có quy tắc "Peers talk through events; parents call their
+children directly". Thay đổi: `ScoreService` không còn gọi `IRoomService.RecordScoreAsync` và `IAnticheatService`
+(`ScoreSubmitted.Room`; host báo cờ của bài nộp); `SessionService.OpenBotAsync` không còn tự vào kênh tự động. Phần dispatcher và handler ghi ở mục 12.9.
 
 ## Phụ lục A. Kịch bản mốc hành vi
 

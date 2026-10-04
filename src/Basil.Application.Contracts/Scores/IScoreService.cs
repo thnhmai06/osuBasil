@@ -23,12 +23,11 @@ public interface IScoreService : IEventPublisher<ScoreEvent>
 	/// <returns><see langword="null" /> when the score was stored; otherwise, why it was rejected.</returns>
 	/// <remarks>
 	///     A score on a beatmap the server does not have is accepted only when it is the beatmap of the
-	///     latest round in the player's room. A score played in that round is recorded against it. Every
+	///     latest round in the player's room. A score played in that round carries the round, and <see cref="ScoreSubmitted" /> names the room so the round can record it. Every
 	///     accepted play adds to the play count and the total score; passed plays also add to the ranked score.
 	///     The submission is checked against the player's latest recorded login. A submission whose
 	///     checksum was already stored is refused. Only a passed play keeps its replay, and only when
-	///     the replay is at least 24 bytes long. Anticheat flags sent with the submission are reported to the
-	///     anticheat.
+	///     the replay is at least 24 bytes long.
 	/// </remarks>
 	Task<ScoreRejection?> SubmitAsync(
 		BanchoConnection connection,

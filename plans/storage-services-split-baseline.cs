@@ -352,7 +352,9 @@ Check("P5a score carries round and team", scoreStore.Items[^1].Value is { Round:
 Check("P5a submitted event with stats", Drain(scoreService.Events).OfType<ScoreSubmitted>().Single().Stats.PlayCount == 1);
 Check("P5b replay of 24+ bytes kept", await Submit(Sub(2000), new byte[30]) is null && replayStore.Saved == replaysBefore + 1);
 Check("P5c duplicate checksum refused", await Submit(Sub(2000), new byte[30]) == ScoreRejection.Duplicate);
-Check("P5d submission flags reported to the anticheat", await Submit(Sub(3000, ClientFlags.SpeedHackDetected), null) is null && Drain(anticheat.Events).OfType<AnticheatPlayerFlagged>().Single().Room == r5);
+Drain(scoreService.Events);
+Check("P5d submitted score names its room; flags are left to the host", await Submit(Sub(3000, ClientFlags.SpeedHackDetected), null) is null
+	&& Drain(scoreService.Events).OfType<ScoreSubmitted>().Single().Room == r5 && Drain(anticheat.Events).Count == 0);
 Check("P5e tampered submission refused", await Submit(Sub(4000) with { HashByClient = zero }, null) == ScoreRejection.SubmissionHashMismatch);
 Check("P5f unknown beatmap refused", await Submit(Sub(5000), null, zero) == ScoreRejection.UnknownBeatmap);
 

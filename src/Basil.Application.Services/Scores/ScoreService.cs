@@ -2,8 +2,6 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Channels;
-using Basil.Application.Contracts.Anticheat;
-using Basil.Application.Contracts.Multiplayer;
 using Basil.Application.Contracts.Scores;
 using Basil.Application.Storage.Common;
 using Basil.Application.Storage.Multiplayer;
@@ -25,9 +23,7 @@ internal sealed class ScoreService(
 	IReplayStorage replays,
 	IUserStatsRepository stats,
 	ILoginRepository logins,
-	Lobby lobby,
-	IRoomService rooms,
-	IAnticheatService anticheat) : IScoreService
+	Lobby lobby) : IScoreService
 {
 	private readonly Channel<ScoreEvent> _events = Channel.CreateUnbounded<ScoreEvent>();
 
@@ -51,8 +47,6 @@ internal sealed class ScoreService(
 		var checkedBeatmap =
 			beatmap ?? (round is not null ? new BeatmapChecksums(client.BeatmapHash, (Md5?)null) : null);
 		if (checkedBeatmap is not { } known) return ScoreRejection.UnknownBeatmap;
-
-		anticheat.Report(connection, submission.ClientFlags);
 
 		var latest = await logins.ListAsync(new LoginQuery(connection.User), new PageRequest(0, 1), cancellationToken);
 		var loginClient = latest.Items.FirstOrDefault()?.Client ?? connection.Login.Client!;
@@ -82,10 +76,7 @@ internal sealed class ScoreService(
 
 		await stats.CreateOrUpdateAsync(current, cancellationToken);
 
-		if (room is not null && round is not null)
-			await rooms.RecordScoreAsync(room, connection.User, score, cancellationToken);
-
-		_events.Writer.TryWrite(new ScoreSubmitted(connection.User, score, current));
+		_events.Writer.TryWrite(new ScoreSubmitted(connection.User, score, current, round is not null ? room : null));
 		return null;
 	}
 

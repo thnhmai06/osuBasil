@@ -380,9 +380,9 @@ the search syntax) belong to Storage; the routes and handlers that answer querie
 changed at runtime (`ServerSettings`) are persistent Domain data, not host configuration.
 
 * `Common` and `Events` depend on no feature. `Users`, `Beatmaps` and `Scores` do not depend on
-  `Multiplayer`, except that the score service records scores against the player's room. Anticheat flags,
-  wherever they arrive (score submission, `lastfm.php`), go to `IAnticheatService`, the single source of anticheat
-  events; Infrastructure's dispatcher delivers its warnings (room chat, referees, creator).
+  `Multiplayer` services; the score service only reads the player's room to find the round. Anticheat flags,
+  wherever they arrive (score submission, `lastfm.php`), are reported by the host to `IAnticheatService`, the single
+  source of anticheat events; Infrastructure's dispatcher delivers its warnings (room chat, referees, creator).
 * `Sessions`, `Chat` and `Multiplayer` reference each other (`Room.Host`, `Room.Channel`,
   `ChannelSession.Members`); treat them as one cluster. Their runtime models live together in Storage, and
   Services changes them through `internal` members (`InternalsVisibleTo("Basil.Application.Services")`).
@@ -404,7 +404,8 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   `XService` and its event stream (`IRoomService : IEventPublisher<RoomEvent>`). This is a deliberate
   exception to "no interface with one implementation": the contracts are the list of capabilities the
   system offers, independent of how they are implemented. Implementations are `internal sealed` and
-  registered by `AddApplicationServices()`. Services call each other through contracts; coordination that is
+  registered by `AddApplicationServices()`. Where one service may call another (see "Peers talk through events"), it
+  calls the contract; coordination that is
   not a public capability (`LobbyService.RoomEmptied`, `RoomRules`) is an `internal` member called through
   the concrete class inside Services.
 * **Capability ports.** A capability with business meaning whose implementation needs external libraries
@@ -466,11 +467,19 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
 * **Each service manages its own kind, and reacts to other kinds only through events.** The session service
   opens and closes connections and announces `UserConnectionOpened`/`UserConnectionClosed`; its responsibility
   ends there. Leaving rooms and parting channels when a connection closes is done by Infrastructure handlers
-  that receive the event and call the owning service. A service calls another only to keep its own invariant
-  (the room service joins its players to the room channel). When a second connection of the same kind arrives
+  that receive the event and call the owning service. When a second connection of the same kind arrives
   for a user an owner still holds, the owner **asks the old connection who it is** (`connection.IsOpen`):
   still open, refuse the new one; already closed (cleanup not run yet, or failed), remove the old one as an
   ordinary leave and admit the new one. Cleanup operations must be safe to run again.
+* **Peers talk through events; parents call their children directly.** Two services are peers when neither
+  owns the other and neither's rule depends on the other (scores and rooms, the anticheat and rooms): the
+  acting service only emits its event, and Infrastructure's dispatcher delivers it to the peer by calling the
+  peer's contract (`ScoreSubmitted` → `IRoomService.RecordScoreAsync`, `AnticheatPlayerFlagged` → the room's
+  chat). A service calls another directly only for a clear parent/child or ownership relation, or to keep a
+  rule that must hold within the same operation: services use storage; a room manages its own channel and a
+  session its PM and spectator channels; the room service tells the lobby when a room empties or fills;
+  logging in opens the connection; deleting a user closes their connections at once, a security rule that
+  must not wait for a handler.
 * **Application emits events; it does not consume them.** Each service is one event source over its own
   `Channel<T>`; storage never emits. One operation emits one event carrying its whole consequence. Events sit
   in a nested category tree (`Event` ← `RoomEvent` ← `RoomSlotEvent` ← `RoomSlotTeamChanged`) so a consumer

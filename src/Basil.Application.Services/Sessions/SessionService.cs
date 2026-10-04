@@ -195,7 +195,6 @@ internal sealed class SessionService(
 		if (failure is not null)
 			throw new InvalidOperationException($"BasilBot could not come online: {failure}");
 
-		channels.JoinAutoChannels(connection);
 		return connection;
 	}
 
