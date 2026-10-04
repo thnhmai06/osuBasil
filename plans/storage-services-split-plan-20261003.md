@@ -866,6 +866,11 @@ ImageSharp, TLS/Kestrel, mDNS, kiểm tra cập nhật, Velopack, migration DB, 
   Khi có tùy chọn này, lúc khởi động host gọi `ICredentialRepository.DeleteAdminKeyAsync()` trước khi nhận request:
   server về chế độ bypass (không có khóa admin) và ghi cảnh báo như khi khởi động không có khóa. Người vận hành sau đó
   đặt khóa mới qua `PUT /settings/adminkey`. Dùng khi quên khóa admin.
+* **Bắt buộc trước khi chạy lại server** (mục 13.1): host Bancho gọi `IRoomService.ReportClientFlagsAsync` với
+  `Submission.ClientFlags` của mọi bài nộp và với cờ của `lastfm.php`, nếu không cảnh báo anticheat cho phòng sẽ mất;
+  handler `UserConnectionClosed` gọi `IChannelService.StopSpectating`, `IRoomService.ReleaseAsync`,
+  `ILobbyService.Unwatch`, `IChannelService.PartAll`, nếu không kết nối đã đóng sẽ còn trong kênh spectator, phòng và
+  lobby. Các thao tác này chạy lại được an toàn. Kịch bản kiểm thử của host phải có hai trường hợp này.
 
 ## 13. Nhật ký triển khai
 
