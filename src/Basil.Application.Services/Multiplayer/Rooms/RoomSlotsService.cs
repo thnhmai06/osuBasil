@@ -1,14 +1,83 @@
 using Basil.Application.Contracts.Multiplayer;
 using Basil.Application.Contracts.Multiplayer.Events;
+using Basil.Application.Contracts.Multiplayer.Rooms;
 using Basil.Application.Storage.Multiplayer;
 using Basil.Application.Storage.Sessions;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 
-namespace Basil.Application.Services.Multiplayer;
+namespace Basil.Application.Services.Multiplayer.Rooms;
 
-internal sealed partial class RoomService
+/// <summary>Moves players between slots and changes what a player sets on their own slot.</summary>
+internal sealed class RoomSlotsService(
+	RoomEventStream events,
+	RoomChannelService roomChannel,
+	RoomMembershipService membership,
+	RoomRoundsService rounds) : IRoomSlotsService
 {
+	/// <inheritdoc />
+	public Task<RoomResult> ChangeSlotAsync(Room room, BanchoConnection by, int index,
+		CancellationToken cancellationToken = default)
+	{
+		return RoomScope.InScopeAsync(room, () => ChangeSlot(room, by, index), cancellationToken);
+	}
+
+	/// <inheritdoc />
+	public Task<RoomResult> MoveAsync(Room room, Connection by, User player, int index,
+		CancellationToken cancellationToken = default)
+	{
+		return RoomScope.InScopeAsync(room, () => Move(room, by, player, index), cancellationToken);
+	}
+
+	/// <inheritdoc />
+	public Task<RoomResult> ArrangeSlotsAsync(Room room, Connection by, IReadOnlyList<SlotArrangement> arrangement,
+		CancellationToken cancellationToken = default)
+	{
+		return RoomScope.InScopeAsync(room, () => ArrangeSlots(room, by, arrangement), cancellationToken);
+	}
+
+	/// <inheritdoc />
+	public Task<RoomResult> ToggleSlotLockAsync(Room room, Connection by, int index,
+		CancellationToken cancellationToken = default)
+	{
+		return RoomScope.InScopeAsync(room, () => ToggleSlotLock(room, by, index), cancellationToken);
+	}
+
+	/// <inheritdoc />
+	public Task<RoomResult> SetReadyAsync(Room room, BanchoConnection by, bool ready,
+		CancellationToken cancellationToken = default)
+	{
+		return RoomScope.InScopeAsync(room, () => SetReady(room, by, ready), cancellationToken);
+	}
+
+	/// <inheritdoc />
+	public Task<RoomResult> SetHasMapAsync(Room room, BanchoConnection by, bool has,
+		CancellationToken cancellationToken = default)
+	{
+		return RoomScope.InScopeAsync(room, () => SetHasMap(room, by, has), cancellationToken);
+	}
+
+	/// <inheritdoc />
+	public Task<RoomResult> ToggleTeamAsync(Room room, BanchoConnection by,
+		CancellationToken cancellationToken = default)
+	{
+		return RoomScope.InScopeAsync(room, () => ToggleTeam(room, by), cancellationToken);
+	}
+
+	/// <inheritdoc />
+	public Task<RoomResult> SetTeamAsync(Room room, Connection by, User player, GameTeam team,
+		CancellationToken cancellationToken = default)
+	{
+		return RoomScope.InScopeAsync(room, () => SetTeam(room, by, player, team), cancellationToken);
+	}
+
+	/// <inheritdoc />
+	public Task<RoomResult> SetPlayerModsAsync(Room room, BanchoConnection by, GameMods mods,
+		CancellationToken cancellationToken = default)
+	{
+		return RoomScope.InScopeAsync(room, () => SetPlayerMods(room, by, mods), cancellationToken);
+	}
+
 	private RoomResult ChangeSlot(Room room, BanchoConnection by, int index)
 	{
 		if (room.Slots.Find(by) is not { } from) return RoomResult.NotInRoom;
@@ -19,7 +88,7 @@ internal sealed partial class RoomService
 		if (to.Locked || to.Player is not null) return RoomResult.SlotNotOpen;
 
 		RoomSlotsMechanics.MoveTo(from, to);
-		Emit(new RoomPlayerMoved(room, by, from.Index, to.Index));
+		events.Emit(new RoomPlayerMoved(room, by, from.Index, to.Index));
 		return RoomResult.Ok;
 	}
 
@@ -32,7 +101,7 @@ internal sealed partial class RoomService
 		if (to.Locked || to.Player is not null) return RoomResult.SlotNotOpen;
 
 		RoomSlotsMechanics.MoveTo(from, to);
-		Emit(new RoomPlayerMoved(room, seated, from.Index, to.Index));
+		events.Emit(new RoomPlayerMoved(room, seated, from.Index, to.Index));
 		return RoomResult.Ok;
 	}
 
@@ -62,7 +131,7 @@ internal sealed partial class RoomService
 			if (entry.Team is { } team && room.TeamType.NeedSplitTeam()) slot.Team = team;
 		}
 
-		Emit(new RoomSlotsArranged(room));
+		events.Emit(new RoomSlotsArranged(room));
 		return RoomResult.Ok;
 	}
 
@@ -80,28 +149,18 @@ internal sealed partial class RoomService
 		{
 			evicted = player;
 			RoomSlotsMechanics.Vacate(room, player);
-			progress = AdvanceRound(room);
+			progress = rounds.AdvanceRound(room);
 		}
 
 		slot.Locked = locking;
-		Emit(new RoomSlotLockChanged(room, slot.Index, locking, evicted, room.Host, progress));
+		events.Emit(new RoomSlotLockChanged(room, slot.Index, locking, evicted, room.Host, progress));
 
 		if (evicted is not null)
 		{
-			LeaveChannel(room, evicted);
-			ReportIfEmpty(room);
+			roomChannel.LeaveChannel(room, evicted);
+			membership.ReportIfEmpty(room);
 		}
 
-		return RoomResult.Ok;
-	}
-
-	private RoomResult SetLocked(Room room, Connection by, bool locked)
-	{
-		if (!RoomRules.CanManage(room, by)) return RoomResult.NotAuthorized;
-		if (room.Slots.Locked == locked) return RoomResult.Ok;
-
-		room.Slots.Locked = locked;
-		Emit(new RoomLockChanged(room, locked));
 		return RoomResult.Ok;
 	}
 
@@ -114,7 +173,7 @@ internal sealed partial class RoomService
 		if (slot.Status == status) return RoomResult.Ok;
 
 		RoomSlotsMechanics.SetStatus(slot, status);
-		Emit(new RoomSlotStatusChanged(room, slot.Index, status));
+		events.Emit(new RoomSlotStatusChanged(room, slot.Index, status));
 		return RoomResult.Ok;
 	}
 
@@ -128,7 +187,7 @@ internal sealed partial class RoomService
 		if (slot.Status == status) return RoomResult.Ok;
 
 		RoomSlotsMechanics.SetStatus(slot, status);
-		Emit(new RoomSlotStatusChanged(room, slot.Index, status));
+		events.Emit(new RoomSlotStatusChanged(room, slot.Index, status));
 		return RoomResult.Ok;
 	}
 
@@ -141,7 +200,7 @@ internal sealed partial class RoomService
 
 		var team = slot.Team is GameTeam.Red ? GameTeam.Blue : GameTeam.Red;
 		slot.Team = team;
-		Emit(new RoomSlotTeamChanged(room, slot.Index, team));
+		events.Emit(new RoomSlotTeamChanged(room, slot.Index, team));
 		return RoomResult.Ok;
 	}
 
@@ -153,7 +212,7 @@ internal sealed partial class RoomService
 		if (slot.Team == team) return RoomResult.Ok;
 
 		slot.Team = team;
-		Emit(new RoomSlotTeamChanged(room, slot.Index, team));
+		events.Emit(new RoomSlotTeamChanged(room, slot.Index, team));
 		return RoomResult.Ok;
 	}
 
@@ -167,7 +226,7 @@ internal sealed partial class RoomService
 		if (slot.Mods == mods) return RoomResult.Ok;
 
 		slot.Mods = mods;
-		Emit(new RoomSlotModsChanged(room, slot.Index, mods));
+		events.Emit(new RoomSlotModsChanged(room, slot.Index, mods));
 		return RoomResult.Ok;
 	}
 }

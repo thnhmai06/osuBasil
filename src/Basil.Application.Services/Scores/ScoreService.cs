@@ -102,15 +102,14 @@ internal sealed class ScoreService(
 		string playerName,
 		SubmittedClient submittedClient)
 	{
-		var serialHash = ComputeSerialHash();
 		var md5ByServer = ComputeSubmissionMd5();
 
 		if (submittedClient.VersionDate != client.Version.Date.ToString("yyyyMMdd", CultureInfo.InvariantCulture))
 			return ScoreRejection.VersionMismatch;
-		if (submittedClient.FingerprintHash != client.Fingerprint.ToString()) return ScoreRejection.ClientHashMismatch;
-		if (serialHash?.UninstallHash != client.Fingerprint.UninstallHash)
+		if (submittedClient.Fingerprint != client.Fingerprint) return ScoreRejection.ClientHashMismatch;
+		if (new Md5(Encoding.UTF8.GetBytes(submittedClient.UninstallId)) != client.Fingerprint.UninstallHash)
 			return ScoreRejection.UninstallerHashMismatch;
-		if (serialHash.Value.DiskSignatureHash != client.Fingerprint.DiskSignatureHash)
+		if (new Md5(Encoding.UTF8.GetBytes(submittedClient.DiskSignature)) != client.Fingerprint.DiskSignatureHash)
 			return ScoreRejection.DiskSignatureHashMismatch;
 		if (submission.HashByClient != md5ByServer) return ScoreRejection.SubmissionHashMismatch;
 		if (submittedClient.BeatmapHash != beatmap.Hash) return ScoreRejection.BeatmapHashMismatch;
@@ -128,18 +127,9 @@ internal sealed class ScoreService(
 				$"smustard{hitCounts.NumKatu}{hitCounts.NumMiss}uu{beatmap.Hash}{submission.Score.MaxCombo}" +
 				$"{submission.Score.IsFullCombo}{playerName}{submission.Score.TotalScore}{submission.Score.Grade.ToString().ToUpperInvariant()}" +
 				$"{(int)submission.Score.Mods}Q{submission.Score.IsPassed}{(int)submission.Score.Mode}" +
-				$"{submittedClient.VersionDate}{submission.Score.Timestamp:yyMMddHHmmss}{submittedClient.FingerprintHash}{beatmap.StoryboardHash?.ToString() ?? string.Empty}";
+				$"{submittedClient.VersionDate}{submission.Score.Timestamp:yyMMddHHmmss}{submittedClient.ClientHash}{beatmap.StoryboardHash?.ToString() ?? string.Empty}";
 			var hash = MD5.HashData(Encoding.UTF8.GetBytes(raw));
 			return Convert.ToHexStringLower(hash);
-		}
-
-		(Md5 UninstallHash, Md5 DiskSignatureHash)? ComputeSerialHash()
-		{
-			const char delimiter = '|';
-
-			var parts = submittedClient.Serial.Split(delimiter, 2);
-			if (parts.Length < 2) return null;
-			return (new Md5(Encoding.UTF8.GetBytes(parts[0])), new Md5(Encoding.UTF8.GetBytes(parts[1])));
 		}
 
 		#endregion

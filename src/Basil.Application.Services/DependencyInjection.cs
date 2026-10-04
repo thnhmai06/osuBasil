@@ -9,6 +9,7 @@ using Basil.Application.Services.Anticheat;
 using Basil.Application.Services.Beatmaps;
 using Basil.Application.Services.Chat;
 using Basil.Application.Services.Multiplayer;
+using Basil.Application.Services.Multiplayer.Rooms;
 using Basil.Application.Services.Scores;
 using Basil.Application.Services.Sessions;
 using Basil.Application.Services.Users;
@@ -43,12 +44,21 @@ public static class DependencyInjection
 		services.AddSingleton<UserService>();
 		services.AddSingleton<IUserService>(sp => sp.GetRequiredService<UserService>());
 
+		services.AddSingleton<ChannelEventStream>();
+		services.AddSingleton<ChannelSpectatorService>();
 		services.AddSingleton<ChannelService>();
 		services.AddSingleton<IChannelService>(sp => sp.GetRequiredService<ChannelService>());
 
 		services.AddSingleton<LobbyService>();
 		services.AddSingleton<ILobbyService>(sp => sp.GetRequiredService<LobbyService>());
 
+		services.AddSingleton<RoomEventStream>();
+		services.AddSingleton<RoomChannelService>();
+		services.AddSingleton<RoomMembershipService>();
+		services.AddSingleton<RoomAuthorityService>();
+		services.AddSingleton<RoomSettingsService>();
+		services.AddSingleton<RoomSlotsService>();
+		services.AddSingleton<RoomRoundsService>();
 		services.AddSingleton<RoomService>();
 		services.AddSingleton<IRoomService>(sp => sp.GetRequiredService<RoomService>());
 

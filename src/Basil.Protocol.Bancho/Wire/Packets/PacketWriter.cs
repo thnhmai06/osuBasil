@@ -88,10 +88,7 @@ public sealed partial class PacketWriter(Stream stream)
 	/// <param name="plays">The number of plays the player has made.</param>
 	/// <param name="totalScore">The player's total score.</param>
 	/// <param name="globalRank">The player's global rank.</param>
-	/// <param name="pp">
-	///     The player's pp; a value above 0xFFFF is substituted into <paramref name="rankedScore" /> and sent as
-	///     zero.
-	/// </param>
+	/// <param name="pp">The player's pp. <paramref name="pp" /> must fit in 16 bits.</param>
 	/// <returns>The complete packet.</returns>
 	public void UserStats(
 		int userId,
@@ -108,13 +105,6 @@ public sealed partial class PacketWriter(Stream stream)
 		int globalRank,
 		int pp)
 	{
-		if (pp > 0xFFFF)
-		{
-			// HACK: if pp is over osu!'s ingame cap, display it as ranked score instead.
-			rankedScore = pp;
-			pp = 0;
-		}
-
 		Wrap(ServerPacketType.UserStats, () =>
 		{
 			_writer.Write(userId);

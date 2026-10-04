@@ -1,5 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using Basil.Domain.Utilities;
+﻿using Basil.Domain.Utilities;
 
 namespace Basil.Domain.Client;
 
@@ -13,7 +12,7 @@ namespace Basil.Domain.Client;
 ///     hardware. Other adapter strings are dot-separated, end with a dot, and contain no empty
 ///     chunks. Comparisons ignore the case of the checksum.
 /// </remarks>
-public readonly record struct NetworkAdapters : IParsable<NetworkAdapters>
+public readonly record struct NetworkAdapters
 {
 	private const string WineAdapterSentinel = "runningunderwine";
 
@@ -74,75 +73,6 @@ public readonly record struct NetworkAdapters : IParsable<NetworkAdapters>
 	public bool Equals(NetworkAdapters other)
 	{
 		return Hash == other.Hash;
-	}
-
-	/// <summary>
-	///     Parses an adapter value of the form <c>adapters:md5</c>.
-	/// </summary>
-	/// <param name="s">The wire value to parse.</param>
-	/// <param name="provider">Ignored.</param>
-	/// <returns>The parsed adapter value.</returns>
-	/// <exception cref="FormatException">
-	///     <paramref name="s" /> does not contain exactly two colon-separated components, or a
-	///     component is invalid.
-	/// </exception>
-	public static NetworkAdapters Parse(string s, IFormatProvider? provider = null)
-	{
-		var parts = s.Split(':', 2);
-
-		return parts.Length == 2
-			? new NetworkAdapters(parts[0], parts[1])
-			: throw new FormatException("Network adapters value must contain 2 components.");
-	}
-
-	/// <summary>
-	///     Attempts to parse an adapter value.
-	/// </summary>
-	/// <param name="s">The wire value to parse, or <see langword="null" />.</param>
-	/// <param name="provider">Ignored.</param>
-	/// <param name="result">
-	///     When this method returns <see langword="true" />, the parsed value; otherwise, the
-	///     default value.
-	/// </param>
-	/// <returns>
-	///     <see langword="true" /> if <paramref name="s" /> was parsed successfully; otherwise,
-	///     <see langword="false" />.
-	/// </returns>
-	public static bool TryParse(
-		[NotNullWhen(true)] string? s,
-		IFormatProvider? provider,
-		out NetworkAdapters result)
-	{
-		if (s is null)
-		{
-			result = default;
-			return false;
-		}
-
-		try
-		{
-			result = Parse(s, provider);
-			return true;
-		}
-		catch (FormatException)
-		{
-			result = default;
-			return false;
-		}
-	}
-
-	/// <summary>
-	///     Returns the adapter value in <c>adapters:md5</c> wire form.
-	/// </summary>
-	/// <returns>The wire representation of this adapter value.</returns>
-	public override string ToString()
-	{
-		return $"{Adapters}:{Hash}";
-	}
-
-	public static implicit operator NetworkAdapters(string other)
-	{
-		return Parse(other);
 	}
 
 	/// <summary>

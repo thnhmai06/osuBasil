@@ -1,13 +1,29 @@
 using Basil.Application.Contracts.Multiplayer;
 using Basil.Application.Contracts.Multiplayer.Events;
+using Basil.Application.Contracts.Multiplayer.Rooms;
 using Basil.Application.Storage.Multiplayer;
 using Basil.Application.Storage.Sessions;
 using Basil.Domain.Mechanics;
 
-namespace Basil.Application.Services.Multiplayer;
+namespace Basil.Application.Services.Multiplayer.Rooms;
 
-internal sealed partial class RoomService
+/// <summary>Changes a room's shared settings and its lock.</summary>
+internal sealed class RoomSettingsService(RoomEventStream events) : IRoomSettingsService
 {
+	/// <inheritdoc />
+	public Task<RoomResult> ConfigureAsync(Room room, Connection by, RoomSettingsChange change,
+		CancellationToken cancellationToken = default)
+	{
+		return RoomScope.InScopeAsync(room, () => Configure(room, by, change), cancellationToken);
+	}
+
+	/// <inheritdoc />
+	public Task<RoomResult> SetLockedAsync(Room room, Connection by, bool locked,
+		CancellationToken cancellationToken = default)
+	{
+		return RoomScope.InScopeAsync(room, () => SetLocked(room, by, locked), cancellationToken);
+	}
+
 	private RoomResult Configure(Room room, Connection by, RoomSettingsChange change)
 	{
 		if (!RoomRules.IsHostOrManager(room, by)) return RoomResult.NotAuthorized;
@@ -66,8 +82,18 @@ internal sealed partial class RoomService
 		if (change.Size is { } size) RoomSlotsMechanics.Resize(room.Slots, size);
 		if (change.IsPrivate is { } isPrivate) room.Match.Value.IsPrivate = isPrivate;
 
-		Emit(new RoomSettingsChanged(room, change with { Password = null }, change.Password is not null,
+		events.Emit(new RoomSettingsChanged(room, change with { Password = null }, change.Password is not null,
 			countdownCancelled));
+		return RoomResult.Ok;
+	}
+
+	private RoomResult SetLocked(Room room, Connection by, bool locked)
+	{
+		if (!RoomRules.CanManage(room, by)) return RoomResult.NotAuthorized;
+		if (room.Slots.Locked == locked) return RoomResult.Ok;
+
+		room.Slots.Locked = locked;
+		events.Emit(new RoomLockChanged(room, locked));
 		return RoomResult.Ok;
 	}
 

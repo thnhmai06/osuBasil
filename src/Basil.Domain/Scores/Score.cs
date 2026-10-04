@@ -1,5 +1,4 @@
-﻿using System.Globalization;
-using Basil.Domain.Mechanics;
+﻿using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Utilities;
 
@@ -102,40 +101,4 @@ public sealed record ScoreData(
 	///     Gets the play's accuracy, computed from its hit counts under its mode and mods.
 	/// </summary>
 	public double Accuracy => HitCounts.CalculateAccuracy(Mode, Mods);
-
-	/// <summary>
-	///     Parses the scoring fields of a submission into a <see cref="ScoreData" />.
-	/// </summary>
-	/// <param name="submitFields">
-	///     The colon-delimited submission fields that follow the submission MD5 entry. Indexes 1
-	///     through 14 carry the hit counts, total score, max combo, full-combo flag, grade, mods,
-	///     passed flag, mode, and occurrence time.
-	/// </param>
-	/// <param name="beatmapHash">The beatmap MD5 to carry into the parsed score, if known.</param>
-	/// <param name="userId">The user ID to carry into the parsed score, if known.</param>
-	/// <returns>The parsed score.</returns>
-	public static ScoreData Parse(IReadOnlyList<string> submitFields, Md5? beatmapHash = null, int? userId = null)
-	{
-		var hitCounts = new HitCounts(
-			int.Parse(submitFields[1], CultureInfo.InvariantCulture),
-			int.Parse(submitFields[2], CultureInfo.InvariantCulture),
-			int.Parse(submitFields[3], CultureInfo.InvariantCulture),
-			int.Parse(submitFields[4], CultureInfo.InvariantCulture),
-			int.Parse(submitFields[5], CultureInfo.InvariantCulture),
-			int.Parse(submitFields[6], CultureInfo.InvariantCulture));
-
-		return new ScoreData
-		(
-			userId,
-			beatmapHash,
-			(GameMode)int.Parse(submitFields[13], CultureInfo.InvariantCulture),
-			(GameMods)int.Parse(submitFields[11], CultureInfo.InvariantCulture),
-			hitCounts,
-			int.Parse(submitFields[7], CultureInfo.InvariantCulture),
-			short.Parse(submitFields[8], CultureInfo.InvariantCulture), Enum.Parse<Grade>(submitFields[10], true),
-			submitFields[12] == "True",
-			submitFields[9] == "True",
-			DateTime.ParseExact(submitFields[14], "yyMMddHHmmss", CultureInfo.InvariantCulture)
-		);
-	}
 }

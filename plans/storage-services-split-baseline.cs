@@ -54,11 +54,11 @@ services.AddSingleton<IMatchRepository>(matchStore);
 var scoreStore = new ScoresFake(); services.AddSingleton<IScoreRepository>(scoreStore);
 var replayStore = new Replays(); services.AddSingleton<IReplayStorage>(replayStore);
 services.AddSingleton<IUserStatsRepository>(new StatsFake());
-var archiveReader = new Reader(); services.AddSingleton<IBeatmapArchiveReader>(archiveReader);
+var archiveReader = new Reader(); services.AddSingleton<IBeatmapsetReader>(archiveReader);
 services.AddSingleton<IBeatmapAnalyser>(new Analyser());
 var setStore = new Sets(); services.AddSingleton<IBeatmapsetRepository>(setStore);
 var mapStore = new Maps(); services.AddSingleton<IBeatmapRepository>(mapStore);
-var archiveStore = new Archives(); services.AddSingleton<IBeatmapArchiveStorage>(archiveStore);
+var archiveStore = new Archives(); services.AddSingleton<IBeatmapsetStorage>(archiveStore);
 var roundStore = new Rounds(); services.AddSingleton<IRoundRepository>(roundStore);
 var eventStore = new MatchEvents(); services.AddSingleton<IMatchEventRepository>(eventStore);
 var relationStore = new Relationships();
@@ -72,8 +72,8 @@ var users = provider.GetRequiredService<UserRegistry>();
 var lobby = provider.GetRequiredService<Lobby>();
 var lobbyService = provider.GetRequiredService<ILobbyService>();
 var roomService = provider.GetRequiredService<IRoomService>();
-var client = new ClientInfo(ClientVersion.Parse("b20250101"),
-	ClientFingerprint.Parse($"{new Md5(new byte[16])}:adapter.:{new Md5(new byte[16])}:{new Md5(new byte[16])}:{new Md5(new byte[16])}:"));
+var client = new ClientInfo(new ClientVersion(new DateOnly(2025, 1, 1), null, ClientVersionStream.Stable),
+	new ClientFingerprint(new Md5(new byte[16]), new NetworkAdapters("adapter.", new Md5(new byte[16])), new Md5(new byte[16]), new Md5(new byte[16])));
 var password = new Md5(new byte[16]);
 
 var nextUser = 1;
@@ -109,11 +109,11 @@ var (t2, _) = await lobbyService.OpenAsync(referee, null, "T2", "", true, false)
 var alice = NewUser("Alice"); var aliceConn = Online(alice);
 time.Advance(TimeSpan.FromMinutes(11));
 Drain(lobbyService.Events);
-Check("S2 alice joins", await Do(t2!, s => s.JoinAsync(t2!, aliceConn, "")) == RoomResult.Ok);
+Check("S2 alice joins", await Do(t2!, s => s.Members.JoinAsync(t2!, aliceConn, "")) == RoomResult.Ok);
 time.Advance(TimeSpan.FromMinutes(10));
 Check("S2 room still open, no announcement", lobby.Find(t2.Id) is not null && Drain(lobbyService.Events).Count == 0);
 var left = time.GetUtcNow();
-await Do(t2, s => s.LeaveAsync(t2!, aliceConn));
+await Do(t2, s => s.Members.LeaveAsync(t2!, aliceConn));
 ev = Drain(lobbyService.Events);
 Check("S2 emptied again: announced at 15 min left", ev.OfType<LobbyRoomClosingAnnounced>().SingleOrDefault()?.ClosesAt == left + TimeSpan.FromMinutes(15));
 time.Advance(TimeSpan.FromMinutes(15));
@@ -124,49 +124,49 @@ var bob = NewUser("Bob"); var bobConn = Online(bob);
 var (n1, rn) = await lobbyService.OpenAsync(bob, bobConn, "N1", "", false, false);
 Check("S3 creator seated as host", rn == RoomResult.Ok && ReferenceEquals(n1!.Host, bobConn));
 Check("S3 open in game while playing elsewhere refused", (await lobbyService.OpenAsync(bob, bobConn, "N2", "", false, false)).Result == RoomResult.AlreadyInRoom);
-await Do(n1, s => s.LeaveAsync(n1!, bobConn));
+await Do(n1, s => s.Members.LeaveAsync(n1!, bobConn));
 Check("S3 closed when empty", lobby.Find(n1.Id) is null);
 
 // S4: a closed seat is only replaced after every check passes
 var carol = NewUser("Carol"); var carol1 = Online(carol);
 var (t4, _) = await lobbyService.OpenAsync(referee, null, "T4", "pw", true, false);
-Check("S4 carol joins", await Do(t4!, s => s.JoinAsync(t4!, carol1, "pw")) == RoomResult.Ok);
+Check("S4 carol joins", await Do(t4!, s => s.Members.JoinAsync(t4!, carol1, "pw")) == RoomResult.Ok);
 time.Advance(TimeSpan.FromSeconds(11));
 var carol2 = Online(carol); // replaces carol1 (idle); carol1 is now closed but still seated
 Check("S4 old connection closed", !carol1.IsOpen);
-Check("S4 wrong password refused", await Do(t4, s => s.JoinAsync(t4!, carol2, "nope")) == RoomResult.WrongPassword);
+Check("S4 wrong password refused", await Do(t4, s => s.Members.JoinAsync(t4!, carol2, "nope")) == RoomResult.WrongPassword);
 Check("S4 old seat kept after refusal", t4.Slots.Find(carol1) is not null);
-Check("S4 right password replaces seat", await Do(t4, s => s.JoinAsync(t4!, carol2, "pw")) == RoomResult.Ok && t4.Slots.Find(carol1) is null && t4.Slots.Find(carol2) is not null);
+Check("S4 right password replaces seat", await Do(t4, s => s.Members.JoinAsync(t4!, carol2, "pw")) == RoomResult.Ok && t4.Slots.Find(carol1) is null && t4.Slots.Find(carol2) is not null);
 
 // S5: a player leaving mid-load completes the "all loaded" set; last completion ends the round
 var dave = NewUser("Dave"); var daveConn = Online(dave);
 var erin = NewUser("Erin"); var erinConn = Online(erin);
 var (t5, _) = await lobbyService.OpenAsync(referee, null, "T5", "", true, false);
 var refConn = Online(referee);
-await Do(t5!, s => s.JoinAsync(t5!, daveConn, "")); await Do(t5, s => s.JoinAsync(t5!, erinConn, ""));
-Check("S5 configure map", await Do(t5, s => s.ConfigureAsync(t5!, refConn, new RoomSettingsChange(Beatmap: new BeatmapReference(new Md5(new byte[16]), 1, "map", GameMode.Standard, null)))) == RoomResult.Ok);
+await Do(t5!, s => s.Members.JoinAsync(t5!, daveConn, "")); await Do(t5, s => s.Members.JoinAsync(t5!, erinConn, ""));
+Check("S5 configure map", await Do(t5, s => s.Settings.ConfigureAsync(t5!, refConn, new RoomSettingsChange(Beatmap: new BeatmapReference(new Md5(new byte[16]), 1, "map", GameMode.Standard, null)))) == RoomResult.Ok);
 Drain(roomService.Events);
-Check("S5 empty configure is no-op", await Do(t5, s => s.ConfigureAsync(t5!, refConn, new RoomSettingsChange())) == RoomResult.Ok && Drain(roomService.Events).Count == 0);
-Check("S5 start", await Do(t5, s => s.StartAsync(t5!, refConn)) == RoomResult.Ok);
-await Do(t5, s => s.MarkLoadedAsync(t5!, daveConn));
+Check("S5 empty configure is no-op", await Do(t5, s => s.Settings.ConfigureAsync(t5!, refConn, new RoomSettingsChange())) == RoomResult.Ok && Drain(roomService.Events).Count == 0);
+Check("S5 start", await Do(t5, s => s.Rounds.StartAsync(t5!, refConn)) == RoomResult.Ok);
+await Do(t5, s => s.Rounds.MarkLoadedAsync(t5!, daveConn));
 Drain(roomService.Events);
-await Do(t5, s => s.LeaveAsync(t5!, erinConn));
+await Do(t5, s => s.Members.LeaveAsync(t5!, erinConn));
 var re = Drain(roomService.Events);
 Check("S5 all loaded reported in the leave event", re.OfType<RoomPlayerLeft>().Single().RoundProgress is { AllLoaded: true, Completed: false } && !re.OfType<RoomRoundAllLoaded>().Any());
-await Do(t5, s => s.CompleteAsync(t5!, daveConn));
+await Do(t5, s => s.Rounds.CompleteAsync(t5!, daveConn));
 re = Drain(roomService.Events);
 Check("S5 round completed", re.OfType<RoomRoundCompleted>().Count() == 1 && !t5.InProgress);
 
 // S6: a round nobody plays ends at once
-await Do(t5, s => s.SetHasMapAsync(t5!, daveConn, false));
+await Do(t5, s => s.Slots.SetHasMapAsync(t5!, daveConn, false));
 Drain(roomService.Events);
-await Do(t5, s => s.StartAsync(t5!, refConn));
+await Do(t5, s => s.Rounds.StartAsync(t5!, refConn));
 re = Drain(roomService.Events);
 Check("S6 unplayed round ends in its start event", re.OfType<RoomRoundStarted>().Single().Round.EndedAt is not null && !re.OfType<RoomRoundCompleted>().Any() && !t5.InProgress);
 
 // S7: clearing the beatmap, then start is refused
-Check("S7 clear beatmap", await Do(t5, s => s.ConfigureAsync(t5!, refConn, new RoomSettingsChange(ClearBeatmap: true))) == RoomResult.Ok && t5.Beatmap is null);
-Check("S7 start without map refused", await Do(t5, s => s.StartAsync(t5!, refConn)) == RoomResult.NoBeatmap);
+Check("S7 clear beatmap", await Do(t5, s => s.Settings.ConfigureAsync(t5!, refConn, new RoomSettingsChange(ClearBeatmap: true))) == RoomResult.Ok && t5.Beatmap is null);
+Check("S7 start without map refused", await Do(t5, s => s.Rounds.StartAsync(t5!, refConn)) == RoomResult.NoBeatmap);
 
 // P2a: a logout within one second of login is ignored; a later one closes the connection
 var fay = NewUser("Fay"); var fayConn = Online(fay);
@@ -263,10 +263,10 @@ Check("P3g friends-only refuses strangers", await channelService.PostAsync(pamCo
 relationStore.Items.Add(new Relationship { Actor = pam, Target = oli, Type = RelationshipType.Friend });
 Check("P3g friends-only accepts friends", await channelService.PostAsync(pamConn.Session.PmChannel, oliConn, "x") == ChannelPostResult.Posted);
 Check("P3h bot passes friends-only", await channelService.PostAsync(pamConn.Session.PmChannel, botConn, "x") == ChannelPostResult.Posted);
-Check("P3i spectate", channelService.Spectate(pamConn, oliConn) == SpectateResult.Spectating && users.FindSpectating(oliConn) is not null);
-Check("P3i spectate self refused", channelService.Spectate(pamConn, pamConn) == SpectateResult.Self);
-Check("P3i bot can spectate", channelService.Spectate(pamConn, botConn) == SpectateResult.Spectating);
-Check("P3i stop", channelService.StopSpectating(oliConn) && users.FindSpectating(oliConn) is null);
+Check("P3i spectate", channelService.Spectators.Spectate(pamConn, oliConn) == SpectateResult.Spectating && users.FindSpectating(oliConn) is not null);
+Check("P3i spectate self refused", channelService.Spectators.Spectate(pamConn, pamConn) == SpectateResult.Self);
+Check("P3i bot can spectate", channelService.Spectators.Spectate(pamConn, botConn) == SpectateResult.Spectating);
+Check("P3i stop", channelService.Spectators.StopSpectating(oliConn) && users.FindSpectating(oliConn) is null);
 time.Advance(TimeSpan.FromSeconds(2));
 sessions.Close(pamConn, ConnectionCloseReason.LoggedOut);
 Check("P3j host leaving closes its spectator channel", pamConn.SpectatorChannel.IsClosed && pamConn.SpectatorChannel.Members.Count == 0);
@@ -274,40 +274,40 @@ Check("P3j host leaving closes its spectator channel", pamConn.SpectatorChannel.
 // P4: rooms through the services
 var quinn = NewUser("Quinn"); var quinnConn = Online(quinn);
 var (p4, _) = await lobbyService.OpenAsync(referee, null, "P4", "", true, false);
-await roomService.JoinAsync(p4!, quinnConn, "");
-Check("P4a bot has server authority", await roomService.ConfigureAsync(p4!, botConn, new RoomSettingsChange(Beatmap: new BeatmapReference(new Md5(new byte[16]), 1, "map", GameMode.Standard, null))) == RoomResult.Ok);
-Check("P4a stranger refused", await roomService.ConfigureAsync(p4!, oliConn, new RoomSettingsChange(Name: "x")) == RoomResult.NotAuthorized);
-await roomService.StartAsync(p4!, botConn);
+await roomService.Members.JoinAsync(p4!, quinnConn, "");
+Check("P4a bot has server authority", await roomService.Settings.ConfigureAsync(p4!, botConn, new RoomSettingsChange(Beatmap: new BeatmapReference(new Md5(new byte[16]), 1, "map", GameMode.Standard, null))) == RoomResult.Ok);
+Check("P4a stranger refused", await roomService.Settings.ConfigureAsync(p4!, oliConn, new RoomSettingsChange(Name: "x")) == RoomResult.NotAuthorized);
+await roomService.Rounds.StartAsync(p4!, botConn);
 Drain(lobbyService.Events);
 Check("P4b bot closes the room", await lobbyService.CloseAsync(p4!, botConn) == RoomResult.Ok);
 Check("P4b closing mid-round reports the aborted round", Drain(lobbyService.Events).OfType<LobbyRoomClosed>().Single() is { AbortedRound: { Aborted: true } } closed && closed.Evicted.Count == 1);
-Check("P4c operations on a closed room report RoomClosed", await roomService.JoinAsync(p4!, quinnConn, "") == RoomResult.RoomClosed);
+Check("P4c operations on a closed room report RoomClosed", await roomService.Members.JoinAsync(p4!, quinnConn, "") == RoomResult.RoomClosed);
 
 // P4b: settings, seating, arranging, anticheat
 var rex = NewUser("Rex"); var rexConn = Online(rex);
 var sam = NewUser("Sam"); var samConn = Online(sam);
 var (q1, _) = await lobbyService.OpenAsync(referee, null, "Q1", "pw", true, false);
 var (q2, _) = await lobbyService.OpenAsync(referee, null, "Q2", "", true, false);
-await roomService.JoinAsync(q2!, rexConn, "");
-Check("P4b seat stranger refused", await roomService.SeatAsync(q1!, oliConn, rexConn) == RoomResult.NotAuthorized);
-Check("P4b seat moves from another room, password not asked", await roomService.SeatAsync(q1!, botConn, rexConn) == RoomResult.Ok && q1!.Slots.Find(rexConn) is not null && q2!.Slots.Find(rexConn) is null);
-Check("P4b seat twice refused", await roomService.SeatAsync(q1!, botConn, rexConn) == RoomResult.AlreadySeated);
-Check("P4b bot cannot be banned", await roomService.BanAsync(q1!, botConn, botConn.User) == RoomResult.NotAuthorized);
-Check("P4b bot cannot be made referee", await roomService.AddRefereeAsync(q1!, botConn, botConn.User) == RoomResult.NotAuthorized);
-await roomService.BanAsync(q1!, botConn, sam);
-Check("P4b seat banned refused", await roomService.SeatAsync(q1!, botConn, samConn) == RoomResult.Banned);
-await roomService.UnbanAsync(q1!, botConn, sam);
-await roomService.SeatAsync(q1!, botConn, samConn);
-await roomService.ConfigureAsync(q1!, botConn, new RoomSettingsChange(Mods: GameMods.Hidden | GameMods.HardRock));
-Check("P4b mode change drops invalid mods", await roomService.ConfigureAsync(q1!, botConn, new RoomSettingsChange(Mode: GameMode.Mania)) == RoomResult.Ok && q1!.Mode == GameMode.Mania && q1.Mods.IsValid(GameMode.Mania));
-await roomService.SetHostAsync(q1!, botConn, rexConn);
-Check("P4b host cannot change privacy", await roomService.ConfigureAsync(q1!, rexConn, new RoomSettingsChange(IsPrivate: true)) == RoomResult.NotAuthorized && !q1!.Match.Value.IsPrivate);
-Check("P4b manager changes privacy", await roomService.ConfigureAsync(q1!, botConn, new RoomSettingsChange(IsPrivate: true)) == RoomResult.Ok && q1!.Match.Value.IsPrivate);
+await roomService.Members.JoinAsync(q2!, rexConn, "");
+Check("P4b seat stranger refused", await roomService.Members.SeatAsync(q1!, oliConn, rexConn) == RoomResult.NotAuthorized);
+Check("P4b seat moves from another room, password not asked", await roomService.Members.SeatAsync(q1!, botConn, rexConn) == RoomResult.Ok && q1!.Slots.Find(rexConn) is not null && q2!.Slots.Find(rexConn) is null);
+Check("P4b seat twice refused", await roomService.Members.SeatAsync(q1!, botConn, rexConn) == RoomResult.AlreadySeated);
+Check("P4b bot cannot be banned", await roomService.Members.BanAsync(q1!, botConn, botConn.User) == RoomResult.NotAuthorized);
+Check("P4b bot cannot be made referee", await roomService.Authority.AddRefereeAsync(q1!, botConn, botConn.User) == RoomResult.NotAuthorized);
+await roomService.Members.BanAsync(q1!, botConn, sam);
+Check("P4b seat banned refused", await roomService.Members.SeatAsync(q1!, botConn, samConn) == RoomResult.Banned);
+await roomService.Members.UnbanAsync(q1!, botConn, sam);
+await roomService.Members.SeatAsync(q1!, botConn, samConn);
+await roomService.Settings.ConfigureAsync(q1!, botConn, new RoomSettingsChange(Mods: GameMods.Hidden | GameMods.HardRock));
+Check("P4b mode change drops invalid mods", await roomService.Settings.ConfigureAsync(q1!, botConn, new RoomSettingsChange(Mode: GameMode.Mania)) == RoomResult.Ok && q1!.Mode == GameMode.Mania && q1.Mods.IsValid(GameMode.Mania));
+await roomService.Authority.SetHostAsync(q1!, botConn, rexConn);
+Check("P4b host cannot change privacy", await roomService.Settings.ConfigureAsync(q1!, rexConn, new RoomSettingsChange(IsPrivate: true)) == RoomResult.NotAuthorized && !q1!.Match.Value.IsPrivate);
+Check("P4b manager changes privacy", await roomService.Settings.ConfigureAsync(q1!, botConn, new RoomSettingsChange(IsPrivate: true)) == RoomResult.Ok && q1!.Match.Value.IsPrivate);
 Drain(roomService.Events);
-Check("P4b arrange missing a player refused", await roomService.ArrangeSlotsAsync(q1!, botConn, [new SlotArrangement(5, rex, null, false)]) == RoomResult.InvalidSettings);
-Check("P4b arrange locked player slot refused", await roomService.ArrangeSlotsAsync(q1!, botConn, [new SlotArrangement(5, rex, null, true), new SlotArrangement(6, sam, null, false)]) == RoomResult.InvalidSettings);
-Check("P4b arrange duplicate slot refused", await roomService.ArrangeSlotsAsync(q1!, botConn, [new SlotArrangement(5, rex, null, false), new SlotArrangement(5, sam, null, false)]) == RoomResult.InvalidSettings);
-Check("P4b arrange swaps and locks", await roomService.ArrangeSlotsAsync(q1!, botConn, [new SlotArrangement(1, sam, null, false), new SlotArrangement(2, rex, null, false), new SlotArrangement(3, null, null, true)]) == RoomResult.Ok
+Check("P4b arrange missing a player refused", await roomService.Slots.ArrangeSlotsAsync(q1!, botConn, [new SlotArrangement(5, rex, null, false)]) == RoomResult.InvalidSettings);
+Check("P4b arrange locked player slot refused", await roomService.Slots.ArrangeSlotsAsync(q1!, botConn, [new SlotArrangement(5, rex, null, true), new SlotArrangement(6, sam, null, false)]) == RoomResult.InvalidSettings);
+Check("P4b arrange duplicate slot refused", await roomService.Slots.ArrangeSlotsAsync(q1!, botConn, [new SlotArrangement(5, rex, null, false), new SlotArrangement(5, sam, null, false)]) == RoomResult.InvalidSettings);
+Check("P4b arrange swaps and locks", await roomService.Slots.ArrangeSlotsAsync(q1!, botConn, [new SlotArrangement(1, sam, null, false), new SlotArrangement(2, rex, null, false), new SlotArrangement(3, null, null, true)]) == RoomResult.Ok
 	&& q1!.Slots.Find(samConn)?.Index == 1 && q1.Slots.Find(rexConn)?.Index == 2 && q1.Slots.At(3)!.Locked && ReferenceEquals(q1.Host, rexConn)
 	&& Drain(roomService.Events).OfType<RoomSlotsArranged>().Count() == 1);
 var anticheat = provider.GetRequiredService<IAnticheatService>();
@@ -317,26 +317,26 @@ Check("AC cheat signs announced with the room", anticheat.Report(rexConn, Client
 Check("AC flags outside a room carry no room", anticheat.Report(oliConn, ClientFlags.SpeedHackDetected) != ClientFlags.Clean && Drain(anticheat.Events).OfType<AnticheatPlayerFlagged>().Single().Room is null);
 var tom = NewUser("Tom"); var tomConn = Online(tom);
 var (q3, _) = await lobbyService.OpenAsync(sam, null, "Q3", "", true, false);
-await roomService.JoinAsync(q3!, tomConn, "");
-Check("P4b seat from a room the caller does not manage refused", await roomService.SeatAsync(q1!, refConn, tomConn) == RoomResult.InAnotherRoom && q3!.Slots.Find(tomConn) is not null);
+await roomService.Members.JoinAsync(q3!, tomConn, "");
+Check("P4b seat from a room the caller does not manage refused", await roomService.Members.SeatAsync(q1!, refConn, tomConn) == RoomResult.InAnotherRoom && q3!.Slots.Find(tomConn) is not null);
 await userService.SilenceAsync(tom, time.GetUtcNow().AddHours(1));
-Check("P4b seat silenced refused", await roomService.SeatAsync(q1!, botConn, tomConn) == RoomResult.Silenced && q3!.Slots.Find(tomConn) is not null);
+Check("P4b seat silenced refused", await roomService.Members.SeatAsync(q1!, botConn, tomConn) == RoomResult.Silenced && q3!.Slots.Find(tomConn) is not null);
 
 // P5: scores, round results, beatmaps, unfinished matches
 var zero = new Md5(new byte[16]);
-var client2 = new ClientInfo(ClientVersion.Parse("b20250101"),
-	ClientFingerprint.Parse($"{zero}:adapter.:{zero}:{new Md5(Encoding.UTF8.GetBytes("u"))}:{new Md5(Encoding.UTF8.GetBytes("d"))}:"));
+var client2 = new ClientInfo(new ClientVersion(new DateOnly(2025, 1, 1), null, ClientVersionStream.Stable),
+	new ClientFingerprint(zero, new NetworkAdapters("adapter.", zero), new Md5(Encoding.UTF8.GetBytes("u")), new Md5(Encoding.UTF8.GetBytes("d"))));
 var uma = NewUser("Uma");
 var umaConn = (BanchoConnection)(await auth.LoginAsync(new LoginAttempt("Uma", password), ConnectionType.Bancho, IPAddress.Loopback, client2, 0)).Connection!;
 var mapHash = new Md5(Encoding.UTF8.GetBytes("map"));
 var (r5, _) = await lobbyService.OpenAsync(NewUser("Vic"), null, "R5", "", true, false);
-await roomService.SeatAsync(r5!, botConn, umaConn);
-await roomService.ConfigureAsync(r5!, botConn, new RoomSettingsChange(Beatmap: new BeatmapReference(mapHash, 1, "map", GameMode.Standard, null), TeamType: GameTeamType.TeamVs));
-await roomService.StartAsync(r5!, botConn);
+await roomService.Members.SeatAsync(r5!, botConn, umaConn);
+await roomService.Settings.ConfigureAsync(r5!, botConn, new RoomSettingsChange(Beatmap: new BeatmapReference(mapHash, 1, "map", GameMode.Standard, null), TeamType: GameTeamType.TeamVs));
+await roomService.Rounds.StartAsync(r5!, botConn);
 Drain(roomService.Events);
 var scoreService = provider.GetRequiredService<IScoreService>();
 var stamp = time.GetUtcNow();
-var fp = client2.Fingerprint.ToString();
+var fp = "client-hash-as-sent";
 Submission Sub(int total, ClientFlags flags = ClientFlags.Clean)
 {
 	var data = new ScoreData(null, mapHash, GameMode.Standard, GameMods.NoMod, new HitCounts(100, 0, 0, 0, 0, 0), total, 100, Grade.S, true, false, stamp)
@@ -345,7 +345,7 @@ Submission Sub(int total, ClientFlags flags = ClientFlags.Clean)
 	return new Submission { Score = data, HashByClient = new Md5(Encoding.UTF8.GetBytes(raw)), ClientFlags = flags };
 }
 Task<ScoreRejection?> Submit(Submission s, byte[]? replay, Md5? played = null) =>
-	scoreService.SubmitAsync(umaConn, s, null, new SubmittedClient(fp, "u|d", "20250101", played ?? mapHash), replay);
+	scoreService.SubmitAsync(umaConn, s, null, new SubmittedClient(fp, client2.Fingerprint, "u", "d", "20250101", played ?? mapHash), replay);
 var replaysBefore = replayStore.Saved;
 Check("P5a score on the round's beatmap accepted, short replay not kept", await Submit(Sub(1000), new byte[10]) is null && replayStore.Saved == replaysBefore);
 Check("P5a score carries round and team", scoreStore.Items[^1].Value is { Round: not null, Team: not null, UserId: not null });
@@ -366,11 +366,11 @@ Check("P5g team win by summed margin", RoundResult.Decide(round5, [S(1, 500, Gam
 Check("P5g draw", RoundResult.Decide(round5, [S(1, 900, null), S(2, 900, null)]) == new RoundResult(null, null, 0));
 Check("P5g single score wins unopposed", RoundResult.Decide(round5, [S(1, 900, GameTeam.Red)]) == new RoundResult(GameTeam.Red, 1, 0));
 
-var beatmapService = provider.GetRequiredService<IBeatmapService>();
-BeatmapArchive Archive(int? setId, params (string Content, int? Id)[] diffs) =>
+var beatmapService = provider.GetRequiredService<IBeatmapsetService>();
+BeatmapsetArchive Archive(int? setId, params (string Content, int? Id)[] diffs) =>
 	new(setId, "Artist", "Title", "Mapper", diffs.Select(d => new BeatmapArchiveDifficulty(d.Id, "v", GameMode.Standard, Encoding.UTF8.GetBytes(d.Content))).ToList());
-Task<BeatmapImportResult> Import(BeatmapArchive? a, int? named = null) { archiveReader.Next = a; return beatmapService.ImportAsync(new MemoryStream([1]), named); }
-Check("P5h unreadable archive", (await Import(null)).Failure == BeatmapImportFailure.Unreadable);
+Task<BeatmapsetImportResult> Import(BeatmapsetArchive? a, int? named = null) { archiveReader.Next = a; return beatmapService.ImportAsync(new MemoryStream([1]), named); }
+Check("P5h unreadable archive", (await Import(null)).Failure == BeatmapsetImportFailure.Unreadable);
 Check("P5h unknown named id falls back to the declared id", (await Import(Archive(123, ("a", 456)), 999)).Set?.Id == 123);
 Check("P5h beatmap keeps its declared id", (await mapStore.GetByHashAsync(new Md5(Encoding.UTF8.GetBytes("a"))))?.Id == 456);
 Check("P5h known beatmap picks its set and keeps its id", (await Import(Archive(777, ("a", null), ("b", null)))).Set?.Id == 123 && (await mapStore.GetByHashAsync(new Md5(Encoding.UTF8.GetBytes("a"))))?.Id == 456);
@@ -379,7 +379,7 @@ Check("P5h existing named id wins over the declared id", (await Import(Archive(8
 Check("P5h difficulties no longer in the set removed", await mapStore.GetByHashAsync(new Md5(Encoding.UTF8.GetBytes("a"))) is null);
 var set123 = (await setStore.GetAsync(123))!;
 set123.Locked = true;
-Check("P5i locked set not imported", (await Import(Archive(123, ("e", null)))).Failure == BeatmapImportFailure.Locked);
+Check("P5i locked set not imported", (await Import(Archive(123, ("e", null)))).Failure == BeatmapsetImportFailure.Locked);
 Check("P5i locked set not deleted", !await beatmapService.DeleteAsync(set123));
 set123.Locked = false;
 Drain(beatmapService.Events);
@@ -396,24 +396,24 @@ Check("P5k unfinished matches and rounds closed", unfinished > 0 && await matchS
 
 // R: review fixes
 var (rc, _) = await lobbyService.OpenAsync(NewUser("Wes"), null, "RC", "", true, false);
-await roomService.ConfigureAsync(rc!, botConn, new RoomSettingsChange(Beatmap: new BeatmapReference(mapHash, 1, "map", GameMode.Standard, null)));
+await roomService.Settings.ConfigureAsync(rc!, botConn, new RoomSettingsChange(Beatmap: new BeatmapReference(mapHash, 1, "map", GameMode.Standard, null)));
 Drain(roomService.Events);
-await roomService.StartCountdownAsync(rc!, botConn, TimeSpan.FromSeconds(130), true);
+await roomService.Rounds.StartCountdownAsync(rc!, botConn, TimeSpan.FromSeconds(130), true);
 for (var i = 0; i < 131; i++) time.Advance(TimeSpan.FromSeconds(1));
 var ce = Drain(roomService.Events);
 Check("R countdown marks for a round start", ce.OfType<RoomCountdownTicked>().Select(t => (int)t.Remaining.TotalSeconds).SequenceEqual([120, 60, 30, 10, 5, 4, 3]));
 Check("R countdown starts the round in one event", ce.OfType<RoomRoundStarted>().SingleOrDefault()?.ByCountdown == true && !ce.OfType<RoomCountdownElapsed>().Any());
-await roomService.StartCountdownAsync(rc!, botConn, TimeSpan.FromSeconds(70), false);
+await roomService.Rounds.StartCountdownAsync(rc!, botConn, TimeSpan.FromSeconds(70), false);
 for (var i = 0; i < 71; i++) time.Advance(TimeSpan.FromSeconds(1));
 ce = Drain(roomService.Events);
 Check("R timer marks", ce.OfType<RoomCountdownTicked>().Select(t => (int)t.Remaining.TotalSeconds).SequenceEqual([60, 30, 10, 5]) && ce.OfType<RoomCountdownElapsed>().Count() == 1);
-await roomService.StartCountdownAsync(rc!, botConn, TimeSpan.FromSeconds(60), true);
+await roomService.Rounds.StartCountdownAsync(rc!, botConn, TimeSpan.FromSeconds(60), true);
 Drain(roomService.Events);
-Check("R gameplay setting cancels auto-start", await roomService.ConfigureAsync(rc!, botConn, new RoomSettingsChange(Mods: GameMods.Hidden)) == RoomResult.Ok
+Check("R gameplay setting cancels auto-start", await roomService.Settings.ConfigureAsync(rc!, botConn, new RoomSettingsChange(Mods: GameMods.Hidden)) == RoomResult.Ok
 	&& Drain(roomService.Events).OfType<RoomSettingsChanged>().Single().CountdownCancelled && rc!.CountdownEndsAt is null);
-await roomService.StartCountdownAsync(rc!, botConn, TimeSpan.FromSeconds(60), true);
+await roomService.Rounds.StartCountdownAsync(rc!, botConn, TimeSpan.FromSeconds(60), true);
 Drain(roomService.Events);
-Check("R room name keeps auto-start", await roomService.ConfigureAsync(rc!, botConn, new RoomSettingsChange(Name: "renamed")) == RoomResult.Ok
+Check("R room name keeps auto-start", await roomService.Settings.ConfigureAsync(rc!, botConn, new RoomSettingsChange(Name: "renamed")) == RoomResult.Ok
 	&& !Drain(roomService.Events).OfType<RoomSettingsChanged>().Single().CountdownCancelled && rc!.CountdownEndsAt is not null && rc.Channel.Channel.Topic == "renamed");
 Check("R analysis failure stores a zero star rating", (await Import(Archive(4242, ("fail", null)))).Beatmaps.Single().Difficulty.Star == 0);
 Console.WriteLine(failures == 0 ? "ALL PASS" : $"{failures} FAILED");
@@ -507,10 +507,10 @@ sealed class StatsFake : IUserStatsRepository
 	public Task CreateOrUpdateAsync(UserStats stats, CancellationToken cancellationToken = default) { _items[(stats.UserId, stats.Mode)] = stats; return Task.CompletedTask; }
 }
 
-sealed class Reader : IBeatmapArchiveReader
+sealed class Reader : IBeatmapsetReader
 {
-	public BeatmapArchive? Next { get; set; }
-	public Task<BeatmapArchive?> ReadAsync(Stream archive, CancellationToken cancellationToken = default) => Task.FromResult(Next);
+	public BeatmapsetArchive? Next { get; set; }
+	public Task<BeatmapsetArchive?> ReadAsync(Stream archive, CancellationToken cancellationToken = default) => Task.FromResult(Next);
 }
 
 sealed class Analyser : IBeatmapAnalyser
@@ -545,7 +545,7 @@ sealed class Maps : IBeatmapRepository
 	}
 }
 
-sealed class Archives : IBeatmapArchiveStorage
+sealed class Archives : IBeatmapsetStorage
 {
 	public HashSet<int> Stored { get; } = [];
 	public Task SaveAsync(Beatmapset set, Stream content, CancellationToken cancellationToken = default) { Stored.Add(set.Id); return Task.CompletedTask; }

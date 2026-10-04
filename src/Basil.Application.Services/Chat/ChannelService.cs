@@ -9,21 +9,22 @@ using Basil.Application.Storage.Users;
 using Basil.Domain.Chat;
 using Basil.Domain.Client;
 using Basil.Domain.Social;
-using Channel = System.Threading.Channels.Channel;
 
 namespace Basil.Application.Services.Chat;
 
 /// <summary>Opens and closes chat channels and lets connections join, part, post and spectate.</summary>
 internal sealed class ChannelService(
 	GeneralChannelRegistry generalChannels,
-	UserRegistry users,
+	ChannelEventStream events,
+	ChannelSpectatorService spectators,
 	IRelationshipRepository relationships,
 	TimeProvider time) : IChannelService
 {
-	private readonly Channel<ChannelEvent> _events = Channel.CreateUnbounded<ChannelEvent>();
+	/// <inheritdoc />
+	public ChannelReader<ChannelEvent> Events => events.Reader;
 
 	/// <inheritdoc />
-	public ChannelReader<ChannelEvent> Events => _events.Reader;
+	public IChannelSpectatorService Spectators => spectators;
 
 	/// <inheritdoc />
 	public void Close(ChannelSession channel)
@@ -36,7 +37,7 @@ internal sealed class ChannelService(
 		foreach (var member in members)
 			channel.RemoveMember(member);
 
-		Emit(new ChannelClosed(channel, members));
+		events.Emit(new ChannelClosed(channel, members));
 
 		if (channel is GeneralChannelSession general)
 			generalChannels.Remove(general);
@@ -62,7 +63,7 @@ internal sealed class ChannelService(
 		}
 
 		channel.AddMember(by);
-		Emit(new ChannelMemberJoined(channel, by, replaced));
+		events.Emit(new ChannelMemberJoined(channel, by, replaced));
 		return ChannelJoinResult.Joined;
 	}
 
@@ -71,7 +72,7 @@ internal sealed class ChannelService(
 	{
 		using var scope = channel.Enter();
 		if (!channel.RemoveMember(by)) return ChannelPartResult.NotMember;
-		Emit(new ChannelMemberParted(channel, by, false));
+		events.Emit(new ChannelMemberParted(channel, by, false));
 		return ChannelPartResult.Parted;
 	}
 
@@ -110,7 +111,7 @@ internal sealed class ChannelService(
 		    && !notice)
 			awayReply = new Message(pmChannel.Owner.User, away, now);
 
-		Emit(new ChannelMessagePosted(channel, message, truncated, awayReply));
+		events.Emit(new ChannelMessagePosted(channel, message, truncated, awayReply));
 		return ChannelPostResult.Posted;
 	}
 
@@ -130,54 +131,11 @@ internal sealed class ChannelService(
 	}
 
 	/// <inheritdoc />
-	public SpectateResult Spectate(BanchoConnection host, Connection by)
-	{
-		if (by is not (BanchoConnection or TourneyConnection or BotConnection))
-			throw new ArgumentException("Only osu!, osu!tourney clients and BasilBot can spectate.", nameof(by));
-
-		var spectatorChannel = host.SpectatorChannel;
-		using var scope = spectatorChannel.Enter();
-
-		if (!host.IsOpen) return SpectateResult.TargetOffline;
-		if (by.User.Equals(host.User)) return SpectateResult.Self;
-		if (spectatorChannel.Members.Contains(by)) return SpectateResult.AlreadySpectating;
-
-		var hostJoined = spectatorChannel.AddMember(host);
-		spectatorChannel.AddMember(by);
-		Emit(new ChannelSpectatorJoined(spectatorChannel, by, hostJoined));
-		return SpectateResult.Spectating;
-	}
-
-	/// <inheritdoc />
-	public bool StopSpectating(Connection by)
-	{
-		var spectatorChannel = users.FindSpectating(by);
-		if (spectatorChannel is null) return false;
-
-		using var scope = spectatorChannel.Enter();
-		if (ReferenceEquals(by, spectatorChannel.Host) || !spectatorChannel.RemoveMember(by)) return false;
-
-		var hostLeft = !spectatorChannel.Spectators.Any() && spectatorChannel.RemoveMember(spectatorChannel.Host);
-		Emit(new ChannelSpectatorLeft(spectatorChannel, by, hostLeft));
-		return true;
-	}
-
-	/// <inheritdoc />
-	public bool ReportSpectatingFailed(Connection by)
-	{
-		var spectatorChannel = users.FindSpectating(by);
-		if (spectatorChannel is null) return false;
-
-		Emit(new ChannelSpectatorFailed(spectatorChannel, by));
-		return true;
-	}
-
-	/// <inheritdoc />
 	public GeneralChannelSession? Open(GeneralChannel channel)
 	{
 		var session = new GeneralChannelSession(channel);
 		if (!generalChannels.Add(session)) return null;
-		Emit(new ChannelOpened(session));
+		events.Emit(new ChannelOpened(session));
 		return session;
 	}
 
@@ -209,10 +167,5 @@ internal sealed class ChannelService(
 			RoomChannelSession => CanRead(channel, connection),
 			_ => false
 		};
-	}
-
-	private void Emit(ChannelEvent @event)
-	{
-		_events.Writer.TryWrite(@event);
 	}
 }
