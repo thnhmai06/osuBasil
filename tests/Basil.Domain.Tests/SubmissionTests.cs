@@ -18,7 +18,7 @@ public class SubmissionTests
 	[Fact]
 	public void FromSubmission_ParsesAllFieldsInOrder()
 	{
-		var score = Submission.FromSubmission(Fields);
+		var score = Submission.From(Fields);
 
 		Assert.Equal("abc123checksum", score.ClientChecksum);
 		Assert.Equal(490, score.HitCounts.x300);
@@ -47,7 +47,7 @@ public class SubmissionTests
 		fields[11] = ((int)Mods.Relax).ToString(); // mods = RX only
 		fields[13] = "0"; // osu!
 
-		var score = Submission.FromSubmission(fields);
+		var score = Submission.From(fields);
 
 		Assert.Equal(GameMode.Standard, score.Mode);
 		Assert.Equal(Mods.Relax, score.Mods);

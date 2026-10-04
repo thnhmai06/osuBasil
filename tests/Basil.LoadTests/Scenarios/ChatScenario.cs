@@ -15,6 +15,9 @@ namespace Basil.LoadTests.Scenarios;
 ///     packet queue is unbounded, "dropped packets" is not a real metric here — a 0% drop figure would
 ///     be a tautology. Instead, this measures delivery latency (marker timestamp embedded in each
 ///     message vs. receive time) and reports undelivered-at-end-of-run as the honest queue-depth proxy.
+///     Receivers poll on <see cref="ChatSettings.ReceivePollInterval" /> rather than the shared client
+///     poll interval, so the reported latency approximates server fan-out speed instead of being
+///     dominated by an unrelated client-side wait (see that setting's doc for why).
 /// </summary>
 public sealed class ChatScenario : IBasilScenario
 {
@@ -84,7 +87,7 @@ public sealed class ChatScenario : IBasilScenario
 							return Response.Ok("sent", text.Length);
 						}
 
-						await Task.Delay(context.Profile.Client.PollInterval, ctx.ScenarioCancellationToken);
+						await Task.Delay(settings.ReceivePollInterval, ctx.ScenarioCancellationToken);
 						var frames = await existing.PollAsync(ctx.ScenarioCancellationToken);
 						var receivedBytes = 0;
 						foreach (var frame in frames)
@@ -121,7 +124,7 @@ public sealed class ChatScenario : IBasilScenario
 				.WithMaxFailCount(settings.MaxFailCount)
 				.WithClean(async _ =>
 				{
-					metrics.WriteReport(reportFolder, n1);
+					metrics.WriteReport(reportFolder, n1, settings.ReceivePollIntervalMs);
 					foreach (var client in clients) await client.DisposeAsync();
 				});
 
@@ -162,7 +165,7 @@ public sealed class ChatScenario : IBasilScenario
 			}
 		}
 
-		public void WriteReport(string reportFolder, int concurrency)
+		public void WriteReport(string reportFolder, int concurrency, int receivePollIntervalMs)
 		{
 			double[] latencies;
 			lock (_lock)
@@ -190,7 +193,10 @@ public sealed class ChatScenario : IBasilScenario
 				$"- Undelivered at end of run: {Math.Max(0, sent - received)}",
 				"- Note: the outbound packet queue is unbounded, so packets are never dropped by design — " +
 				"this figure reflects timing (message sent near the run's end, or a receiver's last poll " +
-				"missing it), not loss."
+				"missing it), not loss.",
+				$"- Receiver poll interval: {receivePollIntervalMs} ms — delivery latency below includes up " +
+				"to this much client-side wait; treat it as an upper bound on server fan-out time, not the " +
+				"exact figure."
 			};
 
 			if (latencies.Length > 0)

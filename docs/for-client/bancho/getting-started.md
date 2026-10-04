@@ -51,7 +51,13 @@ The client must be able to resolve all Basil subdomains to the server.
 
 For a public deployment, configure normal DNS records.
 
-For a LAN or local deployment, add entries to the client's hosts file.
+For a LAN or local deployment, the server advertises its own domain over multicast DNS by default,
+so a client on the same network usually resolves it with nothing to configure. That only applies to
+domains ending in `.local`, which includes the default `basil.local`; ask the server operator if
+you are unsure which domain is in use.
+
+If the domain does not resolve on its own -- it is outside `.local`, the network blocks multicast,
+or this machine ignores it -- add entries to the client's hosts file.
 
 On Windows:
 

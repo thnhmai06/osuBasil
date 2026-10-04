@@ -1,65 +1,87 @@
-﻿namespace Basil.Domain.Multiplayer;
+﻿using Basil.Domain.Users;
+using Basil.Domain.Utilities;
+
+namespace Basil.Domain.Multiplayer;
 
 /// <summary>
-///     A match record as read back for report and management purposes.
+///     A persisted match identified by its id.
 /// </summary>
-/// <param name="Id">The unique identifier of the match.</param>
-/// <param name="Name">The name of the multiplayer room.</param>
-/// <param name="CreatedAt">The time the match was created, in UTC.</param>
-/// <param name="EndedAt">The time the match ended, in UTC, or <see langword="null" /> while open.</param>
-public sealed record Match(
-	int Id,
-	string Name,
-	DateTime CreatedAt,
-	DateTime? EndedAt);
-
-/// <summary>
-///     Represents the team a player is assigned to in a team-based match.
-/// </summary>
-public enum MatchTeam : byte
+public sealed class Match : IWrapper<MatchData>, IEquatable<Match>
 {
-	/// <summary>The player is not on a team.</summary>
-	Neutral = 0, // no team
+	public required int Id
+	{
+		get;
+		init
+		{
+			ArgumentOutOfRangeException.ThrowIfNegative(value);
+			field = value;
+		}
+	}
 
-	/// <summary>The player is on the blue team.</summary>
-	Blue = 1,
+	/// <summary>Gets the match data this identity wraps.</summary>
+	public required MatchData Value { get; init; }
 
-	/// <summary>The player is on the red team.</summary>
-	Red = 2
+	/// <summary>
+	///     Determines whether another match refers to the same persisted match.
+	/// </summary>
+	/// <remarks>
+	///     Two matches are considered equal when their <see cref="Id" /> values are equal.
+	/// </remarks>
+	/// <param name="other">The match to compare against, or <see langword="null" />.</param>
+	/// <returns>
+	///     <see langword="true" /> if <paramref name="other" /> has the same <see cref="Id" />;
+	///     otherwise, <see langword="false" />.
+	/// </returns>
+	public bool Equals(Match? other)
+	{
+		if (other is null) return false;
+		return Id == other.Id;
+	}
+
+	/// <summary>
+	///     Determines whether this match equals another object.
+	/// </summary>
+	/// <param name="obj">The object to compare against.</param>
+	/// <returns>
+	///     <see langword="true" /> if <paramref name="obj" /> is a <see cref="Match" /> with the
+	///     same <see cref="Id" />; otherwise, <see langword="false" />.
+	/// </returns>
+	public override bool Equals(object? obj)
+	{
+		return obj is Match other && Equals(other);
+	}
+
+	/// <summary>
+	///     Returns the hash code of this match.
+	/// </summary>
+	/// <returns>The <see cref="Id" />, which uniquely identifies the match.</returns>
+	public override int GetHashCode()
+	{
+		return Id.GetHashCode();
+	}
 }
 
-/// <summary>
-///     Specifies how the winner of a multiplayer match is decided.
-/// </summary>
-public enum MatchWinCondition : byte
+/// <summary>The data of a match, separate from its persistent identity.</summary>
+public sealed class MatchData
 {
-	/// <summary>The match is decided by the total score of each team.</summary>
-	Score = 0,
+	/// <summary>Gets or sets the name of the match.</summary>
+	public required string Name
+	{
+		get;
+		set => field = string.IsNullOrWhiteSpace(value)
+			? throw new ArgumentException("Match name cannot be empty.", nameof(value))
+			: value;
+	}
 
-	/// <summary>The match is decided by the accuracy of each team.</summary>
-	Accuracy = 1,
+	/// <summary>Gets the user who created the match, or <see langword="null" /> for an unattended room.</summary>
+	public User? Creator { get; init; }
 
-	/// <summary>The match is decided by the combo of each team.</summary>
-	Combo = 2,
+	/// <summary>Gets the date and time when the match started.</summary>
+	public required DateTimeOffset StartedAt { get; init; }
 
-	/// <summary>The match is decided by the ScoreV2 scoring rules.</summary>
-	ScoreV2 = 3
-}
+	/// <summary>Gets or sets the date and time when the match ended, if it has ended.</summary>
+	public required DateTimeOffset? EndedAt { get; set; }
 
-/// <summary>
-///     Specifies how players are grouped into teams for a multiplayer match.
-/// </summary>
-public enum MatchTeamType : byte
-{
-	/// <summary>Each player competes individually against the others.</summary>
-	HeadToHead = 0,
-
-	/// <summary>All players share a single score as a tag team.</summary>
-	TagCoop = 1,
-
-	/// <summary>Players are split into a blue and a red team.</summary>
-	TeamVs = 2,
-
-	/// <summary>Players are split into teams that share scores as tag teams.</summary>
-	TagTeamVs = 3
+	/// <summary>Gets or sets a value that indicates whether the match history is visible only to its creator and participants.</summary>
+	public bool IsPrivate { get; set; } = false;
 }

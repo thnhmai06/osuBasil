@@ -31,7 +31,7 @@ public enum BeatmapStatus : sbyte
 ///     Provides conversions between <see cref="BeatmapStatus" /> and the numeric status values
 ///     used by osu! score submission and the osu! web API.
 /// </summary>
-public static class RankedStatusExtensions
+public static class BeatmapStatusExtensions
 {
 	/// <summary>
 	///     Converts a beatmap status to the numeric value returned by the osu! web API.

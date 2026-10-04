@@ -87,6 +87,13 @@ an email value matching the configured server admin key.
 This endpoint exists for the supported game-client workflow and should not be interpreted as a complete public
 account-management API.
 
+### Friends and private messages
+
+The osu! client's friend list (`osu-getfriends.php`, adding and removing friends) is supported, together with the
+setting that accepts private messages from friends only and with blocked users, whose private messages are refused.
+Players use these during tournaments to reach each other and referees, so they stay even though Basil has no other
+social features.
+
 ## Out of scope
 
 The following features are deliberately not part of Basil's supported surface.
@@ -98,7 +105,6 @@ The following features are deliberately not part of Basil's supported surface.
 | `!mp force`                                                                      | ❌ Out of scope | Administrative forced-player insertion is not implemented.                                                                                                    |
 | `!block`, `!unblock`, `!reconnect`, `!changename`, `!apikey`                     | ❌ Out of scope | These are personal/social account commands outside Basil's multiplayer and tournament scope.                                                                  |
 | `ApiKey` on `User` / `UpdateApiKeyAsync`                                         | ❌ Out of scope | The separate API-key model was removed because it was unused. IRC authentication uses the osu! password directly.                                             |
-| Friends: `osu-getfriends.php`, `FriendAddHandler`, `FriendRemoveHandler`         | ❌ Out of scope | Friend relationships are social functionality unrelated to tournament operation.                                                                              |
 | General-purpose public JSON API v1/v2                                            | ❌ Out of scope | Basil has no concrete requirement for OAuth, public API versioning, or general-purpose external API access.                                                   |
 | `!clan` and moderation/clan commands                                             | ❌ Out of scope | These belonged to the removed command surface and are outside the project's current purpose.                                                                  |
 | Discord audit webhook                                                            | ❌ Out of scope | No current requirement exists for this integration.                                                                                                           |

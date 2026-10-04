@@ -1,35 +1,74 @@
-﻿using Basil.Domain.Beatmaps;
-using Basil.Domain.Scores;
+﻿using Basil.Domain.Utilities;
 
 namespace Basil.Domain.Multiplayer;
 
 /// <summary>
 ///     A round record as read back for report purposes.
 /// </summary>
-/// <param name="Id">The unique identifier of the round.</param>
-/// <param name="MatchId">The id of the match the round belongs to.</param>
-/// <param name="RoundIndex">The round's position within the match, starting at 0.</param>
-/// <param name="MapMd5">The content md5 of the beatmap played.</param>
-/// <param name="Mode">The game mode the round was played in.</param>
-/// <param name="WinCondition">The win condition in effect for the round.</param>
-/// <param name="TeamType">The team setup the round was played under.</param>
-/// <param name="Aborted">A value that indicates whether the round was aborted.</param>
-/// <param name="Mods">The mods enforced for the round.</param>
-/// <param name="StartedAt">The time the round started, in UTC.</param>
-/// <param name="EndedAt">The time the round ended, in UTC, or <see langword="null" /> while open.</param>
-/// <remarks>
-///     Only <see cref="MapMd5" /> identifies the beatmap; every other beatmap fact is resolved live
-///     at report-build time by looking the md5 up through the database, not stored here.
-/// </remarks>
-public sealed record Round(
-	int Id,
-	int MatchId,
-	int RoundIndex,
-	string MapMd5,
-	GameMode Mode,
-	MatchWinCondition WinCondition,
-	MatchTeamType TeamType,
-	bool Aborted,
-	Mods Mods,
-	DateTime StartedAt,
-	DateTime? EndedAt);
+public sealed class Round : IMatchRecord, IEquatable<Round>
+{
+	/// <summary>Gets the position of the round within its match, starting at 1.</summary>
+	/// <remarks>An aborted round keeps its number; the next round takes the following one.</remarks>
+	public required int Number
+	{
+		get;
+		init => field = value > 0
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), "Round number must be positive.");
+	}
+
+	/// <summary>The match the round belongs to.</summary>
+	public required Match Match { get; init; }
+
+	/// <summary>Gets or sets the currently selected beatmap.</summary>
+	/// <remarks>
+	///     A <see langword="null" /> value means that no beatmap has been selected yet — not that a
+	///     selected beatmap could not be found.
+	/// </remarks>
+	public required Md5 BeatmapHash { get; init; }
+
+	/// <summary>The match settings the round was played under.</summary>
+	public required MatchSettings Settings { get; init; }
+
+	/// <summary>The time the round started.</summary>
+	public required DateTimeOffset StartedAt { get; init; }
+
+	/// <inheritdoc />
+	DateTimeOffset IMatchRecord.Timestamp => StartedAt;
+
+	/// <summary>The time the round ended, or <see langword="null" /> while open.</summary>
+	public required DateTimeOffset? EndedAt { get; set; }
+
+	/// <summary>A value that indicates whether the round was aborted.</summary>
+	public bool Aborted { get; set; } = false;
+
+	/// <summary>Determines whether another round is the same round of the same match.</summary>
+	/// <param name="other">The round to compare, or <see langword="null" />.</param>
+	/// <returns>
+	///     <see langword="true" /> if <paramref name="other" /> belongs to the same <see cref="Match" />
+	///     and has the same <see cref="Number" />; otherwise, <see langword="false" />.
+	/// </returns>
+	public bool Equals(Round? other)
+	{
+		if (other is null) return false;
+		return Match.Equals(other.Match) && Number == other.Number;
+	}
+
+	/// <summary>Determines whether this round equals another object.</summary>
+	/// <param name="obj">The object to compare, or <see langword="null" />.</param>
+	/// <returns>
+	///     <see langword="true" /> if <paramref name="obj" /> is a <see cref="Round" /> that equals
+	///     this one; otherwise, <see langword="false" />.
+	/// </returns>
+	public override bool Equals(object? obj)
+	{
+		return obj is Round other && Equals(other);
+	}
+
+	/// <summary>Returns a hash code consistent with the round's equality.</summary>
+	/// <returns>A hash code combining the round's match and number.</returns>
+	public override int GetHashCode()
+	{
+		return HashCode.Combine(Match, Number);
+	}
+}

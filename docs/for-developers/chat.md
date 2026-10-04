@@ -7,67 +7,151 @@ Basil supports chat through two transports:
 * osu! client Bancho packets;
 * native IRC connections.
 
-Both transports feed into the same chat dispatch pipeline. This keeps channel delivery, direct messages, blocking, and command handling consistent regardless of how a message entered the server.
+Both transports act on the same chat model in `Basil.Application`: the same channels, the same rules
+for who may read and write, and the same events. BasilBot takes part through the same model as a
+normal user and provides tournament commands, including `!mp`.
 
-BasilBot uses the same pipeline as a normal chat sender and provides tournament-related commands, including `!mp`.
+> **Pending migration.** The chat model below is the reworked `Basil.Application`. The transports, the
+> command dispatcher and BasilBot live outside Application and have not been migrated to it yet; the
+> sections about them are marked and describe the intended behaviour, which is a user-visible contract.
 
-## Unified dispatch
+## Users, sessions and connections
 
-Chat must not be implemented separately for Bancho and IRC.
+A user who is online is one `UserSession`. Each place they are logged in from is a `Connection`:
 
-Both transports eventually produce the same logical operation:
+| Connection | Client | Per user | Holds |
+|---|---|---|---|
+| `BanchoConnection` | osu! game client | one | presence status, last activity, UTC offset, its spectator channel |
+| `TourneyConnection` | osu!tourney client | several | nothing of its own |
+| `IrcConnection` | IRC client | one | last activity |
+| `BotConnection` | BasilBot | one | nothing of its own |
+
+The session holds what is shared by all of a user's clients: the away message and the user's
+private-message channel.
+
+`UserRegistry` is the only object that opens and closes connections. It announces `UserConnectionOpened`
+(saying whether the user just came online) and `UserConnectionClosed` (saying whether the user went
+offline). Other objects react to those events; the session and its connections hold no channels,
+rooms or other relations, and emit no events.
+
+### Logging in again
+
+A user can hold one connection of each kind except osu!tourney. When a second connection of the same
+kind logs in:
+
+* if the old one has been idle for at least 10 seconds (`UserRegistry.ReplaceAfterIdle`), the old
+  connection is closed with reason `Replaced` and the new one opens;
+* otherwise the new login is refused with `AlreadyOnline`.
+
+osu!tourney logins need the Player and Supporter privileges. An osu! client sends a logout right after
+logging in, so a logout received within one second of an osu! client's login is ignored.
+
+Connections, sessions and channels compare by reference: a connection is one login, a session is one
+period online. An old object carried by a late clean-up can therefore never be mistaken for its
+replacement.
+
+## Channels
+
+### Kinds and owners
+
+A channel has a Domain model (`Channel`: name and topic) and a runtime model
+(`ChannelSession`: members and events). Each kind is managed by whoever owns it:
+
+| Kind | Domain / runtime | Name | Owner, opened and closed with it |
+|---|---|---|---|
+| General | `GeneralChannel` / `GeneralChannelSession` | configured (`#osu`, `#lobby`, …) | `GeneralChannelRegistry` |
+| Room | `RoomChannel` / `RoomChannelSession` | `#mp_{room id}` | the `Room` |
+| Spectator | `SpectatorChannel` / `SpectatorChannelSession` | `#spec_{host user id}` | the spectated `BanchoConnection` |
+| Private message | `PmChannel` / `PmChannelSession` | the owner's name | the recipient's `UserSession` |
+
+`GeneralChannelRegistry` lists only general channels. A room channel is found through its room
+(`lobby.Find(id)?.Channel`); spectator and private-message channels are never looked up by name.
+
+A channel's name tells its kind, as in IRC: a channel several users take part in is named `#name`,
+and a private-message channel carries its owner's name without `#`. Each kind of channel follows
+this convention when it names itself. Transports resolve the aliases `#multiplayer` and `#spectator`
+to the sender's room or spectator channel. A room channel's topic is the room's name and follows it
+when the room is renamed.
+
+### Who may read and write
+
+Access follows osu!: a user may join a channel, including with `/join` over IRC, only if an osu!
+client doing the matching in-game action would have access.
+
+| Kind | May read | May write |
+|---|---|---|
+| General | users holding every bit of the channel's read privileges | users holding every bit of its write privileges |
+| Room | seated players, osu!tourney observers, the creator, the referees, BasilBot | same as read |
+| Spectator | the spectated player and their spectators | same as read |
+| Private message | the owner's connections, except osu!tourney | any open connection |
+
+A privilege requirement is met only when the user holds every bit it sets; an empty requirement is
+always met.
+
+### Joining and leaving
+
+`channel.Join(by)` adds a connection when it may read the channel. If the same user already has a
+member connection of the same kind (osu!tourney excepted), the channel checks that connection: while it
+is open the join is refused with `AlreadyMember`; once it is closed, it is removed as an ordinary leave
+and the new connection joins. A closed channel refuses joins.
+
+`GeneralChannelRegistry.JoinAutoChannels` joins a connection to every auto-join channel it may read, and
+`GeneralChannelRegistry.PartAll` removes a connection from every general channel; both are called when
+a connection opens or closes and are safe to call again. A channel named `#lobby` is an ordinary general
+channel: whether it exists and whether it is joined automatically is configuration, and it has no tie
+to the multiplayer `Lobby`.
+
+### Posting
+
+`channel.Post(by, text)` refuses, in this order:
+
+| Result | When |
+|---|---|
+| `Closed` | the channel is closed |
+| `Silenced` | the sender is silenced |
+| `Empty` | the text is empty or whitespace |
+| `NotMember` | the sender is not a member (private-message channels do not require membership) |
+| `NoWritePermission` | the sender may not write to the channel |
+| `TargetSilenced` | the recipient of a private message is silenced |
+
+A message longer than 2,000 characters is cut, and the `ChannelMessagePosted` event says so.
+
+### Private messages and away replies
+
+A private message is a post into the recipient's private-message channel, so it reaches every
+connection of the recipient except osu!tourney clients. If the recipient has an away message, the
+sender receives it as a message from the recipient in the sender's own private-message channel.
+
+### Spectating
+
+Spectating is membership of the spectated player's spectator channel. The first spectator brings the
+player into the channel and the last one to leave takes them out. A spectator watches one player at a
+time: to switch, the caller stops spectating the old player before spectating the new one
+(`presence.Watching(by)` finds the current one). When the spectated player's connection closes, the
+channel closes and every spectator leaves it. Replay frames are relayed to the channel's members and
+are not events.
+
+### Events
 
 ```text
-message
-   │
-   └── ChatDispatchService
-            │
-            ├── channel message
-            ├── DM to BasilBot
-            └── regular DM
+ChannelEvent
+├── ChannelOpened, ChannelClosed
+├── ChannelMembershipEvent
+│   ├── ChannelMemberJoined, ChannelMemberParted (kicked when the owner closed the channel)
+│   └── ChannelSpectatorJoined, ChannelSpectatorLeft (spectator channels)
+├── ChannelMessageEvent
+│   └── ChannelMessagePosted
+└── ChannelSpectatorCantSpectate
 ```
 
-This gives Basil one place to define:
-
-* channel membership and delivery;
-* blocking;
-* command detection;
-* command dispatch;
-* bot replies.
-
-Transport-specific code is responsible only for translating its protocol into the common chat model and delivering the resulting messages back to the client.
-
-## Session and IRC connections
-
-Every session has an [`IIrcConnection`](../../src/Basil.Application/Sessions/Irc/IIrcConnection.cs), regardless of which session type it represents.
-
-### `GameSession`
-
-A [`GameSession`](../../src/Basil.Application/Sessions/GameSession.cs) represents an osu! client connection.
-
-Its `IIrcConnection` implementation is a bridge to the Bancho client and primarily forwards `PRIVMSG` operations through Bancho packets.
-
-The client does not establish a real IRC connection.
-
-### `IrcSession`
-
-An [`IrcSession`](../../src/Basil.Application/Sessions/IrcSession.cs) represents a native IRC connection.
-
-Its `IIrcConnection` implementation communicates directly with the IRC client and supports IRC-specific operations such as presence numerics and:
-
-* `JOIN`;
-* `PART`;
-* `QUIT`.
-
-The distinction between `GameSession` and `IrcSession` is intentional. See `irc.md` for the session architecture.
+Each event comes from the channel that was acted on, never from the sender's session.
 
 ## IRC authentication
 
-IRC authentication uses the same account password as osu! client authentication.
+> **Pending migration.** The IRC host still uses the previous session model.
 
-There is no separate IRC password.
-
-The connection flow is:
+IRC authentication uses the same account password as osu! client authentication; there is no separate
+IRC password.
 
 ```text
 TCP connection
@@ -76,283 +160,81 @@ TCP connection
 PASS + NICK + USER
       │
       ▼
-IrcAuthenticationService
+Gateway.ConnectAsync (IRC)
       │
       ├── validate account credentials
-      │
-      └── create IrcSession
-              │
-              ├── join auto-join channels
-              └── send welcome numerics
+      └── UserRegistry opens an IrcConnection ── UserConnectionOpened
+                                                │
+                                                ▼
+                               auto-join channels, welcome numerics
 ```
 
-An `IrcSession` has no Bancho game connection. It participates only in chat and commands.
-
-## Chat dispatch
-
-[`ChatDispatchService`](../../src/Basil.Application/Services/Chat/ChatDispatchService.cs) is the common entry point for messages from both transports.
-
-Conceptually, every message follows:
-
-```text
-Bancho SEND_MESSAGE ─┐
-                     ├──► ChatDispatchService
-IRC PRIVMSG ─────────┘
-                            │
-                            ├── channel message
-                            │
-                            ├── regular DM
-                            │
-                            └── command
-```
-
-The dispatcher determines the message's destination and whether it should be interpreted as a command.
+An IRC connection has no game client: it takes part in chat and commands only and can never occupy a
+multiplayer slot.
 
 ## Commands
 
-The configured command prefix is `!` by default.
+> **Pending migration.** Command detection and dispatch are being rebuilt outside Application. The
+> rules below are the user-visible behaviour they keep.
 
-A message beginning with the prefix is treated as a command regardless of transport:
+The command prefix is `!` by default. A message beginning with the prefix is a command, whichever
+transport it came from. A direct message to BasilBot is always a command, even without the prefix: a
+message addressed to the bot has already established the sender's intent. Unrecognized top-level
+commands stay silent, so BasilBot does not answer arbitrary text sent to it.
 
-```text
-Bancho SEND_MESSAGE "!mp help"
-          │
-          ▼
-ChatDispatchService
-          │
-          ▼
-ICommandDispatcher
-          │
-          ▼
-command handler
-```
+General commands use the common command table; `!mp` commands act on a room through the room's own
+operations, so the room checks permissions itself.
 
-The same applies to:
+### `!mp` roles
 
-```text
-IRC PRIVMSG "!mp help"
-```
+`!mp` is available only to the room's managers: its creator and its referees. Being the host does not
+grant `!mp` rights. Only the creator may add or remove referees (`!mp addref`, `!mp removeref`), and
+the creator is not part of the referee list. See [`multiplayer.md`](multiplayer.md) for the roles and
+the generated BasilBot Commands reference at `api.<domain>/docs/basil-bot/` for every command.
 
-### BasilBot DMs
+### Command scope
 
-A direct message to BasilBot is always treated as a command, even without the prefix.
+A command may be associated with a specific room.
 
-For example:
+* Issued in the room's own channel, the reply is posted publicly there.
+* Issued anywhere else (`#osu`, `#lobby`, another shared channel, a direct message), the reply goes to
+  the sender by direct message, so room-specific output never leaks into shared channels. When
+  appropriate, the room still receives an unprefixed copy so referees working on the room remotely stay
+  aware of it.
 
-```text
-DM BasilBot: mp help
-```
+`!mp in` lets a referee scope commands to a room without being in its channel. It is accepted only in
+direct messages, because using it in a public channel would expose the sender's room to everyone there.
 
-is command input rather than ordinary chat.
+### Failed commands
 
-This avoids ambiguity: a direct message addressed specifically to the bot has already established the sender's intent.
-
-Unrecognized top-level commands remain silent. This prevents BasilBot from replying to arbitrary text sent directly to it.
-
-## Command routing
-
-After command detection, the message enters [`ICommandDispatcher`](../../src/Basil.Application/Abstractions/Bot/ICommandDispatcher.cs).
-
-General commands use the common command table. Multiplayer commands are handled by [`MpCommandService`](../../src/Basil.Application/Services/Bot/MpCommandService.cs):
-
-```text
-ICommandDispatcher
-       │
-       ├── general commands
-       │
-       └── !mp
-             │
-             └── MpCommandService
-```
-
-The command layer is independent of whether the original message came from Bancho or IRC.
-
-## `!mp` roles
-
-Multiplayer commands distinguish three separate concepts:
-
-* **creator**: the user who created the match;
-* **referee**: a user with referee permissions for the match;
-* **host**: the current multiplayer host.
-
-These roles are not interchangeable.
-
-The match creator:
-
-* retains full `!mp` authority for the lifetime of the room;
-* can add or remove referees through `!mp addref` and `!mp removeref`;
-* cannot be removed from the referee list.
-
-Referee permissions are scoped to the relevant multiplayer match.
-
-See the generated BasilBot Commands reference at `api.<domain>/docs/basil-bot/` for the complete command and permission model.
-
-## Command scope
-
-A command may be associated with a specific multiplayer match.
-
-[`CommandDispatcher`](../../src/Basil.Application/Services/Bot/CommandDispatcher.cs) resolves this scope independently of the transport and then decides where the response should be delivered.
-
-### Match channel
-
-When a scoped `!mp` command is issued in the match's own channel, the response is sent publicly there.
-
-```text
-match channel
-      │
-      ▼
-public command reply
-```
-
-### Other channels and DMs
-
-A scoped command issued outside its match channel must not expose match-specific information to unrelated users.
-
-For example:
-
-* `#osu`;
-* `#lobby`;
-* another shared channel;
-* a direct message.
-
-In these contexts, the scoped response is delivered to the sender by DM instead.
-
-When appropriate, the room can still receive an unprefixed copy so that referees operating on the match remotely remain aware of the command.
-
-The principle is:
-
-> Match-specific command output must not leak into shared channels.
-
-### `!mp in`
-
-`!mp in` exists to let a referee scope commands to a match without physically being in that match's channel.
-
-It is therefore restricted to DMs.
-
-Allowing `!mp in` in a public channel would expose the sender's match scope to everyone in that channel.
-
-## Failed commands
-
-A recognized command that fails validation or permission checks produces an error response.
-
-This is particularly important for `!mp` commands, where many operations require referee permissions.
-
-For example:
-
-```text
-!mp start
-      │
-      ▼
-permission / validation failure
-      │
-      ▼
-error response
-```
-
-The error follows the same scope rules as other command responses:
-
-* in the target match channel, it is posted publicly;
-* elsewhere, it is sent to the sender by DM.
-
-This makes permission failures and malformed commands observable without exposing match-specific errors to unrelated users.
-
-Unrecognized top-level commands remain silent.
+A recognized command that fails validation or permission checks produces an error reply, following the
+same scope rules: public in the room's channel, by direct message elsewhere. Unrecognized top-level
+commands stay silent.
 
 ## BasilBot
 
-BasilBot is represented internally as a synthetic `GameSession`.
+> **Pending migration.** BasilBot is being rebuilt on the new model.
 
-It is initialized during server startup without an underlying client connection.
-
-Because BasilBot does not send normal client traffic, it is exempt from the idle-disconnect sweep that would otherwise remove sessions that stop sending pings.
-
-From the chat system's perspective, BasilBot is therefore another sender with a normal `IIrcConnection`:
-
-```text
-BasilBot
-   │
-   ▼
-synthetic GameSession
-   │
-   ▼
-IIrcConnection
-   │
-   ▼
-normal chat delivery
-```
-
-This allows bot responses to use the same delivery infrastructure as ordinary users.
-
-## Bot message delivery
-
-BasilBot replies through the normal channel broadcast path rather than writing protocol packets directly.
-
-The relevant path is:
-
-```text
-command
-   │
-   ▼
-BasilBot response
-   │
-   ▼
-ChannelMembershipService.BroadcastPrivmsg
-   │
-   ├── Bancho clients
-   └── IRC clients
-```
-
-This is important because a bot command can be issued from either transport, while its response may need to reach users connected through the other transport.
-
-BasilBot therefore does not need separate Bancho and IRC delivery logic.
-
-## End-to-end lifecycle
-
-A normal chat message:
-
-```text
-osu! SEND_MESSAGE ─┐
-                   │
-IRC PRIVMSG ───────┤
-                   ▼
-          ChatDispatchService
-                   │
-          ┌────────┴────────┐
-          │                 │
-       command           normal chat
-          │                 │
-          ▼                 ├── channel broadcast
- ICommandDispatcher         └── DM
-          │
-     ┌────┴─────┐
-     │          │
- general       !mp
- command       command
-     │          │
-     │          ▼
-     │   MpCommandService
-     │          │
-     └────┬─────┘
-          ▼
-      response
-          │
-          ▼
-   common chat delivery
-```
-
-The transport is therefore only relevant at the edges of the system. Command semantics and message routing remain transport-independent.
+BasilBot is a permanent `UserSession` holding a `BotConnection`, opened through `UserRegistry` when the
+server starts and never closed. Because it is a normal connection, it posts through the same
+`channel.Post` as any user, and its replies reach Bancho and IRC users alike. It joins every room's
+channel when the room opens and receives private messages through its own private-message channel.
 
 ## Related code
 
-* [`Basil.Application/Services/Chat/ChatDispatchService.cs`](../../src/Basil.Application/Services/Chat/ChatDispatchService.cs): unified chat entry point
-* [`Basil.Application/Services/Bot/CommandDispatcher.cs`](../../src/Basil.Application/Services/Bot/CommandDispatcher.cs): command detection, dispatch, and scope
-* [`Basil.Application/Services/Bot/MpCommandService.cs`](../../src/Basil.Application/Services/Bot/MpCommandService.cs): multiplayer command handling
-* [`Basil.Application/Services/Irc/IrcAuthenticationService.cs`](../../src/Basil.Application/Services/Irc/IrcAuthenticationService.cs): IRC authentication and session creation
-* [`Basil.Infrastructure/Irc/TcpIrcListener.cs`](../../src/Basil.Infrastructure/Irc/TcpIrcListener.cs): embedded IRC TCP listener
+* [`Basil.Application/Chat/ChannelSession.cs`](../../src/Basil.Application/Chat/ChannelSession.cs): membership and posting rules shared by every channel
+* [`Basil.Application/Chat/GeneralChannelRegistry.cs`](../../src/Basil.Application/Chat/GeneralChannelRegistry.cs): configured channels and auto-join
+* [`Basil.Application/Chat/GeneralChannelSession.cs`](../../src/Basil.Application/Chat/GeneralChannelSession.cs), [`PmChannelSession.cs`](../../src/Basil.Application/Chat/PmChannelSession.cs): general and private-message channels
+* [`Basil.Application/Multiplayer/RoomChannelSession.cs`](../../src/Basil.Application/Multiplayer/RoomChannelSession.cs): room channels
+* [`Basil.Application/Sessions/SpectatorChannelSession.cs`](../../src/Basil.Application/Sessions/SpectatorChannelSession.cs): spectating
+* [`Basil.Application/Sessions/UserRegistry.cs`](../../src/Basil.Application/Sessions/UserRegistry.cs), [`Gateway.cs`](../../src/Basil.Application/Sessions/Gateway.cs): logging in and out
+* [`Basil.Application/Sessions/UserSession.cs`](../../src/Basil.Application/Sessions/UserSession.cs), [`Connection.cs`](../../src/Basil.Application/Sessions/Connection.cs): sessions and connections
+* [`Basil.Domain/Chat/`](../../src/Basil.Domain/Chat): channel models and `Message`
 
 ## See also
 
-* [`bancho.md`](bancho.md): how Bancho `SEND_MESSAGE` packets enter the chat pipeline
-* [`irc.md`](irc.md): IRC transport and `IrcSession` architecture
-* [`working-scopes.md`](working-scopes.md): chat features and `!mp` commands that are in or out of scope
+* [`bancho.md`](bancho.md): how Bancho packets enter the chat model
+* [`irc.md`](irc.md): the IRC transport
+* [`multiplayer.md`](multiplayer.md): rooms, roles and room channels
+* [`working-scopes.md`](working-scopes.md): chat features and `!mp` commands in or out of scope
 * BasilBot Commands (`api.<domain>/docs/basil-bot/`): generated command reference

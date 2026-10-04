@@ -1,0 +1,116 @@
+using Basil.Application.Irc;
+using Basil.Application.Multiplayer;
+using Basil.Application.Sessions;
+using Basil.Application.Shared.Configuration;
+using Basil.Application.Shared.Eventing;
+using Basil.Domain.Channels;
+using Basil.Application.Spectating;
+using Basil.Domain.Users;
+using Basil.Application.Chat;
+using Basil.Host.Bancho.Chat.Packets;
+using Basil.Host.Bancho.Multiplayer.Packets;
+using Basil.Host.Bancho.Shared.Sessions;
+using Basil.Host.Bancho.Spectating.Packets;
+using Basil.Host.Bancho.Users.Packets;
+using Basil.Protocol.Packets;
+using Basil.Application.Users;
+using Basil.Application.Beatmaps;
+using Basil.Application.Channels;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using NSubstitute;
+using BinaryWriter = Basil.Protocol.Binary.BinaryWriter;
+
+namespace Basil.Host.Bancho.Tests.Users.Packets;
+
+/// <summary>
+///     Verifies the `Logout` handler always delegates to PlayerLogoutService, with no login grace
+///     period. The actual cleanup (match/channel-leaving, registry removal, broadcast) is delegated
+///     to PlayerLogoutService and covered by PlayerLogoutServiceTests.
+/// </summary>
+public class LogoutHandlerTests
+{
+	private readonly IChannelRegistry _channelRegistry = Substitute.For<IChannelRegistry>();
+	private readonly ISessionRegistry<GameSession> _gameRegistry = Substitute.For<ISessionRegistry<GameSession>>();
+	private readonly ISessionRegistry<IrcSession> _ircRegistry = Substitute.For<ISessionRegistry<IrcSession>>();
+
+	private readonly IUserCache _userCache = Substitute.For<IUserCache>();
+
+	private LogoutHandler MakeHandler()
+	{
+		var channelMembership = new ChannelMembershipService(Substitute.For<ISessionRegistry<GameSession>>(),
+			Substitute.For<ISessionRegistry<IrcSession>>(),
+			Substitute.For<IChannelRegistry>(), new ChatNotifier(Options.Create(new IrcOptions())),
+			new ChannelNotifier(Substitute.For<ISessionRegistry<GameSession>>(),
+				Substitute.For<ISessionRegistry<IrcSession>>(), Options.Create(new IrcOptions())),
+			Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
+			Options.Create(new IrcOptions()), _userCache);
+		var matchBroadcast = new MatchBroadcast(Substitute.For<IChannelRegistry>(), channelMembership,
+			new MatchNotifier(_channelRegistry, channelMembership),
+			new ChatNotifier(Options.Create(new IrcOptions())),
+			Substitute.For<ISessionRegistry<GameSession>>(), Substitute.For<ISessionRegistry<IrcSession>>(), null,
+			Substitute.For<IBeatmapRepository>(),
+			Substitute.For<IUserRepository>());
+		var matchLifecycle = new MatchLifecycle(Substitute.For<IMatchRegistry>(), Substitute.For<IChannelRegistry>(),
+			channelMembership, new MatchNotifier(_channelRegistry, channelMembership),
+			Substitute.For<ISessionRegistry<GameSession>>(), Substitute.For<IMatchRepository>(),
+			Substitute.For<IMatchRoundEndOutbox>(), null,
+			Substitute.For<IBeatmapRepository>(), matchBroadcast, Substitute.For<IServiceProvider>(),
+			_userCache, NullLogger<MatchLifecycle>.Instance);
+		var matchMembership = new MatchMembership(Substitute.For<IChannelRegistry>(),
+			Substitute.For<ISessionRegistry<GameSession>>(), channelMembership,
+			new MatchNotifier(_channelRegistry, channelMembership), Substitute.For<IMatchRepository>(),
+			matchLifecycle, _userCache, NullLogger<MatchMembership>.Instance);
+
+		var spectatorService = new SpectatorService(Substitute.For<IChannelRegistry>(),
+			new ChannelMembershipService(Substitute.For<ISessionRegistry<GameSession>>(),
+				Substitute.For<ISessionRegistry<IrcSession>>(),
+				Substitute.For<IChannelRegistry>(), new ChatNotifier(Options.Create(new IrcOptions())),
+				new ChannelNotifier(Substitute.For<ISessionRegistry<GameSession>>(),
+					Substitute.For<ISessionRegistry<IrcSession>>(), Options.Create(new IrcOptions())),
+				Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
+				Options.Create(new IrcOptions()), _userCache), new SpectatorNotifier(),
+			NullLogger<SpectatorService>.Instance);
+
+		return new LogoutHandler(new PlayerLogoutService(
+			[
+				new MatchLeaveLogoutHandler(matchMembership),
+				new SpectatorTeardownLogoutHandler(_gameRegistry, spectatorService),
+				new ChannelPartLogoutHandler(new ChannelMembershipService(_gameRegistry, _ircRegistry, _channelRegistry,
+					new ChatNotifier(Options.Create(new IrcOptions())),
+					new ChannelNotifier(_gameRegistry, _ircRegistry, Options.Create(new IrcOptions())),
+					Substitute.For<IMatchRegistry>(), Substitute.For<ILiveEventHub>(),
+					Options.Create(new IrcOptions()), _userCache)),
+				new GameSessionRegistryRemovalLogoutHandler(_gameRegistry),
+				new IrcSessionRemovalLogoutHandler(_ircRegistry),
+				new StatusPublishLogoutHandler(Substitute.For<IPlayerStatusEvents>()),
+				new LogoutBroadcastHandler(_gameRegistry)
+			],
+			NullLogger<PlayerLogoutService>.Instance));
+	}
+
+	[Fact]
+	public async Task Handle_ImmediatelyAfterLogin_DelegatesToLogoutService()
+	{
+		var loginTime = DateTimeOffset.UtcNow;
+		var session = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, loginTime);
+		var reader = new PacketReader(BinaryWriter.WriteInt32(0));
+
+		await MakeHandler().HandleAsync(session, reader);
+
+		// No login grace: a logout sent in the same second as login is honored like any other.
+		_gameRegistry.Received(1).Remove(session);
+	}
+
+	[Fact]
+	public async Task Handle_AfterOneSecond_DelegatesToLogoutService()
+	{
+		var loginTime = DateTimeOffset.UtcNow.AddSeconds(-2);
+		var session = new GameSession(1, "cmyui", "token", UserPrivileges.Unrestricted, loginTime);
+		var reader = new PacketReader(BinaryWriter.WriteInt32(0));
+
+		await MakeHandler().HandleAsync(session, reader);
+
+		_gameRegistry.Received(1).Remove(session);
+	}
+}
