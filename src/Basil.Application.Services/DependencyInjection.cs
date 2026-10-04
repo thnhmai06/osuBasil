@@ -20,7 +20,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Basil.Application.Services;
 
 /// <summary>Registers the application's registries and services.</summary>
-public static class ServiceCollectionExtensions
+public static class DependencyInjection
 {
 	/// <summary>
 	///     Adds the environment objects (the user registry, the general channel registry, the lobby) and
@@ -61,8 +61,8 @@ public static class ServiceCollectionExtensions
 		services.AddSingleton<ScoreService>();
 		services.AddSingleton<IScoreService>(sp => sp.GetRequiredService<ScoreService>());
 
-		services.AddSingleton<BeatmapService>();
-		services.AddSingleton<IBeatmapService>(sp => sp.GetRequiredService<BeatmapService>());
+		services.AddSingleton<BeatmapsetService>();
+		services.AddSingleton<IBeatmapsetService>(sp => sp.GetRequiredService<BeatmapsetService>());
 
 		return services;
 	}

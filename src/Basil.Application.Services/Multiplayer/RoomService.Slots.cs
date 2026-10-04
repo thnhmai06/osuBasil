@@ -121,9 +121,8 @@ internal sealed partial class RoomService
 	private RoomResult SetHasMap(Room room, BanchoConnection by, bool has)
 	{
 		if (room.Slots.Find(by) is not { } slot) return RoomResult.NotInRoom;
-		if (slot.Status is RoomSlotStatus.Playing) return RoomResult.Ok;
-
-		if (has && slot.Status is not RoomSlotStatus.NoMap) return RoomResult.Ok;
+		if (slot.Status is RoomSlotStatus.Playing || (has && slot.Status is not RoomSlotStatus.NoMap))
+			return RoomResult.Ok;
 
 		var status = has ? RoomSlotStatus.NotReady : RoomSlotStatus.NoMap;
 		if (slot.Status == status) return RoomResult.Ok;

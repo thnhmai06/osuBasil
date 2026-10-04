@@ -1,5 +1,7 @@
 using Basil.Application.Contracts.Events;
 using Basil.Application.Storage.Multiplayer;
+using Basil.Domain.Scores;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Contracts.Scores;
 

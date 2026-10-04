@@ -1,3 +1,5 @@
+using Basil.Domain.Utilities;
+
 namespace Basil.Application.Contracts.Scores;
 
 /// <summary>The checksums of the beatmap a submission is checked against.</summary>

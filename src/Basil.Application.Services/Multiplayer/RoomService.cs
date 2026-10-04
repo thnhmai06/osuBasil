@@ -206,7 +206,7 @@ internal sealed partial class RoomService(
 		{
 			if (lobby.RoomOf(player) is { } room)
 			{
-				await using var scope = await lobby.EnterAsync(room, cancellationToken);
+				await using var scope = await Lobby.EnterAsync(room, cancellationToken);
 				if (scope is not null) Leave(room, player);
 			}
 		}
@@ -214,7 +214,7 @@ internal sealed partial class RoomService(
 		{
 			foreach (var room in lobby.Rooms.Where(room => room.Observers.Contains(observer)).ToArray())
 			{
-				await using var scope = await lobby.EnterAsync(room, cancellationToken);
+				await using var scope = await Lobby.EnterAsync(room, cancellationToken);
 				if (scope is not null) ObserverLeave(room, observer);
 			}
 		}
@@ -292,10 +292,10 @@ internal sealed partial class RoomService(
 	/// <param name="operation">The transition to run once the scope is held.</param>
 	/// <param name="cancellationToken">A token that cancels the wait for the scope.</param>
 	/// <returns>The result of <paramref name="operation" />, or RoomClosed when the room has closed.</returns>
-	private async Task<RoomResult> InScopeAsync(Room room, Func<RoomResult> operation,
+	private static async Task<RoomResult> InScopeAsync(Room room, Func<RoomResult> operation,
 		CancellationToken cancellationToken)
 	{
-		await using var scope = await lobby.EnterAsync(room, cancellationToken);
+		await using var scope = await Lobby.EnterAsync(room, cancellationToken);
 		return scope is null ? RoomResult.RoomClosed : operation();
 	}
 

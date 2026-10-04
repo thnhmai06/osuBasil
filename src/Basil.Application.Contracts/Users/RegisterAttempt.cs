@@ -1,3 +1,5 @@
+using Basil.Domain.Utilities;
+
 namespace Basil.Application.Contracts.Users;
 
 /// <summary>A registration attempt as submitted by a client.</summary>

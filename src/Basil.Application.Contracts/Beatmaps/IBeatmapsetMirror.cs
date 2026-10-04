@@ -1,9 +1,10 @@
 using Basil.Application.Storage.Common;
+using Basil.Domain.Mechanics;
 
 namespace Basil.Application.Contracts.Beatmaps;
 
 /// <summary>Finds and serves beatmapsets the server does not have, from a beatmap mirror.</summary>
-public interface IBeatmapMirror
+public interface IBeatmapsetMirror
 {
 	/// <summary>Searches the mirror.</summary>
 	/// <param name="text">The search text, or <see langword="null" /> for any.</param>

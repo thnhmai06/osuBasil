@@ -88,7 +88,7 @@ public sealed class Lobby
 	/// <param name="room">The room to enter.</param>
 	/// <param name="cancellationToken">A token that cancels the wait.</param>
 	/// <returns>The scope, to dispose when done; or <see langword="null" /> when the room has closed.</returns>
-	public async Task<IAsyncDisposable?> EnterAsync(Room room, CancellationToken cancellationToken = default)
+	public static async Task<IAsyncDisposable?> EnterAsync(Room room, CancellationToken cancellationToken = default)
 	{
 		await room.Gate.WaitAsync(cancellationToken);
 		if (!room.IsClosed) return new Scope(room.Gate);

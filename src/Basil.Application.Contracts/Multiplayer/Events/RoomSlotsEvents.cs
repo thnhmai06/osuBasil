@@ -1,5 +1,6 @@
 using Basil.Application.Storage.Multiplayer;
 using Basil.Application.Storage.Sessions;
+using Basil.Domain.Mechanics;
 
 namespace Basil.Application.Contracts.Multiplayer.Events;
 

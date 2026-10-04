@@ -35,7 +35,7 @@ internal sealed class LobbyService(
 	/// <inheritdoc />
 	public async Task<RoomResult> CloseAsync(Room room, Connection by, CancellationToken cancellationToken = default)
 	{
-		await using var scope = await lobby.EnterAsync(room, cancellationToken);
+		await using var scope = await Lobby.EnterAsync(room, cancellationToken);
 		if (scope is null) return RoomResult.Ok;
 		if (!RoomRules.CanManage(room, by)) return RoomResult.NotAuthorized;
 
@@ -138,7 +138,7 @@ internal sealed class LobbyService(
 	/// <summary>Stops the countdown that would close an empty tournament room.</summary>
 	/// <param name="room">The room that has a player again.</param>
 	/// <remarks>The caller holds the room's scope.</remarks>
-	internal void RoomOccupied(Room room)
+	internal static void RoomOccupied(Room room)
 	{
 		var timer = room.ClosingTimer;
 		room.ClosingTimer = null;
@@ -180,7 +180,7 @@ internal sealed class LobbyService(
 	private void Schedule(Room room, DateTimeOffset at, Func<Task> action)
 	{
 		var delay = at - time.GetUtcNow();
-		var timer = time.CreateTimer(_ => _ = action(), null, delay > TimeSpan.Zero ? delay : TimeSpan.Zero,
+		var timer = time.CreateTimer(_ => action(), null, delay > TimeSpan.Zero ? delay : TimeSpan.Zero,
 			Timeout.InfiniteTimeSpan);
 		var previous = room.ClosingTimer;
 		room.ClosingTimer = timer;
@@ -189,7 +189,7 @@ internal sealed class LobbyService(
 
 	private async Task WarnIfStillEmptyAsync(Room room, DateTimeOffset closesAt)
 	{
-		await using var scope = await lobby.EnterAsync(room);
+		await using var scope = await Lobby.EnterAsync(room);
 		if (scope is null || room.Slots.Any(slot => slot.Player is not null)) return;
 
 		Emit(new LobbyRoomClosingAnnounced(room, closesAt));
@@ -198,7 +198,7 @@ internal sealed class LobbyService(
 
 	private async Task CloseIfStillEmptyAsync(Room room)
 	{
-		await using var scope = await lobby.EnterAsync(room);
+		await using var scope = await Lobby.EnterAsync(room);
 		if (scope is not null && !room.Slots.Any(slot => slot.Player is not null)) Close(room);
 	}
 

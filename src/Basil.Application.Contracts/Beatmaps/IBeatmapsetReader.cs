@@ -1,13 +1,15 @@
+using Basil.Domain.Mechanics;
+
 namespace Basil.Application.Contracts.Beatmaps;
 
 /// <summary>Reads what a beatmapset archive contains.</summary>
-public interface IBeatmapArchiveReader
+public interface IBeatmapsetReader
 {
 	/// <summary>Reads a beatmapset archive.</summary>
 	/// <param name="archive">The archive content.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>What the archive contains, or <see langword="null" /> when it is not a readable beatmapset archive.</returns>
-	Task<BeatmapArchive?> ReadAsync(Stream archive, CancellationToken cancellationToken = default);
+	Task<BeatmapsetArchive?> ReadAsync(Stream archive, CancellationToken cancellationToken = default);
 }
 
 /// <summary>What a beatmapset archive contains.</summary>
@@ -19,7 +21,7 @@ public interface IBeatmapArchiveReader
 /// <param name="Title">The title.</param>
 /// <param name="Creator">The mapper's name.</param>
 /// <param name="Difficulties">The difficulties.</param>
-public sealed record BeatmapArchive(
+public sealed record BeatmapsetArchive(
 	int? OnlineSetId,
 	string Artist,
 	string Title,

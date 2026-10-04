@@ -19,9 +19,7 @@ public readonly record struct IrcUserPrefix(string Nick, string? User = null, st
 	/// <exception cref="InvalidOperationException">
 	///     The prefix has a user but no host, a combination that cannot be represented.
 	/// </exception>
-	public string ToString(
-		string? format = null,
-		IFormatProvider? formatProvider = null)
+	public string ToString(string? format = null, IFormatProvider? formatProvider = null)
 	{
 		if (User is not null)
 			return Host is not null

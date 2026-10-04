@@ -9,18 +9,6 @@ namespace Basil.Application.Services.Anticheat;
 /// <summary>Judges the anticheat flags osu! clients report and announces signs of cheating.</summary>
 internal sealed class AnticheatService(Lobby lobby) : IAnticheatService
 {
-	/// <summary>The client flags that are signs of cheating.</summary>
-	internal const ClientFlags CheatSigns = ClientFlags.SpeedHackDetected | ClientFlags.IncorrectModValue |
-	                                        ClientFlags.MultipleOsuClients | ClientFlags.ChecksumFailure |
-	                                        ClientFlags.FlashlightChecksumIncorrect |
-	                                        ClientFlags.OsuExecutableChecksum | ClientFlags.MissingProcessesInList |
-	                                        ClientFlags.FlashlightImageHack |
-	                                        ClientFlags.SpinnerHack | ClientFlags.TransparentWindow |
-	                                        ClientFlags.FastPress |
-	                                        ClientFlags.RawMouseDiscrepancy | ClientFlags.RawKeyboardDiscrepancy |
-	                                        ClientFlags.HqAssembly |
-	                                        ClientFlags.HqFile | ClientFlags.RegistryEdits;
-
 	private readonly Channel<AnticheatEvent> _events = Channel.CreateUnbounded<AnticheatEvent>();
 
 	/// <inheritdoc />
@@ -29,7 +17,7 @@ internal sealed class AnticheatService(Lobby lobby) : IAnticheatService
 	/// <inheritdoc />
 	public ClientFlags Report(BanchoConnection player, ClientFlags flags)
 	{
-		var signs = flags & CheatSigns;
+		var signs = flags & ClientFlags.CheatSigns;
 		if (signs == ClientFlags.Clean) return signs;
 
 		_events.Writer.TryWrite(new AnticheatPlayerFlagged(player, signs, lobby.RoomOf(player)));

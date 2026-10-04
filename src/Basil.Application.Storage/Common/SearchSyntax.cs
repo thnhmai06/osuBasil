@@ -114,7 +114,7 @@ internal static partial class SearchSyntax
 				break;
 			case ">":
 				min = isZeroLength ? start : end;
-				minInclusive = isZeroLength ? false : true;
+				minInclusive = !isZeroLength;
 				break;
 			case ">=":
 				min = start;

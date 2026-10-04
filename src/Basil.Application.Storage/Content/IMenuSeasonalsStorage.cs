@@ -1,7 +1,7 @@
 namespace Basil.Application.Storage.Content;
 
 /// <summary>Stores the seasonal main-menu backgrounds.</summary>
-public interface ISeasonalBackgroundStorage
+public interface IMenuSeasonalsStorage
 {
 	/// <summary>Lists the names of the stored backgrounds.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>

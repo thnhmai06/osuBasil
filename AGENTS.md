@@ -354,7 +354,7 @@ feature folders appear in Storage, Contracts and Services.
 Common/        PageRequest, Page<T>, Interval<T>                                   (Storage)
 Events/        Event, IEventPublisher<T>                                           (Contracts)
 Users/         IUserRepository, ICredentialRepository (passwords and admin key), ILoginRepository,
-               IRelationshipRepository, IAvatarStorage, UserQuery, LoginQuery;
+               IRelationshipRepository, IUserAvatarStorage, UserQuery, LoginQuery;
                IAuthService, IUserService, LoginAttempt, RegisterAttempt, results
 Sessions/      UserSession, Connection (+ ConnectionType), UserRegistry, PlayerStatus,
                SpectatorChannelSession; ISessionService and its events
@@ -363,14 +363,14 @@ Chat/          ChannelSession tree, GeneralChannelRegistry, IChannelRepository;
 Multiplayer/   Lobby, Room, RoomSlot(s), RoomChannelSession, IMatchRepository, IRoundRepository,
                IMatchEventRepository, MatchQuery; ILobbyService, IRoomService, IMatchService,
                room and lobby events, RoomResult, RoomSettingsChange
-Beatmaps/      beatmap and beatmapset repositories, IBeatmapArchiveStorage, BeatmapQuery,
-               BeatmapsetQuery; IBeatmapService, IBeatmapAnalyser, IBeatmapArchiveReader,
-               IBeatmapAssets, IBeatmapMirror, beatmapset events
+Beatmaps/      beatmap and beatmapset repositories, IBeatmapsetStorage, BeatmapQuery;
+               IBeatmapsetService, IBeatmapAnalyser, IBeatmapsetReader, IBeatmapAssets,
+               IBeatmapsetMirror, beatmapset events
 Scores/        IScoreRepository, IReplayStorage, IUserStatsRepository, ScoreQuery;
                IScoreService and its events
 Anticheat/     IAnticheatService (judges client flags) and its events
-Content/       IServerSettingsRepository, IMenuBannerRepository, menu image, seasonal background and
-               FAQ storages
+Content/       ISettingsRepository, IMenuBannerRepository, IMenuBannerStorage, IMenuIconStorage,
+               IMenuSeasonalsStorage, IFaqStorage
 ```
 
 Notifications, event handlers and dispatchers, chat commands and their reply strings, and host
@@ -410,7 +410,7 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   the concrete class inside Services.
 * **Capability ports.** A capability with business meaning whose implementation needs external libraries
   or resources is a contract in Contracts that Infrastructure implements (`IBeatmapAnalyser`,
-  `IBeatmapArchiveReader`, `IBeatmapAssets`, `IBeatmapMirror`), even when only the hosts use it. Pure
+  `IBeatmapsetReader`, `IBeatmapAssets`, `IBeatmapsetMirror`), even when only the hosts use it. Pure
   plumbing (logging, diagnostics, metrics, SSE hub, TLS, mDNS, update checks, OpenAPI, the response
   envelope) gets no contract.
 * **Contract names do not reveal the mechanism.** If the work moved from the file system to the network, or
@@ -429,7 +429,7 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   its players), the service that performs the operation enforces it; it is never left to a hook that might
   not be installed.
 * **Background work.** A contract declares one run of a background job (`ISessionService.CloseIdle()`,
-  `IBeatmapService.ScanAsync()`); Services implements it; Infrastructure owns the loop, the trigger, the
+  `IBeatmapsetService.ScanAsync()`); Services implements it; Infrastructure owns the loop, the trigger, the
   period and its configuration. A one-shot timer that is the consequence of an operation (an empty room's
   closing, a countdown) stays in Services on `TimeProvider`.
 * **Derive whatever is derivable.** A property a runtime object co-owns with its domain object
@@ -541,11 +541,28 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   A change that has consequences (emits an event, changes other fields, checks authority, groups several
   fields into one event) is a service method. Such a method is a real operation, not a
   `Change*`/`Rename`/`With*` wrapper around a single field.
+* **Name a contract after the object it acts on.** The unit that is imported, stored, read and mirrored is
+  the beatmapset, so the contracts are `IBeatmapsetService`, `IBeatmapsetReader`, `IBeatmapsetStorage`,
+  `IBeatmapsetMirror` and `BeatmapsetImportResult`. A byte storage is `I{Owner}{Thing}Storage`
+  (`IUserAvatarStorage`, `IMenuBannerStorage`, `IMenuSeasonalsStorage`); medium words (`Image`,
+  `Background`, `Archive`) and redundant qualifiers (`Server` in `ISettingsRepository`) stay out of names.
+* **Knowledge about a Domain value lives on that value.** A fixed set of flags is a member of its enum
+  (`ClientFlags.CheatSigns`), a per-mode factory a static member of its type (`BeatmapObjects.NewFrom(mode)`);
+  services use them instead of keeping their own copies.
 * **One concept, one name.** Use the same name for the same concept in every model, parameter,
   event and API: the moment something happened is `Timestamp`, a span is `StartedAt`/`EndedAt`, a
   future window is `StartsAt`/`EndsAt`, a stored record's lifecycle is
   `CreatedAt`/`UpdatedAt`/`DeletedAt`, the caller of an operation is `by`. Do not introduce
   `OccurredAt`, `When`, `Since`, `LoginTime` or similar synonyms.
+
+### Code style
+
+* A small type used by one type lives in that type's file (`ConnectionType` in `Connection.cs`).
+* A member that uses no instance state is `static` (`Lobby.EnterAsync`, `LobbyService.RoomOccupied`).
+* Prefer primary constructors, property patterns (`room is { InProgress: false, Beatmap: not null }`) and
+  one guard for conditions that return the same result; no redundant casts, `? true : false` or
+  discarded-task lambdas (`_ => action()`, not `_ => _ = action()`).
+* The Application registration class is `DependencyInjection` with `AddApplicationServices()`.
 
 ### Important invariants
 

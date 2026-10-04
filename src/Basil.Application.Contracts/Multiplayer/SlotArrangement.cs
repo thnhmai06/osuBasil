@@ -1,3 +1,6 @@
+using Basil.Domain.Mechanics;
+using Basil.Domain.Users;
+
 namespace Basil.Application.Contracts.Multiplayer;
 
 /// <summary>What one slot holds after the slots of a room are arranged.</summary>

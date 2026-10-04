@@ -44,12 +44,12 @@ internal sealed class ScoreService(
 		var room = lobby.RoomOf(connection);
 		var round = room?.LastRound is { } last && last.BeatmapHash == client.BeatmapHash ? last : null;
 		var checkedBeatmap =
-			beatmap ?? (round is not null ? new BeatmapChecksums(client.BeatmapHash, (Md5?)null) : null);
-		if (checkedBeatmap is not { } known) return ScoreRejection.UnknownBeatmap;
+			beatmap ?? (round is not null ? new BeatmapChecksums(client.BeatmapHash, null) : null);
+		if (checkedBeatmap is null) return ScoreRejection.UnknownBeatmap;
 
 		var latest = await logins.ListAsync(new LoginQuery(connection.User), new PageRequest(0, 1), cancellationToken);
 		var loginClient = latest.Items.FirstOrDefault()?.Client ?? connection.Login.Client!;
-		if (Validate(submission, loginClient, known, connection.User.Value.Name, client) is { } rejection)
+		if (Validate(submission, loginClient, checkedBeatmap, connection.User.Value.Name, client) is { } rejection)
 			return rejection;
 
 		var team = round is not null ? room!.Slots.Find(connection)?.Team : null;
@@ -110,7 +110,7 @@ internal sealed class ScoreService(
 		if (submittedClient.FingerprintHash != client.Fingerprint.ToString()) return ScoreRejection.ClientHashMismatch;
 		if (serialHash?.UninstallHash != client.Fingerprint.UninstallHash)
 			return ScoreRejection.UninstallerHashMismatch;
-		if (serialHash?.DiskSignatureHash != client.Fingerprint.DiskSignatureHash)
+		if (serialHash.Value.DiskSignatureHash != client.Fingerprint.DiskSignatureHash)
 			return ScoreRejection.DiskSignatureHashMismatch;
 		if (submission.HashByClient != md5ByServer) return ScoreRejection.SubmissionHashMismatch;
 		if (submittedClient.BeatmapHash != beatmap.Hash) return ScoreRejection.BeatmapHashMismatch;

@@ -1,3 +1,6 @@
+using Basil.Domain.Beatmaps;
+using Basil.Domain.Mechanics;
+
 namespace Basil.Application.Contracts.Beatmaps;
 
 /// <summary>
@@ -11,7 +14,7 @@ namespace Basil.Application.Contracts.Beatmaps;
 public interface IBeatmapAnalyser
 {
 	/// <summary>Analyzes the beatmap file with the given content and returns its gameplay stats.</summary>
-	/// <param name="content">The bytes of the .osu file.</param>
+	/// <param name="content">The content of the .osu file.</param>
 	/// <param name="mode">The ruleset to analyze the beatmap under.</param>
 	/// <param name="mods">The mods whose difficulty adjustments the analysis should apply.</param>
 	/// <returns>The analyzed difficulty stats and per-mode hit-object counts.</returns>

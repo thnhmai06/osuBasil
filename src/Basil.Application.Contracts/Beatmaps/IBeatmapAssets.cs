@@ -1,3 +1,5 @@
+using Basil.Domain.Beatmaps;
+
 namespace Basil.Application.Contracts.Beatmaps;
 
 /// <summary>Opens the files that come with beatmaps and beatmapsets.</summary>

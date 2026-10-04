@@ -1,5 +1,7 @@
 using Basil.Application.Contracts.Events;
 using Basil.Application.Contracts.Sessions;
+using Basil.Domain.Client;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Contracts.Users;
 

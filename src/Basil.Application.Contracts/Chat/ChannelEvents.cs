@@ -1,6 +1,7 @@
 using Basil.Application.Contracts.Events;
 using Basil.Application.Storage.Chat;
 using Basil.Application.Storage.Sessions;
+using Basil.Domain.Chat;
 
 namespace Basil.Application.Contracts.Chat;
 

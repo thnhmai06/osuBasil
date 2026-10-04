@@ -127,7 +127,13 @@ public enum ClientFlags : uint
 	///     Indicates memory or sound artifacts associated with the legacy AQN (Aoba Quality Network) cheat module were
 	///     detected.
 	/// </summary>
-	AqnMenuSample = 1 << 22
+	AqnMenuSample = 1 << 22,
 
 	#endregion
+
+	CheatSigns = SpeedHackDetected | IncorrectModValue | MultipleOsuClients | ChecksumFailure |
+	             FlashlightChecksumIncorrect |
+	             OsuExecutableChecksum | MissingProcessesInList | FlashlightImageHack | SpinnerHack |
+	             TransparentWindow |
+	             FastPress | RawMouseDiscrepancy | RawKeyboardDiscrepancy | HqAssembly | HqFile | RegistryEdits
 }

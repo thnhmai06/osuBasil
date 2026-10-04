@@ -1,9 +1,10 @@
 using Basil.Application.Contracts.Events;
+using Basil.Domain.Beatmaps;
 
 namespace Basil.Application.Contracts.Beatmaps;
 
 /// <summary>Imports, deletes and keeps track of the beatmapsets the server has.</summary>
-public interface IBeatmapService : IEventPublisher<BeatmapsetEvent>
+public interface IBeatmapsetService : IEventPublisher<BeatmapsetEvent>
 {
 	/// <summary>Imports a beatmapset archive, adding or replacing the beatmapset it belongs to.</summary>
 	/// <param name="archive">The archive to import.</param>
@@ -19,7 +20,7 @@ public interface IBeatmapService : IEventPublisher<BeatmapsetEvent>
 	///     otherwise a new local id of at least 1 000 000 000. Difficulties the new version no longer has are removed.
 	///     A locked beatmapset is not changed.
 	/// </remarks>
-	Task<BeatmapImportResult> ImportAsync(Stream archive, int? beatmapsetId = null,
+	Task<BeatmapsetImportResult> ImportAsync(Stream archive, int? beatmapsetId = null,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Deletes a beatmapset with its beatmaps and archive.</summary>

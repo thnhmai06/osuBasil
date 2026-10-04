@@ -1,7 +1,7 @@
 namespace Basil.Application.Storage.Content;
 
 /// <summary>Stores the images of main-menu banners.</summary>
-public interface IMenuBannerImageStorage
+public interface IMenuBannerStorage
 {
 	/// <summary>Lists the names of the stored images.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>

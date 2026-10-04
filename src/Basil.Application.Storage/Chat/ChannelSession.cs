@@ -5,7 +5,9 @@ using Channel = Basil.Domain.Chat.Channel;
 namespace Basil.Application.Storage.Chat;
 
 /// <summary>A chat channel while it is open: its members and what happens in it.</summary>
-public abstract class ChannelSession
+/// <remarks>Opens a runtime channel for a chat channel.</remarks>
+/// <param name="channel">The chat channel this session runs.</param>
+public abstract class ChannelSession(Channel channel)
 {
 	/// <summary>The longest message kept; longer messages are cut.</summary>
 	public const int MaxMessageLength = 2000;
@@ -14,15 +16,8 @@ public abstract class ChannelSession
 	private readonly Lock _sync = new();
 	private volatile bool _closed;
 
-	/// <summary>Opens a runtime channel for a chat channel.</summary>
-	/// <param name="channel">The chat channel this session runs.</param>
-	protected ChannelSession(Channel channel)
-	{
-		Channel = channel;
-	}
-
 	/// <summary>Gets the chat channel this session runs.</summary>
-	public Channel Channel { get; }
+	public Channel Channel { get; } = channel;
 
 	/// <summary>
 	///     Gets the channel name: <c>#name</c> for a channel several users take part in, the owner's name for a

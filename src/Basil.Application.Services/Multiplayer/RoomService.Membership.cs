@@ -36,9 +36,9 @@ internal sealed partial class RoomService
 
 		if (room.Banned.Contains(player.User)) return RoomResult.Banned;
 		if (lobby.RoomOf(player) is { } other && !ReferenceEquals(other, room)) return RoomResult.InAnotherRoom;
-		if (room.Observers.Any(observer => observer.User.Equals(player.User))) return RoomResult.IsObserver;
-
-		return TakeSeat(room, player, stale);
+		return room.Observers.Any(observer => observer.User.Equals(player.User))
+			? RoomResult.IsObserver
+			: TakeSeat(room, player, stale);
 	}
 
 	/// <summary>Seats a player who passed the room's checks, taking over the seat of a closed connection of the same user.</summary>
@@ -53,7 +53,7 @@ internal sealed partial class RoomService
 		}
 
 		channels.Join(room.Channel, player);
-		lobbyService.RoomOccupied(room);
+		LobbyService.RoomOccupied(room);
 		Emit(new RoomPlayerJoined(room, player, slot.Index, null, null));
 		return RoomResult.Ok;
 	}
@@ -73,7 +73,7 @@ internal sealed partial class RoomService
 		LeaveChannel(room, stale);
 		var progress = AdvanceRound(room);
 		channels.Join(room.Channel, player);
-		lobbyService.RoomOccupied(room);
+		LobbyService.RoomOccupied(room);
 		Emit(new RoomPlayerJoined(room, player, slot.Index, stale, progress));
 		return RoomResult.Ok;
 	}

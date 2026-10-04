@@ -15,13 +15,11 @@ internal sealed partial class RoomService
 
 		if (change.IsPrivate is not null && !RoomRules.CanManage(room, by)) return RoomResult.NotAuthorized;
 
-		if (change.Name is not null && string.IsNullOrWhiteSpace(change.Name)) return RoomResult.InvalidSettings;
-		if (change.Size is < 1 or > RoomSlots.MaxSlotCount) return RoomResult.InvalidSettings;
-		if (change.ClearBeatmap && change.Beatmap is not null) return RoomResult.InvalidSettings;
-		if (change.Mode is { } requestedMode && !Enum.IsDefined(requestedMode)) return RoomResult.InvalidSettings;
-		if (change.TeamType is { } requestedTeamType && !Enum.IsDefined(requestedTeamType))
-			return RoomResult.InvalidSettings;
-		if (change.WinCondition is { } requestedWinCondition && !Enum.IsDefined(requestedWinCondition))
+		if ((change.Name is not null && string.IsNullOrWhiteSpace(change.Name)) ||
+		    change.Size is < 1 or > RoomSlots.MaxSlotCount || change is { ClearBeatmap: true, Beatmap: not null } ||
+		    (change.Mode is { } requestedMode && !Enum.IsDefined(requestedMode)) ||
+		    (change.TeamType is { } requestedTeamType && !Enum.IsDefined(requestedTeamType)) ||
+		    (change.WinCondition is { } requestedWinCondition && !Enum.IsDefined(requestedWinCondition)))
 			return RoomResult.InvalidSettings;
 
 		if (change == new RoomSettingsChange()) return RoomResult.Ok;

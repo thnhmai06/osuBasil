@@ -40,6 +40,18 @@ public abstract class BeatmapObjects
 			field = value;
 		}
 	}
+
+	public static BeatmapObjects NewFrom(GameMode mode)
+	{
+		return mode switch
+		{
+			GameMode.Standard => new OsuObjects(),
+			GameMode.Taiko => new TaikoObjects(),
+			GameMode.Catch => new CatchObjects(),
+			GameMode.Mania => new ManiaObjects(),
+			_ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown game mode.")
+		};
+	}
 }
 
 /// <summary>

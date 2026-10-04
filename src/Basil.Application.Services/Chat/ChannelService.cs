@@ -105,8 +105,7 @@ internal sealed class ChannelService(
 		var message = new Message(by.User, truncated ? text[..ChannelSession.MaxMessageLength] : text, now, notice);
 
 		Message? awayReply = null;
-		if (channel is PmChannelSession pmChannel
-		    && pmChannel.Owner.AwayMessage is { } away
+		if (channel is PmChannelSession { Owner.AwayMessage: { } away } pmChannel
 		    && !ReferenceEquals(by.Session, pmChannel.Owner)
 		    && !notice)
 			awayReply = new Message(pmChannel.Owner.User, away, now);
@@ -200,7 +199,7 @@ internal sealed class ChannelService(
 	}
 
 	/// <summary>Checks whether a connection may write to a channel.</summary>
-	private bool CanWrite(ChannelSession channel, Connection connection)
+	private static bool CanWrite(ChannelSession channel, Connection connection)
 	{
 		return channel switch
 		{

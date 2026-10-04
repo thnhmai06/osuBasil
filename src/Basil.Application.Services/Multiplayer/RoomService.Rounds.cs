@@ -118,8 +118,13 @@ internal sealed partial class RoomService
 	{
 		if (!RoomRules.CanManage(room, by)) return RoomResult.NotAuthorized;
 		if (length <= TimeSpan.Zero || length > MaxCountdownLength) return RoomResult.OutOfRange;
-		if (startsRound && room.InProgress) return RoomResult.InProgress;
-		if (startsRound && room.Beatmap is null) return RoomResult.NoBeatmap;
+		switch (startsRound)
+		{
+			case true when room.InProgress:
+				return RoomResult.InProgress;
+			case true when room.Beatmap is null:
+				return RoomResult.NoBeatmap;
+		}
 
 		RoundMechanics.StopCountdown(room);
 		Countdown? countdown = null;
@@ -248,7 +253,7 @@ internal sealed partial class RoomService
 
 	private async Task TickAsync(Room room, Countdown countdown, TimeSpan mark)
 	{
-		await using var scope = await lobby.EnterAsync(room);
+		await using var scope = await Lobby.EnterAsync(room);
 		if (scope is null || !ReferenceEquals(room.CountdownTimer, countdown)) return;
 
 		Emit(new RoomCountdownTicked(room, mark));
@@ -256,11 +261,11 @@ internal sealed partial class RoomService
 
 	private async Task ElapseAsync(Room room, Countdown countdown, bool startsRound)
 	{
-		await using var scope = await lobby.EnterAsync(room);
+		await using var scope = await Lobby.EnterAsync(room);
 		if (scope is null || !ReferenceEquals(room.CountdownTimer, countdown)) return;
 
 		RoundMechanics.StopCountdown(room);
-		if (startsRound && !room.InProgress && room.Beatmap is not null)
+		if (startsRound && room is { InProgress: false, Beatmap: not null })
 			StartRound(room, true);
 		else
 			Emit(new RoomCountdownElapsed(room, startsRound));

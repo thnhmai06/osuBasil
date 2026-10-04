@@ -3,7 +3,7 @@ using Basil.Domain.Content;
 namespace Basil.Application.Storage.Content;
 
 /// <summary>Stores the server-wide settings.</summary>
-public interface IServerSettingsRepository
+public interface ISettingsRepository
 {
 	/// <summary>Gets the server-wide settings.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>

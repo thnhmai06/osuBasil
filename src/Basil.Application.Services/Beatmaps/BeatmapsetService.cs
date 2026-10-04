@@ -1,5 +1,6 @@
 using System.Threading.Channels;
 using Basil.Application.Contracts.Beatmaps;
+using Basil.Application.Services.Common;
 using Basil.Application.Storage.Beatmaps;
 using Basil.Application.Storage.Common;
 using Basil.Domain.Beatmaps;
@@ -11,13 +12,13 @@ namespace Basil.Application.Services.Beatmaps;
 /// <summary>
 ///     Imports, deletes and keeps track of the beatmapsets the server has.
 /// </summary>
-internal sealed class BeatmapService(
-	IBeatmapArchiveReader reader,
+internal sealed class BeatmapsetService(
+	IBeatmapsetReader reader,
 	IBeatmapAnalyser analyser,
 	IBeatmapsetRepository beatmapsets,
 	IBeatmapRepository beatmaps,
-	IBeatmapArchiveStorage archives,
-	TimeProvider time) : IBeatmapService
+	IBeatmapsetStorage archives,
+	TimeProvider time) : IBeatmapsetService
 {
 	private readonly Channel<BeatmapsetEvent> _events = Channel.CreateUnbounded<BeatmapsetEvent>();
 
@@ -25,7 +26,7 @@ internal sealed class BeatmapService(
 	public ChannelReader<BeatmapsetEvent> Events => _events.Reader;
 
 	/// <inheritdoc />
-	public async Task<BeatmapImportResult> ImportAsync(Stream archive, int? beatmapsetId = null,
+	public async Task<BeatmapsetImportResult> ImportAsync(Stream archive, int? beatmapsetId = null,
 		CancellationToken cancellationToken = default)
 	{
 		await using var copy = new MemoryStream();
@@ -33,7 +34,7 @@ internal sealed class BeatmapService(
 		copy.Position = 0;
 
 		if (await reader.ReadAsync(copy, cancellationToken) is not { } content)
-			return new BeatmapImportResult(null, [], BeatmapImportFailure.Unreadable);
+			return new BeatmapsetImportResult(null, [], BeatmapsetImportFailure.Unreadable);
 
 		var stored = new Dictionary<BeatmapArchiveDifficulty, Beatmap?>();
 		foreach (var difficulty in content.Difficulties)
@@ -47,7 +48,7 @@ internal sealed class BeatmapService(
 
 		var existing = await beatmapsets.GetAsync(setId.Value, cancellationToken);
 		if (existing is { Locked: true })
-			return new BeatmapImportResult(null, [], BeatmapImportFailure.Locked);
+			return new BeatmapsetImportResult(null, [], BeatmapsetImportFailure.Locked);
 
 		var now = time.GetUtcNow();
 		var set = new Beatmapset
@@ -83,7 +84,7 @@ internal sealed class BeatmapService(
 		await beatmaps.RetainAsync(set, result, cancellationToken);
 
 		_events.Writer.TryWrite(new BeatmapsetImported(set, result));
-		return new BeatmapImportResult(set, result, null);
+		return new BeatmapsetImportResult(set, result, null);
 	}
 
 	/// <inheritdoc />
@@ -156,14 +157,7 @@ internal sealed class BeatmapService(
 	/// <summary>A zero difficulty and no objects in a game mode.</summary>
 	private static BeatmapAnalysis EmptyAnalysis(GameMode mode)
 	{
-		BeatmapObjects objects = mode switch
-		{
-			GameMode.Standard => new OsuObjects(),
-			GameMode.Taiko => new TaikoObjects(),
-			GameMode.Catch => new CatchObjects(),
-			GameMode.Mania => new ManiaObjects(),
-			_ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown game mode.")
-		};
+		var objects = BeatmapObjects.NewFrom(mode);
 		return new BeatmapAnalysis(new Difficulty(mode, 0, TimeSpan.Zero, 0, 0, 0, 0, 0), objects);
 	}
 }

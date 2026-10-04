@@ -3,7 +3,7 @@ using Basil.Domain.Beatmaps;
 namespace Basil.Application.Storage.Beatmaps;
 
 /// <summary>Stores the <c>.osz</c> archives of beatmapsets.</summary>
-public interface IBeatmapArchiveStorage
+public interface IBeatmapsetStorage
 {
 	/// <summary>Stores the archive of a beatmapset, replacing any archive already stored for it.</summary>
 	/// <param name="set">The beatmapset the archive belongs to.</param>
