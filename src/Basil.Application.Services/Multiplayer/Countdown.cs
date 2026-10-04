@@ -1,5 +1,6 @@
 namespace Basil.Application.Services.Multiplayer;
 
+/// <summary>A countdown that runs one action at each of its milestones, the last when it ends.</summary>
 internal sealed class Countdown : IDisposable
 {
 	private readonly Milestone[] _milestones;
@@ -11,12 +12,17 @@ internal sealed class Countdown : IDisposable
 	private DateTimeOffset? _startedAt;
 	private ITimer? _timer;
 
-	public Countdown(TimeSpan length, IEnumerable<Milestone> milestones, TimeProvider? timeProvider = null)
+	/// <summary>Creates a countdown that has not started.</summary>
+	/// <param name="length">How long the countdown runs; more than zero.</param>
+	/// <param name="milestones">The actions to run; those that fall outside the countdown's length are ignored.</param>
+	/// <param name="timeProvider">The clock that measures the countdown.</param>
+	/// <exception cref="ArgumentOutOfRangeException"><paramref name="length" /> is not more than zero.</exception>
+	public Countdown(TimeSpan length, IEnumerable<Milestone> milestones, TimeProvider timeProvider)
 	{
 		ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(length, TimeSpan.Zero);
 		ArgumentNullException.ThrowIfNull(milestones);
 
-		_timeProvider = timeProvider ?? TimeProvider.System;
+		_timeProvider = timeProvider;
 
 		_milestones =
 		[
@@ -30,34 +36,30 @@ internal sealed class Countdown : IDisposable
 		Length = length;
 	}
 
+	/// <summary>Gets how long the countdown runs.</summary>
 	public TimeSpan Length { get; }
 
-	public DateTimeOffset? StartedAt
+	/// <summary>Gets when the countdown ends, or <see langword="null" /> when it has not started.</summary>
+	public DateTimeOffset? EndsAt
 	{
 		get
 		{
 			lock (_sync)
 			{
-				return _startedAt;
+				return _startedAt is { } startedAt ? startedAt + Length : null;
 			}
 		}
 	}
 
-	public bool IsStarted => StartedAt is not null;
-
-	public DateTimeOffset? EndsAt =>
-		StartedAt is { } startedAt
-			? startedAt + Length
-			: null;
-
+	/// <summary>Gets how much time is left, which is the whole length before the countdown starts.</summary>
 	public TimeSpan Remaining
 	{
 		get
 		{
-			if (StartedAt is not { } start)
+			if (EndsAt is not { } endsAt)
 				return Length;
 
-			var remaining = start + Length - _timeProvider.GetUtcNow();
+			var remaining = endsAt - _timeProvider.GetUtcNow();
 
 			return remaining > TimeSpan.Zero
 				? remaining
@@ -65,11 +67,13 @@ internal sealed class Countdown : IDisposable
 		}
 	}
 
+	/// <summary>Stops the countdown; its remaining milestones do not run.</summary>
 	public void Dispose()
 	{
 		Reset();
 	}
 
+	/// <summary>Starts the countdown; starting a countdown that already runs does nothing.</summary>
 	public void Start()
 	{
 		lock (_sync)
@@ -87,6 +91,7 @@ internal sealed class Countdown : IDisposable
 		}
 	}
 
+	/// <summary>Stops the countdown and returns it to its unstarted state; its remaining milestones do not run.</summary>
 	public void Reset()
 	{
 		lock (_sync)
@@ -148,24 +153,24 @@ internal sealed class Countdown : IDisposable
 		_ = milestone.Execute(cancellationToken);
 	}
 
+	/// <summary>An action that runs when a countdown has a given time left.</summary>
+	/// <param name="Remaining">The time left on the countdown when the action runs; zero runs it when the countdown ends.</param>
+	/// <param name="Action">The action to run; it receives a token that is cancelled when the countdown stops.</param>
 	public readonly record struct Milestone(
 		TimeSpan Remaining,
-		Func<CancellationToken, Task> Action,
-		Func<Exception, Task>? OnException = null)
+		Func<CancellationToken, Task> Action)
 	{
+		/// <summary>Runs the action; a failure of the action, and its cancellation when the countdown stops, are ignored.</summary>
+		/// <param name="ct">A token that is cancelled when the countdown stops.</param>
 		public async Task Execute(CancellationToken ct = default)
 		{
 			try
 			{
 				await Action(ct);
 			}
-			catch (OperationCanceledException) when (ct.IsCancellationRequested)
+			catch (Exception)
 			{
-			}
-			catch (Exception e)
-			{
-				if (OnException is not null)
-					await OnException(e);
+				// A milestone must never fault the countdown that runs it.
 			}
 		}
 	}

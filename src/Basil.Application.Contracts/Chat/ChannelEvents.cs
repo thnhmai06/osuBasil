@@ -12,13 +12,19 @@ public abstract record ChannelEvent(ChannelSession Channel) : Event;
 public sealed record ChannelOpened(ChannelSession Channel) : ChannelEvent(Channel);
 
 /// <summary>A chat channel was closed; it emits nothing afterwards.</summary>
-public sealed record ChannelClosed(ChannelSession Channel) : ChannelEvent(Channel);
+/// <param name="Channel">The channel that closed.</param>
+/// <param name="Members">The connections that were members when the channel closed; they are no longer members.</param>
+public sealed record ChannelClosed(ChannelSession Channel, IReadOnlyList<Connection> Members) : ChannelEvent(Channel);
 
 /// <summary>A connection joined or left a chat channel.</summary>
 public abstract record ChannelMembershipEvent(ChannelSession Channel) : ChannelEvent(Channel);
 
 /// <summary>A connection joined a chat channel.</summary>
-public sealed record ChannelMemberJoined(ChannelSession Channel, Connection Member) : ChannelMembershipEvent(Channel);
+/// <param name="Channel">The channel the connection joined.</param>
+/// <param name="Member">The connection that joined.</param>
+/// <param name="Replaced">A closed connection of the same user and kind that the new member replaced, or <see langword="null" />.</param>
+public sealed record ChannelMemberJoined(ChannelSession Channel, Connection Member, Connection? Replaced)
+	: ChannelMembershipEvent(Channel);
 
 /// <summary>A connection left a chat channel.</summary>
 /// <param name="Channel">The channel the connection left.</param>
@@ -34,7 +40,8 @@ public abstract record ChannelMessageEvent(ChannelSession Channel) : ChannelEven
 /// <param name="Channel">The channel the message was posted to.</param>
 /// <param name="Message">The message that was posted.</param>
 /// <param name="Truncated">Whether the message was cut to <see cref="ChannelSession.MaxMessageLength" /> characters.</param>
-public sealed record ChannelMessagePosted(ChannelSession Channel, Message Message, bool Truncated)
+/// <param name="AwayReply">The recipient's away message, sent back to the author's private-message channel, or <see langword="null" /> when none was sent.</param>
+public sealed record ChannelMessagePosted(ChannelSession Channel, Message Message, bool Truncated, Message? AwayReply)
 	: ChannelMessageEvent(Channel);
 
 /// <summary>A connection started spectating the channel's host.</summary>
@@ -51,8 +58,8 @@ public sealed record ChannelSpectatorJoined(ChannelSession Channel, Connection S
 public sealed record ChannelSpectatorLeft(ChannelSession Channel, Connection Spectator, bool HostLeft)
 	: ChannelMembershipEvent(Channel);
 
-/// <summary>A spectator reported that it cannot spectate the host, usually because it lacks the beatmap.</summary>
+/// <summary>A spectator reported that it failed to spectate the host, usually because it lacks the beatmap.</summary>
 /// <param name="Channel">The channel of the player being spectated.</param>
-/// <param name="Spectator">The spectator that cannot spectate.</param>
-public sealed record ChannelSpectatorCantSpectate(ChannelSession Channel, Connection Spectator)
+/// <param name="Spectator">The spectator that failed to spectate.</param>
+public sealed record ChannelSpectatorFailed(ChannelSession Channel, Connection Spectator)
 	: ChannelEvent(Channel);

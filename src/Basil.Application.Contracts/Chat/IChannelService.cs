@@ -17,14 +17,14 @@ public interface IChannelService : IEventPublisher<ChannelEvent>
 
 	/// <summary>Closes a channel, removing every member.</summary>
 	/// <param name="channel">The channel to close.</param>
-	/// <remarks>Each member is reported as parted by force, then <see cref="ChannelClosed" />. A general channel also stops being listed. Closing a closed channel does nothing.</remarks>
+	/// <remarks>Announces one <see cref="ChannelClosed" /> carrying every member that was removed. A general channel also stops being listed. Closing a closed channel does nothing.</remarks>
 	void Close(ChannelSession channel);
 
 	/// <summary>Adds a connection to a channel's members.</summary>
 	/// <param name="channel">The channel to join.</param>
 	/// <param name="by">The connection joining.</param>
 	/// <returns>The outcome of the join.</returns>
-	/// <remarks>A connection may join only a channel it may read. If the same user is a member through a closed connection of a kind that allows one connection, that connection is removed first as an ordinary part.</remarks>
+	/// <remarks>A connection may join only a channel it may read. If the same user is a member through a closed connection of a kind that allows one connection, that connection is replaced by the new one, which <see cref="ChannelMemberJoined" /> reports.</remarks>
 	ChannelJoinResult Join(ChannelSession channel, Connection by);
 
 	/// <summary>Removes a connection from a channel's members.</summary>
@@ -40,8 +40,9 @@ public interface IChannelService : IEventPublisher<ChannelEvent>
 	/// <param name="notice">Whether the message is a notice, which never triggers an automatic reply.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of the post.</returns>
-	/// <remarks>A message longer than <see cref="ChannelSession.MaxMessageLength" /> characters is cut. A private message is a post into the recipient's private-message channel; the recipient's away message is sent back to the author.</remarks>
-	Task<ChannelPostResult> PostAsync(ChannelSession channel, Connection by, string text, bool notice = false, CancellationToken cancellationToken = default);
+	/// <remarks>A message longer than <see cref="ChannelSession.MaxMessageLength" /> characters is cut. A private message is a post into the recipient's private-message channel; the recipient's away message is sent back to the author, carried by the same <see cref="ChannelMessagePosted" />.</remarks>
+	Task<ChannelPostResult> PostAsync(ChannelSession channel, Connection by, string text, bool notice = false,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>Joins a connection to every general channel joined automatically.</summary>
 	/// <param name="by">The connection that just opened.</param>
@@ -63,8 +64,8 @@ public interface IChannelService : IEventPublisher<ChannelEvent>
 	/// <returns><see langword="true" /> if the connection was spectating.</returns>
 	bool StopSpectating(Connection by);
 
-	/// <summary>Reports that a spectator cannot watch, for example because it lacks the beatmap.</summary>
+	/// <summary>Reports that a spectator failed to spectate its host, for example because it lacks the beatmap.</summary>
 	/// <param name="by">The spectator reporting it.</param>
 	/// <returns><see langword="true" /> if the connection was spectating.</returns>
-	bool CantSpectate(Connection by);
+	bool ReportSpectatingFailed(Connection by);
 }

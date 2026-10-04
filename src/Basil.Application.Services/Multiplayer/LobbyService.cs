@@ -76,30 +76,28 @@ internal sealed class LobbyService(
 		{
 			var opened = new Room(id, match, settings ?? new MatchSettings(), isTournament);
 			if (!string.IsNullOrEmpty(password)) opened.Password = password;
+			if (creatorConnection is not null && lobby.RoomOf(creatorConnection) is null)
+				SeatCreator(opened, creatorConnection);
 			return opened;
 		});
 		if (room is null) return (null, RoomResult.NoRoomId);
 
-		if (creatorConnection is not null && lobby.RoomOf(creatorConnection) is null)
-			SeatCreator(room, creatorConnection);
-
 		if (users.Sessions.Select(session => session.Bot).FirstOrDefault(b => b is not null) is { } bot)
 			channels.Join(room.Channel, bot);
 
-		Emit(new LobbyRoomOpened(room, room.Host));
-
-		// A tournament room opened without a seated player starts its empty-room countdown now.
-		if (!room.Slots.Any(slot => slot.Player is not null)) RoomEmptied(room);
+		DateTimeOffset? closesAt = room.IsTournament && !room.Slots.Any(slot => slot.Player is not null)
+			? ScheduleClosing(room)
+			: null;
+		Emit(new LobbyRoomOpened(room, room.Host, closesAt));
 		return (room, RoomResult.Ok);
 	}
 
 	/// <inheritdoc />
 	public async Task<RoomResult> CloseAsync(Room room, Connection by, CancellationToken cancellationToken = default)
 	{
-		if (!RoomRules.CanManage(room, by)) return RoomResult.NotAuthorized;
-
 		await using var scope = await lobby.EnterAsync(room, cancellationToken);
 		if (scope is null) return RoomResult.Ok;
+		if (!RoomRules.CanManage(room, by)) return RoomResult.NotAuthorized;
 
 		Close(room);
 		return RoomResult.Ok;
@@ -134,9 +132,7 @@ internal sealed class LobbyService(
 			return;
 		}
 
-		var closesAt = time.GetUtcNow() + EmptyTournamentRoomTimeout;
-		Emit(new LobbyRoomClosingAnnounced(room, closesAt));
-		Schedule(room, closesAt - EmptyRoomWarningBefore, () => WarnIfStillEmptyAsync(room, closesAt));
+		Emit(new LobbyRoomClosingAnnounced(room, ScheduleClosing(room)));
 	}
 
 	/// <summary>Stops the countdown that would close an empty tournament room.</summary>
@@ -160,17 +156,8 @@ internal sealed class LobbyService(
 		RoomOccupied(room);
 		if (room.IsClosed) return;
 
-		room.CountdownTimer?.Dispose();
-		room.CountdownTimer = null;
-		room.CountdownEndsAt = null;
-
-		var aborted = room.CurrentRound;
-		if (aborted is not null)
-		{
-			aborted.EndedAt = time.GetUtcNow();
-			aborted.Aborted = true;
-			RoomSlotsMechanics.ResetPlayers(room);
-		}
+		RoundMechanics.StopCountdown(room);
+		var aborted = RoundMechanics.EndCurrentRound(room, time.GetUtcNow(), true);
 
 		var evicted = room.Slots.Where(s => s.Player is not null).Select(s => s.Player!).ToList();
 		foreach (var player in evicted) RoomSlotsMechanics.Vacate(room, player);
@@ -181,6 +168,13 @@ internal sealed class LobbyService(
 		channels.Close(room.Channel);
 		lobby.Remove(room);
 		Emit(new LobbyRoomClosed(room, evicted, aborted));
+	}
+
+	private DateTimeOffset ScheduleClosing(Room room)
+	{
+		var closesAt = time.GetUtcNow() + EmptyTournamentRoomTimeout;
+		Schedule(room, closesAt - EmptyRoomWarningBefore, () => WarnIfStillEmptyAsync(room, closesAt));
+		return closesAt;
 	}
 
 	private void Schedule(Room room, DateTimeOffset at, Func<Task> action)

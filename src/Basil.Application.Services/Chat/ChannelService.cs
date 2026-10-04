@@ -40,13 +40,11 @@ internal sealed class ChannelService(
 		if (channel.IsClosed) return;
 		channel.IsClosed = true;
 
-		foreach (var member in channel.Members.ToArray())
-		{
+		var members = channel.Members.ToArray();
+		foreach (var member in members)
 			channel.RemoveMember(member);
-			Emit(new ChannelMemberParted(channel, member, true));
-		}
 
-		Emit(new ChannelClosed(channel));
+		Emit(new ChannelClosed(channel, members));
 
 		if (channel is GeneralChannelSession general)
 			generalChannels.Remove(general);
@@ -60,19 +58,19 @@ internal sealed class ChannelService(
 		if (!CanRead(channel, by)) return ChannelJoinResult.NoPermission;
 		if (channel.Members.Contains(by)) return ChannelJoinResult.AlreadyMember;
 
+		Connection? replaced = null;
 		if (!by.Type.AllowsMany())
 		{
-			var old = channel.Members.FirstOrDefault(m => m.User.Equals(by.User) && m.Type == by.Type);
-			if (old is not null)
+			replaced = channel.Members.FirstOrDefault(m => m.User.Equals(by.User) && m.Type == by.Type);
+			if (replaced is not null)
 			{
-				if (old.IsOpen) return ChannelJoinResult.AlreadyMember;
-				channel.RemoveMember(old);
-				Emit(new ChannelMemberParted(channel, old, false));
+				if (replaced.IsOpen) return ChannelJoinResult.AlreadyMember;
+				channel.RemoveMember(replaced);
 			}
 		}
 
 		channel.AddMember(by);
-		Emit(new ChannelMemberJoined(channel, by));
+		Emit(new ChannelMemberJoined(channel, by, replaced));
 		return ChannelJoinResult.Joined;
 	}
 
@@ -99,8 +97,6 @@ internal sealed class ChannelService(
 
 		if (channel is PmChannelSession pm)
 		{
-			if (pm.Owner.User.Value.SilenceEndsAt > now) return ChannelPostResult.TargetSilenced;
-
 			if (by.Type is not ConnectionType.Bot)
 			{
 				var rels = await relationships.ListAsync(pm.Owner.User, cancellationToken);
@@ -109,21 +105,21 @@ internal sealed class ChannelService(
 				if (blocked || (pm.Owner.PmPrivate && !friend))
 					return ChannelPostResult.Blocked;
 			}
+
+			if (pm.Owner.User.Value.SilenceEndsAt > now) return ChannelPostResult.TargetSilenced;
 		}
 
 		var truncated = text.Length > ChannelSession.MaxMessageLength;
 		var message = new Message(by.User, truncated ? text[..ChannelSession.MaxMessageLength] : text, now, notice);
-		Emit(new ChannelMessagePosted(channel, message, truncated));
 
+		Message? awayReply = null;
 		if (channel is PmChannelSession pmChannel
 		    && pmChannel.Owner.AwayMessage is { } away
 		    && !ReferenceEquals(by.Session, pmChannel.Owner)
 		    && !notice)
-		{
-			var authorPmChannel = by.Session.PmChannel;
-			Emit(new ChannelMessagePosted(authorPmChannel, new Message(pmChannel.Owner.User, away, now), false));
-		}
+			awayReply = new Message(pmChannel.Owner.User, away, now);
 
+		Emit(new ChannelMessagePosted(channel, message, truncated, awayReply));
 		return ChannelPostResult.Posted;
 	}
 
@@ -176,12 +172,12 @@ internal sealed class ChannelService(
 	}
 
 	/// <inheritdoc />
-	public bool CantSpectate(Connection by)
+	public bool ReportSpectatingFailed(Connection by)
 	{
 		var spectatorChannel = users.FindSpectating(by);
 		if (spectatorChannel is null) return false;
 
-		Emit(new ChannelSpectatorCantSpectate(spectatorChannel, by));
+		Emit(new ChannelSpectatorFailed(spectatorChannel, by));
 		return true;
 	}
 

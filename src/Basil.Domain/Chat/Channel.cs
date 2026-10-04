@@ -20,5 +20,5 @@ public abstract class Channel
 	}
 
 	/// <summary>Gets or sets the topic shown to users who join the channel.</summary>
-	public string Topic { get; set; } = string.Empty;
+	public virtual string Topic { get; set; } = string.Empty;
 }

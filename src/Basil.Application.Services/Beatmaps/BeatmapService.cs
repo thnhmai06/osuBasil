@@ -1,5 +1,6 @@
 using System.Threading.Channels;
 using Basil.Application.Contracts.Beatmaps;
+using Basil.Application.Services.Common;
 using Basil.Application.Storage.Beatmaps;
 using Basil.Application.Storage.Common;
 using Basil.Domain.Beatmaps;
@@ -40,7 +41,8 @@ internal sealed class BeatmapService(
 			stored[difficulty] = await beatmaps.GetByHashAsync(new Md5(difficulty.Content), cancellationToken);
 
 		var setId = stored.Values.FirstOrDefault(b => b is not null)?.Beatmapset.Id;
-		if (setId is null && beatmapsetId is { } named && await beatmapsets.GetAsync(named, cancellationToken) is not null)
+		if (setId is null && beatmapsetId is { } named &&
+		    await beatmapsets.GetAsync(named, cancellationToken) is not null)
 			setId = named;
 		setId ??= content.OnlineSetId is > 0 ? content.OnlineSetId : await NewLocalIdAsync(cancellationToken);
 
@@ -51,18 +53,15 @@ internal sealed class BeatmapService(
 		var now = time.GetUtcNow();
 		var set = new Beatmapset
 		{
-			Id = setId.Value, Artist = content.Artist, Title = content.Title, Creator = content.Creator, UpdatedAt = now,
+			Id = setId.Value, Artist = content.Artist, Title = content.Title, Creator = content.Creator,
+			UpdatedAt = now,
 			CreatedAt = existing?.CreatedAt ?? now, Visible = existing?.Visible ?? true
 		};
-
-		copy.Position = 0;
-		await archives.SaveAsync(set, copy, cancellationToken);
-		await beatmapsets.CreateOrUpdateAsync(set, cancellationToken);
 
 		var result = new List<Beatmap>(content.Difficulties.Count);
 		foreach (var difficulty in content.Difficulties)
 		{
-			var analysis = analyser.Analyze(difficulty.Content, difficulty.Mode, GameMods.NoMod);
+			var analysis = Analyse(difficulty, stored[difficulty]);
 			var beatmap = new Beatmap
 			{
 				Id = stored[difficulty]?.Id ?? (difficulty.OnlineId is > 0 ? difficulty.OnlineId.Value : 0),
@@ -72,9 +71,15 @@ internal sealed class BeatmapService(
 				Difficulty = analysis.Difficulty,
 				Objects = analysis.Objects
 			};
-			await beatmaps.CreateOrUpdateAsync(beatmap, cancellationToken);
 			result.Add(beatmap);
 		}
+
+		copy.Position = 0;
+		await archives.SaveAsync(set, copy, cancellationToken);
+		await beatmapsets.CreateOrUpdateAsync(set, cancellationToken);
+
+		foreach (var beatmap in result)
+			await beatmaps.CreateOrUpdateAsync(beatmap, cancellationToken);
 
 		await beatmaps.RetainAsync(set, result, cancellationToken);
 
@@ -106,17 +111,9 @@ internal sealed class BeatmapService(
 	/// <inheritdoc />
 	public async Task<int> ScanAsync(CancellationToken cancellationToken = default)
 	{
-		var page = new PageRequest(0, 100);
-		var allSets = new List<Beatmapset>();
-
-		while (true)
-		{
-			var paged = await beatmapsets.ListAsync(new BeatmapQuery(IncludeHidden: true), page, cancellationToken);
-			allSets.AddRange(paged.Items);
-			if (paged.Items.Count < page.Limit)
-				break;
-			page = new PageRequest(page.Offset + page.Limit, page.Limit);
-		}
+		var allSets = await Paging.ListAllAsync(
+			page => beatmapsets.ListAsync(new BeatmapQuery(IncludeHidden: true), page, cancellationToken),
+			cancellationToken);
 
 		var forgotten = 0;
 		foreach (var set in allSets)
@@ -135,5 +132,36 @@ internal sealed class BeatmapService(
 		}
 
 		return forgotten;
+	}
+
+	/// <summary>Analyses a difficulty, reusing the analysis of the stored beatmap with the same file when it has a star rating.</summary>
+	/// <remarks>A difficulty that cannot be analysed gets a zero star rating and no objects.</remarks>
+	private BeatmapAnalysis Analyse(BeatmapArchiveDifficulty difficulty, Beatmap? stored)
+	{
+		if (stored is { Difficulty.Star: > 0 })
+			return new BeatmapAnalysis(stored.Difficulty, stored.Objects);
+
+		try
+		{
+			return analyser.Analyze(difficulty.Content, difficulty.Mode, GameMods.NoMod);
+		}
+		catch (Exception e) when (e is not OperationCanceledException)
+		{
+			return EmptyAnalysis(difficulty.Mode);
+		}
+	}
+
+	/// <summary>A zero difficulty and no objects in a game mode.</summary>
+	private static BeatmapAnalysis EmptyAnalysis(GameMode mode)
+	{
+		BeatmapObjects objects = mode switch
+		{
+			GameMode.Standard => new OsuObjects(),
+			GameMode.Taiko => new TaikoObjects(),
+			GameMode.Catch => new CatchObjects(),
+			GameMode.Mania => new ManiaObjects(),
+			_ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown game mode.")
+		};
+		return new BeatmapAnalysis(new Difficulty(mode, 0, TimeSpan.Zero, 0, 0, 0, 0, 0), objects);
 	}
 }

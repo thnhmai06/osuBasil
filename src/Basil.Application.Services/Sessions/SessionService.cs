@@ -206,7 +206,6 @@ internal sealed class SessionService(
 		connection.IsOpen = false;
 		connection.Session.Remove(connection);
 		channels.Part(connection.Session.PmChannel, connection);
-		channels.StopSpectating(connection);
 		if (connection is BanchoConnection bancho)
 			channels.Close(bancho.SpectatorChannel);
 

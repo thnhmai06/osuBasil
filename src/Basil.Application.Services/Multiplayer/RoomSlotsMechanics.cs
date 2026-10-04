@@ -120,19 +120,44 @@ internal static class RoomSlotsMechanics
 		if (to.Locked || to.Player is not null)
 			throw new InvalidOperationException("The target slot is not open.");
 
-		to.Player = from.Player;
-		to.Status = from.Status;
-		to.Team = from.Team;
-		to.Mods = from.Mods;
-		to.IntroSkipped = from.IntroSkipped;
-		to.Loaded = from.Loaded;
+		Restore(to, Capture(from));
+		Clear(from);
+	}
 
-		from.Player = null;
-		from.Status = null;
-		from.Team = null;
-		from.Mods = null;
-		from.IntroSkipped = null;
-		from.Loaded = null;
+	/// <summary>Everything that belongs to a seated player, as it is carried from one slot to another.</summary>
+	/// <param name="Player">The seated connection.</param>
+	/// <param name="Status">The player's status.</param>
+	/// <param name="Team">The player's team.</param>
+	/// <param name="Mods">The player's own mods.</param>
+	/// <param name="IntroSkipped">Whether the player skipped the intro.</param>
+	/// <param name="Loaded">Whether the player loaded the beatmap.</param>
+	internal readonly record struct RoomSlotState(
+		BanchoConnection Player,
+		RoomSlotStatus? Status,
+		GameTeam? Team,
+		GameMods? Mods,
+		bool? IntroSkipped,
+		bool? Loaded);
+
+	/// <summary>Reads everything that belongs to the player seated in a slot.</summary>
+	/// <param name="slot">The occupied slot.</param>
+	/// <returns>The occupant and their per-player state.</returns>
+	internal static RoomSlotState Capture(RoomSlot slot)
+	{
+		return new RoomSlotState(slot.Player!, slot.Status, slot.Team, slot.Mods, slot.IntroSkipped, slot.Loaded);
+	}
+
+	/// <summary>Seats a captured player in a slot with their per-player state, replacing whatever the slot held.</summary>
+	/// <param name="slot">The slot to fill.</param>
+	/// <param name="state">The state to restore.</param>
+	internal static void Restore(RoomSlot slot, RoomSlotState state)
+	{
+		slot.Player = state.Player;
+		slot.Status = state.Status;
+		slot.Team = state.Team;
+		slot.Mods = state.Mods;
+		slot.IntroSkipped = state.IntroSkipped;
+		slot.Loaded = state.Loaded;
 	}
 
 	/// <summary>Sets every playing or finished player back to not ready.</summary>

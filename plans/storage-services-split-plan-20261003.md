@@ -417,7 +417,7 @@ BasilBot là một người dùng bình thường trong `IUserRepository`, với
 | `IRelationshipRepository` | (chưa có; Domain có `Relationship`)                        | `CreateOrUpdateAsync(Relationship)`, `DeleteAsync(Relationship)`, `ListAsync(User)`: friends và chặn                                                                                  |
 | `IChannelRepository`     | (chưa có; Infra cũ đọc bảng `Channels`)                     | `ListAsync()`: các kênh chung được cấu hình (`#osu`, `#lobby`)                                                                                                                         |
 | `IServerSettingsRepository` | (chưa có; Infra cũ dùng bảng `Settings`)                 | `GetAsync()`, `CreateOrUpdateAsync(ServerSettings)`: MOTD, menu icon, endpoint mirror                                                                                                  |
-| `IMenuBannerRepository`  | (chưa có; Domain có `MenuBanner`)                           | `CreateAsync`, `CreateOrUpdateAsync`, `GetAsync`, `ListAsync`, `DeleteAsync`                                                                                                           |
+| `IMenuBannerRepository`  | (chưa có; Domain có `MenuBanner`)                           | `CreateOrUpdateAsync`, `GetAsync(Uri image)`, `ListAsync`, `DeleteAsync`                                                                                                                |
 | `IMatchEventRepository`  | (chưa có; Domain có `MatchEvent`)                           | `CreateAsync(MatchEvent)`, `ListAsync(Match)`: sự kiện trong report trận                                                                                                               |
 | `IAvatarStorage`         | (chưa có)                                                   | `SaveAsync(User, Stream)`, `OpenAsync(User)`, `DeleteAsync(User)`                                                                                                                      |
 | `IMenuBannerImageStorage`, `IMenuIconStorage` | (chưa có)                              | `SaveAsync`, `OpenAsync`, `DeleteAsync` cho ảnh banner (theo banner) và ảnh icon                                                                                                       |
@@ -913,11 +913,48 @@ Khác với kế hoạch ở trên (bản này thắng khi mâu thuẫn):
   hash, nên ném lỗi với mọi bài nộp như vậy. Nay nối chuỗi rỗng như trên `main`.
 * `DependencyInjection.AddApplication` đổi thành `ServiceCollectionExtensions.AddApplicationServices` trong
   `Basil.Application.Services`.
-* Kịch bản mốc lưu ở [`storage-services-split-baseline.cs`](storage-services-split-baseline.cs) (132 kiểm tra, PASS tại
+* Kịch bản mốc lưu ở [`storage-services-split-baseline.cs`](storage-services-split-baseline.cs) (139 kiểm tra, PASS sau 13.1; trước đó 132 tại
   `baaab73f`); chạy ngoài repo, chuyển thành test khi migrate các project test.
 * **Pha 7 hoãn viết lại `architecture.md`, `multiplayer.md`, `chat.md`** tới khi migrate Infrastructure và host: các
   tài liệu này mô tả cả phần chưa migrate, và AGENTS.md quy định chỉ viết lại tài liệu khi code nó mô tả đã migrate.
   `working-scopes.md` (friends, chặn, PM chỉ từ bạn bè) và ghi chú migration trong AGENTS.md đã cập nhật.
+
+### 13.1 Sửa sau review hai trục (2026-10-04)
+
+Review Standards (AGENTS.md) và Spec (kế hoạch này) trên toàn bộ commit của kế hoạch; các sửa đổi:
+
+* **Lỗi:** `ChannelSession.Enter()` tạo lock mới mỗi lần gọi nên kênh chat không loại trừ lẫn nhau; nay một lock mỗi
+  kênh.
+* **Phạm vi phòng:** `LobbyService.OpenAsync` xếp chỗ creator trước khi phòng hiện ra trong lobby; `CloseAsync` kiểm
+  quyền trong scope; `SeatAsync` kiểm còn slot trống và không phải observer trước khi kéo người chơi khỏi phòng cũ.
+* **Một thao tác một event, hiểu theo từng luồng service:** một thao tác phát đúng một event trên luồng của service
+  thực hiện nó; event của service khác do chính service đó phát (ví dụ `LobbyRoomClosingAnnounced` khi phòng giải trống
+  sau `RoomPlayerLeft`). Cụ thể: `ChannelClosed` mang danh sách thành viên; `ChannelMemberJoined.Replaced`;
+  `ChannelMessagePosted.AwayReply`; `LobbyRoomOpened.ClosesAt`; tiến trình round sau khi một người rời đi nằm trong
+  event rời đi (`RoomRoundProgress` trong `RoomPlayerLeft`, `RoomPlayerKicked`, `RoomSlotLockChanged`,
+  `RoomPlayerJoined`), nên `RoomRoundAllLoaded/AllSkipped/Completed.Slot` không còn null; thay ghế đã đóng của cùng user
+  là một `RoomPlayerJoined(Replaced: ...)` và người mới nhận đúng slot cũ; round không người chơi chỉ phát
+  `RoomRoundStarted` (round đã kết thúc); countdown bắt đầu round chỉ phát `RoomRoundStarted(ByCountdown: true)`.
+* **Mỗi service chỉ quản lý loại của mình:** `SessionService` không còn gọi `StopSpectating`, `RoomService.ReleaseAsync`
+  không còn gọi `Unwatch`, `ScoreService` không còn báo cờ anticheat. **Khi migrate Infrastructure/host:** handler
+  `UserConnectionClosed` gọi `IRoomService.ReleaseAsync`, `ILobbyService.Unwatch`, `IChannelService.StopSpectating`,
+  `IChannelService.PartAll`; host Bancho gọi `IRoomService.ReportClientFlagsAsync` với cờ của bài nộp và của
+  `lastfm.php`.
+* **Ghi `Match`:** như round, Infrastructure ghi `room.Match` qua `IMatchRepository.CreateOrUpdateAsync` khi nhận
+  `LobbyRoomClosed` (`EndedAt`) và `RoomSettingsChanged` (tên, riêng tư). Thay mục 4.4 ("Đóng trận ghi `EndedAt` qua
+  `LobbyService`").
+* **Spec bổ sung:** mốc countdown theo B.4 (bắt đầu round: 60, 30, 10, 5, 4, 3 s và mỗi phút dưới tổng, bỏ bội số 60
+  trong vòng 5 s của tổng; timer: 60, 30, 10, 5 s); tick không phát cho countdown đã hủy hoặc bị thay; đổi beatmap,
+  mode, mod, freemod, team type hoặc win condition hủy countdown bắt đầu round (`RoomSettingsChanged.CountdownCancelled`);
+  thứ tự từ chối PM: chặn hoặc PM chỉ bạn bè → `Blocked`, rồi mới tới người nhận bị im lặng; nhập beatmap dùng lại phân
+  tích cũ khi cùng hash và SR > 0, phân tích lỗi lưu SR 0 và đối tượng rỗng, và dựng xong mọi beatmap trước khi lưu;
+  `TotalScore` cộng mọi lượt chơi, `RankedScore` chỉ khi qua màn.
+* **Giữ có chủ đích:** BasilBot bỏ qua chặn và PM chỉ bạn bè, vì tin của bot là thông báo của server (ví dụ cảnh báo
+  anticheat gửi referee). `IMenuBannerRepository` không có `CreateAsync`: banner được nhận diện bằng URI ảnh, không do
+  kho cấp id (sửa mục 3).
+* **Gọn code:** `IRoomService.IsManager` thay bằng `Room.IsManagedBy`; topic kênh phòng là tên trận (`RoomChannel`
+  chuyển tiếp `Match.Value.Name`); `RoundMechanics`, `RoomRules.IsCreatorOrBot`, `RoomSlotState`, `Paging.ListAllAsync`;
+  `SubmitAsync` nhận `BeatmapChecksums` và `SubmittedClient` thay cho tuple; `RoomService` tách thành các file partial.
 
 ## Phụ lục A. Kịch bản mốc hành vi
 

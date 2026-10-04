@@ -93,7 +93,7 @@ var referee = NewUser("Referee");
 var opened = time.GetUtcNow();
 var (t1, r1) = await lobbyService.OpenAsync(referee, null, "T1", "", isTournament: true, isPrivate: false);
 var ev = Drain(lobbyService.Events);
-Check("S1 announced on open (15 min left)", r1 == RoomResult.Ok && ev.OfType<LobbyRoomClosingAnnounced>().SingleOrDefault()?.ClosesAt == opened + TimeSpan.FromMinutes(15));
+Check("S1 opening carries the closing time (15 min)", r1 == RoomResult.Ok && ev.OfType<LobbyRoomOpened>().SingleOrDefault()?.ClosesAt == opened + TimeSpan.FromMinutes(15) && !ev.OfType<LobbyRoomClosingAnnounced>().Any());
 time.Advance(TimeSpan.FromMinutes(9));
 Check("S1 nothing before 10 min", Drain(lobbyService.Events).Count == 0);
 time.Advance(TimeSpan.FromMinutes(1));
@@ -151,7 +151,7 @@ await Do(t5, s => s.MarkLoadedAsync(t5!, daveConn));
 Drain(roomService.Events);
 await Do(t5, s => s.LeaveAsync(t5!, erinConn));
 var re = Drain(roomService.Events);
-Check("S5 all loaded announced after leave", re.OfType<RoomRoundAllLoaded>().SingleOrDefault() is { Slot: null });
+Check("S5 all loaded reported in the leave event", re.OfType<RoomPlayerLeft>().Single().RoundProgress is { AllLoaded: true, Completed: false } && !re.OfType<RoomRoundAllLoaded>().Any());
 await Do(t5, s => s.CompleteAsync(t5!, daveConn));
 re = Drain(roomService.Events);
 Check("S5 round completed", re.OfType<RoomRoundCompleted>().Count() == 1 && !t5.InProgress);
@@ -161,7 +161,7 @@ await Do(t5, s => s.SetHasMapAsync(t5!, daveConn, false));
 Drain(roomService.Events);
 await Do(t5, s => s.StartAsync(t5!, refConn));
 re = Drain(roomService.Events);
-Check("S6 unplayed round ends", re.OfType<RoomRoundStarted>().Count() == 1 && re.OfType<RoomRoundCompleted>().Count() == 1 && !t5.InProgress);
+Check("S6 unplayed round ends in its start event", re.OfType<RoomRoundStarted>().Single().Round.EndedAt is not null && !re.OfType<RoomRoundCompleted>().Any() && !t5.InProgress);
 
 // S7: clearing the beatmap, then start is refused
 Check("S7 clear beatmap", await Do(t5, s => s.ConfigureAsync(t5!, refConn, new RoomSettingsChange(ClearBeatmap: true))) == RoomResult.Ok && t5.Beatmap is null);
@@ -248,11 +248,14 @@ sessions.SetAway(pamConn.Session, "brb");
 Drain(channelService.Events);
 Check("P3d private message posted", await channelService.PostAsync(pamConn.Session.PmChannel, oliConn, "hey") == ChannelPostResult.Posted);
 var pmEvents = Drain(channelService.Events).OfType<ChannelMessagePosted>().ToList();
-Check("P3d away reply sent back", pmEvents.Count == 2 && ReferenceEquals(pmEvents[1].Channel, oliConn.Session.PmChannel) && pmEvents[1].Message.Content == "brb");
+Check("P3d away reply carried in the post", pmEvents.Count == 1 && pmEvents[0].AwayReply?.Content == "brb");
 await channelService.PostAsync(pamConn.Session.PmChannel, oliConn, "notice", notice: true);
 Check("P3e notice gets no away reply", Drain(channelService.Events).OfType<ChannelMessagePosted>().Count() == 1);
 relationStore.Items.Add(new Relationship { Actor = pam, Target = oli, Type = RelationshipType.Block });
 Check("P3f blocked author refused", await channelService.PostAsync(pamConn.Session.PmChannel, oliConn, "x") == ChannelPostResult.Blocked);
+await userService.SilenceAsync(pam, time.GetUtcNow().AddHours(1));
+Check("P3f block wins over a silenced recipient", await channelService.PostAsync(pamConn.Session.PmChannel, oliConn, "x") == ChannelPostResult.Blocked);
+await userService.SilenceAsync(pam, time.GetUtcNow());
 relationStore.Items.Clear();
 sessions.SetPmPrivate(pamConn.Session, true);
 Check("P3g friends-only refuses strangers", await channelService.PostAsync(pamConn.Session.PmChannel, oliConn, "x") == ChannelPostResult.Blocked);
@@ -330,23 +333,23 @@ await roomService.StartAsync(r5!, botConn);
 Drain(roomService.Events);
 var scoreService = provider.GetRequiredService<IScoreService>();
 var stamp = time.GetUtcNow();
-var fp = (client2.Fingerprint.ToString(), "u|d");
+var fp = client2.Fingerprint.ToString();
 Submission Sub(int total, ClientFlags flags = ClientFlags.Clean)
 {
 	var data = new ScoreData(null, mapHash, GameMode.Standard, GameMods.NoMod, new HitCounts(100, 0, 0, 0, 0, 0), total, 100, Grade.S, true, false, stamp)
 		{ Checksum = new Md5(Encoding.UTF8.GetBytes(total.ToString())) };
-	var raw = $"chickenmcnuggets{100}o15{0}{0}smustard{0}{0}uu{mapHash}{100}{false}{uma.Value.Name}{total}S{0}Q{true}{0}20250101{stamp:yyMMddHHmmss}{fp.Item1}";
+	var raw = $"chickenmcnuggets{100}o15{0}{0}smustard{0}{0}uu{mapHash}{100}{false}{uma.Value.Name}{total}S{0}Q{true}{0}20250101{stamp:yyMMddHHmmss}{fp}";
 	return new Submission { Score = data, HashByClient = new Md5(Encoding.UTF8.GetBytes(raw)), ClientFlags = flags };
 }
 Task<ScoreRejection?> Submit(Submission s, byte[]? replay, Md5? played = null) =>
-	scoreService.SubmitAsync(umaConn, s, null, fp, "20250101", played ?? mapHash, replay);
+	scoreService.SubmitAsync(umaConn, s, null, new SubmittedClient(fp, "u|d", "20250101", played ?? mapHash), replay);
 var replaysBefore = replayStore.Saved;
 Check("P5a score on the round's beatmap accepted, short replay not kept", await Submit(Sub(1000), new byte[10]) is null && replayStore.Saved == replaysBefore);
 Check("P5a score carries round and team", scoreStore.Items[^1].Value is { Round: not null, Team: not null, UserId: not null });
 Check("P5a submitted event with stats", Drain(scoreService.Events).OfType<ScoreSubmitted>().Single().Stats.PlayCount == 1);
 Check("P5b replay of 24+ bytes kept", await Submit(Sub(2000), new byte[30]) is null && replayStore.Saved == replaysBefore + 1);
 Check("P5c duplicate checksum refused", await Submit(Sub(2000), new byte[30]) == ScoreRejection.Duplicate);
-Check("P5d cheat flags reported to the room", await Submit(Sub(3000, ClientFlags.SpeedHackDetected), null) is null && Drain(roomService.Events).OfType<RoomPlayerFlagged>().Count() == 1);
+Check("P5d submission flags are left to the host", await Submit(Sub(3000, ClientFlags.SpeedHackDetected), null) is null && !Drain(roomService.Events).OfType<RoomPlayerFlagged>().Any());
 Check("P5e tampered submission refused", await Submit(Sub(4000) with { HashByClient = zero }, null) == ScoreRejection.SubmissionHashMismatch);
 Check("P5f unknown beatmap refused", await Submit(Sub(5000), null, zero) == ScoreRejection.UnknownBeatmap);
 
@@ -385,6 +388,29 @@ roundStore.Items.Add(round5);
 Check("P5k unfinished matches and rounds closed", unfinished > 0 && await matchService.CloseUnfinishedAsync() == unfinished
 	&& matchStore.Items.All(m => m.Value.EndedAt is not null) && round5 is { Aborted: true, EndedAt: not null }
 	&& eventStore.Items.Count(e => e.Type == MatchEventType.Closed) == unfinished);
+
+// R: review fixes
+var (rc, _) = await lobbyService.OpenAsync(NewUser("Wes"), null, "RC", "", true, false);
+await roomService.ConfigureAsync(rc!, botConn, new RoomSettingsChange(Beatmap: new BeatmapReference(mapHash, 1, "map", GameMode.Standard, null)));
+Drain(roomService.Events);
+await roomService.StartCountdownAsync(rc!, botConn, TimeSpan.FromSeconds(130), true);
+for (var i = 0; i < 131; i++) time.Advance(TimeSpan.FromSeconds(1));
+var ce = Drain(roomService.Events);
+Check("R countdown marks for a round start", ce.OfType<RoomCountdownTicked>().Select(t => (int)t.Remaining.TotalSeconds).SequenceEqual([120, 60, 30, 10, 5, 4, 3]));
+Check("R countdown starts the round in one event", ce.OfType<RoomRoundStarted>().SingleOrDefault()?.ByCountdown == true && !ce.OfType<RoomCountdownElapsed>().Any());
+await roomService.StartCountdownAsync(rc!, botConn, TimeSpan.FromSeconds(70), false);
+for (var i = 0; i < 71; i++) time.Advance(TimeSpan.FromSeconds(1));
+ce = Drain(roomService.Events);
+Check("R timer marks", ce.OfType<RoomCountdownTicked>().Select(t => (int)t.Remaining.TotalSeconds).SequenceEqual([60, 30, 10, 5]) && ce.OfType<RoomCountdownElapsed>().Count() == 1);
+await roomService.StartCountdownAsync(rc!, botConn, TimeSpan.FromSeconds(60), true);
+Drain(roomService.Events);
+Check("R gameplay setting cancels auto-start", await roomService.ConfigureAsync(rc!, botConn, new RoomSettingsChange(Mods: GameMods.Hidden)) == RoomResult.Ok
+	&& Drain(roomService.Events).OfType<RoomSettingsChanged>().Single().CountdownCancelled && rc!.CountdownEndsAt is null);
+await roomService.StartCountdownAsync(rc!, botConn, TimeSpan.FromSeconds(60), true);
+Drain(roomService.Events);
+Check("R room name keeps auto-start", await roomService.ConfigureAsync(rc!, botConn, new RoomSettingsChange(Name: "renamed")) == RoomResult.Ok
+	&& !Drain(roomService.Events).OfType<RoomSettingsChanged>().Single().CountdownCancelled && rc!.CountdownEndsAt is not null && rc.Channel.Channel.Topic == "renamed");
+Check("R analysis failure stores a zero star rating", (await Import(Archive(4242, ("fail", null)))).Beatmaps.Single().Difficulty.Star == 0);
 Console.WriteLine(failures == 0 ? "ALL PASS" : $"{failures} FAILED");
 
 sealed class Matches : IMatchRepository
@@ -484,7 +510,8 @@ sealed class Reader : IBeatmapArchiveReader
 
 sealed class Analyser : IBeatmapAnalyser
 {
-	public BeatmapAnalysis Analyze(byte[] content, GameMode mode, GameMods mods) => new(default, new OsuObjects());
+	public BeatmapAnalysis Analyze(byte[] content, GameMode mode, GameMods mods) =>
+		System.Text.Encoding.UTF8.GetString(content) == "fail" ? throw new InvalidDataException("bad map") : new(new Difficulty(mode, 120, TimeSpan.FromMinutes(1), 4, 9, 8, 5, 5.5), new OsuObjects());
 }
 
 sealed class Sets : IBeatmapsetRepository

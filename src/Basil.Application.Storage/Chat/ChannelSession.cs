@@ -12,6 +12,7 @@ public abstract class ChannelSession
 	public const int MaxMessageLength = 2000;
 
 	private readonly ConcurrentSet<Connection> _members = [];
+	private readonly Lock _sync = new();
 	private volatile bool _closed;
 
 	/// <summary>Opens a runtime channel for a chat channel.</summary>
@@ -43,7 +44,7 @@ public abstract class ChannelSession
 	/// <returns>A scope that must be disposed when the membership change is complete.</returns>
 	internal Lock.Scope Enter()
 	{
-		return new Lock().EnterScope();
+		return _sync.EnterScope();
 	}
 
 	/// <summary>Adds a member without emitting an event; the caller holds the scope and reports the change itself.</summary>

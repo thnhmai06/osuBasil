@@ -1,4 +1,5 @@
 using Basil.Application.Contracts.Multiplayer;
+using Basil.Application.Services.Common;
 using Basil.Application.Storage.Common;
 using Basil.Application.Storage.Multiplayer;
 using Basil.Domain.Multiplayer;
@@ -17,17 +18,9 @@ internal sealed class MatchService(
 	/// <inheritdoc />
 	public async Task<int> CloseUnfinishedAsync(CancellationToken cancellationToken = default)
 	{
-		var page = new PageRequest(0, 100);
-		var allMatches = new List<Match>();
-
-		while (true)
-		{
-			var paged = await matches.ListAsync(new MatchQuery(Ended: false, IncludePrivate: true), page, cancellationToken);
-			allMatches.AddRange(paged.Items);
-			if (paged.Items.Count < page.Limit)
-				break;
-			page = new PageRequest(page.Offset + page.Limit, page.Limit);
-		}
+		var allMatches = await Paging.ListAllAsync(
+			page => matches.ListAsync(new MatchQuery(Ended: false, IncludePrivate: true), page, cancellationToken),
+			cancellationToken);
 
 		var now = time.GetUtcNow();
 
@@ -42,7 +35,9 @@ internal sealed class MatchService(
 
 			match.Value.EndedAt = now;
 			await matches.CreateOrUpdateAsync(match, cancellationToken);
-			await events.CreateAsync(new MatchEvent(match, MatchEventType.Closed, now, Detail: "Server shutdown recovery"), cancellationToken);
+			await events.CreateAsync(
+				new MatchEvent(match, MatchEventType.Closed, now, Detail: "Server shutdown recovery"),
+				cancellationToken);
 		}
 
 		return allMatches.Count;

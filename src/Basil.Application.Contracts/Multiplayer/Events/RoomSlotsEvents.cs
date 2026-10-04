@@ -21,12 +21,14 @@ public abstract record RoomSlotEvent(Room Room, int Slot) : RoomSlotsEvent(Room)
 /// <param name="Locked">Whether the slot is locked after the change.</param>
 /// <param name="Evicted">The connection that was removed, or <see langword="null" /> when no player was removed.</param>
 /// <param name="Host">The room's host after the change.</param>
+/// <param name="RoundProgress">What the departure did to the round in progress, or <see langword="null" /> when no round was in progress or nothing changed.</param>
 public sealed record RoomSlotLockChanged(
 	Room Room,
 	int Slot,
 	bool Locked,
 	BanchoConnection? Evicted,
-	BanchoConnection? Host)
+	BanchoConnection? Host,
+	RoomRoundProgress? RoundProgress)
 	: RoomSlotEvent(Room, Slot);
 
 /// <summary>A slot's assigned team changed.</summary>

@@ -26,10 +26,7 @@ internal sealed class UserService(
 	{
 		if (user.Id == SystemUserIds.BasilBot) return false;
 
-		user.Value.SilenceEndsAt = endsAt;
-		var session = registry.Find(user);
-		if (session is not null && !ReferenceEquals(session.User, user))
-			session.User.Value.SilenceEndsAt = endsAt;
+		Apply(user, u => u.SilenceEndsAt = endsAt);
 
 		await users.CreateOrUpdateAsync(user, cancellationToken);
 		_events.Writer.TryWrite(new UserSilenced(user, endsAt));
@@ -42,10 +39,7 @@ internal sealed class UserService(
 	{
 		if (user.Id == SystemUserIds.BasilBot) return false;
 
-		user.Value.Privilege = privilege;
-		var session = registry.Find(user);
-		if (session is not null && !ReferenceEquals(session.User, user))
-			session.User.Value.Privilege = privilege;
+		Apply(user, u => u.Privilege = privilege);
 
 		await users.CreateOrUpdateAsync(user, cancellationToken);
 		return true;
@@ -57,17 +51,15 @@ internal sealed class UserService(
 		if (user.Id == SystemUserIds.BasilBot) return false;
 
 		var now = time.GetUtcNow();
-		user.Value.DeletedAt = now;
-		user.Value.Privilege = ClientPrivileges.None;
-		var session = registry.Find(user);
-		if (session is not null && !ReferenceEquals(session.User, user))
+		Apply(user, u =>
 		{
-			session.User.Value.DeletedAt = now;
-			session.User.Value.Privilege = ClientPrivileges.None;
-		}
+			u.DeletedAt = now;
+			u.Privilege = ClientPrivileges.None;
+		});
 
 		await users.CreateOrUpdateAsync(user, cancellationToken);
 
+		var session = registry.Find(user);
 		if (session is not null)
 		{
 			var connections = session.Connections.Where(c => c.IsOpen).ToList();
@@ -76,5 +68,14 @@ internal sealed class UserService(
 		}
 
 		return true;
+	}
+
+	/// <summary>Applies a change to a user and syncs it to the online session if one exists.</summary>
+	private void Apply(User user, Action<UserData> change)
+	{
+		change(user.Value);
+		var session = registry.Find(user);
+		if (session is not null && !ReferenceEquals(session.User, user))
+			change(session.User.Value);
 	}
 }

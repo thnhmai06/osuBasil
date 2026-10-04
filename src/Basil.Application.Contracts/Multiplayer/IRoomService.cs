@@ -22,7 +22,8 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	///     If the same user is seated through a connection that has closed, that connection leaves first.
 	///     Moderators need no password. The player also joins the room's chat channel.
 	/// </remarks>
-	Task<RoomResult> JoinAsync(Room room, BanchoConnection by, string password, CancellationToken cancellationToken = default);
+	Task<RoomResult> JoinAsync(Room room, BanchoConnection by, string password,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>Seats an online player in a room on behalf of its managers.</summary>
 	/// <param name="room">The room to seat the player in.</param>
@@ -36,9 +37,11 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	/// </returns>
 	/// <remarks>
 	///     The room's password is not asked for; a ban, a silence and the player's privileges still apply. A player in another
-	///     room is moved only when the caller manages that room too.
+	///     room is moved only when the caller manages that room too. The checks run again once the player has left their
+	///     previous room; if the room filled up meanwhile, the player is left without a seat.
 	/// </remarks>
-	Task<RoomResult> SeatAsync(Room room, Connection by, BanchoConnection player, CancellationToken cancellationToken = default);
+	Task<RoomResult> SeatAsync(Room room, Connection by, BanchoConnection player,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>Removes a player from the room.</summary>
 	/// <param name="room">The room to leave.</param>
@@ -83,7 +86,8 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, TargetOffline, AlreadyInRoom or RoomClosed when the room has closed.</returns>
 	/// <remarks>The server's bot cannot be invited.</remarks>
-	Task<RoomResult> InviteAsync(Room room, Connection by, UserSession target, CancellationToken cancellationToken = default);
+	Task<RoomResult> InviteAsync(Room room, Connection by, UserSession target,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>Makes a user a referee.</summary>
 	/// <param name="room">The room.</param>
@@ -92,7 +96,8 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, IsCreator, AlreadyReferee, TooManyReferees or RoomClosed when the room has closed.</returns>
 	/// <remarks>BasilBot cannot be made a referee.</remarks>
-	Task<RoomResult> AddRefereeAsync(Room room, Connection by, User user, CancellationToken cancellationToken = default);
+	Task<RoomResult> AddRefereeAsync(Room room, Connection by, User user,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>Removes a user from the referees.</summary>
 	/// <param name="room">The room.</param>
@@ -100,7 +105,8 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	/// <param name="user">The referee to remove.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, NotReferee or RoomClosed when the room has closed.</returns>
-	Task<RoomResult> RemoveRefereeAsync(Room room, Connection by, User user, CancellationToken cancellationToken = default);
+	Task<RoomResult> RemoveRefereeAsync(Room room, Connection by, User user,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>Gives host to a seated player, or clears it.</summary>
 	/// <param name="room">The room.</param>
@@ -109,7 +115,8 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, NotInRoom or RoomClosed when the room has closed.</returns>
 	/// <remarks>Giving host to the current host does nothing.</remarks>
-	Task<RoomResult> SetHostAsync(Room room, Connection by, BanchoConnection? host, CancellationToken cancellationToken = default);
+	Task<RoomResult> SetHostAsync(Room room, Connection by, BanchoConnection? host,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>Starts observing the room from an osu!tourney client.</summary>
 	/// <param name="room">The room.</param>
@@ -138,8 +145,10 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	///     room the host's mods. Changing the team type reassigns teams. Changing the mode drops mods, the room's and the
 	///     players', that the new mode does not allow. Under freemod, a seated caller's mods that are not speed-changing become
 	///     that caller's own mods. A change with no field set does nothing. Only the creator, a referee or BasilBot can change whether the history is private.
+	///     A change to the beatmap, mode, mods, freemod, team type or win condition cancels a countdown that would start the round.
 	/// </remarks>
-	Task<RoomResult> ConfigureAsync(Room room, Connection by, RoomSettingsChange change, CancellationToken cancellationToken = default);
+	Task<RoomResult> ConfigureAsync(Room room, Connection by, RoomSettingsChange change,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>Moves the caller to another open slot.</summary>
 	/// <param name="room">The room.</param>
@@ -148,7 +157,8 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotInRoom, RoomLocked, InProgress, SlotNotOpen or RoomClosed when the room has closed.</returns>
 	/// <remarks>Moving to the caller's own slot returns Ok and does nothing.</remarks>
-	Task<RoomResult> ChangeSlotAsync(Room room, BanchoConnection by, int index, CancellationToken cancellationToken = default);
+	Task<RoomResult> ChangeSlotAsync(Room room, BanchoConnection by, int index,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>Moves a player to an empty, unlocked slot.</summary>
 	/// <param name="room">The room.</param>
@@ -158,7 +168,8 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, NotInRoom, SlotNotOpen or RoomClosed when the room has closed.</returns>
 	/// <remarks>This is a referee operation, so it is allowed while the room is locked.</remarks>
-	Task<RoomResult> MoveAsync(Room room, Connection by, User player, int index, CancellationToken cancellationToken = default);
+	Task<RoomResult> MoveAsync(Room room, Connection by, User player, int index,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>Arranges every slot of a room at once.</summary>
 	/// <param name="room">The room.</param>
@@ -170,7 +181,8 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	///     Every seated player must appear exactly once, slot numbers must be distinct and from 1 to 16, and a slot
 	///     with a player cannot be locked. A team is applied only while the room plays in teams.
 	/// </remarks>
-	Task<RoomResult> ArrangeSlotsAsync(Room room, Connection by, IReadOnlyList<SlotArrangement> arrangement, CancellationToken cancellationToken = default);
+	Task<RoomResult> ArrangeSlotsAsync(Room room, Connection by, IReadOnlyList<SlotArrangement> arrangement,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>Locks or unlocks a slot; locking an occupied slot removes its player.</summary>
 	/// <param name="room">The room.</param>
@@ -179,7 +191,8 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, SlotNotOpen, OwnSlot or RoomClosed when the room has closed.</returns>
 	/// <remarks>A player cannot lock the slot they occupy.</remarks>
-	Task<RoomResult> ToggleSlotLockAsync(Room room, Connection by, int index, CancellationToken cancellationToken = default);
+	Task<RoomResult> ToggleSlotLockAsync(Room room, Connection by, int index,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>Locks or unlocks the room, which stops players from changing slot or team.</summary>
 	/// <param name="room">The room.</param>
@@ -187,7 +200,8 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	/// <param name="locked">The lock state to set.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized or RoomClosed when the room has closed; setting the current state again returns Ok and does nothing.</returns>
-	Task<RoomResult> SetLockedAsync(Room room, Connection by, bool locked, CancellationToken cancellationToken = default);
+	Task<RoomResult> SetLockedAsync(Room room, Connection by, bool locked,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>Marks the caller ready or not ready.</summary>
 	/// <param name="room">The room.</param>
@@ -195,7 +209,8 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	/// <param name="ready">Whether the caller is ready to play.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotInRoom, InProgress or RoomClosed when the room has closed.</returns>
-	Task<RoomResult> SetReadyAsync(Room room, BanchoConnection by, bool ready, CancellationToken cancellationToken = default);
+	Task<RoomResult> SetReadyAsync(Room room, BanchoConnection by, bool ready,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>Reports whether the caller has the selected beatmap.</summary>
 	/// <param name="room">The room.</param>
@@ -206,7 +221,8 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	/// <remarks>
 	///     The report is ignored while the caller is playing; having the map changes nothing unless the caller had reported not having it.
 	/// </remarks>
-	Task<RoomResult> SetHasMapAsync(Room room, BanchoConnection by, bool has, CancellationToken cancellationToken = default);
+	Task<RoomResult> SetHasMapAsync(Room room, BanchoConnection by, bool has,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>Switches the caller to the other team.</summary>
 	/// <param name="room">The room.</param>
@@ -222,7 +238,8 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	/// <param name="team">The team to assign.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, NoTeams, NotInRoom or RoomClosed when the room has closed.</returns>
-	Task<RoomResult> SetTeamAsync(Room room, Connection by, User player, GameTeam team, CancellationToken cancellationToken = default);
+	Task<RoomResult> SetTeamAsync(Room room, Connection by, User player, GameTeam team,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>Chooses the caller's own mods while freemod is on.</summary>
 	/// <param name="room">The room.</param>
@@ -230,7 +247,8 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	/// <param name="mods">The mods to select.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotInRoom, InProgress, NotFreemod, SpeedModNotAllowed, InvalidMods or RoomClosed when the room has closed.</returns>
-	Task<RoomResult> SetPlayerModsAsync(Room room, BanchoConnection by, GameMods mods, CancellationToken cancellationToken = default);
+	Task<RoomResult> SetPlayerModsAsync(Room room, BanchoConnection by, GameMods mods,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>Starts the next round; players who have the beatmap start playing.</summary>
 	/// <param name="room">The room.</param>
@@ -291,8 +309,14 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	/// <param name="startsRound">Whether the round starts when the countdown ends.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, OutOfRange, InProgress, NoBeatmap or RoomClosed when the room has closed.</returns>
-	/// <remarks>The countdown is announced at 60, 30, 10 and 5 seconds left, each only when shorter than its length.</remarks>
-	Task<RoomResult> StartCountdownAsync(Room room, Connection by, TimeSpan length, bool startsRound, CancellationToken cancellationToken = default);
+	/// <remarks>
+	///     A countdown that starts the round is announced at 60, 30, 10, 5, 4 and 3 seconds left and at every whole minute
+	///     left (a whole minute within 5 seconds of the length is skipped); any other countdown at 60, 30, 10 and 5
+	///     seconds left; each only when shorter than its length. When a countdown ends and the round starts, only
+	///     <see cref="RoomRoundStarted" /> is emitted; otherwise <see cref="RoomCountdownElapsed" /> is.
+	/// </remarks>
+	Task<RoomResult> StartCountdownAsync(Room room, Connection by, TimeSpan length, bool startsRound,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>Cancels the running countdown.</summary>
 	/// <param name="room">The room.</param>
@@ -307,7 +331,8 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, or NotInRoom when the player does not sit in a room.</returns>
 	/// <remarks>Nothing is blocked; the warning is <see cref="RoomPlayerFlagged" />, carrying only the flags that are signs of cheating.</remarks>
-	Task<RoomResult> ReportClientFlagsAsync(BanchoConnection player, ClientFlags flags, CancellationToken cancellationToken = default);
+	Task<RoomResult> ReportClientFlagsAsync(BanchoConnection player, ClientFlags flags,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>Records a stored score of the room's latest round.</summary>
 	/// <param name="room">The room.</param>
@@ -315,17 +340,12 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	/// <param name="score">The stored score.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, RoundMismatch or RoomClosed when the room has closed.</returns>
-	Task<RoomResult> RecordScoreAsync(Room room, User player, Score score, CancellationToken cancellationToken = default);
+	Task<RoomResult> RecordScoreAsync(Room room, User player, Score score,
+		CancellationToken cancellationToken = default);
 
-	/// <summary>Removes a connection from every room it plays in or observes and from the lobby watchers.</summary>
+	/// <summary>Removes a connection from every room it plays in or observes.</summary>
 	/// <param name="connection">The connection to release.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <remarks>Called when the connection closes or its user is silenced; calling it again does nothing.</remarks>
 	Task ReleaseAsync(Connection connection, CancellationToken cancellationToken = default);
-
-	/// <summary>Gets a value that indicates whether a user is the creator or a referee of a room.</summary>
-	/// <param name="room">The room to check.</param>
-	/// <param name="user">The user to check.</param>
-	/// <returns><see langword="true" /> if the user is the creator or a referee of this match; otherwise, <see langword="false" />.</returns>
-	bool IsManager(Room room, User user);
 }

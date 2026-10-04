@@ -19,7 +19,7 @@ public sealed record RoomCountdownTicked(Room Room, TimeSpan Remaining) : RoomCo
 /// <summary>A countdown was cancelled.</summary>
 public sealed record RoomCountdownCancelled(Room Room) : RoomCountdownEvent(Room);
 
-/// <summary>A countdown ended.</summary>
+/// <summary>A countdown ended without starting a round.</summary>
 /// <param name="Room">The room.</param>
-/// <param name="StartsRound">Whether the round starts now.</param>
+/// <param name="StartsRound">Whether the countdown was meant to start the round, which could not start.</param>
 public sealed record RoomCountdownElapsed(Room Room, bool StartsRound) : RoomCountdownEvent(Room);

@@ -39,25 +39,20 @@ internal sealed class ScoreService(
 	public async Task<ScoreRejection?> SubmitAsync(
 		BanchoConnection connection,
 		Submission submission,
-		(Md5 Hash, Md5? StoryboardHash)? beatmap,
-		(string Hash, string Serial) clientFingerprint,
-		string clientVersionDate,
-		Md5 clientBeatmapHash,
+		BeatmapChecksums? beatmap,
+		SubmittedClient client,
 		byte[]? replay,
 		CancellationToken cancellationToken = default)
 	{
 		var room = lobby.RoomOf(connection);
-		var round = room?.LastRound is { } last && last.BeatmapHash == clientBeatmapHash ? last : null;
-		var checkedBeatmap = beatmap ?? (round is not null ? (clientBeatmapHash, (Md5?)null) : null);
+		var round = room?.LastRound is { } last && last.BeatmapHash == client.BeatmapHash ? last : null;
+		var checkedBeatmap =
+			beatmap ?? (round is not null ? new BeatmapChecksums(client.BeatmapHash, (Md5?)null) : null);
 		if (checkedBeatmap is not { } known) return ScoreRejection.UnknownBeatmap;
 
-		if (submission.ClientFlags != ClientFlags.Clean)
-			await rooms.ReportClientFlagsAsync(connection, submission.ClientFlags, cancellationToken);
-
 		var latest = await logins.ListAsync(new LoginQuery(connection.User), new PageRequest(0, 1), cancellationToken);
-		var client = latest.Items.FirstOrDefault()?.Client ?? connection.Login.Client!;
-		if (Validate(submission, client, known, connection.User.Value.Name, clientFingerprint, clientVersionDate,
-			    clientBeatmapHash) is { } rejection)
+		var loginClient = latest.Items.FirstOrDefault()?.Client ?? connection.Login.Client!;
+		if (Validate(submission, loginClient, known, connection.User.Value.Name, client) is { } rejection)
 			return rejection;
 
 		var team = round is not null ? room!.Slots.Find(connection)?.Team : null;
@@ -74,11 +69,10 @@ internal sealed class ScoreService(
 		// ponytail: get-then-write per user; add an atomic increment to the contract if one user's submissions can overlap.
 		var current = await stats.GetAsync(connection.User, submission.Score.Mode, cancellationToken);
 		current.PlayCount++;
+		current.TotalScore += submission.Score.TotalScore;
 		if (submission.Score.IsPassed)
 		{
-			// Every beatmap reports as Approved (see Beatmapset.Status), so every passed score counts
-			// toward ranked score too.
-			current.TotalScore += submission.Score.TotalScore;
+			// Every beatmap reports as Approved (see Beatmapset.Status), so every passed score counts toward ranked score.
 			current.RankedScore += submission.Score.TotalScore;
 		}
 
@@ -107,31 +101,27 @@ internal sealed class ScoreService(
 	/// <param name="client">The osu! client the player logged in with.</param>
 	/// <param name="beatmap">The MD5 and storyboard MD5 of the beatmap the score is checked against.</param>
 	/// <param name="playerName">The player's name as the server knows it.</param>
-	/// <param name="clientFingerprint">The client hash and unique ids sent with the submission.</param>
-	/// <param name="clientVersionDate">The client version date sent with the submission.</param>
-	/// <param name="clientBeatmapHash">The beatmap MD5 the client claims to have played.</param>
+	/// <param name="submittedClient">The osu! client information sent with the submission.</param>
 	/// <returns><see langword="null" /> if the submission is authentic; otherwise, the first reason it is rejected.</returns>
 	private static ScoreRejection? Validate(
 		Submission submission,
 		ClientInfo client,
-		(Md5 Hash, Md5? StoryboardHash) beatmap,
+		BeatmapChecksums beatmap,
 		string playerName,
-		(string Hash, string Serial) clientFingerprint,
-		string clientVersionDate,
-		Md5 clientBeatmapHash)
+		SubmittedClient submittedClient)
 	{
 		var serialHash = ComputeSerialHash();
 		var md5ByServer = ComputeSubmissionMd5();
 
-		if (clientVersionDate != client.Version.Date.ToString("yyyyMMdd", CultureInfo.InvariantCulture))
+		if (submittedClient.VersionDate != client.Version.Date.ToString("yyyyMMdd", CultureInfo.InvariantCulture))
 			return ScoreRejection.VersionMismatch;
-		if (clientFingerprint.Hash != client.Fingerprint.ToString()) return ScoreRejection.ClientHashMismatch;
+		if (submittedClient.FingerprintHash != client.Fingerprint.ToString()) return ScoreRejection.ClientHashMismatch;
 		if (serialHash?.UninstallHash != client.Fingerprint.UninstallHash)
 			return ScoreRejection.UninstallerHashMismatch;
 		if (serialHash?.DiskSignatureHash != client.Fingerprint.DiskSignatureHash)
 			return ScoreRejection.DiskSignatureHashMismatch;
 		if (submission.HashByClient != md5ByServer) return ScoreRejection.SubmissionHashMismatch;
-		if (clientBeatmapHash != beatmap.Hash) return ScoreRejection.BeatmapHashMismatch;
+		if (submittedClient.BeatmapHash != beatmap.Hash) return ScoreRejection.BeatmapHashMismatch;
 
 		return null;
 
@@ -146,7 +136,7 @@ internal sealed class ScoreService(
 				$"smustard{hitCounts.NumKatu}{hitCounts.NumMiss}uu{beatmap.Hash}{submission.Score.MaxCombo}" +
 				$"{submission.Score.IsFullCombo}{playerName}{submission.Score.TotalScore}{submission.Score.Grade.ToString().ToUpperInvariant()}" +
 				$"{(int)submission.Score.Mods}Q{submission.Score.IsPassed}{(int)submission.Score.Mode}" +
-				$"{clientVersionDate}{submission.Score.Timestamp:yyMMddHHmmss}{clientFingerprint.Hash}{beatmap.StoryboardHash?.ToString() ?? string.Empty}";
+				$"{submittedClient.VersionDate}{submission.Score.Timestamp:yyMMddHHmmss}{submittedClient.FingerprintHash}{beatmap.StoryboardHash?.ToString() ?? string.Empty}";
 			var hash = MD5.HashData(Encoding.UTF8.GetBytes(raw));
 			return Convert.ToHexStringLower(hash);
 		}
@@ -155,7 +145,7 @@ internal sealed class ScoreService(
 		{
 			const char delimiter = '|';
 
-			var parts = clientFingerprint.Serial.Split(delimiter, 2);
+			var parts = submittedClient.Serial.Split(delimiter, 2);
 			if (parts.Length < 2) return null;
 			return (new Md5(Encoding.UTF8.GetBytes(parts[0])), new Md5(Encoding.UTF8.GetBytes(parts[1])));
 		}

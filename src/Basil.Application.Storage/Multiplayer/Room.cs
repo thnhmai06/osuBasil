@@ -38,7 +38,7 @@ public sealed class Room : IEquatable<Room>
 	/// <summary>The match this room is a live projection of.</summary>
 	public Match Match { get; }
 
-	/// <summary>The match settings this room mutates; only the forwarding properties are public.</summary>
+	/// <summary>The settings the room plays with; read them through the room's forwarding properties.</summary>
 	internal MatchSettings Settings { get; }
 
 	/// <summary>Gets the runtime identifier assigned to this room.</summary>
@@ -103,6 +103,9 @@ public sealed class Room : IEquatable<Room>
 	/// <summary>The running countdown, to stop when it is cancelled or replaced.</summary>
 	internal IDisposable? CountdownTimer { get; set; }
 
+	/// <summary>Whether the running countdown starts the round.</summary>
+	internal bool CountdownStartsRound { get; set; }
+
 	/// <summary>The timer that closes the room while it is empty.</summary>
 	internal ITimer? ClosingTimer { get; set; }
 
@@ -115,7 +118,7 @@ public sealed class Room : IEquatable<Room>
 	/// <summary>Gets a value that indicates whether the room has closed.</summary>
 	public bool IsClosed { get; internal set; }
 
-	/// <summary>The lock that makes the room's state transitions run one at a time.</summary>
+	/// <summary>Admits one state transition of the room at a time.</summary>
 	internal SemaphoreSlim Gate { get; } = new(1, 1);
 
 	/// <summary>Gets the users with referee authority for this room.</summary>
@@ -140,6 +143,9 @@ public sealed class Room : IEquatable<Room>
 	{
 		return other is not null && Match.Equals(other.Match);
 	}
+
+	/// <summary>Checks whether a user is the room's creator or one of its referees.</summary>
+	public bool IsManagedBy(User user) => (Creator is not null && Creator.Equals(user)) || Referees.Contains(user);
 
 	/// <summary>Makes a user a referee of the room.</summary>
 	/// <param name="user">The user to add.</param>
