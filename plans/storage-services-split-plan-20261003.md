@@ -981,6 +981,32 @@ sở hữu (service → storage, phòng → kênh của phòng, session → kên
 children directly". Thay đổi: `ScoreService` không còn gọi `IRoomService.RecordScoreAsync` và `IAnticheatService`
 (`ScoreSubmitted.Room`; host báo cờ của bài nộp); `SessionService.OpenBotAsync` không còn tự vào kênh tự động. Phần dispatcher và handler ghi ở mục 12.9.
 
+### 13.4 Cấu hình, service con, Protocol (2026-10-04)
+
+Quyết định của người dùng:
+
+* **Cấu hình chỉ đọc ở Host.** Thiết kế của người dùng ở `b40bfd37` (`IConfiguration`, `BasilOptions` Host/Bot/Update,
+  `BasilSettings`, `StorageConstants`) bị `d9b6620d` xóa mà không chuyển đi đâu. Khi migrate: `Basil.Host` bind toàn
+  bộ cấu hình; Infrastructure và transport nhận qua `IOptions<T>` của kiểu options do chính project dùng nó sở hữu;
+  Application không đọc cấu hình. Khôi phục `BasilOptions` (Host, Update, Bot chỉ còn `Prefix`) và `StorageConstants`
+  theo nguyên mẫu ở `git show d9b6620d^:src/Basil.Application/Common/Configuration/`; `BasilSettings` không khôi
+  phục (đã thành Domain `ServerSettings` + `ISettingsRepository`, khóa admin trong `ICredentialRepository`). Thay các
+  tên cũ còn sót ở host (`ServerOptions`, `UpdateCheckOptions`, `MirrorOptions`) và đường dẫn `Data/...` viết cứng.
+* **Service con theo khu vực.** `IRoomService` chỉ còn luồng event và năm con `Members`, `Authority`, `Settings`,
+  `Slots`, `Rounds`; `IChannelService.Spectators`. Các con dùng chung luồng event của cha. Countdown tạm ở `Rounds`
+  tới phiên bàn về bot.
+* **Protocol chỉ là lớp bọc giao tiếp osu! client–server** (`Basil.Protocol.Bancho`, không tạo `.Web`): parse chuỗi
+  thô (bài nộp `ScoreSubmission`, `ClientHash`, `ClientBuild`, `ClientSerial`) thành model kiểu nguyên thủy, không
+  validate, không mang nghĩa nghiệp vụ. Domain bỏ mọi `Parse` định dạng wire (`ScoreData`, `Submission`,
+  `ClientFingerprint`, `NetworkAdapters`, `ClientVersion`) và `Geolocation`. `PacketWriter.UserStats` bỏ cách đổi pp
+  quá 65535 thành ranked score.
+* **Khi migrate host:** map model Protocol sang Domain (`ScoreSubmission` → `Submission`/`ScoreData`, `ClientHash` →
+  `ClientFingerprint`, `ClientBuild` → `ClientVersion`, `ClientSerial` → `SubmittedClient`); đọc IP client từ header
+  proxy theo logic cũ (`CF-Connecting-IP`, rồi phần tử đầu của `X-Forwarded-For` khi có nhiều, nếu không `X-Real-IP`;
+  `git show b098c234:src/Basil.Domain/Client/Geolocation.cs`); tự đổi pp quá 16 bit trước khi gọi
+  `UserStats` nếu còn cần.
+* Trong lúc rework Application/Domain/Protocol, test và các project downstream bị bỏ qua như đã xóa.
+
 ## Phụ lục A. Kịch bản mốc hành vi
 
 Script file-based (.NET 10, `dotnet run check.cs`) chạy trên API hiện tại (`Room`, `Lobby`, `UserRegistry`). Pha 2

@@ -307,7 +307,7 @@ See [`docs/for-technicians/docker.md`](docs/for-technicians/docker.md) for Docke
 
 ```text
 Basil.Domain                     business model and its own validity          -> (nothing)
-Basil.Protocol.Bancho            bancho wire format                            -> (nothing)
+Basil.Protocol.Bancho            osu! client-server wire formats               -> (nothing)
 Basil.Protocol.Irc               IRC wire format                               -> (nothing)
 
 Basil.Application.Storage        persistent ports, registries, runtime models,  -> Domain
@@ -322,6 +322,15 @@ Basil.Host.Bancho / .Irc / .Api  transports                                     
                                                                                    Infrastructure, their Protocol
 Basil.Host                       entry point and composition                    -> everything
 ```
+
+`Basil.Protocol.Bancho` wraps the communication between the osu! client and the server, as an API wrapper
+wraps a remote API: it turns what the client sends (bancho packets, the delimited strings of the web
+endpoints such as the score submission, the client hash, the client build) into C# models of primitives and
+back. It does not validate and gives no business meaning; Domain owns meaning and validity, Application the
+checks. If a wire format changes, only Protocol changes. `Basil.Protocol.Irc` does the same for IRC.
+
+Configuration is bound only in `Basil.Host`. Infrastructure and the transports receive it as `IOptions<T>` of
+an options type that the project using it owns; Application reads no configuration.
 
 `Basil.Infrastructure` never references `Basil.Application.Services`; it gets every service through
 dependency injection by its contract. The hosts may reference Services, which sits beside Infrastructure, but
@@ -464,6 +473,11 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   emits events on its behalf. Otherwise every new joinable kind (channel, room, spectator stream, …) forces a
   new `Join*` method and a new set on the user. "Which channels is X in?" is a query over channels, not state
   on X. Ask "who is acted on?" for every relation, member and event.
+* **A large service is split into child services by area.** The parent contract exposes each child as a
+  property (`IRoomService.Members`, `.Authority`, `.Settings`, `.Slots`, `.Rounds`;
+  `IChannelService.Spectators`); children share the parent's one event stream and may call a sibling's
+  `internal` members directly, since they act on the same object. Callers reach a child only through the
+  parent (`rooms.Slots.MoveAsync(...)`).
 * **Each service manages its own kind, and reacts to other kinds only through events.** The session service
   opens and closes connections and announces `UserConnectionOpened`/`UserConnectionClosed`; its responsibility
   ends there. Leaving rooms and parting channels when a connection closes is done by Infrastructure handlers
