@@ -7,7 +7,7 @@ it.
 
 Basil is a private [osu!](https://osu.ppy.sh/) stable server focused on offline multiplayer tournaments.
 
-It is built on [bancho.py](https://github.com/osuAkatsuki/bancho.py), but it is **not a full bancho.py port**. Basil deliberately has a smaller feature surface. pp calculation, friends, clans, a general-purpose public v1/v2 API, the full bancho.py chat-command set, and other unrelated features are intentionally out of scope.
+It is built on [bancho.py](https://github.com/osuAkatsuki/bancho.py), but it is **not a full bancho.py port**. Basil deliberately has a smaller feature surface. pp calculation, clans, a general-purpose public v1/v2 API, the full bancho.py chat-command set, and other unrelated features are intentionally out of scope.
 
 Before porting or recreating anything from bancho.py, read:
 
@@ -327,23 +327,19 @@ Basil.Host                       entry point and composition                    
 dependency injection by its contract. The hosts may reference Services, which sits beside Infrastructure, but
 only to call `AddApplicationServices()`; they too use services through their contracts.
 
-> **Migration in progress.** Application is being split into Storage, Contracts and Services by
-> [`plans/storage-services-split-plan-20261003.md`](plans/storage-services-split-plan-20261003.md); read it
-> before touching Application. It replaces the "runtime objects carry their own behaviour" part of
+> **Migration in progress.** Application has been split into Storage, Contracts and Services by
+> [`plans/storage-services-split-plan-20261003.md`](plans/storage-services-split-plan-20261003.md) (phases 1–6
+> done; its section 13 lists where the code differs from the plan); read it before touching Application. It
+> replaces the "runtime objects carry their own behaviour" part of
 > [`plans/application-environment-plan-20260930.md`](plans/application-environment-plan-20260930.md), whose
 > other decisions (naming, event tree, channel names, identity by reference) still hold. Older plans are
 > history.
 >
-> Until phase 6 of that plan, everything still lives in the single project `Basil.Application`: new service
-> contracts go under `Contracts/<Feature>/` (namespace `Basil.Application.Contracts.<Feature>`), their
-> implementations under `Services/<Feature>/` (namespace `Basil.Application.Services.<Feature>`), and storage
-> types stay in the feature folders below until they move. Some runtime models still carry behaviour that the
-> plan moves into services; do not add more.
->
 > Infrastructure, the hosts and the tests have not been migrated. Until they are, **only `Basil.Domain` and
-> the Application project(s) build**: `Basil.Infrastructure`, `Basil.Host.*` and every test project still use
-> old Application namespaces, so solution-wide `dotnet build`/`dotnet test` and `Basil.ArchitectureTests` do
-> not run. Verify with `dotnet build src/Basil.Application/Basil.Application.csproj`.
+> the three Application projects build**: `Basil.Infrastructure`, `Basil.Host.*` and every test project still
+> use old Application namespaces, so solution-wide `dotnet build`/`dotnet test` and `Basil.ArchitectureTests`
+> do not run. Verify with `dotnet build src/Basil.Application.Services/Basil.Application.Services.csproj`
+> (it builds Storage and Contracts too).
 >
 > Documentation under `docs/` may describe an older structure; rewrite each document when the code it
 > describes is migrated, not before. Where a plan conflicts with
@@ -545,7 +541,7 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
 
 `Room` is mutable shared state.
 
-Operations that read and then mutate a room must hold the room's exclusive scope across the complete state transition. That scope comes from `Lobby.EnterAsync(room)`, which returns `null` once the room is closed; the registry owns the lock, like a database transaction (until phase 4a of the storage/services plan the scope is still `Room.EnterAsync()`).
+Operations that read and then mutate a room must hold the room's exclusive scope across the complete state transition. That scope comes from `Lobby.EnterAsync(room)`, which returns `null` once the room is closed; the registry owns the lock, like a database transaction.
 
 Do not introduce a second synchronization mechanism for the same state.
 
@@ -564,7 +560,7 @@ room in game is also its first host. After `!mp make`, a creator whose game clie
 not in any room is seated in the new room as host; a creator already in another room stays there
 and does not become host. `!mp` is available only to the creator and the referees; being
 the host does not grant `!mp` rights. Every room operation with a permission rule takes its actor
-and the room service checks authority (`RoomService`, until phase 4a still `Room`), not the transport.
+and the room service (`RoomService`) checks authority, not the transport.
 
 Do not treat them as interchangeable.
 

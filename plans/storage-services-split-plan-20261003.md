@@ -1,7 +1,7 @@
 # Kế hoạch: tách Application thành lớp Lưu trữ, lớp Contracts và lớp Services
 
 Ngày: 2026-10-03. Trạng thái: **đã duyệt hướng (2026-10-01); bổ sung Contracts/Services và kiểm kê chức năng
-(2026-10-03); chưa sửa code**. Điều phối triển khai: [mục 11](#11-điều-phối-triển-khai). Kiểm kê chức năng:
+(2026-10-03); pha 1–6 đã triển khai (2026-10-04), xem [mục 13](#13-nhật-ký-triển-khai)**. Điều phối triển khai: [mục 11](#11-điều-phối-triển-khai). Kiểm kê chức năng:
 [mục 12](#12-kiểm-kê-chức-năng).
 
 Kế hoạch này thay phần "đối tượng runtime tự thực thi hành vi" của
@@ -866,6 +866,58 @@ ImageSharp, TLS/Kestrel, mDNS, kiểm tra cập nhật, Velopack, migration DB, 
   Khi có tùy chọn này, lúc khởi động host gọi `ICredentialRepository.DeleteAdminKeyAsync()` trước khi nhận request:
   server về chế độ bypass (không có khóa admin) và ghi cảnh báo như khi khởi động không có khóa. Người vận hành sau đó
   đặt khóa mới qua `PUT /settings/adminkey`. Dùng khi quên khóa admin.
+
+## 13. Nhật ký triển khai
+
+Pha 1–6 đã xong trên `develop` (2026-10-03 → 2026-10-04); Application build được dưới dạng ba project. Infrastructure,
+host và test chưa migrate. Kịch bản mốc (phụ lục A, mở rộng theo từng pha) PASS sau mỗi commit.
+
+| Pha | Commit |
+|---|---|
+| 1 | `999584d7` |
+| 2 | `d071df6e` |
+| 3 | `d117e0ec` |
+| 4 (gộp 4a, 4c) | `0e3f3e7c` |
+| 4b | `b93dc3f8`, sửa `e1df33f0` |
+| 5 | `c08c73be`, sửa `9791ba3f` |
+| 6 | `baaab73f` |
+
+Khác với kế hoạch ở trên (bản này thắng khi mâu thuẫn):
+
+* **Pha 4a và 4c gộp thành một commit**, vì `Room`, `RoomSlots`, `RoomSlot` phải chỉ còn dữ liệu cùng lúc mới build
+  được. 4b làm riêng sau.
+* **Bỏ `IMatchService.RecordRoundAsync`.** Ghi round đã kết thúc là ghi thuần, Infrastructure gọi thẳng
+  `IRoundRepository.CreateOrUpdateAsync` từ hàng đợi có thứ tự (mục 2.6, 4.4 và 12.3 cũ nhắc tới method này).
+  `IMatchService` chỉ còn `CloseUnfinishedAsync`.
+* **Cờ anticheat ở `RoomService`, không ở `SessionService`.** `IRoomService.ReportClientFlagsAsync` phát
+  `RoomPlayerFlagged` (một `RoomAccessEvent`) mang các cờ thuộc `RoomService.CheatSigns`: các cờ cũ có tên, thêm
+  `HqAssembly`, `HqFile`, `RegistryEdits`. Không có `UserConnectionFlagged`.
+* **Bỏ chặn phần cứng (D9).** Theo quyết định "bỏ tự động ban/flag, không quan tâm multi-account", `MatchWith` bị
+  xóa thay vì dời vào `ScoreService`. `ILoginRepository` vẫn giữ để lưu lịch sử đăng nhập và đối chiếu bài nộp.
+* **`SeatAsync` chặt hơn mục 2.4.** Chỉ kéo người chơi khỏi phòng khác khi người gọi cũng quản lý phòng đó (BasilBot
+  luôn được); im lặng và quyền `Player` vẫn áp dụng như khi join; người chơi đang ở phòng mà người gọi không quản lý →
+  `InAnotherRoom`. Kiểm tra chạy trước khi rời phòng cũ.
+* **`ArrangeSlotsAsync`** nhận `SlotArrangement(Index, Player, Team, Locked)` và phát `RoomSlotsArranged`; slot không
+  liệt kê trở thành trống và giữ khóa.
+* **Đóng phòng giữa round** báo round bị hủy trong `LobbyRoomClosed.AbortedRound`; creator được xếp chỗ khi mở phòng
+  chỉ được báo qua `LobbyRoomOpened` (không có `RoomPlayerJoined`).
+* **Domain:** `Beatmapset.Creator` là tên mapper (`string`); `ScoreData.Team`; `RoundResult.Decide` so accuracy không
+  làm tròn (main nhân 1000 rồi cắt, nên hai accuracy chỉ khác ở chữ số thứ tư bị tính hòa); một điểm duy nhất thắng
+  kèm đội của nó.
+* **Xóa user gỡ mọi quyền.** `UserData.Privilege` thành thuộc tính thường, nên `UserService.DeleteAsync` ghi
+  `ClientPrivileges.None` cùng `DeletedAt`. **Khi migrate Infrastructure:** bản ghi user đã xóa trước đó vẫn lưu quyền
+  cũ; migration phải đặt quyền của chúng về `None` (hoặc mọi chỗ đọc user đã xóa phải bỏ qua quyền).
+* **`IBeatmapAnalyser.Analyze` giữ đồng bộ**; `IBeatmapService.ImportAsync` chọn set id theo thứ tự: set của beatmap
+  đã lưu cùng hash → id được nêu khi set đó tồn tại → id archive khai báo → id local ≥ 1 000 000 000.
+* **Lỗi có sẵn được sửa:** công thức checksum bài nộp chuyển `string.Empty` thành `Md5` khi beatmap không có storyboard
+  hash, nên ném lỗi với mọi bài nộp như vậy. Nay nối chuỗi rỗng như trên `main`.
+* `DependencyInjection.AddApplication` đổi thành `ServiceCollectionExtensions.AddApplicationServices` trong
+  `Basil.Application.Services`.
+* Kịch bản mốc lưu ở [`storage-services-split-baseline.cs`](storage-services-split-baseline.cs) (132 kiểm tra, PASS tại
+  `baaab73f`); chạy ngoài repo, chuyển thành test khi migrate các project test.
+* **Pha 7 hoãn viết lại `architecture.md`, `multiplayer.md`, `chat.md`** tới khi migrate Infrastructure và host: các
+  tài liệu này mô tả cả phần chưa migrate, và AGENTS.md quy định chỉ viết lại tài liệu khi code nó mô tả đã migrate.
+  `working-scopes.md` (friends, chặn, PM chỉ từ bạn bè) và ghi chú migration trong AGENTS.md đã cập nhật.
 
 ## Phụ lục A. Kịch bản mốc hành vi
 
