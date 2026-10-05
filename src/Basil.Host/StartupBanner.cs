@@ -9,7 +9,7 @@ namespace Basil.Host;
 internal static class StartupBanner
 {
 	private const string BasilDescription =
-		"A lightweight, high-performance osu! server for tournaments and multiplayer.";
+		"A lightweight, high-performance osu!(stable) backend platform specialized for multiplayer.";
 
 	private const string BasilLicense = "Copyright © 2026 Mai Thành. Licensed under the MIT License.";
 

@@ -7,7 +7,7 @@
 		<FileVersion>1.0.0</FileVersion>
 		<Product>Basil</Product>
 		<Authors>Mai Thành (thnhmai06)</Authors>
-		<Description>A lightweight, high-performance osu! server for tournaments and multiplayer.</Description>
+		<Description>A lightweight, high-performance osu!(stable) backend platform specialized for multiplayer.</Description>
 		<Copyright>Copyright © 2026 Mai Thành. Licensed under the MIT License.</Copyright>
 		<ApplicationIcon>..\..\assets\icon.ico</ApplicationIcon>
 		<ApplicationManifest>app.manifest</ApplicationManifest>

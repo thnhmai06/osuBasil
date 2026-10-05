@@ -7,7 +7,7 @@
 <sub><i>If [Akatsuki](https://github.com/osuAkatsuki/bancho.py) means dawn, then Basil is the sunflower that always
 faces the sun.</i></sub>
 
-**A lightweight, high-performance [osu!](https://osu.ppy.sh/) (stable) server for tournaments and multiplayer.**
+**A lightweight, high-performance [osu!](https://osu.ppy.sh/) (stable) backend platform specialized for multiplayer.**
 
 [![CI](https://img.shields.io/github/actions/workflow/status/thnhmai06/osuBasil/ci.yml?branch=main&label=CI&style=flat-square)](https://github.com/thnhmai06/osuBasil/actions)
 [![CodeFactor](https://www.codefactor.io/repository/github/thnhmai06/osubasil/badge/main?style=flat-square)](https://www.codefactor.io/repository/github/thnhmai06/osubasil/overview/main)
@@ -37,16 +37,21 @@ requiring third-party online services.
 * **Multiplayer-first**: provides the [osu! stable multiplayer](https://osu.ppy.sh/wiki/en/Client/Interface/Multiplayer)
   experience required for tournament operation, while deliberately excluding unrelated singleplayer and social features.
 * **Tournament support**: supports [osu!tourney](https://osu.ppy.sh/wiki/en/osu%21_tournament_client/osu%21tourney),
-  tournament-oriented `!mp` commands, live match state, and real-time reporting.
+  live match state, and real-time reporting.
 * **osu! ecosystem compatibility**:
-  supports [osu!direct](https://osu.ppy.sh/wiki/en/osu%21supporter#osu!direct), [BanchoBot](https://osu.ppy.sh/wiki/en/BanchoBot)
-  (as BasilBot), and [IRC](https://osu.ppy.sh/wiki/en/Community/Internet_Relay_Chat).
+  supports [osu!direct](https://osu.ppy.sh/wiki/en/osu%21supporter#osu!direct) and
+  [IRC](https://osu.ppy.sh/wiki/en/Community/Internet_Relay_Chat).
+* **A platform to build on**: features such as BasilBot (the [BanchoBot](https://osu.ppy.sh/wiki/en/BanchoBot)-style
+  `!mp` commands), tournament tools and overlays are separate clients that sign in as ordinary users. The server runs
+  the same with or without them.
+* **Fine-grained permissions**: every account acts under its own identity and permissions, osu!-style restrictions
+  and silences included; the privileges an osu! client sees are derived from them.
 * **Self-contained storage**: stores server data locally using SQLite; no external database server is required.
 * **Offline operation**: core gameplay does not depend on the [osu!api](https://osu.ppy.sh/wiki/en/osu%21api) or
   external beatmap mirrors.
-* **Tournament HTTP API**: provides HTTP and SSE endpoints for tournament management, match reports, spectating, and
-  real-time multiplayer data, with an [OpenAPI](https://spec.openapis.org/oas/latest.html) specification and interactive
-  documentation through [Scalar](https://scalar.com/).
+* **User-centric HTTP API**: clients sign in as users and get HTTP and SSE endpoints for rooms, chat, match reports,
+  spectating, and real-time multiplayer events, with an [OpenAPI](https://spec.openapis.org/oas/latest.html)
+  specification and interactive documentation through [Scalar](https://scalar.com/).
 * **Stable-focused**: targets the osu! stable client and its multiplayer/tournament workflows rather than attempting to
   reproduce the complete osu! server.
 

@@ -5,9 +5,16 @@ it.
 
 ## What this is
 
-Basil is a private [osu!](https://osu.ppy.sh/) stable server focused on offline multiplayer tournaments.
+Basil is a lightweight, high-performance [osu!](https://osu.ppy.sh/) (stable) backend platform specialized for
+multiplayer. The server provides the core capabilities (accounts and sessions, permissions, rooms, chat, scores,
+beatmaps, events); specific features such as BasilBot, tournament tooling and overlays are clients built on top
+of it, each signing in as an ordinary user. The server works the same with or without any of them.
 
-It is built on [bancho.py](https://github.com/osuAkatsuki/bancho.py), but it is **not a full bancho.py port**. Basil deliberately has a smaller feature surface. pp calculation, clans, a general-purpose public v1/v2 API, the full bancho.py chat-command set, and other unrelated features are intentionally out of scope.
+It is built on [bancho.py](https://github.com/osuAkatsuki/bancho.py), but it is **not a full bancho.py port**. Basil deliberately has a smaller feature surface. pp calculation, clans, osu-web v1/v2 API compatibility, chat commands inside the server, and other unrelated features are intentionally out of scope.
+
+The direction of the current redesign (identity, permissions, restrictions, no bot in the server) is in
+[`plans/identity-permissions-plan-20261005.md`](plans/identity-permissions-plan-20261005.md); read it before
+touching users, sessions, permissions, rooms or chat.
 
 Before porting or recreating anything from bancho.py, read:
 
@@ -363,7 +370,7 @@ feature folders appear in Storage, Contracts and Services.
 Common/        PageRequest, Page<T>, Interval<T>                                   (Storage)
 Events/        Event, IEventPublisher<T>                                           (Contracts)
 Users/         IUserRepository, ICredentialRepository (passwords and admin key), ILoginRepository,
-               IRelationshipRepository, IUserAvatarStorage, UserQuery, LoginQuery;
+               IRestrictionRepository, IRelationshipRepository, IUserAvatarStorage, UserQuery, LoginQuery;
                IAuthService, IUserService, LoginAttempt, RegisterAttempt, results
 Sessions/      UserSession, Connection (+ ConnectionType), UserRegistry, PlayerStatus,
                SpectatorChannelSession; ISessionService and its events
@@ -382,16 +389,16 @@ Content/       ISettingsRepository, IMenuBannerRepository, IMenuBannerStorage, I
                IMenuSeasonalsStorage, IFaqStorage
 ```
 
-Notifications, event handlers and dispatchers, chat commands and their reply strings, and host
-configuration (ports, TLS, data paths, bot command prefix) do not belong in Application; they live in
-Infrastructure, the hosts or the bot. Query **records** (the filter a repository applies, with `Parse` for
+Notifications, event handlers and dispatchers, and host configuration (ports, TLS, data paths) do not
+belong in Application; they live in Infrastructure or the hosts. Chat commands and their reply strings
+belong to client programs such as BasilBot, never to the server. Query **records** (the filter a repository applies, with `Parse` for
 the search syntax) belong to Storage; the routes and handlers that answer queries do not. Server settings
 changed at runtime (`ServerSettings`) are persistent Domain data, not host configuration.
 
 * `Common` and `Events` depend on no feature. `Users`, `Beatmaps` and `Scores` do not depend on
   `Multiplayer` services; the score service only reads the player's room to find the round. Anticheat flags,
   wherever they arrive (score submission, `lastfm.php`), are reported by the host to `IAnticheatService`, the single
-  source of anticheat events; Infrastructure's dispatcher delivers its warnings (room chat, referees, creator).
+  source of anticheat events; clients that watch events (BasilBot) turn them into chat warnings.
 * `Sessions`, `Chat` and `Multiplayer` reference each other (`Room.Host`, `Room.Channel`,
   `ChannelSession.Members`); treat them as one cluster. Their runtime models live together in Storage, and
   Services changes them through `internal` members (`InternalsVisibleTo("Basil.Application.Services")`).
@@ -428,9 +435,9 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
 * **Registries, runtime models and query records get no interface.** They are not ports. Do not add
   `IUserRegistry` or `ILobby`. Ports are for what lies outside the process: storage, files, network,
   external computation, clock (`TimeProvider`).
-* **Outer layers use storage directly.** Infrastructure, the hosts and the bot read, list and search
-  storage, and write persistent records whose write carries no rule or consequence (an admin renames a
-  user, hides a beatmapset), directly through the repository. Services are only for actions; a service
+* **Outer layers use storage directly.** Infrastructure and the hosts read, list and search storage, and
+  write persistent records whose write carries no rule or consequence (an admin renames a user, hides a
+  beatmapset), directly through the repository, after the host has checked the caller's permission. Services are only for actions; a service
   never wraps a plain read or write (`ScoreService.GetAsync` forwarding to `IScoreRepository.GetAsync` is
   wrong). Runtime state changes only through services: runtime setters are `internal`.
 * **The service of an object's kind enforces its rules in the same operation.** When a rule belongs to the
@@ -445,11 +452,11 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   (truth in Domain) is a forwarding property (`Room.Name => Match.Name`).
 * **A user online is one `UserSession`; each place they log in from is a `Connection`.**
   `UserSession` (sealed) represents the user regardless of where they connect and holds what is
-  shared (`AwayMessage`, `PmChannel`) plus its connections as child data, keyed by
-  `ConnectionType` (`Bancho`, `Tourney`, `Irc`, `Bot`), with typed accessors (`Bancho`, `Irc`, `Bot`,
-  `Tourneys`); only `Tourney` allows several connections per user, a rule the session service owns.
-  `Connection` is an abstract class (`Session`, `Login`, `IsOpen`, `Type`) with `BanchoConnection`,
-  `TourneyConnection`, `IrcConnection`, `BotConnection`; each holds only what exists for that kind of client
+  shared (`AwayMessage`, `PmChannel`, the active `Restrictions`) plus its connections as child data, keyed by
+  `ConnectionType` (`Bancho`, `Tourney`, `Irc`, `Api`), with typed accessors (`Bancho`, `Irc`, `Tourneys`,
+  `Apis`); only `Tourney` and `Api` allow several connections per user, a rule the session service owns.
+  `Connection` is an abstract class (`Session`, `Login`, `Token`, `IsOpen`, `Type`) with `BanchoConnection`,
+  `TourneyConnection`, `IrcConnection`, `ApiConnection`; each holds only what exists for that kind of client
   (`BanchoConnection.Status`, `BanchoConnection.SpectatorChannel`). Rooms, channels and the lobby
   hold connections, not sessions. Owned parts (a session's `PmChannel`, a connection's
   `SpectatorChannel`) are created and destroyed with their owner; they are not relations.
@@ -521,11 +528,11 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   `System.Threading.Channels.Channel<T>` on purpose; the two differ by generic arity.
 * **Event names are `{Group}{Subject}{PastTenseVerb}`.** The group is the category the event belongs
   to (`Room`, `Channel`, `User`, `Lobby`); when the subject is the group itself it is written once
-  (`ChannelOpened`, `UserSilenced`). A subject that belongs to another is written `{Parent}{Child}`
+  (`ChannelOpened`, `UserRestricted`). A subject that belongs to another is written `{Parent}{Child}`
   (`RoomRoundPlayerLoaded`, `RoomSlotTeamChanged`, `UserConnectionOpened`). The abstract category
   records follow the same rule (`RoomRoundEvent`, `ChannelMembershipEvent`).
 * **Chat channels.** Domain: abstract `Channel` (`Name`, `Topic`, IRC convention) with
-  `GeneralChannel` (configured chat; alone carries `ReadPrivilege`, `WritePrivilege`, `AutoJoin`,
+  `GeneralChannel` (configured chat; alone carries `ReadPermissions`, `WritePermissions`, `AutoJoin`,
   `Visible`), `RoomChannel`, `SpectatorChannel`, `PmChannel`; messages are the record `Message`.
   Runtime: abstract `ChannelSession` with `GeneralChannelSession`, `RoomChannelSession`,
   `SpectatorChannelSession`, `PmChannelSession`. **Each channel lives on the record of its owner**:
@@ -534,22 +541,50 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   may read and write. A private message is a post into the recipient's PM channel. Access follows osu!: a
   user may join a channel (including `/join` over IRC) only if an osu! client doing the matching in-game
   action would have access.
-* **Privilege checks require every bit.** A user satisfies a `ClientPrivileges` requirement only if
-  every bit set in the requirement is set on the user (`ClientPrivileges.Has`); an empty
-  requirement is always satisfied. This applies everywhere, not only to channels.
+* **Permissions are the source of truth.** What an account may do is its `Permissions` (Domain, on
+  `UserData`): fine-grained actions in the Discord style, grouped by the `ClientPrivileges` bit each group
+  shows as (`PlayerCreateRoom`, `PlayerChat`, `TournamentObserveRooms`, `ModeratorSilence`, `OwnerManageAccounts`,
+  …; each group also has a mask member named after it). Only high-level management permissions may be broad
+  (`TournamentManageAnyRoom`). Do not add a permission that is merely a consequence of another (playing and
+  submitting scores are one). `ClientPrivileges` is never stored or configured: it is derived from the
+  effective permissions (`ToClientPrivileges()`; a bit is on when any permission of its group is).
+* **Permission checks require every bit** (`Permissions.Allows`); an empty requirement is always
+  satisfied. Checks use the **effective** permissions: the granted ones minus those suspended by the user's
+  active restrictions (`Effective(restrictions, now)`).
+* **Restrictions are timed records,** not account fields. A `Restriction` (Domain, own repository
+  `IRestrictionRepository`) suspends a mask of permissions from `StartsAt` to `EndsAt` (open-ended until
+  lifted; lifting sets `EndsAt`, history is kept). A silence is a restriction of
+  `Permissions.SuspendedBySilence`. Expiry needs no timer: the effective permissions are computed at `now`. A
+  result tells "suspended by a restriction" (`Silenced`) apart from "never granted" (`NotAuthorized`).
+* **Hierarchy.** A staff action aimed at another user (silence, restrict, lift, set permissions, set password,
+  revoke sessions, delete) requires the actor's granted permissions to be a strict superset of the target's.
+  Equals cannot act on each other; acting on oneself is not subject to this rule. Granting gives only bits the
+  actor holds.
+* **No bot in the server.** The server has no bot user, no bot connection kind and no virtual in-game user;
+  user ids start at 1. BasilBot and every other automated client sign in as ordinary accounts and do only
+  what their permissions allow. Chat commands (`!mp`, `!help`, …) and every chat announcement
+  (countdowns, anticheat warnings) belong to such clients; the server only emits events. A client looks up a
+  user's permissions through the API to decide how to answer, and the server checks again.
+* **Identity on every action.** Every action has a real actor `by` (a `Connection`); `by` is never `null`
+  and never a stand-in for "the server". A room created through the API has the caller as creator.
+* **Delegation.** An account with `TournamentActForUsers` may act for another online user:
+  `ISessionService.ActFor` returns that user's connection, and the operation runs with that user's authority
+  and is attributed to that user. Application decides who may act for whom; the host limits the scope to room
+  and lobby operations (`ILobbyService`, `IRoomService` and its children) and refuses delegation elsewhere.
+* **Sessions and tokens.** Every client signs in with credentials and gets a `Connection` with an opaque
+  `Token` (in memory, lost on restart, no absolute expiry). Idle connections close after 300 s for osu!,
+  osu!tourney and IRC and after 2 hours for `Api`. Logging out, changing the password, deleting the user, a
+  permission change that removes access to a kind of client, and revoking close connections. osu! and IRC
+  allow one connection per user; osu!tourney and `Api` allow several. `Api` connections do not make the user
+  appear online in game.
+* **No authority by connection kind.** Never decide authority with `ConnectionType` or `is XConnection`. The
+  kind of client only decides what that client can technically do (only an osu! client takes a slot; an
+  osu!tourney client gets no private-message channel).
 * **A channel's name tells its kind.** A channel several users take part in (general, room,
   spectator) is named `#name` (`#osu`, `#lobby`, `#mp_5`, `#spec_7`); a private-message channel is
   named after its owner, without `#`, as an IRC nick is. This is a naming convention each kind of
   channel follows when it names itself; nothing else checks it. `#multiplayer`/`#spectator` are
   aliases the transport resolves to the sender's room or spectator channel.
-* **BasilBot is an ordinary user with fixed rules.** It is always user id `0` (`SystemUserIds.BasilBot`) in
-  `IUserRepository`; the session service creates it at startup when it is missing and opens its
-  `BotConnection`. Its name and country are edited through the repository like any user's; configuration
-  keeps only the command prefix. It can never be deleted, silenced, given other privileges, kicked, banned
-  or made a referee, and it can never log in from a client, whatever password is stored for it.
-* **The API acts as BasilBot.** A route of the admin API calls services with the bot's connection as `by`;
-  `by` is never `null`. The bot's connection has server authority and passes every room and channel
-  authority check. A route answers 503 while the bot is offline.
 * **Setters only assign and validate.** A Domain setter stores the value and throws if it is invalid; a
   runtime setter is `internal set` and only assigns. A setter never emits an event or changes anything else.
   A change that has consequences (emits an event, changes other fields, checks authority, groups several
@@ -561,7 +596,8 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   (`IUserAvatarStorage`, `IMenuBannerStorage`, `IMenuSeasonalsStorage`); medium words (`Image`,
   `Background`, `Archive`) and redundant qualifiers (`Server` in `ISettingsRepository`) stay out of names.
 * **Knowledge about a Domain value lives on that value.** A fixed set of flags is a member of its enum
-  (`ClientFlags.CheatSigns`), a per-mode factory a static member of its type (`BeatmapObjects.NewFrom(mode)`);
+  (`ClientFlags.CheatSigns`, `Permissions.SuspendedBySilence`), a per-mode factory a static member of its type
+  (`BeatmapObjects.NewFrom(mode)`);
   services use them instead of keeping their own copies.
 * **One concept, one name.** Use the same name for the same concept in every model, parameter,
   event and API: the moment something happened is `Timestamp`, a span is `StartedAt`/`EndedAt`, a
@@ -596,14 +632,16 @@ See [`docs/for-developers/multiplayer.md`](docs/for-developers/multiplayer.md) f
 
 Referee, host, and creator are separate concepts.
 
-Whoever creates a room is its creator, however it was created (in game, `!mp make`, or the API when
-a creator is given; an API-created room without one has no creator). The creator is remembered on
-the match and ranks above referees; it is not added to the referee list. A creator who created the
-room in game is also its first host. After `!mp make`, a creator whose game client is online and
-not in any room is seated in the new room as host; a creator already in another room stays there
-and does not become host. `!mp` is available only to the creator and the referees; being
-the host does not grant `!mp` rights. Every room operation with a permission rule takes its actor
-and the room service (`RoomService`) checks authority, not the transport.
+Whoever creates a room is its creator, however it was created (in game, or through the API, directly or
+by a client acting for the user); every room has a creator. Creating a room needs `PlayerCreateRoom`. The
+creator is remembered on the match and ranks above referees; it is not added to the referee list. A creator
+who created the room in game is also its first host. When a tournament room is created, a creator whose
+game client is online and not in any room is seated in the new room as host; a creator already in another
+room stays there and does not become host. Managing a room is for the creator and the referees (and
+`TournamentManageAnyRoom`, which acts with the creator's authority in every room); being the host does not
+grant management rights. A creator or referee whose permissions are all suspended cannot manage. Every room
+operation with a permission rule takes its actor and the room service (`RoomService`) checks authority, not
+the transport. `!mp` itself is a client feature that calls these operations for the user.
 
 Do not treat them as interchangeable.
 
@@ -659,9 +697,11 @@ Do not reintroduce the old abbreviation.
 
 ## Scope
 
-Basil is deliberately smaller than bancho.py.
+Basil is a backend platform: it offers capabilities through its protocols and its user-centric HTTP API,
+and features are built on top as clients. It is deliberately smaller than bancho.py.
 
-Do not implement a bancho.py feature simply because it exists upstream.
+Do not implement a bancho.py feature simply because it exists upstream. Do not put a feature that a client
+can build with the API (chat commands, announcements, overlays) into the server.
 
 Before adding:
 
@@ -744,6 +784,9 @@ Before considering a code change complete:
    sessions emitting events, event handlers inside Application, and rules or timers on runtime models and
    registries all got through review once; do not let them back in. Nor should a service that only wraps
    a repository read, an interface for a registry, a contract name that reveals its mechanism, or a
-   reference from Infrastructure to `Basil.Application.Services`.
+   reference from Infrastructure to `Basil.Application.Services`. Since the identity redesign, also
+   reject: any bot special case (a fixed bot id, a bot connection kind, "the server acts"), an action
+   without a real `by`, authority decided by connection kind, a check on granted instead of effective
+   permissions, a stored or configured `ClientPrivileges`, and chat text produced by the server.
 
 The goal is not merely to produce compiling code. The goal is a verified change that respects Basil's architecture, scope, contracts, and documentation.
