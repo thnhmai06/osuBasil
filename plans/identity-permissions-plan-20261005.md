@@ -225,11 +225,8 @@ không được cấp thì trả `NotAuthorized` / `NoPermission`. Client nhờ 
   * policy theo permission cho route không có actor;
   * cờ query (`IncludePrivate`, `IncludeHidden`) từ permission;
   * `ClientPrivileges` lên wire;
-  * **phạm vi ủy quyền:** chỉ route phòng và sảnh (`ILobbyService.OpenAsync/CloseAsync`, các service con của
-    `IRoomService`) nhận header ủy quyền.
-  * Lý do ủy quyền chia hai tầng: Application quyết định *ai* làm thay *ai* (`ISessionService.ActFor`); host giới hạn
-    *phạm vi*, vì connection ủy quyền không phân biệt được với connection thật trong mọi service. AGENTS.md ghi luật
-    này.
+  * **phạm vi ủy quyền:** do Application thực thi (`DelegatedConnection`, scope `RoomDelegation`, mục 7); host
+    chỉ đổi header ủy quyền thành kết nối ủy quyền qua `ActFor`.
 * **Client:** không bao giờ là nơi thực thi. Bot tra quyền qua API để trả lời cho đúng; server vẫn kiểm lại.
 
 ### 1.6 Rủi ro và trường hợp biên
@@ -377,7 +374,7 @@ không được cấp thì trả `NotAuthorized` / `NoPermission`. Client nhờ 
     * permission chi tiết theo danh mục `ClientPrivileges`, `ClientPrivileges` chỉ suy ra;
     * restriction là bản ghi có thời hạn;
     * thứ bậc;
-    * ủy quyền (Application quyết ai, host giới hạn phạm vi);
+    * ủy quyền theo scope, Application thực thi (xem mục 7);
     * phiên và token;
     * không xét authority theo loại connection;
   * danh sách `ConnectionType`, mục Authority, mục Scope, checklist cuối;
@@ -415,13 +412,13 @@ không được cấp thì trả `NotAuthorized` / `NoPermission`. Client nhờ 
   * User: đọc permission được cấp, quyền hiệu lực và restriction, để bot tra quyền người gửi. Quản lý
     permission/restriction/tài khoản/phiên.
   * Phòng: mọi thao tác của `ILobbyService`/`IRoomService` (tạo, cài đặt, slot, round, countdown, referee,
-    host, ban, kick, mời, xếp chỗ, đóng). Header ủy quyền → `ActFor`, chỉ ở các route này.
+    host, ban, kick, mời, xếp chỗ, đóng). Header ủy quyền → `ActFor`; Application tự giới hạn phạm vi (mục 7), host chỉ chuyển `DelegatedConnection`.
   * Chat: liệt kê / vào / rời kênh, gửi tin kênh và PM, away, PM-private.
   * Spectate: spectate qua `ApiConnection`; `/users/{id}/live` có input khi subscriber đã đăng nhập.
   * SSE theo phiên: tin kênh/PM, event phòng/lobby, anticheat (theo permission). EventSource không gửi header, cần
     cách truyền token cho `/live`.
   * Policy permission cho beatmap, nội dung, cấu hình, chẩn đoán.
-  * Khóa admin chỉ còn cho đăng ký; bỏ khỏi xác thực.
+  * Bỏ hẳn khóa admin (mục 7); đăng ký theo `ServerSettings.LockedCreation`.
   * Bỏ mọi chặn id 0 và ảnh `basilbot.png`.
 * **Host.Bancho / Host.Irc**
   * `ClientPrivileges` = quyền hiệu lực → `ToClientPrivileges()`. Gửi lại khi có event permission/restriction.
@@ -510,7 +507,7 @@ Thứ tự: 0 → 1 → 2 → 3 → (4a viết `PermissionRules` trước, rồi
 * **Luật mới, cần người dùng duyệt:** không ai tự silence, restrict hay gỡ restriction của chính mình. Lý do: nếu
   không, moderator bị silence tự gỡ được silence của mình. Luật này nằm trong `UserService.MayRestrict` và AGENTS.md.
 * **Ủy quyền không xét thứ bậc** (có review bảo mật nêu ra). Đây là chủ đích: bot phải làm thay được cả referee có
-  quyền cao hơn nó. Phạm vi do host giới hạn (chỉ phòng và sảnh); trần rủi ro ghi bằng `ponytail:` ở
+  quyền cao hơn nó. Phạm vi giờ do Application giới hạn (mục 7); trần rủi ro ghi bằng `ponytail:` ở
   `SessionService.ActFor`.
 * **Quyền được cấp đọc từ `connection.Session.User`** (`PermissionRules.Granted`), không từ `Login.User`. Mỗi lần đăng
   nhập đọc user từ repository (có cache), nên các phiên của cùng một user có thể giữ những bản `User` khác nhau;
