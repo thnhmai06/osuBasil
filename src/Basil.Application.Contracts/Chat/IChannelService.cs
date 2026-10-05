@@ -1,3 +1,4 @@
+using Basil.Domain.Users;
 using Basil.Application.Contracts.Events;
 using Basil.Application.Storage.Chat;
 using Basil.Application.Storage.Sessions;
@@ -52,7 +53,9 @@ public interface IChannelService : IEventPublisher<ChannelEvent>
 	/// <remarks>
 	///     A message longer than <see cref="ChannelSession.MaxMessageLength" /> characters is cut. A private message is a
 	///     post into the recipient's private-message channel; the recipient's away message is sent back to the author, carried
-	///     by the same <see cref="ChannelMessagePosted" />.
+	///     by the same <see cref="ChannelMessagePosted" />. Posting needs <see cref="Permissions.PlayerChat" />, a private
+	///     message <see cref="Permissions.PlayerPrivateMessage" />; a private message passes blocks and friends-only
+	///     settings with <see cref="Permissions.ModeratorMessageAnyone" />.
 	/// </remarks>
 	Task<ChannelPostResult> PostAsync(ChannelSession channel, Connection by, string text, bool notice = false,
 		CancellationToken cancellationToken = default);

@@ -10,5 +10,8 @@ public enum RegistrationFailure : byte
 	NameTaken,
 
 	/// <summary>The administrator key is wrong.</summary>
-	WrongAdminKey
+	WrongAdminKey,
+
+	/// <summary>The caller may not create accounts, or may not grant the permissions the account asks for.</summary>
+	NotAuthorized
 }

@@ -1,9 +1,9 @@
 using Basil.Application.Contracts.Multiplayer;
 using Basil.Application.Contracts.Multiplayer.Events;
 using Basil.Application.Contracts.Multiplayer.Rooms;
+using Basil.Application.Services.Users;
 using Basil.Application.Storage.Multiplayer;
 using Basil.Application.Storage.Sessions;
-using Basil.Domain.Client;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Multiplayer.Rooms;
@@ -34,15 +34,18 @@ internal sealed class RoomMembershipService(
 	public async Task<RoomResult> SeatAsync(Room room, Connection by, BanchoConnection player,
 		CancellationToken cancellationToken = default)
 	{
-		if (!RoomRules.CanManage(room, by)) return RoomResult.NotAuthorized;
+		if (!RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 		if (!player.IsOpen) return RoomResult.TargetOffline;
-		if (player.User.Value.SilenceEndsAt > time.GetUtcNow()) return RoomResult.Silenced;
-		if (!player.User.Value.Privilege.Has(ClientPrivileges.Player)) return RoomResult.NotAuthorized;
+		switch (PermissionRules.Check(player, Permissions.PlayerJoinRoom, time.GetUtcNow()))
+		{
+			case Access.NotGranted: return RoomResult.NotAuthorized;
+			case Access.Suspended: return RoomResult.Silenced;
+		}
 		if (room.Banned.Contains(player.User)) return RoomResult.Banned;
 
 		if (lobby.RoomOf(player) is { } other && !ReferenceEquals(other, room))
 		{
-			if (!RoomRules.CanManage(other, by)) return RoomResult.InAnotherRoom;
+			if (!RoomRules.CanManage(other, by, time.GetUtcNow())) return RoomResult.InAnotherRoom;
 			if (!room.Slots.Any(s => s is { Locked: false, Player: null })) return RoomResult.Full;
 			if (room.Observers.Any(observer => observer.User.Equals(player.User))) return RoomResult.IsObserver;
 			await LeaveAsync(other, player, cancellationToken);
@@ -130,12 +133,15 @@ internal sealed class RoomMembershipService(
 		if (stale is not null && (ReferenceEquals(stale, by) || stale.IsOpen)) return RoomResult.AlreadySeated;
 
 		if (room.Banned.Contains(by.User)) return RoomResult.Banned;
-		if (by.User.Value.SilenceEndsAt > time.GetUtcNow()) return RoomResult.Silenced;
-		if (!by.User.Value.Privilege.Has(ClientPrivileges.Player)) return RoomResult.NotAuthorized;
+		switch (PermissionRules.Check(by, Permissions.PlayerJoinRoom, time.GetUtcNow()))
+		{
+			case Access.NotGranted: return RoomResult.NotAuthorized;
+			case Access.Suspended: return RoomResult.Silenced;
+		}
 		if (lobby.RoomOf(by) is { } other && !ReferenceEquals(other, room)) return RoomResult.InAnotherRoom;
 		if (room.Observers.Any(observer => observer.User.Equals(by.User))) return RoomResult.IsObserver;
 		if (!string.IsNullOrEmpty(room.Password) && room.Password != password &&
-		    !by.User.Value.Privilege.Has(ClientPrivileges.Moderator))
+		    !PermissionRules.Allows(by, Permissions.TournamentManageAnyRoom, time.GetUtcNow()))
 			return RoomResult.WrongPassword;
 
 		return TakeSeat(room, by, stale);
@@ -143,7 +149,7 @@ internal sealed class RoomMembershipService(
 
 	private RoomResult Seat(Room room, Connection by, BanchoConnection player)
 	{
-		if (!RoomRules.CanManage(room, by)) return RoomResult.NotAuthorized;
+		if (!RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 		if (!player.IsOpen) return RoomResult.TargetOffline;
 
 		var stale = room.Slots.Find(player.User)?.Player;
@@ -206,7 +212,7 @@ internal sealed class RoomMembershipService(
 
 	private RoomResult Kick(Room room, Connection by, User player)
 	{
-		if (!RoomRules.IsHostOrManager(room, by)) return RoomResult.NotAuthorized;
+		if (!RoomRules.IsHostOrManager(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 		if (RoomRules.IsManager(room, player)) return RoomResult.IsManager;
 		if (room.Slots.Find(player) is not { Player: { } seated }) return RoomResult.NotInRoom;
 
@@ -220,8 +226,7 @@ internal sealed class RoomMembershipService(
 
 	private RoomResult Ban(Room room, Connection by, User player)
 	{
-		if (!RoomRules.CanManage(room, by)) return RoomResult.NotAuthorized;
-		if (player.Id == SystemUserIds.BasilBot) return RoomResult.NotAuthorized;
+		if (!RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 		if (RoomRules.IsManager(room, player)) return RoomResult.IsManager;
 		if (!room.AddBanned(player)) return RoomResult.Ok;
 
@@ -247,7 +252,7 @@ internal sealed class RoomMembershipService(
 
 	private RoomResult Unban(Room room, Connection by, User player)
 	{
-		if (!RoomRules.CanManage(room, by)) return RoomResult.NotAuthorized;
+		if (!RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 		if (!room.RemoveBanned(player)) return RoomResult.NotBanned;
 
 		events.Emit(new RoomPlayerUnbanned(room, player));
@@ -257,9 +262,8 @@ internal sealed class RoomMembershipService(
 	private RoomResult Invite(Room room, Connection by, UserSession target)
 	{
 		var seated = by is BanchoConnection player && room.Slots.Find(player) is not null;
-		if (!seated && !RoomRules.CanManage(room, by)) return RoomResult.NotAuthorized;
-		if (target.Bot is not null || !target.Connections.Any(connection => connection.IsOpen))
-			return RoomResult.TargetOffline;
+		if (!seated && !RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
+		if (!target.Connections.Any(connection => connection.IsOpen)) return RoomResult.TargetOffline;
 		if (room.Slots.Find(target.User) is not null) return RoomResult.AlreadyInRoom;
 
 		events.Emit(new RoomPlayerInvited(room, by.User, target.User));

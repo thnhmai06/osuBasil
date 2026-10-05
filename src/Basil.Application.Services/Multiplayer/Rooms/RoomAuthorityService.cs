@@ -8,7 +8,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Services.Multiplayer.Rooms;
 
 /// <summary>Changes the referees and the host of a room.</summary>
-internal sealed class RoomAuthorityService(RoomEventStream events) : IRoomAuthorityService
+internal sealed class RoomAuthorityService(RoomEventStream events, TimeProvider time) : IRoomAuthorityService
 {
 	/// <inheritdoc />
 	public Task<RoomResult> AddRefereeAsync(Room room, Connection by, User user,
@@ -33,8 +33,7 @@ internal sealed class RoomAuthorityService(RoomEventStream events) : IRoomAuthor
 
 	private RoomResult AddReferee(Room room, Connection by, User user)
 	{
-		if (!RoomRules.IsCreatorOrBot(room, by)) return RoomResult.NotAuthorized;
-		if (user.Id == SystemUserIds.BasilBot) return RoomResult.NotAuthorized;
+		if (!RoomRules.IsCreatorOrAnyRoomManager(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 		if (room.Creator is not null && room.Creator.Equals(user)) return RoomResult.IsCreator;
 		if (room.Referees.Contains(user)) return RoomResult.AlreadyReferee;
 		if (room.Referees.Count >= Room.MaxReferees) return RoomResult.TooManyReferees;
@@ -46,7 +45,7 @@ internal sealed class RoomAuthorityService(RoomEventStream events) : IRoomAuthor
 
 	private RoomResult RemoveReferee(Room room, Connection by, User user)
 	{
-		if (!RoomRules.IsCreatorOrBot(room, by)) return RoomResult.NotAuthorized;
+		if (!RoomRules.IsCreatorOrAnyRoomManager(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 		if (!room.RemoveReferee(user)) return RoomResult.NotReferee;
 
 		events.Emit(new RoomRefereeRemoved(room, user));
@@ -55,7 +54,7 @@ internal sealed class RoomAuthorityService(RoomEventStream events) : IRoomAuthor
 
 	private RoomResult SetHost(Room room, Connection by, BanchoConnection? host)
 	{
-		if (!RoomRules.IsHostOrManager(room, by)) return RoomResult.NotAuthorized;
+		if (!RoomRules.IsHostOrManager(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 		if (host is not null && room.Slots.Find(host) is null) return RoomResult.NotInRoom;
 		if (ReferenceEquals(room.Host, host)) return RoomResult.Ok;
 

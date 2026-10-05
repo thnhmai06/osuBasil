@@ -1,6 +1,5 @@
 using System.Globalization;
 using Basil.Application.Storage.Common;
-using Basil.Domain.Client;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Storage.Users;
@@ -11,16 +10,16 @@ namespace Basil.Application.Storage.Users;
 ///     <see langword="null" /> for any.
 /// </param>
 /// <param name="Countries">The countries a user may be from, or <see langword="null" /> for any.</param>
-/// <param name="Privilege">Privileges a user must all hold, or <see langword="null" /> for any.</param>
+/// <param name="Permissions">Permissions a user must all be granted, or <see langword="null" /> for any.</param>
 /// <param name="IncludeDeleted">Whether deleted users are included.</param>
 public sealed record UserQuery(
 	string? Text = null,
 	IReadOnlyList<Country>? Countries = null,
-	ClientPrivileges? Privilege = null,
+	Permissions? Permissions = null,
 	bool IncludeDeleted = false)
 {
 	/// <summary>Reads a query written in the user search syntax.</summary>
-	/// <param name="text">The search text, for example <c>country=vnus privilege=4 bob</c>.</param>
+	/// <param name="text">The search text, for example <c>country=vnus permission=PlayerChat bob</c>.</param>
 	/// <param name="includeDeleted">Whether deleted users are included.</param>
 	/// <returns>The query; a filter with an unknown key or a value that does not parse stays in <see cref="Text" />.</returns>
 	public static UserQuery Parse(string text, bool includeDeleted = false)
@@ -29,7 +28,7 @@ public sealed record UserQuery(
 			return new UserQuery(null, null, null, includeDeleted);
 
 		IReadOnlyList<Country>? countries = null;
-		ClientPrivileges? privilege = null;
+		Permissions? permissions = null;
 
 		var keywords = SearchSyntax.Parse(text, (key, op, rawValue) =>
 		{
@@ -39,15 +38,15 @@ public sealed record UserQuery(
 				case "country" when TryParseCountries(rawValue, out var parsedCountries):
 					countries = parsedCountries;
 					return true;
-				case "privilege" when TryParsePrivilege(rawValue, out var parsedPrivilege):
-					privilege = parsedPrivilege;
+				case "permission" when TryParsePermissions(rawValue, out var parsedPermissions):
+					permissions = parsedPermissions;
 					return true;
 				default:
 					return false;
 			}
 		});
 
-		return new UserQuery(keywords, countries, privilege, includeDeleted);
+		return new UserQuery(keywords, countries, permissions, includeDeleted);
 
 		static bool TryParseCountries(string rawValue, out IReadOnlyList<Country> parsedCountries)
 		{
@@ -65,15 +64,15 @@ public sealed record UserQuery(
 			return true;
 		}
 
-		static bool TryParsePrivilege(string rawValue, out ClientPrivileges parsedPrivilege)
+		static bool TryParsePermissions(string rawValue, out Permissions parsedPermissions)
 		{
-			if (byte.TryParse(rawValue, NumberStyles.None, CultureInfo.InvariantCulture, out var mask))
+			if (ulong.TryParse(rawValue, NumberStyles.None, CultureInfo.InvariantCulture, out var mask))
 			{
-				parsedPrivilege = (ClientPrivileges)mask;
+				parsedPermissions = (Permissions)mask;
 				return true;
 			}
 
-			return Enum.TryParse(rawValue, true, out parsedPrivilege);
+			return Enum.TryParse(rawValue, true, out parsedPermissions);
 		}
 	}
 }

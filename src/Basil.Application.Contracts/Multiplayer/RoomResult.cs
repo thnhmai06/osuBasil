@@ -15,7 +15,7 @@ public enum RoomResult : byte
 	/// <summary>The user is banned from the room.</summary>
 	Banned,
 
-	/// <summary>The user is silenced.</summary>
+	/// <summary>A permission the operation needs is suspended by a restriction, such as a silence.</summary>
 	Silenced,
 
 	/// <summary>The connection is seated in another room.</summary>

@@ -1,13 +1,13 @@
-using Basil.Domain.Client;
+using Basil.Domain.Users;
 using Basil.Domain.Utilities;
 
 namespace Basil.Domain.Chat;
 
-/// <summary>A configured chat channel open to every user with the required privileges.</summary>
+/// <summary>A configured chat channel open to every user with the required permissions.</summary>
 public sealed class GeneralChannel : Channel, IEquatable<GeneralChannel>
 {
-	/// <summary>Gets or sets the privileges a user must all hold to read the channel.</summary>
-	public ClientPrivileges ReadPrivilege
+	/// <summary>Gets or sets the permissions a user must all hold to read the channel.</summary>
+	public Permissions ReadPermissions
 	{
 		get;
 		set
@@ -15,10 +15,10 @@ public sealed class GeneralChannel : Channel, IEquatable<GeneralChannel>
 			value.ThrowIfUndefined();
 			field = value;
 		}
-	} = ClientPrivileges.Player;
+	} = Permissions.None;
 
-	/// <summary>Gets or sets the privileges a user must all hold to write to the channel.</summary>
-	public ClientPrivileges WritePrivilege
+	/// <summary>Gets or sets the permissions a user must all hold, besides the right to chat, to post in the channel.</summary>
+	public Permissions WritePermissions
 	{
 		get;
 		set
@@ -26,7 +26,7 @@ public sealed class GeneralChannel : Channel, IEquatable<GeneralChannel>
 			value.ThrowIfUndefined();
 			field = value;
 		}
-	} = ClientPrivileges.Player;
+	} = Permissions.None;
 
 	/// <summary>A value that indicates whether the channel is joined automatically at login.</summary>
 	public bool AutoJoin { get; set; } = false;

@@ -1,3 +1,4 @@
+using Basil.Domain.Users;
 using Basil.Application.Storage.Sessions;
 
 namespace Basil.Application.Contracts.Chat;
@@ -9,7 +10,11 @@ public interface IChannelSpectatorService
 	/// <param name="host">The client being spectated.</param>
 	/// <param name="by">The connection that starts spectating.</param>
 	/// <returns>The outcome.</returns>
-	/// <remarks>osu! clients, osu!tourney clients and BasilBot can spectate.</remarks>
+	/// <remarks>
+	///     osu! clients and HTTP API clients can spectate with <see cref="Permissions.PlayerSpectate" />, osu!tourney
+	///     clients with <see cref="Permissions.TournamentObserveRooms" />; NotPermitted otherwise.
+	/// </remarks>
+	/// <exception cref="ArgumentException"><paramref name="by" /> is an IRC connection.</exception>
 	SpectateResult Spectate(BanchoConnection host, Connection by);
 
 	/// <summary>Stops spectating.</summary>

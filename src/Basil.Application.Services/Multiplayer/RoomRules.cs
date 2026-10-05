@@ -1,3 +1,4 @@
+using Basil.Application.Services.Users;
 using Basil.Application.Storage.Multiplayer;
 using Basil.Application.Storage.Sessions;
 using Basil.Domain.Users;
@@ -10,45 +11,50 @@ internal static class RoomRules
 	/// <summary>Gets a value that indicates whether a user is the creator or a referee of a room.</summary>
 	/// <param name="room">The room to check.</param>
 	/// <param name="user">The user to check.</param>
-	/// <returns>
-	///     <see langword="true" /> if the user is the creator or a referee of this match; otherwise,
-	///     <see langword="false" />.
-	/// </returns>
+	/// <returns><see langword="true" /> if the user is the creator or a referee of this match.</returns>
 	internal static bool IsManager(Room room, User user)
 	{
 		return room.IsManagedBy(user);
 	}
 
-	/// <summary>Gets a value that indicates whether a connection is BasilBot's connection or belongs to the room's creator.</summary>
-	/// <param name="room">The room to check.</param>
-	/// <param name="by">The connection to check.</param>
-	/// <returns><see langword="true" /> if the connection is BasilBot's or the creator's; otherwise, <see langword="false" />.</returns>
-	internal static bool IsCreatorOrBot(Room room, Connection by)
-	{
-		return by is BotConnection || (room.Creator is not null && room.Creator.Equals(by.User));
-	}
-
 	/// <summary>
-	///     Gets a value that indicates whether a connection may manage a room: BasilBot's connection, which acts for the
-	///     server, or the creator or a referee.
+	///     Gets a value that indicates whether a connection acts with the creator's authority: its user is the creator
+	///     and has a permission in effect, or holds <see cref="Permissions.TournamentManageAnyRoom" />.
 	/// </summary>
 	/// <param name="room">The room to check.</param>
 	/// <param name="by">The connection to check.</param>
-	/// <returns><see langword="true" /> if the connection may manage the room; otherwise, <see langword="false" />.</returns>
-	internal static bool CanManage(Room room, Connection by)
+	/// <param name="now">The moment to evaluate at.</param>
+	internal static bool IsCreatorOrAnyRoomManager(Room room, Connection by, DateTimeOffset now)
 	{
-		return by is BotConnection || IsManager(room, by.User);
+		return PermissionRules.Allows(by, Permissions.TournamentManageAnyRoom, now) ||
+		       (room.Creator is not null && room.Creator.Equals(by.User) && HasAnyPermission(by, now));
+	}
+
+	/// <summary>
+	///     Gets a value that indicates whether a connection may manage a room: its user is the creator or a referee and
+	///     has a permission in effect, or holds <see cref="Permissions.TournamentManageAnyRoom" />.
+	/// </summary>
+	/// <param name="room">The room to check.</param>
+	/// <param name="by">The connection to check.</param>
+	/// <param name="now">The moment to evaluate at.</param>
+	internal static bool CanManage(Room room, Connection by, DateTimeOffset now)
+	{
+		return PermissionRules.Allows(by, Permissions.TournamentManageAnyRoom, now) ||
+		       (IsManager(room, by.User) && HasAnyPermission(by, now));
 	}
 
 	/// <summary>Gets a value that indicates whether a connection is the room's host or may manage it.</summary>
 	/// <param name="room">The room to check.</param>
 	/// <param name="by">The connection to check.</param>
-	/// <returns>
-	///     <see langword="true" /> if the connection is the host or may manage the room; otherwise,
-	///     <see langword="false" />.
-	/// </returns>
-	internal static bool IsHostOrManager(Room room, Connection by)
+	/// <param name="now">The moment to evaluate at.</param>
+	internal static bool IsHostOrManager(Room room, Connection by, DateTimeOffset now)
 	{
-		return ReferenceEquals(by, room.Host) || CanManage(room, by);
+		return ReferenceEquals(by, room.Host) || CanManage(room, by, now);
+	}
+
+	/// <summary>A creator or referee whose permissions are all suspended cannot use their authority.</summary>
+	private static bool HasAnyPermission(Connection by, DateTimeOffset now)
+	{
+		return PermissionRules.Effective(by.Session, now) != Permissions.None;
 	}
 }

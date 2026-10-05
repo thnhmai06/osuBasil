@@ -2,9 +2,9 @@ using System.Threading.Channels;
 using Basil.Application.Contracts.Chat;
 using Basil.Application.Contracts.Multiplayer;
 using Basil.Application.Contracts.Multiplayer.Events;
+using Basil.Application.Services.Users;
 using Basil.Application.Storage.Multiplayer;
 using Basil.Application.Storage.Sessions;
-using Basil.Domain.Client;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 
@@ -14,7 +14,6 @@ namespace Basil.Application.Services.Multiplayer;
 internal sealed class LobbyService(
 	Lobby lobby,
 	IMatchRepository matches,
-	UserRegistry users,
 	IChannelService channels,
 	TimeProvider time) : ILobbyService
 {
@@ -37,7 +36,7 @@ internal sealed class LobbyService(
 	{
 		await using var scope = await Lobby.EnterAsync(room, cancellationToken);
 		if (scope is null) return RoomResult.Ok;
-		if (!RoomRules.CanManage(room, by)) return RoomResult.NotAuthorized;
+		if (!RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 
 		Close(room);
 		return RoomResult.Ok;
@@ -59,8 +58,7 @@ internal sealed class LobbyService(
 
 	/// <inheritdoc />
 	public async Task<(Room? Room, RoomResult Result)> OpenAsync(
-		User? creator,
-		BanchoConnection? creatorConnection,
+		Connection by,
 		string name,
 		string password,
 		bool isTournament,
@@ -68,26 +66,35 @@ internal sealed class LobbyService(
 		MatchSettings? settings = null,
 		CancellationToken cancellationToken = default)
 	{
-		if (!isTournament && creatorConnection is null)
-			throw new ArgumentNullException(nameof(creatorConnection),
-				"A room opened in game needs the creator's game client.");
+		if (!isTournament && by is not BanchoConnection)
+			throw new ArgumentException("A room opened in game needs the creator's osu! client.", nameof(by));
 
-		if (creator is not null)
+		var now = time.GetUtcNow();
+		var required = isTournament ? Permissions.PlayerCreateRoom : Permissions.PlayerCreateRoom | Permissions.PlayerJoinRoom;
+		switch (PermissionRules.Check(by, required, now))
 		{
-			if (creator.Value.SilenceEndsAt > time.GetUtcNow()) return (null, RoomResult.Silenced);
-			if (!creator.Value.Privilege.Has(ClientPrivileges.Player)) return (null, RoomResult.NotAuthorized);
-			if (isTournament && TooManyRooms(creator)) return (null, RoomResult.TooManyRooms);
+			case Access.NotGranted: return (null, RoomResult.NotAuthorized);
+			case Access.Suspended: return (null, RoomResult.Silenced);
 		}
 
-		// A room opened in game seats its creator; one who already plays in a room cannot open another.
-		if (!isTournament && lobby.RoomOf(creatorConnection!) is not null) return (null, RoomResult.AlreadyInRoom);
+		var creator = by.User;
+		var limited = isTournament && !PermissionRules.Allows(by, Permissions.TournamentUnlimitedRooms, now);
+		if (limited && TooManyRooms(creator)) return (null, RoomResult.TooManyRooms);
+
+		// A room opened in game seats its creator; a tournament room seats the creator's osu! client when it may join.
+		var seat = isTournament
+			? by.Session.Bancho is { IsOpen: true } bancho && PermissionRules.Allows(bancho, Permissions.PlayerJoinRoom, now)
+				? bancho
+				: null
+			: (BanchoConnection)by;
+		if (!isTournament && lobby.RoomOf(seat!) is not null) return (null, RoomResult.AlreadyInRoom);
 
 		if (lobby.IsFull) return (null, RoomResult.NoRoomId);
 
 		var match = await matches.CreateAsync(new MatchData
 		{
 			Name = name,
-			StartedAt = time.GetUtcNow(),
+			StartedAt = now,
 			EndedAt = null,
 			Creator = creator,
 			IsPrivate = isPrivate
@@ -95,20 +102,17 @@ internal sealed class LobbyService(
 
 		using var scope = lobby.Enter();
 		if (lobby.IsFull) return (null, RoomResult.NoRoomId);
-		if (creator is not null && isTournament && TooManyRooms(creator)) return (null, RoomResult.TooManyRooms);
+		if (limited && TooManyRooms(creator)) return (null, RoomResult.TooManyRooms);
 
 		var room = lobby.Add(id =>
 		{
 			var opened = new Room(id, match, settings ?? new MatchSettings(), isTournament);
 			if (!string.IsNullOrEmpty(password)) opened.Password = password;
-			if (creatorConnection is not null && lobby.RoomOf(creatorConnection) is null)
-				SeatCreator(opened, creatorConnection);
+			if (seat is not null && lobby.RoomOf(seat) is null)
+				SeatCreator(opened, seat);
 			return opened;
 		});
 		if (room is null) return (null, RoomResult.NoRoomId);
-
-		if (users.Sessions.Select(session => session.Bot).FirstOrDefault(b => b is not null) is { } bot)
-			channels.Join(room.Channel, bot);
 
 		DateTimeOffset? closesAt = room.IsTournament && !room.Slots.Any(slot => slot.Player is not null)
 			? ScheduleClosing(room)

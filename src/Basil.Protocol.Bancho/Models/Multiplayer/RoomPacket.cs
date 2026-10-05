@@ -37,4 +37,8 @@ public sealed record RoomPacket(
 	int WinCondition,
 	int TeamType,
 	bool FreeMods,
-	int Seed);
+	int Seed)
+{
+	/// <summary>The host id written for a room that has no host.</summary>
+	public const int NoHostId = 0;
+}

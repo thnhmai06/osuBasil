@@ -4,13 +4,16 @@ using Basil.Domain.Users;
 namespace Basil.Application.Storage.Sessions;
 
 /// <summary>One login of a user from one client; two connections are never equal.</summary>
-public abstract class Connection(Login login)
+public abstract class Connection(Login login, string token)
 {
 	/// <summary>Gets the online session this connection belongs to.</summary>
 	public UserSession Session { get; internal set; } = null!;
 
 	/// <summary>Gets the login that opened this connection.</summary>
 	public Login Login { get; } = login;
+
+	/// <summary>Gets the opaque token the client presents to be recognised as this connection.</summary>
+	public string Token { get; } = token;
 
 	/// <summary>Gets the user who owns this connection.</summary>
 	public User User => Login.User;
@@ -30,8 +33,9 @@ public sealed class BanchoConnection : Connection
 {
 	/// <summary>Initializes a game client connection.</summary>
 	/// <param name="login">The login that opened the connection.</param>
+	/// <param name="token">The token that identifies the connection.</param>
 	/// <param name="utcOffset">The client's UTC offset reported at login.</param>
-	internal BanchoConnection(Login login, int utcOffset) : base(login)
+	internal BanchoConnection(Login login, string token, int utcOffset) : base(login, token)
 	{
 		UtcOffset = utcOffset;
 		SpectatorChannel = new SpectatorChannelSession(this);
@@ -55,7 +59,8 @@ public sealed class TourneyConnection : Connection
 {
 	/// <summary>Initializes the connection a login opened.</summary>
 	/// <param name="login">The login that opened the connection.</param>
-	internal TourneyConnection(Login login) : base(login)
+	/// <param name="token">The token that identifies the connection.</param>
+	internal TourneyConnection(Login login, string token) : base(login, token)
 	{
 	}
 
@@ -68,7 +73,8 @@ public sealed class IrcConnection : Connection
 {
 	/// <summary>Initializes the connection a login opened.</summary>
 	/// <param name="login">The login that opened the connection.</param>
-	internal IrcConnection(Login login) : base(login)
+	/// <param name="token">The token that identifies the connection.</param>
+	internal IrcConnection(Login login, string token) : base(login, token)
 	{
 	}
 
@@ -76,17 +82,18 @@ public sealed class IrcConnection : Connection
 	public override ConnectionType Type => ConnectionType.Irc;
 }
 
-/// <summary>The connection of the server's own bot.</summary>
-public sealed class BotConnection : Connection
+/// <summary>A connection from a client of the HTTP API.</summary>
+public sealed class ApiConnection : Connection
 {
 	/// <summary>Initializes the connection a login opened.</summary>
 	/// <param name="login">The login that opened the connection.</param>
-	internal BotConnection(Login login) : base(login)
+	/// <param name="token">The token that identifies the connection.</param>
+	internal ApiConnection(Login login, string token) : base(login, token)
 	{
 	}
 
 	/// <inheritdoc />
-	public override ConnectionType Type => ConnectionType.Bot;
+	public override ConnectionType Type => ConnectionType.Api;
 }
 
 /// <summary>The kinds of client a user can connect with.</summary>
@@ -101,6 +108,6 @@ public enum ConnectionType : byte
 	/// <summary>An IRC client.</summary>
 	Irc,
 
-	/// <summary>The server's own bot.</summary>
-	Bot
+	/// <summary>A client of the HTTP API.</summary>
+	Api
 }

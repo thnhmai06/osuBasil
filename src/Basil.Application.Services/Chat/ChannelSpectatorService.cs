@@ -1,16 +1,22 @@
 using Basil.Application.Contracts.Chat;
+using Basil.Application.Services.Users;
 using Basil.Application.Storage.Sessions;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Chat;
 
 /// <summary>Starts and stops spectating osu! players.</summary>
-internal sealed class ChannelSpectatorService(ChannelEventStream events, UserRegistry users) : IChannelSpectatorService
+internal sealed class ChannelSpectatorService(ChannelEventStream events, UserRegistry users, TimeProvider time)
+	: IChannelSpectatorService
 {
 	/// <inheritdoc />
 	public SpectateResult Spectate(BanchoConnection host, Connection by)
 	{
-		if (by is not (BanchoConnection or TourneyConnection or BotConnection))
-			throw new ArgumentException("Only osu!, osu!tourney clients and BasilBot can spectate.", nameof(by));
+		if (by is not (BanchoConnection or TourneyConnection or ApiConnection))
+			throw new ArgumentException("Only osu!, osu!tourney and HTTP API clients can spectate.", nameof(by));
+
+		var required = by is TourneyConnection ? Permissions.TournamentObserveRooms : Permissions.PlayerSpectate;
+		if (!PermissionRules.Allows(by, required, time.GetUtcNow())) return SpectateResult.NotPermitted;
 
 		var spectatorChannel = host.SpectatorChannel;
 		using var scope = spectatorChannel.Enter();

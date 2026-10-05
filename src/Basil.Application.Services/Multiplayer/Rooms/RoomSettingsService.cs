@@ -8,7 +8,7 @@ using Basil.Domain.Mechanics;
 namespace Basil.Application.Services.Multiplayer.Rooms;
 
 /// <summary>Changes a room's shared settings and its lock.</summary>
-internal sealed class RoomSettingsService(RoomEventStream events) : IRoomSettingsService
+internal sealed class RoomSettingsService(RoomEventStream events, TimeProvider time) : IRoomSettingsService
 {
 	/// <inheritdoc />
 	public Task<RoomResult> ConfigureAsync(Room room, Connection by, RoomSettingsChange change,
@@ -26,10 +26,10 @@ internal sealed class RoomSettingsService(RoomEventStream events) : IRoomSetting
 
 	private RoomResult Configure(Room room, Connection by, RoomSettingsChange change)
 	{
-		if (!RoomRules.IsHostOrManager(room, by)) return RoomResult.NotAuthorized;
+		if (!RoomRules.IsHostOrManager(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 		if (room.InProgress) return RoomResult.InProgress;
 
-		if (change.IsPrivate is not null && !RoomRules.CanManage(room, by)) return RoomResult.NotAuthorized;
+		if (change.IsPrivate is not null && !RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 
 		if ((change.Name is not null && string.IsNullOrWhiteSpace(change.Name)) ||
 		    change.Size is < 1 or > RoomSlots.MaxSlotCount || change is { ClearBeatmap: true, Beatmap: not null } ||
@@ -89,7 +89,7 @@ internal sealed class RoomSettingsService(RoomEventStream events) : IRoomSetting
 
 	private RoomResult SetLocked(Room room, Connection by, bool locked)
 	{
-		if (!RoomRules.CanManage(room, by)) return RoomResult.NotAuthorized;
+		if (!RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 		if (room.Slots.Locked == locked) return RoomResult.Ok;
 
 		room.Slots.Locked = locked;

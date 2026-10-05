@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-using Basil.Domain.Client;
 using Basil.Domain.Utilities;
 
 namespace Basil.Domain.Users;
@@ -10,7 +9,14 @@ namespace Basil.Domain.Users;
 public sealed class User : IWrapper<UserData>, IEquatable<User>
 {
 	/// <summary>Gets the unique identifier of the user.</summary>
-	public required int Id { get; init; }
+	/// <exception cref="ArgumentOutOfRangeException">The value is less than 1.</exception>
+	public required int Id
+	{
+		get;
+		init => field = value >= 1
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), value, "User ids start at 1.");
+	}
 
 	/// <summary>
 	///     Determines whether another user refers to the same account.
@@ -89,22 +95,18 @@ public sealed partial class UserData
 	/// <summary>Gets or sets the country the user is registered in.</summary>
 	public Country Country { get; set; } = Country.Xx;
 
-	/// <summary>
-	///     Gets or sets the privileges granted to the user.
-	/// </summary>
-	/// <remarks>
-	///     New users default to <see cref="ClientPrivileges.Player" /> combined
-	///     with <see cref="ClientPrivileges.Supporter" />.
-	/// </remarks>
-	public ClientPrivileges Privilege { get; set; } = ClientPrivileges.Player | ClientPrivileges.Supporter;
-
-	/// <summary>
-	///     Gets or sets the date and time when the user's silence expires, if the user is silenced.
-	/// </summary>
-	/// <remarks>
-	///     The osu! client enforces the silence itself once it is told about it.
-	/// </remarks>
-	public DateTimeOffset? SilenceEndsAt { get; set; } = null;
+	/// <summary>Gets or sets the permissions granted to the user.</summary>
+	/// <remarks>New users are granted every player and supporter permission.</remarks>
+	/// <exception cref="ArgumentOutOfRangeException">The value sets a bit no permission defines.</exception>
+	public Permissions Permissions
+	{
+		get;
+		set
+		{
+			value.ThrowIfUndefined();
+			field = value;
+		}
+	} = Permissions.Player | Permissions.Supporter;
 
 	/// <summary>Gets or sets the date and time when the user was deleted, if any.</summary>
 	public DateTimeOffset? DeletedAt { get; set; } = null;

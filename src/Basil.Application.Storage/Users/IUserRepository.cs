@@ -10,7 +10,7 @@ public interface IUserRepository
 	/// <param name="data">The account data of the new user.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The stored user.</returns>
-	/// <remarks>The store never assigns <see cref="SystemUserIds.BasilBot" />.</remarks>
+	/// <remarks>Ids start at 1.</remarks>
 	Task<User> CreateAsync(UserData data, CancellationToken cancellationToken = default);
 
 	/// <summary>Stores a user under its id, adding it when no user has that id and replacing the stored user otherwise.</summary>

@@ -13,7 +13,8 @@ internal sealed class RoomSlotsService(
 	RoomEventStream events,
 	RoomChannelService roomChannel,
 	RoomMembershipService membership,
-	RoomRoundsService rounds) : IRoomSlotsService
+	RoomRoundsService rounds,
+	TimeProvider time) : IRoomSlotsService
 {
 	/// <inheritdoc />
 	public Task<RoomResult> ChangeSlotAsync(Room room, BanchoConnection by, int index,
@@ -94,7 +95,7 @@ internal sealed class RoomSlotsService(
 
 	private RoomResult Move(Room room, Connection by, User player, int index)
 	{
-		if (!RoomRules.CanManage(room, by)) return RoomResult.NotAuthorized;
+		if (!RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 		if (room.Slots.Find(player) is not { Player: { } seated } from) return RoomResult.NotInRoom;
 		if (room.Slots.At(index) is not { } to) return RoomResult.SlotNotOpen;
 		if (ReferenceEquals(from, to)) return RoomResult.Ok;
@@ -107,7 +108,7 @@ internal sealed class RoomSlotsService(
 
 	private RoomResult ArrangeSlots(Room room, Connection by, IReadOnlyList<SlotArrangement> arrangement)
 	{
-		if (!RoomRules.CanManage(room, by)) return RoomResult.NotAuthorized;
+		if (!RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 		if (room.InProgress) return RoomResult.InProgress;
 
 		var seated = room.Slots.Where(s => s.Player is not null)
@@ -137,7 +138,7 @@ internal sealed class RoomSlotsService(
 
 	private RoomResult ToggleSlotLock(Room room, Connection by, int index)
 	{
-		if (!RoomRules.IsHostOrManager(room, by)) return RoomResult.NotAuthorized;
+		if (!RoomRules.IsHostOrManager(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 		if (room.Slots.At(index) is not { } slot) return RoomResult.SlotNotOpen;
 		if (ReferenceEquals(slot.Player, by)) return RoomResult.OwnSlot;
 
@@ -206,7 +207,7 @@ internal sealed class RoomSlotsService(
 
 	private RoomResult SetTeam(Room room, Connection by, User player, GameTeam team)
 	{
-		if (!RoomRules.CanManage(room, by)) return RoomResult.NotAuthorized;
+		if (!RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 		if (!room.TeamType.NeedSplitTeam()) return RoomResult.NoTeams;
 		if (room.Slots.Find(player) is not { Player: not null } slot) return RoomResult.NotInRoom;
 		if (slot.Team == team) return RoomResult.Ok;

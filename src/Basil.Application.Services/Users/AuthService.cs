@@ -1,6 +1,7 @@
 using System.Net;
 using Basil.Application.Contracts.Users;
 using Basil.Application.Services.Sessions;
+using Basil.Application.Contracts.Sessions;
 using Basil.Application.Storage.Sessions;
 using Basil.Application.Storage.Users;
 using Basil.Domain.Auth;
@@ -10,11 +11,12 @@ using Basil.Domain.Utilities;
 
 namespace Basil.Application.Services.Users;
 
-/// <summary>Authenticates users and creates accounts.</summary>
+/// <summary>Authenticates users and manages accounts and passwords.</summary>
 internal sealed class AuthService(
 	IUserRepository users,
 	ICredentialRepository credentials,
 	ILoginRepository logins,
+	IRestrictionRepository restrictions,
 	SessionService sessions,
 	TimeProvider time) : IAuthService
 {
@@ -45,39 +47,31 @@ internal sealed class AuthService(
 	public async Task<LoginResult> LoginAsync(LoginAttempt attempt, ConnectionType type, IPAddress ip,
 		ClientInfo? client, int utcOffset, CancellationToken cancellationToken = default)
 	{
-		if (type is ConnectionType.Bot)
-			throw new ArgumentOutOfRangeException(nameof(type), type, "Only client connections log in.");
+		type.ThrowIfUndefined();
 		if (type is ConnectionType.Bancho or ConnectionType.Tourney && client is null)
 			throw new ArgumentNullException(nameof(client), "An osu! client login must report its client.");
 
 		var user = await users.GetByNameAsync(attempt.Username, cancellationToken);
 		if (user is null) return LoginResult.Fail(LoginFailure.UnknownUser);
-		if (user.Id == SystemUserIds.BasilBot) return LoginResult.Fail(LoginFailure.WrongPassword);
 		if (user.Value.DeletedAt is not null) return LoginResult.Fail(LoginFailure.AccountDeleted);
+		if (!await VerifyAsync(user, attempt.PasswordHash, cancellationToken))
+			return LoginResult.Fail(LoginFailure.WrongPassword);
 
-		bool verified;
-		try
-		{
-			verified = await credentials.VerifyAsync(new Credentials(user, attempt.PasswordHash), cancellationToken);
-		}
-		catch (ArgumentException)
-		{
-			// The client sent something that is not even a well-formed MD5 digest.
-			verified = false;
-		}
-
-		if (!verified) return LoginResult.Fail(LoginFailure.WrongPassword);
-
-		var login = new Login { User = user, Ip = ip, Client = client, Timestamp = time.GetUtcNow() };
+		var now = time.GetUtcNow();
+		var running = (await restrictions.ListAsync(user, cancellationToken))
+			.Where(restriction => restriction.Value.EndsAt is null || restriction.Value.EndsAt > now)
+			.ToList();
+		var login = new Login { User = user, Ip = ip, Client = client, Timestamp = now };
+		var token = SessionService.NewToken();
 		Connection connection = type switch
 		{
-			ConnectionType.Bancho => new BanchoConnection(login, utcOffset),
-			ConnectionType.Tourney => new TourneyConnection(login),
-			ConnectionType.Irc => new IrcConnection(login),
-			_ => throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown connection type.")
+			ConnectionType.Bancho => new BanchoConnection(login, token, utcOffset),
+			ConnectionType.Tourney => new TourneyConnection(login, token),
+			ConnectionType.Irc => new IrcConnection(login, token),
+			_ => new ApiConnection(login, token)
 		};
 
-		var failure = sessions.Open(connection);
+		var failure = sessions.Open(connection, running);
 		if (failure is not null) return LoginResult.Fail(failure.Value);
 
 		await logins.CreateAsync(login, cancellationToken);
@@ -95,13 +89,48 @@ internal sealed class AuthService(
 	}
 
 	/// <inheritdoc />
-	public async Task<(User? User, RegistrationFailure? Failure)> CreateAccountAsync(UserData data, Md5 passwordHash,
-		CancellationToken cancellationToken = default)
+	public async Task<(User? User, RegistrationFailure? Failure)> CreateAccountAsync(Connection by, UserData data,
+		Md5 passwordHash, CancellationToken cancellationToken = default)
 	{
+		if (!PermissionRules.Allows(by, Permissions.OwnerManageAccounts, time.GetUtcNow()) ||
+		    !by.User.Value.Permissions.Allows(data.Permissions))
+			return (null, RegistrationFailure.NotAuthorized);
 		if (await users.GetByNameAsync(data.Name, cancellationToken) is not null)
 			return (null, RegistrationFailure.NameTaken);
 
 		return await CreateCoreAsync(data, passwordHash, cancellationToken);
+	}
+
+	/// <inheritdoc />
+	public async Task<PasswordChangeResult> ChangePasswordAsync(Connection by, User user, Md5 newPasswordHash,
+		Md5? currentPasswordHash, CancellationToken cancellationToken = default)
+	{
+		if (by.User.Equals(user))
+		{
+			if (currentPasswordHash is not { } current || !await VerifyAsync(user, current, cancellationToken))
+				return PasswordChangeResult.WrongPassword;
+		}
+		else if (!PermissionRules.MayActOn(by, user, Permissions.OwnerManageAccounts, time.GetUtcNow()))
+		{
+			return PasswordChangeResult.NotAuthorized;
+		}
+
+		await credentials.CreateOrUpdateAsync(new Credentials(user, newPasswordHash), cancellationToken);
+		sessions.CloseAll(user, ConnectionCloseReason.CredentialsChanged);
+		return PasswordChangeResult.Changed;
+	}
+
+	private async Task<bool> VerifyAsync(User user, Md5 passwordHash, CancellationToken cancellationToken)
+	{
+		try
+		{
+			return await credentials.VerifyAsync(new Credentials(user, passwordHash), cancellationToken);
+		}
+		catch (ArgumentException)
+		{
+			// The client sent something that is not even a well-formed MD5 digest.
+			return false;
+		}
 	}
 
 	private async Task<(User? User, RegistrationFailure? Failure)> CreateCoreAsync(UserData data, Md5 passwordHash,

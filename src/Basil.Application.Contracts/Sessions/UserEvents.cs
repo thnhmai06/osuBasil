@@ -24,10 +24,20 @@ public sealed record UserConnectionClosed(Connection Connection, ConnectionClose
 /// <param name="Status">The new status.</param>
 public sealed record UserConnectionStatusChanged(BanchoConnection Connection, PlayerStatus Status) : UserEvent;
 
-/// <summary>A user was silenced.</summary>
-/// <param name="User">The silenced user.</param>
-/// <param name="EndsAt">When the silence ends.</param>
-public sealed record UserSilenced(User User, DateTimeOffset EndsAt) : UserEvent;
+/// <summary>Some of a user's permissions were suspended; a silence is one such restriction.</summary>
+/// <param name="User">The restricted user.</param>
+/// <param name="Restriction">The new restriction.</param>
+public sealed record UserRestricted(User User, Restriction Restriction) : UserEvent;
+
+/// <summary>A restriction of a user was ended before its time.</summary>
+/// <param name="User">The user the restriction applied to.</param>
+/// <param name="Restriction">The lifted restriction, now ending at the moment it was lifted.</param>
+public sealed record UserRestrictionLifted(User User, Restriction Restriction) : UserEvent;
+
+/// <summary>The permissions granted to a user were replaced.</summary>
+/// <param name="User">The user.</param>
+/// <param name="Permissions">The permissions now granted.</param>
+public sealed record UserPermissionsChanged(User User, Permissions Permissions) : UserEvent;
 
 /// <summary>A notification was shown to online users.</summary>
 /// <param name="Recipients">The osu! clients that were sent the notification.</param>
@@ -50,5 +60,11 @@ public enum ConnectionCloseReason : byte
 	Replaced,
 
 	/// <summary>The user's account was deleted.</summary>
-	Deleted
+	Deleted,
+
+	/// <summary>The user's password was changed.</summary>
+	CredentialsChanged,
+
+	/// <summary>The user's sessions were ended, or the user may no longer use this kind of client.</summary>
+	Revoked
 }

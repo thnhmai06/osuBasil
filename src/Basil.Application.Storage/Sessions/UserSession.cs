@@ -29,6 +29,9 @@ public sealed class UserSession
 	/// <summary>Gets a value that indicates whether the user accepts private messages only from their friends.</summary>
 	public bool PmPrivate { get; internal set; }
 
+	/// <summary>Gets the user's restrictions that had not ended when they were last loaded or changed.</summary>
+	public IReadOnlyList<Restriction> Restrictions { get; internal set; } = [];
+
 	/// <summary>Gets the open connections of one kind.</summary>
 	/// <param name="type">The kind of connection.</param>
 	public IReadOnlySet<Connection> this[ConnectionType type] =>
@@ -43,11 +46,11 @@ public sealed class UserSession
 	/// <summary>Gets the user's IRC connection, if any.</summary>
 	public IrcConnection? Irc => (IrcConnection?)this[ConnectionType.Irc].SingleOrDefault();
 
-	/// <summary>Gets the user's bot connection, if any.</summary>
-	public BotConnection? Bot => (BotConnection?)this[ConnectionType.Bot].SingleOrDefault();
-
 	/// <summary>Gets the user's osu!tourney connections.</summary>
 	public IEnumerable<TourneyConnection> Tourneys => this[ConnectionType.Tourney].Cast<TourneyConnection>();
+
+	/// <summary>Gets the user's HTTP API connections.</summary>
+	public IEnumerable<ApiConnection> Apis => this[ConnectionType.Api].Cast<ApiConnection>();
 
 	/// <summary>Adds a connection.</summary>
 	internal void Add(Connection connection)

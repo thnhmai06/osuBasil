@@ -32,7 +32,7 @@ public enum ChannelPostResult : byte
 	/// <summary>The message was posted.</summary>
 	Posted,
 
-	/// <summary>The sender is silenced and cannot post.</summary>
+	/// <summary>The sender's permission to post is suspended by a restriction.</summary>
 	Silenced,
 
 	/// <summary>The message text is empty.</summary>
@@ -41,10 +41,10 @@ public enum ChannelPostResult : byte
 	/// <summary>The sender is not a member of a channel that requires membership to post.</summary>
 	NotMember,
 
-	/// <summary>The sender may not write to the channel.</summary>
+	/// <summary>The sender is not granted the permissions needed to post in the channel.</summary>
 	NoWritePermission,
 
-	/// <summary>The recipient is silenced and the channel refuses messages.</summary>
+	/// <summary>The recipient's private messages are suspended by a restriction, so the channel refuses messages.</summary>
 	TargetSilenced,
 
 	/// <summary>The recipient does not accept private messages from the author.</summary>
@@ -67,5 +67,8 @@ public enum SpectateResult : byte
 	Self,
 
 	/// <summary>The connection is already spectating this host.</summary>
-	AlreadySpectating
+	AlreadySpectating,
+
+	/// <summary>The spectator is not granted the permission to spectate, or it is suspended.</summary>
+	NotPermitted
 }

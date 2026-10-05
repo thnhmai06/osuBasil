@@ -1,18 +1,19 @@
 using System.Threading.Channels;
 using Basil.Application.Contracts.Sessions;
 using Basil.Application.Contracts.Users;
+using Basil.Application.Services.Sessions;
 using Basil.Application.Storage.Sessions;
 using Basil.Application.Storage.Users;
-using Basil.Domain.Client;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Users;
 
-/// <summary>Changes users in ways that have consequences.</summary>
+/// <summary>Changes users in ways that have consequences: their permissions, restrictions and accounts.</summary>
 internal sealed class UserService(
 	IUserRepository users,
+	IRestrictionRepository restrictions,
 	UserRegistry registry,
-	ISessionService sessions,
+	SessionService sessions,
 	TimeProvider time) : IUserService
 {
 	private readonly Channel<UserEvent> _events = Channel.CreateUnbounded<UserEvent>();
@@ -21,53 +22,98 @@ internal sealed class UserService(
 	public ChannelReader<UserEvent> Events => _events.Reader;
 
 	/// <inheritdoc />
-	public async Task<bool> SilenceAsync(User user, DateTimeOffset endsAt,
+	public Task<Restriction?> SilenceAsync(Connection by, User user, DateTimeOffset endsAt,
 		CancellationToken cancellationToken = default)
 	{
-		if (user.Id == SystemUserIds.BasilBot) return false;
-
-		Apply(user, u => u.SilenceEndsAt = endsAt);
-
-		await users.CreateOrUpdateAsync(user, cancellationToken);
-		_events.Writer.TryWrite(new UserSilenced(user, endsAt));
-		return true;
+		return ImposeAsync(by, user, Permissions.ModeratorSilence, Permissions.SuspendedBySilence, endsAt,
+			cancellationToken);
 	}
 
 	/// <inheritdoc />
-	public async Task<bool> SetPrivilegeAsync(User user, ClientPrivileges privilege,
-		CancellationToken cancellationToken = default)
+	public Task<Restriction?> RestrictAsync(Connection by, User user, Permissions permissions,
+		DateTimeOffset? endsAt, CancellationToken cancellationToken = default)
 	{
-		if (user.Id == SystemUserIds.BasilBot) return false;
-
-		Apply(user, u => u.Privilege = privilege);
-
-		await users.CreateOrUpdateAsync(user, cancellationToken);
-		return true;
+		return ImposeAsync(by, user, Permissions.ModeratorRestrict, permissions, endsAt, cancellationToken);
 	}
 
 	/// <inheritdoc />
-	public async Task<bool> DeleteAsync(User user, CancellationToken cancellationToken = default)
+	public async Task<bool> LiftAsync(Connection by, Restriction restriction,
+		CancellationToken cancellationToken = default)
 	{
-		if (user.Id == SystemUserIds.BasilBot) return false;
-
 		var now = time.GetUtcNow();
+		var user = restriction.Value.User;
+		var silenceOnly = Permissions.SuspendedBySilence.Allows(restriction.Value.Permissions);
+		if (!PermissionRules.MayActOn(by, user, Permissions.ModeratorRestrict, now) &&
+		    !(silenceOnly && PermissionRules.MayActOn(by, user, Permissions.ModeratorSilence, now)))
+			return false;
+		if (restriction.Value.EndsAt <= now) return true;
+
+		restriction.Value.EndsAt = now;
+		await restrictions.CreateOrUpdateAsync(restriction, cancellationToken);
+		if (registry.Find(user) is { } session)
+			session.Restrictions = session.Restrictions.Where(running => !running.Equals(restriction)).ToList();
+
+		_events.Writer.TryWrite(new UserRestrictionLifted(user, restriction));
+		return true;
+	}
+
+	/// <inheritdoc />
+	public async Task<bool> SetPermissionsAsync(Connection by, User user, Permissions permissions,
+		CancellationToken cancellationToken = default)
+	{
+		if (!PermissionRules.MayActOn(by, user, Permissions.OwnerManagePermissions, time.GetUtcNow()) ||
+		    !by.User.Value.Permissions.Allows(user.Value.Permissions ^ permissions))
+			return false;
+
+		Apply(user, u => u.Permissions = permissions);
+		await users.CreateOrUpdateAsync(user, cancellationToken);
+		if (registry.Find(user) is { } session) sessions.CloseDisallowed(session);
+
+		_events.Writer.TryWrite(new UserPermissionsChanged(user, permissions));
+		return true;
+	}
+
+	/// <inheritdoc />
+	public async Task<bool> DeleteAsync(Connection by, User user, CancellationToken cancellationToken = default)
+	{
+		var now = time.GetUtcNow();
+		if (!PermissionRules.MayActOn(by, user, Permissions.OwnerManageAccounts, now)) return false;
+
 		Apply(user, u =>
 		{
 			u.DeletedAt = now;
-			u.Privilege = ClientPrivileges.None;
+			u.Permissions = Permissions.None;
 		});
 
 		await users.CreateOrUpdateAsync(user, cancellationToken);
+		sessions.CloseAll(user, ConnectionCloseReason.Deleted);
+		return true;
+	}
 
-		var session = registry.Find(user);
-		if (session is not null)
+	/// <summary>Suspends some of a user's permissions, if the caller may.</summary>
+	/// <param name="by">The connection acting.</param>
+	/// <param name="user">The user to restrict.</param>
+	/// <param name="required">The permission the caller needs.</param>
+	/// <param name="suspended">The permissions to suspend.</param>
+	/// <param name="endsAt">When the restriction ends, or <see langword="null" /> to keep it until it is lifted.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The new restriction, or <see langword="null" /> when the caller may not restrict the user.</returns>
+	private async Task<Restriction?> ImposeAsync(Connection by, User user, Permissions required,
+		Permissions suspended, DateTimeOffset? endsAt, CancellationToken cancellationToken)
+	{
+		var now = time.GetUtcNow();
+		if (!PermissionRules.MayActOn(by, user, required, now)) return null;
+
+		var data = new RestrictionData { User = user, Permissions = suspended, StartsAt = now, EndsAt = endsAt };
+		var restriction = await restrictions.CreateAsync(data, cancellationToken);
+		if (registry.Find(user) is { } session)
 		{
-			var connections = session.Connections.Where(c => c.IsOpen).ToList();
-			foreach (var connection in connections)
-				sessions.Close(connection, ConnectionCloseReason.Deleted);
+			session.Restrictions = [.. session.Restrictions, restriction];
+			sessions.CloseDisallowed(session);
 		}
 
-		return true;
+		_events.Writer.TryWrite(new UserRestricted(user, restriction));
+		return restriction;
 	}
 
 	/// <summary>Applies a change to a user and syncs it to the online session if one exists.</summary>

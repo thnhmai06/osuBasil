@@ -18,14 +18,15 @@ public interface IRoomMembershipService
 	/// </returns>
 	/// <remarks>
 	///     If the same user is seated through a connection that has closed, that connection leaves first.
-	///     Moderators need no password. The player also joins the room's chat channel.
+	///     A user with <see cref="Permissions.TournamentManageAnyRoom" /> needs no password. The player also joins the
+	///     room's chat channel.
 	/// </remarks>
 	Task<RoomResult> JoinAsync(Room room, BanchoConnection by, string password,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Seats an online player in a room on behalf of its managers.</summary>
 	/// <param name="room">The room to seat the player in.</param>
-	/// <param name="by">The creator, a referee or BasilBot.</param>
+	/// <param name="by">The creator, a referee or a user with <see cref="Permissions.TournamentManageAnyRoom" />.</param>
 	/// <param name="player">The player's osu! client.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>
@@ -34,7 +35,7 @@ public interface IRoomMembershipService
 	///     IsObserver, Full or RoomClosed.
 	/// </returns>
 	/// <remarks>
-	///     The room's password is not asked for; a ban, a silence and the player's privileges still apply. A player in another
+	///     The room's password is not asked for; a ban and the player's permissions still apply. A player in another
 	///     room is moved only when the caller manages that room too. The checks run again once the player has left their
 	///     previous room; if the room filled up meanwhile, the player is left without a seat.
 	/// </remarks>
@@ -69,7 +70,6 @@ public interface IRoomMembershipService
 	///     Ok, NotAuthorized, IsManager or RoomClosed when the room has closed; banning a banned user again returns Ok
 	///     and does nothing.
 	/// </returns>
-	/// <remarks>BasilBot cannot be banned.</remarks>
 	Task<RoomResult> BanAsync(Room room, Connection by, User player, CancellationToken cancellationToken = default);
 
 	/// <summary>Lifts a user's ban.</summary>

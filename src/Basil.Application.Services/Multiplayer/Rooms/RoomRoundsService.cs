@@ -102,7 +102,7 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 
 	private RoomResult Start(Room room, Connection by)
 	{
-		if (!RoomRules.IsHostOrManager(room, by)) return RoomResult.NotAuthorized;
+		if (!RoomRules.IsHostOrManager(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 		if (room.InProgress) return RoomResult.InProgress;
 		if (room.Beatmap is null) return RoomResult.NoBeatmap;
 
@@ -113,7 +113,7 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 
 	private RoomResult Abort(Room room, Connection by)
 	{
-		if (!RoomRules.CanManage(room, by)) return RoomResult.NotAuthorized;
+		if (!RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 		if (!room.InProgress) return RoomResult.NotInProgress;
 
 		RoundMechanics.StopCountdown(room);
@@ -183,7 +183,7 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 
 	private RoomResult StartCountdown(Room room, Connection by, TimeSpan length, bool startsRound)
 	{
-		if (!RoomRules.CanManage(room, by)) return RoomResult.NotAuthorized;
+		if (!RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 		if (length <= TimeSpan.Zero || length > MaxCountdownLength) return RoomResult.OutOfRange;
 		switch (startsRound)
 		{
@@ -209,7 +209,7 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 
 	private RoomResult CancelCountdown(Room room, Connection by)
 	{
-		if (!RoomRules.CanManage(room, by)) return RoomResult.NotAuthorized;
+		if (!RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 		if (room.CountdownTimer is null) return RoomResult.NoCountdown;
 
 		RoundMechanics.StopCountdown(room);

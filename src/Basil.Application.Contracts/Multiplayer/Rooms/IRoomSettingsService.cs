@@ -1,3 +1,4 @@
+using Basil.Domain.Users;
 using Basil.Application.Storage.Multiplayer;
 using Basil.Application.Storage.Sessions;
 
@@ -19,7 +20,7 @@ public interface IRoomSettingsService
 	///     room the host's mods. Changing the team type reassigns teams. Changing the mode drops mods, the room's and the
 	///     players', that the new mode does not allow. Under freemod, a seated caller's mods that are not speed-changing
 	///     become
-	///     that caller's own mods. A change with no field set does nothing. Only the creator, a referee or BasilBot can change
+	///     that caller's own mods. A change with no field set does nothing. Only the creator, a referee or a user with <see cref="Permissions.TournamentManageAnyRoom" /> can change
 	///     whether the history is private.
 	///     A change to the beatmap, mode, mods, freemod, team type or win condition cancels a countdown that would start the
 	///     round.

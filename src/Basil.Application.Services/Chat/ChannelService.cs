@@ -2,13 +2,14 @@ using System.Threading.Channels;
 using Basil.Application.Contracts.Chat;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Services.Sessions;
+using Basil.Application.Services.Users;
 using Basil.Application.Storage.Chat;
 using Basil.Application.Storage.Multiplayer;
 using Basil.Application.Storage.Sessions;
 using Basil.Application.Storage.Users;
 using Basil.Domain.Chat;
-using Basil.Domain.Client;
 using Basil.Domain.Social;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Chat;
 
@@ -48,7 +49,7 @@ internal sealed class ChannelService(
 	{
 		using var scope = channel.Enter();
 		if (channel.IsClosed) return ChannelJoinResult.Closed;
-		if (!CanRead(channel, by)) return ChannelJoinResult.NoPermission;
+		if (!CanRead(channel, by, time.GetUtcNow())) return ChannelJoinResult.NoPermission;
 		if (channel.Members.Contains(by)) return ChannelJoinResult.AlreadyMember;
 
 		Connection? replaced = null;
@@ -83,14 +84,19 @@ internal sealed class ChannelService(
 		if (channel.IsClosed) return ChannelPostResult.Closed;
 
 		var now = time.GetUtcNow();
-		if (by.User.Value.SilenceEndsAt > now) return ChannelPostResult.Silenced;
+		var required = channel is PmChannelSession ? Permissions.PlayerPrivateMessage : Permissions.PlayerChat;
+		switch (PermissionRules.Check(by, required, now))
+		{
+			case Access.NotGranted: return ChannelPostResult.NoWritePermission;
+			case Access.Suspended: return ChannelPostResult.Silenced;
+		}
 		if (string.IsNullOrWhiteSpace(text)) return ChannelPostResult.Empty;
 		if (channel is not PmChannelSession && !channel.Members.Contains(by)) return ChannelPostResult.NotMember;
-		if (!CanWrite(channel, by)) return ChannelPostResult.NoWritePermission;
+		if (!CanWrite(channel, by, now)) return ChannelPostResult.NoWritePermission;
 
 		if (channel is PmChannelSession pm)
 		{
-			if (by.Type is not ConnectionType.Bot)
+			if (!PermissionRules.Allows(by, Permissions.ModeratorMessageAnyone, now))
 			{
 				var rels = await relationships.ListAsync(pm.Owner.User, cancellationToken);
 				var blocked = rels.Any(r => r.Type == RelationshipType.Block && r.Target.Equals(by.User));
@@ -99,7 +105,9 @@ internal sealed class ChannelService(
 					return ChannelPostResult.Blocked;
 			}
 
-			if (pm.Owner.User.Value.SilenceEndsAt > now) return ChannelPostResult.TargetSilenced;
+			if (pm.Owner.User.Value.Permissions.Allows(Permissions.PlayerPrivateMessage) &&
+			    !PermissionRules.Effective(pm.Owner, now).Allows(Permissions.PlayerPrivateMessage))
+				return ChannelPostResult.TargetSilenced;
 		}
 
 		var truncated = text.Length > ChannelSession.MaxMessageLength;
@@ -140,32 +148,40 @@ internal sealed class ChannelService(
 	}
 
 	/// <summary>Checks whether a connection may read a channel.</summary>
-	private static bool CanRead(ChannelSession channel, Connection connection)
+	private static bool CanRead(ChannelSession channel, Connection connection, DateTimeOffset now)
 	{
 		return channel switch
 		{
-			GeneralChannelSession g => connection.User.Value.Privilege.Has(g.Channel.ReadPrivilege),
+			GeneralChannelSession g => PermissionRules.Effective(connection.Session, now).Allows(g.Channel.ReadPermissions),
 			PmChannelSession p => ReferenceEquals(connection.Session, p.Owner) &&
 			                      connection.Type is not ConnectionType.Tourney,
 			SpectatorChannelSession s => s.Members.Contains(connection),
-			RoomChannelSession r => connection.Type is ConnectionType.Bot
-			                        || (connection is BanchoConnection player && r.Room.Slots.Find(player) is not null)
-			                        || (connection is TourneyConnection observer && r.Room.Observers.Contains(observer))
-			                        || RoomRules.IsManager(r.Room, connection.User),
+			RoomChannelSession r => InRoom(r.Room, connection, now) ||
+			                        PermissionRules.Allows(connection, Permissions.TournamentObserveRooms, now),
 			_ => false
 		};
 	}
 
 	/// <summary>Checks whether a connection may write to a channel.</summary>
-	private static bool CanWrite(ChannelSession channel, Connection connection)
+	private static bool CanWrite(ChannelSession channel, Connection connection, DateTimeOffset now)
 	{
 		return channel switch
 		{
-			GeneralChannelSession g => connection.User.Value.Privilege.Has(g.Channel.WritePrivilege),
+			GeneralChannelSession g => PermissionRules.Effective(connection.Session, now).Allows(g.Channel.WritePermissions),
 			PmChannelSession => connection.IsOpen,
 			SpectatorChannelSession s => s.Members.Contains(connection),
-			RoomChannelSession => CanRead(channel, connection),
+			RoomChannelSession r => InRoom(r.Room, connection, now) ||
+			                        PermissionRules.Allows(connection, Permissions.TournamentPostInAnyRoom, now),
 			_ => false
 		};
+	}
+
+	/// <summary>Checks whether a connection takes part in a room: seated, observing, managing it, or managing every room.</summary>
+	private static bool InRoom(Room room, Connection connection, DateTimeOffset now)
+	{
+		return (connection is BanchoConnection player && room.Slots.Find(player) is not null)
+		       || (connection is TourneyConnection observer && room.Observers.Contains(observer))
+		       || RoomRules.IsManager(room, connection.User)
+		       || PermissionRules.Allows(connection, Permissions.TournamentManageAnyRoom, now);
 	}
 }

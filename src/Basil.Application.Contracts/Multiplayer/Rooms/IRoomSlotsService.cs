@@ -31,7 +31,7 @@ public interface IRoomSlotsService
 
 	/// <summary>Arranges every slot of a room at once.</summary>
 	/// <param name="room">The room.</param>
-	/// <param name="by">The creator, a referee or BasilBot.</param>
+	/// <param name="by">The creator, a referee or a user with <see cref="Permissions.TournamentManageAnyRoom" />.</param>
 	/// <param name="arrangement">The slots to set; slots not listed end up empty and keep their lock.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, InProgress, InvalidSettings or RoomClosed.</returns>
