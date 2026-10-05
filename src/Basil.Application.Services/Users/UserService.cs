@@ -43,15 +43,18 @@ internal sealed class UserService(
 		var now = time.GetUtcNow();
 		var user = restriction.Value.User;
 		var silenceOnly = Permissions.SuspendedBySilence.Allows(restriction.Value.Permissions);
-		if (!PermissionRules.MayActOn(by, user, Permissions.ModeratorRestrict, now) &&
-		    !(silenceOnly && PermissionRules.MayActOn(by, user, Permissions.ModeratorSilence, now)))
+		if (!MayRestrict(by, user, Permissions.ModeratorRestrict, now) &&
+		    !(silenceOnly && MayRestrict(by, user, Permissions.ModeratorSilence, now)))
 			return false;
 		if (restriction.Value.EndsAt <= now) return true;
 
 		restriction.Value.EndsAt = now;
 		await restrictions.CreateOrUpdateAsync(restriction, cancellationToken);
 		if (registry.Find(user) is { } session)
+		{
+			using var scope = registry.Enter();
 			session.Restrictions = session.Restrictions.Where(running => !running.Equals(restriction)).ToList();
+		}
 
 		_events.Writer.TryWrite(new UserRestrictionLifted(user, restriction));
 		return true;
@@ -102,18 +105,28 @@ internal sealed class UserService(
 		Permissions suspended, DateTimeOffset? endsAt, CancellationToken cancellationToken)
 	{
 		var now = time.GetUtcNow();
-		if (!PermissionRules.MayActOn(by, user, required, now)) return null;
+		if (!MayRestrict(by, user, required, now)) return null;
 
 		var data = new RestrictionData { User = user, Permissions = suspended, StartsAt = now, EndsAt = endsAt };
 		var restriction = await restrictions.CreateAsync(data, cancellationToken);
 		if (registry.Find(user) is { } session)
 		{
-			session.Restrictions = [.. session.Restrictions, restriction];
+			using (registry.Enter())
+				session.Restrictions = [.. session.Restrictions, restriction];
 			sessions.CloseDisallowed(session);
 		}
 
 		_events.Writer.TryWrite(new UserRestricted(user, restriction));
 		return restriction;
+	}
+
+	/// <summary>
+	///     Gets a value that indicates whether a connection may restrict or lift a restriction of a user: never their own,
+	///     so a restricted moderator cannot free themselves.
+	/// </summary>
+	private static bool MayRestrict(Connection by, User user, Permissions required, DateTimeOffset now)
+	{
+		return !by.User.Equals(user) && PermissionRules.MayActOn(by, user, required, now);
 	}
 
 	/// <summary>Applies a change to a user and syncs it to the online session if one exists.</summary>

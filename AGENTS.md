@@ -558,8 +558,8 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   result tells "suspended by a restriction" (`Silenced`) apart from "never granted" (`NotAuthorized`).
 * **Hierarchy.** A staff action aimed at another user (silence, restrict, lift, set permissions, set password,
   revoke sessions, delete) requires the actor's granted permissions to be a strict superset of the target's.
-  Equals cannot act on each other; acting on oneself is not subject to this rule. Granting gives only bits the
-  actor holds.
+  Equals cannot act on each other; acting on oneself is not subject to this rule, except that nobody restricts,
+  silences or lifts a restriction of themselves. Granting gives only bits the actor holds.
 * **No bot in the server.** The server has no bot user, no bot connection kind and no virtual in-game user;
   user ids start at 1. BasilBot and every other automated client sign in as ordinary accounts and do only
   what their permissions allow. Chat commands (`!mp`, `!help`, …) and every chat announcement
