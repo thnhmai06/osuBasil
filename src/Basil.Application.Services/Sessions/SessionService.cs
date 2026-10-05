@@ -154,7 +154,7 @@ internal sealed class SessionService(
 	/// <inheritdoc />
 	public bool Revoke(Connection by, User user)
 	{
-		if (!by.User.Equals(user) &&
+		if (!(by is not DelegatedConnection && by.User.Equals(user)) &&
 		    !PermissionRules.MayActOn(by, user, Permissions.OwnerManageAccounts, time.GetUtcNow()))
 			return false;
 

@@ -420,7 +420,10 @@ Check("L2 uploads locked by default", (await Import(Archive(null, ("l2a", null))
 settingsStore.Current = new ServerSettings { LockedCreation = CreationLocks.None };
 var l2Set = (await Import(Archive(null, ("l2b", null)), by: uploaderApi)).Set;
 Check("L2 uploader imports a new set while uploads are open", l2Set is not null);
-Check("L2 uploader cannot touch an existing set", (await Import(Archive(l2Set!.Id, ("l2c", null)), by: uploaderApi)).Failure == BeatmapsetImportFailure.NotAuthorized);
+Check("L2 uploader cannot touch an existing set", (await Import(Archive(null, ("l2b", null)), by: uploaderApi)).Failure == BeatmapsetImportFailure.NotAuthorized);
+var l2Declared = (await Import(Archive(l2Set!.Id, ("l2d", 456)), by: uploaderApi)).Set;
+Check("L2 ids an uploader declares are ignored", l2Declared is not null && l2Declared.Id != l2Set.Id
+	&& (await mapStore.GetByHashAsync(new Md5(Encoding.UTF8.GetBytes("l2d"))))?.Id != 456);
 Check("L2 staff replaces it", (await Import(Archive(l2Set.Id, ("l2c", null)))).Set?.Id == l2Set.Id);
 settingsStore.Current = new ServerSettings();
 
@@ -550,6 +553,8 @@ Check("L4 silence outside the scope refused", await userService.SilenceAsync(bos
 Check("L4 general channel join refused", channelService.Join(osuChannel!, bossConnection!) == ChannelJoinResult.NoPermission);
 Check("L4 private message refused", await channelService.PostAsync(depConn.Session.PmChannel, bossConnection!, "x") == ChannelPostResult.NoWritePermission);
 Check("L4 announce outside the scope refused", sessions.Announce(bossConnection!, "x") is null);
+Check("L4 revoking the user's sessions refused", !sessions.Revoke(bossConnection!, boss) && boss is not null && users.Find(boss)?.Connections.Any(c => c.IsOpen) == true);
+Check("L4 changing the user's password refused", await auth.ChangePasswordAsync(bossConnection!, boss!, password, password) == PasswordChangeResult.NotAuthorized);
 
 // N8: room creation rules
 var noRoom = NewUser("NoRoom", Permissions.Supporter);

@@ -54,10 +54,12 @@ internal sealed class BeatmapsetService(
 			stored[difficulty] = await beatmaps.GetByHashAsync(new Md5(difficulty.Content), cancellationToken);
 
 		var setId = stored.Values.FirstOrDefault(b => b is not null)?.Beatmapset.Id;
-		if (setId is null && beatmapsetId is { } named &&
+		// An ordinary uploader only adds a new beatmapset: the ids the archive or the caller declare are ignored, so they
+		// can never point at a stored beatmapset or beatmap.
+		if (manager && setId is null && beatmapsetId is { } named &&
 		    await beatmapsets.GetAsync(named, cancellationToken) is not null)
 			setId = named;
-		setId ??= content.OnlineSetId is > 0 ? content.OnlineSetId : await NewLocalIdAsync(cancellationToken);
+		setId ??= manager && content.OnlineSetId is > 0 ? content.OnlineSetId : await NewLocalIdAsync(cancellationToken);
 
 		var existing = await beatmapsets.GetAsync(setId.Value, cancellationToken);
 		if (existing is { Locked: true })
@@ -77,7 +79,7 @@ internal sealed class BeatmapsetService(
 			var analysis = Analyse(difficulty, stored[difficulty]);
 			var beatmap = new Beatmap
 			{
-				Id = stored[difficulty]?.Id ?? (difficulty.OnlineId is > 0 ? difficulty.OnlineId.Value : 0),
+				Id = stored[difficulty]?.Id ?? (manager && difficulty.OnlineId is > 0 ? difficulty.OnlineId.Value : 0),
 				Hash = new Md5(difficulty.Content),
 				Beatmapset = set,
 				Version = difficulty.Version,

@@ -107,7 +107,8 @@ internal sealed class AuthService(
 	public async Task<PasswordChangeResult> ChangePasswordAsync(Connection by, User user, Md5 newPasswordHash,
 		Md5? currentPasswordHash, CancellationToken cancellationToken = default)
 	{
-		if (by.User.Equals(user))
+		// Acting for a user is not being that user: a delegated connection never takes the owner's path.
+		if (by is not DelegatedConnection && by.User.Equals(user))
 		{
 			if (currentPasswordHash is not { } current || !await VerifyAsync(user, current, cancellationToken))
 				return PasswordChangeResult.WrongPassword;
