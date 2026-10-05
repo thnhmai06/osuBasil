@@ -15,6 +15,14 @@ internal static class PermissionRules
 		return session.User.Value.Permissions.Effective(session.Restrictions, now);
 	}
 
+	/// <summary>Gets the permissions granted to the user behind an open connection.</summary>
+	/// <param name="by">The connection acting.</param>
+	/// <returns>The granted permissions as the online session knows them, which every change keeps current.</returns>
+	internal static Permissions Granted(Connection by)
+	{
+		return by.Session.User.Value.Permissions;
+	}
+
 	/// <summary>Checks whether the user behind a connection may do something now.</summary>
 	/// <param name="by">The connection acting.</param>
 	/// <param name="required">The permissions the action needs.</param>
@@ -22,7 +30,7 @@ internal static class PermissionRules
 	/// <returns>Whether the permissions are in effect, not granted, or granted but suspended by a restriction.</returns>
 	internal static Access Check(Connection by, Permissions required, DateTimeOffset now)
 	{
-		if (!by.User.Value.Permissions.Allows(required)) return Access.NotGranted;
+		if (!Granted(by).Allows(required)) return Access.NotGranted;
 		return Effective(by.Session, now).Allows(required) ? Access.Allowed : Access.Suspended;
 	}
 
@@ -59,7 +67,7 @@ internal static class PermissionRules
 	/// </returns>
 	internal static bool MayActOn(Connection by, User target, Permissions required, DateTimeOffset now)
 	{
-		return Allows(by, required, now) && (by.User.Equals(target) || Outranks(by.User, target));
+		return Allows(by, required, now) && (by.User.Equals(target) || Outranks(by.Session.User, target));
 	}
 }
 

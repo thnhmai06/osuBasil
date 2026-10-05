@@ -93,7 +93,7 @@ internal sealed class AuthService(
 		Md5 passwordHash, CancellationToken cancellationToken = default)
 	{
 		if (!PermissionRules.Allows(by, Permissions.OwnerManageAccounts, time.GetUtcNow()) ||
-		    !by.User.Value.Permissions.Allows(data.Permissions))
+		    !PermissionRules.Granted(by).Allows(data.Permissions))
 			return (null, RegistrationFailure.NotAuthorized);
 		if (await users.GetByNameAsync(data.Name, cancellationToken) is not null)
 			return (null, RegistrationFailure.NameTaken);

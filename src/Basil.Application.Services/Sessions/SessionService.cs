@@ -94,8 +94,10 @@ internal sealed class SessionService(
 	{
 		using var scope = registry.Enter();
 
+		// An online user's session holds the current copy of the user; a login may have read an older one.
+		var user = registry.Find(connection.User)?.User ?? connection.User;
 		if (connection.Type is ConnectionType.Tourney &&
-		    !connection.User.Value.Permissions.Effective(restrictions, time.GetUtcNow())
+		    !user.Value.Permissions.Effective(restrictions, time.GetUtcNow())
 			    .Allows(Permissions.TournamentObserveRooms))
 			return LoginFailure.NoTourneyPermission;
 

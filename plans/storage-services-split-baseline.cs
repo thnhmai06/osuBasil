@@ -552,6 +552,17 @@ Check("N11 silenced effective privileges", dflt.Value.Permissions.Effective([dfl
 Check("N11 none gives no privileges", Permissions.None.ToClientPrivileges() == ClientPrivileges.None);
 Check("N11 observe gives supporter and tournament", Permissions.TournamentObserveRooms.ToClientPrivileges() == (ClientPrivileges.Supporter | ClientPrivileges.Tournament));
 
+// N12: permissions are read from the online session, not from the copy a later login loaded
+var twin = NewUser("Twin1");
+var twinGame = Online(twin);
+userStore.Put(new User { Id = twin.Id, Value = new UserData { Name = "Twin1", Permissions = twin.Value.Permissions } });
+var twinApi = Api(twin);
+var osuChannel2 = channelService.Open(new GeneralChannel { Name = "#twin", Topic = "twin" })!;
+channelService.Join(osuChannel2, twinApi);
+Check("N12 a second login holds another copy of the user", !ReferenceEquals(twinApi.User, twinGame.User));
+await userService.SetPermissionsAsync(staffApi, twin, Permissions.Player & ~Permissions.PlayerChat | Permissions.Supporter);
+Check("N12 a removed permission is refused on every connection", await channelService.PostAsync(osuChannel2, twinApi, "x") == ChannelPostResult.NoWritePermission);
+
 Console.WriteLine(failures == 0 ? "ALL PASS" : $"{failures} FAILED");
 
 sealed class Matches : IMatchRepository

@@ -65,7 +65,7 @@ internal sealed class UserService(
 		CancellationToken cancellationToken = default)
 	{
 		if (!PermissionRules.MayActOn(by, user, Permissions.OwnerManagePermissions, time.GetUtcNow()) ||
-		    !by.User.Value.Permissions.Allows(user.Value.Permissions ^ permissions))
+		    !PermissionRules.Granted(by).Allows(user.Value.Permissions ^ permissions))
 			return false;
 
 		Apply(user, u => u.Permissions = permissions);

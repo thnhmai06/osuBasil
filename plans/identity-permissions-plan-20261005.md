@@ -502,3 +502,26 @@ Thứ tự: 0 → 1 → 2 → 3 → (4a viết `PermissionRules` trước, rồi
     restrict toàn bộ → `None`);
   * user id 0 bị Domain từ chối.
 * Rà diff theo mục "Final verification" của AGENTS.md.
+
+## 6. Ghi chú triển khai (Domain / Protocol / Application, 2026-10-05)
+
+Đã làm ở `a59d43e3` (định vị, AGENTS.md, working-scopes), `1607988a` (code) và các commit sửa sau đó.
+
+* **Luật mới, cần người dùng duyệt:** không ai tự silence, restrict hay gỡ restriction của chính mình. Lý do: nếu
+  không, moderator bị silence tự gỡ được silence của mình. Luật này nằm trong `UserService.MayRestrict` và AGENTS.md.
+* **Ủy quyền không xét thứ bậc** (có review bảo mật nêu ra). Đây là chủ đích: bot phải làm thay được cả referee có
+  quyền cao hơn nó. Phạm vi do host giới hạn (chỉ phòng và sảnh); trần rủi ro ghi bằng `ponytail:` ở
+  `SessionService.ActFor`.
+* **Quyền được cấp đọc từ `connection.Session.User`** (`PermissionRules.Granted`), không từ `Login.User`. Mỗi lần đăng
+  nhập đọc user từ repository (có cache), nên các phiên của cùng một user có thể giữ những bản `User` khác nhau;
+  `UserService.Apply` chỉ giữ bản của session luôn mới. Kịch bản N12 của baseline kiểm điều này.
+* **Phối hợp nội bộ:** `AuthService` và `UserService` gọi trực tiếp `SessionService` cụ thể (`Open`, `NewToken`,
+  `CloseAll`, `CloseDisallowed`). Đây là quan hệ sở hữu: mở phiên khi đăng nhập; đóng phiên khi đổi mật khẩu, xóa
+  user hoặc mất quyền là luật bảo mật trong cùng thao tác.
+* **Cập nhật `UserSession.Restrictions`** chạy trong `UserRegistry.Enter()`, để restrict và gỡ song song không làm
+  mất nhau.
+* **Baseline:** fake `Credentials` giờ kiểm mật khẩu thật. Tài khoản `Staff` (`Permissions.All`, phiên Api) thay
+  BasilBot trong mọi kịch bản. Thêm kịch bản N1–N12.
+* **Downstream:** repository restriction nạp `Restriction.Value.User` phải là bản hiện hành, vì `LiftAsync` xét thứ
+  bậc trên bản đó. Route API nên lấy user mục tiêu từ session online nếu có (`UserRegistry.Find(user)?.User`) trước
+  khi gọi các thao tác xét thứ bậc.
