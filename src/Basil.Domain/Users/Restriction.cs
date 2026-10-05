@@ -39,7 +39,9 @@ public sealed class RestrictionData
 	public required User User { get; init; }
 
 	/// <summary>Gets or sets the permissions suspended while the restriction is active.</summary>
-	/// <exception cref="ArgumentOutOfRangeException">The value is none or sets a bit no permission defines.</exception>
+	/// <exception cref="ArgumentOutOfRangeException">
+	///     The value is none, sets a bit no permission defines, or includes a management permission.
+	/// </exception>
 	public required Permissions Permissions
 	{
 		get;
@@ -48,6 +50,9 @@ public sealed class RestrictionData
 			value.ThrowIfUndefined();
 			if (value == Permissions.None)
 				throw new ArgumentOutOfRangeException(nameof(value), value, "A restriction must suspend a permission.");
+			if ((value & Permissions.Management) != 0)
+				throw new ArgumentOutOfRangeException(nameof(value), value,
+					"Management permissions are withdrawn by changing the permissions, not by a restriction.");
 			field = value;
 		}
 	}

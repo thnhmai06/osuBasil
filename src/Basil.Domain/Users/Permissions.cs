@@ -28,8 +28,12 @@ public enum Permissions : ulong
 	/// <summary>Spectate other players.</summary>
 	PlayerSpectate = 1UL << 4,
 
+	/// <summary>Upload new beatmapsets while uploads are not locked.</summary>
+	PlayerUploadBeatmapsets = 1UL << 5,
+
 	/// <summary>Every permission of the player group.</summary>
-	Player = PlayerCreateRoom | PlayerJoinRoom | PlayerChat | PlayerPrivateMessage | PlayerSpectate,
+	Player = PlayerCreateRoom | PlayerJoinRoom | PlayerChat | PlayerPrivateMessage | PlayerSpectate |
+	         PlayerUploadBeatmapsets,
 
 	/// <summary>Search and download beatmapsets with osu!direct.</summary>
 	SupporterDirect = 1UL << 8,
@@ -105,8 +109,14 @@ public enum Permissions : ulong
 	/// <summary>Every permission.</summary>
 	All = Player | Supporter | Tournament | Moderator | Developer | Owner,
 
+	/// <summary>The management permissions, which restrictions never suspend; they are withdrawn by changing the permissions.</summary>
+	Management = TournamentManageAnyRoom | TournamentManageBeatmaps | Moderator | Developer | Owner,
+
 	/// <summary>The permissions a silence suspends: chatting, private messages and joining rooms.</summary>
-	SuspendedBySilence = PlayerJoinRoom | PlayerChat | PlayerPrivateMessage
+	SuspendedBySilence = PlayerJoinRoom | PlayerChat | PlayerPrivateMessage,
+
+	/// <summary>The permissions an account acting for another user may use in that user's name: room and lobby operations.</summary>
+	RoomDelegation = PlayerCreateRoom | PlayerJoinRoom | TournamentManageAnyRoom | TournamentUnlimitedRooms
 }
 
 /// <summary>Provides the rules for combining and reporting <see cref="Permissions" />.</summary>

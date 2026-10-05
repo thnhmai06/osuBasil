@@ -70,15 +70,14 @@ public interface ISessionService : IEventPublisher<UserEvent>
 	/// <summary>Finds the connection through which an account may act for another online user.</summary>
 	/// <param name="by">The connection asking; its user needs <see cref="Permissions.TournamentActForUsers" />.</param>
 	/// <param name="user">The user to act for.</param>
-	/// <returns>
-	///     The user's open connection to act through, preferring the osu! client, then IRC, the HTTP API and osu!tourney;
-	///     or why there is none.
-	/// </returns>
+	/// <returns>A connection that acts for the user, or why there is none.</returns>
 	/// <remarks>
-	///     An operation run through the returned connection is checked against, and attributed to, that user. Only room
-	///     and lobby operations may be run this way.
+	///     An operation run through the returned connection is checked against, and attributed to, that user, but only
+	///     the user's permissions in <see cref="Permissions.RoomDelegation" /> count: room and lobby operations work,
+	///     anything else is refused. The caller's rank does not matter, since the user's own authority applies. The
+	///     connection takes no part in channels.
 	/// </remarks>
-	(Connection? Connection, DelegationFailure? Failure) ActFor(Connection by, User user);
+	(DelegatedConnection? Connection, DelegationFailure? Failure) ActFor(Connection by, User user);
 }
 
 /// <summary>The reasons an account cannot act for another user.</summary>

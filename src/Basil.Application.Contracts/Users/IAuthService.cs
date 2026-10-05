@@ -34,7 +34,9 @@ public interface IAuthService
 	/// <param name="cancellationToken">A token that cancels the check.</param>
 	/// <returns><see langword="null" /> when the attempt would succeed; otherwise, why it would fail.</returns>
 	/// <remarks>
-	///     While an administrator key is set, the attempt must carry a matching one.
+	///     Anyone may register a new account of their own, granted the permissions of a new account, unless account
+	///     creation is locked (<see cref="Basil.Domain.Content.CreationLocks.Accounts" />), which refuses it with
+	///     <see cref="RegistrationFailure.Locked" />.
 	/// </remarks>
 	Task<RegistrationFailure?> CheckRegistrationAsync(RegisterAttempt attempt,
 		CancellationToken cancellationToken = default);
@@ -44,12 +46,14 @@ public interface IAuthService
 	/// <param name="cancellationToken">A token that cancels the registration.</param>
 	/// <returns>The new user, or why the registration failed.</returns>
 	/// <remarks>
-	///     While an administrator key is set, the attempt must carry a matching one.
+	///     Anyone may register a new account of their own, granted the permissions of a new account, unless account
+	///     creation is locked (<see cref="Basil.Domain.Content.CreationLocks.Accounts" />), which refuses it with
+	///     <see cref="RegistrationFailure.Locked" />.
 	/// </remarks>
 	Task<(User? User, RegistrationFailure? Failure)> RegisterAsync(RegisterAttempt attempt,
 		CancellationToken cancellationToken = default);
 
-	/// <summary>Creates an account on behalf of a user who manages accounts, without an administrator key.</summary>
+	/// <summary>Creates an account on behalf of a user who manages accounts, whether or not account creation is locked.</summary>
 	/// <param name="by">
 	///     The connection acting; its user needs <see cref="Permissions.OwnerManageAccounts" /> and every permission
 	///     the new account is granted.

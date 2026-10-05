@@ -525,3 +525,38 @@ Thứ tự: 0 → 1 → 2 → 3 → (4a viết `PermissionRules` trước, rồi
 * **Downstream:** repository restriction nạp `Restriction.Value.User` phải là bản hiện hành, vì `LiftAsync` xét thứ
   bậc trên bản đó. Route API nên lấy user mục tiêu từ session online nếu có (`UserRegistry.Find(user)?.User`) trước
   khi gọi các thao tác xét thứ bậc.
+
+## 7. Bổ sung sau khi duyệt (2026-10-05, lượt 2)
+
+Quyết định của người dùng:
+* **Luật không tự restrict mình:** đã duyệt.
+* **Restriction không chạm quyền quản lý:**
+  * `Permissions.Management` gồm `TournamentManageAnyRoom`, `TournamentManageBeatmaps`, `Moderator.*`,
+    `Developer.*`, `Owner.*`;
+  * mask restriction chứa một bit trong đó là không hợp lệ (Domain ném lỗi);
+  * muốn tước quyền quản lý thì đổi permission.
+* **Ủy quyền theo scope**, thực thi ở Application:
+  * `ActFor` trả `DelegatedConnection` mang danh tính user được ủy quyền;
+  * chỉ các quyền của user nằm trong `Permissions.RoomDelegation` được tính (`PermissionRules.Granted`/`Check`
+    giao với scope), nên mọi thao tác ngoài phòng và sảnh tự bị từ chối;
+  * kết nối ủy quyền không vào kênh;
+  * vẫn không xét thứ bậc.
+* **Không tự cấp quyền cao cho người đăng ký đầu tiên.** Mọi quyền đến từ đăng ký (quyền mặc định) hoặc được cấp.
+  Downstream: tài khoản quản trị đầu tiên do người vận hành tạo qua CLI của host (cấp phát), không có logic
+  "người đầu tiên".
+* **Tự đăng ký:** người chưa có tài khoản tự tạo tài khoản của mình (`RegisterAsync`, không có actor). Họ nhận quyền
+  mặc định, trừ khi đăng ký bị khóa.
+* **Khóa tạo mới** (`ServerSettings.LockedCreation`, `CreationLocks`):
+  * `Accounts`: chỉ `OwnerManageAccounts` tạo tài khoản; đăng ký in-game và tự đăng ký qua API trả `Locked`;
+  * `Rooms`: chỉ `TournamentManageAnyRoom` tạo phòng;
+  * `Beatmapsets` (khóa mặc định): chỉ `TournamentManageBeatmaps` nhập beatmapset.
+  * Khi mở `Beatmapsets`, người có `PlayerUploadBeatmapsets` (quyền mới, thuộc `Player.*`) chỉ thêm được beatmapset
+    mới, không thay set đã có.
+* **Bỏ khóa admin** khỏi Application: không còn `RegisterAttempt.AdminKey`, `RegistrationFailure.WrongAdminKey`, các
+  hàm admin key của `ICredentialRepository`.
+  * Downstream: bỏ route `/settings/adminkey`;
+  * ô email khi đăng ký in-game không còn là khóa;
+  * migration bỏ setting `AdminKey:*`;
+  * CLI `--reset-admin-key` bỏ.
+* **Privileges định nghĩa nhóm, permissions định nghĩa quyền của nhóm:** đúng với mô hình hiện tại (danh mục
+  `ClientPrivileges` + `ToClientPrivileges`), không đổi.

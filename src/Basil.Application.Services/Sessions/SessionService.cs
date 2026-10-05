@@ -163,7 +163,7 @@ internal sealed class SessionService(
 	}
 
 	/// <inheritdoc />
-	public (Connection? Connection, DelegationFailure? Failure) ActFor(Connection by, User user)
+	public (DelegatedConnection? Connection, DelegationFailure? Failure) ActFor(Connection by, User user)
 	{
 		// ponytail: a leaked token of an account with TournamentActForUsers can act for any online user in rooms and
 		// the lobby; add per-user consent if that risk ever matters.
@@ -175,7 +175,7 @@ internal sealed class SessionService(
 			? null
 			: new Connection?[] { session.Bancho, session.Irc, session.Apis.FirstOrDefault(), session.Tourneys.FirstOrDefault() }
 				.FirstOrDefault(candidate => candidate is { IsOpen: true });
-		return connection is null ? (null, DelegationFailure.UserOffline) : (connection, null);
+		return connection is null ? (null, DelegationFailure.UserOffline) : (new DelegatedConnection(connection, by, Permissions.RoomDelegation), null);
 	}
 
 	/// <summary>Creates the token of a new connection.</summary>

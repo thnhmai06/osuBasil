@@ -3,8 +3,13 @@ using Basil.Application.Contracts.Beatmaps;
 using Basil.Application.Services.Common;
 using Basil.Application.Storage.Beatmaps;
 using Basil.Application.Storage.Common;
+using Basil.Application.Storage.Content;
+using Basil.Application.Storage.Sessions;
+using Basil.Application.Services.Users;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Content;
 using Basil.Domain.Mechanics;
+using Basil.Domain.Users;
 using Basil.Domain.Utilities;
 
 namespace Basil.Application.Services.Beatmaps;
@@ -18,6 +23,7 @@ internal sealed class BeatmapsetService(
 	IBeatmapsetRepository beatmapsets,
 	IBeatmapRepository beatmaps,
 	IBeatmapsetStorage archives,
+	ISettingsRepository settings,
 	TimeProvider time) : IBeatmapsetService
 {
 	private readonly Channel<BeatmapsetEvent> _events = Channel.CreateUnbounded<BeatmapsetEvent>();
@@ -26,9 +32,16 @@ internal sealed class BeatmapsetService(
 	public ChannelReader<BeatmapsetEvent> Events => _events.Reader;
 
 	/// <inheritdoc />
-	public async Task<BeatmapsetImportResult> ImportAsync(Stream archive, int? beatmapsetId = null,
+	public async Task<BeatmapsetImportResult> ImportAsync(Connection by, Stream archive, int? beatmapsetId = null,
 		CancellationToken cancellationToken = default)
 	{
+		var now = time.GetUtcNow();
+		var manager = PermissionRules.Allows(by, Permissions.TournamentManageBeatmaps, now);
+		if (!manager &&
+		    ((await settings.GetAsync(cancellationToken)).LockedCreation.HasFlag(CreationLocks.Beatmapsets) ||
+		     !PermissionRules.Allows(by, Permissions.PlayerUploadBeatmapsets, now)))
+			return new BeatmapsetImportResult(null, [], BeatmapsetImportFailure.NotAuthorized);
+
 		await using var copy = new MemoryStream();
 		await archive.CopyToAsync(copy, cancellationToken);
 		copy.Position = 0;
@@ -49,8 +62,8 @@ internal sealed class BeatmapsetService(
 		var existing = await beatmapsets.GetAsync(setId.Value, cancellationToken);
 		if (existing is { Locked: true })
 			return new BeatmapsetImportResult(null, [], BeatmapsetImportFailure.Locked);
+		if (!manager && existing is not null) return new BeatmapsetImportResult(null, [], BeatmapsetImportFailure.NotAuthorized);
 
-		var now = time.GetUtcNow();
 		var set = new Beatmapset
 		{
 			Id = setId.Value, Artist = content.Artist, Title = content.Title, Creator = content.Creator,

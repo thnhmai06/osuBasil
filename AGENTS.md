@@ -369,7 +369,7 @@ feature folders appear in Storage, Contracts and Services.
 ```text
 Common/        PageRequest, Page<T>, Interval<T>                                   (Storage)
 Events/        Event, IEventPublisher<T>                                           (Contracts)
-Users/         IUserRepository, ICredentialRepository (passwords and admin key), ILoginRepository,
+Users/         IUserRepository, ICredentialRepository (passwords), ILoginRepository,
                IRestrictionRepository, IRelationshipRepository, IUserAvatarStorage, UserQuery, LoginQuery;
                IAuthService, IUserService, LoginAttempt, RegisterAttempt, results
 Sessions/      UserSession, Connection (+ ConnectionType), UserRegistry, PlayerStatus,
@@ -554,7 +554,8 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
 * **Restrictions are timed records,** not account fields. A `Restriction` (Domain, own repository
   `IRestrictionRepository`) suspends a mask of permissions from `StartsAt` to `EndsAt` (open-ended until
   lifted; lifting sets `EndsAt`, history is kept). A silence is a restriction of
-  `Permissions.SuspendedBySilence`. Expiry needs no timer: the effective permissions are computed at `now`. A
+  `Permissions.SuspendedBySilence`. Restrictions never touch management permissions (`Permissions.Management`):
+  a mask containing one is invalid, and a manager is withdrawn by changing the permissions. Expiry needs no timer: the effective permissions are computed at `now`. A
   result tells "suspended by a restriction" (`Silenced`) apart from "never granted" (`NotAuthorized`).
 * **Hierarchy.** A staff action aimed at another user (silence, restrict, lift, set permissions, set password,
   revoke sessions, delete) requires the actor's granted permissions to be a strict superset of the target's.
@@ -567,10 +568,18 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   user's permissions through the API to decide how to answer, and the server checks again.
 * **Identity on every action.** Every action has a real actor `by` (a `Connection`); `by` is never `null`
   and never a stand-in for "the server". A room created through the API has the caller as creator.
-* **Delegation.** An account with `TournamentActForUsers` may act for another online user:
-  `ISessionService.ActFor` returns that user's connection, and the operation runs with that user's authority
-  and is attributed to that user. Application decides who may act for whom; the host limits the scope to room
-  and lobby operations (`ILobbyService`, `IRoomService` and its children) and refuses delegation elsewhere.
+* **Delegation is scope-based.** An account with `TournamentActForUsers` may act for another online user:
+  `ISessionService.ActFor` returns a `DelegatedConnection` carrying that user's identity, so the operation runs
+  with that user's authority and is attributed to that user, but only the user's permissions within its scope
+  (`Permissions.RoomDelegation`: room and lobby operations) count, and it joins no channel. The caller's rank does
+  not matter. Application enforces the scope; the host only forwards the delegated connection.
+* **Accounts come only from registration or creation.** Nobody is granted permissions for being first or for
+  anything else implicit; a new account gets the default permissions, and more only by being granted. Anyone
+  without an account may register one unless `ServerSettings.LockedCreation` locks it.
+* **Creation locks.** `ServerSettings.LockedCreation` locks the creation of accounts, rooms and beatmapsets to
+  their managers (`OwnerManageAccounts`, `TournamentManageAnyRoom`, `TournamentManageBeatmaps`), on every
+  transport. Beatmapset uploads are locked by default; an ordinary uploader (`PlayerUploadBeatmapsets`) may only
+  add new beatmapsets. There is no administrator key.
 * **Sessions and tokens.** Every client signs in with credentials and gets a `Connection` with an opaque
   `Token` (in memory, lost on restart, no absolute expiry). Idle connections close after 300 s for osu!,
   osu!tourney and IRC and after 2 hours for `Api`. Logging out, changing the password, deleting the user, a

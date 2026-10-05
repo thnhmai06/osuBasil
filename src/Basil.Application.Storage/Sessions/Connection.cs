@@ -96,6 +96,36 @@ public sealed class ApiConnection : Connection
 	public override ConnectionType Type => ConnectionType.Api;
 }
 
+/// <summary>A connection through which another account acts for this connection's user, within a scope.</summary>
+/// <remarks>
+///     It carries the user's identity and session, so operations are checked against and attributed to that user,
+///     but only the permissions in <see cref="Scope" /> count. It is never registered, never joins a channel and never
+///     closes.
+/// </remarks>
+public sealed class DelegatedConnection : Connection
+{
+	/// <summary>Initializes a connection that acts for a user through one of their open connections.</summary>
+	/// <param name="target">The user's open connection.</param>
+	/// <param name="by">The connection of the account acting for the user.</param>
+	/// <param name="scope">The permissions the acting account may use in the user's name.</param>
+	internal DelegatedConnection(Connection target, Connection by, Permissions scope) : base(target.Login, by.Token)
+	{
+		Session = target.Session;
+		IsOpen = true;
+		Delegate = by;
+		Scope = scope;
+	}
+
+	/// <summary>Gets the connection of the account acting for the user.</summary>
+	public Connection Delegate { get; }
+
+	/// <summary>Gets the permissions the acting account may use in the user's name.</summary>
+	public Permissions Scope { get; }
+
+	/// <inheritdoc />
+	public override ConnectionType Type => Delegate.Type;
+}
+
 /// <summary>The kinds of client a user can connect with.</summary>
 public enum ConnectionType : byte
 {

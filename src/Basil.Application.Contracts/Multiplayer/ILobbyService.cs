@@ -30,6 +30,8 @@ public interface ILobbyService : IEventPublisher<LobbyEvent>
 	///     and the call fails with AlreadyInRoom when that client already plays in a room. When a tournament room opens,
 	///     the creator's osu! client is seated as host if it is online, may join rooms and is not in any room. A creator
 	///     can have at most 4 tournament rooms open unless they hold <see cref="Permissions.TournamentUnlimitedRooms" />.
+	///     While room creation is locked (<see cref="Basil.Domain.Content.CreationLocks.Rooms" />), only a user with
+	///     <see cref="Permissions.TournamentManageAnyRoom" /> may open a room; anyone else gets NotAuthorized.
 	///     A tournament room opened with nobody seated closes after 15 minutes unless someone joins. Seating the creator
 	///     is reported by <see cref="LobbyRoomOpened" /> through its host.
 	/// </remarks>

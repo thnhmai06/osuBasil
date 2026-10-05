@@ -31,7 +31,7 @@ public interface IChannelService : IEventPublisher<ChannelEvent>
 	/// <param name="by">The connection joining.</param>
 	/// <returns>The outcome of the join.</returns>
 	/// <remarks>
-	///     A connection may join only a channel it may read. If the same user is a member through a closed connection of
+	///     A connection may join only a channel it may read; a connection acting for another user joins none. If the same user is a member through a closed connection of
 	///     a kind that allows one connection, that connection is replaced by the new one, which
 	///     <see cref="ChannelMemberJoined" /> reports.
 	/// </remarks>

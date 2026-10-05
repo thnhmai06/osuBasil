@@ -2,10 +2,12 @@ using System.Net;
 using Basil.Application.Contracts.Users;
 using Basil.Application.Services.Sessions;
 using Basil.Application.Contracts.Sessions;
+using Basil.Application.Storage.Content;
 using Basil.Application.Storage.Sessions;
 using Basil.Application.Storage.Users;
 using Basil.Domain.Auth;
 using Basil.Domain.Client;
+using Basil.Domain.Content;
 using Basil.Domain.Users;
 using Basil.Domain.Utilities;
 
@@ -17,6 +19,7 @@ internal sealed class AuthService(
 	ICredentialRepository credentials,
 	ILoginRepository logins,
 	IRestrictionRepository restrictions,
+	ISettingsRepository settings,
 	SessionService sessions,
 	TimeProvider time) : IAuthService
 {
@@ -24,9 +27,8 @@ internal sealed class AuthService(
 	public async Task<RegistrationFailure?> CheckRegistrationAsync(RegisterAttempt attempt,
 		CancellationToken cancellationToken = default)
 	{
-		if (await credentials.GetAdminKeyUpdatedAtAsync(cancellationToken) is not null &&
-		    (attempt.AdminKey is not { } key || !await credentials.VerifyAdminKeyAsync(key, cancellationToken)))
-			return RegistrationFailure.WrongAdminKey;
+		if ((await settings.GetAsync(cancellationToken)).LockedCreation.HasFlag(CreationLocks.Accounts))
+			return RegistrationFailure.Locked;
 
 		try
 		{

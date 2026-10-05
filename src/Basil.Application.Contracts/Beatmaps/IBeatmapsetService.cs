@@ -1,5 +1,7 @@
 using Basil.Application.Contracts.Events;
+using Basil.Application.Storage.Sessions;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Contracts.Beatmaps;
 
@@ -7,6 +9,11 @@ namespace Basil.Application.Contracts.Beatmaps;
 public interface IBeatmapsetService : IEventPublisher<BeatmapsetEvent>
 {
 	/// <summary>Imports a beatmapset archive, adding or replacing the beatmapset it belongs to.</summary>
+	/// <param name="by">
+	///     The connection uploading it: a user with <see cref="Permissions.TournamentManageBeatmaps" />, or, while uploads
+	///     are not locked (<see cref="Basil.Domain.Content.CreationLocks.Beatmapsets" />), a user with
+	///     <see cref="Permissions.PlayerUploadBeatmapsets" />, who may only add new beatmapsets.
+	/// </param>
 	/// <param name="archive">The archive to import.</param>
 	/// <param name="beatmapsetId">
 	///     The beatmapset id the archive is known under, for example from its file name, or
@@ -20,7 +27,7 @@ public interface IBeatmapsetService : IEventPublisher<BeatmapsetEvent>
 	///     otherwise a new local id of at least 1 000 000 000. Difficulties the new version no longer has are removed.
 	///     A locked beatmapset is not changed.
 	/// </remarks>
-	Task<BeatmapsetImportResult> ImportAsync(Stream archive, int? beatmapsetId = null,
+	Task<BeatmapsetImportResult> ImportAsync(Connection by, Stream archive, int? beatmapsetId = null,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Deletes a beatmapset with its beatmaps and archive.</summary>

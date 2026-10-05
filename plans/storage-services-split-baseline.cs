@@ -10,6 +10,7 @@ using Basil.Application.Services;
 using Basil.Application.Storage.Common;
 using Basil.Application.Storage.Beatmaps;
 using Basil.Application.Storage.Chat;
+using Basil.Application.Storage.Content;
 using Basil.Application.Contracts.Anticheat;
 using Basil.Application.Contracts.Beatmaps;
 using Basil.Application.Contracts.Scores;
@@ -28,6 +29,7 @@ using Basil.Application.Storage.Users;
 using Basil.Domain.Auth;
 using Basil.Domain.Chat;
 using Basil.Domain.Client;
+using Basil.Domain.Content;
 using Basil.Domain.Social;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
@@ -68,6 +70,7 @@ var roundStore = new Rounds(); services.AddSingleton<IRoundRepository>(roundStor
 var eventStore = new MatchEvents(); services.AddSingleton<IMatchEventRepository>(eventStore);
 var relationStore = new Relationships();
 services.AddSingleton<IRelationshipRepository>(relationStore);
+var settingsStore = new Settings(); services.AddSingleton<ISettingsRepository>(settingsStore);
 services.AddApplicationServices();
 var provider = services.BuildServiceProvider();
 var auth = provider.GetRequiredService<IAuthService>();
@@ -201,17 +204,16 @@ try { _ = new User { Id = 0, Value = new UserData { Name = "Bot0" } }; }
 catch (ArgumentOutOfRangeException) { id0Threw = true; }
 Check("P2d user id 0 refused by Domain", id0Threw);
 
-// P2e: registration and the administrator key
-Check("P2e no key: registration accepted", (await auth.RegisterAsync(new RegisterAttempt("Henry", password, null))).Failure is null);
-credentialStore.AdminKey = new Md5(new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 });
-Check("P2e key set: missing key refused", await auth.CheckRegistrationAsync(new RegisterAttempt("Ivy", password, null)) == RegistrationFailure.WrongAdminKey);
-Check("P2e key set: wrong key refused", await auth.CheckRegistrationAsync(new RegisterAttempt("Ivy", password, password)) == RegistrationFailure.WrongAdminKey);
-Check("P2e key set: right key accepted", (await auth.RegisterAsync(new RegisterAttempt("Ivy", password, credentialStore.AdminKey))).User is not null);
-var henry = (await auth.RegisterAsync(new RegisterAttempt("Hank", password, credentialStore.AdminKey))).User!;
-Check("P2e name taken", await auth.CheckRegistrationAsync(new RegisterAttempt("ivy", password, credentialStore.AdminKey)) == RegistrationFailure.NameTaken);
-Check("P2e invalid name", await auth.CheckRegistrationAsync(new RegisterAttempt("x", password, credentialStore.AdminKey)) == RegistrationFailure.InvalidName);
-Check("P2e admin creates an account without a key", (await auth.CreateAccountAsync(staffApi, new UserData { Name = "Jack" }, password)).User is not null);
-Check("P2e ordinary player cannot create an account", (await auth.CreateAccountAsync(Api(henry), new UserData { Name = "Jill" }, password)).Failure == RegistrationFailure.NotAuthorized);
+// P2e: registration and the lock on account creation
+Check("P2e registration open: accepted", (await auth.RegisterAsync(new RegisterAttempt("Henry", password))).Failure is null);
+settingsStore.Current = new ServerSettings { LockedCreation = CreationLocks.Accounts };
+Check("P2e locked: the check reports Locked", await auth.CheckRegistrationAsync(new RegisterAttempt("Ivy", password)) == RegistrationFailure.Locked);
+Check("P2e locked: registration refused", (await auth.RegisterAsync(new RegisterAttempt("Ivy", password))).Failure == RegistrationFailure.Locked);
+Check("P2e locked: staff still creates an account", (await auth.CreateAccountAsync(staffApi, new UserData { Name = "Jack" }, password)).User is not null);
+settingsStore.Current = new ServerSettings();
+Check("P2e open again: accepted", (await auth.RegisterAsync(new RegisterAttempt("Ivy", password))).User is not null);
+Check("P2e name taken", await auth.CheckRegistrationAsync(new RegisterAttempt("ivy", password)) == RegistrationFailure.NameTaken);
+Check("P2e invalid name", await auth.CheckRegistrationAsync(new RegisterAttempt("x", password)) == RegistrationFailure.InvalidName);
 
 // P2f: idle connections are closed after 300 s; activity keeps a connection; an Api connection may idle 2 hours
 var kim = NewUser("Kim"); var kimConn = Online(kim);
@@ -394,7 +396,7 @@ Check("P5g single score wins unopposed", RoundResult.Decide(round5, [S(1, 900, G
 var beatmapService = provider.GetRequiredService<IBeatmapsetService>();
 BeatmapsetArchive Archive(int? setId, params (string Content, int? Id)[] diffs) =>
 	new(setId, "Artist", "Title", "Mapper", diffs.Select(d => new BeatmapArchiveDifficulty(d.Id, "v", GameMode.Standard, Encoding.UTF8.GetBytes(d.Content))).ToList());
-Task<BeatmapsetImportResult> Import(BeatmapsetArchive? a, int? named = null) { archiveReader.Next = a; return beatmapService.ImportAsync(new MemoryStream([1]), named); }
+Task<BeatmapsetImportResult> Import(BeatmapsetArchive? a, int? named = null, Connection? by = null) { archiveReader.Next = a; return beatmapService.ImportAsync(by ?? staffApi, new MemoryStream([1]), named); }
 Check("P5h unreadable archive", (await Import(null)).Failure == BeatmapsetImportFailure.Unreadable);
 Check("P5h unknown named id falls back to the declared id", (await Import(Archive(123, ("a", 456)), 999)).Set?.Id == 123);
 Check("P5h beatmap keeps its declared id", (await mapStore.GetByHashAsync(new Md5(Encoding.UTF8.GetBytes("a"))))?.Id == 456);
@@ -411,6 +413,16 @@ Drain(beatmapService.Events);
 Check("P5i delete", await beatmapService.DeleteAsync(set123) && await setStore.GetAsync(123) is null && Drain(beatmapService.Events).OfType<BeatmapsetDeleted>().Count() == 1);
 archiveStore.Stored.Clear();
 Check("P5j scan forgets sets without an archive", await beatmapService.ScanAsync() == 1 && await setStore.GetAsync(1_000_000_000) is null);
+
+// L2: the lock on beatmapset uploads
+var uploader = NewUser("Uploader"); var uploaderApi = Api(uploader);
+Check("L2 uploads locked by default", (await Import(Archive(null, ("l2a", null)), by: uploaderApi)).Failure == BeatmapsetImportFailure.NotAuthorized);
+settingsStore.Current = new ServerSettings { LockedCreation = CreationLocks.None };
+var l2Set = (await Import(Archive(null, ("l2b", null)), by: uploaderApi)).Set;
+Check("L2 uploader imports a new set while uploads are open", l2Set is not null);
+Check("L2 uploader cannot touch an existing set", (await Import(Archive(l2Set!.Id, ("l2c", null)), by: uploaderApi)).Failure == BeatmapsetImportFailure.NotAuthorized);
+Check("L2 staff replaces it", (await Import(Archive(l2Set.Id, ("l2c", null)))).Set?.Id == l2Set.Id);
+settingsStore.Current = new ServerSettings();
 
 var matchService = provider.GetRequiredService<IMatchService>();
 var unfinished = matchStore.Items.Count(m => m.Value.EndedAt is null);
@@ -484,7 +496,7 @@ var ref2Api = Api(ref2);
 var ref2Tourney = (TourneyConnection)(await LoginAs(ref2, ConnectionType.Tourney)).Connection!;
 var (ref2Room, _) = await lobbyService.OpenAsync(ref2Api, "D4", "", true, false);
 Drain(sessions.Events);
-var ref2Restriction = await userService.RestrictAsync(staffApi, ref2, Permissions.All, null);
+var ref2Restriction = await userService.RestrictAsync(staffApi, ref2, Permissions.All & ~Permissions.Management, null);
 Check("N5 restricted user's tourney connection closed", !ref2Tourney.IsOpen
 	&& Drain(sessions.Events).OfType<UserConnectionClosed>().Any(e => e.Connection.User.Equals(ref2) && e.Reason == ConnectionCloseReason.Revoked));
 ref2Api = Api(ref2);
@@ -492,6 +504,16 @@ Check("N5 restricted creator configuring refused", await roomService.Settings.Co
 Check("N5 lift restores the configure right", await userService.LiftAsync(staffApi, ref2Restriction!)
 	&& await roomService.Settings.ConfigureAsync(ref2Room!, ref2Api, new RoomSettingsChange(Beatmap: new BeatmapReference(mapHash, 1, "map", GameMode.Standard, null))) == RoomResult.Ok);
 Drain(roomService.Events);
+
+// L3: restrictions never suspend management permissions
+var rethrow = false;
+try { _ = new RestrictionData { User = ref2, Permissions = Permissions.ModeratorSilence, StartsAt = time.GetUtcNow() }; }
+catch (ArgumentOutOfRangeException) { rethrow = true; }
+Check("L3 a restriction cannot carry management permissions", rethrow);
+rethrow = false;
+try { await userService.RestrictAsync(staffApi, ref2, Permissions.OwnerManageAccounts, null); }
+catch (ArgumentOutOfRangeException) { rethrow = true; }
+Check("L3 restricting management permissions throws", rethrow);
 
 // N6: the hierarchy of staff actions
 var mod1 = NewUser("Mod1", Permissions.Player | Permissions.Supporter | Permissions.Moderator);
@@ -511,12 +533,23 @@ var dep = NewUser("Dep"); var depConn = Online(dep);
 Check("N7 ordinary user cannot act for others", sessions.ActFor(Api(oli), dep) == (null, DelegationFailure.NotPermitted));
 var actBy = NewUser("ActBy", Permissions.Player | Permissions.Supporter | Permissions.TournamentActForUsers);
 var actApi = Api(actBy);
-var actResult = sessions.ActFor(actApi, pwu);
-Check("N7 offline user cannot be acted for", actResult == (null, DelegationFailure.UserOffline));
+Check("N7 offline user cannot be acted for", sessions.ActFor(actApi, pwu) == (null, DelegationFailure.UserOffline));
 var (delegatedConn, delegatedFailure) = sessions.ActFor(actApi, dep);
-Check("N7 act for an online player gives their osu! connection", delegatedFailure is null && delegatedConn is BanchoConnection && ReferenceEquals(delegatedConn, depConn));
+Check("N7 act for an online player gives a delegated connection",
+	delegatedFailure is null && delegatedConn is not null && delegatedConn.User.Equals(dep));
 var (depRoom, depRoomResult) = await lobbyService.OpenAsync(delegatedConn!, "D1", "", true, false);
 Check("N7 delegated room created for the player", depRoom is not null && depRoomResult == RoomResult.Ok && ReferenceEquals(depRoom.Creator, dep));
+
+// L4: a delegated connection may only use the player's room and lobby powers
+var boss = NewUser("Boss", Permissions.All); var bossConn = Online(boss);
+var (bossConnection, bossFailure) = sessions.ActFor(actApi, boss);
+Check("L4 act for the player", bossFailure is null && bossConnection is not null && bossConnection.User.Equals(boss));
+var (bossRoom, bossRoomResult) = await lobbyService.OpenAsync(bossConnection!, "L4", "", true, false);
+Check("L4 delegated room opened with the player as creator", bossRoom is not null && bossRoomResult == RoomResult.Ok && ReferenceEquals(bossRoom.Creator, boss));
+Check("L4 silence outside the scope refused", await userService.SilenceAsync(bossConnection!, dep, time.GetUtcNow().AddHours(1)) is null);
+Check("L4 general channel join refused", channelService.Join(osuChannel!, bossConnection!) == ChannelJoinResult.NoPermission);
+Check("L4 private message refused", await channelService.PostAsync(depConn.Session.PmChannel, bossConnection!, "x") == ChannelPostResult.NoWritePermission);
+Check("L4 announce outside the scope refused", sessions.Announce(bossConnection!, "x") is null);
 
 // N8: room creation rules
 var noRoom = NewUser("NoRoom", Permissions.Supporter);
@@ -528,6 +561,13 @@ Check("N8 fifth tournament room refused", (await lobbyService.OpenAsync(lotApi, 
 var unlim = NewUser("Unlim", Permissions.All); var unlimApi = Api(unlim);
 for (var i = 1; i <= 5; i++)
 	Check($"N8 unlimited tournament room {i} opens", (await lobbyService.OpenAsync(unlimApi, $"U8-{i}", "", true, false)).Result == RoomResult.Ok);
+
+// L1: a lock on room creation leaves rooms to the room managers
+var roomless = NewUser("Roomless"); var roomlessApi = Api(roomless);
+settingsStore.Current = new ServerSettings { LockedCreation = CreationLocks.Rooms };
+Check("L1 locked room creation refused", (await lobbyService.OpenAsync(roomlessApi, "L1", "", true, false)).Result == RoomResult.NotAuthorized);
+Check("L1 room manager opens while locked", (await lobbyService.OpenAsync(staffApi, "L1M", "", true, false)).Result == RoomResult.Ok);
+settingsStore.Current = new ServerSettings();
 
 // N9: messaging and spectating permissions
 var noPm = NewUser("NoPm", Permissions.Supporter);
@@ -598,7 +638,6 @@ sealed class Users : IUserRepository
 sealed class Credentials(Md5 defaultHash) : ICredentialRepository
 {
 	private readonly Dictionary<int, Md5> _hashes = new();
-	public Md5? AdminKey { get; set; }
 	public Task<bool> VerifyAsync(Basil.Domain.Auth.Credentials credentials, CancellationToken cancellationToken = default)
 	{
 		return Task.FromResult(credentials.PasswordHash == _hashes.GetValueOrDefault(credentials.User.Id, defaultHash));
@@ -608,11 +647,13 @@ sealed class Credentials(Md5 defaultHash) : ICredentialRepository
 		_hashes[credentials.User.Id] = credentials.PasswordHash;
 		return Task.CompletedTask;
 	}
-	public Task<bool> VerifyAdminKeyAsync(Md5 key, CancellationToken cancellationToken = default) => Task.FromResult(AdminKey is { } k && k == key);
-	public ValueTask<DateTimeOffset?> GetAdminKeyUpdatedAtAsync(CancellationToken cancellationToken = default) =>
-		ValueTask.FromResult<DateTimeOffset?>(AdminKey is null ? null : DateTimeOffset.UnixEpoch);
-	public Task CreateOrUpdateAdminKeyAsync(Md5 key, CancellationToken cancellationToken = default) { AdminKey = key; return Task.CompletedTask; }
-	public Task DeleteAdminKeyAsync(CancellationToken cancellationToken = default) { AdminKey = null; return Task.CompletedTask; }
+}
+
+sealed class Settings : ISettingsRepository
+{
+	public ServerSettings Current { get; set; } = new();
+	public ValueTask<ServerSettings> GetAsync(CancellationToken cancellationToken = default) => ValueTask.FromResult(Current);
+	public Task CreateOrUpdateAsync(ServerSettings settings, CancellationToken cancellationToken = default) { Current = settings; return Task.CompletedTask; }
 }
 
 sealed class Logins : ILoginRepository

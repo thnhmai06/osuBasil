@@ -4,6 +4,8 @@ using Basil.Application.Contracts.Multiplayer;
 using Basil.Application.Contracts.Multiplayer.Events;
 using Basil.Application.Services.Users;
 using Basil.Application.Storage.Multiplayer;
+using Basil.Application.Storage.Content;
+using Basil.Domain.Content;
 using Basil.Application.Storage.Sessions;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
@@ -15,6 +17,7 @@ internal sealed class LobbyService(
 	Lobby lobby,
 	IMatchRepository matches,
 	IChannelService channels,
+	ISettingsRepository serverSettings,
 	TimeProvider time) : ILobbyService
 {
 	/// <summary>The most tournament rooms one creator can have open.</summary>
@@ -76,6 +79,10 @@ internal sealed class LobbyService(
 			case Access.NotGranted: return (null, RoomResult.NotAuthorized);
 			case Access.Suspended: return (null, RoomResult.Silenced);
 		}
+
+		if ((await serverSettings.GetAsync(cancellationToken)).LockedCreation.HasFlag(CreationLocks.Rooms) &&
+		    !PermissionRules.Allows(by, Permissions.TournamentManageAnyRoom, now))
+			return (null, RoomResult.NotAuthorized);
 
 		var creator = by.User;
 		var limited = isTournament && !PermissionRules.Allows(by, Permissions.TournamentUnlimitedRooms, now);
