@@ -82,7 +82,7 @@ internal sealed class HttpBeatmapsetMirror(
 		return new MirrorBeatmap(beatmap.BeatmapId, beatmap.DiffName, (GameMode)beatmap.Mode, beatmap.DifficultyRating);
 	}
 
-	/// <summary>Tolerates Unix-second or Unix-millisecond timestamps and unparseable inputs.</summary>
+	/// <summary>Tolerates Unix-second or Unix-millisecond timestamps, ISO-8601 date strings and unparseable inputs.</summary>
 	private static DateTimeOffset ParseUpdatedAt(string value)
 	{
 		if (long.TryParse(value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var raw))
@@ -90,6 +90,9 @@ internal sealed class HttpBeatmapsetMirror(
 			var ms = raw > 1_000_000_000_000 ? raw : raw * 1000;
 			return DateTimeOffset.FromUnixTimeMilliseconds(ms);
 		}
+
+		if (DateTimeOffset.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out var parsed))
+			return parsed;
 
 		return DateTimeOffset.UnixEpoch;
 	}

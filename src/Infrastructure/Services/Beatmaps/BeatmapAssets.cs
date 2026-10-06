@@ -49,10 +49,9 @@ internal sealed class BeatmapAssets(
 				_ => null
 			};
 		}
-		catch
+		finally
 		{
 			await archive.DisposeAsync();
-			throw;
 		}
 	}
 
@@ -62,9 +61,10 @@ internal sealed class BeatmapAssets(
 		var archive = await archives.OpenAsync(set, cancellationToken);
 		if (archive is null) return null;
 
+		Stream? result = null;
 		try
 		{
-			return asset switch
+			result = asset switch
 			{
 				BeatmapsetAsset.Archive => archive,
 				BeatmapsetAsset.ArchiveWithoutVideo => await OpenArchiveWithoutVideoAsync(set, archive, cancellationToken),
@@ -75,11 +75,13 @@ internal sealed class BeatmapAssets(
 				_ => null
 			};
 		}
-		catch
+		finally
 		{
-			await archive.DisposeAsync();
-			throw;
+			// The Archive asset is the archive stream itself; every other asset's result is
+			// extracted to the cache, so the archive can be released here.
+			if (!ReferenceEquals(result, archive)) await archive.DisposeAsync();
 		}
+		return result;
 	}
 
 	/// <summary>Opens the background, audio, or video of a single beatmap.</summary>
@@ -231,6 +233,8 @@ internal sealed class BeatmapAssets(
 		var normalised = Normalise(name);
 		if (normalised.StartsWith('/') || normalised.StartsWith('\\')) return false;
 		if (normalised.Contains("..", StringComparison.Ordinal)) return false;
+		if (Path.IsPathRooted(name)) return false;
+		if (name.Contains(':', StringComparison.Ordinal)) return false;
 		return true;
 	}
 
@@ -368,7 +372,10 @@ internal sealed class BeatmapAssets(
 		if (!File.Exists(path))
 		{
 			var audioPath = Path.Combine(folder, info.AudioFile);
-			if (!File.Exists(audioPath)) return null;
+			await using (var audio = await ExtractEntryAsync(archive, info.AudioFile, folder, cancellationToken))
+			{
+				if (audio is null) return null;
+			}
 
 			var startSeconds = Math.Max(info.PreviewTime, 0) / 1000d;
 			try
@@ -392,8 +399,6 @@ internal sealed class BeatmapAssets(
 		var info = new ProcessStartInfo
 		{
 			FileName = options.Value.Ffmpeg,
-			RedirectStandardError = true,
-			RedirectStandardOutput = true,
 			UseShellExecute = false,
 			CreateNoWindow = true
 		};
