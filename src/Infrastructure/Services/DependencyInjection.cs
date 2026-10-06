@@ -1,3 +1,5 @@
+using Basil.Application.Services.Contracts.Beatmaps;
+using Basil.Infrastructure.Services.Beatmaps;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Infrastructure.Services;
@@ -10,7 +12,8 @@ public static class DependencyInjection
 	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddInfrastructureServices(this IServiceCollection services)
 	{
-		// Capability ports are registered by the phases that add them.
+		services.AddSingleton<IBeatmapAssets, BeatmapAssets>();
+		services.AddSingleton<IBeatmapsetMirror, HttpBeatmapsetMirror>();
 		return services;
 	}
 }
