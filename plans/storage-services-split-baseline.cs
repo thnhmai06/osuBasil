@@ -134,7 +134,7 @@ Check("S2 closed 15 min after emptying", lobby.Find(t2.Id) is null);
 // S3: normal room closes as soon as its last player leaves
 var bob = NewUser("Bob"); var bobConn = Online(bob);
 var (n1, rn) = await lobbyService.OpenAsync(bobConn, "N1", "", false, false);
-Check("S3 creator seated as host", rn == RoomResult.Ok && ReferenceEquals(n1!.Host, bobConn));
+Check("S3 creator seated as host", rn == RoomResult.Ok && ReferenceEquals(n1!.Authority.Host, bobConn));
 Check("S3 open in game while playing elsewhere refused", (await lobbyService.OpenAsync(bobConn, "N2", "", false, false)).Result == RoomResult.AlreadyInRoom);
 await Do(n1, s => s.Members.LeaveAsync(n1!, bobConn));
 Check("S3 closed when empty", lobby.Find(n1.Id) is null);
@@ -167,17 +167,17 @@ var re = Drain(roomService.Events);
 Check("S5 all loaded reported in the leave event", re.OfType<RoomPlayerLeft>().Single().RoundProgress is { AllLoaded: true, Completed: false } && !re.OfType<RoomRoundAllLoaded>().Any());
 await Do(t5, s => s.Rounds.CompleteAsync(t5!, daveConn));
 re = Drain(roomService.Events);
-Check("S5 round completed", re.OfType<RoomRoundCompleted>().Count() == 1 && !t5.InProgress);
+Check("S5 round completed", re.OfType<RoomRoundCompleted>().Count() == 1 && !t5.Rounds.InProgress);
 
 // S6: a round nobody plays ends at once
 await Do(t5, s => s.Slots.SetHasMapAsync(t5!, daveConn, false));
 Drain(roomService.Events);
 await Do(t5, s => s.Rounds.StartAsync(t5!, refConn));
 re = Drain(roomService.Events);
-Check("S6 unplayed round ends in its start event", re.OfType<RoomRoundStarted>().Single().Round.EndedAt is not null && !re.OfType<RoomRoundCompleted>().Any() && !t5.InProgress);
+Check("S6 unplayed round ends in its start event", re.OfType<RoomRoundStarted>().Single().Round.EndedAt is not null && !re.OfType<RoomRoundCompleted>().Any() && !t5.Rounds.InProgress);
 
 // S7: clearing the beatmap, then start is refused
-Check("S7 clear beatmap", await Do(t5, s => s.Settings.ConfigureAsync(t5!, refConn, new RoomSettingsChange(ClearBeatmap: true))) == RoomResult.Ok && t5.Beatmap is null);
+Check("S7 clear beatmap", await Do(t5, s => s.Settings.ConfigureAsync(t5!, refConn, new RoomSettingsChange(ClearBeatmap: true))) == RoomResult.Ok && t5.Settings.Beatmap is null);
 Check("S7 start without map refused", await Do(t5, s => s.Rounds.StartAsync(t5!, refConn)) == RoomResult.NoBeatmap);
 
 // P2a: a logout within one second of login is ignored; a later one closes the connection
@@ -317,7 +317,7 @@ Check("P4b seat banned refused", await roomService.Members.SeatAsync(q1!, staffA
 await roomService.Members.UnbanAsync(q1!, staffApi, sam);
 await roomService.Members.SeatAsync(q1!, staffApi, samConn);
 await roomService.Settings.ConfigureAsync(q1!, staffApi, new RoomSettingsChange(Mods: GameMods.Hidden | GameMods.HardRock));
-Check("P4b mode change drops invalid mods", await roomService.Settings.ConfigureAsync(q1!, staffApi, new RoomSettingsChange(Mode: GameMode.Mania)) == RoomResult.Ok && q1!.Mode == GameMode.Mania && q1.Mods.IsValid(GameMode.Mania));
+Check("P4b mode change drops invalid mods", await roomService.Settings.ConfigureAsync(q1!, staffApi, new RoomSettingsChange(Mode: GameMode.Mania)) == RoomResult.Ok && q1!.Settings.Mode == GameMode.Mania && q1.Settings.Mods.IsValid(GameMode.Mania));
 await roomService.Authority.SetHostAsync(q1!, staffApi, rexConn);
 Check("P4b host cannot change privacy", await roomService.Settings.ConfigureAsync(q1!, rexConn, new RoomSettingsChange(IsPrivate: true)) == RoomResult.NotAuthorized && !q1!.Match.Value.IsPrivate);
 Check("P4b manager changes privacy", await roomService.Settings.ConfigureAsync(q1!, staffApi, new RoomSettingsChange(IsPrivate: true)) == RoomResult.Ok && q1!.Match.Value.IsPrivate);
@@ -326,7 +326,7 @@ Check("P4b arrange missing a player refused", await roomService.Slots.ArrangeSlo
 Check("P4b arrange locked player slot refused", await roomService.Slots.ArrangeSlotsAsync(q1!, staffApi, [new SlotArrangement(5, rex, null, true), new SlotArrangement(6, sam, null, false)]) == RoomResult.InvalidSettings);
 Check("P4b arrange duplicate slot refused", await roomService.Slots.ArrangeSlotsAsync(q1!, staffApi, [new SlotArrangement(5, rex, null, false), new SlotArrangement(5, sam, null, false)]) == RoomResult.InvalidSettings);
 Check("P4b arrange swaps and locks", await roomService.Slots.ArrangeSlotsAsync(q1!, staffApi, [new SlotArrangement(1, sam, null, false), new SlotArrangement(2, rex, null, false), new SlotArrangement(3, null, null, true)]) == RoomResult.Ok
-	&& q1!.Slots.Find(samConn)?.Index == 1 && q1.Slots.Find(rexConn)?.Index == 2 && q1.Slots.At(3)!.Locked && ReferenceEquals(q1.Host, rexConn)
+	&& q1!.Slots.Find(samConn)?.Index == 1 && q1.Slots.Find(rexConn)?.Index == 2 && q1.Slots.At(3)!.Locked && ReferenceEquals(q1.Authority.Host, rexConn)
 	&& Drain(roomService.Events).OfType<RoomSlotsArranged>().Count() == 1);
 // the old "bot cannot be banned / made referee" checks in the new permission model
 var rj = NewUser("Rob1");
@@ -385,7 +385,7 @@ Check("P5d submitted score names its room; flags are left to the host", await Su
 Check("P5e tampered submission refused", await Submit(Sub(4000) with { HashByClient = zero }, null) == ScoreRejection.SubmissionHashMismatch);
 Check("P5f unknown beatmap refused", await Submit(Sub(5000), null, zero) == ScoreRejection.UnknownBeatmap);
 
-var round5 = r5!.LastRound!;
+var round5 = r5!.Rounds.LastRound!;
 Score S(int id, int total, GameTeam? team) => new Score { Id = id, Value = new ScoreData(id, mapHash, GameMode.Standard, GameMods.NoMod, new HitCounts(100, 0, 0, 0, 0, 0), total, 100, Grade.S, true, false, stamp) { Team = team } };
 Check("P5g no score, no result", RoundResult.Decide(round5, []) is null);
 Check("P5g player win by margin", RoundResult.Decide(round5, [S(1, 1000, null), S(2, 900, null)]) == new RoundResult(null, 1, 100));
@@ -451,11 +451,11 @@ Check("R timer marks", ce.OfType<RoomCountdownTicked>().Select(t => (int)t.Remai
 await roomService.Rounds.StartCountdownAsync(rc!, staffApi, TimeSpan.FromSeconds(60), true);
 Drain(roomService.Events);
 Check("R gameplay setting cancels auto-start", await roomService.Settings.ConfigureAsync(rc!, staffApi, new RoomSettingsChange(Mods: GameMods.Hidden)) == RoomResult.Ok
-	&& Drain(roomService.Events).OfType<RoomSettingsChanged>().Single().CountdownCancelled && rc!.CountdownEndsAt is null);
+	&& Drain(roomService.Events).OfType<RoomSettingsChanged>().Single().CountdownCancelled && rc!.Rounds.CountdownEndsAt is null);
 await roomService.Rounds.StartCountdownAsync(rc!, staffApi, TimeSpan.FromSeconds(60), true);
 Drain(roomService.Events);
 Check("R room name keeps auto-start", await roomService.Settings.ConfigureAsync(rc!, staffApi, new RoomSettingsChange(Name: "renamed")) == RoomResult.Ok
-	&& !Drain(roomService.Events).OfType<RoomSettingsChanged>().Single().CountdownCancelled && rc!.CountdownEndsAt is not null && rc.Channel.Channel.Topic == "renamed");
+	&& !Drain(roomService.Events).OfType<RoomSettingsChanged>().Single().CountdownCancelled && rc!.Rounds.CountdownEndsAt is not null && rc.Channel.Channel.Topic == "renamed");
 Check("R analysis failure stores a zero star rating", (await Import(Archive(4242, ("fail", null)))).Beatmaps.Single().Difficulty.Star == 0);
 
 // N1: tokens identify open connections until they close
@@ -541,14 +541,14 @@ var (delegatedConn, delegatedFailure) = sessions.ActFor(actApi, dep);
 Check("N7 act for an online player gives a delegated connection",
 	delegatedFailure is null && delegatedConn is not null && delegatedConn.User.Equals(dep));
 var (depRoom, depRoomResult) = await lobbyService.OpenAsync(delegatedConn!, "D1", "", true, false);
-Check("N7 delegated room created for the player", depRoom is not null && depRoomResult == RoomResult.Ok && ReferenceEquals(depRoom.Creator, dep));
+Check("N7 delegated room created for the player", depRoom is not null && depRoomResult == RoomResult.Ok && ReferenceEquals(depRoom.Authority.Creator, dep));
 
 // L4: a delegated connection may only use the player's room and lobby powers
 var boss = NewUser("Boss", Permissions.All); var bossConn = Online(boss);
 var (bossConnection, bossFailure) = sessions.ActFor(actApi, boss);
 Check("L4 act for the player", bossFailure is null && bossConnection is not null && bossConnection.User.Equals(boss));
 var (bossRoom, bossRoomResult) = await lobbyService.OpenAsync(bossConnection!, "L4", "", true, false);
-Check("L4 delegated room opened with the player as creator", bossRoom is not null && bossRoomResult == RoomResult.Ok && ReferenceEquals(bossRoom.Creator, boss));
+Check("L4 delegated room opened with the player as creator", bossRoom is not null && bossRoomResult == RoomResult.Ok && ReferenceEquals(bossRoom.Authority.Creator, boss));
 Check("L4 silence outside the scope refused", await userService.SilenceAsync(bossConnection!, dep, time.GetUtcNow().AddHours(1)) is null);
 Check("L4 general channel join refused", channelService.Join(osuChannel!, bossConnection!) == ChannelJoinResult.NoPermission);
 Check("L4 private message refused", await channelService.PostAsync(depConn.Session.PmChannel, bossConnection!, "x") == ChannelPostResult.NoWritePermission);

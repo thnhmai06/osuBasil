@@ -103,8 +103,8 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 	private RoomResult Start(Room room, Connection by)
 	{
 		if (!RoomRules.IsHostOrManager(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
-		if (room.InProgress) return RoomResult.InProgress;
-		if (room.Beatmap is null) return RoomResult.NoBeatmap;
+		if (room.Rounds.InProgress) return RoomResult.InProgress;
+		if (room.Settings.Beatmap is null) return RoomResult.NoBeatmap;
 
 		RoundMechanics.StopCountdown(room);
 		StartRound(room, false);
@@ -114,7 +114,7 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 	private RoomResult Abort(Room room, Connection by)
 	{
 		if (!RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
-		if (!room.InProgress) return RoomResult.NotInProgress;
+		if (!room.Rounds.InProgress) return RoomResult.NotInProgress;
 
 		RoundMechanics.StopCountdown(room);
 		AbortRound(room);
@@ -127,10 +127,10 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 		if (slot.Loaded is true) return RoomResult.Ok;
 
 		slot.Loaded = true;
-		if (!room.AllLoadedAnnounced &&
+		if (!room.Rounds.AllLoadedAnnounced &&
 		    room.Slots.Where(s => s.Status is RoomSlotStatus.Playing).All(s => s.Loaded is true))
 		{
-			room.AllLoadedAnnounced = true;
+			room.Rounds.AllLoadedAnnounced = true;
 			events.Emit(new RoomRoundAllLoaded(room, round, slot.Index));
 		}
 		else
@@ -147,10 +147,10 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 		if (slot.IntroSkipped is true) return RoomResult.Ok;
 
 		slot.IntroSkipped = true;
-		if (!room.AllSkippedAnnounced &&
+		if (!room.Rounds.AllSkippedAnnounced &&
 		    room.Slots.Where(s => s.Status is RoomSlotStatus.Playing).All(s => s.IntroSkipped is true))
 		{
-			room.AllSkippedAnnounced = true;
+			room.Rounds.AllSkippedAnnounced = true;
 			events.Emit(new RoomRoundAllSkipped(room, round, slot.Index));
 		}
 		else
@@ -187,9 +187,9 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 		if (length <= TimeSpan.Zero || length > MaxCountdownLength) return RoomResult.OutOfRange;
 		switch (startsRound)
 		{
-			case true when room.InProgress:
+			case true when room.Rounds.InProgress:
 				return RoomResult.InProgress;
-			case true when room.Beatmap is null:
+			case true when room.Settings.Beatmap is null:
 				return RoomResult.NoBeatmap;
 		}
 
@@ -198,9 +198,9 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 			.Select(mark => new Countdown.Milestone(mark, countdown => TickAsync(room, countdown, mark)))
 			.Append(new Countdown.Milestone(TimeSpan.Zero, countdown => ElapseAsync(room, countdown, startsRound)));
 		var countdown = new Countdown(length, milestones, time);
-		room.CountdownTimer = countdown;
-		room.CountdownStartsRound = startsRound;
-		room.CountdownEndsAt = countdown.EndsAt;
+		room.Rounds.CountdownTimer = countdown;
+		room.Rounds.CountdownStartsRound = startsRound;
+		room.Rounds.CountdownEndsAt = countdown.EndsAt;
 		events.Emit(new RoomCountdownStarted(room, length, startsRound, countdown.EndsAt));
 		return RoomResult.Ok;
 	}
@@ -208,7 +208,7 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 	private RoomResult CancelCountdown(Room room, Connection by)
 	{
 		if (!RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
-		if (room.CountdownTimer is null) return RoomResult.NoCountdown;
+		if (room.Rounds.CountdownTimer is null) return RoomResult.NoCountdown;
 
 		RoundMechanics.StopCountdown(room);
 		events.Emit(new RoomCountdownCancelled(room));
@@ -217,7 +217,7 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 
 	private RoomResult RecordScore(Room room, User player, Score score)
 	{
-		if (room.LastRound is not { } round || !round.Equals(score.Value.Round)) return RoomResult.RoundMismatch;
+		if (room.Rounds.LastRound is not { } round || !round.Equals(score.Value.Round)) return RoomResult.RoundMismatch;
 
 		events.Emit(new RoomRoundScoreSubmitted(room, round, player, score));
 		return RoomResult.Ok;
@@ -235,7 +235,7 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 	private static bool TryGetPlayingSlot(Room room, BanchoConnection by, [MaybeNullWhen(false)] out Round round,
 		[MaybeNullWhen(false)] out RoomSlot slot)
 	{
-		if (room.CurrentRound is { } current && room.Slots.Find(by) is { Status: RoomSlotStatus.Playing } playing)
+		if (room.Rounds.CurrentRound is { } current && room.Slots.Find(by) is { Status: RoomSlotStatus.Playing } playing)
 		{
 			round = current;
 			slot = playing;
@@ -259,7 +259,7 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 	/// </remarks>
 	internal RoomRoundProgress? AdvanceRound(Room room)
 	{
-		if (room.CurrentRound is not { } round) return null;
+		if (room.Rounds.CurrentRound is not { } round) return null;
 
 		var playing = room.Slots.Where(s => s.Status is RoomSlotStatus.Playing).ToList();
 		if (playing.Count == 0)
@@ -268,11 +268,11 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 			return new RoomRoundProgress(round, false, false, true);
 		}
 
-		var allLoaded = !room.AllLoadedAnnounced && playing.All(s => s.Loaded is true);
-		if (allLoaded) room.AllLoadedAnnounced = true;
+		var allLoaded = !room.Rounds.AllLoadedAnnounced && playing.All(s => s.Loaded is true);
+		if (allLoaded) room.Rounds.AllLoadedAnnounced = true;
 
-		var allSkipped = !room.AllSkippedAnnounced && playing.All(s => s.IntroSkipped is true);
-		if (allSkipped) room.AllSkippedAnnounced = true;
+		var allSkipped = !room.Rounds.AllSkippedAnnounced && playing.All(s => s.IntroSkipped is true);
+		if (allSkipped) room.Rounds.AllSkippedAnnounced = true;
 
 		return allLoaded || allSkipped ? new RoomRoundProgress(round, allLoaded, allSkipped, false) : null;
 	}
@@ -281,16 +281,16 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 	{
 		var round = new Round
 		{
-			Number = (room.LastRound?.Number ?? 0) + 1,
+			Number = (room.Rounds.LastRound?.Number ?? 0) + 1,
 			Match = room.Match,
-			BeatmapHash = room.Beatmap!.Hash,
-			Settings = room.Settings.Clone(),
+			BeatmapHash = room.Settings.Beatmap!.Hash,
+			Settings = room.Settings.Stored.Clone(),
 			StartedAt = time.GetUtcNow(),
 			EndedAt = null
 		};
-		room.LastRound = round;
-		room.AllLoadedAnnounced = false;
-		room.AllSkippedAnnounced = false;
+		room.Rounds.LastRound = round;
+		room.Rounds.AllLoadedAnnounced = false;
+		room.Rounds.AllSkippedAnnounced = false;
 
 		var players = new List<BanchoConnection>();
 		foreach (var slot in room.Slots.Where(s => s.Player is not null && s.Status is not RoomSlotStatus.NoMap))
@@ -319,7 +319,7 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 	private async Task TickAsync(Room room, Countdown countdown, TimeSpan mark)
 	{
 		await using var scope = await Lobby.EnterAsync(room);
-		if (scope is null || !ReferenceEquals(room.CountdownTimer, countdown)) return;
+		if (scope is null || !ReferenceEquals(room.Rounds.CountdownTimer, countdown)) return;
 
 		events.Emit(new RoomCountdownTicked(room, mark));
 	}
@@ -327,10 +327,10 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 	private async Task ElapseAsync(Room room, Countdown countdown, bool startsRound)
 	{
 		await using var scope = await Lobby.EnterAsync(room);
-		if (scope is null || !ReferenceEquals(room.CountdownTimer, countdown)) return;
+		if (scope is null || !ReferenceEquals(room.Rounds.CountdownTimer, countdown)) return;
 
 		RoundMechanics.StopCountdown(room);
-		if (startsRound && room is { InProgress: false, Beatmap: not null })
+		if (startsRound && room is { Rounds.InProgress: false, Settings.Beatmap: not null })
 			StartRound(room, true);
 		else
 			events.Emit(new RoomCountdownElapsed(room, startsRound));

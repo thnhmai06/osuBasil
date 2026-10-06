@@ -34,11 +34,11 @@ internal sealed class RoomAuthorityService(RoomEventStream events, TimeProvider 
 	private RoomResult AddReferee(Room room, Connection by, User user)
 	{
 		if (!RoomRules.IsCreatorOrAnyRoomManager(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
-		if (room.Creator is not null && room.Creator.Equals(user)) return RoomResult.IsCreator;
-		if (room.Referees.Contains(user)) return RoomResult.AlreadyReferee;
-		if (room.Referees.Count >= Room.MaxReferees) return RoomResult.TooManyReferees;
+		if (room.Authority.Creator is not null && room.Authority.Creator.Equals(user)) return RoomResult.IsCreator;
+		if (room.Authority.Referees.Contains(user)) return RoomResult.AlreadyReferee;
+		if (room.Authority.Referees.Count >= RoomAuthority.MaxReferees) return RoomResult.TooManyReferees;
 
-		room.AddReferee(user);
+		room.Authority.AddReferee(user);
 		events.Emit(new RoomRefereeAdded(room, user));
 		return RoomResult.Ok;
 	}
@@ -46,7 +46,7 @@ internal sealed class RoomAuthorityService(RoomEventStream events, TimeProvider 
 	private RoomResult RemoveReferee(Room room, Connection by, User user)
 	{
 		if (!RoomRules.IsCreatorOrAnyRoomManager(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
-		if (!room.RemoveReferee(user)) return RoomResult.NotReferee;
+		if (!room.Authority.RemoveReferee(user)) return RoomResult.NotReferee;
 
 		events.Emit(new RoomRefereeRemoved(room, user));
 		return RoomResult.Ok;
@@ -56,9 +56,9 @@ internal sealed class RoomAuthorityService(RoomEventStream events, TimeProvider 
 	{
 		if (!RoomRules.IsHostOrManager(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 		if (host is not null && room.Slots.Find(host) is null) return RoomResult.NotInRoom;
-		if (ReferenceEquals(room.Host, host)) return RoomResult.Ok;
+		if (ReferenceEquals(room.Authority.Host, host)) return RoomResult.Ok;
 
-		room.Host = host;
+		room.Authority.Host = host;
 		events.Emit(new RoomHostChanged(room, host));
 		return RoomResult.Ok;
 	}

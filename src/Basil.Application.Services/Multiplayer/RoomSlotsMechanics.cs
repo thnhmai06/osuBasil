@@ -16,7 +16,7 @@ internal static class RoomSlotsMechanics
 	/// <exception cref="InvalidOperationException">The user is banned from the room.</exception>
 	internal static RoomSlot? Seat(Room room, BanchoConnection player)
 	{
-		if (room.Banned.Contains(player.User))
+		if (room.Members.Banned.Contains(player.User))
 			throw new InvalidOperationException("The user is banned from this room.");
 
 		if (room.Slots.Find(player) is { } existing) return existing;
@@ -26,7 +26,7 @@ internal static class RoomSlotsMechanics
 
 		Occupy(slot, player);
 
-		if (room.TeamType.NeedSplitTeam())
+		if (room.Settings.TeamType.NeedSplitTeam())
 		{
 			var redCount = room.Slots.Count(s => s.Team == GameTeam.Red);
 			var blueCount = room.Slots.Count(s => s.Team == GameTeam.Blue);
@@ -158,8 +158,8 @@ internal static class RoomSlotsMechanics
 
 	private static void PassHostFrom(Room room, BanchoConnection leaving)
 	{
-		if (!ReferenceEquals(room.Host, leaving)) return;
-		room.Host = room.Slots.FirstOrDefault(slot => slot.Player is not null && !ReferenceEquals(slot.Player, leaving))
+		if (!ReferenceEquals(room.Authority.Host, leaving)) return;
+		room.Authority.Host = room.Slots.FirstOrDefault(slot => slot.Player is not null && !ReferenceEquals(slot.Player, leaving))
 			?.Player;
 	}
 

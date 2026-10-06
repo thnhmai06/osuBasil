@@ -11,10 +11,10 @@ internal static class RoundMechanics
 	/// <remarks>Stopping a room that has no countdown does nothing.</remarks>
 	internal static void StopCountdown(Room room)
 	{
-		room.CountdownTimer?.Dispose();
-		room.CountdownTimer = null;
-		room.CountdownEndsAt = null;
-		room.CountdownStartsRound = false;
+		room.Rounds.CountdownTimer?.Dispose();
+		room.Rounds.CountdownTimer = null;
+		room.Rounds.CountdownEndsAt = null;
+		room.Rounds.CountdownStartsRound = false;
 	}
 
 	/// <summary>Ends a room's round in progress and sets its players back to not ready.</summary>
@@ -24,7 +24,7 @@ internal static class RoundMechanics
 	/// <returns>The round that ended, or <see langword="null" /> when no round was in progress.</returns>
 	internal static Round? EndCurrentRound(Room room, DateTimeOffset now, bool aborted)
 	{
-		if (room.CurrentRound is not { } round) return null;
+		if (room.Rounds.CurrentRound is not { } round) return null;
 
 		round.EndedAt = now;
 		round.Aborted = aborted;

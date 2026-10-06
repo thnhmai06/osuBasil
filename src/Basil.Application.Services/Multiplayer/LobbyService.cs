@@ -114,7 +114,7 @@ internal sealed class LobbyService(
 		var room = lobby.Add(id =>
 		{
 			var opened = new Room(id, match, settings ?? new MatchSettings(), isTournament);
-			if (!string.IsNullOrEmpty(password)) opened.Password = password;
+			if (!string.IsNullOrEmpty(password)) opened.Settings.Password = password;
 			if (seat is not null && lobby.RoomOf(seat) is null)
 				SeatCreator(opened, seat);
 			return opened;
@@ -124,7 +124,7 @@ internal sealed class LobbyService(
 		DateTimeOffset? closesAt = room.IsTournament && !room.Slots.Any(slot => slot.Player is not null)
 			? ScheduleClosing(room)
 			: null;
-		Emit(new LobbyRoomOpened(room, room.Host, closesAt));
+		Emit(new LobbyRoomOpened(room, room.Authority.Host, closesAt));
 		return (room, RoomResult.Ok);
 	}
 
@@ -174,7 +174,7 @@ internal sealed class LobbyService(
 		foreach (var player in evicted) RoomSlotsMechanics.Vacate(room, player);
 
 		room.Match.Value.EndedAt = time.GetUtcNow();
-		room.ClearObservers();
+		room.Members.ClearObservers();
 		room.IsClosed = true;
 		channels.Close(room.Channel);
 		lobby.Remove(room);
@@ -215,13 +215,13 @@ internal sealed class LobbyService(
 
 	private bool TooManyRooms(User creator)
 	{
-		return lobby.Rooms.Count(room => room.IsTournament && creator.Equals(room.Creator)) >= MaxRoomsPerCreator;
+		return lobby.Rooms.Count(room => room.IsTournament && creator.Equals(room.Authority.Creator)) >= MaxRoomsPerCreator;
 	}
 
 	private void SeatCreator(Room room, BanchoConnection creator)
 	{
 		if (RoomSlotsMechanics.Seat(room, creator) is null) return;
-		room.Host = creator;
+		room.Authority.Host = creator;
 		channels.Join(room.Channel, creator);
 	}
 

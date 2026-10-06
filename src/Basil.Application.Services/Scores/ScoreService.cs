@@ -42,7 +42,7 @@ internal sealed class ScoreService(
 		CancellationToken cancellationToken = default)
 	{
 		var room = lobby.RoomOf(connection);
-		var round = room?.LastRound is { } last && last.BeatmapHash == client.BeatmapHash ? last : null;
+		var round = room?.Rounds.LastRound is { } last && last.BeatmapHash == client.BeatmapHash ? last : null;
 		var checkedBeatmap =
 			beatmap ?? (round is not null ? new BeatmapChecksums(client.BeatmapHash, null) : null);
 		if (checkedBeatmap is null) return ScoreRejection.UnknownBeatmap;

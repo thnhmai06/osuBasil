@@ -181,7 +181,7 @@ internal sealed class ChannelService(
 	private static bool InRoom(Room room, Connection connection, DateTimeOffset now)
 	{
 		return (connection is BanchoConnection player && room.Slots.Find(player) is not null)
-		       || (connection is TourneyConnection observer && room.Observers.Contains(observer))
+		       || (connection is TourneyConnection observer && room.Members.Observers.Contains(observer))
 		       || RoomRules.IsManager(room, connection.User)
 		       || PermissionRules.Allows(connection, Permissions.TournamentManageAnyRoom, now);
 	}

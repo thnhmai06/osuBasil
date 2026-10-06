@@ -14,7 +14,7 @@ internal static class RoomRules
 	/// <returns><see langword="true" /> if the user is the creator or a referee of this match.</returns>
 	internal static bool IsManager(Room room, User user)
 	{
-		return room.IsManagedBy(user);
+		return room.Authority.IsManagedBy(user);
 	}
 
 	/// <summary>
@@ -27,7 +27,7 @@ internal static class RoomRules
 	internal static bool IsCreatorOrAnyRoomManager(Room room, Connection by, DateTimeOffset now)
 	{
 		return PermissionRules.Allows(by, Permissions.TournamentManageAnyRoom, now) ||
-		       (room.Creator is not null && room.Creator.Equals(by.User) && HasAnyPermission(by, now));
+		       (room.Authority.Creator is not null && room.Authority.Creator.Equals(by.User) && HasAnyPermission(by, now));
 	}
 
 	/// <summary>
@@ -49,7 +49,7 @@ internal static class RoomRules
 	/// <param name="now">The moment to evaluate at.</param>
 	internal static bool IsHostOrManager(Room room, Connection by, DateTimeOffset now)
 	{
-		return ReferenceEquals(by, room.Host) || CanManage(room, by, now);
+		return ReferenceEquals(by, room.Authority.Host) || CanManage(room, by, now);
 	}
 
 	/// <summary>A creator or referee whose permissions are all suspended cannot use their authority.</summary>
