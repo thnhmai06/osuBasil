@@ -137,7 +137,10 @@ internal sealed class ChatCommands(
 		CancellationToken cancellationToken)
 	{
 		if (args.Count == 0)
+		{
+			await context.Reply(BotReplies.WhereUsage, cancellationToken);
 			return false;
+		}
 
 		var name = string.Join(" ", args);
 		var user = await users.GetByNameAsync(name, cancellationToken);
@@ -156,7 +159,10 @@ internal sealed class ChatCommands(
 		CancellationToken cancellationToken)
 	{
 		if (args.Count == 0)
+		{
+			await context.Reply(BotReplies.FaqUsage, cancellationToken);
 			return false;
+		}
 
 		var query = string.Join(" ", args);
 
