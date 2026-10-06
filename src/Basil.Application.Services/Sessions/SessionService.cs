@@ -120,7 +120,7 @@ internal sealed class SessionService(
 			registry.Add(session);
 		}
 
-		session.Restrictions = restrictions;
+		session.ChangeRestrictions(_ => [.. restrictions]);
 		connection.Session = session;
 		session.Add(connection);
 		if (connection.Type is not ConnectionType.Tourney)

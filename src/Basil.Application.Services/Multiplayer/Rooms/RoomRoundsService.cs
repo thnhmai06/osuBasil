@@ -194,16 +194,14 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 		}
 
 		RoundMechanics.StopCountdown(room);
-		Countdown? countdown = null;
 		var milestones = MarksFor(length, startsRound)
-			.Select(mark => new Countdown.Milestone(mark, _ => TickAsync(room, countdown!, mark)))
-			.Append(new Countdown.Milestone(TimeSpan.Zero, _ => ElapseAsync(room, countdown!, startsRound)));
-		countdown = new Countdown(length, milestones, time);
+			.Select(mark => new Countdown.Milestone(mark, countdown => TickAsync(room, countdown, mark)))
+			.Append(new Countdown.Milestone(TimeSpan.Zero, countdown => ElapseAsync(room, countdown, startsRound)));
+		var countdown = new Countdown(length, milestones, time);
 		room.CountdownTimer = countdown;
 		room.CountdownStartsRound = startsRound;
-		countdown.Start();
 		room.CountdownEndsAt = countdown.EndsAt;
-		events.Emit(new RoomCountdownStarted(room, length, startsRound, countdown.EndsAt!.Value));
+		events.Emit(new RoomCountdownStarted(room, length, startsRound, countdown.EndsAt));
 		return RoomResult.Ok;
 	}
 

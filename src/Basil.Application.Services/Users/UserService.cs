@@ -50,11 +50,7 @@ internal sealed class UserService(
 
 		restriction.Value.EndsAt = now;
 		await restrictions.CreateOrUpdateAsync(restriction, cancellationToken);
-		if (registry.Find(user) is { } session)
-		{
-			using var scope = registry.Enter();
-			session.Restrictions = session.Restrictions.Where(running => !running.Equals(restriction)).ToList();
-		}
+		registry.Find(user)?.ChangeRestrictions(running => running.RemoveAll(restriction.Equals));
 
 		_events.Writer.TryWrite(new UserRestrictionLifted(user, restriction));
 		return true;
@@ -111,8 +107,7 @@ internal sealed class UserService(
 		var restriction = await restrictions.CreateAsync(data, cancellationToken);
 		if (registry.Find(user) is { } session)
 		{
-			using (registry.Enter())
-				session.Restrictions = [.. session.Restrictions, restriction];
+			session.ChangeRestrictions(running => running.Add(restriction));
 			sessions.CloseDisallowed(session);
 		}
 

@@ -11,6 +11,8 @@ public sealed class UserSession
 {
 	private readonly ConcurrentDictionary<ConnectionType, ConcurrentSet<Connection>> _connections = new();
 
+	private ImmutableList<Restriction> _restrictions = [];
+
 	internal UserSession(User user)
 	{
 		User = user;
@@ -30,7 +32,14 @@ public sealed class UserSession
 	public bool PmPrivate { get; internal set; }
 
 	/// <summary>Gets the user's restrictions that had not ended when they were last loaded or changed.</summary>
-	public IReadOnlyList<Restriction> Restrictions { get; internal set; } = [];
+	public IReadOnlyList<Restriction> Restrictions => _restrictions;
+
+	/// <summary>Replaces the user's restrictions in one step, so concurrent changes never lose each other.</summary>
+	/// <param name="change">Computes the new restrictions from the current ones.</param>
+	internal void ChangeRestrictions(Func<ImmutableList<Restriction>, ImmutableList<Restriction>> change)
+	{
+		ImmutableInterlocked.Update(ref _restrictions, change);
+	}
 
 	/// <summary>Gets the open connections of one kind.</summary>
 	/// <param name="type">The kind of connection.</param>
