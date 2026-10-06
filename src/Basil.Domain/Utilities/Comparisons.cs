@@ -2,7 +2,7 @@
 
 namespace Basil.Domain.Utilities;
 
-public static class Comparations
+public static class Comparisons
 {
 	public static bool NearlyEqual<T>(this T a, T b, T? tolerance = default) where T : INumber<T>
 	{

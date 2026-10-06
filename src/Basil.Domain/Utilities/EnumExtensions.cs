@@ -23,8 +23,7 @@ public static class EnumExtensions
 	{
 		if (!typeof(TEnum).IsDefined(typeof(FlagsAttribute), false)) return Enum.IsDefined(value);
 
-		var known = 0UL;
-		foreach (var member in Enum.GetValues<TEnum>()) known |= Convert.ToUInt64(member);
+		var known = Enum.GetValues<TEnum>().Aggregate(0UL, (current, member) => current | Convert.ToUInt64(member));
 		return (Convert.ToUInt64(value) & ~known) == 0;
 	}
 }

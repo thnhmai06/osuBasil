@@ -1,5 +1,6 @@
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
+using Basil.Domain.Utilities;
 
 namespace Basil.Domain.Multiplayer;
 
@@ -45,7 +46,7 @@ public sealed record RoundResult(GameTeam? WinningTeam, int? WinningUserId, doub
 				.ToList();
 
 			if (teams.Count == 1) return new RoundResult(teams[0].Team, null, 0);
-			return teams[0].Total == teams[1].Total
+			return teams[0].Total.NearlyEqual(teams[1].Total)
 				? new RoundResult(null, null, 0)
 				: new RoundResult(teams[0].Team, null, teams[0].Total - teams[1].Total);
 		}
@@ -55,7 +56,7 @@ public sealed record RoundResult(GameTeam? WinningTeam, int? WinningUserId, doub
 			.OrderByDescending(p => p.Metric)
 			.ToList();
 
-		return players[0].Metric == players[1].Metric
+		return players[0].Metric.NearlyEqual(players[1].Metric)
 			? new RoundResult(null, null, 0)
 			: new RoundResult(null, players[0].UserId, players[0].Metric - players[1].Metric);
 	}

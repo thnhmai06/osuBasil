@@ -51,7 +51,7 @@ internal sealed class BeatmapsetService(
 
 		var stored = new Dictionary<BeatmapArchiveDifficulty, Beatmap?>();
 		foreach (var difficulty in content.Difficulties)
-			stored[difficulty] = await beatmaps.GetByHashAsync(new Md5(difficulty.Content), cancellationToken);
+			stored[difficulty] = await beatmaps.GetAsync(new Md5(difficulty.Content), cancellationToken);
 
 		var setId = stored.Values.FirstOrDefault(b => b is not null)?.Beatmapset.Id;
 		// An ordinary uploader only adds a new beatmapset: the ids the archive or the caller declare are ignored, so they
@@ -59,12 +59,15 @@ internal sealed class BeatmapsetService(
 		if (manager && setId is null && beatmapsetId is { } named &&
 		    await beatmapsets.GetAsync(named, cancellationToken) is not null)
 			setId = named;
-		setId ??= manager && content.OnlineSetId is > 0 ? content.OnlineSetId : await NewLocalIdAsync(cancellationToken);
+		setId ??= manager && content.OnlineSetId is > 0
+			? content.OnlineSetId
+			: await NewLocalIdAsync(cancellationToken);
 
 		var existing = await beatmapsets.GetAsync(setId.Value, cancellationToken);
 		if (existing is { Locked: true })
 			return new BeatmapsetImportResult(null, [], BeatmapsetImportFailure.Locked);
-		if (!manager && existing is not null) return new BeatmapsetImportResult(null, [], BeatmapsetImportFailure.NotAuthorized);
+		if (!manager && existing is not null)
+			return new BeatmapsetImportResult(null, [], BeatmapsetImportFailure.NotAuthorized);
 
 		var set = new Beatmapset
 		{

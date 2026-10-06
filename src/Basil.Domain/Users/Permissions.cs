@@ -122,43 +122,44 @@ public enum Permissions : ulong
 /// <summary>Provides the rules for combining and reporting <see cref="Permissions" />.</summary>
 public static class PermissionsExtensions
 {
-	/// <summary>Determines whether every permission of a requirement is held.</summary>
 	/// <param name="held">The permissions held.</param>
-	/// <param name="required">The permissions that must all be held; none is always satisfied.</param>
-	/// <returns><see langword="true" /> if every permission in <paramref name="required" /> is held.</returns>
-	public static bool Allows(this Permissions held, Permissions required)
+	extension(Permissions held)
 	{
-		return (held & required) == required;
-	}
+		/// <summary>Determines whether every permission of a requirement is held.</summary>
+		/// <param name="required">The permissions that must all be held; none is always satisfied.</param>
+		/// <returns><see langword="true" /> if every permission in <paramref name="required" /> is held.</returns>
+		public bool Allows(Permissions required)
+		{
+			return (held & required) == required;
+		}
 
-	/// <summary>Gets the permissions left in effect once the active restrictions suspend theirs.</summary>
-	/// <param name="granted">The permissions granted to the account.</param>
-	/// <param name="restrictions">The account's restrictions; only those active at <paramref name="now" /> count.</param>
-	/// <param name="now">The moment to evaluate at.</param>
-	/// <returns>The granted permissions that no active restriction suspends.</returns>
-	public static Permissions Effective(this Permissions granted, IEnumerable<Restriction> restrictions,
-		DateTimeOffset now)
-	{
-		var suspended = restrictions
-			.Where(restriction => restriction.Value.IsActive(now))
-			.Aggregate(Permissions.None, (all, restriction) => all | restriction.Value.Permissions);
-		return granted & ~suspended;
-	}
+		/// <summary>Gets the permissions left in effect once the active restrictions suspend theirs.</summary>
+		/// <param name="restrictions">The account's restrictions; only those active at <paramref name="now" /> count.</param>
+		/// <param name="now">The moment to evaluate at.</param>
+		/// <returns>The granted permissions that no active restriction suspends.</returns>
+		public Permissions Effective(IEnumerable<Restriction> restrictions,
+			DateTimeOffset now)
+		{
+			var suspended = restrictions
+				.Where(restriction => restriction.Value.IsActive(now))
+				.Aggregate(Permissions.None, (all, restriction) => all | restriction.Value.Permissions);
+			return held & ~suspended;
+		}
 
-	/// <summary>Gets the privileges an osu! client is told about for a set of effective permissions.</summary>
-	/// <param name="effective">The effective permissions of the user.</param>
-	/// <returns>The privileges of every group in which at least one permission is held.</returns>
-	/// <remarks>Watching rooms with osu!tourney also turns on <see cref="ClientPrivileges.Supporter" />, which osu!tourney requires.</remarks>
-	public static ClientPrivileges ToClientPrivileges(this Permissions effective)
-	{
-		var privileges = ClientPrivileges.None;
-		if ((effective & Permissions.Player) != 0) privileges |= ClientPrivileges.Player;
-		if ((effective & (Permissions.Supporter | Permissions.TournamentObserveRooms)) != 0)
-			privileges |= ClientPrivileges.Supporter;
-		if ((effective & Permissions.Tournament) != 0) privileges |= ClientPrivileges.Tournament;
-		if ((effective & Permissions.Moderator) != 0) privileges |= ClientPrivileges.Moderator;
-		if ((effective & Permissions.Developer) != 0) privileges |= ClientPrivileges.Developer;
-		if ((effective & Permissions.Owner) != 0) privileges |= ClientPrivileges.Owner;
-		return privileges;
+		/// <summary>Gets the privileges an osu! client is told about for a set of effective permissions.</summary>
+		/// <returns>The privileges of every group in which at least one permission is held.</returns>
+		/// <remarks>Watching rooms with osu!tourney also turns on <see cref="ClientPrivileges.Supporter" />, which osu!tourney requires.</remarks>
+		public ClientPrivileges ToClientPrivileges()
+		{
+			var privileges = ClientPrivileges.None;
+			if ((held & Permissions.Player) != 0) privileges |= ClientPrivileges.Player;
+			if ((held & (Permissions.Supporter | Permissions.TournamentObserveRooms)) != 0)
+				privileges |= ClientPrivileges.Supporter;
+			if ((held & Permissions.Tournament) != 0) privileges |= ClientPrivileges.Tournament;
+			if ((held & Permissions.Moderator) != 0) privileges |= ClientPrivileges.Moderator;
+			if ((held & Permissions.Developer) != 0) privileges |= ClientPrivileges.Developer;
+			if ((held & Permissions.Owner) != 0) privileges |= ClientPrivileges.Owner;
+			return privileges;
+		}
 	}
 }

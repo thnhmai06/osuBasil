@@ -109,7 +109,7 @@ public sealed partial class UserData
 	} = Permissions.Player | Permissions.Supporter;
 
 	/// <summary>Gets or sets the date and time when the user was deleted, if any.</summary>
-	public DateTimeOffset? DeletedAt { get; set; } = null;
+	public DateTimeOffset? DeletedAt { get; set; }
 
 	[GeneratedRegex(@"^[a-zA-Z0-9_\-\[\] ]+$")]
 	private static partial Regex OsuUsernameChars();

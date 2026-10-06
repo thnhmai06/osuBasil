@@ -25,7 +25,7 @@ public interface IBeatmapRepository
 	/// <param name="hash">The MD5 hash of the beatmap file.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The beatmap, or <see langword="null" /> when none has that hash.</returns>
-	ValueTask<Beatmap?> GetByHashAsync(Md5 hash, CancellationToken cancellationToken = default);
+	ValueTask<Beatmap?> GetAsync(Md5 hash, CancellationToken cancellationToken = default);
 
 	/// <summary>Lists the beatmaps of a beatmapset, ordered by id.</summary>
 	/// <param name="set">The beatmapset.</param>

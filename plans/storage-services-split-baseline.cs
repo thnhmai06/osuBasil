@@ -399,11 +399,11 @@ BeatmapsetArchive Archive(int? setId, params (string Content, int? Id)[] diffs) 
 Task<BeatmapsetImportResult> Import(BeatmapsetArchive? a, int? named = null, Connection? by = null) { archiveReader.Next = a; return beatmapService.ImportAsync(by ?? staffApi, new MemoryStream([1]), named); }
 Check("P5h unreadable archive", (await Import(null)).Failure == BeatmapsetImportFailure.Unreadable);
 Check("P5h unknown named id falls back to the declared id", (await Import(Archive(123, ("a", 456)), 999)).Set?.Id == 123);
-Check("P5h beatmap keeps its declared id", (await mapStore.GetByHashAsync(new Md5(Encoding.UTF8.GetBytes("a"))))?.Id == 456);
-Check("P5h known beatmap picks its set and keeps its id", (await Import(Archive(777, ("a", null), ("b", null)))).Set?.Id == 123 && (await mapStore.GetByHashAsync(new Md5(Encoding.UTF8.GetBytes("a"))))?.Id == 456);
+Check("P5h beatmap keeps its declared id", (await mapStore.GetAsync(new Md5(Encoding.UTF8.GetBytes("a"))))?.Id == 456);
+Check("P5h known beatmap picks its set and keeps its id", (await Import(Archive(777, ("a", null), ("b", null)))).Set?.Id == 123 && (await mapStore.GetAsync(new Md5(Encoding.UTF8.GetBytes("a"))))?.Id == 456);
 Check("P5h nothing declared gets a local id", (await Import(Archive(null, ("c", null)))).Set?.Id == 1_000_000_000);
 Check("P5h existing named id wins over the declared id", (await Import(Archive(888, ("d", null)), 123)).Set?.Id == 123);
-Check("P5h difficulties no longer in the set removed", await mapStore.GetByHashAsync(new Md5(Encoding.UTF8.GetBytes("a"))) is null);
+Check("P5h difficulties no longer in the set removed", await mapStore.GetAsync(new Md5(Encoding.UTF8.GetBytes("a"))) is null);
 var set123 = (await setStore.GetAsync(123))!;
 set123.Locked = true;
 Check("P5i locked set not imported", (await Import(Archive(123, ("e", null)))).Failure == BeatmapsetImportFailure.Locked);
@@ -423,7 +423,7 @@ Check("L2 uploader imports a new set while uploads are open", l2Set is not null)
 Check("L2 uploader cannot touch an existing set", (await Import(Archive(null, ("l2b", null)), by: uploaderApi)).Failure == BeatmapsetImportFailure.NotAuthorized);
 var l2Declared = (await Import(Archive(l2Set!.Id, ("l2d", 456)), by: uploaderApi)).Set;
 Check("L2 ids an uploader declares are ignored", l2Declared is not null && l2Declared.Id != l2Set.Id
-	&& (await mapStore.GetByHashAsync(new Md5(Encoding.UTF8.GetBytes("l2d"))))?.Id != 456);
+	&& (await mapStore.GetAsync(new Md5(Encoding.UTF8.GetBytes("l2d"))))?.Id != 456);
 Check("L2 staff replaces it", (await Import(Archive(l2Set.Id, ("l2c", null)))).Set?.Id == l2Set.Id);
 settingsStore.Current = new ServerSettings();
 
@@ -751,7 +751,7 @@ sealed class Maps : IBeatmapRepository
 	private readonly Dictionary<Md5, Beatmap> _items = new();
 	public Task CreateOrUpdateAsync(Beatmap beatmap, CancellationToken cancellationToken = default) { _items[beatmap.Hash] = beatmap; return Task.CompletedTask; }
 	public ValueTask<Beatmap?> GetAsync(int id, CancellationToken cancellationToken = default) => ValueTask.FromResult(_items.Values.FirstOrDefault(b => b.Id == id));
-	public ValueTask<Beatmap?> GetByHashAsync(Md5 hash, CancellationToken cancellationToken = default) => ValueTask.FromResult(_items.GetValueOrDefault(hash));
+	public ValueTask<Beatmap?> GetAsync(Md5 hash, CancellationToken cancellationToken = default) => ValueTask.FromResult(_items.GetValueOrDefault(hash));
 	public Task<IReadOnlyList<Beatmap>> ListAsync(Beatmapset set, CancellationToken cancellationToken = default) =>
 		Task.FromResult<IReadOnlyList<Beatmap>>(_items.Values.Where(b => b.Beatmapset.Id == set.Id).ToList());
 	public Task<Page<Beatmap>> ListAsync(BeatmapQuery query, PageRequest page, CancellationToken cancellationToken = default) => Task.FromResult(new Page<Beatmap>([], 0));
