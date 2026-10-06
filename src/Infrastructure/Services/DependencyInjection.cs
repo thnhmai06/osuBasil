@@ -12,6 +12,8 @@ public static class DependencyInjection
 	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddInfrastructureServices(this IServiceCollection services)
 	{
+		services.AddSingleton<IBeatmapsetReader, OsuBeatmapsetReader>();
+		services.AddSingleton<IBeatmapAnalyser, OsuBeatmapAnalyser>();
 		services.AddSingleton<IBeatmapAssets, BeatmapAssets>();
 		services.AddSingleton<IBeatmapsetMirror, HttpBeatmapsetMirror>();
 		return services;
