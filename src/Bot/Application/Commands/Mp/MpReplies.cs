@@ -13,9 +13,6 @@ namespace Basil.Bot.Application.Commands.Mp;
 internal static class MpReplies
 {
 	// ── !mp make / makeprivate ─────────────────────────────────────────────────────────────
-	/// <summary>Reply when a room could not be created.</summary>
-	public const string CreateFailed = "Couldn't create the match — please try again.";
-
 	/// <summary>Reply after a room is created; <c>{0}</c> is the room id, <c>{1}</c> its name, <c>{2}</c> a privacy suffix.</summary>
 	public const string CreatedMatch =
 		"Created the match #{0} {1}{2}. You're now targeting it, and have been added as a referee.";
@@ -30,9 +27,6 @@ internal static class MpReplies
 	/// <summary>Reply when a private room rejects a non-invitee; <c>{0}</c> is the room id.</summary>
 	public const string PrivateRoomJoinDenied =
 		"Cannot join match #{0} — the room is private. Ask a referee for an invite.";
-
-	/// <summary>Reply when the sender is already seated in another room.</summary>
-	public const string AlreadyInARoom = "You're already in a match.";
 
 	/// <summary>Reply when the sender is banned from the room.</summary>
 	public const string BannedFromMatch = "You're banned from this match.";
@@ -117,9 +111,6 @@ internal static class MpReplies
 	/// <summary>Reply when the destination slot is occupied or otherwise not open.</summary>
 	public const string DestinationSlotNotOpen = "Destination slot is not open.";
 
-	/// <summary>Reply when the target holds no slot in the room; <c>{0}</c> is the target's name.</summary>
-	public const string NotInThisMatch = "{0} is not in this match.";
-
 	/// <summary>Reply after moving a player; <c>{0}</c> is the player's name, <c>{1}</c> the destination slot.</summary>
 	public const string MovedToSlot = "Moved {0} into slot {1}";
 
@@ -181,20 +172,8 @@ internal static class MpReplies
 	/// <summary>Reply after adding a referee; <c>{0}</c> is the new referee's name.</summary>
 	public const string AddedReferee = "Added {0} to the match referees";
 
-	/// <summary>Reply when the target already holds referee status; <c>{0}</c> is the target.</summary>
-	public const string TargetIsAlreadyAReferee = "{0} is already a referee of this match.";
-
 	/// <summary>Usage line for <c>!mp removeref</c>.</summary>
 	public const string RemoveRefUsage = "Usage: !mp removeref <name/id>";
-
-	/// <summary>Reply when removing the referee would leave the room without one; <c>{0}</c> is the target.</summary>
-	public const string CannotRemoveLastReferee = "Cannot remove {0} — at least one referee must remain.";
-
-	/// <summary>Reply when the target holds no referee status; <c>{0}</c> is the target.</summary>
-	public const string TargetIsNotAReferee = "{0} is not a referee of this match.";
-
-	/// <summary>Reply when the target is the match's creator; <c>{0}</c> is the target.</summary>
-	public const string CannotRemoveCreator = "Cannot remove {0} — they created this match.";
 
 	/// <summary>Reply after removing a referee; <c>{0}</c> is the removed referee's name.</summary>
 	public const string RemovedReferee = "Removed {0} from the match referees";
@@ -302,9 +281,6 @@ internal static class MpReplies
 	/// <summary>Usage line for <c>!mp unban</c>.</summary>
 	public const string UnbanUsage = "Usage: !mp unban <name/id>";
 
-	/// <summary>Reply when the target is not banned; <c>{0}</c> is the target's name.</summary>
-	public const string NotBannedFromMatch = "{0} is not banned from this match.";
-
 	/// <summary>Reply after unbanning a player; <c>{0}</c> is the unbanned player's name.</summary>
 	public const string UnbannedFromMatch = "Unbanned {0} from the match";
 
@@ -359,6 +335,91 @@ internal static class MpReplies
 		"!mp unban <name/id> - allow a banned user to rejoin" + "\n" +
 		"!mp close - close the match immediately";
 
+	// ── outcome replies ───────────────────────────────────────────────────────────────────
+	/// <summary>Reply when the actor may not perform the requested operation in this match.</summary>
+	public const string NotAuthorizedInMatch = "You don't have permission to do that in this match.";
+
+	/// <summary>Reply when the actor is silenced and may not perform the operation.</summary>
+	public const string Silenced = "You can't do that while you are silenced.";
+
+	/// <summary>Reply when the actor is already seated in this match.</summary>
+	public const string AlreadyInThisMatch = "You're already in this match.";
+
+	/// <summary>Reply when the target is seated in a different match.</summary>
+	public const string TargetInAnotherMatch = "That player is in another match.";
+
+	/// <summary>Reply when the target is watching this match as an observer.</summary>
+	public const string TargetIsObserver = "That player is watching this match as an observer.";
+
+	/// <summary>Reply when the target is not in this match.</summary>
+	public const string TargetNotInMatch = "That player is not in this match.";
+
+	/// <summary>Reply when the operation would act on the match's creator or a referee.</summary>
+	public const string TargetIsManager = "That can't be done to the match's creator or referees.";
+
+	/// <summary>Reply when the target is not banned from this match.</summary>
+	public const string TargetNotBanned = "That player is not banned from this match.";
+
+	/// <summary>Reply when the target is not online.</summary>
+	public const string TargetNotOnline = "That player is not online.";
+
+	/// <summary>Reply when the match already holds the maximum number of referees.</summary>
+	public const string RefereeLimitReached = "This match already has the most referees it can have.";
+
+	/// <summary>Reply when the target is already a referee of this match.</summary>
+	public const string TargetAlreadyReferee = "That user is already a referee of this match.";
+
+	/// <summary>Reply when the target is not a referee of this match.</summary>
+	public const string TargetNotReferee = "That user is not a referee of this match.";
+
+	/// <summary>Reply when the target created this match.</summary>
+	public const string TargetIsCreator = "That user created this match.";
+
+	/// <summary>Reply when the target is playing in this match.</summary>
+	public const string TargetIsPlayer = "That user is playing in this match.";
+
+	/// <summary>Reply when the target is not watching this match.</summary>
+	public const string TargetNotObserver = "That user is not watching this match.";
+
+	/// <summary>Reply when the actor already has the maximum number of tournament matches open.</summary>
+	public const string RoomLimitReached = "You already have the most tournament matches open that you can.";
+
+	/// <summary>Reply when no more matches can be opened right now.</summary>
+	public const string NoMatchesAvailable = "No more matches can be opened right now.";
+
+	/// <summary>Reply when the operation would act on the actor's own slot.</summary>
+	public const string OwnSlotLocked = "You can't lock your own slot.";
+
+	/// <summary>Reply when the match has no teams.</summary>
+	public const string MatchHasNoTeams = "This match has no teams.";
+
+	/// <summary>Reply when FreeMod is not enabled.</summary>
+	public const string FreemodNotEnabled = "FreeMod is not enabled.";
+
+	/// <summary>Reply when a speed-changing mod was requested for a single slot.</summary>
+	public const string SpeedModsMatchWide = "Speed-changing mods can only be set for the whole match.";
+
+	/// <summary>Reply when the requested settings are not valid.</summary>
+	public const string SettingsInvalid = "Those settings are not valid.";
+
+	/// <summary>Reply when no beatmap is selected.</summary>
+	public const string NoBeatmapSelected = "No beatmap is selected.";
+
+	/// <summary>Reply when the target is not playing.</summary>
+	public const string TargetNotPlaying = "That player is not playing.";
+
+	/// <summary>Reply when a countdown length is outside the allowed range.</summary>
+	public const string CountdownOutOfRange = "The countdown must be between 1 second and 1 hour.";
+
+	/// <summary>Reply when a score is not from the current round.</summary>
+	public const string ScoreNotCurrentRound = "That score is not from the current round.";
+
+	/// <summary>Reply when the match is closed.</summary>
+	public const string MatchClosed = "The match is closed.";
+
+	/// <summary>Reply when the requested room, user or beatmap does not exist.</summary>
+	public const string NotFound = "Not found.";
+
 	/// <summary>Maps a <see cref="RoomOutcome" /> to the user-visible reply the bot sends.</summary>
 	/// <param name="outcome">The outcome returned by the server for the requested room operation.</param>
 	/// <returns>The reply text, with any placeholders already filled in for constant replies.</returns>
@@ -366,45 +427,44 @@ internal static class MpReplies
 	{
 		return outcome switch
 		{
-			RoomOutcome.Ok => string.Empty,
-			RoomOutcome.NotAuthorized => NotInARoom,
-			RoomOutcome.AlreadySeated => AlreadyInARoom,
+			RoomOutcome.NotAuthorized => NotAuthorizedInMatch,
+			RoomOutcome.Silenced => Silenced,
+			RoomOutcome.AlreadySeated => AlreadyInThisMatch,
 			RoomOutcome.Banned => BannedFromMatch,
-			RoomOutcome.Silenced => BannedFromMatch,
-			RoomOutcome.InAnotherRoom => AlreadyInARoom,
+			RoomOutcome.InAnotherRoom => TargetInAnotherMatch,
 			RoomOutcome.WrongPassword => IncorrectPassword,
 			RoomOutcome.Full => MatchIsFull,
-			RoomOutcome.IsObserver => AlreadyInARoom,
-			RoomOutcome.NotInRoom => NotInARoom,
-			RoomOutcome.IsManager => NotInARoom,
-			RoomOutcome.NotBanned => NotBannedFromMatch,
-			RoomOutcome.TargetOffline => UserNotFound,
+			RoomOutcome.IsObserver => TargetIsObserver,
+			RoomOutcome.NotInRoom => TargetNotInMatch,
+			RoomOutcome.IsManager => TargetIsManager,
+			RoomOutcome.NotBanned => TargetNotBanned,
+			RoomOutcome.TargetOffline => TargetNotOnline,
 			RoomOutcome.AlreadyInRoom => UserAlreadyInRoom,
-			RoomOutcome.TooManyReferees => CannotRemoveLastReferee,
-			RoomOutcome.AlreadyReferee => TargetIsAlreadyAReferee,
-			RoomOutcome.NotReferee => TargetIsNotAReferee,
-			RoomOutcome.IsCreator => CannotRemoveCreator,
-			RoomOutcome.IsPlayer => NotInThisMatch,
-			RoomOutcome.NotObserver => NotInThisMatch,
-			RoomOutcome.TooManyRooms => CreateFailed,
-			RoomOutcome.NoRoomId => NoActiveRoomWithId,
+			RoomOutcome.TooManyReferees => RefereeLimitReached,
+			RoomOutcome.AlreadyReferee => TargetAlreadyReferee,
+			RoomOutcome.NotReferee => TargetNotReferee,
+			RoomOutcome.IsCreator => TargetIsCreator,
+			RoomOutcome.IsPlayer => TargetIsPlayer,
+			RoomOutcome.NotObserver => TargetNotObserver,
+			RoomOutcome.TooManyRooms => RoomLimitReached,
+			RoomOutcome.NoRoomId => NoMatchesAvailable,
 			RoomOutcome.SlotNotOpen => DestinationSlotNotOpen,
 			RoomOutcome.RoomLocked => MatchIsLocked,
 			RoomOutcome.InProgress => MatchAlreadyInProgress,
-			RoomOutcome.OwnSlot => NotInThisMatch,
-			RoomOutcome.NoTeams => TeamUsage,
-			RoomOutcome.NotFreemod => ModsUsage,
-			RoomOutcome.SpeedModNotAllowed => InvalidMods,
+			RoomOutcome.OwnSlot => OwnSlotLocked,
+			RoomOutcome.NoTeams => MatchHasNoTeams,
+			RoomOutcome.NotFreemod => FreemodNotEnabled,
+			RoomOutcome.SpeedModNotAllowed => SpeedModsMatchWide,
 			RoomOutcome.InvalidMods => InvalidMods,
-			RoomOutcome.InvalidSettings => SetUsage,
-			RoomOutcome.NoBeatmap => NoBeatmapWithId,
-			RoomOutcome.NotPlaying => MatchAlreadyInProgress,
+			RoomOutcome.InvalidSettings => SettingsInvalid,
+			RoomOutcome.NoBeatmap => NoBeatmapSelected,
+			RoomOutcome.NotPlaying => TargetNotPlaying,
 			RoomOutcome.NotInProgress => MatchNotInProgress,
-			RoomOutcome.OutOfRange => DestinationSlotNotOpen,
+			RoomOutcome.OutOfRange => CountdownOutOfRange,
 			RoomOutcome.NoCountdown => NoCountdownRunning,
-			RoomOutcome.RoundMismatch => MatchAlreadyInProgress,
-			RoomOutcome.RoomClosed => string.Format(GenericFailed, outcome),
-			RoomOutcome.NotFound => UserNotFound,
+			RoomOutcome.RoundMismatch => ScoreNotCurrentRound,
+			RoomOutcome.RoomClosed => MatchClosed,
+			RoomOutcome.NotFound => NotFound,
 			_ => string.Format(GenericFailed, outcome)
 		};
 	}
