@@ -1,4 +1,9 @@
+using Basil.Bot.Application.Announcements;
+using Basil.Bot.Application.Commands;
+using Basil.Bot.Application.Commands.Mp;
+using Basil.Bot.Application.Replies;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Basil.Bot.Application;
 
@@ -10,6 +15,15 @@ public static class DependencyInjection
 	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddBotApplication(this IServiceCollection services)
 	{
+		services.AddSingleton<Random>(Random.Shared);
+		services.TryAddSingleton<TimeProvider>(TimeProvider.System);
+		services.AddSingleton<MpScopes>();
+		services.AddSingleton<MpCommands>();
+		services.AddSingleton<ChatCommands>();
+		services.AddSingleton<ReplyWriter>();
+		services.AddSingleton<RoomAnnouncer>();
+		services.AddSingleton<AnticheatAnnouncer>();
+		services.AddSingleton<BotRunner>();
 		return services;
 	}
 }
