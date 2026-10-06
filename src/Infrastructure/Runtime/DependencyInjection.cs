@@ -7,7 +7,13 @@ using Basil.Application.Services.Contracts.Multiplayer.Events;
 using Basil.Application.Services.Contracts.Scores;
 using Basil.Application.Services.Contracts.Sessions;
 using Basil.Application.Services.Contracts.Users;
+using Basil.Infrastructure.Runtime.Beatmaps;
 using Basil.Infrastructure.Runtime.Events;
+using Basil.Infrastructure.Runtime.Multiplayer;
+using Basil.Infrastructure.Runtime.Scores;
+using Basil.Infrastructure.Runtime.Sessions;
+using Basil.Infrastructure.Runtime.Startup;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -22,6 +28,16 @@ public static class DependencyInjection
 	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddInfrastructureRuntime(this IServiceCollection services)
 	{
+		services.TryAddSingleton(TimeProvider.System);
+		services.AddHostedService<RuntimeStartup>();
+
+		services.AddSingleton<IEventHandler<UserEvent>, ConnectionHandler>();
+		services.AddSingleton<IEventHandler<ScoreEvent>, ScoreHandler>();
+		services.AddSingleton<MatchRecorder>();
+		services.AddSingleton<IEventHandler<RoomEvent>>(sp => sp.GetRequiredService<MatchRecorder>());
+		services.AddSingleton<IEventHandler<LobbyEvent>>(sp => sp.GetRequiredService<MatchRecorder>());
+		services.AddSingleton<IHostedService>(sp => sp.GetRequiredService<MatchRecorder>());
+
 		AddPump<ISessionService, UserEvent>(services);
 		AddPump<IUserService, UserEvent>(services);
 		AddPump<IChannelService, ChannelEvent>(services);
@@ -30,6 +46,9 @@ public static class DependencyInjection
 		AddPump<IAnticheatService, AnticheatEvent>(services);
 		AddPump<IScoreService, ScoreEvent>(services);
 		AddPump<IBeatmapsetService, BeatmapsetEvent>(services);
+
+		services.AddHostedService<IdleConnectionSweeper>();
+		services.AddHostedService<BeatmapImportWatcher>();
 		return services;
 	}
 

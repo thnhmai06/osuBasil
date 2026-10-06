@@ -1,3 +1,16 @@
+using Basil.Application.Storage.Contracts.Beatmaps;
+using Basil.Application.Storage.Contracts.Chat;
+using Basil.Application.Storage.Contracts.Content;
+using Basil.Application.Storage.Contracts.Multiplayer;
+using Basil.Application.Storage.Contracts.Scores;
+using Basil.Application.Storage.Contracts.Users;
+using Basil.Infrastructure.Storage.Beatmaps;
+using Basil.Infrastructure.Storage.Chat;
+using Basil.Infrastructure.Storage.Content;
+using Basil.Infrastructure.Storage.Files;
+using Basil.Infrastructure.Storage.Multiplayer;
+using Basil.Infrastructure.Storage.Scores;
+using Basil.Infrastructure.Storage.Users;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Infrastructure.Storage;
@@ -14,7 +27,34 @@ public static class DependencyInjection
 		services.AddSingleton<Database>();
 		services.AddSingleton<DatabaseMigrator>();
 		services.AddHostedService<StorageStartup>();
-		// Repositories and storages are registered by the phases that add them.
+
+		services.AddSingleton<IUserRepository, SqliteUserRepository>();
+		services.AddSingleton<ICredentialRepository, SqliteCredentialRepository>();
+		services.AddSingleton<ILoginRepository, SqliteLoginRepository>();
+		services.AddSingleton<IRestrictionRepository, SqliteRestrictionRepository>();
+		services.AddSingleton<IRelationshipRepository, SqliteRelationshipRepository>();
+		services.AddSingleton<IUserAvatarStorage, FileUserAvatarStorage>();
+
+		services.AddSingleton<IChannelRepository, SqliteChannelRepository>();
+
+		services.AddSingleton<ISettingsRepository, SqliteSettingsRepository>();
+		services.AddSingleton<IMenuBannerRepository, SqliteMenuBannerRepository>();
+		services.AddSingleton<IMenuBannerStorage, FileMenuBannerStorage>();
+		services.AddSingleton<IMenuIconStorage, FileMenuIconStorage>();
+		services.AddSingleton<IMenuSeasonalsStorage, FileMenuSeasonalsStorage>();
+		services.AddSingleton<IFaqStorage, FileFaqStorage>();
+
+		services.AddSingleton<IMatchRepository, SqliteMatchRepository>();
+		services.AddSingleton<IRoundRepository, SqliteRoundRepository>();
+		services.AddSingleton<IMatchEventRepository, SqliteMatchEventRepository>();
+
+		services.AddSingleton<IScoreRepository, SqliteScoreRepository>();
+		services.AddSingleton<IUserStatsRepository, SqliteUserStatsRepository>();
+		services.AddSingleton<IReplayStorage, FileReplayStorage>();
+
+		services.AddSingleton<IBeatmapsetRepository, SqliteBeatmapsetRepository>();
+		services.AddSingleton<IBeatmapRepository, SqliteBeatmapRepository>();
+		services.AddSingleton<IBeatmapsetStorage, FileBeatmapsetStorage>();
 		return services;
 	}
 }
