@@ -1,0 +1,46 @@
+namespace Basil.Bot.Application.Basil;
+
+/// <summary>How a room operation the bot asked for ended; the names follow the server's room results.</summary>
+public enum RoomOutcome : byte
+{
+	Ok,
+	NotAuthorized,
+	AlreadySeated,
+	Banned,
+	Silenced,
+	InAnotherRoom,
+	WrongPassword,
+	Full,
+	IsObserver,
+	NotInRoom,
+	IsManager,
+	NotBanned,
+	TargetOffline,
+	AlreadyInRoom,
+	TooManyReferees,
+	AlreadyReferee,
+	NotReferee,
+	IsCreator,
+	IsPlayer,
+	NotObserver,
+	TooManyRooms,
+	NoRoomId,
+	SlotNotOpen,
+	RoomLocked,
+	InProgress,
+	OwnSlot,
+	NoTeams,
+	NotFreemod,
+	SpeedModNotAllowed,
+	InvalidMods,
+	InvalidSettings,
+	NoBeatmap,
+	NotPlaying,
+	NotInProgress,
+	OutOfRange,
+	NoCountdown,
+	RoundMismatch,
+	RoomClosed,
+	/// <summary>The room, user or beatmap named in the request does not exist on the server.</summary>
+	NotFound
+}
