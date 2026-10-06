@@ -10,7 +10,7 @@ namespace Basil.Application.Services.Multiplayer.Rooms;
 
 /// <summary>Seats, removes and invites the people of a room.</summary>
 internal sealed class RoomMembershipService(
-	Lobby lobby,
+	ILobby lobby,
 	LobbyService lobbyService,
 	RoomEventStream events,
 	RoomChannelService roomChannel,
@@ -82,7 +82,7 @@ internal sealed class RoomMembershipService(
 		{
 			if (lobby.RoomOf(player) is { } room)
 			{
-				await using var scope = await Lobby.EnterAsync(room, cancellationToken);
+				await using var scope = await room.EnterAsync(cancellationToken);
 				if (scope is not null) Leave(room, player);
 			}
 		}
@@ -90,7 +90,7 @@ internal sealed class RoomMembershipService(
 		{
 			foreach (var room in lobby.Rooms.Where(room => room.Members.Observers.Contains(observer)).ToArray())
 			{
-				await using var scope = await Lobby.EnterAsync(room, cancellationToken);
+				await using var scope = await room.EnterAsync(cancellationToken);
 				if (scope is not null) ObserverLeave(room, observer);
 			}
 		}

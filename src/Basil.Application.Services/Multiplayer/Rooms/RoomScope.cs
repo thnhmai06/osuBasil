@@ -14,7 +14,7 @@ internal static class RoomScope
 	internal static async Task<RoomResult> InScopeAsync(Room room, Func<RoomResult> operation,
 		CancellationToken cancellationToken)
 	{
-		await using var scope = await Lobby.EnterAsync(room, cancellationToken);
+		await using var scope = await room.EnterAsync(cancellationToken);
 		return scope is null ? RoomResult.RoomClosed : operation();
 	}
 }

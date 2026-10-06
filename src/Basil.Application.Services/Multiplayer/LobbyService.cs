@@ -14,7 +14,7 @@ namespace Basil.Application.Services.Multiplayer;
 
 /// <summary>Opens and closes rooms and tracks who watches the multiplayer lobby.</summary>
 internal sealed class LobbyService(
-	Lobby lobby,
+	ILobby lobby,
 	IMatchRepository matches,
 	IChannelService channels,
 	ISettingsRepository serverSettings,
@@ -37,7 +37,7 @@ internal sealed class LobbyService(
 	/// <inheritdoc />
 	public async Task<RoomResult> CloseAsync(Room room, Connection by, CancellationToken cancellationToken = default)
 	{
-		await using var scope = await Lobby.EnterAsync(room, cancellationToken);
+		await using var scope = await room.EnterAsync(cancellationToken);
 		if (scope is null) return RoomResult.Ok;
 		if (!RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 
@@ -200,7 +200,7 @@ internal sealed class LobbyService(
 
 	private async Task WarnIfStillEmptyAsync(Room room, DateTimeOffset closesAt)
 	{
-		await using var scope = await Lobby.EnterAsync(room);
+		await using var scope = await room.EnterAsync();
 		if (scope is null || room.Slots.Any(slot => slot.Player is not null)) return;
 
 		Emit(new LobbyRoomClosingAnnounced(room, closesAt));
@@ -209,7 +209,7 @@ internal sealed class LobbyService(
 
 	private async Task CloseIfStillEmptyAsync(Room room)
 	{
-		await using var scope = await Lobby.EnterAsync(room);
+		await using var scope = await room.EnterAsync();
 		if (scope is not null && !room.Slots.Any(slot => slot.Player is not null)) Close(room);
 	}
 

@@ -5,6 +5,7 @@
 	</Folder>
 	<Folder Name="/Sources/Application/">
 		<Project Path="src/Basil.Application.Storage/Basil.Application.Storage.csproj" />
+		<Project Path="src/Basil.Application.Storage.Implementations/Basil.Application.Storage.Implementations.csproj" />
 		<Project Path="src/Basil.Application.Contracts/Basil.Application.Contracts.csproj" />
 		<Project Path="src/Basil.Application.Services/Basil.Application.Services.csproj" />
 	</Folder>

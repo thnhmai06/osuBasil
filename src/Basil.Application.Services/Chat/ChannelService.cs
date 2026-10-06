@@ -15,7 +15,7 @@ namespace Basil.Application.Services.Chat;
 
 /// <summary>Opens and closes chat channels and lets connections join, part, post and spectate.</summary>
 internal sealed class ChannelService(
-	GeneralChannelRegistry generalChannels,
+	IGeneralChannelRegistry generalChannels,
 	ChannelEventStream events,
 	ChannelSpectatorService spectators,
 	IRelationshipRepository relationships,

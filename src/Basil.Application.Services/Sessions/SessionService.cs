@@ -12,7 +12,7 @@ namespace Basil.Application.Services.Sessions;
 
 /// <summary>Opens and closes the connections of online users and changes what they share.</summary>
 internal sealed class SessionService(
-	UserRegistry registry,
+	IUserRegistry registry,
 	IChannelService channels,
 	TimeProvider time) : ISessionService
 {

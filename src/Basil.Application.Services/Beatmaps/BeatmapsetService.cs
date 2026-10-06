@@ -77,20 +77,17 @@ internal sealed class BeatmapsetService(
 		};
 
 		var result = new List<Beatmap>(content.Difficulties.Count);
-		foreach (var difficulty in content.Difficulties)
+		result.AddRange(from difficulty in content.Difficulties
+		let analysis = Analyse(difficulty, stored[difficulty])
+		select new Beatmap
 		{
-			var analysis = Analyse(difficulty, stored[difficulty]);
-			var beatmap = new Beatmap
-			{
-				Id = stored[difficulty]?.Id ?? (manager && difficulty.OnlineId is > 0 ? difficulty.OnlineId.Value : 0),
-				Hash = new Md5(difficulty.Content),
-				Beatmapset = set,
-				Version = difficulty.Version,
-				Difficulty = analysis.Difficulty,
-				Objects = analysis.Objects
-			};
-			result.Add(beatmap);
-		}
+			Id = stored[difficulty]?.Id ?? (manager && difficulty.OnlineId is > 0 ? difficulty.OnlineId.Value : 0),
+			Hash = new Md5(difficulty.Content),
+			Beatmapset = set,
+			Version = difficulty.Version,
+			Difficulty = analysis.Difficulty,
+			Objects = analysis.Objects
+		});
 
 		copy.Position = 0;
 		await archives.SaveAsync(set, copy, cancellationToken);

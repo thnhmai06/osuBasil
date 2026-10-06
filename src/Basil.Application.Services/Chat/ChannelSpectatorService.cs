@@ -6,7 +6,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Services.Chat;
 
 /// <summary>Starts and stops spectating osu! players.</summary>
-internal sealed class ChannelSpectatorService(ChannelEventStream events, UserRegistry users, TimeProvider time)
+internal sealed class ChannelSpectatorService(ChannelEventStream events, IUserRegistry users, TimeProvider time)
 	: IChannelSpectatorService
 {
 	/// <inheritdoc />

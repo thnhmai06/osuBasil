@@ -13,9 +13,6 @@ using Basil.Application.Services.Multiplayer.Rooms;
 using Basil.Application.Services.Scores;
 using Basil.Application.Services.Sessions;
 using Basil.Application.Services.Users;
-using Basil.Application.Storage.Chat;
-using Basil.Application.Storage.Multiplayer;
-using Basil.Application.Storage.Sessions;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Application.Services;
@@ -24,17 +21,12 @@ namespace Basil.Application.Services;
 public static class DependencyInjection
 {
 	/// <summary>
-	///     Adds the environment objects (the user registry, the general channel registry, the lobby) and
-	///     the services that use the repository and storage ports, which the caller registers.
+	///     Adds the services that use the repository and storage ports, which the caller registers.
 	/// </summary>
 	/// <param name="services">The service collection to add to.</param>
 	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddApplicationServices(this IServiceCollection services)
 	{
-		services.AddSingleton<UserRegistry>();
-		services.AddSingleton<GeneralChannelRegistry>();
-		services.AddSingleton<Lobby>();
-
 		services.AddSingleton<SessionService>();
 		services.AddSingleton<ISessionService>(sp => sp.GetRequiredService<SessionService>());
 

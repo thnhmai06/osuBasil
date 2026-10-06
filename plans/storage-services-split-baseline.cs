@@ -3,10 +3,12 @@
 // folder, fix the #:project path if needed, then `dotnet run check.cs`. Port its scenarios into the test
 // projects when they are migrated.
 #:project V:/Code/cs/osuBasil/src/Basil.Application.Services/Basil.Application.Services.csproj
+#:project V:/Code/cs/osuBasil/src/Basil.Application.Storage.Implementations/Basil.Application.Storage.Implementations.csproj
 #:package Microsoft.Extensions.TimeProvider.Testing@9.9.0
 #:package Microsoft.Extensions.DependencyInjection@10.0.0
 using System.Net;
 using Basil.Application.Services;
+using Basil.Application.Storage.Implementations;
 using Basil.Application.Storage.Common;
 using Basil.Application.Storage.Beatmaps;
 using Basil.Application.Storage.Chat;
@@ -71,13 +73,14 @@ var eventStore = new MatchEvents(); services.AddSingleton<IMatchEventRepository>
 var relationStore = new Relationships();
 services.AddSingleton<IRelationshipRepository>(relationStore);
 var settingsStore = new Settings(); services.AddSingleton<ISettingsRepository>(settingsStore);
+services.AddApplicationStorage();
 services.AddApplicationServices();
 var provider = services.BuildServiceProvider();
 var auth = provider.GetRequiredService<IAuthService>();
 var sessions = provider.GetRequiredService<ISessionService>();
 var userService = provider.GetRequiredService<IUserService>();
-var users = provider.GetRequiredService<UserRegistry>();
-var lobby = provider.GetRequiredService<Lobby>();
+var users = provider.GetRequiredService<IUserRegistry>();
+var lobby = provider.GetRequiredService<ILobby>();
 var lobbyService = provider.GetRequiredService<ILobbyService>();
 var roomService = provider.GetRequiredService<IRoomService>();
 

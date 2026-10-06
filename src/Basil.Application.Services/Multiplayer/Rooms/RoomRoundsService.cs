@@ -318,7 +318,7 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 
 	private async Task TickAsync(Room room, Countdown countdown, TimeSpan mark)
 	{
-		await using var scope = await Lobby.EnterAsync(room);
+		await using var scope = await room.EnterAsync();
 		if (scope is null || !ReferenceEquals(room.Rounds.CountdownTimer, countdown)) return;
 
 		events.Emit(new RoomCountdownTicked(room, mark));
@@ -326,7 +326,7 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 
 	private async Task ElapseAsync(Room room, Countdown countdown, bool startsRound)
 	{
-		await using var scope = await Lobby.EnterAsync(room);
+		await using var scope = await room.EnterAsync();
 		if (scope is null || !ReferenceEquals(room.Rounds.CountdownTimer, countdown)) return;
 
 		RoundMechanics.StopCountdown(room);

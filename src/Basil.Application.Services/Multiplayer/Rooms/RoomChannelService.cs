@@ -5,7 +5,7 @@ using Basil.Application.Storage.Sessions;
 namespace Basil.Application.Services.Multiplayer.Rooms;
 
 /// <summary>Keeps the members of a room's channel in step with the people in the room.</summary>
-internal sealed class RoomChannelService(Lobby lobby, IChannelService channels)
+internal sealed class RoomChannelService(ILobby lobby, IChannelService channels)
 {
 	/// <summary>Adds a connection to the room's channel.</summary>
 	/// <param name="room">The room whose channel to join.</param>

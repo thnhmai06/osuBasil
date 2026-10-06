@@ -12,7 +12,7 @@ namespace Basil.Application.Services.Users;
 internal sealed class UserService(
 	IUserRepository users,
 	IRestrictionRepository restrictions,
-	UserRegistry registry,
+	IUserRegistry registry,
 	SessionService sessions,
 	TimeProvider time) : IUserService
 {
