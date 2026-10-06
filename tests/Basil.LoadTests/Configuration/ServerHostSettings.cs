@@ -59,7 +59,7 @@ public sealed class ServerHostSettings
 /// <summary>How a locally launched server process is started.</summary>
 public enum DotnetLaunchMode : byte
 {
-	/// <summary><c>dotnet run --project src/Host/Basil.Host</c>. Slower to start, no publish step.</summary>
+	/// <summary><c>dotnet run --project src/Hosts/Basil.Host</c>. Slower to start, no publish step.</summary>
 	Run,
 
 	/// <summary>A pre-published binary under <see cref="DotnetHostSettings.PublishDirectory" />.</summary>

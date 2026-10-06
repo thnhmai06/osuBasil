@@ -282,7 +282,7 @@ dotnet build --configuration Release
 Run Basil locally:
 
 ```bash
-dotnet run --project src/Host/Basil.Host
+dotnet run --project src/Hosts/Basil.Host
 ```
 
 Run all tests:
@@ -340,7 +340,7 @@ back. It does not validate and gives no business meaning; Domain owns meaning an
 checks. If a wire format changes, only Protocol changes. `Basil.Protocol.Irc` does the same for IRC.
 
 Projects live under `src/` in folders that mirror the solution folders under `/Sources/`:
-`src/Application/Services/`, `src/Application/Storage/`, `src/Host/`, `src/Protocol/`; `Basil.Domain` and
+`src/Application/Services/`, `src/Application/Storage/`, `src/Hosts/`, `src/Protocol/`; `Basil.Domain` and
 `Basil.Infrastructure` sit directly in `src/`. A project keeps its name as its namespace wherever its folder is.
 
 Configuration is bound only in `Basil.Host`. Infrastructure and the transports receive it as `IOptions<T>` of

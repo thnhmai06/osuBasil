@@ -11,11 +11,11 @@
 		<Project Path="src/Application/Storage/Basil.Application.Storage.Contracts/Basil.Application.Storage.Contracts.csproj" />
 		<Project Path="src/Application/Storage/Basil.Application.Storage.Implementations/Basil.Application.Storage.Implementations.csproj" />
 	</Folder>
-	<Folder Name="/Sources/Host/">
-		<Project Path="src/Host/Basil.Host.Bancho/Basil.Host.Bancho.csproj" />
-		<Project Path="src/Host/Basil.Host.Irc/Basil.Host.Irc.csproj" />
-		<Project Path="src/Host/Basil.Host.Api/Basil.Host.Api.csproj" />
-		<Project Path="src/Host/Basil.Host/Basil.Host.csproj" />
+	<Folder Name="/Sources/Hosts/">
+		<Project Path="src/Hosts/Basil.Host.Bancho/Basil.Host.Bancho.csproj" />
+		<Project Path="src/Hosts/Basil.Host.Irc/Basil.Host.Irc.csproj" />
+		<Project Path="src/Hosts/Basil.Host.Api/Basil.Host.Api.csproj" />
+		<Project Path="src/Hosts/Basil.Host/Basil.Host.csproj" />
 	</Folder>
 	<Folder Name="/Sources/Protocol/">
 		<Project Path="src/Protocol/Basil.Protocol.Bancho/Basil.Protocol.Bancho.csproj" />
@@ -31,7 +31,7 @@
 		<Project Path="tests/Basil.Domain.Tests/Basil.Domain.Tests.csproj" />
 		<Project Path="tests/Basil.Infrastructure.Tests/Basil.Infrastructure.Tests.csproj" />
 	</Folder>
-	<Folder Name="/Tests/Units/Host/">
+	<Folder Name="/Tests/Units/Hosts/">
 		<Project Path="tests/Basil.Host.Api.Tests/Basil.Host.Api.Tests.csproj" />
 		<Project Path="tests/Basil.Host.Bancho.Tests/Basil.Host.Bancho.Tests.csproj" />
 		<Project Path="tests/Basil.Host.Irc.Tests/Basil.Host.Irc.Tests.csproj" />

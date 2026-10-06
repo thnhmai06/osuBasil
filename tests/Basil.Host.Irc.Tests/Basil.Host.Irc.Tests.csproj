@@ -27,10 +27,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\src\Host\Basil.Host.Irc\Basil.Host.Irc.csproj"/>
+		<ProjectReference Include="..\..\src\Hosts\Basil.Host.Irc\Basil.Host.Irc.csproj"/>
 		<!-- Wires real bancho packet-transport notifiers (ChatNotifier, ChannelNotifier, MatchNotifier,
 		     SpectatorNotifier) alongside the IRC bridge to test cross-transport chat end to end. -->
-		<ProjectReference Include="..\..\src\Host\Basil.Host.Bancho\Basil.Host.Bancho.csproj"/>
+		<ProjectReference Include="..\..\src\Hosts\Basil.Host.Bancho\Basil.Host.Bancho.csproj"/>
 	</ItemGroup>
 
 </Project>
