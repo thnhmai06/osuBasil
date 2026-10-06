@@ -1,20 +1,21 @@
 using Basil.Bot.Application.Announcements;
 using Basil.Bot.Application.Basil;
 using Basil.Bot.Application.Replies;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace Basil.Bot.Application;
 
-/// <summary>Runs the BasilBot event loop.</summary>
-public sealed class BotRunner(
+/// <summary>Runs BasilBot: reacts to every server event until the host stops.</summary>
+internal sealed class BotRunner(
 	IBasilEvents events,
 	ReplyWriter replyWriter,
 	RoomAnnouncer roomAnnouncer,
 	AnticheatAnnouncer anticheatAnnouncer,
-	ILogger<BotRunner> logger)
+	ILogger<BotRunner> logger) : BackgroundService
 {
-	/// <summary>Runs the bot, processing events until cancelled.</summary>
-	public async Task RunAsync(CancellationToken cancellationToken)
+	/// <inheritdoc />
+	protected override async Task ExecuteAsync(CancellationToken cancellationToken)
 	{
 		await foreach (var botEvent in events.ReadAllAsync(cancellationToken))
 		{

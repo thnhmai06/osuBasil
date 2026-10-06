@@ -23,7 +23,7 @@ public static class DependencyInjection
 		services.AddSingleton<ReplyWriter>();
 		services.AddSingleton<RoomAnnouncer>();
 		services.AddSingleton<AnticheatAnnouncer>();
-		services.AddSingleton<BotRunner>();
+		services.AddHostedService<BotRunner>();
 		return services;
 	}
 }
