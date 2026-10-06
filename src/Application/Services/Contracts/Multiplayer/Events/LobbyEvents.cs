@@ -1,3 +1,4 @@
+using Basil.Domain.Users;
 using Basil.Application.Services.Contracts.Events;
 using Basil.Application.Storage.Contracts.Multiplayer;
 using Basil.Application.Storage.Contracts.Sessions;
@@ -19,12 +20,19 @@ public sealed record LobbyRoomOpened(Room Room, BanchoConnection? Host, DateTime
 
 /// <summary>A room was closed; it emits nothing afterwards.</summary>
 /// <param name="Room">The room that was closed.</param>
+/// <param name="By">
+///     The user who closed the room, or <see langword="null" /> when the room closed itself because it stayed empty.
+/// </param>
 /// <param name="Evicted">The players who were still seated.</param>
 /// <param name="AbortedRound">
 ///     The round that was in progress and ended as aborted when the room closed, or
 ///     <see langword="null" /> when none was.
 /// </param>
-public sealed record LobbyRoomClosed(Room Room, IReadOnlyList<BanchoConnection> Evicted, Round? AbortedRound)
+public sealed record LobbyRoomClosed(
+	Room Room,
+	User? By,
+	IReadOnlyList<BanchoConnection> Evicted,
+	Round? AbortedRound)
 	: LobbyEvent;
 
 /// <summary>An empty tournament room will close unless a player joins.</summary>

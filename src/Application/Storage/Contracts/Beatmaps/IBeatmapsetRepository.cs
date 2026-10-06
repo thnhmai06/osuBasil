@@ -12,6 +12,18 @@ public interface IBeatmapsetRepository
 	/// <returns>The beatmapset, or <see langword="null" /> when none has that id.</returns>
 	ValueTask<Beatmapset?> GetAsync(int id, CancellationToken cancellationToken = default);
 
+	/// <summary>Stores a new beatmapset and assigns its id.</summary>
+	/// <param name="data">The data of the new beatmapset.</param>
+	/// <param name="onlineId">The beatmapset's osu! id, which becomes its id; <see langword="null" /> when it has none.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The stored beatmapset.</returns>
+	/// <remarks>
+	///     A beatmapset without an osu! id gets a new local id, at or above <see cref="Beatmapset.LocalIdFloor" />. The
+	///     caller makes sure no stored beatmapset already has <paramref name="onlineId" />.
+	/// </remarks>
+	Task<Beatmapset> CreateAsync(BeatmapsetData data, int? onlineId = null,
+		CancellationToken cancellationToken = default);
+
 	/// <summary>
 	///     Stores a beatmapset under its id, adding it when no beatmapset has that id and replacing the stored beatmapset
 	///     otherwise.

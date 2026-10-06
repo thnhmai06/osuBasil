@@ -11,7 +11,7 @@ public interface ILobby
 	/// <summary>Gets the osu! clients watching the multiplayer lobby.</summary>
 	IReadOnlySet<BanchoConnection> Watchers { get; }
 
-	/// <summary>Gets a value that indicates whether every room id is taken, so no room can open.</summary>
+	/// <summary>Gets a value that indicates whether every room id is taken or reserved, so no room can open.</summary>
 	internal bool IsFull { get; }
 
 	/// <summary>Finds an open room by id.</summary>
@@ -20,11 +20,17 @@ public interface ILobby
 	/// <summary>Finds the room a player is seated in.</summary>
 	Room? RoomOf(BanchoConnection player);
 
-	/// <summary>Creates a room under the lowest free room id and lists it as open.</summary>
-	/// <param name="create">Creates the room for the assigned id.</param>
-	/// <returns>The new room, or <see langword="null" /> when every room id is taken.</returns>
-	/// <remarks>The caller holds the scope from <see cref="Enter" />.</remarks>
-	internal Room? Add(Func<int, Room> create);
+	/// <summary>Reserves the lowest free room id so no other room takes it.</summary>
+	/// <returns>The reserved id, or <see langword="null" /> when every room id is taken or reserved.</returns>
+	internal int? Reserve();
+
+	/// <summary>Frees a reserved room id that no room took.</summary>
+	/// <param name="id">The reserved id.</param>
+	internal void Release(int id);
+
+	/// <summary>Lists a room as open under the id reserved for it.</summary>
+	/// <param name="room">The room, whose <see cref="Room.Id" /> was reserved with <see cref="Reserve" />.</param>
+	internal void Add(Room room);
 
 	/// <summary>Removes a room from the open rooms.</summary>
 	/// <param name="room">The room to remove.</param>

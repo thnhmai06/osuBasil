@@ -10,6 +10,7 @@ internal sealed class Lobby : ILobby
 {
 	private const int MaxRoomId = ushort.MaxValue;
 	private readonly ConcurrentDictionary<int, Room> _rooms = new();
+	private readonly HashSet<int> _reserved = new();
 
 	private readonly Lock _sync = new();
 	private readonly ConcurrentSet<BanchoConnection> _watchers = [];
@@ -21,7 +22,14 @@ internal sealed class Lobby : ILobby
 	public IReadOnlySet<BanchoConnection> Watchers => _watchers;
 
 	/// <inheritdoc />
-	bool ILobby.IsFull => _rooms.Count >= MaxRoomId;
+	bool ILobby.IsFull
+	{
+		get
+		{
+			using var scope = _sync.EnterScope();
+			return _rooms.Count + _reserved.Count >= MaxRoomId;
+		}
+	}
 
 	/// <inheritdoc />
 	public Room? Find(int id)
@@ -37,18 +45,34 @@ internal sealed class Lobby : ILobby
 	}
 
 	/// <inheritdoc />
-	Room? ILobby.Add(Func<int, Room> create)
+	int? ILobby.Reserve()
 	{
+		using var scope = _sync.EnterScope();
+		if (_rooms.Count + _reserved.Count >= MaxRoomId) return null;
+
 		for (var id = 1; id <= MaxRoomId; id++)
 		{
-			if (_rooms.ContainsKey(id)) continue;
-
-			var room = create(id);
-			_rooms[id] = room;
-			return room;
+			if (_rooms.ContainsKey(id) || _reserved.Contains(id)) continue;
+			_reserved.Add(id);
+			return id;
 		}
 
 		return null;
+	}
+
+	/// <inheritdoc />
+	void ILobby.Release(int id)
+	{
+		using var scope = _sync.EnterScope();
+		_reserved.Remove(id);
+	}
+
+	/// <inheritdoc />
+	void ILobby.Add(Room room)
+	{
+		using var scope = _sync.EnterScope();
+		_rooms[room.Id] = room;
+		_reserved.Remove(room.Id);
 	}
 
 	/// <inheritdoc />

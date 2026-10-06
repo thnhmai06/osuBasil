@@ -9,6 +9,7 @@ public abstract record RoomAccessEvent(Room Room) : RoomEvent(Room);
 
 /// <summary>A player was banned from the room, evicting them if they were seated.</summary>
 /// <param name="Room">The room the player was banned from.</param>
+/// <param name="By">The user who banned the player.</param>
 /// <param name="Player">The player who was banned.</param>
 /// <param name="Vacated">
 ///     The number of the slot that was vacated, or <see langword="null" /> when the player was not
@@ -22,6 +23,7 @@ public abstract record RoomAccessEvent(Room Room) : RoomEvent(Room);
 /// </param>
 public sealed record RoomPlayerBanned(
 	Room Room,
+	User By,
 	User Player,
 	int? Vacated,
 	BanchoConnection? Evicted,

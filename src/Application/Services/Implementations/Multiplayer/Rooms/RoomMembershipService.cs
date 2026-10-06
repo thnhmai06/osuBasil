@@ -167,11 +167,7 @@ internal sealed class RoomMembershipService(
 	{
 		if (stale is not null) return ReplaceSeat(room, player, stale);
 
-		if (RoomSlotsMechanics.Seat(room, player) is not { } slot)
-		{
-			ReportIfEmpty(room);
-			return RoomResult.Full;
-		}
+		if (RoomSlotsMechanics.Seat(room, player) is not { } slot) return RoomResult.Full;
 
 		roomChannel.JoinChannel(room, player);
 		LobbyService.RoomOccupied(room);
@@ -218,7 +214,7 @@ internal sealed class RoomMembershipService(
 
 		var slot = RoomSlotsMechanics.Vacate(room, seated)!;
 		var progress = rounds.AdvanceRound(room);
-		events.Emit(new RoomPlayerKicked(room, seated, slot.Index, room.Authority.Host, progress));
+		events.Emit(new RoomPlayerKicked(room, by.User, seated, slot.Index, room.Authority.Host, progress));
 		roomChannel.LeaveChannel(room, seated);
 		ReportIfEmpty(room);
 		return RoomResult.Ok;
@@ -240,7 +236,7 @@ internal sealed class RoomMembershipService(
 			progress = rounds.AdvanceRound(room);
 		}
 
-		events.Emit(new RoomPlayerBanned(room, player, vacated, evicted, room.Authority.Host, progress));
+		events.Emit(new RoomPlayerBanned(room, by.User, player, vacated, evicted, room.Authority.Host, progress));
 		if (evicted is not null)
 		{
 			roomChannel.LeaveChannel(room, evicted);

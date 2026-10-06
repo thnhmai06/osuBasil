@@ -325,12 +325,18 @@ Basil.Application.Services.Contracts      service contracts, capability ports,  
 Basil.Application.Services.Implementations service implementations (internal)       -> Services.Contracts
                                                                                     (never Storage.Implementations)
 
-Basil.Infrastructure             persistence, files, media, capability ports,   -> Services.Contracts, Protocol.*
-                                 background loops, event dispatch and handlers     (never any Implementations)
+Basil.Infrastructure.Storage     persistent ports: SQLite, files, migrations   -> Storage.Contracts
+Basil.Infrastructure.Services    capability ports: osu! rulesets, media, mirror -> Services.Contracts
+Basil.Infrastructure.Runtime     event pumps and handlers, background loops,    -> Services.Contracts
+                                 startup work                                     (no Infrastructure project
+                                                                                   references any Implementations)
 Basil.Host.Bancho / .Irc / .Api  transports                                     -> Services.Contracts, the two
                                                                                    Implementations, Infrastructure,
                                                                                    their Protocol
 Basil.Host                       entry point and composition                    -> everything
+
+Basil.Bot.Application            BasilBot logic and the ports it needs from     -> Domain
+                                 the server (a separate client, not the server)
 ```
 
 `Basil.Protocol.Bancho` wraps the communication between the osu! client and the server, as an API wrapper
@@ -516,9 +522,9 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
 * **Peers talk through events; parents call their children directly.** Two services are peers when neither
   owns the other and neither's rule depends on the other (scores and rooms, the anticheat and rooms): the
   acting service only emits its event, and Infrastructure's dispatcher delivers it to the peer by calling the
-  peer's contract (`ScoreSubmitted` → `IRoomService.RecordScoreAsync`, `AnticheatPlayerFlagged` → the room's
-  chat). A service calls another directly only for a clear parent/child or ownership relation, or to keep a
-  rule that must hold within the same operation: services use storage; a room manages its own channel and a
+  peer's contract (`ScoreSubmitted` → `IRoomService.RecordScoreAsync`, `AnticheatPlayerFlagged` reaches
+  clients that watch it, such as BasilBot). A service calls another directly only for a clear parent/child or
+  ownership relation, or to keep a rule that must hold within the same operation: services use storage; a room manages its own channel and a
   session its PM and spectator channels; the room service tells the lobby when a room empties or fills;
   logging in opens the connection; deleting a user closes their connections at once, a security rule that
   must not wait for a handler.
@@ -599,8 +605,9 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   without an account may register one unless `ServerSettings.LockedCreation` locks it.
 * **Creation locks.** `ServerSettings.LockedCreation` locks the creation of accounts, rooms and beatmapsets to
   their managers (`OwnerManageAccounts`, `TournamentManageAnyRoom`, `TournamentManageBeatmaps`), on every
-  transport. Beatmapset uploads are locked by default; an ordinary uploader (`PlayerUploadBeatmapsets`) may only
-  add new beatmapsets. There is no administrator key.
+  transport. Beatmapset uploads are locked by default. Importing a beatmapset has no actor in Application: the
+  host gates it by policy (the lock, `PlayerUploadBeatmapsets`, `TournamentManageBeatmaps`). There is no
+  administrator key.
 * **Sessions and tokens.** Every client signs in with credentials and gets a `Connection` with an opaque
   `Token` (in memory, lost on restart, no absolute expiry). Idle connections close after 300 s for osu!,
   osu!tourney and IRC and after 2 hours for `Api`. Logging out, changing the password, deleting the user, a

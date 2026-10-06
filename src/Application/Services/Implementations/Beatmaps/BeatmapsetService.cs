@@ -2,14 +2,9 @@ using System.Threading.Channels;
 using Basil.Application.Services.Contracts.Beatmaps;
 using Basil.Application.Services.Implementations.Common;
 using Basil.Application.Storage.Contracts.Beatmaps;
-using Basil.Application.Storage.Contracts.Common;
 using Basil.Application.Storage.Contracts.Content;
-using Basil.Application.Storage.Contracts.Sessions;
-using Basil.Application.Services.Implementations.Users;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Content;
 using Basil.Domain.Mechanics;
-using Basil.Domain.Users;
 using Basil.Domain.Utilities;
 
 namespace Basil.Application.Services.Implementations.Beatmaps;
@@ -23,7 +18,6 @@ internal sealed class BeatmapsetService(
 	IBeatmapsetRepository beatmapsets,
 	IBeatmapRepository beatmaps,
 	IBeatmapsetStorage archives,
-	ISettingsRepository settings,
 	TimeProvider time) : IBeatmapsetService
 {
 	private readonly Channel<BeatmapsetEvent> _events = Channel.CreateUnbounded<BeatmapsetEvent>();
@@ -32,16 +26,9 @@ internal sealed class BeatmapsetService(
 	public ChannelReader<BeatmapsetEvent> Events => _events.Reader;
 
 	/// <inheritdoc />
-	public async Task<BeatmapsetImportResult> ImportAsync(Connection by, Stream archive, int? beatmapsetId = null,
+	public async Task<BeatmapsetImportResult> ImportAsync(Stream archive, int? beatmapsetId = null,
 		CancellationToken cancellationToken = default)
 	{
-		var now = time.GetUtcNow();
-		var manager = PermissionRules.Allows(by, Permissions.TournamentManageBeatmaps, now);
-		if (!manager &&
-		    ((await settings.GetAsync(cancellationToken)).LockedCreation.HasFlag(CreationLocks.Beatmapsets) ||
-		     !PermissionRules.Allows(by, Permissions.PlayerUploadBeatmapsets, now)))
-			return new BeatmapsetImportResult(null, [], BeatmapsetImportFailure.NotAuthorized);
-
 		await using var copy = new MemoryStream();
 		await archive.CopyToAsync(copy, cancellationToken);
 		copy.Position = 0;
@@ -53,51 +40,72 @@ internal sealed class BeatmapsetService(
 		foreach (var difficulty in content.Difficulties)
 			stored[difficulty] = await beatmaps.GetAsync(new Md5(difficulty.Content), cancellationToken);
 
-		var setId = stored.Values.FirstOrDefault(b => b is not null)?.Beatmapset.Id;
-		// An ordinary uploader only adds a new beatmapset: the ids the archive or the caller declare are ignored, so they
-		// can never point at a stored beatmapset or beatmap.
-		if (manager && setId is null && beatmapsetId is { } named &&
-		    await beatmapsets.GetAsync(named, cancellationToken) is not null)
-			setId = named;
-		setId ??= manager && content.OnlineSetId is > 0
-			? content.OnlineSetId
-			: await NewLocalIdAsync(cancellationToken);
+		var existing = stored.Values.FirstOrDefault(b => b is not null)?.Value.Beatmapset
+			?? (beatmapsetId is { } named ? await beatmapsets.GetAsync(named, cancellationToken) : null)
+			?? (content.OnlineSetId is > 0 ? await beatmapsets.GetAsync(content.OnlineSetId.Value, cancellationToken) : null);
 
-		var existing = await beatmapsets.GetAsync(setId.Value, cancellationToken);
-		if (existing is { Locked: true })
+		if (existing is { Value.Locked: true })
 			return new BeatmapsetImportResult(null, [], BeatmapsetImportFailure.Locked);
-		if (!manager && existing is not null)
-			return new BeatmapsetImportResult(null, [], BeatmapsetImportFailure.NotAuthorized);
 
-		var set = new Beatmapset
+		var now = time.GetUtcNow();
+		Beatmapset set;
+		if (existing is null)
 		{
-			Id = setId.Value, Artist = content.Artist, Title = content.Title, Creator = content.Creator,
-			UpdatedAt = now,
-			CreatedAt = existing?.CreatedAt ?? now, Visible = existing?.Visible ?? true
-		};
-
-		var result = new List<Beatmap>(content.Difficulties.Count);
-		result.AddRange(from difficulty in content.Difficulties
-		let analysis = Analyse(difficulty, stored[difficulty])
-		select new Beatmap
+			set = await beatmapsets.CreateAsync(new BeatmapsetData
+			{
+				Artist = content.Artist,
+				Title = content.Title,
+				Creator = content.Creator,
+				CreatedAt = now,
+				UpdatedAt = now
+			}, content.OnlineSetId is > 0 ? content.OnlineSetId : null, cancellationToken);
+		}
+		else
 		{
-			Id = stored[difficulty]?.Id ?? (manager && difficulty.OnlineId is > 0 ? difficulty.OnlineId.Value : 0),
-			Hash = new Md5(difficulty.Content),
-			Beatmapset = set,
-			Version = difficulty.Version,
-			Difficulty = analysis.Difficulty,
-			Objects = analysis.Objects
-		});
+			existing.Value.Artist = content.Artist;
+			existing.Value.Title = content.Title;
+			existing.Value.Creator = content.Creator;
+			existing.Value.UpdatedAt = now;
+			await beatmapsets.CreateOrUpdateAsync(existing, cancellationToken);
+			set = existing;
+		}
 
 		copy.Position = 0;
 		await archives.SaveAsync(set, copy, cancellationToken);
-		await beatmapsets.CreateOrUpdateAsync(set, cancellationToken);
 
-		foreach (var beatmap in result)
-			await beatmaps.CreateOrUpdateAsync(beatmap, cancellationToken);
+		var result = new List<Beatmap>(content.Difficulties.Count);
+		foreach (var difficulty in content.Difficulties)
+		{
+			var analysis = Analyse(difficulty, stored[difficulty]);
+			var previous = stored[difficulty]
+				?? (difficulty.OnlineId is > 0 ? await beatmaps.GetAsync(difficulty.OnlineId.Value, cancellationToken) : null);
+
+			var data = new BeatmapData
+			{
+				Hash = new Md5(difficulty.Content),
+				Beatmapset = set,
+				Version = difficulty.Version,
+				Difficulty = analysis.Difficulty,
+				Objects = analysis.Objects,
+				Locked = previous?.Value.Locked ?? false,
+				Visible = previous?.Value.Visible ?? true
+			};
+
+			Beatmap beatmap;
+			if (previous is null)
+			{
+				beatmap = await beatmaps.CreateAsync(data, difficulty.OnlineId is > 0 ? difficulty.OnlineId : null, cancellationToken);
+			}
+			else
+			{
+				beatmap = new Beatmap { Id = previous.Id, Value = data };
+				await beatmaps.CreateOrUpdateAsync(beatmap, cancellationToken);
+			}
+
+			result.Add(beatmap);
+		}
 
 		await beatmaps.RetainAsync(set, result, cancellationToken);
-
 		_events.Writer.TryWrite(new BeatmapsetImported(set, result));
 		return new BeatmapsetImportResult(set, result, null);
 	}
@@ -128,19 +136,10 @@ internal sealed class BeatmapsetService(
 		return forgotten;
 	}
 
-	/// <summary>Picks an id for a beatmapset that is known nowhere else: above every stored id and at least 1 000 000 000.</summary>
-	private async Task<int> NewLocalIdAsync(CancellationToken cancellationToken)
-	{
-		var newest = await beatmapsets.ListAsync(new BeatmapQuery(IncludeHidden: true), new PageRequest(0, 1),
-			cancellationToken);
-		return Math.Max(1_000_000_000, (newest.Items.FirstOrDefault()?.Id ?? 0) + 1);
-	}
-
-
 	/// <inheritdoc />
 	public async Task<bool> DeleteAsync(Beatmapset set, CancellationToken cancellationToken = default)
 	{
-		if (set.Locked)
+		if (set.Value.Locked)
 			return false;
 
 		await archives.DeleteAsync(set, cancellationToken);
@@ -156,8 +155,8 @@ internal sealed class BeatmapsetService(
 	/// <remarks>A difficulty that cannot be analysed gets a zero star rating and no objects.</remarks>
 	private BeatmapAnalysis Analyse(BeatmapArchiveDifficulty difficulty, Beatmap? stored)
 	{
-		if (stored is { Difficulty.Star: > 0 })
-			return new BeatmapAnalysis(stored.Difficulty, stored.Objects);
+		if (stored is { Value.Difficulty.Star: > 0 })
+			return new BeatmapAnalysis(stored.Value.Difficulty, stored.Value.Objects);
 
 		try
 		{

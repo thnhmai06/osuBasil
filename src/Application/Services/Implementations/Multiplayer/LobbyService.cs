@@ -41,7 +41,7 @@ internal sealed class LobbyService(
 		if (scope is null) return RoomResult.Ok;
 		if (!RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 
-		Close(room);
+		Close(room, by.User);
 		return RoomResult.Ok;
 	}
 
@@ -96,30 +96,35 @@ internal sealed class LobbyService(
 			: (BanchoConnection)by;
 		if (!isTournament && lobby.RoomOf(seat!) is not null) return (null, RoomResult.AlreadyInRoom);
 
-		if (lobby.IsFull) return (null, RoomResult.NoRoomId);
+		// ponytail: two concurrent opens by one creator can both pass the room limit; count reservations per creator if that matters.
+		if (lobby.Reserve() is not { } id) return (null, RoomResult.NoRoomId);
 
-		var match = await matches.CreateAsync(new MatchData
+		Match match;
+		try
 		{
-			Name = name,
-			StartedAt = now,
-			EndedAt = null,
-			Creator = creator,
-			IsPrivate = isPrivate
-		}, cancellationToken);
-
-		using var scope = lobby.Enter();
-		if (lobby.IsFull) return (null, RoomResult.NoRoomId);
-		if (limited && TooManyRooms(creator)) return (null, RoomResult.TooManyRooms);
-
-		var room = lobby.Add(id =>
+			match = await matches.CreateAsync(new MatchData
+			{
+				Name = name,
+				StartedAt = now,
+				EndedAt = null,
+				Creator = creator,
+				IsPrivate = isPrivate
+			}, cancellationToken);
+		}
+		catch
 		{
-			var opened = new Room(id, match, settings ?? new MatchSettings(), isTournament);
-			if (!string.IsNullOrEmpty(password)) opened.Settings.Password = password;
-			if (seat is not null && lobby.RoomOf(seat) is null)
-				SeatCreator(opened, seat);
-			return opened;
-		});
-		if (room is null) return (null, RoomResult.NoRoomId);
+			lobby.Release(id);
+			throw;
+		}
+
+		Room room;
+		using (lobby.Enter())
+		{
+			room = new Room(id, match, settings ?? new MatchSettings(), isTournament);
+			if (!string.IsNullOrEmpty(password)) room.Settings.Password = password;
+			if (seat is not null && lobby.RoomOf(seat) is null) SeatCreator(room, seat);
+			lobby.Add(room);
+		}
 
 		DateTimeOffset? closesAt = room.IsTournament && !room.Slots.Any(slot => slot.Player is not null)
 			? ScheduleClosing(room)
@@ -139,7 +144,7 @@ internal sealed class LobbyService(
 	{
 		if (!room.IsTournament)
 		{
-			Close(room);
+			Close(room, null);
 			return;
 		}
 
@@ -158,11 +163,12 @@ internal sealed class LobbyService(
 
 	/// <summary>Closes a room, ending its match and vacating every slot.</summary>
 	/// <param name="room">The room to close.</param>
+	/// <param name="by">The user who closed the room, or <see langword="null" /> when the room closed itself.</param>
 	/// <remarks>
 	///     The caller holds the room's scope. A round in progress ends as aborted. Closing a closed room does nothing.
 	///     The room's whole consequence is one <see cref="LobbyRoomClosed" /> event.
 	/// </remarks>
-	internal void Close(Room room)
+	internal void Close(Room room, User? by)
 	{
 		RoomOccupied(room);
 		if (room.IsClosed) return;
@@ -178,7 +184,7 @@ internal sealed class LobbyService(
 		room.IsClosed = true;
 		channels.Close(room.Channel);
 		lobby.Remove(room);
-		Emit(new LobbyRoomClosed(room, evicted, aborted));
+		Emit(new LobbyRoomClosed(room, by, evicted, aborted));
 	}
 
 	private DateTimeOffset ScheduleClosing(Room room)
@@ -210,7 +216,7 @@ internal sealed class LobbyService(
 	private async Task CloseIfStillEmptyAsync(Room room)
 	{
 		await using var scope = await room.EnterAsync();
-		if (scope is not null && !room.Slots.Any(slot => slot.Player is not null)) Close(room);
+		if (scope is not null && !room.Slots.Any(slot => slot.Player is not null)) Close(room, null);
 	}
 
 	private bool TooManyRooms(User creator)

@@ -9,10 +9,7 @@ public enum BeatmapsetImportFailure : byte
 	Unreadable,
 
 	/// <summary>The beatmapset it belongs to is locked.</summary>
-	Locked,
-
-	/// <summary>The caller may not upload beatmapsets, or may not replace the beatmapset it belongs to.</summary>
-	NotAuthorized
+	Locked
 }
 
 /// <summary>The outcome of importing a beatmapset archive.</summary>

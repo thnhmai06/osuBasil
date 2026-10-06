@@ -7,7 +7,6 @@ using Basil.Application.Storage.Contracts.Common;
 using Basil.Application.Storage.Contracts.Multiplayer;
 using Basil.Application.Storage.Contracts.Scores;
 using Basil.Application.Storage.Contracts.Sessions;
-using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Client;
 using Basil.Domain.Scores;
 using Basil.Domain.Utilities;
@@ -21,7 +20,6 @@ internal sealed class ScoreService(
 	IScoreRepository scores,
 	IReplayStorage replays,
 	IUserStatsRepository stats,
-	ILoginRepository logins,
 	ILobby lobby) : IScoreService
 {
 	/// <summary>The shortest replay, in bytes, that is kept.</summary>
@@ -47,8 +45,7 @@ internal sealed class ScoreService(
 			beatmap ?? (round is not null ? new BeatmapChecksums(client.BeatmapHash, null) : null);
 		if (checkedBeatmap is null) return ScoreRejection.UnknownBeatmap;
 
-		var latest = await logins.ListAsync(new LoginQuery(connection.User), new PageRequest(0, 1), cancellationToken);
-		var loginClient = latest.Items.FirstOrDefault()?.Client ?? connection.Login.Client!;
+		var loginClient = connection.Login.Client!;
 		if (Validate(submission, loginClient, checkedBeatmap, connection.User.Value.Name, client) is { } rejection)
 			return rejection;
 

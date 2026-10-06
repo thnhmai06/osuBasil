@@ -7,9 +7,20 @@ namespace Basil.Application.Storage.Contracts.Beatmaps;
 /// <summary>Stores beatmap difficulties.</summary>
 public interface IBeatmapRepository
 {
+	/// <summary>Stores a new beatmap and assigns its id.</summary>
+	/// <param name="data">The data of the new beatmap.</param>
+	/// <param name="onlineId">The beatmap's osu! id, which becomes its id; <see langword="null" /> when it has none.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The stored beatmap.</returns>
+	/// <remarks>
+	///     A beatmap without an osu! id gets a new local id, at or above <see cref="Beatmap.LocalIdFloor" />. The caller
+	///     makes sure no stored beatmap already has <paramref name="onlineId" /> or the same file hash.
+	/// </remarks>
+	Task<Beatmap> CreateAsync(BeatmapData data, int? onlineId = null, CancellationToken cancellationToken = default);
+
 	/// <summary>
-	///     Stores a beatmap under the MD5 of its file, adding it when no beatmap has that hash and replacing the stored
-	///     beatmap otherwise.
+	///     Stores a beatmap under its id, adding it when no beatmap has that id and replacing the stored beatmap
+	///     otherwise.
 	/// </summary>
 	/// <param name="beatmap">The beatmap to store.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
