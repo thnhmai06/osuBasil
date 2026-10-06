@@ -1,7 +1,9 @@
 <Solution>
 	<Folder Name="/Sources/">
 		<Project Path="src/Domain/Basil.Domain.csproj" />
-		<Project Path="src/Infrastructure/Basil.Infrastructure.csproj" />
+	</Folder>
+	<Folder Name="/Sources/Bot/">
+		<Project Path="src/Bot/Application/Basil.Bot.Application.csproj" />
 	</Folder>
 	<Folder Name="/Sources/Application/Services/">
 		<Project Path="src/Application/Services/Contracts/Basil.Application.Services.Contracts.csproj" />
@@ -10,6 +12,11 @@
 	<Folder Name="/Sources/Application/Storage/">
 		<Project Path="src/Application/Storage/Contracts/Basil.Application.Storage.Contracts.csproj" />
 		<Project Path="src/Application/Storage/Implementations/Basil.Application.Storage.Implementations.csproj" />
+	</Folder>
+	<Folder Name="/Sources/Infrastructure/">
+		<Project Path="src/Infrastructure/Storage/Basil.Infrastructure.Storage.csproj" />
+		<Project Path="src/Infrastructure/Services/Basil.Infrastructure.Services.csproj" />
+		<Project Path="src/Infrastructure/Runtime/Basil.Infrastructure.Runtime.csproj" />
 	</Folder>
 	<Folder Name="/Sources/Hosts/">
 		<Project Path="src/Hosts/Bancho/Basil.Host.Bancho.csproj" />

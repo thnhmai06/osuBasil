@@ -16,7 +16,9 @@
 	<ItemGroup>
 		<ProjectReference Include="..\..\Application\Services\Contracts\Basil.Application.Services.Contracts.csproj"/>
 		<ProjectReference Include="..\..\Application\Services\Implementations\Basil.Application.Services.Implementations.csproj"/>
-		<ProjectReference Include="..\..\Infrastructure\Basil.Infrastructure.csproj"/>
+		<ProjectReference Include="..\..\Infrastructure\Storage\Basil.Infrastructure.Storage.csproj"/>
+		<ProjectReference Include="..\..\Infrastructure\Services\Basil.Infrastructure.Services.csproj"/>
+		<ProjectReference Include="..\..\Infrastructure\Runtime\Basil.Infrastructure.Runtime.csproj"/>
 		<ProjectReference Include="..\..\Protocol\Bancho\Basil.Protocol.Bancho.csproj"/>
 	</ItemGroup>
 

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Application\Services\Contracts\Basil.Application.Services.Contracts.csproj"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="ppy.osu.Game.Rulesets.Osu"/>
+		<PackageReference Include="ppy.osu.Game.Rulesets.Taiko"/>
+		<PackageReference Include="ppy.osu.Game.Rulesets.Catch"/>
+		<PackageReference Include="ppy.osu.Game.Rulesets.Mania"/>
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.Options"/>
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
+	</ItemGroup>
+
+</Project>
