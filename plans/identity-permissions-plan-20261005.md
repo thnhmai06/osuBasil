@@ -420,6 +420,12 @@ không được cấp thì trả `NotAuthorized` / `NoPermission`. Client nhờ 
   * Policy permission cho beatmap, nội dung, cấu hình, chẩn đoán.
   * Bỏ hẳn khóa admin (mục 7); đăng ký theo `ServerSettings.LockedCreation`.
   * Bỏ mọi chặn id 0 và ảnh `basilbot.png`.
+  * **Lỗ hổng có sẵn (review bảo mật 2026-10-06), sửa khi migrate:**
+    * `BeatmapsetAssetRoutes`: `HandleDownloadStoryboard` và `HandleDownloadArchive` phục vụ file mà không gọi
+      `ResolveBeatmapsetAsync` như các route anh em, nên lộ beatmapset ẩn (mappool chưa công bố). Kiểm hiển thị trước.
+    * `MenuSeasonalRoutes` upload: tính `Path.GetFileName(file.FileName)` rồi lại truyền `file.FileName` thô vào
+      `CreateAsync` (path traversal). Truyền tên đã làm sạch, từ chối rỗng/`.`/`..`, và storage kiểm đường dẫn cuối nằm
+      trong thư mục gốc.
 * **Host.Bancho / Host.Irc**
   * `ClientPrivileges` = quyền hiệu lực → `ToClientPrivileges()`. Gửi lại khi có event permission/restriction.
   * `AccountRestricted` khi danh mục Player hiệu lực rỗng.
@@ -427,6 +433,8 @@ không được cấp thì trả `NotAuthorized` / `NoPermission`. Client nhờ 
   * Presence chỉ tính phiên trong game (Bancho, IRC).
   * Hằng `RoomPacket.NoHostId`; TOPIC nguồn server; cho-token = `Connection.Token`.
   * osu!direct kiểm `SupporterDirect`.
+  * **Lỗ hổng có sẵn:** `OsuWebRoutes` `/d/{mapSetId}` dựng `.osz` mà không kiểm beatmapset ẩn. Trả 404 khi ẩn,
+    trừ khi người gọi có `TournamentViewHiddenBeatmaps`/`TournamentManageBeatmaps`.
   * Tiền tố IRC `@` = manager phòng hoặc `TournamentManageAnyRoom`.
 * **BasilBot**: project riêng, client HTTP + SSE.
   * Tái dùng Domain và DTO API (DTO ở project chung với Host.Api).
