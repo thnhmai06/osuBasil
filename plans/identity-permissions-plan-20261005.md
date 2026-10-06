@@ -557,3 +557,84 @@ Quyết định của người dùng:
   * CLI `--reset-admin-key` bỏ.
 * **Privileges định nghĩa nhóm, permissions định nghĩa quyền của nhóm:** đúng với mô hình hiện tại (danh mục
   `ClientPrivileges` + `ToClientPrivileges`), không đổi.
+
+## 8. Bàn giao (2026-10-06)
+
+### Trạng thái
+
+Domain / Protocol / Application của đợt này **xong, đã push lên `develop`**:
+* `a59d43e3` — định vị mới, AGENTS.md, README, `working-scopes.md`, tagline.
+* `1607988a` — code chính: Permissions, Restriction, token, `ApiConnection`, bỏ bot.
+* `8efbf8bc` — luật không tự restrict mình, khóa `UserSession.Restrictions`, baseline.
+* `b3dde74a` — quyền được cấp đọc từ user của session.
+* `91c37ffa` — khóa tạo mới, ủy quyền theo scope, bỏ khóa admin.
+* `2fad042e` — chặn kết nối ủy quyền đi nhánh "chính chủ", chặn người upload giả id.
+* `620f4649` — đồng bộ plan.
+
+Mọi quyết định của người dùng nằm ở mục "Quyết định đã chốt", mục 1 và mục 7. Mục 6 ghi chú triển khai; mục 3 là
+việc của các layer sau.
+
+### Cách kiểm lại
+
+* `dotnet build src/Basil.Application.Services/Basil.Application.Services.csproj` → 0 lỗi. Lệnh này build cả Domain,
+  Storage, Contracts.
+* `dotnet build src/Basil.Protocol.Bancho/Basil.Protocol.Bancho.csproj` → 0 lỗi.
+* Baseline hành vi:
+  * chép `plans/storage-services-split-baseline.cs` ra một thư mục trống ngoài repo, đặt tên `check.cs`;
+  * chạy `dotnet run check.cs` → phải in `ALL PASS`;
+  * kịch bản: S, P, R, N1–N12, L1–L4.
+* Infrastructure, `Basil.Host.*` và mọi project test **chưa build được**: chúng còn dùng namespace Application cũ.
+  Đây là trạng thái đã biết.
+
+### Việc tiếp theo (thứ tự đề xuất)
+
+1. **Infrastructure** (mục 3 + 7):
+   * migration SQLite: user id 0; `Privilege` → `Permissions` (bảng map ở mục 3); `SilenceEnd` → restriction; bảng
+     `Restrictions` + `SqliteRestrictionRepository`; GeneralChannel → Permissions; bỏ `AdminKey:*`; thêm
+     `LockedCreation` vào settings;
+   * bỏ bot spectate lúc đăng nhập, `GuidTokenGenerator`, token `bancho-bot-session`;
+   * bỏ mọi chat server tự nói (countdown, anticheat, "Beatmap not found");
+   * sửa `SqliteLoginRepository` lệch schema;
+   * repository restriction nạp `Restriction.Value.User` là bản hiện hành (mục 6).
+2. **Host**:
+   * CLI tạo tài khoản quản trị đầu tiên (cấp phát, không có logic "người đầu tiên");
+   * bỏ `--reset-admin-key`;
+   * dịch vụ nền gọi `ISessionService.CloseIdle()` (300 s cho osu!/IRC, 2 giờ cho Api).
+3. **Host.Api** (phải đủ rộng cho bot):
+   * bearer token → `UserRegistry.Find(token)`, `MarkActive`; `/auth/login`, `/auth/logout`, `/me`;
+   * policy theo permission cho route không có actor;
+   * header ủy quyền → `ActFor` → `DelegatedConnection`;
+   * SSE theo phiên: tin nhắn, event phòng/lobby, anticheat theo permission; cách truyền token cho EventSource;
+   * route user: permission, quyền hiệu lực, restriction, đổi mật khẩu, thu hồi phiên, lock;
+   * bỏ `/settings/adminkey`, mọi chặn id 0, ảnh `basilbot.png`.
+4. **Host.Bancho / Host.Irc**:
+   * `ClientPrivileges` = `Effective(...).ToClientPrivileges()`, gửi lại khi có `UserRestricted`,
+     `UserRestrictionLifted`, `UserPermissionsChanged`;
+   * `AccountRestricted` khi nhóm Player hiệu lực rỗng; SilenceEnd lấy từ restriction đang tạm dừng `PlayerChat`;
+   * presence chỉ tính phiên trong game (Bancho, IRC); cho-token = `Connection.Token`;
+   * đăng ký in-game theo `LockedCreation.Accounts` (ô email không còn là khóa);
+   * `RoomPacket.NoHostId`; TOPIC nguồn server; osu!direct kiểm `SupporterDirect`;
+   * tiền tố IRC `@` = manager phòng hoặc `TournamentManageAnyRoom`.
+5. **BasilBot**: project riêng, client HTTP + SSE, tái dùng Domain và DTO API; lệnh khôi phục từ git `c5e09732`;
+   tra quyền người gửi qua API; dùng ủy quyền cho `!mp`.
+6. **Test và docs**: chuyển kịch bản baseline thành test; viết lại docs liệt kê ở mục 3; `privileges.md` →
+   `permissions.md`.
+
+### Câu hỏi còn mở (hỏi người dùng khi tới bước đó)
+
+* Cách cấp mật khẩu cho tài khoản quản trị đầu tiên và tài khoản BasilBot: tham số CLI, file một lần, hay cách khác.
+* Cách truyền token cho SSE từ trình duyệt (EventSource không gửi header): query string, cookie, hay vé ngắn hạn.
+* Có giữ mặc định khóa upload beatmapset (`LockedCreation = Beatmapsets`) không; hiện người dùng chưa phản đối.
+
+### Cách làm việc đã thống nhất
+
+* Claude lên plan, điều phối, review từng dòng. Giao việc theo thứ tự OpenCode → subagent Sonnet/Haiku → tự làm.
+* OpenCode server ở `http://127.0.0.1:4096`:
+  `opencode run --server http://127.0.0.1:4096 -m <model> --auto --title <t> -f <prompt.md> "<lệnh>"`.
+* Chọn model theo quota (https://opencode.ai/go):
+  * việc cơ học: `deepseek-v4.1-flash`, `mimo-v2.6-flash`, `glm-5.3-flash`;
+  * việc cần thiết kế: `qwen3.7-plus`, `minimax-m3`;
+  * tránh `kimi-k2.7-code` (quota thấp).
+* Prompt mang đủ spec (chữ ký, XML doc, code), không để agent tự chọn.
+* Commit xong thì push ngay; mỗi commit kèm dòng attribution.
+* Sau mỗi push có review bảo mật tự động; đã bắt được 2 lỗi thật (`8efbf8bc`, `2fad042e`). Đọc kỹ kết quả review.
