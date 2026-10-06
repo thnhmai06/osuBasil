@@ -474,7 +474,7 @@ Thứ tự: 0 → 1 → 2 → 3 → (4a viết `PermissionRules` trước, rồi
 ## 5. Kiểm chứng
 
 * `dotnet build src/Basil.Application.Services/Basil.Application.Services.csproj` và
-  `dotnet build src/Basil.Protocol.Bancho/Basil.Protocol.Bancho.csproj` sạch lỗi.
+  `dotnet build src/Protocol/Basil.Protocol.Bancho/Basil.Protocol.Bancho.csproj` sạch lỗi.
 * Grep trong Domain/Application bằng 0 với:
   * `SystemUserIds|BotConnection|ConnectionType.Bot|OpenBotAsync|BasilBot|SilenceEndsAt|Participate`;
   * `ClientPrivileges` ngoài `Domain/Client` và phép suy ra;
@@ -576,10 +576,10 @@ việc của các layer sau.
 
 ### Cách kiểm lại
 
-* `dotnet build src/Basil.Application.Services.Implementations/Basil.Application.Services.Implementations.csproj` → 0 lỗi.
+* `dotnet build src/Application/Services/Basil.Application.Services.Implementations/Basil.Application.Services.Implementations.csproj` → 0 lỗi.
   Lệnh này build cả Domain, Storage.Contracts, Services.Contracts.
-* `dotnet build src/Basil.Application.Storage.Implementations/Basil.Application.Storage.Implementations.csproj` → 0 lỗi.
-* `dotnet build src/Basil.Protocol.Bancho/Basil.Protocol.Bancho.csproj` → 0 lỗi.
+* `dotnet build src/Application/Storage/Basil.Application.Storage.Implementations/Basil.Application.Storage.Implementations.csproj` → 0 lỗi.
+* `dotnet build src/Protocol/Basil.Protocol.Bancho/Basil.Protocol.Bancho.csproj` → 0 lỗi.
 * Baseline hành vi:
   * chép `plans/storage-services-split-baseline.cs` ra một thư mục trống ngoài repo, đặt tên `check.cs`;
   * chạy `dotnet run check.cs` → phải in `ALL PASS`;

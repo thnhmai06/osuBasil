@@ -24,8 +24,8 @@
 		<!-- Basil.Host is deliberately NOT referenced here (even with ReferenceOutputAssembly=false,
 		     the SDK still rejects referencing a self-contained executable from a non-self-contained
 		     one) — the harness builds/publishes it as a subprocess via `dotnet publish` instead. -->
-		<ProjectReference Include="..\..\src\Basil.Protocol.Bancho\Basil.Protocol.Bancho.csproj"/>
-		<ProjectReference Include="..\..\src\Basil.Application.Contracts\Basil.Application.Contracts.csproj"/>
+		<ProjectReference Include="..\..\src\Protocol\Basil.Protocol.Bancho\Basil.Protocol.Bancho.csproj"/>
+		<ProjectReference Include="..\..\src\Application\Services\Basil.Application.Services.Contracts\Basil.Application.Services.Contracts.csproj"/>
 	</ItemGroup>
 
 	<ItemGroup>

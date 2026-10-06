@@ -27,7 +27,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\src\Basil.Host.Bancho\Basil.Host.Bancho.csproj"/>
+		<ProjectReference Include="..\..\src\Host\Basil.Host.Bancho\Basil.Host.Bancho.csproj"/>
 		<!-- MultiplayerTestSupport.cs (its shared fixture for match packet handler tests) stays in
 		     Basil.Infrastructure.Tests, since most of its consumers are Infrastructure business-logic
 		     tests; this reference lets the ~19 match packet handler tests that moved here keep using it. -->

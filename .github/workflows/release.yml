@@ -49,7 +49,7 @@ jobs:
 
       - name: Publish
         run: >
-          dotnet publish src/Basil.Host
+          dotnet publish src/Host/Basil.Host
           -c Release
           -r ${{ matrix.rid }}
           --self-contained true
