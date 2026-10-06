@@ -9,36 +9,29 @@ namespace Basil.Infrastructure.Storage;
 /// <remarks>
 ///     Applies every pending migration script once, in version order, and records the applied version in the database.
 /// </remarks>
-internal sealed class DatabaseMigrator
+internal sealed class DatabaseMigrator(Database database)
 {
 	private const string Marker = ".Migrations.";
 	private const string Extension = ".sql";
-
-	private readonly Database database;
-
-	/// <summary>Creates a migrator around the database to update.</summary>
-	/// <param name="database">The database to update.</param>
-	public DatabaseMigrator(Database database) => this.database = database;
 
 	/// <summary>Applies every migration the database has not seen yet.</summary>
 	/// <param name="cancellationToken">A token that cancels the migration.</param>
 	public async Task MigrateAsync(CancellationToken cancellationToken = default)
 	{
-		await using var connection = await database.OpenAsync(cancellationToken).ConfigureAwait(false);
-		await ExecuteAsync(connection, "PRAGMA journal_mode = WAL;", cancellationToken).ConfigureAwait(false);
+		await using var connection = await database.OpenAsync(cancellationToken);
+		await ExecuteAsync(connection, "PRAGMA journal_mode = WAL;", cancellationToken);
 
-		var version = await ReadVersionAsync(connection, cancellationToken).ConfigureAwait(false);
+		var version = await ReadVersionAsync(connection, cancellationToken);
 
 		foreach (var (next, sql) in Migrations())
 		{
 			if (next <= version)
 				continue;
 
-			await using var transaction = await connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
-			await ExecuteAsync(connection, sql, cancellationToken, transaction).ConfigureAwait(false);
-			await ExecuteAsync(connection, $"PRAGMA user_version = {next};", cancellationToken, transaction)
-				.ConfigureAwait(false);
-			await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+			await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+			await ExecuteAsync(connection, sql, cancellationToken, transaction);
+			await ExecuteAsync(connection, $"PRAGMA user_version = {next};", cancellationToken, transaction);
+			await transaction.CommitAsync(cancellationToken);
 		}
 	}
 
@@ -73,7 +66,7 @@ internal sealed class DatabaseMigrator
 	{
 		await using var command = connection.CreateCommand();
 		command.CommandText = "PRAGMA user_version;";
-		var value = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+		var value = await command.ExecuteScalarAsync(cancellationToken);
 		return Convert.ToInt32(value, CultureInfo.InvariantCulture);
 	}
 
@@ -83,6 +76,6 @@ internal sealed class DatabaseMigrator
 		await using var command = connection.CreateCommand();
 		command.CommandText = sql;
 		command.Transaction = (SqliteTransaction?)transaction;
-		await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+		await command.ExecuteNonQueryAsync(cancellationToken);
 	}
 }

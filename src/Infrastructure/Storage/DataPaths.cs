@@ -7,61 +7,44 @@ namespace Basil.Infrastructure.Storage;
 ///     A relative <see cref="StorageOptions.DataDirectory" /> is resolved against the directory the server runs from.
 ///     The paths are computed without reading or creating anything on disk.
 /// </remarks>
-internal sealed class DataPaths
+internal sealed class DataPaths(IOptions<StorageOptions> options)
 {
-	/// <summary>Creates the set of paths rooted at the configured data directory.</summary>
-	/// <param name="options">The storage configuration.</param>
-	public DataPaths(IOptions<StorageOptions> options)
-	{
-		var dataDirectory = options.Value.DataDirectory;
-		Root = Path.GetFullPath(Path.IsPathRooted(dataDirectory)
-			? dataDirectory
-			: Path.Combine(AppContext.BaseDirectory, dataDirectory));
-
-		Database = Path.Combine(Root, "Basil.db");
-		Beatmapsets = Path.Combine(Root, "Beatmapsets");
-		Imports = Path.Combine(Root, "Imports");
-		Replays = Path.Combine(Root, "Replays");
-		Avatars = Path.Combine(Root, "Avatars");
-		MenuBanners = Path.Combine(Root, "Menu", "Banners");
-		MenuSeasonals = Path.Combine(Root, "Menu", "Seasonals");
-		MenuIcon = Path.Combine(Root, "Menu", "Icon");
-		Faqs = Path.Combine(Root, "Faqs");
-		Cache = Path.Combine(Root, "Cache");
-	}
+	private readonly string root = Path.GetFullPath(Path.IsPathRooted(options.Value.DataDirectory)
+		? options.Value.DataDirectory
+		: Path.Combine(AppContext.BaseDirectory, options.Value.DataDirectory));
 
 	/// <summary>Gets the directory that holds every stored file.</summary>
-	public string Root { get; }
+	public string Root => root;
 
 	/// <summary>Gets the path of the server's database.</summary>
-	public string Database { get; }
+	public string Database => Path.Combine(root, "Basil.db");
 
 	/// <summary>Gets the directory that holds the imported beatmapset archives.</summary>
-	public string Beatmapsets { get; }
+	public string Beatmapsets => Path.Combine(root, "Beatmapsets");
 
 	/// <summary>Gets the directory watched for beatmapset archives to import.</summary>
-	public string Imports { get; }
+	public string Imports => Path.Combine(root, "Imports");
 
 	/// <summary>Gets the directory that holds stored replays.</summary>
-	public string Replays { get; }
+	public string Replays => Path.Combine(root, "Replays");
 
 	/// <summary>Gets the directory that holds user avatars.</summary>
-	public string Avatars { get; }
+	public string Avatars => Path.Combine(root, "Avatars");
 
 	/// <summary>Gets the directory that holds menu banners.</summary>
-	public string MenuBanners { get; }
+	public string MenuBanners => Path.Combine(root, "Menu", "Banners");
 
 	/// <summary>Gets the directory that holds seasonal menu backgrounds.</summary>
-	public string MenuSeasonals { get; }
+	public string MenuSeasonals => Path.Combine(root, "Menu", "Seasonals");
 
 	/// <summary>Gets the directory that holds the main-menu icon.</summary>
-	public string MenuIcon { get; }
+	public string MenuIcon => Path.Combine(root, "Menu", "Icon");
 
 	/// <summary>Gets the directory that holds the frequently asked questions.</summary>
-	public string Faqs { get; }
+	public string Faqs => Path.Combine(root, "Faqs");
 
 	/// <summary>Gets the directory that holds files rebuilt from their sources.</summary>
-	public string Cache { get; }
+	public string Cache => Path.Combine(root, "Cache");
 
 	/// <summary>Creates every directory the server stores files in.</summary>
 	public void CreateDirectories()
