@@ -1,5 +1,5 @@
 using System.Collections.Concurrent;
-using Basil.Application.Storage.Chat;
+using Basil.Application.Storage.Contracts.Chat;
 
 namespace Basil.Application.Storage.Implementations.Chat;
 

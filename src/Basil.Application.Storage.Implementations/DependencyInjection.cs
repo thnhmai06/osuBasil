@@ -1,9 +1,9 @@
-using Basil.Application.Storage.Chat;
+using Basil.Application.Storage.Contracts.Chat;
 using Basil.Application.Storage.Implementations.Chat;
 using Basil.Application.Storage.Implementations.Multiplayer;
 using Basil.Application.Storage.Implementations.Sessions;
-using Basil.Application.Storage.Multiplayer;
-using Basil.Application.Storage.Sessions;
+using Basil.Application.Storage.Contracts.Multiplayer;
+using Basil.Application.Storage.Contracts.Sessions;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Application.Storage.Implementations;

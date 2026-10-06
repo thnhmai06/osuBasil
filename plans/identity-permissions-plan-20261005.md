@@ -576,8 +576,9 @@ việc của các layer sau.
 
 ### Cách kiểm lại
 
-* `dotnet build src/Basil.Application.Services/Basil.Application.Services.csproj` → 0 lỗi. Lệnh này build cả Domain,
-  Storage, Contracts.
+* `dotnet build src/Basil.Application.Services.Implementations/Basil.Application.Services.Implementations.csproj` → 0 lỗi.
+  Lệnh này build cả Domain, Storage.Contracts, Services.Contracts.
+* `dotnet build src/Basil.Application.Storage.Implementations/Basil.Application.Storage.Implementations.csproj` → 0 lỗi.
 * `dotnet build src/Basil.Protocol.Bancho/Basil.Protocol.Bancho.csproj` → 0 lỗi.
 * Baseline hành vi:
   * chép `plans/storage-services-split-baseline.cs` ra một thư mục trống ngoài repo, đặt tên `check.cs`;

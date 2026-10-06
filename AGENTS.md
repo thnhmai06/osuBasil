@@ -317,16 +317,19 @@ Basil.Domain                     business model and its own validity          ->
 Basil.Protocol.Bancho            osu! client-server wire formats               -> (nothing)
 Basil.Protocol.Irc               IRC wire format                               -> (nothing)
 
-Basil.Application.Storage        persistent ports, registries, runtime models,  -> Domain
-                                 paging and query records
-Basil.Application.Contracts      service contracts, capability ports, events,   -> Storage
-                                 inputs and results
-Basil.Application.Services       service implementations (internal)             -> Contracts
+Basil.Application.Storage.Contracts       persistent ports, registry contracts,      -> Domain
+                                          runtime models, paging and query records
+Basil.Application.Storage.Implementations in-memory registries (internal)           -> Storage.Contracts
+Basil.Application.Services.Contracts      service contracts, capability ports,       -> Storage.Contracts
+                                          events, inputs and results
+Basil.Application.Services.Implementations service implementations (internal)       -> Services.Contracts
+                                                                                    (never Storage.Implementations)
 
-Basil.Infrastructure             persistence, files, media, capability ports,   -> Contracts, Protocol.*
-                                 background loops, event dispatch and handlers     (never Services)
-Basil.Host.Bancho / .Irc / .Api  transports                                     -> Contracts, Services,
-                                                                                   Infrastructure, their Protocol
+Basil.Infrastructure             persistence, files, media, capability ports,   -> Services.Contracts, Protocol.*
+                                 background loops, event dispatch and handlers     (never any Implementations)
+Basil.Host.Bancho / .Irc / .Api  transports                                     -> Services.Contracts, the two
+                                                                                   Implementations, Infrastructure,
+                                                                                   their Protocol
 Basil.Host                       entry point and composition                    -> everything
 ```
 
@@ -339,23 +342,31 @@ checks. If a wire format changes, only Protocol changes. `Basil.Protocol.Irc` do
 Configuration is bound only in `Basil.Host`. Infrastructure and the transports receive it as `IOptions<T>` of
 an options type that the project using it owns; Application reads no configuration.
 
-`Basil.Infrastructure` never references `Basil.Application.Services`; it gets every service through
-dependency injection by its contract. The hosts may reference Services, which sits beside Infrastructure, but
-only to call `AddApplicationServices()`; they too use services through their contracts.
+Application has two parallel parts, **Storage** and **Services**, each split into **Contracts** and
+**Implementations**. Implementations are `internal` and joined through dependency injection only:
+`AddApplicationStorage()` (Storage.Implementations) and `AddApplicationServices()` (Services.Implementations).
+Services.Implementations uses storage through Storage.Contracts and never references Storage.Implementations.
+`Basil.Infrastructure` references no Implementations project; it gets every service and registry through
+dependency injection by its contract. The hosts reference the Implementations projects only to call the two
+`Add…()` methods; they too use everything through its contract.
 
 > **Migration in progress.** Application has been split into Storage, Contracts and Services by
 > [`plans/storage-services-split-plan-20261003.md`](plans/storage-services-split-plan-20261003.md) (phases 1–6
-> done; its section 13 lists where the code differs from the plan); read it before touching Application. It
+> done; its section 13 lists where the code differs from the plan); read it before touching Application. Since
+> then the projects were renamed to the four above, the registries got contracts, and the room scope moved to
+> `room.EnterAsync()`; where the plan says otherwise, this file wins. It
 > replaces the "runtime objects carry their own behaviour" part of
 > [`plans/application-environment-plan-20260930.md`](plans/application-environment-plan-20260930.md), whose
 > other decisions (naming, event tree, channel names, identity by reference) still hold. Older plans are
 > history.
 >
 > Infrastructure, the hosts and the tests have not been migrated. Until they are, **only `Basil.Domain` and
-> the three Application projects build**: `Basil.Infrastructure`, `Basil.Host.*` and every test project still
+> the four Application projects build**: `Basil.Infrastructure`, `Basil.Host.*` and every test project still
 > use old Application namespaces, so solution-wide `dotnet build`/`dotnet test` and `Basil.ArchitectureTests`
-> do not run. Verify with `dotnet build src/Basil.Application.Services/Basil.Application.Services.csproj`
-> (it builds Storage and Contracts too).
+> do not run. Verify with
+> `dotnet build src/Basil.Application.Services.Implementations/Basil.Application.Services.Implementations.csproj`
+> (it builds both Contracts projects) and
+> `dotnet build src/Basil.Application.Storage.Implementations/Basil.Application.Storage.Implementations.csproj`.
 >
 > Documentation under `docs/` may describe an older structure; rewrite each document when the code it
 > describes is migrated, not before. Where a plan conflicts with
@@ -401,7 +412,7 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   source of anticheat events; clients that watch events (BasilBot) turn them into chat warnings.
 * `Sessions`, `Chat` and `Multiplayer` reference each other (`Room.Host`, `Room.Channel`,
   `ChannelSession.Members`); treat them as one cluster. Their runtime models live together in Storage, and
-  Services changes them through `internal` members (`InternalsVisibleTo("Basil.Application.Services")`).
+  Services changes them through `internal` members (`InternalsVisibleTo` for both Implementations projects).
   References run from the acted-on object to the actor, never back.
 
 ### Domain and Application
@@ -409,14 +420,15 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
 * **Domain** holds business models that exist beyond runtime (`Match`, `Round`, `MatchSettings`,
   `User`, `Beatmap`, `Login`, `ServerSettings`, …). A model guarantees that **it is valid**: field values
   in range, its own text format, values derived purely from its own data. No runtime-only state, no events.
-* **Storage holds data, Services hold behaviour.** `Basil.Application.Storage` holds the persistent ports
-  and what exists only at runtime (`Room`, `RoomSlot(s)`, `UserSession` and its connections,
-  `ChannelSession`s) together with the registries that keep them (`UserRegistry`, `GeneralChannelRegistry`,
-  `Lobby`): data, lookups and concurrency scopes only. Storage never decides a rule, emits an event, calls a
-  service or starts a timer. `Basil.Application.Services` holds every action: a service guarantees that a
+* **Storage holds data, Services hold behaviour.** Storage.Contracts holds the persistent ports and what
+  exists only at runtime (`Room`, `RoomSlot(s)`, `UserSession` and its connections, `ChannelSession`s) as
+  concrete classes, plus the contracts of the registries that keep them (`IUserRegistry`,
+  `IGeneralChannelRegistry`, `ILobby`); Storage.Implementations implements whatever storage needs nothing
+  outside the process (today the in-memory registries): data, lookups and concurrency scopes only. Storage
+  never decides a rule, emits an event, calls a service or starts a timer. Services.Implementations holds every action: a service guarantees that a
   change **is meaningful** (authority, timing, osu! rules, not tampered with, the consequences of the
   change). A class named like a model (`Gateway`) must not hold logic either.
-* **One contract per service.** `IXService` in `Basil.Application.Contracts` declares every public action of
+* **One contract per service.** `IXService` in Services.Contracts declares every public action of
   `XService` and its event stream (`IRoomService : IEventPublisher<RoomEvent>`). This is a deliberate
   exception to "no interface with one implementation": the contracts are the list of capabilities the
   system offers, independent of how they are implemented. Implementations are `internal sealed` and
@@ -432,9 +444,12 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
 * **Contract names do not reveal the mechanism.** If the work moved from the file system to the network, or
   from one library to another, the name would not change: `ScanAsync`, not `ScanFileAsync`;
   `IBeatmapAssets.OpenAsync`, not `ReadFromDiskAsync`.
-* **Registries, runtime models and query records get no interface.** They are not ports. Do not add
-  `IUserRegistry` or `ILobby`. Ports are for what lies outside the process: storage, files, network,
-  external computation, clock (`TimeProvider`).
+* **Registries are storage contracts; runtime models and query records are not.** A registry is storage
+  held in memory, so it has a contract in Storage.Contracts (`IUserRegistry`, `ILobby`,
+  `IGeneralChannelRegistry`) and an `internal` implementation in Storage.Implementations. Its mutating members
+  are `internal` on the contract, so only the Implementations projects can call them. Runtime models and query
+  records are data and stay concrete classes. Other ports are for what lies outside the process: storage,
+  files, network, external computation, clock (`TimeProvider`).
 * **Outer layers use storage directly.** Infrastructure and the hosts read, list and search storage, and
   write persistent records whose write carries no rule or consequence (an admin renames a user, hides a
   beatmapset), directly through the repository, after the host has checked the caller's permission. Services are only for actions; a service
@@ -617,11 +632,12 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
 ### Code style
 
 * A small type used by one type lives in that type's file (`ConnectionType` in `Connection.cs`).
-* A member that uses no instance state is `static` (`Lobby.EnterAsync`, `LobbyService.RoomOccupied`).
+* A member that uses no instance state is `static` (`LobbyService.RoomOccupied`).
 * Prefer primary constructors, property patterns (`room is { InProgress: false, Beatmap: not null }`) and
   one guard for conditions that return the same result; no redundant casts, `? true : false` or
   discarded-task lambdas (`_ => action()`, not `_ => _ = action()`).
-* The Application registration class is `DependencyInjection` with `AddApplicationServices()`.
+* Each Implementations project registers itself in a class `DependencyInjection`: `AddApplicationStorage()`,
+  `AddApplicationServices()`.
 
 ### Important invariants
 
@@ -629,7 +645,7 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
 
 `Room` is mutable shared state.
 
-Operations that read and then mutate a room must hold the room's exclusive scope across the complete state transition. That scope comes from `Lobby.EnterAsync(room)`, which returns `null` once the room is closed; the registry owns the lock, like a database transaction.
+Operations that read and then mutate a room must hold the room's exclusive scope across the complete state transition. That scope comes from `room.EnterAsync()`, which returns `null` once the room is closed; the room owns the lock, like a database transaction.
 
 Do not introduce a second synchronization mechanism for the same state.
 
@@ -792,8 +808,9 @@ Before considering a code change complete:
    against these rules before accepting it. `UserSession.Channels`, `UserSession.Join(ChannelSession)`,
    sessions emitting events, event handlers inside Application, and rules or timers on runtime models and
    registries all got through review once; do not let them back in. Nor should a service that only wraps
-   a repository read, an interface for a registry, a contract name that reveals its mechanism, or a
-   reference from Infrastructure to `Basil.Application.Services`. Since the identity redesign, also
+   a repository read, a registry used through its implementation instead of its contract, a contract name that
+   reveals its mechanism, or a reference from Services.Implementations to Storage.Implementations or from
+   Infrastructure to either Implementations project. Since the identity redesign, also
    reject: any bot special case (a fixed bot id, a bot connection kind, "the server acts"), an action
    without a real `by`, authority decided by connection kind, a check on granted instead of effective
    permissions, a stored or configured `ClientPrivileges`, and chat text produced by the server.

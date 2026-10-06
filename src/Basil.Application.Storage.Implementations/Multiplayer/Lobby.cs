@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
-using Basil.Application.Storage.Multiplayer;
-using Basil.Application.Storage.Sessions;
+using Basil.Application.Storage.Contracts.Multiplayer;
+using Basil.Application.Storage.Contracts.Sessions;
 using Basil.Domain.Utilities;
 
 namespace Basil.Application.Storage.Implementations.Multiplayer;

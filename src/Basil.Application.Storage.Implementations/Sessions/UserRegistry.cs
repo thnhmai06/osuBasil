@@ -1,5 +1,5 @@
 using System.Collections.Concurrent;
-using Basil.Application.Storage.Sessions;
+using Basil.Application.Storage.Contracts.Sessions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Storage.Implementations.Sessions;
