@@ -2,8 +2,8 @@
 // Run outside the repository (Directory.Packages.props blocks #:package here): copy this file to an empty
 // folder, fix the #:project path if needed, then `dotnet run check.cs`. Port its scenarios into the test
 // projects when they are migrated.
-#:project V:/Code/cs/osuBasil/src/Application/Services/Basil.Application.Services.Implementations/Basil.Application.Services.Implementations.csproj
-#:project V:/Code/cs/osuBasil/src/Application/Storage/Basil.Application.Storage.Implementations/Basil.Application.Storage.Implementations.csproj
+#:project V:/Code/cs/osuBasil/src/Application/Services/Implementations/Basil.Application.Services.Implementations.csproj
+#:project V:/Code/cs/osuBasil/src/Application/Storage/Implementations/Basil.Application.Storage.Implementations.csproj
 #:package Microsoft.Extensions.TimeProvider.Testing@9.9.0
 #:package Microsoft.Extensions.DependencyInjection@10.0.0
 using System.Net;

@@ -22,7 +22,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\src\Protocol\Basil.Protocol.Bancho\Basil.Protocol.Bancho.csproj"/>
+		<ProjectReference Include="..\..\src\Protocol\Bancho\Basil.Protocol.Bancho.csproj"/>
 	</ItemGroup>
 
 </Project>

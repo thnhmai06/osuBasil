@@ -282,7 +282,7 @@ dotnet build --configuration Release
 Run Basil locally:
 
 ```bash
-dotnet run --project src/Hosts/Basil.Host
+dotnet run --project src/Hosts/Host
 ```
 
 Run all tests:
@@ -339,9 +339,11 @@ endpoints such as the score submission, the client hash, the client build) into 
 back. It does not validate and gives no business meaning; Domain owns meaning and validity, Application the
 checks. If a wire format changes, only Protocol changes. `Basil.Protocol.Irc` does the same for IRC.
 
-Projects live under `src/` in folders that mirror the solution folders under `/Sources/`:
-`src/Application/Services/`, `src/Application/Storage/`, `src/Hosts/`, `src/Protocol/`; `Basil.Domain` and
-`Basil.Infrastructure` sit directly in `src/`. A project keeps its name as its namespace wherever its folder is.
+Projects live under `src/` in folders that mirror the solution folders under `/Sources/`, each named by
+its short name without `Basil.`: `src/Domain/`, `src/Infrastructure/`, `src/Application/Services/{Contracts,Implementations}/`,
+`src/Application/Storage/{Contracts,Implementations}/`, `src/Hosts/{Host,Api,Bancho,Irc}/`,
+`src/Protocol/{Bancho,Irc}/`. The project file and the namespace keep the full name (`Basil.Domain.csproj`,
+`Basil.Domain.*`).
 
 Configuration is bound only in `Basil.Host`. Infrastructure and the transports receive it as `IOptions<T>` of
 an options type that the project using it owns; Application reads no configuration.
@@ -368,9 +370,9 @@ dependency injection by its contract. The hosts reference the Implementations pr
 > the four Application projects build**: `Basil.Infrastructure`, `Basil.Host.*` and every test project still
 > use old Application namespaces, so solution-wide `dotnet build`/`dotnet test` and `Basil.ArchitectureTests`
 > do not run. Verify with
-> `dotnet build src/Application/Services/Basil.Application.Services.Implementations/Basil.Application.Services.Implementations.csproj`
+> `dotnet build src/Application/Services/Implementations/Basil.Application.Services.Implementations.csproj`
 > (it builds both Contracts projects) and
-> `dotnet build src/Application/Storage/Basil.Application.Storage.Implementations/Basil.Application.Storage.Implementations.csproj`.
+> `dotnet build src/Application/Storage/Implementations/Basil.Application.Storage.Implementations.csproj`.
 >
 > Documentation under `docs/` may describe an older structure; rewrite each document when the code it
 > describes is migrated, not before. Where a plan conflicts with

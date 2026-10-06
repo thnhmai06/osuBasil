@@ -165,7 +165,7 @@ Basil has three mechanisms for keeping the local beatmap database synchronized w
 
 ### Filesystem watcher
 
-`[BeatmapWatcherService](../../src/Basil.Infrastructure/Beatmaps/BeatmapWatcherService.cs)` monitors the directory's top level, non-recursively, for a `.osz` archive appearing, changing, or disappearing.
+`[BeatmapWatcherService](../../src/Infrastructure/Beatmaps/BeatmapWatcherService.cs)` monitors the directory's top level, non-recursively, for a `.osz` archive appearing, changing, or disappearing.
 
 When a new `.osz` appears, the watcher schedules it for ingestion. Under normal conditions, the change becomes visible within a few seconds.
 
@@ -299,11 +299,11 @@ Derived media must therefore be treated as disposable cache data, not as another
 
 ## Related code
 
-* [`Basil.Infrastructure/Beatmaps/BeatmapIngestionService.cs`](../../src/Basil.Infrastructure/Beatmaps/BeatmapIngestionService.cs): shared local ingestion pipeline
-* [`Basil.Infrastructure/Beatmaps/BeatmapWatcherService.cs`](../../src/Basil.Infrastructure/Beatmaps/BeatmapWatcherService.cs): filesystem change detection
-* [`Basil.Infrastructure/Beatmaps/BeatmapsetMigrationService.cs`](../../src/Basil.Infrastructure/Beatmaps/BeatmapsetMigrationService.cs): one-time background conversion of extracted directories to the canonical `.osz` layout
-* [`Basil.Infrastructure/Beatmaps/BeatmapsetAssetCache.cs`](../../src/Basil.Infrastructure/Beatmaps/BeatmapsetAssetCache.cs): on-demand per-asset extraction from the canonical archive
-* [`Basil.Infrastructure/Performance/PpyOsuCalculator.cs`](../../src/Basil.Infrastructure/Performance/PpyOsuCalculator.cs): osu! ruleset difficulty calculations
+* [`Basil.Infrastructure/Beatmaps/BeatmapIngestionService.cs`](../../src/Infrastructure/Beatmaps/BeatmapIngestionService.cs): shared local ingestion pipeline
+* [`Basil.Infrastructure/Beatmaps/BeatmapWatcherService.cs`](../../src/Infrastructure/Beatmaps/BeatmapWatcherService.cs): filesystem change detection
+* [`Basil.Infrastructure/Beatmaps/BeatmapsetMigrationService.cs`](../../src/Infrastructure/Beatmaps/BeatmapsetMigrationService.cs): one-time background conversion of extracted directories to the canonical `.osz` layout
+* [`Basil.Infrastructure/Beatmaps/BeatmapsetAssetCache.cs`](../../src/Infrastructure/Beatmaps/BeatmapsetAssetCache.cs): on-demand per-asset extraction from the canonical archive
+* [`Basil.Infrastructure/Performance/PpyOsuCalculator.cs`](../../src/Infrastructure/Performance/PpyOsuCalculator.cs): osu! ruleset difficulty calculations
 * [`Basil.Web/Routing/Bancho/BeatmapAssetRoutes.cs`](../../src/Basil.Web/Routing/Bancho/BeatmapAssetRoutes.cs): beatmap asset and preview routes
 
 ## See also

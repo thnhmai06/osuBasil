@@ -6,7 +6,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\Basil.Application.Services.Contracts\Basil.Application.Services.Contracts.csproj"/>
+		<ProjectReference Include="..\Contracts\Basil.Application.Storage.Contracts.csproj"/>
 	</ItemGroup>
 
 	<ItemGroup>

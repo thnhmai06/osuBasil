@@ -23,13 +23,13 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\src\Basil.Domain\Basil.Domain.csproj"/>
-		<ProjectReference Include="..\..\src\Protocol\Basil.Protocol.Bancho\Basil.Protocol.Bancho.csproj"/>
-		<ProjectReference Include="..\..\src\Protocol\Basil.Protocol.Irc\Basil.Protocol.Irc.csproj"/>
-		<ProjectReference Include="..\..\src\Basil.Infrastructure\Basil.Infrastructure.csproj"/>
-		<ProjectReference Include="..\..\src\Hosts\Basil.Host.Bancho\Basil.Host.Bancho.csproj"/>
-		<ProjectReference Include="..\..\src\Hosts\Basil.Host.Irc\Basil.Host.Irc.csproj"/>
-		<ProjectReference Include="..\..\src\Hosts\Basil.Host.Api\Basil.Host.Api.csproj"/>
+		<ProjectReference Include="..\..\src\Domain\Basil.Domain.csproj"/>
+		<ProjectReference Include="..\..\src\Protocol\Bancho\Basil.Protocol.Bancho.csproj"/>
+		<ProjectReference Include="..\..\src\Protocol\Irc\Basil.Protocol.Irc.csproj"/>
+		<ProjectReference Include="..\..\src\Infrastructure\Basil.Infrastructure.csproj"/>
+		<ProjectReference Include="..\..\src\Hosts\Bancho\Basil.Host.Bancho.csproj"/>
+		<ProjectReference Include="..\..\src\Hosts\Irc\Basil.Host.Irc.csproj"/>
+		<ProjectReference Include="..\..\src\Hosts\Api\Basil.Host.Api.csproj"/>
 	</ItemGroup>
 
 </Project>

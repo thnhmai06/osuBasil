@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<Using Include="Microsoft.Extensions.Hosting"/>
+		<Using Include="Microsoft.Extensions.Logging"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Application\Services\Contracts\Basil.Application.Services.Contracts.csproj"/>
+		<ProjectReference Include="..\..\Application\Services\Implementations\Basil.Application.Services.Implementations.csproj"/>
+		<ProjectReference Include="..\..\Infrastructure\Basil.Infrastructure.csproj"/>
+		<ProjectReference Include="..\..\Protocol\Irc\Basil.Protocol.Irc.csproj"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Basil.Host.Irc.Tests"/>
+	</ItemGroup>
+
+</Project>

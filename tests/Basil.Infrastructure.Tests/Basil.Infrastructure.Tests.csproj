@@ -27,10 +27,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\src\Basil.Infrastructure\Basil.Infrastructure.csproj"/>
-		<ProjectReference Include="..\..\src\Hosts\Basil.Host.Bancho\Basil.Host.Bancho.csproj"/>
-		<ProjectReference Include="..\..\src\Protocol\Basil.Protocol.Bancho\Basil.Protocol.Bancho.csproj"/>
-		<ProjectReference Include="..\..\src\Protocol\Basil.Protocol.Irc\Basil.Protocol.Irc.csproj"/>
+		<ProjectReference Include="..\..\src\Infrastructure\Basil.Infrastructure.csproj"/>
+		<ProjectReference Include="..\..\src\Hosts\Bancho\Basil.Host.Bancho.csproj"/>
+		<ProjectReference Include="..\..\src\Protocol\Bancho\Basil.Protocol.Bancho.csproj"/>
+		<ProjectReference Include="..\..\src\Protocol\Irc\Basil.Protocol.Irc.csproj"/>
 	</ItemGroup>
 
 	<!-- Fixture files live beside the Beatmaps tests that use them (Beatmaps/Fixtures/), but the

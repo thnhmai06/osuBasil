@@ -267,7 +267,7 @@ The logging implementation relies on several architectural rules:
 * [`Basil.Web/Program.cs`](../../src/Basil.Web/Program.cs) (`ConfigureSerilog`): Serilog pipeline and sink configuration
 * [`Basil.Web/Logging/CategoryEnricher.cs`](../../src/Basil.Web/Logging/CategoryEnricher.cs): category assignment
 * [`Basil.Web/Logging/HardLinkFileLifecycleHooks.cs`](../../src/Basil.Web/Logging/HardLinkFileLifecycleHooks.cs): active-file hardlink lifecycle
-* [`Basil.Infrastructure/System/HardLink.cs`](../../src/Basil.Infrastructure/System/HardLink.cs): filesystem hardlink implementation
+* [`Basil.Infrastructure/System/HardLink.cs`](../../src/Infrastructure/System/HardLink.cs): filesystem hardlink implementation
 
 ## See also
 

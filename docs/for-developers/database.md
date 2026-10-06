@@ -339,8 +339,8 @@ mechanism.
 
 ## Related code
 
-* [`Basil.Infrastructure/Persistence/Migrations/001_base.sql`](../../src/Basil.Infrastructure/Persistence/Migrations/001_base.sql): base schema
-* [`Basil.Infrastructure/Persistence/Repositories/`](../../src/Basil.Infrastructure/Persistence/Repositories/): database repositories
+* [`Basil.Infrastructure/Persistence/Migrations/001_base.sql`](../../src/Infrastructure/Persistence/Migrations/001_base.sql): base schema
+* [`Basil.Infrastructure/Persistence/Repositories/`](../../src/Infrastructure/Persistence/Repositories/): database repositories
 * [`Basil.Application/Services/Multiplayer/MatchReportService.cs`](../../src/Basil.Application/Services/Multiplayer/MatchReportService.cs): tournament data aggregation and reporting
 
 ## See also

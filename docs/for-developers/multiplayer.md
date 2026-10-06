@@ -361,7 +361,7 @@ Scores
 * [`Basil.Application/Multiplayer/RoomResult.cs`](../../src/Basil.Application/Multiplayer/RoomResult.cs): operation outcomes
 * [`Basil.Application/Multiplayer/Events/`](../../src/Basil.Application/Multiplayer/Events): lobby, room, round and countdown events
 * [`Basil.Application/Scores/ScoreSubmission.cs`](../../src/Basil.Application/Scores/ScoreSubmission.cs): attaching scores to the latest round
-* [`Basil.Domain/Multiplayer/`](../../src/Basil.Domain/Multiplayer): `Match`, `Round`, `MatchSettings`
+* [`Basil.Domain/Multiplayer/`](../../src/Domain/Multiplayer): `Match`, `Round`, `MatchSettings`
 
 ## See also
 

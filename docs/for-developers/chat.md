@@ -229,7 +229,7 @@ channel when the room opens and receives private messages through its own privat
 * [`Basil.Application/Sessions/SpectatorChannelSession.cs`](../../src/Basil.Application/Sessions/SpectatorChannelSession.cs): spectating
 * [`Basil.Application/Sessions/UserRegistry.cs`](../../src/Basil.Application/Sessions/UserRegistry.cs), [`Gateway.cs`](../../src/Basil.Application/Sessions/Gateway.cs): logging in and out
 * [`Basil.Application/Sessions/UserSession.cs`](../../src/Basil.Application/Sessions/UserSession.cs), [`Connection.cs`](../../src/Basil.Application/Sessions/Connection.cs): sessions and connections
-* [`Basil.Domain/Chat/`](../../src/Basil.Domain/Chat): channel models and `Message`
+* [`Basil.Domain/Chat/`](../../src/Domain/Chat): channel models and `Message`
 
 ## See also
 

@@ -23,7 +23,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\src\Basil.Domain\Basil.Domain.csproj"/>
+		<ProjectReference Include="..\..\src\Domain\Basil.Domain.csproj"/>
 	</ItemGroup>
 
 </Project>

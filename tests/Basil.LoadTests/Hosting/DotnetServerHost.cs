@@ -37,7 +37,7 @@ public sealed class DotnetServerHost : IServerHost
 		_processMetricsTrustworthy = settings.Dotnet.Mode == DotnetLaunchMode.Published;
 		_serverDirectory = settings.Dotnet.Mode == DotnetLaunchMode.Published
 			? RepoPaths.Resolve(settings.Dotnet.PublishDirectory)
-			: RepoPaths.Resolve("src/Hosts/Basil.Host");
+			: RepoPaths.Resolve("src/Hosts/Host");
 
 		Endpoint = new ServerEndpoint(settings.Domain, settings.Port, IPAddress.Loopback);
 		Capabilities = new ServerHostCapabilities(
@@ -244,7 +244,7 @@ public sealed class DotnetServerHost : IServerHost
 			Path.Combine(_serverDirectory, OperatingSystem.IsWindows() ? "Basil.Host.exe" : "Basil.Host");
 		if (File.Exists(executablePath) && !_settings.Dotnet.AutoPublish) return;
 
-		var webProject = RepoPaths.Resolve("src/Hosts/Basil.Host");
+		var webProject = RepoPaths.Resolve("src/Hosts/Host");
 		var startInfo = new ProcessStartInfo("dotnet",
 			$"publish \"{webProject}\" -c Release -o \"{_serverDirectory}\"")
 		{

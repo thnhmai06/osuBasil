@@ -151,10 +151,10 @@ See [`configuration.md`](../for-technicians/configuration.md) for the complete `
 
 ## Related code
 
-* `src/Basil.Infrastructure/Media/Assets/` — `AssetsHost`, all `IImageProvider` implementations, and
+* `src/Infrastructure/Media/Assets/` — `AssetsHost`, all `IImageProvider` implementations, and
   `PhysicalImageResolver`.
 * `src/Basil.Web/Routing/Assets/` — `AssetsHostRoutes`, `MenuAssetRoutes`, `MenuContentRoutes`, and
   `BeatmapsetAssetRoutes`.
 * `src/Basil.Web/Program.cs` — `ConfigureImageSharp`.
-* `src/Basil.Domain/Content/MenuBanner.cs` — banner metadata model.
+* `src/Domain/Content/MenuBanner.cs` — banner metadata model.
 * `src/Basil.Application/Services/Content/MenuBannerService.cs` — banner metadata service.

@@ -1,25 +1,25 @@
 <Solution>
 	<Folder Name="/Sources/">
-		<Project Path="src/Basil.Domain/Basil.Domain.csproj" />
-		<Project Path="src/Basil.Infrastructure/Basil.Infrastructure.csproj" />
+		<Project Path="src/Domain/Basil.Domain.csproj" />
+		<Project Path="src/Infrastructure/Basil.Infrastructure.csproj" />
 	</Folder>
 	<Folder Name="/Sources/Application/Services/">
-		<Project Path="src/Application/Services/Basil.Application.Services.Contracts/Basil.Application.Services.Contracts.csproj" />
-		<Project Path="src/Application/Services/Basil.Application.Services.Implementations/Basil.Application.Services.Implementations.csproj" />
+		<Project Path="src/Application/Services/Contracts/Basil.Application.Services.Contracts.csproj" />
+		<Project Path="src/Application/Services/Implementations/Basil.Application.Services.Implementations.csproj" />
 	</Folder>
 	<Folder Name="/Sources/Application/Storage/">
-		<Project Path="src/Application/Storage/Basil.Application.Storage.Contracts/Basil.Application.Storage.Contracts.csproj" />
-		<Project Path="src/Application/Storage/Basil.Application.Storage.Implementations/Basil.Application.Storage.Implementations.csproj" />
+		<Project Path="src/Application/Storage/Contracts/Basil.Application.Storage.Contracts.csproj" />
+		<Project Path="src/Application/Storage/Implementations/Basil.Application.Storage.Implementations.csproj" />
 	</Folder>
 	<Folder Name="/Sources/Hosts/">
-		<Project Path="src/Hosts/Basil.Host.Bancho/Basil.Host.Bancho.csproj" />
-		<Project Path="src/Hosts/Basil.Host.Irc/Basil.Host.Irc.csproj" />
-		<Project Path="src/Hosts/Basil.Host.Api/Basil.Host.Api.csproj" />
-		<Project Path="src/Hosts/Basil.Host/Basil.Host.csproj" />
+		<Project Path="src/Hosts/Bancho/Basil.Host.Bancho.csproj" />
+		<Project Path="src/Hosts/Irc/Basil.Host.Irc.csproj" />
+		<Project Path="src/Hosts/Api/Basil.Host.Api.csproj" />
+		<Project Path="src/Hosts/Host/Basil.Host.csproj" />
 	</Folder>
 	<Folder Name="/Sources/Protocol/">
-		<Project Path="src/Protocol/Basil.Protocol.Bancho/Basil.Protocol.Bancho.csproj" />
-		<Project Path="src/Protocol/Basil.Protocol.Irc/Basil.Protocol.Irc.csproj" />
+		<Project Path="src/Protocol/Bancho/Basil.Protocol.Bancho.csproj" />
+		<Project Path="src/Protocol/Irc/Basil.Protocol.Irc.csproj" />
 	</Folder>
 	<Folder Name="/Tests/">
 		<Project Path="tests/Basil.ArchitectureTests/Basil.ArchitectureTests.csproj" />

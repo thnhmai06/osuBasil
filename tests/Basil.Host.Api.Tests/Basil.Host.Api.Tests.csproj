@@ -27,7 +27,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\src\Hosts\Basil.Host.Api\Basil.Host.Api.csproj"/>
+		<ProjectReference Include="..\..\src\Hosts\Api\Basil.Host.Api.csproj"/>
 	</ItemGroup>
 
 </Project>

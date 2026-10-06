@@ -100,7 +100,7 @@ Nguồn nghiệp vụ (osu-wiki qua context7, forum Tournament Committee):
 
 ### 1.2 Danh mục permission
 
-`[Flags] public enum Permissions : ulong` ở `src/Basil.Domain/Users/Permissions.cs`:
+`[Flags] public enum Permissions : ulong` ở `src/Domain/Users/Permissions.cs`:
 * Mỗi danh mục chiếm một byte.
 * Tên có tiền tố danh mục.
 * Mỗi danh mục có một thành viên mask cùng tên (`Permissions.Player` = mọi bit `Player*`) để suy ra `ClientPrivileges`.
@@ -482,7 +482,7 @@ Thứ tự: 0 → 1 → 2 → 3 → (4a viết `PermissionRules` trước, rồi
 ## 5. Kiểm chứng
 
 * `dotnet build src/Basil.Application.Services/Basil.Application.Services.csproj` và
-  `dotnet build src/Protocol/Basil.Protocol.Bancho/Basil.Protocol.Bancho.csproj` sạch lỗi.
+  `dotnet build src/Protocol/Bancho/Basil.Protocol.Bancho.csproj` sạch lỗi.
 * Grep trong Domain/Application bằng 0 với:
   * `SystemUserIds|BotConnection|ConnectionType.Bot|OpenBotAsync|BasilBot|SilenceEndsAt|Participate`;
   * `ClientPrivileges` ngoài `Domain/Client` và phép suy ra;
@@ -584,10 +584,10 @@ việc của các layer sau.
 
 ### Cách kiểm lại
 
-* `dotnet build src/Application/Services/Basil.Application.Services.Implementations/Basil.Application.Services.Implementations.csproj` → 0 lỗi.
+* `dotnet build src/Application/Services/Implementations/Basil.Application.Services.Implementations.csproj` → 0 lỗi.
   Lệnh này build cả Domain, Storage.Contracts, Services.Contracts.
-* `dotnet build src/Application/Storage/Basil.Application.Storage.Implementations/Basil.Application.Storage.Implementations.csproj` → 0 lỗi.
-* `dotnet build src/Protocol/Basil.Protocol.Bancho/Basil.Protocol.Bancho.csproj` → 0 lỗi.
+* `dotnet build src/Application/Storage/Implementations/Basil.Application.Storage.Implementations.csproj` → 0 lỗi.
+* `dotnet build src/Protocol/Bancho/Basil.Protocol.Bancho.csproj` → 0 lỗi.
 * Baseline hành vi:
   * chép `plans/storage-services-split-baseline.cs` ra một thư mục trống ngoài repo, đặt tên `check.cs`;
   * chạy `dotnet run check.cs` → phải in `ALL PASS`;

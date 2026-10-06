@@ -14,10 +14,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\Application\Services\Basil.Application.Services.Contracts\Basil.Application.Services.Contracts.csproj"/>
-		<ProjectReference Include="..\..\Application\Services\Basil.Application.Services.Implementations\Basil.Application.Services.Implementations.csproj"/>
-		<ProjectReference Include="..\..\Basil.Infrastructure\Basil.Infrastructure.csproj"/>
-		<ProjectReference Include="..\..\Protocol\Basil.Protocol.Bancho\Basil.Protocol.Bancho.csproj"/>
+		<ProjectReference Include="..\..\Application\Services\Contracts\Basil.Application.Services.Contracts.csproj"/>
+		<ProjectReference Include="..\..\Application\Services\Implementations\Basil.Application.Services.Implementations.csproj"/>
+		<ProjectReference Include="..\..\Infrastructure\Basil.Infrastructure.csproj"/>
+		<ProjectReference Include="..\..\Protocol\Bancho\Basil.Protocol.Bancho.csproj"/>
 	</ItemGroup>
 
 	<ItemGroup>
