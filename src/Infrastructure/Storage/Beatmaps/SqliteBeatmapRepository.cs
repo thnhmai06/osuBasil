@@ -205,7 +205,7 @@ internal sealed class SqliteBeatmapRepository(Database database) : IBeatmapRepos
 	{
 		var beatmapset = new Beatmapset
 		{
-			Id = row.SetId,
+			Id = (int)row.SetId,
 			Value = new BeatmapsetData
 			{
 				Artist = row.SetArtist,
@@ -223,7 +223,7 @@ internal sealed class SqliteBeatmapRepository(Database database) : IBeatmapRepos
 
 		return new Beatmap
 		{
-			Id = row.Id,
+			Id = (int)row.Id,
 			Value = new BeatmapData
 			{
 				Hash = new Md5(row.Hash),
@@ -245,28 +245,31 @@ internal sealed class SqliteBeatmapRepository(Database database) : IBeatmapRepos
 		};
 	}
 
-	private sealed record BeatmapRow(
-		int Id,
-		int BeatmapsetId,
-		string Hash,
-		string Version,
-		int Mode,
-		double Star,
-		long Length,
-		double Bpm,
-		double Cs,
-		double Ar,
-		double Od,
-		double Hp,
-		string Objects,
-		long Locked,
-		long Visible,
-		int SetId,
-		string SetArtist,
-		string SetTitle,
-		string SetCreator,
-		long SetCreatedAt,
-		long SetUpdatedAt,
-		long SetLocked,
-		long SetVisible);
+	/// <summary>A stored row of the Beatmaps table joined with its beatmapset.</summary>
+	private sealed class BeatmapRow
+	{
+		public long Id { get; set; }
+		public long BeatmapsetId { get; set; }
+		public string Hash { get; set; } = "";
+		public string Version { get; set; } = "";
+		public long Mode { get; set; }
+		public double Star { get; set; }
+		public long Length { get; set; }
+		public double Bpm { get; set; }
+		public double Cs { get; set; }
+		public double Ar { get; set; }
+		public double Od { get; set; }
+		public double Hp { get; set; }
+		public string Objects { get; set; } = "";
+		public long Locked { get; set; }
+		public long Visible { get; set; }
+		public long SetId { get; set; }
+		public string SetArtist { get; set; } = "";
+		public string SetTitle { get; set; } = "";
+		public string SetCreator { get; set; } = "";
+		public long SetCreatedAt { get; set; }
+		public long SetUpdatedAt { get; set; }
+		public long SetLocked { get; set; }
+		public long SetVisible { get; set; }
+	}
 }

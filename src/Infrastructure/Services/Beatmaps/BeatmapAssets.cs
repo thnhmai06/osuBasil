@@ -145,13 +145,23 @@ internal sealed class BeatmapAssets(
 			if (!string.Equals(Path.GetExtension(entry.FullName), ".osu", StringComparison.OrdinalIgnoreCase)) continue;
 
 			await using var stream = await entry.OpenAsync(cancellationToken);
-			using var memory = new MemoryStream();
-			await stream.CopyToAsync(memory, cancellationToken);
-			if (new Md5(memory.ToArray()) == hash)
+			var memory = new MemoryStream();
+			try
 			{
-				memory.Position = 0;
-				return memory;
+				await stream.CopyToAsync(memory, cancellationToken);
+				if (new Md5(memory.ToArray()) == hash)
+				{
+					memory.Position = 0;
+					return memory;
+				}
 			}
+			catch
+			{
+				await memory.DisposeAsync();
+				throw;
+			}
+
+			await memory.DisposeAsync();
 		}
 
 		return null;
@@ -332,7 +342,7 @@ internal sealed class BeatmapAssets(
 		try
 		{
 			using (var source = new ZipArchive(archive, ZipArchiveMode.Read, leaveOpen: true))
-			await using (var dest = new ZipArchive(File.Create(tempPath), ZipArchiveMode.Create, true))
+			await using (var dest = new ZipArchive(File.Create(tempPath), ZipArchiveMode.Create, false))
 			{
 				foreach (var entry in source.Entries)
 				{

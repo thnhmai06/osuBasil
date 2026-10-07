@@ -136,7 +136,7 @@ internal sealed class SqliteBeatmapsetRepository(Database database) : IBeatmapse
 	{
 		return new Beatmapset
 		{
-			Id = row.Id,
+			Id = (int)row.Id,
 			Value = new BeatmapsetData
 			{
 				Artist = row.Artist,
@@ -150,13 +150,16 @@ internal sealed class SqliteBeatmapsetRepository(Database database) : IBeatmapse
 		};
 	}
 
-	private sealed record BeatmapsetRow(
-		int Id,
-		string Artist,
-		string Title,
-		string Creator,
-		long CreatedAt,
-		long UpdatedAt,
-		long Locked,
-		long Visible);
+	/// <summary>A stored row of the Beatmapsets table.</summary>
+	private sealed class BeatmapsetRow
+	{
+		public long Id { get; set; }
+		public string Artist { get; set; } = "";
+		public string Title { get; set; } = "";
+		public string Creator { get; set; } = "";
+		public long CreatedAt { get; set; }
+		public long UpdatedAt { get; set; }
+		public long Locked { get; set; }
+		public long Visible { get; set; }
+	}
 }
