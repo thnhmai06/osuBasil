@@ -16,6 +16,12 @@ internal sealed class WriteBuffer(Database database, TimeProvider timeProvider, 
 	/// <summary>How long the oldest pending write may wait before its batch is due.</summary>
 	public static readonly TimeSpan MaxAge = TimeSpan.FromMilliseconds(50);
 
+	/// <summary>How many times a write that finds the database busy is tried before it is dropped.</summary>
+	private const int MaxAttempts = 10;
+
+	private const int Busy = 5;
+	private const int Locked = 6;
+
 	private readonly Lock _gate = new();
 	private readonly SemaphoreSlim _flush = new(1, 1);
 	private readonly PriorityQueue<TaskCompletionSource, long> _readers = new();
@@ -108,18 +114,23 @@ internal sealed class WriteBuffer(Database database, TimeProvider timeProvider, 
 				_inFlight = batch.Values.Min(pending => pending.Sequence);
 			}
 
-			if (!await TryCommitAsync(batch, cancellationToken))
-				foreach (var (identity, pending) in batch)
-					await RetryAsync(identity, pending, cancellationToken);
-
-			lock (_gate)
+			try
 			{
-				_inFlight = long.MaxValue;
-				var committed = Committed();
-				while (_readers.TryPeek(out var reader, out var target) && target <= committed)
+				if (!await TryCommitAsync(batch, cancellationToken))
+					foreach (var (identity, pending) in batch)
+						await RetryAsync(identity, pending, cancellationToken);
+			}
+			finally
+			{
+				lock (_gate)
 				{
-					_readers.Dequeue();
-					reader.TrySetResult();
+					_inFlight = long.MaxValue;
+					var committed = Committed();
+					while (_readers.TryPeek(out var reader, out var target) && target <= committed)
+					{
+						_readers.Dequeue();
+						reader.TrySetResult();
+					}
 				}
 			}
 		}
@@ -195,29 +206,33 @@ internal sealed class WriteBuffer(Database database, TimeProvider timeProvider, 
 			await pending.Write(connection, transaction);
 			await transaction.CommitAsync(cancellationToken);
 		}
-		catch (SqliteException exception) when (exception.SqliteErrorCode == 19)
-		{
-			logger.LogError(exception, "Dropping a storage write that violates a database constraint for {Identity}",
-				identity);
-		}
-		catch (Exception exception)
+		catch (SqliteException exception) when (exception.SqliteErrorCode is Busy or Locked &&
+		                                        pending.Attempts + 1 < MaxAttempts)
 		{
 			lock (_gate)
 			{
 				_pending[identity] = _pending.TryGetValue(identity, out var newer)
 					? newer with { Sequence = Math.Min(newer.Sequence, pending.Sequence) }
-					: pending;
+					: pending with { Attempts = pending.Attempts + 1 };
 				if (_pending.Count == 1)
 					_oldest = timeProvider.GetTimestamp();
 			}
 
-			logger.LogError(exception, "Could not persist a storage write for {Identity}; it remains pending",
+			logger.LogWarning(exception, "Storage write for {Identity} found the database busy; it remains pending",
 				identity);
+		}
+		catch (Exception exception) when (exception is not OperationCanceledException)
+		{
+			// A write that cannot succeed is dropped: kept pending, it would hold back every later read for good.
+			logger.LogCritical(exception, "Dropping a storage write for {Identity} that cannot be persisted", identity);
 		}
 	}
 
 	private static TaskCompletionSource NewSignal() => new(TaskCreationOptions.RunContinuationsAsynchronously);
 
 	/// <summary>A queued write and the sequence of the first write queued for its identity.</summary>
-	private readonly record struct Pending(long Sequence, Func<SqliteConnection, SqliteTransaction, Task> Write);
+	private readonly record struct Pending(
+		long Sequence,
+		Func<SqliteConnection, SqliteTransaction, Task> Write,
+		int Attempts = 0);
 }
