@@ -59,7 +59,7 @@ một hàm kiểm đường dẫn (chặn rỗng, `.`, `..`, rooted, thoát thư
 
 **Services** (`ppy.osu.Game.Rulesets.*`): reader (.osz → metadata + difficulty), analyser (port `PpyOsuCalculator`,
 đọc `byte[]`), assets (tìm `.osu` theo MD5 trong `.osz`; asset của set lấy từ beatmap id nhỏ nhất; cache file trong
-`Data/Cache`; preview mp3 qua `ffmpeg` bằng `Process`; archive không video), mirror (một `HttpClient`, endpoint từ
+`Data/Cache`; preview mp3 qua `ffmpeg`, bọc hoàn toàn bằng `FFMpegCore` (lỗi chuẩn hóa thành `FFMpegException`); archive không video), mirror (một `HttpClient`, endpoint từ
 `ServerSettings`).
 
 **Runtime** (chỉ `Hosting.Abstractions`):
@@ -71,10 +71,10 @@ một hàm kiểm đường dẫn (chặn rỗng, `.`, `..`, rooted, thoát thư
 - Khởi động: migrate → mở kênh chung → đóng trận dở → quét beatmapset → nhập file chờ trong `Data/Imports`. Nền: mỗi
   100 s đóng kết nối rảnh; watcher `Data/Imports`.
 
-**Gói:** bỏ khỏi Infrastructure `dbup-sqlite`, `FFMpegCore`, `BouncyCastle` (theo Rijndael sang host),
+**Gói:** bỏ khỏi Infrastructure `dbup-sqlite`, `BouncyCastle` (theo Rijndael sang host),
 `SixLabors.ImageSharp`, `Caching.Memory`, `Microsoft.Extensions.Http`, `Configuration.Binder`,
 `Options.ConfigurationExtensions`, `Serilog.Sinks.*`, tham chiếu `Protocol.*`, `AllowUnsafeBlocks`/HardLink (sang
-host). Gói ngoài còn lại: `Microsoft.Data.Sqlite`, `Dapper`, `BCrypt.Net-Next` (Storage); 4 ruleset ppy (Services);
+host). Gói ngoài còn lại: `Microsoft.Data.Sqlite`, `Dapper`, `BCrypt.Net-Next` (Storage); 4 ruleset ppy và `FFMpegCore` (Services);
 ngoài ra chỉ `Microsoft.Extensions.*.Abstractions` và `Options`.
 
 ## BasilBot Application

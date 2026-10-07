@@ -5,6 +5,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<PackageReference Include="FFMpegCore"/>
 		<PackageReference Include="ppy.osu.Game.Rulesets.Osu"/>
 		<PackageReference Include="ppy.osu.Game.Rulesets.Taiko"/>
 		<PackageReference Include="ppy.osu.Game.Rulesets.Catch"/>
