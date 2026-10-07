@@ -9,7 +9,10 @@ Evidence for three choices of the PostgreSQL storage
 | `users_safe_name_trgm` (GIN, `pg_trgm`) | **keep** | partial-name search 19× faster at 100 000 users, no cost at 1 000 |
 | `fillfactor = 90` on `users`, `user_stats`, `matches`, `rounds` | **keep** | updates that must touch indexes (non-HOT) drop from 1.8% to 0.6% |
 
-Files: [`bench.cs`](bench.cs) (the benchmark, a .NET 10 file-based app), [`raw.log`](raw.log) (its complete output).
+Files: [`bench.cs`](bench.cs) (the benchmark, a .NET 10 file-based app), [`raw.log`](raw.log) (its complete output),
+[`superseded-1-sequential-probe.log`](superseded-1-sequential-probe.log) and
+[`superseded-2-pg-stat-counters.log`](superseded-2-pg-stat-counters.log) (outputs of two earlier versions of the method,
+kept to show why it changed; see "Method").
 
 ## Environment
 
@@ -27,8 +30,8 @@ Each run uses a fresh database (migrated by the storage itself) seeded with 1 00
 storage through its public repository contracts (`AddInfrastructureStorage`). Two phases:
 
 1. **Steady load** — 10 000 appends/s (logins and match events; every one a new row, so nothing is coalesced) for
-   4 s, while a try-operation (`IRestrictionRepository.CreateAsync`, which waits for its commit) runs every 20 ms. The
-   latency of every try-operation is recorded (about 170 per run).
+   4 s, while a try-operation (`IRestrictionRepository.CreateAsync`, which waits for its commit) starts 20 ms after the
+   previous one finished. The latency of every try-operation is recorded.
 2. **Capacity** — 61 000 writes queued at once (40 000 match events, 20 000 logins, 1 000 user stats of distinct
    users), timed until every row is visible in the database (`count(*)`, i.e. committed). Writes of distinct
    identities are used on purpose: snapshots of the same identity are coalesced while queued, which would let a slower
@@ -36,10 +39,14 @@ storage through its public repository contracts (`AddInfrastructureStorage`). Tw
 
 Each lane count (1, 2, 4, 8, 12, 16) runs 5 times; the medians decide.
 
-An earlier version of the benchmark also reported rows/s from `pg_stat_database` counters; it was dropped because
-backends publish those counters late (it showed 7 600 rows/s for runs that committed 60 000), and an earlier version
-that probed try-operations one after another during a flood measured idle latency rather than latency under load.
-Both are superseded by the method above.
+Two earlier versions of the method were replaced, and their outputs are kept:
+
+- [`superseded-1-sequential-probe.log`](superseded-1-sequential-probe.log) probed try-operations one after another
+  while the flood was queued. The first probe waited for the whole flood, the others ran on empty queues, so its
+  latency columns measure idle latency, not latency under load.
+- [`superseded-2-pg-stat-counters.log`](superseded-2-pg-stat-counters.log) also reported rows/s from
+  `pg_stat_database`. Backends publish those counters late: runs 4 and 5 of 8 lanes show 7 595 and 7 773 rows/s for
+  floods that committed about 60 000 writes/s. Throughput is therefore counted from the rows in the tables.
 
 ### pg_trgm
 
@@ -83,6 +90,16 @@ as the writer does; the share of HOT updates read from `pg_stat_user_tables`, wi
 |---|---|---|
 | users | 99.4% | 98.2% |
 | user_stats | 99.5% | 98.3% |
+
+## Correctness at the chosen default
+
+The storage verification ([`verify.cs`](verify.cs), output in [`verify.log`](verify.log); same server, default of 8 lanes) passed all
+25 checks, including: during a flood of 30 000 appends on 40 roots, every backend of the database was terminated three
+times (`pg_terminate_backend`, the `57P01` a server restart sends); every write was stored exactly once (30 000 rows,
+30 000 distinct), each of 20 try-operations racing the terminations was stored exactly once, and no write was dropped
+(the only critical log line came from the deliberately invalid statement of another check). The batches hit by the
+terminations were stored again (14 retries). A connection lost exactly while committing did not occur in that run; its
+settlement through `pg_xact_status` was checked separately on committed and rolled-back transactions.
 
 ## Limits
 
