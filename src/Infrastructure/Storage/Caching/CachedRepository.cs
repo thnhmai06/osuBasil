@@ -34,7 +34,7 @@ internal abstract class CachedRepository<TKey, T>(Database database, WriteBuffer
 	protected void Remove(T item)
 	{
 		var key = KeyOf(item);
-		Items.TryRemove(key, out _);
+		Items.Remove(key);
 		buffer.Enqueue((GetType(), key), (connection, transaction) => EraseAsync(connection, transaction, key));
 	}
 

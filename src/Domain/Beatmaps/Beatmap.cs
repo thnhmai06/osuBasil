@@ -23,8 +23,8 @@ public sealed class Beatmap : IWrapper<BeatmapData>, IEquatable<Beatmap>
 			: throw new ArgumentOutOfRangeException(nameof(value), value, "Beatmap ids start at 1.");
 	}
 
-	/// <summary>Gets the beatmap data this identity wraps.</summary>
-	public required BeatmapData Value { get; init; }
+	/// <summary>Gets or sets the beatmap data this identity wraps.</summary>
+	public required BeatmapData Value { get; set; }
 
 	/// <summary>
 	///     Gets a value that indicates whether the beatmap has no osu! id and was given a local one.

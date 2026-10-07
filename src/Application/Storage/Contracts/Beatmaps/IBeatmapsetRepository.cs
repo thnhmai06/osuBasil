@@ -40,7 +40,8 @@ public interface IBeatmapsetRepository
 	Task<Page<Beatmapset>> ListAsync(BeatmapQuery query, PageRequest page,
 		CancellationToken cancellationToken = default);
 
-	/// <summary>Deletes a beatmapset together with its beatmaps.</summary>
+	/// <summary>Deletes a beatmapset.</summary>
+	/// <remarks>Remove the set's beatmaps first, with <see cref="IBeatmapRepository.RetainAsync" /> keeping none.</remarks>
 	/// <param name="set">The beatmapset to delete.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	Task DeleteAsync(Beatmapset set, CancellationToken cancellationToken = default);

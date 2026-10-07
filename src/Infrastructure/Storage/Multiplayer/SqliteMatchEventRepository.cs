@@ -1,18 +1,19 @@
 using Basil.Application.Storage.Contracts.Multiplayer;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Multiplayer;
+using Basil.Infrastructure.Storage.Caching;
 using Dapper;
 
 namespace Basil.Infrastructure.Storage.Multiplayer;
 
 /// <summary>Stores what happened in matches.</summary>
-internal sealed class SqliteMatchEventRepository(Database database, IUserRepository users) : IMatchEventRepository
+internal sealed class SqliteMatchEventRepository(Database database, WriteBuffer buffer, IUserRepository users)
+	: IMatchEventRepository
 {
 	/// <inheritdoc />
-	public async Task CreateAsync(MatchEvent matchEvent, CancellationToken cancellationToken = default)
+	public Task CreateAsync(MatchEvent matchEvent, CancellationToken cancellationToken = default)
 	{
-		await using var connection = await database.OpenAsync(cancellationToken);
-		await connection.ExecuteAsync(
+		buffer.Append((connection, transaction) => connection.ExecuteAsync(
 			"""
 			INSERT INTO MatchEvents (MatchId, Type, Timestamp, ActorId, TargetId, Detail)
 			VALUES (@MatchId, @Type, @Timestamp, @ActorId, @TargetId, @Detail)
@@ -25,12 +26,14 @@ internal sealed class SqliteMatchEventRepository(Database database, IUserReposit
 				ActorId = matchEvent.Actor?.Id,
 				TargetId = matchEvent.Target?.Id,
 				matchEvent.Detail
-			});
+			}, transaction));
+		return Task.CompletedTask;
 	}
 
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<MatchEvent>> ListAsync(Match match, CancellationToken cancellationToken = default)
 	{
+		await buffer.FlushAsync(cancellationToken);
 		await using var connection = await database.OpenAsync(cancellationToken);
 		var rows = (await connection.QueryAsync<MatchEventRow>(
 			"""

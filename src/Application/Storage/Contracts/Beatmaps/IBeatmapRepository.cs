@@ -24,6 +24,8 @@ public interface IBeatmapRepository
 	/// </summary>
 	/// <param name="beatmap">The beatmap to store.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <remarks>A beatmap already stored keeps its identity: the instance the repository returns for it takes the new data.</remarks>
+	/// <exception cref="InvalidOperationException">Another beatmap already has the beatmap's hash.</exception>
 	Task CreateOrUpdateAsync(Beatmap beatmap, CancellationToken cancellationToken = default);
 
 	/// <summary>Gets a beatmap by id.</summary>

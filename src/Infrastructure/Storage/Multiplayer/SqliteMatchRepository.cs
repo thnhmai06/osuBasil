@@ -2,40 +2,88 @@ using Basil.Application.Storage.Contracts.Common;
 using Basil.Application.Storage.Contracts.Multiplayer;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Multiplayer;
+using Basil.Infrastructure.Storage.Caching;
 using Dapper;
+using Microsoft.Data.Sqlite;
 
 namespace Basil.Infrastructure.Storage.Multiplayer;
 
 /// <summary>Stores matches.</summary>
-internal sealed class SqliteMatchRepository(Database database, IUserRepository users) : IMatchRepository
+internal sealed class SqliteMatchRepository(Database database, WriteBuffer buffer, IUserRepository users)
+	: CachedRepository<int, Match>(database, buffer), IMatchRepository
 {
+	protected override int KeyOf(Match item) => item.Id;
+
 	/// <inheritdoc />
 	public async Task<Match> CreateAsync(MatchData data, CancellationToken cancellationToken = default)
 	{
-		await using var connection = await database.OpenAsync(cancellationToken);
+		var value = await WithCreatorAsync(data, cancellationToken);
+		await using var connection = await OpenAsync(cancellationToken);
 		var id = await connection.QuerySingleAsync<int>(
 			"""
 			INSERT INTO Matches (Name, CreatorId, StartedAt, EndedAt, IsPrivate)
 			VALUES (@Name, @CreatorId, @StartedAt, @EndedAt, @IsPrivate)
 			RETURNING Id
 			""",
-			new
-			{
-				data.Name,
-				CreatorId = data.Creator?.Id,
-				StartedAt = data.StartedAt.ToUnixTimeMilliseconds(),
-				EndedAt = data.EndedAt?.ToUnixTimeMilliseconds(),
-				IsPrivate = data.IsPrivate ? 1 : 0
-			});
+			Parameters(value));
 
-		return new Match { Id = id, Value = data };
+		return Track(new Match { Id = id, Value = value });
 	}
 
 	/// <inheritdoc />
-	public async Task CreateOrUpdateAsync(Match match, CancellationToken cancellationToken = default)
+	public Task CreateOrUpdateAsync(Match match, CancellationToken cancellationToken = default)
 	{
-		await using var connection = await database.OpenAsync(cancellationToken);
-		await connection.ExecuteAsync(
+		var live = Track(match);
+		if (!ReferenceEquals(live, match))
+		{
+			live.Value.Name = match.Value.Name;
+			live.Value.EndedAt = match.Value.EndedAt;
+			live.Value.IsPrivate = match.Value.IsPrivate;
+		}
+
+		Save(live);
+		return Task.CompletedTask;
+	}
+
+	/// <inheritdoc />
+	public ValueTask<Match?> GetAsync(int id, CancellationToken cancellationToken = default) => FindAsync(id, cancellationToken);
+
+	/// <inheritdoc />
+	public async Task<Page<Match>> ListAsync(MatchQuery query, PageRequest page,
+		CancellationToken cancellationToken = default)
+	{
+		var where = BuildFilter(query);
+		await using var connection = await OpenAsync(cancellationToken);
+		var total = await connection.ExecuteScalarAsync<int>($"SELECT COUNT(*) FROM Matches {where}");
+		var rows = await connection.QueryAsync<MatchRow>(
+			$"""
+			 SELECT Id, Name, CreatorId, StartedAt, EndedAt, IsPrivate FROM Matches
+			 {where}
+			 ORDER BY StartedAt DESC, Id DESC
+			 LIMIT @Limit OFFSET @Offset
+			""",
+			new { Limit = page.Limit, Offset = page.Offset });
+
+		var matches = new List<Match>();
+		foreach (var row in rows)
+			matches.Add(Track(await ToMatchAsync(row, cancellationToken)));
+
+		return new Page<Match>(matches, total);
+	}
+
+	protected override async Task<Match?> ReadAsync(SqliteConnection connection, int key,
+		CancellationToken cancellationToken)
+	{
+		var row = await connection.QuerySingleOrDefaultAsync<MatchRow>(
+			"SELECT Id, Name, CreatorId, StartedAt, EndedAt, IsPrivate FROM Matches WHERE Id = @Id",
+			new { Id = key });
+		return row is null ? null : await ToMatchAsync(row, cancellationToken);
+	}
+
+	protected override Task WriteAsync(SqliteConnection connection, SqliteTransaction transaction, Match match)
+	{
+		var value = match.Value;
+		return connection.ExecuteAsync(
 			"""
 			INSERT INTO Matches (Id, Name, CreatorId, StartedAt, EndedAt, IsPrivate)
 			VALUES (@Id, @Name, @CreatorId, @StartedAt, @EndedAt, @IsPrivate)
@@ -49,69 +97,28 @@ internal sealed class SqliteMatchRepository(Database database, IUserRepository u
 			new
 			{
 				match.Id,
-				match.Value.Name,
-				CreatorId = match.Value.Creator?.Id,
-				StartedAt = match.Value.StartedAt.ToUnixTimeMilliseconds(),
-				EndedAt = match.Value.EndedAt?.ToUnixTimeMilliseconds(),
-				IsPrivate = match.Value.IsPrivate ? 1 : 0
-			});
+				value.Name,
+				CreatorId = value.Creator?.Id,
+				StartedAt = value.StartedAt.ToUnixTimeMilliseconds(),
+				EndedAt = value.EndedAt?.ToUnixTimeMilliseconds(),
+				IsPrivate = value.IsPrivate ? 1 : 0
+			}, transaction);
 	}
 
-	/// <inheritdoc />
-	public async ValueTask<Match?> GetAsync(int id, CancellationToken cancellationToken = default)
-	{
-		await using var connection = await database.OpenAsync(cancellationToken);
-		var row = await connection.QuerySingleOrDefaultAsync<MatchRow>(
-			"SELECT Id, Name, CreatorId, StartedAt, EndedAt, IsPrivate FROM Matches WHERE Id = @Id",
-			new { Id = id });
-		return row is null ? null : await ToMatchAsync(row, cancellationToken);
-	}
-
-	/// <inheritdoc />
-	public async Task<Page<Match>> ListAsync(MatchQuery query, PageRequest page,
-		CancellationToken cancellationToken = default)
-	{
-		var where = BuildFilter(query);
-
-		await using var connection = await database.OpenAsync(cancellationToken);
-		var total = await connection.ExecuteScalarAsync<int>($"SELECT COUNT(*) FROM Matches {where}");
-
-		var rows = (await connection.QueryAsync<MatchRow>(
-			$"""
-			 SELECT Id, Name, CreatorId, StartedAt, EndedAt, IsPrivate FROM Matches
-			 {where}
-			 ORDER BY StartedAt DESC, Id DESC
-			 LIMIT @Limit OFFSET @Offset
-			 """,
-			new { Limit = page.Limit, Offset = page.Offset })).ToList();
-
-		var matches = new List<Match>(rows.Count);
-		foreach (var row in rows)
-			matches.Add(await ToMatchAsync(row, cancellationToken));
-
-		return new Page<Match>(matches, total);
-	}
-
-	/// <summary>Builds the WHERE clause of a match listing.</summary>
 	private static string BuildFilter(MatchQuery query)
 	{
 		var conditions = new List<string>();
-
 		if (query.Ended is true) conditions.Add("EndedAt IS NOT NULL");
 		else if (query.Ended is false) conditions.Add("EndedAt IS NULL");
-
 		if (!query.IncludePrivate) conditions.Add("IsPrivate = 0");
-
 		return conditions.Count == 0 ? "" : $"WHERE {string.Join(" AND ", conditions)}";
 	}
 
-	/// <summary>Builds a match from its stored row, resolving its creator.</summary>
 	private async Task<Match> ToMatchAsync(MatchRow row, CancellationToken cancellationToken)
 	{
 		var creator = row.CreatorId is { } creatorId
 			? await users.GetAsync((int)creatorId, cancellationToken)
 			: null;
-
 		return new Match
 		{
 			Id = row.Id,
@@ -123,6 +130,31 @@ internal sealed class SqliteMatchRepository(Database database, IUserRepository u
 				EndedAt = row.EndedAt is { } endedAt ? DateTimeOffset.FromUnixTimeMilliseconds(endedAt) : null,
 				IsPrivate = row.IsPrivate != 0
 			}
+		};
+	}
+
+	private async Task<MatchData> WithCreatorAsync(MatchData data, CancellationToken cancellationToken)
+	{
+		var creator = data.Creator is { } user ? await users.GetAsync(user.Id, cancellationToken) ?? user : null;
+		return new MatchData
+		{
+			Name = data.Name,
+			Creator = creator,
+			StartedAt = data.StartedAt,
+			EndedAt = data.EndedAt,
+			IsPrivate = data.IsPrivate
+		};
+	}
+
+	private static object Parameters(MatchData data)
+	{
+		return new
+		{
+			data.Name,
+			CreatorId = data.Creator?.Id,
+			StartedAt = data.StartedAt.ToUnixTimeMilliseconds(),
+			EndedAt = data.EndedAt?.ToUnixTimeMilliseconds(),
+			IsPrivate = data.IsPrivate ? 1 : 0
 		};
 	}
 

@@ -98,8 +98,8 @@ internal sealed class BeatmapsetService(
 			}
 			else
 			{
-				beatmap = new Beatmap { Id = previous.Id, Value = data };
-				await beatmaps.CreateOrUpdateAsync(beatmap, cancellationToken);
+				await beatmaps.CreateOrUpdateAsync(new Beatmap { Id = previous.Id, Value = data }, cancellationToken);
+				beatmap = previous;
 			}
 
 			result.Add(beatmap);
@@ -123,6 +123,7 @@ internal sealed class BeatmapsetService(
 			var archiveStream = await archives.OpenAsync(set, cancellationToken);
 			if (archiveStream is null)
 			{
+				await beatmaps.RetainAsync(set, [], cancellationToken);
 				await beatmapsets.DeleteAsync(set, cancellationToken);
 				_events.Writer.TryWrite(new BeatmapsetDeleted(set));
 				forgotten++;
@@ -143,6 +144,7 @@ internal sealed class BeatmapsetService(
 			return false;
 
 		await archives.DeleteAsync(set, cancellationToken);
+		await beatmaps.RetainAsync(set, [], cancellationToken);
 		await beatmapsets.DeleteAsync(set, cancellationToken);
 		_events.Writer.TryWrite(new BeatmapsetDeleted(set));
 		return true;

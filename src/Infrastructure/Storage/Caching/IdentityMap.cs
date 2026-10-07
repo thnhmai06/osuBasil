@@ -57,30 +57,7 @@ internal sealed class IdentityMap<TKey, T> : IReadOnlyDictionary<TKey, T> where 
 		}
 	}
 
-	public bool TryRemove(TKey key, [MaybeNullWhen(false)] out T item)
-	{
-		while (_items.TryGetValue(key, out var entry))
-		{
-			T? value;
-			try
-			{
-				value = entry.Value.GetAwaiter().GetResult();
-			}
-			catch
-			{
-				value = null;
-			}
-
-			if (!_items.TryRemove(new KeyValuePair<TKey, Lazy<Task<T?>>>(key, entry)))
-				continue;
-
-			item = value!;
-			return value is not null;
-		}
-
-		item = null;
-		return false;
-	}
+	public bool Remove(TKey key) => _items.TryRemove(key, out _);
 
 	public bool TryUpdate(TKey key, Func<T, T> update)
 	{

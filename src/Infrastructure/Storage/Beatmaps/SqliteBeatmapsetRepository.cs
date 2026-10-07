@@ -1,29 +1,26 @@
 using Basil.Application.Storage.Contracts.Beatmaps;
 using Basil.Application.Storage.Contracts.Common;
 using Basil.Domain.Beatmaps;
+using Basil.Infrastructure.Storage.Caching;
 using Dapper;
 using Microsoft.Data.Sqlite;
 
 namespace Basil.Infrastructure.Storage.Beatmaps;
 
 /// <summary>Stores beatmapsets in the <c>Beatmapsets</c> table.</summary>
-internal sealed class SqliteBeatmapsetRepository(Database database) : IBeatmapsetRepository
+internal sealed class SqliteBeatmapsetRepository(Database database, WriteBuffer buffer)
+	: CachedRepository<int, Beatmapset>(database, buffer), IBeatmapsetRepository
 {
+	protected override int KeyOf(Beatmapset item) => item.Id;
+
 	/// <inheritdoc />
-	public async ValueTask<Beatmapset?> GetAsync(int id, CancellationToken cancellationToken = default)
-	{
-		await using var connection = await database.OpenAsync(cancellationToken);
-		var row = await connection.QuerySingleOrDefaultAsync<BeatmapsetRow>(
-			"SELECT Id, Artist, Title, Creator, CreatedAt, UpdatedAt, Locked, Visible FROM Beatmapsets WHERE Id = @id",
-			new { id });
-		return row is null ? null : Map(row);
-	}
+	public ValueTask<Beatmapset?> GetAsync(int id, CancellationToken cancellationToken = default) => FindAsync(id, cancellationToken);
 
 	/// <inheritdoc />
 	public async Task<Beatmapset> CreateAsync(BeatmapsetData data, int? onlineId = null,
 		CancellationToken cancellationToken = default)
 	{
-		await using var connection = await database.OpenAsync(cancellationToken);
+		await using var connection = await OpenAsync(cancellationToken);
 		await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
 
 		var id = onlineId ?? await NextLocalIdAsync(connection, transaction);
@@ -48,53 +45,39 @@ internal sealed class SqliteBeatmapsetRepository(Database database) : IBeatmapse
 
 		await transaction.CommitAsync(cancellationToken);
 
-		return new Beatmapset { Id = id, Value = data };
+		return Track(new Beatmapset { Id = id, Value = data });
 	}
 
 	/// <inheritdoc />
-	public async Task CreateOrUpdateAsync(Beatmapset set, CancellationToken cancellationToken = default)
+	public Task CreateOrUpdateAsync(Beatmapset set, CancellationToken cancellationToken = default)
 	{
-		await using var connection = await database.OpenAsync(cancellationToken);
-		await connection.ExecuteAsync(
-			"""
-			INSERT INTO Beatmapsets (Id, Artist, Title, Creator, CreatedAt, UpdatedAt, Locked, Visible)
-			VALUES (@id, @artist, @title, @creator, @createdAt, @updatedAt, @locked, @visible)
-			ON CONFLICT(Id) DO UPDATE SET
-			    Artist    = excluded.Artist,
-			    Title     = excluded.Title,
-			    Creator   = excluded.Creator,
-			    CreatedAt = excluded.CreatedAt,
-			    UpdatedAt = excluded.UpdatedAt,
-			    Locked    = excluded.Locked,
-			    Visible   = excluded.Visible
-			""",
-			new
-			{
-				id = set.Id,
-				artist = set.Value.Artist,
-				title = set.Value.Title,
-				creator = set.Value.Creator,
-				createdAt = set.Value.CreatedAt.ToUnixTimeMilliseconds(),
-				updatedAt = set.Value.UpdatedAt.ToUnixTimeMilliseconds(),
-				locked = set.Value.Locked ? 1 : 0,
-				visible = set.Value.Visible ? 1 : 0
-			});
+		var live = Track(set);
+		if (!ReferenceEquals(live, set))
+		{
+			live.Value.Artist = set.Value.Artist;
+			live.Value.Title = set.Value.Title;
+			live.Value.Creator = set.Value.Creator;
+			live.Value.UpdatedAt = set.Value.UpdatedAt;
+			live.Value.Locked = set.Value.Locked;
+			live.Value.Visible = set.Value.Visible;
+		}
+
+		Save(live);
+		return Task.CompletedTask;
 	}
 
 	/// <inheritdoc />
-	public async Task DeleteAsync(Beatmapset set, CancellationToken cancellationToken = default)
+	public Task DeleteAsync(Beatmapset set, CancellationToken cancellationToken = default)
 	{
-		await using var connection = await database.OpenAsync(cancellationToken);
-		await connection.ExecuteAsync(
-			"DELETE FROM Beatmapsets WHERE Id = @id",
-			new { id = set.Id });
+		Remove(set);
+		return Task.CompletedTask;
 	}
 
 	/// <inheritdoc />
 	public async Task<Page<Beatmapset>> ListAsync(BeatmapQuery query, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
-		await using var connection = await database.OpenAsync(cancellationToken);
+		await using var connection = await OpenAsync(cancellationToken);
 		var parameters = new DynamicParameters(new { limit = page.Limit, offset = page.Offset });
 		var where = BeatmapQueryFilter.Build(query, parameters);
 		var existsFilter = where.Length == 0 ? "" : $" AND {where}";
@@ -122,7 +105,50 @@ internal sealed class SqliteBeatmapsetRepository(Database database) : IBeatmapse
 		var rows = await connection.QueryAsync<BeatmapsetRow>(sql, parameters);
 		var total = await connection.ExecuteScalarAsync<int>(countSql, parameters);
 
-		return new Page<Beatmapset>(rows.Select(Map).ToList(), total);
+		return new Page<Beatmapset>(rows.Select(row => Track(ToBeatmapset(row))).ToList(), total);
+	}
+
+	protected override async Task<Beatmapset?> ReadAsync(SqliteConnection connection, int key,
+		CancellationToken cancellationToken)
+	{
+		var row = await connection.QuerySingleOrDefaultAsync<BeatmapsetRow>(
+			"SELECT Id, Artist, Title, Creator, CreatedAt, UpdatedAt, Locked, Visible FROM Beatmapsets WHERE Id = @Id",
+			new { Id = key });
+		return row is null ? null : ToBeatmapset(row);
+	}
+
+	protected override Task WriteAsync(SqliteConnection connection, SqliteTransaction transaction, Beatmapset set)
+	{
+		var value = set.Value;
+		return connection.ExecuteAsync(
+			"""
+			INSERT INTO Beatmapsets (Id, Artist, Title, Creator, CreatedAt, UpdatedAt, Locked, Visible)
+			VALUES (@Id, @Artist, @Title, @Creator, @CreatedAt, @UpdatedAt, @Locked, @Visible)
+			ON CONFLICT(Id) DO UPDATE SET
+				Artist = excluded.Artist,
+				Title = excluded.Title,
+				Creator = excluded.Creator,
+				CreatedAt = excluded.CreatedAt,
+				UpdatedAt = excluded.UpdatedAt,
+				Locked = excluded.Locked,
+				Visible = excluded.Visible;
+			""",
+			new
+			{
+				set.Id,
+				value.Artist,
+				value.Title,
+				value.Creator,
+				CreatedAt = value.CreatedAt.ToUnixTimeMilliseconds(),
+				UpdatedAt = value.UpdatedAt.ToUnixTimeMilliseconds(),
+				Locked = value.Locked ? 1 : 0,
+				Visible = value.Visible ? 1 : 0
+			}, transaction);
+	}
+
+	protected override Task EraseAsync(SqliteConnection connection, SqliteTransaction transaction, int key)
+	{
+		return connection.ExecuteAsync("DELETE FROM Beatmapsets WHERE Id = @Id", new { Id = key }, transaction);
 	}
 
 	private static async Task<int> NextLocalIdAsync(SqliteConnection connection, System.Data.Common.DbTransaction transaction)
@@ -132,7 +158,7 @@ internal sealed class SqliteBeatmapsetRepository(Database database) : IBeatmapse
 		return Math.Max(Beatmapset.LocalIdFloor, (max ?? 0) + 1);
 	}
 
-	private static Beatmapset Map(BeatmapsetRow row)
+	private static Beatmapset ToBeatmapset(BeatmapsetRow row)
 	{
 		return new Beatmapset
 		{
