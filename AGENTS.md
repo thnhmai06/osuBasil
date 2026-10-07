@@ -372,13 +372,11 @@ dependency injection by its contract. The hosts reference the Implementations pr
 > other decisions (naming, event tree, channel names, identity by reference) still hold. Older plans are
 > history.
 >
-> Infrastructure, the hosts and the tests have not been migrated. Until they are, **only `Basil.Domain` and
-> the four Application projects build**: `Basil.Infrastructure`, `Basil.Host.*` and every test project still
-> use old Application namespaces, so solution-wide `dotnet build`/`dotnet test` and `Basil.ArchitectureTests`
-> do not run. Verify with
-> `dotnet build src/Application/Services/Implementations/Basil.Application.Services.Implementations.csproj`
-> (it builds both Contracts projects) and
-> `dotnet build src/Application/Storage/Implementations/Basil.Application.Storage.Implementations.csproj`.
+> Infrastructure was rewritten by [`plans/infrastructure-plan-20261007.md`](plans/infrastructure-plan-20261007.md)
+> as `Basil.Infrastructure.{Storage,Services,Runtime}`, and BasilBot became `Basil.Bot.Application`. The hosts and the
+> tests have not been migrated: `Basil.Host.*` and every test project still use old namespaces, so solution-wide
+> `dotnet build`/`dotnet test` and `Basil.ArchitectureTests` do not run. Verify with `dotnet build` of the two
+> Application Implementations projects, the three Infrastructure projects and `src/Bot/Application`.
 >
 > Documentation under `docs/` may describe an older structure; rewrite each document when the code it
 > describes is migrated, not before. Where a plan conflicts with
