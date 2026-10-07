@@ -552,9 +552,11 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
 * **The live object is the source of truth; the database is where it hibernates.** A repository keeps exactly
   one instance per identity for the life of the process (never evicted) and returns that same instance from
   every `GetAsync`, `GetByYAsync` and `ListAsync`; the database is read only for an identity not yet in memory.
-  `CreateOrUpdateAsync` and `DeleteAsync` mark the change; Infrastructure writes pending changes in one batched
-  transaction every second and once more after the host has stopped everything else. `CreateAsync` writes at
-  once because the store assigns the identity. Append-only history (logins, match events) is
+  `CreateOrUpdateAsync` and `DeleteAsync` queue the change (a later change of the same identity replaces it);
+  Infrastructure commits the queue in one transaction once 100 changes are pending or the oldest has waited 50 ms,
+  and once more after the host has stopped everything else. A database read waits only until every change queued
+  before it is committed, then goes straight to the database. `CreateAsync` writes at once because the store
+  assigns the identity. Append-only history (logins, match events) is
   not kept in memory and is written in the same batches. A derived read model that is queried often (the match
   report) is cached and rebuilt when its sources change.
   **Exception: a change whose check reads rows other than the item itself** (a value unique across the table, such

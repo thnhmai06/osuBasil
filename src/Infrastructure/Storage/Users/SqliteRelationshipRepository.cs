@@ -78,7 +78,7 @@ internal sealed class SqliteRelationshipRepository(Database database, WriteBuffe
 
 	private async Task<SqliteConnection> OpenAsync(CancellationToken cancellationToken)
 	{
-		await buffer.FlushAsync(cancellationToken);
+		await buffer.WaitForWritesAsync(cancellationToken);
 		return await database.OpenAsync(cancellationToken);
 	}
 

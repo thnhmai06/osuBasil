@@ -18,7 +18,7 @@ internal sealed class SqliteChannelRepository(Database database, WriteBuffer buf
 		if (Volatile.Read(ref _channels) is { } cached)
 			return cached;
 
-		await buffer.FlushAsync(cancellationToken);
+		await buffer.WaitForWritesAsync(cancellationToken);
 		await using var connection = await database.OpenAsync(cancellationToken);
 		var rows = await connection.QueryAsync<ChannelRow>(
 			"SELECT Name, Topic, ReadPermissions, WritePermissions, AutoJoin, Visible FROM Channels ORDER BY Name");

@@ -33,7 +33,7 @@ internal sealed class SqliteMatchEventRepository(Database database, WriteBuffer 
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<MatchEvent>> ListAsync(Match match, CancellationToken cancellationToken = default)
 	{
-		await buffer.FlushAsync(cancellationToken);
+		await buffer.WaitForWritesAsync(cancellationToken);
 		await using var connection = await database.OpenAsync(cancellationToken);
 		var rows = (await connection.QueryAsync<MatchEventRow>(
 			"""

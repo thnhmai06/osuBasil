@@ -3,34 +3,30 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Storage.Caching;
 
-/// <summary>Periodically commits pending storage changes and flushes them after shutdown.</summary>
-internal sealed class WriteFlusher(WriteBuffer buffer, TimeProvider timeProvider, ILogger<WriteFlusher> logger)
+/// <summary>Commits pending storage changes whenever a batch is due, and once more after shutdown.</summary>
+internal sealed class WriteFlusher(WriteBuffer buffer, ILogger<WriteFlusher> logger)
 	: BackgroundService, IHostedLifecycleService
 {
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
-		using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1), timeProvider);
 		try
 		{
-			while (await timer.WaitForNextTickAsync(stoppingToken))
+			while (true)
 			{
+				await buffer.WaitUntilDueAsync(stoppingToken);
 				try
 				{
 					await buffer.FlushAsync(stoppingToken);
 				}
-				catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+				catch (Exception exception) when (!stoppingToken.IsCancellationRequested)
 				{
-					break;
-				}
-				catch (Exception exception)
-				{
-					logger.LogError(exception, "Failed to flush pending storage changes.");
+					logger.LogError(exception, "Failed to flush pending storage changes");
 				}
 			}
 		}
 		catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
 		{
-			// Shutdown stops the timer loop; StoppedAsync performs the final flush.
+			// Shutdown stops the loop; StoppedAsync performs the final flush.
 		}
 	}
 
@@ -46,7 +42,7 @@ internal sealed class WriteFlusher(WriteBuffer buffer, TimeProvider timeProvider
 		}
 		catch (Exception exception)
 		{
-			logger.LogError(exception, "Failed to flush storage changes after shutdown.");
+			logger.LogError(exception, "Failed to flush storage changes after shutdown");
 		}
 	}
 }

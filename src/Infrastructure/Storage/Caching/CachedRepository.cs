@@ -40,7 +40,7 @@ internal abstract class CachedRepository<TKey, T>(Database database, WriteBuffer
 
 	protected async Task<SqliteConnection> OpenAsync(CancellationToken cancellationToken)
 	{
-		await buffer.FlushAsync(cancellationToken);
+		await buffer.WaitForWritesAsync(cancellationToken);
 		return await database.OpenAsync(cancellationToken);
 	}
 }

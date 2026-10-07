@@ -17,7 +17,7 @@ internal sealed class SqliteSettingsRepository(Database database, WriteBuffer bu
 		if (Volatile.Read(ref _settings) is { } cached)
 			return cached;
 
-		await buffer.FlushAsync(cancellationToken);
+		await buffer.WaitForWritesAsync(cancellationToken);
 		await using var connection = await database.OpenAsync(cancellationToken);
 		var row = await connection.QuerySingleOrDefaultAsync<SettingsRow>(
 			"""
