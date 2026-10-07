@@ -1,15 +1,23 @@
 using Basil.Application.Storage.Contracts.Content;
 using Basil.Domain.Content;
+using Basil.Infrastructure.Storage.Caching;
 using Dapper;
+using Microsoft.Data.Sqlite;
 
 namespace Basil.Infrastructure.Storage.Content;
 
 /// <summary>Stores the server-wide settings.</summary>
-internal sealed class SqliteSettingsRepository(Database database) : ISettingsRepository
+internal sealed class SqliteSettingsRepository(Database database, WriteBuffer buffer) : ISettingsRepository
 {
+	private ServerSettings? _settings;
+
 	/// <inheritdoc />
 	public async ValueTask<ServerSettings> GetAsync(CancellationToken cancellationToken = default)
 	{
+		if (Volatile.Read(ref _settings) is { } cached)
+			return cached;
+
+		await buffer.FlushAsync(cancellationToken);
 		await using var connection = await database.OpenAsync(cancellationToken);
 		var row = await connection.QuerySingleOrDefaultAsync<SettingsRow>(
 			"""
@@ -17,7 +25,7 @@ internal sealed class SqliteSettingsRepository(Database database) : ISettingsRep
 			FROM Settings WHERE Id = 1
 			""");
 
-		return row is null
+		var loaded = row is null
 			? new ServerSettings()
 			: new ServerSettings
 			{
@@ -28,13 +36,14 @@ internal sealed class SqliteSettingsRepository(Database database) : ISettingsRep
 				MirrorDownloadEndpoint = Parse(row.MirrorDownloadEndpoint),
 				MirrorSearchEndpoint = Parse(row.MirrorSearchEndpoint)
 			};
+		return Interlocked.CompareExchange(ref _settings, loaded, null) ?? loaded;
 	}
 
 	/// <inheritdoc />
-	public async Task CreateOrUpdateAsync(ServerSettings settings, CancellationToken cancellationToken = default)
+	public Task CreateOrUpdateAsync(ServerSettings settings, CancellationToken cancellationToken = default)
 	{
-		await using var connection = await database.OpenAsync(cancellationToken);
-		await connection.ExecuteAsync(
+		Interlocked.Exchange(ref _settings, settings);
+		buffer.Enqueue((GetType(), 1), (connection, transaction) => connection.ExecuteAsync(
 			"""
 			UPDATE Settings SET
 				Motd = @Motd,
@@ -53,7 +62,8 @@ internal sealed class SqliteSettingsRepository(Database database) : ISettingsRep
 				MenuIconImage = settings.MenuIconImage?.ToString(),
 				MirrorDownloadEndpoint = settings.MirrorDownloadEndpoint?.ToString(),
 				MirrorSearchEndpoint = settings.MirrorSearchEndpoint?.ToString()
-			});
+			}, transaction));
+		return Task.CompletedTask;
 	}
 
 	/// <summary>Reads an absolute address, or <see langword="null" /> when none is stored.</summary>
