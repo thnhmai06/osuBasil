@@ -61,10 +61,7 @@ internal sealed class OwnedLists<TOwner, T> where TOwner : notnull
 	{
 		lock (_gate)
 		{
-			if (_loading.TryGetValue(owner, out var loads))
-				foreach (var load in loads)
-					load.Changed = true;
-
+			Overlap(owner);
 			_lists.TryUpdate(owner, change);
 			if (committed.IsCompleted)
 				return;
@@ -75,8 +72,20 @@ internal sealed class OwnedLists<TOwner, T> where TOwner : notnull
 		committed.ContinueWith(_ =>
 		{
 			lock (_gate)
+			{
+				// A load running now may have read before the commit; with the change gone it would miss it.
 				Remove(_uncommitted, owner, change);
+				Overlap(owner);
+			}
 		}, TaskScheduler.Default);
+	}
+
+	/// <summary>Makes every load of an owner in progress start again.</summary>
+	private void Overlap(TOwner owner)
+	{
+		if (_loading.TryGetValue(owner, out var loads))
+			foreach (var load in loads)
+				load.Changed = true;
 	}
 
 	private static void Add<TItem>(Dictionary<TOwner, List<TItem>> lists, TOwner owner, TItem item)
