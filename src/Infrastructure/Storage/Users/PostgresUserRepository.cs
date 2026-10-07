@@ -3,21 +3,23 @@ using System.Globalization;
 using Basil.Application.Storage.Contracts.Common;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Storage.Batching;
 using Basil.Infrastructure.Storage.Caching;
+using Basil.Infrastructure.Storage.Writing;
 using Dapper;
-using Microsoft.Data.Sqlite;
+using Npgsql;
 
 namespace Basil.Infrastructure.Storage.Users;
 
 /// <summary>Stores registered users.</summary>
-internal sealed class SqliteUserRepository(DatabaseBatcher batcher)
-	: CachedRepository<int, User>(batcher), IUserRepository
+internal sealed class PostgresUserRepository(Database database, DatabaseWriter writer)
+	: CachedRepository<int, User>(database, writer), IUserRepository
 {
 	private readonly ConcurrentDictionary<string, int> _idsBySafeName = new(StringComparer.Ordinal);
 	private readonly ConcurrentDictionary<int, string> _safeNamesById = new();
 
 	protected override int KeyOf(User item) => item.Id;
+
+	protected override Root RootOf(User item) => Root.User(item.Id);
 
 	/// <inheritdoc />
 	public async Task<User> CreateAsync(UserData data, CancellationToken cancellationToken = default)
@@ -25,15 +27,15 @@ internal sealed class SqliteUserRepository(DatabaseBatcher batcher)
 		var parameters = new
 		{
 			data.Name,
-			Country = (long)data.Country,
+			Country = (int)data.Country,
 			Permissions = (long)data.Permissions,
-			DeletedAt = data.DeletedAt?.ToUnixTimeMilliseconds()
+			DeletedAt = data.DeletedAt?.ToUniversalTime()
 		};
-		var id = await Batcher.WriteAsync((connection, transaction) => connection.QuerySingleAsync<int>(
+		var id = await Writer.WriteAsync(Root.Server, (connection, transaction) => connection.QuerySingleAsync<int>(
 			"""
-			INSERT INTO Users (Name, Country, Permissions, DeletedAt)
-			VALUES (@Name, @Country, @Permissions, @DeletedAt)
-			RETURNING Id;
+			insert into users (name, country, permissions, deleted_at)
+			values (@Name, @Country, @Permissions, @DeletedAt)
+			returning id;
 			""",
 			parameters, transaction), cancellationToken);
 
@@ -64,10 +66,10 @@ internal sealed class SqliteUserRepository(DatabaseBatcher batcher)
 		// Whether the name is free is the database's to say, so the user takes the name only once it is committed.
 		try
 		{
-			await Batcher.WriteAsync((connection, transaction) => connection.ExecuteAsync(
-				"UPDATE Users SET Name = @Name WHERE Id = @Id", new { Name = name, live.Id }, transaction), cancellationToken);
+			await Writer.WriteAsync(Root.User(live.Id), (connection, transaction) => connection.ExecuteAsync(
+				"update users set name = @Name where id = @Id", new { Name = name, live.Id }, transaction), cancellationToken);
 		}
-		catch (SqliteException exception) when (exception.SqliteErrorCode == SqliteErrors.Constraint)
+		catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation)
 		{
 			return false;
 		}
@@ -94,8 +96,8 @@ internal sealed class SqliteUserRepository(DatabaseBatcher batcher)
 			_idsBySafeName.TryRemove(new KeyValuePair<string, int>(safeName, id));
 		}
 
-		var foundId = await Batcher.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<int?>(
-			"SELECT Id FROM Users WHERE SafeName = replace(lower(@Name), ' ', '_')",
+		var foundId = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<int?>(
+			"select id from users where safe_name = replace(lower(@Name), ' ', '_')",
 			new { Name = name }), cancellationToken);
 		return foundId is { } found ? await FindUserAsync(found, cancellationToken) : null;
 	}
@@ -107,10 +109,10 @@ internal sealed class SqliteUserRepository(DatabaseBatcher batcher)
 		var (where, parameters) = BuildFilter(query);
 		parameters.Add("Limit", page.Limit);
 		parameters.Add("Offset", page.Offset);
-		var (total, rows) = await Batcher.ReadAsync(async connection => (
-			await connection.ExecuteScalarAsync<int>($"SELECT COUNT(*) FROM Users {where}", parameters),
+		var (total, rows) = await Database.ReadAsync(async connection => (
+			await connection.ExecuteScalarAsync<int>($"select count(*) from users {where}", parameters),
 			await connection.QueryAsync<UserRow>(
-				$"SELECT Id, Name, Country, Permissions, DeletedAt FROM Users {where} ORDER BY Id LIMIT @Limit OFFSET @Offset",
+				$"select id, name, country, permissions, deleted_at from users {where} order by id limit @Limit offset @Offset",
 				parameters)), cancellationToken);
 
 		return new Page<User>([.. rows.Select(row => TrackUser(ToUser(row)))], total);
@@ -118,20 +120,20 @@ internal sealed class SqliteUserRepository(DatabaseBatcher batcher)
 
 	protected override async Task<User?> LoadAsync(int key, CancellationToken cancellationToken)
 	{
-		var row = await Batcher.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<UserRow>(
-			"SELECT Id, Name, Country, Permissions, DeletedAt FROM Users WHERE Id = @Id", new { Id = key }),
+		var row = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<UserRow>(
+			"select id, name, country, permissions, deleted_at from users where id = @Id", new { Id = key }),
 			cancellationToken);
 		return row is null ? null : ToUser(row);
 	}
 
 	protected override string WriteSql =>
 		"""
-		INSERT INTO Users (Id, Name, Country, Permissions, DeletedAt)
-		VALUES (@Id, @Name, @Country, @Permissions, @DeletedAt)
-		ON CONFLICT(Id) DO UPDATE SET
-			Country = excluded.Country,
-			Permissions = excluded.Permissions,
-			DeletedAt = excluded.DeletedAt;
+		insert into users (id, name, country, permissions, deleted_at)
+		values (@Id, @Name, @Country, @Permissions, @DeletedAt)
+		on conflict (id) do update set
+			country = excluded.country,
+			permissions = excluded.permissions,
+			deleted_at = excluded.deleted_at;
 		""";
 
 	protected override object WriteParameters(User user)
@@ -141,9 +143,9 @@ internal sealed class SqliteUserRepository(DatabaseBatcher batcher)
 		{
 			user.Id,
 			value.Name,
-			Country = (long)value.Country,
+			Country = (int)value.Country,
 			Permissions = (long)value.Permissions,
-			DeletedAt = value.DeletedAt?.ToUnixTimeMilliseconds()
+			DeletedAt = value.DeletedAt?.ToUniversalTime()
 		};
 	}
 
@@ -192,16 +194,16 @@ internal sealed class SqliteUserRepository(DatabaseBatcher batcher)
 		var conditions = new List<string>();
 		var parameters = new DynamicParameters();
 		if (!query.IncludeDeleted)
-			conditions.Add("DeletedAt IS NULL");
+			conditions.Add("deleted_at is null");
 		if (query.Countries is { Count: > 0 } countries)
 		{
-			conditions.Add("Country IN @Countries");
-			parameters.Add("Countries", countries.Select(country => (long)country).ToList());
+			conditions.Add("country = any(@Countries)");
+			parameters.Add("Countries", countries.Select(country => (int)country).ToArray());
 		}
 
 		if (query.Permissions is { } permissions)
 		{
-			conditions.Add("(Permissions & @Permissions) = @Permissions");
+			conditions.Add("(permissions & @Permissions) = @Permissions");
 			parameters.Add("Permissions", (long)permissions);
 		}
 
@@ -209,18 +211,18 @@ internal sealed class SqliteUserRepository(DatabaseBatcher batcher)
 		{
 			if (int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var id))
 			{
-				conditions.Add("(Id = @TextId OR SafeName LIKE '%' || replace(lower(@Text), ' ', '_') || '%')");
+				conditions.Add("(id = @TextId OR safe_name LIKE '%' || replace(lower(@Text), ' ', '_') || '%')");
 				parameters.Add("TextId", id);
 			}
 			else
 			{
-				conditions.Add("SafeName LIKE '%' || replace(lower(@Text), ' ', '_') || '%'");
+				conditions.Add("safe_name LIKE '%' || replace(lower(@Text), ' ', '_') || '%'");
 			}
 
 			parameters.Add("Text", text);
 		}
 
-		return (conditions.Count == 0 ? "" : $"WHERE {string.Join(" AND ", conditions)}", parameters);
+		return (conditions.Count == 0 ? "" : $"where {string.Join(" AND ", conditions)}", parameters);
 	}
 
 	/// <summary>Builds a user from a stored row.</summary>
@@ -234,18 +236,18 @@ internal sealed class SqliteUserRepository(DatabaseBatcher batcher)
 				Name = row.Name,
 				Country = (Country)row.Country,
 				Permissions = (Permissions)(ulong)row.Permissions,
-				DeletedAt = row.DeletedAt is { } deletedAt ? DateTimeOffset.FromUnixTimeMilliseconds(deletedAt) : null
+				DeletedAt = row.DeletedAt
 			}
 		};
 	}
 
-	/// <summary>A stored row of the Users table.</summary>
+	/// <summary>A stored row of the <c>users</c> table.</summary>
 	private sealed class UserRow
 	{
 		public int Id { get; set; }
 		public string Name { get; set; } = "";
-		public long Country { get; set; }
+		public int Country { get; set; }
 		public long Permissions { get; set; }
-		public long? DeletedAt { get; set; }
+		public DateTimeOffset? DeletedAt { get; set; }
 	}
 }

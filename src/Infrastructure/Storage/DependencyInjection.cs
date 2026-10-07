@@ -4,7 +4,6 @@ using Basil.Application.Storage.Contracts.Content;
 using Basil.Application.Storage.Contracts.Multiplayer;
 using Basil.Application.Storage.Contracts.Scores;
 using Basil.Application.Storage.Contracts.Users;
-using Basil.Infrastructure.Storage.Batching;
 using Basil.Infrastructure.Storage.Beatmaps;
 using Basil.Infrastructure.Storage.Caching;
 using Basil.Infrastructure.Storage.Chat;
@@ -13,6 +12,7 @@ using Basil.Infrastructure.Storage.Files;
 using Basil.Infrastructure.Storage.Multiplayer;
 using Basil.Infrastructure.Storage.Scores;
 using Basil.Infrastructure.Storage.Users;
+using Basil.Infrastructure.Storage.Writing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -31,39 +31,37 @@ public static class DependencyInjection
 		services.AddSingleton<DatabaseMigrator>();
 		services.AddHostedService<StorageStartup>();
 		services.TryAddSingleton(TimeProvider.System);
-		services.AddSingleton<DatabaseBatcher>();
-		services.AddHostedService(provider => provider.GetRequiredService<DatabaseBatcher>());
-		services.AddSingleton<DatabaseWorker>();
-		services.AddHostedService(provider => provider.GetRequiredService<DatabaseWorker>());
+		services.AddSingleton<DatabaseWriter>();
+		services.AddHostedService(provider => provider.GetRequiredService<DatabaseWriter>());
 
-		services.AddSingleton<IUserRepository, SqliteUserRepository>();
-		services.AddSingleton<ICredentialRepository, SqliteCredentialRepository>();
-		services.AddSingleton<ILoginRepository, SqliteLoginRepository>();
-		services.AddSingleton<IRestrictionRepository, SqliteRestrictionRepository>();
-		services.AddSingleton<IRelationshipRepository, SqliteRelationshipRepository>();
+		services.AddSingleton<IUserRepository, PostgresUserRepository>();
+		services.AddSingleton<ICredentialRepository, PostgresCredentialRepository>();
+		services.AddSingleton<ILoginRepository, PostgresLoginRepository>();
+		services.AddSingleton<IRestrictionRepository, PostgresRestrictionRepository>();
+		services.AddSingleton<IRelationshipRepository, PostgresRelationshipRepository>();
 		services.AddSingleton<IUserAvatarStorage, FileUserAvatarStorage>();
 
-		services.AddSingleton<IChannelRepository, SqliteChannelRepository>();
+		services.AddSingleton<IChannelRepository, PostgresChannelRepository>();
 
-		services.AddSingleton<ISettingsRepository, SqliteSettingsRepository>();
-		services.AddSingleton<IMenuBannerRepository, SqliteMenuBannerRepository>();
+		services.AddSingleton<ISettingsRepository, PostgresSettingsRepository>();
+		services.AddSingleton<IMenuBannerRepository, PostgresMenuBannerRepository>();
 		services.AddSingleton<IMenuBannerStorage, FileMenuBannerStorage>();
 		services.AddSingleton<IMenuIconStorage, FileMenuIconStorage>();
 		services.AddSingleton<IMenuSeasonalsStorage, FileMenuSeasonalsStorage>();
 		services.AddSingleton<IFaqStorage, FileFaqStorage>();
 
-		services.AddSingleton<IMatchRepository, SqliteMatchRepository>();
+		services.AddSingleton<IMatchRepository, PostgresMatchRepository>();
 		services.AddSingleton<MatchReportCache>();
 		services.AddSingleton<IMatchReportRepository, MatchReportRepository>();
-		services.AddSingleton<IRoundRepository, SqliteRoundRepository>();
-		services.AddSingleton<IMatchEventRepository, SqliteMatchEventRepository>();
+		services.AddSingleton<IRoundRepository, PostgresRoundRepository>();
+		services.AddSingleton<IMatchEventRepository, PostgresMatchEventRepository>();
 
-		services.AddSingleton<IScoreRepository, SqliteScoreRepository>();
-		services.AddSingleton<IUserStatsRepository, SqliteUserStatsRepository>();
+		services.AddSingleton<IScoreRepository, PostgresScoreRepository>();
+		services.AddSingleton<IUserStatsRepository, PostgresUserStatsRepository>();
 		services.AddSingleton<IReplayStorage, FileReplayStorage>();
 
-		services.AddSingleton<IBeatmapsetRepository, SqliteBeatmapsetRepository>();
-		services.AddSingleton<IBeatmapRepository, SqliteBeatmapRepository>();
+		services.AddSingleton<IBeatmapsetRepository, PostgresBeatmapsetRepository>();
+		services.AddSingleton<IBeatmapRepository, PostgresBeatmapRepository>();
 		services.AddSingleton<IBeatmapsetStorage, FileBeatmapsetStorage>();
 		return services;
 	}

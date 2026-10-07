@@ -16,9 +16,6 @@ internal sealed class DataPaths(IOptions<StorageOptions> options)
 	/// <summary>Gets the directory that holds every stored file.</summary>
 	public string Root => root;
 
-	/// <summary>Gets the path of the server's database.</summary>
-	public string Database => Path.Combine(root, "Basil.db");
-
 	/// <summary>Gets the directory that holds the imported beatmapset archives.</summary>
 	public string Beatmapsets => Path.Combine(root, "Beatmapsets");
 

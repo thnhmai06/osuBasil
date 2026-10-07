@@ -5,22 +5,26 @@ using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Utilities;
-using Basil.Infrastructure.Storage.Batching;
 using Basil.Infrastructure.Storage.Caching;
 using Basil.Infrastructure.Storage.Multiplayer;
+using Basil.Infrastructure.Storage.Writing;
 using Dapper;
-using Microsoft.Data.Sqlite;
+using Npgsql;
 
 namespace Basil.Infrastructure.Storage.Scores;
 
 /// <summary>Stores submitted scores.</summary>
-internal sealed class SqliteScoreRepository(
-	DatabaseBatcher batcher,
+internal sealed class PostgresScoreRepository(
+	Database database,
+	DatabaseWriter writer,
 	IMatchRepository matches,
 	IRoundRepository rounds,
-	MatchReportCache reports) : CachedRepository<int, Score>(batcher), IScoreRepository
+	MatchReportCache reports) : CachedRepository<int, Score>(database, writer), IScoreRepository
 {
 	protected override int KeyOf(Score item) => item.Id;
+
+	protected override Root RootOf(Score item) =>
+		item.Value.Round is { } round ? Root.Match(round.Match.Id) : Root.User(item.Value.UserId ?? 0);
 
 	/// <inheritdoc />
 	/// <remarks>A duplicate checksum stores nothing and yields <see langword="null" />.</remarks>
@@ -34,22 +38,23 @@ internal sealed class SqliteScoreRepository(
 		}
 
 		var value = data with { Round = round };
+		var root = value.Round is { } scoreRound ? Root.Match(scoreRound.Match.Id) : Root.User(value.UserId ?? 0);
 		var parameters = Parameters(value);
 		int id;
 		try
 		{
-			id = await Batcher.WriteAsync((connection, transaction) => connection.QuerySingleOrDefaultAsync<int>(
+			id = await Writer.WriteAsync(root, (connection, transaction) => connection.QuerySingleOrDefaultAsync<int>(
 			"""
-			INSERT INTO Scores (UserId, BeatmapHash, Mode, Mods, Num300, Num100, Num50, NumGeki, NumKatu, NumMiss,
-			                    TotalScore, MaxCombo, Grade, IsPassed, IsFullCombo, Timestamp, MatchId, RoundNumber, Team, Checksum)
-			VALUES (@UserId, @BeatmapHash, @Mode, @Mods, @Num300, @Num100, @Num50, @NumGeki, @NumKatu, @NumMiss,
+			insert into scores (user_id, beatmap_hash, mode, mods, num300, num100, num50, num_geki, num_katu, num_miss,
+			                    total_score, max_combo, grade, is_passed, is_full_combo, timestamp, match_id, round_number, team, checksum)
+			values (@UserId, @BeatmapHash, @Mode, @Mods, @Num300, @Num100, @Num50, @NumGeki, @NumKatu, @NumMiss,
 			        @TotalScore, @MaxCombo, @Grade, @IsPassed, @IsFullCombo, @Timestamp, @MatchId, @RoundNumber, @Team, @Checksum)
-			ON CONFLICT(Checksum) DO NOTHING
-			RETURNING Id
+			on conflict (checksum) do nothing
+			returning id
 			""",
 			parameters, transaction), cancellationToken);
 		}
-		catch (SqliteException exception) when (exception.SqliteErrorCode == SqliteErrors.Constraint)
+		catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation)
 		{
 			return null;
 		}
@@ -73,16 +78,16 @@ internal sealed class SqliteScoreRepository(
 		var (where, parameters) = BuildFilter(query);
 		parameters.Add("Limit", page.Limit);
 		parameters.Add("Offset", page.Offset);
-		var (total, rows) = await Batcher.ReadAsync(async connection => (
-			await connection.ExecuteScalarAsync<int>($"SELECT COUNT(*) FROM Scores {where}", parameters),
+		var (total, rows) = await Database.ReadAsync(async connection => (
+			await connection.ExecuteScalarAsync<int>($"select count(*) from scores {where}", parameters),
 			await connection.QueryAsync<ScoreRow>(
 			$"""
-			 SELECT Id, UserId, BeatmapHash, Mode, Mods, Num300, Num100, Num50, NumGeki, NumKatu, NumMiss,
-			        TotalScore, MaxCombo, Grade, IsPassed, IsFullCombo, Timestamp, MatchId, RoundNumber, Team, Checksum
-			 FROM Scores
+			 select id, user_id, beatmap_hash, mode, mods, num300, num100, num50, num_geki, num_katu, num_miss,
+			        total_score, max_combo, grade, is_passed, is_full_combo, timestamp, match_id, round_number, team, checksum
+			 from scores
 			 {where}
-			 ORDER BY Timestamp DESC, Id DESC
-			 LIMIT @Limit OFFSET @Offset
+			 order by timestamp desc, id desc
+			 limit @Limit offset @Offset
 			""",
 			parameters)), cancellationToken);
 
@@ -93,11 +98,11 @@ internal sealed class SqliteScoreRepository(
 
 	protected override async Task<Score?> LoadAsync(int key, CancellationToken cancellationToken)
 	{
-		var row = await Batcher.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<ScoreRow>(
+		var row = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<ScoreRow>(
 			"""
-			SELECT Id, UserId, BeatmapHash, Mode, Mods, Num300, Num100, Num50, NumGeki, NumKatu, NumMiss,
-			       TotalScore, MaxCombo, Grade, IsPassed, IsFullCombo, Timestamp, MatchId, RoundNumber, Team, Checksum
-			FROM Scores WHERE Id = @Id
+			select id, user_id, beatmap_hash, mode, mods, num300, num100, num50, num_geki, num_katu, num_miss,
+			       total_score, max_combo, grade, is_passed, is_full_combo, timestamp, match_id, round_number, team, checksum
+			from scores where id = @Id
 			""",
 			new { Id = key }), cancellationToken);
 		if (row is null)
@@ -109,31 +114,31 @@ internal sealed class SqliteScoreRepository(
 
 	protected override string WriteSql =>
 		"""
-			INSERT INTO Scores (Id, UserId, BeatmapHash, Mode, Mods, Num300, Num100, Num50, NumGeki, NumKatu, NumMiss,
-			                    TotalScore, MaxCombo, Grade, IsPassed, IsFullCombo, Timestamp, MatchId, RoundNumber, Team, Checksum)
-			VALUES (@Id, @UserId, @BeatmapHash, @Mode, @Mods, @Num300, @Num100, @Num50, @NumGeki, @NumKatu, @NumMiss,
+			insert into scores (id, user_id, beatmap_hash, mode, mods, num300, num100, num50, num_geki, num_katu, num_miss,
+			                    total_score, max_combo, grade, is_passed, is_full_combo, timestamp, match_id, round_number, team, checksum)
+			values (@Id, @UserId, @BeatmapHash, @Mode, @Mods, @Num300, @Num100, @Num50, @NumGeki, @NumKatu, @NumMiss,
 			        @TotalScore, @MaxCombo, @Grade, @IsPassed, @IsFullCombo, @Timestamp, @MatchId, @RoundNumber, @Team, @Checksum)
-			ON CONFLICT(Id) DO UPDATE SET
-				UserId = excluded.UserId,
-				BeatmapHash = excluded.BeatmapHash,
-				Mode = excluded.Mode,
-				Mods = excluded.Mods,
-				Num300 = excluded.Num300,
-				Num100 = excluded.Num100,
-				Num50 = excluded.Num50,
-				NumGeki = excluded.NumGeki,
-				NumKatu = excluded.NumKatu,
-				NumMiss = excluded.NumMiss,
-				TotalScore = excluded.TotalScore,
-				MaxCombo = excluded.MaxCombo,
-				Grade = excluded.Grade,
-				IsPassed = excluded.IsPassed,
-				IsFullCombo = excluded.IsFullCombo,
-				Timestamp = excluded.Timestamp,
-				MatchId = excluded.MatchId,
-				RoundNumber = excluded.RoundNumber,
-				Team = excluded.Team,
-				Checksum = excluded.Checksum
+			on conflict (id) do update set
+				user_id = excluded.user_id,
+				beatmap_hash = excluded.beatmap_hash,
+				mode = excluded.mode,
+				mods = excluded.mods,
+				num300 = excluded.num300,
+				num100 = excluded.num100,
+				num50 = excluded.num50,
+				num_geki = excluded.num_geki,
+				num_katu = excluded.num_katu,
+				num_miss = excluded.num_miss,
+				total_score = excluded.total_score,
+				max_combo = excluded.max_combo,
+				grade = excluded.grade,
+				is_passed = excluded.is_passed,
+				is_full_combo = excluded.is_full_combo,
+				timestamp = excluded.timestamp,
+				match_id = excluded.match_id,
+				round_number = excluded.round_number,
+				team = excluded.team,
+				checksum = excluded.checksum;
 			""";
 
 	protected override object WriteParameters(Score score) => Parameters(score.Value, score.Id);
@@ -145,38 +150,38 @@ internal sealed class SqliteScoreRepository(
 		if (query.Player is { } player)
 		{
 			parameters.Add("UserId", player.Id);
-			conditions.Add("UserId = @UserId");
+			conditions.Add("user_id = @UserId");
 		}
 		if (query.BeatmapHash is { } beatmapHash)
 		{
 			parameters.Add("BeatmapHash", beatmapHash.HashValue);
-			conditions.Add("BeatmapHash = @BeatmapHash");
+			conditions.Add("beatmap_hash = @BeatmapHash");
 		}
 		if (query.Match is { } match)
 		{
 			parameters.Add("MatchId", match.Id);
-			conditions.Add("MatchId = @MatchId");
+			conditions.Add("match_id = @MatchId");
 		}
-		return (conditions.Count == 0 ? "" : $"WHERE {string.Join(" AND ", conditions)}", parameters);
+		return (conditions.Count == 0 ? "" : $"where {string.Join(" AND ", conditions)}", parameters);
 	}
 
-	private async Task<Dictionary<long, Dictionary<long, Round>>> LoadRoundsAsync(IEnumerable<long?> matchIds,
+	private async Task<Dictionary<int, Dictionary<int, Round>>> LoadRoundsAsync(IEnumerable<int?> matchIds,
 		CancellationToken cancellationToken)
 	{
-		var loaded = new Dictionary<long, Dictionary<long, Round>>();
-		foreach (var matchId in matchIds.OfType<long>().Distinct())
+		var loaded = new Dictionary<int, Dictionary<int, Round>>();
+		foreach (var matchId in matchIds.OfType<int>().Distinct())
 		{
-			var match = await matches.GetAsync((int)matchId, cancellationToken);
+			var match = await matches.GetAsync(matchId, cancellationToken);
 			if (match is null)
 				continue;
 
 			loaded[matchId] = (await rounds.ListAsync(match, cancellationToken))
-				.ToDictionary(round => (long)round.Number);
+				.ToDictionary(round => round.Number);
 		}
 		return loaded;
 	}
 
-	private static Round? FindRound(ScoreRow row, Dictionary<long, Dictionary<long, Round>> loaded)
+	private static Round? FindRound(ScoreRow row, Dictionary<int, Dictionary<int, Round>> loaded)
 	{
 		return row.MatchId is { } matchId && row.RoundNumber is { } roundNumber
 		       && loaded.TryGetValue(matchId, out var roundsByNumber)
@@ -193,7 +198,7 @@ internal sealed class SqliteScoreRepository(
 	private static ScoreData ToData(ScoreRow row, Round? round)
 	{
 		return new ScoreData(
-			row.UserId is { } userId ? (int)userId : null,
+			row.UserId,
 			row.BeatmapHash is { } beatmapHash ? new Md5(beatmapHash) : (Md5?)null,
 			(GameMode)row.Mode,
 			(GameMods)row.Mods,
@@ -201,9 +206,9 @@ internal sealed class SqliteScoreRepository(
 			row.TotalScore,
 			(short)row.MaxCombo,
 			(Grade)row.Grade,
-			row.IsPassed != 0,
-			row.IsFullCombo != 0,
-			DateTimeOffset.FromUnixTimeMilliseconds(row.Timestamp))
+			row.IsPassed,
+			row.IsFullCombo,
+			row.Timestamp)
 		with
 		{
 			Round = round,
@@ -219,8 +224,8 @@ internal sealed class SqliteScoreRepository(
 			Id = id,
 			UserId = value.UserId,
 			BeatmapHash = value.BeatmapHash?.HashValue,
-			Mode = (long)value.Mode,
-			Mods = (long)value.Mods,
+			Mode = (int)value.Mode,
+			Mods = (int)value.Mods,
 			value.HitCounts.Num300,
 			value.HitCounts.Num100,
 			value.HitCounts.Num50,
@@ -229,25 +234,25 @@ internal sealed class SqliteScoreRepository(
 			value.HitCounts.NumMiss,
 			value.TotalScore,
 			value.MaxCombo,
-			Grade = (long)value.Grade,
-			IsPassed = value.IsPassed ? 1 : 0,
-			IsFullCombo = value.IsFullCombo ? 1 : 0,
-			Timestamp = value.Timestamp.ToUnixTimeMilliseconds(),
+			Grade = (int)value.Grade,
+			IsPassed = value.IsPassed,
+			IsFullCombo = value.IsFullCombo,
+			Timestamp = value.Timestamp.ToUniversalTime(),
 			MatchId = value.Round?.Match.Id,
 			RoundNumber = value.Round?.Number,
-			Team = value.Team is { } team ? (long)team : (long?)null,
+			Team = value.Team is { } team ? (int)team : (int?)null,
 			Checksum = value.Checksum?.HashValue
 		};
 	}
 
-	/// <summary>A stored row of the Scores table.</summary>
+	/// <summary>A stored row of the <c>scores</c> table.</summary>
 	private sealed class ScoreRow
 	{
 		public int Id { get; set; }
-		public long? UserId { get; set; }
+		public int? UserId { get; set; }
 		public string? BeatmapHash { get; set; }
-		public long Mode { get; set; }
-		public long Mods { get; set; }
+		public int Mode { get; set; }
+		public int Mods { get; set; }
 		public int Num300 { get; set; }
 		public int Num100 { get; set; }
 		public int Num50 { get; set; }
@@ -256,13 +261,13 @@ internal sealed class SqliteScoreRepository(
 		public int NumMiss { get; set; }
 		public int TotalScore { get; set; }
 		public int MaxCombo { get; set; }
-		public long Grade { get; set; }
-		public long IsPassed { get; set; }
-		public long IsFullCombo { get; set; }
-		public long Timestamp { get; set; }
-		public long? MatchId { get; set; }
-		public long? RoundNumber { get; set; }
-		public long? Team { get; set; }
+		public int Grade { get; set; }
+		public bool IsPassed { get; set; }
+		public bool IsFullCombo { get; set; }
+		public DateTimeOffset Timestamp { get; set; }
+		public int? MatchId { get; set; }
+		public int? RoundNumber { get; set; }
+		public int? Team { get; set; }
 		public string? Checksum { get; set; }
 	}
 }

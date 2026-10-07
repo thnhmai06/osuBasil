@@ -6,16 +6,19 @@ using Basil.Application.Storage.Contracts.Common;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Utilities;
-using Basil.Infrastructure.Storage.Batching;
 using Basil.Infrastructure.Storage.Caching;
+using Basil.Infrastructure.Storage.Writing;
 using Dapper;
-using Microsoft.Data.Sqlite;
+using Npgsql;
 
 namespace Basil.Infrastructure.Storage.Beatmaps;
 
-/// <summary>Stores beatmap difficulties in the <c>Beatmaps</c> table.</summary>
-internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, IBeatmapRepository
+/// <summary>Stores beatmap difficulties in the <c>beatmaps</c> table.</summary>
+internal sealed class PostgresBeatmapRepository : CachedRepository<int, Beatmap>, IBeatmapRepository
 {
+	// jsonb keeps object keys in its own order, so the mode discriminator need not come first.
+	private static readonly JsonSerializerOptions StoredJson = new() { AllowOutOfOrderMetadataProperties = true };
+
 	private readonly IBeatmapsetRepository _beatmapsets;
 	private readonly ConcurrentDictionary<Md5, int> _idsByHash = new();
 	private readonly ConcurrentDictionary<int, Md5> _hashesById = new();
@@ -24,13 +27,15 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 	// The beatmaps a set keeps while the deletion of its others is queued, by set id.
 	private readonly ConcurrentDictionary<int, HashSet<int>> _retaining = new();
 
-	public SqliteBeatmapRepository(DatabaseBatcher batcher, IBeatmapsetRepository beatmapsets)
-		: base(batcher)
+	public PostgresBeatmapRepository(Database database, DatabaseWriter writer, IBeatmapsetRepository beatmapsets)
+		: base(database, writer)
 	{
 		_beatmapsets = beatmapsets;
 	}
 
 	protected override int KeyOf(Beatmap item) => item.Id;
+
+	protected override Root RootOf(Beatmap item) => Root.Beatmapset(item.Value.Beatmapset.Id);
 
 	/// <inheritdoc />
 	public async Task<Beatmap> CreateAsync(BeatmapData data, int? onlineId = null,
@@ -39,14 +44,14 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 		var set = await LiveSetAsync(data.Beatmapset, cancellationToken);
 		var value = WithSet(data, set);
 		var parameters = new DynamicParameters(Parameters(0, value));
-		var id = await Batcher.WriteAsync(async (connection, transaction) =>
+		var id = await Writer.WriteAsync(Root.Beatmapset(set.Id), async (connection, transaction) =>
 		{
 			var newId = onlineId ?? await NextLocalIdAsync(connection, transaction);
 			parameters.Add("Id", newId);
 			await connection.ExecuteAsync(
 				"""
-				INSERT INTO Beatmaps (Id, BeatmapsetId, Hash, Version, Mode, Star, Length, Bpm, Cs, Ar, Od, Hp, Objects, Locked, Visible)
-				VALUES (@Id, @BeatmapsetId, @Hash, @Version, @Mode, @Star, @Length, @Bpm, @Cs, @Ar, @Od, @Hp, @Objects, @Locked, @Visible)
+				insert into beatmaps (id, beatmapset_id, hash, version, mode, star, length, bpm, cs, ar, od, hp, objects, locked, visible)
+				values (@Id, @BeatmapsetId, @Hash, @Version, @Mode, @Star, @Length, @Bpm, @Cs, @Ar, @Od, @Hp, @Objects::jsonb, @Locked, @Visible)
 				""",
 				parameters, transaction);
 			return newId;
@@ -70,10 +75,10 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 			var parameters = Parameters(id, value);
 			try
 			{
-				await Batcher.WriteAsync((connection, transaction) =>
+				await Writer.WriteAsync(Root.Beatmapset(value.Beatmapset.Id), (connection, transaction) =>
 					connection.ExecuteAsync(WriteSql, parameters, transaction), cancellationToken);
 			}
-			catch (SqliteException exception) when (exception.SqliteErrorCode == SqliteErrors.Constraint)
+			catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation)
 			{
 				throw new InvalidOperationException($"Another beatmap already has the hash {value.Hash}.", exception);
 			}
@@ -118,7 +123,7 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 			_idsByHash.TryRemove(new KeyValuePair<Md5, int>(hash, id));
 		}
 
-		var row = await Batcher.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<BeatmapRow>(
+		var row = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<BeatmapRow>(
 			ByHashSql, new { Hash = hash.HashValue }), cancellationToken);
 		if (row is null)
 			return null;
@@ -134,7 +139,7 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 		var liveSet = await LiveSetAsync(set, cancellationToken);
 		return await _bySet.GetOrLoadAsync(liveSet.Id, async () =>
 		{
-			var rows = await Batcher.ReadAsync(connection => connection.QueryAsync<BeatmapRow>(
+			var rows = await Database.ReadAsync(connection => connection.QueryAsync<BeatmapRow>(
 				BySetSql, new { SetId = liveSet.Id }), cancellationToken);
 			var beatmaps = ImmutableList.CreateBuilder<Beatmap>();
 			foreach (var row in rows)
@@ -156,20 +161,20 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 		var where = BeatmapQueryFilter.Build(query, parameters);
 		var filter = where.Length == 0 ? "" : $" WHERE {where}";
 		var sql = $"""
-		           SELECT b.Id, b.BeatmapsetId, b.Hash, b.Version, b.Mode, b.Star, b.Length, b.Bpm, b.Cs, b.Ar, b.Od, b.Hp, b.Objects, b.Locked, b.Visible,
-		                  s.Id AS SetId, s.Artist AS SetArtist, s.Title AS SetTitle, s.Creator AS SetCreator, s.CreatedAt AS SetCreatedAt, s.UpdatedAt AS SetUpdatedAt, s.Locked AS SetLocked, s.Visible AS SetVisible
-		           FROM Beatmaps b
-		           JOIN Beatmapsets s ON s.Id = b.BeatmapsetId{filter}
-		           ORDER BY b.BeatmapsetId DESC, b.Star ASC
-		           LIMIT @limit OFFSET @offset
+		           select b.id, b.beatmapset_id, b.hash, b.version, b.mode, b.star, b.length, b.bpm, b.cs, b.ar, b.od, b.hp, b.objects, b.locked, b.visible,
+		                  s.id as set_id, s.artist as set_artist, s.title as set_title, s.creator as set_creator, s.created_at as set_created_at, s.updated_at as set_updated_at, s.locked as set_locked, s.visible as set_visible
+		           from beatmaps b
+		           join beatmapsets s on s.id = b.beatmapset_id{filter}
+		           order by b.beatmapset_id desc, b.star asc
+		           limit @limit offset @offset
 		           """;
 		var countSql = $"""
-		                SELECT COUNT(*)
-		                FROM Beatmaps b
-		                JOIN Beatmapsets s ON s.Id = b.BeatmapsetId{filter}
+		                select count(*)
+		                from beatmaps b
+		                join beatmapsets s on s.id = b.beatmapset_id{filter}
 		                """;
 
-		var (rows, total) = await Batcher.ReadAsync(async connection => (
+		var (rows, total) = await Database.ReadAsync(async connection => (
 			await connection.QueryAsync<BeatmapRow>(sql, parameters),
 			await connection.ExecuteScalarAsync<int>(countSql, parameters)), cancellationToken);
 		var items = new List<Beatmap>();
@@ -189,27 +194,17 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 	{
 		var setId = set.Id;
 		var keepIds = keep.Select(beatmap => beatmap.Id).ToArray();
-		var keepAny = keepIds.Length != 0;
-		var deleteAllParameters = new { SetId = setId };
-		var deleteKeptParameters = new { SetId = setId, KeepIds = keepIds };
 		var keepSet = keepIds.ToHashSet();
-		foreach (var beatmap in Items.Values.Where(beatmap => beatmap.Value.Beatmapset.Id == setId && !keepSet.Contains(beatmap.Id)))
+		foreach (var beatmap in Items.Values.Where(beatmap =>
+			         beatmap.Value.Beatmapset.Id == setId && !keepSet.Contains(beatmap.Id)))
 			RemoveCached(beatmap);
 
 		_retaining[setId] = keepSet;
-		var retained = Batcher.EnqueueAsync((GetType(), "retain", setId), async (connection, transaction) =>
-		{
-			if (!keepAny)
-			{
-				await connection.ExecuteAsync("DELETE FROM Beatmaps WHERE BeatmapsetId = @SetId", deleteAllParameters, transaction);
-				return;
-			}
-
-			await connection.ExecuteAsync(
-				"DELETE FROM Beatmaps WHERE BeatmapsetId = @SetId AND Id NOT IN @KeepIds",
-				deleteKeptParameters, transaction);
-		});
-		_bySet.Change(setId, current => current.Where(beatmap => keepSet.Contains(beatmap.Id)).ToImmutableList(), retained);
+		var retained = Writer.EnqueueAsync(Root.Beatmapset(setId), (GetType(), "retain", setId), new WriteCommand(
+			"delete from beatmaps where beatmapset_id = @SetId and id <> all(@KeepIds)",
+			new { SetId = setId, KeepIds = keepIds }));
+		_bySet.Change(setId, current => current.Where(beatmap => keepSet.Contains(beatmap.Id)).ToImmutableList(),
+			retained);
 		retained.ContinueWith(_ => _retaining.TryRemove(new KeyValuePair<int, HashSet<int>>(setId, keepSet)),
 			TaskScheduler.Default);
 		return Task.CompletedTask;
@@ -217,7 +212,7 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 
 	protected override async Task<Beatmap?> LoadAsync(int key, CancellationToken cancellationToken)
 	{
-		var row = await Batcher.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<BeatmapRow>(
+		var row = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<BeatmapRow>(
 			ByIdSql, new { Id = key }), cancellationToken);
 		return row is null ? null : await ToBeatmapAsync(row, cancellationToken);
 	}
@@ -227,54 +222,54 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 	protected override object WriteParameters(Beatmap beatmap) => Parameters(beatmap.Id, beatmap.Value);
 
 	private const string UpsertSql = """
-			INSERT INTO Beatmaps (Id, BeatmapsetId, Hash, Version, Mode, Star, Length, Bpm, Cs, Ar, Od, Hp, Objects, Locked, Visible)
-			VALUES (@Id, @BeatmapsetId, @Hash, @Version, @Mode, @Star, @Length, @Bpm, @Cs, @Ar, @Od, @Hp, @Objects, @Locked, @Visible)
-			ON CONFLICT(Id) DO UPDATE SET
-				BeatmapsetId = excluded.BeatmapsetId,
-				Hash = excluded.Hash,
-				Version = excluded.Version,
-				Mode = excluded.Mode,
-				Star = excluded.Star,
-				Length = excluded.Length,
-				Bpm = excluded.Bpm,
-				Cs = excluded.Cs,
-				Ar = excluded.Ar,
-				Od = excluded.Od,
-				Hp = excluded.Hp,
-				Objects = excluded.Objects,
-				Locked = excluded.Locked,
-				Visible = excluded.Visible;
-			""";
+	                                 insert into beatmaps (id, beatmapset_id, hash, version, mode, star, length, bpm, cs, ar, od, hp, objects, locked, visible)
+	                                 values (@Id, @BeatmapsetId, @Hash, @Version, @Mode, @Star, @Length, @Bpm, @Cs, @Ar, @Od, @Hp, @Objects::jsonb, @Locked, @Visible)
+	                                 on conflict (id) do update set
+	                                 	beatmapset_id = excluded.beatmapset_id,
+	                                 	hash = excluded.hash,
+	                                 	version = excluded.version,
+	                                 	mode = excluded.mode,
+	                                 	star = excluded.star,
+	                                 	length = excluded.length,
+	                                 	bpm = excluded.bpm,
+	                                 	cs = excluded.cs,
+	                                 	ar = excluded.ar,
+	                                 	od = excluded.od,
+	                                 	hp = excluded.hp,
+	                                 	objects = excluded.objects,
+	                                 	locked = excluded.locked,
+	                                 	visible = excluded.visible;
+	                                 """;
 
-	protected override Task EraseAsync(SqliteConnection connection, SqliteTransaction transaction, int key)
+	protected override WriteCommand EraseCommand(int key)
 	{
-		return connection.ExecuteAsync("DELETE FROM Beatmaps WHERE Id = @Id", new { Id = key }, transaction);
+		return new WriteCommand("delete from beatmaps where id = @Id", new { Id = key });
 	}
 
 	private const string ByIdSql = """
-		SELECT b.Id, b.BeatmapsetId, b.Hash, b.Version, b.Mode, b.Star, b.Length, b.Bpm, b.Cs, b.Ar, b.Od, b.Hp, b.Objects, b.Locked, b.Visible,
-		       s.Id AS SetId, s.Artist AS SetArtist, s.Title AS SetTitle, s.Creator AS SetCreator, s.CreatedAt AS SetCreatedAt, s.UpdatedAt AS SetUpdatedAt, s.Locked AS SetLocked, s.Visible AS SetVisible
-		FROM Beatmaps b
-		JOIN Beatmapsets s ON s.Id = b.BeatmapsetId
-		WHERE b.Id = @Id
-		""";
+	                               select b.id, b.beatmapset_id, b.hash, b.version, b.mode, b.star, b.length, b.bpm, b.cs, b.ar, b.od, b.hp, b.objects, b.locked, b.visible,
+	                                      s.id as set_id, s.artist as set_artist, s.title as set_title, s.creator as set_creator, s.created_at as set_created_at, s.updated_at as set_updated_at, s.locked as set_locked, s.visible as set_visible
+	                               from beatmaps b
+	                               join beatmapsets s on s.id = b.beatmapset_id
+	                               where b.id = @Id
+	                               """;
 
 	private const string ByHashSql = """
-		SELECT b.Id, b.BeatmapsetId, b.Hash, b.Version, b.Mode, b.Star, b.Length, b.Bpm, b.Cs, b.Ar, b.Od, b.Hp, b.Objects, b.Locked, b.Visible,
-		       s.Id AS SetId, s.Artist AS SetArtist, s.Title AS SetTitle, s.Creator AS SetCreator, s.CreatedAt AS SetCreatedAt, s.UpdatedAt AS SetUpdatedAt, s.Locked AS SetLocked, s.Visible AS SetVisible
-		FROM Beatmaps b
-		JOIN Beatmapsets s ON s.Id = b.BeatmapsetId
-		WHERE b.Hash = @Hash
-		""";
+	                                 select b.id, b.beatmapset_id, b.hash, b.version, b.mode, b.star, b.length, b.bpm, b.cs, b.ar, b.od, b.hp, b.objects, b.locked, b.visible,
+	                                        s.id as set_id, s.artist as set_artist, s.title as set_title, s.creator as set_creator, s.created_at as set_created_at, s.updated_at as set_updated_at, s.locked as set_locked, s.visible as set_visible
+	                                 from beatmaps b
+	                                 join beatmapsets s on s.id = b.beatmapset_id
+	                                 where b.hash = @Hash
+	                                 """;
 
 	private const string BySetSql = """
-		SELECT b.Id, b.BeatmapsetId, b.Hash, b.Version, b.Mode, b.Star, b.Length, b.Bpm, b.Cs, b.Ar, b.Od, b.Hp, b.Objects, b.Locked, b.Visible,
-		       s.Id AS SetId, s.Artist AS SetArtist, s.Title AS SetTitle, s.Creator AS SetCreator, s.CreatedAt AS SetCreatedAt, s.UpdatedAt AS SetUpdatedAt, s.Locked AS SetLocked, s.Visible AS SetVisible
-		FROM Beatmaps b
-		JOIN Beatmapsets s ON s.Id = b.BeatmapsetId
-		WHERE b.BeatmapsetId = @SetId
-		ORDER BY b.Id
-		""";
+	                                select b.id, b.beatmapset_id, b.hash, b.version, b.mode, b.star, b.length, b.bpm, b.cs, b.ar, b.od, b.hp, b.objects, b.locked, b.visible,
+	                                       s.id as set_id, s.artist as set_artist, s.title as set_title, s.creator as set_creator, s.created_at as set_created_at, s.updated_at as set_updated_at, s.locked as set_locked, s.visible as set_visible
+	                                from beatmaps b
+	                                join beatmapsets s on s.id = b.beatmapset_id
+	                                where b.beatmapset_id = @SetId
+	                                order by b.id
+	                                """;
 
 	protected override bool IsBeingRemoved(Beatmap beatmap) =>
 		base.IsBeingRemoved(beatmap) ||
@@ -308,10 +303,9 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 		return index < 0 ? current.Add(beatmap) : current.SetItem(index, beatmap);
 	}
 
-	private static async Task<int> NextLocalIdAsync(SqliteConnection connection, System.Data.Common.DbTransaction transaction)
+	private static Task<int> NextLocalIdAsync(NpgsqlConnection connection, NpgsqlTransaction transaction)
 	{
-		var max = await connection.ExecuteScalarAsync<int?>("SELECT COALESCE(MAX(Id), 0) FROM Beatmaps", transaction: transaction);
-		return Math.Max(Beatmap.LocalIdFloor, (max ?? 0) + 1);
+		return connection.ExecuteScalarAsync<int>("select nextval('local_beatmap_ids')::int", transaction: transaction);
 	}
 
 	private static object Parameters(int id, BeatmapData value)
@@ -324,15 +318,15 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 			value.Version,
 			Mode = (int)value.Difficulty.Mode,
 			value.Difficulty.Star,
-			Length = (long)value.Difficulty.Length.TotalMilliseconds,
+			Length = (int)value.Difficulty.Length.TotalMilliseconds,
 			value.Difficulty.Bpm,
 			Cs = value.Difficulty.Cs,
 			Ar = value.Difficulty.Ar,
 			Od = value.Difficulty.Od,
 			Hp = value.Difficulty.Hp,
 			Objects = JsonSerializer.Serialize(value.Objects),
-			Locked = value.Locked ? 1 : 0,
-			Visible = value.Visible ? 1 : 0
+			Locked = value.Locked,
+			Visible = value.Visible
 		};
 	}
 
@@ -358,24 +352,24 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 	{
 		var set = await LiveSetAsync(new Beatmapset
 		{
-			Id = (int)row.SetId,
+			Id = row.SetId,
 			Value = new BeatmapsetData
 			{
 				Artist = row.SetArtist,
 				Title = row.SetTitle,
 				Creator = row.SetCreator,
-				CreatedAt = DateTimeOffset.FromUnixTimeMilliseconds(row.SetCreatedAt),
-				UpdatedAt = DateTimeOffset.FromUnixTimeMilliseconds(row.SetUpdatedAt),
-				Locked = row.SetLocked != 0,
-				Visible = row.SetVisible != 0
+				CreatedAt = row.SetCreatedAt,
+				UpdatedAt = row.SetUpdatedAt,
+				Locked = row.SetLocked,
+				Visible = row.SetVisible
 			}
 		}, cancellationToken);
-		var objects = JsonSerializer.Deserialize<BeatmapObjects>(row.Objects)
+		var objects = JsonSerializer.Deserialize<BeatmapObjects>(row.Objects, StoredJson)
 		              ?? BeatmapObjects.NewFrom((GameMode)row.Mode);
 
 		return new Beatmap
 		{
-			Id = (int)row.Id,
+			Id = row.Id,
 			Value = new BeatmapData
 			{
 				Hash = new Md5(row.Hash),
@@ -391,8 +385,8 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 					Hp: row.Hp,
 					Star: row.Star),
 				Objects = objects,
-				Locked = row.Locked != 0,
-				Visible = row.Visible != 0
+				Locked = row.Locked,
+				Visible = row.Visible
 			}
 		};
 	}
@@ -400,28 +394,28 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 	/// <summary>A stored beatmap row joined with its beatmapset.</summary>
 	private sealed class BeatmapRow
 	{
-		public long Id { get; set; }
-		public long BeatmapsetId { get; set; }
+		public int Id { get; set; }
+		public int BeatmapsetId { get; set; }
 		public string Hash { get; set; } = "";
 		public string Version { get; set; } = "";
-		public long Mode { get; set; }
+		public int Mode { get; set; }
 		public double Star { get; set; }
-		public long Length { get; set; }
+		public int Length { get; set; }
 		public double Bpm { get; set; }
 		public double Cs { get; set; }
 		public double Ar { get; set; }
 		public double Od { get; set; }
 		public double Hp { get; set; }
 		public string Objects { get; set; } = "";
-		public long Locked { get; set; }
-		public long Visible { get; set; }
-		public long SetId { get; set; }
+		public bool Locked { get; set; }
+		public bool Visible { get; set; }
+		public int SetId { get; set; }
 		public string SetArtist { get; set; } = "";
 		public string SetTitle { get; set; } = "";
 		public string SetCreator { get; set; } = "";
-		public long SetCreatedAt { get; set; }
-		public long SetUpdatedAt { get; set; }
-		public long SetLocked { get; set; }
-		public long SetVisible { get; set; }
+		public DateTimeOffset SetCreatedAt { get; set; }
+		public DateTimeOffset SetUpdatedAt { get; set; }
+		public bool SetLocked { get; set; }
+		public bool SetVisible { get; set; }
 	}
 }

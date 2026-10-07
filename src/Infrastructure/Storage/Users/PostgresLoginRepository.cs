@@ -1,13 +1,12 @@
 using System.Globalization;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Auth;
-using Basil.Infrastructure.Storage.Batching;
-using Dapper;
+using Basil.Infrastructure.Storage.Writing;
 
 namespace Basil.Infrastructure.Storage.Users;
 
 /// <summary>Records the history of logins.</summary>
-internal sealed class SqliteLoginRepository(DatabaseBatcher batcher) : ILoginRepository
+internal sealed class PostgresLoginRepository(DatabaseWriter writer) : ILoginRepository
 {
 	/// <inheritdoc />
 	public Task CreateAsync(Login login, CancellationToken cancellationToken = default)
@@ -16,11 +15,11 @@ internal sealed class SqliteLoginRepository(DatabaseBatcher batcher) : ILoginRep
 		var values = new
 		{
 			UserId = login.User.Id,
-			Ip = login.Ip.ToString(),
-			Timestamp = login.Timestamp.ToUnixTimeMilliseconds(),
+			login.Ip,
+			Timestamp = login.Timestamp.ToUniversalTime(),
 			ClientDate = client?.Version.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
 			ClientRevision = client?.Version.Revision,
-			ClientStream = client is null ? null : (long?)client.Version.Stream,
+			ClientStream = client is null ? null : (int?)client.Version.Stream,
 			OsuPathHash = client?.Fingerprint.OsuPathHash.HashValue,
 			NetworkAdapters = client?.Fingerprint.NetworkAdapters.Adapters,
 			NetworkAdaptersHash = client?.Fingerprint.NetworkAdapters.Hash.HashValue,
@@ -28,14 +27,14 @@ internal sealed class SqliteLoginRepository(DatabaseBatcher batcher) : ILoginRep
 			DiskSignatureHash = client?.Fingerprint.DiskSignatureHash.HashValue
 		};
 
-		_ = batcher.AppendAsync((connection, transaction) => connection.ExecuteAsync(
+		_ = writer.AppendAsync(Root.User(login.User.Id), new WriteCommand(
 			"""
-			INSERT INTO Logins (UserId, Ip, Timestamp, ClientDate, ClientRevision, ClientStream, OsuPathHash,
-			                    NetworkAdapters, NetworkAdaptersHash, UninstallHash, DiskSignatureHash)
-			VALUES (@UserId, @Ip, @Timestamp, @ClientDate, @ClientRevision, @ClientStream, @OsuPathHash,
+			insert into logins (user_id, ip, timestamp, client_date, client_revision, client_stream, osu_path_hash,
+			                    network_adapters, network_adapters_hash, uninstall_hash, disk_signature_hash)
+			values (@UserId, @Ip, @Timestamp, @ClientDate, @ClientRevision, @ClientStream, @OsuPathHash,
 			        @NetworkAdapters, @NetworkAdaptersHash, @UninstallHash, @DiskSignatureHash);
 			""",
-			values, transaction));
+			values));
 		return Task.CompletedTask;
 	}
 }

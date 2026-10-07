@@ -1,13 +1,13 @@
 using System.Globalization;
 using System.Reflection;
-using System.Data.Common;
-using Microsoft.Data.Sqlite;
+using Npgsql;
 
 namespace Basil.Infrastructure.Storage;
 
 /// <summary>Brings the database up to date with the schema the server was built against.</summary>
 /// <remarks>
 ///     Applies every pending migration script once, in version order, and records the applied version in the database.
+///     The pending migrations are applied together: when one fails, the database is left as it was.
 /// </remarks>
 internal sealed class DatabaseMigrator(Database database)
 {
@@ -19,20 +19,36 @@ internal sealed class DatabaseMigrator(Database database)
 	public async Task MigrateAsync(CancellationToken cancellationToken = default)
 	{
 		await using var connection = await database.OpenAsync(cancellationToken);
-		await ExecuteAsync(connection, "PRAGMA journal_mode = WAL;", cancellationToken);
+		await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
 
-		var version = await ReadVersionAsync(connection, cancellationToken);
+		await using (var createVersion = new NpgsqlCommand(
+			             "create table if not exists schema_version (id integer primary key check (id = 1), version integer not null)",
+			             connection, transaction))
+			await createVersion.ExecuteNonQueryAsync(cancellationToken);
+
+		var version = await ReadVersionAsync(connection, transaction, cancellationToken);
+		var lastApplied = 0;
 
 		foreach (var (next, sql) in Migrations())
 		{
 			if (next <= version)
 				continue;
 
-			await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
-			await ExecuteAsync(connection, sql, cancellationToken, transaction);
-			await ExecuteAsync(connection, $"PRAGMA user_version = {next};", cancellationToken, transaction);
-			await transaction.CommitAsync(cancellationToken);
+			await using var command = new NpgsqlCommand(sql, connection, transaction);
+			await command.ExecuteNonQueryAsync(cancellationToken);
+			lastApplied = next;
 		}
+
+		if (lastApplied > 0)
+		{
+			await using var upsert = new NpgsqlCommand(
+				"insert into schema_version (id, version) values (1, $1) on conflict (id) do update set version = excluded.version",
+				connection, transaction);
+			upsert.Parameters.AddWithValue(lastApplied);
+			await upsert.ExecuteNonQueryAsync(cancellationToken);
+		}
+
+		await transaction.CommitAsync(cancellationToken);
 	}
 
 	private static IEnumerable<(int Version, string Sql)> Migrations()
@@ -62,20 +78,12 @@ internal sealed class DatabaseMigrator(Database database)
 		return reader.ReadToEnd();
 	}
 
-	private static async Task<int> ReadVersionAsync(SqliteConnection connection, CancellationToken cancellationToken)
+	private static async Task<int> ReadVersionAsync(NpgsqlConnection connection, NpgsqlTransaction transaction,
+		CancellationToken cancellationToken)
 	{
-		await using var command = connection.CreateCommand();
-		command.CommandText = "PRAGMA user_version;";
+		await using var command = new NpgsqlCommand("select version from schema_version where id = 1", connection,
+			transaction);
 		var value = await command.ExecuteScalarAsync(cancellationToken);
-		return Convert.ToInt32(value, CultureInfo.InvariantCulture);
-	}
-
-	private static async Task ExecuteAsync(SqliteConnection connection, string sql, CancellationToken cancellationToken,
-		DbTransaction? transaction = null)
-	{
-		await using var command = connection.CreateCommand();
-		command.CommandText = sql;
-		command.Transaction = (SqliteTransaction?)transaction;
-		await command.ExecuteNonQueryAsync(cancellationToken);
+		return value is null ? 0 : Convert.ToInt32(value, CultureInfo.InvariantCulture);
 	}
 }

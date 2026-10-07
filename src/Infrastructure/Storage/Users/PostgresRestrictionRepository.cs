@@ -1,20 +1,21 @@
 using System.Collections.Immutable;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Storage.Batching;
 using Basil.Infrastructure.Storage.Caching;
+using Basil.Infrastructure.Storage.Writing;
 using Dapper;
-using Microsoft.Data.Sqlite;
 
 namespace Basil.Infrastructure.Storage.Users;
 
 /// <summary>Stores the restrictions of users.</summary>
-internal sealed class SqliteRestrictionRepository(DatabaseBatcher batcher, IUserRepository users)
-	: CachedRepository<int, Restriction>(batcher), IRestrictionRepository
+internal sealed class PostgresRestrictionRepository(Database database, DatabaseWriter writer, IUserRepository users)
+	: CachedRepository<int, Restriction>(database, writer), IRestrictionRepository
 {
 	private readonly OwnedLists<int, Restriction> _byUser = new();
 
 	protected override int KeyOf(Restriction item) => item.Id;
+
+	protected override Root RootOf(Restriction item) => Root.User(item.Value.User.Id);
 
 	/// <inheritdoc />
 	public async Task<Restriction> CreateAsync(RestrictionData data, CancellationToken cancellationToken = default)
@@ -31,15 +32,15 @@ internal sealed class SqliteRestrictionRepository(DatabaseBatcher batcher, IUser
 		{
 			UserId = value.User.Id,
 			Permissions = (long)value.Permissions,
-			StartsAt = value.StartsAt.ToUnixTimeMilliseconds(),
-			EndsAt = value.EndsAt?.ToUnixTimeMilliseconds()
+			StartsAt = value.StartsAt.ToUniversalTime(),
+			EndsAt = value.EndsAt?.ToUniversalTime()
 		};
 
-		var id = await Batcher.WriteAsync((connection, transaction) => connection.QuerySingleAsync<int>(
+		var id = await Writer.WriteAsync(Root.User(user.Id), (connection, transaction) => connection.QuerySingleAsync<int>(
 			"""
-			INSERT INTO Restrictions (UserId, Permissions, StartsAt, EndsAt)
-			VALUES (@UserId, @Permissions, @StartsAt, @EndsAt)
-			RETURNING Id;
+			insert into restrictions (user_id, permissions, starts_at, ends_at)
+			values (@UserId, @Permissions, @StartsAt, @EndsAt)
+			returning id;
 			""",
 			parameters, transaction), cancellationToken);
 
@@ -66,8 +67,8 @@ internal sealed class SqliteRestrictionRepository(DatabaseBatcher batcher, IUser
 		var liveUser = await users.GetAsync(user.Id, cancellationToken) ?? user;
 		return await _byUser.GetOrLoadAsync(liveUser.Id, async () =>
 		{
-			var rows = await Batcher.ReadAsync(connection => connection.QueryAsync<RestrictionRow>(
-				"SELECT Id, UserId, Permissions, StartsAt, EndsAt FROM Restrictions WHERE UserId = @UserId ORDER BY StartsAt, Id",
+			var rows = await Database.ReadAsync(connection => connection.QueryAsync<RestrictionRow>(
+				"select id, user_id, permissions, starts_at, ends_at from restrictions where user_id = @UserId order by starts_at, id",
 				new { UserId = liveUser.Id }), cancellationToken);
 			var restrictions = ImmutableList.CreateBuilder<Restriction>();
 			foreach (var row in rows)
@@ -78,8 +79,8 @@ internal sealed class SqliteRestrictionRepository(DatabaseBatcher batcher, IUser
 
 	protected override async Task<Restriction?> LoadAsync(int key, CancellationToken cancellationToken)
 	{
-		var row = await Batcher.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<RestrictionRow>(
-			"SELECT Id, UserId, Permissions, StartsAt, EndsAt FROM Restrictions WHERE Id = @Id", new { Id = key }), cancellationToken);
+		var row = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<RestrictionRow>(
+			"select id, user_id, permissions, starts_at, ends_at from restrictions where id = @Id", new { Id = key }), cancellationToken);
 		if (row is null)
 			return null;
 
@@ -89,13 +90,13 @@ internal sealed class SqliteRestrictionRepository(DatabaseBatcher batcher, IUser
 
 	protected override string WriteSql =>
 		"""
-		INSERT INTO Restrictions (Id, UserId, Permissions, StartsAt, EndsAt)
-		VALUES (@Id, @UserId, @Permissions, @StartsAt, @EndsAt)
-		ON CONFLICT(Id) DO UPDATE SET
-			UserId = excluded.UserId,
-			Permissions = excluded.Permissions,
-			StartsAt = excluded.StartsAt,
-			EndsAt = excluded.EndsAt;
+		insert into restrictions (id, user_id, permissions, starts_at, ends_at)
+		values (@Id, @UserId, @Permissions, @StartsAt, @EndsAt)
+		on conflict (id) do update set
+			user_id = excluded.user_id,
+			permissions = excluded.permissions,
+			starts_at = excluded.starts_at,
+			ends_at = excluded.ends_at;
 		""";
 
 	protected override object WriteParameters(Restriction restriction)
@@ -106,8 +107,8 @@ internal sealed class SqliteRestrictionRepository(DatabaseBatcher batcher, IUser
 			restriction.Id,
 			UserId = value.User.Id,
 			Permissions = (long)value.Permissions,
-			StartsAt = value.StartsAt.ToUnixTimeMilliseconds(),
-			EndsAt = value.EndsAt?.ToUnixTimeMilliseconds()
+			StartsAt = value.StartsAt.ToUniversalTime(),
+			EndsAt = value.EndsAt?.ToUniversalTime()
 		};
 	}
 
@@ -127,19 +128,19 @@ internal sealed class SqliteRestrictionRepository(DatabaseBatcher batcher, IUser
 			{
 				User = user,
 				Permissions = (Permissions)(ulong)row.Permissions,
-				StartsAt = DateTimeOffset.FromUnixTimeMilliseconds(row.StartsAt),
-				EndsAt = row.EndsAt is { } endsAt ? DateTimeOffset.FromUnixTimeMilliseconds(endsAt) : null
+				StartsAt = row.StartsAt,
+				EndsAt = row.EndsAt
 			}
 		};
 	}
 
-	/// <summary>A stored row of the Restrictions table.</summary>
+	/// <summary>A stored row of the <c>restrictions</c> table.</summary>
 	private sealed class RestrictionRow
 	{
 		public int Id { get; set; }
 		public int UserId { get; set; }
 		public long Permissions { get; set; }
-		public long StartsAt { get; set; }
-		public long? EndsAt { get; set; }
+		public DateTimeOffset StartsAt { get; set; }
+		public DateTimeOffset? EndsAt { get; set; }
 	}
 }

@@ -1,18 +1,19 @@
 using Basil.Application.Storage.Contracts.Scores;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Storage.Batching;
 using Basil.Infrastructure.Storage.Caching;
+using Basil.Infrastructure.Storage.Writing;
 using Dapper;
-using Microsoft.Data.Sqlite;
 
 namespace Basil.Infrastructure.Storage.Scores;
 
 /// <summary>Stores users' cumulative score statistics.</summary>
-internal sealed class SqliteUserStatsRepository(DatabaseBatcher batcher)
-	: CachedRepository<(int UserId, GameMode Mode), UserStats>(batcher), IUserStatsRepository
+internal sealed class PostgresUserStatsRepository(Database database, DatabaseWriter writer)
+	: CachedRepository<(int UserId, GameMode Mode), UserStats>(database, writer), IUserStatsRepository
 {
 	protected override (int UserId, GameMode Mode) KeyOf(UserStats item) => (item.UserId, item.Mode);
+
+	protected override Root RootOf(UserStats item) => Root.User(item.UserId);
 
 	/// <inheritdoc />
 	public async ValueTask<UserStats> GetAsync(User user, GameMode mode, CancellationToken cancellationToken = default)
@@ -35,9 +36,9 @@ internal sealed class SqliteUserStatsRepository(DatabaseBatcher batcher)
 
 	protected override async Task<UserStats?> LoadAsync((int UserId, GameMode Mode) key, CancellationToken cancellationToken)
 	{
-		var row = await Batcher.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<StatsRow>(
-			"SELECT UserId, Mode, TotalScore, RankedScore, PlayCount FROM UserStats WHERE UserId = @UserId AND Mode = @Mode",
-			new { UserId = key.UserId, Mode = (long)key.Mode }), cancellationToken);
+		var row = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<StatsRow>(
+			"select user_id, mode, total_score, ranked_score, play_count from user_stats where user_id = @UserId and mode = @Mode",
+			new { UserId = key.UserId, Mode = (int)key.Mode }), cancellationToken);
 		return row is null
 			? null
 			: new UserStats
@@ -52,29 +53,29 @@ internal sealed class SqliteUserStatsRepository(DatabaseBatcher batcher)
 
 	protected override string WriteSql =>
 		"""
-		INSERT INTO UserStats (UserId, Mode, TotalScore, RankedScore, PlayCount)
-		VALUES (@UserId, @Mode, @TotalScore, @RankedScore, @PlayCount)
-		ON CONFLICT(UserId, Mode) DO UPDATE SET
-			TotalScore = excluded.TotalScore,
-			RankedScore = excluded.RankedScore,
-			PlayCount = excluded.PlayCount
+		insert into user_stats (user_id, mode, total_score, ranked_score, play_count)
+		values (@UserId, @Mode, @TotalScore, @RankedScore, @PlayCount)
+		on conflict (user_id, mode) do update set
+			total_score = excluded.total_score,
+			ranked_score = excluded.ranked_score,
+			play_count = excluded.play_count;
 		""";
 
 	protected override object WriteParameters(UserStats stats)
 	{
 		var userId = stats.UserId;
-		var mode = (long)stats.Mode;
+		var mode = (int)stats.Mode;
 		var totalScore = stats.TotalScore;
 		var rankedScore = stats.RankedScore;
 		var playCount = stats.PlayCount;
 		return new { UserId = userId, Mode = mode, TotalScore = totalScore, RankedScore = rankedScore, PlayCount = playCount };
 	}
 
-	/// <summary>A stored row of the UserStats table.</summary>
+	/// <summary>A stored row of the <c>user_stats</c> table.</summary>
 	private sealed class StatsRow
 	{
 		public int UserId { get; set; }
-		public long Mode { get; set; }
+		public int Mode { get; set; }
 		public long TotalScore { get; set; }
 		public long RankedScore { get; set; }
 		public int PlayCount { get; set; }

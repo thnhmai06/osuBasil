@@ -23,50 +23,50 @@ internal static class BeatmapQueryFilter
 
 		if (!query.IncludeHidden)
 		{
-			conditions.Add("b.Visible = 1");
-			conditions.Add("s.Visible = 1");
+			conditions.Add("b.visible");
+			conditions.Add("s.visible");
 		}
 
 		if (query.Mode is { } mode)
 		{
 			parameters.Add("mode", (int)mode);
-			conditions.Add("b.Mode = @mode");
+			conditions.Add("b.mode = @mode");
 		}
 
 		if (query.Stars is { } stars)
-			AddInterval(conditions, parameters, "b.Star", stars, "starsMin", "starsMax");
+			AddInterval(conditions, parameters, "b.star", stars, "starsMin", "starsMax");
 
 		if (query.Ar is { } ar)
-			AddInterval(conditions, parameters, "b.Ar", ar, "arMin", "arMax");
+			AddInterval(conditions, parameters, "b.ar", ar, "arMin", "arMax");
 
 		if (query.Cs is { } cs)
-			AddInterval(conditions, parameters, "b.Cs", cs, "csMin", "csMax");
+			AddInterval(conditions, parameters, "b.cs", cs, "csMin", "csMax");
 
 		if (query.Od is { } od)
-			AddInterval(conditions, parameters, "b.Od", od, "odMin", "odMax");
+			AddInterval(conditions, parameters, "b.od", od, "odMin", "odMax");
 
 		if (query.Hp is { } hp)
-			AddInterval(conditions, parameters, "b.Hp", hp, "hpMin", "hpMax");
+			AddInterval(conditions, parameters, "b.hp", hp, "hpMin", "hpMax");
 
 		if (query.Bpm is { } bpm)
-			AddInterval(conditions, parameters, "b.Bpm", bpm, "bpmMin", "bpmMax");
+			AddInterval(conditions, parameters, "b.bpm", bpm, "bpmMin", "bpmMax");
 
 		// Length: the query is in seconds, the column stores milliseconds.
 		if (query.Length is { } length)
-			AddInterval(conditions, parameters, "b.Length / 1000.0", length, "lengthMin", "lengthMax");
+			AddInterval(conditions, parameters, "b.length / 1000.0", length, "lengthMin", "lengthMax");
 
 		if (query.Circles is { } circles)
-			AddInterval(conditions, parameters, "json_extract(b.Objects,'$.Circles')", circles, "circlesMin", "circlesMax");
+			AddInterval(conditions, parameters, "(b.objects->>'Circles')::int", circles, "circlesMin", "circlesMax");
 
 		if (query.Sliders is { } sliders)
-			AddInterval(conditions, parameters, "json_extract(b.Objects,'$.Sliders')", sliders, "slidersMin", "slidersMax");
+			AddInterval(conditions, parameters, "(b.objects->>'Sliders')::int", sliders, "slidersMin", "slidersMax");
 
-		// Created at / Updated at: DateTimeOffset → Unix milliseconds.
+		// Created at / Updated at: the query bounds are UTC instants.
 		if (query.Created is { } created)
-			AddDateInterval(conditions, parameters, "s.CreatedAt", created, "createdMin", "createdMax");
+			AddDateInterval(conditions, parameters, "s.created_at", created, "createdMin", "createdMax");
 
 		if (query.Updated is { } updated)
-			AddDateInterval(conditions, parameters, "s.UpdatedAt", updated, "updatedMin", "updatedMax");
+			AddDateInterval(conditions, parameters, "s.updated_at", updated, "updatedMin", "updatedMax");
 
 		// Free text: every whitespace-separated word must match artist, title, creator or version.
 		if (!string.IsNullOrWhiteSpace(query.Text))
@@ -77,32 +77,32 @@ internal static class BeatmapQueryFilter
 				var p = $"tw{i}";
 				parameters.Add(p, $"%{words[i]}%");
 				conditions.Add(
-					$"(s.Artist LIKE @{p} OR s.Title LIKE @{p} OR s.Creator LIKE @{p} OR b.Version LIKE @{p})");
+					$"(s.artist ILIKE @{p} OR s.title ILIKE @{p} OR s.creator ILIKE @{p} OR b.version ILIKE @{p})");
 			}
 		}
 
 		if (!string.IsNullOrWhiteSpace(query.Creator))
 		{
 			parameters.Add("creator", $"%{query.Creator}%");
-			conditions.Add("s.Creator LIKE @creator");
+			conditions.Add("s.creator ILIKE @creator");
 		}
 
 		if (!string.IsNullOrWhiteSpace(query.Artist))
 		{
 			parameters.Add("artist", $"%{query.Artist}%");
-			conditions.Add("s.Artist LIKE @artist");
+			conditions.Add("s.artist ILIKE @artist");
 		}
 
 		if (!string.IsNullOrWhiteSpace(query.Title))
 		{
 			parameters.Add("title", $"%{query.Title}%");
-			conditions.Add("s.Title LIKE @title");
+			conditions.Add("s.title ILIKE @title");
 		}
 
 		if (!string.IsNullOrWhiteSpace(query.Difficulty))
 		{
 			parameters.Add("version", $"%{query.Difficulty}%");
-			conditions.Add("b.Version LIKE @version");
+			conditions.Add("b.version ILIKE @version");
 		}
 
 		// Basil reports every set as Approved; any other status matches nothing.
@@ -145,13 +145,13 @@ internal static class BeatmapQueryFilter
 	{
 		if (interval.Min is { } min)
 		{
-			parameters.Add(minParam, min.ToUnixTimeMilliseconds());
+			parameters.Add(minParam, min.ToUniversalTime());
 			conditions.Add(interval.MinInclusive ? $"{column} >= @{minParam}" : $"{column} > @{minParam}");
 		}
 
 		if (interval.Max is { } max)
 		{
-			parameters.Add(maxParam, max.ToUnixTimeMilliseconds());
+			parameters.Add(maxParam, max.ToUniversalTime());
 			conditions.Add(interval.MaxInclusive ? $"{column} <= @{maxParam}" : $"{column} < @{maxParam}");
 		}
 	}

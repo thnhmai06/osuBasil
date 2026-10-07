@@ -1,12 +1,12 @@
 using Basil.Application.Storage.Contracts.Content;
 using Basil.Domain.Content;
-using Basil.Infrastructure.Storage.Batching;
+using Basil.Infrastructure.Storage.Writing;
 using Dapper;
 
 namespace Basil.Infrastructure.Storage.Content;
 
 /// <summary>Stores the server-wide settings.</summary>
-internal sealed class SqliteSettingsRepository(DatabaseBatcher batcher) : ISettingsRepository
+internal sealed class PostgresSettingsRepository(Database database, DatabaseWriter writer) : ISettingsRepository
 {
 	private ServerSettings? _settings;
 
@@ -16,10 +16,10 @@ internal sealed class SqliteSettingsRepository(DatabaseBatcher batcher) : ISetti
 		if (Volatile.Read(ref _settings) is { } cached)
 			return cached;
 
-		var row = await batcher.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<SettingsRow>(
+		var row = await database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<SettingsRow>(
 			"""
-			SELECT Motd, LockedCreation, MenuIconUrl, MenuIconImage, MirrorDownloadEndpoint, MirrorSearchEndpoint
-			FROM Settings WHERE Id = 1
+			select motd, locked_creation, menu_icon_url, menu_icon_image, mirror_download_endpoint, mirror_search_endpoint
+			from settings where id = 1
 			"""), cancellationToken);
 
 		var loaded = row is null
@@ -42,25 +42,25 @@ internal sealed class SqliteSettingsRepository(DatabaseBatcher batcher) : ISetti
 		var parameters = new
 		{
 			settings.Motd,
-			LockedCreation = (long)settings.LockedCreation,
+			LockedCreation = (int)settings.LockedCreation,
 			MenuIconUrl = settings.MenuIconUrl?.ToString(),
 			MenuIconImage = settings.MenuIconImage?.ToString(),
 			MirrorDownloadEndpoint = settings.MirrorDownloadEndpoint?.ToString(),
 			MirrorSearchEndpoint = settings.MirrorSearchEndpoint?.ToString()
 		};
 		Interlocked.Exchange(ref _settings, settings);
-		_ = batcher.EnqueueAsync((GetType(), 1), (connection, transaction) => connection.ExecuteAsync(
+		_ = writer.EnqueueAsync(Root.Server, (GetType(), 1), new WriteCommand(
 			"""
-			UPDATE Settings SET
-				Motd = @Motd,
-				LockedCreation = @LockedCreation,
-				MenuIconUrl = @MenuIconUrl,
-				MenuIconImage = @MenuIconImage,
-				MirrorDownloadEndpoint = @MirrorDownloadEndpoint,
-				MirrorSearchEndpoint = @MirrorSearchEndpoint
-			WHERE Id = 1;
+			update settings set
+				motd = @Motd,
+				locked_creation = @LockedCreation,
+				menu_icon_url = @MenuIconUrl,
+				menu_icon_image = @MenuIconImage,
+				mirror_download_endpoint = @MirrorDownloadEndpoint,
+				mirror_search_endpoint = @MirrorSearchEndpoint
+			where id = 1;
 			""",
-			parameters, transaction));
+			parameters));
 		return Task.CompletedTask;
 	}
 
@@ -70,11 +70,11 @@ internal sealed class SqliteSettingsRepository(DatabaseBatcher batcher) : ISetti
 		return value is null ? null : new Uri(value, UriKind.Absolute);
 	}
 
-	/// <summary>A stored row of the Settings table.</summary>
+	/// <summary>A stored row of the <c>settings</c> table.</summary>
 	private sealed class SettingsRow
 	{
 		public string? Motd { get; set; }
-		public long LockedCreation { get; set; }
+		public int LockedCreation { get; set; }
 		public string? MenuIconUrl { get; set; }
 		public string? MenuIconImage { get; set; }
 		public string? MirrorDownloadEndpoint { get; set; }
