@@ -12,6 +12,10 @@ namespace Basil.Bot.Application.Commands.Mp;
 /// </remarks>
 internal static class MpReplies
 {
+	// ── room scope ─────────────────────────────────────────────────────────────────────────
+	/// <summary>Names the target room on each reply line posted outside that room's own channel; <c>{0}</c> is the room id.</summary>
+	public const string RoomPrefix = "[#{0}] ";
+
 	// ── !mp make / makeprivate ─────────────────────────────────────────────────────────────
 	/// <summary>Reply after a room is created; <c>{0}</c> is the room id, <c>{1}</c> its name, <c>{2}</c> a privacy suffix.</summary>
 	public const string CreatedMatch =

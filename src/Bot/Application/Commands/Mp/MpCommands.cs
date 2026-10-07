@@ -98,6 +98,8 @@ internal sealed partial class MpCommands(
 			return false;
 		}
 
+		context = NameRoom(context, roomId.Value);
+
 		return subcommand.ToLowerInvariant() switch
 		{
 			"settings" => await SettingsAsync(context, roomId.Value, cancellationToken),
@@ -128,6 +130,33 @@ internal sealed partial class MpCommands(
 			"unban" => await UnbanAsync(context, roomId.Value, args, cancellationToken),
 			"close" => await CloseAsync(context, roomId.Value, cancellationToken),
 			_ => await UnknownSubcommandAsync(context, subcommand, cancellationToken)
+		};
+	}
+
+	/// <summary>
+	///     Answers a room-scoped command with the room named on every line when the reply is not posted in
+	///     that room's own channel.
+	/// </summary>
+	/// <param name="context">The context the command was sent with.</param>
+	/// <param name="roomId">The room the command resolved to.</param>
+	/// <returns>
+	///     A context whose replies posted outside <c>#mp_{roomId}</c>
+	///     prefix each non-empty line with <see cref="MpReplies.RoomPrefix" />; a private reply always goes to a
+	///     direct message, so <see cref="CommandContext.ReplyPrivately" /> is always prefixed.
+	/// </returns>
+	private static CommandContext NameRoom(CommandContext context, int roomId)
+	{
+		var prefix = string.Format(MpReplies.RoomPrefix, roomId);
+
+		string NameLines(string text) => string.Join('\n',
+			text.Split('\n').Select(line => line.Length == 0 ? line : prefix + line));
+
+		return context with
+		{
+			Reply = context.Channel == $"#mp_{roomId}"
+				? context.Reply
+				: (text, cancellationToken) => context.Reply(NameLines(text), cancellationToken),
+			ReplyPrivately = (text, cancellationToken) => context.ReplyPrivately(NameLines(text), cancellationToken)
 		};
 	}
 
