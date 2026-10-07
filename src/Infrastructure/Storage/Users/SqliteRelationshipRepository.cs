@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Social;
 using Basil.Domain.Users;
+using Basil.Infrastructure.Storage.Batching;
 using Basil.Infrastructure.Storage.Caching;
 using Dapper;
 using Microsoft.Data.Sqlite;
@@ -9,7 +10,7 @@ using Microsoft.Data.Sqlite;
 namespace Basil.Infrastructure.Storage.Users;
 
 /// <summary>Stores the friends and blocks users set toward each other.</summary>
-internal sealed class SqliteRelationshipRepository(Database database, WriteBuffer buffer, IUserRepository users)
+internal sealed class SqliteRelationshipRepository(DatabaseBatcher batcher, IUserRepository users)
 	: IRelationshipRepository
 {
 	private readonly IdentityMap<int, ImmutableList<Relationship>> _byActor = new();
@@ -20,7 +21,8 @@ internal sealed class SqliteRelationshipRepository(Database database, WriteBuffe
 		var actorId = relationship.Actor.Id;
 		var targetId = relationship.Target.Id;
 		var values = Values(relationship);
-		buffer.Enqueue((GetType(), (actorId, targetId)), (connection, transaction) => connection.ExecuteAsync(
+		_byActor.TryUpdate(actorId, current => Replace(current, relationship));
+		return batcher.EnqueueAsync((GetType(), (actorId, targetId)), (connection, transaction) => connection.ExecuteAsync(
 			"""
 			INSERT INTO Relationships (ActorId, TargetId, Type, CreatedAt)
 			VALUES (@ActorId, @TargetId, @Type, @CreatedAt)
@@ -29,8 +31,6 @@ internal sealed class SqliteRelationshipRepository(Database database, WriteBuffe
 				CreatedAt = excluded.CreatedAt;
 			""",
 			values, transaction));
-		_byActor.TryUpdate(actorId, current => Replace(current, relationship));
-		return Task.CompletedTask;
 	}
 
 	/// <inheritdoc />
@@ -38,11 +38,11 @@ internal sealed class SqliteRelationshipRepository(Database database, WriteBuffe
 	{
 		var actorId = relationship.Actor.Id;
 		var targetId = relationship.Target.Id;
-		buffer.Enqueue((GetType(), (actorId, targetId)), (connection, transaction) => connection.ExecuteAsync(
-			"DELETE FROM Relationships WHERE ActorId = @ActorId AND TargetId = @TargetId",
-			new { ActorId = actorId, TargetId = targetId }, transaction));
+		var parameters = new { ActorId = actorId, TargetId = targetId };
 		_byActor.TryUpdate(actorId, current => current.RemoveAll(item => item.Target.Id == targetId));
-		return Task.CompletedTask;
+		return batcher.EnqueueAsync((GetType(), (actorId, targetId)), (connection, transaction) => connection.ExecuteAsync(
+			"DELETE FROM Relationships WHERE ActorId = @ActorId AND TargetId = @TargetId",
+			parameters, transaction));
 	}
 
 	/// <inheritdoc />
@@ -51,10 +51,9 @@ internal sealed class SqliteRelationshipRepository(Database database, WriteBuffe
 		var liveActor = await users.GetAsync(actor.Id, cancellationToken) ?? actor;
 		var relationships = await _byActor.GetOrAddAsync(liveActor.Id, async _ =>
 		{
-			await using var connection = await OpenAsync(cancellationToken);
-			var rows = await connection.QueryAsync<RelationshipRow>(
+			var rows = await batcher.ReadAsync((connection, transaction) => connection.QueryAsync<RelationshipRow>(
 				"SELECT ActorId, TargetId, Type, CreatedAt FROM Relationships WHERE ActorId = @ActorId",
-				new { ActorId = liveActor.Id });
+				new { ActorId = liveActor.Id }, transaction), cancellationToken);
 
 			var items = ImmutableList.CreateBuilder<Relationship>();
 			foreach (var row in rows)
@@ -74,12 +73,6 @@ internal sealed class SqliteRelationshipRepository(Database database, WriteBuffe
 		});
 
 		return relationships ?? ImmutableList<Relationship>.Empty;
-	}
-
-	private async Task<SqliteConnection> OpenAsync(CancellationToken cancellationToken)
-	{
-		await buffer.WaitForWritesAsync(cancellationToken);
-		return await database.OpenAsync(cancellationToken);
 	}
 
 	private static ImmutableList<Relationship> Replace(ImmutableList<Relationship> current, Relationship item)

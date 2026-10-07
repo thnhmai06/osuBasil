@@ -1,46 +1,54 @@
+using Basil.Infrastructure.Storage.Batching;
+using Dapper;
 using Microsoft.Data.Sqlite;
 
 namespace Basil.Infrastructure.Storage.Caching;
 
 /// <summary>Base for repositories whose stored items stay live in memory once read.</summary>
-internal abstract class CachedRepository<TKey, T>(Database database, WriteBuffer buffer)
+internal abstract class CachedRepository<TKey, T>(DatabaseBatcher batcher)
 	where TKey : notnull where T : class
 {
 	protected IdentityMap<TKey, T> Items { get; } = new();
 
+	/// <summary>Gets the batcher that runs this repository's reads and writes.</summary>
+	protected DatabaseBatcher Batcher { get; } = batcher;
+
 	protected abstract TKey KeyOf(T item);
-	protected abstract Task<T?> ReadAsync(SqliteConnection connection, TKey key, CancellationToken cancellationToken);
-	protected abstract Task WriteAsync(SqliteConnection connection, SqliteTransaction transaction, T item);
+
+	/// <summary>Loads a stored item that is not in memory yet, or <see langword="null" /> when none is stored.</summary>
+	protected abstract Task<T?> LoadAsync(TKey key, CancellationToken cancellationToken);
+
+	/// <summary>Gets the statement that stores an item: an insert of its key that updates the stored row when one exists.</summary>
+	protected abstract string WriteSql { get; }
+
+	/// <summary>Gets the values the statement stores for an item, as they are when the change is queued.</summary>
+	protected abstract object WriteParameters(T item);
+
 	protected virtual Task EraseAsync(SqliteConnection connection, SqliteTransaction transaction, TKey key)
 		=> throw new NotSupportedException();
 
-	protected ValueTask<T?> FindAsync(TKey key, CancellationToken cancellationToken)
-	{
-		return Items.GetOrAddAsync(key, async miss =>
-		{
-			await using var connection = await OpenAsync(cancellationToken);
-			return await ReadAsync(connection, miss, cancellationToken);
-		});
-	}
+	protected ValueTask<T?> FindAsync(TKey key, CancellationToken cancellationToken) =>
+		Items.GetOrAddAsync(key, miss => LoadAsync(miss, cancellationToken));
 
 	protected T Track(T item) => Items.GetOrAdd(KeyOf(item), item);
 
-	protected void Save(T item)
+	/// <summary>Queues the state the live instance of an item has now.</summary>
+	/// <returns>A task that completes once the state is committed.</returns>
+	protected Task SaveAsync(T item)
 	{
 		var live = Track(item);
-		buffer.Enqueue((GetType(), KeyOf(live)), (connection, transaction) => WriteAsync(connection, transaction, live));
+		var parameters = WriteParameters(live);
+		return Batcher.EnqueueAsync((GetType(), KeyOf(live)),
+			(connection, transaction) => connection.ExecuteAsync(WriteSql, parameters, transaction));
 	}
 
-	protected void Remove(T item)
+	/// <summary>Forgets an item and queues its deletion.</summary>
+	/// <returns>A task that completes once the deletion is committed.</returns>
+	protected Task RemoveAsync(T item)
 	{
 		var key = KeyOf(item);
 		Items.Remove(key);
-		buffer.Enqueue((GetType(), key), (connection, transaction) => EraseAsync(connection, transaction, key));
-	}
-
-	protected async Task<SqliteConnection> OpenAsync(CancellationToken cancellationToken)
-	{
-		await buffer.WaitForWritesAsync(cancellationToken);
-		return await database.OpenAsync(cancellationToken);
+		return Batcher.EnqueueAsync((GetType(), key),
+			(connection, transaction) => EraseAsync(connection, transaction, key));
 	}
 }

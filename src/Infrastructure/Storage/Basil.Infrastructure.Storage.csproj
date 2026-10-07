@@ -11,6 +11,7 @@
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Data.Sqlite"/>
 		<PackageReference Include="Dapper"/>
+		<PackageReference Include="Microsoft.Extensions.Caching.Memory"/>
 		<PackageReference Include="BCrypt.Net-Next"/>
 		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions"/>
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>

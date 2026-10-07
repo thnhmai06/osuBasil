@@ -549,20 +549,24 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   (`Query<T>`, `SortOptions`). Key normalization (for example case- and space-insensitive user names) is the
   repository's own lookup concern. A repository filters only by explicit criteria in its query record
   (`IncludeHidden`, `IncludeDeleted`, `IncludePrivate`); the caller sets them from the asker's authority.
-* **The live object is the source of truth; the database is where it hibernates.** A repository keeps exactly
-  one instance per identity for the life of the process (never evicted) and returns that same instance from
-  every `GetAsync`, `GetByYAsync` and `ListAsync`; the database is read only for an identity not yet in memory.
-  `CreateOrUpdateAsync` and `DeleteAsync` queue the change (a later change of the same identity replaces it);
-  Infrastructure commits the queue in one transaction once 100 changes are pending or the oldest has waited 50 ms,
-  and once more after the host has stopped everything else. A database read waits only until every change queued
-  before it is committed, then goes straight to the database. `CreateAsync` writes at once because the store
-  assigns the identity. Append-only history (logins, match events) is
-  not kept in memory and is written in the same batches. A derived read model that is queried often (the match
-  report) is cached and rebuilt when its sources change.
-  **Exception: a change whose check reads rows other than the item itself** (a value unique across the table, such
-  as a user name or a beatmap hash, or any condition over many rows) is checked and written in one database
-  transaction at once, and the live object changes only after the commit (`IUserRepository.RenameAsync`); a
-  batched write must never be the one that discovers a conflict.
+* **Memory is the truth; the database is a snapshot of it.** The system works the same with no database at all,
+  only without persistence. A runtime change only signals that it happened; keeping the snapshot correct, fast and
+  free of races is the storage's job. A repository is a cache of live instances: one instance per identity, returned
+  by every `GetAsync`, `GetByYAsync` and `ListAsync`, kept while anyone holds it and for 5 minutes after it was last
+  asked for, then released; the database is read for an identity not in memory.
+  `CreateOrUpdateAsync`/`DeleteAsync` queue a snapshot of the values **as they are when queued** (a later change of
+  the same identity replaces it); the returned task completes once it is committed and fails with the reason it was
+  not. A failed write is never tried again, since a later attempt could overwrite newer data. Every read and write
+  goes through `DatabaseBatcher`, which runs them in order in batches of one transaction, due once 100 writes are
+  pending or the oldest operation has waited 50 ms (a read sees every write queued before it); `DatabaseWorker` is
+  the only code that touches the database, each operation in its own savepoint. An operation's lambda uses only its
+  connection and transaction and never queues another operation. Parents are created before their children.
+  Append-only history (logins, match events) is not kept in memory. A derived read model that is queried often (the
+  match report) is cached and rebuilt when its sources change.
+  **A change whose check needs rows not in memory** (a value unique across the table such as a user name or a
+  beatmap hash, an id the store assigns, any condition over many rows) is a try-operation checked and applied by
+  the database (`CreateAsync`, `IUserRepository.RenameAsync`); the live object changes only after it succeeded.
+  Rules the database owns for its lookups (the safe name) stay in the database.
 * **Naming: Domain model `X`, runtime model `XSession`, the object that holds the live sessions
   `XRegistry`, the contract `IXService` and its implementation `XService`.** No suffixes such as
   "Definition". `Channel` → `ChannelSession` → `GeneralChannelRegistry` (it holds only general channels);

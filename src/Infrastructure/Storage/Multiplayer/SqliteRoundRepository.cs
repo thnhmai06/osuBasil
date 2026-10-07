@@ -3,6 +3,7 @@ using Basil.Application.Storage.Contracts.Multiplayer;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Utilities;
+using Basil.Infrastructure.Storage.Batching;
 using Basil.Infrastructure.Storage.Caching;
 using Dapper;
 using Microsoft.Data.Sqlite;
@@ -11,11 +12,10 @@ namespace Basil.Infrastructure.Storage.Multiplayer;
 
 /// <summary>Stores the rounds played in matches.</summary>
 internal sealed class SqliteRoundRepository(
-	Database database,
-	WriteBuffer buffer,
+	DatabaseBatcher batcher,
 	IMatchRepository matches,
 	MatchReportCache reports)
-	: CachedRepository<(int MatchId, int Number), Round>(database, buffer), IRoundRepository
+	: CachedRepository<(int MatchId, int Number), Round>(batcher), IRoundRepository
 {
 	private readonly IdentityMap<int, ImmutableList<Round>> _byMatch = new();
 
@@ -32,9 +32,9 @@ internal sealed class SqliteRoundRepository(
 		}
 
 		_byMatch.TryUpdate(live.Match.Id, current => AddOrReplace(current, live));
-		Save(live);
+		var saved = SaveAsync(live);
 		reports.Invalidate(live.Match.Id);
-		return Task.CompletedTask;
+		return saved;
 	}
 
 	/// <inheritdoc />
@@ -43,15 +43,14 @@ internal sealed class SqliteRoundRepository(
 		var liveMatch = await matches.GetAsync(match.Id, cancellationToken) ?? match;
 		var rounds = await _byMatch.GetOrAddAsync(liveMatch.Id, async _ =>
 		{
-			await using var connection = await OpenAsync(cancellationToken);
-			var rows = await connection.QueryAsync<RoundRow>(
+			var rows = await Batcher.ReadAsync((connection, transaction) => connection.QueryAsync<RoundRow>(
 				"""
 				SELECT Number, BeatmapHash, Mode, Mods, Freemods, TeamType, WinCondition, Seed, StartedAt, EndedAt, Aborted
 				FROM Rounds
 				WHERE MatchId = @MatchId
 				ORDER BY Number
 				""",
-				new { MatchId = liveMatch.Id });
+				new { MatchId = liveMatch.Id }, transaction), cancellationToken);
 			var result = ImmutableList.CreateBuilder<Round>();
 			foreach (var row in rows)
 				result.Add(Track(ToRound(liveMatch, row)));
@@ -61,27 +60,24 @@ internal sealed class SqliteRoundRepository(
 		return rounds ?? ImmutableList<Round>.Empty;
 	}
 
-	protected override async Task<Round?> ReadAsync(SqliteConnection connection,
-		(int MatchId, int Number) key, CancellationToken cancellationToken)
+	protected override async Task<Round?> LoadAsync((int MatchId, int Number) key, CancellationToken cancellationToken)
 	{
-		var match = await matches.GetAsync(key.MatchId, cancellationToken);
-		if (match is null)
-			return null;
-
-		var row = await connection.QuerySingleOrDefaultAsync<RoundRow>(
+		var row = await Batcher.ReadAsync((connection, transaction) => connection.QuerySingleOrDefaultAsync<RoundRow>(
 			"""
 			SELECT Number, BeatmapHash, Mode, Mods, Freemods, TeamType, WinCondition, Seed, StartedAt, EndedAt, Aborted
 			FROM Rounds
 			WHERE MatchId = @MatchId AND Number = @Number
 			""",
-			new { key.MatchId, key.Number });
-		return row is null ? null : ToRound(match, row);
+			new { key.MatchId, key.Number }, transaction), cancellationToken);
+		if (row is null)
+			return null;
+
+		var match = await matches.GetAsync(key.MatchId, cancellationToken);
+		return match is null ? null : ToRound(match, row);
 	}
 
-	protected override Task WriteAsync(SqliteConnection connection, SqliteTransaction transaction, Round round)
-	{
-		return connection.ExecuteAsync(
-			"""
+	protected override string WriteSql =>
+		"""
 			INSERT INTO Rounds (MatchId, Number, BeatmapHash, Mode, Mods, Freemods, TeamType, WinCondition, Seed, StartedAt, EndedAt, Aborted)
 			VALUES (@MatchId, @Number, @BeatmapHash, @Mode, @Mods, @Freemods, @TeamType, @WinCondition, @Seed, @StartedAt, @EndedAt, @Aborted)
 			ON CONFLICT(MatchId, Number) DO UPDATE SET
@@ -95,22 +91,25 @@ internal sealed class SqliteRoundRepository(
 				StartedAt = excluded.StartedAt,
 				EndedAt = excluded.EndedAt,
 				Aborted = excluded.Aborted
-			""",
-			new
-			{
-				MatchId = round.Match.Id,
-				round.Number,
-				BeatmapHash = round.BeatmapHash.HashValue,
-				Mode = (long)round.Settings.Mode,
-				Mods = (long)round.Settings.Mods,
-				Freemods = round.Settings.Freemods ? 1 : 0,
-				TeamType = (long)round.Settings.TeamType,
-				WinCondition = (long)round.Settings.WinCondition,
-				round.Settings.Seed,
-				StartedAt = round.StartedAt.ToUnixTimeMilliseconds(),
-				EndedAt = round.EndedAt?.ToUnixTimeMilliseconds(),
-				Aborted = round.Aborted ? 1 : 0
-			}, transaction);
+			""";
+
+	protected override object WriteParameters(Round round)
+	{
+		return new
+		{
+			MatchId = round.Match.Id,
+			round.Number,
+			BeatmapHash = round.BeatmapHash.HashValue,
+			Mode = (long)round.Settings.Mode,
+			Mods = (long)round.Settings.Mods,
+			Freemods = round.Settings.Freemods ? 1 : 0,
+			TeamType = (long)round.Settings.TeamType,
+			WinCondition = (long)round.Settings.WinCondition,
+			round.Settings.Seed,
+			StartedAt = round.StartedAt.ToUnixTimeMilliseconds(),
+			EndedAt = round.EndedAt?.ToUnixTimeMilliseconds(),
+			Aborted = round.Aborted ? 1 : 0
+		};
 	}
 
 	private static ImmutableList<Round> AddOrReplace(ImmutableList<Round> current, Round round)

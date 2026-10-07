@@ -2,13 +2,13 @@ using System.Collections.Immutable;
 using Basil.Application.Storage.Contracts.Chat;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Storage.Caching;
+using Basil.Infrastructure.Storage.Batching;
 using Dapper;
 
 namespace Basil.Infrastructure.Storage.Chat;
 
 /// <summary>Stores the general chat channels the server offers.</summary>
-internal sealed class SqliteChannelRepository(Database database, WriteBuffer buffer) : IChannelRepository
+internal sealed class SqliteChannelRepository(DatabaseBatcher batcher) : IChannelRepository
 {
 	private ImmutableList<GeneralChannel>? _channels;
 
@@ -18,10 +18,8 @@ internal sealed class SqliteChannelRepository(Database database, WriteBuffer buf
 		if (Volatile.Read(ref _channels) is { } cached)
 			return cached;
 
-		await buffer.WaitForWritesAsync(cancellationToken);
-		await using var connection = await database.OpenAsync(cancellationToken);
-		var rows = await connection.QueryAsync<ChannelRow>(
-			"SELECT Name, Topic, ReadPermissions, WritePermissions, AutoJoin, Visible FROM Channels ORDER BY Name");
+		var rows = await batcher.ReadAsync((connection, transaction) => connection.QueryAsync<ChannelRow>(
+			"SELECT Name, Topic, ReadPermissions, WritePermissions, AutoJoin, Visible FROM Channels ORDER BY Name", transaction: transaction), cancellationToken);
 		var loaded = rows.Select(row => row.ToChannel()).ToImmutableList();
 		return Interlocked.CompareExchange(ref _channels, loaded, null) ?? loaded;
 	}

@@ -4,6 +4,7 @@ using Basil.Application.Storage.Contracts.Content;
 using Basil.Application.Storage.Contracts.Multiplayer;
 using Basil.Application.Storage.Contracts.Scores;
 using Basil.Application.Storage.Contracts.Users;
+using Basil.Infrastructure.Storage.Batching;
 using Basil.Infrastructure.Storage.Beatmaps;
 using Basil.Infrastructure.Storage.Caching;
 using Basil.Infrastructure.Storage.Chat;
@@ -30,8 +31,10 @@ public static class DependencyInjection
 		services.AddSingleton<DatabaseMigrator>();
 		services.AddHostedService<StorageStartup>();
 		services.TryAddSingleton(TimeProvider.System);
-		services.AddSingleton<WriteBuffer>();
-		services.AddHostedService<WriteFlusher>();
+		services.AddSingleton<DatabaseBatcher>();
+		services.AddHostedService(provider => provider.GetRequiredService<DatabaseBatcher>());
+		services.AddSingleton<DatabaseWorker>();
+		services.AddHostedService(provider => provider.GetRequiredService<DatabaseWorker>());
 
 		services.AddSingleton<IUserRepository, SqliteUserRepository>();
 		services.AddSingleton<ICredentialRepository, SqliteCredentialRepository>();

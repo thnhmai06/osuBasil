@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Users;
+using Basil.Infrastructure.Storage.Batching;
 using Basil.Infrastructure.Storage.Caching;
 using Dapper;
 using Microsoft.Data.Sqlite;
@@ -8,8 +9,8 @@ using Microsoft.Data.Sqlite;
 namespace Basil.Infrastructure.Storage.Users;
 
 /// <summary>Stores the restrictions of users.</summary>
-internal sealed class SqliteRestrictionRepository(Database database, WriteBuffer buffer, IUserRepository users)
-	: CachedRepository<int, Restriction>(database, buffer), IRestrictionRepository
+internal sealed class SqliteRestrictionRepository(DatabaseBatcher batcher, IUserRepository users)
+	: CachedRepository<int, Restriction>(batcher), IRestrictionRepository
 {
 	private readonly IdentityMap<int, ImmutableList<Restriction>> _byUser = new();
 
@@ -26,21 +27,21 @@ internal sealed class SqliteRestrictionRepository(Database database, WriteBuffer
 			StartsAt = data.StartsAt,
 			EndsAt = data.EndsAt
 		};
+		var parameters = new
+		{
+			UserId = value.User.Id,
+			Permissions = (long)value.Permissions,
+			StartsAt = value.StartsAt.ToUnixTimeMilliseconds(),
+			EndsAt = value.EndsAt?.ToUnixTimeMilliseconds()
+		};
 
-		await using var connection = await OpenAsync(cancellationToken);
-		var id = await connection.QuerySingleAsync<int>(
+		var id = await Batcher.WriteAsync((connection, transaction) => connection.QuerySingleAsync<int>(
 			"""
 			INSERT INTO Restrictions (UserId, Permissions, StartsAt, EndsAt)
 			VALUES (@UserId, @Permissions, @StartsAt, @EndsAt)
 			RETURNING Id;
 			""",
-			new
-			{
-				UserId = value.User.Id,
-				Permissions = (long)value.Permissions,
-				StartsAt = value.StartsAt.ToUnixTimeMilliseconds(),
-				EndsAt = value.EndsAt?.ToUnixTimeMilliseconds()
-			});
+			parameters, transaction), cancellationToken);
 
 		var restriction = Track(new Restriction { Id = id, Value = value });
 		_byUser.TryUpdate(user.Id, current => current.Add(restriction));
@@ -51,9 +52,8 @@ internal sealed class SqliteRestrictionRepository(Database database, WriteBuffer
 	public Task CreateOrUpdateAsync(Restriction restriction, CancellationToken cancellationToken = default)
 	{
 		var live = Track(restriction);
-		Save(live);
 		_byUser.TryUpdate(live.Value.User.Id, current => Replace(current, live));
-		return Task.CompletedTask;
+		return SaveAsync(live);
 	}
 
 	/// <inheritdoc />
@@ -65,10 +65,9 @@ internal sealed class SqliteRestrictionRepository(Database database, WriteBuffer
 		var liveUser = await users.GetAsync(user.Id, cancellationToken) ?? user;
 		var items = await _byUser.GetOrAddAsync(liveUser.Id, async _ =>
 		{
-			await using var connection = await OpenAsync(cancellationToken);
-			var rows = await connection.QueryAsync<RestrictionRow>(
+			var rows = await Batcher.ReadAsync((connection, transaction) => connection.QueryAsync<RestrictionRow>(
 				"SELECT Id, UserId, Permissions, StartsAt, EndsAt FROM Restrictions WHERE UserId = @UserId ORDER BY StartsAt, Id",
-				new { UserId = liveUser.Id });
+				new { UserId = liveUser.Id }, transaction), cancellationToken);
 			var restrictions = ImmutableList.CreateBuilder<Restriction>();
 			foreach (var row in rows)
 				restrictions.Add(Track(ToRestriction(row, liveUser)));
@@ -78,11 +77,10 @@ internal sealed class SqliteRestrictionRepository(Database database, WriteBuffer
 		return items ?? ImmutableList<Restriction>.Empty;
 	}
 
-	protected override async Task<Restriction?> ReadAsync(SqliteConnection connection, int key,
-		CancellationToken cancellationToken)
+	protected override async Task<Restriction?> LoadAsync(int key, CancellationToken cancellationToken)
 	{
-		var row = await connection.QuerySingleOrDefaultAsync<RestrictionRow>(
-			"SELECT Id, UserId, Permissions, StartsAt, EndsAt FROM Restrictions WHERE Id = @Id", new { Id = key });
+		var row = await Batcher.ReadAsync((connection, transaction) => connection.QuerySingleOrDefaultAsync<RestrictionRow>(
+			"SELECT Id, UserId, Permissions, StartsAt, EndsAt FROM Restrictions WHERE Id = @Id", new { Id = key }, transaction), cancellationToken);
 		if (row is null)
 			return null;
 
@@ -90,27 +88,28 @@ internal sealed class SqliteRestrictionRepository(Database database, WriteBuffer
 		return user is null ? null : ToRestriction(row, user);
 	}
 
-	protected override Task WriteAsync(SqliteConnection connection, SqliteTransaction transaction, Restriction restriction)
+	protected override string WriteSql =>
+		"""
+		INSERT INTO Restrictions (Id, UserId, Permissions, StartsAt, EndsAt)
+		VALUES (@Id, @UserId, @Permissions, @StartsAt, @EndsAt)
+		ON CONFLICT(Id) DO UPDATE SET
+			UserId = excluded.UserId,
+			Permissions = excluded.Permissions,
+			StartsAt = excluded.StartsAt,
+			EndsAt = excluded.EndsAt;
+		""";
+
+	protected override object WriteParameters(Restriction restriction)
 	{
 		var value = restriction.Value;
-		return connection.ExecuteAsync(
-			"""
-			INSERT INTO Restrictions (Id, UserId, Permissions, StartsAt, EndsAt)
-			VALUES (@Id, @UserId, @Permissions, @StartsAt, @EndsAt)
-			ON CONFLICT(Id) DO UPDATE SET
-				UserId = excluded.UserId,
-				Permissions = excluded.Permissions,
-				StartsAt = excluded.StartsAt,
-				EndsAt = excluded.EndsAt;
-			""",
-			new
-			{
-				restriction.Id,
-				UserId = value.User.Id,
-				Permissions = (long)value.Permissions,
-				StartsAt = value.StartsAt.ToUnixTimeMilliseconds(),
-				EndsAt = value.EndsAt?.ToUnixTimeMilliseconds()
-			}, transaction);
+		return new
+		{
+			restriction.Id,
+			UserId = value.User.Id,
+			Permissions = (long)value.Permissions,
+			StartsAt = value.StartsAt.ToUnixTimeMilliseconds(),
+			EndsAt = value.EndsAt?.ToUnixTimeMilliseconds()
+		};
 	}
 
 	private static ImmutableList<Restriction> Replace(ImmutableList<Restriction> current, Restriction item)

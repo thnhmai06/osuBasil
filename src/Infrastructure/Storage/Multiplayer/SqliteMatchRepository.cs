@@ -2,6 +2,7 @@ using Basil.Application.Storage.Contracts.Common;
 using Basil.Application.Storage.Contracts.Multiplayer;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Multiplayer;
+using Basil.Infrastructure.Storage.Batching;
 using Basil.Infrastructure.Storage.Caching;
 using Dapper;
 using Microsoft.Data.Sqlite;
@@ -9,8 +10,8 @@ using Microsoft.Data.Sqlite;
 namespace Basil.Infrastructure.Storage.Multiplayer;
 
 /// <summary>Stores matches.</summary>
-internal sealed class SqliteMatchRepository(Database database, WriteBuffer buffer, IUserRepository users)
-	: CachedRepository<int, Match>(database, buffer), IMatchRepository
+internal sealed class SqliteMatchRepository(DatabaseBatcher batcher, IUserRepository users)
+	: CachedRepository<int, Match>(batcher), IMatchRepository
 {
 	protected override int KeyOf(Match item) => item.Id;
 
@@ -18,14 +19,14 @@ internal sealed class SqliteMatchRepository(Database database, WriteBuffer buffe
 	public async Task<Match> CreateAsync(MatchData data, CancellationToken cancellationToken = default)
 	{
 		var value = await WithCreatorAsync(data, cancellationToken);
-		await using var connection = await OpenAsync(cancellationToken);
-		var id = await connection.QuerySingleAsync<int>(
+		var parameters = Parameters(value);
+		var id = await Batcher.WriteAsync((connection, transaction) => connection.QuerySingleAsync<int>(
 			"""
 			INSERT INTO Matches (Name, CreatorId, StartedAt, EndedAt, IsPrivate)
 			VALUES (@Name, @CreatorId, @StartedAt, @EndedAt, @IsPrivate)
 			RETURNING Id
 			""",
-			Parameters(value));
+			parameters, transaction), cancellationToken);
 
 		return Track(new Match { Id = id, Value = value });
 	}
@@ -41,8 +42,7 @@ internal sealed class SqliteMatchRepository(Database database, WriteBuffer buffe
 			live.Value.IsPrivate = match.Value.IsPrivate;
 		}
 
-		Save(live);
-		return Task.CompletedTask;
+		return SaveAsync(live);
 	}
 
 	/// <inheritdoc />
@@ -53,16 +53,16 @@ internal sealed class SqliteMatchRepository(Database database, WriteBuffer buffe
 		CancellationToken cancellationToken = default)
 	{
 		var where = BuildFilter(query);
-		await using var connection = await OpenAsync(cancellationToken);
-		var total = await connection.ExecuteScalarAsync<int>($"SELECT COUNT(*) FROM Matches {where}");
-		var rows = await connection.QueryAsync<MatchRow>(
+		var (total, rows) = await Batcher.ReadAsync(async (connection, transaction) => (
+			await connection.ExecuteScalarAsync<int>($"SELECT COUNT(*) FROM Matches {where}", transaction: transaction),
+			await connection.QueryAsync<MatchRow>(
 			$"""
 			 SELECT Id, Name, CreatorId, StartedAt, EndedAt, IsPrivate FROM Matches
 			 {where}
 			 ORDER BY StartedAt DESC, Id DESC
 			 LIMIT @Limit OFFSET @Offset
 			""",
-			new { Limit = page.Limit, Offset = page.Offset });
+			new { Limit = page.Limit, Offset = page.Offset }, transaction)), cancellationToken);
 
 		var matches = new List<Match>();
 		foreach (var row in rows)
@@ -71,38 +71,38 @@ internal sealed class SqliteMatchRepository(Database database, WriteBuffer buffe
 		return new Page<Match>(matches, total);
 	}
 
-	protected override async Task<Match?> ReadAsync(SqliteConnection connection, int key,
-		CancellationToken cancellationToken)
+	protected override async Task<Match?> LoadAsync(int key, CancellationToken cancellationToken)
 	{
-		var row = await connection.QuerySingleOrDefaultAsync<MatchRow>(
+		var row = await Batcher.ReadAsync((connection, transaction) => connection.QuerySingleOrDefaultAsync<MatchRow>(
 			"SELECT Id, Name, CreatorId, StartedAt, EndedAt, IsPrivate FROM Matches WHERE Id = @Id",
-			new { Id = key });
+			new { Id = key }, transaction), cancellationToken);
 		return row is null ? null : await ToMatchAsync(row, cancellationToken);
 	}
 
-	protected override Task WriteAsync(SqliteConnection connection, SqliteTransaction transaction, Match match)
+	protected override string WriteSql =>
+		"""
+		INSERT INTO Matches (Id, Name, CreatorId, StartedAt, EndedAt, IsPrivate)
+		VALUES (@Id, @Name, @CreatorId, @StartedAt, @EndedAt, @IsPrivate)
+		ON CONFLICT(Id) DO UPDATE SET
+			Name = excluded.Name,
+			CreatorId = excluded.CreatorId,
+			StartedAt = excluded.StartedAt,
+			EndedAt = excluded.EndedAt,
+			IsPrivate = excluded.IsPrivate
+		""";
+
+	protected override object WriteParameters(Match match)
 	{
 		var value = match.Value;
-		return connection.ExecuteAsync(
-			"""
-			INSERT INTO Matches (Id, Name, CreatorId, StartedAt, EndedAt, IsPrivate)
-			VALUES (@Id, @Name, @CreatorId, @StartedAt, @EndedAt, @IsPrivate)
-			ON CONFLICT(Id) DO UPDATE SET
-				Name = excluded.Name,
-				CreatorId = excluded.CreatorId,
-				StartedAt = excluded.StartedAt,
-				EndedAt = excluded.EndedAt,
-				IsPrivate = excluded.IsPrivate
-			""",
-			new
-			{
-				match.Id,
-				value.Name,
-				CreatorId = value.Creator?.Id,
-				StartedAt = value.StartedAt.ToUnixTimeMilliseconds(),
-				EndedAt = value.EndedAt?.ToUnixTimeMilliseconds(),
-				IsPrivate = value.IsPrivate ? 1 : 0
-			}, transaction);
+		return new
+		{
+			match.Id,
+			value.Name,
+			CreatorId = value.Creator?.Id,
+			StartedAt = value.StartedAt.ToUnixTimeMilliseconds(),
+			EndedAt = value.EndedAt?.ToUnixTimeMilliseconds(),
+			IsPrivate = value.IsPrivate ? 1 : 0
+		};
 	}
 
 	private static string BuildFilter(MatchQuery query)

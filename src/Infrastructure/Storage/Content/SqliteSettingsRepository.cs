@@ -1,13 +1,12 @@
 using Basil.Application.Storage.Contracts.Content;
 using Basil.Domain.Content;
-using Basil.Infrastructure.Storage.Caching;
+using Basil.Infrastructure.Storage.Batching;
 using Dapper;
-using Microsoft.Data.Sqlite;
 
 namespace Basil.Infrastructure.Storage.Content;
 
 /// <summary>Stores the server-wide settings.</summary>
-internal sealed class SqliteSettingsRepository(Database database, WriteBuffer buffer) : ISettingsRepository
+internal sealed class SqliteSettingsRepository(DatabaseBatcher batcher) : ISettingsRepository
 {
 	private ServerSettings? _settings;
 
@@ -17,13 +16,11 @@ internal sealed class SqliteSettingsRepository(Database database, WriteBuffer bu
 		if (Volatile.Read(ref _settings) is { } cached)
 			return cached;
 
-		await buffer.WaitForWritesAsync(cancellationToken);
-		await using var connection = await database.OpenAsync(cancellationToken);
-		var row = await connection.QuerySingleOrDefaultAsync<SettingsRow>(
+		var row = await batcher.ReadAsync((connection, transaction) => connection.QuerySingleOrDefaultAsync<SettingsRow>(
 			"""
 			SELECT Motd, LockedCreation, MenuIconUrl, MenuIconImage, MirrorDownloadEndpoint, MirrorSearchEndpoint
 			FROM Settings WHERE Id = 1
-			""");
+			""", transaction: transaction), cancellationToken);
 
 		var loaded = row is null
 			? new ServerSettings()
@@ -42,8 +39,17 @@ internal sealed class SqliteSettingsRepository(Database database, WriteBuffer bu
 	/// <inheritdoc />
 	public Task CreateOrUpdateAsync(ServerSettings settings, CancellationToken cancellationToken = default)
 	{
+		var parameters = new
+		{
+			settings.Motd,
+			LockedCreation = (long)settings.LockedCreation,
+			MenuIconUrl = settings.MenuIconUrl?.ToString(),
+			MenuIconImage = settings.MenuIconImage?.ToString(),
+			MirrorDownloadEndpoint = settings.MirrorDownloadEndpoint?.ToString(),
+			MirrorSearchEndpoint = settings.MirrorSearchEndpoint?.ToString()
+		};
 		Interlocked.Exchange(ref _settings, settings);
-		buffer.Enqueue((GetType(), 1), (connection, transaction) => connection.ExecuteAsync(
+		return batcher.EnqueueAsync((GetType(), 1), (connection, transaction) => connection.ExecuteAsync(
 			"""
 			UPDATE Settings SET
 				Motd = @Motd,
@@ -54,16 +60,7 @@ internal sealed class SqliteSettingsRepository(Database database, WriteBuffer bu
 				MirrorSearchEndpoint = @MirrorSearchEndpoint
 			WHERE Id = 1;
 			""",
-			new
-			{
-				settings.Motd,
-				LockedCreation = (long)settings.LockedCreation,
-				MenuIconUrl = settings.MenuIconUrl?.ToString(),
-				MenuIconImage = settings.MenuIconImage?.ToString(),
-				MirrorDownloadEndpoint = settings.MirrorDownloadEndpoint?.ToString(),
-				MirrorSearchEndpoint = settings.MirrorSearchEndpoint?.ToString()
-			}, transaction));
-		return Task.CompletedTask;
+			parameters, transaction));
 	}
 
 	/// <summary>Reads an absolute address, or <see langword="null" /> when none is stored.</summary>

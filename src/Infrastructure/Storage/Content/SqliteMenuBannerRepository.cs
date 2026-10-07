@@ -1,5 +1,6 @@
 using Basil.Application.Storage.Contracts.Content;
 using Basil.Domain.Content;
+using Basil.Infrastructure.Storage.Batching;
 using Basil.Infrastructure.Storage.Caching;
 using Dapper;
 using Microsoft.Data.Sqlite;
@@ -7,8 +8,8 @@ using Microsoft.Data.Sqlite;
 namespace Basil.Infrastructure.Storage.Content;
 
 /// <summary>Stores the banners shown on the osu! main menu.</summary>
-internal sealed class SqliteMenuBannerRepository(Database database, WriteBuffer buffer)
-	: CachedRepository<Uri, MenuBanner>(database, buffer), IMenuBannerRepository
+internal sealed class SqliteMenuBannerRepository(DatabaseBatcher batcher)
+	: CachedRepository<Uri, MenuBanner>(batcher), IMenuBannerRepository
 {
 	private volatile bool _listed;
 
@@ -20,8 +21,7 @@ internal sealed class SqliteMenuBannerRepository(Database database, WriteBuffer 
 		var live = Track(banner);
 		if (!ReferenceEquals(live, banner))
 			Update(live, banner);
-		Save(live);
-		return Task.CompletedTask;
+		return SaveAsync(live);
 	}
 
 	/// <inheritdoc />
@@ -32,9 +32,9 @@ internal sealed class SqliteMenuBannerRepository(Database database, WriteBuffer 
 	{
 		if (!_listed)
 		{
-			await using var connection = await OpenAsync(cancellationToken);
-			foreach (var row in await connection.QueryAsync<MenuBannerRow>(
-				         "SELECT Image, Url, StartsAt, EndsAt, CreatedAt FROM MenuBanners"))
+			var rows = await Batcher.ReadAsync((connection, transaction) => connection.QueryAsync<MenuBannerRow>(
+				"SELECT Image, Url, StartsAt, EndsAt, CreatedAt FROM MenuBanners", transaction: transaction), cancellationToken);
+			foreach (var row in rows)
 				Track(ToBanner(row));
 			_listed = true;
 		}
@@ -45,37 +45,35 @@ internal sealed class SqliteMenuBannerRepository(Database database, WriteBuffer 
 	/// <inheritdoc />
 	public Task DeleteAsync(MenuBanner banner, CancellationToken cancellationToken = default)
 	{
-		Remove(banner);
-		return Task.CompletedTask;
+		return RemoveAsync(banner);
 	}
 
-	protected override async Task<MenuBanner?> ReadAsync(SqliteConnection connection, Uri key,
-		CancellationToken cancellationToken)
+	protected override async Task<MenuBanner?> LoadAsync(Uri key, CancellationToken cancellationToken)
 	{
-		var row = await connection.QuerySingleOrDefaultAsync<MenuBannerRow>(
+		var row = await Batcher.ReadAsync((connection, transaction) => connection.QuerySingleOrDefaultAsync<MenuBannerRow>(
 			"SELECT Image, Url, StartsAt, EndsAt, CreatedAt FROM MenuBanners WHERE Image = @Image",
-			new { Image = key.ToString() });
+			new { Image = key.ToString() }, transaction), cancellationToken);
 		return row is null ? null : ToBanner(row);
 	}
 
-	protected override Task WriteAsync(SqliteConnection connection, SqliteTransaction transaction, MenuBanner banner)
+	protected override string WriteSql =>
+		"""
+		INSERT INTO MenuBanners (Image, Url, StartsAt, EndsAt, CreatedAt)
+		VALUES (@Image, @Url, @StartsAt, @EndsAt, @CreatedAt)
+		ON CONFLICT(Image) DO UPDATE SET
+			Url = excluded.Url,
+			StartsAt = excluded.StartsAt,
+			EndsAt = excluded.EndsAt,
+			CreatedAt = excluded.CreatedAt;
+		""";
+
+	protected override object WriteParameters(MenuBanner banner)
 	{
 		var url = banner.Url.ToString();
 		var startsAt = banner.StartsAt?.ToUnixTimeMilliseconds();
 		var endsAt = banner.EndsAt?.ToUnixTimeMilliseconds();
 		var createdAt = banner.CreatedAt.ToUnixTimeMilliseconds();
-		return connection.ExecuteAsync(
-			"""
-			INSERT INTO MenuBanners (Image, Url, StartsAt, EndsAt, CreatedAt)
-			VALUES (@Image, @Url, @StartsAt, @EndsAt, @CreatedAt)
-			ON CONFLICT(Image) DO UPDATE SET
-				Url = excluded.Url,
-				StartsAt = excluded.StartsAt,
-				EndsAt = excluded.EndsAt,
-				CreatedAt = excluded.CreatedAt;
-			""",
-			new { Image = banner.Image.ToString(), Url = url, StartsAt = startsAt, EndsAt = endsAt, CreatedAt = createdAt },
-			transaction);
+		return new { Image = banner.Image.ToString(), Url = url, StartsAt = startsAt, EndsAt = endsAt, CreatedAt = createdAt };
 	}
 
 	protected override Task EraseAsync(SqliteConnection connection, SqliteTransaction transaction, Uri key)

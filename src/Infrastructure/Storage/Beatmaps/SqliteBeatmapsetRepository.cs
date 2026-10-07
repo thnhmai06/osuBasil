@@ -1,6 +1,7 @@
 using Basil.Application.Storage.Contracts.Beatmaps;
 using Basil.Application.Storage.Contracts.Common;
 using Basil.Domain.Beatmaps;
+using Basil.Infrastructure.Storage.Batching;
 using Basil.Infrastructure.Storage.Caching;
 using Dapper;
 using Microsoft.Data.Sqlite;
@@ -8,8 +9,8 @@ using Microsoft.Data.Sqlite;
 namespace Basil.Infrastructure.Storage.Beatmaps;
 
 /// <summary>Stores beatmapsets in the <c>Beatmapsets</c> table.</summary>
-internal sealed class SqliteBeatmapsetRepository(Database database, WriteBuffer buffer)
-	: CachedRepository<int, Beatmapset>(database, buffer), IBeatmapsetRepository
+internal sealed class SqliteBeatmapsetRepository(DatabaseBatcher batcher)
+	: CachedRepository<int, Beatmapset>(batcher), IBeatmapsetRepository
 {
 	protected override int KeyOf(Beatmapset item) => item.Id;
 
@@ -20,30 +21,30 @@ internal sealed class SqliteBeatmapsetRepository(Database database, WriteBuffer 
 	public async Task<Beatmapset> CreateAsync(BeatmapsetData data, int? onlineId = null,
 		CancellationToken cancellationToken = default)
 	{
-		await using var connection = await OpenAsync(cancellationToken);
-		await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
-
-		var id = onlineId ?? await NextLocalIdAsync(connection, transaction);
-
-		await connection.ExecuteAsync(
-			"""
-			INSERT INTO Beatmapsets (Id, Artist, Title, Creator, CreatedAt, UpdatedAt, Locked, Visible)
-			VALUES (@id, @artist, @title, @creator, @createdAt, @updatedAt, @locked, @visible)
-			""",
-			new
-			{
-				id,
-				artist = data.Artist,
-				title = data.Title,
-				creator = data.Creator,
-				createdAt = data.CreatedAt.ToUnixTimeMilliseconds(),
-				updatedAt = data.UpdatedAt.ToUnixTimeMilliseconds(),
-				locked = data.Locked ? 1 : 0,
-				visible = data.Visible ? 1 : 0
-			},
-			transaction);
-
-		await transaction.CommitAsync(cancellationToken);
+		var parameters = new DynamicParameters(new
+		{
+			id = 0,
+			artist = data.Artist,
+			title = data.Title,
+			creator = data.Creator,
+			createdAt = data.CreatedAt.ToUnixTimeMilliseconds(),
+			updatedAt = data.UpdatedAt.ToUnixTimeMilliseconds(),
+			locked = data.Locked ? 1 : 0,
+			visible = data.Visible ? 1 : 0
+		});
+		var id = await Batcher.WriteAsync(async (connection, transaction) =>
+		{
+			var newId = onlineId ?? await NextLocalIdAsync(connection, transaction);
+			parameters.Add("id", newId);
+			await connection.ExecuteAsync(
+				"""
+				INSERT INTO Beatmapsets (Id, Artist, Title, Creator, CreatedAt, UpdatedAt, Locked, Visible)
+				VALUES (@id, @artist, @title, @creator, @createdAt, @updatedAt, @locked, @visible)
+				""",
+				parameters,
+				transaction);
+			return newId;
+		}, cancellationToken);
 
 		return Track(new Beatmapset { Id = id, Value = data });
 	}
@@ -62,22 +63,19 @@ internal sealed class SqliteBeatmapsetRepository(Database database, WriteBuffer 
 			live.Value.Visible = set.Value.Visible;
 		}
 
-		Save(live);
-		return Task.CompletedTask;
+		return SaveAsync(live);
 	}
 
 	/// <inheritdoc />
 	public Task DeleteAsync(Beatmapset set, CancellationToken cancellationToken = default)
 	{
-		Remove(set);
-		return Task.CompletedTask;
+		return RemoveAsync(set);
 	}
 
 	/// <inheritdoc />
 	public async Task<Page<Beatmapset>> ListAsync(BeatmapQuery query, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
-		await using var connection = await OpenAsync(cancellationToken);
 		var parameters = new DynamicParameters(new { limit = page.Limit, offset = page.Offset });
 		var where = BeatmapQueryFilter.Build(query, parameters);
 		var existsFilter = where.Length == 0 ? "" : $" AND {where}";
@@ -102,48 +100,49 @@ internal sealed class SqliteBeatmapsetRepository(Database database, WriteBuffer 
 		                )
 		                """;
 
-		var rows = await connection.QueryAsync<BeatmapsetRow>(sql, parameters);
-		var total = await connection.ExecuteScalarAsync<int>(countSql, parameters);
+		var (rows, total) = await Batcher.ReadAsync(async (connection, transaction) => (
+			await connection.QueryAsync<BeatmapsetRow>(sql, parameters, transaction),
+			await connection.ExecuteScalarAsync<int>(countSql, parameters, transaction)), cancellationToken);
 
 		return new Page<Beatmapset>(rows.Select(row => Track(ToBeatmapset(row))).ToList(), total);
 	}
 
-	protected override async Task<Beatmapset?> ReadAsync(SqliteConnection connection, int key,
-		CancellationToken cancellationToken)
+	protected override async Task<Beatmapset?> LoadAsync(int key, CancellationToken cancellationToken)
 	{
-		var row = await connection.QuerySingleOrDefaultAsync<BeatmapsetRow>(
+		var row = await Batcher.ReadAsync((connection, transaction) => connection.QuerySingleOrDefaultAsync<BeatmapsetRow>(
 			"SELECT Id, Artist, Title, Creator, CreatedAt, UpdatedAt, Locked, Visible FROM Beatmapsets WHERE Id = @Id",
-			new { Id = key });
+			new { Id = key }, transaction), cancellationToken);
 		return row is null ? null : ToBeatmapset(row);
 	}
 
-	protected override Task WriteAsync(SqliteConnection connection, SqliteTransaction transaction, Beatmapset set)
+	protected override string WriteSql =>
+		"""
+		INSERT INTO Beatmapsets (Id, Artist, Title, Creator, CreatedAt, UpdatedAt, Locked, Visible)
+		VALUES (@Id, @Artist, @Title, @Creator, @CreatedAt, @UpdatedAt, @Locked, @Visible)
+		ON CONFLICT(Id) DO UPDATE SET
+			Artist = excluded.Artist,
+			Title = excluded.Title,
+			Creator = excluded.Creator,
+			CreatedAt = excluded.CreatedAt,
+			UpdatedAt = excluded.UpdatedAt,
+			Locked = excluded.Locked,
+			Visible = excluded.Visible;
+		""";
+
+	protected override object WriteParameters(Beatmapset set)
 	{
 		var value = set.Value;
-		return connection.ExecuteAsync(
-			"""
-			INSERT INTO Beatmapsets (Id, Artist, Title, Creator, CreatedAt, UpdatedAt, Locked, Visible)
-			VALUES (@Id, @Artist, @Title, @Creator, @CreatedAt, @UpdatedAt, @Locked, @Visible)
-			ON CONFLICT(Id) DO UPDATE SET
-				Artist = excluded.Artist,
-				Title = excluded.Title,
-				Creator = excluded.Creator,
-				CreatedAt = excluded.CreatedAt,
-				UpdatedAt = excluded.UpdatedAt,
-				Locked = excluded.Locked,
-				Visible = excluded.Visible;
-			""",
-			new
-			{
-				set.Id,
-				value.Artist,
-				value.Title,
-				value.Creator,
-				CreatedAt = value.CreatedAt.ToUnixTimeMilliseconds(),
-				UpdatedAt = value.UpdatedAt.ToUnixTimeMilliseconds(),
-				Locked = value.Locked ? 1 : 0,
-				Visible = value.Visible ? 1 : 0
-			}, transaction);
+		return new
+		{
+			set.Id,
+			value.Artist,
+			value.Title,
+			value.Creator,
+			CreatedAt = value.CreatedAt.ToUnixTimeMilliseconds(),
+			UpdatedAt = value.UpdatedAt.ToUnixTimeMilliseconds(),
+			Locked = value.Locked ? 1 : 0,
+			Visible = value.Visible ? 1 : 0
+		};
 	}
 
 	protected override Task EraseAsync(SqliteConnection connection, SqliteTransaction transaction, int key)

@@ -6,6 +6,7 @@ using Basil.Application.Storage.Contracts.Common;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Utilities;
+using Basil.Infrastructure.Storage.Batching;
 using Basil.Infrastructure.Storage.Caching;
 using Dapper;
 using Microsoft.Data.Sqlite;
@@ -15,16 +16,14 @@ namespace Basil.Infrastructure.Storage.Beatmaps;
 /// <summary>Stores beatmap difficulties in the <c>Beatmaps</c> table.</summary>
 internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, IBeatmapRepository
 {
-	private readonly WriteBuffer _buffer;
 	private readonly IBeatmapsetRepository _beatmapsets;
 	private readonly ConcurrentDictionary<Md5, int> _idsByHash = new();
 	private readonly ConcurrentDictionary<int, Md5> _hashesById = new();
 	private readonly IdentityMap<int, ImmutableList<Beatmap>> _bySet = new();
 
-	public SqliteBeatmapRepository(Database database, WriteBuffer buffer, IBeatmapsetRepository beatmapsets)
-		: base(database, buffer)
+	public SqliteBeatmapRepository(DatabaseBatcher batcher, IBeatmapsetRepository beatmapsets)
+		: base(batcher)
 	{
-		_buffer = buffer;
 		_beatmapsets = beatmapsets;
 	}
 
@@ -36,18 +35,20 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 	{
 		var set = await LiveSetAsync(data.Beatmapset, cancellationToken);
 		var value = WithSet(data, set);
-		await using var connection = await OpenAsync(cancellationToken);
-		await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+		var parameters = new DynamicParameters(Parameters(0, value));
+		var id = await Batcher.WriteAsync(async (connection, transaction) =>
+		{
+			var newId = onlineId ?? await NextLocalIdAsync(connection, transaction);
+			parameters.Add("Id", newId);
+			await connection.ExecuteAsync(
+				"""
+				INSERT INTO Beatmaps (Id, BeatmapsetId, Hash, Version, Mode, Star, Length, Bpm, Cs, Ar, Od, Hp, Objects, Locked, Visible)
+				VALUES (@Id, @BeatmapsetId, @Hash, @Version, @Mode, @Star, @Length, @Bpm, @Cs, @Ar, @Od, @Hp, @Objects, @Locked, @Visible)
+				""",
+				parameters, transaction);
+			return newId;
+		}, cancellationToken);
 
-		var id = onlineId ?? await NextLocalIdAsync(connection, transaction);
-		await connection.ExecuteAsync(
-			"""
-			INSERT INTO Beatmaps (Id, BeatmapsetId, Hash, Version, Mode, Star, Length, Bpm, Cs, Ar, Od, Hp, Objects, Locked, Visible)
-			VALUES (@Id, @BeatmapsetId, @Hash, @Version, @Mode, @Star, @Length, @Bpm, @Cs, @Ar, @Od, @Hp, @Objects, @Locked, @Visible)
-			""",
-			Parameters(id, value), transaction);
-
-		await transaction.CommitAsync(cancellationToken);
 		var beatmap = Track(new Beatmap { Id = id, Value = value });
 		Index(beatmap);
 		_bySet.TryUpdate(set.Id, current => AddOrReplace(current, beatmap));
@@ -62,14 +63,14 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 		{
 			// A hash must be unique across every beatmap, so a new or changed one is written at once and the live
 			// beatmap takes it only after the commit.
-			await using var connection = await OpenAsync(cancellationToken);
-			await using var transaction = connection.BeginTransaction();
+			var id = beatmap.Id;
+			var parameters = Parameters(id, value);
 			try
 			{
-				await WriteAsync(connection, transaction, new Beatmap { Id = beatmap.Id, Value = value });
-				await transaction.CommitAsync(cancellationToken);
+				await Batcher.WriteAsync((connection, transaction) =>
+					connection.ExecuteAsync(WriteSql, parameters, transaction), cancellationToken);
 			}
-			catch (SqliteException exception) when (exception.SqliteErrorCode == 19)
+			catch (SqliteException exception) when (exception.SqliteErrorCode == SqliteErrors.Constraint)
 			{
 				throw new InvalidOperationException($"Another beatmap already has the hash {value.Hash}.", exception);
 			}
@@ -78,7 +79,7 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 			return;
 		}
 
-		Save(Remember(beatmap, value));
+		await SaveAsync(Remember(beatmap, value));
 	}
 
 	/// <summary>Gives the live instance of a beatmap the stored data and keeps the lookups in step.</summary>
@@ -112,8 +113,8 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 			_idsByHash.TryRemove(new KeyValuePair<Md5, int>(hash, id));
 		}
 
-		await using var connection = await OpenAsync(cancellationToken);
-		var row = await connection.QuerySingleOrDefaultAsync<BeatmapRow>(ByHashSql, new { Hash = hash.HashValue });
+		var row = await Batcher.ReadAsync((connection, transaction) => connection.QuerySingleOrDefaultAsync<BeatmapRow>(
+			ByHashSql, new { Hash = hash.HashValue }, transaction), cancellationToken);
 		if (row is null)
 			return null;
 
@@ -128,8 +129,8 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 		var liveSet = await LiveSetAsync(set, cancellationToken);
 		var items = await _bySet.GetOrAddAsync(liveSet.Id, async _ =>
 		{
-			await using var connection = await OpenAsync(cancellationToken);
-			var rows = await connection.QueryAsync<BeatmapRow>(BySetSql, new { SetId = liveSet.Id });
+			var rows = await Batcher.ReadAsync((connection, transaction) => connection.QueryAsync<BeatmapRow>(
+				BySetSql, new { SetId = liveSet.Id }, transaction), cancellationToken);
 			var beatmaps = ImmutableList.CreateBuilder<Beatmap>();
 			foreach (var row in rows)
 			{
@@ -148,7 +149,6 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 	public async Task<Page<Beatmap>> ListAsync(BeatmapQuery query, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
-		await using var connection = await OpenAsync(cancellationToken);
 		var parameters = new DynamicParameters(new { limit = page.Limit, offset = page.Offset });
 		var where = BeatmapQueryFilter.Build(query, parameters);
 		var filter = where.Length == 0 ? "" : $" WHERE {where}";
@@ -166,8 +166,9 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 		                JOIN Beatmapsets s ON s.Id = b.BeatmapsetId{filter}
 		                """;
 
-		var rows = await connection.QueryAsync<BeatmapRow>(sql, parameters);
-		var total = await connection.ExecuteScalarAsync<int>(countSql, parameters);
+		var (rows, total) = await Batcher.ReadAsync(async (connection, transaction) => (
+			await connection.QueryAsync<BeatmapRow>(sql, parameters, transaction),
+			await connection.ExecuteScalarAsync<int>(countSql, parameters, transaction)), cancellationToken);
 		var items = new List<Beatmap>();
 		foreach (var row in rows)
 		{
@@ -183,39 +184,42 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 	public Task RetainAsync(Beatmapset set, IReadOnlyCollection<Beatmap> keep,
 		CancellationToken cancellationToken = default)
 	{
+		var setId = set.Id;
 		var keepIds = keep.Select(beatmap => beatmap.Id).ToArray();
+		var keepAny = keepIds.Length != 0;
+		var deleteAllParameters = new { SetId = setId };
+		var deleteKeptParameters = new { SetId = setId, KeepIds = keepIds };
 		var keepSet = keepIds.ToHashSet();
-		foreach (var beatmap in Items.Values.Where(beatmap => beatmap.Value.Beatmapset.Id == set.Id && !keepSet.Contains(beatmap.Id)))
+		foreach (var beatmap in Items.Values.Where(beatmap => beatmap.Value.Beatmapset.Id == setId && !keepSet.Contains(beatmap.Id)))
 			RemoveCached(beatmap);
 
-		_bySet.TryUpdate(set.Id, current => current.Where(beatmap => keepSet.Contains(beatmap.Id)).ToImmutableList());
-		_buffer.Enqueue((GetType(), "retain", set.Id), async (connection, transaction) =>
+		_bySet.TryUpdate(setId, current => current.Where(beatmap => keepSet.Contains(beatmap.Id)).ToImmutableList());
+		return Batcher.EnqueueAsync((GetType(), "retain", setId), async (connection, transaction) =>
 		{
-			if (keepIds.Length == 0)
+			if (!keepAny)
 			{
-				await connection.ExecuteAsync("DELETE FROM Beatmaps WHERE BeatmapsetId = @SetId", new { SetId = set.Id }, transaction);
+				await connection.ExecuteAsync("DELETE FROM Beatmaps WHERE BeatmapsetId = @SetId", deleteAllParameters, transaction);
 				return;
 			}
 
 			await connection.ExecuteAsync(
 				"DELETE FROM Beatmaps WHERE BeatmapsetId = @SetId AND Id NOT IN @KeepIds",
-				new { SetId = set.Id, KeepIds = keepIds }, transaction);
+				deleteKeptParameters, transaction);
 		});
-		return Task.CompletedTask;
 	}
 
-	protected override async Task<Beatmap?> ReadAsync(SqliteConnection connection, int key,
-		CancellationToken cancellationToken)
+	protected override async Task<Beatmap?> LoadAsync(int key, CancellationToken cancellationToken)
 	{
-		var row = await connection.QuerySingleOrDefaultAsync<BeatmapRow>(ByIdSql, new { Id = key });
+		var row = await Batcher.ReadAsync((connection, transaction) => connection.QuerySingleOrDefaultAsync<BeatmapRow>(
+			ByIdSql, new { Id = key }, transaction), cancellationToken);
 		return row is null ? null : await ToBeatmapAsync(row, cancellationToken);
 	}
 
-	protected override Task WriteAsync(SqliteConnection connection, SqliteTransaction transaction, Beatmap beatmap)
-	{
-		var value = beatmap.Value;
-		return connection.ExecuteAsync(
-			"""
+	protected override string WriteSql => UpsertSql;
+
+	protected override object WriteParameters(Beatmap beatmap) => Parameters(beatmap.Id, beatmap.Value);
+
+	private const string UpsertSql = """
 			INSERT INTO Beatmaps (Id, BeatmapsetId, Hash, Version, Mode, Star, Length, Bpm, Cs, Ar, Od, Hp, Objects, Locked, Visible)
 			VALUES (@Id, @BeatmapsetId, @Hash, @Version, @Mode, @Star, @Length, @Bpm, @Cs, @Ar, @Od, @Hp, @Objects, @Locked, @Visible)
 			ON CONFLICT(Id) DO UPDATE SET
@@ -233,9 +237,7 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 				Objects = excluded.Objects,
 				Locked = excluded.Locked,
 				Visible = excluded.Visible;
-			""",
-			Parameters(beatmap.Id, value), transaction);
-	}
+			""";
 
 	protected override Task EraseAsync(SqliteConnection connection, SqliteTransaction transaction, int key)
 	{

@@ -5,6 +5,7 @@ using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Utilities;
+using Basil.Infrastructure.Storage.Batching;
 using Basil.Infrastructure.Storage.Caching;
 using Basil.Infrastructure.Storage.Multiplayer;
 using Dapper;
@@ -14,11 +15,10 @@ namespace Basil.Infrastructure.Storage.Scores;
 
 /// <summary>Stores submitted scores.</summary>
 internal sealed class SqliteScoreRepository(
-	Database database,
-	WriteBuffer buffer,
+	DatabaseBatcher batcher,
 	IMatchRepository matches,
 	IRoundRepository rounds,
-	MatchReportCache reports) : CachedRepository<int, Score>(database, buffer), IScoreRepository
+	MatchReportCache reports) : CachedRepository<int, Score>(batcher), IScoreRepository
 {
 	protected override int KeyOf(Score item) => item.Id;
 
@@ -34,8 +34,11 @@ internal sealed class SqliteScoreRepository(
 		}
 
 		var value = data with { Round = round };
-		await using var connection = await OpenAsync(cancellationToken);
-		var id = await connection.QuerySingleOrDefaultAsync<int>(
+		var parameters = Parameters(value);
+		int id;
+		try
+		{
+			id = await Batcher.WriteAsync((connection, transaction) => connection.QuerySingleOrDefaultAsync<int>(
 			"""
 			INSERT INTO Scores (UserId, BeatmapHash, Mode, Mods, Num300, Num100, Num50, NumGeki, NumKatu, NumMiss,
 			                    TotalScore, MaxCombo, Grade, IsPassed, IsFullCombo, Timestamp, MatchId, RoundNumber, Team, Checksum)
@@ -44,7 +47,12 @@ internal sealed class SqliteScoreRepository(
 			ON CONFLICT(Checksum) DO NOTHING
 			RETURNING Id
 			""",
-			Parameters(value));
+			parameters, transaction), cancellationToken);
+		}
+		catch (SqliteException exception) when (exception.SqliteErrorCode == SqliteErrors.Constraint)
+		{
+			return null;
+		}
 
 		if (id == 0)
 			return null;
@@ -63,11 +71,11 @@ internal sealed class SqliteScoreRepository(
 		CancellationToken cancellationToken = default)
 	{
 		var (where, parameters) = BuildFilter(query);
-		await using var connection = await OpenAsync(cancellationToken);
-		var total = await connection.ExecuteScalarAsync<int>($"SELECT COUNT(*) FROM Scores {where}", parameters);
 		parameters.Add("Limit", page.Limit);
 		parameters.Add("Offset", page.Offset);
-		var rows = await connection.QueryAsync<ScoreRow>(
+		var (total, rows) = await Batcher.ReadAsync(async (connection, transaction) => (
+			await connection.ExecuteScalarAsync<int>($"SELECT COUNT(*) FROM Scores {where}", parameters, transaction),
+			await connection.QueryAsync<ScoreRow>(
 			$"""
 			 SELECT Id, UserId, BeatmapHash, Mode, Mods, Num300, Num100, Num50, NumGeki, NumKatu, NumMiss,
 			        TotalScore, MaxCombo, Grade, IsPassed, IsFullCombo, Timestamp, MatchId, RoundNumber, Team, Checksum
@@ -76,23 +84,22 @@ internal sealed class SqliteScoreRepository(
 			 ORDER BY Timestamp DESC, Id DESC
 			 LIMIT @Limit OFFSET @Offset
 			""",
-			parameters);
+			parameters, transaction)), cancellationToken);
 
 		var loaded = await LoadRoundsAsync(rows.Select(row => row.MatchId), cancellationToken);
 		var items = rows.Select(row => Track(ToScore(row, FindRound(row, loaded)))).ToList();
 		return new Page<Score>(items, total);
 	}
 
-	protected override async Task<Score?> ReadAsync(SqliteConnection connection, int key,
-		CancellationToken cancellationToken)
+	protected override async Task<Score?> LoadAsync(int key, CancellationToken cancellationToken)
 	{
-		var row = await connection.QuerySingleOrDefaultAsync<ScoreRow>(
+		var row = await Batcher.ReadAsync((connection, transaction) => connection.QuerySingleOrDefaultAsync<ScoreRow>(
 			"""
 			SELECT Id, UserId, BeatmapHash, Mode, Mods, Num300, Num100, Num50, NumGeki, NumKatu, NumMiss,
 			       TotalScore, MaxCombo, Grade, IsPassed, IsFullCombo, Timestamp, MatchId, RoundNumber, Team, Checksum
 			FROM Scores WHERE Id = @Id
 			""",
-			new { Id = key });
+			new { Id = key }, transaction), cancellationToken);
 		if (row is null)
 			return null;
 
@@ -100,10 +107,8 @@ internal sealed class SqliteScoreRepository(
 		return ToScore(row, FindRound(row, loaded));
 	}
 
-	protected override Task WriteAsync(SqliteConnection connection, SqliteTransaction transaction, Score score)
-	{
-		return connection.ExecuteAsync(
-			"""
+	protected override string WriteSql =>
+		"""
 			INSERT INTO Scores (Id, UserId, BeatmapHash, Mode, Mods, Num300, Num100, Num50, NumGeki, NumKatu, NumMiss,
 			                    TotalScore, MaxCombo, Grade, IsPassed, IsFullCombo, Timestamp, MatchId, RoundNumber, Team, Checksum)
 			VALUES (@Id, @UserId, @BeatmapHash, @Mode, @Mods, @Num300, @Num100, @Num50, @NumGeki, @NumKatu, @NumMiss,
@@ -129,9 +134,9 @@ internal sealed class SqliteScoreRepository(
 				RoundNumber = excluded.RoundNumber,
 				Team = excluded.Team,
 				Checksum = excluded.Checksum
-			""",
-			Parameters(score.Value, score.Id), transaction);
-	}
+			""";
+
+	protected override object WriteParameters(Score score) => Parameters(score.Value, score.Id);
 
 	private static (string Where, DynamicParameters Parameters) BuildFilter(ScoreQuery query)
 	{

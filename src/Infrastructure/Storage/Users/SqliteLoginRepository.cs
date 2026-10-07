@@ -1,13 +1,13 @@
 using System.Globalization;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Auth;
-using Basil.Infrastructure.Storage.Caching;
+using Basil.Infrastructure.Storage.Batching;
 using Dapper;
 
 namespace Basil.Infrastructure.Storage.Users;
 
 /// <summary>Records the history of logins.</summary>
-internal sealed class SqliteLoginRepository(WriteBuffer buffer) : ILoginRepository
+internal sealed class SqliteLoginRepository(DatabaseBatcher batcher) : ILoginRepository
 {
 	/// <inheritdoc />
 	public Task CreateAsync(Login login, CancellationToken cancellationToken = default)
@@ -28,7 +28,7 @@ internal sealed class SqliteLoginRepository(WriteBuffer buffer) : ILoginReposito
 			DiskSignatureHash = client?.Fingerprint.DiskSignatureHash.HashValue
 		};
 
-		buffer.Append((connection, transaction) => connection.ExecuteAsync(
+		return batcher.AppendAsync((connection, transaction) => connection.ExecuteAsync(
 			"""
 			INSERT INTO Logins (UserId, Ip, Timestamp, ClientDate, ClientRevision, ClientStream, OsuPathHash,
 			                    NetworkAdapters, NetworkAdaptersHash, UninstallHash, DiskSignatureHash)
@@ -36,6 +36,5 @@ internal sealed class SqliteLoginRepository(WriteBuffer buffer) : ILoginReposito
 			        @NetworkAdapters, @NetworkAdaptersHash, @UninstallHash, @DiskSignatureHash);
 			""",
 			values, transaction));
-		return Task.CompletedTask;
 	}
 }

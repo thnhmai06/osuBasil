@@ -3,6 +3,7 @@ using System.Globalization;
 using Basil.Application.Storage.Contracts.Common;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Users;
+using Basil.Infrastructure.Storage.Batching;
 using Basil.Infrastructure.Storage.Caching;
 using Dapper;
 using Microsoft.Data.Sqlite;
@@ -10,8 +11,8 @@ using Microsoft.Data.Sqlite;
 namespace Basil.Infrastructure.Storage.Users;
 
 /// <summary>Stores registered users.</summary>
-internal sealed class SqliteUserRepository(Database database, WriteBuffer buffer)
-	: CachedRepository<int, User>(database, buffer), IUserRepository
+internal sealed class SqliteUserRepository(DatabaseBatcher batcher)
+	: CachedRepository<int, User>(batcher), IUserRepository
 {
 	private readonly ConcurrentDictionary<string, int> _idsBySafeName = new(StringComparer.Ordinal);
 	private readonly ConcurrentDictionary<int, string> _safeNamesById = new();
@@ -21,20 +22,20 @@ internal sealed class SqliteUserRepository(Database database, WriteBuffer buffer
 	/// <inheritdoc />
 	public async Task<User> CreateAsync(UserData data, CancellationToken cancellationToken = default)
 	{
-		await using var connection = await OpenAsync(cancellationToken);
-		var id = await connection.QuerySingleAsync<int>(
+		var parameters = new
+		{
+			data.Name,
+			Country = (long)data.Country,
+			Permissions = (long)data.Permissions,
+			DeletedAt = data.DeletedAt?.ToUnixTimeMilliseconds()
+		};
+		var id = await Batcher.WriteAsync((connection, transaction) => connection.QuerySingleAsync<int>(
 			"""
 			INSERT INTO Users (Name, Country, Permissions, DeletedAt)
 			VALUES (@Name, @Country, @Permissions, @DeletedAt)
 			RETURNING Id;
 			""",
-			new
-			{
-				data.Name,
-				Country = (long)data.Country,
-				Permissions = (long)data.Permissions,
-				DeletedAt = data.DeletedAt?.ToUnixTimeMilliseconds()
-			});
+			parameters, transaction), cancellationToken);
 
 		return TrackUser(new User { Id = id, Value = data });
 	}
@@ -50,8 +51,7 @@ internal sealed class SqliteUserRepository(Database database, WriteBuffer buffer
 			live.Value.DeletedAt = user.Value.DeletedAt;
 		}
 
-		Save(live);
-		return Task.CompletedTask;
+		return SaveAsync(live);
 	}
 
 	/// <inheritdoc />
@@ -60,32 +60,18 @@ internal sealed class SqliteUserRepository(Database database, WriteBuffer buffer
 		_ = new UserData { Name = name };
 		var live = TrackUser(user);
 
-		// The one write that goes to the database at once: whether the name is free is the database's to say, and
-		// the user takes the name only once the database holds it.
-		await using var connection = await OpenAsync(cancellationToken);
-		await using var transaction = connection.BeginTransaction();
+		// Whether the name is free is the database's to say, so the user takes the name only once it is committed.
 		try
 		{
-			await connection.ExecuteAsync("UPDATE Users SET Name = @Name WHERE Id = @Id",
-				new { Name = name, live.Id }, transaction);
+			await Batcher.WriteAsync((connection, transaction) => connection.ExecuteAsync(
+				"UPDATE Users SET Name = @Name WHERE Id = @Id", new { Name = name, live.Id }, transaction), cancellationToken);
 		}
-		catch (SqliteException exception) when (exception.SqliteErrorCode == 19)
+		catch (SqliteException exception) when (exception.SqliteErrorCode == SqliteErrors.Constraint)
 		{
 			return false;
 		}
 
-		var previous = live.Value.Name;
 		live.Value.Name = name;
-		try
-		{
-			await transaction.CommitAsync(cancellationToken);
-		}
-		catch
-		{
-			live.Value.Name = previous;
-			throw;
-		}
-
 		IndexUser(live);
 		return true;
 	}
@@ -107,10 +93,9 @@ internal sealed class SqliteUserRepository(Database database, WriteBuffer buffer
 			_idsBySafeName.TryRemove(new KeyValuePair<string, int>(safeName, id));
 		}
 
-		await using var connection = await OpenAsync(cancellationToken);
-		var foundId = await connection.QuerySingleOrDefaultAsync<int?>(
+		var foundId = await Batcher.ReadAsync((connection, transaction) => connection.QuerySingleOrDefaultAsync<int?>(
 			"SELECT Id FROM Users WHERE SafeName = replace(lower(@Name), ' ', '_')",
-			new { Name = name });
+			new { Name = name }, transaction), cancellationToken);
 		return foundId is { } found ? await FindUserAsync(found, cancellationToken) : null;
 	}
 
@@ -119,45 +104,46 @@ internal sealed class SqliteUserRepository(Database database, WriteBuffer buffer
 		CancellationToken cancellationToken = default)
 	{
 		var (where, parameters) = BuildFilter(query);
-		await using var connection = await OpenAsync(cancellationToken);
-		var total = await connection.ExecuteScalarAsync<int>($"SELECT COUNT(*) FROM Users {where}", parameters);
 		parameters.Add("Limit", page.Limit);
 		parameters.Add("Offset", page.Offset);
-		var rows = await connection.QueryAsync<UserRow>(
-			$"SELECT Id, Name, Country, Permissions, DeletedAt FROM Users {where} ORDER BY Id LIMIT @Limit OFFSET @Offset",
-			parameters);
+		var (total, rows) = await Batcher.ReadAsync(async (connection, transaction) => (
+			await connection.ExecuteScalarAsync<int>($"SELECT COUNT(*) FROM Users {where}", parameters, transaction),
+			await connection.QueryAsync<UserRow>(
+				$"SELECT Id, Name, Country, Permissions, DeletedAt FROM Users {where} ORDER BY Id LIMIT @Limit OFFSET @Offset",
+				parameters, transaction)), cancellationToken);
 
 		return new Page<User>([.. rows.Select(row => TrackUser(ToUser(row)))], total);
 	}
 
-	protected override async Task<User?> ReadAsync(SqliteConnection connection, int key,
-		CancellationToken cancellationToken)
+	protected override async Task<User?> LoadAsync(int key, CancellationToken cancellationToken)
 	{
-		var row = await connection.QuerySingleOrDefaultAsync<UserRow>(
-			"SELECT Id, Name, Country, Permissions, DeletedAt FROM Users WHERE Id = @Id", new { Id = key });
+		var row = await Batcher.ReadAsync((connection, transaction) => connection.QuerySingleOrDefaultAsync<UserRow>(
+			"SELECT Id, Name, Country, Permissions, DeletedAt FROM Users WHERE Id = @Id", new { Id = key }, transaction),
+			cancellationToken);
 		return row is null ? null : ToUser(row);
 	}
 
-	protected override async Task WriteAsync(SqliteConnection connection, SqliteTransaction transaction, User user)
+	protected override string WriteSql =>
+		"""
+		INSERT INTO Users (Id, Name, Country, Permissions, DeletedAt)
+		VALUES (@Id, @Name, @Country, @Permissions, @DeletedAt)
+		ON CONFLICT(Id) DO UPDATE SET
+			Country = excluded.Country,
+			Permissions = excluded.Permissions,
+			DeletedAt = excluded.DeletedAt;
+		""";
+
+	protected override object WriteParameters(User user)
 	{
 		var value = user.Value;
-		await connection.ExecuteAsync(
-			"""
-			INSERT INTO Users (Id, Name, Country, Permissions, DeletedAt)
-			VALUES (@Id, @Name, @Country, @Permissions, @DeletedAt)
-			ON CONFLICT(Id) DO UPDATE SET
-				Country = excluded.Country,
-				Permissions = excluded.Permissions,
-				DeletedAt = excluded.DeletedAt;
-			""",
-			new
-			{
-				user.Id,
-				value.Name,
-				Country = (long)value.Country,
-				Permissions = (long)value.Permissions,
-				DeletedAt = value.DeletedAt?.ToUnixTimeMilliseconds()
-			}, transaction);
+		return new
+		{
+			user.Id,
+			value.Name,
+			Country = (long)value.Country,
+			Permissions = (long)value.Permissions,
+			DeletedAt = value.DeletedAt?.ToUnixTimeMilliseconds()
+		};
 	}
 
 	private User TrackUser(User user)
