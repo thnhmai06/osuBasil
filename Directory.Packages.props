@@ -5,12 +5,12 @@
   <ItemGroup>
     <PackageVersion Include="BCrypt.Net-Next" Version="4.2.0" />
     <PackageVersion Include="BouncyCastle.Cryptography" Version="2.7.0" />
-    <PackageVersion Include="Dapper" Version="2.1.79" />
-    <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.11" />
-    <PackageVersion Include="ppy.osu.Game.Rulesets.Osu" Version="2026.730.0" />
-    <PackageVersion Include="ppy.osu.Game.Rulesets.Taiko" Version="2026.730.0" />
-    <PackageVersion Include="ppy.osu.Game.Rulesets.Catch" Version="2026.730.0" />
-    <PackageVersion Include="ppy.osu.Game.Rulesets.Mania" Version="2026.730.0" />
+    <PackageVersion Include="Dapper" Version="2.1.89" />
+    <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.12" />
+    <PackageVersion Include="ppy.osu.Game.Rulesets.Osu" Version="2026.916.0" />
+    <PackageVersion Include="ppy.osu.Game.Rulesets.Taiko" Version="2026.916.0" />
+    <PackageVersion Include="ppy.osu.Game.Rulesets.Catch" Version="2026.916.0" />
+    <PackageVersion Include="ppy.osu.Game.Rulesets.Mania" Version="2026.916.0" />
     <!-- Already a transitive dependency of ppy.osu.Framework at this exact version — pinning it here
          to reference directly for thumbnail resizing doesn't add a new package to the graph. -->
     <PackageVersion Include="SixLabors.ImageSharp" Version="3.1.12" />
@@ -21,10 +21,10 @@
          without a hosts entry. jdomnitz's maintained fork of richardschneider/net-mdns. -->
     <PackageVersion Include="Makaretu.Dns.Multicast.New" Version="0.38.0" />
     <!-- Basil.Application -->
-    <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.11" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.11" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
     <!-- Basil.Web -->
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
     <PackageVersion Include="Microsoft.Extensions.ApiDescription.Server" Version="10.0.11" />
