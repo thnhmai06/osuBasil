@@ -314,8 +314,6 @@ See [`docs/for-technicians/docker.md`](docs/for-technicians/docker.md) for Docke
 
 ```text
 Basil.Domain                     business model and its own validity          -> (nothing)
-Basil.Protocol.Bancho            osu! client-server wire formats               -> (nothing)
-Basil.Protocol.Irc               IRC wire format                               -> (nothing)
 
 Basil.Application.Storage.Contracts       persistent ports, registry contracts,      -> Domain
                                           runtime models, paging and query records
@@ -326,14 +324,19 @@ Basil.Application.Services.Implementations service implementations (internal)   
                                                                                     (never Storage.Implementations)
 
 Basil.Infrastructure.Storage     persistent ports: SQLite, files, migrations   -> Storage.Contracts
-Basil.Infrastructure.Services    capability ports: osu! rulesets, media, mirror -> Services.Contracts
+Basil.Infrastructure.Services    capability ports: osu! rulesets, FFMpegCore,   -> Services.Contracts
+                                 beatmap mirror
 Basil.Infrastructure.Runtime     event pumps and handlers, background loops,    -> Services.Contracts
                                  startup work                                     (no Infrastructure project
                                                                                    references any Implementations)
+Basil.Protocol.Bancho            osu! client-server wire formats, score         -> external libraries only
+                                 submission cipher (BouncyCastle)
+Basil.Protocol.Irc               IRC wire format                                -> (nothing)
 Basil.Host.Bancho / .Irc / .Api  transports                                     -> Services.Contracts, the two
                                                                                    Implementations, Infrastructure,
                                                                                    their Protocol
-Basil.Host                       entry point and composition                    -> everything
+Basil.Host                       entry point, composition, logging,             -> everything
+                                 diagnostics, LAN advertising
 
 Basil.Bot.Application            BasilBot logic and the ports it needs from     -> Domain
                                  the server (a separate client, not the server)
@@ -342,8 +345,10 @@ Basil.Bot.Application            BasilBot logic and the ports it needs from     
 `Basil.Protocol.Bancho` wraps the communication between the osu! client and the server, as an API wrapper
 wraps a remote API: it turns what the client sends (bancho packets, the delimited strings of the web
 endpoints such as the score submission, the client hash, the client build) into C# models of primitives and
-back. It does not validate and gives no business meaning; Domain owns meaning and validity, Application the
-checks. If a wire format changes, only Protocol changes. `Basil.Protocol.Irc` does the same for IRC.
+back, including undoing the client's own encoding (the score submission's Rijndael cipher). It does not
+validate and gives no business meaning; Domain owns meaning and validity, Application the checks. If a wire
+format changes, only Protocol changes. `Basil.Protocol.Irc` does the same for IRC. Protocol is not a peer of
+Domain: only the transport hosts reference it, and it may use external libraries for the wire work.
 
 Projects live under `src/` in folders that mirror the solution folders under `/Sources/`, each named by
 its short name without `Basil.`: `src/Domain/`, `src/Infrastructure/`, `src/Application/Services/{Contracts,Implementations}/`,
@@ -544,6 +549,14 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   (`Query<T>`, `SortOptions`). Key normalization (for example case- and space-insensitive user names) is the
   repository's own lookup concern. A repository filters only by explicit criteria in its query record
   (`IncludeHidden`, `IncludeDeleted`, `IncludePrivate`); the caller sets them from the asker's authority.
+* **The live object is the source of truth; the database is where it hibernates.** A repository keeps exactly
+  one instance per identity for the life of the process (never evicted) and returns that same instance from
+  every `GetAsync`, `GetByYAsync` and `ListAsync`; the database is read only for an identity not yet in memory.
+  `CreateOrUpdateAsync` and `DeleteAsync` mark the change; Infrastructure writes pending changes in one batched
+  transaction every second and once more after the host has stopped everything else. `CreateAsync` writes at
+  once because the store assigns the identity. Append-only history (logins, match events) is
+  not kept in memory and is written in the same batches. A derived read model that is queried often (the match
+  report) is cached and rebuilt when its sources change.
 * **Naming: Domain model `X`, runtime model `XSession`, the object that holds the live sessions
   `XRegistry`, the contract `IXService` and its implementation `XService`.** No suffixes such as
   "Definition". `Channel` → `ChannelSession` → `GeneralChannelRegistry` (it holds only general channels);
