@@ -556,11 +556,14 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   asked for, then released; the database is read for an identity not in memory.
   `CreateOrUpdateAsync`/`DeleteAsync` queue a snapshot of the values **as they are when queued** (a later change of
   the same identity replaces it); the returned task completes once it is committed and fails with the reason it was
-  not. A failed write is never tried again, since a later attempt could overwrite newer data. Every read and write
-  goes through `DatabaseBatcher`, which runs them in order in batches of one transaction, due once 100 writes are
-  pending or the oldest operation has waited 50 ms (a read sees every write queued before it); `DatabaseWorker` is
-  the only code that touches the database, each operation in its own savepoint. An operation's lambda uses only its
-  connection and transaction and never queues another operation. Parents are created before their children.
+  not. A failed write is never tried again, since a later attempt could overwrite newer data. Every database read
+  and write goes through `DatabaseBatcher`: writes run in order in batches of one transaction, due once 100 writes
+  are pending or the oldest has waited 50 ms; reads are not batched and, as in SQLite's WAL mode, see only what is
+  committed. A lookup asks memory first and the database only when memory has nothing; a listing asks the database
+  which rows match and returns the live instance of every row memory holds, and a row whose deletion is still
+  queued never comes back into memory. `DatabaseWorker` is the only code that touches the database, each write in
+  its own savepoint, reads side by side on connections of their own. An operation's lambda uses only its
+  connection (and transaction) and never queues another operation. Parents are created before their children.
   Append-only history (logins, match events) is not kept in memory. A derived read model that is queried often (the
   match report) is cached and rebuilt when its sources change.
   **A change whose check needs rows not in memory** (a value unique across the table such as a user name or a

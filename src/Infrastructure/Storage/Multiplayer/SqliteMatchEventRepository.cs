@@ -33,14 +33,14 @@ internal sealed class SqliteMatchEventRepository(DatabaseBatcher batcher, IUserR
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<MatchEvent>> ListAsync(Match match, CancellationToken cancellationToken = default)
 	{
-		var rows = (await batcher.ReadAsync((connection, transaction) => connection.QueryAsync<MatchEventRow>(
+		var rows = (await batcher.ReadAsync(connection => connection.QueryAsync<MatchEventRow>(
 			"""
 			SELECT Type, Timestamp, ActorId, TargetId, Detail
 			FROM MatchEvents
 			WHERE MatchId = @MatchId
 			ORDER BY Timestamp, Id
 			""",
-			new { MatchId = match.Id }, transaction), cancellationToken)).ToList();
+			new { MatchId = match.Id }), cancellationToken)).ToList();
 
 		var events = new List<MatchEvent>(rows.Count);
 		foreach (var row in rows)

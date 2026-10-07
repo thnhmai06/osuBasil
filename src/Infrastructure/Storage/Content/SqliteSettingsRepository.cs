@@ -16,11 +16,11 @@ internal sealed class SqliteSettingsRepository(DatabaseBatcher batcher) : ISetti
 		if (Volatile.Read(ref _settings) is { } cached)
 			return cached;
 
-		var row = await batcher.ReadAsync((connection, transaction) => connection.QuerySingleOrDefaultAsync<SettingsRow>(
+		var row = await batcher.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<SettingsRow>(
 			"""
 			SELECT Motd, LockedCreation, MenuIconUrl, MenuIconImage, MirrorDownloadEndpoint, MirrorSearchEndpoint
 			FROM Settings WHERE Id = 1
-			""", transaction: transaction), cancellationToken);
+			"""), cancellationToken);
 
 		var loaded = row is null
 			? new ServerSettings()

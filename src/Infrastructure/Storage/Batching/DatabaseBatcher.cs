@@ -7,33 +7,38 @@ namespace Basil.Infrastructure.Storage.Batching;
 
 /// <summary>Takes every read and write the repositories make and decides when the database worker runs them.</summary>
 /// <remarks>
-///     Operations run in the order they were queued, in batches of one transaction: a batch is due once
+///     Writes run in the order they were queued, in batches of one transaction: a batch is due once
 ///     <see cref="MaxCount" /> writes are pending or the oldest has waited <see cref="MaxAge" />. A later write for the
-///     same identity replaces the queued one. A read therefore sees every write queued before it. Every operation
-///     completes only once its batch is committed, or fails with the reason it was not. An operation uses only the
-///     connection and transaction it is given and never queues another operation: the batch it runs in would wait for
-///     itself.
+///     same identity replaces the queued one. A write completes only once its batch is committed, or fails with the
+///     reason it was not. Reads are not batched: they go to the worker at once and, as in SQLite's WAL mode, see what
+///     is committed, not the writes still queued. An operation uses only the connection it is given and never queues
+///     another operation: the batch it runs in would wait for itself.
 /// </remarks>
 internal sealed class DatabaseBatcher(TimeProvider timeProvider, ILogger<DatabaseBatcher> logger)
 	: BackgroundService, IHostedLifecycleService
 {
-	/// <summary>The number of pending writes that makes a batch due; reads do not count.</summary>
+	/// <summary>The number of pending writes that makes a batch due.</summary>
 	public const int MaxCount = 100;
 
-	/// <summary>How long the oldest pending operation may wait before its batch is due.</summary>
+	/// <summary>How long the oldest pending write may wait before its batch is due.</summary>
 	public static readonly TimeSpan MaxAge = TimeSpan.FromMilliseconds(50);
 
 	private readonly Channel<DatabaseBatch> _batches = Channel.CreateUnbounded<DatabaseBatch>(
 		new UnboundedChannelOptions { SingleReader = true, SingleWriter = true });
 
+	private readonly Channel<ReadOperation> _reads = Channel.CreateUnbounded<ReadOperation>(
+		new UnboundedChannelOptions { SingleReader = true });
+
 	private readonly Lock _gate = new();
 	private OrderedDictionary<object, DatabaseOperation> _pending = new();
 	private TaskCompletionSource _changed = NewSignal();
 	private long _oldest;
-	private int _writes;
 
 	/// <summary>Gets the batches of operations, in the order they must run.</summary>
 	public ChannelReader<DatabaseBatch> Batches => _batches.Reader;
+
+	/// <summary>Gets the reads, in the order they were made; they run side by side.</summary>
+	public ChannelReader<ReadOperation> Reads => _reads.Reader;
 
 	/// <summary>Queues a write of an identity, replacing any queued write of the same identity.</summary>
 	/// <returns>A task that completes once the write is committed.</returns>
@@ -59,13 +64,27 @@ internal sealed class DatabaseBatcher(TimeProvider timeProvider, ILogger<Databas
 
 	/// <summary>Queues a write that produces a result, such as an insert that assigns an id.</summary>
 	/// <returns>The result, once the write is committed.</returns>
-	public Task<T> WriteAsync<T>(Func<SqliteConnection, SqliteTransaction, Task<T>> command,
-		CancellationToken cancellationToken = default) => RunAsync(command, false, cancellationToken);
+	public async Task<T> WriteAsync<T>(Func<SqliteConnection, SqliteTransaction, Task<T>> command,
+		CancellationToken cancellationToken = default)
+	{
+		T result = default!;
+		await AppendAsync(async (connection, transaction) => result = await command(connection, transaction))
+			.WaitAsync(cancellationToken);
+		return result;
+	}
 
-	/// <summary>Queues a query; it sees every write queued before it.</summary>
+	/// <summary>Runs a query at once, alongside other reads; it sees what is committed.</summary>
 	/// <returns>The result of the query.</returns>
-	public Task<T> ReadAsync<T>(Func<SqliteConnection, SqliteTransaction, Task<T>> query,
-		CancellationToken cancellationToken = default) => RunAsync(query, true, cancellationToken);
+	public Task<T> ReadAsync<T>(Func<SqliteConnection, Task<T>> query, CancellationToken cancellationToken = default)
+	{
+		var result = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
+		var read = new ReadOperation(async connection => result.TrySetResult(await query(connection)),
+			exception => result.TrySetException(exception));
+		if (!_reads.Writer.TryWrite(read))
+			read.Fail(new InvalidOperationException("The database is closed."));
+
+		return result.Task.WaitAsync(cancellationToken);
+	}
 
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
@@ -94,29 +113,15 @@ internal sealed class DatabaseBatcher(TimeProvider timeProvider, ILogger<Databas
 			await RunBatchAsync();
 
 		_batches.Writer.Complete();
-	}
-
-	private async Task<T> RunAsync<T>(Func<SqliteConnection, SqliteTransaction, Task<T>> operation, bool isRead,
-		CancellationToken cancellationToken)
-	{
-		T result = default!;
-		var queued = new DatabaseOperation(new object(),
-			async (connection, transaction) => result = await operation(connection, transaction), isRead);
-		lock (_gate)
-			Add(queued);
-
-		await queued.Done.Task.WaitAsync(cancellationToken);
-		return result;
+		_reads.Writer.Complete();
 	}
 
 	private void Add(DatabaseOperation operation)
 	{
 		_pending.Add(operation.Identity, operation);
-		if (!operation.IsRead)
-			_writes++;
 		if (_pending.Count == 1)
 			_oldest = timeProvider.GetTimestamp();
-		if (_pending.Count == 1 || _writes == MaxCount)
+		if (_pending.Count is 1 or MaxCount)
 			_changed.TrySetResult();
 	}
 
@@ -129,7 +134,7 @@ internal sealed class DatabaseBatcher(TimeProvider timeProvider, ILogger<Databas
 			TimeSpan? wait = null;
 			lock (_gate)
 			{
-				if (_writes >= MaxCount)
+				if (_pending.Count >= MaxCount)
 					return;
 				if (_pending.Count > 0)
 				{
@@ -164,7 +169,6 @@ internal sealed class DatabaseBatcher(TimeProvider timeProvider, ILogger<Databas
 
 			batch = new DatabaseBatch([.. _pending.Values]);
 			_pending = new OrderedDictionary<object, DatabaseOperation>();
-			_writes = 0;
 		}
 
 		await _batches.Writer.WriteAsync(batch);

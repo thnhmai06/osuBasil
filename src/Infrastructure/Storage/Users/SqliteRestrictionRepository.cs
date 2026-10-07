@@ -65,9 +65,9 @@ internal sealed class SqliteRestrictionRepository(DatabaseBatcher batcher, IUser
 		var liveUser = await users.GetAsync(user.Id, cancellationToken) ?? user;
 		var items = await _byUser.GetOrAddAsync(liveUser.Id, async _ =>
 		{
-			var rows = await Batcher.ReadAsync((connection, transaction) => connection.QueryAsync<RestrictionRow>(
+			var rows = await Batcher.ReadAsync(connection => connection.QueryAsync<RestrictionRow>(
 				"SELECT Id, UserId, Permissions, StartsAt, EndsAt FROM Restrictions WHERE UserId = @UserId ORDER BY StartsAt, Id",
-				new { UserId = liveUser.Id }, transaction), cancellationToken);
+				new { UserId = liveUser.Id }), cancellationToken);
 			var restrictions = ImmutableList.CreateBuilder<Restriction>();
 			foreach (var row in rows)
 				restrictions.Add(Track(ToRestriction(row, liveUser)));
@@ -79,8 +79,8 @@ internal sealed class SqliteRestrictionRepository(DatabaseBatcher batcher, IUser
 
 	protected override async Task<Restriction?> LoadAsync(int key, CancellationToken cancellationToken)
 	{
-		var row = await Batcher.ReadAsync((connection, transaction) => connection.QuerySingleOrDefaultAsync<RestrictionRow>(
-			"SELECT Id, UserId, Permissions, StartsAt, EndsAt FROM Restrictions WHERE Id = @Id", new { Id = key }, transaction), cancellationToken);
+		var row = await Batcher.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<RestrictionRow>(
+			"SELECT Id, UserId, Permissions, StartsAt, EndsAt FROM Restrictions WHERE Id = @Id", new { Id = key }), cancellationToken);
 		if (row is null)
 			return null;
 

@@ -3,17 +3,33 @@ using Microsoft.Extensions.Hosting;
 
 namespace Basil.Infrastructure.Storage.Batching;
 
-/// <summary>Runs the batches the batcher hands over; the one place that uses the database.</summary>
+/// <summary>Runs the batches and reads the batcher hands over; the one place that uses the database.</summary>
 /// <remarks>
-///     Batches run one at a time, each in one transaction with every operation in its own savepoint, so an operation that
-///     fails is rolled back alone. The worker keeps running until the batcher has handed over its last batch.
+///     Batches run one at a time, each in one transaction with every write in its own savepoint, so a write that fails
+///     is rolled back alone. Reads run side by side on connections of their own, alongside the batch being written.
+///     The worker keeps running until the batcher has handed over its last batch.
 /// </remarks>
 internal sealed class DatabaseWorker(Database database, DatabaseBatcher batcher) : BackgroundService
 {
-	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+	// ponytail: a fixed number of reads at once, so a burst cannot open a connection per read; tune if reads queue up.
+	private readonly SemaphoreSlim _readSlots = new(Environment.ProcessorCount * 2);
+
+	protected override Task ExecuteAsync(CancellationToken stoppingToken) =>
+		Task.WhenAll(RunBatchesAsync(), RunReadsAsync());
+
+	private async Task RunBatchesAsync()
 	{
 		await foreach (var batch in batcher.Batches.ReadAllAsync())
 			batch.Complete(await RunAsync(batch));
+	}
+
+	private async Task RunReadsAsync()
+	{
+		await foreach (var read in batcher.Reads.ReadAllAsync())
+		{
+			await _readSlots.WaitAsync();
+			_ = RunAsync(read);
+		}
 	}
 
 	/// <summary>Leaves the worker running: it stops once the batcher closes, after its last batch.</summary>
@@ -51,6 +67,23 @@ internal sealed class DatabaseWorker(Database database, DatabaseBatcher batcher)
 		catch (Exception exception)
 		{
 			return exception;
+		}
+	}
+
+	private async Task RunAsync(ReadOperation read)
+	{
+		try
+		{
+			await using var connection = await database.OpenAsync();
+			await read.Run(connection);
+		}
+		catch (Exception exception)
+		{
+			read.Fail(exception);
+		}
+		finally
+		{
+			_readSlots.Release();
 		}
 	}
 

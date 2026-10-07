@@ -18,8 +18,8 @@ internal sealed class SqliteChannelRepository(DatabaseBatcher batcher) : IChanne
 		if (Volatile.Read(ref _channels) is { } cached)
 			return cached;
 
-		var rows = await batcher.ReadAsync((connection, transaction) => connection.QueryAsync<ChannelRow>(
-			"SELECT Name, Topic, ReadPermissions, WritePermissions, AutoJoin, Visible FROM Channels ORDER BY Name", transaction: transaction), cancellationToken);
+		var rows = await batcher.ReadAsync(connection => connection.QueryAsync<ChannelRow>(
+			"SELECT Name, Topic, ReadPermissions, WritePermissions, AutoJoin, Visible FROM Channels ORDER BY Name"), cancellationToken);
 		var loaded = rows.Select(row => row.ToChannel()).ToImmutableList();
 		return Interlocked.CompareExchange(ref _channels, loaded, null) ?? loaded;
 	}

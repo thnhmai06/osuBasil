@@ -43,14 +43,14 @@ internal sealed class SqliteRoundRepository(
 		var liveMatch = await matches.GetAsync(match.Id, cancellationToken) ?? match;
 		var rounds = await _byMatch.GetOrAddAsync(liveMatch.Id, async _ =>
 		{
-			var rows = await Batcher.ReadAsync((connection, transaction) => connection.QueryAsync<RoundRow>(
+			var rows = await Batcher.ReadAsync(connection => connection.QueryAsync<RoundRow>(
 				"""
 				SELECT Number, BeatmapHash, Mode, Mods, Freemods, TeamType, WinCondition, Seed, StartedAt, EndedAt, Aborted
 				FROM Rounds
 				WHERE MatchId = @MatchId
 				ORDER BY Number
 				""",
-				new { MatchId = liveMatch.Id }, transaction), cancellationToken);
+				new { MatchId = liveMatch.Id }), cancellationToken);
 			var result = ImmutableList.CreateBuilder<Round>();
 			foreach (var row in rows)
 				result.Add(Track(ToRound(liveMatch, row)));
@@ -62,13 +62,13 @@ internal sealed class SqliteRoundRepository(
 
 	protected override async Task<Round?> LoadAsync((int MatchId, int Number) key, CancellationToken cancellationToken)
 	{
-		var row = await Batcher.ReadAsync((connection, transaction) => connection.QuerySingleOrDefaultAsync<RoundRow>(
+		var row = await Batcher.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<RoundRow>(
 			"""
 			SELECT Number, BeatmapHash, Mode, Mods, Freemods, TeamType, WinCondition, Seed, StartedAt, EndedAt, Aborted
 			FROM Rounds
 			WHERE MatchId = @MatchId AND Number = @Number
 			""",
-			new { key.MatchId, key.Number }, transaction), cancellationToken);
+			new { key.MatchId, key.Number }), cancellationToken);
 		if (row is null)
 			return null;
 

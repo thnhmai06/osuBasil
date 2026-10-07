@@ -51,9 +51,9 @@ internal sealed class SqliteRelationshipRepository(DatabaseBatcher batcher, IUse
 		var liveActor = await users.GetAsync(actor.Id, cancellationToken) ?? actor;
 		var relationships = await _byActor.GetOrAddAsync(liveActor.Id, async _ =>
 		{
-			var rows = await batcher.ReadAsync((connection, transaction) => connection.QueryAsync<RelationshipRow>(
+			var rows = await batcher.ReadAsync(connection => connection.QueryAsync<RelationshipRow>(
 				"SELECT ActorId, TargetId, Type, CreatedAt FROM Relationships WHERE ActorId = @ActorId",
-				new { ActorId = liveActor.Id }, transaction), cancellationToken);
+				new { ActorId = liveActor.Id }), cancellationToken);
 
 			var items = ImmutableList.CreateBuilder<Relationship>();
 			foreach (var row in rows)

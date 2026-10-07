@@ -34,9 +34,9 @@ internal sealed class SqliteUserStatsRepository(DatabaseBatcher batcher)
 
 	protected override async Task<UserStats?> LoadAsync((int UserId, GameMode Mode) key, CancellationToken cancellationToken)
 	{
-		var row = await Batcher.ReadAsync((connection, transaction) => connection.QuerySingleOrDefaultAsync<StatsRow>(
+		var row = await Batcher.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<StatsRow>(
 			"SELECT UserId, Mode, TotalScore, RankedScore, PlayCount FROM UserStats WHERE UserId = @UserId AND Mode = @Mode",
-			new { UserId = key.UserId, Mode = (long)key.Mode }, transaction), cancellationToken);
+			new { UserId = key.UserId, Mode = (long)key.Mode }), cancellationToken);
 		return row is null
 			? null
 			: new UserStats

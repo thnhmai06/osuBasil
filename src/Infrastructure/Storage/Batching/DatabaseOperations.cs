@@ -2,16 +2,12 @@ using Microsoft.Data.Sqlite;
 
 namespace Basil.Infrastructure.Storage.Batching;
 
-/// <summary>A read or write waiting for its batch.</summary>
+/// <summary>A write waiting for its batch.</summary>
 /// <param name="identity">What the operation stores; a later write for the same identity replaces it.</param>
 /// <param name="run">The statements of the operation.</param>
-/// <param name="isRead">Whether the operation only reads.</param>
-internal sealed class DatabaseOperation(object identity, Func<SqliteConnection, SqliteTransaction, Task> run, bool isRead = false)
+internal sealed class DatabaseOperation(object identity, Func<SqliteConnection, SqliteTransaction, Task> run)
 {
 	public object Identity { get; } = identity;
-
-	/// <summary>Gets whether the operation only reads, so it does not count toward a full batch.</summary>
-	public bool IsRead { get; } = isRead;
 
 	/// <summary>Gets or sets the statements of the latest operation queued for the identity.</summary>
 	public Func<SqliteConnection, SqliteTransaction, Task> Run { get; set; } = run;
@@ -35,6 +31,16 @@ internal sealed class DatabaseBatch(IReadOnlyList<DatabaseOperation> operations)
 	public Task<Exception?> Completion => _done.Task;
 
 	public void Complete(Exception? failure) => _done.TrySetResult(failure);
+}
+
+/// <summary>A read the worker runs at once on a connection of its own.</summary>
+/// <param name="run">The query; it reports its own result.</param>
+/// <param name="fail">Reports a failure to get a connection for the query.</param>
+internal sealed class ReadOperation(Func<SqliteConnection, Task> run, Action<Exception> fail)
+{
+	public Func<SqliteConnection, Task> Run { get; } = run;
+
+	public Action<Exception> Fail { get; } = fail;
 }
 
 /// <summary>The SQLite result codes the storage reacts to.</summary>

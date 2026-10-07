@@ -32,8 +32,8 @@ internal sealed class SqliteMenuBannerRepository(DatabaseBatcher batcher)
 	{
 		if (!_listed)
 		{
-			var rows = await Batcher.ReadAsync((connection, transaction) => connection.QueryAsync<MenuBannerRow>(
-				"SELECT Image, Url, StartsAt, EndsAt, CreatedAt FROM MenuBanners", transaction: transaction), cancellationToken);
+			var rows = await Batcher.ReadAsync(connection => connection.QueryAsync<MenuBannerRow>(
+				"SELECT Image, Url, StartsAt, EndsAt, CreatedAt FROM MenuBanners"), cancellationToken);
 			foreach (var row in rows)
 				Track(ToBanner(row));
 			_listed = true;
@@ -50,9 +50,9 @@ internal sealed class SqliteMenuBannerRepository(DatabaseBatcher batcher)
 
 	protected override async Task<MenuBanner?> LoadAsync(Uri key, CancellationToken cancellationToken)
 	{
-		var row = await Batcher.ReadAsync((connection, transaction) => connection.QuerySingleOrDefaultAsync<MenuBannerRow>(
+		var row = await Batcher.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<MenuBannerRow>(
 			"SELECT Image, Url, StartsAt, EndsAt, CreatedAt FROM MenuBanners WHERE Image = @Image",
-			new { Image = key.ToString() }, transaction), cancellationToken);
+			new { Image = key.ToString() }), cancellationToken);
 		return row is null ? null : ToBanner(row);
 	}
 

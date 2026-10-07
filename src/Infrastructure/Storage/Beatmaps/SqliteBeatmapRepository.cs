@@ -21,6 +21,9 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 	private readonly ConcurrentDictionary<int, Md5> _hashesById = new();
 	private readonly IdentityMap<int, ImmutableList<Beatmap>> _bySet = new();
 
+	// The beatmaps a set keeps while the deletion of its others is queued, by set id.
+	private readonly ConcurrentDictionary<int, HashSet<int>> _retaining = new();
+
 	public SqliteBeatmapRepository(DatabaseBatcher batcher, IBeatmapsetRepository beatmapsets)
 		: base(batcher)
 	{
@@ -113,8 +116,8 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 			_idsByHash.TryRemove(new KeyValuePair<Md5, int>(hash, id));
 		}
 
-		var row = await Batcher.ReadAsync((connection, transaction) => connection.QuerySingleOrDefaultAsync<BeatmapRow>(
-			ByHashSql, new { Hash = hash.HashValue }, transaction), cancellationToken);
+		var row = await Batcher.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<BeatmapRow>(
+			ByHashSql, new { Hash = hash.HashValue }), cancellationToken);
 		if (row is null)
 			return null;
 
@@ -129,8 +132,8 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 		var liveSet = await LiveSetAsync(set, cancellationToken);
 		var items = await _bySet.GetOrAddAsync(liveSet.Id, async _ =>
 		{
-			var rows = await Batcher.ReadAsync((connection, transaction) => connection.QueryAsync<BeatmapRow>(
-				BySetSql, new { SetId = liveSet.Id }, transaction), cancellationToken);
+			var rows = await Batcher.ReadAsync(connection => connection.QueryAsync<BeatmapRow>(
+				BySetSql, new { SetId = liveSet.Id }), cancellationToken);
 			var beatmaps = ImmutableList.CreateBuilder<Beatmap>();
 			foreach (var row in rows)
 			{
@@ -166,9 +169,9 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 		                JOIN Beatmapsets s ON s.Id = b.BeatmapsetId{filter}
 		                """;
 
-		var (rows, total) = await Batcher.ReadAsync(async (connection, transaction) => (
-			await connection.QueryAsync<BeatmapRow>(sql, parameters, transaction),
-			await connection.ExecuteScalarAsync<int>(countSql, parameters, transaction)), cancellationToken);
+		var (rows, total) = await Batcher.ReadAsync(async connection => (
+			await connection.QueryAsync<BeatmapRow>(sql, parameters),
+			await connection.ExecuteScalarAsync<int>(countSql, parameters)), cancellationToken);
 		var items = new List<Beatmap>();
 		foreach (var row in rows)
 		{
@@ -194,7 +197,8 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 			RemoveCached(beatmap);
 
 		_bySet.TryUpdate(setId, current => current.Where(beatmap => keepSet.Contains(beatmap.Id)).ToImmutableList());
-		return Batcher.EnqueueAsync((GetType(), "retain", setId), async (connection, transaction) =>
+		_retaining[setId] = keepSet;
+		var retained = Batcher.EnqueueAsync((GetType(), "retain", setId), async (connection, transaction) =>
 		{
 			if (!keepAny)
 			{
@@ -206,12 +210,15 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 				"DELETE FROM Beatmaps WHERE BeatmapsetId = @SetId AND Id NOT IN @KeepIds",
 				deleteKeptParameters, transaction);
 		});
+		retained.ContinueWith(_ => _retaining.TryRemove(new KeyValuePair<int, HashSet<int>>(setId, keepSet)),
+			TaskScheduler.Default);
+		return retained;
 	}
 
 	protected override async Task<Beatmap?> LoadAsync(int key, CancellationToken cancellationToken)
 	{
-		var row = await Batcher.ReadAsync((connection, transaction) => connection.QuerySingleOrDefaultAsync<BeatmapRow>(
-			ByIdSql, new { Id = key }, transaction), cancellationToken);
+		var row = await Batcher.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<BeatmapRow>(
+			ByIdSql, new { Id = key }), cancellationToken);
 		return row is null ? null : await ToBeatmapAsync(row, cancellationToken);
 	}
 
@@ -268,6 +275,10 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 		WHERE b.BeatmapsetId = @SetId
 		ORDER BY b.Id
 		""";
+
+	protected override bool IsBeingRemoved(Beatmap beatmap) =>
+		base.IsBeingRemoved(beatmap) ||
+		_retaining.TryGetValue(beatmap.Value.Beatmapset.Id, out var keep) && !keep.Contains(beatmap.Id);
 
 	private void RemoveCached(Beatmap beatmap)
 	{

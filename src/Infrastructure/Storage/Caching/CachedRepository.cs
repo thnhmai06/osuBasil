@@ -1,3 +1,4 @@
+using Basil.Domain.Utilities;
 using Basil.Infrastructure.Storage.Batching;
 using Dapper;
 using Microsoft.Data.Sqlite;
@@ -9,6 +10,9 @@ internal abstract class CachedRepository<TKey, T>(DatabaseBatcher batcher)
 	where TKey : notnull where T : class
 {
 	protected IdentityMap<TKey, T> Items { get; } = new();
+
+	// Reads see only committed rows, so a row whose deletion is still queued must not come back into memory.
+	private readonly ConcurrentSet<TKey> _removing = [];
 
 	/// <summary>Gets the batcher that runs this repository's reads and writes.</summary>
 	protected DatabaseBatcher Batcher { get; } = batcher;
@@ -28,9 +32,16 @@ internal abstract class CachedRepository<TKey, T>(DatabaseBatcher batcher)
 		=> throw new NotSupportedException();
 
 	protected ValueTask<T?> FindAsync(TKey key, CancellationToken cancellationToken) =>
-		Items.GetOrAddAsync(key, miss => LoadAsync(miss, cancellationToken));
+		_removing.Contains(key)
+			? ValueTask.FromResult<T?>(null)
+			: Items.GetOrAddAsync(key, async miss =>
+				await LoadAsync(miss, cancellationToken) is { } loaded && !IsBeingRemoved(loaded) ? loaded : null);
 
-	protected T Track(T item) => Items.GetOrAdd(KeyOf(item), item);
+	/// <summary>Gets the live instance of an item, keeping it when it is the first; an item being deleted is not kept.</summary>
+	protected T Track(T item) => IsBeingRemoved(item) ? item : Items.GetOrAdd(KeyOf(item), item);
+
+	/// <summary>Tells whether the deletion of an item is queued but not committed yet.</summary>
+	protected virtual bool IsBeingRemoved(T item) => _removing.Contains(KeyOf(item));
 
 	/// <summary>Queues the state the live instance of an item has now.</summary>
 	/// <returns>A task that completes once the state is committed.</returns>
@@ -47,8 +58,11 @@ internal abstract class CachedRepository<TKey, T>(DatabaseBatcher batcher)
 	protected Task RemoveAsync(T item)
 	{
 		var key = KeyOf(item);
+		_removing.Add(key);
 		Items.Remove(key);
-		return Batcher.EnqueueAsync((GetType(), key),
+		var erased = Batcher.EnqueueAsync((GetType(), key),
 			(connection, transaction) => EraseAsync(connection, transaction, key));
+		erased.ContinueWith(_ => _removing.Remove(key), TaskScheduler.Default);
+		return erased;
 	}
 }

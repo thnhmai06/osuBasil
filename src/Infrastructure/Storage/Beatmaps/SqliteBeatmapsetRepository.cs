@@ -100,18 +100,18 @@ internal sealed class SqliteBeatmapsetRepository(DatabaseBatcher batcher)
 		                )
 		                """;
 
-		var (rows, total) = await Batcher.ReadAsync(async (connection, transaction) => (
-			await connection.QueryAsync<BeatmapsetRow>(sql, parameters, transaction),
-			await connection.ExecuteScalarAsync<int>(countSql, parameters, transaction)), cancellationToken);
+		var (rows, total) = await Batcher.ReadAsync(async connection => (
+			await connection.QueryAsync<BeatmapsetRow>(sql, parameters),
+			await connection.ExecuteScalarAsync<int>(countSql, parameters)), cancellationToken);
 
 		return new Page<Beatmapset>(rows.Select(row => Track(ToBeatmapset(row))).ToList(), total);
 	}
 
 	protected override async Task<Beatmapset?> LoadAsync(int key, CancellationToken cancellationToken)
 	{
-		var row = await Batcher.ReadAsync((connection, transaction) => connection.QuerySingleOrDefaultAsync<BeatmapsetRow>(
+		var row = await Batcher.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<BeatmapsetRow>(
 			"SELECT Id, Artist, Title, Creator, CreatedAt, UpdatedAt, Locked, Visible FROM Beatmapsets WHERE Id = @Id",
-			new { Id = key }, transaction), cancellationToken);
+			new { Id = key }), cancellationToken);
 		return row is null ? null : ToBeatmapset(row);
 	}
 

@@ -73,8 +73,8 @@ internal sealed class SqliteScoreRepository(
 		var (where, parameters) = BuildFilter(query);
 		parameters.Add("Limit", page.Limit);
 		parameters.Add("Offset", page.Offset);
-		var (total, rows) = await Batcher.ReadAsync(async (connection, transaction) => (
-			await connection.ExecuteScalarAsync<int>($"SELECT COUNT(*) FROM Scores {where}", parameters, transaction),
+		var (total, rows) = await Batcher.ReadAsync(async connection => (
+			await connection.ExecuteScalarAsync<int>($"SELECT COUNT(*) FROM Scores {where}", parameters),
 			await connection.QueryAsync<ScoreRow>(
 			$"""
 			 SELECT Id, UserId, BeatmapHash, Mode, Mods, Num300, Num100, Num50, NumGeki, NumKatu, NumMiss,
@@ -84,7 +84,7 @@ internal sealed class SqliteScoreRepository(
 			 ORDER BY Timestamp DESC, Id DESC
 			 LIMIT @Limit OFFSET @Offset
 			""",
-			parameters, transaction)), cancellationToken);
+			parameters)), cancellationToken);
 
 		var loaded = await LoadRoundsAsync(rows.Select(row => row.MatchId), cancellationToken);
 		var items = rows.Select(row => Track(ToScore(row, FindRound(row, loaded)))).ToList();
@@ -93,13 +93,13 @@ internal sealed class SqliteScoreRepository(
 
 	protected override async Task<Score?> LoadAsync(int key, CancellationToken cancellationToken)
 	{
-		var row = await Batcher.ReadAsync((connection, transaction) => connection.QuerySingleOrDefaultAsync<ScoreRow>(
+		var row = await Batcher.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<ScoreRow>(
 			"""
 			SELECT Id, UserId, BeatmapHash, Mode, Mods, Num300, Num100, Num50, NumGeki, NumKatu, NumMiss,
 			       TotalScore, MaxCombo, Grade, IsPassed, IsFullCombo, Timestamp, MatchId, RoundNumber, Team, Checksum
 			FROM Scores WHERE Id = @Id
 			""",
-			new { Id = key }, transaction), cancellationToken);
+			new { Id = key }), cancellationToken);
 		if (row is null)
 			return null;
 

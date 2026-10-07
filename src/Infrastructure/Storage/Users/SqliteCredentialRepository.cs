@@ -31,8 +31,8 @@ internal sealed class SqliteCredentialRepository(DatabaseBatcher batcher)
 
 	protected override async Task<StoredCredential?> LoadAsync(int key, CancellationToken cancellationToken)
 	{
-		var hash = await Batcher.ReadAsync((connection, transaction) => connection.QuerySingleOrDefaultAsync<string?>(
-			"SELECT PasswordHash FROM Credentials WHERE UserId = @UserId", new { UserId = key }, transaction), cancellationToken);
+		var hash = await Batcher.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<string?>(
+			"SELECT PasswordHash FROM Credentials WHERE UserId = @UserId", new { UserId = key }), cancellationToken);
 		return hash is null ? null : new StoredCredential(key, hash);
 	}
 

@@ -53,8 +53,8 @@ internal sealed class SqliteMatchRepository(DatabaseBatcher batcher, IUserReposi
 		CancellationToken cancellationToken = default)
 	{
 		var where = BuildFilter(query);
-		var (total, rows) = await Batcher.ReadAsync(async (connection, transaction) => (
-			await connection.ExecuteScalarAsync<int>($"SELECT COUNT(*) FROM Matches {where}", transaction: transaction),
+		var (total, rows) = await Batcher.ReadAsync(async connection => (
+			await connection.ExecuteScalarAsync<int>($"SELECT COUNT(*) FROM Matches {where}"),
 			await connection.QueryAsync<MatchRow>(
 			$"""
 			 SELECT Id, Name, CreatorId, StartedAt, EndedAt, IsPrivate FROM Matches
@@ -62,7 +62,7 @@ internal sealed class SqliteMatchRepository(DatabaseBatcher batcher, IUserReposi
 			 ORDER BY StartedAt DESC, Id DESC
 			 LIMIT @Limit OFFSET @Offset
 			""",
-			new { Limit = page.Limit, Offset = page.Offset }, transaction)), cancellationToken);
+			new { Limit = page.Limit, Offset = page.Offset })), cancellationToken);
 
 		var matches = new List<Match>();
 		foreach (var row in rows)
@@ -73,9 +73,9 @@ internal sealed class SqliteMatchRepository(DatabaseBatcher batcher, IUserReposi
 
 	protected override async Task<Match?> LoadAsync(int key, CancellationToken cancellationToken)
 	{
-		var row = await Batcher.ReadAsync((connection, transaction) => connection.QuerySingleOrDefaultAsync<MatchRow>(
+		var row = await Batcher.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<MatchRow>(
 			"SELECT Id, Name, CreatorId, StartedAt, EndedAt, IsPrivate FROM Matches WHERE Id = @Id",
-			new { Id = key }, transaction), cancellationToken);
+			new { Id = key }), cancellationToken);
 		return row is null ? null : await ToMatchAsync(row, cancellationToken);
 	}
 

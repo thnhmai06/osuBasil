@@ -93,9 +93,9 @@ internal sealed class SqliteUserRepository(DatabaseBatcher batcher)
 			_idsBySafeName.TryRemove(new KeyValuePair<string, int>(safeName, id));
 		}
 
-		var foundId = await Batcher.ReadAsync((connection, transaction) => connection.QuerySingleOrDefaultAsync<int?>(
+		var foundId = await Batcher.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<int?>(
 			"SELECT Id FROM Users WHERE SafeName = replace(lower(@Name), ' ', '_')",
-			new { Name = name }, transaction), cancellationToken);
+			new { Name = name }), cancellationToken);
 		return foundId is { } found ? await FindUserAsync(found, cancellationToken) : null;
 	}
 
@@ -106,19 +106,19 @@ internal sealed class SqliteUserRepository(DatabaseBatcher batcher)
 		var (where, parameters) = BuildFilter(query);
 		parameters.Add("Limit", page.Limit);
 		parameters.Add("Offset", page.Offset);
-		var (total, rows) = await Batcher.ReadAsync(async (connection, transaction) => (
-			await connection.ExecuteScalarAsync<int>($"SELECT COUNT(*) FROM Users {where}", parameters, transaction),
+		var (total, rows) = await Batcher.ReadAsync(async connection => (
+			await connection.ExecuteScalarAsync<int>($"SELECT COUNT(*) FROM Users {where}", parameters),
 			await connection.QueryAsync<UserRow>(
 				$"SELECT Id, Name, Country, Permissions, DeletedAt FROM Users {where} ORDER BY Id LIMIT @Limit OFFSET @Offset",
-				parameters, transaction)), cancellationToken);
+				parameters)), cancellationToken);
 
 		return new Page<User>([.. rows.Select(row => TrackUser(ToUser(row)))], total);
 	}
 
 	protected override async Task<User?> LoadAsync(int key, CancellationToken cancellationToken)
 	{
-		var row = await Batcher.ReadAsync((connection, transaction) => connection.QuerySingleOrDefaultAsync<UserRow>(
-			"SELECT Id, Name, Country, Permissions, DeletedAt FROM Users WHERE Id = @Id", new { Id = key }, transaction),
+		var row = await Batcher.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<UserRow>(
+			"SELECT Id, Name, Country, Permissions, DeletedAt FROM Users WHERE Id = @Id", new { Id = key }),
 			cancellationToken);
 		return row is null ? null : ToUser(row);
 	}
