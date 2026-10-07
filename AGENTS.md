@@ -557,6 +557,10 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   once because the store assigns the identity. Append-only history (logins, match events) is
   not kept in memory and is written in the same batches. A derived read model that is queried often (the match
   report) is cached and rebuilt when its sources change.
+  **Exception: a change whose check reads rows other than the item itself** (a value unique across the table, such
+  as a user name or a beatmap hash, or any condition over many rows) is checked and written in one database
+  transaction at once, and the live object changes only after the commit (`IUserRepository.RenameAsync`); a
+  batched write must never be the one that discovers a conflict.
 * **Naming: Domain model `X`, runtime model `XSession`, the object that holds the live sessions
   `XRegistry`, the contract `IXService` and its implementation `XService`.** No suffixes such as
   "Definition". `Channel` → `ChannelSession` → `GeneralChannelRegistry` (it holds only general channels);

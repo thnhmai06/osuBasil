@@ -45,11 +45,9 @@ internal sealed class SqliteUserRepository(Database database, WriteBuffer buffer
 		var live = TrackUser(user);
 		if (!ReferenceEquals(live, user))
 		{
-			live.Value.Name = user.Value.Name;
 			live.Value.Country = user.Value.Country;
 			live.Value.Permissions = user.Value.Permissions;
 			live.Value.DeletedAt = user.Value.DeletedAt;
-			IndexUser(live);
 		}
 
 		Save(live);
@@ -57,7 +55,44 @@ internal sealed class SqliteUserRepository(Database database, WriteBuffer buffer
 	}
 
 	/// <inheritdoc />
-	public ValueTask<User?> GetAsync(int id, CancellationToken cancellationToken = default) => FindUserAsync(id, cancellationToken);
+	public async Task<bool> RenameAsync(User user, string name, CancellationToken cancellationToken = default)
+	{
+		_ = new UserData { Name = name };
+		var live = TrackUser(user);
+
+		// The one write that goes to the database at once: whether the name is free is the database's to say, and
+		// the user takes the name only once the database holds it.
+		await using var connection = await OpenAsync(cancellationToken);
+		await using var transaction = connection.BeginTransaction();
+		try
+		{
+			await connection.ExecuteAsync("UPDATE Users SET Name = @Name WHERE Id = @Id",
+				new { Name = name, live.Id }, transaction);
+		}
+		catch (SqliteException exception) when (exception.SqliteErrorCode == 19)
+		{
+			return false;
+		}
+
+		var previous = live.Value.Name;
+		live.Value.Name = name;
+		try
+		{
+			await transaction.CommitAsync(cancellationToken);
+		}
+		catch
+		{
+			live.Value.Name = previous;
+			throw;
+		}
+
+		IndexUser(live);
+		return true;
+	}
+
+	/// <inheritdoc />
+	public ValueTask<User?> GetAsync(int id, CancellationToken cancellationToken = default) =>
+		FindUserAsync(id, cancellationToken);
 
 	/// <inheritdoc />
 	public async ValueTask<User?> GetByNameAsync(string name, CancellationToken cancellationToken = default)
@@ -111,7 +146,6 @@ internal sealed class SqliteUserRepository(Database database, WriteBuffer buffer
 			INSERT INTO Users (Id, Name, Country, Permissions, DeletedAt)
 			VALUES (@Id, @Name, @Country, @Permissions, @DeletedAt)
 			ON CONFLICT(Id) DO UPDATE SET
-				Name = excluded.Name,
 				Country = excluded.Country,
 				Permissions = excluded.Permissions,
 				DeletedAt = excluded.DeletedAt;
@@ -177,11 +211,13 @@ internal sealed class SqliteUserRepository(Database database, WriteBuffer buffer
 			conditions.Add("Country IN @Countries");
 			parameters.Add("Countries", countries.Select(country => (long)country).ToList());
 		}
+
 		if (query.Permissions is { } permissions)
 		{
 			conditions.Add("(Permissions & @Permissions) = @Permissions");
 			parameters.Add("Permissions", (long)permissions);
 		}
+
 		if (query.Text is { } text)
 		{
 			if (int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var id))
