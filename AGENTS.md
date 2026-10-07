@@ -131,7 +131,7 @@ Prefer raw strings for multi-paragraph descriptions.
 
 Never document implementation details such as:
 
-* SQLite
+* PostgreSQL
 * Redis
 * DI
 * middleware
@@ -323,7 +323,8 @@ Basil.Application.Services.Contracts      service contracts, capability ports,  
 Basil.Application.Services.Implementations service implementations (internal)       -> Services.Contracts
                                                                                     (never Storage.Implementations)
 
-Basil.Infrastructure.Storage     persistent ports: SQLite, files, migrations   -> Storage.Contracts
+Basil.Infrastructure.Storage     persistent ports: PostgreSQL, files,           -> Storage.Contracts
+                                 migrations
 Basil.Infrastructure.Services    capability ports: osu! rulesets, FFMpegCore,   -> Services.Contracts
                                  beatmap mirror
 Basil.Infrastructure.Runtime     event pumps and handlers, background loops,    -> Services.Contracts
@@ -555,16 +556,25 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   by every `GetAsync`, `GetByYAsync` and `ListAsync`, kept while anyone holds it and for 5 minutes after it was last
   asked for, then released; the database is read for an identity not in memory.
   `CreateOrUpdateAsync`/`DeleteAsync` queue a snapshot of the values **as they are when queued** (a later change of
-  the same identity replaces it) and return at once: memory has changed, and nothing waits for the database. A
-  snapshot that fails is logged as an error and never tried again, since a later attempt could overwrite newer
-  data. Only a try-operation waits for the database, because its outcome comes from it. Every database read
-  and write goes through `DatabaseBatcher`: writes run in order in batches of one transaction, due once 100 writes
-  are pending or the oldest has waited 50 ms; reads are not batched and, as in SQLite's WAL mode, see only what is
-  committed. A lookup asks memory first and the database only when memory has nothing; a listing asks the database
-  which rows match and returns the live instance of every row memory holds, and a row whose deletion is still
-  queued never comes back into memory. `DatabaseWorker` is the only code that touches the database, each write in
-  its own savepoint, reads side by side on connections of their own. An operation's lambda uses only its
-  connection (and transaction) and never queues another operation. Parents are created before their children.
+  the same identity replaces it) and return at once: memory has changed, and nothing waits for the database. Only a
+  try-operation waits for the database, because its outcome comes from it, and it learns that outcome only once its
+  batch is committed. Reads go straight to PostgreSQL on a pooled connection of their own and see only what is
+  committed. Writes go through `DatabaseWriter`, which keeps `StorageOptions.WriteLanes` lanes side by side
+  (PostgreSQL takes many writers at once; the lane count is measured, see
+  [`plans/evidence/postgresql-write-lanes-20261008`](plans/evidence/postgresql-write-lanes-20261008/results.md)). A
+  write's lane is chosen by its root (`Root.User`, `Root.Match`, `Root.Beatmapset`, `Root.Server`), so the writes of
+  one root keep their order; the root of an identity never changes. A lane runs its writes in batches of one
+  transaction, due once 100 writes are pending, the oldest has waited 50 ms, or a try-operation is queued;
+  consecutive snapshots go as one `NpgsqlBatch`, each try-operation in a savepoint of its own. A batch that fails
+  for a reason outside the server (lost connection, deadlock, server shutting down) is stored again before any later
+  write of its lane, so a retry never overwrites newer data; a commit whose connection broke is settled with
+  `pg_xact_status`; a statement the database refuses is logged as critical and dropped, never tried again. A child
+  refers to a parent of another root only once the parent is committed (such a parent is created by an awaited
+  try-operation). One database belongs to one Basil process. A lookup asks memory first and the database only when
+  memory has nothing; a listing asks the database which rows match and returns the live instance of every row
+  memory holds, and a row whose deletion is still queued never comes back into memory. An operation's lambda uses
+  only its connection (and transaction) and never queues another operation. Parents are created before their
+  children.
   Append-only history (logins, match events) is not kept in memory. A derived read model that is queried often (the
   match report) is cached and rebuilt when its sources change.
   **A change whose check needs rows not in memory** (a value unique across the table such as a user name or a

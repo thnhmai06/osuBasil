@@ -1,6 +1,6 @@
 # Kế hoạch: chuyển storage từ SQLite sang PostgreSQL 18
 
-Trạng thái: **đã duyệt lại 2026-10-08 sau review** (đối chiếu AGENTS.md, docs và code); chưa triển khai code. Đã có
+Trạng thái: **đã triển khai 2026-10-08** (commit `4a8202e1`, `e9042d01`); số đo ở [`plans/evidence/postgresql-write-lanes-20261008/results.md`](evidence/postgresql-write-lanes-20261008/results.md). Đã có
 sẵn role `basil` và database `basil` trên PG 18 local. Phạm vi: chỉ `src` (hosts, tests, docs để sau).
 
 ## Vì sao chuyển
@@ -107,12 +107,12 @@ mọi lệnh đến sau của làn.
   `beatmaps (mode)`, `matches (ended_at)`, `match_events (match_id)`.
 - `scores (checksum)` unique, `scores (user_id)`, `scores (beatmap_hash)`, `scores (match_id, round_number)` (partial,
   `where match_id is not null`).
-- `users_safe_name_trgm` (GIN `gin_trgm_ops`, extension `pg_trgm`) cho tìm user theo một phần tên: **chỉ giữ nếu
-  benchmark (P13) cho thấy lợi**.
+- `users_safe_name_trgm` (GIN `gin_trgm_ops`, extension `pg_trgm`) cho tìm user theo một phần tên: **giữ** (đo: 0,69 ms so với 13,2 ms ở 100k user;
+  không khác ở 1k user).
 
 **P9. Bảng cập nhật thường xuyên.** `fillfactor = 90` cho `users`, `user_stats`, `matches`, `rounds` để **tăng khả
-năng** PG cập nhật tại chỗ (HOT); cập nhật đổi cột có index thì không HOT. **Chỉ giữ nếu benchmark đo thấy tỉ lệ HOT
-tăng.** Autovacuum giữ mặc định; chỉnh khi đo.
+năng** PG cập nhật tại chỗ (HOT); cập nhật đổi cột có index thì không HOT. **Giữ**: đo được update không HOT giảm từ
+1,8% xuống 0,6%. Autovacuum giữ mặc định; chỉnh khi đo.
 
 **P10. Migration.**
 - `001_baseline.sql` viết lại cho PG. Chưa có dữ liệu thật, nên không chuyển dữ liệu từ SQLite.
@@ -121,7 +121,7 @@ tăng.** Autovacuum giữ mặc định; chỉnh khi đo.
 - Bỏ `DataPaths.Database` (file `Basil.db`).
 
 **P11. Cấu hình.**
-- `StorageOptions.ConnectionString` (bắt buộc) và `StorageOptions.WriteLanes` (mặc định tạm `4`, thay bằng số đo của
+- `StorageOptions.ConnectionString` (bắt buộc) và `StorageOptions.WriteLanes` (mặc định `8`, chọn theo số đo của
   P13).
 - Khi migrate host: `Basil.Host` bind `Basil:Database:ConnectionString` từ `Data/appsettings.json` (file mẫu để
   placeholder mật khẩu như `Server:CertPassword`; mật khẩu dev trong `Data/appsettings.Development.json`, thêm vào
@@ -135,12 +135,12 @@ tăng.** Autovacuum giữ mặc định; chỉnh khi đo.
 - `DatabaseWriter` có `WriteLanes` làn. Mỗi làn có hàng chờ riêng, ngưỡng batch P1 và vòng lặp riêng. Tối đa một batch
   mỗi làn đang chạy, nên mỗi làn giữ đúng thứ tự.
 - Chọn làn theo **gốc** (root) của dữ liệu: `lane = (uint)root.GetHashCode() % WriteLanes`.
-  - `Roots.User(id)`: user, credentials, restrictions, relationships (theo actor), logins, user stats, điểm không thuộc
+  - `Root.User(id)`: user, credentials, restrictions, relationships (theo actor), logins, user stats, điểm không thuộc
     trận.
-  - `Roots.Match(id)`: match, rounds, match events, điểm trong trận.
-  - `Roots.Beatmapset(id)`: beatmapset, beatmaps.
-  - `Roots.Server`: settings, channels, menu banners.
-  - `Roots.*` là record struct so sánh theo giá trị; không bao giờ dùng `new object()` làm gốc.
+  - `Root.Match(id)`: match, rounds, match events, điểm trong trận.
+  - `Root.Beatmapset(id)`: beatmapset, beatmaps.
+  - `Root.Server`: settings, channels, menu banners.
+  - `Root.*` là record struct so sánh theo giá trị; không bao giờ dùng `new object()` làm gốc.
 - Bất biến:
   - gốc của một identity không bao giờ đổi;
   - con chỉ tham chiếu cha **khác gốc** khi cha đã commit (cha tạo bằng lệnh thử đã chờ); cha cùng gốc nằm cùng làn
@@ -148,7 +148,7 @@ tăng.** Autovacuum giữ mặc định; chỉnh khi đo.
   - một database chỉ cho một tiến trình Basil (ghi nhận, không cưỡng chế).
 - Tranh chấp giữa các làn chỉ ở unique key và khóa FK của cha (`FOR KEY SHARE` không chặn update thường); deadlock
   `40P01` là lỗi môi trường (P4.1).
-- `WriteLanes` chọn theo **số đo, có chứng cứ** ở `plans/evidence/postgresql-write-lanes-<ngày>/` (cách đo ở mục
+- `WriteLanes = 8` chọn theo **số đo, có chứng cứ** ở `plans/evidence/postgresql-write-lanes-20261008/` (cách đo ở mục
   "Kiểm chứng").
 
 **P14. Chuỗi có `\0`.** PG `text` không nhận `\0`. Domain chặn: một helper trong `Basil.Domain.Utilities`, các setter
@@ -170,7 +170,7 @@ Thư mục `Batching/` đổi thành `Writing/`. Mọi type đều `internal`.
 | `DatabaseWriter` (`BackgroundService, IHostedLifecycleService`) | Giữ các `WriteLane`, chọn làn theo gốc. `StoppedAsync` ghi nốt mọi làn song song, dừng theo token; còn lệnh chưa ghi thì log Critical kèm số lượng. |
 | `WriteLane` | Hàng chờ `OrderedDictionary<object, …>` (lệnh mới cùng identity thay lệnh cũ), luật đến hạn P1, vòng lặp, chạy batch trong transaction của chính nó, thử lại theo P4. |
 | `WriteCommand(string Sql, object Parameters)` | Một câu SQL ghi ở dạng dữ liệu. Mọi bản chụp, append, xóa đều là một câu (`RetainAsync`: `delete … where beatmapset_id = @SetId and id <> all(@KeepIds)`; mảng rỗng thì xóa hết). Tham số lấy từ thuộc tính của object (bộ đọc có cache theo type). |
-| `Roots` | `User(int)`, `Match(int)`, `Beatmapset(int)`, `Server`. |
+| `Root` | `User(int)`, `Match(int)`, `Beatmapset(int)`, `Server`. |
 
 API cho repository (trên `DatabaseWriter`):
 - `EnqueueAsync(root, identity, WriteCommand)`: bản chụp, gộp theo identity.
@@ -205,7 +205,7 @@ Theo `~/.claude/CLAUDE.md`: Claude điều phối, viết spec và review từng
 | Bước | Việc | Agent (OpenCode Go) | Kiểm |
 |---|---|---|---|
 | 1 | Package `Npgsql`, `StorageOptions`, `Database`, `001_baseline.sql`, migrator, DI, bỏ `DataPaths.Database`; probe: `@Name` trong `NpgsqlBatchCommand`, đọc `timestamptz` ra `DateTimeOffset` qua Dapper | `qwen3.7-plus` | build Storage; migrate database trống; xem schema bằng Rider MCP/postgres-mcp; probe đạt rồi mới viết spec bước 2 |
-| 2 | `DatabaseWriter`, `WriteLane`, `WriteCommand`, `Roots`, `CachedRepository` (P1, P4–P7, P13) | `gpt-6-luna` | build; review kỹ thứ tự, thử lại, trả kết quả sau commit, tắt server |
+| 2 | `DatabaseWriter`, `WriteLane`, `WriteCommand`, `Root`, `CachedRepository` (P1, P4–P7, P13) | `gpt-6-luna` | build; review kỹ thứ tự, thử lại, trả kết quả sau commit, tắt server |
 | 3 | SQL, row DTO, `RootOf`, đổi tên 15 repository, `BeatmapQueryFilter`, `MatchReportRepository` | `deepseek-v4.1-flash` (2 lượt nối tiếp, chia theo thư mục) | build; grep ở mục "Kiểm chứng" |
 | 4 | P14: helper Domain, setter, `RoomSettingsService`, `LobbyService` | `qwen3.7-plus` | build Domain và Application; review theo AGENTS.md |
 | 5 | Benchmark `WriteLanes`, P8, P9; commit chứng cứ | Claude | `results.md` đủ cách đo và số thô |
