@@ -13,7 +13,7 @@ namespace Basil.Infrastructure.Storage.Users;
 internal sealed class SqliteRelationshipRepository(DatabaseBatcher batcher, IUserRepository users)
 	: IRelationshipRepository
 {
-	private readonly IdentityMap<int, ImmutableList<Relationship>> _byActor = new();
+	private readonly OwnedLists<int, Relationship> _byActor = new();
 
 	/// <inheritdoc />
 	public Task CreateOrUpdateAsync(Relationship relationship, CancellationToken cancellationToken = default)
@@ -21,8 +21,7 @@ internal sealed class SqliteRelationshipRepository(DatabaseBatcher batcher, IUse
 		var actorId = relationship.Actor.Id;
 		var targetId = relationship.Target.Id;
 		var values = Values(relationship);
-		_byActor.TryUpdate(actorId, current => Replace(current, relationship));
-		return batcher.EnqueueAsync((GetType(), (actorId, targetId)), (connection, transaction) => connection.ExecuteAsync(
+		var saved = batcher.EnqueueAsync((GetType(), (actorId, targetId)), (connection, transaction) => connection.ExecuteAsync(
 			"""
 			INSERT INTO Relationships (ActorId, TargetId, Type, CreatedAt)
 			VALUES (@ActorId, @TargetId, @Type, @CreatedAt)
@@ -31,6 +30,8 @@ internal sealed class SqliteRelationshipRepository(DatabaseBatcher batcher, IUse
 				CreatedAt = excluded.CreatedAt;
 			""",
 			values, transaction));
+		_byActor.Change(actorId, current => Replace(current, relationship), saved);
+		return saved;
 	}
 
 	/// <inheritdoc />
@@ -39,17 +40,18 @@ internal sealed class SqliteRelationshipRepository(DatabaseBatcher batcher, IUse
 		var actorId = relationship.Actor.Id;
 		var targetId = relationship.Target.Id;
 		var parameters = new { ActorId = actorId, TargetId = targetId };
-		_byActor.TryUpdate(actorId, current => current.RemoveAll(item => item.Target.Id == targetId));
-		return batcher.EnqueueAsync((GetType(), (actorId, targetId)), (connection, transaction) => connection.ExecuteAsync(
+		var deleted = batcher.EnqueueAsync((GetType(), (actorId, targetId)), (connection, transaction) => connection.ExecuteAsync(
 			"DELETE FROM Relationships WHERE ActorId = @ActorId AND TargetId = @TargetId",
 			parameters, transaction));
+		_byActor.Change(actorId, current => current.RemoveAll(item => item.Target.Id == targetId), deleted);
+		return deleted;
 	}
 
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<Relationship>> ListAsync(User actor, CancellationToken cancellationToken = default)
 	{
 		var liveActor = await users.GetAsync(actor.Id, cancellationToken) ?? actor;
-		var relationships = await _byActor.GetOrAddAsync(liveActor.Id, async _ =>
+		return await _byActor.GetOrLoadAsync(liveActor.Id, async () =>
 		{
 			var rows = await batcher.ReadAsync(connection => connection.QueryAsync<RelationshipRow>(
 				"SELECT ActorId, TargetId, Type, CreatedAt FROM Relationships WHERE ActorId = @ActorId",
@@ -71,8 +73,6 @@ internal sealed class SqliteRelationshipRepository(DatabaseBatcher batcher, IUse
 
 			return items.ToImmutable();
 		});
-
-		return relationships ?? ImmutableList<Relationship>.Empty;
 	}
 
 	private static ImmutableList<Relationship> Replace(ImmutableList<Relationship> current, Relationship item)

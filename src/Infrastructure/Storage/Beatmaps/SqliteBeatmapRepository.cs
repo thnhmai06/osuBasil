@@ -19,7 +19,7 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 	private readonly IBeatmapsetRepository _beatmapsets;
 	private readonly ConcurrentDictionary<Md5, int> _idsByHash = new();
 	private readonly ConcurrentDictionary<int, Md5> _hashesById = new();
-	private readonly IdentityMap<int, ImmutableList<Beatmap>> _bySet = new();
+	private readonly OwnedLists<int, Beatmap> _bySet = new();
 
 	// The beatmaps a set keeps while the deletion of its others is queued, by set id.
 	private readonly ConcurrentDictionary<int, HashSet<int>> _retaining = new();
@@ -54,7 +54,7 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 
 		var beatmap = Track(new Beatmap { Id = id, Value = value });
 		Index(beatmap);
-		_bySet.TryUpdate(set.Id, current => AddOrReplace(current, beatmap));
+		_bySet.Change(set.Id, current => AddOrReplace(current, beatmap), Task.CompletedTask);
 		return beatmap;
 	}
 
@@ -78,21 +78,24 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 				throw new InvalidOperationException($"Another beatmap already has the hash {value.Hash}.", exception);
 			}
 
-			Remember(beatmap, value);
+			Remember(beatmap, value, Task.CompletedTask);
 			return;
 		}
 
-		await SaveAsync(Remember(beatmap, value));
+		var live = Track(beatmap);
+		live.Value = value;
+		var saved = SaveAsync(live);
+		Remember(live, value, saved);
+		await saved;
 	}
 
 	/// <summary>Gives the live instance of a beatmap the stored data and keeps the lookups in step.</summary>
-	private Beatmap Remember(Beatmap beatmap, BeatmapData value)
+	private void Remember(Beatmap beatmap, BeatmapData value, Task committed)
 	{
 		var live = Track(beatmap);
 		live.Value = value;
 		Index(live);
-		_bySet.TryUpdate(value.Beatmapset.Id, current => AddOrReplace(current, live));
-		return live;
+		_bySet.Change(value.Beatmapset.Id, current => AddOrReplace(current, live), committed);
 	}
 
 	/// <inheritdoc />
@@ -130,7 +133,7 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 	public async Task<IReadOnlyList<Beatmap>> ListAsync(Beatmapset set, CancellationToken cancellationToken = default)
 	{
 		var liveSet = await LiveSetAsync(set, cancellationToken);
-		var items = await _bySet.GetOrAddAsync(liveSet.Id, async _ =>
+		return await _bySet.GetOrLoadAsync(liveSet.Id, async () =>
 		{
 			var rows = await Batcher.ReadAsync(connection => connection.QueryAsync<BeatmapRow>(
 				BySetSql, new { SetId = liveSet.Id }), cancellationToken);
@@ -144,8 +147,6 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 
 			return beatmaps.ToImmutable();
 		});
-
-		return items ?? ImmutableList<Beatmap>.Empty;
 	}
 
 	/// <inheritdoc />
@@ -196,7 +197,6 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 		foreach (var beatmap in Items.Values.Where(beatmap => beatmap.Value.Beatmapset.Id == setId && !keepSet.Contains(beatmap.Id)))
 			RemoveCached(beatmap);
 
-		_bySet.TryUpdate(setId, current => current.Where(beatmap => keepSet.Contains(beatmap.Id)).ToImmutableList());
 		_retaining[setId] = keepSet;
 		var retained = Batcher.EnqueueAsync((GetType(), "retain", setId), async (connection, transaction) =>
 		{
@@ -210,6 +210,7 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 				"DELETE FROM Beatmaps WHERE BeatmapsetId = @SetId AND Id NOT IN @KeepIds",
 				deleteKeptParameters, transaction);
 		});
+		_bySet.Change(setId, current => current.Where(beatmap => keepSet.Contains(beatmap.Id)).ToImmutableList(), retained);
 		retained.ContinueWith(_ => _retaining.TryRemove(new KeyValuePair<int, HashSet<int>>(setId, keepSet)),
 			TaskScheduler.Default);
 		return retained;

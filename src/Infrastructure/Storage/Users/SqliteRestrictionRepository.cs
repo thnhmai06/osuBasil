@@ -12,7 +12,7 @@ namespace Basil.Infrastructure.Storage.Users;
 internal sealed class SqliteRestrictionRepository(DatabaseBatcher batcher, IUserRepository users)
 	: CachedRepository<int, Restriction>(batcher), IRestrictionRepository
 {
-	private readonly IdentityMap<int, ImmutableList<Restriction>> _byUser = new();
+	private readonly OwnedLists<int, Restriction> _byUser = new();
 
 	protected override int KeyOf(Restriction item) => item.Id;
 
@@ -44,7 +44,7 @@ internal sealed class SqliteRestrictionRepository(DatabaseBatcher batcher, IUser
 			parameters, transaction), cancellationToken);
 
 		var restriction = Track(new Restriction { Id = id, Value = value });
-		_byUser.TryUpdate(user.Id, current => current.Add(restriction));
+		_byUser.Change(user.Id, current => Replace(current, restriction), Task.CompletedTask);
 		return restriction;
 	}
 
@@ -52,8 +52,9 @@ internal sealed class SqliteRestrictionRepository(DatabaseBatcher batcher, IUser
 	public Task CreateOrUpdateAsync(Restriction restriction, CancellationToken cancellationToken = default)
 	{
 		var live = Track(restriction);
-		_byUser.TryUpdate(live.Value.User.Id, current => Replace(current, live));
-		return SaveAsync(live);
+		var saved = SaveAsync(live);
+		_byUser.Change(live.Value.User.Id, current => Replace(current, live), saved);
+		return saved;
 	}
 
 	/// <inheritdoc />
@@ -63,7 +64,7 @@ internal sealed class SqliteRestrictionRepository(DatabaseBatcher batcher, IUser
 	public async Task<IReadOnlyList<Restriction>> ListAsync(User user, CancellationToken cancellationToken = default)
 	{
 		var liveUser = await users.GetAsync(user.Id, cancellationToken) ?? user;
-		var items = await _byUser.GetOrAddAsync(liveUser.Id, async _ =>
+		return await _byUser.GetOrLoadAsync(liveUser.Id, async () =>
 		{
 			var rows = await Batcher.ReadAsync(connection => connection.QueryAsync<RestrictionRow>(
 				"SELECT Id, UserId, Permissions, StartsAt, EndsAt FROM Restrictions WHERE UserId = @UserId ORDER BY StartsAt, Id",
@@ -73,8 +74,6 @@ internal sealed class SqliteRestrictionRepository(DatabaseBatcher batcher, IUser
 				restrictions.Add(Track(ToRestriction(row, liveUser)));
 			return restrictions.ToImmutable();
 		});
-
-		return items ?? ImmutableList<Restriction>.Empty;
 	}
 
 	protected override async Task<Restriction?> LoadAsync(int key, CancellationToken cancellationToken)

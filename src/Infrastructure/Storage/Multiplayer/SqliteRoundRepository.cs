@@ -17,7 +17,7 @@ internal sealed class SqliteRoundRepository(
 	MatchReportCache reports)
 	: CachedRepository<(int MatchId, int Number), Round>(batcher), IRoundRepository
 {
-	private readonly IdentityMap<int, ImmutableList<Round>> _byMatch = new();
+	private readonly OwnedLists<int, Round> _byMatch = new();
 
 	protected override (int MatchId, int Number) KeyOf(Round item) => (item.Match.Id, item.Number);
 
@@ -31,8 +31,8 @@ internal sealed class SqliteRoundRepository(
 			live.Aborted = round.Aborted;
 		}
 
-		_byMatch.TryUpdate(live.Match.Id, current => AddOrReplace(current, live));
 		var saved = SaveAsync(live);
+		_byMatch.Change(live.Match.Id, current => AddOrReplace(current, live), saved);
 		reports.Invalidate(live.Match.Id);
 		return saved;
 	}
@@ -41,7 +41,7 @@ internal sealed class SqliteRoundRepository(
 	public async Task<IReadOnlyList<Round>> ListAsync(Match match, CancellationToken cancellationToken = default)
 	{
 		var liveMatch = await matches.GetAsync(match.Id, cancellationToken) ?? match;
-		var rounds = await _byMatch.GetOrAddAsync(liveMatch.Id, async _ =>
+		return await _byMatch.GetOrLoadAsync(liveMatch.Id, async () =>
 		{
 			var rows = await Batcher.ReadAsync(connection => connection.QueryAsync<RoundRow>(
 				"""
@@ -56,8 +56,6 @@ internal sealed class SqliteRoundRepository(
 				result.Add(Track(ToRound(liveMatch, row)));
 			return result.ToImmutable();
 		});
-
-		return rounds ?? ImmutableList<Round>.Empty;
 	}
 
 	protected override async Task<Round?> LoadAsync((int MatchId, int Number) key, CancellationToken cancellationToken)
