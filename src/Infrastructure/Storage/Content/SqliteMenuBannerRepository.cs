@@ -21,7 +21,8 @@ internal sealed class SqliteMenuBannerRepository(DatabaseBatcher batcher)
 		var live = Track(banner);
 		if (!ReferenceEquals(live, banner))
 			Update(live, banner);
-		return SaveAsync(live);
+		_ = SaveAsync(live);
+		return Task.CompletedTask;
 	}
 
 	/// <inheritdoc />
@@ -45,7 +46,8 @@ internal sealed class SqliteMenuBannerRepository(DatabaseBatcher batcher)
 	/// <inheritdoc />
 	public Task DeleteAsync(MenuBanner banner, CancellationToken cancellationToken = default)
 	{
-		return RemoveAsync(banner);
+		_ = RemoveAsync(banner);
+		return Task.CompletedTask;
 	}
 
 	protected override async Task<MenuBanner?> LoadAsync(Uri key, CancellationToken cancellationToken)

@@ -41,8 +41,11 @@ internal sealed class DatabaseBatcher(TimeProvider timeProvider, ILogger<Databas
 	public ChannelReader<ReadOperation> Reads => _reads.Reader;
 
 	/// <summary>Queues a write of an identity, replacing any queued write of the same identity.</summary>
-	/// <returns>A task that completes once the write is committed.</returns>
-	public Task EnqueueAsync(object identity, Func<SqliteConnection, SqliteTransaction, Task> write)
+	/// <returns>A task that completes once the write is committed; callers that only record a change need not wait.</returns>
+	public Task EnqueueAsync(object identity, Func<SqliteConnection, SqliteTransaction, Task> write) =>
+		Enqueue(identity, write, false);
+
+	private Task Enqueue(object identity, Func<SqliteConnection, SqliteTransaction, Task> write, bool awaited)
 	{
 		lock (_gate)
 		{
@@ -52,7 +55,7 @@ internal sealed class DatabaseBatcher(TimeProvider timeProvider, ILogger<Databas
 				return queued.Done.Task;
 			}
 
-			var operation = new DatabaseOperation(identity, write);
+			var operation = new DatabaseOperation(identity, write) { Awaited = awaited };
 			Add(operation);
 			return operation.Done.Task;
 		}
@@ -68,7 +71,7 @@ internal sealed class DatabaseBatcher(TimeProvider timeProvider, ILogger<Databas
 		CancellationToken cancellationToken = default)
 	{
 		T result = default!;
-		await AppendAsync(async (connection, transaction) => result = await command(connection, transaction))
+		await Enqueue(new object(), async (connection, transaction) => result = await command(connection, transaction), true)
 			.WaitAsync(cancellationToken);
 		return result;
 	}
@@ -180,7 +183,11 @@ internal sealed class DatabaseBatcher(TimeProvider timeProvider, ILogger<Databas
 			var operation = batch.Operations[index];
 			if ((failure ?? batch.Errors[index]) is { } error)
 			{
-				logger.LogWarning(error, "Database operation for {Identity} failed", operation.Identity);
+				// Nobody waits for a queued snapshot, so its failure is only known from this log.
+				if (operation.Awaited)
+					logger.LogDebug(error, "Database operation for {Identity} failed", operation.Identity);
+				else
+					logger.LogError(error, "Snapshot write for {Identity} was not stored", operation.Identity);
 				operation.Done.TrySetException(error);
 			}
 			else

@@ -54,7 +54,7 @@ internal sealed class SqliteRestrictionRepository(DatabaseBatcher batcher, IUser
 		var live = Track(restriction);
 		var saved = SaveAsync(live);
 		_byUser.Change(live.Value.User.Id, current => Replace(current, live), saved);
-		return saved;
+		return Task.CompletedTask;
 	}
 
 	/// <inheritdoc />

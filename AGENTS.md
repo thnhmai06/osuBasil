@@ -555,8 +555,9 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   by every `GetAsync`, `GetByYAsync` and `ListAsync`, kept while anyone holds it and for 5 minutes after it was last
   asked for, then released; the database is read for an identity not in memory.
   `CreateOrUpdateAsync`/`DeleteAsync` queue a snapshot of the values **as they are when queued** (a later change of
-  the same identity replaces it); the returned task completes once it is committed and fails with the reason it was
-  not. A failed write is never tried again, since a later attempt could overwrite newer data. Every database read
+  the same identity replaces it) and return at once: memory has changed, and nothing waits for the database. A
+  snapshot that fails is logged as an error and never tried again, since a later attempt could overwrite newer
+  data. Only a try-operation waits for the database, because its outcome comes from it. Every database read
   and write goes through `DatabaseBatcher`: writes run in order in batches of one transaction, due once 100 writes
   are pending or the oldest has waited 50 ms; reads are not batched and, as in SQLite's WAL mode, see only what is
   committed. A lookup asks memory first and the database only when memory has nothing; a listing asks the database

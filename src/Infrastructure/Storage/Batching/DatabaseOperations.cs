@@ -12,6 +12,9 @@ internal sealed class DatabaseOperation(object identity, Func<SqliteConnection, 
 	/// <summary>Gets or sets the statements of the latest operation queued for the identity.</summary>
 	public Func<SqliteConnection, SqliteTransaction, Task> Run { get; set; } = run;
 
+	/// <summary>Gets whether a caller waits for the outcome, so a failure is the caller's to handle.</summary>
+	public bool Awaited { get; init; }
+
 	/// <summary>Completes once the operation is committed, or fails with the reason it was not.</summary>
 	public TaskCompletionSource Done { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 }

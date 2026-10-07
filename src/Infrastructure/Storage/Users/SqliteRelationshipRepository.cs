@@ -31,7 +31,7 @@ internal sealed class SqliteRelationshipRepository(DatabaseBatcher batcher, IUse
 			""",
 			values, transaction));
 		_byActor.Change(actorId, current => Replace(current, relationship), saved);
-		return saved;
+		return Task.CompletedTask;
 	}
 
 	/// <inheritdoc />
@@ -44,7 +44,7 @@ internal sealed class SqliteRelationshipRepository(DatabaseBatcher batcher, IUse
 			"DELETE FROM Relationships WHERE ActorId = @ActorId AND TargetId = @TargetId",
 			parameters, transaction));
 		_byActor.Change(actorId, current => current.RemoveAll(item => item.Target.Id == targetId), deleted);
-		return deleted;
+		return Task.CompletedTask;
 	}
 
 	/// <inheritdoc />

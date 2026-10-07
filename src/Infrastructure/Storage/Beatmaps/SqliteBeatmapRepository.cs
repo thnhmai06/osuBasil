@@ -86,7 +86,6 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 		live.Value = value;
 		var saved = SaveAsync(live);
 		Remember(live, value, saved);
-		await saved;
 	}
 
 	/// <summary>Gives the live instance of a beatmap the stored data and keeps the lookups in step.</summary>
@@ -213,7 +212,7 @@ internal sealed class SqliteBeatmapRepository : CachedRepository<int, Beatmap>, 
 		_bySet.Change(setId, current => current.Where(beatmap => keepSet.Contains(beatmap.Id)).ToImmutableList(), retained);
 		retained.ContinueWith(_ => _retaining.TryRemove(new KeyValuePair<int, HashSet<int>>(setId, keepSet)),
 			TaskScheduler.Default);
-		return retained;
+		return Task.CompletedTask;
 	}
 
 	protected override async Task<Beatmap?> LoadAsync(int key, CancellationToken cancellationToken)

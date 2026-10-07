@@ -22,12 +22,13 @@ internal sealed class SqliteMatchEventRepository(DatabaseBatcher batcher, IUserR
 			TargetId = matchEvent.Target?.Id,
 			matchEvent.Detail
 		};
-		return batcher.AppendAsync((connection, transaction) => connection.ExecuteAsync(
+		_ = batcher.AppendAsync((connection, transaction) => connection.ExecuteAsync(
 			"""
 			INSERT INTO MatchEvents (MatchId, Type, Timestamp, ActorId, TargetId, Detail)
 			VALUES (@MatchId, @Type, @Timestamp, @ActorId, @TargetId, @Detail)
 			""",
 			parameters, transaction));
+		return Task.CompletedTask;
 	}
 
 	/// <inheritdoc />

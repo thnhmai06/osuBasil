@@ -63,13 +63,15 @@ internal sealed class SqliteBeatmapsetRepository(DatabaseBatcher batcher)
 			live.Value.Visible = set.Value.Visible;
 		}
 
-		return SaveAsync(live);
+		_ = SaveAsync(live);
+		return Task.CompletedTask;
 	}
 
 	/// <inheritdoc />
 	public Task DeleteAsync(Beatmapset set, CancellationToken cancellationToken = default)
 	{
-		return RemoveAsync(set);
+		_ = RemoveAsync(set);
+		return Task.CompletedTask;
 	}
 
 	/// <inheritdoc />

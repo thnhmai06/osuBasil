@@ -26,7 +26,8 @@ internal sealed class SqliteCredentialRepository(DatabaseBatcher batcher)
 		var hash = BCrypt.Net.BCrypt.HashPassword(credentials.PasswordHash.HashValue);
 		var item = Track(new StoredCredential(credentials.User.Id, hash));
 		item.Hash = hash;
-		return SaveAsync(item);
+		_ = SaveAsync(item);
+		return Task.CompletedTask;
 	}
 
 	protected override async Task<StoredCredential?> LoadAsync(int key, CancellationToken cancellationToken)

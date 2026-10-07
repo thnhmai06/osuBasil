@@ -34,7 +34,7 @@ internal sealed class SqliteRoundRepository(
 		var saved = SaveAsync(live);
 		_byMatch.Change(live.Match.Id, current => AddOrReplace(current, live), saved);
 		reports.Invalidate(live.Match.Id);
-		return saved;
+		return Task.CompletedTask;
 	}
 
 	/// <inheritdoc />

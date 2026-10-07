@@ -42,7 +42,8 @@ internal sealed class SqliteMatchRepository(DatabaseBatcher batcher, IUserReposi
 			live.Value.IsPrivate = match.Value.IsPrivate;
 		}
 
-		return SaveAsync(live);
+		_ = SaveAsync(live);
+		return Task.CompletedTask;
 	}
 
 	/// <inheritdoc />

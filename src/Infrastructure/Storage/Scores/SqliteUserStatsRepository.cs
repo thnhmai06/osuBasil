@@ -29,7 +29,8 @@ internal sealed class SqliteUserStatsRepository(DatabaseBatcher batcher)
 		live.TotalScore = stats.TotalScore;
 		live.RankedScore = stats.RankedScore;
 		live.PlayCount = stats.PlayCount;
-		return SaveAsync(live);
+		_ = SaveAsync(live);
+		return Task.CompletedTask;
 	}
 
 	protected override async Task<UserStats?> LoadAsync((int UserId, GameMode Mode) key, CancellationToken cancellationToken)

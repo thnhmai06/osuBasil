@@ -49,7 +49,7 @@ internal sealed class SqliteSettingsRepository(DatabaseBatcher batcher) : ISetti
 			MirrorSearchEndpoint = settings.MirrorSearchEndpoint?.ToString()
 		};
 		Interlocked.Exchange(ref _settings, settings);
-		return batcher.EnqueueAsync((GetType(), 1), (connection, transaction) => connection.ExecuteAsync(
+		_ = batcher.EnqueueAsync((GetType(), 1), (connection, transaction) => connection.ExecuteAsync(
 			"""
 			UPDATE Settings SET
 				Motd = @Motd,
@@ -61,6 +61,7 @@ internal sealed class SqliteSettingsRepository(DatabaseBatcher batcher) : ISetti
 			WHERE Id = 1;
 			""",
 			parameters, transaction));
+		return Task.CompletedTask;
 	}
 
 	/// <summary>Reads an absolute address, or <see langword="null" /> when none is stored.</summary>

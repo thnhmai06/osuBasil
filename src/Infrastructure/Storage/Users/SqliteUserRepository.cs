@@ -51,7 +51,8 @@ internal sealed class SqliteUserRepository(DatabaseBatcher batcher)
 			live.Value.DeletedAt = user.Value.DeletedAt;
 		}
 
-		return SaveAsync(live);
+		_ = SaveAsync(live);
+		return Task.CompletedTask;
 	}
 
 	/// <inheritdoc />

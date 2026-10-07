@@ -28,7 +28,7 @@ internal sealed class SqliteLoginRepository(DatabaseBatcher batcher) : ILoginRep
 			DiskSignatureHash = client?.Fingerprint.DiskSignatureHash.HashValue
 		};
 
-		return batcher.AppendAsync((connection, transaction) => connection.ExecuteAsync(
+		_ = batcher.AppendAsync((connection, transaction) => connection.ExecuteAsync(
 			"""
 			INSERT INTO Logins (UserId, Ip, Timestamp, ClientDate, ClientRevision, ClientStream, OsuPathHash,
 			                    NetworkAdapters, NetworkAdaptersHash, UninstallHash, DiskSignatureHash)
@@ -36,5 +36,6 @@ internal sealed class SqliteLoginRepository(DatabaseBatcher batcher) : ILoginRep
 			        @NetworkAdapters, @NetworkAdaptersHash, @UninstallHash, @DiskSignatureHash);
 			""",
 			values, transaction));
+		return Task.CompletedTask;
 	}
 }
