@@ -101,7 +101,7 @@ public sealed class BeatmapsetData
 		get;
 		set => field = string.IsNullOrWhiteSpace(value)
 			? throw new ArgumentException("Artist cannot be empty.", nameof(value))
-			: value;
+			: value.ThrowIfHasNul();
 	}
 
 	/// <summary>The title of the set's music.</summary>
@@ -110,7 +110,7 @@ public sealed class BeatmapsetData
 		get;
 		set => field = string.IsNullOrWhiteSpace(value)
 			? throw new ArgumentException("Title cannot be empty.", nameof(value))
-			: value;
+			: value.ThrowIfHasNul();
 	}
 
 	/// <summary>The name of the beatmapset's mapper.</summary>
@@ -119,7 +119,7 @@ public sealed class BeatmapsetData
 		get;
 		set => field = string.IsNullOrWhiteSpace(value)
 			? throw new ArgumentException("Creator cannot be empty.", nameof(value))
-			: value;
+			: value.ThrowIfHasNul();
 	}
 
 	/// <summary>The time of the latest import of the set, in UTC.</summary>

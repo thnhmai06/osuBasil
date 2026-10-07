@@ -1,4 +1,5 @@
 ﻿using Basil.Domain.Users;
+using Basil.Domain.Utilities;
 
 namespace Basil.Domain.Multiplayer;
 
@@ -17,7 +18,16 @@ public sealed record MatchEvent(
 	DateTimeOffset Timestamp,
 	User? Actor = null,
 	User? Target = null,
-	string? Detail = null) : IMatchRecord;
+	string? Detail = null) : IMatchRecord
+{
+	/// <summary>Additional detail about the event, if any.</summary>
+	/// <exception cref="ArgumentException">The detail contains the NUL character.</exception>
+	public string? Detail
+	{
+		get;
+		init => field = value?.ThrowIfHasNul();
+	} = Detail?.ThrowIfHasNul();
+}
 
 /// <summary>
 ///     The kinds of match lifecycle events that get recorded against a match.

@@ -1,4 +1,6 @@
-﻿namespace Basil.Domain.Chat;
+﻿using Basil.Domain.Utilities;
+
+namespace Basil.Domain.Chat;
 
 /// <summary>A chat channel, named and described by IRC convention.</summary>
 public abstract class Channel
@@ -20,5 +22,5 @@ public abstract class Channel
 	}
 
 	/// <summary>Gets or sets the topic shown to users who join the channel.</summary>
-	public virtual string Topic { get; set; } = string.Empty;
+	public virtual string Topic { get; set => field = value.ThrowIfHasNul(); } = string.Empty;
 }

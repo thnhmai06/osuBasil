@@ -4,6 +4,7 @@ using Basil.Application.Services.Contracts.Multiplayer.Rooms;
 using Basil.Application.Storage.Contracts.Multiplayer;
 using Basil.Application.Storage.Contracts.Sessions;
 using Basil.Domain.Mechanics;
+using Basil.Domain.Multiplayer;
 
 namespace Basil.Application.Services.Implementations.Multiplayer.Rooms;
 
@@ -31,7 +32,7 @@ internal sealed class RoomSettingsService(RoomEventStream events, TimeProvider t
 
 		if (change.IsPrivate is not null && !RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 
-		if ((change.Name is not null && string.IsNullOrWhiteSpace(change.Name)) ||
+		if ((change.Name is { } newName && !MatchData.IsValidName(newName)) ||
 		    change.Size is < 1 or > RoomSlots.MaxSlotCount || change is { ClearBeatmap: true, Beatmap: not null } ||
 		    (change.Mode is { } requestedMode && !Enum.IsDefined(requestedMode)) ||
 		    (change.TeamType is { } requestedTeamType && !Enum.IsDefined(requestedTeamType)) ||

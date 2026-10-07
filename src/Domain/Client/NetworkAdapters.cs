@@ -86,6 +86,9 @@ public readonly record struct NetworkAdapters
 
 	private static bool IsValidAdaptersString(string value)
 	{
+		if (value.HasNul())
+			return false;
+
 		if (value.Equals(WineAdapterSentinel, StringComparison.OrdinalIgnoreCase))
 			return true;
 

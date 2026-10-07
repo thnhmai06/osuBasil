@@ -85,7 +85,7 @@ public sealed class BeatmapData
 	public required Beatmapset Beatmapset { get; init; }
 
 	/// <summary>The difficulty name, such as "Insane".</summary>
-	public required string Version { get; init; } = string.Empty;
+	public required string Version { get; init => field = value.ThrowIfHasNul(); } = string.Empty;
 
 	/// <summary>The gameplay stats of the beatmap.</summary>
 	public required Difficulty Difficulty { get; init; }

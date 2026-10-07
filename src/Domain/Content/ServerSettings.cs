@@ -6,7 +6,8 @@ namespace Basil.Domain.Content;
 public sealed record ServerSettings
 {
 	/// <summary>Gets the message of the day shown to users when they log in, or <see langword="null" /> for none.</summary>
-	public string? Motd { get; init; }
+	/// <exception cref="ArgumentException">The value contains the NUL character.</exception>
+	public string? Motd { get; init => field = value?.ThrowIfHasNul(); }
 
 	/// <summary>Gets the kinds of thing only their managers may create; everyone else is refused while a kind is locked.</summary>
 	/// <remarks>Beatmapset uploads are locked unless an administrator opens them.</remarks>

@@ -96,6 +96,8 @@ internal sealed class LobbyService(
 			: (BanchoConnection)by;
 		if (!isTournament && lobby.RoomOf(seat!) is not null) return (null, RoomResult.AlreadyInRoom);
 
+		if (!MatchData.IsValidName(name)) return (null, RoomResult.InvalidSettings);
+
 		// ponytail: two concurrent opens by one creator can both pass the room limit; count reservations per creator if that matters.
 		if (lobby.Reserve() is not { } id) return (null, RoomResult.NoRoomId);
 
