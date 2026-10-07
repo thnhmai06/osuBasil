@@ -1,5 +1,6 @@
 using Basil.Bot.Application.Basil;
 using Basil.Bot.Application.Commands.Mp;
+using Basil.Domain.Users;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Bot.Application.Commands;
@@ -151,7 +152,7 @@ internal sealed class ChatCommands(
 			return true;
 		}
 
-		await context.Reply(string.Format(BotReplies.WhereIsIn, user.Value.Name, user.Value.Country), cancellationToken);
+		await context.Reply(string.Format(BotReplies.WhereIsIn, user.Value.Name, user.Value.Country.Describe()), cancellationToken);
 		return true;
 	}
 

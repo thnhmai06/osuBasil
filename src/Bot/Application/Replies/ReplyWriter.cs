@@ -17,6 +17,10 @@ internal sealed class ReplyWriter(IBasilChat chat, ChatCommands commands)
 			return;
 
 		var context = BuildContext(message.Message, message.Channel);
+		// Ignore notices - they never trigger commands
+		if (message.Message.IsNotice)
+			return;
+
 		await commands.ExecuteAsync(context, message.Message.Content, cancellationToken);
 	}
 

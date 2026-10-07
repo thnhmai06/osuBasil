@@ -10,11 +10,21 @@ namespace Basil.Bot.Application.Basil;
 /// </remarks>
 public interface IBasilRooms
 {
-	/// <summary>Gets an open room.</summary>
+	/// <summary>Gets an open room as the bot sees it, for the bot's own announcements.</summary>
 	/// <param name="roomId">The room id.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The room, or <see langword="null" /> when no open room has that id.</returns>
 	Task<RoomState?> GetAsync(int roomId, CancellationToken cancellationToken = default);
+
+	/// <summary>Gets an open room as a user may see it.</summary>
+	/// <param name="viewer">The user asking.</param>
+	/// <param name="roomId">The room id.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>
+	///     The room, or <see langword="null" /> when no open room has that id or the user may not see it (the same rule
+	///     as reading the room's chat channel).
+	/// </returns>
+	Task<RoomState?> GetForAsync(User viewer, int roomId, CancellationToken cancellationToken = default);
 
 	/// <summary>Gets the open room a user's osu! client is seated in.</summary>
 	/// <param name="player">The user.</param>
@@ -47,7 +57,8 @@ public interface IBasilRooms
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Locks or unlocks a room's slots against players moving themselves.</summary>
-	Task<RoomOutcome> SetLockedAsync(User actor, int roomId, bool locked, CancellationToken cancellationToken = default);
+	Task<RoomOutcome> SetLockedAsync(User actor, int roomId, bool locked,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>Moves a seated player to another slot (numbered 1 to 16).</summary>
 	Task<RoomOutcome> MoveAsync(User actor, int roomId, User player, int slot,

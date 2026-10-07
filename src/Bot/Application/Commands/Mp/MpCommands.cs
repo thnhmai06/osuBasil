@@ -135,24 +135,27 @@ internal sealed partial class MpCommands(
 
 	private async Task<int?> ResolveRoomIdAsync(CommandContext context, CancellationToken cancellationToken)
 	{
-		var scoped = scopes.Get(context.Sender.Id);
-		if (scoped is not null)
-		{
-			var scopedRoom = await rooms.GetAsync(scoped.Value, cancellationToken);
-			if (scopedRoom is not null) return scoped.Value;
-			scopes.Clear(context.Sender.Id);
-		}
-
+		// (a) Channel takes precedence: if sent in #mp_{id}, use that room
 		if (context.Channel is not null)
 		{
 			var match = MpChannelRegex.Match(context.Channel);
 			if (match.Success && int.TryParse(match.Groups[1].Value, out var channelRoomId))
 			{
-				var channelRoom = await rooms.GetAsync(channelRoomId, cancellationToken);
+				var channelRoom = await rooms.GetForAsync(context.Sender, channelRoomId, cancellationToken);
 				if (channelRoom is not null) return channelRoomId;
 			}
 		}
 
+		// (b) PM scope: !mp in <id> sets a target room
+		var scoped = scopes.Get(context.Sender.Id);
+		if (scoped is not null)
+		{
+			var scopedRoom = await rooms.GetForAsync(context.Sender, scoped.Value, cancellationToken);
+			if (scopedRoom is not null) return scoped.Value;
+			scopes.Clear(context.Sender.Id);
+		}
+
+		// (c) Seated room: where the sender is currently playing
 		var seated = await rooms.FindByPlayerAsync(context.Sender, cancellationToken);
 		return seated?.Id;
 	}
@@ -192,7 +195,7 @@ internal sealed partial class MpCommands(
 			return false;
 		}
 
-		var room = await rooms.GetAsync(roomId, cancellationToken);
+		var room = await rooms.GetForAsync(context.Sender, roomId, cancellationToken);
 		if (room is null)
 		{
 			await context.Reply(string.Format(MpReplies.NoActiveRoomWithId, roomId), cancellationToken);
@@ -236,7 +239,7 @@ internal sealed partial class MpCommands(
 			return false;
 		}
 
-		var room = await rooms.GetAsync(roomId, cancellationToken);
+		var room = await rooms.GetForAsync(context.Sender, roomId, cancellationToken);
 		if (room is null)
 		{
 			await context.Reply(string.Format(MpReplies.NoActiveRoomWithHashId, roomId), cancellationToken);
@@ -252,7 +255,7 @@ internal sealed partial class MpCommands(
 
 	private async Task<bool> SettingsAsync(CommandContext context, int roomId, CancellationToken cancellationToken)
 	{
-		var room = await rooms.GetAsync(roomId, cancellationToken);
+		var room = await rooms.GetForAsync(context.Sender, roomId, cancellationToken);
 		if (room is null)
 		{
 			await context.Reply(string.Format(MpReplies.NoActiveRoomWithId, roomId), cancellationToken);
@@ -328,7 +331,7 @@ internal sealed partial class MpCommands(
 	{
 		if (args.Count == 0)
 		{
-			var room = await rooms.GetAsync(roomId, cancellationToken);
+			var room = await rooms.GetForAsync(context.Sender, roomId, cancellationToken);
 			if (room is null)
 			{
 				await context.Reply(string.Format(MpReplies.NoActiveRoomWithId, roomId), cancellationToken);
@@ -591,7 +594,7 @@ internal sealed partial class MpCommands(
 
 	private async Task<bool> ListRefsAsync(CommandContext context, int roomId, CancellationToken cancellationToken)
 	{
-		var room = await rooms.GetAsync(roomId, cancellationToken);
+		var room = await rooms.GetForAsync(context.Sender, roomId, cancellationToken);
 		if (room is null)
 		{
 			await context.Reply(string.Format(MpReplies.NoActiveRoomWithId, roomId), cancellationToken);
@@ -614,7 +617,7 @@ internal sealed partial class MpCommands(
 
 	private async Task<bool> BanListAsync(CommandContext context, int roomId, CancellationToken cancellationToken)
 	{
-		var room = await rooms.GetAsync(roomId, cancellationToken);
+		var room = await rooms.GetForAsync(context.Sender, roomId, cancellationToken);
 		if (room is null)
 		{
 			await context.Reply(string.Format(MpReplies.NoActiveRoomWithId, roomId), cancellationToken);
@@ -715,7 +718,7 @@ internal sealed partial class MpCommands(
 			return false;
 		}
 
-		var live = await rooms.GetAsync(roomId, cancellationToken);
+		var live = await rooms.GetForAsync(context.Sender, roomId, cancellationToken);
 		var liveTeamType = live?.Settings.TeamType ?? (GameTeamType)teamValue;
 		var liveWinCondition = live?.Settings.WinCondition ?? (winCondition ?? default);
 		var sizeSuffix = size is { } sz ? $", {sz} slots." : ".";
@@ -781,7 +784,7 @@ internal sealed partial class MpCommands(
 			return false;
 		}
 
-		var room = await rooms.GetAsync(roomId, cancellationToken);
+		var room = await rooms.GetForAsync(context.Sender, roomId, cancellationToken);
 		if (room is null)
 		{
 			await context.Reply(string.Format(MpReplies.NoActiveRoomWithId, roomId), cancellationToken);
@@ -816,7 +819,7 @@ internal sealed partial class MpCommands(
 			return false;
 		}
 
-		var updated = await rooms.GetAsync(roomId, cancellationToken);
+		var updated = await rooms.GetForAsync(context.Sender, roomId, cancellationToken);
 		var after = updated?.Settings.Mods ?? mods;
 		var isFreemod = updated?.Settings.Freemods ?? freemod;
 		await context.Reply(DescribeModChange(before, after, wasFreemod, isFreemod), cancellationToken);
