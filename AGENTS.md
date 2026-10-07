@@ -391,7 +391,7 @@ feature folders appear in Storage, Contracts and Services.
 Common/        PageRequest, Page<T>, Interval<T>                                   (Storage)
 Events/        Event, IEventPublisher<T>                                           (Contracts)
 Users/         IUserRepository, ICredentialRepository (passwords), ILoginRepository,
-               IRestrictionRepository, IRelationshipRepository, IUserAvatarStorage, UserQuery, LoginQuery;
+               IRestrictionRepository, IRelationshipRepository, IUserAvatarStorage, UserQuery;
                IAuthService, IUserService, LoginAttempt, RegisterAttempt, results
 Sessions/      UserSession, Connection (+ ConnectionType), UserRegistry, PlayerStatus,
                SpectatorChannelSession; ISessionService and its events
