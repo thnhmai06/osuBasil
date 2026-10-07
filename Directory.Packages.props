@@ -12,6 +12,11 @@
     <PackageVersion Include="ppy.osu.Game.Rulesets.Taiko" Version="2026.916.0" />
     <PackageVersion Include="ppy.osu.Game.Rulesets.Catch" Version="2026.916.0" />
     <PackageVersion Include="ppy.osu.Game.Rulesets.Mania" Version="2026.916.0" />
+    <!-- AutoMapper 13.0.1 comes in through ppy.osu.Game, which uses it only to detach and copy Realm objects;
+         Basil only decodes beatmaps and calculates difficulty, so the deep-recursion DoS is unreachable. The
+         patched releases (15.1.1+) change APIs osu.Game calls and need a commercial licence key, so they cannot
+         be pinned here. Remove this when ppy.osu.Game moves to a patched AutoMapper. -->
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-rvv3-g6hj-g44x" />
     <!-- Already a transitive dependency of ppy.osu.Framework at this exact version — pinning it here
          to reference directly for thumbnail resizing doesn't add a new package to the graph. -->
     <PackageVersion Include="SixLabors.ImageSharp" Version="3.1.12" />
