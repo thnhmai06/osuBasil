@@ -1,12 +1,14 @@
 using System.Collections.Concurrent;
 using System.Collections.Frozen;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO.Compression;
 using Basil.Application.Services.Contracts.Beatmaps;
 using Basil.Application.Storage.Contracts.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Utilities;
+using FFMpegCore;
+using FFMpegCore.Enums;
+using FFMpegCore.Exceptions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -392,9 +394,12 @@ internal sealed class BeatmapAssets(
 			{
 				await RunFfmpegAsync(audioPath, startSeconds, path, cancellationToken);
 			}
-			catch (Exception ex) when (ex is not OperationCanceledException)
+			catch (FFMpegException e)
 			{
-				logger.LogWarning(ex, "Audio preview extraction failed: BeatmapsetId={BeatmapsetId}", set.Id);
+				logger.LogWarning(
+					"Audio preview extraction failed: BeatmapsetId={BeatmapsetId} Type={Type} Output={Output}",
+					set.Id, e.Type, e.FFMpegErrorOutput);
+				if (File.Exists(path)) File.Delete(path);
 				return null;
 			}
 		}
@@ -402,45 +407,20 @@ internal sealed class BeatmapAssets(
 		return File.OpenRead(path);
 	}
 
-	/// <summary>Invokes the configured ffmpeg executable to cut the preview clip.</summary>
-	private async Task RunFfmpegAsync(string audioPath, double startSeconds, string outputPath,
+	/// <summary>Cuts the ten-second preview clip with ffmpeg.</summary>
+	private Task RunFfmpegAsync(string audioPath, double startSeconds, string outputPath,
 		CancellationToken cancellationToken)
 	{
-		var info = new ProcessStartInfo
-		{
-			FileName = options.Value.Ffmpeg,
-			UseShellExecute = false,
-			CreateNoWindow = true
-		};
-		info.ArgumentList.Add("-hide_banner");
-		info.ArgumentList.Add("-loglevel");
-		info.ArgumentList.Add("error");
-		info.ArgumentList.Add("-ss");
-		info.ArgumentList.Add(startSeconds.ToString(CultureInfo.InvariantCulture));
-		info.ArgumentList.Add("-i");
-		info.ArgumentList.Add(audioPath);
-		info.ArgumentList.Add("-t");
-		info.ArgumentList.Add("10");
-		info.ArgumentList.Add("-vn");
-		info.ArgumentList.Add("-c:a");
-		info.ArgumentList.Add("libmp3lame");
-		info.ArgumentList.Add("-b:a");
-		info.ArgumentList.Add("128k");
-		info.ArgumentList.Add("-af");
-		info.ArgumentList.Add("afade=t=out:st=9:d=1");
-		info.ArgumentList.Add("-y");
-		info.ArgumentList.Add(outputPath);
-
-		var process = Process.Start(info);
-		if (process is null)
-			throw new InvalidOperationException("ffmpeg did not start.");
-
-		using (process)
-		{
-			await process.WaitForExitAsync(cancellationToken);
-			if (process.ExitCode != 0)
-				throw new InvalidOperationException($"ffmpeg exited with code {process.ExitCode}.");
-		}
+		return FFMpegArguments
+			.FromFileInput(audioPath, true, input => input.Seek(TimeSpan.FromSeconds(startSeconds)))
+			.OutputToFile(outputPath, true, output => output
+				.WithDuration(TimeSpan.FromSeconds(10))
+				.DisableChannel(Channel.Video)
+				.WithAudioCodec(AudioCodec.LibMp3Lame)
+				.WithAudioBitrate(128)
+				.WithCustomArgument("-af afade=t=out:st=9:d=1"))
+			.CancellableThrough(cancellationToken)
+			.ProcessAsynchronously(true, new FFOptions { BinaryFolder = options.Value.FfmpegFolder ?? string.Empty });
 	}
 
 	/// <summary>The fields a <c>.osu</c> file declares that the asset layer needs.</summary>
