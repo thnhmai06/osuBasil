@@ -11,6 +11,7 @@ public interface IUserRepository
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The stored user.</returns>
 	/// <remarks>Ids start at 1.</remarks>
+	/// <exception cref="AlreadyExistsException">Another user already has the same safe name.</exception>
 	Task<User> CreateAsync(UserData data, CancellationToken cancellationToken = default);
 
 	/// <summary>Stores a user under its id, adding it when no user has that id and replacing the stored user otherwise.</summary>

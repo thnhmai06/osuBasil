@@ -50,9 +50,16 @@ internal sealed class ScoreService(
 			return rejection;
 
 		var team = round is not null ? room!.Slots.Find(connection)?.Team : null;
-		var score = await scores.CreateAsync(
-			submission.Score with { UserId = connection.User.Id, Round = round, Team = team }, cancellationToken);
-		if (score is null) return ScoreRejection.Duplicate;
+		Score score;
+		try
+		{
+			score = await scores.CreateAsync(
+				submission.Score with { UserId = connection.User.Id, Round = round, Team = team }, cancellationToken);
+		}
+		catch (AlreadyExistsException)
+		{
+			return ScoreRejection.Duplicate;
+		}
 
 		if (submission.Score.IsPassed && replay is { Length: >= MinReplayLength })
 		{

@@ -23,6 +23,9 @@ internal sealed class PostgresBeatmapsetRepository(Database database, DatabaseWr
 	public async Task<Beatmapset> CreateAsync(BeatmapsetData data, int? onlineId = null,
 		CancellationToken cancellationToken = default)
 	{
+		if (onlineId is { } existingId && Items.TryGetValue(existingId, out _))
+			throw new AlreadyExistsException($"A beatmapset already has osu! id {existingId}.");
+
 		var parameters = new DynamicParameters(new
 		{
 			id = 0,
@@ -34,20 +37,30 @@ internal sealed class PostgresBeatmapsetRepository(Database database, DatabaseWr
 			locked = data.Locked,
 			visible = data.Visible
 		});
-		var id = await Writer.WriteAsync(onlineId is { } given ? Root.Beatmapset(given) : Root.Server,
-			async (connection, transaction) =>
+		int id;
+		try
 		{
-			var newId = onlineId ?? await NextLocalIdAsync(connection, transaction);
-			parameters.Add("id", newId);
-			await connection.ExecuteAsync(
-				"""
-				insert into beatmapsets (id, artist, title, creator, created_at, updated_at, locked, visible)
-				values (@id, @artist, @title, @creator, @createdAt, @updatedAt, @locked, @visible)
-				""",
-				parameters,
-				transaction);
-			return newId;
-		}, cancellationToken);
+			id = await Writer.WriteAsync(onlineId is { } given ? Root.Beatmapset(given) : Root.Server,
+				async (connection, transaction) =>
+			{
+				var newId = onlineId ?? await NextLocalIdAsync(connection, transaction);
+				parameters.Add("id", newId);
+				await connection.ExecuteAsync(
+					"""
+					insert into beatmapsets (id, artist, title, creator, created_at, updated_at, locked, visible)
+					values (@id, @artist, @title, @creator, @createdAt, @updatedAt, @locked, @visible)
+					""",
+					parameters,
+					transaction);
+				return newId;
+			}, cancellationToken);
+		}
+		catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation)
+		{
+			throw new AlreadyExistsException(onlineId is { } givenId
+				? $"A beatmapset already has osu! id {givenId}."
+				: "A beatmapset already has this online id.");
+		}
 
 		return Track(new Beatmapset { Id = id, Value = data });
 	}

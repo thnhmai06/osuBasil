@@ -22,6 +22,9 @@ internal sealed class PostgresUserRepository(Database database, DatabaseWriter w
 	/// <inheritdoc />
 	public async Task<User> CreateAsync(UserData data, CancellationToken cancellationToken = default)
 	{
+		if (_byName.TryGet(data.SafeName, out var known) && known.Value.SafeName == data.SafeName)
+			throw new AlreadyExistsException($"A user is already named {data.Name}.");
+
 		var parameters = new
 		{
 			data.Name,
@@ -30,13 +33,21 @@ internal sealed class PostgresUserRepository(Database database, DatabaseWriter w
 			Permissions = (long)data.Permissions,
 			DeletedAt = data.DeletedAt?.ToUniversalTime()
 		};
-		var id = await Writer.WriteAsync(Root.Server, (connection, transaction) => connection.QuerySingleAsync<int>(
-			"""
-			insert into users (name, safe_name, country, permissions, deleted_at)
-			values (@Name, @SafeName, @Country, @Permissions, @DeletedAt)
-			returning id;
-			""",
-			parameters, transaction), cancellationToken);
+		int id;
+		try
+		{
+			id = await Writer.WriteAsync(Root.Server, (connection, transaction) => connection.QuerySingleAsync<int>(
+				"""
+				insert into users (name, safe_name, country, permissions, deleted_at)
+				values (@Name, @SafeName, @Country, @Permissions, @DeletedAt)
+				returning id;
+				""",
+				parameters, transaction), cancellationToken);
+		}
+		catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation)
+		{
+			throw new AlreadyExistsException($"A user is already named {data.Name}.");
+		}
 
 		return TrackUser(new User { Id = id, Value = data });
 	}
@@ -61,13 +72,17 @@ internal sealed class PostgresUserRepository(Database database, DatabaseWriter w
 		_ = new UserData { Name = name };
 		var live = TrackUser(user);
 		var old = live.Value.SafeName;
+		var newSafe = UserData.SafeNameOf(name);
+
+		if (_byName.TryGet(newSafe, out var known) && known.Value.SafeName == newSafe && known != live)
+			return false;
 
 		// Whether the name is free is the database's to say, so the user takes the name only once it is committed.
 		try
 		{
 			await Writer.WriteAsync(Root.User(live.Id), (connection, transaction) => connection.ExecuteAsync(
 				"update users set name = @Name, safe_name = @SafeName where id = @Id",
-				new { Name = name, SafeName = UserData.SafeNameOf(name), live.Id }, transaction), cancellationToken);
+				new { Name = name, SafeName = newSafe, live.Id }, transaction), cancellationToken);
 		}
 		catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation)
 		{

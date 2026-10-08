@@ -40,21 +40,36 @@ internal sealed class PostgresBeatmapRepository : MemoryRepository<int, Beatmap>
 	public async Task<Beatmap> CreateAsync(BeatmapData data, int? onlineId = null,
 		CancellationToken cancellationToken = default)
 	{
+		if (_byHash.TryGet(data.Hash, out var known) && known.Value.Hash == data.Hash)
+			throw new AlreadyExistsException($"A beatmap already has the hash {data.Hash}.");
+		if (onlineId is { } existingId && Items.TryGetValue(existingId, out _))
+			throw new AlreadyExistsException($"A beatmap already has osu! id {onlineId}.");
+
 		var set = await LiveSetAsync(data.Beatmapset, cancellationToken);
 		var value = WithSet(data, set);
 		var parameters = new DynamicParameters(Parameters(0, value));
-		var id = await Writer.WriteAsync(Root.Beatmapset(set.Id), async (connection, transaction) =>
+		int id;
+		try
 		{
-			var newId = onlineId ?? await NextLocalIdAsync(connection, transaction);
-			parameters.Add("Id", newId);
-			await connection.ExecuteAsync(
-				"""
-				insert into beatmaps (id, beatmapset_id, hash, version, mode, star, length, bpm, cs, ar, od, hp, objects, locked, visible)
-				values (@Id, @BeatmapsetId, @Hash, @Version, @Mode, @Star, @Length, @Bpm, @Cs, @Ar, @Od, @Hp, @Objects::jsonb, @Locked, @Visible)
-				""",
-				parameters, transaction);
-			return newId;
-		}, cancellationToken);
+			id = await Writer.WriteAsync(Root.Beatmapset(set.Id), async (connection, transaction) =>
+			{
+				var newId = onlineId ?? await NextLocalIdAsync(connection, transaction);
+				parameters.Add("Id", newId);
+				await connection.ExecuteAsync(
+					"""
+					insert into beatmaps (id, beatmapset_id, hash, version, mode, star, length, bpm, cs, ar, od, hp, objects, locked, visible)
+					values (@Id, @BeatmapsetId, @Hash, @Version, @Mode, @Star, @Length, @Bpm, @Cs, @Ar, @Od, @Hp, @Objects::jsonb, @Locked, @Visible)
+					""",
+					parameters, transaction);
+				return newId;
+			}, cancellationToken);
+		}
+		catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation)
+		{
+			throw new AlreadyExistsException(onlineId is not null
+				? $"A beatmap already has osu! id {onlineId}."
+				: $"A beatmap already has the hash {data.Hash}.");
+		}
 
 		var beatmap = Track(new Beatmap { Id = id, Value = value });
 		Index(beatmap);
@@ -68,6 +83,9 @@ internal sealed class PostgresBeatmapRepository : MemoryRepository<int, Beatmap>
 		var value = WithSet(beatmap.Value, await LiveSetAsync(beatmap.Value.Beatmapset, cancellationToken));
 		if (!Items.TryGetValue(beatmap.Id, out var current) || current.Value.Hash != value.Hash)
 		{
+			if (_byHash.TryGet(value.Hash, out var known) && known.Id != beatmap.Id && known.Value.Hash == value.Hash)
+				throw new AlreadyExistsException($"A beatmap already has the hash {value.Hash}.");
+
 			// A hash must be unique across every beatmap, so a new or changed one is written at once and the live
 			// beatmap takes it only after the commit.
 			var id = beatmap.Id;
@@ -79,7 +97,7 @@ internal sealed class PostgresBeatmapRepository : MemoryRepository<int, Beatmap>
 			}
 			catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation)
 			{
-				throw new InvalidOperationException($"Another beatmap already has the hash {value.Hash}.", exception);
+				throw new AlreadyExistsException($"A beatmap already has the hash {value.Hash}.");
 			}
 
 			Remember(beatmap, value, Task.CompletedTask);

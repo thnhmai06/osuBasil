@@ -2,6 +2,7 @@ using System.Threading.Channels;
 using Basil.Application.Services.Contracts.Beatmaps;
 using Basil.Application.Services.Implementations.Common;
 using Basil.Application.Storage.Contracts.Beatmaps;
+using Basil.Application.Storage.Contracts.Common;
 using Basil.Application.Storage.Contracts.Content;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
@@ -51,22 +52,28 @@ internal sealed class BeatmapsetService(
 		Beatmapset set;
 		if (existing is null)
 		{
-			set = await beatmapsets.CreateAsync(new BeatmapsetData
+			try
 			{
-				Artist = content.Artist,
-				Title = content.Title,
-				Creator = content.Creator,
-				CreatedAt = now,
-				UpdatedAt = now
-			}, content.OnlineSetId is > 0 ? content.OnlineSetId : null, cancellationToken);
+				set = await beatmapsets.CreateAsync(new BeatmapsetData
+				{
+					Artist = content.Artist,
+					Title = content.Title,
+					Creator = content.Creator,
+					CreatedAt = now,
+					UpdatedAt = now
+				}, content.OnlineSetId is > 0 ? content.OnlineSetId : null, cancellationToken);
+			}
+			catch (AlreadyExistsException)
+			{
+				// Another import created the set meanwhile; fetch it and continue as the existing-set branch.
+				set = await beatmapsets.GetAsync(content.OnlineSetId!.Value, cancellationToken)
+					?? throw new InvalidOperationException("A beatmapset with this online id already exists but could not be retrieved.");
+				await UpdateSetAsync(set, content, now, cancellationToken);
+			}
 		}
 		else
 		{
-			existing.Value.Artist = content.Artist;
-			existing.Value.Title = content.Title;
-			existing.Value.Creator = content.Creator;
-			existing.Value.UpdatedAt = now;
-			await beatmapsets.CreateOrUpdateAsync(existing, cancellationToken);
+			await UpdateSetAsync(existing, content, now, cancellationToken);
 			set = existing;
 		}
 
@@ -90,16 +97,29 @@ internal sealed class BeatmapsetService(
 				Locked = previous?.Value.Locked ?? false,
 				Visible = previous?.Value.Visible ?? true
 			};
-
 			Beatmap beatmap;
 			if (previous is null)
 			{
-				beatmap = await beatmaps.CreateAsync(data, difficulty.OnlineId is > 0 ? difficulty.OnlineId : null, cancellationToken);
+				try
+				{
+					beatmap = await beatmaps.CreateAsync(data,
+						difficulty.OnlineId is > 0 ? difficulty.OnlineId : null, cancellationToken);
+				}
+				catch (AlreadyExistsException)
+				{
+					var existingBeatmap = await beatmaps.GetAsync(data.Hash, cancellationToken)
+						?? (difficulty.OnlineId is > 0
+							? await beatmaps.GetAsync(difficulty.OnlineId.Value, cancellationToken)
+							: null);
+					if (existingBeatmap is null)
+						throw;
+
+					beatmap = await UpdateBeatmapAsync(existingBeatmap, data);
+				}
 			}
 			else
 			{
-				await beatmaps.CreateOrUpdateAsync(new Beatmap { Id = previous.Id, Value = data }, cancellationToken);
-				beatmap = previous;
+				beatmap = await UpdateBeatmapAsync(previous, data);
 			}
 
 			result.Add(beatmap);
@@ -108,6 +128,12 @@ internal sealed class BeatmapsetService(
 		await beatmaps.RetainAsync(set, result, cancellationToken);
 		_events.Writer.TryWrite(new BeatmapsetImported(set, result));
 		return new BeatmapsetImportResult(set, result, null);
+
+		async Task<Beatmap> UpdateBeatmapAsync(Beatmap existingBeatmap, BeatmapData data)
+		{
+			await beatmaps.CreateOrUpdateAsync(new Beatmap { Id = existingBeatmap.Id, Value = data }, cancellationToken);
+			return existingBeatmap;
+		}
 	}
 
 	/// <inheritdoc />
@@ -175,5 +201,15 @@ internal sealed class BeatmapsetService(
 	{
 		var objects = BeatmapObjects.NewFrom(mode);
 		return new BeatmapAnalysis(new Difficulty(mode, 0, TimeSpan.Zero, 0, 0, 0, 0, 0), objects);
+	}
+
+	private async Task UpdateSetAsync(Beatmapset set, BeatmapsetArchive content, DateTimeOffset now,
+		CancellationToken cancellationToken)
+	{
+		set.Value.Artist = content.Artist;
+		set.Value.Title = content.Title;
+		set.Value.Creator = content.Creator;
+		set.Value.UpdatedAt = now;
+		await beatmapsets.CreateOrUpdateAsync(set, cancellationToken);
 	}
 }

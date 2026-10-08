@@ -1,4 +1,5 @@
 using Basil.Application.Storage.Contracts.Common;
+using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 
 namespace Basil.Application.Storage.Contracts.Scores;
@@ -9,11 +10,9 @@ public interface IScoreRepository
 	/// <summary>Stores a new score and assigns its id.</summary>
 	/// <param name="data">The data of the new score.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>
-	///     The stored score, or <see langword="null" /> when a score with the same <see cref="ScoreData.Checksum" /> is
-	///     already stored.
-	/// </returns>
-	Task<Score?> CreateAsync(ScoreData data, CancellationToken cancellationToken = default);
+	/// <returns>The stored score.</returns>
+	/// <exception cref="AlreadyExistsException">A score with the same <see cref="ScoreData.Checksum" /> is already stored.</exception>
+	Task<Score> CreateAsync(ScoreData data, CancellationToken cancellationToken = default);
 
 	/// <summary>Gets a score by id.</summary>
 	/// <param name="id">The score id.</param>
@@ -27,4 +26,10 @@ public interface IScoreRepository
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>A page of scores.</returns>
 	Task<Page<Score>> ListAsync(ScoreQuery query, PageRequest page, CancellationToken cancellationToken = default);
+
+	/// <summary>Lists the scores submitted in a round.</summary>
+	/// <param name="round">The round.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The round's scores, in submission order.</returns>
+	Task<IReadOnlyList<Score>> ListAsync(Round round, CancellationToken cancellationToken = default);
 }

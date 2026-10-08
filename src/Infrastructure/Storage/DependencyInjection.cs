@@ -50,7 +50,6 @@ public static class DependencyInjection
 		services.AddSingleton<IFaqStorage, FileFaqStorage>();
 
 		services.AddSingleton<IMatchRepository, PostgresMatchRepository>();
-		services.AddSingleton<MatchReportCache>();
 		services.AddSingleton<IMatchReportRepository, MatchReportRepository>();
 		services.AddSingleton<IRoundRepository, PostgresRoundRepository>();
 		services.AddSingleton<IMatchEventRepository, PostgresMatchEventRepository>();

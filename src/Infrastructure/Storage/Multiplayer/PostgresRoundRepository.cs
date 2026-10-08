@@ -13,8 +13,7 @@ namespace Basil.Infrastructure.Storage.Multiplayer;
 internal sealed class PostgresRoundRepository(
 	Database database,
 	DatabaseWriter writer,
-	IMatchRepository matches,
-	MatchReportCache reports)
+	IMatchRepository matches)
 	: MemoryRepository<(int MatchId, int Number), Round>(database, writer), IRoundRepository
 {
 	private readonly OwnedLists<int, Match, Round> _byMatch = new();
@@ -29,7 +28,6 @@ internal sealed class PostgresRoundRepository(
 		var saved = SaveAsync(round);
 		var live = Track(round);
 		_byMatch.Change(live.Match.Id, live.Match, current => AddOrReplace(current, live), saved);
-		reports.Invalidate(live.Match.Id);
 		return Task.CompletedTask;
 	}
 

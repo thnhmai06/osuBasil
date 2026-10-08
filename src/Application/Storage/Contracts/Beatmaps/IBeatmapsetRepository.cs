@@ -21,6 +21,7 @@ public interface IBeatmapsetRepository
 	///     A beatmapset without an osu! id gets a new local id, at or above <see cref="Beatmapset.LocalIdFloor" />. The
 	///     caller makes sure no stored beatmapset already has <paramref name="onlineId" />.
 	/// </remarks>
+	/// <exception cref="AlreadyExistsException">A beatmapset already has <paramref name="onlineId" />.</exception>
 	Task<Beatmapset> CreateAsync(BeatmapsetData data, int? onlineId = null,
 		CancellationToken cancellationToken = default);
 

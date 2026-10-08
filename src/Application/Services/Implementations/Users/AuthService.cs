@@ -2,6 +2,7 @@ using System.Net;
 using Basil.Application.Services.Contracts.Users;
 using Basil.Application.Services.Implementations.Sessions;
 using Basil.Application.Services.Contracts.Sessions;
+using Basil.Application.Storage.Contracts.Common;
 using Basil.Application.Storage.Contracts.Content;
 using Basil.Application.Storage.Contracts.Sessions;
 using Basil.Application.Storage.Contracts.Users;
@@ -139,7 +140,15 @@ internal sealed class AuthService(
 	private async Task<(User? User, RegistrationFailure? Failure)> CreateCoreAsync(UserData data, Md5 passwordHash,
 		CancellationToken cancellationToken)
 	{
-		var user = await users.CreateAsync(data, cancellationToken);
+		User user;
+		try
+		{
+			user = await users.CreateAsync(data, cancellationToken);
+		}
+		catch (AlreadyExistsException)
+		{
+			return (null, RegistrationFailure.NameTaken);
+		}
 		await credentials.CreateOrUpdateAsync(new Credentials(user, passwordHash), cancellationToken);
 		return (user, null);
 	}
