@@ -206,7 +206,8 @@ IHost BuildHost()
 {
 	var builder = Host.CreateApplicationBuilder();
 	builder.Logging.ClearProviders().AddSimpleConsole().SetMinimumLevel(LogLevel.Warning);
-	builder.Services.AddSingleton(Microsoft.Extensions.Options.Options.Create(new StorageOptions { DataDirectory = dataDir, ConnectionString = cs }));
+	builder.Services.AddSingleton(Microsoft.Extensions.Options.Options.Create(new StorageOptions { DataDirectory = dataDir }));
+	builder.Services.AddSingleton(Microsoft.Extensions.Options.Options.Create(new DatabaseOptions { ConnectionString = cs }));
 	builder.Services.AddInfrastructureStorage();
 	return builder.Build();
 }

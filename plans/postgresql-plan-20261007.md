@@ -121,11 +121,10 @@ năng** PG cập nhật tại chỗ (HOT); cập nhật đổi cột có index t
 - Bỏ `DataPaths.Database` (file `Basil.db`).
 
 **P11. Cấu hình.**
-- `StorageOptions.ConnectionString` (bắt buộc) và `StorageOptions.WriteLanes` (mặc định `8`, chọn theo số đo của
-  P13).
-- Khi migrate host: `Basil.Host` bind `Basil:Database:ConnectionString` từ `Data/appsettings.json` (file mẫu để
-  placeholder mật khẩu như `Server:CertPassword`; mật khẩu dev trong `Data/appsettings.Development.json`, thêm vào
-  `.gitignore`). Host không đọc biến môi trường hay user-secrets.
+- `DatabaseOptions` (Storage): `ConnectionString` (bắt buộc) và `WriteLanes` (mặc định `8`, người dùng tự đặt; số đo
+  ở P13). Section `Basil:Database` trong `Data/appsettings.json` (file mẫu để placeholder mật khẩu như
+  `Server:CertPassword`; mật khẩu dev trong `Data/appsettings.Development.json`), có trong `appsettings.schema.json`;
+  `Basil.Host` bind section này. Host không đọc biến môi trường hay user-secrets.
 - App chạy bằng role `basil` (không phải superuser).
 
 **P12. Kiểm chứng trong lúc làm.** Không có smoke giao cho agent; Claude chạy script trong scratchpad với PG local (mục

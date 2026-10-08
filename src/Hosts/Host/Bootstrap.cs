@@ -1,6 +1,7 @@
 using Basil.Application.Shared.Configuration;
 using Basil.Host.Api.Shared.Http;
 using Basil.Host.Api.Shared.Http.Middleware;
+using Basil.Infrastructure.Storage;
 using Microsoft.Extensions.Options;
 using SixLabors.ImageSharp.Web.DependencyInjection;
 using Velopack;
@@ -29,6 +30,7 @@ public sealed class Bootstrap
 		ConfigurationSetup.Configure(builder, args);
 		KestrelSetup.Configure(builder);
 		builder.Services.Configure<ServerOptions>(builder.Configuration.GetSection(ServerOptions.SectionName));
+		builder.Services.Configure<DatabaseOptions>(builder.Configuration.GetSection("Basil:Database"));
 		builder.Services.Configure<UpdateCheckOptions>(
 			builder.Configuration.GetSection(UpdateCheckOptions.SectionName));
 		builder.Services.AddSingleton<IUpdateProbe>(serviceProvider =>

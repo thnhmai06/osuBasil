@@ -5,7 +5,7 @@ using Npgsql;
 namespace Basil.Infrastructure.Storage;
 
 /// <summary>Gives access to the server's database: connections for writes, and reads of what is committed.</summary>
-internal sealed class Database(IOptions<StorageOptions> options) : IAsyncDisposable
+internal sealed class Database(IOptions<DatabaseOptions> options) : IAsyncDisposable
 {
 	private readonly NpgsqlDataSource _source = new NpgsqlDataSourceBuilder(options.Value.ConnectionString)
 	{

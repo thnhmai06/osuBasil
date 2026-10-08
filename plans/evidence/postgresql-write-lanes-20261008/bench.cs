@@ -3,7 +3,7 @@
 #:package Microsoft.Extensions.DependencyInjection
 #:project ../../../src/Infrastructure/Storage/Basil.Infrastructure.Storage.csproj
 
-// Benchmark behind the choice of StorageOptions.WriteLanes and of the pg_trgm index and fillfactor in
+// Benchmark behind the choice of DatabaseOptions.WriteLanes and of the pg_trgm index and fillfactor in
 // 001_baseline.sql. See results.md next to this file for the method and the numbers.
 //
 // Usage: dotnet run bench.cs -- "<admin connection string with CREATEDB>" [lanes=1,2,4,8] [runs=3]
@@ -298,7 +298,8 @@ ServiceProvider Services(string connection, string dataDirectory, int lanes)
 {
 	var services = new ServiceCollection();
 	services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
-	services.AddSingleton(Options.Create(new StorageOptions { DataDirectory = dataDirectory, ConnectionString = connection, WriteLanes = lanes }));
+	services.AddSingleton(Options.Create(new StorageOptions { DataDirectory = dataDirectory }));
+	services.AddSingleton(Options.Create(new DatabaseOptions { WriteLanes = lanes, ConnectionString = connection }));
 	services.AddInfrastructureStorage();
 	return services.BuildServiceProvider();
 }

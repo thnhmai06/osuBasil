@@ -13,7 +13,7 @@ namespace Basil.Infrastructure.Storage.Writing;
 /// </remarks>
 internal sealed class DatabaseWriter(
 	Database database,
-	IOptions<StorageOptions> options,
+	IOptions<DatabaseOptions> options,
 	TimeProvider timeProvider,
 	ILogger<DatabaseWriter> logger) : BackgroundService, IHostedLifecycleService
 {
@@ -63,7 +63,7 @@ internal sealed class DatabaseWriter(
 
 	private WriteLane LaneOf(Root root) => _lanes[(uint)root.GetHashCode() % (uint)_lanes.Length];
 
-	private static WriteLane[] CreateLanes(Database database, IOptions<StorageOptions> options,
+	private static WriteLane[] CreateLanes(Database database, IOptions<DatabaseOptions> options,
 		TimeProvider timeProvider, ILogger<DatabaseWriter> logger)
 	{
 		if (options.Value.WriteLanes < 1)

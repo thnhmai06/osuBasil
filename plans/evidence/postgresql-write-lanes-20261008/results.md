@@ -5,7 +5,7 @@ Evidence for three choices of the PostgreSQL storage
 
 | Choice | Decision | Basis |
 |---|---|---|
-| `StorageOptions.WriteLanes` default | **8** | smallest lane count within 10% of the best throughput, with a steady-load try-operation p99 no worse than the best (1.1 × best + 1 ms) |
+| `WriteLanes` default (`Basil:Database:WriteLanes`) | **8** | smallest lane count within 10% of the best throughput, with a steady-load try-operation p99 no worse than the best (1.1 × best + 1 ms) |
 | `users_safe_name_trgm` (GIN, `pg_trgm`) | **keep** | partial-name search 19× faster at 100 000 users, no cost at 1 000 |
 | `fillfactor = 90` on `users`, `user_stats`, `matches`, `rounds` | **keep** | updates that must touch indexes (non-HOT) drop from 1.8% to 0.6% |
 

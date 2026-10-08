@@ -22,9 +22,6 @@ public static class SharedInfrastructureServiceCollectionExtensions
 	public static IServiceCollection AddSharedInfrastructure(this IServiceCollection services,
 		IConfiguration configuration)
 	{
-		// Database path is fixed to Data/Basil.db next to the executable; not configurable.
-		services.AddSingleton(Options.Create(new DatabaseOptions()));
-
 		// Storage folders are fixed under a Data/ subdirectory next to the executable.
 		services.AddSingleton(Options.Create(new StorageOptions
 		{

@@ -559,9 +559,9 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   the same identity replaces it) and return at once: memory has changed, and nothing waits for the database. Only a
   try-operation waits for the database, because its outcome comes from it, and it learns that outcome only once its
   batch is committed. Reads go straight to PostgreSQL on a pooled connection of their own and see only what is
-  committed. Writes go through `DatabaseWriter`, which keeps `StorageOptions.WriteLanes` lanes side by side
-  (PostgreSQL takes many writers at once; the lane count is measured, see
-  [`plans/evidence/postgresql-write-lanes-20261008`](plans/evidence/postgresql-write-lanes-20261008/results.md)). A
+  committed. Writes go through `DatabaseWriter`, which keeps `DatabaseOptions.WriteLanes` lanes side by side
+  (PostgreSQL takes many writers at once; the operator sets the count in `Basil:Database:WriteLanes`, 8 by default,
+  see [`plans/evidence/postgresql-write-lanes-20261008`](plans/evidence/postgresql-write-lanes-20261008/results.md)). A
   write's lane is chosen by its root (`Root.User`, `Root.Match`, `Root.Beatmapset`, `Root.Server`), so the writes of
   one root keep their order; the root of an identity never changes. A lane runs its writes in batches of one
   transaction, due once 100 writes are pending, the oldest has waited 50 ms, or a try-operation is queued;
