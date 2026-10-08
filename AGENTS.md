@@ -547,40 +547,48 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   is only for byte storages (`IXxxStorage`: `SaveAsync`, `OpenAsync`, `DeleteAsync`). Extract a shared
   interface only when several repositories genuinely share an operation, and keep the `IXxxRepository`
   contract callers depend on; no parallel generic ports (`ICreatable`) and no generic query system
-  (`Query<T>`, `SortOptions`). Key normalization (for example case- and space-insensitive user names) is the
-  repository's own lookup concern. A repository filters only by explicit criteria in its query record
+  (`Query<T>`, `SortOptions`). Key normalization (for example case- and space-insensitive user names) lives on the
+  Domain value (`UserData.SafeName`); the server writes the normalized key it looks records up by. A repository filters only by explicit criteria in its query record
   (`IncludeHidden`, `IncludeDeleted`, `IncludePrivate`); the caller sets them from the asker's authority.
-* **Memory is the truth; the database is a snapshot of it.** The system works the same with no database at all,
-  only without persistence. A runtime change only signals that it happened; keeping the snapshot correct, fast and
-  free of races is the storage's job. A repository is a cache of live instances: one instance per identity, returned
-  by every `GetAsync`, `GetByYAsync` and `ListAsync`, kept while anyone holds it and for 5 minutes after it was last
-  asked for, then released; the database is read for an identity not in memory.
-  `CreateOrUpdateAsync`/`DeleteAsync` queue a snapshot of the values **as they are when queued** (a later change of
-  the same identity replaces it) and return at once: memory has changed, and nothing waits for the database. Only a
-  try-operation waits for the database, because its outcome comes from it, and it learns that outcome only once its
-  batch is committed. Reads go straight to PostgreSQL on a pooled connection of their own and see only what is
-  committed. Writes go through `DatabaseWriter`, which keeps `DatabaseOptions.WriteLanes` lanes side by side
-  (PostgreSQL takes many writers at once; the operator sets the count in `Basil:Database:WriteLanes`, 8 by default,
-  see [`plans/evidence/postgresql-write-lanes-20261008`](plans/evidence/postgresql-write-lanes-20261008/results.md)). A
-  write's lane is chosen by its root (`Root.User`, `Root.Match`, `Root.Beatmapset`, `Root.Server`), so the writes of
-  one root keep their order; the root of an identity never changes. A lane runs its writes in batches of one
-  transaction, due once 100 writes are pending, the oldest has waited 50 ms, or a try-operation is queued;
-  consecutive snapshots go as one `NpgsqlBatch`, each try-operation in a savepoint of its own. A batch that fails
-  for a reason outside the server (lost connection, deadlock, server shutting down) is stored again before any later
-  write of its lane, so a retry never overwrites newer data; a commit whose connection broke is settled with
-  `pg_xact_status`; a statement the database refuses is logged as critical and dropped, never tried again. A child
-  refers to a parent of another root only once the parent is committed (such a parent is created by an awaited
-  try-operation). One database belongs to one Basil process. A lookup asks memory first and the database only when
-  memory has nothing; a listing asks the database which rows match and returns the live instance of every row
-  memory holds, and a row whose deletion is still queued never comes back into memory. An operation's lambda uses
-  only its connection (and transaction) and never queues another operation. Parents are created before their
-  children.
-  Append-only history (logins, match events) is not kept in memory. A derived read model that is queried often (the
-  match report) is cached and rebuilt when its sources change.
-  **A change whose check needs rows not in memory** (a value unique across the table such as a user name or a
-  beatmap hash, an id the store assigns, any condition over many rows) is a try-operation checked and applied by
-  the database (`CreateAsync`, `IUserRepository.RenameAsync`); the live object changes only after it succeeded.
-  Rules the database owns for its lookups (the safe name) stay in the database.
+* **Memory is the truth; the database is a copy of it.** Everything asks memory first and goes to the database only
+  on a miss, to verify or to load into memory; a miss means "not loaded", never "does not exist". A change is applied
+  to the live object in memory, and its copy is written to the database alongside. "Cache" means only the on-disk
+  `Cache/` directory of derived, rebuildable files (repacked `.osz` archives, audio previews); data in memory is never
+  called a cache.
+  * **Resident data**, which every client uses (`ServerSettings`, general channels, menu banners, the menu files), is
+    loaded at startup and never released; it changes only through its repository or storage, never on disk behind
+    the server's back.
+  * **On-demand data:** a repository holds one live instance per identity, returned by every `GetAsync`,
+    `GetByYAsync` and `ListAsync`. It lives while anything holds it (a session its user, a room its match) or while
+    a change of it is not stored yet, and is then released; there is no TTL. A list owned by an object (a user's
+    restrictions and relationships, a set's beatmaps, a match's rounds and events, a round's scores) lives as long as
+    its owner instance: it is loaded whole the first time it is needed, then changed item by item.
+  * **Writes:** `CreateOrUpdateAsync`/`DeleteAsync` queue a copy of the values **as they are when queued** and return
+    at once; only a try-operation waits for the database, because its outcome comes from it. `DatabaseWriter` keeps
+    one queue per root (`Root.User`, `Root.Match`, `Root.Beatmapset`, `Root.Server`) and sends its writes one
+    statement at a time, in order; a copy not sent yet is replaced by a newer copy of the same identity. At most
+    `Basil:Database:WriteConnections` connections (8 by default) write at once. No write is grouped with unrelated
+    writes; a business operation that must store several rows together gets one try-operation of its own. A score
+    belongs to its player (`Root.User`); a round lists its scores.
+  * **Errors:** only environment errors (lost connection, timeout, server shutting down, read-only after a failover,
+    deadlock, authentication, permissions) are retried, before any later write of the same root. Any other error
+    fails that write alone: a try-operation throws it to its caller, a copy is logged as an error. A try-operation
+    runs in its own transaction and settles a broken commit with `pg_xact_status`; its cancellation token counts
+    only while it waits for its turn. Appends (logins, match events) take their ids from memory, so a retried append
+    is stored once.
+  * **Reads** go straight to PostgreSQL on a pooled connection of their own and see only what is committed. A listing
+    asks the database which rows match and returns the live instance of each; a row whose deletion is still queued
+    never comes back into memory.
+  * **A value unique across a table** (a user's safe name, a beatmap's hash or osu! id, a score's checksum, an id the
+    store assigns): when memory holds a record with that value the repository rejects the change at once; otherwise
+    the insert runs as a try-operation and a unique violation from the database means the value is taken. Either way
+    the repository throws `AlreadyExistsException` (a rename returns `false`) and does not load the existing record.
+  * A derived read model (the match report) is projected from memory when asked; it is not stored or rebuilt.
+  * A child refers to a parent of another root only once the parent is committed (such a parent is created by an
+    awaited try-operation); parents are created before their children. One database belongs to one Basil process. An
+    operation's lambda uses only its connection and transaction and never queues another operation.
+  * Without a database, creating identities and checking unique values wait for it; everything already in memory
+    keeps working.
 * **Naming: Domain model `X`, runtime model `XSession`, the object that holds the live sessions
   `XRegistry`, the contract `IXService` and its implementation `XService`.** No suffixes such as
   "Definition". `Channel` → `ChannelSession` → `GeneralChannelRegistry` (it holds only general channels);

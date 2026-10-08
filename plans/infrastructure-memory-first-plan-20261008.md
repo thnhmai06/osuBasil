@@ -445,3 +445,11 @@ dotnet build src/Bot/Application/Basil.Bot.Application.csproj
 `tests/` và host chưa migrate (AGENTS), nên chưa chạy `dotnet test`. Hành vi ghi DB kiểm bằng `verify.cs`/`bench.cs`
 (§6.7) trên PostgreSQL local; đồng bộ archive kiểm bằng một script spike trong `plans/evidence/` (sửa, thêm, xóa file
 rồi mở `.osz` bằng `ZipArchive` so nội dung).
+
+## Trạng thái thi công (cập nhật 2026-10-08)
+
+Đã commit: P1 `1a5e1119`, P2 `8c05f2b7`, P3a `456be753`, P3b A+C `f58b2ced`, P3b B `db399543`, P4 `0d92ed81`, AGENTS
+(đoạn "Memory is the truth"). Lệch so với plan: bản ghi trận là hai danh sách theo vòng đời Match (rounds, events)
+thay vì một `MatchRecords` chung; preview mp3 chép audio ra file tạm rồi chạy ffmpeg (không dùng pipe).
+Còn lại: P5 (spec `.tasks/p5.md`, đang chạy trên OpenCode lúc ghi), P6 đo lại `bench.cs`/`verify.cs` với writer mới
+(PostgreSQL 18 local đang chạy; đổi reflection `EnqueueAsync` → `SaveAsync`, `WriteLanes` → `WriteConnections`).
