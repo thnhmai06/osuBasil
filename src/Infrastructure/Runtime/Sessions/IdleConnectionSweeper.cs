@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Runtime.Sessions;
 
+/// <summary>Closes idle connections every 100 seconds.</summary>
 internal sealed class IdleConnectionSweeper(
 	ISessionService sessions,
 	TimeProvider time,
@@ -14,8 +15,15 @@ internal sealed class IdleConnectionSweeper(
 		using var timer = new PeriodicTimer(TimeSpan.FromSeconds(100), time);
 		while (await timer.WaitForNextTickAsync(stoppingToken))
 		{
-			var closed = sessions.CloseIdle();
-			if (closed > 0) logger.LogDebug("Closed {ConnectionCount} idle connections.", closed);
+			try
+			{
+				var closed = sessions.CloseIdle();
+				if (closed > 0) logger.LogDebug("Closed {ConnectionCount} idle connections.", closed);
+			}
+			catch (Exception exception)
+			{
+				logger.LogError(exception, "Could not close idle connections.");
+			}
 		}
 	}
 }

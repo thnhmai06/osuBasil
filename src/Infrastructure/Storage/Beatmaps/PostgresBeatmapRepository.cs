@@ -165,7 +165,7 @@ internal sealed class PostgresBeatmapRepository : CachedRepository<int, Beatmap>
 		                  s.id as set_id, s.artist as set_artist, s.title as set_title, s.creator as set_creator, s.created_at as set_created_at, s.updated_at as set_updated_at, s.locked as set_locked, s.visible as set_visible
 		           from beatmaps b
 		           join beatmapsets s on s.id = b.beatmapset_id{filter}
-		           order by b.beatmapset_id desc, b.star asc
+		           order by b.beatmapset_id desc, b.star asc, b.id
 		           limit @limit offset @offset
 		           """;
 		var countSql = $"""

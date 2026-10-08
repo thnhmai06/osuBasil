@@ -75,7 +75,7 @@ internal static class BeatmapQueryFilter
 			for (var i = 0; i < words.Length; i++)
 			{
 				var p = $"tw{i}";
-				parameters.Add(p, $"%{words[i]}%");
+				parameters.Add(p, LikePattern.Containing(words[i]));
 				conditions.Add(
 					$"(s.artist ILIKE @{p} OR s.title ILIKE @{p} OR s.creator ILIKE @{p} OR b.version ILIKE @{p})");
 			}
@@ -83,25 +83,25 @@ internal static class BeatmapQueryFilter
 
 		if (!string.IsNullOrWhiteSpace(query.Creator))
 		{
-			parameters.Add("creator", $"%{query.Creator}%");
+			parameters.Add("creator", LikePattern.Containing(query.Creator));
 			conditions.Add("s.creator ILIKE @creator");
 		}
 
 		if (!string.IsNullOrWhiteSpace(query.Artist))
 		{
-			parameters.Add("artist", $"%{query.Artist}%");
+			parameters.Add("artist", LikePattern.Containing(query.Artist));
 			conditions.Add("s.artist ILIKE @artist");
 		}
 
 		if (!string.IsNullOrWhiteSpace(query.Title))
 		{
-			parameters.Add("title", $"%{query.Title}%");
+			parameters.Add("title", LikePattern.Containing(query.Title));
 			conditions.Add("s.title ILIKE @title");
 		}
 
 		if (!string.IsNullOrWhiteSpace(query.Difficulty))
 		{
-			parameters.Add("version", $"%{query.Difficulty}%");
+			parameters.Add("version", LikePattern.Containing(query.Difficulty));
 			conditions.Add("b.version ILIKE @version");
 		}
 

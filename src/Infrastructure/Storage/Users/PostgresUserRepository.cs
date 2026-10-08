@@ -209,17 +209,17 @@ internal sealed class PostgresUserRepository(Database database, DatabaseWriter w
 
 		if (query.Text is { } text)
 		{
+			var pattern = LikePattern.Containing(text.ToLowerInvariant().Replace(' ', '_'));
+			parameters.Add("Pattern", pattern);
 			if (int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var id))
 			{
-				conditions.Add("(id = @TextId OR safe_name LIKE '%' || replace(lower(@Text), ' ', '_') || '%')");
+				conditions.Add("(id = @TextId OR safe_name LIKE @Pattern)");
 				parameters.Add("TextId", id);
 			}
 			else
 			{
-				conditions.Add("safe_name LIKE '%' || replace(lower(@Text), ' ', '_') || '%'");
+				conditions.Add("safe_name LIKE @Pattern");
 			}
-
-			parameters.Add("Text", text);
 		}
 
 		return (conditions.Count == 0 ? "" : $"where {string.Join(" AND ", conditions)}", parameters);

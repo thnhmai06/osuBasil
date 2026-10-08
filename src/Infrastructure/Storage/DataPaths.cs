@@ -19,9 +19,6 @@ internal sealed class DataPaths(IOptions<StorageOptions> options)
 	/// <summary>Gets the directory that holds the imported beatmapset archives.</summary>
 	public string Beatmapsets => Path.Combine(root, "Beatmapsets");
 
-	/// <summary>Gets the directory watched for beatmapset archives to import.</summary>
-	public string Imports => Path.Combine(root, "Imports");
-
 	/// <summary>Gets the directory that holds stored replays.</summary>
 	public string Replays => Path.Combine(root, "Replays");
 
@@ -48,7 +45,7 @@ internal sealed class DataPaths(IOptions<StorageOptions> options)
 	{
 		foreach (var directory in new[]
 		         {
-			         Root, Beatmapsets, Imports, Replays, Avatars, MenuBanners, MenuSeasonals, MenuIcon, Faqs, Cache
+			         Root, Beatmapsets, Replays, Avatars, MenuBanners, MenuSeasonals, MenuIcon, Faqs, Cache
 		         })
 			Directory.CreateDirectory(directory);
 	}
