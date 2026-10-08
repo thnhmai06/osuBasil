@@ -7,20 +7,23 @@ using Dapper;
 namespace Basil.Infrastructure.Storage.Chat;
 
 /// <summary>Stores the general chat channels the server offers.</summary>
-internal sealed class PostgresChannelRepository(Database database) : IChannelRepository
+internal sealed class PostgresChannelRepository(Database database) : IChannelRepository, IResident
 {
 	private ImmutableList<GeneralChannel>? _channels;
 
 	/// <inheritdoc />
-	public async Task<IReadOnlyList<GeneralChannel>> ListAsync(CancellationToken cancellationToken = default)
+	public Task<IReadOnlyList<GeneralChannel>> ListAsync(CancellationToken cancellationToken = default)
 	{
-		if (Volatile.Read(ref _channels) is { } current)
-			return current;
+		return Task.FromResult<IReadOnlyList<GeneralChannel>>(Volatile.Read(ref _channels)
+			?? throw new InvalidOperationException("Server channels are read before the storage has started."));
+	}
 
+	/// <inheritdoc />
+	public async Task LoadAsync(CancellationToken cancellationToken)
+	{
 		var rows = await database.ReadAsync(connection => connection.QueryAsync<ChannelRow>(
 			"select name, topic, read_permissions, write_permissions, auto_join, visible from channels order by name"), cancellationToken);
-		var loaded = rows.Select(row => row.ToChannel()).ToImmutableList();
-		return Interlocked.CompareExchange(ref _channels, loaded, null) ?? loaded;
+		_channels = rows.Select(row => row.ToChannel()).ToImmutableList();
 	}
 
 	/// <summary>A stored row of the <c>channels</c> table.</summary>

@@ -40,14 +40,28 @@ public static class DependencyInjection
 		services.AddSingleton<IRelationshipRepository, PostgresRelationshipRepository>();
 		services.AddSingleton<IUserAvatarStorage, FileUserAvatarStorage>();
 
-		services.AddSingleton<IChannelRepository, PostgresChannelRepository>();
+		services.AddSingleton<PostgresChannelRepository>();
+		services.AddSingleton<IChannelRepository>(provider => provider.GetRequiredService<PostgresChannelRepository>());
+		services.AddSingleton<IResident>(provider => provider.GetRequiredService<PostgresChannelRepository>());
 
-		services.AddSingleton<ISettingsRepository, PostgresSettingsRepository>();
-		services.AddSingleton<IMenuBannerRepository, PostgresMenuBannerRepository>();
-		services.AddSingleton<IMenuBannerStorage, FileMenuBannerStorage>();
-		services.AddSingleton<IMenuIconStorage, FileMenuIconStorage>();
-		services.AddSingleton<IMenuSeasonalsStorage, FileMenuSeasonalsStorage>();
-		services.AddSingleton<IFaqStorage, FileFaqStorage>();
+		services.AddSingleton<PostgresSettingsRepository>();
+		services.AddSingleton<ISettingsRepository>(provider => provider.GetRequiredService<PostgresSettingsRepository>());
+		services.AddSingleton<IResident>(provider => provider.GetRequiredService<PostgresSettingsRepository>());
+		services.AddSingleton<PostgresMenuBannerRepository>();
+		services.AddSingleton<IMenuBannerRepository>(provider => provider.GetRequiredService<PostgresMenuBannerRepository>());
+		services.AddSingleton<IResident>(provider => provider.GetRequiredService<PostgresMenuBannerRepository>());
+		services.AddSingleton<FileMenuBannerStorage>();
+		services.AddSingleton<IMenuBannerStorage>(provider => provider.GetRequiredService<FileMenuBannerStorage>());
+		services.AddSingleton<IResident>(provider => provider.GetRequiredService<FileMenuBannerStorage>());
+		services.AddSingleton<FileMenuIconStorage>();
+		services.AddSingleton<IMenuIconStorage>(provider => provider.GetRequiredService<FileMenuIconStorage>());
+		services.AddSingleton<IResident>(provider => provider.GetRequiredService<FileMenuIconStorage>());
+		services.AddSingleton<FileMenuSeasonalsStorage>();
+		services.AddSingleton<IMenuSeasonalsStorage>(provider => provider.GetRequiredService<FileMenuSeasonalsStorage>());
+		services.AddSingleton<IResident>(provider => provider.GetRequiredService<FileMenuSeasonalsStorage>());
+		services.AddSingleton<FileFaqStorage>();
+		services.AddSingleton<IFaqStorage>(provider => provider.GetRequiredService<FileFaqStorage>());
+		services.AddSingleton<IResident>(provider => provider.GetRequiredService<FileFaqStorage>());
 
 		services.AddSingleton<IMatchRepository, PostgresMatchRepository>();
 		services.AddSingleton<IMatchReportRepository, MatchReportRepository>();

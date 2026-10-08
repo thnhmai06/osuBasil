@@ -2,47 +2,45 @@ using Basil.Application.Storage.Contracts.Content;
 
 namespace Basil.Infrastructure.Storage.Files;
 
-/// <summary>Stores the main-menu icon image as the icon directory's single file.</summary>
-internal sealed class FileMenuIconStorage(DataPaths paths) : IMenuIconStorage
+/// <summary>Holds the main-menu icon in memory from startup and changes it only through its storage methods.</summary>
+internal sealed class FileMenuIconStorage(DataPaths paths) : IMenuIconStorage, IResident
 {
-	/// <summary>Combines the icon image's file name with the icon directory.</summary>
-	/// <param name="name">The file name to store the icon under.</param>
-	/// <returns>The absolute path of the icon file.</returns>
-	private string PathFor(string name)
-	{
-		return SafePath.Combine(paths.MenuIcon, name);
-	}
+	private (string Name, byte[] Content)? _icon;
 
-	/// <summary>Finds the single stored icon file.</summary>
-	/// <returns>The file's path, or <see langword="null" /> when no icon is stored.</returns>
-	private string? Find()
+	/// <inheritdoc />
+	public async Task LoadAsync(CancellationToken cancellationToken)
 	{
-		return FileStorage.Files(paths.MenuIcon, "*") is { } files ? files.FirstOrDefault() : null;
+		Directory.CreateDirectory(paths.MenuIcon);
+		if (FileStorage.Files(paths.MenuIcon, "*")?.FirstOrDefault() is { } path)
+			_icon = (Path.GetFileName(path), await File.ReadAllBytesAsync(path, cancellationToken));
 	}
 
 	/// <inheritdoc />
 	public async Task SaveAsync(string name, Stream content, CancellationToken cancellationToken = default)
 	{
-		foreach (var file in FileStorage.Files(paths.MenuIcon, "*") ?? [])
-			File.Delete(file);
-
-		await FileStorage.SaveAsync(PathFor(name), content, cancellationToken);
+		var path = SafePath.Combine(paths.MenuIcon, name);
+		using var buffer = new MemoryStream();
+		await content.CopyToAsync(buffer, cancellationToken);
+		var bytes = buffer.ToArray();
+		_icon = (name, bytes);
+		using var storedContent = new MemoryStream(bytes);
+		await FileStorage.SaveAsync(path, storedContent, cancellationToken);
+		FileStorage.DeleteExcept(paths.MenuIcon, "*", path);
 	}
 
 	/// <inheritdoc />
 	public Task<(string Name, Stream Content)?> OpenAsync(CancellationToken cancellationToken = default)
 	{
-		var path = Find();
-		if (path is null)
+		if (_icon is not { } icon)
 			return Task.FromResult<(string Name, Stream Content)?>(null);
 
-		var content = FileStorage.Open(path);
-		return Task.FromResult<(string Name, Stream Content)?>(content is null ? null : (Path.GetFileName(path), content));
+		return Task.FromResult<(string Name, Stream Content)?>((icon.Name, new MemoryStream(icon.Content, writable: false)));
 	}
 
 	/// <inheritdoc />
 	public Task DeleteAsync(CancellationToken cancellationToken = default)
 	{
+		_icon = null;
 		foreach (var file in FileStorage.Files(paths.MenuIcon, "*") ?? [])
 			FileStorage.Delete(file);
 

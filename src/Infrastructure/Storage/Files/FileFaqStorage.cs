@@ -1,43 +1,56 @@
+using System.Collections.Concurrent;
 using Basil.Application.Storage.Contracts.Content;
 
 namespace Basil.Infrastructure.Storage.Files;
 
-/// <summary>Stores FAQ entries as <c>.txt</c> files, nested by the <c>:</c> segments of entry names.</summary>
-internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage
+/// <summary>Holds FAQ entries in memory from startup and changes them only through its storage methods.</summary>
+internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage, IResident
 {
+	private readonly ConcurrentDictionary<string, byte[]> _entries = new(StringComparer.Ordinal);
+
 	/// <inheritdoc />
-	public Task<IReadOnlyList<string>> ListAsync(CancellationToken cancellationToken = default)
+	public async Task LoadAsync(CancellationToken cancellationToken)
 	{
 		Directory.CreateDirectory(paths.Faqs);
-
-		return Task.FromResult<IReadOnlyList<string>>([.. Directory
-			.EnumerateFiles(paths.Faqs, "*.txt", SearchOption.AllDirectories)
-			.Select(file =>
-			{
-				var relative = Path.GetRelativePath(paths.Faqs, file);
-				return Path.ChangeExtension(relative, null)
-					.Replace(Path.DirectorySeparatorChar, ':')
-					.Replace(Path.AltDirectorySeparatorChar, ':');
-			})
-			.OrderBy(name => name, StringComparer.OrdinalIgnoreCase)]);
+		foreach (var path in Directory.EnumerateFiles(paths.Faqs, "*.txt", SearchOption.AllDirectories))
+		{
+			var relative = Path.GetRelativePath(paths.Faqs, path);
+			var entry = Path.ChangeExtension(relative, null)
+				.Replace(Path.DirectorySeparatorChar, ':')
+				.Replace(Path.AltDirectorySeparatorChar, ':');
+			_entries[entry] = await File.ReadAllBytesAsync(path, cancellationToken);
+		}
 	}
 
 	/// <inheritdoc />
-	public Task SaveAsync(string entry, Stream content, CancellationToken cancellationToken = default)
+	public Task<IReadOnlyList<string>> ListAsync(CancellationToken cancellationToken = default)
 	{
-		return FileStorage.SaveAsync(PathFor(paths.Faqs, entry), content, cancellationToken);
+		return Task.FromResult<IReadOnlyList<string>>([.. _entries.Keys.OrderBy(name => name, StringComparer.OrdinalIgnoreCase)]);
+	}
+
+	/// <inheritdoc />
+	public async Task SaveAsync(string entry, Stream content, CancellationToken cancellationToken = default)
+	{
+		var path = PathFor(paths.Faqs, entry);
+		var bytes = await ReadAsync(content, cancellationToken);
+		_entries[entry] = bytes;
+		using var storedContent = new MemoryStream(bytes);
+		await FileStorage.SaveAsync(path, storedContent, cancellationToken);
 	}
 
 	/// <inheritdoc />
 	public Task<Stream?> OpenAsync(string entry, CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult<Stream?>(FileStorage.Open(PathFor(paths.Faqs, entry)));
+		PathFor(paths.Faqs, entry);
+		return Task.FromResult<Stream?>(_entries.TryGetValue(entry, out var bytes) ? new MemoryStream(bytes, writable: false) : null);
 	}
 
 	/// <inheritdoc />
 	public Task DeleteAsync(string entry, CancellationToken cancellationToken = default)
 	{
-		FileStorage.Delete(PathFor(paths.Faqs, entry));
+		var path = PathFor(paths.Faqs, entry);
+		_entries.TryRemove(entry, out _);
+		FileStorage.Delete(path);
 		return Task.CompletedTask;
 	}
 
@@ -49,5 +62,12 @@ internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage
 	private static string PathFor(string root, string entry)
 	{
 		return SafePath.Combine(root, string.Join('/', entry.Split(':')) + ".txt");
+	}
+
+	private static async Task<byte[]> ReadAsync(Stream content, CancellationToken cancellationToken)
+	{
+		using var buffer = new MemoryStream();
+		await content.CopyToAsync(buffer, cancellationToken);
+		return buffer.ToArray();
 	}
 }
