@@ -44,7 +44,7 @@ PASS  a statement the database refuses fails alone
 PASS  the rest of the batch is stored
 PASS  two roots in different lanes interleave, each keeps its order
 PASS  pg_xact_status reports a committed transaction
-      terminated 7 backends at write 5000
+      terminated 8 backends at write 5000
 warn: Basil.Infrastructure.Storage.Writing.DatabaseWriter[0]
       Write batch will be stored again in 00:00:00.0500000
       Npgsql.NpgsqlException (0x80004005): Exception while writing to stream
@@ -82,46 +82,13 @@ warn: Basil.Infrastructure.Storage.Writing.DatabaseWriter[0]
          at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
          at System.Threading.Tasks.Task`1.TrySetResult(TResult result)
          at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.SetExistingTaskResult(Task`1 task, TResult result)
-         at Basil.Infrastructure.Storage.Writing.WriteLane.StoreAsync(List`1 batch, CancellationToken abandon) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 163
+         at Basil.Infrastructure.Storage.Writing.WriteLane.WaitUntilDueAsync(CancellationToken cancellationToken) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 92
          at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
          at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
          at System.Threading.Tasks.AwaitTaskContinuation.RunOrScheduleAction(IAsyncStateMachineBox box, Boolean allowInlining)
          at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
          at System.Threading.Tasks.Task`1.TrySetResult(TResult result)
-         at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.SetExistingTaskResult(Task`1 task, TResult result)
-         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 236
-         at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.ExecutionContextCallback(Object s)
-         at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
-         at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
-         at System.Threading.Tasks.AwaitTaskContinuation.RunOrScheduleAction(IAsyncStateMachineBox box, Boolean allowInlining)
-         at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
-         at System.Threading.Tasks.Task`1.TrySetResult(TResult result)
-         at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.SetExistingTaskResult(Task`1 task, TResult result)
-         at Npgsql.NpgsqlTransaction.Commit(Boolean async, CancellationToken cancellationToken)
-         at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.ExecutionContextCallback(Object s)
-         at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
-         at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
-         at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext()
-         at System.Threading.Tasks.AwaitTaskContinuation.RunOrScheduleAction(IAsyncStateMachineBox box, Boolean allowInlining)
-         at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
-         at System.Threading.Tasks.Task`1.TrySetResult(TResult result)
-         at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.SetExistingTaskResult(Task`1 task, TResult result)
-         at Npgsql.Internal.NpgsqlConnector.ExecuteInternalCommand(Byte[] data, Boolean async, CancellationToken cancellationToken)
-         at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.ExecutionContextCallback(Object s)
-         at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
-         at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
-         at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext()
-         at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
-         at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.ExecutionContextCallback(Object s)
-         at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
-         at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.MoveNext()
-         at Npgsql.Internal.NpgsqlReadBuffer.<Ensure>g__EnsureLong|54_0(NpgsqlReadBuffer buffer, Int32 count, Boolean async, Boolean readingNotifications)
-         at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.ExecutionContextCallback(Object s)
-         at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
-         at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.MoveNext()
-         at System.Net.Sockets.SocketAsyncEventArgs.<>c.<.cctor>b__174_0(UInt32 errorCode, UInt32 numBytes, NativeOverlapped* nativeOverlapped)
-         at System.Threading.PortableThreadPool.IOCompletionPoller.Event.Invoke()
-         at System.Threading.ThreadPoolTypedWorkItemQueue.System.Threading.IThreadPoolWorkItem.Execute()
+         at System.Threading.Tasks.Task.TwoTaskWhenAnyPromise`1.Invoke(Task completingTask)
          at System.Threading.ThreadPoolWorkQueue.Dispatch()
          at System.Threading.PortableThreadPool.WorkerThread.WorkerThreadStart()
          at System.Threading.Thread.StartCallback()
@@ -138,179 +105,59 @@ warn: Basil.Infrastructure.Storage.Writing.DatabaseWriter[0]
          at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 182
          at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
          at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
-      terminated 7 backends at write 15000
 warn: Basil.Infrastructure.Storage.Writing.DatabaseWriter[0]
       Write batch will be stored again in 00:00:00.0500000
-      Npgsql.PostgresException (0x80004005): 57P01: terminating connection due to administrator command
-         at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
-         at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
-         at Npgsql.Internal.NpgsqlConnector.ExecuteInternalCommand(Byte[] data, Boolean async, CancellationToken cancellationToken)
-         at Npgsql.NpgsqlTransaction.Commit(Boolean async, CancellationToken cancellationToken)
-         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 216
-         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
-         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
-        Exception data:
-          Severity: FATAL
-          SqlState: 57P01
-          MessageText: terminating connection due to administrator command
-          File: postgres.c
-          Line: 3356
-          Routine: ProcessInterrupts
-warn: Basil.Infrastructure.Storage.Writing.DatabaseWriter[0]
-      Write batch will be stored again in 00:00:00.0500000
-      Npgsql.PostgresException (0x80004005): 57P01: terminating connection due to administrator command
-         at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
-         at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
-         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
-         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+      Npgsql.NpgsqlException (0x80004005): Exception while writing to stream
+       ---> System.IO.IOException: Unable to write data to the transport connection: An existing connection was forcibly closed by the remote host..
+       ---> System.Net.Sockets.SocketException (10054): An existing connection was forcibly closed by the remote host.
+         at System.Net.Sockets.Socket.AwaitableSocketAsyncEventArgs.CreateException(SocketError error, Boolean forAsyncThrow)
+         at System.Net.Sockets.Socket.AwaitableSocketAsyncEventArgs.SendAsyncForNetworkStream(Socket socket, CancellationToken cancellationToken)
+         at System.Net.Sockets.Socket.SendAsyncForNetworkStream(ReadOnlyMemory`1 buffer, SocketFlags socketFlags, CancellationToken cancellationToken)
+         at System.Net.Sockets.NetworkStream.WriteAsync(Byte[] buffer, Int32 offset, Int32 count, CancellationToken cancellationToken)
+         at Npgsql.Internal.NpgsqlWriteBuffer.Flush(Boolean async, CancellationToken cancellationToken)
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Npgsql.Internal.NpgsqlWriteBuffer.Flush(Boolean async, CancellationToken cancellationToken)
+         at Npgsql.Internal.NpgsqlConnector.Flush(Boolean async, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.<Write>g__WriteExecute|103_0(NpgsqlConnector connector, Boolean async, Boolean flush, CancellationToken cancellationToken)
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Npgsql.NpgsqlCommand.<Write>g__WriteExecute|103_0(NpgsqlConnector connector, Boolean async, Boolean flush, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.Write(NpgsqlConnector connector, Boolean async, Boolean flush, CancellationToken cancellationToken)
          at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
          at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
-         at Npgsql.NpgsqlCommand.ExecuteNonQuery(Boolean async, CancellationToken cancellationToken)
-         at Basil.Infrastructure.Storage.Writing.WriteLane.ExecuteSqlAsync(NpgsqlConnection connection, NpgsqlTransaction transaction, String sql) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 324
-         at Basil.Infrastructure.Storage.Writing.WriteLane.ExecuteSqlAsync(NpgsqlConnection connection, NpgsqlTransaction transaction, String sql) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 324
-         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 202
-         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
-         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
-        Exception data:
-          Severity: FATAL
-          SqlState: 57P01
-          MessageText: terminating connection due to administrator command
-          File: postgres.c
-          Line: 3356
-          Routine: ProcessInterrupts
-warn: Basil.Infrastructure.Storage.Writing.DatabaseWriter[0]
-      Write batch will be stored again in 00:00:00.0500000
-      Npgsql.PostgresException (0x80004005): 57P01: terminating connection due to administrator command
-         at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
-         at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
-         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
-         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
-         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
-         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
-         at Npgsql.NpgsqlCommand.ExecuteNonQuery(Boolean async, CancellationToken cancellationToken)
-         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 197
-         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 198
-         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
-         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
-        Exception data:
-          Severity: FATAL
-          SqlState: 57P01
-          MessageText: terminating connection due to administrator command
-          File: postgres.c
-          Line: 3356
-          Routine: ProcessInterrupts
-warn: Basil.Infrastructure.Storage.Writing.DatabaseWriter[0]
-      Write batch will be stored again in 00:00:00.0500000
-      Npgsql.PostgresException (0x80004005): 57P01: terminating connection due to administrator command
-         at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
-         at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
-         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
-         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
-         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
-         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
-         at Npgsql.NpgsqlCommand.ExecuteNonQuery(Boolean async, CancellationToken cancellationToken)
-         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 197
-         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 198
-         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
-         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
-        Exception data:
-          Severity: FATAL
-          SqlState: 57P01
-          MessageText: terminating connection due to administrator command
-          File: postgres.c
-          Line: 3356
-          Routine: ProcessInterrupts
-warn: Basil.Infrastructure.Storage.Writing.DatabaseWriter[0]
-      Write batch will be stored again in 00:00:00.0500000
-      Npgsql.PostgresException (0x80004005): 57P01: terminating connection due to administrator command
-         at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
-         at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
-         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
-         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
-         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
-         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
-         at Npgsql.NpgsqlCommand.ExecuteNonQuery(Boolean async, CancellationToken cancellationToken)
-         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 197
-         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 198
-         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
-         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
-        Exception data:
-          Severity: FATAL
-          SqlState: 57P01
-          MessageText: terminating connection due to administrator command
-          File: postgres.c
-          Line: 3356
-          Routine: ProcessInterrupts
-warn: Basil.Infrastructure.Storage.Writing.DatabaseWriter[0]
-      Write batch will be stored again in 00:00:00.1000000
-      Npgsql.PostgresException (0x80004005): 57P01: terminating connection due to administrator command
-         at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
-         at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
-         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
-         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
-         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
-         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
-         at Npgsql.NpgsqlCommand.ExecuteNonQuery(Boolean async, CancellationToken cancellationToken)
-         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 197
-         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 198
-         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
-         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
-        Exception data:
-          Severity: FATAL
-          SqlState: 57P01
-          MessageText: terminating connection due to administrator command
-          File: postgres.c
-          Line: 3356
-          Routine: ProcessInterrupts
-      terminated 5 backends at write 25000
-warn: Basil.Infrastructure.Storage.Writing.DatabaseWriter[0]
-      Write batch will be stored again in 00:00:00.1000000
-      Npgsql.PostgresException (0x80004005): 57P01: terminating connection due to administrator command
-         at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
-         at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
-         at Npgsql.Internal.NpgsqlConnector.ExecuteInternalCommand(Byte[] data, Boolean async, CancellationToken cancellationToken)
-         at Npgsql.NpgsqlTransaction.Commit(Boolean async, CancellationToken cancellationToken)
-         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 216
-         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
-         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
-        Exception data:
-          Severity: FATAL
-          SqlState: 57P01
-          MessageText: terminating connection due to administrator command
-          File: postgres.c
-          Line: 3356
-          Routine: ProcessInterrupts
-warn: Basil.Infrastructure.Storage.Writing.DatabaseWriter[0]
-      Write batch will be stored again in 00:00:00.1000000
-      Npgsql.PostgresException (0x80004005): 57P01: terminating connection due to administrator command
-         at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
-         at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
-         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
-         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
-         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
-         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
-         at Npgsql.NpgsqlCommand.ExecuteNonQuery(Boolean async, CancellationToken cancellationToken)
-         at Basil.Infrastructure.Storage.Writing.WriteLane.ExecuteSqlAsync(NpgsqlConnection connection, NpgsqlTransaction transaction, String sql) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 324
-         at Basil.Infrastructure.Storage.Writing.WriteLane.ExecuteSqlAsync(NpgsqlConnection connection, NpgsqlTransaction transaction, String sql) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 324
-         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 202
-         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
-         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
-        Exception data:
-          Severity: FATAL
-          SqlState: 57P01
-          MessageText: terminating connection due to administrator command
-          File: postgres.c
-          Line: 3356
-          Routine: ProcessInterrupts
-warn: Basil.Infrastructure.Storage.Writing.DatabaseWriter[0]
-      Write batch will be stored again in 00:00:00.1000000
-      Npgsql.PostgresException (0x80004005): 57P01: terminating connection due to administrator command
-         at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
-         at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
-         at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
-         at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
-         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
-         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteScalar(Boolean async, CancellationToken cancellationToken)
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Npgsql.NpgsqlCommand.ExecuteScalarAsync(CancellationToken cancellationToken)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 182
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.StoreAsync(List`1 batch, CancellationToken abandon) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 121
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.StoreAsync(List`1 batch, CancellationToken abandon)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.StoreDueAsync(CancellationToken abandon) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 276
+         at Basil.Infrastructure.Storage.Writing.DatabaseWriter.RunLaneAsync(WriteLane lane, CancellationToken stoppingToken) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\DatabaseWriter.cs:line 91
+         at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+         at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
+         at System.Threading.Tasks.AwaitTaskContinuation.RunOrScheduleAction(IAsyncStateMachineBox box, Boolean allowInlining)
+         at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
+         at System.Threading.Tasks.Task`1.TrySetResult(TResult result)
+         at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.SetExistingTaskResult(Task`1 task, TResult result)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.WaitUntilDueAsync(CancellationToken cancellationToken) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 92
+         at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+         at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
+         at System.Threading.Tasks.AwaitTaskContinuation.RunOrScheduleAction(IAsyncStateMachineBox box, Boolean allowInlining)
+         at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
+         at System.Threading.Tasks.Task`1.TrySetResult(TResult result)
+         at System.Threading.Tasks.Task.TwoTaskWhenAnyPromise`1.Invoke(Task completingTask)
+         at System.Threading.ThreadPoolWorkQueue.Dispatch()
+         at System.Threading.PortableThreadPool.WorkerThread.WorkerThreadStart()
+         at System.Threading.Thread.StartCallback()
+      --- End of stack trace from previous location ---
+      
+         --- End of inner exception stack trace ---
+         at Npgsql.Internal.NpgsqlWriteBuffer.Flush(Boolean async, CancellationToken cancellationToken)
+         at Npgsql.Internal.NpgsqlWriteBuffer.Flush(Boolean async, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.<Write>g__WriteExecute|103_0(NpgsqlConnector connector, Boolean async, Boolean flush, CancellationToken cancellationToken)
          at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
          at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
          at Npgsql.NpgsqlCommand.ExecuteScalar(Boolean async, CancellationToken cancellationToken)
@@ -318,6 +165,322 @@ warn: Basil.Infrastructure.Storage.Writing.DatabaseWriter[0]
          at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 182
          at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
          at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
+warn: Basil.Infrastructure.Storage.Writing.DatabaseWriter[0]
+      Write batch will be stored again in 00:00:00.0500000
+      Npgsql.NpgsqlException (0x80004005): Exception while writing to stream
+       ---> System.IO.IOException: Unable to write data to the transport connection: An existing connection was forcibly closed by the remote host..
+       ---> System.Net.Sockets.SocketException (10054): An existing connection was forcibly closed by the remote host.
+         at System.Net.Sockets.Socket.AwaitableSocketAsyncEventArgs.CreateException(SocketError error, Boolean forAsyncThrow)
+         at System.Net.Sockets.Socket.AwaitableSocketAsyncEventArgs.SendAsyncForNetworkStream(Socket socket, CancellationToken cancellationToken)
+         at System.Net.Sockets.Socket.SendAsyncForNetworkStream(ReadOnlyMemory`1 buffer, SocketFlags socketFlags, CancellationToken cancellationToken)
+         at System.Net.Sockets.NetworkStream.WriteAsync(Byte[] buffer, Int32 offset, Int32 count, CancellationToken cancellationToken)
+         at Npgsql.Internal.NpgsqlWriteBuffer.Flush(Boolean async, CancellationToken cancellationToken)
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Npgsql.Internal.NpgsqlWriteBuffer.Flush(Boolean async, CancellationToken cancellationToken)
+         at Npgsql.Internal.NpgsqlConnector.Flush(Boolean async, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.<Write>g__WriteExecute|103_0(NpgsqlConnector connector, Boolean async, Boolean flush, CancellationToken cancellationToken)
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Npgsql.NpgsqlCommand.<Write>g__WriteExecute|103_0(NpgsqlConnector connector, Boolean async, Boolean flush, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.Write(NpgsqlConnector connector, Boolean async, Boolean flush, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteScalar(Boolean async, CancellationToken cancellationToken)
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Npgsql.NpgsqlCommand.ExecuteScalarAsync(CancellationToken cancellationToken)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 182
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.StoreAsync(List`1 batch, CancellationToken abandon) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 121
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.StoreAsync(List`1 batch, CancellationToken abandon)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.StoreDueAsync(CancellationToken abandon) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 276
+         at Basil.Infrastructure.Storage.Writing.DatabaseWriter.RunLaneAsync(WriteLane lane, CancellationToken stoppingToken) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\DatabaseWriter.cs:line 91
+         at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+         at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
+         at System.Threading.Tasks.AwaitTaskContinuation.RunOrScheduleAction(IAsyncStateMachineBox box, Boolean allowInlining)
+         at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
+         at System.Threading.Tasks.Task`1.TrySetResult(TResult result)
+         at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.SetExistingTaskResult(Task`1 task, TResult result)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.WaitUntilDueAsync(CancellationToken cancellationToken) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 92
+         at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+         at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
+         at System.Threading.Tasks.AwaitTaskContinuation.RunOrScheduleAction(IAsyncStateMachineBox box, Boolean allowInlining)
+         at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
+         at System.Threading.Tasks.Task`1.TrySetResult(TResult result)
+         at System.Threading.Tasks.Task.TwoTaskWhenAnyPromise`1.Invoke(Task completingTask)
+         at System.Threading.ThreadPoolWorkQueue.Dispatch()
+         at System.Threading.PortableThreadPool.WorkerThread.WorkerThreadStart()
+         at System.Threading.Thread.StartCallback()
+      --- End of stack trace from previous location ---
+      
+         --- End of inner exception stack trace ---
+         at Npgsql.Internal.NpgsqlWriteBuffer.Flush(Boolean async, CancellationToken cancellationToken)
+         at Npgsql.Internal.NpgsqlWriteBuffer.Flush(Boolean async, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.<Write>g__WriteExecute|103_0(NpgsqlConnector connector, Boolean async, Boolean flush, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteScalar(Boolean async, CancellationToken cancellationToken)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 182
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 182
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
+warn: Basil.Infrastructure.Storage.Writing.DatabaseWriter[0]
+      Write batch will be stored again in 00:00:00.0500000
+      Npgsql.NpgsqlException (0x80004005): Exception while writing to stream
+       ---> System.IO.IOException: Unable to write data to the transport connection: An existing connection was forcibly closed by the remote host..
+       ---> System.Net.Sockets.SocketException (10054): An existing connection was forcibly closed by the remote host.
+         at System.Net.Sockets.Socket.AwaitableSocketAsyncEventArgs.CreateException(SocketError error, Boolean forAsyncThrow)
+         at System.Net.Sockets.Socket.AwaitableSocketAsyncEventArgs.SendAsyncForNetworkStream(Socket socket, CancellationToken cancellationToken)
+         at System.Net.Sockets.Socket.SendAsyncForNetworkStream(ReadOnlyMemory`1 buffer, SocketFlags socketFlags, CancellationToken cancellationToken)
+         at System.Net.Sockets.NetworkStream.WriteAsync(Byte[] buffer, Int32 offset, Int32 count, CancellationToken cancellationToken)
+         at Npgsql.Internal.NpgsqlWriteBuffer.Flush(Boolean async, CancellationToken cancellationToken)
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Npgsql.Internal.NpgsqlWriteBuffer.Flush(Boolean async, CancellationToken cancellationToken)
+         at Npgsql.Internal.NpgsqlConnector.Flush(Boolean async, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.<Write>g__WriteExecute|103_0(NpgsqlConnector connector, Boolean async, Boolean flush, CancellationToken cancellationToken)
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Npgsql.NpgsqlCommand.<Write>g__WriteExecute|103_0(NpgsqlConnector connector, Boolean async, Boolean flush, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.Write(NpgsqlConnector connector, Boolean async, Boolean flush, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteScalar(Boolean async, CancellationToken cancellationToken)
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Npgsql.NpgsqlCommand.ExecuteScalarAsync(CancellationToken cancellationToken)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 182
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.StoreAsync(List`1 batch, CancellationToken abandon) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 121
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.StoreAsync(List`1 batch, CancellationToken abandon)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.StoreDueAsync(CancellationToken abandon) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 276
+         at Basil.Infrastructure.Storage.Writing.DatabaseWriter.RunLaneAsync(WriteLane lane, CancellationToken stoppingToken) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\DatabaseWriter.cs:line 91
+         at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+         at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
+         at System.Threading.Tasks.AwaitTaskContinuation.RunOrScheduleAction(IAsyncStateMachineBox box, Boolean allowInlining)
+         at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
+         at System.Threading.Tasks.Task`1.TrySetResult(TResult result)
+         at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.SetExistingTaskResult(Task`1 task, TResult result)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.WaitUntilDueAsync(CancellationToken cancellationToken) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 92
+         at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+         at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
+         at System.Threading.Tasks.AwaitTaskContinuation.RunOrScheduleAction(IAsyncStateMachineBox box, Boolean allowInlining)
+         at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
+         at System.Threading.Tasks.Task`1.TrySetResult(TResult result)
+         at System.Threading.Tasks.Task.TwoTaskWhenAnyPromise`1.Invoke(Task completingTask)
+         at System.Threading.ThreadPoolWorkQueue.Dispatch()
+         at System.Threading.PortableThreadPool.WorkerThread.WorkerThreadStart()
+         at System.Threading.Thread.StartCallback()
+      --- End of stack trace from previous location ---
+      
+         --- End of inner exception stack trace ---
+         at Npgsql.Internal.NpgsqlWriteBuffer.Flush(Boolean async, CancellationToken cancellationToken)
+         at Npgsql.Internal.NpgsqlWriteBuffer.Flush(Boolean async, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.<Write>g__WriteExecute|103_0(NpgsqlConnector connector, Boolean async, Boolean flush, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteScalar(Boolean async, CancellationToken cancellationToken)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 182
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 182
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
+warn: Basil.Infrastructure.Storage.Writing.DatabaseWriter[0]
+      Write batch will be stored again in 00:00:00.0500000
+      Npgsql.NpgsqlException (0x80004005): Exception while writing to stream
+       ---> System.IO.IOException: Unable to write data to the transport connection: An existing connection was forcibly closed by the remote host..
+       ---> System.Net.Sockets.SocketException (10054): An existing connection was forcibly closed by the remote host.
+         at System.Net.Sockets.Socket.AwaitableSocketAsyncEventArgs.CreateException(SocketError error, Boolean forAsyncThrow)
+         at System.Net.Sockets.Socket.AwaitableSocketAsyncEventArgs.SendAsyncForNetworkStream(Socket socket, CancellationToken cancellationToken)
+         at System.Net.Sockets.Socket.SendAsyncForNetworkStream(ReadOnlyMemory`1 buffer, SocketFlags socketFlags, CancellationToken cancellationToken)
+         at System.Net.Sockets.NetworkStream.WriteAsync(Byte[] buffer, Int32 offset, Int32 count, CancellationToken cancellationToken)
+         at Npgsql.Internal.NpgsqlWriteBuffer.Flush(Boolean async, CancellationToken cancellationToken)
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Npgsql.Internal.NpgsqlWriteBuffer.Flush(Boolean async, CancellationToken cancellationToken)
+         at Npgsql.Internal.NpgsqlConnector.Flush(Boolean async, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.<Write>g__WriteExecute|103_0(NpgsqlConnector connector, Boolean async, Boolean flush, CancellationToken cancellationToken)
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Npgsql.NpgsqlCommand.<Write>g__WriteExecute|103_0(NpgsqlConnector connector, Boolean async, Boolean flush, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.Write(NpgsqlConnector connector, Boolean async, Boolean flush, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteScalar(Boolean async, CancellationToken cancellationToken)
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Npgsql.NpgsqlCommand.ExecuteScalarAsync(CancellationToken cancellationToken)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 182
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.StoreAsync(List`1 batch, CancellationToken abandon) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 121
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.StoreAsync(List`1 batch, CancellationToken abandon)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.StoreDueAsync(CancellationToken abandon) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 276
+         at Basil.Infrastructure.Storage.Writing.DatabaseWriter.RunLaneAsync(WriteLane lane, CancellationToken stoppingToken) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\DatabaseWriter.cs:line 91
+         at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+         at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
+         at System.Threading.Tasks.AwaitTaskContinuation.RunOrScheduleAction(IAsyncStateMachineBox box, Boolean allowInlining)
+         at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
+         at System.Threading.Tasks.Task`1.TrySetResult(TResult result)
+         at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.SetExistingTaskResult(Task`1 task, TResult result)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.WaitUntilDueAsync(CancellationToken cancellationToken) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 92
+         at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+         at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
+         at System.Threading.Tasks.AwaitTaskContinuation.RunOrScheduleAction(IAsyncStateMachineBox box, Boolean allowInlining)
+         at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
+         at System.Threading.Tasks.Task`1.TrySetResult(TResult result)
+         at System.Threading.Tasks.Task.TwoTaskWhenAnyPromise`1.Invoke(Task completingTask)
+         at System.Threading.ThreadPoolWorkQueue.Dispatch()
+         at System.Threading.PortableThreadPool.WorkerThread.WorkerThreadStart()
+         at System.Threading.Thread.StartCallback()
+      --- End of stack trace from previous location ---
+      
+         --- End of inner exception stack trace ---
+         at Npgsql.Internal.NpgsqlWriteBuffer.Flush(Boolean async, CancellationToken cancellationToken)
+         at Npgsql.Internal.NpgsqlWriteBuffer.Flush(Boolean async, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.<Write>g__WriteExecute|103_0(NpgsqlConnector connector, Boolean async, Boolean flush, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteScalar(Boolean async, CancellationToken cancellationToken)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 182
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 182
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
+warn: Basil.Infrastructure.Storage.Writing.DatabaseWriter[0]
+      Write batch will be stored again in 00:00:00.0500000
+      Npgsql.NpgsqlException (0x80004005): Exception while writing to stream
+       ---> System.IO.IOException: Unable to write data to the transport connection: An existing connection was forcibly closed by the remote host..
+       ---> System.Net.Sockets.SocketException (10054): An existing connection was forcibly closed by the remote host.
+         at System.Net.Sockets.Socket.AwaitableSocketAsyncEventArgs.CreateException(SocketError error, Boolean forAsyncThrow)
+         at System.Net.Sockets.Socket.AwaitableSocketAsyncEventArgs.SendAsyncForNetworkStream(Socket socket, CancellationToken cancellationToken)
+         at System.Net.Sockets.Socket.SendAsyncForNetworkStream(ReadOnlyMemory`1 buffer, SocketFlags socketFlags, CancellationToken cancellationToken)
+         at System.Net.Sockets.NetworkStream.WriteAsync(Byte[] buffer, Int32 offset, Int32 count, CancellationToken cancellationToken)
+         at Npgsql.Internal.NpgsqlWriteBuffer.Flush(Boolean async, CancellationToken cancellationToken)
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Npgsql.Internal.NpgsqlWriteBuffer.Flush(Boolean async, CancellationToken cancellationToken)
+         at Npgsql.Internal.NpgsqlConnector.Flush(Boolean async, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.<Write>g__WriteExecute|103_0(NpgsqlConnector connector, Boolean async, Boolean flush, CancellationToken cancellationToken)
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Npgsql.NpgsqlCommand.<Write>g__WriteExecute|103_0(NpgsqlConnector connector, Boolean async, Boolean flush, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.Write(NpgsqlConnector connector, Boolean async, Boolean flush, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteScalar(Boolean async, CancellationToken cancellationToken)
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Npgsql.NpgsqlCommand.ExecuteScalarAsync(CancellationToken cancellationToken)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 182
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.StoreAsync(List`1 batch, CancellationToken abandon) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 121
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.StoreAsync(List`1 batch, CancellationToken abandon)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.StoreDueAsync(CancellationToken abandon) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 276
+         at Basil.Infrastructure.Storage.Writing.DatabaseWriter.RunLaneAsync(WriteLane lane, CancellationToken stoppingToken) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\DatabaseWriter.cs:line 91
+         at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+         at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
+         at System.Threading.Tasks.AwaitTaskContinuation.RunOrScheduleAction(IAsyncStateMachineBox box, Boolean allowInlining)
+         at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
+         at System.Threading.Tasks.Task`1.TrySetResult(TResult result)
+         at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.SetExistingTaskResult(Task`1 task, TResult result)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.WaitUntilDueAsync(CancellationToken cancellationToken) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 92
+         at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+         at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
+         at System.Threading.Tasks.AwaitTaskContinuation.RunOrScheduleAction(IAsyncStateMachineBox box, Boolean allowInlining)
+         at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
+         at System.Threading.Tasks.Task`1.TrySetResult(TResult result)
+         at System.Threading.Tasks.Task.TwoTaskWhenAnyPromise`1.Invoke(Task completingTask)
+         at System.Threading.ThreadPoolWorkQueue.Dispatch()
+         at System.Threading.PortableThreadPool.WorkerThread.WorkerThreadStart()
+         at System.Threading.Thread.StartCallback()
+      --- End of stack trace from previous location ---
+      
+         --- End of inner exception stack trace ---
+         at Npgsql.Internal.NpgsqlWriteBuffer.Flush(Boolean async, CancellationToken cancellationToken)
+         at Npgsql.Internal.NpgsqlWriteBuffer.Flush(Boolean async, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.<Write>g__WriteExecute|103_0(NpgsqlConnector connector, Boolean async, Boolean flush, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteScalar(Boolean async, CancellationToken cancellationToken)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 182
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 182
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
+warn: Basil.Infrastructure.Storage.Writing.DatabaseWriter[0]
+      Write batch will be stored again in 00:00:00.0500000
+      Npgsql.NpgsqlException (0x80004005): Exception while writing to stream
+       ---> System.IO.IOException: Unable to write data to the transport connection: An existing connection was forcibly closed by the remote host..
+       ---> System.Net.Sockets.SocketException (10054): An existing connection was forcibly closed by the remote host.
+         at System.Net.Sockets.Socket.AwaitableSocketAsyncEventArgs.CreateException(SocketError error, Boolean forAsyncThrow)
+         at System.Net.Sockets.Socket.AwaitableSocketAsyncEventArgs.SendAsyncForNetworkStream(Socket socket, CancellationToken cancellationToken)
+         at System.Net.Sockets.Socket.SendAsyncForNetworkStream(ReadOnlyMemory`1 buffer, SocketFlags socketFlags, CancellationToken cancellationToken)
+         at System.Net.Sockets.NetworkStream.WriteAsync(Byte[] buffer, Int32 offset, Int32 count, CancellationToken cancellationToken)
+         at Npgsql.Internal.NpgsqlWriteBuffer.Flush(Boolean async, CancellationToken cancellationToken)
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Npgsql.Internal.NpgsqlWriteBuffer.Flush(Boolean async, CancellationToken cancellationToken)
+         at Npgsql.Internal.NpgsqlConnector.Flush(Boolean async, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.<Write>g__WriteExecute|103_0(NpgsqlConnector connector, Boolean async, Boolean flush, CancellationToken cancellationToken)
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Npgsql.NpgsqlCommand.<Write>g__WriteExecute|103_0(NpgsqlConnector connector, Boolean async, Boolean flush, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.Write(NpgsqlConnector connector, Boolean async, Boolean flush, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteScalar(Boolean async, CancellationToken cancellationToken)
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Npgsql.NpgsqlCommand.ExecuteScalarAsync(CancellationToken cancellationToken)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 182
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.StoreAsync(List`1 batch, CancellationToken abandon) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 121
+         at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.StoreAsync(List`1 batch, CancellationToken abandon)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.StoreDueAsync(CancellationToken abandon) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 276
+         at Basil.Infrastructure.Storage.Writing.DatabaseWriter.RunLaneAsync(WriteLane lane, CancellationToken stoppingToken) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\DatabaseWriter.cs:line 91
+         at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+         at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
+         at System.Threading.Tasks.AwaitTaskContinuation.RunOrScheduleAction(IAsyncStateMachineBox box, Boolean allowInlining)
+         at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
+         at System.Threading.Tasks.Task`1.TrySetResult(TResult result)
+         at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.SetExistingTaskResult(Task`1 task, TResult result)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.WaitUntilDueAsync(CancellationToken cancellationToken) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 92
+         at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+         at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
+         at System.Threading.Tasks.AwaitTaskContinuation.RunOrScheduleAction(IAsyncStateMachineBox box, Boolean allowInlining)
+         at System.Threading.Tasks.Task.RunContinuations(Object continuationObject)
+         at System.Threading.Tasks.Task`1.TrySetResult(TResult result)
+         at System.Threading.Tasks.Task.TwoTaskWhenAnyPromise`1.Invoke(Task completingTask)
+         at System.Threading.ThreadPoolWorkQueue.Dispatch()
+         at System.Threading.PortableThreadPool.WorkerThread.WorkerThreadStart()
+         at System.Threading.Thread.StartCallback()
+      --- End of stack trace from previous location ---
+      
+         --- End of inner exception stack trace ---
+         at Npgsql.Internal.NpgsqlWriteBuffer.Flush(Boolean async, CancellationToken cancellationToken)
+         at Npgsql.Internal.NpgsqlWriteBuffer.Flush(Boolean async, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.<Write>g__WriteExecute|103_0(NpgsqlConnector connector, Boolean async, Boolean flush, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteScalar(Boolean async, CancellationToken cancellationToken)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 182
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 182
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
+      terminated 0 backends at write 15000
+      terminated 6 backends at write 25000
+warn: Basil.Infrastructure.Storage.Writing.DatabaseWriter[0]
+      Write batch will be stored again in 00:00:00.0500000
+      Npgsql.PostgresException (0x80004005): 57P01: terminating connection due to administrator command
+         at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
+         at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteNonQuery(Boolean async, CancellationToken cancellationToken)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 197
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 198
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
         Exception data:
           Severity: FATAL
           SqlState: 57P01
@@ -326,7 +489,49 @@ warn: Basil.Infrastructure.Storage.Writing.DatabaseWriter[0]
           Line: 3356
           Routine: ProcessInterrupts
 warn: Basil.Infrastructure.Storage.Writing.DatabaseWriter[0]
-      Write batch will be stored again in 00:00:00.1000000
+      Write batch will be stored again in 00:00:00.0500000
+      Npgsql.PostgresException (0x80004005): 57P01: terminating connection due to administrator command
+         at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
+         at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteNonQuery(Boolean async, CancellationToken cancellationToken)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 197
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 198
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
+        Exception data:
+          Severity: FATAL
+          SqlState: 57P01
+          MessageText: terminating connection due to administrator command
+          File: postgres.c
+          Line: 3356
+          Routine: ProcessInterrupts
+warn: Basil.Infrastructure.Storage.Writing.DatabaseWriter[0]
+      Write batch will be stored again in 00:00:00.0500000
+      Npgsql.PostgresException (0x80004005): 57P01: terminating connection due to administrator command
+         at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
+         at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteNonQuery(Boolean async, CancellationToken cancellationToken)
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 197
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 198
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
+         at Basil.Infrastructure.Storage.Writing.WriteLane.RunOnceAsync(List`1 batch) in V:\Code\cs\osuBasil\src\Infrastructure\Storage\Writing\WriteLane.cs:line 217
+        Exception data:
+          Severity: FATAL
+          SqlState: 57P01
+          MessageText: terminating connection due to administrator command
+          File: postgres.c
+          Line: 3356
+          Routine: ProcessInterrupts
+warn: Basil.Infrastructure.Storage.Writing.DatabaseWriter[0]
+      Write batch will be stored again in 00:00:00.0500000
       Npgsql.NpgsqlException (0x80004005): Exception while writing to stream
        ---> System.IO.IOException: Unable to write data to the transport connection: An existing connection was forcibly closed by the remote host..
        ---> System.Net.Sockets.SocketException (10054): An existing connection was forcibly closed by the remote host.
@@ -346,8 +551,6 @@ warn: Basil.Infrastructure.Storage.Writing.DatabaseWriter[0]
          at Npgsql.Internal.NpgsqlConnector.WriteParse(String sql, Byte[] asciiName, List`1 inputParameters, Boolean async, CancellationToken cancellationToken)
          at Npgsql.NpgsqlCommand.<Write>g__WriteExecute|103_0(NpgsqlConnector connector, Boolean async, Boolean flush, CancellationToken cancellationToken)
          at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
-         at Npgsql.NpgsqlCommand.<Write>g__WriteExecute|103_0(NpgsqlConnector connector, Boolean async, Boolean flush, CancellationToken cancellationToken)
-         at Npgsql.NpgsqlCommand.Write(NpgsqlConnector connector, Boolean async, Boolean flush, CancellationToken cancellationToken)
          at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
          at System.Runtime.CompilerServices.AsyncMethodBuilderCore.Start[TStateMachine](TStateMachine& stateMachine)
          at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
@@ -386,6 +589,10 @@ warn: Basil.Infrastructure.Storage.Writing.DatabaseWriter[0]
          at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
          at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext(Thread threadPoolThread)
          at System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1.AsyncStateMachineBox`1.MoveNext()
+         at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
+         at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.ExecutionContextCallback(Object s)
+         at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+         at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.MoveNext()
          at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
          at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.ExecutionContextCallback(Object s)
          at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)

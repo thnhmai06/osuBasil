@@ -94,11 +94,11 @@ as the writer does; the share of HOT updates read from `pg_stat_user_tables`, wi
 ## Correctness at the chosen default
 
 The storage verification ([`verify.cs`](verify.cs), output in [`verify.log`](verify.log); same server, default of 8 lanes) passed all
-25 checks, including: during a flood of 30 000 appends on 40 roots, every backend of the database was terminated three
+26 checks, including: during a flood of 30 000 appends on 40 roots, every backend of the database was terminated three
 times (`pg_terminate_backend`, the `57P01` a server restart sends); every write was stored exactly once (30 000 rows,
 30 000 distinct), each of 20 try-operations racing the terminations was stored exactly once, and no write was dropped
 (the only critical log line came from the deliberately invalid statement of another check). The batches hit by the
-terminations were stored again (14 retries). A connection lost exactly while committing did not occur in that run; its
+terminations were stored again (6 to 14 retries, depending on the run). A connection lost exactly while committing did not occur in that run; its
 settlement through `pg_xact_status` was checked separately on committed and rolled-back transactions.
 
 ## Limits
