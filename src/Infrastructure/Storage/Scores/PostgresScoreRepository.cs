@@ -5,7 +5,7 @@ using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Utilities;
-using Basil.Infrastructure.Storage.Caching;
+using Basil.Infrastructure.Storage.Memory;
 using Basil.Infrastructure.Storage.Multiplayer;
 using Basil.Infrastructure.Storage.Writing;
 using Dapper;
@@ -19,7 +19,7 @@ internal sealed class PostgresScoreRepository(
 	DatabaseWriter writer,
 	IMatchRepository matches,
 	IRoundRepository rounds,
-	MatchReportCache reports) : CachedRepository<int, Score>(database, writer), IScoreRepository
+	MatchReportCache reports) : MemoryRepository<int, Score>(database, writer), IScoreRepository
 {
 	protected override int KeyOf(Score item) => item.Id;
 
@@ -96,7 +96,7 @@ internal sealed class PostgresScoreRepository(
 		return new Page<Score>(items, total);
 	}
 
-	protected override async Task<Score?> LoadAsync(int key, CancellationToken cancellationToken)
+	protected override async Task<Score?> LoadAsync(int key)
 	{
 		var row = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<ScoreRow>(
 			"""
@@ -104,11 +104,11 @@ internal sealed class PostgresScoreRepository(
 			       total_score, max_combo, grade, is_passed, is_full_combo, timestamp, match_id, round_number, team, checksum
 			from scores where id = @Id
 			""",
-			new { Id = key }), cancellationToken);
+			new { Id = key }));
 		if (row is null)
 			return null;
 
-		var loaded = await LoadRoundsAsync([row.MatchId], cancellationToken);
+		var loaded = await LoadRoundsAsync([row.MatchId], default);
 		return ToScore(row, FindRound(row, loaded));
 	}
 

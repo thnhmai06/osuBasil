@@ -5,7 +5,6 @@ using Basil.Application.Storage.Contracts.Multiplayer;
 using Basil.Application.Storage.Contracts.Scores;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Infrastructure.Storage.Beatmaps;
-using Basil.Infrastructure.Storage.Caching;
 using Basil.Infrastructure.Storage.Chat;
 using Basil.Infrastructure.Storage.Content;
 using Basil.Infrastructure.Storage.Files;

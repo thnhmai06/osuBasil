@@ -3,7 +3,7 @@ using Basil.Application.Storage.Contracts.Multiplayer;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Utilities;
-using Basil.Infrastructure.Storage.Caching;
+using Basil.Infrastructure.Storage.Memory;
 using Basil.Infrastructure.Storage.Writing;
 using Dapper;
 
@@ -15,9 +15,9 @@ internal sealed class PostgresRoundRepository(
 	DatabaseWriter writer,
 	IMatchRepository matches,
 	MatchReportCache reports)
-	: CachedRepository<(int MatchId, int Number), Round>(database, writer), IRoundRepository
+	: MemoryRepository<(int MatchId, int Number), Round>(database, writer), IRoundRepository
 {
-	private readonly OwnedLists<int, Round> _byMatch = new();
+	private readonly OwnedLists<int, Match, Round> _byMatch = new();
 
 	protected override (int MatchId, int Number) KeyOf(Round item) => (item.Match.Id, item.Number);
 
@@ -26,15 +26,9 @@ internal sealed class PostgresRoundRepository(
 	/// <inheritdoc />
 	public Task CreateOrUpdateAsync(Round round, CancellationToken cancellationToken = default)
 	{
+		var saved = SaveAsync(round);
 		var live = Track(round);
-		if (!ReferenceEquals(live, round))
-		{
-			live.EndedAt = round.EndedAt;
-			live.Aborted = round.Aborted;
-		}
-
-		var saved = SaveAsync(live);
-		_byMatch.Change(live.Match.Id, current => AddOrReplace(current, live), saved);
+		_byMatch.Change(live.Match.Id, live.Match, current => AddOrReplace(current, live), saved);
 		reports.Invalidate(live.Match.Id);
 		return Task.CompletedTask;
 	}
@@ -43,7 +37,7 @@ internal sealed class PostgresRoundRepository(
 	public async Task<IReadOnlyList<Round>> ListAsync(Match match, CancellationToken cancellationToken = default)
 	{
 		var liveMatch = await matches.GetAsync(match.Id, cancellationToken) ?? match;
-		return await _byMatch.GetOrLoadAsync(liveMatch.Id, async () =>
+		return await _byMatch.GetOrLoadAsync(liveMatch.Id, liveMatch, async () =>
 		{
 			var rows = await Database.ReadAsync(connection => connection.QueryAsync<RoundRow>(
 				"""
@@ -60,7 +54,7 @@ internal sealed class PostgresRoundRepository(
 		});
 	}
 
-	protected override async Task<Round?> LoadAsync((int MatchId, int Number) key, CancellationToken cancellationToken)
+	protected override async Task<Round?> LoadAsync((int MatchId, int Number) key)
 	{
 		var row = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<RoundRow>(
 			"""
@@ -68,12 +62,18 @@ internal sealed class PostgresRoundRepository(
 			from rounds
 			where match_id = @MatchId and number = @Number
 			""",
-			new { key.MatchId, key.Number }), cancellationToken);
+			new { key.MatchId, key.Number }));
 		if (row is null)
 			return null;
 
-		var match = await matches.GetAsync(key.MatchId, cancellationToken);
+		var match = await matches.GetAsync(key.MatchId);
 		return match is null ? null : ToRound(match, row);
+	}
+
+	protected override void CopyTo(Round live, Round from)
+	{
+		live.EndedAt = from.EndedAt;
+		live.Aborted = from.Aborted;
 	}
 
 	protected override string WriteSql =>

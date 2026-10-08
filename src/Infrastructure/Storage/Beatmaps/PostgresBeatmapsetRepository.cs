@@ -1,7 +1,7 @@
 using Basil.Application.Storage.Contracts.Beatmaps;
 using Basil.Application.Storage.Contracts.Common;
 using Basil.Domain.Beatmaps;
-using Basil.Infrastructure.Storage.Caching;
+using Basil.Infrastructure.Storage.Memory;
 using Basil.Infrastructure.Storage.Writing;
 using Dapper;
 using Npgsql;
@@ -10,7 +10,7 @@ namespace Basil.Infrastructure.Storage.Beatmaps;
 
 /// <summary>Stores beatmapsets in the <c>beatmapsets</c> table.</summary>
 internal sealed class PostgresBeatmapsetRepository(Database database, DatabaseWriter writer)
-	: CachedRepository<int, Beatmapset>(database, writer), IBeatmapsetRepository
+	: MemoryRepository<int, Beatmapset>(database, writer), IBeatmapsetRepository
 {
 	protected override int KeyOf(Beatmapset item) => item.Id;
 
@@ -55,19 +55,18 @@ internal sealed class PostgresBeatmapsetRepository(Database database, DatabaseWr
 	/// <inheritdoc />
 	public Task CreateOrUpdateAsync(Beatmapset set, CancellationToken cancellationToken = default)
 	{
-		var live = Track(set);
-		if (!ReferenceEquals(live, set))
-		{
-			live.Value.Artist = set.Value.Artist;
-			live.Value.Title = set.Value.Title;
-			live.Value.Creator = set.Value.Creator;
-			live.Value.UpdatedAt = set.Value.UpdatedAt;
-			live.Value.Locked = set.Value.Locked;
-			live.Value.Visible = set.Value.Visible;
-		}
-
-		_ = SaveAsync(live);
+		_ = SaveAsync(set);
 		return Task.CompletedTask;
+	}
+
+	protected override void CopyTo(Beatmapset live, Beatmapset from)
+	{
+		live.Value.Artist = from.Value.Artist;
+		live.Value.Title = from.Value.Title;
+		live.Value.Creator = from.Value.Creator;
+		live.Value.UpdatedAt = from.Value.UpdatedAt;
+		live.Value.Locked = from.Value.Locked;
+		live.Value.Visible = from.Value.Visible;
 	}
 
 	/// <inheritdoc />
@@ -112,11 +111,11 @@ internal sealed class PostgresBeatmapsetRepository(Database database, DatabaseWr
 		return new Page<Beatmapset>(rows.Select(row => Track(ToBeatmapset(row))).ToList(), total);
 	}
 
-	protected override async Task<Beatmapset?> LoadAsync(int key, CancellationToken cancellationToken)
+	protected override async Task<Beatmapset?> LoadAsync(int key)
 	{
 		var row = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<BeatmapsetRow>(
 			"select id, artist, title, creator, created_at, updated_at, locked, visible from beatmapsets where id = @Id",
-			new { Id = key }), cancellationToken);
+			new { Id = key }));
 		return row is null ? null : ToBeatmapset(row);
 	}
 

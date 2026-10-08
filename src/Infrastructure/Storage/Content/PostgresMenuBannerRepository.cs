@@ -1,6 +1,6 @@
 using Basil.Application.Storage.Contracts.Content;
 using Basil.Domain.Content;
-using Basil.Infrastructure.Storage.Caching;
+using Basil.Infrastructure.Storage.Memory;
 using Basil.Infrastructure.Storage.Writing;
 using Dapper;
 
@@ -8,7 +8,7 @@ namespace Basil.Infrastructure.Storage.Content;
 
 /// <summary>Stores the banners shown on the osu! main menu.</summary>
 internal sealed class PostgresMenuBannerRepository(Database database, DatabaseWriter writer)
-	: CachedRepository<Uri, MenuBanner>(database, writer), IMenuBannerRepository
+	: MemoryRepository<Uri, MenuBanner>(database, writer), IMenuBannerRepository
 {
 	private volatile bool _listed;
 
@@ -19,11 +19,15 @@ internal sealed class PostgresMenuBannerRepository(Database database, DatabaseWr
 	/// <inheritdoc />
 	public Task CreateOrUpdateAsync(MenuBanner banner, CancellationToken cancellationToken = default)
 	{
-		var live = Track(banner);
-		if (!ReferenceEquals(live, banner))
-			Update(live, banner);
-		_ = SaveAsync(live);
+		_ = SaveAsync(banner);
 		return Task.CompletedTask;
+	}
+
+	protected override void CopyTo(MenuBanner live, MenuBanner from)
+	{
+		live.Url = from.Url;
+		live.StartsAt = from.StartsAt;
+		live.EndsAt = from.EndsAt;
 	}
 
 	/// <inheritdoc />
@@ -51,11 +55,11 @@ internal sealed class PostgresMenuBannerRepository(Database database, DatabaseWr
 		return Task.CompletedTask;
 	}
 
-	protected override async Task<MenuBanner?> LoadAsync(Uri key, CancellationToken cancellationToken)
+	protected override async Task<MenuBanner?> LoadAsync(Uri key)
 	{
 		var row = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<MenuBannerRow>(
 			"select image, url, starts_at, ends_at, created_at from menu_banners where image = @Image",
-			new { Image = key.ToString() }), cancellationToken);
+			new { Image = key.ToString() }));
 		return row is null ? null : ToBanner(row);
 	}
 
@@ -83,13 +87,6 @@ internal sealed class PostgresMenuBannerRepository(Database database, DatabaseWr
 	{
 		return new WriteCommand("delete from menu_banners where image = @Image",
 			new { Image = key.ToString() });
-	}
-
-	private static void Update(MenuBanner live, MenuBanner update)
-	{
-		live.Url = update.Url;
-		live.StartsAt = update.StartsAt;
-		live.EndsAt = update.EndsAt;
 	}
 
 	/// <summary>Builds a banner from a stored row.</summary>

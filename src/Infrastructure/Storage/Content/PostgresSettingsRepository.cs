@@ -13,8 +13,8 @@ internal sealed class PostgresSettingsRepository(Database database, DatabaseWrit
 	/// <inheritdoc />
 	public async ValueTask<ServerSettings> GetAsync(CancellationToken cancellationToken = default)
 	{
-		if (Volatile.Read(ref _settings) is { } cached)
-			return cached;
+		if (Volatile.Read(ref _settings) is { } current)
+			return current;
 
 		var row = await database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<SettingsRow>(
 			"""

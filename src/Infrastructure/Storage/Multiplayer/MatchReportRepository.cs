@@ -3,7 +3,6 @@ using Basil.Application.Storage.Contracts.Multiplayer;
 using Basil.Application.Storage.Contracts.Scores;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
-using Basil.Infrastructure.Storage.Caching;
 
 namespace Basil.Infrastructure.Storage.Multiplayer;
 
@@ -11,13 +10,13 @@ namespace Basil.Infrastructure.Storage.Multiplayer;
 internal sealed class MatchReportRepository(
 	IRoundRepository rounds,
 	IScoreRepository scores,
-	MatchReportCache cache) : IMatchReportRepository
+	MatchReportCache reports) : IMatchReportRepository
 {
 	/// <inheritdoc />
 	public async ValueTask<MatchReport> GetAsync(Match match, CancellationToken cancellationToken = default)
 	{
-		var report = await cache.Reports.GetOrAddAsync(match.Id,
-			async _ => (MatchReport?)await BuildAsync(match, cancellationToken));
+		var report = await reports.Reports.GetOrAddAsync(match.Id,
+			async _ => (MatchReport?)await BuildAsync(match, default), cancellationToken);
 		return report ?? throw new InvalidOperationException("A match report load returned no report.");
 	}
 

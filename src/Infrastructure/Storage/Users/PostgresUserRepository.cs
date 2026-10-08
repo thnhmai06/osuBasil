@@ -1,9 +1,8 @@
-using System.Collections.Concurrent;
 using System.Globalization;
 using Basil.Application.Storage.Contracts.Common;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Storage.Caching;
+using Basil.Infrastructure.Storage.Memory;
 using Basil.Infrastructure.Storage.Writing;
 using Dapper;
 using Npgsql;
@@ -12,10 +11,9 @@ namespace Basil.Infrastructure.Storage.Users;
 
 /// <summary>Stores registered users.</summary>
 internal sealed class PostgresUserRepository(Database database, DatabaseWriter writer)
-	: CachedRepository<int, User>(database, writer), IUserRepository
+	: MemoryRepository<int, User>(database, writer), IUserRepository
 {
-	private readonly ConcurrentDictionary<string, int> _idsBySafeName = new(StringComparer.Ordinal);
-	private readonly ConcurrentDictionary<int, string> _safeNamesById = new();
+	private readonly WeakIndex<string, User> _byName = new();
 
 	protected override int KeyOf(User item) => item.Id;
 
@@ -27,14 +25,15 @@ internal sealed class PostgresUserRepository(Database database, DatabaseWriter w
 		var parameters = new
 		{
 			data.Name,
+			data.SafeName,
 			Country = (int)data.Country,
 			Permissions = (long)data.Permissions,
 			DeletedAt = data.DeletedAt?.ToUniversalTime()
 		};
 		var id = await Writer.WriteAsync(Root.Server, (connection, transaction) => connection.QuerySingleAsync<int>(
 			"""
-			insert into users (name, country, permissions, deleted_at)
-			values (@Name, @Country, @Permissions, @DeletedAt)
+			insert into users (name, safe_name, country, permissions, deleted_at)
+			values (@Name, @SafeName, @Country, @Permissions, @DeletedAt)
 			returning id;
 			""",
 			parameters, transaction), cancellationToken);
@@ -45,16 +44,15 @@ internal sealed class PostgresUserRepository(Database database, DatabaseWriter w
 	/// <inheritdoc />
 	public Task CreateOrUpdateAsync(User user, CancellationToken cancellationToken = default)
 	{
-		var live = TrackUser(user);
-		if (!ReferenceEquals(live, user))
-		{
-			live.Value.Country = user.Value.Country;
-			live.Value.Permissions = user.Value.Permissions;
-			live.Value.DeletedAt = user.Value.DeletedAt;
-		}
-
-		_ = SaveAsync(live);
+		_ = SaveAsync(user);
 		return Task.CompletedTask;
+	}
+
+	protected override void CopyTo(User live, User from)
+	{
+		live.Value.Country = from.Value.Country;
+		live.Value.Permissions = from.Value.Permissions;
+		live.Value.DeletedAt = from.Value.DeletedAt;
 	}
 
 	/// <inheritdoc />
@@ -62,12 +60,14 @@ internal sealed class PostgresUserRepository(Database database, DatabaseWriter w
 	{
 		_ = new UserData { Name = name };
 		var live = TrackUser(user);
+		var old = live.Value.SafeName;
 
 		// Whether the name is free is the database's to say, so the user takes the name only once it is committed.
 		try
 		{
 			await Writer.WriteAsync(Root.User(live.Id), (connection, transaction) => connection.ExecuteAsync(
-				"update users set name = @Name where id = @Id", new { Name = name, live.Id }, transaction), cancellationToken);
+				"update users set name = @Name, safe_name = @SafeName where id = @Id",
+				new { Name = name, SafeName = UserData.SafeNameOf(name), live.Id }, transaction), cancellationToken);
 		}
 		catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation)
 		{
@@ -75,7 +75,8 @@ internal sealed class PostgresUserRepository(Database database, DatabaseWriter w
 		}
 
 		live.Value.Name = name;
-		IndexUser(live);
+		_byName.Remove(old, live);
+		_byName.Set(live.Value.SafeName, live);
 		return true;
 	}
 
@@ -86,19 +87,12 @@ internal sealed class PostgresUserRepository(Database database, DatabaseWriter w
 	/// <inheritdoc />
 	public async ValueTask<User?> GetByNameAsync(string name, CancellationToken cancellationToken = default)
 	{
-		var safeName = SafeName(name);
-		if (_idsBySafeName.TryGetValue(safeName, out var id))
-		{
-			var cached = await FindUserAsync(id, cancellationToken);
-			if (cached is not null && SafeName(cached.Value.Name) == safeName)
-				return cached;
-
-			_idsBySafeName.TryRemove(new KeyValuePair<string, int>(safeName, id));
-		}
+		var safeName = UserData.SafeNameOf(name);
+		if (_byName.TryGet(safeName, out var known) && known.Value.SafeName == safeName)
+			return known;
 
 		var foundId = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<int?>(
-			"select id from users where safe_name = replace(lower(@Name), ' ', '_')",
-			new { Name = name }), cancellationToken);
+			"select id from users where safe_name = @SafeName", new { SafeName = safeName }), cancellationToken);
 		return foundId is { } found ? await FindUserAsync(found, cancellationToken) : null;
 	}
 
@@ -118,18 +112,17 @@ internal sealed class PostgresUserRepository(Database database, DatabaseWriter w
 		return new Page<User>([.. rows.Select(row => TrackUser(ToUser(row)))], total);
 	}
 
-	protected override async Task<User?> LoadAsync(int key, CancellationToken cancellationToken)
+	protected override async Task<User?> LoadAsync(int key)
 	{
 		var row = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<UserRow>(
-			"select id, name, country, permissions, deleted_at from users where id = @Id", new { Id = key }),
-			cancellationToken);
+			"select id, name, country, permissions, deleted_at from users where id = @Id", new { Id = key }));
 		return row is null ? null : ToUser(row);
 	}
 
 	protected override string WriteSql =>
 		"""
-		insert into users (id, name, country, permissions, deleted_at)
-		values (@Id, @Name, @Country, @Permissions, @DeletedAt)
+		insert into users (id, name, safe_name, country, permissions, deleted_at)
+		values (@Id, @Name, @SafeName, @Country, @Permissions, @DeletedAt)
 		on conflict (id) do update set
 			country = excluded.country,
 			permissions = excluded.permissions,
@@ -143,6 +136,7 @@ internal sealed class PostgresUserRepository(Database database, DatabaseWriter w
 		{
 			user.Id,
 			value.Name,
+			value.SafeName,
 			Country = (int)value.Country,
 			Permissions = (long)value.Permissions,
 			DeletedAt = value.DeletedAt?.ToUniversalTime()
@@ -166,26 +160,7 @@ internal sealed class PostgresUserRepository(Database database, DatabaseWriter w
 
 	private void IndexUser(User live)
 	{
-		var safeName = SafeName(live.Value.Name);
-		if (_safeNamesById.TryGetValue(live.Id, out var previous) && previous != safeName)
-			_idsBySafeName.TryRemove(new KeyValuePair<string, int>(previous, live.Id));
-
-		_safeNamesById[live.Id] = safeName;
-		_idsBySafeName[safeName] = live.Id;
-	}
-
-	private static string SafeName(string name)
-	{
-		return string.Create(name.Length, name, static (characters, value) =>
-		{
-			for (var index = 0; index < value.Length; index++)
-			{
-				var character = value[index];
-				characters[index] = character is >= 'A' and <= 'Z' ? (char)(character + ('a' - 'A'))
-					: character == ' ' ? '_'
-					: character;
-			}
-		});
+		_byName.Set(live.Value.SafeName, live);
 	}
 
 	/// <summary>Builds the shared filter and parameters for a user listing.</summary>

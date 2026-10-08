@@ -2,7 +2,7 @@ using Basil.Application.Storage.Contracts.Common;
 using Basil.Application.Storage.Contracts.Multiplayer;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Multiplayer;
-using Basil.Infrastructure.Storage.Caching;
+using Basil.Infrastructure.Storage.Memory;
 using Basil.Infrastructure.Storage.Writing;
 using Dapper;
 
@@ -10,7 +10,7 @@ namespace Basil.Infrastructure.Storage.Multiplayer;
 
 /// <summary>Stores matches.</summary>
 internal sealed class PostgresMatchRepository(Database database, DatabaseWriter writer, IUserRepository users)
-	: CachedRepository<int, Match>(database, writer), IMatchRepository
+	: MemoryRepository<int, Match>(database, writer), IMatchRepository
 {
 	protected override int KeyOf(Match item) => item.Id;
 
@@ -35,16 +35,15 @@ internal sealed class PostgresMatchRepository(Database database, DatabaseWriter 
 	/// <inheritdoc />
 	public Task CreateOrUpdateAsync(Match match, CancellationToken cancellationToken = default)
 	{
-		var live = Track(match);
-		if (!ReferenceEquals(live, match))
-		{
-			live.Value.Name = match.Value.Name;
-			live.Value.EndedAt = match.Value.EndedAt;
-			live.Value.IsPrivate = match.Value.IsPrivate;
-		}
-
-		_ = SaveAsync(live);
+		_ = SaveAsync(match);
 		return Task.CompletedTask;
+	}
+
+	protected override void CopyTo(Match live, Match from)
+	{
+		live.Value.Name = from.Value.Name;
+		live.Value.EndedAt = from.Value.EndedAt;
+		live.Value.IsPrivate = from.Value.IsPrivate;
 	}
 
 	/// <inheritdoc />
@@ -73,12 +72,12 @@ internal sealed class PostgresMatchRepository(Database database, DatabaseWriter 
 		return new Page<Match>(matches, total);
 	}
 
-	protected override async Task<Match?> LoadAsync(int key, CancellationToken cancellationToken)
+	protected override async Task<Match?> LoadAsync(int key)
 	{
 		var row = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<MatchRow>(
 			"select id, name, creator_id, started_at, ended_at, is_private from matches where id = @Id",
-			new { Id = key }), cancellationToken);
-		return row is null ? null : await ToMatchAsync(row, cancellationToken);
+			new { Id = key }));
+		return row is null ? null : await ToMatchAsync(row, default);
 	}
 
 	protected override string WriteSql =>

@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Social;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Storage.Caching;
+using Basil.Infrastructure.Storage.Memory;
 using Basil.Infrastructure.Storage.Writing;
 using Dapper;
 
@@ -12,13 +12,14 @@ namespace Basil.Infrastructure.Storage.Users;
 internal sealed class PostgresRelationshipRepository(Database database, DatabaseWriter writer, IUserRepository users)
 	: IRelationshipRepository
 {
-	private readonly OwnedLists<int, Relationship> _byActor = new();
+	private readonly OwnedLists<int, User, Relationship> _byActor = new();
 
 	/// <inheritdoc />
-	public Task CreateOrUpdateAsync(Relationship relationship, CancellationToken cancellationToken = default)
+	public async Task CreateOrUpdateAsync(Relationship relationship, CancellationToken cancellationToken = default)
 	{
 		var actorId = relationship.Actor.Id;
 		var targetId = relationship.Target.Id;
+		var actor = await users.GetAsync(actorId, cancellationToken);
 		var values = Values(relationship);
 		var saved = writer.SaveAsync(Root.User(actorId), (GetType(), (actorId, targetId)), new WriteCommand(
 			"""
@@ -29,28 +30,27 @@ internal sealed class PostgresRelationshipRepository(Database database, Database
 				created_at = excluded.created_at;
 			""",
 			values));
-		_byActor.Change(actorId, current => Replace(current, relationship), saved);
-		return Task.CompletedTask;
+		_byActor.Change(actorId, actor, current => Replace(current, relationship), saved);
 	}
 
 	/// <inheritdoc />
-	public Task DeleteAsync(Relationship relationship, CancellationToken cancellationToken = default)
+	public async Task DeleteAsync(Relationship relationship, CancellationToken cancellationToken = default)
 	{
 		var actorId = relationship.Actor.Id;
 		var targetId = relationship.Target.Id;
+		var actor = await users.GetAsync(actorId, cancellationToken);
 		var parameters = new { ActorId = actorId, TargetId = targetId };
 		var deleted = writer.SaveAsync(Root.User(actorId), (GetType(), (actorId, targetId)), new WriteCommand(
 			"delete from relationships where actor_id = @ActorId and target_id = @TargetId",
 			parameters));
-		_byActor.Change(actorId, current => current.RemoveAll(item => item.Target.Id == targetId), deleted);
-		return Task.CompletedTask;
+		_byActor.Change(actorId, actor, current => current.RemoveAll(item => item.Target.Id == targetId), deleted);
 	}
 
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<Relationship>> ListAsync(User actor, CancellationToken cancellationToken = default)
 	{
 		var liveActor = await users.GetAsync(actor.Id, cancellationToken) ?? actor;
-		return await _byActor.GetOrLoadAsync(liveActor.Id, async () =>
+		return await _byActor.GetOrLoadAsync(liveActor.Id, liveActor, async () =>
 		{
 			var rows = await database.ReadAsync(connection => connection.QueryAsync<RelationshipRow>(
 				"select actor_id, target_id, type, created_at from relationships where actor_id = @ActorId",

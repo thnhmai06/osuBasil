@@ -66,6 +66,13 @@ public sealed class User : IWrapper<UserData>, IEquatable<User>
 /// </summary>
 public sealed partial class UserData
 {
+	/// <summary>Gets the form of the name that identifies the user: lower case, with spaces written as underscores.</summary>
+	/// <remarks>Two names with the same safe name are the same name.</remarks>
+	public string SafeName => SafeNameOf(Name);
+
+	/// <summary>Gets the safe name of a user name.</summary>
+	public static string SafeNameOf(string name) => name.ToLowerInvariant().Replace(' ', '_');
+
 	/// <summary>
 	///     Gets or sets the username.
 	/// </summary>

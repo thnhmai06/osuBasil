@@ -1,7 +1,7 @@
 using Basil.Application.Storage.Contracts.Scores;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Storage.Caching;
+using Basil.Infrastructure.Storage.Memory;
 using Basil.Infrastructure.Storage.Writing;
 using Dapper;
 
@@ -9,7 +9,7 @@ namespace Basil.Infrastructure.Storage.Scores;
 
 /// <summary>Stores users' cumulative score statistics.</summary>
 internal sealed class PostgresUserStatsRepository(Database database, DatabaseWriter writer)
-	: CachedRepository<(int UserId, GameMode Mode), UserStats>(database, writer), IUserStatsRepository
+	: MemoryRepository<(int UserId, GameMode Mode), UserStats>(database, writer), IUserStatsRepository
 {
 	protected override (int UserId, GameMode Mode) KeyOf(UserStats item) => (item.UserId, item.Mode);
 
@@ -26,19 +26,22 @@ internal sealed class PostgresUserStatsRepository(Database database, DatabaseWri
 	/// <inheritdoc />
 	public Task CreateOrUpdateAsync(UserStats stats, CancellationToken cancellationToken = default)
 	{
-		var live = Track(stats);
-		live.TotalScore = stats.TotalScore;
-		live.RankedScore = stats.RankedScore;
-		live.PlayCount = stats.PlayCount;
-		_ = SaveAsync(live);
+		_ = SaveAsync(stats);
 		return Task.CompletedTask;
 	}
 
-	protected override async Task<UserStats?> LoadAsync((int UserId, GameMode Mode) key, CancellationToken cancellationToken)
+	protected override void CopyTo(UserStats live, UserStats from)
+	{
+		live.TotalScore = from.TotalScore;
+		live.RankedScore = from.RankedScore;
+		live.PlayCount = from.PlayCount;
+	}
+
+	protected override async Task<UserStats?> LoadAsync((int UserId, GameMode Mode) key)
 	{
 		var row = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<StatsRow>(
 			"select user_id, mode, total_score, ranked_score, play_count from user_stats where user_id = @UserId and mode = @Mode",
-			new { UserId = key.UserId, Mode = (int)key.Mode }), cancellationToken);
+			new { UserId = key.UserId, Mode = (int)key.Mode }));
 		return row is null
 			? null
 			: new UserStats

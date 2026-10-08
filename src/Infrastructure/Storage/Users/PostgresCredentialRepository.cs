@@ -1,6 +1,6 @@
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Auth;
-using Basil.Infrastructure.Storage.Caching;
+using Basil.Infrastructure.Storage.Memory;
 using Basil.Infrastructure.Storage.Writing;
 using Dapper;
 
@@ -8,7 +8,7 @@ namespace Basil.Infrastructure.Storage.Users;
 
 /// <summary>Stores the login credential of each user.</summary>
 internal sealed class PostgresCredentialRepository(Database database, DatabaseWriter writer)
-	: CachedRepository<int, PostgresCredentialRepository.StoredCredential>(database, writer), ICredentialRepository
+	: MemoryRepository<int, PostgresCredentialRepository.StoredCredential>(database, writer), ICredentialRepository
 {
 	protected override int KeyOf(StoredCredential item) => item.UserId;
 
@@ -25,16 +25,16 @@ internal sealed class PostgresCredentialRepository(Database database, DatabaseWr
 	public Task CreateOrUpdateAsync(Credentials credentials, CancellationToken cancellationToken = default)
 	{
 		var hash = BCrypt.Net.BCrypt.HashPassword(credentials.PasswordHash.HashValue);
-		var item = Track(new StoredCredential(credentials.User.Id, hash));
-		item.Hash = hash;
-		_ = SaveAsync(item);
+		_ = SaveAsync(new StoredCredential(credentials.User.Id, hash));
 		return Task.CompletedTask;
 	}
 
-	protected override async Task<StoredCredential?> LoadAsync(int key, CancellationToken cancellationToken)
+	protected override void CopyTo(StoredCredential live, StoredCredential from) => live.Hash = from.Hash;
+
+	protected override async Task<StoredCredential?> LoadAsync(int key)
 	{
 		var hash = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<string?>(
-			"select password_hash from credentials where user_id = @UserId", new { UserId = key }), cancellationToken);
+			"select password_hash from credentials where user_id = @UserId", new { UserId = key }));
 		return hash is null ? null : new StoredCredential(key, hash);
 	}
 

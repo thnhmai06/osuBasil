@@ -1,5 +1,5 @@
 using Basil.Domain.Multiplayer;
-using Basil.Infrastructure.Storage.Caching;
+using Basil.Infrastructure.Storage.Memory;
 
 namespace Basil.Infrastructure.Storage.Multiplayer;
 

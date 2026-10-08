@@ -14,8 +14,8 @@ internal sealed class PostgresChannelRepository(Database database) : IChannelRep
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<GeneralChannel>> ListAsync(CancellationToken cancellationToken = default)
 	{
-		if (Volatile.Read(ref _channels) is { } cached)
-			return cached;
+		if (Volatile.Read(ref _channels) is { } current)
+			return current;
 
 		var rows = await database.ReadAsync(connection => connection.QueryAsync<ChannelRow>(
 			"select name, topic, read_permissions, write_permissions, auto_join, visible from channels order by name"), cancellationToken);

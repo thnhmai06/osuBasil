@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Storage.Caching;
+using Basil.Infrastructure.Storage.Memory;
 using Basil.Infrastructure.Storage.Writing;
 using Dapper;
 
@@ -9,9 +9,9 @@ namespace Basil.Infrastructure.Storage.Users;
 
 /// <summary>Stores the restrictions of users.</summary>
 internal sealed class PostgresRestrictionRepository(Database database, DatabaseWriter writer, IUserRepository users)
-	: CachedRepository<int, Restriction>(database, writer), IRestrictionRepository
+	: MemoryRepository<int, Restriction>(database, writer), IRestrictionRepository
 {
-	private readonly OwnedLists<int, Restriction> _byUser = new();
+	private readonly OwnedLists<int, User, Restriction> _byUser = new();
 
 	protected override int KeyOf(Restriction item) => item.Id;
 
@@ -45,17 +45,23 @@ internal sealed class PostgresRestrictionRepository(Database database, DatabaseW
 			parameters, transaction), cancellationToken);
 
 		var restriction = Track(new Restriction { Id = id, Value = value });
-		_byUser.Change(user.Id, current => Replace(current, restriction), Task.CompletedTask);
+		_byUser.Change(user.Id, user, current => Replace(current, restriction), Task.CompletedTask);
 		return restriction;
 	}
 
 	/// <inheritdoc />
 	public Task CreateOrUpdateAsync(Restriction restriction, CancellationToken cancellationToken = default)
 	{
+		var saved = SaveAsync(restriction);
 		var live = Track(restriction);
-		var saved = SaveAsync(live);
-		_byUser.Change(live.Value.User.Id, current => Replace(current, live), saved);
+		_byUser.Change(live.Value.User.Id, live.Value.User, current => Replace(current, live), saved);
 		return Task.CompletedTask;
+	}
+
+	protected override void CopyTo(Restriction live, Restriction from)
+	{
+		live.Value.Permissions = from.Value.Permissions;
+		live.Value.EndsAt = from.Value.EndsAt;
 	}
 
 	/// <inheritdoc />
@@ -65,7 +71,7 @@ internal sealed class PostgresRestrictionRepository(Database database, DatabaseW
 	public async Task<IReadOnlyList<Restriction>> ListAsync(User user, CancellationToken cancellationToken = default)
 	{
 		var liveUser = await users.GetAsync(user.Id, cancellationToken) ?? user;
-		return await _byUser.GetOrLoadAsync(liveUser.Id, async () =>
+		return await _byUser.GetOrLoadAsync(liveUser.Id, liveUser, async () =>
 		{
 			var rows = await Database.ReadAsync(connection => connection.QueryAsync<RestrictionRow>(
 				"select id, user_id, permissions, starts_at, ends_at from restrictions where user_id = @UserId order by starts_at, id",
@@ -77,14 +83,14 @@ internal sealed class PostgresRestrictionRepository(Database database, DatabaseW
 		});
 	}
 
-	protected override async Task<Restriction?> LoadAsync(int key, CancellationToken cancellationToken)
+	protected override async Task<Restriction?> LoadAsync(int key)
 	{
 		var row = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<RestrictionRow>(
-			"select id, user_id, permissions, starts_at, ends_at from restrictions where id = @Id", new { Id = key }), cancellationToken);
+			"select id, user_id, permissions, starts_at, ends_at from restrictions where id = @Id", new { Id = key }));
 		if (row is null)
 			return null;
 
-		var user = await users.GetAsync(row.UserId, cancellationToken);
+		var user = await users.GetAsync(row.UserId);
 		return user is null ? null : ToRestriction(row, user);
 	}
 
