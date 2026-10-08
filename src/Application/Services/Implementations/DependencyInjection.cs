@@ -14,6 +14,7 @@ using Basil.Application.Services.Implementations.Scores;
 using Basil.Application.Services.Implementations.Sessions;
 using Basil.Application.Services.Implementations.Users;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Basil.Application.Services.Implementations;
 
@@ -27,6 +28,8 @@ public static class DependencyInjection
 	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddApplicationServices(this IServiceCollection services)
 	{
+		services.TryAddSingleton(TimeProvider.System);
+
 		services.AddSingleton<SessionService>();
 		services.AddSingleton<ISessionService>(sp => sp.GetRequiredService<SessionService>());
 

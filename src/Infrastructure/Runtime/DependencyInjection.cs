@@ -36,7 +36,6 @@ public static class DependencyInjection
 		services.AddSingleton<MatchRecorder>();
 		services.AddSingleton<IEventHandler<RoomEvent>>(sp => sp.GetRequiredService<MatchRecorder>());
 		services.AddSingleton<IEventHandler<LobbyEvent>>(sp => sp.GetRequiredService<MatchRecorder>());
-		services.AddSingleton<IHostedService>(sp => sp.GetRequiredService<MatchRecorder>());
 
 		AddPump<ISessionService, UserEvent>(services);
 		AddPump<IUserService, UserEvent>(services);

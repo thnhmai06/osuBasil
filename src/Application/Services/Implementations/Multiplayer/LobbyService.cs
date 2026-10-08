@@ -235,6 +235,6 @@ internal sealed class LobbyService(
 
 	private void Emit(LobbyEvent @event)
 	{
-		_events.Writer.TryWrite(@event);
+		_events.Writer.TryWrite(@event with { Timestamp = time.GetUtcNow() });
 	}
 }
