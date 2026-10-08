@@ -1,0 +1,79 @@
+## Environment
+
+- .NET 10.0.12, 8 logical processors, Microsoft Windows NT 10.0.26300.0
+- PostgreSQL 18.6 on x86_64-windows, compiled by msvc-19.44.35229, 64-bit
+- shared_buffers = 128MB
+- synchronous_commit = on
+- wal_writer_delay = 200ms
+- max_connections = 100
+- fsync = on
+- wal_level = replica
+
+## Write connections
+
+Each run, on a fresh database with 1000 users and 16 matches:
+
+1. Steady load: 10000 appends/s (logins and match events, every one a new row) for 4 s, with a try-operation (restriction insert) every 20 ms; the try-operation latency is measured.
+2. Capacity: 61000 writes queued at once (40000 match events, 20000 logins, 1000 user stats of distinct users), timed until every row is in the database.
+
+| connections | run | flood drain s | committed writes/s | steady elapsed s | try p50 ms | try p99 ms | try max ms |
+|---|---|---|---|---|---|---|
+| 1 | 1 | 18.86 | 3234 | 4.03 | 949.6 | 1892.4 | 1892.4 |
+| 1 | 2 | 25.35 | 2406 | 4.02 | 497.8 | 604.4 | 604.4 |
+| 1 | 3 | 20.57 | 2965 | 4.03 | 583.4 | 1991.6 | 1991.6 |
+| 1 | 4 | 27.74 | 2199 | 4.03 | 293.9 | 1297.5 | 1297.5 |
+| 1 | 5 | 36.94 | 1651 | 4.02 | 485.8 | 1749.4 | 1749.4 |
+| 2 | 1 | 19.08 | 3198 | 4.01 | 12.2 | 2292.4 | 2292.4 |
+| 2 | 2 | 7.73 | 7889 | 4.02 | 3.9 | 98.8 | 173.3 |
+| 2 | 3 | 7.53 | 8102 | 4.02 | 3.7 | 19.6 | 139.0 |
+| 2 | 4 | 7.36 | 8283 | 4.03 | 3.4 | 39.4 | 64.3 |
+| 2 | 5 | 7.40 | 8239 | 4.02 | 3.4 | 21.1 | 67.1 |
+| 4 | 1 | 4.64 | 13141 | 4.02 | 1.7 | 40.4 | 75.5 |
+| 4 | 2 | 4.59 | 13296 | 4.03 | 1.6 | 28.9 | 103.9 |
+| 4 | 3 | 4.58 | 13331 | 4.02 | 1.6 | 8.7 | 73.5 |
+| 4 | 4 | 4.62 | 13202 | 4.02 | 1.7 | 19.3 | 82.7 |
+| 4 | 5 | 4.54 | 13448 | 4.02 | 1.7 | 27.8 | 73.8 |
+| 8 | 1 | 3.38 | 18034 | 4.02 | 2.1 | 18.4 | 105.2 |
+| 8 | 2 | 3.23 | 18883 | 4.03 | 2.2 | 15.9 | 120.0 |
+| 8 | 3 | 3.29 | 18566 | 4.03 | 2.2 | 8.9 | 111.5 |
+| 8 | 4 | 3.38 | 18031 | 4.02 | 2.3 | 5.9 | 96.0 |
+| 8 | 5 | 3.22 | 18951 | 4.03 | 2.2 | 25.4 | 135.9 |
+| 12 | 1 | 3.07 | 19876 | 4.03 | 2.9 | 41.7 | 134.8 |
+| 12 | 2 | 3.20 | 19060 | 4.02 | 3.1 | 80.1 | 151.0 |
+| 12 | 3 | 4.17 | 14626 | 4.02 | 2.8 | 46.1 | 196.2 |
+| 12 | 4 | 3.09 | 19770 | 4.03 | 3.5 | 64.3 | 156.0 |
+| 12 | 5 | 3.07 | 19838 | 4.02 | 3.1 | 67.2 | 161.4 |
+| 16 | 1 | 3.16 | 19320 | 4.02 | 3.9 | 8.9 | 341.5 |
+| 16 | 2 | 3.01 | 20280 | 4.02 | 3.9 | 62.5 | 200.8 |
+| 16 | 3 | 3.07 | 19885 | 4.02 | 4.1 | 38.0 | 168.0 |
+| 16 | 4 | 3.14 | 19422 | 4.01 | 3.9 | 94.0 | 176.4 |
+| 16 | 5 | 3.01 | 20299 | 4.02 | 3.9 | 71.0 | 193.8 |
+
+Medians:
+
+| connections | committed writes/s | steady elapsed s | try p50 ms | try p99 ms | try max ms |
+|---|---|---|---|---|
+| 1 | 2406 | 4.03 | 497.8 | 1749.4 | 1749.4 |
+| 2 | 8102 | 4.02 | 3.7 | 39.4 | 139.0 |
+| 4 | 13296 | 4.02 | 1.7 | 27.8 | 75.5 |
+| 8 | 18566 | 4.03 | 2.2 | 15.9 | 111.5 |
+| 12 | 19770 | 4.02 | 3.1 | 64.3 | 156.0 |
+| 16 | 19885 | 4.02 | 3.9 | 62.5 | 193.8 |
+
+Rule: smallest connection count within 10% of the best capacity (19885 committed writes/s) and with a steady-load p99 no worse than 1.1 × 15.9 ms + 1 ms: 8
+Steady-load target met (median elapsed <= 4.0 s): False
+
+## pg_trgm index on users.safe_name (partial-name search, median of 7, ms)
+
+| users | with index | without index |
+|---|---|---|
+| 1000 | 0.139 | 0.158 |
+| 100000 | 0.886 | 13.122 |
+
+## fillfactor on frequently updated tables (HOT share of updates)
+
+| table | fillfactor 90 | fillfactor 100 |
+|---|---|---|
+| users | 99.4% | 98.2% |
+| user_stats | 99.5% | 98.3% |
+exit 0

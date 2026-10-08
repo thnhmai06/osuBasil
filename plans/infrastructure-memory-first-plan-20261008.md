@@ -451,5 +451,4 @@ rồi mở `.osz` bằng `ZipArchive` so nội dung).
 Đã commit: P1 `1a5e1119`, P2 `8c05f2b7`, P3a `456be753`, P3b A+C `f58b2ced`, P3b B `db399543`, P4 `0d92ed81`, AGENTS
 (đoạn "Memory is the truth"). Lệch so với plan: bản ghi trận là hai danh sách theo vòng đời Match (rounds, events)
 thay vì một `MatchRecords` chung; preview mp3 chép audio ra file tạm rồi chạy ffmpeg (không dùng pipe).
-Còn lại: P5 (spec `.tasks/p5.md`, đang chạy trên OpenCode lúc ghi), P6 đo lại `bench.cs`/`verify.cs` với writer mới
-(PostgreSQL 18 local đang chạy; đổi reflection `EnqueueAsync` → `SaveAsync`, `WriteLanes` → `WriteConnections`).
+P5 `b2937321` xong. P6 xong: writer mới đúng một lần khi kill backend (verify ALL PASS), 18 566 lệnh/s ở 8 connection (batching cũ 51 592/s), vẫn dư sức cho 10 000 append/s; giữ mặc định 8 (`plans/evidence/postgresql-direct-writes-20261008/results.md`).
