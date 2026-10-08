@@ -200,7 +200,7 @@ internal sealed class PostgresBeatmapRepository : CachedRepository<int, Beatmap>
 			RemoveCached(beatmap);
 
 		_retaining[setId] = keepSet;
-		var retained = Writer.EnqueueAsync(Root.Beatmapset(setId), (GetType(), "retain", setId), new WriteCommand(
+		var retained = Writer.SaveAsync(Root.Beatmapset(setId), (GetType(), "retain", setId), new WriteCommand(
 			"delete from beatmaps where beatmapset_id = @SetId and id <> all(@KeepIds)",
 			new { SetId = setId, KeepIds = keepIds }));
 		_bySet.Change(setId, current => current.Where(beatmap => keepSet.Contains(beatmap.Id)).ToImmutableList(),

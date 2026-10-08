@@ -11,9 +11,9 @@ internal sealed record WriteCommand(string Sql, object Parameters)
 {
 	private static readonly ConcurrentDictionary<Type, PropertyInfo[]> ParameterProperties = new();
 
-	internal NpgsqlBatchCommand ToBatchCommand()
+	internal NpgsqlCommand ToCommand(NpgsqlConnection connection)
 	{
-		var command = new NpgsqlBatchCommand(Sql);
+		var command = new NpgsqlCommand(Sql, connection);
 		foreach (var property in ParameterProperties.GetOrAdd(Parameters.GetType(),
 			         static type => type.GetProperties(BindingFlags.Instance | BindingFlags.Public)))
 		{

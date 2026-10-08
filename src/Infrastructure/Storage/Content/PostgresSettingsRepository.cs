@@ -49,7 +49,7 @@ internal sealed class PostgresSettingsRepository(Database database, DatabaseWrit
 			MirrorSearchEndpoint = settings.MirrorSearchEndpoint?.ToString()
 		};
 		Interlocked.Exchange(ref _settings, settings);
-		_ = writer.EnqueueAsync(Root.Server, (GetType(), 1), new WriteCommand(
+		_ = writer.SaveAsync(Root.Server, (GetType(), 1), new WriteCommand(
 			"""
 			update settings set
 				motd = @Motd,

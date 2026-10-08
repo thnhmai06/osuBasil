@@ -10,11 +10,15 @@ namespace Basil.Infrastructure.Storage.Multiplayer;
 internal sealed class PostgresMatchEventRepository(Database database, DatabaseWriter writer, IUserRepository users)
 	: IMatchEventRepository
 {
+	private readonly IdSequence _ids = new(database, "match_events");
+
 	/// <inheritdoc />
-	public Task CreateAsync(MatchEvent matchEvent, CancellationToken cancellationToken = default)
+	public async Task CreateAsync(MatchEvent matchEvent, CancellationToken cancellationToken = default)
 	{
+		var id = await _ids.NextAsync(cancellationToken);
 		var parameters = new
 		{
+			Id = id,
 			MatchId = matchEvent.Match.Id,
 			Type = (int)matchEvent.Type,
 			Timestamp = matchEvent.Timestamp.ToUniversalTime(),
@@ -24,11 +28,11 @@ internal sealed class PostgresMatchEventRepository(Database database, DatabaseWr
 		};
 		_ = writer.AppendAsync(Root.Match(matchEvent.Match.Id), new WriteCommand(
 			"""
-			insert into match_events (match_id, type, timestamp, actor_id, target_id, detail)
-			values (@MatchId, @Type, @Timestamp, @ActorId, @TargetId, @Detail)
+			insert into match_events (id, match_id, type, timestamp, actor_id, target_id, detail)
+			values (@Id, @MatchId, @Type, @Timestamp, @ActorId, @TargetId, @Detail)
+			on conflict (id) do nothing
 			""",
 			parameters));
-		return Task.CompletedTask;
 	}
 
 	/// <inheritdoc />

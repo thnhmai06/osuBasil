@@ -20,7 +20,7 @@ internal sealed class PostgresRelationshipRepository(Database database, Database
 		var actorId = relationship.Actor.Id;
 		var targetId = relationship.Target.Id;
 		var values = Values(relationship);
-		var saved = writer.EnqueueAsync(Root.User(actorId), (GetType(), (actorId, targetId)), new WriteCommand(
+		var saved = writer.SaveAsync(Root.User(actorId), (GetType(), (actorId, targetId)), new WriteCommand(
 			"""
 			insert into relationships (actor_id, target_id, type, created_at)
 			values (@ActorId, @TargetId, @Type, @CreatedAt)
@@ -39,7 +39,7 @@ internal sealed class PostgresRelationshipRepository(Database database, Database
 		var actorId = relationship.Actor.Id;
 		var targetId = relationship.Target.Id;
 		var parameters = new { ActorId = actorId, TargetId = targetId };
-		var deleted = writer.EnqueueAsync(Root.User(actorId), (GetType(), (actorId, targetId)), new WriteCommand(
+		var deleted = writer.SaveAsync(Root.User(actorId), (GetType(), (actorId, targetId)), new WriteCommand(
 			"delete from relationships where actor_id = @ActorId and target_id = @TargetId",
 			parameters));
 		_byActor.Change(actorId, current => current.RemoveAll(item => item.Target.Id == targetId), deleted);

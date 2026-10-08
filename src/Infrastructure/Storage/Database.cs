@@ -7,11 +7,8 @@ namespace Basil.Infrastructure.Storage;
 /// <summary>Gives access to the server's database: connections for writes, and reads of what is committed.</summary>
 internal sealed class Database(IOptions<DatabaseOptions> options) : IAsyncDisposable
 {
-	private readonly NpgsqlDataSource _source = new NpgsqlDataSourceBuilder(options.Value.ConnectionString)
-	{
-		// The writer needs to know which statement of a batch was refused.
-		ConnectionStringBuilder = { IncludeFailedBatchedCommand = true }
-	}.Build();
+	private readonly NpgsqlDataSource _source = NpgsqlDataSource.Create(options.Value.ConnectionString);
+	private readonly NpgsqlDataSource _snapshotSource = CreateSnapshotSource(options.Value.ConnectionString);
 
 	// ponytail: a fixed number of reads at once, so a burst cannot take every pooled connection; tune if reads queue up.
 	private readonly SemaphoreSlim _readSlots = new(Environment.ProcessorCount * 2);
@@ -21,6 +18,10 @@ internal sealed class Database(IOptions<DatabaseOptions> options) : IAsyncDispos
 	/// <summary>Opens a connection to the database.</summary>
 	public ValueTask<NpgsqlConnection> OpenAsync(CancellationToken cancellationToken = default) =>
 		_source.OpenConnectionAsync(cancellationToken);
+
+	/// <summary>Opens a connection for storing snapshots; its commits do not wait for the disk.</summary>
+	public ValueTask<NpgsqlConnection> OpenSnapshotConnectionAsync(CancellationToken cancellationToken = default) =>
+		_snapshotSource.OpenConnectionAsync(cancellationToken);
 
 	/// <summary>Runs a query on a connection of its own, alongside other reads; it sees what is committed.</summary>
 	/// <returns>The result of the query.</returns>
@@ -38,5 +39,18 @@ internal sealed class Database(IOptions<DatabaseOptions> options) : IAsyncDispos
 		}
 	}
 
-	public ValueTask DisposeAsync() => _source.DisposeAsync();
+	public async ValueTask DisposeAsync()
+	{
+		await _source.DisposeAsync();
+		await _snapshotSource.DisposeAsync();
+	}
+
+	private static NpgsqlDataSource CreateSnapshotSource(string connectionString)
+	{
+		var builder = new NpgsqlConnectionStringBuilder(connectionString);
+		builder.Options = string.IsNullOrEmpty(builder.Options)
+			? "-c synchronous_commit=off"
+			: $"{builder.Options} -c synchronous_commit=off";
+		return NpgsqlDataSource.Create(builder.ConnectionString);
+	}
 }

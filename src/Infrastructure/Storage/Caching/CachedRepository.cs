@@ -52,7 +52,7 @@ internal abstract class CachedRepository<TKey, T>(Database database, DatabaseWri
 	{
 		var live = Track(item);
 		var parameters = WriteParameters(live);
-		return Writer.EnqueueAsync(RootOf(live), (GetType(), KeyOf(live)), new WriteCommand(WriteSql, parameters));
+		return Writer.SaveAsync(RootOf(live), (GetType(), KeyOf(live)), new WriteCommand(WriteSql, parameters));
 	}
 
 	/// <summary>Forgets an item and queues its deletion.</summary>
@@ -63,7 +63,7 @@ internal abstract class CachedRepository<TKey, T>(Database database, DatabaseWri
 		var key = KeyOf(item);
 		_removing.Add(key);
 		Items.Remove(key);
-		var erased = Writer.EnqueueAsync(root, (GetType(), key), EraseCommand(key));
+		var erased = Writer.SaveAsync(root, (GetType(), key), EraseCommand(key));
 		erased.ContinueWith(_ => _removing.Remove(key), TaskScheduler.Default);
 		return erased;
 	}
