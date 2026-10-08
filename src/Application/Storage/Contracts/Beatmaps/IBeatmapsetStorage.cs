@@ -2,22 +2,37 @@ using Basil.Domain.Beatmaps;
 
 namespace Basil.Application.Storage.Contracts.Beatmaps;
 
-/// <summary>Stores the <c>.osz</c> archives of beatmapsets.</summary>
+/// <summary>Stores the files of beatmapsets and offers each set as an .osz archive.</summary>
 public interface IBeatmapsetStorage
 {
-	/// <summary>Stores the archive of a beatmapset, replacing any archive already stored for it.</summary>
+	/// <summary>Stores a set's files from an .osz archive, replacing the files stored for it.</summary>
 	/// <param name="set">The beatmapset the archive belongs to.</param>
-	/// <param name="content">The archive bytes.</param>
+	/// <param name="archive">The archive to store.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task SaveAsync(Beatmapset set, Stream content, CancellationToken cancellationToken = default);
+	/// <exception cref="InvalidDataException">The archive is not a readable .osz, names a file outside the set, or is too large.</exception>
+	Task SaveAsync(Beatmapset set, Stream archive, CancellationToken cancellationToken = default);
 
-	/// <summary>Opens the stored archive of a beatmapset.</summary>
+	/// <summary>Lists the files of a set.</summary>
 	/// <param name="set">The beatmapset the archive belongs to.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>The archive bytes, or <see langword="null" /> when no archive is stored for the set.</returns>
-	Task<Stream?> OpenAsync(Beatmapset set, CancellationToken cancellationToken = default);
+	/// <returns>The files' names relative to the set, with '/' between folders; empty when nothing is stored for the set.</returns>
+	Task<IReadOnlyList<string>> ListAsync(Beatmapset set, CancellationToken cancellationToken = default);
 
-	/// <summary>Deletes the stored archive of a beatmapset; deleting a missing archive does nothing.</summary>
+	/// <summary>Opens one file of a set.</summary>
+	/// <param name="set">The beatmapset whose file to open.</param>
+	/// <param name="name">The file's name relative to the set; case and '/' or '\\' do not matter.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The file's content, seekable; or <see langword="null" /> when the set has no such file.</returns>
+	Task<Stream?> OpenAsync(Beatmapset set, string name, CancellationToken cancellationToken = default);
+
+	/// <summary>Opens a set as an .osz archive.</summary>
+	/// <param name="set">The beatmapset to open.</param>
+	/// <param name="withVideo">Whether the archive includes the set's videos.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The archive, seekable; or <see langword="null" /> when nothing is stored for the set.</returns>
+	Task<Stream?> OpenArchiveAsync(Beatmapset set, bool withVideo, CancellationToken cancellationToken = default);
+
+	/// <summary>Deletes a set's files and archives; deleting a missing set does nothing.</summary>
 	/// <param name="set">The beatmapset the archive belongs to.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	Task DeleteAsync(Beatmapset set, CancellationToken cancellationToken = default);

@@ -146,17 +146,12 @@ internal sealed class BeatmapsetService(
 		var forgotten = 0;
 		foreach (var set in allSets)
 		{
-			var archiveStream = await archives.OpenAsync(set, cancellationToken);
-			if (archiveStream is null)
+			if ((await archives.ListAsync(set, cancellationToken)).Count == 0)
 			{
 				await beatmaps.RetainAsync(set, [], cancellationToken);
 				await beatmapsets.DeleteAsync(set, cancellationToken);
 				_events.Writer.TryWrite(new BeatmapsetDeleted(set));
 				forgotten++;
-			}
-			else
-			{
-				await archiveStream.DisposeAsync();
 			}
 		}
 

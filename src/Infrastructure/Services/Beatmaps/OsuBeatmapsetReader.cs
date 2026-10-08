@@ -11,6 +11,9 @@ namespace Basil.Infrastructure.Services.Beatmaps;
 /// <summary>Reads a beatmapset archive using ppy's osu!lazer legacy decoder.</summary>
 internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 {
+	// ponytail: cap each difficulty at 16 MiB; raise this only if valid osu! difficulty files exceed it.
+	private const int MaxOsuBytes = 16 * 1024 * 1024;
+
 	/// <inheritdoc />
 	/// <remarks>
 	///     An archive that is not a valid zip, or that contains no decodable difficulty, yields
@@ -37,10 +40,21 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 			foreach (var entry in zip.Entries)
 			{
 				if (!entry.Name.EndsWith(".osu", StringComparison.OrdinalIgnoreCase)) continue;
+				if (entry.Length > MaxOsuBytes) continue;
 
 				using var buffer = new MemoryStream();
 				using (var entryStream = entry.Open())
-					entryStream.CopyTo(buffer);
+				{
+					var chunk = new byte[81920];
+					var remaining = MaxOsuBytes;
+					while (remaining > 0)
+					{
+						var read = entryStream.Read(chunk, 0, Math.Min(chunk.Length, remaining));
+						if (read == 0) break;
+						buffer.Write(chunk, 0, read);
+						remaining -= read;
+					}
+				}
 
 				var bytes = buffer.ToArray();
 				var decoded = TryDecode(bytes);

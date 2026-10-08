@@ -1,62 +1,395 @@
-using System.Text;
+using System.Collections.Concurrent;
+using System.Globalization;
 using Basil.Application.Storage.Contracts.Beatmaps;
 using Basil.Domain.Beatmaps;
+using Microsoft.Extensions.Logging;
+using SharpZip = ICSharpCode.SharpZipLib.Zip;
 
 namespace Basil.Infrastructure.Storage.Files;
 
-/// <summary>Stores the <c>.osz</c> archives of beatmapsets, one file per set, named after the set.</summary>
-/// <remarks>
-///     A set's archive is located by the leading id of its file name, so it is found and replaced even
-///     when the set's artist or title no longer match the name the file was stored under.
-/// </remarks>
-internal sealed class FileBeatmapsetStorage(DataPaths paths) : IBeatmapsetStorage
+/// <summary>Stores beatmapset files and offers each set as an .osz archive.</summary>
+internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmapsetStorage> logger) : IBeatmapsetStorage
 {
-	/// <inheritdoc />
-	public async Task SaveAsync(Beatmapset set, Stream content, CancellationToken cancellationToken = default)
+	private static readonly HashSet<string> VideoExtensions = new(StringComparer.OrdinalIgnoreCase)
 	{
-		var target = Path.Combine(paths.Beatmapsets, Name(set));
-		await FileStorage.SaveAsync(target, content, cancellationToken);
-		FileStorage.DeleteExcept(paths.Beatmapsets, $"{set.Id} *.osz", target);
-	}
+		".mp4", ".avi", ".flv", ".m4v", ".mkv", ".mov", ".mpg", ".mpeg", ".webm", ".wmv"
+	};
+
+	// ponytail: 2,000 files and 2 GiB declared unpacked; raise these only if legitimate osu! sets exceed them.
+	private const int MaxFiles = 2_000;
+	private const long MaxUnpackedBytes = 2L * 1024 * 1024 * 1024;
+	private static readonly ConcurrentDictionary<int, SemaphoreSlim> SetLocks = new();
 
 	/// <inheritdoc />
-	public Task<Stream?> OpenAsync(Beatmapset set, CancellationToken cancellationToken = default)
+	public async Task SaveAsync(Beatmapset set, Stream archive, CancellationToken cancellationToken = default)
 	{
-		var files = FileStorage.Files(paths.Beatmapsets, $"{set.Id} *.osz");
-		var path = files is null ? null : files.FirstOrDefault();
-		return Task.FromResult<Stream?>(path is null ? null : FileStorage.Open(path));
-	}
-
-	/// <inheritdoc />
-	public Task DeleteAsync(Beatmapset set, CancellationToken cancellationToken = default)
-	{
-		var files = FileStorage.Files(paths.Beatmapsets, $"{set.Id} *.osz");
-		if (files is not null)
+		var id = set.Id.ToString(CultureInfo.InvariantCulture);
+		var archiveFolder = ArchiveFolder(id);
+		var setFolder = SetFolder(id);
+		var uploadPath = Path.Combine(archiveFolder, $"upload-{Guid.NewGuid():N}.tmp");
+		var unpackFolder = Path.Combine(paths.Beatmaps, $"{id}.unpack-{Guid.NewGuid():N}");
+		var gate = SetLocks.GetOrAdd(set.Id, static _ => new SemaphoreSlim(1, 1));
+		await gate.WaitAsync(cancellationToken);
+		try
 		{
-			foreach (var file in files)
-				File.Delete(file);
+			Directory.CreateDirectory(archiveFolder);
+			await using (var upload = new FileStream(uploadPath, FileMode.CreateNew, FileAccess.Write, FileShare.None,
+				             81920, FileOptions.Asynchronous))
+				await archive.CopyToAsync(upload, cancellationToken);
+
+			try
+			{
+				Unpack(uploadPath, unpackFolder, cancellationToken);
+			}
+			catch (Exception exception) when (exception is SharpZip.ZipException or InvalidDataException or ArgumentException)
+			{
+				DeleteDirectoryIfExists(unpackFolder);
+				throw new InvalidDataException($"The beatmapset archive is invalid: {exception.Message}", exception);
+			}
+
+			var oldFolder = Path.Combine(paths.Beatmaps, $"{id}.old-{Guid.NewGuid():N}");
+			var movedOldFolder = false;
+			if (Directory.Exists(setFolder))
+			{
+				Directory.Move(setFolder, oldFolder);
+				movedOldFolder = true;
+			}
+
+			try
+			{
+				Directory.Move(unpackFolder, setFolder);
+			}
+			catch
+			{
+				if (movedOldFolder && !Directory.Exists(setFolder)) Directory.Move(oldFolder, setFolder);
+				throw;
+			}
+
+			if (movedOldFolder)
+			{
+				try
+				{
+					Directory.Delete(oldFolder, true);
+				}
+				catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+				{
+					logger.LogWarning(exception, "Could not remove the previous files of beatmapset {SetId}.", set.Id);
+				}
+			}
+
+			File.Move(uploadPath, Path.Combine(archiveFolder, "full.osz"), overwrite: true);
+			var noVideoPath = Path.Combine(archiveFolder, "novideo.osz");
+			if (File.Exists(noVideoPath)) File.Delete(noVideoPath);
+		}
+		finally
+		{
+			DeleteDirectoryIfExists(unpackFolder);
+			if (File.Exists(uploadPath)) File.Delete(uploadPath);
+			gate.Release();
+		}
+	}
+
+	/// <inheritdoc />
+	public async Task<IReadOnlyList<string>> ListAsync(Beatmapset set, CancellationToken cancellationToken = default)
+	{
+		var folder = SetFolder(set.Id.ToString(CultureInfo.InvariantCulture));
+		var gate = SetLocks.GetOrAdd(set.Id, static _ => new SemaphoreSlim(1, 1));
+		await gate.WaitAsync(cancellationToken);
+		try
+		{
+			if (!Directory.Exists(folder)) return [];
+			return Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories)
+				.Select(path => Path.GetRelativePath(folder, path).Replace('\\', '/'))
+				.Order(StringComparer.Ordinal)
+				.ToArray();
+		}
+		finally
+		{
+			gate.Release();
+		}
+	}
+
+	/// <inheritdoc />
+	public async Task<Stream?> OpenAsync(Beatmapset set, string name, CancellationToken cancellationToken = default)
+	{
+		var folder = SetFolder(set.Id.ToString(CultureInfo.InvariantCulture));
+		var gate = SetLocks.GetOrAdd(set.Id, static _ => new SemaphoreSlim(1, 1));
+		await gate.WaitAsync(cancellationToken);
+		try
+		{
+			if (!Directory.Exists(folder)) return null;
+
+			var normalised = name.Replace('\\', '/');
+			string path;
+			try
+			{
+				path = SafePath.Combine(folder, normalised);
+			}
+			catch (ArgumentException)
+			{
+				return null;
+			}
+
+			if (File.Exists(path)) return OpenRead(path);
+			foreach (var candidate in Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories))
+				if (string.Equals(Path.GetRelativePath(folder, candidate).Replace('\\', '/'), normalised,
+					    StringComparison.OrdinalIgnoreCase))
+					return OpenRead(candidate);
+
+			return null;
+		}
+		finally
+		{
+			gate.Release();
+		}
+	}
+
+	/// <inheritdoc />
+	public async Task<Stream?> OpenArchiveAsync(Beatmapset set, bool withVideo,
+		CancellationToken cancellationToken = default)
+	{
+		var id = set.Id.ToString(CultureInfo.InvariantCulture);
+		var folder = SetFolder(id);
+
+		var gate = SetLocks.GetOrAdd(set.Id, static _ => new SemaphoreSlim(1, 1));
+		await gate.WaitAsync(cancellationToken);
+		try
+		{
+			if (!Directory.Exists(folder)) return null;
+			var archiveFolder = ArchiveFolder(id);
+			Directory.CreateDirectory(archiveFolder);
+			var fullPath = Path.Combine(archiveFolder, "full.osz");
+			if (!File.Exists(fullPath)) BuildArchive(folder, fullPath, cancellationToken);
+
+			if (withVideo || !HasVideo(folder)) return OpenRead(fullPath);
+
+			var noVideoPath = Path.Combine(archiveFolder, "novideo.osz");
+			if (!File.Exists(noVideoPath))
+			{
+				var tempPath = Path.Combine(archiveFolder, $"novideo-{Guid.NewGuid():N}.tmp");
+				try
+				{
+					File.Copy(fullPath, tempPath);
+					using (var zip = new SharpZip.ZipFile(tempPath))
+					{
+						zip.BeginUpdate();
+						var videos = zip.Cast<SharpZip.ZipEntry>()
+							.Where(entry => !entry.IsDirectory && VideoExtensions.Contains(Path.GetExtension(entry.Name)))
+							.ToArray();
+						foreach (var entry in videos) zip.Delete(entry);
+						zip.CommitUpdate();
+					}
+					File.Move(tempPath, noVideoPath, overwrite: true);
+				}
+				finally
+				{
+					if (File.Exists(tempPath)) File.Delete(tempPath);
+				}
+			}
+
+			return OpenRead(noVideoPath);
+		}
+		finally
+		{
+			gate.Release();
+		}
+	}
+
+	/// <inheritdoc />
+	public async Task DeleteAsync(Beatmapset set, CancellationToken cancellationToken = default)
+	{
+		var id = set.Id.ToString(CultureInfo.InvariantCulture);
+		var gate = SetLocks.GetOrAdd(set.Id, static _ => new SemaphoreSlim(1, 1));
+		await gate.WaitAsync(cancellationToken);
+		try
+		{
+			DeleteDirectoryIfExists(SetFolder(id));
+			DeleteDirectoryIfExists(ArchiveFolder(id));
+		}
+		finally
+		{
+			gate.Release();
+		}
+	}
+
+	internal async Task SyncArchivesAsync(int setId, CancellationToken cancellationToken)
+	{
+		var id = setId.ToString(CultureInfo.InvariantCulture);
+		var folder = SetFolder(id);
+		var archiveFolder = ArchiveFolder(id);
+		var gate = SetLocks.GetOrAdd(setId, static _ => new SemaphoreSlim(1, 1));
+		await gate.WaitAsync(cancellationToken);
+		try
+		{
+			if (!Directory.Exists(folder))
+			{
+				DeleteDirectoryIfExists(archiveFolder);
+				return;
+			}
+
+			if (!Directory.Exists(archiveFolder)) return;
+			var allFiles = Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories).ToArray();
+			var changedFiles = new HashSet<string>(StringComparer.Ordinal);
+			var fullPath = Path.Combine(archiveFolder, "full.osz");
+			if (File.Exists(fullPath))
+				SyncArchive(fullPath, allFiles, folder, includeVideo: true, changedFiles, cancellationToken);
+
+			var noVideoPath = Path.Combine(archiveFolder, "novideo.osz");
+			if (File.Exists(noVideoPath))
+				SyncArchive(noVideoPath, allFiles, folder, includeVideo: false, changedFiles, cancellationToken);
+
+			if (!HasVideo(folder) && File.Exists(noVideoPath)) File.Delete(noVideoPath);
+			foreach (var name in changedFiles)
+				if (Path.GetExtension(name).Equals(".osu", StringComparison.OrdinalIgnoreCase))
+					logger.LogWarning("Beatmap file {Name} of set {SetId} changed on disk; import the set again to update its beatmaps",
+						name, setId);
+		}
+		finally
+		{
+			gate.Release();
+		}
+	}
+
+	internal IEnumerable<int> StoredSetIds()
+	{
+		if (!Directory.Exists(paths.Beatmaps)) yield break;
+		foreach (var folder in Directory.EnumerateDirectories(paths.Beatmaps))
+		{
+			var name = Path.GetFileName(folder);
+			if (name.Length > 0 && name.All(char.IsAsciiDigit) &&
+			    int.TryParse(name, NumberStyles.None, CultureInfo.InvariantCulture, out var id))
+				yield return id;
+		}
+	}
+
+	private void Unpack(string archivePath, string unpackFolder, CancellationToken cancellationToken)
+	{
+		Directory.CreateDirectory(unpackFolder);
+		using var zip = new SharpZip.ZipFile(archivePath);
+		var fileCount = 0;
+		long totalSize = 0;
+		var buffer = new byte[81920];
+		foreach (SharpZip.ZipEntry entry in zip)
+		{
+			cancellationToken.ThrowIfCancellationRequested();
+			if (entry.IsDirectory) continue;
+			if (++fileCount > MaxFiles) throw new InvalidDataException($"The archive contains more than {MaxFiles} files.");
+			if (entry.Size < 0 || entry.Size > MaxUnpackedBytes - totalSize)
+				throw new InvalidDataException($"The archive contains more than {MaxUnpackedBytes} bytes of files.");
+			totalSize += entry.Size;
+
+			var name = entry.Name.Replace('\\', '/');
+			var path = SafePath.Combine(unpackFolder, name);
+			var parent = Path.GetDirectoryName(path);
+			if (!string.IsNullOrEmpty(parent)) Directory.CreateDirectory(parent);
+			using var input = zip.GetInputStream(entry);
+			using var output = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920,
+				FileOptions.Asynchronous);
+			long copied = 0;
+			while (copied < entry.Size)
+			{
+				cancellationToken.ThrowIfCancellationRequested();
+				var read = input.Read(buffer, 0, (int)Math.Min(buffer.Length, entry.Size - copied));
+				if (read == 0) break;
+				output.Write(buffer, 0, read);
+				copied += read;
+			}
+			if (copied != entry.Size) throw new InvalidDataException($"File '{name}' is shorter than its declared size.");
+			if (input.ReadByte() != -1) throw new InvalidDataException($"File '{name}' is larger than its declared size.");
+			File.SetLastWriteTime(path, entry.DateTime);
+		}
+	}
+
+	private static void SyncArchive(string archivePath, string[] allFiles, string setFolder, bool includeVideo,
+		ISet<string> changedFiles, CancellationToken cancellationToken)
+	{
+		var files = allFiles
+			.Where(path => includeVideo || !IsVideo(path))
+			.Select(path => (Path: path, Name: Path.GetRelativePath(setFolder, path).Replace('\\', '/')))
+			.ToArray();
+		using var zip = new SharpZip.ZipFile(archivePath);
+		var entries = zip.Cast<SharpZip.ZipEntry>().ToList();
+		var filesByName = files.ToDictionary(file => file.Name, StringComparer.Ordinal);
+		var toDelete = new List<SharpZip.ZipEntry>();
+		var toAdd = new List<(string Path, string Name)>();
+		foreach (var file in files)
+		{
+			cancellationToken.ThrowIfCancellationRequested();
+			var matches = entries.Where(entry => !entry.IsDirectory && string.Equals(entry.Name.Replace('\\', '/'), file.Name,
+				StringComparison.Ordinal)).ToArray();
+			var info = new FileInfo(file.Path);
+			if (matches.Length == 1 && matches[0].Size == info.Length &&
+			    Math.Abs((matches[0].DateTime - info.LastWriteTime).TotalSeconds) <= 2)
+				continue;
+
+			toDelete.AddRange(matches);
+			toAdd.Add(file);
+			changedFiles.Add(file.Name);
 		}
 
-		return Task.CompletedTask;
+		foreach (var entry in entries)
+		{
+			cancellationToken.ThrowIfCancellationRequested();
+			var name = entry.Name.Replace('\\', '/');
+			if (filesByName.ContainsKey(name) && !toDelete.Any(candidate => ReferenceEquals(candidate, entry))) continue;
+			if (!toDelete.Any(candidate => ReferenceEquals(candidate, entry))) toDelete.Add(entry);
+		}
+
+		if (toDelete.Count > 0 || toAdd.Count > 0)
+		{
+			zip.BeginUpdate();
+			foreach (var entry in toDelete) zip.Delete(entry);
+			foreach (var file in toAdd) zip.Add(file.Path, file.Name);
+			zip.CommitUpdate();
+		}
 	}
 
-	/// <summary>Builds the name of a beatmapset's archive file.</summary>
-	/// <param name="set">The beatmapset.</param>
-	/// <returns>The file name, with invalid file-name characters replaced by underscores.</returns>
-	private static string Name(Beatmapset set)
+	private void BuildArchive(string setFolder, string archivePath, CancellationToken cancellationToken)
 	{
-		return Sanitize($"{set.Id} {set.Value.Artist} - {set.Value.Title}") + ".osz";
+		var tempPath = Path.Combine(Path.GetDirectoryName(archivePath)!, $"full-{Guid.NewGuid():N}.tmp");
+		try
+		{
+			using (var zip = new SharpZip.ZipOutputStream(File.Create(tempPath)))
+			{
+				var buffer = new byte[81920];
+				foreach (var path in Directory.EnumerateFiles(setFolder, "*", SearchOption.AllDirectories))
+				{
+					cancellationToken.ThrowIfCancellationRequested();
+					var name = Path.GetRelativePath(setFolder, path).Replace('\\', '/');
+					var info = new FileInfo(path);
+					zip.PutNextEntry(new SharpZip.ZipEntry(name)
+					{
+						DateTime = info.LastWriteTime,
+						Size = info.Length
+					});
+					using var input = File.OpenRead(path);
+					int read;
+					while ((read = input.Read(buffer, 0, buffer.Length)) > 0) zip.Write(buffer, 0, read);
+				}
+			}
+			File.Move(tempPath, archivePath, overwrite: true);
+		}
+		finally
+		{
+			if (File.Exists(tempPath)) File.Delete(tempPath);
+		}
 	}
 
-	/// <summary>Replaces the invalid file-name characters of a name and cuts it to 200 characters.</summary>
-	/// <param name="name">The name to sanitize.</param>
-	/// <returns>The sanitized name, at most 200 characters.</returns>
-	private static string Sanitize(string name)
-	{
-		var builder = new StringBuilder(name.Length);
-		foreach (var character in name)
-			builder.Append(Path.GetInvalidFileNameChars().Contains(character) ? '_' : character);
+	private string SetFolder(string id) => Path.Combine(paths.Beatmaps, id);
 
-		return builder.ToString(0, Math.Min(builder.Length, 200));
+	private string ArchiveFolder(string id) => Path.Combine(paths.BeatmapArchives, id);
+
+	private static FileStream OpenRead(string path) =>
+		new(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete, 4096,
+			FileOptions.Asynchronous);
+
+	private static bool HasVideo(string folder) =>
+		Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories).Any(IsVideo);
+
+	private static bool IsVideo(string path) => VideoExtensions.Contains(Path.GetExtension(path));
+
+	private static void DeleteDirectoryIfExists(string path)
+	{
+		if (Directory.Exists(path)) Directory.Delete(path, true);
 	}
 }

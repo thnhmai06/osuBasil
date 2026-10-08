@@ -18,6 +18,11 @@ public interface IBeatmapAssets
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The file's content, or <see langword="null" /> when the set has no such file.</returns>
 	Task<Stream?> OpenAsync(Beatmapset set, BeatmapsetAsset asset, CancellationToken cancellationToken = default);
+
+	/// <summary>Discards the files derived from a beatmapset, such as its audio preview; they are made again when next asked for.</summary>
+	/// <param name="set">The beatmapset.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	Task ForgetAsync(Beatmapset set, CancellationToken cancellationToken = default);
 }
 
 /// <summary>The files of one beatmap.</summary>

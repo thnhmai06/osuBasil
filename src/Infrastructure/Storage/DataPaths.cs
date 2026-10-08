@@ -16,8 +16,8 @@ internal sealed class DataPaths(IOptions<StorageOptions> options)
 	/// <summary>Gets the directory that holds every stored file.</summary>
 	public string Root => root;
 
-	/// <summary>Gets the directory that holds the imported beatmapset archives.</summary>
-	public string Beatmapsets => Path.Combine(root, "Beatmapsets");
+	/// <summary>Gets the directory that holds the files of stored beatmapsets, one directory per set.</summary>
+	public string Beatmaps => Path.Combine(root, "Beatmaps");
 
 	/// <summary>Gets the directory that holds stored replays.</summary>
 	public string Replays => Path.Combine(root, "Replays");
@@ -40,12 +40,16 @@ internal sealed class DataPaths(IOptions<StorageOptions> options)
 	/// <summary>Gets the directory that holds files rebuilt from their sources.</summary>
 	public string Cache => Path.Combine(root, "Cache");
 
+	/// <summary>Gets the directory that holds the .osz archives built from stored beatmapsets.</summary>
+	public string BeatmapArchives => Path.Combine(Cache, "Beatmaps");
+
 	/// <summary>Creates every directory the server stores files in.</summary>
 	public void CreateDirectories()
 	{
 		foreach (var directory in new[]
 		         {
-			         Root, Beatmapsets, Replays, Avatars, MenuBanners, MenuSeasonals, MenuIcon, Faqs, Cache
+			         Root, Beatmaps, Replays, Avatars, MenuBanners, MenuSeasonals, MenuIcon, Faqs, Cache,
+			         BeatmapArchives
 		         })
 			Directory.CreateDirectory(directory);
 	}

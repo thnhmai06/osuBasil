@@ -33,6 +33,7 @@ public static class DependencyInjection
 
 		services.AddSingleton<IEventHandler<UserEvent>, ConnectionHandler>();
 		services.AddSingleton<IEventHandler<ScoreEvent>, ScoreHandler>();
+		services.AddSingleton<IEventHandler<BeatmapsetEvent>, BeatmapAssetsHandler>();
 		services.AddSingleton<MatchRecorder>();
 		services.AddSingleton<IEventHandler<RoomEvent>>(sp => sp.GetRequiredService<MatchRecorder>());
 		services.AddSingleton<IEventHandler<LobbyEvent>>(sp => sp.GetRequiredService<MatchRecorder>());
