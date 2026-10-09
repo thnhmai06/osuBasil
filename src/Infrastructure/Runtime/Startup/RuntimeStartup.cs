@@ -6,7 +6,10 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Runtime.Startup;
 
-/// <summary>Prepares the runtime before the server serves anyone: opens the general channels and closes matches left unfinished.</summary>
+/// <summary>
+///     Prepares the runtime before the server serves anyone: opens the general channels and closes matches left
+///     unfinished.
+/// </summary>
 internal sealed class RuntimeStartup(
 	IChannelRepository channelRepository,
 	IChannelService channels,
@@ -18,7 +21,8 @@ internal sealed class RuntimeStartup(
 	{
 		var openedChannels = 0;
 		foreach (var channel in await channelRepository.ListAsync(cancellationToken))
-			if (channels.Open(channel) is not null) openedChannels++;
+			if (channels.Open(channel) is not null)
+				openedChannels++;
 		logger.LogInformation("Opened {ChannelCount} general channels.", openedChannels);
 
 		var closedMatches = await matches.CloseUnfinishedAsync(cancellationToken);
@@ -26,5 +30,8 @@ internal sealed class RuntimeStartup(
 	}
 
 	/// <inheritdoc />
-	public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+	public Task StopAsync(CancellationToken cancellationToken)
+	{
+		return Task.CompletedTask;
+	}
 }

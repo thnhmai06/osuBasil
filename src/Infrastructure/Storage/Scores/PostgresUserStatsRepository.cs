@@ -11,16 +11,22 @@ namespace Basil.Infrastructure.Storage.Scores;
 internal sealed class PostgresUserStatsRepository(Database database, DatabaseWriter writer)
 	: MemoryRepository<(int UserId, GameMode Mode), UserStats>(database, writer), IUserStatsRepository
 {
-	protected override (int UserId, GameMode Mode) KeyOf(UserStats item) => (item.UserId, item.Mode);
-
-	protected override Root RootOf(UserStats item) => Root.User(item.UserId);
+	protected override string WriteSql =>
+		"""
+		insert into user_stats (user_id, mode, total_score, ranked_score, play_count)
+		values (@UserId, @Mode, @TotalScore, @RankedScore, @PlayCount)
+		on conflict (user_id, mode) do update set
+			total_score = excluded.total_score,
+			ranked_score = excluded.ranked_score,
+			play_count = excluded.play_count;
+		""";
 
 	/// <inheritdoc />
 	public async ValueTask<UserStats> GetAsync(User user, GameMode mode, CancellationToken cancellationToken = default)
 	{
 		var key = (user.Id, mode);
 		return await FindAsync(key, cancellationToken)
-			?? Track(new UserStats { UserId = user.Id, Mode = mode });
+		       ?? Track(new UserStats { UserId = user.Id, Mode = mode });
 	}
 
 	/// <inheritdoc />
@@ -28,6 +34,16 @@ internal sealed class PostgresUserStatsRepository(Database database, DatabaseWri
 	{
 		_ = SaveAsync(stats);
 		return Task.CompletedTask;
+	}
+
+	protected override (int UserId, GameMode Mode) KeyOf(UserStats item)
+	{
+		return (item.UserId, item.Mode);
+	}
+
+	protected override Root RootOf(UserStats item)
+	{
+		return Root.User(item.UserId);
 	}
 
 	protected override void CopyTo(UserStats live, UserStats from)
@@ -41,7 +57,7 @@ internal sealed class PostgresUserStatsRepository(Database database, DatabaseWri
 	{
 		var row = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<StatsRow>(
 			"select user_id, mode, total_score, ranked_score, play_count from user_stats where user_id = @UserId and mode = @Mode",
-			new { UserId = key.UserId, Mode = (int)key.Mode }));
+			new { key.UserId, Mode = (int)key.Mode }));
 		return row is null
 			? null
 			: new UserStats
@@ -54,16 +70,6 @@ internal sealed class PostgresUserStatsRepository(Database database, DatabaseWri
 			};
 	}
 
-	protected override string WriteSql =>
-		"""
-		insert into user_stats (user_id, mode, total_score, ranked_score, play_count)
-		values (@UserId, @Mode, @TotalScore, @RankedScore, @PlayCount)
-		on conflict (user_id, mode) do update set
-			total_score = excluded.total_score,
-			ranked_score = excluded.ranked_score,
-			play_count = excluded.play_count;
-		""";
-
 	protected override object WriteParameters(UserStats stats)
 	{
 		var userId = stats.UserId;
@@ -71,7 +77,10 @@ internal sealed class PostgresUserStatsRepository(Database database, DatabaseWri
 		var totalScore = stats.TotalScore;
 		var rankedScore = stats.RankedScore;
 		var playCount = stats.PlayCount;
-		return new { UserId = userId, Mode = mode, TotalScore = totalScore, RankedScore = rankedScore, PlayCount = playCount };
+		return new
+		{
+			UserId = userId, Mode = mode, TotalScore = totalScore, RankedScore = rankedScore, PlayCount = playCount
+		};
 	}
 
 	/// <summary>A stored row of the <c>user_stats</c> table.</summary>

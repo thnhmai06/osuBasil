@@ -1,5 +1,6 @@
 using Basil.Application.Storage.Contracts.Beatmaps;
 using Basil.Application.Storage.Contracts.Common;
+using Basil.Domain.Beatmaps;
 using Dapper;
 
 namespace Basil.Infrastructure.Storage.Beatmaps;
@@ -107,7 +108,7 @@ internal static class BeatmapQueryFilter
 
 		// Basil reports every set as Approved; any other status matches nothing.
 		if (query.Status is { } status
-		    && status != Domain.Beatmaps.BeatmapStatus.Approved)
+		    && status != BeatmapStatus.Approved)
 			return "1 = 0";
 
 		return conditions.Count == 0 ? string.Empty : string.Join(" AND ", conditions);

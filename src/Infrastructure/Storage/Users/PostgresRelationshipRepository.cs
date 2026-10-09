@@ -9,7 +9,10 @@ using Dapper;
 namespace Basil.Infrastructure.Storage.Users;
 
 /// <summary>Stores the friends and blocks users set toward each other.</summary>
-internal sealed class PostgresRelationshipRepository(Database database, DatabaseWriter writer, IUserRepository users)
+internal sealed class PostgresRelationshipRepository(
+	Database database,
+	DatabaseWriter writer,
+	IUserRepository users)
 	: IRelationshipRepository
 {
 	private readonly OwnedLists<int, User, Relationship> _byActor = new();

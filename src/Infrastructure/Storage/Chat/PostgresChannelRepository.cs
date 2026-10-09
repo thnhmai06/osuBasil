@@ -15,14 +15,16 @@ internal sealed class PostgresChannelRepository(Database database) : IChannelRep
 	public Task<IReadOnlyList<GeneralChannel>> ListAsync(CancellationToken cancellationToken = default)
 	{
 		return Task.FromResult<IReadOnlyList<GeneralChannel>>(Volatile.Read(ref _channels)
-			?? throw new InvalidOperationException("Server channels are read before the storage has started."));
+		                                                      ?? throw new InvalidOperationException(
+			                                                      "Server channels are read before the storage has started."));
 	}
 
 	/// <inheritdoc />
 	public async Task LoadAsync(CancellationToken cancellationToken)
 	{
 		var rows = await database.ReadAsync(connection => connection.QueryAsync<ChannelRow>(
-			"select name, topic, read_permissions, write_permissions, auto_join, visible from channels order by name"), cancellationToken);
+				"select name, topic, read_permissions, write_permissions, auto_join, visible from channels order by name"),
+			cancellationToken);
 		_channels = rows.Select(row => row.ToChannel()).ToImmutableList();
 	}
 

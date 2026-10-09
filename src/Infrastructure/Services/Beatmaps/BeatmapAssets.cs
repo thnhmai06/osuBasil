@@ -36,6 +36,7 @@ internal sealed class BeatmapAssets(
 			var osuName = await OsuFileNameAsync(set, beatmap.Value.Hash, cancellationToken);
 			return osuName is null ? null : await storage.OpenAsync(set, osuName, cancellationToken);
 		}
+
 		if (asset is not (BeatmapAsset.Background or BeatmapAsset.Audio or BeatmapAsset.Video)) return null;
 
 		var info = await ReadBeatmapInfoAsync(set, beatmap.Value.Hash, cancellationToken);
@@ -58,10 +59,11 @@ internal sealed class BeatmapAssets(
 	{
 		return asset switch
 		{
-			BeatmapsetAsset.Archive => await storage.OpenArchiveAsync(set, withVideo: true, cancellationToken),
-			BeatmapsetAsset.ArchiveWithoutVideo => await storage.OpenArchiveAsync(set, withVideo: false, cancellationToken),
+			BeatmapsetAsset.Archive => await storage.OpenArchiveAsync(set, true, cancellationToken),
+			BeatmapsetAsset.ArchiveWithoutVideo => await storage.OpenArchiveAsync(set, false, cancellationToken),
 			BeatmapsetAsset.AudioPreview => await OpenAudioPreviewAsync(set, cancellationToken),
-			BeatmapsetAsset.Background or BeatmapsetAsset.Audio => await OpenSetSharedAssetAsync(set, asset, cancellationToken),
+			BeatmapsetAsset.Background or BeatmapsetAsset.Audio => await OpenSetSharedAssetAsync(set, asset,
+				cancellationToken),
 			BeatmapsetAsset.Storyboard => await OpenStoryboardAsync(set, cancellationToken),
 			_ => null
 		};
@@ -80,6 +82,7 @@ internal sealed class BeatmapAssets(
 			cancellationToken.ThrowIfCancellationRequested();
 			File.Delete(path);
 		}
+
 		return Task.CompletedTask;
 	}
 
@@ -96,6 +99,7 @@ internal sealed class BeatmapAssets(
 			await stream.CopyToAsync(content, cancellationToken);
 			if (new Md5(content.ToArray()) == hash) return name;
 		}
+
 		return null;
 	}
 
@@ -177,7 +181,7 @@ internal sealed class BeatmapAssets(
 			try
 			{
 				await RunFfmpegAsync(audioPath, startSeconds, outputPath, cancellationToken);
-				File.Move(outputPath, path, overwrite: true);
+				File.Move(outputPath, path, true);
 				return true;
 			}
 			catch (FFMpegException exception)
@@ -236,13 +240,6 @@ internal sealed class BeatmapAssets(
 			.ProcessAsynchronously(true, new FFOptions { BinaryFolder = options.Value.FfmpegFolder ?? string.Empty });
 	}
 
-	/// <summary>The fields a <c>.osu</c> file declares that the asset layer needs.</summary>
-	/// <param name="AudioFile">The audio track's filename, or <see langword="null" /> when the file declares none.</param>
-	/// <param name="PreviewTime">The audio preview offset in milliseconds, 0 when undeclared or negative.</param>
-	/// <param name="BackgroundFile">The background image's filename, or <see langword="null" /> when none is declared.</param>
-	/// <param name="VideoFile">The video's filename, or <see langword="null" /> when no video is declared.</param>
-	private sealed record OsuInfo(string? AudioFile, int PreviewTime, string? BackgroundFile, string? VideoFile);
-
 	/// <summary>Reads the small slice of <c>.osu</c> the asset layer needs.</summary>
 	/// <remarks>
 	///     <c>[General]</c>'s <c>AudioFilename:</c> and <c>PreviewTime:</c>, and <c>[Events]</c>'s
@@ -271,7 +268,8 @@ internal sealed class BeatmapAssets(
 				if (audio is null && line.StartsWith("AudioFilename:", StringComparison.Ordinal))
 					audio = Unquote(line["AudioFilename:".Length..].Trim());
 				else if (line.StartsWith("PreviewTime:", StringComparison.Ordinal) &&
-				         int.TryParse(line["PreviewTime:".Length..].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var t))
+				         int.TryParse(line["PreviewTime:".Length..].Trim(), NumberStyles.Integer,
+					         CultureInfo.InvariantCulture, out var t))
 					preview = t;
 			}
 			else if (section == "[Events]")
@@ -301,4 +299,11 @@ internal sealed class BeatmapAssets(
 		if (first < 0 || last <= first) return null;
 		return line[(first + 1)..last];
 	}
+
+	/// <summary>The fields a <c>.osu</c> file declares that the asset layer needs.</summary>
+	/// <param name="AudioFile">The audio track's filename, or <see langword="null" /> when the file declares none.</param>
+	/// <param name="PreviewTime">The audio preview offset in milliseconds, 0 when undeclared or negative.</param>
+	/// <param name="BackgroundFile">The background image's filename, or <see langword="null" /> when none is declared.</param>
+	/// <param name="VideoFile">The video's filename, or <see langword="null" /> when no video is declared.</param>
+	private sealed record OsuInfo(string? AudioFile, int PreviewTime, string? BackgroundFile, string? VideoFile);
 }

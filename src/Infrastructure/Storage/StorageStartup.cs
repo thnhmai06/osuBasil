@@ -3,7 +3,8 @@ using Microsoft.Extensions.Hosting;
 namespace Basil.Infrastructure.Storage;
 
 /// <summary>Prepares the server's storage before anything else uses it.</summary>
-internal sealed class StorageStartup(DataPaths paths, DatabaseMigrator migrator, IEnumerable<IResident> residents) : IHostedService
+internal sealed class StorageStartup(DataPaths paths, DatabaseMigrator migrator, IEnumerable<IResident> residents)
+	: IHostedService
 {
 	/// <summary>Creates the data directories, brings the database up to date and loads resident data.</summary>
 	/// <param name="cancellationToken">A token that cancels the startup work.</param>
@@ -18,5 +19,8 @@ internal sealed class StorageStartup(DataPaths paths, DatabaseMigrator migrator,
 	/// <summary>Does nothing; the storage needs no shutdown work.</summary>
 	/// <param name="cancellationToken">A token that cancels the shutdown work.</param>
 	/// <returns>A completed task.</returns>
-	public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+	public Task StopAsync(CancellationToken cancellationToken)
+	{
+		return Task.CompletedTask;
+	}
 }

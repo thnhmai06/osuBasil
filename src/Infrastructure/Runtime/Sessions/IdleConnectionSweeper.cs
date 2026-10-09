@@ -14,7 +14,6 @@ internal sealed class IdleConnectionSweeper(
 	{
 		using var timer = new PeriodicTimer(TimeSpan.FromSeconds(100), time);
 		while (await timer.WaitForNextTickAsync(stoppingToken))
-		{
 			try
 			{
 				var closed = sessions.CloseIdle();
@@ -24,6 +23,5 @@ internal sealed class IdleConnectionSweeper(
 			{
 				logger.LogError(exception, "Could not close idle connections.");
 			}
-		}
 	}
 }

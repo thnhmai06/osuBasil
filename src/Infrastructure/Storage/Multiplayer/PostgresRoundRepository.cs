@@ -18,9 +18,22 @@ internal sealed class PostgresRoundRepository(
 {
 	private readonly OwnedLists<int, Match, Round> _byMatch = new();
 
-	protected override (int MatchId, int Number) KeyOf(Round item) => (item.Match.Id, item.Number);
-
-	protected override Root RootOf(Round item) => Root.Match(item.Match.Id);
+	protected override string WriteSql =>
+		"""
+		insert into rounds (match_id, number, beatmap_hash, mode, mods, freemods, team_type, win_condition, seed, started_at, ended_at, aborted)
+		values (@MatchId, @Number, @BeatmapHash, @Mode, @Mods, @Freemods, @TeamType, @WinCondition, @Seed, @StartedAt, @EndedAt, @Aborted)
+		on conflict (match_id, number) do update set
+			beatmap_hash = excluded.beatmap_hash,
+			mode = excluded.mode,
+			mods = excluded.mods,
+			freemods = excluded.freemods,
+			team_type = excluded.team_type,
+			win_condition = excluded.win_condition,
+			seed = excluded.seed,
+			started_at = excluded.started_at,
+			ended_at = excluded.ended_at,
+			aborted = excluded.aborted;
+		""";
 
 	/// <inheritdoc />
 	public Task CreateOrUpdateAsync(Round round, CancellationToken cancellationToken = default)
@@ -52,6 +65,16 @@ internal sealed class PostgresRoundRepository(
 		});
 	}
 
+	protected override (int MatchId, int Number) KeyOf(Round item)
+	{
+		return (item.Match.Id, item.Number);
+	}
+
+	protected override Root RootOf(Round item)
+	{
+		return Root.Match(item.Match.Id);
+	}
+
 	protected override async Task<Round?> LoadAsync((int MatchId, int Number) key)
 	{
 		var row = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<RoundRow>(
@@ -74,23 +97,6 @@ internal sealed class PostgresRoundRepository(
 		live.Aborted = from.Aborted;
 	}
 
-	protected override string WriteSql =>
-		"""
-			insert into rounds (match_id, number, beatmap_hash, mode, mods, freemods, team_type, win_condition, seed, started_at, ended_at, aborted)
-			values (@MatchId, @Number, @BeatmapHash, @Mode, @Mods, @Freemods, @TeamType, @WinCondition, @Seed, @StartedAt, @EndedAt, @Aborted)
-			on conflict (match_id, number) do update set
-				beatmap_hash = excluded.beatmap_hash,
-				mode = excluded.mode,
-				mods = excluded.mods,
-				freemods = excluded.freemods,
-				team_type = excluded.team_type,
-				win_condition = excluded.win_condition,
-				seed = excluded.seed,
-				started_at = excluded.started_at,
-				ended_at = excluded.ended_at,
-				aborted = excluded.aborted;
-			""";
-
 	protected override object WriteParameters(Round round)
 	{
 		return new
@@ -100,13 +106,13 @@ internal sealed class PostgresRoundRepository(
 			BeatmapHash = round.BeatmapHash.HashValue,
 			Mode = (int)round.Settings.Mode,
 			Mods = (int)round.Settings.Mods,
-			Freemods = round.Settings.Freemods,
+			round.Settings.Freemods,
 			TeamType = (int)round.Settings.TeamType,
 			WinCondition = (int)round.Settings.WinCondition,
 			round.Settings.Seed,
 			StartedAt = round.StartedAt.ToUniversalTime(),
 			EndedAt = round.EndedAt?.ToUniversalTime(),
-			Aborted = round.Aborted
+			round.Aborted
 		};
 	}
 

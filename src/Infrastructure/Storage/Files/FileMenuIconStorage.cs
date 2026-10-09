@@ -8,14 +8,6 @@ internal sealed class FileMenuIconStorage(DataPaths paths) : IMenuIconStorage, I
 	private (string Name, byte[] Content)? _icon;
 
 	/// <inheritdoc />
-	public async Task LoadAsync(CancellationToken cancellationToken)
-	{
-		Directory.CreateDirectory(paths.MenuIcon);
-		if (FileStorage.Files(paths.MenuIcon, "*")?.FirstOrDefault() is { } path)
-			_icon = (Path.GetFileName(path), await File.ReadAllBytesAsync(path, cancellationToken));
-	}
-
-	/// <inheritdoc />
 	public async Task SaveAsync(string name, Stream content, CancellationToken cancellationToken = default)
 	{
 		var path = SafePath.Combine(paths.MenuIcon, name);
@@ -34,7 +26,7 @@ internal sealed class FileMenuIconStorage(DataPaths paths) : IMenuIconStorage, I
 		if (_icon is not { } icon)
 			return Task.FromResult<(string Name, Stream Content)?>(null);
 
-		return Task.FromResult<(string Name, Stream Content)?>((icon.Name, new MemoryStream(icon.Content, writable: false)));
+		return Task.FromResult<(string Name, Stream Content)?>((icon.Name, new MemoryStream(icon.Content, false)));
 	}
 
 	/// <inheritdoc />
@@ -45,5 +37,13 @@ internal sealed class FileMenuIconStorage(DataPaths paths) : IMenuIconStorage, I
 			FileStorage.Delete(file);
 
 		return Task.CompletedTask;
+	}
+
+	/// <inheritdoc />
+	public async Task LoadAsync(CancellationToken cancellationToken)
+	{
+		Directory.CreateDirectory(paths.MenuIcon);
+		if (FileStorage.Files(paths.MenuIcon, "*")?.FirstOrDefault() is { } path)
+			_icon = (Path.GetFileName(path), await File.ReadAllBytesAsync(path, cancellationToken));
 	}
 }

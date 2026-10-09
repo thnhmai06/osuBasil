@@ -45,10 +45,12 @@ public static class DependencyInjection
 		services.AddSingleton<IResident>(provider => provider.GetRequiredService<PostgresChannelRepository>());
 
 		services.AddSingleton<PostgresSettingsRepository>();
-		services.AddSingleton<ISettingsRepository>(provider => provider.GetRequiredService<PostgresSettingsRepository>());
+		services.AddSingleton<ISettingsRepository>(provider =>
+			provider.GetRequiredService<PostgresSettingsRepository>());
 		services.AddSingleton<IResident>(provider => provider.GetRequiredService<PostgresSettingsRepository>());
 		services.AddSingleton<PostgresMenuBannerRepository>();
-		services.AddSingleton<IMenuBannerRepository>(provider => provider.GetRequiredService<PostgresMenuBannerRepository>());
+		services.AddSingleton<IMenuBannerRepository>(provider =>
+			provider.GetRequiredService<PostgresMenuBannerRepository>());
 		services.AddSingleton<IResident>(provider => provider.GetRequiredService<PostgresMenuBannerRepository>());
 		services.AddSingleton<FileMenuBannerStorage>();
 		services.AddSingleton<IMenuBannerStorage>(provider => provider.GetRequiredService<FileMenuBannerStorage>());
@@ -57,7 +59,8 @@ public static class DependencyInjection
 		services.AddSingleton<IMenuIconStorage>(provider => provider.GetRequiredService<FileMenuIconStorage>());
 		services.AddSingleton<IResident>(provider => provider.GetRequiredService<FileMenuIconStorage>());
 		services.AddSingleton<FileMenuSeasonalsStorage>();
-		services.AddSingleton<IMenuSeasonalsStorage>(provider => provider.GetRequiredService<FileMenuSeasonalsStorage>());
+		services.AddSingleton<IMenuSeasonalsStorage>(provider =>
+			provider.GetRequiredService<FileMenuSeasonalsStorage>());
 		services.AddSingleton<IResident>(provider => provider.GetRequiredService<FileMenuSeasonalsStorage>());
 		services.AddSingleton<FileFaqStorage>();
 		services.AddSingleton<IFaqStorage>(provider => provider.GetRequiredService<FileFaqStorage>());

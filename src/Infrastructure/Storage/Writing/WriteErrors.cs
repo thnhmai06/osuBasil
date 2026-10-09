@@ -21,12 +21,18 @@ internal static class WriteErrors
 		"42501"
 	}.ToFrozenSet();
 
-	/// <summary>Tells whether a write failed because of its environment (connection, server state, configuration), which makes it worth trying again.</summary>
-	public static bool IsEnvironment(Exception exception) => exception switch
+	/// <summary>
+	///     Tells whether a write failed because of its environment (connection, server state, configuration), which makes
+	///     it worth trying again.
+	/// </summary>
+	public static bool IsEnvironment(Exception exception)
 	{
-		PostgresException postgres => postgres.IsTransient || EnvironmentStates.Contains(postgres.SqlState),
-		NpgsqlException npgsql => npgsql.IsTransient,
-		TimeoutException => true,
-		_ => false
-	};
+		return exception switch
+		{
+			PostgresException postgres => postgres.IsTransient || EnvironmentStates.Contains(postgres.SqlState),
+			NpgsqlException npgsql => npgsql.IsTransient,
+			TimeoutException => true,
+			_ => false
+		};
+	}
 }

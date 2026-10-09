@@ -10,9 +10,12 @@ namespace Basil.Infrastructure.Storage.Users;
 internal sealed class PostgresCredentialRepository(Database database, DatabaseWriter writer)
 	: MemoryRepository<int, PostgresCredentialRepository.StoredCredential>(database, writer), ICredentialRepository
 {
-	protected override int KeyOf(StoredCredential item) => item.UserId;
-
-	protected override Root RootOf(StoredCredential item) => Root.User(item.UserId);
+	protected override string WriteSql =>
+		"""
+		insert into credentials (user_id, password_hash)
+		values (@UserId, @PasswordHash)
+		on conflict (user_id) do update set password_hash = excluded.password_hash;
+		""";
 
 	/// <inheritdoc />
 	public async Task<bool> VerifyAsync(Credentials credentials, CancellationToken cancellationToken = default)
@@ -29,7 +32,20 @@ internal sealed class PostgresCredentialRepository(Database database, DatabaseWr
 		return Task.CompletedTask;
 	}
 
-	protected override void CopyTo(StoredCredential live, StoredCredential from) => live.Hash = from.Hash;
+	protected override int KeyOf(StoredCredential item)
+	{
+		return item.UserId;
+	}
+
+	protected override Root RootOf(StoredCredential item)
+	{
+		return Root.User(item.UserId);
+	}
+
+	protected override void CopyTo(StoredCredential live, StoredCredential from)
+	{
+		live.Hash = from.Hash;
+	}
 
 	protected override async Task<StoredCredential?> LoadAsync(int key)
 	{
@@ -38,14 +54,10 @@ internal sealed class PostgresCredentialRepository(Database database, DatabaseWr
 		return hash is null ? null : new StoredCredential(key, hash);
 	}
 
-	protected override string WriteSql =>
-		"""
-			insert into credentials (user_id, password_hash)
-			values (@UserId, @PasswordHash)
-			on conflict (user_id) do update set password_hash = excluded.password_hash;
-			""";
-
-	protected override object WriteParameters(StoredCredential item) => new { item.UserId, PasswordHash = item.Hash };
+	protected override object WriteParameters(StoredCredential item)
+	{
+		return new { item.UserId, PasswordHash = item.Hash };
+	}
 
 	/// <summary>Holds one user's stored credential hash.</summary>
 	internal sealed class StoredCredential(int userId, string hash)

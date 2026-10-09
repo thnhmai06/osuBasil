@@ -6,16 +6,10 @@ using Dapper;
 namespace Basil.Infrastructure.Storage.Content;
 
 /// <summary>Stores the server-wide settings.</summary>
-internal sealed class PostgresSettingsRepository(Database database, DatabaseWriter writer) : ISettingsRepository, IResident
+internal sealed class PostgresSettingsRepository(Database database, DatabaseWriter writer)
+	: ISettingsRepository, IResident
 {
 	private ServerSettings? _settings;
-
-	/// <inheritdoc />
-	public ValueTask<ServerSettings> GetAsync(CancellationToken cancellationToken = default)
-	{
-		return ValueTask.FromResult(Volatile.Read(ref _settings)
-			?? throw new InvalidOperationException("Server settings are read before the storage has started."));
-	}
 
 	/// <inheritdoc />
 	public async Task LoadAsync(CancellationToken cancellationToken)
@@ -37,6 +31,14 @@ internal sealed class PostgresSettingsRepository(Database database, DatabaseWrit
 				MirrorDownloadEndpoint = Parse(row.MirrorDownloadEndpoint),
 				MirrorSearchEndpoint = Parse(row.MirrorSearchEndpoint)
 			};
+	}
+
+	/// <inheritdoc />
+	public ValueTask<ServerSettings> GetAsync(CancellationToken cancellationToken = default)
+	{
+		return ValueTask.FromResult(Volatile.Read(ref _settings)
+		                            ?? throw new InvalidOperationException(
+			                            "Server settings are read before the storage has started."));
 	}
 
 	/// <inheritdoc />

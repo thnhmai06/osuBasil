@@ -13,6 +13,25 @@ internal sealed class MatchRecorder(
 	IMatchEventRepository matchEvents) : IEventHandler<RoomEvent>, IEventHandler<LobbyEvent>
 {
 	/// <inheritdoc />
+	public async ValueTask HandleAsync(LobbyEvent @event, CancellationToken cancellationToken)
+	{
+		switch (@event)
+		{
+			case LobbyRoomOpened e:
+				await RecordMatchEventAsync(e.Room.Match, MatchEventType.Created, @event.Timestamp,
+					e.Room.Authority.Creator, cancellationToken: cancellationToken);
+				break;
+			case LobbyRoomClosed e:
+				if (e.AbortedRound is { } abortedRound)
+					await rounds.CreateOrUpdateAsync(abortedRound, cancellationToken);
+				await matches.CreateOrUpdateAsync(e.Room.Match, cancellationToken);
+				await RecordMatchEventAsync(e.Room.Match, MatchEventType.Closed, @event.Timestamp, e.By,
+					detail: e.By is null ? "Empty" : null, cancellationToken: cancellationToken);
+				break;
+		}
+	}
+
+	/// <inheritdoc />
 	public async ValueTask HandleAsync(RoomEvent @event, CancellationToken cancellationToken)
 	{
 		if (ProgressOf(@event) is { Completed: true } progress)
@@ -69,25 +88,6 @@ internal sealed class MatchRecorder(
 			RoomSlotLockChanged e => e.RoundProgress,
 			_ => null
 		};
-	}
-
-	/// <inheritdoc />
-	public async ValueTask HandleAsync(LobbyEvent @event, CancellationToken cancellationToken)
-	{
-		switch (@event)
-		{
-			case LobbyRoomOpened e:
-				await RecordMatchEventAsync(e.Room.Match, MatchEventType.Created, @event.Timestamp,
-					e.Room.Authority.Creator, cancellationToken: cancellationToken);
-				break;
-			case LobbyRoomClosed e:
-				if (e.AbortedRound is { } abortedRound)
-					await rounds.CreateOrUpdateAsync(abortedRound, cancellationToken);
-				await matches.CreateOrUpdateAsync(e.Room.Match, cancellationToken);
-				await RecordMatchEventAsync(e.Room.Match, MatchEventType.Closed, @event.Timestamp, e.By,
-					detail: e.By is null ? "Empty" : null, cancellationToken: cancellationToken);
-				break;
-		}
 	}
 
 	private async ValueTask RecordMatchEventAsync(

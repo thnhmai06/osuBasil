@@ -13,8 +13,8 @@ using Basil.Infrastructure.Runtime.Multiplayer;
 using Basil.Infrastructure.Runtime.Scores;
 using Basil.Infrastructure.Runtime.Sessions;
 using Basil.Infrastructure.Runtime.Startup;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 

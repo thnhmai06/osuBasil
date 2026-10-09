@@ -6,8 +6,8 @@ namespace Basil.Infrastructure.Storage.Writing;
 internal sealed class IdSequence(Database database, string table)
 {
 	private readonly SemaphoreSlim _loading = new(1, 1);
-	private bool _loaded;
 	private long _last;
+	private bool _loaded;
 
 	/// <summary>Gets the next id.</summary>
 	public async ValueTask<long> NextAsync(CancellationToken cancellationToken = default)

@@ -8,7 +8,6 @@ using osu.Game.Beatmaps.Formats;
 using osu.Game.Beatmaps.Legacy;
 using osu.Game.IO;
 using osu.Game.Rulesets;
-using osu.Game.Skinning;
 using osu.Game.Rulesets.Catch;
 using osu.Game.Rulesets.Catch.Objects;
 using osu.Game.Rulesets.Mania;
@@ -18,6 +17,7 @@ using osu.Game.Rulesets.Osu;
 using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Taiko;
 using osu.Game.Rulesets.Taiko.Objects;
+using osu.Game.Skinning;
 using osu.Game.Utils;
 using Beatmap = osu.Game.Beatmaps.Beatmap;
 
@@ -68,10 +68,15 @@ internal sealed class OsuBeatmapAnalyser : IBeatmapAnalyser
 		return new BeatmapAnalysis(difficulty, objects);
 	}
 
-	private static double Clamp(double value) => Math.Clamp(value, 0d, 10d);
+	private static double Clamp(double value)
+	{
+		return Math.Clamp(value, 0d, 10d);
+	}
 
-	private static double Round(double value, int digits) =>
-		Math.Round(value, digits, MidpointRounding.AwayFromZero);
+	private static double Round(double value, int digits)
+	{
+		return Math.Round(value, digits, MidpointRounding.AwayFromZero);
+	}
 
 	/// <summary>
 	///     Counts hit objects by concrete type into the per-mode <see cref="BeatmapObjects" /> subtype.
@@ -199,14 +204,29 @@ internal sealed class OsuBeatmapAnalyser : IBeatmapAnalyser
 	private sealed class StreamlessWorkingBeatmap(Beatmap beatmap)
 		: WorkingBeatmap(beatmap.BeatmapInfo, null)
 	{
-		protected override IBeatmap GetBeatmap() => beatmap;
+		protected override IBeatmap GetBeatmap()
+		{
+			return beatmap;
+		}
 
-		public override Texture? GetBackground() => null;
+		public override Texture? GetBackground()
+		{
+			return null;
+		}
 
-		protected override Track? GetBeatmapTrack() => null;
+		protected override Track? GetBeatmapTrack()
+		{
+			return null;
+		}
 
-		protected override ISkin? GetSkin() => null;
+		protected override ISkin? GetSkin()
+		{
+			return null;
+		}
 
-		public override Stream? GetStream(string storagePath) => null;
+		public override Stream? GetStream(string storagePath)
+		{
+			return null;
+		}
 	}
 }

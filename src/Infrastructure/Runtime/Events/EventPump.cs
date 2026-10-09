@@ -20,22 +20,18 @@ internal sealed class EventPump<T>(
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
 		await foreach (var @event in source.Events.ReadAllAsync(stoppingToken))
-		{
-			foreach (var handler in handlers)
+		foreach (var handler in handlers)
+			try
 			{
-				try
-				{
-					await handler.HandleAsync(@event, stoppingToken);
-				}
-				catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-				{
-					return;
-				}
-				catch (Exception exception)
-				{
-					logger.LogError(exception, "A handler for {Category} events failed.", typeof(T).Name);
-				}
+				await handler.HandleAsync(@event, stoppingToken);
 			}
-		}
+			catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+			{
+				return;
+			}
+			catch (Exception exception)
+			{
+				logger.LogError(exception, "A handler for {Category} events failed.", typeof(T).Name);
+			}
 	}
 }

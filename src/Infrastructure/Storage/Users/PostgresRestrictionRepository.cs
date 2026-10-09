@@ -8,14 +8,24 @@ using Dapper;
 namespace Basil.Infrastructure.Storage.Users;
 
 /// <summary>Stores the restrictions of users.</summary>
-internal sealed class PostgresRestrictionRepository(Database database, DatabaseWriter writer, IUserRepository users)
+internal sealed class PostgresRestrictionRepository(
+	Database database,
+	DatabaseWriter writer,
+	IUserRepository users)
 	: MemoryRepository<int, Restriction>(database, writer), IRestrictionRepository
 {
 	private readonly OwnedLists<int, User, Restriction> _byUser = new();
 
-	protected override int KeyOf(Restriction item) => item.Id;
-
-	protected override Root RootOf(Restriction item) => Root.User(item.Value.User.Id);
+	protected override string WriteSql =>
+		"""
+		insert into restrictions (id, user_id, permissions, starts_at, ends_at)
+		values (@Id, @UserId, @Permissions, @StartsAt, @EndsAt)
+		on conflict (id) do update set
+			user_id = excluded.user_id,
+			permissions = excluded.permissions,
+			starts_at = excluded.starts_at,
+			ends_at = excluded.ends_at;
+		""";
 
 	/// <inheritdoc />
 	public async Task<Restriction> CreateAsync(RestrictionData data, CancellationToken cancellationToken = default)
@@ -36,13 +46,14 @@ internal sealed class PostgresRestrictionRepository(Database database, DatabaseW
 			EndsAt = value.EndsAt?.ToUniversalTime()
 		};
 
-		var id = await Writer.WriteAsync(Root.User(user.Id), (connection, transaction) => connection.QuerySingleAsync<int>(
-			"""
-			insert into restrictions (user_id, permissions, starts_at, ends_at)
-			values (@UserId, @Permissions, @StartsAt, @EndsAt)
-			returning id;
-			""",
-			parameters, transaction), cancellationToken);
+		var id = await Writer.WriteAsync(Root.User(user.Id), (connection, transaction) =>
+			connection.QuerySingleAsync<int>(
+				"""
+				insert into restrictions (user_id, permissions, starts_at, ends_at)
+				values (@UserId, @Permissions, @StartsAt, @EndsAt)
+				returning id;
+				""",
+				parameters, transaction), cancellationToken);
 
 		var restriction = Track(new Restriction { Id = id, Value = value });
 		_byUser.Change(user.Id, user, current => Replace(current, restriction), Task.CompletedTask);
@@ -58,14 +69,11 @@ internal sealed class PostgresRestrictionRepository(Database database, DatabaseW
 		return Task.CompletedTask;
 	}
 
-	protected override void CopyTo(Restriction live, Restriction from)
-	{
-		live.Value.Permissions = from.Value.Permissions;
-		live.Value.EndsAt = from.Value.EndsAt;
-	}
-
 	/// <inheritdoc />
-	public ValueTask<Restriction?> GetAsync(int id, CancellationToken cancellationToken = default) => FindAsync(id, cancellationToken);
+	public ValueTask<Restriction?> GetAsync(int id, CancellationToken cancellationToken = default)
+	{
+		return FindAsync(id, cancellationToken);
+	}
 
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<Restriction>> ListAsync(User user, CancellationToken cancellationToken = default)
@@ -83,6 +91,22 @@ internal sealed class PostgresRestrictionRepository(Database database, DatabaseW
 		});
 	}
 
+	protected override int KeyOf(Restriction item)
+	{
+		return item.Id;
+	}
+
+	protected override Root RootOf(Restriction item)
+	{
+		return Root.User(item.Value.User.Id);
+	}
+
+	protected override void CopyTo(Restriction live, Restriction from)
+	{
+		live.Value.Permissions = from.Value.Permissions;
+		live.Value.EndsAt = from.Value.EndsAt;
+	}
+
 	protected override async Task<Restriction?> LoadAsync(int key)
 	{
 		var row = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<RestrictionRow>(
@@ -93,17 +117,6 @@ internal sealed class PostgresRestrictionRepository(Database database, DatabaseW
 		var user = await users.GetAsync(row.UserId);
 		return user is null ? null : ToRestriction(row, user);
 	}
-
-	protected override string WriteSql =>
-		"""
-		insert into restrictions (id, user_id, permissions, starts_at, ends_at)
-		values (@Id, @UserId, @Permissions, @StartsAt, @EndsAt)
-		on conflict (id) do update set
-			user_id = excluded.user_id,
-			permissions = excluded.permissions,
-			starts_at = excluded.starts_at,
-			ends_at = excluded.ends_at;
-		""";
 
 	protected override object WriteParameters(Restriction restriction)
 	{

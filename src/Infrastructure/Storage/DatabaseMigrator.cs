@@ -24,7 +24,9 @@ internal sealed class DatabaseMigrator(Database database)
 		await using (var createVersion = new NpgsqlCommand(
 			             "create table if not exists schema_version (id integer primary key check (id = 1), version integer not null)",
 			             connection, transaction))
+		{
 			await createVersion.ExecuteNonQueryAsync(cancellationToken);
+		}
 
 		var version = await ReadVersionAsync(connection, transaction, cancellationToken);
 		var lastApplied = 0;

@@ -6,14 +6,6 @@ namespace Basil.Infrastructure.Runtime.Beatmaps;
 
 internal static class BeatmapArchiveImporter
 {
-	internal enum ImportStatus
-	{
-		Imported,
-		Failed,
-		Locked,
-		Missing
-	}
-
 	internal static async Task<ImportStatus> ImportAsync(
 		string path,
 		IBeatmapsetService beatmapsets,
@@ -23,7 +15,7 @@ internal static class BeatmapArchiveImporter
 		FileStream archive;
 		try
 		{
-			archive = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, useAsync: true);
+			archive = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true);
 		}
 		catch (FileNotFoundException)
 		{
@@ -43,7 +35,9 @@ internal static class BeatmapArchiveImporter
 		try
 		{
 			await using (archive)
+			{
 				result = await beatmapsets.ImportAsync(archive, IdFromFileName(path), cancellationToken);
+			}
 		}
 		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
 		{
@@ -84,5 +78,13 @@ internal static class BeatmapArchiveImporter
 		return length > 0 && int.TryParse(name[..length], NumberStyles.None, CultureInfo.InvariantCulture, out var id)
 			? id
 			: null;
+	}
+
+	internal enum ImportStatus
+	{
+		Imported,
+		Failed,
+		Locked,
+		Missing
 	}
 }

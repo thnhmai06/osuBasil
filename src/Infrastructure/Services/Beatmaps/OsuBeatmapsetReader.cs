@@ -1,7 +1,6 @@
 using System.IO.Compression;
 using Basil.Application.Services.Contracts.Beatmaps;
 using Basil.Domain.Mechanics;
-using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Formats;
 using osu.Game.IO;
 using LazerBeatmap = osu.Game.Beatmaps.Beatmap;
@@ -28,7 +27,7 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 		ZipArchive zip;
 		try
 		{
-			zip = new ZipArchive(archive, ZipArchiveMode.Read, leaveOpen: true);
+			zip = new ZipArchive(archive, ZipArchiveMode.Read, true);
 		}
 		catch (InvalidDataException)
 		{
@@ -75,7 +74,9 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 		var onlineSetId = meta.BeatmapSet?.OnlineID is > 0 ? meta.BeatmapSet.OnlineID : (int?)null;
 		var artist = string.IsNullOrWhiteSpace(meta.Metadata.Artist) ? "Unknown" : meta.Metadata.Artist;
 		var title = string.IsNullOrWhiteSpace(meta.Metadata.Title) ? "Unknown" : meta.Metadata.Title;
-		var creator = string.IsNullOrWhiteSpace(meta.Metadata.Author.Username) ? "Unknown" : meta.Metadata.Author.Username;
+		var creator = string.IsNullOrWhiteSpace(meta.Metadata.Author.Username)
+			? "Unknown"
+			: meta.Metadata.Author.Username;
 
 		return Task.FromResult<BeatmapsetArchive?>(new BeatmapsetArchive(
 			onlineSetId, artist, title, creator, difficulties));

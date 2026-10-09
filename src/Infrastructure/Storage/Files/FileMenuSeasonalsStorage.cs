@@ -9,17 +9,11 @@ internal sealed class FileMenuSeasonalsStorage(DataPaths paths) : IMenuSeasonals
 	private readonly ConcurrentDictionary<string, byte[]> _files = new(StringComparer.Ordinal);
 
 	/// <inheritdoc />
-	public async Task LoadAsync(CancellationToken cancellationToken)
-	{
-		Directory.CreateDirectory(paths.MenuSeasonals);
-		foreach (var path in FileStorage.Files(paths.MenuSeasonals, "*")!)
-			_files[Path.GetFileName(path)] = await File.ReadAllBytesAsync(path, cancellationToken);
-	}
-
-	/// <inheritdoc />
 	public Task<IReadOnlyList<string>> ListAsync(CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult<IReadOnlyList<string>>([.. _files.Keys.OrderBy(name => name, StringComparer.OrdinalIgnoreCase)]);
+		return Task.FromResult<IReadOnlyList<string>>([
+			.. _files.Keys.OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+		]);
 	}
 
 	/// <inheritdoc />
@@ -36,7 +30,9 @@ internal sealed class FileMenuSeasonalsStorage(DataPaths paths) : IMenuSeasonals
 	public Task<Stream?> OpenAsync(string name, CancellationToken cancellationToken = default)
 	{
 		SafePath.Combine(paths.MenuSeasonals, name);
-		return Task.FromResult<Stream?>(_files.TryGetValue(name, out var bytes) ? new MemoryStream(bytes, writable: false) : null);
+		return Task.FromResult<Stream?>(_files.TryGetValue(name, out var bytes)
+			? new MemoryStream(bytes, false)
+			: null);
 	}
 
 	/// <inheritdoc />
@@ -63,6 +59,14 @@ internal sealed class FileMenuSeasonalsStorage(DataPaths paths) : IMenuSeasonals
 		_files.TryRemove(name, out _);
 		FileStorage.Delete(path);
 		return Task.CompletedTask;
+	}
+
+	/// <inheritdoc />
+	public async Task LoadAsync(CancellationToken cancellationToken)
+	{
+		Directory.CreateDirectory(paths.MenuSeasonals);
+		foreach (var path in FileStorage.Files(paths.MenuSeasonals, "*")!)
+			_files[Path.GetFileName(path)] = await File.ReadAllBytesAsync(path, cancellationToken);
 	}
 
 	private static async Task<byte[]> ReadAsync(Stream content, CancellationToken cancellationToken)

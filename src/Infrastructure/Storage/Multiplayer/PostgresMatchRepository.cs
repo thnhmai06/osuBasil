@@ -12,9 +12,17 @@ namespace Basil.Infrastructure.Storage.Multiplayer;
 internal sealed class PostgresMatchRepository(Database database, DatabaseWriter writer, IUserRepository users)
 	: MemoryRepository<int, Match>(database, writer), IMatchRepository
 {
-	protected override int KeyOf(Match item) => item.Id;
-
-	protected override Root RootOf(Match item) => Root.Match(item.Id);
+	protected override string WriteSql =>
+		"""
+		insert into matches (id, name, creator_id, started_at, ended_at, is_private)
+		values (@Id, @Name, @CreatorId, @StartedAt, @EndedAt, @IsPrivate)
+		on conflict (id) do update set
+			name = excluded.name,
+			creator_id = excluded.creator_id,
+			started_at = excluded.started_at,
+			ended_at = excluded.ended_at,
+			is_private = excluded.is_private;
+		""";
 
 	/// <inheritdoc />
 	public async Task<Match> CreateAsync(MatchData data, CancellationToken cancellationToken = default)
@@ -39,15 +47,11 @@ internal sealed class PostgresMatchRepository(Database database, DatabaseWriter 
 		return Task.CompletedTask;
 	}
 
-	protected override void CopyTo(Match live, Match from)
-	{
-		live.Value.Name = from.Value.Name;
-		live.Value.EndedAt = from.Value.EndedAt;
-		live.Value.IsPrivate = from.Value.IsPrivate;
-	}
-
 	/// <inheritdoc />
-	public ValueTask<Match?> GetAsync(int id, CancellationToken cancellationToken = default) => FindAsync(id, cancellationToken);
+	public ValueTask<Match?> GetAsync(int id, CancellationToken cancellationToken = default)
+	{
+		return FindAsync(id, cancellationToken);
+	}
 
 	/// <inheritdoc />
 	public async Task<Page<Match>> ListAsync(MatchQuery query, PageRequest page,
@@ -57,19 +61,36 @@ internal sealed class PostgresMatchRepository(Database database, DatabaseWriter 
 		var (total, rows) = await Database.ReadAsync(async connection => (
 			await connection.ExecuteScalarAsync<int>($"select count(*) from matches {where}"),
 			await connection.QueryAsync<MatchRow>(
-			$"""
-			 select id, name, creator_id, started_at, ended_at, is_private from matches
-			 {where}
-			 order by started_at desc, id desc
-			 limit @Limit offset @Offset
-			""",
-			new { Limit = page.Limit, Offset = page.Offset })), cancellationToken);
+				$"""
+				  select id, name, creator_id, started_at, ended_at, is_private from matches
+				  {where}
+				  order by started_at desc, id desc
+				  limit @Limit offset @Offset
+				 """,
+				new { page.Limit, page.Offset })), cancellationToken);
 
 		var matches = new List<Match>();
 		foreach (var row in rows)
 			matches.Add(Track(await ToMatchAsync(row, cancellationToken)));
 
 		return new Page<Match>(matches, total);
+	}
+
+	protected override int KeyOf(Match item)
+	{
+		return item.Id;
+	}
+
+	protected override Root RootOf(Match item)
+	{
+		return Root.Match(item.Id);
+	}
+
+	protected override void CopyTo(Match live, Match from)
+	{
+		live.Value.Name = from.Value.Name;
+		live.Value.EndedAt = from.Value.EndedAt;
+		live.Value.IsPrivate = from.Value.IsPrivate;
 	}
 
 	protected override async Task<Match?> LoadAsync(int key)
@@ -79,18 +100,6 @@ internal sealed class PostgresMatchRepository(Database database, DatabaseWriter 
 			new { Id = key }));
 		return row is null ? null : await ToMatchAsync(row, default);
 	}
-
-	protected override string WriteSql =>
-		"""
-		insert into matches (id, name, creator_id, started_at, ended_at, is_private)
-		values (@Id, @Name, @CreatorId, @StartedAt, @EndedAt, @IsPrivate)
-		on conflict (id) do update set
-			name = excluded.name,
-			creator_id = excluded.creator_id,
-			started_at = excluded.started_at,
-			ended_at = excluded.ended_at,
-			is_private = excluded.is_private;
-		""";
 
 	protected override object WriteParameters(Match match)
 	{
@@ -102,7 +111,7 @@ internal sealed class PostgresMatchRepository(Database database, DatabaseWriter 
 			CreatorId = value.Creator?.Id,
 			StartedAt = value.StartedAt.ToUniversalTime(),
 			EndedAt = value.EndedAt?.ToUniversalTime(),
-			IsPrivate = value.IsPrivate
+			value.IsPrivate
 		};
 	}
 
@@ -155,7 +164,7 @@ internal sealed class PostgresMatchRepository(Database database, DatabaseWriter 
 			CreatorId = data.Creator?.Id,
 			StartedAt = data.StartedAt.ToUniversalTime(),
 			EndedAt = data.EndedAt?.ToUniversalTime(),
-			IsPrivate = data.IsPrivate
+			data.IsPrivate
 		};
 	}
 

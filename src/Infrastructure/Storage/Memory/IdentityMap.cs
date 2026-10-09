@@ -3,7 +3,10 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Basil.Infrastructure.Storage.Memory;
 
-/// <summary>Keeps the one live instance of each stored item, by key, for as long as anyone holds it or a change of it is not stored yet.</summary>
+/// <summary>
+///     Keeps the one live instance of each stored item, by key, for as long as anyone holds it or a change of it is
+///     not stored yet.
+/// </summary>
 /// <remarks>
 ///     Objects nobody holds are released and loaded again on the next request; an item with a change not yet stored is
 ///     kept.
@@ -19,12 +22,26 @@ internal sealed class IdentityMap<TKey, T> where TKey : notnull where T : class
 	private readonly ConcurrentDictionary<Task, T> _pinned = new();
 	private int _additions;
 
+	/// <summary>Gets the live instances.</summary>
+	public IEnumerable<T> Values
+	{
+		get
+		{
+			foreach (var (key, reference) in _instances)
+				if (reference.TryGetTarget(out var value))
+					yield return value;
+				else
+					_instances.TryRemove(new KeyValuePair<TKey, WeakReference<T>>(key, reference));
+		}
+	}
+
 	/// <summary>Gets the live instance of a key, loading it once however many callers ask at the same time.</summary>
 	/// <param name="key">The item's key.</param>
 	/// <param name="load">Loads the item; it runs once for all concurrent callers and no caller's token stops it.</param>
 	/// <param name="cancellationToken">Stops this caller's wait only.</param>
 	/// <returns>The live instance, or <see langword="null" /> when the loader finds nothing (which is not kept).</returns>
-	public async ValueTask<T?> GetOrAddAsync(TKey key, Func<TKey, Task<T?>> load, CancellationToken cancellationToken = default)
+	public async ValueTask<T?> GetOrAddAsync(TKey key, Func<TKey, Task<T?>> load,
+		CancellationToken cancellationToken = default)
 	{
 		if (TryGetValue(key, out var live))
 			return live;
@@ -48,8 +65,8 @@ internal sealed class IdentityMap<TKey, T> where TKey : notnull where T : class
 
 			var reference = new WeakReference<T>(item);
 			if (_instances.TryAdd(key, reference) ||
-			    _instances.TryGetValue(key, out var dead) && !dead.TryGetTarget(out _) &&
-			    _instances.TryUpdate(key, reference, dead))
+			    (_instances.TryGetValue(key, out var dead) && !dead.TryGetTarget(out _) &&
+			     _instances.TryUpdate(key, reference, dead)))
 			{
 				if (Interlocked.Increment(ref _additions) % SweepEvery == 0)
 					Sweep();
@@ -86,21 +103,6 @@ internal sealed class IdentityMap<TKey, T> where TKey : notnull where T : class
 
 		value = null;
 		return false;
-	}
-
-	/// <summary>Gets the live instances.</summary>
-	public IEnumerable<T> Values
-	{
-		get
-		{
-			foreach (var (key, reference) in _instances)
-			{
-				if (reference.TryGetTarget(out var value))
-					yield return value;
-				else
-					_instances.TryRemove(new KeyValuePair<TKey, WeakReference<T>>(key, reference));
-			}
-		}
 	}
 
 	private void Sweep()

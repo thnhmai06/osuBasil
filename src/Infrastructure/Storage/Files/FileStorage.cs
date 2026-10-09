@@ -23,7 +23,7 @@ internal static class FileStorage
 				await content.CopyToAsync(stream, cancellationToken);
 			}
 
-			File.Move(temporary, path, overwrite: true);
+			File.Move(temporary, path, true);
 		}
 		finally
 		{
@@ -104,8 +104,11 @@ internal static class FileStorage
 	{
 		Directory.CreateDirectory(directory);
 
-		return [.. Directory.EnumerateFiles(directory)
-			.Select(file => Path.GetFileName(file))
-			.OrderBy(name => name, StringComparer.OrdinalIgnoreCase)];
+		return
+		[
+			.. Directory.EnumerateFiles(directory)
+				.Select(file => Path.GetFileName(file))
+				.OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+		];
 	}
 }

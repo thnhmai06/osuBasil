@@ -7,7 +7,10 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Runtime.Sessions;
 
-/// <summary>Cleans up after connections: joins auto-join channels when one opens, and releases its room, spectating, lobby watch and channels when one closes.</summary>
+/// <summary>
+///     Cleans up after connections: joins auto-join channels when one opens, and releases its room, spectating, lobby
+///     watch and channels when one closes.
+/// </summary>
 internal sealed class ConnectionHandler(
 	IChannelService channels,
 	IRoomService rooms,
@@ -43,7 +46,8 @@ internal sealed class ConnectionHandler(
 		{
 			await action();
 		}
-		catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+		catch (Exception exception) when (exception is not OperationCanceledException ||
+		                                  !cancellationToken.IsCancellationRequested)
 		{
 			logger.LogError(exception, "Could not {Step} for the closed connection of user {UserId}.", step, userId);
 		}
@@ -56,7 +60,8 @@ internal sealed class ConnectionHandler(
 		{
 			action();
 		}
-		catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+		catch (Exception exception) when (exception is not OperationCanceledException ||
+		                                  !cancellationToken.IsCancellationRequested)
 		{
 			logger.LogError(exception, "Could not {Step} for the closed connection of user {UserId}.", step, userId);
 		}

@@ -16,6 +16,51 @@ namespace Basil.Infrastructure.Storage.Beatmaps;
 /// <summary>Stores beatmap difficulties in the <c>beatmaps</c> table.</summary>
 internal sealed class PostgresBeatmapRepository : MemoryRepository<int, Beatmap>, IBeatmapRepository
 {
+	private const string UpsertSql = """
+	                                 insert into beatmaps (id, beatmapset_id, hash, version, mode, star, length, bpm, cs, ar, od, hp, objects, locked, visible)
+	                                 values (@Id, @BeatmapsetId, @Hash, @Version, @Mode, @Star, @Length, @Bpm, @Cs, @Ar, @Od, @Hp, @Objects::jsonb, @Locked, @Visible)
+	                                 on conflict (id) do update set
+	                                 	beatmapset_id = excluded.beatmapset_id,
+	                                 	hash = excluded.hash,
+	                                 	version = excluded.version,
+	                                 	mode = excluded.mode,
+	                                 	star = excluded.star,
+	                                 	length = excluded.length,
+	                                 	bpm = excluded.bpm,
+	                                 	cs = excluded.cs,
+	                                 	ar = excluded.ar,
+	                                 	od = excluded.od,
+	                                 	hp = excluded.hp,
+	                                 	objects = excluded.objects,
+	                                 	locked = excluded.locked,
+	                                 	visible = excluded.visible;
+	                                 """;
+
+	private const string ByIdSql = """
+	                               select b.id, b.beatmapset_id, b.hash, b.version, b.mode, b.star, b.length, b.bpm, b.cs, b.ar, b.od, b.hp, b.objects, b.locked, b.visible,
+	                                      s.id as set_id, s.artist as set_artist, s.title as set_title, s.creator as set_creator, s.created_at as set_created_at, s.updated_at as set_updated_at, s.locked as set_locked, s.visible as set_visible
+	                               from beatmaps b
+	                               join beatmapsets s on s.id = b.beatmapset_id
+	                               where b.id = @Id
+	                               """;
+
+	private const string ByHashSql = """
+	                                 select b.id, b.beatmapset_id, b.hash, b.version, b.mode, b.star, b.length, b.bpm, b.cs, b.ar, b.od, b.hp, b.objects, b.locked, b.visible,
+	                                        s.id as set_id, s.artist as set_artist, s.title as set_title, s.creator as set_creator, s.created_at as set_created_at, s.updated_at as set_updated_at, s.locked as set_locked, s.visible as set_visible
+	                                 from beatmaps b
+	                                 join beatmapsets s on s.id = b.beatmapset_id
+	                                 where b.hash = @Hash
+	                                 """;
+
+	private const string BySetSql = """
+	                                select b.id, b.beatmapset_id, b.hash, b.version, b.mode, b.star, b.length, b.bpm, b.cs, b.ar, b.od, b.hp, b.objects, b.locked, b.visible,
+	                                       s.id as set_id, s.artist as set_artist, s.title as set_title, s.creator as set_creator, s.created_at as set_created_at, s.updated_at as set_updated_at, s.locked as set_locked, s.visible as set_visible
+	                                from beatmaps b
+	                                join beatmapsets s on s.id = b.beatmapset_id
+	                                where b.beatmapset_id = @SetId
+	                                order by b.id
+	                                """;
+
 	// jsonb keeps object keys in its own order, so the mode discriminator need not come first.
 	private static readonly JsonSerializerOptions StoredJson = new() { AllowOutOfOrderMetadataProperties = true };
 
@@ -26,15 +71,14 @@ internal sealed class PostgresBeatmapRepository : MemoryRepository<int, Beatmap>
 	// The beatmaps a set keeps while the deletion of its others is queued, by set id.
 	private readonly ConcurrentDictionary<int, HashSet<int>> _retaining = new();
 
-	public PostgresBeatmapRepository(Database database, DatabaseWriter writer, IBeatmapsetRepository beatmapsets)
+	public PostgresBeatmapRepository(Database database, DatabaseWriter writer,
+		IBeatmapsetRepository beatmapsets)
 		: base(database, writer)
 	{
 		_beatmapsets = beatmapsets;
 	}
 
-	protected override int KeyOf(Beatmap item) => item.Id;
-
-	protected override Root RootOf(Beatmap item) => Root.Beatmapset(item.Value.Beatmapset.Id);
+	protected override string WriteSql => UpsertSql;
 
 	/// <inheritdoc />
 	public async Task<Beatmap> CreateAsync(BeatmapData data, int? onlineId = null,
@@ -107,18 +151,6 @@ internal sealed class PostgresBeatmapRepository : MemoryRepository<int, Beatmap>
 		var saved = SaveAsync(beatmap);
 		var live = Track(beatmap);
 		Remember(live, value, saved);
-	}
-
-	protected override void CopyTo(Beatmap live, Beatmap from) => live.Value = from.Value;
-
-	/// <summary>Gives the live instance of a beatmap the stored data and keeps the lookups in step.</summary>
-	private void Remember(Beatmap beatmap, BeatmapData value, Task committed)
-	{
-		var live = Track(beatmap);
-		Unindex(live);
-		live.Value = value;
-		Index(live);
-		_bySet.Change(value.Beatmapset.Id, value.Beatmapset, current => AddOrReplace(current, live), committed);
 	}
 
 	/// <inheritdoc />
@@ -217,10 +249,36 @@ internal sealed class PostgresBeatmapRepository : MemoryRepository<int, Beatmap>
 		var retained = Writer.SaveAsync(Root.Beatmapset(setId), (GetType(), "retain", setId), new WriteCommand(
 			"delete from beatmaps where beatmapset_id = @SetId and id <> all(@KeepIds)",
 			new { SetId = setId, KeepIds = keepIds }));
-		_bySet.Change(setId, liveSet, current => current.Where(beatmap => keepSet.Contains(beatmap.Id)).ToImmutableList(),
+		_bySet.Change(setId, liveSet,
+			current => current.Where(beatmap => keepSet.Contains(beatmap.Id)).ToImmutableList(),
 			retained);
 		_ = retained.ContinueWith(_ => _retaining.TryRemove(new KeyValuePair<int, HashSet<int>>(setId, keepSet)),
 			TaskScheduler.Default);
+	}
+
+	protected override int KeyOf(Beatmap item)
+	{
+		return item.Id;
+	}
+
+	protected override Root RootOf(Beatmap item)
+	{
+		return Root.Beatmapset(item.Value.Beatmapset.Id);
+	}
+
+	protected override void CopyTo(Beatmap live, Beatmap from)
+	{
+		live.Value = from.Value;
+	}
+
+	/// <summary>Gives the live instance of a beatmap the stored data and keeps the lookups in step.</summary>
+	private void Remember(Beatmap beatmap, BeatmapData value, Task committed)
+	{
+		var live = Track(beatmap);
+		Unindex(live);
+		live.Value = value;
+		Index(live);
+		_bySet.Change(value.Beatmapset.Id, value.Beatmapset, current => AddOrReplace(current, live), committed);
 	}
 
 	protected override async Task<Beatmap?> LoadAsync(int key)
@@ -230,63 +288,21 @@ internal sealed class PostgresBeatmapRepository : MemoryRepository<int, Beatmap>
 		return row is null ? null : await ToBeatmapAsync(row, default);
 	}
 
-	protected override string WriteSql => UpsertSql;
-
-	protected override object WriteParameters(Beatmap beatmap) => Parameters(beatmap.Id, beatmap.Value);
-
-	private const string UpsertSql = """
-	                                 insert into beatmaps (id, beatmapset_id, hash, version, mode, star, length, bpm, cs, ar, od, hp, objects, locked, visible)
-	                                 values (@Id, @BeatmapsetId, @Hash, @Version, @Mode, @Star, @Length, @Bpm, @Cs, @Ar, @Od, @Hp, @Objects::jsonb, @Locked, @Visible)
-	                                 on conflict (id) do update set
-	                                 	beatmapset_id = excluded.beatmapset_id,
-	                                 	hash = excluded.hash,
-	                                 	version = excluded.version,
-	                                 	mode = excluded.mode,
-	                                 	star = excluded.star,
-	                                 	length = excluded.length,
-	                                 	bpm = excluded.bpm,
-	                                 	cs = excluded.cs,
-	                                 	ar = excluded.ar,
-	                                 	od = excluded.od,
-	                                 	hp = excluded.hp,
-	                                 	objects = excluded.objects,
-	                                 	locked = excluded.locked,
-	                                 	visible = excluded.visible;
-	                                 """;
+	protected override object WriteParameters(Beatmap beatmap)
+	{
+		return Parameters(beatmap.Id, beatmap.Value);
+	}
 
 	protected override WriteCommand EraseCommand(int key)
 	{
 		return new WriteCommand("delete from beatmaps where id = @Id", new { Id = key });
 	}
 
-	private const string ByIdSql = """
-	                               select b.id, b.beatmapset_id, b.hash, b.version, b.mode, b.star, b.length, b.bpm, b.cs, b.ar, b.od, b.hp, b.objects, b.locked, b.visible,
-	                                      s.id as set_id, s.artist as set_artist, s.title as set_title, s.creator as set_creator, s.created_at as set_created_at, s.updated_at as set_updated_at, s.locked as set_locked, s.visible as set_visible
-	                               from beatmaps b
-	                               join beatmapsets s on s.id = b.beatmapset_id
-	                               where b.id = @Id
-	                               """;
-
-	private const string ByHashSql = """
-	                                 select b.id, b.beatmapset_id, b.hash, b.version, b.mode, b.star, b.length, b.bpm, b.cs, b.ar, b.od, b.hp, b.objects, b.locked, b.visible,
-	                                        s.id as set_id, s.artist as set_artist, s.title as set_title, s.creator as set_creator, s.created_at as set_created_at, s.updated_at as set_updated_at, s.locked as set_locked, s.visible as set_visible
-	                                 from beatmaps b
-	                                 join beatmapsets s on s.id = b.beatmapset_id
-	                                 where b.hash = @Hash
-	                                 """;
-
-	private const string BySetSql = """
-	                                select b.id, b.beatmapset_id, b.hash, b.version, b.mode, b.star, b.length, b.bpm, b.cs, b.ar, b.od, b.hp, b.objects, b.locked, b.visible,
-	                                       s.id as set_id, s.artist as set_artist, s.title as set_title, s.creator as set_creator, s.created_at as set_created_at, s.updated_at as set_updated_at, s.locked as set_locked, s.visible as set_visible
-	                                from beatmaps b
-	                                join beatmapsets s on s.id = b.beatmapset_id
-	                                where b.beatmapset_id = @SetId
-	                                order by b.id
-	                                """;
-
-	protected override bool IsBeingRemoved(Beatmap beatmap) =>
-		base.IsBeingRemoved(beatmap) ||
-		_retaining.TryGetValue(beatmap.Value.Beatmapset.Id, out var keep) && !keep.Contains(beatmap.Id);
+	protected override bool IsBeingRemoved(Beatmap beatmap)
+	{
+		return base.IsBeingRemoved(beatmap) ||
+		       (_retaining.TryGetValue(beatmap.Value.Beatmapset.Id, out var keep) && !keep.Contains(beatmap.Id));
+	}
 
 	private void RemoveFromMemory(Beatmap beatmap)
 	{
@@ -299,7 +315,10 @@ internal sealed class PostgresBeatmapRepository : MemoryRepository<int, Beatmap>
 		_byHash.Remove(beatmap.Value.Hash, beatmap);
 	}
 
-	private void Index(Beatmap beatmap) => _byHash.Set(beatmap.Value.Hash, beatmap);
+	private void Index(Beatmap beatmap)
+	{
+		_byHash.Set(beatmap.Value.Hash, beatmap);
+	}
 
 	private static ImmutableList<Beatmap> AddOrReplace(ImmutableList<Beatmap> current, Beatmap beatmap)
 	{
@@ -324,19 +343,21 @@ internal sealed class PostgresBeatmapRepository : MemoryRepository<int, Beatmap>
 			value.Difficulty.Star,
 			Length = (int)value.Difficulty.Length.TotalMilliseconds,
 			value.Difficulty.Bpm,
-			Cs = value.Difficulty.Cs,
-			Ar = value.Difficulty.Ar,
-			Od = value.Difficulty.Od,
-			Hp = value.Difficulty.Hp,
+			value.Difficulty.Cs,
+			value.Difficulty.Ar,
+			value.Difficulty.Od,
+			value.Difficulty.Hp,
 			Objects = JsonSerializer.Serialize(value.Objects),
-			Locked = value.Locked,
-			Visible = value.Visible
+			value.Locked,
+			value.Visible
 		};
 	}
 
 	/// <summary>Gets the live instance of a beatmapset, or the given one when it is not stored.</summary>
-	private async ValueTask<Beatmapset> LiveSetAsync(Beatmapset set, CancellationToken cancellationToken) =>
-		await _beatmapsets.GetAsync(set.Id, cancellationToken) ?? set;
+	private async ValueTask<Beatmapset> LiveSetAsync(Beatmapset set, CancellationToken cancellationToken)
+	{
+		return await _beatmapsets.GetAsync(set.Id, cancellationToken) ?? set;
+	}
 
 	private static BeatmapData WithSet(BeatmapData value, Beatmapset set)
 	{
@@ -380,14 +401,14 @@ internal sealed class PostgresBeatmapRepository : MemoryRepository<int, Beatmap>
 				Beatmapset = set,
 				Version = row.Version,
 				Difficulty = new Difficulty(
-					Mode: (GameMode)row.Mode,
-					Bpm: row.Bpm,
-					Length: TimeSpan.FromMilliseconds(row.Length),
-					Cs: row.Cs,
-					Ar: row.Ar,
-					Od: row.Od,
-					Hp: row.Hp,
-					Star: row.Star),
+					(GameMode)row.Mode,
+					row.Bpm,
+					TimeSpan.FromMilliseconds(row.Length),
+					row.Cs,
+					row.Ar,
+					row.Od,
+					row.Hp,
+					row.Star),
 				Objects = objects,
 				Locked = row.Locked,
 				Visible = row.Visible

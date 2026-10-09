@@ -16,8 +16,8 @@ internal sealed class PostgresMatchEventRepository(
 	IUserRepository users)
 	: IMatchEventRepository
 {
-	private readonly IdSequence _ids = new(database, "match_events");
 	private readonly OwnedLists<int, Match, MatchEvent> _byMatch = new();
+	private readonly IdSequence _ids = new(database, "match_events");
 
 	/// <inheritdoc />
 	public async Task CreateAsync(MatchEvent matchEvent, CancellationToken cancellationToken = default)

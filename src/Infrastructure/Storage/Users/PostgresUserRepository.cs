@@ -15,9 +15,15 @@ internal sealed class PostgresUserRepository(Database database, DatabaseWriter w
 {
 	private readonly WeakIndex<string, User> _byName = new();
 
-	protected override int KeyOf(User item) => item.Id;
-
-	protected override Root RootOf(User item) => Root.User(item.Id);
+	protected override string WriteSql =>
+		"""
+		insert into users (id, name, safe_name, country, permissions, deleted_at)
+		values (@Id, @Name, @SafeName, @Country, @Permissions, @DeletedAt)
+		on conflict (id) do update set
+			country = excluded.country,
+			permissions = excluded.permissions,
+			deleted_at = excluded.deleted_at;
+		""";
 
 	/// <inheritdoc />
 	public async Task<User> CreateAsync(UserData data, CancellationToken cancellationToken = default)
@@ -59,13 +65,6 @@ internal sealed class PostgresUserRepository(Database database, DatabaseWriter w
 		return Task.CompletedTask;
 	}
 
-	protected override void CopyTo(User live, User from)
-	{
-		live.Value.Country = from.Value.Country;
-		live.Value.Permissions = from.Value.Permissions;
-		live.Value.DeletedAt = from.Value.DeletedAt;
-	}
-
 	/// <inheritdoc />
 	public async Task<bool> RenameAsync(User user, string name, CancellationToken cancellationToken = default)
 	{
@@ -96,8 +95,10 @@ internal sealed class PostgresUserRepository(Database database, DatabaseWriter w
 	}
 
 	/// <inheritdoc />
-	public ValueTask<User?> GetAsync(int id, CancellationToken cancellationToken = default) =>
-		FindUserAsync(id, cancellationToken);
+	public ValueTask<User?> GetAsync(int id, CancellationToken cancellationToken = default)
+	{
+		return FindUserAsync(id, cancellationToken);
+	}
 
 	/// <inheritdoc />
 	public async ValueTask<User?> GetByNameAsync(string name, CancellationToken cancellationToken = default)
@@ -127,22 +128,29 @@ internal sealed class PostgresUserRepository(Database database, DatabaseWriter w
 		return new Page<User>([.. rows.Select(row => TrackUser(ToUser(row)))], total);
 	}
 
+	protected override int KeyOf(User item)
+	{
+		return item.Id;
+	}
+
+	protected override Root RootOf(User item)
+	{
+		return Root.User(item.Id);
+	}
+
+	protected override void CopyTo(User live, User from)
+	{
+		live.Value.Country = from.Value.Country;
+		live.Value.Permissions = from.Value.Permissions;
+		live.Value.DeletedAt = from.Value.DeletedAt;
+	}
+
 	protected override async Task<User?> LoadAsync(int key)
 	{
 		var row = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<UserRow>(
 			"select id, name, country, permissions, deleted_at from users where id = @Id", new { Id = key }));
 		return row is null ? null : ToUser(row);
 	}
-
-	protected override string WriteSql =>
-		"""
-		insert into users (id, name, safe_name, country, permissions, deleted_at)
-		values (@Id, @Name, @SafeName, @Country, @Permissions, @DeletedAt)
-		on conflict (id) do update set
-			country = excluded.country,
-			permissions = excluded.permissions,
-			deleted_at = excluded.deleted_at;
-		""";
 
 	protected override object WriteParameters(User user)
 	{

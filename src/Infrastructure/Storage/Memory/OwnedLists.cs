@@ -12,10 +12,10 @@ namespace Basil.Infrastructure.Storage.Memory;
 /// </remarks>
 internal sealed class OwnedLists<TKey, TOwner, T> where TKey : notnull where TOwner : class
 {
-	private readonly ConditionalWeakTable<TOwner, Holder> _lists = new();
 	private readonly Lock _gate = new();
-	private readonly Dictionary<TKey, List<Func<ImmutableList<T>, ImmutableList<T>>>> _uncommitted = new();
+	private readonly ConditionalWeakTable<TOwner, Holder> _lists = new();
 	private readonly Dictionary<TKey, List<Load>> _loading = new();
+	private readonly Dictionary<TKey, List<Func<ImmutableList<T>, ImmutableList<T>>>> _uncommitted = new();
 
 	/// <summary>Gets an owner's list, loading it when it is not in memory.</summary>
 	/// <param name="key">The owner's key.</param>
@@ -30,7 +30,9 @@ internal sealed class OwnedLists<TKey, TOwner, T> where TKey : notnull where TOw
 
 			var ticket = new Load();
 			lock (_gate)
+			{
 				Add(_loading, key, ticket);
+			}
 
 			ImmutableList<T> stored;
 			try
@@ -40,7 +42,9 @@ internal sealed class OwnedLists<TKey, TOwner, T> where TKey : notnull where TOw
 			finally
 			{
 				lock (_gate)
+				{
 					Remove(_loading, key, ticket);
+				}
 			}
 
 			lock (_gate)
@@ -61,7 +65,10 @@ internal sealed class OwnedLists<TKey, TOwner, T> where TKey : notnull where TOw
 
 	/// <summary>Applies a change to an owner's list, now if it is loaded and to any later load until the change is committed.</summary>
 	/// <param name="key">The owner's key.</param>
-	/// <param name="owner">The live instance of the owner, or null when the caller does not hold it (then only later loads see the change).</param>
+	/// <param name="owner">
+	///     The live instance of the owner, or null when the caller does not hold it (then only later loads see
+	///     the change).
+	/// </param>
 	/// <param name="change">The idempotent change.</param>
 	/// <param name="committed">Completes once the change is in the database.</param>
 	public void Change(TKey key, TOwner? owner, Func<ImmutableList<T>, ImmutableList<T>> change, Task committed)

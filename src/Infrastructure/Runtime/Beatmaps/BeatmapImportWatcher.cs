@@ -5,7 +5,10 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Runtime.Beatmaps;
 
-/// <summary>Imports the beatmapset archives placed in the import directory: those waiting at startup and every one added later; at startup it also forgets beatmapsets whose archive is gone.</summary>
+/// <summary>
+///     Imports the beatmapset archives placed in the import directory: those waiting at startup and every one added
+///     later; at startup it also forgets beatmapsets whose archive is gone.
+/// </summary>
 internal sealed class BeatmapImportWatcher(
 	IBeatmapsetService beatmapsets,
 	IOptions<BeatmapImportOptions> options,
@@ -87,8 +90,15 @@ internal sealed class BeatmapImportWatcher(
 			}
 		}
 
-		void OnChanged(object sender, FileSystemEventArgs args) => Schedule(args.FullPath, stoppingToken);
-		void OnRenamed(object sender, RenamedEventArgs args) => Schedule(args.FullPath, stoppingToken);
+		void OnChanged(object sender, FileSystemEventArgs args)
+		{
+			Schedule(args.FullPath, stoppingToken);
+		}
+
+		void OnRenamed(object sender, RenamedEventArgs args)
+		{
+			Schedule(args.FullPath, stoppingToken);
+		}
 
 		void OnError(object sender, ErrorEventArgs args)
 		{

@@ -8,7 +8,7 @@
     <PackageVersion Include="Dapper" Version="2.1.89" />
     <PackageVersion Include="Npgsql" Version="10.0.3" />
     <PackageVersion Include="SharpZipLib" Version="1.4.2" />
-    <PackageVersion Include="FFMpegCore" Version="5.4.0" />
+    <PackageVersion Include="FFMpegCore" Version="5.5.0" />
     <PackageVersion Include="ppy.osu.Game.Rulesets.Osu" Version="2026.916.0" />
     <PackageVersion Include="ppy.osu.Game.Rulesets.Taiko" Version="2026.916.0" />
     <PackageVersion Include="ppy.osu.Game.Rulesets.Catch" Version="2026.916.0" />

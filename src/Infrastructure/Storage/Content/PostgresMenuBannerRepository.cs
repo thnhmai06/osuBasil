@@ -13,18 +13,6 @@ internal sealed class PostgresMenuBannerRepository(Database database, DatabaseWr
 	private readonly ConcurrentDictionary<Uri, MenuBanner> _banners = new();
 
 	/// <inheritdoc />
-	public async Task LoadAsync(CancellationToken cancellationToken)
-	{
-		var rows = await database.ReadAsync(connection => connection.QueryAsync<MenuBannerRow>(
-			"select image, url, starts_at, ends_at, created_at from menu_banners"), cancellationToken);
-		foreach (var row in rows)
-		{
-			var banner = ToBanner(row);
-			_banners[banner.Image] = banner;
-		}
-	}
-
-	/// <inheritdoc />
 	public Task CreateOrUpdateAsync(MenuBanner banner, CancellationToken cancellationToken = default)
 	{
 		var live = _banners.AddOrUpdate(banner.Image, banner, (_, current) =>
@@ -38,8 +26,10 @@ internal sealed class PostgresMenuBannerRepository(Database database, DatabaseWr
 	}
 
 	/// <inheritdoc />
-	public ValueTask<MenuBanner?> GetAsync(Uri image, CancellationToken cancellationToken = default) =>
-		ValueTask.FromResult(_banners.GetValueOrDefault(image));
+	public ValueTask<MenuBanner?> GetAsync(Uri image, CancellationToken cancellationToken = default)
+	{
+		return ValueTask.FromResult(_banners.GetValueOrDefault(image));
+	}
 
 	/// <inheritdoc />
 	public Task<IReadOnlyList<MenuBanner>> ListAsync(CancellationToken cancellationToken = default)
@@ -55,6 +45,18 @@ internal sealed class PostgresMenuBannerRepository(Database database, DatabaseWr
 			"delete from menu_banners where image = @Image",
 			new { Image = banner.Image.ToString() }));
 		return Task.CompletedTask;
+	}
+
+	/// <inheritdoc />
+	public async Task LoadAsync(CancellationToken cancellationToken)
+	{
+		var rows = await database.ReadAsync(connection => connection.QueryAsync<MenuBannerRow>(
+			"select image, url, starts_at, ends_at, created_at from menu_banners"), cancellationToken);
+		foreach (var row in rows)
+		{
+			var banner = ToBanner(row);
+			_banners[banner.Image] = banner;
+		}
 	}
 
 	private static void CopyTo(MenuBanner live, MenuBanner from)

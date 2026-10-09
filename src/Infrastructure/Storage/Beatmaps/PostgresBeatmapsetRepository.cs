@@ -12,12 +12,25 @@ namespace Basil.Infrastructure.Storage.Beatmaps;
 internal sealed class PostgresBeatmapsetRepository(Database database, DatabaseWriter writer)
 	: MemoryRepository<int, Beatmapset>(database, writer), IBeatmapsetRepository
 {
-	protected override int KeyOf(Beatmapset item) => item.Id;
-
-	protected override Root RootOf(Beatmapset item) => Root.Beatmapset(item.Id);
+	protected override string WriteSql =>
+		"""
+		insert into beatmapsets (id, artist, title, creator, created_at, updated_at, locked, visible)
+		values (@Id, @Artist, @Title, @Creator, @CreatedAt, @UpdatedAt, @Locked, @Visible)
+		on conflict (id) do update set
+			artist = excluded.artist,
+			title = excluded.title,
+			creator = excluded.creator,
+			created_at = excluded.created_at,
+			updated_at = excluded.updated_at,
+			locked = excluded.locked,
+			visible = excluded.visible;
+		""";
 
 	/// <inheritdoc />
-	public ValueTask<Beatmapset?> GetAsync(int id, CancellationToken cancellationToken = default) => FindAsync(id, cancellationToken);
+	public ValueTask<Beatmapset?> GetAsync(int id, CancellationToken cancellationToken = default)
+	{
+		return FindAsync(id, cancellationToken);
+	}
 
 	/// <inheritdoc />
 	public async Task<Beatmapset> CreateAsync(BeatmapsetData data, int? onlineId = null,
@@ -42,18 +55,18 @@ internal sealed class PostgresBeatmapsetRepository(Database database, DatabaseWr
 		{
 			id = await Writer.WriteAsync(onlineId is { } given ? Root.Beatmapset(given) : Root.Server,
 				async (connection, transaction) =>
-			{
-				var newId = onlineId ?? await NextLocalIdAsync(connection, transaction);
-				parameters.Add("id", newId);
-				await connection.ExecuteAsync(
-					"""
-					insert into beatmapsets (id, artist, title, creator, created_at, updated_at, locked, visible)
-					values (@id, @artist, @title, @creator, @createdAt, @updatedAt, @locked, @visible)
-					""",
-					parameters,
-					transaction);
-				return newId;
-			}, cancellationToken);
+				{
+					var newId = onlineId ?? await NextLocalIdAsync(connection, transaction);
+					parameters.Add("id", newId);
+					await connection.ExecuteAsync(
+						"""
+						insert into beatmapsets (id, artist, title, creator, created_at, updated_at, locked, visible)
+						values (@id, @artist, @title, @creator, @createdAt, @updatedAt, @locked, @visible)
+						""",
+						parameters,
+						transaction);
+					return newId;
+				}, cancellationToken);
 		}
 		catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation)
 		{
@@ -70,16 +83,6 @@ internal sealed class PostgresBeatmapsetRepository(Database database, DatabaseWr
 	{
 		_ = SaveAsync(set);
 		return Task.CompletedTask;
-	}
-
-	protected override void CopyTo(Beatmapset live, Beatmapset from)
-	{
-		live.Value.Artist = from.Value.Artist;
-		live.Value.Title = from.Value.Title;
-		live.Value.Creator = from.Value.Creator;
-		live.Value.UpdatedAt = from.Value.UpdatedAt;
-		live.Value.Locked = from.Value.Locked;
-		live.Value.Visible = from.Value.Visible;
 	}
 
 	/// <inheritdoc />
@@ -124,6 +127,26 @@ internal sealed class PostgresBeatmapsetRepository(Database database, DatabaseWr
 		return new Page<Beatmapset>(rows.Select(row => Track(ToBeatmapset(row))).ToList(), total);
 	}
 
+	protected override int KeyOf(Beatmapset item)
+	{
+		return item.Id;
+	}
+
+	protected override Root RootOf(Beatmapset item)
+	{
+		return Root.Beatmapset(item.Id);
+	}
+
+	protected override void CopyTo(Beatmapset live, Beatmapset from)
+	{
+		live.Value.Artist = from.Value.Artist;
+		live.Value.Title = from.Value.Title;
+		live.Value.Creator = from.Value.Creator;
+		live.Value.UpdatedAt = from.Value.UpdatedAt;
+		live.Value.Locked = from.Value.Locked;
+		live.Value.Visible = from.Value.Visible;
+	}
+
 	protected override async Task<Beatmapset?> LoadAsync(int key)
 	{
 		var row = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<BeatmapsetRow>(
@@ -131,20 +154,6 @@ internal sealed class PostgresBeatmapsetRepository(Database database, DatabaseWr
 			new { Id = key }));
 		return row is null ? null : ToBeatmapset(row);
 	}
-
-	protected override string WriteSql =>
-		"""
-		insert into beatmapsets (id, artist, title, creator, created_at, updated_at, locked, visible)
-		values (@Id, @Artist, @Title, @Creator, @CreatedAt, @UpdatedAt, @Locked, @Visible)
-		on conflict (id) do update set
-			artist = excluded.artist,
-			title = excluded.title,
-			creator = excluded.creator,
-			created_at = excluded.created_at,
-			updated_at = excluded.updated_at,
-			locked = excluded.locked,
-			visible = excluded.visible;
-		""";
 
 	protected override object WriteParameters(Beatmapset set)
 	{
@@ -157,8 +166,8 @@ internal sealed class PostgresBeatmapsetRepository(Database database, DatabaseWr
 			value.Creator,
 			CreatedAt = value.CreatedAt.ToUniversalTime(),
 			UpdatedAt = value.UpdatedAt.ToUniversalTime(),
-			Locked = value.Locked,
-			Visible = value.Visible
+			value.Locked,
+			value.Visible
 		};
 	}
 
@@ -169,7 +178,8 @@ internal sealed class PostgresBeatmapsetRepository(Database database, DatabaseWr
 
 	private static Task<int> NextLocalIdAsync(NpgsqlConnection connection, NpgsqlTransaction transaction)
 	{
-		return connection.ExecuteScalarAsync<int>("select nextval('local_beatmapset_ids')::int", transaction: transaction);
+		return connection.ExecuteScalarAsync<int>("select nextval('local_beatmapset_ids')::int",
+			transaction: transaction);
 	}
 
 	private static Beatmapset ToBeatmapset(BeatmapsetRow row)

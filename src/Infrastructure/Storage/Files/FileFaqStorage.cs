@@ -9,23 +9,11 @@ internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage, IResident
 	private readonly ConcurrentDictionary<string, byte[]> _entries = new(StringComparer.Ordinal);
 
 	/// <inheritdoc />
-	public async Task LoadAsync(CancellationToken cancellationToken)
-	{
-		Directory.CreateDirectory(paths.Faqs);
-		foreach (var path in Directory.EnumerateFiles(paths.Faqs, "*.txt", SearchOption.AllDirectories))
-		{
-			var relative = Path.GetRelativePath(paths.Faqs, path);
-			var entry = Path.ChangeExtension(relative, null)
-				.Replace(Path.DirectorySeparatorChar, ':')
-				.Replace(Path.AltDirectorySeparatorChar, ':');
-			_entries[entry] = await File.ReadAllBytesAsync(path, cancellationToken);
-		}
-	}
-
-	/// <inheritdoc />
 	public Task<IReadOnlyList<string>> ListAsync(CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult<IReadOnlyList<string>>([.. _entries.Keys.OrderBy(name => name, StringComparer.OrdinalIgnoreCase)]);
+		return Task.FromResult<IReadOnlyList<string>>([
+			.. _entries.Keys.OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+		]);
 	}
 
 	/// <inheritdoc />
@@ -42,7 +30,9 @@ internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage, IResident
 	public Task<Stream?> OpenAsync(string entry, CancellationToken cancellationToken = default)
 	{
 		PathFor(paths.Faqs, entry);
-		return Task.FromResult<Stream?>(_entries.TryGetValue(entry, out var bytes) ? new MemoryStream(bytes, writable: false) : null);
+		return Task.FromResult<Stream?>(_entries.TryGetValue(entry, out var bytes)
+			? new MemoryStream(bytes, false)
+			: null);
 	}
 
 	/// <inheritdoc />
@@ -52,6 +42,20 @@ internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage, IResident
 		_entries.TryRemove(entry, out _);
 		FileStorage.Delete(path);
 		return Task.CompletedTask;
+	}
+
+	/// <inheritdoc />
+	public async Task LoadAsync(CancellationToken cancellationToken)
+	{
+		Directory.CreateDirectory(paths.Faqs);
+		foreach (var path in Directory.EnumerateFiles(paths.Faqs, "*.txt", SearchOption.AllDirectories))
+		{
+			var relative = Path.GetRelativePath(paths.Faqs, path);
+			var entry = Path.ChangeExtension(relative, null)
+				.Replace(Path.DirectorySeparatorChar, ':')
+				.Replace(Path.AltDirectorySeparatorChar, ':');
+			_entries[entry] = await File.ReadAllBytesAsync(path, cancellationToken);
+		}
 	}
 
 	/// <summary>Resolves the path of a FAQ entry's file.</summary>

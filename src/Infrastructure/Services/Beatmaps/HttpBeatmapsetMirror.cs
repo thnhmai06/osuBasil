@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Basil.Application.Services.Contracts.Beatmaps;
@@ -19,10 +20,11 @@ internal sealed class HttpBeatmapsetMirror(
 	ISettingsRepository settings,
 	ILogger<HttpBeatmapsetMirror> logger) : IBeatmapsetMirror
 {
-	private static readonly HttpClient Http = new(new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(15) })
-	{
-		Timeout = TimeSpan.FromSeconds(10)
-	};
+	private static readonly HttpClient Http =
+		new(new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(15) })
+		{
+			Timeout = TimeSpan.FromSeconds(10)
+		};
 
 	private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
@@ -85,13 +87,14 @@ internal sealed class HttpBeatmapsetMirror(
 	/// <summary>Tolerates Unix-second or Unix-millisecond timestamps, ISO-8601 date strings and unparseable inputs.</summary>
 	private static DateTimeOffset ParseUpdatedAt(string value)
 	{
-		if (long.TryParse(value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var raw))
+		if (long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var raw))
 		{
 			var ms = raw > 1_000_000_000_000 ? raw : raw * 1000;
 			return DateTimeOffset.FromUnixTimeMilliseconds(ms);
 		}
 
-		if (DateTimeOffset.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out var parsed))
+		if (DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal,
+			    out var parsed))
 			return parsed;
 
 		return DateTimeOffset.UnixEpoch;
@@ -110,10 +113,10 @@ internal sealed class HttpBeatmapsetMirror(
 
 	private sealed class RawSet
 	{
-		public string Artist { get; init; } = "";
-		public string Title { get; init; } = "";
-		public string Creator { get; init; } = "";
-		public string LastUpdate { get; init; } = "";
+		public string Artist { get; } = "";
+		public string Title { get; } = "";
+		public string Creator { get; } = "";
+		public string LastUpdate { get; } = "";
 		public int SetId { get; init; }
 		public JsonElement HasVideo { get; init; }
 		public List<RawBeatmap>? ChildrenBeatmaps { get; init; }
@@ -122,7 +125,7 @@ internal sealed class HttpBeatmapsetMirror(
 	private sealed class RawBeatmap
 	{
 		public int BeatmapId { get; init; }
-		public string DiffName { get; init; } = "";
+		public string DiffName { get; } = "";
 		public double DifficultyRating { get; init; }
 		public int Mode { get; init; }
 	}

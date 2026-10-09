@@ -10,14 +10,15 @@ namespace Basil.Infrastructure.Storage.Files;
 /// <summary>Stores beatmapset files and offers each set as an .osz archive.</summary>
 internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmapsetStorage> logger) : IBeatmapsetStorage
 {
+	// ponytail: 2,000 files and 2 GiB declared unpacked; raise these only if legitimate osu! sets exceed them.
+	private const int MaxFiles = 2_000;
+	private const long MaxUnpackedBytes = 2L * 1024 * 1024 * 1024;
+
 	private static readonly HashSet<string> VideoExtensions = new(StringComparer.OrdinalIgnoreCase)
 	{
 		".mp4", ".avi", ".flv", ".m4v", ".mkv", ".mov", ".mpg", ".mpeg", ".webm", ".wmv"
 	};
 
-	// ponytail: 2,000 files and 2 GiB declared unpacked; raise these only if legitimate osu! sets exceed them.
-	private const int MaxFiles = 2_000;
-	private const long MaxUnpackedBytes = 2L * 1024 * 1024 * 1024;
 	private static readonly ConcurrentDictionary<int, SemaphoreSlim> SetLocks = new();
 
 	/// <inheritdoc />
@@ -35,13 +36,16 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 			Directory.CreateDirectory(archiveFolder);
 			await using (var upload = new FileStream(uploadPath, FileMode.CreateNew, FileAccess.Write, FileShare.None,
 				             81920, FileOptions.Asynchronous))
+			{
 				await archive.CopyToAsync(upload, cancellationToken);
+			}
 
 			try
 			{
 				Unpack(uploadPath, unpackFolder, cancellationToken);
 			}
-			catch (Exception exception) when (exception is SharpZip.ZipException or InvalidDataException or ArgumentException)
+			catch (Exception exception) when (exception is SharpZip.ZipException or InvalidDataException
+				                                  or ArgumentException)
 			{
 				DeleteDirectoryIfExists(unpackFolder);
 				throw new InvalidDataException($"The beatmapset archive is invalid: {exception.Message}", exception);
@@ -66,7 +70,6 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 			}
 
 			if (movedOldFolder)
-			{
 				try
 				{
 					Directory.Delete(oldFolder, true);
@@ -75,9 +78,8 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 				{
 					logger.LogWarning(exception, "Could not remove the previous files of beatmapset {SetId}.", set.Id);
 				}
-			}
 
-			File.Move(uploadPath, Path.Combine(archiveFolder, "full.osz"), overwrite: true);
+			File.Move(uploadPath, Path.Combine(archiveFolder, "full.osz"), true);
 			var noVideoPath = Path.Combine(archiveFolder, "novideo.osz");
 			if (File.Exists(noVideoPath)) File.Delete(noVideoPath);
 		}
@@ -174,12 +176,14 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 					{
 						zip.BeginUpdate();
 						var videos = zip.Cast<SharpZip.ZipEntry>()
-							.Where(entry => !entry.IsDirectory && VideoExtensions.Contains(Path.GetExtension(entry.Name)))
+							.Where(entry =>
+								!entry.IsDirectory && VideoExtensions.Contains(Path.GetExtension(entry.Name)))
 							.ToArray();
 						foreach (var entry in videos) zip.Delete(entry);
 						zip.CommitUpdate();
 					}
-					File.Move(tempPath, noVideoPath, overwrite: true);
+
+					File.Move(tempPath, noVideoPath, true);
 				}
 				finally
 				{
@@ -232,16 +236,17 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 			var changedFiles = new HashSet<string>(StringComparer.Ordinal);
 			var fullPath = Path.Combine(archiveFolder, "full.osz");
 			if (File.Exists(fullPath))
-				SyncArchive(fullPath, allFiles, folder, includeVideo: true, changedFiles, cancellationToken);
+				SyncArchive(fullPath, allFiles, folder, true, changedFiles, cancellationToken);
 
 			var noVideoPath = Path.Combine(archiveFolder, "novideo.osz");
 			if (File.Exists(noVideoPath))
-				SyncArchive(noVideoPath, allFiles, folder, includeVideo: false, changedFiles, cancellationToken);
+				SyncArchive(noVideoPath, allFiles, folder, false, changedFiles, cancellationToken);
 
 			if (!HasVideo(folder) && File.Exists(noVideoPath)) File.Delete(noVideoPath);
 			foreach (var name in changedFiles)
 				if (Path.GetExtension(name).Equals(".osu", StringComparison.OrdinalIgnoreCase))
-					logger.LogWarning("Beatmap file {Name} of set {SetId} changed on disk; import the set again to update its beatmaps",
+					logger.LogWarning(
+						"Beatmap file {Name} of set {SetId} changed on disk; import the set again to update its beatmaps",
 						name, setId);
 		}
 		finally
@@ -273,7 +278,8 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 		{
 			cancellationToken.ThrowIfCancellationRequested();
 			if (entry.IsDirectory) continue;
-			if (++fileCount > MaxFiles) throw new InvalidDataException($"The archive contains more than {MaxFiles} files.");
+			if (++fileCount > MaxFiles)
+				throw new InvalidDataException($"The archive contains more than {MaxFiles} files.");
 			if (entry.Size < 0 || entry.Size > MaxUnpackedBytes - totalSize)
 				throw new InvalidDataException($"The archive contains more than {MaxUnpackedBytes} bytes of files.");
 			totalSize += entry.Size;
@@ -294,8 +300,11 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 				output.Write(buffer, 0, read);
 				copied += read;
 			}
-			if (copied != entry.Size) throw new InvalidDataException($"File '{name}' is shorter than its declared size.");
-			if (input.ReadByte() != -1) throw new InvalidDataException($"File '{name}' is larger than its declared size.");
+
+			if (copied != entry.Size)
+				throw new InvalidDataException($"File '{name}' is shorter than its declared size.");
+			if (input.ReadByte() != -1)
+				throw new InvalidDataException($"File '{name}' is larger than its declared size.");
 			File.SetLastWriteTime(path, entry.DateTime);
 		}
 	}
@@ -315,7 +324,8 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 		foreach (var file in files)
 		{
 			cancellationToken.ThrowIfCancellationRequested();
-			var matches = entries.Where(entry => !entry.IsDirectory && string.Equals(entry.Name.Replace('\\', '/'), file.Name,
+			var matches = entries.Where(entry => !entry.IsDirectory && string.Equals(entry.Name.Replace('\\', '/'),
+				file.Name,
 				StringComparison.Ordinal)).ToArray();
 			var info = new FileInfo(file.Path);
 			if (matches.Length == 1 && matches[0].Size == info.Length &&
@@ -331,7 +341,8 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 		{
 			cancellationToken.ThrowIfCancellationRequested();
 			var name = entry.Name.Replace('\\', '/');
-			if (filesByName.ContainsKey(name) && !toDelete.Any(candidate => ReferenceEquals(candidate, entry))) continue;
+			if (filesByName.ContainsKey(name) &&
+			    !toDelete.Any(candidate => ReferenceEquals(candidate, entry))) continue;
 			if (!toDelete.Any(candidate => ReferenceEquals(candidate, entry))) toDelete.Add(entry);
 		}
 
@@ -367,7 +378,8 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 					while ((read = input.Read(buffer, 0, buffer.Length)) > 0) zip.Write(buffer, 0, read);
 				}
 			}
-			File.Move(tempPath, archivePath, overwrite: true);
+
+			File.Move(tempPath, archivePath, true);
 		}
 		finally
 		{
@@ -375,18 +387,31 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 		}
 	}
 
-	private string SetFolder(string id) => Path.Combine(paths.Beatmaps, id);
+	private string SetFolder(string id)
+	{
+		return Path.Combine(paths.Beatmaps, id);
+	}
 
-	private string ArchiveFolder(string id) => Path.Combine(paths.BeatmapArchives, id);
+	private string ArchiveFolder(string id)
+	{
+		return Path.Combine(paths.BeatmapArchives, id);
+	}
 
-	private static FileStream OpenRead(string path) =>
-		new(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete, 4096,
+	private static FileStream OpenRead(string path)
+	{
+		return new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete, 4096,
 			FileOptions.Asynchronous);
+	}
 
-	private static bool HasVideo(string folder) =>
-		Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories).Any(IsVideo);
+	private static bool HasVideo(string folder)
+	{
+		return Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories).Any(IsVideo);
+	}
 
-	private static bool IsVideo(string path) => VideoExtensions.Contains(Path.GetExtension(path));
+	private static bool IsVideo(string path)
+	{
+		return VideoExtensions.Contains(Path.GetExtension(path));
+	}
 
 	private static void DeleteDirectoryIfExists(string path)
 	{

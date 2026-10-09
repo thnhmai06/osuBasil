@@ -23,9 +23,34 @@ internal sealed class PostgresScoreRepository(
 	private readonly WeakIndex<Md5, Score> _byChecksum = new();
 	private readonly OwnedLists<(int MatchId, int Number), Round, Score> _byRound = new();
 
-	protected override int KeyOf(Score item) => item.Id;
-
-	protected override Root RootOf(Score item) => Root.User(item.Value.UserId ?? 0);
+	protected override string WriteSql =>
+		"""
+		insert into scores (id, user_id, beatmap_hash, mode, mods, num300, num100, num50, num_geki, num_katu, num_miss,
+		                    total_score, max_combo, grade, is_passed, is_full_combo, timestamp, match_id, round_number, team, checksum)
+		values (@Id, @UserId, @BeatmapHash, @Mode, @Mods, @Num300, @Num100, @Num50, @NumGeki, @NumKatu, @NumMiss,
+		        @TotalScore, @MaxCombo, @Grade, @IsPassed, @IsFullCombo, @Timestamp, @MatchId, @RoundNumber, @Team, @Checksum)
+		on conflict (id) do update set
+			user_id = excluded.user_id,
+			beatmap_hash = excluded.beatmap_hash,
+			mode = excluded.mode,
+			mods = excluded.mods,
+			num300 = excluded.num300,
+			num100 = excluded.num100,
+			num50 = excluded.num50,
+			num_geki = excluded.num_geki,
+			num_katu = excluded.num_katu,
+			num_miss = excluded.num_miss,
+			total_score = excluded.total_score,
+			max_combo = excluded.max_combo,
+			grade = excluded.grade,
+			is_passed = excluded.is_passed,
+			is_full_combo = excluded.is_full_combo,
+			timestamp = excluded.timestamp,
+			match_id = excluded.match_id,
+			round_number = excluded.round_number,
+			team = excluded.team,
+			checksum = excluded.checksum;
+		""";
 
 	/// <inheritdoc />
 	public async Task<Score> CreateAsync(ScoreData data, CancellationToken cancellationToken = default)
@@ -129,6 +154,16 @@ internal sealed class PostgresScoreRepository(
 		});
 	}
 
+	protected override int KeyOf(Score item)
+	{
+		return item.Id;
+	}
+
+	protected override Root RootOf(Score item)
+	{
+		return Root.User(item.Value.UserId ?? 0);
+	}
+
 	protected override async Task<Score?> LoadAsync(int key)
 	{
 		var row = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<ScoreRow>(
@@ -145,36 +180,10 @@ internal sealed class PostgresScoreRepository(
 		return ToScore(row, FindRound(row, loaded));
 	}
 
-	protected override string WriteSql =>
-		"""
-		insert into scores (id, user_id, beatmap_hash, mode, mods, num300, num100, num50, num_geki, num_katu, num_miss,
-		                    total_score, max_combo, grade, is_passed, is_full_combo, timestamp, match_id, round_number, team, checksum)
-		values (@Id, @UserId, @BeatmapHash, @Mode, @Mods, @Num300, @Num100, @Num50, @NumGeki, @NumKatu, @NumMiss,
-		        @TotalScore, @MaxCombo, @Grade, @IsPassed, @IsFullCombo, @Timestamp, @MatchId, @RoundNumber, @Team, @Checksum)
-		on conflict (id) do update set
-			user_id = excluded.user_id,
-			beatmap_hash = excluded.beatmap_hash,
-			mode = excluded.mode,
-			mods = excluded.mods,
-			num300 = excluded.num300,
-			num100 = excluded.num100,
-			num50 = excluded.num50,
-			num_geki = excluded.num_geki,
-			num_katu = excluded.num_katu,
-			num_miss = excluded.num_miss,
-			total_score = excluded.total_score,
-			max_combo = excluded.max_combo,
-			grade = excluded.grade,
-			is_passed = excluded.is_passed,
-			is_full_combo = excluded.is_full_combo,
-			timestamp = excluded.timestamp,
-			match_id = excluded.match_id,
-			round_number = excluded.round_number,
-			team = excluded.team,
-			checksum = excluded.checksum;
-		""";
-
-	protected override object WriteParameters(Score score) => Parameters(score.Value, score.Id);
+	protected override object WriteParameters(Score score)
+	{
+		return Parameters(score.Value, score.Id);
+	}
 
 	private static (string Where, DynamicParameters Parameters) BuildFilter(ScoreQuery query)
 	{
@@ -265,7 +274,7 @@ internal sealed class PostgresScoreRepository(
 		return new
 		{
 			Id = id,
-			UserId = value.UserId,
+			value.UserId,
 			BeatmapHash = value.BeatmapHash?.HashValue,
 			Mode = (int)value.Mode,
 			Mods = (int)value.Mods,
@@ -278,8 +287,8 @@ internal sealed class PostgresScoreRepository(
 			value.TotalScore,
 			value.MaxCombo,
 			Grade = (int)value.Grade,
-			IsPassed = value.IsPassed,
-			IsFullCombo = value.IsFullCombo,
+			value.IsPassed,
+			value.IsFullCombo,
 			Timestamp = value.Timestamp.ToUniversalTime(),
 			MatchId = value.Round?.Match.Id,
 			RoundNumber = value.Round?.Number,

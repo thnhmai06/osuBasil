@@ -22,7 +22,8 @@ internal sealed class BeatmapsetFilesWatcher(
 			watcher = new FileSystemWatcher(paths.Beatmaps)
 			{
 				IncludeSubdirectories = true,
-				NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite | NotifyFilters.Size
+				NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite |
+				               NotifyFilters.Size
 			};
 			watcher.Created += OnChanged;
 			watcher.Changed += OnChanged;
@@ -41,7 +42,6 @@ internal sealed class BeatmapsetFilesWatcher(
 		try
 		{
 			foreach (var id in storage.StoredSetIds())
-			{
 				try
 				{
 					await storage.SyncArchivesAsync(id, stoppingToken);
@@ -54,7 +54,6 @@ internal sealed class BeatmapsetFilesWatcher(
 				{
 					logger.LogError(exception, "Could not synchronize the archives of beatmapset {SetId}.", id);
 				}
-			}
 
 			try
 			{
@@ -78,17 +77,26 @@ internal sealed class BeatmapsetFilesWatcher(
 			}
 		}
 
-		void OnChanged(object sender, FileSystemEventArgs args) => Schedule(SetIdOf(args.FullPath), stoppingToken);
-		void OnRenamed(object sender, RenamedEventArgs args) => Schedule(SetIdOf(args.FullPath), stoppingToken);
+		void OnChanged(object sender, FileSystemEventArgs args)
+		{
+			Schedule(SetIdOf(args.FullPath), stoppingToken);
+		}
+
+		void OnRenamed(object sender, RenamedEventArgs args)
+		{
+			Schedule(SetIdOf(args.FullPath), stoppingToken);
+		}
 
 		void OnError(object sender, ErrorEventArgs args)
 		{
-			logger.LogWarning(args.GetException(), "Watching {Directory} failed; synchronizing every stored set.", paths.Beatmaps);
+			logger.LogWarning(args.GetException(), "Watching {Directory} failed; synchronizing every stored set.",
+				paths.Beatmaps);
 			try
 			{
 				foreach (var id in storage.StoredSetIds()) Schedule(id, stoppingToken);
 			}
-			catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
+			catch (Exception exception) when (exception is IOException or UnauthorizedAccessException
+				                                  or ArgumentException)
 			{
 				logger.LogWarning(exception, "Could not list stored beatmapsets to synchronize their archives.");
 			}
@@ -116,10 +124,12 @@ internal sealed class BeatmapsetFilesWatcher(
 			if (_pending.Remove(id.Value, out var previous)) previous.Cancel();
 			_pending.Add(id.Value, debounce);
 		}
+
 		_ = SyncAfterDebounceAsync(id.Value, debounce, stoppingToken);
 	}
 
-	private async Task SyncAfterDebounceAsync(int setId, CancellationTokenSource debounce, CancellationToken stoppingToken)
+	private async Task SyncAfterDebounceAsync(int setId, CancellationTokenSource debounce,
+		CancellationToken stoppingToken)
 	{
 		try
 		{
@@ -132,7 +142,8 @@ internal sealed class BeatmapsetFilesWatcher(
 
 			await storage.SyncArchivesAsync(setId, stoppingToken);
 		}
-		catch (OperationCanceledException) when (debounce.IsCancellationRequested || stoppingToken.IsCancellationRequested)
+		catch (OperationCanceledException) when (debounce.IsCancellationRequested ||
+		                                         stoppingToken.IsCancellationRequested)
 		{
 		}
 		catch (Exception exception)

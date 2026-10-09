@@ -3,7 +3,10 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Basil.Infrastructure.Storage.Memory;
 
-/// <summary>Finds live instances by a second unique key, such as a user's safe name or a beatmap's hash, for as long as they live.</summary>
+/// <summary>
+///     Finds live instances by a second unique key, such as a user's safe name or a beatmap's hash, for as long as
+///     they live.
+/// </summary>
 /// <remarks>The key of an item can change after it was indexed, so a caller checks the key on the item it gets.</remarks>
 internal sealed class WeakIndex<TKey, T> where TKey : notnull where T : class
 {
@@ -37,7 +40,8 @@ internal sealed class WeakIndex<TKey, T> where TKey : notnull where T : class
 	/// <summary>Forgets a key when it still points to the item.</summary>
 	public void Remove(TKey key, T item)
 	{
-		if (_items.TryGetValue(key, out var reference) && reference.TryGetTarget(out var current) && ReferenceEquals(current, item))
+		if (_items.TryGetValue(key, out var reference) && reference.TryGetTarget(out var current) &&
+		    ReferenceEquals(current, item))
 			_items.TryRemove(new KeyValuePair<TKey, WeakReference<T>>(key, reference));
 	}
 
