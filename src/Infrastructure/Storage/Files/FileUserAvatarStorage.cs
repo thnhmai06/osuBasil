@@ -1,5 +1,6 @@
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Users;
+using Basil.Infrastructure.Storage.Common.Options;
 
 namespace Basil.Infrastructure.Storage.Files;
 

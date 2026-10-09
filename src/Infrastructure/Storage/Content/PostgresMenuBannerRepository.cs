@@ -1,13 +1,15 @@
 using System.Collections.Concurrent;
 using Basil.Application.Storage.Contracts.Content;
 using Basil.Domain.Content;
-using Basil.Infrastructure.Storage.Writing;
+using Basil.Infrastructure.Storage.Common;
+using Basil.Infrastructure.Storage.Common.Database;
+using Basil.Infrastructure.Storage.Common.Writing;
 using Dapper;
 
 namespace Basil.Infrastructure.Storage.Content;
 
 /// <summary>Stores the banners shown on the osu! main menu.</summary>
-internal sealed class PostgresMenuBannerRepository(Database database, DatabaseWriter writer)
+internal sealed class PostgresMenuBannerRepository(DatabaseReader reader, DatabaseWriter writer)
 	: IMenuBannerRepository, IResident
 {
 	private readonly ConcurrentDictionary<Uri, MenuBanner> _banners = new();
@@ -50,7 +52,7 @@ internal sealed class PostgresMenuBannerRepository(Database database, DatabaseWr
 	/// <inheritdoc />
 	public async Task LoadAsync(CancellationToken cancellationToken)
 	{
-		var rows = await database.ReadAsync(connection => connection.QueryAsync<MenuBannerRow>(
+		var rows = await reader.ReadAsync(connection => connection.QueryAsync<MenuBannerRow>(
 			"select image, url, starts_at, ends_at, created_at from menu_banners"), cancellationToken);
 		foreach (var row in rows)
 		{

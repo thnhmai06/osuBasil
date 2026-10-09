@@ -1,15 +1,16 @@
 using System.Collections.Concurrent;
-using Basil.Infrastructure.Storage.Writing;
+using Basil.Infrastructure.Storage.Common.Database;
+using Basil.Infrastructure.Storage.Common.Writing;
 
 namespace Basil.Infrastructure.Storage.Memory;
 
 /// <summary>Base for repositories whose items live in memory, the source of truth, with the database keeping a copy.</summary>
-internal abstract class MemoryRepository<TKey, T>(Database database, DatabaseWriter writer)
+internal abstract class MemoryRepository<TKey, T>(DatabaseReader reader, DatabaseWriter writer)
 	where TKey : notnull where T : class
 {
 	private readonly ConcurrentDictionary<TKey, Task> _removing = new();
 	protected IdentityMap<TKey, T> Items { get; } = new();
-	protected Database Database { get; } = database;
+	protected DatabaseReader Reader { get; } = reader;
 	protected DatabaseWriter Writer { get; } = writer;
 
 	protected abstract string WriteSql { get; }

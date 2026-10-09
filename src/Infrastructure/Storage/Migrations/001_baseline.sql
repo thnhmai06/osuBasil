@@ -75,7 +75,7 @@ insert into channels (name, topic, read_permissions, write_permissions, auto_joi
 values ('#osu', 'General discussion.', 0, 0, true, true),
 	   ('#lobby', 'Multiplayer lobby discussion.', 0, 0, false, true);
 
-create table settings
+create table settings --TODO: Transpose this
 (
 	id                       integer primary key check (id = 1),
 	motd                     text    null,

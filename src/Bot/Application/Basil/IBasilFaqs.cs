@@ -1,6 +1,3 @@
-using Basil.Domain.Beatmaps;
-using Basil.Domain.Users;
-
 namespace Basil.Bot.Application.Basil;
 
 /// <summary>Reads the server's FAQ entries.</summary>

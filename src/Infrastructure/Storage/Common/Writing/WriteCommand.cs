@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using System.Reflection;
 using Npgsql;
 
-namespace Basil.Infrastructure.Storage.Writing;
+namespace Basil.Infrastructure.Storage.Common.Writing;
 
 /// <summary>One statement that stores a change, with its values as they were when the change was made.</summary>
 /// <param name="Sql">The statement, with <c>@Name</c> placeholders.</param>

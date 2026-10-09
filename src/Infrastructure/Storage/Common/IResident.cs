@@ -1,4 +1,4 @@
-namespace Basil.Infrastructure.Storage;
+namespace Basil.Infrastructure.Storage.Common;
 
 /// <summary>Data every client uses, held in memory from startup for the server's whole life.</summary>
 internal interface IResident

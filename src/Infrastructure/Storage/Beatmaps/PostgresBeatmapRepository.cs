@@ -6,8 +6,9 @@ using Basil.Application.Storage.Contracts.Common;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Utilities;
+using Basil.Infrastructure.Storage.Common.Database;
+using Basil.Infrastructure.Storage.Common.Writing;
 using Basil.Infrastructure.Storage.Memory;
-using Basil.Infrastructure.Storage.Writing;
 using Dapper;
 using Npgsql;
 
@@ -71,9 +72,9 @@ internal sealed class PostgresBeatmapRepository : MemoryRepository<int, Beatmap>
 	// The beatmaps a set keeps while the deletion of its others is queued, by set id.
 	private readonly ConcurrentDictionary<int, HashSet<int>> _retaining = new();
 
-	public PostgresBeatmapRepository(Database database, DatabaseWriter writer,
+	public PostgresBeatmapRepository(DatabaseReader reader, DatabaseWriter writer,
 		IBeatmapsetRepository beatmapsets)
-		: base(database, writer)
+		: base(reader, writer)
 	{
 		_beatmapsets = beatmapsets;
 	}
@@ -168,7 +169,7 @@ internal sealed class PostgresBeatmapRepository : MemoryRepository<int, Beatmap>
 		if (_byHash.TryGet(hash, out var known) && known.Value.Hash == hash)
 			return known;
 
-		var row = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<BeatmapRow>(
+		var row = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<BeatmapRow>(
 			ByHashSql, new { Hash = hash.HashValue }), cancellationToken);
 		if (row is null)
 			return null;
@@ -184,7 +185,7 @@ internal sealed class PostgresBeatmapRepository : MemoryRepository<int, Beatmap>
 		var liveSet = await LiveSetAsync(set, cancellationToken);
 		return await _bySet.GetOrLoadAsync(liveSet.Id, liveSet, async () =>
 		{
-			var rows = await Database.ReadAsync(connection => connection.QueryAsync<BeatmapRow>(
+			var rows = await Reader.ReadAsync(connection => connection.QueryAsync<BeatmapRow>(
 				BySetSql, new { SetId = liveSet.Id }), cancellationToken);
 			var beatmaps = ImmutableList.CreateBuilder<Beatmap>();
 			foreach (var row in rows)
@@ -219,7 +220,7 @@ internal sealed class PostgresBeatmapRepository : MemoryRepository<int, Beatmap>
 		                join beatmapsets s on s.id = b.beatmapset_id{filter}
 		                """;
 
-		var (rows, total) = await Database.ReadAsync(async connection => (
+		var (rows, total) = await Reader.ReadAsync(async connection => (
 			await connection.QueryAsync<BeatmapRow>(sql, parameters),
 			await connection.ExecuteScalarAsync<int>(countSql, parameters)), cancellationToken);
 		var items = new List<Beatmap>();
@@ -283,7 +284,7 @@ internal sealed class PostgresBeatmapRepository : MemoryRepository<int, Beatmap>
 
 	protected override async Task<Beatmap?> LoadAsync(int key)
 	{
-		var row = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<BeatmapRow>(
+		var row = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<BeatmapRow>(
 			ByIdSql, new { Id = key }));
 		return row is null ? null : await ToBeatmapAsync(row, default);
 	}

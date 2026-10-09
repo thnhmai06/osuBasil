@@ -1,12 +1,14 @@
 using Basil.Application.Storage.Contracts.Content;
 using Basil.Domain.Content;
-using Basil.Infrastructure.Storage.Writing;
+using Basil.Infrastructure.Storage.Common;
+using Basil.Infrastructure.Storage.Common.Database;
+using Basil.Infrastructure.Storage.Common.Writing;
 using Dapper;
 
 namespace Basil.Infrastructure.Storage.Content;
 
 /// <summary>Stores the server-wide settings.</summary>
-internal sealed class PostgresSettingsRepository(Database database, DatabaseWriter writer)
+internal sealed class PostgresSettingsRepository(DatabaseReader reader, DatabaseWriter writer)
 	: ISettingsRepository, IResident
 {
 	private ServerSettings? _settings;
@@ -14,7 +16,7 @@ internal sealed class PostgresSettingsRepository(Database database, DatabaseWrit
 	/// <inheritdoc />
 	public async Task LoadAsync(CancellationToken cancellationToken)
 	{
-		var row = await database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<SettingsRow>(
+		var row = await reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<SettingsRow>(
 			"""
 			select motd, locked_creation, menu_icon_url, menu_icon_image, mirror_download_endpoint, mirror_search_endpoint
 			from settings where id = 1

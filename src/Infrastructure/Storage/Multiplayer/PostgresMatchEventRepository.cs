@@ -2,22 +2,23 @@ using System.Collections.Immutable;
 using Basil.Application.Storage.Contracts.Multiplayer;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Multiplayer;
+using Basil.Infrastructure.Storage.Common.Database;
+using Basil.Infrastructure.Storage.Common.Writing;
 using Basil.Infrastructure.Storage.Memory;
-using Basil.Infrastructure.Storage.Writing;
 using Dapper;
 
 namespace Basil.Infrastructure.Storage.Multiplayer;
 
 /// <summary>Stores what happened in matches.</summary>
 internal sealed class PostgresMatchEventRepository(
-	Database database,
+	DatabaseReader reader,
 	DatabaseWriter writer,
 	IMatchRepository matches,
 	IUserRepository users)
 	: IMatchEventRepository
 {
 	private readonly OwnedLists<int, Match, MatchEvent> _byMatch = new();
-	private readonly IdSequence _ids = new(database, "match_events");
+	private readonly IdAllocator _ids = new(reader, "match_events");
 
 	/// <inheritdoc />
 	public async Task CreateAsync(MatchEvent matchEvent, CancellationToken cancellationToken = default)
@@ -49,7 +50,7 @@ internal sealed class PostgresMatchEventRepository(
 		var liveMatch = await matches.GetAsync(match.Id, cancellationToken) ?? match;
 		return await _byMatch.GetOrLoadAsync(liveMatch.Id, liveMatch, async () =>
 		{
-			var rows = await database.ReadAsync(connection => connection.QueryAsync<MatchEventRow>(
+			var rows = await reader.ReadAsync(connection => connection.QueryAsync<MatchEventRow>(
 				"""
 				select type, timestamp, actor_id, target_id, detail
 				from match_events

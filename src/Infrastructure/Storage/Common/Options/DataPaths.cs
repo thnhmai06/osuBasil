@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Options;
 
-namespace Basil.Infrastructure.Storage;
+namespace Basil.Infrastructure.Storage.Common.Options;
 
 /// <summary>Locates every file and directory the server stores.</summary>
 /// <remarks>

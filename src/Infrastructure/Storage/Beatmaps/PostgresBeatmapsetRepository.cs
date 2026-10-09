@@ -1,16 +1,17 @@
 using Basil.Application.Storage.Contracts.Beatmaps;
 using Basil.Application.Storage.Contracts.Common;
 using Basil.Domain.Beatmaps;
+using Basil.Infrastructure.Storage.Common.Database;
+using Basil.Infrastructure.Storage.Common.Writing;
 using Basil.Infrastructure.Storage.Memory;
-using Basil.Infrastructure.Storage.Writing;
 using Dapper;
 using Npgsql;
 
 namespace Basil.Infrastructure.Storage.Beatmaps;
 
 /// <summary>Stores beatmapsets in the <c>beatmapsets</c> table.</summary>
-internal sealed class PostgresBeatmapsetRepository(Database database, DatabaseWriter writer)
-	: MemoryRepository<int, Beatmapset>(database, writer), IBeatmapsetRepository
+internal sealed class PostgresBeatmapsetRepository(DatabaseReader reader, DatabaseWriter writer)
+	: MemoryRepository<int, Beatmapset>(reader, writer), IBeatmapsetRepository
 {
 	protected override string WriteSql =>
 		"""
@@ -120,7 +121,7 @@ internal sealed class PostgresBeatmapsetRepository(Database database, DatabaseWr
 		                )
 		                """;
 
-		var (rows, total) = await Database.ReadAsync(async connection => (
+		var (rows, total) = await Reader.ReadAsync(async connection => (
 			await connection.QueryAsync<BeatmapsetRow>(sql, parameters),
 			await connection.ExecuteScalarAsync<int>(countSql, parameters)), cancellationToken);
 
@@ -149,7 +150,7 @@ internal sealed class PostgresBeatmapsetRepository(Database database, DatabaseWr
 
 	protected override async Task<Beatmapset?> LoadAsync(int key)
 	{
-		var row = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<BeatmapsetRow>(
+		var row = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<BeatmapsetRow>(
 			"select id, artist, title, creator, created_at, updated_at, locked, visible from beatmapsets where id = @Id",
 			new { Id = key }));
 		return row is null ? null : ToBeatmapset(row);

@@ -1,8 +1,18 @@
-namespace Basil.Infrastructure.Storage.Writing;
+namespace Basil.Infrastructure.Storage.Common.Writing;
 
 /// <summary>What a stored change belongs to; changes that belong to the same root are stored in the order they were made.</summary>
-internal readonly record struct Root(RootKind Kind, int Id)
+internal readonly record struct Root
 {
+	public readonly RootKind Kind;
+
+	public readonly int Id;
+
+	private Root(RootKind kind, int id)
+	{
+		Kind = kind;
+		Id = id;
+	}
+
 	public static Root Server => new(RootKind.Server, 0);
 
 	public static Root User(int id)
@@ -21,7 +31,7 @@ internal readonly record struct Root(RootKind Kind, int Id)
 	}
 }
 
-internal enum RootKind
+internal enum RootKind : byte
 {
 	User,
 	Match,

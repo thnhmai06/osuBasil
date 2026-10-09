@@ -1,4 +1,4 @@
-namespace Basil.Infrastructure.Storage;
+namespace Basil.Infrastructure.Storage.Common.Queries;
 
 /// <summary>Combines a stored file's name with the directory that holds it, refusing any name that escapes it.</summary>
 internal static class SafePath
@@ -34,9 +34,8 @@ internal static class SafePath
 			? StringComparison.OrdinalIgnoreCase
 			: StringComparison.Ordinal;
 
-		if (!combined.StartsWith(boundary, comparison))
-			throw new ArgumentException("The name resolves outside the root directory.", nameof(name));
-
-		return combined;
+		return combined.StartsWith(boundary, comparison)
+			? combined
+			: throw new ArgumentException("The name resolves outside the root directory.", nameof(name));
 	}
 }

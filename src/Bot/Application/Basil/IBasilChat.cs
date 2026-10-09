@@ -1,4 +1,3 @@
-using Basil.Domain.Beatmaps;
 using Basil.Domain.Users;
 
 namespace Basil.Bot.Application.Basil;

@@ -2,12 +2,14 @@ using System.Collections.Immutable;
 using Basil.Application.Storage.Contracts.Chat;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
+using Basil.Infrastructure.Storage.Common;
+using Basil.Infrastructure.Storage.Common.Database;
 using Dapper;
 
 namespace Basil.Infrastructure.Storage.Chat;
 
 /// <summary>Stores the general chat channels the server offers.</summary>
-internal sealed class PostgresChannelRepository(Database database) : IChannelRepository, IResident
+internal sealed class PostgresChannelRepository(DatabaseReader reader) : IChannelRepository, IResident
 {
 	private ImmutableList<GeneralChannel>? _channels;
 
@@ -22,7 +24,7 @@ internal sealed class PostgresChannelRepository(Database database) : IChannelRep
 	/// <inheritdoc />
 	public async Task LoadAsync(CancellationToken cancellationToken)
 	{
-		var rows = await database.ReadAsync(connection => connection.QueryAsync<ChannelRow>(
+		var rows = await reader.ReadAsync(connection => connection.QueryAsync<ChannelRow>(
 				"select name, topic, read_permissions, write_permissions, auto_join, visible from channels order by name"),
 			cancellationToken);
 		_channels = rows.Select(row => row.ToChannel()).ToImmutableList();

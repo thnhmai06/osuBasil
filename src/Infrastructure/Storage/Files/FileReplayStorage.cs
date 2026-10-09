@@ -1,5 +1,6 @@
 using Basil.Application.Storage.Contracts.Scores;
 using Basil.Domain.Scores;
+using Basil.Infrastructure.Storage.Common.Options;
 
 namespace Basil.Infrastructure.Storage.Files;
 

@@ -3,18 +3,19 @@ using Basil.Application.Storage.Contracts.Multiplayer;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Utilities;
+using Basil.Infrastructure.Storage.Common.Database;
+using Basil.Infrastructure.Storage.Common.Writing;
 using Basil.Infrastructure.Storage.Memory;
-using Basil.Infrastructure.Storage.Writing;
 using Dapper;
 
 namespace Basil.Infrastructure.Storage.Multiplayer;
 
 /// <summary>Stores the rounds played in matches.</summary>
 internal sealed class PostgresRoundRepository(
-	Database database,
+	DatabaseReader reader,
 	DatabaseWriter writer,
 	IMatchRepository matches)
-	: MemoryRepository<(int MatchId, int Number), Round>(database, writer), IRoundRepository
+	: MemoryRepository<(int MatchId, int Number), Round>(reader, writer), IRoundRepository
 {
 	private readonly OwnedLists<int, Match, Round> _byMatch = new();
 
@@ -50,7 +51,7 @@ internal sealed class PostgresRoundRepository(
 		var liveMatch = await matches.GetAsync(match.Id, cancellationToken) ?? match;
 		return await _byMatch.GetOrLoadAsync(liveMatch.Id, liveMatch, async () =>
 		{
-			var rows = await Database.ReadAsync(connection => connection.QueryAsync<RoundRow>(
+			var rows = await Reader.ReadAsync(connection => connection.QueryAsync<RoundRow>(
 				"""
 				select number, beatmap_hash, mode, mods, freemods, team_type, win_condition, seed, started_at, ended_at, aborted
 				from rounds
@@ -77,7 +78,7 @@ internal sealed class PostgresRoundRepository(
 
 	protected override async Task<Round?> LoadAsync((int MatchId, int Number) key)
 	{
-		var row = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<RoundRow>(
+		var row = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<RoundRow>(
 			"""
 			select number, beatmap_hash, mode, mods, freemods, team_type, win_condition, seed, started_at, ended_at, aborted
 			from rounds

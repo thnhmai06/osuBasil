@@ -1,14 +1,15 @@
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Auth;
+using Basil.Infrastructure.Storage.Common.Database;
+using Basil.Infrastructure.Storage.Common.Writing;
 using Basil.Infrastructure.Storage.Memory;
-using Basil.Infrastructure.Storage.Writing;
 using Dapper;
 
 namespace Basil.Infrastructure.Storage.Users;
 
 /// <summary>Stores the login credential of each user.</summary>
-internal sealed class PostgresCredentialRepository(Database database, DatabaseWriter writer)
-	: MemoryRepository<int, PostgresCredentialRepository.StoredCredential>(database, writer), ICredentialRepository
+internal sealed class PostgresCredentialRepository(DatabaseReader reader, DatabaseWriter writer)
+	: MemoryRepository<int, PostgresCredentialRepository.StoredCredential>(reader, writer), ICredentialRepository
 {
 	protected override string WriteSql =>
 		"""
@@ -49,7 +50,7 @@ internal sealed class PostgresCredentialRepository(Database database, DatabaseWr
 
 	protected override async Task<StoredCredential?> LoadAsync(int key)
 	{
-		var hash = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<string?>(
+		var hash = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<string?>(
 			"select password_hash from credentials where user_id = @UserId", new { UserId = key }));
 		return hash is null ? null : new StoredCredential(key, hash);
 	}

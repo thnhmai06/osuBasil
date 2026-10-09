@@ -1,14 +1,15 @@
 using System.Globalization;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Auth;
-using Basil.Infrastructure.Storage.Writing;
+using Basil.Infrastructure.Storage.Common.Database;
+using Basil.Infrastructure.Storage.Common.Writing;
 
 namespace Basil.Infrastructure.Storage.Users;
 
 /// <summary>Records the history of logins.</summary>
-internal sealed class PostgresLoginRepository(Database database, DatabaseWriter writer) : ILoginRepository
+internal sealed class PostgresLoginRepository(DatabaseReader reader, DatabaseWriter writer) : ILoginRepository
 {
-	private readonly IdSequence _ids = new(database, "logins");
+	private readonly IdAllocator _ids = new(reader, "logins");
 
 	/// <inheritdoc />
 	public async Task CreateAsync(Login login, CancellationToken cancellationToken = default)

@@ -6,12 +6,14 @@ using Basil.Application.Storage.Contracts.Scores;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Infrastructure.Storage.Beatmaps;
 using Basil.Infrastructure.Storage.Chat;
+using Basil.Infrastructure.Storage.Common;
+using Basil.Infrastructure.Storage.Common.Database;
+using Basil.Infrastructure.Storage.Common.Options;
 using Basil.Infrastructure.Storage.Content;
 using Basil.Infrastructure.Storage.Files;
 using Basil.Infrastructure.Storage.Multiplayer;
 using Basil.Infrastructure.Storage.Scores;
 using Basil.Infrastructure.Storage.Users;
-using Basil.Infrastructure.Storage.Writing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -27,6 +29,7 @@ public static class DependencyInjection
 	{
 		services.AddSingleton<DataPaths>();
 		services.AddSingleton<Database>();
+		services.AddSingleton<DatabaseReader>();
 		services.AddSingleton<DatabaseMigrator>();
 		services.AddHostedService<StorageStartup>();
 		services.TryAddSingleton(TimeProvider.System);

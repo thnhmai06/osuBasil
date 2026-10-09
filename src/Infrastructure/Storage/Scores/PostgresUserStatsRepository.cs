@@ -1,15 +1,16 @@
 using Basil.Application.Storage.Contracts.Scores;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
+using Basil.Infrastructure.Storage.Common.Database;
+using Basil.Infrastructure.Storage.Common.Writing;
 using Basil.Infrastructure.Storage.Memory;
-using Basil.Infrastructure.Storage.Writing;
 using Dapper;
 
 namespace Basil.Infrastructure.Storage.Scores;
 
 /// <summary>Stores users' cumulative score statistics.</summary>
-internal sealed class PostgresUserStatsRepository(Database database, DatabaseWriter writer)
-	: MemoryRepository<(int UserId, GameMode Mode), UserStats>(database, writer), IUserStatsRepository
+internal sealed class PostgresUserStatsRepository(DatabaseReader reader, DatabaseWriter writer)
+	: MemoryRepository<(int UserId, GameMode Mode), UserStats>(reader, writer), IUserStatsRepository
 {
 	protected override string WriteSql =>
 		"""
@@ -55,7 +56,7 @@ internal sealed class PostgresUserStatsRepository(Database database, DatabaseWri
 
 	protected override async Task<UserStats?> LoadAsync((int UserId, GameMode Mode) key)
 	{
-		var row = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<StatsRow>(
+		var row = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<StatsRow>(
 			"select user_id, mode, total_score, ranked_score, play_count from user_stats where user_id = @UserId and mode = @Mode",
 			new { key.UserId, Mode = (int)key.Mode }));
 		return row is null

@@ -1,10 +1,12 @@
 using System.Collections.Concurrent;
+using Basil.Infrastructure.Storage.Common.Options;
+using Basil.Infrastructure.Storage.Common.Writing;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Npgsql;
 
-namespace Basil.Infrastructure.Storage.Writing;
+namespace Basil.Infrastructure.Storage.Common.Database;
 
 /// <summary>
 ///     Stores every change as its own statement, keeps the writes of one <see cref="Root" /> in order, and retries
@@ -21,13 +23,6 @@ internal sealed class DatabaseWriter(
 	private readonly ConcurrentDictionary<RootQueue, Task> _drains = new();
 	private readonly ConcurrentDictionary<Root, RootQueue> _queues = new();
 	private int _abandonedCount;
-
-	/// <inheritdoc />
-	public void Dispose()
-	{
-		_abandon.Dispose();
-		_connections.Dispose();
-	}
 
 	/// <inheritdoc />
 	public Task StartingAsync(CancellationToken cancellationToken)
@@ -80,7 +75,7 @@ internal sealed class DatabaseWriter(
 	/// </returns>
 	public Task SaveAsync(Root root, object identity, WriteCommand command)
 	{
-		var pending = new Pending(identity, command, null);
+		var pending = new PendingTransaction(identity, command, null);
 		return Enqueue(root, identity, pending).Pending.Done.Task;
 	}
 
@@ -91,7 +86,7 @@ internal sealed class DatabaseWriter(
 	public Task AppendAsync(Root root, WriteCommand command)
 	{
 		var identity = new object();
-		var pending = new Pending(identity, command, null);
+		var pending = new PendingTransaction(identity, command, null);
 		return Enqueue(root, identity, pending).Pending.Done.Task;
 	}
 
@@ -105,10 +100,10 @@ internal sealed class DatabaseWriter(
 	{
 		T result = default!;
 		var identity = new object();
-		var pending = new Pending(identity, null,
+		var pending = new PendingTransaction(identity, null,
 			async (connection, transaction) => result = await operation(connection, transaction));
 		var queue = Enqueue(root, identity, pending).Queue;
-		using var registration = cancellationToken.Register(() =>
+		await using var registration = cancellationToken.Register(() =>
 		{
 			lock (queue.Gate)
 			{
@@ -120,6 +115,13 @@ internal sealed class DatabaseWriter(
 		return result;
 	}
 
+	/// <inheritdoc />
+	public void Dispose()
+	{
+		_abandon.Dispose();
+		_connections.Dispose();
+	}
+
 	private static int ValidConnections(int count)
 	{
 		return count >= 1
@@ -127,7 +129,8 @@ internal sealed class DatabaseWriter(
 			: throw new ArgumentOutOfRangeException(nameof(count), count, "At least one write connection is required.");
 	}
 
-	private (RootQueue Queue, Pending Pending) Enqueue(Root root, object identity, Pending pending)
+	private (RootQueue Queue, PendingTransaction Pending) Enqueue(Root root, object identity,
+		PendingTransaction pendingTransaction)
 	{
 		while (true)
 		{
@@ -136,14 +139,14 @@ internal sealed class DatabaseWriter(
 			{
 				if (queue.Retired)
 					continue;
-				if (pending.Command is not null && queue.Pending.TryGetValue(identity, out var queued) &&
+				if (pendingTransaction.Command is not null && queue.Pending.TryGetValue(identity, out var queued) &&
 				    queued.Command is not null && queued.Run is null)
 				{
-					queued.Command = pending.Command;
+					queued.Command = pendingTransaction.Command;
 					return (queue, queued);
 				}
 
-				queue.Pending.Add(identity, pending);
+				queue.Pending.Add(identity, pendingTransaction);
 				if (!queue.Draining)
 				{
 					queue.Draining = true;
@@ -153,7 +156,7 @@ internal sealed class DatabaseWriter(
 						TaskScheduler.Default);
 				}
 
-				return (queue, pending);
+				return (queue, pendingTransaction);
 			}
 		}
 	}
@@ -162,7 +165,7 @@ internal sealed class DatabaseWriter(
 	{
 		while (true)
 		{
-			Pending next;
+			PendingTransaction next;
 			lock (queue.Gate)
 			{
 				if (queue.Pending.Count == 0)
@@ -182,7 +185,7 @@ internal sealed class DatabaseWriter(
 		}
 	}
 
-	private async Task RunAsync(Root root, Pending pending)
+	private async Task RunAsync(Root root, PendingTransaction pendingTransaction)
 	{
 		var delay = TimeSpan.FromMilliseconds(50);
 		DateTimeOffset? firstFailure = null;
@@ -197,11 +200,11 @@ internal sealed class DatabaseWriter(
 					await _connections.WaitAsync(_abandon.Token);
 					try
 					{
-						if (pending.Run is null)
-							await RunSnapshotAsync(pending);
+						if (pendingTransaction.Run is null)
+							await RunSnapshotAsync(pendingTransaction);
 						else
-							await RunTryOpAsync(pending);
-						pending.Done.TrySetResult();
+							await RunTryOpAsync(pendingTransaction);
+						pendingTransaction.Done.TrySetResult();
 						return;
 					}
 					finally
@@ -210,7 +213,7 @@ internal sealed class DatabaseWriter(
 					}
 				}
 				catch (Exception exception) when (!_abandon.IsCancellationRequested &&
-				                                  WriteErrors.IsEnvironment(exception))
+				                                  exception.IsEnvironmentException())
 				{
 					environmentException = exception;
 				}
@@ -237,15 +240,15 @@ internal sealed class DatabaseWriter(
 
 				if (failException is not null)
 				{
-					if (pending.Run is not null)
+					if (pendingTransaction.Run is not null)
 					{
-						pending.Done.TrySetException(failException);
+						pendingTransaction.Done.TrySetException(failException);
 					}
 					else
 					{
 						logger.LogError(failException, "A write of {Root} for {Identity} was refused and not stored",
-							root, pending.Identity);
-						pending.Done.TrySetException(failException);
+							root, pendingTransaction.Identity);
+						pendingTransaction.Done.TrySetException(failException);
 					}
 
 					return;
@@ -254,25 +257,25 @@ internal sealed class DatabaseWriter(
 			catch (OperationCanceledException) when (_abandon.IsCancellationRequested)
 			{
 				Interlocked.Increment(ref _abandonedCount);
-				pending.Done.TrySetException(new OperationCanceledException(_abandon.Token));
+				pendingTransaction.Done.TrySetException(new OperationCanceledException(_abandon.Token));
 				return;
 			}
 	}
 
-	private async Task RunSnapshotAsync(Pending pending)
+	private async Task RunSnapshotAsync(PendingTransaction pendingTransaction)
 	{
-		await using var connection = await database.OpenSnapshotAsync(_abandon.Token);
-		await using var command = pending.Command!.ToCommand(connection);
+		await using var connection = await database.AsynchronousSource.OpenConnectionAsync(_abandon.Token);
+		await using var command = pendingTransaction.Command!.ToCommand(connection);
 		await command.ExecuteNonQueryAsync(_abandon.Token);
 	}
 
-	private async Task RunTryOpAsync(Pending pending)
+	private async Task RunTryOpAsync(PendingTransaction pendingTransaction)
 	{
 		long xid = 0;
 		var committing = false;
 		try
 		{
-			await using var connection = await database.OpenAsync(_abandon.Token);
+			await using var connection = await database.SynchronousSource.OpenConnectionAsync(_abandon.Token);
 			await using var transaction = await connection.BeginTransactionAsync(_abandon.Token);
 			await using (var timeout = new NpgsqlCommand("set local idle_in_transaction_session_timeout = '30s'",
 				             connection, transaction))
@@ -286,7 +289,7 @@ internal sealed class DatabaseWriter(
 				xid = Convert.ToInt64(await xactId.ExecuteScalarAsync(_abandon.Token));
 			}
 
-			await pending.Run!(connection, transaction);
+			await pendingTransaction.Run!(connection, transaction);
 			committing = true;
 			await transaction.CommitAsync(_abandon.Token);
 		}
@@ -304,7 +307,7 @@ internal sealed class DatabaseWriter(
 		while (true)
 			try
 			{
-				await using var connection = await database.OpenAsync(_abandon.Token);
+				await using var connection = await database.SynchronousSource.OpenConnectionAsync(_abandon.Token);
 				await using var command = new NpgsqlCommand("select pg_xact_status(@Xid::text::xid8)", connection);
 				command.Parameters.AddWithValue("Xid", xid);
 				var status = (string?)await command.ExecuteScalarAsync(_abandon.Token);
@@ -319,7 +322,7 @@ internal sealed class DatabaseWriter(
 						return false;
 				}
 			}
-			catch (Exception exception) when (WriteErrors.IsEnvironment(exception))
+			catch (Exception exception) when (exception.IsEnvironmentException())
 			{
 				logger.LogWarning(exception, "Transaction status could not be checked; retrying in {Delay}", delay);
 				await Task.Delay(delay, timeProvider, _abandon.Token);
@@ -336,10 +339,10 @@ internal sealed class DatabaseWriter(
 		public bool Draining;
 		public bool Retired;
 		public Lock Gate { get; } = new();
-		public OrderedDictionary<object, Pending> Pending { get; } = new();
+		public OrderedDictionary<object, PendingTransaction> Pending { get; } = new();
 	}
 
-	private sealed class Pending(
+	private sealed class PendingTransaction(
 		object identity,
 		WriteCommand? command,
 		Func<NpgsqlConnection, NpgsqlTransaction, Task>? run)

@@ -1,7 +1,7 @@
 using System.Collections.Frozen;
 using Npgsql;
 
-namespace Basil.Infrastructure.Storage.Writing;
+namespace Basil.Infrastructure.Storage.Common.Writing;
 
 /// <summary>Tells apart the write failures caused by the database's environment from those caused by the write itself.</summary>
 internal static class WriteErrors
@@ -25,7 +25,7 @@ internal static class WriteErrors
 	///     Tells whether a write failed because of its environment (connection, server state, configuration), which makes
 	///     it worth trying again.
 	/// </summary>
-	public static bool IsEnvironment(Exception exception)
+	public static bool IsEnvironmentException(this Exception exception)
 	{
 		return exception switch
 		{

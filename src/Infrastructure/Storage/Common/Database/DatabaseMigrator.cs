@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Reflection;
 using Npgsql;
 
-namespace Basil.Infrastructure.Storage;
+namespace Basil.Infrastructure.Storage.Common.Database;
 
 /// <summary>Brings the database up to date with the schema the server was built against.</summary>
 /// <remarks>
@@ -18,7 +18,7 @@ internal sealed class DatabaseMigrator(Database database)
 	/// <param name="cancellationToken">A token that cancels the migration.</param>
 	public async Task MigrateAsync(CancellationToken cancellationToken = default)
 	{
-		await using var connection = await database.OpenAsync(cancellationToken);
+		await using var connection = await database.SynchronousSource.OpenConnectionAsync(cancellationToken);
 		await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
 
 		await using (var createVersion = new NpgsqlCommand(
@@ -53,7 +53,7 @@ internal sealed class DatabaseMigrator(Database database)
 		await transaction.CommitAsync(cancellationToken);
 	}
 
-	private static IEnumerable<(int Version, string Sql)> Migrations()
+	private static IOrderedEnumerable<(int Version, string Sql)> Migrations()
 	{
 		var assembly = Assembly.GetExecutingAssembly();
 
@@ -61,8 +61,7 @@ internal sealed class DatabaseMigrator(Database database)
 			.Where(name => name.Contains(Marker, StringComparison.Ordinal)
 			               && name.EndsWith(Extension, StringComparison.Ordinal))
 			.Select(name => (Version: ParseVersion(name), Sql: ReadSql(assembly, name)))
-			.OrderBy(migration => migration.Version)
-			.ToList();
+			.OrderBy(migration => migration.Version);
 	}
 
 	private static int ParseVersion(string resourceName)

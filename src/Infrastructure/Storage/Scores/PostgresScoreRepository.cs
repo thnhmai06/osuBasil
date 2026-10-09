@@ -6,8 +6,9 @@ using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Utilities;
+using Basil.Infrastructure.Storage.Common.Database;
+using Basil.Infrastructure.Storage.Common.Writing;
 using Basil.Infrastructure.Storage.Memory;
-using Basil.Infrastructure.Storage.Writing;
 using Dapper;
 using Npgsql;
 
@@ -15,10 +16,10 @@ namespace Basil.Infrastructure.Storage.Scores;
 
 /// <summary>Stores submitted scores.</summary>
 internal sealed class PostgresScoreRepository(
-	Database database,
+	DatabaseReader reader,
 	DatabaseWriter writer,
 	IMatchRepository matches,
-	IRoundRepository rounds) : MemoryRepository<int, Score>(database, writer), IScoreRepository
+	IRoundRepository rounds) : MemoryRepository<int, Score>(reader, writer), IScoreRepository
 {
 	private readonly WeakIndex<Md5, Score> _byChecksum = new();
 	private readonly OwnedLists<(int MatchId, int Number), Round, Score> _byRound = new();
@@ -108,7 +109,7 @@ internal sealed class PostgresScoreRepository(
 		var (where, parameters) = BuildFilter(query);
 		parameters.Add("Limit", page.Limit);
 		parameters.Add("Offset", page.Offset);
-		var (total, rows) = await Database.ReadAsync(async connection => (
+		var (total, rows) = await Reader.ReadAsync(async connection => (
 			await connection.ExecuteScalarAsync<int>($"select count(*) from scores {where}", parameters),
 			await connection.QueryAsync<ScoreRow>(
 				$"""
@@ -133,7 +134,7 @@ internal sealed class PostgresScoreRepository(
 	{
 		return await _byRound.GetOrLoadAsync((round.Match.Id, round.Number), round, async () =>
 		{
-			var rows = await Database.ReadAsync(connection => connection.QueryAsync<ScoreRow>(
+			var rows = await Reader.ReadAsync(connection => connection.QueryAsync<ScoreRow>(
 				"""
 				select id, user_id, beatmap_hash, mode, mods, num300, num100, num50, num_geki, num_katu, num_miss,
 				       total_score, max_combo, grade, is_passed, is_full_combo, timestamp, match_id, round_number, team, checksum
@@ -166,7 +167,7 @@ internal sealed class PostgresScoreRepository(
 
 	protected override async Task<Score?> LoadAsync(int key)
 	{
-		var row = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<ScoreRow>(
+		var row = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<ScoreRow>(
 			"""
 			select id, user_id, beatmap_hash, mode, mods, num300, num100, num50, num_geki, num_katu, num_miss,
 			       total_score, max_combo, grade, is_passed, is_full_combo, timestamp, match_id, round_number, team, checksum

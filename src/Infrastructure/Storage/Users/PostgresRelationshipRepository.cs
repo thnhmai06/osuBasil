@@ -2,15 +2,16 @@ using System.Collections.Immutable;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Social;
 using Basil.Domain.Users;
+using Basil.Infrastructure.Storage.Common.Database;
+using Basil.Infrastructure.Storage.Common.Writing;
 using Basil.Infrastructure.Storage.Memory;
-using Basil.Infrastructure.Storage.Writing;
 using Dapper;
 
 namespace Basil.Infrastructure.Storage.Users;
 
 /// <summary>Stores the friends and blocks users set toward each other.</summary>
 internal sealed class PostgresRelationshipRepository(
-	Database database,
+	DatabaseReader reader,
 	DatabaseWriter writer,
 	IUserRepository users)
 	: IRelationshipRepository
@@ -55,7 +56,7 @@ internal sealed class PostgresRelationshipRepository(
 		var liveActor = await users.GetAsync(actor.Id, cancellationToken) ?? actor;
 		return await _byActor.GetOrLoadAsync(liveActor.Id, liveActor, async () =>
 		{
-			var rows = await database.ReadAsync(connection => connection.QueryAsync<RelationshipRow>(
+			var rows = await reader.ReadAsync(connection => connection.QueryAsync<RelationshipRow>(
 				"select actor_id, target_id, type, created_at from relationships where actor_id = @ActorId",
 				new { ActorId = liveActor.Id }), cancellationToken);
 

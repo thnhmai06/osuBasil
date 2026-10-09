@@ -2,16 +2,18 @@ using System.Globalization;
 using Basil.Application.Storage.Contracts.Common;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Users;
+using Basil.Infrastructure.Storage.Common.Database;
+using Basil.Infrastructure.Storage.Common.Queries;
+using Basil.Infrastructure.Storage.Common.Writing;
 using Basil.Infrastructure.Storage.Memory;
-using Basil.Infrastructure.Storage.Writing;
 using Dapper;
 using Npgsql;
 
 namespace Basil.Infrastructure.Storage.Users;
 
 /// <summary>Stores registered users.</summary>
-internal sealed class PostgresUserRepository(Database database, DatabaseWriter writer)
-	: MemoryRepository<int, User>(database, writer), IUserRepository
+internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWriter writer)
+	: MemoryRepository<int, User>(reader, writer), IUserRepository
 {
 	private readonly WeakIndex<string, User> _byName = new();
 
@@ -107,7 +109,7 @@ internal sealed class PostgresUserRepository(Database database, DatabaseWriter w
 		if (_byName.TryGet(safeName, out var known) && known.Value.SafeName == safeName)
 			return known;
 
-		var foundId = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<int?>(
+		var foundId = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<int?>(
 			"select id from users where safe_name = @SafeName", new { SafeName = safeName }), cancellationToken);
 		return foundId is { } found ? await FindUserAsync(found, cancellationToken) : null;
 	}
@@ -119,7 +121,7 @@ internal sealed class PostgresUserRepository(Database database, DatabaseWriter w
 		var (where, parameters) = BuildFilter(query);
 		parameters.Add("Limit", page.Limit);
 		parameters.Add("Offset", page.Offset);
-		var (total, rows) = await Database.ReadAsync(async connection => (
+		var (total, rows) = await Reader.ReadAsync(async connection => (
 			await connection.ExecuteScalarAsync<int>($"select count(*) from users {where}", parameters),
 			await connection.QueryAsync<UserRow>(
 				$"select id, name, country, permissions, deleted_at from users {where} order by id limit @Limit offset @Offset",
@@ -147,7 +149,7 @@ internal sealed class PostgresUserRepository(Database database, DatabaseWriter w
 
 	protected override async Task<User?> LoadAsync(int key)
 	{
-		var row = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<UserRow>(
+		var row = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<UserRow>(
 			"select id, name, country, permissions, deleted_at from users where id = @Id", new { Id = key }));
 		return row is null ? null : ToUser(row);
 	}

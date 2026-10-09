@@ -1,4 +1,3 @@
-using Basil.Application.Storage.Contracts.Sessions;
 using Basil.Domain.Multiplayer;
 
 namespace Basil.Application.Storage.Contracts.Multiplayer;

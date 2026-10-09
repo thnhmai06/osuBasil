@@ -2,15 +2,16 @@ using Basil.Application.Storage.Contracts.Common;
 using Basil.Application.Storage.Contracts.Multiplayer;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Multiplayer;
+using Basil.Infrastructure.Storage.Common.Database;
+using Basil.Infrastructure.Storage.Common.Writing;
 using Basil.Infrastructure.Storage.Memory;
-using Basil.Infrastructure.Storage.Writing;
 using Dapper;
 
 namespace Basil.Infrastructure.Storage.Multiplayer;
 
 /// <summary>Stores matches.</summary>
-internal sealed class PostgresMatchRepository(Database database, DatabaseWriter writer, IUserRepository users)
-	: MemoryRepository<int, Match>(database, writer), IMatchRepository
+internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWriter writer, IUserRepository users)
+	: MemoryRepository<int, Match>(reader, writer), IMatchRepository
 {
 	protected override string WriteSql =>
 		"""
@@ -58,7 +59,7 @@ internal sealed class PostgresMatchRepository(Database database, DatabaseWriter 
 		CancellationToken cancellationToken = default)
 	{
 		var where = BuildFilter(query);
-		var (total, rows) = await Database.ReadAsync(async connection => (
+		var (total, rows) = await Reader.ReadAsync(async connection => (
 			await connection.ExecuteScalarAsync<int>($"select count(*) from matches {where}"),
 			await connection.QueryAsync<MatchRow>(
 				$"""
@@ -95,7 +96,7 @@ internal sealed class PostgresMatchRepository(Database database, DatabaseWriter 
 
 	protected override async Task<Match?> LoadAsync(int key)
 	{
-		var row = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<MatchRow>(
+		var row = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<MatchRow>(
 			"select id, name, creator_id, started_at, ended_at, is_private from matches where id = @Id",
 			new { Id = key }));
 		return row is null ? null : await ToMatchAsync(row, default);

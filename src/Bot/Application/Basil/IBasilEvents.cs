@@ -1,6 +1,3 @@
-using Basil.Domain.Beatmaps;
-using Basil.Domain.Users;
-
 namespace Basil.Bot.Application.Basil;
 
 /// <summary>The stream of things happening on the server that the bot reacts to.</summary>

@@ -1,18 +1,19 @@
 using System.Collections.Immutable;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Users;
+using Basil.Infrastructure.Storage.Common.Database;
+using Basil.Infrastructure.Storage.Common.Writing;
 using Basil.Infrastructure.Storage.Memory;
-using Basil.Infrastructure.Storage.Writing;
 using Dapper;
 
 namespace Basil.Infrastructure.Storage.Users;
 
 /// <summary>Stores the restrictions of users.</summary>
 internal sealed class PostgresRestrictionRepository(
-	Database database,
+	DatabaseReader reader,
 	DatabaseWriter writer,
 	IUserRepository users)
-	: MemoryRepository<int, Restriction>(database, writer), IRestrictionRepository
+	: MemoryRepository<int, Restriction>(reader, writer), IRestrictionRepository
 {
 	private readonly OwnedLists<int, User, Restriction> _byUser = new();
 
@@ -81,7 +82,7 @@ internal sealed class PostgresRestrictionRepository(
 		var liveUser = await users.GetAsync(user.Id, cancellationToken) ?? user;
 		return await _byUser.GetOrLoadAsync(liveUser.Id, liveUser, async () =>
 		{
-			var rows = await Database.ReadAsync(connection => connection.QueryAsync<RestrictionRow>(
+			var rows = await Reader.ReadAsync(connection => connection.QueryAsync<RestrictionRow>(
 				"select id, user_id, permissions, starts_at, ends_at from restrictions where user_id = @UserId order by starts_at, id",
 				new { UserId = liveUser.Id }), cancellationToken);
 			var restrictions = ImmutableList.CreateBuilder<Restriction>();
@@ -109,7 +110,7 @@ internal sealed class PostgresRestrictionRepository(
 
 	protected override async Task<Restriction?> LoadAsync(int key)
 	{
-		var row = await Database.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<RestrictionRow>(
+		var row = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<RestrictionRow>(
 			"select id, user_id, permissions, starts_at, ends_at from restrictions where id = @Id", new { Id = key }));
 		if (row is null)
 			return null;
