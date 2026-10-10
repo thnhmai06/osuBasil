@@ -9,7 +9,6 @@ using Basil.Application.Storage.Contracts.Multiplayer.Room;
 using Basil.Application.Storage.Contracts.Sessions;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Chat;
-using Basil.Domain.Social;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Implementations.Chat;

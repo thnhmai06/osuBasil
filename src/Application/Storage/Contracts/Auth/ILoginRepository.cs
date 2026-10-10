@@ -1,6 +1,6 @@
 using Basil.Domain.Auth;
 
-namespace Basil.Application.Storage.Contracts.Users;
+namespace Basil.Application.Storage.Contracts.Auth;
 
 /// <summary>Records the history of logins.</summary>
 /// <remarks>The history is kept for audit; no server operation reads it back.</remarks>

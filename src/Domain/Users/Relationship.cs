@@ -1,6 +1,4 @@
-﻿using Basil.Domain.Users;
-
-namespace Basil.Domain.Social;
+﻿namespace Basil.Domain.Users;
 
 /// <summary>
 ///     A social relationship between two users.

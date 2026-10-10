@@ -1,4 +1,3 @@
-using Basil.Domain.Social;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Storage.Contracts.Users;

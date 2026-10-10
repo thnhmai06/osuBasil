@@ -1,4 +1,4 @@
-namespace Basil.Domain.Social;
+namespace Basil.Domain.Users;
 
 /// <summary>
 ///     Specifies which users a player can see in their presence list.

@@ -1,3 +1,4 @@
+using Basil.Application.Storage.Contracts.Auth;
 using Basil.Application.Storage.Contracts.Beatmaps;
 using Basil.Application.Storage.Contracts.Chat;
 using Basil.Application.Storage.Contracts.Content;
@@ -6,6 +7,7 @@ using Basil.Application.Storage.Contracts.Multiplayer.Match;
 using Basil.Application.Storage.Contracts.Multiplayer.Room;
 using Basil.Application.Storage.Contracts.Scores;
 using Basil.Application.Storage.Contracts.Users;
+using Basil.Infrastructure.Storage.Auth;
 using Basil.Infrastructure.Storage.Beatmaps;
 using Basil.Infrastructure.Storage.Chat;
 using Basil.Infrastructure.Storage.Common;

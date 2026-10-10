@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
 using Basil.Application.Storage.Contracts.Users;
-using Basil.Domain.Social;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Storage.Common.Database;
 using Basil.Infrastructure.Storage.Common.Writing;

@@ -1,11 +1,11 @@
-using Basil.Application.Storage.Contracts.Users;
+using Basil.Application.Storage.Contracts.Auth;
 using Basil.Domain.Auth;
 using Basil.Infrastructure.Storage.Common.Database;
 using Basil.Infrastructure.Storage.Common.Writing;
 using Basil.Infrastructure.Storage.Memory;
 using Dapper;
 
-namespace Basil.Infrastructure.Storage.Users;
+namespace Basil.Infrastructure.Storage.Auth;
 
 /// <summary>Stores the login credential of each user.</summary>
 internal sealed class PostgresCredentialRepository(DatabaseReader reader, DatabaseWriter writer)

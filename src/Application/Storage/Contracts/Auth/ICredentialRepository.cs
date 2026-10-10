@@ -1,6 +1,6 @@
 using Basil.Domain.Auth;
 
-namespace Basil.Application.Storage.Contracts.Users;
+namespace Basil.Application.Storage.Contracts.Auth;
 
 /// <summary>
 ///     The single source of truth for a user's login credential.

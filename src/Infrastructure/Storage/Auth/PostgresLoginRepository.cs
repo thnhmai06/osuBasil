@@ -1,10 +1,10 @@
 using System.Globalization;
-using Basil.Application.Storage.Contracts.Users;
+using Basil.Application.Storage.Contracts.Auth;
 using Basil.Domain.Auth;
 using Basil.Infrastructure.Storage.Common.Database;
 using Basil.Infrastructure.Storage.Common.Writing;
 
-namespace Basil.Infrastructure.Storage.Users;
+namespace Basil.Infrastructure.Storage.Auth;
 
 /// <summary>Records the history of logins.</summary>
 internal sealed class PostgresLoginRepository(DatabaseReader reader, DatabaseWriter writer) : ILoginRepository
