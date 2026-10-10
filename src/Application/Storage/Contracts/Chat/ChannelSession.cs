@@ -6,8 +6,7 @@ namespace Basil.Application.Storage.Contracts.Chat;
 
 /// <summary>A chat channel while it is open: its members and what happens in it.</summary>
 /// <remarks>Opens a runtime channel for a chat channel.</remarks>
-/// <param name="channel">The chat channel this session runs.</param>
-public abstract class ChannelSession(Channel channel)
+public abstract class ChannelSession
 {
 	/// <summary>The longest message kept; longer messages are cut.</summary>
 	public const int MaxMessageLength = 2000;
@@ -17,13 +16,7 @@ public abstract class ChannelSession(Channel channel)
 	private volatile bool _closed;
 
 	/// <summary>Gets the chat channel this session runs.</summary>
-	public Channel Channel { get; } = channel;
-
-	/// <summary>
-	///     Gets the channel name: <c>#name</c> for a channel several users take part in, the owner's name for a
-	///     private-message channel.
-	/// </summary>
-	public string Name => Channel.Name;
+	public abstract Channel Channel { get; }
 
 	/// <summary>Gets the connections currently in the channel.</summary>
 	public IReadOnlySet<Connection> Members => _members;

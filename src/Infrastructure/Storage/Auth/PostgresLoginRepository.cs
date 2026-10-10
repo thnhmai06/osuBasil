@@ -12,7 +12,7 @@ internal sealed class PostgresLoginRepository(DatabaseReader reader, DatabaseWri
 	private readonly IdAllocator _ids = new(reader, "logins");
 
 	/// <inheritdoc />
-	public async Task CreateAsync(Login login, CancellationToken cancellationToken = default)
+	public async Task RecordAsync(Login login, CancellationToken cancellationToken = default)
 	{
 		var client = login.Client;
 		var id = await _ids.NextAsync(cancellationToken);

@@ -5,7 +5,7 @@ namespace Basil.Application.Storage.Contracts.Chat;
 public interface IGeneralChannelRegistry
 {
 	/// <summary>Gets every open configured channel.</summary>
-	IEnumerable<GeneralChannelSession> All { get; }
+	IReadOnlyCollection<GeneralChannelSession> All { get; }
 
 	/// <summary>Finds an open configured channel by name, ignoring case.</summary>
 	/// <param name="name">The channel name, including its leading <c>#</c>.</param>

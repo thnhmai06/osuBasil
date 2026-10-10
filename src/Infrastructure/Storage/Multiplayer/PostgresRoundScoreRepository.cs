@@ -18,7 +18,7 @@ internal sealed class PostgresRoundScoreRepository(
 	IScoreRepository scores) : IRoundScoreRepository
 {
 	/// <inheritdoc />
-	public async Task<RoundScore> CreateAsync(RoundScore roundScore, CancellationToken cancellationToken = default)
+	public async Task<RoundScore> RecordAsync(RoundScore roundScore, CancellationToken cancellationToken = default)
 	{
 		await writer.WriteAsync(Root.Match(roundScore.Round.Match.Id), (connection, transaction) =>
 			connection.ExecuteAsync(

@@ -37,7 +37,7 @@ internal sealed class MatchService(
 
 			match.Value.EndedAt = now;
 			await matches.CreateOrUpdateAsync(match, cancellationToken);
-			await events.CreateAsync(
+			await events.RecordAsync(
 				new MatchEvent(match, MatchEventType.Closed, now, Detail: "Server shutdown recovery"),
 				cancellationToken);
 		}

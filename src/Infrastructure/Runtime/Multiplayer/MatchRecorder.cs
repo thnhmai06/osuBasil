@@ -104,6 +104,6 @@ internal sealed class MatchRecorder(
 		CancellationToken cancellationToken = default)
 	{
 		var matchEvent = new MatchEvent(match, type, timestamp, actor, target, detail);
-		await matchEvents.CreateAsync(matchEvent, cancellationToken);
+		await matchEvents.RecordAsync(matchEvent, cancellationToken);
 	}
 }

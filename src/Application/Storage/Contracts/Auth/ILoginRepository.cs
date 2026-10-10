@@ -9,5 +9,5 @@ public interface ILoginRepository
 	/// <summary>Records a login.</summary>
 	/// <param name="login">The login to record.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task CreateAsync(Login login, CancellationToken cancellationToken = default);
+	Task RecordAsync(Login login, CancellationToken cancellationToken = default);
 }

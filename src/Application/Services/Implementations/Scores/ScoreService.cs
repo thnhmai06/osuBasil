@@ -67,7 +67,7 @@ internal sealed class ScoreService(
 		}
 
 		var roundScore = round is not null
-			? await roundScores.CreateAsync(new RoundScore { Score = score, Round = round, Team = team },
+			? await roundScores.RecordAsync(new RoundScore { Score = score, Round = round, Team = team },
 				cancellationToken)
 			: null;
 
@@ -87,7 +87,8 @@ internal sealed class ScoreService(
 
 		await stats.CreateOrUpdateAsync(current, cancellationToken);
 
-		_events.Writer.TryWrite(new ScoreSubmitted(connection.User, score, current, roundScore, round is not null ? room : null));
+		_events.Writer.TryWrite(new ScoreSubmitted(connection.User, score, current, roundScore,
+			round is not null ? room : null));
 		return null;
 	}
 

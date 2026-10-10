@@ -11,7 +11,8 @@ internal sealed class GeneralChannelRegistry : IGeneralChannelRegistry
 		new(StringComparer.OrdinalIgnoreCase);
 
 	/// <inheritdoc />
-	public IEnumerable<GeneralChannelSession> All => _channels.Values;
+	public IReadOnlyCollection<GeneralChannelSession> All =>
+		(IReadOnlyCollection<GeneralChannelSession>)_channels.Values;
 
 	/// <inheritdoc />
 	public GeneralChannelSession? Find(string name)
@@ -22,12 +23,12 @@ internal sealed class GeneralChannelRegistry : IGeneralChannelRegistry
 	/// <inheritdoc />
 	bool IGeneralChannelRegistry.Add(GeneralChannelSession channel)
 	{
-		return _channels.TryAdd(channel.Name, channel);
+		return _channels.TryAdd(channel.Channel.Name, channel);
 	}
 
 	/// <inheritdoc />
 	bool IGeneralChannelRegistry.Remove(GeneralChannelSession channel)
 	{
-		return _channels.TryRemove(new KeyValuePair<string, GeneralChannelSession>(channel.Name, channel));
+		return _channels.TryRemove(new KeyValuePair<string, GeneralChannelSession>(channel.Channel.Name, channel));
 	}
 }

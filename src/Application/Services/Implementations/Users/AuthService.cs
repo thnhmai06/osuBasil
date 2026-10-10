@@ -78,7 +78,7 @@ internal sealed class AuthService(
 		var failure = sessions.Open(connection, running);
 		if (failure is not null) return LoginResult.Fail(failure.Value);
 
-		await logins.CreateAsync(login, cancellationToken);
+		await logins.RecordAsync(login, cancellationToken);
 		return LoginResult.Success(connection);
 	}
 
@@ -150,6 +150,7 @@ internal sealed class AuthService(
 		{
 			return (null, RegistrationFailure.NameTaken);
 		}
+
 		await credentials.CreateOrUpdateAsync(new Credentials(user, passwordHash), cancellationToken);
 		return (user, null);
 	}

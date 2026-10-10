@@ -24,7 +24,7 @@ internal sealed class PostgresMatchEventRepository(
 	private readonly IdAllocator _ids = new(reader, "match_events");
 
 	/// <inheritdoc />
-	public async Task CreateAsync(MatchEvent matchEvent, CancellationToken cancellationToken = default)
+	public async Task RecordAsync(MatchEvent matchEvent, CancellationToken cancellationToken = default)
 	{
 		var id = await _ids.NextAsync(cancellationToken);
 		var parameters = new
