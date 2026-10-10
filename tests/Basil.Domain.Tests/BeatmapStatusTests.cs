@@ -46,7 +46,7 @@ public class BeatmapStatusTests
 	[InlineData(999, BeatmapStatus.UpdateAvailable)]
 	public void FromOsuApi_MatchesPythonMapping(int osuApiStatus, BeatmapStatus expected)
 	{
-		Assert.Equal(expected, RankedStatusExtensions.FromOsuApi(osuApiStatus));
+		Assert.Equal(expected, BeatmapStatusExtensions.FromOsuApi(osuApiStatus));
 	}
 
 	[Theory]
@@ -59,6 +59,6 @@ public class BeatmapStatusTests
 	[InlineData(999, BeatmapStatus.UpdateAvailable)]
 	public void FromOsuDirect_MatchesPythonMapping(int osuDirectStatus, BeatmapStatus expected)
 	{
-		Assert.Equal(expected, RankedStatusExtensions.FromOsuDirect(osuDirectStatus));
+		Assert.Equal(expected, BeatmapStatusExtensions.FromOsuDirect(osuDirectStatus));
 	}
 }

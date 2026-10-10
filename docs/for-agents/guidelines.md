@@ -4,12 +4,12 @@
 
 This folder contains documentation for AI agents and automated development workflows working on Basil.
 
-The repository's root [`CLAUDE.md`](../../CLAUDE.md) is the **authoritative instruction source for agents**. This page
+The repository's root [`AGENTS.md`](../../AGENTS.md) is the **authoritative instruction source for agents**. This page
 does not replace it.
 
 Before making code changes:
 
-1. Read [`CLAUDE.md`](../../CLAUDE.md).
+1. Read [`AGENTS.md`](../../AGENTS.md).
 2. Read the relevant documentation listed below.
 3. Check the existing implementation and tests.
 4. Follow the documented scope and architectural constraints.
@@ -222,7 +222,7 @@ documentation must remain consistent.
 
 ## See also
 
-* [`CLAUDE.md`](../../CLAUDE.md): authoritative agent instructions
+* [`AGENTS.md`](../../AGENTS.md): authoritative agent instructions
 * [`domain.md`](domain.md): domain documentation and modelling workflow
 * [`issue-tracker.md`](issue-tracker.md): GitHub Issues workflow
 * [`architecture.md`](../for-developers/architecture.md): architecture and dependency rules

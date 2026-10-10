@@ -1,0 +1,49 @@
+# Superseded run 1 (2026-10-08): try-operations probed one after another during the flood, 3 runs per lane count.
+# Tail of the benchmark output as captured by the run (the top of the environment section is cut).
+- max_connections = 100
+- fsync = on
+- wal_level = replica
+
+## Write lanes (61000 writes per run: 40000 match events, 20000 logins, 1000 user stats; 200 try-operations during the load)
+
+| lanes | run | drain s | writes/s | rows/s | transactions | try p50 ms | try p99 ms |
+|---|---|---|---|---|---|---|---|
+| 1 | 1 | 4.26 | 14308 | 14899 | 2046 | 0.7 | 1.6 |
+| 1 | 2 | 3.11 | 19622 | 20481 | 2070 | 0.6 | 1.4 |
+| 1 | 3 | 3.12 | 19554 | 20361 | 2048 | 0.6 | 1.8 |
+| 2 | 1 | 1.86 | 32808 | 31788 | 2050 | 0.6 | 6.3 |
+| 2 | 2 | 2.61 | 23349 | 24335 | 2167 | 0.9 | 9.7 |
+| 2 | 3 | 1.87 | 32652 | 26772 | 2050 | 0.6 | 4.2 |
+| 4 | 1 | 1.68 | 36287 | 37795 | 2096 | 0.7 | 40.7 |
+| 4 | 2 | 2.02 | 30170 | 31432 | 2129 | 1.2 | 31.2 |
+| 4 | 3 | 1.45 | 42189 | 41781 | 2058 | 0.6 | 7.4 |
+| 8 | 1 | 1.26 | 48392 | 48737 | 2122 | 0.6 | 6.1 |
+| 8 | 2 | 1.43 | 42519 | 43045 | 2073 | 0.7 | 101.4 |
+| 8 | 3 | 1.29 | 47462 | 48294 | 2178 | 0.6 | 22.2 |
+
+Medians:
+
+| lanes | writes/s | rows/s | try p50 ms | try p99 ms |
+|---|---|---|---|---|
+| 1 | 19554 | 20361 | 0.6 | 1.6 |
+| 2 | 32652 | 26772 | 0.6 | 6.3 |
+| 4 | 36287 | 37795 | 0.7 | 31.2 |
+| 8 | 47462 | 48294 | 0.6 | 22.2 |
+
+Smallest lane count within 10% of the best rows/s (48294) and p99 (1.6 ms): -1
+
+## pg_trgm index on users.safe_name (partial-name search, median of 7, ms)
+
+| users | with index | without index |
+|---|---|---|
+| 1000 | 0.147 | 0.133 |
+| 100000 | 0.947 | 13.223 |
+
+## fillfactor on frequently updated tables (HOT share of updates)
+
+| table | fillfactor 90 | fillfactor 100 |
+|---|---|---|
+| users | 99.4% | 98.2% |
+| user_stats | 99.5% | 98.3% |
+
+[exited with code 0]

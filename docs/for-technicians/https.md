@@ -92,7 +92,7 @@ The shipped certificate covers the required Basil subdomains with:
 - Domain: `basil.local`
 - Password: `your-password`
 
-The shipped [`appsettings.json`](../../src/Basil.Web/appsettings.json) is already configured to use this certificate.
+The shipped [`appsettings.json`](../../src/Basil.Web/Data/appsettings.json) is already configured to use this certificate.
 
 This means a fresh local installation can start with HTTPS without generating a certificate first.
 

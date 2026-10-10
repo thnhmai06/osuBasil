@@ -1,0 +1,176 @@
+# ADR-003 — Match state persistence ordering
+
+> Status: **Accepted and implemented.** Approved 2026-09-01 (user decision on every open
+> sub-decision below). Implemented the same session: `MatchRoundEndOutbox`
+> (`src/Basil.Application/Backgrounds/MatchRoundEndOutbox.cs`), wired into
+> `MatchCompleteHandler`, `MatchControlService.AbortAsync`, and
+> `MatchMembershipService.TeardownMatch`.
+
+## Problem
+
+Three call sites write match-round rows to SQLite while holding `MatchSession.Lock`, the
+per-match semaphore that also serializes every other read-mutate-broadcast sequence on that
+match (join, leave, ready, slot change, settings change, and so on):
+
+- `MatchMembershipService.StartAsync` → `IMatchRepository.CreateRoundAsync` (round start)
+- `MatchCompleteHandler.HandleAsync` → `IMatchRepository.SetRoundEndedAsync` (round end, normal completion)
+- `MatchControlService.AbortAsync` → `IMatchRepository.SetRoundEndedAsync` (round end, `!mp abort`)
+
+`Microsoft.Data.Sqlite` has no true async I/O (confirmed in Phase 0/1 of this investigation:
+see the plan's Evidence section and RC1) — a write under contention blocks for up to
+`busy_timeout` (currently 5s, set in `SqliteConnectionFactory`). Because these three writes run
+under `MatchSession.Lock`, that same 5-second stall blocks every *other* operation on the same
+match: a player trying to join, ready up, or change a slot in room A cannot proceed while room
+A's round-start write is stuck behind SQLite contention, even though that write has nothing to
+do with slot/settings state.
+
+This ADR exists to answer two questions before any code moves these writes out from under the
+lock:
+
+1. What ordering/causality guarantees does the rest of the system actually rely on for these
+   three writes, and for match events in general?
+2. What mechanism preserves those guarantees once the write no longer runs synchronously inside
+   the lock that used to make its ordering trivial?
+
+## Evidence
+
+- RC1 (Phase 0/1, this investigation): SQLite write path ceiling ~136 RPS before ADR-001's
+  fixes, ~825 RPS after. Writes under sustained contention block the calling thread for up to
+  `busy_timeout`.
+- RC11 (Phase 0): a combined multiplayer+API load run drove sustained ThreadPool/queue growth
+  that never recovered, root-caused to the same SQLite write-path saturation (RC1), observed
+  under exactly the kind of mixed load where match-round writes and API writes compete for the
+  same SQLite writer.
+- `MatchSession.Lock` discipline is otherwise correct: 22/25 call sites (audited this session,
+  see `d4158ec`) that acquire it do so for slot/settings/host mutations only, with no I/O inside
+  the critical section. The 3 sites above are the exception.
+- `MatchReportService` and the `GET /matches/{id}/report` read path reconstruct a match's
+  results from `Round` and `Score` rows keyed by `RoundId`; a score submission
+  (`ScoreSubmissionService`, HTTP POST, unordered relative to the bancho connection) is linked
+  to `MatchSession.CurrentRoundId` at submission time (see `MatchCompleteHandler`'s remarks on
+  why `CurrentRoundId` is deliberately left set after the round-end write completes).
+- `MatchEvent` rows (`MatchCreated`, `PlayerJoined`, `HostGranted`, etc.) are the audit trail for
+  tournament disputes; Phase 1 of this investigation (`0147004`) already converted every
+  fire-and-forget `CreateEventAsync` call to `await`, so those writes are already ordered
+  relative to the state transition that produced them — this ADR does not reopen that decision,
+  only the round start/end writes.
+
+## Constraints
+
+- No silent behavior change (plan rule 2): a client reading match state, round history, or a
+  score's linked round must observe the same causal relationships it does today.
+- `Start` must be observably ordered before the `Finish`/`Abort` of the same round: nothing may
+  ever record a round ending before it started.
+- A `PlayerJoined` for a given userSession must never be observably reordered past that same
+  userSession's own later `PlayerLeft` (or vice versa) in anything that reads match events back
+  (the `!mp make`+`!mp start` and taskkill-reconnect repro tests from Phase 2 depend on this).
+- The round-end write for the *same round* must not race the round-start write for the *next*
+  round (`match.NextRoundIndex++` is single-threaded under the lock today; whatever replaces the
+  in-lock write must not let two rounds' persistence interleave out of order).
+- A round-end write that fails or times out must not silently disappear: it either succeeds, or
+  is retried, or is surfaced as a known gap in the match report — never both attempted and lost
+  without a trace.
+
+## Alternatives
+
+**A. Per-match ordered outbox, persisted outside the lock.**
+Each `MatchSession` gets a bounded, single-consumer queue. The lock-held section enqueues a
+small immutable record (round start/end fact) instead of awaiting the write; a single
+background consumer per match (or one shared consumer that processes per-match queues
+in-order) drains it and performs the actual `CreateRoundAsync`/`SetRoundEndedAsync` call.
+Ordering is free (FIFO per match); the lock is held only long enough to enqueue.
+Trade-off: needs an explicit answer for what happens when the queue is full (backpressure into
+the lock-held caller, defeating the purpose) or when the consumer is behind at match teardown
+(must drain before the match's in-memory state is discarded, or the last round's end never
+persists).
+
+> **Caveat found on review, not yet resolved:** the two writes this ADR targets are not
+> symmetric. `SetRoundEndedAsync(int roundId, …)` takes an existing id and returns nothing — it
+> is outbox-shaped as written above. `CreateRoundAsync(...)` returns the new `Task<int>` row id,
+> and `MatchMembershipService.StartAsync` uses that return value *synchronously*:
+> `match.CurrentRoundId = await matchRepository.CreateRoundAsync(...)`. `ScoreSubmissionService`
+> reads `match.CurrentRoundId` at submission time to link a score to its round. If round *start*
+> moves into an async outbox, `CurrentRoundId` doesn't exist yet when `StartAsync` returns, and
+> every score submitted before the consumer drains the queue gets `roundId = null` — a real,
+> silent audit-trail loss, exactly what the Constraints section above forbids. Option A as
+> originally written does not survive this for the start-write specifically. Two ways to resolve
+> it, neither picked here:
+> - **A1.** Only the round-*end* write goes through the outbox; round-*start* stays synchronous
+>   (in-lock, as today, or moved out via Option B/D below). Simpler, but leaves one of the three
+>   flagged call sites unaddressed by this ADR.
+> - **A2.** Pre-allocate the round id (an app-side monotonic sequence, or a value reserved from
+>   SQLite before enqueueing) so `match.CurrentRoundId` is known and set synchronously the moment
+>   `StartAsync` returns, and the outbox only has to persist the *row* for an id that's already
+>   decided. Keeps all three sites uniform, but adds a second id-allocation mechanism alongside
+>   SQLite's own autoincrement that must never collide with it.
+>
+> This must be resolved as part of the Decision, not deferred to the implementation plan — it
+> changes which sites Option A actually covers.
+
+**B. Fire back into the existing SQLite write path, but off the match lock, with an explicit
+per-match sequence number.**
+The lock-held section synchronously assigns a monotonic per-match sequence number (already
+available via `NextRoundIndex`) and starts the write as a detached, awaited-from-outside-the-lock
+task; the repository layer enforces ordering by sequence number at the SQL level (e.g. a
+`CHECK` or an `INSERT ... WHERE NOT EXISTS (SELECT 1 FROM Rounds WHERE MatchId=? AND Ended IS
+NULL)` guard). Simpler than a full outbox, but pushes ordering enforcement into SQL and doesn't
+generalize past these two calls.
+
+**C. Leave writes under the lock, shrink `busy_timeout` instead.**
+Rejected outright: this trades one bad failure mode (long lock hold) for another (write
+failures under load), without removing the root cause (SQLite's serialized writer). Doesn't
+answer this ADR's actual question.
+
+## Decision
+
+**Option A (per-match ordered outbox), with every sub-decision resolved as follows:**
+
+1. **A1** — round-*start* (`CreateRoundAsync`) stays synchronous, in-lock, exactly as today.
+   Only round-*end* (`SetRoundEndedAsync`, both the normal-completion and `!mp abort` call
+   sites) moves into the outbox. This leaves the round-start call site's lock-hold cost
+   unaddressed by this ADR — accepted, since round-start is one of two writes and the simpler
+   mechanism (no parallel id-allocation source) was preferred over A2's added complexity.
+2. **Backpressure**: reject. If a match's outbox is full when `SetRoundEndedAsync` would
+   enqueue, the enqueue fails immediately and the triggering call site (`MatchCompleteHandler`,
+   `MatchControlService.AbortAsync`) surfaces this as an error to its own caller rather than
+   blocking the lock-held section or silently dropping the write. A full queue is expected to be
+   an anomaly (round-end frequency is low), not a normal operating condition.
+3. **Teardown drain**: `TeardownMatch` blocks until the match's outbox is empty before
+   discarding the match's in-memory state, guaranteeing the last round's end is never lost to a
+   teardown race.
+4. **Failure semantics**: bounded retry with backoff on a write that ultimately fails (not a
+   transient busy-retry, an actual failure); once retries are exhausted, the failure is surfaced
+   as a known, visible gap rather than retried indefinitely or silently dropped.
+5. **Consumer lifecycle**: one shared consumer drains every match's queue in turn, matching
+   SQLite's own single-writer reality — avoids one background task per match.
+
+## Implementation notes (non-normative, for the implementation)
+
+- Only `SetRoundEndedAsync` sites go through the outbox (2 call sites: `MatchCompleteHandler`,
+  `MatchControlService.AbortAsync`). `CreateRoundAsync`/`StartAsync` is untouched by this ADR.
+- The shared consumer must preserve **per-match FIFO order** even though it drains many matches'
+  queues — a round-end for match A must never be reordered relative to another round-end queued
+  earlier for match A, though interleaving with match B's items is fine.
+- "Surfaced as a known gap" needs a concrete shape decided during implementation (not fixed
+  here): a nullable/flag column on the round row, a logged error with enough context to
+  reconstruct it manually, or something client-visible in the match report — whichever is
+  chosen must be covered by a regression test asserting the gap is actually observable, not just
+  logged and forgotten.
+
+## Trade-offs
+
+(To be finalized alongside the Decision.) For Option A: added moving parts (one queue +
+consumer per match, or one shared consumer keyed by match id) versus today's zero added
+infrastructure; a match-teardown path that must drain its queue before discarding in-memory
+state, adding one more sequencing rule to `TeardownMatch`/`CloseAsync`.
+
+## Measurements
+
+Not yet run. Once a decision is made, verify with:
+- The existing multiplayer load scenario (4/16/32/64 rooms, `Profiles/full.json`) — match-lock
+  wait time (`BasilMetrics.MatchLockWaitMs`, already instrumented) should drop measurably for
+  rooms whose round-start/end coincides with SQLite write contention.
+- A repro test asserting round start/end ordering survives concurrent load (many matches
+  starting/ending rounds simultaneously against a saturated SQLite writer).
+- `crash-repro-sequence.json` (from the RC11 investigation) rerun to confirm no regression in
+  the ThreadPool-saturation behavior this ADR is partly meant to relieve.

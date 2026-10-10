@@ -1,6 +1,6 @@
 using System.Net;
-using Basil.Application.Configurations;
-using Basil.Web;
+using Basil.Application.Shared.Configuration;
+using Basil.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,11 +12,11 @@ namespace Basil.IntegrationTests;
 ///     Covers the `/b`, `/m`, `/u`, `/s`, `/ss` shorthand redirects: bare prefix and prefix-plus-rest
 ///     both 302 to the canonical plural path, preserving whatever query string was attached.
 /// </summary>
-public class AbbreviationRedirectEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class AbbreviationRedirectEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 
-	public AbbreviationRedirectEndpointTests(WebApplicationFactory<Program> factory)
+	public AbbreviationRedirectEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		_factory = factory.WithWebHostBuilder(builder =>
 		{
@@ -30,7 +30,7 @@ public class AbbreviationRedirectEndpointTests : IClassFixture<WebApplicationFac
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
 			});
 		});
@@ -54,7 +54,7 @@ public class AbbreviationRedirectEndpointTests : IClassFixture<WebApplicationFac
 	[InlineData("/ss", "/menu/seasonals")]
 	public async Task BarePrefix_RedirectsToCanonicalRoot(string prefix, string target)
 	{
-		var response = await MakeClient().SendAsync(MakeRequest(prefix));
+		var response = await MakeClient().SendAsync(MakeRequest(prefix), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
 		Assert.Equal(target, response.Headers.Location?.ToString());
@@ -68,7 +68,7 @@ public class AbbreviationRedirectEndpointTests : IClassFixture<WebApplicationFac
 	[InlineData("/ss/winter.png", "/menu/seasonals/winter.png")]
 	public async Task PrefixWithRest_RedirectsToCanonicalPath(string path, string target)
 	{
-		var response = await MakeClient().SendAsync(MakeRequest(path));
+		var response = await MakeClient().SendAsync(MakeRequest(path), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
 		Assert.Equal(target, response.Headers.Location?.ToString());
@@ -77,7 +77,7 @@ public class AbbreviationRedirectEndpointTests : IClassFixture<WebApplicationFac
 	[Fact]
 	public async Task PrefixWithRest_PreservesQueryString()
 	{
-		var response = await MakeClient().SendAsync(MakeRequest("/m/5/live?foo=bar"));
+		var response = await MakeClient().SendAsync(MakeRequest("/m/5/live?foo=bar"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
 		Assert.Equal("/matches/5/live?foo=bar", response.Headers.Location?.ToString());

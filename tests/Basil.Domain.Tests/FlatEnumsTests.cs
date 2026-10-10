@@ -1,12 +1,12 @@
-using Basil.Domain.Login;
 using Basil.Domain.Multiplayer;
+using Basil.Domain.Social;
 using Basil.Domain.Users;
 
 namespace Basil.Domain.Tests;
 
 /// <summary>
 ///     Spot-checks for the flat constant enums ported from app/constants/privileges.py,
-///     app/objects/player.py (UserActivity), and app/objects/match.py (SlotStatus, MatchTeam,
+///     app/objects/player.py (UserActivity), and app/objects/match.py (RoomSlotStatus, MatchTeam,
 ///     MatchWinCondition, MatchTeamType) — these carry no logic, just bit/value constants,
 ///     so a representative sample (rather than exhaustive per-value tests) guards against
 ///     transcription errors.
@@ -63,12 +63,12 @@ public class FlatEnumsTests
 	[Fact]
 	public void SlotStatus_MatchesPythonBitValues_AndHasPlayerMask()
 	{
-		Assert.Equal(1, (int)SlotStatus.Open);
-		Assert.Equal(128, (int)SlotStatus.Quit);
+		Assert.Equal(1, (int)RoomSlotStatus.Open);
+		Assert.Equal(128, (int)RoomSlotStatus.Quit);
 
 		// matches the 0b01111100 magic number used directly in app/packets.py's write_match/read_match
-		var hasPlayerMask = SlotStatus.NotReady | SlotStatus.Ready | SlotStatus.NoMap
-		                    | SlotStatus.Playing | SlotStatus.Complete;
+		var hasPlayerMask = RoomSlotStatus.NotReady | RoomSlotStatus.Ready | RoomSlotStatus.NoMap
+		                    | RoomSlotStatus.Playing | RoomSlotStatus.Complete;
 		Assert.Equal(0b0111_1100, (int)hasPlayerMask);
 	}
 

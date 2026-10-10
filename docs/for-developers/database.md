@@ -46,7 +46,7 @@ Basil deployment
 ├── Data/
 │   ├── database
 │   └── ...
-└── Mapsets/
+└── Beatmapsets/
 ```
 
 Moving a deployment to another machine does not require provisioning a database server.
@@ -64,20 +64,20 @@ The schema is divided conceptually into two groups:
 
 | Table                       | Purpose                                                                                                                                                                        |
 |-----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `Users`                     | User accounts, including name, password hash, privilege bits, country, and silence expiry. `Id = 0` is reserved for BasilBot.                                                  |
-| `Beatmapsets` / `Beatmaps`  | Locally ingested beatmapsets and their difficulties. Each difficulty is identified by content hash. These tables mirror the local `Mapsets/` data. See [`beatmap-ingestion.md`](beatmap-ingestion.md). |
+| `Users`                     | User accounts, including name, password hash, privilege bits, country, and silence expiry. `Id = 0` is reserved for BasilBot. Deletion is soft: `DeletedAt` is the authoritative signal (never inferred from privilege bits), the row and its name are never removed, and the unique name constraints keep a deleted account's username permanently reserved.                                                  |
+| `Beatmapsets` / `Beatmaps`  | Locally ingested beatmapsets and their difficulties. Each difficulty is identified by content hash. These tables mirror the local `Beatmapsets/` data. See [`beatmap-ingestion.md`](beatmap-ingestion.md). |
 | `Channels`                  | Static chat channel catalog such as `#osu` and `#lobby`, including read/write privilege gates and auto-join state.                                                             |
 | `Relationships`             | Friend and block relationships between users.                                                                                                                                  |
 | `ClientHashes`              | Hardware fingerprint history associated with logins, used by the authentication and ban checks described in [`authentication.md`](../for-client/bancho/authentication.md).     |
 | `IngameLogins` / `UserLogs` | Append-only audit data. `IngameLogins` records login information such as IP and client version; `UserLogs` records administrative actions between users.                       |
-| `Settings`                  | Key-value server state such as the admin key hash, last-changed timestamp, client menu icon, and MOTD.                                                                         |
+| `Settings`                  | Key-value server state such as the admin key hash, last-changed timestamp, client menu icon, beatmap mirror endpoints, and MOTD.                                               |
 
 ### Tournament flow
 
 | Table         | Purpose                                                                                                                  |
 |---------------|--------------------------------------------------------------------------------------------------------------------------|
 | `Matches`     | One row per multiplayer room. Stores room identity and lifecycle timestamps. Mutable gameplay state belongs to `Rounds`. |
-| `Rounds`      | One row per beatmap played in a match. Stores mode, win condition, team type, mods, and the beatmap content hash.        |
+| `Rounds`      | One row per beatmap played in a match, identified by match and round number. Stores mode, win condition, team type, mods, and the beatmap content hash. |
 | `Scores`      | Submitted scores, optionally associated with a round. See the score-to-round invariant below.                            |
 | `MatchEvents` | Append-only match lifecycle history, including creation, closure, and referee changes.                                   |
 | `UserStats`   | Per-mode aggregate display statistics. Initialized once and not recomputed from individual scores.                       |
@@ -90,7 +90,7 @@ Not every database table is the authoritative representation of its data.
 For locally ingested beatmaps:
 
 ```text
-Mapsets/
+Beatmapsets/
     │
     ▼
 filesystem
@@ -122,26 +122,29 @@ preserve them.
 
 A score-to-round relationship must not depend on the ordering of network requests.
 
-When a round starts, its id is recorded on the match immediately:
+A round is identified by its match and its number. Rounds are numbered from `1` within each match in the order they
+start, and an aborted round keeps its number. The live room assigns the number when the round starts, so it is known
+before any score is submitted:
 
 ```text
 round starts
     │
     ▼
-match.currentRoundId = new round
+room's latest round = (match, next number)
     │
     ▼
-players submit scores
+players submit scores ──> score references the latest round
 ```
 
 Score submission and the packet that ends a round arrive over independent connections. Their relative ordering is
 therefore not guaranteed.
 
-The current round id is intentionally advanced only when the next round starts. It is not cleared when the current round
-ends.
+The room's latest round is intentionally replaced only when the next round starts. It is not forgotten when the current
+round ends.
 
 As a result, a score submission that arrives slightly after the round-ending packet still resolves to the round that was
-active when the score was produced.
+active when the score was produced. A score is attached only when it was played on the latest round's beatmap, so a
+late score does not attach to a newer round on a different beatmap.
 
 See [`multiplayer.md`](multiplayer.md) for the complete round lifecycle.
 
@@ -273,19 +276,27 @@ Basil explicitly enables it through the connection configuration.
 Do not assume that declaring a foreign key in the schema is sufficient by itself; enforcement must remain enabled on
 every database connection.
 
-### Busy timeout
+### Write configuration
 
 SQLite permits concurrent readers but serializes conflicting writes.
 
-Basil therefore configures a short busy timeout.
+Every connection is opened through a single factory that applies two per-connection PRAGMAs before the connection is
+handed to a repository:
 
-This is deliberate because Basil runs on a normal thread pool rather than the single-threaded execution model of the
-original server. Concurrent writes from independent matches are expected.
+* `busy_timeout = 5000` — SQLite's own bounded-wait-with-backoff busy handler. A blocked write waits up to 5 seconds
+  for the lock rather than failing immediately, since Basil runs on a normal thread pool (not the single-threaded
+  execution model of the original server) and concurrent writes from independent matches are expected.
+* `synchronous = NORMAL` — safe under `journal_mode=WAL` (set once, persistently, when the database is migrated):
+  durable against process crashes, with only a very recent commit at risk on an OS-level power failure, and the
+  database file itself is never corrupted.
 
-A short wait is preferable to immediately failing a transaction when another write has temporarily acquired the SQLite
-lock.
+Both PRAGMAs are session-scoped, not persisted like `journal_mode`, so they are applied on every new connection
+rather than once at startup.
 
-The timeout should remain short: it is intended to absorb normal contention, not hide persistent database bottlenecks.
+The busy timeout should remain short: it is intended to absorb normal contention, not hide persistent database
+bottlenecks. A request whose writes are on the hot path for match state (round-end persistence in particular) does
+not wait on this timeout directly -- see [`multiplayer.md`](multiplayer.md) for the ordered, outside-the-match-lock
+persistence queue that decouples a match's round-end write from the request that triggered it.
 
 ### Dapper row mapping
 
@@ -328,8 +339,8 @@ mechanism.
 
 ## Related code
 
-* [`Basil.Infrastructure/Persistence/Migrations/001_base.sql`](../../src/Basil.Infrastructure/Persistence/Migrations/001_base.sql): base schema
-* [`Basil.Infrastructure/Persistence/Repositories/`](../../src/Basil.Infrastructure/Persistence/Repositories/): database repositories
+* [`Basil.Infrastructure/Persistence/Migrations/001_base.sql`](../../src/Infrastructure/Persistence/Migrations/001_base.sql): base schema
+* [`Basil.Infrastructure/Persistence/Repositories/`](../../src/Infrastructure/Persistence/Repositories/): database repositories
 * [`Basil.Application/Services/Multiplayer/MatchReportService.cs`](../../src/Basil.Application/Services/Multiplayer/MatchReportService.cs): tournament data aggregation and reporting
 
 ## See also

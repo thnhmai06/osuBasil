@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Application\Storage\Contracts\Basil.Application.Storage.Contracts.csproj"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<EmbeddedResource Include="Migrations\*.sql"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Npgsql"/>
+		<PackageReference Include="SharpZipLib"/>
+		<PackageReference Include="Dapper"/>
+		<PackageReference Include="BCrypt.Net-Next"/>
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.Options"/>
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
+	</ItemGroup>
+
+</Project>

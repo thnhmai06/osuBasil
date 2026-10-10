@@ -5,37 +5,42 @@
   <ItemGroup>
     <PackageVersion Include="BCrypt.Net-Next" Version="4.2.0" />
     <PackageVersion Include="BouncyCastle.Cryptography" Version="2.7.0" />
-    <PackageVersion Include="Dapper" Version="2.1.79" />
-    <PackageVersion Include="dbup-sqlite" Version="6.0.4" />
-    <PackageVersion Include="FFMpegCore" Version="5.4.0" />
-    <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.11" />
-    <PackageVersion Include="Microsoft.Extensions.Caching.Memory" Version="10.0.11" />
-    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.11" />
-    <PackageVersion Include="ppy.osu.Game.Rulesets.Osu" Version="2026.730.0" />
-    <PackageVersion Include="ppy.osu.Game.Rulesets.Taiko" Version="2026.730.0" />
-    <PackageVersion Include="ppy.osu.Game.Rulesets.Catch" Version="2026.730.0" />
-    <PackageVersion Include="ppy.osu.Game.Rulesets.Mania" Version="2026.730.0" />
+    <PackageVersion Include="Dapper" Version="2.1.89" />
+    <PackageVersion Include="Npgsql" Version="10.0.3" />
+    <PackageVersion Include="SharpZipLib" Version="1.4.2" />
+    <PackageVersion Include="FFMpegCore" Version="5.5.0" />
+    <PackageVersion Include="ppy.osu.Game.Rulesets.Osu" Version="2026.916.0" />
+    <PackageVersion Include="ppy.osu.Game.Rulesets.Taiko" Version="2026.916.0" />
+    <PackageVersion Include="ppy.osu.Game.Rulesets.Catch" Version="2026.916.0" />
+    <PackageVersion Include="ppy.osu.Game.Rulesets.Mania" Version="2026.916.0" />
     <!-- Already a transitive dependency of ppy.osu.Framework at this exact version — pinning it here
          to reference directly for thumbnail resizing doesn't add a new package to the graph. -->
     <PackageVersion Include="SixLabors.ImageSharp" Version="3.1.12" />
     <PackageVersion Include="SixLabors.ImageSharp.Web" Version="3.2.0" />
+    <!-- Startup update check and the update command. -->
+    <PackageVersion Include="Velopack" Version="1.2.0" />
+    <!-- Answers multicast DNS queries for the configured domain so a LAN client resolves it
+         without a hosts entry. jdomnitz's maintained fork of richardschneider/net-mdns. -->
+    <PackageVersion Include="Makaretu.Dns.Multicast.New" Version="0.38.0" />
     <!-- Basil.Application -->
-    <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.11" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.11" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.Extensions.Caching.Memory" Version="10.0.12" />
     <!-- Basil.Web -->
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
     <PackageVersion Include="Microsoft.Extensions.ApiDescription.Server" Version="10.0.11" />
     <PackageVersion Include="Microsoft.OpenApi" Version="2.11.0" />
     <PackageVersion Include="Scalar.AspNetCore" Version="2.17.1" />
     <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageVersion Include="Serilog.Sinks.Async" Version="2.1.0" />
     <PackageVersion Include="Serilog.Sinks.Console" Version="6.1.1" />
     <PackageVersion Include="Serilog.Sinks.File" Version="7.0.0" />
     <!-- Shared across test projects -->
     <PackageVersion Include="coverlet.collector" Version="10.0.1" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
-    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.v3" Version="4.0.0" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.11" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.11" />

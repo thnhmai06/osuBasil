@@ -37,7 +37,7 @@ public sealed class ExistingServerHost(
 
 		if (settings.Existing.ProcessId is { } pid)
 		{
-			_processSampler = new ProcessResourceSampler(pid, settings.Port);
+			_processSampler = new ProcessResourceSampler(pid, settings.Port, logWarning);
 
 			if (countersSettings.Enabled)
 			{

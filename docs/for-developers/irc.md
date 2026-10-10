@@ -363,7 +363,7 @@ These properties must not be collapsed into a single "match member" concept.
 Every match starts with:
 
 ```text
-MatchSession.NoHostId
+MatchSession.HostId == null
 ```
 
 This means that nobody is currently seated as host. It does not mean that the match has never had a host.
@@ -540,8 +540,8 @@ The explicit `!mp removeref` operation makes the authority change intentional an
 * [`Basil.Application/Sessions/GameSession.cs`](../../src/Basil.Application/Sessions/GameSession.cs)
 * [`Basil.Application/Sessions/IrcSession.cs`](../../src/Basil.Application/Sessions/IrcSession.cs)
 * [`Basil.Application/Sessions/ISessionRegistry.cs`](../../src/Basil.Application/Sessions/ISessionRegistry.cs)
-* [`Basil.Infrastructure/Sessions/GameSessionRegistry.cs`](../../src/Basil.Infrastructure/Sessions/GameSessionRegistry.cs)
-* [`Basil.Infrastructure/Sessions/IrcSessionRegistry.cs`](../../src/Basil.Infrastructure/Sessions/IrcSessionRegistry.cs)
+* [`Basil.Infrastructure/Sessions/GameSessionRegistry.cs`](../../src/Infrastructure/Sessions/GameSessionRegistry.cs)
+* [`Basil.Infrastructure/Sessions/IrcSessionRegistry.cs`](../../src/Infrastructure/Sessions/IrcSessionRegistry.cs)
 * [`Basil.Application/Sessions/Channels/ChannelMembershipService.cs`](../../src/Basil.Application/Sessions/Channels/ChannelMembershipService.cs): channel roster and JOIN/PART/QUIT behavior
 * [`Basil.Application/Sessions/Irc/BanchoIrcBridgeConnection.cs`](../../src/Basil.Application/Sessions/Irc/BanchoIrcBridgeConnection.cs): Bancho-to-IRC bridge
 * [`Basil.Application/Sessions/PlayerLogoutService.cs`](../../src/Basil.Application/Sessions/PlayerLogoutService.cs): game and IRC logout handling
@@ -550,8 +550,8 @@ The explicit `!mp removeref` operation makes the authority change intentional an
 * [`Basil.Application/Services/Multiplayer/MatchMembershipService.cs`](../../src/Basil.Application/Services/Multiplayer/MatchMembershipService.cs): seating, host state, and empty-room lifecycle
 * [`Basil.Application/Services/Multiplayer/MatchControlService.cs`](../../src/Basil.Application/Services/Multiplayer/MatchControlService.cs): kick, ban, referee, and invite guards
 * [`Basil.Application/Services/Bot/MpCommandService.cs`](../../src/Basil.Application/Services/Bot/MpCommandService.cs): `!mp` command behavior
-* [`Basil.Infrastructure/Irc/TcpIrcListener.cs`](../../src/Basil.Infrastructure/Irc/TcpIrcListener.cs)
-* [`Basil.Infrastructure/Irc/TcpIrcConnection.cs`](../../src/Basil.Infrastructure/Irc/TcpIrcConnection.cs)
+* [`Basil.Infrastructure/Irc/TcpIrcListener.cs`](../../src/Infrastructure/Irc/TcpIrcListener.cs)
+* [`Basil.Infrastructure/Irc/TcpIrcConnection.cs`](../../src/Infrastructure/Irc/TcpIrcConnection.cs)
 
 ## See also
 

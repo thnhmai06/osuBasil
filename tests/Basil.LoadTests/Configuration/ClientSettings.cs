@@ -23,7 +23,7 @@ public sealed class ClientSettings
 	public int MaxConnectionsPerServer { get; init; } = 256;
 
 	/// <summary>The per-request timeout.</summary>
-	public int RequestTimeoutSeconds { get; init; } = 30;
+	private int RequestTimeoutSeconds { get; init; } = 30;
 
 	/// <summary>
 	///     How often an idle bancho client polls to stay alive. Must stay well under the server's

@@ -26,7 +26,7 @@ public sealed class ApiScenario : IBasilScenario
 		// id 0 is the seeded BasilBot account, always present, used as a safe fallback target.
 		var sampleUserId = context.Accounts.FirstOrDefault(a => a.UserId.HasValue)?.UserId ?? 0;
 		var sampleMatchId = apiClient.ResolveSampleMatchIdAsync().GetAwaiter().GetResult() ?? 1;
-		var sampleMapsetId = apiClient.ResolveSampleBeatmapsetIdAsync().GetAwaiter().GetResult() ?? 1;
+		var sampleBeatmapsetId = apiClient.ResolveSampleBeatmapsetIdAsync().GetAwaiter().GetResult() ?? 1;
 
 		var paths = new Dictionary<string, string>
 		{
@@ -34,7 +34,7 @@ public sealed class ApiScenario : IBasilScenario
 			["user"] = $"/users/{sampleUserId}",
 			["match_list"] = "/matches?status=all&page=1&pageSize=20",
 			["match_report"] = $"/matches/{sampleMatchId}",
-			["beatmapset"] = $"/beatmapsets/{sampleMapsetId}"
+			["beatmapset"] = $"/beatmapsets/{sampleBeatmapsetId}"
 		};
 
 		var props = new List<ScenarioProps>();

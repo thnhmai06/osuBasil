@@ -2,11 +2,14 @@
 
 ## Overview
 
-Basil is a multiplayer tournament server built on top of **bancho.py**. It is intentionally **not** a full osu! server.
+Basil is an osu! (stable) backend platform specialized for multiplayer, built on top of **bancho.py**. It is
+intentionally **not** a full osu! server.
 
-The project implements the parts of the osu! server surface required for multiplayer matches, tournament operation, and
-the supporting client protocols. Features from bancho.py are not automatically in scope simply because they exist
-upstream.
+The server implements the core capabilities that multiplayer needs: accounts, sessions and permissions, rooms, chat,
+scores, beatmaps, the client protocols, and the events other programs observe. Features such as chat commands,
+tournament automation and overlays are built on top as separate clients that sign in as ordinary users through the
+HTTP API; the server works the same with or without them. Features from bancho.py are not automatically in scope
+simply because they exist upstream.
 
 This page defines:
 
@@ -29,7 +32,7 @@ Basil's primary scope is multiplayer tournament infrastructure, including:
 * teams
 * host and referee state
 * match access control
-* tournament-oriented match commands
+* tournament-oriented match operations (driven by clients such as BasilBot's `!mp` commands)
 * live match reporting
 * SSE-based match updates
 * replay and beatmap delivery required by supported workflows
@@ -37,34 +40,35 @@ Basil's primary scope is multiplayer tournament infrastructure, including:
 The implementation is built around Basil's multiplayer application services rather than attempting to reproduce the
 complete bancho.py feature set.
 
-### Chat commands and IRC
+### Chat and IRC
 
 Chat is in scope because tournament operation depends on chat-based match control.
 
 This includes:
 
-* general supported chat commands
-* `!mp` tournament commands
-* BasilBot
+* general, room and spectator channels and private messages
 * the embedded IRC gateway
 
 The IRC gateway allows real IRC clients and tools such as osu-ahr to connect alongside osu! clients.
 
-See [`chat.md`](chat.md) for the command dispatch architecture and the BasilBot Commands documentation at
-`api.<domain>/docs/basil-bot/` for the complete supported command list.
+Chat commands (`!mp`, `!help`, `!roll`, `!where`, `!faq`) and chat announcements (countdowns, anticheat warnings) are
+not part of the server. They are provided by BasilBot, a separate client that signs in as an ordinary user with the
+permissions it is granted and works through the HTTP API and its event streams. See the BasilBot Commands
+documentation at `api.<domain>/docs/basil-bot/` for the supported command list.
 
-### Tournament API
+### HTTP API
 
-The `api.<domain>` host provides the narrower API surface required by tournament tooling.
+The `api.<domain>` host is user-centric: a client signs in with an account's credentials, receives a session token,
+and every action it takes is checked against that account's permissions and attributed to it. The API covers what
+clients built on Basil need, such as BasilBot, tournament tools and overlays:
 
-It includes:
+* rooms and their full management
+* chat channels and private messages
+* users, their permissions and restrictions
+* match reports, replays and beatmap downloads
+* live updates and events through SSE
 
-* tournament match reports
-* live match updates through SSE
-* replay and beatmap downloads
-* admin-key-gated management operations
-
-This is intentionally not a general-purpose replacement for osu-web's public API.
+This is intentionally not a reproduction of osu-web's public API: there is no v1/v2 compatibility and no OAuth.
 
 ### Assets host and main-menu banner
 
@@ -87,6 +91,13 @@ an email value matching the configured server admin key.
 This endpoint exists for the supported game-client workflow and should not be interpreted as a complete public
 account-management API.
 
+### Friends and private messages
+
+The osu! client's friend list (`osu-getfriends.php`, adding and removing friends) is supported, together with the
+setting that accepts private messages from friends only and with blocked users, whose private messages are refused.
+Players use these during tournaments to reach each other and referees, so they stay even though Basil has no other
+social features.
+
 ## Out of scope
 
 The following features are deliberately not part of Basil's supported surface.
@@ -97,9 +108,8 @@ The following features are deliberately not part of Basil's supported surface.
 | Scrim engine: `!mp scrim`, `autoref`, `endscrim`, `rematch`                      | ❌ Out of scope | The race-safe match-point engine (`MatchScoringService`) was removed with the previous command layer and is not part of the current design.                   |
 | `!mp force`                                                                      | ❌ Out of scope | Administrative forced-player insertion is not implemented.                                                                                                    |
 | `!block`, `!unblock`, `!reconnect`, `!changename`, `!apikey`                     | ❌ Out of scope | These are personal/social account commands outside Basil's multiplayer and tournament scope.                                                                  |
-| `ApiKey` on `User` / `UpdateApiKeyAsync`                                         | ❌ Out of scope | The separate API-key model was removed because it was unused. IRC authentication uses the osu! password directly.                                             |
-| Friends: `osu-getfriends.php`, `FriendAddHandler`, `FriendRemoveHandler`         | ❌ Out of scope | Friend relationships are social functionality unrelated to tournament operation.                                                                              |
-| General-purpose public JSON API v1/v2                                            | ❌ Out of scope | Basil has no concrete requirement for OAuth, public API versioning, or general-purpose external API access.                                                   |
+| `ApiKey` on `User` / `UpdateApiKeyAsync`                                         | ❌ Out of scope | Clients sign in with the account's password and receive a session token; a separate API-key model has no use.                                             |
+| osu-web API v1/v2 compatibility and OAuth                                        | ❌ Out of scope | Basil's own user-centric API serves the clients built on it; reproducing osu-web's API or OAuth has no concrete requirement.                                   |
 | `!clan` and moderation/clan commands                                             | ❌ Out of scope | These belonged to the removed command surface and are outside the project's current purpose.                                                                  |
 | Discord audit webhook                                                            | ❌ Out of scope | No current requirement exists for this integration.                                                                                                           |
 | Datadog / bancho metrics such as `bancho.online_players` and `bancho.login_time` | ❌ Out of scope | Basil does not use the corresponding Datadog integration.                                                                                                     |
@@ -165,21 +175,11 @@ Removing chat completely was therefore an overcorrection.
 
 **Current resolution**
 
-Basil reintroduced `BanchoBot` as a real session through [`BotBootstrapService`](../../src/Basil.Application/Services/Bot/BotBootstrapService.cs).
-
-The current command architecture uses:
-
-```text
-ICommandDispatcher
-        ↓
-CommandDispatcher
-        ↓
-MpCommandService
-        ↓
-MatchSession / MatchMembershipService
-```
-
-This provides the tournament commands Basil actually needs without restoring the entire historical command surface.
+Basil first reintroduced `BanchoBot` as a special session inside the server. Since the identity redesign
+([`plans/identity-permissions-plan-20261005.md`](../../plans/identity-permissions-plan-20261005.md)), chat commands
+live in BasilBot, a separate client: it signs in as an ordinary user, reads chat and room events through the API, and
+runs room operations for the users who issue commands, with their authority. The server keeps no bot user, no bot
+session and no command code, and works without BasilBot.
 
 ### Deferring the API indefinitely
 
@@ -200,9 +200,11 @@ The `api.<domain>` host was introduced with a deliberately narrower API surface:
 * replay and beatmap downloads
 * admin-key-gated management CRUD
 
-It does **not** attempt to reproduce a general osu-web API.
+It does **not** attempt to reproduce a general osu-web API, and has no OAuth.
 
-There is currently no OAuth, public API versioning, or general-purpose API contract.
+Since the identity redesign the API is user-centric: management is no longer gated by an admin key acting for the
+server, but by the permissions of the signed-in user, so clients built on Basil can do through the API what their
+accounts are allowed to do.
 
 ### Automatic Bancho/Basil parity testing
 

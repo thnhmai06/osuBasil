@@ -1,0 +1,9 @@
+﻿Bắt đầu đọc từ FileFaqStorage và các file storage khác để xem vấn đề là gì.
+- Trên Hosts sẽ cung cấp dịch vụ tương tự như một mini CDN (ImageSharp.Web)
+  Công cụ này sẽ xử lý các assets, screenshot, menu* được tải lên - như một CDN thực thụ. Như vậy ta sẽ cần tổng hợp xem nó sẽ quản lý các tài nguyên nào.
+  => Cho phép chức năng Tải lên Screenshot cho client.
+- Khi đó, assets trong hệ thống sẽ được cung cấp URI để dẫn tới assets đó, phục vụ cung cấp source qua URI.
+CHÚ Ý:
++ INFRASTRUCTURE CHỈ QUY ĐỊNH INTERFACE, HOSTS SẼ TRIỂN KHAI INTERFACE ĐÓ DO THƯ VIỆN TRÊN CÀI TRÊN HOSTS, KHÔNG PHẢI TRÊN INFRASTRUCTURE.
+  PHẦN NÀY KHÔNG THỂ THUỘC VỀ APPLICATION - NẾU THUỘC THÌ CHỈ CÓ CONTRACTS VỀ VIỆC TẢI LÊN ẢNH -> TRẢ VỀ URI. LOGIC TẢI LÊN NHƯ NÀO THUỘC INFRASTRUCTURE
++ NHỮNG TÀI NGUYÊN MÀ UPLOAD Ở DẠNG URI SẴN, THÌ GIỮ NGUYÊN, KHÔNG CLONE NÓ THÀNH CỦA MÌNH.
