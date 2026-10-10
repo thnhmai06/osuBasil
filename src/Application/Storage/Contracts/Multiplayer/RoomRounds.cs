@@ -1,4 +1,4 @@
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Round;
 
 namespace Basil.Application.Storage.Contracts.Multiplayer;
 
@@ -14,6 +14,8 @@ public sealed class RoomRounds
 
 	/// <summary>Gets a value that indicates whether a round is currently in progress.</summary>
 	public bool InProgress => CurrentRound is not null;
+
+	// TODO: Countdown là thuộc về Bot, không phải thuộc về application của server.
 
 	/// <summary>Gets when the running countdown ends, or <see langword="null" /> when none is running.</summary>
 	public DateTimeOffset? CountdownEndsAt { get; internal set; }

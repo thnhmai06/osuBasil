@@ -8,6 +8,7 @@ using Basil.Application.Storage.Contracts.Multiplayer;
 using Basil.Application.Storage.Contracts.Scores;
 using Basil.Application.Storage.Contracts.Sessions;
 using Basil.Domain.Client;
+using Basil.Domain.Multiplayer.Round;
 using Basil.Domain.Scores;
 using Basil.Domain.Utilities;
 
@@ -18,6 +19,7 @@ namespace Basil.Application.Services.Implementations.Scores;
 /// </summary>
 internal sealed class ScoreService(
 	IScoreRepository scores,
+	IRoundScoreRepository roundScores,
 	IReplayStorage replays,
 	IUserStatsRepository stats,
 	ILobby lobby) : IScoreService
@@ -54,12 +56,17 @@ internal sealed class ScoreService(
 		try
 		{
 			score = await scores.CreateAsync(
-				submission.Score with { UserId = connection.User.Id, Round = round, Team = team }, cancellationToken);
+				submission.Score with { UserId = connection.User.Id }, cancellationToken);
 		}
 		catch (AlreadyExistsException)
 		{
 			return ScoreRejection.Duplicate;
 		}
+
+		var roundScore = round is not null
+			? await roundScores.CreateAsync(new RoundScore { Score = score, Round = round, Team = team },
+				cancellationToken)
+			: null;
 
 		if (submission.Score.IsPassed && replay is { Length: >= MinReplayLength })
 		{
@@ -77,7 +84,7 @@ internal sealed class ScoreService(
 
 		await stats.CreateOrUpdateAsync(current, cancellationToken);
 
-		_events.Writer.TryWrite(new ScoreSubmitted(connection.User, score, current, round is not null ? room : null));
+		_events.Writer.TryWrite(new ScoreSubmitted(connection.User, score, current, roundScore, round is not null ? room : null));
 		return null;
 	}
 

@@ -9,7 +9,7 @@ internal sealed class ScoreHandler(IRoomService rooms) : IEventHandler<ScoreEven
 	/// <inheritdoc />
 	public async ValueTask HandleAsync(ScoreEvent @event, CancellationToken cancellationToken)
 	{
-		if (@event is ScoreSubmitted { Room: { } room } submitted)
-			await rooms.Rounds.RecordScoreAsync(room, submitted.Player, submitted.Score, cancellationToken);
+		if (@event is ScoreSubmitted { Room: { } room, RoundScore: { } roundScore } submitted)
+			await rooms.Rounds.RecordScoreAsync(room, roundScore, submitted.Player, cancellationToken);
 	}
 }

@@ -8,6 +8,7 @@ using Basil.Application.Storage.Contracts.Content;
 using Basil.Domain.Content;
 using Basil.Application.Storage.Contracts.Sessions;
 using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Match;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Implementations.Multiplayer;
@@ -73,7 +74,9 @@ internal sealed class LobbyService(
 			throw new ArgumentException("A room opened in game needs the creator's osu! client.", nameof(by));
 
 		var now = time.GetUtcNow();
-		var required = isTournament ? Permissions.PlayerCreateRoom : Permissions.PlayerCreateRoom | Permissions.PlayerJoinRoom;
+		var required = isTournament
+			? Permissions.PlayerCreateRoom
+			: Permissions.PlayerCreateRoom | Permissions.PlayerJoinRoom;
 		switch (PermissionRules.Check(by, required, now))
 		{
 			case Access.NotGranted: return (null, RoomResult.NotAuthorized);
@@ -90,7 +93,8 @@ internal sealed class LobbyService(
 
 		// A room opened in game seats its creator; a tournament room seats the creator's osu! client when it may join.
 		var seat = isTournament
-			? by.Session.Bancho is { IsOpen: true } bancho && PermissionRules.Allows(bancho, Permissions.PlayerJoinRoom, now)
+			? by.Session.Bancho is { IsOpen: true } bancho &&
+			  PermissionRules.Allows(bancho, Permissions.PlayerJoinRoom, now)
 				? bancho
 				: null
 			: (BanchoConnection)by;
@@ -223,7 +227,8 @@ internal sealed class LobbyService(
 
 	private bool TooManyRooms(User creator)
 	{
-		return lobby.Rooms.Count(room => room.IsTournament && creator.Equals(room.Authority.Creator)) >= MaxRoomsPerCreator;
+		return lobby.Rooms.Count(room => room.IsTournament && creator.Equals(room.Authority.Creator)) >=
+		       MaxRoomsPerCreator;
 	}
 
 	private void SeatCreator(Room room, BanchoConnection creator)

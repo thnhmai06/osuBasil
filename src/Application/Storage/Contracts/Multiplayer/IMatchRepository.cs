@@ -1,5 +1,5 @@
 using Basil.Application.Storage.Contracts.Common;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Match;
 
 namespace Basil.Application.Storage.Contracts.Multiplayer;
 

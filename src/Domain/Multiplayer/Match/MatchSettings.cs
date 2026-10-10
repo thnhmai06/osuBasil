@@ -1,7 +1,7 @@
 ﻿using Basil.Domain.Mechanics;
 using Basil.Domain.Utilities;
 
-namespace Basil.Domain.Multiplayer;
+namespace Basil.Domain.Multiplayer.Match;
 
 /// <summary>
 ///     Represents the settings of an osu! multiplayer room: the selected beatmap, game mode,
@@ -62,6 +62,8 @@ public sealed class MatchSettings
 	/// <summary>Gets the room's random seed, broadcast to clients as part of the match's data.</summary>
 	public int Seed { get; init; } = 0;
 
+	/// <summary>Returns a copy of these settings that can be changed without affecting this instance.</summary>
+	/// <returns>A new set of settings with the same values.</returns>
 	public MatchSettings Clone()
 	{
 		return (MatchSettings)MemberwiseClone();

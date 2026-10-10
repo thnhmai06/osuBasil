@@ -10,7 +10,7 @@ internal sealed class Lobby : ILobby
 {
 	private const int MaxRoomId = ushort.MaxValue;
 	private readonly ConcurrentDictionary<int, Room> _rooms = new();
-	private readonly HashSet<int> _reserved = new();
+	private readonly HashSet<int> _reserved = [];
 
 	private readonly Lock _sync = new();
 	private readonly ConcurrentSet<BanchoConnection> _watchers = [];
@@ -52,8 +52,7 @@ internal sealed class Lobby : ILobby
 
 		for (var id = 1; id <= MaxRoomId; id++)
 		{
-			if (_rooms.ContainsKey(id) || _reserved.Contains(id)) continue;
-			_reserved.Add(id);
+			if (_rooms.ContainsKey(id) || !_reserved.Add(id)) continue;
 			return id;
 		}
 

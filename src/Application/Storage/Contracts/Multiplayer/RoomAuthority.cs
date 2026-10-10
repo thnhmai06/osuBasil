@@ -1,5 +1,5 @@
 using Basil.Application.Storage.Contracts.Sessions;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Match;
 using Basil.Domain.Users;
 using Basil.Domain.Utilities;
 

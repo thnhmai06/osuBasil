@@ -10,7 +10,6 @@ using Basil.Infrastructure.Storage.Common;
 using Basil.Infrastructure.Storage.Common.Database;
 using Basil.Infrastructure.Storage.Common.Options;
 using Basil.Infrastructure.Storage.Content;
-using Basil.Infrastructure.Storage.Files;
 using Basil.Infrastructure.Storage.Multiplayer;
 using Basil.Infrastructure.Storage.Scores;
 using Basil.Infrastructure.Storage.Users;
@@ -72,6 +71,7 @@ public static class DependencyInjection
 		services.AddSingleton<IMatchRepository, PostgresMatchRepository>();
 		services.AddSingleton<IMatchReportRepository, MatchReportRepository>();
 		services.AddSingleton<IRoundRepository, PostgresRoundRepository>();
+		services.AddSingleton<IRoundScoreRepository, PostgresRoundScoreRepository>();
 		services.AddSingleton<IMatchEventRepository, PostgresMatchEventRepository>();
 
 		services.AddSingleton<IScoreRepository, PostgresScoreRepository>();

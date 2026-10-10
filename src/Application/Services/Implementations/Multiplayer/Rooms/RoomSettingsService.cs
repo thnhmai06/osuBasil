@@ -5,6 +5,7 @@ using Basil.Application.Storage.Contracts.Multiplayer;
 using Basil.Application.Storage.Contracts.Sessions;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Match;
 
 namespace Basil.Application.Services.Implementations.Multiplayer.Rooms;
 
@@ -30,7 +31,8 @@ internal sealed class RoomSettingsService(RoomEventStream events, TimeProvider t
 		if (!RoomRules.IsHostOrManager(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 		if (room.Rounds.InProgress) return RoomResult.InProgress;
 
-		if (change.IsPrivate is not null && !RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
+		if (change.IsPrivate is not null && !RoomRules.CanManage(room, by, time.GetUtcNow()))
+			return RoomResult.NotAuthorized;
 
 		if ((change.Name is { } newName && !MatchData.IsValidName(newName)) ||
 		    change.Size is < 1 or > RoomSlots.MaxSlotCount || change is { ClearBeatmap: true, Beatmap: not null } ||
@@ -69,7 +71,8 @@ internal sealed class RoomSettingsService(RoomEventStream events, TimeProvider t
 				slot.Mods = slot.Mods!.Value.RemoveInvalidMods(newMode);
 		}
 
-		if (change.Freemods is { } newFreemods && newFreemods != room.Settings.Freemods) ApplyFreemods(room, newFreemods);
+		if (change.Freemods is { } newFreemods && newFreemods != room.Settings.Freemods)
+			ApplyFreemods(room, newFreemods);
 		if (change.Mods is { } newMods)
 		{
 			room.Settings.Stored.Mods = freemods ? newMods & GameMods.SpeedChangingMods : newMods;
@@ -136,7 +139,7 @@ internal sealed class RoomSettingsService(RoomEventStream events, TimeProvider t
 	{
 		room.Settings.Stored.TeamType = value;
 
-		if (value.NeedSplitTeam())
+		if (value.IsTeamMode())
 		{
 			var redCount = 0;
 			var blueCount = 0;

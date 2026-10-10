@@ -18,10 +18,21 @@ public enum GameTeamType : byte
 	TagTeamVs = 3
 }
 
+/// <summary>Reads the properties of a <see cref="GameTeamType" />.</summary>
 public static class GameTeamTypeExtensions
 {
-	public static bool NeedSplitTeam(this GameTeamType type)
+	extension(GameTeamType type)
 	{
-		return type is GameTeamType.TeamVs or GameTeamType.TagTeamVs;
+		/// <summary>Tells whether players are split into opposing teams.</summary>
+		public bool IsTeamMode()
+		{
+			return type is GameTeamType.TeamVs or GameTeamType.TagTeamVs;
+		}
+
+		/// <summary>Tells whether players take turns sharing a combo.</summary>
+		public bool IsTagMode()
+		{
+			return type is GameTeamType.TagCoop or GameTeamType.TagTeamVs;
+		}
 	}
 }

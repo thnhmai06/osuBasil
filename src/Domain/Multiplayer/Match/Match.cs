@@ -1,13 +1,14 @@
 ﻿using Basil.Domain.Users;
 using Basil.Domain.Utilities;
 
-namespace Basil.Domain.Multiplayer;
+namespace Basil.Domain.Multiplayer.Match;
 
 /// <summary>
 ///     A persisted match identified by its id.
 /// </summary>
 public sealed class Match : IWrapper<MatchData>, IEquatable<Match>
 {
+	/// <summary>Gets the unique identifier of the match.</summary>
 	public required int Id
 	{
 		get;
@@ -65,14 +66,19 @@ public sealed class Match : IWrapper<MatchData>, IEquatable<Match>
 public sealed class MatchData
 {
 	/// <summary>Tells whether a text can be a match's name: not empty or blank, and without the NUL character.</summary>
-	public static bool IsValidName(string name) => !string.IsNullOrWhiteSpace(name) && !name.HasNul();
+	public static bool IsValidName(string name)
+	{
+		return !string.IsNullOrWhiteSpace(name) && !name.HasNul();
+	}
 
 	/// <summary>Gets or sets the name of the match.</summary>
 	/// <exception cref="ArgumentException">The name is empty, blank, or contains the NUL character.</exception>
 	public required string Name
 	{
 		get;
-		set => field = IsValidName(value) ? value : throw new ArgumentException("Match name cannot be empty or contain the NUL character.", nameof(value));
+		set => field = IsValidName(value)
+			? value
+			: throw new ArgumentException("Match name cannot be empty or contain the NUL character.", nameof(value));
 	}
 
 	/// <summary>Gets the user who created the match, or <see langword="null" /> for an unattended room.</summary>

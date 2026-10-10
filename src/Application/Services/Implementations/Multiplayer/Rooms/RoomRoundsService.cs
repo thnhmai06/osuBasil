@@ -5,6 +5,7 @@ using Basil.Application.Storage.Contracts.Multiplayer;
 using Basil.Application.Storage.Contracts.Sessions;
 using System.Diagnostics.CodeAnalysis;
 using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Round;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 
@@ -72,10 +73,10 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 	}
 
 	/// <inheritdoc />
-	public Task<RoomResult> RecordScoreAsync(Room room, User player, Score score,
+	public Task<RoomResult> RecordScoreAsync(Room room, RoundScore score, User player,
 		CancellationToken cancellationToken = default)
 	{
-		return RoomScope.InScopeAsync(room, () => RecordScore(room, player, score), cancellationToken);
+		return RoomScope.InScopeAsync(room, () => RecordScore(room, score, player), cancellationToken);
 	}
 
 	/// <summary>Gets the remaining times at which a countdown announces itself, longest first.</summary>
@@ -215,9 +216,9 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 		return RoomResult.Ok;
 	}
 
-	private RoomResult RecordScore(Room room, User player, Score score)
+	private RoomResult RecordScore(Room room, RoundScore score, User player)
 	{
-		if (room.Rounds.LastRound is not { } round || !round.Equals(score.Value.Round)) return RoomResult.RoundMismatch;
+		if (room.Rounds.LastRound is not { } round || !round.Equals(score.Round)) return RoomResult.RoundMismatch;
 
 		events.Emit(new RoomRoundScoreSubmitted(room, round, player, score));
 		return RoomResult.Ok;
@@ -235,7 +236,8 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 	private static bool TryGetPlayingSlot(Room room, BanchoConnection by, [MaybeNullWhen(false)] out Round round,
 		[MaybeNullWhen(false)] out RoomSlot slot)
 	{
-		if (room.Rounds.CurrentRound is { } current && room.Slots.Find(by) is { Status: RoomSlotStatus.Playing } playing)
+		if (room.Rounds.CurrentRound is { } current &&
+		    room.Slots.Find(by) is { Status: RoomSlotStatus.Playing } playing)
 		{
 			round = current;
 			slot = playing;

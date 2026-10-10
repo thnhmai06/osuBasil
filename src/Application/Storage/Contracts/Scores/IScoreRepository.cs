@@ -1,5 +1,4 @@
 using Basil.Application.Storage.Contracts.Common;
-using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 
 namespace Basil.Application.Storage.Contracts.Scores;
@@ -26,10 +25,4 @@ public interface IScoreRepository
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>A page of scores.</returns>
 	Task<Page<Score>> ListAsync(ScoreQuery query, PageRequest page, CancellationToken cancellationToken = default);
-
-	/// <summary>Lists the scores submitted in a round.</summary>
-	/// <param name="round">The round.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>The round's scores, in submission order.</returns>
-	Task<IReadOnlyList<Score>> ListAsync(Round round, CancellationToken cancellationToken = default);
 }

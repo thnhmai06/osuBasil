@@ -1,4 +1,5 @@
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Match;
+using Basil.Domain.Multiplayer.Round;
 
 namespace Basil.Application.Storage.Contracts.Multiplayer;
 

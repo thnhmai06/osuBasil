@@ -129,7 +129,7 @@ internal sealed class RoomSlotsService(
 			if (entry.Player is null) continue;
 
 			RoomSlotsMechanics.Restore(slot, seated[entry.Player]);
-			if (entry.Team is { } team && room.Settings.TeamType.NeedSplitTeam()) slot.Team = team;
+			if (entry.Team is { } team && room.Settings.TeamType.IsTeamMode()) slot.Team = team;
 		}
 
 		events.Emit(new RoomSlotsArranged(room));
@@ -195,7 +195,7 @@ internal sealed class RoomSlotsService(
 	private RoomResult ToggleTeam(Room room, BanchoConnection by)
 	{
 		if (room.Slots.Find(by) is not { } slot) return RoomResult.NotInRoom;
-		if (!room.Settings.TeamType.NeedSplitTeam()) return RoomResult.NoTeams;
+		if (!room.Settings.TeamType.IsTeamMode()) return RoomResult.NoTeams;
 		if (room.Slots.Locked) return RoomResult.RoomLocked;
 		if (room.Rounds.InProgress) return RoomResult.InProgress;
 
@@ -208,7 +208,7 @@ internal sealed class RoomSlotsService(
 	private RoomResult SetTeam(Room room, Connection by, User player, GameTeam team)
 	{
 		if (!RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
-		if (!room.Settings.TeamType.NeedSplitTeam()) return RoomResult.NoTeams;
+		if (!room.Settings.TeamType.IsTeamMode()) return RoomResult.NoTeams;
 		if (room.Slots.Find(player) is not { Player: not null } slot) return RoomResult.NotInRoom;
 		if (slot.Team == team) return RoomResult.Ok;
 

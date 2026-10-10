@@ -1,6 +1,7 @@
 using Basil.Application.Storage.Contracts.Multiplayer;
 using Basil.Application.Storage.Contracts.Sessions;
 using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Round;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 
@@ -78,6 +79,6 @@ public sealed record RoomRoundPlayerCompleted(Room Room, Round Round, int Slot) 
 /// <param name="Room">The room.</param>
 /// <param name="Round">The round the score was played in.</param>
 /// <param name="Player">The player who submitted the score.</param>
-/// <param name="Score">The stored score.</param>
-public sealed record RoomRoundScoreSubmitted(Room Room, Round Round, User Player, Score Score)
+/// <param name="Score">The relation between the stored score and the round.</param>
+public sealed record RoomRoundScoreSubmitted(Room Room, Round Round, User Player, RoundScore Score)
 	: RoomRoundEvent(Room, Round);

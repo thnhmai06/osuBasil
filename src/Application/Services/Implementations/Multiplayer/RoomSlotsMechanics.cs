@@ -26,7 +26,7 @@ internal static class RoomSlotsMechanics
 
 		Occupy(slot, player);
 
-		if (room.Settings.TeamType.NeedSplitTeam())
+		if (room.Settings.TeamType.IsTeamMode())
 		{
 			var redCount = room.Slots.Count(s => s.Team == GameTeam.Red);
 			var blueCount = room.Slots.Count(s => s.Team == GameTeam.Blue);
@@ -159,7 +159,8 @@ internal static class RoomSlotsMechanics
 	private static void PassHostFrom(Room room, BanchoConnection leaving)
 	{
 		if (!ReferenceEquals(room.Authority.Host, leaving)) return;
-		room.Authority.Host = room.Slots.FirstOrDefault(slot => slot.Player is not null && !ReferenceEquals(slot.Player, leaving))
+		room.Authority.Host = room.Slots
+			.FirstOrDefault(slot => slot.Player is not null && !ReferenceEquals(slot.Player, leaving))
 			?.Player;
 	}
 

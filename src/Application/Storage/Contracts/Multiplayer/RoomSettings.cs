@@ -1,5 +1,5 @@
 using Basil.Domain.Mechanics;
-using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Match;
 
 namespace Basil.Application.Storage.Contracts.Multiplayer;
 
@@ -19,6 +19,8 @@ public sealed class RoomSettings
 
 	/// <summary>The stored settings the forwarding properties read.</summary>
 	internal MatchSettings Stored { get; }
+
+	// TODO: Bỏ các API Flatten, đổi tên Stored -> Value.
 
 	/// <summary>Gets the name broadcast to clients.</summary>
 	public string Name => _match.Value.Name;

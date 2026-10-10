@@ -2,6 +2,8 @@ using System.Collections.Immutable;
 using Basil.Application.Storage.Contracts.Multiplayer;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Match;
+using Basil.Domain.Multiplayer.Round;
 using Basil.Infrastructure.Storage.Common.Database;
 using Basil.Infrastructure.Storage.Common.Writing;
 using Basil.Infrastructure.Storage.Memory;

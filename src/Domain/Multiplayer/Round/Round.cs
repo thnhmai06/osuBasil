@@ -1,6 +1,7 @@
-﻿using Basil.Domain.Utilities;
+﻿using Basil.Domain.Multiplayer.Match;
+using Basil.Domain.Utilities;
 
-namespace Basil.Domain.Multiplayer;
+namespace Basil.Domain.Multiplayer.Round;
 
 /// <summary>
 ///     A round record as read back for report purposes.
@@ -9,7 +10,7 @@ public sealed class Round : IMatchRecord, IEquatable<Round>
 {
 	/// <summary>Gets the position of the round within its match, starting at 1.</summary>
 	/// <remarks>An aborted round keeps its number; the next round takes the following one.</remarks>
-	public required int Number
+	public required int Number // TODO: Đổi tên thành Index
 	{
 		get;
 		init => field = value > 0
@@ -27,14 +28,34 @@ public sealed class Round : IMatchRecord, IEquatable<Round>
 	/// <summary>The match settings the round was played under.</summary>
 	public required MatchSettings Settings { get; init; }
 
+	/// <summary>A value that indicates whether the round was aborted.</summary>
+	public bool Aborted { get; set; } = false;
+
+	/// <summary>Gets or sets the outcome decided from the round's scores, or <see langword="null" /> before it is decided.</summary>
+	/// <exception cref="ArgumentException">The result was decided for another round.</exception>
+	public RoundResult? Result
+	{
+		get;
+		set
+		{
+			if (value is not null && !value.Round.Equals(this))
+				throw new ArgumentException("The result must belong to this round.", nameof(value));
+
+			field = value;
+		}
+	} = null;
+
 	/// <summary>The time the round started.</summary>
 	public required DateTimeOffset StartedAt { get; init; }
 
 	/// <summary>The time the round ended, or <see langword="null" /> while open.</summary>
 	public required DateTimeOffset? EndedAt { get; set; }
 
-	/// <summary>A value that indicates whether the round was aborted.</summary>
-	public bool Aborted { get; set; } = false;
+	/// <summary>The match the round belongs to.</summary>
+	public required Match.Match Match { get; init; }
+
+	/// <inheritdoc />
+	DateTimeOffset IMatchRecord.Timestamp => StartedAt;
 
 	/// <summary>Determines whether another round is the same round of the same match.</summary>
 	/// <param name="other">The round to compare, or <see langword="null" />.</param>
@@ -47,12 +68,6 @@ public sealed class Round : IMatchRecord, IEquatable<Round>
 		if (other is null) return false;
 		return Match.Equals(other.Match) && Number == other.Number;
 	}
-
-	/// <summary>The match the round belongs to.</summary>
-	public required Match Match { get; init; }
-
-	/// <inheritdoc />
-	DateTimeOffset IMatchRecord.Timestamp => StartedAt;
 
 	/// <summary>Determines whether this round equals another object.</summary>
 	/// <param name="obj">The object to compare, or <see langword="null" />.</param>

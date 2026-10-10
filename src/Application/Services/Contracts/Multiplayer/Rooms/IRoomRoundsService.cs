@@ -1,5 +1,5 @@
 using Basil.Application.Services.Contracts.Multiplayer.Events;
-using Basil.Domain.Scores;
+using Basil.Domain.Multiplayer.Round;
 using Basil.Domain.Users;
 using Basil.Application.Storage.Contracts.Multiplayer;
 using Basil.Application.Storage.Contracts.Sessions;
@@ -87,10 +87,10 @@ public interface IRoomRoundsService
 
 	/// <summary>Records a stored score of the room's latest round.</summary>
 	/// <param name="room">The room.</param>
+	/// <param name="score">The relation between the stored score and the round.</param>
 	/// <param name="player">The player who submitted the score.</param>
-	/// <param name="score">The stored score.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, RoundMismatch or RoomClosed when the room has closed.</returns>
-	Task<RoomResult> RecordScoreAsync(Room room, User player, Score score,
+	Task<RoomResult> RecordScoreAsync(Room room, RoundScore score, User player,
 		CancellationToken cancellationToken = default);
 }

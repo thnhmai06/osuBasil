@@ -1,9 +1,6 @@
-using System.Collections.Immutable;
 using Basil.Application.Storage.Contracts.Common;
-using Basil.Application.Storage.Contracts.Multiplayer;
 using Basil.Application.Storage.Contracts.Scores;
 using Basil.Domain.Mechanics;
-using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Utilities;
 using Basil.Infrastructure.Storage.Common.Database;
@@ -17,19 +14,16 @@ namespace Basil.Infrastructure.Storage.Scores;
 /// <summary>Stores submitted scores.</summary>
 internal sealed class PostgresScoreRepository(
 	DatabaseReader reader,
-	DatabaseWriter writer,
-	IMatchRepository matches,
-	IRoundRepository rounds) : MemoryRepository<int, Score>(reader, writer), IScoreRepository
+	DatabaseWriter writer) : MemoryRepository<int, Score>(reader, writer), IScoreRepository
 {
 	private readonly WeakIndex<Md5, Score> _byChecksum = new();
-	private readonly OwnedLists<(int MatchId, int Number), Round, Score> _byRound = new();
 
 	protected override string WriteSql =>
 		"""
 		insert into scores (id, user_id, beatmap_hash, mode, mods, num300, num100, num50, num_geki, num_katu, num_miss,
-		                    total_score, max_combo, grade, is_passed, is_full_combo, timestamp, match_id, round_number, team, checksum)
+		                    total_score, max_combo, current_combo, grade, is_passed, is_full_combo, timestamp, checksum)
 		values (@Id, @UserId, @BeatmapHash, @Mode, @Mods, @Num300, @Num100, @Num50, @NumGeki, @NumKatu, @NumMiss,
-		        @TotalScore, @MaxCombo, @Grade, @IsPassed, @IsFullCombo, @Timestamp, @MatchId, @RoundNumber, @Team, @Checksum)
+		        @TotalScore, @MaxCombo, @CurrentCombo, @Grade, @IsPassed, @IsFullCombo, @Timestamp, @Checksum)
 		on conflict (id) do update set
 			user_id = excluded.user_id,
 			beatmap_hash = excluded.beatmap_hash,
@@ -43,21 +37,18 @@ internal sealed class PostgresScoreRepository(
 			num_miss = excluded.num_miss,
 			total_score = excluded.total_score,
 			max_combo = excluded.max_combo,
+			current_combo = excluded.current_combo,
 			grade = excluded.grade,
 			is_passed = excluded.is_passed,
 			is_full_combo = excluded.is_full_combo,
 			timestamp = excluded.timestamp,
-			match_id = excluded.match_id,
-			round_number = excluded.round_number,
-			team = excluded.team,
 			checksum = excluded.checksum;
 		""";
 
 	/// <inheritdoc />
 	public async Task<Score> CreateAsync(ScoreData data, CancellationToken cancellationToken = default)
 	{
-		var round = data.Round;
-		if (data.Checksum is { } checksum && _byChecksum.TryGet(checksum, out var known) &&
+		if (data.Checksum is { } checksum && _byChecksum.TryGetValue(checksum, out var known) &&
 		    known.Value.Checksum == checksum)
 			throw new AlreadyExistsException($"A score with checksum {checksum} is already stored.");
 
@@ -69,9 +60,9 @@ internal sealed class PostgresScoreRepository(
 				connection.QuerySingleOrDefaultAsync<int>(
 					"""
 					insert into scores (user_id, beatmap_hash, mode, mods, num300, num100, num50, num_geki, num_katu, num_miss,
-					                    total_score, max_combo, grade, is_passed, is_full_combo, timestamp, match_id, round_number, team, checksum)
+					                    total_score, max_combo, current_combo, grade, is_passed, is_full_combo, timestamp, checksum)
 					values (@UserId, @BeatmapHash, @Mode, @Mods, @Num300, @Num100, @Num50, @NumGeki, @NumKatu, @NumMiss,
-					        @TotalScore, @MaxCombo, @Grade, @IsPassed, @IsFullCombo, @Timestamp, @MatchId, @RoundNumber, @Team, @Checksum)
+					        @TotalScore, @MaxCombo, @CurrentCombo, @Grade, @IsPassed, @IsFullCombo, @Timestamp, @Checksum)
 					on conflict (checksum) do nothing
 					returning id
 					""",
@@ -87,9 +78,6 @@ internal sealed class PostgresScoreRepository(
 
 		var score = Track(new Score { Id = id, Value = data });
 		IndexScore(score);
-		if (round is not null)
-			_byRound.Change((round.Match.Id, round.Number), round,
-				list => list.Exists(item => item.Id == score.Id) ? list : list.Add(score), Task.CompletedTask);
 		return score;
 	}
 
@@ -114,7 +102,7 @@ internal sealed class PostgresScoreRepository(
 			await connection.QueryAsync<ScoreRow>(
 				$"""
 				  select id, user_id, beatmap_hash, mode, mods, num300, num100, num50, num_geki, num_katu, num_miss,
-				         total_score, max_combo, grade, is_passed, is_full_combo, timestamp, match_id, round_number, team, checksum
+				         total_score, max_combo, current_combo, grade, is_passed, is_full_combo, timestamp, checksum
 				  from scores
 				  {where}
 				  order by timestamp desc, id desc
@@ -122,37 +110,10 @@ internal sealed class PostgresScoreRepository(
 				 """,
 				parameters)), cancellationToken);
 
-		var loaded = await LoadRoundsAsync(rows.Select(row => row.MatchId), cancellationToken);
-		var items = rows.Select(row => Track(ToScore(row, FindRound(row, loaded)))).ToList();
+		var items = rows.Select(row => Track(ToScore(row))).ToList();
 		foreach (var score in items)
 			IndexScore(score);
 		return new Page<Score>(items, total);
-	}
-
-	/// <inheritdoc />
-	public async Task<IReadOnlyList<Score>> ListAsync(Round round, CancellationToken cancellationToken = default)
-	{
-		return await _byRound.GetOrLoadAsync((round.Match.Id, round.Number), round, async () =>
-		{
-			var rows = await Reader.ReadAsync(connection => connection.QueryAsync<ScoreRow>(
-				"""
-				select id, user_id, beatmap_hash, mode, mods, num300, num100, num50, num_geki, num_katu, num_miss,
-				       total_score, max_combo, grade, is_passed, is_full_combo, timestamp, match_id, round_number, team, checksum
-				from scores
-				where match_id = @MatchId and round_number = @Number
-				order by timestamp, id
-				""",
-				new { MatchId = round.Match.Id, round.Number }), cancellationToken);
-			var scores = ImmutableList.CreateBuilder<Score>();
-			foreach (var row in rows)
-			{
-				var score = Track(ToScore(row, round));
-				IndexScore(score);
-				scores.Add(score);
-			}
-
-			return scores.ToImmutable();
-		});
 	}
 
 	protected override int KeyOf(Score item)
@@ -170,15 +131,11 @@ internal sealed class PostgresScoreRepository(
 		var row = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<ScoreRow>(
 			"""
 			select id, user_id, beatmap_hash, mode, mods, num300, num100, num50, num_geki, num_katu, num_miss,
-			       total_score, max_combo, grade, is_passed, is_full_combo, timestamp, match_id, round_number, team, checksum
+			       total_score, max_combo, current_combo, grade, is_passed, is_full_combo, timestamp, checksum
 			from scores where id = @Id
 			""",
 			new { Id = key }));
-		if (row is null)
-			return null;
-
-		var loaded = await LoadRoundsAsync([row.MatchId], default);
-		return ToScore(row, FindRound(row, loaded));
+		return row is null ? null : ToScore(row);
 	}
 
 	protected override object WriteParameters(Score score)
@@ -202,39 +159,7 @@ internal sealed class PostgresScoreRepository(
 			conditions.Add("beatmap_hash = @BeatmapHash");
 		}
 
-		if (query.Match is { } match)
-		{
-			parameters.Add("MatchId", match.Id);
-			conditions.Add("match_id = @MatchId");
-		}
-
 		return (conditions.Count == 0 ? "" : $"where {string.Join(" AND ", conditions)}", parameters);
-	}
-
-	private async Task<Dictionary<int, Dictionary<int, Round>>> LoadRoundsAsync(IEnumerable<int?> matchIds,
-		CancellationToken cancellationToken)
-	{
-		var loaded = new Dictionary<int, Dictionary<int, Round>>();
-		foreach (var matchId in matchIds.OfType<int>().Distinct())
-		{
-			var match = await matches.GetAsync(matchId, cancellationToken);
-			if (match is null)
-				continue;
-
-			loaded[matchId] = (await rounds.ListAsync(match, cancellationToken))
-				.ToDictionary(round => round.Number);
-		}
-
-		return loaded;
-	}
-
-	private static Round? FindRound(ScoreRow row, Dictionary<int, Dictionary<int, Round>> loaded)
-	{
-		return row.MatchId is { } matchId && row.RoundNumber is { } roundNumber
-		                                  && loaded.TryGetValue(matchId, out var roundsByNumber)
-		                                  && roundsByNumber.TryGetValue(roundNumber, out var round)
-			? round
-			: null;
 	}
 
 	private void IndexScore(Score score)
@@ -243,12 +168,12 @@ internal sealed class PostgresScoreRepository(
 			_byChecksum.Set(checksum, score);
 	}
 
-	private static Score ToScore(ScoreRow row, Round? round)
+	private static Score ToScore(ScoreRow row)
 	{
-		return new Score { Id = row.Id, Value = ToData(row, round) };
+		return new Score { Id = row.Id, Value = ToData(row) };
 	}
 
-	private static ScoreData ToData(ScoreRow row, Round? round)
+	private static ScoreData ToData(ScoreRow row)
 	{
 		return new ScoreData(
 				row.UserId,
@@ -258,15 +183,14 @@ internal sealed class PostgresScoreRepository(
 				new HitCounts(row.Num300, row.Num100, row.Num50, row.NumGeki, row.NumKatu, row.NumMiss),
 				row.TotalScore,
 				(short)row.MaxCombo,
+				(short)row.CurrentCombo,
 				(Grade)row.Grade,
 				row.IsPassed,
 				row.IsFullCombo,
 				row.Timestamp)
 			with
 			{
-				Round = round,
-				Checksum = row.Checksum is { } checksum ? new Md5(checksum) : (Md5?)null,
-				Team = row.Team is { } team ? (GameTeam)team : null
+				Checksum = row.Checksum is { } checksum ? new Md5(checksum) : (Md5?)null
 			};
 	}
 
@@ -287,13 +211,11 @@ internal sealed class PostgresScoreRepository(
 			value.HitCounts.NumMiss,
 			value.TotalScore,
 			value.MaxCombo,
+			value.CurrentCombo,
 			Grade = (int)value.Grade,
 			value.IsPassed,
 			value.IsFullCombo,
 			Timestamp = value.Timestamp.ToUniversalTime(),
-			MatchId = value.Round?.Match.Id,
-			RoundNumber = value.Round?.Number,
-			Team = value.Team is { } team ? (int)team : (int?)null,
 			Checksum = value.Checksum?.HashValue
 		};
 	}
@@ -314,13 +236,11 @@ internal sealed class PostgresScoreRepository(
 		public int NumMiss { get; set; }
 		public int TotalScore { get; set; }
 		public int MaxCombo { get; set; }
+		public int CurrentCombo { get; set; }
 		public int Grade { get; set; }
 		public bool IsPassed { get; set; }
 		public bool IsFullCombo { get; set; }
 		public DateTimeOffset Timestamp { get; set; }
-		public int? MatchId { get; set; }
-		public int? RoundNumber { get; set; }
-		public int? Team { get; set; }
 		public string? Checksum { get; set; }
 	}
 }

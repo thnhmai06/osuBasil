@@ -1,5 +1,6 @@
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
+using Basil.Domain.Multiplayer.Match;
 using Basil.Domain.Users;
 
 namespace Basil.Bot.Application.Basil;

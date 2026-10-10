@@ -1,7 +1,7 @@
 ﻿using Basil.Domain.Users;
 using Basil.Domain.Utilities;
 
-namespace Basil.Domain.Multiplayer;
+namespace Basil.Domain.Multiplayer.Match;
 
 /// <summary>
 ///     A single lifecycle event recorded against a match.

@@ -1,5 +1,4 @@
 ﻿using Basil.Domain.Mechanics;
-using Basil.Domain.Multiplayer;
 using Basil.Domain.Utilities;
 
 namespace Basil.Domain.Scores;
@@ -16,6 +15,9 @@ public sealed class Score : IWrapper<ScoreData>, IEquatable<Score>
 			: throw new ArgumentOutOfRangeException(nameof(value), "Score id must be positive.");
 	}
 
+	/// <summary>Gets the score data this identity wraps.</summary>
+	public required ScoreData Value { get; init; }
+
 	/// <summary>Determines whether another score refers to the same stored score.</summary>
 	/// <param name="other">The score to compare against, or <see langword="null" />.</param>
 	/// <returns>
@@ -27,9 +29,6 @@ public sealed class Score : IWrapper<ScoreData>, IEquatable<Score>
 		if (other is null) return false;
 		return Id == other.Id;
 	}
-
-	/// <summary>Gets the score data this identity wraps.</summary>
-	public required ScoreData Value { get; init; }
 
 	/// <summary>Determines whether this score equals another object.</summary>
 	/// <param name="obj">The object to compare against.</param>
@@ -58,6 +57,7 @@ public sealed class Score : IWrapper<ScoreData>, IEquatable<Score>
 /// <param name="HitCounts">The judgment counts of the play.</param>
 /// <param name="TotalScore">The total score achieved.</param>
 /// <param name="MaxCombo">The maximum combo reached.</param>
+/// <param name="CurrentCombo">The combo count at the end of the beatmap.</param>
 /// <param name="Grade">The grade earned.</param>
 /// <param name="IsPassed">Whether the play was passed.</param>
 /// <param name="IsFullCombo">Whether the play was a full combo.</param>
@@ -70,32 +70,29 @@ public sealed record ScoreData(
 	HitCounts HitCounts,
 	int TotalScore,
 	short MaxCombo,
+	short CurrentCombo,
 	Grade Grade,
 	bool IsPassed,
 	bool IsFullCombo,
 	DateTimeOffset Timestamp)
 {
+	/// <summary>Gets the total score achieved.</summary>
+	/// <exception cref="ArgumentOutOfRangeException">The total score is negative.</exception>
 	public int TotalScore { get; init; } = TotalScore >= 0
 		? TotalScore
 		: throw new ArgumentOutOfRangeException(nameof(TotalScore), "TotalScore must be non-negative.");
 
+	/// <summary>Gets the maximum combo reached.</summary>
+	/// <exception cref="ArgumentOutOfRangeException">The maximum combo is negative.</exception>
 	public short MaxCombo { get; init; } = MaxCombo >= 0
 		? MaxCombo
 		: throw new ArgumentOutOfRangeException(nameof(MaxCombo), "MaxCombo must be non-negative.");
-
-	/// <summary>Gets the multiplayer round the play was made in, or <see langword="null" /> outside a round.</summary>
-	public Round? Round { get; init; }
 
 	/// <summary>
 	///     Gets the checksum the client computed for the submission of this score, which identifies the submission,
 	///     or <see langword="null" /> when it is not known.
 	/// </summary>
 	public Md5? Checksum { get; init; }
-
-	/// <summary>
-	///     Gets the team the player was on in the round, or <see langword="null" /> outside a team round.
-	/// </summary>
-	public GameTeam? Team { get; init; }
 
 	/// <summary>
 	///     Gets the play's accuracy, computed from its hit counts under its mode and mods.
