@@ -15,29 +15,25 @@ internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage, IResident
 	private readonly ConcurrentDictionary<string, byte[]> _entries = new(StringComparer.Ordinal);
 
 	/// <inheritdoc />
-	public Task<IReadOnlyList<string>> ListAsync(CancellationToken cancellationToken = default)
+	public Task<IEnumerable<string>> ListAsync(CancellationToken cancellationToken)
 	{
-		return Task.FromResult<IReadOnlyList<string>>([
-			.. _entries.Keys.OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
-		]);
+		return Task.FromResult<IEnumerable<string>>(
+			_entries.Keys.OrderBy(name => name, StringComparer.OrdinalIgnoreCase));
 	}
 
 	/// <inheritdoc />
-	public async Task SaveAsync(string entry, Stream content, CancellationToken cancellationToken = default)
+	public Task<StreamWriter> CreateOrUpdateAsync(string entry, CancellationToken cancellationToken = default)
 	{
 		var path = PathFor(paths.Faqs, entry);
-		var bytes = await ReadAsync(content, cancellationToken);
-		_entries[entry] = bytes;
-		using var storedContent = new MemoryStream(bytes);
-		await FileStorage.SaveAsync(path, storedContent, cancellationToken);
+		return Task.FromResult<StreamWriter>(new EntryWriter(this, entry, path));
 	}
 
 	/// <inheritdoc />
-	public Task<Stream?> OpenAsync(string entry, CancellationToken cancellationToken = default)
+	public Task<StreamReader?> ReadAsync(string entry, CancellationToken cancellationToken = default)
 	{
 		PathFor(paths.Faqs, entry);
-		return Task.FromResult<Stream?>(_entries.TryGetValue(entry, out var bytes)
-			? new MemoryStream(bytes, false)
+		return Task.FromResult(_entries.TryGetValue(entry, out var bytes)
+			? new StreamReader(new MemoryStream(bytes, false))
 			: null);
 	}
 
@@ -74,10 +70,44 @@ internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage, IResident
 		return SafePath.Combine(root, string.Join('/', entry.Split(':')) + ".txt");
 	}
 
-	private static async Task<byte[]> ReadAsync(Stream content, CancellationToken cancellationToken)
+	/// <summary>Replaces an entry's stored text with newly written bytes.</summary>
+	/// <param name="entry">The name of the entry.</param>
+	/// <param name="path">The path of the entry's file.</param>
+	/// <param name="bytes">The text as bytes.</param>
+	private async Task StoreAsync(string entry, string path, byte[] bytes)
 	{
-		using var buffer = new MemoryStream();
-		await content.CopyToAsync(buffer, cancellationToken);
-		return buffer.ToArray();
+		_entries[entry] = bytes;
+		using var content = new MemoryStream(bytes);
+		await FileStorage.SaveAsync(path, content, CancellationToken.None);
+	}
+
+	/// <summary>Collects an entry's new text and stores it once the writer is disposed.</summary>
+	private sealed class EntryWriter(FileFaqStorage storage, string entry, string path)
+		: StreamWriter(new MemoryStream())
+	{
+		private bool _stored;
+
+		/// <inheritdoc />
+		protected override void Dispose(bool disposing)
+		{
+			if (disposing) PersistAsync().GetAwaiter().GetResult();
+			base.Dispose(disposing);
+		}
+
+		/// <inheritdoc />
+		public override async ValueTask DisposeAsync()
+		{
+			await PersistAsync();
+			await base.DisposeAsync();
+		}
+
+		/// <summary>Stores the written text, once.</summary>
+		private async Task PersistAsync()
+		{
+			if (_stored) return;
+			_stored = true;
+			await FlushAsync();
+			await storage.StoreAsync(entry, path, ((MemoryStream)BaseStream).ToArray());
+		}
 	}
 }

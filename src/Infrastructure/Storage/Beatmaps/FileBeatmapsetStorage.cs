@@ -95,7 +95,7 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 	}
 
 	/// <inheritdoc />
-	public async Task<IReadOnlyList<string>> ListAsync(Beatmapset set, CancellationToken cancellationToken = default)
+	public async Task<IEnumerable<string>> ListAsync(Beatmapset set, CancellationToken cancellationToken = default)
 	{
 		var folder = SetFolder(set.Id.ToString(CultureInfo.InvariantCulture));
 		var gate = SetLocks.GetOrAdd(set.Id, static _ => new SemaphoreSlim(1, 1));

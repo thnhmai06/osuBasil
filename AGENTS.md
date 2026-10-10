@@ -396,21 +396,22 @@ feature folders appear in Storage, Contracts and Services.
 ```text
 Common/        PageRequest, Page<T>, Interval<T>                                   (Storage)
 Events/        Event, IEventPublisher<T>                                           (Contracts)
-Users/         IUserRepository, ICredentialRepository (passwords), ILoginRepository,
-               IRestrictionRepository, IRelationshipRepository, IUserAvatarStorage, UserQuery;
-               IAuthService, IUserService, LoginAttempt, RegisterAttempt, results
+Users/         IUserRepository, IRestrictionRepository, IRelationshipRepository,
+               IUserAvatarStorage, UserQuery; IUserService, results
+Auth/          ICredentialRepository (passwords), ILoginRepository; IAuthService,
+               LoginAttempt, RegisterAttempt
 Sessions/      UserSession, Connection (+ ConnectionType), UserRegistry, PlayerStatus,
                SpectatorChannelSession; ISessionService and its events
 Chat/          ChannelSession tree, GeneralChannelRegistry, IChannelRepository;
                IChannelService, channel events and results
 Multiplayer/   Lobby, Room, RoomSlot(s), RoomChannelSession, IMatchRepository, IRoundRepository,
-               IMatchEventRepository, MatchQuery; ILobbyService, IRoomService, IMatchService,
-               room and lobby events, RoomResult, RoomSettingsChange
+               IRoundScoreRepository, IMatchEventRepository, MatchQuery; ILobbyService,
+               IRoomService, IMatchService, room and lobby events, RoomResult, RoomSettingsChange
 Beatmaps/      beatmap and beatmapset repositories, IBeatmapsetStorage, BeatmapQuery;
                IBeatmapsetService, IBeatmapAnalyser, IBeatmapsetReader, IBeatmapAssets,
                IBeatmapsetMirror, beatmapset events
-Scores/        IScoreRepository, IReplayStorage, IUserStatsRepository, ScoreQuery;
-               IScoreService and its events
+Scores/        IScoreRepository (the play's values only), IReplayStorage, IUserStatsRepository,
+               ScoreQuery (player and beatmap only); IScoreService and its events
 Anticheat/     IAnticheatService (judges client flags) and its events
 Content/       ISettingsRepository, IMenuBannerRepository, IMenuBannerStorage, IMenuIconStorage,
                IMenuSeasonalsStorage, IFaqStorage
@@ -540,11 +541,17 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   directly. Handlers, dispatchers and event → client-notification routing belong to Infrastructure and the
   hosts, never to Application.
 * **Repository contracts are written per model** as `IXxxRepository` (`IMatchRepository`,
-  `IScoreRepository`, …), each declaring the operations Services and the outer layers need. Verbs:
+  `IScoreRepository`, …), each declaring the operations Services and the outer layers need. A relation
+  between two models that is stored on its own gets its own repository rather than a column on either
+  (`IRoundScoreRepository` relates a round to a score and keeps the team it was set for). Verbs:
   `CreateAsync(XData) → X` (the store assigns the identity), `CreateOrUpdateAsync(X)`, `GetAsync(id)`,
   `GetByYAsync(y)` for a unique key, `ListAsync(XQuery, PageRequest) → Page<X>` for listing and search,
-  `DeleteAsync(X)`. Soft deletion is a service setting `DeletedAt` and calling `CreateOrUpdateAsync`. `Save`
-  is only for byte storages (`IXxxStorage`: `SaveAsync`, `OpenAsync`, `DeleteAsync`). Extract a shared
+  `DeleteAsync(X)`. A listing without a page returns `IReadOnlyList<X>`: a repository's result is complete,
+  so a caller may count or index it. Soft deletion is a service setting `DeletedAt` and calling
+  `CreateOrUpdateAsync`. `Save` is only for byte storages (`IXxxStorage`: `SaveAsync`, `OpenAsync`,
+  `DeleteAsync`); a storage lists with `IEnumerable<X>` (the caller decides whether to materialise it), and a
+  storage of text reads and writes it through `StreamReader`/`StreamWriter` (`IFaqStorage.OpenAsync`,
+  `IFaqStorage.EditAsync`) instead of a raw `Stream`. Extract a shared
   interface only when several repositories genuinely share an operation, and keep the `IXxxRepository`
   contract callers depend on; no parallel generic ports (`ICreatable`) and no generic query system
   (`Query<T>`, `SortOptions`). Key normalization (for example case- and space-insensitive user names) lives on the
@@ -569,7 +576,8 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
     statement at a time, in order; a copy not sent yet is replaced by a newer copy of the same identity. At most
     `Basil:Database:WriteConnections` connections (8 by default, see [`plans/evidence/postgresql-direct-writes-20261008`](plans/evidence/postgresql-direct-writes-20261008/results.md)) write at once. No write is grouped with unrelated
     writes; a business operation that must store several rows together gets one try-operation of its own. A score
-    belongs to its player (`Root.User`); a round lists its scores.
+    belongs to its player (`Root.User`); which round it was played in is a relation of its own
+    (`round_scores`), listed with the round.
   * **Errors:** only environment errors (lost connection, timeout, server shutting down, read-only after a failover,
     deadlock, authentication, permissions) are retried, before any later write of the same root. Any other error
     fails that write alone: a try-operation throws it to its caller, a copy is logged as an error. A try-operation

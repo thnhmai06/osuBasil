@@ -6,7 +6,7 @@ public interface IMenuBannerStorage
 	/// <summary>Lists the names of the stored images.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The names of the stored images.</returns>
-	Task<IReadOnlyList<string>> ListAsync(CancellationToken cancellationToken = default);
+	Task<IEnumerable<string>> ListAsync(CancellationToken cancellationToken = default);
 
 	/// <summary>Stores an image under a name, replacing any image with that name.</summary>
 	/// <param name="name">The name to store the image under.</param>

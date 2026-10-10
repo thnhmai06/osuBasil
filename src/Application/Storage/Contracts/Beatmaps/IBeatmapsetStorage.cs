@@ -16,7 +16,7 @@ public interface IBeatmapsetStorage
 	/// <param name="set">The beatmapset the archive belongs to.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The files' names relative to the set, with '/' between folders; empty when nothing is stored for the set.</returns>
-	Task<IReadOnlyList<string>> ListAsync(Beatmapset set, CancellationToken cancellationToken = default);
+	Task<IEnumerable<string>> ListAsync(Beatmapset set, CancellationToken cancellationToken = default);
 
 	/// <summary>Opens one file of a set.</summary>
 	/// <param name="set">The beatmapset whose file to open.</param>

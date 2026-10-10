@@ -6,7 +6,7 @@ public interface IMenuSeasonalsStorage
 	/// <summary>Lists the names of the stored backgrounds.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The names of the stored backgrounds.</returns>
-	Task<IReadOnlyList<string>> ListAsync(CancellationToken cancellationToken = default);
+	Task<IEnumerable<string>> ListAsync(CancellationToken cancellationToken = default);
 
 	/// <summary>Stores a background under a name, replacing any background with that name.</summary>
 	/// <param name="name">The name to store the background under.</param>

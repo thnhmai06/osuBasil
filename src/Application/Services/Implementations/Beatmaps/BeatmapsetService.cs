@@ -145,7 +145,7 @@ internal sealed class BeatmapsetService(
 		var forgotten = 0;
 		foreach (var set in allSets)
 		{
-			if ((await archives.ListAsync(set, cancellationToken)).Count == 0)
+			if (!(await archives.ListAsync(set, cancellationToken)).Any())
 			{
 				await beatmaps.RetainAsync(set, [], cancellationToken);
 				await beatmapsets.DeleteAsync(set, cancellationToken);

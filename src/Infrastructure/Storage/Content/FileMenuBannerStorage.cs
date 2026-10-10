@@ -14,11 +14,10 @@ internal sealed class FileMenuBannerStorage(DataPaths paths) : IMenuBannerStorag
 	private readonly ConcurrentDictionary<string, byte[]> _files = new(StringComparer.Ordinal);
 
 	/// <inheritdoc />
-	public Task<IReadOnlyList<string>> ListAsync(CancellationToken cancellationToken = default)
+	public Task<IEnumerable<string>> ListAsync(CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult<IReadOnlyList<string>>([
-			.. _files.Keys.OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
-		]);
+		return Task.FromResult<IEnumerable<string>>(
+			_files.Keys.OrderBy(name => name, StringComparer.OrdinalIgnoreCase));
 	}
 
 	/// <inheritdoc />
