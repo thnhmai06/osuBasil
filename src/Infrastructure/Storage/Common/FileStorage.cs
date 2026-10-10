@@ -1,4 +1,4 @@
-namespace Basil.Infrastructure.Storage.Files;
+namespace Basil.Infrastructure.Storage.Common;
 
 /// <summary>Stores single files for the file storages.</summary>
 internal static class FileStorage
@@ -31,10 +31,10 @@ internal static class FileStorage
 		}
 	}
 
-	/// <summary>Opens a stored file.</summary>
+	/// <summary>Reads a stored file.</summary>
 	/// <param name="path">The path of the file.</param>
 	/// <returns>A read-only stream over the file, or <see langword="null" /> when the file does not exist.</returns>
-	public static FileStream? Open(string path)
+	public static FileStream? Read(string path)
 	{
 		return File.Exists(path)
 			? new FileStream(path, new FileStreamOptions
@@ -67,7 +67,7 @@ internal static class FileStorage
 	/// <param name="directory">The path of the directory.</param>
 	/// <param name="pattern">The search pattern the file names must match.</param>
 	/// <returns>The file paths, or <see langword="null" /> when the directory does not exist.</returns>
-	public static IEnumerable<string>? Files(string directory, string pattern)
+	public static IEnumerable<string>? List(string directory, string pattern)
 	{
 		return Directory.Exists(directory)
 			? Directory.EnumerateFiles(directory, pattern)
@@ -78,11 +78,10 @@ internal static class FileStorage
 	/// <param name="directory">The path of the directory.</param>
 	/// <param name="pattern">The search pattern the file names must match.</param>
 	/// <param name="kept">The path of the file kept.</param>
-	public static void DeleteExcept(string directory, string pattern, string kept)
+	public static void DeleteAllExcept(string directory, string pattern, string kept)
 	{
-		var files = Files(directory, pattern);
-		if (files is null)
-			return;
+		var files = List(directory, pattern);
+		if (files is null) return;
 
 		foreach (var file in files.Where(file => Path.GetFullPath(file) != Path.GetFullPath(kept)))
 			File.Delete(file);
@@ -95,20 +94,5 @@ internal static class FileStorage
 	{
 		if (File.Exists(path))
 			File.Delete(path);
-	}
-
-	/// <summary>Lists the names of the files of a directory, sorted.</summary>
-	/// <param name="directory">The path of the directory.</param>
-	/// <returns>The names of the files the directory holds.</returns>
-	public static IReadOnlyList<string> List(string directory)
-	{
-		Directory.CreateDirectory(directory);
-
-		return
-		[
-			.. Directory.EnumerateFiles(directory)
-				.Select(file => Path.GetFileName(file))
-				.OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
-		];
 	}
 }

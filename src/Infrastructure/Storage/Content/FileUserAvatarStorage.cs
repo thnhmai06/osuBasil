@@ -1,8 +1,9 @@
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Users;
+using Basil.Infrastructure.Storage.Common;
 using Basil.Infrastructure.Storage.Common.Options;
 
-namespace Basil.Infrastructure.Storage.Files;
+namespace Basil.Infrastructure.Storage.Content;
 
 /// <summary>Stores the avatars of users — bare image bytes, one extension-less file per user.</summary>
 internal sealed class FileUserAvatarStorage(DataPaths paths) : IUserAvatarStorage
@@ -16,7 +17,7 @@ internal sealed class FileUserAvatarStorage(DataPaths paths) : IUserAvatarStorag
 	/// <inheritdoc />
 	public Task<Stream?> OpenAsync(User user, CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult<Stream?>(FileStorage.Open(Path.Combine(paths.Avatars, $"{user.Id}")));
+		return Task.FromResult<Stream?>(FileStorage.Read(Path.Combine(paths.Avatars, $"{user.Id}")));
 	}
 
 	/// <inheritdoc />

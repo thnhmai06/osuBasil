@@ -1,3 +1,4 @@
+using Basil.Application.Storage.Contracts.Multiplayer.Room;
 using Basil.Application.Storage.Contracts.Sessions;
 
 namespace Basil.Application.Storage.Contracts.Multiplayer;
@@ -6,7 +7,7 @@ namespace Basil.Application.Storage.Contracts.Multiplayer;
 public interface ILobby
 {
 	/// <summary>Gets every open room.</summary>
-	IEnumerable<Room> Rooms { get; }
+	IEnumerable<Room.Room> Rooms { get; }
 
 	/// <summary>Gets the osu! clients watching the multiplayer lobby.</summary>
 	IReadOnlySet<BanchoConnection> Watchers { get; }
@@ -15,10 +16,10 @@ public interface ILobby
 	internal bool IsFull { get; }
 
 	/// <summary>Finds an open room by id.</summary>
-	Room? Find(int id);
+	Room.Room? Find(int id);
 
 	/// <summary>Finds the room a player is seated in.</summary>
-	Room? RoomOf(BanchoConnection player);
+	Room.Room? RoomOf(BanchoConnection player);
 
 	/// <summary>Reserves the lowest free room id so no other room takes it.</summary>
 	/// <returns>The reserved id, or <see langword="null" /> when every room id is taken or reserved.</returns>
@@ -30,12 +31,12 @@ public interface ILobby
 
 	/// <summary>Lists a room as open under the id reserved for it.</summary>
 	/// <param name="room">The room, whose <see cref="Room.Id" /> was reserved with <see cref="Reserve" />.</param>
-	internal void Add(Room room);
+	internal void Add(Room.Room room);
 
 	/// <summary>Removes a room from the open rooms.</summary>
 	/// <param name="room">The room to remove.</param>
 	/// <returns><see langword="true" /> if that room was open; <see langword="false" /> if it was not listed under its id.</returns>
-	internal bool Remove(Room room);
+	internal bool Remove(Room.Room room);
 
 	/// <summary>Adds an osu! client to the lobby watchers.</summary>
 	/// <param name="watcher">The client that started watching.</param>

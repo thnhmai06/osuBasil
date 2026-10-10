@@ -17,11 +17,11 @@ internal sealed class IdleConnectionSweeper(
 			try
 			{
 				var closed = sessions.CloseIdle();
-				if (closed > 0) logger.LogDebug("Closed {ConnectionCount} idle connections.", closed);
+				if (closed > 0) logger.LogDebug("Closed {ConnectionCount} idle connections", closed);
 			}
 			catch (Exception exception)
 			{
-				logger.LogError(exception, "Could not close idle connections.");
+				logger.LogError(exception, "Could not close idle connections");
 			}
 	}
 }

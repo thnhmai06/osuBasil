@@ -1,7 +1,7 @@
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 
-namespace Basil.Application.Storage.Contracts.Scores;
+namespace Basil.Application.Storage.Contracts.Users;
 
 /// <summary>
 ///     The single source of truth for a user's cumulative score statistics, keyed by the user and

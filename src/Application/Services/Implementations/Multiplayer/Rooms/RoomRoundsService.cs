@@ -4,6 +4,7 @@ using Basil.Application.Services.Contracts.Multiplayer.Rooms;
 using Basil.Application.Storage.Contracts.Multiplayer;
 using Basil.Application.Storage.Contracts.Sessions;
 using System.Diagnostics.CodeAnalysis;
+using Basil.Application.Storage.Contracts.Multiplayer.Room;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Multiplayer.Round;
 using Basil.Domain.Scores;

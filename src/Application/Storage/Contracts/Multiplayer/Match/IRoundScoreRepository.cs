@@ -1,6 +1,6 @@
 using Basil.Domain.Multiplayer.Round;
 
-namespace Basil.Application.Storage.Contracts.Multiplayer;
+namespace Basil.Application.Storage.Contracts.Multiplayer.Match;
 
 /// <summary>Stores which round each score belongs to.</summary>
 public interface IRoundScoreRepository

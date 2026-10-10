@@ -1,4 +1,4 @@
-namespace Basil.Application.Storage.Contracts.Multiplayer;
+namespace Basil.Application.Storage.Contracts.Multiplayer.Match;
 
 /// <summary>Which matches a match listing includes.</summary>
 /// <param name="Ended">

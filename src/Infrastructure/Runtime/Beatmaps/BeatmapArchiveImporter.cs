@@ -27,7 +27,7 @@ internal static class BeatmapArchiveImporter
 		}
 		catch (IOException exception)
 		{
-			logger.LogDebug(exception, "Beatmap archive {Path} is not ready to read.", path);
+			logger.LogDebug(exception, "Beatmap archive {Path} is not ready to read", path);
 			return ImportStatus.Locked;
 		}
 
@@ -45,13 +45,13 @@ internal static class BeatmapArchiveImporter
 		}
 		catch (Exception exception)
 		{
-			logger.LogError(exception, "Could not import beatmap archive {Path}; the file was kept.", path);
+			logger.LogError(exception, "Could not import beatmap archive {Path}; the file was kept", path);
 			return ImportStatus.Failed;
 		}
 
 		if (result is not { Failure: null, Set: not null })
 		{
-			logger.LogWarning("Could not import beatmap archive {Path}: {Failure}; the file was kept.", path,
+			logger.LogWarning("Could not import beatmap archive {Path}: {Failure}; the file was kept", path,
 				result.Failure?.ToString() ?? "No beatmapset was returned.");
 			return ImportStatus.Failed;
 		}
@@ -59,12 +59,12 @@ internal static class BeatmapArchiveImporter
 		try
 		{
 			File.Delete(path);
-			logger.LogInformation("Imported beatmap archive {Path}.", path);
+			logger.LogInformation("Imported beatmap archive {Path}", path);
 			return ImportStatus.Imported;
 		}
 		catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
 		{
-			logger.LogError(exception, "Imported beatmap archive {Path}, but could not delete the file.", path);
+			logger.LogError(exception, "Imported beatmap archive {Path}, but could not delete the file", path);
 			return ImportStatus.Failed;
 		}
 	}

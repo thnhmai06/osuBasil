@@ -1,7 +1,7 @@
 using Basil.Application.Storage.Contracts.Sessions;
 using Basil.Domain.Mechanics;
 
-namespace Basil.Application.Storage.Contracts.Multiplayer;
+namespace Basil.Application.Storage.Contracts.Multiplayer.Room;
 
 /// <summary>One of a room's 16 slots, holding its current occupant and per-slot settings.</summary>
 public sealed class RoomSlot

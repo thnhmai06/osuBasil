@@ -4,11 +4,14 @@ using Basil.Infrastructure.Storage.Common;
 using Basil.Infrastructure.Storage.Common.Options;
 using Basil.Infrastructure.Storage.Common.Queries;
 
-namespace Basil.Infrastructure.Storage.Files;
+namespace Basil.Infrastructure.Storage.Content;
 
 /// <summary>Holds FAQ entries in memory from startup and changes them only through its storage methods.</summary>
 internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage, IResident
 {
+	// TODO: Trên các storage mà nơi lưu trữ (source of truth) phụ thuộc vào bên ngoài, KHÔNG ĐƯỢC LOAD HẾT TẤT CẢ VÀO MEMORY LUÔN.
+	// Trong Memory chỉ lưu "tham chiếu" tới nó, tức ám chỉ là đường dẫn tới nó, KHÔNG PHẢI LÀ LƯU TOÀN BỘ NỘI DUNG
+	// CỦA FILE VÀO TRONG MEMORY NÀY. Các File*Storage khác cũng đều bị dính lỗi tương tự như này.
 	private readonly ConcurrentDictionary<string, byte[]> _entries = new(StringComparer.Ordinal);
 
 	/// <inheritdoc />

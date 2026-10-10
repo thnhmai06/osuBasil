@@ -3,12 +3,12 @@ using Basil.Infrastructure.Storage.Common;
 using Basil.Infrastructure.Storage.Common.Options;
 using Basil.Infrastructure.Storage.Common.Queries;
 
-namespace Basil.Infrastructure.Storage.Files;
+namespace Basil.Infrastructure.Storage.Content;
 
 /// <summary>Holds the main-menu icon in memory from startup and changes it only through its storage methods.</summary>
 internal sealed class FileMenuIconStorage(DataPaths paths) : IMenuIconStorage, IResident
 {
-	private (string Name, byte[] Content)? _icon;
+	private (string Name, byte[] Content)? _icon; // TODO: TƯƠNG TỰ MENU BANNERS
 
 	/// <inheritdoc />
 	public async Task SaveAsync(string name, Stream content, CancellationToken cancellationToken = default)
@@ -20,7 +20,7 @@ internal sealed class FileMenuIconStorage(DataPaths paths) : IMenuIconStorage, I
 		_icon = (name, bytes);
 		using var storedContent = new MemoryStream(bytes);
 		await FileStorage.SaveAsync(path, storedContent, cancellationToken);
-		FileStorage.DeleteExcept(paths.MenuIcon, "*", path);
+		FileStorage.DeleteAllExcept(paths.MenuIcon, "*", path);
 	}
 
 	/// <inheritdoc />
@@ -36,7 +36,7 @@ internal sealed class FileMenuIconStorage(DataPaths paths) : IMenuIconStorage, I
 	public Task DeleteAsync(CancellationToken cancellationToken = default)
 	{
 		_icon = null;
-		foreach (var file in FileStorage.Files(paths.MenuIcon, "*") ?? [])
+		foreach (var file in FileStorage.List(paths.MenuIcon, "*") ?? [])
 			FileStorage.Delete(file);
 
 		return Task.CompletedTask;
@@ -46,7 +46,7 @@ internal sealed class FileMenuIconStorage(DataPaths paths) : IMenuIconStorage, I
 	public async Task LoadAsync(CancellationToken cancellationToken)
 	{
 		Directory.CreateDirectory(paths.MenuIcon);
-		if (FileStorage.Files(paths.MenuIcon, "*")?.FirstOrDefault() is { } path)
+		if (FileStorage.List(paths.MenuIcon, "*")?.FirstOrDefault() is { } path)
 			_icon = (Path.GetFileName(path), await File.ReadAllBytesAsync(path, cancellationToken));
 	}
 }

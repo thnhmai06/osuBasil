@@ -1,4 +1,5 @@
 using Basil.Application.Storage.Contracts.Scores;
+using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Storage.Common.Database;

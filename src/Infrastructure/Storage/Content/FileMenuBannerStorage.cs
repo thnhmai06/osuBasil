@@ -4,11 +4,13 @@ using Basil.Infrastructure.Storage.Common;
 using Basil.Infrastructure.Storage.Common.Options;
 using Basil.Infrastructure.Storage.Common.Queries;
 
-namespace Basil.Infrastructure.Storage.Files;
+namespace Basil.Infrastructure.Storage.Content;
 
 /// <summary>Holds menu banner images in memory from startup and changes them only through its storage methods.</summary>
 internal sealed class FileMenuBannerStorage(DataPaths paths) : IMenuBannerStorage, IResident
 {
+	// TODO: CHÚ Ý: CÁC FILE ẢNH TRONG MENU BANNERS SẼ ĐƯỢC CẤP THÔNG QUA TRUYỀN TRỰC TIẾP URL TRÊN HOSTS, KHÔNG PHẢI TRUYỀN TRỰC TIẾP ẢNH,
+	// VÀ CŨNG KHÔNG NÊN LOAD TOÀN BỘ RESOURCE NÀY VÀO TRONG MEMORY. XEM TODO TRƯỚC ĐÓ.
 	private readonly ConcurrentDictionary<string, byte[]> _files = new(StringComparer.Ordinal);
 
 	/// <inheritdoc />
@@ -51,7 +53,7 @@ internal sealed class FileMenuBannerStorage(DataPaths paths) : IMenuBannerStorag
 	public async Task LoadAsync(CancellationToken cancellationToken)
 	{
 		Directory.CreateDirectory(paths.MenuBanners);
-		foreach (var path in FileStorage.Files(paths.MenuBanners, "*")!)
+		foreach (var path in FileStorage.List(paths.MenuBanners, "*")!)
 			_files[Path.GetFileName(path)] = await File.ReadAllBytesAsync(path, cancellationToken);
 	}
 

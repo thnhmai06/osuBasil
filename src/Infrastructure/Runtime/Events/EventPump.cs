@@ -31,7 +31,7 @@ internal sealed class EventPump<T>(
 			}
 			catch (Exception exception)
 			{
-				logger.LogError(exception, "A handler for {Category} events failed.", typeof(T).Name);
+				logger.LogError(exception, "A handler for {Category} events failed", typeof(T).Name);
 			}
 	}
 }

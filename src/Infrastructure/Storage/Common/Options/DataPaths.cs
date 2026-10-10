@@ -39,7 +39,7 @@ internal sealed class DataPaths(IOptions<StorageOptions> options)
 	public string Cache => Path.Combine(Root, "Cache");
 
 	/// <summary>Gets the directory that holds the .osz archives built from stored beatmapsets.</summary>
-	public string BeatmapArchives => Path.Combine(Cache, "Beatmaps");
+	public string BeatmapArchives => Path.Combine(Cache, "Beatmaps"); // This ís Cache!!!!
 
 	/// <summary>Creates every directory the server stores files in.</summary>
 	public void CreateDirectories()

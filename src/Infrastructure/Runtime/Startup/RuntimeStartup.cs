@@ -23,10 +23,10 @@ internal sealed class RuntimeStartup(
 		foreach (var channel in await channelRepository.ListAsync(cancellationToken))
 			if (channels.Open(channel) is not null)
 				openedChannels++;
-		logger.LogInformation("Opened {ChannelCount} general channels.", openedChannels);
+		logger.LogInformation("Opened {ChannelCount} general channels", openedChannels);
 
 		var closedMatches = await matches.CloseUnfinishedAsync(cancellationToken);
-		logger.LogInformation("Closed {MatchCount} unfinished matches.", closedMatches);
+		logger.LogInformation("Closed {MatchCount} unfinished matches", closedMatches);
 	}
 
 	/// <inheritdoc />

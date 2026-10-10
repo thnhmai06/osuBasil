@@ -49,7 +49,7 @@ internal sealed class ConnectionHandler(
 		catch (Exception exception) when (exception is not OperationCanceledException ||
 		                                  !cancellationToken.IsCancellationRequested)
 		{
-			logger.LogError(exception, "Could not {Step} for the closed connection of user {UserId}.", step, userId);
+			logger.LogError(exception, "Could not {Step} for the closed connection of user {UserId}", step, userId);
 		}
 	}
 
@@ -63,7 +63,7 @@ internal sealed class ConnectionHandler(
 		catch (Exception exception) when (exception is not OperationCanceledException ||
 		                                  !cancellationToken.IsCancellationRequested)
 		{
-			logger.LogError(exception, "Could not {Step} for the closed connection of user {UserId}.", step, userId);
+			logger.LogError(exception, "Could not {Step} for the closed connection of user {UserId}", step, userId);
 		}
 	}
 }

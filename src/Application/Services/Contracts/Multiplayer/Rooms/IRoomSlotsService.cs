@@ -1,6 +1,7 @@
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 using Basil.Application.Storage.Contracts.Multiplayer;
+using Basil.Application.Storage.Contracts.Multiplayer.Room;
 using Basil.Application.Storage.Contracts.Sessions;
 
 namespace Basil.Application.Services.Contracts.Multiplayer.Rooms;

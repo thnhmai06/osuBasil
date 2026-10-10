@@ -1,4 +1,6 @@
 using Basil.Application.Storage.Contracts.Multiplayer;
+using Basil.Application.Storage.Contracts.Multiplayer.Match;
+using Basil.Application.Storage.Contracts.Multiplayer.Room;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer.Match;
 using Basil.Domain.Multiplayer.Round;

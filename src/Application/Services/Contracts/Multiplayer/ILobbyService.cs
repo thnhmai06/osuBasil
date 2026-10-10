@@ -1,6 +1,7 @@
 using Basil.Application.Services.Contracts.Events;
 using Basil.Application.Services.Contracts.Multiplayer.Events;
 using Basil.Application.Storage.Contracts.Multiplayer;
+using Basil.Application.Storage.Contracts.Multiplayer.Room;
 using Basil.Application.Storage.Contracts.Sessions;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Multiplayer.Match;

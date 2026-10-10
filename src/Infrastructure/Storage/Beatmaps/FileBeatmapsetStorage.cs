@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Collections.Frozen;
 using System.Globalization;
 using Basil.Application.Storage.Contracts.Beatmaps;
 using Basil.Domain.Beatmaps;
@@ -7,7 +8,7 @@ using Basil.Infrastructure.Storage.Common.Queries;
 using Microsoft.Extensions.Logging;
 using SharpZip = ICSharpCode.SharpZipLib.Zip;
 
-namespace Basil.Infrastructure.Storage.Files;
+namespace Basil.Infrastructure.Storage.Beatmaps;
 
 /// <summary>Stores beatmapset files and offers each set as an .osz archive.</summary>
 internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmapsetStorage> logger) : IBeatmapsetStorage
@@ -16,10 +17,9 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 	private const int MaxFiles = 2_000;
 	private const long MaxUnpackedBytes = 2L * 1024 * 1024 * 1024;
 
-	private static readonly HashSet<string> VideoExtensions = new(StringComparer.OrdinalIgnoreCase)
-	{
-		".mp4", ".avi", ".flv", ".m4v", ".mkv", ".mov", ".mpg", ".mpeg", ".webm", ".wmv"
-	};
+	private static readonly FrozenSet<string> VideoExtensions =
+		new[] { ".mp4", ".avi", ".flv", ".m4v", ".mkv", ".mov", ".mpg", ".mpeg", ".webm", ".wmv" }.ToFrozenSet(
+			StringComparer.OrdinalIgnoreCase);
 
 	private static readonly ConcurrentDictionary<int, SemaphoreSlim> SetLocks = new();
 
@@ -32,6 +32,7 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 		var uploadPath = Path.Combine(archiveFolder, $"upload-{Guid.NewGuid():N}.tmp");
 		var unpackFolder = Path.Combine(paths.Beatmaps, $"{id}.unpack-{Guid.NewGuid():N}");
 		var gate = SetLocks.GetOrAdd(set.Id, static _ => new SemaphoreSlim(1, 1));
+
 		await gate.WaitAsync(cancellationToken);
 		try
 		{
@@ -78,7 +79,7 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 				}
 				catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
 				{
-					logger.LogWarning(exception, "Could not remove the previous files of beatmapset {SetId}.", set.Id);
+					logger.LogWarning(exception, "Could not remove the previous files of beatmapset {SetId}", set.Id);
 				}
 
 			File.Move(uploadPath, Path.Combine(archiveFolder, "full.osz"), true);
@@ -105,7 +106,7 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 			return Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories)
 				.Select(path => Path.GetRelativePath(folder, path).Replace('\\', '/'))
 				.Order(StringComparer.Ordinal)
-				.ToArray();
+				.ToList();
 		}
 		finally
 		{
@@ -135,12 +136,11 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 			}
 
 			if (File.Exists(path)) return OpenRead(path);
-			foreach (var candidate in Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories))
-				if (string.Equals(Path.GetRelativePath(folder, candidate).Replace('\\', '/'), normalised,
-					    StringComparison.OrdinalIgnoreCase))
-					return OpenRead(candidate);
-
-			return null;
+			return (
+				from candidate in Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories)
+				where string.Equals(Path.GetRelativePath(folder, candidate).Replace('\\', '/'), normalised,
+					StringComparison.OrdinalIgnoreCase)
+				select OpenRead(candidate)).FirstOrDefault();
 		}
 		finally
 		{
@@ -245,11 +245,11 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 				SyncArchive(noVideoPath, allFiles, folder, false, changedFiles, cancellationToken);
 
 			if (!HasVideo(folder) && File.Exists(noVideoPath)) File.Delete(noVideoPath);
-			foreach (var name in changedFiles)
-				if (Path.GetExtension(name).Equals(".osu", StringComparison.OrdinalIgnoreCase))
-					logger.LogWarning(
-						"Beatmap file {Name} of set {SetId} changed on disk; import the set again to update its beatmaps",
-						name, setId);
+			foreach (var name in changedFiles.Where(name =>
+				         Path.GetExtension(name).Equals(".osu", StringComparison.OrdinalIgnoreCase)))
+				logger.LogWarning(
+					"Beatmap file {Name} of set {SetId} changed on disk; import the set again to update its beatmaps",
+					name, setId);
 		}
 		finally
 		{
@@ -269,7 +269,7 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 		}
 	}
 
-	private void Unpack(string archivePath, string unpackFolder, CancellationToken cancellationToken)
+	private static void Unpack(string archivePath, string unpackFolder, CancellationToken cancellationToken)
 	{
 		Directory.CreateDirectory(unpackFolder);
 		using var zip = new SharpZip.ZipFile(archivePath);
@@ -312,7 +312,7 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 	}
 
 	private static void SyncArchive(string archivePath, string[] allFiles, string setFolder, bool includeVideo,
-		ISet<string> changedFiles, CancellationToken cancellationToken)
+		HashSet<string> changedFiles, CancellationToken cancellationToken)
 	{
 		var files = allFiles
 			.Where(path => includeVideo || !IsVideo(path))
@@ -357,7 +357,7 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 		}
 	}
 
-	private void BuildArchive(string setFolder, string archivePath, CancellationToken cancellationToken)
+	private static void BuildArchive(string setFolder, string archivePath, CancellationToken cancellationToken)
 	{
 		var tempPath = Path.Combine(Path.GetDirectoryName(archivePath)!, $"full-{Guid.NewGuid():N}.tmp");
 		try

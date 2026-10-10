@@ -3,7 +3,7 @@ using Basil.Infrastructure.Storage.Common.Options;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace Basil.Infrastructure.Storage.Files;
+namespace Basil.Infrastructure.Storage.Beatmaps;
 
 /// <summary>Keeps the .osz archives of stored beatmapsets in step with their files when the files change on disk.</summary>
 internal sealed class BeatmapsetFilesWatcher(
@@ -12,7 +12,7 @@ internal sealed class BeatmapsetFilesWatcher(
 	TimeProvider time,
 	ILogger<BeatmapsetFilesWatcher> logger) : BackgroundService
 {
-	private readonly object _gate = new();
+	private readonly Lock _gate = new();
 	private readonly Dictionary<int, CancellationTokenSource> _pending = [];
 
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -36,7 +36,7 @@ internal sealed class BeatmapsetFilesWatcher(
 		catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
 		{
 			watcher?.Dispose();
-			logger.LogError(exception, "Beatmapset files in {Directory} will not be watched.", paths.Beatmaps);
+			logger.LogError(exception, "Beatmapset files in {Directory} will not be watched", paths.Beatmaps);
 			return;
 		}
 
@@ -53,7 +53,7 @@ internal sealed class BeatmapsetFilesWatcher(
 				}
 				catch (Exception exception)
 				{
-					logger.LogError(exception, "Could not synchronize the archives of beatmapset {SetId}.", id);
+					logger.LogError(exception, "Could not synchronize the archives of beatmapset {SetId}", id);
 				}
 
 			try
@@ -66,7 +66,7 @@ internal sealed class BeatmapsetFilesWatcher(
 		}
 		catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
 		{
-			logger.LogError(exception, "Could not list stored beatmapsets while synchronizing their archives.");
+			logger.LogError(exception, "Could not list stored beatmapsets while synchronizing their archives");
 		}
 		finally
 		{
@@ -77,6 +77,8 @@ internal sealed class BeatmapsetFilesWatcher(
 				_pending.Clear();
 			}
 		}
+
+		return;
 
 		void OnChanged(object sender, FileSystemEventArgs args)
 		{
@@ -90,7 +92,7 @@ internal sealed class BeatmapsetFilesWatcher(
 
 		void OnError(object sender, ErrorEventArgs args)
 		{
-			logger.LogWarning(args.GetException(), "Watching {Directory} failed; synchronizing every stored set.",
+			logger.LogWarning(args.GetException(), "Watching {Directory} failed; synchronizing every stored set",
 				paths.Beatmaps);
 			try
 			{
@@ -99,7 +101,7 @@ internal sealed class BeatmapsetFilesWatcher(
 			catch (Exception exception) when (exception is IOException or UnauthorizedAccessException
 				                                  or ArgumentException)
 			{
-				logger.LogWarning(exception, "Could not list stored beatmapsets to synchronize their archives.");
+				logger.LogWarning(exception, "Could not list stored beatmapsets to synchronize their archives");
 			}
 		}
 	}
@@ -149,7 +151,7 @@ internal sealed class BeatmapsetFilesWatcher(
 		}
 		catch (Exception exception)
 		{
-			logger.LogError(exception, "Could not synchronize the archives of beatmapset {SetId}.", setId);
+			logger.LogError(exception, "Could not synchronize the archives of beatmapset {SetId}", setId);
 		}
 		finally
 		{

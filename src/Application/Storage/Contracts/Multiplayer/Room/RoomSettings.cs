@@ -1,17 +1,17 @@
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer.Match;
 
-namespace Basil.Application.Storage.Contracts.Multiplayer;
+namespace Basil.Application.Storage.Contracts.Multiplayer.Room;
 
 /// <summary>The settings a room plays with: those stored on its match and those that live only while it is open.</summary>
 public sealed class RoomSettings
 {
-	private readonly Match _match;
+	private readonly Domain.Multiplayer.Match.Match _match;
 
 	/// <summary>Creates the settings of a room.</summary>
 	/// <param name="match">The match the room plays.</param>
 	/// <param name="stored">The room's initial stored settings.</param>
-	internal RoomSettings(Match match, MatchSettings stored)
+	internal RoomSettings(Domain.Multiplayer.Match.Match match, MatchSettings stored)
 	{
 		_match = match;
 		Stored = stored;

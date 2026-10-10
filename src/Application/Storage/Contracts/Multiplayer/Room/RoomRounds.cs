@@ -1,6 +1,6 @@
 using Basil.Domain.Multiplayer.Round;
 
-namespace Basil.Application.Storage.Contracts.Multiplayer;
+namespace Basil.Application.Storage.Contracts.Multiplayer.Room;
 
 /// <summary>The rounds of a room: the last one played and the countdown to the next.</summary>
 public sealed class RoomRounds

@@ -4,7 +4,7 @@ using Basil.Infrastructure.Storage.Common;
 using Basil.Infrastructure.Storage.Common.Options;
 using Basil.Infrastructure.Storage.Common.Queries;
 
-namespace Basil.Infrastructure.Storage.Files;
+namespace Basil.Infrastructure.Storage.Content;
 
 /// <summary>Holds seasonal menu backgrounds in memory from startup and changes them only through its storage methods.</summary>
 internal sealed class FileMenuSeasonalsStorage(DataPaths paths) : IMenuSeasonalsStorage, IResident
@@ -68,7 +68,7 @@ internal sealed class FileMenuSeasonalsStorage(DataPaths paths) : IMenuSeasonals
 	public async Task LoadAsync(CancellationToken cancellationToken)
 	{
 		Directory.CreateDirectory(paths.MenuSeasonals);
-		foreach (var path in FileStorage.Files(paths.MenuSeasonals, "*")!)
+		foreach (var path in FileStorage.List(paths.MenuSeasonals, "*")!)
 			_files[Path.GetFileName(path)] = await File.ReadAllBytesAsync(path, cancellationToken);
 	}
 

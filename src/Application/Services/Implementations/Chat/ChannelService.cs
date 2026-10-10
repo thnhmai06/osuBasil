@@ -5,6 +5,7 @@ using Basil.Application.Services.Implementations.Sessions;
 using Basil.Application.Services.Implementations.Users;
 using Basil.Application.Storage.Contracts.Chat;
 using Basil.Application.Storage.Contracts.Multiplayer;
+using Basil.Application.Storage.Contracts.Multiplayer.Room;
 using Basil.Application.Storage.Contracts.Sessions;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Chat;

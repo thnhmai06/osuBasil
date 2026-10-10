@@ -1,6 +1,6 @@
 using Basil.Domain.Multiplayer.Match;
 
-namespace Basil.Application.Storage.Contracts.Multiplayer;
+namespace Basil.Application.Storage.Contracts.Multiplayer.Match;
 
 /// <summary>Stores what happened in matches.</summary>
 public interface IMatchEventRepository
@@ -14,5 +14,5 @@ public interface IMatchEventRepository
 	/// <param name="match">The match whose events to list.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The events of the match.</returns>
-	Task<IReadOnlyList<MatchEvent>> ListAsync(Match match, CancellationToken cancellationToken = default);
+	Task<IReadOnlyList<MatchEvent>> ListAsync(Domain.Multiplayer.Match.Match match, CancellationToken cancellationToken = default);
 }

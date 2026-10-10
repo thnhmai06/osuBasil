@@ -2,7 +2,7 @@ using Basil.Application.Storage.Contracts.Sessions;
 using Basil.Domain.Users;
 using Basil.Domain.Utilities;
 
-namespace Basil.Application.Storage.Contracts.Multiplayer;
+namespace Basil.Application.Storage.Contracts.Multiplayer.Room;
 
 /// <summary>Who belongs to a room besides its seated players: the users banned from it and the osu!tourney clients observing it.</summary>
 public sealed class RoomMembers

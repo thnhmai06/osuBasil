@@ -1,6 +1,6 @@
 using Basil.Domain.Multiplayer.Match;
 
-namespace Basil.Application.Storage.Contracts.Multiplayer;
+namespace Basil.Application.Storage.Contracts.Multiplayer.Match;
 
 /// <summary>Gets the results of a match, round by round.</summary>
 public interface IMatchReportRepository
@@ -10,5 +10,5 @@ public interface IMatchReportRepository
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The report of the match.</returns>
 	/// <remarks>The report reflects every round and score stored for the match.</remarks>
-	ValueTask<MatchReport> GetAsync(Match match, CancellationToken cancellationToken = default);
+	ValueTask<MatchReport> GetAsync(Domain.Multiplayer.Match.Match match, CancellationToken cancellationToken = default);
 }

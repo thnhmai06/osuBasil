@@ -66,8 +66,8 @@ internal sealed partial class MpCommands(
 
 		return subcommand.ToLowerInvariant() switch
 		{
-			"make" => await MakeAsync(context, subArgs, isPrivate: false, cancellationToken),
-			"makeprivate" => await MakeAsync(context, subArgs, isPrivate: true, cancellationToken),
+			"make" => await MakeAsync(context, subArgs, false, cancellationToken),
+			"makeprivate" => await MakeAsync(context, subArgs, true, cancellationToken),
 			"join" => await JoinAsync(context, subArgs, cancellationToken),
 			"in" => await InAsync(context, subArgs, cancellationToken),
 			_ => await ScopedAsync(context, subcommand, subArgs, cancellationToken)
@@ -148,8 +148,11 @@ internal sealed partial class MpCommands(
 	{
 		var prefix = string.Format(MpReplies.RoomPrefix, roomId);
 
-		string NameLines(string text) => string.Join('\n',
-			text.Split('\n').Select(line => line.Length == 0 ? line : prefix + line));
+		string NameLines(string text)
+		{
+			return string.Join('\n',
+				text.Split('\n').Select(line => line.Length == 0 ? line : prefix + line));
+		}
 
 		return context with
 		{
@@ -329,13 +332,15 @@ internal sealed partial class MpCommands(
 		return true;
 	}
 
-	private static string SlotStatusText(RoomSlotStatus? status) =>
-		status switch
+	private static string SlotStatusText(RoomSlotStatus? status)
+	{
+		return status switch
 		{
 			RoomSlotStatus.NotReady => "Not Ready",
 			RoomSlotStatus.NoMap => "No Map",
 			_ => status?.ToString() ?? string.Empty
 		};
+	}
 
 	// ── !mp lock / unlock ─────────────────────────────────────────────────────────────────
 
@@ -504,7 +509,7 @@ internal sealed partial class MpCommands(
 		var name = string.Join(' ', args);
 		if (name.Length > MaxRoomNameLength) name = name[..MaxRoomNameLength];
 
-		var outcome = await rooms.ConfigureAsync(context.Sender, roomId, new RoomChange(Name: name),
+		var outcome = await rooms.ConfigureAsync(context.Sender, roomId, new RoomChange(name),
 			cancellationToken);
 		if (outcome != RoomOutcome.Ok)
 		{
@@ -749,7 +754,7 @@ internal sealed partial class MpCommands(
 
 		var live = await rooms.GetForAsync(context.Sender, roomId, cancellationToken);
 		var liveTeamType = live?.Settings.TeamType ?? (GameTeamType)teamValue;
-		var liveWinCondition = live?.Settings.WinCondition ?? (winCondition ?? default);
+		var liveWinCondition = live?.Settings.WinCondition ?? winCondition ?? default;
 		var sizeSuffix = size is { } sz ? $", {sz} slots." : ".";
 		await context.Reply(string.Format(MpReplies.ChangedMatchSettings, liveTeamType, liveWinCondition, sizeSuffix),
 			cancellationToken);
@@ -877,7 +882,7 @@ internal sealed partial class MpCommands(
 		RoomOutcome outcome;
 		if (args.Count > 0 && int.TryParse(args[0], out var seconds) && seconds > 0)
 			outcome = await rooms.StartCountdownAsync(context.Sender, roomId, TimeSpan.FromSeconds(seconds),
-				startsRound: true, cancellationToken);
+				true, cancellationToken);
 		else
 			outcome = await rooms.StartAsync(context.Sender, roomId, cancellationToken);
 
@@ -899,16 +904,14 @@ internal sealed partial class MpCommands(
 	{
 		var seconds = DefaultTimerSeconds;
 		if (args.Count > 0)
-		{
 			if (!int.TryParse(args[0], out seconds) || seconds <= 0)
 			{
 				await context.Reply(MpReplies.TimerUsage, cancellationToken);
 				return false;
 			}
-		}
 
 		var outcome = await rooms.StartCountdownAsync(context.Sender, roomId, TimeSpan.FromSeconds(seconds),
-			startsRound: false, cancellationToken);
+			false, cancellationToken);
 		if (outcome != RoomOutcome.Ok)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
@@ -1046,7 +1049,7 @@ internal sealed partial class MpCommands(
 
 	// ── unknown subcommand ───────────────────────────────────────────────────────────────
 
-	private async Task<bool> UnknownSubcommandAsync(CommandContext context, string subcommand,
+	private static async Task<bool> UnknownSubcommandAsync(CommandContext context, string subcommand,
 		CancellationToken cancellationToken)
 	{
 		await context.Reply(string.Format(MpReplies.UnknownMpSubcommand, subcommand), cancellationToken);

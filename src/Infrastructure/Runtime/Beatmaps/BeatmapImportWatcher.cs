@@ -40,19 +40,19 @@ internal sealed class BeatmapImportWatcher(
 		{
 			watcher?.Dispose();
 			logger.LogError(exception,
-				"Beatmap archives in {Directory} will not be imported: the directory cannot be watched.", directory);
+				"Beatmap archives in {Directory} will not be imported: the directory cannot be watched", directory);
 			return;
 		}
 
 		try
 		{
 			var forgotten = await beatmapsets.ScanAsync(stoppingToken);
-			logger.LogInformation("Forgot {BeatmapsetCount} beatmapsets whose archive is gone.", forgotten);
+			logger.LogInformation("Forgot {BeatmapsetCount} beatmapsets whose archive is gone", forgotten);
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException ||
 		                                  !stoppingToken.IsCancellationRequested)
 		{
-			logger.LogError(exception, "Could not check the stored beatmapsets.");
+			logger.LogError(exception, "Could not check the stored beatmapsets");
 		}
 
 		try
@@ -65,12 +65,12 @@ internal sealed class BeatmapImportWatcher(
 				else if (status == BeatmapArchiveImporter.ImportStatus.Imported) imported++;
 			}
 
-			logger.LogInformation("Imported {ArchiveCount} waiting beatmap archives.", imported);
+			logger.LogInformation("Imported {ArchiveCount} waiting beatmap archives", imported);
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException ||
 		                                  !stoppingToken.IsCancellationRequested)
 		{
-			logger.LogError(exception, "Could not import the waiting beatmap archives.");
+			logger.LogError(exception, "Could not import the waiting beatmap archives");
 		}
 
 		try
@@ -90,6 +90,8 @@ internal sealed class BeatmapImportWatcher(
 			}
 		}
 
+		return;
+
 		void OnChanged(object sender, FileSystemEventArgs args)
 		{
 			Schedule(args.FullPath, stoppingToken);
@@ -102,7 +104,7 @@ internal sealed class BeatmapImportWatcher(
 
 		void OnError(object sender, ErrorEventArgs args)
 		{
-			logger.LogWarning(args.GetException(), "Watching {Directory} failed; checking every waiting archive again.",
+			logger.LogWarning(args.GetException(), "Watching {Directory} failed; checking every waiting archive again",
 				directory);
 			try
 			{
@@ -111,7 +113,7 @@ internal sealed class BeatmapImportWatcher(
 			}
 			catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
 			{
-				logger.LogWarning(exception, "Could not list the waiting beatmap archives in {Directory}.", directory);
+				logger.LogWarning(exception, "Could not list the waiting beatmap archives in {Directory}", directory);
 			}
 		}
 	}
@@ -151,7 +153,7 @@ internal sealed class BeatmapImportWatcher(
 		}
 		catch (Exception exception)
 		{
-			logger.LogError(exception, "Could not process beatmap archive {Path}.", path);
+			logger.LogError(exception, "Could not process beatmap archive {Path}", path);
 		}
 		finally
 		{

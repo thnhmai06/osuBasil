@@ -1,7 +1,6 @@
-using Basil.Domain.Multiplayer.Match;
 using Basil.Domain.Multiplayer.Round;
 
-namespace Basil.Application.Storage.Contracts.Multiplayer;
+namespace Basil.Application.Storage.Contracts.Multiplayer.Match;
 
 /// <summary>Stores the rounds played in matches.</summary>
 public interface IRoundRepository
@@ -15,5 +14,5 @@ public interface IRoundRepository
 	/// <param name="match">The match whose rounds to list.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The rounds of the match.</returns>
-	Task<IReadOnlyList<Round>> ListAsync(Match match, CancellationToken cancellationToken = default);
+	Task<IReadOnlyList<Round>> ListAsync(Domain.Multiplayer.Match.Match match, CancellationToken cancellationToken = default);
 }

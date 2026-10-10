@@ -15,8 +15,14 @@ using Npgsql;
 namespace Basil.Infrastructure.Storage.Beatmaps;
 
 /// <summary>Stores beatmap difficulties in the <c>beatmaps</c> table.</summary>
-internal sealed class PostgresBeatmapRepository : MemoryRepository<int, Beatmap>, IBeatmapRepository
+internal sealed class PostgresBeatmapRepository(
+	DatabaseReader reader,
+	DatabaseWriter writer,
+	IBeatmapsetRepository beatmapsets)
+	: MemoryRepository<int, Beatmap>(reader, writer), IBeatmapRepository
 {
+	#region SQL Scripts
+
 	private const string UpsertSql = """
 	                                 insert into beatmaps (id, beatmapset_id, hash, version, mode, star, length, bpm, cs, ar, od, hp, objects, locked, visible)
 	                                 values (@Id, @BeatmapsetId, @Hash, @Version, @Mode, @Star, @Length, @Bpm, @Cs, @Ar, @Od, @Hp, @Objects::jsonb, @Locked, @Visible)
@@ -62,22 +68,16 @@ internal sealed class PostgresBeatmapRepository : MemoryRepository<int, Beatmap>
 	                                order by b.id
 	                                """;
 
+	#endregion
+
 	// jsonb keeps object keys in its own order, so the mode discriminator need not come first.
 	private static readonly JsonSerializerOptions StoredJson = new() { AllowOutOfOrderMetadataProperties = true };
 
-	private readonly IBeatmapsetRepository _beatmapsets;
 	private readonly WeakIndex<Md5, Beatmap> _byHash = new();
 	private readonly OwnedLists<int, Beatmapset, Beatmap> _bySet = new();
 
 	// The beatmaps a set keeps while the deletion of its others is queued, by set id.
 	private readonly ConcurrentDictionary<int, HashSet<int>> _retaining = new();
-
-	public PostgresBeatmapRepository(DatabaseReader reader, DatabaseWriter writer,
-		IBeatmapsetRepository beatmapsets)
-		: base(reader, writer)
-	{
-		_beatmapsets = beatmapsets;
-	}
 
 	protected override string WriteSql => UpsertSql;
 
@@ -85,7 +85,7 @@ internal sealed class PostgresBeatmapRepository : MemoryRepository<int, Beatmap>
 	public async Task<Beatmap> CreateAsync(BeatmapData data, int? onlineId = null,
 		CancellationToken cancellationToken = default)
 	{
-		if (_byHash.TryGet(data.Hash, out var known) && known.Value.Hash == data.Hash)
+		if (_byHash.TryGetValue(data.Hash, out var known) && known.Value.Hash == data.Hash)
 			throw new AlreadyExistsException($"A beatmap already has the hash {data.Hash}.");
 		if (onlineId is { } existingId && Items.TryGetValue(existingId, out _))
 			throw new AlreadyExistsException($"A beatmap already has osu! id {onlineId}.");
@@ -128,7 +128,8 @@ internal sealed class PostgresBeatmapRepository : MemoryRepository<int, Beatmap>
 		var value = WithSet(beatmap.Value, await LiveSetAsync(beatmap.Value.Beatmapset, cancellationToken));
 		if (!Items.TryGetValue(beatmap.Id, out var current) || current.Value.Hash != value.Hash)
 		{
-			if (_byHash.TryGet(value.Hash, out var known) && known.Id != beatmap.Id && known.Value.Hash == value.Hash)
+			if (_byHash.TryGetValue(value.Hash, out var known) && known.Id != beatmap.Id &&
+			    known.Value.Hash == value.Hash)
 				throw new AlreadyExistsException($"A beatmap already has the hash {value.Hash}.");
 
 			// A hash must be unique across every beatmap, so a new or changed one is written at once and the live
@@ -166,7 +167,7 @@ internal sealed class PostgresBeatmapRepository : MemoryRepository<int, Beatmap>
 	/// <inheritdoc />
 	public async ValueTask<Beatmap?> GetAsync(Md5 hash, CancellationToken cancellationToken = default)
 	{
-		if (_byHash.TryGet(hash, out var known) && known.Value.Hash == hash)
+		if (_byHash.TryGetValue(hash, out var known) && known.Value.Hash == hash)
 			return known;
 
 		var row = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<BeatmapRow>(
@@ -251,7 +252,7 @@ internal sealed class PostgresBeatmapRepository : MemoryRepository<int, Beatmap>
 			"delete from beatmaps where beatmapset_id = @SetId and id <> all(@KeepIds)",
 			new { SetId = setId, KeepIds = keepIds }));
 		_bySet.Change(setId, liveSet,
-			current => current.Where(beatmap => keepSet.Contains(beatmap.Id)).ToImmutableList(),
+			current => [.. current.Where(beatmap => keepSet.Contains(beatmap.Id))],
 			retained);
 		_ = retained.ContinueWith(_ => _retaining.TryRemove(new KeyValuePair<int, HashSet<int>>(setId, keepSet)),
 			TaskScheduler.Default);
@@ -357,7 +358,7 @@ internal sealed class PostgresBeatmapRepository : MemoryRepository<int, Beatmap>
 	/// <summary>Gets the live instance of a beatmapset, or the given one when it is not stored.</summary>
 	private async ValueTask<Beatmapset> LiveSetAsync(Beatmapset set, CancellationToken cancellationToken)
 	{
-		return await _beatmapsets.GetAsync(set.Id, cancellationToken) ?? set;
+		return await beatmapsets.GetAsync(set.Id, cancellationToken) ?? set;
 	}
 
 	private static BeatmapData WithSet(BeatmapData value, Beatmapset set)

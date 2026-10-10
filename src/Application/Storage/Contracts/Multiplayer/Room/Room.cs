@@ -1,6 +1,6 @@
 using Basil.Domain.Multiplayer.Match;
 
-namespace Basil.Application.Storage.Contracts.Multiplayer;
+namespace Basil.Application.Storage.Contracts.Multiplayer.Room;
 
 /// <summary>
 ///     Holds an osu! multiplayer match's live runtime state, grouped like the room service: settings,
@@ -13,7 +13,7 @@ public sealed class Room : IEquatable<Room>
 	/// <param name="match">The match the room plays.</param>
 	/// <param name="settings">The room's initial settings.</param>
 	/// <param name="isTournament">Whether the room is a tournament room.</param>
-	internal Room(int id, Match match, MatchSettings settings, bool isTournament)
+	internal Room(int id, Domain.Multiplayer.Match.Match match, MatchSettings settings, bool isTournament)
 	{
 		ArgumentOutOfRangeException.ThrowIfNegative(id);
 		Id = id;
@@ -28,7 +28,7 @@ public sealed class Room : IEquatable<Room>
 	}
 
 	/// <summary>The match this room is a live projection of.</summary>
-	public Match Match { get; }
+	public Domain.Multiplayer.Match.Match Match { get; }
 
 	/// <summary>Gets the runtime identifier assigned to this room.</summary>
 	public int Id { get; }

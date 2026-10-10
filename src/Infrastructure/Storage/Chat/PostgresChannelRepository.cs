@@ -11,6 +11,7 @@ namespace Basil.Infrastructure.Storage.Chat;
 /// <summary>Stores the general chat channels the server offers.</summary>
 internal sealed class PostgresChannelRepository(DatabaseReader reader) : IChannelRepository, IResident
 {
+	// TODO: Thiết lập cơ chế cho phép Thêm/Bớt/Sửa/Xóa cho kênh ChatChannel ngay tại runtime. Mình muốn các thao tác client không gọi trực tiếp đối với database mà phải qua application.
 	private ImmutableList<GeneralChannel>? _channels;
 
 	/// <inheritdoc />
@@ -27,7 +28,7 @@ internal sealed class PostgresChannelRepository(DatabaseReader reader) : IChanne
 		var rows = await reader.ReadAsync(connection => connection.QueryAsync<ChannelRow>(
 				"select name, topic, read_permissions, write_permissions, auto_join, visible from channels order by name"),
 			cancellationToken);
-		_channels = rows.Select(row => row.ToChannel()).ToImmutableList();
+		_channels = [.. rows.Select(row => row.ToChannel())];
 	}
 
 	/// <summary>A stored row of the <c>channels</c> table.</summary>

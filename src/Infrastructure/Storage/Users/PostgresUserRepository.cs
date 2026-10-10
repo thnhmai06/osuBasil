@@ -30,7 +30,7 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 	/// <inheritdoc />
 	public async Task<User> CreateAsync(UserData data, CancellationToken cancellationToken = default)
 	{
-		if (_byName.TryGet(data.SafeName, out var known) && known.Value.SafeName == data.SafeName)
+		if (_byName.TryGetValue(data.SafeName, out var known) && known.Value.SafeName == data.SafeName)
 			throw new AlreadyExistsException($"A user is already named {data.Name}.");
 
 		var parameters = new
@@ -75,7 +75,7 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 		var old = live.Value.SafeName;
 		var newSafe = UserData.SafeNameOf(name);
 
-		if (_byName.TryGet(newSafe, out var known) && known.Value.SafeName == newSafe && known != live)
+		if (_byName.TryGetValue(newSafe, out var known) && known.Value.SafeName == newSafe && known != live)
 			return false;
 
 		// Whether the name is free is the database's to say, so the user takes the name only once it is committed.
@@ -106,7 +106,7 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 	public async ValueTask<User?> GetByNameAsync(string name, CancellationToken cancellationToken = default)
 	{
 		var safeName = UserData.SafeNameOf(name);
-		if (_byName.TryGet(safeName, out var known) && known.Value.SafeName == safeName)
+		if (_byName.TryGetValue(safeName, out var known) && known.Value.SafeName == safeName)
 			return known;
 
 		var foundId = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<int?>(
