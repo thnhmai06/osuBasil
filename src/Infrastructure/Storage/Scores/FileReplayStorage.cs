@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Globalization;
+using System.Text;
 using Basil.Application.Storage.Contracts.Scores;
 using Basil.Application.Storage.Contracts.Beatmaps;
 using Basil.Application.Storage.Contracts.Users;
@@ -54,7 +55,7 @@ internal sealed class FileReplayStorage(
 			"{0} {1} - {2} ({3:yyyy-MM-dd}) {4}",
 			score.Id, user.Value.Name, beatmap.Value.FullName, score.Value.Timestamp.UtcDateTime,
 			ModeName(score.Value.Mode));
-		return Portable(name) + ".osr";
+		return Fitted(Portable(name)) + ".osr";
 	}
 
 	private static string ModeName(GameMode mode) => mode switch
@@ -65,6 +66,19 @@ internal sealed class FileReplayStorage(
 		GameMode.Mania => "OsuMania",
 		_ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null)
 	};
+
+	/// <summary>Shortens a name so that, with its extension, it fits the 255-byte file name limit of common file systems.</summary>
+	/// <remarks>The score id at its start is kept, so the replay is still found by it.</remarks>
+	private static string Fitted(string name)
+	{
+		const int maxBytes = 255 - 4; // ".osr"
+		if (Encoding.UTF8.GetByteCount(name) <= maxBytes) return name;
+
+		var length = name.Length;
+		while (Encoding.UTF8.GetByteCount(name.AsSpan(0, length)) > maxBytes || char.IsHighSurrogate(name[length - 1]))
+			length--;
+		return name[..length].TrimEnd(' ', '.');
+	}
 
 	/// <summary>Replaces every character some operating system refuses in a file name with an underscore.</summary>
 	private static string Portable(string name)

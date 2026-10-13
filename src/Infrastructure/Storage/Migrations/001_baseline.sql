@@ -25,7 +25,7 @@ create table credentials
 
 create table logins
 (
-	id                    bigint primary key,
+	id                    bigint generated always as identity primary key,
 	user_id               integer     not null references users (id),
 	ip                    inet        not null,
 	timestamp             timestamptz not null,
@@ -174,7 +174,7 @@ create table rounds
 
 create table match_events
 (
-	id        bigint primary key,
+	id        bigint generated always as identity primary key,
 	match_id  integer     not null references matches (id),
 	type      integer     not null,
 	timestamp timestamptz not null,

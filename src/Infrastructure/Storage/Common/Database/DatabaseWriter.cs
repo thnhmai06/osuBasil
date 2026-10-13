@@ -75,18 +75,26 @@ internal sealed class DatabaseWriter(
 	/// </returns>
 	public Task SaveAsync(Root root, object identity, WriteCommand command)
 	{
-		var pending = new PendingTransaction(identity, command, null);
+		var pending = new PendingTransaction(identity, command, null, false);
 		return Enqueue(root, identity, pending).Pending.Done.Task;
 	}
 
 	/// <summary>
-	///     Queues a write that no other write replaces, such as a line of history. The command must be safe to run twice
-	///     (insert … on conflict (id) do nothing).
+	///     Queues a write that no other write replaces, such as a line of history. It runs in a transaction of its own
+	///     whose commit is confirmed, so it is stored exactly once even when the connection drops while committing.
 	/// </summary>
+	/// <returns>
+	///     A task that completes once the write is committed and fails when the database refuses it; a refusal is logged,
+	///     so callers that only record a change need not wait.
+	/// </returns>
 	public Task AppendAsync(Root root, WriteCommand command)
 	{
 		var identity = new object();
-		var pending = new PendingTransaction(identity, command, null);
+		var pending = new PendingTransaction(identity, null, async (connection, transaction) =>
+		{
+			await using var statement = command.ToCommand(connection, transaction);
+			await statement.ExecuteNonQueryAsync(_abandon.Token).ConfigureAwait(false);
+		}, true);
 		return Enqueue(root, identity, pending).Pending.Done.Task;
 	}
 
@@ -101,7 +109,7 @@ internal sealed class DatabaseWriter(
 		T result = default!;
 		var identity = new object();
 		var pending = new PendingTransaction(identity, null,
-			async (connection, transaction) => result = await operation(connection, transaction));
+			async (connection, transaction) => result = await operation(connection, transaction), false);
 		var queue = Enqueue(root, identity, pending).Queue;
 		await using var registration = cancellationToken.Register(() =>
 		{
@@ -240,17 +248,10 @@ internal sealed class DatabaseWriter(
 
 				if (failException is not null)
 				{
-					if (pendingTransaction.Run is not null)
-					{
-						pendingTransaction.Done.TrySetException(failException);
-					}
-					else
-					{
+					if (pendingTransaction.Run is null || pendingTransaction.LogsRefusal)
 						logger.LogError(failException, "A write of {Root} for {Identity} was refused and not stored",
 							root, pendingTransaction.Identity);
-						pendingTransaction.Done.TrySetException(failException);
-					}
-
+					pendingTransaction.Done.TrySetException(failException);
 					return;
 				}
 			}
@@ -345,12 +346,14 @@ internal sealed class DatabaseWriter(
 	private sealed class PendingTransaction(
 		object identity,
 		WriteCommand? command,
-		Func<NpgsqlConnection, NpgsqlTransaction, Task>? run)
+		Func<NpgsqlConnection, NpgsqlTransaction, Task>? run,
+		bool logsRefusal)
 	{
 		public bool Started;
 		public object Identity { get; } = identity;
 		public WriteCommand? Command { get; set; } = command;
 		public Func<NpgsqlConnection, NpgsqlTransaction, Task>? Run { get; } = run;
+		public bool LogsRefusal { get; } = logsRefusal;
 		public TaskCompletionSource Done { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 	}
 }

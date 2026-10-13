@@ -21,15 +21,12 @@ internal sealed class PostgresMatchEventRepository(
 	: IMatchEventRepository
 {
 	private readonly OwnedLists<int, Match, MatchEvent> _byMatch = new();
-	private readonly IdAllocator _ids = new(reader, "match_events");
 
 	/// <inheritdoc />
-	public async Task RecordAsync(MatchEvent matchEvent, CancellationToken cancellationToken = default)
+	public Task RecordAsync(MatchEvent matchEvent, CancellationToken cancellationToken = default)
 	{
-		var id = await _ids.NextAsync(cancellationToken);
 		var parameters = new
 		{
-			Id = id,
 			MatchId = matchEvent.Match.Id,
 			Type = (int)matchEvent.Type,
 			Timestamp = matchEvent.Timestamp.ToUniversalTime(),
@@ -39,12 +36,12 @@ internal sealed class PostgresMatchEventRepository(
 		};
 		var appended = writer.AppendAsync(Root.Match(matchEvent.Match.Id), new WriteCommand(
 			"""
-			insert into match_events (id, match_id, type, timestamp, actor_id, target_id, detail)
-			values (@Id, @MatchId, @Type, @Timestamp, @ActorId, @TargetId, @Detail)
-			on conflict (id) do nothing
+			insert into match_events (match_id, type, timestamp, actor_id, target_id, detail)
+			values (@MatchId, @Type, @Timestamp, @ActorId, @TargetId, @Detail)
 			""",
 			parameters));
 		_byMatch.Change(matchEvent.Match.Id, matchEvent.Match, list => Insert(list, matchEvent), appended);
+		return Task.CompletedTask;
 	}
 
 	/// <inheritdoc />
@@ -83,11 +80,18 @@ internal sealed class PostgresMatchEventRepository(
 	private static ImmutableList<MatchEvent> Insert(ImmutableList<MatchEvent> events, MatchEvent matchEvent)
 	{
 		// A load that already read the committed event must not get it twice.
-		if (events.Contains(matchEvent))
+		if (events.Any(item => SameEvent(item, matchEvent)))
 			return events;
 
 		var index = events.FindIndex(item => item.Timestamp > matchEvent.Timestamp);
 		return index < 0 ? events.Add(matchEvent) : events.Insert(index, matchEvent);
+	}
+
+	/// <summary>Determines whether two events are the same, with the timestamp compared to the microsecond the database keeps.</summary>
+	private static bool SameEvent(MatchEvent left, MatchEvent right)
+	{
+		return left.Type == right.Type && left.Timestamp.UtcTicks / 10 == right.Timestamp.UtcTicks / 10 &&
+		       Equals(left.Actor, right.Actor) && Equals(left.Target, right.Target) && left.Detail == right.Detail;
 	}
 
 	/// <summary>A stored row of the <c>match_events</c> table.</summary>
