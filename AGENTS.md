@@ -414,7 +414,7 @@ Scores/        IScoreRepository (the play's values only), IReplayStorage, IUserS
                ScoreQuery (player and beatmap only); IScoreService and its events
 Anticheat/     IAnticheatService (judges client flags) and its events
 Content/       ISettingsRepository, IMenuBannerRepository, IMenuBannerStorage, IMenuIconStorage,
-               IMenuSeasonalsStorage, IFaqStorage
+               IMenuSeasonalsStorage, IFaqStorage, IScreenshotStorage
 ```
 
 Notifications, event handlers and dispatchers, and host configuration (ports, TLS, data paths) do not
@@ -479,7 +479,8 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
 * **Background work.** A contract declares one run of a background job (`ISessionService.CloseIdle()`,
   `IBeatmapsetService.ScanAsync()`); Services implements it; Infrastructure owns the loop, the trigger, the
   period and its configuration. A one-shot timer that is the consequence of an operation (an empty room's
-  closing, a countdown) stays in Services on `TimeProvider`.
+  closing) stays in Services on `TimeProvider`. A countdown is not one: it is a client feature (BasilBot runs
+  it and starts the round as the user who asked).
 * **Derive whatever is derivable.** A property a runtime object co-owns with its domain object
   (truth in Domain) is a forwarding property (`Room.Name => Match.Name`).
 * **A user online is one `UserSession`; each place they log in from is a `Connection`.**
@@ -549,7 +550,9 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   `DeleteAsync(X)`. A listing without a page returns `IReadOnlyList<X>`: a repository's result is complete,
   so a caller may count or index it. Soft deletion is a service setting `DeletedAt` and calling
   `CreateOrUpdateAsync`. `Save` is only for byte storages (`IXxxStorage`: `SaveAsync`, `OpenAsync`,
-  `DeleteAsync`); a storage lists with `IEnumerable<X>` (the caller decides whether to materialise it), and a
+  `DeleteAsync`, plus `ListAsync` and `RenameAsync` where the content is managed); `OpenAsync` serves the server's
+  own reads, never clients, who get stored assets from the asset host. A storage lists with `IEnumerable<X>` (the
+  caller decides whether to materialise it), and a
   storage of text reads and writes it through `StreamReader`/`StreamWriter` (`IFaqStorage.OpenAsync`,
   `IFaqStorage.EditAsync`) instead of a raw `Stream`. Extract a shared
   interface only when several repositories genuinely share an operation, and keep the `IXxxRepository`
@@ -557,14 +560,17 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   (`Query<T>`, `SortOptions`). Key normalization (for example case- and space-insensitive user names) lives on the
   Domain value (`UserData.SafeName`); the server writes the normalized key it looks records up by. A repository filters only by explicit criteria in its query record
   (`IncludeHidden`, `IncludeDeleted`, `IncludePrivate`); the caller sets them from the asker's authority.
-* **Memory is the truth; the database is a copy of it.** Everything asks memory first and goes to the database only
-  on a miss, to verify or to load into memory; a miss means "not loaded", never "does not exist". A change is applied
-  to the live object in memory, and its copy is written to the database alongside. "Cache" means only the on-disk
-  `Cache/` directory of derived, rebuildable files (repacked `.osz` archives, audio previews); data in memory is never
-  called a cache.
-  * **Resident data**, which every client uses (`ServerSettings`, general channels, menu banners, the menu files), is
-    loaded at startup and never released; it changes only through its repository or storage, never on disk behind
-    the server's back.
+* **Memory is the truth; the database is a copy of it.** Memory is where the server works; the database only keeps
+  a record of what was done. **No operation waits for the database unless its result comes from the database**
+  (a try-operation: an identity the store assigns, a unique value). Everything asks memory first and goes to the
+  database only on a miss, to verify or to load into memory; a miss means "not loaded", never "does not exist". A
+  change is applied to the live object in memory, and its copy is written to the database alongside. "Cache" means
+  only the on-disk `Cache/` directory of derived, rebuildable files (repacked `.osz` archives, audio previews); data
+  in memory is never called a cache.
+  * **Resident data**, the database records every client uses (`ServerSettings`, general channels, menu banners), is
+    loaded at startup and never released; it changes only through its repository, never in the database behind the
+    server's back. File storages are not resident and hold no file content in memory: the file system is their
+    index, read as it is when asked.
   * **On-demand data:** a repository holds one live instance per identity, returned by every `GetAsync`,
     `GetByYAsync` and `ListAsync`. It lives while anything holds it (a session its user, a room its match) or while
     a change of it is not stored yet, and is then released; there is no TTL. A list owned by an object (a user's
@@ -582,8 +588,10 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
     deadlock, authentication, permissions) are retried, before any later write of the same root. Any other error
     fails that write alone: a try-operation throws it to its caller, a copy is logged as an error. A try-operation
     runs in its own transaction and settles a broken commit with `pg_xact_status`; its cancellation token counts
-    only while it waits for its turn. Appends (logins, match events) take their ids from memory, so a retried append
-    is stored once.
+    only while it waits for its turn. Appends (logins, match events) carry no business id: the database assigns it,
+    the repository queues the append and returns at once (logging in works without a database), and
+    `DatabaseWriter.AppendAsync` runs each append in its own transaction settled the same way, so it is stored
+    exactly once.
   * **Reads** go straight to PostgreSQL on a pooled connection of their own and see only what is committed. A listing
     asks the database which rows match and returns the live instance of each; a row whose deletion is still queued
     never comes back into memory.
@@ -618,7 +626,16 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   channel, a `BanchoConnection` its spectator channel. The channel service decides, per kind of channel, who
   may read and write. A private message is a post into the recipient's PM channel. Access follows osu!: a
   user may join a channel (including `/join` over IRC) only if an osu! client doing the matching in-game
-  action would have access.
+  action would have access. General channels are created, configured and deleted at runtime through
+  `IChannelService` (`DeveloperConfigureServer`); configuring a channel removes the members who may no longer read it.
+* **Assets are referred to by `AssetReference`** (Domain), never by `string` or `Uri`: either the relative path of a
+  file the server stores under its data directory (`Menu/Banners/x.png`, valid on every machine) or an absolute
+  http/https address of an asset hosted elsewhere, kept as given and never copied. The value is canonical (its
+  parsing and normalization live on the type). File storages give out the reference of what they store; the hosts
+  serve stored files under a fixed public path per asset directory (static file provider rooted at each asset
+  directory, never at the whole data directory) and only distribute them. Replays are named
+  `{ScoreId} {Player} - {Artist} - {Title} [{Version}] ({yyyy-MM-dd}) {Mode}.osr`, as osu! names an exported
+  replay; screenshots get a UUIDv7 name.
 * **Permissions are the source of truth.** What an account may do is its `Permissions` (Domain, on
   `UserData`): fine-grained actions in the Discord style, grouped by the `ClientPrivileges` bit each group
   shows as (`PlayerCreateRoom`, `PlayerChat`, `TournamentObserveRooms`, `ModeratorSilence`, `OwnerManageAccounts`,
@@ -696,6 +713,13 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
 ### Code style
 
 * A small type used by one type lives in that type's file (`ConnectionType` in `Connection.cs`).
+* Object-oriented, not procedural: an operation goes through the object that owns the state it changes
+  (`DataStorage.SaveAsync`, `RoomState.IsManagedBy`), not through a static helper that is handed the state.
+* A type that is a collection implements the matching BCL interface (`DataStorage : IReadOnlyDictionary<string,
+  FileInfo>`); a business value with a text form is a value type implementing `IParsable<T>` and `IFormattable`
+  (`AssetReference`).
+* A folder that would share its name with a type in it is plural (`Multiplayer/Matches/Match.cs`), so code never
+  writes `Match.Match`.
 * A member that uses no instance state is `static` (`LobbyService.RoomOccupied`).
 * Prefer primary constructors, property patterns (`room is { InProgress: false, Beatmap: not null }`) and
   one guard for conditions that return the same result; no redundant casts, `? true : false` or
