@@ -19,16 +19,12 @@ public sealed record ServerSettings
 	public CreationLocks LockedCreation
 	{
 		get;
-		init
-		{
-			value.ThrowIfUndefined();
-			field = value;
-		}
+		init => field = value.ThrowIfUndefined();
 	} = CreationLocks.Beatmapsets;
 
 	/// <summary>Gets the icon shown on the main menu.</summary>
 	/// <exception cref="ArgumentNullException">The value is <see langword="null" />.</exception>
-	public MenuIcon MenuIcon
+	public MenuIconSettings MenuIcon
 	{
 		get;
 		init => field = value ?? throw new ArgumentNullException(nameof(value));
@@ -36,60 +32,51 @@ public sealed record ServerSettings
 
 	/// <summary>Gets the beatmap mirror that beatmapset downloads and beatmap searches are sent to.</summary>
 	/// <exception cref="ArgumentNullException">The value is <see langword="null" />.</exception>
-	public BeatmapMirror Mirror
+	public BeatmapMirrorSettings BeatmapMirror
 	{
 		get;
 		init => field = value ?? throw new ArgumentNullException(nameof(value));
 	} = new();
 
-	/// <summary>Returns an address unchanged, or throws when it is not absolute.</summary>
-	/// <exception cref="ArgumentException">The address is not absolute.</exception>
-	internal static Uri? RequireAbsolute(Uri? value)
+	/// <summary>The icon shown on the main menu: its image and the address it links to.</summary>
+	public sealed record MenuIconSettings
 	{
-		return value is null || value.IsAbsoluteUri
-			? value
-			: throw new ArgumentException("The address must be absolute.", nameof(value));
-	}
-}
+		/// <summary>Gets the address the icon links to, or <see langword="null" /> for none.</summary>
+		/// <exception cref="ArgumentException">The value is not an absolute address.</exception>
+		public Uri? Url
+		{
+			get;
+			init => field = value?.ThrowIfNotAbsolute();
+		}
 
-/// <summary>The icon shown on the main menu: its image and the address it links to.</summary>
-public sealed record MenuIcon
-{
-	/// <summary>Gets the address the icon links to, or <see langword="null" /> for none.</summary>
-	/// <exception cref="ArgumentException">The value is not an absolute address.</exception>
-	public Uri? Url
-	{
-		get;
-		init => field = ServerSettings.RequireAbsolute(value);
+		/// <summary>Gets the image of the icon, or <see langword="null" /> for none.</summary>
+		public AssetReference? Image { get; init; }
 	}
 
-	/// <summary>Gets the image of the icon, or <see langword="null" /> for none.</summary>
-	public AssetReference? Image { get; init; }
-}
-
-/// <summary>The beatmap mirror the server sends beatmapset downloads and beatmap searches to.</summary>
-public sealed record BeatmapMirror
-{
-	/// <summary>
-	///     Gets the address beatmapset downloads are sent to, or <see langword="null" /> when the server has no
-	///     download mirror.
-	/// </summary>
-	/// <exception cref="ArgumentException">The value is not an absolute address.</exception>
-	public Uri? DownloadEndpoint
+	/// <summary>The beatmap mirror the server sends beatmapset downloads and beatmap searches to.</summary>
+	public sealed record BeatmapMirrorSettings
 	{
-		get;
-		init => field = ServerSettings.RequireAbsolute(value);
-	}
+		/// <summary>
+		///     Gets the address beatmapset downloads are sent to, or <see langword="null" /> when the server has no
+		///     download mirror.
+		/// </summary>
+		/// <exception cref="ArgumentException">The value is not an absolute address.</exception>
+		public Uri? DownloadEndpoint
+		{
+			get;
+			init => field = value?.ThrowIfNotAbsolute();
+		}
 
-	/// <summary>
-	///     Gets the address beatmap searches are sent to, or <see langword="null" /> when the server has no search
-	///     mirror.
-	/// </summary>
-	/// <exception cref="ArgumentException">The value is not an absolute address.</exception>
-	public Uri? SearchEndpoint
-	{
-		get;
-		init => field = ServerSettings.RequireAbsolute(value);
+		/// <summary>
+		///     Gets the address beatmap searches are sent to, or <see langword="null" /> when the server has no search
+		///     mirror.
+		/// </summary>
+		/// <exception cref="ArgumentException">The value is not an absolute address.</exception>
+		public Uri? SearchEndpoint
+		{
+			get;
+			init => field = value?.ThrowIfNotAbsolute();
+		}
 	}
 }
 

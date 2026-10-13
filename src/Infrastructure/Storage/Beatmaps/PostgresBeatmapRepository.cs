@@ -23,24 +23,23 @@ internal sealed class PostgresBeatmapRepository(
 {
 	#region SQL Scripts
 
-	private const string UpsertSql = """
-	                                 insert into beatmaps (id, beatmapset_id, hash, version, mode, star, length, bpm, cs, ar, od, hp, objects, locked, visible)
-	                                 values (@Id, @BeatmapsetId, @Hash, @Version, @Mode, @Star, @Length, @Bpm, @Cs, @Ar, @Od, @Hp, @Objects::jsonb, @Locked, @Visible)
-	                                 on conflict (id) do update set
-	                                 	beatmapset_id = excluded.beatmapset_id,
-	                                 	hash = excluded.hash,
-	                                 	version = excluded.version,
-	                                 	mode = excluded.mode,
-	                                 	star = excluded.star,
-	                                 	length = excluded.length,
-	                                 	bpm = excluded.bpm,
-	                                 	cs = excluded.cs,
-	                                 	ar = excluded.ar,
-	                                 	od = excluded.od,
-	                                 	hp = excluded.hp,
-	                                 	objects = excluded.objects,
-	                                 	locked = excluded.locked,
-	                                 	visible = excluded.visible;
+	private const string UpdateSql = """
+	                                 update beatmaps set
+	                                 	beatmapset_id = @BeatmapsetId,
+	                                 	hash = @Hash,
+	                                 	version = @Version,
+	                                 	mode = @Mode,
+	                                 	star = @Star,
+	                                 	length = @Length,
+	                                 	bpm = @Bpm,
+	                                 	cs = @Cs,
+	                                 	ar = @Ar,
+	                                 	od = @Od,
+	                                 	hp = @Hp,
+	                                 	objects = @Objects::jsonb,
+	                                 	locked = @Locked,
+	                                 	visible = @Visible
+	                                 where id = @Id;
 	                                 """;
 
 	private const string ByIdSql = """
@@ -79,7 +78,7 @@ internal sealed class PostgresBeatmapRepository(
 	// The beatmaps a set keeps while the deletion of its others is queued, by set id.
 	private readonly ConcurrentDictionary<int, HashSet<int>> _retaining = new();
 
-	protected override string WriteSql => UpsertSql;
+	protected override string WriteSql => UpdateSql;
 
 	/// <inheritdoc />
 	public async Task<Beatmap> CreateAsync(BeatmapData data, int? onlineId = null,
@@ -123,7 +122,7 @@ internal sealed class PostgresBeatmapRepository(
 	}
 
 	/// <inheritdoc />
-	public async Task CreateOrUpdateAsync(Beatmap beatmap, CancellationToken cancellationToken = default)
+	public async Task UpdateAsync(Beatmap beatmap, CancellationToken cancellationToken = default)
 	{
 		var value = WithSet(beatmap.Value, await LiveSetAsync(beatmap.Value.Beatmapset, cancellationToken));
 		if (!Items.TryGetValue(beatmap.Id, out var current) || current.Value.Hash != value.Hash)
@@ -392,7 +391,7 @@ internal sealed class PostgresBeatmapRepository(
 			}
 		}, cancellationToken);
 		var objects = JsonSerializer.Deserialize<BeatmapObjects>(row.Objects, StoredJson)
-		              ?? BeatmapObjects.NewFrom((GameMode)row.Mode);
+		              ?? BeatmapObjects.Empty((GameMode)row.Mode);
 
 		return new Beatmap
 		{

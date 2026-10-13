@@ -1,5 +1,7 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Basil.Application.Storage.Contracts.Common;
+using Basil.Domain.Users;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
 
@@ -11,7 +13,11 @@ namespace Basil.Application.Storage.Contracts.Beatmaps;
 ///     for any.
 /// </param>
 /// <param name="Mode">The game mode a beatmap must be for, or <see langword="null" /> for any.</param>
-/// <param name="IncludeHidden">Whether hidden beatmaps and beatmapsets are included.</param>
+/// <param name="Hidden">
+///     Whether only hidden (<see langword="true" />) or only visible (<see langword="false" />) beatmaps are included,
+///     or <see langword="null" /> for both; a beatmap is hidden when it or its beatmapset is. Visible beatmaps only unless
+///     the search text says otherwise.
+/// </param>
 /// <param name="Stars">The star rating range, or <see langword="null" /> for any.</param>
 /// <param name="Ar">The approach rate range, or <see langword="null" /> for any.</param>
 /// <param name="Cs">The circle size range (the key count in osu!mania), or <see langword="null" /> for any.</param>
@@ -31,7 +37,7 @@ namespace Basil.Application.Storage.Contracts.Beatmaps;
 public sealed record BeatmapQuery(
 	string? Text = null,
 	GameMode? Mode = null,
-	bool IncludeHidden = false,
+	bool? Hidden = false,
 	Interval<double>? Stars = null,
 	Interval<double>? Ar = null,
 	Interval<double>? Cs = null,
@@ -47,15 +53,22 @@ public sealed record BeatmapQuery(
 	string? Difficulty = null,
 	BeatmapStatus? Status = null,
 	Interval<DateTimeOffset>? Created = null,
-	Interval<DateTimeOffset>? Updated = null)
+	Interval<DateTimeOffset>? Updated = null) : IParsable<BeatmapQuery>
 {
 	/// <summary>Reads a query written in the osu! beatmap search syntax.</summary>
-	/// <param name="text">The search text, for example <c>stars>5 ar=9 "some title"</c>.</param>
-	/// <param name="mode">The game mode a beatmap must be for, or <see langword="null" /> for any.</param>
-	/// <param name="includeHidden">Whether hidden beatmaps and beatmapsets are included.</param>
+	/// <param name="s">
+	///     The search text, for example <c>stars>5 ar=9 mode=0 hidden=0 "some title"</c>; <c>hidden</c> takes <c>1</c>, <c>0</c> or <c>*</c> for both, and <c>mode</c> takes the number
+	///     of a game mode.
+	/// </param>
+	/// <param name="provider">Not used; the syntax does not depend on culture.</param>
 	/// <returns>The query; a filter with an unknown key or a value that does not parse stays in <see cref="Text" />.</returns>
-	public static BeatmapQuery Parse(string text, GameMode? mode = null, bool includeHidden = false)
+	/// <exception cref="ArgumentNullException"><paramref name="s" /> is <see langword="null" />.</exception>
+	public static BeatmapQuery Parse(string s, IFormatProvider? provider = null)
 	{
+		ArgumentNullException.ThrowIfNull(s);
+
+		GameMode? mode = null;
+		bool? hidden = false;
 		Interval<double>? stars = null;
 		Interval<double>? ar = null;
 		Interval<double>? cs = null;
@@ -73,10 +86,18 @@ public sealed record BeatmapQuery(
 		Interval<DateTimeOffset>? created = null;
 		Interval<DateTimeOffset>? updated = null;
 
-		var keywords = SearchSyntax.Parse(text, (key, op, rawValue) =>
+		var keywords = SearchSyntax.Parse(s, (key, op, rawValue) =>
 		{
 			switch (key)
 			{
+				case "mode" when op is ":" or "=" &&
+				                 byte.TryParse(rawValue, NumberStyles.None, CultureInfo.InvariantCulture,
+					                 out var number) && Enum.IsDefined((GameMode)number):
+					mode = (GameMode)number;
+					return true;
+				case "hidden" when op is ":" or "=" && SearchSyntax.TryParseState(rawValue, out var state):
+					hidden = state;
+					return true;
 				case "stars" or "star": return TrySetDouble(rawValue, op, stars, v => stars = v);
 				case "ar": return TrySetDouble(rawValue, op, ar, v => ar = v);
 				case "cs" or "keys" or "key": return TrySetDouble(rawValue, op, cs, v => cs = v);
@@ -105,7 +126,7 @@ public sealed record BeatmapQuery(
 			}
 		});
 
-		return new BeatmapQuery(keywords, mode, includeHidden, stars, ar, cs, od, hp, bpm, length, circles, sliders,
+		return new BeatmapQuery(keywords, mode, hidden, stars, ar, cs, od, hp, bpm, length, circles, sliders,
 			creator, artist, title, difficulty, status, created, updated);
 
 		static bool TrySetDouble(string raw, string op, Interval<double>? current, Action<Interval<double>> set)
@@ -155,5 +176,25 @@ public sealed record BeatmapQuery(
 			set(narrowed);
 			return true;
 		}
+	}
+
+	/// <summary>Narrows the query to what a user with the given permissions may see.</summary>
+	/// <param name="effective">The asker's effective permissions.</param>
+	/// <returns>The query, which leaves hidden beatmaps out unless the asker may see them.</returns>
+	public BeatmapQuery LimitTo(Permissions effective)
+	{
+		return effective.Allows(Permissions.TournamentViewHiddenBeatmaps) ? this : this with { Hidden = false };
+	}
+
+	/// <summary>Reads a query written in the osu! beatmap search syntax.</summary>
+	/// <param name="s">The search text.</param>
+	/// <param name="provider">Not used; the syntax does not depend on culture.</param>
+	/// <param name="result">The query, or <see langword="null" /> when <paramref name="s" /> is <see langword="null" />.</param>
+	/// <returns><see langword="true" /> unless <paramref name="s" /> is <see langword="null" />; any text reads as a query.</returns>
+	public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider,
+		[MaybeNullWhen(false)] out BeatmapQuery result)
+	{
+		result = s is null ? null : Parse(s, provider);
+		return result is not null;
 	}
 }

@@ -33,7 +33,7 @@ internal sealed class HttpBeatmapsetMirror(
 		CancellationToken cancellationToken = default)
 	{
 		var serverSettings = await settings.GetAsync(cancellationToken);
-		var endpoint = serverSettings.Mirror.SearchEndpoint;
+		var endpoint = serverSettings.BeatmapMirror.SearchEndpoint;
 		if (endpoint is null) return null;
 
 		var separator = endpoint.ToString().Contains('?') ? '&' : '?';
@@ -58,7 +58,7 @@ internal sealed class HttpBeatmapsetMirror(
 		CancellationToken cancellationToken = default)
 	{
 		var serverSettings = await settings.GetAsync(cancellationToken);
-		var endpoint = serverSettings.Mirror.DownloadEndpoint;
+		var endpoint = serverSettings.BeatmapMirror.DownloadEndpoint;
 		if (endpoint is null) return null;
 
 		var baseAddress = endpoint.ToString().TrimEnd('/');

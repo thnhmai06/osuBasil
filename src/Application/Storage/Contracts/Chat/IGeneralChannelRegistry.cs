@@ -5,12 +5,7 @@ namespace Basil.Application.Storage.Contracts.Chat;
 public interface IGeneralChannelRegistry
 {
 	/// <summary>Gets every open configured channel.</summary>
-	IReadOnlyCollection<GeneralChannelSession> All { get; }
-
-	/// <summary>Finds an open configured channel by name, ignoring case.</summary>
-	/// <param name="name">The channel name, including its leading <c>#</c>.</param>
-	/// <returns>The channel, or <see langword="null" /> when no configured channel has that name.</returns>
-	GeneralChannelSession? Find(string name);
+	IReadOnlyDictionary<string, GeneralChannelSession> All { get; }
 
 	/// <summary>Adds a configured channel.</summary>
 	/// <param name="channel">The channel to add.</param>

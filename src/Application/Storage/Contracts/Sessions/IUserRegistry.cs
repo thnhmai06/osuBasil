@@ -5,13 +5,8 @@ namespace Basil.Application.Storage.Contracts.Sessions;
 /// <summary>The users who are online, each with their session.</summary>
 public interface IUserRegistry
 {
-	/// <summary>Gets every online session.</summary>
-	IEnumerable<UserSession> Sessions { get; }
-
-	/// <summary>Finds the online session of a user.</summary>
-	/// <param name="user">The user to look up.</param>
-	/// <returns>The user's session, or <see langword="null" /> when the user is offline.</returns>
-	UserSession? Find(User user);
+	/// <summary>Gets every online session by its user.</summary>
+	IReadOnlyDictionary<User, UserSession> Sessions { get; }
 
 	/// <summary>Finds the open connection a token identifies.</summary>
 	/// <param name="token">The token the client presented.</param>

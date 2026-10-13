@@ -545,21 +545,32 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   `IScoreRepository`, …), each declaring the operations Services and the outer layers need. A relation
   between two models that is stored on its own gets its own repository rather than a column on either
   (`IRoundScoreRepository` relates a round to a score and keeps the team it was set for). Verbs:
-  `CreateAsync(XData) → X` (the store assigns the identity), `CreateOrUpdateAsync(X)`, `GetAsync(id)`,
+  `CreateAsync(XData) → X` (the store assigns the identity) with `UpdateAsync(X)` for a record created that way
+  (nothing is created under an id the store has not given out), `CreateOrUpdateAsync(X)` only for a record keyed by
+  what it is about (credentials by user, a relationship by its two users, stats by user and mode), `GetAsync(id)`,
   `GetByYAsync(y)` for a unique key, `ListAsync(XQuery, PageRequest) → Page<X>` for listing and search,
-  `DeleteAsync(X)`. A listing without a page returns `IReadOnlyList<X>`: a repository's result is complete,
-  so a caller may count or index it. Soft deletion is a service setting `DeletedAt` and calling
-  `CreateOrUpdateAsync`. `Save` is only for byte storages (`IXxxStorage`: `SaveAsync`, `OpenAsync`,
+  `DeleteAsync(X)`. A listing without a page is complete and is never copied to be returned: a list the
+  repository holds (an owned list) comes back as it is, through its read-only interface (`IReadOnlyList<X>`); a
+  listing computed when asked (filtered or ordered from memory) is an `IEnumerable<X>`, and the caller decides
+  whether to materialise it. Soft deletion is a service setting `DeletedAt` and calling
+  `UpdateAsync`. `Save` is only for byte storages (`IXxxStorage`: `SaveAsync`, `OpenAsync`,
   `DeleteAsync`, plus `ListAsync` and `RenameAsync` where the content is managed); `OpenAsync` serves the server's
   own reads, never clients, who get stored assets from the asset host. A storage lists with `IEnumerable<X>` (the
-  caller decides whether to materialise it), and a
+  caller decides whether to materialise it). `IBeatmapsetStorage` works on the set's folder of files (save from
+  an upload, list, open, delete); the `.osz` archive is only an export (`ExportAsync`), with no CRUD of its own,
+  and keeping exported archives in `Cache/` is Infrastructure's business. A
   storage of text reads and writes it through `StreamReader`/`StreamWriter` (`IFaqStorage.ReadAsync`,
   `IFaqStorage.CreateOrUpdateAsync`) instead of a raw `Stream`. Extract a shared
   interface only when several repositories genuinely share an operation, and keep the `IXxxRepository`
   contract callers depend on; no parallel generic ports (`ICreatable`) and no generic query system
   (`Query<T>`, `SortOptions`). Key normalization (for example case- and space-insensitive user names) lives on the
-  Domain value (`UserData.SafeName`); the server writes the normalized key it looks records up by. A repository filters only by explicit criteria in its query record
-  (`IncludeHidden`, `IncludeDeleted`, `IncludePrivate`); the caller sets them from the asker's authority.
+  Domain value (`UserData.SafeName`); the server writes the normalized key it looks records up by. A repository filters only by explicit criteria in its query record.
+  A query record searched with text (`UserQuery`, `BeatmapQuery`, `MatchQuery`) is `IParsable<T>`: every criterion, a
+  state included, is written in the search text (`deleted=1`,
+  `hidden=0`, `ended=0`, `private=1`, enum masks as numbers such as `permission=4`), and a state is a `bool?` (`null` for both,
+  written `*`) whose default, kept when the text has no token for it, is what a user with the least permissions sees (`Deleted =
+  false`, `Hidden = false`, `Private = false`). Every caller narrows a query to the asker before using it:
+  `UserQuery.Parse(text).LimitTo(effective)`, where `LimitTo` resets each state the asker may not widen.
 * **Memory is the truth; the database is a copy of it.** Memory is where the server works; the database only keeps
   a record of what was done. **No operation waits for the database unless its result comes from the database**
   (a try-operation: an identity the store assigns, a unique value). Everything asks memory first and goes to the
@@ -642,15 +653,23 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   …; each group also has a mask member named after it). Only high-level management permissions may be broad
   (`TournamentManageAnyRoom`). Do not add a permission that is merely a consequence of another (playing and
   submitting scores are one). `ClientPrivileges` is never stored or configured: it is derived from the
-  effective permissions (`ToClientPrivileges()`; a bit is on when any permission of its group is).
+  effective permissions (`ToPrivileges()`; a bit is on when any permission of its group is). A larger permission contains the smaller
+  ones it implies, as bits, not as a separate grant: a manage permission includes the matching view permission
+  (`TournamentManageBeatmaps` holds `TournamentViewHiddenBeatmaps`, `TournamentManageAnyRoom` holds
+  `TournamentViewPrivateMatches` and `TournamentPostInAnyRoom`, `OwnerManageAccounts` holds `OwnerViewDeletedUsers`,
+  `ModeratorRestrict` holds `ModeratorSilence`). A check asks for the smallest permission that allows the action,
+  so the manager and a user granted only that permission both pass; never `Allows(A) || Allows(B)` for a pair where
+  one contains the other.
 * **Permission checks require every bit** (`Permissions.Allows`); an empty requirement is always
   satisfied. Checks use the **effective** permissions: the granted ones minus those suspended by the user's
   active restrictions (`Effective(restrictions, now)`).
 * **Restrictions are timed records,** not account fields. A `Restriction` (Domain, own repository
   `IRestrictionRepository`) suspends a mask of permissions from `StartsAt` to `EndsAt` (open-ended until
   lifted; lifting sets `EndsAt`, history is kept). A silence is a restriction of
-  `Permissions.SuspendedBySilence`. Restrictions never touch management permissions (`Permissions.Management`):
-  a mask containing one is invalid, and a manager is withdrawn by changing the permissions. Expiry needs no timer: the effective permissions are computed at `now`. A
+  `Permissions.SuspendedBySilence`. Restrictions never touch management (`Permissions.Management`, the bits only management permissions have): a mask
+  containing one is invalid, and a manager is withdrawn by changing the permissions. A restriction may suspend a
+  smaller permission a management permission contains (`TournamentViewHiddenBeatmaps`), except from a user who holds
+  that management permission in full; such a user keeps every bit of it. Expiry needs no timer: the effective permissions are computed at `now`. A
   result tells "suspended by a restriction" (`Silenced`) apart from "never granted" (`NotAuthorized`).
 * **Hierarchy.** A staff action aimed at another user (silence, restrict, lift, set permissions, set password,
   revoke sessions, delete) requires the actor's granted permissions to be a strict superset of the target's.
@@ -718,6 +737,20 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
 * A type that is a collection implements the matching BCL interface (`DataStorage : IReadOnlyDictionary<string,
   FileInfo>`); a business value with a text form is a value type implementing `IParsable<T>` and `IFormattable`
   (`AssetReference`).
+* **Collections are exposed, not copied** (most mistakes so far were in registries and storages):
+  * Never materialise a collection only to hand it out (`[.. _channels.Values]`, `.ToList()`, `.ToArray()` on a
+    return). Return the collection itself through an interface it implements (`IReadOnlyDictionary<string,
+    GeneralChannelSession> All => _channels`), or an `IEnumerable<T>` for a sequence computed on the fly. Copy only
+    where the code needs a snapshot (to change the collection while walking it, or to read it outside the lock that
+    guards it, as `FileBeatmapsetStorage.ListAsync` does). `ConcurrentDictionary.Values` and `.Keys` are such a copy
+    (taken under every lock), so a registry exposes the dictionary, not its `Values`.
+  * A collection that is both read and changed is exposed twice, with no methods that only forward to it: a public
+    read-only interface and an `internal` read-write one named `Mutable{X}` (`public IReadOnlySet<User> Banned`,
+    `internal ISet<User> MutableBanned`; `IDictionary`/`IList` likewise). A method stays only when it carries a rule
+    of its own (`ILobby.Add` releases the reserved id; `UserSession.Add` files a connection by its kind).
+  * Expose the most derived interface the value has (`IReadOnlyDictionary`, `IReadOnlySet`, `IReadOnlyCollection`
+    rather than `IEnumerable`), unless the extra property belongs to the implementation and not to the contract: a
+    storage that walks files returns `IEnumerable<T>`, not `IOrderedEnumerable<T>`, even when it sorts them.
 * Every stored time is UTC (`DateTimeOffset.UtcNow`, `TimeProvider.GetUtcNow()`, `timestamptz` columns); only the
   presentation converts it to a local date and time. Never `DateTimeOffset.Now` or `DateTime.Now`.
 * A folder that would share its name with a type in it is plural (`Multiplayer/Matches/Match.cs`), so code never

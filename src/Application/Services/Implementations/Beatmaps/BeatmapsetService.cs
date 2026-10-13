@@ -41,8 +41,10 @@ internal sealed class BeatmapsetService(
 			stored[difficulty] = await beatmaps.GetAsync(new Md5(difficulty.Content), cancellationToken);
 
 		var existing = stored.Values.FirstOrDefault(b => b is not null)?.Value.Beatmapset
-			?? (beatmapsetId is { } named ? await beatmapsets.GetAsync(named, cancellationToken) : null)
-			?? (content.OnlineSetId is > 0 ? await beatmapsets.GetAsync(content.OnlineSetId.Value, cancellationToken) : null);
+		               ?? (beatmapsetId is { } named ? await beatmapsets.GetAsync(named, cancellationToken) : null)
+		               ?? (content.OnlineSetId is > 0
+			               ? await beatmapsets.GetAsync(content.OnlineSetId.Value, cancellationToken)
+			               : null);
 
 		if (existing is { Value.Locked: true })
 			return new BeatmapsetImportResult(null, [], BeatmapsetImportFailure.Locked);
@@ -66,7 +68,8 @@ internal sealed class BeatmapsetService(
 			{
 				// Another import created the set meanwhile; fetch it and continue as the existing-set branch.
 				set = await beatmapsets.GetAsync(content.OnlineSetId!.Value, cancellationToken)
-					?? throw new InvalidOperationException("A beatmapset with this online id already exists but could not be retrieved.");
+				      ?? throw new InvalidOperationException(
+					      "A beatmapset with this online id already exists but could not be retrieved.");
 				await UpdateSetAsync(set, content, now, cancellationToken);
 			}
 		}
@@ -84,7 +87,9 @@ internal sealed class BeatmapsetService(
 		{
 			var analysis = Analyse(difficulty, stored[difficulty]);
 			var previous = stored[difficulty]
-				?? (difficulty.OnlineId is > 0 ? await beatmaps.GetAsync(difficulty.OnlineId.Value, cancellationToken) : null);
+			               ?? (difficulty.OnlineId is > 0
+				               ? await beatmaps.GetAsync(difficulty.OnlineId.Value, cancellationToken)
+				               : null);
 
 			var data = new BeatmapData
 			{
@@ -98,7 +103,6 @@ internal sealed class BeatmapsetService(
 			};
 			Beatmap beatmap;
 			if (previous is null)
-			{
 				try
 				{
 					beatmap = await beatmaps.CreateAsync(data,
@@ -107,19 +111,16 @@ internal sealed class BeatmapsetService(
 				catch (AlreadyExistsException)
 				{
 					var existingBeatmap = await beatmaps.GetAsync(data.Hash, cancellationToken)
-						?? (difficulty.OnlineId is > 0
-							? await beatmaps.GetAsync(difficulty.OnlineId.Value, cancellationToken)
-							: null);
+					                      ?? (difficulty.OnlineId is > 0
+						                      ? await beatmaps.GetAsync(difficulty.OnlineId.Value, cancellationToken)
+						                      : null);
 					if (existingBeatmap is null)
 						throw;
 
 					beatmap = await UpdateBeatmapAsync(existingBeatmap, data);
 				}
-			}
 			else
-			{
 				beatmap = await UpdateBeatmapAsync(previous, data);
-			}
 
 			result.Add(beatmap);
 		}
@@ -130,7 +131,8 @@ internal sealed class BeatmapsetService(
 
 		async Task<Beatmap> UpdateBeatmapAsync(Beatmap existingBeatmap, BeatmapData data)
 		{
-			await beatmaps.CreateOrUpdateAsync(new Beatmap { Id = existingBeatmap.Id, Value = data }, cancellationToken);
+			await beatmaps.UpdateAsync(new Beatmap { Id = existingBeatmap.Id, Value = data },
+				cancellationToken);
 			return existingBeatmap;
 		}
 	}
@@ -139,12 +141,11 @@ internal sealed class BeatmapsetService(
 	public async Task<int> ScanAsync(CancellationToken cancellationToken = default)
 	{
 		var allSets = await Paging.ListAllAsync(
-			page => beatmapsets.ListAsync(new BeatmapQuery(IncludeHidden: true), page, cancellationToken),
+			page => beatmapsets.ListAsync(new BeatmapQuery(Hidden: null), page, cancellationToken),
 			cancellationToken);
 
 		var forgotten = 0;
 		foreach (var set in allSets)
-		{
 			if (!(await archives.ListAsync(set, cancellationToken)).Any())
 			{
 				await beatmaps.RetainAsync(set, [], cancellationToken);
@@ -152,7 +153,6 @@ internal sealed class BeatmapsetService(
 				_events.Writer.TryWrite(new BeatmapsetDeleted(set));
 				forgotten++;
 			}
-		}
 
 		return forgotten;
 	}
@@ -193,7 +193,7 @@ internal sealed class BeatmapsetService(
 	/// <summary>A zero difficulty and no objects in a game mode.</summary>
 	private static BeatmapAnalysis EmptyAnalysis(GameMode mode)
 	{
-		var objects = BeatmapObjects.NewFrom(mode);
+		var objects = BeatmapObjects.Empty(mode);
 		return new BeatmapAnalysis(new Difficulty(mode, 0, TimeSpan.Zero, 0, 0, 0, 0, 0), objects);
 	}
 
@@ -204,6 +204,6 @@ internal sealed class BeatmapsetService(
 		set.Value.Title = content.Title;
 		set.Value.Creator = content.Creator;
 		set.Value.UpdatedAt = now;
-		await beatmapsets.CreateOrUpdateAsync(set, cancellationToken);
+		await beatmapsets.UpdateAsync(set, cancellationToken);
 	}
 }

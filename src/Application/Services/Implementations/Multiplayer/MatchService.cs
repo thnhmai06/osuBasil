@@ -21,7 +21,7 @@ internal sealed class MatchService(
 	public async Task<int> CloseUnfinishedAsync(CancellationToken cancellationToken = default)
 	{
 		var allMatches = await Paging.ListAllAsync(
-			page => matches.ListAsync(new MatchQuery(false, true), page, cancellationToken),
+			page => matches.ListAsync(new MatchQuery(Ended: false, Private: null), page, cancellationToken),
 			cancellationToken);
 
 		var now = time.GetUtcNow();
@@ -36,7 +36,7 @@ internal sealed class MatchService(
 			}
 
 			match.Value.EndedAt = now;
-			await matches.CreateOrUpdateAsync(match, cancellationToken);
+			await matches.UpdateAsync(match, cancellationToken);
 			await events.RecordAsync(
 				new MatchEvent(match, MatchEventType.Closed, now, Detail: "Server shutdown recovery"),
 				cancellationToken);

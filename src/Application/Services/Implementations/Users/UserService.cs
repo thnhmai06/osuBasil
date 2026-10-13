@@ -49,8 +49,8 @@ internal sealed class UserService(
 		if (restriction.Value.EndsAt <= now) return true;
 
 		restriction.Value.EndsAt = now;
-		await restrictions.CreateOrUpdateAsync(restriction, cancellationToken);
-		registry.Find(user)?.ChangeRestrictions(running => running.RemoveAll(restriction.Equals));
+		await restrictions.UpdateAsync(restriction, cancellationToken);
+		registry.Sessions.GetValueOrDefault(user)?.ChangeRestrictions(running => running.RemoveAll(restriction.Equals));
 
 		_events.Writer.TryWrite(new UserRestrictionLifted(user, restriction));
 		return true;
@@ -65,8 +65,8 @@ internal sealed class UserService(
 			return false;
 
 		Apply(user, u => u.Permissions = permissions);
-		await users.CreateOrUpdateAsync(user, cancellationToken);
-		if (registry.Find(user) is { } session) sessions.CloseDisallowed(session);
+		await users.UpdateAsync(user, cancellationToken);
+		if (registry.Sessions.GetValueOrDefault(user) is { } session) sessions.CloseDisallowed(session);
 
 		_events.Writer.TryWrite(new UserPermissionsChanged(user, permissions));
 		return true;
@@ -84,7 +84,7 @@ internal sealed class UserService(
 			u.Permissions = Permissions.None;
 		});
 
-		await users.CreateOrUpdateAsync(user, cancellationToken);
+		await users.UpdateAsync(user, cancellationToken);
 		sessions.CloseAll(user, ConnectionCloseReason.Deleted);
 		return true;
 	}
@@ -105,7 +105,7 @@ internal sealed class UserService(
 
 		var data = new RestrictionData { User = user, Permissions = suspended, StartsAt = now, EndsAt = endsAt };
 		var restriction = await restrictions.CreateAsync(data, cancellationToken);
-		if (registry.Find(user) is { } session)
+		if (registry.Sessions.GetValueOrDefault(user) is { } session)
 		{
 			session.ChangeRestrictions(running => running.Add(restriction));
 			sessions.CloseDisallowed(session);
@@ -128,7 +128,7 @@ internal sealed class UserService(
 	private void Apply(User user, Action<UserData> change)
 	{
 		change(user.Value);
-		var session = registry.Find(user);
+		var session = registry.Sessions.GetValueOrDefault(user);
 		if (session is not null && !ReferenceEquals(session.User, user))
 			change(session.User.Value);
 	}

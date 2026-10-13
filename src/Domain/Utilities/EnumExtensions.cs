@@ -13,10 +13,12 @@ public static class EnumExtensions
 	///     <paramref name="value" /> is not a valid value of
 	///     <typeparamref name="TEnum" />.
 	/// </exception>
-	public static void ThrowIfUndefined<TEnum>(this TEnum value) where TEnum : struct, Enum
+	/// <returns><paramref name="value" />, unchanged.</returns>
+	public static TEnum ThrowIfUndefined<TEnum>(this TEnum value) where TEnum : struct, Enum
 	{
-		if (!IsValid(value))
-			throw new ArgumentOutOfRangeException(nameof(value), value, "Enum value is undefined.");
+		return IsValid(value)
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), value, "Enum value is undefined.");
 	}
 
 	private static bool IsValid<TEnum>(TEnum value) where TEnum : struct, Enum

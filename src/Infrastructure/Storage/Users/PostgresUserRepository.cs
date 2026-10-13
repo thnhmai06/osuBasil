@@ -19,12 +19,11 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 
 	protected override string WriteSql =>
 		"""
-		insert into users (id, name, safe_name, country, permissions, deleted_at)
-		values (@Id, @Name, @SafeName, @Country, @Permissions, @DeletedAt)
-		on conflict (id) do update set
-			country = excluded.country,
-			permissions = excluded.permissions,
-			deleted_at = excluded.deleted_at;
+		update users set
+			country = @Country,
+			permissions = @Permissions,
+			deleted_at = @DeletedAt
+		where id = @Id;
 		""";
 
 	/// <inheritdoc />
@@ -61,7 +60,7 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 	}
 
 	/// <inheritdoc />
-	public Task CreateOrUpdateAsync(User user, CancellationToken cancellationToken = default)
+	public Task UpdateAsync(User user, CancellationToken cancellationToken = default)
 	{
 		_ = SaveAsync(user);
 		return Task.CompletedTask;
@@ -193,8 +192,7 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 	{
 		var conditions = new List<string>();
 		var parameters = new DynamicParameters();
-		if (!query.IncludeDeleted)
-			conditions.Add("deleted_at is null");
+		if (query.Deleted is { } deleted) conditions.Add(deleted ? "deleted_at is not null" : "deleted_at is null");
 		if (query.Countries is { Count: > 0 } countries)
 		{
 			conditions.Add("country = any(@Countries)");

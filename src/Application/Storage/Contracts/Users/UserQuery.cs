@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Basil.Application.Storage.Contracts.Common;
 using Basil.Domain.Users;
@@ -11,26 +12,30 @@ namespace Basil.Application.Storage.Contracts.Users;
 /// </param>
 /// <param name="Countries">The countries a user may be from, or <see langword="null" /> for any.</param>
 /// <param name="Permissions">Permissions a user must all be granted, or <see langword="null" /> for any.</param>
-/// <param name="IncludeDeleted">Whether deleted users are included.</param>
+/// <param name="Deleted">
+///     Whether only deleted (<see langword="true" />) or only existing (<see langword="false" />) users are
+///     included, or <see langword="null" /> for both; existing users only unless the search text says otherwise.
+/// </param>
 public sealed record UserQuery(
 	string? Text = null,
 	IReadOnlyList<Country>? Countries = null,
 	Permissions? Permissions = null,
-	bool IncludeDeleted = false)
+	bool? Deleted = false) : IParsable<UserQuery>
 {
 	/// <summary>Reads a query written in the user search syntax.</summary>
-	/// <param name="text">The search text, for example <c>country=vnus permission=PlayerChat bob</c>.</param>
-	/// <param name="includeDeleted">Whether deleted users are included.</param>
+	/// <param name="s">The search text, for example <c>country=usvn permission=4 deleted=* bob</c>; a state takes <c>1</c>, <c>0</c> or <c>*</c> for both.</param>
+	/// <param name="provider">Not used; the syntax does not depend on culture.</param>
 	/// <returns>The query; a filter with an unknown key or a value that does not parse stays in <see cref="Text" />.</returns>
-	public static UserQuery Parse(string text, bool includeDeleted = false)
+	/// <exception cref="ArgumentNullException"><paramref name="s" /> is <see langword="null" />.</exception>
+	public static UserQuery Parse(string s, IFormatProvider? provider = null)
 	{
-		if (string.IsNullOrWhiteSpace(text))
-			return new UserQuery(null, null, null, includeDeleted);
+		ArgumentNullException.ThrowIfNull(s);
 
 		IReadOnlyList<Country>? countries = null;
 		Permissions? permissions = null;
+		bool? deleted = false;
 
-		var keywords = SearchSyntax.Parse(text, (key, op, rawValue) =>
+		var keywords = SearchSyntax.Parse(s, (key, op, rawValue) =>
 		{
 			if (op is not (":" or "=")) return false;
 			switch (key)
@@ -38,15 +43,19 @@ public sealed record UserQuery(
 				case "country" when TryParseCountries(rawValue, out var parsedCountries):
 					countries = parsedCountries;
 					return true;
-				case "permission" when TryParsePermissions(rawValue, out var parsedPermissions):
-					permissions = parsedPermissions;
+				case "permission" when ulong.TryParse(rawValue, NumberStyles.None, CultureInfo.InvariantCulture,
+					out var mask):
+					permissions = (Permissions)mask;
+					return true;
+				case "deleted" when SearchSyntax.TryParseState(rawValue, out var state):
+					deleted = state;
 					return true;
 				default:
 					return false;
 			}
 		});
 
-		return new UserQuery(keywords, countries, permissions, includeDeleted);
+		return new UserQuery(keywords, countries, permissions, deleted);
 
 		static bool TryParseCountries(string rawValue, out IReadOnlyList<Country> parsedCountries)
 		{
@@ -63,16 +72,25 @@ public sealed record UserQuery(
 			parsedCountries = parsed;
 			return true;
 		}
+	}
 
-		static bool TryParsePermissions(string rawValue, out Permissions parsedPermissions)
-		{
-			if (ulong.TryParse(rawValue, NumberStyles.None, CultureInfo.InvariantCulture, out var mask))
-			{
-				parsedPermissions = (Permissions)mask;
-				return true;
-			}
+	/// <summary>Narrows the query to what a user with the given permissions may see.</summary>
+	/// <param name="effective">The asker's effective permissions.</param>
+	/// <returns>The query, which leaves deleted users out unless the asker may see them.</returns>
+	public UserQuery LimitTo(Permissions effective)
+	{
+		return effective.Allows(Domain.Users.Permissions.OwnerViewDeletedUsers) ? this : this with { Deleted = false };
+	}
 
-			return Enum.TryParse(rawValue, true, out parsedPermissions);
-		}
+	/// <summary>Reads a query written in the user search syntax.</summary>
+	/// <param name="s">The search text.</param>
+	/// <param name="provider">Not used; the syntax does not depend on culture.</param>
+	/// <param name="result">The query, or <see langword="null" /> when <paramref name="s" /> is <see langword="null" />.</param>
+	/// <returns><see langword="true" /> unless <paramref name="s" /> is <see langword="null" />; any text reads as a query.</returns>
+	public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider,
+		[MaybeNullWhen(false)] out UserQuery result)
+	{
+		result = s is null ? null : Parse(s, provider);
+		return result is not null;
 	}
 }

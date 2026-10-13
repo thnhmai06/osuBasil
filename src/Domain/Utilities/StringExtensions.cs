@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 namespace Basil.Domain.Utilities;
 
 /// <summary>Rules that every text the server keeps follows.</summary>
-public static class TextExtensions
+public static class StringExtensions
 {
 	extension(string value)
 	{

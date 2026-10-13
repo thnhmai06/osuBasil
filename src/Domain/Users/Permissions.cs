@@ -4,7 +4,9 @@ namespace Basil.Domain.Users;
 
 /// <summary>The actions an account may take, grouped by the osu! client privilege each group shows as.</summary>
 /// <remarks>
-///     Each group takes one byte and has a member named after it that holds every action of the group. Restrictions
+///     Each group takes one byte and has a member named after it that holds every action of the group. A
+///     permission that includes smaller ones (a manage permission includes the matching view permission) holds their
+///     bits too, so a check asks for the bit of the smallest permission that allows the action. Restrictions
 ///     suspend some granted permissions for a while; the rest are the account's effective permissions.
 /// </remarks>
 [Flags]
@@ -13,45 +15,25 @@ public enum Permissions : ulong
 	/// <summary>No permission.</summary>
 	None = 0,
 
+	#region Rooms
+
 	/// <summary>Create rooms, in game or for a tournament.</summary>
 	PlayerCreateRoom = 1UL << 0,
 
 	/// <summary>Join rooms and take a seat, including being seated by a referee.</summary>
 	PlayerJoinRoom = 1UL << 1,
 
-	/// <summary>Post in the general, room and spectator channels the account is a member of.</summary>
-	PlayerChat = 1UL << 2,
-
-	/// <summary>Send private messages.</summary>
-	PlayerPrivateMessage = 1UL << 3,
-
-	/// <summary>Spectate other players.</summary>
-	PlayerSpectate = 1UL << 4,
-
-	/// <summary>Upload new beatmapsets while uploads are not locked.</summary>
-	PlayerUploadBeatmapsets = 1UL << 5,
-
-	/// <summary>Every permission of the player group.</summary>
-	Player = PlayerCreateRoom | PlayerJoinRoom | PlayerChat | PlayerPrivateMessage | PlayerSpectate |
-	         PlayerUploadBeatmapsets,
-
-	/// <summary>Search and download beatmapsets with osu!direct.</summary>
-	SupporterDirect = 1UL << 8,
-
-	/// <summary>Every permission of the supporter group.</summary>
-	Supporter = SupporterDirect,
-
 	/// <summary>Log in with osu!tourney and watch any open room, reading its channel.</summary>
 	TournamentObserveRooms = 1UL << 16,
-
-	/// <summary>Post in the channel of any room.</summary>
-	TournamentPostInAnyRoom = 1UL << 17,
 
 	/// <summary>See the private rooms and private match history of other users.</summary>
 	TournamentViewPrivateMatches = 1UL << 18,
 
-	/// <summary>Act with the authority of the creator in every room, and join any room without its password.</summary>
-	TournamentManageAnyRoom = 1UL << 19,
+	/// <summary>
+	///     Act with the authority of the creator in every room, and join any room without its password; includes seeing
+	///     private matches and posting in any room.
+	/// </summary>
+	TournamentManageAnyRoom = 1UL << 19 | TournamentViewPrivateMatches | TournamentPostInAnyRoom,
 
 	/// <summary>Open more tournament rooms than one creator may otherwise have open.</summary>
 	TournamentUnlimitedRooms = 1UL << 20,
@@ -59,22 +41,18 @@ public enum Permissions : ulong
 	/// <summary>Act for another online user in room and lobby operations, with that user's permissions.</summary>
 	TournamentActForUsers = 1UL << 21,
 
-	/// <summary>Import, replace, delete, hide and lock beatmapsets, and see hidden ones.</summary>
-	TournamentManageBeatmaps = 1UL << 22,
+	#endregion
 
-	/// <summary>See hidden beatmapsets.</summary>
-	TournamentViewHiddenBeatmaps = 1UL << 23,
+	#region Chat
 
-	/// <summary>Every permission of the tournament group.</summary>
-	Tournament = TournamentObserveRooms | TournamentPostInAnyRoom | TournamentViewPrivateMatches |
-	             TournamentManageAnyRoom | TournamentUnlimitedRooms | TournamentActForUsers |
-	             TournamentManageBeatmaps | TournamentViewHiddenBeatmaps,
+	/// <summary>Post in the general, room and spectator channels the account is a member of.</summary>
+	PlayerChat = 1UL << 2,
 
-	/// <summary>Silence other users for a while.</summary>
-	ModeratorSilence = 1UL << 24,
+	/// <summary>Send private messages.</summary>
+	PlayerPrivateMessage = 1UL << 3,
 
-	/// <summary>Suspend any permissions of other users, for a while or until lifted, and lift such suspensions.</summary>
-	ModeratorRestrict = 1UL << 25,
+	/// <summary>Post in the channel of any room.</summary>
+	TournamentPostInAnyRoom = 1UL << 17,
 
 	/// <summary>Send private messages past blocks and friends-only settings.</summary>
 	ModeratorMessageAnyone = 1UL << 26,
@@ -82,8 +60,57 @@ public enum Permissions : ulong
 	/// <summary>Show a notification to online users.</summary>
 	ModeratorAnnounce = 1UL << 27,
 
-	/// <summary>Every permission of the moderator group.</summary>
-	Moderator = ModeratorSilence | ModeratorRestrict | ModeratorMessageAnyone | ModeratorAnnounce,
+	#endregion
+
+	#region Spectating
+
+	/// <summary>Spectate other players.</summary>
+	PlayerSpectate = 1UL << 4,
+
+	#endregion
+
+	#region Beatmaps
+
+	/// <summary>Upload new beatmapsets while uploads are not locked.</summary>
+	PlayerUploadBeatmapsets = 1UL << 5,
+
+	/// <summary>Search and download beatmapsets with osu!direct.</summary>
+	SupporterDirect = 1UL << 8,
+
+	/// <summary>See hidden beatmaps and beatmapsets.</summary>
+	TournamentViewHiddenBeatmaps = 1UL << 23,
+
+	/// <summary>Import, replace, delete, hide and lock beatmapsets; includes seeing hidden ones.</summary>
+	TournamentManageBeatmaps = 1UL << 22 | TournamentViewHiddenBeatmaps,
+
+	#endregion
+
+	#region Users
+
+	/// <summary>Silence other users for a while.</summary>
+	ModeratorSilence = 1UL << 24,
+
+	/// <summary>
+	///     Suspend any permissions of other users, for a while or until lifted, and lift such suspensions; includes
+	///     silencing.
+	/// </summary>
+	ModeratorRestrict = 1UL << 25 | ModeratorSilence,
+
+	/// <summary>See deleted accounts.</summary>
+	OwnerViewDeletedUsers = 1UL << 43,
+
+	/// <summary>
+	///     Create, edit and delete accounts, set other users' passwords and end their sessions; includes seeing deleted
+	///     accounts.
+	/// </summary>
+	OwnerManageAccounts = 1UL << 40 | OwnerViewDeletedUsers,
+
+	/// <summary>Grant and remove permissions.</summary>
+	OwnerManagePermissions = 1UL << 41,
+
+	#endregion
+
+	#region Server
 
 	/// <summary>Change the settings of the running server.</summary>
 	DeveloperConfigureServer = 1UL << 32,
@@ -91,37 +118,68 @@ public enum Permissions : ulong
 	/// <summary>Read the server's diagnostics.</summary>
 	DeveloperViewDiagnostics = 1UL << 33,
 
-	/// <summary>Every permission of the developer group.</summary>
-	Developer = DeveloperConfigureServer | DeveloperViewDiagnostics,
-
-	/// <summary>Create, edit and delete accounts, set other users' passwords and end their sessions.</summary>
-	OwnerManageAccounts = 1UL << 40,
-
-	/// <summary>Grant and remove permissions.</summary>
-	OwnerManagePermissions = 1UL << 41,
-
 	/// <summary>Edit the message of the day, the main menu, the FAQ, seasonal backgrounds and banners.</summary>
 	OwnerManageContent = 1UL << 42,
 
+	#endregion
+
+	#region Groups
+
+	/// <summary>Every permission of the player group.</summary>
+	Player = PlayerCreateRoom | PlayerJoinRoom | PlayerChat | PlayerPrivateMessage | PlayerSpectate |
+	         PlayerUploadBeatmapsets,
+
+	/// <summary>Every permission of the supporter group.</summary>
+	Supporter = SupporterDirect,
+
+	/// <summary>Every permission of the tournament group.</summary>
+	Tournament = TournamentObserveRooms | TournamentPostInAnyRoom | TournamentViewPrivateMatches |
+	             TournamentManageAnyRoom | TournamentUnlimitedRooms | TournamentActForUsers |
+	             TournamentManageBeatmaps | TournamentViewHiddenBeatmaps,
+
+	/// <summary>Every permission of the moderator group.</summary>
+	Moderator = ModeratorSilence | ModeratorRestrict | ModeratorMessageAnyone | ModeratorAnnounce,
+
+	/// <summary>Every permission of the developer group.</summary>
+	Developer = DeveloperConfigureServer | DeveloperViewDiagnostics,
+
 	/// <summary>Every permission of the owner group.</summary>
-	Owner = OwnerManageAccounts | OwnerManagePermissions | OwnerManageContent,
+	Owner = OwnerManageAccounts | OwnerViewDeletedUsers | OwnerManagePermissions | OwnerManageContent,
 
 	/// <summary>Every permission.</summary>
 	All = Player | Supporter | Tournament | Moderator | Developer | Owner,
 
-	/// <summary>The management permissions, which restrictions never suspend; they are withdrawn by changing the permissions.</summary>
-	Management = TournamentManageAnyRoom | TournamentManageBeatmaps | Moderator | Developer | Owner,
+	#endregion
+
+	#region Rule sets
+
+	/// <summary>
+	///     The bits only management permissions have, which no restriction may suspend; management is withdrawn by
+	///     changing the permissions.
+	/// </summary>
+	/// <remarks>
+	///     The smaller permissions a management permission contains (seeing hidden beatmaps, private matches) are not
+	///     among them: a restriction may suspend them, except from a user who holds the whole management permission.
+	/// </remarks>
+	Management = (TournamentManageAnyRoom | TournamentManageBeatmaps | Moderator | Developer | Owner) &
+	             ~(TournamentViewPrivateMatches | TournamentPostInAnyRoom | TournamentViewHiddenBeatmaps),
 
 	/// <summary>The permissions a silence suspends: chatting, private messages and joining rooms.</summary>
 	SuspendedBySilence = PlayerJoinRoom | PlayerChat | PlayerPrivateMessage,
 
 	/// <summary>The permissions an account acting for another user may use in that user's name: room and lobby operations.</summary>
 	RoomDelegation = PlayerCreateRoom | PlayerJoinRoom | TournamentManageAnyRoom | TournamentUnlimitedRooms
+
+	#endregion
 }
 
 /// <summary>Provides the rules for combining and reporting <see cref="Permissions" />.</summary>
 public static class PermissionsExtensions
 {
+	/// <summary>The management permissions that contain smaller permissions a restriction could otherwise suspend.</summary>
+	private static readonly Permissions[] ManagementPermissions =
+		[Permissions.TournamentManageAnyRoom, Permissions.TournamentManageBeatmaps];
+
 	/// <param name="held">The permissions held.</param>
 	extension(Permissions held)
 	{
@@ -136,20 +194,25 @@ public static class PermissionsExtensions
 		/// <summary>Gets the permissions left in effect once the active restrictions suspend theirs.</summary>
 		/// <param name="restrictions">The account's restrictions; only those active at <paramref name="now" /> count.</param>
 		/// <param name="now">The moment to evaluate at.</param>
-		/// <returns>The granted permissions that no active restriction suspends.</returns>
-		public Permissions Effective(IEnumerable<Restriction> restrictions,
-			DateTimeOffset now)
+		/// <returns>
+		///     The granted permissions that no active restriction suspends; a management permission held in full keeps
+		///     every bit it contains.
+		/// </returns>
+		public Permissions Effective(IEnumerable<Restriction> restrictions, DateTimeOffset now)
 		{
 			var suspended = restrictions
 				.Where(restriction => restriction.Value.IsActive(now))
 				.Aggregate(Permissions.None, (all, restriction) => all | restriction.Value.Permissions);
-			return held & ~suspended;
+			var kept = Permissions.None;
+			foreach (var management in ManagementPermissions)
+				if (held.Allows(management)) kept |= management;
+			return held & ~(suspended & ~kept);
 		}
 
 		/// <summary>Gets the privileges an osu! client is told about for a set of effective permissions.</summary>
 		/// <returns>The privileges of every group in which at least one permission is held.</returns>
 		/// <remarks>Watching rooms with osu!tourney also turns on <see cref="ClientPrivileges.Supporter" />, which osu!tourney requires.</remarks>
-		public ClientPrivileges ToClientPrivileges()
+		public ClientPrivileges ToPrivileges()
 		{
 			var privileges = ClientPrivileges.None;
 			if ((held & Permissions.Player) != 0) privileges |= ClientPrivileges.Player;

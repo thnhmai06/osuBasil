@@ -19,7 +19,7 @@ public interface IMenuBannerRepository
 	/// <summary>Lists every banner, whether or not it is shown now.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>All stored banners.</returns>
-	Task<IReadOnlyList<MenuBanner>> ListAsync(CancellationToken cancellationToken = default);
+	Task<IEnumerable<MenuBanner>> ListAsync(CancellationToken cancellationToken = default);
 
 	/// <summary>Deletes a banner; deleting a missing one does nothing.</summary>
 	/// <param name="banner">The banner to delete.</param>

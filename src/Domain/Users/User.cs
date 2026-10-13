@@ -108,11 +108,7 @@ public sealed partial class UserData
 	public Permissions Permissions
 	{
 		get;
-		set
-		{
-			value.ThrowIfUndefined();
-			field = value;
-		}
+		set => field = value.ThrowIfUndefined();
 	} = Permissions.Player | Permissions.Supporter;
 
 	/// <summary>Gets or sets the date and time when the user was deleted, if any.</summary>

@@ -38,7 +38,7 @@ internal sealed class ChannelService(
 
 		var members = channel.Members.ToArray();
 		foreach (var member in members)
-			channel.RemoveMember(member);
+			channel.MutableMembers.Remove(member);
 
 		events.Emit(new ChannelClosed(channel, members));
 
@@ -62,11 +62,11 @@ internal sealed class ChannelService(
 			if (replaced is not null)
 			{
 				if (replaced.IsOpen) return ChannelJoinResult.AlreadyMember;
-				channel.RemoveMember(replaced);
+				channel.MutableMembers.Remove(replaced);
 			}
 		}
 
-		channel.AddMember(by);
+		channel.MutableMembers.Add(by);
 		events.Emit(new ChannelMemberJoined(channel, by, replaced));
 		return ChannelJoinResult.Joined;
 	}
@@ -75,7 +75,7 @@ internal sealed class ChannelService(
 	public ChannelPartResult Part(ChannelSession channel, Connection by)
 	{
 		using var scope = channel.Enter();
-		if (!channel.RemoveMember(by)) return ChannelPartResult.NotMember;
+		if (!channel.MutableMembers.Remove(by)) return ChannelPartResult.NotMember;
 		events.Emit(new ChannelMemberParted(channel, by, false));
 		return ChannelPartResult.Parted;
 	}
@@ -129,7 +129,7 @@ internal sealed class ChannelService(
 	/// <inheritdoc />
 	public void JoinAutoChannels(Connection by)
 	{
-		foreach (var channel in generalChannels.All)
+		foreach (var channel in generalChannels.All.Values)
 			if (channel.Channel.AutoJoin)
 				Join(channel, by);
 	}
@@ -137,7 +137,7 @@ internal sealed class ChannelService(
 	/// <inheritdoc />
 	public void PartAll(Connection by)
 	{
-		foreach (var channel in generalChannels.All)
+		foreach (var channel in generalChannels.All.Values)
 			Part(channel, by);
 	}
 
@@ -187,7 +187,7 @@ internal sealed class ChannelService(
 
 			removed = [.. channel.Members.Where(member => !CanRead(channel, member, now))];
 			foreach (var member in removed)
-				channel.RemoveMember(member);
+				channel.MutableMembers.Remove(member);
 			events.Emit(new ChannelConfigured(channel, change, removed));
 		}
 

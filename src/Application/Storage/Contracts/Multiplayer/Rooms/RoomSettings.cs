@@ -9,15 +9,15 @@ public sealed class RoomSettings
 
 	/// <summary>Creates the settings of a room.</summary>
 	/// <param name="match">The match the room plays.</param>
-	/// <param name="value">The room's initial stored settings.</param>
-	internal RoomSettings(Match match, MatchSettings value)
+	/// <param name="matchSettings">The room's initial stored settings.</param>
+	internal RoomSettings(Match match, MatchSettings matchSettings)
 	{
 		_match = match;
-		Value = value;
+		MatchSettings = matchSettings;
 	}
 
 	/// <summary>Gets the stored settings of the room's match.</summary>
-	public MatchSettings Value { get; }
+	public MatchSettings MatchSettings { get; }
 
 	/// <summary>Gets the name broadcast to clients.</summary>
 	public string Name => _match.Value.Name;

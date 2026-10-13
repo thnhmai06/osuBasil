@@ -209,7 +209,7 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 			Index = (room.Rounds.LastRound?.Index ?? 0) + 1,
 			Match = room.Match,
 			BeatmapHash = room.Settings.Beatmap!.Hash,
-			Settings = room.Settings.Value.Clone(),
+			Settings = room.Settings.MatchSettings.Clone(),
 			StartedAt = time.GetUtcNow(),
 			EndedAt = null
 		};
@@ -240,5 +240,4 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 		var round = RoundMechanics.EndCurrentRound(room, time.GetUtcNow(), false)!;
 		events.Emit(new RoomRoundCompleted(room, round, slot));
 	}
-
 }

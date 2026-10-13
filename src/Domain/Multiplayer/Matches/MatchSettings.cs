@@ -41,22 +41,14 @@ public sealed class MatchSettings
 	public GameTeamType TeamType
 	{
 		get;
-		set
-		{
-			value.ThrowIfUndefined();
-			field = value;
-		}
+		set => field = value.ThrowIfUndefined();
 	} = GameTeamType.HeadToHead;
 
 	/// <summary>Gets or sets the condition that decides the winner of a round.</summary>
 	public GameWinCondition WinCondition
 	{
 		get;
-		set
-		{
-			value.ThrowIfUndefined();
-			field = value;
-		}
+		set => field = value.ThrowIfUndefined();
 	} = GameWinCondition.Score;
 
 	/// <summary>Gets the room's random seed, broadcast to clients as part of the match's data.</summary>

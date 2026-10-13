@@ -1,3 +1,4 @@
+using System.Globalization;
 using Basil.Application.Storage.Contracts.Content;
 using Basil.Domain.Content;
 using Basil.Infrastructure.Storage.Common;
@@ -20,25 +21,29 @@ internal sealed class PostgresSettingsRepository(
 	/// <inheritdoc />
 	public async Task LoadAsync(CancellationToken cancellationToken)
 	{
-		var row = await reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<SettingsRow>(
-			"""
-			select motd, locked_creation, menu_icon_url, menu_icon_image, mirror_download_endpoint, mirror_search_endpoint
-			from settings where id = 1
-			"""), cancellationToken).ConfigureAwait(false);
+		var rows = await reader.ReadAsync(connection => connection.QueryAsync<(string Name, string? Value)>(
+			"select name, value from settings"), cancellationToken).ConfigureAwait(false);
+		var values = rows.ToDictionary(row => row.Name, row => row.Value, StringComparer.Ordinal);
 
-		_settings = row is null
-			? new ServerSettings()
-			: new ServerSettings
+		// A setting without a row keeps its default.
+		var defaults = new ServerSettings();
+		_settings = new ServerSettings
+		{
+			Motd = values.GetValueOrDefault("motd"),
+			LockedCreation = values.GetValueOrDefault("locked_creation") is { } locks
+				? (CreationLocks)int.Parse(locks, CultureInfo.InvariantCulture)
+				: defaults.LockedCreation,
+			MenuIcon = new ServerSettings.MenuIconSettings
 			{
-				Motd = row.Motd,
-				LockedCreation = (CreationLocks)row.LockedCreation,
-				MenuIcon = new MenuIcon { Url = Parse(row.MenuIconUrl), Image = ParseImage(row.MenuIconImage) },
-				Mirror = new BeatmapMirror
-				{
-					DownloadEndpoint = Parse(row.MirrorDownloadEndpoint),
-					SearchEndpoint = Parse(row.MirrorSearchEndpoint)
-				}
-			};
+				Url = Parse(values.GetValueOrDefault("menu_icon_url")),
+				Image = ParseImage(values.GetValueOrDefault("menu_icon_image"))
+			},
+			BeatmapMirror = new ServerSettings.BeatmapMirrorSettings
+			{
+				DownloadEndpoint = Parse(values.GetValueOrDefault("mirror_download_endpoint")),
+				SearchEndpoint = Parse(values.GetValueOrDefault("mirror_search_endpoint"))
+			}
+		};
 	}
 
 	/// <inheritdoc />
@@ -55,23 +60,23 @@ internal sealed class PostgresSettingsRepository(
 		var parameters = new
 		{
 			settings.Motd,
-			LockedCreation = (int)settings.LockedCreation,
+			LockedCreation = ((int)settings.LockedCreation).ToString(CultureInfo.InvariantCulture),
 			MenuIconUrl = settings.MenuIcon.Url?.ToString(),
 			MenuIconImage = settings.MenuIcon.Image?.ToString(),
-			MirrorDownloadEndpoint = settings.Mirror.DownloadEndpoint?.ToString(),
-			MirrorSearchEndpoint = settings.Mirror.SearchEndpoint?.ToString()
+			MirrorDownloadEndpoint = settings.BeatmapMirror.DownloadEndpoint?.ToString(),
+			MirrorSearchEndpoint = settings.BeatmapMirror.SearchEndpoint?.ToString()
 		};
 		Interlocked.Exchange(ref _settings, settings);
 		_ = writer.SaveAsync(Root.Server, (GetType(), 1), new WriteCommand(
 			"""
-			update settings set
-				motd = @Motd,
-				locked_creation = @LockedCreation,
-				menu_icon_url = @MenuIconUrl,
-				menu_icon_image = @MenuIconImage,
-				mirror_download_endpoint = @MirrorDownloadEndpoint,
-				mirror_search_endpoint = @MirrorSearchEndpoint
-			where id = 1;
+			insert into settings (name, value)
+			values ('motd', @Motd),
+				   ('locked_creation', @LockedCreation),
+				   ('menu_icon_url', @MenuIconUrl),
+				   ('menu_icon_image', @MenuIconImage),
+				   ('mirror_download_endpoint', @MirrorDownloadEndpoint),
+				   ('mirror_search_endpoint', @MirrorSearchEndpoint)
+			on conflict (name) do update set value = excluded.value;
 			""",
 			parameters));
 		return Task.CompletedTask;
@@ -91,16 +96,5 @@ internal sealed class PostgresSettingsRepository(
 
 		logger.LogWarning("The menu icon image {Image} is not a valid asset reference and is not shown", value);
 		return null;
-	}
-
-	/// <summary>A stored row of the <c>settings</c> table.</summary>
-	private sealed class SettingsRow
-	{
-		public string? Motd { get; set; }
-		public int LockedCreation { get; set; }
-		public string? MenuIconUrl { get; set; }
-		public string? MenuIconImage { get; set; }
-		public string? MirrorDownloadEndpoint { get; set; }
-		public string? MirrorSearchEndpoint { get; set; }
 	}
 }

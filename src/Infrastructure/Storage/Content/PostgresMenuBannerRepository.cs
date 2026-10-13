@@ -38,9 +38,9 @@ internal sealed class PostgresMenuBannerRepository(
 	}
 
 	/// <inheritdoc />
-	public Task<IReadOnlyList<MenuBanner>> ListAsync(CancellationToken cancellationToken = default)
+	public Task<IEnumerable<MenuBanner>> ListAsync(CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult<IReadOnlyList<MenuBanner>>([.. _banners.Values.OrderBy(banner => banner.CreatedAt)]);
+		return Task.FromResult<IEnumerable<MenuBanner>>(_banners.Values.OrderBy(banner => banner.CreatedAt));
 	}
 
 	/// <inheritdoc />

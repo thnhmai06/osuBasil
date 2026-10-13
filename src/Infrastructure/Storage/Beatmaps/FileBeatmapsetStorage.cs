@@ -10,7 +10,7 @@ using SharpZip = ICSharpCode.SharpZipLib.Zip;
 
 namespace Basil.Infrastructure.Storage.Beatmaps;
 
-/// <summary>Stores beatmapset files and offers each set as an .osz archive.</summary>
+/// <summary>Stores each beatmapset's files in its own folder and exports sets as .osz archives.</summary>
 internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmapsetStorage> logger) : IBeatmapsetStorage
 {
 	// ponytail: 2,000 files and 2 GiB declared unpacked; raise these only if legitimate osu! sets exceed them.
@@ -149,7 +149,7 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 	}
 
 	/// <inheritdoc />
-	public async Task<Stream?> OpenArchiveAsync(Beatmapset set, bool withVideo,
+	public async Task<Stream?> ExportAsync(Beatmapset set, bool withVideo,
 		CancellationToken cancellationToken = default)
 	{
 		var id = set.Id.ToString(CultureInfo.InvariantCulture);

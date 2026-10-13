@@ -17,12 +17,12 @@ internal sealed class PostgresChannelRepository(DatabaseReader reader, DatabaseW
 	private volatile bool _loaded;
 
 	/// <inheritdoc />
-	public Task<IReadOnlyList<GeneralChannel>> ListAsync(CancellationToken cancellationToken = default)
+	public Task<IEnumerable<GeneralChannel>> ListAsync(CancellationToken cancellationToken = default)
 	{
 		if (!_loaded)
 			throw new InvalidOperationException("Server channels are read before the storage has started.");
-		return Task.FromResult<IReadOnlyList<GeneralChannel>>(
-			[.. _channels.Values.OrderBy(channel => channel.Name, StringComparer.Ordinal)]);
+		return Task.FromResult<IEnumerable<GeneralChannel>>(
+			_channels.Values.OrderBy(channel => channel.Name, StringComparer.Ordinal));
 	}
 
 	/// <inheritdoc />

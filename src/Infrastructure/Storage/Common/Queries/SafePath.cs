@@ -1,3 +1,5 @@
+using Basil.Domain.Utilities;
+
 namespace Basil.Infrastructure.Storage.Common.Queries;
 
 /// <summary>Combines a stored file's name with the directory that holds it, refusing any name that escapes it.</summary>
@@ -15,7 +17,7 @@ internal static class SafePath
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
-		if (name.Contains('\0'))
+		if (name.HasNul())
 			throw new ArgumentException("The name cannot contain a null character.", nameof(name));
 
 		if (Path.IsPathRooted(name))

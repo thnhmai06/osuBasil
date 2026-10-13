@@ -18,14 +18,13 @@ internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWri
 {
 	protected override string WriteSql =>
 		"""
-		insert into matches (id, name, creator_id, started_at, ended_at, is_private)
-		values (@Id, @Name, @CreatorId, @StartedAt, @EndedAt, @IsPrivate)
-		on conflict (id) do update set
-			name = excluded.name,
-			creator_id = excluded.creator_id,
-			started_at = excluded.started_at,
-			ended_at = excluded.ended_at,
-			is_private = excluded.is_private;
+		update matches set
+			name = @Name,
+			creator_id = @CreatorId,
+			started_at = @StartedAt,
+			ended_at = @EndedAt,
+			is_private = @IsPrivate
+		where id = @Id;
 		""";
 
 	/// <inheritdoc />
@@ -45,7 +44,7 @@ internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWri
 	}
 
 	/// <inheritdoc />
-	public Task CreateOrUpdateAsync(Match match, CancellationToken cancellationToken = default)
+	public Task UpdateAsync(Match match, CancellationToken cancellationToken = default)
 	{
 		_ = SaveAsync(match);
 		return Task.CompletedTask;
@@ -124,7 +123,7 @@ internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWri
 		var conditions = new List<string>();
 		if (query.Ended is true) conditions.Add("ended_at is not null");
 		else if (query.Ended is false) conditions.Add("ended_at is null");
-		if (!query.IncludePrivate) conditions.Add("not is_private");
+		if (query.Private is { } isPrivate) conditions.Add(isPrivate ? "is_private" : "not is_private");
 		return conditions.Count == 0 ? "" : $"where {string.Join(" AND ", conditions)}";
 	}
 

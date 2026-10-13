@@ -1,4 +1,6 @@
-﻿namespace Basil.Domain.Users;
+﻿using Basil.Domain.Utilities;
+
+namespace Basil.Domain.Users;
 
 /// <summary>
 ///     A social relationship between two users.
@@ -29,9 +31,7 @@ public sealed class Relationship : IEquatable<Relationship>
 	public required RelationshipType Type
 	{
 		get;
-		init => field = Enum.IsDefined(value)
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), value, "RelationshipType is not a defined value.");
+		init => field = value.ThrowIfUndefined();
 	}
 
 	public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;

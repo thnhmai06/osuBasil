@@ -41,7 +41,7 @@ public abstract class BeatmapObjects
 		}
 	}
 
-	public static BeatmapObjects NewFrom(GameMode mode)
+	public static BeatmapObjects Empty(GameMode mode)
 	{
 		return mode switch
 		{

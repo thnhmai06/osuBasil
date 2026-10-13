@@ -39,7 +39,7 @@ internal sealed class RoomAuthorityService(RoomEventStream events, TimeProvider 
 		if (room.Authority.Referees.Contains(user)) return RoomResult.AlreadyReferee;
 		if (room.Authority.Referees.Count >= RoomAuthority.MaxReferees) return RoomResult.TooManyReferees;
 
-		room.Authority.AddReferee(user);
+		room.Authority.MutableReferees.Add(user);
 		events.Emit(new RoomRefereeAdded(room, by.User, user));
 		return RoomResult.Ok;
 	}
@@ -47,7 +47,7 @@ internal sealed class RoomAuthorityService(RoomEventStream events, TimeProvider 
 	private RoomResult RemoveReferee(Room room, Connection by, User user)
 	{
 		if (!RoomRules.IsCreatorOrAnyRoomManager(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
-		if (!room.Authority.RemoveReferee(user)) return RoomResult.NotReferee;
+		if (!room.Authority.MutableReferees.Remove(user)) return RoomResult.NotReferee;
 
 		events.Emit(new RoomRefereeRemoved(room, by.User, user));
 		return RoomResult.Ok;

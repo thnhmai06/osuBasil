@@ -17,7 +17,7 @@ internal sealed class Lobby : ILobby
 	private readonly ConcurrentSet<BanchoConnection> _watchers = [];
 
 	/// <inheritdoc />
-	public IEnumerable<Room> Rooms => _rooms.Values;
+	public IReadOnlyDictionary<int, Room> Rooms => _rooms;
 
 	/// <inheritdoc />
 	public IReadOnlySet<BanchoConnection> Watchers => _watchers;
@@ -30,12 +30,6 @@ internal sealed class Lobby : ILobby
 			using var scope = _sync.EnterScope();
 			return _rooms.Count + _reserved.Count >= MaxRoomId;
 		}
-	}
-
-	/// <inheritdoc />
-	public Room? Find(int id)
-	{
-		return _rooms.GetValueOrDefault(id);
 	}
 
 	/// <inheritdoc />
@@ -82,16 +76,7 @@ internal sealed class Lobby : ILobby
 	}
 
 	/// <inheritdoc />
-	bool ILobby.AddWatcher(BanchoConnection watcher)
-	{
-		return _watchers.Add(watcher);
-	}
-
-	/// <inheritdoc />
-	bool ILobby.RemoveWatcher(BanchoConnection watcher)
-	{
-		return _watchers.Remove(watcher);
-	}
+	ISet<BanchoConnection> ILobby.MutableWatchers => _watchers;
 
 	/// <inheritdoc />
 	Lock.Scope ILobby.Enter()

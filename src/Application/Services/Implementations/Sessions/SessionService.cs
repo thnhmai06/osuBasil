@@ -70,7 +70,7 @@ internal sealed class SessionService(
 	public int CloseIdle()
 	{
 		var now = time.GetUtcNow();
-		var idleConnections = registry.Sessions
+		var idleConnections = registry.Sessions.Values
 			.SelectMany(s => s.Connections)
 			.Where(c => c.IsOpen && now - c.LastActiveAt > c.Type.IdleTimeout())
 			.ToList();
@@ -95,13 +95,13 @@ internal sealed class SessionService(
 		using var scope = registry.Enter();
 
 		// An online user's session holds the current copy of the user; a login may have read an older one.
-		var user = registry.Find(connection.User)?.User ?? connection.User;
+		var user = registry.Sessions.GetValueOrDefault(connection.User)?.User ?? connection.User;
 		if (connection.Type is ConnectionType.Tourney &&
 		    !user.Value.Permissions.Effective(restrictions, time.GetUtcNow())
 			    .Allows(Permissions.TournamentObserveRooms))
 			return LoginFailure.NoTourneyPermission;
 
-		var session = registry.Find(connection.User);
+		var session = registry.Sessions.GetValueOrDefault(connection.User);
 
 		if (session is not null && !connection.Type.AllowsMany() &&
 		    session[connection.Type].FirstOrDefault() is { } old)
@@ -110,7 +110,7 @@ internal sealed class SessionService(
 				return LoginFailure.AlreadyOnline;
 
 			CloseCore(old, ConnectionCloseReason.Replaced);
-			session = registry.Find(connection.User);
+			session = registry.Sessions.GetValueOrDefault(connection.User);
 		}
 
 		var cameOnline = session is null;
@@ -137,7 +137,7 @@ internal sealed class SessionService(
 	{
 		if (!PermissionRules.Allows(by, Permissions.ModeratorAnnounce, time.GetUtcNow())) return null;
 
-		var recipients = registry.Sessions
+		var recipients = registry.Sessions.Values
 			.Where(s => to is null || to.Contains(s.User))
 			.Select(s => s.Bancho)
 			.Where(c => c is not null && c.IsOpen)
@@ -170,7 +170,7 @@ internal sealed class SessionService(
 		if (!PermissionRules.Allows(by, Permissions.TournamentActForUsers, time.GetUtcNow()))
 			return (null, DelegationFailure.NotPermitted);
 
-		var session = registry.Find(user);
+		var session = registry.Sessions.GetValueOrDefault(user);
 		var connection = session is null
 			? null
 			: new Connection?[] { session.Bancho, session.Irc, session.Apis.FirstOrDefault(), session.Tourneys.FirstOrDefault() }
@@ -190,7 +190,7 @@ internal sealed class SessionService(
 	/// <param name="reason">Why they are closed.</param>
 	internal void CloseAll(User user, ConnectionCloseReason reason)
 	{
-		var session = registry.Find(user);
+		var session = registry.Sessions.GetValueOrDefault(user);
 		if (session is null) return;
 
 		foreach (var connection in session.Connections.Where(connection => connection.IsOpen).ToList())

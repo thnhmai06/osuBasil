@@ -8,7 +8,7 @@ public interface IChannelRepository
 	/// <summary>Lists every general channel.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The general channels.</returns>
-	Task<IReadOnlyList<GeneralChannel>> ListAsync(CancellationToken cancellationToken = default);
+	Task<IEnumerable<GeneralChannel>> ListAsync(CancellationToken cancellationToken = default);
 
 	/// <summary>Stores a general channel, adding it or replacing the stored channel with the same name.</summary>
 	/// <param name="channel">The channel to store.</param>

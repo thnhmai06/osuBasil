@@ -12,13 +12,7 @@ internal sealed class UserRegistry : IUserRegistry
 	private readonly Lock _sync = new(); // ponytail: one lock for all logins; per-user locks if login rate ever matters
 
 	/// <inheritdoc />
-	public IEnumerable<UserSession> Sessions => _sessions.Values;
-
-	/// <inheritdoc />
-	public UserSession? Find(User user)
-	{
-		return _sessions.GetValueOrDefault(user);
-	}
+	public IReadOnlyDictionary<User, UserSession> Sessions => _sessions;
 
 	/// <inheritdoc />
 	public Connection? Find(string token)

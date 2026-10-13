@@ -27,7 +27,7 @@ internal static class RoomSlotsMechanics
 
 		Occupy(slot, player);
 
-		if (room.Settings.Value.TeamType.IsTeamMode())
+		if (room.Settings.MatchSettings.TeamType.IsTeamMode())
 		{
 			var redCount = room.Slots.Count(s => s.Team == GameTeam.Red);
 			var blueCount = room.Slots.Count(s => s.Team == GameTeam.Blue);

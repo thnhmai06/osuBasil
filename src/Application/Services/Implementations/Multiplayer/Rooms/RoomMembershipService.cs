@@ -89,7 +89,7 @@ internal sealed class RoomMembershipService(
 		}
 		else if (connection is TourneyConnection observer)
 		{
-			foreach (var room in lobby.Rooms.Where(room => room.Members.Observers.Contains(observer)).ToArray())
+			foreach (var room in lobby.Rooms.Values.Where(room => room.Members.Observers.Contains(observer)).ToArray())
 			{
 				await using var scope = await room.EnterAsync(cancellationToken);
 				if (scope is not null) ObserverLeave(room, observer);
@@ -225,7 +225,7 @@ internal sealed class RoomMembershipService(
 	{
 		if (!RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 		if (RoomRules.IsManager(room, player)) return RoomResult.IsManager;
-		if (!room.Members.AddBanned(player)) return RoomResult.Ok;
+		if (!room.Members.MutableBanned.Add(player)) return RoomResult.Ok;
 
 		int? vacated = null;
 		BanchoConnection? evicted = null;
@@ -250,7 +250,7 @@ internal sealed class RoomMembershipService(
 	private RoomResult Unban(Room room, Connection by, User player)
 	{
 		if (!RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
-		if (!room.Members.RemoveBanned(player)) return RoomResult.NotBanned;
+		if (!room.Members.MutableBanned.Remove(player)) return RoomResult.NotBanned;
 
 		events.Emit(new RoomPlayerUnbanned(room, player));
 		return RoomResult.Ok;
@@ -270,7 +270,7 @@ internal sealed class RoomMembershipService(
 	private RoomResult ObserverJoin(Room room, TourneyConnection by)
 	{
 		if (room.Slots.Find(by.User) is not null) return RoomResult.IsPlayer;
-		if (!room.Members.AddObserver(by)) return RoomResult.Ok;
+		if (!room.Members.MutableObservers.Add(by)) return RoomResult.Ok;
 
 		events.Emit(new RoomObserverJoined(room, by));
 		roomChannel.JoinChannel(room, by);
@@ -279,7 +279,7 @@ internal sealed class RoomMembershipService(
 
 	private RoomResult ObserverLeave(Room room, TourneyConnection by)
 	{
-		if (!room.Members.RemoveObserver(by)) return RoomResult.NotObserver;
+		if (!room.Members.MutableObservers.Remove(by)) return RoomResult.NotObserver;
 
 		events.Emit(new RoomObserverLeft(room, by));
 		roomChannel.LeaveChannel(room, by);

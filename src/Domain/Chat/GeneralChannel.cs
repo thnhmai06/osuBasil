@@ -10,22 +10,14 @@ public sealed class GeneralChannel : Channel, IEquatable<GeneralChannel>
 	public Permissions ReadPermissions
 	{
 		get;
-		set
-		{
-			value.ThrowIfUndefined();
-			field = value;
-		}
+		set => field = value.ThrowIfUndefined();
 	} = Permissions.None;
 
 	/// <summary>Gets or sets the permissions a user must all hold, besides the right to chat, to post in the channel.</summary>
 	public Permissions WritePermissions
 	{
 		get;
-		set
-		{
-			value.ThrowIfUndefined();
-			field = value;
-		}
+		set => field = value.ThrowIfUndefined();
 	} = Permissions.None;
 
 	/// <summary>A value that indicates whether the channel is joined automatically at login.</summary>

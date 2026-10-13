@@ -28,7 +28,7 @@ internal sealed class MatchRecorder(
 			case LobbyRoomClosed e:
 				if (e.AbortedRound is { } abortedRound)
 					await rounds.CreateOrUpdateAsync(abortedRound, cancellationToken);
-				await matches.CreateOrUpdateAsync(e.Room.Match, cancellationToken);
+				await matches.UpdateAsync(e.Room.Match, cancellationToken);
 				await RecordMatchEventAsync(e.Room.Match, MatchEventType.Closed, @event.Timestamp, e.By,
 					detail: e.By is null ? "Empty" : null, cancellationToken: cancellationToken);
 				break;
@@ -44,7 +44,7 @@ internal sealed class MatchRecorder(
 		switch (@event)
 		{
 			case RoomSettingsChanged e when e.Change.Name is not null || e.Change.IsPrivate is not null:
-				await matches.CreateOrUpdateAsync(e.Room.Match, cancellationToken);
+				await matches.UpdateAsync(e.Room.Match, cancellationToken);
 				break;
 			case RoomRoundStarted or RoomRoundAborted or RoomRoundCompleted:
 				await rounds.CreateOrUpdateAsync(((RoomRoundEvent)@event).Round, cancellationToken);

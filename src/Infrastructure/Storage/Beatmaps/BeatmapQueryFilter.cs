@@ -23,11 +23,7 @@ internal static class BeatmapQueryFilter
 	{
 		var conditions = new List<string>();
 
-		if (!query.IncludeHidden)
-		{
-			conditions.Add("b.visible");
-			conditions.Add("s.visible");
-		}
+		if (query.Hidden is { } hidden) conditions.Add(hidden ? "not (b.visible and s.visible)" : "b.visible and s.visible");
 
 		if (query.Mode is { } mode)
 		{

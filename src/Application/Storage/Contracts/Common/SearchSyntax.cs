@@ -164,6 +164,16 @@ internal static partial class SearchSyntax
 		return false;
 	}
 
+	/// <summary>Reads a state filter value: <c>1</c> for yes, <c>0</c> for no, <c>*</c> for both.</summary>
+	/// <param name="raw">The raw value text.</param>
+	/// <param name="value">The value read; <see langword="null" /> for both.</param>
+	/// <returns>True when the text is <c>1</c>, <c>0</c> or <c>*</c>.</returns>
+	public static bool TryParseState(string raw, out bool? value)
+	{
+		value = raw switch { "1" => true, "0" => false, _ => null };
+		return raw is "1" or "0" or "*";
+	}
+
 	/// <summary>Attempts to parse a length string as seconds.</summary>
 	/// <param name="raw">The raw length text (e.g., "2m", "120s", "500ms", "1h").</param>
 	/// <param name="seconds">The parsed length in seconds.</param>

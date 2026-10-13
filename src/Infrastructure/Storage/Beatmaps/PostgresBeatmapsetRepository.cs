@@ -15,16 +15,15 @@ internal sealed class PostgresBeatmapsetRepository(DatabaseReader reader, Databa
 {
 	protected override string WriteSql =>
 		"""
-		insert into beatmapsets (id, artist, title, creator, created_at, updated_at, locked, visible)
-		values (@Id, @Artist, @Title, @Creator, @CreatedAt, @UpdatedAt, @Locked, @Visible)
-		on conflict (id) do update set
-			artist = excluded.artist,
-			title = excluded.title,
-			creator = excluded.creator,
-			created_at = excluded.created_at,
-			updated_at = excluded.updated_at,
-			locked = excluded.locked,
-			visible = excluded.visible;
+		update beatmapsets set
+			artist = @Artist,
+			title = @Title,
+			creator = @Creator,
+			created_at = @CreatedAt,
+			updated_at = @UpdatedAt,
+			locked = @Locked,
+			visible = @Visible
+		where id = @Id;
 		""";
 
 	/// <inheritdoc />
@@ -80,7 +79,7 @@ internal sealed class PostgresBeatmapsetRepository(DatabaseReader reader, Databa
 	}
 
 	/// <inheritdoc />
-	public Task CreateOrUpdateAsync(Beatmapset set, CancellationToken cancellationToken = default)
+	public Task UpdateAsync(Beatmapset set, CancellationToken cancellationToken = default)
 	{
 		_ = SaveAsync(set);
 		return Task.CompletedTask;

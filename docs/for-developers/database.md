@@ -34,7 +34,7 @@ needs a database server and its credentials. The write path was measured before 
 | Group        | Tables                                                                      | Notes                                                                 |
 |--------------|-----------------------------------------------------------------------------|-----------------------------------------------------------------------|
 | Accounts     | `users`, `credentials`, `restrictions`, `relationships`, `logins`           | `logins` is append-only history                                       |
-| Server       | `settings` (one row), `channels`, `menu_banners`                            | resident: loaded at startup, never released                           |
+| Server       | `settings` (one row per setting), `channels`, `menu_banners`               | resident: loaded at startup, never released                           |
 | Beatmaps     | `beatmapsets`, `beatmaps`, sequences `local_beatmapset_ids`, `local_beatmap_ids` | mirror the stored beatmapset files; local ids start at 1 000 000 000 |
 | Multiplayer  | `matches`, `rounds`, `match_events`, `round_scores`                         | `match_events` is append-only history                                 |
 | Scores       | `scores`, `user_stats`                                                      | a score belongs to its player                                         |

@@ -11,10 +11,10 @@ public interface IRestrictionRepository
 	/// <returns>The stored restriction.</returns>
 	Task<Restriction> CreateAsync(RestrictionData data, CancellationToken cancellationToken = default);
 
-	/// <summary>Stores a restriction under its id, replacing the stored restriction.</summary>
+	/// <summary>Stores the new values of a created restriction, replacing the stored ones.</summary>
 	/// <param name="restriction">The restriction to store.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task CreateOrUpdateAsync(Restriction restriction, CancellationToken cancellationToken = default);
+	Task UpdateAsync(Restriction restriction, CancellationToken cancellationToken = default);
 
 	/// <summary>Gets a restriction by id.</summary>
 	/// <param name="id">The restriction id.</param>

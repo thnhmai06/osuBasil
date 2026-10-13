@@ -25,13 +25,10 @@ public interface IBeatmapsetRepository
 	Task<Beatmapset> CreateAsync(BeatmapsetData data, int? onlineId = null,
 		CancellationToken cancellationToken = default);
 
-	/// <summary>
-	///     Stores a beatmapset under its id, adding it when no beatmapset has that id and replacing the stored beatmapset
-	///     otherwise.
-	/// </summary>
+	/// <summary>Stores the new values of a created beatmapset, replacing the stored ones.</summary>
 	/// <param name="set">The beatmapset to store.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task CreateOrUpdateAsync(Beatmapset set, CancellationToken cancellationToken = default);
+	Task UpdateAsync(Beatmapset set, CancellationToken cancellationToken = default);
 
 	/// <summary>Lists the beatmapsets that have at least one beatmap the query includes, newest id first.</summary>
 	/// <param name="query">Which beatmaps to include.</param>

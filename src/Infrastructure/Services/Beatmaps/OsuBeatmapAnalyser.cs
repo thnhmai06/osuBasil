@@ -104,7 +104,7 @@ internal sealed class OsuBeatmapAnalyser : IBeatmapAnalyser
 						case Spinner: spinners++; break;
 					}
 
-				var o = (OsuObjects)BeatmapObjects.NewFrom(mode);
+				var o = (OsuObjects)BeatmapObjects.Empty(mode);
 				o.Total = circles + sliders + spinners;
 				o.MaxCombo = maxCombo;
 				o.Circles = circles;
@@ -123,7 +123,7 @@ internal sealed class OsuBeatmapAnalyser : IBeatmapAnalyser
 						case Hit: hits++; break;
 					}
 
-				var o = (TaikoObjects)BeatmapObjects.NewFrom(mode);
+				var o = (TaikoObjects)BeatmapObjects.Empty(mode);
 				o.Total = hits + drumRolls + dendens;
 				o.MaxCombo = maxCombo;
 				o.Hits = hits;
@@ -137,7 +137,7 @@ internal sealed class OsuBeatmapAnalyser : IBeatmapAnalyser
 				foreach (var h in hitObjects)
 					CountCatchRecursive(h, ref fruits, ref droplets, ref tinyDroplets, ref bananas);
 
-				var o = (CatchObjects)BeatmapObjects.NewFrom(mode);
+				var o = (CatchObjects)BeatmapObjects.Empty(mode);
 				o.Total = fruits + droplets + tinyDroplets + bananas;
 				o.MaxCombo = maxCombo;
 				o.Fruits = fruits;
@@ -156,7 +156,7 @@ internal sealed class OsuBeatmapAnalyser : IBeatmapAnalyser
 						case Note: notes++; break;
 					}
 
-				var o = (ManiaObjects)BeatmapObjects.NewFrom(mode);
+				var o = (ManiaObjects)BeatmapObjects.Empty(mode);
 				o.Total = notes + holdNotes;
 				o.MaxCombo = maxCombo;
 				o.Notes = notes;

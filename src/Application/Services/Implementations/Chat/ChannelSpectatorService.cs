@@ -25,8 +25,8 @@ internal sealed class ChannelSpectatorService(ChannelEventStream events, IUserRe
 		if (by.User.Equals(host.User)) return SpectateResult.Self;
 		if (spectatorChannel.Members.Contains(by)) return SpectateResult.AlreadySpectating;
 
-		var hostJoined = spectatorChannel.AddMember(host);
-		spectatorChannel.AddMember(by);
+		var hostJoined = spectatorChannel.MutableMembers.Add(host);
+		spectatorChannel.MutableMembers.Add(by);
 		events.Emit(new ChannelSpectatorJoined(spectatorChannel, by, hostJoined));
 		return SpectateResult.Spectating;
 	}
@@ -38,9 +38,10 @@ internal sealed class ChannelSpectatorService(ChannelEventStream events, IUserRe
 		if (spectatorChannel is null) return false;
 
 		using var scope = spectatorChannel.Enter();
-		if (ReferenceEquals(by, spectatorChannel.Host) || !spectatorChannel.RemoveMember(by)) return false;
+		if (ReferenceEquals(by, spectatorChannel.Host) || !spectatorChannel.MutableMembers.Remove(by)) return false;
 
-		var hostLeft = !spectatorChannel.Spectators.Any() && spectatorChannel.RemoveMember(spectatorChannel.Host);
+		var hostLeft = !spectatorChannel.Spectators.Any() &&
+		               spectatorChannel.MutableMembers.Remove(spectatorChannel.Host);
 		events.Emit(new ChannelSpectatorLeft(spectatorChannel, by, hostLeft));
 		return true;
 	}

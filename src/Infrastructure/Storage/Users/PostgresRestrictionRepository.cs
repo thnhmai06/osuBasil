@@ -19,13 +19,12 @@ internal sealed class PostgresRestrictionRepository(
 
 	protected override string WriteSql =>
 		"""
-		insert into restrictions (id, user_id, permissions, starts_at, ends_at)
-		values (@Id, @UserId, @Permissions, @StartsAt, @EndsAt)
-		on conflict (id) do update set
-			user_id = excluded.user_id,
-			permissions = excluded.permissions,
-			starts_at = excluded.starts_at,
-			ends_at = excluded.ends_at;
+		update restrictions set
+			user_id = @UserId,
+			permissions = @Permissions,
+			starts_at = @StartsAt,
+			ends_at = @EndsAt
+		where id = @Id;
 		""";
 
 	/// <inheritdoc />
@@ -62,7 +61,7 @@ internal sealed class PostgresRestrictionRepository(
 	}
 
 	/// <inheritdoc />
-	public Task CreateOrUpdateAsync(Restriction restriction, CancellationToken cancellationToken = default)
+	public Task UpdateAsync(Restriction restriction, CancellationToken cancellationToken = default)
 	{
 		var saved = SaveAsync(restriction);
 		var live = Track(restriction);

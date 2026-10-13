@@ -19,15 +19,12 @@ public interface IBeatmapRepository
 	/// <exception cref="AlreadyExistsException">Another beatmap already has the hash or <paramref name="onlineId" />.</exception>
 	Task<Beatmap> CreateAsync(BeatmapData data, int? onlineId = null, CancellationToken cancellationToken = default);
 
-	/// <summary>
-	///     Stores a beatmap under its id, adding it when no beatmap has that id and replacing the stored beatmap
-	///     otherwise.
-	/// </summary>
+	/// <summary>Stores the new values of a created beatmap, replacing the stored ones.</summary>
 	/// <param name="beatmap">The beatmap to store.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <remarks>A beatmap already stored keeps its identity: the instance the repository returns for it takes the new data.</remarks>
 	/// <exception cref="AlreadyExistsException">Another beatmap already has the beatmap's hash.</exception>
-	Task CreateOrUpdateAsync(Beatmap beatmap, CancellationToken cancellationToken = default);
+	Task UpdateAsync(Beatmap beatmap, CancellationToken cancellationToken = default);
 
 	/// <summary>Gets a beatmap by id.</summary>
 	/// <param name="id">The beatmap id.</param>

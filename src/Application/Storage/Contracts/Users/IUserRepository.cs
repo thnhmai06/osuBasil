@@ -14,11 +14,11 @@ public interface IUserRepository
 	/// <exception cref="AlreadyExistsException">Another user already has the same safe name.</exception>
 	Task<User> CreateAsync(UserData data, CancellationToken cancellationToken = default);
 
-	/// <summary>Stores a user under its id, adding it when no user has that id and replacing the stored user otherwise.</summary>
+	/// <summary>Stores the new values of a created user, replacing the stored ones.</summary>
 	/// <param name="user">The user to store.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <remarks>The name of a user already stored is kept; a stored user changes name only through <see cref="RenameAsync" />.</remarks>
-	Task CreateOrUpdateAsync(User user, CancellationToken cancellationToken = default);
+	Task UpdateAsync(User user, CancellationToken cancellationToken = default);
 
 	/// <summary>Gives a stored user a new name, unless another user already has it.</summary>
 	/// <param name="user">The user to rename.</param>

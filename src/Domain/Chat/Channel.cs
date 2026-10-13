@@ -15,12 +15,17 @@ public abstract class Channel
 		get;
 		init
 		{
-			if (string.IsNullOrWhiteSpace(value.TrimStart('#')))
+			value = value.TrimStart('#');
+			if (string.IsNullOrWhiteSpace(value))
 				throw new ArgumentException("Channel name cannot be empty.", nameof(value));
 			field = value;
 		}
 	}
 
 	/// <summary>Gets or sets the topic shown to users who join the channel.</summary>
-	public virtual string Topic { get; set => field = value.ThrowIfHasNul(); } = string.Empty;
+	public virtual string Topic
+	{
+		get;
+		set => field = value.ThrowIfHasNul();
+	} = string.Empty;
 }

@@ -75,21 +75,12 @@ insert into channels (name, topic, read_permissions, write_permissions, auto_joi
 values ('#osu', 'General discussion.', 0, 0, true, true),
 	   ('#lobby', 'Multiplayer lobby discussion.', 0, 0, false, true);
 
-create table settings --TODO: Transpose this
+-- One row per server setting; a setting without a row keeps its default.
+create table settings
 (
-	id                       integer primary key check (id = 1),
-	motd                     text    null,
-	locked_creation          integer not null,
-	menu_icon_url            text    null,
-	menu_icon_image          text    null,
-	mirror_download_endpoint text    null,
-	mirror_search_endpoint   text    null
+	name  text primary key,
+	value text null
 );
-
--- 4 = CreationLocks.Beatmapsets.
-insert into settings (id, motd, locked_creation, menu_icon_url, menu_icon_image, mirror_download_endpoint,
-					  mirror_search_endpoint)
-values (1, null, 4, null, null, null, null);
 
 create table menu_banners
 (

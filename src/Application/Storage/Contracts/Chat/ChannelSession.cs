@@ -21,6 +21,9 @@ public abstract class ChannelSession
 	/// <summary>Gets the connections currently in the channel.</summary>
 	public IReadOnlySet<Connection> Members => _members;
 
+	/// <summary>Gets the connections currently in the channel, for changing them; the caller holds the scope and reports the change itself.</summary>
+	internal ISet<Connection> MutableMembers => _members;
+
 	/// <summary>Gets a value that indicates whether the channel has been closed.</summary>
 	public bool IsClosed
 	{
@@ -35,22 +38,5 @@ public abstract class ChannelSession
 	internal Lock.Scope Enter()
 	{
 		return _sync.EnterScope();
-	}
-
-	/// <summary>Adds a member without emitting an event; the caller holds the scope and reports the change itself.</summary>
-	/// <returns><see langword="true" /> if the connection was not already a member.</returns>
-	internal bool AddMember(Connection connection)
-	{
-		return _members.Add(connection);
-	}
-
-	/// <summary>
-	///     Removes a member without emitting an event; the caller holds the scope and reports the change
-	///     itself.
-	/// </summary>
-	/// <returns><see langword="true" /> if the connection was a member.</returns>
-	internal bool RemoveMember(Connection connection)
-	{
-		return _members.Remove(connection);
 	}
 }

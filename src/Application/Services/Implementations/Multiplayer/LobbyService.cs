@@ -51,14 +51,14 @@ internal sealed class LobbyService(
 	/// <inheritdoc />
 	public void Watch(BanchoConnection by)
 	{
-		if (lobby.AddWatcher(by))
+		if (lobby.MutableWatchers.Add(by))
 			Emit(new LobbyWatcherJoined(by));
 	}
 
 	/// <inheritdoc />
 	public void Unwatch(BanchoConnection by)
 	{
-		if (lobby.RemoveWatcher(by))
+		if (lobby.MutableWatchers.Remove(by))
 			Emit(new LobbyWatcherLeft(by));
 	}
 
@@ -187,7 +187,7 @@ internal sealed class LobbyService(
 		foreach (var player in evicted) RoomSlotsMechanics.Vacate(room, player);
 
 		room.Match.Value.EndedAt = time.GetUtcNow();
-		room.Members.ClearObservers();
+		room.Members.MutableObservers.Clear();
 		room.IsClosed = true;
 		channels.Close(room.Channel);
 		lobby.Remove(room);
@@ -228,7 +228,7 @@ internal sealed class LobbyService(
 
 	private bool TooManyRooms(User creator)
 	{
-		return lobby.Rooms.Count(room => room.IsTournament && creator.Equals(room.Authority.Creator)) >=
+		return lobby.Rooms.Values.Count(room => room.IsTournament && creator.Equals(room.Authority.Creator)) >=
 		       MaxRoomsPerCreator;
 	}
 

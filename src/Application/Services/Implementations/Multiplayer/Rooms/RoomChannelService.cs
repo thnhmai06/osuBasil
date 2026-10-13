@@ -28,7 +28,7 @@ internal sealed class RoomChannelService(ILobby lobby, IChannelService channels)
 	/// <param name="connection">The connection that leaves.</param>
 	internal void LeaveAllChannels(Connection connection)
 	{
-		foreach (var room in lobby.Rooms)
+		foreach (var room in lobby.Rooms.Values)
 			channels.Part(room.Channel, connection);
 	}
 }
