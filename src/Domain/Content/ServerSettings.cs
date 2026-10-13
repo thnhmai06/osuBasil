@@ -7,7 +7,11 @@ public sealed record ServerSettings
 {
 	/// <summary>Gets the message of the day shown to users when they log in, or <see langword="null" /> for none.</summary>
 	/// <exception cref="ArgumentException">The value contains the NUL character.</exception>
-	public string? Motd { get; init => field = value?.ThrowIfHasNul(); }
+	public string? Motd
+	{
+		get;
+		init => field = value?.ThrowIfHasNul();
+	}
 
 	/// <summary>Gets the kinds of thing only their managers may create; everyone else is refused while a kind is locked.</summary>
 	/// <remarks>Beatmapset uploads are locked unless an administrator opens them.</remarks>
@@ -22,26 +26,59 @@ public sealed record ServerSettings
 		}
 	} = CreationLocks.Beatmapsets;
 
-	/// <summary>Gets the address the main-menu icon links to, or <see langword="null" /> for none.</summary>
-	/// <exception cref="ArgumentException">The value is not an absolute address.</exception>
-	public Uri? MenuIconUrl
+	/// <summary>Gets the icon shown on the main menu.</summary>
+	/// <exception cref="ArgumentNullException">The value is <see langword="null" />.</exception>
+	public MenuIcon MenuIcon
 	{
 		get;
-		init => field = RequireAbsolute(value);
+		init => field = value ?? throw new ArgumentNullException(nameof(value));
+	} = new();
+
+	/// <summary>Gets the beatmap mirror that beatmapset downloads and beatmap searches are sent to.</summary>
+	/// <exception cref="ArgumentNullException">The value is <see langword="null" />.</exception>
+	public BeatmapMirror Mirror
+	{
+		get;
+		init => field = value ?? throw new ArgumentNullException(nameof(value));
+	} = new();
+
+	/// <summary>Returns an address unchanged, or throws when it is not absolute.</summary>
+	/// <exception cref="ArgumentException">The address is not absolute.</exception>
+	internal static Uri? RequireAbsolute(Uri? value)
+	{
+		return value is null || value.IsAbsoluteUri
+			? value
+			: throw new ArgumentException("The address must be absolute.", nameof(value));
+	}
+}
+
+/// <summary>The icon shown on the main menu: its image and the address it links to.</summary>
+public sealed record MenuIcon
+{
+	/// <summary>Gets the address the icon links to, or <see langword="null" /> for none.</summary>
+	/// <exception cref="ArgumentException">The value is not an absolute address.</exception>
+	public Uri? Url
+	{
+		get;
+		init => field = ServerSettings.RequireAbsolute(value);
 	}
 
-	/// <summary>Gets the image of the main-menu icon: a canonical asset reference, or <see langword="null" /> for none.</summary>
-	public AssetReference? MenuIconImage { get; init; }
+	/// <summary>Gets the image of the icon, or <see langword="null" /> for none.</summary>
+	public AssetReference? Image { get; init; }
+}
 
+/// <summary>The beatmap mirror the server sends beatmapset downloads and beatmap searches to.</summary>
+public sealed record BeatmapMirror
+{
 	/// <summary>
 	///     Gets the address beatmapset downloads are sent to, or <see langword="null" /> when the server has no
 	///     download mirror.
 	/// </summary>
 	/// <exception cref="ArgumentException">The value is not an absolute address.</exception>
-	public Uri? MirrorDownloadEndpoint
+	public Uri? DownloadEndpoint
 	{
 		get;
-		init => field = RequireAbsolute(value);
+		init => field = ServerSettings.RequireAbsolute(value);
 	}
 
 	/// <summary>
@@ -49,17 +86,10 @@ public sealed record ServerSettings
 	///     mirror.
 	/// </summary>
 	/// <exception cref="ArgumentException">The value is not an absolute address.</exception>
-	public Uri? MirrorSearchEndpoint
+	public Uri? SearchEndpoint
 	{
 		get;
-		init => field = RequireAbsolute(value);
-	}
-
-	private static Uri? RequireAbsolute(Uri? value)
-	{
-		return value is null || value.IsAbsoluteUri
-			? value
-			: throw new ArgumentException("The address must be absolute.", nameof(value));
+		init => field = ServerSettings.RequireAbsolute(value);
 	}
 }
 

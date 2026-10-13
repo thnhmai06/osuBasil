@@ -32,10 +32,12 @@ internal sealed class PostgresSettingsRepository(
 			{
 				Motd = row.Motd,
 				LockedCreation = (CreationLocks)row.LockedCreation,
-				MenuIconUrl = Parse(row.MenuIconUrl),
-				MenuIconImage = ParseImage(row.MenuIconImage),
-				MirrorDownloadEndpoint = Parse(row.MirrorDownloadEndpoint),
-				MirrorSearchEndpoint = Parse(row.MirrorSearchEndpoint)
+				MenuIcon = new MenuIcon { Url = Parse(row.MenuIconUrl), Image = ParseImage(row.MenuIconImage) },
+				Mirror = new BeatmapMirror
+				{
+					DownloadEndpoint = Parse(row.MirrorDownloadEndpoint),
+					SearchEndpoint = Parse(row.MirrorSearchEndpoint)
+				}
 			};
 	}
 
@@ -54,10 +56,10 @@ internal sealed class PostgresSettingsRepository(
 		{
 			settings.Motd,
 			LockedCreation = (int)settings.LockedCreation,
-			MenuIconUrl = settings.MenuIconUrl?.ToString(),
-			MenuIconImage = settings.MenuIconImage?.ToString(),
-			MirrorDownloadEndpoint = settings.MirrorDownloadEndpoint?.ToString(),
-			MirrorSearchEndpoint = settings.MirrorSearchEndpoint?.ToString()
+			MenuIconUrl = settings.MenuIcon.Url?.ToString(),
+			MenuIconImage = settings.MenuIcon.Image?.ToString(),
+			MirrorDownloadEndpoint = settings.Mirror.DownloadEndpoint?.ToString(),
+			MirrorSearchEndpoint = settings.Mirror.SearchEndpoint?.ToString()
 		};
 		Interlocked.Exchange(ref _settings, settings);
 		_ = writer.SaveAsync(Root.Server, (GetType(), 1), new WriteCommand(
