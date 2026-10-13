@@ -13,10 +13,8 @@ public abstract record RoomSettingsEvent(Room Room) : RoomEvent(Room);
 ///     travels in events.
 /// </param>
 /// <param name="PasswordChanged">Whether the password changed.</param>
-/// <param name="CountdownCancelled">Whether the change cancelled a countdown that would have started the round.</param>
 public sealed record RoomSettingsChanged(
 	Room Room,
 	RoomSettingsChange Change,
-	bool PasswordChanged,
-	bool CountdownCancelled)
+	bool PasswordChanged)
 	: RoomSettingsEvent(Room);

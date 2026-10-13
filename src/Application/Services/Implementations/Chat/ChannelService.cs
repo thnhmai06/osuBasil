@@ -10,12 +10,14 @@ using Basil.Application.Storage.Contracts.Sessions;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
+using Basil.Domain.Utilities;
 
 namespace Basil.Application.Services.Implementations.Chat;
 
 /// <summary>Opens and closes chat channels and lets connections join, part, post and spectate.</summary>
 internal sealed class ChannelService(
 	IGeneralChannelRegistry generalChannels,
+	IChannelRepository channels,
 	ChannelEventStream events,
 	ChannelSpectatorService spectators,
 	IRelationshipRepository relationships,
@@ -146,6 +148,62 @@ internal sealed class ChannelService(
 		if (!generalChannels.Add(session)) return null;
 		events.Emit(new ChannelOpened(session));
 		return session;
+	}
+
+	/// <inheritdoc />
+	public async Task<ChannelManageResult> CreateAsync(GeneralChannel channel, Connection by,
+		CancellationToken cancellationToken = default)
+	{
+		if (!PermissionRules.Allows(by, Permissions.DeveloperConfigureServer, time.GetUtcNow()))
+			return ChannelManageResult.NotAuthorized;
+		if (Open(channel) is null) return ChannelManageResult.NameTaken;
+		await channels.CreateOrUpdateAsync(channel, cancellationToken).ConfigureAwait(false);
+		return ChannelManageResult.Ok;
+	}
+
+	/// <inheritdoc />
+	public async Task<ChannelManageResult> ConfigureAsync(GeneralChannelSession channel, GeneralChannelChange change,
+		Connection by, CancellationToken cancellationToken = default)
+	{
+		var now = time.GetUtcNow();
+		if (!PermissionRules.Allows(by, Permissions.DeveloperConfigureServer, now))
+			return ChannelManageResult.NotAuthorized;
+
+		Connection[] removed;
+		using (channel.Enter())
+		{
+			if (channel.IsClosed) return ChannelManageResult.Closed;
+			var target = channel.Channel;
+
+			if (change.ReadPermissions is { } r) r.ThrowIfUndefined();
+			if (change.WritePermissions is { } w) w.ThrowIfUndefined();
+			change.Topic?.ThrowIfHasNul();
+
+			if (change.Topic is { } topic) target.Topic = topic;
+			if (change.ReadPermissions is { } read) target.ReadPermissions = read;
+			if (change.WritePermissions is { } write) target.WritePermissions = write;
+			if (change.AutoJoin is { } autoJoin) target.AutoJoin = autoJoin;
+			if (change.Visible is { } visible) target.Visible = visible;
+
+			removed = [.. channel.Members.Where(member => !CanRead(channel, member, now))];
+			foreach (var member in removed)
+				channel.RemoveMember(member);
+			events.Emit(new ChannelConfigured(channel, change, removed));
+		}
+
+		await channels.CreateOrUpdateAsync(channel.Channel, cancellationToken).ConfigureAwait(false);
+		return ChannelManageResult.Ok;
+	}
+
+	/// <inheritdoc />
+	public async Task<ChannelManageResult> DeleteAsync(GeneralChannelSession channel, Connection by,
+		CancellationToken cancellationToken = default)
+	{
+		if (!PermissionRules.Allows(by, Permissions.DeveloperConfigureServer, time.GetUtcNow()))
+			return ChannelManageResult.NotAuthorized;
+		Close(channel);
+		await channels.DeleteAsync(channel.Channel, cancellationToken).ConfigureAwait(false);
+		return ChannelManageResult.Ok;
 	}
 
 	/// <summary>Checks whether a connection may read a channel.</summary>

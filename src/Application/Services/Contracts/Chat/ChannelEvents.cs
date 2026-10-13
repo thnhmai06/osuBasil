@@ -64,6 +64,13 @@ public sealed record ChannelSpectatorJoined(ChannelSession Channel, Connection S
 public sealed record ChannelSpectatorLeft(ChannelSession Channel, Connection Spectator, bool HostLeft)
 	: ChannelMembershipEvent(Channel);
 
+/// <summary>A general channel's settings changed.</summary>
+/// <param name="Channel">The channel.</param>
+/// <param name="Change">The settings that changed.</param>
+/// <param name="Removed">The members removed because they may no longer read the channel.</param>
+public sealed record ChannelConfigured(ChannelSession Channel, GeneralChannelChange Change, IReadOnlyList<Connection> Removed)
+	: ChannelEvent(Channel);
+
 /// <summary>A spectator reported that it failed to spectate the host, usually because it lacks the beatmap.</summary>
 /// <param name="Channel">The channel of the player being spectated.</param>
 /// <param name="Spectator">The spectator that failed to spectate.</param>

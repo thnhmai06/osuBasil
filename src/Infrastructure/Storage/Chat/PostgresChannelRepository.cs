@@ -1,25 +1,45 @@
-using System.Collections.Immutable;
+using System.Collections.Concurrent;
 using Basil.Application.Storage.Contracts.Chat;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Storage.Common;
 using Basil.Infrastructure.Storage.Common.Database;
+using Basil.Infrastructure.Storage.Common.Writing;
 using Dapper;
 
 namespace Basil.Infrastructure.Storage.Chat;
 
 /// <summary>Stores the general chat channels the server offers.</summary>
-internal sealed class PostgresChannelRepository(DatabaseReader reader) : IChannelRepository, IResident
+internal sealed class PostgresChannelRepository(DatabaseReader reader, DatabaseWriter writer)
+	: IChannelRepository, IResident
 {
-	// TODO: Thiết lập cơ chế cho phép Thêm/Bớt/Sửa/Xóa cho kênh ChatChannel ngay tại runtime. Mình muốn các thao tác client không gọi trực tiếp đối với database mà phải qua application.
-	private ImmutableList<GeneralChannel>? _channels;
+	private readonly ConcurrentDictionary<string, GeneralChannel> _channels = new(StringComparer.OrdinalIgnoreCase);
+	private volatile bool _loaded;
 
 	/// <inheritdoc />
 	public Task<IReadOnlyList<GeneralChannel>> ListAsync(CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult<IReadOnlyList<GeneralChannel>>(Volatile.Read(ref _channels)
-		                                                      ?? throw new InvalidOperationException(
-			                                                      "Server channels are read before the storage has started."));
+		if (!_loaded)
+			throw new InvalidOperationException("Server channels are read before the storage has started.");
+		return Task.FromResult<IReadOnlyList<GeneralChannel>>(
+			[.. _channels.Values.OrderBy(channel => channel.Name, StringComparer.Ordinal)]);
+	}
+
+	/// <inheritdoc />
+	public Task CreateOrUpdateAsync(GeneralChannel channel, CancellationToken cancellationToken = default)
+	{
+		_channels[channel.Name] = channel;
+		_ = writer.SaveAsync(Root.Server, (GetType(), channel.Name.ToLowerInvariant()), Upsert(channel));
+		return Task.CompletedTask;
+	}
+
+	/// <inheritdoc />
+	public Task DeleteAsync(GeneralChannel channel, CancellationToken cancellationToken = default)
+	{
+		_channels.TryRemove(channel.Name, out _);
+		_ = writer.SaveAsync(Root.Server, (GetType(), channel.Name.ToLowerInvariant()), new WriteCommand(
+			"delete from channels where name = @Name", new { channel.Name }));
+		return Task.CompletedTask;
 	}
 
 	/// <inheritdoc />
@@ -28,7 +48,38 @@ internal sealed class PostgresChannelRepository(DatabaseReader reader) : IChanne
 		var rows = await reader.ReadAsync(connection => connection.QueryAsync<ChannelRow>(
 				"select name, topic, read_permissions, write_permissions, auto_join, visible from channels order by name"),
 			cancellationToken);
-		_channels = [.. rows.Select(row => row.ToChannel())];
+		foreach (var row in rows)
+		{
+			var channel = row.ToChannel();
+			_channels[channel.Name] = channel;
+		}
+		_loaded = true;
+	}
+
+	private static WriteCommand Upsert(GeneralChannel channel)
+	{
+		var readPermissions = (long)(ulong)channel.ReadPermissions;
+		var writePermissions = (long)(ulong)channel.WritePermissions;
+		return new WriteCommand(
+			"""
+			insert into channels (name, topic, read_permissions, write_permissions, auto_join, visible)
+			values (@Name, @Topic, @ReadPermissions, @WritePermissions, @AutoJoin, @Visible)
+			on conflict (name) do update set
+				topic = excluded.topic,
+				read_permissions = excluded.read_permissions,
+				write_permissions = excluded.write_permissions,
+				auto_join = excluded.auto_join,
+				visible = excluded.visible;
+			""",
+			new
+			{
+				Name = channel.Name,
+				Topic = channel.Topic,
+				ReadPermissions = readPermissions,
+				WritePermissions = writePermissions,
+				AutoJoin = channel.AutoJoin,
+				Visible = channel.Visible
+			});
 	}
 
 	/// <summary>A stored row of the <c>channels</c> table.</summary>

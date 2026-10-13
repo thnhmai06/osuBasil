@@ -72,3 +72,19 @@ public enum SpectateResult : byte
 	/// <summary>The spectator is not granted the permission to spectate, or it is suspended.</summary>
 	NotPermitted
 }
+
+/// <summary>The outcome of creating, configuring or deleting a general channel.</summary>
+public enum ChannelManageResult : byte
+{
+	/// <summary>The change was made.</summary>
+	Ok,
+
+	/// <summary>The caller may not manage general channels.</summary>
+	NotAuthorized,
+
+	/// <summary>A general channel with that name is already open.</summary>
+	NameTaken,
+
+	/// <summary>The channel is closed.</summary>
+	Closed
+}

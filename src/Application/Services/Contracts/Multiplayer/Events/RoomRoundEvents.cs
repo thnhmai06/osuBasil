@@ -23,12 +23,10 @@ public sealed record RoomRoundProgress(Round Round, bool AllLoaded, bool AllSkip
 /// <param name="Room">The room.</param>
 /// <param name="Round">The round.</param>
 /// <param name="Players">The players taking part.</param>
-/// <param name="ByCountdown">Whether a countdown started the round.</param>
 public sealed record RoomRoundStarted(
 	Room Room,
 	Round Round,
-	IReadOnlyList<BanchoConnection> Players,
-	bool ByCountdown)
+	IReadOnlyList<BanchoConnection> Players)
 	: RoomRoundEvent(Room, Round);
 
 /// <summary>A round was aborted.</summary>

@@ -9,6 +9,7 @@ public sealed class SpectatorChannelSession(BanchoConnection host) : ChannelSess
 	/// <summary>Gets the connection being spectated.</summary>
 	public BanchoConnection Host => host;
 
+	/// <summary>Gets the spectator channel this session holds.</summary>
 	public override SpectatorChannel Channel { get; } = new(host.User);
 
 	/// <summary>Gets the connections spectating the host.</summary>

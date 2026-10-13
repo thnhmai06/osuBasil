@@ -181,7 +181,6 @@ internal sealed class LobbyService(
 		RoomOccupied(room);
 		if (room.IsClosed) return;
 
-		RoundMechanics.StopCountdown(room);
 		var aborted = RoundMechanics.EndCurrentRound(room, time.GetUtcNow(), true);
 
 		var evicted = room.Slots.Where(s => s.Player is not null).Select(s => s.Player!).ToList();

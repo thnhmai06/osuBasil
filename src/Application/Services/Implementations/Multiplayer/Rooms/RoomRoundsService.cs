@@ -2,9 +2,9 @@ using Basil.Application.Services.Contracts.Multiplayer;
 using Basil.Application.Services.Contracts.Multiplayer.Events;
 using Basil.Application.Services.Contracts.Multiplayer.Rooms;
 using Basil.Application.Storage.Contracts.Multiplayer;
+using Basil.Application.Storage.Contracts.Multiplayer.Rooms;
 using Basil.Application.Storage.Contracts.Sessions;
 using System.Diagnostics.CodeAnalysis;
-using Basil.Application.Storage.Contracts.Multiplayer.Rooms;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Multiplayer.Rounds;
 using Basil.Domain.Scores;
@@ -12,15 +12,9 @@ using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Implementations.Multiplayer.Rooms;
 
-/// <summary>Runs rounds and countdowns of rooms and records the scores of their rounds.</summary>
+/// <summary>Runs rounds of rooms and records the scores of their rounds.</summary>
 internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider time) : IRoomRoundsService
 {
-	/// <summary>The countdown length used when none is given.</summary>
-	internal static readonly TimeSpan DefaultCountdownLength = TimeSpan.FromSeconds(30);
-
-	/// <summary>The longest countdown allowed.</summary>
-	internal static readonly TimeSpan MaxCountdownLength = TimeSpan.FromHours(1);
-
 	/// <inheritdoc />
 	public Task<RoomResult> StartAsync(Room room, Connection by, CancellationToken cancellationToken = default)
 	{
@@ -60,46 +54,10 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 	}
 
 	/// <inheritdoc />
-	public Task<RoomResult> StartCountdownAsync(Room room, Connection by, TimeSpan length, bool startsRound,
-		CancellationToken cancellationToken = default)
-	{
-		return RoomScope.InScopeAsync(room, () => StartCountdown(room, by, length, startsRound), cancellationToken);
-	}
-
-	/// <inheritdoc />
-	public Task<RoomResult> CancelCountdownAsync(Room room, Connection by,
-		CancellationToken cancellationToken = default)
-	{
-		return RoomScope.InScopeAsync(room, () => CancelCountdown(room, by), cancellationToken);
-	}
-
-	/// <inheritdoc />
 	public Task<RoomResult> RecordScoreAsync(Room room, RoundScore score, User player,
 		CancellationToken cancellationToken = default)
 	{
 		return RoomScope.InScopeAsync(room, () => RecordScore(room, score, player), cancellationToken);
-	}
-
-	/// <summary>Gets the remaining times at which a countdown announces itself, longest first.</summary>
-	/// <param name="length">The countdown's length.</param>
-	/// <param name="startsRound">Whether the countdown starts the round when it ends.</param>
-	/// <returns>
-	///     Every mark is strictly below <paramref name="length" />. A countdown that starts the round announces at 60, 30, 10,
-	///     5,
-	///     4 and 3 seconds and at every whole minute (120, 180, ...), skipping any whole-minute mark, 60 included, within 5
-	///     seconds of the length. Any other countdown announces at 60, 30, 10 and 5 seconds.
-	/// </returns>
-	internal static IReadOnlyList<TimeSpan> MarksFor(TimeSpan length, bool startsRound)
-	{
-		int[] seconds = startsRound ? [30, 10, 5, 4, 3] : [60, 30, 10, 5];
-		var marks = seconds.Select(second => TimeSpan.FromSeconds(second)).Where(mark => mark < length).ToList();
-
-		if (startsRound)
-			for (var minute = TimeSpan.FromMinutes(1); minute < length; minute += TimeSpan.FromMinutes(1))
-				if (length - minute > TimeSpan.FromSeconds(5))
-					marks.Add(minute);
-
-		return [.. marks.OrderByDescending(mark => mark)];
 	}
 
 	private RoomResult Start(Room room, Connection by)
@@ -108,8 +66,7 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 		if (room.Rounds.InProgress) return RoomResult.InProgress;
 		if (room.Settings.Beatmap is null) return RoomResult.NoBeatmap;
 
-		RoundMechanics.StopCountdown(room);
-		StartRound(room, false);
+		StartRound(room);
 		return RoomResult.Ok;
 	}
 
@@ -118,7 +75,6 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 		if (!RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 		if (!room.Rounds.InProgress) return RoomResult.NotInProgress;
 
-		RoundMechanics.StopCountdown(room);
 		AbortRound(room);
 		return RoomResult.Ok;
 	}
@@ -180,40 +136,6 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 			events.Emit(new RoomRoundPlayerCompleted(room, round, slot.Index));
 		else
 			EndRound(room, slot.Index);
-		return RoomResult.Ok;
-	}
-
-	private RoomResult StartCountdown(Room room, Connection by, TimeSpan length, bool startsRound)
-	{
-		if (!RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
-		if (length <= TimeSpan.Zero || length > MaxCountdownLength) return RoomResult.OutOfRange;
-		switch (startsRound)
-		{
-			case true when room.Rounds.InProgress:
-				return RoomResult.InProgress;
-			case true when room.Settings.Beatmap is null:
-				return RoomResult.NoBeatmap;
-		}
-
-		RoundMechanics.StopCountdown(room);
-		var milestones = MarksFor(length, startsRound)
-			.Select(mark => new Countdown.Milestone(mark, countdown => TickAsync(room, countdown, mark)))
-			.Append(new Countdown.Milestone(TimeSpan.Zero, countdown => ElapseAsync(room, countdown, startsRound)));
-		var countdown = new Countdown(length, milestones, time);
-		room.Rounds.CountdownTimer = countdown;
-		room.Rounds.CountdownStartsRound = startsRound;
-		room.Rounds.CountdownEndsAt = countdown.EndsAt;
-		events.Emit(new RoomCountdownStarted(room, length, startsRound, countdown.EndsAt));
-		return RoomResult.Ok;
-	}
-
-	private RoomResult CancelCountdown(Room room, Connection by)
-	{
-		if (!RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
-		if (room.Rounds.CountdownTimer is null) return RoomResult.NoCountdown;
-
-		RoundMechanics.StopCountdown(room);
-		events.Emit(new RoomCountdownCancelled(room));
 		return RoomResult.Ok;
 	}
 
@@ -280,7 +202,7 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 		return allLoaded || allSkipped ? new RoomRoundProgress(round, allLoaded, allSkipped, false) : null;
 	}
 
-	private Round StartRound(Room room, bool byCountdown)
+	private Round StartRound(Room room)
 	{
 		var round = new Round
 		{
@@ -303,7 +225,7 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 		}
 
 		if (players.Count == 0) RoundMechanics.EndCurrentRound(room, time.GetUtcNow(), false);
-		events.Emit(new RoomRoundStarted(room, round, players, byCountdown));
+		events.Emit(new RoomRoundStarted(room, round, players));
 		return round;
 	}
 
@@ -319,23 +241,4 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 		events.Emit(new RoomRoundCompleted(room, round, slot));
 	}
 
-	private async Task TickAsync(Room room, Countdown countdown, TimeSpan mark)
-	{
-		await using var scope = await room.EnterAsync();
-		if (scope is null || !ReferenceEquals(room.Rounds.CountdownTimer, countdown)) return;
-
-		events.Emit(new RoomCountdownTicked(room, mark));
-	}
-
-	private async Task ElapseAsync(Room room, Countdown countdown, bool startsRound)
-	{
-		await using var scope = await room.EnterAsync();
-		if (scope is null || !ReferenceEquals(room.Rounds.CountdownTimer, countdown)) return;
-
-		RoundMechanics.StopCountdown(room);
-		if (startsRound && room is { Rounds.InProgress: false, Settings.Beatmap: not null })
-			StartRound(room, true);
-		else
-			events.Emit(new RoomCountdownElapsed(room, startsRound));
-	}
 }

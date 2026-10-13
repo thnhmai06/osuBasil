@@ -105,12 +105,6 @@ public enum RoomResult : byte
 	/// <summary>No round is in progress.</summary>
 	NotInProgress,
 
-	/// <summary>The countdown length is outside the allowed range.</summary>
-	OutOfRange,
-
-	/// <summary>No countdown is running.</summary>
-	NoCountdown,
-
 	/// <summary>The score was not played in the room's latest round.</summary>
 	RoundMismatch,
 

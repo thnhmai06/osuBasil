@@ -48,12 +48,6 @@ internal sealed class RoomSettingsService(RoomEventStream events, TimeProvider t
 		var freemods = change.Freemods ?? room.Settings.Value.Freemods;
 		if (change.Mods is { } requestedMods && !requestedMods.IsValid(mode)) return RoomResult.InvalidMods;
 
-		var countdownCancelled = room.Rounds.CountdownStartsRound &&
-		                         (change.Beatmap is not null || change.ClearBeatmap || change.Mode is not null ||
-		                          change.Mods is not null || change.Freemods is not null ||
-		                          change.TeamType is not null || change.WinCondition is not null);
-		if (countdownCancelled) RoundMechanics.StopCountdown(room);
-
 		if (change.Name is { } name) room.Match.Value.Name = name;
 
 		if (change.Password is { } password) room.Settings.Password = password;
@@ -87,8 +81,7 @@ internal sealed class RoomSettingsService(RoomEventStream events, TimeProvider t
 		if (change.Size is { } size) RoomSlotsMechanics.Resize(room.Slots, size);
 		if (change.IsPrivate is { } isPrivate) room.Match.Value.IsPrivate = isPrivate;
 
-		events.Emit(new RoomSettingsChanged(room, change with { Password = null }, change.Password is not null,
-			countdownCancelled));
+		events.Emit(new RoomSettingsChanged(room, change with { Password = null }, change.Password is not null));
 		return RoomResult.Ok;
 	}
 

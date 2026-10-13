@@ -11,8 +11,7 @@ internal sealed class GeneralChannelRegistry : IGeneralChannelRegistry
 		new(StringComparer.OrdinalIgnoreCase);
 
 	/// <inheritdoc />
-	public IReadOnlyCollection<GeneralChannelSession> All =>
-		(IReadOnlyCollection<GeneralChannelSession>)_channels.Values;
+	public IReadOnlyCollection<GeneralChannelSession> All => [.. _channels.Values];
 
 	/// <inheritdoc />
 	public GeneralChannelSession? Find(string name)
