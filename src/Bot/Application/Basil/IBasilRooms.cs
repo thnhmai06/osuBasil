@@ -85,19 +85,6 @@ public interface IBasilRooms
 	/// <summary>Starts the round now.</summary>
 	Task<RoomOutcome> StartAsync(User actor, int roomId, CancellationToken cancellationToken = default);
 
-	/// <summary>Starts a countdown, replacing any running one.</summary>
-	/// <param name="actor">The user starting it.</param>
-	/// <param name="roomId">The room id.</param>
-	/// <param name="length">How long it runs.</param>
-	/// <param name="startsRound">Whether the round starts when it ends.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>The outcome.</returns>
-	Task<RoomOutcome> StartCountdownAsync(User actor, int roomId, TimeSpan length, bool startsRound,
-		CancellationToken cancellationToken = default);
-
-	/// <summary>Cancels the running countdown.</summary>
-	Task<RoomOutcome> CancelCountdownAsync(User actor, int roomId, CancellationToken cancellationToken = default);
-
 	/// <summary>Aborts the round in progress.</summary>
 	Task<RoomOutcome> AbortAsync(User actor, int roomId, CancellationToken cancellationToken = default);
 

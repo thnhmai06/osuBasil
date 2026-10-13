@@ -18,6 +18,7 @@ public static class DependencyInjection
 		services.AddSingleton<Random>(Random.Shared);
 		services.TryAddSingleton<TimeProvider>(TimeProvider.System);
 		services.AddSingleton<MpScopes>();
+		services.AddSingleton<RoomCountdowns>();
 		services.AddSingleton<MpCommands>();
 		services.AddSingleton<ChatCommands>();
 		services.AddSingleton<ReplyWriter>();

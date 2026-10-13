@@ -37,8 +37,6 @@ public enum RoomOutcome : byte
 	NoBeatmap,
 	NotPlaying,
 	NotInProgress,
-	OutOfRange,
-	NoCountdown,
 	RoundMismatch,
 	RoomClosed,
 	/// <summary>The room, user or beatmap named in the request does not exist on the server.</summary>

@@ -42,10 +42,6 @@ internal sealed class BotRunner(
 				await anticheatAnnouncer.HandleAsync(botEvent, cancellationToken);
 				break;
 
-			case RoomCountdownStarted:
-			case RoomCountdownTicked:
-			case RoomCountdownCancelled:
-			case RoomCountdownElapsed:
 			case RoomRoundStarted:
 			case RoomRoundAborted:
 			case RoomSettingsChanged:

@@ -19,7 +19,8 @@ internal sealed partial class MpCommands(
 	IBasilRooms rooms,
 	IBasilUsers users,
 	IBasilBeatmaps beatmaps,
-	MpScopes scopes)
+	MpScopes scopes,
+	RoomCountdowns countdowns)
 {
 	/// <summary>The maximum length of a room name as accepted by the osu! client.</summary>
 	private const int MaxRoomNameLength = 50;
@@ -879,23 +880,23 @@ internal sealed partial class MpCommands(
 	private async Task<bool> StartAsync(CommandContext context, int roomId, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
-		RoomOutcome outcome;
 		if (args.Count > 0 && int.TryParse(args[0], out var seconds) && seconds > 0)
-			outcome = await rooms.StartCountdownAsync(context.Sender, roomId, TimeSpan.FromSeconds(seconds),
-				true, cancellationToken);
-		else
-			outcome = await rooms.StartAsync(context.Sender, roomId, cancellationToken);
+		{
+			if (!await StartCountdownAsync(context, roomId, seconds, true, cancellationToken))
+				return false;
 
+			await context.Reply(string.Format(MpReplies.MatchStartsInSeconds, seconds), cancellationToken);
+			return true;
+		}
+
+		var outcome = await rooms.StartAsync(context.Sender, roomId, cancellationToken);
 		if (outcome != RoomOutcome.Ok)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
 		}
 
-		if (args.Count > 0 && int.TryParse(args[0], out var counted) && counted > 0)
-			await context.Reply(string.Format(MpReplies.MatchStartsInSeconds, counted), cancellationToken);
-		else
-			await context.Reply(MpReplies.MatchStarted, cancellationToken);
+		await context.Reply(MpReplies.MatchStarted, cancellationToken);
 		return true;
 	}
 
@@ -910,13 +911,8 @@ internal sealed partial class MpCommands(
 				return false;
 			}
 
-		var outcome = await rooms.StartCountdownAsync(context.Sender, roomId, TimeSpan.FromSeconds(seconds),
-			false, cancellationToken);
-		if (outcome != RoomOutcome.Ok)
-		{
-			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
+		if (!await StartCountdownAsync(context, roomId, seconds, false, cancellationToken))
 			return false;
-		}
 
 		await context.Reply(string.Format(MpReplies.CountdownStarted, seconds), cancellationToken);
 		return true;
@@ -924,14 +920,56 @@ internal sealed partial class MpCommands(
 
 	private async Task<bool> AbortTimerAsync(CommandContext context, int roomId, CancellationToken cancellationToken)
 	{
-		var outcome = await rooms.CancelCountdownAsync(context.Sender, roomId, cancellationToken);
-		if (outcome != RoomOutcome.Ok)
+		var room = await rooms.GetForAsync(context.Sender, roomId, cancellationToken);
+		if (room is null)
 		{
-			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
+			await context.Reply(string.Format(MpReplies.NoActiveRoomWithId, roomId), cancellationToken);
+			return false;
+		}
+
+		if (!room.IsManagedBy(context.Sender))
+		{
+			await context.Reply(MpReplies.Describe(RoomOutcome.NotAuthorized), cancellationToken);
+			return false;
+		}
+
+		if (!await countdowns.CancelAsync(roomId, cancellationToken))
+		{
+			await context.Reply(MpReplies.NoCountdownRunning, cancellationToken);
 			return false;
 		}
 
 		await context.Reply(MpReplies.CountdownAborted, cancellationToken);
+		return true;
+	}
+
+	/// <summary>Starts a countdown after checking what the server no longer checks for it.</summary>
+	/// <param name="context">Who sent the command and how to answer it.</param>
+	/// <param name="roomId">The room the countdown runs in.</param>
+	/// <param name="seconds">How long the countdown runs.</param>
+	/// <param name="startsRound">Whether the round starts when the countdown ends.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns><see langword="true" /> when it started; otherwise the reason was replied.</returns>
+	private async Task<bool> StartCountdownAsync(CommandContext context, int roomId, int seconds, bool startsRound,
+		CancellationToken cancellationToken)
+	{
+		var room = await rooms.GetForAsync(context.Sender, roomId, cancellationToken);
+		string? refusal = room switch
+		{
+			null => string.Format(MpReplies.NoActiveRoomWithId, roomId),
+			_ when !room.IsManagedBy(context.Sender) => MpReplies.Describe(RoomOutcome.NotAuthorized),
+			_ when seconds < 1 || seconds > 3600 => MpReplies.CountdownOutOfRange,
+			{ InProgress: true } when startsRound => MpReplies.Describe(RoomOutcome.InProgress),
+			{ Beatmap: null } when startsRound => MpReplies.Describe(RoomOutcome.NoBeatmap),
+			_ => null
+		};
+		if (refusal is not null)
+		{
+			await context.Reply(refusal, cancellationToken);
+			return false;
+		}
+
+		await countdowns.StartAsync(roomId, context.Sender, TimeSpan.FromSeconds(seconds), startsRound, cancellationToken);
 		return true;
 	}
 

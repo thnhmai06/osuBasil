@@ -34,7 +34,16 @@ public sealed record RoomState(
 	bool Locked,
 	bool IsPrivate,
 	bool InProgress,
-	IReadOnlyList<RoomSlotState> Slots);
+	IReadOnlyList<RoomSlotState> Slots)
+{
+	/// <summary>Determines whether a user manages the room: its creator or one of its referees.</summary>
+	/// <param name="user">The user.</param>
+	/// <returns><see langword="true" /> when the user is the creator or a referee.</returns>
+	public bool IsManagedBy(User user)
+	{
+		return user.Equals(Creator) || Referees.Contains(user);
+	}
+}
 
 /// <summary>The beatmap selected in a room.</summary>
 /// <param name="Id">The beatmap id.</param>

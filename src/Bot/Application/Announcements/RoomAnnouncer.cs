@@ -1,13 +1,14 @@
 using System.Collections.Concurrent;
 using Basil.Bot.Application.Basil;
+using Basil.Bot.Application.Commands.Mp;
 using Basil.Domain.Users;
 
 namespace Basil.Bot.Application.Announcements;
 
 /// <summary>Reacts to room events and posts announcements in the room's channel.</summary>
-internal sealed class RoomAnnouncer(IBasilChat chat, IBasilRooms rooms, TimeProvider timeProvider)
+internal sealed class RoomAnnouncer(IBasilChat chat, IBasilRooms rooms, TimeProvider timeProvider,
+	RoomCountdowns countdowns)
 {
-	private readonly ConcurrentDictionary<int, bool> _countdownStartsRound = new();
 	private readonly ConcurrentDictionary<int, DateTimeOffset> _closingRooms = new();
 
 	/// <summary>Handles a room event and posts appropriate announcements.</summary>
@@ -15,18 +16,6 @@ internal sealed class RoomAnnouncer(IBasilChat chat, IBasilRooms rooms, TimeProv
 	{
 		switch (botEvent)
 		{
-			case RoomCountdownStarted e:
-				await HandleCountdownStartedAsync(e, cancellationToken);
-				break;
-			case RoomCountdownTicked e:
-				await HandleCountdownTickedAsync(e, cancellationToken);
-				break;
-			case RoomCountdownCancelled e:
-				await HandleCountdownCancelledAsync(e, cancellationToken);
-				break;
-			case RoomCountdownElapsed e:
-				await HandleCountdownElapsedAsync(e, cancellationToken);
-				break;
 			case RoomRoundStarted e:
 				await HandleRoundStartedAsync(e, cancellationToken);
 				break;
@@ -48,69 +37,24 @@ internal sealed class RoomAnnouncer(IBasilChat chat, IBasilRooms rooms, TimeProv
 		}
 	}
 
-	private async Task HandleCountdownStartedAsync(RoomCountdownStarted e, CancellationToken cancellationToken)
-	{
-		_countdownStartsRound[e.RoomId] = e.StartsRound;
-		var seconds = (int)e.Length.TotalSeconds;
-		var text = e.StartsRound
-			? string.Format(AnnouncementReplies.CountdownStartedForRound, seconds)
-			: string.Format(AnnouncementReplies.CountdownStarted, seconds);
-		await chat.PostAsync($"#mp_{e.RoomId}", text, cancellationToken);
-	}
-
-	private async Task HandleCountdownTickedAsync(RoomCountdownTicked e, CancellationToken cancellationToken)
-	{
-		if (!_countdownStartsRound.TryGetValue(e.RoomId, out var startsRound))
-			return;
-
-		var seconds = (int)e.Remaining.TotalSeconds;
-		var text = startsRound
-			? string.Format(AnnouncementReplies.CountdownTickedForRound, seconds)
-			: string.Format(AnnouncementReplies.CountdownTicked, seconds);
-		await chat.PostAsync($"#mp_{e.RoomId}", text, cancellationToken);
-	}
-
-	private async Task HandleCountdownCancelledAsync(RoomCountdownCancelled e, CancellationToken cancellationToken)
-	{
-		_countdownStartsRound.TryRemove(e.RoomId, out _);
-		await chat.PostAsync($"#mp_{e.RoomId}", AnnouncementReplies.CountdownCancelled, cancellationToken);
-	}
-
-	private async Task HandleCountdownElapsedAsync(RoomCountdownElapsed e, CancellationToken cancellationToken)
-	{
-		_countdownStartsRound.TryRemove(e.RoomId, out _);
-		var text = e.StartsRound
-			? AnnouncementReplies.CountdownElapsedForRound
-			: AnnouncementReplies.CountdownElapsed;
-		await chat.PostAsync($"#mp_{e.RoomId}", text, cancellationToken);
-	}
-
 	private async Task HandleRoundStartedAsync(RoomRoundStarted e, CancellationToken cancellationToken)
 	{
-		_countdownStartsRound.TryRemove(e.RoomId, out _);
+		countdowns.Stop(e.RoomId);
 
-		string? text = null;
-		if (e.ByCountdown)
-			text = AnnouncementReplies.RoundStartedByCountdown;
-		else if (e.PlayerCount == 0)
-			text = AnnouncementReplies.RoundStartedNoPlayers;
-
-		if (text is not null)
-			await chat.PostAsync($"#mp_{e.RoomId}", text, cancellationToken);
+		if (e.PlayerCount == 0)
+			await chat.PostAsync($"#mp_{e.RoomId}", AnnouncementReplies.RoundStartedNoPlayers, cancellationToken);
 	}
 
 	private async Task HandleRoundAbortedAsync(RoomRoundAborted e, CancellationToken cancellationToken)
 	{
+		countdowns.Stop(e.RoomId);
 		await chat.PostAsync($"#mp_{e.RoomId}", AnnouncementReplies.RoundAborted, cancellationToken);
 	}
 
 	private async Task HandleSettingsChangedAsync(RoomSettingsChanged e, CancellationToken cancellationToken)
 	{
-		if (e.CountdownCancelled)
-		{
-			_countdownStartsRound.TryRemove(e.RoomId, out _);
+		if (e.RoundSettingsChanged && countdowns.Stop(e.RoomId, onlyStartingRound: true))
 			await chat.PostAsync($"#mp_{e.RoomId}", AnnouncementReplies.SettingsChangedCountdownCancelled, cancellationToken);
-		}
 	}
 
 	private async Task HandleClosingAnnouncedAsync(RoomClosingAnnounced e, CancellationToken cancellationToken)
@@ -147,7 +91,7 @@ internal sealed class RoomAnnouncer(IBasilChat chat, IBasilRooms rooms, TimeProv
 
 	private void HandleRoomClosed(RoomClosed e)
 	{
-		_countdownStartsRound.TryRemove(e.RoomId, out _);
+		countdowns.Stop(e.RoomId);
 		_closingRooms.TryRemove(e.RoomId, out _);
 	}
 }

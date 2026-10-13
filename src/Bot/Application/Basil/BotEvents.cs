@@ -12,31 +12,10 @@ public abstract record BotEvent;
 /// <param name="Channel">The channel it was posted in, or <see langword="null" /> when it is a private message to the bot.</param>
 public sealed record MessageReceived(Message Message, string? Channel) : BotEvent;
 
-/// <summary>A countdown started in a room.</summary>
-/// <param name="RoomId">The room.</param>
-/// <param name="Length">How long the countdown runs.</param>
-/// <param name="StartsRound">Whether the round starts when it ends.</param>
-public sealed record RoomCountdownStarted(int RoomId, TimeSpan Length, bool StartsRound) : BotEvent;
-
-/// <summary>A running countdown reached one of its announced marks.</summary>
-/// <param name="RoomId">The room.</param>
-/// <param name="Remaining">The time left.</param>
-public sealed record RoomCountdownTicked(int RoomId, TimeSpan Remaining) : BotEvent;
-
-/// <summary>A running countdown was cancelled by a user.</summary>
-/// <param name="RoomId">The room.</param>
-public sealed record RoomCountdownCancelled(int RoomId) : BotEvent;
-
-/// <summary>A countdown ran out without starting a round.</summary>
-/// <param name="RoomId">The room.</param>
-/// <param name="StartsRound">Whether it was meant to start the round (which could not start).</param>
-public sealed record RoomCountdownElapsed(int RoomId, bool StartsRound) : BotEvent;
-
 /// <summary>A round started in a room.</summary>
 /// <param name="RoomId">The room.</param>
 /// <param name="PlayerCount">How many players play it.</param>
-/// <param name="ByCountdown">Whether a countdown started it.</param>
-public sealed record RoomRoundStarted(int RoomId, int PlayerCount, bool ByCountdown) : BotEvent;
+public sealed record RoomRoundStarted(int RoomId, int PlayerCount) : BotEvent;
 
 /// <summary>The round in progress in a room was aborted.</summary>
 /// <param name="RoomId">The room.</param>
@@ -44,8 +23,8 @@ public sealed record RoomRoundAborted(int RoomId) : BotEvent;
 
 /// <summary>A room's settings changed.</summary>
 /// <param name="RoomId">The room.</param>
-/// <param name="CountdownCancelled">Whether the change cancelled a countdown that would start the round.</param>
-public sealed record RoomSettingsChanged(int RoomId, bool CountdownCancelled) : BotEvent;
+/// <param name="RoundSettingsChanged">Whether a setting the round is played with changed (beatmap, mode, mods, freemods, team type or win condition).</param>
+public sealed record RoomSettingsChanged(int RoomId, bool RoundSettingsChanged) : BotEvent;
 
 /// <summary>An empty room announced when it will close if nobody joins.</summary>
 /// <param name="RoomId">The room.</param>

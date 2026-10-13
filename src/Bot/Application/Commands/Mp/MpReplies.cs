@@ -464,8 +464,6 @@ internal static class MpReplies
 			RoomOutcome.NoBeatmap => NoBeatmapSelected,
 			RoomOutcome.NotPlaying => TargetNotPlaying,
 			RoomOutcome.NotInProgress => MatchNotInProgress,
-			RoomOutcome.OutOfRange => CountdownOutOfRange,
-			RoomOutcome.NoCountdown => NoCountdownRunning,
 			RoomOutcome.RoundMismatch => ScoreNotCurrentRound,
 			RoomOutcome.RoomClosed => MatchClosed,
 			RoomOutcome.NotFound => NotFound,
