@@ -513,11 +513,13 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   emits events on its behalf. Otherwise every new joinable kind (channel, room, spectator stream, …) forces a
   new `Join*` method and a new set on the user. "Which channels is X in?" is a query over channels, not state
   on X. Ask "who is acted on?" for every relation, member and event.
-* **A large service is split into child services by area.** The parent contract exposes each child as a
-  property (`IRoomService.Members`, `.Authority`, `.Settings`, `.Slots`, `.Rounds`;
-  `IChannelService.Spectators`); children share the parent's one event stream and may call a sibling's
-  `internal` members directly, since they act on the same object. Callers reach a child only through the
-  parent (`rooms.Slots.MoveAsync(...)`).
+* **A service whose object has parts gets one child service per part.** The parent contract exposes each
+  child as a property named after the part (`IRoomService.Members`, `.Authority`, `.Settings`, `.Slots`,
+  `.Rounds`); the object stays a parameter of every operation (`rooms.Slots.MoveAsync(room, by, player, index)`),
+  never an object-bound handle (`rooms.For(room)`). Children are `I{Parent}{Part}Service`, share the parent's one
+  event stream and may call a sibling's `internal` members directly, since they act on the same object. Callers
+  reach a child only through the parent. A service whose object has no parts it acts on stays flat; size alone is
+  no reason to split.
 * **Each service manages its own kind, and reacts to other kinds only through events.** The session service
   opens and closes connections and announces `UserConnectionOpened`/`UserConnectionClosed`; its responsibility
   ends there. Leaving rooms and parting channels when a connection closes is done by Infrastructure handlers
@@ -556,9 +558,14 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   `UpdateAsync`. `Save` is only for byte storages (`IXxxStorage`: `SaveAsync`, `OpenAsync`,
   `DeleteAsync`, plus `ListAsync` and `RenameAsync` where the content is managed); `OpenAsync` serves the server's
   own reads, never clients, who get stored assets from the asset host. A storage lists with `IEnumerable<X>` (the
-  caller decides whether to materialise it). `IBeatmapsetStorage` works on the set's folder of files (save from
-  an upload, list, open, delete); the `.osz` archive is only an export (`ExportAsync`), with no CRUD of its own,
-  and keeping exported archives in `Cache/` is Infrastructure's business. A
+  caller decides whether to materialise it). `IBeatmapsetStorage` works on the set's folder of files (save the
+  `BeatmapsetFile`s the reader found, list, open, delete); it never unpacks an archive. The `.osz` archive is only an
+  export (`ExportAsync`), with no CRUD of its own, and keeping exported archives in `Cache/` is Infrastructure's
+  business. `IBeatmapsetReader` reads a set from an archive or a folder into a `BeatmapsetContent` whose files open
+  on demand (no `byte[]` copies) and owns the input checks (unsafe or duplicate names, size limits); only
+  `IBeatmapsetService.ImportAsync` uses it. An asset (`IBeatmapAssets`) is what a beatmap or set contains (its
+  `.osu`, background, audio, video, storyboard) or a file made from it (an audio preview); the whole set as one
+  archive is not an asset, so a host serves downloads straight from `IBeatmapsetStorage.ExportAsync`. A
   storage of text reads and writes it through `StreamReader`/`StreamWriter` (`IFaqStorage.ReadAsync`,
   `IFaqStorage.CreateOrUpdateAsync`) instead of a raw `Stream`. Extract a shared
   interface only when several repositories genuinely share an operation, and keep the `IXxxRepository`

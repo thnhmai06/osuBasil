@@ -21,6 +21,16 @@ public readonly record struct Md5
 
 	public string HashValue { get; }
 
+	/// <summary>Computes the MD5 hash of a content read to its end.</summary>
+	/// <param name="content">The content, read from its current position; not disposed.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The hash of the content.</returns>
+	public static async Task<Md5> ComputeAsync(Stream content, CancellationToken cancellationToken = default)
+	{
+		var hash = await MD5.HashDataAsync(content, cancellationToken).ConfigureAwait(false);
+		return new Md5(Convert.ToHexStringLower(hash));
+	}
+
 	public override string ToString()
 	{
 		return HashValue;

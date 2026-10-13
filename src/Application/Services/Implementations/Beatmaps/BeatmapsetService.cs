@@ -26,24 +26,56 @@ internal sealed class BeatmapsetService(
 	public ChannelReader<BeatmapsetEvent> Events => _events.Reader;
 
 	/// <inheritdoc />
-	public async Task<BeatmapsetImportResult> ImportAsync(Stream archive, int? beatmapsetId = null,
+	public async Task<BeatmapsetImportResult> ImportAsync(Stream archive, CancellationToken cancellationToken = default)
+	{
+		var content = await reader.ReadAsync(archive, cancellationToken).ConfigureAwait(false);
+		return await ImportAsync(content, cancellationToken).ConfigureAwait(false);
+	}
+
+	/// <inheritdoc />
+	public async Task<BeatmapsetImportResult> ImportAsync(DirectoryInfo folder,
 		CancellationToken cancellationToken = default)
 	{
-		await using var copy = new MemoryStream();
-		await archive.CopyToAsync(copy, cancellationToken);
-		copy.Position = 0;
+		var content = await reader.ReadAsync(folder, cancellationToken).ConfigureAwait(false);
+		return await ImportAsync(content, cancellationToken).ConfigureAwait(false);
+	}
 
-		if (await reader.ReadAsync(copy, cancellationToken) is not { } content)
-			return new BeatmapsetImportResult(null, [], BeatmapsetImportFailure.Unreadable);
+	/// <summary>Imports what a beatmapset contains, then releases it.</summary>
+	/// <param name="content">What was read, or <see langword="null" /> when nothing readable was found.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	private async Task<BeatmapsetImportResult> ImportAsync(BeatmapsetContent? content,
+		CancellationToken cancellationToken)
+	{
+		if (content is null) return new BeatmapsetImportResult(null, [], BeatmapsetImportFailure.Unreadable);
 
-		var stored = new Dictionary<BeatmapArchiveDifficulty, Beatmap?>();
+		await using (content.ConfigureAwait(false))
+		{
+			return await ImportContentAsync(content, cancellationToken).ConfigureAwait(false);
+		}
+	}
+
+	/// <summary>Imports what a beatmapset contains.</summary>
+	private async Task<BeatmapsetImportResult> ImportContentAsync(BeatmapsetContent content,
+		CancellationToken cancellationToken)
+	{
+		var hashes = new Dictionary<BeatmapsetDifficulty, Md5>();
 		foreach (var difficulty in content.Difficulties)
-			stored[difficulty] = await beatmaps.GetAsync(new Md5(difficulty.Content), cancellationToken);
+		{
+			var stream = await difficulty.File.OpenAsync(cancellationToken).ConfigureAwait(false);
+			await using (stream.ConfigureAwait(false))
+			{
+				hashes[difficulty] = await Md5.ComputeAsync(stream, cancellationToken).ConfigureAwait(false);
+			}
+		}
+
+		var stored = new Dictionary<BeatmapsetDifficulty, Beatmap?>();
+		foreach (var difficulty in content.Difficulties)
+			stored[difficulty] = await beatmaps.GetAsync(hashes[difficulty], cancellationToken).ConfigureAwait(false);
 
 		var existing = stored.Values.FirstOrDefault(b => b is not null)?.Value.Beatmapset
-		               ?? (beatmapsetId is { } named ? await beatmapsets.GetAsync(named, cancellationToken) : null)
 		               ?? (content.OnlineSetId is > 0
 			               ? await beatmapsets.GetAsync(content.OnlineSetId.Value, cancellationToken)
+				               .ConfigureAwait(false)
 			               : null);
 
 		if (existing is { Value.Locked: true })
@@ -62,38 +94,38 @@ internal sealed class BeatmapsetService(
 					Creator = content.Creator,
 					CreatedAt = now,
 					UpdatedAt = now
-				}, content.OnlineSetId is > 0 ? content.OnlineSetId : null, cancellationToken);
+				}, content.OnlineSetId is > 0 ? content.OnlineSetId : null, cancellationToken).ConfigureAwait(false);
 			}
 			catch (AlreadyExistsException)
 			{
 				// Another import created the set meanwhile; fetch it and continue as the existing-set branch.
-				set = await beatmapsets.GetAsync(content.OnlineSetId!.Value, cancellationToken)
+				set = await beatmapsets.GetAsync(content.OnlineSetId!.Value, cancellationToken).ConfigureAwait(false)
 				      ?? throw new InvalidOperationException(
 					      "A beatmapset with this online id already exists but could not be retrieved.");
-				await UpdateSetAsync(set, content, now, cancellationToken);
+				await UpdateSetAsync(set, content, now, cancellationToken).ConfigureAwait(false);
 			}
 		}
 		else
 		{
-			await UpdateSetAsync(existing, content, now, cancellationToken);
+			await UpdateSetAsync(existing, content, now, cancellationToken).ConfigureAwait(false);
 			set = existing;
 		}
 
-		copy.Position = 0;
-		await archives.SaveAsync(set, copy, cancellationToken);
+		await archives.SaveAsync(set, content.Files, cancellationToken).ConfigureAwait(false);
 
 		var result = new List<Beatmap>(content.Difficulties.Count);
 		foreach (var difficulty in content.Difficulties)
 		{
-			var analysis = Analyse(difficulty, stored[difficulty]);
+			var analysis = await AnalyseAsync(difficulty, stored[difficulty], cancellationToken).ConfigureAwait(false);
 			var previous = stored[difficulty]
 			               ?? (difficulty.OnlineId is > 0
 				               ? await beatmaps.GetAsync(difficulty.OnlineId.Value, cancellationToken)
+					               .ConfigureAwait(false)
 				               : null);
 
 			var data = new BeatmapData
 			{
-				Hash = new Md5(difficulty.Content),
+				Hash = hashes[difficulty],
 				Beatmapset = set,
 				Version = difficulty.Version,
 				Difficulty = analysis.Difficulty,
@@ -106,33 +138,35 @@ internal sealed class BeatmapsetService(
 				try
 				{
 					beatmap = await beatmaps.CreateAsync(data,
-						difficulty.OnlineId is > 0 ? difficulty.OnlineId : null, cancellationToken);
+							difficulty.OnlineId is > 0 ? difficulty.OnlineId : null, cancellationToken)
+						.ConfigureAwait(false);
 				}
 				catch (AlreadyExistsException)
 				{
-					var existingBeatmap = await beatmaps.GetAsync(data.Hash, cancellationToken)
+					var existingBeatmap = await beatmaps.GetAsync(data.Hash, cancellationToken).ConfigureAwait(false)
 					                      ?? (difficulty.OnlineId is > 0
 						                      ? await beatmaps.GetAsync(difficulty.OnlineId.Value, cancellationToken)
+							                      .ConfigureAwait(false)
 						                      : null);
 					if (existingBeatmap is null)
 						throw;
 
-					beatmap = await UpdateBeatmapAsync(existingBeatmap, data);
+					beatmap = await UpdateBeatmapAsync(existingBeatmap, data).ConfigureAwait(false);
 				}
 			else
-				beatmap = await UpdateBeatmapAsync(previous, data);
+				beatmap = await UpdateBeatmapAsync(previous, data).ConfigureAwait(false);
 
 			result.Add(beatmap);
 		}
 
-		await beatmaps.RetainAsync(set, result, cancellationToken);
+		await beatmaps.RetainAsync(set, result, cancellationToken).ConfigureAwait(false);
 		_events.Writer.TryWrite(new BeatmapsetImported(set, result));
 		return new BeatmapsetImportResult(set, result, null);
 
 		async Task<Beatmap> UpdateBeatmapAsync(Beatmap existingBeatmap, BeatmapData data)
 		{
 			await beatmaps.UpdateAsync(new Beatmap { Id = existingBeatmap.Id, Value = data },
-				cancellationToken);
+				cancellationToken).ConfigureAwait(false);
 			return existingBeatmap;
 		}
 	}
@@ -142,14 +176,14 @@ internal sealed class BeatmapsetService(
 	{
 		var allSets = await Paging.ListAllAsync(
 			page => beatmapsets.ListAsync(new BeatmapQuery(), page, cancellationToken),
-			cancellationToken);
+			cancellationToken).ConfigureAwait(false);
 
 		var forgotten = 0;
 		foreach (var set in allSets)
-			if (!(await archives.ListAsync(set, cancellationToken)).Any())
+			if (!(await archives.ListAsync(set, cancellationToken).ConfigureAwait(false)).Any())
 			{
-				await beatmaps.RetainAsync(set, [], cancellationToken);
-				await beatmapsets.DeleteAsync(set, cancellationToken);
+				await beatmaps.RetainAsync(set, [], cancellationToken).ConfigureAwait(false);
+				await beatmapsets.DeleteAsync(set, cancellationToken).ConfigureAwait(false);
 				_events.Writer.TryWrite(new BeatmapsetDeleted(set));
 				forgotten++;
 			}
@@ -163,9 +197,9 @@ internal sealed class BeatmapsetService(
 		if (set.Value.Locked)
 			return false;
 
-		await archives.DeleteAsync(set, cancellationToken);
-		await beatmaps.RetainAsync(set, [], cancellationToken);
-		await beatmapsets.DeleteAsync(set, cancellationToken);
+		await archives.DeleteAsync(set, cancellationToken).ConfigureAwait(false);
+		await beatmaps.RetainAsync(set, [], cancellationToken).ConfigureAwait(false);
+		await beatmapsets.DeleteAsync(set, cancellationToken).ConfigureAwait(false);
 		_events.Writer.TryWrite(new BeatmapsetDeleted(set));
 		return true;
 	}
@@ -175,14 +209,19 @@ internal sealed class BeatmapsetService(
 	///     rating.
 	/// </summary>
 	/// <remarks>A difficulty that cannot be analysed gets a zero star rating and no objects.</remarks>
-	private BeatmapAnalysis Analyse(BeatmapArchiveDifficulty difficulty, Beatmap? stored)
+	private async Task<BeatmapAnalysis> AnalyseAsync(BeatmapsetDifficulty difficulty, Beatmap? stored,
+		CancellationToken cancellationToken)
 	{
 		if (stored is { Value.Difficulty.Star: > 0 })
 			return new BeatmapAnalysis(stored.Value.Difficulty, stored.Value.Objects);
 
 		try
 		{
-			return analyser.Analyze(difficulty.Content, difficulty.Mode, GameMods.NoMod);
+			var stream = await difficulty.File.OpenAsync(cancellationToken).ConfigureAwait(false);
+			await using (stream.ConfigureAwait(false))
+			{
+				return analyser.Analyze(stream, difficulty.Mode, GameMods.NoMod);
+			}
 		}
 		catch (Exception e) when (e is not OperationCanceledException)
 		{
@@ -197,13 +236,13 @@ internal sealed class BeatmapsetService(
 		return new BeatmapAnalysis(new Difficulty(mode, 0, TimeSpan.Zero, 0, 0, 0, 0, 0), objects);
 	}
 
-	private async Task UpdateSetAsync(Beatmapset set, BeatmapsetArchive content, DateTimeOffset now,
+	private async Task UpdateSetAsync(Beatmapset set, BeatmapsetContent content, DateTimeOffset now,
 		CancellationToken cancellationToken)
 	{
 		set.Value.Artist = content.Artist;
 		set.Value.Title = content.Title;
 		set.Value.Creator = content.Creator;
 		set.Value.UpdatedAt = now;
-		await beatmapsets.UpdateAsync(set, cancellationToken);
+		await beatmapsets.UpdateAsync(set, cancellationToken).ConfigureAwait(false);
 	}
 }

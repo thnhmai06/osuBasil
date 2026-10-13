@@ -5,12 +5,16 @@ namespace Basil.Application.Storage.Contracts.Beatmaps;
 /// <summary>Stores the files of each beatmapset in its own folder and exports a set as an .osz archive.</summary>
 public interface IBeatmapsetStorage
 {
-	/// <summary>Stores a set's files from an uploaded .osz archive, replacing every file stored for the set.</summary>
-	/// <param name="set">The beatmapset the archive belongs to.</param>
-	/// <param name="archive">The archive to store.</param>
+	/// <summary>Stores a set's files, replacing every file stored for the set.</summary>
+	/// <param name="set">The beatmapset the files belong to.</param>
+	/// <param name="files">The set's files; each must stay readable until the call returns.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <exception cref="InvalidDataException">The archive is not a readable .osz, names a file outside the set, or is too large.</exception>
-	Task SaveAsync(Beatmapset set, Stream archive, CancellationToken cancellationToken = default);
+	/// <remarks>Either every file is stored or the set keeps the files it had.</remarks>
+	/// <exception cref="InvalidDataException">
+	///     A file names a place outside the set, or its content does not have the size the file declares.
+	/// </exception>
+	Task SaveAsync(Beatmapset set, IReadOnlyCollection<BeatmapsetFile> files,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>Lists the files of a set.</summary>
 	/// <param name="set">The beatmapset whose files to list.</param>

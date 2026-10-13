@@ -7,7 +7,8 @@ namespace Basil.Infrastructure.Runtime.Beatmaps;
 
 /// <summary>
 ///     Imports the beatmapset archives placed in the import directory: those waiting at startup and every one added
-///     later; at startup it also forgets beatmapsets whose archive is gone.
+///     later, and the folders of beatmapset files waiting at startup; at startup it also forgets beatmapsets whose
+///     archive is gone.
 /// </summary>
 internal sealed class BeatmapImportWatcher(
 	IBeatmapsetService beatmapsets,
@@ -60,12 +61,20 @@ internal sealed class BeatmapImportWatcher(
 			var imported = 0;
 			foreach (var path in Directory.EnumerateFiles(directory, "*.osz", SearchOption.TopDirectoryOnly))
 			{
-				var status = await BeatmapArchiveImporter.ImportAsync(path, beatmapsets, logger, stoppingToken);
-				if (status == BeatmapArchiveImporter.ImportStatus.Locked) Schedule(path, stoppingToken);
-				else if (status == BeatmapArchiveImporter.ImportStatus.Imported) imported++;
+				var status = await BeatmapsetImporter.ImportAsync(path, beatmapsets, logger, stoppingToken);
+				if (status == BeatmapsetImporter.ImportStatus.Locked) Schedule(path, stoppingToken);
+				else if (status == BeatmapsetImporter.ImportStatus.Imported) imported++;
 			}
 
-			logger.LogInformation("Imported {ArchiveCount} waiting beatmap archives", imported);
+			// Folders are not watched live, because a folder being copied fires events before it is complete.
+			foreach (var path in Directory.EnumerateDirectories(directory, "*", SearchOption.TopDirectoryOnly))
+			{
+				var status = await BeatmapsetImporter.ImportFolderAsync(path, beatmapsets, logger, stoppingToken)
+					.ConfigureAwait(false);
+				if (status == BeatmapsetImporter.ImportStatus.Imported) imported++;
+			}
+
+			logger.LogInformation("Imported {BeatmapsetCount} waiting beatmapsets", imported);
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException ||
 		                                  !stoppingToken.IsCancellationRequested)
@@ -144,8 +153,8 @@ internal sealed class BeatmapImportWatcher(
 				_pending.Remove(path);
 			}
 
-			var status = await BeatmapArchiveImporter.ImportAsync(path, beatmapsets, logger, stoppingToken);
-			if (status == BeatmapArchiveImporter.ImportStatus.Locked) Schedule(path, stoppingToken);
+			var status = await BeatmapsetImporter.ImportAsync(path, beatmapsets, logger, stoppingToken);
+			if (status == BeatmapsetImporter.ImportStatus.Locked) Schedule(path, stoppingToken);
 		}
 		catch (OperationCanceledException) when (debounce.IsCancellationRequested ||
 		                                         stoppingToken.IsCancellationRequested)

@@ -1,40 +1,79 @@
+using Basil.Application.Storage.Contracts.Beatmaps;
 using Basil.Domain.Mechanics;
 
 namespace Basil.Application.Services.Contracts.Beatmaps;
 
-/// <summary>Reads what a beatmapset archive contains.</summary>
+/// <summary>Reads what a beatmapset contains, from an archive or from a folder of its files.</summary>
 public interface IBeatmapsetReader
 {
 	/// <summary>Reads a beatmapset archive.</summary>
-	/// <param name="archive">The archive content.</param>
+	/// <param name="archive">The .osz archive, read from its current position; not disposed.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>What the archive contains, or <see langword="null" /> when it is not a readable beatmapset archive.</returns>
-	Task<BeatmapsetArchive?> ReadAsync(Stream archive, CancellationToken cancellationToken = default);
+	/// <returns>
+	///     What the archive contains, or <see langword="null" /> when it is not a readable beatmapset archive: not an
+	///     archive, no readable difficulty, a file named outside the set or named twice, or too many or too large files.
+	/// </returns>
+	/// <remarks>The content's files are read from the archive, which must stay open until the content is disposed.</remarks>
+	Task<BeatmapsetContent?> ReadAsync(Stream archive, CancellationToken cancellationToken = default);
+
+	/// <summary>Reads a folder holding a beatmapset's files.</summary>
+	/// <param name="folder">The folder; every file under it belongs to the set.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>
+	///     What the folder contains, or <see langword="null" /> when it is not a readable beatmapset: no readable
+	///     difficulty, or too many or too large files.
+	/// </returns>
+	/// <remarks>The content's files are read from the folder, which must stay unchanged until the content is disposed.</remarks>
+	Task<BeatmapsetContent?> ReadAsync(DirectoryInfo folder, CancellationToken cancellationToken = default);
 }
 
-/// <summary>What a beatmapset archive contains.</summary>
-/// <param name="OnlineSetId">
-///     The beatmapset id the difficulties declare, or <see langword="null" /> when they declare
-///     none.
-/// </param>
-/// <param name="Artist">The artist.</param>
-/// <param name="Title">The title.</param>
-/// <param name="Creator">The mapper's name.</param>
-/// <param name="Difficulties">The difficulties.</param>
-public sealed record BeatmapsetArchive(
-	int? OnlineSetId,
-	string Artist,
-	string Title,
-	string Creator,
-	IReadOnlyList<BeatmapArchiveDifficulty> Difficulties);
+/// <summary>What a beatmapset contains.</summary>
+/// <param name="onlineSetId">The beatmapset id the difficulties declare, or <see langword="null" /> when they declare none.</param>
+/// <param name="artist">The artist.</param>
+/// <param name="title">The title.</param>
+/// <param name="creator">The mapper's name.</param>
+/// <param name="difficulties">The difficulties.</param>
+/// <param name="files">Every file of the set, the difficulties' files included.</param>
+/// <param name="source">What the files are read from, released when the content is disposed; or <see langword="null" />.</param>
+/// <remarks>The files stay readable until the content is disposed.</remarks>
+public sealed class BeatmapsetContent(
+	int? onlineSetId,
+	string artist,
+	string title,
+	string creator,
+	IReadOnlyList<BeatmapsetDifficulty> difficulties,
+	IReadOnlyList<BeatmapsetFile> files,
+	IAsyncDisposable? source) : IAsyncDisposable
+{
+	/// <summary>Gets the beatmapset id the difficulties declare, or <see langword="null" /> when they declare none.</summary>
+	public int? OnlineSetId => onlineSetId;
 
-/// <summary>One difficulty of a beatmapset archive.</summary>
+	/// <summary>Gets the artist.</summary>
+	public string Artist => artist;
+
+	/// <summary>Gets the title.</summary>
+	public string Title => title;
+
+	/// <summary>Gets the mapper's name.</summary>
+	public string Creator => creator;
+
+	/// <summary>Gets the difficulties.</summary>
+	public IReadOnlyList<BeatmapsetDifficulty> Difficulties => difficulties;
+
+	/// <summary>Gets every file of the set, the difficulties' files included.</summary>
+	public IReadOnlyList<BeatmapsetFile> Files => files;
+
+	/// <summary>Releases what the files are read from; the files cannot be read afterwards.</summary>
+	/// <returns>A task that completes when the source is released.</returns>
+	public ValueTask DisposeAsync()
+	{
+		return source?.DisposeAsync() ?? ValueTask.CompletedTask;
+	}
+}
+
+/// <summary>One difficulty of a beatmapset.</summary>
 /// <param name="OnlineId">The beatmap id the difficulty declares, or <see langword="null" /> when it declares none.</param>
 /// <param name="Version">The difficulty name.</param>
 /// <param name="Mode">The game mode.</param>
-/// <param name="Content">The difficulty file's bytes.</param>
-public sealed record BeatmapArchiveDifficulty(
-	int? OnlineId,
-	string Version,
-	GameMode Mode,
-	byte[] Content);
+/// <param name="File">The difficulty's .osu file.</param>
+public sealed record BeatmapsetDifficulty(int? OnlineId, string Version, GameMode Mode, BeatmapsetFile File);

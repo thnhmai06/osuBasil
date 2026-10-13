@@ -13,10 +13,6 @@ namespace Basil.Infrastructure.Storage.Beatmaps;
 /// <summary>Stores each beatmapset's files in its own folder and exports sets as .osz archives.</summary>
 internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmapsetStorage> logger) : IBeatmapsetStorage
 {
-	// ponytail: 2,000 files and 2 GiB declared unpacked; raise these only if legitimate osu! sets exceed them.
-	private const int MaxFiles = 2_000;
-	private const long MaxUnpackedBytes = 2L * 1024 * 1024 * 1024;
-
 	private static readonly FrozenSet<string> VideoExtensions =
 		new[] { ".mp4", ".avi", ".flv", ".m4v", ".mkv", ".mov", ".mpg", ".mpeg", ".webm", ".wmv" }.ToFrozenSet(
 			StringComparer.OrdinalIgnoreCase);
@@ -24,35 +20,19 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 	private static readonly ConcurrentDictionary<int, SemaphoreSlim> SetLocks = new();
 
 	/// <inheritdoc />
-	public async Task SaveAsync(Beatmapset set, Stream archive, CancellationToken cancellationToken = default)
+	public async Task SaveAsync(Beatmapset set, IReadOnlyCollection<BeatmapsetFile> files,
+		CancellationToken cancellationToken = default)
 	{
 		var id = set.Id.ToString(CultureInfo.InvariantCulture);
 		var archiveFolder = ArchiveFolder(id);
 		var setFolder = SetFolder(id);
-		var uploadPath = Path.Combine(archiveFolder, $"upload-{Guid.NewGuid():N}.tmp");
 		var unpackFolder = Path.Combine(paths.Beatmaps.Path, $"{id}.unpack-{Guid.NewGuid():N}");
 		var gate = SetLocks.GetOrAdd(set.Id, static _ => new SemaphoreSlim(1, 1));
 
-		await gate.WaitAsync(cancellationToken);
+		await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
 		try
 		{
-			Directory.CreateDirectory(archiveFolder);
-			await using (var upload = new FileStream(uploadPath, FileMode.CreateNew, FileAccess.Write, FileShare.None,
-				             81920, FileOptions.Asynchronous))
-			{
-				await archive.CopyToAsync(upload, cancellationToken);
-			}
-
-			try
-			{
-				Unpack(uploadPath, unpackFolder, cancellationToken);
-			}
-			catch (Exception exception) when (exception is SharpZip.ZipException or InvalidDataException
-				                                  or ArgumentException)
-			{
-				DeleteDirectoryIfExists(unpackFolder);
-				throw new InvalidDataException($"The beatmapset archive is invalid: {exception.Message}", exception);
-			}
+			await WriteAsync(unpackFolder, files, cancellationToken).ConfigureAwait(false);
 
 			var oldFolder = Path.Combine(paths.Beatmaps.Path, $"{id}.old-{Guid.NewGuid():N}");
 			var movedOldFolder = false;
@@ -82,14 +62,14 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 					logger.LogWarning(exception, "Could not remove the previous files of beatmapset {SetId}", set.Id);
 				}
 
-			File.Move(uploadPath, Path.Combine(archiveFolder, "full.osz"), true);
+			var fullPath = Path.Combine(archiveFolder, "full.osz");
+			if (File.Exists(fullPath)) File.Delete(fullPath);
 			var noVideoPath = Path.Combine(archiveFolder, "novideo.osz");
 			if (File.Exists(noVideoPath)) File.Delete(noVideoPath);
 		}
 		finally
 		{
 			DeleteDirectoryIfExists(unpackFolder);
-			if (File.Exists(uploadPath)) File.Delete(uploadPath);
 			gate.Release();
 		}
 	}
@@ -269,45 +249,52 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 		}
 	}
 
-	private static void Unpack(string archivePath, string unpackFolder, CancellationToken cancellationToken)
+	/// <summary>Writes a set's files into a folder, checking that each has the size it declares.</summary>
+	private static async Task WriteAsync(string folder, IReadOnlyCollection<BeatmapsetFile> files,
+		CancellationToken cancellationToken)
 	{
-		Directory.CreateDirectory(unpackFolder);
-		using var zip = new SharpZip.ZipFile(archivePath);
-		var fileCount = 0;
-		long totalSize = 0;
+		Directory.CreateDirectory(folder);
 		var buffer = new byte[81920];
-		foreach (SharpZip.ZipEntry entry in zip)
+		foreach (var file in files)
 		{
 			cancellationToken.ThrowIfCancellationRequested();
-			if (entry.IsDirectory) continue;
-			if (++fileCount > MaxFiles)
-				throw new InvalidDataException($"The archive contains more than {MaxFiles} files.");
-			if (entry.Size < 0 || entry.Size > MaxUnpackedBytes - totalSize)
-				throw new InvalidDataException($"The archive contains more than {MaxUnpackedBytes} bytes of files.");
-			totalSize += entry.Size;
-
-			var name = entry.Name.Replace('\\', '/');
-			var path = SafePath.Combine(unpackFolder, name);
-			var parent = Path.GetDirectoryName(path);
-			if (!string.IsNullOrEmpty(parent)) Directory.CreateDirectory(parent);
-			using var input = zip.GetInputStream(entry);
-			using var output = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920,
-				FileOptions.Asynchronous);
-			long copied = 0;
-			while (copied < entry.Size)
+			string path;
+			try
 			{
-				cancellationToken.ThrowIfCancellationRequested();
-				var read = input.Read(buffer, 0, (int)Math.Min(buffer.Length, entry.Size - copied));
-				if (read == 0) break;
-				output.Write(buffer, 0, read);
-				copied += read;
+				path = SafePath.Combine(folder, file.Name);
+			}
+			catch (ArgumentException exception)
+			{
+				throw new InvalidDataException($"File '{file.Name}' is outside the beatmapset.", exception);
 			}
 
-			if (copied != entry.Size)
-				throw new InvalidDataException($"File '{name}' is shorter than its declared size.");
-			if (input.ReadByte() != -1)
-				throw new InvalidDataException($"File '{name}' is larger than its declared size.");
-			File.SetLastWriteTime(path, entry.DateTime);
+			var parent = Path.GetDirectoryName(path);
+			if (!string.IsNullOrEmpty(parent)) Directory.CreateDirectory(parent);
+
+			var input = await file.OpenAsync(cancellationToken).ConfigureAwait(false);
+			await using (input.ConfigureAwait(false))
+			{
+				var output = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920,
+					FileOptions.Asynchronous);
+				await using (output.ConfigureAwait(false))
+				{
+					long copied = 0;
+					while (copied < file.Length)
+					{
+						var read = await input
+							.ReadAsync(buffer.AsMemory(0, (int)Math.Min(buffer.Length, file.Length - copied)),
+								cancellationToken).ConfigureAwait(false);
+						if (read == 0) break;
+						await output.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
+						copied += read;
+					}
+
+					if (copied != file.Length)
+						throw new InvalidDataException($"File '{file.Name}' is shorter than its declared size.");
+					if (await input.ReadAsync(buffer.AsMemory(0, 1), cancellationToken).ConfigureAwait(false) > 0)
+						throw new InvalidDataException($"File '{file.Name}' is larger than its declared size.");
+				}
+			}
 		}
 	}
 

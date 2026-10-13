@@ -2,7 +2,8 @@ using Basil.Domain.Beatmaps;
 
 namespace Basil.Application.Services.Contracts.Beatmaps;
 
-/// <summary>Opens the files that come with beatmaps and beatmapsets.</summary>
+/// <summary>Opens what beatmaps and beatmapsets contain, and the files made from it such as an audio preview.</summary>
+/// <remarks>A whole beatmapset as one archive is not an asset; it is exported by the beatmapset storage.</remarks>
 public interface IBeatmapAssets
 {
 	/// <summary>Opens a file of a beatmap.</summary>
@@ -54,11 +55,5 @@ public enum BeatmapsetAsset : byte
 	AudioPreview,
 
 	/// <summary>The storyboard.</summary>
-	Storyboard,
-
-	/// <summary>The archive with every file.</summary>
-	Archive,
-
-	/// <summary>The archive without video files.</summary>
-	ArchiveWithoutVideo
+	Storyboard
 }

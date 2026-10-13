@@ -35,10 +35,9 @@ internal sealed class OsuBeatmapAnalyser : IBeatmapAnalyser
 {
 	/// <inheritdoc />
 	/// <exception cref="Exception">The beatmap file could not be decoded or analyzed.</exception>
-	public BeatmapAnalysis Analyze(byte[] content, GameMode mode, GameMods mods)
+	public BeatmapAnalysis Analyze(Stream content, GameMode mode, GameMods mods)
 	{
-		using var stream = new MemoryStream(content);
-		using var reader = new LineBufferedReader(stream, true);
+		using var reader = new LineBufferedReader(content, true);
 		var beatmap = Decoder.GetDecoder<Beatmap>(reader).Decode(reader);
 
 		var ruleset = CreateRuleset(mode);

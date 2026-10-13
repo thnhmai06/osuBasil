@@ -59,8 +59,6 @@ internal sealed class BeatmapAssets(
 	{
 		return asset switch
 		{
-			BeatmapsetAsset.Archive => await storage.ExportAsync(set, true, cancellationToken),
-			BeatmapsetAsset.ArchiveWithoutVideo => await storage.ExportAsync(set, false, cancellationToken),
 			BeatmapsetAsset.AudioPreview => await OpenAudioPreviewAsync(set, cancellationToken),
 			BeatmapsetAsset.Background or BeatmapsetAsset.Audio => await OpenSetSharedAssetAsync(set, asset,
 				cancellationToken),
