@@ -110,13 +110,17 @@ internal sealed class RoomCountdowns(IBasilChat chat, IBasilRooms rooms, TimePro
 		}
 
 		var outcome = await rooms.StartAsync(countdown.Actor, countdown.RoomId, CancellationToken.None);
-		var text = outcome switch
+		string? text = outcome switch
 		{
-			RoomOutcome.Ok => AnnouncementReplies.RoundStartedByCountdown,
+			// A round nobody plays has already ended; the round announcement says so instead.
+			RoomOutcome.Ok => await rooms.GetAsync(countdown.RoomId, CancellationToken.None) is { InProgress: true }
+				? AnnouncementReplies.RoundStartedByCountdown
+				: null,
 			RoomOutcome.NoBeatmap => AnnouncementReplies.CountdownElapsedForRound,
 			_ => MpReplies.Describe(outcome)
 		};
-		await chat.PostAsync(Channel(countdown.RoomId), text, CancellationToken.None);
+		if (text is not null)
+			await chat.PostAsync(Channel(countdown.RoomId), text, CancellationToken.None);
 	}
 
 	/// <summary>Determines whether a countdown is still the one running in its room.</summary>
