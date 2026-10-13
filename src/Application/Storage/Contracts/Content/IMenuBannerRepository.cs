@@ -11,10 +11,10 @@ public interface IMenuBannerRepository
 	Task CreateOrUpdateAsync(MenuBanner banner, CancellationToken cancellationToken = default);
 
 	/// <summary>Gets a banner by its image.</summary>
-	/// <param name="image">The image URI to look up.</param>
+	/// <param name="image">The image to look up.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The banner, or <see langword="null" /> when none shows that image.</returns>
-	ValueTask<MenuBanner?> GetAsync(Uri image, CancellationToken cancellationToken = default);
+	ValueTask<MenuBanner?> GetAsync(AssetReference image, CancellationToken cancellationToken = default);
 
 	/// <summary>Lists every banner, whether or not it is shown now.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>

@@ -19,7 +19,7 @@ public abstract class RoundResult : IEquatable<RoundResult>
 		get;
 		init
 		{
-			if (!value.Any(s => s.Round.Equals(Round)))
+			if (value.Any(s => !s.Round.Equals(Round)))
 				throw new ArgumentException("All scores must belong to this round.", nameof(value));
 			field = value;
 		}
@@ -33,6 +33,19 @@ public abstract class RoundResult : IEquatable<RoundResult>
 
 	/// <summary>Gets a value that indicates whether the round is a draw, with no winner ahead.</summary>
 	public bool IsDraw => Margin.NearlyEqual(0);
+
+	/// <summary>Decides who won a round from the scores played in it.</summary>
+	/// <param name="round">The round.</param>
+	/// <param name="scores">The scores submitted in the round.</param>
+	/// <returns>A team result for a round played in teams, a head-to-head result otherwise, or <see langword="null" /> when the round has no score.</returns>
+	public static RoundResult? Decide(Round round, IReadOnlyCollection<RoundScore> scores)
+	{
+		return scores.Count == 0
+			? null
+			: round.Settings.TeamType.IsTeamMode()
+				? new TeamVersusResult(round, scores)
+				: new HeadToHeadResult(round, scores);
+	}
 
 	/// <summary>Determines whether another result was decided for the same round.</summary>
 	/// <param name="other">The result to compare against, or <see langword="null" />.</param>
@@ -83,7 +96,7 @@ public sealed class HeadToHeadResult : RoundResult
 	///     Gets the id of the winning player, or <see langword="null" /> for a draw or when the round has
 	///     no score.
 	/// </summary>
-	public readonly int? WinnerId;
+	public int? WinnerId { get; }
 
 	/// <summary>Decides which player wins a head-to-head round from its scores.</summary>
 	/// <param name="round">The round.</param>
@@ -134,18 +147,18 @@ public sealed class TeamVersusResult : RoundResult
 	/// <summary>
 	///     Gets the scores each team set, with a team that played none present as an empty sequence.
 	/// </summary>
-	public readonly FrozenDictionary<GameTeam, IEnumerable<Score>> TeamScores;
+	public FrozenDictionary<GameTeam, IReadOnlyList<Score>> TeamScores { get; }
 
 	/// <summary>
 	///     Gets the win metric each team reached — the sum of its scores or combos, or its average
 	///     accuracy — with a team that has no score counting as zero.
 	/// </summary>
-	public readonly FrozenDictionary<GameTeam, double> TeamScore;
+	public FrozenDictionary<GameTeam, double> TeamScore { get; }
 
 	/// <summary>
 	///     Gets the winning team, or <see langword="null" /> for a round without teams or a draw.
 	/// </summary>
-	public readonly GameTeam? Winner;
+	public GameTeam? Winner { get; }
 
 	/// <summary>Decides which team wins a team round from its scores.</summary>
 	/// <param name="round">The team round.</param>
@@ -162,9 +175,9 @@ public sealed class TeamVersusResult : RoundResult
 		var condition = round.Settings.WinCondition;
 
 		// Every team is present, even one with no score; an absent team counts as zero.
-		TeamScores = Teams.ToFrozenDictionary(
+		TeamScores = Teams.ToFrozenDictionary<GameTeam, GameTeam, IReadOnlyList<Score>>(
 			team => team,
-			team => scores.Where(s => s.Team == team).Select(s => s.Score));
+			team => scores.Where(s => s.Team == team).Select(s => s.Score).ToList());
 
 		// Only teams with a player still alive at the end contend; a team whose players all failed drops
 		// out and the opposing team wins unopposed.

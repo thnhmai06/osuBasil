@@ -30,16 +30,8 @@ public sealed record ServerSettings
 		init => field = RequireAbsolute(value);
 	}
 
-	/// <summary>
-	///     Gets the address of a main-menu icon image hosted elsewhere, or <see langword="null" /> when the server
-	///     stores the icon itself or has none.
-	/// </summary>
-	/// <exception cref="ArgumentException">The value is not an absolute address.</exception>
-	public Uri? MenuIconImage
-	{
-		get;
-		init => field = RequireAbsolute(value);
-	}
+	/// <summary>Gets the image of the main-menu icon: a canonical asset reference, or <see langword="null" /> for none.</summary>
+	public AssetReference? MenuIconImage { get; init; }
 
 	/// <summary>
 	///     Gets the address beatmapset downloads are sent to, or <see langword="null" /> when the server has no

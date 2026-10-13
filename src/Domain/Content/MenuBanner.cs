@@ -5,10 +5,15 @@ namespace Basil.Domain.Content;
 /// </summary>
 public sealed class MenuBanner : IEquatable<MenuBanner>
 {
-	/// <summary>
-	///     The image source which is displayed.
-	/// </summary>
-	public required Uri Image { get; init; }
+	/// <summary>Gets the image shown: a canonical asset reference.</summary>
+	/// <exception cref="ArgumentException">The reference is the default value.</exception>
+	public required AssetReference Image
+	{
+		get;
+		init => field = value.Value is null
+			? throw new ArgumentException("The image must refer to an asset.", nameof(value))
+			: value;
+	}
 
 	/// <summary>The click-through URI opened when the banner is clicked.</summary>
 	public required Uri Url { get; set; }

@@ -20,7 +20,7 @@ internal sealed class PostgresSettingsRepository(DatabaseReader reader, Database
 			"""
 			select motd, locked_creation, menu_icon_url, menu_icon_image, mirror_download_endpoint, mirror_search_endpoint
 			from settings where id = 1
-			"""), cancellationToken);
+			"""), cancellationToken).ConfigureAwait(false);
 
 		_settings = row is null
 			? new ServerSettings()
@@ -29,7 +29,7 @@ internal sealed class PostgresSettingsRepository(DatabaseReader reader, Database
 				Motd = row.Motd,
 				LockedCreation = (CreationLocks)row.LockedCreation,
 				MenuIconUrl = Parse(row.MenuIconUrl),
-				MenuIconImage = Parse(row.MenuIconImage),
+				MenuIconImage = AssetReference.TryParse(row.MenuIconImage, null, out var icon) ? icon : null,
 				MirrorDownloadEndpoint = Parse(row.MirrorDownloadEndpoint),
 				MirrorSearchEndpoint = Parse(row.MirrorSearchEndpoint)
 			};

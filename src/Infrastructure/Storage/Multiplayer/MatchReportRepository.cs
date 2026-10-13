@@ -1,32 +1,25 @@
 using Basil.Application.Storage.Contracts.Multiplayer;
 using Basil.Application.Storage.Contracts.Multiplayer.Matches;
 using Basil.Application.Storage.Contracts.Multiplayer.Rooms;
-using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer.Matches;
 using Basil.Domain.Multiplayer.Rounds;
 
 namespace Basil.Infrastructure.Storage.Multiplayer;
 
 /// <summary>Builds reports from the rounds and scores of each match.</summary>
-internal sealed class MatchReportRepository(IRoundRepository rounds, IRoundScoreRepository roundScores)
+internal sealed class MatchReportRepository(IRoundRepository rounds, IRoundScoreRepository roundScores, IMatchEventRepository events)
 	: IMatchReportRepository
 {
 	/// <inheritdoc />
 	public async ValueTask<MatchReport> GetAsync(Match match, CancellationToken cancellationToken = default)
 	{
-		var matchRounds = await rounds.ListAsync(match, cancellationToken);
-		var reportRounds = new List<RoundReport>(matchRounds.Count);
+		var matchRounds = await rounds.ListAsync(match, cancellationToken).ConfigureAwait(false);
 		foreach (var round in matchRounds)
 		{
-			var scores = await roundScores.ListAsync(round, cancellationToken);
-			RoundResult? result = scores.Count == 0
-				? null
-				: round.Settings.TeamType.IsTeamMode()
-					? new TeamVersusResult(round, scores)
-					: new HeadToHeadResult(round, scores);
-			reportRounds.Add(new RoundReport(round, scores.Select(score => score.Score).ToList(), result));
+			round.Result = RoundResult.Decide(round, await roundScores.ListAsync(round, cancellationToken).ConfigureAwait(false));
 		}
 
-		return new MatchReport(match, reportRounds);
+		var matchEvents = await events.ListAsync(match, cancellationToken).ConfigureAwait(false);
+		return new MatchReport(match, [.. matchRounds.Cast<IMatchRecord>().Concat(matchEvents).OrderBy(record => record.Timestamp)]);
 	}
 }

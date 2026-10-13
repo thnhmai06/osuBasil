@@ -125,12 +125,12 @@ public static class GameWinConditionExtensions
 		}
 	}
 
-	/// <summary>Orders two possibly null scores by presence, or returns nothing when both are present.</summary>
+	/// <summary>Orders two possibly null scores so that a missing score orders before any score, or returns nothing when both are present.</summary>
 	private static int? Nulls(ScoreData? x, ScoreData? y)
 	{
 		if (ReferenceEquals(x, y)) return 0;
-		if (x is null) return 1;
-		if (y is null) return -1;
+		if (x is null) return -1;
+		if (y is null) return 1;
 		return null;
 	}
 }

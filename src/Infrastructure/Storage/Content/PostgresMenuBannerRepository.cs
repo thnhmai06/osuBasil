@@ -12,7 +12,7 @@ namespace Basil.Infrastructure.Storage.Content;
 internal sealed class PostgresMenuBannerRepository(DatabaseReader reader, DatabaseWriter writer)
 	: IMenuBannerRepository, IResident
 {
-	private readonly ConcurrentDictionary<Uri, MenuBanner> _banners = new();
+	private readonly ConcurrentDictionary<AssetReference, MenuBanner> _banners = new();
 
 	/// <inheritdoc />
 	public Task CreateOrUpdateAsync(MenuBanner banner, CancellationToken cancellationToken = default)
@@ -28,7 +28,7 @@ internal sealed class PostgresMenuBannerRepository(DatabaseReader reader, Databa
 	}
 
 	/// <inheritdoc />
-	public ValueTask<MenuBanner?> GetAsync(Uri image, CancellationToken cancellationToken = default)
+	public ValueTask<MenuBanner?> GetAsync(AssetReference image, CancellationToken cancellationToken = default)
 	{
 		return ValueTask.FromResult(_banners.GetValueOrDefault(image));
 	}
@@ -53,10 +53,13 @@ internal sealed class PostgresMenuBannerRepository(DatabaseReader reader, Databa
 	public async Task LoadAsync(CancellationToken cancellationToken)
 	{
 		var rows = await reader.ReadAsync(connection => connection.QueryAsync<MenuBannerRow>(
-			"select image, url, starts_at, ends_at, created_at from menu_banners"), cancellationToken);
+			"select image, url, starts_at, ends_at, created_at from menu_banners"), cancellationToken)
+			.ConfigureAwait(false);
 		foreach (var row in rows)
 		{
-			var banner = ToBanner(row);
+			if (!AssetReference.TryParse(row.Image, null, out var image)) continue;
+
+			var banner = ToBanner(row, image);
 			_banners[banner.Image] = banner;
 		}
 	}
@@ -90,12 +93,12 @@ internal sealed class PostgresMenuBannerRepository(DatabaseReader reader, Databa
 			});
 	}
 
-	/// <summary>Builds a banner from a stored row.</summary>
-	private static MenuBanner ToBanner(MenuBannerRow row)
+	/// <summary>Builds a banner from a stored row and its parsed image.</summary>
+	private static MenuBanner ToBanner(MenuBannerRow row, AssetReference image)
 	{
 		return new MenuBanner
 		{
-			Image = new Uri(row.Image, UriKind.RelativeOrAbsolute),
+			Image = image,
 			Url = new Uri(row.Url, UriKind.RelativeOrAbsolute),
 			StartsAt = row.StartsAt,
 			EndsAt = row.EndsAt,
