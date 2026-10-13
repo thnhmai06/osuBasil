@@ -27,8 +27,8 @@ internal sealed class SessionSpectatorsService(
 
 		var first = host.Spectators.Count == 0;
 		host.MutableSpectators.Add(by);
-		if (first) channels.Join(host.SpectatorChannel, host);
-		channels.Join(host.SpectatorChannel, by);
+		if (first) channels.Members.Join(host.SpectatorChannel, host);
+		channels.Members.Join(host.SpectatorChannel, by);
 		events.Emit(new UserSpectatorJoined(host, by));
 		return SpectateResult.Spectating;
 	}
@@ -42,8 +42,8 @@ internal sealed class SessionSpectatorsService(
 		using var scope = host.EnterSpectators();
 		if (!host.MutableSpectators.Remove(by)) return false;
 
-		channels.Part(host.SpectatorChannel, by);
-		if (host.Spectators.Count == 0) channels.Part(host.SpectatorChannel, host);
+		channels.Members.Part(host.SpectatorChannel, by);
+		if (host.Spectators.Count == 0) channels.Members.Part(host.SpectatorChannel, host);
 		events.Emit(new UserSpectatorLeft(host, by));
 		return true;
 	}

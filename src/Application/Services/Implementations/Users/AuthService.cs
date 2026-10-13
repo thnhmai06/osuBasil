@@ -22,7 +22,7 @@ internal sealed class AuthService(
 	ILoginRepository logins,
 	IRestrictionRepository restrictions,
 	ISettingsRepository settings,
-	SessionService sessions,
+	SessionConnectionsService connections,
 	TimeProvider time) : IAuthService
 {
 	/// <inheritdoc />
@@ -66,7 +66,7 @@ internal sealed class AuthService(
 			.Where(restriction => restriction.Value.EndsAt is null || restriction.Value.EndsAt > now)
 			.ToList();
 		var login = new Login { User = user, Ip = ip, Client = client, Timestamp = now };
-		var token = SessionService.NewToken();
+		var token = SessionConnectionsService.NewToken();
 		Connection connection = type switch
 		{
 			ConnectionType.Bancho => new BanchoConnection(login, token, utcOffset),
@@ -75,7 +75,7 @@ internal sealed class AuthService(
 			_ => new ApiConnection(login, token)
 		};
 
-		var failure = sessions.Open(connection, running);
+		var failure = connections.Open(connection, running);
 		if (failure is not null) return LoginResult.Fail(failure.Value);
 
 		await logins.RecordAsync(login, cancellationToken);
@@ -121,7 +121,7 @@ internal sealed class AuthService(
 		}
 
 		await credentials.CreateOrUpdateAsync(new Credentials(user, newPasswordHash), cancellationToken);
-		sessions.CloseAll(user, ConnectionCloseReason.CredentialsChanged);
+		connections.CloseAll(user, ConnectionCloseReason.CredentialsChanged);
 		return PasswordChangeResult.Changed;
 	}
 

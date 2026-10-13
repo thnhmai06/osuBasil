@@ -13,7 +13,7 @@ internal sealed class RoomChannelService(ILobby lobby, IChannelService channels)
 	/// <param name="connection">The connection that joins.</param>
 	internal void JoinChannel(Room room, Connection connection)
 	{
-		channels.Join(room.Channel, connection);
+		channels.Members.Join(room.Channel, connection);
 	}
 
 	/// <summary>Removes a connection from the room's channel unless it manages the room.</summary>
@@ -21,7 +21,7 @@ internal sealed class RoomChannelService(ILobby lobby, IChannelService channels)
 	/// <param name="connection">The connection that leaves.</param>
 	internal void LeaveChannel(Room room, Connection connection)
 	{
-		if (!RoomRules.IsManager(room, connection.User)) channels.Part(room.Channel, connection);
+		if (!RoomRules.IsManager(room, connection.User)) channels.Members.Part(room.Channel, connection);
 	}
 
 	/// <summary>Removes a connection from the channel of every room, managers included.</summary>
@@ -29,6 +29,6 @@ internal sealed class RoomChannelService(ILobby lobby, IChannelService channels)
 	internal void LeaveAllChannels(Connection connection)
 	{
 		foreach (var room in lobby.Rooms.Values)
-			channels.Part(room.Channel, connection);
+			channels.Members.Part(room.Channel, connection);
 	}
 }

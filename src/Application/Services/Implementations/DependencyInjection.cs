@@ -34,19 +34,29 @@ public static class DependencyInjection
 
 		services.AddSingleton<SessionEventStream>();
 		services.AddSingleton<SessionSpectatorsService>();
+		services.AddSingleton<SessionConnectionsService>();
+		services.AddSingleton<SessionPresenceService>();
 		services.AddSingleton<SessionService>();
 		services.AddSingleton<ISessionService>(sp => sp.GetRequiredService<SessionService>());
 
 		services.AddSingleton<AuthService>();
 		services.AddSingleton<IAuthService>(sp => sp.GetRequiredService<AuthService>());
 
+		services.AddSingleton<UserEventStream>();
+		services.AddSingleton<UserRestrictionsService>();
 		services.AddSingleton<UserService>();
 		services.AddSingleton<IUserService>(sp => sp.GetRequiredService<UserService>());
 
 		services.AddSingleton<ChannelEventStream>();
+		services.AddSingleton<ChannelMembershipService>();
+		services.AddSingleton<ChannelMessagesService>();
+		services.AddSingleton<GeneralChannelService>();
 		services.AddSingleton<ChannelService>();
 		services.AddSingleton<IChannelService>(sp => sp.GetRequiredService<ChannelService>());
 
+		services.AddSingleton<LobbyEventStream>();
+		services.AddSingleton<LobbyRoomsService>();
+		services.AddSingleton<LobbyWatchersService>();
 		services.AddSingleton<LobbyService>();
 		services.AddSingleton<ILobbyService>(sp => sp.GetRequiredService<LobbyService>());
 

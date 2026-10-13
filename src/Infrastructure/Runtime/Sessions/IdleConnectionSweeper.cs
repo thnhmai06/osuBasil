@@ -16,7 +16,7 @@ internal sealed class IdleConnectionSweeper(
 		while (await timer.WaitForNextTickAsync(stoppingToken))
 			try
 			{
-				var closed = sessions.CloseIdle();
+				var closed = sessions.Connections.CloseIdle();
 				if (closed > 0) logger.LogDebug("Closed {ConnectionCount} idle connections", closed);
 			}
 			catch (Exception exception)

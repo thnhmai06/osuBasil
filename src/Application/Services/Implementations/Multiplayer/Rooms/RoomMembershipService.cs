@@ -12,7 +12,7 @@ namespace Basil.Application.Services.Implementations.Multiplayer.Rooms;
 /// <summary>Seats, removes and invites the people of a room.</summary>
 internal sealed class RoomMembershipService(
 	ILobby lobby,
-	LobbyService lobbyService,
+	LobbyRoomsService lobbyRooms,
 	RoomEventStream events,
 	RoomChannelService roomChannel,
 	RoomRoundsService rounds,
@@ -125,7 +125,7 @@ internal sealed class RoomMembershipService(
 	/// <param name="room">The room to check.</param>
 	internal void ReportIfEmpty(Room room)
 	{
-		if (!room.Slots.Any(slot => slot.Player is not null)) lobbyService.RoomEmptied(room);
+		if (!room.Slots.Any(slot => slot.Player is not null)) lobbyRooms.RoomEmptied(room);
 	}
 
 	private RoomResult Join(Room room, BanchoConnection by, string password)
@@ -171,7 +171,7 @@ internal sealed class RoomMembershipService(
 		if (RoomSlotsMechanics.Seat(room, player) is not { } slot) return RoomResult.Full;
 
 		roomChannel.JoinChannel(room, player);
-		LobbyService.RoomOccupied(room);
+		LobbyRoomsService.RoomOccupied(room);
 		events.Emit(new RoomPlayerJoined(room, player, slot.Index, null, null));
 		return RoomResult.Ok;
 	}
@@ -191,7 +191,7 @@ internal sealed class RoomMembershipService(
 		roomChannel.LeaveChannel(room, stale);
 		var progress = rounds.AdvanceRound(room);
 		roomChannel.JoinChannel(room, player);
-		LobbyService.RoomOccupied(room);
+		LobbyRoomsService.RoomOccupied(room);
 		events.Emit(new RoomPlayerJoined(room, player, slot.Index, stale, progress));
 		return RoomResult.Ok;
 	}

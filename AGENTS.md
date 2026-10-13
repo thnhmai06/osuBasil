@@ -511,7 +511,7 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
 * **The acted-on object owns the interaction.** An actor (a user, a session, any active object)
   only *calls* an action. The relation is stored on the record of the object acted on
   (`ChannelSession.Members`, `Room.Slots`), the operation lives in the service of that object's kind
-  (`IChannelService.Join(channel, by)`, `IRoomService.JoinAsync(room, by, password)`), and the event belongs to
+  (`IChannelService.Members.Join(channel, by)`, `IRoomService.Members.JoinAsync(room, by, password)`), and the event belongs to
   that object's category (`ChannelMemberJoined` is a `ChannelEvent`, emitted by the channel service). The
   session does **not** keep a `Channels` set, does **not** have a `Join(ChannelSession)` method, and nothing
   emits events on its behalf. Otherwise every new joinable kind (channel, room, spectator stream, …) forces a
@@ -520,7 +520,10 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
 * **A service whose object has parts gets one child service per part.** The parent contract exposes each
   child as a property named after the part (`IRoomService.Members`, `.Authority`, `.Settings`, `.Slots`,
   `.Rounds`); the object stays a parameter of every operation (`rooms.Slots.MoveAsync(room, by, player, index)`),
-  never an object-bound handle (`rooms.For(room)`). Children are `I{Parent}{Part}Service`, share the parent's one
+  never an object-bound handle (`rooms.For(room)`). Today: `IRoomService` (`Members`, `Authority`, `Settings`,
+  `Slots`, `Rounds`), `IChannelService` (`Members`, `Messages`, `General`), `ISessionService` (`Connections`,
+  `Presence`, `Spectators`), `IUserService` (`Restrictions`), `ILobbyService` (`Rooms`, `Watchers`). Children are
+  named after the parent and the part (`IRoomSlotsService`, `IGeneralChannelService`), share the parent's one
   event stream and may call a sibling's `internal` members directly, since they act on the same object. Callers
   reach a child only through the parent. A service whose object has no parts it acts on stays flat; size alone is
   no reason to split.
@@ -697,7 +700,7 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
 * **Identity on every action.** Every action has a real actor `by` (a `Connection`); `by` is never `null`
   and never a stand-in for "the server". A room created through the API has the caller as creator.
 * **Delegation is scope-based.** An account with `TournamentActForUsers` may act for another online user:
-  `ISessionService.ActFor` returns a `DelegatedConnection` carrying that user's identity, so the operation runs
+  `ISessionService.Connections.ActFor` returns a `DelegatedConnection` carrying that user's identity, so the operation runs
   with that user's authority and is attributed to that user, but only the user's permissions within its scope
   (`Permissions.RoomDelegation`: room and lobby operations) count, and it joins no channel. The caller's rank does
   not matter. Application enforces the scope; the host only forwards the delegated connection.

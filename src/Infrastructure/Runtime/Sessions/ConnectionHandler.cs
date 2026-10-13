@@ -24,7 +24,7 @@ internal sealed class ConnectionHandler(
 		switch (@event)
 		{
 			case UserConnectionOpened opened:
-				channels.JoinAutoChannels(opened.Connection);
+				channels.Members.JoinAutoChannels(opened.Connection);
 				break;
 			case UserConnectionClosed closed:
 				var connection = closed.Connection;
@@ -33,9 +33,9 @@ internal sealed class ConnectionHandler(
 				Run("stop spectating", connection.User.Id,
 					() => sessions.Spectators.StopSpectating(connection), cancellationToken);
 				if (connection is BanchoConnection bancho)
-					Run("leave the lobby", connection.User.Id, () => lobby.Unwatch(bancho), cancellationToken);
+					Run("leave the lobby", connection.User.Id, () => lobby.Watchers.Unwatch(bancho), cancellationToken);
 				Run("part its channels", connection.User.Id,
-					() => channels.PartAll(connection), cancellationToken);
+					() => channels.Members.PartAll(connection), cancellationToken);
 				break;
 		}
 	}
