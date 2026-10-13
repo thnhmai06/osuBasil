@@ -4,11 +4,15 @@ using Basil.Infrastructure.Storage.Common;
 using Basil.Infrastructure.Storage.Common.Database;
 using Basil.Infrastructure.Storage.Common.Writing;
 using Dapper;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Storage.Content;
 
 /// <summary>Stores the server-wide settings.</summary>
-internal sealed class PostgresSettingsRepository(DatabaseReader reader, DatabaseWriter writer)
+internal sealed class PostgresSettingsRepository(
+	DatabaseReader reader,
+	DatabaseWriter writer,
+	ILogger<PostgresSettingsRepository> logger)
 	: ISettingsRepository, IResident
 {
 	private ServerSettings? _settings;
@@ -29,7 +33,7 @@ internal sealed class PostgresSettingsRepository(DatabaseReader reader, Database
 				Motd = row.Motd,
 				LockedCreation = (CreationLocks)row.LockedCreation,
 				MenuIconUrl = Parse(row.MenuIconUrl),
-				MenuIconImage = AssetReference.TryParse(row.MenuIconImage, null, out var icon) ? icon : null,
+				MenuIconImage = ParseImage(row.MenuIconImage),
 				MirrorDownloadEndpoint = Parse(row.MirrorDownloadEndpoint),
 				MirrorSearchEndpoint = Parse(row.MirrorSearchEndpoint)
 			};
@@ -75,6 +79,16 @@ internal sealed class PostgresSettingsRepository(DatabaseReader reader, Database
 	private static Uri? Parse(string? value)
 	{
 		return value is null ? null : new Uri(value, UriKind.Absolute);
+	}
+
+	/// <summary>Reads the stored menu icon image, or <see langword="null" /> when none or an invalid one is stored.</summary>
+	private AssetReference? ParseImage(string? value)
+	{
+		if (value is null) return null;
+		if (AssetReference.TryParse(value, null, out var image)) return image;
+
+		logger.LogWarning("The menu icon image {Image} is not a valid asset reference and is not shown", value);
+		return null;
 	}
 
 	/// <summary>A stored row of the <c>settings</c> table.</summary>

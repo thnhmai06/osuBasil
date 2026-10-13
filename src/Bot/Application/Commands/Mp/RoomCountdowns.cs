@@ -27,11 +27,11 @@ internal sealed class RoomCountdowns(IBasilChat chat, IBasilRooms rooms, TimePro
 			return countdown;
 		});
 
+		countdown.Run();
 		var seconds = (int)length.TotalSeconds;
 		await chat.PostAsync(Channel(roomId), startsRound
 			? string.Format(AnnouncementReplies.CountdownStartedForRound, seconds)
 			: string.Format(AnnouncementReplies.CountdownStarted, seconds), cancellationToken);
-		countdown.Run();
 	}
 
 	/// <summary>Stops a room's countdown and announces that it was aborted.</summary>
@@ -104,7 +104,8 @@ internal sealed class RoomCountdowns(IBasilChat chat, IBasilRooms rooms, TimePro
 		countdown.Dispose();
 		if (!countdown.StartsRound)
 		{
-			await chat.PostAsync(Channel(countdown.RoomId), AnnouncementReplies.CountdownElapsed, CancellationToken.None);
+			await chat.PostAsync(Channel(countdown.RoomId), AnnouncementReplies.CountdownElapsed,
+				CancellationToken.None);
 			return;
 		}
 
@@ -131,7 +132,12 @@ internal sealed class RoomCountdowns(IBasilChat chat, IBasilRooms rooms, TimePro
 	/// <param name="length">How long it runs.</param>
 	/// <param name="owner">The countdown collection that runs it.</param>
 	/// <param name="time">The clock the timers use.</param>
-	private sealed class RoomCountdown(int roomId, User actor, bool startsRound, TimeSpan length, RoomCountdowns owner,
+	private sealed class RoomCountdown(
+		int roomId,
+		User actor,
+		bool startsRound,
+		TimeSpan length,
+		RoomCountdowns owner,
 		TimeProvider time) : IDisposable
 	{
 		/// <summary>The timers that announce the marks and the end; empty until the countdown starts.</summary>

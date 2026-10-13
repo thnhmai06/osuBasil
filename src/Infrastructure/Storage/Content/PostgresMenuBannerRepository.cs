@@ -5,11 +5,15 @@ using Basil.Infrastructure.Storage.Common;
 using Basil.Infrastructure.Storage.Common.Database;
 using Basil.Infrastructure.Storage.Common.Writing;
 using Dapper;
+using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Storage.Content;
 
 /// <summary>Stores the banners shown on the osu! main menu.</summary>
-internal sealed class PostgresMenuBannerRepository(DatabaseReader reader, DatabaseWriter writer)
+internal sealed class PostgresMenuBannerRepository(
+	DatabaseReader reader,
+	DatabaseWriter writer,
+	ILogger<PostgresMenuBannerRepository> logger)
 	: IMenuBannerRepository, IResident
 {
 	private readonly ConcurrentDictionary<AssetReference, MenuBanner> _banners = new();
@@ -57,7 +61,11 @@ internal sealed class PostgresMenuBannerRepository(DatabaseReader reader, Databa
 			.ConfigureAwait(false);
 		foreach (var row in rows)
 		{
-			if (!AssetReference.TryParse(row.Image, null, out var image)) continue;
+			if (!AssetReference.TryParse(row.Image, null, out var image))
+			{
+				logger.LogWarning("The menu banner image {Image} is not a valid asset reference and is not shown", row.Image);
+				continue;
+			}
 
 			var banner = ToBanner(row, image);
 			_banners[banner.Image] = banner;

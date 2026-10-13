@@ -553,8 +553,8 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   `DeleteAsync`, plus `ListAsync` and `RenameAsync` where the content is managed); `OpenAsync` serves the server's
   own reads, never clients, who get stored assets from the asset host. A storage lists with `IEnumerable<X>` (the
   caller decides whether to materialise it), and a
-  storage of text reads and writes it through `StreamReader`/`StreamWriter` (`IFaqStorage.OpenAsync`,
-  `IFaqStorage.EditAsync`) instead of a raw `Stream`. Extract a shared
+  storage of text reads and writes it through `StreamReader`/`StreamWriter` (`IFaqStorage.ReadAsync`,
+  `IFaqStorage.CreateOrUpdateAsync`) instead of a raw `Stream`. Extract a shared
   interface only when several repositories genuinely share an operation, and keep the `IXxxRepository`
   contract callers depend on; no parallel generic ports (`ICreatable`) and no generic query system
   (`Query<T>`, `SortOptions`). Key normalization (for example case- and space-insensitive user names) lives on the
