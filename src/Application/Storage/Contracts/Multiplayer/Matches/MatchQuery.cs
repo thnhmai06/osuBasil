@@ -11,10 +11,10 @@ namespace Basil.Application.Storage.Contracts.Multiplayer.Matches;
 /// </param>
 /// <param name="Private">
 ///     Whether only matches with private history (<see langword="true" />) or only public ones
-///     (<see langword="false" />) are included, or <see langword="null" /> for both; public matches only unless the
-///     search text says otherwise.
+///     (<see langword="false" />) are included, or <see langword="null" /> for both; a user's search is narrowed
+///     with <see cref="LimitTo" />.
 /// </param>
-public sealed record MatchQuery(bool? Ended = null, bool? Private = false) : IParsable<MatchQuery>
+public sealed record MatchQuery(bool? Ended = null, bool? Private = null) : IParsable<MatchQuery>
 {
 	/// <summary>Reads a query written in the match search syntax.</summary>
 	/// <param name="s">The search text, for example <c>ended=0 private=*</c>; a state takes <c>1</c>, <c>0</c> or <c>*</c> for both, and anything else in the text is ignored.</param>
@@ -26,7 +26,7 @@ public sealed record MatchQuery(bool? Ended = null, bool? Private = false) : IPa
 		ArgumentNullException.ThrowIfNull(s);
 
 		bool? ended = null;
-		bool? isPrivate = false;
+		bool? isPrivate = null;
 		SearchSyntax.Parse(s, (key, op, rawValue) =>
 		{
 			if (op is not (":" or "=") || !SearchSyntax.TryParseState(rawValue, out var state)) return false;

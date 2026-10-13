@@ -15,8 +15,8 @@ namespace Basil.Application.Storage.Contracts.Beatmaps;
 /// <param name="Mode">The game mode a beatmap must be for, or <see langword="null" /> for any.</param>
 /// <param name="Hidden">
 ///     Whether only hidden (<see langword="true" />) or only visible (<see langword="false" />) beatmaps are included,
-///     or <see langword="null" /> for both; a beatmap is hidden when it or its beatmapset is. Visible beatmaps only unless
-///     the search text says otherwise.
+///     or <see langword="null" /> for both; a beatmap is hidden when it or its beatmapset is. A user's search is
+///     narrowed with <see cref="LimitTo" />.
 /// </param>
 /// <param name="Stars">The star rating range, or <see langword="null" /> for any.</param>
 /// <param name="Ar">The approach rate range, or <see langword="null" /> for any.</param>
@@ -37,7 +37,7 @@ namespace Basil.Application.Storage.Contracts.Beatmaps;
 public sealed record BeatmapQuery(
 	string? Text = null,
 	GameMode? Mode = null,
-	bool? Hidden = false,
+	bool? Hidden = null,
 	Interval<double>? Stars = null,
 	Interval<double>? Ar = null,
 	Interval<double>? Cs = null,
@@ -68,7 +68,7 @@ public sealed record BeatmapQuery(
 		ArgumentNullException.ThrowIfNull(s);
 
 		GameMode? mode = null;
-		bool? hidden = false;
+		bool? hidden = null;
 		Interval<double>? stars = null;
 		Interval<double>? ar = null;
 		Interval<double>? cs = null;

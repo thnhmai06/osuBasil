@@ -21,7 +21,7 @@ internal sealed class MatchService(
 	public async Task<int> CloseUnfinishedAsync(CancellationToken cancellationToken = default)
 	{
 		var allMatches = await Paging.ListAllAsync(
-			page => matches.ListAsync(new MatchQuery(Ended: false, Private: null), page, cancellationToken),
+			page => matches.ListAsync(new MatchQuery(Ended: false), page, cancellationToken),
 			cancellationToken);
 
 		var now = time.GetUtcNow();

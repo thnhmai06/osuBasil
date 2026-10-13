@@ -14,13 +14,13 @@ namespace Basil.Application.Storage.Contracts.Users;
 /// <param name="Permissions">Permissions a user must all be granted, or <see langword="null" /> for any.</param>
 /// <param name="Deleted">
 ///     Whether only deleted (<see langword="true" />) or only existing (<see langword="false" />) users are
-///     included, or <see langword="null" /> for both; existing users only unless the search text says otherwise.
+///     included, or <see langword="null" /> for both; a user's search is narrowed with <see cref="LimitTo" />.
 /// </param>
 public sealed record UserQuery(
 	string? Text = null,
 	IReadOnlyList<Country>? Countries = null,
 	Permissions? Permissions = null,
-	bool? Deleted = false) : IParsable<UserQuery>
+	bool? Deleted = null) : IParsable<UserQuery>
 {
 	/// <summary>Reads a query written in the user search syntax.</summary>
 	/// <param name="s">The search text, for example <c>country=usvn permission=4 deleted=* bob</c>; a state takes <c>1</c>, <c>0</c> or <c>*</c> for both.</param>
@@ -33,7 +33,7 @@ public sealed record UserQuery(
 
 		IReadOnlyList<Country>? countries = null;
 		Permissions? permissions = null;
-		bool? deleted = false;
+		bool? deleted = null;
 
 		var keywords = SearchSyntax.Parse(s, (key, op, rawValue) =>
 		{

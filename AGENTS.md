@@ -568,9 +568,10 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   A query record searched with text (`UserQuery`, `BeatmapQuery`, `MatchQuery`) is `IParsable<T>`: every criterion, a
   state included, is written in the search text (`deleted=1`,
   `hidden=0`, `ended=0`, `private=1`, enum masks as numbers such as `permission=4`), and a state is a `bool?` (`null` for both,
-  written `*`) whose default, kept when the text has no token for it, is what a user with the least permissions sees (`Deleted =
-  false`, `Hidden = false`, `Private = false`). Every caller narrows a query to the asker before using it:
-  `UserQuery.Parse(text).LimitTo(effective)`, where `LimitTo` resets each state the asker may not widen.
+  written `*`) whose default, kept when the text has no token for it, is `null` (both). Every caller narrows a query to the asker
+  before using it, `UserQuery.Parse(text).LimitTo(effective)`: `LimitTo` sets each state the asker may not see to
+  what a user without that permission sees (`Deleted = false`, `Hidden = false`, `Private = false`). A query used
+  without `LimitTo` shows everything, so only the server's own work (a scan, startup recovery) skips it.
 * **Memory is the truth; the database is a copy of it.** Memory is where the server works; the database only keeps
   a record of what was done. **No operation waits for the database unless its result comes from the database**
   (a try-operation: an identity the store assigns, a unique value). Everything asks memory first and goes to the

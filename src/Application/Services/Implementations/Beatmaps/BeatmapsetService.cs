@@ -141,7 +141,7 @@ internal sealed class BeatmapsetService(
 	public async Task<int> ScanAsync(CancellationToken cancellationToken = default)
 	{
 		var allSets = await Paging.ListAllAsync(
-			page => beatmapsets.ListAsync(new BeatmapQuery(Hidden: null), page, cancellationToken),
+			page => beatmapsets.ListAsync(new BeatmapQuery(), page, cancellationToken),
 			cancellationToken);
 
 		var forgotten = 0;
