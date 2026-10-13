@@ -1,11 +1,11 @@
 using System.Collections.Immutable;
 using Basil.Application.Storage.Contracts.Multiplayer;
-using Basil.Application.Storage.Contracts.Multiplayer.Match;
-using Basil.Application.Storage.Contracts.Multiplayer.Room;
+using Basil.Application.Storage.Contracts.Multiplayer.Matches;
+using Basil.Application.Storage.Contracts.Multiplayer.Rooms;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Multiplayer.Match;
-using Basil.Domain.Multiplayer.Round;
+using Basil.Domain.Multiplayer.Matches;
+using Basil.Domain.Multiplayer.Rounds;
 using Basil.Domain.Utilities;
 using Basil.Infrastructure.Storage.Common.Database;
 using Basil.Infrastructure.Storage.Common.Writing;
@@ -19,7 +19,7 @@ internal sealed class PostgresRoundRepository(
 	DatabaseReader reader,
 	DatabaseWriter writer,
 	IMatchRepository matches)
-	: MemoryRepository<(int MatchId, int Number), Round>(reader, writer), IRoundRepository
+	: MemoryRepository<(int MatchId, int Index), Round>(reader, writer), IRoundRepository
 {
 	private readonly OwnedLists<int, Match, Round> _byMatch = new();
 
@@ -70,9 +70,9 @@ internal sealed class PostgresRoundRepository(
 		});
 	}
 
-	protected override (int MatchId, int Number) KeyOf(Round item)
+	protected override (int MatchId, int Index) KeyOf(Round item)
 	{
-		return (item.Match.Id, item.Number);
+		return (item.Match.Id, item.Index);
 	}
 
 	protected override Root RootOf(Round item)
@@ -80,7 +80,7 @@ internal sealed class PostgresRoundRepository(
 		return Root.Match(item.Match.Id);
 	}
 
-	protected override async Task<Round?> LoadAsync((int MatchId, int Number) key)
+	protected override async Task<Round?> LoadAsync((int MatchId, int Index) key)
 	{
 		var row = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<RoundRow>(
 			"""
@@ -88,7 +88,7 @@ internal sealed class PostgresRoundRepository(
 			from rounds
 			where match_id = @MatchId and number = @Number
 			""",
-			new { key.MatchId, key.Number }));
+			new { key.MatchId, Number = key.Index }));
 		if (row is null)
 			return null;
 
@@ -107,7 +107,7 @@ internal sealed class PostgresRoundRepository(
 		return new
 		{
 			MatchId = round.Match.Id,
-			round.Number,
+			Number = round.Index,
 			BeatmapHash = round.BeatmapHash.HashValue,
 			Mode = (int)round.Settings.Mode,
 			Mods = (int)round.Settings.Mods,
@@ -123,9 +123,9 @@ internal sealed class PostgresRoundRepository(
 
 	private static ImmutableList<Round> AddOrReplace(ImmutableList<Round> current, Round round)
 	{
-		var index = current.FindIndex(item => item.Number == round.Number);
+		var index = current.FindIndex(item => item.Index == round.Index);
 		var next = index < 0 ? current.Add(round) : current.SetItem(index, round);
-		return next.Sort(static (left, right) => left.Number.CompareTo(right.Number));
+		return next.Sort(static (left, right) => left.Index.CompareTo(right.Index));
 	}
 
 	/// <summary>Builds a round of the given match from its stored row.</summary>
@@ -146,7 +146,7 @@ internal sealed class PostgresRoundRepository(
 		return new Round
 		{
 			Match = match,
-			Number = row.Number,
+			Index = row.Number,
 			BeatmapHash = new Md5(row.BeatmapHash),
 			Settings = settings,
 			StartedAt = row.StartedAt,

@@ -1,10 +1,10 @@
 using System.Collections.Immutable;
 using Basil.Application.Storage.Contracts.Multiplayer;
-using Basil.Application.Storage.Contracts.Multiplayer.Match;
-using Basil.Application.Storage.Contracts.Multiplayer.Room;
+using Basil.Application.Storage.Contracts.Multiplayer.Matches;
+using Basil.Application.Storage.Contracts.Multiplayer.Rooms;
 using Basil.Application.Storage.Contracts.Scores;
 using Basil.Domain.Mechanics;
-using Basil.Domain.Multiplayer.Round;
+using Basil.Domain.Multiplayer.Rounds;
 using Basil.Infrastructure.Storage.Common.Database;
 using Basil.Infrastructure.Storage.Common.Writing;
 using Dapper;
@@ -31,7 +31,7 @@ internal sealed class PostgresRoundScoreRepository(
 				{
 					ScoreId = roundScore.Score.Id,
 					MatchId = roundScore.Round.Match.Id,
-					RoundNumber = roundScore.Round.Number,
+					RoundNumber = roundScore.Round.Index,
 					Team = roundScore.Team is { } team ? (int)team : (int?)null
 				}, transaction), cancellationToken);
 		return roundScore;
@@ -47,7 +47,7 @@ internal sealed class PostgresRoundScoreRepository(
 			where match_id = @MatchId and round_number = @Number
 			order by score_id
 			""",
-			new { MatchId = round.Match.Id, round.Number }), cancellationToken);
+			new { MatchId = round.Match.Id, Number = round.Index }), cancellationToken);
 
 		var result = ImmutableList.CreateBuilder<RoundScore>();
 		foreach (var row in rows)

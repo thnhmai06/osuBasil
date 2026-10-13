@@ -1,7 +1,7 @@
-using Basil.Domain.Multiplayer.Round;
+using Basil.Domain.Multiplayer.Rounds;
 using Basil.Domain.Scores;
 
-namespace Basil.Domain.Multiplayer.Match;
+namespace Basil.Domain.Multiplayer.Matches;
 
 /// <summary>A match's results, round by round.</summary>
 /// <param name="Match">The match these results describe.</param>
@@ -13,4 +13,4 @@ public sealed record MatchReport(Match Match, IReadOnlyList<RoundReport> Rounds)
 /// <param name="Round">The round being reported.</param>
 /// <param name="Scores">The scores submitted in the round.</param>
 /// <param name="Result">The outcome decided from those scores, or <see langword="null" /> when there are none.</param>
-public sealed record RoundReport(Round.Round Round, IReadOnlyList<Score> Scores, RoundResult? Result);
+public sealed record RoundReport(Round Round, IReadOnlyList<Score> Scores, RoundResult? Result);

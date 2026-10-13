@@ -1,7 +1,7 @@
-﻿using Basil.Domain.Users;
+using Basil.Domain.Users;
 using Basil.Domain.Utilities;
 
-namespace Basil.Domain.Multiplayer.Match;
+namespace Basil.Domain.Multiplayer.Matches;
 
 /// <summary>
 ///     A persisted match identified by its id.

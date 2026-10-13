@@ -1,7 +1,7 @@
 using Basil.Application.Storage.Contracts.Chat;
 using Basil.Domain.Chat;
 
-namespace Basil.Application.Storage.Contracts.Multiplayer.Room;
+namespace Basil.Application.Storage.Contracts.Multiplayer.Rooms;
 
 /// <summary>A multiplayer room's chat channel while the room is open.</summary>
 public sealed class RoomChannelSession(Room room) : ChannelSession

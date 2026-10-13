@@ -2,11 +2,11 @@ using Basil.Application.Services.Contracts.Multiplayer;
 using Basil.Application.Services.Contracts.Multiplayer.Events;
 using Basil.Application.Services.Contracts.Multiplayer.Rooms;
 using Basil.Application.Storage.Contracts.Multiplayer;
-using Basil.Application.Storage.Contracts.Multiplayer.Room;
+using Basil.Application.Storage.Contracts.Multiplayer.Rooms;
 using Basil.Application.Storage.Contracts.Sessions;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Multiplayer.Match;
+using Basil.Domain.Multiplayer.Matches;
 
 namespace Basil.Application.Services.Implementations.Multiplayer.Rooms;
 
@@ -44,8 +44,8 @@ internal sealed class RoomSettingsService(RoomEventStream events, TimeProvider t
 
 		if (change == new RoomSettingsChange()) return RoomResult.Ok;
 
-		var mode = change.Mode ?? room.Settings.Mode;
-		var freemods = change.Freemods ?? room.Settings.Freemods;
+		var mode = change.Mode ?? room.Settings.Value.Mode;
+		var freemods = change.Freemods ?? room.Settings.Value.Freemods;
 		if (change.Mods is { } requestedMods && !requestedMods.IsValid(mode)) return RoomResult.InvalidMods;
 
 		var countdownCancelled = room.Rounds.CountdownStartsRound &&
@@ -66,24 +66,24 @@ internal sealed class RoomSettingsService(RoomEventStream events, TimeProvider t
 
 		if (change.Mode is { } newMode)
 		{
-			room.Settings.Stored.Mods = room.Settings.Stored.Mods.RemoveInvalidMods(newMode);
-			room.Settings.Stored.Mode = newMode;
+			room.Settings.Value.Mods = room.Settings.Value.Mods.RemoveInvalidMods(newMode);
+			room.Settings.Value.Mode = newMode;
 			foreach (var slot in room.Slots.Where(s => s.Mods is not null))
 				slot.Mods = slot.Mods!.Value.RemoveInvalidMods(newMode);
 		}
 
-		if (change.Freemods is { } newFreemods && newFreemods != room.Settings.Freemods)
+		if (change.Freemods is { } newFreemods && newFreemods != room.Settings.Value.Freemods)
 			ApplyFreemods(room, newFreemods);
 		if (change.Mods is { } newMods)
 		{
-			room.Settings.Stored.Mods = freemods ? newMods & GameMods.SpeedChangingMods : newMods;
+			room.Settings.Value.Mods = freemods ? newMods & GameMods.SpeedChangingMods : newMods;
 			// Under freemod a seated caller keeps the rest of the mods as their own, as the osu! client expects.
 			if (freemods && by is BanchoConnection caller && room.Slots.Find(caller) is { } callerSlot)
 				callerSlot.Mods = newMods & ~GameMods.SpeedChangingMods;
 		}
 
 		if (change.TeamType is { } teamType) ApplyTeamType(room, teamType);
-		if (change.WinCondition is { } winCondition) room.Settings.Stored.WinCondition = winCondition;
+		if (change.WinCondition is { } winCondition) room.Settings.Value.WinCondition = winCondition;
 		if (change.Size is { } size) RoomSlotsMechanics.Resize(room.Slots, size);
 		if (change.IsPrivate is { } isPrivate) room.Match.Value.IsPrivate = isPrivate;
 
@@ -112,7 +112,7 @@ internal sealed class RoomSettingsService(RoomEventStream events, TimeProvider t
 	/// </remarks>
 	private static void ApplyFreemods(Room room, bool value)
 	{
-		room.Settings.Stored.Freemods = value;
+		room.Settings.Value.Freemods = value;
 
 		var seated = room.Slots.Where(s => s.Player is not null).ToList();
 		if (value)
@@ -120,14 +120,14 @@ internal sealed class RoomSettingsService(RoomEventStream events, TimeProvider t
 			// Players take the room's mods that combine per player; the room keeps only the
 			// speed-changing ones, which must stay the same for everyone.
 			foreach (var slot in seated)
-				slot.Mods = room.Settings.Stored.Mods & ~GameMods.SpeedChangingMods;
-			room.Settings.Stored.Mods &= GameMods.SpeedChangingMods;
+				slot.Mods = room.Settings.Value.Mods & ~GameMods.SpeedChangingMods;
+			room.Settings.Value.Mods &= GameMods.SpeedChangingMods;
 		}
 		else
 		{
 			// The room keeps its speed-changing mods and takes the host's own mods.
 			var hostMods = (room.Authority.Host is { } host ? room.Slots.Find(host)?.Mods : null) ?? GameMods.NoMod;
-			room.Settings.Stored.Mods = (room.Settings.Stored.Mods & GameMods.SpeedChangingMods) | hostMods;
+			room.Settings.Value.Mods = (room.Settings.Value.Mods & GameMods.SpeedChangingMods) | hostMods;
 			foreach (var slot in seated)
 				slot.Mods = GameMods.NoMod;
 		}
@@ -138,7 +138,7 @@ internal sealed class RoomSettingsService(RoomEventStream events, TimeProvider t
 	/// <param name="value">The team arrangement to set.</param>
 	private static void ApplyTeamType(Room room, GameTeamType value)
 	{
-		room.Settings.Stored.TeamType = value;
+		room.Settings.Value.TeamType = value;
 
 		if (value.IsTeamMode())
 		{

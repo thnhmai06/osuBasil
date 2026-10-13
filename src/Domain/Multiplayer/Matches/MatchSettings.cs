@@ -1,7 +1,7 @@
-﻿using Basil.Domain.Mechanics;
+using Basil.Domain.Mechanics;
 using Basil.Domain.Utilities;
 
-namespace Basil.Domain.Multiplayer.Match;
+namespace Basil.Domain.Multiplayer.Matches;
 
 /// <summary>
 ///     Represents the settings of an osu! multiplayer room: the selected beatmap, game mode,

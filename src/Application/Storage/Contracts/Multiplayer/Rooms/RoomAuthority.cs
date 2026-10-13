@@ -1,8 +1,9 @@
 using Basil.Application.Storage.Contracts.Sessions;
+using Basil.Domain.Multiplayer.Matches;
 using Basil.Domain.Users;
 using Basil.Domain.Utilities;
 
-namespace Basil.Application.Storage.Contracts.Multiplayer.Room;
+namespace Basil.Application.Storage.Contracts.Multiplayer.Rooms;
 
 /// <summary>Who has authority over a room: its creator, its referees and its host.</summary>
 public sealed class RoomAuthority
@@ -10,12 +11,12 @@ public sealed class RoomAuthority
 	/// <summary>The most referees a room can have.</summary>
 	public const int MaxReferees = 8;
 
-	private readonly Domain.Multiplayer.Match.Match _match;
+	private readonly Match _match;
 	private readonly ConcurrentSet<User> _referees = [];
 
 	/// <summary>Creates the authority of a room.</summary>
 	/// <param name="match">The match the room plays.</param>
-	internal RoomAuthority(Domain.Multiplayer.Match.Match match)
+	internal RoomAuthority(Match match)
 	{
 		_match = match;
 	}

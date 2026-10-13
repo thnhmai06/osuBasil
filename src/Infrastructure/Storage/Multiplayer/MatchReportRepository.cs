@@ -1,9 +1,9 @@
 using Basil.Application.Storage.Contracts.Multiplayer;
-using Basil.Application.Storage.Contracts.Multiplayer.Match;
-using Basil.Application.Storage.Contracts.Multiplayer.Room;
+using Basil.Application.Storage.Contracts.Multiplayer.Matches;
+using Basil.Application.Storage.Contracts.Multiplayer.Rooms;
 using Basil.Domain.Mechanics;
-using Basil.Domain.Multiplayer.Match;
-using Basil.Domain.Multiplayer.Round;
+using Basil.Domain.Multiplayer.Matches;
+using Basil.Domain.Multiplayer.Rounds;
 
 namespace Basil.Infrastructure.Storage.Multiplayer;
 

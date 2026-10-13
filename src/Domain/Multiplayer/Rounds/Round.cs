@@ -1,7 +1,7 @@
-﻿using Basil.Domain.Multiplayer.Match;
+using Basil.Domain.Multiplayer.Matches;
 using Basil.Domain.Utilities;
 
-namespace Basil.Domain.Multiplayer.Round;
+namespace Basil.Domain.Multiplayer.Rounds;
 
 /// <summary>
 ///     A round record as read back for report purposes.
@@ -10,7 +10,7 @@ public sealed class Round : IMatchRecord, IEquatable<Round>
 {
 	/// <summary>Gets the position of the round within its match, starting at 1.</summary>
 	/// <remarks>An aborted round keeps its number; the next round takes the following one.</remarks>
-	public required int Number // TODO: Đổi tên thành Index
+	public required int Index
 	{
 		get;
 		init => field = value > 0
@@ -52,7 +52,7 @@ public sealed class Round : IMatchRecord, IEquatable<Round>
 	public required DateTimeOffset? EndedAt { get; set; }
 
 	/// <summary>The match the round belongs to.</summary>
-	public required Match.Match Match { get; init; }
+	public required Match Match { get; init; }
 
 	/// <inheritdoc />
 	DateTimeOffset IMatchRecord.Timestamp => StartedAt;
@@ -61,12 +61,12 @@ public sealed class Round : IMatchRecord, IEquatable<Round>
 	/// <param name="other">The round to compare, or <see langword="null" />.</param>
 	/// <returns>
 	///     <see langword="true" /> if <paramref name="other" /> belongs to the same <see cref="Match" />
-	///     and has the same <see cref="Number" />; otherwise, <see langword="false" />.
+	///     and has the same <see cref="Index" />; otherwise, <see langword="false" />.
 	/// </returns>
 	public bool Equals(Round? other)
 	{
 		if (other is null) return false;
-		return Match.Equals(other.Match) && Number == other.Number;
+		return Match.Equals(other.Match) && Index == other.Index;
 	}
 
 	/// <summary>Determines whether this round equals another object.</summary>
@@ -84,6 +84,6 @@ public sealed class Round : IMatchRecord, IEquatable<Round>
 	/// <returns>A hash code combining the round's match and number.</returns>
 	public override int GetHashCode()
 	{
-		return HashCode.Combine(Match, Number);
+		return HashCode.Combine(Match, Index);
 	}
 }

@@ -1,4 +1,4 @@
-﻿namespace Basil.Domain.Multiplayer.Match;
+namespace Basil.Domain.Multiplayer.Matches;
 
 /// <summary>
 ///     An osu! TRT record unit.

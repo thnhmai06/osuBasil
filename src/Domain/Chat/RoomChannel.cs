@@ -1,6 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Multiplayer.Match;
+using Basil.Domain.Multiplayer.Matches;
 
 namespace Basil.Domain.Chat;
 

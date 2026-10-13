@@ -1,10 +1,10 @@
 using Basil.Domain.Users;
 using Basil.Application.Services.Contracts.Events;
 using Basil.Application.Storage.Contracts.Multiplayer;
-using Basil.Application.Storage.Contracts.Multiplayer.Room;
+using Basil.Application.Storage.Contracts.Multiplayer.Rooms;
 using Basil.Application.Storage.Contracts.Sessions;
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Multiplayer.Round;
+using Basil.Domain.Multiplayer.Rounds;
 
 namespace Basil.Application.Services.Contracts.Multiplayer.Events;
 

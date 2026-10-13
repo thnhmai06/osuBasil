@@ -1,6 +1,6 @@
 using Basil.Application.Services.Contracts.Multiplayer;
 using Basil.Application.Storage.Contracts.Multiplayer;
-using Basil.Application.Storage.Contracts.Multiplayer.Room;
+using Basil.Application.Storage.Contracts.Multiplayer.Rooms;
 
 namespace Basil.Application.Services.Implementations.Multiplayer.Rooms;
 
