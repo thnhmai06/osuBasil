@@ -1,52 +1,41 @@
 using Basil.Application.Storage.Contracts.Content;
+using Basil.Domain.Content;
 using Basil.Infrastructure.Storage.Common;
 using Basil.Infrastructure.Storage.Common.Options;
-using Basil.Infrastructure.Storage.Common.Queries;
 
 namespace Basil.Infrastructure.Storage.Content;
 
-/// <summary>Holds the main-menu icon in memory from startup and changes it only through its storage methods.</summary>
-internal sealed class FileMenuIconStorage(DataPaths paths) : IMenuIconStorage, IResident
+/// <summary>Stores the main-menu icon image as a file in the data directory.</summary>
+internal sealed class FileMenuIconStorage(DataPaths paths) : IMenuIconStorage
 {
-	private (string Name, byte[] Content)? _icon; // TODO: TƯƠNG TỰ MENU BANNERS
+	private DataStorage Files => paths.MenuIcon;
 
 	/// <inheritdoc />
-	public async Task SaveAsync(string name, Stream content, CancellationToken cancellationToken = default)
+	public async Task<AssetReference> SaveAsync(string name, Stream content, CancellationToken cancellationToken = default)
 	{
-		var path = SafePath.Combine(paths.MenuIcon, name);
-		using var buffer = new MemoryStream();
-		await content.CopyToAsync(buffer, cancellationToken);
-		var bytes = buffer.ToArray();
-		_icon = (name, bytes);
-		using var storedContent = new MemoryStream(bytes);
-		await FileStorage.SaveAsync(path, storedContent, cancellationToken);
-		FileStorage.DeleteAllExcept(paths.MenuIcon, "*", path);
+		await Files.SaveAsync(name, content, cancellationToken);
+		Files.DeleteAllExcept(name);
+		return Files.ReferenceOf(name);
 	}
 
 	/// <inheritdoc />
-	public Task<(string Name, Stream Content)?> OpenAsync(CancellationToken cancellationToken = default)
+	public Task<(AssetReference Reference, Stream Content)?> OpenAsync(CancellationToken cancellationToken = default)
 	{
-		if (_icon is not { } icon)
-			return Task.FromResult<(string Name, Stream Content)?>(null);
+		var key = Files.Keys.Order(StringComparer.Ordinal).FirstOrDefault();
+		if (key is null)
+			return Task.FromResult<(AssetReference Reference, Stream Content)?>(null);
 
-		return Task.FromResult<(string Name, Stream Content)?>((icon.Name, new MemoryStream(icon.Content, false)));
+		var stream = Files.Open(key);
+		if (stream is null)
+			return Task.FromResult<(AssetReference Reference, Stream Content)?>(null);
+
+		return Task.FromResult<(AssetReference Reference, Stream Content)?>((Files.ReferenceOf(key), stream));
 	}
 
 	/// <inheritdoc />
 	public Task DeleteAsync(CancellationToken cancellationToken = default)
 	{
-		_icon = null;
-		foreach (var file in FileStorage.List(paths.MenuIcon, "*") ?? [])
-			FileStorage.Delete(file);
-
+		Files.DeleteAllExcept(null);
 		return Task.CompletedTask;
-	}
-
-	/// <inheritdoc />
-	public async Task LoadAsync(CancellationToken cancellationToken)
-	{
-		Directory.CreateDirectory(paths.MenuIcon);
-		if (FileStorage.List(paths.MenuIcon, "*")?.FirstOrDefault() is { } path)
-			_icon = (Path.GetFileName(path), await File.ReadAllBytesAsync(path, cancellationToken));
 	}
 }

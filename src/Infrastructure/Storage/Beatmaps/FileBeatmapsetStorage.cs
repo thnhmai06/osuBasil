@@ -30,7 +30,7 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 		var archiveFolder = ArchiveFolder(id);
 		var setFolder = SetFolder(id);
 		var uploadPath = Path.Combine(archiveFolder, $"upload-{Guid.NewGuid():N}.tmp");
-		var unpackFolder = Path.Combine(paths.Beatmaps, $"{id}.unpack-{Guid.NewGuid():N}");
+		var unpackFolder = Path.Combine(paths.Beatmaps.Path, $"{id}.unpack-{Guid.NewGuid():N}");
 		var gate = SetLocks.GetOrAdd(set.Id, static _ => new SemaphoreSlim(1, 1));
 
 		await gate.WaitAsync(cancellationToken);
@@ -54,7 +54,7 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 				throw new InvalidDataException($"The beatmapset archive is invalid: {exception.Message}", exception);
 			}
 
-			var oldFolder = Path.Combine(paths.Beatmaps, $"{id}.old-{Guid.NewGuid():N}");
+			var oldFolder = Path.Combine(paths.Beatmaps.Path, $"{id}.old-{Guid.NewGuid():N}");
 			var movedOldFolder = false;
 			if (Directory.Exists(setFolder))
 			{
@@ -259,8 +259,8 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 
 	internal IEnumerable<int> StoredSetIds()
 	{
-		if (!Directory.Exists(paths.Beatmaps)) yield break;
-		foreach (var folder in Directory.EnumerateDirectories(paths.Beatmaps))
+		if (!Directory.Exists(paths.Beatmaps.Path)) yield break;
+		foreach (var folder in Directory.EnumerateDirectories(paths.Beatmaps.Path))
 		{
 			var name = Path.GetFileName(folder);
 			if (name.Length > 0 && name.All(char.IsAsciiDigit) &&
@@ -391,12 +391,12 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 
 	private string SetFolder(string id)
 	{
-		return Path.Combine(paths.Beatmaps, id);
+		return Path.Combine(paths.Beatmaps.Path, id);
 	}
 
 	private string ArchiveFolder(string id)
 	{
-		return Path.Combine(paths.BeatmapArchives, id);
+		return Path.Combine(paths.BeatmapArchives.Path, id);
 	}
 
 	private static FileStream OpenRead(string path)

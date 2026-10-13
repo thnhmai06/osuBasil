@@ -1,3 +1,5 @@
+using Basil.Domain.Content;
+
 namespace Basil.Application.Storage.Contracts.Content;
 
 /// <summary>Stores the image of the osu! main-menu icon.</summary>
@@ -7,12 +9,14 @@ public interface IMenuIconStorage
 	/// <param name="name">The file name to store the icon under.</param>
 	/// <param name="content">The image bytes.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task SaveAsync(string name, Stream content, CancellationToken cancellationToken = default);
+	/// <returns>The reference to the stored icon.</returns>
+	/// <exception cref="ArgumentException"><paramref name="name" /> is not a safe file name.</exception>
+	Task<AssetReference> SaveAsync(string name, Stream content, CancellationToken cancellationToken = default);
 
 	/// <summary>Opens the stored icon image.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>The icon's file name and bytes, or <see langword="null" /> when no icon is stored.</returns>
-	Task<(string Name, Stream Content)?> OpenAsync(CancellationToken cancellationToken = default);
+	/// <returns>The icon's reference and bytes, or <see langword="null" /> when no icon is stored.</returns>
+	Task<(AssetReference Reference, Stream Content)?> OpenAsync(CancellationToken cancellationToken = default);
 
 	/// <summary>Deletes the stored icon; deleting when none is stored does nothing.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>

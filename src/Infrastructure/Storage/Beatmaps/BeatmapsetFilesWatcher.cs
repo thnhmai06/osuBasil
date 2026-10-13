@@ -20,7 +20,7 @@ internal sealed class BeatmapsetFilesWatcher(
 		FileSystemWatcher? watcher = null;
 		try
 		{
-			watcher = new FileSystemWatcher(paths.Beatmaps)
+			watcher = new FileSystemWatcher(paths.Beatmaps.Path)
 			{
 				IncludeSubdirectories = true,
 				NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite |
@@ -36,7 +36,7 @@ internal sealed class BeatmapsetFilesWatcher(
 		catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
 		{
 			watcher?.Dispose();
-			logger.LogError(exception, "Beatmapset files in {Directory} will not be watched", paths.Beatmaps);
+			logger.LogError(exception, "Beatmapset files in {Directory} will not be watched", paths.Beatmaps.Path);
 			return;
 		}
 
@@ -93,7 +93,7 @@ internal sealed class BeatmapsetFilesWatcher(
 		void OnError(object sender, ErrorEventArgs args)
 		{
 			logger.LogWarning(args.GetException(), "Watching {Directory} failed; synchronizing every stored set",
-				paths.Beatmaps);
+				paths.Beatmaps.Path);
 			try
 			{
 				foreach (var id in storage.StoredSetIds()) Schedule(id, stoppingToken);
@@ -108,7 +108,7 @@ internal sealed class BeatmapsetFilesWatcher(
 
 	private int? SetIdOf(string path)
 	{
-		var relative = Path.GetRelativePath(paths.Beatmaps, path);
+		var relative = Path.GetRelativePath(paths.Beatmaps.Path, path);
 		var segment = relative.Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
 			StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
 		return segment is { Length: > 0 } && segment.All(char.IsAsciiDigit) &&

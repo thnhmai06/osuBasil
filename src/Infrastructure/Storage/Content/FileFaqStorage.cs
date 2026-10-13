@@ -1,113 +1,88 @@
-using System.Collections.Concurrent;
 using Basil.Application.Storage.Contracts.Content;
 using Basil.Infrastructure.Storage.Common;
 using Basil.Infrastructure.Storage.Common.Options;
-using Basil.Infrastructure.Storage.Common.Queries;
 
 namespace Basil.Infrastructure.Storage.Content;
 
-/// <summary>Holds FAQ entries in memory from startup and changes them only through its storage methods.</summary>
-internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage, IResident
+/// <summary>Stores FAQ entries as files in the data directory.</summary>
+internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage
 {
-	// TODO: Trên các storage mà nơi lưu trữ (source of truth) phụ thuộc vào bên ngoài, KHÔNG ĐƯỢC LOAD HẾT TẤT CẢ VÀO MEMORY LUÔN.
-	// Trong Memory chỉ lưu "tham chiếu" tới nó, tức ám chỉ là đường dẫn tới nó, KHÔNG PHẢI LÀ LƯU TOÀN BỘ NỘI DUNG
-	// CỦA FILE VÀO TRONG MEMORY NÀY. Các File*Storage khác cũng đều bị dính lỗi tương tự như này.
-	private readonly ConcurrentDictionary<string, byte[]> _entries = new(StringComparer.Ordinal);
+	private DataStorage Files => paths.Faqs;
 
 	/// <inheritdoc />
-	public Task<IEnumerable<string>> ListAsync(CancellationToken cancellationToken)
+	public Task<IEnumerable<string>> ListAsync(CancellationToken cancellationToken = default)
 	{
 		return Task.FromResult<IEnumerable<string>>(
-			_entries.Keys.OrderBy(name => name, StringComparer.OrdinalIgnoreCase));
+			Files.Keys.Where(key => key.EndsWith(".txt", StringComparison.Ordinal))
+				.Order(StringComparer.OrdinalIgnoreCase)
+				.Select(key => key[..^4].Replace('/', ':')));
 	}
 
 	/// <inheritdoc />
 	public Task<StreamWriter> CreateOrUpdateAsync(string entry, CancellationToken cancellationToken = default)
 	{
-		var path = PathFor(paths.Faqs, entry);
-		return Task.FromResult<StreamWriter>(new EntryWriter(this, entry, path));
+		return Task.FromResult<StreamWriter>(EntryWriter.Create(Files.Resolve(FileNameOf(entry))));
 	}
 
 	/// <inheritdoc />
 	public Task<StreamReader?> ReadAsync(string entry, CancellationToken cancellationToken = default)
 	{
-		PathFor(paths.Faqs, entry);
-		return Task.FromResult(_entries.TryGetValue(entry, out var bytes)
-			? new StreamReader(new MemoryStream(bytes, false))
-			: null);
+		var fileName = FileNameOf(entry);
+		Files.Resolve(fileName); // an unsafe entry name is refused, not reported as missing
+		return Task.FromResult<StreamReader?>(Files.Open(fileName) is { } stream ? new StreamReader(stream) : null);
 	}
 
 	/// <inheritdoc />
 	public Task DeleteAsync(string entry, CancellationToken cancellationToken = default)
 	{
-		var path = PathFor(paths.Faqs, entry);
-		_entries.TryRemove(entry, out _);
-		FileStorage.Delete(path);
+		var fileName = FileNameOf(entry);
+		Files.Resolve(fileName); // an unsafe entry name is refused, not ignored
+		Files.Delete(fileName);
 		return Task.CompletedTask;
 	}
 
-	/// <inheritdoc />
-	public async Task LoadAsync(CancellationToken cancellationToken)
+	/// <summary>Gets the name of an entry's file: its <c>:</c> segments name the folders.</summary>
+	private static string FileNameOf(string entry)
 	{
-		Directory.CreateDirectory(paths.Faqs);
-		foreach (var path in Directory.EnumerateFiles(paths.Faqs, "*.txt", SearchOption.AllDirectories))
+		return string.Join('/', entry.Split(':')) + ".txt";
+	}
+
+	/// <summary>Writes an entry's new text to a temporary file and puts it in place once disposed.</summary>
+	private sealed class EntryWriter : StreamWriter
+	{
+		private readonly string _path;
+		private readonly string _temporary;
+
+		private EntryWriter(string path, string temporary) : base(new FileStream(temporary, new FileStreamOptions
 		{
-			var relative = Path.GetRelativePath(paths.Faqs, path);
-			var entry = Path.ChangeExtension(relative, null)
-				.Replace(Path.DirectorySeparatorChar, ':')
-				.Replace(Path.AltDirectorySeparatorChar, ':');
-			_entries[entry] = await File.ReadAllBytesAsync(path, cancellationToken);
+			Mode = FileMode.CreateNew,
+			Access = FileAccess.Write,
+			Share = FileShare.None,
+			Options = FileOptions.Asynchronous
+		}))
+		{
+			_path = path;
+			_temporary = temporary;
 		}
-	}
 
-	/// <summary>Resolves the path of a FAQ entry's file.</summary>
-	/// <param name="root">The directory the entry files belong to.</param>
-	/// <param name="entry">The name of the entry; its <c>:</c> segments name the subdirectories.</param>
-	/// <returns>The absolute path of the entry's <c>.txt</c> file.</returns>
-	/// <exception cref="ArgumentException">The <paramref name="entry" /> names an unsafe path.</exception>
-	private static string PathFor(string root, string entry)
-	{
-		return SafePath.Combine(root, string.Join('/', entry.Split(':')) + ".txt");
-	}
+		public static EntryWriter Create(string path)
+		{
+			Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+			return new EntryWriter(path, path + "." + Path.GetRandomFileName() + ".tmp");
+		}
 
-	/// <summary>Replaces an entry's stored text with newly written bytes.</summary>
-	/// <param name="entry">The name of the entry.</param>
-	/// <param name="path">The path of the entry's file.</param>
-	/// <param name="bytes">The text as bytes.</param>
-	private async Task StoreAsync(string entry, string path, byte[] bytes)
-	{
-		_entries[entry] = bytes;
-		using var content = new MemoryStream(bytes);
-		await FileStorage.SaveAsync(path, content, CancellationToken.None);
-	}
-
-	/// <summary>Collects an entry's new text and stores it once the writer is disposed.</summary>
-	private sealed class EntryWriter(FileFaqStorage storage, string entry, string path)
-		: StreamWriter(new MemoryStream())
-	{
-		private bool _stored;
-
-		/// <inheritdoc />
 		protected override void Dispose(bool disposing)
 		{
-			if (disposing) PersistAsync().GetAwaiter().GetResult();
 			base.Dispose(disposing);
-		}
-
-		/// <inheritdoc />
-		public override async ValueTask DisposeAsync()
-		{
-			await PersistAsync();
-			await base.DisposeAsync();
-		}
-
-		/// <summary>Stores the written text, once.</summary>
-		private async Task PersistAsync()
-		{
-			if (_stored) return;
-			_stored = true;
-			await FlushAsync();
-			await storage.StoreAsync(entry, path, ((MemoryStream)BaseStream).ToArray());
+			if (!disposing) return;
+			try
+			{
+				File.Move(_temporary, _path, true);
+			}
+			finally
+			{
+				if (File.Exists(_temporary)) File.Delete(_temporary);
+			}
 		}
 	}
 }
