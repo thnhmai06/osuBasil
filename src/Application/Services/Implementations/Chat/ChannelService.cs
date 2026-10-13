@@ -14,20 +14,16 @@ using Basil.Domain.Utilities;
 
 namespace Basil.Application.Services.Implementations.Chat;
 
-/// <summary>Opens and closes chat channels and lets connections join, part, post and spectate.</summary>
+/// <summary>Opens and closes chat channels and lets connections join, part and post.</summary>
 internal sealed class ChannelService(
 	IGeneralChannelRegistry generalChannels,
 	IChannelRepository channels,
 	ChannelEventStream events,
-	ChannelSpectatorService spectators,
 	IRelationshipRepository relationships,
 	TimeProvider time) : IChannelService
 {
 	/// <inheritdoc />
 	public ChannelReader<ChannelEvent> Events => events.Reader;
-
-	/// <inheritdoc />
-	public IChannelSpectatorService Spectators => spectators;
 
 	/// <inheritdoc />
 	public void Close(ChannelSession channel)
@@ -214,7 +210,7 @@ internal sealed class ChannelService(
 			GeneralChannelSession g => PermissionRules.Effective(connection.Session, now).Allows(g.Channel.ReadPermissions),
 			PmChannelSession p => ReferenceEquals(connection.Session, p.Owner) &&
 			                      connection.Type is not ConnectionType.Tourney,
-			SpectatorChannelSession s => s.Members.Contains(connection),
+			SpectatorChannelSession s => ReferenceEquals(connection, s.Host) || s.Host.Spectators.Contains(connection),
 			RoomChannelSession r => InRoom(r.Room, connection, now) ||
 			                        PermissionRules.Allows(connection, Permissions.TournamentObserveRooms, now),
 			_ => false
@@ -228,7 +224,7 @@ internal sealed class ChannelService(
 		{
 			GeneralChannelSession g => PermissionRules.Effective(connection.Session, now).Allows(g.Channel.WritePermissions),
 			PmChannelSession => connection.IsOpen,
-			SpectatorChannelSession s => s.Members.Contains(connection),
+			SpectatorChannelSession s => ReferenceEquals(connection, s.Host) || s.Host.Spectators.Contains(connection),
 			RoomChannelSession r => InRoom(r.Room, connection, now) ||
 			                        PermissionRules.Allows(connection, Permissions.TournamentPostInAnyRoom, now),
 			_ => false

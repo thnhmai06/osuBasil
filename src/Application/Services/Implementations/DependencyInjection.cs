@@ -1,6 +1,7 @@
 using Basil.Application.Services.Contracts.Anticheat;
 using Basil.Application.Services.Contracts.Beatmaps;
 using Basil.Application.Services.Contracts.Chat;
+using Basil.Application.Services.Contracts.Content;
 using Basil.Application.Services.Contracts.Multiplayer;
 using Basil.Application.Services.Contracts.Scores;
 using Basil.Application.Services.Contracts.Sessions;
@@ -8,6 +9,7 @@ using Basil.Application.Services.Contracts.Users;
 using Basil.Application.Services.Implementations.Anticheat;
 using Basil.Application.Services.Implementations.Beatmaps;
 using Basil.Application.Services.Implementations.Chat;
+using Basil.Application.Services.Implementations.Content;
 using Basil.Application.Services.Implementations.Multiplayer;
 using Basil.Application.Services.Implementations.Multiplayer.Rooms;
 using Basil.Application.Services.Implementations.Scores;
@@ -30,6 +32,8 @@ public static class DependencyInjection
 	{
 		services.TryAddSingleton(TimeProvider.System);
 
+		services.AddSingleton<SessionEventStream>();
+		services.AddSingleton<SessionSpectatorsService>();
 		services.AddSingleton<SessionService>();
 		services.AddSingleton<ISessionService>(sp => sp.GetRequiredService<SessionService>());
 
@@ -40,7 +44,6 @@ public static class DependencyInjection
 		services.AddSingleton<IUserService>(sp => sp.GetRequiredService<UserService>());
 
 		services.AddSingleton<ChannelEventStream>();
-		services.AddSingleton<ChannelSpectatorService>();
 		services.AddSingleton<ChannelService>();
 		services.AddSingleton<IChannelService>(sp => sp.GetRequiredService<ChannelService>());
 
@@ -68,6 +71,9 @@ public static class DependencyInjection
 
 		services.AddSingleton<BeatmapsetService>();
 		services.AddSingleton<IBeatmapsetService>(sp => sp.GetRequiredService<BeatmapsetService>());
+
+		services.AddSingleton<ScreenshotService>();
+		services.AddSingleton<IScreenshotService>(sp => sp.GetRequiredService<ScreenshotService>());
 
 		return services;
 	}

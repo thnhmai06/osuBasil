@@ -7,6 +7,9 @@ namespace Basil.Application.Services.Contracts.Sessions;
 /// <summary>Opens and closes the connections of online users and changes what they share.</summary>
 public interface ISessionService : IEventPublisher<UserEvent>
 {
+	/// <summary>Spectating osu! clients.</summary>
+	ISessionSpectatorsService Spectators { get; }
+
 	/// <summary>Closes a connection, taking its user offline if it was their last one.</summary>
 	/// <param name="connection">The connection to close.</param>
 	/// <param name="reason">Why the connection is closed.</param>

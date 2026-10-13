@@ -15,6 +15,7 @@ internal sealed class ConnectionHandler(
 	IChannelService channels,
 	IRoomService rooms,
 	ILobbyService lobby,
+	ISessionService sessions,
 	ILogger<ConnectionHandler> logger) : IEventHandler<UserEvent>
 {
 	/// <inheritdoc />
@@ -30,7 +31,7 @@ internal sealed class ConnectionHandler(
 				await RunAsync("release its room", connection.User.Id,
 					() => rooms.Members.ReleaseAsync(connection, cancellationToken), cancellationToken);
 				Run("stop spectating", connection.User.Id,
-					() => channels.Spectators.StopSpectating(connection), cancellationToken);
+					() => sessions.Spectators.StopSpectating(connection), cancellationToken);
 				if (connection is BanchoConnection bancho)
 					Run("leave the lobby", connection.User.Id, () => lobby.Unwatch(bancho), cancellationToken);
 				Run("part its channels", connection.User.Id,

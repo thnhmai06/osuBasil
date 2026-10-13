@@ -54,25 +54,6 @@ public enum ChannelPostResult : byte
 	Closed
 }
 
-/// <summary>The outcome of starting to spectate a player.</summary>
-public enum SpectateResult : byte
-{
-	/// <summary>The connection is now spectating the host.</summary>
-	Spectating,
-
-	/// <summary>The host's connection is closed.</summary>
-	TargetOffline,
-
-	/// <summary>A user cannot spectate themselves.</summary>
-	Self,
-
-	/// <summary>The connection is already spectating this host.</summary>
-	AlreadySpectating,
-
-	/// <summary>The spectator is not granted the permission to spectate, or it is suspended.</summary>
-	NotPermitted
-}
-
 /// <summary>The outcome of creating, configuring or deleting a general channel.</summary>
 public enum ChannelManageResult : byte
 {

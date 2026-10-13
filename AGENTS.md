@@ -493,6 +493,10 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   (`BanchoConnection.Status`, `BanchoConnection.SpectatorChannel`). Rooms, channels and the lobby
   hold connections, not sessions. Owned parts (a session's `PmChannel`, a connection's
   `SpectatorChannel`) are created and destroyed with their owner; they are not relations.
+  Spectating is a relation on the spectated osu! client (`BanchoConnection.Spectators`), changed only by
+  `ISessionService.Spectators`, which keeps the client's spectator channel in step (the first spectator brings the
+  host in, the last one out) the way the room service keeps a room's channel; the channel never stands for who is
+  spectating.
 * **Identify by the basis object**, not its id (`Room` by `Match`, `GeneralChannel` by `Name`). Runtime
   objects that can be recreated with the same user or name compare **by reference**: a connection
   is one login, a `UserSession` is one period online (look it up by `User` through `UserRegistry`), a
@@ -665,7 +669,9 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   ones it implies, as bits, not as a separate grant: a manage permission includes the matching view permission
   (`TournamentManageBeatmaps` holds `TournamentViewHiddenBeatmaps`, `TournamentManageAnyRoom` holds
   `TournamentViewPrivateMatches` and `TournamentPostInAnyRoom`, `OwnerManageAccounts` holds `OwnerViewDeletedUsers`,
-  `ModeratorRestrict` holds `ModeratorSilence`). A check asks for the smallest permission that allows the action,
+  `ModeratorRestrict` holds `ModeratorSilence`), even across groups (`TournamentObserveRooms` holds `PlayerSpectate`);
+  a group's mask then keeps only its own group's bits, so holding the smaller permission never shows as the larger
+  group's privilege. A check asks for the smallest permission that allows the action,
   so the manager and a user granted only that permission both pass; never `Allows(A) || Allows(B)` for a pair where
   one contains the other.
 * **Permission checks require every bit** (`Permissions.Allows`); an empty requirement is always

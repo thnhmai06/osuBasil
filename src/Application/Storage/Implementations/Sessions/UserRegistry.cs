@@ -21,13 +21,12 @@ internal sealed class UserRegistry : IUserRegistry
 	}
 
 	/// <inheritdoc />
-	public SpectatorChannelSession? FindSpectating(Connection connection)
+	public BanchoConnection? FindSpectating(Connection connection)
 	{
 		// ponytail: scans every online osu! client; add an index if the online count grows large.
 		return _sessions.Values
-			.Select(session => session.Bancho?.SpectatorChannel)
-			.FirstOrDefault(channel => channel is not null && !ReferenceEquals(channel.Host, connection) &&
-			                           channel.Members.Contains(connection));
+			.Select(session => session.Bancho)
+			.FirstOrDefault(host => host is not null && host.Spectators.Contains(connection));
 	}
 
 	/// <inheritdoc />

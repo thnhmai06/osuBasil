@@ -50,29 +50,9 @@ public abstract record ChannelMessageEvent(ChannelSession Channel) : ChannelEven
 public sealed record ChannelMessagePosted(ChannelSession Channel, Message Message, bool Truncated, Message? AwayReply)
 	: ChannelMessageEvent(Channel);
 
-/// <summary>A connection started spectating the channel's host.</summary>
-/// <param name="Channel">The channel of the player being spectated.</param>
-/// <param name="Spectator">The connection that started spectating.</param>
-/// <param name="HostJoined">Whether the host joined the channel because this is its first spectator.</param>
-public sealed record ChannelSpectatorJoined(ChannelSession Channel, Connection Spectator, bool HostJoined)
-	: ChannelMembershipEvent(Channel);
-
-/// <summary>A connection stopped spectating the channel's host.</summary>
-/// <param name="Channel">The channel of the player being spectated.</param>
-/// <param name="Spectator">The connection that stopped spectating.</param>
-/// <param name="HostLeft">Whether the host left the channel because this was its last spectator.</param>
-public sealed record ChannelSpectatorLeft(ChannelSession Channel, Connection Spectator, bool HostLeft)
-	: ChannelMembershipEvent(Channel);
-
 /// <summary>A general channel's settings changed.</summary>
 /// <param name="Channel">The channel.</param>
 /// <param name="Change">The settings that changed.</param>
 /// <param name="Removed">The members removed because they may no longer read the channel.</param>
 public sealed record ChannelConfigured(ChannelSession Channel, GeneralChannelChange Change, IReadOnlyList<Connection> Removed)
-	: ChannelEvent(Channel);
-
-/// <summary>A spectator reported that it failed to spectate the host, usually because it lacks the beatmap.</summary>
-/// <param name="Channel">The channel of the player being spectated.</param>
-/// <param name="Spectator">The spectator that failed to spectate.</param>
-public sealed record ChannelSpectatorFailed(ChannelSession Channel, Connection Spectator)
 	: ChannelEvent(Channel);

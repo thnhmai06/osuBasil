@@ -13,10 +13,10 @@ public interface IUserRegistry
 	/// <returns>The connection, or <see langword="null" /> when no open connection has that token.</returns>
 	Connection? Find(string token);
 
-	/// <summary>Finds the spectator channel a connection is spectating.</summary>
+	/// <summary>Finds the osu! client a connection is spectating.</summary>
 	/// <param name="connection">The connection to look up.</param>
-	/// <returns>The channel of the player being spectated, or <see langword="null" /> when the connection is not spectating.</returns>
-	SpectatorChannelSession? FindSpectating(Connection connection);
+	/// <returns>The online osu! client being spectated, or <see langword="null" /> when the connection is not spectating.</returns>
+	BanchoConnection? FindSpectating(Connection connection);
 
 	/// <summary>Adds an online session.</summary>
 	internal void Add(UserSession session);

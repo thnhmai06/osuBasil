@@ -1,5 +1,6 @@
 using Basil.Domain.Auth;
 using Basil.Domain.Users;
+using Basil.Domain.Utilities;
 
 namespace Basil.Application.Storage.Contracts.Sessions;
 
@@ -31,6 +32,9 @@ public abstract class Connection(Login login, string token)
 /// <summary>A connection from an osu! game client.</summary>
 public sealed class BanchoConnection : Connection
 {
+	private readonly ConcurrentSet<Connection> _spectators = [];
+	private readonly Lock _spectating = new();
+
 	/// <summary>Initializes a game client connection.</summary>
 	/// <param name="login">The login that opened the connection.</param>
 	/// <param name="token">The token that identifies the connection.</param>
@@ -52,6 +56,19 @@ public sealed class BanchoConnection : Connection
 
 	/// <summary>Gets the chat channel shared with the users spectating this client.</summary>
 	public SpectatorChannelSession SpectatorChannel { get; }
+
+	/// <summary>Gets the connections spectating this client.</summary>
+	public IReadOnlySet<Connection> Spectators => _spectators;
+
+	/// <summary>Gets the connections spectating this client, for changing them; the caller holds the scope and reports the change itself.</summary>
+	internal ISet<Connection> MutableSpectators => _spectators;
+
+	/// <summary>Enters the scope in which the client's spectators change one at a time.</summary>
+	/// <returns>A scope that must be disposed when the change is complete.</returns>
+	internal Lock.Scope EnterSpectators()
+	{
+		return _spectating.EnterScope();
+	}
 }
 
 /// <summary>A connection from an osu!tourney spectator client.</summary>

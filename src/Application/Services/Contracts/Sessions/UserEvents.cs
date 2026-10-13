@@ -68,3 +68,25 @@ public enum ConnectionCloseReason : byte
 	/// <summary>The user's sessions were ended, or the user may no longer use this kind of client.</summary>
 	Revoked
 }
+/// <summary>Something happened between an osu! client and a connection spectating it.</summary>
+/// <param name="Host">The osu! client being spectated.</param>
+/// <param name="Spectator">The spectating connection.</param>
+public abstract record UserSpectatorEvent(BanchoConnection Host, Connection Spectator) : UserEvent;
+
+/// <summary>A connection started spectating an osu! client.</summary>
+/// <param name="Host">The osu! client being spectated.</param>
+/// <param name="Spectator">The connection that started spectating.</param>
+public sealed record UserSpectatorJoined(BanchoConnection Host, Connection Spectator)
+	: UserSpectatorEvent(Host, Spectator);
+
+/// <summary>A connection stopped spectating an osu! client.</summary>
+/// <param name="Host">The osu! client that was spectated.</param>
+/// <param name="Spectator">The connection that stopped spectating.</param>
+public sealed record UserSpectatorLeft(BanchoConnection Host, Connection Spectator)
+	: UserSpectatorEvent(Host, Spectator);
+
+/// <summary>A spectator reported that it failed to spectate, usually because it lacks the beatmap.</summary>
+/// <param name="Host">The osu! client being spectated.</param>
+/// <param name="Spectator">The spectator that failed to spectate.</param>
+public sealed record UserSpectatorFailed(BanchoConnection Host, Connection Spectator)
+	: UserSpectatorEvent(Host, Spectator);

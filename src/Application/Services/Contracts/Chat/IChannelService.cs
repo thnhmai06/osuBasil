@@ -6,7 +6,7 @@ using Basil.Domain.Chat;
 
 namespace Basil.Application.Services.Contracts.Chat;
 
-/// <summary>Opens and closes chat channels and lets connections join, part, post and spectate.</summary>
+/// <summary>Opens and closes chat channels and lets connections join, part and post.</summary>
 public interface IChannelService : IEventPublisher<ChannelEvent>
 {
 	/// <summary>Opens a general channel.</summary>
@@ -97,7 +97,4 @@ public interface IChannelService : IEventPublisher<ChannelEvent>
 	/// <returns>Ok or NotAuthorized.</returns>
 	/// <remarks>Requires <see cref="Permissions.DeveloperConfigureServer" />; announces <see cref="ChannelClosed" />.</remarks>
 	Task<ChannelManageResult> DeleteAsync(GeneralChannelSession channel, Connection by, CancellationToken cancellationToken = default);
-
-	/// <summary>Spectating osu! players.</summary>
-	IChannelSpectatorService Spectators { get; }
 }

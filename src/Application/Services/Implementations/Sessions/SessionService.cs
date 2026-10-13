@@ -14,6 +14,8 @@ namespace Basil.Application.Services.Implementations.Sessions;
 internal sealed class SessionService(
 	IUserRegistry registry,
 	IChannelService channels,
+	SessionSpectatorsService spectators,
+	SessionEventStream events,
 	TimeProvider time) : ISessionService
 {
 	/// <summary>How long a connection must be idle before a new login of the same kind replaces it.</summary>
@@ -22,10 +24,11 @@ internal sealed class SessionService(
 	/// <summary>A logout an osu! client sends this soon after login is ignored.</summary>
 	internal static readonly TimeSpan IgnoreLogoutWithin = TimeSpan.FromSeconds(1);
 
-	private readonly Channel<UserEvent> _events = Channel.CreateUnbounded<UserEvent>();
+	/// <inheritdoc />
+	public ChannelReader<UserEvent> Events => events.Reader;
 
 	/// <inheritdoc />
-	public ChannelReader<UserEvent> Events => _events.Reader;
+	public ISessionSpectatorsService Spectators => spectators;
 
 	/// <inheritdoc />
 	public void Close(Connection connection, ConnectionCloseReason reason)
@@ -44,7 +47,7 @@ internal sealed class SessionService(
 		if (!by.IsOpen || Equals(by.Status, status)) return;
 
 		by.Status = status;
-		_events.Writer.TryWrite(new UserConnectionStatusChanged(by, status));
+		events.Emit(new UserConnectionStatusChanged(by, status));
 	}
 
 	/// <inheritdoc />
@@ -128,7 +131,7 @@ internal sealed class SessionService(
 		connection.IsOpen = true;
 		registry.Index(connection);
 
-		_events.Writer.TryWrite(new UserConnectionOpened(connection, cameOnline));
+		events.Emit(new UserConnectionOpened(connection, cameOnline));
 		return null;
 	}
 
@@ -147,7 +150,7 @@ internal sealed class SessionService(
 		if (recipients.Count == 0)
 			return 0;
 
-		_events.Writer.TryWrite(new UserNotificationSent(recipients, text));
+		events.Emit(new UserNotificationSent(recipients, text));
 		return recipients.Count;
 	}
 
@@ -225,6 +228,6 @@ internal sealed class SessionService(
 			channels.Close(connection.Session.PmChannel);
 		}
 
-		_events.Writer.TryWrite(new UserConnectionClosed(connection, reason, wentOffline));
+		events.Emit(new UserConnectionClosed(connection, reason, wentOffline));
 	}
 }

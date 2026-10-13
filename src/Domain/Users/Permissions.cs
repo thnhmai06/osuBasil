@@ -23,8 +23,8 @@ public enum Permissions : ulong
 	/// <summary>Join rooms and take a seat, including being seated by a referee.</summary>
 	PlayerJoinRoom = 1UL << 1,
 
-	/// <summary>Log in with osu!tourney and watch any open room, reading its channel.</summary>
-	TournamentObserveRooms = 1UL << 16,
+	/// <summary>Log in with osu!tourney and watch any open room, reading its channel; includes spectating players.</summary>
+	TournamentObserveRooms = 1UL << 16 | PlayerSpectate,
 
 	/// <summary>See the private rooms and private match history of other users.</summary>
 	TournamentViewPrivateMatches = 1UL << 18,
@@ -85,6 +85,16 @@ public enum Permissions : ulong
 
 	#endregion
 
+	#region Screenshots
+
+	/// <summary>Upload screenshots from the game.</summary>
+	PlayerUploadScreenshots = 1UL << 6,
+
+	/// <summary>Delete any stored screenshot.</summary>
+	ModeratorDeleteScreenshots = 1UL << 28,
+
+	#endregion
+
 	#region Users
 
 	/// <summary>Silence other users for a while.</summary>
@@ -127,18 +137,21 @@ public enum Permissions : ulong
 
 	/// <summary>Every permission of the player group.</summary>
 	Player = PlayerCreateRoom | PlayerJoinRoom | PlayerChat | PlayerPrivateMessage | PlayerSpectate |
+	         PlayerUploadScreenshots |
 	         PlayerUploadBeatmapsets,
 
 	/// <summary>Every permission of the supporter group.</summary>
 	Supporter = SupporterDirect,
 
 	/// <summary>Every permission of the tournament group.</summary>
-	Tournament = TournamentObserveRooms | TournamentPostInAnyRoom | TournamentViewPrivateMatches |
-	             TournamentManageAnyRoom | TournamentUnlimitedRooms | TournamentActForUsers |
-	             TournamentManageBeatmaps | TournamentViewHiddenBeatmaps,
+	/// <remarks>Holds only the group's own bits, not those of other groups its permissions contain.</remarks>
+	Tournament = (TournamentObserveRooms | TournamentPostInAnyRoom | TournamentViewPrivateMatches |
+	              TournamentManageAnyRoom | TournamentUnlimitedRooms | TournamentActForUsers |
+	              TournamentManageBeatmaps | TournamentViewHiddenBeatmaps) & ~Player,
 
 	/// <summary>Every permission of the moderator group.</summary>
-	Moderator = ModeratorSilence | ModeratorRestrict | ModeratorMessageAnyone | ModeratorAnnounce,
+	Moderator = ModeratorSilence | ModeratorRestrict | ModeratorMessageAnyone | ModeratorAnnounce |
+	            ModeratorDeleteScreenshots,
 
 	/// <summary>Every permission of the developer group.</summary>
 	Developer = DeveloperConfigureServer | DeveloperViewDiagnostics,
@@ -205,7 +218,8 @@ public static class PermissionsExtensions
 				.Aggregate(Permissions.None, (all, restriction) => all | restriction.Value.Permissions);
 			var kept = Permissions.None;
 			foreach (var management in ManagementPermissions)
-				if (held.Allows(management)) kept |= management;
+				if (held.Allows(management))
+					kept |= management;
 			return held & ~(suspended & ~kept);
 		}
 
@@ -216,7 +230,7 @@ public static class PermissionsExtensions
 		{
 			var privileges = ClientPrivileges.None;
 			if ((held & Permissions.Player) != 0) privileges |= ClientPrivileges.Player;
-			if ((held & (Permissions.Supporter | Permissions.TournamentObserveRooms)) != 0)
+			if ((held & Permissions.Supporter) != 0 || held.Allows(Permissions.TournamentObserveRooms))
 				privileges |= ClientPrivileges.Supporter;
 			if ((held & Permissions.Tournament) != 0) privileges |= ClientPrivileges.Tournament;
 			if ((held & Permissions.Moderator) != 0) privileges |= ClientPrivileges.Moderator;

@@ -11,7 +11,4 @@ public sealed class SpectatorChannelSession(BanchoConnection host) : ChannelSess
 
 	/// <summary>Gets the spectator channel this session holds.</summary>
 	public override SpectatorChannel Channel { get; } = new(host.User);
-
-	/// <summary>Gets the connections spectating the host.</summary>
-	public IEnumerable<Connection> Spectators => Members.Where(member => !ReferenceEquals(member, Host));
 }
