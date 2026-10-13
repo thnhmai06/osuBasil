@@ -16,7 +16,7 @@ internal sealed class DataPaths
 		Root = Path.GetFullPath(Path.IsPathRooted(options.Value.DataDirectory)
 			? options.Value.DataDirectory
 			: Path.Combine(AppContext.BaseDirectory, options.Value.DataDirectory));
-		Beatmaps = new DataStorage(Root, "Beatmaps");
+		Songs = new DataStorage(Root, "Songs");
 		Replays = new DataStorage(Root, "Replays");
 		Avatars = new DataStorage(Root, "Avatars");
 		MenuBanners = new DataStorage(Root, "Menu/Banners");
@@ -32,7 +32,7 @@ internal sealed class DataPaths
 	public string Root { get; }
 
 	/// <summary>Gets the files of stored beatmapsets, one directory per set.</summary>
-	public DataStorage Beatmaps { get; }
+	public DataStorage Songs { get; }
 
 	/// <summary>Gets the files of stored replays.</summary>
 	public DataStorage Replays { get; }
@@ -62,12 +62,15 @@ internal sealed class DataPaths
 	public DataStorage BeatmapArchives { get; }
 
 	/// <summary>Creates every directory the server stores files in.</summary>
+	/// <remarks>Beatmapsets stored under the former <c>Beatmaps</c> directory are moved to <see cref="Songs" /> first.</remarks>
 	public void CreateDirectories()
 	{
 		Directory.CreateDirectory(Root);
+		var formerSongs = Path.Combine(Root, "Beatmaps");
+		if (Directory.Exists(formerSongs) && !Directory.Exists(Songs.Path)) Directory.Move(formerSongs, Songs.Path);
 		foreach (var storage in new[]
 		         {
-			         Beatmaps, Replays, Avatars, MenuBanners, MenuSeasonals, MenuIcon, Faqs, Screenshots, Cache,
+			         Songs, Replays, Avatars, MenuBanners, MenuSeasonals, MenuIcon, Faqs, Screenshots, Cache,
 			         BeatmapArchives
 		         })
 			Directory.CreateDirectory(storage.Path);

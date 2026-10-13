@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Runtime.Beatmaps;
 
-/// <summary>Imports one waiting beatmapset, from an archive or a folder, and removes it once imported.</summary>
+/// <summary>Imports one waiting beatmapset: an archive is deleted once imported, a folder is kept.</summary>
 internal static class BeatmapsetImporter
 {
 	/// <summary>Imports the beatmapset archive at the path and deletes it once imported.</summary>
@@ -50,10 +50,28 @@ internal static class BeatmapsetImporter
 			return ImportStatus.Failed;
 		}
 
-		return Complete(path, result, () => File.Delete(path), "archive", "file", logger);
+
+		if (result is not { Failure: null, Set: not null })
+		{
+			logger.LogWarning("Could not import beatmap archive {Path}: {Failure}; the file was kept", path,
+				result.Failure?.ToString() ?? "No beatmapset was returned.");
+			return ImportStatus.Failed;
+		}
+
+		try
+		{
+			File.Delete(path);
+			logger.LogInformation("Imported beatmap archive {Path}", path);
+			return ImportStatus.Imported;
+		}
+		catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+		{
+			logger.LogError(exception, "Imported beatmap archive {Path}, but could not delete the file", path);
+			return ImportStatus.Failed;
+		}
 	}
 
-	/// <summary>Imports the beatmapset files in the folder at the path and deletes the folder once imported.</summary>
+	/// <summary>Imports the beatmapset files in the folder at the path; the folder is left as it is.</summary>
 	internal static async Task<ImportStatus> ImportFolderAsync(
 		string path,
 		IBeatmapsetService beatmapsets,
@@ -74,42 +92,25 @@ internal static class BeatmapsetImporter
 		}
 		catch (Exception exception)
 		{
-			logger.LogError(exception, "Could not import beatmap folder {Path}; the folder was kept", path);
+			logger.LogError(exception, "Could not import beatmap folder {Path}", path);
 			return ImportStatus.Failed;
 		}
 
-		return Complete(path, result, () => Directory.Delete(path, true), "folder", "folder", logger);
-	}
-
-	/// <summary>Checks the import result and deletes the archive or folder, reporting the outcome.</summary>
-	private static ImportStatus Complete(string path, BeatmapsetImportResult result, Action delete,
-		string kind, string item, ILogger logger)
-	{
 		if (result is not { Failure: null, Set: not null })
 		{
-			logger.LogWarning("Could not import beatmap {Kind} {Path}: {Failure}; the {Item} was kept",
-				kind, path, result.Failure?.ToString() ?? "No beatmapset was returned.", item);
+			logger.LogWarning("Could not import beatmap folder {Path}: {Failure}", path,
+				result.Failure?.ToString() ?? "No beatmapset was returned.");
 			return ImportStatus.Failed;
 		}
 
-		try
-		{
-			delete();
-			logger.LogInformation("Imported beatmap {Kind} {Path}", kind, path);
-			return ImportStatus.Imported;
-		}
-		catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-		{
-			logger.LogError(exception, "Imported beatmap {Kind} {Path}, but could not delete the {Item}",
-				kind, path, item);
-			return ImportStatus.Failed;
-		}
+		logger.LogInformation("Imported beatmap folder {Path}", path);
+		return ImportStatus.Imported;
 	}
 
 	/// <summary>The outcome of importing one waiting beatmapset.</summary>
 	internal enum ImportStatus
 	{
-		/// <summary>The beatmapset was imported and its archive or folder was deleted.</summary>
+		/// <summary>The beatmapset was imported; its archive was deleted, its folder kept.</summary>
 		Imported,
 
 		/// <summary>The import failed and the archive or folder was kept.</summary>

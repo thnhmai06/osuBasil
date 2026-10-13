@@ -26,7 +26,7 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 		var id = set.Id.ToString(CultureInfo.InvariantCulture);
 		var archiveFolder = ArchiveFolder(id);
 		var setFolder = SetFolder(id);
-		var unpackFolder = Path.Combine(paths.Beatmaps.Path, $"{id}.unpack-{Guid.NewGuid():N}");
+		var unpackFolder = Path.Combine(paths.Songs.Path, $"{id}.unpack-{Guid.NewGuid():N}");
 		var gate = SetLocks.GetOrAdd(set.Id, static _ => new SemaphoreSlim(1, 1));
 
 		await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -34,7 +34,7 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 		{
 			await WriteAsync(unpackFolder, files, cancellationToken).ConfigureAwait(false);
 
-			var oldFolder = Path.Combine(paths.Beatmaps.Path, $"{id}.old-{Guid.NewGuid():N}");
+			var oldFolder = Path.Combine(paths.Songs.Path, $"{id}.old-{Guid.NewGuid():N}");
 			var movedOldFolder = false;
 			if (Directory.Exists(setFolder))
 			{
@@ -239,8 +239,8 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 
 	internal IEnumerable<int> StoredSetIds()
 	{
-		if (!Directory.Exists(paths.Beatmaps.Path)) yield break;
-		foreach (var folder in Directory.EnumerateDirectories(paths.Beatmaps.Path))
+		if (!Directory.Exists(paths.Songs.Path)) yield break;
+		foreach (var folder in Directory.EnumerateDirectories(paths.Songs.Path))
 		{
 			var name = Path.GetFileName(folder);
 			if (name.Length > 0 && name.All(char.IsAsciiDigit) &&
@@ -378,7 +378,7 @@ internal sealed class FileBeatmapsetStorage(DataPaths paths, ILogger<FileBeatmap
 
 	private string SetFolder(string id)
 	{
-		return Path.Combine(paths.Beatmaps.Path, id);
+		return Path.Combine(paths.Songs.Path, id);
 	}
 
 	private string ArchiveFolder(string id)

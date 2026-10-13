@@ -298,7 +298,7 @@ installation.
 | `Data/Localization/*.json` | Reply text and the message-of-the-day; see [Localization](#localization) above.                                                | **No**                                                       |
 | `Data/Replays/`           | Submitted score replays, named like an osu! replay export (`{score id} {player} - {artist} - {title} [{version}] ({date}) {mode}.osr`). | **No**, unless you intentionally want to remove replays.    |
 | `Data/Avatars/`           | User avatar files.                                                                                                                | **No**, unless you intentionally want to remove avatars.    |
-| `Data/Beatmaps/`         | Installed beatmapsets, one folder of extracted files per set (`Data/Beatmaps/{set id}/`). | **No**, unless you intentionally want to remove beatmaps.   |
+| `Data/Songs/`             | Installed beatmapsets, one folder of extracted files per set (`Data/Songs/{set id}/`). | **No**, unless you intentionally want to remove beatmaps.   |
 | `Data/Menu/Seasonals/`    | Seasonal background images used by the client's login screen.                                                                     | Optional                                                     |
 | `Data/Menu/Banners/`      | Main-menu banner images uploaded for `MenuBanners` entries with a local image (as opposed to an external URL).                    | Optional                                                     |
 | `Data/Menu/Icon/`        | The uploaded main-menu icon image, when the icon is a stored file rather than an external URL. | Usually no                                                   |
@@ -325,10 +325,11 @@ Database migrations are applied automatically when Basil starts. Back up the dat
 Beatmaps are stored under:
 
 ```text
-Data/Beatmaps/{set id}/
+Data/Songs/{set id}/
 ```
 
-Each beatmapset is a folder of its extracted files (audio, images, video, `.osu`). The `.osz` archives offered for
+Each beatmapset is a folder of its extracted files (audio, images, video, `.osu`). A `Data/Beatmaps/` directory
+from an older version is moved to `Data/Songs/` on startup. The `.osz` archives offered for
 download, with and without video, are rebuilt from these files into `Data/Cache/Beatmaps/` and are kept in step
 when the files change on disk. See [`beatmap-ingestion.md`](../for-developers/beatmap-ingestion.md).
 
