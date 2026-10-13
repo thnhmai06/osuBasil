@@ -718,6 +718,8 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
 * A type that is a collection implements the matching BCL interface (`DataStorage : IReadOnlyDictionary<string,
   FileInfo>`); a business value with a text form is a value type implementing `IParsable<T>` and `IFormattable`
   (`AssetReference`).
+* Every stored time is UTC (`DateTimeOffset.UtcNow`, `TimeProvider.GetUtcNow()`, `timestamptz` columns); only the
+  presentation converts it to a local date and time. Never `DateTimeOffset.Now` or `DateTime.Now`.
 * A folder that would share its name with a type in it is plural (`Multiplayer/Matches/Match.cs`), so code never
   writes `Match.Match`.
 * A member that uses no instance state is `static` (`LobbyService.RoomOccupied`).

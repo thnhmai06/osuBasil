@@ -19,7 +19,7 @@ namespace Basil.Infrastructure.Storage.Memory;
 ///         caller that needs every stored item asks the repository, which loads the missing ones.
 ///     </para>
 /// </remarks>
-internal sealed class IdentityMap<TKey, T> : IDictionary<TKey, T>, IReadOnlyDictionary<TKey, T>
+internal sealed class IdentityMap<TKey, T> : IReadOnlyDictionary<TKey, T>
 	where TKey : notnull where T : class
 {
 	// ponytail: dead weak references are swept every SweepEvery additions, an O(n) pass;
@@ -32,77 +32,21 @@ internal sealed class IdentityMap<TKey, T> : IDictionary<TKey, T>, IReadOnlyDict
 	private int _additions;
 
 	/// <summary>Gets the number of keys that currently have a live instance.</summary>
-	public int Count
-	{
-		get
-		{
-			var count = 0;
-			foreach (var (key, reference) in _instances)
-				if (reference.TryGetTarget(out _))
-					count++;
-				else
-					_instances.TryRemove(new KeyValuePair<TKey, WeakReference<T>>(key, reference));
-			return count;
-		}
-	}
+	public int Count => _instances.Values.Count(reference => reference.TryGetTarget(out _));
 
 	/// <summary>Gets the keys that currently have a live instance.</summary>
-	public ICollection<TKey> Keys => Snapshot().Select(entry => entry.Key).ToArray();
+	public IEnumerable<TKey> Keys => Snapshot().Select(entry => entry.Key);
 
 	/// <summary>Gets the live instances.</summary>
-	public ICollection<T> Values => Snapshot().Select(entry => entry.Value).ToArray();
+	public IEnumerable<T> Values => Snapshot().Select(entry => entry.Value);
 
-	IEnumerable<TKey> IReadOnlyDictionary<TKey, T>.Keys => Keys;
-
-	IEnumerable<T> IReadOnlyDictionary<TKey, T>.Values => Values;
-
-	/// <summary>Gets a value that indicates whether the map can be changed.</summary>
-	/// <value>Always <see langword="false" />; the map is never read-only.</value>
-	public bool IsReadOnly => false;
-
-	/// <summary>Gets the live instance of a key, or keeps an item under a key.</summary>
+	/// <summary>Gets the live instance of a key.</summary>
 	/// <param name="key">The item's key.</param>
 	/// <returns>The live instance.</returns>
 	/// <exception cref="KeyNotFoundException">The key has no live instance.</exception>
-	public T this[TKey key]
-	{
-		get => TryGetValue(key, out var value)
-			? value
-			: throw new KeyNotFoundException($"The key {key} has no live instance.");
-		set => Store(key, value);
-	}
-
-	/// <summary>Keeps an item under a key; the key must not already have a live instance.</summary>
-	/// <param name="key">The item's key.</param>
-	/// <param name="item">The item.</param>
-	/// <exception cref="ArgumentException">The key already has a live instance.</exception>
-	public void Add(TKey key, T item)
-	{
-		var reference = new WeakReference<T>(item);
-		while (true)
-		{
-			if (_instances.TryGetValue(key, out var existing))
-			{
-				if (existing.TryGetTarget(out _))
-					throw new ArgumentException($"The key {key} already has a live instance.", nameof(key));
-				if (_instances.TryUpdate(key, reference, existing))
-					break;
-			}
-			else if (_instances.TryAdd(key, reference))
-			{
-				break;
-			}
-		}
-
-		Tick();
-	}
-
-	/// <summary>Keeps the item of a pair under its key.</summary>
-	/// <param name="item">The pair to add.</param>
-	public void Add(KeyValuePair<TKey, T> item)
-	{
-		Add(item.Key, item.Value);
-	}
+	public T this[TKey key] => TryGetValue(key, out var value)
+		? value
+		: throw new KeyNotFoundException($"The key {key} has no live instance.");
 
 	/// <summary>Forgets the instance of a key.</summary>
 	/// <param name="key">The item's key.</param>
@@ -112,45 +56,12 @@ internal sealed class IdentityMap<TKey, T> : IDictionary<TKey, T>, IReadOnlyDict
 		return _instances.TryRemove(key, out _);
 	}
 
-	/// <summary>Forgets the instance of a key when it is still the given item.</summary>
-	/// <param name="item">The key and the item expected under it.</param>
-	/// <returns><see langword="true" /> when the entry was removed.</returns>
-	public bool Remove(KeyValuePair<TKey, T> item)
-	{
-		if (!TryGetValue(item.Key, out var value) || !EqualityComparer<T>.Default.Equals(value, item.Value))
-			return false;
-
-		return Remove(item.Key);
-	}
-
-	/// <summary>Forgets every key.</summary>
-	public void Clear()
-	{
-		_instances.Clear();
-	}
-
 	/// <summary>Gets a value that indicates whether a key has a live instance.</summary>
 	/// <param name="key">The key to look up.</param>
 	/// <returns><see langword="true" /> if the key has a live instance; otherwise, <see langword="false" />.</returns>
 	public bool ContainsKey(TKey key)
 	{
 		return TryGetValue(key, out _);
-	}
-
-	/// <summary>Gets a value that indicates whether the map keeps a given item under its key.</summary>
-	/// <param name="item">The key and the item expected under it.</param>
-	/// <returns><see langword="true" /> if the map holds the item; otherwise, <see langword="false" />.</returns>
-	public bool Contains(KeyValuePair<TKey, T> item)
-	{
-		return TryGetValue(item.Key, out var value) && EqualityComparer<T>.Default.Equals(value, item.Value);
-	}
-
-	/// <summary>Copies the live key-value pairs into an array.</summary>
-	/// <param name="array">The destination array.</param>
-	/// <param name="arrayIndex">The zero-based index in <paramref name="array" /> at which copying begins.</param>
-	public void CopyTo(KeyValuePair<TKey, T>[] array, int arrayIndex)
-	{
-		Snapshot().CopyTo(array, arrayIndex);
 	}
 
 	/// <summary>Returns an enumerator over the live key-value pairs.</summary>
@@ -235,13 +146,6 @@ internal sealed class IdentityMap<TKey, T> : IDictionary<TKey, T>, IReadOnlyDict
 
 		value = null;
 		return false;
-	}
-
-	/// <summary>Keeps an item under a key, replacing any instance the key held.</summary>
-	private void Store(TKey key, T item)
-	{
-		_instances[key] = new WeakReference<T>(item);
-		Tick();
 	}
 
 	/// <summary>Snapshots the live entries, dropping references whose item is gone.</summary>

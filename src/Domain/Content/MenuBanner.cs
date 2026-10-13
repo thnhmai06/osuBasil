@@ -31,7 +31,7 @@ public sealed class MenuBanner : IEquatable<MenuBanner>
 	public required DateTimeOffset? EndsAt { get; set; }
 
 	/// <summary>The UTC instant the banner was created.</summary>
-	public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.Now;
+	public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
 
 	/// <summary>Gets a value that indicates whether this banner equals another by image.</summary>
 	/// <param name="other">The banner to compare, or <see langword="null" />.</param>

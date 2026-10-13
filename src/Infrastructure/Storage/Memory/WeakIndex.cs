@@ -25,19 +25,7 @@ internal sealed class WeakIndex<TKey, T> : IReadOnlyDictionary<TKey, T>
 	private int _additions;
 
 	/// <summary>Gets the number of keys that currently have a live instance.</summary>
-	public int Count
-	{
-		get
-		{
-			var count = 0;
-			foreach (var (key, reference) in _items)
-				if (reference.TryGetTarget(out _))
-					count++;
-				else
-					_items.TryRemove(new KeyValuePair<TKey, WeakReference<T>>(key, reference));
-			return count;
-		}
-	}
+	public int Count => _items.Values.Count(reference => reference.TryGetTarget(out _));
 
 	/// <summary>Gets the keys that currently have a live instance.</summary>
 	public IEnumerable<TKey> Keys => Snapshot().Select(entry => entry.Key);
@@ -53,6 +41,9 @@ internal sealed class WeakIndex<TKey, T> : IReadOnlyDictionary<TKey, T>
 		? value
 		: throw new KeyNotFoundException($"The key {key} has no live instance.");
 
+	/// <summary>Indexes a live instance under a key, replacing whatever the key pointed to.</summary>
+	/// <param name="key">The key to index the item under.</param>
+	/// <param name="item">The live instance.</param>
 	public void Set(TKey key, T item)
 	{
 		_items[key] = new WeakReference<T>(item);
@@ -68,6 +59,10 @@ internal sealed class WeakIndex<TKey, T> : IReadOnlyDictionary<TKey, T>
 		return TryGetValue(key, out _);
 	}
 
+	/// <summary>Gets the live instance indexed under a key.</summary>
+	/// <param name="key">The key to look up.</param>
+	/// <param name="item">The live instance.</param>
+	/// <returns><see langword="true" /> when the key has a live instance; otherwise, <see langword="false" />.</returns>
 	public bool TryGetValue(TKey key, [MaybeNullWhen(false)] out T item)
 	{
 		if (_items.TryGetValue(key, out var reference))
@@ -83,6 +78,8 @@ internal sealed class WeakIndex<TKey, T> : IReadOnlyDictionary<TKey, T>
 	}
 
 	/// <summary>Forgets a key when it still points to the item.</summary>
+	/// <param name="key">The key the item was indexed under.</param>
+	/// <param name="item">The item expected under the key.</param>
 	public void Remove(TKey key, T item)
 	{
 		if (_items.TryGetValue(key, out var reference) && reference.TryGetTarget(out var current) &&
