@@ -296,15 +296,15 @@ installation.
 |---------------------------|-----------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------|
 | `Data/appsettings.json`   | Server configuration; see [Configuration file](#configuration-file) above.                                                       | **No**                                                       |
 | `Data/Localization/*.json` | Reply text and the message-of-the-day; see [Localization](#localization) above.                                                | **No**                                                       |
-| `Data/Basil.db`           | Main SQLite database. `-wal` and `-shm` files may exist while Basil is running. Database migrations run automatically at startup. | **No**                                                       |
-| `Data/Replays/`           | Submitted score replay files.                                                                                                     | **No**, unless you intentionally want to remove replays.    |
+| `Data/Replays/`           | Submitted score replays, named like an osu! replay export (`{score id} {player} - {artist} - {title} [{version}] ({date}) {mode}.osr`). | **No**, unless you intentionally want to remove replays.    |
 | `Data/Avatars/`           | User avatar files.                                                                                                                | **No**, unless you intentionally want to remove avatars.    |
-| `Data/Beatmapsets/`           | Installed beatmapsets. Each set is stored as its own `.osz` archive.                                    | **No**, unless you intentionally want to remove beatmaps.   |
+| `Data/Beatmaps/`         | Installed beatmapsets, one folder of extracted files per set (`Data/Beatmaps/{set id}/`). | **No**, unless you intentionally want to remove beatmaps.   |
 | `Data/Menu/Seasonals/`    | Seasonal background images used by the client's login screen.                                                                     | Optional                                                     |
 | `Data/Menu/Banners/`      | Main-menu banner images uploaded for `MenuBanners` entries with a local image (as opposed to an external URL).                    | Optional                                                     |
-| `Data/Menu/Icon{ext}`     | Uploaded custom main-menu icon image, when one is configured as a file upload.                                                    | Usually no                                                   |
+| `Data/Menu/Icon/`        | The uploaded main-menu icon image, when the icon is a stored file rather than an external URL. | Usually no                                                   |
 | `Data/Faqs/`              | Text files used by `!faq <entry>`.                                                                                                | Optional                                                     |
-| `Data/Cache/`             | Generated thumbnails, cover crops, and transcoded audio previews.                                                                 | **Yes**                                                     |
+| `Data/Screenshots/`       | Screenshots uploaded by players, each under a UUID name.                                                                          | Optional                                                     |
+| `Data/Cache/`             | Rebuildable files: `.osz` downloads of each set (`Cache/Beatmaps/`), image crops, transcoded audio previews.                                                                 | **Yes**                                                     |
 
 `Data/Seasonals/` and `Data/MenuIcon.{ext}` are the pre-`assets.<domain>` locations of the two rows
 above; Basil moves them into place automatically on startup if found (see
@@ -312,33 +312,25 @@ above; Basil moves them into place automatically on startup if found (see
 
 ### Database
 
-`Data/Basil.db` is the primary server database.
+Basil stores its records in PostgreSQL, set by `Basil:Database:ConnectionString` (an Npgsql connection string) and
+`Basil:Database:WriteConnections` (how many connections store changes at once, 8 by default). One database belongs
+to one Basil process; do not let anything else write to it.
 
-**Do not copy, replace, or delete the database while Basil is running.**
-
-The database may also have:
-
-```text
-Data/Basil.db-wal
-Data/Basil.db-shm
-```
-
-These are SQLite runtime files. Always stop Basil before copying the database and its associated files.
-
-Database migrations are applied automatically when Basil starts.
+Database migrations are applied automatically when Basil starts. Back up the database with the PostgreSQL tools
+(`pg_dump`) and the `Data/` directory together, since stored files and records refer to each other. See
+[`database.md`](../for-developers/database.md).
 
 ### Beatmaps
 
 Beatmaps are stored under:
 
 ```text
-Data/Beatmapsets/
+Data/Beatmaps/{set id}/
 ```
 
-Each beatmapset is stored as its own `.osz` archive, kept exactly as uploaded. Individual files (audio, images, video,
-`.osu`) are extracted on demand rather than kept separately on disk.
-
-You can add an `.osz` file directly to the `Data/Beatmapsets/` directory. Basil detects and ingests it automatically.
+Each beatmapset is a folder of its extracted files (audio, images, video, `.osu`). The `.osz` archives offered for
+download, with and without video, are rebuilt from these files into `Data/Cache/Beatmaps/` and are kept in step
+when the files change on disk. See [`beatmap-ingestion.md`](../for-developers/beatmap-ingestion.md).
 
 A standalone `.osu` file is **not** imported because a difficulty file alone does not provide enough information to
 identify its beatmapset.

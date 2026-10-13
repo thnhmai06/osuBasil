@@ -67,6 +67,15 @@ A channel has a Domain model (`Channel`: name and topic) and a runtime model
 `GeneralChannelRegistry` lists only general channels. A room channel is found through its room
 (`lobby.Find(id)?.Channel`); spectator and private-message channels are never looked up by name.
 
+General channels are stored records (`IChannelRepository`, loaded at startup) and can be managed while the server
+runs through `IChannelService`, by a user with `DeveloperConfigureServer`:
+
+* `CreateAsync` stores a new channel and opens it (`ChannelOpened`); a name already open is refused (`NameTaken`).
+* `ConfigureAsync` changes topic, read and write permissions, auto-join and visibility in one step, removes the
+  members who may no longer read the channel, and emits one `ChannelConfigured` carrying the change and the removed
+  members.
+* `DeleteAsync` closes the channel (`ChannelClosed`) and deletes its record.
+
 A channel's name tells its kind, as in IRC: a channel several users take part in is named `#name`,
 and a private-message channel carries its owner's name without `#`. Each kind of channel follows
 this convention when it names itself. Transports resolve the aliases `#multiplayer` and `#spectator`

@@ -5,7 +5,7 @@
 A multiplayer match in Basil has two representations:
 
 * a live `Room` in `Basil.Application`, which exists only while the server runs and holds the slots,
-  the host, the referees, the countdown and the round in progress;
+  the host, the referees and the round in progress;
 * a persisted record in `Basil.Domain` (`Match`, `Round`, `Score`) that survives the room and is used
   to rebuild the match report after the room is gone.
 
@@ -27,7 +27,7 @@ the facts needed to rebuild the report and derives the report when it is request
 ```text
 Room (runtime)                    record (persisted)
   slots, host, referees,            Match
-  countdown, round in progress      Rounds
+  round in progress                 Rounds
             │                       Scores
             │ events                    │
             └──────────► stored ────────┘
@@ -107,7 +107,7 @@ has no host. An IRC connection can never be host because it cannot occupy a slot
 |---|---|
 | Join, leave, change own slot, ready, report having the map, change own team, choose own freemod mods | the player themselves |
 | Start a round, change settings, give or clear host, lock or unlock a slot, kick | the host or a manager |
-| Abort a round, ban, unban, move a player, set a player's team, lock the room, start or cancel a countdown | a manager |
+| Abort a round, ban, unban, move a player, set a player's team, lock the room | a manager |
 | Add or remove a referee | the creator |
 | Invite | a seated player or a manager |
 | Observe from osu!tourney | any osu!tourney client that is not playing in the room |
@@ -121,7 +121,7 @@ Every operation with a rule takes its caller and checks the rule inside `Room`, 
 ```mermaid
 flowchart TD
     open["Lobby.OpenAsync<br/>(in game, !mp make, API)"] --> room["Room open<br/>creator seated as host when created in game"]
-    room --> start["Start or countdown elapses"]
+    room --> start["Start (a client countdown may trigger it)"]
     start --> round["Round n in progress"]
     round -->|"last player completes or leaves"| done["Round n completed"]
     round -->|"manager aborts"| aborted["Round n aborted"]
@@ -147,8 +147,8 @@ The room's chat channel is named `#mp_{room id}` and belongs to the room: it ope
 
 ### Closing a room
 
-A manager closes a room with `Lobby.CloseAsync`. Closing aborts a round in progress, cancels the
-countdown, removes every player and the room's channel, records the match's end time and emits
+A manager closes a room with `Lobby.CloseAsync`. Closing aborts a round in progress, removes every player and
+the room's channel, records the match's end time and emits
 `LobbyRoomClosed`. Closing a room does not delete its match history.
 
 ## Joining and leaving
@@ -208,11 +208,10 @@ sequenceDiagram
 
 ### Countdown
 
-A manager can start a countdown (`!mp start <seconds>`, `!mp timer`) of up to one hour; the default is
-30 seconds. It is announced at 60, 30, 10 and 5 seconds remaining when those are shorter than its
-length. When it ends, the room emits `RoomCountdownElapsed` and, if the countdown starts the round, starts
-it. A new countdown replaces the running one. Starting or aborting a round, and closing the room, cancel
-the countdown.
+The server runs no countdown. A countdown (`!mp start <seconds>`, `!mp timer`) is a client feature: BasilBot
+runs it, announces it in the room's channel, and when it ends starts the round as the user who asked, through the
+ordinary start operation, so the server checks that user's authority again. See
+[`basil-bot.md`](../for-client/basil-bot.md).
 
 ## Settings
 
@@ -289,11 +288,11 @@ What happens when a room has no seated player depends on how it was created:
 * a tournament room stays open for `Lobby.EmptyTournamentRoomTimeout` (15 minutes) and then closes if
   it is still empty. The lobby emits `LobbyRoomClosingAnnounced` twice, carrying the closing time: when the
   room becomes empty (15 minutes left) and 5 minutes before it closes. Both are used to warn the room's
-  referees. A player joining at any point cancels the countdown; if the room empties again, it starts
+  referees. A player joining at any point cancels the closing timer; if the room empties again, it starts
   over at 15 minutes.
 
 A tournament room can start empty, for example when it is created over IRC or through the API, or when
-its creator already plays in another room. The countdown then starts when the room opens. The creator
+its creator already plays in another room. The closing timer then starts when the room opens. The creator
 and the referees keep their authority while nobody is seated.
 
 ## Report generation
@@ -359,7 +358,7 @@ Scores
 * [`Basil.Application/Multiplayer/RoomSlots.cs`](../../src/Basil.Application/Multiplayer/RoomSlots.cs), [`RoomSlot.cs`](../../src/Basil.Application/Multiplayer/RoomSlot.cs): slots
 * [`Basil.Application/Multiplayer/RoomSettingsChange.cs`](../../src/Basil.Application/Multiplayer/RoomSettingsChange.cs), [`BeatmapReference.cs`](../../src/Basil.Application/Multiplayer/BeatmapReference.cs): settings changes
 * [`Basil.Application/Multiplayer/RoomResult.cs`](../../src/Basil.Application/Multiplayer/RoomResult.cs): operation outcomes
-* [`Basil.Application/Multiplayer/Events/`](../../src/Basil.Application/Multiplayer/Events): lobby, room, round and countdown events
+* [`Basil.Application/Multiplayer/Events/`](../../src/Basil.Application/Multiplayer/Events): lobby, room and round events
 * [`Basil.Application/Scores/ScoreSubmission.cs`](../../src/Basil.Application/Scores/ScoreSubmission.cs): attaching scores to the latest round
 * [`Basil.Domain/Multiplayer/`](../../src/Domain/Multiplayer): `Match`, `Round`, `MatchSettings`
 

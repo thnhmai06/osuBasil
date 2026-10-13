@@ -154,7 +154,7 @@ Event
 ├── UserEvent       UserConnectionOpened, UserConnectionClosed, UserConnectionStatusChanged, UserStatsChanged, UserSilenced
 ├── ChannelEvent    channel lifecycle, membership, messages, spectating
 ├── LobbyEvent          LobbyRoomOpened, LobbyRoomClosed, LobbyRoomClosingAnnounced, lobby watchers
-├── RoomEvent           settings, slots, membership, authority, access, rounds, countdown
+├── RoomEvent           settings, slots, membership, authority, access, rounds
 └── BeatmapsetEvent        BeatmapsetImported
 ```
 

@@ -130,13 +130,43 @@ when the source file's last-write time changes.
 Avatars use a shorter browser `Cache-Control` lifetime through `OnPrepareResponseAsync`, since users may replace their
 avatars. Menu and beatmap images are comparatively static.
 
+### Asset references
+
+The server refers to an asset by an `AssetReference` (Domain), never by a bare string or URI. A reference is one of:
+
+* the path of a file the server stores, relative to the data directory (`Menu/Banners/summer.png`), so it stays
+  valid when the installation moves to another machine;
+* the absolute `http`/`https` address of an asset hosted elsewhere, kept exactly as given; Basil never copies it.
+
+The value is canonical: `\` becomes `/`, empty and `.` segments are dropped, and a rooted path, a `..` segment, a
+drive or scheme (`file:`, `javascript:`), or a control character is rejected. A banner's image and the menu icon are
+stored in the database as the reference's text.
+
+### Storages and serving
+
+Each kind of stored asset has a storage contract (`IMenuBannerStorage`, `IMenuSeasonalsStorage`, `IMenuIconStorage`,
+`IScreenshotStorage`) with list, save, rename where it applies, and delete; each save returns the reference of the
+stored file. `OpenAsync` serves the server's own reads only. The storages keep no file content in memory and are not
+resident: the directory is the index and is read as it is when asked.
+
+Clients never read through the storages. The hosts serve stored files under a fixed public path per asset directory
+(for example `menu/banners/{name}` for `Data/Menu/Banners/{name}`), with a static file provider rooted at that asset
+directory and never at the whole `Data/` directory, which also holds replays, FAQs and the cache. A reference to an
+external address is handed to the client as it is.
+
+Screenshots are stored under a new UUIDv7 name with the upload's extension.
+
+> **Pending migration.** The hosts still use the previous wiring: the providers below, and the startup move of
+> `Data/MenuIcon.{ext}`, predate the storage contracts.
+
 ### Data layout
 
 Menu assets use the following layout:
 
 * `Data/Menu/Banners/` — menu banners
 * `Data/Menu/Seasonals/` — seasonal images
-* `Data/Menu/Icon{ext}` — the current menu icon
+* `Data/Menu/Icon/` — the current menu icon, the only file there
+* `Data/Screenshots/` — uploaded screenshots
 
 `MenuBanners` stores banner metadata in the database; see [`database.md`](database.md).
 

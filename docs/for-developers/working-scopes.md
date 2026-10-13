@@ -81,6 +81,9 @@ This deliberately does not replicate `assets.ppy.sh`'s user-profile-cover, team,
 artist/media asset families — Basil has no public profile pages, teams, or contest system for them to
 back.
 
+Screenshots uploaded by the osu! client (`osu-screenshot.php`) are in scope: the server stores them and hands back
+a link the client opens.
+
 ### In-game registration
 
 `POST /users` is supported for in-game account registration.
@@ -123,7 +126,7 @@ features.
 
 | Endpoint                | Status  | Behavior                                                                                        |
 |-------------------------|---------|-------------------------------------------------------------------------------------------------|
-| `osu-screenshot.php`    | ⚠️ Stub | Returns HTTP 400 with `not available`.                                                          |
+| `osu-screenshot.php`    | ⚠️ Pending | Still returns HTTP 400 with `not available`; screenshots are stored by `IScreenshotStorage` once the host is migrated. |
 | `osu-getfavourites.php` | ⚠️ Stub | Returns an empty favourite list.                                                                |
 | `osu-addfavourite.php`  | ⚠️ Stub | No favourite functionality is implemented.                                                      |
 | `osu-rate.php`          | ⚠️ Stub | Returns `not ranked`, matching the expected real-bancho response for the unsupported operation. |
