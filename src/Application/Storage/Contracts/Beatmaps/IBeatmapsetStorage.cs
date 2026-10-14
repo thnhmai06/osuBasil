@@ -8,9 +8,10 @@ namespace Basil.Application.Storage.Contracts.Beatmaps;
 /// </summary>
 /// <remarks>
 ///     A set's folder holds its archive as it was given, the archive without video, and the files the server uses,
-///     each kind in its own place (<see cref="BeatmapsetFileKind" />). Anyone may also place an .osz archive or a
-///     folder of loose files in the storage by hand; such entries wait, listed by
-///     <see cref="ListAsync(CancellationToken)" />, until the server takes them in.
+///     each kind in its own place (<see cref="BeatmapsetFileKind" />). Anyone may also place an .osz or .zip archive or
+///     a folder in the storage by hand, of one beatmapset or a collection of them; such entries wait, listed by
+///     <see cref="ListAsync(CancellationToken)" />, until the server takes them in. Other files placed there are not
+///     entries.
 /// </remarks>
 public interface IBeatmapsetStorage
 {
@@ -51,6 +52,17 @@ public interface IBeatmapsetStorage
 	/// </returns>
 	/// <remarks>The loose files are removed once the packed archive is taken in by <see cref="SaveAsync(Beatmapset, BeatmapsetArchiveEntry, CancellationToken)" />.</remarks>
 	Task<BeatmapsetArchiveEntry?> PackAsync(BeatmapsetFolderEntry folder,
+		CancellationToken cancellationToken = default);
+
+	/// <summary>Lays out each beatmapset of a collection placed by hand as its own entry of the storage.</summary>
+	/// <param name="collection">The collection.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The new entries, one per beatmapset found; empty when the collection is gone or cannot be unpacked.</returns>
+	/// <remarks>
+	///     An archive is removed once laid out; a folder keeps what is not a beatmapset, and is removed when nothing is
+	///     left in it. A collection that cannot be unpacked is left as it is.
+	/// </remarks>
+	Task<IReadOnlyList<BeatmapsetEntry>> UnpackAsync(BeatmapsetCollectionEntry collection,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Removes every file made from a set's archive, keeping the archive.</summary>
@@ -101,7 +113,7 @@ public interface IBeatmapsetStorage
 	/// <returns>The archive, seekable; or <see langword="null" /> when it is not stored.</returns>
 	Task<Stream?> OpenArchiveAsync(Beatmapset set, bool withVideo, CancellationToken cancellationToken = default);
 
-	/// <summary>Lists every entry in the storage: loose archives and every folder directly in it.</summary>
+	/// <summary>Lists every entry in the storage: the archives, collections and folders directly in it.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The entries; folders being written or deleted are left out.</returns>
 	Task<IEnumerable<BeatmapsetEntry>> ListAsync(CancellationToken cancellationToken = default);

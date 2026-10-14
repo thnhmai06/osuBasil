@@ -1,6 +1,6 @@
 namespace Basil.Application.Storage.Contracts.Beatmaps;
 
-/// <summary>Something lying directly in the beatmapset storage: an .osz archive or a folder.</summary>
+/// <summary>Something lying directly in the beatmapset storage: an archive, a folder, or a collection of beatmapsets.</summary>
 /// <param name="name">The entry's name in the storage.</param>
 public abstract class BeatmapsetEntry(string name)
 {
@@ -44,3 +44,7 @@ public abstract class BeatmapsetFolderEntry(string name, int? id, bool exists, B
 	/// <remarks>A folder that exists without an archive holds loose files, which can be packed into one.</remarks>
 	public BeatmapsetArchiveEntry? Archive => archive;
 }
+/// <summary>An .osz or .zip archive, or a folder, placed in the storage by hand that holds several beatmapsets rather than being one.</summary>
+/// <param name="name">The entry's name in the storage.</param>
+/// <remarks>It holds .osz archives or folders of beatmapsets, at any depth, and no difficulty at its top.</remarks>
+public abstract class BeatmapsetCollectionEntry(string name) : BeatmapsetEntry(name);

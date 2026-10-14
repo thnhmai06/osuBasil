@@ -52,6 +52,21 @@ internal sealed class FileBeatmapsetUpload(string path) : BeatmapsetUpload
 	/// <inheritdoc />
 	public override IReadOnlyList<BeatmapsetArchiveEntry> Archives => MutableArchives;
 
+	/// <inheritdoc />
+	public override IReadOnlyList<string> Rejected => MutableRejected;
+
 	/// <summary>Gets the archives found in the upload, to add to while it is looked through.</summary>
 	internal List<BeatmapsetArchiveEntry> MutableArchives { get; } = [];
+
+	/// <summary>Gets the loose difficulties found in the upload, to add to while it is looked through.</summary>
+	internal List<string> MutableRejected { get; } = [];
+}
+
+/// <summary>An archive or folder placed in the storage that holds several beatmapsets.</summary>
+/// <param name="path">The archive's or folder's full path on disk.</param>
+/// <param name="name">The entry's name in the storage.</param>
+internal sealed class FileBeatmapsetCollection(string path, string name) : BeatmapsetCollectionEntry(name)
+{
+	/// <summary>Gets the archive's or folder's full path on disk.</summary>
+	internal string Path => path;
 }

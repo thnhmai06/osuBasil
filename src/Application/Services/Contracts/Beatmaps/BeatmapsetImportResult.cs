@@ -12,7 +12,10 @@ public enum BeatmapsetImportFailure : byte
 	Locked,
 
 	/// <summary>An earlier beatmapset of the same upload is the same beatmapset or shares a difficulty with it.</summary>
-	Duplicate
+	Duplicate,
+
+	/// <summary>A difficulty was uploaded on its own, outside any archive or folder of a beatmapset.</summary>
+	Loose
 }
 
 /// <summary>The outcome of importing one beatmapset found in an upload.</summary>

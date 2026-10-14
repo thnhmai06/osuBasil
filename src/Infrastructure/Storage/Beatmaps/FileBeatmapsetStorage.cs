@@ -65,6 +65,14 @@ internal sealed class FileBeatmapsetStorage(
 
 	private static readonly FrozenSet<char> InvalidNameChars = "\"<>:/\\|?*".ToFrozenSet();
 
+	/// <summary>The names Windows keeps for devices, which no stored file or folder may take, whatever its extension.</summary>
+	private static readonly FrozenSet<string> ReservedNames = new[]
+	{
+		"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "COM0", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7",
+		"COM8", "COM9", "COM¹", "COM²", "COM³", "LPT0", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8",
+		"LPT9", "LPT¹", "LPT²", "LPT³"
+	}.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
+
 	private static readonly ConcurrentDictionary<int, SemaphoreSlim> SetLocks = new();
 
 	/// <inheritdoc />
@@ -91,8 +99,23 @@ internal sealed class FileBeatmapsetStorage(
 				await WriteAsync(file.Content, path, budget, cancellationToken).ConfigureAwait(false);
 			}
 
-			await FindAsync(upload, filesRoot, filesRoot, packedRoot, budget, 0, cancellationToken)
-				.ConfigureAwait(false);
+			var finder = new SetFinder(
+				async (folder, name) =>
+				{
+					var packedFiles = Directory.GetFiles(folder, "*", SearchOption.AllDirectories);
+					// The packed copy is counted before it is written: it is about as large as the files it packs.
+					budget.AddBytes(packedFiles.Sum(file => new FileInfo(file).Length));
+					var packed = Path.Combine(packedRoot, $"{Guid.NewGuid():N}.osz");
+					await PackFilesAsync(folder, packedFiles, packed, cancellationToken).ConfigureAwait(false);
+					upload.MutableArchives.Add(ArchiveAt(packed, name));
+				},
+				(archive, name) =>
+				{
+					upload.MutableArchives.Add(ArchiveAt(archive, name));
+					return Task.CompletedTask;
+				},
+				upload.MutableRejected.Add);
+			await FindAsync(filesRoot, filesRoot, budget, 0, finder, cancellationToken).ConfigureAwait(false);
 			return upload;
 		}
 		catch
@@ -130,65 +153,200 @@ internal sealed class FileBeatmapsetStorage(
 		return Task.CompletedTask;
 	}
 
-	/// <summary>Looks through one folder of an upload for beatmapsets, adding the archive of each one found.</summary>
-	/// <param name="upload">The upload the archives are added to.</param>
+	/// <inheritdoc />
+	public async Task<IReadOnlyList<BeatmapsetEntry>> UnpackAsync(BeatmapsetCollectionEntry collection,
+		CancellationToken cancellationToken = default)
+	{
+		if (collection is not FileBeatmapsetCollection placed)
+			throw new ArgumentException("The collection does not belong to this storage.", nameof(collection));
+
+		var laidOut = new List<string>();
+		var finder = new SetFinder(MoveOut, MoveOut, static _ => { });
+		string? unpacked = null;
+		try
+		{
+			if (Directory.Exists(placed.Path))
+			{
+				await FindAsync(placed.Path, placed.Path, new UploadBudget(), 0, finder, cancellationToken)
+					.ConfigureAwait(false);
+				RemoveEmptyFolders(placed.Path);
+			}
+			else if (File.Exists(placed.Path))
+			{
+				unpacked = Incoming();
+				await UnpackAsync(placed.Path, unpacked, new UploadBudget(), cancellationToken).ConfigureAwait(false);
+				await FindAsync(unpacked, unpacked, new UploadBudget(), 1, finder, cancellationToken)
+					.ConfigureAwait(false);
+				File.Delete(placed.Path);
+			}
+		}
+		catch (Exception exception) when (exception is InvalidDataException or IOException
+			                                  or UnauthorizedAccessException)
+		{
+			logger.LogWarning(exception, "Could not unpack the beatmapset collection {Name}", placed.Name);
+		}
+		finally
+		{
+			if (unpacked is not null) DeleteUpload(new FileBeatmapsetUpload(unpacked));
+		}
+
+		return laidOut.Select(EntryOf).OfType<BeatmapsetEntry>().ToList();
+
+		// A beatmapset found in the collection moves to the top of the storage, under a name no other entry has.
+		Task MoveOut(string path, string _)
+		{
+			var name = TopLevelName(Path.GetFileName(path));
+			var target = Path.Combine(paths.Beatmapsets.Path, name);
+			if (Directory.Exists(path)) Directory.Move(path, target);
+			else File.Move(path, target);
+			laidOut.Add(name);
+			return Task.CompletedTask;
+		}
+	}
+
+	/// <summary>Looks through one folder for beatmapsets, handing each one found to a finder.</summary>
 	/// <param name="folder">The folder to look through.</param>
-	/// <param name="filesRoot">The folder holding the uploaded files, which archive names are relative to.</param>
-	/// <param name="packedRoot">The folder that archives packed from folders are written to.</param>
-	/// <param name="budget">What the upload may still unpack.</param>
+	/// <param name="root">The folder the search started from, which names are relative to.</param>
+	/// <param name="budget">What may still be unpacked.</param>
 	/// <param name="depth">How many archives the folder lies in.</param>
+	/// <param name="finder">What to do with each beatmapset found.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	private static async Task FindAsync(FileBeatmapsetUpload upload, string folder, string filesRoot,
-		string packedRoot, UploadBudget budget, int depth, CancellationToken cancellationToken)
+	/// <remarks>
+	///     A folder with difficulties directly in it is one beatmapset, except the root, whose difficulties lie loose. An
+	///     archive that holds beatmapsets is unpacked in its place and looked through; any other archive is one beatmapset.
+	/// </remarks>
+	private static async Task FindAsync(string folder, string root, UploadBudget budget, int depth, SetFinder finder,
+		CancellationToken cancellationToken)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
-		var name = Path.GetRelativePath(filesRoot, folder).Replace('\\', '/');
-		if (name == ".") name = "";
-
-		// A folder with difficulties directly in it is one beatmapset, whatever lies below it.
-		if (Directory.EnumerateFiles(folder, "*.osu").Any())
+		var difficulties = Directory.GetFiles(folder, "*.osu");
+		if (difficulties.Length > 0)
 		{
-			var files = Directory.GetFiles(folder, "*", SearchOption.AllDirectories);
-			// The packed copy is counted before it is written: it is about as large as the files it packs.
-			budget.AddBytes(files.Sum(file => new FileInfo(file).Length));
-			var packed = Path.Combine(packedRoot, $"{Guid.NewGuid():N}.osz");
-			await PackFilesAsync(folder, files, packed, cancellationToken).ConfigureAwait(false);
-			upload.MutableArchives.Add(ArchiveAt(packed, name));
-			return;
+			if (folder != root)
+			{
+				await finder.Folder(folder, NameIn(root, folder)).ConfigureAwait(false);
+				return;
+			}
+
+			foreach (var file in difficulties) finder.Loose(NameIn(root, file));
 		}
 
 		// Taken before archives are unpacked here, so an unpacked archive is looked through once.
 		var folders = Directory.GetDirectories(folder).Order(StringComparer.Ordinal).ToList();
 		foreach (var file in Directory.GetFiles(folder).Order(StringComparer.Ordinal))
 		{
-			var extension = Path.GetExtension(file);
-			if (!extension.Equals(".osz", StringComparison.OrdinalIgnoreCase) &&
-			    !extension.Equals(".zip", StringComparison.OrdinalIgnoreCase))
-				continue;
+			if (!IsArchiveName(file)) continue;
 
-			var fileName = Path.GetRelativePath(filesRoot, file).Replace('\\', '/');
 			if (!HoldsBeatmapsets(file))
 			{
-				upload.MutableArchives.Add(ArchiveAt(file, fileName));
+				await finder.Archive(file, NameIn(root, file)).ConfigureAwait(false);
 				continue;
 			}
 
 			if (depth >= MaxUploadDepth)
-				throw new InvalidDataException("The upload nests archives too deeply.");
+				throw new InvalidDataException("Archives are nested too deeply.");
 
 			// The archive's place is taken by a folder of what it holds, so what is found in it is named after it.
 			var unpacked = file + IncomingMarker;
 			await UnpackAsync(file, unpacked, budget, cancellationToken).ConfigureAwait(false);
 			File.Delete(file);
 			Directory.Move(unpacked, file);
-			await FindAsync(upload, file, filesRoot, packedRoot, budget, depth + 1, cancellationToken)
-				.ConfigureAwait(false);
+			await FindAsync(file, root, budget, depth + 1, finder, cancellationToken).ConfigureAwait(false);
 		}
 
 		foreach (var child in folders)
-			await FindAsync(upload, child, filesRoot, packedRoot, budget, depth, cancellationToken)
-				.ConfigureAwait(false);
+			await FindAsync(child, root, budget, depth, finder, cancellationToken).ConfigureAwait(false);
 	}
+
+	/// <summary>Builds the name of a path relative to the folder a search started from.</summary>
+	/// <param name="root">The folder the search started from.</param>
+	/// <param name="path">A path inside it.</param>
+	/// <returns>The relative path, its folders separated by <c>/</c>.</returns>
+	private static string NameIn(string root, string path)
+	{
+		return Path.GetRelativePath(root, path).Replace('\\', '/');
+	}
+
+	/// <summary>Determines whether a name is that of an archive that can hold beatmapsets.</summary>
+	/// <param name="name">The file name or path.</param>
+	/// <returns><see langword="true" /> for an .osz or a .zip archive.</returns>
+	private static bool IsArchiveName(string name)
+	{
+		return name.EndsWith(".osz", StringComparison.OrdinalIgnoreCase) ||
+		       name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase);
+	}
+
+
+	/// <summary>Removes a folder and the folders below it that hold no file, keeping every folder that still holds one.</summary>
+	/// <param name="folder">The folder's full path.</param>
+	/// <returns><see langword="true" /> when the folder itself was removed.</returns>
+	private static bool RemoveEmptyFolders(string folder)
+	{
+		var empty = true;
+		foreach (var child in Directory.GetDirectories(folder))
+			if (new DirectoryInfo(child).Attributes.HasFlag(FileAttributes.ReparsePoint) || !RemoveEmptyFolders(child))
+				empty = false;
+
+		if (!empty || Directory.EnumerateFiles(folder).Any()) return false;
+		Directory.Delete(folder);
+		return true;
+	}
+	/// <summary>Determines whether a folder placed by hand holds several beatmapsets rather than being one.</summary>
+	/// <param name="folder">The folder's full path.</param>
+	/// <returns>
+	///     <see langword="true" /> when it is no set's folder, has no difficulty directly in it, and holds an archive or a
+	///     difficulty in a folder below it.
+	/// </returns>
+	private static bool IsCollection(string folder)
+	{
+		if (IsSetFolder(folder) || Directory.EnumerateFiles(folder, "*.osu").Any()) return false;
+
+		var options = new EnumerationOptions
+		{
+			RecurseSubdirectories = true,
+			AttributesToSkip = FileAttributes.ReparsePoint,
+			MaxRecursionDepth = MaxPathSegments
+		};
+		return Directory.EnumerateFiles(folder, "*", options)
+			.Any(file => IsArchiveName(file) || file.EndsWith(".osu", StringComparison.OrdinalIgnoreCase));
+	}
+
+	/// <summary>Builds a name for an entry moved to the top of the storage that no entry has yet.</summary>
+	/// <param name="name">The name the entry had.</param>
+	/// <returns>The name, with a number added when it is taken, and made safe when it is reserved or hidden.</returns>
+	private string TopLevelName(string name)
+	{
+		if (IsReservedName(name) || IsHidden(name)) name = "_" + name;
+
+		var stem = Path.GetFileNameWithoutExtension(name);
+		var extension = Path.GetExtension(name);
+		var candidate = name;
+		for (var number = 2;
+		     File.Exists(Path.Combine(paths.Beatmapsets.Path, candidate)) ||
+		     Directory.Exists(Path.Combine(paths.Beatmapsets.Path, candidate));
+		     number++)
+			candidate = $"{stem} ({number}){extension}";
+
+		return candidate;
+	}
+
+	/// <summary>Determines whether a file name is one Windows keeps for a device, whatever its extension.</summary>
+	/// <param name="name">The file name.</param>
+	/// <returns><see langword="true" /> for names such as <c>CON</c>, <c>nul.txt</c> or <c>COM1</c>.</returns>
+	private static bool IsReservedName(string name)
+	{
+		var dot = name.IndexOf('.');
+		return ReservedNames.Contains((dot < 0 ? name : name[..dot]).TrimEnd(' '));
+	}
+
+	/// <summary>What a search for beatmapsets does with each one it finds.</summary>
+	/// <param name="Folder">Takes a folder of one beatmapset and its name.</param>
+	/// <param name="Archive">Takes an archive of one beatmapset and its name.</param>
+	/// <param name="Loose">Takes the name of a difficulty lying loose at the root of the search.</param>
+	private readonly record struct SetFinder(
+		Func<string, string, Task> Folder,
+		Func<string, string, Task> Archive,
+		Action<string> Loose);
 
 	/// <summary>Determines whether an archive holds beatmapsets rather than being one.</summary>
 	/// <param name="file">The archive's full path.</param>
@@ -275,7 +433,8 @@ internal sealed class FileBeatmapsetStorage(
 		if (relative.Length == 0 || Path.IsPathRooted(relative) || segments.Length > MaxPathSegments ||
 		    segments.Any(segment => segment.Length == 0 || segment is "." or ".." ||
 		                            segment.EndsWith('.') || segment.EndsWith(' ') ||
-		                            segment.Any(char.IsControl) || segment.Any(InvalidNameChars.Contains)))
+		                            segment.Any(char.IsControl) || segment.Any(InvalidNameChars.Contains) ||
+		                            IsReservedName(segment)))
 			return null;
 
 		return Path.Combine([folder, .. segments]);
@@ -477,8 +636,10 @@ internal sealed class FileBeatmapsetStorage(
 		// Links are never followed: only what lies inside the folder itself is packed.
 		if (new DirectoryInfo(placed.Path).Attributes.HasFlag(FileAttributes.ReparsePoint)) return null;
 		var files = Directory.EnumerateFiles(placed.Path, "*",
-			new EnumerationOptions { RecurseSubdirectories = true, AttributesToSkip = FileAttributes.ReparsePoint }).ToList();
-		if (files.Count == 0) return null;
+				new EnumerationOptions { RecurseSubdirectories = true, AttributesToSkip = FileAttributes.ReparsePoint })
+			.ToList();
+		// Difficulties directly in the folder make it one beatmapset; without them it is none.
+		if (files.Count == 0 || !Directory.EnumerateFiles(placed.Path, "*.osu").Any()) return null;
 
 		var path = Incoming(".osz");
 		await PackFilesAsync(placed.Path, files, path, cancellationToken).ConfigureAwait(false);
@@ -529,8 +690,9 @@ internal sealed class FileBeatmapsetStorage(
 			var temporary = Incoming(".tmp");
 			try
 			{
-				await using (var output = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None,
-					     81920, FileOptions.Asynchronous))
+				await using (var output = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write,
+					             FileShare.None,
+					             81920, FileOptions.Asynchronous))
 				{
 					await content.CopyToAsync(output, cancellationToken).ConfigureAwait(false);
 				}
@@ -566,7 +728,7 @@ internal sealed class FileBeatmapsetStorage(
 			try
 			{
 				await using (var input = new FileStream(archivePath, FileMode.Open, FileAccess.Read,
-					     FileShare.Read | FileShare.Delete, 81920, FileOptions.Asynchronous))
+					             FileShare.Read | FileShare.Delete, 81920, FileOptions.Asynchronous))
 				{
 					using var source = new ZipArchive(input, ZipArchiveMode.Read, leaveOpen: true);
 					await using var output = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write,
@@ -670,7 +832,7 @@ internal sealed class FileBeatmapsetStorage(
 			{
 				var name = Path.GetFileName(file);
 				if (IsHidden(name) ||
-				    !name.EndsWith(".osz", StringComparison.OrdinalIgnoreCase)) continue;
+				    !IsArchiveName(name)) continue;
 				var entry = EntryOf(name);
 				if (entry is not null) entries.Add(entry);
 			}
@@ -841,17 +1003,18 @@ internal sealed class FileBeatmapsetStorage(
 					new DateTimeOffset(info.LastWriteTimeUtc, TimeSpan.Zero));
 			}
 
+			if (archive is null && IsCollection(path)) return new FileBeatmapsetCollection(path, name);
 			return new FileBeatmapsetFolder(path, name, LeadingId(name), true, archive);
 		}
 
-		if (File.Exists(path) && name.EndsWith(".osz", StringComparison.OrdinalIgnoreCase))
+		// Only an archive is an entry; any other file placed here, such as a loose difficulty, is not.
+		if (File.Exists(path))
 		{
-			var info = new FileInfo(path);
-			return new FileBeatmapsetArchive(path, name, info.Length,
-				new DateTimeOffset(info.LastWriteTimeUtc, TimeSpan.Zero));
+			if (!IsArchiveName(name)) return null;
+			return HoldsBeatmapsets(path) ? new FileBeatmapsetCollection(path, name) : ArchiveAt(path, name);
 		}
 
-		if (!name.EndsWith(".osz", StringComparison.OrdinalIgnoreCase))
+		if (!IsArchiveName(name))
 			return new FileBeatmapsetFolder(path, name, LeadingId(name), false, null);
 
 		return null;
@@ -871,6 +1034,8 @@ internal sealed class FileBeatmapsetStorage(
 			throw new ArgumentException("The file name must not contain a path.", nameof(name));
 		if (name.Any(char.IsControl) || name.Any(InvalidNameChars.Contains))
 			throw new ArgumentException("The file name contains invalid characters.", nameof(name));
+		if (IsReservedName(name) || name.EndsWith('.') || name.EndsWith(' '))
+			throw new ArgumentException("The file name is not one a file may have.", nameof(name));
 
 		return kind switch
 		{
@@ -947,10 +1112,10 @@ internal sealed class FileBeatmapsetStorage(
 		var candidates = FoldersOf(id);
 		if (candidates.Count == 0) return null;
 		return (preferredName is null
-				? null
-				: candidates.FirstOrDefault(folder =>
-					string.Equals(Path.GetFileName(folder), preferredName, StringComparison.OrdinalIgnoreCase)))
-			?? candidates.MinBy(folder => Path.GetFileName(folder), StringComparer.Ordinal);
+			       ? null
+			       : candidates.FirstOrDefault(folder =>
+				       string.Equals(Path.GetFileName(folder), preferredName, StringComparison.OrdinalIgnoreCase)))
+		       ?? candidates.MinBy(folder => Path.GetFileName(folder), StringComparer.Ordinal);
 	}
 
 	/// <summary>Renames a folder out of the way before its files are removed, so nothing new is stored under its name meanwhile.</summary>

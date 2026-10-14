@@ -12,10 +12,14 @@ public sealed record BeatmapsetUploadFile(string Path, Stream Content);
 /// <remarks>
 ///     An .osz or .zip archive with difficulties at its top is one beatmapset; a folder with difficulties directly in it
 ///     is one beatmapset, packed into an archive; any other archive is unpacked and looked through like a folder. An
-///     archive that cannot be opened is kept as one beatmapset, which then cannot be read.
+///     archive that cannot be opened is kept as one beatmapset, which then cannot be read. A difficulty uploaded on its
+///     own, outside any archive or folder, belongs to no beatmapset and is rejected.
 /// </remarks>
 public abstract class BeatmapsetUpload
 {
 	/// <summary>Gets the archive of each beatmapset found in the upload, each named by its path within the upload.</summary>
 	public abstract IReadOnlyList<BeatmapsetArchiveEntry> Archives { get; }
+
+	/// <summary>Gets the path within the upload of each difficulty uploaded on its own, which belongs to no beatmapset.</summary>
+	public abstract IReadOnlyList<string> Rejected { get; }
 }

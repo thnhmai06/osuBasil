@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Channels;
 using Basil.Application.Services.Contracts.Beatmaps;
 using Basil.Application.Services.Implementations.Common;
@@ -26,6 +27,11 @@ internal sealed class BeatmapsetService(
 	/// <summary>A scan that changed nothing.</summary>
 	private static readonly BeatmapsetScanResult NoChange = new(0, 0, 0);
 
+	/// <summary>The names Windows keeps for devices, whatever their extension.</summary>
+	private static readonly Regex ReservedName =
+		new(@"^(CON|PRN|AUX|NUL|CONIN\$|CONOUT\$|COM[0-9¹²³]|LPT[0-9¹²³]) *$",
+			RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
 	private readonly Channel<BeatmapsetEvent> _events = Channel.CreateUnbounded<BeatmapsetEvent>();
 
 	/// <inheritdoc />
@@ -40,8 +46,7 @@ internal sealed class BeatmapsetService(
 		{
 			var results = new BeatmapsetImportResult?[upload.Archives.Count];
 			var accepted = new List<(int Index, Indexed Item)>();
-			var claimedSets = new HashSet<int>();
-			var claimedBeatmaps = new HashSet<Md5>();
+			var claims = new SetClaims();
 
 			for (var i = 0; i < upload.Archives.Count; i++)
 			{
@@ -66,19 +71,12 @@ internal sealed class BeatmapsetService(
 					continue;
 				}
 
-				// Two sets of one upload must not become the same set, nor share a difficulty: the first one found wins.
-				var hashes = item.Sync.Beatmaps.Select(beatmap => beatmap.Hash).ToList();
-				if ((item.Existing is not null && claimedSets.Contains(item.Existing.Id)) ||
-				    (item.Sync.OnlineId is { } onlineId && claimedSets.Contains(onlineId)) ||
-				    hashes.Count != hashes.Distinct().Count() || hashes.Any(claimedBeatmaps.Contains))
+				if (!claims.TryClaim(item.Sync))
 				{
 					results[i] = new BeatmapsetImportResult(archive.Name, null, [], BeatmapsetImportFailure.Duplicate);
 					continue;
 				}
 
-				if (item.Existing is not null) claimedSets.Add(item.Existing.Id);
-				if (item.Sync.OnlineId is { } claimed) claimedSets.Add(claimed);
-				claimedBeatmaps.UnionWith(hashes);
 				accepted.Add((i, item));
 			}
 
@@ -101,7 +99,13 @@ internal sealed class BeatmapsetService(
 				}
 			}
 
-			return results!;
+			// A difficulty uploaded on its own belongs to no beatmapset.
+			return
+			[
+				.. results!,
+				.. upload.Rejected.Select(name =>
+					new BeatmapsetImportResult(name, null, [], BeatmapsetImportFailure.Loose))
+			];
 		}
 		finally
 		{
@@ -137,8 +141,17 @@ internal sealed class BeatmapsetService(
 		var unchanged = new List<Beatmapset>();
 		var changed = new List<(BeatmapsetSyncSet Sync, Beatmapset Set)>();
 		var indexed = new List<Indexed>();
+		var claims = new SetClaims();
 
+		// A collection placed by hand is laid out first: each beatmapset in it becomes an entry of its own.
+		var entries = new List<BeatmapsetEntry>();
 		foreach (var entry in await storage.ListAsync(cancellationToken).ConfigureAwait(false))
+			if (entry is BeatmapsetCollectionEntry collection)
+				entries.AddRange(await storage.UnpackAsync(collection, cancellationToken).ConfigureAwait(false));
+			else
+				entries.Add(entry);
+
+		foreach (var entry in entries)
 		{
 			switch (entry)
 			{
@@ -176,6 +189,7 @@ internal sealed class BeatmapsetService(
 					{
 						seen.Add(stored.Id);
 						var sync = await SyncOfAsync(stored, archive, hash, cancellationToken).ConfigureAwait(false);
+						claims.TryClaim(sync);
 						changed.Add((sync, stored));
 						break;
 					}
@@ -203,14 +217,17 @@ internal sealed class BeatmapsetService(
 				}
 
 				if (item.Existing is not null) seen.Add(item.Existing.Id);
+				// Another archive of this scan already becomes that set; this one waits for the next scan.
+				if (!claims.TryClaim(item.Sync)) continue;
+
 				indexed.Add(item);
 			}
 		}
 
 		var remove = new List<Beatmapset>();
 		foreach (var set in await Paging.ListAllAsync(
-			         page => beatmapsets.ListAsync(new BeatmapQuery(), page, cancellationToken), cancellationToken)
-		         .ConfigureAwait(false))
+				         page => beatmapsets.ListAsync(new BeatmapQuery(), page, cancellationToken), cancellationToken)
+			         .ConfigureAwait(false))
 			if (!seen.Contains(set.Id))
 				remove.Add(set);
 
@@ -262,6 +279,19 @@ internal sealed class BeatmapsetService(
 
 			case BeatmapsetFolderEntry folder:
 				return await ScanFolderAsync(folder, cancellationToken).ConfigureAwait(false);
+
+			case BeatmapsetCollectionEntry collection:
+			{
+				var total = NoChange;
+				foreach (var laidOut in await storage.UnpackAsync(collection, cancellationToken).ConfigureAwait(false))
+				{
+					var result = await ScanAsync(laidOut, cancellationToken).ConfigureAwait(false);
+					total = new BeatmapsetScanResult(total.Imported + result.Imported, total.Updated + result.Updated,
+						total.Forgotten + result.Forgotten);
+				}
+
+				return total;
+			}
 
 			default:
 				return NoChange;
@@ -741,16 +771,22 @@ internal sealed class BeatmapsetService(
 
 	/// <summary>A file's plain name, with every character a file name may not have replaced.</summary>
 	/// <param name="name">The file's name relative to the set.</param>
-	/// <returns>The plain name; a name left empty by the replacement is <c>file</c>.</returns>
+	/// <returns>The plain name, safe to store a file under; a name left empty by the replacement is <c>file</c>.</returns>
 	private static string PlainName(string name)
 	{
 		var plain = Path.GetFileName(name);
 		var builder = new StringBuilder(plain.Length);
 		foreach (var character in plain)
 			builder.Append(character is '<' or '>' or ':' or '"' or '/' or '\\' or '|' or '?' or '*'
-				or < ' ' ? '_' : character);
+				or < ' '
+				? '_'
+				: character);
 
-		return builder.Length > 0 ? builder.ToString() : "file";
+		// Windows drops trailing dots and spaces and keeps device names such as CON or NUL.txt for itself.
+		var result = builder.ToString().TrimEnd('.', ' ');
+		if (result.Length == 0) return "file";
+		var dot = result.IndexOf('.');
+		return ReservedName.IsMatch(dot < 0 ? result : result[..dot]) ? "_" + result : result;
 	}
 
 	/// <summary>Computes the MD5 hash of an archive's content.</summary>
@@ -823,4 +859,31 @@ internal sealed class BeatmapsetService(
 		Beatmapset? Existing,
 		BeatmapsetSyncSet Sync,
 		bool Locked);
+
+	/// <summary>The beatmapsets and difficulties already given to an archive by one import or scan.</summary>
+	/// <remarks>Two archives of one import or scan never become the same beatmapset nor share a difficulty: the first wins.</remarks>
+	private sealed class SetClaims
+	{
+		private readonly HashSet<Md5> _beatmaps = [];
+		private readonly HashSet<int> _sets = [];
+
+		/// <summary>Gives a beatmapset and its difficulties to one archive.</summary>
+		/// <param name="sync">The beatmapset as read from the archive.</param>
+		/// <returns>
+		///     <see langword="false" /> when an earlier archive already has the beatmapset or one of its difficulties, or
+		///     the archive repeats a difficulty; nothing is claimed then.
+		/// </returns>
+		public bool TryClaim(BeatmapsetSyncSet sync)
+		{
+			var id = sync.Existing?.Id ?? sync.OnlineId;
+			var hashes = sync.Beatmaps.Select(beatmap => beatmap.Hash).ToList();
+			if ((id is { } taken && _sets.Contains(taken)) || hashes.Count != hashes.Distinct().Count() ||
+			    hashes.Any(_beatmaps.Contains))
+				return false;
+
+			if (id is { } claimed) _sets.Add(claimed);
+			_beatmaps.UnionWith(hashes);
+			return true;
+		}
+	}
 }
