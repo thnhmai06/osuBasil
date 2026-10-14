@@ -2,7 +2,7 @@ using System.Threading.Channels;
 using Basil.Application.Services.Contracts.Anticheat;
 using Basil.Application.Storage.Contracts.Multiplayer;
 using Basil.Application.Storage.Contracts.Sessions;
-using Basil.Domain.Client;
+using Basil.Domain.Bancho;
 
 namespace Basil.Application.Services.Implementations.Anticheat;
 
@@ -15,10 +15,10 @@ internal sealed class AnticheatService(ILobby lobby) : IAnticheatService
 	public ChannelReader<AnticheatEvent> Events => _events.Reader;
 
 	/// <inheritdoc />
-	public ClientFlags Report(BanchoConnection player, ClientFlags flags)
+	public BanchoFlags Report(BanchoConnection player, BanchoFlags flags)
 	{
-		var signs = flags & ClientFlags.CheatSigns;
-		if (signs == ClientFlags.Clean) return signs;
+		var signs = flags & BanchoFlags.CheatSigns;
+		if (signs == BanchoFlags.Clean) return signs;
 
 		_events.Writer.TryWrite(new AnticheatPlayerFlagged(player, signs, lobby.RoomOf(player)));
 		return signs;

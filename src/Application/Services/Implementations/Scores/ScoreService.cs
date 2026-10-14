@@ -10,7 +10,7 @@ using Basil.Application.Storage.Contracts.Multiplayer.Rooms;
 using Basil.Application.Storage.Contracts.Scores;
 using Basil.Application.Storage.Contracts.Sessions;
 using Basil.Application.Storage.Contracts.Users;
-using Basil.Domain.Client;
+using Basil.Domain.Bancho;
 using Basil.Domain.Multiplayer.Rounds;
 using Basil.Domain.Scores;
 using Basil.Domain.Utilities;
@@ -105,26 +105,27 @@ internal sealed class ScoreService(
 	///     first mismatch the reason is returned and validation stops.
 	/// </remarks>
 	/// <param name="submission">The parsed submission.</param>
-	/// <param name="client">The osu! client the player logged in with.</param>
+	/// <param name="banchoClient">The osu! client the player logged in with.</param>
 	/// <param name="beatmap">The MD5 and storyboard MD5 of the beatmap the score is checked against.</param>
 	/// <param name="playerName">The player's name as the server knows it.</param>
 	/// <param name="submittedClient">The osu! client information sent with the submission.</param>
 	/// <returns><see langword="null" /> if the submission is authentic; otherwise, the first reason it is rejected.</returns>
 	private static ScoreRejection? Validate(
 		Submission submission,
-		ClientInfo client,
+		BanchoClient banchoClient,
 		BeatmapChecksums beatmap,
 		string playerName,
 		SubmittedClient submittedClient)
 	{
 		var md5ByServer = ComputeSubmissionMd5();
 
-		if (submittedClient.VersionDate != client.Version.Date.ToString("yyyyMMdd", CultureInfo.InvariantCulture))
+		if (submittedClient.VersionDate != banchoClient.Version.Date.ToString("yyyyMMdd", CultureInfo.InvariantCulture))
 			return ScoreRejection.VersionMismatch;
-		if (submittedClient.Fingerprint != client.Fingerprint) return ScoreRejection.ClientHashMismatch;
-		if (new Md5(Encoding.UTF8.GetBytes(submittedClient.UninstallId)) != client.Fingerprint.UninstallHash)
+		if (submittedClient.Fingerprint != banchoClient.Fingerprint) return ScoreRejection.ClientHashMismatch;
+		if (new Md5(Encoding.UTF8.GetBytes(submittedClient.UninstallId)) != banchoClient.Fingerprint.UninstallHash)
 			return ScoreRejection.UninstallerHashMismatch;
-		if (new Md5(Encoding.UTF8.GetBytes(submittedClient.DiskSignature)) != client.Fingerprint.DiskSignatureHash)
+		if (new Md5(Encoding.UTF8.GetBytes(submittedClient.DiskSignature)) !=
+		    banchoClient.Fingerprint.DiskSignatureHash)
 			return ScoreRejection.DiskSignatureHashMismatch;
 		if (submission.HashByClient != md5ByServer) return ScoreRejection.SubmissionHashMismatch;
 		if (submittedClient.BeatmapHash != beatmap.Hash) return ScoreRejection.BeatmapHashMismatch;

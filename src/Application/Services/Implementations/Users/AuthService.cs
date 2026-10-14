@@ -8,7 +8,7 @@ using Basil.Application.Storage.Contracts.Content;
 using Basil.Application.Storage.Contracts.Sessions;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Auth;
-using Basil.Domain.Client;
+using Basil.Domain.Bancho;
 using Basil.Domain.Content;
 using Basil.Domain.Users;
 using Basil.Domain.Utilities;
@@ -49,7 +49,7 @@ internal sealed class AuthService(
 
 	/// <inheritdoc />
 	public async Task<LoginResult> LoginAsync(LoginAttempt attempt, ConnectionType type, IPAddress ip,
-		ClientInfo? client, int utcOffset, CancellationToken cancellationToken = default)
+		BanchoClient? client, int utcOffset, CancellationToken cancellationToken = default)
 	{
 		type.ThrowIfUndefined();
 		if (type is ConnectionType.Bancho or ConnectionType.Tourney && client is null)

@@ -1,10 +1,10 @@
-namespace Basil.Domain.Client;
+namespace Basil.Domain.Bancho;
 
 /// <summary>
 ///     Represents the anticheat flags reported by an osu! client.
 /// </summary>
 [Flags]
-public enum ClientFlags : uint
+public enum BanchoFlags : uint
 {
 	#region Legacy
 

@@ -1,5 +1,5 @@
+using Basil.Domain.Bancho;
 using Basil.Domain.Chat;
-using Basil.Domain.Client;
 using Basil.Domain.Users;
 
 namespace Basil.Bot.Application.Basil;
@@ -45,4 +45,4 @@ public sealed record RoomClosed(int RoomId, User? By) : BotEvent;
 /// <param name="Player">The player.</param>
 /// <param name="Signs">The cheat signs reported.</param>
 /// <param name="RoomId">The room the player sits in, or <see langword="null" /> when none.</param>
-public sealed record PlayerFlagged(User Player, ClientFlags Signs, int? RoomId) : BotEvent;
+public sealed record PlayerFlagged(User Player, BanchoFlags Signs, int? RoomId) : BotEvent;

@@ -1,6 +1,6 @@
 using System.Net;
 using Basil.Application.Storage.Contracts.Sessions;
-using Basil.Domain.Client;
+using Basil.Domain.Bancho;
 using Basil.Domain.Users;
 using Basil.Domain.Utilities;
 
@@ -26,7 +26,7 @@ public interface IAuthService
 	///     An osu!tourney login needs <see cref="Permissions.TournamentObserveRooms" /> in effect. A successful login is
 	///     recorded in the login history.
 	/// </remarks>
-	Task<LoginResult> LoginAsync(LoginAttempt attempt, ConnectionType type, IPAddress ip, ClientInfo? client,
+	Task<LoginResult> LoginAsync(LoginAttempt attempt, ConnectionType type, IPAddress ip, BanchoClient? client,
 		int utcOffset, CancellationToken cancellationToken = default);
 
 	/// <summary>Checks a registration attempt without creating the account.</summary>

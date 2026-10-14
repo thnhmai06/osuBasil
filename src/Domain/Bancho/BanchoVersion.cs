@@ -1,15 +1,15 @@
-namespace Basil.Domain.Client;
+namespace Basil.Domain.Bancho;
 
 /// <summary>
 ///     Represents the version an osu! client reports when it connects: a build date, an optional revision and a
 ///     release stream.
 /// </summary>
-public readonly record struct ClientVersion(DateOnly Date, int? Revision, ClientVersionStream Stream);
+public readonly record struct BanchoVersion(DateOnly Date, int? Revision, BanchoVersionStream Stream);
 
 /// <summary>
 ///     Represents the release stream of an osu! client.
 /// </summary>
-public enum ClientVersionStream : byte
+public enum BanchoVersionStream : byte
 {
 	/// <summary>The stable release stream.</summary>
 	Stable,

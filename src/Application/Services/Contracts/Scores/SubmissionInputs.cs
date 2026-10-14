@@ -1,4 +1,4 @@
-using Basil.Domain.Client;
+using Basil.Domain.Bancho;
 using Basil.Domain.Utilities;
 
 namespace Basil.Application.Services.Contracts.Scores;
@@ -15,5 +15,10 @@ public sealed record BeatmapChecksums(Md5 Hash, Md5? StoryboardHash);
 /// <param name="DiskSignature">The client's disk signature, as sent.</param>
 /// <param name="VersionDate">The client version date as sent, as <c>yyyyMMdd</c>, which the checksum covers.</param>
 /// <param name="BeatmapHash">The MD5 of the beatmap the client claims to have played.</param>
-public sealed record SubmittedClient(string ClientHash, ClientFingerprint Fingerprint, string UninstallId,
-	string DiskSignature, string VersionDate, Md5 BeatmapHash);
+public sealed record SubmittedClient(
+	string ClientHash,
+	BanchoFingerprint Fingerprint,
+	string UninstallId,
+	string DiskSignature,
+	string VersionDate,
+	Md5 BeatmapHash);

@@ -1,5 +1,5 @@
 ﻿using System.Net;
-using Basil.Domain.Client;
+using Basil.Domain.Bancho;
 using Basil.Domain.Users;
 
 namespace Basil.Domain.Auth;
@@ -14,7 +14,7 @@ public sealed class Login
 	public required IPAddress Ip { get; init; }
 
 	/// <summary>Gets the osu! client that logged in, or <see langword="null" /> for a login without an osu! client.</summary>
-	public ClientInfo? Client { get; init; }
+	public BanchoClient? Client { get; init; }
 
 	/// <summary>Gets the date and time of the login.</summary>
 	public required DateTimeOffset Timestamp { get; init; }

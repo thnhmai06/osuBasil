@@ -1,4 +1,4 @@
-using Basil.Domain.Client;
+using Basil.Domain.Bancho;
 using Basil.Domain.Utilities;
 
 namespace Basil.Domain.Scores;
@@ -15,10 +15,9 @@ public sealed record Submission
 	public required ScoreData Score { get; init; }
 
 	/// <summary>Gets the anticheat flags the client reported with the submission.</summary>
-	/// <remarks>Kept as reported, including bits that no <see cref="Client.ClientFlags" /> member names.</remarks>
-	public ClientFlags ClientFlags { get; init; } = ClientFlags.Clean;
+	/// <remarks>Kept as reported, including bits that no <see cref="BanchoFlags" /> member names.</remarks>
+	public BanchoFlags BanchoFlags { get; init; } = BanchoFlags.Clean;
 
 	/// <summary>Gets or sets the submission checksum that the client sent.</summary>
 	public required Md5 HashByClient { get; init; }
-
 }

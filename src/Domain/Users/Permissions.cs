@@ -1,4 +1,4 @@
-using Basil.Domain.Client;
+using Basil.Domain.Bancho;
 
 namespace Basil.Domain.Users;
 
@@ -24,7 +24,7 @@ public enum Permissions : ulong
 	PlayerJoinRoom = 1UL << 1,
 
 	/// <summary>Log in with osu!tourney and watch any open room, reading its channel; includes spectating players.</summary>
-	TournamentObserveRooms = 1UL << 16 | PlayerSpectate,
+	TournamentObserveRooms = (1UL << 16) | PlayerSpectate,
 
 	/// <summary>See the private rooms and private match history of other users.</summary>
 	TournamentViewPrivateMatches = 1UL << 18,
@@ -33,7 +33,7 @@ public enum Permissions : ulong
 	///     Act with the authority of the creator in every room, and join any room without its password; includes seeing
 	///     private matches and posting in any room.
 	/// </summary>
-	TournamentManageAnyRoom = 1UL << 19 | TournamentViewPrivateMatches | TournamentPostInAnyRoom,
+	TournamentManageAnyRoom = (1UL << 19) | TournamentViewPrivateMatches | TournamentPostInAnyRoom,
 
 	/// <summary>Open more tournament rooms than one creator may otherwise have open.</summary>
 	TournamentUnlimitedRooms = 1UL << 20,
@@ -81,7 +81,7 @@ public enum Permissions : ulong
 	TournamentViewHiddenBeatmaps = 1UL << 23,
 
 	/// <summary>Import, replace, delete, hide and lock beatmapsets; includes seeing hidden ones.</summary>
-	TournamentManageBeatmaps = 1UL << 22 | TournamentViewHiddenBeatmaps,
+	TournamentManageBeatmaps = (1UL << 22) | TournamentViewHiddenBeatmaps,
 
 	#endregion
 
@@ -104,7 +104,7 @@ public enum Permissions : ulong
 	///     Suspend any permissions of other users, for a while or until lifted, and lift such suspensions; includes
 	///     silencing.
 	/// </summary>
-	ModeratorRestrict = 1UL << 25 | ModeratorSilence,
+	ModeratorRestrict = (1UL << 25) | ModeratorSilence,
 
 	/// <summary>See deleted accounts.</summary>
 	OwnerViewDeletedUsers = 1UL << 43,
@@ -113,7 +113,7 @@ public enum Permissions : ulong
 	///     Create, edit and delete accounts, set other users' passwords and end their sessions; includes seeing deleted
 	///     accounts.
 	/// </summary>
-	OwnerManageAccounts = 1UL << 40 | OwnerViewDeletedUsers,
+	OwnerManageAccounts = (1UL << 40) | OwnerViewDeletedUsers,
 
 	/// <summary>Grant and remove permissions.</summary>
 	OwnerManagePermissions = 1UL << 41,
@@ -225,17 +225,17 @@ public static class PermissionsExtensions
 
 		/// <summary>Gets the privileges an osu! client is told about for a set of effective permissions.</summary>
 		/// <returns>The privileges of every group in which at least one permission is held.</returns>
-		/// <remarks>Watching rooms with osu!tourney also turns on <see cref="ClientPrivileges.Supporter" />, which osu!tourney requires.</remarks>
-		public ClientPrivileges ToPrivileges()
+		/// <remarks>Watching rooms with osu!tourney also turns on <see cref="BanchoPrivileges.Supporter" />, which osu!tourney requires.</remarks>
+		public BanchoPrivileges ToPrivileges()
 		{
-			var privileges = ClientPrivileges.None;
-			if ((held & Permissions.Player) != 0) privileges |= ClientPrivileges.Player;
+			var privileges = BanchoPrivileges.None;
+			if ((held & Permissions.Player) != 0) privileges |= BanchoPrivileges.Player;
 			if ((held & Permissions.Supporter) != 0 || held.Allows(Permissions.TournamentObserveRooms))
-				privileges |= ClientPrivileges.Supporter;
-			if ((held & Permissions.Tournament) != 0) privileges |= ClientPrivileges.Tournament;
-			if ((held & Permissions.Moderator) != 0) privileges |= ClientPrivileges.Moderator;
-			if ((held & Permissions.Developer) != 0) privileges |= ClientPrivileges.Developer;
-			if ((held & Permissions.Owner) != 0) privileges |= ClientPrivileges.Owner;
+				privileges |= BanchoPrivileges.Supporter;
+			if ((held & Permissions.Tournament) != 0) privileges |= BanchoPrivileges.Tournament;
+			if ((held & Permissions.Moderator) != 0) privileges |= BanchoPrivileges.Moderator;
+			if ((held & Permissions.Developer) != 0) privileges |= BanchoPrivileges.Developer;
+			if ((held & Permissions.Owner) != 0) privileges |= BanchoPrivileges.Owner;
 			return privileges;
 		}
 	}

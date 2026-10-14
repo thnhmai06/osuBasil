@@ -1,5 +1,5 @@
 using Basil.Bot.Application.Basil;
-using Basil.Domain.Client;
+using Basil.Domain.Bancho;
 using Basil.Domain.Users;
 
 namespace Basil.Bot.Application.Announcements;
@@ -11,9 +11,7 @@ internal sealed class AnticheatAnnouncer(IBasilChat chat, IBasilRooms rooms)
 	public async Task HandleAsync(BotEvent botEvent, CancellationToken cancellationToken)
 	{
 		if (botEvent is PlayerFlagged { RoomId: not null } flagged)
-		{
 			await HandlePlayerFlaggedAsync(flagged, cancellationToken);
-		}
 	}
 
 	private async Task HandlePlayerFlaggedAsync(PlayerFlagged e, CancellationToken cancellationToken)
@@ -38,25 +36,20 @@ internal sealed class AnticheatAnnouncer(IBasilChat chat, IBasilRooms rooms)
 			recipients.Add(room.Creator);
 		recipients.AddRange(room.Referees);
 
-		foreach (var recipient in recipients)
-		{
-			await chat.SendAsync(recipient, pmMessage, cancellationToken);
-		}
+		foreach (var recipient in recipients) await chat.SendAsync(recipient, pmMessage, cancellationToken);
 	}
 
-	private static string FormatFlags(ClientFlags flags)
+	private static string FormatFlags(BanchoFlags flags)
 	{
 		var flagNames = new List<string>();
-		foreach (var value in Enum.GetValues<ClientFlags>())
+		foreach (var value in Enum.GetValues<BanchoFlags>())
 		{
-			if (value == ClientFlags.Clean || value == ClientFlags.CheatSigns)
+			if (value == BanchoFlags.Clean || value == BanchoFlags.CheatSigns)
 				continue;
 
-			if (flags.HasFlag(value))
-			{
-				flagNames.Add(value.ToString());
-			}
+			if (flags.HasFlag(value)) flagNames.Add(value.ToString());
 		}
+
 		return string.Join(", ", flagNames);
 	}
 }

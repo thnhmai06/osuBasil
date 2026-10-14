@@ -1,6 +1,6 @@
 ﻿using Basil.Domain.Users;
 
-namespace Basil.Domain.Client;
+namespace Basil.Domain.Bancho;
 
 /// <summary>
 ///     Represents the privileges the server reports to an osu! client about the current user.
@@ -9,7 +9,7 @@ namespace Basil.Domain.Client;
 ///     A bitwise combination of flags derived from the user's effective permissions; see <see cref="PermissionsExtensions.ToPrivileges" />.
 /// </remarks>
 [Flags]
-public enum ClientPrivileges : byte
+public enum BanchoPrivileges : byte
 {
 	/// <summary>Indicates that no privileges have been granted to the client.</summary>
 	None = 0,

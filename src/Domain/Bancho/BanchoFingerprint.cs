@@ -1,6 +1,6 @@
 using Basil.Domain.Utilities;
 
-namespace Basil.Domain.Client;
+namespace Basil.Domain.Bancho;
 
 /// <summary>
 ///     Represents the client fingerprint captured from an osu! client at login.
@@ -9,7 +9,7 @@ namespace Basil.Domain.Client;
 ///     The fingerprint is the osu! client hash: five components identifying the
 ///     installation (and, after re-installation, the machine) a player is using.
 /// </remarks>
-public readonly record struct ClientFingerprint(
+public readonly record struct BanchoFingerprint(
 	Md5 OsuPathHash,
 	NetworkAdapters NetworkAdapters,
 	Md5 UninstallHash,

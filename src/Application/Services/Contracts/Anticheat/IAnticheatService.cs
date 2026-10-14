@@ -1,6 +1,6 @@
 using Basil.Application.Services.Contracts.Events;
 using Basil.Application.Storage.Contracts.Sessions;
-using Basil.Domain.Client;
+using Basil.Domain.Bancho;
 
 namespace Basil.Application.Services.Contracts.Anticheat;
 
@@ -10,10 +10,10 @@ public interface IAnticheatService : IEventPublisher<AnticheatEvent>
 	/// <summary>Reports the anticheat flags a player's osu! client sent.</summary>
 	/// <param name="player">The player's osu! client.</param>
 	/// <param name="flags">The flags the client reported.</param>
-	/// <returns>The reported flags that are signs of cheating; <see cref="ClientFlags.Clean" /> when there are none.</returns>
+	/// <returns>The reported flags that are signs of cheating; <see cref="BanchoFlags.Clean" /> when there are none.</returns>
 	/// <remarks>
 	///     Nothing is blocked. When the flags show signs of cheating, one <see cref="AnticheatPlayerFlagged" /> carries
 	///     them and the room the player sits in, so the room's chat, referees and creator can be warned.
 	/// </remarks>
-	ClientFlags Report(BanchoConnection player, ClientFlags flags);
+	BanchoFlags Report(BanchoConnection player, BanchoFlags flags);
 }
