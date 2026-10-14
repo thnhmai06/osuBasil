@@ -39,6 +39,9 @@ internal sealed class FileBeatmapsetStorage(
 	/// <summary>How deep archives of beatmapsets may lie inside one another in an upload.</summary>
 	private const int MaxUploadDepth = 3;
 
+	/// <summary>How many folders deep a file of an upload, or of an archive in it, may lie.</summary>
+	private const int MaxPathSegments = 32;
+
 	private const string VersionFolder = "versions";
 	private const string BackgroundFolder = "backgrounds";
 	private const string AudioFolder = "audio";
@@ -145,9 +148,11 @@ internal sealed class FileBeatmapsetStorage(
 		// A folder with difficulties directly in it is one beatmapset, whatever lies below it.
 		if (Directory.EnumerateFiles(folder, "*.osu").Any())
 		{
+			var files = Directory.GetFiles(folder, "*", SearchOption.AllDirectories);
+			// The packed copy is counted before it is written: it is about as large as the files it packs.
+			budget.AddBytes(files.Sum(file => new FileInfo(file).Length));
 			var packed = Path.Combine(packedRoot, $"{Guid.NewGuid():N}.osz");
-			await PackFilesAsync(folder, Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories), packed,
-				cancellationToken).ConfigureAwait(false);
+			await PackFilesAsync(folder, files, packed, cancellationToken).ConfigureAwait(false);
 			upload.MutableArchives.Add(ArchiveAt(packed, name));
 			return;
 		}
@@ -267,7 +272,7 @@ internal sealed class FileBeatmapsetStorage(
 	private static string? PathInside(string folder, string relative)
 	{
 		var segments = relative.Split('/', '\\');
-		if (relative.Length == 0 || Path.IsPathRooted(relative) ||
+		if (relative.Length == 0 || Path.IsPathRooted(relative) || segments.Length > MaxPathSegments ||
 		    segments.Any(segment => segment.Length == 0 || segment is "." or ".." ||
 		                            segment.EndsWith('.') || segment.EndsWith(' ') ||
 		                            segment.Any(char.IsControl) || segment.Any(InvalidNameChars.Contains)))
@@ -366,7 +371,7 @@ internal sealed class FileBeatmapsetStorage(
 		/// <summary>Counts more bytes.</summary>
 		/// <param name="count">The number of bytes.</param>
 		/// <exception cref="InvalidDataException">The upload would hold too many bytes.</exception>
-		public void AddBytes(int count)
+		public void AddBytes(long count)
 		{
 			if ((_bytes += count) > MaxUploadBytes) throw new InvalidDataException("The upload holds too many bytes.");
 		}
