@@ -87,22 +87,15 @@ internal sealed class OsuBeatmapAnalyser(IBeatmapsetStorage storage) : IBeatmapA
 		var bpm = mostCommonBeatLength > 0 ? 60000 / mostCommonBeatLength * rate : 0;
 		var totalLength = TimeSpan.FromMilliseconds(playable.CalculatePlayableLength() / rate);
 
-		// The domain difficulty requires each setting to stay within [0, 10], but a mod such as
-		// HardRock can push the adjusted value past that; clamp so the result stays valid.
 		var difficulty = new BeatmapDifficulty(
 			mode, Round(bpm, 1), totalLength,
-			Clamp(displayDifficulty.CircleSize), Clamp(displayDifficulty.ApproachRate),
-			Clamp(displayDifficulty.OverallDifficulty), Clamp(displayDifficulty.DrainRate),
+			displayDifficulty.CircleSize, displayDifficulty.ApproachRate,
+			displayDifficulty.OverallDifficulty, displayDifficulty.DrainRate,
 			Round(attributes.StarRating, 2));
 
 		var objects = BuildObjectCounts(mode, playable.HitObjects, maxCombo);
 
 		return new BeatmapAnalysis(difficulty, objects);
-	}
-
-	private static double Clamp(double value)
-	{
-		return Math.Clamp(value, 0d, 10d);
 	}
 
 	private static double Round(double value, int digits)

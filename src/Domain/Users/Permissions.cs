@@ -216,10 +216,8 @@ public static class PermissionsExtensions
 			var suspended = restrictions
 				.Where(restriction => restriction.Value.IsActive(now))
 				.Aggregate(Permissions.None, (all, restriction) => all | restriction.Value.Permissions);
-			var kept = Permissions.None;
-			foreach (var management in ManagementPermissions)
-				if (held.Allows(management))
-					kept |= management;
+			var kept = ManagementPermissions.Where(management => held.Allows(management))
+				.Aggregate(Permissions.None, (current, management) => current | management);
 			return held & ~(suspended & ~kept);
 		}
 

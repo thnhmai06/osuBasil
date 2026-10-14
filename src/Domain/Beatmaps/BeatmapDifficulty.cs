@@ -15,6 +15,8 @@ namespace Basil.Domain.Beatmaps;
 /// <param name="Star">The star rating of the beatmap.</param>
 /// <remarks>
 ///     <see cref="Length" /> serializes as a whole number of seconds on the wire.
+///     Under mods the settings may leave the range a beatmap file allows (approach rate above 10 under DoubleTime,
+///     below 0 under HalfTime), so they are only required to be finite.
 /// </remarks>
 public readonly record struct BeatmapDifficulty(
 	GameMode Mode,
@@ -53,36 +55,36 @@ public readonly record struct BeatmapDifficulty(
 	public double Cs
 	{
 		get;
-		init => field = value is >= 0 and <= 10
+		init => field = double.IsFinite(value)
 			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), "Circle size must be between 0 and 10.");
+			: throw new ArgumentOutOfRangeException(nameof(value), "Circle size must be a finite number.");
 	} = Cs;
 
 	/// <summary>The approach rate setting.</summary>
 	public double Ar
 	{
 		get;
-		init => field = value is >= 0 and <= 10
+		init => field = double.IsFinite(value)
 			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), "Approach rate must be between 0 and 10.");
+			: throw new ArgumentOutOfRangeException(nameof(value), "Approach rate must be a finite number.");
 	} = Ar;
 
 	/// <summary>The overall difficulty setting.</summary>
 	public double Od
 	{
 		get;
-		init => field = value is >= 0 and <= 10
+		init => field = double.IsFinite(value)
 			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), "Overall difficulty must be between 0 and 10.");
+			: throw new ArgumentOutOfRangeException(nameof(value), "Overall difficulty must be a finite number.");
 	} = Od;
 
 	/// <summary>The health drain rate setting.</summary>
 	public double Hp
 	{
 		get;
-		init => field = value is >= 0 and <= 10
+		init => field = double.IsFinite(value)
 			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), "Health drain must be between 0 and 10.");
+			: throw new ArgumentOutOfRangeException(nameof(value), "Health drain must be a finite number.");
 	} = Hp;
 
 	/// <summary>The star rating of the beatmap.</summary>
