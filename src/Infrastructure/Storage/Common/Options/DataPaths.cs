@@ -25,7 +25,6 @@ internal sealed class DataPaths
 		Faqs = new DataStorage(Root, "Faqs");
 		Screenshots = new DataStorage(Root, "Screenshots");
 		Cache = new DataStorage(Root, "Cache");
-		Staging = new DataStorage(Root, "Cache/Staging");
 	}
 
 	/// <summary>Gets the directory that holds every stored file.</summary>
@@ -58,9 +57,6 @@ internal sealed class DataPaths
 	/// <summary>Gets the files rebuilt from their sources.</summary>
 	public DataStorage Cache { get; }
 
-	/// <summary>Gets the folder where a set's files are written before they replace its stored folder.</summary>
-	public DataStorage Staging { get; }
-
 	/// <summary>Creates every directory the server stores files in.</summary>
 	/// <remarks>
 	///     Beatmapsets stored under the former <c>Songs</c> directory, or under the older <c>Beatmaps</c> directory, are
@@ -79,8 +75,7 @@ internal sealed class DataPaths
 
 		foreach (var storage in new[]
 		         {
-			         Beatmapsets, Replays, Avatars, MenuBanners, MenuSeasonals, MenuIcon, Faqs, Screenshots, Cache,
-			         Staging
+			         Beatmapsets, Replays, Avatars, MenuBanners, MenuSeasonals, MenuIcon, Faqs, Screenshots, Cache
 		         })
 			Directory.CreateDirectory(storage.Path);
 	}

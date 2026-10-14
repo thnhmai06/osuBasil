@@ -304,7 +304,7 @@ installation.
 | `Data/Menu/Icon/`        | The uploaded main-menu icon image, when the icon is a stored file rather than an external URL. | Usually no                                                   |
 | `Data/Faqs/`              | Text files used by `!faq <entry>`.                                                                                                | Optional                                                     |
 | `Data/Screenshots/`       | Screenshots uploaded by players, each under a UUID name.                                                                          | Optional                                                     |
-| `Data/Cache/`             | Rebuildable files: image crops; `Staging/` holds files being written.                                                                 | **Yes**                                                     |
+| `Data/Cache/`             | Rebuildable files: image crops.                                                                                                     | **Yes**                                                     |
 
 `Data/Seasonals/` and `Data/MenuIcon.{ext}` are the pre-`assets.<domain>` locations of the two rows
 above; Basil moves them into place automatically on startup if found (see

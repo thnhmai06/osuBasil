@@ -41,3 +41,17 @@ internal sealed class FileBeatmapsetFolder(string path, string name, int? id, bo
 	/// <summary>Gets the folder's full path on disk.</summary>
 	internal string Path => path;
 }
+
+/// <summary>An upload held in its own folder of the storage while its beatmapsets are taken in.</summary>
+/// <param name="path">The upload folder's full path on disk.</param>
+internal sealed class FileBeatmapsetUpload(string path) : BeatmapsetUpload
+{
+	/// <summary>Gets the upload folder's full path on disk.</summary>
+	internal string Path => path;
+
+	/// <inheritdoc />
+	public override IReadOnlyList<BeatmapsetArchiveEntry> Archives => MutableArchives;
+
+	/// <summary>Gets the archives found in the upload, to add to while it is looked through.</summary>
+	internal List<BeatmapsetArchiveEntry> MutableArchives { get; } = [];
+}

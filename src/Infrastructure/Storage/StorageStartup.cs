@@ -36,15 +36,15 @@ internal sealed class StorageStartup(DataPaths paths, DatabaseMigrator migrator,
 	private void RemoveLeftovers()
 	{
 		foreach (var folder in Directory.EnumerateDirectories(paths.Beatmapsets.Path))
-			if (Path.GetFileName(folder).Contains(FileBeatmapsetStorage.DeletedMarker, StringComparison.Ordinal))
+			if (FileBeatmapsetStorage.IsHidden(Path.GetFileName(folder)))
 				DeleteLeftover(folder);
-		foreach (var file in Directory.EnumerateFiles(paths.Staging.Path))
-			DeleteLeftoverFile(file);
-		foreach (var folder in Directory.EnumerateDirectories(paths.Staging.Path))
-			DeleteLeftover(folder);
+		foreach (var file in Directory.EnumerateFiles(paths.Beatmapsets.Path))
+			if (FileBeatmapsetStorage.IsHidden(Path.GetFileName(file)))
+				DeleteLeftoverFile(file);
 
-		var formerArchives = Path.Combine(paths.Root, "Cache", "Beatmaps");
-		if (Directory.Exists(formerArchives)) DeleteLeftover(formerArchives);
+		foreach (var former in new[]
+		         { Path.Combine(paths.Root, "Cache", "Beatmaps"), Path.Combine(paths.Root, "Cache", "Staging") })
+			if (Directory.Exists(former)) DeleteLeftover(former);
 	}
 
 	/// <summary>Removes one leftover file, leaving what it cannot remove to the next startup.</summary>

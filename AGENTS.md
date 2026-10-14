@@ -571,8 +571,12 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   `archive-novideo.osz`, `versions/{md5}.osu`, `backgrounds/`, `audio/` (with `preview_{audio}`), `video/` and
   `storyboard.osb` are made from it when the set is indexed; nothing else is extracted, and reading never makes a file
   (a missing one reads as absent). A loose `.osz` or a folder of loose files dropped into `Data/Beatmapsets` is taken
-  in (the folder packed first); a folder being deleted is renamed with `.deleted_` first; writes go through
-  `Cache/Staging`. `IBeatmapsetService.ScanAsync()` runs at startup before clients are served: it checks every entry
+  in (the folder packed first); a folder being deleted is renamed with `.deleted_` first; anything being written (an upload, a
+  derived file, a set folder before it moves into place) lies under a top-level `.incoming_` name, which is never listed
+  or watched, so moves stay on one volume. `IBeatmapsetService.ImportAsync` takes an upload of several files or folders:
+  their content decides whether each is one set (difficulties at its top), several (`.zip` or folder of `.osz` and
+  folders) or invalid; every valid set of one upload is stored in one transaction and what is rejected leaves nothing.
+  An invalid entry placed by hand is left as it is. `IBeatmapsetService.ScanAsync()` runs at startup before clients are served: it checks every entry
   (size and modification time, then the hash), indexes what changed, makes missing files again, and stores every
   record change in one `IBeatmapsetRepository.SyncAsync` transaction; `ScanAsync(entry)` handles each change the
   storage watcher reports. `IBeatmapsetReader` reads an archive into a `BeatmapsetContent` whose files open on demand
