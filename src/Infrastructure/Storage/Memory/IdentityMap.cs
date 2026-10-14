@@ -48,14 +48,6 @@ internal sealed class IdentityMap<TKey, T> : IReadOnlyDictionary<TKey, T>
 		? value
 		: throw new KeyNotFoundException($"The key {key} has no live instance.");
 
-	/// <summary>Forgets the instance of a key.</summary>
-	/// <param name="key">The item's key.</param>
-	/// <returns><see langword="true" /> when the key had an entry.</returns>
-	public bool Remove(TKey key)
-	{
-		return _instances.TryRemove(key, out _);
-	}
-
 	/// <summary>Gets a value that indicates whether a key has a live instance.</summary>
 	/// <param name="key">The key to look up.</param>
 	/// <returns><see langword="true" /> if the key has a live instance; otherwise, <see langword="false" />.</returns>
@@ -74,6 +66,32 @@ internal sealed class IdentityMap<TKey, T> : IReadOnlyDictionary<TKey, T>
 	IEnumerator IEnumerable.GetEnumerator()
 	{
 		return GetEnumerator();
+	}
+
+	/// <summary>Gets the live instance of a key.</summary>
+	/// <param name="key">The item's key.</param>
+	/// <param name="value">The live instance.</param>
+	/// <returns><see langword="true" /> when the key has a live instance; otherwise, <see langword="false" />.</returns>
+	public bool TryGetValue(TKey key, [MaybeNullWhen(false)] out T value)
+	{
+		if (_instances.TryGetValue(key, out var reference))
+		{
+			if (reference.TryGetTarget(out value))
+				return true;
+
+			_instances.TryRemove(new KeyValuePair<TKey, WeakReference<T>>(key, reference));
+		}
+
+		value = null;
+		return false;
+	}
+
+	/// <summary>Forgets the instance of a key.</summary>
+	/// <param name="key">The item's key.</param>
+	/// <returns><see langword="true" /> when the key had an entry.</returns>
+	public bool Remove(TKey key)
+	{
+		return _instances.TryRemove(key, out _);
 	}
 
 	/// <summary>Gets the live instance of a key, loading it once however many callers ask at the same time.</summary>
@@ -128,24 +146,6 @@ internal sealed class IdentityMap<TKey, T> : IReadOnlyDictionary<TKey, T>
 
 		_pinned[stored] = item;
 		_ = stored.ContinueWith(completed => _pinned.TryRemove(stored, out _), TaskScheduler.Default);
-	}
-
-	/// <summary>Gets the live instance of a key.</summary>
-	/// <param name="key">The item's key.</param>
-	/// <param name="value">The live instance.</param>
-	/// <returns><see langword="true" /> when the key has a live instance; otherwise, <see langword="false" />.</returns>
-	public bool TryGetValue(TKey key, [MaybeNullWhen(false)] out T value)
-	{
-		if (_instances.TryGetValue(key, out var reference))
-		{
-			if (reference.TryGetTarget(out value))
-				return true;
-
-			_instances.TryRemove(new KeyValuePair<TKey, WeakReference<T>>(key, reference));
-		}
-
-		value = null;
-		return false;
 	}
 
 	/// <summary>Snapshots the live entries, dropping references whose item is gone.</summary>

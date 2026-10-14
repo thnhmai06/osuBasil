@@ -34,13 +34,6 @@ public sealed class UserSession
 	/// <summary>Gets the user's restrictions that had not ended when they were last loaded or changed.</summary>
 	public IReadOnlyList<Restriction> Restrictions => _restrictions;
 
-	/// <summary>Replaces the user's restrictions in one step, so concurrent changes never lose each other.</summary>
-	/// <param name="change">Computes the new restrictions from the current ones.</param>
-	internal void ChangeRestrictions(Func<ImmutableList<Restriction>, ImmutableList<Restriction>> change)
-	{
-		ImmutableInterlocked.Update(ref _restrictions, change);
-	}
-
 	/// <summary>Gets the open connections of one kind.</summary>
 	/// <param name="type">The kind of connection.</param>
 	public IReadOnlySet<Connection> this[ConnectionType type] =>
@@ -60,6 +53,13 @@ public sealed class UserSession
 
 	/// <summary>Gets the user's HTTP API connections.</summary>
 	public IEnumerable<ApiConnection> Apis => this[ConnectionType.Api].Cast<ApiConnection>();
+
+	/// <summary>Replaces the user's restrictions in one step, so concurrent changes never lose each other.</summary>
+	/// <param name="change">Computes the new restrictions from the current ones.</param>
+	internal void ChangeRestrictions(Func<ImmutableList<Restriction>, ImmutableList<Restriction>> change)
+	{
+		ImmutableInterlocked.Update(ref _restrictions, change);
+	}
 
 	/// <summary>Adds a connection.</summary>
 	internal void Add(Connection connection)

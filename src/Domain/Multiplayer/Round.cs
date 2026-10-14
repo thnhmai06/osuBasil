@@ -51,12 +51,6 @@ public sealed class Round : IMatchRecord, IEquatable<Round>
 	/// <summary>The time the round ended, or <see langword="null" /> while open.</summary>
 	public required DateTimeOffset? EndedAt { get; set; }
 
-	/// <summary>The match the round belongs to.</summary>
-	public required Match Match { get; init; }
-
-	/// <inheritdoc />
-	DateTimeOffset IMatchRecord.Timestamp => StartedAt;
-
 	/// <summary>Determines whether another round is the same round of the same match.</summary>
 	/// <param name="other">The round to compare, or <see langword="null" />.</param>
 	/// <returns>
@@ -68,6 +62,12 @@ public sealed class Round : IMatchRecord, IEquatable<Round>
 		if (other is null) return false;
 		return Match.Equals(other.Match) && Index == other.Index;
 	}
+
+	/// <summary>The match the round belongs to.</summary>
+	public required Match Match { get; init; }
+
+	/// <inheritdoc />
+	DateTimeOffset IMatchRecord.Timestamp => StartedAt;
 
 	/// <summary>Determines whether this round equals another object.</summary>
 	/// <param name="obj">The object to compare, or <see langword="null" />.</param>

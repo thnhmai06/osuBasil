@@ -6,7 +6,8 @@ namespace Basil.Domain.Bancho;
 ///     Represents the privileges the server reports to an osu! client about the current user.
 /// </summary>
 /// <remarks>
-///     A bitwise combination of flags derived from the user's effective permissions; see <see cref="PermissionsExtensions.ToPrivileges" />.
+///     A bitwise combination of flags derived from the user's effective permissions; see
+///     <see cref="PermissionsExtensions.ToPrivileges" />.
 /// </remarks>
 [Flags]
 public enum BanchoPrivileges : byte

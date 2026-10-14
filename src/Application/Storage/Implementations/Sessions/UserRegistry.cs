@@ -7,8 +7,8 @@ namespace Basil.Application.Storage.Implementations.Sessions;
 /// <summary>The users who are online, each with their session.</summary>
 internal sealed class UserRegistry : IUserRegistry
 {
-	private readonly ConcurrentDictionary<User, UserSession> _sessions = new();
 	private readonly ConcurrentDictionary<string, Connection> _connections = new(StringComparer.Ordinal);
+	private readonly ConcurrentDictionary<User, UserSession> _sessions = new();
 	private readonly Lock _sync = new(); // ponytail: one lock for all logins; per-user locks if login rate ever matters
 
 	/// <inheritdoc />

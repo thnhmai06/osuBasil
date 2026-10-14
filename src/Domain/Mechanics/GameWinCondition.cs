@@ -57,15 +57,27 @@ public static class GameWinConditionExtensions
 		}
 	}
 
+	/// <summary>
+	///     Orders two possibly null scores so that a missing score orders before any score, or returns nothing when both
+	///     are present.
+	/// </summary>
+	private static int? Nulls(ScoreData? x, ScoreData? y)
+	{
+		if (ReferenceEquals(x, y)) return 0;
+		if (x is null) return -1;
+		if (y is null) return 1;
+		return null;
+	}
+
 	/// <summary>Compares scores by total score; a higher score compares greater.</summary>
 	private sealed class ScoreComparer : IComparer<ScoreData>
 	{
+		/// <summary>Gets the single instance of the comparer.</summary>
+		public static readonly ScoreComparer Instance = new();
+
 		private ScoreComparer()
 		{
 		}
-
-		/// <summary>Gets the single instance of the comparer.</summary>
-		public static readonly ScoreComparer Instance = new();
 
 		/// <inheritdoc />
 		public int Compare(ScoreData? x, ScoreData? y)
@@ -80,12 +92,12 @@ public static class GameWinConditionExtensions
 	/// </summary>
 	private sealed class AccuracyComparer : IComparer<ScoreData>
 	{
+		/// <summary>Gets the single instance of the comparer.</summary>
+		public static readonly AccuracyComparer Instance = new();
+
 		private AccuracyComparer()
 		{
 		}
-
-		/// <summary>Gets the single instance of the comparer.</summary>
-		public static readonly AccuracyComparer Instance = new();
 
 		/// <inheritdoc />
 		public int Compare(ScoreData? x, ScoreData? y)
@@ -108,12 +120,12 @@ public static class GameWinConditionExtensions
 	/// </summary>
 	private sealed class ComboComparer : IComparer<ScoreData>
 	{
+		/// <summary>Gets the single instance of the comparer.</summary>
+		public static readonly ComboComparer Instance = new();
+
 		private ComboComparer()
 		{
 		}
-
-		/// <summary>Gets the single instance of the comparer.</summary>
-		public static readonly ComboComparer Instance = new();
 
 		/// <inheritdoc />
 		public int Compare(ScoreData? x, ScoreData? y)
@@ -123,14 +135,5 @@ public static class GameWinConditionExtensions
 			var byCombo = x!.CurrentCombo.CompareTo(y!.CurrentCombo);
 			return byCombo != 0 ? byCombo : ScoreComparer.Instance.Compare(x, y);
 		}
-	}
-
-	/// <summary>Orders two possibly null scores so that a missing score orders before any score, or returns nothing when both are present.</summary>
-	private static int? Nulls(ScoreData? x, ScoreData? y)
-	{
-		if (ReferenceEquals(x, y)) return 0;
-		if (x is null) return -1;
-		if (y is null) return 1;
-		return null;
 	}
 }

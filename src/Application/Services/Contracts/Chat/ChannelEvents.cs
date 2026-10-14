@@ -54,5 +54,8 @@ public sealed record ChannelMessagePosted(ChannelSession Channel, Message Messag
 /// <param name="Channel">The channel.</param>
 /// <param name="Change">The settings that changed.</param>
 /// <param name="Removed">The members removed because they may no longer read the channel.</param>
-public sealed record ChannelConfigured(ChannelSession Channel, GeneralChannelChange Change, IReadOnlyList<Connection> Removed)
+public sealed record ChannelConfigured(
+	ChannelSession Channel,
+	GeneralChannelChange Change,
+	IReadOnlyList<Connection> Removed)
 	: ChannelEvent(Channel);

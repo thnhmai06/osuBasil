@@ -8,8 +8,8 @@ namespace Basil.Infrastructure.Storage.Common.Database;
 /// <summary>Gives access to the server's database: pooled connections through which data is read and stored.</summary>
 internal sealed class Database(IOptions<DatabaseOptions> options) : IAsyncDisposable
 {
-	internal readonly NpgsqlDataSource SynchronousSource = NpgsqlDataSource.Create(options.Value.ConnectionString);
 	internal readonly NpgsqlDataSource AsynchronousSource = CreateAsynchronousSource(options.Value.ConnectionString);
+	internal readonly NpgsqlDataSource SynchronousSource = NpgsqlDataSource.Create(options.Value.ConnectionString);
 
 	static Database()
 	{

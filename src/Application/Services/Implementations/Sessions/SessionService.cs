@@ -6,7 +6,10 @@ using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Implementations.Sessions;
 
-/// <summary>Opens and closes the connections of online users and changes what they share; connections and presence are its parts.</summary>
+/// <summary>
+///     Opens and closes the connections of online users and changes what they share; connections and presence are its
+///     parts.
+/// </summary>
 internal sealed class SessionService(
 	SessionConnectionsService connections,
 	SessionPresenceService presence,

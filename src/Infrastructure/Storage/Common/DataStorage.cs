@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Diagnostics.CodeAnalysis;
 using Basil.Domain.Content;
 using Basil.Infrastructure.Storage.Common.Queries;
@@ -83,6 +84,19 @@ internal sealed class DataStorage : IReadOnlyDictionary<string, FileInfo>
 		return true;
 	}
 
+	/// <inheritdoc />
+	public IEnumerator<KeyValuePair<string, FileInfo>> GetEnumerator()
+	{
+		foreach (var name in Keys)
+			yield return new KeyValuePair<string, FileInfo>(name, new FileInfo(Resolve(name)));
+	}
+
+	/// <inheritdoc />
+	IEnumerator IEnumerable.GetEnumerator()
+	{
+		return GetEnumerator();
+	}
+
 	/// <summary>Combines a file's name with the directory.</summary>
 	/// <param name="name">The file's name, relative to the directory.</param>
 	/// <returns>The absolute path of the file.</returns>
@@ -113,7 +127,10 @@ internal sealed class DataStorage : IReadOnlyDictionary<string, FileInfo>
 	/// <summary>Takes the name of a file of the directory out of an asset reference.</summary>
 	/// <param name="reference">The reference to take the name from.</param>
 	/// <param name="name">The file's name, relative to the directory.</param>
-	/// <returns><see langword="true" /> when the reference names a safe file name of the directory; otherwise, <see langword="false" />.</returns>
+	/// <returns>
+	///     <see langword="true" /> when the reference names a safe file name of the directory; otherwise,
+	///     <see langword="false" />.
+	/// </returns>
 	public bool TryGetName(ContentReference reference, [NotNullWhen(true)] out string? name)
 	{
 		var prefix = RelativePath + "/";
@@ -169,7 +186,10 @@ internal sealed class DataStorage : IReadOnlyDictionary<string, FileInfo>
 
 	/// <summary>Opens a stored file for reading.</summary>
 	/// <param name="name">The name of the file to open.</param>
-	/// <returns>A read-only stream over the file, or <see langword="null" /> when the name is unsafe or the file does not exist.</returns>
+	/// <returns>
+	///     A read-only stream over the file, or <see langword="null" /> when the name is unsafe or the file does not
+	///     exist.
+	/// </returns>
 	public FileStream? Open(string name)
 	{
 		if (!TryResolve(name, out var path) || !File.Exists(path)) return null;
@@ -186,7 +206,10 @@ internal sealed class DataStorage : IReadOnlyDictionary<string, FileInfo>
 	/// <summary>Renames a stored file.</summary>
 	/// <param name="name">The current name of the file.</param>
 	/// <param name="newName">The new name for the file.</param>
-	/// <returns><see langword="true" /> when the file was renamed; <see langword="false" /> when it does not exist or the new name is taken.</returns>
+	/// <returns>
+	///     <see langword="true" /> when the file was renamed; <see langword="false" /> when it does not exist or the new
+	///     name is taken.
+	/// </returns>
 	/// <exception cref="ArgumentException"><paramref name="newName" /> is not a safe file name.</exception>
 	public bool Move(string name, string newName)
 	{
@@ -222,19 +245,6 @@ internal sealed class DataStorage : IReadOnlyDictionary<string, FileInfo>
 			if (key == name) continue;
 			if (TryResolve(key, out var path)) File.Delete(path);
 		}
-	}
-
-	/// <inheritdoc />
-	public IEnumerator<KeyValuePair<string, FileInfo>> GetEnumerator()
-	{
-		foreach (var name in Keys)
-			yield return new KeyValuePair<string, FileInfo>(name, new FileInfo(Resolve(name)));
-	}
-
-	/// <inheritdoc />
-	System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
-	{
-		return GetEnumerator();
 	}
 
 	private bool TryResolve(string name, [NotNullWhen(true)] out string? path)

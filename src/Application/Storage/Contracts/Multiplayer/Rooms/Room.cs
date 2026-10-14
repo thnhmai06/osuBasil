@@ -60,28 +60,6 @@ public sealed class Room : IEquatable<Room>
 	/// <summary>Admits one state transition of the room at a time.</summary>
 	internal SemaphoreSlim Gate { get; } = new(1, 1);
 
-	/// <summary>Enters the room's exclusive scope, in which one state transition of the room runs one at a time.</summary>
-	/// <param name="cancellationToken">A token that cancels the wait.</param>
-	/// <returns>The scope, to dispose when done; or <see langword="null" /> when the room has closed.</returns>
-	public async Task<IAsyncDisposable?> EnterAsync(CancellationToken cancellationToken = default)
-	{
-		await Gate.WaitAsync(cancellationToken);
-		if (!IsClosed) return new Scope(Gate);
-		Gate.Release();
-		return null;
-	}
-
-	private sealed class Scope(SemaphoreSlim held) : IAsyncDisposable
-	{
-		private int _released;
-
-		public ValueTask DisposeAsync()
-		{
-			if (Interlocked.Exchange(ref _released, 1) == 0) held.Release();
-			return ValueTask.CompletedTask;
-		}
-	}
-
 	/// <summary>The timer that closes the room while it is empty.</summary>
 	internal ITimer? ClosingTimer { get; set; }
 
@@ -99,6 +77,17 @@ public sealed class Room : IEquatable<Room>
 		return other is not null && Match.Equals(other.Match);
 	}
 
+	/// <summary>Enters the room's exclusive scope, in which one state transition of the room runs one at a time.</summary>
+	/// <param name="cancellationToken">A token that cancels the wait.</param>
+	/// <returns>The scope, to dispose when done; or <see langword="null" /> when the room has closed.</returns>
+	public async Task<IAsyncDisposable?> EnterAsync(CancellationToken cancellationToken = default)
+	{
+		await Gate.WaitAsync(cancellationToken);
+		if (!IsClosed) return new Scope(Gate);
+		Gate.Release();
+		return null;
+	}
+
 	/// <inheritdoc />
 	public override bool Equals(object? obj)
 	{
@@ -109,5 +98,16 @@ public sealed class Room : IEquatable<Room>
 	public override int GetHashCode()
 	{
 		return Match.GetHashCode();
+	}
+
+	private sealed class Scope(SemaphoreSlim held) : IAsyncDisposable
+	{
+		private int _released;
+
+		public ValueTask DisposeAsync()
+		{
+			if (Interlocked.Exchange(ref _released, 1) == 0) held.Release();
+			return ValueTask.CompletedTask;
+		}
 	}
 }

@@ -44,7 +44,8 @@ internal static class AnnouncementReplies
 
 	// ── Room closing ───────────────────────────────────────────────────────────────────────
 	/// <summary>Reply when an empty room announces it will close; <c>{0}</c> is minutes.</summary>
-	public const string RoomClosingAnnounced = "This room is empty and will close in {0} minutes unless a player joins.";
+	public const string RoomClosingAnnounced =
+		"This room is empty and will close in {0} minutes unless a player joins.";
 
 	/// <summary>Reply when a player joins a room that was closing.</summary>
 	public const string RoomPlayerJoinedClosing = "A player joined — the room will no longer close.";

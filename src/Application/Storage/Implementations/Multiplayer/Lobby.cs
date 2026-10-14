@@ -10,8 +10,8 @@ namespace Basil.Application.Storage.Implementations.Multiplayer;
 internal sealed class Lobby : ILobby
 {
 	private const int MaxRoomId = ushort.MaxValue;
-	private readonly ConcurrentDictionary<int, Room> _rooms = new();
 	private readonly HashSet<int> _reserved = [];
+	private readonly ConcurrentDictionary<int, Room> _rooms = new();
 
 	private readonly Lock _sync = new();
 	private readonly ConcurrentSet<BanchoConnection> _watchers = [];

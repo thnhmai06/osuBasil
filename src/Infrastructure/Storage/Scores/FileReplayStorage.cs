@@ -1,8 +1,8 @@
 using System.Buffers;
 using System.Globalization;
 using System.Text;
-using Basil.Application.Storage.Contracts.Scores;
 using Basil.Application.Storage.Contracts.Beatmaps;
+using Basil.Application.Storage.Contracts.Scores;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
@@ -17,6 +17,7 @@ internal sealed class FileReplayStorage(
 	IUserRepository users,
 	IBeatmapRepository beatmaps) : IReplayStorage
 {
+	private static readonly SearchValues<char> UnportableChars = SearchValues.Create("<>:\"/\\|?*");
 	private DataStorage Files => paths.Replays;
 
 	/// <inheritdoc />
@@ -92,6 +93,4 @@ internal sealed class FileReplayStorage(
 				span[i] = source[i] < ' ' || UnportableChars.Contains(source[i]) ? '_' : source[i];
 		});
 	}
-
-	private static readonly SearchValues<char> UnportableChars = SearchValues.Create("<>:\"/\\|?*");
 }

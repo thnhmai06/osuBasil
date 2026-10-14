@@ -5,9 +5,9 @@ using Basil.Application.Services.Contracts.Beatmaps;
 using Basil.Application.Services.Implementations.Common;
 using Basil.Application.Storage.Contracts.Beatmaps;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Mechanics;
 using Basil.Domain.Common;
 using Basil.Domain.Content;
+using Basil.Domain.Mechanics;
 
 namespace Basil.Application.Services.Implementations.Beatmaps;
 
@@ -85,6 +85,34 @@ internal sealed class BeatmapsetService(
 			foreach (var archive in packed)
 				await storage.DeleteAsync(archive, CancellationToken.None).ConfigureAwait(false);
 		}
+	}
+
+	/// <inheritdoc />
+	public async Task<BeatmapsetScanResult> ScanAsync(BeatmapsetSource entry,
+		CancellationToken cancellationToken = default)
+	{
+		switch (entry)
+		{
+			case BeatmapsetArchive archive:
+				return await ScanArchiveAsync(archive, null, cancellationToken).ConfigureAwait(false);
+
+			case BeatmapsetFolder folder:
+				return await ScanFolderAsync(folder, cancellationToken).ConfigureAwait(false);
+
+			default:
+				return NoChange;
+		}
+	}
+
+	/// <inheritdoc />
+	public async Task<bool> DeleteAsync(Beatmapset set, CancellationToken cancellationToken = default)
+	{
+		if (set.Locked)
+			return false;
+
+		await storage.DeleteAsync(set, cancellationToken).ConfigureAwait(false);
+		await ForgetAsync(set, cancellationToken).ConfigureAwait(false);
+		return true;
 	}
 
 	/// <summary>Brings the server in step with every entry of the storage.</summary>
@@ -214,34 +242,6 @@ internal sealed class BeatmapsetService(
 			indexed.Count(item => item.Existing is null),
 			indexed.Count(item => item.Existing is not null),
 			remove.Count);
-	}
-
-	/// <inheritdoc />
-	public async Task<BeatmapsetScanResult> ScanAsync(BeatmapsetSource entry,
-		CancellationToken cancellationToken = default)
-	{
-		switch (entry)
-		{
-			case BeatmapsetArchive archive:
-				return await ScanArchiveAsync(archive, null, cancellationToken).ConfigureAwait(false);
-
-			case BeatmapsetFolder folder:
-				return await ScanFolderAsync(folder, cancellationToken).ConfigureAwait(false);
-
-			default:
-				return NoChange;
-		}
-	}
-
-	/// <inheritdoc />
-	public async Task<bool> DeleteAsync(Beatmapset set, CancellationToken cancellationToken = default)
-	{
-		if (set.Locked)
-			return false;
-
-		await storage.DeleteAsync(set, cancellationToken).ConfigureAwait(false);
-		await ForgetAsync(set, cancellationToken).ConfigureAwait(false);
-		return true;
 	}
 
 	/// <summary>Brings the server in step with one folder of the storage.</summary>
@@ -616,7 +616,10 @@ internal sealed class BeatmapsetService(
 	/// <summary>Finds the stored beatmapset a read beatmapset belongs to.</summary>
 	/// <param name="content">What was read.</param>
 	/// <param name="hashes">The MD5 hash of each difficulty's file.</param>
-	/// <param name="folderId">The id of the stored folder the content lies in, or <see langword="null" /> when it lies in none.</param>
+	/// <param name="folderId">
+	///     The id of the stored folder the content lies in, or <see langword="null" /> when it lies in
+	///     none.
+	/// </param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The stored beatmapset the content belongs to, or <see langword="null" /> when it is a new one.</returns>
 	/// <remarks>

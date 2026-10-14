@@ -59,6 +59,36 @@ internal sealed class SessionConnectionsService(
 		return idleConnections.Count;
 	}
 
+	/// <inheritdoc />
+	public bool Revoke(Connection by, User user)
+	{
+		if (!(by is not DelegatedConnection && by.User.Equals(user)) &&
+		    !PermissionRules.MayActOn(by, user, Permissions.OwnerManageAccounts, time.GetUtcNow()))
+			return false;
+
+		CloseAll(user, ConnectionCloseReason.Revoked);
+		return true;
+	}
+
+	/// <inheritdoc />
+	public (DelegatedConnection? Connection, DelegationFailure? Failure) ActFor(Connection by, User user)
+	{
+		// ponytail: a leaked token of an account with TournamentActForUsers can act for any online user in rooms and
+		// the lobby; add per-user consent if that risk ever matters.
+		if (!PermissionRules.Allows(by, Permissions.TournamentActForUsers, time.GetUtcNow()))
+			return (null, DelegationFailure.NotPermitted);
+
+		var session = registry.Sessions.GetValueOrDefault(user);
+		var connection = session is null
+			? null
+			: new Connection?[]
+					{ session.Bancho, session.Irc, session.Apis.FirstOrDefault(), session.Tourneys.FirstOrDefault() }
+				.FirstOrDefault(candidate => candidate is { IsOpen: true });
+		return connection is null
+			? (null, DelegationFailure.UserOffline)
+			: (new DelegatedConnection(connection, by, Permissions.RoomDelegation), null);
+	}
+
 	/// <summary>Opens an authenticated connection, bringing its user online if this is their first.</summary>
 	/// <param name="connection">The new connection.</param>
 	/// <param name="restrictions">The user's restrictions that have not ended.</param>
@@ -108,36 +138,6 @@ internal sealed class SessionConnectionsService(
 
 		events.Emit(new UserConnectionOpened(connection, cameOnline));
 		return null;
-	}
-
-	/// <inheritdoc />
-	public bool Revoke(Connection by, User user)
-	{
-		if (!(by is not DelegatedConnection && by.User.Equals(user)) &&
-		    !PermissionRules.MayActOn(by, user, Permissions.OwnerManageAccounts, time.GetUtcNow()))
-			return false;
-
-		CloseAll(user, ConnectionCloseReason.Revoked);
-		return true;
-	}
-
-	/// <inheritdoc />
-	public (DelegatedConnection? Connection, DelegationFailure? Failure) ActFor(Connection by, User user)
-	{
-		// ponytail: a leaked token of an account with TournamentActForUsers can act for any online user in rooms and
-		// the lobby; add per-user consent if that risk ever matters.
-		if (!PermissionRules.Allows(by, Permissions.TournamentActForUsers, time.GetUtcNow()))
-			return (null, DelegationFailure.NotPermitted);
-
-		var session = registry.Sessions.GetValueOrDefault(user);
-		var connection = session is null
-			? null
-			: new Connection?[]
-					{ session.Bancho, session.Irc, session.Apis.FirstOrDefault(), session.Tourneys.FirstOrDefault() }
-				.FirstOrDefault(candidate => candidate is { IsOpen: true });
-		return connection is null
-			? (null, DelegationFailure.UserOffline)
-			: (new DelegatedConnection(connection, by, Permissions.RoomDelegation), null);
 	}
 
 	/// <summary>Creates the token of a new connection.</summary>

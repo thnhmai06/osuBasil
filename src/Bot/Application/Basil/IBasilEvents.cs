@@ -8,4 +8,3 @@ public interface IBasilEvents
 	/// <returns>The events, in the order they happened.</returns>
 	IAsyncEnumerable<BotEvent> ReadAllAsync(CancellationToken cancellationToken = default);
 }
-

@@ -45,7 +45,10 @@ public interface IBeatmapsetStorage
 	///     The packed archive, or <see langword="null" /> when the folder is gone, holds no files, or is a set's folder that
 	///     lost its archive (it holds files made from one), which is never packed.
 	/// </returns>
-	/// <remarks>The loose files are removed once the packed archive is taken in by <see cref="SaveAsync(Beatmapset, BeatmapsetArchive, CancellationToken)" />.</remarks>
+	/// <remarks>
+	///     The loose files are removed once the packed archive is taken in by
+	///     <see cref="SaveAsync(Beatmapset, BeatmapsetArchive, CancellationToken)" />.
+	/// </remarks>
 	Task<BeatmapsetArchive?> PackAsync(BeatmapsetFolder folder,
 		CancellationToken cancellationToken = default);
 

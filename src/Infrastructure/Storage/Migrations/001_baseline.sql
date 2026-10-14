@@ -91,23 +91,29 @@ create table menu_banners
 	created_at timestamptz not null
 );
 
+-- archive_hash is the MD5 of the set's archive, which identifies its content; archive_size and archive_modified_at
+-- tell, without reading the archive, whether it may have changed.
 create table beatmapsets
 (
-	id         integer primary key check (id >= 1),
-	artist     text        not null,
-	title      text        not null,
-	creator    text        not null,
-	created_at timestamptz not null,
-	updated_at timestamptz not null,
-	locked     boolean     not null,
-	visible    boolean     not null
+	id                  integer primary key check (id >= 1),
+	artist              text        not null,
+	title               text        not null,
+	creator             text        not null,
+	created_at          timestamptz not null,
+	updated_at          timestamptz not null,
+	archive_hash        text        not null,
+	archive_size        bigint      not null,
+	archive_modified_at timestamptz not null,
+	storyboard          boolean     not null,
+	locked              boolean     not null,
+	visible             boolean     not null
 );
 
 -- Sequence for local beatmapset IDs. Start value equals Beatmapset.LocalIdFloor in Domain.
 create
 	sequence local_beatmapset_ids as integer start with 1000000000;
 
--- objects is the JSON of a Basil.Domain.Beatmaps.BeatmapObjects value; length is in milliseconds.
+-- objects is the JSON of a Basil.Domain.Beatmaps.BeatmapObjects value; length and preview_time are in milliseconds.
 create table beatmaps
 (
 	id            integer primary key check (id >= 1),
@@ -123,6 +129,13 @@ create table beatmaps
 	od            double precision not null,
 	hp            double precision not null,
 	objects       jsonb            not null,
+	background    text             null,
+	audio         text             null,
+	video         text             null,
+	preview_time  integer          null,
+	storyboard    boolean          not null,
+	created_at    timestamptz      not null,
+	updated_at    timestamptz      not null,
 	locked        boolean          not null,
 	visible       boolean          not null
 );

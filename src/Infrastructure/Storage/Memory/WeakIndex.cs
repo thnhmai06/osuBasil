@@ -41,16 +41,6 @@ internal sealed class WeakIndex<TKey, T> : IReadOnlyDictionary<TKey, T>
 		? value
 		: throw new KeyNotFoundException($"The key {key} has no live instance.");
 
-	/// <summary>Indexes a live instance under a key, replacing whatever the key pointed to.</summary>
-	/// <param name="key">The key to index the item under.</param>
-	/// <param name="item">The live instance.</param>
-	public void Set(TKey key, T item)
-	{
-		_items[key] = new WeakReference<T>(item);
-		if (Interlocked.Increment(ref _additions) % SweepEvery == 0)
-			Sweep();
-	}
-
 	/// <summary>Gets a value that indicates whether a key has a live instance.</summary>
 	/// <param name="key">The key to look up.</param>
 	/// <returns><see langword="true" /> if the key has a live instance; otherwise, <see langword="false" />.</returns>
@@ -77,16 +67,6 @@ internal sealed class WeakIndex<TKey, T> : IReadOnlyDictionary<TKey, T>
 		return false;
 	}
 
-	/// <summary>Forgets a key when it still points to the item.</summary>
-	/// <param name="key">The key the item was indexed under.</param>
-	/// <param name="item">The item expected under the key.</param>
-	public void Remove(TKey key, T item)
-	{
-		if (_items.TryGetValue(key, out var reference) && reference.TryGetTarget(out var current) &&
-		    ReferenceEquals(current, item))
-			_items.TryRemove(new KeyValuePair<TKey, WeakReference<T>>(key, reference));
-	}
-
 	/// <summary>Returns an enumerator over the live key-value pairs.</summary>
 	/// <returns>An enumerator over the live entries.</returns>
 	public IEnumerator<KeyValuePair<TKey, T>> GetEnumerator()
@@ -97,6 +77,26 @@ internal sealed class WeakIndex<TKey, T> : IReadOnlyDictionary<TKey, T>
 	IEnumerator IEnumerable.GetEnumerator()
 	{
 		return GetEnumerator();
+	}
+
+	/// <summary>Indexes a live instance under a key, replacing whatever the key pointed to.</summary>
+	/// <param name="key">The key to index the item under.</param>
+	/// <param name="item">The live instance.</param>
+	public void Set(TKey key, T item)
+	{
+		_items[key] = new WeakReference<T>(item);
+		if (Interlocked.Increment(ref _additions) % SweepEvery == 0)
+			Sweep();
+	}
+
+	/// <summary>Forgets a key when it still points to the item.</summary>
+	/// <param name="key">The key the item was indexed under.</param>
+	/// <param name="item">The item expected under the key.</param>
+	public void Remove(TKey key, T item)
+	{
+		if (_items.TryGetValue(key, out var reference) && reference.TryGetTarget(out var current) &&
+		    ReferenceEquals(current, item))
+			_items.TryRemove(new KeyValuePair<TKey, WeakReference<T>>(key, reference));
 	}
 
 	/// <summary>Snapshots the live entries, dropping references whose item is gone.</summary>

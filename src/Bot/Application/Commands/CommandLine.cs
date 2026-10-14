@@ -154,6 +154,7 @@ internal static class CommandLine
 					tokens.Add(current.ToString());
 					current.Clear();
 				}
+
 				i++;
 				continue;
 			}

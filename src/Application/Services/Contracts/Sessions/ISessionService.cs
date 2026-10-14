@@ -4,7 +4,10 @@ using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Contracts.Sessions;
 
-/// <summary>Opens and closes the connections of online users and changes what they share; connections and presence are its parts.</summary>
+/// <summary>
+///     Opens and closes the connections of online users and changes what they share; connections and presence are its
+///     parts.
+/// </summary>
 public interface ISessionService : IEventPublisher<UserEvent>
 {
 	/// <summary>Connections: closing them, keeping them alive, acting for another user.</summary>

@@ -34,19 +34,6 @@ public abstract class RoundResult : IEquatable<RoundResult>
 	/// <summary>Gets a value that indicates whether the round is a draw, with no winner ahead.</summary>
 	public bool IsDraw => Margin.NearlyEqual(0);
 
-	/// <summary>Decides who won a round from the scores played in it.</summary>
-	/// <param name="round">The round.</param>
-	/// <param name="scores">The scores submitted in the round.</param>
-	/// <returns>A team result for a round played in teams, a head-to-head result otherwise, or <see langword="null" /> when the round has no score.</returns>
-	public static RoundResult? Decide(Round round, IReadOnlyCollection<RoundScore> scores)
-	{
-		return scores.Count == 0
-			? null
-			: round.Settings.TeamType.IsTeamMode()
-				? new TeamVersusResult(round, scores)
-				: new HeadToHeadResult(round, scores);
-	}
-
 	/// <summary>Determines whether another result was decided for the same round.</summary>
 	/// <param name="other">The result to compare against, or <see langword="null" />.</param>
 	/// <returns>
@@ -56,6 +43,22 @@ public abstract class RoundResult : IEquatable<RoundResult>
 	public bool Equals(RoundResult? other)
 	{
 		return other is not null && Round.Equals(other.Round);
+	}
+
+	/// <summary>Decides who won a round from the scores played in it.</summary>
+	/// <param name="round">The round.</param>
+	/// <param name="scores">The scores submitted in the round.</param>
+	/// <returns>
+	///     A team result for a round played in teams, a head-to-head result otherwise, or <see langword="null" /> when
+	///     the round has no score.
+	/// </returns>
+	public static RoundResult? Decide(Round round, IReadOnlyCollection<RoundScore> scores)
+	{
+		return scores.Count == 0
+			? null
+			: round.Settings.TeamType.IsTeamMode()
+				? new TeamVersusResult(round, scores)
+				: new HeadToHeadResult(round, scores);
 	}
 
 	/// <summary>Determines whether this result equals another object.</summary>
@@ -92,12 +95,6 @@ public abstract class RoundResult : IEquatable<RoundResult>
 /// <summary>Who won a round played without teams, and by how much.</summary>
 public sealed class HeadToHeadResult : RoundResult
 {
-	/// <summary>
-	///     Gets the id of the winning player, or <see langword="null" /> for a draw or when the round has
-	///     no score.
-	/// </summary>
-	public int? WinnerId { get; }
-
 	/// <summary>Decides which player wins a head-to-head round from its scores.</summary>
 	/// <param name="round">The round.</param>
 	/// <param name="scores">The scores submitted in the round.</param>
@@ -137,28 +134,18 @@ public sealed class HeadToHeadResult : RoundResult
 			? contenders[0].Score.Value.UserId
 			: null;
 	}
+
+	/// <summary>
+	///     Gets the id of the winning player, or <see langword="null" /> for a draw or when the round has
+	///     no score.
+	/// </summary>
+	public int? WinnerId { get; }
 }
 
 /// <summary>Who won a team round, and by how much.</summary>
 public sealed class TeamVersusResult : RoundResult
 {
 	private static readonly GameTeam[] Teams = Enum.GetValues<GameTeam>();
-
-	/// <summary>
-	///     Gets the scores each team set, with a team that played none present as an empty sequence.
-	/// </summary>
-	public FrozenDictionary<GameTeam, IReadOnlyList<Score>> TeamScores { get; }
-
-	/// <summary>
-	///     Gets the win metric each team reached — the sum of its scores or combos, or its average
-	///     accuracy — with a team that has no score counting as zero.
-	/// </summary>
-	public FrozenDictionary<GameTeam, double> TeamScore { get; }
-
-	/// <summary>
-	///     Gets the winning team, or <see langword="null" /> for a round without teams or a draw.
-	/// </summary>
-	public GameTeam? Winner { get; }
 
 	/// <summary>Decides which team wins a team round from its scores.</summary>
 	/// <param name="round">The team round.</param>
@@ -213,6 +200,22 @@ public sealed class TeamVersusResult : RoundResult
 			.ThenByDescending(s => s.Score.Value, comparer)
 			.ToList();
 	}
+
+	/// <summary>
+	///     Gets the scores each team set, with a team that played none present as an empty sequence.
+	/// </summary>
+	public FrozenDictionary<GameTeam, IReadOnlyList<Score>> TeamScores { get; }
+
+	/// <summary>
+	///     Gets the win metric each team reached — the sum of its scores or combos, or its average
+	///     accuracy — with a team that has no score counting as zero.
+	/// </summary>
+	public FrozenDictionary<GameTeam, double> TeamScore { get; }
+
+	/// <summary>
+	///     Gets the winning team, or <see langword="null" /> for a round without teams or a draw.
+	/// </summary>
+	public GameTeam? Winner { get; }
 
 	/// <summary>Ranks teams by their win metric, the team that is ahead first.</summary>
 	private static IOrderedEnumerable<(GameTeam Team, double Total)> Rank(

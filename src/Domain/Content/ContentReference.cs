@@ -3,13 +3,13 @@ using Basil.Domain.Common;
 
 namespace Basil.Domain.Content;
 
-/// <summary>A canonical reference to an asset: the address of an asset hosted elsewhere, or the path of a file the server stores under its data directory.</summary>
+/// <summary>
+///     A canonical reference to an asset: the address of an asset hosted elsewhere, or the path of a file the server
+///     stores under its data directory.
+/// </summary>
 /// <remarks>The default value refers to nothing; a model that holds a reference rejects it.</remarks>
 public readonly record struct ContentReference : IParsable<ContentReference>, IFormattable
 {
-	/// <summary>Gets the canonical text of the reference; null for the default value.</summary>
-	public string Value { get; }
-
 	/// <summary>Initializes a reference to an asset hosted at an absolute address.</summary>
 	/// <param name="address">The absolute http or https address of the asset.</param>
 	/// <exception cref="ArgumentNullException"><paramref name="address" /> is <see langword="null" />.</exception>
@@ -59,8 +59,24 @@ public readonly record struct ContentReference : IParsable<ContentReference>, IF
 		}
 	}
 
-	/// <summary>Gets a value that indicates whether the reference names a file the server stores, rather than an address hosted elsewhere.</summary>
+	/// <summary>Gets the canonical text of the reference; null for the default value.</summary>
+	public string Value { get; }
+
+	/// <summary>
+	///     Gets a value that indicates whether the reference names a file the server stores, rather than an address
+	///     hosted elsewhere.
+	/// </summary>
 	public bool IsStored => Value is not null && !IsAddress(Value);
+
+	/// <summary>Returns the canonical text of the reference.</summary>
+	/// <param name="format">The format to use, or <see langword="null" /> for the default.</param>
+	/// <param name="formatProvider">A provider that supplies culture-specific formatting information.</param>
+	/// <returns>The canonical text of the reference.</returns>
+	/// <exception cref="FormatException"><paramref name="format" /> is not empty or "G".</exception>
+	public string ToString(string? format, IFormatProvider? formatProvider)
+	{
+		return ToString();
+	}
 
 	/// <summary>Parses a reference from its canonical text.</summary>
 	/// <param name="s">The text to parse.</param>
@@ -87,7 +103,10 @@ public readonly record struct ContentReference : IParsable<ContentReference>, IF
 	/// <param name="s">The text to parse.</param>
 	/// <param name="provider">A provider that supplies culture-specific formatting information.</param>
 	/// <param name="result">The parsed reference, or the default value when the text is invalid.</param>
-	/// <returns><see langword="true" /> when <paramref name="s" /> is a canonical reference; otherwise, <see langword="false" />.</returns>
+	/// <returns>
+	///     <see langword="true" /> when <paramref name="s" /> is a canonical reference; otherwise,
+	///     <see langword="false" />.
+	/// </returns>
 	public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, out ContentReference result)
 	{
 		result = default;
@@ -108,16 +127,6 @@ public readonly record struct ContentReference : IParsable<ContentReference>, IF
 	public override string ToString()
 	{
 		return Value ?? string.Empty;
-	}
-
-	/// <summary>Returns the canonical text of the reference.</summary>
-	/// <param name="format">The format to use, or <see langword="null" /> for the default.</param>
-	/// <param name="formatProvider">A provider that supplies culture-specific formatting information.</param>
-	/// <returns>The canonical text of the reference.</returns>
-	/// <exception cref="FormatException"><paramref name="format" /> is not empty or "G".</exception>
-	public string ToString(string? format, IFormatProvider? formatProvider)
-	{
-		return ToString();
 	}
 
 	/// <summary>Converts the canonical text of a reference to a reference.</summary>

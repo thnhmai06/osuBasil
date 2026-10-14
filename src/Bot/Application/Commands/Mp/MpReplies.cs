@@ -204,7 +204,10 @@ internal static class MpReplies
 	/// <summary>Usage line for <c>!mp set</c>.</summary>
 	public const string SetUsage = "Usage: !mp set <teammode 0-3> [scoremode 0-3] [size 1-16]";
 
-	/// <summary>Reply after changing settings; <c>{0}</c> is the team type, <c>{1}</c> the win condition, <c>{2}</c> a size suffix.</summary>
+	/// <summary>
+	///     Reply after changing settings; <c>{0}</c> is the team type, <c>{1}</c> the win condition, <c>{2}</c> a size
+	///     suffix.
+	/// </summary>
 	public const string ChangedMatchSettings = "Changed match settings to {0}, {1}{2}";
 
 	// ── !mp map / mods ─────────────────────────────────────────────────────────────────────

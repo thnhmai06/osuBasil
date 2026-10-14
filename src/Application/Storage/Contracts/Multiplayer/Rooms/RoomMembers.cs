@@ -4,7 +4,10 @@ using Basil.Domain.Users;
 
 namespace Basil.Application.Storage.Contracts.Multiplayer.Rooms;
 
-/// <summary>Who belongs to a room besides its seated players: the users banned from it and the osu!tourney clients observing it.</summary>
+/// <summary>
+///     Who belongs to a room besides its seated players: the users banned from it and the osu!tourney clients
+///     observing it.
+/// </summary>
 public sealed class RoomMembers
 {
 	private readonly ConcurrentSet<User> _banned = [];

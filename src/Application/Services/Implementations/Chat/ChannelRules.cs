@@ -15,7 +15,8 @@ internal static class ChannelRules
 	{
 		return channel switch
 		{
-			GeneralChannelSession g => PermissionRules.Effective(connection.Session, now).Allows(g.Channel.ReadPermissions),
+			GeneralChannelSession g => PermissionRules.Effective(connection.Session, now)
+				.Allows(g.Channel.ReadPermissions),
 			PmChannelSession p => ReferenceEquals(connection.Session, p.Owner) &&
 			                      connection.Type is not ConnectionType.Tourney,
 			SpectatorChannelSession s => ReferenceEquals(connection, s.Host) || s.Host.Spectators.Contains(connection),
@@ -30,7 +31,8 @@ internal static class ChannelRules
 	{
 		return channel switch
 		{
-			GeneralChannelSession g => PermissionRules.Effective(connection.Session, now).Allows(g.Channel.WritePermissions),
+			GeneralChannelSession g => PermissionRules.Effective(connection.Session, now)
+				.Allows(g.Channel.WritePermissions),
 			PmChannelSession => connection.IsOpen,
 			SpectatorChannelSession s => ReferenceEquals(connection, s.Host) || s.Host.Spectators.Contains(connection),
 			RoomChannelSession r => InRoom(r.Room, connection, now) ||

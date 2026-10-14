@@ -3,9 +3,8 @@ namespace Basil.Infrastructure.Storage.Common.Writing;
 /// <summary>What a stored change belongs to; changes that belong to the same root are stored in the order they were made.</summary>
 internal readonly record struct Root
 {
-	public readonly RootKind Kind;
-
 	public readonly int Id;
+	public readonly RootKind Kind;
 
 	private Root(RootKind kind, int id)
 	{

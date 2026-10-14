@@ -1,6 +1,9 @@
 namespace Basil.Application.Storage.Contracts.Beatmaps;
 
-/// <summary>One file inside a beatmapset, such as a difficulty, a background or an audio track, opened anew each time it is read.</summary>
+/// <summary>
+///     One file inside a beatmapset, such as a difficulty, a background or an audio track, opened anew each time it
+///     is read.
+/// </summary>
 /// <param name="name">The file's name relative to the set, with '/' between folders.</param>
 /// <param name="length">The file's size in bytes.</param>
 public abstract class BeatmapsetContentFile(string name, long length)

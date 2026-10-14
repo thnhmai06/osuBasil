@@ -23,7 +23,10 @@ public sealed record UserQuery(
 	bool? Deleted = null) : IParsable<UserQuery>
 {
 	/// <summary>Reads a query written in the user search syntax.</summary>
-	/// <param name="s">The search text, for example <c>country=usvn permission=4 deleted=* bob</c>; a state takes <c>1</c>, <c>0</c> or <c>*</c> for both.</param>
+	/// <param name="s">
+	///     The search text, for example <c>country=usvn permission=4 deleted=* bob</c>; a state takes <c>1</c>,
+	///     <c>0</c> or <c>*</c> for both.
+	/// </param>
 	/// <param name="provider">Not used; the syntax does not depend on culture.</param>
 	/// <returns>The query; a filter with an unknown key or a value that does not parse stays in <see cref="Text" />.</returns>
 	/// <exception cref="ArgumentNullException"><paramref name="s" /> is <see langword="null" />.</exception>
@@ -74,14 +77,6 @@ public sealed record UserQuery(
 		}
 	}
 
-	/// <summary>Narrows the query to what a user with the given permissions may see.</summary>
-	/// <param name="effective">The asker's effective permissions.</param>
-	/// <returns>The query, which leaves deleted users out unless the asker may see them.</returns>
-	public UserQuery LimitTo(Permissions effective)
-	{
-		return effective.Allows(Domain.Users.Permissions.OwnerViewDeletedUsers) ? this : this with { Deleted = false };
-	}
-
 	/// <summary>Reads a query written in the user search syntax.</summary>
 	/// <param name="s">The search text.</param>
 	/// <param name="provider">Not used; the syntax does not depend on culture.</param>
@@ -92,5 +87,13 @@ public sealed record UserQuery(
 	{
 		result = s is null ? null : Parse(s, provider);
 		return result is not null;
+	}
+
+	/// <summary>Narrows the query to what a user with the given permissions may see.</summary>
+	/// <param name="effective">The asker's effective permissions.</param>
+	/// <returns>The query, which leaves deleted users out unless the asker may see them.</returns>
+	public UserQuery LimitTo(Permissions effective)
+	{
+		return effective.Allows(Domain.Users.Permissions.OwnerViewDeletedUsers) ? this : this with { Deleted = false };
 	}
 }

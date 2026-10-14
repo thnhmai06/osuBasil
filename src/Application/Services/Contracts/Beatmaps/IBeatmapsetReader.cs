@@ -18,7 +18,10 @@ public interface IBeatmapsetReader
 }
 
 /// <summary>What a beatmapset contains.</summary>
-/// <param name="onlineSetId">The beatmapset id the difficulties declare, or <see langword="null" /> when they declare none.</param>
+/// <param name="onlineSetId">
+///     The beatmapset id the difficulties declare, or <see langword="null" /> when they declare
+///     none.
+/// </param>
 /// <param name="artist">The artist.</param>
 /// <param name="title">The title.</param>
 /// <param name="creator">The mapper's name.</param>

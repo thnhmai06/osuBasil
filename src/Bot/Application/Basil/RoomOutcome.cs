@@ -39,6 +39,7 @@ public enum RoomOutcome : byte
 	NotInProgress,
 	RoundMismatch,
 	RoomClosed,
+
 	/// <summary>The room, user or beatmap named in the request does not exist on the server.</summary>
 	NotFound
 }

@@ -42,6 +42,7 @@ internal sealed class RoomMembershipService(
 			case Access.NotGranted: return RoomResult.NotAuthorized;
 			case Access.Suspended: return RoomResult.Silenced;
 		}
+
 		if (room.Members.Banned.Contains(player.User)) return RoomResult.Banned;
 
 		if (lobby.RoomOf(player) is { } other && !ReferenceEquals(other, room))
@@ -139,6 +140,7 @@ internal sealed class RoomMembershipService(
 			case Access.NotGranted: return RoomResult.NotAuthorized;
 			case Access.Suspended: return RoomResult.Silenced;
 		}
+
 		if (lobby.RoomOf(by) is { } other && !ReferenceEquals(other, room)) return RoomResult.InAnotherRoom;
 		if (room.Members.Observers.Any(observer => observer.User.Equals(by.User))) return RoomResult.IsObserver;
 		if (!string.IsNullOrEmpty(room.Settings.Password) && room.Settings.Password != password &&

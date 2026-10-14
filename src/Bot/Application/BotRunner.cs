@@ -18,7 +18,6 @@ internal sealed class BotRunner(
 	protected override async Task ExecuteAsync(CancellationToken cancellationToken)
 	{
 		await foreach (var botEvent in events.ReadAllAsync(cancellationToken))
-		{
 			try
 			{
 				await HandleEventAsync(botEvent, cancellationToken);
@@ -27,7 +26,6 @@ internal sealed class BotRunner(
 			{
 				logger.LogError(ex, "Error handling bot event {EventType}", botEvent.GetType().Name);
 			}
-		}
 	}
 
 	private async Task HandleEventAsync(BotEvent botEvent, CancellationToken cancellationToken)

@@ -17,4 +17,3 @@ public interface IBasilUsers
 	/// <returns>The user, or <see langword="null" /> when none has that name.</returns>
 	ValueTask<User?> GetByNameAsync(string name, CancellationToken cancellationToken = default);
 }
-

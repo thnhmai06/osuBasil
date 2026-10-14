@@ -29,34 +29,28 @@ internal sealed class ReplyWriter(IBasilChat chat, ChatCommands commands)
 		var sender = message.Author;
 
 		if (channel is not null)
-		{
 			// From a channel: Reply posts in channel, ReplyPrivately sends PM
 			return new CommandContext(
 				sender,
 				channel,
 				(text, ct) => SendSplitAsync(text, channel, null, ct),
 				(text, ct) => SendSplitAsync(text, null, sender, ct));
-		}
-		else
-		{
-			// From a PM: both Reply and ReplyPrivately send PM
-			return new CommandContext(
-				sender,
-				null,
-				(text, ct) => SendSplitAsync(text, null, sender, ct),
-				(text, ct) => SendSplitAsync(text, null, sender, ct));
-		}
+
+		// From a PM: both Reply and ReplyPrivately send PM
+		return new CommandContext(
+			sender,
+			null,
+			(text, ct) => SendSplitAsync(text, null, sender, ct),
+			(text, ct) => SendSplitAsync(text, null, sender, ct));
 	}
 
 	private async Task SendSplitAsync(string text, string? channel, User? user, CancellationToken cancellationToken)
 	{
 		foreach (var piece in SplitForSend(text))
-		{
 			if (channel is not null)
 				await chat.PostAsync(channel, piece, cancellationToken);
 			else if (user is not null)
 				await chat.SendAsync(user, piece, cancellationToken);
-		}
 	}
 
 	private static IEnumerable<string> SplitForSend(string text)

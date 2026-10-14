@@ -6,7 +6,10 @@ using Basil.Domain.Users;
 namespace Basil.Bot.Application.Announcements;
 
 /// <summary>Reacts to room events and posts announcements in the room's channel.</summary>
-internal sealed class RoomAnnouncer(IBasilChat chat, IBasilRooms rooms, TimeProvider timeProvider,
+internal sealed class RoomAnnouncer(
+	IBasilChat chat,
+	IBasilRooms rooms,
+	TimeProvider timeProvider,
 	RoomCountdowns countdowns)
 {
 	private readonly ConcurrentDictionary<int, DateTimeOffset> _closingRooms = new();
@@ -53,8 +56,9 @@ internal sealed class RoomAnnouncer(IBasilChat chat, IBasilRooms rooms, TimeProv
 
 	private async Task HandleSettingsChangedAsync(RoomSettingsChanged e, CancellationToken cancellationToken)
 	{
-		if (e.RoundSettingsChanged && countdowns.Stop(e.RoomId, onlyStartingRound: true))
-			await chat.PostAsync($"#mp_{e.RoomId}", AnnouncementReplies.SettingsChangedCountdownCancelled, cancellationToken);
+		if (e.RoundSettingsChanged && countdowns.Stop(e.RoomId, true))
+			await chat.PostAsync($"#mp_{e.RoomId}", AnnouncementReplies.SettingsChangedCountdownCancelled,
+				cancellationToken);
 	}
 
 	private async Task HandleClosingAnnouncedAsync(RoomClosingAnnounced e, CancellationToken cancellationToken)
@@ -84,9 +88,7 @@ internal sealed class RoomAnnouncer(IBasilChat chat, IBasilRooms rooms, TimeProv
 	private async Task HandlePlayerJoinedAsync(RoomPlayerJoined e, CancellationToken cancellationToken)
 	{
 		if (_closingRooms.TryRemove(e.RoomId, out _))
-		{
 			await chat.PostAsync($"#mp_{e.RoomId}", AnnouncementReplies.RoomPlayerJoinedClosing, cancellationToken);
-		}
 	}
 
 	private void HandleRoomClosed(RoomClosed e)

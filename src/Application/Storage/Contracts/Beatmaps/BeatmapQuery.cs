@@ -57,7 +57,8 @@ public sealed record BeatmapQuery(
 {
 	/// <summary>Reads a query written in the osu! beatmap search syntax.</summary>
 	/// <param name="s">
-	///     The search text, for example <c>stars>5 ar=9 mode=0 hidden=0 "some title"</c>; <c>hidden</c> takes <c>1</c>, <c>0</c> or <c>*</c> for both, and <c>mode</c> takes the number
+	///     The search text, for example <c>stars>5 ar=9 mode=0 hidden=0 "some title"</c>; <c>hidden</c> takes <c>1</c>,
+	///     <c>0</c> or <c>*</c> for both, and <c>mode</c> takes the number
 	///     of a game mode.
 	/// </param>
 	/// <param name="provider">Not used; the syntax does not depend on culture.</param>
@@ -178,14 +179,6 @@ public sealed record BeatmapQuery(
 		}
 	}
 
-	/// <summary>Narrows the query to what a user with the given permissions may see.</summary>
-	/// <param name="effective">The asker's effective permissions.</param>
-	/// <returns>The query, which leaves hidden beatmaps out unless the asker may see them.</returns>
-	public BeatmapQuery LimitTo(Permissions effective)
-	{
-		return effective.Allows(Permissions.TournamentViewHiddenBeatmaps) ? this : this with { Hidden = false };
-	}
-
 	/// <summary>Reads a query written in the osu! beatmap search syntax.</summary>
 	/// <param name="s">The search text.</param>
 	/// <param name="provider">Not used; the syntax does not depend on culture.</param>
@@ -196,5 +189,13 @@ public sealed record BeatmapQuery(
 	{
 		result = s is null ? null : Parse(s, provider);
 		return result is not null;
+	}
+
+	/// <summary>Narrows the query to what a user with the given permissions may see.</summary>
+	/// <param name="effective">The asker's effective permissions.</param>
+	/// <returns>The query, which leaves hidden beatmaps out unless the asker may see them.</returns>
+	public BeatmapQuery LimitTo(Permissions effective)
+	{
+		return effective.Allows(Permissions.TournamentViewHiddenBeatmaps) ? this : this with { Hidden = false };
 	}
 }

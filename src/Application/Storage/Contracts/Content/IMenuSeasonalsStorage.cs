@@ -28,7 +28,10 @@ public interface IMenuSeasonalsStorage
 	/// <param name="background">The reference of the background to rename.</param>
 	/// <param name="newName">The new name for the background.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>The reference under the new name, or <see langword="null" /> when the reference names no background stored here or the new name is taken.</returns>
+	/// <returns>
+	///     The reference under the new name, or <see langword="null" /> when the reference names no background stored
+	///     here or the new name is taken.
+	/// </returns>
 	/// <exception cref="ArgumentException"><paramref name="newName" /> is not a safe file name.</exception>
 	Task<ContentReference?> RenameAsync(ContentReference background, string newName,
 		CancellationToken cancellationToken = default);

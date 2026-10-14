@@ -201,7 +201,10 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 		return name.Replace('\\', '/');
 	}
 
-	/// <summary>Whether a set's files are acceptable: every name is safe and unique ignoring case, and the set stays within the file count and total size limits.</summary>
+	/// <summary>
+	///     Whether a set's files are acceptable: every name is safe and unique ignoring case, and the set stays within
+	///     the file count and total size limits.
+	/// </summary>
 	private static bool IsAcceptable(IReadOnlyList<BeatmapsetContentFile> files)
 	{
 		if (files.Count > MaxFiles) return false;

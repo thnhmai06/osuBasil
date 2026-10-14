@@ -17,4 +17,3 @@ public interface IBasilChat
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	Task SendAsync(User user, string text, CancellationToken cancellationToken = default);
 }
-

@@ -17,7 +17,10 @@ namespace Basil.Application.Storage.Contracts.Multiplayer.Matches;
 public sealed record MatchQuery(bool? Ended = null, bool? Private = null) : IParsable<MatchQuery>
 {
 	/// <summary>Reads a query written in the match search syntax.</summary>
-	/// <param name="s">The search text, for example <c>ended=0 private=*</c>; a state takes <c>1</c>, <c>0</c> or <c>*</c> for both, and anything else in the text is ignored.</param>
+	/// <param name="s">
+	///     The search text, for example <c>ended=0 private=*</c>; a state takes <c>1</c>, <c>0</c> or <c>*</c> for
+	///     both, and anything else in the text is ignored.
+	/// </param>
 	/// <param name="provider">Not used; the syntax does not depend on culture.</param>
 	/// <returns>The query.</returns>
 	/// <exception cref="ArgumentNullException"><paramref name="s" /> is <see langword="null" />.</exception>
@@ -46,14 +49,6 @@ public sealed record MatchQuery(bool? Ended = null, bool? Private = null) : IPar
 		return new MatchQuery(ended, isPrivate);
 	}
 
-	/// <summary>Narrows the query to what a user with the given permissions may see.</summary>
-	/// <param name="effective">The asker's effective permissions.</param>
-	/// <returns>The query, which leaves matches with private history out unless the asker may see them.</returns>
-	public MatchQuery LimitTo(Permissions effective)
-	{
-		return effective.Allows(Permissions.TournamentViewPrivateMatches) ? this : this with { Private = false };
-	}
-
 	/// <summary>Reads a query written in the match search syntax.</summary>
 	/// <param name="s">The search text.</param>
 	/// <param name="provider">Not used; the syntax does not depend on culture.</param>
@@ -64,5 +59,13 @@ public sealed record MatchQuery(bool? Ended = null, bool? Private = null) : IPar
 	{
 		result = s is null ? null : Parse(s, provider);
 		return result is not null;
+	}
+
+	/// <summary>Narrows the query to what a user with the given permissions may see.</summary>
+	/// <param name="effective">The asker's effective permissions.</param>
+	/// <returns>The query, which leaves matches with private history out unless the asker may see them.</returns>
+	public MatchQuery LimitTo(Permissions effective)
+	{
+		return effective.Allows(Permissions.TournamentViewPrivateMatches) ? this : this with { Private = false };
 	}
 }

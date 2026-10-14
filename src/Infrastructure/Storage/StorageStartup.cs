@@ -43,8 +43,9 @@ internal sealed class StorageStartup(DataPaths paths, DatabaseMigrator migrator,
 				DeleteLeftoverFile(file);
 
 		foreach (var former in new[]
-		         { Path.Combine(paths.Root, "Cache", "Beatmaps"), Path.Combine(paths.Root, "Cache", "Staging") })
-			if (Directory.Exists(former)) DeleteLeftover(former);
+			         { Path.Combine(paths.Root, "Cache", "Beatmaps"), Path.Combine(paths.Root, "Cache", "Staging") })
+			if (Directory.Exists(former))
+				DeleteLeftover(former);
 	}
 
 	/// <summary>Removes one leftover file, leaving what it cannot remove to the next startup.</summary>

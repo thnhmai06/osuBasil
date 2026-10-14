@@ -82,7 +82,10 @@ internal sealed class RoomCountdowns(IBasilChat chat, IBasilRooms rooms, TimePro
 	/// <summary>Gets the chat channel of a room, named after its id.</summary>
 	/// <param name="roomId">The room id.</param>
 	/// <returns>The channel name, such as <c>#mp_5</c>.</returns>
-	private static string Channel(int roomId) => $"#mp_{roomId}";
+	private static string Channel(int roomId)
+	{
+		return $"#mp_{roomId}";
+	}
 
 	/// <summary>Announces a mark of a countdown that is still the room's current one.</summary>
 	/// <param name="countdown">The countdown whose mark was reached.</param>
@@ -110,7 +113,7 @@ internal sealed class RoomCountdowns(IBasilChat chat, IBasilRooms rooms, TimePro
 		}
 
 		var outcome = await rooms.StartAsync(countdown.Actor, countdown.RoomId, CancellationToken.None);
-		string? text = outcome switch
+		var text = outcome switch
 		{
 			// A round nobody plays has already ended; the round announcement says so instead.
 			RoomOutcome.Ok => await rooms.GetAsync(countdown.RoomId, CancellationToken.None) is { InProgress: true }
@@ -126,8 +129,10 @@ internal sealed class RoomCountdowns(IBasilChat chat, IBasilRooms rooms, TimePro
 	/// <summary>Determines whether a countdown is still the one running in its room.</summary>
 	/// <param name="countdown">The countdown to check.</param>
 	/// <returns><see langword="true" /> when no newer countdown replaced it.</returns>
-	private bool IsCurrent(RoomCountdown countdown) =>
-		_running.TryGetValue(countdown.RoomId, out var current) && ReferenceEquals(current, countdown);
+	private bool IsCurrent(RoomCountdown countdown)
+	{
+		return _running.TryGetValue(countdown.RoomId, out var current) && ReferenceEquals(current, countdown);
+	}
 
 	/// <summary>One countdown in one room: a timer per announced mark and one for its end.</summary>
 	/// <param name="roomId">The room.</param>
@@ -156,6 +161,12 @@ internal sealed class RoomCountdowns(IBasilChat chat, IBasilRooms rooms, TimePro
 		/// <summary>Gets whether the round starts when the countdown ends.</summary>
 		public bool StartsRound => startsRound;
 
+		/// <summary>Stops every timer that has not fired.</summary>
+		public void Dispose()
+		{
+			foreach (var timer in _timers) timer.Dispose();
+		}
+
 		/// <summary>Starts the timers.</summary>
 		public void Run()
 		{
@@ -168,15 +179,11 @@ internal sealed class RoomCountdowns(IBasilChat chat, IBasilRooms rooms, TimePro
 			];
 		}
 
-		/// <summary>Stops every timer that has not fired.</summary>
-		public void Dispose()
-		{
-			foreach (var timer in _timers) timer.Dispose();
-		}
-
 		/// <summary>Runs an announcement and ignores its failure, so a failed announcement cannot crash the bot.</summary>
 		/// <param name="action">The announcement to run.</param>
-		private static void Fire(Func<Task> action) =>
+		private static void Fire(Func<Task> action)
+		{
 			_ = action().ContinueWith(static task => _ = task.Exception, TaskContinuationOptions.OnlyOnFaulted);
+		}
 	}
 }

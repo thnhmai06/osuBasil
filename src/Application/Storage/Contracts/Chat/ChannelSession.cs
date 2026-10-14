@@ -21,7 +21,10 @@ public abstract class ChannelSession
 	/// <summary>Gets the connections currently in the channel.</summary>
 	public IReadOnlySet<Connection> Members => _members;
 
-	/// <summary>Gets the connections currently in the channel, for changing them; the caller holds the scope and reports the change itself.</summary>
+	/// <summary>
+	///     Gets the connections currently in the channel, for changing them; the caller holds the scope and reports the
+	///     change itself.
+	/// </summary>
 	internal ISet<Connection> MutableMembers => _members;
 
 	/// <summary>Gets a value that indicates whether the channel has been closed.</summary>

@@ -16,7 +16,7 @@ public static class DependencyInjection
 	public static IServiceCollection AddBotApplication(this IServiceCollection services)
 	{
 		services.AddSingleton<Random>(Random.Shared);
-		services.TryAddSingleton<TimeProvider>(TimeProvider.System);
+		services.TryAddSingleton(TimeProvider.System);
 		services.AddSingleton<MpScopes>();
 		services.AddSingleton<RoomCountdowns>();
 		services.AddSingleton<MpCommands>();

@@ -32,8 +32,8 @@ public abstract class Connection(Login login, string token)
 /// <summary>A connection from an osu! game client.</summary>
 public sealed class BanchoConnection : Connection
 {
-	private readonly ConcurrentSet<Connection> _spectators = [];
 	private readonly Lock _spectating = new();
+	private readonly ConcurrentSet<Connection> _spectators = [];
 
 	/// <summary>Initializes a game client connection.</summary>
 	/// <param name="login">The login that opened the connection.</param>
@@ -60,7 +60,10 @@ public sealed class BanchoConnection : Connection
 	/// <summary>Gets the connections spectating this client.</summary>
 	public IReadOnlySet<Connection> Spectators => _spectators;
 
-	/// <summary>Gets the connections spectating this client, for changing them; the caller holds the scope and reports the change itself.</summary>
+	/// <summary>
+	///     Gets the connections spectating this client, for changing them; the caller holds the scope and reports the
+	///     change itself.
+	/// </summary>
 	internal ISet<Connection> MutableSpectators => _spectators;
 
 	/// <summary>Enters the scope in which the client's spectators change one at a time.</summary>

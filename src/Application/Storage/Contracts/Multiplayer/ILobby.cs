@@ -15,6 +15,9 @@ public interface ILobby
 	/// <summary>Gets a value that indicates whether every room id is taken or reserved, so no room can open.</summary>
 	internal bool IsFull { get; }
 
+	/// <summary>Gets the osu! clients watching the multiplayer lobby, for changing them.</summary>
+	internal ISet<BanchoConnection> MutableWatchers { get; }
+
 	/// <summary>Finds the room a player is seated in.</summary>
 	Room? RoomOf(BanchoConnection player);
 
@@ -34,9 +37,6 @@ public interface ILobby
 	/// <param name="room">The room to remove.</param>
 	/// <returns><see langword="true" /> if that room was open; <see langword="false" /> if it was not listed under its id.</returns>
 	internal bool Remove(Room room);
-
-	/// <summary>Gets the osu! clients watching the multiplayer lobby, for changing them.</summary>
-	internal ISet<BanchoConnection> MutableWatchers { get; }
 
 	/// <summary>Enters the short scope in which a room id is assigned and a creator's open rooms are counted.</summary>
 	/// <returns>The scope, to dispose when done.</returns>

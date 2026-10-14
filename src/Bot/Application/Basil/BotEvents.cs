@@ -23,7 +23,10 @@ public sealed record RoomRoundAborted(int RoomId) : BotEvent;
 
 /// <summary>A room's settings changed.</summary>
 /// <param name="RoomId">The room.</param>
-/// <param name="RoundSettingsChanged">Whether a setting the round is played with changed (beatmap, mode, mods, freemods, team type or win condition).</param>
+/// <param name="RoundSettingsChanged">
+///     Whether a setting the round is played with changed (beatmap, mode, mods, freemods,
+///     team type or win condition).
+/// </param>
 public sealed record RoomSettingsChanged(int RoomId, bool RoundSettingsChanged) : BotEvent;
 
 /// <summary>An empty room announced when it will close if nobody joins.</summary>

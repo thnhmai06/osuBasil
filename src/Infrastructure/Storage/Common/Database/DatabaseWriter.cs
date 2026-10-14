@@ -25,6 +25,13 @@ internal sealed class DatabaseWriter(
 	private int _abandonedCount;
 
 	/// <inheritdoc />
+	public void Dispose()
+	{
+		_abandon.Dispose();
+		_connections.Dispose();
+	}
+
+	/// <inheritdoc />
 	public Task StartingAsync(CancellationToken cancellationToken)
 	{
 		return Task.CompletedTask;
@@ -121,13 +128,6 @@ internal sealed class DatabaseWriter(
 		});
 		await pending.Done.Task;
 		return result;
-	}
-
-	/// <inheritdoc />
-	public void Dispose()
-	{
-		_abandon.Dispose();
-		_connections.Dispose();
 	}
 
 	private static int ValidConnections(int count)

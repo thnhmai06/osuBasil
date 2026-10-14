@@ -66,20 +66,6 @@ public sealed class Beatmap : IEquatable<Beatmap>
 	/// <value>An "Artist - Title [Version]" string.</value>
 	public string Name => $"{Beatmapset.Metadata.Name} [{Metadata.Version}]";
 
-	/// <summary>Determines whether the difficulty or its set is locked.</summary>
-	/// <returns><see langword="true" /> if either is locked; otherwise, <see langword="false" />.</returns>
-	public bool IsLocked()
-	{
-		return Locked || Beatmapset.Locked;
-	}
-
-	/// <summary>Determines whether both the difficulty and its set are shown.</summary>
-	/// <returns><see langword="true" /> if both are visible; otherwise, <see langword="false" />.</returns>
-	public bool IsVisible()
-	{
-		return Visible && Beatmapset.Visible;
-	}
-
 	/// <summary>
 	///     Determines whether another beatmap refers to the same difficulty.
 	/// </summary>
@@ -92,6 +78,20 @@ public sealed class Beatmap : IEquatable<Beatmap>
 	{
 		if (other is null) return false;
 		return Id == other.Id;
+	}
+
+	/// <summary>Determines whether the difficulty or its set is locked.</summary>
+	/// <returns><see langword="true" /> if either is locked; otherwise, <see langword="false" />.</returns>
+	public bool IsLocked()
+	{
+		return Locked || Beatmapset.Locked;
+	}
+
+	/// <summary>Determines whether both the difficulty and its set are shown.</summary>
+	/// <returns><see langword="true" /> if both are visible; otherwise, <see langword="false" />.</returns>
+	public bool IsVisible()
+	{
+		return Visible && Beatmapset.Visible;
 	}
 
 	/// <summary>

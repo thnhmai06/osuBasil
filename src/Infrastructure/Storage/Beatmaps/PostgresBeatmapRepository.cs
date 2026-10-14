@@ -23,66 +23,6 @@ internal sealed class PostgresBeatmapRepository(
 	IBeatmapsetRepository beatmapsets)
 	: MemoryRepository<int, Beatmap>(reader, writer), IBeatmapRepository
 {
-	#region SQL Scripts
-
-	private const string UpdateSql = """
-	                                 update beatmaps set
-	                                 beatmapset_id = @BeatmapsetId,
-	                                 hash = @Hash,
-	                                 version = @Version,
-	                                 mode = @Mode,
-	                                 star = @Star,
-	                                 length = @Length,
-	                                 bpm = @Bpm,
-	                                 cs = @Cs,
-	                                 ar = @Ar,
-	                                 od = @Od,
-	                                 hp = @Hp,
-	                                 objects = @Objects::jsonb,
-	                                 background = @Background,
-	                                 audio = @Audio,
-	                                 video = @Video,
-	                                 preview_time = @PreviewTime,
-	                                 storyboard = @Storyboard,
-	                                 created_at = @CreatedAt,
-	                                 updated_at = @UpdatedAt,
-	                                 locked = @Locked,
-	                                 visible = @Visible
-	                                 where id = @Id;
-	                                 """;
-
-	private const string InsertSql = """
-	                                 insert into beatmaps (id, beatmapset_id, hash, version, mode, star, length, bpm, cs, ar, od, hp, objects, background, audio, video, preview_time, storyboard, created_at, updated_at, locked, visible)
-	                                 values (@Id, @BeatmapsetId, @Hash, @Version, @Mode, @Star, @Length, @Bpm, @Cs, @Ar, @Od, @Hp, @Objects::jsonb, @Background, @Audio, @Video, @PreviewTime, @Storyboard, @CreatedAt, @UpdatedAt, @Locked, @Visible);
-	                                 """;
-
-	private const string ByIdSql = """
-	                               select b.id, b.beatmapset_id, b.hash, b.version, b.mode, b.star, b.length, b.bpm, b.cs, b.ar, b.od, b.hp, b.objects, b.background, b.audio, b.video, b.preview_time, b.storyboard, b.created_at, b.updated_at, b.locked, b.visible,
-	                               s.id as set_id, s.artist as set_artist, s.title as set_title, s.creator as set_creator, s.created_at as set_created_at, s.updated_at as set_updated_at, s.archive_hash as set_archive_hash, s.archive_size as set_archive_size, s.archive_modified_at as set_archive_modified_at, s.storyboard as set_storyboard, s.locked as set_locked, s.visible as set_visible
-	                               from beatmaps b
-	                               join beatmapsets s on s.id = b.beatmapset_id
-	                               where b.id = @Id
-	                               """;
-
-	private const string ByHashSql = """
-	                                 select b.id, b.beatmapset_id, b.hash, b.version, b.mode, b.star, b.length, b.bpm, b.cs, b.ar, b.od, b.hp, b.objects, b.background, b.audio, b.video, b.preview_time, b.storyboard, b.created_at, b.updated_at, b.locked, b.visible,
-	                                 s.id as set_id, s.artist as set_artist, s.title as set_title, s.creator as set_creator, s.created_at as set_created_at, s.updated_at as set_updated_at, s.archive_hash as set_archive_hash, s.archive_size as set_archive_size, s.archive_modified_at as set_archive_modified_at, s.storyboard as set_storyboard, s.locked as set_locked, s.visible as set_visible
-	                                 from beatmaps b
-	                                 join beatmapsets s on s.id = b.beatmapset_id
-	                                 where b.hash = @Hash
-	                                 """;
-
-	private const string BySetSql = """
-	                                select b.id, b.beatmapset_id, b.hash, b.version, b.mode, b.star, b.length, b.bpm, b.cs, b.ar, b.od, b.hp, b.objects, b.background, b.audio, b.video, b.preview_time, b.storyboard, b.created_at, b.updated_at, b.locked, b.visible,
-	                                s.id as set_id, s.artist as set_artist, s.title as set_title, s.creator as set_creator, s.created_at as set_created_at, s.updated_at as set_updated_at, s.archive_hash as set_archive_hash, s.archive_size as set_archive_size, s.archive_modified_at as set_archive_modified_at, s.storyboard as set_storyboard, s.locked as set_locked, s.visible as set_visible
-	                                from beatmaps b
-	                                join beatmapsets s on s.id = b.beatmapset_id
-	                                where b.beatmapset_id = @SetId
-	                                order by b.id
-	                                """;
-
-	#endregion
-
 	// jsonb keeps object keys in its own order, so the mode discriminator need not come first.
 	// The objects of each mode are stored with a mode discriminator; jsonb keeps object keys in its own order.
 	private static readonly JsonSerializerOptions StoredJson = new()
@@ -589,4 +529,64 @@ internal sealed class PostgresBeatmapRepository(
 		public bool Visible { get; set; }
 		public DateTimeOffset CreatedAt { get; set; }
 	}
+
+	#region SQL Scripts
+
+	private const string UpdateSql = """
+	                                 update beatmaps set
+	                                 beatmapset_id = @BeatmapsetId,
+	                                 hash = @Hash,
+	                                 version = @Version,
+	                                 mode = @Mode,
+	                                 star = @Star,
+	                                 length = @Length,
+	                                 bpm = @Bpm,
+	                                 cs = @Cs,
+	                                 ar = @Ar,
+	                                 od = @Od,
+	                                 hp = @Hp,
+	                                 objects = @Objects::jsonb,
+	                                 background = @Background,
+	                                 audio = @Audio,
+	                                 video = @Video,
+	                                 preview_time = @PreviewTime,
+	                                 storyboard = @Storyboard,
+	                                 created_at = @CreatedAt,
+	                                 updated_at = @UpdatedAt,
+	                                 locked = @Locked,
+	                                 visible = @Visible
+	                                 where id = @Id;
+	                                 """;
+
+	private const string InsertSql = """
+	                                 insert into beatmaps (id, beatmapset_id, hash, version, mode, star, length, bpm, cs, ar, od, hp, objects, background, audio, video, preview_time, storyboard, created_at, updated_at, locked, visible)
+	                                 values (@Id, @BeatmapsetId, @Hash, @Version, @Mode, @Star, @Length, @Bpm, @Cs, @Ar, @Od, @Hp, @Objects::jsonb, @Background, @Audio, @Video, @PreviewTime, @Storyboard, @CreatedAt, @UpdatedAt, @Locked, @Visible);
+	                                 """;
+
+	private const string ByIdSql = """
+	                               select b.id, b.beatmapset_id, b.hash, b.version, b.mode, b.star, b.length, b.bpm, b.cs, b.ar, b.od, b.hp, b.objects, b.background, b.audio, b.video, b.preview_time, b.storyboard, b.created_at, b.updated_at, b.locked, b.visible,
+	                               s.id as set_id, s.artist as set_artist, s.title as set_title, s.creator as set_creator, s.created_at as set_created_at, s.updated_at as set_updated_at, s.archive_hash as set_archive_hash, s.archive_size as set_archive_size, s.archive_modified_at as set_archive_modified_at, s.storyboard as set_storyboard, s.locked as set_locked, s.visible as set_visible
+	                               from beatmaps b
+	                               join beatmapsets s on s.id = b.beatmapset_id
+	                               where b.id = @Id
+	                               """;
+
+	private const string ByHashSql = """
+	                                 select b.id, b.beatmapset_id, b.hash, b.version, b.mode, b.star, b.length, b.bpm, b.cs, b.ar, b.od, b.hp, b.objects, b.background, b.audio, b.video, b.preview_time, b.storyboard, b.created_at, b.updated_at, b.locked, b.visible,
+	                                 s.id as set_id, s.artist as set_artist, s.title as set_title, s.creator as set_creator, s.created_at as set_created_at, s.updated_at as set_updated_at, s.archive_hash as set_archive_hash, s.archive_size as set_archive_size, s.archive_modified_at as set_archive_modified_at, s.storyboard as set_storyboard, s.locked as set_locked, s.visible as set_visible
+	                                 from beatmaps b
+	                                 join beatmapsets s on s.id = b.beatmapset_id
+	                                 where b.hash = @Hash
+	                                 """;
+
+	private const string BySetSql = """
+	                                select b.id, b.beatmapset_id, b.hash, b.version, b.mode, b.star, b.length, b.bpm, b.cs, b.ar, b.od, b.hp, b.objects, b.background, b.audio, b.video, b.preview_time, b.storyboard, b.created_at, b.updated_at, b.locked, b.visible,
+	                                s.id as set_id, s.artist as set_artist, s.title as set_title, s.creator as set_creator, s.created_at as set_created_at, s.updated_at as set_updated_at, s.archive_hash as set_archive_hash, s.archive_size as set_archive_size, s.archive_modified_at as set_archive_modified_at, s.storyboard as set_storyboard, s.locked as set_locked, s.visible as set_visible
+	                                from beatmaps b
+	                                join beatmapsets s on s.id = b.beatmapset_id
+	                                where b.beatmapset_id = @SetId
+	                                order by b.id
+	                                """;
+
+	#endregion
 }

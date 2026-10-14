@@ -7,14 +7,16 @@ using System.Text;
 using System.Threading.Channels;
 using Basil.Application.Storage.Contracts.Beatmaps;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Common;
 using Basil.Domain.Content;
 using Basil.Infrastructure.Storage.Common.Options;
 using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Storage.Beatmaps;
 
-/// <summary>Stores each beatmapset's archive and the files made from it in its own folder of Data/Beatmapsets, and takes in what is placed there.</summary>
+/// <summary>
+///     Stores each beatmapset's archive and the files made from it in its own folder of Data/Beatmapsets, and takes
+///     in what is placed there.
+/// </summary>
 internal sealed class FileBeatmapsetStorage(
 	DataPaths paths,
 	TimeProvider time,
@@ -105,83 +107,6 @@ internal sealed class FileBeatmapsetStorage(
 		}
 
 		return Task.CompletedTask;
-	}
-
-	/// <summary>Determines whether a name is that of a beatmapset archive.</summary>
-	/// <param name="name">The file name or path.</param>
-	/// <returns><see langword="true" /> for an .osz archive.</returns>
-	private static bool IsArchiveName(string name)
-	{
-		return name.EndsWith(".osz", StringComparison.OrdinalIgnoreCase);
-	}
-
-	/// <summary>Determines whether a file name is one Windows keeps for a device, whatever its extension.</summary>
-	/// <param name="name">The file name.</param>
-	/// <returns><see langword="true" /> for names such as <c>CON</c>, <c>nul.txt</c> or <c>COM1</c>.</returns>
-	private static bool IsReservedName(string name)
-	{
-		var dot = name.IndexOf('.');
-		return ReservedNames.Contains((dot < 0 ? name : name[..dot]).TrimEnd(' '));
-	}
-
-	/// <summary>Builds the entry of an archive file lying in the storage.</summary>
-	/// <param name="path">The archive's full path.</param>
-	/// <param name="name">The archive's name.</param>
-	/// <returns>The archive entry.</returns>
-	private static FileBeatmapsetArchive ArchiveAt(string path, string name)
-	{
-		var info = new FileInfo(path);
-		return new FileBeatmapsetArchive(path, name,
-			new ContentStamp(info.Length, new DateTimeOffset(info.LastWriteTimeUtc, TimeSpan.Zero)));
-	}
-
-	/// <summary>Packs files of a folder into a new archive, each under its path inside the folder.</summary>
-	/// <param name="folder">The folder's full path.</param>
-	/// <param name="files">The full paths of the files to pack, all inside the folder.</param>
-	/// <param name="target">The new archive's full path.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	private static async Task PackFilesAsync(string folder, IEnumerable<string> files, string target,
-		CancellationToken cancellationToken)
-	{
-		var stream = new FileStream(target, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920,
-			FileOptions.Asynchronous);
-		await using (stream.ConfigureAwait(false))
-		{
-			using var zip = new ZipArchive(stream, ZipArchiveMode.Create, true);
-			foreach (var file in files)
-			{
-				cancellationToken.ThrowIfCancellationRequested();
-				var entry = zip.CreateEntry(Path.GetRelativePath(folder, file).Replace('\\', '/'),
-					CompressionLevel.Optimal);
-				var input = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 81920,
-					FileOptions.Asynchronous);
-				await using (input.ConfigureAwait(false))
-				{
-					var output = entry.Open();
-					await using (output.ConfigureAwait(false))
-					{
-						await input.CopyToAsync(output, cancellationToken).ConfigureAwait(false);
-					}
-				}
-			}
-		}
-	}
-
-	/// <summary>Builds the full path of a new name in the storage that is never listed, watched or taken in.</summary>
-	/// <param name="extension">The extension to end the name with, or empty for a folder.</param>
-	/// <returns>The full path, on the same volume as the set folders it is moved into.</returns>
-	private string Incoming(string extension = "")
-	{
-		return Path.Combine(paths.Beatmapsets.Path, $"{IncomingMarker}{Guid.NewGuid():N}{extension}");
-	}
-
-	/// <summary>Determines whether a top-level name is hidden from listing and watching.</summary>
-	/// <param name="name">The name.</param>
-	/// <returns><see langword="true" /> while the name is being removed or written.</returns>
-	internal static bool IsHidden(string name)
-	{
-		return name.Contains(DeletedMarker, StringComparison.Ordinal) ||
-		       name.StartsWith(IncomingMarker, StringComparison.Ordinal);
 	}
 
 	/// <inheritdoc />
@@ -589,6 +514,99 @@ internal sealed class FileBeatmapsetStorage(
 		}
 	}
 
+	/// <inheritdoc />
+	public async Task DeleteAsync(Beatmapset set, CancellationToken cancellationToken = default)
+	{
+		var gate = SetLocks.GetOrAdd(set.Id, static _ => new SemaphoreSlim(1, 1));
+		await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+		try
+		{
+			foreach (var folder in FoldersOf(set.Id).Where(IsSetFolder))
+				RemoveMarked(MarkDeleted(folder), set);
+		}
+		finally
+		{
+			gate.Release();
+		}
+	}
+
+	/// <summary>Determines whether a name is that of a beatmapset archive.</summary>
+	/// <param name="name">The file name or path.</param>
+	/// <returns><see langword="true" /> for an .osz archive.</returns>
+	private static bool IsArchiveName(string name)
+	{
+		return name.EndsWith(".osz", StringComparison.OrdinalIgnoreCase);
+	}
+
+	/// <summary>Determines whether a file name is one Windows keeps for a device, whatever its extension.</summary>
+	/// <param name="name">The file name.</param>
+	/// <returns><see langword="true" /> for names such as <c>CON</c>, <c>nul.txt</c> or <c>COM1</c>.</returns>
+	private static bool IsReservedName(string name)
+	{
+		var dot = name.IndexOf('.');
+		return ReservedNames.Contains((dot < 0 ? name : name[..dot]).TrimEnd(' '));
+	}
+
+	/// <summary>Builds the entry of an archive file lying in the storage.</summary>
+	/// <param name="path">The archive's full path.</param>
+	/// <param name="name">The archive's name.</param>
+	/// <returns>The archive entry.</returns>
+	private static FileBeatmapsetArchive ArchiveAt(string path, string name)
+	{
+		var info = new FileInfo(path);
+		return new FileBeatmapsetArchive(path, name,
+			new ContentStamp(info.Length, new DateTimeOffset(info.LastWriteTimeUtc, TimeSpan.Zero)));
+	}
+
+	/// <summary>Packs files of a folder into a new archive, each under its path inside the folder.</summary>
+	/// <param name="folder">The folder's full path.</param>
+	/// <param name="files">The full paths of the files to pack, all inside the folder.</param>
+	/// <param name="target">The new archive's full path.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	private static async Task PackFilesAsync(string folder, IEnumerable<string> files, string target,
+		CancellationToken cancellationToken)
+	{
+		var stream = new FileStream(target, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920,
+			FileOptions.Asynchronous);
+		await using (stream.ConfigureAwait(false))
+		{
+			using var zip = new ZipArchive(stream, ZipArchiveMode.Create, true);
+			foreach (var file in files)
+			{
+				cancellationToken.ThrowIfCancellationRequested();
+				var entry = zip.CreateEntry(Path.GetRelativePath(folder, file).Replace('\\', '/'),
+					CompressionLevel.Optimal);
+				var input = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 81920,
+					FileOptions.Asynchronous);
+				await using (input.ConfigureAwait(false))
+				{
+					var output = entry.Open();
+					await using (output.ConfigureAwait(false))
+					{
+						await input.CopyToAsync(output, cancellationToken).ConfigureAwait(false);
+					}
+				}
+			}
+		}
+	}
+
+	/// <summary>Builds the full path of a new name in the storage that is never listed, watched or taken in.</summary>
+	/// <param name="extension">The extension to end the name with, or empty for a folder.</param>
+	/// <returns>The full path, on the same volume as the set folders it is moved into.</returns>
+	private string Incoming(string extension = "")
+	{
+		return Path.Combine(paths.Beatmapsets.Path, $"{IncomingMarker}{Guid.NewGuid():N}{extension}");
+	}
+
+	/// <summary>Determines whether a top-level name is hidden from listing and watching.</summary>
+	/// <param name="name">The name.</param>
+	/// <returns><see langword="true" /> while the name is being removed or written.</returns>
+	internal static bool IsHidden(string name)
+	{
+		return name.Contains(DeletedMarker, StringComparison.Ordinal) ||
+		       name.StartsWith(IncomingMarker, StringComparison.Ordinal);
+	}
+
 	/// <summary>Yields each watched entry once its changes have settled, disposing the watcher when the watching ends.</summary>
 	private async IAsyncEnumerable<BeatmapsetSource> WatchEntriesAsync(FileSystemWatcher watcher,
 		Channel<string> settled, Dictionary<string, CancellationTokenSource> pending, Lock gate,
@@ -610,22 +628,6 @@ internal sealed class FileBeatmapsetStorage(
 				foreach (var debounce in pending.Values) debounce.Cancel();
 				pending.Clear();
 			}
-		}
-	}
-
-	/// <inheritdoc />
-	public async Task DeleteAsync(Beatmapset set, CancellationToken cancellationToken = default)
-	{
-		var gate = SetLocks.GetOrAdd(set.Id, static _ => new SemaphoreSlim(1, 1));
-		await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
-		try
-		{
-			foreach (var folder in FoldersOf(set.Id).Where(IsSetFolder))
-				RemoveMarked(MarkDeleted(folder), set);
-		}
-		finally
-		{
-			gate.Release();
 		}
 	}
 
@@ -701,7 +703,10 @@ internal sealed class FileBeatmapsetStorage(
 			: null;
 	}
 
-	/// <summary>Builds the canonical name of a set's folder: its id, artist and title as osu! names its songs, without the characters a folder name may not have.</summary>
+	/// <summary>
+	///     Builds the canonical name of a set's folder: its id, artist and title as osu! names its songs, without the
+	///     characters a folder name may not have.
+	/// </summary>
 	/// <param name="set">The beatmapset the folder holds.</param>
 	/// <returns>The folder's name.</returns>
 	private static string FolderName(Beatmapset set)
@@ -754,7 +759,10 @@ internal sealed class FileBeatmapsetStorage(
 		       ?? candidates.MinBy(folder => Path.GetFileName(folder), StringComparer.Ordinal);
 	}
 
-	/// <summary>Renames a folder out of the way before its files are removed, so nothing new is stored under its name meanwhile.</summary>
+	/// <summary>
+	///     Renames a folder out of the way before its files are removed, so nothing new is stored under its name
+	///     meanwhile.
+	/// </summary>
 	/// <param name="folder">The folder's full path.</param>
 	/// <returns>The folder's new path, carrying the deleted marker.</returns>
 	/// <exception cref="IOException">The folder could not be renamed; nothing was changed.</exception>

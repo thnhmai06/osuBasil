@@ -23,7 +23,8 @@ public interface IGeneralChannelService
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, or NameTaken when a general channel with that name is open.</returns>
 	/// <remarks>Requires <see cref="Permissions.DeveloperConfigureServer" />; announces <see cref="ChannelOpened" />.</remarks>
-	Task<ChannelManageResult> CreateAsync(GeneralChannel channel, Connection by, CancellationToken cancellationToken = default);
+	Task<ChannelManageResult> CreateAsync(GeneralChannel channel, Connection by,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>Changes the settings of an open general channel.</summary>
 	/// <param name="channel">The channel to change.</param>
@@ -45,5 +46,6 @@ public interface IGeneralChannelService
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok or NotAuthorized.</returns>
 	/// <remarks>Requires <see cref="Permissions.DeveloperConfigureServer" />; announces <see cref="ChannelClosed" />.</remarks>
-	Task<ChannelManageResult> DeleteAsync(GeneralChannelSession channel, Connection by, CancellationToken cancellationToken = default);
+	Task<ChannelManageResult> DeleteAsync(GeneralChannelSession channel, Connection by,
+		CancellationToken cancellationToken = default);
 }

@@ -223,7 +223,10 @@ public static class PermissionsExtensions
 
 		/// <summary>Gets the privileges an osu! client is told about for a set of effective permissions.</summary>
 		/// <returns>The privileges of every group in which at least one permission is held.</returns>
-		/// <remarks>Watching rooms with osu!tourney also turns on <see cref="BanchoPrivileges.Supporter" />, which osu!tourney requires.</remarks>
+		/// <remarks>
+		///     Watching rooms with osu!tourney also turns on <see cref="BanchoPrivileges.Supporter" />, which osu!tourney
+		///     requires.
+		/// </remarks>
 		public BanchoPrivileges ToPrivileges()
 		{
 			var privileges = BanchoPrivileges.None;

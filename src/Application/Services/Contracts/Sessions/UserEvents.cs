@@ -68,6 +68,7 @@ public enum ConnectionCloseReason : byte
 	/// <summary>The user's sessions were ended, or the user may no longer use this kind of client.</summary>
 	Revoked
 }
+
 /// <summary>Something happened between an osu! client and a connection spectating it.</summary>
 /// <param name="Host">The osu! client being spectated.</param>
 /// <param name="Spectator">The spectating connection.</param>

@@ -14,12 +14,6 @@ internal sealed class GeneralChannelRegistry : IGeneralChannelRegistry
 	public IReadOnlyDictionary<string, GeneralChannelSession> All => _channels;
 
 	/// <inheritdoc />
-	public GeneralChannelSession? Find(string name)
-	{
-		return _channels.GetValueOrDefault(name);
-	}
-
-	/// <inheritdoc />
 	bool IGeneralChannelRegistry.Add(GeneralChannelSession channel)
 	{
 		return _channels.TryAdd(channel.Channel.Name, channel);
@@ -29,5 +23,11 @@ internal sealed class GeneralChannelRegistry : IGeneralChannelRegistry
 	bool IGeneralChannelRegistry.Remove(GeneralChannelSession channel)
 	{
 		return _channels.TryRemove(new KeyValuePair<string, GeneralChannelSession>(channel.Channel.Name, channel));
+	}
+
+	/// <inheritdoc />
+	public GeneralChannelSession? Find(string name)
+	{
+		return _channels.GetValueOrDefault(name);
 	}
 }

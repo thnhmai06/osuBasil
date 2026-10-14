@@ -53,6 +53,7 @@ internal sealed class PostgresChannelRepository(DatabaseReader reader, DatabaseW
 			var channel = row.ToChannel();
 			_channels[channel.Name] = channel;
 		}
+
 		_loaded = true;
 	}
 
@@ -73,12 +74,12 @@ internal sealed class PostgresChannelRepository(DatabaseReader reader, DatabaseW
 			""",
 			new
 			{
-				Name = channel.Name,
-				Topic = channel.Topic,
+				channel.Name,
+				channel.Topic,
 				ReadPermissions = readPermissions,
 				WritePermissions = writePermissions,
-				AutoJoin = channel.AutoJoin,
-				Visible = channel.Visible
+				channel.AutoJoin,
+				channel.Visible
 			});
 	}
 

@@ -19,6 +19,9 @@ public sealed class Match : IEquatable<Match>
 		}
 	}
 
+	/// <summary>Gets the match data this identity wraps.</summary>
+	public required MatchData Value { get; init; }
+
 	/// <summary>
 	///     Determines whether another match refers to the same persisted match.
 	/// </summary>
@@ -35,9 +38,6 @@ public sealed class Match : IEquatable<Match>
 		if (other is null) return false;
 		return Id == other.Id;
 	}
-
-	/// <summary>Gets the match data this identity wraps.</summary>
-	public required MatchData Value { get; init; }
 
 	/// <summary>
 	///     Determines whether this match equals another object.
@@ -65,12 +65,6 @@ public sealed class Match : IEquatable<Match>
 /// <summary>The data of a match, separate from its persistent identity.</summary>
 public sealed class MatchData
 {
-	/// <summary>Tells whether a text can be a match's name: not empty or blank, and without the NUL character.</summary>
-	public static bool IsValidName(string name)
-	{
-		return !string.IsNullOrWhiteSpace(name) && !name.HasNul();
-	}
-
 	/// <summary>Gets or sets the name of the match.</summary>
 	/// <exception cref="ArgumentException">The name is empty, blank, or contains the NUL character.</exception>
 	public required string Name
@@ -92,4 +86,10 @@ public sealed class MatchData
 
 	/// <summary>Gets or sets a value that indicates whether the match history is visible only to its creator and participants.</summary>
 	public bool IsPrivate { get; set; } = false;
+
+	/// <summary>Tells whether a text can be a match's name: not empty or blank, and without the NUL character.</summary>
+	public static bool IsValidName(string name)
+	{
+		return !string.IsNullOrWhiteSpace(name) && !name.HasNul();
+	}
 }

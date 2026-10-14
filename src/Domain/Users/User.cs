@@ -18,6 +18,9 @@ public sealed class User : IEquatable<User>
 			: throw new ArgumentOutOfRangeException(nameof(value), value, "User ids start at 1.");
 	}
 
+	/// <summary>Gets the user data this identity wraps.</summary>
+	public required UserData Value { get; init; }
+
 	/// <summary>
 	///     Determines whether another user refers to the same account.
 	/// </summary>
@@ -34,9 +37,6 @@ public sealed class User : IEquatable<User>
 		if (other is null) return false;
 		return Id == other.Id;
 	}
-
-	/// <summary>Gets the user data this identity wraps.</summary>
-	public required UserData Value { get; init; }
 
 	/// <summary>
 	///     Determines whether this user equals another object.
@@ -69,12 +69,6 @@ public sealed partial class UserData
 	/// <summary>Gets the form of the name that identifies the user: lower case, with spaces written as underscores.</summary>
 	/// <remarks>Two names with the same safe name are the same name.</remarks>
 	public string SafeName => SafeNameOf(Name);
-
-	/// <summary>Gets the safe name of a user name.</summary>
-	public static string SafeNameOf(string name)
-	{
-		return name.ToLowerInvariant().Replace(' ', '_');
-	}
 
 	/// <summary>
 	///     Gets or sets the username.
@@ -116,6 +110,12 @@ public sealed partial class UserData
 
 	/// <summary>Gets or sets the date and time when the user was deleted, if any.</summary>
 	public DateTimeOffset? DeletedAt { get; set; }
+
+	/// <summary>Gets the safe name of a user name.</summary>
+	public static string SafeNameOf(string name)
+	{
+		return name.ToLowerInvariant().Replace(' ', '_');
+	}
 
 	[GeneratedRegex(@"^[a-zA-Z0-9_\-\[\] ]+$")]
 	private static partial Regex OsuUsernameChars();

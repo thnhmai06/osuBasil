@@ -18,7 +18,10 @@ public static class ScoreSubmissionCipher
 	/// <param name="osuVersion">The client's osu! version string, which is part of the key.</param>
 	/// <returns>The plaintext, UTF-8 decoded.</returns>
 	/// <exception cref="FormatException">A base64 argument is malformed.</exception>
-	/// <exception cref="Org.BouncyCastle.Crypto.InvalidCipherTextException">The ciphertext does not decrypt with this key and IV.</exception>
+	/// <exception cref="Org.BouncyCastle.Crypto.InvalidCipherTextException">
+	///     The ciphertext does not decrypt with this key and
+	///     IV.
+	/// </exception>
 	public static string Decrypt(string encryptedBase64, string ivBase64, string osuVersion)
 	{
 		var key = Encoding.UTF8.GetBytes($"osu!-scoreburgr---------{osuVersion}");
