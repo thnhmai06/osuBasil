@@ -1,5 +1,5 @@
 using Basil.Domain.Bancho;
-using Basil.Domain.Utilities;
+using Basil.Domain.Common;
 
 namespace Basil.Application.Services.Contracts.Scores;
 

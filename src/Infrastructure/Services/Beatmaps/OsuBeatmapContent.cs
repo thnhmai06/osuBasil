@@ -1,4 +1,3 @@
-using Basil.Domain.Beatmaps;
 using osu.Framework.Audio.Track;
 using osu.Framework.Graphics.Textures;
 using osu.Game.Beatmaps;
@@ -8,7 +7,7 @@ using Beatmap = osu.Game.Beatmaps.Beatmap;
 namespace Basil.Infrastructure.Services.Beatmaps;
 
 /// <summary>The understood content of a .osu file, as ppy's osu!lazer libraries read it.</summary>
-internal sealed class OsuBeatmapContent(IWorkingBeatmap working) : BeatmapContent
+internal sealed class OsuBeatmapContent(IWorkingBeatmap working)
 {
 	/// <summary>Gets the osu!lazer working beatmap the decoded difficulty is read through.</summary>
 	internal IWorkingBeatmap Working => working;

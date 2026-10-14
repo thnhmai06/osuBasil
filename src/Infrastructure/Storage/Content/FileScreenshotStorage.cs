@@ -11,14 +11,15 @@ internal sealed class FileScreenshotStorage(DataPaths paths) : IScreenshotStorag
 	private DataStorage Files => paths.Screenshots;
 
 	/// <inheritdoc />
-	public Task<IEnumerable<AssetReference>> ListAsync(CancellationToken cancellationToken = default)
+	public Task<IEnumerable<ContentReference>> ListAsync(CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult<IEnumerable<AssetReference>>(
+		return Task.FromResult<IEnumerable<ContentReference>>(
 			Files.Keys.Order(StringComparer.OrdinalIgnoreCase).Select(Files.ReferenceOf));
 	}
 
 	/// <inheritdoc />
-	public async Task<AssetReference> SaveAsync(Stream content, string extension, CancellationToken cancellationToken = default)
+	public async Task<ContentReference> SaveAsync(Stream content, string extension,
+		CancellationToken cancellationToken = default)
 	{
 		if (extension.Length is < 1 or > 8 || !extension.All(char.IsAsciiLetterOrDigit))
 			throw new ArgumentException("The extension must be 1 to 8 ASCII letters or digits.", nameof(extension));
@@ -29,13 +30,13 @@ internal sealed class FileScreenshotStorage(DataPaths paths) : IScreenshotStorag
 	}
 
 	/// <inheritdoc />
-	public Task<Stream?> OpenAsync(AssetReference screenshot, CancellationToken cancellationToken = default)
+	public Task<Stream?> OpenAsync(ContentReference screenshot, CancellationToken cancellationToken = default)
 	{
 		return Task.FromResult<Stream?>(Files.TryGetName(screenshot, out var name) ? Files.Open(name) : null);
 	}
 
 	/// <inheritdoc />
-	public Task DeleteAsync(AssetReference screenshot, CancellationToken cancellationToken = default)
+	public Task DeleteAsync(ContentReference screenshot, CancellationToken cancellationToken = default)
 	{
 		if (Files.TryGetName(screenshot, out var name))
 			Files.Delete(name);

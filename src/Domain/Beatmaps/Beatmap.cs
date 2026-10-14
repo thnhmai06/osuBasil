@@ -1,17 +1,17 @@
-using Basil.Domain.Utilities;
+using Basil.Domain.Common;
 
 namespace Basil.Domain.Beatmaps;
 
 /// <summary>
 ///     A stored beatmap difficulty identified by its id.
 /// </summary>
-public sealed class Beatmap : IWrapper<BeatmapData>, IEquatable<Beatmap>
+public sealed class Beatmap : IEquatable<Beatmap>
 {
 	/// <summary>
 	///     The lowest id of a beatmap that has no osu! id and was given a local one.
 	/// </summary>
 	/// <remarks>Real osu! ids stay well below this value.</remarks>
-	public const int LocalIdFloor = 1_000_000_000;
+	private const int LocalIdFloor = 1_000_000_000;
 
 	/// <summary>Gets the unique identifier of the beatmap: its osu! id, or a local id.</summary>
 	/// <exception cref="ArgumentOutOfRangeException">The value is less than 1.</exception>
@@ -23,13 +23,6 @@ public sealed class Beatmap : IWrapper<BeatmapData>, IEquatable<Beatmap>
 			: throw new ArgumentOutOfRangeException(nameof(value), value, "Beatmap ids start at 1.");
 	}
 
-	/// <summary>Gets or sets the beatmap data this identity wraps.</summary>
-	public required BeatmapData Value { get; set; }
-
-	/// <summary>Gets or sets the understood content of the beatmap's .osu file, or <see langword="null" /> until it is first needed.</summary>
-	/// <remarks>It lives in memory with this beatmap and is never stored.</remarks>
-	public BeatmapContent? Content { get; set; }
-
 	/// <summary>
 	///     Gets a value that indicates whether the beatmap has no osu! id and was given a local one.
 	/// </summary>
@@ -38,6 +31,54 @@ public sealed class Beatmap : IWrapper<BeatmapData>, IEquatable<Beatmap>
 	///     otherwise, <see langword="false" />.
 	/// </value>
 	public bool IsLocallyIngested => Id >= LocalIdFloor;
+
+	/// <summary>Gets or sets the beatmapset the difficulty belongs to.</summary>
+	public required Beatmapset Beatmapset { get; set; }
+
+	/// <summary>Gets or sets the MD5 hash of the difficulty's .osu file, which identifies its content.</summary>
+	public required Md5 Hash { get; set; }
+
+	/// <summary>Gets or sets what the difficulty is: its name, gameplay stats and hit objects.</summary>
+	public required BeatmapMetadata Metadata { get; set; }
+
+	/// <summary>Gets or sets the files of the set the difficulty uses.</summary>
+	public required BeatmapAssets Assets { get; set; }
+
+	/// <summary>
+	///     Whether the difficulty is write-locked. Locked difficulties cannot be updated or deleted.
+	/// </summary>
+	public bool Locked { get; set; } = false;
+
+	/// <summary>
+	///     Whether the difficulty is shown in public listings and on the public beatmap endpoints.
+	/// </summary>
+	public bool Visible { get; set; } = true;
+
+	/// <summary>The time of the latest import of the difficulty, in UTC.</summary>
+	public required DateTimeOffset UpdatedAt { get; set; }
+
+	/// <summary>The time the difficulty was first imported, in UTC.</summary>
+	public required DateTimeOffset CreatedAt { get; init; }
+
+	/// <summary>
+	///     Gets the full display name of the beatmap.
+	/// </summary>
+	/// <value>An "Artist - Title [Version]" string.</value>
+	public string Name => $"{Beatmapset.Metadata.Name} [{Metadata.Version}]";
+
+	/// <summary>Determines whether the difficulty or its set is locked.</summary>
+	/// <returns><see langword="true" /> if either is locked; otherwise, <see langword="false" />.</returns>
+	public bool IsLocked()
+	{
+		return Locked || Beatmapset.Locked;
+	}
+
+	/// <summary>Determines whether both the difficulty and its set are shown.</summary>
+	/// <returns><see langword="true" /> if both are visible; otherwise, <see langword="false" />.</returns>
+	public bool IsVisible()
+	{
+		return Visible && Beatmapset.Visible;
+	}
 
 	/// <summary>
 	///     Determines whether another beatmap refers to the same difficulty.
@@ -71,71 +112,5 @@ public sealed class Beatmap : IWrapper<BeatmapData>, IEquatable<Beatmap>
 	public override int GetHashCode()
 	{
 		return Id;
-	}
-}
-
-/// <summary>
-///     A single difficulty within a <see cref="Beatmapset" />.
-/// </summary>
-/// <remarks>
-///     The <see cref="Difficulty" /> value holds the gameplay stats, including the star rating.
-/// </remarks>
-public sealed class BeatmapData
-{
-	/// <summary>The MD5 hash of the beatmap file's contents.</summary>
-	public required Md5 Hash { get; init; }
-
-	/// <summary>The set this difficulty belongs to.</summary>
-	public required Beatmapset Beatmapset { get; init; }
-
-	/// <summary>The difficulty name, such as "Insane".</summary>
-	public required string Version { get; init => field = value.ThrowIfHasNul(); } = string.Empty;
-
-	/// <summary>The gameplay stats of the beatmap.</summary>
-	public required Difficulty Difficulty { get; init; }
-
-	/// <summary>The per-mode hit-object counts of the beatmap.</summary>
-	public required BeatmapObjects Objects { get; init; }
-
-	/// <summary>The name of the difficulty's background in the set's backgrounds, or <see langword="null" /> when it has none.</summary>
-	public string? Background { get; init; }
-
-	/// <summary>The name of the difficulty's audio track in the set's audio, or <see langword="null" /> when it has none.</summary>
-	public string? Audio { get; init; }
-
-	/// <summary>The name of the difficulty's video in the set's videos, or <see langword="null" /> when it has none.</summary>
-	public string? Video { get; init; }
-
-	/// <summary>Where the audio preview starts, or <see langword="null" /> when the difficulty sets none.</summary>
-	public TimeSpan? PreviewTime { get; init; }
-
-	/// <summary>
-	///     Whether the difficulty is write-locked. Locked difficulties cannot be updated or deleted.
-	/// </summary>
-	public bool Locked { get; set; } = false;
-
-	/// <summary>
-	///     Whether the difficulty is shown in public listings and on the public beatmap endpoints.
-	/// </summary>
-	public bool Visible { get; set; } = true;
-
-	/// <summary>
-	///     Gets the full display name of the beatmap.
-	/// </summary>
-	/// <value>An "Artist - Title [Version]" string.</value>
-	public string FullName => $"{Beatmapset.Value.Artist} - {Beatmapset.Value.Title} [{Version}]";
-
-	/// <summary>Determines whether the difficulty or its set is locked.</summary>
-	/// <returns><see langword="true" /> if either is locked; otherwise, <see langword="false" />.</returns>
-	public bool IsLocked()
-	{
-		return Locked || Beatmapset.Value.Locked;
-	}
-
-	/// <summary>Determines whether both the difficulty and its set are shown.</summary>
-	/// <returns><see langword="true" /> if both are visible; otherwise, <see langword="false" />.</returns>
-	public bool IsVisible()
-	{
-		return Visible && Beatmapset.Value.Visible;
 	}
 }

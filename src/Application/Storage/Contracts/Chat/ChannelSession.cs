@@ -1,5 +1,5 @@
 using Basil.Application.Storage.Contracts.Sessions;
-using Basil.Domain.Utilities;
+using Basil.Domain.Common;
 using Channel = Basil.Domain.Chat.Channel;
 
 namespace Basil.Application.Storage.Contracts.Chat;

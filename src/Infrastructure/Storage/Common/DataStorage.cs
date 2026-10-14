@@ -65,7 +65,10 @@ internal sealed class DataStorage : IReadOnlyDictionary<string, FileInfo>
 	}
 
 	/// <inheritdoc />
-	public bool ContainsKey(string key) => TryGetValue(key, out _);
+	public bool ContainsKey(string key)
+	{
+		return TryGetValue(key, out _);
+	}
 
 	/// <inheritdoc />
 	public bool TryGetValue(string key, [NotNullWhen(true)] out FileInfo? value)
@@ -84,7 +87,10 @@ internal sealed class DataStorage : IReadOnlyDictionary<string, FileInfo>
 	/// <param name="name">The file's name, relative to the directory.</param>
 	/// <returns>The absolute path of the file.</returns>
 	/// <exception cref="ArgumentException"><paramref name="name" /> is not a safe file name.</exception>
-	public string Resolve(string name) => SafePath.Combine(Path, name);
+	public string Resolve(string name)
+	{
+		return SafePath.Combine(Path, name);
+	}
 
 	/// <summary>Lists the names of the files directly in the directory matching a search pattern.</summary>
 	/// <param name="pattern">The OS search pattern the file names must match.</param>
@@ -99,13 +105,16 @@ internal sealed class DataStorage : IReadOnlyDictionary<string, FileInfo>
 	/// <summary>Makes an asset reference to a file of the directory.</summary>
 	/// <param name="name">The file's name, relative to the directory.</param>
 	/// <returns>The reference to the file.</returns>
-	public AssetReference ReferenceOf(string name) => new(RelativePath + "/" + name);
+	public ContentReference ReferenceOf(string name)
+	{
+		return new ContentReference(RelativePath + "/" + name);
+	}
 
 	/// <summary>Takes the name of a file of the directory out of an asset reference.</summary>
 	/// <param name="reference">The reference to take the name from.</param>
 	/// <param name="name">The file's name, relative to the directory.</param>
 	/// <returns><see langword="true" /> when the reference names a safe file name of the directory; otherwise, <see langword="false" />.</returns>
-	public bool TryGetName(AssetReference reference, [NotNullWhen(true)] out string? name)
+	public bool TryGetName(ContentReference reference, [NotNullWhen(true)] out string? name)
 	{
 		var prefix = RelativePath + "/";
 		if (!reference.IsStored || !reference.Value.StartsWith(prefix, StringComparison.Ordinal))
@@ -139,13 +148,13 @@ internal sealed class DataStorage : IReadOnlyDictionary<string, FileInfo>
 		try
 		{
 			await using (var stream = new FileStream(temporary, new FileStreamOptions
-			{
-				Mode = FileMode.CreateNew,
-				Access = FileAccess.Write,
-				Share = FileShare.None,
-				Options = FileOptions.Asynchronous,
-				BufferSize = BufferSize
-			}))
+			             {
+				             Mode = FileMode.CreateNew,
+				             Access = FileAccess.Write,
+				             Share = FileShare.None,
+				             Options = FileOptions.Asynchronous,
+				             BufferSize = BufferSize
+			             }))
 			{
 				await content.CopyToAsync(stream, cancellationToken).ConfigureAwait(false);
 			}
@@ -223,7 +232,10 @@ internal sealed class DataStorage : IReadOnlyDictionary<string, FileInfo>
 	}
 
 	/// <inheritdoc />
-	System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+	System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+	{
+		return GetEnumerator();
+	}
 
 	private bool TryResolve(string name, [NotNullWhen(true)] out string? path)
 	{

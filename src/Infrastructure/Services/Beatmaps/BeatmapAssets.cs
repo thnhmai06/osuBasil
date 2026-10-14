@@ -24,12 +24,11 @@ internal sealed class BeatmapAssets(
 		var previews = new Dictionary<string, TimeSpan?>(StringComparer.OrdinalIgnoreCase);
 		foreach (var beatmap in beatmaps)
 		{
-			var audio = beatmap.Value.Audio;
-			if (!string.IsNullOrEmpty(audio)) previews.TryAdd(audio, beatmap.Value.PreviewTime);
+			var audio = beatmap.Assets.AudioFile;
+			if (!string.IsNullOrEmpty(audio)) previews.TryAdd(audio, beatmap.Assets.PreviewTime);
 		}
 
 		foreach (var (audio, previewTime) in previews)
-		{
 			try
 			{
 				await BuildPreviewAsync(set, audio, previewTime ?? TimeSpan.Zero, cancellationToken)
@@ -44,7 +43,6 @@ internal sealed class BeatmapAssets(
 				logger.LogWarning(exception,
 					"Audio preview build failed: BeatmapsetId={BeatmapsetId} Audio={Audio}", set.Id, audio);
 			}
-		}
 	}
 
 	/// <summary>Makes the preview of one audio track from the set's stored audio.</summary>
@@ -88,7 +86,7 @@ internal sealed class BeatmapAssets(
 	}
 
 	/// <summary>Cuts the ten-second preview clip with ffmpeg.</summary>
-	private Task RunFfmpegAsync(string audioPath, TimeSpan start, string outputPath,
+	private Task<bool> RunFfmpegAsync(string audioPath, TimeSpan start, string outputPath,
 		CancellationToken cancellationToken)
 	{
 		return FFMpegArguments

@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 
-namespace Basil.Domain.Utilities;
+namespace Basil.Domain.Common;
 
 /// <summary>Rules that every address the server keeps follows.</summary>
 public static class UriExtensions

@@ -11,12 +11,12 @@ public interface IMenuIconStorage
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The reference to the stored icon.</returns>
 	/// <exception cref="ArgumentException"><paramref name="name" /> is not a safe file name.</exception>
-	Task<AssetReference> SaveAsync(string name, Stream content, CancellationToken cancellationToken = default);
+	Task<ContentReference> SaveAsync(string name, Stream content, CancellationToken cancellationToken = default);
 
 	/// <summary>Opens the stored icon image.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The icon's reference and bytes, or <see langword="null" /> when no icon is stored.</returns>
-	Task<(AssetReference Reference, Stream Content)?> OpenAsync(CancellationToken cancellationToken = default);
+	Task<(ContentReference Reference, Stream Content)?> OpenAsync(CancellationToken cancellationToken = default);
 
 	/// <summary>Deletes the stored icon; deleting when none is stored does nothing.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>

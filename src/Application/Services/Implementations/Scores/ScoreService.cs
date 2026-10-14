@@ -6,14 +6,13 @@ using Basil.Application.Services.Contracts.Scores;
 using Basil.Application.Storage.Contracts.Common;
 using Basil.Application.Storage.Contracts.Multiplayer;
 using Basil.Application.Storage.Contracts.Multiplayer.Matches;
-using Basil.Application.Storage.Contracts.Multiplayer.Rooms;
 using Basil.Application.Storage.Contracts.Scores;
 using Basil.Application.Storage.Contracts.Sessions;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Bancho;
+using Basil.Domain.Common;
 using Basil.Domain.Multiplayer.Rounds;
 using Basil.Domain.Scores;
-using Basil.Domain.Utilities;
 
 namespace Basil.Application.Services.Implementations.Scores;
 

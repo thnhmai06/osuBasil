@@ -11,7 +11,7 @@ namespace Basil.Application.Services.Implementations.Content;
 internal sealed class ScreenshotService(IScreenshotStorage screenshots, TimeProvider time) : IScreenshotService
 {
 	/// <inheritdoc />
-	public async Task<(AssetReference? Screenshot, ScreenshotUploadFailure? Failure)> UploadAsync(Connection by,
+	public async Task<(ContentReference? Screenshot, ScreenshotUploadFailure? Failure)> UploadAsync(Connection by,
 		Stream content, CancellationToken cancellationToken = default)
 	{
 		if (!PermissionRules.Allows(by, Permissions.PlayerUploadScreenshots, time.GetUtcNow()))
@@ -41,7 +41,7 @@ internal sealed class ScreenshotService(IScreenshotStorage screenshots, TimeProv
 	}
 
 	/// <inheritdoc />
-	public async Task<bool> DeleteAsync(Connection by, AssetReference screenshot,
+	public async Task<bool> DeleteAsync(Connection by, ContentReference screenshot,
 		CancellationToken cancellationToken = default)
 	{
 		if (!PermissionRules.Allows(by, Permissions.ModeratorDeleteScreenshots, time.GetUtcNow())) return false;
@@ -49,10 +49,10 @@ internal sealed class ScreenshotService(IScreenshotStorage screenshots, TimeProv
 		return true;
 	}
 
-	/// <summary>Tells which image format the content is.</summary>
+	/// <summary>Tells which image format the file is.</summary>
 	/// <param name="content">The whole image.</param>
 	/// <returns>
-	///     The file extension of the format, or <see langword="null" /> when the content is neither a JPEG nor a
+	///     The file extension of the format, or <see langword="null" /> when the file is neither a JPEG nor a
 	///     PNG image.
 	/// </returns>
 	private static string? ImageExtension(ReadOnlySpan<byte> content)

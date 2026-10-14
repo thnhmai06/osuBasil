@@ -1,12 +1,12 @@
 using System.Text.RegularExpressions;
-using Basil.Domain.Utilities;
+using Basil.Domain.Common;
 
 namespace Basil.Domain.Users;
 
 /// <summary>
 ///     A registered user identified by their id.
 /// </summary>
-public sealed class User : IWrapper<UserData>, IEquatable<User>
+public sealed class User : IEquatable<User>
 {
 	/// <summary>Gets the unique identifier of the user.</summary>
 	/// <exception cref="ArgumentOutOfRangeException">The value is less than 1.</exception>
@@ -71,7 +71,10 @@ public sealed partial class UserData
 	public string SafeName => SafeNameOf(Name);
 
 	/// <summary>Gets the safe name of a user name.</summary>
-	public static string SafeNameOf(string name) => name.ToLowerInvariant().Replace(' ', '_');
+	public static string SafeNameOf(string name)
+	{
+		return name.ToLowerInvariant().Replace(' ', '_');
+	}
 
 	/// <summary>
 	///     Gets or sets the username.

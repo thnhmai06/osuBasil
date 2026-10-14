@@ -1,5 +1,4 @@
-﻿using Basil.Domain.Utilities;
-
+using Basil.Domain.Common;
 namespace Basil.Domain.Chat;
 
 /// <summary>A chat channel, named and described by IRC convention.</summary>

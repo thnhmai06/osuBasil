@@ -5,4 +5,9 @@
 		<PackageReference Include="Microsoft.Extensions.Options"/>
 	</ItemGroup>
 
+	<ItemGroup>
+		<Folder Include="Multiplayer\Matches\"/>
+		<Folder Include="Multiplayer\Rounds\"/>
+	</ItemGroup>
+
 </Project>

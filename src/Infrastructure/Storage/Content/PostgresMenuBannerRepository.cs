@@ -16,7 +16,7 @@ internal sealed class PostgresMenuBannerRepository(
 	ILogger<PostgresMenuBannerRepository> logger)
 	: IMenuBannerRepository, IResident
 {
-	private readonly ConcurrentDictionary<AssetReference, MenuBanner> _banners = new();
+	private readonly ConcurrentDictionary<ContentReference, MenuBanner> _banners = new();
 
 	/// <inheritdoc />
 	public Task CreateOrUpdateAsync(MenuBanner banner, CancellationToken cancellationToken = default)
@@ -32,7 +32,7 @@ internal sealed class PostgresMenuBannerRepository(
 	}
 
 	/// <inheritdoc />
-	public ValueTask<MenuBanner?> GetAsync(AssetReference image, CancellationToken cancellationToken = default)
+	public ValueTask<MenuBanner?> GetAsync(ContentReference image, CancellationToken cancellationToken = default)
 	{
 		return ValueTask.FromResult(_banners.GetValueOrDefault(image));
 	}
@@ -57,13 +57,14 @@ internal sealed class PostgresMenuBannerRepository(
 	public async Task LoadAsync(CancellationToken cancellationToken)
 	{
 		var rows = await reader.ReadAsync(connection => connection.QueryAsync<MenuBannerRow>(
-			"select image, url, starts_at, ends_at, created_at from menu_banners"), cancellationToken)
+				"select image, url, starts_at, ends_at, created_at from menu_banners"), cancellationToken)
 			.ConfigureAwait(false);
 		foreach (var row in rows)
 		{
-			if (!AssetReference.TryParse(row.Image, null, out var image))
+			if (!ContentReference.TryParse(row.Image, null, out var image))
 			{
-				logger.LogWarning("The menu banner image {Image} is not a valid asset reference and is not shown", row.Image);
+				logger.LogWarning("The menu banner image {Image} is not a valid asset reference and is not shown",
+					row.Image);
 				continue;
 			}
 
@@ -102,7 +103,7 @@ internal sealed class PostgresMenuBannerRepository(
 	}
 
 	/// <summary>Builds a banner from a stored row and its parsed image.</summary>
-	private static MenuBanner ToBanner(MenuBannerRow row, AssetReference image)
+	private static MenuBanner ToBanner(MenuBannerRow row, ContentReference image)
 	{
 		return new MenuBanner
 		{

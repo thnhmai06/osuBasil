@@ -1,6 +1,6 @@
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
-using Basil.Domain.Utilities;
 
 namespace Basil.Application.Storage.Contracts.Multiplayer.Rooms;
 

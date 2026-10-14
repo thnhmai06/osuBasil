@@ -7,7 +7,7 @@ public sealed class MenuBanner : IEquatable<MenuBanner>
 {
 	/// <summary>Gets the image shown: a canonical asset reference.</summary>
 	/// <exception cref="ArgumentException">The reference is the default value.</exception>
-	public required AssetReference Image
+	public required ContentReference Image
 	{
 		get;
 		init => field = value.Value is null

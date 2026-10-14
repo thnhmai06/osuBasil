@@ -1,4 +1,3 @@
-using Basil.Application.Storage.Contracts.Multiplayer;
 using Basil.Application.Storage.Contracts.Multiplayer.Rooms;
 
 namespace Basil.Application.Services.Contracts.Multiplayer.Events;

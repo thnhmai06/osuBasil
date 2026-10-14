@@ -1,6 +1,6 @@
 ﻿using System.Security.Cryptography;
 
-namespace Basil.Domain.Utilities;
+namespace Basil.Domain.Common;
 
 public readonly record struct Md5
 {

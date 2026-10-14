@@ -130,7 +130,8 @@ internal sealed class ChatCommands(
 			max = parsed;
 
 		var roll = random.Next(0, max + 1);
-		await context.Reply(string.Format(BotReplies.RollResult, context.Sender.Value.Name, roll), cancellationToken);
+		await context.Reply(string.Format(BotReplies.RollResult, context.Sender.Value.Name, roll),
+			cancellationToken);
 		return true;
 	}
 
@@ -152,7 +153,8 @@ internal sealed class ChatCommands(
 			return true;
 		}
 
-		await context.Reply(string.Format(BotReplies.WhereIsIn, user.Value.Name, user.Value.Country.Describe()), cancellationToken);
+		await context.Reply(string.Format(BotReplies.WhereIsIn, user.Value.Name, user.Value.Country.Describe()),
+			cancellationToken);
 		return true;
 	}
 

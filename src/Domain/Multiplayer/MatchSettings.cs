@@ -1,5 +1,5 @@
+using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
-using Basil.Domain.Utilities;
 
 namespace Basil.Domain.Multiplayer.Matches;
 

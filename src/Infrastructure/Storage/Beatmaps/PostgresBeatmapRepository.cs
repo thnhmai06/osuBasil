@@ -1,11 +1,13 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using Basil.Application.Storage.Contracts.Beatmaps;
 using Basil.Application.Storage.Contracts.Common;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Common;
+using Basil.Domain.Content;
 using Basil.Domain.Mechanics;
-using Basil.Domain.Utilities;
 using Basil.Infrastructure.Storage.Common.Database;
 using Basil.Infrastructure.Storage.Common.Writing;
 using Basil.Infrastructure.Storage.Memory;
@@ -23,63 +25,71 @@ internal sealed class PostgresBeatmapRepository(
 {
 	#region SQL Scripts
 
-		private const string UpdateSql = """
-		update beatmaps set
-		beatmapset_id = @BeatmapsetId,
-		hash = @Hash,
-		version = @Version,
-		mode = @Mode,
-		star = @Star,
-		length = @Length,
-		bpm = @Bpm,
-		cs = @Cs,
-		ar = @Ar,
-		od = @Od,
-		hp = @Hp,
-		objects = @Objects::jsonb,
-		background = @Background,
-		audio = @Audio,
-		video = @Video,
-		preview_time = @PreviewTime,
-		locked = @Locked,
-		visible = @Visible
-		where id = @Id;
-		""";
+	private const string UpdateSql = """
+	                                 update beatmaps set
+	                                 beatmapset_id = @BeatmapsetId,
+	                                 hash = @Hash,
+	                                 version = @Version,
+	                                 mode = @Mode,
+	                                 star = @Star,
+	                                 length = @Length,
+	                                 bpm = @Bpm,
+	                                 cs = @Cs,
+	                                 ar = @Ar,
+	                                 od = @Od,
+	                                 hp = @Hp,
+	                                 objects = @Objects::jsonb,
+	                                 background = @Background,
+	                                 audio = @Audio,
+	                                 video = @Video,
+	                                 preview_time = @PreviewTime,
+	                                 storyboard = @Storyboard,
+	                                 created_at = @CreatedAt,
+	                                 updated_at = @UpdatedAt,
+	                                 locked = @Locked,
+	                                 visible = @Visible
+	                                 where id = @Id;
+	                                 """;
 
-		private const string InsertSql = """
-		insert into beatmaps (id, beatmapset_id, hash, version, mode, star, length, bpm, cs, ar, od, hp, objects, background, audio, video, preview_time, locked, visible)
-		values (@Id, @BeatmapsetId, @Hash, @Version, @Mode, @Star, @Length, @Bpm, @Cs, @Ar, @Od, @Hp, @Objects::jsonb, @Background, @Audio, @Video, @PreviewTime, @Locked, @Visible);
-		""";
+	private const string InsertSql = """
+	                                 insert into beatmaps (id, beatmapset_id, hash, version, mode, star, length, bpm, cs, ar, od, hp, objects, background, audio, video, preview_time, storyboard, created_at, updated_at, locked, visible)
+	                                 values (@Id, @BeatmapsetId, @Hash, @Version, @Mode, @Star, @Length, @Bpm, @Cs, @Ar, @Od, @Hp, @Objects::jsonb, @Background, @Audio, @Video, @PreviewTime, @Storyboard, @CreatedAt, @UpdatedAt, @Locked, @Visible);
+	                                 """;
 
-		private const string ByIdSql = """
-		select b.id, b.beatmapset_id, b.hash, b.version, b.mode, b.star, b.length, b.bpm, b.cs, b.ar, b.od, b.hp, b.objects, b.background, b.audio, b.video, b.preview_time, b.locked, b.visible,
-		s.id as set_id, s.artist as set_artist, s.title as set_title, s.creator as set_creator, s.created_at as set_created_at, s.updated_at as set_updated_at, s.archive_hash as set_archive_hash, s.archive_size as set_archive_size, s.archive_modified_at as set_archive_modified_at, s.storyboard as set_storyboard, s.locked as set_locked, s.visible as set_visible
-		from beatmaps b
-		join beatmapsets s on s.id = b.beatmapset_id
-		where b.id = @Id
-		""";
+	private const string ByIdSql = """
+	                               select b.id, b.beatmapset_id, b.hash, b.version, b.mode, b.star, b.length, b.bpm, b.cs, b.ar, b.od, b.hp, b.objects, b.background, b.audio, b.video, b.preview_time, b.storyboard, b.created_at, b.updated_at, b.locked, b.visible,
+	                               s.id as set_id, s.artist as set_artist, s.title as set_title, s.creator as set_creator, s.created_at as set_created_at, s.updated_at as set_updated_at, s.archive_hash as set_archive_hash, s.archive_size as set_archive_size, s.archive_modified_at as set_archive_modified_at, s.storyboard as set_storyboard, s.locked as set_locked, s.visible as set_visible
+	                               from beatmaps b
+	                               join beatmapsets s on s.id = b.beatmapset_id
+	                               where b.id = @Id
+	                               """;
 
-		private const string ByHashSql = """
-		select b.id, b.beatmapset_id, b.hash, b.version, b.mode, b.star, b.length, b.bpm, b.cs, b.ar, b.od, b.hp, b.objects, b.background, b.audio, b.video, b.preview_time, b.locked, b.visible,
-		s.id as set_id, s.artist as set_artist, s.title as set_title, s.creator as set_creator, s.created_at as set_created_at, s.updated_at as set_updated_at, s.archive_hash as set_archive_hash, s.archive_size as set_archive_size, s.archive_modified_at as set_archive_modified_at, s.storyboard as set_storyboard, s.locked as set_locked, s.visible as set_visible
-		from beatmaps b
-		join beatmapsets s on s.id = b.beatmapset_id
-		where b.hash = @Hash
-		""";
+	private const string ByHashSql = """
+	                                 select b.id, b.beatmapset_id, b.hash, b.version, b.mode, b.star, b.length, b.bpm, b.cs, b.ar, b.od, b.hp, b.objects, b.background, b.audio, b.video, b.preview_time, b.storyboard, b.created_at, b.updated_at, b.locked, b.visible,
+	                                 s.id as set_id, s.artist as set_artist, s.title as set_title, s.creator as set_creator, s.created_at as set_created_at, s.updated_at as set_updated_at, s.archive_hash as set_archive_hash, s.archive_size as set_archive_size, s.archive_modified_at as set_archive_modified_at, s.storyboard as set_storyboard, s.locked as set_locked, s.visible as set_visible
+	                                 from beatmaps b
+	                                 join beatmapsets s on s.id = b.beatmapset_id
+	                                 where b.hash = @Hash
+	                                 """;
 
-		private const string BySetSql = """
-		select b.id, b.beatmapset_id, b.hash, b.version, b.mode, b.star, b.length, b.bpm, b.cs, b.ar, b.od, b.hp, b.objects, b.background, b.audio, b.video, b.preview_time, b.locked, b.visible,
-		s.id as set_id, s.artist as set_artist, s.title as set_title, s.creator as set_creator, s.created_at as set_created_at, s.updated_at as set_updated_at, s.archive_hash as set_archive_hash, s.archive_size as set_archive_size, s.archive_modified_at as set_archive_modified_at, s.storyboard as set_storyboard, s.locked as set_locked, s.visible as set_visible
-		from beatmaps b
-		join beatmapsets s on s.id = b.beatmapset_id
-		where b.beatmapset_id = @SetId
-		order by b.id
-		""";
+	private const string BySetSql = """
+	                                select b.id, b.beatmapset_id, b.hash, b.version, b.mode, b.star, b.length, b.bpm, b.cs, b.ar, b.od, b.hp, b.objects, b.background, b.audio, b.video, b.preview_time, b.storyboard, b.created_at, b.updated_at, b.locked, b.visible,
+	                                s.id as set_id, s.artist as set_artist, s.title as set_title, s.creator as set_creator, s.created_at as set_created_at, s.updated_at as set_updated_at, s.archive_hash as set_archive_hash, s.archive_size as set_archive_size, s.archive_modified_at as set_archive_modified_at, s.storyboard as set_storyboard, s.locked as set_locked, s.visible as set_visible
+	                                from beatmaps b
+	                                join beatmapsets s on s.id = b.beatmapset_id
+	                                where b.beatmapset_id = @SetId
+	                                order by b.id
+	                                """;
 
 	#endregion
 
 	// jsonb keeps object keys in its own order, so the mode discriminator need not come first.
-	private static readonly JsonSerializerOptions StoredJson = new() { AllowOutOfOrderMetadataProperties = true };
+	// The objects of each mode are stored with a mode discriminator; jsonb keeps object keys in its own order.
+	private static readonly JsonSerializerOptions StoredJson = new()
+	{
+		AllowOutOfOrderMetadataProperties = true,
+		TypeInfoResolver = new DefaultJsonTypeInfoResolver { Modifiers = { StoredObjects } }
+	};
 
 	private readonly WeakIndex<Md5, Beatmap> _byHash = new();
 	private readonly OwnedLists<int, Beatmapset, Beatmap> _bySet = new();
@@ -90,59 +100,24 @@ internal sealed class PostgresBeatmapRepository(
 	protected override string WriteSql => UpdateSql;
 
 	/// <inheritdoc />
-	public async Task<Beatmap> CreateAsync(BeatmapData data, int? onlineId = null,
-		CancellationToken cancellationToken = default)
-	{
-		if (_byHash.TryGetValue(data.Hash, out var known) && known.Value.Hash == data.Hash)
-			throw new AlreadyExistsException($"A beatmap already has the hash {data.Hash}.");
-		if (onlineId is { } existingId && Items.TryGetValue(existingId, out _))
-			throw new AlreadyExistsException($"A beatmap already has osu! id {onlineId}.");
-
-		var set = await LiveSetAsync(data.Beatmapset, cancellationToken).ConfigureAwait(false);
-		var value = WithSet(data, set);
-		var parameters = new DynamicParameters(Parameters(0, value));
-		int id;
-		try
-		{
-			id = await Writer.WriteAsync(Root.Beatmapset(set.Id), async (connection, transaction) =>
-			{
-				var newId = onlineId ?? await NextLocalIdAsync(connection, transaction).ConfigureAwait(false);
-				parameters.Add("Id", newId);
-				await connection.ExecuteAsync(InsertSql, parameters, transaction).ConfigureAwait(false);
-				return newId;
-			}, cancellationToken).ConfigureAwait(false);
-		}
-		catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation)
-		{
-			throw new AlreadyExistsException(onlineId is not null
-				? $"A beatmap already has osu! id {onlineId}."
-				: $"A beatmap already has the hash {data.Hash}.");
-		}
-
-		var beatmap = Track(new Beatmap { Id = id, Value = value });
-		Index(beatmap);
-		_bySet.Change(set.Id, set, current => AddOrReplace(current, beatmap), Task.CompletedTask);
-		return beatmap;
-	}
-
-	/// <inheritdoc />
 	public async Task UpdateAsync(Beatmap beatmap, CancellationToken cancellationToken = default)
 	{
-		var value = WithSet(beatmap.Value, await LiveSetAsync(beatmap.Value.Beatmapset, cancellationToken).ConfigureAwait(false));
-		if (!Items.TryGetValue(beatmap.Id, out var current) || current.Value.Hash != value.Hash)
+		var value = Copy(beatmap, await LiveSetAsync(beatmap.Beatmapset, cancellationToken).ConfigureAwait(false));
+		if (!Items.TryGetValue(beatmap.Id, out var current) || current.Hash != value.Hash)
 		{
 			if (_byHash.TryGetValue(value.Hash, out var known) && known.Id != beatmap.Id &&
-			    known.Value.Hash == value.Hash)
+			    known.Hash == value.Hash)
 				throw new AlreadyExistsException($"A beatmap already has the hash {value.Hash}.");
 
 			// A hash must be unique across every beatmap, so a new or changed one is written at once and the live
 			// beatmap takes it only after the commit.
 			var id = beatmap.Id;
-			var parameters = Parameters(id, value);
+			var parameters = Parameters(value);
 			try
 			{
 				await Writer.WriteAsync(Root.Beatmapset(value.Beatmapset.Id), (connection, transaction) =>
-					connection.ExecuteAsync(WriteSql, parameters, transaction), cancellationToken).ConfigureAwait(false);
+						connection.ExecuteAsync(WriteSql, parameters, transaction), cancellationToken)
+					.ConfigureAwait(false);
 			}
 			catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation)
 			{
@@ -170,7 +145,7 @@ internal sealed class PostgresBeatmapRepository(
 	/// <inheritdoc />
 	public async ValueTask<Beatmap?> GetAsync(Md5 hash, CancellationToken cancellationToken = default)
 	{
-		if (_byHash.TryGetValue(hash, out var known) && known.Value.Hash == hash)
+		if (_byHash.TryGetValue(hash, out var known) && known.Hash == hash)
 			return known;
 
 		var row = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<BeatmapRow>(
@@ -211,7 +186,7 @@ internal sealed class PostgresBeatmapRepository(
 		var where = BeatmapQueryFilter.Build(query, parameters);
 		var filter = where.Length == 0 ? "" : $" WHERE {where}";
 		var sql = $"""
-		           select b.id, b.beatmapset_id, b.hash, b.version, b.mode, b.star, b.length, b.bpm, b.cs, b.ar, b.od, b.hp, b.objects, b.background, b.audio, b.video, b.preview_time, b.locked, b.visible,
+		           select b.id, b.beatmapset_id, b.hash, b.version, b.mode, b.star, b.length, b.bpm, b.cs, b.ar, b.od, b.hp, b.objects, b.background, b.audio, b.video, b.preview_time, b.storyboard, b.created_at, b.updated_at, b.locked, b.visible,
 		                  s.id as set_id, s.artist as set_artist, s.title as set_title, s.creator as set_creator, s.created_at as set_created_at, s.updated_at as set_updated_at, s.archive_hash as set_archive_hash, s.archive_size as set_archive_size, s.archive_modified_at as set_archive_modified_at, s.storyboard as set_storyboard, s.locked as set_locked, s.visible as set_visible
 		           from beatmaps b
 		           join beatmapsets s on s.id = b.beatmapset_id{filter}
@@ -247,7 +222,7 @@ internal sealed class PostgresBeatmapRepository(
 		var keepIds = keep.Select(beatmap => beatmap.Id).ToArray();
 		var keepSet = keepIds.ToHashSet();
 		foreach (var beatmap in Items.Values.Where(beatmap =>
-			         beatmap.Value.Beatmapset.Id == setId && !keepSet.Contains(beatmap.Id)))
+			         beatmap.Beatmapset.Id == setId && !keepSet.Contains(beatmap.Id)))
 			RemoveFromMemory(beatmap);
 
 		_retaining[setId] = keepSet;
@@ -261,45 +236,41 @@ internal sealed class PostgresBeatmapRepository(
 			TaskScheduler.Default);
 	}
 
-	/// <summary>Stores the difficulties of a beatmapset as a scan brings them in.</summary>
+	/// <summary>Stores the difficulties of a beatmapset as a scan or import brings them in.</summary>
 	/// <param name="set">The beatmapset the difficulties belong to.</param>
 	/// <param name="data">Every difficulty the set has, in order.</param>
-	/// <param name="connection">The connection the scan runs on.</param>
-	/// <param name="transaction">The transaction the scan runs in.</param>
+	/// <param name="now">The time of the import, in UTC.</param>
+	/// <param name="connection">The connection the commit runs on.</param>
+	/// <param name="transaction">The transaction the commit runs in.</param>
 	/// <returns>Each stored difficulty, in the same order.</returns>
 	/// <remarks>
 	///     A difficulty already stored under the same file's hash, or under the same osu! id, is moved to this set and
-	///     keeps its id and whether it is locked or shown.
+	///     keeps its id, its creation time and whether it is locked or shown.
 	/// </remarks>
-	internal static async Task<List<StoredBeatmap>> StoreAsync(Beatmapset set, IReadOnlyList<BeatmapSyncData> data,
-		NpgsqlConnection connection, NpgsqlTransaction transaction)
+	internal static async Task<List<StoredBeatmap>> StoreAsync(Beatmapset set,
+		IReadOnlyList<BeatmapData> data,
+		DateTimeOffset now, NpgsqlConnection connection, NpgsqlTransaction transaction)
 	{
 		var stored = new List<StoredBeatmap>(data.Count);
 		foreach (var item in data)
 		{
 			var row = await FindAsync(item, connection, transaction).ConfigureAwait(false);
-			var id = row?.Id ?? item.OnlineId ??
-			         await NextLocalIdAsync(connection, transaction).ConfigureAwait(false);
-			var locked = row?.Locked ?? false;
-			var visible = row?.Visible ?? true;
-			var value = new BeatmapData
+			var beatmap = new Beatmap
 			{
-				Hash = item.Hash,
+				Id = row?.Id ?? item.OnlineId ?? await NextLocalIdAsync(connection, transaction).ConfigureAwait(false),
 				Beatmapset = set,
-				Version = item.Version,
-				Difficulty = item.Difficulty,
-				Objects = item.Objects,
-				Background = item.Background,
-				Audio = item.Audio,
-				Video = item.Video,
-				PreviewTime = item.PreviewTime,
-				Locked = locked,
-				Visible = visible
+				Hash = item.Hash,
+				Metadata = item.Metadata,
+				Assets = item.Assets,
+				Locked = row?.Locked ?? false,
+				Visible = row?.Visible ?? true,
+				CreatedAt = row?.CreatedAt ?? now,
+				UpdatedAt = now
 			};
 
-			await connection.ExecuteAsync(row is null ? InsertSql : UpdateSql, Parameters(id, value), transaction)
+			await connection.ExecuteAsync(row is null ? InsertSql : UpdateSql, Parameters(beatmap), transaction)
 				.ConfigureAwait(false);
-			stored.Add(new StoredBeatmap(id, item, locked, visible));
+			stored.Add(new StoredBeatmap(beatmap));
 		}
 
 		return stored;
@@ -309,28 +280,9 @@ internal sealed class PostgresBeatmapRepository(
 	/// <param name="set">The live beatmapset the difficulty belongs to.</param>
 	/// <param name="stored">The stored difficulty.</param>
 	/// <returns>The live difficulty.</returns>
-	/// <remarks>A difficulty whose file changed forgets the content it had understood.</remarks>
 	internal Beatmap Apply(Beatmapset set, StoredBeatmap stored)
 	{
-		var beatmap = new Beatmap
-		{
-			Id = stored.Id,
-			Value = new BeatmapData
-			{
-				Hash = stored.Data.Hash,
-				Beatmapset = set,
-				Version = stored.Data.Version,
-				Difficulty = stored.Data.Difficulty,
-				Objects = stored.Data.Objects,
-				Background = stored.Data.Background,
-				Audio = stored.Data.Audio,
-				Video = stored.Data.Video,
-				PreviewTime = stored.Data.PreviewTime,
-				Locked = stored.Locked,
-				Visible = stored.Visible
-			}
-		};
-
+		var beatmap = Copy(stored.Beatmap, set);
 		var live = Track(beatmap);
 		if (ReferenceEquals(live, beatmap))
 		{
@@ -339,8 +291,7 @@ internal sealed class PostgresBeatmapRepository(
 		}
 
 		Unindex(live);
-		if (live.Value.Hash != stored.Data.Hash) live.Content = null;
-		live.Value = beatmap.Value;
+		CopyTo(live, beatmap);
 		Index(live);
 		return live;
 	}
@@ -358,7 +309,7 @@ internal sealed class PostgresBeatmapRepository(
 	/// <param name="set">The live beatmapset that was removed.</param>
 	internal void Forget(int id, Beatmapset set)
 	{
-		foreach (var beatmap in Items.Values.Where(beatmap => beatmap.Value.Beatmapset.Id == id))
+		foreach (var beatmap in Items.Values.Where(beatmap => beatmap.Beatmapset.Id == id))
 			RemoveFromMemory(beatmap);
 
 		_bySet.Change(id, set, _ => ImmutableList<Beatmap>.Empty, Task.CompletedTask);
@@ -371,20 +322,26 @@ internal sealed class PostgresBeatmapRepository(
 
 	protected override Root RootOf(Beatmap item)
 	{
-		return Root.Beatmapset(item.Value.Beatmapset.Id);
+		return Root.Beatmapset(item.Beatmapset.Id);
 	}
 
 	protected override void CopyTo(Beatmap live, Beatmap from)
 	{
-		live.Value = from.Value;
+		live.Beatmapset = from.Beatmapset;
+		live.Hash = from.Hash;
+		live.Metadata = from.Metadata;
+		live.Assets = from.Assets;
+		live.Locked = from.Locked;
+		live.Visible = from.Visible;
+		live.UpdatedAt = from.UpdatedAt;
 	}
 
 	/// <summary>Gives the live instance of a beatmap the stored data and keeps the lookups in step.</summary>
-	private void Remember(Beatmap beatmap, BeatmapData value, Task committed)
+	private void Remember(Beatmap beatmap, Beatmap value, Task committed)
 	{
 		var live = Track(beatmap);
 		Unindex(live);
-		live.Value = value;
+		if (!ReferenceEquals(live, value)) CopyTo(live, value);
 		Index(live);
 		_bySet.Change(value.Beatmapset.Id, value.Beatmapset, current => AddOrReplace(current, live), committed);
 	}
@@ -398,7 +355,7 @@ internal sealed class PostgresBeatmapRepository(
 
 	protected override object WriteParameters(Beatmap beatmap)
 	{
-		return Parameters(beatmap.Id, beatmap.Value);
+		return Parameters(beatmap);
 	}
 
 	protected override WriteCommand EraseCommand(int key)
@@ -409,7 +366,7 @@ internal sealed class PostgresBeatmapRepository(
 	protected override bool IsBeingRemoved(Beatmap beatmap)
 	{
 		return base.IsBeingRemoved(beatmap) ||
-		       (_retaining.TryGetValue(beatmap.Value.Beatmapset.Id, out var keep) && !keep.Contains(beatmap.Id));
+		       (_retaining.TryGetValue(beatmap.Beatmapset.Id, out var keep) && !keep.Contains(beatmap.Id));
 	}
 
 	private void RemoveFromMemory(Beatmap beatmap)
@@ -420,12 +377,12 @@ internal sealed class PostgresBeatmapRepository(
 
 	private void Unindex(Beatmap beatmap)
 	{
-		_byHash.Remove(beatmap.Value.Hash, beatmap);
+		_byHash.Remove(beatmap.Hash, beatmap);
 	}
 
 	private void Index(Beatmap beatmap)
 	{
-		_byHash.Set(beatmap.Value.Hash, beatmap);
+		_byHash.Set(beatmap.Hash, beatmap);
 	}
 
 	private static ImmutableList<Beatmap> AddOrReplace(ImmutableList<Beatmap> current, Beatmap beatmap)
@@ -439,17 +396,20 @@ internal sealed class PostgresBeatmapRepository(
 	/// <param name="connection">The connection the sync runs on.</param>
 	/// <param name="transaction">The transaction the sync runs in.</param>
 	/// <returns>The stored row, or <see langword="null" /> when the difficulty is not stored yet.</returns>
-	private static async Task<StoredBeatmapRow?> FindAsync(BeatmapSyncData data, NpgsqlConnection connection,
+	private static async Task<StoredBeatmapRow?> FindAsync(BeatmapData data,
+		NpgsqlConnection connection,
 		NpgsqlTransaction transaction)
 	{
 		var row = await connection.QuerySingleOrDefaultAsync<StoredBeatmapRow>(
-			"select id, locked, visible from beatmaps where hash = @Hash", new { Hash = data.Hash.HashValue },
+			"select id, locked, visible, created_at from beatmaps where hash = @Hash",
+			new { Hash = data.Hash.HashValue },
 			transaction).ConfigureAwait(false);
 		if (row is not null) return row;
 
 		return data.OnlineId is { } onlineId
 			? await connection.QuerySingleOrDefaultAsync<StoredBeatmapRow>(
-				"select id, locked, visible from beatmaps where id = @Id", new { Id = onlineId }, transaction)
+					"select id, locked, visible, created_at from beatmaps where id = @Id", new { Id = onlineId },
+					transaction)
 				.ConfigureAwait(false)
 			: null;
 	}
@@ -459,29 +419,53 @@ internal sealed class PostgresBeatmapRepository(
 		return connection.ExecuteScalarAsync<int>("select nextval('local_beatmap_ids')::int", transaction: transaction);
 	}
 
-	private static object Parameters(int id, BeatmapData value)
+
+	/// <summary>Stores the objects of each game mode under the mode's own discriminator.</summary>
+	/// <param name="info">The type being described.</param>
+	private static void StoredObjects(JsonTypeInfo info)
 	{
+		if (info.Type != typeof(BeatmapObjects)) return;
+
+		info.PolymorphismOptions = new JsonPolymorphismOptions
+		{
+			TypeDiscriminatorPropertyName = "mode",
+			DerivedTypes =
+			{
+				new JsonDerivedType(typeof(OsuObjects), (int)GameMode.Standard),
+				new JsonDerivedType(typeof(TaikoObjects), (int)GameMode.Taiko),
+				new JsonDerivedType(typeof(CatchObjects), (int)GameMode.Catch),
+				new JsonDerivedType(typeof(ManiaObjects), (int)GameMode.Mania)
+			}
+		};
+	}
+
+	private static object Parameters(Beatmap beatmap)
+	{
+		var difficulty = beatmap.Metadata.Difficulty;
 		return new
 		{
-			Id = id,
-			BeatmapsetId = value.Beatmapset.Id,
-			Hash = value.Hash.HashValue,
-			value.Version,
-			Mode = (int)value.Difficulty.Mode,
-			value.Difficulty.Star,
-			Length = (int)value.Difficulty.Length.TotalMilliseconds,
-			value.Difficulty.Bpm,
-			value.Difficulty.Cs,
-			value.Difficulty.Ar,
-			value.Difficulty.Od,
-			value.Difficulty.Hp,
-			Objects = JsonSerializer.Serialize(value.Objects),
-			value.Background,
-			value.Audio,
-			value.Video,
-			PreviewTime = (int?)value.PreviewTime?.TotalMilliseconds,
-			value.Locked,
-			value.Visible
+			beatmap.Id,
+			BeatmapsetId = beatmap.Beatmapset.Id,
+			Hash = beatmap.Hash.HashValue,
+			beatmap.Metadata.Version,
+			Mode = (int)difficulty.Mode,
+			difficulty.Star,
+			Length = (int)difficulty.Length.TotalMilliseconds,
+			difficulty.Bpm,
+			difficulty.Cs,
+			difficulty.Ar,
+			difficulty.Od,
+			difficulty.Hp,
+			Objects = JsonSerializer.Serialize(beatmap.Metadata.Objects, StoredJson),
+			Background = beatmap.Assets.BackgroundFile,
+			Audio = beatmap.Assets.AudioFile,
+			Video = beatmap.Assets.VideoFile,
+			PreviewTime = (int?)beatmap.Assets.PreviewTime?.TotalMilliseconds,
+			Storyboard = beatmap.Assets.HasStoryboard,
+			CreatedAt = beatmap.CreatedAt.ToUniversalTime(),
+			UpdatedAt = beatmap.UpdatedAt.ToUniversalTime(),
+			beatmap.Locked,
+			beatmap.Visible
 		};
 	}
 
@@ -491,45 +475,42 @@ internal sealed class PostgresBeatmapRepository(
 		return await beatmapsets.GetAsync(set.Id, cancellationToken).ConfigureAwait(false) ?? set;
 	}
 
-	private static BeatmapData WithSet(BeatmapData value, Beatmapset set)
+	/// <summary>Copies a beatmap's values into a new instance that belongs to a given beatmapset.</summary>
+	private static Beatmap Copy(Beatmap beatmap, Beatmapset set)
 	{
-		return new BeatmapData
+		return new Beatmap
 		{
-			Hash = value.Hash,
+			Id = beatmap.Id,
 			Beatmapset = set,
-			Version = value.Version,
-			Difficulty = value.Difficulty,
-			Objects = value.Objects,
-			Background = value.Background,
-			Audio = value.Audio,
-			Video = value.Video,
-			PreviewTime = value.PreviewTime,
-			Locked = value.Locked,
-			Visible = value.Visible
+			Hash = beatmap.Hash,
+			Metadata = beatmap.Metadata,
+			Assets = beatmap.Assets,
+			Locked = beatmap.Locked,
+			Visible = beatmap.Visible,
+			CreatedAt = beatmap.CreatedAt,
+			UpdatedAt = beatmap.UpdatedAt
 		};
 	}
 
 	private async Task<Beatmap> ToBeatmapAsync(BeatmapRow row, CancellationToken cancellationToken)
 	{
-		Md5? archiveHash = null;
-		if (row.SetArchiveHash is { } hash) archiveHash = new Md5(hash);
+		// A set stored before archives were recorded has no fingerprint; the next scan takes one, as for a changed archive.
+		var fingerprint = row.SetArchiveHash is { } hash
+			? new ContentFingerprint(
+				new ContentStamp(row.SetArchiveSize ?? 0, row.SetArchiveModifiedAt ?? DateTimeOffset.UnixEpoch),
+				new Md5(hash))
+			: default;
 		var set = await LiveSetAsync(new Beatmapset
 		{
 			Id = row.SetId,
-			Value = new BeatmapsetData
-			{
-				Artist = row.SetArtist,
-				Title = row.SetTitle,
-				Creator = row.SetCreator,
-				CreatedAt = row.SetCreatedAt,
-				UpdatedAt = row.SetUpdatedAt,
-				ArchiveHash = archiveHash,
-				ArchiveSize = row.SetArchiveSize,
-				ArchiveModifiedAt = row.SetArchiveModifiedAt,
-				Storyboard = row.SetStoryboard,
-				Locked = row.SetLocked,
-				Visible = row.SetVisible
-			}
+			Fingerprint = fingerprint,
+			Metadata =
+				new BeatmapsetMetadata { Artist = row.SetArtist, Title = row.SetTitle, Creator = row.SetCreator },
+			Assets = new BeatmapsetAssets { HasStoryboard = row.SetStoryboard },
+			CreatedAt = row.SetCreatedAt,
+			UpdatedAt = row.SetUpdatedAt,
+			Locked = row.SetLocked,
+			Visible = row.SetVisible
 		}, cancellationToken).ConfigureAwait(false);
 		var objects = JsonSerializer.Deserialize<BeatmapObjects>(row.Objects, StoredJson)
 		              ?? BeatmapObjects.Empty((GameMode)row.Mode);
@@ -537,28 +518,27 @@ internal sealed class PostgresBeatmapRepository(
 		return new Beatmap
 		{
 			Id = row.Id,
-			Value = new BeatmapData
+			Beatmapset = set,
+			Hash = new Md5(row.Hash),
+			Metadata = new BeatmapMetadata
 			{
-				Hash = new Md5(row.Hash),
-				Beatmapset = set,
 				Version = row.Version,
-				Difficulty = new Difficulty(
-					(GameMode)row.Mode,
-					row.Bpm,
-					TimeSpan.FromMilliseconds(row.Length),
-					row.Cs,
-					row.Ar,
-					row.Od,
-					row.Hp,
-					row.Star),
-				Objects = objects,
-				Background = row.Background,
-				Audio = row.Audio,
-				Video = row.Video,
-				PreviewTime = row.PreviewTime is { } preview ? TimeSpan.FromMilliseconds(preview) : null,
-				Locked = row.Locked,
-				Visible = row.Visible
-			}
+				Difficulty = new BeatmapDifficulty((GameMode)row.Mode, row.Bpm, TimeSpan.FromMilliseconds(row.Length),
+					row.Cs, row.Ar, row.Od, row.Hp, row.Star),
+				Objects = objects
+			},
+			Assets = new BeatmapAssets
+			{
+				HasStoryboard = row.Storyboard,
+				BackgroundFile = row.Background,
+				AudioFile = row.Audio,
+				VideoFile = row.Video,
+				PreviewTime = row.PreviewTime is { } preview ? TimeSpan.FromMilliseconds(preview) : null
+			},
+			Locked = row.Locked,
+			Visible = row.Visible,
+			CreatedAt = row.CreatedAt,
+			UpdatedAt = row.UpdatedAt
 		};
 	}
 
@@ -582,6 +562,9 @@ internal sealed class PostgresBeatmapRepository(
 		public string? Audio { get; set; }
 		public string? Video { get; set; }
 		public int? PreviewTime { get; set; }
+		public bool Storyboard { get; set; }
+		public DateTimeOffset CreatedAt { get; set; }
+		public DateTimeOffset UpdatedAt { get; set; }
 		public bool Locked { get; set; }
 		public bool Visible { get; set; }
 		public int SetId { get; set; }
@@ -598,11 +581,12 @@ internal sealed class PostgresBeatmapRepository(
 		public bool SetVisible { get; set; }
 	}
 
-	/// <summary>The identity, lock and visibility of a stored row of the <c>beatmaps</c> table.</summary>
+	/// <summary>The identity, lock, visibility and creation time of a stored row of the <c>beatmaps</c> table.</summary>
 	private sealed class StoredBeatmapRow
 	{
 		public int Id { get; set; }
 		public bool Locked { get; set; }
 		public bool Visible { get; set; }
+		public DateTimeOffset CreatedAt { get; set; }
 	}
 }

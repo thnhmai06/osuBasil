@@ -27,6 +27,7 @@ internal sealed class ChannelMessagesService(
 			case Access.NotGranted: return ChannelPostResult.NoWritePermission;
 			case Access.Suspended: return ChannelPostResult.Silenced;
 		}
+
 		if (string.IsNullOrWhiteSpace(text)) return ChannelPostResult.Empty;
 		if (channel is not PmChannelSession && !channel.Members.Contains(by)) return ChannelPostResult.NotMember;
 		if (!ChannelRules.CanWrite(channel, by, now)) return ChannelPostResult.NoWritePermission;

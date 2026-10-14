@@ -1,8 +1,8 @@
 using Basil.Application.Storage.Contracts.Common;
 using Basil.Application.Storage.Contracts.Scores;
+using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
-using Basil.Domain.Utilities;
 using Basil.Infrastructure.Storage.Common.Database;
 using Basil.Infrastructure.Storage.Common.Writing;
 using Basil.Infrastructure.Storage.Memory;

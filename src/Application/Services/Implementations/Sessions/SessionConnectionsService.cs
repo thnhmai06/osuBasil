@@ -132,9 +132,12 @@ internal sealed class SessionConnectionsService(
 		var session = registry.Sessions.GetValueOrDefault(user);
 		var connection = session is null
 			? null
-			: new Connection?[] { session.Bancho, session.Irc, session.Apis.FirstOrDefault(), session.Tourneys.FirstOrDefault() }
+			: new Connection?[]
+					{ session.Bancho, session.Irc, session.Apis.FirstOrDefault(), session.Tourneys.FirstOrDefault() }
 				.FirstOrDefault(candidate => candidate is { IsOpen: true });
-		return connection is null ? (null, DelegationFailure.UserOffline) : (new DelegatedConnection(connection, by, Permissions.RoomDelegation), null);
+		return connection is null
+			? (null, DelegationFailure.UserOffline)
+			: (new DelegatedConnection(connection, by, Permissions.RoomDelegation), null);
 	}
 
 	/// <summary>Creates the token of a new connection.</summary>

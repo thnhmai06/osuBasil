@@ -1,8 +1,8 @@
 using System.Net;
 using Basil.Application.Storage.Contracts.Sessions;
 using Basil.Domain.Bancho;
+using Basil.Domain.Common;
 using Basil.Domain.Users;
-using Basil.Domain.Utilities;
 
 namespace Basil.Application.Services.Contracts.Users;
 

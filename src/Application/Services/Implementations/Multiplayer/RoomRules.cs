@@ -1,5 +1,4 @@
 using Basil.Application.Services.Implementations.Users;
-using Basil.Application.Storage.Contracts.Multiplayer;
 using Basil.Application.Storage.Contracts.Multiplayer.Rooms;
 using Basil.Application.Storage.Contracts.Sessions;
 using Basil.Domain.Users;
@@ -28,7 +27,8 @@ internal static class RoomRules
 	internal static bool IsCreatorOrAnyRoomManager(Room room, Connection by, DateTimeOffset now)
 	{
 		return PermissionRules.Allows(by, Permissions.TournamentManageAnyRoom, now) ||
-		       (room.Authority.Creator is not null && room.Authority.Creator.Equals(by.User) && HasAnyPermission(by, now));
+		       (room.Authority.Creator is not null && room.Authority.Creator.Equals(by.User) &&
+		        HasAnyPermission(by, now));
 	}
 
 	/// <summary>

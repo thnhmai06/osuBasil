@@ -33,8 +33,8 @@ public sealed class BeatmapsetContent(
 	string title,
 	string creator,
 	IReadOnlyList<BeatmapsetDifficulty> difficulties,
-	IReadOnlyList<BeatmapsetFile> files,
-	BeatmapsetFile? storyboard,
+	IReadOnlyList<BeatmapsetContentFile> files,
+	BeatmapsetContentFile? storyboard,
 	IAsyncDisposable? source) : IAsyncDisposable
 {
 	/// <summary>Gets the beatmapset id the difficulties declare, or <see langword="null" /> when they declare none.</summary>
@@ -53,10 +53,10 @@ public sealed class BeatmapsetContent(
 	public IReadOnlyList<BeatmapsetDifficulty> Difficulties => difficulties;
 
 	/// <summary>Gets every file of the set, the difficulties' files included.</summary>
-	public IReadOnlyList<BeatmapsetFile> Files => files;
+	public IReadOnlyList<BeatmapsetContentFile> Files => files;
 
 	/// <summary>Gets the set's storyboard file, or <see langword="null" /> when it has none.</summary>
-	public BeatmapsetFile? Storyboard => storyboard;
+	public BeatmapsetContentFile? Storyboard => storyboard;
 
 	/// <summary>Releases what the files are read from; the files cannot be read afterwards.</summary>
 	/// <returns>A task that completes when the source is released.</returns>
@@ -75,12 +75,14 @@ public sealed class BeatmapsetContent(
 /// <param name="Audio">The file of its audio track, or <see langword="null" /> when it names none the set has.</param>
 /// <param name="Video">The file of its video, or <see langword="null" /> when it names none the set has.</param>
 /// <param name="PreviewTime">Where its audio preview starts, or <see langword="null" /> when it sets none.</param>
+/// <param name="Storyboard">Whether the difficulty draws a storyboard of its own.</param>
 public sealed record BeatmapsetDifficulty(
 	int? OnlineId,
 	string Version,
 	GameMode Mode,
-	BeatmapsetFile File,
-	BeatmapsetFile? Background,
-	BeatmapsetFile? Audio,
-	BeatmapsetFile? Video,
-	TimeSpan? PreviewTime);
+	BeatmapsetContentFile File,
+	BeatmapsetContentFile? Background,
+	BeatmapsetContentFile? Audio,
+	BeatmapsetContentFile? Video,
+	TimeSpan? PreviewTime,
+	bool Storyboard);

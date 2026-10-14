@@ -11,27 +11,28 @@ internal sealed class FileMenuBannerStorage(DataPaths paths) : IMenuBannerStorag
 	private DataStorage Files => paths.MenuBanners;
 
 	/// <inheritdoc />
-	public Task<IEnumerable<AssetReference>> ListAsync(CancellationToken cancellationToken = default)
+	public Task<IEnumerable<ContentReference>> ListAsync(CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult<IEnumerable<AssetReference>>(
+		return Task.FromResult<IEnumerable<ContentReference>>(
 			Files.Keys.Order(StringComparer.OrdinalIgnoreCase).Select(Files.ReferenceOf));
 	}
 
 	/// <inheritdoc />
-	public async Task<AssetReference> SaveAsync(string name, Stream content, CancellationToken cancellationToken = default)
+	public async Task<ContentReference> SaveAsync(string name, Stream content,
+		CancellationToken cancellationToken = default)
 	{
 		await Files.SaveAsync(name, content, cancellationToken);
 		return Files.ReferenceOf(name);
 	}
 
 	/// <inheritdoc />
-	public Task<Stream?> OpenAsync(AssetReference image, CancellationToken cancellationToken = default)
+	public Task<Stream?> OpenAsync(ContentReference image, CancellationToken cancellationToken = default)
 	{
 		return Task.FromResult<Stream?>(Files.TryGetName(image, out var name) ? Files.Open(name) : null);
 	}
 
 	/// <inheritdoc />
-	public Task DeleteAsync(AssetReference image, CancellationToken cancellationToken = default)
+	public Task DeleteAsync(ContentReference image, CancellationToken cancellationToken = default)
 	{
 		if (Files.TryGetName(image, out var name))
 			Files.Delete(name);

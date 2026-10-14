@@ -1,10 +1,10 @@
-﻿using Basil.Domain.Mechanics;
-using Basil.Domain.Utilities;
+﻿using Basil.Domain.Common;
+using Basil.Domain.Mechanics;
 
 namespace Basil.Domain.Scores;
 
 /// <summary>A stored score identified by its id.</summary>
-public sealed class Score : IWrapper<ScoreData>, IEquatable<Score>
+public sealed class Score : IEquatable<Score>
 {
 	/// <summary>Gets the unique identifier of the score.</summary>
 	public required int Id

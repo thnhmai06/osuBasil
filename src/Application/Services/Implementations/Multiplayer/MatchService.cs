@@ -1,9 +1,6 @@
 using Basil.Application.Services.Contracts.Multiplayer;
 using Basil.Application.Services.Implementations.Common;
-using Basil.Application.Storage.Contracts.Multiplayer;
 using Basil.Application.Storage.Contracts.Multiplayer.Matches;
-using Basil.Application.Storage.Contracts.Multiplayer.Rooms;
-using Basil.Domain.Multiplayer;
 using Basil.Domain.Multiplayer.Matches;
 
 namespace Basil.Application.Services.Implementations.Multiplayer;
@@ -21,7 +18,7 @@ internal sealed class MatchService(
 	public async Task<int> CloseUnfinishedAsync(CancellationToken cancellationToken = default)
 	{
 		var allMatches = await Paging.ListAllAsync(
-			page => matches.ListAsync(new MatchQuery(Ended: false), page, cancellationToken),
+			page => matches.ListAsync(new MatchQuery(false), page, cancellationToken),
 			cancellationToken);
 
 		var now = time.GetUtcNow();

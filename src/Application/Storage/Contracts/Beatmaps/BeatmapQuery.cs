@@ -1,9 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Basil.Application.Storage.Contracts.Common;
-using Basil.Domain.Users;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Storage.Contracts.Beatmaps;
 
@@ -51,7 +51,7 @@ public sealed record BeatmapQuery(
 	string? Artist = null,
 	string? Title = null,
 	string? Difficulty = null,
-	BeatmapStatus? Status = null,
+	BeatmapsetStatus? Status = null,
 	Interval<DateTimeOffset>? Created = null,
 	Interval<DateTimeOffset>? Updated = null) : IParsable<BeatmapQuery>
 {
@@ -82,7 +82,7 @@ public sealed record BeatmapQuery(
 		string? artist = null;
 		string? title = null;
 		string? difficulty = null;
-		BeatmapStatus? status = null;
+		BeatmapsetStatus? status = null;
 		Interval<DateTimeOffset>? created = null;
 		Interval<DateTimeOffset>? updated = null;
 
@@ -153,15 +153,15 @@ public sealed record BeatmapQuery(
 		bool TrySetStatus(string raw)
 		{
 			var name = raw.ToLowerInvariant();
-			BeatmapStatus? parsed = name switch
+			BeatmapsetStatus? parsed = name switch
 			{
-				_ when "pending".StartsWith(name, StringComparison.Ordinal) => BeatmapStatus.Pending,
-				_ when "graveyard".StartsWith(name, StringComparison.Ordinal) => BeatmapStatus.Pending,
-				_ when "wip".StartsWith(name, StringComparison.Ordinal) => BeatmapStatus.Pending,
-				_ when "ranked".StartsWith(name, StringComparison.Ordinal) => BeatmapStatus.Ranked,
-				_ when "approved".StartsWith(name, StringComparison.Ordinal) => BeatmapStatus.Approved,
-				_ when "qualified".StartsWith(name, StringComparison.Ordinal) => BeatmapStatus.Qualified,
-				_ when "loved".StartsWith(name, StringComparison.Ordinal) => BeatmapStatus.Loved,
+				_ when "pending".StartsWith(name, StringComparison.Ordinal) => BeatmapsetStatus.Pending,
+				_ when "graveyard".StartsWith(name, StringComparison.Ordinal) => BeatmapsetStatus.Pending,
+				_ when "wip".StartsWith(name, StringComparison.Ordinal) => BeatmapsetStatus.Pending,
+				_ when "ranked".StartsWith(name, StringComparison.Ordinal) => BeatmapsetStatus.Ranked,
+				_ when "approved".StartsWith(name, StringComparison.Ordinal) => BeatmapsetStatus.Approved,
+				_ when "qualified".StartsWith(name, StringComparison.Ordinal) => BeatmapsetStatus.Qualified,
+				_ when "loved".StartsWith(name, StringComparison.Ordinal) => BeatmapsetStatus.Loved,
 				_ => null
 			};
 			if (parsed is null) return false;

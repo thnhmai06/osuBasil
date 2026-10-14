@@ -11,7 +11,8 @@ internal sealed class FileMenuIconStorage(DataPaths paths) : IMenuIconStorage
 	private DataStorage Files => paths.MenuIcon;
 
 	/// <inheritdoc />
-	public async Task<AssetReference> SaveAsync(string name, Stream content, CancellationToken cancellationToken = default)
+	public async Task<ContentReference> SaveAsync(string name, Stream content,
+		CancellationToken cancellationToken = default)
 	{
 		await Files.SaveAsync(name, content, cancellationToken);
 		Files.DeleteAllExcept(name);
@@ -19,17 +20,17 @@ internal sealed class FileMenuIconStorage(DataPaths paths) : IMenuIconStorage
 	}
 
 	/// <inheritdoc />
-	public Task<(AssetReference Reference, Stream Content)?> OpenAsync(CancellationToken cancellationToken = default)
+	public Task<(ContentReference Reference, Stream Content)?> OpenAsync(CancellationToken cancellationToken = default)
 	{
 		var key = Files.Keys.Order(StringComparer.Ordinal).FirstOrDefault();
 		if (key is null)
-			return Task.FromResult<(AssetReference Reference, Stream Content)?>(null);
+			return Task.FromResult<(ContentReference Reference, Stream Content)?>(null);
 
 		var stream = Files.Open(key);
 		if (stream is null)
-			return Task.FromResult<(AssetReference Reference, Stream Content)?>(null);
+			return Task.FromResult<(ContentReference Reference, Stream Content)?>(null);
 
-		return Task.FromResult<(AssetReference Reference, Stream Content)?>((Files.ReferenceOf(key), stream));
+		return Task.FromResult<(ContentReference Reference, Stream Content)?>((Files.ReferenceOf(key), stream));
 	}
 
 	/// <inheritdoc />

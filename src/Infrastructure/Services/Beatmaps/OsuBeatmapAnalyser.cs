@@ -1,6 +1,8 @@
+using System.Runtime.CompilerServices;
 using Basil.Application.Services.Contracts.Beatmaps;
 using Basil.Application.Storage.Contracts.Beatmaps;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Formats;
@@ -18,6 +20,7 @@ using osu.Game.Rulesets.Taiko;
 using osu.Game.Rulesets.Taiko.Objects;
 using osu.Game.Utils;
 using Beatmap = Basil.Domain.Beatmaps.Beatmap;
+using BeatmapDifficulty = Basil.Domain.Beatmaps.BeatmapDifficulty;
 using LazerBeatmap = osu.Game.Beatmaps.Beatmap;
 
 namespace Basil.Infrastructure.Services.Beatmaps;
@@ -32,6 +35,9 @@ namespace Basil.Infrastructure.Services.Beatmaps;
 /// </remarks>
 internal sealed class OsuBeatmapAnalyser(IBeatmapsetStorage storage) : IBeatmapAnalyser
 {
+	// The content lives as long as the beatmap instance; it is decoded again when the beatmap's file changes.
+	private readonly ConditionalWeakTable<Beatmap, KeptContent> _contents = new();
+
 	/// <inheritdoc />
 	/// <exception cref="Exception">The beatmap file could not be decoded or analyzed.</exception>
 	public BeatmapAnalysis Analyze(Stream content, GameMode mode, GameMods mods)
@@ -47,20 +53,21 @@ internal sealed class OsuBeatmapAnalyser(IBeatmapsetStorage storage) : IBeatmapA
 	public async Task<BeatmapAnalysis?> AnalyzeAsync(Beatmap beatmap, GameMods mods,
 		CancellationToken cancellationToken = default)
 	{
-		if (beatmap.Content is not OsuBeatmapContent content)
+		var hash = beatmap.Hash;
+		if (!_contents.TryGetValue(beatmap, out var kept) || kept.Hash != hash)
 		{
-			var osu = await storage.OpenAsync(beatmap.Value.Beatmapset, BeatmapsetFileKind.Version,
-				$"{beatmap.Value.Hash}.osu", cancellationToken).ConfigureAwait(false);
+			var osu = await storage.OpenAsync(beatmap.Beatmapset, BeatmapsetFileKind.Version,
+				$"{hash}.osu", cancellationToken).ConfigureAwait(false);
 			if (osu is null) return null;
 			await using var osuScope = osu.ConfigureAwait(false);
 
 			using var reader = new LineBufferedReader(osu, true);
 			var decoded = Decoder.GetDecoder<LazerBeatmap>(reader).Decode(reader);
-			content = new OsuBeatmapContent(new StreamlessWorkingBeatmap(decoded));
-			beatmap.Content = content;
+			kept = new KeptContent(hash, new OsuBeatmapContent(new StreamlessWorkingBeatmap(decoded)));
+			_contents.AddOrUpdate(beatmap, kept);
 		}
 
-		return Analyze(content, beatmap.Value.Difficulty.Mode, mods);
+		return Analyze(kept.Content, beatmap.Metadata.Difficulty.Mode, mods);
 	}
 
 	/// <summary>Computes the gameplay stats of an already-decoded difficulty under the given mode and mods.</summary>
@@ -82,7 +89,7 @@ internal sealed class OsuBeatmapAnalyser(IBeatmapsetStorage storage) : IBeatmapA
 
 		// The domain difficulty requires each setting to stay within [0, 10], but a mod such as
 		// HardRock can push the adjusted value past that; clamp so the result stays valid.
-		var difficulty = new Difficulty(
+		var difficulty = new BeatmapDifficulty(
 			mode, Round(bpm, 1), totalLength,
 			Clamp(displayDifficulty.CircleSize), Clamp(displayDifficulty.ApproachRate),
 			Clamp(displayDifficulty.OverallDifficulty), Clamp(displayDifficulty.DrainRate),
@@ -221,4 +228,7 @@ internal sealed class OsuBeatmapAnalyser(IBeatmapsetStorage storage) : IBeatmapA
 			_ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown ruleset for game mode.")
 		};
 	}
+
+	/// <summary>The decoded content of a beatmap's .osu file, with the hash of the file it was decoded from.</summary>
+	private sealed record KeptContent(Md5 Hash, OsuBeatmapContent Content);
 }

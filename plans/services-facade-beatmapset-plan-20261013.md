@@ -310,8 +310,9 @@ xử lý chúng sau khi quét xong.
 - Mỗi lần index một entry là một thao tác riêng: ghi DB bằng try-operation của nó rồi phát event.
 
 Quét lại một entry không đổi thì không ghi DB, không ghi file, không phát event. Xoá set: đổi tên folder có
-`.deleted_` rồi xoá ngay; khởi động dọn phần còn sót. Staging vẫn ở `Cache/Staging`, cùng ổ với
-`Data/Beatmapsets`.
+`.deleted_` rồi xoá ngay; khởi động dọn phần còn sót. Thứ đang ghi dở (upload, file phái sinh, folder set trước khi
+chuyển vào chỗ) nằm dưới tên `.incoming_*` ngay trong `Data/Beatmapsets` (không còn `Cache/Staging`); danh sách và watcher
+bỏ qua, khởi động dọn phần còn sót.
 
 ### 5.5 Nội dung .osu đã đọc hiểu (độ khó theo mods)
 

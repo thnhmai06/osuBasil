@@ -15,15 +15,16 @@ internal static class BeatmapQueryFilter
 	/// <returns>The SQL WHERE clause fragment (without the WHERE keyword), or empty when no filter applies.</returns>
 	/// <remarks>
 	///     The caller aliases the beatmap table as <c>b</c> and the beatmapset table as <c>s</c>.
-	///     <see cref="Domain.Beatmaps.Beatmapset.Status" /> is a static member that always returns
-	///     <see cref="Domain.Beatmaps.BeatmapStatus.Approved" />; when the query asks for a different
+	///     <see cref="Beatmapset.Status" /> is a static member that always returns
+	///     <see cref="BeatmapsetStatus.Approved" />; when the query asks for a different
 	///     status, the returned fragment matches no row.
 	/// </remarks>
 	public static string Build(BeatmapQuery query, DynamicParameters parameters)
 	{
 		var conditions = new List<string>();
 
-		if (query.Hidden is { } hidden) conditions.Add(hidden ? "not (b.visible and s.visible)" : "b.visible and s.visible");
+		if (query.Hidden is { } hidden)
+			conditions.Add(hidden ? "not (b.visible and s.visible)" : "b.visible and s.visible");
 
 		if (query.Mode is { } mode)
 		{
@@ -105,7 +106,7 @@ internal static class BeatmapQueryFilter
 
 		// Basil reports every set as Approved; any other status matches nothing.
 		if (query.Status is { } status
-		    && status != BeatmapStatus.Approved)
+		    && status != BeatmapsetStatus.Approved)
 			return "1 = 0";
 
 		return conditions.Count == 0 ? string.Empty : string.Join(" AND ", conditions);

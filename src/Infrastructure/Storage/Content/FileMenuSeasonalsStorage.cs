@@ -11,36 +11,38 @@ internal sealed class FileMenuSeasonalsStorage(DataPaths paths) : IMenuSeasonals
 	private DataStorage Files => paths.MenuSeasonals;
 
 	/// <inheritdoc />
-	public Task<IEnumerable<AssetReference>> ListAsync(CancellationToken cancellationToken = default)
+	public Task<IEnumerable<ContentReference>> ListAsync(CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult<IEnumerable<AssetReference>>(
+		return Task.FromResult<IEnumerable<ContentReference>>(
 			Files.Keys.Order(StringComparer.OrdinalIgnoreCase).Select(Files.ReferenceOf));
 	}
 
 	/// <inheritdoc />
-	public async Task<AssetReference> SaveAsync(string name, Stream content, CancellationToken cancellationToken = default)
+	public async Task<ContentReference> SaveAsync(string name, Stream content,
+		CancellationToken cancellationToken = default)
 	{
 		await Files.SaveAsync(name, content, cancellationToken);
 		return Files.ReferenceOf(name);
 	}
 
 	/// <inheritdoc />
-	public Task<Stream?> OpenAsync(AssetReference background, CancellationToken cancellationToken = default)
+	public Task<Stream?> OpenAsync(ContentReference background, CancellationToken cancellationToken = default)
 	{
 		return Task.FromResult<Stream?>(Files.TryGetName(background, out var name) ? Files.Open(name) : null);
 	}
 
 	/// <inheritdoc />
-	public Task<AssetReference?> RenameAsync(AssetReference background, string newName, CancellationToken cancellationToken = default)
+	public Task<ContentReference?> RenameAsync(ContentReference background, string newName,
+		CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult<AssetReference?>(
+		return Task.FromResult<ContentReference?>(
 			Files.TryGetName(background, out var name) && Files.Move(name, newName)
 				? Files.ReferenceOf(newName)
 				: null);
 	}
 
 	/// <inheritdoc />
-	public Task DeleteAsync(AssetReference background, CancellationToken cancellationToken = default)
+	public Task DeleteAsync(ContentReference background, CancellationToken cancellationToken = default)
 	{
 		if (Files.TryGetName(background, out var name))
 			Files.Delete(name);

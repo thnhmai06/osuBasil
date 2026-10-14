@@ -53,19 +53,22 @@ internal sealed class FileReplayStorage(
 
 		var name = string.Format(CultureInfo.InvariantCulture,
 			"{0} {1} - {2} ({3:yyyy-MM-dd}) {4}",
-			score.Id, user.Value.Name, beatmap.Value.FullName, score.Value.Timestamp.UtcDateTime,
+			score.Id, user.Value.Name, beatmap.Name, score.Value.Timestamp.UtcDateTime,
 			ModeName(score.Value.Mode));
 		return Fitted(Portable(name)) + ".osr";
 	}
 
-	private static string ModeName(GameMode mode) => mode switch
+	private static string ModeName(GameMode mode)
 	{
-		GameMode.Standard => "Osu",
-		GameMode.Taiko => "Taiko",
-		GameMode.Catch => "CatchTheBeat",
-		GameMode.Mania => "OsuMania",
-		_ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null)
-	};
+		return mode switch
+		{
+			GameMode.Standard => "Osu",
+			GameMode.Taiko => "Taiko",
+			GameMode.Catch => "CatchTheBeat",
+			GameMode.Mania => "OsuMania",
+			_ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null)
+		};
+	}
 
 	/// <summary>Shortens a name so that, with its extension, it fits the 255-byte file name limit of common file systems.</summary>
 	/// <remarks>The score id at its start is kept, so the replay is still found by it.</remarks>

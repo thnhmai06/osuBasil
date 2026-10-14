@@ -793,7 +793,7 @@ internal sealed partial class MpCommands(
 		}
 
 		var outcome = await rooms.ConfigureAsync(context.Sender, roomId,
-			new RoomChange(BeatmapId: beatmapId, Mode: mode ?? beatmap.Value.Difficulty.Mode),
+			new RoomChange(BeatmapId: beatmapId, Mode: mode ?? beatmap.Metadata.Difficulty.Mode),
 			cancellationToken);
 		if (outcome != RoomOutcome.Ok)
 		{
@@ -802,8 +802,8 @@ internal sealed partial class MpCommands(
 		}
 
 		await context.Reply(
-			string.Format(MpReplies.ChangedBeatmap, beatmap.Value.Beatmapset.Value.Artist,
-				beatmap.Value.Beatmapset.Value.Title, beatmap.Value.Version),
+			string.Format(MpReplies.ChangedBeatmap, beatmap.Beatmapset.Metadata.Artist,
+				beatmap.Beatmapset.Metadata.Title, beatmap.Metadata.Version),
 			cancellationToken);
 		return true;
 	}
@@ -954,7 +954,7 @@ internal sealed partial class MpCommands(
 		CancellationToken cancellationToken)
 	{
 		var room = await rooms.GetForAsync(context.Sender, roomId, cancellationToken);
-		string? refusal = room switch
+		var refusal = room switch
 		{
 			null => string.Format(MpReplies.NoActiveRoomWithId, roomId),
 			_ when !room.IsManagedBy(context.Sender) => MpReplies.Describe(RoomOutcome.NotAuthorized),
@@ -969,7 +969,8 @@ internal sealed partial class MpCommands(
 			return false;
 		}
 
-		await countdowns.StartAsync(roomId, context.Sender, TimeSpan.FromSeconds(seconds), startsRound, cancellationToken);
+		await countdowns.StartAsync(roomId, context.Sender, TimeSpan.FromSeconds(seconds), startsRound,
+			cancellationToken);
 		return true;
 	}
 

@@ -1,4 +1,3 @@
-using System.Text.Json.Serialization;
 using Basil.Domain.Mechanics;
 
 namespace Basil.Domain.Beatmaps;
@@ -12,11 +11,6 @@ namespace Basil.Domain.Beatmaps;
 ///     with a <c>mode</c> discriminator whose values match <see cref="GameMode" />'s own wire
 ///     values, so a client can dispatch on the same integer either way.
 /// </remarks>
-[JsonPolymorphic(TypeDiscriminatorPropertyName = "mode")]
-[JsonDerivedType(typeof(OsuObjects), (int)GameMode.Standard)]
-[JsonDerivedType(typeof(TaikoObjects), (int)GameMode.Taiko)]
-[JsonDerivedType(typeof(CatchObjects), (int)GameMode.Catch)]
-[JsonDerivedType(typeof(ManiaObjects), (int)GameMode.Mania)]
 public abstract class BeatmapObjects
 {
 	/// <summary>Gets or sets the total number of hit objects in the beatmap.</summary>

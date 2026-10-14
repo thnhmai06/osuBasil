@@ -17,7 +17,7 @@ internal sealed class BeatmapsetStorageWatcher(
 	private readonly CancellationTokenSource _stopping = new();
 
 	/// <summary>The watched entries to scan once the full scan is done.</summary>
-	private IAsyncEnumerable<BeatmapsetEntry>? _changes;
+	private IAsyncEnumerable<BeatmapsetSource>? _changes;
 
 	/// <summary>Starts watching the storage, scans it fully, and only then starts serving the changed entries.</summary>
 	/// <param name="cancellationToken">A token that cancels starting.</param>
@@ -66,7 +66,6 @@ internal sealed class BeatmapsetStorageWatcher(
 		try
 		{
 			await foreach (var entry in _changes!.ConfigureAwait(false))
-			{
 				try
 				{
 					var result = await beatmapsets.ScanAsync(entry, stoppingToken).ConfigureAwait(false);
@@ -80,7 +79,6 @@ internal sealed class BeatmapsetStorageWatcher(
 				{
 					logger.LogError(exception, "Could not scan beatmapset entry {Name}", entry.Name);
 				}
-			}
 		}
 		catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested ||
 		                                         _stopping.IsCancellationRequested)

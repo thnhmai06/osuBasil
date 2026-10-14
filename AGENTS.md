@@ -567,28 +567,31 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   `DeleteAsync`, plus `ListAsync` and `RenameAsync` where the content is managed); `OpenAsync` serves the server's
   own reads, never clients, who get stored assets from the asset host. A storage lists with `IEnumerable<X>` (the
   caller decides whether to materialise it). `IBeatmapsetStorage` keeps each set in `Data/Beatmapsets/{id} {Artist} - {Title}/`: `archive.osz`
-  exactly as given is the truth about the set (`ArchiveHash`, `ArchiveSize`, `ArchiveModifiedAt` record it), and
+  exactly as given is the truth about the set (`Beatmapset.Fingerprint` records it), and
   `archive-novideo.osz`, `versions/{md5}.osu`, `backgrounds/`, `audio/` (with `preview_{audio}`), `video/` and
   `storyboard.osb` are made from it when the set is indexed; nothing else is extracted, and reading never makes a file
-  (a missing one reads as absent). Whether an `.osz`, a `.zip` or a folder, uploaded or dropped into `Data/Beatmapsets` by
-  hand, its content decides what it is: one set (difficulties at its top; a folder is packed first), a collection of
-  sets (`.osz` archives or set folders at any depth, laid out as entries of their own) or invalid. A dropped `.osu` on
-  its own is not an entry and is skipped; an uploaded one is rejected (`BeatmapsetImportFailure.Loose`). An invalid
-  entry placed by hand is left as it is. `IBeatmapsetService.ImportAsync` takes an upload of several files and folders;
-  every valid set of one upload is stored in one transaction, what is rejected leaves nothing, and two parts that are
-  the same set or share a difficulty keep only the first found (a scan does the same). A folder being deleted is
+  (a missing one reads as absent). Three kinds of type, three owners: the storage holds raw content (`BeatmapsetSource`: a
+  `BeatmapsetArchive` `.osz` or a `BeatmapsetFolder` of one set's files), `IBeatmapsetReader` understands it
+  (`BeatmapsetContent`), and the repositories hold the records (`Beatmapset`, `Beatmap`; created from `BeatmapsetData`
+  through `IBeatmapsetRepository.CommitAsync`). Raw content is identified by a `ContentFingerprint`: its `ContentStamp`
+  (size, modification time) is known without reading, the MD5 is taken (`BeatmapsetArchive.FingerprintAsync`) only when
+  the stamp differs from the one recorded on the set; a `Beatmap` is identified by the MD5 of its `.osu`. One import is
+  one beatmapset: `IBeatmapsetService.ImportAsync` takes one `.osz`; a folder exists only when placed by hand and is
+  packed into an `.osz` first. Difficulties lie at the top of an archive. There are no collections: a `.zip`, a loose
+  `.osu` or any other file placed by hand is not a source and is left as it is, as is an invalid source; an upload
+  that is rejected leaves nothing, and its set and beatmaps are stored in one transaction. Two sources of one scan never
+  become the same set or share a difficulty (the first found wins). A folder being deleted is
   renamed with `.deleted_` first; anything being written (an upload, a derived file, a set folder before it moves into
   place) lies under a top-level `.incoming_` name, which is never listed or watched, so moves stay on one volume. Every
-  name written from untrusted input avoids the names Windows keeps for devices (`CON`, `NUL.txt`, `COM1`, ...): an
-  uploaded path with one is refused, an archive entry with one is left out, and a derived file or laid-out entry gets a
-  `_` prefix. `IBeatmapsetService.ScanAsync()` runs at startup before clients are served: it checks every entry
+  name written from untrusted input avoids the names Windows keeps for devices (`CON`, `NUL.txt`, `COM1`, ...): a
+  derived file gets a `_` prefix. `IBeatmapsetService.ScanAsync()` runs at startup before clients are served: it checks every entry
   (size and modification time, then the hash), indexes what changed, makes missing files again, and stores every
-  record change in one `IBeatmapsetRepository.SyncAsync` transaction; `ScanAsync(entry)` handles each change the
+  record change in one `IBeatmapsetRepository.CommitAsync` transaction; `ScanAsync(entry)` handles each change the
   storage watcher reports. `IBeatmapsetReader` reads an archive into a `BeatmapsetContent` whose files open on demand
   (no `byte[]` copies) and owns the input checks; only the beatmapset service uses it. `IBeatmapAssets` only makes
-  derived files at index time (audio previews). A beatmap's `Content` (`BeatmapContent`, opaque, made by
-  Infrastructure from the osu! libraries) is the understood `.osu` file, loaded lazily by
-  `IBeatmapAnalyser.AnalyzeAsync` and kept in memory so changing mods reads no file; metadata stays in the database. A
+  derived files at index time (audio previews). `IBeatmapAnalyser.AnalyzeAsync` reads a beatmap's `.osu` once
+  and keeps the understood file as long as that `Beatmap` instance lives (again when its hash changes), so changing mods
+  reads no file; the Domain holds no such runtime content, and metadata stays in the database. A
   storage of text reads and writes it through `StreamReader`/`StreamWriter` (`IFaqStorage.ReadAsync`,
   `IFaqStorage.CreateOrUpdateAsync`) instead of a raw `Stream`. Extract a shared
   interface only when several repositories genuinely share an operation, and keep the `IXxxRepository`

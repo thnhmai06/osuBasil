@@ -1,6 +1,6 @@
 ﻿using System.Numerics;
 
-namespace Basil.Domain.Utilities;
+namespace Basil.Domain.Common;
 
 public static class Comparisons
 {

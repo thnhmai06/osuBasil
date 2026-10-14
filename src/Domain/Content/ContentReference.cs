@@ -1,11 +1,11 @@
 using System.Diagnostics.CodeAnalysis;
-using Basil.Domain.Utilities;
+using Basil.Domain.Common;
 
 namespace Basil.Domain.Content;
 
 /// <summary>A canonical reference to an asset: the address of an asset hosted elsewhere, or the path of a file the server stores under its data directory.</summary>
 /// <remarks>The default value refers to nothing; a model that holds a reference rejects it.</remarks>
-public readonly record struct AssetReference : IParsable<AssetReference>, IFormattable
+public readonly record struct ContentReference : IParsable<ContentReference>, IFormattable
 {
 	/// <summary>Gets the canonical text of the reference; null for the default value.</summary>
 	public string Value { get; }
@@ -14,7 +14,7 @@ public readonly record struct AssetReference : IParsable<AssetReference>, IForma
 	/// <param name="address">The absolute http or https address of the asset.</param>
 	/// <exception cref="ArgumentNullException"><paramref name="address" /> is <see langword="null" />.</exception>
 	/// <exception cref="ArgumentException"><paramref name="address" /> is not absolute, or its scheme is not http or https.</exception>
-	public AssetReference(Uri address)
+	public ContentReference(Uri address)
 	{
 		ArgumentNullException.ThrowIfNull(address);
 		if (!address.IsHttp())
@@ -26,7 +26,7 @@ public readonly record struct AssetReference : IParsable<AssetReference>, IForma
 	/// <param name="path">The canonical path of the file, relative to the data directory.</param>
 	/// <exception cref="ArgumentNullException"><paramref name="path" /> is <see langword="null" />.</exception>
 	/// <exception cref="ArgumentException"><paramref name="path" /> is empty, not a relative path, or not canonical.</exception>
-	public AssetReference(string path)
+	public ContentReference(string path)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(path);
 		if (!TryNormalizePath(path, out var canonical))
@@ -68,14 +68,14 @@ public readonly record struct AssetReference : IParsable<AssetReference>, IForma
 	/// <returns>The parsed reference.</returns>
 	/// <exception cref="ArgumentNullException"><paramref name="s" /> is <see langword="null" />.</exception>
 	/// <exception cref="FormatException"><paramref name="s" /> is not a canonical reference.</exception>
-	public static AssetReference Parse(string s, IFormatProvider? provider)
+	public static ContentReference Parse(string s, IFormatProvider? provider)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(s);
 		try
 		{
 			return IsAddress(s)
-				? new AssetReference(new Uri(s, UriKind.Absolute))
-				: new AssetReference(s);
+				? new ContentReference(new Uri(s, UriKind.Absolute))
+				: new ContentReference(s);
 		}
 		catch (ArgumentException exception)
 		{
@@ -88,7 +88,7 @@ public readonly record struct AssetReference : IParsable<AssetReference>, IForma
 	/// <param name="provider">A provider that supplies culture-specific formatting information.</param>
 	/// <param name="result">The parsed reference, or the default value when the text is invalid.</param>
 	/// <returns><see langword="true" /> when <paramref name="s" /> is a canonical reference; otherwise, <see langword="false" />.</returns>
-	public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, out AssetReference result)
+	public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, out ContentReference result)
 	{
 		result = default;
 		if (s is null) return false;
@@ -122,21 +122,21 @@ public readonly record struct AssetReference : IParsable<AssetReference>, IForma
 
 	/// <summary>Converts the canonical text of a reference to a reference.</summary>
 	/// <param name="text">The text to convert.</param>
-	public static explicit operator AssetReference(string text)
+	public static explicit operator ContentReference(string text)
 	{
 		return Parse(text, null);
 	}
 
 	/// <summary>Converts an absolute address to a reference.</summary>
 	/// <param name="address">The address to convert.</param>
-	public static explicit operator AssetReference(Uri address)
+	public static explicit operator ContentReference(Uri address)
 	{
-		return new AssetReference(address);
+		return new ContentReference(address);
 	}
 
 	/// <summary>Converts a reference to its canonical text.</summary>
 	/// <param name="reference">The reference to convert.</param>
-	public static explicit operator string(AssetReference reference)
+	public static explicit operator string(ContentReference reference)
 	{
 		return reference.ToString();
 	}

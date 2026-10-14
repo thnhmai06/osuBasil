@@ -12,32 +12,22 @@ namespace Basil.Application.Services.Contracts.Beatmaps;
 /// </remarks>
 public interface IBeatmapsetService : IEventPublisher<BeatmapsetEvent>
 {
-	/// <summary>Imports every beatmapset found in an upload, adding or replacing the beatmapsets they belong to.</summary>
-	/// <param name="files">
-	///     The uploaded files: .osz archives of one beatmapset, .zip archives of several beatmapsets (as .osz archives or
-	///     folders), or folders of beatmapsets.
-	/// </param>
+	/// <summary>Imports an uploaded beatmapset archive, adding or replacing the beatmapset it belongs to.</summary>
+	/// <param name="archive">The .osz archive of one beatmapset, read from its current position; not disposed.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>The result of each beatmapset found, in the order they were found; empty when none was found.</returns>
+	/// <returns>The result of the import.</returns>
 	/// <remarks>
 	///     <para>
-	///         What each file holds decides what it is: an archive or folder with difficulties at its top is one
-	///         beatmapset; any other archive or folder is looked through for beatmapsets.
+	///         An archive that cannot be read, or that belongs to a locked beatmapset, is rejected and nothing of it is
+	///         kept. The beatmapset and its beatmaps are stored at once, or not at all.
 	///     </para>
 	///     <para>
-	///         Every beatmapset that can be imported is stored at once, or none of them is. One that cannot be read,
-	///         belongs to a locked beatmapset or repeats an earlier one of the upload is rejected; nothing of it is kept.
-	///     </para>
-	///     <para>
-	///         A beatmapset is the stored one that already has a beatmap of it; otherwise the stored one with the id it
-	///         declares; otherwise a new beatmapset, given the declared id when it has one. Difficulties the new version
-	///         no longer has are removed.
+	///         The beatmapset is the stored one that already has a beatmap of the archive; otherwise the stored one with
+	///         the id the archive declares; otherwise a new beatmapset, given the declared id when it has one.
+	///         Difficulties the new version no longer has are removed.
 	///     </para>
 	/// </remarks>
-	/// <exception cref="ArgumentException">A file's path is not a safe relative path.</exception>
-	/// <exception cref="InvalidDataException">The upload unpacks to more files or bytes than one upload may hold.</exception>
-	Task<IReadOnlyList<BeatmapsetImportResult>> ImportAsync(IReadOnlyList<BeatmapsetUploadFile> files,
-		CancellationToken cancellationToken = default);
+	Task<BeatmapsetImportResult> ImportAsync(Stream archive, CancellationToken cancellationToken = default);
 
 	/// <summary>Deletes a beatmapset with its beatmaps and files.</summary>
 	/// <param name="set">The beatmapset to delete.</param>
@@ -70,7 +60,7 @@ public interface IBeatmapsetService : IEventPublisher<BeatmapsetEvent>
 	///     otherwise a new one. A folder that is gone or whose archive is gone or unreadable forgets its set; its files
 	///     are left as they are. A locked set is not changed. Scanning an unchanged entry again changes nothing.
 	/// </remarks>
-	Task<BeatmapsetScanResult> ScanAsync(BeatmapsetEntry entry, CancellationToken cancellationToken = default);
+	Task<BeatmapsetScanResult> ScanAsync(BeatmapsetSource entry, CancellationToken cancellationToken = default);
 }
 
 /// <summary>How many beatmapsets a scan changed.</summary>

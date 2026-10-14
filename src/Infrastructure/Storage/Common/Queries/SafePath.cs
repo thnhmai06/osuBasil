@@ -1,4 +1,4 @@
-using Basil.Domain.Utilities;
+using Basil.Domain.Common;
 
 namespace Basil.Infrastructure.Storage.Common.Queries;
 

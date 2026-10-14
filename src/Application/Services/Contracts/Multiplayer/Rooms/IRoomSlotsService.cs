@@ -1,6 +1,5 @@
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
-using Basil.Application.Storage.Contracts.Multiplayer;
 using Basil.Application.Storage.Contracts.Multiplayer.Rooms;
 using Basil.Application.Storage.Contracts.Sessions;
 

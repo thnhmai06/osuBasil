@@ -1,4 +1,4 @@
-using Basil.Domain.Utilities;
+using Basil.Domain.Common;
 
 namespace Basil.Domain.Content;
 
@@ -50,7 +50,7 @@ public sealed record ServerSettings
 		}
 
 		/// <summary>Gets the image of the icon, or <see langword="null" /> for none.</summary>
-		public AssetReference? Image { get; init; }
+		public ContentReference? Image { get; init; }
 	}
 
 	/// <summary>The beatmap mirror the server sends beatmapset downloads and beatmap searches to.</summary>

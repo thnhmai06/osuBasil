@@ -3,7 +3,7 @@ namespace Basil.Domain.Beatmaps;
 /// <summary>
 ///     Represents the ranked status of a beatmap.
 /// </summary>
-public enum BeatmapStatus : sbyte
+public enum BeatmapsetStatus : sbyte
 {
 	/// <summary>The beatmap has not been submitted.</summary>
 	NotSubmitted = -1,
@@ -28,10 +28,10 @@ public enum BeatmapStatus : sbyte
 }
 
 /// <summary>
-///     Provides conversions between <see cref="BeatmapStatus" /> and the numeric status values
+///     Provides conversions between <see cref="BeatmapsetStatus" /> and the numeric status values
 ///     used by osu! score submission and the osu! web API.
 /// </summary>
-public static class BeatmapStatusExtensions
+public static class BeatmapsetStatusExtensions
 {
 	/// <summary>
 	///     Converts a beatmap status to the numeric value returned by the osu! web API.
@@ -40,63 +40,63 @@ public static class BeatmapStatusExtensions
 	/// <returns>The numeric value the osu! web API uses for the status.</returns>
 	/// <exception cref="ArgumentOutOfRangeException">
 	///     <paramref name="status" /> has no osu! web API mapping, such as
-	///     <see cref="BeatmapStatus.NotSubmitted" /> or <see cref="BeatmapStatus.UpdateAvailable" />.
+	///     <see cref="BeatmapsetStatus.NotSubmitted" /> or <see cref="BeatmapsetStatus.UpdateAvailable" />.
 	/// </exception>
-	public static int ToOsuApi(this BeatmapStatus status)
+	public static int ToOsuApi(this BeatmapsetStatus status)
 	{
 		return status switch
 		{
-			BeatmapStatus.Pending => 0,
-			BeatmapStatus.Ranked => 1,
-			BeatmapStatus.Approved => 2,
-			BeatmapStatus.Qualified => 3,
-			BeatmapStatus.Loved => 4,
+			BeatmapsetStatus.Pending => 0,
+			BeatmapsetStatus.Ranked => 1,
+			BeatmapsetStatus.Approved => 2,
+			BeatmapsetStatus.Qualified => 3,
+			BeatmapsetStatus.Loved => 4,
 			_ => throw new ArgumentOutOfRangeException(nameof(status), status, "No osu!api mapping for this status.")
 		};
 	}
 
 	/// <summary>
-	///     Converts a numeric osu! web API status to a <see cref="BeatmapStatus" />.
+	///     Converts a numeric osu! web API status to a <see cref="BeatmapsetStatus" />.
 	/// </summary>
 	/// <param name="osuApiStatus">The numeric status value from the osu! web API.</param>
 	/// <returns>
-	///     The matching status, or <see cref="BeatmapStatus.UpdateAvailable" /> when the value is
+	///     The matching status, or <see cref="BeatmapsetStatus.UpdateAvailable" /> when the value is
 	///     not recognized.
 	/// </returns>
-	public static BeatmapStatus FromOsuApi(int osuApiStatus)
+	public static BeatmapsetStatus FromOsuApi(int osuApiStatus)
 	{
 		return osuApiStatus switch
 		{
-			-2 => BeatmapStatus.Pending, // graveyard
-			-1 => BeatmapStatus.Pending, // wip
-			0 => BeatmapStatus.Pending,
-			1 => BeatmapStatus.Ranked,
-			2 => BeatmapStatus.Approved,
-			3 => BeatmapStatus.Qualified,
-			4 => BeatmapStatus.Loved,
-			_ => BeatmapStatus.UpdateAvailable
+			-2 => BeatmapsetStatus.Pending, // graveyard
+			-1 => BeatmapsetStatus.Pending, // wip
+			0 => BeatmapsetStatus.Pending,
+			1 => BeatmapsetStatus.Ranked,
+			2 => BeatmapsetStatus.Approved,
+			3 => BeatmapsetStatus.Qualified,
+			4 => BeatmapsetStatus.Loved,
+			_ => BeatmapsetStatus.UpdateAvailable
 		};
 	}
 
 	/// <summary>
-	///     Converts a numeric osu!direct status to a <see cref="BeatmapStatus" />.
+	///     Converts a numeric osu!direct status to a <see cref="BeatmapsetStatus" />.
 	/// </summary>
 	/// <param name="osuDirectStatus">The numeric status value from osu!direct.</param>
 	/// <returns>
-	///     The matching status, or <see cref="BeatmapStatus.UpdateAvailable" /> when the value is
+	///     The matching status, or <see cref="BeatmapsetStatus.UpdateAvailable" /> when the value is
 	///     not recognized.
 	/// </returns>
-	public static BeatmapStatus FromOsuDirect(int osuDirectStatus)
+	public static BeatmapsetStatus FromOsuDirect(int osuDirectStatus)
 	{
 		return osuDirectStatus switch
 		{
-			0 => BeatmapStatus.Ranked,
-			2 => BeatmapStatus.Pending,
-			3 => BeatmapStatus.Qualified,
-			5 => BeatmapStatus.Pending, // graveyard
-			7 => BeatmapStatus.Ranked, // ranked + played before
-			8 => BeatmapStatus.Loved,
-			_ => BeatmapStatus.UpdateAvailable
+			0 => BeatmapsetStatus.Ranked,
+			2 => BeatmapsetStatus.Pending,
+			3 => BeatmapsetStatus.Qualified,
+			5 => BeatmapsetStatus.Pending, // graveyard
+			7 => BeatmapsetStatus.Ranked, // ranked + played before
+			8 => BeatmapsetStatus.Loved,
+			_ => BeatmapsetStatus.UpdateAvailable
 		};
 	}
 }

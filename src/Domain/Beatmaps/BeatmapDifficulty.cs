@@ -16,7 +16,7 @@ namespace Basil.Domain.Beatmaps;
 /// <remarks>
 ///     <see cref="Length" /> serializes as a whole number of seconds on the wire.
 /// </remarks>
-public readonly record struct Difficulty(
+public readonly record struct BeatmapDifficulty(
 	GameMode Mode,
 	double Bpm,
 	TimeSpan Length,

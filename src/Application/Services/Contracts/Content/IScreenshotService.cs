@@ -18,9 +18,9 @@ public interface IScreenshotService
 	/// <returns>The reference to the stored screenshot, or why it was not stored.</returns>
 	/// <remarks>
 	///     The image may be at most <see cref="MaxScreenshotBytes" /> bytes and must be a PNG or JPEG image; its format is
-	///     told from its content, never from a name.
+	///     told from its file, never from a name.
 	/// </remarks>
-	Task<(AssetReference? Screenshot, ScreenshotUploadFailure? Failure)> UploadAsync(Connection by, Stream content,
+	Task<(ContentReference? Screenshot, ScreenshotUploadFailure? Failure)> UploadAsync(Connection by, Stream content,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Deletes a stored screenshot.</summary>
@@ -31,7 +31,7 @@ public interface IScreenshotService
 	///     <see langword="true" /> if the caller may delete screenshots, even when no screenshot is stored under the
 	///     reference; otherwise, <see langword="false" />.
 	/// </returns>
-	Task<bool> DeleteAsync(Connection by, AssetReference screenshot, CancellationToken cancellationToken = default);
+	Task<bool> DeleteAsync(Connection by, ContentReference screenshot, CancellationToken cancellationToken = default);
 }
 
 /// <summary>The reasons a screenshot is not stored.</summary>
@@ -43,6 +43,6 @@ public enum ScreenshotUploadFailure : byte
 	/// <summary>The image is larger than <see cref="IScreenshotService.MaxScreenshotBytes" />.</summary>
 	TooLarge,
 
-	/// <summary>The content is not a PNG or JPEG image.</summary>
+	/// <summary>The file is not a PNG or JPEG image.</summary>
 	InvalidImage
 }

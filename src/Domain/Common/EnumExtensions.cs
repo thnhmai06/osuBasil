@@ -1,4 +1,4 @@
-﻿namespace Basil.Domain.Utilities;
+﻿namespace Basil.Domain.Common;
 
 /// <summary>Validation helpers for enum values.</summary>
 public static class EnumExtensions

@@ -1,5 +1,5 @@
-﻿using Basil.Domain.Users;
-using Basil.Domain.Utilities;
+﻿using Basil.Domain.Common;
+using Basil.Domain.Users;
 
 namespace Basil.Domain.Auth;
 

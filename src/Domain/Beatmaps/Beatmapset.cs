@@ -1,17 +1,18 @@
-using Basil.Domain.Utilities;
+using Basil.Domain.Common;
+using Basil.Domain.Content;
 
 namespace Basil.Domain.Beatmaps;
 
 /// <summary>
 ///     A stored beatmapset identified by its id.
 /// </summary>
-public sealed class Beatmapset : IWrapper<BeatmapsetData>, IEquatable<Beatmapset>
+public sealed class Beatmapset : IEquatable<Beatmapset>
 {
 	/// <summary>
 	///     The lowest id of a beatmapset that has no osu! id and was given a local one.
 	/// </summary>
 	/// <remarks>Real osu! ids stay well below this value.</remarks>
-	public const int LocalIdFloor = 1_000_000_000;
+	private const int LocalIdFloor = 1_000_000_000;
 
 	/// <summary>Gets the unique identifier of the set: its osu! id, or a local id.</summary>
 	/// <exception cref="ArgumentOutOfRangeException">The value is less than 1.</exception>
@@ -23,18 +24,6 @@ public sealed class Beatmapset : IWrapper<BeatmapsetData>, IEquatable<Beatmapset
 			: throw new ArgumentOutOfRangeException(nameof(value), value, "Beatmapset ids start at 1.");
 	}
 
-	/// <summary>Gets the beatmapset data this identity wraps.</summary>
-	public required BeatmapsetData Value { get; init; }
-
-	/// <summary>
-	///     Gets the ranked status of the set.
-	/// </summary>
-	/// <remarks>
-	///     This member is static because Basil reports every beatmapset as approved; the status is
-	///     not stored per set.
-	/// </remarks>
-	public static BeatmapStatus Status => BeatmapStatus.Approved;
-
 	/// <summary>
 	///     Gets a value that indicates whether the set has no osu! id and was given a local one.
 	/// </summary>
@@ -43,6 +32,40 @@ public sealed class Beatmapset : IWrapper<BeatmapsetData>, IEquatable<Beatmapset
 	///     <see langword="false" />.
 	/// </value>
 	public bool IsLocallyIngested => Id >= LocalIdFloor;
+
+	/// <summary>Gets or sets the fingerprint of the set's archive as it was last indexed.</summary>
+	public required ContentFingerprint Fingerprint { get; set; }
+
+	/// <summary>Gets or sets what the set's difficulties share: artist, title and mapper.</summary>
+	public required BeatmapsetMetadata Metadata { get; set; }
+
+	/// <summary>Gets or sets the files the set has besides its difficulties.</summary>
+	public required BeatmapsetAssets Assets { get; set; }
+
+	/// <summary>
+	///     Gets the ranked status of the set.
+	/// </summary>
+	/// <remarks>
+	///     This member is static because Basil reports every beatmapset as approved; the status is
+	///     not stored per set.
+	/// </remarks>
+	public static BeatmapsetStatus Status => BeatmapsetStatus.Approved;
+
+	/// <summary>The time of the latest import of the set, in UTC.</summary>
+	public required DateTimeOffset UpdatedAt { get; set; }
+
+	/// <summary>The time the set was first imported, in UTC.</summary>
+	public required DateTimeOffset CreatedAt { get; init; }
+
+	/// <summary>
+	///     Whether the set is write-locked. Locked sets cannot be updated or deleted.
+	/// </summary>
+	public bool Locked { get; set; } = false;
+
+	/// <summary>
+	///     Whether the set is shown in public listings and on the public beatmap endpoints.
+	/// </summary>
+	public bool Visible { get; set; } = true;
 
 	/// <summary>
 	///     Determines whether another beatmapset refers to the same set.
@@ -82,71 +105,4 @@ public sealed class Beatmapset : IWrapper<BeatmapsetData>, IEquatable<Beatmapset
 	{
 		return Id;
 	}
-}
-
-/// <summary>
-///     The shared metadata of a group of beatmap difficulties.
-/// </summary>
-/// <remarks>
-///     Artist, Title, Creator, and UpdatedAt are shared by every difficulty in the set, so they
-///     live here instead of being duplicated on each <see cref="BeatmapData" />.
-///     <see cref="CreatedAt" /> records the first import, distinct from <see cref="UpdatedAt" />,
-///     which changes on every later import of the set.
-/// </remarks>
-public sealed class BeatmapsetData
-{
-	/// <summary>The artist of the set's music.</summary>
-	public required string Artist
-	{
-		get;
-		set => field = string.IsNullOrWhiteSpace(value)
-			? throw new ArgumentException("Artist cannot be empty.", nameof(value))
-			: value.ThrowIfHasNul();
-	}
-
-	/// <summary>The title of the set's music.</summary>
-	public required string Title
-	{
-		get;
-		set => field = string.IsNullOrWhiteSpace(value)
-			? throw new ArgumentException("Title cannot be empty.", nameof(value))
-			: value.ThrowIfHasNul();
-	}
-
-	/// <summary>The name of the beatmapset's mapper.</summary>
-	public required string Creator
-	{
-		get;
-		set => field = string.IsNullOrWhiteSpace(value)
-			? throw new ArgumentException("Creator cannot be empty.", nameof(value))
-			: value.ThrowIfHasNul();
-	}
-
-	/// <summary>The time of the latest import of the set, in UTC.</summary>
-	public required DateTimeOffset UpdatedAt { get; set; }
-
-	/// <summary>The time the set was first imported, in UTC.</summary>
-	public required DateTimeOffset CreatedAt { get; init; }
-
-	/// <summary>The MD5 hash of the set's archive, or <see langword="null" /> until the archive is first indexed.</summary>
-	public Md5? ArchiveHash { get; set; }
-
-	/// <summary>The size of the set's archive in bytes, or <see langword="null" /> until the archive is first indexed.</summary>
-	public long? ArchiveSize { get; set; }
-
-	/// <summary>When the set's archive was last modified, in UTC, or <see langword="null" /> until it is first indexed.</summary>
-	public DateTimeOffset? ArchiveModifiedAt { get; set; }
-
-	/// <summary>Whether the set has a storyboard.</summary>
-	public bool Storyboard { get; set; }
-
-	/// <summary>
-	///     Whether the set is write-locked. Locked sets cannot be updated or deleted.
-	/// </summary>
-	public bool Locked { get; set; } = false;
-
-	/// <summary>
-	///     Whether the set is shown in public listings and on the public beatmap endpoints.
-	/// </summary>
-	public bool Visible { get; set; } = true;
 }

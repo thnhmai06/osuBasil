@@ -3,8 +3,8 @@ using Basil.Application.Services.Implementations.Users;
 using Basil.Application.Storage.Contracts.Chat;
 using Basil.Application.Storage.Contracts.Sessions;
 using Basil.Domain.Chat;
+using Basil.Domain.Common;
 using Basil.Domain.Users;
-using Basil.Domain.Utilities;
 
 namespace Basil.Application.Services.Implementations.Chat;
 

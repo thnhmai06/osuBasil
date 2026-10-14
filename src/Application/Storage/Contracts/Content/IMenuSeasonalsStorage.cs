@@ -8,7 +8,7 @@ public interface IMenuSeasonalsStorage
 	/// <summary>Lists the stored backgrounds.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>References to the stored backgrounds.</returns>
-	Task<IEnumerable<AssetReference>> ListAsync(CancellationToken cancellationToken = default);
+	Task<IEnumerable<ContentReference>> ListAsync(CancellationToken cancellationToken = default);
 
 	/// <summary>Stores a background under a name, replacing any background with that name.</summary>
 	/// <param name="name">The name to store the background under.</param>
@@ -16,13 +16,13 @@ public interface IMenuSeasonalsStorage
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The reference to the stored background.</returns>
 	/// <exception cref="ArgumentException"><paramref name="name" /> is not a safe file name.</exception>
-	Task<AssetReference> SaveAsync(string name, Stream content, CancellationToken cancellationToken = default);
+	Task<ContentReference> SaveAsync(string name, Stream content, CancellationToken cancellationToken = default);
 
 	/// <summary>Opens a stored background.</summary>
 	/// <param name="background">The reference of the background to open.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The image bytes, or <see langword="null" /> when the reference names no background stored here.</returns>
-	Task<Stream?> OpenAsync(AssetReference background, CancellationToken cancellationToken = default);
+	Task<Stream?> OpenAsync(ContentReference background, CancellationToken cancellationToken = default);
 
 	/// <summary>Renames a stored background.</summary>
 	/// <param name="background">The reference of the background to rename.</param>
@@ -30,10 +30,11 @@ public interface IMenuSeasonalsStorage
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The reference under the new name, or <see langword="null" /> when the reference names no background stored here or the new name is taken.</returns>
 	/// <exception cref="ArgumentException"><paramref name="newName" /> is not a safe file name.</exception>
-	Task<AssetReference?> RenameAsync(AssetReference background, string newName, CancellationToken cancellationToken = default);
+	Task<ContentReference?> RenameAsync(ContentReference background, string newName,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>Deletes a stored background; a reference to no background stored here does nothing.</summary>
 	/// <param name="background">The reference of the background to delete.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task DeleteAsync(AssetReference background, CancellationToken cancellationToken = default);
+	Task DeleteAsync(ContentReference background, CancellationToken cancellationToken = default);
 }

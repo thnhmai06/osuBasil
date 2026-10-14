@@ -1,9 +1,9 @@
-using Basil.Domain.Utilities;
+using Basil.Domain.Common;
 
 namespace Basil.Domain.Users;
 
 /// <summary>A restriction of a user, identified by its id.</summary>
-public sealed class Restriction : IWrapper<RestrictionData>, IEquatable<Restriction>
+public sealed class Restriction : IEquatable<Restriction>
 {
 	/// <summary>Gets the unique identifier of the restriction.</summary>
 	public required int Id { get; init; }
@@ -65,7 +65,8 @@ public sealed class RestrictionData
 		init
 		{
 			if (value > EndsAt)
-				throw new ArgumentOutOfRangeException(nameof(value), value, "A restriction cannot start after it ends.");
+				throw new ArgumentOutOfRangeException(nameof(value), value,
+					"A restriction cannot start after it ends.");
 			field = value;
 		}
 	}
@@ -78,7 +79,8 @@ public sealed class RestrictionData
 		set
 		{
 			if (value < StartsAt)
-				throw new ArgumentOutOfRangeException(nameof(value), value, "A restriction cannot end before it starts.");
+				throw new ArgumentOutOfRangeException(nameof(value), value,
+					"A restriction cannot end before it starts.");
 			field = value;
 		}
 	}

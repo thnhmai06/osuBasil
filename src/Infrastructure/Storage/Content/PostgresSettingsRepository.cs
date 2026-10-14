@@ -89,10 +89,10 @@ internal sealed class PostgresSettingsRepository(
 	}
 
 	/// <summary>Reads the stored menu icon image, or <see langword="null" /> when none or an invalid one is stored.</summary>
-	private AssetReference? ParseImage(string? value)
+	private ContentReference? ParseImage(string? value)
 	{
 		if (value is null) return null;
-		if (AssetReference.TryParse(value, null, out var image)) return image;
+		if (ContentReference.TryParse(value, null, out var image)) return image;
 
 		logger.LogWarning("The menu icon image {Image} is not a valid asset reference and is not shown", value);
 		return null;

@@ -1,12 +1,12 @@
+using Basil.Domain.Common;
 using Basil.Domain.Users;
-using Basil.Domain.Utilities;
 
 namespace Basil.Domain.Multiplayer.Matches;
 
 /// <summary>
 ///     A persisted match identified by its id.
 /// </summary>
-public sealed class Match : IWrapper<MatchData>, IEquatable<Match>
+public sealed class Match : IEquatable<Match>
 {
 	/// <summary>Gets the unique identifier of the match.</summary>
 	public required int Id
