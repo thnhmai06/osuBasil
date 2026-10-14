@@ -45,7 +45,7 @@ internal sealed class BeatmapsetService(
 			item = await PlanAsync(entry, null, content, null, cancellationToken).ConfigureAwait(false);
 		}
 
-		if (item.Existing is { Value.Locked: true })
+		if (item.Locked)
 			return new BeatmapsetImportResult(null, [], BeatmapsetImportFailure.Locked);
 
 		// The archive is closed first: it is moved into the set's folder.
@@ -117,9 +117,9 @@ internal sealed class BeatmapsetService(
 			await using (content.ConfigureAwait(false))
 			{
 				var item = await PlanAsync(archive, hash, content, folderId, cancellationToken).ConfigureAwait(false);
-				if (item.Existing is { Value.Locked: true })
+				if (item.Locked)
 				{
-					seen.Add(item.Existing.Id);
+					if (item.Existing is not null) seen.Add(item.Existing.Id);
 					continue;
 				}
 
@@ -274,7 +274,7 @@ internal sealed class BeatmapsetService(
 			item = await PlanAsync(archive, hash, content, folderId, cancellationToken).ConfigureAwait(false);
 		}
 
-		if (item.Existing is { Value.Locked: true }) return NoChange;
+		if (item.Locked) return NoChange;
 
 		// The archive is closed first: it is moved into the set's folder.
 		await StoreAsync(item, archive, cancellationToken).ConfigureAwait(false);
@@ -499,7 +499,43 @@ internal sealed class BeatmapsetService(
 			content.Storyboard is not null,
 			synced);
 
-		return new Indexed(archive, existing, sync);
+		return new Indexed(archive, existing, sync,
+			await TouchesLockedAsync(existing, content, hashes, stored, cancellationToken).ConfigureAwait(false));
+	}
+
+	/// <summary>Determines whether storing what an archive holds would change something locked.</summary>
+	/// <param name="existing">The stored set the archive replaces, or <see langword="null" />.</param>
+	/// <param name="content">What the archive holds.</param>
+	/// <param name="hashes">The hash of each difficulty.</param>
+	/// <param name="stored">The stored beatmap with each difficulty's hash, or <see langword="null" />.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>
+	///     <see langword="true" /> when the set is locked, or a locked beatmap (or a beatmap of a locked set) would be
+	///     taken over, changed or removed.
+	/// </returns>
+	private async Task<bool> TouchesLockedAsync(Beatmapset? existing, BeatmapsetContent content,
+		Dictionary<BeatmapsetDifficulty, Md5> hashes, Dictionary<BeatmapsetDifficulty, Beatmap?> stored,
+		CancellationToken cancellationToken)
+	{
+		if (existing is { Value.Locked: true }) return true;
+
+		foreach (var difficulty in content.Difficulties)
+		{
+			var matched = stored[difficulty] ?? (difficulty.OnlineId is > 0
+				? await beatmaps.GetAsync(difficulty.OnlineId.Value, cancellationToken).ConfigureAwait(false)
+				: null);
+			if (matched is null) continue;
+			if (!matched.Value.Beatmapset.Equals(existing) && matched.Value.IsLocked()) return true;
+			if (matched.Value.Locked && matched.Value.Hash != hashes[difficulty]) return true;
+		}
+
+		if (existing is null) return false;
+		var kept = hashes.Values.ToHashSet();
+		foreach (var beatmap in await beatmaps.ListAsync(existing, cancellationToken).ConfigureAwait(false))
+			if (beatmap.Value.Locked && !kept.Contains(beatmap.Value.Hash))
+				return true;
+
+		return false;
 	}
 
 	/// <summary>Reads an archive lying in the storage, keeping it open while its content lives.</summary>
@@ -693,8 +729,10 @@ internal sealed class BeatmapsetService(
 	/// <param name="Archive">The archive, which becomes the beatmapset's own.</param>
 	/// <param name="Existing">The stored beatmapset it belongs to, or <see langword="null" /> when it is a new one.</param>
 	/// <param name="Sync">The beatmapset as read from the archive.</param>
+	/// <param name="Locked">Whether storing it would change something locked, so it is not stored.</param>
 	private sealed record Indexed(
 		BeatmapsetArchiveEntry Archive,
 		Beatmapset? Existing,
-		BeatmapsetSyncSet Sync);
+		BeatmapsetSyncSet Sync,
+		bool Locked);
 }

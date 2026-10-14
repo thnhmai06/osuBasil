@@ -138,7 +138,8 @@ internal sealed class FileBeatmapsetStorage(
 				}
 			}
 
-			foreach (var other in FoldersOf(set.Id).Where(folder => !string.Equals(folder, target, StringComparison.Ordinal)))
+			foreach (var other in FoldersOf(set.Id).Where(folder =>
+				         IsSetFolder(folder) && !string.Equals(folder, target, StringComparison.Ordinal)))
 			{
 				var otherMarked = MarkDeleted(other);
 				RemoveMarked(otherMarked, set);
@@ -162,7 +163,10 @@ internal sealed class FileBeatmapsetStorage(
 		    File.Exists(Path.Combine(placed.Path, ArchiveWithoutVideoName)))
 			return null;
 
-		var files = Directory.EnumerateFiles(placed.Path, "*", SearchOption.AllDirectories).ToList();
+		// Links are never followed: only what lies inside the folder itself is packed.
+		if (new DirectoryInfo(placed.Path).Attributes.HasFlag(FileAttributes.ReparsePoint)) return null;
+		var files = Directory.EnumerateFiles(placed.Path, "*",
+			new EnumerationOptions { RecurseSubdirectories = true, AttributesToSkip = FileAttributes.ReparsePoint }).ToList();
 		if (files.Count == 0) return null;
 
 		var path = Path.Combine(paths.Staging.Path, $"{Guid.NewGuid():N}.osz");
@@ -509,7 +513,7 @@ internal sealed class FileBeatmapsetStorage(
 		await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
 		try
 		{
-			foreach (var folder in FoldersOf(set.Id))
+			foreach (var folder in FoldersOf(set.Id).Where(IsSetFolder))
 				RemoveMarked(MarkDeleted(folder), set);
 		}
 		finally
@@ -524,6 +528,11 @@ internal sealed class FileBeatmapsetStorage(
 	private BeatmapsetEntry? EntryOf(string name)
 	{
 		var path = Path.Combine(paths.Beatmapsets.Path, name);
+		// A linked entry points outside the storage; it is never taken in, changed or deleted.
+		if ((File.Exists(path) || Directory.Exists(path)) &&
+		    File.GetAttributes(path).HasFlag(FileAttributes.ReparsePoint))
+			return null;
+
 		if (Directory.Exists(path))
 		{
 			var archivePath = Path.Combine(path, ArchiveName);
@@ -608,6 +617,16 @@ internal sealed class FileBeatmapsetStorage(
 		var folder = builder.ToString().TrimEnd('.', ' ');
 		if (folder.Length > 150) folder = folder[..150].TrimEnd('.', ' ');
 		return folder;
+	}
+
+	/// <summary>Determines whether a folder is a set's folder: it holds an archive or files made from one, never loose files.</summary>
+	/// <param name="folder">The folder's full path.</param>
+	/// <returns><see langword="true" /> if the folder holds an archive or what was made from one.</returns>
+	private static bool IsSetFolder(string folder)
+	{
+		return File.Exists(Path.Combine(folder, ArchiveName)) ||
+		       File.Exists(Path.Combine(folder, ArchiveWithoutVideoName)) ||
+		       Directory.Exists(Path.Combine(folder, VersionFolder));
 	}
 
 	/// <summary>Lists every folder stored for a beatmapset, whatever its name after the id.</summary>
