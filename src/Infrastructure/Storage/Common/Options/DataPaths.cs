@@ -16,7 +16,7 @@ internal sealed class DataPaths
 		Root = Path.GetFullPath(Path.IsPathRooted(options.Value.DataDirectory)
 			? options.Value.DataDirectory
 			: Path.Combine(AppContext.BaseDirectory, options.Value.DataDirectory));
-		Songs = new DataStorage(Root, "Songs");
+		Beatmapsets = new DataStorage(Root, "Beatmapsets");
 		Replays = new DataStorage(Root, "Replays");
 		Avatars = new DataStorage(Root, "Avatars");
 		MenuBanners = new DataStorage(Root, "Menu/Banners");
@@ -25,14 +25,14 @@ internal sealed class DataPaths
 		Faqs = new DataStorage(Root, "Faqs");
 		Screenshots = new DataStorage(Root, "Screenshots");
 		Cache = new DataStorage(Root, "Cache");
-		BeatmapArchives = new DataStorage(Root, "Cache/Beatmaps");
+		Staging = new DataStorage(Root, "Cache/Staging");
 	}
 
 	/// <summary>Gets the directory that holds every stored file.</summary>
 	public string Root { get; }
 
 	/// <summary>Gets the files of stored beatmapsets, one directory per set.</summary>
-	public DataStorage Songs { get; }
+	public DataStorage Beatmapsets { get; }
 
 	/// <summary>Gets the files of stored replays.</summary>
 	public DataStorage Replays { get; }
@@ -58,20 +58,29 @@ internal sealed class DataPaths
 	/// <summary>Gets the files rebuilt from their sources.</summary>
 	public DataStorage Cache { get; }
 
-	/// <summary>Gets the .osz archives built from stored beatmapsets.</summary>
-	public DataStorage BeatmapArchives { get; }
+	/// <summary>Gets the folder where a set's files are written before they replace its stored folder.</summary>
+	public DataStorage Staging { get; }
 
 	/// <summary>Creates every directory the server stores files in.</summary>
-	/// <remarks>Beatmapsets stored under the former <c>Beatmaps</c> directory are moved to <see cref="Songs" /> first.</remarks>
+	/// <remarks>
+	///     Beatmapsets stored under the former <c>Songs</c> directory, or under the older <c>Beatmaps</c> directory, are
+	///     moved to <see cref="Beatmapsets" /> first.
+	/// </remarks>
 	public void CreateDirectories()
 	{
 		Directory.CreateDirectory(Root);
-		var formerSongs = Path.Combine(Root, "Beatmaps");
-		if (Directory.Exists(formerSongs) && !Directory.Exists(Songs.Path)) Directory.Move(formerSongs, Songs.Path);
+		if (!Directory.Exists(Beatmapsets.Path))
+		{
+			var formerSongs = Path.Combine(Root, "Songs");
+			var formerBeatmaps = Path.Combine(Root, "Beatmaps");
+			if (Directory.Exists(formerSongs)) Directory.Move(formerSongs, Beatmapsets.Path);
+			else if (Directory.Exists(formerBeatmaps)) Directory.Move(formerBeatmaps, Beatmapsets.Path);
+		}
+
 		foreach (var storage in new[]
 		         {
-			         Songs, Replays, Avatars, MenuBanners, MenuSeasonals, MenuIcon, Faqs, Screenshots, Cache,
-			         BeatmapArchives
+			         Beatmapsets, Replays, Avatars, MenuBanners, MenuSeasonals, MenuIcon, Faqs, Screenshots, Cache,
+			         Staging
 		         })
 			Directory.CreateDirectory(storage.Path);
 	}

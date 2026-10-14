@@ -1,14 +1,15 @@
 using System.IO.Compression;
+using System.Text;
 using Basil.Application.Services.Contracts.Beatmaps;
 using Basil.Application.Storage.Contracts.Beatmaps;
 using Basil.Domain.Mechanics;
-using osu.Game.Beatmaps.Formats;
 using osu.Game.IO;
+using Decoder = osu.Game.Beatmaps.Formats.Decoder;
 using LazerBeatmap = osu.Game.Beatmaps.Beatmap;
 
 namespace Basil.Infrastructure.Services.Beatmaps;
 
-/// <summary>Reads beatmapsets, from an archive or a folder, with ppy's osu!lazer legacy decoder.</summary>
+/// <summary>Reads what a beatmapset archive contains, with ppy's osu!lazer legacy decoder.</summary>
 internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 {
 	// ponytail: at most 2,000 files per set; raise this only if legitimate osu! sets exceed it.
@@ -41,20 +42,14 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 		try
 		{
 			var files = new List<BeatmapsetFile>();
-			var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-			var totalBytes = 0L;
 			foreach (var entry in zip.Entries)
 			{
 				if (entry.FullName.EndsWith('/') || entry.FullName.EndsWith('\\')) continue;
 
-				var name = entry.FullName.Replace('\\', '/');
-				if (!IsSafeName(name) || !names.Add(name) || files.Count >= MaxFiles ||
-				    totalBytes + entry.Length > MaxTotalBytes)
-					return null;
-
-				totalBytes += entry.Length;
-				files.Add(new ZipBeatmapsetFile(entry, name));
+				files.Add(new ZipBeatmapsetFile(entry, entry.FullName.Replace('\\', '/')));
 			}
+
+			if (!IsAcceptable(files)) return null;
 
 			var content = await ReadContentAsync(files, zip, cancellationToken).ConfigureAwait(false);
 			keepArchive = content is not null;
@@ -66,32 +61,13 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 		}
 	}
 
-	/// <inheritdoc />
-	/// <remarks>
-	///     Blank artist, title, or creator resolve to <c>Unknown</c>, because the domain rejects blank values.
-	/// </remarks>
-	public async Task<BeatmapsetContent?> ReadAsync(DirectoryInfo folder, CancellationToken cancellationToken = default)
-	{
-		if (!folder.Exists) return null;
-
-		var files = new List<BeatmapsetFile>();
-		var totalBytes = 0L;
-		foreach (var file in folder.EnumerateFiles("*", SearchOption.AllDirectories))
-		{
-			var name = Path.GetRelativePath(folder.FullName, file.FullName).Replace('\\', '/');
-			if (files.Count >= MaxFiles || totalBytes + file.Length > MaxTotalBytes) return null;
-
-			totalBytes += file.Length;
-			files.Add(new DiskBeatmapsetFile(file, name));
-		}
-
-		return await ReadContentAsync(files, null, cancellationToken).ConfigureAwait(false);
-	}
-
 	/// <summary>Decodes the difficulties of a set's files and assembles what the set contains.</summary>
 	private static async Task<BeatmapsetContent?> ReadContentAsync(IReadOnlyList<BeatmapsetFile> files,
 		IAsyncDisposable? source, CancellationToken cancellationToken)
 	{
+		var byName = new Dictionary<string, BeatmapsetFile>(StringComparer.OrdinalIgnoreCase);
+		foreach (var file in files) byName.TryAdd(Normalise(file.Name), file);
+
 		LazerBeatmap? first = null;
 		var difficulties = new List<BeatmapsetDifficulty>();
 
@@ -103,11 +79,15 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 			var decoded = await TryDecodeAsync(file, cancellationToken).ConfigureAwait(false);
 			if (decoded is null) continue;
 
-			first ??= decoded;
+			first ??= decoded.Beatmap;
 
-			var info = decoded.BeatmapInfo;
+			var info = decoded.Beatmap.BeatmapInfo;
+			var metadata = info.Metadata;
 			difficulties.Add(new BeatmapsetDifficulty(
-				info.OnlineID > 0 ? info.OnlineID : null, info.DifficultyName, (GameMode)info.Ruleset.OnlineID, file));
+				info.OnlineID > 0 ? info.OnlineID : null, info.DifficultyName, (GameMode)info.Ruleset.OnlineID, file,
+				FindFile(byName, metadata.BackgroundFile), FindFile(byName, metadata.AudioFile),
+				FindFile(byName, decoded.Video),
+				metadata.PreviewTime >= 0 ? TimeSpan.FromMilliseconds(metadata.PreviewTime) : null));
 		}
 
 		if (first is null) return null;
@@ -120,11 +100,15 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 			? "Unknown"
 			: meta.Metadata.Author.Username;
 
-		return new BeatmapsetContent(onlineSetId, artist, title, creator, difficulties, files, source);
+		var storyboard = files.FirstOrDefault(file =>
+			!file.Name.Contains('/') && file.Name.EndsWith(".osb", StringComparison.OrdinalIgnoreCase));
+
+		return new BeatmapsetContent(onlineSetId, artist, title, creator, difficulties, files, storyboard, source);
 	}
 
 	/// <summary>Decodes one <c>.osu</c> file, or <see langword="null" /> when it is malformed.</summary>
-	private static async Task<LazerBeatmap?> TryDecodeAsync(BeatmapsetFile file, CancellationToken cancellationToken)
+	private static async Task<DecodedDifficulty?> TryDecodeAsync(BeatmapsetFile file,
+		CancellationToken cancellationToken)
 	{
 		try
 		{
@@ -145,14 +129,83 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 			if (read > MaxOsuBytes) return null;
 
 			buffer.Position = 0;
-			using var reader = new LineBufferedReader(buffer, true);
-			return Decoder.GetDecoder<LazerBeatmap>(reader).Decode(reader);
+			LazerBeatmap beatmap;
+			using (var reader = new LineBufferedReader(buffer, true))
+				beatmap = Decoder.GetDecoder<LazerBeatmap>(reader).Decode(reader);
+
+			var video = await ReadVideoAsync(buffer, cancellationToken).ConfigureAwait(false);
+			return new DecodedDifficulty(beatmap, video);
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException)
 		{
 			// Skip malformed .osu files rather than aborting the whole scan.
 			return null;
 		}
+	}
+
+	/// <summary>Reads the video a <c>.osu</c> file names in its <c>[Events]</c> section, or <see langword="null" /> when it names none.</summary>
+	private static async Task<string?> ReadVideoAsync(Stream content, CancellationToken cancellationToken)
+	{
+		content.Position = 0;
+		using var reader = new StreamReader(content, Encoding.UTF8, detectEncodingFromByteOrderMarks: true,
+			bufferSize: 1024, leaveOpen: true);
+		var section = "";
+		while (await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false) is { } line)
+		{
+			if (line.StartsWith('[') && line.EndsWith(']'))
+			{
+				section = line;
+				continue;
+			}
+
+			if (section != "[Events]") continue;
+
+			var video = FirstQuoted(line, "Video,") ?? FirstQuoted(line, "1,");
+			if (video is not null) return video;
+		}
+
+		return null;
+	}
+
+	/// <summary>The quoted payload of <paramref name="line" /> when it begins with <paramref name="prefix" />.</summary>
+	private static string? FirstQuoted(string line, string prefix)
+	{
+		if (!line.StartsWith(prefix, StringComparison.Ordinal)) return null;
+		var first = line.IndexOf('"');
+		var last = line.LastIndexOf('"');
+		if (first < 0 || last <= first) return null;
+		return line[(first + 1)..last];
+	}
+
+	/// <summary>Finds the file a difficulty names, or <see langword="null" /> when the set has no such file.</summary>
+	private static BeatmapsetFile? FindFile(Dictionary<string, BeatmapsetFile> files, string? name)
+	{
+		return string.IsNullOrEmpty(name) ? null : files.GetValueOrDefault(Normalise(name));
+	}
+
+	/// <summary>Replaces backslashes with forward slashes.</summary>
+	private static string Normalise(string name)
+	{
+		return name.Replace('\\', '/');
+	}
+
+	/// <summary>Whether a set's files are acceptable: every name is safe and unique ignoring case, and the set stays within the file count and total size limits.</summary>
+	private static bool IsAcceptable(IReadOnlyList<BeatmapsetFile> files)
+	{
+		if (files.Count > MaxFiles) return false;
+
+		var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+		var totalBytes = 0L;
+		foreach (var file in files)
+		{
+			if (!IsSafeName(file.Name) || !names.Add(file.Name) ||
+			    totalBytes + file.Length > MaxTotalBytes)
+				return false;
+
+			totalBytes += file.Length;
+		}
+
+		return true;
 	}
 
 	/// <summary>Whether a set-relative file name stays inside the set's own folder.</summary>
@@ -166,4 +219,9 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 				return false;
 		return true;
 	}
+
+	/// <summary>A decoded difficulty together with the video its <c>.osu</c> file names.</summary>
+	/// <param name="Beatmap">The decoded difficulty.</param>
+	/// <param name="Video">The video's name, or <see langword="null" /> when the file names none.</param>
+	private sealed record DecodedDifficulty(LazerBeatmap Beatmap, string? Video);
 }

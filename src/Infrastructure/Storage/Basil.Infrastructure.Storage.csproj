@@ -10,7 +10,6 @@
 
 	<ItemGroup>
 		<PackageReference Include="Npgsql"/>
-		<PackageReference Include="SharpZipLib"/>
 		<PackageReference Include="Dapper"/>
 		<PackageReference Include="BCrypt.Net-Next"/>
 		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions"/>

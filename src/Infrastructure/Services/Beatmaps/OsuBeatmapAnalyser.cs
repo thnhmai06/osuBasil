@@ -1,8 +1,7 @@
 using Basil.Application.Services.Contracts.Beatmaps;
+using Basil.Application.Storage.Contracts.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
-using osu.Framework.Audio.Track;
-using osu.Framework.Graphics.Textures;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Formats;
 using osu.Game.Beatmaps.Legacy;
@@ -17,9 +16,9 @@ using osu.Game.Rulesets.Osu;
 using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Taiko;
 using osu.Game.Rulesets.Taiko.Objects;
-using osu.Game.Skinning;
 using osu.Game.Utils;
-using Beatmap = osu.Game.Beatmaps.Beatmap;
+using Beatmap = Basil.Domain.Beatmaps.Beatmap;
+using LazerBeatmap = osu.Game.Beatmaps.Beatmap;
 
 namespace Basil.Infrastructure.Services.Beatmaps;
 
@@ -31,23 +30,50 @@ namespace Basil.Infrastructure.Services.Beatmaps;
 ///     The server uses these numbers for star rating and difficulty display only; they feed no
 ///     scoring, leaderboard, or match win condition.
 /// </remarks>
-internal sealed class OsuBeatmapAnalyser : IBeatmapAnalyser
+internal sealed class OsuBeatmapAnalyser(IBeatmapsetStorage storage) : IBeatmapAnalyser
 {
 	/// <inheritdoc />
 	/// <exception cref="Exception">The beatmap file could not be decoded or analyzed.</exception>
 	public BeatmapAnalysis Analyze(Stream content, GameMode mode, GameMods mods)
 	{
 		using var reader = new LineBufferedReader(content, true);
-		var beatmap = Decoder.GetDecoder<Beatmap>(reader).Decode(reader);
+		var beatmap = Decoder.GetDecoder<LazerBeatmap>(reader).Decode(reader);
 
+		return Analyze(new OsuBeatmapContent(new StreamlessWorkingBeatmap(beatmap)), mode, mods);
+	}
+
+	/// <inheritdoc />
+	/// <exception cref="Exception">The beatmap file could not be decoded or analyzed.</exception>
+	public async Task<BeatmapAnalysis?> AnalyzeAsync(Beatmap beatmap, GameMods mods,
+		CancellationToken cancellationToken = default)
+	{
+		if (beatmap.Content is not OsuBeatmapContent content)
+		{
+			var osu = await storage.OpenAsync(beatmap.Value.Beatmapset, BeatmapsetFileKind.Version,
+				$"{beatmap.Value.Hash}.osu", cancellationToken).ConfigureAwait(false);
+			if (osu is null) return null;
+			await using var osuScope = osu.ConfigureAwait(false);
+
+			using var reader = new LineBufferedReader(osu, true);
+			var decoded = Decoder.GetDecoder<LazerBeatmap>(reader).Decode(reader);
+			content = new OsuBeatmapContent(new StreamlessWorkingBeatmap(decoded));
+			beatmap.Content = content;
+		}
+
+		return Analyze(content, beatmap.Value.Difficulty.Mode, mods);
+	}
+
+	/// <summary>Computes the gameplay stats of an already-decoded difficulty under the given mode and mods.</summary>
+	private static BeatmapAnalysis Analyze(OsuBeatmapContent content, GameMode mode, GameMods mods)
+	{
 		var ruleset = CreateRuleset(mode);
-		var workingBeatmap = new StreamlessWorkingBeatmap(beatmap);
+		var workingBeatmap = content.Working;
 
 		var legacyMods = ruleset.ConvertFromLegacyMods((LegacyMods)mods).ToArray();
 		var attributes = ruleset.CreateDifficultyCalculator(workingBeatmap).Calculate(legacyMods);
 		var playable = workingBeatmap.GetPlayableBeatmap(ruleset.RulesetInfo, legacyMods);
 
-		var displayDifficulty = ruleset.GetAdjustedDisplayDifficulty(beatmap.BeatmapInfo, legacyMods);
+		var displayDifficulty = ruleset.GetAdjustedDisplayDifficulty(workingBeatmap.Beatmap.BeatmapInfo, legacyMods);
 		var maxCombo = playable.GetMaxCombo();
 		var mostCommonBeatLength = playable.GetMostCommonBeatLength();
 		var rate = ModUtils.CalculateRateWithMods(legacyMods);
@@ -194,38 +220,5 @@ internal sealed class OsuBeatmapAnalyser : IBeatmapAnalyser
 			GameMode.Mania => new ManiaRuleset(),
 			_ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown ruleset for game mode.")
 		};
-	}
-
-	/// <summary>
-	///     A minimal <see cref="WorkingBeatmap" /> for headless difficulty calculation only: no
-	///     osu!framework host, audio, or texture access is needed or provided.
-	/// </summary>
-	private sealed class StreamlessWorkingBeatmap(Beatmap beatmap)
-		: WorkingBeatmap(beatmap.BeatmapInfo, null)
-	{
-		protected override IBeatmap GetBeatmap()
-		{
-			return beatmap;
-		}
-
-		public override Texture? GetBackground()
-		{
-			return null;
-		}
-
-		protected override Track? GetBeatmapTrack()
-		{
-			return null;
-		}
-
-		protected override ISkin? GetSkin()
-		{
-			return null;
-		}
-
-		public override Stream? GetStream(string storagePath)
-		{
-			return null;
-		}
 	}
 }

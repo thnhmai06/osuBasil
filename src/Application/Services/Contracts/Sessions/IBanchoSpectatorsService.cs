@@ -4,7 +4,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Services.Contracts.Sessions;
 
 /// <summary>Starts and stops spectating osu! clients.</summary>
-public interface ISessionSpectatorsService
+public interface IBanchoSpectatorsService
 {
 	/// <summary>Starts spectating an osu! client.</summary>
 	/// <param name="host">The client being spectated.</param>
@@ -13,7 +13,8 @@ public interface ISessionSpectatorsService
 	/// <remarks>
 	///     Needs <see cref="Permissions.PlayerSpectate" />, which <see cref="Permissions.TournamentObserveRooms" />
 	///     includes; NotPermitted otherwise. The spectator joins the host's spectator channel, and the first spectator
-	///     brings the host into it too.
+	///     brings the host into it too. A connection spectating another client stops spectating it first. Spectating
+	///     the host it already spectates announces the spectator again, as an osu! client does once it has the beatmap.
 	/// </remarks>
 	/// <exception cref="ArgumentException"><paramref name="by" /> is an IRC connection, which cannot spectate.</exception>
 	SpectateResult Spectate(BanchoConnection host, Connection by);
@@ -44,9 +45,6 @@ public enum SpectateResult : byte
 
 	/// <summary>A user cannot spectate themselves.</summary>
 	Self,
-
-	/// <summary>The connection is already spectating this host.</summary>
-	AlreadySpectating,
 
 	/// <summary>The spectator is not granted the permission to spectate, or it is suspended.</summary>
 	NotPermitted

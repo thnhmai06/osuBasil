@@ -1,8 +1,8 @@
+using System.Text;
 using System.Threading.Channels;
 using Basil.Application.Services.Contracts.Beatmaps;
 using Basil.Application.Services.Implementations.Common;
 using Basil.Application.Storage.Contracts.Beatmaps;
-using Basil.Application.Storage.Contracts.Common;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Utilities;
@@ -15,11 +15,17 @@ namespace Basil.Application.Services.Implementations.Beatmaps;
 internal sealed class BeatmapsetService(
 	IBeatmapsetReader reader,
 	IBeatmapAnalyser analyser,
+	IBeatmapAssets assets,
 	IBeatmapsetRepository beatmapsets,
 	IBeatmapRepository beatmaps,
-	IBeatmapsetStorage archives,
-	TimeProvider time) : IBeatmapsetService
+	IBeatmapsetStorage storage) : IBeatmapsetService
 {
+	/// <summary>The name passed when a storyboard file is stored or looked for; its kind decides where it lies.</summary>
+	private const string StoryboardFileName = "storyboard.osb";
+
+	/// <summary>A scan that changed nothing.</summary>
+	private static readonly BeatmapsetScanResult NoChange = new(0, 0, 0);
+
 	private readonly Channel<BeatmapsetEvent> _events = Channel.CreateUnbounded<BeatmapsetEvent>();
 
 	/// <inheritdoc />
@@ -28,167 +34,159 @@ internal sealed class BeatmapsetService(
 	/// <inheritdoc />
 	public async Task<BeatmapsetImportResult> ImportAsync(Stream archive, CancellationToken cancellationToken = default)
 	{
-		var content = await reader.ReadAsync(archive, cancellationToken).ConfigureAwait(false);
-		return await ImportAsync(content, cancellationToken).ConfigureAwait(false);
-	}
-
-	/// <inheritdoc />
-	public async Task<BeatmapsetImportResult> ImportAsync(DirectoryInfo folder,
-		CancellationToken cancellationToken = default)
-	{
-		var content = await reader.ReadAsync(folder, cancellationToken).ConfigureAwait(false);
-		return await ImportAsync(content, cancellationToken).ConfigureAwait(false);
-	}
-
-	/// <summary>Imports what a beatmapset contains, then releases it.</summary>
-	/// <param name="content">What was read, or <see langword="null" /> when nothing readable was found.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	private async Task<BeatmapsetImportResult> ImportAsync(BeatmapsetContent? content,
-		CancellationToken cancellationToken)
-	{
+		var entry = await storage.SaveAsync(archive, cancellationToken).ConfigureAwait(false);
+		var (content, stream) = await ReadAsync(entry, cancellationToken).ConfigureAwait(false);
 		if (content is null) return new BeatmapsetImportResult(null, [], BeatmapsetImportFailure.Unreadable);
 
+		Indexed item;
+		await using (stream!.ConfigureAwait(false))
 		await using (content.ConfigureAwait(false))
 		{
-			return await ImportContentAsync(content, cancellationToken).ConfigureAwait(false);
-		}
-	}
-
-	/// <summary>Imports what a beatmapset contains.</summary>
-	private async Task<BeatmapsetImportResult> ImportContentAsync(BeatmapsetContent content,
-		CancellationToken cancellationToken)
-	{
-		var hashes = new Dictionary<BeatmapsetDifficulty, Md5>();
-		foreach (var difficulty in content.Difficulties)
-		{
-			var stream = await difficulty.File.OpenAsync(cancellationToken).ConfigureAwait(false);
-			await using (stream.ConfigureAwait(false))
-			{
-				hashes[difficulty] = await Md5.ComputeAsync(stream, cancellationToken).ConfigureAwait(false);
-			}
+			item = await PlanAsync(entry, null, content, null, cancellationToken).ConfigureAwait(false);
 		}
 
-		var stored = new Dictionary<BeatmapsetDifficulty, Beatmap?>();
-		foreach (var difficulty in content.Difficulties)
-			stored[difficulty] = await beatmaps.GetAsync(hashes[difficulty], cancellationToken).ConfigureAwait(false);
-
-		var existing = stored.Values.FirstOrDefault(b => b is not null)?.Value.Beatmapset
-		               ?? (content.OnlineSetId is > 0
-			               ? await beatmapsets.GetAsync(content.OnlineSetId.Value, cancellationToken)
-				               .ConfigureAwait(false)
-			               : null);
-
-		if (existing is { Value.Locked: true })
+		if (item.Existing is { Value.Locked: true })
 			return new BeatmapsetImportResult(null, [], BeatmapsetImportFailure.Locked);
 
-		var now = time.GetUtcNow();
-		Beatmapset set;
-		if (existing is null)
-		{
-			try
-			{
-				set = await beatmapsets.CreateAsync(new BeatmapsetData
-				{
-					Artist = content.Artist,
-					Title = content.Title,
-					Creator = content.Creator,
-					CreatedAt = now,
-					UpdatedAt = now
-				}, content.OnlineSetId is > 0 ? content.OnlineSetId : null, cancellationToken).ConfigureAwait(false);
-			}
-			catch (AlreadyExistsException)
-			{
-				// Another import created the set meanwhile; fetch it and continue as the existing-set branch.
-				set = await beatmapsets.GetAsync(content.OnlineSetId!.Value, cancellationToken).ConfigureAwait(false)
-				      ?? throw new InvalidOperationException(
-					      "A beatmapset with this online id already exists but could not be retrieved.");
-				await UpdateSetAsync(set, content, now, cancellationToken).ConfigureAwait(false);
-			}
-		}
-		else
-		{
-			await UpdateSetAsync(existing, content, now, cancellationToken).ConfigureAwait(false);
-			set = existing;
-		}
-
-		await archives.SaveAsync(set, content.Files, cancellationToken).ConfigureAwait(false);
-
-		var result = new List<Beatmap>(content.Difficulties.Count);
-		foreach (var difficulty in content.Difficulties)
-		{
-			var analysis = await AnalyseAsync(difficulty, stored[difficulty], cancellationToken).ConfigureAwait(false);
-			var previous = stored[difficulty]
-			               ?? (difficulty.OnlineId is > 0
-				               ? await beatmaps.GetAsync(difficulty.OnlineId.Value, cancellationToken)
-					               .ConfigureAwait(false)
-				               : null);
-
-			var data = new BeatmapData
-			{
-				Hash = hashes[difficulty],
-				Beatmapset = set,
-				Version = difficulty.Version,
-				Difficulty = analysis.Difficulty,
-				Objects = analysis.Objects,
-				Locked = previous?.Value.Locked ?? false,
-				Visible = previous?.Value.Visible ?? true
-			};
-			Beatmap beatmap;
-			if (previous is null)
-				try
-				{
-					beatmap = await beatmaps.CreateAsync(data,
-							difficulty.OnlineId is > 0 ? difficulty.OnlineId : null, cancellationToken)
-						.ConfigureAwait(false);
-				}
-				catch (AlreadyExistsException)
-				{
-					var existingBeatmap = await beatmaps.GetAsync(data.Hash, cancellationToken).ConfigureAwait(false)
-					                      ?? (difficulty.OnlineId is > 0
-						                      ? await beatmaps.GetAsync(difficulty.OnlineId.Value, cancellationToken)
-							                      .ConfigureAwait(false)
-						                      : null);
-					if (existingBeatmap is null)
-						throw;
-
-					beatmap = await UpdateBeatmapAsync(existingBeatmap, data).ConfigureAwait(false);
-				}
-			else
-				beatmap = await UpdateBeatmapAsync(previous, data).ConfigureAwait(false);
-
-			result.Add(beatmap);
-		}
-
-		await beatmaps.RetainAsync(set, result, cancellationToken).ConfigureAwait(false);
-		_events.Writer.TryWrite(new BeatmapsetImported(set, result));
-		return new BeatmapsetImportResult(set, result, null);
-
-		async Task<Beatmap> UpdateBeatmapAsync(Beatmap existingBeatmap, BeatmapData data)
-		{
-			await beatmaps.UpdateAsync(new Beatmap { Id = existingBeatmap.Id, Value = data },
-				cancellationToken).ConfigureAwait(false);
-			return existingBeatmap;
-		}
+		// The archive is closed first: it is moved into the set's folder.
+		var (set, stored) = await StoreAsync(item, entry, cancellationToken).ConfigureAwait(false);
+		return new BeatmapsetImportResult(set, stored, null);
 	}
 
 	/// <inheritdoc />
-	public async Task<int> ScanAsync(CancellationToken cancellationToken = default)
+	public async Task<BeatmapsetScanResult> ScanAsync(CancellationToken cancellationToken = default)
 	{
-		var allSets = await Paging.ListAllAsync(
-			page => beatmapsets.ListAsync(new BeatmapQuery(), page, cancellationToken),
-			cancellationToken).ConfigureAwait(false);
+		var seen = new HashSet<int>();
+		var queued = new List<(BeatmapsetArchiveEntry Archive, int? FolderId, Md5? Hash)>();
+		var unchanged = new List<Beatmapset>();
+		var changed = new List<(BeatmapsetSyncSet Sync, Beatmapset Set)>();
+		var indexed = new List<Indexed>();
 
-		var forgotten = 0;
-		foreach (var set in allSets)
-			if (!(await archives.ListAsync(set, cancellationToken).ConfigureAwait(false)).Any())
+		foreach (var entry in await storage.ListAsync(cancellationToken).ConfigureAwait(false))
+		{
+			switch (entry)
 			{
-				await beatmaps.RetainAsync(set, [], cancellationToken).ConfigureAwait(false);
-				await beatmapsets.DeleteAsync(set, cancellationToken).ConfigureAwait(false);
-				_events.Writer.TryWrite(new BeatmapsetDeleted(set));
-				forgotten++;
-			}
+				case BeatmapsetArchiveEntry loose:
+					queued.Add((loose, null, null));
+					break;
 
-		return forgotten;
+				case BeatmapsetFolderEntry { Exists: true, Archive: null } folder:
+				{
+					var packed = await storage.PackAsync(folder, cancellationToken).ConfigureAwait(false);
+					if (packed is not null) queued.Add((packed, folder.Id, null));
+					break;
+				}
+
+				case BeatmapsetFolderEntry { Exists: true, Archive: { } archive } folder:
+				{
+					Beatmapset? stored = null;
+					if (folder.Id is { } id)
+						stored = await beatmapsets.GetAsync(id, cancellationToken).ConfigureAwait(false);
+
+					if (stored is not null &&
+					    stored.Value.ArchiveSize == archive.Size &&
+					    stored.Value.ArchiveModifiedAt == archive.ModifiedAt)
+					{
+						seen.Add(stored.Id);
+						unchanged.Add(stored);
+						break;
+					}
+
+					var hash = await HashAsync(archive, cancellationToken).ConfigureAwait(false);
+					if (stored is not null && stored.Value.ArchiveHash == hash)
+					{
+						seen.Add(stored.Id);
+						var sync = await SyncOfAsync(stored, archive, hash, cancellationToken).ConfigureAwait(false);
+						changed.Add((sync, stored));
+						break;
+					}
+
+					queued.Add((archive, folder.Id, hash));
+					break;
+				}
+			}
+		}
+
+		foreach (var (archive, folderId, hash) in queued)
+		{
+			// An archive that cannot be read keeps its files; the set of the folder it lay in is not seen and is forgotten.
+			var (content, stream) = await ReadAsync(archive, cancellationToken).ConfigureAwait(false);
+			if (content is null) continue;
+
+			await using (stream!.ConfigureAwait(false))
+			await using (content.ConfigureAwait(false))
+			{
+				var item = await PlanAsync(archive, hash, content, folderId, cancellationToken).ConfigureAwait(false);
+				if (item.Existing is { Value.Locked: true })
+				{
+					seen.Add(item.Existing.Id);
+					continue;
+				}
+
+				if (item.Existing is not null) seen.Add(item.Existing.Id);
+				indexed.Add(item);
+			}
+		}
+
+		var remove = new List<Beatmapset>();
+		foreach (var set in await Paging.ListAllAsync(
+			         page => beatmapsets.ListAsync(new BeatmapQuery(), page, cancellationToken), cancellationToken)
+		         .ConfigureAwait(false))
+			if (!seen.Contains(set.Id))
+				remove.Add(set);
+
+		var store = new List<BeatmapsetSyncSet>(indexed.Count + changed.Count);
+		foreach (var item in indexed) store.Add(item.Sync);
+		foreach (var (sync, _) in changed) store.Add(sync);
+
+		var storedSets =
+			await beatmapsets.SyncAsync(new BeatmapsetSync(store, remove), cancellationToken).ConfigureAwait(false);
+
+		for (var i = 0; i < indexed.Count; i++)
+		{
+			var item = indexed[i];
+			var set = storedSets[i];
+			await storage.SaveAsync(set, item.Archive, cancellationToken).ConfigureAwait(false);
+			await StoreFilesAsync(set, cancellationToken).ConfigureAwait(false);
+			var storedBeatmaps = await beatmaps.ListAsync(set, cancellationToken).ConfigureAwait(false);
+			_events.Writer.TryWrite(new BeatmapsetImported(set, storedBeatmaps));
+		}
+
+		for (var i = 0; i < changed.Count; i++)
+		{
+			var set = storedSets[indexed.Count + i];
+			if (await MissingFilesAsync(set, cancellationToken).ConfigureAwait(false))
+				await StoreFilesAsync(set, cancellationToken).ConfigureAwait(false);
+		}
+
+		foreach (var set in unchanged)
+			if (await MissingFilesAsync(set, cancellationToken).ConfigureAwait(false))
+				await StoreFilesAsync(set, cancellationToken).ConfigureAwait(false);
+
+		foreach (var set in remove)
+			_events.Writer.TryWrite(new BeatmapsetDeleted(set));
+
+		return new BeatmapsetScanResult(
+			indexed.Count(item => item.Existing is null),
+			indexed.Count(item => item.Existing is not null),
+			remove.Count);
+	}
+
+	/// <inheritdoc />
+	public async Task<BeatmapsetScanResult> ScanAsync(BeatmapsetEntry entry,
+		CancellationToken cancellationToken = default)
+	{
+		switch (entry)
+		{
+			case BeatmapsetArchiveEntry archive:
+				return await ScanArchiveAsync(archive, null, cancellationToken).ConfigureAwait(false);
+
+			case BeatmapsetFolderEntry folder:
+				return await ScanFolderAsync(folder, cancellationToken).ConfigureAwait(false);
+
+			default:
+				return NoChange;
+		}
 	}
 
 	/// <inheritdoc />
@@ -197,17 +195,471 @@ internal sealed class BeatmapsetService(
 		if (set.Value.Locked)
 			return false;
 
-		await archives.DeleteAsync(set, cancellationToken).ConfigureAwait(false);
-		await beatmaps.RetainAsync(set, [], cancellationToken).ConfigureAwait(false);
-		await beatmapsets.DeleteAsync(set, cancellationToken).ConfigureAwait(false);
-		_events.Writer.TryWrite(new BeatmapsetDeleted(set));
+		await storage.DeleteAsync(set, cancellationToken).ConfigureAwait(false);
+		await ForgetAsync(set, cancellationToken).ConfigureAwait(false);
 		return true;
+	}
+
+	/// <summary>Brings the server in step with one folder of the storage.</summary>
+	/// <param name="folder">The folder as it is now.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>How many beatmapsets were taken in, updated and forgotten.</returns>
+	/// <remarks>The folder keeps its files when its beatmapset is forgotten.</remarks>
+	private async Task<BeatmapsetScanResult> ScanFolderAsync(BeatmapsetFolderEntry folder,
+		CancellationToken cancellationToken)
+	{
+		if (folder is { Exists: true, Archive: { } archive })
+			return await ScanArchiveAsync(archive, folder.Id, cancellationToken).ConfigureAwait(false);
+
+		// A folder that holds no archive holds loose files, which are packed before they are read; a folder that is
+		// gone packs to nothing.
+		var packed = await storage.PackAsync(folder, cancellationToken).ConfigureAwait(false);
+		if (packed is not null)
+			return await ScanArchiveAsync(packed, folder.Id, cancellationToken).ConfigureAwait(false);
+
+		// The folder or its archive is gone: the beatmapset it held is forgotten.
+		if (folder.Id is not { } id) return NoChange;
+
+		var held = await beatmapsets.GetAsync(id, cancellationToken).ConfigureAwait(false);
+		if (held is null) return NoChange;
+
+		// The set may still have its archive in another folder (the server renames folders itself).
+		var remaining = await storage.OpenArchiveAsync(held, true, cancellationToken).ConfigureAwait(false);
+		if (remaining is not null)
+		{
+			await remaining.DisposeAsync().ConfigureAwait(false);
+			return NoChange;
+		}
+
+		await ForgetAsync(held, cancellationToken).ConfigureAwait(false);
+		return new BeatmapsetScanResult(0, 0, 1);
+	}
+
+	/// <summary>Brings the server in step with one archive lying in the storage.</summary>
+	/// <param name="archive">The archive as it is now.</param>
+	/// <param name="folderId">The id of the folder the archive lies in, or <see langword="null" /> when it lies loose.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>How many beatmapsets were taken in, updated and forgotten.</returns>
+	/// <remarks>
+	///     An archive whose hash is the one stored for the folder's beatmapset needs no indexing; an archive that cannot
+	///     be read forgets the beatmapset of the folder it lay in, keeping its files.
+	/// </remarks>
+	private async Task<BeatmapsetScanResult> ScanArchiveAsync(BeatmapsetArchiveEntry archive, int? folderId,
+		CancellationToken cancellationToken)
+	{
+		var hash = await HashAsync(archive, cancellationToken).ConfigureAwait(false);
+
+		Beatmapset? stored = null;
+		if (folderId is { } id)
+			stored = await beatmapsets.GetAsync(id, cancellationToken).ConfigureAwait(false);
+
+		// Unchanged. Missing files are not looked for here: the server's own writes into a set's folder come back as
+		// changes while an index may still be writing; the full scan makes missing files again.
+		if (stored is not null && stored.Value.ArchiveHash == hash) return NoChange;
+
+		var (content, stream) = await ReadAsync(archive, cancellationToken).ConfigureAwait(false);
+		if (content is null)
+		{
+			// The archive cannot be read: the set of the folder it lay in is forgotten, its files kept as they are.
+			if (stored is null) return NoChange;
+
+			await ForgetAsync(stored, cancellationToken).ConfigureAwait(false);
+			return new BeatmapsetScanResult(0, 0, 1);
+		}
+
+		Indexed item;
+		await using (stream!.ConfigureAwait(false))
+		await using (content.ConfigureAwait(false))
+		{
+			item = await PlanAsync(archive, hash, content, folderId, cancellationToken).ConfigureAwait(false);
+		}
+
+		if (item.Existing is { Value.Locked: true }) return NoChange;
+
+		// The archive is closed first: it is moved into the set's folder.
+		await StoreAsync(item, archive, cancellationToken).ConfigureAwait(false);
+		return new BeatmapsetScanResult(item.Existing is null ? 1 : 0, item.Existing is null ? 0 : 1, 0);
+	}
+
+	/// <summary>Stores one planned beatmapset, makes every file it serves and announces it.</summary>
+	/// <param name="item">The archive, as planned from what it contains.</param>
+	/// <param name="archive">The archive, which becomes the beatmapset's own.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The stored beatmapset with its difficulties.</returns>
+	private async Task<(Beatmapset Set, IReadOnlyList<Beatmap> Beatmaps)> StoreAsync(Indexed item,
+		BeatmapsetArchiveEntry archive, CancellationToken cancellationToken)
+	{
+		var storedSets = await beatmapsets.SyncAsync(new BeatmapsetSync([item.Sync], []), cancellationToken)
+			.ConfigureAwait(false);
+		var set = storedSets[0];
+
+		await storage.SaveAsync(set, archive, cancellationToken).ConfigureAwait(false);
+		await StoreFilesAsync(set, cancellationToken).ConfigureAwait(false);
+
+		var storedBeatmaps = await beatmaps.ListAsync(set, cancellationToken).ConfigureAwait(false);
+		_events.Writer.TryWrite(new BeatmapsetImported(set, storedBeatmaps));
+		return (set, storedBeatmaps);
+	}
+
+	/// <summary>Makes every file a set serves from its archive, which is already stored.</summary>
+	/// <param name="set">The beatmapset, whose archive is stored.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <remarks>The names are chosen the same way they were when the set was planned, so they match the records.</remarks>
+	private async Task StoreFilesAsync(Beatmapset set, CancellationToken cancellationToken)
+	{
+		await storage.ClearAsync(set, cancellationToken).ConfigureAwait(false);
+
+		var stream = await storage.OpenArchiveAsync(set, true, cancellationToken).ConfigureAwait(false);
+		if (stream is null) return;
+
+		var keep = false;
+		try
+		{
+			var content = await reader.ReadAsync(stream, cancellationToken).ConfigureAwait(false);
+			keep = content is not null;
+			if (content is null) return;
+
+			await using (stream.ConfigureAwait(false))
+			await using (content.ConfigureAwait(false))
+			{
+				var backgrounds = ChooseNames(content.Difficulties.Select(difficulty => difficulty.Background));
+				var audio = ChooseNames(content.Difficulties.Select(difficulty => difficulty.Audio));
+				var video = ChooseNames(content.Difficulties.Select(difficulty => difficulty.Video));
+
+				foreach (var difficulty in content.Difficulties)
+				{
+					var hash = await HashAsync(difficulty.File, cancellationToken).ConfigureAwait(false);
+					var osu = await difficulty.File.OpenAsync(cancellationToken).ConfigureAwait(false);
+					await using (osu.ConfigureAwait(false))
+					{
+						await storage.SaveAsync(set, BeatmapsetFileKind.Version, $"{hash}.osu", osu, cancellationToken)
+							.ConfigureAwait(false);
+					}
+				}
+
+				var done = new HashSet<BeatmapsetFile>();
+				foreach (var difficulty in content.Difficulties)
+				{
+					await SaveFileAsync(set, BeatmapsetFileKind.Background, difficulty.Background, backgrounds, done,
+						cancellationToken).ConfigureAwait(false);
+					await SaveFileAsync(set, BeatmapsetFileKind.Audio, difficulty.Audio, audio, done,
+						cancellationToken).ConfigureAwait(false);
+					await SaveFileAsync(set, BeatmapsetFileKind.Video, difficulty.Video, video, done,
+						cancellationToken).ConfigureAwait(false);
+				}
+
+				if (content.Storyboard is not null)
+				{
+					var storyboard = await content.Storyboard.OpenAsync(cancellationToken).ConfigureAwait(false);
+					await using (storyboard.ConfigureAwait(false))
+					{
+						await storage.SaveAsync(set, BeatmapsetFileKind.Storyboard, StoryboardFileName, storyboard,
+							cancellationToken).ConfigureAwait(false);
+					}
+				}
+			}
+		}
+		finally
+		{
+			if (!keep) await stream.DisposeAsync().ConfigureAwait(false);
+		}
+
+		await storage.SaveArchiveWithoutVideoAsync(set, cancellationToken).ConfigureAwait(false);
+		var storedBeatmaps = await beatmaps.ListAsync(set, cancellationToken).ConfigureAwait(false);
+		await assets.BuildAsync(set, storedBeatmaps, cancellationToken).ConfigureAwait(false);
+	}
+
+	/// <summary>Stores one file of a set, once, under the name chosen for it.</summary>
+	/// <param name="set">The beatmapset.</param>
+	/// <param name="kind">What the file is.</param>
+	/// <param name="file">The file of the set's archive, or <see langword="null" /> when the set has none of that kind.</param>
+	/// <param name="names">The name chosen for each file.</param>
+	/// <param name="done">The files already stored by this call; <paramref name="file" /> is added to it.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	private async Task SaveFileAsync(Beatmapset set, BeatmapsetFileKind kind, BeatmapsetFile? file,
+		IReadOnlyDictionary<BeatmapsetFile, string> names, HashSet<BeatmapsetFile> done,
+		CancellationToken cancellationToken)
+	{
+		if (file is null || !done.Add(file)) return;
+
+		var stream = await file.OpenAsync(cancellationToken).ConfigureAwait(false);
+		await using (stream.ConfigureAwait(false))
+		{
+			await storage.SaveAsync(set, kind, names[file], stream, cancellationToken).ConfigureAwait(false);
+		}
+	}
+
+	/// <summary>Determines whether a stored beatmapset misses a file it serves.</summary>
+	/// <param name="set">The stored beatmapset.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns><see langword="true" /> when its archive or any file made from it is not stored.</returns>
+	private async Task<bool> MissingFilesAsync(Beatmapset set, CancellationToken cancellationToken)
+	{
+		var archive = await storage.OpenArchiveAsync(set, true, cancellationToken).ConfigureAwait(false);
+		if (archive is null) return true;
+		await archive.DisposeAsync().ConfigureAwait(false);
+
+		var withoutVideo = await storage.OpenArchiveAsync(set, false, cancellationToken).ConfigureAwait(false);
+		if (withoutVideo is null) return true;
+		await withoutVideo.DisposeAsync().ConfigureAwait(false);
+
+		if (set.Value.Storyboard &&
+		    !await storage.ExistsAsync(set, BeatmapsetFileKind.Storyboard, StoryboardFileName, cancellationToken)
+			    .ConfigureAwait(false))
+			return true;
+
+		foreach (var beatmap in await beatmaps.ListAsync(set, cancellationToken).ConfigureAwait(false))
+		{
+			if (!await storage.ExistsAsync(set, BeatmapsetFileKind.Version, $"{beatmap.Value.Hash}.osu",
+				    cancellationToken).ConfigureAwait(false))
+				return true;
+
+			if (beatmap.Value.Background is { } background &&
+			    !await storage.ExistsAsync(set, BeatmapsetFileKind.Background, background, cancellationToken)
+				    .ConfigureAwait(false))
+				return true;
+
+			if (beatmap.Value.Audio is { } audio)
+			{
+				if (!await storage.ExistsAsync(set, BeatmapsetFileKind.Audio, audio, cancellationToken)
+					    .ConfigureAwait(false))
+					return true;
+
+				if (!await storage.ExistsAsync(set, BeatmapsetFileKind.Preview, audio, cancellationToken)
+					    .ConfigureAwait(false))
+					return true;
+			}
+
+			if (beatmap.Value.Video is { } video &&
+			    !await storage.ExistsAsync(set, BeatmapsetFileKind.Video, video, cancellationToken)
+				    .ConfigureAwait(false))
+				return true;
+		}
+
+		return false;
+	}
+
+	/// <summary>Plans one archive's beatmapset: its records and the name of every file it serves.</summary>
+	/// <param name="archive">The archive to plan.</param>
+	/// <param name="archiveHash">The archive's hash when it is already known, or <see langword="null" />.</param>
+	/// <param name="content">What the archive contains.</param>
+	/// <param name="folderId">The id of the stored folder the archive lies in, or <see langword="null" /> when it lies loose.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The archive, the stored beatmapset it belongs to, and the set as read from it.</returns>
+	private async Task<Indexed> PlanAsync(BeatmapsetArchiveEntry archive, Md5? archiveHash, BeatmapsetContent content,
+		int? folderId, CancellationToken cancellationToken)
+	{
+		var setHash = archiveHash ?? await HashAsync(archive, cancellationToken).ConfigureAwait(false);
+
+		var hashes = new Dictionary<BeatmapsetDifficulty, Md5>(content.Difficulties.Count);
+		var stored = new Dictionary<BeatmapsetDifficulty, Beatmap?>(content.Difficulties.Count);
+		foreach (var difficulty in content.Difficulties)
+		{
+			var hash = await HashAsync(difficulty.File, cancellationToken).ConfigureAwait(false);
+			hashes[difficulty] = hash;
+			stored[difficulty] = await beatmaps.GetAsync(hash, cancellationToken).ConfigureAwait(false);
+		}
+
+		var existing = await ResolveAsync(content, hashes, folderId, cancellationToken).ConfigureAwait(false);
+
+		var backgrounds = ChooseNames(content.Difficulties.Select(difficulty => difficulty.Background));
+		var audio = ChooseNames(content.Difficulties.Select(difficulty => difficulty.Audio));
+		var video = ChooseNames(content.Difficulties.Select(difficulty => difficulty.Video));
+
+		var synced = new List<BeatmapSyncData>(content.Difficulties.Count);
+
+		foreach (var difficulty in content.Difficulties)
+		{
+			var analysis = await AnalyseAsync(difficulty, stored[difficulty], cancellationToken).ConfigureAwait(false);
+			var background = difficulty.Background is null ? null : backgrounds[difficulty.Background];
+			var sound = difficulty.Audio is null ? null : audio[difficulty.Audio];
+			var clip = difficulty.Video is null ? null : video[difficulty.Video];
+
+			synced.Add(new BeatmapSyncData(
+				difficulty.OnlineId is > 0 ? difficulty.OnlineId : null,
+				hashes[difficulty],
+				difficulty.Version,
+				analysis.Difficulty,
+				analysis.Objects,
+				background,
+				sound,
+				clip,
+				difficulty.PreviewTime));
+		}
+
+		var sync = new BeatmapsetSyncSet(
+			existing,
+			existing is null && content.OnlineSetId is > 0 ? content.OnlineSetId : null,
+			content.Artist,
+			content.Title,
+			content.Creator,
+			setHash,
+			archive.Size,
+			archive.ModifiedAt,
+			content.Storyboard is not null,
+			synced);
+
+		return new Indexed(archive, existing, sync);
+	}
+
+	/// <summary>Reads an archive lying in the storage, keeping it open while its content lives.</summary>
+	/// <param name="archive">The archive to read.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>
+	///     What the archive contains and the open stream it is read from; both <see langword="null" /> when it is not a
+	///     readable beatmapset archive. The caller releases the content first and the stream after it.
+	/// </returns>
+	private async Task<(BeatmapsetContent? Content, Stream? Stream)> ReadAsync(BeatmapsetArchiveEntry archive,
+		CancellationToken cancellationToken)
+	{
+		var stream = await archive.OpenAsync(cancellationToken).ConfigureAwait(false);
+		var keep = false;
+		try
+		{
+			var content = await reader.ReadAsync(stream, cancellationToken).ConfigureAwait(false);
+			keep = content is not null;
+			return (content, stream);
+		}
+		finally
+		{
+			if (!keep) await stream.DisposeAsync().ConfigureAwait(false);
+		}
+	}
+
+	/// <summary>Finds the stored beatmapset a read beatmapset belongs to.</summary>
+	/// <param name="content">What was read.</param>
+	/// <param name="hashes">The MD5 hash of each difficulty's file.</param>
+	/// <param name="folderId">The id of the stored folder the content lies in, or <see langword="null" /> when it lies in none.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The stored beatmapset the content belongs to, or <see langword="null" /> when it is a new one.</returns>
+	/// <remarks>
+	///     The beatmapset is the stored one that already has a difficulty of the read set; otherwise the stored one with
+	///     the folder's id; otherwise the stored one with the id the read set declares.
+	/// </remarks>
+	private async Task<Beatmapset?> ResolveAsync(BeatmapsetContent content,
+		IReadOnlyDictionary<BeatmapsetDifficulty, Md5> hashes, int? folderId, CancellationToken cancellationToken)
+	{
+		foreach (var hash in hashes.Values)
+		{
+			var beatmap = await beatmaps.GetAsync(hash, cancellationToken).ConfigureAwait(false);
+			if (beatmap is not null) return beatmap.Value.Beatmapset;
+		}
+
+		if (folderId is { } id)
+		{
+			var inFolder = await beatmapsets.GetAsync(id, cancellationToken).ConfigureAwait(false);
+			if (inFolder is not null) return inFolder;
+		}
+
+		return content.OnlineSetId is > 0
+			? await beatmapsets.GetAsync(content.OnlineSetId.Value, cancellationToken).ConfigureAwait(false)
+			: null;
+	}
+
+	/// <summary>Describes a stored beatmapset as it is, with its archive's new size and modification time.</summary>
+	/// <param name="set">The stored beatmapset, with its difficulties as they are stored.</param>
+	/// <param name="archive">The stored set's archive, unchanged in content.</param>
+	/// <param name="hash">The archive's hash.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	private async Task<BeatmapsetSyncSet> SyncOfAsync(Beatmapset set, BeatmapsetArchiveEntry archive, Md5 hash,
+		CancellationToken cancellationToken)
+	{
+		var synced = new List<BeatmapSyncData>();
+		foreach (var beatmap in await beatmaps.ListAsync(set, cancellationToken).ConfigureAwait(false))
+			synced.Add(new BeatmapSyncData(
+				beatmap.IsLocallyIngested ? null : beatmap.Id,
+				beatmap.Value.Hash,
+				beatmap.Value.Version,
+				beatmap.Value.Difficulty,
+				beatmap.Value.Objects,
+				beatmap.Value.Background,
+				beatmap.Value.Audio,
+				beatmap.Value.Video,
+				beatmap.Value.PreviewTime));
+
+		return new BeatmapsetSyncSet(set, null, set.Value.Artist, set.Value.Title, set.Value.Creator, hash,
+			archive.Size, archive.ModifiedAt, set.Value.Storyboard, synced);
+	}
+
+	/// <summary>Forgets a stored beatmapset, leaving the files of its folder as they are.</summary>
+	/// <param name="set">The beatmapset to forget.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	private async Task ForgetAsync(Beatmapset set, CancellationToken cancellationToken)
+	{
+		await beatmapsets.SyncAsync(new BeatmapsetSync([], [set]), cancellationToken).ConfigureAwait(false);
+		_events.Writer.TryWrite(new BeatmapsetDeleted(set));
+	}
+
+	/// <summary>Chooses the plain name each file of one kind is stored under.</summary>
+	/// <param name="files">The files of one kind, in difficulty order; a file used by several difficulties comes once.</param>
+	/// <returns>One chosen name per file; two different files never get the same name.</returns>
+	private static Dictionary<BeatmapsetFile, string> ChooseNames(IEnumerable<BeatmapsetFile?> files)
+	{
+		var names = new Dictionary<BeatmapsetFile, string>();
+		var taken = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+		foreach (var file in files)
+		{
+			if (file is null || names.ContainsKey(file)) continue;
+
+			var plain = PlainName(file.Name);
+			var stem = Path.GetFileNameWithoutExtension(plain);
+			var extension = Path.GetExtension(plain);
+			var name = plain;
+			for (var suffix = 2; !taken.Add(name); suffix++)
+				name = $"{stem}-{suffix}{extension}";
+
+			names[file] = name;
+		}
+
+		return names;
+	}
+
+	/// <summary>A file's plain name, with every character a file name may not have replaced.</summary>
+	/// <param name="name">The file's name relative to the set.</param>
+	/// <returns>The plain name; a name left empty by the replacement is <c>file</c>.</returns>
+	private static string PlainName(string name)
+	{
+		var plain = Path.GetFileName(name);
+		var builder = new StringBuilder(plain.Length);
+		foreach (var character in plain)
+			builder.Append(character is '<' or '>' or ':' or '"' or '/' or '\\' or '|' or '?' or '*'
+				or < ' ' ? '_' : character);
+
+		return builder.Length > 0 ? builder.ToString() : "file";
+	}
+
+	/// <summary>Computes the MD5 hash of an archive's content.</summary>
+	/// <param name="archive">The archive, read to its end; not disposed.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	private static async Task<Md5> HashAsync(BeatmapsetArchiveEntry archive, CancellationToken cancellationToken)
+	{
+		var stream = await archive.OpenAsync(cancellationToken).ConfigureAwait(false);
+		await using (stream.ConfigureAwait(false))
+		{
+			return await Md5.ComputeAsync(stream, cancellationToken).ConfigureAwait(false);
+		}
+	}
+
+	/// <summary>Computes the MD5 hash of a set file's content.</summary>
+	/// <param name="file">The file, read to its end; not disposed.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	private static async Task<Md5> HashAsync(BeatmapsetFile file, CancellationToken cancellationToken)
+	{
+		var stream = await file.OpenAsync(cancellationToken).ConfigureAwait(false);
+		await using (stream.ConfigureAwait(false))
+		{
+			return await Md5.ComputeAsync(stream, cancellationToken).ConfigureAwait(false);
+		}
 	}
 
 	/// <summary>
 	///     Analyses a difficulty, reusing the analysis of the stored beatmap with the same file when it has a star
 	///     rating.
 	/// </summary>
+	/// <param name="difficulty">The difficulty to analyse.</param>
+	/// <param name="stored">The stored beatmap of the same file, or <see langword="null" /> when there is none.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <remarks>A difficulty that cannot be analysed gets a zero star rating and no objects.</remarks>
 	private async Task<BeatmapAnalysis> AnalyseAsync(BeatmapsetDifficulty difficulty, Beatmap? stored,
 		CancellationToken cancellationToken)
@@ -230,19 +682,19 @@ internal sealed class BeatmapsetService(
 	}
 
 	/// <summary>A zero difficulty and no objects in a game mode.</summary>
+	/// <param name="mode">The game mode.</param>
 	private static BeatmapAnalysis EmptyAnalysis(GameMode mode)
 	{
 		var objects = BeatmapObjects.Empty(mode);
 		return new BeatmapAnalysis(new Difficulty(mode, 0, TimeSpan.Zero, 0, 0, 0, 0, 0), objects);
 	}
 
-	private async Task UpdateSetAsync(Beatmapset set, BeatmapsetContent content, DateTimeOffset now,
-		CancellationToken cancellationToken)
-	{
-		set.Value.Artist = content.Artist;
-		set.Value.Title = content.Title;
-		set.Value.Creator = content.Creator;
-		set.Value.UpdatedAt = now;
-		await beatmapsets.UpdateAsync(set, cancellationToken).ConfigureAwait(false);
-	}
+	/// <summary>One archive read for indexing: the stored beatmapset it belongs to and its records.</summary>
+	/// <param name="Archive">The archive, which becomes the beatmapset's own.</param>
+	/// <param name="Existing">The stored beatmapset it belongs to, or <see langword="null" /> when it is a new one.</param>
+	/// <param name="Sync">The beatmapset as read from the archive.</param>
+	private sealed record Indexed(
+		BeatmapsetArchiveEntry Archive,
+		Beatmapset? Existing,
+		BeatmapsetSyncSet Sync);
 }

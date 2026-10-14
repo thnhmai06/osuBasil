@@ -11,6 +11,7 @@ namespace Basil.Application.Services.Implementations.Sessions;
 
 /// <summary>Closes connections, keeps them alive and lets an account act for another user.</summary>
 internal sealed class SessionConnectionsService(
+	BanchoConnectionService bancho,
 	IUserRegistry registry,
 	IChannelService channels,
 	SessionEventStream events,
@@ -21,6 +22,9 @@ internal sealed class SessionConnectionsService(
 
 	/// <summary>A logout an osu! client sends this soon after login is ignored.</summary>
 	internal static readonly TimeSpan IgnoreLogoutWithin = TimeSpan.FromSeconds(1);
+
+	/// <inheritdoc />
+	public IBanchoConnectionService Bancho => bancho;
 
 	/// <inheritdoc />
 	public void Close(Connection connection, ConnectionCloseReason reason)
@@ -170,8 +174,8 @@ internal sealed class SessionConnectionsService(
 		registry.Unindex(connection);
 		connection.Session.Remove(connection);
 		channels.Members.Part(connection.Session.PmChannel, connection);
-		if (connection is BanchoConnection bancho)
-			channels.Close(bancho.SpectatorChannel);
+		if (connection is BanchoConnection client)
+			channels.Close(client.SpectatorChannel);
 
 		var wentOffline = !connection.Session.Connections.Any();
 		if (wentOffline)

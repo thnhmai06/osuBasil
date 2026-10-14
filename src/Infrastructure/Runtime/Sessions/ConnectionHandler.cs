@@ -31,7 +31,7 @@ internal sealed class ConnectionHandler(
 				await RunAsync("release its room", connection.User.Id,
 					() => rooms.Members.ReleaseAsync(connection, cancellationToken), cancellationToken);
 				Run("stop spectating", connection.User.Id,
-					() => sessions.Spectators.StopSpectating(connection), cancellationToken);
+					() => sessions.Connections.Bancho.Spectators.StopSpectating(connection), cancellationToken);
 				if (connection is BanchoConnection bancho)
 					Run("leave the lobby", connection.User.Id, () => lobby.Watchers.Unwatch(bancho), cancellationToken);
 				Run("part its channels", connection.User.Id,

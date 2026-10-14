@@ -4,7 +4,7 @@ using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Contracts.Sessions;
 
-/// <summary>Opens and closes the connections of online users and changes what they share; connections, presence and spectating are its parts.</summary>
+/// <summary>Opens and closes the connections of online users and changes what they share; connections and presence are its parts.</summary>
 public interface ISessionService : IEventPublisher<UserEvent>
 {
 	/// <summary>Connections: closing them, keeping them alive, acting for another user.</summary>
@@ -12,9 +12,6 @@ public interface ISessionService : IEventPublisher<UserEvent>
 
 	/// <summary>What online users show to others.</summary>
 	ISessionPresenceService Presence { get; }
-
-	/// <summary>Spectating osu! clients.</summary>
-	ISessionSpectatorsService Spectators { get; }
 
 	/// <summary>Shows a notification to online osu! clients.</summary>
 	/// <param name="by">The connection asking; its user needs <see cref="Permissions.ModeratorAnnounce" />.</param>

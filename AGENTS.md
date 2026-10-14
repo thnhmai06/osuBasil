@@ -476,7 +476,7 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   environment (a room closes when its last player leaves, a room keeps its channel's members in step with
   its players), the service that performs the operation enforces it; it is never left to a hook that might
   not be installed.
-* **Background work.** A contract declares one run of a background job (`ISessionService.CloseIdle()`,
+* **Background work.** A contract declares one run of a background job (`ISessionService.Connections.CloseIdle()`,
   `IBeatmapsetService.ScanAsync()`); Services implements it; Infrastructure owns the loop, the trigger, the
   period and its configuration. A one-shot timer that is the consequence of an operation (an empty room's
   closing) stays in Services on `TimeProvider`. A countdown is not one: it is a client feature (BasilBot runs
@@ -494,7 +494,8 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   hold connections, not sessions. Owned parts (a session's `PmChannel`, a connection's
   `SpectatorChannel`) are created and destroyed with their owner; they are not relations.
   Spectating is a relation on the spectated osu! client (`BanchoConnection.Spectators`), changed only by
-  `ISessionService.Spectators`, which keeps the client's spectator channel in step (the first spectator brings the
+  `ISessionService.Connections.Bancho.Spectators` (what only an osu! client has lives under `Connections.Bancho`:
+  spectating and its presence status), which keeps the client's spectator channel in step (the first spectator brings the
   host in, the last one out) the way the room service keeps a room's channel; the channel never stands for who is
   spectating.
 * **Identify by the basis object**, not its id (`Room` by `Match`, `GeneralChannel` by `Name`). Runtime
@@ -521,8 +522,8 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   child as a property named after the part (`IRoomService.Members`, `.Authority`, `.Settings`, `.Slots`,
   `.Rounds`); the object stays a parameter of every operation (`rooms.Slots.MoveAsync(room, by, player, index)`),
   never an object-bound handle (`rooms.For(room)`). Today: `IRoomService` (`Members`, `Authority`, `Settings`,
-  `Slots`, `Rounds`), `IChannelService` (`Members`, `Messages`, `General`), `ISessionService` (`Connections`,
-  `Presence`, `Spectators`), `IUserService` (`Restrictions`), `ILobbyService` (`Rooms`, `Watchers`). Children are
+  `Slots`, `Rounds`), `IChannelService` (`Members`, `Messages`, `General`), `ISessionService` (`Connections`
+  with its own child `Bancho`, `Presence`), `IUserService` (`Restrictions`), `ILobbyService` (`Rooms`, `Watchers`). Children are
   named after the parent and the part (`IRoomSlotsService`, `IGeneralChannelService`), share the parent's one
   event stream and may call a sibling's `internal` members directly, since they act on the same object. Callers
   reach a child only through the parent. A service whose object has no parts it acts on stays flat; size alone is
@@ -565,14 +566,20 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   `UpdateAsync`. `Save` is only for byte storages (`IXxxStorage`: `SaveAsync`, `OpenAsync`,
   `DeleteAsync`, plus `ListAsync` and `RenameAsync` where the content is managed); `OpenAsync` serves the server's
   own reads, never clients, who get stored assets from the asset host. A storage lists with `IEnumerable<X>` (the
-  caller decides whether to materialise it). `IBeatmapsetStorage` works on the set's folder of files (save the
-  `BeatmapsetFile`s the reader found, list, open, delete); it never unpacks an archive. The `.osz` archive is only an
-  export (`ExportAsync`), with no CRUD of its own, and keeping exported archives in `Cache/` is Infrastructure's
-  business. `IBeatmapsetReader` reads a set from an archive or a folder into a `BeatmapsetContent` whose files open
-  on demand (no `byte[]` copies) and owns the input checks (unsafe or duplicate names, size limits); only
-  `IBeatmapsetService.ImportAsync` uses it. An asset (`IBeatmapAssets`) is what a beatmap or set contains (its
-  `.osu`, background, audio, video, storyboard) or a file made from it (an audio preview); the whole set as one
-  archive is not an asset, so a host serves downloads straight from `IBeatmapsetStorage.ExportAsync`. A
+  caller decides whether to materialise it). `IBeatmapsetStorage` keeps each set in `Data/Beatmapsets/{id} {Artist} - {Title}/`: `archive.osz`
+  exactly as given is the truth about the set (`ArchiveHash`, `ArchiveSize`, `ArchiveModifiedAt` record it), and
+  `archive-novideo.osz`, `versions/{md5}.osu`, `backgrounds/`, `audio/` (with `preview_{audio}`), `video/` and
+  `storyboard.osb` are made from it when the set is indexed; nothing else is extracted, and reading never makes a file
+  (a missing one reads as absent). A loose `.osz` or a folder of loose files dropped into `Data/Beatmapsets` is taken
+  in (the folder packed first); a folder being deleted is renamed with `.deleted_` first; writes go through
+  `Cache/Staging`. `IBeatmapsetService.ScanAsync()` runs at startup before clients are served: it checks every entry
+  (size and modification time, then the hash), indexes what changed, makes missing files again, and stores every
+  record change in one `IBeatmapsetRepository.SyncAsync` transaction; `ScanAsync(entry)` handles each change the
+  storage watcher reports. `IBeatmapsetReader` reads an archive into a `BeatmapsetContent` whose files open on demand
+  (no `byte[]` copies) and owns the input checks; only the beatmapset service uses it. `IBeatmapAssets` only makes
+  derived files at index time (audio previews). A beatmap's `Content` (`BeatmapContent`, opaque, made by
+  Infrastructure from the osu! libraries) is the understood `.osu` file, loaded lazily by
+  `IBeatmapAnalyser.AnalyzeAsync` and kept in memory so changing mods reads no file; metadata stays in the database. A
   storage of text reads and writes it through `StreamReader`/`StreamWriter` (`IFaqStorage.ReadAsync`,
   `IFaqStorage.CreateOrUpdateAsync`) instead of a raw `Stream`. Extract a shared
   interface only when several repositories genuinely share an operation, and keep the `IXxxRepository`

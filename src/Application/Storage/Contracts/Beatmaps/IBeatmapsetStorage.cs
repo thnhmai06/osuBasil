@@ -2,42 +2,134 @@ using Basil.Domain.Beatmaps;
 
 namespace Basil.Application.Storage.Contracts.Beatmaps;
 
-/// <summary>Stores the files of each beatmapset in its own folder and exports a set as an .osz archive.</summary>
+/// <summary>
+///     Stores each beatmapset in its own folder, named <c>{id} {Artist} - {Title}</c> as osu! names its songs: the
+///     set's archive, which is the truth about the set, and the files made from it.
+/// </summary>
+/// <remarks>
+///     A set's folder holds its archive as it was given, the archive without video, and the files the server uses,
+///     each kind in its own place (<see cref="BeatmapsetFileKind" />). Anyone may also place an .osz archive or a
+///     folder of loose files in the storage by hand; such entries wait, listed by
+///     <see cref="ListAsync(CancellationToken)" />, until the server takes them in.
+/// </remarks>
 public interface IBeatmapsetStorage
 {
-	/// <summary>Stores a set's files, replacing every file stored for the set.</summary>
-	/// <param name="set">The beatmapset the files belong to.</param>
-	/// <param name="files">The set's files; each must stay readable until the call returns.</param>
+	/// <summary>Stores an uploaded archive, byte for byte, as an archive waiting to be taken in.</summary>
+	/// <param name="archive">The archive, read from its current position to its end; not disposed.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <remarks>Either every file is stored or the set keeps the files it had.</remarks>
-	/// <exception cref="InvalidDataException">
-	///     A file names a place outside the set, or its content does not have the size the file declares.
-	/// </exception>
-	Task SaveAsync(Beatmapset set, IReadOnlyCollection<BeatmapsetFile> files,
+	/// <returns>The stored archive, which becomes a set's archive through <see cref="SaveAsync(Beatmapset, BeatmapsetArchiveEntry, CancellationToken)" />.</returns>
+	/// <remarks>It is not listed nor watched; one never taken in is removed when the server starts again.</remarks>
+	Task<BeatmapsetArchiveEntry> SaveAsync(Stream archive, CancellationToken cancellationToken = default);
+
+	/// <summary>Makes an archive lying in the storage the set's archive, moving it byte for byte.</summary>
+	/// <param name="set">The beatmapset the archive holds.</param>
+	/// <param name="archive">The archive: one placed by hand, one packed from loose files, or a set folder's own.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <remarks>
+	///     The set's folder is named after the set, and another folder stored for the set is deleted. A set folder's own
+	///     archive stays in place; the folder is only renamed when its name changed.
+	/// </remarks>
+	Task SaveAsync(Beatmapset set, BeatmapsetArchiveEntry archive, CancellationToken cancellationToken = default);
+
+	/// <summary>Packs a folder of loose files into an archive that waits to be taken in.</summary>
+	/// <param name="folder">The folder; its files are left as they are until the archive is taken in.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>
+	///     The packed archive, or <see langword="null" /> when the folder is gone, holds no files, or is a set's folder that
+	///     lost its archive (it holds files made from one), which is never packed.
+	/// </returns>
+	/// <remarks>The loose files are removed once the packed archive is taken in by <see cref="SaveAsync(Beatmapset, BeatmapsetArchiveEntry, CancellationToken)" />.</remarks>
+	Task<BeatmapsetArchiveEntry?> PackAsync(BeatmapsetFolderEntry folder,
 		CancellationToken cancellationToken = default);
 
-	/// <summary>Lists the files of a set.</summary>
-	/// <param name="set">The beatmapset whose files to list.</param>
+	/// <summary>Removes every file made from a set's archive, keeping the archive.</summary>
+	/// <param name="set">The beatmapset.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>The files' names relative to the set, with '/' between folders; empty when nothing is stored for the set.</returns>
-	Task<IEnumerable<string>> ListAsync(Beatmapset set, CancellationToken cancellationToken = default);
+	Task ClearAsync(Beatmapset set, CancellationToken cancellationToken = default);
 
-	/// <summary>Opens one file of a set.</summary>
-	/// <param name="set">The beatmapset whose file to open.</param>
-	/// <param name="name">The file's name relative to the set; case and '/' or '\\' do not matter.</param>
+	/// <summary>Stores one file made from a set's archive.</summary>
+	/// <param name="set">The beatmapset.</param>
+	/// <param name="kind">What the file is.</param>
+	/// <param name="name">
+	///     The plain file name to store it under, without folders: for a difficulty <c>{hash}.osu</c>; for an audio preview
+	///     the name of the audio it is made from; ignored for the storyboard. A file with that name is replaced.
+	/// </param>
+	/// <param name="content">The content, read to its end; not disposed.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>The file's content, seekable; or <see langword="null" /> when the set has no such file.</returns>
-	Task<Stream?> OpenAsync(Beatmapset set, string name, CancellationToken cancellationToken = default);
+	/// <exception cref="ArgumentException"><paramref name="name" /> is not a plain file name.</exception>
+	Task SaveAsync(Beatmapset set, BeatmapsetFileKind kind, string name, Stream content,
+		CancellationToken cancellationToken = default);
 
-	/// <summary>Exports a set's stored files as an .osz archive.</summary>
-	/// <param name="set">The beatmapset to open.</param>
-	/// <param name="withVideo">Whether the archive includes the set's videos.</param>
+	/// <summary>Makes the set's archive without video from its archive.</summary>
+	/// <param name="set">The beatmapset.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>The archive, seekable; or <see langword="null" /> when nothing is stored for the set.</returns>
-	Task<Stream?> ExportAsync(Beatmapset set, bool withVideo, CancellationToken cancellationToken = default);
+	Task SaveArchiveWithoutVideoAsync(Beatmapset set, CancellationToken cancellationToken = default);
 
-	/// <summary>Deletes a set's files; deleting a missing set does nothing.</summary>
-	/// <param name="set">The beatmapset whose files to delete.</param>
+	/// <summary>Determines whether a file made from a set's archive is stored.</summary>
+	/// <param name="set">The beatmapset.</param>
+	/// <param name="kind">What the file is.</param>
+	/// <param name="name">The name it is stored under.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns><see langword="true" /> if the file is stored.</returns>
+	Task<bool> ExistsAsync(Beatmapset set, BeatmapsetFileKind kind, string name,
+		CancellationToken cancellationToken = default);
+
+	/// <summary>Opens one file made from a set's archive.</summary>
+	/// <param name="set">The beatmapset.</param>
+	/// <param name="kind">What the file is.</param>
+	/// <param name="name">The name it is stored under; ignored for the storyboard.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The file's content, seekable; or <see langword="null" /> when it is not stored. Nothing is made when asked.</returns>
+	Task<Stream?> OpenAsync(Beatmapset set, BeatmapsetFileKind kind, string name,
+		CancellationToken cancellationToken = default);
+
+	/// <summary>Opens a set's archive, with or without video.</summary>
+	/// <param name="set">The beatmapset.</param>
+	/// <param name="withVideo">Whether to open the archive as it was given, with its videos.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The archive, seekable; or <see langword="null" /> when it is not stored.</returns>
+	Task<Stream?> OpenArchiveAsync(Beatmapset set, bool withVideo, CancellationToken cancellationToken = default);
+
+	/// <summary>Lists every entry in the storage: loose archives and every folder directly in it.</summary>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The entries; folders being written or deleted are left out.</returns>
+	Task<IEnumerable<BeatmapsetEntry>> ListAsync(CancellationToken cancellationToken = default);
+
+	/// <summary>Watches the storage for entries that change, whoever changes them.</summary>
+	/// <param name="cancellationToken">A token that stops watching.</param>
+	/// <returns>
+	///     Each entry that changed, as it is once its changes have settled; a change inside a folder (its archive above
+	///     all) reports the folder, and a folder that is gone comes back with <see cref="BeatmapsetFolderEntry.Exists" />
+	///     false. Watching starts when this is called; folders being written or deleted are left out.
+	/// </returns>
+	IAsyncEnumerable<BeatmapsetEntry> WatchAsync(CancellationToken cancellationToken);
+
+	/// <summary>Deletes a set's folder with everything in it; deleting a missing set does nothing.</summary>
+	/// <param name="set">The beatmapset whose folder to delete.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <remarks>The folder stops being the set's at once; its files are removed right after.</remarks>
+	/// <exception cref="IOException">A file of the set is in use; the set keeps its folder.</exception>
 	Task DeleteAsync(Beatmapset set, CancellationToken cancellationToken = default);
+}
+
+/// <summary>What a file made from a beatmapset's archive is.</summary>
+public enum BeatmapsetFileKind : byte
+{
+	/// <summary>A difficulty's .osu file, named after the hash of its content.</summary>
+	Version,
+
+	/// <summary>A background image.</summary>
+	Background,
+
+	/// <summary>An audio track.</summary>
+	Audio,
+
+	/// <summary>A short preview of an audio track, named after it.</summary>
+	Preview,
+
+	/// <summary>A video.</summary>
+	Video,
+
+	/// <summary>The set's storyboard.</summary>
+	Storyboard
 }

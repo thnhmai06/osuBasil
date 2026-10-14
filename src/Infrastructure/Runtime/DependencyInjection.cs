@@ -33,7 +33,6 @@ public static class DependencyInjection
 
 		services.AddSingleton<IEventHandler<UserEvent>, ConnectionHandler>();
 		services.AddSingleton<IEventHandler<ScoreEvent>, ScoreHandler>();
-		services.AddSingleton<IEventHandler<BeatmapsetEvent>, BeatmapAssetsHandler>();
 		services.AddSingleton<MatchRecorder>();
 		services.AddSingleton<IEventHandler<RoomEvent>>(sp => sp.GetRequiredService<MatchRecorder>());
 		services.AddSingleton<IEventHandler<LobbyEvent>>(sp => sp.GetRequiredService<MatchRecorder>());
@@ -48,7 +47,7 @@ public static class DependencyInjection
 		AddPump<IBeatmapsetService, BeatmapsetEvent>(services);
 
 		services.AddHostedService<IdleConnectionSweeper>();
-		services.AddHostedService<BeatmapImportWatcher>();
+		services.AddHostedService<BeatmapsetStorageWatcher>();
 		return services;
 	}
 

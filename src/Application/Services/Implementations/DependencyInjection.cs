@@ -33,7 +33,8 @@ public static class DependencyInjection
 		services.TryAddSingleton(TimeProvider.System);
 
 		services.AddSingleton<SessionEventStream>();
-		services.AddSingleton<SessionSpectatorsService>();
+		services.AddSingleton<BanchoSpectatorsService>();
+		services.AddSingleton<BanchoConnectionService>();
 		services.AddSingleton<SessionConnectionsService>();
 		services.AddSingleton<SessionPresenceService>();
 		services.AddSingleton<SessionService>();

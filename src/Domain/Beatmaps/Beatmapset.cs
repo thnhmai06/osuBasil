@@ -128,6 +128,18 @@ public sealed class BeatmapsetData
 	/// <summary>The time the set was first imported, in UTC.</summary>
 	public required DateTimeOffset CreatedAt { get; init; }
 
+	/// <summary>The MD5 hash of the set's archive, or <see langword="null" /> until the archive is first indexed.</summary>
+	public Md5? ArchiveHash { get; set; }
+
+	/// <summary>The size of the set's archive in bytes, or <see langword="null" /> until the archive is first indexed.</summary>
+	public long? ArchiveSize { get; set; }
+
+	/// <summary>When the set's archive was last modified, in UTC, or <see langword="null" /> until it is first indexed.</summary>
+	public DateTimeOffset? ArchiveModifiedAt { get; set; }
+
+	/// <summary>Whether the set has a storyboard.</summary>
+	public bool Storyboard { get; set; }
+
 	/// <summary>
 	///     Whether the set is write-locked. Locked sets cannot be updated or deleted.
 	/// </summary>

@@ -1,9 +1,15 @@
 using Basil.Application.Services.Contracts.Events;
+using Basil.Application.Storage.Contracts.Beatmaps;
 using Basil.Domain.Beatmaps;
 
 namespace Basil.Application.Services.Contracts.Beatmaps;
 
 /// <summary>Imports, deletes and keeps track of the beatmapsets the server has.</summary>
+/// <remarks>
+///     A set's archive in the beatmapset storage is the truth about the set; the server takes in what is placed there,
+///     makes every file it serves from the archive when it indexes the set, and keeps its records in step with the
+///     archives.
+/// </remarks>
 public interface IBeatmapsetService : IEventPublisher<BeatmapsetEvent>
 {
 	/// <summary>Imports a beatmapset archive, adding or replacing the beatmapset it belongs to.</summary>
@@ -17,22 +23,42 @@ public interface IBeatmapsetService : IEventPublisher<BeatmapsetEvent>
 	/// </remarks>
 	Task<BeatmapsetImportResult> ImportAsync(Stream archive, CancellationToken cancellationToken = default);
 
-	/// <summary>Imports a folder holding a beatmapset's files, adding or replacing the beatmapset it belongs to.</summary>
-	/// <param name="folder">The folder; every file under it belongs to the set, and it is left as it is.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>The result of the import.</returns>
-	/// <remarks>The beatmapset is chosen as for an archive.</remarks>
-	Task<BeatmapsetImportResult> ImportAsync(DirectoryInfo folder, CancellationToken cancellationToken = default);
-
-	/// <summary>Deletes a beatmapset with its beatmaps and archive.</summary>
+	/// <summary>Deletes a beatmapset with its beatmaps and files.</summary>
 	/// <param name="set">The beatmapset to delete.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns><see langword="true" /> if the beatmapset was deleted; <see langword="false" /> when the beatmapset is locked.</returns>
 	Task<bool> DeleteAsync(Beatmapset set, CancellationToken cancellationToken = default);
 
-	/// <summary>Forgets every beatmapset whose archive is no longer stored.</summary>
+	/// <summary>Takes in everything waiting in the storage and brings every beatmapset in step with its archive.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>How many beatmapsets were forgotten.</returns>
-	/// <remarks>Run by the host when it starts.</remarks>
-	Task<int> ScanAsync(CancellationToken cancellationToken = default);
+	/// <returns>How many beatmapsets were taken in, updated and forgotten.</returns>
+	/// <remarks>
+	///     First every entry is checked: an archive whose size and modification time match the stored ones is not hashed;
+	///     any other is hashed, and one whose hash differs from the stored one, or that no stored set has, is indexed
+	///     again, as are loose archives and folders of loose files. Then each of those is indexed and its files are made
+	///     again, and every stored set whose folder or archive is gone, or whose archive cannot be read, is forgotten.
+	///     Every change of the records is stored at once, after all of that. A set that needs no indexing but misses a
+	///     file made from its archive gets that file made again. Run when the server starts, before it serves clients.
+	/// </remarks>
+	Task<BeatmapsetScanResult> ScanAsync(CancellationToken cancellationToken = default);
+
+	/// <summary>Brings the server in step with one entry of the storage after it changed.</summary>
+	/// <param name="entry">The entry as it is now.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>How many beatmapsets were taken in, updated and forgotten.</returns>
+	/// <remarks>
+	///     The entry's archive is hashed and indexed again when its hash differs from the stored one, even when the folder
+	///     held no valid set before. A loose archive is moved into its set's folder; a folder of loose files is packed into
+	///     an archive first. The beatmapset is the stored one that already has a beatmap of the archive; otherwise the
+	///     stored one with the id the folder's name starts with; otherwise the stored one with the id the archive declares;
+	///     otherwise a new one. A folder that is gone or whose archive is gone or unreadable forgets its set; its files
+	///     are left as they are. A locked set is not changed. Scanning an unchanged entry again changes nothing.
+	/// </remarks>
+	Task<BeatmapsetScanResult> ScanAsync(BeatmapsetEntry entry, CancellationToken cancellationToken = default);
 }
+
+/// <summary>How many beatmapsets a scan changed.</summary>
+/// <param name="Imported">The beatmapsets taken in for the first time.</param>
+/// <param name="Updated">The beatmapsets whose difficulties changed.</param>
+/// <param name="Forgotten">The beatmapsets forgotten because nothing is stored for them.</param>
+public sealed record BeatmapsetScanResult(int Imported, int Updated, int Forgotten);

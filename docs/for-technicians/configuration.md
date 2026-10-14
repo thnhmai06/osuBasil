@@ -298,13 +298,13 @@ installation.
 | `Data/Localization/*.json` | Reply text and the message-of-the-day; see [Localization](#localization) above.                                                | **No**                                                       |
 | `Data/Replays/`           | Submitted score replays, named like an osu! replay export (`{score id} {player} - {artist} - {title} [{version}] ({date}) {mode}.osr`). | **No**, unless you intentionally want to remove replays.    |
 | `Data/Avatars/`           | User avatar files.                                                                                                                | **No**, unless you intentionally want to remove avatars.    |
-| `Data/Songs/`             | Installed beatmapsets, one folder of extracted files per set (`Data/Songs/{set id}/`). | **No**, unless you intentionally want to remove beatmaps.   |
+| `Data/Beatmapsets/`       | Installed beatmapsets, one folder per set (`{set id} {Artist} - {Title}/`) holding its archive and the files the server serves. | **No**, unless you intentionally want to remove beatmaps.   |
 | `Data/Menu/Seasonals/`    | Seasonal background images used by the client's login screen.                                                                     | Optional                                                     |
 | `Data/Menu/Banners/`      | Main-menu banner images uploaded for `MenuBanners` entries with a local image (as opposed to an external URL).                    | Optional                                                     |
 | `Data/Menu/Icon/`        | The uploaded main-menu icon image, when the icon is a stored file rather than an external URL. | Usually no                                                   |
 | `Data/Faqs/`              | Text files used by `!faq <entry>`.                                                                                                | Optional                                                     |
 | `Data/Screenshots/`       | Screenshots uploaded by players, each under a UUID name.                                                                          | Optional                                                     |
-| `Data/Cache/`             | Rebuildable files: `.osz` downloads of each set (`Cache/Beatmaps/`), image crops, transcoded audio previews.                                                                 | **Yes**                                                     |
+| `Data/Cache/`             | Rebuildable files: image crops; `Staging/` holds files being written.                                                                 | **Yes**                                                     |
 
 `Data/Seasonals/` and `Data/MenuIcon.{ext}` are the pre-`assets.<domain>` locations of the two rows
 above; Basil moves them into place automatically on startup if found (see
@@ -325,13 +325,18 @@ Database migrations are applied automatically when Basil starts. Back up the dat
 Beatmaps are stored under:
 
 ```text
-Data/Songs/{set id}/
+Data/Beatmapsets/{set id} {Artist} - {Title}/
+  archive.osz            the set's archive, exactly as given
+  archive-novideo.osz    the same without video, offered for download
+  versions/{md5}.osu     each difficulty
+  backgrounds/  audio/  video/  storyboard.osb
 ```
 
-Each beatmapset is a folder of its extracted files (audio, images, video, `.osu`). A `Data/Beatmaps/` directory
-from an older version is moved to `Data/Songs/` on startup. The `.osz` archives offered for
-download, with and without video, are rebuilt from these files into `Data/Cache/Beatmaps/` and are kept in step
-when the files change on disk. See [`beatmap-ingestion.md`](../for-developers/beatmap-ingestion.md).
+`archive.osz` is what counts: everything else is made from it when the set is indexed, and made again if it goes
+missing. Drop a `.osz`, or a folder of a set's loose files, into `Data/Beatmapsets/` to add it; the server moves or
+packs it into a set folder. Deleting a set folder's `archive.osz` removes the set from the server and leaves the folder
+as it is. A `Data/Songs/` or `Data/Beatmaps/` directory from an older version is moved to `Data/Beatmapsets/` on
+startup. See [`beatmap-ingestion.md`](../for-developers/beatmap-ingestion.md).
 
 A standalone `.osu` file is **not** imported because a difficulty file alone does not provide enough information to
 identify its beatmapset.

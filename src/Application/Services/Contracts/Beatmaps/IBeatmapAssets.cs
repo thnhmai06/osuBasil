@@ -2,58 +2,17 @@ using Basil.Domain.Beatmaps;
 
 namespace Basil.Application.Services.Contracts.Beatmaps;
 
-/// <summary>Opens what beatmaps and beatmapsets contain, and the files made from it such as an audio preview.</summary>
-/// <remarks>A whole beatmapset as one archive is not an asset; it is exported by the beatmapset storage.</remarks>
+/// <summary>Makes the files derived from a beatmapset's stored files, such as audio previews.</summary>
+/// <remarks>
+///     Everything is made when the set is indexed; reading a set's files is done through the beatmapset storage and
+///     never makes anything.
+/// </remarks>
 public interface IBeatmapAssets
 {
-	/// <summary>Opens a file of a beatmap.</summary>
-	/// <param name="beatmap">The beatmap whose file to open.</param>
-	/// <param name="asset">The file to open.</param>
+	/// <summary>Makes the derived files of a set: an audio preview of each audio track its difficulties use.</summary>
+	/// <param name="set">The beatmapset, whose audio is already stored.</param>
+	/// <param name="beatmaps">The set's difficulties, naming their audio and preview times.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>The file's content, or <see langword="null" /> when the beatmap has no such file.</returns>
-	Task<Stream?> OpenAsync(Beatmap beatmap, BeatmapAsset asset, CancellationToken cancellationToken = default);
-
-	/// <summary>Opens a file of a beatmapset.</summary>
-	/// <param name="set">The beatmapset whose file to open.</param>
-	/// <param name="asset">The file to open.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>The file's content, or <see langword="null" /> when the set has no such file.</returns>
-	Task<Stream?> OpenAsync(Beatmapset set, BeatmapsetAsset asset, CancellationToken cancellationToken = default);
-
-	/// <summary>Discards the files derived from a beatmapset, such as its audio preview; they are made again when next asked for.</summary>
-	/// <param name="set">The beatmapset.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task ForgetAsync(Beatmapset set, CancellationToken cancellationToken = default);
-}
-
-/// <summary>The files of one beatmap.</summary>
-public enum BeatmapAsset : byte
-{
-	/// <summary>The difficulty file.</summary>
-	File,
-
-	/// <summary>The background image.</summary>
-	Background,
-
-	/// <summary>The audio track.</summary>
-	Audio,
-
-	/// <summary>The video.</summary>
-	Video
-}
-
-/// <summary>The files of a beatmapset.</summary>
-public enum BeatmapsetAsset : byte
-{
-	/// <summary>The background image of the set.</summary>
-	Background,
-
-	/// <summary>The audio track of the set.</summary>
-	Audio,
-
-	/// <summary>A short preview of the audio track.</summary>
-	AudioPreview,
-
-	/// <summary>The storyboard.</summary>
-	Storyboard
+	/// <remarks>A preview that cannot be made is left out; the set stays usable without it.</remarks>
+	Task BuildAsync(Beatmapset set, IReadOnlyList<Beatmap> beatmaps, CancellationToken cancellationToken = default);
 }

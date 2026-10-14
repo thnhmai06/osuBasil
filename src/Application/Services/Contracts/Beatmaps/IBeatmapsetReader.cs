@@ -3,7 +3,7 @@ using Basil.Domain.Mechanics;
 
 namespace Basil.Application.Services.Contracts.Beatmaps;
 
-/// <summary>Reads what a beatmapset contains, from an archive or from a folder of its files.</summary>
+/// <summary>Reads what a beatmapset archive contains.</summary>
 public interface IBeatmapsetReader
 {
 	/// <summary>Reads a beatmapset archive.</summary>
@@ -15,16 +15,6 @@ public interface IBeatmapsetReader
 	/// </returns>
 	/// <remarks>The content's files are read from the archive, which must stay open until the content is disposed.</remarks>
 	Task<BeatmapsetContent?> ReadAsync(Stream archive, CancellationToken cancellationToken = default);
-
-	/// <summary>Reads a folder holding a beatmapset's files.</summary>
-	/// <param name="folder">The folder; every file under it belongs to the set.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>
-	///     What the folder contains, or <see langword="null" /> when it is not a readable beatmapset: no readable
-	///     difficulty, or too many or too large files.
-	/// </returns>
-	/// <remarks>The content's files are read from the folder, which must stay unchanged until the content is disposed.</remarks>
-	Task<BeatmapsetContent?> ReadAsync(DirectoryInfo folder, CancellationToken cancellationToken = default);
 }
 
 /// <summary>What a beatmapset contains.</summary>
@@ -34,6 +24,7 @@ public interface IBeatmapsetReader
 /// <param name="creator">The mapper's name.</param>
 /// <param name="difficulties">The difficulties.</param>
 /// <param name="files">Every file of the set, the difficulties' files included.</param>
+/// <param name="storyboard">The set's storyboard file, or <see langword="null" /> when it has none.</param>
 /// <param name="source">What the files are read from, released when the content is disposed; or <see langword="null" />.</param>
 /// <remarks>The files stay readable until the content is disposed.</remarks>
 public sealed class BeatmapsetContent(
@@ -43,6 +34,7 @@ public sealed class BeatmapsetContent(
 	string creator,
 	IReadOnlyList<BeatmapsetDifficulty> difficulties,
 	IReadOnlyList<BeatmapsetFile> files,
+	BeatmapsetFile? storyboard,
 	IAsyncDisposable? source) : IAsyncDisposable
 {
 	/// <summary>Gets the beatmapset id the difficulties declare, or <see langword="null" /> when they declare none.</summary>
@@ -63,6 +55,9 @@ public sealed class BeatmapsetContent(
 	/// <summary>Gets every file of the set, the difficulties' files included.</summary>
 	public IReadOnlyList<BeatmapsetFile> Files => files;
 
+	/// <summary>Gets the set's storyboard file, or <see langword="null" /> when it has none.</summary>
+	public BeatmapsetFile? Storyboard => storyboard;
+
 	/// <summary>Releases what the files are read from; the files cannot be read afterwards.</summary>
 	/// <returns>A task that completes when the source is released.</returns>
 	public ValueTask DisposeAsync()
@@ -76,4 +71,16 @@ public sealed class BeatmapsetContent(
 /// <param name="Version">The difficulty name.</param>
 /// <param name="Mode">The game mode.</param>
 /// <param name="File">The difficulty's .osu file.</param>
-public sealed record BeatmapsetDifficulty(int? OnlineId, string Version, GameMode Mode, BeatmapsetFile File);
+/// <param name="Background">The file of its background, or <see langword="null" /> when it names none the set has.</param>
+/// <param name="Audio">The file of its audio track, or <see langword="null" /> when it names none the set has.</param>
+/// <param name="Video">The file of its video, or <see langword="null" /> when it names none the set has.</param>
+/// <param name="PreviewTime">Where its audio preview starts, or <see langword="null" /> when it sets none.</param>
+public sealed record BeatmapsetDifficulty(
+	int? OnlineId,
+	string Version,
+	GameMode Mode,
+	BeatmapsetFile File,
+	BeatmapsetFile? Background,
+	BeatmapsetFile? Audio,
+	BeatmapsetFile? Video,
+	TimeSpan? PreviewTime);

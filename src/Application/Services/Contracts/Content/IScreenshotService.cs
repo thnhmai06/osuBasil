@@ -8,14 +8,19 @@ namespace Basil.Application.Services.Contracts.Content;
 /// <remarks>A stored screenshot is read through the screenshot storage; it belongs to no user.</remarks>
 public interface IScreenshotService
 {
+	/// <summary>The largest screenshot accepted, in bytes: 4 MiB.</summary>
+	const int MaxScreenshotBytes = 4 * 1024 * 1024;
+
 	/// <summary>Stores a screenshot under a new unique name.</summary>
 	/// <param name="by">The connection uploading it; its user needs <see cref="Permissions.PlayerUploadScreenshots" />.</param>
 	/// <param name="content">The image, read to its end; not disposed.</param>
-	/// <param name="extension">The file extension of the image format, without the dot.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>The reference to the stored screenshot, or <see langword="null" /> when the caller may not upload screenshots.</returns>
-	/// <exception cref="ArgumentException"><paramref name="extension" /> is not 1 to 8 ASCII letters or digits.</exception>
-	Task<AssetReference?> UploadAsync(Connection by, Stream content, string extension,
+	/// <returns>The reference to the stored screenshot, or why it was not stored.</returns>
+	/// <remarks>
+	///     The image may be at most <see cref="MaxScreenshotBytes" /> bytes and must be a PNG or JPEG image; its format is
+	///     told from its content, never from a name.
+	/// </remarks>
+	Task<(AssetReference? Screenshot, ScreenshotUploadFailure? Failure)> UploadAsync(Connection by, Stream content,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Deletes a stored screenshot.</summary>
@@ -27,4 +32,17 @@ public interface IScreenshotService
 	///     reference; otherwise, <see langword="false" />.
 	/// </returns>
 	Task<bool> DeleteAsync(Connection by, AssetReference screenshot, CancellationToken cancellationToken = default);
+}
+
+/// <summary>The reasons a screenshot is not stored.</summary>
+public enum ScreenshotUploadFailure : byte
+{
+	/// <summary>The caller may not upload screenshots, or the permission is suspended.</summary>
+	NotAuthorized,
+
+	/// <summary>The image is larger than <see cref="IScreenshotService.MaxScreenshotBytes" />.</summary>
+	TooLarge,
+
+	/// <summary>The content is not a PNG or JPEG image.</summary>
+	InvalidImage
 }

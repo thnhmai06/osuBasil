@@ -79,7 +79,6 @@ public static class DependencyInjection
 		services.AddSingleton<IBeatmapRepository, PostgresBeatmapRepository>();
 		services.AddSingleton<FileBeatmapsetStorage>();
 		services.AddSingleton<IBeatmapsetStorage>(provider => provider.GetRequiredService<FileBeatmapsetStorage>());
-		services.AddHostedService<BeatmapsetFilesWatcher>();
 		return services;
 	}
 }

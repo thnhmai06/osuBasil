@@ -38,6 +38,18 @@ public interface IBeatmapsetRepository
 	Task<Page<Beatmapset>> ListAsync(BeatmapQuery query, PageRequest page,
 		CancellationToken cancellationToken = default);
 
+	/// <summary>Brings the stored beatmapsets and their beatmaps in step with what was read, all at once.</summary>
+	/// <param name="sync">The beatmapsets to store and to remove.</param>
+	/// <param name="cancellationToken">A token that cancels the wait for its turn.</param>
+	/// <returns>The stored beatmapsets, in the order of <see cref="BeatmapsetSync.Store" />.</returns>
+	/// <remarks>
+	///     Either every change is stored or none is. A replaced beatmap keeps its id and whether it is locked or
+	///     visible; a replaced set keeps its id, creation time, lock and visibility. New sets and beatmaps get their
+	///     osu! id, or a new local id. The live instances in memory are changed only once everything is stored.
+	/// </remarks>
+	/// <exception cref="AlreadyExistsException">A new set or beatmap has an id or hash another stored one has.</exception>
+	Task<IReadOnlyList<Beatmapset>> SyncAsync(BeatmapsetSync sync, CancellationToken cancellationToken = default);
+
 	/// <summary>Deletes a beatmapset.</summary>
 	/// <remarks>Remove the set's beatmaps first, with <see cref="IBeatmapRepository.RetainAsync" /> keeping none.</remarks>
 	/// <param name="set">The beatmapset to delete.</param>

@@ -26,6 +26,10 @@ public sealed class Beatmap : IWrapper<BeatmapData>, IEquatable<Beatmap>
 	/// <summary>Gets or sets the beatmap data this identity wraps.</summary>
 	public required BeatmapData Value { get; set; }
 
+	/// <summary>Gets or sets the understood content of the beatmap's .osu file, or <see langword="null" /> until it is first needed.</summary>
+	/// <remarks>It lives in memory with this beatmap and is never stored.</remarks>
+	public BeatmapContent? Content { get; set; }
+
 	/// <summary>
 	///     Gets a value that indicates whether the beatmap has no osu! id and was given a local one.
 	/// </summary>
@@ -92,6 +96,18 @@ public sealed class BeatmapData
 
 	/// <summary>The per-mode hit-object counts of the beatmap.</summary>
 	public required BeatmapObjects Objects { get; init; }
+
+	/// <summary>The name of the difficulty's background in the set's backgrounds, or <see langword="null" /> when it has none.</summary>
+	public string? Background { get; init; }
+
+	/// <summary>The name of the difficulty's audio track in the set's audio, or <see langword="null" /> when it has none.</summary>
+	public string? Audio { get; init; }
+
+	/// <summary>The name of the difficulty's video in the set's videos, or <see langword="null" /> when it has none.</summary>
+	public string? Video { get; init; }
+
+	/// <summary>Where the audio preview starts, or <see langword="null" /> when the difficulty sets none.</summary>
+	public TimeSpan? PreviewTime { get; init; }
 
 	/// <summary>
 	///     Whether the difficulty is write-locked. Locked difficulties cannot be updated or deleted.

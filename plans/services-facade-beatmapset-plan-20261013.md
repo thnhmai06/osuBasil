@@ -224,3 +224,185 @@ Application" của AGENTS.md trước khi commit.
 
 Kiểm cuối mỗi phần: `dotnet build` Domain, hai project Storage, hai project Services, ba project Infrastructure,
 `src/Bot/Application`.
+
+## 5. Bổ sung 2026-10-14: kho beatmapset lấy archive.osz làm nguồn thật
+
+Phần này thay cách lưu "một folder chứa file rời" của mục 1 và phần đang làm dở theo hướng alpha (folder
+`{id} {Artist} - {Title}`, quét và theo dõi thư mục gốc). Chưa đụng vào code, chờ duyệt.
+
+### 5.1 Đã chốt (phỏng vấn 2026-10-14)
+
+| Câu hỏi               | Chốt                                                                                                     |
+|-----------------------|----------------------------------------------------------------------------------------------------------|
+| Thư mục gốc           | `Data/Songs` đổi thành `Data/Beatmapsets`; `Data/Songs`, `Data/Beatmaps` cũ chuyển sang lúc khởi động     |
+| Tên folder set        | Giữ: `{id} {Artist} - {Title}`                                                                           |
+| Đầu vào               | Thả vào gốc `Data/Beatmapsets` hoặc upload qua API. `.osz` chuyển nguyên byte thành `archive.osz`; folder file rời (kiểu osu! Songs) được nén thành `archive.osz`, file rời bị thay bằng cấu trúc chuẩn |
+| Nguồn thật            | Beatmapset: `archive.osz`. Beatmap (chỉ để nạp tính độ khó): `versions/{md5}.osu`                        |
+| File dựng ra bị thiếu | Dựng lại từ `archive.osz`; set chỉ bị loại khi `archive.osz` mất hoặc không đọc được                     |
+| Hash khi quét         | Đường tắt: DB lưu kích thước và thời gian sửa của `archive.osz`; khởi động chỉ hash khi một trong hai khác. Sự kiện watcher thì luôn hash |
+| Độ khó theo mods      | Giữ một object đại diện độ khó thô của beatmap, do thư viện osu! chính thức tạo ở Infrastructure; Application chỉ thấy nó là một object |
+
+### 5.2 Cấu trúc một folder set
+
+```text
+Data/Beatmapsets/
+  {id} {Artist} - {Title}/
+    archive.osz            nguồn thật: nguyên bản, có video
+    archive-novideo.osz    dựng từ archive.osz, bỏ video
+    versions/{md5}.osu     mỗi difficulty, tên theo hash nội dung (= beatmaps.hash)
+    backgrounds/{tên}      từng ảnh nền; difficulty nào dùng ảnh nào thì DB lưu
+    audio/{tên}            từng file nhạc; DB lưu difficulty nào dùng file nào
+    audio/preview_{tên}    đoạn nghe thử dựng từ audio/{tên} (mẫu cố định, {tên} lấy từ DB)
+    video/{tên}            từng video; DB lưu difficulty nào dùng video nào
+    storyboard.osb         storyboard của set, nếu có
+```
+
+- Không còn thư mục `assets/`. Không giải nén thứ nghiệp vụ không dùng (sprite storyboard, hitsound, skin...):
+  chúng vẫn nằm trong `archive.osz`, nên tải về vẫn đủ.
+- Hai file `.osz` không còn ở `Cache/`; `Cache/Beatmaps` và preview trong `Cache/` bị bỏ.
+- Tên file lấy theo tên gốc (chỉ phần tên, đã lọc ký tự không hợp lệ). Hai file khác nhau trùng tên trong cùng
+  loại thì file sau thêm hậu tố `-2`, `-3`; DB lưu tên thật.
+
+### 5.3 Dữ liệu trong DB
+
+- `beatmapsets`: thêm `archive_hash` (md5 của `archive.osz`, khoá nhận diện nội dung), `archive_size` và
+  `archive_modified_at` (đường tắt khi quét), `storyboard` (có hay không).
+- `beatmaps`: `hash` (đã có) là tên file trong `versions/`; thêm `background`, `audio`, `video` (tên trong thư mục
+  tương ứng, có thể null) và `preview_time`. Tên preview suy ra: `preview_{audio}`.
+- Domain: `BeatmapsetData` thêm `ArchiveHash` (`Md5`), `ArchiveSize`, `ArchiveModifiedAt`, `Storyboard`; `BeatmapData`
+  thêm `Background`, `Audio`, `Video`, `PreviewTime`. Migration PostgreSQL mới.
+- Giữ nguyên metadata đang có trong DB, kể cả `beatmaps.objects` (jsonb, số object theo mode) và độ khó NoMod.
+
+### 5.4 Quét và theo dõi
+
+"Folder" ở đây là mọi folder con độ sâu 1 của `Data/Beatmapsets/`, hợp lệ hay không.
+
+**Quét toàn bộ (lúc khởi động).** Phải xong trước khi các host khởi động:
+
+1. **Kiểm tra.** Đi qua mọi entry ở gốc và đưa vào hàng đợi những gì cần index lại:
+   - `.osz` rời: luôn vào hàng đợi;
+   - folder không có `archive.osz` nhưng có file rời đọc được: vào hàng đợi (sẽ được nén);
+   - folder có `archive.osz`: so kích thước và thời gian sửa với DB trước; khớp thì không hash. Không khớp thì
+     hash; hash khác `beatmapsets.archive_hash`, hoặc DB chưa có set, thì vào hàng đợi. Hash khớp thì chỉ ghi nhận kích
+     thước và thời gian mới;
+   - set có trong DB mà không còn hợp lệ trên đĩa (mất folder hoặc mất `archive.osz`): đánh dấu bỏ khỏi hệ thống.
+2. **Index lại** từng mục trong hàng đợi, đồng thời đồng bộ file dựng ra:
+   - `.osz` rời: đọc metadata, chọn set (trùng hash difficulty, rồi id file khai, rồi set mới), chuyển nguyên byte
+     vào `{folder}/archive.osz`;
+   - folder file rời: nén thành `archive.osz` trong folder chuẩn của set, xoá file rời;
+   - rồi phân tích, dựng lại mọi file của mục 5.2 (kể cả preview) và đổi tên folder về tên chuẩn;
+   - `archive.osz` không đọc được: set không hợp lệ, đánh dấu bỏ khỏi hệ thống, giữ nguyên folder.
+   - Set không cần index lại nhưng thiếu file dựng ra: dựng lại từ `archive.osz`.
+3. **Ghi DB một lần.** Xong hết thì gửi mọi thay đổi (set và beatmap thêm, sửa, bỏ; kích thước và thời gian mới)
+   trong một transaction. Đây là try-operation riêng của việc quét, đúng luật "một thao tác nghiệp vụ cần lưu
+   nhiều dòng cùng nhau thì có try-operation riêng". Bộ nhớ cập nhật theo kết quả sau khi transaction xong; event
+   (`BeatmapsetImported`, `BeatmapsetDeleted`) phát sau đó.
+
+Khởi động: Runtime đăng ký một `IHostedService` chạy quét toàn bộ trong `StartAsync`; host đăng ký Infrastructure
+trước web server, nên server chỉ nhận kết nối khi quét xong. Watcher bắt đầu ghi nhận thay đổi trước khi quét, và
+xử lý chúng sau khi quét xong.
+
+**Theo dõi trực tiếp.** Watcher báo từng entry thay đổi (debounce 2 giây):
+
+- `archive.osz` của bất kỳ folder nào thay đổi: index lại ngay, kể cả folder trước đó không phải beatmapset hợp lệ.
+- `.osz` rời hoặc folder file rời mới: index như trên.
+- Folder hay `archive.osz` biến mất: bỏ set khỏi hệ thống.
+- Mỗi lần index một entry là một thao tác riêng: ghi DB bằng try-operation của nó rồi phát event.
+
+Quét lại một entry không đổi thì không ghi DB, không ghi file, không phát event. Xoá set: đổi tên folder có
+`.deleted_` rồi xoá ngay; khởi động dọn phần còn sót. Staging vẫn ở `Cache/Staging`, cùng ổ với
+`Data/Beatmapsets`.
+
+### 5.5 Nội dung .osu đã đọc hiểu (độ khó theo mods)
+
+- Domain: lớp trừu tượng rỗng `BeatmapContent` (không thành viên nghiệp vụ), đại diện nội dung đã đọc hiểu của
+  toàn bộ file `.osu`: các object thật (hit object, timing, thiết lập độ khó...). Infrastructure.Services cài đặt
+  bằng `IWorkingBeatmap` của thư viện osu! (lớp `StreamlessWorkingBeatmap` đang có, bọc `Beatmap` đã giải mã; audio,
+  texture, skin trả null), vì đó là kiểu tối thiểu mà `CreateDifficultyCalculator` và `GetPlayableBeatmap` nhận.
+  Mỗi lần tính theo mods chỉ tạo calculator và chuyển đổi lại, không đọc hay giải mã file. Nó không thay metadata
+  trong DB.
+- `Beatmap` có thuộc tính `Content`, khởi tạo lười: rỗng khi tạo object, chỉ được nạp lần đầu có người cần.
+  Setter chỉ gán.
+- `IBeatmapAnalyser`:
+  - `Task<BeatmapAnalysis> AnalyzeAsync(Beatmap beatmap, GameMods mods)`: nếu `Content` chưa có thì nạp từ
+    `versions/{md5}.osu` (qua `IBeatmapsetStorage`) rồi gán vào beatmap; sau đó tính theo mods từ `Content`, không
+    đọc lại file;
+  - `BeatmapAnalysis Analyze(Stream osu, GameMode mode, GameMods mods)` vẫn dùng lúc index.
+- `Content` sống trong bộ nhớ cùng beatmap (on-demand data), không xuống DB.
+
+### 5.6 Contract thay đổi so với phần đang làm
+
+- `IBeatmapsetStorage` làm việc với folder set theo cấu trúc mục 5.2:
+  - `SaveAsync(set, Stream archive)` ghi `archive.osz` nguyên byte; nén folder file rời thành `archive.osz`;
+  - dựng file từ archive: `archive-novideo.osz`, `versions/`, `backgrounds/`, `audio/`, `video/`, `storyboard.osb`;
+  - `OpenAsync(set, kind, name)` mở một file dựng ra; `OpenArchiveAsync(set, withVideo)` thay `ExportAsync`. Thiếu
+    file thì trả "không có", không dựng;
+  - `ListAsync()`, `WatchAsync()`, `DeleteAsync(...)` giữ như phần đang làm. Entry là `.osz` rời hoặc một folder
+    độ sâu 1 (có hay không có `archive.osz`, kèm kích thước và thời gian sửa).
+  - Host đọc file dựng ra thẳng từ storage (outer layers use storage directly).
+- `IBeatmapsetReader`: chỉ còn đọc archive; overload đọc danh sách file bị bỏ.
+- `IBeatmapAssets` chỉ còn dựng file phái sinh lúc index, ví dụ preview bằng FFmpeg, ghi vào `audio/preview_{tên}`.
+  Không còn mở file và không dựng khi được hỏi.
+- Repository: thêm try-operation ghi kết quả một lần quét (set, beatmap thêm, sửa, bỏ) trong một transaction.
+- `IBeatmapsetService.ScanAsync()` / `ScanAsync(entry)` theo mục 5.4; `ImportAsync(Stream)` (upload API) đi đúng
+  luồng `.osz` rời.
+- Giữ từ phần đang làm (chưa commit): tên folder và tìm theo id đứng đầu, marker `.deleted_`, staging ngoài thư mục
+  gốc, `WatchAsync` có debounce, `BeatmapsetStorageWatcher` ở Runtime (đổi thành chạy quét trong `StartAsync`),
+  dọn rác lúc khởi động. `AdoptAsync` và `BeatmapsetFolderEntry.ListFiles` bị thay.
+
+### 5.7 Thứ tự và kiểm tra
+
+1. Domain (`BeatmapContent`, cột mới) và migration; contracts mục 5.5 và 5.6. Build các project contract.
+2. Song song, mỗi project một agent OpenCode, mình review từng dòng:
+   - Infrastructure.Storage: cấu trúc folder, nén folder rời, dựng file, quét, xoá, chuyển thư mục cũ,
+     try-operation ghi kết quả quét;
+   - Infrastructure.Services: reader, analyser (`AnalyzeAsync` với `Content` lười), dựng preview lúc index;
+   - Services.Implementations: `BeatmapsetService` theo mục 5.4;
+   - Runtime: quét trong `StartAsync`, rồi theo dõi.
+3. Script kiểm trên `.osz` mẫu:
+   - thả `.osz` → đúng cấu trúc, `.osz` gốc biến mất, preview đã có sẵn;
+   - thả folder rời → được nén;
+   - quét lần hai → không ghi file, không ghi DB, không event;
+   - xoá `versions/x.osu` → dựng lại;
+   - sửa `archive.osz` → index lại, kể cả folder trước đó hỏng;
+   - xoá `archive.osz` → set bị bỏ, folder giữ nguyên;
+   - `AnalyzeAsync` với HR/DT ra khác NoMod, và lần gọi thứ hai không mở file;
+   - kiểm DI.
+4. AGENTS.md: luật lưu beatmapset và luật `BeatmapContent`. Commit, push.
+
+### 5.8 Đã chốt (2026-10-14, lượt 2)
+
+1. Set lưu `archive_hash`, `archive_size`, `archive_modified_at`.
+2. Quét toàn bộ lúc khởi động theo hai bước (kiểm tra rồi index lại), ghi DB một transaction, xong mới khởi động
+   host.
+3. Nội dung `.osu` đã đọc hiểu (`BeatmapContent`) là thuộc tính trên beatmap, khởi tạo lười; metadata vẫn ở DB.
+4. Mọi file phái sinh dựng sẵn lúc index; khi được hỏi chỉ mở, mất thì trả "không có".
+5. Set có `archive.osz` hỏng: giữ folder.
+6. `archive.osz` của mọi folder độ sâu 1 thay đổi trực tiếp thì index lại, kể cả folder không hợp lệ.
+
+7. Giữ `beatmaps.objects` và mọi metadata đang có.
+## 6. Bổ sung 2026-10-14: spectating và trạng thái thuộc osu! client
+
+Session là tập hợp các connection; spectating và trạng thái là nghiệp vụ chỉ osu! client có (`BanchoConnection`).
+Người gọi tìm đúng connection rồi mới làm: tìm ai, rồi làm gì.
+
+- `ISessionConnectionsService` có thêm phần con `Bancho` (`IBanchoConnectionService`), thao tác chỉ osu! client có:
+  - `SetStatus(BanchoConnection by, PlayerStatus status)`, chuyển từ `Presence` sang;
+  - `Spectators` (`IBanchoSpectatorsService`): `Spectate(host, by)`, `StopSpectating(by)`,
+    `ReportSpectatingFailed(by)`, chuyển từ `ISessionSpectatorsService` (bỏ contract này).
+- `ISessionService` còn `Connections`, `Presence` (`SetAway`, `SetPmPrivate`: thứ user chia sẻ trên mọi connection)
+  và `Announce`; bỏ `Spectators`.
+- Gọi: `sessions.Connections.Bancho.Spectators.Spectate(host, by)`, `sessions.Connections.Bancho.SetStatus(by, status)`.
+- Quan hệ vẫn ở `BanchoConnection.Spectators`; event giữ nguyên (`UserSpectator*`, `UserConnectionStatusChanged`) trên
+  luồng của session service.
+- Đối chiếu bancho.py, sửa luôn trong đợt này:
+  - spectate người khác khi đang xem một host: rời host cũ trước (phát `UserSpectatorLeft` cho host cũ);
+  - spectate lại đúng host đang xem: phát lại `UserSpectatorJoined` (client gửi lại sau khi tải map xong), trả
+    `Spectating`; bỏ `SpectateResult.AlreadySpectating`.
+- Screenshot (đối chiếu bancho.py): `IScreenshotService.UploadAsync(by, content)` không nhận phần mở rộng từ caller;
+  service đọc tối đa 4 MiB, nhận diện PNG/JPEG theo đầu và cuối file, trả lý do khi từ chối (`NotAuthorized`,
+  `TooLarge`, `InvalidImage`).
+- AGENTS.md: sửa ví dụ phần con của `ISessionService` và câu "Spectating is a relation ...".
+
+Thứ tự: làm cùng bước 1 của mục 5 (contracts), rồi cài đặt trong Services.Implementations và Runtime
+(`ConnectionHandler`).

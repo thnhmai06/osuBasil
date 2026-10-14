@@ -6,11 +6,10 @@ using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Implementations.Sessions;
 
-/// <summary>Opens and closes the connections of online users and changes what they share; connections, presence and spectating are its parts.</summary>
+/// <summary>Opens and closes the connections of online users and changes what they share; connections and presence are its parts.</summary>
 internal sealed class SessionService(
 	SessionConnectionsService connections,
 	SessionPresenceService presence,
-	SessionSpectatorsService spectators,
 	SessionEventStream events,
 	IUserRegistry registry,
 	TimeProvider time) : ISessionService
@@ -23,9 +22,6 @@ internal sealed class SessionService(
 
 	/// <inheritdoc />
 	public ISessionPresenceService Presence => presence;
-
-	/// <inheritdoc />
-	public ISessionSpectatorsService Spectators => spectators;
 
 	/// <inheritdoc />
 	public int? Announce(Connection by, string text, IReadOnlyCollection<User>? to = null)
