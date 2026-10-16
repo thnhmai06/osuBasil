@@ -51,10 +51,12 @@ This includes:
 
 The IRC gateway allows real IRC clients and tools such as osu-ahr to connect alongside osu! clients.
 
-Chat commands (`!mp`, `!help`, `!roll`, `!where`, `!faq`) and chat announcements (countdowns, anticheat warnings) are
-not part of the server. They are provided by BasilBot, a separate client that signs in as an ordinary user with the
-permissions it is granted and works through the HTTP API and its event streams. See the BasilBot Commands
-documentation at `api.<domain>/docs/basil-bot/` for the supported command list.
+Chat commands (`!mp`, `!help`, `!roll`, `!where`, `!faq`, and the staff commands) and chat announcements (anticheat
+warnings, round and room notices) are part of the server, provided by BasilBot: a fixed user (id 1) that is always
+online, signs in nowhere and holds no permission. A command is an entry point like IRC: it runs with the rights of the
+user who typed it, and the bot only replies. Room countdowns (a delayed start, a plain timer, cancelling it) are a
+feature of the room. See the BasilBot Commands documentation at `api.<domain>/docs/basil-bot/` for the supported
+command list.
 
 ### HTTP API
 
@@ -97,9 +99,16 @@ account-management API.
 ### Friends and private messages
 
 The osu! client's friend list (`osu-getfriends.php`, adding and removing friends) is supported, together with the
-setting that accepts private messages from friends only and with blocked users, whose private messages are refused.
-Players use these during tournaments to reach each other and referees, so they stay even though Basil has no other
-social features.
+setting that accepts private messages from friends only and with blocking: a block refuses private messages, hides the
+blocked user's messages in general channels, and refuses their spectating and invitations (staff who manage the matching
+area are not bound by a block; see "a block yields to a higher right" in `AGENTS.md`). Players use these during
+tournaments to reach each other and referees, so they stay even though Basil has no other social features.
+
+### Moderation
+
+Restricting a user (a silence is the restriction of chat and multiplayer), lifting it, adding a note, and a moderation
+log that keeps the trace of these actions and of every view of a user's login history. The log is for people; it never
+changes a right.
 
 ## Out of scope
 
@@ -110,7 +119,13 @@ The following features are deliberately not part of Basil's supported surface.
 | `!pool` and `!mp loadpool/unloadpool/ban/unban/pick`                             | ❌ Out of scope | A complete tournament mappool system requires persistence such as `tourney_pools` and `tourney_pool_maps`, which Basil does not currently have.               |
 | Scrim engine: `!mp scrim`, `autoref`, `endscrim`, `rematch`                      | ❌ Out of scope | The race-safe match-point engine (`MatchScoringService`) was removed with the previous command layer and is not part of the current design.                   |
 | `!mp force`                                                                      | ❌ Out of scope | Administrative forced-player insertion is not implemented.                                                                                                    |
-| `!block`, `!unblock`, `!reconnect`, `!changename`, `!apikey`                     | ❌ Out of scope | These are personal/social account commands outside Basil's multiplayer and tournament scope.                                                                  |
+| `!reconnect`, `!changename`, `!apikey`                                           | ❌ Out of scope | These are personal account commands outside Basil's multiplayer and tournament scope. (`!block` and `!unblock` are in scope.)                                 |
+| Multi-account detection, hardware bans, client hash checks, the `Verified` grant | ❌ Out of scope | The server does not judge who owns which account.                                                                                                             |
+| Blocking old osu! clients (`DISALLOW_OLD_CLIENTS`)                               | ❌ Out of scope | The server does not decide which client versions may sign in; score submission still checks the version it received at login.                                 |
+| Updating a country from the IP at login, or any third-party geolocation service | ❌ Out of scope | The stored country is the source. Only registration through the game client takes a country from the host (proxy header or an offline GeoLite2 file).        |
+| PM to an offline user (`mail`, `osu-markasread.php`)                             | ❌ Out of scope | A message to someone offline is not kept.                                                                                                                     |
+| Acting for another user (delegation)                                             | ❌ Out of scope | An outside tool signs in with its own account and the rights it holds.                                                                                        |
+| Seating or hosting through the API on behalf of a player                         | ❌ Out of scope | Taking a slot is what the osu! client does; the API manages rooms (creator and referee rights), it does not play.                                             |
 | `ApiKey` on `User` / `UpdateApiKeyAsync`                                         | ❌ Out of scope | Clients sign in with the account's password and receive a session token; a separate API-key model has no use.                                             |
 | osu-web API v1/v2 compatibility and OAuth                                        | ❌ Out of scope | Basil's own user-centric API serves the clients built on it; reproducing osu-web's API or OAuth has no concrete requirement.                                   |
 | `!clan` and moderation/clan commands                                             | ❌ Out of scope | These belonged to the removed command surface and are outside the project's current purpose.                                                                  |
@@ -178,11 +193,12 @@ Removing chat completely was therefore an overcorrection.
 
 **Current resolution**
 
-Basil first reintroduced `BanchoBot` as a special session inside the server. Since the identity redesign
-([`plans/identity-permissions-plan-20261005.md`](../../plans/identity-permissions-plan-20261005.md)), chat commands
-live in BasilBot, a separate client: it signs in as an ordinary user, reads chat and room events through the API, and
-runs room operations for the users who issue commands, with their authority. The server keeps no bot user, no bot
-session and no command code, and works without BasilBot.
+Basil first reintroduced `BanchoBot` as a special session inside the server. The identity redesign
+([`plans/identity-permissions-plan-20261005.md`](../../plans/identity-permissions-plan-20261005.md)) moved the commands
+out to BasilBot as a separate client. The 2026-10-16 redesign brought BasilBot back into the server, this time as a
+fixed user (id 1) with no rights and no sign-in: the commands are an entry point of the server that runs with the
+rights of whoever typed them, and the bot is only the voice that replies and announces. The earlier "special session"
+failed because the bot acted with rights of its own; that does not return.
 
 ### Deferring the API indefinitely
 

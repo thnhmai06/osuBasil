@@ -7,12 +7,12 @@ it.
 
 Basil is a lightweight, high-performance [osu!](https://osu.ppy.sh/) (stable) backend platform specialized for
 multiplayer. The server provides the core capabilities (accounts and sessions, permissions, rooms, chat, scores,
-beatmaps, events); specific features such as BasilBot, tournament tooling and overlays are clients built on top
+beatmaps, events); specific features such as tournament tooling and overlays are clients built on top
 of it, each signing in as an ordinary user. The server works the same with or without any of them.
 
-It is built on [bancho.py](https://github.com/osuAkatsuki/bancho.py), but it is **not a full bancho.py port**. Basil deliberately has a smaller feature surface. pp calculation, clans, osu-web v1/v2 API compatibility, chat commands inside the server, and other unrelated features are intentionally out of scope.
+It is built on [bancho.py](https://github.com/osuAkatsuki/bancho.py), but it is **not a full bancho.py port**. Basil deliberately has a smaller feature surface. pp calculation, clans, osu-web v1/v2 API compatibility, and other unrelated features are intentionally out of scope. Chat commands, announcements and room countdowns are in scope: they are BasilBot, a feature of the server.
 
-The direction of the current redesign (identity, permissions, restrictions, no bot in the server) is in
+The direction of the current redesign (identity, permissions, restrictions) is in
 [`plans/identity-permissions-plan-20261005.md`](plans/identity-permissions-plan-20261005.md); read it before
 touching users, sessions, permissions, rooms or chat.
 
@@ -339,8 +339,8 @@ Basil.Host.Bancho / .Irc / .Api  transports                                     
 Basil.Host                       entry point, composition, logging,             -> everything
                                  diagnostics, LAN advertising
 
-Basil.Bot.Application            BasilBot logic and the ports it needs from     -> Domain
-                                 the server (a separate client, not the server)
+Basil.Bot.Application            BasilBot: chat commands and their replies,     -> Services.Contracts
+                                 an entry point of the server (not a client)
 ```
 
 `Basil.Protocol.Bancho` wraps the communication between the osu! client and the server, as an API wrapper
@@ -419,14 +419,14 @@ Content/       ISettingsRepository, IMenuBannerRepository, IMenuBannerStorage, I
 
 Notifications, event handlers and dispatchers, and host configuration (ports, TLS, data paths) do not
 belong in Application; they live in Infrastructure or the hosts. Chat commands and their reply strings
-belong to client programs such as BasilBot, never to the server. Query **records** (the filter a repository applies, with `Parse` for
+belong to the server's BasilBot surface (`Basil.Bot.Application`): an entry point like IRC that runs on objects scoped to the typist's connection. Query **records** (the filter a repository applies, with `Parse` for
 the search syntax) belong to Storage; the routes and handlers that answer queries do not. Server settings
 changed at runtime (`ServerSettings`) are persistent Domain data, not host configuration.
 
 * `Common` and `Events` depend on no feature. `Users`, `Beatmaps` and `Scores` do not depend on
   `Multiplayer` services; the score service only reads the player's room to find the round. Anticheat flags,
   wherever they arrive (score submission, `lastfm.php`), are reported by the host to `IAnticheatService`, the single
-  source of anticheat events; clients that watch events (BasilBot) turn them into chat warnings.
+  source of anticheat events; BasilBot turns them into chat warnings.
 * `Sessions`, `Chat` and `Multiplayer` reference each other (`Room.Host`, `Room.Channel`,
   `ChannelSession.Members`); treat them as one cluster. Their runtime models live together in Storage, and
   Services changes them through `internal` members (`InternalsVisibleTo` for both Implementations projects).
@@ -437,7 +437,31 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
 * **Domain** holds business models that exist beyond runtime (`Match`, `Round`, `MatchSettings`,
   `User`, `Beatmap`, `Login`, `ServerSettings`, …). A model guarantees that **it is valid**: field values
   in range, its own text format, values derived purely from its own data. No runtime-only state, no events.
-* **Storage holds data, Services hold behaviour.** Storage.Contracts holds the persistent ports and what
+* **Behaviour belongs to the object that owns it, and is reached through that object.** *(Target design of
+  [`plans/`](plans) and the user's decision of 2026-10-16; the code migrates by phase, starting with `Room`. Until
+  a type has migrated, the old rules below it still describe the code.)* Every concept with state, invariants and
+  rights is an **Application object** (`User`, `UserSession`, `Connection`, `Room`, `RoomSlot`, `Lobby`, the
+  channels, `Beatmapset`, `Restriction`, `Score`, and the root `Server`) in Services.Contracts. It owns its state,
+  keeps its invariants, and offers its behaviour; its state changes only inside its own behaviour. Its persistent
+  value is a Domain record named `XRecord` with the plain value `XData` (`UserRecord`, `BeatmapsetRecord`,
+  `RestrictionRecord`, `MatchRecord`); the object wraps it. A part is reached through its owner
+  (`room.Slots[3]`), never through an outside object that takes the owner as a parameter.
+  **`x.ScopeTo(connection)`** returns `ScopedX`, a short-lived capability for one request or command. It snapshots
+  the caller's effective permissions and role on `X` once, and each behaviour checks that snapshot and returns
+  `NotAuthorized` or `Restricted` before it takes the object's lock, keeps the invariants, acts and emits the
+  event. The caller never passes `connection`, permissions or an actor into a call. **Anything whose actions
+  depend on permissions or privileges is scoped; only a system that needs no check is not** (the server's own work:
+  Runtime handlers, startup, the bot's announcements, public reads).
+  Services remain for queries, persistence, infrastructure and coordination across several objects (`IAuthService`,
+  beatmapset import and scan, score submission, anticheat judgement, match reports, leaderboards). Five
+  anti-patterns to reject in review: a **God Actor** that gathers every behaviour; **service-centric procedural
+  design** (a service takes an object and does its behaviour for it); **permission plumbing** (rights passed
+  through many layers and methods); **exposing mutable state** (callers change internals past the invariants);
+  **fake scoping** (`ScopeTo` only wraps while behaviour and checks stay in a central service). The shared
+  authority primitives (`Access`, effective permissions, hierarchy, "a block yields to a higher right") are a
+  library each `ScopeTo` calls, not a layer to pass through. A domain record and its Application object never
+  share a name.
+* **Storage holds data, Services hold behaviour.** *(Current code; migrating as above.)* Storage.Contracts holds the persistent ports and what
   exists only at runtime (`Room`, `RoomSlot(s)`, `UserSession` and its connections, `ChannelSession`s) as
   concrete classes, plus the contracts of the registries that keep them (`IUserRegistry`,
   `IGeneralChannelRegistry`, `ILobby`); Storage.Implementations implements whatever storage needs nothing
@@ -479,8 +503,8 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
 * **Background work.** A contract declares one run of a background job (`ISessionService.Connections.CloseIdle()`,
   `IBeatmapsetService.ScanAsync()`); Services implements it; Infrastructure owns the loop, the trigger, the
   period and its configuration. A one-shot timer that is the consequence of an operation (an empty room's
-  closing) stays in Services on `TimeProvider`. A countdown is not one: it is a client feature (BasilBot runs
-  it and starts the round as the user who asked).
+  closing) stays in Services on `TimeProvider`. So does a room's countdown: a delayed start, a plain timer and
+  cancelling it are features of the room (aborting a round cancels a pending start); BasilBot only announces its marks.
 * **Derive whatever is derivable.** A property a runtime object co-owns with its domain object
   (truth in Domain) is a forwarding property (`Room.Name => Match.Name`).
 * **A user online is one `UserSession`; each place they log in from is a `Connection`.**
@@ -596,7 +620,7 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   `IFaqStorage.CreateOrUpdateAsync`) instead of a raw `Stream`. Extract a shared
   interface only when several repositories genuinely share an operation, and keep the `IXxxRepository`
   contract callers depend on; no parallel generic ports (`ICreatable`) and no generic query system
-  (`Query<T>`, `SortOptions`). Key normalization (for example case- and space-insensitive user names) lives on the
+  (`Query<T>`, `SortOptions`). Key normalization (for example `UserData.NormalizedName`, case-insensitive with a space equal to an underscore) lives on the
   Domain value (`UserData.SafeName`); the server writes the normalized key it looks records up by. A repository filters only by explicit criteria in its query record.
   A query record searched with text (`UserQuery`, `BeatmapQuery`, `MatchQuery`) is `IParsable<T>`: every criterion, a
   state included, is written in the search text (`deleted=1`,
@@ -682,50 +706,74 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   `{ScoreId} {Player} - {Artist} - {Title} [{Version}] ({yyyy-MM-dd}) {Mode}.osr`, as osu! names an exported
   replay; screenshots get a UUIDv7 name.
 * **Permissions are the source of truth.** What an account may do is its `Permissions` (Domain, on
-  `UserData`): fine-grained actions in the Discord style, grouped by the `ClientPrivileges` bit each group
-  shows as (`PlayerCreateRoom`, `PlayerChat`, `TournamentObserveRooms`, `ModeratorSilence`, `OwnerManageAccounts`,
-  …; each group also has a mask member named after it). Only high-level management permissions may be broad
-  (`TournamentManageAnyRoom`). Do not add a permission that is merely a consequence of another (playing and
-  submitting scores are one). `ClientPrivileges` is never stored or configured: it is derived from the
-  effective permissions (`ToPrivileges()`; a bit is on when any permission of its group is). A larger permission contains the smaller
-  ones it implies, as bits, not as a separate grant: a manage permission includes the matching view permission
-  (`TournamentManageBeatmaps` holds `TournamentViewHiddenBeatmaps`, `TournamentManageAnyRoom` holds
-  `TournamentViewPrivateMatches` and `TournamentPostInAnyRoom`, `OwnerManageAccounts` holds `OwnerViewDeletedUsers`,
-  `ModeratorRestrict` holds `ModeratorSilence`), even across groups (`TournamentObserveRooms` holds `PlayerSpectate`);
-  a group's mask then keeps only its own group's bits, so holding the smaller permission never shows as the larger
-  group's privilege. A check asks for the smallest permission that allows the action,
-  so the manager and a user granted only that permission both pass; never `Allows(A) || Allows(B)` for a pair where
-  one contains the other.
+  `UserData`): one flat enum of independent actions named `[Resource][Action]` (`RoomCreate`, `ChatPost`,
+  `UserRestrict`, `ServerConfigure`, …), split into `#region`s by resource. The enum has **no group members**.
+  A larger permission still contains the bits of the smaller ones it implies, because it is still *one
+  permission* ("whoever holds this can also do what is below it"): a manage permission includes the matching view
+  permission (`BeatmapsetManage` holds `BeatmapsetViewHidden`, `RoomManageAny` holds `RoomViewPrivate`,
+  `UserRestrict` holds `UserSilence`). A group says only "these permissions belong together" and lives in the
+  static class `PermissionsGroups` beside the enum, one mask per area (`Chat`, `Multiplayer`, `Spectating`,
+  `Beatmapsets`, `Users`, `Server`), each with the permission that manages the area. The same pattern, `{Enum}Groups`,
+  holds the combinations of every other flags enum (`GameModsGroups`, `BanchoFlagsGroups`); no flags enum has
+  combination members. A check asks for the smallest permission that allows the action, so the manager and a user
+  granted only that permission both pass; never `Allows(A) || Allows(B)` for a pair where one contains the other.
+  Do not add a permission that is merely a consequence of another (playing and submitting scores are one:
+  `ScoreSubmit`).
+* **Privileges are roles, permissions are rights.** `Privileges` (Domain; renamed from `BanchoPrivileges`) is one
+  flags enum of the roles osu! knows (`Player`, `Moderator`, `Supporter`, `Owner`, `Developer`, `Tournament`; the
+  values stay the wire bits). `privilege.Permissions` (an extension) lists the permissions that belong directly to
+  that role, at depth one. A user has the bit of a role when their **effective** permissions hold at least one of
+  those. A requirement written in privileges (a channel's `ReadPrivileges`/`WritePrivileges`) is met when the user
+  has every bit asked for. Privileges are derived, never stored or configured, and they grant nothing: a client
+  that claims a role it holds no permission for is refused.
 * **Permission checks require every bit** (`Permissions.Allows`); an empty requirement is always
   satisfied. Checks use the **effective** permissions: the granted ones minus those suspended by the user's
   active restrictions (`Effective(restrictions, now)`).
-* **Restrictions are timed records,** not account fields. A `Restriction` (Domain, own repository
-  `IRestrictionRepository`) suspends a mask of permissions from `StartsAt` to `EndsAt` (open-ended until
-  lifted; lifting sets `EndsAt`, history is kept). A silence is a restriction of
-  `Permissions.SuspendedBySilence`. Restrictions never touch management (`Permissions.Management`, the bits only management permissions have): a mask
-  containing one is invalid, and a manager is withdrawn by changing the permissions. A restriction may suspend a
-  smaller permission a management permission contains (`TournamentViewHiddenBeatmaps`), except from a user who holds
-  that management permission in full; such a user keeps every bit of it. Expiry needs no timer: the effective permissions are computed at `now`. A
-  result tells "suspended by a restriction" (`Silenced`) apart from "never granted" (`NotAuthorized`).
-* **Hierarchy.** A staff action aimed at another user (silence, restrict, lift, set permissions, set password,
+* **Restrictions are timed records,** not account fields. A `RestrictionRecord` suspends a mask of permissions
+  from `StartsAt` to `EndsAt` (open-ended until lifted; lifting sets `EndsAt`, history is kept). It holds only that
+  data: no reason and no note. Named masks live on `Restriction`, not on `Permissions`:
+  `Silence = Chat | Multiplayer` follows the osu! wiki (no chatting anywhere, no multiplayer; watching others play
+  stays allowed) and `Restrict = Silence | Spectating | ScoreSubmit | BeatmapsetUpload | ScreenshotUpload`. There is
+  one restrict operation, taking a mask. **Whoever manages an area cannot be restricted in that area:** the
+  restriction is stored, but the effective permissions keep every bit of the areas the user manages (a
+  `RoomManageAny` holder who is silenced still plays and manages multiplayer, but cannot chat unless they also
+  manage chat). Expiry needs no timer: the effective permissions are computed at `now`. A result tells "suspended by
+  a restriction" (`Restricted`) apart from "never granted" (`NotAuthorized`).
+* **A block yields to a higher right.** A limit a user sets on others (a block, friends-only messages) does not
+  bind someone who manages the matching area (`ChatMessageAnyone` for messages, `RoomManageAny` for invitations,
+  `RoomObserve` for spectating). Every "prevent, unless a higher right" rule follows this pattern.
+* **Moderation history is a log.** Restricting, lifting, adding a note and viewing a user's login history append an
+  entry (action, `by`, target, reason, `Timestamp`) to the moderation log. The log is for people to trace; it
+  never affects any right.
+* **Hierarchy.** A staff action aimed at another user (restrict, lift, set permissions, set password,
   revoke sessions, delete) requires the actor's granted permissions to be a strict superset of the target's.
-  Equals cannot act on each other; acting on oneself is not subject to this rule, except that nobody restricts,
-  silences or lifts a restriction of themselves. Granting gives only bits the actor holds.
-* **No bot in the server.** The server has no bot user, no bot connection kind and no virtual in-game user;
-  user ids start at 1. BasilBot and every other automated client sign in as ordinary accounts and do only
-  what their permissions allow. Chat commands (`!mp`, `!help`, …) and every chat announcement
-  (countdowns, anticheat warnings) belong to such clients; the server only emits events. A client looks up a
-  user's permissions through the API to decide how to answer, and the server checks again.
-* **Identity on every action.** Every action has a real actor `by` (a `Connection`); `by` is never `null`
-  and never a stand-in for "the server". A room created through the API has the caller as creator.
-* **Delegation is scope-based.** An account with `TournamentActForUsers` may act for another online user:
-  `ISessionService.Connections.ActFor` returns a `DelegatedConnection` carrying that user's identity, so the operation runs
-  with that user's authority and is attributed to that user, but only the user's permissions within its scope
-  (`Permissions.RoomDelegation`: room and lobby operations) count, and it joins no channel. The caller's rank does
-  not matter. Application enforces the scope; the host only forwards the delegated connection.
-* **Accounts come only from registration or creation.** Nobody is granted permissions for being first or for
-  anything else implicit; a new account gets the default permissions, and more only by being granted. Anyone
-  without an account may register one unless `ServerSettings.LockedCreation` locks it.
+  Equals cannot act on each other; acting on oneself is not subject to this rule, except that nobody restricts
+  or lifts a restriction of themselves. Granting gives only bits the actor holds.
+* **BasilBot is the server's voice.** The server has one fixed user, BasilBot, with id 1, created by a migration:
+  always online, a friend of everybody, unable to sign in, holding no permission. Its record is fixed (it cannot be
+  deleted, restricted, given permissions or a password, or have its connection revoked); its metadata (name,
+  country, avatar) can be edited like any other user's. The bot answers chat commands (`!`, a fixed prefix) and
+  posts the server's announcements. A chat command is an entry point like IRC or the API: it runs on the objects
+  scoped to the connection of the user who typed it, so it needs that user's rights; the bot only replies. The
+  bot's own messages go straight to the chat, past the rights check. Countdowns are a feature of the room.
+* **Identity on every action.** Every action has a real actor `by` (a `Connection`); `by` is never `null`.
+  A room created through the API has the caller as creator. A server announcement is `by` BasilBot.
+* **There is no delegation.** No account acts for another. An outside tool signs in with its own account and the
+  rights that account holds.
+* **Accounts come only from registration, creation or bootstrap.** Nobody is granted permissions for being first
+  or for anything else implicit; a new account gets the default permissions, and more only by being granted.
+  Anyone without an account may register one unless `ServerSettings.LockedCreation` locks it. The one exception is
+  the **bootstrap**: when startup finds no live account (BasilBot does not count), it creates `admin` with the password `admin` and
+  every permission, and logs a warning telling the operator to change them. Because a deleted account frees its name, the
+  bootstrap always uses `admin`.
+* **A name is unique among live accounts.** Deleting an account is a soft delete and is **permanent**: the account
+  is never restored, and its id is never reused. The name is unique only among accounts that are not deleted, after
+  normalization (case-insensitive; a space and an underscore are the same). `UserData.NormalizedName` does the
+  normalization and the database enforces the same rule with a partial unique expression index. A new account may
+  take the name of a deleted one.
+* **No third party in the core.** Apart from the beatmap mirror, the server uses no third-party service for core
+  work. Country at registration comes from the host (a proxy header or an offline GeoLite2 file); Domain and
+  Application receive the `Country` as an input and do not know where it came from.
 * **Creation locks.** `ServerSettings.LockedCreation` locks the creation of accounts, rooms and beatmapsets to
   their managers (`OwnerManageAccounts`, `TournamentManageAnyRoom`, `TournamentManageBeatmaps`), on every
   transport. Beatmapset uploads are locked by default. Importing a beatmapset has no actor in Application: the
@@ -755,8 +803,9 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   `IBeatmapsetMirror` and `BeatmapsetImportResult`. A byte storage is `I{Owner}{Thing}Storage`
   (`IUserAvatarStorage`, `IMenuBannerStorage`, `IMenuSeasonalsStorage`); medium words (`Image`,
   `Background`, `Archive`) and redundant qualifiers (`Server` in `ISettingsRepository`) stay out of names.
-* **Knowledge about a Domain value lives on that value.** A fixed set of flags is a member of its enum
-  (`ClientFlags.CheatSigns`, `Permissions.SuspendedBySilence`), a per-mode factory a static member of its type
+* **Knowledge about a Domain value lives on that value.** A fixed set of flags is a member of its `{Enum}Groups`
+  class (`BanchoFlagsGroups.CheatSigns`, `PermissionsGroups.Chat`) or of the owning type (`Restriction.Silence`),
+  never a combination member of the enum itself; a per-mode factory is a static member of its type
   (`BeatmapObjects.NewFrom(mode)`);
   services use them instead of keeping their own copies.
 * **One concept, one name.** Use the same name for the same concept in every model, parameter,
@@ -970,8 +1019,11 @@ Before considering a code change complete:
    a repository read, a registry used through its implementation instead of its contract, a contract name that
    reveals its mechanism, or a reference from Services.Implementations to Storage.Implementations or from
    Infrastructure to either Implementations project. Since the identity redesign, also
-   reject: any bot special case (a fixed bot id, a bot connection kind, "the server acts"), an action
-   without a real `by`, authority decided by connection kind, a check on granted instead of effective
-   permissions, a stored or configured `ClientPrivileges`, and chat text produced by the server.
+   reject: an action without a real `by`, authority decided by connection kind, a check on granted instead of
+   effective permissions, a stored or configured `Privileges`, privileges used to grant anything, and a
+   delegation of any kind. Since the 2026-10-16 redesign, also reject the five anti-patterns of "Behaviour belongs
+   to the object that owns it" (God Actor, service-centric procedural design, permission plumbing, exposed mutable
+   state, fake scoping), and a bot message that goes through a rights check or a bot command that runs with the
+   bot's rights instead of the typist's.
 
 The goal is not merely to produce compiling code. The goal is a verified change that respects Basil's architecture, scope, contracts, and documentation.

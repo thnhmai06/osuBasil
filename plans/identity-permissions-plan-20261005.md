@@ -3,6 +3,11 @@
 Plan này (`plans/identity-permissions-plan-20261005.md`, đã duyệt 2026-10-05) là nguồn sự thật cho
 các layer sau.
 
+> **Đã bị thay một phần (2026-10-16)** bởi [`object-scope-plan-20261016.md`](object-scope-plan-20261016.md): BasilBot trở lại là tính năng
+> của server (user id 1 cố định, không quyền, không đăng nhập); delegation (`ActFor`, `DelegatedConnection`) bị bỏ;
+> `ClientPrivileges` đổi thành `Privileges`; silence là restriction của `Chat`+`Multiplayer`; bootstrap admin là ngoại lệ
+> của "không ai được cấp quyền vì là người đầu tiên". Các phần còn lại của plan này vẫn đúng.
+
 ## Context
 
 Basil đang coi BasilBot là thực thể đặc biệt của server:
