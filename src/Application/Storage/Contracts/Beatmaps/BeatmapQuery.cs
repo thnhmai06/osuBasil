@@ -196,6 +196,6 @@ public sealed record BeatmapQuery(
 	/// <returns>The query, which leaves hidden beatmaps out unless the asker may see them.</returns>
 	public BeatmapQuery LimitTo(Permissions effective)
 	{
-		return effective.Allows(Permissions.TournamentViewHiddenBeatmaps) ? this : this with { Hidden = false };
+		return effective.Allows(Permissions.BeatmapsetViewHidden) ? this : this with { Hidden = false };
 	}
 }

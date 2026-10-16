@@ -130,10 +130,4 @@ public enum BanchoFlags : uint
 	AqnMenuSample = 1 << 22,
 
 	#endregion
-
-	CheatSigns = SpeedHackDetected | IncorrectModValue | MultipleOsuClients | ChecksumFailure |
-	             FlashlightChecksumIncorrect |
-	             OsuExecutableChecksum | MissingProcessesInList | FlashlightImageHack | SpinnerHack |
-	             TransparentWindow |
-	             FastPress | RawMouseDiscrepancy | RawKeyboardDiscrepancy | HqAssembly | HqFile | RegistryEdits
 }

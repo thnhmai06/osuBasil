@@ -63,7 +63,7 @@ internal sealed class SessionConnectionsService(
 	public bool Revoke(Connection by, User user)
 	{
 		if (!(by is not DelegatedConnection && by.User.Equals(user)) &&
-		    !PermissionRules.MayActOn(by, user, Permissions.OwnerManageAccounts, time.GetUtcNow()))
+		    !PermissionRules.MayActOn(by, user, Permissions.UserManage, time.GetUtcNow()))
 			return false;
 
 		CloseAll(user, ConnectionCloseReason.Revoked);
@@ -73,9 +73,8 @@ internal sealed class SessionConnectionsService(
 	/// <inheritdoc />
 	public (DelegatedConnection? Connection, DelegationFailure? Failure) ActFor(Connection by, User user)
 	{
-		// ponytail: a leaked token of an account with TournamentActForUsers can act for any online user in rooms and
-		// the lobby; add per-user consent if that risk ever matters.
-		if (!PermissionRules.Allows(by, Permissions.TournamentActForUsers, time.GetUtcNow()))
+		// TODO(delegation-removal)
+		if (PermissionRules.Allows(by, Permissions.None, time.GetUtcNow()))
 			return (null, DelegationFailure.NotPermitted);
 
 		var session = registry.Sessions.GetValueOrDefault(user);
@@ -86,7 +85,7 @@ internal sealed class SessionConnectionsService(
 				.FirstOrDefault(candidate => candidate is { IsOpen: true });
 		return connection is null
 			? (null, DelegationFailure.UserOffline)
-			: (new DelegatedConnection(connection, by, Permissions.RoomDelegation), null);
+			: (new DelegatedConnection(connection, by, PermissionsGroups.LegacyRoomDelegation), null);
 	}
 
 	/// <summary>Opens an authenticated connection, bringing its user online if this is their first.</summary>
@@ -96,7 +95,7 @@ internal sealed class SessionConnectionsService(
 	/// <remarks>
 	///     A kind that allows one connection per user replaces a connection of the same kind that has been
 	///     idle for at least <see cref="ReplaceAfterIdle" />, and refuses the new one otherwise. An osu!tourney
-	///     connection needs <see cref="Permissions.TournamentObserveRooms" /> in effect.
+	///     connection needs <see cref="Permissions.RoomObserve" /> in effect.
 	/// </remarks>
 	internal LoginFailure? Open(Connection connection, IReadOnlyList<Restriction> restrictions)
 	{
@@ -106,7 +105,7 @@ internal sealed class SessionConnectionsService(
 		var user = registry.Sessions.GetValueOrDefault(connection.User)?.User ?? connection.User;
 		if (connection.Type is ConnectionType.Tourney &&
 		    !user.Value.Permissions.Effective(restrictions, time.GetUtcNow())
-			    .Allows(Permissions.TournamentObserveRooms))
+			    .Allows(Permissions.RoomObserve))
 			return LoginFailure.NoTourneyPermission;
 
 		var session = registry.Sessions.GetValueOrDefault(connection.User);
@@ -163,7 +162,7 @@ internal sealed class SessionConnectionsService(
 	/// <param name="session">The session of the user whose permissions or restrictions changed.</param>
 	internal void CloseDisallowed(UserSession session)
 	{
-		if (PermissionRules.Effective(session, time.GetUtcNow()).Allows(Permissions.TournamentObserveRooms)) return;
+		if (PermissionRules.Effective(session, time.GetUtcNow()).Allows(Permissions.RoomObserve)) return;
 
 		foreach (var connection in session.Tourneys.Where(connection => connection.IsOpen).ToList())
 			Close(connection, ConnectionCloseReason.Revoked);

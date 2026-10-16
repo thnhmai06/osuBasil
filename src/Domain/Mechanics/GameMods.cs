@@ -106,20 +106,7 @@ public enum GameMods
 	ScoreV2 = 1 << 29,
 
 	/// <summary>Mirrors the column layout of the notes.</summary>
-	Mirror = 1 << 30,
-
-	// Groups
-	/// <summary>The mods that change the playback rate of the beatmap.</summary>
-	SpeedChangingMods = DoubleTime | Nightcore | HalfTime,
-
-	/// <summary>The mods that restrict the play to a specific key count.</summary>
-	KeyMods = Key1 | Key2 | Key3 | Key4 | Key5 | Key6 | Key7 | Key8 | Key9,
-
-	/// <summary>The mods that only apply to osu!standard.</summary>
-	OsuSpecificMods = Autopilot | SpunOut | Target,
-
-	/// <summary>The mods that only apply to osu!mania.</summary>
-	ManiaSpecificMods = Mirror | Random | FadeIn | KeyMods
+	Mirror = 1 << 30
 }
 
 /// <summary>
@@ -238,11 +225,11 @@ public static class ModsExtensions
 
 			// 2. remove mode-unique mods from incorrect gamemodes
 			if (mode != GameMode.Standard) // osu! specific
-				result &= ~GameMods.OsuSpecificMods;
+				result &= ~GameModsGroups.OsuSpecific;
 
 			// ctb & taiko have no unique mods
 			if (mode != GameMode.Mania) // mania specific
-				result &= ~GameMods.ManiaSpecificMods;
+				result &= ~GameModsGroups.ManiaSpecific;
 
 			switch (mode)
 			{
@@ -261,7 +248,7 @@ public static class ModsExtensions
 			}
 
 			// 4. remove multiple keymods, keeping only the first
-			var keymodsUsed = result & GameMods.KeyMods;
+			var keymodsUsed = result & GameModsGroups.Key;
 			if (CountSetBits(keymodsUsed) > 1)
 			{
 				var firstKeymod =

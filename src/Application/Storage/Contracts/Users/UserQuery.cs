@@ -94,6 +94,6 @@ public sealed record UserQuery(
 	/// <returns>The query, which leaves deleted users out unless the asker may see them.</returns>
 	public UserQuery LimitTo(Permissions effective)
 	{
-		return effective.Allows(Domain.Users.Permissions.OwnerViewDeletedUsers) ? this : this with { Deleted = false };
+		return effective.Allows(Domain.Users.Permissions.UserViewDeleted) ? this : this with { Deleted = false };
 	}
 }

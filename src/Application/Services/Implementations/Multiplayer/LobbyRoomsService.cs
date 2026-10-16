@@ -57,8 +57,8 @@ internal sealed class LobbyRoomsService(
 
 		var now = time.GetUtcNow();
 		var required = isTournament
-			? Permissions.PlayerCreateRoom
-			: Permissions.PlayerCreateRoom | Permissions.PlayerJoinRoom;
+			? Permissions.RoomCreate
+			: Permissions.RoomCreate | Permissions.RoomJoin;
 		switch (PermissionRules.Check(by, required, now))
 		{
 			case Access.NotGranted: return (null, RoomResult.NotAuthorized);
@@ -66,17 +66,17 @@ internal sealed class LobbyRoomsService(
 		}
 
 		if ((await serverSettings.GetAsync(cancellationToken)).LockedCreation.HasFlag(CreationLocks.Rooms) &&
-		    !PermissionRules.Allows(by, Permissions.TournamentManageAnyRoom, now))
+		    !PermissionRules.Allows(by, Permissions.RoomManageAny, now))
 			return (null, RoomResult.NotAuthorized);
 
 		var creator = by.User;
-		var limited = isTournament && !PermissionRules.Allows(by, Permissions.TournamentUnlimitedRooms, now);
+		var limited = isTournament && !PermissionRules.Allows(by, Permissions.RoomCreateUnlimited, now);
 		if (limited && TooManyRooms(creator)) return (null, RoomResult.TooManyRooms);
 
 		// A room opened in game seats its creator; a tournament room seats the creator's osu! client when it may join.
 		var seat = isTournament
 			? by.Session.Bancho is { IsOpen: true } bancho &&
-			  PermissionRules.Allows(bancho, Permissions.PlayerJoinRoom, now)
+			  PermissionRules.Allows(bancho, Permissions.RoomJoin, now)
 				? bancho
 				: null
 			: (BanchoConnection)by;

@@ -96,7 +96,7 @@ internal sealed class AuthService(
 	public async Task<(User? User, RegistrationFailure? Failure)> CreateAccountAsync(Connection by, UserData data,
 		Md5 passwordHash, CancellationToken cancellationToken = default)
 	{
-		if (!PermissionRules.Allows(by, Permissions.OwnerManageAccounts, time.GetUtcNow()) ||
+		if (!PermissionRules.Allows(by, Permissions.UserManage, time.GetUtcNow()) ||
 		    !PermissionRules.Granted(by).Allows(data.Permissions))
 			return (null, RegistrationFailure.NotAuthorized);
 		if (await users.GetByNameAsync(data.Name, cancellationToken) is not null)
@@ -115,7 +115,7 @@ internal sealed class AuthService(
 			if (currentPasswordHash is not { } current || !await VerifyAsync(user, current, cancellationToken))
 				return PasswordChangeResult.WrongPassword;
 		}
-		else if (!PermissionRules.MayActOn(by, user, Permissions.OwnerManageAccounts, time.GetUtcNow()))
+		else if (!PermissionRules.MayActOn(by, user, Permissions.UserManage, time.GetUtcNow()))
 		{
 			return PasswordChangeResult.NotAuthorized;
 		}

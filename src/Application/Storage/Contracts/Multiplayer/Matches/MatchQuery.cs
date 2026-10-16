@@ -66,6 +66,6 @@ public sealed record MatchQuery(bool? Ended = null, bool? Private = null) : IPar
 	/// <returns>The query, which leaves matches with private history out unless the asker may see them.</returns>
 	public MatchQuery LimitTo(Permissions effective)
 	{
-		return effective.Allows(Permissions.TournamentViewPrivateMatches) ? this : this with { Private = false };
+		return effective.Allows(Permissions.RoomViewPrivate) ? this : this with { Private = false };
 	}
 }

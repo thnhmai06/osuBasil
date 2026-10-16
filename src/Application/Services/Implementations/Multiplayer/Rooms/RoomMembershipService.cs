@@ -37,7 +37,7 @@ internal sealed class RoomMembershipService(
 	{
 		if (!RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 		if (!player.IsOpen) return RoomResult.TargetOffline;
-		switch (PermissionRules.Check(player, Permissions.PlayerJoinRoom, time.GetUtcNow()))
+		switch (PermissionRules.Check(player, Permissions.RoomJoin, time.GetUtcNow()))
 		{
 			case Access.NotGranted: return RoomResult.NotAuthorized;
 			case Access.Suspended: return RoomResult.Silenced;
@@ -135,7 +135,7 @@ internal sealed class RoomMembershipService(
 		if (stale is not null && (ReferenceEquals(stale, by) || stale.IsOpen)) return RoomResult.AlreadySeated;
 
 		if (room.Members.Banned.Contains(by.User)) return RoomResult.Banned;
-		switch (PermissionRules.Check(by, Permissions.PlayerJoinRoom, time.GetUtcNow()))
+		switch (PermissionRules.Check(by, Permissions.RoomJoin, time.GetUtcNow()))
 		{
 			case Access.NotGranted: return RoomResult.NotAuthorized;
 			case Access.Suspended: return RoomResult.Silenced;
@@ -144,7 +144,7 @@ internal sealed class RoomMembershipService(
 		if (lobby.RoomOf(by) is { } other && !ReferenceEquals(other, room)) return RoomResult.InAnotherRoom;
 		if (room.Members.Observers.Any(observer => observer.User.Equals(by.User))) return RoomResult.IsObserver;
 		if (!string.IsNullOrEmpty(room.Settings.Password) && room.Settings.Password != password &&
-		    !PermissionRules.Allows(by, Permissions.TournamentManageAnyRoom, time.GetUtcNow()))
+		    !PermissionRules.Allows(by, Permissions.RoomManageAny, time.GetUtcNow()))
 			return RoomResult.WrongPassword;
 
 		return TakeSeat(room, by, stale);

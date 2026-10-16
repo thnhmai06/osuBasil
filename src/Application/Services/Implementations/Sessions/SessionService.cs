@@ -29,7 +29,7 @@ internal sealed class SessionService(
 	/// <inheritdoc />
 	public int? Announce(Connection by, string text, IReadOnlyCollection<User>? to = null)
 	{
-		if (!PermissionRules.Allows(by, Permissions.ModeratorAnnounce, time.GetUtcNow())) return null;
+		if (!PermissionRules.Allows(by, Permissions.ChatAnnounce, time.GetUtcNow())) return null;
 
 		var recipients = registry.Sessions.Values
 			.Where(s => to is null || to.Contains(s.User))

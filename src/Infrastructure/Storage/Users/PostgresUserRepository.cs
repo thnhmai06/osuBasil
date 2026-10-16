@@ -29,13 +29,13 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 	/// <inheritdoc />
 	public async Task<User> CreateAsync(UserData data, CancellationToken cancellationToken = default)
 	{
-		if (_byName.TryGetValue(data.SafeName, out var known) && known.Value.SafeName == data.SafeName)
+		if (_byName.TryGetValue(data.NormalizedName, out var known) && known.Value.NormalizedName == data.NormalizedName)
 			throw new AlreadyExistsException($"A user is already named {data.Name}.");
 
 		var parameters = new
 		{
 			data.Name,
-			data.SafeName,
+			NormalizedName = data.NormalizedName,
 			Country = (int)data.Country,
 			Permissions = (long)data.Permissions,
 			DeletedAt = data.DeletedAt?.ToUniversalTime()
@@ -46,7 +46,7 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 			id = await Writer.WriteAsync(Root.Server, (connection, transaction) => connection.QuerySingleAsync<int>(
 				"""
 				insert into users (name, safe_name, country, permissions, deleted_at)
-				values (@Name, @SafeName, @Country, @Permissions, @DeletedAt)
+				values (@Name, @NormalizedName, @Country, @Permissions, @DeletedAt)
 				returning id;
 				""",
 				parameters, transaction), cancellationToken);
@@ -71,18 +71,18 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 	{
 		_ = new UserData { Name = name };
 		var live = TrackUser(user);
-		var old = live.Value.SafeName;
-		var newSafe = UserData.SafeNameOf(name);
+		var old = live.Value.NormalizedName;
+		var newSafe = UserData.NormalizeName(name);
 
-		if (_byName.TryGetValue(newSafe, out var known) && known.Value.SafeName == newSafe && known != live)
+		if (_byName.TryGetValue(newSafe, out var known) && known.Value.NormalizedName == newSafe && known != live)
 			return false;
 
 		// Whether the name is free is the database's to say, so the user takes the name only once it is committed.
 		try
 		{
 			await Writer.WriteAsync(Root.User(live.Id), (connection, transaction) => connection.ExecuteAsync(
-				"update users set name = @Name, safe_name = @SafeName where id = @Id",
-				new { Name = name, SafeName = newSafe, live.Id }, transaction), cancellationToken);
+				"update users set name = @Name, safe_name = @NormalizedName where id = @Id",
+				new { Name = name, NormalizedName = newSafe, live.Id }, transaction), cancellationToken);
 		}
 		catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation)
 		{
@@ -91,7 +91,7 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 
 		live.Value.Name = name;
 		_byName.Remove(old, live);
-		_byName.Set(live.Value.SafeName, live);
+		_byName.Set(live.Value.NormalizedName, live);
 		return true;
 	}
 
@@ -104,12 +104,12 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 	/// <inheritdoc />
 	public async ValueTask<User?> GetByNameAsync(string name, CancellationToken cancellationToken = default)
 	{
-		var safeName = UserData.SafeNameOf(name);
-		if (_byName.TryGetValue(safeName, out var known) && known.Value.SafeName == safeName)
+		var safeName = UserData.NormalizeName(name);
+		if (_byName.TryGetValue(safeName, out var known) && known.Value.NormalizedName == safeName)
 			return known;
 
 		var foundId = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<int?>(
-			"select id from users where safe_name = @SafeName", new { SafeName = safeName }), cancellationToken);
+			"select id from users where safe_name = @NormalizedName", new { NormalizedName = safeName }), cancellationToken);
 		return foundId is { } found ? await FindUserAsync(found, cancellationToken) : null;
 	}
 
@@ -160,7 +160,7 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 		{
 			user.Id,
 			value.Name,
-			value.SafeName,
+			NormalizedName = value.NormalizedName,
 			Country = (int)value.Country,
 			Permissions = (long)value.Permissions,
 			DeletedAt = value.DeletedAt?.ToUniversalTime()
@@ -184,7 +184,7 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 
 	private void IndexUser(User live)
 	{
-		_byName.Set(live.Value.SafeName, live);
+		_byName.Set(live.Value.NormalizedName, live);
 	}
 
 	/// <summary>Builds the shared filter and parameters for a user listing.</summary>

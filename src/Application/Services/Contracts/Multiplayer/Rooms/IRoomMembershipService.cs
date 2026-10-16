@@ -18,7 +18,7 @@ public interface IRoomMembershipService
 	/// </returns>
 	/// <remarks>
 	///     If the same user is seated through a connection that has closed, that connection leaves first.
-	///     A user with <see cref="Permissions.TournamentManageAnyRoom" /> needs no password. The player also joins the
+	///     A user with <see cref="Permissions.RoomManageAny" /> needs no password. The player also joins the
 	///     room's chat channel.
 	/// </remarks>
 	Task<RoomResult> JoinAsync(Room room, BanchoConnection by, string password,
@@ -26,7 +26,7 @@ public interface IRoomMembershipService
 
 	/// <summary>Seats an online player in a room on behalf of its managers.</summary>
 	/// <param name="room">The room to seat the player in.</param>
-	/// <param name="by">The creator, a referee or a user with <see cref="Permissions.TournamentManageAnyRoom" />.</param>
+	/// <param name="by">The creator, a referee or a user with <see cref="Permissions.RoomManageAny" />.</param>
 	/// <param name="player">The player's osu! client.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>

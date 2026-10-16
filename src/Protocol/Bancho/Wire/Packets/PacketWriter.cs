@@ -374,7 +374,7 @@ public sealed partial class PacketWriter(Stream stream)
 	/// <summary>Builds the privileges packet sending the client's privilege level.</summary>
 	/// <param name="priv">The privilege bitmask of the client.</param>
 	/// <returns>The complete packet.</returns>
-	public void BanchoPrivileges(int priv)
+	public void Privileges(int priv)
 	{
 		Wrap(ServerPacketType.Privileges, () => _writer.Write(priv));
 	}

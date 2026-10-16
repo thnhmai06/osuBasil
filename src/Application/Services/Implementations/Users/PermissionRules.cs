@@ -18,7 +18,7 @@ internal static class PermissionRules
 	/// <summary>Gets the permissions a connection may use: all of them, or a delegation's scope.</summary>
 	private static Permissions Scope(Connection by)
 	{
-		return by is DelegatedConnection delegated ? delegated.Scope : Permissions.All;
+		return by is DelegatedConnection delegated ? delegated.Scope : PermissionsGroups.All;
 	}
 
 	/// <summary>Gets the permissions granted to the user behind an open connection.</summary>

@@ -9,7 +9,7 @@ public interface IRoomAuthorityService
 {
 	/// <summary>Makes a user a referee.</summary>
 	/// <param name="room">The room.</param>
-	/// <param name="by">The creator or a user with <see cref="Permissions.TournamentManageAnyRoom" />.</param>
+	/// <param name="by">The creator or a user with <see cref="Permissions.RoomManageAny" />.</param>
 	/// <param name="user">The user to make referee.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, IsCreator, AlreadyReferee, TooManyReferees or RoomClosed when the room has closed.</returns>
@@ -18,7 +18,7 @@ public interface IRoomAuthorityService
 
 	/// <summary>Removes a user from the referees.</summary>
 	/// <param name="room">The room.</param>
-	/// <param name="by">The creator or a user with <see cref="Permissions.TournamentManageAnyRoom" />.</param>
+	/// <param name="by">The creator or a user with <see cref="Permissions.RoomManageAny" />.</param>
 	/// <param name="user">The referee to remove.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, NotReferee or RoomClosed when the room has closed.</returns>

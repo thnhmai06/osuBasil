@@ -17,7 +17,7 @@ public interface IUserService : IEventPublisher<UserEvent>
 
 	/// <summary>Replaces the permissions granted to a user.</summary>
 	/// <param name="by">
-	///     The connection acting; its user needs <see cref="Permissions.OwnerManagePermissions" /> and may only add or
+	///     The connection acting; its user needs <see cref="Permissions.UserManagePermissions" /> and may only add or
 	///     remove permissions it holds itself.
 	/// </param>
 	/// <param name="user">The user whose permissions are replaced.</param>
@@ -32,7 +32,7 @@ public interface IUserService : IEventPublisher<UserEvent>
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Deletes a user's account, keeping its record.</summary>
-	/// <param name="by">The connection acting; its user needs <see cref="Permissions.OwnerManageAccounts" />.</param>
+	/// <param name="by">The connection acting; its user needs <see cref="Permissions.UserManage" />.</param>
 	/// <param name="user">The user to delete.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns><see langword="true" /> if the user was deleted; <see langword="false" /> when the caller may not.</returns>

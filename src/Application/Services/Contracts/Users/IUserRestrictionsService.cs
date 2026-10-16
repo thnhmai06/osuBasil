@@ -12,21 +12,21 @@ namespace Basil.Application.Services.Contracts.Users;
 public interface IUserRestrictionsService
 {
 	/// <summary>Silences a user until a given time.</summary>
-	/// <param name="by">The connection acting; its user needs <see cref="Permissions.ModeratorSilence" />.</param>
+	/// <param name="by">The connection acting; its user needs <see cref="Permissions.UserSilence" />.</param>
 	/// <param name="user">The user to silence.</param>
 	/// <param name="endsAt">When the silence ends.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The restriction that silences the user, or <see langword="null" /> when the caller may not silence them.</returns>
 	/// <exception cref="ArgumentOutOfRangeException"><paramref name="endsAt" /> is in the past.</exception>
 	/// <remarks>
-	///     A silence is a restriction of <see cref="Permissions.SuspendedBySilence" />. Announces
+	///     A silence is a restriction of <see cref="RestrictionData.Silence" />. Announces
 	///     <see cref="UserRestricted" />.
 	/// </remarks>
 	Task<Restriction?> SilenceAsync(Connection by, User user, DateTimeOffset endsAt,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Suspends some of a user's permissions.</summary>
-	/// <param name="by">The connection acting; its user needs <see cref="Permissions.ModeratorRestrict" />.</param>
+	/// <param name="by">The connection acting; its user needs <see cref="Permissions.UserRestrict" />.</param>
 	/// <param name="user">The user to restrict.</param>
 	/// <param name="permissions">The permissions to suspend.</param>
 	/// <param name="endsAt">When the restriction ends, or <see langword="null" /> to keep it until it is lifted.</param>
@@ -44,8 +44,8 @@ public interface IUserRestrictionsService
 
 	/// <summary>Ends a restriction now.</summary>
 	/// <param name="by">
-	///     The connection acting; its user needs <see cref="Permissions.ModeratorRestrict" />, or
-	///     <see cref="Permissions.ModeratorSilence" /> to lift a silence.
+	///     The connection acting; its user needs <see cref="Permissions.UserRestrict" />, or
+	///     <see cref="Permissions.UserSilence" /> to lift a silence.
 	/// </param>
 	/// <param name="restriction">The restriction to end.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>

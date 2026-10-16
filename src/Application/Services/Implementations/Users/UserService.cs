@@ -27,7 +27,7 @@ internal sealed class UserService(
 	public async Task<bool> SetPermissionsAsync(Connection by, User user, Permissions permissions,
 		CancellationToken cancellationToken = default)
 	{
-		if (!PermissionRules.MayActOn(by, user, Permissions.OwnerManagePermissions, time.GetUtcNow()) ||
+		if (!PermissionRules.MayActOn(by, user, Permissions.UserManagePermissions, time.GetUtcNow()) ||
 		    !PermissionRules.Granted(by).Allows(user.Value.Permissions ^ permissions))
 			return false;
 
@@ -43,7 +43,7 @@ internal sealed class UserService(
 	public async Task<bool> DeleteAsync(Connection by, User user, CancellationToken cancellationToken = default)
 	{
 		var now = time.GetUtcNow();
-		if (!PermissionRules.MayActOn(by, user, Permissions.OwnerManageAccounts, now)) return false;
+		if (!PermissionRules.MayActOn(by, user, Permissions.UserManage, now)) return false;
 
 		Apply(user, u =>
 		{

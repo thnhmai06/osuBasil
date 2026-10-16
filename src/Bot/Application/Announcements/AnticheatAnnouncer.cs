@@ -44,7 +44,7 @@ internal sealed class AnticheatAnnouncer(IBasilChat chat, IBasilRooms rooms)
 		var flagNames = new List<string>();
 		foreach (var value in Enum.GetValues<BanchoFlags>())
 		{
-			if (value == BanchoFlags.Clean || value == BanchoFlags.CheatSigns)
+			if (value == BanchoFlags.Clean || value == BanchoFlagsGroups.CheatSigns)
 				continue;
 
 			if (flags.HasFlag(value)) flagNames.Add(value.ToString());

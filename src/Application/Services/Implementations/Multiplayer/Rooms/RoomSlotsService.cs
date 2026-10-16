@@ -222,7 +222,7 @@ internal sealed class RoomSlotsService(
 		if (room.Slots.Find(by) is not { } slot) return RoomResult.NotInRoom;
 		if (room.Rounds.InProgress) return RoomResult.InProgress;
 		if (!room.Settings.MatchSettings.Freemods) return RoomResult.NotFreemod;
-		if ((mods & GameMods.SpeedChangingMods) != GameMods.NoMod) return RoomResult.SpeedModNotAllowed;
+		if ((mods & GameModsGroups.SpeedChanging) != GameMods.NoMod) return RoomResult.SpeedModNotAllowed;
 		if (!mods.IsValid(room.Settings.MatchSettings.Mode)) return RoomResult.InvalidMods;
 		if (slot.Mods == mods) return RoomResult.Ok;
 

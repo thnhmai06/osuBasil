@@ -21,7 +21,7 @@ internal sealed class ChannelMessagesService(
 		if (channel.IsClosed) return ChannelPostResult.Closed;
 
 		var now = time.GetUtcNow();
-		var required = channel is PmChannelSession ? Permissions.PlayerPrivateMessage : Permissions.PlayerChat;
+		var required = channel is PmChannelSession ? Permissions.ChatPostPrivate : Permissions.ChatPost;
 		switch (PermissionRules.Check(by, required, now))
 		{
 			case Access.NotGranted: return ChannelPostResult.NoWritePermission;
@@ -34,7 +34,7 @@ internal sealed class ChannelMessagesService(
 
 		if (channel is PmChannelSession pm)
 		{
-			if (!PermissionRules.Allows(by, Permissions.ModeratorMessageAnyone, now))
+			if (!PermissionRules.Allows(by, Permissions.ChatMessageAnyone, now))
 			{
 				var rels = await relationships.ListAsync(pm.Owner.User, cancellationToken);
 				var blocked = rels.Any(r => r.Type == RelationshipType.Block && r.Target.Equals(by.User));
@@ -43,8 +43,8 @@ internal sealed class ChannelMessagesService(
 					return ChannelPostResult.Blocked;
 			}
 
-			if (pm.Owner.User.Value.Permissions.Allows(Permissions.PlayerPrivateMessage) &&
-			    !PermissionRules.Effective(pm.Owner, now).Allows(Permissions.PlayerPrivateMessage))
+			if (pm.Owner.User.Value.Permissions.Allows(Permissions.ChatPostPrivate) &&
+			    !PermissionRules.Effective(pm.Owner, now).Allows(Permissions.ChatPostPrivate))
 				return ChannelPostResult.TargetSilenced;
 		}
 

@@ -17,7 +17,7 @@ public interface ISessionService : IEventPublisher<UserEvent>
 	ISessionPresenceService Presence { get; }
 
 	/// <summary>Shows a notification to online osu! clients.</summary>
-	/// <param name="by">The connection asking; its user needs <see cref="Permissions.ModeratorAnnounce" />.</param>
+	/// <param name="by">The connection asking; its user needs <see cref="Permissions.ChatAnnounce" />.</param>
 	/// <param name="text">The text to show.</param>
 	/// <param name="to">The users to notify, or <see langword="null" /> for every online user.</param>
 	/// <returns>

@@ -11,7 +11,7 @@ public interface IBanchoSpectatorsService
 	/// <param name="by">The connection that starts spectating.</param>
 	/// <returns>The outcome.</returns>
 	/// <remarks>
-	///     Needs <see cref="Permissions.PlayerSpectate" />, which <see cref="Permissions.TournamentObserveRooms" />
+	///     Needs <see cref="Permissions.SpectatingWatch" />, which <see cref="Permissions.RoomObserve" />
 	///     includes; NotPermitted otherwise. The spectator joins the host's spectator channel, and the first spectator
 	///     brings the host into it too. A connection spectating another client stops spectating it first. Spectating
 	///     the host it already spectates announces the spectator again, as an osu! client does once it has the beatmap.

@@ -21,7 +21,7 @@ internal static class ChannelRules
 			                      connection.Type is not ConnectionType.Tourney,
 			SpectatorChannelSession s => ReferenceEquals(connection, s.Host) || s.Host.Spectators.Contains(connection),
 			RoomChannelSession r => InRoom(r.Room, connection, now) ||
-			                        PermissionRules.Allows(connection, Permissions.TournamentObserveRooms, now),
+			                        PermissionRules.Allows(connection, Permissions.RoomObserve, now),
 			_ => false
 		};
 	}
@@ -36,7 +36,7 @@ internal static class ChannelRules
 			PmChannelSession => connection.IsOpen,
 			SpectatorChannelSession s => ReferenceEquals(connection, s.Host) || s.Host.Spectators.Contains(connection),
 			RoomChannelSession r => InRoom(r.Room, connection, now) ||
-			                        PermissionRules.Allows(connection, Permissions.TournamentPostInAnyRoom, now),
+			                        PermissionRules.Allows(connection, Permissions.ChatPostAnyRoom, now),
 			_ => false
 		};
 	}
@@ -47,6 +47,6 @@ internal static class ChannelRules
 		return (connection is BanchoConnection player && room.Slots.Find(player) is not null)
 		       || (connection is TourneyConnection observer && room.Members.Observers.Contains(observer))
 		       || RoomRules.IsManager(room, connection.User)
-		       || PermissionRules.Allows(connection, Permissions.TournamentManageAnyRoom, now);
+		       || PermissionRules.Allows(connection, Permissions.RoomManageAny, now);
 	}
 }

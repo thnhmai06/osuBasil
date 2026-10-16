@@ -68,10 +68,10 @@ internal sealed class RoomSettingsService(RoomEventStream events, TimeProvider t
 			ApplyFreemods(room, newFreemods);
 		if (change.Mods is { } newMods)
 		{
-			room.Settings.MatchSettings.Mods = freemods ? newMods & GameMods.SpeedChangingMods : newMods;
+			room.Settings.MatchSettings.Mods = freemods ? newMods & GameModsGroups.SpeedChanging : newMods;
 			// Under freemod a seated caller keeps the rest of the mods as their own, as the osu! client expects.
 			if (freemods && by is BanchoConnection caller && room.Slots.Find(caller) is { } callerSlot)
-				callerSlot.Mods = newMods & ~GameMods.SpeedChangingMods;
+				callerSlot.Mods = newMods & ~GameModsGroups.SpeedChanging;
 		}
 
 		if (change.TeamType is { } teamType) ApplyTeamType(room, teamType);
@@ -111,15 +111,15 @@ internal sealed class RoomSettingsService(RoomEventStream events, TimeProvider t
 			// Players take the room's mods that combine per player; the room keeps only the
 			// speed-changing ones, which must stay the same for everyone.
 			foreach (var slot in seated)
-				slot.Mods = room.Settings.MatchSettings.Mods & ~GameMods.SpeedChangingMods;
-			room.Settings.MatchSettings.Mods &= GameMods.SpeedChangingMods;
+				slot.Mods = room.Settings.MatchSettings.Mods & ~GameModsGroups.SpeedChanging;
+			room.Settings.MatchSettings.Mods &= GameModsGroups.SpeedChanging;
 		}
 		else
 		{
 			// The room keeps its speed-changing mods and takes the host's own mods.
 			var hostMods = (room.Authority.Host is { } host ? room.Slots.Find(host)?.Mods : null) ?? GameMods.NoMod;
 			room.Settings.MatchSettings.Mods =
-				(room.Settings.MatchSettings.Mods & GameMods.SpeedChangingMods) | hostMods;
+				(room.Settings.MatchSettings.Mods & GameModsGroups.SpeedChanging) | hostMods;
 			foreach (var slot in seated)
 				slot.Mods = GameMods.NoMod;
 		}

@@ -35,12 +35,22 @@ public sealed class Restriction : IEquatable<Restriction>
 /// <summary>A suspension of some of a user's permissions for a period.</summary>
 public sealed class RestrictionData
 {
+	/// <summary>The permissions a silence suspends: chatting and multiplayer.</summary>
+	public static readonly Permissions Silence =
+		PermissionsGroups.Chat.Permissions | PermissionsGroups.Multiplayer.Permissions;
+
+	/// <summary>The permissions a full restriction suspends.</summary>
+	public static readonly Permissions Restrict = Silence | PermissionsGroups.Spectating.Permissions |
+	                                             PermissionsGroups.Scores.Permissions |
+	                                             PermissionsGroups.Beatmapsets.Permissions |
+	                                             PermissionsGroups.Screenshots.Permissions;
+
 	/// <summary>Gets the restricted user.</summary>
 	public required User User { get; init; }
 
 	/// <summary>Gets or sets the permissions suspended while the restriction is active.</summary>
 	/// <exception cref="ArgumentOutOfRangeException">
-	///     The value is none, sets a bit no permission defines, or includes a management permission.
+	///     The value is none, or sets a bit no permission defines.
 	/// </exception>
 	public required Permissions Permissions
 	{
@@ -50,9 +60,6 @@ public sealed class RestrictionData
 			value.ThrowIfUndefined();
 			if (value == Permissions.None)
 				throw new ArgumentOutOfRangeException(nameof(value), value, "A restriction must suspend a permission.");
-			if ((value & Permissions.Management) != 0)
-				throw new ArgumentOutOfRangeException(nameof(value), value,
-					"Management permissions are withdrawn by changing the permissions, not by a restriction.");
 			field = value;
 		}
 	}

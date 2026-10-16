@@ -19,7 +19,7 @@ internal sealed class UserRestrictionsService(
 	public Task<Restriction?> SilenceAsync(Connection by, User user, DateTimeOffset endsAt,
 		CancellationToken cancellationToken = default)
 	{
-		return ImposeAsync(by, user, Permissions.ModeratorSilence, Permissions.SuspendedBySilence, endsAt,
+		return ImposeAsync(by, user, Permissions.UserSilence, RestrictionData.Silence, endsAt,
 			cancellationToken);
 	}
 
@@ -27,7 +27,7 @@ internal sealed class UserRestrictionsService(
 	public Task<Restriction?> RestrictAsync(Connection by, User user, Permissions permissions,
 		DateTimeOffset? endsAt, CancellationToken cancellationToken = default)
 	{
-		return ImposeAsync(by, user, Permissions.ModeratorRestrict, permissions, endsAt, cancellationToken);
+		return ImposeAsync(by, user, Permissions.UserRestrict, permissions, endsAt, cancellationToken);
 	}
 
 	/// <inheritdoc />
@@ -36,9 +36,9 @@ internal sealed class UserRestrictionsService(
 	{
 		var now = time.GetUtcNow();
 		var user = restriction.Value.User;
-		var silenceOnly = Permissions.SuspendedBySilence.Allows(restriction.Value.Permissions);
-		if (!MayRestrict(by, user, Permissions.ModeratorRestrict, now) &&
-		    !(silenceOnly && MayRestrict(by, user, Permissions.ModeratorSilence, now)))
+		var silenceOnly = RestrictionData.Silence.Allows(restriction.Value.Permissions);
+		if (!MayRestrict(by, user, Permissions.UserRestrict, now) &&
+		    !(silenceOnly && MayRestrict(by, user, Permissions.UserSilence, now)))
 			return false;
 		if (restriction.Value.EndsAt <= now) return true;
 

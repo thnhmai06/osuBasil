@@ -29,7 +29,7 @@ internal sealed class GeneralChannelService(
 	public async Task<ChannelManageResult> CreateAsync(GeneralChannel channel, Connection by,
 		CancellationToken cancellationToken = default)
 	{
-		if (!PermissionRules.Allows(by, Permissions.DeveloperConfigureServer, time.GetUtcNow()))
+		if (!PermissionRules.Allows(by, Permissions.ServerConfigure, time.GetUtcNow()))
 			return ChannelManageResult.NotAuthorized;
 		if (Open(channel) is null) return ChannelManageResult.NameTaken;
 		await channels.CreateOrUpdateAsync(channel, cancellationToken).ConfigureAwait(false);
@@ -41,7 +41,7 @@ internal sealed class GeneralChannelService(
 		Connection by, CancellationToken cancellationToken = default)
 	{
 		var now = time.GetUtcNow();
-		if (!PermissionRules.Allows(by, Permissions.DeveloperConfigureServer, now))
+		if (!PermissionRules.Allows(by, Permissions.ServerConfigure, now))
 			return ChannelManageResult.NotAuthorized;
 
 		Connection[] removed;
@@ -74,7 +74,7 @@ internal sealed class GeneralChannelService(
 	public async Task<ChannelManageResult> DeleteAsync(GeneralChannelSession channel, Connection by,
 		CancellationToken cancellationToken = default)
 	{
-		if (!PermissionRules.Allows(by, Permissions.DeveloperConfigureServer, time.GetUtcNow()))
+		if (!PermissionRules.Allows(by, Permissions.ServerConfigure, time.GetUtcNow()))
 			return ChannelManageResult.NotAuthorized;
 		members.Close(channel);
 		await channels.DeleteAsync(channel.Channel, cancellationToken).ConfigureAwait(false);

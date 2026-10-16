@@ -22,7 +22,7 @@ public interface IGeneralChannelService
 	/// <param name="by">The connection creating it.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, or NameTaken when a general channel with that name is open.</returns>
-	/// <remarks>Requires <see cref="Permissions.DeveloperConfigureServer" />; announces <see cref="ChannelOpened" />.</remarks>
+	/// <remarks>Requires <see cref="Permissions.ServerConfigure" />; announces <see cref="ChannelOpened" />.</remarks>
 	Task<ChannelManageResult> CreateAsync(GeneralChannel channel, Connection by,
 		CancellationToken cancellationToken = default);
 
@@ -33,7 +33,7 @@ public interface IGeneralChannelService
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, or Closed when the channel has closed.</returns>
 	/// <remarks>
-	///     Requires <see cref="Permissions.DeveloperConfigureServer" />. Members who may no longer read the channel are
+	///     Requires <see cref="Permissions.ServerConfigure" />. Members who may no longer read the channel are
 	///     removed; one <see cref="ChannelConfigured" /> reports the change and the removed members.
 	/// </remarks>
 	/// <exception cref="ArgumentException">A permission or the topic in <paramref name="change" /> is invalid.</exception>
@@ -45,7 +45,7 @@ public interface IGeneralChannelService
 	/// <param name="by">The connection deleting it.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok or NotAuthorized.</returns>
-	/// <remarks>Requires <see cref="Permissions.DeveloperConfigureServer" />; announces <see cref="ChannelClosed" />.</remarks>
+	/// <remarks>Requires <see cref="Permissions.ServerConfigure" />; announces <see cref="ChannelClosed" />.</remarks>
 	Task<ChannelManageResult> DeleteAsync(GeneralChannelSession channel, Connection by,
 		CancellationToken cancellationToken = default);
 }

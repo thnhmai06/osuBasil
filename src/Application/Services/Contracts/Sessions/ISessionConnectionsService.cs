@@ -33,7 +33,7 @@ public interface ISessionConnectionsService
 
 	/// <summary>Closes every connection of a user.</summary>
 	/// <param name="by">
-	///     The connection asking: the user themselves, or a user with <see cref="Permissions.OwnerManageAccounts" /> who
+	///     The connection asking: the user themselves, or a user with <see cref="Permissions.UserManage" /> who
 	///     outranks them.
 	/// </param>
 	/// <param name="user">The user whose connections are closed.</param>
@@ -45,14 +45,12 @@ public interface ISessionConnectionsService
 	bool Revoke(Connection by, User user);
 
 	/// <summary>Finds the connection through which an account may act for another online user.</summary>
-	/// <param name="by">The connection asking; its user needs <see cref="Permissions.TournamentActForUsers" />.</param>
+	/// <param name="by">The connection asking.</param>
 	/// <param name="user">The user to act for.</param>
 	/// <returns>A connection that acts for the user, or why there is none.</returns>
 	/// <remarks>
-	///     An operation run through the returned connection is checked against, and attributed to, that user, but only
-	///     the user's permissions in <see cref="Permissions.RoomDelegation" /> count: room and lobby operations work,
-	///     anything else is refused. The caller's rank does not matter, since the user's own authority applies. The
-	///     connection takes no part in channels.
+	///     Acting for another account is not permitted, so this always reports
+	///     <see cref="DelegationFailure.NotPermitted" />; it is kept only until delegation is removed.
 	/// </remarks>
 	(DelegatedConnection? Connection, DelegationFailure? Failure) ActFor(Connection by, User user);
 }

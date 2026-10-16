@@ -17,7 +17,7 @@ internal sealed class AnticheatService(ILobby lobby) : IAnticheatService
 	/// <inheritdoc />
 	public BanchoFlags Report(BanchoConnection player, BanchoFlags flags)
 	{
-		var signs = flags & BanchoFlags.CheatSigns;
+		var signs = flags & BanchoFlagsGroups.CheatSigns;
 		if (signs == BanchoFlags.Clean) return signs;
 
 		_events.Writer.TryWrite(new AnticheatPlayerFlagged(player, signs, lobby.RoomOf(player)));

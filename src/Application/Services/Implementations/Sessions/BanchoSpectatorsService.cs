@@ -17,7 +17,7 @@ internal sealed class BanchoSpectatorsService(
 	public SpectateResult Spectate(BanchoConnection host, Connection by)
 	{
 		if (by is IrcConnection) throw new ArgumentException("IRC clients cannot spectate.", nameof(by));
-		if (!PermissionRules.Allows(by, Permissions.PlayerSpectate, time.GetUtcNow()))
+		if (!PermissionRules.Allows(by, Permissions.SpectatingWatch, time.GetUtcNow()))
 			return SpectateResult.NotPermitted;
 
 		// Leave the previous host before entering this host's scope, so two spectator scopes are never held at once.

@@ -68,7 +68,7 @@ public sealed partial class UserData
 {
 	/// <summary>Gets the form of the name that identifies the user: lower case, with spaces written as underscores.</summary>
 	/// <remarks>Two names with the same safe name are the same name.</remarks>
-	public string SafeName => SafeNameOf(Name);
+	public string NormalizedName => NormalizeName(Name);
 
 	/// <summary>
 	///     Gets or sets the username.
@@ -106,13 +106,13 @@ public sealed partial class UserData
 	{
 		get;
 		set => field = value.ThrowIfUndefined();
-	} = Permissions.Player | Permissions.Supporter;
+	} = PermissionsGroups.Default;
 
 	/// <summary>Gets or sets the date and time when the user was deleted, if any.</summary>
 	public DateTimeOffset? DeletedAt { get; set; }
 
-	/// <summary>Gets the safe name of a user name.</summary>
-	public static string SafeNameOf(string name)
+	/// <summary>Gets the normalized form of a user name.</summary>
+	public static string NormalizeName(string name)
 	{
 		return name.ToLowerInvariant().Replace(' ', '_');
 	}

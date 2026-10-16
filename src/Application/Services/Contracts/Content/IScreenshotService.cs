@@ -12,7 +12,7 @@ public interface IScreenshotService
 	const int MaxScreenshotBytes = 4 * 1024 * 1024;
 
 	/// <summary>Stores a screenshot under a new unique name.</summary>
-	/// <param name="by">The connection uploading it; its user needs <see cref="Permissions.PlayerUploadScreenshots" />.</param>
+	/// <param name="by">The connection uploading it; its user needs <see cref="Permissions.ScreenshotUpload" />.</param>
 	/// <param name="content">The image, read to its end; not disposed.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The reference to the stored screenshot, or why it was not stored.</returns>
@@ -24,7 +24,7 @@ public interface IScreenshotService
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Deletes a stored screenshot.</summary>
-	/// <param name="by">The connection deleting it; its user needs <see cref="Permissions.ModeratorDeleteScreenshots" />.</param>
+	/// <param name="by">The connection deleting it; its user needs <see cref="Permissions.ScreenshotDelete" />.</param>
 	/// <param name="screenshot">The reference of the screenshot to delete.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>

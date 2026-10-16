@@ -14,7 +14,7 @@ internal sealed class ScreenshotService(IScreenshotStorage screenshots, TimeProv
 	public async Task<(ContentReference? Screenshot, ScreenshotUploadFailure? Failure)> UploadAsync(Connection by,
 		Stream content, CancellationToken cancellationToken = default)
 	{
-		if (!PermissionRules.Allows(by, Permissions.PlayerUploadScreenshots, time.GetUtcNow()))
+		if (!PermissionRules.Allows(by, Permissions.ScreenshotUpload, time.GetUtcNow()))
 			return (null, ScreenshotUploadFailure.NotAuthorized);
 
 		using var memory = new MemoryStream();
@@ -44,7 +44,7 @@ internal sealed class ScreenshotService(IScreenshotStorage screenshots, TimeProv
 	public async Task<bool> DeleteAsync(Connection by, ContentReference screenshot,
 		CancellationToken cancellationToken = default)
 	{
-		if (!PermissionRules.Allows(by, Permissions.ModeratorDeleteScreenshots, time.GetUtcNow())) return false;
+		if (!PermissionRules.Allows(by, Permissions.ScreenshotDelete, time.GetUtcNow())) return false;
 		await screenshots.DeleteAsync(screenshot, cancellationToken).ConfigureAwait(false);
 		return true;
 	}

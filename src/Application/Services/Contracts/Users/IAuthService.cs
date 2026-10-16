@@ -23,7 +23,7 @@ public interface IAuthService
 	///     osu!tourney login.
 	/// </exception>
 	/// <remarks>
-	///     An osu!tourney login needs <see cref="Permissions.TournamentObserveRooms" /> in effect. A successful login is
+	///     An osu!tourney login needs <see cref="Permissions.RoomObserve" /> in effect. A successful login is
 	///     recorded in the login history.
 	/// </remarks>
 	Task<LoginResult> LoginAsync(LoginAttempt attempt, ConnectionType type, IPAddress ip, BanchoClient? client,
@@ -55,7 +55,7 @@ public interface IAuthService
 
 	/// <summary>Creates an account on behalf of a user who manages accounts, whether or not account creation is locked.</summary>
 	/// <param name="by">
-	///     The connection acting; its user needs <see cref="Permissions.OwnerManageAccounts" /> and every permission
+	///     The connection acting; its user needs <see cref="Permissions.UserManage" /> and every permission
 	///     the new account is granted.
 	/// </param>
 	/// <param name="data">The account data.</param>
@@ -71,7 +71,7 @@ public interface IAuthService
 	/// <summary>Replaces a user's password and ends every session they have.</summary>
 	/// <param name="by">
 	///     The connection acting: the user themselves, who must give the current password, or a user with
-	///     <see cref="Permissions.OwnerManageAccounts" /> who outranks them.
+	///     <see cref="Permissions.UserManage" /> who outranks them.
 	/// </param>
 	/// <param name="user">The user whose password is replaced.</param>
 	/// <param name="newPasswordHash">The MD5 digest of the new password.</param>
