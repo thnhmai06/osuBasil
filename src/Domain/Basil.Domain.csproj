@@ -1,0 +1,13 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.Options"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<Folder Include="Multiplayer\Matches\"/>
+		<Folder Include="Multiplayer\Rounds\"/>
+	</ItemGroup>
+
+</Project>

@@ -10,11 +10,12 @@
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
 		<PackageReference Include="Microsoft.NET.Test.Sdk"/>
-		<PackageReference Include="xunit"/>
+		<PackageReference Include="xunit.v3"/>
 		<PackageReference Include="xunit.runner.visualstudio">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
+		<PackageReference Include="NSubstitute"/>
 	</ItemGroup>
 
 	<ItemGroup>
@@ -22,7 +23,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\src\Basil.Domain\Basil.Domain.csproj"/>
+		<ProjectReference Include="..\..\src\Domain\Basil.Domain.csproj"/>
 	</ItemGroup>
 
 </Project>

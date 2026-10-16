@@ -1,30 +1,32 @@
 using System.Net;
 using System.Net.Http.Json;
-using Basil.Application.Abstractions.Beatmaps;
-using Basil.Application.Configurations;
-using Basil.Application.Formats;
+using Basil.Application.Beatmaps;
+using Basil.Application.Shared.Configuration;
+using Basil.Application.Shared.Http;
+using Basil.Application.Shared.Json;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
-using Basil.Web;
-using Basil.Web.OpenApi;
+using Basil.Host;
+using Basil.Infrastructure.Beatmaps;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
 namespace Basil.IntegrationTests;
 
 /// <summary>
-///     Covers `GET /beatmapsets/{mapsetId}/{beatmapId}/difficulty` end-to-end against a real
+///     Covers `GET /beatmapsets/{beatmapsetId}/{beatmapId}/difficulty` end-to-end against a real
 ///     analyzable `.osu` file (the same fixture <c>PpyOsuCalculatorTests</c> uses, so the recorded
 ///     NoMod/HardRock star ratings there double as a cross-check here) — not just route wiring, since
 ///     this endpoint's whole point is running the real ppy.osu.Game difficulty calculator.
 /// </summary>
-public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactory<Program>>, IDisposable
+public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>, IDisposable
 {
 	// Verbatim copy of Basil.Infrastructure.Tests/Fixtures/vivid_osu_file.osu — PpyOsuCalculatorTests
-	// records NoMod Sr=4.8750450142072701 (-> 4.88 rounded) and HardRock Sr=5.9296060838721534 (-> 5.93
+	// records NoMod Star=4.8750450142072701 (-> 4.88 rounded) and HardRock Star=5.9296060838721534 (-> 5.93
 	// rounded) against this exact content.
 	private const string FixtureOsuContent = """
 	                                         osu file format v3
@@ -169,11 +171,11 @@ public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactor
 	                                         """;
 
 	private readonly string _dataDir = Directory.CreateTempSubdirectory("basil-difficulty-tests-").FullName;
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 	private Beatmap? _beatmap;
-	private Beatmapset? _mapset;
+	private Beatmapset? _beatmapset;
 
-	public BeatmapDifficultyEndpointTests(WebApplicationFactory<Program> factory)
+	public BeatmapDifficultyEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		var maps = Substitute.For<IBeatmapRepository>();
 		maps.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),
@@ -186,9 +188,9 @@ public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactor
 		maps.FetchAllBySetIdAsync(Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
 			.Returns(_ => _beatmap is null ? [] : [_beatmap]);
 
-		var mapsets = Substitute.For<IBeatmapsetRepository>();
-		mapsets.FetchByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-			.Returns(_ => _mapset?.Id == _beatmap?.Beatmapset.Id ? _mapset : null);
+		var beatmapsets = Substitute.For<IBeatmapsetRepository>();
+		beatmapsets.FetchByIdAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+			.Returns(_ => _beatmapset?.Id == _beatmap?.Beatmapset.Id ? _beatmapset : null);
 
 		_factory = factory.WithWebHostBuilder(builder =>
 		{
@@ -202,20 +204,28 @@ public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactor
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton(TestDoubles.FixedAdminKeySettingsRepository());
 				services.AddSingleton(maps);
-				services.AddSingleton(mapsets);
+				services.AddSingleton(beatmapsets);
 				services.AddSingleton(Options.Create(new StorageOptions
 				{
 					ReplaysPath = Path.Combine(_dataDir, "Replays"),
 					AvatarsPath = Path.Combine(_dataDir, "Avatars"),
-					MapsetsPath = Path.Combine(_dataDir, "Mapsets"),
+					BeatmapsetsPath = Path.Combine(_dataDir, "Beatmapsets"),
 					MenuSeasonalsPath = Path.Combine(_dataDir, "Seasonals"),
 					MenuBannersPath = Path.Combine(_dataDir, "Banners"),
 					FaqsPath = Path.Combine(_dataDir, "Faqs"),
 					CachePath = Path.Combine(_dataDir, "Cache")
 				}));
+				// These tests seed a legacy on-disk beatmapset folder directly and read it back within
+				// the same request (or expect it to still be there at Dispose()); the live watcher and
+				// the startup migration pass both race that same folder in the background otherwise --
+				// converting or moving it out from under the test -- so, like
+				// BeatmapsetManagementEndpointTests' file-layout-sensitive tests, this host runs
+				// without either.
+				RemoveHostedService<BeatmapWatcherService>(services);
+				RemoveHostedService<BeatmapsetMigrationService>(services);
 			});
 		});
 	}
@@ -225,19 +235,26 @@ public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactor
 		if (Directory.Exists(_dataDir)) Directory.Delete(_dataDir, true);
 	}
 
+	private static void RemoveHostedService<T>(IServiceCollection services) where T : class
+	{
+		var descriptor = services.FirstOrDefault(d =>
+			d.ServiceType == typeof(IHostedService) && d.ImplementationType == typeof(T));
+		if (descriptor is not null) services.Remove(descriptor);
+	}
+
 	private static HttpRequestMessage MakeRequest(string path)
 	{
 		return new HttpRequestMessage(HttpMethod.Get, path) { Headers = { Host = "api.test.local" } };
 	}
 
-	private void SeedBeatmap(int mapsetId, int beatmapId, bool isPrivate = false)
+	private void SeedBeatmap(int beatmapsetId, int beatmapId, bool isPrivate = false)
 	{
-		_mapset = new Beatmapset(mapsetId, "FAIRY FORE", "Vivid", "Hitoshirenu Shourai", DateTime.UnixEpoch,
+		_beatmapset = new Beatmapset(beatmapsetId, "FAIRY FORE", "Vivid", "Hitoshirenu Shourai", DateTime.UnixEpoch,
 			DateTime.UnixEpoch, IsPrivate: isPrivate);
-		_beatmap = new Beatmap(new string('a', 32), beatmapId, _mapset, "Insane", "vivid.osu",
-			new Difficulty(GameMode.Standard, 0, TimeSpan.Zero, 0, 0, 0, 0, 0), new OsuBeatmapObjectCounts());
+		_beatmap = new Beatmap(new string('a', 32), beatmapId, _beatmapset, "Insane", "vivid.osu",
+			new Difficulty(GameMode.Standard, 0, TimeSpan.Zero, 0, 0, 0, 0, 0), new OsuObjects());
 
-		var folder = Path.Combine(_dataDir, "Mapsets", $"{mapsetId} FAIRY FORE - Vivid");
+		var folder = Path.Combine(_dataDir, "Beatmapsets", $"{beatmapsetId} FAIRY FORE - Vivid");
 		Directory.CreateDirectory(folder);
 		File.WriteAllText(Path.Combine(folder, "vivid.osu"), FixtureOsuContent);
 	}
@@ -248,13 +265,15 @@ public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactor
 		SeedBeatmap(9001, 1);
 		using var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/beatmapsets/9001/1/difficulty"));
+		var response = await client.SendAsync(MakeRequest("/beatmapsets/9001/1/difficulty"),
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-		var body = await response.Content.ReadFromJsonAsync<Envelope<DifficultyResultShape>>(BasilJsonOptions.Instance);
+		var body = await response.Content.ReadFromJsonAsync<Envelope<DifficultyResultShape>>(BasilJsonOptions.Instance,
+			TestContext.Current.CancellationToken);
 		Assert.NotNull(body?.Data);
 		Assert.Equal(Mods.NoMod, body.Data.Mods);
-		Assert.Equal(4.88, body.Data.Beatmap.Difficulty.Sr, 2);
+		Assert.Equal(4.88, body.Data.Beatmap.Difficulty.Star, 2);
 	}
 
 	[Fact]
@@ -263,13 +282,15 @@ public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactor
 		SeedBeatmap(9002, 2);
 		using var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/beatmapsets/9002/2/difficulty?mods=16"));
+		var response = await client.SendAsync(MakeRequest("/beatmapsets/9002/2/difficulty?mods=16"),
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-		var body = await response.Content.ReadFromJsonAsync<Envelope<DifficultyResultShape>>(BasilJsonOptions.Instance);
+		var body = await response.Content.ReadFromJsonAsync<Envelope<DifficultyResultShape>>(BasilJsonOptions.Instance,
+			TestContext.Current.CancellationToken);
 		Assert.NotNull(body?.Data);
 		Assert.Equal(Mods.HardRock, body.Data.Mods);
-		Assert.Equal(5.93, body.Data.Beatmap.Difficulty.Sr, 2);
+		Assert.Equal(5.93, body.Data.Beatmap.Difficulty.Star, 2);
 		Assert.Equal(7.8, body.Data.Beatmap.Difficulty.Cs, 1); // raw CS=6 * 1.3
 	}
 
@@ -279,7 +300,8 @@ public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactor
 		SeedBeatmap(9003, 3);
 		using var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/beatmapsets/9003/3/difficulty?mode=9"));
+		var response = await client.SendAsync(MakeRequest("/beatmapsets/9003/3/difficulty?mode=9"),
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 	}
@@ -289,23 +311,25 @@ public class BeatmapDifficultyEndpointTests : IClassFixture<WebApplicationFactor
 	{
 		using var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/beatmapsets/9004/999/difficulty"));
+		var response = await client.SendAsync(MakeRequest("/beatmapsets/9004/999/difficulty"),
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
 
 	[Fact]
-	public async Task GetDifficulty_PrivateMapsetWithoutAdminKey_ReturnsNotFound()
+	public async Task GetDifficulty_PrivateBeatmapsetWithoutAdminKey_ReturnsNotFound()
 	{
 		SeedBeatmap(9005, 5, true);
 		using var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest("/beatmapsets/9005/5/difficulty"));
+		var response = await client.SendAsync(MakeRequest("/beatmapsets/9005/5/difficulty"),
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
 
-	// Local shadow of BeatmapsetRoutes.BeatmapDifficultyResult — that type is internal to Basil.Web, so
+	// Local shadow of BeatmapsetRoutes.BeatmapDifficultyResult — that type is internal to Basil.Infrastructure, so
 	// the test deserializes into its own matching shape instead (same pattern as ScoreEndpointTests'
 	// ScoreShape), pulling in only the fields these tests actually assert on.
 	private sealed record DifficultyResultShape(Mods Mods, BeatmapShape Beatmap);

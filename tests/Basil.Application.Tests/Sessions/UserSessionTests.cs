@@ -29,8 +29,8 @@ public class UserSessionTests
 			UserPrivileges.Unrestricted | UserPrivileges.Donator | UserPrivileges.Moderator
 			| UserPrivileges.Administrator | UserPrivileges.Developer);
 
-		var expected = ClientPrivileges.Player | ClientPrivileges.Supporter | ClientPrivileges.Moderator
-		               | ClientPrivileges.Developer | ClientPrivileges.Owner;
+		const ClientPrivileges expected = ClientPrivileges.Player | ClientPrivileges.Supporter | ClientPrivileges.Moderator
+		                                  | ClientPrivileges.Developer | ClientPrivileges.Owner;
 		Assert.Equal(expected, session.BanchoPrivilege);
 	}
 

@@ -11,6 +11,12 @@ Commands include:
 
 The `!mp` commands can be used for tournament operations such as creating and configuring rooms, managing referees and players, and controlling match timers.
 
+Match timers (`!mp start <seconds>`, `!mp timer`, `!mp aborttimer`) are run by BasilBot itself, not by the server.
+Only the room's creator and referees can start or abort one. When a timer that starts the match ends, BasilBot starts
+the round on behalf of the user who set it, so the server checks that user's authority at that moment. A timer that
+would start the match is cancelled when the round's settings change, and any timer stops when a round starts or is
+aborted or the room closes.
+
 ---
 
 ## Command reference

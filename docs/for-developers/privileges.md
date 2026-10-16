@@ -2,7 +2,7 @@
 
 ## Overview
 
-Basil represents account privileges as a bitfield: [`Basil.Domain.Users.Privileges`](../../src/Basil.Domain/Users/Privileges.cs).
+Basil represents account privileges as a bitfield: [`Basil.Domain.Users.Privileges`](../../src/Domain/Users/Privileges.cs).
 
 A user can therefore hold any combination of privileges simultaneously. Basil does not model mutually exclusive roles
 such as "moderator" or "tournament manager".
@@ -209,7 +209,7 @@ This separation is intentional: tournament control and server administration are
 
 The server-side privilege model is not identical to the privilege names understood by the osu! client.
 
-During Bancho login, Basil maps server privileges to protocol-level [`ClientPrivileges`](../../src/Basil.Domain/Users/Privileges.cs):
+During Bancho login, Basil maps server privileges to protocol-level [`ClientPrivileges`](../../src/Domain/Users/Privileges.cs):
 
 | Server privilege | Client privilege |
 |------------------|------------------|
@@ -258,7 +258,7 @@ The privilege model depends on several rules:
 
 ## Related code
 
-* [`Basil.Domain/Users/Privileges.cs`](../../src/Basil.Domain/Users/Privileges.cs): privilege definitions and composite masks
+* [`Basil.Domain/Users/Privileges.cs`](../../src/Domain/Users/Privileges.cs): privilege definitions and composite masks
 * [`Basil.Application/Services/Authentication/LoginService.cs`](../../src/Basil.Application/Services/Authentication/LoginService.cs): `Verified` auto-grant and login privilege handling
 * [`Basil.Application/Services/Multiplayer/MatchMembershipService.cs`](../../src/Basil.Application/Services/Multiplayer/MatchMembershipService.cs): privilege checks during match joining
 * [`Basil.Application/Services/Chat/ChatDispatchService.cs`](../../src/Basil.Application/Services/Chat/ChatDispatchService.cs): unrestricted chat authorization

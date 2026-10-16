@@ -1,12 +1,12 @@
 using System.Net;
-using Basil.Application.Abstractions.Beatmaps;
-using Basil.Application.Abstractions.Scores;
-using Basil.Application.Abstractions.Users;
-using Basil.Application.Configurations;
+using Basil.Application.Beatmaps;
+using Basil.Application.Scores;
 using Basil.Application.Sessions;
+using Basil.Application.Shared.Configuration;
+using Basil.Application.Users;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Users;
-using Basil.Web;
+using Basil.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,20 +21,20 @@ namespace Basil.IntegrationTests;
 ///     status-broadcast side effect (the only request osu! sends on every song-select map change),
 ///     and the two status outcomes (known/unknown map).
 /// </summary>
-public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
-	public const string KnownMd5 = "known-md5";
+	private const string KnownMd5 = "known-md5";
 
 	private static readonly Beatmapset Beatmapset = new(1, "Artist", "Title", "Creator", DateTime.UnixEpoch,
 		DateTime.UnixEpoch);
 
 	private static readonly Beatmap Beatmap = new(
 		KnownMd5, 1, Beatmapset, "Normal", "map.osu",
-		new Difficulty(GameMode.Standard, 0, TimeSpan.Zero, 0, 0, 0, 0, 0), new OsuBeatmapObjectCounts());
+		new Difficulty(GameMode.Standard, 0, TimeSpan.Zero, 0, 0, 0, 0, 0), new OsuObjects());
 
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 
-	public GetScoresEndpointTests(WebApplicationFactory<Program> factory)
+	public GetScoresEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		var users = Substitute.For<IUserRepository>();
 		users.FetchPasswordHashAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
@@ -45,7 +45,7 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
 		maps.FetchOneAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int?>(),
 				Arg.Any<bool>(), Arg.Any<CancellationToken>())
 			.Returns(call => call.ArgAt<string?>(1) == KnownMd5 ? Beatmap : null);
-		maps.SearchAsync(Arg.Any<string?>(), Arg.Any<GameMode?>(), Arg.Any<int>(), Arg.Any<int>(),
+		maps.SearchAsync(Arg.Any<BeatmapFilters>(), Arg.Any<GameMode?>(), Arg.Any<int>(), Arg.Any<int>(),
 				Arg.Any<CancellationToken>())
 			.Returns(Task.FromResult<IReadOnlyList<IReadOnlyList<Beatmap>>>([]));
 		maps.FetchAllBySetIdAsync(Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
@@ -92,7 +92,7 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
 		var client = _factory.CreateClient();
 		var request = MakeRequest("us=nobody&ha=x&m=0&mods=0");
 
-		var response = await client.SendAsync(request);
+		var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 	}
@@ -105,7 +105,7 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
 			DateTimeOffset.UnixEpoch));
 		var request = MakeRequest("us=cmyui-wrongpw&ha=wrong-md5&m=0&mods=0");
 
-		var response = await _factory.CreateClient().SendAsync(request);
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 	}
@@ -118,22 +118,22 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
 			DateTimeOffset.UnixEpoch));
 		var request = MakeRequest("us=cmyui-stub&ha=correct-md5&c=unknown-md5&m=0&mods=0");
 
-		var response = await _factory.CreateClient().SendAsync(request);
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal("-1|false", body);
 	}
 
 	[Fact]
-	public async Task Authenticated_KnownMap_ReturnsMapsetRankedStatus()
+	public async Task Authenticated_KnownMap_ReturnsBeatmapsetRankedStatus()
 	{
 		var sessionRegistry = _factory.Services.GetRequiredService<ISessionRegistry<GameSession>>();
 		sessionRegistry.TryAdd(new GameSession(56, "cmyui-known", "tok5", UserPrivileges.Unrestricted,
 			DateTimeOffset.UnixEpoch));
 		var request = MakeRequest($"us=cmyui-known&ha=correct-md5&c={KnownMd5}&m=0&mods=0");
 
-		var response = await _factory.CreateClient().SendAsync(request);
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal($"{(int)BeatmapStatus.Approved}|false", body);
 	}
@@ -150,7 +150,7 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
 		sessionRegistry.TryAdd(other);
 		var request = MakeRequest("us=cmyui-status&ha=correct-md5&m=1&mods=8"); // Taiko + Hidden, differs from defaults
 
-		await _factory.CreateClient().SendAsync(request);
+		await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.NotEmpty(other.Dequeue());
 	}
@@ -167,7 +167,7 @@ public class GetScoresEndpointTests : IClassFixture<WebApplicationFactory<Progra
 		sessionRegistry.TryAdd(other);
 		var request = MakeRequest("us=cmyui-nochange&ha=correct-md5&m=0&mods=0"); // matches UserStatus defaults
 
-		await _factory.CreateClient().SendAsync(request);
+		await _factory.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Empty(other.Dequeue());
 	}

@@ -138,12 +138,14 @@ public sealed class DockerServerHost(ServerHostSettings settings) : IServerHost
 	{
 		try
 		{
+			// Uncapped: a fixed-line tail can discard the onset of a failure burst — the dotnet host's
+			// equivalent report file had this exact bug (see DotnetServerHost.ExportResultsAsync).
 			using var stream = await _client.Containers.GetContainerLogsAsync(containerId, false,
 				new ContainerLogsParameters
 				{
 					ShowStdout = true,
 					ShowStderr = true,
-					Tail = "500"
+					Tail = "all"
 				}, cancellationToken);
 
 			var builder = new StringBuilder();
