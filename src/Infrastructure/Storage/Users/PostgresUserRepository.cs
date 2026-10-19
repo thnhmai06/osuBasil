@@ -15,6 +15,9 @@ namespace Basil.Infrastructure.Storage.Users;
 internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWriter writer)
 	: MemoryRepository<int, UserRecord>(reader, writer), IUserRepository
 {
+	/// <summary>The expression that gives a stored name its identifying form: lower case, with spaces as underscores.</summary>
+	private const string NormalizedNameSql = "lower(replace(name, ' ', '_'))";
+
 	private readonly WeakIndex<string, UserRecord> _byName = new();
 
 	protected override string WriteSql =>
@@ -35,7 +38,6 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 		var parameters = new
 		{
 			data.Name,
-			NormalizedName = data.NormalizedName,
 			Country = (int)data.Country,
 			Permissions = (long)data.Permissions,
 			DeletedAt = data.DeletedAt?.ToUniversalTime()
@@ -45,8 +47,8 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 		{
 			id = await Writer.WriteAsync(Root.Server, (connection, transaction) => connection.QuerySingleAsync<int>(
 				"""
-				insert into users (name, safe_name, country, permissions, deleted_at)
-				values (@Name, @NormalizedName, @Country, @Permissions, @DeletedAt)
+				insert into users (name, country, permissions, deleted_at)
+				values (@Name, @Country, @Permissions, @DeletedAt)
 				returning id;
 				""",
 				parameters, transaction), cancellationToken);
@@ -63,6 +65,8 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 	public Task UpdateAsync(UserRecord user, CancellationToken cancellationToken = default)
 	{
 		_ = SaveAsync(user);
+		if (user.Value.DeletedAt is not null)
+			_byName.Remove(user.Value.NormalizedName, user);
 		return Task.CompletedTask;
 	}
 
@@ -81,8 +85,8 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 		try
 		{
 			await Writer.WriteAsync(Root.User(live.Id), (connection, transaction) => connection.ExecuteAsync(
-				"update users set name = @Name, safe_name = @NormalizedName where id = @Id",
-				new { Name = name, NormalizedName = newSafe, live.Id }, transaction), cancellationToken);
+				"update users set name = @Name where id = @Id",
+				new { Name = name, live.Id }, transaction), cancellationToken);
 		}
 		catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation)
 		{
@@ -91,7 +95,7 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 
 		live.Value.Name = name;
 		_byName.Remove(old, live);
-		_byName.Set(live.Value.NormalizedName, live);
+		IndexUser(live);
 		return true;
 	}
 
@@ -109,7 +113,8 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 			return known;
 
 		var foundId = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<int?>(
-			"select id from users where safe_name = @NormalizedName", new { NormalizedName = safeName }), cancellationToken);
+			$"select id from users where {NormalizedNameSql} = @NormalizedName and deleted_at is null",
+			new { NormalizedName = safeName }), cancellationToken);
 		return foundId is { } found ? await FindUserAsync(found, cancellationToken) : null;
 	}
 
@@ -144,6 +149,8 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 		live.Value.Country = from.Value.Country;
 		live.Value.Permissions = from.Value.Permissions;
 		live.Value.DeletedAt = from.Value.DeletedAt;
+		if (live.Value.DeletedAt is not null)
+			_byName.Remove(live.Value.NormalizedName, live);
 	}
 
 	protected override async Task<UserRecord?> LoadAsync(int key)
@@ -182,9 +189,11 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 		return user;
 	}
 
+	/// <summary>Indexes a live user by name; a user who is deleted is not indexed, so their name stays free.</summary>
 	private void IndexUser(UserRecord live)
 	{
-		_byName.Set(live.Value.NormalizedName, live);
+		if (live.Value.DeletedAt is null)
+			_byName.Set(live.Value.NormalizedName, live);
 	}
 
 	/// <summary>Builds the shared filter and parameters for a user listing.</summary>
@@ -211,12 +220,12 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 			parameters.Add("Pattern", pattern);
 			if (int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var id))
 			{
-				conditions.Add("(id = @TextId OR safe_name LIKE @Pattern)");
+				conditions.Add($"(id = @TextId OR {NormalizedNameSql} LIKE @Pattern)");
 				parameters.Add("TextId", id);
 			}
 			else
 			{
-				conditions.Add("safe_name LIKE @Pattern");
+				conditions.Add($"{NormalizedNameSql} LIKE @Pattern");
 			}
 		}
 
