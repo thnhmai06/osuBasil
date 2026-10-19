@@ -78,3 +78,25 @@ public sealed record RoomRoundPlayerCompleted(Room Room, Round Round, int Slot) 
 /// <param name="Score">The relation between the stored score and the round.</param>
 public sealed record RoomRoundScoreSubmitted(Room Room, Round Round, UserRecord Player, RoundScore Score)
 	: RoomRoundEvent(Room, Round);
+
+/// <summary>A countdown started in a room.</summary>
+/// <param name="Room">The room.</param>
+/// <param name="Countdown">The countdown that started.</param>
+public sealed record RoomCountdownStarted(Room Room, RoomCountdown Countdown) : RoomEvent(Room);
+
+/// <summary>A countdown reached one of its announced marks.</summary>
+/// <param name="Room">The room.</param>
+/// <param name="Countdown">The countdown that reached the mark.</param>
+/// <param name="Remaining">The time remaining at the mark.</param>
+public sealed record RoomCountdownTicked(Room Room, RoomCountdown Countdown, TimeSpan Remaining) : RoomEvent(Room);
+
+/// <summary>A countdown elapsed.</summary>
+/// <param name="Room">The room.</param>
+/// <param name="Countdown">The countdown that elapsed.</param>
+/// <param name="StartResult">The result of starting a round, or <see cref="RoomResult.Ok" /> when no round was requested.</param>
+public sealed record RoomCountdownElapsed(Room Room, RoomCountdown Countdown, RoomResult StartResult) : RoomEvent(Room);
+
+/// <summary>A countdown was cancelled.</summary>
+/// <param name="Room">The room.</param>
+/// <param name="Countdown">The countdown that was cancelled.</param>
+public sealed record RoomCountdownCancelled(Room Room, RoomCountdown Countdown) : RoomEvent(Room);

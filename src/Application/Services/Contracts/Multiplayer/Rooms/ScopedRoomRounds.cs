@@ -32,9 +32,46 @@ public sealed class ScopedRoomRounds
 		if (room.Rounds.InProgress) return RoomResult.InProgress;
 		if (room.Settings.Beatmap is null) return RoomResult.NoBeatmap;
 
+		room.CancelCountdown(announce: true);
 		var (round, players) = room.BeginRound();
 		room.Context.Events.Emit(new RoomRoundStarted(room, round, players));
 		return RoomResult.Ok;
+	}
+
+	/// <summary>Starts a countdown in the room, optionally starting a round when it elapses.</summary>
+	/// <param name="length">How long the countdown runs.</param>
+	/// <param name="startsRound">Whether the countdown starts a round when it elapses.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>Ok, NotAuthorized, InvalidSettings, InProgress or RoomClosed when the room has closed.</returns>
+	public async Task<RoomResult> StartCountdownAsync(TimeSpan length, bool startsRound,
+		CancellationToken cancellationToken = default)
+	{
+		var required = RoomPermissions.RoundsCountdown;
+		if (startsRound) required |= RoomPermissions.RoundsStart;
+		if (_scoped.Require(required) is { } denied) return denied;
+
+		await using var scope = await _scoped.Room.EnterAsync(cancellationToken);
+		if (scope is null) return RoomResult.RoomClosed;
+
+		var room = _scoped.Room;
+		if (length <= TimeSpan.Zero) return RoomResult.InvalidSettings;
+		if (startsRound && room.Rounds.InProgress) return RoomResult.InProgress;
+
+		room.StartCountdown(_scoped.By.User, length, startsRound);
+		return RoomResult.Ok;
+	}
+
+	/// <summary>Cancels the room's current countdown.</summary>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>Ok, NotAuthorized, NoCountdown or RoomClosed when the room has closed.</returns>
+	public async Task<RoomResult> CancelCountdownAsync(CancellationToken cancellationToken = default)
+	{
+		if (_scoped.Require(RoomPermissions.RoundsCountdown) is { } denied) return denied;
+
+		await using var scope = await _scoped.Room.EnterAsync(cancellationToken);
+		if (scope is null) return RoomResult.RoomClosed;
+
+		return _scoped.Room.CancelCountdown(announce: true) ? RoomResult.Ok : RoomResult.NoCountdown;
 	}
 
 	/// <summary>Aborts the round in progress; players go back to not ready.</summary>
@@ -50,6 +87,7 @@ public sealed class ScopedRoomRounds
 		var room = _scoped.Room;
 		if (!room.Rounds.InProgress) return RoomResult.NotInProgress;
 
+		room.CancelCountdown(announce: true);
 		var round = room.EndCurrentRound(true)!;
 		room.Context.Events.Emit(new RoomRoundAborted(room, round));
 		return RoomResult.Ok;

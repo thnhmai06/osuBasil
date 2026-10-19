@@ -3,6 +3,7 @@ using Basil.Application.Services.Contracts.Sessions;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer.Matches;
 using Basil.Domain.Multiplayer.Rounds;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Contracts.Multiplayer.Rooms;
 
@@ -234,6 +235,86 @@ public sealed class Room : IEquatable<Room>
 	internal void ReportIfEmpty()
 	{
 		if (!Slots.Any(slot => slot.Player is not null)) Context.Lobby.Emptied(this);
+	}
+
+	/// <summary>Starts a countdown in this room, replacing any countdown already running.</summary>
+	/// <param name="by">The user who started the countdown.</param>
+	/// <param name="length">How long the countdown runs.</param>
+	/// <param name="startsRound">Whether the countdown starts a round when it elapses.</param>
+	/// <returns>The countdown that started.</returns>
+	/// <remarks>The caller holds the room's scope.</remarks>
+	internal RoomCountdown StartCountdown(UserRecord by, TimeSpan length, bool startsRound)
+	{
+		CancelCountdown(announce: false);
+
+		var countdown = new RoomCountdown(by, length, startsRound, Context.Clock.GetUtcNow());
+		Rounds.Countdown = countdown;
+		Rounds.CountdownTimers =
+		[
+			.. RoomCountdown.MarksFor(length, startsRound).Select(mark =>
+				Context.Clock.CreateTimer(_ => Fire(() => TickCountdownAsync(countdown, mark)), null, length - mark,
+					Timeout.InfiniteTimeSpan)),
+			Context.Clock.CreateTimer(_ => Fire(() => ElapseCountdownAsync(countdown)), null, length,
+				Timeout.InfiniteTimeSpan)
+		];
+		Context.Events.Emit(new RoomCountdownStarted(this, countdown));
+		return countdown;
+	}
+
+	/// <summary>Cancels this room's countdown.</summary>
+	/// <param name="announce">Whether to emit a cancellation event.</param>
+	/// <returns><see langword="true" /> when a countdown was cancelled.</returns>
+	/// <remarks>The caller holds the room's scope.</remarks>
+	internal bool CancelCountdown(bool announce)
+	{
+		var countdown = Rounds.Countdown;
+		foreach (var timer in Rounds.CountdownTimers) timer.Dispose();
+		Rounds.CountdownTimers = [];
+		Rounds.Countdown = null;
+
+		if (countdown is null) return false;
+		if (announce) Context.Events.Emit(new RoomCountdownCancelled(this, countdown));
+		return true;
+	}
+
+	private async Task TickCountdownAsync(RoomCountdown countdown, TimeSpan remaining)
+	{
+		await using var scope = await EnterAsync();
+		if (scope is null || !ReferenceEquals(Rounds.Countdown, countdown)) return;
+		Context.Events.Emit(new RoomCountdownTicked(this, countdown, remaining));
+	}
+
+	private async Task ElapseCountdownAsync(RoomCountdown countdown)
+	{
+		await using var scope = await EnterAsync();
+		if (scope is null) return;
+		ElapseCountdown(countdown);
+	}
+
+	private void ElapseCountdown(RoomCountdown countdown)
+	{
+		if (!ReferenceEquals(Rounds.Countdown, countdown)) return;
+
+		CancelCountdown(announce: false);
+		(Round Round, IReadOnlyList<BanchoConnection> Players)? started = null;
+		var result = RoomResult.Ok;
+		if (countdown.StartsRound)
+		{
+			if (Rounds.InProgress)
+				result = RoomResult.InProgress;
+			else if (Settings.Beatmap is null)
+				result = RoomResult.NoBeatmap;
+			else
+				started = BeginRound();
+		}
+
+		Context.Events.Emit(new RoomCountdownElapsed(this, countdown, result));
+		if (started is { } round) Context.Events.Emit(new RoomRoundStarted(this, round.Round, round.Players));
+	}
+
+	private static void Fire(Func<Task> action)
+	{
+		_ = action().ContinueWith(static task => _ = task.Exception, TaskContinuationOptions.OnlyOnFaulted);
 	}
 
 	/// <summary>Ends a room's round in progress and sets its players back to not ready.</summary>

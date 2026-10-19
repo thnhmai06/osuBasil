@@ -33,7 +33,8 @@ public sealed class ScopedRoomSettings
 	///     A change to the beatmap, mode, mods, freemod, team type or win condition cancels a countdown that would start the
 	///     round.
 	/// </remarks>
-	public async Task<RoomResult> ConfigureAsync(RoomSettingsChange change, CancellationToken cancellationToken = default)
+	public async Task<RoomResult> ConfigureAsync(RoomSettingsChange change,
+		CancellationToken cancellationToken = default)
 	{
 		var room = _scoped.Room;
 		var by = _scoped.By;
@@ -97,7 +98,13 @@ public sealed class ScopedRoomSettings
 		if (change.Size is { } size) room.Slots.Resize(size);
 		if (change.IsPrivate is { } isPrivate) room.Match.Value.IsPrivate = isPrivate;
 
-		room.Context.Events.Emit(new RoomSettingsChanged(room, change with { Password = null }, change.Password is not null));
+		if (room.Rounds.Countdown is { StartsRound: true } &&
+		    (change.Beatmap is not null || change.ClearBeatmap || change.Mode is not null || change.Mods is not null ||
+		     change.Freemods is not null || change.TeamType is not null || change.WinCondition is not null))
+			room.CancelCountdown(announce: true);
+
+		room.Context.Events.Emit(new RoomSettingsChanged(room, change with { Password = null },
+			change.Password is not null));
 		return RoomResult.Ok;
 	}
 
