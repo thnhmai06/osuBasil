@@ -9,7 +9,7 @@ using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Implementations.Sessions;
 
-/// <summary>Closes connections, keeps them alive and lets an account act for another user.</summary>
+/// <summary>Closes connections and keeps them alive.</summary>
 internal sealed class SessionConnectionsService(
 	BanchoConnectionService bancho,
 	IUserRegistry registry,
@@ -62,30 +62,12 @@ internal sealed class SessionConnectionsService(
 	/// <inheritdoc />
 	public bool Revoke(Connection by, User user)
 	{
-		if (!(by is not DelegatedConnection && by.User.Equals(user)) &&
+		if (!by.User.Equals(user) &&
 		    !PermissionRules.MayActOn(by, user, Permissions.UserManage, time.GetUtcNow()))
 			return false;
 
 		CloseAll(user, ConnectionCloseReason.Revoked);
 		return true;
-	}
-
-	/// <inheritdoc />
-	public (DelegatedConnection? Connection, DelegationFailure? Failure) ActFor(Connection by, User user)
-	{
-		// TODO(delegation-removal)
-		if (PermissionRules.Allows(by, Permissions.None, time.GetUtcNow()))
-			return (null, DelegationFailure.NotPermitted);
-
-		var session = registry.Sessions.GetValueOrDefault(user);
-		var connection = session is null
-			? null
-			: new Connection?[]
-					{ session.Bancho, session.Irc, session.Apis.FirstOrDefault(), session.Tourneys.FirstOrDefault() }
-				.FirstOrDefault(candidate => candidate is { IsOpen: true });
-		return connection is null
-			? (null, DelegationFailure.UserOffline)
-			: (new DelegatedConnection(connection, by, PermissionsGroups.LegacyRoomDelegation), null);
 	}
 
 	/// <summary>Opens an authenticated connection, bringing its user online if this is their first.</summary>

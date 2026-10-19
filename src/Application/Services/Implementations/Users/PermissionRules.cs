@@ -15,18 +15,12 @@ internal static class PermissionRules
 		return session.User.Value.Permissions.Effective(session.Restrictions, now);
 	}
 
-	/// <summary>Gets the permissions a connection may use: all of them, or a delegation's scope.</summary>
-	private static Permissions Scope(Connection by)
-	{
-		return by is DelegatedConnection delegated ? delegated.Scope : PermissionsGroups.All;
-	}
-
 	/// <summary>Gets the permissions granted to the user behind an open connection.</summary>
 	/// <param name="by">The connection acting.</param>
-	/// <returns>The granted permissions as the online session knows them, limited to a delegation's scope.</returns>
+	/// <returns>The granted permissions as the online session knows them.</returns>
 	internal static Permissions Granted(Connection by)
 	{
-		return by.Session.User.Value.Permissions & Scope(by);
+		return by.Session.User.Value.Permissions;
 	}
 
 	/// <summary>Checks whether the user behind a connection may do something now.</summary>
@@ -37,7 +31,7 @@ internal static class PermissionRules
 	internal static Access Check(Connection by, Permissions required, DateTimeOffset now)
 	{
 		if (!Granted(by).Allows(required)) return Access.NotGranted;
-		return (Effective(by.Session, now) & Scope(by)).Allows(required) ? Access.Allowed : Access.Suspended;
+		return Effective(by.Session, now).Allows(required) ? Access.Allowed : Access.Suspended;
 	}
 
 	/// <summary>Gets a value that indicates whether the user behind a connection may do something now.</summary>

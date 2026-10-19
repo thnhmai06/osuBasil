@@ -14,7 +14,6 @@ internal sealed class ChannelMembershipService(
 	/// <inheritdoc />
 	public ChannelJoinResult Join(ChannelSession channel, Connection by)
 	{
-		if (by is DelegatedConnection) return ChannelJoinResult.NoPermission;
 		using var scope = channel.Enter();
 		if (channel.IsClosed) return ChannelJoinResult.Closed;
 		if (!ChannelRules.CanRead(channel, by, time.GetUtcNow())) return ChannelJoinResult.NoPermission;

@@ -27,10 +27,6 @@ public static class PermissionsGroups
 	/// <summary>The permissions a new account holds.</summary>
 	public static readonly Permissions Default = Privileges.Player.Permissions | Privileges.Supporter.Permissions;
 
-	/// <summary>The permissions a delegated room operation may use; kept only while delegation is being removed.</summary>
-	public static readonly Permissions LegacyRoomDelegation = Permissions.RoomCreate | Permissions.RoomJoin |
-	                                                         Permissions.RoomManageAny | Permissions.RoomCreateUnlimited;
-
 	/// <summary>The chatting permissions and the permission that manages them.</summary>
 	public static readonly PermissionArea Chat =
 		new(Permissions.ChatPost | Permissions.ChatPostPrivate, Permissions.ChatMessageAnyone);

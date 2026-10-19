@@ -3,7 +3,7 @@ using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Contracts.Sessions;
 
-/// <summary>Closes connections, keeps them alive and lets an account act for another user.</summary>
+/// <summary>Closes connections and keeps them alive.</summary>
 public interface ISessionConnectionsService
 {
 	/// <summary>What only osu! clients have: presence status and spectating.</summary>
@@ -43,24 +43,4 @@ public interface ISessionConnectionsService
 	/// </returns>
 	/// <remarks>The connections, the caller's own included, are closed as <see cref="ConnectionCloseReason.Revoked" />.</remarks>
 	bool Revoke(Connection by, User user);
-
-	/// <summary>Finds the connection through which an account may act for another online user.</summary>
-	/// <param name="by">The connection asking.</param>
-	/// <param name="user">The user to act for.</param>
-	/// <returns>A connection that acts for the user, or why there is none.</returns>
-	/// <remarks>
-	///     Acting for another account is not permitted, so this always reports
-	///     <see cref="DelegationFailure.NotPermitted" />; it is kept only until delegation is removed.
-	/// </remarks>
-	(DelegatedConnection? Connection, DelegationFailure? Failure) ActFor(Connection by, User user);
-}
-
-/// <summary>The reasons an account cannot act for another user.</summary>
-public enum DelegationFailure : byte
-{
-	/// <summary>The caller may not act for other users.</summary>
-	NotPermitted,
-
-	/// <summary>The user to act for has no open connection.</summary>
-	UserOffline
 }
