@@ -48,7 +48,6 @@ public static class DependencyInjection
 		services.AddSingleton<IAuthService>(sp => sp.GetRequiredService<AuthService>());
 
 		services.AddSingleton<UserEventStream>();
-		services.AddSingleton<UserRestrictionsService>();
 		services.AddSingleton<UserService>();
 		services.AddSingleton<IUserService>(sp => sp.GetRequiredService<UserService>());
 

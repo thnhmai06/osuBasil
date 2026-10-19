@@ -14,7 +14,7 @@ internal sealed class SessionConnectionsService(
 	IUserRegistry registry,
 	IChannelService channels,
 	SessionEventStream events,
-	TimeProvider time) : ISessionConnectionsService
+	TimeProvider time) : ISessionConnectionsService, IUserSessionsPort
 {
 	/// <summary>How long a connection must be idle before a new login of the same kind replaces it.</summary>
 	internal static readonly TimeSpan ReplaceAfterIdle = TimeSpan.FromSeconds(10);
@@ -61,8 +61,8 @@ internal sealed class SessionConnectionsService(
 	/// <inheritdoc />
 	public bool Revoke(Connection by, UserRecord user)
 	{
-		if (!by.User.Equals(user) &&
-		    !PermissionRules.MayActOn(by, user, Permissions.UserManage, time.GetUtcNow()))
+		if (BasilBot.Is(user) ||
+		    (!by.User.Equals(user) && !PermissionRules.MayActOn(by, user, Permissions.UserManage, time.GetUtcNow())))
 			return false;
 
 		CloseAll(user, ConnectionCloseReason.Revoked);
@@ -139,6 +139,8 @@ internal sealed class SessionConnectionsService(
 			Close(connection, reason);
 	}
 
+	void IUserSessionsPort.CloseAll(UserRecord user, ConnectionCloseReason reason) => CloseAll(user, reason);
+
 	/// <summary>Closes the connections of a kind the user may no longer use.</summary>
 	/// <param name="session">The session of the user whose permissions or restrictions changed.</param>
 	internal void CloseDisallowed(UserSession session)
@@ -148,6 +150,8 @@ internal sealed class SessionConnectionsService(
 		foreach (var connection in session.Tourneys.Where(connection => connection.IsOpen).ToList())
 			Close(connection, ConnectionCloseReason.Revoked);
 	}
+
+	void IUserSessionsPort.CloseDisallowed(UserSession session) => CloseDisallowed(session);
 
 	private void CloseCore(Connection connection, ConnectionCloseReason reason)
 	{

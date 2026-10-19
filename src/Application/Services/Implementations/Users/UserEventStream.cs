@@ -1,10 +1,11 @@
 using System.Threading.Channels;
 using Basil.Application.Services.Contracts.Sessions;
+using Basil.Application.Services.Contracts.Users;
 
 namespace Basil.Application.Services.Implementations.Users;
 
 /// <summary>The one event stream of users, shared by the user service and its children.</summary>
-internal sealed class UserEventStream
+internal sealed class UserEventStream : IUserEventSink
 {
 	private readonly Channel<UserEvent> _events = Channel.CreateUnbounded<UserEvent>();
 
@@ -17,4 +18,6 @@ internal sealed class UserEventStream
 	{
 		_events.Writer.TryWrite(@event);
 	}
+
+	void IUserEventSink.Emit(UserEvent @event) => Emit(@event);
 }

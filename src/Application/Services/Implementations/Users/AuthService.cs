@@ -108,6 +108,8 @@ internal sealed class AuthService(
 	public async Task<PasswordChangeResult> ChangePasswordAsync(Connection by, UserRecord user, Md5 newPasswordHash,
 		Md5? currentPasswordHash, CancellationToken cancellationToken = default)
 	{
+		if (BasilBot.Is(user)) return PasswordChangeResult.NotAuthorized;
+
 		if (by.User.Equals(user))
 		{
 			if (currentPasswordHash is not { } current || !await VerifyAsync(user, current, cancellationToken))

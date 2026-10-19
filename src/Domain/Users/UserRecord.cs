@@ -108,8 +108,18 @@ public sealed partial class UserData
 		set => field = value.ThrowIfUndefined();
 	} = PermissionsGroups.Default;
 
-	/// <summary>Gets or sets the date and time when the user was deleted, if any.</summary>
-	public DateTimeOffset? DeletedAt { get; set; }
+	/// <summary>Gets or sets the date and time when the user was permanently deleted, if any.</summary>
+	/// <exception cref="InvalidOperationException">The account was deleted already and the value is <see langword="null" />.</exception>
+	public DateTimeOffset? DeletedAt
+	{
+		get;
+		set
+		{
+			if (value is null && field is not null)
+				throw new InvalidOperationException("A deleted account is never restored.");
+			field = value;
+		}
+	}
 
 	/// <summary>Gets the normalized form of a user name.</summary>
 	public static string NormalizeName(string name)

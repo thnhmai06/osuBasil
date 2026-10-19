@@ -8,4 +8,12 @@ public static class BasilBot
 
 	/// <summary>The name of the fixed user that is the server's voice in chat.</summary>
 	public const string Name = "BasilBot";
+
+	/// <summary>Determines whether an account is BasilBot.</summary>
+	/// <param name="user">The account to check.</param>
+	/// <returns><see langword="true" /> when the account has BasilBot's fixed id.</returns>
+	public static bool Is(UserRecord user)
+	{
+		return user.Id == Id;
+	}
 }
