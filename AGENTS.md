@@ -760,12 +760,17 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   A room created through the API has the caller as creator. A server announcement is `by` BasilBot.
 * **There is no delegation.** No account acts for another. An outside tool signs in with its own account and the
   rights that account holds.
-* **Accounts come only from registration, creation or bootstrap.** Nobody is granted permissions for being first
+* **Accounts come only from registration, creation or the console.** Nobody is granted permissions for being first
   or for anything else implicit; a new account gets the default permissions, and more only by being granted.
-  Anyone without an account may register one unless `ServerSettings.LockedCreation` locks it. The one exception is
-  the **bootstrap**: when startup finds no live account (BasilBot does not count), it creates `admin` with the password `admin` and
-  every permission, and logs a warning telling the operator to change them. Because a deleted account frees its name, the
-  bootstrap always uses `admin`.
+  Anyone without an account may register one unless `ServerSettings.LockedCreation` locks it. The server creates
+  no account by itself: the first administrator is made by the operator with a console command (below).
+* **The console is the operator's entry point.** *(Planned for the Host phase, in a new project `Basil.Cli`; not
+  built yet.)* The server process offers an interactive console, like a Minecraft server, where the operator types
+  commands. A console command acts as BasilBot (by its id, `BasilBot.Id`) and is **not subject to rights checks**: it is
+  the one entry point that skips them, because whoever sits at the console owns the machine. Creating an account
+  (and so the first administrator, with every permission) is a console command. The `--noconsole` flag turns the
+  console off. The CLI is built on the `XenoAtom.*` libraries (not Spectre.Console). What the commands are and how
+  they reach the objects is decided with the Host.
 * **A name is unique among live accounts.** Deleting an account is a soft delete and is **permanent**: the account
   is never restored, and its id is never reused. The name is unique only among accounts that are not deleted, after
   normalization (case-insensitive; a space and an underscore are the same). `UserData.NormalizedName` does the

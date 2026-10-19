@@ -24,7 +24,7 @@ tài liệu `maxmind/geoip2-dotnet` qua Context7.
 
 | Mục | Quyết định |
 |---|---|
-| Bootstrap admin | Chạy lúc startup khi không còn account nào chưa xoá (bot không tính). Tên `admin`, password `admin`, có mọi permission; ghi log Warning lúc tạo. |
+| Tài khoản đầu tiên | Server không tự tạo account. Quản trị viên đầu tiên (mọi permission) tạo bằng lệnh trong console của Host (project `Basil.Cli`, thư viện `XenoAtom.*`, cờ `--noconsole` tắt console). Console chạy lệnh với BasilBot (theo id) làm tác nhân và bỏ qua kiểm quyền. Việc này làm ở giai đoạn Host; bootstrap `admin`/`admin` đã bị bỏ. |
 | Tên user unique giữa account còn sống | Xoá là soft delete (`DeletedAt`) và **vĩnh viễn**: không có thao tác phục hồi. Id không bao giờ dùng lại. Bỏ cột `safe_name`, thay bằng unique index một phần trên `lower(replace(name, ' ', '_'))` với điều kiện `deleted_at is null`; index trigram cũng chuyển sang biểu thức này. Domain có `NormalizedName` get-only, chuẩn hoá theo đúng luật đó. Tên của account đã xoá được dùng lại. |
 | Trải phẳng `Permissions` | Mỗi member là một hành vi, tên dạng `[Resource][Action]`, chia `#region` theo resource. Trong enum không có member nào là group. Quyền lớn vẫn chứa bit của quyền nhỏ, vì đó vẫn là *một quyền*. Static class `PermissionsGroups` chỉ giữ mask **theo lĩnh vực** (`Chat`, `Multiplayer`, `Spectating`, `Beatmapsets`, `Users`, `Server`…), mỗi lĩnh vực kèm permission quản lý của nó. Thêm `ScoreSubmit` (chơi = nộp điểm, một bit). Bảng tên nháp ở mục 2. |
 | `Privileges` (đổi tên từ `BanchoPrivileges`) | Permission diễn tả quyền; privilege diễn tả vai trò ở tầng cao hơn. Một enum flags duy nhất, giữ thứ tự và giá trị bit của osu!/bancho.py: `Player, Moderator, Supporter, Owner, Developer, Tournament`. Extension `privilege.Permissions` liệt kê các permission trực tiếp của vai trò đó (thay các group theo vai trò). **User có bit X khi giữ ít nhất 1 permission trực tiếp (depth 1) của X**, tính trên effective permission. Một yêu cầu viết bằng privileges được thoả khi user có đủ mọi bit được yêu cầu. Privilege chỉ để hiển thị và để so khớp yêu cầu, không cấp quyền: client osu! có thể bật UI theo vai trò, nhưng nếu thiếu permission thật thì server vẫn từ chối. |
@@ -147,7 +147,7 @@ Tôi sẽ đề xuất và hỏi lại ở giai đoạn tương ứng:
 - Thay mục "`ClientPrivileges` is never stored… derived (`ToPrivileges()`)" bằng `Privileges` (bit bật khi có ≥1
   permission trực tiếp; privilege không cấp quyền). Thêm `RoomPermissions` và luật "vai trò khớp mô hình osu!".
 - Đảo "No bot in the server", "chat commands belong to clients" và "a countdown is a client feature"; bỏ
-  delegation. Bootstrap admin là ngoại lệ của "nobody is granted permissions for being first".
+  delegation. Account đầu tiên do console tạo (không bootstrap tự động).
 - Restriction: thay "a mask containing a management permission is invalid" bằng "người quản lý một lĩnh vực không
   bị restrict ở lĩnh vực đó".
 - Thêm: không dùng dịch vụ bên thứ ba cho việc lõi, trừ mirror; luật "chặn, trừ quyền cao hơn"; tên chỉ unique
@@ -205,7 +205,7 @@ Tôi sẽ đề xuất và hỏi lại ở giai đoạn tương ứng:
    khi host đóng), `User` (restriction và hệ quả, quan hệ friend/block, permission, xoá, moderation log, lịch
    sử login), `Beatmapset`, `Score`, `Server` (settings, content, kênh general, announce). Service chỉ còn đúng
    các vai trò nêu ở mục 2.
-6. **Runtime và bot**: bootstrap admin; bot connection; bề mặt lệnh chat chạy trên object đã scope; handler
+6. **Runtime và bot**: bot connection; bề mặt lệnh chat chạy trên object đã scope; handler
    thông báo hệ thống; bỏ `BotOptions.Prefix` và 6 port `IBasil*`.
 7. **Checklist host** (ghi vào báo cáo, chưa làm): packet silence, friends, presence; route `getfriends`,
    `getbeatmapinfo`, `getscores`; middleware GeoIP; API cho room, timer, moderation, friends.
