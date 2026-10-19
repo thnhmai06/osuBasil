@@ -7,7 +7,7 @@ namespace Basil.Application.Services.Contracts.Multiplayer;
 /// <summary>Changes room membership and records scores submitted during rounds.</summary>
 public interface IRoomService : IEventPublisher<RoomEvent>
 {
-	/// <summary>Joining, leaving, seating, removing and inviting players, and tourney observers.</summary>
+	/// <summary>Removes a closing connection from room memberships.</summary>
 	IRoomMembershipService Members { get; }
 
 	/// <summary>Records scores submitted during the room's rounds.</summary>

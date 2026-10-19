@@ -20,12 +20,13 @@ public static class RoomPermissionsGroups
 	/// <summary>Gets the permissions granted by a combination of roles.</summary>
 	/// <param name="roles">The roles to combine.</param>
 	/// <returns>The union of permissions granted by each role.</returns>
+	/// <remarks>Players may post room chat and invite users; the other permissions depend on their room role.</remarks>
 	public static RoomPermissions GetPermissions(this RoomRoles roles)
 	{
 		var permissions = RoomPermissions.None;
 
 		if ((roles & RoomRoles.Player) != 0)
-			permissions |= RoomPermissions.ChatPost;
+			permissions |= RoomPermissions.ChatPost | RoomPermissions.MembersInvite;
 
 		if ((roles & RoomRoles.Host) != 0)
 			permissions |=

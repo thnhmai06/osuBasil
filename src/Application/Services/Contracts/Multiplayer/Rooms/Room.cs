@@ -132,6 +132,61 @@ public sealed class Room : IEquatable<Room>
 		return slot;
 	}
 
+	/// <summary>Seats a player who passed the room's checks, replacing a closed connection of the same user if present.</summary>
+	/// <param name="player">The connection to seat.</param>
+	/// <param name="stale">The closed connection whose seat the player may take.</param>
+	/// <returns>The result of seating the player.</returns>
+	internal RoomResult TakeSeat(BanchoConnection player, BanchoConnection? stale)
+	{
+		if (stale is not null) return ReplaceSeat(player, stale);
+
+		if (Seat(player) is not { } slot) return RoomResult.Full;
+
+		JoinChannel(player);
+		MarkOccupied();
+		Context.Events.Emit(new RoomPlayerJoined(this, player, slot.Index, null, null));
+		return RoomResult.Ok;
+	}
+
+	/// <summary>Removes a seated player and updates the room's round, channel and empty-room state.</summary>
+	/// <param name="by">The player's game connection.</param>
+	/// <returns>Ok when the player left, otherwise NotInRoom.</returns>
+	internal RoomResult Leave(BanchoConnection by)
+	{
+		if (Vacate(by) is not { } slot) return RoomResult.NotInRoom;
+
+		var progress = AdvanceRound();
+		Context.Events.Emit(new RoomPlayerLeft(this, by, slot.Index, Authority.Host, progress));
+		LeaveChannel(by);
+		ReportIfEmpty();
+		return RoomResult.Ok;
+	}
+
+	/// <summary>Adds a tournament connection as an observer.</summary>
+	/// <param name="by">The tournament connection observing.</param>
+	/// <returns>Ok, or IsPlayer when the user is seated in the room.</returns>
+	internal RoomResult ObserverJoin(TourneyConnection by)
+	{
+		if (Slots.Find(by.User) is not null) return RoomResult.IsPlayer;
+		if (!Members.MutableObservers.Add(by)) return RoomResult.Ok;
+
+		Context.Events.Emit(new RoomObserverJoined(this, by));
+		JoinChannel(by);
+		return RoomResult.Ok;
+	}
+
+	/// <summary>Removes a tournament connection from the room's observers.</summary>
+	/// <param name="by">The tournament connection leaving.</param>
+	/// <returns>Ok when the observer left, otherwise NotObserver.</returns>
+	internal RoomResult ObserverLeave(TourneyConnection by)
+	{
+		if (!Members.MutableObservers.Remove(by)) return RoomResult.NotObserver;
+
+		Context.Events.Emit(new RoomObserverLeft(this, by));
+		LeaveChannel(by);
+		return RoomResult.Ok;
+	}
+
 	/// <summary>Clears the slot occupied by a player, passing host on when the player was host.</summary>
 	/// <param name="player">The connection to remove.</param>
 	/// <returns>The slot that was vacated, or <see langword="null" /> when the connection was not seated.</returns>
@@ -269,6 +324,29 @@ public sealed class Room : IEquatable<Room>
 		Authority.Host = Slots
 			.FirstOrDefault(slot => slot.Player is not null && !ReferenceEquals(slot.Player, leaving))
 			?.Player;
+	}
+
+	/// <summary>Gives the seat of a closed connection to a new connection of the same user.</summary>
+	/// <param name="player">The connection taking the seat.</param>
+	/// <param name="stale">The closed connection whose seat is replaced.</param>
+	/// <returns>Ok after replacing the seated connection.</returns>
+	private RoomResult ReplaceSeat(BanchoConnection player, BanchoConnection stale)
+	{
+		var slot = Slots.Find(stale)!;
+		var team = slot.Team;
+		var wasHost = ReferenceEquals(Authority.Host, stale);
+
+		slot.Clear();
+		slot.Occupy(player);
+		slot.Team = team;
+		if (wasHost) Authority.Host = player;
+
+		LeaveChannel(stale);
+		var progress = AdvanceRound();
+		JoinChannel(player);
+		MarkOccupied();
+		Context.Events.Emit(new RoomPlayerJoined(this, player, slot.Index, stale, progress));
+		return RoomResult.Ok;
 	}
 
 	private sealed class Scope(SemaphoreSlim held) : IAsyncDisposable

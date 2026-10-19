@@ -12,7 +12,7 @@ internal static class PermissionRules
 	/// <returns>The permissions granted to the user that no active restriction suspends.</returns>
 	internal static Permissions Effective(UserSession session, DateTimeOffset now)
 	{
-		return session.User.Value.Permissions.Effective(session.Restrictions, now);
+		return session.EffectivePermissions(now);
 	}
 
 	/// <summary>Gets the permissions granted to the user behind an open connection.</summary>
@@ -30,8 +30,7 @@ internal static class PermissionRules
 	/// <returns>Whether the permissions are in effect, not granted, or granted but suspended by a restriction.</returns>
 	internal static Access Check(Connection by, Permissions required, DateTimeOffset now)
 	{
-		if (!Granted(by).Allows(required)) return Access.NotGranted;
-		return Effective(by.Session, now).Allows(required) ? Access.Allowed : Access.Suspended;
+		return by.Session.Check(required, now);
 	}
 
 	/// <summary>Gets a value that indicates whether the user behind a connection may do something now.</summary>
@@ -69,17 +68,4 @@ internal static class PermissionRules
 	{
 		return Allows(by, required, now) && (by.User.Equals(target) || Outranks(by.Session.User, target));
 	}
-}
-
-/// <summary>Whether a user may do something, given what they are granted and what their restrictions suspend.</summary>
-internal enum Access : byte
-{
-	/// <summary>Every required permission is in effect.</summary>
-	Allowed,
-
-	/// <summary>A required permission is not granted.</summary>
-	NotGranted,
-
-	/// <summary>Every required permission is granted, but a restriction suspends one of them.</summary>
-	Suspended
 }

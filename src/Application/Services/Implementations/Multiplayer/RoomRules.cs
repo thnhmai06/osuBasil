@@ -30,15 +30,6 @@ internal static class RoomRules
 		       (IsManager(room, by.User) && HasAnyPermission(by, now));
 	}
 
-	/// <summary>Gets a value that indicates whether a connection is the room's host or may manage it.</summary>
-	/// <param name="room">The room to check.</param>
-	/// <param name="by">The connection to check.</param>
-	/// <param name="now">The moment to evaluate at.</param>
-	internal static bool IsHostOrManager(Room room, Connection by, DateTimeOffset now)
-	{
-		return ReferenceEquals(by, room.Authority.Host) || CanManage(room, by, now);
-	}
-
 	/// <summary>A creator or referee whose permissions are all suspended cannot use their authority.</summary>
 	private static bool HasAnyPermission(Connection by, DateTimeOffset now)
 	{

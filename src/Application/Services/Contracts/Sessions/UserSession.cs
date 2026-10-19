@@ -34,6 +34,24 @@ public sealed class UserSession
 	/// <summary>Gets the user's restrictions that had not ended when they were last loaded or changed.</summary>
 	public IReadOnlyList<RestrictionRecord> Restrictions => _restrictions;
 
+	/// <summary>Gets the user's permissions that are in effect at a moment.</summary>
+	/// <param name="now">The moment to evaluate restrictions at.</param>
+	/// <returns>The granted permissions not suspended by an active restriction.</returns>
+	public Permissions EffectivePermissions(DateTimeOffset now)
+	{
+		return User.Value.Permissions.Effective(Restrictions, now);
+	}
+
+	/// <summary>Checks whether the user's granted permissions are in effect for an action.</summary>
+	/// <param name="required">The permissions the action needs.</param>
+	/// <param name="now">The moment to evaluate restrictions at.</param>
+	/// <returns>Whether the permissions are in effect, not granted, or suspended by a restriction.</returns>
+	public Access Check(Permissions required, DateTimeOffset now)
+	{
+		if (!User.Value.Permissions.Allows(required)) return Access.NotGranted;
+		return EffectivePermissions(now).Allows(required) ? Access.Allowed : Access.Suspended;
+	}
+
 	/// <summary>Gets the open connections of one kind.</summary>
 	/// <param name="type">The kind of connection.</param>
 	public IReadOnlySet<Connection> this[ConnectionType type] =>

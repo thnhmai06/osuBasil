@@ -36,6 +36,12 @@ public sealed class ScopedRoom
 	/// <summary>The authority service for this scoped room.</summary>
 	public ScopedRoomAuthority Authority { get; }
 
+	/// <summary>The membership operations for this scoped room.</summary>
+	public ScopedRoomMembers Members { get; }
+
+	/// <summary>Whether the connection may manage every room.</summary>
+	internal bool ManagesAnyRoom { get; }
+
 	/// <summary>Creates a scoped room for a connection.</summary>
 	/// <param name="room">The room to scope.</param>
 	/// <param name="by">The connection acting on the room.</param>
@@ -52,13 +58,14 @@ public sealed class ScopedRoom
 
 		// Apply effective permissions
 		var now = room.Context.Clock.GetUtcNow();
-		var effectivePermissions = by.Session.User.Value.Permissions.Effective(by.Session.Restrictions, now);
+		var effectivePermissions = by.Session.EffectivePermissions(now);
+		ManagesAnyRoom = effectivePermissions.Allows(Domain.Users.Permissions.RoomManageAny);
 
 		// If effective permissions lack RoomJoin, drop role-derived rights
 		if (!effectivePermissions.Allows(Domain.Users.Permissions.RoomJoin))
 			rights = RoomPermissions.None;
 		// If effective permissions allow RoomManageAny, grant all rights
-		else if (effectivePermissions.Allows(Domain.Users.Permissions.RoomManageAny))
+		else if (ManagesAnyRoom)
 			rights = RoomPermissionsGroups.All;
 
 		Permissions = rights;
@@ -66,6 +73,7 @@ public sealed class ScopedRoom
 		Rounds = new ScopedRoomRounds(this);
 		Settings = new ScopedRoomSettings(this);
 		Authority = new ScopedRoomAuthority(this);
+		Members = new ScopedRoomMembers(this);
 
 		return;
 
@@ -102,13 +110,21 @@ public sealed class ScopedRoom
 			return null;
 
 		// Check if granted permissions allow RoomJoin but effective don't
-		var granted = By.Session.User.Value.Permissions;
-		var effective =
-			By.Session.User.Value.Permissions.Effective(By.Session.Restrictions, Room.Context.Clock.GetUtcNow());
-
-		if (granted.Allows(Domain.Users.Permissions.RoomJoin) && !effective.Allows(Domain.Users.Permissions.RoomJoin))
+		if (By.Session.Check(Domain.Users.Permissions.RoomJoin, Room.Context.Clock.GetUtcNow()) is Access.Suspended)
 			return RoomResult.Silenced;
 
 		return RoomResult.NotAuthorized;
+	}
+
+	/// <summary>Checks whether the connection may join the room.</summary>
+	/// <returns>Null when allowed, otherwise the reason for denial.</returns>
+	internal RoomResult? RequireJoin()
+	{
+		return By.Session.Check(Domain.Users.Permissions.RoomJoin, Room.Context.Clock.GetUtcNow()) switch
+		{
+			Access.NotGranted => RoomResult.NotAuthorized,
+			Access.Suspended => RoomResult.Silenced,
+			_ => null
+		};
 	}
 }
