@@ -23,12 +23,19 @@ update restrictions
 set permissions = permissions | (1::bigint << 0) | (1::bigint << 20)
 where (permissions & 14) = 14;
 
+-- The bits split out above follow the permission they came from, so a restriction that suspended it keeps suspending
+-- what it used to: playing (0) also meant submitting scores, silencing (24) noting, restricting (25) viewing logins.
+update restrictions set permissions = permissions | (1::bigint << 7) where (permissions & 1) <> 0;
+update restrictions set permissions = permissions | (1::bigint << 30) where (permissions & (1::bigint << 24)) <> 0;
+update restrictions set permissions = permissions | (1::bigint << 29) where (permissions & (1::bigint << 25)) <> 0;
+
 -- c. BasilBot: the fixed user the server speaks as. It holds no permission and has no credentials row, so
 -- it cannot sign in.
 do $$
 begin
-	if exists (select 1 from users where id = 1 and name <> 'BasilBot') then
-		raise exception 'user id 1 is taken by an account not named BasilBot';
+	if exists (select 1 from users where id = 1 and (name <> 'BasilBot' or permissions <> 0 or deleted_at is not null
+													 or exists (select 1 from credentials where user_id = 1))) then
+		raise exception 'user id 1 is not the fixed BasilBot account (wrong name, permissions, deleted, or able to sign in)';
 	end if;
 end $$;
 
