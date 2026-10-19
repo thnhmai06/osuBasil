@@ -1,5 +1,8 @@
+using Basil.Application.Services.Contracts.Multiplayer.Events;
 using Basil.Application.Services.Contracts.Sessions;
+using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer.Matches;
+using Basil.Domain.Multiplayer.Rounds;
 
 namespace Basil.Application.Services.Contracts.Multiplayer.Rooms;
 
@@ -102,6 +105,90 @@ public sealed class Room : IEquatable<Room>
 		return null;
 	}
 
+	/// <summary>Seats a player in the lowest-index empty, unlocked slot.</summary>
+	/// <param name="player">The connection to seat.</param>
+	/// <returns>The assigned slot, or <see langword="null" /> when no slot is available.</returns>
+	/// <remarks>Seating a player who already has a slot returns that slot. The caller reports the seating.</remarks>
+	/// <exception cref="InvalidOperationException">The user is banned from the room.</exception>
+	internal RoomSlot? Seat(BanchoConnection player)
+	{
+		if (Members.Banned.Contains(player.User))
+			throw new InvalidOperationException("The user is banned from this room.");
+
+		if (Slots.Find(player) is { } existing) return existing;
+
+		var slot = Slots.FirstOrDefault(s => s is { Locked: false, Player: null });
+		if (slot is null) return null;
+
+		slot.Occupy(player);
+
+		if (Settings.MatchSettings.TeamType.IsTeamMode())
+		{
+			var redCount = Slots.Count(s => s.Team == GameTeam.Red);
+			var blueCount = Slots.Count(s => s.Team == GameTeam.Blue);
+			slot.Team = redCount <= blueCount ? GameTeam.Red : GameTeam.Blue;
+		}
+
+		return slot;
+	}
+
+	/// <summary>Clears the slot occupied by a player, passing host on when the player was host.</summary>
+	/// <param name="player">The connection to remove.</param>
+	/// <returns>The slot that was vacated, or <see langword="null" /> when the connection was not seated.</returns>
+	/// <remarks>When the host leaves, host passes to the next seated player by slot order.</remarks>
+	internal RoomSlot? Vacate(BanchoConnection player)
+	{
+		var slot = Slots.Find(player);
+		if (slot is null) return null;
+
+		PassHostFrom(player);
+
+		slot.Clear();
+		return slot;
+	}
+
+	/// <summary>Ends a room's round in progress and sets its players back to not ready.</summary>
+	/// <param name="aborted">Whether the round ends as aborted rather than played out.</param>
+	/// <returns>The round that ended, or <see langword="null" /> when no round was in progress.</returns>
+	internal Round? EndCurrentRound(bool aborted)
+	{
+		if (Rounds.CurrentRound is not { } round) return null;
+
+		round.EndedAt = Context.Clock.GetUtcNow();
+		round.Aborted = aborted;
+		Slots.ResetPlayers();
+		return round;
+	}
+
+	/// <summary>Works out what the players who are still playing have all done, after a player stopped playing.</summary>
+	/// <returns>
+	///     What changed for the round in progress, or <see langword="null" /> when no round is in progress or nothing
+	///     changed.
+	/// </returns>
+	/// <remarks>
+	///     Ends the round when nobody is playing any more; otherwise reports that every remaining player has loaded or
+	///     skipped, once per round.
+	/// </remarks>
+	internal RoomRoundProgress? AdvanceRound()
+	{
+		if (Rounds.CurrentRound is not { } round) return null;
+
+		var playing = Slots.Where(s => s.Status is RoomSlotStatus.Playing).ToList();
+		if (playing.Count == 0)
+		{
+			EndCurrentRound(false);
+			return new RoomRoundProgress(round, false, false, true);
+		}
+
+		var allLoaded = !Rounds.AllLoadedAnnounced && playing.All(s => s.Loaded is true);
+		if (allLoaded) Rounds.AllLoadedAnnounced = true;
+
+		var allSkipped = !Rounds.AllSkippedAnnounced && playing.All(s => s.IntroSkipped is true);
+		if (allSkipped) Rounds.AllSkippedAnnounced = true;
+
+		return allLoaded || allSkipped ? new RoomRoundProgress(round, allLoaded, allSkipped, false) : null;
+	}
+
 	/// <inheritdoc />
 	public override bool Equals(object? obj)
 	{
@@ -112,6 +199,14 @@ public sealed class Room : IEquatable<Room>
 	public override int GetHashCode()
 	{
 		return Match.GetHashCode();
+	}
+
+	private void PassHostFrom(BanchoConnection leaving)
+	{
+		if (!ReferenceEquals(Authority.Host, leaving)) return;
+		Authority.Host = Slots
+			.FirstOrDefault(slot => slot.Player is not null && !ReferenceEquals(slot.Player, leaving))
+			?.Player;
 	}
 
 	private sealed class Scope(SemaphoreSlim held) : IAsyncDisposable

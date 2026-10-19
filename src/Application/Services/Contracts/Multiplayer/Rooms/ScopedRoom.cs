@@ -5,6 +5,11 @@ using Basil.Domain.Users;
 namespace Basil.Application.Services.Contracts.Multiplayer.Rooms;
 
 /// <summary>A room scoped to a connection, with its permissions and role snapshot.</summary>
+/// <remarks>
+///     The snapshot is taken once, so a scope is for one request or command: create it with
+///     <see cref="Room.ScopeTo" />, use it, drop it. Keeping one past the request lets its rights outlive a change of
+///     role or restriction.
+/// </remarks>
 public sealed class ScopedRoom
 {
 	/// <summary>The room this scope is over.</summary>

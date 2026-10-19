@@ -62,6 +62,13 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		return _slots.FirstOrDefault(s => ReferenceEquals(player, s.Player));
 	}
 
+	/// <summary>Sets every playing or finished player back to not ready.</summary>
+	internal void ResetPlayers()
+	{
+		foreach (var slot in this.Where(s => s.Status is RoomSlotStatus.Playing or RoomSlotStatus.Complete))
+			slot.SetStatus(RoomSlotStatus.NotReady);
+	}
+
 	/// <summary>Resizes the room, leaving occupied slots untouched.</summary>
 	/// <param name="size">The new number of available slots, from 1 to 16.</param>
 	internal void Resize(int size)

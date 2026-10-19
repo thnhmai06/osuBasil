@@ -42,6 +42,19 @@ public sealed class RoomSlot
 	/// <summary>Gets the mods selected for this slot, used when free mods are enabled.</summary>
 	public GameMods? Mods { get; internal set; }
 
+	/// <summary>Seats a player in this slot.</summary>
+	/// <param name="player">The connection to seat.</param>
+	/// <exception cref="InvalidOperationException">The slot is locked or already occupied.</exception>
+	internal void Occupy(BanchoConnection player)
+	{
+		if (Locked) throw new InvalidOperationException("The slot is locked.");
+		if (Player is not null) throw new InvalidOperationException("The slot is already occupied.");
+
+		Player = player;
+		Status = RoomSlotStatus.NotReady;
+		Mods = GameMods.NoMod;
+	}
+
 	/// <summary>Moves this slot's player and state to another slot.</summary>
 	/// <param name="target">The target slot to move to.</param>
 	/// <remarks>The target slot must be open (not locked and empty). This slot becomes empty.</remarks>

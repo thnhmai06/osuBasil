@@ -163,10 +163,10 @@ internal sealed class LobbyRoomsService(
 		RoomOccupied(room);
 		if (room.IsClosed) return;
 
-		var aborted = RoundMechanics.EndCurrentRound(room, time.GetUtcNow(), true);
+		var aborted = room.EndCurrentRound(true);
 
 		var evicted = room.Slots.Where(s => s.Player is not null).Select(s => s.Player!).ToList();
-		foreach (var player in evicted) RoomSlotsMechanics.Vacate(room, player);
+		foreach (var player in evicted) room.Vacate(player);
 
 		room.Match.Value.EndedAt = time.GetUtcNow();
 		room.Members.MutableObservers.Clear();
@@ -216,7 +216,7 @@ internal sealed class LobbyRoomsService(
 
 	private void SeatCreator(Room room, BanchoConnection creator)
 	{
-		if (RoomSlotsMechanics.Seat(room, creator) is null) return;
+		if (room.Seat(creator) is null) return;
 		room.Authority.Host = creator;
 		channels.Members.Join(room.Channel, creator);
 	}

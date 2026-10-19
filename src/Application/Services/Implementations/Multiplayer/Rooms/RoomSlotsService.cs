@@ -10,7 +10,6 @@ internal sealed class RoomSlotsService(
 	RoomEventStream events,
 	RoomChannelService roomChannel,
 	RoomMembershipService membership,
-	RoomRoundsService rounds,
 	TimeProvider time) : IRoomSlotsService
 {
 	/// <inheritdoc />
@@ -33,8 +32,8 @@ internal sealed class RoomSlotsService(
 		if (locking && slot.Player is { } player)
 		{
 			evicted = player;
-			RoomSlotsMechanics.Vacate(room, player);
-			progress = rounds.AdvanceRound(room);
+			room.Vacate(player);
+			progress = room.AdvanceRound();
 		}
 
 		slot.Locked = locking;

@@ -168,36 +168,6 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 		return false;
 	}
 
-	/// <summary>Works out what the players who are still playing have all done, after a player stopped playing.</summary>
-	/// <param name="room">The room whose round to look at.</param>
-	/// <returns>
-	///     What changed for the round in progress, or <see langword="null" /> when no round is in progress or nothing
-	///     changed.
-	/// </returns>
-	/// <remarks>
-	///     Ends the round when nobody is playing any more; otherwise reports that every remaining player has loaded or
-	///     skipped, once per round.
-	/// </remarks>
-	internal RoomRoundProgress? AdvanceRound(Room room)
-	{
-		if (room.Rounds.CurrentRound is not { } round) return null;
-
-		var playing = room.Slots.Where(s => s.Status is RoomSlotStatus.Playing).ToList();
-		if (playing.Count == 0)
-		{
-			RoundMechanics.EndCurrentRound(room, time.GetUtcNow(), false);
-			return new RoomRoundProgress(round, false, false, true);
-		}
-
-		var allLoaded = !room.Rounds.AllLoadedAnnounced && playing.All(s => s.Loaded is true);
-		if (allLoaded) room.Rounds.AllLoadedAnnounced = true;
-
-		var allSkipped = !room.Rounds.AllSkippedAnnounced && playing.All(s => s.IntroSkipped is true);
-		if (allSkipped) room.Rounds.AllSkippedAnnounced = true;
-
-		return allLoaded || allSkipped ? new RoomRoundProgress(round, allLoaded, allSkipped, false) : null;
-	}
-
 	private Round StartRound(Room room)
 	{
 		var round = new Round
@@ -220,20 +190,20 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 			players.Add(slot.Player!);
 		}
 
-		if (players.Count == 0) RoundMechanics.EndCurrentRound(room, time.GetUtcNow(), false);
+		if (players.Count == 0) room.EndCurrentRound(false);
 		events.Emit(new RoomRoundStarted(room, round, players));
 		return round;
 	}
 
 	private void AbortRound(Room room)
 	{
-		var round = RoundMechanics.EndCurrentRound(room, time.GetUtcNow(), true)!;
+		var round = room.EndCurrentRound(true)!;
 		events.Emit(new RoomRoundAborted(room, round));
 	}
 
 	private void EndRound(Room room, int slot)
 	{
-		var round = RoundMechanics.EndCurrentRound(room, time.GetUtcNow(), false)!;
+		var round = room.EndCurrentRound(false)!;
 		events.Emit(new RoomRoundCompleted(room, round, slot));
 	}
 }

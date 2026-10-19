@@ -13,7 +13,6 @@ internal sealed class RoomMembershipService(
 	LobbyRoomsService lobbyRooms,
 	RoomEventStream events,
 	RoomChannelService roomChannel,
-	RoomRoundsService rounds,
 	TimeProvider time) : IRoomMembershipService
 {
 	/// <inheritdoc />
@@ -168,7 +167,7 @@ internal sealed class RoomMembershipService(
 	{
 		if (stale is not null) return ReplaceSeat(room, player, stale);
 
-		if (RoomSlotsMechanics.Seat(room, player) is not { } slot) return RoomResult.Full;
+		if (room.Seat(player) is not { } slot) return RoomResult.Full;
 
 		roomChannel.JoinChannel(room, player);
 		LobbyRoomsService.RoomOccupied(room);
@@ -184,12 +183,12 @@ internal sealed class RoomMembershipService(
 		var wasHost = ReferenceEquals(room.Authority.Host, stale);
 
 		slot.Clear();
-		RoomSlotsMechanics.Occupy(slot, player);
+		slot.Occupy(player);
 		slot.Team = team;
 		if (wasHost) room.Authority.Host = player;
 
 		roomChannel.LeaveChannel(room, stale);
-		var progress = rounds.AdvanceRound(room);
+		var progress = room.AdvanceRound();
 		roomChannel.JoinChannel(room, player);
 		LobbyRoomsService.RoomOccupied(room);
 		events.Emit(new RoomPlayerJoined(room, player, slot.Index, stale, progress));
@@ -198,9 +197,9 @@ internal sealed class RoomMembershipService(
 
 	private RoomResult Leave(Room room, BanchoConnection by)
 	{
-		if (RoomSlotsMechanics.Vacate(room, by) is not { } slot) return RoomResult.NotInRoom;
+		if (room.Vacate(by) is not { } slot) return RoomResult.NotInRoom;
 
-		var progress = rounds.AdvanceRound(room);
+		var progress = room.AdvanceRound();
 		events.Emit(new RoomPlayerLeft(room, by, slot.Index, room.Authority.Host, progress));
 		roomChannel.LeaveChannel(room, by);
 		ReportIfEmpty(room);
@@ -213,8 +212,8 @@ internal sealed class RoomMembershipService(
 		if (RoomRules.IsManager(room, player)) return RoomResult.IsManager;
 		if (room.Slots.Find(player) is not { Player: { } seated }) return RoomResult.NotInRoom;
 
-		var slot = RoomSlotsMechanics.Vacate(room, seated)!;
-		var progress = rounds.AdvanceRound(room);
+		var slot = room.Vacate(seated)!;
+		var progress = room.AdvanceRound();
 		events.Emit(new RoomPlayerKicked(room, by.User, seated, slot.Index, room.Authority.Host, progress));
 		roomChannel.LeaveChannel(room, seated);
 		ReportIfEmpty(room);
@@ -233,8 +232,8 @@ internal sealed class RoomMembershipService(
 		if (room.Slots.Find(player) is { Player: { } seated })
 		{
 			evicted = seated;
-			vacated = RoomSlotsMechanics.Vacate(room, seated)?.Index;
-			progress = rounds.AdvanceRound(room);
+			vacated = room.Vacate(seated)?.Index;
+			progress = room.AdvanceRound();
 		}
 
 		events.Emit(new RoomPlayerBanned(room, by.User, player, vacated, evicted, room.Authority.Host, progress));
