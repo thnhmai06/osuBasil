@@ -21,7 +21,8 @@ internal sealed class LobbyRoomsService(
 	IChannelService channels,
 	ISettingsRepository serverSettings,
 	RoomEventStream roomEvents,
-	TimeProvider time) : ILobbyRoomsService
+	RoomChannelService roomChannel,
+	TimeProvider time) : ILobbyRoomsService, IRoomLobbyPort
 {
 	/// <summary>The most tournament rooms one creator can have open.</summary>
 	internal const int MaxRoomsPerCreator = 4;
@@ -109,7 +110,7 @@ internal sealed class LobbyRoomsService(
 		Room room;
 		using (lobby.Enter())
 		{
-			var context = new RoomContext(time, roomEvents);
+			var context = new RoomContext(time, roomEvents, this, roomChannel);
 			room = new Room(id, match, settings ?? new MatchSettings(), isTournament, context);
 			if (!string.IsNullOrEmpty(password)) room.Settings.Password = password;
 			if (seat is not null && lobby.RoomOf(seat) is null) SeatCreator(room, seat);
@@ -130,7 +131,7 @@ internal sealed class LobbyRoomsService(
 	/// </summary>
 	/// <param name="room">The room that has no player left.</param>
 	/// <remarks>The caller holds the room's scope.</remarks>
-	internal void RoomEmptied(Room room)
+	void IRoomLobbyPort.Emptied(Room room)
 	{
 		if (!room.IsTournament)
 		{
@@ -144,7 +145,17 @@ internal sealed class LobbyRoomsService(
 	/// <summary>Stops the countdown that would close an empty tournament room.</summary>
 	/// <param name="room">The room that has a player again.</param>
 	/// <remarks>The caller holds the room's scope.</remarks>
-	internal static void RoomOccupied(Room room)
+	void IRoomLobbyPort.Occupied(Room room)
+	{
+		RoomOccupied(room);
+	}
+
+	Room? IRoomLobbyPort.RoomOf(BanchoConnection player)
+	{
+		return lobby.RoomOf(player);
+	}
+
+	private void RoomOccupied(Room room)
 	{
 		var timer = room.ClosingTimer;
 		room.ClosingTimer = null;
@@ -218,6 +229,6 @@ internal sealed class LobbyRoomsService(
 	{
 		if (room.Seat(creator) is null) return;
 		room.Authority.Host = creator;
-		channels.Members.Join(room.Channel, creator);
+		room.JoinChannel(creator);
 	}
 }

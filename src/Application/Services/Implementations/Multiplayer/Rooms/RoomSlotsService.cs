@@ -8,8 +8,6 @@ namespace Basil.Application.Services.Implementations.Multiplayer.Rooms;
 /// <summary>Moves players between slots and changes what a player sets on their own slot.</summary>
 internal sealed class RoomSlotsService(
 	RoomEventStream events,
-	RoomChannelService roomChannel,
-	RoomMembershipService membership,
 	TimeProvider time) : IRoomSlotsService
 {
 	/// <inheritdoc />
@@ -41,8 +39,8 @@ internal sealed class RoomSlotsService(
 
 		if (evicted is not null)
 		{
-			roomChannel.LeaveChannel(room, evicted);
-			membership.ReportIfEmpty(room);
+			room.LeaveChannel(evicted);
+			room.ReportIfEmpty();
 		}
 
 		return RoomResult.Ok;

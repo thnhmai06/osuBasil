@@ -147,6 +147,40 @@ public sealed class Room : IEquatable<Room>
 		return slot;
 	}
 
+	/// <summary>Finds the room a player is seated in.</summary>
+	/// <param name="player">The player's game connection.</param>
+	/// <returns>The room containing the player, or <see langword="null" />.</returns>
+	internal Room? RoomOf(BanchoConnection player)
+	{
+		return Context.Lobby.RoomOf(player);
+	}
+
+	/// <summary>Adds a connection to this room's channel.</summary>
+	/// <param name="connection">The connection that joins.</param>
+	internal void JoinChannel(Connection connection)
+	{
+		Context.Channel.Join(this, connection);
+	}
+
+	/// <summary>Removes a connection from this room's channel unless its user manages the room.</summary>
+	/// <param name="connection">The connection that leaves.</param>
+	internal void LeaveChannel(Connection connection)
+	{
+		if (!Authority.IsManagedBy(connection.User)) Context.Channel.Part(this, connection);
+	}
+
+	/// <summary>Tells the lobby that this room has a player again.</summary>
+	internal void MarkOccupied()
+	{
+		Context.Lobby.Occupied(this);
+	}
+
+	/// <summary>Tells the lobby when this room has no seated players.</summary>
+	internal void ReportIfEmpty()
+	{
+		if (!Slots.Any(slot => slot.Player is not null)) Context.Lobby.Emptied(this);
+	}
+
 	/// <summary>Ends a room's round in progress and sets its players back to not ready.</summary>
 	/// <param name="aborted">Whether the round ends as aborted rather than played out.</param>
 	/// <returns>The round that ended, or <see langword="null" /> when no round was in progress.</returns>

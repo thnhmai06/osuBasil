@@ -10,7 +10,6 @@ namespace Basil.Application.Services.Implementations.Multiplayer.Rooms;
 /// <summary>Seats, removes and invites the people of a room.</summary>
 internal sealed class RoomMembershipService(
 	ILobby lobby,
-	LobbyRoomsService lobbyRooms,
 	RoomEventStream events,
 	RoomChannelService roomChannel,
 	TimeProvider time) : IRoomMembershipService
@@ -42,7 +41,7 @@ internal sealed class RoomMembershipService(
 
 		if (room.Members.Banned.Contains(player.User)) return RoomResult.Banned;
 
-		if (lobby.RoomOf(player) is { } other && !ReferenceEquals(other, room))
+		if (room.RoomOf(player) is { } other && !ReferenceEquals(other, room))
 		{
 			if (!RoomRules.CanManage(other, by, time.GetUtcNow())) return RoomResult.InAnotherRoom;
 			if (!room.Slots.Any(s => s is { Locked: false, Player: null })) return RoomResult.Full;
@@ -119,13 +118,6 @@ internal sealed class RoomMembershipService(
 		return RoomScope.InScopeAsync(room, () => Unban(room, by, player), cancellationToken);
 	}
 
-	/// <summary>Tells the lobby that a room has no players left, if that is so.</summary>
-	/// <param name="room">The room to check.</param>
-	internal void ReportIfEmpty(Room room)
-	{
-		if (!room.Slots.Any(slot => slot.Player is not null)) lobbyRooms.RoomEmptied(room);
-	}
-
 	private RoomResult Join(Room room, BanchoConnection by, string password)
 	{
 		var stale = room.Slots.Find(by.User)?.Player;
@@ -138,7 +130,7 @@ internal sealed class RoomMembershipService(
 			case Access.Suspended: return RoomResult.Silenced;
 		}
 
-		if (lobby.RoomOf(by) is { } other && !ReferenceEquals(other, room)) return RoomResult.InAnotherRoom;
+		if (room.RoomOf(by) is { } other && !ReferenceEquals(other, room)) return RoomResult.InAnotherRoom;
 		if (room.Members.Observers.Any(observer => observer.User.Equals(by.User))) return RoomResult.IsObserver;
 		if (!string.IsNullOrEmpty(room.Settings.Password) && room.Settings.Password != password &&
 		    !PermissionRules.Allows(by, Permissions.RoomManageAny, time.GetUtcNow()))
@@ -169,8 +161,8 @@ internal sealed class RoomMembershipService(
 
 		if (room.Seat(player) is not { } slot) return RoomResult.Full;
 
-		roomChannel.JoinChannel(room, player);
-		LobbyRoomsService.RoomOccupied(room);
+		room.JoinChannel(player);
+		room.MarkOccupied();
 		events.Emit(new RoomPlayerJoined(room, player, slot.Index, null, null));
 		return RoomResult.Ok;
 	}
@@ -187,10 +179,10 @@ internal sealed class RoomMembershipService(
 		slot.Team = team;
 		if (wasHost) room.Authority.Host = player;
 
-		roomChannel.LeaveChannel(room, stale);
+		room.LeaveChannel(stale);
 		var progress = room.AdvanceRound();
-		roomChannel.JoinChannel(room, player);
-		LobbyRoomsService.RoomOccupied(room);
+		room.JoinChannel(player);
+		room.MarkOccupied();
 		events.Emit(new RoomPlayerJoined(room, player, slot.Index, stale, progress));
 		return RoomResult.Ok;
 	}
@@ -201,8 +193,8 @@ internal sealed class RoomMembershipService(
 
 		var progress = room.AdvanceRound();
 		events.Emit(new RoomPlayerLeft(room, by, slot.Index, room.Authority.Host, progress));
-		roomChannel.LeaveChannel(room, by);
-		ReportIfEmpty(room);
+		room.LeaveChannel(by);
+		room.ReportIfEmpty();
 		return RoomResult.Ok;
 	}
 
@@ -215,8 +207,8 @@ internal sealed class RoomMembershipService(
 		var slot = room.Vacate(seated)!;
 		var progress = room.AdvanceRound();
 		events.Emit(new RoomPlayerKicked(room, by.User, seated, slot.Index, room.Authority.Host, progress));
-		roomChannel.LeaveChannel(room, seated);
-		ReportIfEmpty(room);
+		room.LeaveChannel(seated);
+		room.ReportIfEmpty();
 		return RoomResult.Ok;
 	}
 
@@ -239,8 +231,8 @@ internal sealed class RoomMembershipService(
 		events.Emit(new RoomPlayerBanned(room, by.User, player, vacated, evicted, room.Authority.Host, progress));
 		if (evicted is not null)
 		{
-			roomChannel.LeaveChannel(room, evicted);
-			ReportIfEmpty(room);
+			room.LeaveChannel(evicted);
+			room.ReportIfEmpty();
 		}
 
 		return RoomResult.Ok;
@@ -272,7 +264,7 @@ internal sealed class RoomMembershipService(
 		if (!room.Members.MutableObservers.Add(by)) return RoomResult.Ok;
 
 		events.Emit(new RoomObserverJoined(room, by));
-		roomChannel.JoinChannel(room, by);
+		room.JoinChannel(by);
 		return RoomResult.Ok;
 	}
 
@@ -281,7 +273,7 @@ internal sealed class RoomMembershipService(
 		if (!room.Members.MutableObservers.Remove(by)) return RoomResult.NotObserver;
 
 		events.Emit(new RoomObserverLeft(room, by));
-		roomChannel.LeaveChannel(room, by);
+		room.LeaveChannel(by);
 		return RoomResult.Ok;
 	}
 }
