@@ -1,13 +1,17 @@
 using System.Globalization;
+using System.Net;
 using Basil.Application.Storage.Contracts.Auth;
+using Basil.Application.Storage.Contracts.Common;
 using Basil.Domain.Auth;
+using Basil.Domain.Users;
 using Basil.Infrastructure.Storage.Common.Database;
 using Basil.Infrastructure.Storage.Common.Writing;
+using Dapper;
 
 namespace Basil.Infrastructure.Storage.Auth;
 
 /// <summary>Records the history of logins.</summary>
-internal sealed class PostgresLoginRepository(DatabaseWriter writer) : ILoginRepository
+internal sealed class PostgresLoginRepository(DatabaseWriter writer, DatabaseReader reader) : ILoginRepository
 {
 	/// <inheritdoc />
 	public Task RecordAsync(Login login, CancellationToken cancellationToken = default)
@@ -37,5 +41,33 @@ internal sealed class PostgresLoginRepository(DatabaseWriter writer) : ILoginRep
 			""",
 			values));
 		return Task.CompletedTask;
+	}
+
+	/// <inheritdoc />
+	public async ValueTask<Page<LoginEntry>> ListAsync(UserRecord user, PageRequest page,
+		CancellationToken cancellationToken = default)
+	{
+		var (total, rows) = await reader.ReadAsync(async connection => (
+			await connection.ExecuteScalarAsync<int>("select count(*) from logins where user_id = @UserId",
+				new { UserId = user.Id }),
+			await connection.QueryAsync<LoginRow>(
+				"""
+				select ip, timestamp
+				from logins
+				where user_id = @UserId
+				order by timestamp desc, id desc
+				limit @Limit offset @Offset
+				""",
+				new { UserId = user.Id, page.Limit, page.Offset })), cancellationToken);
+
+		var logins = rows.Select(row => new LoginEntry(user, row.Ip, row.Timestamp)).ToList();
+		return new Page<LoginEntry>(logins, total);
+	}
+
+	/// <summary>A stored row of the <c>logins</c> table, holding only what a login history shows.</summary>
+	private sealed class LoginRow
+	{
+		public IPAddress Ip { get; set; } = IPAddress.None;
+		public DateTimeOffset Timestamp { get; set; }
 	}
 }

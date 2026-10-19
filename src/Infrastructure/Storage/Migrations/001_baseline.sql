@@ -55,6 +55,17 @@ create table restrictions
 
 create index restrictions_user_id on restrictions (user_id);
 
+create table moderation_log
+(
+	id        bigint generated always as identity primary key,
+	action    integer     not null,
+	by_id     integer     not null references users (id),
+	target_id integer     not null references users (id),
+	reason    text        null,
+	timestamp timestamptz not null
+);
+create index moderation_log_target_id_timestamp on moderation_log (target_id, timestamp desc);
+
 create table relationships
 (
 	actor_id   integer     not null references users (id),

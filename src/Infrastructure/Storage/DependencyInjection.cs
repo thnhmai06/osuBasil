@@ -42,6 +42,7 @@ public static class DependencyInjection
 		services.AddSingleton<ILoginRepository, PostgresLoginRepository>();
 		services.AddSingleton<IRestrictionRepository, PostgresRestrictionRepository>();
 		services.AddSingleton<IRelationshipRepository, PostgresRelationshipRepository>();
+		services.AddSingleton<IModerationLogRepository, PostgresModerationLogRepository>();
 		services.AddSingleton<IUserAvatarStorage, FileUserAvatarStorage>();
 
 		services.AddSingleton<PostgresChannelRepository>();
