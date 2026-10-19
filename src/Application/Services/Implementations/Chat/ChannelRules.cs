@@ -1,7 +1,6 @@
 using Basil.Application.Services.Contracts.Chat;
 using Basil.Application.Services.Contracts.Multiplayer.Rooms;
 using Basil.Application.Services.Contracts.Sessions;
-using Basil.Application.Services.Implementations.Multiplayer;
 using Basil.Application.Services.Implementations.Users;
 using Basil.Domain.Users;
 
@@ -46,7 +45,7 @@ internal static class ChannelRules
 	{
 		return (connection is BanchoConnection player && room.Slots.Find(player) is not null)
 		       || (connection is TourneyConnection observer && room.Members.Observers.Contains(observer))
-		       || RoomRules.IsManager(room, connection.User)
+		       || room.Authority.IsManagedBy(connection.User)
 		       || PermissionRules.Allows(connection, Permissions.RoomManageAny, now);
 	}
 }

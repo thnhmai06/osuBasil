@@ -34,15 +34,7 @@ internal sealed class LobbyRoomsService(
 	internal static readonly TimeSpan EmptyRoomWarningBefore = TimeSpan.FromMinutes(5);
 
 	/// <inheritdoc />
-	public async Task<RoomResult> CloseAsync(Room room, Connection by, CancellationToken cancellationToken = default)
-	{
-		await using var scope = await room.EnterAsync(cancellationToken);
-		if (scope is null) return RoomResult.Ok;
-		if (!RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
-
-		Close(room, by.User);
-		return RoomResult.Ok;
-	}
+	void IRoomLobbyPort.Close(Room room, UserRecord? by) => Close(room, by);
 
 	/// <inheritdoc />
 	public async Task<(Room? Room, RoomResult Result)> OpenAsync(

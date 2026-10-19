@@ -6,7 +6,7 @@ using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Contracts.Multiplayer;
 
-/// <summary>Opens and closes rooms.</summary>
+/// <summary>Opens rooms.</summary>
 public interface ILobbyRoomsService
 {
 	/// <summary>Opens a room for a new match, created by the caller.</summary>
@@ -45,12 +45,4 @@ public interface ILobbyRoomsService
 		bool isPrivate,
 		MatchSettings? settings = null,
 		CancellationToken cancellationToken = default);
-
-	/// <summary>Closes a room.</summary>
-	/// <param name="room">The room to close.</param>
-	/// <param name="by">The creator, a referee or a user with <see cref="Permissions.RoomManageAny" />.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>Ok, or NotAuthorized when the caller may not close the room.</returns>
-	/// <remarks>Closing a closed room returns Ok and does nothing.</remarks>
-	Task<RoomResult> CloseAsync(Room room, Connection by, CancellationToken cancellationToken = default);
 }

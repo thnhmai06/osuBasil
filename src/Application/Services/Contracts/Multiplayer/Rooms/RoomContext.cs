@@ -1,5 +1,6 @@
 using Basil.Application.Services.Contracts.Multiplayer.Events;
 using Basil.Application.Services.Contracts.Sessions;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Contracts.Multiplayer.Rooms;
 
@@ -37,6 +38,12 @@ internal interface IRoomLobbyPort
 	/// <summary>Tells the lobby the room has no player left, so it closes or schedules its closing.</summary>
 	/// <param name="room">The room that may be empty.</param>
 	void Emptied(Room room);
+
+	/// <summary>Closes the room: the lobby evicts its players, ends its round, closes its channel and forgets it.</summary>
+	/// <param name="room">The room to close.</param>
+	/// <param name="by">The user who closed the room, or <see langword="null" /> when the room closed itself.</param>
+	/// <remarks>The caller holds the room's scope.</remarks>
+	void Close(Room room, UserRecord? by);
 }
 
 /// <summary>What a room asks of the chat to keep its own channel in step.</summary>

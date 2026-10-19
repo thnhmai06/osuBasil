@@ -127,4 +127,21 @@ public sealed class ScopedRoom
 			_ => null
 		};
 	}
+
+	/// <summary>Closes the room, evicting its players, ending its round, closing its channel and forgetting it.</summary>
+	/// <param name="cancellationToken">A token that cancels the wait for the room.</param>
+	/// <returns>
+	///     Ok, NotAuthorized or Silenced; a room that has closed already returns Ok and does nothing.
+	/// </returns>
+	/// <remarks>The caller needs <see cref="RoomPermissions.RoomClose" />, checked before the room is entered.</remarks>
+	public async Task<RoomResult> CloseAsync(CancellationToken cancellationToken = default)
+	{
+		if (Require(RoomPermissions.RoomClose) is { } denied) return denied;
+
+		await using var scope = await Room.EnterAsync(cancellationToken);
+		if (scope is null) return RoomResult.Ok;
+
+		Room.Context.Lobby.Close(Room, By.User);
+		return RoomResult.Ok;
+	}
 }
