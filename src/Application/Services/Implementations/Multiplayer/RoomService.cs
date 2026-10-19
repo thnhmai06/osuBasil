@@ -6,11 +6,9 @@ using Basil.Application.Services.Implementations.Multiplayer.Rooms;
 
 namespace Basil.Application.Services.Implementations.Multiplayer;
 
-/// <summary>Changes rooms through its children: membership, authority, settings, slots and rounds.</summary>
+/// <summary>Changes rooms through its children: membership, settings, slots and rounds.</summary>
 internal sealed class RoomService(
 	RoomMembershipService members,
-	RoomAuthorityService authority,
-	RoomSettingsService settings,
 	RoomSlotsService slots,
 	RoomRoundsService rounds,
 	RoomEventStream events) : IRoomService
@@ -20,12 +18,6 @@ internal sealed class RoomService(
 
 	/// <inheritdoc />
 	public IRoomMembershipService Members => members;
-
-	/// <inheritdoc />
-	public IRoomAuthorityService Authority => authority;
-
-	/// <inheritdoc />
-	public IRoomSettingsService Settings => settings;
 
 	/// <inheritdoc />
 	public IRoomSlotsService Slots => slots;

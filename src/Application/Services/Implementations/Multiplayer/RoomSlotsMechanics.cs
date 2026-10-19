@@ -51,21 +51,6 @@ internal static class RoomSlotsMechanics
 		return slot;
 	}
 
-	/// <summary>Resizes the room, leaving occupied slots untouched.</summary>
-	/// <param name="slots">The slots of the room to resize.</param>
-	/// <param name="size">The new number of available slots, from 1 to 16.</param>
-	internal static void Resize(RoomSlots slots, int size)
-	{
-		ArgumentOutOfRangeException.ThrowIfLessThan(size, 1);
-		ArgumentOutOfRangeException.ThrowIfGreaterThan(size, RoomSlots.MaxSlotCount);
-
-		// Players may sit in any slot, so the size counts usable slots rather than naming a slot
-		// range: keep (size - players) empty slots open and lock the remaining empty ones.
-		var open = size - slots.Count(s => s.Player is not null);
-		foreach (var slot in slots.Where(s => s.Player is null))
-			slot.Locked = open-- <= 0;
-	}
-
 	/// <summary>Seats a player in a slot.</summary>
 	/// <param name="slot">The slot to occupy.</param>
 	/// <param name="player">The connection to seat.</param>

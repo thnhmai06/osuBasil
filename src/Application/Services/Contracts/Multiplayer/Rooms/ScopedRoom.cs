@@ -22,6 +22,12 @@ public sealed class ScopedRoom
 	/// <summary>The slots service for this scoped room.</summary>
 	public ScopedRoomSlots Slots { get; }
 
+	/// <summary>The settings service for this scoped room.</summary>
+	public ScopedRoomSettings Settings { get; }
+
+	/// <summary>The authority service for this scoped room.</summary>
+	public ScopedRoomAuthority Authority { get; }
+
 	/// <summary>Creates a scoped room for a connection.</summary>
 	/// <param name="room">The room to scope.</param>
 	/// <param name="by">The connection acting on the room.</param>
@@ -49,6 +55,8 @@ public sealed class ScopedRoom
 
 		Permissions = rights;
 		Slots = new ScopedRoomSlots(this);
+		Settings = new ScopedRoomSettings(this);
+		Authority = new ScopedRoomAuthority(this);
 
 		return;
 

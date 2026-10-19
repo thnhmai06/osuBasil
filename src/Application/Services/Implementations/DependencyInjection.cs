@@ -68,8 +68,6 @@ public static class DependencyInjection
 		services.AddSingleton<RoomEventStream>();
 		services.AddSingleton<RoomChannelService>();
 		services.AddSingleton<RoomMembershipService>();
-		services.AddSingleton<RoomAuthorityService>();
-		services.AddSingleton<RoomSettingsService>();
 		services.AddSingleton<RoomSlotsService>();
 		services.AddSingleton<RoomRoundsService>();
 		services.AddSingleton<RoomService>();

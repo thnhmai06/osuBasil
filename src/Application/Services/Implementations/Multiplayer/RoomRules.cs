@@ -18,20 +18,6 @@ internal static class RoomRules
 	}
 
 	/// <summary>
-	///     Gets a value that indicates whether a connection acts with the creator's authority: its user is the creator
-	///     and has a permission in effect, or holds <see cref="Permissions.RoomManageAny" />.
-	/// </summary>
-	/// <param name="room">The room to check.</param>
-	/// <param name="by">The connection to check.</param>
-	/// <param name="now">The moment to evaluate at.</param>
-	internal static bool IsCreatorOrAnyRoomManager(Room room, Connection by, DateTimeOffset now)
-	{
-		return PermissionRules.Allows(by, Permissions.RoomManageAny, now) ||
-		       (room.Authority.Creator is not null && room.Authority.Creator.Equals(by.User) &&
-		        HasAnyPermission(by, now));
-	}
-
-	/// <summary>
 	///     Gets a value that indicates whether a connection may manage a room: its user is the creator or a referee and
 	///     has a permission in effect, or holds <see cref="Permissions.RoomManageAny" />.
 	/// </summary>

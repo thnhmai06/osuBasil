@@ -1,36 +1,55 @@
-using Basil.Application.Services.Contracts.Multiplayer;
 using Basil.Application.Services.Contracts.Multiplayer.Events;
-using Basil.Application.Services.Contracts.Multiplayer.Rooms;
 using Basil.Application.Services.Contracts.Sessions;
 using Basil.Domain.Mechanics;
+using Basil.Domain.Multiplayer;
 using Basil.Domain.Multiplayer.Matches;
 
-namespace Basil.Application.Services.Implementations.Multiplayer.Rooms;
+namespace Basil.Application.Services.Contracts.Multiplayer.Rooms;
 
-/// <summary>Changes a room's shared settings and its lock.</summary>
-internal sealed class RoomSettingsService(RoomEventStream events, TimeProvider time) : IRoomSettingsService
+/// <summary>Settings operations on a room, scoped to a connection with its permissions.</summary>
+public sealed class ScopedRoomSettings
 {
-	/// <inheritdoc />
-	public Task<RoomResult> ConfigureAsync(Room room, Connection by, RoomSettingsChange change,
-		CancellationToken cancellationToken = default)
+	private readonly ScopedRoom _scoped;
+
+	/// <summary>Creates a scoped settings service for a room.</summary>
+	/// <param name="scoped">The scoped room.</param>
+	internal ScopedRoomSettings(ScopedRoom scoped)
 	{
-		return RoomScope.InScopeAsync(room, () => Configure(room, by, change), cancellationToken);
+		_scoped = scoped;
 	}
 
-	/// <inheritdoc />
-	public Task<RoomResult> SetLockedAsync(Room room, Connection by, bool locked,
-		CancellationToken cancellationToken = default)
+	/// <summary>Changes the room's settings in one step.</summary>
+	/// <param name="change">The settings to change.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>Ok, NotAuthorized, InProgress, InvalidSettings, InvalidMods or RoomClosed when the room has closed.</returns>
+	/// <remarks>
+	///     Nothing changes unless every field is valid. Selecting or clearing the beatmap sets ready players back to not
+	///     ready.
+	///     Turning freemod on moves the room's mods that are not speed-changing onto each player; turning it off gives the
+	///     room the host's mods. Changing the team type reassigns teams. Changing the mode drops mods, the room's and the
+	///     players', that the new mode does not allow. Under freemod, a seated caller's mods that are not speed-changing
+	///     become
+	///     that caller's own mods. A change with no field set does nothing.
+	///     A change to the beatmap, mode, mods, freemod, team type or win condition cancels a countdown that would start the
+	///     round.
+	/// </remarks>
+	public async Task<RoomResult> ConfigureAsync(RoomSettingsChange change, CancellationToken cancellationToken = default)
 	{
-		return RoomScope.InScopeAsync(room, () => SetLocked(room, by, locked), cancellationToken);
-	}
+		var room = _scoped.Room;
+		var by = _scoped.By;
 
-	private RoomResult Configure(Room room, Connection by, RoomSettingsChange change)
-	{
-		if (!RoomRules.IsHostOrManager(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
+		// Build required permissions from the change
+		var required = RoomPermissions.SettingsChange;
+		if (change.Name is not null) required |= RoomPermissions.SettingsRename;
+		if (change.Password is not null) required |= RoomPermissions.SettingsPassword;
+		if (change.IsPrivate is not null) required |= RoomPermissions.SettingsPrivate;
+
+		if (_scoped.Require(required) is { } denied) return denied;
+
+		await using var scope = await room.EnterAsync(cancellationToken);
+		if (scope is null) return RoomResult.RoomClosed;
+
 		if (room.Rounds.InProgress) return RoomResult.InProgress;
-
-		if (change.IsPrivate is not null && !RoomRules.CanManage(room, by, time.GetUtcNow()))
-			return RoomResult.NotAuthorized;
 
 		if ((change.Name is { } newName && !MatchData.IsValidName(newName)) ||
 		    change.Size is < 1 or > RoomSlots.MaxSlotCount || change is { ClearBeatmap: true, Beatmap: not null } ||
@@ -75,20 +94,32 @@ internal sealed class RoomSettingsService(RoomEventStream events, TimeProvider t
 
 		if (change.TeamType is { } teamType) ApplyTeamType(room, teamType);
 		if (change.WinCondition is { } winCondition) room.Settings.MatchSettings.WinCondition = winCondition;
-		if (change.Size is { } size) RoomSlotsMechanics.Resize(room.Slots, size);
+		if (change.Size is { } size) room.Slots.Resize(size);
 		if (change.IsPrivate is { } isPrivate) room.Match.Value.IsPrivate = isPrivate;
 
-		events.Emit(new RoomSettingsChanged(room, change with { Password = null }, change.Password is not null));
+		room.Context.Events.Emit(new RoomSettingsChanged(room, change with { Password = null }, change.Password is not null));
 		return RoomResult.Ok;
 	}
 
-	private RoomResult SetLocked(Room room, Connection by, bool locked)
+	/// <summary>Locks or unlocks the room, which stops players from changing slot or team.</summary>
+	/// <param name="locked">The lock state to set.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>
+	///     Ok, NotAuthorized or RoomClosed when the room has closed; setting the current state again returns Ok and does
+	///     nothing.
+	/// </returns>
+	public async Task<RoomResult> SetLockedAsync(bool locked, CancellationToken cancellationToken = default)
 	{
-		if (!RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
+		if (_scoped.Require(RoomPermissions.SlotsMovePlayers) is { } denied) return denied;
+
+		await using var scope = await _scoped.Room.EnterAsync(cancellationToken);
+		if (scope is null) return RoomResult.RoomClosed;
+
+		var room = _scoped.Room;
 		if (room.Slots.Locked == locked) return RoomResult.Ok;
 
 		room.Slots.Locked = locked;
-		events.Emit(new RoomLockChanged(room, locked));
+		room.Context.Events.Emit(new RoomLockChanged(room, locked));
 		return RoomResult.Ok;
 	}
 

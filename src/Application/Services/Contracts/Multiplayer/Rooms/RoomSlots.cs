@@ -62,6 +62,20 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		return _slots.FirstOrDefault(s => ReferenceEquals(player, s.Player));
 	}
 
+	/// <summary>Resizes the room, leaving occupied slots untouched.</summary>
+	/// <param name="size">The new number of available slots, from 1 to 16.</param>
+	internal void Resize(int size)
+	{
+		ArgumentOutOfRangeException.ThrowIfLessThan(size, 1);
+		ArgumentOutOfRangeException.ThrowIfGreaterThan(size, MaxSlotCount);
+
+		// Players may sit in any slot, so the size counts usable slots rather than naming a slot
+		// range: keep (size - players) empty slots open and lock the remaining empty ones.
+		var open = size - this.Count(s => s.Player is not null);
+		foreach (var slot in this.Where(s => s.Player is null))
+			slot.Locked = open-- <= 0;
+	}
+
 	/// <summary>Gets the slot with a given number, or <see langword="null" /> when the number is outside 1 to 16.</summary>
 	public RoomSlot? At(int index)
 	{

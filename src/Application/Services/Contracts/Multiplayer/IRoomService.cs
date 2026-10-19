@@ -10,12 +10,6 @@ public interface IRoomService : IEventPublisher<RoomEvent>
 	/// <summary>Joining, leaving, seating, removing and inviting players, and tourney observers.</summary>
 	IRoomMembershipService Members { get; }
 
-	/// <summary>Referees and the host.</summary>
-	IRoomAuthorityService Authority { get; }
-
-	/// <summary>The room's shared settings and its lock.</summary>
-	IRoomSettingsService Settings { get; }
-
 	/// <summary>Slots and what each player sets on their own slot.</summary>
 	IRoomSlotsService Slots { get; }
 
