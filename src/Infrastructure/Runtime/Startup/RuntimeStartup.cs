@@ -7,10 +7,11 @@ using Microsoft.Extensions.Logging;
 namespace Basil.Infrastructure.Runtime.Startup;
 
 /// <summary>
-///     Prepares the runtime before the server serves anyone: opens the general channels and closes matches left
-///     unfinished.
+///     Prepares the runtime before the server serves anyone: creates the first administrator when none exists, opens
+///     the general channels and closes matches left unfinished.
 /// </summary>
 internal sealed class RuntimeStartup(
+	AdminBootstrap bootstrap,
 	IChannelRepository channelRepository,
 	IChannelService channels,
 	IMatchService matches,
@@ -19,6 +20,8 @@ internal sealed class RuntimeStartup(
 	/// <inheritdoc />
 	public async Task StartAsync(CancellationToken cancellationToken)
 	{
+		await bootstrap.RunAsync(cancellationToken);
+
 		var openedChannels = 0;
 		foreach (var channel in await channelRepository.ListAsync(cancellationToken))
 			if (channels.General.Open(channel) is not null)

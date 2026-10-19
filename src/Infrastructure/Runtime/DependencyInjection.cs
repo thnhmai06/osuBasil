@@ -29,6 +29,7 @@ public static class DependencyInjection
 	public static IServiceCollection AddInfrastructureRuntime(this IServiceCollection services)
 	{
 		services.TryAddSingleton(TimeProvider.System);
+		services.AddSingleton<AdminBootstrap>();
 		services.AddHostedService<RuntimeStartup>();
 
 		services.AddSingleton<IEventHandler<UserEvent>, ConnectionHandler>();
