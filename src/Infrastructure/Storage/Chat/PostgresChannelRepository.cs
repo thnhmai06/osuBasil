@@ -46,7 +46,7 @@ internal sealed class PostgresChannelRepository(DatabaseReader reader, DatabaseW
 	public async Task LoadAsync(CancellationToken cancellationToken)
 	{
 		var rows = await reader.ReadAsync(connection => connection.QueryAsync<ChannelRow>(
-				"select name, topic, read_permissions, write_permissions, auto_join, visible from channels order by name"),
+				"select name, topic, read_privileges, write_privileges, auto_join, visible from channels order by name"),
 			cancellationToken);
 		foreach (var row in rows)
 		{
@@ -59,16 +59,16 @@ internal sealed class PostgresChannelRepository(DatabaseReader reader, DatabaseW
 
 	private static WriteCommand Upsert(GeneralChannel channel)
 	{
-		var readPermissions = (long)(ulong)channel.ReadPermissions;
-		var writePermissions = (long)(ulong)channel.WritePermissions;
+		var readPrivileges = (int)(byte)channel.ReadPrivileges;
+		var writePrivileges = (int)(byte)channel.WritePrivileges;
 		return new WriteCommand(
 			"""
-			insert into channels (name, topic, read_permissions, write_permissions, auto_join, visible)
-			values (@Name, @Topic, @ReadPermissions, @WritePermissions, @AutoJoin, @Visible)
+			insert into channels (name, topic, read_privileges, write_privileges, auto_join, visible)
+			values (@Name, @Topic, @ReadPrivileges, @WritePrivileges, @AutoJoin, @Visible)
 			on conflict (name) do update set
 				topic = excluded.topic,
-				read_permissions = excluded.read_permissions,
-				write_permissions = excluded.write_permissions,
+				read_privileges = excluded.read_privileges,
+				write_privileges = excluded.write_privileges,
 				auto_join = excluded.auto_join,
 				visible = excluded.visible;
 			""",
@@ -76,8 +76,8 @@ internal sealed class PostgresChannelRepository(DatabaseReader reader, DatabaseW
 			{
 				channel.Name,
 				channel.Topic,
-				ReadPermissions = readPermissions,
-				WritePermissions = writePermissions,
+				ReadPrivileges = readPrivileges,
+				WritePrivileges = writePrivileges,
 				channel.AutoJoin,
 				channel.Visible
 			});
@@ -88,8 +88,8 @@ internal sealed class PostgresChannelRepository(DatabaseReader reader, DatabaseW
 	{
 		public string Name { get; set; } = "";
 		public string Topic { get; set; } = "";
-		public long ReadPermissions { get; set; }
-		public long WritePermissions { get; set; }
+		public int ReadPrivileges { get; set; }
+		public int WritePrivileges { get; set; }
 		public bool AutoJoin { get; set; }
 		public bool Visible { get; set; }
 
@@ -100,8 +100,8 @@ internal sealed class PostgresChannelRepository(DatabaseReader reader, DatabaseW
 			{
 				Name = Name,
 				Topic = Topic,
-				ReadPermissions = (Permissions)(ulong)ReadPermissions,
-				WritePermissions = (Permissions)(ulong)WritePermissions,
+				ReadPrivileges = (Privileges)(byte)ReadPrivileges,
+				WritePrivileges = (Privileges)(byte)WritePrivileges,
 				AutoJoin = AutoJoin,
 				Visible = Visible
 			};

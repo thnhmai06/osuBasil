@@ -3,22 +3,22 @@ using Basil.Domain.Users;
 
 namespace Basil.Domain.Chat;
 
-/// <summary>A configured chat channel open to every user with the required permissions.</summary>
+/// <summary>A configured chat channel open to every user with the required roles.</summary>
 public sealed class GeneralChannel : Channel, IEquatable<GeneralChannel>
 {
-	/// <summary>Gets or sets the permissions a user must all hold to read the channel.</summary>
-	public Permissions ReadPermissions
+	/// <summary>Gets or sets the roles a user must all have to read the channel; <see cref="Privileges.None" /> lets anyone read.</summary>
+	public Privileges ReadPrivileges
 	{
 		get;
 		set => field = value.ThrowIfUndefined();
-	} = Permissions.None;
+	} = Privileges.None;
 
-	/// <summary>Gets or sets the permissions a user must all hold, besides the right to chat, to post in the channel.</summary>
-	public Permissions WritePermissions
+	/// <summary>Gets or sets the roles a user must all have, besides the right to chat, to post in the channel; <see cref="Privileges.None" /> lets anyone post.</summary>
+	public Privileges WritePrivileges
 	{
 		get;
 		set => field = value.ThrowIfUndefined();
-	} = Permissions.None;
+	} = Privileges.None;
 
 	/// <summary>A value that indicates whether the channel is joined automatically at login.</summary>
 	public bool AutoJoin { get; set; } = false;

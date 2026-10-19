@@ -50,13 +50,13 @@ internal sealed class GeneralChannelService(
 			if (channel.IsClosed) return ChannelManageResult.Closed;
 			var target = channel.Channel;
 
-			if (change.ReadPermissions is { } r) r.ThrowIfUndefined();
-			if (change.WritePermissions is { } w) w.ThrowIfUndefined();
+			if (change.ReadPrivileges is { } r) r.ThrowIfUndefined();
+			if (change.WritePrivileges is { } w) w.ThrowIfUndefined();
 			change.Topic?.ThrowIfHasNul();
 
 			if (change.Topic is { } topic) target.Topic = topic;
-			if (change.ReadPermissions is { } read) target.ReadPermissions = read;
-			if (change.WritePermissions is { } write) target.WritePermissions = write;
+			if (change.ReadPrivileges is { } read) target.ReadPrivileges = read;
+			if (change.WritePrivileges is { } write) target.WritePrivileges = write;
 			if (change.AutoJoin is { } autoJoin) target.AutoJoin = autoJoin;
 			if (change.Visible is { } visible) target.Visible = visible;
 

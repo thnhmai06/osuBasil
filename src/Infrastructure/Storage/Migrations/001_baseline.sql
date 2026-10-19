@@ -68,13 +68,13 @@ create table channels
 (
 	name              text primary key,
 	topic             text    not null,
-	read_permissions  bigint  not null,
-	write_permissions bigint  not null,
+	read_privileges   integer not null,
+	write_privileges  integer not null,
 	auto_join         boolean not null,
 	visible           boolean not null
 );
 
-insert into channels (name, topic, read_permissions, write_permissions, auto_join, visible)
+insert into channels (name, topic, read_privileges, write_privileges, auto_join, visible)
 values ('#osu', 'General discussion.', 0, 0, true, true),
 	   ('#lobby', 'Multiplayer lobby discussion.', 0, 0, false, true);
 

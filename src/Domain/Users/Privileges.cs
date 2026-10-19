@@ -36,6 +36,15 @@ public enum Privileges : byte
 /// <summary>The permissions that belong directly to each role.</summary>
 public static class PrivilegesExtensions
 {
+	/// <summary>Determines whether every required role is held.</summary>
+	/// <param name="held">The roles held.</param>
+	/// <param name="required">The roles that must all be held; none is always satisfied.</param>
+	/// <returns><see langword="true" /> if every role in <paramref name="required" /> is held.</returns>
+	public static bool Allows(this Privileges held, Privileges required)
+	{
+		return (held & required) == required;
+	}
+
 	/// <param name="role">The roles; a combination is the union of its roles' permissions.</param>
 	extension(Privileges role)
 	{
