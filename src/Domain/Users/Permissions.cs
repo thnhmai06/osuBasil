@@ -30,9 +30,9 @@ public enum Permissions : ulong
 
 	/// <summary>
 	///     Act with the authority of the creator in every room, and join any room without its password; includes seeing
-	///     private matches and posting in any room.
+	///     private matches.
 	/// </summary>
-	RoomManageAny = (1UL << 19) | RoomViewPrivate | ChatPostAnyRoom,
+	RoomManageAny = (1UL << 19) | RoomViewPrivate,
 
 	/// <summary>Open more rooms than one creator may otherwise have open.</summary>
 	RoomCreateUnlimited = 1UL << 20,

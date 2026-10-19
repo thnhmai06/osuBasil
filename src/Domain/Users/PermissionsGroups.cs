@@ -29,7 +29,8 @@ public static class PermissionsGroups
 
 	/// <summary>The chatting permissions and the permission that manages them.</summary>
 	public static readonly PermissionArea Chat =
-		new(Permissions.ChatPost | Permissions.ChatPostPrivate, Permissions.ChatMessageAnyone);
+		new(Permissions.ChatPost | Permissions.ChatPostPrivate | Permissions.ChatPostAnyRoom,
+			Permissions.ChatMessageAnyone);
 
 	/// <summary>The multiplayer permissions and the permission that manages them.</summary>
 	public static readonly PermissionArea Multiplayer =
