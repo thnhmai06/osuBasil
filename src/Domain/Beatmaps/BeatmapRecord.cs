@@ -5,7 +5,7 @@ namespace Basil.Domain.Beatmaps;
 /// <summary>
 ///     A stored beatmap difficulty identified by its id.
 /// </summary>
-public sealed class Beatmap : IEquatable<Beatmap>
+public sealed class BeatmapRecord : IEquatable<BeatmapRecord>
 {
 	/// <summary>
 	///     The lowest id of a beatmap that has no osu! id and was given a local one.
@@ -33,7 +33,7 @@ public sealed class Beatmap : IEquatable<Beatmap>
 	public bool IsLocallyIngested => Id >= LocalIdFloor;
 
 	/// <summary>Gets or sets the beatmapset the difficulty belongs to.</summary>
-	public required Beatmapset Beatmapset { get; set; }
+	public required BeatmapsetRecord Beatmapset { get; set; }
 
 	/// <summary>Gets or sets the MD5 hash of the difficulty's .osu file, which identifies its content.</summary>
 	public required Md5 Hash { get; set; }
@@ -74,7 +74,7 @@ public sealed class Beatmap : IEquatable<Beatmap>
 	///     <see langword="true" /> if <paramref name="other" /> is non-null and has the same
 	///     <see cref="Id" /> as this beatmap; otherwise, <see langword="false" />.
 	/// </returns>
-	public bool Equals(Beatmap? other)
+	public bool Equals(BeatmapRecord? other)
 	{
 		if (other is null) return false;
 		return Id == other.Id;
@@ -99,12 +99,12 @@ public sealed class Beatmap : IEquatable<Beatmap>
 	/// </summary>
 	/// <param name="obj">The object to compare, or <see langword="null" />.</param>
 	/// <returns>
-	///     <see langword="true" /> if <paramref name="obj" /> is a <see cref="Beatmap" /> that equals
+	///     <see langword="true" /> if <paramref name="obj" /> is a <see cref="BeatmapRecord" /> that equals
 	///     this one; otherwise, <see langword="false" />.
 	/// </returns>
 	public override bool Equals(object? obj)
 	{
-		return obj is Beatmap other && Equals(other);
+		return obj is BeatmapRecord other && Equals(other);
 	}
 
 	/// <summary>Returns the hash code of this beatmap.</summary>

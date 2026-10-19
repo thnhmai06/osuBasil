@@ -18,7 +18,7 @@ internal sealed class BeatmapAssets(
 	ILogger<BeatmapAssets> logger) : IBeatmapAssets
 {
 	/// <inheritdoc />
-	public async Task BuildAsync(Beatmapset set, IReadOnlyList<Beatmap> beatmaps,
+	public async Task BuildAsync(BeatmapsetRecord set, IReadOnlyList<BeatmapRecord> beatmaps,
 		CancellationToken cancellationToken = default)
 	{
 		var previews = new Dictionary<string, TimeSpan?>(StringComparer.OrdinalIgnoreCase);
@@ -50,7 +50,7 @@ internal sealed class BeatmapAssets(
 	/// <param name="audio">The name of the audio track in the set.</param>
 	/// <param name="start">Where the preview starts.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	private async Task BuildPreviewAsync(Beatmapset set, string audio, TimeSpan start,
+	private async Task BuildPreviewAsync(BeatmapsetRecord set, string audio, TimeSpan start,
 		CancellationToken cancellationToken)
 	{
 		var source = await storage.OpenAsync(set, BeatmapsetFileKind.Audio, audio, cancellationToken)

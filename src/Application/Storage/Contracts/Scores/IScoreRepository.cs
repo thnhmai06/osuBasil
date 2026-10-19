@@ -11,18 +11,18 @@ public interface IScoreRepository
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The stored score.</returns>
 	/// <exception cref="AlreadyExistsException">A score with the same <see cref="ScoreData.Checksum" /> is already stored.</exception>
-	Task<Score> CreateAsync(ScoreData data, CancellationToken cancellationToken = default);
+	Task<ScoreRecord> CreateAsync(ScoreData data, CancellationToken cancellationToken = default);
 
 	/// <summary>Gets a score by id.</summary>
 	/// <param name="id">The score id.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The score, or <see langword="null" /> when no score has that id.</returns>
-	ValueTask<Score?> GetAsync(int id, CancellationToken cancellationToken = default);
+	ValueTask<ScoreRecord?> GetAsync(int id, CancellationToken cancellationToken = default);
 
 	/// <summary>Lists the scores a query includes, newest first.</summary>
 	/// <param name="query">Which scores to include.</param>
 	/// <param name="page">Which part of the listing to return.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>A page of scores.</returns>
-	Task<Page<Score>> ListAsync(ScoreQuery query, PageRequest page, CancellationToken cancellationToken = default);
+	Task<Page<ScoreRecord>> ListAsync(ScoreQuery query, PageRequest page, CancellationToken cancellationToken = default);
 }

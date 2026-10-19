@@ -49,7 +49,7 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 	/// <summary>Finds the slot occupied by a player.</summary>
 	/// <param name="user">The player to look up.</param>
 	/// <returns>The player's slot, or <see langword="null" /> when they have none.</returns>
-	public RoomSlot? Find(User user)
+	public RoomSlot? Find(UserRecord user)
 	{
 		return _slots.FirstOrDefault(s => user.Equals(s.Player?.User));
 	}

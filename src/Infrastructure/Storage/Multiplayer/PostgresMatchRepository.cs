@@ -11,7 +11,7 @@ namespace Basil.Infrastructure.Storage.Multiplayer;
 
 /// <summary>Stores matches.</summary>
 internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWriter writer, IUserRepository users)
-	: MemoryRepository<int, Match>(reader, writer), IMatchRepository
+	: MemoryRepository<int, MatchRecord>(reader, writer), IMatchRepository
 {
 	protected override string WriteSql =>
 		"""
@@ -25,7 +25,7 @@ internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWri
 		""";
 
 	/// <inheritdoc />
-	public async Task<Match> CreateAsync(MatchData data, CancellationToken cancellationToken = default)
+	public async Task<MatchRecord> CreateAsync(MatchData data, CancellationToken cancellationToken = default)
 	{
 		var value = await WithCreatorAsync(data, cancellationToken);
 		var parameters = Parameters(value);
@@ -37,24 +37,24 @@ internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWri
 			""",
 			parameters, transaction), cancellationToken);
 
-		return Track(new Match { Id = id, Value = value });
+		return Track(new MatchRecord { Id = id, Value = value });
 	}
 
 	/// <inheritdoc />
-	public Task UpdateAsync(Match match, CancellationToken cancellationToken = default)
+	public Task UpdateAsync(MatchRecord match, CancellationToken cancellationToken = default)
 	{
 		_ = SaveAsync(match);
 		return Task.CompletedTask;
 	}
 
 	/// <inheritdoc />
-	public ValueTask<Match?> GetAsync(int id, CancellationToken cancellationToken = default)
+	public ValueTask<MatchRecord?> GetAsync(int id, CancellationToken cancellationToken = default)
 	{
 		return FindAsync(id, cancellationToken);
 	}
 
 	/// <inheritdoc />
-	public async Task<Page<Match>> ListAsync(MatchQuery query, PageRequest page,
+	public async Task<Page<MatchRecord>> ListAsync(MatchQuery query, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
 		var where = BuildFilter(query);
@@ -69,31 +69,31 @@ internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWri
 				 """,
 				new { page.Limit, page.Offset })), cancellationToken);
 
-		var matches = new List<Match>();
+		var matches = new List<MatchRecord>();
 		foreach (var row in rows)
 			matches.Add(Track(await ToMatchAsync(row, cancellationToken)));
 
-		return new Page<Match>(matches, total);
+		return new Page<MatchRecord>(matches, total);
 	}
 
-	protected override int KeyOf(Match item)
+	protected override int KeyOf(MatchRecord item)
 	{
 		return item.Id;
 	}
 
-	protected override Root RootOf(Match item)
+	protected override Root RootOf(MatchRecord item)
 	{
 		return Root.Match(item.Id);
 	}
 
-	protected override void CopyTo(Match live, Match from)
+	protected override void CopyTo(MatchRecord live, MatchRecord from)
 	{
 		live.Value.Name = from.Value.Name;
 		live.Value.EndedAt = from.Value.EndedAt;
 		live.Value.IsPrivate = from.Value.IsPrivate;
 	}
 
-	protected override async Task<Match?> LoadAsync(int key)
+	protected override async Task<MatchRecord?> LoadAsync(int key)
 	{
 		var row = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<MatchRow>(
 			"select id, name, creator_id, started_at, ended_at, is_private from matches where id = @Id",
@@ -101,7 +101,7 @@ internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWri
 		return row is null ? null : await ToMatchAsync(row, default);
 	}
 
-	protected override object WriteParameters(Match match)
+	protected override object WriteParameters(MatchRecord match)
 	{
 		var value = match.Value;
 		return new
@@ -124,12 +124,12 @@ internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWri
 		return conditions.Count == 0 ? "" : $"where {string.Join(" AND ", conditions)}";
 	}
 
-	private async Task<Match> ToMatchAsync(MatchRow row, CancellationToken cancellationToken)
+	private async Task<MatchRecord> ToMatchAsync(MatchRow row, CancellationToken cancellationToken)
 	{
 		var creator = row.CreatorId is { } creatorId
 			? await users.GetAsync(creatorId, cancellationToken)
 			: null;
-		return new Match
+		return new MatchRecord
 		{
 			Id = row.Id,
 			Value = new MatchData

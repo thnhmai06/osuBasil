@@ -44,7 +44,7 @@ internal sealed class ReplyWriter(IBasilChat chat, ChatCommands commands)
 			(text, ct) => SendSplitAsync(text, null, sender, ct));
 	}
 
-	private async Task SendSplitAsync(string text, string? channel, User? user, CancellationToken cancellationToken)
+	private async Task SendSplitAsync(string text, string? channel, UserRecord? user, CancellationToken cancellationToken)
 	{
 		foreach (var piece in SplitForSend(text))
 			if (channel is not null)

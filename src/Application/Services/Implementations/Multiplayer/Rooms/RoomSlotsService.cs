@@ -24,7 +24,7 @@ internal sealed class RoomSlotsService(
 	}
 
 	/// <inheritdoc />
-	public Task<RoomResult> MoveAsync(Room room, Connection by, User player, int index,
+	public Task<RoomResult> MoveAsync(Room room, Connection by, UserRecord player, int index,
 		CancellationToken cancellationToken = default)
 	{
 		return RoomScope.InScopeAsync(room, () => Move(room, by, player, index), cancellationToken);
@@ -66,7 +66,7 @@ internal sealed class RoomSlotsService(
 	}
 
 	/// <inheritdoc />
-	public Task<RoomResult> SetTeamAsync(Room room, Connection by, User player, GameTeam team,
+	public Task<RoomResult> SetTeamAsync(Room room, Connection by, UserRecord player, GameTeam team,
 		CancellationToken cancellationToken = default)
 	{
 		return RoomScope.InScopeAsync(room, () => SetTeam(room, by, player, team), cancellationToken);
@@ -93,7 +93,7 @@ internal sealed class RoomSlotsService(
 		return RoomResult.Ok;
 	}
 
-	private RoomResult Move(Room room, Connection by, User player, int index)
+	private RoomResult Move(Room room, Connection by, UserRecord player, int index)
 	{
 		if (!RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 		if (room.Slots.Find(player) is not { Player: { } seated } from) return RoomResult.NotInRoom;
@@ -205,7 +205,7 @@ internal sealed class RoomSlotsService(
 		return RoomResult.Ok;
 	}
 
-	private RoomResult SetTeam(Room room, Connection by, User player, GameTeam team)
+	private RoomResult SetTeam(Room room, Connection by, UserRecord player, GameTeam team)
 	{
 		if (!RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 		if (!room.Settings.MatchSettings.TeamType.IsTeamMode()) return RoomResult.NoTeams;

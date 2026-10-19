@@ -24,13 +24,13 @@ public interface IBasilRooms
 	///     The room, or <see langword="null" /> when no open room has that id or the user may not see it (the same rule
 	///     as reading the room's chat channel).
 	/// </returns>
-	Task<RoomState?> GetForAsync(User viewer, int roomId, CancellationToken cancellationToken = default);
+	Task<RoomState?> GetForAsync(UserRecord viewer, int roomId, CancellationToken cancellationToken = default);
 
 	/// <summary>Gets the open room a user's osu! client is seated in.</summary>
 	/// <param name="player">The user.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The room, or <see langword="null" /> when the user is not seated anywhere.</returns>
-	Task<RoomState?> FindByPlayerAsync(User player, CancellationToken cancellationToken = default);
+	Task<RoomState?> FindByPlayerAsync(UserRecord player, CancellationToken cancellationToken = default);
 
 	/// <summary>Opens a tournament room with the actor as its creator.</summary>
 	/// <param name="actor">The user opening the room.</param>
@@ -38,7 +38,7 @@ public interface IBasilRooms
 	/// <param name="isPrivate">Whether the room's match history is private.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The new room, or <see langword="null" /> with the reason it was not opened.</returns>
-	Task<(RoomState? Room, RoomOutcome Outcome)> OpenAsync(User actor, string name, bool isPrivate,
+	Task<(RoomState? Room, RoomOutcome Outcome)> OpenAsync(UserRecord actor, string name, bool isPrivate,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Seats the actor's osu! client in a room.</summary>
@@ -47,55 +47,55 @@ public interface IBasilRooms
 	/// <param name="password">The room password, empty when none.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome.</returns>
-	Task<RoomOutcome> JoinAsync(User actor, int roomId, string password, CancellationToken cancellationToken = default);
+	Task<RoomOutcome> JoinAsync(UserRecord actor, int roomId, string password, CancellationToken cancellationToken = default);
 
 	/// <summary>Closes a room.</summary>
-	Task<RoomOutcome> CloseAsync(User actor, int roomId, CancellationToken cancellationToken = default);
+	Task<RoomOutcome> CloseAsync(UserRecord actor, int roomId, CancellationToken cancellationToken = default);
 
 	/// <summary>Changes a room's settings; only the fields set in <paramref name="change" /> change.</summary>
-	Task<RoomOutcome> ConfigureAsync(User actor, int roomId, RoomChange change,
+	Task<RoomOutcome> ConfigureAsync(UserRecord actor, int roomId, RoomChange change,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Locks or unlocks a room's slots against players moving themselves.</summary>
-	Task<RoomOutcome> SetLockedAsync(User actor, int roomId, bool locked,
+	Task<RoomOutcome> SetLockedAsync(UserRecord actor, int roomId, bool locked,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Moves a seated player to another slot (numbered 1 to 16).</summary>
-	Task<RoomOutcome> MoveAsync(User actor, int roomId, User player, int slot,
+	Task<RoomOutcome> MoveAsync(UserRecord actor, int roomId, UserRecord player, int slot,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Makes a seated player the host, or clears the host when <paramref name="host" /> is <see langword="null" />.</summary>
-	Task<RoomOutcome> SetHostAsync(User actor, int roomId, User? host, CancellationToken cancellationToken = default);
+	Task<RoomOutcome> SetHostAsync(UserRecord actor, int roomId, UserRecord? host, CancellationToken cancellationToken = default);
 
 	/// <summary>Invites an online user to a room.</summary>
-	Task<RoomOutcome> InviteAsync(User actor, int roomId, User target, CancellationToken cancellationToken = default);
+	Task<RoomOutcome> InviteAsync(UserRecord actor, int roomId, UserRecord target, CancellationToken cancellationToken = default);
 
 	/// <summary>Grants a user referee authority in a room.</summary>
-	Task<RoomOutcome> AddRefereeAsync(User actor, int roomId, User referee,
+	Task<RoomOutcome> AddRefereeAsync(UserRecord actor, int roomId, UserRecord referee,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Revokes a user's referee authority in a room.</summary>
-	Task<RoomOutcome> RemoveRefereeAsync(User actor, int roomId, User referee,
+	Task<RoomOutcome> RemoveRefereeAsync(UserRecord actor, int roomId, UserRecord referee,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Puts a seated player on a team.</summary>
-	Task<RoomOutcome> SetTeamAsync(User actor, int roomId, User player, GameTeam team,
+	Task<RoomOutcome> SetTeamAsync(UserRecord actor, int roomId, UserRecord player, GameTeam team,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Starts the round now.</summary>
-	Task<RoomOutcome> StartAsync(User actor, int roomId, CancellationToken cancellationToken = default);
+	Task<RoomOutcome> StartAsync(UserRecord actor, int roomId, CancellationToken cancellationToken = default);
 
 	/// <summary>Aborts the round in progress.</summary>
-	Task<RoomOutcome> AbortAsync(User actor, int roomId, CancellationToken cancellationToken = default);
+	Task<RoomOutcome> AbortAsync(UserRecord actor, int roomId, CancellationToken cancellationToken = default);
 
 	/// <summary>Removes a seated player from a room.</summary>
-	Task<RoomOutcome> KickAsync(User actor, int roomId, User player, CancellationToken cancellationToken = default);
+	Task<RoomOutcome> KickAsync(UserRecord actor, int roomId, UserRecord player, CancellationToken cancellationToken = default);
 
 	/// <summary>Bans a user from a room, removing them if seated.</summary>
-	Task<RoomOutcome> BanAsync(User actor, int roomId, User player, CancellationToken cancellationToken = default);
+	Task<RoomOutcome> BanAsync(UserRecord actor, int roomId, UserRecord player, CancellationToken cancellationToken = default);
 
 	/// <summary>Lifts a user's ban from a room.</summary>
-	Task<RoomOutcome> UnbanAsync(User actor, int roomId, User player, CancellationToken cancellationToken = default);
+	Task<RoomOutcome> UnbanAsync(UserRecord actor, int roomId, UserRecord player, CancellationToken cancellationToken = default);
 }
 
 /// <summary>A change to a room's settings; <see langword="null" /> fields stay as they are.</summary>

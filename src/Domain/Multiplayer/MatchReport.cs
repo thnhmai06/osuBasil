@@ -5,5 +5,5 @@ namespace Basil.Domain.Multiplayer.Matches;
 ///     happened.
 /// </summary>
 /// <param name="Match">The match this report describes.</param>
-/// <param name="Records">The rounds and events of the match, ordered by <see cref="IMatchRecord.Timestamp" />.</param>
-public sealed record MatchReport(Match Match, IReadOnlyList<IMatchRecord> Records);
+/// <param name="Records">The rounds and events of the match, ordered by <see cref="IMatchEntry.Timestamp" />.</param>
+public sealed record MatchReport(MatchRecord Match, IReadOnlyList<IMatchEntry> Records);

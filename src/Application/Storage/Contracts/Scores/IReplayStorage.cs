@@ -9,11 +9,11 @@ public interface IReplayStorage
 	/// <param name="score">The score the replay belongs to.</param>
 	/// <param name="content">The replay bytes.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task SaveAsync(Score score, Stream content, CancellationToken cancellationToken = default);
+	Task SaveAsync(ScoreRecord score, Stream content, CancellationToken cancellationToken = default);
 
 	/// <summary>Opens the stored replay of a score.</summary>
 	/// <param name="score">The score the replay belongs to.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The replay bytes, or <see langword="null" /> when no replay is stored for the score.</returns>
-	Task<Stream?> OpenAsync(Score score, CancellationToken cancellationToken = default);
+	Task<Stream?> OpenAsync(ScoreRecord score, CancellationToken cancellationToken = default);
 }

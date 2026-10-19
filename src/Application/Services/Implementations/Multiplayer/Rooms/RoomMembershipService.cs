@@ -102,21 +102,21 @@ internal sealed class RoomMembershipService(
 	}
 
 	/// <inheritdoc />
-	public Task<RoomResult> KickAsync(Room room, Connection by, User player,
+	public Task<RoomResult> KickAsync(Room room, Connection by, UserRecord player,
 		CancellationToken cancellationToken = default)
 	{
 		return RoomScope.InScopeAsync(room, () => Kick(room, by, player), cancellationToken);
 	}
 
 	/// <inheritdoc />
-	public Task<RoomResult> BanAsync(Room room, Connection by, User player,
+	public Task<RoomResult> BanAsync(Room room, Connection by, UserRecord player,
 		CancellationToken cancellationToken = default)
 	{
 		return RoomScope.InScopeAsync(room, () => Ban(room, by, player), cancellationToken);
 	}
 
 	/// <inheritdoc />
-	public Task<RoomResult> UnbanAsync(Room room, Connection by, User player,
+	public Task<RoomResult> UnbanAsync(Room room, Connection by, UserRecord player,
 		CancellationToken cancellationToken = default)
 	{
 		return RoomScope.InScopeAsync(room, () => Unban(room, by, player), cancellationToken);
@@ -209,7 +209,7 @@ internal sealed class RoomMembershipService(
 		return RoomResult.Ok;
 	}
 
-	private RoomResult Kick(Room room, Connection by, User player)
+	private RoomResult Kick(Room room, Connection by, UserRecord player)
 	{
 		if (!RoomRules.IsHostOrManager(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 		if (RoomRules.IsManager(room, player)) return RoomResult.IsManager;
@@ -223,7 +223,7 @@ internal sealed class RoomMembershipService(
 		return RoomResult.Ok;
 	}
 
-	private RoomResult Ban(Room room, Connection by, User player)
+	private RoomResult Ban(Room room, Connection by, UserRecord player)
 	{
 		if (!RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 		if (RoomRules.IsManager(room, player)) return RoomResult.IsManager;
@@ -249,7 +249,7 @@ internal sealed class RoomMembershipService(
 		return RoomResult.Ok;
 	}
 
-	private RoomResult Unban(Room room, Connection by, User player)
+	private RoomResult Unban(Room room, Connection by, UserRecord player)
 	{
 		if (!RoomRules.CanManage(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 		if (!room.Members.MutableBanned.Remove(player)) return RoomResult.NotBanned;

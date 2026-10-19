@@ -23,5 +23,5 @@ public interface ISessionService : IEventPublisher<UserEvent>
 	/// <returns>
 	///     How many clients were sent the notification, or <see langword="null" /> when the caller may not announce.
 	/// </returns>
-	int? Announce(Connection by, string text, IReadOnlyCollection<User>? to = null);
+	int? Announce(Connection by, string text, IReadOnlyCollection<UserRecord>? to = null);
 }

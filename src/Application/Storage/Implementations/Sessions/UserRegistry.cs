@@ -8,11 +8,11 @@ namespace Basil.Application.Storage.Implementations.Sessions;
 internal sealed class UserRegistry : IUserRegistry
 {
 	private readonly ConcurrentDictionary<string, Connection> _connections = new(StringComparer.Ordinal);
-	private readonly ConcurrentDictionary<User, UserSession> _sessions = new();
+	private readonly ConcurrentDictionary<UserRecord, UserSession> _sessions = new();
 	private readonly Lock _sync = new(); // ponytail: one lock for all logins; per-user locks if login rate ever matters
 
 	/// <inheritdoc />
-	public IReadOnlyDictionary<User, UserSession> Sessions => _sessions;
+	public IReadOnlyDictionary<UserRecord, UserSession> Sessions => _sessions;
 
 	/// <inheritdoc />
 	public Connection? Find(string token)
@@ -38,7 +38,7 @@ internal sealed class UserRegistry : IUserRegistry
 	/// <inheritdoc />
 	bool IUserRegistry.Remove(UserSession session)
 	{
-		return _sessions.TryRemove(new KeyValuePair<User, UserSession>(session.User, session));
+		return _sessions.TryRemove(new KeyValuePair<UserRecord, UserSession>(session.User, session));
 	}
 
 	/// <inheritdoc />

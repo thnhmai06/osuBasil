@@ -15,7 +15,7 @@ internal sealed class PostgresRelationshipRepository(
 	IUserRepository users)
 	: IRelationshipRepository
 {
-	private readonly OwnedLists<int, User, Relationship> _byActor = new();
+	private readonly OwnedLists<int, UserRecord, Relationship> _byActor = new();
 
 	/// <inheritdoc />
 	public async Task CreateOrUpdateAsync(Relationship relationship, CancellationToken cancellationToken = default)
@@ -50,7 +50,7 @@ internal sealed class PostgresRelationshipRepository(
 	}
 
 	/// <inheritdoc />
-	public async Task<IReadOnlyList<Relationship>> ListAsync(User actor, CancellationToken cancellationToken = default)
+	public async Task<IReadOnlyList<Relationship>> ListAsync(UserRecord actor, CancellationToken cancellationToken = default)
 	{
 		var liveActor = await users.GetAsync(actor.Id, cancellationToken) ?? actor;
 		return await _byActor.GetOrLoadAsync(liveActor.Id, liveActor, async () =>

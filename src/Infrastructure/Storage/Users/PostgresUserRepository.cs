@@ -13,9 +13,9 @@ namespace Basil.Infrastructure.Storage.Users;
 
 /// <summary>Stores registered users.</summary>
 internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWriter writer)
-	: MemoryRepository<int, User>(reader, writer), IUserRepository
+	: MemoryRepository<int, UserRecord>(reader, writer), IUserRepository
 {
-	private readonly WeakIndex<string, User> _byName = new();
+	private readonly WeakIndex<string, UserRecord> _byName = new();
 
 	protected override string WriteSql =>
 		"""
@@ -27,7 +27,7 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 		""";
 
 	/// <inheritdoc />
-	public async Task<User> CreateAsync(UserData data, CancellationToken cancellationToken = default)
+	public async Task<UserRecord> CreateAsync(UserData data, CancellationToken cancellationToken = default)
 	{
 		if (_byName.TryGetValue(data.NormalizedName, out var known) && known.Value.NormalizedName == data.NormalizedName)
 			throw new AlreadyExistsException($"A user is already named {data.Name}.");
@@ -56,18 +56,18 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 			throw new AlreadyExistsException($"A user is already named {data.Name}.");
 		}
 
-		return TrackUser(new User { Id = id, Value = data });
+		return TrackUser(new UserRecord { Id = id, Value = data });
 	}
 
 	/// <inheritdoc />
-	public Task UpdateAsync(User user, CancellationToken cancellationToken = default)
+	public Task UpdateAsync(UserRecord user, CancellationToken cancellationToken = default)
 	{
 		_ = SaveAsync(user);
 		return Task.CompletedTask;
 	}
 
 	/// <inheritdoc />
-	public async Task<bool> RenameAsync(User user, string name, CancellationToken cancellationToken = default)
+	public async Task<bool> RenameAsync(UserRecord user, string name, CancellationToken cancellationToken = default)
 	{
 		_ = new UserData { Name = name };
 		var live = TrackUser(user);
@@ -96,13 +96,13 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 	}
 
 	/// <inheritdoc />
-	public ValueTask<User?> GetAsync(int id, CancellationToken cancellationToken = default)
+	public ValueTask<UserRecord?> GetAsync(int id, CancellationToken cancellationToken = default)
 	{
 		return FindUserAsync(id, cancellationToken);
 	}
 
 	/// <inheritdoc />
-	public async ValueTask<User?> GetByNameAsync(string name, CancellationToken cancellationToken = default)
+	public async ValueTask<UserRecord?> GetByNameAsync(string name, CancellationToken cancellationToken = default)
 	{
 		var safeName = UserData.NormalizeName(name);
 		if (_byName.TryGetValue(safeName, out var known) && known.Value.NormalizedName == safeName)
@@ -114,7 +114,7 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 	}
 
 	/// <inheritdoc />
-	public async Task<Page<User>> ListAsync(UserQuery query, PageRequest page,
+	public async Task<Page<UserRecord>> ListAsync(UserQuery query, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
 		var (where, parameters) = BuildFilter(query);
@@ -126,34 +126,34 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 				$"select id, name, country, permissions, deleted_at from users {where} order by id limit @Limit offset @Offset",
 				parameters)), cancellationToken);
 
-		return new Page<User>([.. rows.Select(row => TrackUser(ToUser(row)))], total);
+		return new Page<UserRecord>([.. rows.Select(row => TrackUser(ToUser(row)))], total);
 	}
 
-	protected override int KeyOf(User item)
+	protected override int KeyOf(UserRecord item)
 	{
 		return item.Id;
 	}
 
-	protected override Root RootOf(User item)
+	protected override Root RootOf(UserRecord item)
 	{
 		return Root.User(item.Id);
 	}
 
-	protected override void CopyTo(User live, User from)
+	protected override void CopyTo(UserRecord live, UserRecord from)
 	{
 		live.Value.Country = from.Value.Country;
 		live.Value.Permissions = from.Value.Permissions;
 		live.Value.DeletedAt = from.Value.DeletedAt;
 	}
 
-	protected override async Task<User?> LoadAsync(int key)
+	protected override async Task<UserRecord?> LoadAsync(int key)
 	{
 		var row = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<UserRow>(
 			"select id, name, country, permissions, deleted_at from users where id = @Id", new { Id = key }));
 		return row is null ? null : ToUser(row);
 	}
 
-	protected override object WriteParameters(User user)
+	protected override object WriteParameters(UserRecord user)
 	{
 		var value = user.Value;
 		return new
@@ -167,14 +167,14 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 		};
 	}
 
-	private User TrackUser(User user)
+	private UserRecord TrackUser(UserRecord user)
 	{
 		var live = Track(user);
 		IndexUser(live);
 		return live;
 	}
 
-	private async ValueTask<User?> FindUserAsync(int id, CancellationToken cancellationToken)
+	private async ValueTask<UserRecord?> FindUserAsync(int id, CancellationToken cancellationToken)
 	{
 		var user = await FindAsync(id, cancellationToken);
 		if (user is not null)
@@ -182,7 +182,7 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 		return user;
 	}
 
-	private void IndexUser(User live)
+	private void IndexUser(UserRecord live)
 	{
 		_byName.Set(live.Value.NormalizedName, live);
 	}
@@ -224,9 +224,9 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 	}
 
 	/// <summary>Builds a user from a stored row.</summary>
-	private static User ToUser(UserRow row)
+	private static UserRecord ToUser(UserRow row)
 	{
-		return new User
+		return new UserRecord
 		{
 			Id = row.Id,
 			Value = new UserData

@@ -8,7 +8,7 @@ namespace Basil.Bot.Application.Commands;
 /// <param name="Reply">Answers where the command came from (the channel, or the sender's private messages).</param>
 /// <param name="ReplyPrivately">Answers in the sender's private messages wherever the command came from.</param>
 internal sealed record CommandContext(
-	User Sender,
+	UserRecord Sender,
 	string? Channel,
 	Func<string, CancellationToken, Task> Reply,
 	Func<string, CancellationToken, Task> ReplyPrivately);

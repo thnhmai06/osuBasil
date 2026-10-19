@@ -17,7 +17,7 @@ public interface IUserStatsRepository
 	///     The stored statistics, or statistics with zero totals when the user has not submitted a score in that mode
 	///     yet. Never <see langword="null" />.
 	/// </returns>
-	ValueTask<UserStats> GetAsync(User user, GameMode mode, CancellationToken cancellationToken = default);
+	ValueTask<UserStats> GetAsync(UserRecord user, GameMode mode, CancellationToken cancellationToken = default);
 
 	/// <summary>Stores statistics, replacing any statistics stored for the same user and mode.</summary>
 	/// <param name="stats">The statistics to store.</param>

@@ -164,7 +164,7 @@ public static class PermissionsExtensions
 		///     The granted permissions that no active restriction suspends; a user who manages an area keeps every
 		///     permission of that area.
 		/// </returns>
-		public Permissions Effective(IEnumerable<Restriction> restrictions, DateTimeOffset now)
+		public Permissions Effective(IEnumerable<RestrictionRecord> restrictions, DateTimeOffset now)
 		{
 			var suspended = restrictions
 				.Where(restriction => restriction.Value.IsActive(now))

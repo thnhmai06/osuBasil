@@ -34,7 +34,7 @@ public sealed record LobbyRoomOpened(Room Room, BanchoConnection? Host, DateTime
 /// </param>
 public sealed record LobbyRoomClosed(
 	Room Room,
-	User? By,
+	UserRecord? By,
 	IReadOnlyList<BanchoConnection> Evicted,
 	Round? AbortedRound)
 	: LobbyEvent;

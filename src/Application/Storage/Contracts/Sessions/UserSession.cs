@@ -11,16 +11,16 @@ public sealed class UserSession
 {
 	private readonly ConcurrentDictionary<ConnectionType, ConcurrentSet<Connection>> _connections = new();
 
-	private ImmutableList<Restriction> _restrictions = [];
+	private ImmutableList<RestrictionRecord> _restrictions = [];
 
-	internal UserSession(User user)
+	internal UserSession(UserRecord user)
 	{
 		User = user;
 		PmChannel = new PmChannelSession(this);
 	}
 
 	/// <summary>Gets the user who is online.</summary>
-	public User User { get; }
+	public UserRecord User { get; }
 
 	/// <summary>Gets the channel that receives the user's private messages.</summary>
 	public PmChannelSession PmChannel { get; }
@@ -32,7 +32,7 @@ public sealed class UserSession
 	public bool PmPrivate { get; internal set; }
 
 	/// <summary>Gets the user's restrictions that had not ended when they were last loaded or changed.</summary>
-	public IReadOnlyList<Restriction> Restrictions => _restrictions;
+	public IReadOnlyList<RestrictionRecord> Restrictions => _restrictions;
 
 	/// <summary>Gets the open connections of one kind.</summary>
 	/// <param name="type">The kind of connection.</param>
@@ -56,7 +56,7 @@ public sealed class UserSession
 
 	/// <summary>Replaces the user's restrictions in one step, so concurrent changes never lose each other.</summary>
 	/// <param name="change">Computes the new restrictions from the current ones.</param>
-	internal void ChangeRestrictions(Func<ImmutableList<Restriction>, ImmutableList<Restriction>> change)
+	internal void ChangeRestrictions(Func<ImmutableList<RestrictionRecord>, ImmutableList<RestrictionRecord>> change)
 	{
 		ImmutableInterlocked.Update(ref _restrictions, change);
 	}

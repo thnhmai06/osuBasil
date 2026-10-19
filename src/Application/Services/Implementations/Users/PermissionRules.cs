@@ -50,7 +50,7 @@ internal static class PermissionRules
 	/// <returns>
 	///     <see langword="true" /> if the actor is granted every permission granted to the target and at least one more.
 	/// </returns>
-	internal static bool Outranks(User actor, User target)
+	internal static bool Outranks(UserRecord actor, UserRecord target)
 	{
 		var mine = actor.Value.Permissions;
 		var theirs = target.Value.Permissions;
@@ -65,7 +65,7 @@ internal static class PermissionRules
 	/// <returns>
 	///     <see langword="true" /> if the permission is in effect and the actor is the target or outranks them.
 	/// </returns>
-	internal static bool MayActOn(Connection by, User target, Permissions required, DateTimeOffset now)
+	internal static bool MayActOn(Connection by, UserRecord target, Permissions required, DateTimeOffset now)
 	{
 		return Allows(by, required, now) && (by.User.Equals(target) || Outranks(by.Session.User, target));
 	}

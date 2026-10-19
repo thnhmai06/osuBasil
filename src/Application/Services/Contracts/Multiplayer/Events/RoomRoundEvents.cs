@@ -76,5 +76,5 @@ public sealed record RoomRoundPlayerCompleted(Room Room, Round Round, int Slot) 
 /// <param name="Round">The round the score was played in.</param>
 /// <param name="Player">The player who submitted the score.</param>
 /// <param name="Score">The relation between the stored score and the round.</param>
-public sealed record RoomRoundScoreSubmitted(Room Room, Round Round, User Player, RoundScore Score)
+public sealed record RoomRoundScoreSubmitted(Room Room, Round Round, UserRecord Player, RoundScore Score)
 	: RoomRoundEvent(Room, Round);

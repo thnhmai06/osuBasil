@@ -83,7 +83,7 @@ internal sealed class AuthService(
 	}
 
 	/// <inheritdoc />
-	public async Task<(User? User, RegistrationFailure? Failure)> RegisterAsync(RegisterAttempt attempt,
+	public async Task<(UserRecord? User, RegistrationFailure? Failure)> RegisterAsync(RegisterAttempt attempt,
 		CancellationToken cancellationToken = default)
 	{
 		var failure = await CheckRegistrationAsync(attempt, cancellationToken);
@@ -93,7 +93,7 @@ internal sealed class AuthService(
 	}
 
 	/// <inheritdoc />
-	public async Task<(User? User, RegistrationFailure? Failure)> CreateAccountAsync(Connection by, UserData data,
+	public async Task<(UserRecord? User, RegistrationFailure? Failure)> CreateAccountAsync(Connection by, UserData data,
 		Md5 passwordHash, CancellationToken cancellationToken = default)
 	{
 		if (!PermissionRules.Allows(by, Permissions.UserManage, time.GetUtcNow()) ||
@@ -106,7 +106,7 @@ internal sealed class AuthService(
 	}
 
 	/// <inheritdoc />
-	public async Task<PasswordChangeResult> ChangePasswordAsync(Connection by, User user, Md5 newPasswordHash,
+	public async Task<PasswordChangeResult> ChangePasswordAsync(Connection by, UserRecord user, Md5 newPasswordHash,
 		Md5? currentPasswordHash, CancellationToken cancellationToken = default)
 	{
 		if (by.User.Equals(user))
@@ -124,7 +124,7 @@ internal sealed class AuthService(
 		return PasswordChangeResult.Changed;
 	}
 
-	private async Task<bool> VerifyAsync(User user, Md5 passwordHash, CancellationToken cancellationToken)
+	private async Task<bool> VerifyAsync(UserRecord user, Md5 passwordHash, CancellationToken cancellationToken)
 	{
 		try
 		{
@@ -137,10 +137,10 @@ internal sealed class AuthService(
 		}
 	}
 
-	private async Task<(User? User, RegistrationFailure? Failure)> CreateCoreAsync(UserData data, Md5 passwordHash,
+	private async Task<(UserRecord? User, RegistrationFailure? Failure)> CreateCoreAsync(UserData data, Md5 passwordHash,
 		CancellationToken cancellationToken)
 	{
-		User user;
+		UserRecord user;
 		try
 		{
 			user = await users.CreateAsync(data, cancellationToken);

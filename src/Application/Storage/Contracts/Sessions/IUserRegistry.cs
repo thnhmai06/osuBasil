@@ -6,7 +6,7 @@ namespace Basil.Application.Storage.Contracts.Sessions;
 public interface IUserRegistry
 {
 	/// <summary>Gets every online session by its user.</summary>
-	IReadOnlyDictionary<User, UserSession> Sessions { get; }
+	IReadOnlyDictionary<UserRecord, UserSession> Sessions { get; }
 
 	/// <summary>Finds the open connection a token identifies.</summary>
 	/// <param name="token">The token the client presented.</param>

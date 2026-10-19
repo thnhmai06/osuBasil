@@ -10,5 +10,5 @@ public interface IMatchReportRepository
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The report of the match.</returns>
 	/// <remarks>The report reflects every round and score stored for the match.</remarks>
-	ValueTask<MatchReport> GetAsync(Match match, CancellationToken cancellationToken = default);
+	ValueTask<MatchReport> GetAsync(MatchRecord match, CancellationToken cancellationToken = default);
 }

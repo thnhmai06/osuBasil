@@ -22,7 +22,7 @@ public interface IUserRestrictionsService
 	///     A silence is a restriction of <see cref="RestrictionData.Silence" />. Announces
 	///     <see cref="UserRestricted" />.
 	/// </remarks>
-	Task<Restriction?> SilenceAsync(Connection by, User user, DateTimeOffset endsAt,
+	Task<RestrictionRecord?> SilenceAsync(Connection by, UserRecord user, DateTimeOffset endsAt,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Suspends some of a user's permissions.</summary>
@@ -39,7 +39,7 @@ public interface IUserRestrictionsService
 	///     Connections of a kind the user may no longer use are closed as <see cref="ConnectionCloseReason.Revoked" />.
 	///     Announces <see cref="UserRestricted" />.
 	/// </remarks>
-	Task<Restriction?> RestrictAsync(Connection by, User user, Permissions permissions, DateTimeOffset? endsAt,
+	Task<RestrictionRecord?> RestrictAsync(Connection by, UserRecord user, Permissions permissions, DateTimeOffset? endsAt,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Ends a restriction now.</summary>
@@ -54,5 +54,5 @@ public interface IUserRestrictionsService
 	///     <see langword="false" /> when the caller may not lift it.
 	/// </returns>
 	/// <remarks>Announces <see cref="UserRestrictionLifted" /> when the restriction was still running.</remarks>
-	Task<bool> LiftAsync(Connection by, Restriction restriction, CancellationToken cancellationToken = default);
+	Task<bool> LiftAsync(Connection by, RestrictionRecord restriction, CancellationToken cancellationToken = default);
 }

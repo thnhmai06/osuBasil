@@ -13,7 +13,7 @@ public interface IRoomAuthorityService
 	/// <param name="user">The user to make referee.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, IsCreator, AlreadyReferee, TooManyReferees or RoomClosed when the room has closed.</returns>
-	Task<RoomResult> AddRefereeAsync(Room room, Connection by, User user,
+	Task<RoomResult> AddRefereeAsync(Room room, Connection by, UserRecord user,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Removes a user from the referees.</summary>
@@ -22,7 +22,7 @@ public interface IRoomAuthorityService
 	/// <param name="user">The referee to remove.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, NotReferee or RoomClosed when the room has closed.</returns>
-	Task<RoomResult> RemoveRefereeAsync(Room room, Connection by, User user,
+	Task<RoomResult> RemoveRefereeAsync(Room room, Connection by, UserRecord user,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Gives host to a seated player, or clears it.</summary>

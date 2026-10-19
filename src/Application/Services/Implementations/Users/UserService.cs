@@ -24,7 +24,7 @@ internal sealed class UserService(
 	public IUserRestrictionsService Restrictions => restrictions;
 
 	/// <inheritdoc />
-	public async Task<bool> SetPermissionsAsync(Connection by, User user, Permissions permissions,
+	public async Task<bool> SetPermissionsAsync(Connection by, UserRecord user, Permissions permissions,
 		CancellationToken cancellationToken = default)
 	{
 		if (!PermissionRules.MayActOn(by, user, Permissions.UserManagePermissions, time.GetUtcNow()) ||
@@ -40,7 +40,7 @@ internal sealed class UserService(
 	}
 
 	/// <inheritdoc />
-	public async Task<bool> DeleteAsync(Connection by, User user, CancellationToken cancellationToken = default)
+	public async Task<bool> DeleteAsync(Connection by, UserRecord user, CancellationToken cancellationToken = default)
 	{
 		var now = time.GetUtcNow();
 		if (!PermissionRules.MayActOn(by, user, Permissions.UserManage, now)) return false;
@@ -57,7 +57,7 @@ internal sealed class UserService(
 	}
 
 	/// <summary>Applies a change to a user and syncs it to the online session if one exists.</summary>
-	private void Apply(User user, Action<UserData> change)
+	private void Apply(UserRecord user, Action<UserData> change)
 	{
 		change(user.Value);
 		var session = registry.Sessions.GetValueOrDefault(user);

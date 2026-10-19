@@ -6,7 +6,7 @@ namespace Basil.Domain.Multiplayer.Rounds;
 /// <summary>
 ///     A round record as read back for report purposes.
 /// </summary>
-public sealed class Round : IMatchRecord, IEquatable<Round>
+public sealed class Round : IMatchEntry, IEquatable<Round>
 {
 	/// <summary>Gets the position of the round within its match, starting at 1.</summary>
 	/// <remarks>An aborted round keeps its number; the next round takes the following one.</remarks>
@@ -64,10 +64,10 @@ public sealed class Round : IMatchRecord, IEquatable<Round>
 	}
 
 	/// <summary>The match the round belongs to.</summary>
-	public required Match Match { get; init; }
+	public required MatchRecord Match { get; init; }
 
 	/// <inheritdoc />
-	DateTimeOffset IMatchRecord.Timestamp => StartedAt;
+	DateTimeOffset IMatchEntry.Timestamp => StartedAt;
 
 	/// <summary>Determines whether this round equals another object.</summary>
 	/// <param name="obj">The object to compare, or <see langword="null" />.</param>

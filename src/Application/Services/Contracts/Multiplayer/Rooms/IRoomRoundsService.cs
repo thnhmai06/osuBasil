@@ -67,6 +67,6 @@ public interface IRoomRoundsService
 	/// <param name="player">The player who submitted the score.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, RoundMismatch or RoomClosed when the room has closed.</returns>
-	Task<RoomResult> RecordScoreAsync(Room room, RoundScore score, User player,
+	Task<RoomResult> RecordScoreAsync(Room room, RoundScore score, UserRecord player,
 		CancellationToken cancellationToken = default);
 }

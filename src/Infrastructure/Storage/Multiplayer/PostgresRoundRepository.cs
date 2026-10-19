@@ -18,7 +18,7 @@ internal sealed class PostgresRoundRepository(
 	IMatchRepository matches)
 	: MemoryRepository<(int MatchId, int Index), Round>(reader, writer), IRoundRepository
 {
-	private readonly OwnedLists<int, Match, Round> _byMatch = new();
+	private readonly OwnedLists<int, MatchRecord, Round> _byMatch = new();
 
 	protected override string WriteSql =>
 		"""
@@ -47,7 +47,7 @@ internal sealed class PostgresRoundRepository(
 	}
 
 	/// <inheritdoc />
-	public async Task<IReadOnlyList<Round>> ListAsync(Match match, CancellationToken cancellationToken = default)
+	public async Task<IReadOnlyList<Round>> ListAsync(MatchRecord match, CancellationToken cancellationToken = default)
 	{
 		var liveMatch = await matches.GetAsync(match.Id, cancellationToken) ?? match;
 		return await _byMatch.GetOrLoadAsync(liveMatch.Id, liveMatch, async () =>
@@ -126,7 +126,7 @@ internal sealed class PostgresRoundRepository(
 	}
 
 	/// <summary>Builds a round of the given match from its stored row.</summary>
-	private static Round ToRound(Match match, RoundRow row)
+	private static Round ToRound(MatchRecord match, RoundRow row)
 	{
 		// The mods setter validates against the mode, so the stored mode must be restored first;
 		// the seed is init-only and belongs to the object initializer.

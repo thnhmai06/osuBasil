@@ -10,19 +10,19 @@ public interface IBeatmapsetRepository
 	/// <param name="id">The beatmapset id.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The beatmapset, or <see langword="null" /> when none has that id.</returns>
-	ValueTask<Beatmapset?> GetAsync(int id, CancellationToken cancellationToken = default);
+	ValueTask<BeatmapsetRecord?> GetAsync(int id, CancellationToken cancellationToken = default);
 
 	/// <summary>Stores the new values of a created beatmapset, replacing the stored ones.</summary>
 	/// <param name="set">The beatmapset to store.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task UpdateAsync(Beatmapset set, CancellationToken cancellationToken = default);
+	Task UpdateAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default);
 
 	/// <summary>Lists the beatmapsets that have at least one beatmap the query includes, newest id first.</summary>
 	/// <param name="query">Which beatmaps to include.</param>
 	/// <param name="page">Which part of the listing to return.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>A page of beatmapsets.</returns>
-	Task<Page<Beatmapset>> ListAsync(BeatmapQuery query, PageRequest page,
+	Task<Page<BeatmapsetRecord>> ListAsync(BeatmapQuery query, PageRequest page,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Stores what one scan or import changes, all at once.</summary>
@@ -35,12 +35,12 @@ public interface IBeatmapsetRepository
 	///     osu! id, or a new local id. The live instances in memory are changed only once everything is stored.
 	/// </remarks>
 	/// <exception cref="AlreadyExistsException">A new set or beatmap has an id or hash another stored one has.</exception>
-	Task<IReadOnlyList<Beatmapset>> CommitAsync(BeatmapsetChanges changes,
+	Task<IReadOnlyList<BeatmapsetRecord>> CommitAsync(BeatmapsetChanges changes,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Deletes a beatmapset.</summary>
 	/// <remarks>Remove the set's beatmaps first, with <see cref="IBeatmapRepository.RetainAsync" /> keeping none.</remarks>
 	/// <param name="set">The beatmapset to delete.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task DeleteAsync(Beatmapset set, CancellationToken cancellationToken = default);
+	Task DeleteAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default);
 }

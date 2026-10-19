@@ -19,5 +19,5 @@ public interface IRelationshipRepository
 	/// <param name="actor">The user whose relationships to list.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The relationships the user holds.</returns>
-	Task<IReadOnlyList<Relationship>> ListAsync(User actor, CancellationToken cancellationToken = default);
+	Task<IReadOnlyList<Relationship>> ListAsync(UserRecord actor, CancellationToken cancellationToken = default);
 }

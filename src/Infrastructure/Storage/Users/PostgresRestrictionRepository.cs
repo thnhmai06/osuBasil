@@ -13,9 +13,9 @@ internal sealed class PostgresRestrictionRepository(
 	DatabaseReader reader,
 	DatabaseWriter writer,
 	IUserRepository users)
-	: MemoryRepository<int, Restriction>(reader, writer), IRestrictionRepository
+	: MemoryRepository<int, RestrictionRecord>(reader, writer), IRestrictionRepository
 {
-	private readonly OwnedLists<int, User, Restriction> _byUser = new();
+	private readonly OwnedLists<int, UserRecord, RestrictionRecord> _byUser = new();
 
 	protected override string WriteSql =>
 		"""
@@ -28,7 +28,7 @@ internal sealed class PostgresRestrictionRepository(
 		""";
 
 	/// <inheritdoc />
-	public async Task<Restriction> CreateAsync(RestrictionData data, CancellationToken cancellationToken = default)
+	public async Task<RestrictionRecord> CreateAsync(RestrictionData data, CancellationToken cancellationToken = default)
 	{
 		var user = await users.GetAsync(data.User.Id, cancellationToken) ?? data.User;
 		var value = new RestrictionData
@@ -55,13 +55,13 @@ internal sealed class PostgresRestrictionRepository(
 				""",
 				parameters, transaction), cancellationToken);
 
-		var restriction = Track(new Restriction { Id = id, Value = value });
+		var restriction = Track(new RestrictionRecord { Id = id, Value = value });
 		_byUser.Change(user.Id, user, current => Replace(current, restriction), Task.CompletedTask);
 		return restriction;
 	}
 
 	/// <inheritdoc />
-	public Task UpdateAsync(Restriction restriction, CancellationToken cancellationToken = default)
+	public Task UpdateAsync(RestrictionRecord restriction, CancellationToken cancellationToken = default)
 	{
 		var saved = SaveAsync(restriction);
 		var live = Track(restriction);
@@ -70,13 +70,13 @@ internal sealed class PostgresRestrictionRepository(
 	}
 
 	/// <inheritdoc />
-	public ValueTask<Restriction?> GetAsync(int id, CancellationToken cancellationToken = default)
+	public ValueTask<RestrictionRecord?> GetAsync(int id, CancellationToken cancellationToken = default)
 	{
 		return FindAsync(id, cancellationToken);
 	}
 
 	/// <inheritdoc />
-	public async Task<IReadOnlyList<Restriction>> ListAsync(User user, CancellationToken cancellationToken = default)
+	public async Task<IReadOnlyList<RestrictionRecord>> ListAsync(UserRecord user, CancellationToken cancellationToken = default)
 	{
 		var liveUser = await users.GetAsync(user.Id, cancellationToken) ?? user;
 		return await _byUser.GetOrLoadAsync(liveUser.Id, liveUser, async () =>
@@ -84,30 +84,30 @@ internal sealed class PostgresRestrictionRepository(
 			var rows = await Reader.ReadAsync(connection => connection.QueryAsync<RestrictionRow>(
 				"select id, user_id, permissions, starts_at, ends_at from restrictions where user_id = @UserId order by starts_at, id",
 				new { UserId = liveUser.Id }), cancellationToken);
-			var restrictions = ImmutableList.CreateBuilder<Restriction>();
+			var restrictions = ImmutableList.CreateBuilder<RestrictionRecord>();
 			foreach (var row in rows)
 				restrictions.Add(Track(ToRestriction(row, liveUser)));
 			return restrictions.ToImmutable();
 		});
 	}
 
-	protected override int KeyOf(Restriction item)
+	protected override int KeyOf(RestrictionRecord item)
 	{
 		return item.Id;
 	}
 
-	protected override Root RootOf(Restriction item)
+	protected override Root RootOf(RestrictionRecord item)
 	{
 		return Root.User(item.Value.User.Id);
 	}
 
-	protected override void CopyTo(Restriction live, Restriction from)
+	protected override void CopyTo(RestrictionRecord live, RestrictionRecord from)
 	{
 		live.Value.Permissions = from.Value.Permissions;
 		live.Value.EndsAt = from.Value.EndsAt;
 	}
 
-	protected override async Task<Restriction?> LoadAsync(int key)
+	protected override async Task<RestrictionRecord?> LoadAsync(int key)
 	{
 		var row = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<RestrictionRow>(
 			"select id, user_id, permissions, starts_at, ends_at from restrictions where id = @Id", new { Id = key }));
@@ -118,7 +118,7 @@ internal sealed class PostgresRestrictionRepository(
 		return user is null ? null : ToRestriction(row, user);
 	}
 
-	protected override object WriteParameters(Restriction restriction)
+	protected override object WriteParameters(RestrictionRecord restriction)
 	{
 		var value = restriction.Value;
 		return new
@@ -131,16 +131,16 @@ internal sealed class PostgresRestrictionRepository(
 		};
 	}
 
-	private static ImmutableList<Restriction> Replace(ImmutableList<Restriction> current, Restriction item)
+	private static ImmutableList<RestrictionRecord> Replace(ImmutableList<RestrictionRecord> current, RestrictionRecord item)
 	{
 		var index = current.FindIndex(restriction => restriction.Id == item.Id);
 		return index < 0 ? current.Add(item) : current.SetItem(index, item);
 	}
 
 	/// <summary>Builds a restriction from a stored row.</summary>
-	private static Restriction ToRestriction(RestrictionRow row, User user)
+	private static RestrictionRecord ToRestriction(RestrictionRow row, UserRecord user)
 	{
-		return new Restriction
+		return new RestrictionRecord
 		{
 			Id = row.Id,
 			Value = new RestrictionData

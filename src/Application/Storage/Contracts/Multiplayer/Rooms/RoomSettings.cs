@@ -5,12 +5,12 @@ namespace Basil.Application.Storage.Contracts.Multiplayer.Rooms;
 /// <summary>The settings a room plays with: those stored on its match and those that live only while it is open.</summary>
 public sealed class RoomSettings
 {
-	private readonly Match _match;
+	private readonly MatchRecord _match;
 
 	/// <summary>Creates the settings of a room.</summary>
 	/// <param name="match">The match the room plays.</param>
 	/// <param name="matchSettings">The room's initial stored settings.</param>
-	internal RoomSettings(Match match, MatchSettings matchSettings)
+	internal RoomSettings(MatchRecord match, MatchSettings matchSettings)
 	{
 		_match = match;
 		MatchSettings = matchSettings;

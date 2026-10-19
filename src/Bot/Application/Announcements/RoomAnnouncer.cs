@@ -76,7 +76,7 @@ internal sealed class RoomAnnouncer(
 		if (room is null)
 			return;
 
-		var recipients = new List<User>();
+		var recipients = new List<UserRecord>();
 		if (room.Creator is not null)
 			recipients.Add(room.Creator);
 		recipients.AddRange(room.Referees);

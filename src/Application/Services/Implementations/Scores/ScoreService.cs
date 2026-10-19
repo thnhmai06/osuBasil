@@ -54,7 +54,7 @@ internal sealed class ScoreService(
 			return rejection;
 
 		var team = round is not null ? room!.Slots.Find(connection)?.Team : null;
-		Score score;
+		ScoreRecord score;
 		try
 		{
 			score = await scores.CreateAsync(

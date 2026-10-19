@@ -50,7 +50,7 @@ public interface IAuthService
 	///     creation is locked (<see cref="Basil.Domain.Content.CreationLocks.Accounts" />), which refuses it with
 	///     <see cref="RegistrationFailure.Locked" />.
 	/// </remarks>
-	Task<(User? User, RegistrationFailure? Failure)> RegisterAsync(RegisterAttempt attempt,
+	Task<(UserRecord? User, RegistrationFailure? Failure)> RegisterAsync(RegisterAttempt attempt,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Creates an account on behalf of a user who manages accounts, whether or not account creation is locked.</summary>
@@ -65,7 +65,7 @@ public interface IAuthService
 	///     The new user, or why the account could not be created (<see cref="RegistrationFailure.NotAuthorized" /> or
 	///     <see cref="RegistrationFailure.NameTaken" />).
 	/// </returns>
-	Task<(User? User, RegistrationFailure? Failure)> CreateAccountAsync(Connection by, UserData data,
+	Task<(UserRecord? User, RegistrationFailure? Failure)> CreateAccountAsync(Connection by, UserData data,
 		Md5 passwordHash, CancellationToken cancellationToken = default);
 
 	/// <summary>Replaces a user's password and ends every session they have.</summary>
@@ -82,7 +82,7 @@ public interface IAuthService
 	///     Every connection of the user, the caller's own included, is closed as
 	///     <see cref="Sessions.ConnectionCloseReason.CredentialsChanged" />.
 	/// </remarks>
-	Task<PasswordChangeResult> ChangePasswordAsync(Connection by, User user, Md5 newPasswordHash,
+	Task<PasswordChangeResult> ChangePasswordAsync(Connection by, UserRecord user, Md5 newPasswordHash,
 		Md5? currentPasswordHash, CancellationToken cancellationToken = default);
 }
 

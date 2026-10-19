@@ -6,7 +6,7 @@ namespace Basil.Domain.Multiplayer.Matches;
 /// <summary>
 ///     A persisted match identified by its id.
 /// </summary>
-public sealed class Match : IEquatable<Match>
+public sealed class MatchRecord : IEquatable<MatchRecord>
 {
 	/// <summary>Gets the unique identifier of the match.</summary>
 	public required int Id
@@ -33,7 +33,7 @@ public sealed class Match : IEquatable<Match>
 	///     <see langword="true" /> if <paramref name="other" /> has the same <see cref="Id" />;
 	///     otherwise, <see langword="false" />.
 	/// </returns>
-	public bool Equals(Match? other)
+	public bool Equals(MatchRecord? other)
 	{
 		if (other is null) return false;
 		return Id == other.Id;
@@ -44,12 +44,12 @@ public sealed class Match : IEquatable<Match>
 	/// </summary>
 	/// <param name="obj">The object to compare against.</param>
 	/// <returns>
-	///     <see langword="true" /> if <paramref name="obj" /> is a <see cref="Match" /> with the
+	///     <see langword="true" /> if <paramref name="obj" /> is a <see cref="MatchRecord" /> with the
 	///     same <see cref="Id" />; otherwise, <see langword="false" />.
 	/// </returns>
 	public override bool Equals(object? obj)
 	{
-		return obj is Match other && Equals(other);
+		return obj is MatchRecord other && Equals(other);
 	}
 
 	/// <summary>
@@ -76,7 +76,7 @@ public sealed class MatchData
 	}
 
 	/// <summary>Gets the user who created the match, or <see langword="null" /> for an unattended room.</summary>
-	public User? Creator { get; init; }
+	public UserRecord? Creator { get; init; }
 
 	/// <summary>Gets the date and time when the match started.</summary>
 	public required DateTimeOffset StartedAt { get; init; }

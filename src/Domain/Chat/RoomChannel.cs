@@ -6,13 +6,13 @@ namespace Basil.Domain.Chat;
 /// <summary>The chat channel of a multiplayer room.</summary>
 public sealed class RoomChannel : Channel
 {
-	private readonly Match _match;
+	private readonly MatchRecord _match;
 
 	/// <summary>Initializes the channel of a room, named after the room's id.</summary>
 	/// <param name="roomId">The id of the room.</param>
 	/// <param name="match">The match the room plays; its name is the channel's topic.</param>
 	[SetsRequiredMembers]
-	public RoomChannel(int roomId, Match match)
+	public RoomChannel(int roomId, MatchRecord match)
 	{
 		_match = match;
 		Name = $"#mp_{roomId}";

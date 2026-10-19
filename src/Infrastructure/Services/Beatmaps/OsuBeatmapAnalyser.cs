@@ -19,7 +19,6 @@ using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Taiko;
 using osu.Game.Rulesets.Taiko.Objects;
 using osu.Game.Utils;
-using Beatmap = Basil.Domain.Beatmaps.Beatmap;
 using BeatmapDifficulty = Basil.Domain.Beatmaps.BeatmapDifficulty;
 using LazerBeatmap = osu.Game.Beatmaps.Beatmap;
 
@@ -36,7 +35,7 @@ namespace Basil.Infrastructure.Services.Beatmaps;
 internal sealed class OsuBeatmapAnalyser(IBeatmapsetStorage storage) : IBeatmapAnalyser
 {
 	// The content lives as long as the beatmap instance; it is decoded again when the beatmap's file changes.
-	private readonly ConditionalWeakTable<Beatmap, KeptContent> _contents = new();
+	private readonly ConditionalWeakTable<BeatmapRecord, KeptContent> _contents = new();
 
 	/// <inheritdoc />
 	/// <exception cref="Exception">The beatmap file could not be decoded or analyzed.</exception>
@@ -50,7 +49,7 @@ internal sealed class OsuBeatmapAnalyser(IBeatmapsetStorage storage) : IBeatmapA
 
 	/// <inheritdoc />
 	/// <exception cref="Exception">The beatmap file could not be decoded or analyzed.</exception>
-	public async Task<BeatmapAnalysis?> AnalyzeAsync(Beatmap beatmap, GameMods mods,
+	public async Task<BeatmapAnalysis?> AnalyzeAsync(BeatmapRecord beatmap, GameMods mods,
 		CancellationToken cancellationToken = default)
 	{
 		var hash = beatmap.Hash;

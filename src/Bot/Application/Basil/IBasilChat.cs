@@ -15,5 +15,5 @@ public interface IBasilChat
 	/// <param name="user">The recipient.</param>
 	/// <param name="text">The message.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task SendAsync(User user, string text, CancellationToken cancellationToken = default);
+	Task SendAsync(UserRecord user, string text, CancellationToken cancellationToken = default);
 }

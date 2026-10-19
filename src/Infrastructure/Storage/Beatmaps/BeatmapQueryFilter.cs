@@ -15,7 +15,7 @@ internal static class BeatmapQueryFilter
 	/// <returns>The SQL WHERE clause fragment (without the WHERE keyword), or empty when no filter applies.</returns>
 	/// <remarks>
 	///     The caller aliases the beatmap table as <c>b</c> and the beatmapset table as <c>s</c>.
-	///     <see cref="Beatmapset.Status" /> is a static member that always returns
+	///     <see cref="BeatmapsetRecord.Status" /> is a static member that always returns
 	///     <see cref="BeatmapsetStatus.Approved" />; when the query asks for a different
 	///     status, the returned fragment matches no row.
 	/// </remarks>

@@ -27,7 +27,7 @@ internal sealed class SessionService(
 	public ISessionPresenceService Presence => presence;
 
 	/// <inheritdoc />
-	public int? Announce(Connection by, string text, IReadOnlyCollection<User>? to = null)
+	public int? Announce(Connection by, string text, IReadOnlyCollection<UserRecord>? to = null)
 	{
 		if (!PermissionRules.Allows(by, Permissions.ChatAnnounce, time.GetUtcNow())) return null;
 

@@ -9,7 +9,7 @@ public sealed class PmChannel : Channel
 	/// <summary>Initializes the private-message channel of a user, named after the user.</summary>
 	/// <param name="owner">The user who receives the messages.</param>
 	[SetsRequiredMembers]
-	public PmChannel(User owner)
+	public PmChannel(UserRecord owner)
 	{
 		Name = owner.Value.Name;
 	}

@@ -17,6 +17,6 @@ public enum BeatmapsetImportFailure : byte
 /// <param name="Beatmaps">The imported beatmaps; empty on failure.</param>
 /// <param name="Failure">Why the import failed, or <see langword="null" /> on success.</param>
 public sealed record BeatmapsetImportResult(
-	Beatmapset? Set,
-	IReadOnlyList<Beatmap> Beatmaps,
+	BeatmapsetRecord? Set,
+	IReadOnlyList<BeatmapRecord> Beatmaps,
 	BeatmapsetImportFailure? Failure);

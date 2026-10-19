@@ -17,7 +17,7 @@ internal sealed class PostgresMatchEventRepository(
 	IUserRepository users)
 	: IMatchEventRepository
 {
-	private readonly OwnedLists<int, Match, MatchEvent> _byMatch = new();
+	private readonly OwnedLists<int, MatchRecord, MatchEvent> _byMatch = new();
 
 	/// <inheritdoc />
 	public Task RecordAsync(MatchEvent matchEvent, CancellationToken cancellationToken = default)
@@ -42,7 +42,7 @@ internal sealed class PostgresMatchEventRepository(
 	}
 
 	/// <inheritdoc />
-	public async Task<IReadOnlyList<MatchEvent>> ListAsync(Match match, CancellationToken cancellationToken = default)
+	public async Task<IReadOnlyList<MatchEvent>> ListAsync(MatchRecord match, CancellationToken cancellationToken = default)
 	{
 		var liveMatch = await matches.GetAsync(match.Id, cancellationToken) ?? match;
 		return await _byMatch.GetOrLoadAsync(liveMatch.Id, liveMatch, async () =>

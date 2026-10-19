@@ -17,7 +17,7 @@ internal sealed class RoomCountdowns(IBasilChat chat, IBasilRooms rooms, TimePro
 	/// <param name="length">How long it runs.</param>
 	/// <param name="startsRound">Whether the round starts when it ends.</param>
 	/// <param name="cancellationToken">A token that cancels the announcement.</param>
-	public async Task StartAsync(int roomId, User actor, TimeSpan length, bool startsRound,
+	public async Task StartAsync(int roomId, UserRecord actor, TimeSpan length, bool startsRound,
 		CancellationToken cancellationToken)
 	{
 		var countdown = new RoomCountdown(roomId, actor, startsRound, length, this, time);
@@ -143,7 +143,7 @@ internal sealed class RoomCountdowns(IBasilChat chat, IBasilRooms rooms, TimePro
 	/// <param name="time">The clock the timers use.</param>
 	private sealed class RoomCountdown(
 		int roomId,
-		User actor,
+		UserRecord actor,
 		bool startsRound,
 		TimeSpan length,
 		RoomCountdowns owner,
@@ -156,7 +156,7 @@ internal sealed class RoomCountdowns(IBasilChat chat, IBasilRooms rooms, TimePro
 		public int RoomId => roomId;
 
 		/// <summary>Gets the user who started the countdown.</summary>
-		public User Actor => actor;
+		public UserRecord Actor => actor;
 
 		/// <summary>Gets whether the round starts when the countdown ends.</summary>
 		public bool StartsRound => startsRound;

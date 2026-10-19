@@ -27,17 +27,17 @@ public sealed record UserConnectionStatusChanged(BanchoConnection Connection, Pl
 /// <summary>Some of a user's permissions were suspended; a silence is one such restriction.</summary>
 /// <param name="User">The restricted user.</param>
 /// <param name="Restriction">The new restriction.</param>
-public sealed record UserRestricted(User User, Restriction Restriction) : UserEvent;
+public sealed record UserRestricted(UserRecord User, RestrictionRecord Restriction) : UserEvent;
 
 /// <summary>A restriction of a user was ended before its time.</summary>
 /// <param name="User">The user the restriction applied to.</param>
 /// <param name="Restriction">The lifted restriction, now ending at the moment it was lifted.</param>
-public sealed record UserRestrictionLifted(User User, Restriction Restriction) : UserEvent;
+public sealed record UserRestrictionLifted(UserRecord User, RestrictionRecord Restriction) : UserEvent;
 
 /// <summary>The permissions granted to a user were replaced.</summary>
 /// <param name="User">The user.</param>
 /// <param name="Permissions">The permissions now granted.</param>
-public sealed record UserPermissionsChanged(User User, Permissions Permissions) : UserEvent;
+public sealed record UserPermissionsChanged(UserRecord User, Permissions Permissions) : UserEvent;
 
 /// <summary>A notification was shown to online users.</summary>
 /// <param name="Recipients">The osu! clients that were sent the notification.</param>

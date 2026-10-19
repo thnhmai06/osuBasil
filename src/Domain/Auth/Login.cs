@@ -8,7 +8,7 @@ namespace Basil.Domain.Auth;
 public sealed class Login
 {
 	/// <summary>Gets the user who logged in.</summary>
-	public required User User { get; init; }
+	public required UserRecord User { get; init; }
 
 	/// <summary>Gets the IP address the login came from.</summary>
 	public required IPAddress Ip { get; init; }

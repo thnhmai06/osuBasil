@@ -33,7 +33,7 @@ public interface IBeatmapsetService : IEventPublisher<BeatmapsetEvent>
 	/// <param name="set">The beatmapset to delete.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns><see langword="true" /> if the beatmapset was deleted; <see langword="false" /> when the beatmapset is locked.</returns>
-	Task<bool> DeleteAsync(Beatmapset set, CancellationToken cancellationToken = default);
+	Task<bool> DeleteAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default);
 
 	/// <summary>Takes in everything waiting in the storage and brings every beatmapset in step with its archive.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>

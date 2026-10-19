@@ -59,7 +59,7 @@ public interface IRoomMembershipService
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, IsManager, NotInRoom or RoomClosed when the room has closed.</returns>
 	/// <remarks>The creator and referees cannot be kicked.</remarks>
-	Task<RoomResult> KickAsync(Room room, Connection by, User player, CancellationToken cancellationToken = default);
+	Task<RoomResult> KickAsync(Room room, Connection by, UserRecord player, CancellationToken cancellationToken = default);
 
 	/// <summary>Bans a user from the room, removing them if seated.</summary>
 	/// <param name="room">The room.</param>
@@ -70,7 +70,7 @@ public interface IRoomMembershipService
 	///     Ok, NotAuthorized, IsManager or RoomClosed when the room has closed; banning a banned user again returns Ok
 	///     and does nothing.
 	/// </returns>
-	Task<RoomResult> BanAsync(Room room, Connection by, User player, CancellationToken cancellationToken = default);
+	Task<RoomResult> BanAsync(Room room, Connection by, UserRecord player, CancellationToken cancellationToken = default);
 
 	/// <summary>Lifts a user's ban.</summary>
 	/// <param name="room">The room.</param>
@@ -78,7 +78,7 @@ public interface IRoomMembershipService
 	/// <param name="player">The banned user.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, NotBanned or RoomClosed when the room has closed.</returns>
-	Task<RoomResult> UnbanAsync(Room room, Connection by, User player, CancellationToken cancellationToken = default);
+	Task<RoomResult> UnbanAsync(Room room, Connection by, UserRecord player, CancellationToken cancellationToken = default);
 
 	/// <summary>Invites an online user to the room.</summary>
 	/// <param name="room">The room.</param>

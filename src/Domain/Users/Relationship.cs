@@ -9,7 +9,7 @@ public sealed class Relationship : IEquatable<Relationship>
 {
 	/// <summary>The user who holds the relationship.</summary>
 	/// <exception cref="ArgumentException">The value is the same user as <see cref="Target" />.</exception>
-	public required User Actor
+	public required UserRecord Actor
 	{
 		get;
 		init => field = value.Equals(Target)
@@ -19,7 +19,7 @@ public sealed class Relationship : IEquatable<Relationship>
 
 	/// <summary>The user the relationship is held toward.</summary>
 	/// <exception cref="ArgumentException">The value is the same user as <see cref="Actor" />.</exception>
-	public required User Target
+	public required UserRecord Target
 	{
 		get;
 		init => field = value.Equals(Actor)

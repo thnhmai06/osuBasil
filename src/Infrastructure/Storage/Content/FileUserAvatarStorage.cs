@@ -11,19 +11,19 @@ internal sealed class FileUserAvatarStorage(DataPaths paths) : IUserAvatarStorag
 	private DataStorage Files => paths.Avatars;
 
 	/// <inheritdoc />
-	public Task SaveAsync(User user, Stream content, CancellationToken cancellationToken = default)
+	public Task SaveAsync(UserRecord user, Stream content, CancellationToken cancellationToken = default)
 	{
 		return Files.SaveAsync($"{user.Id}", content, cancellationToken);
 	}
 
 	/// <inheritdoc />
-	public Task<Stream?> OpenAsync(User user, CancellationToken cancellationToken = default)
+	public Task<Stream?> OpenAsync(UserRecord user, CancellationToken cancellationToken = default)
 	{
 		return Task.FromResult<Stream?>(Files.Open($"{user.Id}"));
 	}
 
 	/// <inheritdoc />
-	public Task DeleteAsync(User user, CancellationToken cancellationToken = default)
+	public Task DeleteAsync(UserRecord user, CancellationToken cancellationToken = default)
 	{
 		Files.Delete($"{user.Id}");
 		return Task.CompletedTask;

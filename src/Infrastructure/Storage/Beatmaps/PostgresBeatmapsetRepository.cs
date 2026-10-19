@@ -18,7 +18,7 @@ internal sealed class PostgresBeatmapsetRepository(
 	DatabaseWriter writer,
 	TimeProvider time,
 	IServiceProvider services)
-	: MemoryRepository<int, Beatmapset>(reader, writer), IBeatmapsetRepository
+	: MemoryRepository<int, BeatmapsetRecord>(reader, writer), IBeatmapsetRepository
 {
 	private const string UpdateSql =
 		"""
@@ -56,20 +56,20 @@ internal sealed class PostgresBeatmapsetRepository(
 	protected override string WriteSql => UpdateSql;
 
 	/// <inheritdoc />
-	public ValueTask<Beatmapset?> GetAsync(int id, CancellationToken cancellationToken = default)
+	public ValueTask<BeatmapsetRecord?> GetAsync(int id, CancellationToken cancellationToken = default)
 	{
 		return FindAsync(id, cancellationToken);
 	}
 
 	/// <inheritdoc />
-	public Task UpdateAsync(Beatmapset set, CancellationToken cancellationToken = default)
+	public Task UpdateAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default)
 	{
 		_ = SaveAsync(set);
 		return Task.CompletedTask;
 	}
 
 	/// <inheritdoc />
-	public async Task<IReadOnlyList<Beatmapset>> CommitAsync(BeatmapsetChanges changes,
+	public async Task<IReadOnlyList<BeatmapsetRecord>> CommitAsync(BeatmapsetChanges changes,
 		CancellationToken cancellationToken = default)
 	{
 		try
@@ -85,14 +85,14 @@ internal sealed class PostgresBeatmapsetRepository(
 	}
 
 	/// <inheritdoc />
-	public Task DeleteAsync(Beatmapset set, CancellationToken cancellationToken = default)
+	public Task DeleteAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default)
 	{
 		_ = RemoveAsync(set);
 		return Task.CompletedTask;
 	}
 
 	/// <inheritdoc />
-	public async Task<Page<Beatmapset>> ListAsync(BeatmapQuery query, PageRequest page,
+	public async Task<Page<BeatmapsetRecord>> ListAsync(BeatmapQuery query, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
 		var parameters = new DynamicParameters(new { limit = page.Limit, offset = page.Offset });
@@ -123,20 +123,20 @@ internal sealed class PostgresBeatmapsetRepository(
 			await connection.QueryAsync<BeatmapsetRow>(sql, parameters),
 			await connection.ExecuteScalarAsync<int>(countSql, parameters)), cancellationToken);
 
-		return new Page<Beatmapset>(rows.Select(row => Track(ToBeatmapset(row))).ToList(), total);
+		return new Page<BeatmapsetRecord>(rows.Select(row => Track(ToBeatmapset(row))).ToList(), total);
 	}
 
-	protected override int KeyOf(Beatmapset item)
+	protected override int KeyOf(BeatmapsetRecord item)
 	{
 		return item.Id;
 	}
 
-	protected override Root RootOf(Beatmapset item)
+	protected override Root RootOf(BeatmapsetRecord item)
 	{
 		return Root.Beatmapset(item.Id);
 	}
 
-	protected override void CopyTo(Beatmapset live, Beatmapset from)
+	protected override void CopyTo(BeatmapsetRecord live, BeatmapsetRecord from)
 	{
 		live.Fingerprint = from.Fingerprint;
 		live.Metadata = from.Metadata;
@@ -146,7 +146,7 @@ internal sealed class PostgresBeatmapsetRepository(
 		live.Visible = from.Visible;
 	}
 
-	protected override async Task<Beatmapset?> LoadAsync(int key)
+	protected override async Task<BeatmapsetRecord?> LoadAsync(int key)
 	{
 		var row = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<BeatmapsetRow>(
 			"""
@@ -157,7 +157,7 @@ internal sealed class PostgresBeatmapsetRepository(
 		return row is null ? null : ToBeatmapset(row);
 	}
 
-	protected override object WriteParameters(Beatmapset set)
+	protected override object WriteParameters(BeatmapsetRecord set)
 	{
 		return RowParameters(set);
 	}
@@ -199,7 +199,7 @@ internal sealed class PostgresBeatmapsetRepository(
 				visible = true;
 			}
 
-			var set = new Beatmapset
+			var set = new BeatmapsetRecord
 			{
 				Id = id,
 				Fingerprint = item.Data.Fingerprint,
@@ -241,15 +241,15 @@ internal sealed class PostgresBeatmapsetRepository(
 	/// <param name="stored">What was stored, in the order of <see cref="BeatmapsetChanges.Store" />.</param>
 	/// <param name="removed">The beatmapsets that were removed.</param>
 	/// <returns>The live beatmapsets, in the order of <see cref="BeatmapsetChanges.Store" />.</returns>
-	private List<Beatmapset> Remember(List<StoredSet> stored, IReadOnlyCollection<Beatmapset> removed)
+	private List<BeatmapsetRecord> Remember(List<StoredSet> stored, IReadOnlyCollection<BeatmapsetRecord> removed)
 	{
 		var beatmaps = Beatmaps;
-		var live = new List<Beatmapset>(stored.Count);
+		var live = new List<BeatmapsetRecord>(stored.Count);
 
 		foreach (var item in stored)
 		{
 			var set = Live(item.Set);
-			var difficulties = new List<Beatmap>(item.Beatmaps.Count);
+			var difficulties = new List<BeatmapRecord>(item.Beatmaps.Count);
 			foreach (var storedBeatmap in item.Beatmaps)
 				difficulties.Add(beatmaps.Apply(set, storedBeatmap));
 			beatmaps.Replace(set, difficulties);
@@ -268,14 +268,14 @@ internal sealed class PostgresBeatmapsetRepository(
 	/// <summary>Gives the live instance of a stored beatmapset its values, or keeps the new one.</summary>
 	/// <param name="set">The beatmapset as it is stored.</param>
 	/// <returns>The live beatmapset.</returns>
-	private Beatmapset Live(Beatmapset set)
+	private BeatmapsetRecord Live(BeatmapsetRecord set)
 	{
 		var live = Track(set);
 		if (!ReferenceEquals(live, set)) CopyTo(live, set);
 		return live;
 	}
 
-	private static object RowParameters(Beatmapset set)
+	private static object RowParameters(BeatmapsetRecord set)
 	{
 		return new
 		{
@@ -300,7 +300,7 @@ internal sealed class PostgresBeatmapsetRepository(
 			transaction: transaction);
 	}
 
-	private static Beatmapset ToBeatmapset(BeatmapsetRow row)
+	private static BeatmapsetRecord ToBeatmapset(BeatmapsetRow row)
 	{
 		// A set stored before archives were recorded has no fingerprint; the next scan takes one, as for a changed archive.
 		var fingerprint = row.ArchiveHash is { } hash
@@ -308,7 +308,7 @@ internal sealed class PostgresBeatmapsetRepository(
 				new ContentStamp(row.ArchiveSize ?? 0, row.ArchiveModifiedAt ?? DateTimeOffset.UnixEpoch),
 				new Md5(hash))
 			: default;
-		return new Beatmapset
+		return new BeatmapsetRecord
 		{
 			Id = row.Id,
 			Fingerprint = fingerprint,
@@ -341,9 +341,9 @@ internal sealed class PostgresBeatmapsetRepository(
 
 /// <summary>One difficulty of a beatmapset, as a commit stored it.</summary>
 /// <param name="Beatmap">The difficulty with the values it was stored with.</param>
-internal sealed record StoredBeatmap(Beatmap Beatmap);
+internal sealed record StoredBeatmap(BeatmapRecord Beatmap);
 
 /// <summary>One beatmapset, as a commit stored it.</summary>
 /// <param name="Set">The beatmapset, with the values it now has.</param>
 /// <param name="Beatmaps">Every difficulty the set now has, in order.</param>
-internal sealed record StoredSet(Beatmapset Set, List<StoredBeatmap> Beatmaps);
+internal sealed record StoredSet(BeatmapsetRecord Set, List<StoredBeatmap> Beatmaps);

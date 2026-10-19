@@ -21,7 +21,7 @@ internal sealed class FileReplayStorage(
 	private DataStorage Files => paths.Replays;
 
 	/// <inheritdoc />
-	public async Task SaveAsync(Score score, Stream content, CancellationToken cancellationToken = default)
+	public async Task SaveAsync(ScoreRecord score, Stream content, CancellationToken cancellationToken = default)
 	{
 		var name = await NameOfAsync(score, cancellationToken);
 		if (Find(score.Id) is { } old && old != name)
@@ -30,7 +30,7 @@ internal sealed class FileReplayStorage(
 	}
 
 	/// <inheritdoc />
-	public Task<Stream?> OpenAsync(Score score, CancellationToken cancellationToken = default)
+	public Task<Stream?> OpenAsync(ScoreRecord score, CancellationToken cancellationToken = default)
 	{
 		return Task.FromResult<Stream?>(Find(score.Id) is { } name ? Files.Open(name) : null);
 	}
@@ -45,7 +45,7 @@ internal sealed class FileReplayStorage(
 			name.StartsWith(prefix, StringComparison.Ordinal));
 	}
 
-	private async Task<string> NameOfAsync(Score score, CancellationToken cancellationToken)
+	private async Task<string> NameOfAsync(ScoreRecord score, CancellationToken cancellationToken)
 	{
 		var user = score.Value.UserId is { } userId ? await users.GetAsync(userId, cancellationToken) : null;
 		var beatmap = score.Value.BeatmapHash is { } hash ? await beatmaps.GetAsync(hash, cancellationToken) : null;

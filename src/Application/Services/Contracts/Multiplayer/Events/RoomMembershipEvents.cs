@@ -56,7 +56,7 @@ public sealed record RoomPlayerLeft(
 /// </param>
 public sealed record RoomPlayerKicked(
 	Room Room,
-	User By,
+	UserRecord By,
 	BanchoConnection Player,
 	int Slot,
 	BanchoConnection? Host,

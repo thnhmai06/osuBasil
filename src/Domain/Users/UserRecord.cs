@@ -6,7 +6,7 @@ namespace Basil.Domain.Users;
 /// <summary>
 ///     A registered user identified by their id.
 /// </summary>
-public sealed class User : IEquatable<User>
+public sealed class UserRecord : IEquatable<UserRecord>
 {
 	/// <summary>Gets the unique identifier of the user.</summary>
 	/// <exception cref="ArgumentOutOfRangeException">The value is less than 1.</exception>
@@ -32,7 +32,7 @@ public sealed class User : IEquatable<User>
 	///     <see langword="true" /> if <paramref name="other" /> has the same <see cref="Id" />;
 	///     otherwise, <see langword="false" />.
 	/// </returns>
-	public bool Equals(User? other)
+	public bool Equals(UserRecord? other)
 	{
 		if (other is null) return false;
 		return Id == other.Id;
@@ -43,12 +43,12 @@ public sealed class User : IEquatable<User>
 	/// </summary>
 	/// <param name="obj">The object to compare against.</param>
 	/// <returns>
-	///     <see langword="true" /> if <paramref name="obj" /> is a <see cref="User" /> with the same
+	///     <see langword="true" /> if <paramref name="obj" /> is a <see cref="UserRecord" /> with the same
 	///     <see cref="Id" />; otherwise, <see langword="false" />.
 	/// </returns>
 	public override bool Equals(object? obj)
 	{
-		return obj is User other && Equals(other);
+		return obj is UserRecord other && Equals(other);
 	}
 
 	/// <summary>

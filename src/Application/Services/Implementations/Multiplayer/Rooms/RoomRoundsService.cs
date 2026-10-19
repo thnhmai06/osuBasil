@@ -51,7 +51,7 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 	}
 
 	/// <inheritdoc />
-	public Task<RoomResult> RecordScoreAsync(Room room, RoundScore score, User player,
+	public Task<RoomResult> RecordScoreAsync(Room room, RoundScore score, UserRecord player,
 		CancellationToken cancellationToken = default)
 	{
 		return RoomScope.InScopeAsync(room, () => RecordScore(room, score, player), cancellationToken);
@@ -136,7 +136,7 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 		return RoomResult.Ok;
 	}
 
-	private RoomResult RecordScore(Room room, RoundScore score, User player)
+	private RoomResult RecordScore(Room room, RoundScore score, UserRecord player)
 	{
 		if (room.Rounds.LastRound is not { } round || !round.Equals(score.Round)) return RoomResult.RoundMismatch;
 

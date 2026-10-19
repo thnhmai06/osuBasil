@@ -23,10 +23,10 @@ public sealed record RoomState(
 	int Id,
 	string Name,
 	string Channel,
-	User? Creator,
-	IReadOnlyList<User> Referees,
-	IReadOnlyList<User> Banned,
-	User? Host,
+	UserRecord? Creator,
+	IReadOnlyList<UserRecord> Referees,
+	IReadOnlyList<UserRecord> Banned,
+	UserRecord? Host,
 	MatchSettings Settings,
 	RoomBeatmap? Beatmap,
 	bool HasPassword,
@@ -38,7 +38,7 @@ public sealed record RoomState(
 	/// <summary>Determines whether a user manages the room: its creator or one of its referees.</summary>
 	/// <param name="user">The user.</param>
 	/// <returns><see langword="true" /> when the user is the creator or a referee.</returns>
-	public bool IsManagedBy(User user)
+	public bool IsManagedBy(UserRecord user)
 	{
 		return user.Equals(Creator) || Referees.Contains(user);
 	}
@@ -59,7 +59,7 @@ public sealed record RoomBeatmap(int Id, string Name, GameMode Mode);
 /// <param name="Locked">Whether the slot is locked.</param>
 public sealed record RoomSlotState(
 	int Index,
-	User? Player,
+	UserRecord? Player,
 	GameTeam? Team,
 	RoomSlotStatus? Status,
 	GameMods? Mods,

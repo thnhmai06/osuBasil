@@ -4,7 +4,7 @@ using Basil.Domain.Mechanics;
 namespace Basil.Domain.Scores;
 
 /// <summary>A stored score identified by its id.</summary>
-public sealed class Score : IEquatable<Score>
+public sealed class ScoreRecord : IEquatable<ScoreRecord>
 {
 	/// <summary>Gets the unique identifier of the score.</summary>
 	public required int Id
@@ -24,7 +24,7 @@ public sealed class Score : IEquatable<Score>
 	///     <see langword="true" /> if <paramref name="other" /> has the same <see cref="Id" />;
 	///     otherwise, <see langword="false" />.
 	/// </returns>
-	public bool Equals(Score? other)
+	public bool Equals(ScoreRecord? other)
 	{
 		if (other is null) return false;
 		return Id == other.Id;
@@ -33,12 +33,12 @@ public sealed class Score : IEquatable<Score>
 	/// <summary>Determines whether this score equals another object.</summary>
 	/// <param name="obj">The object to compare against.</param>
 	/// <returns>
-	///     <see langword="true" /> if <paramref name="obj" /> is a <see cref="Score" /> with the
+	///     <see langword="true" /> if <paramref name="obj" /> is a <see cref="ScoreRecord" /> with the
 	///     same <see cref="Id" />; otherwise, <see langword="false" />.
 	/// </returns>
 	public override bool Equals(object? obj)
 	{
-		return obj is Score other && Equals(other);
+		return obj is ScoreRecord other && Equals(other);
 	}
 
 	/// <summary>Returns the hash code of this score.</summary>

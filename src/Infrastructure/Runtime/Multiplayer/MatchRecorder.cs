@@ -91,11 +91,11 @@ internal sealed class MatchRecorder(
 	}
 
 	private async ValueTask RecordMatchEventAsync(
-		Match match,
+		MatchRecord match,
 		MatchEventType type,
 		DateTimeOffset timestamp,
-		User? actor = null,
-		User? target = null,
+		UserRecord? actor = null,
+		UserRecord? target = null,
 		string? detail = null,
 		CancellationToken cancellationToken = default)
 	{

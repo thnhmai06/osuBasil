@@ -105,7 +105,7 @@ internal sealed class BeatmapsetService(
 	}
 
 	/// <inheritdoc />
-	public async Task<bool> DeleteAsync(Beatmapset set, CancellationToken cancellationToken = default)
+	public async Task<bool> DeleteAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default)
 	{
 		if (set.Locked)
 			return false;
@@ -124,8 +124,8 @@ internal sealed class BeatmapsetService(
 	{
 		var seen = new HashSet<int>();
 		var queued = new List<(BeatmapsetArchive Archive, int? FolderId, ContentFingerprint? Fingerprint)>();
-		var unchanged = new List<Beatmapset>();
-		var changed = new List<(BeatmapsetChange Change, Beatmapset Set)>();
+		var unchanged = new List<BeatmapsetRecord>();
+		var changed = new List<(BeatmapsetChange Change, BeatmapsetRecord Set)>();
 		var indexed = new List<Indexed>();
 		var claims = new SetClaims();
 
@@ -148,7 +148,7 @@ internal sealed class BeatmapsetService(
 
 				case BeatmapsetFolder { Exists: true, Archive: { } archive } folder:
 				{
-					Beatmapset? stored = null;
+					BeatmapsetRecord? stored = null;
 					if (folder.Id is { } id)
 						stored = await beatmapsets.GetAsync(id, cancellationToken).ConfigureAwait(false);
 
@@ -199,7 +199,7 @@ internal sealed class BeatmapsetService(
 			}
 		}
 
-		var remove = new List<Beatmapset>();
+		var remove = new List<BeatmapsetRecord>();
 		foreach (var set in await Paging.ListAllAsync(
 				         page => beatmapsets.ListAsync(new BeatmapQuery(), page, cancellationToken), cancellationToken)
 			         .ConfigureAwait(false))
@@ -300,7 +300,7 @@ internal sealed class BeatmapsetService(
 	{
 		var fingerprint = await archive.FingerprintAsync(cancellationToken).ConfigureAwait(false);
 
-		Beatmapset? stored = null;
+		BeatmapsetRecord? stored = null;
 		if (folderId is { } id)
 			stored = await beatmapsets.GetAsync(id, cancellationToken).ConfigureAwait(false);
 
@@ -336,7 +336,7 @@ internal sealed class BeatmapsetService(
 	/// <param name="item">The archive, as planned from what it contains.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The stored beatmapset with its difficulties.</returns>
-	private async Task<(Beatmapset Set, IReadOnlyList<Beatmap> Beatmaps)> StoreAsync(Indexed item,
+	private async Task<(BeatmapsetRecord Set, IReadOnlyList<BeatmapRecord> Beatmaps)> StoreAsync(Indexed item,
 		CancellationToken cancellationToken)
 	{
 		var storedSets = await beatmapsets.CommitAsync(new BeatmapsetChanges([item.Change], []), cancellationToken)
@@ -355,7 +355,7 @@ internal sealed class BeatmapsetService(
 	/// <param name="set">The beatmapset, whose archive is stored.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <remarks>The names are chosen the same way they were when the set was planned, so they match the records.</remarks>
-	private async Task StoreFilesAsync(Beatmapset set, CancellationToken cancellationToken)
+	private async Task StoreFilesAsync(BeatmapsetRecord set, CancellationToken cancellationToken)
 	{
 		await storage.ClearAsync(set, cancellationToken).ConfigureAwait(false);
 
@@ -426,7 +426,7 @@ internal sealed class BeatmapsetService(
 	/// <param name="names">The name chosen for each file.</param>
 	/// <param name="done">The files already stored by this call; <paramref name="file" /> is added to it.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	private async Task SaveFileAsync(Beatmapset set, BeatmapsetFileKind kind, BeatmapsetContentFile? file,
+	private async Task SaveFileAsync(BeatmapsetRecord set, BeatmapsetFileKind kind, BeatmapsetContentFile? file,
 		IReadOnlyDictionary<BeatmapsetContentFile, string> names, HashSet<BeatmapsetContentFile> done,
 		CancellationToken cancellationToken)
 	{
@@ -443,7 +443,7 @@ internal sealed class BeatmapsetService(
 	/// <param name="set">The stored beatmapset.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns><see langword="true" /> when its archive or any file made from it is not stored.</returns>
-	private async Task<bool> MissingFilesAsync(Beatmapset set, CancellationToken cancellationToken)
+	private async Task<bool> MissingFilesAsync(BeatmapsetRecord set, CancellationToken cancellationToken)
 	{
 		var archive = await storage.OpenArchiveAsync(set, true, cancellationToken).ConfigureAwait(false);
 		if (archive is null) return true;
@@ -503,7 +503,7 @@ internal sealed class BeatmapsetService(
 		var setFingerprint = fingerprint ?? await archive.FingerprintAsync(cancellationToken).ConfigureAwait(false);
 
 		var hashes = new Dictionary<BeatmapsetDifficulty, Md5>(content.Difficulties.Count);
-		var stored = new Dictionary<BeatmapsetDifficulty, Beatmap?>(content.Difficulties.Count);
+		var stored = new Dictionary<BeatmapsetDifficulty, BeatmapRecord?>(content.Difficulties.Count);
 		foreach (var difficulty in content.Difficulties)
 		{
 			var hash = await HashAsync(difficulty.File, cancellationToken).ConfigureAwait(false);
@@ -564,8 +564,8 @@ internal sealed class BeatmapsetService(
 	///     <see langword="true" /> when the set is locked, or a locked beatmap (or a beatmap of a locked set) would be
 	///     taken over, changed or removed.
 	/// </returns>
-	private async Task<bool> TouchesLockedAsync(Beatmapset? existing, BeatmapsetContent content,
-		Dictionary<BeatmapsetDifficulty, Md5> hashes, Dictionary<BeatmapsetDifficulty, Beatmap?> stored,
+	private async Task<bool> TouchesLockedAsync(BeatmapsetRecord? existing, BeatmapsetContent content,
+		Dictionary<BeatmapsetDifficulty, Md5> hashes, Dictionary<BeatmapsetDifficulty, BeatmapRecord?> stored,
 		CancellationToken cancellationToken)
 	{
 		if (existing is { Locked: true }) return true;
@@ -626,7 +626,7 @@ internal sealed class BeatmapsetService(
 	///     The beatmapset is the stored one that already has a difficulty of the read set; otherwise the stored one with
 	///     the folder's id; otherwise the stored one with the id the read set declares.
 	/// </remarks>
-	private async Task<Beatmapset?> ResolveAsync(BeatmapsetContent content,
+	private async Task<BeatmapsetRecord?> ResolveAsync(BeatmapsetContent content,
 		IReadOnlyDictionary<BeatmapsetDifficulty, Md5> hashes, int? folderId, CancellationToken cancellationToken)
 	{
 		foreach (var hash in hashes.Values)
@@ -650,7 +650,7 @@ internal sealed class BeatmapsetService(
 	/// <param name="set">The stored beatmapset, with its difficulties as they are stored.</param>
 	/// <param name="fingerprint">The fingerprint of the set's archive, unchanged in content.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	private async Task<BeatmapsetChange> ChangeOfAsync(Beatmapset set, ContentFingerprint fingerprint,
+	private async Task<BeatmapsetChange> ChangeOfAsync(BeatmapsetRecord set, ContentFingerprint fingerprint,
 		CancellationToken cancellationToken)
 	{
 		var synced = new List<BeatmapData>();
@@ -664,7 +664,7 @@ internal sealed class BeatmapsetService(
 	/// <summary>Forgets a stored beatmapset, leaving the files of its folder as they are.</summary>
 	/// <param name="set">The beatmapset to forget.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	private async Task ForgetAsync(Beatmapset set, CancellationToken cancellationToken)
+	private async Task ForgetAsync(BeatmapsetRecord set, CancellationToken cancellationToken)
 	{
 		await beatmapsets.CommitAsync(new BeatmapsetChanges([], [set]), cancellationToken).ConfigureAwait(false);
 		_events.Writer.TryWrite(new BeatmapsetDeleted(set));
@@ -735,7 +735,7 @@ internal sealed class BeatmapsetService(
 	/// <param name="stored">The stored beatmap of the same file, or <see langword="null" /> when there is none.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <remarks>A difficulty that cannot be analysed gets a zero star rating and no objects.</remarks>
-	private async Task<BeatmapAnalysis> AnalyseAsync(BeatmapsetDifficulty difficulty, Beatmap? stored,
+	private async Task<BeatmapAnalysis> AnalyseAsync(BeatmapsetDifficulty difficulty, BeatmapRecord? stored,
 		CancellationToken cancellationToken)
 	{
 		if (stored is { Metadata.Difficulty.Star: > 0 })
@@ -770,7 +770,7 @@ internal sealed class BeatmapsetService(
 	/// <param name="Locked">Whether storing it would change something locked, so it is not stored.</param>
 	private sealed record Indexed(
 		BeatmapsetArchive Archive,
-		Beatmapset? Existing,
+		BeatmapsetRecord? Existing,
 		BeatmapsetData Data,
 		bool Locked)
 	{

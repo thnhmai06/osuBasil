@@ -42,5 +42,5 @@ public interface ISessionConnectionsService
 	///     <see langword="false" />.
 	/// </returns>
 	/// <remarks>The connections, the caller's own included, are closed as <see cref="ConnectionCloseReason.Revoked" />.</remarks>
-	bool Revoke(Connection by, User user);
+	bool Revoke(Connection by, UserRecord user);
 }

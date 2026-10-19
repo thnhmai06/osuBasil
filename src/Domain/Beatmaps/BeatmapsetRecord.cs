@@ -5,7 +5,7 @@ namespace Basil.Domain.Beatmaps;
 /// <summary>
 ///     A stored beatmapset identified by its id.
 /// </summary>
-public sealed class Beatmapset : IEquatable<Beatmapset>
+public sealed class BeatmapsetRecord : IEquatable<BeatmapsetRecord>
 {
 	/// <summary>
 	///     The lowest id of a beatmapset that has no osu! id and was given a local one.
@@ -77,7 +77,7 @@ public sealed class Beatmapset : IEquatable<Beatmapset>
 	///     <see langword="true" /> if <paramref name="other" /> has the same <see cref="Id" />;
 	///     otherwise, <see langword="false" />.
 	/// </returns>
-	public bool Equals(Beatmapset? other)
+	public bool Equals(BeatmapsetRecord? other)
 	{
 		if (other is null) return false;
 		return Id == other.Id;
@@ -88,12 +88,12 @@ public sealed class Beatmapset : IEquatable<Beatmapset>
 	/// </summary>
 	/// <param name="obj">The object to compare against.</param>
 	/// <returns>
-	///     <see langword="true" /> if <paramref name="obj" /> is a <see cref="Beatmapset" /> with
+	///     <see langword="true" /> if <paramref name="obj" /> is a <see cref="BeatmapsetRecord" /> with
 	///     the same <see cref="Id" />; otherwise, <see langword="false" />.
 	/// </returns>
 	public override bool Equals(object? obj)
 	{
-		return obj is Beatmapset other && Equals(other);
+		return obj is BeatmapsetRecord other && Equals(other);
 	}
 
 	/// <summary>

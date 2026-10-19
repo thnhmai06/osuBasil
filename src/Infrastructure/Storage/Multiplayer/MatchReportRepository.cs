@@ -12,7 +12,7 @@ internal sealed class MatchReportRepository(
 	: IMatchReportRepository
 {
 	/// <inheritdoc />
-	public async ValueTask<MatchReport> GetAsync(Match match, CancellationToken cancellationToken = default)
+	public async ValueTask<MatchReport> GetAsync(MatchRecord match, CancellationToken cancellationToken = default)
 	{
 		var matchRounds = await rounds.ListAsync(match, cancellationToken).ConfigureAwait(false);
 		foreach (var round in matchRounds)
@@ -21,6 +21,6 @@ internal sealed class MatchReportRepository(
 
 		var matchEvents = await events.ListAsync(match, cancellationToken).ConfigureAwait(false);
 		return new MatchReport(match,
-			[.. matchRounds.Cast<IMatchRecord>().Concat(matchEvents).OrderBy(record => record.Timestamp)]);
+			[.. matchRounds.Cast<IMatchEntry>().Concat(matchEvents).OrderBy(record => record.Timestamp)]);
 	}
 }

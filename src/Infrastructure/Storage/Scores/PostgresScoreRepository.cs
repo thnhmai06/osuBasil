@@ -14,9 +14,9 @@ namespace Basil.Infrastructure.Storage.Scores;
 /// <summary>Stores submitted scores.</summary>
 internal sealed class PostgresScoreRepository(
 	DatabaseReader reader,
-	DatabaseWriter writer) : MemoryRepository<int, Score>(reader, writer), IScoreRepository
+	DatabaseWriter writer) : MemoryRepository<int, ScoreRecord>(reader, writer), IScoreRepository
 {
-	private readonly WeakIndex<Md5, Score> _byChecksum = new();
+	private readonly WeakIndex<Md5, ScoreRecord> _byChecksum = new();
 
 	protected override string WriteSql =>
 		"""
@@ -46,7 +46,7 @@ internal sealed class PostgresScoreRepository(
 		""";
 
 	/// <inheritdoc />
-	public async Task<Score> CreateAsync(ScoreData data, CancellationToken cancellationToken = default)
+	public async Task<ScoreRecord> CreateAsync(ScoreData data, CancellationToken cancellationToken = default)
 	{
 		if (data.Checksum is { } checksum && _byChecksum.TryGetValue(checksum, out var known) &&
 		    known.Value.Checksum == checksum)
@@ -76,13 +76,13 @@ internal sealed class PostgresScoreRepository(
 		if (id == 0)
 			throw new AlreadyExistsException("A score with the same checksum is already stored.");
 
-		var score = Track(new Score { Id = id, Value = data });
+		var score = Track(new ScoreRecord { Id = id, Value = data });
 		IndexScore(score);
 		return score;
 	}
 
 	/// <inheritdoc />
-	public async ValueTask<Score?> GetAsync(int id, CancellationToken cancellationToken = default)
+	public async ValueTask<ScoreRecord?> GetAsync(int id, CancellationToken cancellationToken = default)
 	{
 		var score = await FindAsync(id, cancellationToken);
 		if (score is not null)
@@ -91,7 +91,7 @@ internal sealed class PostgresScoreRepository(
 	}
 
 	/// <inheritdoc />
-	public async Task<Page<Score>> ListAsync(ScoreQuery query, PageRequest page,
+	public async Task<Page<ScoreRecord>> ListAsync(ScoreQuery query, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
 		var (where, parameters) = BuildFilter(query);
@@ -113,20 +113,20 @@ internal sealed class PostgresScoreRepository(
 		var items = rows.Select(row => Track(ToScore(row))).ToList();
 		foreach (var score in items)
 			IndexScore(score);
-		return new Page<Score>(items, total);
+		return new Page<ScoreRecord>(items, total);
 	}
 
-	protected override int KeyOf(Score item)
+	protected override int KeyOf(ScoreRecord item)
 	{
 		return item.Id;
 	}
 
-	protected override Root RootOf(Score item)
+	protected override Root RootOf(ScoreRecord item)
 	{
 		return Root.User(item.Value.UserId ?? 0);
 	}
 
-	protected override async Task<Score?> LoadAsync(int key)
+	protected override async Task<ScoreRecord?> LoadAsync(int key)
 	{
 		var row = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<ScoreRow>(
 			"""
@@ -138,7 +138,7 @@ internal sealed class PostgresScoreRepository(
 		return row is null ? null : ToScore(row);
 	}
 
-	protected override object WriteParameters(Score score)
+	protected override object WriteParameters(ScoreRecord score)
 	{
 		return Parameters(score.Value, score.Id);
 	}
@@ -162,15 +162,15 @@ internal sealed class PostgresScoreRepository(
 		return (conditions.Count == 0 ? "" : $"where {string.Join(" AND ", conditions)}", parameters);
 	}
 
-	private void IndexScore(Score score)
+	private void IndexScore(ScoreRecord score)
 	{
 		if (score.Value.Checksum is { } checksum)
 			_byChecksum.Set(checksum, score);
 	}
 
-	private static Score ToScore(ScoreRow row)
+	private static ScoreRecord ToScore(ScoreRow row)
 	{
-		return new Score { Id = row.Id, Value = ToData(row) };
+		return new ScoreRecord { Id = row.Id, Value = ToData(row) };
 	}
 
 	private static ScoreData ToData(ScoreRow row)

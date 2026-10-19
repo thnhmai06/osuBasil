@@ -17,7 +17,7 @@ public abstract class Connection(Login login, string token)
 	public string Token { get; } = token;
 
 	/// <summary>Gets the user who owns this connection.</summary>
-	public User User => Login.User;
+	public UserRecord User => Login.User;
 
 	/// <summary>Gets the kind of client this connection comes from.</summary>
 	public abstract ConnectionType Type { get; }

@@ -60,7 +60,7 @@ internal sealed class SessionConnectionsService(
 	}
 
 	/// <inheritdoc />
-	public bool Revoke(Connection by, User user)
+	public bool Revoke(Connection by, UserRecord user)
 	{
 		if (!by.User.Equals(user) &&
 		    !PermissionRules.MayActOn(by, user, Permissions.UserManage, time.GetUtcNow()))
@@ -79,7 +79,7 @@ internal sealed class SessionConnectionsService(
 	///     idle for at least <see cref="ReplaceAfterIdle" />, and refuses the new one otherwise. An osu!tourney
 	///     connection needs <see cref="Permissions.RoomObserve" /> in effect.
 	/// </remarks>
-	internal LoginFailure? Open(Connection connection, IReadOnlyList<Restriction> restrictions)
+	internal LoginFailure? Open(Connection connection, IReadOnlyList<RestrictionRecord> restrictions)
 	{
 		using var scope = registry.Enter();
 
@@ -131,7 +131,7 @@ internal sealed class SessionConnectionsService(
 	/// <summary>Closes every open connection of a user.</summary>
 	/// <param name="user">The user whose connections are closed.</param>
 	/// <param name="reason">Why they are closed.</param>
-	internal void CloseAll(User user, ConnectionCloseReason reason)
+	internal void CloseAll(UserRecord user, ConnectionCloseReason reason)
 	{
 		var session = registry.Sessions.GetValueOrDefault(user);
 		if (session is null) return;

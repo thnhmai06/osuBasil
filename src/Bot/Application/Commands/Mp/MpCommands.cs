@@ -1097,7 +1097,7 @@ internal sealed partial class MpCommands(
 
 	// ── helpers ──────────────────────────────────────────────────────────────────────────
 
-	private async ValueTask<User?> ResolveUserAsync(string raw, CancellationToken cancellationToken)
+	private async ValueTask<UserRecord?> ResolveUserAsync(string raw, CancellationToken cancellationToken)
 	{
 		if (raw.StartsWith('#') && int.TryParse(raw[1..], out var id))
 			return await users.GetAsync(id, cancellationToken);

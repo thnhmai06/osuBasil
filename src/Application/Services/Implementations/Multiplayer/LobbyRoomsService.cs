@@ -87,7 +87,7 @@ internal sealed class LobbyRoomsService(
 		// ponytail: two concurrent opens by one creator can both pass the room limit; count reservations per creator if that matters.
 		if (lobby.Reserve() is not { } id) return (null, RoomResult.NoRoomId);
 
-		Match match;
+		MatchRecord match;
 		try
 		{
 			match = await matches.CreateAsync(new MatchData
@@ -156,7 +156,7 @@ internal sealed class LobbyRoomsService(
 	///     The caller holds the room's scope. A round in progress ends as aborted. Closing a closed room does nothing.
 	///     The room's whole consequence is one <see cref="LobbyRoomClosed" /> event.
 	/// </remarks>
-	internal void Close(Room room, User? by)
+	internal void Close(Room room, UserRecord? by)
 	{
 		RoomOccupied(room);
 		if (room.IsClosed) return;
@@ -206,7 +206,7 @@ internal sealed class LobbyRoomsService(
 		if (scope is not null && !room.Slots.Any(slot => slot.Player is not null)) Close(room, null);
 	}
 
-	private bool TooManyRooms(User creator)
+	private bool TooManyRooms(UserRecord creator)
 	{
 		return lobby.Rooms.Values.Count(room => room.IsTournament && creator.Equals(room.Authority.Creator)) >=
 		       MaxRoomsPerCreator;

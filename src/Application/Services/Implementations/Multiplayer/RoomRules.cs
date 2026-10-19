@@ -12,7 +12,7 @@ internal static class RoomRules
 	/// <param name="room">The room to check.</param>
 	/// <param name="user">The user to check.</param>
 	/// <returns><see langword="true" /> if the user is the creator or a referee of this match.</returns>
-	internal static bool IsManager(Room room, User user)
+	internal static bool IsManager(Room room, UserRecord user)
 	{
 		return room.Authority.IsManagedBy(user);
 	}

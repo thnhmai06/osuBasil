@@ -10,17 +10,17 @@ namespace Basil.Application.Storage.Contracts.Multiplayer.Rooms;
 /// </summary>
 public sealed class RoomMembers
 {
-	private readonly ConcurrentSet<User> _banned = [];
+	private readonly ConcurrentSet<UserRecord> _banned = [];
 	private readonly ConcurrentSet<TourneyConnection> _observers = [];
 
 	/// <summary>Gets the users banned from this room.</summary>
-	public IReadOnlySet<User> Banned => _banned;
+	public IReadOnlySet<UserRecord> Banned => _banned;
 
 	/// <summary>Gets the osu!tourney clients observing the room.</summary>
 	public IReadOnlySet<TourneyConnection> Observers => _observers;
 
 	/// <summary>Gets the users banned from this room, for changing them.</summary>
-	internal ISet<User> MutableBanned => _banned;
+	internal ISet<UserRecord> MutableBanned => _banned;
 
 	/// <summary>Gets the osu!tourney clients observing the room, for changing them.</summary>
 	internal ISet<TourneyConnection> MutableObservers => _observers;

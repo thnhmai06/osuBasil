@@ -16,7 +16,7 @@ internal sealed class UserRestrictionsService(
 	TimeProvider time) : IUserRestrictionsService
 {
 	/// <inheritdoc />
-	public Task<Restriction?> SilenceAsync(Connection by, User user, DateTimeOffset endsAt,
+	public Task<RestrictionRecord?> SilenceAsync(Connection by, UserRecord user, DateTimeOffset endsAt,
 		CancellationToken cancellationToken = default)
 	{
 		return ImposeAsync(by, user, Permissions.UserSilence, RestrictionData.Silence, endsAt,
@@ -24,14 +24,14 @@ internal sealed class UserRestrictionsService(
 	}
 
 	/// <inheritdoc />
-	public Task<Restriction?> RestrictAsync(Connection by, User user, Permissions permissions,
+	public Task<RestrictionRecord?> RestrictAsync(Connection by, UserRecord user, Permissions permissions,
 		DateTimeOffset? endsAt, CancellationToken cancellationToken = default)
 	{
 		return ImposeAsync(by, user, Permissions.UserRestrict, permissions, endsAt, cancellationToken);
 	}
 
 	/// <inheritdoc />
-	public async Task<bool> LiftAsync(Connection by, Restriction restriction,
+	public async Task<bool> LiftAsync(Connection by, RestrictionRecord restriction,
 		CancellationToken cancellationToken = default)
 	{
 		var now = time.GetUtcNow();
@@ -58,7 +58,7 @@ internal sealed class UserRestrictionsService(
 	/// <param name="endsAt">When the restriction ends, or <see langword="null" /> to keep it until it is lifted.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The new restriction, or <see langword="null" /> when the caller may not restrict the user.</returns>
-	private async Task<Restriction?> ImposeAsync(Connection by, User user, Permissions required,
+	private async Task<RestrictionRecord?> ImposeAsync(Connection by, UserRecord user, Permissions required,
 		Permissions suspended, DateTimeOffset? endsAt, CancellationToken cancellationToken)
 	{
 		var now = time.GetUtcNow();
@@ -80,7 +80,7 @@ internal sealed class UserRestrictionsService(
 	///     Gets a value that indicates whether a connection may restrict or lift a restriction of a user: never their own,
 	///     so a restricted moderator cannot free themselves.
 	/// </summary>
-	private static bool MayRestrict(Connection by, User user, Permissions required, DateTimeOffset now)
+	private static bool MayRestrict(Connection by, UserRecord user, Permissions required, DateTimeOffset now)
 	{
 		return !by.User.Equals(user) && PermissionRules.MayActOn(by, user, required, now);
 	}

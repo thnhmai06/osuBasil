@@ -26,7 +26,7 @@ public interface IBeatmapAnalyser
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The analysis, or <see langword="null" /> when the beatmap's .osu file is not stored.</returns>
 	/// <remarks>The file is read once for each beatmap instance; analyzing it again under other mods reads no file.</remarks>
-	Task<BeatmapAnalysis?> AnalyzeAsync(Beatmap beatmap, GameMods mods, CancellationToken cancellationToken = default);
+	Task<BeatmapAnalysis?> AnalyzeAsync(BeatmapRecord beatmap, GameMods mods, CancellationToken cancellationToken = default);
 }
 
 /// <summary>The result of analyzing a beatmap under a specific mode and mod combination.</summary>

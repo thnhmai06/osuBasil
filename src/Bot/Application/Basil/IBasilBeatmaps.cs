@@ -9,5 +9,5 @@ public interface IBasilBeatmaps
 	/// <param name="id">The beatmap id.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The beatmap, or <see langword="null" /> when the server has none with that id.</returns>
-	ValueTask<Beatmap?> GetAsync(int id, CancellationToken cancellationToken = default);
+	ValueTask<BeatmapRecord?> GetAsync(int id, CancellationToken cancellationToken = default);
 }

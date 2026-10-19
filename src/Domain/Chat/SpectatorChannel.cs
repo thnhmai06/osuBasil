@@ -9,7 +9,7 @@ public sealed class SpectatorChannel : Channel
 	/// <summary>Initializes the spectator channel of a player.</summary>
 	/// <param name="host">The player being spectated.</param>
 	[SetsRequiredMembers]
-	public SpectatorChannel(User host)
+	public SpectatorChannel(UserRecord host)
 	{
 		Name = $"#spec_{host.Id}";
 		Topic = $"{host.Value.Name}'s spectator channel";

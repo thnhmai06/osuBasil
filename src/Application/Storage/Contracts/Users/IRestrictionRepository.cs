@@ -9,22 +9,22 @@ public interface IRestrictionRepository
 	/// <param name="data">The restriction to store.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The stored restriction.</returns>
-	Task<Restriction> CreateAsync(RestrictionData data, CancellationToken cancellationToken = default);
+	Task<RestrictionRecord> CreateAsync(RestrictionData data, CancellationToken cancellationToken = default);
 
 	/// <summary>Stores the new values of a created restriction, replacing the stored ones.</summary>
 	/// <param name="restriction">The restriction to store.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task UpdateAsync(Restriction restriction, CancellationToken cancellationToken = default);
+	Task UpdateAsync(RestrictionRecord restriction, CancellationToken cancellationToken = default);
 
 	/// <summary>Gets a restriction by id.</summary>
 	/// <param name="id">The restriction id.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The restriction, or <see langword="null" /> when no restriction has that id.</returns>
-	ValueTask<Restriction?> GetAsync(int id, CancellationToken cancellationToken = default);
+	ValueTask<RestrictionRecord?> GetAsync(int id, CancellationToken cancellationToken = default);
 
 	/// <summary>Lists every restriction of a user, ended ones included, oldest first.</summary>
 	/// <param name="user">The restricted user.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The user's restrictions.</returns>
-	Task<IReadOnlyList<Restriction>> ListAsync(User user, CancellationToken cancellationToken = default);
+	Task<IReadOnlyList<RestrictionRecord>> ListAsync(UserRecord user, CancellationToken cancellationToken = default);
 }

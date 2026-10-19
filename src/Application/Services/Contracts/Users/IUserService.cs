@@ -28,7 +28,7 @@ public interface IUserService : IEventPublisher<UserEvent>
 	///     Changing one's own permissions needs no outranking. Connections of a kind the user may no longer use are closed
 	///     as <see cref="ConnectionCloseReason.Revoked" />. Announces <see cref="UserPermissionsChanged" />.
 	/// </remarks>
-	Task<bool> SetPermissionsAsync(Connection by, User user, Permissions permissions,
+	Task<bool> SetPermissionsAsync(Connection by, UserRecord user, Permissions permissions,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Deletes a user's account, keeping its record.</summary>
@@ -37,5 +37,5 @@ public interface IUserService : IEventPublisher<UserEvent>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns><see langword="true" /> if the user was deleted; <see langword="false" /> when the caller may not.</returns>
 	/// <remarks>The user loses every permission and their open connections are closed.</remarks>
-	Task<bool> DeleteAsync(Connection by, User user, CancellationToken cancellationToken = default);
+	Task<bool> DeleteAsync(Connection by, UserRecord user, CancellationToken cancellationToken = default);
 }

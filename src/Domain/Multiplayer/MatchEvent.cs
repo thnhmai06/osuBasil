@@ -13,12 +13,12 @@ namespace Basil.Domain.Multiplayer.Matches;
 /// <param name="Target">The user the action affected, if any.</param>
 /// <param name="Detail">Additional detail about the event, if any.</param>
 public sealed record MatchEvent(
-	Match Match,
+	MatchRecord Match,
 	MatchEventType Type,
 	DateTimeOffset Timestamp,
-	User? Actor = null,
-	User? Target = null,
-	string? Detail = null) : IMatchRecord
+	UserRecord? Actor = null,
+	UserRecord? Target = null,
+	string? Detail = null) : IMatchEntry
 {
 	/// <summary>Additional detail about the event, if any.</summary>
 	/// <exception cref="ArgumentException">The detail contains the NUL character.</exception>

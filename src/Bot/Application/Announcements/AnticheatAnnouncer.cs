@@ -31,7 +31,7 @@ internal sealed class AnticheatAnnouncer(IBasilChat chat, IBasilRooms rooms)
 		// PM to creator and referees
 		var pmMessage = string.Format(AnnouncementReplies.AnticheatFlagPm, roomId, room.Name, playerName, reason);
 
-		var recipients = new List<User>();
+		var recipients = new List<UserRecord>();
 		if (room.Creator is not null)
 			recipients.Add(room.Creator);
 		recipients.AddRange(room.Referees);

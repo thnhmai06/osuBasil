@@ -11,14 +11,14 @@ namespace Basil.Application.Services.Implementations.Multiplayer.Rooms;
 internal sealed class RoomAuthorityService(RoomEventStream events, TimeProvider time) : IRoomAuthorityService
 {
 	/// <inheritdoc />
-	public Task<RoomResult> AddRefereeAsync(Room room, Connection by, User user,
+	public Task<RoomResult> AddRefereeAsync(Room room, Connection by, UserRecord user,
 		CancellationToken cancellationToken = default)
 	{
 		return RoomScope.InScopeAsync(room, () => AddReferee(room, by, user), cancellationToken);
 	}
 
 	/// <inheritdoc />
-	public Task<RoomResult> RemoveRefereeAsync(Room room, Connection by, User user,
+	public Task<RoomResult> RemoveRefereeAsync(Room room, Connection by, UserRecord user,
 		CancellationToken cancellationToken = default)
 	{
 		return RoomScope.InScopeAsync(room, () => RemoveReferee(room, by, user), cancellationToken);
@@ -31,7 +31,7 @@ internal sealed class RoomAuthorityService(RoomEventStream events, TimeProvider 
 		return RoomScope.InScopeAsync(room, () => SetHost(room, by, host), cancellationToken);
 	}
 
-	private RoomResult AddReferee(Room room, Connection by, User user)
+	private RoomResult AddReferee(Room room, Connection by, UserRecord user)
 	{
 		if (!RoomRules.IsCreatorOrAnyRoomManager(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 		if (room.Authority.Creator is not null && room.Authority.Creator.Equals(user)) return RoomResult.IsCreator;
@@ -43,7 +43,7 @@ internal sealed class RoomAuthorityService(RoomEventStream events, TimeProvider 
 		return RoomResult.Ok;
 	}
 
-	private RoomResult RemoveReferee(Room room, Connection by, User user)
+	private RoomResult RemoveReferee(Room room, Connection by, UserRecord user)
 	{
 		if (!RoomRules.IsCreatorOrAnyRoomManager(room, by, time.GetUtcNow())) return RoomResult.NotAuthorized;
 		if (!room.Authority.MutableReferees.Remove(user)) return RoomResult.NotReferee;

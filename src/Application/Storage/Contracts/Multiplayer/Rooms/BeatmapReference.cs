@@ -10,4 +10,4 @@ namespace Basil.Application.Storage.Contracts.Multiplayer.Rooms;
 /// <param name="Name">The display name of the beatmap.</param>
 /// <param name="Mode">The game mode the beatmap was made for.</param>
 /// <param name="Known">The beatmap as stored on the server, or <see langword="null" /> when the server does not have it.</param>
-public sealed record BeatmapReference(Md5 Hash, int Id, string Name, GameMode Mode, Beatmap? Known);
+public sealed record BeatmapReference(Md5 Hash, int Id, string Name, GameMode Mode, BeatmapRecord? Known);

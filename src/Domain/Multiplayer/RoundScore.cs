@@ -7,7 +7,7 @@ namespace Basil.Domain.Multiplayer.Rounds;
 public sealed class RoundScore : IEquatable<RoundScore>
 {
 	/// <summary>Gets the stored score.</summary>
-	public required Score Score { get; init; }
+	public required ScoreRecord Score { get; init; }
 
 	/// <summary>Gets the round the score was played in.</summary>
 	public required Round Round { get; init; }

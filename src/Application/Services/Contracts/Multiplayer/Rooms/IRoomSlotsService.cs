@@ -26,7 +26,7 @@ public interface IRoomSlotsService
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, NotInRoom, SlotNotOpen or RoomClosed when the room has closed.</returns>
 	/// <remarks>This is a referee operation, so it is allowed while the room is locked.</remarks>
-	Task<RoomResult> MoveAsync(Room room, Connection by, User player, int index,
+	Task<RoomResult> MoveAsync(Room room, Connection by, UserRecord player, int index,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Arranges every slot of a room at once.</summary>
@@ -88,7 +88,7 @@ public interface IRoomSlotsService
 	/// <param name="team">The team to assign.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, NoTeams, NotInRoom or RoomClosed when the room has closed.</returns>
-	Task<RoomResult> SetTeamAsync(Room room, Connection by, User player, GameTeam team,
+	Task<RoomResult> SetTeamAsync(Room room, Connection by, UserRecord player, GameTeam team,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Chooses the caller's own mods while freemod is on.</summary>

@@ -110,7 +110,7 @@ internal sealed class FileBeatmapsetStorage(
 	}
 
 	/// <inheritdoc />
-	public async Task SaveAsync(Beatmapset set, BeatmapsetArchive archive,
+	public async Task SaveAsync(BeatmapsetRecord set, BeatmapsetArchive archive,
 		CancellationToken cancellationToken = default)
 	{
 		if (archive is not FileBeatmapsetArchive placed)
@@ -223,7 +223,7 @@ internal sealed class FileBeatmapsetStorage(
 	}
 
 	/// <inheritdoc />
-	public async Task ClearAsync(Beatmapset set, CancellationToken cancellationToken = default)
+	public async Task ClearAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default)
 	{
 		var gate = SetLocks.GetOrAdd(set.Id, static _ => new SemaphoreSlim(1, 1));
 		await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -246,7 +246,7 @@ internal sealed class FileBeatmapsetStorage(
 	}
 
 	/// <inheritdoc />
-	public async Task SaveAsync(Beatmapset set, BeatmapsetFileKind kind, string name, Stream content,
+	public async Task SaveAsync(BeatmapsetRecord set, BeatmapsetFileKind kind, string name, Stream content,
 		CancellationToken cancellationToken = default)
 	{
 		var gate = SetLocks.GetOrAdd(set.Id, static _ => new SemaphoreSlim(1, 1));
@@ -284,7 +284,7 @@ internal sealed class FileBeatmapsetStorage(
 	}
 
 	/// <inheritdoc />
-	public async Task SaveArchiveWithoutVideoAsync(Beatmapset set, CancellationToken cancellationToken = default)
+	public async Task SaveArchiveWithoutVideoAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default)
 	{
 		var gate = SetLocks.GetOrAdd(set.Id, static _ => new SemaphoreSlim(1, 1));
 		await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -333,7 +333,7 @@ internal sealed class FileBeatmapsetStorage(
 	}
 
 	/// <inheritdoc />
-	public Task<bool> ExistsAsync(Beatmapset set, BeatmapsetFileKind kind, string name,
+	public Task<bool> ExistsAsync(BeatmapsetRecord set, BeatmapsetFileKind kind, string name,
 		CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
@@ -351,7 +351,7 @@ internal sealed class FileBeatmapsetStorage(
 	}
 
 	/// <inheritdoc />
-	public Task<Stream?> OpenAsync(Beatmapset set, BeatmapsetFileKind kind, string name,
+	public Task<Stream?> OpenAsync(BeatmapsetRecord set, BeatmapsetFileKind kind, string name,
 		CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
@@ -373,7 +373,7 @@ internal sealed class FileBeatmapsetStorage(
 	}
 
 	/// <inheritdoc />
-	public Task<Stream?> OpenArchiveAsync(Beatmapset set, bool withVideo,
+	public Task<Stream?> OpenArchiveAsync(BeatmapsetRecord set, bool withVideo,
 		CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
@@ -515,7 +515,7 @@ internal sealed class FileBeatmapsetStorage(
 	}
 
 	/// <inheritdoc />
-	public async Task DeleteAsync(Beatmapset set, CancellationToken cancellationToken = default)
+	public async Task DeleteAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default)
 	{
 		var gate = SetLocks.GetOrAdd(set.Id, static _ => new SemaphoreSlim(1, 1));
 		await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -709,7 +709,7 @@ internal sealed class FileBeatmapsetStorage(
 	/// </summary>
 	/// <param name="set">The beatmapset the folder holds.</param>
 	/// <returns>The folder's name.</returns>
-	private static string FolderName(Beatmapset set)
+	private static string FolderName(BeatmapsetRecord set)
 	{
 		var name = $"{set.Id} {set.Metadata.Artist} - {set.Metadata.Title}";
 		var builder = new StringBuilder(name.Length);
@@ -776,7 +776,7 @@ internal sealed class FileBeatmapsetStorage(
 	/// <summary>Removes a folder that was renamed out of the way, leaving what is still in use to the startup sweep.</summary>
 	/// <param name="markedFolder">The folder's renamed path.</param>
 	/// <param name="set">The beatmapset whose previous files these are.</param>
-	private void RemoveMarked(string markedFolder, Beatmapset set)
+	private void RemoveMarked(string markedFolder, BeatmapsetRecord set)
 	{
 		try
 		{

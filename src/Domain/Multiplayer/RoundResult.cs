@@ -162,7 +162,7 @@ public sealed class TeamVersusResult : RoundResult
 		var condition = round.Settings.WinCondition;
 
 		// Every team is present, even one with no score; an absent team counts as zero.
-		TeamScores = Teams.ToFrozenDictionary<GameTeam, GameTeam, IReadOnlyList<Score>>(
+		TeamScores = Teams.ToFrozenDictionary<GameTeam, GameTeam, IReadOnlyList<ScoreRecord>>(
 			team => team,
 			team => scores.Where(s => s.Team == team).Select(s => s.Score).ToList());
 
@@ -204,7 +204,7 @@ public sealed class TeamVersusResult : RoundResult
 	/// <summary>
 	///     Gets the scores each team set, with a team that played none present as an empty sequence.
 	/// </summary>
-	public FrozenDictionary<GameTeam, IReadOnlyList<Score>> TeamScores { get; }
+	public FrozenDictionary<GameTeam, IReadOnlyList<ScoreRecord>> TeamScores { get; }
 
 	/// <summary>
 	///     Gets the win metric each team reached — the sum of its scores or combos, or its average

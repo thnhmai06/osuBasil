@@ -37,15 +37,15 @@ public sealed record RoomClosingAnnounced(int RoomId, DateTimeOffset ClosesAt) :
 /// <summary>A player took a seat in a room.</summary>
 /// <param name="RoomId">The room.</param>
 /// <param name="Player">The player.</param>
-public sealed record RoomPlayerJoined(int RoomId, User Player) : BotEvent;
+public sealed record RoomPlayerJoined(int RoomId, UserRecord Player) : BotEvent;
 
 /// <summary>A room closed.</summary>
 /// <param name="RoomId">The room.</param>
 /// <param name="By">The user who closed it, or <see langword="null" /> when it closed because it stayed empty.</param>
-public sealed record RoomClosed(int RoomId, User? By) : BotEvent;
+public sealed record RoomClosed(int RoomId, UserRecord? By) : BotEvent;
 
 /// <summary>A player's client reported signs of cheating.</summary>
 /// <param name="Player">The player.</param>
 /// <param name="Signs">The cheat signs reported.</param>
 /// <param name="RoomId">The room the player sits in, or <see langword="null" /> when none.</param>
-public sealed record PlayerFlagged(User Player, BanchoFlags Signs, int? RoomId) : BotEvent;
+public sealed record PlayerFlagged(UserRecord Player, BanchoFlags Signs, int? RoomId) : BotEvent;

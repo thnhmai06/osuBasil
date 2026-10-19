@@ -23,7 +23,7 @@ internal sealed class PostgresUserStatsRepository(DatabaseReader reader, Databas
 		""";
 
 	/// <inheritdoc />
-	public async ValueTask<UserStats> GetAsync(User user, GameMode mode, CancellationToken cancellationToken = default)
+	public async ValueTask<UserStats> GetAsync(UserRecord user, GameMode mode, CancellationToken cancellationToken = default)
 	{
 		var key = (user.Id, mode);
 		return await FindAsync(key, cancellationToken)
