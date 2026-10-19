@@ -1,12 +1,12 @@
 using Basil.Application.Services.Contracts.Chat;
 using Basil.Application.Services.Contracts.Multiplayer;
 using Basil.Application.Services.Contracts.Multiplayer.Events;
+using Basil.Application.Services.Contracts.Multiplayer.Rooms;
+using Basil.Application.Services.Contracts.Sessions;
+using Basil.Application.Services.Implementations.Multiplayer.Rooms;
 using Basil.Application.Services.Implementations.Users;
 using Basil.Application.Storage.Contracts.Content;
-using Basil.Application.Storage.Contracts.Multiplayer;
 using Basil.Application.Storage.Contracts.Multiplayer.Matches;
-using Basil.Application.Storage.Contracts.Multiplayer.Rooms;
-using Basil.Application.Storage.Contracts.Sessions;
 using Basil.Domain.Content;
 using Basil.Domain.Multiplayer.Matches;
 using Basil.Domain.Users;
@@ -20,6 +20,7 @@ internal sealed class LobbyRoomsService(
 	IMatchRepository matches,
 	IChannelService channels,
 	ISettingsRepository serverSettings,
+	RoomEventStream roomEvents,
 	TimeProvider time) : ILobbyRoomsService
 {
 	/// <summary>The most tournament rooms one creator can have open.</summary>
@@ -108,7 +109,8 @@ internal sealed class LobbyRoomsService(
 		Room room;
 		using (lobby.Enter())
 		{
-			room = new Room(id, match, settings ?? new MatchSettings(), isTournament);
+			var context = new RoomContext(time, roomEvents);
+			room = new Room(id, match, settings ?? new MatchSettings(), isTournament, context);
 			if (!string.IsNullOrEmpty(password)) room.Settings.Password = password;
 			if (seat is not null && lobby.RoomOf(seat) is null) SeatCreator(room, seat);
 			lobby.Add(room);

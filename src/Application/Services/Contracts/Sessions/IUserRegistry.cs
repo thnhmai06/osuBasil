@@ -1,6 +1,6 @@
 using Basil.Domain.Users;
 
-namespace Basil.Application.Storage.Contracts.Sessions;
+namespace Basil.Application.Services.Contracts.Sessions;
 
 /// <summary>The users who are online, each with their session.</summary>
 public interface IUserRegistry

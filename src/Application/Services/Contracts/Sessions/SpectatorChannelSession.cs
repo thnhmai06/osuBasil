@@ -1,7 +1,7 @@
-using Basil.Application.Storage.Contracts.Chat;
+using Basil.Application.Services.Contracts.Chat;
 using Basil.Domain.Chat;
 
-namespace Basil.Application.Storage.Contracts.Sessions;
+namespace Basil.Application.Services.Contracts.Sessions;
 
 /// <summary>The chat channel of an osu! client and the users spectating it.</summary>
 public sealed class SpectatorChannelSession(BanchoConnection host) : ChannelSession

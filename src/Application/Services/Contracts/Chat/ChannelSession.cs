@@ -1,8 +1,8 @@
-using Basil.Application.Storage.Contracts.Sessions;
+using Basil.Application.Services.Contracts.Sessions;
 using Basil.Domain.Common;
 using Channel = Basil.Domain.Chat.Channel;
 
-namespace Basil.Application.Storage.Contracts.Chat;
+namespace Basil.Application.Services.Contracts.Chat;
 
 /// <summary>A chat channel while it is open: its members and what happens in it.</summary>
 /// <remarks>Opens a runtime channel for a chat channel.</remarks>

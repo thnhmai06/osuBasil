@@ -2,7 +2,7 @@ using Basil.Domain.Beatmaps;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 
-namespace Basil.Application.Storage.Contracts.Multiplayer.Rooms;
+namespace Basil.Application.Services.Contracts.Multiplayer.Rooms;
 
 /// <summary>The beatmap a room has selected, as the client describes it; the server may not have it.</summary>
 /// <param name="Hash">The MD5 of the beatmap file.</param>

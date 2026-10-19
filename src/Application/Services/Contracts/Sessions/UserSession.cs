@@ -1,10 +1,10 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
-using Basil.Application.Storage.Contracts.Chat;
+using Basil.Application.Services.Contracts.Chat;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
 
-namespace Basil.Application.Storage.Contracts.Sessions;
+namespace Basil.Application.Services.Contracts.Sessions;
 
 /// <summary>One period during which a user is online, across all the clients they are connected with.</summary>
 public sealed class UserSession

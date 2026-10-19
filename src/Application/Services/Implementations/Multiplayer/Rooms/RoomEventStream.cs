@@ -1,10 +1,11 @@
 using System.Threading.Channels;
 using Basil.Application.Services.Contracts.Multiplayer.Events;
+using Basil.Application.Services.Contracts.Multiplayer.Rooms;
 
 namespace Basil.Application.Services.Implementations.Multiplayer.Rooms;
 
 /// <summary>The one event stream of rooms, shared by the room service and its children.</summary>
-internal sealed class RoomEventStream(TimeProvider time)
+internal sealed class RoomEventStream(TimeProvider time) : IRoomEventSink
 {
 	private readonly Channel<RoomEvent> _events = Channel.CreateUnbounded<RoomEvent>();
 
@@ -13,7 +14,7 @@ internal sealed class RoomEventStream(TimeProvider time)
 
 	/// <summary>Emits an event to the stream.</summary>
 	/// <param name="event">The event to emit.</param>
-	internal void Emit(RoomEvent @event)
+	public void Emit(RoomEvent @event)
 	{
 		_events.Writer.TryWrite(@event with { Timestamp = time.GetUtcNow() });
 	}

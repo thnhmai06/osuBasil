@@ -1,6 +1,6 @@
 using Basil.Domain.Multiplayer.Matches;
 
-namespace Basil.Application.Storage.Contracts.Multiplayer.Rooms;
+namespace Basil.Application.Services.Contracts.Multiplayer.Rooms;
 
 /// <summary>The settings a room plays with: those stored on its match and those that live only while it is open.</summary>
 public sealed class RoomSettings

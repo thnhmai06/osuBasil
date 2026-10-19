@@ -1,10 +1,10 @@
 using System.Collections.Concurrent;
-using Basil.Application.Storage.Contracts.Multiplayer;
-using Basil.Application.Storage.Contracts.Multiplayer.Rooms;
-using Basil.Application.Storage.Contracts.Sessions;
+using Basil.Application.Services.Contracts.Multiplayer;
+using Basil.Application.Services.Contracts.Multiplayer.Rooms;
+using Basil.Application.Services.Contracts.Sessions;
 using Basil.Domain.Common;
 
-namespace Basil.Application.Storage.Implementations.Multiplayer;
+namespace Basil.Application.Services.Implementations.Multiplayer;
 
 /// <summary>The open multiplayer rooms and the osu! clients watching the multiplayer lobby.</summary>
 internal sealed class Lobby : ILobby

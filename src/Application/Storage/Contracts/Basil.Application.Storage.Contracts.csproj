@@ -11,6 +11,5 @@
 
 	<ItemGroup>
 		<InternalsVisibleTo Include="Basil.Application.Services.Implementations"/>
-		<InternalsVisibleTo Include="Basil.Application.Storage.Implementations"/>
 	</ItemGroup>
 </Project>

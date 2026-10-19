@@ -1,5 +1,5 @@
-using Basil.Application.Storage.Contracts.Chat;
-using Basil.Application.Storage.Contracts.Sessions;
+using Basil.Application.Services.Contracts.Sessions;
+using Basil.Application.Services.Contracts.Chat;
 
 namespace Basil.Application.Services.Contracts.Chat;
 

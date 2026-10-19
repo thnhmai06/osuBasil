@@ -5,7 +5,6 @@ using Basil.Application.Services.Implementations.Sessions;
 using Basil.Application.Storage.Contracts.Auth;
 using Basil.Application.Storage.Contracts.Common;
 using Basil.Application.Storage.Contracts.Content;
-using Basil.Application.Storage.Contracts.Sessions;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Auth;
 using Basil.Domain.Bancho;

@@ -1,7 +1,7 @@
-using Basil.Application.Storage.Contracts.Multiplayer.Rooms;
-using Basil.Application.Storage.Contracts.Sessions;
+using Basil.Application.Services.Contracts.Multiplayer.Rooms;
+using Basil.Application.Services.Contracts.Sessions;
 
-namespace Basil.Application.Storage.Contracts.Multiplayer;
+namespace Basil.Application.Services.Contracts.Multiplayer;
 
 /// <summary>The open multiplayer rooms and the osu! clients watching the multiplayer lobby.</summary>
 public interface ILobby

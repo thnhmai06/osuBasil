@@ -1,9 +1,9 @@
 using System.Collections;
 using System.Collections.Immutable;
-using Basil.Application.Storage.Contracts.Sessions;
+using Basil.Application.Services.Contracts.Sessions;
 using Basil.Domain.Users;
 
-namespace Basil.Application.Storage.Contracts.Multiplayer.Rooms;
+namespace Basil.Application.Services.Contracts.Multiplayer.Rooms;
 
 /// <summary>An osu! multiplayer room's 16 player slots, and whether the room's slots are locked as a whole.</summary>
 public sealed class RoomSlots : IReadOnlyList<RoomSlot>

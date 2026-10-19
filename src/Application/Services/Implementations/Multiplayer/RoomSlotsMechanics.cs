@@ -1,6 +1,6 @@
 using Basil.Application.Services.Contracts.Multiplayer.Events;
-using Basil.Application.Storage.Contracts.Multiplayer.Rooms;
-using Basil.Application.Storage.Contracts.Sessions;
+using Basil.Application.Services.Contracts.Multiplayer.Rooms;
+using Basil.Application.Services.Contracts.Sessions;
 using Basil.Domain.Mechanics;
 
 namespace Basil.Application.Services.Implementations.Multiplayer;
@@ -48,7 +48,7 @@ internal static class RoomSlotsMechanics
 
 		PassHostFrom(room, player);
 
-		Clear(slot);
+		slot.Clear();
 		return slot;
 	}
 
@@ -81,79 +81,12 @@ internal static class RoomSlotsMechanics
 		slot.Mods = GameMods.NoMod;
 	}
 
-	/// <summary>Makes a slot empty.</summary>
-	/// <param name="slot">The slot to clear.</param>
-	internal static void Clear(RoomSlot slot)
-	{
-		slot.Player = null;
-		slot.Status = null;
-		slot.Team = null;
-		slot.Mods = null;
-		slot.IntroSkipped = null;
-		slot.Loaded = null;
-	}
-
-	/// <summary>Assigns a slot's status without reporting a <see cref="RoomSlotStatusChanged" /> event.</summary>
-	/// <param name="slot">The slot to change.</param>
-	/// <param name="status">The status to assign, or <see langword="null" /> to clear it.</param>
-	/// <remarks>
-	///     Playing starts the slot's intro-skipped and loaded flags as false; any other status clears them. Assigning the
-	///     current status does nothing.
-	/// </remarks>
-	internal static void SetStatus(RoomSlot slot, RoomSlotStatus? status)
-	{
-		if (slot.Status == status) return;
-		slot.Status = status;
-		slot.IntroSkipped = status is RoomSlotStatus.Playing ? false : null;
-		slot.Loaded = status is RoomSlotStatus.Playing ? false : null;
-	}
-
-	/// <summary>Moves a player, with their status, team, mods and round progress, to another slot.</summary>
-	/// <param name="from">The slot the player leaves.</param>
-	/// <param name="to">The open slot the player moves to.</param>
-	/// <remarks>Moving to the same slot does nothing.</remarks>
-	/// <exception cref="ArgumentException">The target slot belongs to a different room.</exception>
-	/// <exception cref="InvalidOperationException">The source slot has no player, or the target slot is not open.</exception>
-	internal static void MoveTo(RoomSlot from, RoomSlot to)
-	{
-		if (!ReferenceEquals(from.Slots, to.Slots))
-			throw new ArgumentException("The target slot belongs to a different room.", nameof(to));
-		if (from.Index == to.Index) return;
-		if (from.Player is null) throw new InvalidOperationException("The slot has no player.");
-		if (to.Locked || to.Player is not null)
-			throw new InvalidOperationException("The target slot is not open.");
-
-		Restore(to, Capture(from));
-		Clear(from);
-	}
-
-	/// <summary>Reads everything that belongs to the player seated in a slot.</summary>
-	/// <param name="slot">The occupied slot.</param>
-	/// <returns>The occupant and their per-player state.</returns>
-	internal static RoomSlotState Capture(RoomSlot slot)
-	{
-		return new RoomSlotState(slot.Player!, slot.Status, slot.Team, slot.Mods, slot.IntroSkipped, slot.Loaded);
-	}
-
-	/// <summary>Seats a captured player in a slot with their per-player state, replacing whatever the slot held.</summary>
-	/// <param name="slot">The slot to fill.</param>
-	/// <param name="state">The state to restore.</param>
-	internal static void Restore(RoomSlot slot, RoomSlotState state)
-	{
-		slot.Player = state.Player;
-		slot.Status = state.Status;
-		slot.Team = state.Team;
-		slot.Mods = state.Mods;
-		slot.IntroSkipped = state.IntroSkipped;
-		slot.Loaded = state.Loaded;
-	}
-
 	/// <summary>Sets every playing or finished player back to not ready.</summary>
 	/// <param name="room">The room whose players to reset.</param>
 	internal static void ResetPlayers(Room room)
 	{
 		foreach (var slot in room.Slots.Where(s => s.Status is RoomSlotStatus.Playing or RoomSlotStatus.Complete))
-			SetStatus(slot, RoomSlotStatus.NotReady);
+			slot.SetStatus(RoomSlotStatus.NotReady);
 	}
 
 	private static void PassHostFrom(Room room, BanchoConnection leaving)
@@ -163,19 +96,4 @@ internal static class RoomSlotsMechanics
 			.FirstOrDefault(slot => slot.Player is not null && !ReferenceEquals(slot.Player, leaving))
 			?.Player;
 	}
-
-	/// <summary>Everything that belongs to a seated player, as it is carried from one slot to another.</summary>
-	/// <param name="Player">The seated connection.</param>
-	/// <param name="Status">The player's status.</param>
-	/// <param name="Team">The player's team.</param>
-	/// <param name="Mods">The player's own mods.</param>
-	/// <param name="IntroSkipped">Whether the player skipped the intro.</param>
-	/// <param name="Loaded">Whether the player loaded the beatmap.</param>
-	internal readonly record struct RoomSlotState(
-		BanchoConnection Player,
-		RoomSlotStatus? Status,
-		GameTeam? Team,
-		GameMods? Mods,
-		bool? IntroSkipped,
-		bool? Loaded);
 }

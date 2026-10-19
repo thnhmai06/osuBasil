@@ -1,7 +1,7 @@
 using Basil.Application.Services.Contracts.Chat;
-using Basil.Application.Services.Implementations.Users;
+using Basil.Application.Services.Contracts.Sessions;
 using Basil.Application.Storage.Contracts.Chat;
-using Basil.Application.Storage.Contracts.Sessions;
+using Basil.Application.Services.Implementations.Users;
 using Basil.Domain.Chat;
 using Basil.Domain.Common;
 using Basil.Domain.Users;

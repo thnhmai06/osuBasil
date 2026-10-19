@@ -1,6 +1,8 @@
+using Basil.Application.Services.Contracts.Multiplayer.Rooms;
+using Basil.Application.Services.Contracts.Sessions;
 using Basil.Domain.Multiplayer.Matches;
 
-namespace Basil.Application.Storage.Contracts.Multiplayer.Rooms;
+namespace Basil.Application.Services.Contracts.Multiplayer.Rooms;
 
 /// <summary>
 ///     Holds an osu! multiplayer match's live runtime state, grouped like the room service: settings,
@@ -13,7 +15,8 @@ public sealed class Room : IEquatable<Room>
 	/// <param name="match">The match the room plays.</param>
 	/// <param name="settings">The room's initial settings.</param>
 	/// <param name="isTournament">Whether the room is a tournament room.</param>
-	internal Room(int id, MatchRecord match, MatchSettings settings, bool isTournament)
+	/// <param name="context">The runtime context for emitting events and checking permissions.</param>
+	internal Room(int id, MatchRecord match, MatchSettings settings, bool isTournament, RoomContext context)
 	{
 		ArgumentOutOfRangeException.ThrowIfNegative(id);
 		Id = id;
@@ -25,7 +28,11 @@ public sealed class Room : IEquatable<Room>
 		IsTournament = isTournament;
 		Slots = new RoomSlots(this);
 		Channel = new RoomChannelSession(this);
+		Context = context;
 	}
+
+	/// <summary>The runtime context for emitting events and checking permissions.</summary>
+	internal RoomContext Context { get; }
 
 	/// <summary>The match this room is a live projection of.</summary>
 	public MatchRecord Match { get; }
@@ -75,6 +82,14 @@ public sealed class Room : IEquatable<Room>
 	public bool Equals(Room? other)
 	{
 		return other is not null && Match.Equals(other.Match);
+	}
+
+	/// <summary>Creates a scoped room for a connection, capturing roles and permissions.</summary>
+	/// <param name="by">The connection acting on the room.</param>
+	/// <returns>A scoped room with permissions snapshot.</returns>
+	public ScopedRoom ScopeTo(Connection by)
+	{
+		return new ScopedRoom(this, by);
 	}
 
 	/// <summary>Enters the room's exclusive scope, in which one state transition of the room runs one at a time.</summary>

@@ -2,8 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using Basil.Application.Services.Contracts.Multiplayer;
 using Basil.Application.Services.Contracts.Multiplayer.Events;
 using Basil.Application.Services.Contracts.Multiplayer.Rooms;
-using Basil.Application.Storage.Contracts.Multiplayer.Rooms;
-using Basil.Application.Storage.Contracts.Sessions;
+using Basil.Application.Services.Contracts.Sessions;
 using Basil.Domain.Multiplayer.Rounds;
 using Basil.Domain.Users;
 
@@ -128,7 +127,7 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 	{
 		if (!TryGetPlayingSlot(room, by, out var round, out var slot)) return RoomResult.NotPlaying;
 
-		RoomSlotsMechanics.SetStatus(slot, RoomSlotStatus.Complete);
+		slot.SetStatus(RoomSlotStatus.Complete);
 		if (room.Slots.Any(s => s.Status is RoomSlotStatus.Playing))
 			events.Emit(new RoomRoundPlayerCompleted(room, round, slot.Index));
 		else
@@ -217,7 +216,7 @@ internal sealed class RoomRoundsService(RoomEventStream events, TimeProvider tim
 		var players = new List<BanchoConnection>();
 		foreach (var slot in room.Slots.Where(s => s.Player is not null && s.Status is not RoomSlotStatus.NoMap))
 		{
-			RoomSlotsMechanics.SetStatus(slot, RoomSlotStatus.Playing);
+			slot.SetStatus(RoomSlotStatus.Playing);
 			players.Add(slot.Player!);
 		}
 

@@ -1,6 +1,6 @@
 using Basil.Domain.Chat;
 
-namespace Basil.Application.Storage.Contracts.Chat;
+namespace Basil.Application.Services.Contracts.Chat;
 
 /// <summary>A configured chat channel while it is open.</summary>
 public sealed class GeneralChannelSession(GeneralChannel channel) : ChannelSession

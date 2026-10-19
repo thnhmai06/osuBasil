@@ -32,6 +32,10 @@ public static class DependencyInjection
 	{
 		services.TryAddSingleton(TimeProvider.System);
 
+		services.AddSingleton<IUserRegistry, UserRegistry>();
+		services.AddSingleton<IGeneralChannelRegistry, GeneralChannelRegistry>();
+		services.AddSingleton<ILobby, Lobby>();
+
 		services.AddSingleton<SessionEventStream>();
 		services.AddSingleton<BanchoSpectatorsService>();
 		services.AddSingleton<BanchoConnectionService>();

@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
-using Basil.Application.Storage.Contracts.Sessions;
+using Basil.Application.Services.Contracts.Sessions;
 using Basil.Domain.Users;
 
-namespace Basil.Application.Storage.Implementations.Sessions;
+namespace Basil.Application.Services.Implementations.Sessions;
 
 /// <summary>The users who are online, each with their session.</summary>
 internal sealed class UserRegistry : IUserRegistry

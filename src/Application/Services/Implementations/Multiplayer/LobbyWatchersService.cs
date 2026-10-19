@@ -1,7 +1,6 @@
 using Basil.Application.Services.Contracts.Multiplayer;
 using Basil.Application.Services.Contracts.Multiplayer.Events;
-using Basil.Application.Storage.Contracts.Multiplayer;
-using Basil.Application.Storage.Contracts.Sessions;
+using Basil.Application.Services.Contracts.Sessions;
 
 namespace Basil.Application.Services.Implementations.Multiplayer;
 

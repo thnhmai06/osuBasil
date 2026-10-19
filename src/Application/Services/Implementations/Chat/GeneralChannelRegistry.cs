@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
-using Basil.Application.Storage.Contracts.Chat;
+using Basil.Application.Services.Contracts.Chat;
 
-namespace Basil.Application.Storage.Implementations.Chat;
+namespace Basil.Application.Services.Implementations.Chat;
 
 /// <summary>The configured chat channels that are open, looked up by name.</summary>
 /// <remarks>Room, spectator and private-message channels belong to their owners and are not listed here.</remarks>

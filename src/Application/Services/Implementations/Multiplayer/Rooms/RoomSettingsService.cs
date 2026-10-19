@@ -1,8 +1,7 @@
 using Basil.Application.Services.Contracts.Multiplayer;
 using Basil.Application.Services.Contracts.Multiplayer.Events;
 using Basil.Application.Services.Contracts.Multiplayer.Rooms;
-using Basil.Application.Storage.Contracts.Multiplayer.Rooms;
-using Basil.Application.Storage.Contracts.Sessions;
+using Basil.Application.Services.Contracts.Sessions;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer.Matches;
 
@@ -53,7 +52,7 @@ internal sealed class RoomSettingsService(RoomEventStream events, TimeProvider t
 		{
 			room.Settings.Beatmap = change.Beatmap;
 			foreach (var slot in room.Slots.Where(s => s.Status is RoomSlotStatus.Ready))
-				RoomSlotsMechanics.SetStatus(slot, RoomSlotStatus.NotReady);
+				slot.SetStatus(RoomSlotStatus.NotReady);
 		}
 
 		if (change.Mode is { } newMode)

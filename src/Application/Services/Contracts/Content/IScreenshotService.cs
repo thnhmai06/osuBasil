@@ -1,4 +1,4 @@
-using Basil.Application.Storage.Contracts.Sessions;
+using Basil.Application.Services.Contracts.Sessions;
 using Basil.Domain.Content;
 using Basil.Domain.Users;
 

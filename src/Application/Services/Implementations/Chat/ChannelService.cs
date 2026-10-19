@@ -1,6 +1,5 @@
 using System.Threading.Channels;
 using Basil.Application.Services.Contracts.Chat;
-using Basil.Application.Storage.Contracts.Chat;
 
 namespace Basil.Application.Services.Implementations.Chat;
 

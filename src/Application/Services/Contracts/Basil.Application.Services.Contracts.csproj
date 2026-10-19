@@ -8,4 +8,8 @@
 	<ItemGroup>
 		<ProjectReference Include="..\..\Storage\Contracts\Basil.Application.Storage.Contracts.csproj"/>
 	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Basil.Application.Services.Implementations"/>
+	</ItemGroup>
 </Project>

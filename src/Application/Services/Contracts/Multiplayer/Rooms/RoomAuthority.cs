@@ -1,9 +1,9 @@
-using Basil.Application.Storage.Contracts.Sessions;
+using Basil.Application.Services.Contracts.Sessions;
 using Basil.Domain.Common;
 using Basil.Domain.Multiplayer.Matches;
 using Basil.Domain.Users;
 
-namespace Basil.Application.Storage.Contracts.Multiplayer.Rooms;
+namespace Basil.Application.Services.Contracts.Multiplayer.Rooms;
 
 /// <summary>Who has authority over a room: its creator, its referees and its host.</summary>
 public sealed class RoomAuthority

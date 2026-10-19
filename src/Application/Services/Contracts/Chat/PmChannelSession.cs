@@ -1,7 +1,7 @@
-using Basil.Application.Storage.Contracts.Sessions;
+using Basil.Application.Services.Contracts.Sessions;
 using Basil.Domain.Chat;
 
-namespace Basil.Application.Storage.Contracts.Chat;
+namespace Basil.Application.Services.Contracts.Chat;
 
 /// <summary>A user's private-message channel: every message posted here is delivered to that user.</summary>
 public sealed class PmChannelSession(UserSession owner) : ChannelSession

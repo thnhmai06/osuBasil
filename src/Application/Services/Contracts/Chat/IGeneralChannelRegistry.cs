@@ -1,4 +1,4 @@
-namespace Basil.Application.Storage.Contracts.Chat;
+namespace Basil.Application.Services.Contracts.Chat;
 
 /// <summary>The configured chat channels that are open, looked up by name.</summary>
 /// <remarks>Room, spectator and private-message channels belong to their owners and are not listed here.</remarks>

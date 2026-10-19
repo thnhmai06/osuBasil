@@ -1,6 +1,6 @@
 using Basil.Application.Services.Contracts.Multiplayer.Events;
-using Basil.Application.Storage.Contracts.Multiplayer.Rooms;
-using Basil.Application.Storage.Contracts.Sessions;
+using Basil.Application.Services.Contracts.Sessions;
+using Basil.Application.Services.Contracts.Multiplayer.Rooms;
 using Basil.Domain.Multiplayer.Rounds;
 using Basil.Domain.Users;
 

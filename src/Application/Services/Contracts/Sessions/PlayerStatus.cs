@@ -2,7 +2,7 @@ using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 
-namespace Basil.Application.Storage.Contracts.Sessions;
+namespace Basil.Application.Services.Contracts.Sessions;
 
 /// <summary>
 ///     The presence state a game client currently reports: what it is doing, and (while playing or

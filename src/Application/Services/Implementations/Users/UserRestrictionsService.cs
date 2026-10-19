@@ -1,7 +1,6 @@
 using Basil.Application.Services.Contracts.Sessions;
 using Basil.Application.Services.Contracts.Users;
 using Basil.Application.Services.Implementations.Sessions;
-using Basil.Application.Storage.Contracts.Sessions;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Users;
 
