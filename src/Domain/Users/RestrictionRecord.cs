@@ -41,9 +41,9 @@ public sealed class RestrictionData
 
 	/// <summary>The permissions a full restriction suspends.</summary>
 	public static readonly Permissions Restrict = Silence | PermissionsGroups.Spectating.Permissions |
-	                                             PermissionsGroups.Scores.Permissions |
-	                                             PermissionsGroups.Beatmapsets.Permissions |
-	                                             PermissionsGroups.Screenshots.Permissions;
+	                                              PermissionsGroups.Scores.Permissions |
+	                                              PermissionsGroups.Beatmapsets.Permissions |
+	                                              PermissionsGroups.Screenshots.Permissions;
 
 	/// <summary>Gets the restricted user.</summary>
 	public required UserRecord User { get; init; }

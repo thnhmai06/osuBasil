@@ -1,4 +1,3 @@
-using Basil.Application.Services.Contracts.Multiplayer.Events;
 using Basil.Application.Services.Contracts.Multiplayer.Rooms;
 using Basil.Application.Services.Contracts.Sessions;
 using Basil.Domain.Mechanics;

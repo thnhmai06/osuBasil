@@ -61,9 +61,9 @@ public static class PrivilegesExtensions
 
 	/// <summary>The permissions that belong to the tournament role, without the player's.</summary>
 	private static readonly Permissions TournamentPermissions = (Perm.RoomObserve | Perm.RoomViewPrivate |
-	                                                              Perm.RoomManageAny | Perm.RoomCreateUnlimited |
-	                                                              Perm.ChatPostAnyRoom | Perm.BeatmapsetManage |
-	                                                              Perm.BeatmapsetViewHidden) & ~PlayerPermissions;
+	                                                             Perm.RoomManageAny | Perm.RoomCreateUnlimited |
+	                                                             Perm.ChatPostAnyRoom | Perm.BeatmapsetManage |
+	                                                             Perm.BeatmapsetViewHidden) & ~PlayerPermissions;
 
 	/// <summary>Gets the permissions the roles in a mask hold.</summary>
 	private static Permissions PermissionsOf(Privileges role)
@@ -78,7 +78,8 @@ public static class PrivilegesExtensions
 		if ((role & Privileges.Developer) != 0)
 			permissions |= Perm.ServerConfigure | Perm.ServerViewDiagnostics;
 		if ((role & Privileges.Owner) != 0)
-			permissions |= Perm.UserManage | Perm.UserViewDeleted | Perm.UserManagePermissions | Perm.ServerManageContent;
+			permissions |= Perm.UserManage | Perm.UserViewDeleted | Perm.UserManagePermissions |
+			               Perm.ServerManageContent;
 		return permissions;
 	}
 }

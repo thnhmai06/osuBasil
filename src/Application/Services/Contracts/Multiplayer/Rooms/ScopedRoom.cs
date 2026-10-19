@@ -17,7 +17,7 @@ public sealed class ScopedRoom
 	public RoomRoles Roles { get; }
 
 	/// <summary>The permissions this connection has in the room, after applying effective permissions.</summary>
-	public RoomPermissions Rights { get; }
+	public RoomPermissions Permissions { get; }
 
 	/// <summary>The slots service for this scoped room.</summary>
 	public ScopedRoomSlots Slots { get; }
@@ -34,22 +34,46 @@ public sealed class ScopedRoom
 		Roles = ComputeRoles(room, by);
 
 		// Compute rights from roles
-		var rights = RoomPermissionsGroups.Of(Roles);
+		var rights = Roles.GetPermissions();
 
 		// Apply effective permissions
 		var now = room.Context.Clock.GetUtcNow();
 		var effectivePermissions = by.Session.User.Value.Permissions.Effective(by.Session.Restrictions, now);
-		var grantedPermissions = by.Session.User.Value.Permissions;
 
 		// If effective permissions lack RoomJoin, drop role-derived rights
-		if (!effectivePermissions.Allows(Permissions.RoomJoin))
+		if (!effectivePermissions.Allows(Domain.Users.Permissions.RoomJoin))
 			rights = RoomPermissions.None;
 		// If effective permissions allow RoomManageAny, grant all rights
-		else if (effectivePermissions.Allows(Permissions.RoomManageAny))
+		else if (effectivePermissions.Allows(Domain.Users.Permissions.RoomManageAny))
 			rights = RoomPermissionsGroups.All;
 
-		Rights = rights;
+		Permissions = rights;
 		Slots = new ScopedRoomSlots(this);
+
+		return;
+
+		static RoomRoles ComputeRoles(Room room, Connection by)
+		{
+			var roles = RoomRoles.None;
+
+			// Player: seated BanchoConnection
+			if (by is BanchoConnection bancho && room.Slots.Find(bancho) is not null)
+				roles |= RoomRoles.Player;
+
+			// Host: reference equals
+			if (ReferenceEquals(by, room.Authority.Host))
+				roles |= RoomRoles.Host;
+
+			// Referee: managed by but not creator
+			if (room.Authority.IsManagedBy(by.User) && !Equals(room.Authority.Creator, by.User))
+				roles |= RoomRoles.Referee;
+
+			// Creator: creator equals
+			if (Equals(room.Authority.Creator, by.User))
+				roles |= RoomRoles.Creator;
+
+			return roles;
+		}
 	}
 
 	/// <summary>Checks if the scoped connection has the required permissions.</summary>
@@ -57,39 +81,17 @@ public sealed class ScopedRoom
 	/// <returns>Null if allowed, otherwise the reason for denial.</returns>
 	internal RoomResult? Require(RoomPermissions needed)
 	{
-		if ((Rights & needed) == needed)
+		if ((Permissions & needed) == needed)
 			return null;
 
 		// Check if granted permissions allow RoomJoin but effective don't
 		var granted = By.Session.User.Value.Permissions;
-		var effective = By.Session.User.Value.Permissions.Effective(By.Session.Restrictions, Room.Context.Clock.GetUtcNow());
+		var effective =
+			By.Session.User.Value.Permissions.Effective(By.Session.Restrictions, Room.Context.Clock.GetUtcNow());
 
-		if (granted.Allows(Permissions.RoomJoin) && !effective.Allows(Permissions.RoomJoin))
+		if (granted.Allows(Domain.Users.Permissions.RoomJoin) && !effective.Allows(Domain.Users.Permissions.RoomJoin))
 			return RoomResult.Silenced;
 
 		return RoomResult.NotAuthorized;
-	}
-
-	private static RoomRoles ComputeRoles(Room room, Connection by)
-	{
-		var roles = RoomRoles.None;
-
-		// Player: seated BanchoConnection
-		if (by is BanchoConnection bancho && room.Slots.Find(bancho) is not null)
-			roles |= RoomRoles.Player;
-
-		// Host: reference equals
-		if (ReferenceEquals(by, room.Authority.Host))
-			roles |= RoomRoles.Host;
-
-		// Referee: managed by but not creator
-		if (room.Authority.IsManagedBy(by.User) && !Equals(room.Authority.Creator, by.User))
-			roles |= RoomRoles.Referee;
-
-		// Creator: creator equals
-		if (Equals(room.Authority.Creator, by.User))
-			roles |= RoomRoles.Creator;
-
-		return roles;
 	}
 }

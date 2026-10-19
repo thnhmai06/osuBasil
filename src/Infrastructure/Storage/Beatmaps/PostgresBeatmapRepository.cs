@@ -51,7 +51,6 @@ internal sealed class PostgresBeatmapRepository(
 
 			// A hash must be unique across every beatmap, so a new or changed one is written at once and the live
 			// beatmap takes it only after the commit.
-			var id = beatmap.Id;
 			var parameters = Parameters(value);
 			try
 			{
@@ -99,7 +98,8 @@ internal sealed class PostgresBeatmapRepository(
 	}
 
 	/// <inheritdoc />
-	public async Task<IReadOnlyList<BeatmapRecord>> ListAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default)
+	public async Task<IReadOnlyList<BeatmapRecord>> ListAsync(BeatmapsetRecord set,
+		CancellationToken cancellationToken = default)
 	{
 		var liveSet = await LiveSetAsync(set, cancellationToken).ConfigureAwait(false);
 		return await _bySet.GetOrLoadAsync(liveSet.Id, liveSet, async () =>
@@ -325,7 +325,8 @@ internal sealed class PostgresBeatmapRepository(
 		_byHash.Set(beatmap.Hash, beatmap);
 	}
 
-	private static ImmutableList<BeatmapRecord> AddOrReplace(ImmutableList<BeatmapRecord> current, BeatmapRecord beatmap)
+	private static ImmutableList<BeatmapRecord> AddOrReplace(ImmutableList<BeatmapRecord> current,
+		BeatmapRecord beatmap)
 	{
 		var index = current.FindIndex(item => item.Id == beatmap.Id);
 		return index < 0 ? current.Add(beatmap) : current.SetItem(index, beatmap);

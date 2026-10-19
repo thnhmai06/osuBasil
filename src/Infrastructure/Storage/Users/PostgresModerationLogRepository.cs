@@ -60,12 +60,12 @@ internal sealed class PostgresModerationLogRepository(
 				$"select count(*) from moderation_log where {where}", parameters),
 			await connection.QueryAsync<ModerationLogRow>(
 				$"""
-				  select id, action, by_id, target_id, reason, timestamp
-				  from moderation_log
-				  where {where}
-				  order by timestamp desc, id desc
-				  limit @Limit offset @Offset
-				  """,
+				 select id, action, by_id, target_id, reason, timestamp
+				 from moderation_log
+				 where {where}
+				 order by timestamp desc, id desc
+				 limit @Limit offset @Offset
+				 """,
 				parameters)), cancellationToken);
 
 		var entries = ImmutableList.CreateBuilder<ModerationLogEntry>();

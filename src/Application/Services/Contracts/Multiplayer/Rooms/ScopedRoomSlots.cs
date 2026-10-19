@@ -76,7 +76,8 @@ public sealed class ScopedRoomSlots
 	///     Every seated player must appear exactly once, slot numbers must be distinct and from 1 to 16, and a slot
 	///     with a player cannot be locked. A team is applied only while the room plays in teams.
 	/// </remarks>
-	public async Task<RoomResult> ArrangeAsync(IReadOnlyList<SlotArrangement> arrangement, CancellationToken cancellationToken = default)
+	public async Task<RoomResult> ArrangeAsync(IReadOnlyList<SlotArrangement> arrangement,
+		CancellationToken cancellationToken = default)
 	{
 		if (_scoped.Require(RoomPermissions.SlotsMovePlayers) is { } denied) return denied;
 
@@ -192,7 +193,8 @@ public sealed class ScopedRoomSlots
 	/// <param name="team">The team to assign.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, NoTeams, NotInRoom or RoomClosed when the room has closed.</returns>
-	public async Task<RoomResult> SetTeamAsync(UserRecord player, GameTeam team, CancellationToken cancellationToken = default)
+	public async Task<RoomResult> SetTeamAsync(UserRecord player, GameTeam team,
+		CancellationToken cancellationToken = default)
 	{
 		if (_scoped.Require(RoomPermissions.SlotsMovePlayers) is { } denied) return denied;
 

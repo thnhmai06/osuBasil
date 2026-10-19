@@ -7,29 +7,20 @@ namespace Basil.Domain.Multiplayer;
 public static class RoomPermissionsGroups
 {
 	/// <summary>The union of every room permission.</summary>
-	public static readonly RoomPermissions All =
-		RoomPermissions.SlotsMovePlayers |
-		RoomPermissions.SlotsLock |
-		RoomPermissions.SettingsChange |
-		RoomPermissions.SettingsRename |
-		RoomPermissions.SettingsPassword |
-		RoomPermissions.SettingsPrivate |
-		RoomPermissions.MembersKick |
-		RoomPermissions.MembersBan |
-		RoomPermissions.MembersSeat |
-		RoomPermissions.MembersInvite |
-		RoomPermissions.RefereesManage |
-		RoomPermissions.HostTransfer |
-		RoomPermissions.RoundsStart |
-		RoomPermissions.RoundsAbort |
-		RoomPermissions.RoundsCountdown |
-		RoomPermissions.RoomClose |
-		RoomPermissions.ChatPost;
+	public const RoomPermissions All = RoomPermissions.SlotsMovePlayers | RoomPermissions.SlotsLock |
+	                                   RoomPermissions.SettingsChange | RoomPermissions.SettingsRename |
+	                                   RoomPermissions.SettingsPassword | RoomPermissions.SettingsPrivate |
+	                                   RoomPermissions.MembersKick | RoomPermissions.MembersBan |
+	                                   RoomPermissions.MembersSeat | RoomPermissions.MembersInvite |
+	                                   RoomPermissions.RefereesManage | RoomPermissions.HostTransfer |
+	                                   RoomPermissions.RoundsStart | RoomPermissions.RoundsAbort |
+	                                   RoomPermissions.RoundsCountdown | RoomPermissions.RoomClose |
+	                                   RoomPermissions.ChatPost;
 
 	/// <summary>Gets the permissions granted by a combination of roles.</summary>
 	/// <param name="roles">The roles to combine.</param>
 	/// <returns>The union of permissions granted by each role.</returns>
-	public static RoomPermissions Of(RoomRoles roles)
+	public static RoomPermissions GetPermissions(this RoomRoles roles)
 	{
 		var permissions = RoomPermissions.None;
 

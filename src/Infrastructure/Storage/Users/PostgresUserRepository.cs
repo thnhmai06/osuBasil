@@ -32,7 +32,8 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 	/// <inheritdoc />
 	public async Task<UserRecord> CreateAsync(UserData data, CancellationToken cancellationToken = default)
 	{
-		if (_byName.TryGetValue(data.NormalizedName, out var known) && known.Value.NormalizedName == data.NormalizedName)
+		if (_byName.TryGetValue(data.NormalizedName, out var known) &&
+		    known.Value.NormalizedName == data.NormalizedName)
 			throw new AlreadyExistsException($"A user is already named {data.Name}.");
 
 		var parameters = new
@@ -167,7 +168,6 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 		{
 			user.Id,
 			value.Name,
-			NormalizedName = value.NormalizedName,
 			Country = (int)value.Country,
 			Permissions = (long)value.Permissions,
 			DeletedAt = value.DeletedAt?.ToUniversalTime()
