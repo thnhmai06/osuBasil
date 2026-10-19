@@ -4,15 +4,12 @@ using Basil.Application.Services.Contracts.Multiplayer.Rooms;
 
 namespace Basil.Application.Services.Contracts.Multiplayer;
 
-/// <summary>Changes rooms: who is in them, who runs them, their settings, slots and rounds.</summary>
+/// <summary>Changes room membership and records scores submitted during rounds.</summary>
 public interface IRoomService : IEventPublisher<RoomEvent>
 {
 	/// <summary>Joining, leaving, seating, removing and inviting players, and tourney observers.</summary>
 	IRoomMembershipService Members { get; }
 
-	/// <summary>Slots and what each player sets on their own slot.</summary>
-	IRoomSlotsService Slots { get; }
-
-	/// <summary>Rounds, countdowns and the scores recorded in them.</summary>
+	/// <summary>Records scores submitted during the room's rounds.</summary>
 	IRoomRoundsService Rounds { get; }
 }

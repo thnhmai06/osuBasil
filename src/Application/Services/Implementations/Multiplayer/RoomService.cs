@@ -6,10 +6,9 @@ using Basil.Application.Services.Implementations.Multiplayer.Rooms;
 
 namespace Basil.Application.Services.Implementations.Multiplayer;
 
-/// <summary>Changes rooms through its children: membership, settings, slots and rounds.</summary>
+/// <summary>Changes room membership and records scores submitted during rounds.</summary>
 internal sealed class RoomService(
 	RoomMembershipService members,
-	RoomSlotsService slots,
 	RoomRoundsService rounds,
 	RoomEventStream events) : IRoomService
 {
@@ -18,9 +17,6 @@ internal sealed class RoomService(
 
 	/// <inheritdoc />
 	public IRoomMembershipService Members => members;
-
-	/// <inheritdoc />
-	public IRoomSlotsService Slots => slots;
 
 	/// <inheritdoc />
 	public IRoomRoundsService Rounds => rounds;

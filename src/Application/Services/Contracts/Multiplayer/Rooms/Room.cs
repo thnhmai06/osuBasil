@@ -194,6 +194,34 @@ public sealed class Room : IEquatable<Room>
 		return round;
 	}
 
+	/// <summary>Begins a round and marks the seated players who have the beatmap as playing.</summary>
+	/// <returns>The new round and the players taking part.</returns>
+	internal (Round Round, IReadOnlyList<BanchoConnection> Players) BeginRound()
+	{
+		var round = new Round
+		{
+			Index = (Rounds.LastRound?.Index ?? 0) + 1,
+			Match = Match,
+			BeatmapHash = Settings.Beatmap!.Hash,
+			Settings = Settings.MatchSettings.Clone(),
+			StartedAt = Context.Clock.GetUtcNow(),
+			EndedAt = null
+		};
+		Rounds.LastRound = round;
+		Rounds.AllLoadedAnnounced = false;
+		Rounds.AllSkippedAnnounced = false;
+
+		var players = new List<BanchoConnection>();
+		foreach (var slot in Slots.Where(s => s.Player is not null && s.Status is not RoomSlotStatus.NoMap))
+		{
+			slot.SetStatus(RoomSlotStatus.Playing);
+			players.Add(slot.Player!);
+		}
+
+		if (players.Count == 0) EndCurrentRound(false);
+		return (round, players);
+	}
+
 	/// <summary>Works out what the players who are still playing have all done, after a player stopped playing.</summary>
 	/// <returns>
 	///     What changed for the round in progress, or <see langword="null" /> when no round is in progress or nothing

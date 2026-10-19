@@ -235,4 +235,43 @@ public sealed class ScopedRoomSlots
 		room.Context.Events.Emit(new RoomSlotModsChanged(room, slot.Index, mods));
 		return RoomResult.Ok;
 	}
+
+	/// <summary>Toggles whether a slot is locked.</summary>
+	/// <param name="index">The slot number, from 1 to 16.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>Ok, NotAuthorized, SlotNotOpen, OwnSlot or RoomClosed when the room has closed.</returns>
+	public async Task<RoomResult> ToggleLockAsync(int index, CancellationToken cancellationToken = default)
+	{
+		if (_scoped.Require(RoomPermissions.SlotsLock) is { } denied) return denied;
+
+		await using var scope = await _scoped.Room.EnterAsync(cancellationToken);
+		if (scope is null) return RoomResult.RoomClosed;
+
+		var room = _scoped.Room;
+		if (room.Slots.At(index) is not { } slot) return RoomResult.SlotNotOpen;
+		if (ReferenceEquals(slot.Player, _scoped.By)) return RoomResult.OwnSlot;
+
+		var locking = !slot.Locked;
+
+		BanchoConnection? evicted = null;
+		RoomRoundProgress? progress = null;
+		if (locking && slot.Player is { } player)
+		{
+			evicted = player;
+			room.Vacate(player);
+			progress = room.AdvanceRound();
+		}
+
+		slot.Locked = locking;
+		room.Context.Events.Emit(new RoomSlotLockChanged(room, slot.Index, locking, evicted, room.Authority.Host,
+			progress));
+
+		if (evicted is not null)
+		{
+			room.LeaveChannel(evicted);
+			room.ReportIfEmpty();
+		}
+
+		return RoomResult.Ok;
+	}
 }
