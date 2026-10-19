@@ -39,7 +39,7 @@ public enum RoomResult : byte
 	/// <summary>The user is not banned from the room.</summary>
 	NotBanned,
 
-	/// <summary>The invited user is offline or is the server's bot.</summary>
+	/// <summary>The invited user has no open connection.</summary>
 	TargetOffline,
 
 	/// <summary>The user is already seated in the room.</summary>

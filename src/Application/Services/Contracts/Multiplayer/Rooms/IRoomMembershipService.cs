@@ -86,7 +86,7 @@ public interface IRoomMembershipService
 	/// <param name="target">The online session of the invited user.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, TargetOffline, AlreadyInRoom or RoomClosed when the room has closed.</returns>
-	/// <remarks>The server's bot cannot be invited.</remarks>
+	/// <remarks>BasilBot signs in nowhere, so it can never be invited.</remarks>
 	Task<RoomResult> InviteAsync(Room room, Connection by, UserSession target,
 		CancellationToken cancellationToken = default);
 
@@ -108,6 +108,6 @@ public interface IRoomMembershipService
 	/// <summary>Removes a connection from every room it plays in or observes.</summary>
 	/// <param name="connection">The connection to release.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <remarks>Called when the connection closes or its user is silenced; calling it again does nothing.</remarks>
+	/// <remarks>Called when the connection closes or when the user may no longer take part in multiplayer.</remarks>
 	Task ReleaseAsync(Connection connection, CancellationToken cancellationToken = default);
 }

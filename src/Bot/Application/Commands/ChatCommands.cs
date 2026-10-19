@@ -1,26 +1,27 @@
 using Basil.Bot.Application.Basil;
 using Basil.Bot.Application.Commands.Mp;
 using Basil.Domain.Users;
-using Microsoft.Extensions.Options;
 
 namespace Basil.Bot.Application.Commands;
 
 /// <summary>Dispatches chat commands to their handlers.</summary>
 internal sealed class ChatCommands(
-	IOptions<BotOptions> options,
 	IBasilUsers users,
 	IBasilFaqs faqs,
 	MpCommands mpCommands,
 	Random random)
 {
-	/// <summary>Executes a command if the text matches the configured prefix.</summary>
+	/// <summary>The text that starts a command.</summary>
+	public const string CommandPrefix = "!";
+
+	/// <summary>Executes a command if the text starts with the command prefix.</summary>
 	/// <param name="context">The command context.</param>
 	/// <param name="text">The message text.</param>
 	/// <param name="cancellationToken">A cancellation token.</param>
 	/// <returns>True if a command was executed; otherwise false (no reply sent for unknown commands).</returns>
 	public async Task<bool> ExecuteAsync(CommandContext context, string text, CancellationToken cancellationToken)
 	{
-		var prefix = options.Value.Prefix;
+		var prefix = CommandPrefix;
 		if (string.IsNullOrEmpty(text))
 			return false;
 
@@ -88,7 +89,7 @@ internal sealed class ChatCommands(
 
 	private string StripPrefix(string segmentText)
 	{
-		var prefix = options.Value.Prefix;
+		var prefix = CommandPrefix;
 		return segmentText.StartsWith(prefix, StringComparison.Ordinal)
 			? segmentText[prefix.Length..]
 			: segmentText;
