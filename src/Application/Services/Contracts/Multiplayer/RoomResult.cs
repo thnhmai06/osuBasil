@@ -112,5 +112,8 @@ public enum RoomResult : byte
 	RoundMismatch,
 
 	/// <summary>The room has closed.</summary>
-	RoomClosed
+	RoomClosed,
+
+	/// <summary>The invited user blocks the inviter.</summary>
+	Blocked
 }

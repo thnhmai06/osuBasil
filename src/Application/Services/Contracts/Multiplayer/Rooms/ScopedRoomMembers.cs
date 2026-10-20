@@ -180,10 +180,13 @@ public sealed class ScopedRoomMembers
 	/// <summary>Invites an online user to the room.</summary>
 	/// <param name="target">The online session of the invited user.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>Ok, NotAuthorized, Silenced, TargetOffline, AlreadyInRoom or RoomClosed.</returns>
+	/// <returns>Ok, NotAuthorized, Silenced, Blocked, TargetOffline, AlreadyInRoom or RoomClosed.</returns>
 	public async Task<RoomResult> InviteAsync(UserSession target, CancellationToken cancellationToken = default)
 	{
 		if (_scoped.Require(RoomPermissions.MembersInvite) is { } denied) return denied;
+		if (!_scoped.ManagesAnyRoom &&
+		    await _scoped.Room.Context.Users.BlocksAsync(target.User, _scoped.By.User, cancellationToken))
+			return RoomResult.Blocked;
 
 		await using var scope = await _scoped.Room.EnterAsync(cancellationToken);
 		if (scope is null) return RoomResult.RoomClosed;

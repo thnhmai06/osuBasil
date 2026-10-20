@@ -16,5 +16,11 @@ public enum UserResult
 	Protected,
 
 	/// <summary>The restriction has no permissions to suspend or ends in the past.</summary>
-	InvalidRestriction
+	InvalidRestriction,
+
+	/// <summary>A user cannot have a relationship with themself.</summary>
+	Self,
+
+	/// <summary>The target account is deleted.</summary>
+	Deleted
 }

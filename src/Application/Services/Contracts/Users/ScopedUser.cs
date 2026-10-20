@@ -21,6 +21,9 @@ public sealed class ScopedUser
 	/// <summary>The restriction operations for this account.</summary>
 	public ScopedUserRestrictions Restrictions { get; }
 
+	/// <summary>The friends and blocks this account sets toward other users.</summary>
+	public ScopedUserRelationships Relationships { get; }
+
 	/// <summary>Creates a scoped account for a connection.</summary>
 	/// <param name="user">The account to scope.</param>
 	/// <param name="by">The connection acting on the account.</param>
@@ -31,6 +34,7 @@ public sealed class ScopedUser
 		_now = user.Context.Clock.GetUtcNow();
 		Granted = by.Session.User.Value.Permissions;
 		Restrictions = new ScopedUserRestrictions(this);
+		Relationships = new ScopedUserRelationships(this);
 	}
 
 	/// <summary>Checks whether the caller has a required permission in effect.</summary>

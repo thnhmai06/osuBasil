@@ -3,6 +3,7 @@ using Basil.Application.Services.Contracts.Multiplayer;
 using Basil.Application.Services.Contracts.Multiplayer.Events;
 using Basil.Application.Services.Contracts.Multiplayer.Rooms;
 using Basil.Application.Services.Contracts.Sessions;
+using Basil.Application.Services.Contracts.Users;
 using Basil.Application.Services.Implementations.Multiplayer.Rooms;
 using Basil.Application.Services.Implementations.Users;
 using Basil.Application.Storage.Contracts.Content;
@@ -22,7 +23,8 @@ internal sealed class LobbyRoomsService(
 	ISettingsRepository serverSettings,
 	RoomEventStream roomEvents,
 	RoomChannelService roomChannel,
-	TimeProvider time) : ILobbyRoomsService, IRoomLobbyPort
+	TimeProvider time,
+	IUserService users) : ILobbyRoomsService, IRoomLobbyPort, IRoomUsersPort
 {
 	/// <summary>The most tournament rooms one creator can have open.</summary>
 	internal const int MaxRoomsPerCreator = 4;
@@ -35,6 +37,10 @@ internal sealed class LobbyRoomsService(
 
 	/// <inheritdoc />
 	void IRoomLobbyPort.Close(Room room, UserRecord? by) => Close(room, by);
+
+	/// <inheritdoc />
+	ValueTask<bool> IRoomUsersPort.BlocksAsync(UserRecord blocker, UserRecord who,
+		CancellationToken cancellationToken) => users.Of(blocker).HasBlockedAsync(who, cancellationToken);
 
 	/// <inheritdoc />
 	public async Task<(Room? Room, RoomResult Result)> OpenAsync(
@@ -102,7 +108,7 @@ internal sealed class LobbyRoomsService(
 		Room room;
 		using (lobby.Enter())
 		{
-			var context = new RoomContext(time, roomEvents, this, roomChannel);
+			var context = new RoomContext(time, roomEvents, this, roomChannel, this);
 			room = new Room(id, match, settings ?? new MatchSettings(), isTournament, context);
 			if (!string.IsNullOrEmpty(password)) room.Settings.Password = password;
 			if (seat is not null && lobby.RoomOf(seat) is null) SeatCreator(room, seat);

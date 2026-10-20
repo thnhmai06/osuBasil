@@ -14,10 +14,12 @@ internal sealed class UserService : IUserService
 	private readonly UserEventStream _events;
 
 	public UserService(IUserRepository users, IRestrictionRepository restrictions,
-		IModerationLogRepository moderationLog, IUserRegistry registry, SessionConnectionsService sessions,
+		IModerationLogRepository moderationLog, IRelationshipRepository relationships, IUserRegistry registry,
+		SessionConnectionsService sessions,
 		TimeProvider clock, UserEventStream events)
 	{
-		_context = new UserContext(clock, events, registry, users, restrictions, moderationLog, sessions);
+		_context = new UserContext(clock, events, registry, users, restrictions, moderationLog, relationships,
+			sessions);
 		_events = events;
 	}
 

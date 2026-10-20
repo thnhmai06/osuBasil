@@ -29,6 +29,19 @@ public sealed class User
 		return new ScopedUser(this, by);
 	}
 
+	/// <summary>Gets a value that indicates whether this user blocks another.</summary>
+	/// <param name="who">The user to check.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
+	/// <returns><see langword="true" /> when this user blocks <paramref name="who" />.</returns>
+	public async ValueTask<bool> HasBlockedAsync(UserRecord who, CancellationToken ct = default)
+	{
+		if (BasilBot.Is(Record)) return false;
+
+		var relationships = await Context.Relationships.ListAsync(Record, ct);
+		return relationships.Any(relationship => relationship.Target.Equals(who) &&
+		                                         relationship.Type == RelationshipType.Block);
+	}
+
 	/// <summary>Changes the account data and keeps its online session in sync.</summary>
 	/// <param name="change">The change to apply to the account.</param>
 	internal void Apply(Action<UserData> change)

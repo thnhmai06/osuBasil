@@ -9,11 +9,13 @@ namespace Basil.Application.Services.Contracts.Multiplayer.Rooms;
 /// <param name="Events">The event sink for emitting room events.</param>
 /// <param name="Lobby">The lobby that holds the room.</param>
 /// <param name="Channel">The chat service for the room's channel.</param>
+/// <param name="Users">The user service for checking blocks.</param>
 internal sealed record RoomContext(
 	TimeProvider Clock,
 	IRoomEventSink Events,
 	IRoomLobbyPort Lobby,
-	IRoomChannelPort Channel);
+	IRoomChannelPort Channel,
+	IRoomUsersPort Users);
 
 /// <summary>Emits room events to the event stream.</summary>
 internal interface IRoomEventSink
@@ -58,4 +60,14 @@ internal interface IRoomChannelPort
 	/// <param name="room">The room whose channel to leave.</param>
 	/// <param name="connection">The connection that leaves.</param>
 	void Part(Room room, Connection connection);
+}
+
+/// <summary>What a room asks of the users: whether one blocks another.</summary>
+internal interface IRoomUsersPort
+{
+	/// <summary>Gets whether one user blocks another.</summary>
+	/// <param name="blocker">The user whose blocks are checked.</param>
+	/// <param name="who">The user who may be blocked.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	ValueTask<bool> BlocksAsync(UserRecord blocker, UserRecord who, CancellationToken cancellationToken);
 }
