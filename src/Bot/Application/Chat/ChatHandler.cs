@@ -35,7 +35,7 @@ internal sealed class ChatHandler(Server server, ChatCommands commands, CommandW
 			(text, ct) =>
 				SendSplitAsync(text, (piece, token) => server.WhisperAsync(by.Session, piece, ct: token), ct));
 
-		worker.Enqueue(async ct =>
+		worker.Enqueue(by.User.Id, async ct =>
 		{
 			try
 			{
