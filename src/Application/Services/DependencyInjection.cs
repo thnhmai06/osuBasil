@@ -14,8 +14,8 @@ using Basil.Application.Services.Chat;
 using Basil.Application.Services.Multiplayer;
 using Basil.Application.Services.Multiplayer.Rooms;
 using Basil.Application.Services.Scores;
-using Basil.Application.Services.Sessions;
 using Basil.Application.Services.Users;
+using Basil.Application.Storage.Auth;
 using Basil.Application.Storage.Chat;
 using Basil.Application.Storage.Content;
 using Basil.Application.Storage.Multiplayer;
@@ -38,20 +38,23 @@ public static class DependencyInjection
 	{
 		services.TryAddSingleton(TimeProvider.System);
 
-		services.AddSingleton<IUserRegistry, UserRegistry>();
 		services.AddSingleton<IGeneralChannelRegistry, GeneralChannelRegistry>();
 
-		services.AddSingleton<SessionConnectionsService>();
-		services.AddSingleton<SessionService>();
-		services.AddSingleton<ISessionService>(sp => sp.GetRequiredService<SessionService>());
-
-		services.AddSingleton<AuthService>();
-		services.AddSingleton<IAuthService>(sp => sp.GetRequiredService<AuthService>());
-
-		services.AddSingleton<UserService>();
-		services.AddSingleton<IUserService>(sp => sp.GetRequiredService<UserService>());
-		services.AddSingleton<IRoomUsersPort>(sp => sp.GetRequiredService<UserService>());
-		services.AddSingleton<Func<UserRecord, User>>(sp => record => sp.GetRequiredService<IUserService>().Of(record));
+		services.AddSingleton<AccountService>();
+		services.AddSingleton<IAccountService>(sp => sp.GetRequiredService<AccountService>());
+		services.AddSingleton<UserRegistry>(sp => new UserRegistry(
+			sp.GetRequiredService<IAccountService>(),
+			sp.GetRequiredService<IUserRepository>(),
+			sp.GetRequiredService<IRestrictionRepository>(),
+			sp.GetRequiredService<IModerationLogRepository>(),
+			sp.GetRequiredService<IRelationshipRepository>(),
+			sp.GetRequiredService<ILoginRepository>(),
+			sp.GetRequiredService<ICredentialRepository>(),
+			sp.GetRequiredService<TimeProvider>(),
+			sp.GetRequiredService<IEventPublisher<UserEvent>>(),
+			sp.GetRequiredService<ChannelContext>()));
+		services.AddSingleton<IRoomUsersPort>(sp => sp.GetRequiredService<UserRegistry>());
+		services.AddSingleton<Func<UserRecord, User>>(sp => sp.GetRequiredService<UserRegistry>().Of);
 
 		services.AddSingleton<ChannelContext>(sp => new ChannelContext(
 			sp.GetRequiredService<TimeProvider>(),
@@ -62,7 +65,7 @@ public static class DependencyInjection
 		services.AddSingleton<SessionContext>(sp => new SessionContext(
 			sp.GetRequiredService<TimeProvider>(),
 			sp.GetRequiredService<IEventPublisher<UserEvent>>(),
-			sp.GetRequiredService<IUserRegistry>(),
+			sp.GetRequiredService<UserRegistry>(),
 			sp.GetRequiredService<IRelationshipRepository>(),
 			sp.GetRequiredService<ChannelContext>()));
 		services.AddSingleton<ServerContext>(sp => new ServerContext(

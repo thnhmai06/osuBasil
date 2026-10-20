@@ -1,4 +1,4 @@
-using Basil.Application.Objects.Sessions;
+using Basil.Application.Objects.Users;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -6,7 +6,7 @@ namespace Basil.Infrastructure.Runtime.Sessions;
 
 /// <summary>Closes idle connections every 100 seconds.</summary>
 internal sealed class IdleConnectionSweeper(
-	ISessionService sessions,
+	UserRegistry sessions,
 	TimeProvider time,
 	ILogger<IdleConnectionSweeper> logger) : BackgroundService
 {
@@ -16,7 +16,7 @@ internal sealed class IdleConnectionSweeper(
 		while (await timer.WaitForNextTickAsync(stoppingToken))
 			try
 			{
-				var closed = sessions.Connections.CloseIdle();
+				var closed = sessions.CloseIdle();
 				if (closed > 0) logger.LogDebug("Closed {ConnectionCount} idle connections", closed);
 			}
 			catch (Exception exception)

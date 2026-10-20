@@ -1,6 +1,6 @@
 using Basil.Application.Objects.Multiplayer;
 using Basil.Application.Objects.Servers;
-using Basil.Application.Objects.Sessions;
+using Basil.Application.Objects.Users;
 using Basil.Application.Storage.Chat;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -14,7 +14,7 @@ namespace Basil.Infrastructure.Runtime.Startup;
 internal sealed class RuntimeStartup(
 	IChannelRepository channelRepository,
 	Server server,
-	ISessionService sessions,
+	UserRegistry sessions,
 	IMatchService matches,
 	ILogger<RuntimeStartup> logger) : IHostedService
 {
@@ -27,7 +27,7 @@ internal sealed class RuntimeStartup(
 				openedChannels++;
 		logger.LogInformation("Opened {ChannelCount} general channels", openedChannels);
 
-		if (await sessions.Connections.ConnectBotAsync(cancellationToken) is null)
+		if (await sessions.ConnectBotAsync(cancellationToken) is null)
 			logger.LogWarning("BasilBot's record is missing; the bot stays offline");
 		else
 			logger.LogInformation("BasilBot is online");

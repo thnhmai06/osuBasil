@@ -1,6 +1,7 @@
 using Basil.Application.Objects.Events;
 using Basil.Application.Objects.Multiplayer;
 using Basil.Application.Objects.Sessions;
+using Basil.Application.Objects.Users;
 using Basil.Domain.Permissions;
 using Microsoft.Extensions.Logging;
 
@@ -8,7 +9,7 @@ namespace Basil.Infrastructure.Runtime.Sessions;
 
 /// <summary>Applies the room and spectating consequences of a user's restrictions.</summary>
 internal sealed class RestrictionHandler(
-	IUserRegistry registry,
+	UserRegistry registry,
 	IRoomService rooms,
 	TimeProvider time,
 	ILogger<RestrictionHandler> logger) : IEventHandler<UserEvent>

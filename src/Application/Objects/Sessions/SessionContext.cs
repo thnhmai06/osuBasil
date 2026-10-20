@@ -1,5 +1,6 @@
 using Basil.Application.Objects.Chat;
 using Basil.Application.Objects.Events;
+using Basil.Application.Objects.Users;
 using Basil.Application.Storage.Users;
 
 namespace Basil.Application.Objects.Sessions;
@@ -13,6 +14,6 @@ namespace Basil.Application.Objects.Sessions;
 internal sealed record SessionContext(
 	TimeProvider Clock,
 	IEventPublisher<UserEvent> Events,
-	IUserRegistry Registry,
+	UserRegistry Registry,
 	IRelationshipRepository Relationships,
 	ChannelContext Chat);

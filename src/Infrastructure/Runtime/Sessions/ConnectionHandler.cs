@@ -2,6 +2,7 @@ using Basil.Application.Objects.Chat;
 using Basil.Application.Objects.Events;
 using Basil.Application.Objects.Multiplayer;
 using Basil.Application.Objects.Sessions;
+using Basil.Application.Objects.Users;
 using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Runtime.Sessions;
@@ -14,7 +15,7 @@ internal sealed class ConnectionHandler(
 	IChannelService channels,
 	IRoomService rooms,
 	Lobby lobby,
-	IUserRegistry registry,
+	UserRegistry registry,
 	ILogger<ConnectionHandler> logger) : IEventHandler<UserEvent>
 {
 	/// <inheritdoc />

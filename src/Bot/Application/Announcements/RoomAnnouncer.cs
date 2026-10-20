@@ -3,14 +3,14 @@ using Basil.Application.Objects.Events;
 using Basil.Application.Objects.Multiplayer;
 using Basil.Application.Objects.Multiplayer.Events;
 using Basil.Application.Objects.Multiplayer.Rooms;
-using Basil.Application.Objects.Sessions;
 using Basil.Application.Objects.Servers;
+using Basil.Application.Objects.Users;
 using Basil.Domain.Users;
 
 namespace Basil.Bot.Application.Announcements;
 
 /// <summary>Reacts to room and lobby events by posting announcements in the affected room.</summary>
-internal sealed class RoomAnnouncer(Server server, IUserRegistry users, TimeProvider timeProvider)
+internal sealed class RoomAnnouncer(Server server, UserRegistry users, TimeProvider timeProvider)
 	: IEventHandler<RoomEvent>, IEventHandler<LobbyEvent>
 {
 	private readonly ConcurrentDictionary<int, Room> _closingRooms = new();

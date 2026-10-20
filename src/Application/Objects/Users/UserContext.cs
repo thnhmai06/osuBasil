@@ -22,7 +22,7 @@ namespace Basil.Application.Objects.Users;
 internal sealed record UserContext(
 	TimeProvider Clock,
 	IEventPublisher<UserEvent> Events,
-	IUserRegistry Registry,
+	UserRegistry Registry,
 	IUserRepository Users,
 	IRestrictionRepository Restrictions,
 	IModerationLogRepository ModerationLog,

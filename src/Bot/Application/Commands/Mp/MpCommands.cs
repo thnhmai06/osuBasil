@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using Basil.Application.Objects.Multiplayer;
 using Basil.Application.Objects.Multiplayer.Rooms;
 using Basil.Application.Objects.Sessions;
+using Basil.Application.Objects.Users;
 using Basil.Application.Storage.Beatmaps;
 using Basil.Application.Storage.Users;
 using Basil.Domain.Mechanics;
@@ -21,7 +22,7 @@ namespace Basil.Bot.Application.Commands.Mp;
 /// </remarks>
 internal sealed partial class MpCommands(
 	Lobby lobby,
-	IUserRegistry registry,
+	UserRegistry registry,
 	IUserRepository users,
 	IBeatmapRepository beatmaps,
 	MpScopes scopes,
