@@ -1,5 +1,4 @@
 using System.Net;
-using Basil.Application.Services.Contracts.Chat;
 using Basil.Application.Services.Contracts.Sessions;
 using Basil.Application.Services.Contracts.Users;
 using Basil.Application.Services.Implementations.Sessions;
@@ -23,7 +22,7 @@ internal sealed class AuthService(
 	IRestrictionRepository restrictions,
 	ISettingsRepository settings,
 	SessionConnectionsService connections,
-	ChannelContext chat,
+	SessionContext context,
 	TimeProvider time) : IAuthService
 {
 	/// <inheritdoc />
@@ -70,7 +69,7 @@ internal sealed class AuthService(
 		var token = SessionConnectionsService.NewToken();
 		Connection connection = type switch
 		{
-			ConnectionType.Bancho => new BanchoConnection(login, token, utcOffset, chat),
+			ConnectionType.Bancho => new BanchoConnection(login, token, utcOffset, context),
 			ConnectionType.Tourney => new TourneyConnection(login, token),
 			ConnectionType.Irc => new IrcConnection(login, token),
 			_ => new ApiConnection(login, token)

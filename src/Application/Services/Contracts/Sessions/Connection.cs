@@ -1,4 +1,3 @@
-using Basil.Application.Services.Contracts.Chat;
 using Basil.Domain.Auth;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
@@ -43,12 +42,16 @@ namespace Basil.Application.Services.Contracts.Sessions
 		/// <param name="login">The login that opened the connection.</param>
 		/// <param name="token">The token that identifies the connection.</param>
 		/// <param name="utcOffset">The client's UTC offset reported at login.</param>
-		/// <param name="chat">The runtime dependencies for the spectator channel.</param>
-		internal BanchoConnection(Login login, string token, int utcOffset, ChannelContext chat) : base(login, token)
+		/// <param name="context">The runtime dependencies for the connection's behaviour.</param>
+		internal BanchoConnection(Login login, string token, int utcOffset, SessionContext context) : base(login, token)
 		{
 			UtcOffset = utcOffset;
-			SpectatorChannel = new SpectatorChannelSession(this, chat);
+			Context = context;
+			SpectatorChannel = new SpectatorChannelSession(this, context.Chat);
 		}
+
+		/// <summary>The runtime dependencies used by this connection.</summary>
+		internal SessionContext Context { get; }
 
 		/// <inheritdoc />
 		public override ConnectionType Type => ConnectionType.Bancho;
@@ -65,6 +68,14 @@ namespace Basil.Application.Services.Contracts.Sessions
 		/// <summary>Gets the connections spectating this client.</summary>
 		public IReadOnlySet<Connection> Spectators => _spectators;
 
+		/// <summary>Scopes this client's behaviour to a connection.</summary>
+		/// <param name="by">The connection acting on this client.</param>
+		/// <returns>A short-lived scope for this client and connection.</returns>
+		public ScopedBanchoConnection ScopeTo(Connection by)
+		{
+			return new ScopedBanchoConnection(this, by);
+		}
+
 		/// <summary>
 		///     Gets the connections spectating this client, for changing them; the caller holds the scope and reports the
 		///     change itself.
@@ -76,6 +87,16 @@ namespace Basil.Application.Services.Contracts.Sessions
 		internal Lock.Scope EnterSpectators()
 		{
 			return _spectating.EnterScope();
+		}
+
+		/// <summary>Removes every spectator when this client goes away and announces each one.</summary>
+		internal void ReleaseSpectators()
+		{
+			using var scope = EnterSpectators();
+			var spectators = Spectators.ToArray();
+			MutableSpectators.Clear();
+			foreach (var spectator in spectators)
+				Context.Events.Emit(new UserSpectatorLeft(this, spectator));
 		}
 	}
 

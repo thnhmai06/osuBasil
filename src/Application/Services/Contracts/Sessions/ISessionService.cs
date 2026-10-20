@@ -1,20 +1,15 @@
 using Basil.Application.Services.Contracts.Events;
-using Basil.Application.Services.Contracts.Sessions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Contracts.Sessions;
 
 /// <summary>
-///     Opens and closes the connections of online users and changes what they share; connections and presence are its
-///     parts.
+///     Opens and closes the connections of online users.
 /// </summary>
 public interface ISessionService : IEventPublisher<UserEvent>
 {
 	/// <summary>Connections: closing them, keeping them alive, acting for another user.</summary>
 	ISessionConnectionsService Connections { get; }
-
-	/// <summary>What online users show to others.</summary>
-	ISessionPresenceService Presence { get; }
 
 	/// <summary>Shows a notification to online osu! clients.</summary>
 	/// <param name="by">The connection asking; its user needs <see cref="Permissions.ChatAnnounce" />.</param>

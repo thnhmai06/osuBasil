@@ -41,10 +41,8 @@ public static class DependencyInjection
 		services.AddSingleton<IGeneralChannelRegistry, GeneralChannelRegistry>();
 
 		services.AddSingleton<SessionEventStream>();
-		services.AddSingleton<BanchoSpectatorsService>();
-		services.AddSingleton<BanchoConnectionService>();
+		services.AddSingleton<ISessionEventSink>(sp => sp.GetRequiredService<SessionEventStream>());
 		services.AddSingleton<SessionConnectionsService>();
-		services.AddSingleton<SessionPresenceService>();
 		services.AddSingleton<SessionService>();
 		services.AddSingleton<ISessionService>(sp => sp.GetRequiredService<SessionService>());
 
@@ -64,6 +62,12 @@ public static class DependencyInjection
 			sp.GetRequiredService<IGeneralChannelRegistry>(),
 			sp.GetRequiredService<IRelationshipRepository>(),
 			sp.GetRequiredService<IChannelRepository>()));
+		services.AddSingleton<SessionContext>(sp => new SessionContext(
+			sp.GetRequiredService<TimeProvider>(),
+			sp.GetRequiredService<ISessionEventSink>(),
+			sp.GetRequiredService<IUserRegistry>(),
+			sp.GetRequiredService<IRelationshipRepository>(),
+			sp.GetRequiredService<ChannelContext>()));
 		services.AddSingleton<ChannelService>();
 		services.AddSingleton<IChannelService>(sp => sp.GetRequiredService<ChannelService>());
 

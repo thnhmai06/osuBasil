@@ -11,7 +11,6 @@ namespace Basil.Application.Services.Implementations.Sessions;
 /// </summary>
 internal sealed class SessionService(
 	SessionConnectionsService connections,
-	SessionPresenceService presence,
 	SessionEventStream events,
 	IUserRegistry registry,
 	TimeProvider time) : ISessionService
@@ -21,9 +20,6 @@ internal sealed class SessionService(
 
 	/// <inheritdoc />
 	public ISessionConnectionsService Connections => connections;
-
-	/// <inheritdoc />
-	public ISessionPresenceService Presence => presence;
 
 	/// <inheritdoc />
 	public int? Announce(Connection by, string text, IReadOnlyCollection<UserRecord>? to = null)

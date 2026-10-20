@@ -1,6 +1,5 @@
 using System.Buffers.Text;
 using System.Security.Cryptography;
-using Basil.Application.Services.Contracts.Chat;
 using Basil.Application.Services.Contracts.Sessions;
 using Basil.Application.Services.Contracts.Users;
 using Basil.Application.Services.Implementations.Users;
@@ -10,9 +9,8 @@ namespace Basil.Application.Services.Implementations.Sessions;
 
 /// <summary>Closes connections and keeps them alive.</summary>
 internal sealed class SessionConnectionsService(
-	BanchoConnectionService bancho,
 	IUserRegistry registry,
-	ChannelContext chat,
+	SessionContext context,
 	SessionEventStream events,
 	TimeProvider time) : ISessionConnectionsService, IUserSessionsPort
 {
@@ -21,9 +19,6 @@ internal sealed class SessionConnectionsService(
 
 	/// <summary>A logout an osu! client sends this soon after login is ignored.</summary>
 	internal static readonly TimeSpan IgnoreLogoutWithin = TimeSpan.FromSeconds(1);
-
-	/// <inheritdoc />
-	public IBanchoConnectionService Bancho => bancho;
 
 	/// <inheritdoc />
 	public void Close(Connection connection, ConnectionCloseReason reason)
@@ -104,7 +99,7 @@ internal sealed class SessionConnectionsService(
 		var cameOnline = session is null;
 		if (session is null)
 		{
-			session = new UserSession(connection.User, chat);
+			session = new UserSession(connection.User, context);
 			registry.Add(session);
 		}
 
@@ -162,7 +157,10 @@ internal sealed class SessionConnectionsService(
 		connection.Session.Remove(connection);
 		connection.Session.PmChannel.ScopeTo(connection).Part();
 		if (connection is BanchoConnection client)
+		{
+			client.ReleaseSpectators();
 			client.SpectatorChannel.Close();
+		}
 
 		var wentOffline = !connection.Session.Connections.Any();
 		if (wentOffline)

@@ -13,11 +13,15 @@ public sealed class UserSession
 
 	private ImmutableList<RestrictionRecord> _restrictions = [];
 
-	internal UserSession(UserRecord user, ChannelContext chat)
+	internal UserSession(UserRecord user, SessionContext context)
 	{
 		User = user;
-		PmChannel = new PmChannelSession(this, chat);
+		Context = context;
+		PmChannel = new PmChannelSession(this, context.Chat);
 	}
+
+	/// <summary>The runtime dependencies used by this session.</summary>
+	internal SessionContext Context { get; }
 
 	/// <summary>Gets the user who is online.</summary>
 	public UserRecord User { get; }
@@ -30,6 +34,14 @@ public sealed class UserSession
 
 	/// <summary>Gets a value that indicates whether the user accepts private messages only from their friends.</summary>
 	public bool PmPrivate { get; internal set; }
+
+	/// <summary>Scopes this session's behaviour to a connection.</summary>
+	/// <param name="by">The connection acting on this session.</param>
+	/// <returns>A short-lived scope for this session and connection.</returns>
+	public ScopedUserSession ScopeTo(Connection by)
+	{
+		return new ScopedUserSession(this, by);
+	}
 
 	/// <summary>Gets the user's restrictions that had not ended when they were last loaded or changed.</summary>
 	public IReadOnlyList<RestrictionRecord> Restrictions => _restrictions;

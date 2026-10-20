@@ -10,7 +10,6 @@ namespace Basil.Infrastructure.Runtime.Sessions;
 internal sealed class RestrictionHandler(
 	IUserRegistry registry,
 	IRoomService rooms,
-	ISessionService sessions,
 	TimeProvider time,
 	ILogger<RestrictionHandler> logger) : IEventHandler<UserEvent>
 {
@@ -31,18 +30,18 @@ internal sealed class RestrictionHandler(
 		}
 
 		await RunAsync("remove it from rooms", session.User.Id,
-				() => rooms.Members.RemoveSuspendedAsync(session, cancellationToken), cancellationToken)
-			;
+				() => rooms.Members.RemoveSuspendedAsync(session, cancellationToken), cancellationToken);
 
 		if (session.Check(Permissions.SpectatingWatch, time.GetUtcNow()) is Access.Allowed) return;
 
-		if (session.Bancho is { } bancho)
+		if (session.Bancho is { } bancho && registry.FindSpectating(bancho) is { } host)
 			Run("stop spectating", session.User.Id,
-				() => sessions.Connections.Bancho.Spectators.StopSpectating(bancho), cancellationToken);
+				() => host.ScopeTo(bancho).StopSpectating(), cancellationToken);
 
 		foreach (var connection in session.Tourneys)
-			Run("stop spectating", session.User.Id,
-				() => sessions.Connections.Bancho.Spectators.StopSpectating(connection), cancellationToken);
+			if (registry.FindSpectating(connection) is { } spectated)
+				Run("stop spectating", session.User.Id,
+					() => spectated.ScopeTo(connection).StopSpectating(), cancellationToken);
 	}
 
 	/// <summary>Runs one restriction consequence, logging a failure so the remaining consequences still run.</summary>

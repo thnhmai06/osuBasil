@@ -1,4 +1,3 @@
-using Basil.Application.Services.Contracts.Sessions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Contracts.Sessions;
@@ -6,9 +5,6 @@ namespace Basil.Application.Services.Contracts.Sessions;
 /// <summary>Closes connections and keeps them alive.</summary>
 public interface ISessionConnectionsService
 {
-	/// <summary>What only osu! clients have: presence status and spectating.</summary>
-	IBanchoConnectionService Bancho { get; }
-
 	/// <summary>Closes a connection, taking its user offline if it was their last one.</summary>
 	/// <param name="connection">The connection to close.</param>
 	/// <param name="reason">Why the connection is closed.</param>
