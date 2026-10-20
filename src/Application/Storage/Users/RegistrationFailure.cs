@@ -1,4 +1,4 @@
-namespace Basil.Application.Objects.Users;
+namespace Basil.Application.Storage.Users;
 
 /// <summary>The reasons a registration is refused.</summary>
 public enum RegistrationFailure : byte

@@ -1,4 +1,4 @@
-using Basil.Application.Objects.Users;
+using Basil.Application.Storage.Users;
 using Basil.Application.Storage.Auth;
 using Basil.Application.Storage.Common;
 using Basil.Application.Storage.Content;
@@ -16,7 +16,7 @@ internal sealed class AccountService(
 	IUserRepository users,
 	ICredentialRepository credentials,
 	IRestrictionRepository restrictions,
-	ISettingsRepository settings) : IAccountService
+	ISettingsRepository settings)
 {
 	/// <inheritdoc />
 	public async Task<RegistrationFailure?> CheckRegistrationAsync(RegisterAttempt attempt,

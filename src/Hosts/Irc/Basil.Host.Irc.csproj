@@ -11,7 +11,6 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\..\Application\Objects\Basil.Application.Objects.csproj"/>
-		<ProjectReference Include="..\..\Application\Services\Basil.Application.Services.csproj"/>
 		<ProjectReference Include="..\..\Infrastructure\Storage\Basil.Infrastructure.Storage.csproj"/>
 		<ProjectReference Include="..\..\Infrastructure\Capabilities\Basil.Infrastructure.Capabilities.csproj"/>
 		<ProjectReference Include="..\..\Infrastructure\Runtime\Basil.Infrastructure.Runtime.csproj"/>

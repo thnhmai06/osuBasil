@@ -6,6 +6,7 @@ using Basil.Application.Objects.Scores;
 using Basil.Application.Objects.Users;
 using Basil.Application.Storage.Scores;
 using Basil.Application.Storage.Users;
+using Basil.Application.Services.Scores;
 
 namespace Basil.Application.Objects.Sessions;
 
@@ -26,7 +27,7 @@ internal sealed record SessionContext(
 	IRelationshipRepository Relationships,
 	ChannelContext Chat,
 	IConnectionLobbyPort Lobby,
-	IScoreRecording Scores,
+	ScoreRecorder Scores,
 	IEventPublisher<ScoreEvent> ScoreEvents,
 	IEventPublisher<AnticheatEvent> AnticheatEvents);
 

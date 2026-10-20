@@ -8,6 +8,7 @@ using Basil.Domain.Users;
 using Basil.Application.Objects.Anticheat;
 using Basil.Application.Objects.Scores;
 using Basil.Application.Objects.Users;
+using Basil.Application.Storage.Scores;
 
 namespace Basil.Application.Objects.Sessions;
 

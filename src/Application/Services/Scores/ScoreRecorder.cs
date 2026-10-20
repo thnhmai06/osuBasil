@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
-using Basil.Application.Objects.Scores;
+using Basil.Application.Storage.Scores;
 using Basil.Application.Storage.Common;
 using Basil.Application.Storage.Scores;
 using Basil.Application.Storage.Multiplayer;
@@ -22,7 +22,7 @@ internal sealed class ScoreRecorder(
 	IScoreRepository scores,
 	IRoundScoreRepository roundScores,
 	IReplayStorage replays,
-	IUserStatsRepository stats) : IScoreRecording
+	IUserStatsRepository stats)
 {
 	/// <summary>The shortest replay, in bytes, that is kept.</summary>
 	internal const int MinReplayLength = 24;

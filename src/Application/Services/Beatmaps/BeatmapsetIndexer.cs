@@ -1,6 +1,5 @@
 using System.Text;
 using System.Text.RegularExpressions;
-using Basil.Application.Objects.Beatmaps;
 using Basil.Application.Storage.Common;
 using Basil.Application.Storage.Beatmaps;
 using Basil.Domain.Beatmaps;
@@ -19,7 +18,7 @@ internal sealed partial class BeatmapsetIndexer(
 	IBeatmapAssets assets,
 	IBeatmapsetRepository beatmapsets,
 	IBeatmapRepository beatmaps,
-	IBeatmapsetStorage storage) : IBeatmapsetIndexing
+	IBeatmapsetStorage storage)
 {
 	/// <summary>The name passed when a storyboard file is stored or looked for; its kind decides where it lies.</summary>
 	private const string StoryboardFileName = "storyboard.osb";

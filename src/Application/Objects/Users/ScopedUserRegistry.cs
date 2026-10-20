@@ -2,6 +2,7 @@ using Basil.Application.Objects.Sessions;
 using Basil.Domain.Common;
 using Basil.Domain.Permissions;
 using Basil.Domain.Users;
+using Basil.Application.Storage.Users;
 
 namespace Basil.Application.Objects.Users;
 

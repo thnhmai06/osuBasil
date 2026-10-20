@@ -15,6 +15,8 @@ using Basil.Domain.Bancho;
 using Basil.Domain.Common;
 using Basil.Domain.Permissions;
 using Basil.Domain.Users;
+using Basil.Application.Services.Users;
+using Basil.Application.Services.Scores;
 
 namespace Basil.Application.Objects.Users;
 
@@ -24,7 +26,7 @@ public sealed class UserRegistry : IUserConnectionsPort, IRoomUsersPort
 	private readonly ConcurrentDictionary<string, Connection> _connections = new(StringComparer.Ordinal);
 	private readonly ConcurrentDictionary<UserRecord, User> _online = new();
 	private readonly Lock _sync = new(); // ponytail: one lock for all logins; per-user locks if login rate ever matters
-	private readonly IAccountService _accounts;
+	private readonly AccountService _accounts;
 	private readonly IUserRepository _users;
 	private readonly ILoginRepository _logins;
 	private readonly TimeProvider _clock;
@@ -53,10 +55,10 @@ public sealed class UserRegistry : IUserConnectionsPort, IRoomUsersPort
 	/// <param name="scores">The score validation and persistence operations.</param>
 	/// <param name="scoreEvents">The publisher for score events.</param>
 	/// <param name="anticheatEvents">The publisher for anticheat events.</param>
-	internal UserRegistry(IAccountService accounts, IUserRepository users, IRestrictionRepository restrictions,
+	internal UserRegistry(AccountService accounts, IUserRepository users, IRestrictionRepository restrictions,
 		IModerationLogRepository moderationLog, IRelationshipRepository relationships, ILoginRepository logins,
 		ICredentialRepository credentials, TimeProvider clock, IEventPublisher<UserEvent> events, ChannelContext chat,
-		Func<IConnectionLobbyPort> lobby, IScoreRecording scores, IEventPublisher<ScoreEvent> scoreEvents,
+		Func<IConnectionLobbyPort> lobby, ScoreRecorder scores, IEventPublisher<ScoreEvent> scoreEvents,
 		IEventPublisher<AnticheatEvent> anticheatEvents)
 	{
 		_accounts = accounts;
@@ -405,26 +407,4 @@ public sealed class UserRegistry : IUserConnectionsPort, IRoomUsersPort
 			return _lobby.Value.RoomOf(player);
 		}
 	}
-}
-
-/// <summary>Provides account persistence operations to the online-user registry.</summary>
-internal interface IAccountService
-{
-	/// <summary>Checks whether a registration attempt may create an account.</summary>
-	Task<RegistrationFailure?> CheckRegistrationAsync(RegisterAttempt attempt, CancellationToken cancellationToken);
-
-	/// <summary>Checks whether a password digest matches the account's credential.</summary>
-	Task<bool> VerifyAsync(UserRecord user, Md5 passwordHash, CancellationToken cancellationToken);
-
-	/// <summary>Creates an account and its credential, or returns why creation failed.</summary>
-	Task<(UserRecord? User, RegistrationFailure? Failure)> CreateAsync(UserData data, Md5 passwordHash,
-		CancellationToken cancellationToken);
-
-	/// <summary>Finds an account that may sign in, or returns why the login failed.</summary>
-	Task<(UserRecord? User, LoginFailure? Failure)> FindLoginUserAsync(LoginAttempt attempt,
-		CancellationToken cancellationToken);
-
-	/// <summary>Lists the restrictions active for an account at a moment.</summary>
-	Task<IReadOnlyList<Restriction>> ListRunningRestrictionsAsync(UserRecord user, DateTimeOffset now,
-		CancellationToken cancellationToken);
 }

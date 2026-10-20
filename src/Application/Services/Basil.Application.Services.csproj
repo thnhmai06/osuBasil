@@ -6,7 +6,11 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\Objects\Basil.Application.Objects.csproj"/>
+		<ProjectReference Include="..\Storage\Basil.Application.Storage.csproj"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Basil.Application.Objects"/>
 	</ItemGroup>
 
 	<ItemGroup>

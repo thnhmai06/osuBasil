@@ -1,6 +1,6 @@
 using Basil.Domain.Common;
 
-namespace Basil.Application.Objects.Users;
+namespace Basil.Application.Storage.Users;
 
 /// <summary>A registration attempt as submitted by a client.</summary>
 /// <param name="Username">The requested username.</param>

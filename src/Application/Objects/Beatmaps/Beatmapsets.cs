@@ -1,5 +1,6 @@
 using Basil.Application.Storage.Beatmaps;
 using Basil.Domain.Beatmaps;
+using Basil.Application.Services.Beatmaps;
 
 namespace Basil.Application.Objects.Beatmaps;
 
@@ -12,9 +13,9 @@ namespace Basil.Application.Objects.Beatmaps;
 public sealed class Beatmapsets
 {
 	private readonly BeatmapsetContext _context;
-	private readonly IBeatmapsetIndexing _indexer;
+	private readonly BeatmapsetIndexer _indexer;
 
-	internal Beatmapsets(BeatmapsetContext context, IBeatmapsetIndexing indexer)
+	internal Beatmapsets(BeatmapsetContext context, BeatmapsetIndexer indexer)
 	{
 		_context = context;
 		_indexer = indexer;

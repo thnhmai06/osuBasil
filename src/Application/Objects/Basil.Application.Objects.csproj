@@ -7,9 +7,10 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\Storage\Basil.Application.Storage.csproj"/>
+		<ProjectReference Include="..\Services\Basil.Application.Services.csproj"/>
 	</ItemGroup>
 
 	<ItemGroup>
-		<InternalsVisibleTo Include="Basil.Application.Services"/>
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
 	</ItemGroup>
 </Project>

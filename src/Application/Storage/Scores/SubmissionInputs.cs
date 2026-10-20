@@ -1,7 +1,7 @@
 using Basil.Domain.Bancho;
 using Basil.Domain.Common;
 
-namespace Basil.Application.Objects.Scores;
+namespace Basil.Application.Storage.Scores;
 
 /// <summary>The checksums of the beatmap a submission is checked against.</summary>
 /// <param name="Hash">The MD5 of the beatmap file.</param>
