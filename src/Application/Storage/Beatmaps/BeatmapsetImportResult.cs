@@ -1,6 +1,6 @@
 using Basil.Domain.Beatmaps;
 
-namespace Basil.Application.Objects.Beatmaps;
+namespace Basil.Application.Storage.Beatmaps;
 
 /// <summary>The outcome of importing a beatmapset.</summary>
 /// <param name="Set">The imported beatmapset, or <see langword="null" /> on failure.</param>
