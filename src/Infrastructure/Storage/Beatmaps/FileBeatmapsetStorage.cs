@@ -246,7 +246,7 @@ internal sealed class FileBeatmapsetStorage(
 	}
 
 	/// <inheritdoc />
-	public async Task SaveAsync(BeatmapsetRecord set, BeatmapsetFileKind kind, string name, Stream content,
+	public async Task SaveAsync(BeatmapsetRecord set, BeatmapsetFileType type, string name, Stream content,
 		CancellationToken cancellationToken = default)
 	{
 		var gate = SetLocks.GetOrAdd(set.Id, static _ => new SemaphoreSlim(1, 1));
@@ -256,7 +256,7 @@ internal sealed class FileBeatmapsetStorage(
 			var folder = FindFolder(set.Id, FolderName(set));
 			if (folder is null) throw new InvalidOperationException("The beatmapset has no folder.");
 
-			var path = PathOf(folder, kind, name);
+			var path = PathOf(folder, type, name);
 			var parent = Path.GetDirectoryName(path);
 			if (!string.IsNullOrEmpty(parent)) Directory.CreateDirectory(parent);
 
@@ -333,7 +333,7 @@ internal sealed class FileBeatmapsetStorage(
 	}
 
 	/// <inheritdoc />
-	public Task<bool> ExistsAsync(BeatmapsetRecord set, BeatmapsetFileKind kind, string name,
+	public Task<bool> ExistsAsync(BeatmapsetRecord set, BeatmapsetFileType type, string name,
 		CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
@@ -342,7 +342,7 @@ internal sealed class FileBeatmapsetStorage(
 
 		try
 		{
-			return Task.FromResult(File.Exists(PathOf(folder, kind, name)));
+			return Task.FromResult(File.Exists(PathOf(folder, type, name)));
 		}
 		catch (ArgumentException)
 		{
@@ -351,7 +351,7 @@ internal sealed class FileBeatmapsetStorage(
 	}
 
 	/// <inheritdoc />
-	public Task<Stream?> OpenAsync(BeatmapsetRecord set, BeatmapsetFileKind kind, string name,
+	public Task<Stream?> OpenAsync(BeatmapsetRecord set, BeatmapsetFileType type, string name,
 		CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
@@ -361,7 +361,7 @@ internal sealed class FileBeatmapsetStorage(
 		string path;
 		try
 		{
-			path = PathOf(folder, kind, name);
+			path = PathOf(folder, type, name);
 		}
 		catch (ArgumentException)
 		{
@@ -660,11 +660,11 @@ internal sealed class FileBeatmapsetStorage(
 
 	/// <summary>Builds the path of one file made from a set's archive.</summary>
 	/// <param name="setFolder">The set folder's full path.</param>
-	/// <param name="kind">What the file is.</param>
+	/// <param name="type">What the file is.</param>
 	/// <param name="name">The plain file name to store it under.</param>
 	/// <returns>The file's full path.</returns>
 	/// <exception cref="ArgumentException"><paramref name="name" /> is not a plain file name.</exception>
-	private static string PathOf(string setFolder, BeatmapsetFileKind kind, string name)
+	private static string PathOf(string setFolder, BeatmapsetFileType type, string name)
 	{
 		if (string.IsNullOrEmpty(name))
 			throw new ArgumentException("The file name cannot be empty.", nameof(name));
@@ -675,15 +675,15 @@ internal sealed class FileBeatmapsetStorage(
 		if (IsReservedName(name) || name.EndsWith('.') || name.EndsWith(' '))
 			throw new ArgumentException("The file name is not one a file may have.", nameof(name));
 
-		return kind switch
+		return type switch
 		{
-			BeatmapsetFileKind.Storyboard => Path.Combine(setFolder, StoryboardName),
-			BeatmapsetFileKind.Preview => Path.Combine(setFolder, AudioFolder, PreviewPrefix + name),
-			BeatmapsetFileKind.Version => Path.Combine(setFolder, VersionFolder, name),
-			BeatmapsetFileKind.Background => Path.Combine(setFolder, BackgroundFolder, name),
-			BeatmapsetFileKind.Audio => Path.Combine(setFolder, AudioFolder, name),
-			BeatmapsetFileKind.Video => Path.Combine(setFolder, VideoFolder, name),
-			_ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
+			BeatmapsetFileType.Storyboard => Path.Combine(setFolder, StoryboardName),
+			BeatmapsetFileType.Preview => Path.Combine(setFolder, AudioFolder, PreviewPrefix + name),
+			BeatmapsetFileType.Version => Path.Combine(setFolder, VersionFolder, name),
+			BeatmapsetFileType.Background => Path.Combine(setFolder, BackgroundFolder, name),
+			BeatmapsetFileType.Audio => Path.Combine(setFolder, AudioFolder, name),
+			BeatmapsetFileType.Video => Path.Combine(setFolder, VideoFolder, name),
+			_ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
 		};
 	}
 

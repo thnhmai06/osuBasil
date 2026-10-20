@@ -1,6 +1,6 @@
 using Basil.Domain.Multiplayer;
 
-namespace Basil.Application.Storage.Multiplayer.Matches;
+namespace Basil.Application.Storage.Multiplayer;
 
 /// <summary>Stores what happened in matches.</summary>
 public interface IMatchEventRepository

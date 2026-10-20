@@ -379,7 +379,7 @@ internal sealed class BeatmapsetService(
 					var osu = await difficulty.File.OpenAsync(cancellationToken).ConfigureAwait(false);
 					await using (osu.ConfigureAwait(false))
 					{
-						await storage.SaveAsync(set, BeatmapsetFileKind.Version, $"{hash}.osu", osu, cancellationToken)
+						await storage.SaveAsync(set, BeatmapsetFileType.Version, $"{hash}.osu", osu, cancellationToken)
 							.ConfigureAwait(false);
 					}
 				}
@@ -387,11 +387,11 @@ internal sealed class BeatmapsetService(
 				var done = new HashSet<BeatmapsetContentFile>();
 				foreach (var difficulty in content.Difficulties)
 				{
-					await SaveFileAsync(set, BeatmapsetFileKind.Background, difficulty.Background, backgrounds, done,
+					await SaveFileAsync(set, BeatmapsetFileType.Background, difficulty.Background, backgrounds, done,
 						cancellationToken).ConfigureAwait(false);
-					await SaveFileAsync(set, BeatmapsetFileKind.Audio, difficulty.Audio, audio, done,
+					await SaveFileAsync(set, BeatmapsetFileType.Audio, difficulty.Audio, audio, done,
 						cancellationToken).ConfigureAwait(false);
-					await SaveFileAsync(set, BeatmapsetFileKind.Video, difficulty.Video, video, done,
+					await SaveFileAsync(set, BeatmapsetFileType.Video, difficulty.Video, video, done,
 						cancellationToken).ConfigureAwait(false);
 				}
 
@@ -400,7 +400,7 @@ internal sealed class BeatmapsetService(
 					var storyboard = await content.Storyboard.OpenAsync(cancellationToken).ConfigureAwait(false);
 					await using (storyboard.ConfigureAwait(false))
 					{
-						await storage.SaveAsync(set, BeatmapsetFileKind.Storyboard, StoryboardFileName, storyboard,
+						await storage.SaveAsync(set, BeatmapsetFileType.Storyboard, StoryboardFileName, storyboard,
 							cancellationToken).ConfigureAwait(false);
 					}
 				}
@@ -418,12 +418,12 @@ internal sealed class BeatmapsetService(
 
 	/// <summary>Stores one file of a set, once, under the name chosen for it.</summary>
 	/// <param name="set">The beatmapset.</param>
-	/// <param name="kind">What the file is.</param>
+	/// <param name="type">What the file is.</param>
 	/// <param name="file">The file of the set's archive, or <see langword="null" /> when the set has none of that kind.</param>
 	/// <param name="names">The name chosen for each file.</param>
 	/// <param name="done">The files already stored by this call; <paramref name="file" /> is added to it.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	private async Task SaveFileAsync(BeatmapsetRecord set, BeatmapsetFileKind kind, BeatmapsetContentFile? file,
+	private async Task SaveFileAsync(BeatmapsetRecord set, BeatmapsetFileType type, BeatmapsetContentFile? file,
 		IReadOnlyDictionary<BeatmapsetContentFile, string> names, HashSet<BeatmapsetContentFile> done,
 		CancellationToken cancellationToken)
 	{
@@ -432,7 +432,7 @@ internal sealed class BeatmapsetService(
 		var stream = await file.OpenAsync(cancellationToken).ConfigureAwait(false);
 		await using (stream.ConfigureAwait(false))
 		{
-			await storage.SaveAsync(set, kind, names[file], stream, cancellationToken).ConfigureAwait(false);
+			await storage.SaveAsync(set, type, names[file], stream, cancellationToken).ConfigureAwait(false);
 		}
 	}
 
@@ -451,34 +451,34 @@ internal sealed class BeatmapsetService(
 		await withoutVideo.DisposeAsync().ConfigureAwait(false);
 
 		if (set.Assets.HasStoryboard &&
-		    !await storage.ExistsAsync(set, BeatmapsetFileKind.Storyboard, StoryboardFileName, cancellationToken)
+		    !await storage.ExistsAsync(set, BeatmapsetFileType.Storyboard, StoryboardFileName, cancellationToken)
 			    .ConfigureAwait(false))
 			return true;
 
 		foreach (var beatmap in await beatmaps.ListAsync(set, cancellationToken).ConfigureAwait(false))
 		{
-			if (!await storage.ExistsAsync(set, BeatmapsetFileKind.Version, $"{beatmap.Hash}.osu",
+			if (!await storage.ExistsAsync(set, BeatmapsetFileType.Version, $"{beatmap.Hash}.osu",
 				    cancellationToken).ConfigureAwait(false))
 				return true;
 
 			if (beatmap.Assets.BackgroundFile is { } background &&
-			    !await storage.ExistsAsync(set, BeatmapsetFileKind.Background, background, cancellationToken)
+			    !await storage.ExistsAsync(set, BeatmapsetFileType.Background, background, cancellationToken)
 				    .ConfigureAwait(false))
 				return true;
 
 			if (beatmap.Assets.AudioFile is { } audio)
 			{
-				if (!await storage.ExistsAsync(set, BeatmapsetFileKind.Audio, audio, cancellationToken)
+				if (!await storage.ExistsAsync(set, BeatmapsetFileType.Audio, audio, cancellationToken)
 					    .ConfigureAwait(false))
 					return true;
 
-				if (!await storage.ExistsAsync(set, BeatmapsetFileKind.Preview, audio, cancellationToken)
+				if (!await storage.ExistsAsync(set, BeatmapsetFileType.Preview, audio, cancellationToken)
 					    .ConfigureAwait(false))
 					return true;
 			}
 
 			if (beatmap.Assets.VideoFile is { } video &&
-			    !await storage.ExistsAsync(set, BeatmapsetFileKind.Video, video, cancellationToken)
+			    !await storage.ExistsAsync(set, BeatmapsetFileType.Video, video, cancellationToken)
 				    .ConfigureAwait(false))
 				return true;
 		}

@@ -53,7 +53,7 @@ internal sealed class BeatmapAssets(
 	private async Task BuildPreviewAsync(BeatmapsetRecord set, string audio, TimeSpan start,
 		CancellationToken cancellationToken)
 	{
-		var source = await storage.OpenAsync(set, BeatmapsetFileKind.Audio, audio, cancellationToken)
+		var source = await storage.OpenAsync(set, BeatmapsetFileType.Audio, audio, cancellationToken)
 			.ConfigureAwait(false);
 		if (source is null) return;
 		await using var sourceScope = source.ConfigureAwait(false);
@@ -75,7 +75,7 @@ internal sealed class BeatmapAssets(
 
 			var preview = File.OpenRead(outputPath);
 			await using var previewScope = preview.ConfigureAwait(false);
-			await storage.SaveAsync(set, BeatmapsetFileKind.Preview, audio, preview, cancellationToken)
+			await storage.SaveAsync(set, BeatmapsetFileType.Preview, audio, preview, cancellationToken)
 				.ConfigureAwait(false);
 		}
 		finally

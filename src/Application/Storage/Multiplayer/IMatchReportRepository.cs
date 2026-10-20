@@ -1,6 +1,6 @@
 using Basil.Domain.Multiplayer;
 
-namespace Basil.Application.Storage.Multiplayer.Matches;
+namespace Basil.Application.Storage.Multiplayer;
 
 /// <summary>Gets the results of a match, round by round.</summary>
 public interface IMatchReportRepository

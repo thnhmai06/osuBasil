@@ -8,7 +8,7 @@ namespace Basil.Application.Storage.Beatmaps;
 /// </summary>
 /// <remarks>
 ///     A set's folder holds its archive as it was given, the archive without video, and the files the server uses,
-///     each kind in its own place (<see cref="BeatmapsetFileKind" />). Anyone may also place an .osz archive or a folder
+///     each kind in its own place (<see cref="BeatmapsetFileType" />). Anyone may also place an .osz archive or a folder
 ///     of one beatmapset's files in the storage by hand; such sources wait, listed by
 ///     <see cref="ListAsync(CancellationToken)" />, until the server takes them in. Other files placed there are not
 ///     sources.
@@ -59,7 +59,7 @@ public interface IBeatmapsetStorage
 
 	/// <summary>Stores one file made from a set's archive.</summary>
 	/// <param name="set">The beatmapset.</param>
-	/// <param name="kind">What the file is.</param>
+	/// <param name="type">What the file is.</param>
 	/// <param name="name">
 	///     The plain file name to store it under, without folders: for a difficulty <c>{hash}.osu</c>; for an audio preview
 	///     the name of the audio it is made from; ignored for the storyboard. A file with that name is replaced.
@@ -67,7 +67,7 @@ public interface IBeatmapsetStorage
 	/// <param name="content">The content, read to its end; not disposed.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <exception cref="ArgumentException"><paramref name="name" /> is not a plain file name.</exception>
-	Task SaveAsync(BeatmapsetRecord set, BeatmapsetFileKind kind, string name, Stream content,
+	Task SaveAsync(BeatmapsetRecord set, BeatmapsetFileType type, string name, Stream content,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Makes the set's archive without video from its archive.</summary>
@@ -77,20 +77,20 @@ public interface IBeatmapsetStorage
 
 	/// <summary>Determines whether a file made from a set's archive is stored.</summary>
 	/// <param name="set">The beatmapset.</param>
-	/// <param name="kind">What the file is.</param>
+	/// <param name="type">What the file is.</param>
 	/// <param name="name">The name it is stored under.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns><see langword="true" /> if the file is stored.</returns>
-	Task<bool> ExistsAsync(BeatmapsetRecord set, BeatmapsetFileKind kind, string name,
+	Task<bool> ExistsAsync(BeatmapsetRecord set, BeatmapsetFileType type, string name,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Opens one file made from a set's archive.</summary>
 	/// <param name="set">The beatmapset.</param>
-	/// <param name="kind">What the file is.</param>
+	/// <param name="type">What the file is.</param>
 	/// <param name="name">The name it is stored under; ignored for the storyboard.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The file's content, seekable; or <see langword="null" /> when it is not stored. Nothing is made when asked.</returns>
-	Task<Stream?> OpenAsync(BeatmapsetRecord set, BeatmapsetFileKind kind, string name,
+	Task<Stream?> OpenAsync(BeatmapsetRecord set, BeatmapsetFileType type, string name,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Opens a set's archive, with or without video.</summary>
@@ -132,7 +132,7 @@ public interface IBeatmapsetStorage
 }
 
 /// <summary>What a file made from a beatmapset's archive is.</summary>
-public enum BeatmapsetFileKind : byte
+public enum BeatmapsetFileType : byte
 {
 	/// <summary>A difficulty's .osu file, named after the hash of its content.</summary>
 	Version,

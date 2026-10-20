@@ -1,6 +1,6 @@
 using Basil.Application.Objects.Events;
 using Basil.Application.Objects.Multiplayer.Events;
-using Basil.Application.Storage.Multiplayer.Matches;
+using Basil.Application.Storage.Multiplayer;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 

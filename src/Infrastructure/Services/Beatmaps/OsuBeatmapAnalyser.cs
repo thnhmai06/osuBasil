@@ -55,7 +55,7 @@ internal sealed class OsuBeatmapAnalyser(IBeatmapsetStorage storage) : IBeatmapA
 		var hash = beatmap.Hash;
 		if (!_contents.TryGetValue(beatmap, out var kept) || kept.Hash != hash)
 		{
-			var osu = await storage.OpenAsync(beatmap.Beatmapset, BeatmapsetFileKind.Version,
+			var osu = await storage.OpenAsync(beatmap.Beatmapset, BeatmapsetFileType.Version,
 				$"{hash}.osu", cancellationToken).ConfigureAwait(false);
 			if (osu is null) return null;
 			await using var osuScope = osu.ConfigureAwait(false);

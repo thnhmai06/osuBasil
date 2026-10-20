@@ -2,7 +2,7 @@ using Basil.Application.Storage.Auth;
 using Basil.Application.Storage.Beatmaps;
 using Basil.Application.Storage.Chat;
 using Basil.Application.Storage.Content;
-using Basil.Application.Storage.Multiplayer.Matches;
+using Basil.Application.Storage.Multiplayer;
 using Basil.Application.Storage.Scores;
 using Basil.Application.Storage.Users;
 using Basil.Infrastructure.Storage.Auth;

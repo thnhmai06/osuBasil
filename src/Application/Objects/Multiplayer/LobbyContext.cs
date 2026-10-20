@@ -2,7 +2,7 @@ using Basil.Application.Objects.Chat;
 using Basil.Application.Objects.Multiplayer.Events;
 using Basil.Application.Objects.Multiplayer.Rooms;
 using Basil.Application.Storage.Content;
-using Basil.Application.Storage.Multiplayer.Matches;
+using Basil.Application.Storage.Multiplayer;
 
 namespace Basil.Application.Objects.Multiplayer;
 

@@ -1,5 +1,5 @@
 using Basil.Application.Storage.Common;
-using Basil.Application.Storage.Multiplayer.Matches;
+using Basil.Application.Storage.Multiplayer;
 using Basil.Application.Storage.Users;
 using Basil.Domain.Multiplayer;
 using Basil.Infrastructure.Storage.Common.Database;

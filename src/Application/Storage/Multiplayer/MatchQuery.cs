@@ -1,9 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
 using Basil.Application.Storage.Common;
 using Basil.Domain.Permissions;
-using Basil.Domain.Users;
 
-namespace Basil.Application.Storage.Multiplayer.Matches;
+namespace Basil.Application.Storage.Multiplayer;
 
 /// <summary>Which matches a match listing includes.</summary>
 /// <param name="Ended">

@@ -1,7 +1,7 @@
 namespace Basil.Application.Objects.Beatmaps;
 
 /// <summary>The outcome of a beatmapset operation.</summary>
-public enum BeatmapsetResult
+public enum BeatmapsetResult : byte
 {
 	/// <summary>The operation succeeded.</summary>
 	Ok,

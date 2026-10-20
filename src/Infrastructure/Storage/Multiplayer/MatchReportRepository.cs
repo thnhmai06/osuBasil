@@ -1,4 +1,4 @@
-using Basil.Application.Storage.Multiplayer.Matches;
+using Basil.Application.Storage.Multiplayer;
 using Basil.Domain.Multiplayer;
 
 namespace Basil.Infrastructure.Storage.Multiplayer;

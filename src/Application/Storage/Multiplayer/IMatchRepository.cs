@@ -1,7 +1,7 @@
 using Basil.Application.Storage.Common;
 using Basil.Domain.Multiplayer;
 
-namespace Basil.Application.Storage.Multiplayer.Matches;
+namespace Basil.Application.Storage.Multiplayer;
 
 /// <summary>Stores matches.</summary>
 public interface IMatchRepository

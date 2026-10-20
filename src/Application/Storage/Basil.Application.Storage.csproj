@@ -12,4 +12,8 @@
 	<ItemGroup>
 		<InternalsVisibleTo Include="Basil.Application.Services"/>
 	</ItemGroup>
+
+	<ItemGroup>
+		<Folder Include="Anticheat\"/>
+	</ItemGroup>
 </Project>

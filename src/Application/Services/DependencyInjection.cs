@@ -17,7 +17,7 @@ using Basil.Application.Services.Sessions;
 using Basil.Application.Services.Users;
 using Basil.Application.Storage.Chat;
 using Basil.Application.Storage.Content;
-using Basil.Application.Storage.Multiplayer.Matches;
+using Basil.Application.Storage.Multiplayer;
 using Basil.Application.Storage.Users;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
