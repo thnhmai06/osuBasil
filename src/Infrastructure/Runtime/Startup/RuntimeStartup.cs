@@ -1,5 +1,5 @@
-using Basil.Application.Services.Contracts.Chat;
 using Basil.Application.Services.Contracts.Multiplayer;
+using Basil.Application.Services.Contracts.Servers;
 using Basil.Application.Storage.Contracts.Chat;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -12,7 +12,7 @@ namespace Basil.Infrastructure.Runtime.Startup;
 /// </summary>
 internal sealed class RuntimeStartup(
 	IChannelRepository channelRepository,
-	IChannelService channels,
+	Server server,
 	IMatchService matches,
 	ILogger<RuntimeStartup> logger) : IHostedService
 {
@@ -21,7 +21,7 @@ internal sealed class RuntimeStartup(
 	{
 		var openedChannels = 0;
 		foreach (var channel in await channelRepository.ListAsync(cancellationToken))
-			if (channels.Open(channel) is not null)
+			if (server.OpenChannel(channel) is not null)
 				openedChannels++;
 		logger.LogInformation("Opened {ChannelCount} general channels", openedChannels);
 
