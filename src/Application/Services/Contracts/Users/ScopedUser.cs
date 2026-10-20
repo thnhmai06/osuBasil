@@ -1,4 +1,6 @@
 using Basil.Application.Services.Contracts.Sessions;
+using Basil.Application.Storage.Contracts.Common;
+using Basil.Domain.Auth;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Contracts.Users;
@@ -104,5 +106,29 @@ public sealed class ScopedUser
 		await User.Context.Users.UpdateAsync(User.Record, ct);
 		User.Context.Sessions.CloseAll(User.Record, ConnectionCloseReason.Deleted);
 		return UserResult.Ok;
+	}
+
+	/// <summary>Reads the login history of this account.</summary>
+	/// <param name="page">Which part of the history to return.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
+	/// <returns>The outcome and, when it is Ok, one part of the history, newest first.</returns>
+	/// <remarks>Reading the history of another account is recorded in the moderation log.</remarks>
+	public async Task<(UserResult Result, Page<LoginEntry>? Logins)> ViewLoginsAsync(PageRequest page,
+		CancellationToken ct = default)
+	{
+		if (Guard(Permissions.UserViewLogins, selfAllowed: true) is { } denied) return (denied, null);
+
+		if (!IsSelf)
+		{
+			await User.Context.ModerationLog.AppendAsync(new ModerationLogData
+			{
+				Action = ModerationAction.ViewLogins,
+				By = By.User,
+				Target = User.Record,
+				Timestamp = _now
+			}, ct);
+		}
+
+		return (UserResult.Ok, await User.Context.Logins.ListAsync(User.Record, page, ct));
 	}
 }

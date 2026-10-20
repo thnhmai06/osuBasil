@@ -2,6 +2,7 @@ using System.Threading.Channels;
 using Basil.Application.Services.Contracts.Sessions;
 using Basil.Application.Services.Contracts.Users;
 using Basil.Application.Services.Implementations.Sessions;
+using Basil.Application.Storage.Contracts.Auth;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Users;
 
@@ -14,11 +15,12 @@ internal sealed class UserService : IUserService
 	private readonly UserEventStream _events;
 
 	public UserService(IUserRepository users, IRestrictionRepository restrictions,
-		IModerationLogRepository moderationLog, IRelationshipRepository relationships, IUserRegistry registry,
+		IModerationLogRepository moderationLog, IRelationshipRepository relationships, ILoginRepository logins,
+		IUserRegistry registry,
 		SessionConnectionsService sessions,
 		TimeProvider clock, UserEventStream events)
 	{
-		_context = new UserContext(clock, events, registry, users, restrictions, moderationLog, relationships,
+		_context = new UserContext(clock, events, registry, users, restrictions, moderationLog, relationships, logins,
 			sessions);
 		_events = events;
 	}

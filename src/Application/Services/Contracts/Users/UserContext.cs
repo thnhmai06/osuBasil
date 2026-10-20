@@ -1,4 +1,5 @@
 using Basil.Application.Services.Contracts.Sessions;
+using Basil.Application.Storage.Contracts.Auth;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Users;
 
@@ -12,6 +13,7 @@ namespace Basil.Application.Services.Contracts.Users;
 /// <param name="Restrictions">The stored restrictions.</param>
 /// <param name="ModerationLog">The recorded moderation history.</param>
 /// <param name="Relationships">The friends and blocks users set toward each other.</param>
+/// <param name="Logins">The recorded logins.</param>
 /// <param name="Sessions">The operations on online sessions.</param>
 internal sealed record UserContext(
 	TimeProvider Clock,
@@ -21,6 +23,7 @@ internal sealed record UserContext(
 	IRestrictionRepository Restrictions,
 	IModerationLogRepository ModerationLog,
 	IRelationshipRepository Relationships,
+	ILoginRepository Logins,
 	IUserSessionsPort Sessions);
 
 /// <summary>Emits account events to the user event stream.</summary>
