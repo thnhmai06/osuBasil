@@ -95,17 +95,22 @@ internal sealed class PostgresScoreRepository(
 		CancellationToken cancellationToken = default)
 	{
 		var (where, parameters) = BuildFilter(query);
+		var source = query.BestPerPlayer
+			? $"(select distinct on (user_id) * from scores {where} order by user_id, total_score desc, timestamp asc, id asc) best_scores"
+			: $"scores {where}";
+		var order = query.BestPerPlayer || query.BeatmapHash is not null
+			? "total_score desc, timestamp asc, id asc"
+			: "timestamp desc, id desc";
 		parameters.Add("Limit", page.Limit);
 		parameters.Add("Offset", page.Offset);
 		var (total, rows) = await Reader.ReadAsync(async connection => (
-			await connection.ExecuteScalarAsync<int>($"select count(*) from scores {where}", parameters),
+			await connection.ExecuteScalarAsync<int>($"select count(*) from {source}", parameters),
 			await connection.QueryAsync<ScoreRow>(
 				$"""
 				  select id, user_id, beatmap_hash, mode, mods, num300, num100, num50, num_geki, num_katu, num_miss,
 				         total_score, max_combo, current_combo, grade, is_passed, is_full_combo, timestamp, checksum
-				  from scores
-				  {where}
-				  order by timestamp desc, id desc
+				  from {source}
+				  order by {order}
 				  limit @Limit offset @Offset
 				 """,
 				parameters)), cancellationToken);
@@ -158,6 +163,21 @@ internal sealed class PostgresScoreRepository(
 			parameters.Add("BeatmapHash", beatmapHash.HashValue);
 			conditions.Add("beatmap_hash = @BeatmapHash");
 		}
+
+		if (query.Mods is { } mods)
+		{
+			parameters.Add("Mods", (int)mods);
+			conditions.Add("mods = @Mods");
+		}
+
+		if (query.Players is { } players)
+		{
+			parameters.Add("PlayerIds", players.Select(player => player.Id).ToArray());
+			conditions.Add("user_id = any(@PlayerIds)");
+		}
+
+		if (query.BestPerPlayer)
+			conditions.Add("user_id is not null");
 
 		return (conditions.Count == 0 ? "" : $"where {string.Join(" AND ", conditions)}", parameters);
 	}

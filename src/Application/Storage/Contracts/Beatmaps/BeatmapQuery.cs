@@ -34,6 +34,7 @@ namespace Basil.Application.Storage.Contracts.Beatmaps;
 /// <param name="Status">The ranked status a beatmapset must report, or <see langword="null" /> for any.</param>
 /// <param name="Created">When the beatmapset must have been created, or <see langword="null" /> for any time.</param>
 /// <param name="Updated">When the beatmapset must last have been updated, or <see langword="null" /> for any time.</param>
+/// <param name="FileName">The osu! difficulty file name, or <see langword="null" /> for any.</param>
 public sealed record BeatmapQuery(
 	string? Text = null,
 	GameMode? Mode = null,
@@ -53,7 +54,8 @@ public sealed record BeatmapQuery(
 	string? Difficulty = null,
 	BeatmapsetStatus? Status = null,
 	Interval<DateTimeOffset>? Created = null,
-	Interval<DateTimeOffset>? Updated = null) : IParsable<BeatmapQuery>
+	Interval<DateTimeOffset>? Updated = null,
+	string? FileName = null) : IParsable<BeatmapQuery>
 {
 	/// <summary>Reads a query written in the osu! beatmap search syntax.</summary>
 	/// <param name="s">
@@ -86,6 +88,7 @@ public sealed record BeatmapQuery(
 		BeatmapsetStatus? status = null;
 		Interval<DateTimeOffset>? created = null;
 		Interval<DateTimeOffset>? updated = null;
+		string? fileName = null;
 
 		var keywords = SearchSyntax.Parse(s, (key, op, rawValue) =>
 		{
@@ -117,6 +120,9 @@ public sealed record BeatmapQuery(
 				case "title":
 					title = rawValue;
 					return true;
+				case "filename" or "file":
+					fileName = rawValue;
+					return true;
 				case "difficulty":
 					difficulty = rawValue;
 					return true;
@@ -128,7 +134,7 @@ public sealed record BeatmapQuery(
 		});
 
 		return new BeatmapQuery(keywords, mode, hidden, stars, ar, cs, od, hp, bpm, length, circles, sliders,
-			creator, artist, title, difficulty, status, created, updated);
+			creator, artist, title, difficulty, status, created, updated, fileName);
 
 		static bool TrySetDouble(string raw, string op, Interval<double>? current, Action<Interval<double>> set)
 		{

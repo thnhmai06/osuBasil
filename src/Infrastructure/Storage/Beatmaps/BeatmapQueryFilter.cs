@@ -104,6 +104,13 @@ internal static class BeatmapQueryFilter
 			conditions.Add("b.version ILIKE @version");
 		}
 
+		if (!string.IsNullOrWhiteSpace(query.FileName))
+		{
+			parameters.Add("fileName", BeatmapMetadata.NormalizeOsuFileName(query.FileName));
+			conditions.Add(
+				"lower(regexp_replace(s.artist || ' - ' || s.title || ' (' || s.creator || ') [' || b.version || '].osu', '[:\\\\/*<>?\"|]', '', 'g')) = lower(@fileName)");
+		}
+
 		// Basil reports every set as Approved; any other status matches nothing.
 		if (query.Status is { } status
 		    && status != BeatmapsetStatus.Approved)
