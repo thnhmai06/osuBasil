@@ -1,4 +1,5 @@
 using System.Threading.Channels;
+using Basil.Application.Services.Contracts.Multiplayer.Rooms;
 using Basil.Application.Services.Contracts.Sessions;
 using Basil.Application.Services.Contracts.Users;
 using Basil.Application.Services.Implementations.Sessions;
@@ -9,7 +10,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Services.Implementations.Users;
 
 /// <summary>Gives access to the accounts' behaviour and announces what happens to them.</summary>
-internal sealed class UserService : IUserService
+internal sealed class UserService : IUserService, IRoomUsersPort
 {
 	private readonly UserContext _context;
 	private readonly UserEventStream _events;
@@ -33,4 +34,7 @@ internal sealed class UserService : IUserService
 	{
 		return new User(user, _context);
 	}
+
+	ValueTask<bool> IRoomUsersPort.BlocksAsync(UserRecord blocker, UserRecord who, CancellationToken ct) =>
+		Of(blocker).HasBlockedAsync(who, ct);
 }

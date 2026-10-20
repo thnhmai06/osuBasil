@@ -7,7 +7,7 @@ using Basil.Domain.Bancho;
 namespace Basil.Application.Services.Implementations.Anticheat;
 
 /// <summary>Judges the anticheat flags osu! clients report and announces signs of cheating.</summary>
-internal sealed class AnticheatService(ILobby lobby) : IAnticheatService
+internal sealed class AnticheatService(Lobby lobby) : IAnticheatService
 {
 	private readonly Channel<AnticheatEvent> _events = Channel.CreateUnbounded<AnticheatEvent>();
 

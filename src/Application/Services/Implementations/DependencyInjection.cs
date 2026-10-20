@@ -3,6 +3,7 @@ using Basil.Application.Services.Contracts.Beatmaps;
 using Basil.Application.Services.Contracts.Chat;
 using Basil.Application.Services.Contracts.Content;
 using Basil.Application.Services.Contracts.Multiplayer;
+using Basil.Application.Services.Contracts.Multiplayer.Rooms;
 using Basil.Application.Services.Contracts.Scores;
 using Basil.Application.Services.Contracts.Sessions;
 using Basil.Application.Services.Contracts.Users;
@@ -15,6 +16,8 @@ using Basil.Application.Services.Implementations.Multiplayer.Rooms;
 using Basil.Application.Services.Implementations.Scores;
 using Basil.Application.Services.Implementations.Sessions;
 using Basil.Application.Services.Implementations.Users;
+using Basil.Application.Storage.Contracts.Content;
+using Basil.Application.Storage.Contracts.Multiplayer.Matches;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -34,7 +37,6 @@ public static class DependencyInjection
 
 		services.AddSingleton<IUserRegistry, UserRegistry>();
 		services.AddSingleton<IGeneralChannelRegistry, GeneralChannelRegistry>();
-		services.AddSingleton<ILobby, Lobby>();
 
 		services.AddSingleton<SessionEventStream>();
 		services.AddSingleton<BanchoSpectatorsService>();
@@ -50,6 +52,7 @@ public static class DependencyInjection
 		services.AddSingleton<UserEventStream>();
 		services.AddSingleton<UserService>();
 		services.AddSingleton<IUserService>(sp => sp.GetRequiredService<UserService>());
+		services.AddSingleton<IRoomUsersPort>(sp => sp.GetRequiredService<UserService>());
 
 		services.AddSingleton<ChannelEventStream>();
 		services.AddSingleton<ChannelMembershipService>();
@@ -59,13 +62,23 @@ public static class DependencyInjection
 		services.AddSingleton<IChannelService>(sp => sp.GetRequiredService<ChannelService>());
 
 		services.AddSingleton<LobbyEventStream>();
-		services.AddSingleton<LobbyRoomsService>();
-		services.AddSingleton<LobbyWatchersService>();
+		services.AddSingleton<ILobbyEventSink>(sp => sp.GetRequiredService<LobbyEventStream>());
+		services.AddSingleton<RoomEventStream>();
+		services.AddSingleton<IRoomEventSink>(sp => sp.GetRequiredService<RoomEventStream>());
+		services.AddSingleton<RoomChannelService>();
+		services.AddSingleton<IRoomChannelPort>(sp => sp.GetRequiredService<RoomChannelService>());
+		services.AddSingleton<LobbyContext>(sp => new LobbyContext(
+			sp.GetRequiredService<TimeProvider>(),
+			sp.GetRequiredService<ILobbyEventSink>(),
+			sp.GetRequiredService<IMatchRepository>(),
+			sp.GetRequiredService<ISettingsRepository>(),
+			sp.GetRequiredService<IRoomEventSink>(),
+			sp.GetRequiredService<IRoomChannelPort>(),
+			sp.GetRequiredService<IRoomUsersPort>()));
+		services.AddSingleton<Lobby>(sp => new Lobby(sp.GetRequiredService<LobbyContext>()));
 		services.AddSingleton<LobbyService>();
 		services.AddSingleton<ILobbyService>(sp => sp.GetRequiredService<LobbyService>());
 
-		services.AddSingleton<RoomEventStream>();
-		services.AddSingleton<RoomChannelService>();
 		services.AddSingleton<RoomMembershipService>();
 		services.AddSingleton<RoomRoundsService>();
 		services.AddSingleton<RoomService>();

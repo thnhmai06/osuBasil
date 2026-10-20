@@ -13,7 +13,7 @@ namespace Basil.Infrastructure.Runtime.Sessions;
 internal sealed class ConnectionHandler(
 	IChannelService channels,
 	IRoomService rooms,
-	ILobbyService lobby,
+	Lobby lobby,
 	ISessionService sessions,
 	ILogger<ConnectionHandler> logger) : IEventHandler<UserEvent>
 {
@@ -32,7 +32,7 @@ internal sealed class ConnectionHandler(
 				Run("stop spectating", connection.User.Id,
 					() => sessions.Connections.Bancho.Spectators.StopSpectating(connection), cancellationToken);
 				if (connection is BanchoConnection bancho)
-					Run("leave the lobby", connection.User.Id, () => lobby.Watchers.Unwatch(bancho), cancellationToken);
+					Run("leave the lobby", connection.User.Id, () => lobby.Unwatch(bancho), cancellationToken);
 				Run("part its channels", connection.User.Id,
 					() => channels.Members.PartAll(connection), cancellationToken);
 				break;

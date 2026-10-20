@@ -24,7 +24,7 @@ internal sealed class ScoreService(
 	IRoundScoreRepository roundScores,
 	IReplayStorage replays,
 	IUserStatsRepository stats,
-	ILobby lobby) : IScoreService
+	Lobby lobby) : IScoreService
 {
 	/// <summary>The shortest replay, in bytes, that is kept.</summary>
 	internal const int MinReplayLength = 24;

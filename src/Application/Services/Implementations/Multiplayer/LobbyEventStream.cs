@@ -1,10 +1,11 @@
 using System.Threading.Channels;
+using Basil.Application.Services.Contracts.Multiplayer;
 using Basil.Application.Services.Contracts.Multiplayer.Events;
 
 namespace Basil.Application.Services.Implementations.Multiplayer;
 
-/// <summary>The one event stream of the lobby, shared by the lobby service and its children.</summary>
-internal sealed class LobbyEventStream(TimeProvider time)
+/// <summary>The one event stream of the lobby, shared by the lobby and the lobby service.</summary>
+internal sealed class LobbyEventStream(TimeProvider time) : ILobbyEventSink
 {
 	private readonly Channel<LobbyEvent> _events = Channel.CreateUnbounded<LobbyEvent>();
 
@@ -17,4 +18,6 @@ internal sealed class LobbyEventStream(TimeProvider time)
 	{
 		_events.Writer.TryWrite(@event with { Timestamp = time.GetUtcNow() });
 	}
+
+	void ILobbyEventSink.Emit(LobbyEvent @event) => Emit(@event);
 }

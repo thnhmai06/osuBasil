@@ -60,6 +60,10 @@ internal interface IRoomChannelPort
 	/// <param name="room">The room whose channel to leave.</param>
 	/// <param name="connection">The connection that leaves.</param>
 	void Part(Room room, Connection connection);
+
+	/// <summary>Closes the room's channel.</summary>
+	/// <param name="room">The room whose channel closes.</param>
+	void Close(Room room);
 }
 
 /// <summary>What a room asks of the users: whether one blocks another.</summary>
