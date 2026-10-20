@@ -69,7 +69,9 @@ public static class DependencyInjection
 			sp.GetRequiredService<ChannelContext>()));
 		services.AddSingleton<ServerContext>(sp => new ServerContext(
 			sp.GetRequiredService<SessionContext>(),
-			sp.GetRequiredService<IScreenshotStorage>()));
+			sp.GetRequiredService<IScreenshotStorage>(),
+			sp.GetRequiredService<Lobby>(),
+			sp.GetRequiredService<IUserRepository>()));
 		services.AddSingleton<Server>(sp => new Server(sp.GetRequiredService<ServerContext>()));
 		services.AddSingleton<ChannelService>();
 		services.AddSingleton<IChannelService>(sp => sp.GetRequiredService<ChannelService>());

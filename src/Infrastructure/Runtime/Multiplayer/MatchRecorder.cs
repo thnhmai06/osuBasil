@@ -1,8 +1,8 @@
+using Basil.Application.Services.Contracts.Events;
 using Basil.Application.Services.Contracts.Multiplayer.Events;
 using Basil.Application.Storage.Contracts.Multiplayer.Matches;
 using Basil.Domain.Multiplayer.Matches;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Runtime.Events;
 
 namespace Basil.Infrastructure.Runtime.Multiplayer;
 

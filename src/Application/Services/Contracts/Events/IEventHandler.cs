@@ -1,6 +1,4 @@
-using Basil.Application.Services.Contracts.Events;
-
-namespace Basil.Infrastructure.Runtime.Events;
+namespace Basil.Application.Services.Contracts.Events;
 
 /// <summary>Reacts to the events of one category emitted by the application's services.</summary>
 /// <typeparam name="T">The event category handled.</typeparam>

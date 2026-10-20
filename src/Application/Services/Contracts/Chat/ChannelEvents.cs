@@ -1,6 +1,5 @@
 using Basil.Application.Services.Contracts.Events;
 using Basil.Application.Services.Contracts.Sessions;
-using Basil.Application.Services.Contracts.Chat;
 using Basil.Domain.Chat;
 
 namespace Basil.Application.Services.Contracts.Chat;
@@ -47,7 +46,15 @@ public abstract record ChannelMessageEvent(ChannelSession Channel) : ChannelEven
 ///     The recipient's away message, sent back to the author's private-message channel, or
 ///     <see langword="null" /> when none was sent.
 /// </param>
-public sealed record ChannelMessagePosted(ChannelSession Channel, Message Message, bool Truncated, Message? AwayReply)
+/// <param name="By">
+///     The connection that posted the message, or <see langword="null" /> for a message the server itself said.
+/// </param>
+public sealed record ChannelMessagePosted(
+	ChannelSession Channel,
+	Message Message,
+	bool Truncated,
+	Message? AwayReply,
+	Connection? By = null)
 	: ChannelMessageEvent(Channel);
 
 /// <summary>A general channel's settings changed.</summary>

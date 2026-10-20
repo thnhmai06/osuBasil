@@ -1,6 +1,7 @@
 using Basil.Application.Services.Contracts.Sessions;
 using Basil.Domain.Chat;
 using Basil.Domain.Common;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Contracts.Chat;
 
@@ -59,6 +60,27 @@ public abstract class ChannelSession
 	internal Lock.Scope Enter()
 	{
 		return _sync.EnterScope();
+	}
+
+	/// <summary>Posts a message under the given author and reports the connection that posted it.</summary>
+	/// <param name="author">The user shown as the author.</param>
+	/// <param name="text">The message text.</param>
+	/// <param name="notice">Whether the message is a notice.</param>
+	/// <param name="now">The time the message was posted.</param>
+	/// <param name="by">The connection that posted the message, or <see langword="null" /> for the server.</param>
+	internal void PostMessage(UserRecord author, string text, bool notice, DateTimeOffset now, Connection? by)
+	{
+		var truncated = text.Length > MaxMessageLength;
+		var message = new Message(author, truncated ? text[..MaxMessageLength] : text, now, notice);
+
+		Message? awayReply = null;
+		if (by is not null
+		    && this is PmChannelSession { Owner.AwayMessage: { } away } pmChannel
+		    && !ReferenceEquals(by.Session, pmChannel.Owner)
+		    && !notice)
+			awayReply = new Message(pmChannel.Owner.User, away, now);
+
+		Context.Events.Emit(new ChannelMessagePosted(this, message, truncated, awayReply, by));
 	}
 
 	/// <summary>Closes this channel and removes every member.</summary>

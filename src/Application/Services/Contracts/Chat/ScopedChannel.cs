@@ -1,5 +1,4 @@
 using Basil.Application.Services.Contracts.Sessions;
-using Basil.Domain.Chat;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Contracts.Chat;
@@ -111,16 +110,7 @@ public sealed class ScopedChannel
 				return ChannelPostResult.TargetSilenced;
 		}
 
-		var truncated = text.Length > ChannelSession.MaxMessageLength;
-		var message = new Message(By.User, truncated ? text[..ChannelSession.MaxMessageLength] : text, now, notice);
-
-		Message? awayReply = null;
-		if (Channel is PmChannelSession { Owner.AwayMessage: { } away } pmChannel
-		    && !ReferenceEquals(By.Session, pmChannel.Owner)
-		    && !notice)
-			awayReply = new Message(pmChannel.Owner.User, away, now);
-
-		Channel.Context.Events.Emit(new ChannelMessagePosted(Channel, message, truncated, awayReply));
+		Channel.PostMessage(By.User, text, notice, now, By);
 		return ChannelPostResult.Posted;
 	}
 }

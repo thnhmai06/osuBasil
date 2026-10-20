@@ -1,6 +1,7 @@
 ﻿using Basil.Application.Services.Contracts.Chat;
 using Basil.Application.Services.Contracts.Sessions;
 using Basil.Domain.Chat;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Contracts.Servers;
 
@@ -34,5 +35,66 @@ public sealed class Server
 		if (!Context.Session.Chat.Registry.Add(session)) return null;
 		Context.Session.Chat.Events.Emit(new ChannelOpened(session));
 		return session;
+	}
+
+	/// <summary>Sends a message to an open channel as BasilBot.</summary>
+	/// <param name="channel">The channel to speak in.</param>
+	/// <param name="text">The message text.</param>
+	/// <param name="notice">Whether the message is a notice.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
+	/// <returns>
+	///     <see langword="true" /> when the message was posted; otherwise, <see langword="false" /> when the channel is
+	///     closed, the text is empty or whitespace, or BasilBot's record is unavailable.
+	/// </returns>
+	/// <remarks>
+	///     This system operation needs no rights because the server itself calls it. Chat commands must use the scope of
+	///     the connection that typed them, not this method, to act for a user.
+	/// </remarks>
+	public async Task<bool> SayAsync(ChannelSession channel, string text, bool notice = false,
+		CancellationToken ct = default)
+	{
+		if (channel.IsClosed || string.IsNullOrWhiteSpace(text)) return false;
+
+		var bot = await Context.Users.GetAsync(BasilBot.Id, ct);
+		if (bot is null || channel.IsClosed) return false;
+
+		channel.PostMessage(bot, text, notice, Context.Session.Clock.GetUtcNow(), null);
+		return true;
+	}
+
+	/// <summary>Sends a private message to an online user as BasilBot.</summary>
+	/// <param name="to">The online recipient.</param>
+	/// <param name="text">The message text.</param>
+	/// <param name="notice">Whether the message is a notice.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
+	/// <returns><see langword="true" /> when the message was posted; otherwise, <see langword="false" />.</returns>
+	/// <remarks>
+	///     This system operation needs no rights because the server itself calls it. Chat commands must use the scope of
+	///     the connection that typed them, not this method, to act for a user. Messages are not delivered offline.
+	/// </remarks>
+	public Task<bool> WhisperAsync(UserSession to, string text, bool notice = false, CancellationToken ct = default)
+	{
+		return SayAsync(to.PmChannel, text, notice, ct);
+	}
+
+	/// <summary>Finds an open channel the bot may speak in by the name clients use.</summary>
+	/// <param name="name">The channel name.</param>
+	/// <returns>The open channel, or <see langword="null" /> when no matching channel is open.</returns>
+	/// <remarks>
+	///     This system operation needs no rights because the server itself calls it. Chat commands must not use it to
+	///     act for a user.
+	/// </remarks>
+	public ChannelSession? FindChannel(string name)
+	{
+		if (Context.Session.Chat.Registry.All.TryGetValue(name, out var general))
+			return general.IsClosed ? null : general;
+
+		if (!name.StartsWith("#mp_", StringComparison.Ordinal)
+		    || !int.TryParse(name.AsSpan(4), out var roomId)
+		    || !Context.Lobby.Rooms.TryGetValue(roomId, out var room)
+		    || room.Channel.IsClosed)
+			return null;
+
+		return room.Channel;
 	}
 }
