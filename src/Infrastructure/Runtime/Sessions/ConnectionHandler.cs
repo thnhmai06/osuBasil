@@ -3,6 +3,7 @@ using Basil.Application.Objects.Events;
 using Basil.Application.Objects.Multiplayer;
 using Basil.Application.Objects.Sessions;
 using Basil.Application.Objects.Users;
+using Basil.Infrastructure.Runtime.Events;
 using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Runtime.Sessions;
@@ -17,6 +18,8 @@ internal sealed class ConnectionHandler(
 	UserRegistry registry,
 	ILogger<ConnectionHandler> logger) : IEventHandler<UserEvent>
 {
+	private const string Subject = "the closed connection of user";
+
 	/// <inheritdoc />
 	public async ValueTask HandleAsync(UserEvent @event, CancellationToken cancellationToken)
 	{
@@ -27,44 +30,17 @@ internal sealed class ConnectionHandler(
 				break;
 			case UserConnectionClosed closed:
 				var connection = closed.Connection;
-				await RunAsync("release its room", connection.Record.Id,
+				await HandlerStep.RunAsync(logger, "release its room", Subject, connection.Record.Id,
 					() => lobby.ReleaseAsync(connection, cancellationToken), cancellationToken);
 				if (registry.FindSpectating(connection) is { } host)
-					Run("stop spectating", connection.Record.Id,
+					HandlerStep.Run(logger, "stop spectating", Subject, connection.Record.Id,
 						() => host.ScopeTo(connection).StopSpectating(), cancellationToken);
 				if (connection is BanchoConnection bancho)
-					Run("leave the lobby", connection.Record.Id, () => lobby.Unwatch(bancho), cancellationToken);
-				Run("part its channels", connection.Record.Id,
+					HandlerStep.Run(logger, "leave the lobby", Subject, connection.Record.Id, () => lobby.Unwatch(bancho),
+						cancellationToken);
+				HandlerStep.Run(logger, "part its channels", Subject, connection.Record.Id,
 					() => channels.PartAll(connection), cancellationToken);
 				break;
-		}
-	}
-
-	/// <summary>Runs one cleanup step of a closed connection, logging a failure so the remaining steps still run.</summary>
-	private async Task RunAsync(string step, int userId, Func<Task> action, CancellationToken cancellationToken)
-	{
-		try
-		{
-			await action();
-		}
-		catch (Exception exception) when (exception is not OperationCanceledException ||
-		                                  !cancellationToken.IsCancellationRequested)
-		{
-			logger.LogError(exception, "Could not {Step} for the closed connection of user {UserId}", step, userId);
-		}
-	}
-
-	/// <summary>Runs one cleanup step of a closed connection, logging a failure so the remaining steps still run.</summary>
-	private void Run(string step, int userId, Action action, CancellationToken cancellationToken)
-	{
-		try
-		{
-			action();
-		}
-		catch (Exception exception) when (exception is not OperationCanceledException ||
-		                                  !cancellationToken.IsCancellationRequested)
-		{
-			logger.LogError(exception, "Could not {Step} for the closed connection of user {UserId}", step, userId);
 		}
 	}
 }

@@ -20,7 +20,7 @@ internal sealed class AnticheatAnnouncer(Server server, UserRegistry users) : IE
 		var reason = FormatFlags(flagged.Signs);
 		var playerName = flagged.Player.Record.Value.Name;
 		var channelMessage = string.Format(AnnouncementReplies.AnticheatFlagRoom, playerName, reason);
-		await server.SayAsync(room.Channel, channelMessage, ct: cancellationToken);
+		await server.SayAsync(room.Channel, channelMessage, cancellationToken: cancellationToken);
 
 		var pmMessage = string.Format(AnnouncementReplies.AnticheatFlagPm, room.Id, room.Settings.Name,
 			playerName, reason);
@@ -39,7 +39,7 @@ internal sealed class AnticheatAnnouncer(Server server, UserRegistry users) : IE
 		async Task WhisperIfOnlineAsync(UserRecord user)
 		{
 			if (users.Online.GetValueOrDefault(user) is { } online)
-				await server.WhisperAsync(online, text, ct: cancellationToken);
+				await server.WhisperAsync(online, text, cancellationToken: cancellationToken);
 		}
 	}
 

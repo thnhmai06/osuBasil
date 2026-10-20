@@ -35,6 +35,9 @@ public abstract class BeatmapObjects
 		}
 	}
 
+	/// <summary>Creates the object counts of a beatmap that has no objects.</summary>
+	/// <param name="mode">The game mode of the beatmap.</param>
+	/// <returns>The empty object counts for that mode.</returns>
 	public static BeatmapObjects Empty(GameMode mode)
 	{
 		return mode switch

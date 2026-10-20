@@ -95,16 +95,16 @@ public sealed class ScopedUser
 
 	/// <summary>Replaces this account's permissions.</summary>
 	/// <param name="permissions">The permissions to grant.</param>
-	/// <param name="ct">A token that cancels the operation.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of replacing the permissions.</returns>
 	public async Task<UserResult> SetPermissionsAsync(Permissions permissions,
-		CancellationToken ct = default)
+		CancellationToken cancellationToken = default)
 	{
 		if (Guard(Permissions.UserManagePermissions, true) is { } denied) return denied;
 		if (!Granted.Allows(User.Record.Value.Permissions ^ permissions)) return UserResult.NotAuthorized;
 
 		User.Apply(data => data.Permissions = permissions);
-		await User.Context.Users.UpdateAsync(User.Record, ct);
+		await User.Context.Users.UpdateAsync(User.Record, cancellationToken);
 		if (User.Context.Registry.Online.GetValueOrDefault(User.Record) is { } user)
 			User.Context.Connections.CloseDisallowed(user);
 
@@ -113,9 +113,9 @@ public sealed class ScopedUser
 	}
 
 	/// <summary>Permanently deletes this account.</summary>
-	/// <param name="ct">A token that cancels the operation.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of deleting the account.</returns>
-	public async Task<UserResult> DeleteAsync(CancellationToken ct = default)
+	public async Task<UserResult> DeleteAsync(CancellationToken cancellationToken = default)
 	{
 		if (Guard(Permissions.UserManage, true) is { } denied) return denied;
 		if (User.Record.Value.DeletedAt is not null) return UserResult.Ok;
@@ -127,18 +127,18 @@ public sealed class ScopedUser
 			user.Permissions = Permissions.None;
 		});
 
-		await User.Context.Users.UpdateAsync(User.Record, ct);
+		await User.Context.Users.UpdateAsync(User.Record, cancellationToken);
 		User.Context.Connections.CloseAll(User.Record, ConnectionCloseReason.Deleted);
 		return UserResult.Ok;
 	}
 
 	/// <summary>Reads the login history of this account.</summary>
 	/// <param name="page">Which part of the history to return.</param>
-	/// <param name="ct">A token that cancels the operation.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome and, when it is Ok, one part of the history, newest first.</returns>
 	/// <remarks>Reading the history of another account is recorded in the moderation log.</remarks>
 	public async Task<(UserResult Result, Page<LoginEntry>? Logins)> ViewLoginsAsync(PageRequest page,
-		CancellationToken ct = default)
+		CancellationToken cancellationToken = default)
 	{
 		if (Guard(Permissions.UserViewLogins, true) is { } denied) return (denied, null);
 
@@ -149,9 +149,9 @@ public sealed class ScopedUser
 				By = By.Record,
 				Target = User.Record,
 				Timestamp = _now
-			}, ct);
+			}, cancellationToken);
 
-		return (UserResult.Ok, await User.Context.Logins.ListAsync(User.Record, page, ct));
+		return (UserResult.Ok, await User.Context.Logins.ListAsync(User.Record, page, cancellationToken));
 	}
 
 	/// <summary>Closes every connection of this account.</summary>
@@ -173,7 +173,7 @@ public sealed class ScopedUser
 	/// <summary>Replaces this account's password and closes every connection of it.</summary>
 	/// <param name="newPasswordHash">The MD5 digest of the new password.</param>
 	/// <param name="currentPasswordHash">The MD5 digest of the current password, needed when users change their own.</param>
-	/// <param name="ct">A token that cancels the operation.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, WrongPassword, or why the caller may not.</returns>
 	/// <remarks>
 	///     An account changes its own password by giving the current one; changing another's needs
@@ -181,13 +181,13 @@ public sealed class ScopedUser
 	///     <see cref="ConnectionCloseReason.CredentialsChanged" />.
 	/// </remarks>
 	public async Task<UserResult> ChangePasswordAsync(Md5 newPasswordHash, Md5? currentPasswordHash,
-		CancellationToken ct = default)
+		CancellationToken cancellationToken = default)
 	{
 		if (BasilBot.Is(User.Record)) return UserResult.Protected;
 
 		if (IsSelf)
 		{
-			if (currentPasswordHash is not { } current || !await VerifyAsync(current, ct))
+			if (currentPasswordHash is not { } current || !await VerifyAsync(current, cancellationToken))
 				return UserResult.WrongPassword;
 		}
 		else if (Guard(Permissions.UserManage, false) is { } denied)
@@ -195,16 +195,16 @@ public sealed class ScopedUser
 			return denied;
 		}
 
-		await User.Context.Credentials.CreateOrUpdateAsync(new Credentials(User.Record, newPasswordHash), ct);
+		await User.Context.Credentials.CreateOrUpdateAsync(new Credentials(User.Record, newPasswordHash), cancellationToken);
 		User.Context.Connections.CloseAll(User.Record, ConnectionCloseReason.CredentialsChanged);
 		return UserResult.Ok;
 	}
 
-	private async Task<bool> VerifyAsync(Md5 passwordHash, CancellationToken ct)
+	private async Task<bool> VerifyAsync(Md5 passwordHash, CancellationToken cancellationToken)
 	{
 		try
 		{
-			return await User.Context.Credentials.VerifyAsync(new Credentials(User.Record, passwordHash), ct);
+			return await User.Context.Credentials.VerifyAsync(new Credentials(User.Record, passwordHash), cancellationToken);
 		}
 		catch (ArgumentException)
 		{

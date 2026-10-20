@@ -26,43 +26,43 @@ public sealed class ScopedBeatmapset
 	}
 
 	/// <summary>Deletes this beatmapset and its files.</summary>
-	/// <param name="ct">A token that cancels the operation.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of deleting the beatmapset.</returns>
-	public async Task<BeatmapsetResult> DeleteAsync(CancellationToken ct = default)
+	public async Task<BeatmapsetResult> DeleteAsync(CancellationToken cancellationToken = default)
 	{
 		if (Require() is { } denied) return denied;
 		if (Beatmapset.Record.Locked) return BeatmapsetResult.Locked;
 
-		await Beatmapset.Context.Storage.DeleteAsync(Beatmapset.Record, ct);
-		await Beatmapset.ForgetAsync(ct);
+		await Beatmapset.Context.Storage.DeleteAsync(Beatmapset.Record, cancellationToken);
+		await Beatmapset.ForgetAsync(cancellationToken);
 		return BeatmapsetResult.Ok;
 	}
 
 	/// <summary>Changes whether this beatmapset is shown in public listings.</summary>
 	/// <param name="visible">Whether the beatmapset is visible.</param>
-	/// <param name="ct">A token that cancels the operation.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of changing the beatmapset's visibility.</returns>
-	public async Task<BeatmapsetResult> SetVisibleAsync(bool visible, CancellationToken ct = default)
+	public async Task<BeatmapsetResult> SetVisibleAsync(bool visible, CancellationToken cancellationToken = default)
 	{
 		if (Require() is { } denied) return denied;
 		if (Beatmapset.Record.Visible == visible) return BeatmapsetResult.Ok;
 
 		Beatmapset.Record.Visible = visible;
-		await Beatmapset.Context.Repository.UpdateAsync(Beatmapset.Record, ct);
+		await Beatmapset.Context.Repository.UpdateAsync(Beatmapset.Record, cancellationToken);
 		return BeatmapsetResult.Ok;
 	}
 
 	/// <summary>Changes whether this beatmapset is write-locked.</summary>
 	/// <param name="locked">Whether the beatmapset is write-locked.</param>
-	/// <param name="ct">A token that cancels the operation.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of changing the beatmapset's lock.</returns>
-	public async Task<BeatmapsetResult> SetLockedAsync(bool locked, CancellationToken ct = default)
+	public async Task<BeatmapsetResult> SetLockedAsync(bool locked, CancellationToken cancellationToken = default)
 	{
 		if (Require() is { } denied) return denied;
 		if (Beatmapset.Record.Locked == locked) return BeatmapsetResult.Ok;
 
 		Beatmapset.Record.Locked = locked;
-		await Beatmapset.Context.Repository.UpdateAsync(Beatmapset.Record, ct);
+		await Beatmapset.Context.Repository.UpdateAsync(Beatmapset.Record, cancellationToken);
 		return BeatmapsetResult.Ok;
 	}
 

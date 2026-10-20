@@ -27,7 +27,7 @@ public sealed class ScopedServerScreenshots
 
 	/// <summary>Stores a screenshot under a new unique name.</summary>
 	/// <param name="content">The image, read to its end; not disposed.</param>
-	/// <param name="ct">A token that cancels the operation.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The reference to the stored screenshot, or why it was not stored.</returns>
 	/// <remarks>
 	///     Requires <see cref="Permissions.ScreenshotUpload" />. The image may be at most
@@ -36,7 +36,7 @@ public sealed class ScopedServerScreenshots
 	///     content, never from a name.
 	/// </remarks>
 	public async Task<(ContentReference? Screenshot, ScreenshotUploadFailure? Failure)> UploadAsync(Stream content,
-		CancellationToken ct = default)
+		CancellationToken cancellationToken = default)
 	{
 		var context = _scoped.Server.Context;
 		if (_scoped.By.User.Check(Permissions.ScreenshotUpload, context.Session.Clock.GetUtcNow()) is not Access
@@ -49,7 +49,7 @@ public sealed class ScopedServerScreenshots
 		{
 			var allowance = (int)Math.Min(buffer.Length, MaxScreenshotBytes + 1 - memory.Length);
 			if (allowance == 0) break;
-			var read = await content.ReadAsync(buffer.AsMemory(0, allowance), ct);
+			var read = await content.ReadAsync(buffer.AsMemory(0, allowance), cancellationToken);
 			if (read == 0) break;
 			memory.Write(buffer, 0, read);
 		}
@@ -57,32 +57,32 @@ public sealed class ScopedServerScreenshots
 		if (memory.Length > MaxScreenshotBytes) return (null, ScreenshotUploadFailure.TooLarge);
 
 		memory.Position = 0;
-		var info = await context.Inspector.InspectAsync(memory, ct);
+		var info = await context.Inspector.InspectAsync(memory, cancellationToken);
 		if (info is null || info.Width < 1 || info.Height < 1)
 			return (null, ScreenshotUploadFailure.InvalidImage);
 		if (info.Width > MaxScreenshotWidth || info.Height > MaxScreenshotHeight)
 			return (null, ScreenshotUploadFailure.DimensionsTooLarge);
 
 		memory.Position = 0;
-		var reference = await context.Screenshots.SaveAsync(memory, info.Extension, ct);
+		var reference = await context.Screenshots.SaveAsync(memory, info.Extension, cancellationToken);
 		return (reference, null);
 	}
 
 	/// <summary>Deletes a stored screenshot.</summary>
 	/// <param name="screenshot">The reference of the screenshot to delete.</param>
-	/// <param name="ct">A token that cancels the operation.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>
 	///     <see langword="true" /> if the caller may delete screenshots, even when no screenshot is stored under the
 	///     reference; otherwise, <see langword="false" />.
 	/// </returns>
 	/// <remarks>Requires <see cref="Permissions.ScreenshotDelete" />.</remarks>
-	public async Task<bool> DeleteAsync(ContentReference screenshot, CancellationToken ct = default)
+	public async Task<bool> DeleteAsync(ContentReference screenshot, CancellationToken cancellationToken = default)
 	{
 		var context = _scoped.Server.Context;
 		if (_scoped.By.User.Check(Permissions.ScreenshotDelete, context.Session.Clock.GetUtcNow()) is not Access
 			    .Allowed)
 			return false;
-		await context.Screenshots.DeleteAsync(screenshot, ct);
+		await context.Screenshots.DeleteAsync(screenshot, cancellationToken);
 		return true;
 	}
 }

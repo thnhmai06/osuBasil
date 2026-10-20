@@ -19,7 +19,7 @@ namespace Basil.Infrastructure.Runtime;
 /// <summary>Registers the background work that reacts to the application's events.</summary>
 public static class DependencyInjection
 {
-	/// <summary>Adds one event pump for each service that emits events.</summary>
+	/// <summary>Registers one event bus for each event category, the handlers that react to them and the background work.</summary>
 	/// <param name="services">The service collection to add to.</param>
 	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddInfrastructureRuntime(this IServiceCollection services)

@@ -3,6 +3,7 @@ using Basil.Application.Objects.Scores;
 
 namespace Basil.Infrastructure.Runtime.Scores;
 
+/// <summary>Gives a submitted score to the round of the room it was played in.</summary>
 internal sealed class ScoreHandler : IEventHandler<ScoreEvent>
 {
 	/// <inheritdoc />

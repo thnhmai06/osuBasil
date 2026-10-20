@@ -36,17 +36,21 @@ public sealed class UserStats : IEquatable<UserStats>
 	/// <summary>The number of plays submitted.</summary>
 	public int PlayCount { get; set; }
 
+	/// <summary>Determines whether another record is the statistics of the same user in the same game mode.</summary>
+	/// <param name="other">The statistics to compare against, or <see langword="null" />.</param>
 	public bool Equals(UserStats? other)
 	{
 		if (other is null) return false;
 		return UserId == other.UserId && Mode == other.Mode;
 	}
 
+	/// <inheritdoc />
 	public override bool Equals(object? obj)
 	{
 		return obj is UserStats other && Equals(other);
 	}
 
+	/// <inheritdoc />
 	public override int GetHashCode()
 	{
 		return HashCode.Combine(UserId, Mode);

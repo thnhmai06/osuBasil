@@ -18,33 +18,33 @@ public sealed class ScopedUserRestrictions
 	/// <summary>Suspends the permissions covered by a silence until a given time.</summary>
 	/// <param name="endsAt">When the silence ends.</param>
 	/// <param name="reason">Why the account is silenced, if known.</param>
-	/// <param name="ct">A token that cancels the operation.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome and the new restriction, if one was created.</returns>
 	public Task<(UserResult Result, Restriction? Restriction)> SilenceAsync(DateTimeOffset endsAt,
-		string? reason = null, CancellationToken ct = default)
+		string? reason = null, CancellationToken cancellationToken = default)
 	{
-		return ImposeAsync(Permissions.UserSilence, RestrictionData.Silence, endsAt, reason, ct);
+		return ImposeAsync(Permissions.UserSilence, RestrictionData.Silence, endsAt, reason, cancellationToken);
 	}
 
 	/// <summary>Suspends selected permissions until lifted or their end time.</summary>
 	/// <param name="permissions">The permissions to suspend.</param>
 	/// <param name="endsAt">When the restriction ends, or <see langword="null" /> to keep it until lifted.</param>
 	/// <param name="reason">Why the account is restricted, if known.</param>
-	/// <param name="ct">A token that cancels the operation.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome and the new restriction, if one was created.</returns>
 	public Task<(UserResult Result, Restriction? Restriction)> RestrictAsync(Permissions permissions,
-		DateTimeOffset? endsAt, string? reason = null, CancellationToken ct = default)
+		DateTimeOffset? endsAt, string? reason = null, CancellationToken cancellationToken = default)
 	{
-		return ImposeAsync(Permissions.UserRestrict, permissions, endsAt, reason, ct);
+		return ImposeAsync(Permissions.UserRestrict, permissions, endsAt, reason, cancellationToken);
 	}
 
 	/// <summary>Ends a restriction now.</summary>
 	/// <param name="restriction">The restriction to end.</param>
 	/// <param name="reason">Why the restriction is lifted, if known.</param>
-	/// <param name="ct">A token that cancels the operation.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of lifting the restriction.</returns>
 	public async Task<UserResult> LiftAsync(Restriction restriction, string? reason = null,
-		CancellationToken ct = default)
+		CancellationToken cancellationToken = default)
 	{
 		var silenceOnly = RestrictionData.Silence.Allows(restriction.Value.Permissions);
 		var needed = silenceOnly ? Permissions.UserSilence : Permissions.UserRestrict;
@@ -64,17 +64,17 @@ public sealed class ScopedUserRestrictions
 		};
 
 		restriction.Value.EndsAt = now;
-		await _scoped.User.Context.Restrictions.UpdateAsync(restriction, ct);
+		await _scoped.User.Context.Restrictions.UpdateAsync(restriction, cancellationToken);
 		_scoped.User.Context.Registry.Online.GetValueOrDefault(_scoped.User.Record)
 			?.ChangeRestrictions(running => running.RemoveAll(restriction.Equals));
-		await _scoped.User.Context.ModerationLog.AppendAsync(log, ct);
+		await _scoped.User.Context.ModerationLog.AppendAsync(log, cancellationToken);
 
 		_scoped.User.Context.Events.Publish(new UserRestrictionLifted(_scoped.User.Record, restriction));
 		return UserResult.Ok;
 	}
 
 	private async Task<(UserResult Result, Restriction? Restriction)> ImposeAsync(Permissions needed,
-		Permissions permissions, DateTimeOffset? endsAt, string? reason, CancellationToken ct)
+		Permissions permissions, DateTimeOffset? endsAt, string? reason, CancellationToken cancellationToken)
 	{
 		if (_scoped.Guard(needed, false) is { } denied) return (denied, null);
 
@@ -98,14 +98,14 @@ public sealed class ScopedUserRestrictions
 			EndsAt = endsAt
 		};
 		var context = _scoped.User.Context;
-		var restriction = await context.Restrictions.CreateAsync(data, ct);
+		var restriction = await context.Restrictions.CreateAsync(data, cancellationToken);
 		if (context.Registry.Online.GetValueOrDefault(_scoped.User.Record) is { } user)
 		{
 			user.ChangeRestrictions(running => running.Add(restriction));
 			context.Connections.CloseDisallowed(user);
 		}
 
-		await context.ModerationLog.AppendAsync(log, ct);
+		await context.ModerationLog.AppendAsync(log, cancellationToken);
 
 		context.Events.Publish(new UserRestricted(_scoped.User.Record, restriction));
 		return (UserResult.Ok, restriction);

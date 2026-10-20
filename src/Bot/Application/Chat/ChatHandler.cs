@@ -32,20 +32,20 @@ internal sealed class ChatHandler(
 		var context = new CommandContext(
 			by,
 			privateMessage ? null : posted.Channel.Name,
-			(text, ct) => SendSplitAsync(text, (piece, token) => privateMessage
-				? server.WhisperAsync(by.User, piece, ct: token)
-				: server.SayAsync(posted.Channel, piece, ct: token), ct),
-			(text, ct) =>
-				SendSplitAsync(text, (piece, token) => server.WhisperAsync(by.User, piece, ct: token), ct));
+			(text, sendToken) => SendSplitAsync(text, (piece, token) => privateMessage
+				? server.WhisperAsync(by.User, piece, cancellationToken: token)
+				: server.SayAsync(posted.Channel, piece, cancellationToken: token), sendToken),
+			(text, sendToken) =>
+				SendSplitAsync(text, (piece, token) => server.WhisperAsync(by.User, piece, cancellationToken: token), sendToken));
 
-		worker.Enqueue(by.Record.Id, async ct =>
+		worker.Enqueue(by.Record.Id, async workerToken =>
 		{
 			try
 			{
-				await commands.ExecuteAsync(context, posted.Message.Content, ct);
+				await commands.ExecuteAsync(context, posted.Message.Content, workerToken);
 			}
 			catch (Exception exception) when
-				(exception is not OperationCanceledException || !ct.IsCancellationRequested)
+				(exception is not OperationCanceledException || !workerToken.IsCancellationRequested)
 			{
 				logger.LogError(exception, "Error handling bot command from user {UserId}", by.Record.Id);
 			}

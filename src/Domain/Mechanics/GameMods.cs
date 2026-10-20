@@ -264,11 +264,17 @@ public static class ModsExtensions
 			return result;
 		}
 
+		/// <summary>Determines whether the mods can be used together in a game mode.</summary>
+		/// <param name="mode">The game mode.</param>
+		/// <returns><see langword="true" /> when removing the mods invalid for the mode would change nothing.</returns>
 		public bool IsValid(GameMode mode)
 		{
 			return gameMods == gameMods.RemoveInvalidMods(mode);
 		}
 
+		/// <summary>Throws when the mods cannot be used together in a game mode.</summary>
+		/// <param name="mode">The game mode.</param>
+		/// <exception cref="ArgumentException">The mods are not valid for the mode.</exception>
 		public void ThrowIfInvalid(GameMode mode)
 		{
 			if (!gameMods.IsValid(mode))

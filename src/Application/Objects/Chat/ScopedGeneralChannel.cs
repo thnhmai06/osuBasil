@@ -24,14 +24,14 @@ public sealed class ScopedGeneralChannel
 
 	/// <summary>Changes the settings of this general channel.</summary>
 	/// <param name="change">The settings to change.</param>
-	/// <param name="ct">A token that cancels the operation.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, or Closed when the channel has closed.</returns>
 	/// <remarks>
 	///     Requires <see cref="Permissions.ServerConfigure" />. Members who may no longer read the channel are removed;
 	///     one <see cref="ChannelConfigured" /> reports the change and removed members.
 	/// </remarks>
 	/// <exception cref="ArgumentException">A permission or the topic in <paramref name="change" /> is invalid.</exception>
-	public async Task<ChannelManageResult> ConfigureAsync(GeneralChannelChange change, CancellationToken ct = default)
+	public async Task<ChannelManageResult> ConfigureAsync(GeneralChannelChange change, CancellationToken cancellationToken = default)
 	{
 		var now = Channel.Context.Clock.GetUtcNow();
 		if (By.User.Check(Permissions.ServerConfigure, now) is not Access.Allowed)
@@ -58,21 +58,21 @@ public sealed class ScopedGeneralChannel
 			Channel.Context.Events.Publish(new ChannelConfigured(Channel, change, removed));
 		}
 
-		await Channel.Context.Channels.CreateOrUpdateAsync(Channel.Record, ct);
+		await Channel.Context.Channels.CreateOrUpdateAsync(Channel.Record, cancellationToken);
 		return ChannelManageResult.Ok;
 	}
 
 	/// <summary>Closes and deletes this general channel.</summary>
-	/// <param name="ct">A token that cancels the operation.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok or NotAuthorized.</returns>
 	/// <remarks>Requires <see cref="Permissions.ServerConfigure" />; announces <see cref="ChannelClosed" />.</remarks>
-	public async Task<ChannelManageResult> DeleteAsync(CancellationToken ct = default)
+	public async Task<ChannelManageResult> DeleteAsync(CancellationToken cancellationToken = default)
 	{
 		if (By.User.Check(Permissions.ServerConfigure, Channel.Context.Clock.GetUtcNow()) is not Access.Allowed)
 			return ChannelManageResult.NotAuthorized;
 
 		Channel.Close();
-		await Channel.Context.Channels.DeleteAsync(Channel.Record, ct);
+		await Channel.Context.Channels.DeleteAsync(Channel.Record, cancellationToken);
 		return ChannelManageResult.Ok;
 	}
 }

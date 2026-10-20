@@ -97,13 +97,13 @@ public sealed class User
 
 	/// <summary>Gets a value that indicates whether this user blocks another.</summary>
 	/// <param name="who">The user to check.</param>
-	/// <param name="ct">A token that cancels the operation.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns><see langword="true" /> when this user blocks <paramref name="who" />.</returns>
-	public async ValueTask<bool> HasBlockedAsync(UserRecord who, CancellationToken ct = default)
+	public async ValueTask<bool> HasBlockedAsync(UserRecord who, CancellationToken cancellationToken = default)
 	{
 		if (BasilBot.Is(Record)) return false;
 
-		var relationships = await Context.Relationships.ListAsync(Record, ct);
+		var relationships = await Context.Relationships.ListAsync(Record, cancellationToken);
 		return relationships.Any(relationship => relationship.Target.Equals(who) &&
 		                                         relationship.Type == RelationshipType.Block);
 	}

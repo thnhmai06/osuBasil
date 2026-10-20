@@ -8,6 +8,7 @@ namespace Basil.Application.Objects.Multiplayer.Rooms;
 /// <summary>An osu! multiplayer room's 16 player slots, and whether the room's slots are locked as a whole.</summary>
 public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 {
+	/// <summary>The number of slots every room has.</summary>
 	public const int MaxSlotCount = 16;
 
 	/// <summary>The room these slots belong to.</summary>
@@ -25,8 +26,12 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 	/// <remarks>A locked room stops players from changing their own slot or team; referees still can.</remarks>
 	public bool Locked { get; internal set; }
 
+	/// <summary>Gets the number of slots, which is always <see cref="MaxSlotCount" />.</summary>
 	public int Count => _slots.Length;
 
+	/// <summary>Gets a slot by its number.</summary>
+	/// <param name="index">The slot number, from 1 to <see cref="MaxSlotCount" />.</param>
+	/// <exception cref="ArgumentOutOfRangeException">The number is outside 1 to <see cref="MaxSlotCount" />.</exception>
 	public RoomSlot this[int index]
 	{
 		get
@@ -36,6 +41,8 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 		}
 	}
 
+	/// <summary>Enumerates the slots in order, from slot 1.</summary>
+	/// <returns>An enumerator over the slots.</returns>
 	public IEnumerator<RoomSlot> GetEnumerator()
 	{
 		return ((IEnumerable<RoomSlot>)_slots).GetEnumerator();

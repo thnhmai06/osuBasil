@@ -14,7 +14,7 @@ namespace Basil.Infrastructure.Runtime.Startup;
 internal sealed class RuntimeStartup(
 	IChannelRepository channelRepository,
 	Server server,
-	UserRegistry sessions,
+	UserRegistry registry,
 	Lobby lobby,
 	ILogger<RuntimeStartup> logger) : IHostedService
 {
@@ -27,7 +27,7 @@ internal sealed class RuntimeStartup(
 				openedChannels++;
 		logger.LogInformation("Opened {ChannelCount} general channels", openedChannels);
 
-		if (await sessions.ConnectBotAsync(cancellationToken) is null)
+		if (await registry.ConnectBotAsync(cancellationToken) is null)
 			logger.LogWarning("BasilBot's record is missing; the bot stays offline");
 		else
 			logger.LogInformation("BasilBot is online");

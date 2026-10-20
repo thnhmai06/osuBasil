@@ -5,8 +5,10 @@ using SixLabors.ImageSharp.Formats.Png;
 
 namespace Basil.Infrastructure.Capabilities.Content;
 
+/// <inheritdoc />
 internal sealed class ImageSharpScreenshotInspector : IScreenshotInspector
 {
+	/// <inheritdoc />
 	public async Task<ScreenshotInfo?> InspectAsync(Stream content, CancellationToken cancellationToken = default)
 	{
 		try
@@ -18,13 +20,9 @@ internal sealed class ImageSharpScreenshotInspector : IScreenshotInspector
 				JpegFormat => "jpg",
 				_ => null
 			};
-			return extension is null ? null : new ScreenshotInfo(extension, info.Width, info.Height);
+			return extension is not null ? new ScreenshotInfo(extension, info.Width, info.Height) : null;
 		}
-		catch (UnknownImageFormatException)
-		{
-			return null;
-		}
-		catch (InvalidImageContentException)
+		catch (Exception exception) when (exception is UnknownImageFormatException or InvalidImageContentException)
 		{
 			return null;
 		}

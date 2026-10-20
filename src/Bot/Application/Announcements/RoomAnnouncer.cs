@@ -21,24 +21,24 @@ internal sealed class RoomAnnouncer(Server server, UserRegistry users, TimeProvi
 		switch (@event)
 		{
 			case RoomRoundStarted { Players.Count: 0 } e:
-				await server.SayAsync(e.Room.Channel, AnnouncementReplies.RoundStartedNoPlayers, ct: cancellationToken);
+				await server.SayAsync(e.Room.Channel, AnnouncementReplies.RoundStartedNoPlayers, cancellationToken: cancellationToken);
 				break;
 			case RoomRoundAborted e:
-				await server.SayAsync(e.Room.Channel, AnnouncementReplies.RoundAborted, ct: cancellationToken);
+				await server.SayAsync(e.Room.Channel, AnnouncementReplies.RoundAborted, cancellationToken: cancellationToken);
 				break;
 			case RoomCountdownStarted e:
 				var seconds = (int)e.Countdown.Length.TotalSeconds;
 				var text = e.Countdown.StartsRound
 					? string.Format(AnnouncementReplies.CountdownStartedForRound, seconds)
 					: string.Format(AnnouncementReplies.CountdownStarted, seconds);
-				await server.SayAsync(e.Room.Channel, text, ct: cancellationToken);
+				await server.SayAsync(e.Room.Channel, text, cancellationToken: cancellationToken);
 				break;
 			case RoomCountdownTicked e:
 				var remainingSeconds = (int)Math.Round(e.Remaining.TotalSeconds);
 				var tick = e.Countdown.StartsRound
 					? string.Format(AnnouncementReplies.CountdownTickedForRound, remainingSeconds)
 					: string.Format(AnnouncementReplies.CountdownTicked, remainingSeconds);
-				await server.SayAsync(e.Room.Channel, tick, ct: cancellationToken);
+				await server.SayAsync(e.Room.Channel, tick, cancellationToken: cancellationToken);
 				break;
 			case RoomCountdownElapsed e:
 				var elapsed = e.StartResult switch
@@ -50,14 +50,14 @@ internal sealed class RoomAnnouncer(Server server, UserRegistry users, TimeProvi
 					_ => null
 				};
 				if (elapsed is not null)
-					await server.SayAsync(e.Room.Channel, elapsed, ct: cancellationToken);
+					await server.SayAsync(e.Room.Channel, elapsed, cancellationToken: cancellationToken);
 				break;
 			case RoomCountdownCancelled e:
-				await server.SayAsync(e.Room.Channel, AnnouncementReplies.CountdownCancelled, ct: cancellationToken);
+				await server.SayAsync(e.Room.Channel, AnnouncementReplies.CountdownCancelled, cancellationToken: cancellationToken);
 				break;
 			case RoomPlayerJoined e when _closingRooms.TryRemove(new KeyValuePair<int, Room>(e.Room.Id, e.Room)):
 				await server.SayAsync(e.Room.Channel, AnnouncementReplies.RoomPlayerJoinedClosing,
-					ct: cancellationToken);
+					cancellationToken: cancellationToken);
 				break;
 		}
 	}
@@ -81,7 +81,7 @@ internal sealed class RoomAnnouncer(Server server, UserRegistry users, TimeProvi
 		var minutesUntilClose = (int)Math.Ceiling((e.ClosesAt - timeProvider.GetUtcNow()).TotalMinutes);
 		var text = string.Format(AnnouncementReplies.RoomClosingAnnounced, minutesUntilClose);
 
-		await server.SayAsync(e.Room.Channel, text, ct: cancellationToken);
+		await server.SayAsync(e.Room.Channel, text, cancellationToken: cancellationToken);
 		_closingRooms[e.Room.Id] = e.Room;
 		await WhisperStaffAsync(e.Room, text, cancellationToken);
 	}
@@ -98,7 +98,7 @@ internal sealed class RoomAnnouncer(Server server, UserRegistry users, TimeProvi
 		async Task WhisperIfOnlineAsync(UserRecord user)
 		{
 			if (users.Online.GetValueOrDefault(user) is { } online)
-				await server.WhisperAsync(online, text, ct: cancellationToken);
+				await server.WhisperAsync(online, text, cancellationToken: cancellationToken);
 		}
 	}
 }

@@ -43,7 +43,7 @@ public sealed class Server
 	/// <param name="channel">The channel to speak in.</param>
 	/// <param name="text">The message text.</param>
 	/// <param name="notice">Whether the message is a notice.</param>
-	/// <param name="ct">A token that cancels the operation.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>
 	///     <see langword="true" /> when the message was posted; otherwise, <see langword="false" /> when the channel is
 	///     closed, the text is empty or whitespace, or BasilBot's record is unavailable.
@@ -53,12 +53,12 @@ public sealed class Server
 	///     the connection that typed them, not this method, to act for a user.
 	/// </remarks>
 	public async Task<bool> SayAsync(Channel channel, string text, bool notice = false,
-		CancellationToken ct = default)
+		CancellationToken cancellationToken = default)
 	{
 		if (channel.IsClosed || channel is PmChannel { Owner.IsOnline: false } || string.IsNullOrWhiteSpace(text))
 			return false;
 
-		var bot = await Context.Users.GetAsync(BasilBot.Id, ct);
+		var bot = await Context.Users.GetAsync(BasilBot.Id, cancellationToken);
 		if (bot is null || channel.IsClosed) return false;
 
 		channel.PostMessage(bot, text, notice, Context.Session.Clock.GetUtcNow(), null);
@@ -69,16 +69,16 @@ public sealed class Server
 	/// <param name="to">The recipient.</param>
 	/// <param name="text">The message text.</param>
 	/// <param name="notice">Whether the message is a notice.</param>
-	/// <param name="ct">A token that cancels the operation.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns><see langword="true" /> when the message was posted; otherwise, <see langword="false" />.</returns>
 	/// <remarks>
 	///     This system operation needs no rights because the server itself calls it. Chat commands must use the scope of
 	///     the connection that typed them, not this method, to act for a user. Messages are not delivered offline.
 	/// </remarks>
-	public Task<bool> WhisperAsync(User to, string text, bool notice = false, CancellationToken ct = default)
+	public Task<bool> WhisperAsync(User to, string text, bool notice = false, CancellationToken cancellationToken = default)
 	{
 		if (!to.IsOnline) return Task.FromResult(false);
-		return SayAsync(to.PmChannel, text, notice, ct);
+		return SayAsync(to.PmChannel, text, notice, cancellationToken);
 	}
 
 	/// <summary>Finds an open channel the bot may speak in by the name clients use.</summary>

@@ -17,7 +17,7 @@ public sealed class ScopedUserTests
 		var by = await app.LoginAsync(actor);
 
 		var (result, _) = await app.Users.Of(target).ScopeTo(by).Restrictions.RestrictAsync(
-			Permissions.ChatPost, null, ct: TestContext.Current.CancellationToken);
+			Permissions.ChatPost, null, cancellationToken: TestContext.Current.CancellationToken);
 
 		Assert.Equal(UserResult.NotAuthorized, result);
 	}
@@ -30,7 +30,7 @@ public sealed class ScopedUserTests
 		var by = await app.LoginAsync(actor);
 
 		var (result, restriction) = await app.Users.Of(actor).ScopeTo(by).Restrictions.RestrictAsync(
-			Permissions.ChatPost, null, ct: TestContext.Current.CancellationToken);
+			Permissions.ChatPost, null, cancellationToken: TestContext.Current.CancellationToken);
 
 		Assert.Equal(UserResult.NotAuthorized, result);
 		Assert.Null(restriction);
@@ -86,11 +86,11 @@ public sealed class ScopedUserTests
 		var by = await app.LoginAsync(actor);
 		var scoped = app.Users.Of(target).ScopeTo(by);
 		var (_, restriction) = await scoped.Restrictions.RestrictAsync(Permissions.ChatPost, null,
-			ct: TestContext.Current.CancellationToken);
+			cancellationToken: TestContext.Current.CancellationToken);
 		Assert.NotNull(restriction);
 
 		var result = await scoped.Restrictions.LiftAsync(restriction,
-			ct: TestContext.Current.CancellationToken);
+			cancellationToken: TestContext.Current.CancellationToken);
 
 		Assert.Equal(UserResult.Ok, result);
 		Assert.Equal(app.Clock.GetUtcNow(), restriction.Value.EndsAt);

@@ -46,7 +46,7 @@ public sealed class UserTests
 		var offlineUser = app.Users.Of(target);
 
 		var (result, _) = await offlineUser.ScopeTo(by).Restrictions.RestrictAsync(
-			Permissions.ChatPost, null, ct: TestContext.Current.CancellationToken);
+			Permissions.ChatPost, null, cancellationToken: TestContext.Current.CancellationToken);
 
 		Assert.Equal(UserResult.Ok, result);
 		Assert.False(app.Users.Online.ContainsKey(target));

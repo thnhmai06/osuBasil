@@ -34,19 +34,24 @@ public sealed class Relationship : IEquatable<Relationship>
 		init => field = value.ThrowIfUndefined();
 	}
 
+	/// <summary>When the relationship was set.</summary>
 	public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
 
+	/// <summary>Determines whether another relationship has the same actor, target and type.</summary>
+	/// <param name="other">The relationship to compare against, or <see langword="null" />.</param>
 	public bool Equals(Relationship? other)
 	{
 		if (other is null) return false;
 		return Actor.Equals(other.Actor) && Target.Equals(other.Target) && Type == other.Type;
 	}
 
+	/// <inheritdoc />
 	public override bool Equals(object? obj)
 	{
 		return obj is Relationship other && Equals(other);
 	}
 
+	/// <inheritdoc />
 	public override int GetHashCode()
 	{
 		return HashCode.Combine(Actor, Target, Type);
