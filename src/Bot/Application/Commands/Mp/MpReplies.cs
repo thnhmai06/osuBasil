@@ -1,4 +1,4 @@
-using Basil.Bot.Application.Basil;
+using Basil.Application.Services.Contracts.Multiplayer;
 
 namespace Basil.Bot.Application.Commands.Mp;
 
@@ -427,50 +427,61 @@ internal static class MpReplies
 	/// <summary>Reply when the requested room, user or beatmap does not exist.</summary>
 	public const string NotFound = "Not found.";
 
-	/// <summary>Maps a <see cref="RoomOutcome" /> to the user-visible reply the bot sends.</summary>
+	/// <summary>Maps a <see cref="RoomResult" /> to the user-visible reply the bot sends.</summary>
 	/// <param name="outcome">The outcome returned by the server for the requested room operation.</param>
 	/// <returns>The reply text, with any placeholders already filled in for constant replies.</returns>
-	public static string Describe(RoomOutcome outcome)
+	public static string Describe(RoomResult outcome)
 	{
 		return outcome switch
 		{
-			RoomOutcome.NotAuthorized => NotAuthorizedInMatch,
-			RoomOutcome.Silenced => Silenced,
-			RoomOutcome.AlreadySeated => AlreadyInThisMatch,
-			RoomOutcome.Banned => BannedFromMatch,
-			RoomOutcome.InAnotherRoom => TargetInAnotherMatch,
-			RoomOutcome.WrongPassword => IncorrectPassword,
-			RoomOutcome.Full => MatchIsFull,
-			RoomOutcome.IsObserver => TargetIsObserver,
-			RoomOutcome.NotInRoom => TargetNotInMatch,
-			RoomOutcome.IsManager => TargetIsManager,
-			RoomOutcome.NotBanned => TargetNotBanned,
-			RoomOutcome.TargetOffline => TargetNotOnline,
-			RoomOutcome.AlreadyInRoom => UserAlreadyInRoom,
-			RoomOutcome.TooManyReferees => RefereeLimitReached,
-			RoomOutcome.AlreadyReferee => TargetAlreadyReferee,
-			RoomOutcome.NotReferee => TargetNotReferee,
-			RoomOutcome.IsCreator => TargetIsCreator,
-			RoomOutcome.IsPlayer => TargetIsPlayer,
-			RoomOutcome.NotObserver => TargetNotObserver,
-			RoomOutcome.TooManyRooms => RoomLimitReached,
-			RoomOutcome.NoRoomId => NoMatchesAvailable,
-			RoomOutcome.SlotNotOpen => DestinationSlotNotOpen,
-			RoomOutcome.RoomLocked => MatchIsLocked,
-			RoomOutcome.InProgress => MatchAlreadyInProgress,
-			RoomOutcome.OwnSlot => OwnSlotLocked,
-			RoomOutcome.NoTeams => MatchHasNoTeams,
-			RoomOutcome.NotFreemod => FreemodNotEnabled,
-			RoomOutcome.SpeedModNotAllowed => SpeedModsMatchWide,
-			RoomOutcome.InvalidMods => InvalidMods,
-			RoomOutcome.InvalidSettings => SettingsInvalid,
-			RoomOutcome.NoBeatmap => NoBeatmapSelected,
-			RoomOutcome.NotPlaying => TargetNotPlaying,
-			RoomOutcome.NotInProgress => MatchNotInProgress,
-			RoomOutcome.RoundMismatch => ScoreNotCurrentRound,
-			RoomOutcome.RoomClosed => MatchClosed,
-			RoomOutcome.NotFound => NotFound,
+			RoomResult.NotAuthorized => NotAuthorizedInMatch,
+			RoomResult.Silenced => Silenced,
+			RoomResult.AlreadySeated => AlreadyInThisMatch,
+			RoomResult.Banned => BannedFromMatch,
+			RoomResult.InAnotherRoom => TargetInAnotherMatch,
+			RoomResult.WrongPassword => IncorrectPassword,
+			RoomResult.Full => MatchIsFull,
+			RoomResult.IsObserver => TargetIsObserver,
+			RoomResult.NotInRoom => TargetNotInMatch,
+			RoomResult.IsManager => TargetIsManager,
+			RoomResult.NotBanned => TargetNotBanned,
+			RoomResult.TargetOffline => TargetNotOnline,
+			RoomResult.AlreadyInRoom => UserAlreadyInRoom,
+			RoomResult.TooManyReferees => RefereeLimitReached,
+			RoomResult.AlreadyReferee => TargetAlreadyReferee,
+			RoomResult.NotReferee => TargetNotReferee,
+			RoomResult.IsCreator => TargetIsCreator,
+			RoomResult.IsPlayer => TargetIsPlayer,
+			RoomResult.NotObserver => TargetNotObserver,
+			RoomResult.TooManyRooms => RoomLimitReached,
+			RoomResult.NoRoomId => NoMatchesAvailable,
+			RoomResult.SlotNotOpen => DestinationSlotNotOpen,
+			RoomResult.RoomLocked => MatchIsLocked,
+			RoomResult.InProgress => MatchAlreadyInProgress,
+			RoomResult.OwnSlot => OwnSlotLocked,
+			RoomResult.NoTeams => MatchHasNoTeams,
+			RoomResult.NotFreemod => FreemodNotEnabled,
+			RoomResult.SpeedModNotAllowed => SpeedModsMatchWide,
+			RoomResult.InvalidMods => InvalidMods,
+			RoomResult.InvalidSettings => SettingsInvalid,
+			RoomResult.NoBeatmap => NoBeatmapSelected,
+			RoomResult.NotPlaying => TargetNotPlaying,
+			RoomResult.NotInProgress => MatchNotInProgress,
+			RoomResult.NoCountdown => NoCountdownRunning,
+			RoomResult.RoundMismatch => ScoreNotCurrentRound,
+			RoomResult.RoomClosed => MatchClosed,
 			_ => string.Format(GenericFailed, outcome)
 		};
+	}
+
+	/// <summary>Maps a transitional room outcome with a matching name to its user-visible reply.</summary>
+	/// <typeparam name="TOutcome">The outcome enum still used by an un-migrated command surface.</typeparam>
+	/// <param name="outcome">The outcome returned by that command surface.</param>
+	/// <returns>The matching reply, or the generic failure text when no room result has that name.</returns>
+	public static string Describe<TOutcome>(TOutcome outcome) where TOutcome : struct, Enum
+	{
+		return Enum.TryParse<RoomResult>(outcome.ToString(), out var result) && Enum.IsDefined(result)
+			? Describe(result)
+			: string.Format(GenericFailed, outcome);
 	}
 }

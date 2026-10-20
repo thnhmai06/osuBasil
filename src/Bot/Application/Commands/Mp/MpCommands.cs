@@ -1,6 +1,10 @@
 using System.Collections.Frozen;
 using System.Text.RegularExpressions;
-using Basil.Bot.Application.Basil;
+using Basil.Application.Services.Contracts.Multiplayer;
+using Basil.Application.Services.Contracts.Multiplayer.Rooms;
+using Basil.Application.Services.Contracts.Sessions;
+using Basil.Application.Storage.Contracts.Beatmaps;
+using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 
@@ -10,17 +14,16 @@ namespace Basil.Bot.Application.Commands.Mp;
 ///     Executes the <c>!mp</c> chat command surface against the Basil server.
 /// </summary>
 /// <remarks>
-///     All operations go through <see cref="IBasilRooms" />, <see cref="IBasilUsers" /> and
-///     <see cref="IBasilBeatmaps" />; the server enforces authority and returns a
-///     <see cref="RoomOutcome" />, which is mapped to a user-visible reply by
+///     Operations run on the lobby and rooms scoped to the connection of the user who typed the command; the server
+///     enforces authority and returns a <see cref="RoomResult" />, which is mapped to a user-visible reply by
 ///     <see cref="MpReplies.Describe" />.
 /// </remarks>
 internal sealed partial class MpCommands(
-	IBasilRooms rooms,
-	IBasilUsers users,
-	IBasilBeatmaps beatmaps,
-	MpScopes scopes,
-	RoomCountdowns countdowns)
+	Lobby lobby,
+	IUserRegistry registry,
+	IUserRepository users,
+	IBeatmapRepository beatmaps,
+	MpScopes scopes)
 {
 	/// <summary>The maximum length of a room name as accepted by the osu! client.</summary>
 	private const int MaxRoomNameLength = 50;
@@ -50,12 +53,19 @@ internal sealed partial class MpCommands(
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>
 	///     <see langword="true" /> when the command was recognized and the server reported success;
-	///     <see langword="false" /> for usage errors, unknown subcommands, and any non-<see cref="RoomOutcome.Ok" />
+	///     <see langword="false" /> for usage errors, unknown subcommands, and any non-<see cref="RoomResult.Ok" />
 	///     result from the server.
 	/// </returns>
 	public async Task<bool> ExecuteAsync(CommandContext context, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
+		var by = context.By;
+		if (by is null)
+		{
+			await context.Reply(string.Format(MpReplies.GenericFailed, "connection not available"), cancellationToken);
+			return false;
+		}
+
 		var subcommand = args.Count > 0 ? args[0] : "";
 		var subArgs = args.Count > 1 ? args.Skip(1).ToArray() : Array.Empty<string>();
 
@@ -92,7 +102,7 @@ internal sealed partial class MpCommands(
 	private async Task<bool> ScopedAsync(CommandContext context, string subcommand, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
-		var roomId = await ResolveRoomIdAsync(context, cancellationToken);
+		var roomId = ResolveRoomId(context);
 		if (roomId is null)
 		{
 			await context.Reply(MpReplies.NotInARoom, cancellationToken);
@@ -166,15 +176,16 @@ internal sealed partial class MpCommands(
 
 	// ── scope resolution ─────────────────────────────────────────────────────────────────
 
-	private async Task<int?> ResolveRoomIdAsync(CommandContext context, CancellationToken cancellationToken)
+	private int? ResolveRoomId(CommandContext context)
 	{
+		var by = context.By!;
 		// (a) Channel takes precedence: if sent in #mp_{id}, use that room
 		if (context.Channel is not null)
 		{
 			var match = MpChannelRegex.Match(context.Channel);
 			if (match.Success && int.TryParse(match.Groups[1].Value, out var channelRoomId))
 			{
-				var channelRoom = await rooms.GetForAsync(context.Sender, channelRoomId, cancellationToken);
+				var channelRoom = ViewRoom(by, channelRoomId);
 				if (channelRoom is not null) return channelRoomId;
 			}
 		}
@@ -183,13 +194,13 @@ internal sealed partial class MpCommands(
 		var scoped = scopes.Get(context.Sender.Id);
 		if (scoped is not null)
 		{
-			var scopedRoom = await rooms.GetForAsync(context.Sender, scoped.Value, cancellationToken);
+			var scopedRoom = ViewRoom(by, scoped.Value);
 			if (scopedRoom is not null) return scoped.Value;
 			scopes.Clear(context.Sender.Id);
 		}
 
 		// (c) Seated room: where the sender is currently playing
-		var seated = await rooms.FindByPlayerAsync(context.Sender, cancellationToken);
+		var seated = by.Session.Bancho is { } client ? lobby.RoomOf(client) : null;
 		return seated?.Id;
 	}
 
@@ -198,13 +209,15 @@ internal sealed partial class MpCommands(
 	private async Task<bool> MakeAsync(CommandContext context, IReadOnlyList<string> args, bool isPrivate,
 		CancellationToken cancellationToken)
 	{
+		var by = context.By!;
 		var name = args.Count > 0
 			? string.Join(' ', args)
 			: $"{context.Sender.Value.Name}'s match";
 		if (name.Length > MaxRoomNameLength) name = name[..MaxRoomNameLength];
 
-		var (room, outcome) = await rooms.OpenAsync(context.Sender, name, isPrivate, cancellationToken);
-		if (outcome != RoomOutcome.Ok || room is null)
+		var (room, outcome) = await lobby.ScopeTo(by).OpenRoomAsync(name, "", isTournament: true, isPrivate,
+			cancellationToken: cancellationToken);
+		if (outcome != RoomResult.Ok || room is null)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -213,7 +226,7 @@ internal sealed partial class MpCommands(
 		scopes.Set(context.Sender.Id, room.Id);
 		var privacySuffix = isPrivate ? " (private)" : string.Empty;
 		await context.Reply(
-			string.Format(MpReplies.CreatedMatch, room.Id, room.Name, privacySuffix), cancellationToken);
+			string.Format(MpReplies.CreatedMatch, room.Id, room.Settings.Name, privacySuffix), cancellationToken);
 		return true;
 	}
 
@@ -222,13 +235,14 @@ internal sealed partial class MpCommands(
 	private async Task<bool> JoinAsync(CommandContext context, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
+		var by = context.By!;
 		if (args.Count < 1 || !int.TryParse(args[0], out var roomId))
 		{
 			await context.Reply(MpReplies.JoinUsage, cancellationToken);
 			return false;
 		}
 
-		var room = await rooms.GetForAsync(context.Sender, roomId, cancellationToken);
+		var room = ViewRoom(by, roomId);
 		if (room is null)
 		{
 			await context.Reply(string.Format(MpReplies.NoActiveRoomWithId, roomId), cancellationToken);
@@ -236,15 +250,15 @@ internal sealed partial class MpCommands(
 		}
 
 		var password = args.Count > 1 ? string.Join(' ', args.Skip(1)) : string.Empty;
-		var outcome = await rooms.JoinAsync(context.Sender, roomId, password, cancellationToken);
-		if (outcome != RoomOutcome.Ok)
+		var outcome = await room.ScopeTo(by).Members.JoinAsync(password, cancellationToken);
+		if (outcome != RoomResult.Ok)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
 		}
 
 		scopes.Set(context.Sender.Id, roomId);
-		await context.Reply(string.Format(MpReplies.JoinedMatch, roomId, room.Name), cancellationToken);
+		await context.Reply(string.Format(MpReplies.JoinedMatch, roomId, room.Settings.Name), cancellationToken);
 		return true;
 	}
 
@@ -253,6 +267,7 @@ internal sealed partial class MpCommands(
 	private async Task<bool> InAsync(CommandContext context, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
+		var by = context.By!;
 		if (context.Channel is not null)
 		{
 			await context.Reply(MpReplies.MpInDmOnly, cancellationToken);
@@ -272,7 +287,7 @@ internal sealed partial class MpCommands(
 			return false;
 		}
 
-		var room = await rooms.GetForAsync(context.Sender, roomId, cancellationToken);
+		var room = ViewRoom(by, roomId);
 		if (room is null)
 		{
 			await context.Reply(string.Format(MpReplies.NoActiveRoomWithHashId, roomId), cancellationToken);
@@ -280,7 +295,7 @@ internal sealed partial class MpCommands(
 		}
 
 		scopes.Set(context.Sender.Id, roomId);
-		await context.Reply(string.Format(MpReplies.NowTargetingMatch, roomId, room.Name), cancellationToken);
+		await context.Reply(string.Format(MpReplies.NowTargetingMatch, roomId, room.Settings.Name), cancellationToken);
 		return true;
 	}
 
@@ -288,7 +303,7 @@ internal sealed partial class MpCommands(
 
 	private async Task<bool> SettingsAsync(CommandContext context, int roomId, CancellationToken cancellationToken)
 	{
-		var room = await rooms.GetForAsync(context.Sender, roomId, cancellationToken);
+		var room = ViewRoom(context.By!, roomId);
 		if (room is null)
 		{
 			await context.Reply(string.Format(MpReplies.NoActiveRoomWithId, roomId), cancellationToken);
@@ -297,36 +312,37 @@ internal sealed partial class MpCommands(
 
 		var lines = new List<string>
 		{
-			string.Format(MpReplies.SettingsRoomName, room.Name, room.Id),
-			room.Beatmap is null
+			string.Format(MpReplies.SettingsRoomName, room.Settings.Name, room.Id),
+			room.Settings.Beatmap is not { } beatmap
 				? MpReplies.SettingsBeatmapNotSelected
-				: string.Format(MpReplies.SettingsBeatmap, room.Beatmap.Id, room.Beatmap.Name),
-			string.Format(MpReplies.SettingsTeamMode, room.Settings.TeamType, room.Settings.WinCondition)
+				: string.Format(MpReplies.SettingsBeatmap, beatmap.Id, beatmap.Name),
+			string.Format(MpReplies.SettingsTeamMode, room.Settings.MatchSettings.TeamType,
+				room.Settings.MatchSettings.WinCondition)
 		};
 
 		var activeMods = new List<string>();
-		if (room.Settings.Mods != GameMods.NoMod) activeMods.Add(room.Settings.Mods.ToString());
-		if (room.Settings.Freemods) activeMods.Add("Freemod");
+		if (room.Settings.MatchSettings.Mods != GameMods.NoMod) activeMods.Add(room.Settings.MatchSettings.Mods.ToString());
+		if (room.Settings.MatchSettings.Freemods) activeMods.Add("Freemod");
 		if (activeMods.Count > 0)
 			lines.Add(string.Format(MpReplies.SettingsActiveMods, string.Join(", ", activeMods)));
 
-		if (room.Creator is { } creator)
+		if (room.Authority.Creator is { } creator)
 			lines.Add(string.Format(MpReplies.SettingsCreator, creator.Id, creator.Value.Name));
 
-		var occupied = room.Slots.Count(s => s.Player is not null);
+		var occupied = room.Slots.Count(slot => slot.Player is not null);
 		lines.Add(string.Format(MpReplies.SettingsPlayers, occupied));
 
-		var showTeam = room.Settings.TeamType is GameTeamType.TeamVs or GameTeamType.TagTeamVs;
+		var showTeam = room.Settings.MatchSettings.TeamType is GameTeamType.TeamVs or GameTeamType.TagTeamVs;
 		foreach (var slot in room.Slots)
 		{
-			if (slot.Player is null) continue;
+			if (slot.Player is not { } player) continue;
 			var tags = new List<string>();
-			if (room.Host is not null && slot.Player == room.Host) tags.Add("Host");
+			if (room.Authority.Host is not null && player == room.Authority.Host) tags.Add("Host");
 			if (slot.Mods is { } slotMods && slotMods != GameMods.NoMod) tags.Add(slotMods.ToString());
 			var tagText = tags.Count > 0 ? $" [{string.Join(" / ", tags)}]" : string.Empty;
 			var teamText = showTeam && slot.Team is { } team ? $"{team,-5} " : string.Empty;
 			lines.Add(
-				$"Slot {slot.Index,2}  {SlotStatusText(slot.Status),-10} {teamText}{slot.Player.Id,6} {slot.Player.Value.Name,-16}{tagText}");
+				$"Slot {slot.Index,2}  {SlotStatusText(slot.Status),-10} {teamText}{player.User.Id,6} {player.User.Value.Name,-16}{tagText}");
 		}
 
 		await context.Reply(string.Join('\n', lines), cancellationToken);
@@ -348,8 +364,15 @@ internal sealed partial class MpCommands(
 	private async Task<bool> SetLockedAsync(CommandContext context, int roomId, bool locked,
 		CancellationToken cancellationToken)
 	{
-		var outcome = await rooms.SetLockedAsync(context.Sender, roomId, locked, cancellationToken);
-		if (outcome != RoomOutcome.Ok)
+		var room = ViewRoom(context.By!, roomId);
+		if (room is null)
+		{
+			await context.Reply(MpReplies.NotFound, cancellationToken);
+			return false;
+		}
+
+		var outcome = await room.ScopeTo(context.By!).Settings.SetLockedAsync(locked, cancellationToken);
+		if (outcome != RoomResult.Ok)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -364,9 +387,10 @@ internal sealed partial class MpCommands(
 	private async Task<bool> PrivateAsync(CommandContext context, int roomId, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
+		var by = context.By!;
 		if (args.Count == 0)
 		{
-			var room = await rooms.GetForAsync(context.Sender, roomId, cancellationToken);
+			var room = ViewRoom(by, roomId);
 			if (room is null)
 			{
 				await context.Reply(string.Format(MpReplies.NoActiveRoomWithId, roomId), cancellationToken);
@@ -374,7 +398,7 @@ internal sealed partial class MpCommands(
 			}
 
 			await context.Reply(
-				string.Format(MpReplies.MatchIsPrivateNow, room.IsPrivate ? "private" : "not private"),
+				string.Format(MpReplies.MatchIsPrivateNow, room.Settings.IsPrivate ? "private" : "not private"),
 				cancellationToken);
 			return true;
 		}
@@ -385,9 +409,16 @@ internal sealed partial class MpCommands(
 			return false;
 		}
 
-		var outcome = await rooms.ConfigureAsync(context.Sender, roomId,
-			new RoomChange(IsPrivate: args[0] == "1"), cancellationToken);
-		if (outcome != RoomOutcome.Ok)
+		var roomToChange = ViewRoom(by, roomId);
+		if (roomToChange is null)
+		{
+			await context.Reply(MpReplies.NotFound, cancellationToken);
+			return false;
+		}
+
+		var outcome = await roomToChange.ScopeTo(by).Settings.ConfigureAsync(
+			new RoomSettingsChange(IsPrivate: args[0] == "1"), cancellationToken);
+		if (outcome != RoomResult.Ok)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -410,9 +441,16 @@ internal sealed partial class MpCommands(
 		}
 
 		size = Math.Clamp(size, 1, MaxRoomSize);
-		var outcome = await rooms.ConfigureAsync(context.Sender, roomId, new RoomChange(Size: size),
+		var room = ViewRoom(context.By!, roomId);
+		if (room is null)
+		{
+			await context.Reply(MpReplies.NotFound, cancellationToken);
+			return false;
+		}
+
+		var outcome = await room.ScopeTo(context.By!).Settings.ConfigureAsync(new RoomSettingsChange(Size: size),
 			cancellationToken);
-		if (outcome != RoomOutcome.Ok)
+		if (outcome != RoomResult.Ok)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -427,6 +465,7 @@ internal sealed partial class MpCommands(
 	private async Task<bool> MoveAsync(CommandContext context, int roomId, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
+		var by = context.By!;
 		if (args.Count < 2 || !int.TryParse(args[^1], out var slot))
 		{
 			await context.Reply(MpReplies.MoveUsage, cancellationToken);
@@ -442,8 +481,15 @@ internal sealed partial class MpCommands(
 			return false;
 		}
 
-		var outcome = await rooms.MoveAsync(context.Sender, roomId, target, slot, cancellationToken);
-		if (outcome != RoomOutcome.Ok)
+		var room = ViewRoom(by, roomId);
+		if (room is null)
+		{
+			await context.Reply(MpReplies.NotFound, cancellationToken);
+			return false;
+		}
+
+		var outcome = await room.ScopeTo(by).Slots.MoveAsync(target, slot, cancellationToken);
+		if (outcome != RoomResult.Ok)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -458,6 +504,7 @@ internal sealed partial class MpCommands(
 	private async Task<bool> HostAsync(CommandContext context, int roomId, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
+		var by = context.By!;
 		if (args.Count < 1)
 		{
 			await context.Reply(MpReplies.HostUsage, cancellationToken);
@@ -472,8 +519,18 @@ internal sealed partial class MpCommands(
 			return false;
 		}
 
-		var outcome = await rooms.SetHostAsync(context.Sender, roomId, target, cancellationToken);
-		if (outcome != RoomOutcome.Ok)
+		var room = ViewRoom(by, roomId);
+		if (room is null)
+		{
+			await context.Reply(MpReplies.NotFound, cancellationToken);
+			return false;
+		}
+
+		var host = registry.Sessions.GetValueOrDefault(target)?.Bancho;
+		var outcome = host is not { IsOpen: true }
+			? RoomResult.TargetOffline
+			: await room.ScopeTo(by).Authority.SetHostAsync(host, cancellationToken);
+		if (outcome != RoomResult.Ok)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -485,8 +542,15 @@ internal sealed partial class MpCommands(
 
 	private async Task<bool> ClearHostAsync(CommandContext context, int roomId, CancellationToken cancellationToken)
 	{
-		var outcome = await rooms.SetHostAsync(context.Sender, roomId, null, cancellationToken);
-		if (outcome != RoomOutcome.Ok)
+		var room = ViewRoom(context.By!, roomId);
+		if (room is null)
+		{
+			await context.Reply(MpReplies.NotFound, cancellationToken);
+			return false;
+		}
+
+		var outcome = await room.ScopeTo(context.By!).Authority.SetHostAsync(null, cancellationToken);
+		if (outcome != RoomResult.Ok)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -510,9 +574,16 @@ internal sealed partial class MpCommands(
 		var name = string.Join(' ', args);
 		if (name.Length > MaxRoomNameLength) name = name[..MaxRoomNameLength];
 
-		var outcome = await rooms.ConfigureAsync(context.Sender, roomId, new RoomChange(name),
+		var room = ViewRoom(context.By!, roomId);
+		if (room is null)
+		{
+			await context.Reply(MpReplies.NotFound, cancellationToken);
+			return false;
+		}
+
+		var outcome = await room.ScopeTo(context.By!).Settings.ConfigureAsync(new RoomSettingsChange(Name: name),
 			cancellationToken);
-		if (outcome != RoomOutcome.Ok)
+		if (outcome != RoomResult.Ok)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -525,10 +596,18 @@ internal sealed partial class MpCommands(
 	private async Task<bool> SetPasswordAsync(CommandContext context, int roomId, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
+		var by = context.By!;
 		var password = args.Count == 0 ? string.Empty : string.Join(' ', args);
-		var outcome = await rooms.ConfigureAsync(context.Sender, roomId, new RoomChange(Password: password),
+		var room = ViewRoom(by, roomId);
+		if (room is null)
+		{
+			await context.Reply(MpReplies.NotFound, cancellationToken);
+			return false;
+		}
+
+		var outcome = await room.ScopeTo(by).Settings.ConfigureAsync(new RoomSettingsChange(Password: password),
 			cancellationToken);
-		if (outcome != RoomOutcome.Ok)
+		if (outcome != RoomResult.Ok)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -544,6 +623,7 @@ internal sealed partial class MpCommands(
 	private async Task<bool> InviteAsync(CommandContext context, int roomId, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
+		var by = context.By!;
 		if (args.Count < 1)
 		{
 			await context.Reply(MpReplies.InviteUsage, cancellationToken);
@@ -558,8 +638,18 @@ internal sealed partial class MpCommands(
 			return false;
 		}
 
-		var outcome = await rooms.InviteAsync(context.Sender, roomId, target, cancellationToken);
-		if (outcome != RoomOutcome.Ok)
+		var room = ViewRoom(by, roomId);
+		if (room is null)
+		{
+			await context.Reply(MpReplies.NotFound, cancellationToken);
+			return false;
+		}
+
+		var targetSession = registry.Sessions.GetValueOrDefault(target);
+		var outcome = targetSession is null
+			? RoomResult.TargetOffline
+			: await room.ScopeTo(by).Members.InviteAsync(targetSession, cancellationToken);
+		if (outcome != RoomResult.Ok)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -574,6 +664,7 @@ internal sealed partial class MpCommands(
 	private async Task<bool> AddRefereeAsync(CommandContext context, int roomId, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
+		var by = context.By!;
 		if (args.Count < 1)
 		{
 			await context.Reply(MpReplies.AddRefUsage, cancellationToken);
@@ -588,8 +679,15 @@ internal sealed partial class MpCommands(
 			return false;
 		}
 
-		var outcome = await rooms.AddRefereeAsync(context.Sender, roomId, target, cancellationToken);
-		if (outcome != RoomOutcome.Ok)
+		var room = ViewRoom(by, roomId);
+		if (room is null)
+		{
+			await context.Reply(MpReplies.NotFound, cancellationToken);
+			return false;
+		}
+
+		var outcome = await room.ScopeTo(by).Authority.AddRefereeAsync(target, cancellationToken);
+		if (outcome != RoomResult.Ok)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -602,6 +700,7 @@ internal sealed partial class MpCommands(
 	private async Task<bool> RemoveRefereeAsync(CommandContext context, int roomId, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
+		var by = context.By!;
 		if (args.Count < 1)
 		{
 			await context.Reply(MpReplies.RemoveRefUsage, cancellationToken);
@@ -616,8 +715,15 @@ internal sealed partial class MpCommands(
 			return false;
 		}
 
-		var outcome = await rooms.RemoveRefereeAsync(context.Sender, roomId, target, cancellationToken);
-		if (outcome != RoomOutcome.Ok)
+		var room = ViewRoom(by, roomId);
+		if (room is null)
+		{
+			await context.Reply(MpReplies.NotFound, cancellationToken);
+			return false;
+		}
+
+		var outcome = await room.ScopeTo(by).Authority.RemoveRefereeAsync(target, cancellationToken);
+		if (outcome != RoomResult.Ok)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -629,20 +735,20 @@ internal sealed partial class MpCommands(
 
 	private async Task<bool> ListRefsAsync(CommandContext context, int roomId, CancellationToken cancellationToken)
 	{
-		var room = await rooms.GetForAsync(context.Sender, roomId, cancellationToken);
+		var room = ViewRoom(context.By!, roomId);
 		if (room is null)
 		{
 			await context.Reply(string.Format(MpReplies.NoActiveRoomWithId, roomId), cancellationToken);
 			return false;
 		}
 
-		if (room.Referees.Count == 0)
+		if (room.Authority.Referees.Count == 0)
 		{
 			await context.Reply(MpReplies.NoReferees, cancellationToken);
 			return true;
 		}
 
-		var lines = room.Referees
+		var lines = room.Authority.Referees
 			.Select(u => $"#{u.Id} {u.Value.Name}");
 		await context.Reply(MpReplies.MatchReferees + "\n" + string.Join('\n', lines), cancellationToken);
 		return true;
@@ -652,20 +758,20 @@ internal sealed partial class MpCommands(
 
 	private async Task<bool> BanListAsync(CommandContext context, int roomId, CancellationToken cancellationToken)
 	{
-		var room = await rooms.GetForAsync(context.Sender, roomId, cancellationToken);
+		var room = ViewRoom(context.By!, roomId);
 		if (room is null)
 		{
 			await context.Reply(string.Format(MpReplies.NoActiveRoomWithId, roomId), cancellationToken);
 			return false;
 		}
 
-		if (room.Banned.Count == 0)
+		if (room.Members.Banned.Count == 0)
 		{
 			await context.Reply(MpReplies.NoBannedPlayers, cancellationToken);
 			return true;
 		}
 
-		var lines = room.Banned
+		var lines = room.Members.Banned
 			.Select(u => $"#{u.Id} {u.Value.Name}");
 		await context.Reply(MpReplies.MatchBans + "\n" + string.Join('\n', lines), cancellationToken);
 		return true;
@@ -676,6 +782,7 @@ internal sealed partial class MpCommands(
 	private async Task<bool> SetTeamAsync(CommandContext context, int roomId, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
+		var by = context.By!;
 		if (args.Count < 2)
 		{
 			await context.Reply(MpReplies.TeamUsage, cancellationToken);
@@ -698,8 +805,15 @@ internal sealed partial class MpCommands(
 		}
 
 		var team = teamArg == "red" ? GameTeam.Red : GameTeam.Blue;
-		var outcome = await rooms.SetTeamAsync(context.Sender, roomId, target, team, cancellationToken);
-		if (outcome != RoomOutcome.Ok)
+		var room = ViewRoom(by, roomId);
+		if (room is null)
+		{
+			await context.Reply(MpReplies.NotFound, cancellationToken);
+			return false;
+		}
+
+		var outcome = await room.ScopeTo(by).Slots.SetTeamAsync(target, team, cancellationToken);
+		if (outcome != RoomResult.Ok)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -745,17 +859,24 @@ internal sealed partial class MpCommands(
 			size = Math.Clamp(parsedSize, 1, MaxRoomSize);
 		}
 
-		var change = new RoomChange(TeamType: (GameTeamType)teamValue, WinCondition: winCondition, Size: size);
-		var outcome = await rooms.ConfigureAsync(context.Sender, roomId, change, cancellationToken);
-		if (outcome != RoomOutcome.Ok)
+		var room = ViewRoom(context.By!, roomId);
+		if (room is null)
+		{
+			await context.Reply(MpReplies.NotFound, cancellationToken);
+			return false;
+		}
+
+		var change = new RoomSettingsChange(TeamType: (GameTeamType)teamValue, WinCondition: winCondition,
+			Size: size);
+		var outcome = await room.ScopeTo(context.By!).Settings.ConfigureAsync(change, cancellationToken);
+		if (outcome != RoomResult.Ok)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
 		}
 
-		var live = await rooms.GetForAsync(context.Sender, roomId, cancellationToken);
-		var liveTeamType = live?.Settings.TeamType ?? (GameTeamType)teamValue;
-		var liveWinCondition = live?.Settings.WinCondition ?? winCondition ?? default;
+		var liveTeamType = room.Settings.MatchSettings.TeamType;
+		var liveWinCondition = room.Settings.MatchSettings.WinCondition;
 		var sizeSuffix = size is { } sz ? $", {sz} slots." : ".";
 		await context.Reply(string.Format(MpReplies.ChangedMatchSettings, liveTeamType, liveWinCondition, sizeSuffix),
 			cancellationToken);
@@ -792,10 +913,19 @@ internal sealed partial class MpCommands(
 			return false;
 		}
 
-		var outcome = await rooms.ConfigureAsync(context.Sender, roomId,
-			new RoomChange(BeatmapId: beatmapId, Mode: mode ?? beatmap.Metadata.Difficulty.Mode),
+		var room = ViewRoom(context.By!, roomId);
+		if (room is null)
+		{
+			await context.Reply(MpReplies.NotFound, cancellationToken);
+			return false;
+		}
+
+		var reference = new BeatmapReference(beatmap.Hash, beatmap.Id, beatmap.Name,
+			beatmap.Metadata.Difficulty.Mode, beatmap);
+		var outcome = await room.ScopeTo(context.By!).Settings.ConfigureAsync(
+			new RoomSettingsChange(Beatmap: reference, Mode: mode ?? beatmap.Metadata.Difficulty.Mode),
 			cancellationToken);
-		if (outcome != RoomOutcome.Ok)
+		if (outcome != RoomResult.Ok)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -813,22 +943,23 @@ internal sealed partial class MpCommands(
 	private async Task<bool> SetModsAsync(CommandContext context, int roomId, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
+		var by = context.By!;
 		if (args.Count < 1)
 		{
 			await context.Reply(MpReplies.ModsUsage, cancellationToken);
 			return false;
 		}
 
-		var room = await rooms.GetForAsync(context.Sender, roomId, cancellationToken);
+		var room = ViewRoom(by, roomId);
 		if (room is null)
 		{
 			await context.Reply(string.Format(MpReplies.NoActiveRoomWithId, roomId), cancellationToken);
 			return false;
 		}
 
-		var before = room.Settings.Mods;
-		var wasFreemod = room.Settings.Freemods;
-		var mode = room.Settings.Mode;
+		var before = room.Settings.MatchSettings.Mods;
+		var wasFreemod = room.Settings.MatchSettings.Freemods;
+		var mode = room.Settings.MatchSettings.Mode;
 
 		var mods = GameMods.NoMod;
 		var freemod = false;
@@ -846,17 +977,16 @@ internal sealed partial class MpCommands(
 			mods |= ModsExtensions.FromModString(token);
 		}
 
-		var outcome = await rooms.ConfigureAsync(context.Sender, roomId,
-			new RoomChange(Mods: mods.RemoveInvalidMods(mode), Freemods: freemod), cancellationToken);
-		if (outcome != RoomOutcome.Ok)
+		var outcome = await room.ScopeTo(by).Settings.ConfigureAsync(
+			new RoomSettingsChange(Mods: mods.RemoveInvalidMods(mode), Freemods: freemod), cancellationToken);
+		if (outcome != RoomResult.Ok)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
 		}
 
-		var updated = await rooms.GetForAsync(context.Sender, roomId, cancellationToken);
-		var after = updated?.Settings.Mods ?? mods;
-		var isFreemod = updated?.Settings.Freemods ?? freemod;
+		var after = room.Settings.MatchSettings.Mods;
+		var isFreemod = room.Settings.MatchSettings.Freemods;
 		await context.Reply(DescribeModChange(before, after, wasFreemod, isFreemod), cancellationToken);
 		return true;
 	}
@@ -885,12 +1015,18 @@ internal sealed partial class MpCommands(
 			if (!await StartCountdownAsync(context, roomId, seconds, true, cancellationToken))
 				return false;
 
-			await context.Reply(string.Format(MpReplies.MatchStartsInSeconds, seconds), cancellationToken);
 			return true;
 		}
 
-		var outcome = await rooms.StartAsync(context.Sender, roomId, cancellationToken);
-		if (outcome != RoomOutcome.Ok)
+		var room = ViewRoom(context.By!, roomId);
+		if (room is null)
+		{
+			await context.Reply(MpReplies.NotFound, cancellationToken);
+			return false;
+		}
+
+		var outcome = await room.ScopeTo(context.By!).Rounds.StartAsync(cancellationToken);
+		if (outcome != RoomResult.Ok)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -914,28 +1050,23 @@ internal sealed partial class MpCommands(
 		if (!await StartCountdownAsync(context, roomId, seconds, false, cancellationToken))
 			return false;
 
-		await context.Reply(string.Format(MpReplies.CountdownStarted, seconds), cancellationToken);
 		return true;
 	}
 
 	private async Task<bool> AbortTimerAsync(CommandContext context, int roomId, CancellationToken cancellationToken)
 	{
-		var room = await rooms.GetForAsync(context.Sender, roomId, cancellationToken);
+		var by = context.By!;
+		var room = ViewRoom(by, roomId);
 		if (room is null)
 		{
 			await context.Reply(string.Format(MpReplies.NoActiveRoomWithId, roomId), cancellationToken);
 			return false;
 		}
 
-		if (!room.IsManagedBy(context.Sender))
+		var outcome = await room.ScopeTo(by).Rounds.CancelCountdownAsync(cancellationToken);
+		if (outcome != RoomResult.Ok)
 		{
-			await context.Reply(MpReplies.Describe(RoomOutcome.NotAuthorized), cancellationToken);
-			return false;
-		}
-
-		if (!await countdowns.CancelAsync(roomId, cancellationToken))
-		{
-			await context.Reply(MpReplies.NoCountdownRunning, cancellationToken);
+			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
 		}
 
@@ -953,31 +1084,42 @@ internal sealed partial class MpCommands(
 	private async Task<bool> StartCountdownAsync(CommandContext context, int roomId, int seconds, bool startsRound,
 		CancellationToken cancellationToken)
 	{
-		var room = await rooms.GetForAsync(context.Sender, roomId, cancellationToken);
-		var refusal = room switch
+		var by = context.By!;
+		var room = ViewRoom(by, roomId);
+		if (room is null)
 		{
-			null => string.Format(MpReplies.NoActiveRoomWithId, roomId),
-			_ when !room.IsManagedBy(context.Sender) => MpReplies.Describe(RoomOutcome.NotAuthorized),
-			_ when seconds < 1 || seconds > 3600 => MpReplies.CountdownOutOfRange,
-			{ InProgress: true } when startsRound => MpReplies.Describe(RoomOutcome.InProgress),
-			{ Beatmap: null } when startsRound => MpReplies.Describe(RoomOutcome.NoBeatmap),
-			_ => null
-		};
-		if (refusal is not null)
-		{
-			await context.Reply(refusal, cancellationToken);
+			await context.Reply(string.Format(MpReplies.NoActiveRoomWithId, roomId), cancellationToken);
 			return false;
 		}
 
-		await countdowns.StartAsync(roomId, context.Sender, TimeSpan.FromSeconds(seconds), startsRound,
+		if (seconds < 1 || seconds > 3600)
+		{
+			await context.Reply(MpReplies.CountdownOutOfRange, cancellationToken);
+			return false;
+		}
+
+		var outcome = await room.ScopeTo(by).Rounds.StartCountdownAsync(TimeSpan.FromSeconds(seconds), startsRound,
 			cancellationToken);
+		if (outcome != RoomResult.Ok)
+		{
+			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
+			return false;
+		}
+
 		return true;
 	}
 
 	private async Task<bool> AbortAsync(CommandContext context, int roomId, CancellationToken cancellationToken)
 	{
-		var outcome = await rooms.AbortAsync(context.Sender, roomId, cancellationToken);
-		if (outcome != RoomOutcome.Ok)
+		var room = ViewRoom(context.By!, roomId);
+		if (room is null)
+		{
+			await context.Reply(MpReplies.NotFound, cancellationToken);
+			return false;
+		}
+
+		var outcome = await room.ScopeTo(context.By!).Rounds.AbortAsync(cancellationToken);
+		if (outcome != RoomResult.Ok)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -992,6 +1134,7 @@ internal sealed partial class MpCommands(
 	private async Task<bool> KickAsync(CommandContext context, int roomId, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
+		var by = context.By!;
 		if (args.Count < 1)
 		{
 			await context.Reply(MpReplies.KickUsage, cancellationToken);
@@ -1006,8 +1149,15 @@ internal sealed partial class MpCommands(
 			return false;
 		}
 
-		var outcome = await rooms.KickAsync(context.Sender, roomId, target, cancellationToken);
-		if (outcome != RoomOutcome.Ok)
+		var room = ViewRoom(by, roomId);
+		if (room is null)
+		{
+			await context.Reply(MpReplies.NotFound, cancellationToken);
+			return false;
+		}
+
+		var outcome = await room.ScopeTo(by).Members.KickAsync(target, cancellationToken);
+		if (outcome != RoomResult.Ok)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -1020,6 +1170,7 @@ internal sealed partial class MpCommands(
 	private async Task<bool> BanAsync(CommandContext context, int roomId, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
+		var by = context.By!;
 		if (args.Count < 1)
 		{
 			await context.Reply(MpReplies.BanUsage, cancellationToken);
@@ -1034,8 +1185,15 @@ internal sealed partial class MpCommands(
 			return false;
 		}
 
-		var outcome = await rooms.BanAsync(context.Sender, roomId, target, cancellationToken);
-		if (outcome != RoomOutcome.Ok)
+		var room = ViewRoom(by, roomId);
+		if (room is null)
+		{
+			await context.Reply(MpReplies.NotFound, cancellationToken);
+			return false;
+		}
+
+		var outcome = await room.ScopeTo(by).Members.BanAsync(target, cancellationToken);
+		if (outcome != RoomResult.Ok)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -1048,6 +1206,7 @@ internal sealed partial class MpCommands(
 	private async Task<bool> UnbanAsync(CommandContext context, int roomId, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
+		var by = context.By!;
 		if (args.Count < 1)
 		{
 			await context.Reply(MpReplies.UnbanUsage, cancellationToken);
@@ -1062,8 +1221,15 @@ internal sealed partial class MpCommands(
 			return false;
 		}
 
-		var outcome = await rooms.UnbanAsync(context.Sender, roomId, target, cancellationToken);
-		if (outcome != RoomOutcome.Ok)
+		var room = ViewRoom(by, roomId);
+		if (room is null)
+		{
+			await context.Reply(MpReplies.NotFound, cancellationToken);
+			return false;
+		}
+
+		var outcome = await room.ScopeTo(by).Members.UnbanAsync(target, cancellationToken);
+		if (outcome != RoomResult.Ok)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -1075,8 +1241,15 @@ internal sealed partial class MpCommands(
 
 	private async Task<bool> CloseAsync(CommandContext context, int roomId, CancellationToken cancellationToken)
 	{
-		var outcome = await rooms.CloseAsync(context.Sender, roomId, cancellationToken);
-		if (outcome != RoomOutcome.Ok)
+		var room = ViewRoom(context.By!, roomId);
+		if (room is null)
+		{
+			await context.Reply(MpReplies.NotFound, cancellationToken);
+			return false;
+		}
+
+		var outcome = await room.ScopeTo(context.By!).CloseAsync(cancellationToken);
+		if (outcome != RoomResult.Ok)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -1102,6 +1275,18 @@ internal sealed partial class MpCommands(
 		if (raw.StartsWith('#') && int.TryParse(raw[1..], out var id))
 			return await users.GetAsync(id, cancellationToken);
 		return await users.GetByNameAsync(raw, cancellationToken);
+	}
+
+	private Room? ViewRoom(Connection by, int id)
+	{
+		if (!lobby.Rooms.TryGetValue(id, out var room) || room.IsClosed) return null;
+		if (!room.Settings.IsPrivate || room.Slots.Find(by.User) is not null ||
+			room.Members.Observers.Any(observer => observer.User.Equals(by.User)) ||
+			room.Authority.IsManagedBy(by.User) ||
+			by.Session.Check(Permissions.RoomViewPrivate, DateTimeOffset.UtcNow) is Access.Allowed)
+			return room;
+
+		return null;
 	}
 
 	[GeneratedRegex(@"^#mp_(\d+)$")]
