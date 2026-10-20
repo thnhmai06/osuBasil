@@ -1,7 +1,7 @@
 # Phân tầng Application: Services nằm dưới Objects, và Infrastructure tương xứng (2026-10-21)
 
-Trạng thái (2026-10-21): **hướng đã được chủ dự án duyệt; các bước 1 và 3 đã làm xong, còn bước 2 (đảo tham chiếu) và
-bước 4 (tài liệu, harness) — chờ lệnh.** Chi tiết ở mục 7.
+Trạng thái (2026-10-21): **hướng đã được chủ dự án duyệt; các bước 1, 2 và 3 đã làm xong (đảo tham chiếu xong
+ở commit `362a8246`), tài liệu đã cập nhật.** Chi tiết ở mục 7.
 
 ## 1. Vì sao
 
@@ -120,11 +120,9 @@ Khác với bảng mục 2, ghi lại để khỏi nhầm:
 * Sự kiện giữ nguyên thứ tự phát nhưng `Beatmapsets.ScanAsync` phát `BeatmapsetImported/Deleted` sau khi cả lượt quét xong
   (trước đây phát giữa lượt quét, sau mỗi commit).
 
-Còn lại (dừng chờ lệnh chủ dự án):
+Đảo tham chiếu (`362a8246`): `Application.Services` chỉ tham chiếu Storage, mọi kiểu `internal`, `InternalsVisibleTo Basil.Application.Objects`;
+`Objects` tham chiếu Services và có `AddApplication()` công khai; ba cầu tạm đã xoá; `LoginAttempt`, `RegisterAttempt`, `LoginFailure`,
+`RegistrationFailure`, `BeatmapChecksums`, `SubmittedClient` chuyển sang `Application.Storage` (Objects công khai chúng, Services dùng chúng);
+`ScoreOutcome` nằm trong Services; ba csproj của Host không còn tham chiếu Services; harness DI gọi `AddApplication()` (83 đăng ký, không vòng).
 
-1. **Đảo tham chiếu**: `Application.Services` bỏ tham chiếu Objects (ba cầu tạm bị xoá, `ScoreOutcome`/kết quả của Services đưa
-   về kiểu chung ở Storage), `Objects` tham chiếu `Services`; Services `internal` + `InternalsVisibleTo`;
-   `AddApplication()` công khai ở Objects (context, đối tượng gốc, gọi `AddApplicationServices()` internal); harness DI gọi bốn
-   hàm `Add…`.
-2. **Tài liệu**: `docs/for-developers/architecture.md` và các tài liệu liên quan theo luật mới (AGENTS.md đã cập nhật).
-3. **Câu hỏi mở** ở [`next-steps-20261021.md`](next-steps-20261021.md).
+Còn lại: migrate test, rồi Host, rồi `Basil.Cli`; trả lời các câu hỏi mở ở [`next-steps-20261021.md`](next-steps-20261021.md).

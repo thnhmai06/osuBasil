@@ -319,8 +319,7 @@ dotnet build src/Bot/Application --nologo -v q
 ```
 
 A change to a constructor, a context or `DependencyInjection.cs` also needs the container check: a throwaway
-console project that calls the registrations of the application (`AddApplicationServices()` until the public
-`AddApplication()` of Application.Objects replaces it), `AddInfrastructureRuntime()` and `AddBotApplication()`,
+console project that calls the registrations of the application (`AddApplication()` of Application.Objects), `AddInfrastructureRuntime()` and `AddBotApplication()`,
 registers a stub for every external port (storage and capability), builds the provider with `ValidateOnBuild`, and
 resolves every registration (factory lambdas included). Run it with a timeout: a dependency cycle shows up as a hang,
 not as an error. It must finish without a cycle or a missing registration.
@@ -400,11 +399,9 @@ Application.Services. The hosts reference Application.Objects and call `AddAppli
 > Application, Infrastructure.Runtime and Basil.Bot.Application: behaviour belongs to the owning runtime object and
 > permission-dependent operations use its short-lived `ScopeTo(connection)` view; the user, room, lobby, channel,
 > beatmapset and score services were absorbed by the objects that own them (`UserRegistry`, `Lobby`, `Room`,
-> `GeneralChannelRegistry`, `Beatmapsets`, `BanchoConnection`). **Still to do in Application:** Application.Services
-> still references Application.Objects and the registration still lives in Services; flipping the reference
-> (Objects -> Services), making Services `internal` and moving the registration to a public `AddApplication()`
-> removes the three temporary bridge interfaces (`IAccountService`, `IBeatmapsetIndexing`, `IScoreRecording`). The
-> hosts and all test projects still use old namespaces; solution-wide `dotnet build`, `dotnet test` and
+> `GeneralChannelRegistry`, `Beatmapsets`, `BanchoConnection`). The reference is flipped (Objects ->
+> Services, every Services type `internal`, the public `AddApplication()` in Objects) and the temporary bridge
+> interfaces are gone. The hosts and all test projects still use old namespaces; solution-wide `dotnet build`, `dotnet test` and
 > `Basil.ArchitectureTests` do not run. The operator console (`Basil.Cli`), host migration and test migration remain
 > unfinished. Verify the migrated projects individually with the eight builds listed under Commands. The decisions in
 > [`plans/object-scope-plan-20261016.md`](plans/object-scope-plan-20261016.md) and
@@ -496,9 +493,9 @@ not host configuration.
 * **Services have no public contract.** A service is an `internal` class of Application.Services that Objects calls
   directly; there is no `IXService` and no registry contract. A service never sees a live object (`Room`, `User`,
   `Connection`), never publishes an event (events and `IEventPublisher<T>` belong to Objects, so the service returns
-  what happened and the object publishes it) and holds no running state. While the project reference is still being
-  flipped, a small `internal` interface in Objects bridges to the service (`IAccountService`,
-  `IBeatmapsetIndexing`, `IScoreRecording`); it disappears with the flip. Callers reach permission-dependent
+  what happened and the object publishes it) and holds no running state. Objects reach it through
+  `InternalsVisibleTo`; plain data that both Services and Objects use in public signatures (login, registration and
+  score submission inputs, import and scan results) lives in Application.Storage. Callers reach permission-dependent
   behaviour through `ScopeTo(connection)` and the server's own work through labelled system operations.
 * **Object or service?** One question decides it: does the operation have a caller whose rights it must
   check? Then it is behaviour of the object it changes, reached through `ScopeTo(connection)`. An operation that
@@ -919,8 +916,7 @@ not host configuration.
   one guard for conditions that return the same result; no redundant casts, `? true : false` or
   discarded-task lambdas (`_ => action()`, not `_ => _ = action()`).
 * Application.Objects registers its objects, registries and contexts, and the internal services, in the public
-  `DependencyInjection.AddApplication()` (while the reference flip is pending the registration is still
-  `AddApplicationServices()` in Application.Services).
+  `DependencyInjection.AddApplication()` (it calls the internal `AddApplicationServices()` of Application.Services).
 * **Read the IDE's suggestions to find better patterns** *(notes for the future code-principles skill)*. After a
   change, run Rider's `lint_files` / `get_file_problems` with warnings and suggestions on, and treat what it says as
   a review comment, not noise. The agent decides each case; the IDE only finds candidates. Act on:

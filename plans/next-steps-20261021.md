@@ -53,8 +53,7 @@ Bằng chứng kiểm tra: review diff từng dòng, build 8 project, kiểm DI 
 
 ## 4. Thứ tự làm tiếp (đề xuất)
 
-1. **Đảo tham chiếu** (xem mục 7 của [`application-layering-plan-20261021.md`](application-layering-plan-20261021.md)); sau đó cập nhật
-   `docs/for-developers/architecture.md` và các tài liệu liên quan. **Đang chờ lệnh chủ dự án.**
+1. ~~Đảo tham chiếu~~ **xong** (`362a8246`, xem mục 7 của [`application-layering-plan-20261021.md`](application-layering-plan-20261021.md)); `docs/for-developers` đã cập nhật.
 2. **Chủ dự án review** các thay đổi (chuỗi commit từ `3dcdbaef` đến hiện tại) và trả lời mục 3.
 3. **Migrate test** trước Host, vì test cho biết ngay đợt viết lại có sai hành vi không:
    * cập nhật namespace/cấu trúc từng project test; `Basil.ArchitectureTests` theo cấu trúc mới (ba project Application,
