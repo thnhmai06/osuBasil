@@ -1,7 +1,7 @@
 using Basil.Application.Storage.Common;
 using Basil.Domain.Mechanics;
 
-namespace Basil.Application.Objects.Beatmaps;
+namespace Basil.Application.Storage.Beatmaps;
 
 /// <summary>Finds and serves beatmapsets the server does not have, from a beatmap mirror.</summary>
 public interface IBeatmapsetMirror
@@ -20,7 +20,8 @@ public interface IBeatmapsetMirror
 	/// <param name="withVideo">Whether the download includes video files.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The download address, or <see langword="null" /> when no mirror is set.</returns>
-	Task<Uri?> GetDownloadAddressAsync(int beatmapsetId, bool withVideo, CancellationToken cancellationToken = default);
+	Task<Uri?> GetDownloadAddressAsync(int beatmapsetId, bool withVideo,
+		CancellationToken cancellationToken = default);
 }
 
 /// <summary>A beatmapset as a mirror describes it.</summary>

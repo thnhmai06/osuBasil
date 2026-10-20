@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using Basil.Application.Objects.Beatmaps;
 using Basil.Application.Storage.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Common;
@@ -22,7 +21,7 @@ using osu.Game.Utils;
 using BeatmapDifficulty = Basil.Domain.Beatmaps.BeatmapDifficulty;
 using LazerBeatmap = osu.Game.Beatmaps.Beatmap;
 
-namespace Basil.Infrastructure.Services.Beatmaps;
+namespace Basil.Infrastructure.Capabilities.Beatmaps;
 
 /// <summary>
 ///     Computes beatmap gameplay stats with ppy's osu!lazer ruleset libraries, the same engine the

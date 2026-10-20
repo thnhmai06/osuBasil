@@ -1,7 +1,6 @@
-using Basil.Application.Storage.Beatmaps;
 using Basil.Domain.Mechanics;
 
-namespace Basil.Application.Objects.Beatmaps;
+namespace Basil.Application.Storage.Beatmaps;
 
 /// <summary>Reads what a beatmapset archive contains.</summary>
 public interface IBeatmapsetReader

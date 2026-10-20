@@ -1,4 +1,3 @@
-using Basil.Application.Objects.Beatmaps;
 using Basil.Application.Storage.Beatmaps;
 using Basil.Domain.Beatmaps;
 using FFMpegCore;
@@ -6,7 +5,7 @@ using FFMpegCore.Enums;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace Basil.Infrastructure.Services.Beatmaps;
+namespace Basil.Infrastructure.Capabilities.Beatmaps;
 
 /// <summary>
 ///     Makes the files derived from a beatmapset's stored files: a ten-second audio preview of each audio track its

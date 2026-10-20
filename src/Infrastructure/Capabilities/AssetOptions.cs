@@ -1,4 +1,4 @@
-namespace Basil.Infrastructure.Services;
+namespace Basil.Infrastructure.Capabilities;
 
 /// <summary>Configures the capability ports that extract beatmap assets.</summary>
 public sealed class AssetOptions

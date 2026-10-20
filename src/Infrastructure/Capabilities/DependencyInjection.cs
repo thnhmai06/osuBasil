@@ -1,18 +1,18 @@
-using Basil.Application.Objects.Beatmaps;
+using Basil.Application.Storage.Beatmaps;
 using Basil.Application.Storage.Content;
-using Basil.Infrastructure.Services.Beatmaps;
-using Basil.Infrastructure.Services.Content;
+using Basil.Infrastructure.Capabilities.Beatmaps;
+using Basil.Infrastructure.Capabilities.Content;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Basil.Infrastructure.Services;
+namespace Basil.Infrastructure.Capabilities;
 
 /// <summary>Registers the capability ports that reach outside the process.</summary>
 public static class DependencyInjection
 {
-	/// <summary>Adds the capability ports the server needs.</summary>
+	/// <summary>Registers the capability ports that reach outside the process.</summary>
 	/// <param name="services">The service collection to add to.</param>
 	/// <returns><paramref name="services" />, for chaining.</returns>
-	public static IServiceCollection AddInfrastructureServices(this IServiceCollection services)
+	public static IServiceCollection AddInfrastructureCapabilities(this IServiceCollection services)
 	{
 		services.AddSingleton<IBeatmapsetReader, OsuBeatmapsetReader>();
 		services.AddSingleton<IBeatmapAnalyser, OsuBeatmapAnalyser>();

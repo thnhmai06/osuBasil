@@ -3,7 +3,7 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Formats.Png;
 
-namespace Basil.Infrastructure.Services.Content;
+namespace Basil.Infrastructure.Capabilities.Content;
 
 internal sealed class ImageSharpScreenshotInspector : IScreenshotInspector
 {

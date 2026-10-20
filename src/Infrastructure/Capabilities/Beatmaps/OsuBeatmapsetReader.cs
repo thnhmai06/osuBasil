@@ -1,13 +1,12 @@
 using System.IO.Compression;
 using System.Text;
-using Basil.Application.Objects.Beatmaps;
 using Basil.Application.Storage.Beatmaps;
 using Basil.Domain.Mechanics;
 using osu.Game.IO;
 using Decoder = osu.Game.Beatmaps.Formats.Decoder;
 using LazerBeatmap = osu.Game.Beatmaps.Beatmap;
 
-namespace Basil.Infrastructure.Services.Beatmaps;
+namespace Basil.Infrastructure.Capabilities.Beatmaps;
 
 /// <summary>Reads what a beatmapset archive contains, with ppy's osu!lazer legacy decoder.</summary>
 internal sealed class OsuBeatmapsetReader : IBeatmapsetReader

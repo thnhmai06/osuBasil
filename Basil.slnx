@@ -12,7 +12,7 @@
 	</Folder>
 	<Folder Name="/Sources/Infrastructure/">
 		<Project Path="src/Infrastructure/Storage/Basil.Infrastructure.Storage.csproj"/>
-		<Project Path="src/Infrastructure/Services/Basil.Infrastructure.Services.csproj"/>
+		<Project Path="src/Infrastructure/Capabilities/Basil.Infrastructure.Capabilities.csproj"/>
 		<Project Path="src/Infrastructure/Runtime/Basil.Infrastructure.Runtime.csproj"/>
 	</Folder>
 	<Folder Name="/Sources/Hosts/">

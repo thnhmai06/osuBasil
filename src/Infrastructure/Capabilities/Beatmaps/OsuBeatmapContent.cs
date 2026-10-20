@@ -4,7 +4,7 @@ using osu.Game.Beatmaps;
 using osu.Game.Skinning;
 using Beatmap = osu.Game.Beatmaps.Beatmap;
 
-namespace Basil.Infrastructure.Services.Beatmaps;
+namespace Basil.Infrastructure.Capabilities.Beatmaps;
 
 /// <summary>The understood content of a .osu file, as ppy's osu!lazer libraries read it.</summary>
 internal sealed class OsuBeatmapContent(IWorkingBeatmap working)

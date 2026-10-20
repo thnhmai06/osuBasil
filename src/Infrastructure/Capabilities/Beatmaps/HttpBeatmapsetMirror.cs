@@ -1,13 +1,13 @@
 using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Basil.Application.Objects.Beatmaps;
+using Basil.Application.Storage.Beatmaps;
 using Basil.Application.Storage.Common;
 using Basil.Application.Storage.Content;
 using Basil.Domain.Mechanics;
 using Microsoft.Extensions.Logging;
 
-namespace Basil.Infrastructure.Services.Beatmaps;
+namespace Basil.Infrastructure.Capabilities.Beatmaps;
 
 /// <inheritdoc />
 /// <remarks>

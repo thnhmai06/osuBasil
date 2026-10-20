@@ -1,6 +1,6 @@
 using Basil.Domain.Beatmaps;
 
-namespace Basil.Application.Objects.Beatmaps;
+namespace Basil.Application.Storage.Beatmaps;
 
 /// <summary>Makes the files derived from a beatmapset's stored files, such as audio previews.</summary>
 /// <remarks>
@@ -14,5 +14,6 @@ public interface IBeatmapAssets
 	/// <param name="beatmaps">The set's difficulties, naming their audio and preview times.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <remarks>A preview that cannot be made is left out; the set stays usable without it.</remarks>
-	Task BuildAsync(BeatmapsetRecord set, IReadOnlyList<BeatmapRecord> beatmaps, CancellationToken cancellationToken = default);
+	Task BuildAsync(BeatmapsetRecord set, IReadOnlyList<BeatmapRecord> beatmaps,
+		CancellationToken cancellationToken = default);
 }
