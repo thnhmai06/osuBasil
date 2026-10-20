@@ -2,10 +2,12 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\..\Application\Objects\Basil.Application.Objects.csproj"/>
+		<ProjectReference Include="..\..\Application\Storage\Basil.Application.Storage.csproj"/>
 	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="FFMpegCore"/>
+		<PackageReference Include="SixLabors.ImageSharp"/>
 		<PackageReference Include="ppy.osu.Game.Rulesets.Osu"/>
 		<PackageReference Include="ppy.osu.Game.Rulesets.Taiko"/>
 		<PackageReference Include="ppy.osu.Game.Rulesets.Catch"/>

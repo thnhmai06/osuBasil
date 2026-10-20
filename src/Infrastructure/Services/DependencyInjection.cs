@@ -1,5 +1,7 @@
 using Basil.Application.Objects.Beatmaps;
+using Basil.Application.Storage.Content;
 using Basil.Infrastructure.Services.Beatmaps;
+using Basil.Infrastructure.Services.Content;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Infrastructure.Services;
@@ -16,6 +18,7 @@ public static class DependencyInjection
 		services.AddSingleton<IBeatmapAnalyser, OsuBeatmapAnalyser>();
 		services.AddSingleton<IBeatmapAssets, BeatmapAssets>();
 		services.AddSingleton<IBeatmapsetMirror, HttpBeatmapsetMirror>();
+		services.AddSingleton<IScreenshotInspector, ImageSharpScreenshotInspector>();
 		return services;
 	}
 }

@@ -30,27 +30,53 @@ public sealed class ScopedServer
 	/// <summary>Gets operations for screenshots.</summary>
 	public ScopedServerScreenshots Screenshots { get; }
 
-	/// <summary>Sends a notification to online osu! clients.</summary>
+	/// <summary>Sends a notification to one user's open osu! client.</summary>
 	/// <param name="text">The text to show.</param>
-	/// <param name="to">The users to notify, or <see langword="null" /> for every online user.</param>
+	/// <param name="to">The user to notify.</param>
 	/// <returns>
-	///     How many clients were sent the notification, or <see langword="null" /> when the caller may not announce.
+	///     The number of clients sent the notification, or <see langword="null" /> when the caller lacks permission.
 	/// </returns>
-	/// <remarks>Requires <see cref="Permissions.ChatAnnounce" />.</remarks>
-	public int? Announce(string text, IReadOnlyCollection<UserRecord>? to = null)
+	/// <remarks>
+	///     Requires <see cref="Permissions.ChatAnnounce" />; only open osu! clients receive the notification.
+	/// </remarks>
+	public int? Notify(string text, UserRecord to)
+	{
+		if (!CanAnnounce()) return null;
+		return Server.Notify(text, to);
+	}
+
+	/// <summary>Sends a notification to the specified users' open osu! clients.</summary>
+	/// <param name="text">The text to show.</param>
+	/// <param name="to">The users to notify.</param>
+	/// <returns>
+	///     The number of clients sent the notification, or <see langword="null" /> when the caller lacks permission.
+	/// </returns>
+	/// <remarks>
+	///     Requires <see cref="Permissions.ChatAnnounce" />; only open osu! clients receive the notification.
+	/// </remarks>
+	public int? Notify(string text, IReadOnlyCollection<UserRecord> to)
+	{
+		if (!CanAnnounce()) return null;
+		return Server.Notify(text, to);
+	}
+
+	/// <summary>Sends a notification to every open osu! client.</summary>
+	/// <param name="text">The text to show.</param>
+	/// <returns>
+	///     The number of clients sent the notification, or <see langword="null" /> when the caller lacks permission.
+	/// </returns>
+	/// <remarks>
+	///     Requires <see cref="Permissions.ChatAnnounce" />; only open osu! clients receive the notification.
+	/// </remarks>
+	public int? NotifyAll(string text)
+	{
+		if (!CanAnnounce()) return null;
+		return Server.NotifyAll(text);
+	}
+
+	private bool CanAnnounce()
 	{
 		var context = Server.Context.Session;
-		if (By.Session.Check(Permissions.ChatAnnounce, context.Clock.GetUtcNow()) is not Access.Allowed) return null;
-
-		var recipients = context.Registry.Sessions.Values
-			.Where(session => to is null || to.Contains(session.User))
-			.Select(session => session.Bancho)
-			.Where(connection => connection is not null && connection.IsOpen)
-			.Cast<BanchoConnection>()
-			.ToList();
-		if (recipients.Count == 0) return 0;
-
-		context.Events.Publish(new UserNotificationSent(recipients, text));
-		return recipients.Count;
+		return By.Session.Check(Permissions.ChatAnnounce, context.Clock.GetUtcNow()) is Access.Allowed;
 	}
 }

@@ -1,6 +1,7 @@
 ﻿using Basil.Application.Objects.Chat;
 using Basil.Application.Objects.Sessions;
 using Basil.Domain.Chat;
+using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Objects.Servers;
@@ -96,5 +97,58 @@ public sealed class Server
 			return null;
 
 		return room.Channel;
+	}
+
+	/// <summary>
+	///     The server itself calls this system operation, which needs no rights, to notify one user's open osu! client.
+	/// </summary>
+	/// <param name="text">The text to show.</param>
+	/// <param name="to">The user to notify.</param>
+	/// <returns>The number of open osu! clients sent the notification.</returns>
+	/// <remarks>This system operation needs no rights because the server itself calls it.</remarks>
+	public int Notify(string text, UserRecord to)
+	{
+		return NotifyCore(text, [to]);
+	}
+
+	/// <summary>
+	///     The server itself calls this system operation, which needs no rights, to notify the specified users' open osu!
+	///     clients.
+	/// </summary>
+	/// <param name="text">The text to show.</param>
+	/// <param name="to">The users to notify.</param>
+	/// <returns>The number of open osu! clients sent the notification.</returns>
+	/// <remarks>This system operation needs no rights because the server itself calls it.</remarks>
+	public int Notify(string text, IReadOnlyCollection<UserRecord> to)
+	{
+		return NotifyCore(text, to);
+	}
+
+	/// <summary>
+	///     The server itself calls this system operation, which needs no rights, to notify every open osu! client.
+	/// </summary>
+	/// <param name="text">The text to show.</param>
+	/// <returns>The number of open osu! clients sent the notification.</returns>
+	/// <remarks>This system operation needs no rights because the server itself calls it.</remarks>
+	public int NotifyAll(string text)
+	{
+		return NotifyCore(text, null);
+	}
+
+	private int NotifyCore(string text, IReadOnlyCollection<UserRecord>? to)
+	{
+		if (string.IsNullOrWhiteSpace(text)) return 0;
+
+		var context = Context.Session;
+		var recipients = context.Registry.Sessions.Values
+			.Where(session => to is null || to.Contains(session.User))
+			.Select(session => session.Bancho)
+			.OfType<BanchoConnection>()
+			.Where(connection => connection.IsOpen)
+			.ToList();
+		if (recipients.Count == 0) return 0;
+
+		context.Events.Publish(new UserNotificationSent(recipients, text));
+		return recipients.Count;
 	}
 }
