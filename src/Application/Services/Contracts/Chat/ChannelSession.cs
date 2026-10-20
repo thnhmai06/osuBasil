@@ -62,6 +62,37 @@ public abstract class ChannelSession
 		return _sync.EnterScope();
 	}
 
+	/// <summary>Lists the members a posted message is shown to.</summary>
+	/// <param name="posted">The message as the channel announced it.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The members who do not block the author; every member when nobody blocks them.</returns>
+	/// <remarks>
+	///     A member who blocks the author is not shown the message, silently, and the author is not told. A block
+	///     yields to a higher right: an author holding <see cref="Permissions.ChatMessageAnyone" />, and the server
+	///     itself, reach every member. The author's own connections are kept; the transport decides whether to echo.
+	/// </remarks>
+	public async Task<IReadOnlyList<Connection>> RecipientsAsync(ChannelMessagePosted posted,
+		CancellationToken cancellationToken = default)
+	{
+		var author = posted.Message.Author;
+		var members = Members.ToArray();
+		if (posted.By is not { } by ||
+		    by.Session.Check(Permissions.ChatMessageAnyone, Context.Clock.GetUtcNow()) is Access.Allowed ||
+		    this is PmChannelSession)
+			return members;
+
+		var blockers = new HashSet<UserRecord>();
+		foreach (var user in members.Select(member => member.User).Where(user => !user.Equals(author)).Distinct())
+		{
+			var relationships = await Context.Relationships.ListAsync(user, cancellationToken);
+			if (relationships.Any(relationship => relationship.Type == RelationshipType.Block &&
+			                                      relationship.Target.Equals(author)))
+				blockers.Add(user);
+		}
+
+		return blockers.Count == 0 ? members : [.. members.Where(member => !blockers.Contains(member.User))];
+	}
+
 	/// <summary>Posts a message under the given author and reports the connection that posted it.</summary>
 	/// <param name="author">The user shown as the author.</param>
 	/// <param name="text">The message text.</param>
