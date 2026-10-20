@@ -8,7 +8,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Objects.Multiplayer;
 
 /// <summary>The open multiplayer rooms and the osu! clients watching the multiplayer lobby.</summary>
-public sealed class Lobby : IRoomLobbyPort
+public sealed class Lobby : IRoomLobbyPort, IConnectionLobbyPort
 {
 	private const int MaxRoomId = ushort.MaxValue;
 	private readonly HashSet<int> _reserved = [];
@@ -180,6 +180,7 @@ public sealed class Lobby : IRoomLobbyPort
 	}
 
 	Room? IRoomLobbyPort.RoomOf(BanchoConnection player) => RoomOf(player);
+	Room? IConnectionLobbyPort.RoomOf(BanchoConnection player) => RoomOf(player);
 	void IRoomLobbyPort.Occupied(Room room) => Occupied(room);
 	void IRoomLobbyPort.Emptied(Room room) => Emptied(room);
 	void IRoomLobbyPort.Close(Room room, UserRecord? by) => Close(room, by);

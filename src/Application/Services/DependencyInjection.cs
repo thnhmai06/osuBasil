@@ -1,4 +1,5 @@
 using Basil.Application.Objects.Beatmaps;
+using Basil.Application.Objects.Anticheat;
 using Basil.Application.Objects.Chat;
 using Basil.Application.Objects.Events;
 using Basil.Application.Objects.Multiplayer;
@@ -8,7 +9,6 @@ using Basil.Application.Objects.Scores;
 using Basil.Application.Objects.Sessions;
 using Basil.Application.Objects.Servers;
 using Basil.Application.Objects.Users;
-using Basil.Application.Services.Anticheat;
 using Basil.Application.Services.Beatmaps;
 using Basil.Application.Services.Chat;
 using Basil.Application.Services.Multiplayer;
@@ -53,7 +53,11 @@ public static class DependencyInjection
 			sp.GetRequiredService<ICredentialRepository>(),
 			sp.GetRequiredService<TimeProvider>(),
 			sp.GetRequiredService<IEventPublisher<UserEvent>>(),
-			sp.GetRequiredService<ChannelContext>()));
+			sp.GetRequiredService<ChannelContext>(),
+			() => sp.GetRequiredService<Lobby>(),
+			sp.GetRequiredService<IScoreRecording>(),
+			sp.GetRequiredService<IEventPublisher<ScoreEvent>>(),
+			sp.GetRequiredService<IEventPublisher<AnticheatEvent>>()));
 		services.AddSingleton<IRoomUsersPort>(sp => sp.GetRequiredService<UserRegistry>());
 		services.AddSingleton<Func<UserRecord, User>>(sp => sp.GetRequiredService<UserRegistry>().Of);
 
@@ -63,12 +67,7 @@ public static class DependencyInjection
 			sp.GetRequiredService<IGeneralChannelRegistry>(),
 			sp.GetRequiredService<IRelationshipRepository>(),
 			sp.GetRequiredService<IChannelRepository>()));
-		services.AddSingleton<SessionContext>(sp => new SessionContext(
-			sp.GetRequiredService<TimeProvider>(),
-			sp.GetRequiredService<IEventPublisher<UserEvent>>(),
-			sp.GetRequiredService<UserRegistry>(),
-			sp.GetRequiredService<IRelationshipRepository>(),
-			sp.GetRequiredService<ChannelContext>()));
+		services.AddSingleton<SessionContext>(sp => sp.GetRequiredService<UserRegistry>().Session);
 		services.AddSingleton<ServerContext>(sp => new ServerContext(
 			sp.GetRequiredService<SessionContext>(),
 			sp.GetRequiredService<IScreenshotInspector>(),
@@ -94,14 +93,11 @@ public static class DependencyInjection
 		services.AddSingleton<RoomService>();
 		services.AddSingleton<IRoomService>(sp => sp.GetRequiredService<RoomService>());
 
-		services.AddSingleton<AnticheatService>();
-		services.AddSingleton<IAnticheatService>(sp => sp.GetRequiredService<AnticheatService>());
-
 		services.AddSingleton<MatchService>();
 		services.AddSingleton<IMatchService>(sp => sp.GetRequiredService<MatchService>());
 
-		services.AddSingleton<ScoreService>();
-		services.AddSingleton<IScoreService>(sp => sp.GetRequiredService<ScoreService>());
+		services.AddSingleton<ScoreRecorder>();
+		services.AddSingleton<IScoreRecording>(sp => sp.GetRequiredService<ScoreRecorder>());
 
 		services.AddSingleton<BeatmapsetIndexer>();
 		services.AddSingleton<IBeatmapsetIndexing>(sp => sp.GetRequiredService<BeatmapsetIndexer>());

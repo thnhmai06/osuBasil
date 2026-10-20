@@ -1,64 +1,66 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
-using Basil.Application.Objects.Events;
-using Basil.Application.Objects.Multiplayer;
 using Basil.Application.Objects.Scores;
 using Basil.Application.Storage.Common;
 using Basil.Application.Storage.Scores;
-using Basil.Application.Objects.Sessions;
 using Basil.Application.Storage.Multiplayer;
 using Basil.Application.Storage.Users;
 using Basil.Domain.Bancho;
 using Basil.Domain.Common;
+using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Scores;
 
 /// <summary>
-///     Validates and stores submitted scores, their replays, and the submitter's updated statistics.
+///     Validates and stores submitted scores, their replays, and the player's updated statistics.
 /// </summary>
-internal sealed class ScoreService(
+internal sealed class ScoreRecorder(
 	IScoreRepository scores,
 	IRoundScoreRepository roundScores,
 	IReplayStorage replays,
-	IUserStatsRepository stats,
-	Lobby lobby,
-	IEventPublisher<ScoreEvent> events) : IScoreService
+	IUserStatsRepository stats) : IScoreRecording
 {
 	/// <summary>The shortest replay, in bytes, that is kept.</summary>
 	internal const int MinReplayLength = 24;
 
-	/// <inheritdoc />
-	public async Task<ScoreRejection?> SubmitAsync(
-		BanchoConnection connection,
+	/// <summary>Validates and records a score with its optional round, replay and updated statistics.</summary>
+	/// <param name="player">The account that submitted the score.</param>
+	/// <param name="loginClient">The osu! client the player logged in with.</param>
+	/// <param name="submission">The parsed submission.</param>
+	/// <param name="checkedBeatmap">The checksums of the beatmap the score is checked against.</param>
+	/// <param name="client">The osu! client information sent with the submission.</param>
+	/// <param name="round">The round the player played, or <see langword="null" />.</param>
+	/// <param name="team">The team the score was set for, or <see langword="null" />.</param>
+	/// <param name="replay">The replay bytes, or <see langword="null" /> when none is kept.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The rejection, or the stored score and updated statistics.</returns>
+	public async Task<ScoreOutcome> ValidateAndRecordAsync(
+		UserRecord player,
+		BanchoClient loginClient,
 		Submission submission,
-		BeatmapChecksums? beatmap,
+		BeatmapChecksums checkedBeatmap,
 		SubmittedClient client,
+		Round? round,
+		GameTeam? team,
 		byte[]? replay,
 		CancellationToken cancellationToken = default)
 	{
-		var room = lobby.RoomOf(connection);
-		var round = room?.Rounds.LastRound is { } last && last.BeatmapHash == client.BeatmapHash ? last : null;
-		var checkedBeatmap =
-			beatmap ?? (round is not null ? new BeatmapChecksums(client.BeatmapHash, null) : null);
-		if (checkedBeatmap is null) return ScoreRejection.UnknownBeatmap;
+		if (Validate(submission, loginClient, checkedBeatmap, player.Value.Name, client) is { } rejection)
+			return new ScoreOutcome(rejection, null, null, null);
 
-		var loginClient = connection.Login.Client!;
-		if (Validate(submission, loginClient, checkedBeatmap, connection.Record.Value.Name, client) is { } rejection)
-			return rejection;
-
-		var team = round is not null ? room!.Slots.Find(connection)?.Team : null;
 		ScoreRecord score;
 		try
 		{
 			score = await scores.CreateAsync(
-				submission.Score with { UserId = connection.Record.Id }, cancellationToken);
+				submission.Score with { UserId = player.Id }, cancellationToken);
 		}
 		catch (AlreadyExistsException)
 		{
-			return ScoreRejection.Duplicate;
+			return new ScoreOutcome(ScoreRejection.Duplicate, null, null, null);
 		}
 
 		var roundScore = round is not null
@@ -73,7 +75,7 @@ internal sealed class ScoreService(
 		}
 
 		// ponytail: get-then-write per user; add an atomic increment to the contract if one user's submissions can overlap.
-		var current = await stats.GetAsync(connection.Record, submission.Score.Mode, cancellationToken);
+		var current = await stats.GetAsync(player, submission.Score.Mode, cancellationToken);
 		current.PlayCount++;
 		current.TotalScore += submission.Score.TotalScore;
 		if (submission.Score.IsPassed)
@@ -82,9 +84,7 @@ internal sealed class ScoreService(
 
 		await stats.CreateOrUpdateAsync(current, cancellationToken);
 
-		events.Publish(new ScoreSubmitted(connection.Record, score, current, roundScore,
-			round is not null ? room : null));
-		return null;
+		return new ScoreOutcome(null, score, roundScore, current);
 	}
 
 
