@@ -16,7 +16,7 @@ An action that depends on a caller starts from the room and the caller's real `C
 var scopedRoom = room.ScopeTo(by);
 ```
 
-`ScopedRoom` holds the room, caller, room roles and derived `RoomPermissions` for one request or command. Use its parts—`Slots`, `Rounds`, `Settings`, `Authority` and `Members`—rather than asking `IRoomService` to perform a player's action. Do not retain a scope after the request: its authority is a snapshot.
+`ScopedRoom` holds the room, caller, room roles and derived `RoomPermissions` for one request or command. Use its parts—`Slots`, `Rounds`, `Settings`, `Authority` and `Members`—rather than asking a service to perform a player's action. Do not retain a scope after the request: its authority is a snapshot.
 
 Each operation returns a `RoomResult` for ordinary outcomes such as success, missing authority or a suspended permission. The caller does not pass permissions through each operation, and connection type alone never grants authority.
 
@@ -55,7 +55,7 @@ This is why a creator or referee whose room permissions are suspended cannot man
 
 ### System-owned operations
 
-Some room work has no user caller. `IRoomService` retains system operations such as cleaning up room membership and recording submitted scores. These operations do not create a caller scope. Caller-authorized room behavior belongs to `ScopedRoom` and its parts.
+Some room work has no user caller. The `Lobby` and the `Room` keep system operations such as releasing a connection from the rooms, removing a suspended member or referee, recovering unfinished matches (`Lobby`) and recording a submitted score (`Room.RecordScoreAsync`). Their summaries say that the server itself calls them and that they need no rights; they do not create a caller scope. Caller-authorized room behavior belongs to `ScopedRoom` and its parts.
 
 ## Membership, slots and settings
 
@@ -101,7 +101,7 @@ Room state is mutable and shared. A read followed by a mutation must hold the ex
 * [`Room.cs`](../../src/Application/Objects/Multiplayer/Rooms/Room.cs): live room and `ScopeTo`
 * [`ScopedRoom.cs`](../../src/Application/Objects/Multiplayer/Rooms/ScopedRoom.cs): caller, role and room-permission scope
 * [`ScopedRoomMembers.cs`](../../src/Application/Objects/Multiplayer/Rooms/ScopedRoomMembers.cs), [`ScopedRoomSlots.cs`](../../src/Application/Objects/Multiplayer/Rooms/ScopedRoomSlots.cs), [`ScopedRoomRounds.cs`](../../src/Application/Objects/Multiplayer/Rooms/ScopedRoomRounds.cs), [`ScopedRoomSettings.cs`](../../src/Application/Objects/Multiplayer/Rooms/ScopedRoomSettings.cs), [`ScopedRoomAuthority.cs`](../../src/Application/Objects/Multiplayer/Rooms/ScopedRoomAuthority.cs): caller-authorized room parts
-* [`IRoomService.cs`](../../src/Application/Objects/Multiplayer/IRoomService.cs): system-owned room operations
+* [`Lobby.cs`](../../src/Application/Objects/Multiplayer/Lobby.cs), [`Room.cs`](../../src/Application/Objects/Multiplayer/Rooms/Room.cs): system-owned room operations
 * [`RoomRoles.cs`](../../src/Domain/Multiplayer/RoomRoles.cs), [`RoomPermissions.cs`](../../src/Domain/Multiplayer/RoomPermissions.cs), [`RoomPermissionsGroups.cs`](../../src/Domain/Multiplayer/RoomPermissionsGroups.cs): room rights
 * [`RoomCountdown.cs`](../../src/Application/Objects/Multiplayer/Rooms/RoomCountdown.cs): countdown state and marks
 * [`Lobby.cs`](../../src/Application/Objects/Multiplayer/Lobby.cs), [`ScopedLobby.cs`](../../src/Application/Objects/Multiplayer/ScopedLobby.cs): lobby-owned lifetime and caller-scoped operations

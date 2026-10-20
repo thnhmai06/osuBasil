@@ -53,7 +53,7 @@ An area manager keeps the permissions of the area they manage while restricted. 
 
 ### Distinguishing denial outcomes
 
-`UserSession.Check` distinguishes these permission states:
+`User.Check` distinguishes these permission states:
 
 | `Access` result | Meaning |
 |---|---|
@@ -83,7 +83,7 @@ A name is unique among live accounts after normalization: matching is case-insen
 
 BasilBot is the server's fixed user identity (id 1), is the voice the server speaks with, not an actor: nobody can sign in as it or act for it, permissions mean nothing to it, and its privileges only decide how a client shows it. Its record cannot be deleted, restricted, given permissions or a password, or have its connections revoked; its public metadata may be edited.
 
-**Planned:** BasilBot will be represented as a permanently online `UserSession` with a connection. Its announcements will be server-originated and will not pass through an ordinary user's permission check. A BasilBot command will act with the typist's scoped permissions, never with permissions belonging to BasilBot.
+**Planned:** BasilBot will be represented as a permanently online `User` with a connection. Its announcements will be server-originated and will not pass through an ordinary user's permission check. A BasilBot command will act with the typist's scoped permissions, never with permissions belonging to BasilBot.
 
 The operator console is also **planned**. It is the explicit operator entry point for creating the first administrator; no account receives administrator permissions implicitly.
 
@@ -105,7 +105,7 @@ The operator console is also **planned**. It is the explicit operator entry poin
 * [`PermissionsGroups.cs`](../../src/Domain/Users/PermissionsGroups.cs): permission masks, defaults and area managers
 * [`Privileges.cs`](../../src/Domain/Users/Privileges.cs): roles understood by osu! and their direct permissions
 * [`Restriction.cs`](../../src/Domain/Permissions/Restriction.cs): restriction target, permissions and time window
-* [`UserSession.cs`](../../src/Application/Objects/Sessions/UserSession.cs): effective permission checks
+* [`User.cs`](../../src/Application/Objects/Users/User.cs): effective permission checks
 * [`ScopedUser.cs`](../../src/Application/Objects/Users/ScopedUser.cs), [`ScopedUserRestrictions.cs`](../../src/Application/Objects/Users/ScopedUserRestrictions.cs): account actions and restrictions
 * [`UserResult.cs`](../../src/Application/Objects/Users/UserResult.cs): account-operation outcomes
 * [`RestrictionHandler.cs`](../../src/Infrastructure/Runtime/Sessions/RestrictionHandler.cs): infrastructure reaction to restriction events

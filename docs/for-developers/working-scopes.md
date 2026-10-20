@@ -103,7 +103,7 @@ The osu! client's friend list (`osu-getfriends.php`, adding and removing friends
 setting that accepts private messages from friends only and with blocking: a block refuses private messages,
 spectating and invitations (staff who manage the matching area are not bound by a block; see "a block yields to a
 higher right" in `AGENTS.md`). A blocked user's messages in general channels are filtered silently per recipient: the
-server offers the recipients of a message (ChannelSession.RecipientsAsync) and the transports deliver to them. Players use friends and blocks during tournaments to reach each other and referees, so they stay
+server offers the recipients of a message (Channel.RecipientsAsync) and the transports deliver to them. Players use friends and blocks during tournaments to reach each other and referees, so they stay
 even though Basil has no other social features.
 
 ### Moderation
