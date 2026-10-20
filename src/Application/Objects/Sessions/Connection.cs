@@ -96,7 +96,7 @@ namespace Basil.Application.Objects.Sessions
 			var spectators = Spectators.ToArray();
 			MutableSpectators.Clear();
 			foreach (var spectator in spectators)
-				Context.Events.Emit(new UserSpectatorLeft(this, spectator));
+				Context.Events.Publish(new UserSpectatorLeft(this, spectator));
 		}
 	}
 

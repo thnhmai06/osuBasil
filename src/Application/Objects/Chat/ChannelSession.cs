@@ -112,7 +112,7 @@ public abstract class ChannelSession
 		    && !notice)
 			awayReply = new Message(pmChannel.Owner.User, away, now);
 
-		Context.Events.Emit(new ChannelMessagePosted(this, message, truncated, awayReply, by));
+		Context.Events.Publish(new ChannelMessagePosted(this, message, truncated, awayReply, by));
 	}
 
 	/// <summary>Closes this channel and removes every member.</summary>
@@ -126,7 +126,7 @@ public abstract class ChannelSession
 		foreach (var member in members)
 			MutableMembers.Remove(member);
 
-		Context.Events.Emit(new ChannelClosed(this, members));
+		Context.Events.Publish(new ChannelClosed(this, members));
 
 		if (this is GeneralChannelSession general)
 			Context.Registry.Remove(general);

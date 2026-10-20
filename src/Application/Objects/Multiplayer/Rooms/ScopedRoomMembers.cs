@@ -116,7 +116,7 @@ public sealed class ScopedRoomMembers
 
 		var slot = room.Vacate(seated)!;
 		var progress = room.AdvanceRound();
-		room.Context.Events.Emit(new RoomPlayerKicked(room, by.User, seated, slot.Index, room.Authority.Host,
+		room.Context.Events.Publish(new RoomPlayerKicked(room, by.User, seated, slot.Index, room.Authority.Host,
 			progress));
 		room.LeaveChannel(seated);
 		room.ReportIfEmpty();
@@ -149,7 +149,7 @@ public sealed class ScopedRoomMembers
 			progress = room.AdvanceRound();
 		}
 
-		room.Context.Events.Emit(new RoomPlayerBanned(room, by.User, player, vacated, evicted, room.Authority.Host,
+		room.Context.Events.Publish(new RoomPlayerBanned(room, by.User, player, vacated, evicted, room.Authority.Host,
 			progress));
 		if (evicted is not null)
 		{
@@ -174,7 +174,7 @@ public sealed class ScopedRoomMembers
 		var room = _scoped.Room;
 		if (!room.Members.MutableBanned.Remove(player)) return RoomResult.NotBanned;
 
-		room.Context.Events.Emit(new RoomPlayerUnbanned(room, player));
+		room.Context.Events.Publish(new RoomPlayerUnbanned(room, player));
 		return RoomResult.Ok;
 	}
 
@@ -196,7 +196,7 @@ public sealed class ScopedRoomMembers
 		if (!target.Connections.Any(connection => connection.IsOpen)) return RoomResult.TargetOffline;
 		if (room.Slots.Find(target.User) is not null) return RoomResult.AlreadyInRoom;
 
-		room.Context.Events.Emit(new RoomPlayerInvited(room, _scoped.By.User, target.User));
+		room.Context.Events.Publish(new RoomPlayerInvited(room, _scoped.By.User, target.User));
 		return RoomResult.Ok;
 	}
 

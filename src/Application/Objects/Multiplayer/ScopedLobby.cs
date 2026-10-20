@@ -2,10 +2,8 @@ using Basil.Application.Objects.Multiplayer.Events;
 using Basil.Application.Objects.Multiplayer.Rooms;
 using Basil.Application.Objects.Sessions;
 using Basil.Domain;
-using Basil.Domain.Content;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Permissions;
-using Basil.Domain.Users;
 
 namespace Basil.Application.Objects.Multiplayer;
 
@@ -69,7 +67,8 @@ public sealed class ScopedLobby
 		if (access is Access.NotGranted) return (null, RoomResult.NotAuthorized);
 		if (access is Access.Suspended) return (null, RoomResult.Silenced);
 
-		if ((await Lobby.Context.Settings.GetAsync(cancellationToken)).LockedCreation.HasFlag(ServerSettings.CreationLocks.Rooms) &&
+		if ((await Lobby.Context.Settings.GetAsync(cancellationToken)).LockedCreation.HasFlag(ServerSettings
+			    .CreationLocks.Rooms) &&
 		    By.Session.Check(Permissions.RoomManageAny, now) is not Access.Allowed)
 			return (null, RoomResult.NotAuthorized);
 
@@ -123,7 +122,7 @@ public sealed class ScopedLobby
 		DateTimeOffset? closesAt = room.IsTournament && !room.Slots.Any(slot => slot.Player is not null)
 			? Lobby.ScheduleClosing(room)
 			: null;
-		Lobby.Context.Events.Emit(new LobbyRoomOpened(room, room.Authority.Host, closesAt));
+		Lobby.Context.Events.Publish(new LobbyRoomOpened(room, room.Authority.Host, closesAt));
 		return (room, RoomResult.Ok);
 	}
 
@@ -134,7 +133,7 @@ public sealed class ScopedLobby
 		if (By is not BanchoConnection bancho)
 			throw new ArgumentException("Only an osu! client can watch the lobby.", nameof(By));
 
-		if (Lobby.MutableWatchers.Add(bancho)) Lobby.Context.Events.Emit(new LobbyWatcherJoined(bancho));
+		if (Lobby.MutableWatchers.Add(bancho)) Lobby.Context.Events.Publish(new LobbyWatcherJoined(bancho));
 	}
 
 	/// <summary>Stops watching the multiplayer lobby; doing it again does nothing.</summary>

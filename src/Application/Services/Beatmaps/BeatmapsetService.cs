@@ -1,6 +1,6 @@
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Channels;
+using Basil.Application.Objects.Events;
 using Basil.Application.Objects.Beatmaps;
 using Basil.Application.Services.Common;
 using Basil.Application.Storage.Beatmaps;
@@ -22,9 +22,9 @@ internal sealed class BeatmapsetService(
 	IBeatmapRepository beatmaps,
 	IBeatmapsetStorage storage,
 	TimeProvider clock,
-	BeatmapsetEventStream eventStream) : IBeatmapsetService
+	IEventPublisher<BeatmapsetEvent> events) : IBeatmapsetService
 {
-	private readonly BeatmapsetContext _context = new(clock, eventStream, beatmapsets, storage);
+	private readonly BeatmapsetContext _context = new(clock, events, beatmapsets, storage);
 
 	/// <summary>The name passed when a storyboard file is stored or looked for; its kind decides where it lies.</summary>
 	private const string StoryboardFileName = "storyboard.osb";
@@ -38,8 +38,6 @@ internal sealed class BeatmapsetService(
 			RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
 	/// <inheritdoc />
-	public ChannelReader<BeatmapsetEvent> Events => eventStream.Reader;
-
 	/// <inheritdoc />
 	public Beatmapset Of(BeatmapsetRecord set)
 	{
@@ -218,7 +216,7 @@ internal sealed class BeatmapsetService(
 			await storage.SaveAsync(set, item.Archive, cancellationToken).ConfigureAwait(false);
 			await StoreFilesAsync(set, cancellationToken).ConfigureAwait(false);
 			var storedBeatmaps = await beatmaps.ListAsync(set, cancellationToken).ConfigureAwait(false);
-			eventStream.Emit(new BeatmapsetImported(set, storedBeatmaps));
+			events.Publish(new BeatmapsetImported(set, storedBeatmaps));
 		}
 
 		for (var i = 0; i < changed.Count; i++)
@@ -233,7 +231,7 @@ internal sealed class BeatmapsetService(
 				await StoreFilesAsync(set, cancellationToken).ConfigureAwait(false);
 
 		foreach (var set in remove)
-			eventStream.Emit(new BeatmapsetDeleted(set));
+			events.Publish(new BeatmapsetDeleted(set));
 
 		return new BeatmapsetScanResult(
 			indexed.Count(item => item.Existing is null),
@@ -344,7 +342,7 @@ internal sealed class BeatmapsetService(
 		await StoreFilesAsync(set, cancellationToken).ConfigureAwait(false);
 
 		var storedBeatmaps = await beatmaps.ListAsync(set, cancellationToken).ConfigureAwait(false);
-		eventStream.Emit(new BeatmapsetImported(set, storedBeatmaps));
+		events.Publish(new BeatmapsetImported(set, storedBeatmaps));
 		return (set, storedBeatmaps);
 	}
 

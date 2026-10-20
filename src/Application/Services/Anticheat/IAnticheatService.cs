@@ -1,12 +1,11 @@
 using Basil.Application.Objects.Anticheat;
-using Basil.Application.Objects.Events;
 using Basil.Application.Objects.Sessions;
 using Basil.Domain.Bancho;
 
 namespace Basil.Application.Services.Anticheat;
 
 /// <summary>Judges the anticheat flags osu! clients report and announces signs of cheating.</summary>
-public interface IAnticheatService : IEventPublisher<AnticheatEvent>
+public interface IAnticheatService
 {
 	/// <summary>Reports the anticheat flags a player's osu! client sent.</summary>
 	/// <param name="player">The player's osu! client.</param>

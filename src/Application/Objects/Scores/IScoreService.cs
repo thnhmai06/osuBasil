@@ -1,11 +1,10 @@
-using Basil.Application.Objects.Events;
 using Basil.Application.Objects.Sessions;
 using Basil.Domain.Scores;
 
 namespace Basil.Application.Objects.Scores;
 
 /// <summary>Checks and stores submitted scores.</summary>
-public interface IScoreService : IEventPublisher<ScoreEvent>
+public interface IScoreService
 {
 	/// <summary>Validates and records a score submission.</summary>
 	/// <param name="connection">The game client connection that submitted the score.</param>

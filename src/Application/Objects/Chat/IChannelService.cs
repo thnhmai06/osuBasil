@@ -1,10 +1,9 @@
-using Basil.Application.Objects.Events;
 using Basil.Application.Objects.Sessions;
 
 namespace Basil.Application.Objects.Chat;
 
 /// <summary>Manages automatic channel membership in general channels.</summary>
-public interface IChannelService : IEventPublisher<ChannelEvent>
+public interface IChannelService
 {
 	/// <summary>Joins a connection to every open general channel configured for automatic joining.</summary>
 	/// <param name="by">The connection that just opened.</param>

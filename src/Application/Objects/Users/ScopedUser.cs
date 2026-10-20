@@ -86,7 +86,7 @@ public sealed class ScopedUser
 		if (User.Context.Registry.Sessions.GetValueOrDefault(User.Record) is { } session)
 			User.Context.Sessions.CloseDisallowed(session);
 
-		User.Context.Events.Emit(new UserPermissionsChanged(User.Record, permissions));
+		User.Context.Events.Publish(new UserPermissionsChanged(User.Record, permissions));
 		return UserResult.Ok;
 	}
 

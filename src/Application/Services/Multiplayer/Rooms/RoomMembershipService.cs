@@ -61,7 +61,7 @@ internal sealed class RoomMembershipService(
 			await using var scope = await room.EnterAsync(cancellationToken);
 			if (scope is null || !room.Authority.MutableReferees.Remove(user)) continue;
 
-			room.Context.Events.Emit(new RoomRefereeRemoved(room, by, user));
+			room.Context.Events.Publish(new RoomRefereeRemoved(room, by, user));
 		}
 	}
 }

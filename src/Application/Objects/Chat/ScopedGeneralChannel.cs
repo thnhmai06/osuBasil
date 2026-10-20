@@ -1,7 +1,6 @@
 using Basil.Application.Objects.Sessions;
 using Basil.Domain.Common;
 using Basil.Domain.Permissions;
-using Basil.Domain.Users;
 
 namespace Basil.Application.Objects.Chat;
 
@@ -56,7 +55,7 @@ public sealed class ScopedGeneralChannel
 			var removed = Channel.Members.Where(member => !ChannelRules.CanRead(Channel, member, now)).ToArray();
 			foreach (var member in removed)
 				Channel.MutableMembers.Remove(member);
-			Channel.Context.Events.Emit(new ChannelConfigured(Channel, change, removed));
+			Channel.Context.Events.Publish(new ChannelConfigured(Channel, change, removed));
 		}
 
 		await Channel.Context.Channels.CreateOrUpdateAsync(Channel.Channel, ct);

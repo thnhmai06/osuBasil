@@ -7,11 +7,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Objects.Multiplayer.Events;
 
 /// <summary>Something happened to the set of open rooms or to who is watching the lobby.</summary>
-public abstract record LobbyEvent : Event
-{
-	/// <summary>Gets the moment the event happened.</summary>
-	public DateTimeOffset Timestamp { get; init; }
-}
+public abstract record LobbyEvent : Event;
 
 /// <summary>A room was opened.</summary>
 /// <param name="Room">The room that was opened.</param>

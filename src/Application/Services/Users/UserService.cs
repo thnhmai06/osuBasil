@@ -1,4 +1,4 @@
-using System.Threading.Channels;
+using Basil.Application.Objects.Events;
 using Basil.Application.Objects.Multiplayer.Rooms;
 using Basil.Application.Objects.Sessions;
 using Basil.Application.Objects.Users;
@@ -13,21 +13,18 @@ namespace Basil.Application.Services.Users;
 internal sealed class UserService : IUserService, IRoomUsersPort
 {
 	private readonly UserContext _context;
-	private readonly UserEventStream _events;
 
 	public UserService(IUserRepository users, IRestrictionRepository restrictions,
-		IModerationLogRepository moderationLog, IRelationshipRepository relationships, ILoginRepository logins, ICredentialRepository credentials,
+		IModerationLogRepository moderationLog, IRelationshipRepository relationships, ILoginRepository logins,
+		ICredentialRepository credentials,
 		IUserRegistry registry,
 		SessionConnectionsService sessions,
-		TimeProvider clock, UserEventStream events)
+		TimeProvider clock, IEventPublisher<UserEvent> events)
 	{
-		_context = new UserContext(clock, events, registry, users, restrictions, moderationLog, relationships, logins, credentials,
+		_context = new UserContext(clock, events, registry, users, restrictions, moderationLog, relationships, logins,
+			credentials,
 			sessions);
-		_events = events;
 	}
-
-	/// <inheritdoc />
-	public ChannelReader<UserEvent> Events => _events.Reader;
 
 	/// <inheritdoc />
 	public User Of(UserRecord user)

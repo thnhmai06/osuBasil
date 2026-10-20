@@ -1,6 +1,5 @@
 using Basil.Application.Objects.Sessions;
 using Basil.Domain.Permissions;
-using Basil.Domain.Users;
 
 namespace Basil.Application.Objects.Users;
 
@@ -70,7 +69,7 @@ public sealed class ScopedUserRestrictions
 			?.ChangeRestrictions(running => running.RemoveAll(restriction.Equals));
 		await _scoped.User.Context.ModerationLog.AppendAsync(log, ct);
 
-		_scoped.User.Context.Events.Emit(new UserRestrictionLifted(_scoped.User.Record, restriction));
+		_scoped.User.Context.Events.Publish(new UserRestrictionLifted(_scoped.User.Record, restriction));
 		return UserResult.Ok;
 	}
 
@@ -108,7 +107,7 @@ public sealed class ScopedUserRestrictions
 
 		await context.ModerationLog.AppendAsync(log, ct);
 
-		context.Events.Emit(new UserRestricted(_scoped.User.Record, restriction));
+		context.Events.Publish(new UserRestricted(_scoped.User.Record, restriction));
 		return (UserResult.Ok, restriction);
 	}
 }

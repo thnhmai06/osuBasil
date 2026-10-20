@@ -1,4 +1,5 @@
 using Basil.Application.Objects.Sessions;
+using Basil.Application.Objects.Events;
 using Basil.Application.Storage.Auth;
 using Basil.Application.Storage.Users;
 using Basil.Domain.Users;
@@ -7,7 +8,7 @@ namespace Basil.Application.Objects.Users;
 
 /// <summary>The ports through which an account performs its behaviour.</summary>
 /// <param name="Clock">The clock for evaluating restrictions.</param>
-/// <param name="Events">The event sink for announcing account changes.</param>
+/// <param name="Events">The publisher for account events.</param>
 /// <param name="Registry">The sessions of online users.</param>
 /// <param name="Users">The stored account records.</param>
 /// <param name="Restrictions">The stored restrictions.</param>
@@ -18,7 +19,7 @@ namespace Basil.Application.Objects.Users;
 /// <param name="Sessions">The operations on online sessions.</param>
 internal sealed record UserContext(
 	TimeProvider Clock,
-	IUserEventSink Events,
+	IEventPublisher<UserEvent> Events,
 	IUserRegistry Registry,
 	IUserRepository Users,
 	IRestrictionRepository Restrictions,
@@ -27,14 +28,6 @@ internal sealed record UserContext(
 	ILoginRepository Logins,
 	ICredentialRepository Credentials,
 	IUserSessionsPort Sessions);
-
-/// <summary>Emits account events to the user event stream.</summary>
-internal interface IUserEventSink
-{
-	/// <summary>Emits an account event.</summary>
-	/// <param name="event">The event to emit.</param>
-	void Emit(UserEvent @event);
-}
 
 /// <summary>What an account asks of the sessions that hold it online.</summary>
 internal interface IUserSessionsPort

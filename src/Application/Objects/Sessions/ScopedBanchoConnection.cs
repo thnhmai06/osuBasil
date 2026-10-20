@@ -61,7 +61,7 @@ public sealed class ScopedBanchoConnection
 		if (By.User.Equals(Host.User)) return SpectateResult.Self;
 		if (Host.Spectators.Contains(By))
 		{
-			Host.Context.Events.Emit(new UserSpectatorJoined(Host, By));
+			Host.Context.Events.Publish(new UserSpectatorJoined(Host, By));
 			return SpectateResult.Spectating;
 		}
 
@@ -69,7 +69,7 @@ public sealed class ScopedBanchoConnection
 		Host.MutableSpectators.Add(By);
 		if (first) Host.SpectatorChannel.ScopeTo(Host).Join();
 		Host.SpectatorChannel.ScopeTo(By).Join();
-		Host.Context.Events.Emit(new UserSpectatorJoined(Host, By));
+		Host.Context.Events.Publish(new UserSpectatorJoined(Host, By));
 		return SpectateResult.Spectating;
 	}
 
@@ -83,7 +83,7 @@ public sealed class ScopedBanchoConnection
 
 		Host.SpectatorChannel.ScopeTo(By).Part();
 		if (Host.Spectators.Count == 0) Host.SpectatorChannel.ScopeTo(Host).Part();
-		Host.Context.Events.Emit(new UserSpectatorLeft(Host, By));
+		Host.Context.Events.Publish(new UserSpectatorLeft(Host, By));
 		return true;
 	}
 
@@ -93,7 +93,7 @@ public sealed class ScopedBanchoConnection
 	{
 		if (!Host.Spectators.Contains(By)) return false;
 
-		Host.Context.Events.Emit(new UserSpectatorFailed(Host, By));
+		Host.Context.Events.Publish(new UserSpectatorFailed(Host, By));
 		return true;
 	}
 
@@ -106,7 +106,7 @@ public sealed class ScopedBanchoConnection
 		if (!ReferenceEquals(By, Host) || !Host.IsOpen || Equals(Host.Status, status)) return false;
 
 		Host.Status = status;
-		Host.Context.Events.Emit(new UserConnectionStatusChanged(Host, status));
+		Host.Context.Events.Publish(new UserConnectionStatusChanged(Host, status));
 		return true;
 	}
 }

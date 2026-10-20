@@ -34,7 +34,7 @@ public sealed class ScopedRoomAuthority
 		if (room.Authority.Referees.Count >= RoomAuthority.MaxReferees) return RoomResult.TooManyReferees;
 
 		room.Authority.MutableReferees.Add(user);
-		room.Context.Events.Emit(new RoomRefereeAdded(room, _scoped.By.User, user));
+		room.Context.Events.Publish(new RoomRefereeAdded(room, _scoped.By.User, user));
 		return RoomResult.Ok;
 	}
 
@@ -52,7 +52,7 @@ public sealed class ScopedRoomAuthority
 		var room = _scoped.Room;
 		if (!room.Authority.MutableReferees.Remove(user)) return RoomResult.NotReferee;
 
-		room.Context.Events.Emit(new RoomRefereeRemoved(room, _scoped.By.User, user));
+		room.Context.Events.Publish(new RoomRefereeRemoved(room, _scoped.By.User, user));
 		return RoomResult.Ok;
 	}
 
@@ -73,7 +73,7 @@ public sealed class ScopedRoomAuthority
 		if (ReferenceEquals(room.Authority.Host, host)) return RoomResult.Ok;
 
 		room.Authority.Host = host;
-		room.Context.Events.Emit(new RoomHostChanged(room, _scoped.By.User, host));
+		room.Context.Events.Publish(new RoomHostChanged(room, _scoped.By.User, host));
 		return RoomResult.Ok;
 	}
 }

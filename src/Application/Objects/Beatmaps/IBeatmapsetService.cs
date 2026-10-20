@@ -1,4 +1,3 @@
-using Basil.Application.Objects.Events;
 using Basil.Application.Storage.Beatmaps;
 using Basil.Domain.Beatmaps;
 
@@ -10,7 +9,7 @@ namespace Basil.Application.Objects.Beatmaps;
 ///     makes every file it serves from the archive when it indexes the set, and keeps its records in step with the
 ///     archives.
 /// </remarks>
-public interface IBeatmapsetService : IEventPublisher<BeatmapsetEvent>
+public interface IBeatmapsetService
 {
 	/// <summary>Gets the beatmapset object through which a stored set's behaviour is reached.</summary>
 	/// <param name="set">The stored beatmapset.</param>

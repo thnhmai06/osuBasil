@@ -1,4 +1,3 @@
-using System.Threading.Channels;
 using Basil.Application.Objects.Sessions;
 
 namespace Basil.Application.Services.Sessions;
@@ -8,12 +7,8 @@ namespace Basil.Application.Services.Sessions;
 ///     parts.
 /// </summary>
 internal sealed class SessionService(
-	SessionConnectionsService connections,
-	SessionEventStream events) : ISessionService
+	SessionConnectionsService connections) : ISessionService
 {
-	/// <inheritdoc />
-	public ChannelReader<UserEvent> Events => events.Reader;
-
 	/// <inheritdoc />
 	public ISessionConnectionsService Connections => connections;
 }

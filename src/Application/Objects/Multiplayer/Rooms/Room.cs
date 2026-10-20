@@ -146,7 +146,7 @@ public sealed class Room : IEquatable<Room>
 
 		JoinChannel(player);
 		MarkOccupied();
-		Context.Events.Emit(new RoomPlayerJoined(this, player, slot.Index, null, null));
+		Context.Events.Publish(new RoomPlayerJoined(this, player, slot.Index, null, null));
 		return RoomResult.Ok;
 	}
 
@@ -158,7 +158,7 @@ public sealed class Room : IEquatable<Room>
 		if (Vacate(by) is not { } slot) return RoomResult.NotInRoom;
 
 		var progress = AdvanceRound();
-		Context.Events.Emit(new RoomPlayerLeft(this, by, slot.Index, Authority.Host, progress));
+		Context.Events.Publish(new RoomPlayerLeft(this, by, slot.Index, Authority.Host, progress));
 		LeaveChannel(by);
 		ReportIfEmpty();
 		return RoomResult.Ok;
@@ -172,7 +172,7 @@ public sealed class Room : IEquatable<Room>
 		if (Slots.Find(by.User) is not null) return RoomResult.IsPlayer;
 		if (!Members.MutableObservers.Add(by)) return RoomResult.Ok;
 
-		Context.Events.Emit(new RoomObserverJoined(this, by));
+		Context.Events.Publish(new RoomObserverJoined(this, by));
 		JoinChannel(by);
 		return RoomResult.Ok;
 	}
@@ -184,7 +184,7 @@ public sealed class Room : IEquatable<Room>
 	{
 		if (!Members.MutableObservers.Remove(by)) return RoomResult.NotObserver;
 
-		Context.Events.Emit(new RoomObserverLeft(this, by));
+		Context.Events.Publish(new RoomObserverLeft(this, by));
 		LeaveChannel(by);
 		return RoomResult.Ok;
 	}
@@ -258,7 +258,7 @@ public sealed class Room : IEquatable<Room>
 			Context.Clock.CreateTimer(_ => Fire(() => ElapseCountdownAsync(countdown)), null, length,
 				Timeout.InfiniteTimeSpan)
 		];
-		Context.Events.Emit(new RoomCountdownStarted(this, countdown));
+		Context.Events.Publish(new RoomCountdownStarted(this, countdown));
 		return countdown;
 	}
 
@@ -274,7 +274,7 @@ public sealed class Room : IEquatable<Room>
 		Rounds.Countdown = null;
 
 		if (countdown is null) return false;
-		if (announce) Context.Events.Emit(new RoomCountdownCancelled(this, countdown));
+		if (announce) Context.Events.Publish(new RoomCountdownCancelled(this, countdown));
 		return true;
 	}
 
@@ -282,7 +282,7 @@ public sealed class Room : IEquatable<Room>
 	{
 		await using var scope = await EnterAsync();
 		if (scope is null || !ReferenceEquals(Rounds.Countdown, countdown)) return;
-		Context.Events.Emit(new RoomCountdownTicked(this, countdown, remaining));
+		Context.Events.Publish(new RoomCountdownTicked(this, countdown, remaining));
 	}
 
 	private async Task ElapseCountdownAsync(RoomCountdown countdown)
@@ -309,8 +309,8 @@ public sealed class Room : IEquatable<Room>
 				started = BeginRound();
 		}
 
-		Context.Events.Emit(new RoomCountdownElapsed(this, countdown, result));
-		if (started is { } round) Context.Events.Emit(new RoomRoundStarted(this, round.Round, round.Players));
+		Context.Events.Publish(new RoomCountdownElapsed(this, countdown, result));
+		if (started is { } round) Context.Events.Publish(new RoomRoundStarted(this, round.Round, round.Players));
 	}
 
 	private static void Fire(Func<Task> action)
@@ -427,7 +427,7 @@ public sealed class Room : IEquatable<Room>
 		var progress = AdvanceRound();
 		JoinChannel(player);
 		MarkOccupied();
-		Context.Events.Emit(new RoomPlayerJoined(this, player, slot.Index, stale, progress));
+		Context.Events.Publish(new RoomPlayerJoined(this, player, slot.Index, stale, progress));
 		return RoomResult.Ok;
 	}
 

@@ -50,7 +50,7 @@ public sealed class ScopedServer
 			.ToList();
 		if (recipients.Count == 0) return 0;
 
-		context.Events.Emit(new UserNotificationSent(recipients, text));
+		context.Events.Publish(new UserNotificationSent(recipients, text));
 		return recipients.Count;
 	}
 }

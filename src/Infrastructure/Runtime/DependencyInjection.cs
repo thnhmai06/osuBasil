@@ -2,11 +2,9 @@ using Basil.Application.Objects.Anticheat;
 using Basil.Application.Objects.Beatmaps;
 using Basil.Application.Objects.Chat;
 using Basil.Application.Objects.Events;
-using Basil.Application.Objects.Multiplayer;
 using Basil.Application.Objects.Multiplayer.Events;
 using Basil.Application.Objects.Scores;
 using Basil.Application.Objects.Sessions;
-using Basil.Application.Objects.Users;
 using Basil.Infrastructure.Runtime.Beatmaps;
 using Basil.Infrastructure.Runtime.Events;
 using Basil.Infrastructure.Runtime.Multiplayer;
@@ -15,8 +13,6 @@ using Basil.Infrastructure.Runtime.Sessions;
 using Basil.Infrastructure.Runtime.Startup;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Runtime;
 
@@ -38,28 +34,23 @@ public static class DependencyInjection
 		services.AddSingleton<IEventHandler<RoomEvent>>(sp => sp.GetRequiredService<MatchRecorder>());
 		services.AddSingleton<IEventHandler<LobbyEvent>>(sp => sp.GetRequiredService<MatchRecorder>());
 
-		AddPump<ISessionService, UserEvent>(services);
-		AddPump<IUserService, UserEvent>(services);
-		AddPump<IChannelService, ChannelEvent>(services);
-		AddPump<ILobbyService, LobbyEvent>(services);
-		AddPump<IRoomService, RoomEvent>(services);
-		AddPump<IAnticheatService, AnticheatEvent>(services);
-		AddPump<IScoreService, ScoreEvent>(services);
-		AddPump<IBeatmapsetService, BeatmapsetEvent>(services);
+		AddBus<UserEvent>(services);
+		AddBus<ChannelEvent>(services);
+		AddBus<LobbyEvent>(services);
+		AddBus<RoomEvent>(services);
+		AddBus<AnticheatEvent>(services);
+		AddBus<ScoreEvent>(services);
+		AddBus<BeatmapsetEvent>(services);
 
 		services.AddHostedService<IdleConnectionSweeper>();
 		services.AddHostedService<BeatmapsetStorageWatcher>();
 		return services;
 	}
 
-	private static void AddPump<TService, TEvent>(IServiceCollection services)
-		where TService : class, IEventPublisher<TEvent>
-		where TEvent : Event
+	private static void AddBus<T>(IServiceCollection services) where T : Event
 	{
-		services.AddSingleton<IHostedService>(services =>
-			new EventPump<TEvent>(
-				services.GetRequiredService<TService>(),
-				services.GetServices<IEventHandler<TEvent>>(),
-				services.GetRequiredService<ILogger<EventPump<TEvent>>>()));
+		services.AddSingleton<EventBus<T>>();
+		services.AddSingleton<IEventPublisher<T>>(sp => sp.GetRequiredService<EventBus<T>>());
+		services.AddHostedService(sp => sp.GetRequiredService<EventBus<T>>());
 	}
 }

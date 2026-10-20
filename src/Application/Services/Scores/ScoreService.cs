@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Channels;
+using Basil.Application.Objects.Events;
 using Basil.Application.Objects.Multiplayer;
 using Basil.Application.Objects.Scores;
 using Basil.Application.Storage.Common;
@@ -24,15 +24,11 @@ internal sealed class ScoreService(
 	IRoundScoreRepository roundScores,
 	IReplayStorage replays,
 	IUserStatsRepository stats,
-	Lobby lobby) : IScoreService
+	Lobby lobby,
+	IEventPublisher<ScoreEvent> events) : IScoreService
 {
 	/// <summary>The shortest replay, in bytes, that is kept.</summary>
 	internal const int MinReplayLength = 24;
-
-	private readonly Channel<ScoreEvent> _events = Channel.CreateUnbounded<ScoreEvent>();
-
-	/// <inheritdoc />
-	public ChannelReader<ScoreEvent> Events => _events.Reader;
 
 	/// <inheritdoc />
 	public async Task<ScoreRejection?> SubmitAsync(
@@ -86,7 +82,7 @@ internal sealed class ScoreService(
 
 		await stats.CreateOrUpdateAsync(current, cancellationToken);
 
-		_events.Writer.TryWrite(new ScoreSubmitted(connection.User, score, current, roundScore,
+		events.Publish(new ScoreSubmitted(connection.User, score, current, roundScore,
 			round is not null ? room : null));
 		return null;
 	}

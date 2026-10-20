@@ -52,7 +52,7 @@ public sealed class ScopedChannel
 		}
 
 		Channel.MutableMembers.Add(By);
-		Channel.Context.Events.Emit(new ChannelMemberJoined(Channel, By, replaced));
+		Channel.Context.Events.Publish(new ChannelMemberJoined(Channel, By, replaced));
 		return ChannelJoinResult.Joined;
 	}
 
@@ -63,7 +63,7 @@ public sealed class ScopedChannel
 	{
 		using var scope = Channel.Enter();
 		if (!Channel.MutableMembers.Remove(By)) return ChannelPartResult.NotMember;
-		Channel.Context.Events.Emit(new ChannelMemberParted(Channel, By, false));
+		Channel.Context.Events.Publish(new ChannelMemberParted(Channel, By, false));
 		return ChannelPartResult.Parted;
 	}
 

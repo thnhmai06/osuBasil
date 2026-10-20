@@ -33,7 +33,7 @@ public sealed class ScopedRoomRounds
 
 		room.CancelCountdown(true);
 		var (round, players) = room.BeginRound();
-		room.Context.Events.Emit(new RoomRoundStarted(room, round, players));
+		room.Context.Events.Publish(new RoomRoundStarted(room, round, players));
 		return RoomResult.Ok;
 	}
 
@@ -88,7 +88,7 @@ public sealed class ScopedRoomRounds
 
 		room.CancelCountdown(true);
 		var round = room.EndCurrentRound(true)!;
-		room.Context.Events.Emit(new RoomRoundAborted(room, round));
+		room.Context.Events.Publish(new RoomRoundAborted(room, round));
 		return RoomResult.Ok;
 	}
 
@@ -110,11 +110,11 @@ public sealed class ScopedRoomRounds
 		    room.Slots.Where(s => s.Status is RoomSlotStatus.Playing).All(s => s.Loaded is true))
 		{
 			room.Rounds.AllLoadedAnnounced = true;
-			room.Context.Events.Emit(new RoomRoundAllLoaded(room, round, slot.Index));
+			room.Context.Events.Publish(new RoomRoundAllLoaded(room, round, slot.Index));
 		}
 		else
 		{
-			room.Context.Events.Emit(new RoomRoundPlayerLoaded(room, round, slot.Index));
+			room.Context.Events.Publish(new RoomRoundPlayerLoaded(room, round, slot.Index));
 		}
 
 		return RoomResult.Ok;
@@ -138,11 +138,11 @@ public sealed class ScopedRoomRounds
 		    room.Slots.Where(s => s.Status is RoomSlotStatus.Playing).All(s => s.IntroSkipped is true))
 		{
 			room.Rounds.AllSkippedAnnounced = true;
-			room.Context.Events.Emit(new RoomRoundAllSkipped(room, round, slot.Index));
+			room.Context.Events.Publish(new RoomRoundAllSkipped(room, round, slot.Index));
 		}
 		else
 		{
-			room.Context.Events.Emit(new RoomRoundPlayerSkipped(room, round, slot.Index));
+			room.Context.Events.Publish(new RoomRoundPlayerSkipped(room, round, slot.Index));
 		}
 
 		return RoomResult.Ok;
@@ -159,7 +159,7 @@ public sealed class ScopedRoomRounds
 		var room = _scoped.Room;
 		if (!TryGetPlayingSlot(out var round, out var slot)) return RoomResult.NotPlaying;
 
-		room.Context.Events.Emit(new RoomRoundPlayerFailed(room, round, slot.Index));
+		room.Context.Events.Publish(new RoomRoundPlayerFailed(room, round, slot.Index));
 		return RoomResult.Ok;
 	}
 
@@ -180,7 +180,7 @@ public sealed class ScopedRoomRounds
 
 		slot.SetStatus(RoomSlotStatus.Complete);
 		if (room.Slots.Any(s => s.Status is RoomSlotStatus.Playing))
-			room.Context.Events.Emit(new RoomRoundPlayerCompleted(room, round, slot.Index));
+			room.Context.Events.Publish(new RoomRoundPlayerCompleted(room, round, slot.Index));
 		else
 			EndRound(room, slot.Index);
 		return RoomResult.Ok;
@@ -205,6 +205,6 @@ public sealed class ScopedRoomRounds
 	private static void EndRound(Room room, int slot)
 	{
 		var round = room.EndCurrentRound(false)!;
-		room.Context.Events.Emit(new RoomRoundCompleted(room, round, slot));
+		room.Context.Events.Publish(new RoomRoundCompleted(room, round, slot));
 	}
 }

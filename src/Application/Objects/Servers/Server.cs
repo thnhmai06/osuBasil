@@ -33,7 +33,7 @@ public sealed class Server
 	{
 		var session = new GeneralChannelSession(channel, Context.Session.Chat);
 		if (!Context.Session.Chat.Registry.Add(session)) return null;
-		Context.Session.Chat.Events.Emit(new ChannelOpened(session));
+		Context.Session.Chat.Events.Publish(new ChannelOpened(session));
 		return session;
 	}
 

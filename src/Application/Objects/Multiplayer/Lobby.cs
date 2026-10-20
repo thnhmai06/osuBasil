@@ -124,7 +124,7 @@ public sealed class Lobby : IRoomLobbyPort
 	/// <remarks>User-initiated unwatching goes through <see cref="ScopedLobby.Unwatch" />.</remarks>
 	public void Unwatch(BanchoConnection connection)
 	{
-		if (MutableWatchers.Remove(connection)) Context.Events.Emit(new LobbyWatcherLeft(connection));
+		if (MutableWatchers.Remove(connection)) Context.Events.Publish(new LobbyWatcherLeft(connection));
 	}
 
 	/// <summary>Stops the countdown that would close an empty tournament room.</summary>
@@ -150,7 +150,7 @@ public sealed class Lobby : IRoomLobbyPort
 			return;
 		}
 
-		Context.Events.Emit(new LobbyRoomClosingAnnounced(room, ScheduleClosing(room)));
+		Context.Events.Publish(new LobbyRoomClosingAnnounced(room, ScheduleClosing(room)));
 	}
 
 	/// <summary>Closes a room, ending its match and vacating every slot.</summary>
@@ -176,7 +176,7 @@ public sealed class Lobby : IRoomLobbyPort
 		room.IsClosed = true;
 		room.Channel.Close();
 		Remove(room);
-		Context.Events.Emit(new LobbyRoomClosed(room, by, evicted, aborted));
+		Context.Events.Publish(new LobbyRoomClosed(room, by, evicted, aborted));
 	}
 
 	Room? IRoomLobbyPort.RoomOf(BanchoConnection player) => RoomOf(player);
@@ -216,7 +216,7 @@ public sealed class Lobby : IRoomLobbyPort
 		await using var scope = await room.EnterAsync();
 		if (scope is null || room.Slots.Any(slot => slot.Player is not null)) return;
 
-		Context.Events.Emit(new LobbyRoomClosingAnnounced(room, closesAt));
+		Context.Events.Publish(new LobbyRoomClosingAnnounced(room, closesAt));
 		Schedule(room, closesAt, () => CloseIfStillEmptyAsync(room));
 	}
 

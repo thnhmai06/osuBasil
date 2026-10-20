@@ -60,7 +60,7 @@ owns the state, invariants and operations for itself and its parts. See [Object 
 
 ### `Basil.Infrastructure`
 
-Implementations of storage and capability ports, event dispatchers and handlers, and background loops.
+Implementations of storage and capability ports, event buses and handlers, and background loops.
 `Infrastructure.Runtime` reacts to Application events by calling the owning object's operations, for example
 when a connection closes or a restriction takes effect.
 
@@ -138,9 +138,10 @@ such as `Room` and `User` have no parallel `IX` service contract.
 * **Each object manages its own state.** `UserRegistry` opens and closes connections and announces those events;
   it does not clean up rooms or channels. Infrastructure handlers receive cross-object events and call the
   owning object's operation. A room keeps its channel in step with its players and the lobby owns room closing.
-* **Application emits events; it never consumes them.** `IEventPublisher<T>` exposes event streams and
-  `IEventHandler<T>` is the handler contract in Application.Objects. One Infrastructure dispatcher reads each
-  stream and fans events out to handlers in Infrastructure.Runtime or `Basil.Bot.Application`.
+* **Application publishes events; it never consumes them.** `IEventPublisher<T>` (`Publish`) is the only event port
+  and `IEventHandler<T>` is the handler contract, both in Application.Objects. Infrastructure.Runtime implements the
+  port with one `EventBus<T>` per event category, which delivers each event in order to the handlers in
+  Infrastructure.Runtime or `Basil.Bot.Application`.
 * **Identity follows the basis object.** `Room` is identified by its `Match`, a general chat channel by its
   name. Recreated runtime objects compare by reference, so late cleanup carrying an old object cannot touch
   its replacement.
@@ -221,8 +222,8 @@ remain for coordination and system operations that are public capabilities.
 
 ## Events across objects
 
-Application publishes events but does not consume them. One dispatcher reads each event stream and invokes
-the registered `IEventHandler<T>` handlers. Infrastructure.Runtime owns runtime handlers; BasilBot owns
+Application publishes events but does not consume them. One `EventBus<T>` per event category queues what is
+published and invokes the registered `IEventHandler<T>` handlers in order. Infrastructure.Runtime owns runtime handlers; BasilBot owns
 command and announcement handlers. The hosts still need migration to the new Application contracts.
 
 ```mermaid
@@ -293,7 +294,7 @@ scope.
 * `src/Application/Objects/`: runtime objects, scopes, contexts, events and service contracts.
 * `src/Application/Services/`: object factories and remaining service implementations.
 * `src/Application/Storage/`: repository, storage and registry contracts.
-* `src/Infrastructure/Runtime/`: event dispatchers, handlers and background work.
+* `src/Infrastructure/Runtime/`: event buses, handlers and background work.
 * `src/Bot/Application/`: BasilBot command and announcement handlers.
 
 ## Where to go from here

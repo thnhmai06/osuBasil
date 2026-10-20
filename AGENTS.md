@@ -425,7 +425,7 @@ Content/       content repositories and storage ports
 Servers/       Server, ScopedServer, server contexts and server resources
 ```
 
-Event-handler contracts belong to Application.Objects; dispatchers and concrete handlers live in
+Event-handler contracts belong to Application.Objects; event buses and concrete handlers live in
 Infrastructure.Runtime or the consumer that owns them, including `Basil.Bot.Application`. Host configuration
 (ports, TLS, data paths) belongs to the hosts. BasilBot commands and announcements are server features: a
 command is an entry point that uses the typist's scoped objects, and the bot only replies. Query **records**
@@ -478,7 +478,7 @@ not host configuration.
   never decides a business rule, emits an event, calls a service or starts a timer. A state change and its
   consequences belong to the object that owns the state.
 * **Contracts exist for the services that remain.** `IXService` in Application.Objects declares the public
-  capabilities of a service and, where applicable, its event stream. This deliberate exception to "no
+  capabilities of a service. This deliberate exception to "no
   interface with one implementation" keeps cross-object coordination and one-run operations independent of
   their implementation. Examples include `IAuthService`, `IBeatmapsetService`, `IScoreService`,
   `IAnticheatService`, `IMatchService` and `ISessionConnectionsService`. Objects such as `Room` and `User` do
@@ -586,22 +586,25 @@ not host configuration.
   ordinary leave and admit the new one. Cleanup operations must be safe to run again.
 * **Peers talk through events; owners call their parts directly.** Two operations are peers when neither
   object owns the other and neither's rule depends on the other (scores and rooms, the anticheat and rooms): the
-  acting operation emits its event, and Infrastructure's dispatcher delivers it to the peer's contract
+  acting operation publishes its event, and Infrastructure's event bus delivers it to the peer's contract
   (`ScoreSubmitted` → `IRoomService.Rounds.RecordScoreAsync`, `AnticheatPlayerFlagged` reaches clients that
   watch it, such as BasilBot). An object calls another directly only for a clear ownership relation or to keep
   a rule that must hold within the same operation: objects use storage ports; a room manages its own channel, a
   session its PM channel and a connection its spectator channel; a room tells the lobby when it empties or fills;
   logging in opens the connection; deleting a user closes their connections at once, a security rule that
   must not wait for a handler.
-* **Application emits events; it does not consume them.** Each event stream is read by one Infrastructure
-  dispatcher, which fans events out to `IEventHandler<T>` implementations in Infrastructure.Runtime or
-  `Basil.Bot.Application`. Storage never emits. One operation emits one event carrying its whole consequence. Events sit
-  in a nested category tree (`Event` ← `RoomEvent` ← `RoomSlotEvent` ← `RoomSlotTeamChanged`) so a consumer
-  can subscribe to a whole category. Each item of a `Channel<T>` reaches one reader, so Infrastructure runs
-  exactly one dispatcher per service stream that fans out to its handlers; nothing else reads `Events`
-  directly. Handlers, dispatchers and event → client-notification routing belong to Infrastructure and the
-  hosts, never to Application.
-* **Handlers are quick; slow work goes to its own queue.** A dispatcher awaits its handlers one after another, so a
+* **Application publishes events; it does not consume them.** An object, a service or the bot's voice publishes
+  an event through `IEventPublisher<T>` (`Publish`), the only event port of Application: it returns at once and
+  has no read end. Infrastructure.Runtime implements it with one `EventBus<T>` per category (`UserEvent`,
+  `RoomEvent`, `LobbyEvent`, `ChannelEvent`, `BeatmapsetEvent`, `ScoreEvent`, `AnticheatEvent`): the bus
+  stamps `Timestamp`, keeps the events in order in its own queue and calls the `IEventHandler<T>` implementations
+  of Infrastructure.Runtime or `Basil.Bot.Application` one after another. The bus resolves its handlers when it
+  starts delivering, not when it is built (a handler reaches objects that publish to buses, so resolving them in the
+  constructor makes buses wait for each other). Storage never publishes. One operation publishes one event carrying
+  its whole consequence. Events sit in a nested category tree (`Event` ← `RoomEvent` ← `RoomSlotEvent` ←
+  `RoomSlotTeamChanged`) so a consumer can subscribe to a whole category. Buses, handlers and event →
+  client-notification routing belong to Infrastructure and the hosts, never to Application.
+* **Handlers are quick; slow work goes to its own queue.** A bus awaits its handlers one after another, so a
   handler that waits (a lookup, a room, the store) holds up every later event of its category. A handler that may
   wait only queues the work on a bounded queue of its own, with a cap per user and a timeout per item, and returns
   (`CommandWorker` of the bot). A dropped item is logged, never silent.

@@ -40,7 +40,7 @@ public sealed class ScopedRoomSlots
 		if (to.Locked || to.Player is not null) return RoomResult.SlotNotOpen;
 
 		from.MoveTo(to);
-		room.Context.Events.Emit(new RoomPlayerMoved(room, bancho, from.Index, to.Index));
+		room.Context.Events.Publish(new RoomPlayerMoved(room, bancho, from.Index, to.Index));
 		return RoomResult.Ok;
 	}
 
@@ -64,7 +64,7 @@ public sealed class ScopedRoomSlots
 		if (to.Locked || to.Player is not null) return RoomResult.SlotNotOpen;
 
 		from.MoveTo(to);
-		room.Context.Events.Emit(new RoomPlayerMoved(room, seated, from.Index, to.Index));
+		room.Context.Events.Publish(new RoomPlayerMoved(room, seated, from.Index, to.Index));
 		return RoomResult.Ok;
 	}
 
@@ -108,7 +108,7 @@ public sealed class ScopedRoomSlots
 			if (entry.Team is { } team && room.Settings.MatchSettings.TeamType.IsTeamMode()) slot.Team = team;
 		}
 
-		room.Context.Events.Emit(new RoomSlotsArranged(room));
+		room.Context.Events.Publish(new RoomSlotsArranged(room));
 		return RoomResult.Ok;
 	}
 
@@ -132,7 +132,7 @@ public sealed class ScopedRoomSlots
 		if (slot.Status == status) return RoomResult.Ok;
 
 		slot.SetStatus(status);
-		room.Context.Events.Emit(new RoomSlotStatusChanged(room, slot.Index, status));
+		room.Context.Events.Publish(new RoomSlotStatusChanged(room, slot.Index, status));
 		return RoomResult.Ok;
 	}
 
@@ -161,7 +161,7 @@ public sealed class ScopedRoomSlots
 		if (slot.Status == status) return RoomResult.Ok;
 
 		slot.SetStatus(status);
-		room.Context.Events.Emit(new RoomSlotStatusChanged(room, slot.Index, status));
+		room.Context.Events.Publish(new RoomSlotStatusChanged(room, slot.Index, status));
 		return RoomResult.Ok;
 	}
 
@@ -184,7 +184,7 @@ public sealed class ScopedRoomSlots
 
 		var team = slot.Team is GameTeam.Red ? GameTeam.Blue : GameTeam.Red;
 		slot.Team = team;
-		room.Context.Events.Emit(new RoomSlotTeamChanged(room, slot.Index, team));
+		room.Context.Events.Publish(new RoomSlotTeamChanged(room, slot.Index, team));
 		return RoomResult.Ok;
 	}
 
@@ -207,7 +207,7 @@ public sealed class ScopedRoomSlots
 		if (slot.Team == team) return RoomResult.Ok;
 
 		slot.Team = team;
-		room.Context.Events.Emit(new RoomSlotTeamChanged(room, slot.Index, team));
+		room.Context.Events.Publish(new RoomSlotTeamChanged(room, slot.Index, team));
 		return RoomResult.Ok;
 	}
 
@@ -232,7 +232,7 @@ public sealed class ScopedRoomSlots
 		if (slot.Mods == mods) return RoomResult.Ok;
 
 		slot.Mods = mods;
-		room.Context.Events.Emit(new RoomSlotModsChanged(room, slot.Index, mods));
+		room.Context.Events.Publish(new RoomSlotModsChanged(room, slot.Index, mods));
 		return RoomResult.Ok;
 	}
 
@@ -263,7 +263,7 @@ public sealed class ScopedRoomSlots
 		}
 
 		slot.Locked = locking;
-		room.Context.Events.Emit(new RoomSlotLockChanged(room, slot.Index, locking, evicted, room.Authority.Host,
+		room.Context.Events.Publish(new RoomSlotLockChanged(room, slot.Index, locking, evicted, room.Authority.Host,
 			progress));
 
 		if (evicted is not null)

@@ -1,4 +1,5 @@
 using Basil.Application.Objects.Multiplayer.Events;
+using Basil.Application.Objects.Events;
 using Basil.Application.Objects.Chat;
 using Basil.Application.Objects.Sessions;
 using Basil.Domain.Users;
@@ -7,24 +8,16 @@ namespace Basil.Application.Objects.Multiplayer.Rooms;
 
 /// <summary>The ports through which a room interacts with its runtime environment.</summary>
 /// <param name="Clock">The clock for checking current time.</param>
-/// <param name="Events">The event sink for emitting room events.</param>
+/// <param name="Events">The publisher for room events.</param>
 /// <param name="Lobby">The lobby that holds the room.</param>
 /// <param name="Chat">The runtime dependencies for the room's channel.</param>
 /// <param name="Users">The user service for checking blocks.</param>
 internal sealed record RoomContext(
 	TimeProvider Clock,
-	IRoomEventSink Events,
+	IEventPublisher<RoomEvent> Events,
 	IRoomLobbyPort Lobby,
 	ChannelContext Chat,
 	IRoomUsersPort Users);
-
-/// <summary>Emits room events to the event stream.</summary>
-internal interface IRoomEventSink
-{
-	/// <summary>Emits a room event.</summary>
-	/// <param name="event">The event to emit.</param>
-	void Emit(RoomEvent @event);
-}
 
 /// <summary>What a room asks of the lobby that holds it.</summary>
 internal interface IRoomLobbyPort

@@ -1,6 +1,7 @@
 using System.Buffers.Text;
 using System.Net;
 using System.Security.Cryptography;
+using Basil.Application.Objects.Events;
 using Basil.Application.Objects.Sessions;
 using Basil.Application.Objects.Users;
 using Basil.Application.Services.Users;
@@ -16,7 +17,7 @@ internal sealed class SessionConnectionsService(
 	IUserRegistry registry,
 	IUserRepository users,
 	SessionContext context,
-	SessionEventStream events,
+	IEventPublisher<UserEvent> events,
 	TimeProvider time) : ISessionConnectionsService, IUserSessionsPort
 {
 	/// <summary>How long a connection must be idle before a new login of the same kind replaces it.</summary>
@@ -122,7 +123,7 @@ internal sealed class SessionConnectionsService(
 		// The bot's token is never findable: nobody can present it, and nobody should be able to try.
 		if (connection.Type is not ConnectionType.Bot) registry.Index(connection);
 
-		events.Emit(new UserConnectionOpened(connection, cameOnline));
+		events.Publish(new UserConnectionOpened(connection, cameOnline));
 		return null;
 	}
 
@@ -186,6 +187,6 @@ internal sealed class SessionConnectionsService(
 			connection.Session.PmChannel.Close();
 		}
 
-		events.Emit(new UserConnectionClosed(connection, reason, wentOffline));
+		events.Publish(new UserConnectionClosed(connection, reason, wentOffline));
 	}
 }

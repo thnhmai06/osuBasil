@@ -35,6 +35,6 @@ public sealed class Beatmapset
 	internal async Task ForgetAsync(CancellationToken cancellationToken)
 	{
 		await Context.Repository.CommitAsync(new BeatmapsetChanges([], [Record]), cancellationToken);
-		Context.Events.Emit(new BeatmapsetDeleted(Record));
+		Context.Events.Publish(new BeatmapsetDeleted(Record));
 	}
 }

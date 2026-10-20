@@ -1,12 +1,10 @@
-using System.Threading.Channels;
-
 namespace Basil.Application.Objects.Events;
 
-/// <summary>
-///     Exposes a channel of events produced by a runtime object.
-/// </summary>
-/// <typeparam name="T">The root event type the object emits.</typeparam>
-public interface IEventPublisher<T> where T : Event
+/// <summary>Publishes an event of a category to every handler of that category; returns at once, the handlers run later and in order.</summary>
+/// <typeparam name="T">The event category published.</typeparam>
+public interface IEventPublisher<in T> where T : Event
 {
-	ChannelReader<T> Events { get; }
+	/// <summary>Publishes an event to every handler of its category.</summary>
+	/// <param name="event">The event to publish.</param>
+	void Publish(T @event);
 }

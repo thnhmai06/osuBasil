@@ -102,7 +102,7 @@ public sealed class ScopedRoomSettings
 		     change.Freemods is not null || change.TeamType is not null || change.WinCondition is not null))
 			room.CancelCountdown(true);
 
-		room.Context.Events.Emit(new RoomSettingsChanged(room, change with { Password = null },
+		room.Context.Events.Publish(new RoomSettingsChanged(room, change with { Password = null },
 			change.Password is not null));
 		return RoomResult.Ok;
 	}
@@ -125,7 +125,7 @@ public sealed class ScopedRoomSettings
 		if (room.Slots.Locked == locked) return RoomResult.Ok;
 
 		room.Slots.Locked = locked;
-		room.Context.Events.Emit(new RoomLockChanged(room, locked));
+		room.Context.Events.Publish(new RoomLockChanged(room, locked));
 		return RoomResult.Ok;
 	}
 
