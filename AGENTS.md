@@ -304,6 +304,23 @@ dotnet test tests/Basil.Application.Tests \
   --filter "FullyQualifiedName~<TestClassName>"
 ```
 
+While the hosts and the tests are not migrated (see the migration status under [Architecture](#architecture)),
+verify a change with the six projects that do build, one at a time:
+
+```bash
+dotnet build src/Domain --nologo -v q
+dotnet build src/Application/Services/Implementations --nologo -v q
+dotnet build src/Infrastructure/Storage --nologo -v q
+dotnet build src/Infrastructure/Services --nologo -v q
+dotnet build src/Infrastructure/Runtime --nologo -v q
+dotnet build src/Bot/Application --nologo -v q
+```
+
+A change to a constructor, a context or `DependencyInjection.cs` also needs the container check: a throwaway
+console project that calls `AddApplicationServices()`, `AddInfrastructureRuntime()` and `AddBotApplication()`,
+registers a stub for every external storage port, builds the provider with `ValidateOnBuild`, and resolves every
+registration (factory lambdas included). It must finish without a cycle or a missing registration.
+
 See [`docs/for-developers/development.md`](docs/for-developers/development.md) for the complete development workflow.
 
 See [`docs/for-technicians/configuration.md`](docs/for-technicians/configuration.md) for runtime configuration and data directories.
@@ -464,6 +481,27 @@ not host configuration.
   `IRoomService` remains for system operations such as `Members.ReleaseAsync`, `Members.RemoveSuspendedAsync`,
   `Members.RemoveRefereeAsync` and `Rounds.RecordScoreAsync`. Implementations are `internal sealed` and
   registered by `AddApplicationServices()`.
+* **Object or service?** One question decides it: does the operation have a caller whose rights it must
+  check? Then it is behaviour of the object it changes, reached through `ScopeTo(connection)`. An operation that
+  has no caller (the server's own work, a handler's reaction, startup) or that coordinates several objects
+  (login, import, score submission) is a service.
+* **Objects get their collaborators through a context.** An object takes a `…Context` record of ports (clock,
+  event sink, repositories, the ports of the objects it works with: `RoomContext`, `UserContext`, `LobbyContext`,
+  `ChannelContext`, `SessionContext`, `BeatmapsetContext`, `ServerContext`) when it is created. The context, the
+  object's constructor and the event sinks are `internal`; `Services.Implementations` builds them in factory
+  lambdas in `DependencyInjection.cs`, because the container only sees public constructors. A service class that
+  the container creates by itself needs a `public` constructor even when the class is `internal`. An object never
+  reaches a service; a port is implemented by whoever owns the other object (`Lobby` implements `IRoomLobbyPort`).
+  Because the factories hide dependencies from `ValidateOnBuild`, verify the container by resolving every
+  registration with the external storage ports stubbed (see Commands).
+* **A scope is a snapshot: re-check after waiting.** A `ScopedX` is for one request or command and is never kept.
+  A behaviour that awaits between its rights check and its change (a lookup, a repository call) checks again,
+  inside the object's own scope or lock, what the wait could have changed (the permission, `IsOpen`, a block)
+  before it changes anything.
+* **System operations are labelled.** A public method on an object that skips the rights check (`Lobby.Unwatch`,
+  `Server.SayAsync`, `Server.WhisperAsync`, `Server.OpenChannel`, `IRoomService.Members.ReleaseAsync`) says in its
+  XML summary that the server itself calls it and needs no rights. A chat command, an API route or any other entry
+  point that acts for a user never calls one; it uses the scope of the user's connection.
 * **Capability ports.** A capability with business meaning whose implementation needs external libraries
   or resources is a contract in Contracts that Infrastructure implements (`IBeatmapAnalyser`,
   `IBeatmapsetReader`, `IBeatmapAssets`, `IBeatmapsetMirror`), even when only the hosts use it. Pure
@@ -558,6 +596,14 @@ not host configuration.
   exactly one dispatcher per service stream that fans out to its handlers; nothing else reads `Events`
   directly. Handlers, dispatchers and event → client-notification routing belong to Infrastructure and the
   hosts, never to Application.
+* **Handlers are quick; slow work goes to its own queue.** A dispatcher awaits its handlers one after another, so a
+  handler that waits (a lookup, a room, the store) holds up every later event of its category. A handler that may
+  wait only queues the work on a bounded queue of its own, with a cap per user and a timeout per item, and returns
+  (`CommandWorker` of the bot). A dropped item is logged, never silent.
+* **A consequence reaches everyone, through every path.** What a change does to the people it concerns it does
+  whether they are online or not (a restriction removes an offline referee from the open rooms too), and every
+  path that grants the same authority applies the same gate (`ScopedRoom` and `ChannelRules.InRoom` agree on
+  `RoomManageAny` and `RoomJoin`).
 * **Repository contracts are written per model** as `IXxxRepository` (`IMatchRepository`,
   `IScoreRepository`, …), each declaring the operations Services and the outer layers need. A relation
   between two models that is stored on its own gets its own repository rather than a column on either
@@ -778,7 +824,10 @@ not host configuration.
   appear online in game.
 * **No authority by connection kind.** Never decide authority with `ConnectionType` or `is XConnection`. The
   kind of client only decides what that client can technically do (only an osu! client takes a slot; an
-  osu!tourney client gets no private-message channel).
+  osu!tourney client gets no private-message channel). The kind `Bot` is BasilBot's own connection, opened by the
+  server at startup so that the bot has a session and a private-message channel; no client can request it or
+  sign in as the bot, it holds no permission, and idle sweeps never close it. Transports skip it when they
+  deliver a message.
 * **A channel's name tells its kind.** A channel several users take part in (general, room,
   spectator) is named `#name` (`#osu`, `#lobby`, `#mp_5`, `#spec_7`); a private-message channel is
   named after its owner, without `#`, as an IRC nick is. This is a naming convention each kind of
@@ -1014,5 +1063,11 @@ Before considering a code change complete:
    to the object that owns it" (God Actor, service-centric procedural design, permission plumbing, exposed mutable
    state, fake scoping), and a bot message that goes through a rights check or a bot command that runs with the
    bot's rights instead of the typist's.
+8. Review delegated work for what agents tend to leave behind, besides the rules above: `.ConfigureAwait(false)` in
+   new code, a changed final newline or reflowed lines nobody asked for, a renamed parameter outside the task,
+   stray tabs in XML documentation, a constructor made `internal` on a class the container creates, a member that
+   nothing calls any more, a wait between a rights check and the change it guards, a handler that waits, and a
+   consequence that skips offline users or one of several paths. Run parallel agents in separate git worktrees
+   (two at a time at most) and merge their commits yourself.
 
 The goal is not merely to produce compiling code. The goal is a verified change that respects Basil's architecture, scope, contracts, and documentation.
