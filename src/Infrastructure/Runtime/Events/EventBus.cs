@@ -19,7 +19,7 @@ internal sealed class EventBus<T>(
 	/// <inheritdoc />
 	public void Publish(T @event)
 	{
-		var stamped = (T)(((Event)@event) with { Timestamp = time.GetUtcNow() });
+		var stamped = (T)((Event)@event with { Timestamp = time.GetUtcNow() });
 		_events.Writer.TryWrite(stamped);
 	}
 

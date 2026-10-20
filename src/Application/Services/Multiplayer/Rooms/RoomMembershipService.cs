@@ -17,20 +17,28 @@ internal sealed class RoomMembershipService(
 	/// <inheritdoc />
 	public async Task ReleaseAsync(Connection connection, CancellationToken cancellationToken = default)
 	{
-		if (connection is BanchoConnection player)
+		switch (connection)
 		{
-			if (lobby.RoomOf(player) is { } room)
+			case BanchoConnection player:
 			{
-				await using var scope = await room.EnterAsync(cancellationToken);
-				if (scope is not null) room.Leave(player);
+				if (lobby.RoomOf(player) is { } room)
+				{
+					await using var scope = await room.EnterAsync(cancellationToken);
+					if (scope is not null) room.Leave(player);
+				}
+
+				break;
 			}
-		}
-		else if (connection is TourneyConnection observer)
-		{
-			foreach (var room in lobby.Rooms.Values.Where(room => room.Members.Observers.Contains(observer)).ToArray())
+			case TourneyConnection observer:
 			{
-				await using var scope = await room.EnterAsync(cancellationToken);
-				if (scope is not null) room.ObserverLeave(observer);
+				foreach (var room in lobby.Rooms.Values.Where(room => room.Members.Observers.Contains(observer))
+					         .ToArray())
+				{
+					await using var scope = await room.EnterAsync(cancellationToken);
+					if (scope is not null) room.ObserverLeave(observer);
+				}
+
+				break;
 			}
 		}
 

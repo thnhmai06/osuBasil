@@ -14,7 +14,7 @@ namespace Basil.Application.Services.Beatmaps;
 /// <summary>
 ///     Imports, deletes and keeps track of the beatmapsets the server has.
 /// </summary>
-internal sealed class BeatmapsetService(
+internal sealed partial class BeatmapsetService(
 	IBeatmapsetReader reader,
 	IBeatmapAnalyser analyser,
 	IBeatmapAssets assets,
@@ -33,9 +33,7 @@ internal sealed class BeatmapsetService(
 	private static readonly BeatmapsetScanResult NoChange = new(0, 0, 0);
 
 	/// <summary>The names Windows keeps for devices, whatever their extension.</summary>
-	private static readonly Regex ReservedName =
-		new(@"^(CON|PRN|AUX|NUL|CONIN\$|CONOUT\$|COM[0-9¹²³]|LPT[0-9¹²³]) *$",
-			RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+	private static readonly Regex ReservedName = ReservedPattern();
 
 	/// <inheritdoc />
 	/// <inheritdoc />
@@ -97,25 +95,20 @@ internal sealed class BeatmapsetService(
 	public async Task<BeatmapsetScanResult> ScanAsync(BeatmapsetSource entry,
 		CancellationToken cancellationToken = default)
 	{
-		switch (entry)
+		return entry switch
 		{
-			case BeatmapsetArchive archive:
-				return await ScanArchiveAsync(archive, null, cancellationToken).ConfigureAwait(false);
-
-			case BeatmapsetFolder folder:
-				return await ScanFolderAsync(folder, cancellationToken).ConfigureAwait(false);
-
-			default:
-				return NoChange;
-		}
+			BeatmapsetArchive archive => await ScanArchiveAsync(archive, null, cancellationToken).ConfigureAwait(false),
+			BeatmapsetFolder folder => await ScanFolderAsync(folder, cancellationToken).ConfigureAwait(false),
+			_ => NoChange
+		};
 	}
 
 	/// <summary>Brings the server in step with every entry of the storage.</summary>
 	/// <param name="packed">The archives packed from loose files during the scan, added to as they are packed.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>How many beatmapsets were taken in, updated and forgotten.</returns>
-	private async Task<BeatmapsetScanResult> ScanAllAsync(List<BeatmapsetArchive> packed,
-		CancellationToken cancellationToken)
+	private async Task<BeatmapsetScanResult> ScanAllAsync(
+		List<BeatmapsetArchive> packed, CancellationToken cancellationToken)
 	{
 		var seen = new HashSet<int>();
 		var queued = new List<(BeatmapsetArchive Archive, int? FolderId, ContentFingerprint? Fingerprint)>();
@@ -194,16 +187,15 @@ internal sealed class BeatmapsetService(
 			}
 		}
 
-		var remove = new List<BeatmapsetRecord>();
-		foreach (var set in await Paging.ListAllAsync(
-				         page => beatmapsets.ListAsync(new BeatmapQuery(), page, cancellationToken), cancellationToken)
-			         .ConfigureAwait(false))
-			if (!seen.Contains(set.Id))
-				remove.Add(set);
+		var remove = (
+				await Paging.ListAllAsync(page => beatmapsets.ListAsync(
+					new BeatmapQuery(), page, cancellationToken), cancellationToken).ConfigureAwait(false))
+			.Where(set => !seen.Contains(set.Id))
+			.ToList();
 
-		var store = new List<BeatmapsetChange>(indexed.Count + changed.Count);
-		foreach (var item in indexed) store.Add(item.Change);
-		foreach (var (change, _) in changed) store.Add(change);
+		var store = indexed.Select(x => x.Change)
+			.Concat(changed.Select(x => x.Change))
+			.ToList();
 
 		var storedSets =
 			await beatmapsets.CommitAsync(new BeatmapsetChanges(store, remove), cancellationToken)
@@ -577,11 +569,8 @@ internal sealed class BeatmapsetService(
 
 		if (existing is null) return false;
 		var kept = hashes.Values.ToHashSet();
-		foreach (var beatmap in await beatmaps.ListAsync(existing, cancellationToken).ConfigureAwait(false))
-			if (beatmap.Locked && !kept.Contains(beatmap.Hash))
-				return true;
-
-		return false;
+		return (await beatmaps.ListAsync(existing, cancellationToken).ConfigureAwait(false)).Any(beatmap =>
+			beatmap.Locked && !kept.Contains(beatmap.Hash));
 	}
 
 	/// <summary>Reads an archive lying in the storage, keeping it open while its content lives.</summary>
@@ -648,10 +637,10 @@ internal sealed class BeatmapsetService(
 	private async Task<BeatmapsetChange> ChangeOfAsync(BeatmapsetRecord set, ContentFingerprint fingerprint,
 		CancellationToken cancellationToken)
 	{
-		var synced = new List<BeatmapData>();
-		foreach (var beatmap in await beatmaps.ListAsync(set, cancellationToken).ConfigureAwait(false))
-			synced.Add(new BeatmapData(beatmap.IsLocallyIngested ? null : beatmap.Id, beatmap.Hash, beatmap.Metadata,
-				beatmap.Assets));
+		var synced = (
+			from beatmap in await beatmaps.ListAsync(set, cancellationToken).ConfigureAwait(false)
+			select new BeatmapData(beatmap.IsLocallyIngested ? null : beatmap.Id, beatmap.Hash, beatmap.Metadata,
+				beatmap.Assets)).ToList();
 
 		return new BeatmapsetChange(set, new BeatmapsetData(null, fingerprint, set.Metadata, set.Assets, synced));
 	}
@@ -689,8 +678,7 @@ internal sealed class BeatmapsetService(
 		var plain = Path.GetFileName(name);
 		var builder = new StringBuilder(plain.Length);
 		foreach (var character in plain)
-			builder.Append(character is '<' or '>' or ':' or '"' or '/' or '\\' or '|' or '?' or '*'
-				or < ' '
+			builder.Append(character is '<' or '>' or ':' or '"' or '/' or '\\' or '|' or '?' or '*' or < ' '
 				? '_'
 				: character);
 
@@ -790,4 +778,8 @@ internal sealed class BeatmapsetService(
 			return true;
 		}
 	}
+
+	[GeneratedRegex(@"^(CON|PRN|AUX|NUL|CONIN\$|CONOUT\$|COM[0-9¹²³]|LPT[0-9¹²³]) *$",
+		RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+	private static partial Regex ReservedPattern();
 }

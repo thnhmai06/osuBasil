@@ -6,8 +6,7 @@ namespace Basil.Application.Services.Sessions;
 ///     Opens and closes the connections of online users and changes what they share; connections and presence are its
 ///     parts.
 /// </summary>
-internal sealed class SessionService(
-	SessionConnectionsService connections) : ISessionService
+internal sealed class SessionService(SessionConnectionsService connections) : ISessionService
 {
 	/// <inheritdoc />
 	public ISessionConnectionsService Connections => connections;

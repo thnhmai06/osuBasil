@@ -78,18 +78,17 @@ public sealed class ScopedServerScreenshots
 
 	private static string? ImageExtension(ReadOnlySpan<byte> content)
 	{
-		if (content.Length >= 5 && content[0] == 0xFF && content[1] == 0xD8 && content[2] == 0xFF &&
-		    content[^2] == 0xFF && content[^1] == 0xD9)
-			return "jpg";
-
-		if (content.Length >= 16 &&
-		    content[0] == 0x89 && content[1] == 0x50 && content[2] == 0x4E && content[3] == 0x47 &&
-		    content[4] == 0x0D && content[5] == 0x0A && content[6] == 0x1A && content[7] == 0x0A &&
-		    content[^8] == 0x49 && content[^7] == 0x45 && content[^6] == 0x4E && content[^5] == 0x44 &&
-		    content[^4] == 0xAE && content[^3] == 0x42 && content[^2] == 0x60 && content[^1] == 0x82)
-			return "png";
-
-		return null;
+		return content.Length switch
+		{
+			>= 5 when content[0] == 0xFF && content[1] == 0xD8 && content[2] == 0xFF && content[^2] == 0xFF &&
+			          content[^1] == 0xD9 => "jpg",
+			>= 16 when content[0] == 0x89 && content[1] == 0x50 && content[2] == 0x4E && content[3] == 0x47 &&
+			           content[4] == 0x0D && content[5] == 0x0A && content[6] == 0x1A && content[7] == 0x0A &&
+			           content[^8] == 0x49 && content[^7] == 0x45 && content[^6] == 0x4E && content[^5] == 0x44 &&
+			           content[^4] == 0xAE && content[^3] == 0x42 && content[^2] == 0x60 &&
+			           content[^1] == 0x82 => "png",
+			_ => null
+		};
 	}
 }
 

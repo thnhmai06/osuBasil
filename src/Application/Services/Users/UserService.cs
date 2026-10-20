@@ -10,21 +10,22 @@ using Basil.Domain.Users;
 namespace Basil.Application.Services.Users;
 
 /// <summary>Gives access to the accounts' behaviour and announces what happens to them.</summary>
-internal sealed class UserService : IUserService, IRoomUsersPort
+internal sealed class UserService(
+	IUserRepository users,
+	IRestrictionRepository restrictions,
+	IModerationLogRepository moderationLog,
+	IRelationshipRepository relationships,
+	ILoginRepository logins,
+	ICredentialRepository credentials,
+	IUserRegistry registry,
+	SessionConnectionsService sessions,
+	TimeProvider clock,
+	IEventPublisher<UserEvent> events) : IUserService, IRoomUsersPort
 {
-	private readonly UserContext _context;
-
-	public UserService(IUserRepository users, IRestrictionRepository restrictions,
-		IModerationLogRepository moderationLog, IRelationshipRepository relationships, ILoginRepository logins,
-		ICredentialRepository credentials,
-		IUserRegistry registry,
-		SessionConnectionsService sessions,
-		TimeProvider clock, IEventPublisher<UserEvent> events)
-	{
-		_context = new UserContext(clock, events, registry, users, restrictions, moderationLog, relationships, logins,
-			credentials,
-			sessions);
-	}
+	private readonly UserContext _context = new(clock, events, registry, users, restrictions, moderationLog,
+		relationships, logins,
+		credentials,
+		sessions);
 
 	/// <inheritdoc />
 	public User Of(UserRecord user)
@@ -32,6 +33,8 @@ internal sealed class UserService : IUserService, IRoomUsersPort
 		return new User(user, _context);
 	}
 
-	ValueTask<bool> IRoomUsersPort.BlocksAsync(UserRecord blocker, UserRecord who, CancellationToken ct) =>
-		Of(blocker).HasBlockedAsync(who, ct);
+	ValueTask<bool> IRoomUsersPort.BlocksAsync(UserRecord blocker, UserRecord who, CancellationToken ct)
+	{
+		return Of(blocker).HasBlockedAsync(who, ct);
+	}
 }

@@ -111,11 +111,10 @@ public sealed class ScopedRoom
 			return null;
 
 		// Check if granted permissions allow RoomJoin but effective don't
-		if (By.Session.Check(Domain.Permissions.Permissions.RoomJoin, Room.Context.Clock.GetUtcNow()) is Access
-			    .Suspended)
-			return RoomResult.Silenced;
-
-		return RoomResult.NotAuthorized;
+		return By.Session.Check(Domain.Permissions.Permissions.RoomJoin, Room.Context.Clock.GetUtcNow())
+			is Access.Suspended
+			? RoomResult.Silenced
+			: RoomResult.NotAuthorized;
 	}
 
 	/// <summary>Checks whether the connection may join the room.</summary>

@@ -53,9 +53,7 @@ public sealed class ScopedRoomMembers
 		if (_scoped.By is not BanchoConnection by) return RoomResult.NotInRoom;
 
 		await using var scope = await _scoped.Room.EnterAsync(cancellationToken);
-		if (scope is null) return RoomResult.RoomClosed;
-
-		return _scoped.Room.Leave(by);
+		return scope is null ? RoomResult.RoomClosed : _scoped.Room.Leave(by);
 	}
 
 	/// <summary>Seats an online player in the room on behalf of a manager.</summary>
@@ -208,9 +206,7 @@ public sealed class ScopedRoomMembers
 		if (_scoped.By is not TourneyConnection by) return RoomResult.NotObserver;
 
 		await using var scope = await _scoped.Room.EnterAsync(cancellationToken);
-		if (scope is null) return RoomResult.RoomClosed;
-
-		return _scoped.Room.ObserverJoin(by);
+		return scope is not null ? _scoped.Room.ObserverJoin(by) : RoomResult.RoomClosed;
 	}
 
 	/// <summary>Removes the caller's tournament connection from the room's observers.</summary>
@@ -221,8 +217,6 @@ public sealed class ScopedRoomMembers
 		if (_scoped.By is not TourneyConnection by) return RoomResult.NotObserver;
 
 		await using var scope = await _scoped.Room.EnterAsync(cancellationToken);
-		if (scope is null) return RoomResult.RoomClosed;
-
-		return _scoped.Room.ObserverLeave(by);
+		return scope is not null ? _scoped.Room.ObserverLeave(by) : RoomResult.RoomClosed;
 	}
 }

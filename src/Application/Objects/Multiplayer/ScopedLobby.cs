@@ -64,8 +64,13 @@ public sealed class ScopedLobby
 			? Permissions.RoomCreate
 			: Permissions.RoomCreate | Permissions.RoomJoin;
 		var access = By.Session.Check(required, now);
-		if (access is Access.NotGranted) return (null, RoomResult.NotAuthorized);
-		if (access is Access.Suspended) return (null, RoomResult.Silenced);
+		switch (access)
+		{
+			case Access.NotGranted:
+				return (null, RoomResult.NotAuthorized);
+			case Access.Suspended:
+				return (null, RoomResult.Silenced);
+		}
 
 		if ((await Lobby.Context.Settings.GetAsync(cancellationToken)).LockedCreation.HasFlag(ServerSettings
 			    .CreationLocks.Rooms) &&

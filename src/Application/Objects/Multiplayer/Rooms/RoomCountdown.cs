@@ -3,32 +3,24 @@ using Basil.Domain.Users;
 namespace Basil.Application.Objects.Multiplayer.Rooms;
 
 /// <summary>A room countdown, identified by reference, that may start a round when it elapses.</summary>
-public sealed class RoomCountdown
+/// <remarks>Creates a room countdown.</remarks>
+/// <param name="by">The user who started the countdown.</param>
+/// <param name="length">How long the countdown runs.</param>
+/// <param name="startsRound">Whether the countdown starts a round when it elapses.</param>
+/// <param name="startedAt">When the countdown started.</param>
+public sealed class RoomCountdown(UserRecord by, TimeSpan length, bool startsRound, DateTimeOffset startedAt)
 {
-	/// <summary>Creates a room countdown.</summary>
-	/// <param name="by">The user who started the countdown.</param>
-	/// <param name="length">How long the countdown runs.</param>
-	/// <param name="startsRound">Whether the countdown starts a round when it elapses.</param>
-	/// <param name="startedAt">When the countdown started.</param>
-	public RoomCountdown(UserRecord by, TimeSpan length, bool startsRound, DateTimeOffset startedAt)
-	{
-		By = by;
-		Length = length;
-		StartsRound = startsRound;
-		StartedAt = startedAt;
-	}
-
 	/// <summary>Gets the user who started the countdown.</summary>
-	public UserRecord By { get; }
+	public UserRecord By { get; } = by;
 
 	/// <summary>Gets how long the countdown runs.</summary>
-	public TimeSpan Length { get; }
+	public TimeSpan Length { get; } = length;
 
 	/// <summary>Gets whether the countdown starts a round when it elapses.</summary>
-	public bool StartsRound { get; }
+	public bool StartsRound { get; } = startsRound;
 
 	/// <summary>Gets when the countdown started.</summary>
-	public DateTimeOffset StartedAt { get; }
+	public DateTimeOffset StartedAt { get; } = startedAt;
 
 	/// <summary>Gets when the countdown elapses.</summary>
 	public DateTimeOffset EndsAt => StartedAt + Length;
