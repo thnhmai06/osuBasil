@@ -2,9 +2,11 @@ using System.Buffers.Text;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Security.Cryptography;
+using Basil.Application.Objects.Anticheat;
 using Basil.Application.Objects.Chat;
 using Basil.Application.Objects.Events;
 using Basil.Application.Objects.Multiplayer.Rooms;
+using Basil.Application.Objects.Scores;
 using Basil.Application.Objects.Sessions;
 using Basil.Application.Storage.Auth;
 using Basil.Application.Storage.Users;
@@ -47,9 +49,15 @@ public sealed class UserRegistry : IUserConnectionsPort, IRoomUsersPort
 	/// <param name="clock">The clock for connection and permission times.</param>
 	/// <param name="events">The publisher for user events.</param>
 	/// <param name="chat">The runtime dependencies for user channels.</param>
+	/// <param name="lobby">The deferred lookup for rooms containing game clients.</param>
+	/// <param name="scores">The score validation and persistence operations.</param>
+	/// <param name="scoreEvents">The publisher for score events.</param>
+	/// <param name="anticheatEvents">The publisher for anticheat events.</param>
 	internal UserRegistry(IAccountService accounts, IUserRepository users, IRestrictionRepository restrictions,
 		IModerationLogRepository moderationLog, IRelationshipRepository relationships, ILoginRepository logins,
-		ICredentialRepository credentials, TimeProvider clock, IEventPublisher<UserEvent> events, ChannelContext chat)
+		ICredentialRepository credentials, TimeProvider clock, IEventPublisher<UserEvent> events, ChannelContext chat,
+		Func<IConnectionLobbyPort> lobby, IScoreRecording scores, IEventPublisher<ScoreEvent> scoreEvents,
+		IEventPublisher<AnticheatEvent> anticheatEvents)
 	{
 		_accounts = accounts;
 		_users = users;
@@ -58,8 +66,11 @@ public sealed class UserRegistry : IUserConnectionsPort, IRoomUsersPort
 		_events = events;
 		_context = new UserContext(clock, events, this, users, restrictions, moderationLog, relationships, logins,
 			credentials, this, chat);
-		_session = new SessionContext(clock, events, this, relationships, chat);
+		_session = new SessionContext(clock, events, this, relationships, chat,
+			new DeferredConnectionLobbyPort(lobby), scores, scoreEvents, anticheatEvents);
 	}
+
+	internal SessionContext Session => _session;
 
 	/// <summary>Gets every online user by its account.</summary>
 	public IReadOnlyDictionary<UserRecord, User> Online => _online;
@@ -383,6 +394,16 @@ public sealed class UserRegistry : IUserConnectionsPort, IRoomUsersPort
 		Md5 passwordHash, CancellationToken cancellationToken)
 	{
 		return _accounts.CreateAsync(data, passwordHash, cancellationToken);
+	}
+
+	private sealed class DeferredConnectionLobbyPort(Func<IConnectionLobbyPort> resolve) : IConnectionLobbyPort
+	{
+		private readonly Lazy<IConnectionLobbyPort> _lobby = new(resolve);
+
+		public Room? RoomOf(BanchoConnection player)
+		{
+			return _lobby.Value.RoomOf(player);
+		}
 	}
 }
 
