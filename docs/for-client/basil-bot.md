@@ -2,8 +2,9 @@
 
 ## Overview
 
-BasilBot is the server's built-in chat command and announcement surface. Its account is fixed, cannot sign in and
-has no permissions; it exists as the server's voice, not as an actor with authority.
+BasilBot is the server's built-in chat command and announcement surface. It is not an actor but the voice the server speaks with: its
+account is fixed, the server protects it, and nobody can sign in as it or act for it. Permissions mean nothing to it,
+and its privileges only decide how a client shows it. Commands run with the rights of the user who typed them.
 
 Commands include:
 

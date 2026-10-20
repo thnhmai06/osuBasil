@@ -1,7 +1,6 @@
 using Basil.Domain.Common;
-using Basil.Domain.Multiplayer.Matches;
 
-namespace Basil.Domain.Multiplayer.Rounds;
+namespace Basil.Domain.Multiplayer;
 
 /// <summary>
 ///     A round record as read back for report purposes.

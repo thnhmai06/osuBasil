@@ -11,7 +11,7 @@ using Basil.Application.Services.Contracts.Sessions;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Bancho;
 using Basil.Domain.Common;
-using Basil.Domain.Multiplayer.Rounds;
+using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 
 namespace Basil.Application.Services.Implementations.Scores;

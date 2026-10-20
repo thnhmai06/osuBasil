@@ -1,4 +1,5 @@
 using Basil.Application.Storage.Contracts.Common;
+using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Storage.Contracts.Users;
@@ -10,7 +11,7 @@ public interface IModerationLogRepository
 	/// <summary>Records a moderation action.</summary>
 	/// <param name="entry">The action to record.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task AppendAsync(ModerationLogData entry, CancellationToken cancellationToken = default);
+	Task AppendAsync(ModerationData entry, CancellationToken cancellationToken = default);
 
 	/// <summary>Lists the entries recorded against a user, newest first.</summary>
 	/// <param name="target">The user whose moderation history to list.</param>
@@ -18,6 +19,6 @@ public interface IModerationLogRepository
 	/// <param name="page">Which part of the listing to return.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>One part of the user's moderation history, newest first, with how many entries it has in total.</returns>
-	ValueTask<Page<ModerationLogEntry>> ListAsync(UserRecord target, Interval<DateTimeOffset>? within,
+	ValueTask<Page<ModerationRecord>> ListAsync(UserRecord target, Interval<DateTimeOffset>? within,
 		PageRequest page, CancellationToken cancellationToken = default);
 }

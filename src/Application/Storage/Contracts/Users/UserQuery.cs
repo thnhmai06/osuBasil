@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Basil.Application.Storage.Contracts.Common;
+using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Storage.Contracts.Users;
@@ -94,6 +95,6 @@ public sealed record UserQuery(
 	/// <returns>The query, which leaves deleted users out unless the asker may see them.</returns>
 	public UserQuery LimitTo(Permissions effective)
 	{
-		return effective.Allows(Domain.Users.Permissions.UserViewDeleted) ? this : this with { Deleted = false };
+		return effective.Allows(Domain.Permissions.Permissions.UserViewDeleted) ? this : this with { Deleted = false };
 	}
 }

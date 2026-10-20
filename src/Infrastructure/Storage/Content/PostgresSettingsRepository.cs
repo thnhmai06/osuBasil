@@ -1,5 +1,6 @@
 using System.Globalization;
 using Basil.Application.Storage.Contracts.Content;
+using Basil.Domain;
 using Basil.Domain.Content;
 using Basil.Infrastructure.Storage.Common;
 using Basil.Infrastructure.Storage.Common.Database;
@@ -31,7 +32,7 @@ internal sealed class PostgresSettingsRepository(
 		{
 			Motd = values.GetValueOrDefault("motd"),
 			LockedCreation = values.GetValueOrDefault("locked_creation") is { } locks
-				? (CreationLocks)int.Parse(locks, CultureInfo.InvariantCulture)
+				? (ServerSettings.CreationLocks)int.Parse(locks, CultureInfo.InvariantCulture)
 				: defaults.LockedCreation,
 			MenuIcon = new ServerSettings.MenuIconSettings
 			{

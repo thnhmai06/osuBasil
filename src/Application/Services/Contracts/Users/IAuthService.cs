@@ -1,7 +1,9 @@
 using System.Net;
 using Basil.Application.Services.Contracts.Sessions;
+using Basil.Domain;
 using Basil.Domain.Bancho;
 using Basil.Domain.Common;
+using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Contracts.Users;
@@ -36,7 +38,7 @@ public interface IAuthService
 	/// <returns><see langword="null" /> when the attempt would succeed; otherwise, why it would fail.</returns>
 	/// <remarks>
 	///     Anyone may register a new account of their own, granted the permissions of a new account, unless account
-	///     creation is locked (<see cref="Basil.Domain.Content.CreationLocks.Accounts" />), which refuses it with
+	///     creation is locked (<see cref="CreationLocks.Accounts" />), which refuses it with
 	///     <see cref="RegistrationFailure.Locked" />.
 	/// </remarks>
 	Task<RegistrationFailure?> CheckRegistrationAsync(RegisterAttempt attempt,
@@ -48,7 +50,7 @@ public interface IAuthService
 	/// <returns>The new user, or why the registration failed.</returns>
 	/// <remarks>
 	///     Anyone may register a new account of their own, granted the permissions of a new account, unless account
-	///     creation is locked (<see cref="Basil.Domain.Content.CreationLocks.Accounts" />), which refuses it with
+	///     creation is locked (<see cref="CreationLocks.Accounts" />), which refuses it with
 	///     <see cref="RegistrationFailure.Locked" />.
 	/// </remarks>
 	Task<(UserRecord? User, RegistrationFailure? Failure)> RegisterAsync(RegisterAttempt attempt,
@@ -68,5 +70,4 @@ public interface IAuthService
 	/// </returns>
 	Task<(UserRecord? User, RegistrationFailure? Failure)> CreateAccountAsync(Connection by, UserData data,
 		Md5 passwordHash, CancellationToken cancellationToken = default);
-
 }

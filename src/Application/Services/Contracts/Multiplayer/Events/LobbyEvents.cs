@@ -1,7 +1,7 @@
 using Basil.Application.Services.Contracts.Events;
 using Basil.Application.Services.Contracts.Multiplayer.Rooms;
 using Basil.Application.Services.Contracts.Sessions;
-using Basil.Domain.Multiplayer.Rounds;
+using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Contracts.Multiplayer.Events;

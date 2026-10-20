@@ -2,7 +2,6 @@ using System.Diagnostics.CodeAnalysis;
 using Basil.Application.Services.Contracts.Multiplayer.Events;
 using Basil.Application.Services.Contracts.Sessions;
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Multiplayer.Rounds;
 
 namespace Basil.Application.Services.Contracts.Multiplayer.Rooms;
 
@@ -32,7 +31,7 @@ public sealed class ScopedRoomRounds
 		if (room.Rounds.InProgress) return RoomResult.InProgress;
 		if (room.Settings.Beatmap is null) return RoomResult.NoBeatmap;
 
-		room.CancelCountdown(announce: true);
+		room.CancelCountdown(true);
 		var (round, players) = room.BeginRound();
 		room.Context.Events.Emit(new RoomRoundStarted(room, round, players));
 		return RoomResult.Ok;
@@ -71,7 +70,7 @@ public sealed class ScopedRoomRounds
 		await using var scope = await _scoped.Room.EnterAsync(cancellationToken);
 		if (scope is null) return RoomResult.RoomClosed;
 
-		return _scoped.Room.CancelCountdown(announce: true) ? RoomResult.Ok : RoomResult.NoCountdown;
+		return _scoped.Room.CancelCountdown(true) ? RoomResult.Ok : RoomResult.NoCountdown;
 	}
 
 	/// <summary>Aborts the round in progress; players go back to not ready.</summary>
@@ -87,7 +86,7 @@ public sealed class ScopedRoomRounds
 		var room = _scoped.Room;
 		if (!room.Rounds.InProgress) return RoomResult.NotInProgress;
 
-		room.CancelCountdown(announce: true);
+		room.CancelCountdown(true);
 		var round = room.EndCurrentRound(true)!;
 		room.Context.Events.Emit(new RoomRoundAborted(room, round));
 		return RoomResult.Ok;

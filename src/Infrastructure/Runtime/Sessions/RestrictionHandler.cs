@@ -1,6 +1,7 @@
 using Basil.Application.Services.Contracts.Events;
 using Basil.Application.Services.Contracts.Multiplayer;
 using Basil.Application.Services.Contracts.Sessions;
+using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 using Microsoft.Extensions.Logging;
 
@@ -30,7 +31,7 @@ internal sealed class RestrictionHandler(
 		}
 
 		await RunAsync("remove it from rooms", session.User.Id,
-				() => rooms.Members.RemoveSuspendedAsync(session, cancellationToken), cancellationToken);
+			() => rooms.Members.RemoveSuspendedAsync(session, cancellationToken), cancellationToken);
 
 		if (session.Check(Permissions.SpectatingWatch, time.GetUtcNow()) is Access.Allowed) return;
 

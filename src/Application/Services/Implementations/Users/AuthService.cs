@@ -6,10 +6,12 @@ using Basil.Application.Storage.Contracts.Auth;
 using Basil.Application.Storage.Contracts.Common;
 using Basil.Application.Storage.Contracts.Content;
 using Basil.Application.Storage.Contracts.Users;
+using Basil.Domain;
 using Basil.Domain.Auth;
 using Basil.Domain.Bancho;
 using Basil.Domain.Common;
 using Basil.Domain.Content;
+using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Implementations.Users;
@@ -29,7 +31,7 @@ internal sealed class AuthService(
 	public async Task<RegistrationFailure?> CheckRegistrationAsync(RegisterAttempt attempt,
 		CancellationToken cancellationToken = default)
 	{
-		if ((await settings.GetAsync(cancellationToken)).LockedCreation.HasFlag(CreationLocks.Accounts))
+		if ((await settings.GetAsync(cancellationToken)).LockedCreation.HasFlag(ServerSettings.CreationLocks.Accounts))
 			return RegistrationFailure.Locked;
 
 		try
@@ -123,7 +125,8 @@ internal sealed class AuthService(
 		}
 	}
 
-	private async Task<(UserRecord? User, RegistrationFailure? Failure)> CreateCoreAsync(UserData data, Md5 passwordHash,
+	private async Task<(UserRecord? User, RegistrationFailure? Failure)> CreateCoreAsync(UserData data,
+		Md5 passwordHash,
 		CancellationToken cancellationToken)
 	{
 		UserRecord user;

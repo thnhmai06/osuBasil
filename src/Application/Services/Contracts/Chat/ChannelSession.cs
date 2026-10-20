@@ -1,6 +1,7 @@
 using Basil.Application.Services.Contracts.Sessions;
 using Basil.Domain.Chat;
 using Basil.Domain.Common;
+using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Contracts.Chat;

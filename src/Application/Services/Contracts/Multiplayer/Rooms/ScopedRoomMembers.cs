@@ -1,6 +1,7 @@
 using Basil.Application.Services.Contracts.Multiplayer.Events;
 using Basil.Application.Services.Contracts.Sessions;
 using Basil.Domain.Multiplayer;
+using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Contracts.Multiplayer.Rooms;

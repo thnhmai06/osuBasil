@@ -1,4 +1,4 @@
-namespace Basil.Domain.Multiplayer.Matches;
+namespace Basil.Domain.Multiplayer;
 
 /// <summary>
 ///     What happened in a match: its rounds, each with its result, and its lifecycle events, in the order they

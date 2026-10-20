@@ -2,7 +2,6 @@ using Basil.Application.Services.Contracts.Multiplayer.Events;
 using Basil.Application.Services.Contracts.Sessions;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Multiplayer.Matches;
 
 namespace Basil.Application.Services.Contracts.Multiplayer.Rooms;
 
@@ -101,7 +100,7 @@ public sealed class ScopedRoomSettings
 		if (room.Rounds.Countdown is { StartsRound: true } &&
 		    (change.Beatmap is not null || change.ClearBeatmap || change.Mode is not null || change.Mods is not null ||
 		     change.Freemods is not null || change.TeamType is not null || change.WinCondition is not null))
-			room.CancelCountdown(announce: true);
+			room.CancelCountdown(true);
 
 		room.Context.Events.Emit(new RoomSettingsChanged(room, change with { Password = null },
 			change.Password is not null));

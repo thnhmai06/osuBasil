@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
 using Basil.Application.Storage.Contracts.Multiplayer.Matches;
 using Basil.Application.Storage.Contracts.Users;
-using Basil.Domain.Multiplayer.Matches;
+using Basil.Domain.Multiplayer;
 using Basil.Infrastructure.Storage.Common.Database;
 using Basil.Infrastructure.Storage.Common.Writing;
 using Basil.Infrastructure.Storage.Memory;
@@ -42,7 +42,8 @@ internal sealed class PostgresMatchEventRepository(
 	}
 
 	/// <inheritdoc />
-	public async Task<IReadOnlyList<MatchEvent>> ListAsync(MatchRecord match, CancellationToken cancellationToken = default)
+	public async Task<IReadOnlyList<MatchEvent>> ListAsync(MatchRecord match,
+		CancellationToken cancellationToken = default)
 	{
 		var liveMatch = await matches.GetAsync(match.Id, cancellationToken) ?? match;
 		return await _byMatch.GetOrLoadAsync(liveMatch.Id, liveMatch, async () =>

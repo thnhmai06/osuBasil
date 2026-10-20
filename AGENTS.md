@@ -449,7 +449,8 @@ not host configuration.
   channels, `Beatmapset`, and the root `Server`) in Services.Contracts. It owns its state,
   keeps its invariants, and offers its behaviour; its state changes only inside its own behaviour. Its persistent
   value is a Domain record named `XRecord` with the plain value `XData` (`UserRecord`, `BeatmapsetRecord`,
-  `RestrictionRecord`, `MatchRecord`); the object wraps it. A part is reached through its owner
+  `MatchRecord`); the object wraps it. A persistent value that has no live object of its own, such as a
+  restriction, is a plain Domain class named after the concept (`Restriction`). A part is reached through its owner
   (`room.Slots[3]`), never through an outside object that takes the owner as a parameter.
   **`x.ScopeTo(connection)`** returns `ScopedX`, a short-lived capability for one request or command. It snapshots
   the caller's effective permissions and role on `X` once, and each behaviour checks that snapshot and returns
@@ -758,7 +759,7 @@ not host configuration.
 * **Permission checks require every bit** (`Permissions.Allows`); an empty requirement is always
   satisfied. Checks use the **effective** permissions: the granted ones minus those suspended by the user's
   active restrictions (`Effective(restrictions, now)`).
-* **Restrictions are timed records,** not account fields. A `RestrictionRecord` suspends a mask of permissions
+* **Restrictions are timed records,** not account fields. A `Restriction` suspends a mask of permissions
   from `StartsAt` to `EndsAt` (open-ended until lifted; lifting sets `EndsAt`, history is kept). It holds only that
   data: no reason and no note. Named masks live on `Restriction`, not on `Permissions`:
   `Silence = Chat | Multiplayer` follows the osu! wiki (no chatting anywhere, no multiplayer; watching others play
@@ -779,9 +780,12 @@ not host configuration.
   Equals cannot act on each other; acting on oneself is not subject to this rule, except that nobody restricts
   or lifts a restriction of themselves. Granting gives only bits the actor holds.
 * **BasilBot is the server's voice.** The server has one fixed user, BasilBot, with id 1, created by a migration:
-  it is a friend of everybody, cannot sign in, and holds no permission. Its record is fixed (it cannot be
-  deleted, restricted, given permissions or a password, or have its connection revoked); its metadata (name,
-  country, avatar) can be edited like any other user's. The bot answers chat commands (`!`, a fixed prefix) and
+  it is a friend of everybody. It is not an actor: it is the voice the server speaks with, and the server protects
+  it. Nobody can sign in as it or act for it, in any form (no login, no token a client can present, no
+  delegation). It never goes through a rights check because it never asks for anything, so permissions mean
+  nothing to it, and its privileges only decide how a client shows it; they grant nothing. Its record is fixed (it
+  cannot be deleted, restricted, given permissions or a password, or have its connection revoked); its metadata
+  (name, country, avatar) can be edited like any other user's. The bot answers chat commands (`!`, a fixed prefix) and
   posts the server's announcements. A chat command is an entry point like IRC or the API: it runs on the objects
   scoped to the connection of the user who typed it, so it needs that user's rights; the bot only replies. The
   bot's own messages go straight to the chat, past the rights check. The command handler and event-based
@@ -826,7 +830,7 @@ not host configuration.
   kind of client only decides what that client can technically do (only an osu! client takes a slot; an
   osu!tourney client gets no private-message channel). The kind `Bot` is BasilBot's own connection, opened by the
   server at startup so that the bot has a session and a private-message channel; no client can request it or
-  sign in as the bot, it holds no permission, and idle sweeps never close it. Transports skip it when they
+  sign in as the bot, no token of it can be presented, and idle sweeps never close it. Transports skip it when they
   deliver a message.
 * **A channel's name tells its kind.** A channel several users take part in (general, room,
   spectator) is named `#name` (`#osu`, `#lobby`, `#mp_5`, `#spec_7`); a private-message channel is

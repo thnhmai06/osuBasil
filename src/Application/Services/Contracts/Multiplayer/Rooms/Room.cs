@@ -1,9 +1,10 @@
 using Basil.Application.Services.Contracts.Multiplayer.Events;
 using Basil.Application.Services.Contracts.Sessions;
 using Basil.Domain.Mechanics;
-using Basil.Domain.Multiplayer.Matches;
-using Basil.Domain.Multiplayer.Rounds;
+using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
+using MatchRecord = Basil.Domain.Multiplayer.MatchRecord;
+using MatchSettings = Basil.Domain.Multiplayer.MatchSettings;
 
 namespace Basil.Application.Services.Contracts.Multiplayer.Rooms;
 
@@ -245,7 +246,7 @@ public sealed class Room : IEquatable<Room>
 	/// <remarks>The caller holds the room's scope.</remarks>
 	internal RoomCountdown StartCountdown(UserRecord by, TimeSpan length, bool startsRound)
 	{
-		CancelCountdown(announce: false);
+		CancelCountdown(false);
 
 		var countdown = new RoomCountdown(by, length, startsRound, Context.Clock.GetUtcNow());
 		Rounds.Countdown = countdown;
@@ -295,7 +296,7 @@ public sealed class Room : IEquatable<Room>
 	{
 		if (!ReferenceEquals(Rounds.Countdown, countdown)) return;
 
-		CancelCountdown(announce: false);
+		CancelCountdown(false);
 		(Round Round, IReadOnlyList<BanchoConnection> Players)? started = null;
 		var result = RoomResult.Ok;
 		if (countdown.StartsRound)

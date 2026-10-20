@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 using Basil.Application.Storage.Contracts.Multiplayer.Matches;
 using Basil.Application.Storage.Contracts.Scores;
 using Basil.Domain.Mechanics;
-using Basil.Domain.Multiplayer.Rounds;
+using Basil.Domain.Multiplayer;
 using Basil.Infrastructure.Storage.Common.Database;
 using Basil.Infrastructure.Storage.Common.Writing;
 using Basil.Infrastructure.Storage.Memory;

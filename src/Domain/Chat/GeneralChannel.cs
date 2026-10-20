@@ -1,4 +1,5 @@
 using Basil.Domain.Common;
+using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Domain.Chat;

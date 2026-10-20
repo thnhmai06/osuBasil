@@ -1,13 +1,10 @@
 namespace Basil.Domain.Users;
 
-/// <summary>The fixed user that is the server's voice in chat; it signs in nowhere and holds no permission.</summary>
+/// <summary>The fixed user that is the server's voice in chat; the server speaks through it, protects it, and nobody can sign in as it or act for it.</summary>
 public static class BasilBot
 {
 	/// <summary>The id of the fixed user that is the server's voice in chat.</summary>
 	public const int Id = 1;
-
-	/// <summary>The name of the fixed user that is the server's voice in chat.</summary>
-	public const string Name = "BasilBot";
 
 	/// <summary>Determines whether an account is BasilBot.</summary>
 	/// <param name="user">The account to check.</param>

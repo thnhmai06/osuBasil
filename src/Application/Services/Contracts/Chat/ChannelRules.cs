@@ -1,5 +1,6 @@
 using Basil.Application.Services.Contracts.Sessions;
 using Basil.Application.Services.Contracts.Multiplayer.Rooms;
+using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Contracts.Chat;

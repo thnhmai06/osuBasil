@@ -2,6 +2,7 @@ using Basil.Application.Services.Contracts.Sessions;
 using Basil.Application.Storage.Contracts.Common;
 using Basil.Domain.Auth;
 using Basil.Domain.Common;
+using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Contracts.Users;
@@ -77,7 +78,7 @@ public sealed class ScopedUser
 	public async Task<UserResult> SetPermissionsAsync(Permissions permissions,
 		CancellationToken ct = default)
 	{
-		if (Guard(Permissions.UserManagePermissions, selfAllowed: true) is { } denied) return denied;
+		if (Guard(Permissions.UserManagePermissions, true) is { } denied) return denied;
 		if (!Granted.Allows(User.Record.Value.Permissions ^ permissions)) return UserResult.NotAuthorized;
 
 		User.Apply(user => user.Permissions = permissions);
@@ -94,7 +95,7 @@ public sealed class ScopedUser
 	/// <returns>The outcome of deleting the account.</returns>
 	public async Task<UserResult> DeleteAsync(CancellationToken ct = default)
 	{
-		if (Guard(Permissions.UserManage, selfAllowed: true) is { } denied) return denied;
+		if (Guard(Permissions.UserManage, true) is { } denied) return denied;
 		if (User.Record.Value.DeletedAt is not null) return UserResult.Ok;
 
 		var now = User.Context.Clock.GetUtcNow();
@@ -117,18 +118,16 @@ public sealed class ScopedUser
 	public async Task<(UserResult Result, Page<LoginEntry>? Logins)> ViewLoginsAsync(PageRequest page,
 		CancellationToken ct = default)
 	{
-		if (Guard(Permissions.UserViewLogins, selfAllowed: true) is { } denied) return (denied, null);
+		if (Guard(Permissions.UserViewLogins, true) is { } denied) return (denied, null);
 
 		if (!IsSelf)
-		{
-			await User.Context.ModerationLog.AppendAsync(new ModerationLogData
+			await User.Context.ModerationLog.AppendAsync(new ModerationData
 			{
 				Action = ModerationAction.ViewLogins,
 				By = By.User,
 				Target = User.Record,
 				Timestamp = _now
 			}, ct);
-		}
 
 		return (UserResult.Ok, await User.Context.Logins.ListAsync(User.Record, page, ct));
 	}
@@ -143,7 +142,7 @@ public sealed class ScopedUser
 	public UserResult RevokeConnections()
 	{
 		if (BasilBot.Is(User.Record)) return UserResult.Protected;
-		if (!IsSelf && Guard(Permissions.UserManage, selfAllowed: false) is { } denied) return denied;
+		if (!IsSelf && Guard(Permissions.UserManage, false) is { } denied) return denied;
 
 		User.Context.Sessions.CloseAll(User.Record, ConnectionCloseReason.Revoked);
 		return UserResult.Ok;
@@ -166,9 +165,10 @@ public sealed class ScopedUser
 
 		if (IsSelf)
 		{
-			if (currentPasswordHash is not { } current || !await VerifyAsync(current, ct)) return UserResult.WrongPassword;
+			if (currentPasswordHash is not { } current || !await VerifyAsync(current, ct))
+				return UserResult.WrongPassword;
 		}
-		else if (Guard(Permissions.UserManage, selfAllowed: false) is { } denied)
+		else if (Guard(Permissions.UserManage, false) is { } denied)
 		{
 			return denied;
 		}

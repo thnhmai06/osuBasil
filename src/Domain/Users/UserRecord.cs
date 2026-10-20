@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Basil.Domain.Common;
+using Basil.Domain.Permissions;
 
 namespace Basil.Domain.Users;
 
@@ -57,7 +58,7 @@ public sealed class UserRecord : IEquatable<UserRecord>
 	/// <returns>The <see cref="Id" />, which uniquely identifies the user.</returns>
 	public override int GetHashCode()
 	{
-		return Id;
+		return Id.GetHashCode();
 	}
 }
 
@@ -102,7 +103,7 @@ public sealed partial class UserData
 	/// <summary>Gets or sets the permissions granted to the user.</summary>
 	/// <remarks>New users are granted every player and supporter permission.</remarks>
 	/// <exception cref="ArgumentOutOfRangeException">The value sets a bit no permission defines.</exception>
-	public Permissions Permissions
+	public Permissions.Permissions Permissions
 	{
 		get;
 		set => field = value.ThrowIfUndefined();

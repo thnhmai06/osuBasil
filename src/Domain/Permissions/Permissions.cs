@@ -1,4 +1,4 @@
-namespace Basil.Domain.Users;
+namespace Basil.Domain.Permissions;
 
 /// <summary>The actions an account may take.</summary>
 /// <remarks>
@@ -164,7 +164,7 @@ public static class PermissionsExtensions
 		///     The granted permissions that no active restriction suspends; a user who manages an area keeps every
 		///     permission of that area.
 		/// </returns>
-		public Permissions Effective(IEnumerable<RestrictionRecord> restrictions, DateTimeOffset now)
+		public Permissions Effective(IEnumerable<Restriction> restrictions, DateTimeOffset now)
 		{
 			var suspended = restrictions
 				.Where(restriction => restriction.Value.IsActive(now))
@@ -181,20 +181,20 @@ public static class PermissionsExtensions
 		///     Watching rooms with osu!tourney also turns on <see cref="Privileges.Supporter" />, which osu!tourney
 		///     requires.
 		/// </remarks>
-		public Privileges Privileges => PrivilegesOf(held);
-	}
-
-	/// <summary>Gets the privileges a set of effective permissions grants.</summary>
-	private static Privileges PrivilegesOf(Permissions held)
-	{
-		var privileges = Privileges.None;
-		if ((held & Privileges.Player.Permissions) != 0) privileges |= Privileges.Player;
-		if ((held & Privileges.Supporter.Permissions) != 0 || held.Allows(Permissions.RoomObserve))
-			privileges |= Privileges.Supporter;
-		if ((held & Privileges.Tournament.Permissions) != 0) privileges |= Privileges.Tournament;
-		if ((held & Privileges.Moderator.Permissions) != 0) privileges |= Privileges.Moderator;
-		if ((held & Privileges.Developer.Permissions) != 0) privileges |= Privileges.Developer;
-		if ((held & Privileges.Owner.Permissions) != 0) privileges |= Privileges.Owner;
-		return privileges;
+		public Privileges Privileges
+		{
+			get
+			{
+				var privileges = Privileges.None;
+				if ((held & Privileges.Player.Permissions) != 0) privileges |= Privileges.Player;
+				if ((held & Privileges.Supporter.Permissions) != 0 || held.Allows(Permissions.RoomObserve))
+					privileges |= Privileges.Supporter;
+				if ((held & Privileges.Tournament.Permissions) != 0) privileges |= Privileges.Tournament;
+				if ((held & Privileges.Moderator.Permissions) != 0) privileges |= Privileges.Moderator;
+				if ((held & Privileges.Developer.Permissions) != 0) privileges |= Privileges.Developer;
+				if ((held & Privileges.Owner.Permissions) != 0) privileges |= Privileges.Owner;
+				return privileges;
+			}
+		}
 	}
 }

@@ -1,9 +1,10 @@
 using Basil.Domain.Common;
+using Basil.Domain.Users;
 
-namespace Basil.Domain.Users;
+namespace Basil.Domain.Permissions;
 
 /// <summary>A restriction of a user, identified by its id.</summary>
-public sealed class RestrictionRecord : IEquatable<RestrictionRecord>
+public sealed class Restriction : IEquatable<Restriction>
 {
 	/// <summary>Gets the unique identifier of the restriction.</summary>
 	public required int Id { get; init; }
@@ -14,7 +15,7 @@ public sealed class RestrictionRecord : IEquatable<RestrictionRecord>
 	/// <summary>Determines whether another restriction is the same record.</summary>
 	/// <param name="other">The restriction to compare against, or <see langword="null" />.</param>
 	/// <returns><see langword="true" /> if <paramref name="other" /> has the same <see cref="Id" />.</returns>
-	public bool Equals(RestrictionRecord? other)
+	public bool Equals(Restriction? other)
 	{
 		return other is not null && Id == other.Id;
 	}
@@ -22,13 +23,13 @@ public sealed class RestrictionRecord : IEquatable<RestrictionRecord>
 	/// <inheritdoc />
 	public override bool Equals(object? obj)
 	{
-		return obj is RestrictionRecord other && Equals(other);
+		return obj is Restriction other && Equals(other);
 	}
 
 	/// <inheritdoc />
 	public override int GetHashCode()
 	{
-		return Id;
+		return Id.GetHashCode();
 	}
 }
 
@@ -40,10 +41,10 @@ public sealed class RestrictionData
 		PermissionsGroups.Chat.Permissions | PermissionsGroups.Multiplayer.Permissions;
 
 	/// <summary>The permissions a full restriction suspends.</summary>
-	public static readonly Permissions Restrict = Silence | PermissionsGroups.Spectating.Permissions |
-	                                              PermissionsGroups.Scores.Permissions |
-	                                              PermissionsGroups.Beatmapsets.Permissions |
-	                                              PermissionsGroups.Screenshots.Permissions;
+	public static readonly Permissions Restricted = Silence | PermissionsGroups.Spectating.Permissions |
+	                                                PermissionsGroups.Scores.Permissions |
+	                                                PermissionsGroups.Beatmapsets.Permissions |
+	                                                PermissionsGroups.Screenshots.Permissions;
 
 	/// <summary>Gets the restricted user.</summary>
 	public required UserRecord User { get; init; }

@@ -1,5 +1,5 @@
 using Basil.Application.Storage.Contracts.Common;
-using Basil.Domain.Multiplayer.Matches;
+using Basil.Domain.Multiplayer;
 
 namespace Basil.Application.Storage.Contracts.Multiplayer.Matches;
 
@@ -28,5 +28,6 @@ public interface IMatchRepository
 	/// <param name="page">Which part of the listing to return.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>A page of matches.</returns>
-	Task<Page<MatchRecord>> ListAsync(MatchQuery query, PageRequest page, CancellationToken cancellationToken = default);
+	Task<Page<MatchRecord>> ListAsync(MatchQuery query, PageRequest page,
+		CancellationToken cancellationToken = default);
 }

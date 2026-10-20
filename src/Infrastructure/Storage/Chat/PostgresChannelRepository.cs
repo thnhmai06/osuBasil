@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Basil.Application.Storage.Contracts.Chat;
 using Basil.Domain.Chat;
+using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Storage.Common;
 using Basil.Infrastructure.Storage.Common.Database;

@@ -1,7 +1,7 @@
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
 
-namespace Basil.Domain.Multiplayer.Rounds;
+namespace Basil.Domain.Multiplayer;
 
 /// <summary>The relation between a round and a score played in it, with the team it was set for.</summary>
 public sealed class RoundScore : IEquatable<RoundScore>

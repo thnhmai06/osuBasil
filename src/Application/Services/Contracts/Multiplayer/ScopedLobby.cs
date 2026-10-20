@@ -1,8 +1,10 @@
 using Basil.Application.Services.Contracts.Multiplayer.Events;
 using Basil.Application.Services.Contracts.Multiplayer.Rooms;
 using Basil.Application.Services.Contracts.Sessions;
+using Basil.Domain;
 using Basil.Domain.Content;
-using Basil.Domain.Multiplayer.Matches;
+using Basil.Domain.Multiplayer;
+using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Contracts.Multiplayer;
@@ -42,7 +44,7 @@ public sealed class ScopedLobby
 	///     host, and the call fails with AlreadyInRoom when that client already plays in a room. When a tournament room opens,
 	///     the creator's osu! client is seated as host if it is online, may join rooms and is not in any room. A creator
 	///     can have at most 4 tournament rooms open unless they hold <see cref="Permissions.RoomCreateUnlimited" />.
-	///     While room creation is locked (<see cref="CreationLocks.Rooms" />), only a user with
+	///     While room creation is locked (<see cref="ServerSettings.CreationLocks.Rooms" />), only a user with
 	///     <see cref="Permissions.RoomManageAny" /> may open a room; anyone else gets NotAuthorized.
 	///     A tournament room opened with nobody seated closes after 15 minutes unless someone joins. Seating the creator
 	///     is reported by <see cref="LobbyRoomOpened" /> through its host.
@@ -67,7 +69,7 @@ public sealed class ScopedLobby
 		if (access is Access.NotGranted) return (null, RoomResult.NotAuthorized);
 		if (access is Access.Suspended) return (null, RoomResult.Silenced);
 
-		if ((await Lobby.Context.Settings.GetAsync(cancellationToken)).LockedCreation.HasFlag(CreationLocks.Rooms) &&
+		if ((await Lobby.Context.Settings.GetAsync(cancellationToken)).LockedCreation.HasFlag(ServerSettings.CreationLocks.Rooms) &&
 		    By.Session.Check(Permissions.RoomManageAny, now) is not Access.Allowed)
 			return (null, RoomResult.NotAuthorized);
 

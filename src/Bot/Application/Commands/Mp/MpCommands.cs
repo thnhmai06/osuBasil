@@ -6,6 +6,7 @@ using Basil.Application.Services.Contracts.Sessions;
 using Basil.Application.Storage.Contracts.Beatmaps;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Mechanics;
+using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Bot.Application.Commands.Mp;
@@ -210,7 +211,7 @@ internal sealed partial class MpCommands(
 			: $"{context.Sender.Value.Name}'s match";
 		if (name.Length > MaxRoomNameLength) name = name[..MaxRoomNameLength];
 
-		var (room, outcome) = await lobby.ScopeTo(by).OpenRoomAsync(name, "", isTournament: true, isPrivate,
+		var (room, outcome) = await lobby.ScopeTo(by).OpenRoomAsync(name, "", true, isPrivate,
 			cancellationToken: cancellationToken);
 		if (outcome != RoomResult.Ok || room is null)
 		{
@@ -316,7 +317,8 @@ internal sealed partial class MpCommands(
 		};
 
 		var activeMods = new List<string>();
-		if (room.Settings.MatchSettings.Mods != GameMods.NoMod) activeMods.Add(room.Settings.MatchSettings.Mods.ToString());
+		if (room.Settings.MatchSettings.Mods != GameMods.NoMod)
+			activeMods.Add(room.Settings.MatchSettings.Mods.ToString());
 		if (room.Settings.MatchSettings.Freemods) activeMods.Add("Freemod");
 		if (activeMods.Count > 0)
 			lines.Add(string.Format(MpReplies.SettingsActiveMods, string.Join(", ", activeMods)));
@@ -576,7 +578,7 @@ internal sealed partial class MpCommands(
 			return false;
 		}
 
-		var outcome = await room.ScopeTo(context.By).Settings.ConfigureAsync(new RoomSettingsChange(Name: name),
+		var outcome = await room.ScopeTo(context.By).Settings.ConfigureAsync(new RoomSettingsChange(name),
 			cancellationToken);
 		if (outcome != RoomResult.Ok)
 		{
@@ -1276,9 +1278,9 @@ internal sealed partial class MpCommands(
 	{
 		if (!lobby.Rooms.TryGetValue(id, out var room) || room.IsClosed) return null;
 		if (!room.Settings.IsPrivate || room.Slots.Find(by.User) is not null ||
-			room.Members.Observers.Any(observer => observer.User.Equals(by.User)) ||
-			room.Authority.IsManagedBy(by.User) ||
-			by.Session.Check(Permissions.RoomViewPrivate, time.GetUtcNow()) is Access.Allowed)
+		    room.Members.Observers.Any(observer => observer.User.Equals(by.User)) ||
+		    room.Authority.IsManagedBy(by.User) ||
+		    by.Session.Check(Permissions.RoomViewPrivate, time.GetUtcNow()) is Access.Allowed)
 			return room;
 
 		return null;

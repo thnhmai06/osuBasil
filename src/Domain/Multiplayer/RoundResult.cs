@@ -4,7 +4,7 @@ using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
 
-namespace Basil.Domain.Multiplayer.Rounds;
+namespace Basil.Domain.Multiplayer;
 
 /// <summary>Who won a round, and by how much, decided from the scores played in it.</summary>
 public abstract class RoundResult : IEquatable<RoundResult>

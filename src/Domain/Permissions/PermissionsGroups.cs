@@ -1,19 +1,12 @@
-namespace Basil.Domain.Users;
+using System.Collections.Immutable;
+
+namespace Basil.Domain.Permissions;
 
 /// <summary>The masks of permissions by area, and the permission that manages each area.</summary>
 public static class PermissionsGroups
 {
-	/// <summary>The permissions of one area and the permission that manages it.</summary>
-	/// <param name="Permissions">The permissions the area covers.</param>
-	/// <param name="Manager">
-	///     The permission a user must hold in full to keep the area's permissions in effect while they are restricted;
-	///     <see cref="Basil.Domain.Users.Permissions.None" /> means nobody is exempt.
-	/// </param>
-	/// <remarks>A restriction never suspends the permissions of an area from a user who holds the area's manager.</remarks>
-	public readonly record struct PermissionArea(Permissions Permissions, Permissions Manager);
-
 	/// <summary>Every permission the server defines.</summary>
-	public static readonly Permissions All =
+	public const Permissions All =
 		Permissions.RoomCreate | Permissions.RoomJoin | Permissions.RoomObserve | Permissions.RoomViewPrivate |
 		Permissions.RoomManageAny | Permissions.RoomCreateUnlimited | Permissions.ChatPost |
 		Permissions.ChatPostPrivate | Permissions.ChatPostAnyRoom | Permissions.ChatMessageAnyone |
@@ -50,6 +43,8 @@ public static class PermissionsGroups
 		new(Permissions.ScreenshotUpload, Permissions.ScreenshotDelete);
 
 	/// <summary>Every area, in a fixed order.</summary>
-	public static readonly IReadOnlyList<PermissionArea> Areas =
-		[Chat, Multiplayer, Spectating, Scores, Beatmapsets, Screenshots];
+	public static readonly ImmutableArray<PermissionArea> Areas =
+	[
+		Chat, Multiplayer, Spectating, Scores, Beatmapsets, Screenshots
+	];
 }

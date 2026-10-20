@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using Basil.Application.Services.Contracts.Chat;
 using Basil.Domain.Common;
+using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Contracts.Sessions;
@@ -11,7 +12,7 @@ public sealed class UserSession
 {
 	private readonly ConcurrentDictionary<ConnectionType, ConcurrentSet<Connection>> _connections = new();
 
-	private ImmutableList<RestrictionRecord> _restrictions = [];
+	private ImmutableList<Restriction> _restrictions = [];
 
 	internal UserSession(UserRecord user, SessionContext context)
 	{
@@ -44,7 +45,7 @@ public sealed class UserSession
 	}
 
 	/// <summary>Gets the user's restrictions that had not ended when they were last loaded or changed.</summary>
-	public IReadOnlyList<RestrictionRecord> Restrictions => _restrictions;
+	public IReadOnlyList<Restriction> Restrictions => _restrictions;
 
 	/// <summary>Gets the user's permissions that are in effect at a moment.</summary>
 	/// <param name="now">The moment to evaluate restrictions at.</param>
@@ -89,7 +90,7 @@ public sealed class UserSession
 
 	/// <summary>Replaces the user's restrictions in one step, so concurrent changes never lose each other.</summary>
 	/// <param name="change">Computes the new restrictions from the current ones.</param>
-	internal void ChangeRestrictions(Func<ImmutableList<RestrictionRecord>, ImmutableList<RestrictionRecord>> change)
+	internal void ChangeRestrictions(Func<ImmutableList<Restriction>, ImmutableList<Restriction>> change)
 	{
 		ImmutableInterlocked.Update(ref _restrictions, change);
 	}

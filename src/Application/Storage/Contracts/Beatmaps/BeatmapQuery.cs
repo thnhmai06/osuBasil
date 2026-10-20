@@ -3,6 +3,7 @@ using System.Globalization;
 using Basil.Application.Storage.Contracts.Common;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
+using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Storage.Contracts.Beatmaps;

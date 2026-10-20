@@ -45,7 +45,7 @@ A user's granted permissions are reduced by active restrictions:
 effective = granted permissions minus permissions suspended now
 ```
 
-A `RestrictionRecord` suspends a permission mask from `StartsAt` through, but not including, `EndsAt`. A `null` end time means the restriction lasts until lifted. Expiry is evaluated at the time of the check; it does not require a separate expiry timer.
+A `Restriction` suspends a permission mask from `StartsAt` through, but not including, `EndsAt`. A `null` end time means the restriction lasts until lifted. Expiry is evaluated at the time of the check; it does not require a separate expiry timer.
 
 A silence suspends chat and multiplayer permissions. A full restriction also suspends spectating, score submission, beatmapset upload and screenshot upload. Restrictions do not remove granted permissions from the account; they change which permissions are effective for a period.
 
@@ -81,7 +81,7 @@ Restrictions are records of the target, suspended permissions and time window. T
 
 A name is unique among live accounts after normalization: matching is case-insensitive, and a space is equivalent to an underscore. Deletion is permanent; a deleted account is not restored, its id is not reused, and its name becomes available again.
 
-BasilBot is the server's fixed user identity (id 1), has no permissions and cannot sign in. Its record cannot be deleted, restricted, given permissions or a password, or have its connections revoked; its public metadata may be edited.
+BasilBot is the server's fixed user identity (id 1), is the voice the server speaks with, not an actor: nobody can sign in as it or act for it, permissions mean nothing to it, and its privileges only decide how a client shows it. Its record cannot be deleted, restricted, given permissions or a password, or have its connections revoked; its public metadata may be edited.
 
 **Planned:** BasilBot will be represented as a permanently online `UserSession` with a connection. Its announcements will be server-originated and will not pass through an ordinary user's permission check. A BasilBot command will act with the typist's scoped permissions, never with permissions belonging to BasilBot.
 
@@ -104,7 +104,7 @@ The operator console is also **planned**. It is the explicit operator entry poin
 * [`Permissions.cs`](../../src/Domain/Users/Permissions.cs): action permissions, `Allows`, effective permissions and derived roles
 * [`PermissionsGroups.cs`](../../src/Domain/Users/PermissionsGroups.cs): permission masks, defaults and area managers
 * [`Privileges.cs`](../../src/Domain/Users/Privileges.cs): roles understood by osu! and their direct permissions
-* [`RestrictionRecord.cs`](../../src/Domain/Users/RestrictionRecord.cs): restriction target, permissions and time window
+* [`Restriction.cs`](../../src/Domain/Permissions/Restriction.cs): restriction target, permissions and time window
 * [`UserSession.cs`](../../src/Application/Services/Contracts/Sessions/UserSession.cs): effective permission checks
 * [`ScopedUser.cs`](../../src/Application/Services/Contracts/Users/ScopedUser.cs), [`ScopedUserRestrictions.cs`](../../src/Application/Services/Contracts/Users/ScopedUserRestrictions.cs): account actions and restrictions
 * [`UserResult.cs`](../../src/Application/Services/Contracts/Users/UserResult.cs): account-operation outcomes

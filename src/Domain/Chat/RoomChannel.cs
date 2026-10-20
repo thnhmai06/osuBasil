@@ -1,5 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
-using Basil.Domain.Multiplayer.Matches;
+using Basil.Domain.Multiplayer;
 
 namespace Basil.Domain.Chat;
 

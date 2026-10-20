@@ -6,6 +6,7 @@ using Basil.Application.Services.Contracts.Users;
 using Basil.Application.Services.Implementations.Users;
 using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Auth;
+using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Implementations.Sessions;
@@ -81,7 +82,7 @@ internal sealed class SessionConnectionsService(
 	///     idle for at least <see cref="ReplaceAfterIdle" />, and refuses the new one otherwise. An osu!tourney
 	///     connection needs <see cref="Permissions.RoomObserve" /> in effect.
 	/// </remarks>
-	internal LoginFailure? Open(Connection connection, IReadOnlyList<RestrictionRecord> restrictions)
+	internal LoginFailure? Open(Connection connection, IReadOnlyList<Restriction> restrictions)
 	{
 		using var scope = registry.Enter();
 
@@ -117,7 +118,9 @@ internal sealed class SessionConnectionsService(
 		if (connection.Type is not ConnectionType.Tourney)
 			session.PmChannel.ScopeTo(connection).Join();
 		connection.IsOpen = true;
-		registry.Index(connection);
+
+		// The bot's token is never findable: nobody can present it, and nobody should be able to try.
+		if (connection.Type is not ConnectionType.Bot) registry.Index(connection);
 
 		events.Emit(new UserConnectionOpened(connection, cameOnline));
 		return null;
@@ -142,7 +145,10 @@ internal sealed class SessionConnectionsService(
 			Close(connection, reason);
 	}
 
-	void IUserSessionsPort.CloseAll(UserRecord user, ConnectionCloseReason reason) => CloseAll(user, reason);
+	void IUserSessionsPort.CloseAll(UserRecord user, ConnectionCloseReason reason)
+	{
+		CloseAll(user, reason);
+	}
 
 	/// <summary>Closes the connections of a kind the user may no longer use.</summary>
 	/// <param name="session">The session of the user whose permissions or restrictions changed.</param>
@@ -154,7 +160,10 @@ internal sealed class SessionConnectionsService(
 			Close(connection, ConnectionCloseReason.Revoked);
 	}
 
-	void IUserSessionsPort.CloseDisallowed(UserSession session) => CloseDisallowed(session);
+	void IUserSessionsPort.CloseDisallowed(UserSession session)
+	{
+		CloseDisallowed(session);
+	}
 
 	private void CloseCore(Connection connection, ConnectionCloseReason reason)
 	{

@@ -1,6 +1,6 @@
 using Basil.Application.Services.Contracts.Events;
 using Basil.Application.Services.Contracts.Multiplayer.Rooms;
-using Basil.Domain.Multiplayer.Rounds;
+using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 
@@ -21,5 +21,10 @@ public abstract record ScoreEvent : Event;
 ///     The room whose latest round the score was played in, or <see langword="null" /> when the score
 ///     belongs to no round.
 /// </param>
-public sealed record ScoreSubmitted(UserRecord Player, ScoreRecord Score, UserStats Stats, RoundScore? RoundScore, Room? Room)
+public sealed record ScoreSubmitted(
+	UserRecord Player,
+	ScoreRecord Score,
+	UserStats Stats,
+	RoundScore? RoundScore,
+	Room? Room)
 	: ScoreEvent;

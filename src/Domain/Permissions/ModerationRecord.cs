@@ -1,19 +1,21 @@
-namespace Basil.Domain.Users;
+using Basil.Domain.Users;
+
+namespace Basil.Domain.Permissions;
 
 /// <summary>
 ///     An entry of the moderation log, identified by its id.
 /// </summary>
-public sealed class ModerationLogEntry
+public sealed class ModerationRecord
 {
 	/// <summary>Gets the unique identifier of the entry, assigned when it is stored.</summary>
 	public required long Id { get; init; }
 
 	/// <summary>Gets the moderation log data this identity wraps.</summary>
-	public required ModerationLogData Value { get; init; }
+	public required ModerationData Value { get; init; }
 }
 
 /// <summary>A recorded moderation action, separate from its persistent identity.</summary>
-public sealed class ModerationLogData
+public sealed class ModerationData
 {
 	/// <summary>Gets the kind of moderation action that was recorded.</summary>
 	public required ModerationAction Action { get; init; }

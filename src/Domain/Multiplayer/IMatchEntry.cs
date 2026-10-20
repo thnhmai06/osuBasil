@@ -1,4 +1,4 @@
-namespace Basil.Domain.Multiplayer.Matches;
+namespace Basil.Domain.Multiplayer;
 
 /// <summary>A record of something that happened in a match at a point in time.</summary>
 public interface IMatchEntry

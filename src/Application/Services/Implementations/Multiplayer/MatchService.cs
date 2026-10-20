@@ -1,7 +1,7 @@
 using Basil.Application.Services.Contracts.Multiplayer;
 using Basil.Application.Services.Implementations.Common;
 using Basil.Application.Storage.Contracts.Multiplayer.Matches;
-using Basil.Domain.Multiplayer.Matches;
+using Basil.Domain.Multiplayer;
 
 namespace Basil.Application.Services.Implementations.Multiplayer;
 

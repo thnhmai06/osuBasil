@@ -1,4 +1,5 @@
 using Basil.Application.Services.Contracts.Sessions;
+using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Implementations.Users;
@@ -42,5 +43,4 @@ internal static class PermissionRules
 	{
 		return Check(by, required, now) is Access.Allowed;
 	}
-
 }

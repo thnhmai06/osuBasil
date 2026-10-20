@@ -1,6 +1,7 @@
 using System.Globalization;
 using Basil.Application.Storage.Contracts.Common;
 using Basil.Application.Storage.Contracts.Users;
+using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Storage.Common.Database;
 using Basil.Infrastructure.Storage.Common.Queries;

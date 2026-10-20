@@ -1,6 +1,6 @@
 using Basil.Application.Services.Contracts.Sessions;
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Users;
+using Basil.Domain.Permissions;
 
 namespace Basil.Application.Services.Contracts.Multiplayer.Rooms;
 
@@ -59,14 +59,14 @@ public sealed class ScopedRoom
 		// Apply effective permissions
 		var now = room.Context.Clock.GetUtcNow();
 		var effectivePermissions = by.Session.EffectivePermissions(now);
-		ManagesAnyRoom = effectivePermissions.Allows(Domain.Users.Permissions.RoomManageAny);
+		ManagesAnyRoom = effectivePermissions.Allows(Domain.Permissions.Permissions.RoomManageAny);
 
 		// Managing every room acts with the creator's authority, joined or not; a restriction cannot suspend it,
 		// because whoever manages an area keeps it in the effective permissions.
 		if (ManagesAnyRoom)
 			rights = RoomPermissionsGroups.All;
 		// Otherwise a user who may not join rooms has no role-derived rights.
-		else if (!effectivePermissions.Allows(Domain.Users.Permissions.RoomJoin))
+		else if (!effectivePermissions.Allows(Domain.Permissions.Permissions.RoomJoin))
 			rights = RoomPermissions.None;
 
 		Permissions = rights;
@@ -111,7 +111,8 @@ public sealed class ScopedRoom
 			return null;
 
 		// Check if granted permissions allow RoomJoin but effective don't
-		if (By.Session.Check(Domain.Users.Permissions.RoomJoin, Room.Context.Clock.GetUtcNow()) is Access.Suspended)
+		if (By.Session.Check(Domain.Permissions.Permissions.RoomJoin, Room.Context.Clock.GetUtcNow()) is Access
+			    .Suspended)
 			return RoomResult.Silenced;
 
 		return RoomResult.NotAuthorized;
@@ -121,7 +122,7 @@ public sealed class ScopedRoom
 	/// <returns>Null when allowed, otherwise the reason for denial.</returns>
 	internal RoomResult? RequireJoin()
 	{
-		return By.Session.Check(Domain.Users.Permissions.RoomJoin, Room.Context.Clock.GetUtcNow()) switch
+		return By.Session.Check(Domain.Permissions.Permissions.RoomJoin, Room.Context.Clock.GetUtcNow()) switch
 		{
 			Access.NotGranted => RoomResult.NotAuthorized,
 			Access.Suspended => RoomResult.Silenced,

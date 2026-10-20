@@ -1,6 +1,7 @@
 using Basil.Domain.Common;
+using Basil.Domain.Content;
 
-namespace Basil.Domain.Content;
+namespace Basil.Domain;
 
 /// <summary>The server-wide settings an administrator changes while the server runs.</summary>
 public sealed record ServerSettings
@@ -78,21 +79,21 @@ public sealed record ServerSettings
 			init => field = value?.ThrowIfNotAbsolute();
 		}
 	}
-}
 
-/// <summary>The kinds of thing whose creation can be locked to their managers.</summary>
-[Flags]
-public enum CreationLocks : byte
-{
-	/// <summary>Nothing is locked.</summary>
-	None = 0,
+	/// <summary>The kinds of thing whose creation can be locked to their managers.</summary>
+	[Flags]
+	public enum CreationLocks : byte
+	{
+		/// <summary>Nothing is locked.</summary>
+		None = 0,
 
-	/// <summary>Only users who manage accounts create accounts; registration is refused.</summary>
-	Accounts = 1 << 0,
+		/// <summary>Only users who manage accounts create accounts; registration is refused.</summary>
+		Accounts = 1 << 0,
 
-	/// <summary>Only users who manage every room create rooms.</summary>
-	Rooms = 1 << 1,
+		/// <summary>Only users who manage every room create rooms.</summary>
+		Rooms = 1 << 1,
 
-	/// <summary>Only users who manage beatmapsets upload them.</summary>
-	Beatmapsets = 1 << 2
+		/// <summary>Only users who manage beatmapsets upload them.</summary>
+		Beatmapsets = 1 << 2
+	}
 }

@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Basil.Application.Storage.Contracts.Common;
+using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Storage.Contracts.Multiplayer.Matches;

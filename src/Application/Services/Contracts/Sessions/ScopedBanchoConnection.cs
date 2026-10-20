@@ -1,3 +1,4 @@
+using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Contracts.Sessions;
@@ -54,7 +55,8 @@ public sealed class ScopedBanchoConnection
 		if (!Host.IsOpen) return SpectateResult.TargetOffline;
 		// The permission was checked before the awaits above; check it again before the spectator is added, so a restriction
 		// or a closed connection in between cannot slip in.
-		if (!By.IsOpen || By.Session.Check(Permissions.SpectatingWatch, Host.Context.Clock.GetUtcNow()) is not Access.Allowed)
+		if (!By.IsOpen ||
+		    By.Session.Check(Permissions.SpectatingWatch, Host.Context.Clock.GetUtcNow()) is not Access.Allowed)
 			return SpectateResult.NotPermitted;
 		if (By.User.Equals(Host.User)) return SpectateResult.Self;
 		if (Host.Spectators.Contains(By))

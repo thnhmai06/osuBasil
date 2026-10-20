@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Basil.Application.Storage.Contracts.Common;
 using Basil.Application.Storage.Contracts.Users;
+using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Storage.Common.Database;
 using Basil.Infrastructure.Storage.Common.Writing;
@@ -16,7 +17,7 @@ internal sealed class PostgresModerationLogRepository(
 	: IModerationLogRepository
 {
 	/// <inheritdoc />
-	public Task AppendAsync(ModerationLogData entry, CancellationToken cancellationToken = default)
+	public Task AppendAsync(ModerationData entry, CancellationToken cancellationToken = default)
 	{
 		var parameters = new
 		{
@@ -36,7 +37,7 @@ internal sealed class PostgresModerationLogRepository(
 	}
 
 	/// <inheritdoc />
-	public async ValueTask<Page<ModerationLogEntry>> ListAsync(UserRecord target, Interval<DateTimeOffset>? within,
+	public async ValueTask<Page<ModerationRecord>> ListAsync(UserRecord target, Interval<DateTimeOffset>? within,
 		PageRequest page, CancellationToken cancellationToken = default)
 	{
 		var liveTarget = await users.GetAsync(target.Id, cancellationToken) ?? target;
@@ -68,7 +69,7 @@ internal sealed class PostgresModerationLogRepository(
 				 """,
 				parameters)), cancellationToken);
 
-		var entries = ImmutableList.CreateBuilder<ModerationLogEntry>();
+		var entries = ImmutableList.CreateBuilder<ModerationRecord>();
 		foreach (var row in rows)
 		{
 			var by = await users.GetAsync(row.ById, cancellationToken);
@@ -81,10 +82,10 @@ internal sealed class PostgresModerationLogRepository(
 			if (entryTarget is null)
 				continue;
 
-			entries.Add(new ModerationLogEntry
+			entries.Add(new ModerationRecord
 			{
 				Id = row.Id,
-				Value = new ModerationLogData
+				Value = new ModerationData
 				{
 					Action = (ModerationAction)row.Action,
 					By = by,
@@ -95,7 +96,7 @@ internal sealed class PostgresModerationLogRepository(
 			});
 		}
 
-		return new Page<ModerationLogEntry>(entries.ToImmutable(), total);
+		return new Page<ModerationRecord>(entries.ToImmutable(), total);
 	}
 
 	/// <summary>A stored row of the <c>moderation_log</c> table.</summary>
