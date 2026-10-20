@@ -52,11 +52,16 @@ internal sealed class AuthService(
 		BanchoClient? client, int utcOffset, CancellationToken cancellationToken = default)
 	{
 		type.ThrowIfUndefined();
-		if (type is ConnectionType.Bancho or ConnectionType.Tourney && client is null)
-			throw new ArgumentNullException(nameof(client), "An osu! client login must report its client.");
+		switch (type)
+		{
+			case ConnectionType.Bot:
+				throw new ArgumentException("The bot's connection cannot be requested.", nameof(type));
+			case ConnectionType.Bancho or ConnectionType.Tourney when client is null:
+				throw new ArgumentNullException(nameof(client), "An osu! client login must report its client.");
+		}
 
 		var user = await users.GetByNameAsync(attempt.Username, cancellationToken);
-		if (user is null) return LoginResult.Fail(LoginFailure.UnknownUser);
+		if (user is null || BasilBot.Is(user)) return LoginResult.Fail(LoginFailure.UnknownUser);
 		if (user.Value.DeletedAt is not null) return LoginResult.Fail(LoginFailure.AccountDeleted);
 		if (!await VerifyAsync(user, attempt.PasswordHash, cancellationToken))
 			return LoginResult.Fail(LoginFailure.WrongPassword);

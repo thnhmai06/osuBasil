@@ -1,5 +1,3 @@
-using Basil.Domain.Users;
-
 namespace Basil.Application.Services.Contracts.Sessions;
 
 /// <summary>Closes connections and keeps them alive.</summary>
@@ -23,8 +21,16 @@ public interface ISessionConnectionsService
 	/// <returns>How many connections were closed.</returns>
 	/// <remarks>
 	///     Run periodically by the host. A connection of the HTTP API may stay idle for 2 hours; any other connection
-	///     for 300 seconds.
+	///     for 300 seconds. BasilBot's connection is not closed by this operation.
 	/// </remarks>
 	int CloseIdle();
 
+	/// <summary>Brings BasilBot online with a connection of its own.</summary>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>
+	///     The existing connection when BasilBot is already online, or <see langword="null" /> when its record is not
+	///     stored or its connection could not be opened.
+	/// </returns>
+	/// <remarks>Used by the server at startup.</remarks>
+	Task<BotConnection?> ConnectBotAsync(CancellationToken cancellationToken = default);
 }

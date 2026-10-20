@@ -78,6 +78,9 @@ public sealed class UserSession
 	/// <summary>Gets the user's IRC connection, if any.</summary>
 	public IrcConnection? Irc => (IrcConnection?)this[ConnectionType.Irc].SingleOrDefault();
 
+	/// <summary>Gets the server's connection for BasilBot, if any.</summary>
+	public BotConnection? Bot => (BotConnection?)this[ConnectionType.Bot].SingleOrDefault();
+
 	/// <summary>Gets the user's osu!tourney connections.</summary>
 	public IEnumerable<TourneyConnection> Tourneys => this[ConnectionType.Tourney].Cast<TourneyConnection>();
 

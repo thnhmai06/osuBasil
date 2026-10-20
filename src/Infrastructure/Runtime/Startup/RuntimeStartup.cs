@@ -1,5 +1,6 @@
 using Basil.Application.Services.Contracts.Multiplayer;
 using Basil.Application.Services.Contracts.Servers;
+using Basil.Application.Services.Contracts.Sessions;
 using Basil.Application.Storage.Contracts.Chat;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -7,12 +8,13 @@ using Microsoft.Extensions.Logging;
 namespace Basil.Infrastructure.Runtime.Startup;
 
 /// <summary>
-///     Prepares the runtime before the server serves anyone: opens the general channels and closes matches left
-///     unfinished.
+///     Prepares the runtime before the server serves anyone: opens the general channels, brings BasilBot online and
+///     closes matches left unfinished.
 /// </summary>
 internal sealed class RuntimeStartup(
 	IChannelRepository channelRepository,
 	Server server,
+	ISessionService sessions,
 	IMatchService matches,
 	ILogger<RuntimeStartup> logger) : IHostedService
 {
@@ -24,6 +26,11 @@ internal sealed class RuntimeStartup(
 			if (server.OpenChannel(channel) is not null)
 				openedChannels++;
 		logger.LogInformation("Opened {ChannelCount} general channels", openedChannels);
+
+		if (await sessions.Connections.ConnectBotAsync(cancellationToken) is null)
+			logger.LogWarning("BasilBot's record is missing; the bot stays offline");
+		else
+			logger.LogInformation("BasilBot is online");
 
 		var closedMatches = await matches.CloseUnfinishedAsync(cancellationToken);
 		logger.LogInformation("Closed {MatchCount} unfinished matches", closedMatches);

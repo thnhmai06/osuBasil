@@ -18,17 +18,22 @@ internal sealed class ChatHandler(Server server, ChatCommands commands, ILogger<
 	{
 		if (@event is not ChannelMessagePosted posted
 		    || posted.By is not { } by
-		    || posted.Channel is PmChannelSession
 		    || posted.Message.IsNotice
 		    || string.IsNullOrWhiteSpace(posted.Message.Content)
 		    || BasilBot.Is(posted.Message.Author))
 			return;
 
+		var privateMessage = posted.Channel is PmChannelSession pm && BasilBot.Is(pm.Owner.User);
+		if (posted.Channel is PmChannelSession && !privateMessage) return;
+
 		var context = new CommandContext(
 			by,
-			posted.Channel.Channel.Name,
-			(text, ct) => SendSplitAsync(text, (piece, token) => server.SayAsync(posted.Channel, piece, ct: token), ct),
-			(text, ct) => SendSplitAsync(text, (piece, token) => server.WhisperAsync(by.Session, piece, ct: token), ct));
+			privateMessage ? null : posted.Channel.Channel.Name,
+			(text, ct) => SendSplitAsync(text, (piece, token) => privateMessage
+				? server.WhisperAsync(by.Session, piece, ct: token)
+				: server.SayAsync(posted.Channel, piece, ct: token), ct),
+			(text, ct) =>
+				SendSplitAsync(text, (piece, token) => server.WhisperAsync(by.Session, piece, ct: token), ct));
 
 		try
 		{

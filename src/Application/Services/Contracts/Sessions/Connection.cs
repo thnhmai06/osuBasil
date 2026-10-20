@@ -13,19 +13,19 @@ namespace Basil.Application.Services.Contracts.Sessions
 		/// <summary>Gets the login that opened this connection.</summary>
 		public Login Login { get; } = login;
 
-		/// <summary>Gets the opaque token the client presents to be recognised as this connection.</summary>
+		/// <summary>Gets the opaque token that identifies this connection.</summary>
 		public string Token { get; } = token;
 
 		/// <summary>Gets the user who owns this connection.</summary>
 		public UserRecord User => Login.User;
 
-		/// <summary>Gets the kind of client this connection comes from.</summary>
+		/// <summary>Gets the kind of connection.</summary>
 		public abstract ConnectionType Type { get; }
 
 		/// <summary>Gets a value that indicates whether the connection is still open.</summary>
 		public bool IsOpen { get; internal set; }
 
-		/// <summary>Gets the time of the last message received from the client.</summary>
+		/// <summary>Gets when this connection was last active.</summary>
 		public DateTimeOffset LastActiveAt { get; internal set; } = login.Timestamp;
 	}
 }
@@ -142,7 +142,21 @@ namespace Basil.Application.Services.Contracts.Sessions
 		public override ConnectionType Type => ConnectionType.Api;
 	}
 
-	/// <summary>The kinds of client a user can connect with.</summary>
+	/// <summary>The server's own connection for BasilBot; no client is behind it.</summary>
+	public sealed class BotConnection : Connection
+	{
+		/// <summary>Initializes the server's connection for BasilBot.</summary>
+		/// <param name="login">The login that opened the connection.</param>
+		/// <param name="token">The token that identifies the connection.</param>
+		internal BotConnection(Login login, string token) : base(login, token)
+		{
+		}
+
+		/// <inheritdoc />
+		public override ConnectionType Type => ConnectionType.Bot;
+	}
+
+	/// <summary>The kinds of connection a user can hold.</summary>
 	public enum ConnectionType : byte
 	{
 		/// <summary>An osu! game client.</summary>
@@ -155,6 +169,9 @@ namespace Basil.Application.Services.Contracts.Sessions
 		Irc,
 
 		/// <summary>A client of the HTTP API.</summary>
-		Api
+		Api,
+
+		/// <summary>The server's own connection for BasilBot; no client is behind it.</summary>
+		Bot
 	}
 }

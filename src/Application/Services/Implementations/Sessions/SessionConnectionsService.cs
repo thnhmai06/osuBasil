@@ -1,8 +1,11 @@
 using System.Buffers.Text;
+using System.Net;
 using System.Security.Cryptography;
 using Basil.Application.Services.Contracts.Sessions;
 using Basil.Application.Services.Contracts.Users;
 using Basil.Application.Services.Implementations.Users;
+using Basil.Application.Storage.Contracts.Users;
+using Basil.Domain.Auth;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Implementations.Sessions;
@@ -10,6 +13,7 @@ namespace Basil.Application.Services.Implementations.Sessions;
 /// <summary>Closes connections and keeps them alive.</summary>
 internal sealed class SessionConnectionsService(
 	IUserRegistry registry,
+	IUserRepository users,
 	SessionContext context,
 	SessionEventStream events,
 	TimeProvider time) : ISessionConnectionsService, IUserSessionsPort
@@ -44,13 +48,28 @@ internal sealed class SessionConnectionsService(
 		var now = time.GetUtcNow();
 		var idleConnections = registry.Sessions.Values
 			.SelectMany(s => s.Connections)
-			.Where(c => c.IsOpen && now - c.LastActiveAt > c.Type.IdleTimeout())
+			.Where(c => c is { IsOpen: true, Type: not ConnectionType.Bot } &&
+			            now - c.LastActiveAt > c.Type.IdleTimeout())
 			.ToList();
 
 		foreach (var connection in idleConnections)
 			Close(connection, ConnectionCloseReason.TimedOut);
 
 		return idleConnections.Count;
+	}
+
+	/// <inheritdoc />
+	public async Task<BotConnection?> ConnectBotAsync(CancellationToken cancellationToken = default)
+	{
+		var user = await users.GetAsync(BasilBot.Id, cancellationToken);
+		if (user is null) return null;
+
+		var session = registry.Sessions.GetValueOrDefault(user);
+		if (session?.Bot is { IsOpen: true } connection) return connection;
+
+		var login = new Login { User = user, Ip = IPAddress.Loopback, Timestamp = time.GetUtcNow() };
+		var bot = new BotConnection(login, NewToken());
+		return Open(bot, []) is null ? bot : null;
 	}
 
 	/// <summary>Opens an authenticated connection, bringing its user online if this is their first.</summary>
