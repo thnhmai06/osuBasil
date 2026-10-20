@@ -16,6 +16,7 @@ using Basil.Application.Services.Multiplayer.Rooms;
 using Basil.Application.Services.Scores;
 using Basil.Application.Services.Users;
 using Basil.Application.Storage.Auth;
+using Basil.Application.Storage.Beatmaps;
 using Basil.Application.Storage.Chat;
 using Basil.Application.Storage.Content;
 using Basil.Application.Storage.Multiplayer;
@@ -102,8 +103,16 @@ public static class DependencyInjection
 		services.AddSingleton<ScoreService>();
 		services.AddSingleton<IScoreService>(sp => sp.GetRequiredService<ScoreService>());
 
-		services.AddSingleton<BeatmapsetService>();
-		services.AddSingleton<IBeatmapsetService>(sp => sp.GetRequiredService<BeatmapsetService>());
+		services.AddSingleton<BeatmapsetIndexer>();
+		services.AddSingleton<IBeatmapsetIndexing>(sp => sp.GetRequiredService<BeatmapsetIndexer>());
+		services.AddSingleton<BeatmapsetContext>(sp => new BeatmapsetContext(
+			sp.GetRequiredService<TimeProvider>(),
+			sp.GetRequiredService<IEventPublisher<BeatmapsetEvent>>(),
+			sp.GetRequiredService<IBeatmapsetRepository>(),
+			sp.GetRequiredService<IBeatmapsetStorage>()));
+		services.AddSingleton<Beatmapsets>(sp => new Beatmapsets(
+			sp.GetRequiredService<BeatmapsetContext>(),
+			sp.GetRequiredService<IBeatmapsetIndexing>()));
 
 		return services;
 	}

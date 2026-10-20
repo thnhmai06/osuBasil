@@ -10,7 +10,7 @@ namespace Basil.Infrastructure.Runtime.Beatmaps;
 ///     server serves clients, then every entry that changes.
 /// </summary>
 internal sealed class BeatmapsetStorageWatcher(
-	IBeatmapsetService beatmapsets,
+	Beatmapsets beatmapsets,
 	IBeatmapsetStorage storage,
 	ILogger<BeatmapsetStorageWatcher> logger) : BackgroundService
 {

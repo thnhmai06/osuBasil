@@ -9,12 +9,24 @@ namespace Basil.Application.Objects.Beatmaps;
 ///     makes every file it serves from the archive when it indexes the set, and keeps its records in step with the
 ///     archives.
 /// </remarks>
-public interface IBeatmapsetService
+public sealed class Beatmapsets
 {
+	private readonly BeatmapsetContext _context;
+	private readonly IBeatmapsetIndexing _indexer;
+
+	internal Beatmapsets(BeatmapsetContext context, IBeatmapsetIndexing indexer)
+	{
+		_context = context;
+		_indexer = indexer;
+	}
+
 	/// <summary>Gets the beatmapset object through which a stored set's behaviour is reached.</summary>
 	/// <param name="set">The stored beatmapset.</param>
 	/// <returns>The beatmapset.</returns>
-	Beatmapset Of(BeatmapsetRecord set);
+	public Beatmapset Of(BeatmapsetRecord set)
+	{
+		return new Beatmapset(set, _context);
+	}
 
 	/// <summary>Imports an uploaded beatmapset archive, adding or replacing the beatmapset it belongs to.</summary>
 	/// <param name="archive">The .osz archive of one beatmapset, read from its current position; not disposed.</param>
@@ -31,7 +43,14 @@ public interface IBeatmapsetService
 	///         Difficulties the new version no longer has are removed.
 	///     </para>
 	/// </remarks>
-	Task<BeatmapsetImportResult> ImportAsync(Stream archive, CancellationToken cancellationToken = default);
+	public async Task<BeatmapsetImportResult> ImportAsync(Stream archive,
+		CancellationToken cancellationToken = default)
+	{
+		var (result, imported) = await _indexer.ImportAsync(archive, cancellationToken);
+		if (imported is not null)
+			_context.Events.Publish(new BeatmapsetImported(imported.Set, imported.Beatmaps));
+		return result;
+	}
 
 	/// <summary>Takes in everything waiting in the storage and brings every beatmapset in step with its archive.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
@@ -44,7 +63,12 @@ public interface IBeatmapsetService
 	///     Every change of the records is stored at once, after all of that. A set that needs no indexing but misses a
 	///     file made from its archive gets that file made again. Run when the server starts, before it serves clients.
 	/// </remarks>
-	Task<BeatmapsetScanResult> ScanAsync(CancellationToken cancellationToken = default);
+	public async Task<BeatmapsetScanResult> ScanAsync(CancellationToken cancellationToken = default)
+	{
+		var outcome = await _indexer.ScanAsync(cancellationToken);
+		Publish(outcome);
+		return outcome.Result;
+	}
 
 	/// <summary>Brings the server in step with one entry of the storage after it changed.</summary>
 	/// <param name="entry">The entry as it is now.</param>
@@ -58,11 +82,20 @@ public interface IBeatmapsetService
 	///     otherwise a new one. A folder that is gone or whose archive is gone or unreadable forgets its set; its files
 	///     are left as they are. A locked set is not changed. Scanning an unchanged entry again changes nothing.
 	/// </remarks>
-	Task<BeatmapsetScanResult> ScanAsync(BeatmapsetSource entry, CancellationToken cancellationToken = default);
-}
+	public async Task<BeatmapsetScanResult> ScanAsync(BeatmapsetSource entry,
+		CancellationToken cancellationToken = default)
+	{
+		var outcome = await _indexer.ScanAsync(entry, cancellationToken);
+		Publish(outcome);
+		return outcome.Result;
+	}
 
-/// <summary>How many beatmapsets a scan changed.</summary>
-/// <param name="Imported">The beatmapsets taken in for the first time.</param>
-/// <param name="Updated">The beatmapsets whose difficulties changed.</param>
-/// <param name="Forgotten">The beatmapsets forgotten because nothing is stored for them.</param>
-public sealed record BeatmapsetScanResult(int Imported, int Updated, int Forgotten);
+	private void Publish(BeatmapsetScanOutcome outcome)
+	{
+		foreach (var imported in outcome.Imported)
+			_context.Events.Publish(new BeatmapsetImported(imported.Set, imported.Beatmaps));
+
+		foreach (var deleted in outcome.Deleted)
+			_context.Events.Publish(new BeatmapsetDeleted(deleted));
+	}
+}
