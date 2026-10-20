@@ -1,6 +1,6 @@
 ﻿using Npgsql;
 
-namespace Basil.Infrastructure.Storage.Common.Database;
+namespace Basil.Infrastructure.Storage.Postgres;
 
 /// <summary>Runs reads against the database alongside writes, each read on a connection of its own.</summary>
 internal sealed class DatabaseReader(Database database)

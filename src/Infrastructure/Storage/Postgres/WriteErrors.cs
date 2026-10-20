@@ -1,7 +1,7 @@
 using System.Collections.Frozen;
 using Npgsql;
 
-namespace Basil.Infrastructure.Storage.Common.Writing;
+namespace Basil.Infrastructure.Storage.Postgres;
 
 /// <summary>Tells apart the write failures caused by the database's environment from those caused by the write itself.</summary>
 internal static class WriteErrors

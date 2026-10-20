@@ -1,7 +1,7 @@
 using Basil.Application.Storage.Beatmaps;
 using Basil.Application.Storage.Common;
 using Basil.Domain.Beatmaps;
-using Basil.Infrastructure.Storage.Common.Queries;
+using Basil.Infrastructure.Storage.Postgres;
 using Dapper;
 
 namespace Basil.Infrastructure.Storage.Beatmaps;

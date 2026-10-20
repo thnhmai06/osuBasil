@@ -6,8 +6,7 @@ using Basil.Application.Storage.Scores;
 using Basil.Application.Storage.Users;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
-using Basil.Infrastructure.Storage.Common;
-using Basil.Infrastructure.Storage.Common.Options;
+using Basil.Infrastructure.Storage.Files;
 
 namespace Basil.Infrastructure.Storage.Scores;
 

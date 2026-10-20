@@ -1,7 +1,7 @@
 using Basil.Infrastructure.Storage.Beatmaps;
 using Basil.Infrastructure.Storage.Common;
-using Basil.Infrastructure.Storage.Common.Database;
-using Basil.Infrastructure.Storage.Common.Options;
+using Basil.Infrastructure.Storage.Postgres;
+using Basil.Infrastructure.Storage.Files;
 using Microsoft.Extensions.Hosting;
 
 namespace Basil.Infrastructure.Storage;

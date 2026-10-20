@@ -1,6 +1,6 @@
 using Basil.Domain.Common;
 
-namespace Basil.Infrastructure.Storage.Common.Queries;
+namespace Basil.Infrastructure.Storage.Files;
 
 /// <summary>Combines a stored file's name with the directory that holds it, refusing any name that escapes it.</summary>
 internal static class SafePath

@@ -2,8 +2,7 @@ using System.Collections.Immutable;
 using Basil.Application.Storage.Multiplayer;
 using Basil.Application.Storage.Users;
 using Basil.Domain.Multiplayer;
-using Basil.Infrastructure.Storage.Common.Database;
-using Basil.Infrastructure.Storage.Common.Writing;
+using Basil.Infrastructure.Storage.Postgres;
 using Basil.Infrastructure.Storage.Memory;
 using Dapper;
 

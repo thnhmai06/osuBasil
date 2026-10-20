@@ -3,8 +3,7 @@ using Basil.Application.Storage.Multiplayer;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
-using Basil.Infrastructure.Storage.Common.Database;
-using Basil.Infrastructure.Storage.Common.Writing;
+using Basil.Infrastructure.Storage.Postgres;
 using Basil.Infrastructure.Storage.Memory;
 using Dapper;
 

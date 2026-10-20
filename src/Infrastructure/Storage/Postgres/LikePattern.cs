@@ -1,4 +1,4 @@
-namespace Basil.Infrastructure.Storage.Common.Queries;
+namespace Basil.Infrastructure.Storage.Postgres;
 
 /// <summary>Builds LIKE patterns that match a user's text literally.</summary>
 internal static class LikePattern
