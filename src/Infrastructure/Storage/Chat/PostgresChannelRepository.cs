@@ -3,8 +3,7 @@ using Basil.Application.Storage.Chat;
 using Basil.Domain.Chat;
 using Basil.Domain.Permissions;
 using Basil.Infrastructure.Storage.Common;
-using Basil.Infrastructure.Storage.Common.Database;
-using Basil.Infrastructure.Storage.Common.Writing;
+using Basil.Infrastructure.Storage.Postgres;
 using Dapper;
 
 namespace Basil.Infrastructure.Storage.Chat;

@@ -8,7 +8,7 @@ using System.Threading.Channels;
 using Basil.Application.Storage.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Content;
-using Basil.Infrastructure.Storage.Common.Options;
+using Basil.Infrastructure.Storage.Files;
 using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Storage.Beatmaps;

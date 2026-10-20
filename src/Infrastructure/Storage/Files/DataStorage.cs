@@ -1,9 +1,8 @@
 using System.Collections;
 using System.Diagnostics.CodeAnalysis;
 using Basil.Domain.Content;
-using Basil.Infrastructure.Storage.Common.Queries;
 
-namespace Basil.Infrastructure.Storage.Common;
+namespace Basil.Infrastructure.Storage.Files;
 
 /// <summary>The files stored in one directory of the data directory, by name, and the asset references that refer to them.</summary>
 /// <remarks>Names are relative to the directory, with '/' between folders. Reading it reads the disk as it is now.</remarks>

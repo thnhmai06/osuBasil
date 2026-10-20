@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Reflection;
 using Npgsql;
 
-namespace Basil.Infrastructure.Storage.Common.Database;
+namespace Basil.Infrastructure.Storage.Postgres;
 
 /// <summary>Brings the database up to date with the schema the server was built against.</summary>
 /// <remarks>

@@ -1,12 +1,10 @@
 using System.Collections.Concurrent;
-using Basil.Infrastructure.Storage.Common.Options;
-using Basil.Infrastructure.Storage.Common.Writing;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Npgsql;
 
-namespace Basil.Infrastructure.Storage.Common.Database;
+namespace Basil.Infrastructure.Storage.Postgres;
 
 /// <summary>
 ///     Stores every change as its own statement, keeps the writes of one <see cref="Root" /> in order, and retries

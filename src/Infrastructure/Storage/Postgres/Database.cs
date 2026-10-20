@@ -1,9 +1,8 @@
-using Basil.Infrastructure.Storage.Common.Options;
 using Dapper;
 using Microsoft.Extensions.Options;
 using Npgsql;
 
-namespace Basil.Infrastructure.Storage.Common.Database;
+namespace Basil.Infrastructure.Storage.Postgres;
 
 /// <summary>Gives access to the server's database: pooled connections through which data is read and stored.</summary>
 internal sealed class Database(IOptions<DatabaseOptions> options) : IAsyncDisposable

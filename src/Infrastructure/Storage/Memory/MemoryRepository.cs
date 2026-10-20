@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
-using Basil.Infrastructure.Storage.Common.Database;
-using Basil.Infrastructure.Storage.Common.Writing;
+using Basil.Infrastructure.Storage.Postgres;
 
 namespace Basil.Infrastructure.Storage.Memory;
 

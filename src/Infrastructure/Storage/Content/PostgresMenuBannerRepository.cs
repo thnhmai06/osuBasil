@@ -2,8 +2,7 @@ using System.Collections.Concurrent;
 using Basil.Application.Storage.Content;
 using Basil.Domain.Content;
 using Basil.Infrastructure.Storage.Common;
-using Basil.Infrastructure.Storage.Common.Database;
-using Basil.Infrastructure.Storage.Common.Writing;
+using Basil.Infrastructure.Storage.Postgres;
 using Dapper;
 using Microsoft.Extensions.Logging;
 

@@ -1,7 +1,6 @@
 using Basil.Application.Storage.Auth;
 using Basil.Domain.Auth;
-using Basil.Infrastructure.Storage.Common.Database;
-using Basil.Infrastructure.Storage.Common.Writing;
+using Basil.Infrastructure.Storage.Postgres;
 using Basil.Infrastructure.Storage.Memory;
 using Dapper;
 

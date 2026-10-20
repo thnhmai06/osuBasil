@@ -1,4 +1,4 @@
-namespace Basil.Infrastructure.Storage.Common.Writing;
+namespace Basil.Infrastructure.Storage.Postgres;
 
 /// <summary>What a stored change belongs to; changes that belong to the same root are stored in the order they were made.</summary>
 internal readonly record struct Root

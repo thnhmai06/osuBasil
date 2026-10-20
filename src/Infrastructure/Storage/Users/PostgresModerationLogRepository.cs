@@ -3,8 +3,7 @@ using Basil.Application.Storage.Common;
 using Basil.Application.Storage.Users;
 using Basil.Domain.Permissions;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Storage.Common.Database;
-using Basil.Infrastructure.Storage.Common.Writing;
+using Basil.Infrastructure.Storage.Postgres;
 using Dapper;
 
 namespace Basil.Infrastructure.Storage.Users;

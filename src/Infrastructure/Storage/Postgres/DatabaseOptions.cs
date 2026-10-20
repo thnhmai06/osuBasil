@@ -1,4 +1,4 @@
-namespace Basil.Infrastructure.Storage.Common.Options;
+namespace Basil.Infrastructure.Storage.Postgres;
 
 /// <summary>Configures how the server reaches its PostgreSQL database and how it stores changes there.</summary>
 public sealed class DatabaseOptions

@@ -1,7 +1,6 @@
 using Basil.Application.Storage.Content;
 using Basil.Domain.Content;
-using Basil.Infrastructure.Storage.Common;
-using Basil.Infrastructure.Storage.Common.Options;
+using Basil.Infrastructure.Storage.Files;
 
 namespace Basil.Infrastructure.Storage.Content;
 
