@@ -10,6 +10,12 @@ public sealed class ScopedServerScreenshots
 	/// <summary>The largest screenshot accepted, in bytes: 4 MiB.</summary>
 	public const int MaxScreenshotBytes = 4 * 1024 * 1024;
 
+	/// <summary>The largest accepted screenshot width, in pixels.</summary>
+	public const int MaxScreenshotWidth = 8192;
+
+	/// <summary>The largest accepted screenshot height, in pixels.</summary>
+	public const int MaxScreenshotHeight = 8192;
+
 	private readonly ScopedServer _scoped;
 
 	/// <summary>Creates screenshot operations for a server scope.</summary>
@@ -25,8 +31,9 @@ public sealed class ScopedServerScreenshots
 	/// <returns>The reference to the stored screenshot, or why it was not stored.</returns>
 	/// <remarks>
 	///     Requires <see cref="Permissions.ScreenshotUpload" />. The image may be at most
-	///     <see cref="MaxScreenshotBytes" /> bytes and must be a PNG or JPEG image; its format is told from its file,
-	///     never from a name.
+	///     <see cref="MaxScreenshotBytes" /> bytes and must be a PNG or JPEG picture of at most
+	///     <see cref="MaxScreenshotWidth" /> by <see cref="MaxScreenshotHeight" /> pixels per side, told from its
+	///     content, never from a name.
 	/// </remarks>
 	public async Task<(ContentReference? Screenshot, ScreenshotUploadFailure? Failure)> UploadAsync(Stream content,
 		CancellationToken ct = default)
@@ -49,11 +56,15 @@ public sealed class ScopedServerScreenshots
 
 		if (memory.Length > MaxScreenshotBytes) return (null, ScreenshotUploadFailure.TooLarge);
 
-		var extension = ImageExtension(memory.GetBuffer().AsSpan(0, (int)memory.Length));
-		if (extension is null) return (null, ScreenshotUploadFailure.InvalidImage);
+		memory.Position = 0;
+		var info = await context.Inspector.InspectAsync(memory, ct);
+		if (info is null || info.Width < 1 || info.Height < 1)
+			return (null, ScreenshotUploadFailure.InvalidImage);
+		if (info.Width > MaxScreenshotWidth || info.Height > MaxScreenshotHeight)
+			return (null, ScreenshotUploadFailure.DimensionsTooLarge);
 
 		memory.Position = 0;
-		var reference = await context.Screenshots.SaveAsync(memory, extension, ct);
+		var reference = await context.Screenshots.SaveAsync(memory, info.Extension, ct);
 		return (reference, null);
 	}
 
@@ -74,21 +85,6 @@ public sealed class ScopedServerScreenshots
 		await context.Screenshots.DeleteAsync(screenshot, ct);
 		return true;
 	}
-
-	private static string? ImageExtension(ReadOnlySpan<byte> content)
-	{
-		return content.Length switch
-		{
-			>= 5 when content[0] == 0xFF && content[1] == 0xD8 && content[2] == 0xFF && content[^2] == 0xFF &&
-			          content[^1] == 0xD9 => "jpg",
-			>= 16 when content[0] == 0x89 && content[1] == 0x50 && content[2] == 0x4E && content[3] == 0x47 &&
-			           content[4] == 0x0D && content[5] == 0x0A && content[6] == 0x1A && content[7] == 0x0A &&
-			           content[^8] == 0x49 && content[^7] == 0x45 && content[^6] == 0x4E && content[^5] == 0x44 &&
-			           content[^4] == 0xAE && content[^3] == 0x42 && content[^2] == 0x60 &&
-			           content[^1] == 0x82 => "png",
-			_ => null
-		};
-	}
 }
 
 /// <summary>The reasons a screenshot is not stored.</summary>
@@ -101,5 +97,8 @@ public enum ScreenshotUploadFailure : byte
 	TooLarge,
 
 	/// <summary>The file is not a PNG or JPEG image.</summary>
-	InvalidImage
+	InvalidImage,
+
+	/// <summary>The picture is wider or taller than the accepted size.</summary>
+	DimensionsTooLarge
 }
