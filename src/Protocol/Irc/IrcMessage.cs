@@ -220,6 +220,6 @@ public sealed record IrcMessage(string Command, string? Prefix = null, params IR
 	/// </returns>
 	public override string ToString()
 	{
-		return ToString();
+		return ToString(null, null);
 	}
 }
