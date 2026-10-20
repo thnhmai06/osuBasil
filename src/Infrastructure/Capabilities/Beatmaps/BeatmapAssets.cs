@@ -59,7 +59,8 @@ internal sealed class BeatmapAssets(
 
 		var directory = options.Value.CacheDirectory;
 		Directory.CreateDirectory(directory);
-		var audioPath = Path.Combine(directory, $"{Guid.NewGuid():N}{Path.GetExtension(audio)}");
+		// The name comes from an uploaded archive, so no part of it reaches the temporary file name.
+		var audioPath = Path.Combine(directory, $"{Guid.NewGuid():N}.bin");
 		var outputPath = Path.Combine(directory, $"{Guid.NewGuid():N}.tmp.mp3");
 		try
 		{
@@ -69,6 +70,19 @@ internal sealed class BeatmapAssets(
 			{
 				await source.CopyToAsync(file, cancellationToken).ConfigureAwait(false);
 			}
+
+			// The content, not the name, says whether this is audio, how long it is and how many bytes it takes.
+			var analysis = await FFProbe.AnalyseAsync(audioPath, FfmpegOptions, cancellationToken)
+				.ConfigureAwait(false);
+			if (analysis.PrimaryAudioStream is null) return;
+
+			if (logger.IsEnabled(LogLevel.Debug))
+				logger.LogDebug(
+					"Audio track read: BeatmapsetId={BeatmapsetId} Audio={Audio} Bytes={Bytes} Duration={Duration}",
+					set.Id, audio, new FileInfo(audioPath).Length, analysis.Duration);
+
+			// A preview point past the end of the track starts the preview at the beginning.
+			if (start >= analysis.Duration) start = TimeSpan.Zero;
 
 			await RunFfmpegAsync(audioPath, start, outputPath, cancellationToken).ConfigureAwait(false);
 
@@ -97,6 +111,8 @@ internal sealed class BeatmapAssets(
 				.WithAudioBitrate(128)
 				.WithCustomArgument("-af afade=t=out:st=9:d=1"))
 			.CancellableThrough(cancellationToken)
-			.ProcessAsynchronously(true, new FFOptions { BinaryFolder = options.Value.FfmpegFolder ?? string.Empty });
+			.ProcessAsynchronously(true, FfmpegOptions);
 	}
+
+	private FFOptions FfmpegOptions => new() { BinaryFolder = options.Value.FfmpegFolder ?? string.Empty };
 }
