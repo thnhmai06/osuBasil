@@ -87,7 +87,7 @@ These ownership rules keep channel membership on the object being joined and avo
 
 BasilBot is the server's voice, not an authority that users borrow.
 
-BasilBot is online with a permanent `UserSession` and a `BotConnection` that the server opens at startup; a private message to it is a command. Commands act with the typist's connection and permissions, a room command will call the room through `room.ScopeTo(by)`, and countdown announcements will follow room-owned countdown events. Server-originated bot messages will not go through an ordinary caller's permission check. BasilBot itself will not own countdown timing or room authority.
+BasilBot is online with a permanent `UserSession` and a `BotConnection` that the server opens at startup; a private message to it is a command. Commands act with the typist's connection and permissions, a room command calls the room through `room.ScopeTo(by)`, and countdown announcements follow room-owned countdown events. Server-originated bot messages will not go through an ordinary caller's permission check. BasilBot itself will not own countdown timing or room authority.
 
 ## Invariants
 
