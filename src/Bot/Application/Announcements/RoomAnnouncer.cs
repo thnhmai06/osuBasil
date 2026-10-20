@@ -1,99 +1,103 @@
 using System.Collections.Concurrent;
-using Basil.Bot.Application.Basil;
-using Basil.Bot.Application.Commands.Mp;
+using Basil.Application.Services.Contracts.Events;
+using Basil.Application.Services.Contracts.Multiplayer;
+using Basil.Application.Services.Contracts.Multiplayer.Events;
+using Basil.Application.Services.Contracts.Multiplayer.Rooms;
+using Basil.Application.Services.Contracts.Sessions;
+using Basil.Application.Services.Contracts.Servers;
 using Basil.Domain.Users;
 
 namespace Basil.Bot.Application.Announcements;
 
-/// <summary>Reacts to room events and posts announcements in the room's channel.</summary>
-internal sealed class RoomAnnouncer(
-	IBasilChat chat,
-	IBasilRooms rooms,
-	TimeProvider timeProvider,
-	RoomCountdowns countdowns)
+/// <summary>Reacts to room and lobby events by posting announcements in the affected room.</summary>
+internal sealed class RoomAnnouncer(Server server, IUserRegistry users, TimeProvider timeProvider)
+	: IEventHandler<RoomEvent>, IEventHandler<LobbyEvent>
 {
-	private readonly ConcurrentDictionary<int, DateTimeOffset> _closingRooms = new();
+	private readonly ConcurrentDictionary<int, Room> _closingRooms = new();
 
-	/// <summary>Handles a room event and posts appropriate announcements.</summary>
-	public async Task HandleAsync(BotEvent botEvent, CancellationToken cancellationToken)
+	/// <inheritdoc />
+	public async ValueTask HandleAsync(RoomEvent @event, CancellationToken cancellationToken)
 	{
-		switch (botEvent)
+		switch (@event)
 		{
-			case RoomRoundStarted e:
-				await HandleRoundStartedAsync(e, cancellationToken);
+			case RoomRoundStarted { Players.Count: 0 } e:
+				await server.SayAsync(e.Room.Channel, AnnouncementReplies.RoundStartedNoPlayers, ct: cancellationToken);
 				break;
 			case RoomRoundAborted e:
-				await HandleRoundAbortedAsync(e, cancellationToken);
+				await server.SayAsync(e.Room.Channel, AnnouncementReplies.RoundAborted, ct: cancellationToken);
 				break;
-			case RoomSettingsChanged e:
-				await HandleSettingsChangedAsync(e, cancellationToken);
+			case RoomCountdownStarted e:
+				var seconds = (int)e.Countdown.Length.TotalSeconds;
+				var text = e.Countdown.StartsRound
+					? string.Format(AnnouncementReplies.CountdownStartedForRound, seconds)
+					: string.Format(AnnouncementReplies.CountdownStarted, seconds);
+				await server.SayAsync(e.Room.Channel, text, ct: cancellationToken);
 				break;
-			case RoomClosingAnnounced e:
-				await HandleClosingAnnouncedAsync(e, cancellationToken);
+			case RoomCountdownTicked e:
+				var remainingSeconds = (int)Math.Round(e.Remaining.TotalSeconds);
+				var tick = e.Countdown.StartsRound
+					? string.Format(AnnouncementReplies.CountdownTickedForRound, remainingSeconds)
+					: string.Format(AnnouncementReplies.CountdownTicked, remainingSeconds);
+				await server.SayAsync(e.Room.Channel, tick, ct: cancellationToken);
 				break;
-			case RoomPlayerJoined e:
-				await HandlePlayerJoinedAsync(e, cancellationToken);
+			case RoomCountdownElapsed e:
+				var elapsed = e.StartResult switch
+				{
+					RoomResult.Ok when e.Countdown.StartsRound && e.Room.Rounds.InProgress =>
+						AnnouncementReplies.RoundStartedByCountdown,
+					RoomResult.Ok when !e.Countdown.StartsRound => AnnouncementReplies.CountdownElapsed,
+					RoomResult.NoBeatmap => AnnouncementReplies.CountdownElapsedForRound,
+					_ => null
+				};
+				if (elapsed is not null)
+					await server.SayAsync(e.Room.Channel, elapsed, ct: cancellationToken);
 				break;
-			case RoomClosed e:
-				HandleRoomClosed(e);
+			case RoomCountdownCancelled e:
+				await server.SayAsync(e.Room.Channel, AnnouncementReplies.CountdownCancelled, ct: cancellationToken);
+				break;
+			case RoomPlayerJoined e when _closingRooms.TryRemove(new KeyValuePair<int, Room>(e.Room.Id, e.Room)):
+				await server.SayAsync(e.Room.Channel, AnnouncementReplies.RoomPlayerJoinedClosing,
+					ct: cancellationToken);
 				break;
 		}
 	}
 
-	private async Task HandleRoundStartedAsync(RoomRoundStarted e, CancellationToken cancellationToken)
+	/// <inheritdoc />
+	public async ValueTask HandleAsync(LobbyEvent @event, CancellationToken cancellationToken)
 	{
-		countdowns.Stop(e.RoomId);
-
-		if (e.PlayerCount == 0)
-			await chat.PostAsync($"#mp_{e.RoomId}", AnnouncementReplies.RoundStartedNoPlayers, cancellationToken);
+		switch (@event)
+		{
+			case LobbyRoomClosingAnnounced e:
+				await AnnounceClosingAsync(e, cancellationToken);
+				break;
+			case LobbyRoomClosed e:
+				_closingRooms.TryRemove(new KeyValuePair<int, Room>(e.Room.Id, e.Room));
+				break;
+		}
 	}
 
-	private async Task HandleRoundAbortedAsync(RoomRoundAborted e, CancellationToken cancellationToken)
+	private async Task AnnounceClosingAsync(LobbyRoomClosingAnnounced e, CancellationToken cancellationToken)
 	{
-		countdowns.Stop(e.RoomId);
-		await chat.PostAsync($"#mp_{e.RoomId}", AnnouncementReplies.RoundAborted, cancellationToken);
-	}
-
-	private async Task HandleSettingsChangedAsync(RoomSettingsChanged e, CancellationToken cancellationToken)
-	{
-		if (e.RoundSettingsChanged && countdowns.Stop(e.RoomId, true))
-			await chat.PostAsync($"#mp_{e.RoomId}", AnnouncementReplies.SettingsChangedCountdownCancelled,
-				cancellationToken);
-	}
-
-	private async Task HandleClosingAnnouncedAsync(RoomClosingAnnounced e, CancellationToken cancellationToken)
-	{
-		var now = timeProvider.GetUtcNow();
-		var minutesUntilClose = (int)Math.Ceiling((e.ClosesAt - now).TotalMinutes);
+		var minutesUntilClose = (int)Math.Ceiling((e.ClosesAt - timeProvider.GetUtcNow()).TotalMinutes);
 		var text = string.Format(AnnouncementReplies.RoomClosingAnnounced, minutesUntilClose);
 
-		await chat.PostAsync($"#mp_{e.RoomId}", text, cancellationToken);
-
-		_closingRooms[e.RoomId] = e.ClosesAt;
-
-		// Also send PM to creator and referees
-		var room = await rooms.GetAsync(e.RoomId, cancellationToken);
-		if (room is null)
-			return;
-
-		var recipients = new List<UserRecord>();
-		if (room.Creator is not null)
-			recipients.Add(room.Creator);
-		recipients.AddRange(room.Referees);
-
-		foreach (var recipient in recipients)
-			await chat.SendAsync(recipient, text, cancellationToken);
+		await server.SayAsync(e.Room.Channel, text, ct: cancellationToken);
+		_closingRooms[e.Room.Id] = e.Room;
+		await WhisperStaffAsync(e.Room, text, cancellationToken);
 	}
 
-	private async Task HandlePlayerJoinedAsync(RoomPlayerJoined e, CancellationToken cancellationToken)
+	private async Task WhisperStaffAsync(Room room, string text, CancellationToken cancellationToken)
 	{
-		if (_closingRooms.TryRemove(e.RoomId, out _))
-			await chat.PostAsync($"#mp_{e.RoomId}", AnnouncementReplies.RoomPlayerJoinedClosing, cancellationToken);
-	}
+		if (room.Authority.Creator is { } creator)
+			await WhisperIfOnlineAsync(creator);
 
-	private void HandleRoomClosed(RoomClosed e)
-	{
-		countdowns.Stop(e.RoomId);
-		_closingRooms.TryRemove(e.RoomId, out _);
+		foreach (var referee in room.Authority.Referees)
+			await WhisperIfOnlineAsync(referee);
+
+		async Task WhisperIfOnlineAsync(UserRecord user)
+		{
+			if (users.Sessions.GetValueOrDefault(user) is { } session)
+				await server.WhisperAsync(session, text, ct: cancellationToken);
+		}
 	}
 }

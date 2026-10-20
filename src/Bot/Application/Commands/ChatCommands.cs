@@ -1,13 +1,14 @@
-using Basil.Bot.Application.Basil;
 using Basil.Bot.Application.Commands.Mp;
+using Basil.Application.Storage.Contracts.Content;
+using Basil.Application.Storage.Contracts.Users;
 using Basil.Domain.Users;
 
 namespace Basil.Bot.Application.Commands;
 
 /// <summary>Dispatches chat commands to their handlers.</summary>
 internal sealed class ChatCommands(
-	IBasilUsers users,
-	IBasilFaqs faqs,
+	IUserRepository users,
+	IFaqStorage faqs,
 	MpCommands mpCommands,
 	Random random)
 {
@@ -172,8 +173,8 @@ internal sealed class ChatCommands(
 
 		if (string.Equals(query, "list", StringComparison.OrdinalIgnoreCase))
 		{
-			var entries = await faqs.ListAsync(cancellationToken);
-			if (entries.Count == 0)
+			var entries = (await faqs.ListAsync(cancellationToken)).ToArray();
+			if (entries.Length == 0)
 			{
 				await context.Reply(BotReplies.NoFaqEntriesAvailable, cancellationToken);
 				return true;
@@ -184,12 +185,16 @@ internal sealed class ChatCommands(
 			return true;
 		}
 
-		var text = await faqs.ReadAsync(query, cancellationToken);
-		if (text is null)
+		var reader = await faqs.ReadAsync(query, cancellationToken);
+		if (reader is null)
 		{
 			await context.Reply(string.Format(BotReplies.NoFaqEntryFound, query), cancellationToken);
 			return true;
 		}
+
+		string text;
+		using (reader)
+			text = await reader.ReadToEndAsync(cancellationToken);
 
 		await context.Reply(text, cancellationToken);
 		return true;

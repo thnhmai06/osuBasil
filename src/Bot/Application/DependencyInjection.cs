@@ -1,7 +1,11 @@
 using Basil.Bot.Application.Announcements;
+using Basil.Bot.Application.Chat;
 using Basil.Bot.Application.Commands;
 using Basil.Bot.Application.Commands.Mp;
-using Basil.Bot.Application.Replies;
+using Basil.Application.Services.Contracts.Anticheat;
+using Basil.Application.Services.Contracts.Chat;
+using Basil.Application.Services.Contracts.Events;
+using Basil.Application.Services.Contracts.Multiplayer.Events;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -21,10 +25,11 @@ public static class DependencyInjection
 		services.AddSingleton<RoomCountdowns>();
 		services.AddSingleton<MpCommands>();
 		services.AddSingleton<ChatCommands>();
-		services.AddSingleton<ReplyWriter>();
+		services.AddSingleton<IEventHandler<ChannelEvent>, ChatHandler>();
 		services.AddSingleton<RoomAnnouncer>();
-		services.AddSingleton<AnticheatAnnouncer>();
-		services.AddHostedService<BotRunner>();
+		services.AddSingleton<IEventHandler<RoomEvent>>(sp => sp.GetRequiredService<RoomAnnouncer>());
+		services.AddSingleton<IEventHandler<LobbyEvent>>(sp => sp.GetRequiredService<RoomAnnouncer>());
+		services.AddSingleton<IEventHandler<AnticheatEvent>, AnticheatAnnouncer>();
 		return services;
 	}
 }

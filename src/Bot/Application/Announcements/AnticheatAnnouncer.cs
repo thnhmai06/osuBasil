@@ -1,42 +1,45 @@
-using Basil.Bot.Application.Basil;
+using Basil.Application.Services.Contracts.Anticheat;
+using Basil.Application.Services.Contracts.Events;
+using Basil.Application.Services.Contracts.Multiplayer.Rooms;
+using Basil.Application.Services.Contracts.Sessions;
+using Basil.Application.Services.Contracts.Servers;
 using Basil.Domain.Bancho;
 using Basil.Domain.Users;
 
 namespace Basil.Bot.Application.Announcements;
 
 /// <summary>Announces anticheat flags in room channels and to room staff.</summary>
-internal sealed class AnticheatAnnouncer(IBasilChat chat, IBasilRooms rooms)
+internal sealed class AnticheatAnnouncer(Server server, IUserRegistry users) : IEventHandler<AnticheatEvent>
 {
-	/// <summary>Handles an anticheat event.</summary>
-	public async Task HandleAsync(BotEvent botEvent, CancellationToken cancellationToken)
+	/// <inheritdoc />
+	public async ValueTask HandleAsync(AnticheatEvent @event, CancellationToken cancellationToken)
 	{
-		if (botEvent is PlayerFlagged { RoomId: not null } flagged)
-			await HandlePlayerFlaggedAsync(flagged, cancellationToken);
-	}
-
-	private async Task HandlePlayerFlaggedAsync(PlayerFlagged e, CancellationToken cancellationToken)
-	{
-		var roomId = e.RoomId!.Value;
-		var room = await rooms.GetAsync(roomId, cancellationToken);
-		if (room is null)
+		if (@event is not AnticheatPlayerFlagged { Room: { } room } flagged)
 			return;
 
-		var reason = FormatFlags(e.Signs);
-		var playerName = e.Player.Value.Name;
-
-		// Post in room channel
+		var reason = FormatFlags(flagged.Signs);
+		var playerName = flagged.Player.User.Value.Name;
 		var channelMessage = string.Format(AnnouncementReplies.AnticheatFlagRoom, playerName, reason);
-		await chat.PostAsync($"#mp_{roomId}", channelMessage, cancellationToken);
+		await server.SayAsync(room.Channel, channelMessage, ct: cancellationToken);
 
-		// PM to creator and referees
-		var pmMessage = string.Format(AnnouncementReplies.AnticheatFlagPm, roomId, room.Name, playerName, reason);
+		var pmMessage = string.Format(AnnouncementReplies.AnticheatFlagPm, room.Id, room.Settings.Name,
+			playerName, reason);
+		await WhisperStaffAsync(room, pmMessage, cancellationToken);
+	}
 
-		var recipients = new List<UserRecord>();
-		if (room.Creator is not null)
-			recipients.Add(room.Creator);
-		recipients.AddRange(room.Referees);
+	private async Task WhisperStaffAsync(Room room, string text, CancellationToken cancellationToken)
+	{
+		if (room.Authority.Creator is { } creator)
+			await WhisperIfOnlineAsync(creator);
 
-		foreach (var recipient in recipients) await chat.SendAsync(recipient, pmMessage, cancellationToken);
+		foreach (var referee in room.Authority.Referees)
+			await WhisperIfOnlineAsync(referee);
+
+		async Task WhisperIfOnlineAsync(UserRecord user)
+		{
+			if (users.Sessions.GetValueOrDefault(user) is { } session)
+				await server.WhisperAsync(session, text, ct: cancellationToken);
+		}
 	}
 
 	private static string FormatFlags(BanchoFlags flags)
