@@ -31,66 +31,51 @@ internal static class CommandLine
 		var op = ChainOperator.Semicolon;
 		var inQuote = false;
 
-		void FlushSegment(ChainOperator nextOp)
-		{
-			var text = current.ToString().Trim();
-			if (text.Length > 0)
-				segments.Add(new CommandSegment(text, op));
-			current.Clear();
-			op = nextOp;
-		}
-
 		while (i < message.Length)
 		{
 			var c = message[i];
 
 			if (inQuote)
 			{
-				if (c == '\\' && i + 1 < message.Length)
+				switch (c)
 				{
-					current.Append(c);
-					current.Append(message[i + 1]);
-					i += 2;
-					continue;
+					case '\\' when i + 1 < message.Length:
+						current.Append(c);
+						current.Append(message[i + 1]);
+						i += 2;
+						continue;
+					case '"':
+						current.Append(c);
+						inQuote = false;
+						i++;
+						continue;
 				}
 
-				if (c == '"')
-				{
+				current.Append(c);
+				i++;
+				continue;
+			}
+
+			switch (c)
+			{
+				case '"':
 					current.Append(c);
-					inQuote = false;
+					inQuote = true;
 					i++;
 					continue;
-				}
-
-				current.Append(c);
-				i++;
-				continue;
+				case ';' when !inQuote:
+					FlushSegment(ChainOperator.Semicolon);
+					i++;
+					continue;
+				case '&' when i + 1 < message.Length && message[i + 1] == '&':
+					FlushSegment(ChainOperator.And);
+					i += 2;
+					continue;
+				default:
+					current.Append(c);
+					i++;
+					break;
 			}
-
-			if (c == '"')
-			{
-				current.Append(c);
-				inQuote = true;
-				i++;
-				continue;
-			}
-
-			if (c == ';' && !inQuote)
-			{
-				FlushSegment(ChainOperator.Semicolon);
-				i++;
-				continue;
-			}
-
-			if (c == '&' && i + 1 < message.Length && message[i + 1] == '&')
-			{
-				FlushSegment(ChainOperator.And);
-				i += 2;
-				continue;
-			}
-
-			current.Append(c);
-			i++;
 		}
 
 		// Flush the last segment
@@ -99,6 +84,15 @@ internal static class CommandLine
 			segments.Add(new CommandSegment(last, op));
 
 		return segments.Count > 0 ? segments : [new CommandSegment(message.Trim(), ChainOperator.Semicolon)];
+
+		void FlushSegment(ChainOperator nextOp)
+		{
+			var text = current.ToString().Trim();
+			if (text.Length > 0)
+				segments.Add(new CommandSegment(text, op));
+			current.Clear();
+			op = nextOp;
+		}
 	}
 
 	/// <summary>Tokenises a command segment into words, respecting quoted strings and escape sequences.</summary>
@@ -140,33 +134,34 @@ internal static class CommandLine
 				continue;
 			}
 
-			if (c == '"')
+			switch (c)
 			{
-				inQuote = true;
-				i++;
-				continue;
-			}
-
-			if (c == ' ')
-			{
-				if (current.Length > 0)
-				{
-					tokens.Add(current.ToString());
-					current.Clear();
-				}
-
-				i++;
-				continue;
-			}
-
-			if (c == '\\' && i + 1 < segment.Length)
-			{
-				var next = segment[i + 1];
-				if (next is '"' or '\\')
-				{
-					current.Append(next);
-					i += 2;
+				case '"':
+					inQuote = true;
+					i++;
 					continue;
+				case ' ':
+				{
+					if (current.Length > 0)
+					{
+						tokens.Add(current.ToString());
+						current.Clear();
+					}
+
+					i++;
+					continue;
+				}
+				case '\\' when i + 1 < segment.Length:
+				{
+					var next = segment[i + 1];
+					if (next is '"' or '\\')
+					{
+						current.Append(next);
+						i += 2;
+						continue;
+					}
+
+					break;
 				}
 			}
 

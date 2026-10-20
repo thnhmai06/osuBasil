@@ -20,8 +20,7 @@ internal sealed class ChatHandler(
 	/// <inheritdoc />
 	public ValueTask HandleAsync(ChannelEvent @event, CancellationToken cancellationToken)
 	{
-		if (@event is not ChannelMessagePosted posted
-		    || posted.By is not { } by
+		if (@event is not ChannelMessagePosted { By: { } by } posted
 		    || posted.Message.IsNotice
 		    || string.IsNullOrWhiteSpace(posted.Message.Content)
 		    || BasilBot.Is(posted.Message.Author))

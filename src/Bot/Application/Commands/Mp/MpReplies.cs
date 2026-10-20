@@ -477,5 +477,4 @@ internal static class MpReplies
 			_ => string.Format(GenericFailed, outcome)
 		};
 	}
-
 }

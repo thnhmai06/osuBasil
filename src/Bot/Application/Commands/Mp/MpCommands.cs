@@ -155,12 +155,6 @@ internal sealed partial class MpCommands(
 	{
 		var prefix = string.Format(MpReplies.RoomPrefix, roomId);
 
-		string NameLines(string text)
-		{
-			return string.Join('\n',
-				text.Split('\n').Select(line => line.Length == 0 ? line : prefix + line));
-		}
-
 		return context with
 		{
 			Reply = context.Channel == $"#mp_{roomId}"
@@ -168,6 +162,12 @@ internal sealed partial class MpCommands(
 				: (text, cancellationToken) => context.Reply(NameLines(text), cancellationToken),
 			ReplyPrivately = (text, cancellationToken) => context.ReplyPrivately(NameLines(text), cancellationToken)
 		};
+
+		string NameLines(string text)
+		{
+			return string.Join('\n',
+				text.Split('\n').Select(line => line.Length == 0 ? line : prefix + line));
+		}
 	}
 
 	// ── scope resolution ─────────────────────────────────────────────────────────────────

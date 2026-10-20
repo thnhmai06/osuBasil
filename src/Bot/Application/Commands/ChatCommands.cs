@@ -6,11 +6,7 @@ using Basil.Domain.Users;
 namespace Basil.Bot.Application.Commands;
 
 /// <summary>Dispatches chat commands to their handlers.</summary>
-internal sealed class ChatCommands(
-	IUserRepository users,
-	IFaqStorage faqs,
-	MpCommands mpCommands,
-	Random random)
+internal sealed class ChatCommands(IUserRepository users, IFaqStorage faqs, MpCommands mpCommands, Random random)
 {
 	/// <summary>The text that starts a command.</summary>
 	public const string CommandPrefix = "!";
@@ -22,18 +18,17 @@ internal sealed class ChatCommands(
 	/// <returns>True if a command was executed; otherwise false (no reply sent for unknown commands).</returns>
 	public async Task<bool> ExecuteAsync(CommandContext context, string text, CancellationToken cancellationToken)
 	{
-		var prefix = CommandPrefix;
 		if (string.IsNullOrEmpty(text))
 			return false;
 
 		var isPrivate = context.Channel is null;
-		var hasPrefix = text.StartsWith(prefix, StringComparison.Ordinal);
+		var hasPrefix = text.StartsWith(CommandPrefix, StringComparison.Ordinal);
 
 		if (!hasPrefix && !isPrivate)
 			return false;
 
 		// Rebuild with prefix so the splitter sees every segment as a full command
-		var commandText = hasPrefix ? text : prefix + text;
+		var commandText = hasPrefix ? text : CommandPrefix + text;
 		var segments = CommandLine.Split(commandText);
 
 		if (segments.Count == 1)
@@ -50,23 +45,12 @@ internal sealed class ChatCommands(
 		{
 			var stripped = StripPrefix(segment.Text);
 			var tokens = CommandLine.Tokenize(stripped);
-			if (tokens.Count == 0)
-			{
-				await context.Reply(BotReplies.ChainOnlyMpAllowed, cancellationToken);
-				return false;
-			}
+			if (tokens.Count != 0
+			    && string.Equals(tokens[0], "mp", StringComparison.OrdinalIgnoreCase)
+			    && tokens.Count >= 2 && MpCommands.IsChainable(tokens[1])) continue;
 
-			if (!string.Equals(tokens[0], "mp", StringComparison.OrdinalIgnoreCase))
-			{
-				await context.Reply(BotReplies.ChainOnlyMpAllowed, cancellationToken);
-				return false;
-			}
-
-			if (tokens.Count < 2 || !MpCommands.IsChainable(tokens[1]))
-			{
-				await context.Reply(BotReplies.ChainOnlyMpAllowed, cancellationToken);
-				return false;
-			}
+			await context.Reply(BotReplies.ChainOnlyMpAllowed, cancellationToken);
+			return false;
 		}
 
 		// ── Chain execution ──────────────────────────────────────────────────────────────
@@ -88,11 +72,10 @@ internal sealed class ChatCommands(
 		return succeeded;
 	}
 
-	private string StripPrefix(string segmentText)
+	private static string StripPrefix(string segmentText)
 	{
-		var prefix = CommandPrefix;
-		return segmentText.StartsWith(prefix, StringComparison.Ordinal)
-			? segmentText[prefix.Length..]
+		return segmentText.StartsWith(CommandPrefix, StringComparison.Ordinal)
+			? segmentText[CommandPrefix.Length..]
 			: segmentText;
 	}
 
@@ -194,7 +177,9 @@ internal sealed class ChatCommands(
 
 		string text;
 		using (reader)
+		{
 			text = await reader.ReadToEndAsync(cancellationToken);
+		}
 
 		await context.Reply(text, cancellationToken);
 		return true;

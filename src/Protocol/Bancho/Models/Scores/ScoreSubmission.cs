@@ -57,11 +57,6 @@ public sealed record ScoreSubmission(
 		if (fields.Length < FieldCount)
 			throw new FormatException("Score submission has too few fields.");
 
-		int Number(int index)
-		{
-			return int.Parse(fields[index], CultureInfo.InvariantCulture);
-		}
-
 		return new ScoreSubmission(
 			fields[0],
 			fields[1],
@@ -81,5 +76,10 @@ public sealed record ScoreSubmission(
 			Number(15),
 			DateTime.ParseExact(fields[16], "yyMMddHHmmss", CultureInfo.InvariantCulture),
 			fields[17].Count(c => c == ' ') & ~4);
+
+		int Number(int index)
+		{
+			return int.Parse(fields[index], CultureInfo.InvariantCulture);
+		}
 	}
 }

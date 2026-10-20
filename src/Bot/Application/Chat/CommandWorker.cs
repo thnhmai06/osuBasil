@@ -37,14 +37,12 @@ internal sealed class CommandWorker(ILogger<CommandWorker> logger) : BackgroundS
 	/// </returns>
 	internal bool Enqueue(int userId, Func<CancellationToken, Task> command)
 	{
-		if (_pending.AddOrUpdate(userId, 1, (_, count) => count + 1) > PendingPerUser || !_commands.Writer.TryWrite((userId, command)))
-		{
-			Release(userId);
-			logger.LogWarning("Dropped a bot command from user {UserId}: too many commands waiting", userId);
-			return false;
-		}
+		if (_pending.AddOrUpdate(userId, 1, (_, count) => count + 1) <= PendingPerUser
+		    && _commands.Writer.TryWrite((userId, command))) return true;
 
-		return true;
+		Release(userId);
+		logger.LogWarning("Dropped a bot command from user {UserId}: too many commands waiting", userId);
+		return false;
 	}
 
 	/// <inheritdoc />
@@ -63,7 +61,8 @@ internal sealed class CommandWorker(ILogger<CommandWorker> logger) : BackgroundS
 			}
 			catch (OperationCanceledException)
 			{
-				logger.LogWarning("A bot command from user {UserId} took longer than {Timeout} and was cancelled", userId,
+				logger.LogWarning("A bot command from user {UserId} took longer than {Timeout} and was cancelled",
+					userId,
 					CommandTimeout);
 			}
 			catch (Exception exception)

@@ -34,6 +34,7 @@ internal sealed class AnticheatAnnouncer(Server server, UserRegistry users) : IE
 
 		foreach (var referee in room.Authority.Referees)
 			await WhisperIfOnlineAsync(referee);
+		return;
 
 		async Task WhisperIfOnlineAsync(UserRecord user)
 		{

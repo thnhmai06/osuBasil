@@ -93,6 +93,7 @@ internal sealed class RoomAnnouncer(Server server, UserRegistry users, TimeProvi
 
 		foreach (var referee in room.Authority.Referees)
 			await WhisperIfOnlineAsync(referee);
+		return;
 
 		async Task WhisperIfOnlineAsync(UserRecord user)
 		{
