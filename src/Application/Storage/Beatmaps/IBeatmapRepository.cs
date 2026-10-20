@@ -37,11 +37,13 @@ public interface IBeatmapRepository
 	/// <param name="page">Which part of the listing to return.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>A page of beatmaps.</returns>
-	Task<Page<BeatmapRecord>> ListAsync(BeatmapQuery query, PageRequest page, CancellationToken cancellationToken = default);
+	Task<Page<BeatmapRecord>> ListAsync(BeatmapQuery query, PageRequest page,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>Deletes the stored beatmaps of a beatmapset that are not in a given list.</summary>
 	/// <param name="set">The beatmapset.</param>
 	/// <param name="keep">The beatmaps the set still has.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task RetainAsync(BeatmapsetRecord set, IReadOnlyCollection<BeatmapRecord> keep, CancellationToken cancellationToken = default);
+	Task RetainAsync(BeatmapsetRecord set, IReadOnlyCollection<BeatmapRecord> keep,
+		CancellationToken cancellationToken = default);
 }

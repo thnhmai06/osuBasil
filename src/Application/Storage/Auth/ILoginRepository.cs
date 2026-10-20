@@ -18,5 +18,6 @@ public interface ILoginRepository
 	/// <param name="page">Which part of the listing to return.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>One part of the user's login history, newest first, with how many logins it has in total.</returns>
-	ValueTask<Page<LoginEntry>> ListAsync(UserRecord user, PageRequest page, CancellationToken cancellationToken = default);
+	ValueTask<Page<LoginEntry>> ListAsync(UserRecord user, PageRequest page,
+		CancellationToken cancellationToken = default);
 }

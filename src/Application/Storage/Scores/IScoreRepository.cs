@@ -27,5 +27,6 @@ public interface IScoreRepository
 	/// <param name="page">Which part of the listing to return.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>A page of scores.</returns>
-	Task<Page<ScoreRecord>> ListAsync(ScoreQuery query, PageRequest page, CancellationToken cancellationToken = default);
+	Task<Page<ScoreRecord>> ListAsync(ScoreQuery query, PageRequest page,
+		CancellationToken cancellationToken = default);
 }
