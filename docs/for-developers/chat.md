@@ -87,7 +87,7 @@ These ownership rules keep channel membership on the object being joined and avo
 
 BasilBot is the server's voice, not an authority that users borrow.
 
-**Planned:** BasilBot's permanent online `UserSession` and connection are not yet implemented. The chat-command integration with scoped objects is also planned: a command will act with the typist's connection and permissions, a room command will call the room through `room.ScopeTo(by)`, and countdown announcements will follow room-owned countdown events. Server-originated bot messages will not go through an ordinary caller's permission check. BasilBot itself will not own countdown timing or room authority.
+BasilBot is online with a permanent `UserSession` and a `BotConnection` that the server opens at startup; a private message to it is a command. Commands act with the typist's connection and permissions, a room command will call the room through `room.ScopeTo(by)`, and countdown announcements will follow room-owned countdown events. Server-originated bot messages will not go through an ordinary caller's permission check. BasilBot itself will not own countdown timing or room authority.
 
 ## Invariants
 
@@ -97,7 +97,7 @@ BasilBot is the server's voice, not an authority that users borrow.
 * Private-message posting requires `ChatPostPrivate`; recipient blocks and friends-only settings yield to effective `ChatMessageAnyone`.
 * Restrictions apply to effective permissions for both sender and recipient.
 * Channel events describe the channel that changed, not a relation stored on the sender.
-* Planned BasilBot commands will use the typist's authority; its connected session and scoped command integration are not implemented yet.
+* BasilBot commands use the typist's authority; the transports must deliver channel messages only to `ChannelSession.RecipientsAsync`.
 
 ## Related code
 

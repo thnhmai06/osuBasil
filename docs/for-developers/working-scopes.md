@@ -102,8 +102,8 @@ redesigned account-creation rules as already integrated into every transport.
 The osu! client's friend list (`osu-getfriends.php`, adding and removing friends) is supported, together with the
 setting that accepts private messages from friends only and with blocking: a block refuses private messages,
 spectating and invitations (staff who manage the matching area are not bound by a block; see "a block yields to a
-higher right" in `AGENTS.md`). Silent filtering of a blocked user's messages in general channels is planned but not
-implemented yet. Players use friends and blocks during tournaments to reach each other and referees, so they stay
+higher right" in `AGENTS.md`). A blocked user's messages in general channels are filtered silently per recipient: the
+server offers the recipients of a message (ChannelSession.RecipientsAsync) and the transports deliver to them. Players use friends and blocks during tournaments to reach each other and referees, so they stay
 even though Basil has no other social features.
 
 ### Moderation
@@ -202,7 +202,7 @@ Basil first reintroduced `BanchoBot` as a special session inside the server. The
 out to BasilBot as a separate client. The 2026-10-16 redesign brought them back as a server entry point: BasilBot is a
 fixed user (id 1) with no rights and no sign-in, commands run using the typist's connection, and the bot only replies
 and announces. The command and announcement handlers are implemented in `Basil.Bot.Application`; transport
-integration and the bot's own connection remain planned for the Host phase. The earlier "special session" failed
+integration remains planned for the Host phase; the bot's own connection is kept by the server. The earlier "special session" failed
 because the bot acted with rights of its own; that does not return.
 
 ### Deferring the API indefinitely

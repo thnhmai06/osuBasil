@@ -739,8 +739,9 @@ not host configuration.
   posts the server's announcements. A chat command is an entry point like IRC or the API: it runs on the objects
   scoped to the connection of the user who typed it, so it needs that user's rights; the bot only replies. The
   bot's own messages go straight to the chat, past the rights check. The command handler and event-based
-  announcers are implemented in `Basil.Bot.Application`; the bot's own online connection, private messages to
-  the bot and host integration are planned for the Host phase. Countdowns are a feature of the room.
+  announcers are implemented in `Basil.Bot.Application`. The bot is online with a connection of its own (`BotConnection`,
+  brought up by the server at startup; nobody can sign in as it) and a private message to it is a command. Showing the
+  bot as online on the transports is planned for the Host phase. Countdowns are a feature of the room.
 * **Identity on every action.** Every action has a real actor `by` (a `Connection`); `by` is never `null`.
   A room created through the API has the caller as creator. A server announcement is `by` BasilBot.
 * **There is no delegation.** No account acts for another. An outside tool signs in with its own account and the

@@ -25,8 +25,7 @@ countdown marks.
 
 The following host-phase work is not implemented yet:
 
-* BasilBot's own connection as an online user;
-* private messages sent to BasilBot;
+* showing BasilBot as an online user on the transports (the server already keeps its connection);
 * integration of the new command and announcement handlers with the migrated hosts;
 * the planned operator console in `Basil.Cli`.
 
