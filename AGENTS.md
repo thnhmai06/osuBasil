@@ -305,21 +305,25 @@ dotnet test tests/Basil.Application.Tests \
 ```
 
 While the hosts and the tests are not migrated (see the migration status under [Architecture](#architecture)),
-verify a change with the six projects that do build, one at a time:
+verify a change with the eight projects that do build, one at a time:
 
 ```bash
 dotnet build src/Domain --nologo -v q
+dotnet build src/Application/Storage --nologo -v q
+dotnet build src/Application/Objects --nologo -v q
 dotnet build src/Application/Services --nologo -v q
 dotnet build src/Infrastructure/Storage --nologo -v q
-dotnet build src/Infrastructure/Services --nologo -v q
+dotnet build src/Infrastructure/Capabilities --nologo -v q
 dotnet build src/Infrastructure/Runtime --nologo -v q
 dotnet build src/Bot/Application --nologo -v q
 ```
 
 A change to a constructor, a context or `DependencyInjection.cs` also needs the container check: a throwaway
-console project that calls `AddApplicationServices()`, `AddInfrastructureRuntime()` and `AddBotApplication()`,
-registers a stub for every external storage port, builds the provider with `ValidateOnBuild`, and resolves every
-registration (factory lambdas included). It must finish without a cycle or a missing registration.
+console project that calls the registrations of the application (`AddApplicationServices()` until the public
+`AddApplication()` of Application.Objects replaces it), `AddInfrastructureRuntime()` and `AddBotApplication()`,
+registers a stub for every external port (storage and capability), builds the provider with `ValidateOnBuild`, and
+resolves every registration (factory lambdas included). Run it with a timeout: a dependency cycle shows up as a hang,
+not as an error. It must finish without a cycle or a missing registration.
 
 See [`docs/for-developers/development.md`](docs/for-developers/development.md) for the complete development workflow.
 
@@ -332,27 +336,29 @@ See [`docs/for-technicians/docker.md`](docs/for-technicians/docker.md) for Docke
 ```text
 Basil.Domain                     business model and its own validity          -> (nothing)
 
-Basil.Application.Storage        persistent ports (repositories, storages),     -> Domain
-                                 paging and query records
-Basil.Application.Objects        the live objects and what they do: runtime     -> Domain, Application.Storage
-                                 objects, scopes, contexts, events, registry
-                                 contracts and the contracts of the services
-                                 that remain
-Basil.Application.Services       the services that remain, registries, the      -> Application.Objects,
-                                 factories that build objects (DI)                 Application.Storage
+Basil.Application.Storage        ports to the outside of the process: persistent  -> Domain
+                                 (repositories, storages, query records, paging)
+                                 and capability ports (beatmapset reader,
+                                 analyser, assets, mirror, screenshot inspector)
+Basil.Application.Services       application logic that needs no live object:     -> Application.Storage
+                                 it takes and returns records and results,
+                                 never publishes an event; every type internal
+Basil.Application.Objects        the live objects and what they do: runtime       -> Domain, Application.Storage,
+                                 objects, scopes, contexts, events, registries,      Application.Services
+                                 root objects, the coordination between
+                                 objects; the public AddApplication()
 
-Basil.Infrastructure.Storage     persistent ports: PostgreSQL, files,           -> Application.Storage
-                                 migrations
-Basil.Infrastructure.Services    capability ports: osu! rulesets, FFMpegCore,   -> Application.Objects
-                                 beatmap mirror
-Basil.Infrastructure.Runtime     event pumps and handlers, background loops,    -> Application.Objects
-                                 startup work                                     (no Infrastructure project
-                                                                                   references Application.Services)
+Basil.Infrastructure.Storage     implements the persistent ports: PostgreSQL,    -> Application.Storage
+                                 files, memory, migrations
+Basil.Infrastructure.Capabilities implements the capability ports: osu!          -> Application.Storage
+                                 rulesets, FFMpegCore, beatmap mirror, ImageSharp
+Basil.Infrastructure.Runtime     event buses and handlers, background loops,     -> Application.Objects
+                                 startup work                                       (no Infrastructure project
+                                                                                    references Application.Services)
 Basil.Protocol.Bancho            osu! client-server wire formats, score         -> external libraries only
                                  submission cipher (BouncyCastle)
 Basil.Protocol.Irc               IRC wire format                                -> (nothing)
 Basil.Host.Bancho / .Irc / .Api  transports                                     -> Application.Objects,
-                                                                                   Application.Services,
                                                                                    Infrastructure, their Protocol
 Basil.Host                       entry point, composition, logging,             -> everything
                                  diagnostics, LAN advertising
@@ -378,50 +384,57 @@ its short name without `Basil.`: `src/Domain/`, `src/Infrastructure/`, `src/Appl
 Configuration is bound only in `Basil.Host`. Infrastructure and the transports receive it as `IOptions<T>` of
 an options type that the project using it owns; Application reads no configuration.
 
-Application has three projects named by role. **Application.Storage** holds the ports to persistence: repository and
-storage contracts, query records and paging. **Application.Objects** holds the live objects and what they do:
-runtime objects, their registries' contracts, scopes, contexts, events and the contracts of the services that
-remain. **Application.Services** holds the services that remain, the registries and the factories that build the
-objects (`AddApplicationServices()` registers them); it uses storage through Application.Storage.
-`Basil.Infrastructure` references only Application.Storage and Application.Objects, never Application.Services; it
-receives everything else through their contracts. The hosts reference Application.Services only to call
-`AddApplicationServices()`.
+Application has three projects named by role. **Application.Storage** holds the ports to the outside of the process:
+repository and storage contracts, query records and paging, and the capability ports (a capability with business
+meaning whose implementation needs external libraries; Infrastructure implements them). **Application.Services**
+holds the application logic that needs no live object (account checks, beatmapset indexing, score validation and
+recording): it takes and returns records and plain results, never creates, receives or publishes an object or an
+event, and every type is `internal`. **Application.Objects** holds the live objects and what they do: runtime
+objects, registries, root objects, scopes, contexts, events, and every coordination between objects; it calls the
+services and publishes the events they leave to it. Its public `AddApplication()` builds the contexts and the
+objects and registers the services (Services gives Objects access to its internals). `Basil.Infrastructure`
+references only Application.Storage (Storage and Capabilities) or Application.Objects (Runtime), never
+Application.Services. The hosts reference Application.Objects and call `AddApplication()`.
 
-> **Migration status (2026-10-20).** The object-scope redesign is implemented across Domain, Application,
-> Infrastructure.Runtime and Basil.Bot.Application: behaviour belongs to the owning runtime object and
-> permission-dependent operations use its short-lived `ScopeTo(connection)` view. The hosts and all test
-> projects still use old namespaces; solution-wide `dotnet build`, `dotnet test` and `Basil.ArchitectureTests`
-> do not run. The operator console (`Basil.Cli`), host migration and test migration remain unfinished. Verify the migrated projects individually with
-> `dotnet build src/Domain`, `dotnet build src/Application/Services`,
-> `dotnet build src/Infrastructure/Storage`, `dotnet build src/Infrastructure/Services`,
-> `dotnet build src/Infrastructure/Runtime` and `dotnet build src/Bot/Application`. The decisions in
-> [`plans/object-scope-plan-20261016.md`](plans/object-scope-plan-20261016.md) remain authoritative where they
-> agree with this file; older plans are history.
+> **Migration status (2026-10-21).** The object-scope redesign and the service moves are implemented across Domain,
+> Application, Infrastructure.Runtime and Basil.Bot.Application: behaviour belongs to the owning runtime object and
+> permission-dependent operations use its short-lived `ScopeTo(connection)` view; the user, room, lobby, channel,
+> beatmapset and score services were absorbed by the objects that own them (`UserRegistry`, `Lobby`, `Room`,
+> `GeneralChannelRegistry`, `Beatmapsets`, `BanchoConnection`). **Still to do in Application:** Application.Services
+> still references Application.Objects and the registration still lives in Services; flipping the reference
+> (Objects -> Services), making Services `internal` and moving the registration to a public `AddApplication()`
+> removes the three temporary bridge interfaces (`IAccountService`, `IBeatmapsetIndexing`, `IScoreRecording`). The
+> hosts and all test projects still use old namespaces; solution-wide `dotnet build`, `dotnet test` and
+> `Basil.ArchitectureTests` do not run. The operator console (`Basil.Cli`), host migration and test migration remain
+> unfinished. Verify the migrated projects individually with the eight builds listed under Commands. The decisions in
+> [`plans/object-scope-plan-20261016.md`](plans/object-scope-plan-20261016.md) and
+> [`plans/application-layering-plan-20261021.md`](plans/application-layering-plan-20261021.md) remain authoritative
+> where they agree with this file; older plans are history.
 
 ### Application feature folders
 
-Application is sliced by feature, not by kind of type; namespace = project + folder. Application.Storage owns
-persistent repository and storage ports, query records and paging. Application.Objects owns runtime objects,
-their registries, scoped views and contexts, events, results and the contracts for services that remain.
-Application.Services contains registry and service implementations.
+Application is sliced by feature, not by kind of type; namespace = project + folder. Application.Storage owns the
+ports to the outside (persistent repository and storage ports, query records, paging, capability ports).
+Application.Services owns the object-free application logic. Application.Objects owns runtime objects, registries,
+scoped views and contexts, events, results and the coordination between objects.
 
 ```text
-Common/        PageRequest, Page<T>, Interval<T>                                   (Storage)
-Events/        Event, IEventPublisher<T>, IEventHandler<T>                         (Application.Objects)
+Common/        PageRequest, Page<T>, Interval<T>, Paging                           (Storage)
+Events/        Event, IEventPublisher<T>, IEventHandler<T>                         (Objects)
 Users/         user and restriction repositories, UserQuery; User, ScopedUser,
-               ScopedUserRestrictions, ScopedUserRelationships, UserResult
-Auth/          credential and login repositories; IAuthService, login and registration inputs
-Sessions/      Connection tree, UserRegistry,
-               ScopedBanchoConnection; ISessionConnectionsService and events
-Chat/          Channel tree, IChannelRepository; ScopedChannel, ScopedGeneralChannel,
-               GeneralChannelRegistry, IGeneralChannelRegistry, IChannelService, events and results
+               UserRegistry, ScopedUserRegistry, UserResult, login and registration
+               inputs; AccountService                                              (Services)
+Sessions/      Connection tree (BanchoConnection also submits scores and reports
+               anticheat flags), ScopedBanchoConnection and user events
+Chat/          Channel tree, GeneralChannelRegistry, IChannelRepository; ScopedChannel,
+               ScopedGeneralChannel, events and results
 Multiplayer/   Lobby, Room, their parts and scopes; match, round and score repositories;
-               IMatchService, IRoomService, room and lobby events and results
-Beatmaps/      beatmap and beatmapset repositories and storage; Beatmapset, ScopedBeatmapset,
-               IBeatmapsetService and capability ports
-Scores/        score, replay and stats repositories; IScoreService and score events
-Anticheat/     IAnticheatService and its events
-Content/       content repositories and storage ports
+               room and lobby events and results
+Beatmaps/      beatmap and beatmapset repositories and storage, capability ports;
+               Beatmapset, Beatmapsets, ScopedBeatmapset; BeatmapsetIndexer         (Services)
+Scores/        score, replay and stats repositories; score events; ScoreRecorder     (Services)
+Anticheat/     anticheat events
+Content/       content repositories, storage ports and the screenshot inspector port
 Servers/       Server, ScopedServer, server contexts and server resources
 ```
 
@@ -434,11 +447,11 @@ that answer queries do not. Server settings changed at runtime (`ServerSettings`
 not host configuration.
 
 * `Common` and `Events` depend on no feature. `Users`, `Beatmaps` and `Scores` do not depend on
-  `Multiplayer` services; the score service only reads the player's room to find the round. Anticheat flags,
-  wherever they arrive (score submission, `lastfm.php`), are reported by the host to `IAnticheatService`, the single
-  source of anticheat events; BasilBot turns them into chat warnings.
+  `Multiplayer` objects; a game client's connection only reads its player's room to find the round. Anticheat flags,
+  wherever they arrive (score submission, `lastfm.php`), are reported by the host through `BanchoConnection.Report`,
+  the single source of anticheat events; BasilBot turns them into chat warnings.
 * `Sessions`, `Chat` and `Multiplayer` reference each other (`Room.Host`, `Room.Channel`,
-  `Channel.Members`); treat them as one cluster. Their runtime objects and registries live in Services;
+  `Channel.Members`); treat them as one cluster. Their runtime objects and registries live in Objects;
   persistent repositories remain in Application.Storage. Objects change their own state through behaviour, with
   implementation access limited to the owning object and its collaborators. References run from the acted-on
   object to the actor, never back.
@@ -462,41 +475,45 @@ not host configuration.
   event. The caller never passes `connection`, permissions or an actor into a call. **Anything whose actions
   depend on permissions or privileges is scoped; only a system that needs no check is not** (the server's own work:
   Runtime handlers, startup, the bot's announcements, public reads).
-  Services remain for queries, persistence, infrastructure and coordination across several objects (`IAuthService`,
-  beatmapset import and scan, score submission, anticheat judgement, match reports, leaderboards). Five
-  anti-patterns to reject in review: a **God Actor** that gathers every behaviour; **service-centric procedural
+  Services keep only application logic that needs no live object (account checks, beatmapset indexing, score
+  validation and recording); coordination between objects belongs to the object that is acted on
+  (`UserRegistry` for logins and connections, `Lobby` for what happens across rooms, `BanchoConnection` for a
+  player's score and anticheat report, `Beatmapsets` for imports). Five
+  anti-patterns to reject in review: a **God Actor** that gathers every behaviour (every former service ending up
+  as `Server.X`); **service-centric procedural
   design** (a service takes an object and does its behaviour for it); **permission plumbing** (rights passed
   through many layers and methods); **exposing mutable state** (callers change internals past the invariants);
   **fake scoping** (`ScopeTo` only wraps while behaviour and checks stay in a central service). The shared
   authority primitives (`Access`, effective permissions, hierarchy, "a block yields to a higher right") are a
   library each `ScopeTo` calls, not a layer to pass through. A domain record and its Application object never
   share a name.
-* **Storage holds persistence; runtime objects and registries live in Services.** Application.Storage holds
-  persistent ports, query records and paging. Runtime objects (`Room`, `RoomSlot`, `User`, connections
-  and channels), registry contracts (`IUserRegistry`, `IGeneralChannelRegistry`) and their scoped
-  behaviour live in Application.Objects; registry implementations live in Application.Services. Storage
+* **Storage holds the ports; runtime objects and registries live in Objects.** Application.Storage holds
+  persistent ports, capability ports, query records and paging. Runtime objects (`Room`, `RoomSlot`, `User`,
+  connections and channels), registries (`UserRegistry`, `GeneralChannelRegistry`) and their scoped
+  behaviour live in Application.Objects, as public classes. Storage
   never decides a business rule, emits an event, calls a service or starts a timer. A state change and its
   consequences belong to the object that owns the state.
-* **Contracts exist for the services that remain.** `IXService` in Application.Objects declares the public
-  capabilities of a service. This deliberate exception to "no
-  interface with one implementation" keeps cross-object coordination and one-run operations independent of
-  their implementation. Examples include `IAuthService`, `IBeatmapsetService`, `IScoreService`,
-  `IAnticheatService`, `IMatchService` and `ISessionConnectionsService`. Objects such as `Room` and `User` do
-  not have service contracts: callers reach their permission-dependent behaviour through `ScopeTo(connection)`.
-  `IRoomService` remains for system operations such as `Members.ReleaseAsync`, `Members.RemoveSuspendedAsync`,
-  `Members.RemoveRefereeAsync` and `Rounds.RecordScoreAsync`. Implementations are `internal sealed` and
-  registered by `AddApplicationServices()`.
+* **Services have no public contract.** A service is an `internal` class of Application.Services that Objects calls
+  directly; there is no `IXService` and no registry contract. A service never sees a live object (`Room`, `User`,
+  `Connection`), never publishes an event (events and `IEventPublisher<T>` belong to Objects, so the service returns
+  what happened and the object publishes it) and holds no running state. While the project reference is still being
+  flipped, a small `internal` interface in Objects bridges to the service (`IAccountService`,
+  `IBeatmapsetIndexing`, `IScoreRecording`); it disappears with the flip. Callers reach permission-dependent
+  behaviour through `ScopeTo(connection)` and the server's own work through labelled system operations.
 * **Object or service?** One question decides it: does the operation have a caller whose rights it must
   check? Then it is behaviour of the object it changes, reached through `ScopeTo(connection)`. An operation that
   has no caller (the server's own work, a handler's reaction, startup) or that coordinates several objects
-  (login, import, score submission) is a service.
+  (login, import, score submission) is the behaviour of the object that owns the identity, the collection or the
+  actor, and it calls a service only for the part that needs no live object.
 * **Objects get their collaborators through a context.** An object takes a `…Context` record of ports (clock,
-  event sink, repositories, the ports of the objects it works with: `RoomContext`, `UserContext`, `LobbyContext`,
+  event publisher, repositories, the ports of the objects it works with: `RoomContext`, `UserContext`, `LobbyContext`,
   `ChannelContext`, `SessionContext`, `BeatmapsetContext`, `ServerContext`) when it is created. The context, the
-  object's constructor and the event sinks are `internal`; `Application.Services` builds them in factory
-  lambdas in `DependencyInjection.cs`, because the container only sees public constructors. A service class that
-  the container creates by itself needs a `public` constructor even when the class is `internal`. An object never
-  reaches a service; a port is implemented by whoever owns the other object (`Lobby` implements `IRoomLobbyPort`).
+  object's constructor are `internal`; the registration builds them in factory lambdas, because the container only
+  sees public constructors (a root object that two others need, such as the lobby for a connection, is reached
+  through a deferred port to avoid a construction cycle). A service class that the container creates by itself
+  needs a `public` constructor even when the class is `internal`. An object calls a service for pure logic only; a
+  port is implemented by whoever owns the other object (`Lobby` implements `IRoomLobbyPort` and
+  `IConnectionLobbyPort`).
   Because the factories hide dependencies from `ValidateOnBuild`, verify the container by resolving every
   registration with the external storage ports stubbed (see Commands).
 * **A scope is a snapshot: re-check after waiting.** A `ScopedX` is for one request or command and is never kept.
@@ -504,34 +521,39 @@ not host configuration.
   inside the object's own scope or lock, what the wait could have changed (the permission, `IsOpen`, a block)
   before it changes anything.
 * **System operations are labelled.** A public method on an object that skips the rights check (`Lobby.Unwatch`,
-  `Server.SayAsync`, `Server.WhisperAsync`, `Server.OpenChannel`, `IRoomService.Members.ReleaseAsync`) says in its
+  `Server.SayAsync`, `Server.WhisperAsync`, `Server.OpenChannel`, `Lobby.ReleaseAsync`, `Room.RecordScoreAsync`, `Server.Notify`) says in its
   XML summary that the server itself calls it and needs no rights. A chat command, an API route or any other entry
   point that acts for a user never calls one; it uses the scope of the user's connection.
 * **Capability ports.** A capability with business meaning whose implementation needs external libraries
-  or resources is a contract in Contracts that Infrastructure implements (`IBeatmapAnalyser`,
-  `IBeatmapsetReader`, `IBeatmapAssets`, `IBeatmapsetMirror`), even when only the hosts use it. Pure
-  plumbing (logging, diagnostics, metrics, SSE hub, TLS, mDNS, update checks, OpenAPI, the response
-  envelope) gets no contract.
+  or resources is a contract in Application.Storage that Infrastructure.Capabilities implements
+  (`IBeatmapAnalyser`, `IBeatmapsetReader`, `IBeatmapAssets`, `IBeatmapsetMirror`, `IScreenshotInspector`), even
+  when only the hosts use it. Pure plumbing (logging, diagnostics, metrics, SSE hub, TLS, mDNS, update checks,
+  OpenAPI, the response envelope) gets no contract. Whatever kind of file a client sends, trust a known extension
+  and probe the content only when it is unknown or when its size is needed: an image with ImageSharp
+  (header only, never decoded; a screenshot is always identified because its pixel size is capped), audio with
+  ffprobe through FFMpegCore (duration and bytes are read from the content); no part of an uploaded name reaches a
+  temporary file name.
 * **Contract names do not reveal the mechanism.** If the work moved from the file system to the network, or
   from one library to another, the name would not change: `ScanAsync`, not `ScanFileAsync`;
   `IBeatmapAssets.OpenAsync`, not `ReadFromDiskAsync`.
-* **Registries belong with runtime objects.** A registry holds live runtime objects, so its contract is in
-  Application.Objects (`IUserRegistry`, `IGeneralChannelRegistry`) and its implementation is in
-  Application.Services. Mutating registry members are `internal` on the contract. Persistent repositories,
-  storage ports, query records and paging belong to Application.Storage. Other capability ports describe what
-  lies outside the process: files, network, external computation and the clock (`TimeProvider`).
+* **Registries belong with runtime objects.** A registry holds live runtime objects, so it is a public class of
+  Application.Objects (`UserRegistry`, `GeneralChannelRegistry`) that also owns the operations on what it holds
+  (`UserRegistry` opens and closes connections and logs users in). Mutating registry members are `internal`.
+  Persistent repositories, storage ports, query records and paging belong to Application.Storage. Other
+  capability ports describe what lies outside the process: files, network, external computation and the clock
+  (`TimeProvider`).
 * **Outer layers use storage directly.** Infrastructure and the hosts read, list and search storage, and
   write persistent records whose write carries no rule or consequence (an admin renames a user, hides a
   beatmapset), directly through the repository, after the host has checked the caller's permission. Services are only for actions; a service
-  never wraps a plain read or write (`ScoreService.GetAsync` forwarding to `IScoreRepository.GetAsync` is
+  never wraps a plain read or write (a score service's `GetAsync` forwarding to `IScoreRepository.GetAsync` is
   wrong). Runtime state changes only through the behaviour of the object that owns that state; runtime setters
   are `internal`.
 * **Each object enforces its own rules.** An operation keeps the owning object's parts consistent in that same
   operation (a room keeps its channel in step with its players). A consequence that crosses object boundaries
   (a restriction removes memberships in rooms and spectator streams) is announced as an event; Infrastructure
   handlers call the operations owned by those objects.
-* **Background work.** A contract declares one run of a background job (`ISessionConnectionsService.CloseIdle()`,
-  `IBeatmapsetService.ScanAsync()`); Services implements it; Infrastructure owns the loop, the trigger, the
+* **Background work.** An object declares one run of a background job (`UserRegistry.CloseIdle()`,
+  `Beatmapsets.ScanAsync()`); Infrastructure owns the loop, the trigger, the
   period and its configuration. A one-shot timer that is the consequence of an operation (an empty room's
   closing) belongs to the lobby that owns the room and runs on `TimeProvider`. A room's countdown belongs to
   its scoped round behaviour; aborting a round cancels a pending start. BasilBot announces the countdown marks.
@@ -541,7 +563,7 @@ not host configuration.
   `User` (sealed) represents the account and, while it is online, everywhere they connect from: it holds what is
   shared (`AwayMessage`, `PmChannel`, the active `Restrictions`) plus its connections as child data, keyed by
   `ConnectionType` (`Bancho`, `Tourney`, `Irc`, `Api`), with typed accessors (`Bancho`, `Irc`, `Tourneys`,
-  `Apis`); only `Tourney` and `Api` allow several connections per user, a rule the session service owns.
+  `Apis`); only `Tourney` and `Api` allow several connections per user, a rule the user registry owns.
   `Connection` is an abstract class (`User`, `Record`, `Login`, `Token`, `IsOpen`, `Type`) with `BanchoConnection`,
   `TourneyConnection`, `IrcConnection`, `ApiConnection`; each holds only what exists for that kind of client
   (`BanchoConnection.Status`, `BanchoConnection.SpectatorChannel`). Rooms, channels and the lobby
@@ -575,32 +597,32 @@ not host configuration.
 * **Parts are reached through the owning object's scope.** `room.ScopeTo(by)` exposes `.Slots`, `.Rounds`,
   `.Settings`, `.Authority` and `.Members`; `users.Of(record).ScopeTo(by)` exposes the user's restrictions,
   relationships and account operations. Channels, sessions, connections, the lobby, beatmapsets and the server
-  follow the same pattern. Services stay flat and expose only system operations or coordination that spans
-  objects; there are no child service trees for object behaviour.
-* **Each service manages its own kind, and reacts to other kinds only through events.** The session service
+  follow the same pattern. There are no child service trees for object behaviour; coordination that spans objects
+  is a method of the object that is acted on (or of the registry that holds them).
+* **Each owner manages its own kind, and reacts to other kinds only through events.** The user registry
   opens and closes connections and announces `UserConnectionOpened`/`UserConnectionClosed`; its responsibility
   ends there. Leaving rooms and parting channels when a connection closes is done by Infrastructure handlers
-  that receive the event and call the owning service. When a second connection of the same kind arrives
+  that receive the event and call the owning object (`Lobby.ReleaseAsync`, `GeneralChannelRegistry.PartAll`). When a second connection of the same kind arrives
   for a user an owner still holds, the owner **asks the old connection who it is** (`connection.IsOpen`):
   still open, refuse the new one; already closed (cleanup not run yet, or failed), remove the old one as an
   ordinary leave and admit the new one. Cleanup operations must be safe to run again.
 * **Peers talk through events; owners call their parts directly.** Two operations are peers when neither
   object owns the other and neither's rule depends on the other (scores and rooms, the anticheat and rooms): the
   acting operation publishes its event, and Infrastructure's event bus delivers it to the peer's contract
-  (`ScoreSubmitted` → `IRoomService.Rounds.RecordScoreAsync`, `AnticheatPlayerFlagged` reaches clients that
+  (`ScoreSubmitted` → `Room.RecordScoreAsync`, `AnticheatPlayerFlagged` reaches clients that
   watch it, such as BasilBot). An object calls another directly only for a clear ownership relation or to keep
   a rule that must hold within the same operation: objects use storage ports; a room manages its own channel, a
   session its PM channel and a connection its spectator channel; a room tells the lobby when it empties or fills;
   logging in opens the connection; deleting a user closes their connections at once, a security rule that
   must not wait for a handler.
-* **Application publishes events; it does not consume them.** An object, a service or the bot's voice publishes
+* **Application publishes events; it does not consume them.** An object or the bot's voice publishes
   an event through `IEventPublisher<T>` (`Publish`), the only event port of Application: it returns at once and
   has no read end. Infrastructure.Runtime implements it with one `EventBus<T>` per category (`UserEvent`,
   `RoomEvent`, `LobbyEvent`, `ChannelEvent`, `BeatmapsetEvent`, `ScoreEvent`, `AnticheatEvent`): the bus
   stamps `Timestamp`, keeps the events in order in its own queue and calls the `IEventHandler<T>` implementations
   of Infrastructure.Runtime or `Basil.Bot.Application` one after another. The bus resolves its handlers when it
   starts delivering, not when it is built (a handler reaches objects that publish to buses, so resolving them in the
-  constructor makes buses wait for each other). Storage never publishes. One operation publishes one event carrying
+  constructor makes buses wait for each other). Storage and Services never publish (a service returns what happened and the object publishes it). One operation publishes one event carrying
   its whole consequence. Events sit in a nested category tree (`Event` ← `RoomEvent` ← `RoomSlotEvent` ←
   `RoomSlotTeamChanged`) so a consumer can subscribe to a whole category. Buses, handlers and event →
   client-notification routing belong to Infrastructure and the hosts, never to Application.
@@ -637,7 +659,7 @@ not host configuration.
   through `IBeatmapsetRepository.CommitAsync`). Raw content is identified by a `ContentFingerprint`: its `ContentStamp`
   (size, modification time) is known without reading, the MD5 is taken (`BeatmapsetArchive.FingerprintAsync`) only when
   the stamp differs from the one recorded on the set; a `Beatmap` is identified by the MD5 of its `.osu`. One import is
-  one beatmapset: `IBeatmapsetService.ImportAsync` takes one `.osz`; a folder exists only when placed by hand and is
+  one beatmapset: `Beatmapsets.ImportAsync` takes one `.osz`; a folder exists only when placed by hand and is
   packed into an `.osz` first. Difficulties lie at the top of an archive. There are no collections: a `.zip`, a loose
   `.osu` or any other file placed by hand is not a source and is left as it is, as is an invalid source; an upload
   that is rejected leaves nothing, and its set and beatmaps are stored in one transaction. Two sources of one scan never
@@ -645,7 +667,7 @@ not host configuration.
   renamed with `.deleted_` first; anything being written (an upload, a derived file, a set folder before it moves into
   place) lies under a top-level `.incoming_` name, which is never listed or watched, so moves stay on one volume. Every
   name written from untrusted input avoids the names Windows keeps for devices (`CON`, `NUL.txt`, `COM1`, ...): a
-  derived file gets a `_` prefix. `IBeatmapsetService.ScanAsync()` runs at startup before clients are served: it checks every entry
+  derived file gets a `_` prefix. `Beatmapsets.ScanAsync()` runs at startup before clients are served: it checks every entry
   (size and modification time, then the hash), indexes what changed, makes missing files again, and stores every
   record change in one `IBeatmapsetRepository.CommitAsync` transaction; `ScanAsync(entry)` handles each change the
   storage watcher reports. `IBeatmapsetReader` reads an archive into a `BeatmapsetContent` whose files open on demand
@@ -851,7 +873,7 @@ not host configuration.
   fields into one event) is an operation on the object that owns the state. Such an operation is real behaviour, not a
   `Change*`/`Rename`/`With*` wrapper around a single field.
 * **Name a contract after the object it acts on.** The unit that is imported, stored, read and mirrored is
-  the beatmapset, so the contracts are `IBeatmapsetService`, `IBeatmapsetReader`, `IBeatmapsetStorage`,
+  the beatmapset, so the root object is `Beatmapsets` and the contracts are `IBeatmapsetReader`, `IBeatmapsetStorage`,
   `IBeatmapsetMirror` and `BeatmapsetImportResult`. A byte storage is `I{Owner}{Thing}Storage`
   (`IUserAvatarStorage`, `IMenuBannerStorage`, `IMenuSeasonalsStorage`); medium words (`Image`,
   `Background`, `Archive`) and redundant qualifiers (`Server` in `ISettingsRepository`) stay out of names.
@@ -896,7 +918,9 @@ not host configuration.
 * Prefer primary constructors, property patterns (`room is { InProgress: false, Beatmap: not null }`) and
   one guard for conditions that return the same result; no redundant casts, `? true : false` or
   discarded-task lambdas (`_ => action()`, not `_ => _ = action()`).
-* Application.Services registers its services and registries in `DependencyInjection.AddApplicationServices()`.
+* Application.Objects registers its objects, registries and contexts, and the internal services, in the public
+  `DependencyInjection.AddApplication()` (while the reference flip is pending the registration is still
+  `AddApplicationServices()` in Application.Services).
 * **Read the IDE's suggestions to find better patterns** *(notes for the future code-principles skill)*. After a
   change, run Rider's `lint_files` / `get_file_problems` with warnings and suggestions on, and treat what it says as
   a review comment, not noise. The agent decides each case; the IDE only finds candidates. Act on:
@@ -1087,14 +1111,14 @@ Before considering a code change complete:
    Application rework, see the migration note under [Architecture](#architecture)).
 6. Review the final diff for unrelated changes.
 7. Check every new or changed member in the Application projects against
-   [Domain and Application](#domain-and-application), above all "storage holds data, services hold
-   behaviour", "the acted-on object owns the interaction" and "Application emits events; it does not
-   consume them". This applies to code written by delegated agents too: the orchestrator reviews it
+   [Domain and Application](#domain-and-application), above all "behaviour belongs to the object that owns it", "the acted-on object owns the interaction" and
+   "Application publishes events; it does not consume them". This applies to code written by delegated agents too: the orchestrator reviews it
    against these rules before accepting it. `User.Channels`, `User.Join(Channel)`,
    sessions emitting events, event handlers inside Application, and rules or timers on runtime models and
    registries all got through review once; do not let them back in. Nor should a service that only wraps
-   a repository read, a registry used through its implementation instead of its contract, a contract name that
-   reveals its mechanism, or a reference from Infrastructure to Application.Services. Since the identity redesign, also
+   a repository read, a service that takes, returns or creates a live object or publishes an event, a public
+   service contract, a contract name that reveals its mechanism, or a reference from Infrastructure to
+   Application.Services. Since the identity redesign, also
    reject: an action without a real `by`, authority decided by connection kind, a check on granted instead of
    effective permissions, a stored or configured `Privileges`, privileges used to grant anything, and a
    delegation of any kind. Since the 2026-10-16 redesign, also reject the five anti-patterns of "Behaviour belongs
@@ -1104,7 +1128,9 @@ Before considering a code change complete:
 8. Review delegated work for what agents tend to leave behind, besides the rules above: `.ConfigureAwait(false)` in
    new code, a changed final newline or reflowed lines nobody asked for, a renamed parameter outside the task,
    stray tabs in XML documentation, a constructor made `internal` on a class the container creates, a member that
-   nothing calls any more, a wait between a rights check and the change it guards, a handler that waits, and a
+   nothing calls any more, a wait between a rights check and the change it guards, a handler that waits, a
+   `switch` statement rewritten as a nullable-result switch expression plus an `if` to silence a hint, a whole-tree
+   `git add` that sweeps in files nobody asked for, and a
    consequence that skips offline users or one of several paths. Run parallel agents in separate git worktrees
    (two at a time at most) and merge their commits yourself.
 

@@ -1,9 +1,14 @@
-> **Status (2026-10-20).** Completed phases: Domain redesign, storage and migrations, the Room pilot, and the wider
-> object-scope migration. The Runtime/BasilBot phase is partially complete: command and announcement handlers are
-> implemented, and BasilBot is online with a connection of its own (`BotConnection`); a blocked user's channel messages are
-> filtered per recipient by `ChannelSession.RecipientsAsync`. Remaining phases and work: Host migration (including `Basil.Cli`),
-> test migration. Host checklist: transports must deliver channel messages only to `RecipientsAsync` and must skip the bot's
-> connection when delivering; they show the bot as online. Hosts and tests still use old namespaces.
+> **Status (2026-10-21).** Completed phases: Domain redesign, storage and migrations, the Room pilot, the wider
+> object-scope migration, and the move of the services into the objects that own them (see
+> [`application-layering-plan-20261021.md`](application-layering-plan-20261021.md), which supersedes the "Service còn
+> lại", "Registry" and "Kiểm quyền" paragraphs of section 2 where they differ: services are object-free, internal and
+> never publish; coordination is a method of the object that is acted on). The Runtime/BasilBot phase is complete
+> except showing the bot on the transports: command and announcement handlers are implemented, BasilBot is online with a
+> connection of its own (`BotConnection`); a blocked user's channel messages are filtered per recipient by
+> `Channel.RecipientsAsync`. Remaining: the reference flip described in the layering plan, Host migration (including
+> `Basil.Cli`), test migration. Host checklist: transports must deliver channel messages only to `RecipientsAsync`
+> and must skip the bot's connection when delivering; they show the bot as online; they call `AddApplication()`. Hosts
+> and tests still use old namespaces.
 
 # Kế hoạch: chốt use case osuBasil develop, tổ chức lại Application quanh đối tượng sở hữu hành vi
 

@@ -5,26 +5,22 @@ quyết định đã chốt, các câu hỏi còn mở và thứ tự làm tiế
 
 ## 1. Điểm dừng
 
-Đã xong và đã đẩy lên `develop` (build 6 project: `src/Domain`, `src/Application/Services`,
-`src/Infrastructure/{Storage,Services,Runtime}`, `src/Bot/Application`; chưa có test nào chạy):
+Đã xong và đã đẩy lên `develop` (8 project build: `src/Domain`, `src/Application/{Storage,Objects,Services}`,
+`src/Infrastructure/{Storage,Capabilities,Runtime}`, `src/Bot/Application`; kiểm DI 86 đăng ký không vòng; chưa có test nào chạy):
 
 | Phần | Nội dung |
 |---|---|
-| Room | slots, settings, authority, rounds, countdown, members, đóng room, qua `room.ScopeTo(by)` |
-| User | `users.Of(record).ScopeTo(by)`: permission, xoá, restriction (+ log moderation), friend/block, lịch sử login, thu hồi connection, đổi password; BasilBot được bảo vệ; `DeletedAt` vĩnh viễn |
-| Lobby | `lobby.ScopeTo(by)`: mở room, watch/unwatch; lobby tự đóng room và giữ timer room trống |
-| Channels | `channel.ScopeTo(by)`: join, part, post; channel general: cấu hình, xoá; `RecipientsAsync` lọc im lặng theo block |
-| Sessions | spectate, status trên `BanchoConnection`; away/PM-private trên `UserSession`; host đóng thì gỡ spectator |
-| Beatmapset | xoá, ẩn, khoá qua `beatmapsets.Of(record).ScopeTo(by)` |
-| Server | object gốc: announce, tạo channel general, screenshot; thao tác hệ thống `OpenChannel`, `SayAsync`, `WhisperAsync`, `FindChannel` |
-| BasilBot | handler sự kiện (`IEventHandler` nằm trong Contracts), lệnh chạy trên connection của người gõ, `!mp` trên room đã scope, `BotConnection` (online), tin riêng tới bot là lệnh, hàng đợi lệnh có giới hạn |
-| Dữ liệu | tiêu chí `filename` của `BeatmapQuery`, `ScoreQuery` cho leaderboard (Mods, Players, BestPerPlayer) |
-| Tài liệu | AGENTS.md, architecture, working-scopes, multiplayer, privileges, chat, basil-bot |
+| Room, User, Lobby, Channels, Sessions, Beatmapset, Server | hành vi nằm trên đối tượng sở hữu, qua `ScopeTo(connection)` (xem [`object-scope-plan-20261016.md`](object-scope-plan-20261016.md)) |
+| Channel | Domain chỉ còn `GeneralChannelRecord`/`GeneralChannelData`; Application có `Channel`, `GeneralChannel`, `RoomChannel`, `SpectatorChannel`, `PmChannel`; tên giữ dấu `#` |
+| User | `UserSession` gộp vào `User`; một `User` sống mỗi lần online, tài khoản offline có bản tạm không vào registry |
+| Phân tầng | cổng capability và `Paging` ở `Application.Storage`; `Infrastructure.Capabilities`; `Infrastructure.Storage` gom `Postgres/Files/Memory`; các service Users/Sessions/Room/Match/Chat/Score/Anticheat/Beatmapset đã chuyển vào đối tượng sở hữu (`UserRegistry`, `Lobby`, `Room`, `GeneralChannelRegistry`, `BanchoConnection`, `Beatmapsets`); Services chỉ còn `AccountService`, `BeatmapsetIndexer`, `ScoreRecorder` (xem [`application-layering-plan-20261021.md`](application-layering-plan-20261021.md) mục 7) |
+| Ảnh và âm thanh | screenshot nhận dạng định dạng và kích thước bằng ImageSharp (trần 8192 px mỗi cạnh); preview audio đọc thời lượng và số byte bằng ffprobe (không giới hạn độ dài), tên file tạm luôn `.bin` |
+| Server | `Server.Notify/NotifyAll` (thao tác hệ thống) và `ScopedServer.Notify/NotifyAll` (cần `ChatAnnounce`) gửi cho một, nhiều hay mọi client osu! |
+| Quy ước | AGENTS.md có mục "Read the IDE's suggestions" (async + token, LINQ, return-switch, bỏ gợi ý cấp phát) để đưa vào skill sau |
+| Tài liệu | AGENTS.md cập nhật theo phân tầng mới; `docs/` chưa cập nhật (chờ sau khi đảo tham chiếu) |
 
-Bằng chứng kiểm tra: review diff từng dòng, build 6 project, kiểm tra DI (`ValidateOnBuild`, giải quyết toàn bộ 96
-đăng ký với port lưu trữ được stub), chạy thử các câu SQL mới trên DB dev (đúng cú pháp với schema thật; các bảng đang
-rỗng nên chưa kiểm chứng kết quả). **Chưa có test hành vi.** Thứ tự kiểm tra và kết quả của các luật đã port chỉ dựa trên
-review.
+Bằng chứng kiểm tra: review diff từng dòng, build 8 project, kiểm DI (`ValidateOnBuild`, giải quyết toàn bộ đăng ký với cổng ngoài được stub).
+**Chưa có test hành vi.** Thứ tự kiểm tra và kết quả của các luật đã port chỉ dựa trên review.
 
 ## 2. Quyết định đã chốt
 
@@ -36,41 +32,54 @@ review.
 
 ## 3. Câu hỏi còn mở (chờ quyết)
 
-1. **Tên kết quả "quyền đang bị treo":** `RoomResult.Silenced` nhưng `UserResult.Restricted`,
-   `BeatmapsetResult.Restricted`; AGENTS.md ghi `Restricted`. Đề xuất đổi `Silenced` thành `Restricted` ở `RoomResult`
-   (đổi tên công khai, cần cập nhật `MpReplies`).
-2. **`ConfigureAwait(false)`:** code mới không dùng, `BeatmapsetService` và `Infrastructure.Runtime` vẫn dùng. Đề xuất
-   chính sách: cấm trong Application và Bot, cho phép trong Infrastructure.
-3. **Kết thúc dòng và dòng cuối tệp:** `.editorconfig` đặt CRLF và không có dòng cuối, `.gitattributes` ép LF trong
-   repo; Rider và agent đổi qua lại. Cần một quy ước một câu ghi vào AGENTS.md.
-4. **Chia nhỏ AGENTS.md** (hơn 1000 dòng): giữ luật cốt lõi, đưa các mục chi tiết (quy ước repository và bộ nhớ, tài sản,
-   bot và console) sang `docs/for-agents/` kèm liên kết. Chỉ làm khi chủ dự án đồng ý.
-5. **Lý do huỷ countdown:** khi settings đổi làm huỷ countdown, bot chỉ nói "Countdown aborted." vì room không nêu lý do.
-   Có cần event/giá trị riêng cho lý do không?
+1. **Cấp quyền theo quyền được cấp hay quyền hiệu lực.** `ScopedUserRegistry.CreateAccountAsync`, `ScopedUser.SetPermissions` và
+   `Outranks` so quyền đã cấp (granted) của người thực hiện, đúng luật hierarchy ở AGENTS.md. Hệ quả: một người đang bị
+   restriction vẫn cấp được cho tài khoản mới đúng những quyền họ đang bị treo. Đổi sang quyền hiệu lực thì phải đổi cả ba chỗ và
+   hierarchy sẽ thay đổi theo restriction tạm thời. (Do bộ rà soát bảo mật nêu ra.)
+2. **Registry thuộc Objects hay Storage.** Option A đặt `UserRegistry`/`GeneralChannelRegistry` ở `Application.Objects` vì chúng giữ
+   đối tượng sống; chủ dự án từng nói "registry thuộc Storage". Cần xác nhận.
+3. **Tên kết quả "quyền đang bị treo":** `RoomResult.Silenced` nhưng `UserResult.Restricted`, `BeatmapsetResult.Restricted`,
+   `ChannelPostResult.Silenced`; AGENTS.md ghi `Restricted`. Đề xuất đổi (cần cập nhật `MpReplies`).
+4. **`ConfigureAwait(false)`:** code mới không dùng; `BeatmapsetIndexer`, `Infrastructure.Runtime` và vài file Capabilities vẫn dùng.
+   Đề xuất: cấm trong Application và Bot, cho phép trong Infrastructure.
+5. **Kết thúc dòng và dòng cuối tệp:** `.editorconfig` đặt CRLF và không có dòng cuối, `.gitattributes` ép LF trong repo;
+   Rider và agent đổi qua lại. Cần một quy ước một câu ghi vào AGENTS.md.
+6. **Chia nhỏ AGENTS.md** (hơn 1000 dòng): giữ luật cốt lõi, đưa mục chi tiết sang `docs/for-agents/` kèm liên kết.
+7. **Lý do huỷ countdown:** bot chỉ nói "Countdown aborted." vì room không nêu lý do. Có cần event/giá trị riêng?
+8. **Liên kết `ModerationRecord` với `Restriction`:** (A) cột `restriction_id`, hay (B) `ModerationRecord` trừu tượng với các kiểu con bất biến
+   (đề xuất B). Chưa chọn.
+9. **Getter `Visible`/`Locked` trên `ScopedBeatmapset`:** đề xuất chỉ getter, không setter.
+10. **Giữ tên bot khi đổi tên:** chưa có luật chặn người dùng chiếm tên "BasilBot" sau khi bot đổi tên.
 
 ## 4. Thứ tự làm tiếp (đề xuất)
 
-1. **Chủ dự án review** các thay đổi (chuỗi commit từ `3dcdbaef` đến hiện tại).
-2. **Migrate test** trước Host, vì test cho biết ngay đợt viết lại có sai hành vi không:
-   * cập nhật namespace/cấu trúc từng project test; `Basil.ArchitectureTests` theo cấu trúc mới
-     (hai project Application, không còn Storage.Implementations);
-   * viết test hợp đồng cho các luật mới: bảng quyền room theo vai trò và `RoomManageAny` trước `RoomJoin`; hiệu ứng
-     restriction (đẩy khỏi room, gỡ referee kể cả offline, dừng spectate); bảo vệ BasilBot; `DeletedAt` không về null và
-     `CopyTo`; block (invite, spectate, PM, `RecipientsAsync`); host đóng thì gỡ spectator; `BotConnection` không thể xin hay
-     đăng nhập; `CommandWorker` (giới hạn hàng đợi, theo người, timeout); countdown (đủ mốc, huỷ khi abort/đổi settings);
-     truy vấn `filename` và leaderboard với dữ liệu thật;
+1. **Đảo tham chiếu** (xem mục 7 của [`application-layering-plan-20261021.md`](application-layering-plan-20261021.md)); sau đó cập nhật
+   `docs/for-developers/architecture.md` và các tài liệu liên quan. **Đang chờ lệnh chủ dự án.**
+2. **Chủ dự án review** các thay đổi (chuỗi commit từ `3dcdbaef` đến hiện tại) và trả lời mục 3.
+3. **Migrate test** trước Host, vì test cho biết ngay đợt viết lại có sai hành vi không:
+   * cập nhật namespace/cấu trúc từng project test; `Basil.ArchitectureTests` theo cấu trúc mới (ba project Application,
+     Infrastructure chia Storage/Capabilities/Runtime, luật "Infrastructure không tham chiếu Services", "Services không có kiểu public");
+   * viết test hợp đồng cho các luật mới: bảng quyền room theo vai trò và `RoomManageAny` trước `RoomJoin`; hiệu ứng restriction
+     (đẩy khỏi room, gỡ referee kể cả offline, dừng spectate); bảo vệ BasilBot; `DeletedAt` không về null; block; host đóng thì gỡ
+     spectator; `BotConnection` không thể xin hay đăng nhập; `CommandWorker`; countdown; truy vấn `filename` và leaderboard;
+     định danh theo tham chiếu của `User` online và bản tạm offline; screenshot (định dạng, trần kích thước); preview audio;
    * giữ nguyên quy tắc AGENTS.md mục 8 (test hợp đồng quan sát được, không test cài đặt).
-3. **Migrate Host:** gói tin, route, SSE, GeoIP; hiện bot là user online (nhưng bỏ qua `BotConnection` khi giao tin);
-   giao tin kênh chỉ cho người trong `ChannelSession.RecipientsAsync`; `osu-getfriends.php`, `osu-getbeatmapinfo.php`
-   (dùng tiêu chí `filename`), `osu-osz2-getscores.php` (dùng `ScoreQuery` mới); API room, timer, moderation, friends.
-4. **`Basil.Cli`:** console của operator (tạo tài khoản quản trị đầu tiên, chạy lệnh với BasilBot làm tác nhân, bỏ qua
-   kiểm quyền).
-5. **Việc nhỏ còn lại:** thu gọn setter `internal` của `RoomSlot`; `SessionConnectionsService` (Close, MarkActive,
-   CloseIdle) có thể vẫn là service điều phối, ghi quyết định này vào AGENTS.md khi test xong; kiểm chứng kết quả SQL mới
-   bằng dữ liệu thật; xoá thủ công thư mục rỗng `V:\Code\cs\osuBasil-b2` nếu còn.
+4. **Migrate Host:** gói tin, route, SSE, GeoIP; gọi `AddApplication()`; hiện bot là user online (bỏ qua `BotConnection` khi giao tin);
+   giao tin kênh chỉ cho người trong `Channel.RecipientsAsync`; `osu-getfriends.php`, `osu-getbeatmapinfo.php` (tiêu chí `filename`),
+   `osu-osz2-getscores.php` (`ScoreQuery`); upload screenshot map `ScreenshotUploadFailure.DimensionsTooLarge`; API room, timer,
+   moderation, friends, thông báo (`Notify`).
+5. **`Basil.Cli`:** console của operator (tạo tài khoản quản trị đầu tiên, chạy lệnh với BasilBot làm tác nhân, bỏ qua kiểm quyền).
+6. **Việc nhỏ còn lại:** thu gọn setter `internal` của `RoomSlot`; kiểm chứng kết quả SQL mới bằng dữ liệu thật; xoá tay các thư mục
+   worktree bị khoá (`osuBasil-b2`, `osuBasil-wt-img`, `osuBasil-wt-store`, `osuBasil-wt-bm`, `osuBasil-wt-score`).
 
 ## 5. Cách làm việc với agent (rút từ đợt này)
 
 * Spec đầy đủ trong thư mục tạm, bắt đầu bằng yêu cầu dùng Rider MCP, CodeGraph, Context7/Microsoft Learn.
 * `opencode-go/gpt-6-luna`; tối đa hai agent cùng lúc (RAM); agent thứ hai làm trong git worktree riêng, tôi gộp commit.
 * Review từng dòng; những thứ agent hay để lại được liệt kê ở mục 8 của "Final verification" trong AGENTS.md.
+* Rider MCP chỉ thấy checkout chính: agent trong worktree dùng `git mv`, tìm và thay bằng shell, `dotnet build`; tôi chạy kiểm DI sau khi gộp.
+* Hai agent cùng lúc là được khi chúng không đụng cùng file (một ở thư mục chính, một trong worktree); xung đột còn lại thường chỉ là
+  `DependencyInjection.cs`.
+* Chỉ `git add` đúng đường dẫn; `git add -A` cả cây đã từng gom file nhận được từ chỗ khác vào commit.
+* Agent hay biến `switch` thành switch-expression kèm `if` (khó đọc hơn) và thêm `.ConfigureAwait(false)`: xem mục 8 của "Final
+  verification" trong AGENTS.md.

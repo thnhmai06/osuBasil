@@ -1,8 +1,7 @@
 # Phân tầng Application: Services nằm dưới Objects, và Infrastructure tương xứng (2026-10-21)
 
-Trạng thái: **đã được chủ dự án duyệt hướng** (Option A: Services dưới Objects; Infrastructure chia theo ba vai trò;
-đổi `Infrastructure.Services` thành `Infrastructure.Capabilities`). Tài liệu này là bảng thiết kế mà agent chỉ việc
-port theo; agent không tự quyết định chỗ đặt.
+Trạng thái (2026-10-21): **hướng đã được chủ dự án duyệt; các bước 1 và 3 đã làm xong, còn bước 2 (đảo tham chiếu) và
+bước 4 (tài liệu, harness) — chờ lệnh.** Chi tiết ở mục 7.
 
 ## 1. Vì sao
 
@@ -97,3 +96,35 @@ Contract public bị bỏ hết: `IAuthService`, `IUserService`, `ISessionServic
   harness với `timeout` (treo = có vòng).
 * Mất kiểm tra quyền khi đổi chỗ: mọi thao tác hệ thống ghi rõ trong XML; entry point của người dùng chỉ qua `ScopeTo`.
 * `BanchoConnection` cần cổng lobby và publisher; thêm vào `SessionContext`, không để kết nối giữ `Lobby` trực tiếp.
+
+## 7. Tiến độ (2026-10-21)
+
+Đã làm, đã build 8 project (Domain, Application.{Storage,Objects,Services}, Infrastructure.{Storage,Capabilities,Runtime},
+Bot.Application) và kiểm DI (86 đăng ký, không vòng) sau mỗi bước:
+
+| Việc | Kết quả | Commit |
+|---|---|---|
+| Cổng capability và `Paging` sang `Application.Storage`; `Infrastructure.Services` đổi thành `Capabilities` (chỉ tham chiếu Storage) | xong | `9a653975` |
+| `Infrastructure.Storage` gom `Postgres/` (đổi từ `Database/` để tránh `Database.Database`), `Files/`, `Memory/` | xong | `44f5d8cf`, `8d3d4c0c` |
+| Người dùng, kết nối, đăng nhập vào `UserRegistry` (`AccountService` object-free, cầu `IAccountService`) | xong | `d129ab9a` |
+| Beatmapset: `Beatmapsets` (Objects) phát event, `BeatmapsetIndexer` object-free (cầu `IBeatmapsetIndexing`) | xong | `8416a3d0`, `606a8394` |
+| Lobby/Room/Match và chat: `Lobby.ReleaseAsync/RemoveSuspendedAsync/RemoveRefereeAsync/CloseUnfinishedAsync`, `Room.RecordScoreAsync`, `GeneralChannelRegistry` | xong | `d56a275b` |
+| Điểm và anticheat: `BanchoConnection.SubmitScoreAsync/Report`, `ScoreRecorder` object-free (cầu `IScoreRecording`); vòng dựng `UserRegistry` ↔ `Lobby` gỡ bằng cổng trì hoãn | xong | `c6e60679`, `3c3a007b` |
+
+Khác với bảng mục 2, ghi lại để khỏi nhầm:
+
+* `Beatmapsets` và các kiểu kết quả (`BeatmapsetImportResult`, `BeatmapsetScanResult`, `BeatmapsetScanOutcome`,
+  `BeatmapsetIndexed`) nằm ở `Application.Storage/Beatmaps`, vì Objects công khai trả chúng và Services (nằm dưới) tạo ra chúng.
+* `Anticheat/` và `Services/Multiplayer|Chat|Sessions` đã trống; `Services` còn `Users/AccountService`,
+  `Beatmaps/BeatmapsetIndexer`, `Scores/ScoreRecorder` và `DependencyInjection`.
+* Sự kiện giữ nguyên thứ tự phát nhưng `Beatmapsets.ScanAsync` phát `BeatmapsetImported/Deleted` sau khi cả lượt quét xong
+  (trước đây phát giữa lượt quét, sau mỗi commit).
+
+Còn lại (dừng chờ lệnh chủ dự án):
+
+1. **Đảo tham chiếu**: `Application.Services` bỏ tham chiếu Objects (ba cầu tạm bị xoá, `ScoreOutcome`/kết quả của Services đưa
+   về kiểu chung ở Storage), `Objects` tham chiếu `Services`; Services `internal` + `InternalsVisibleTo`;
+   `AddApplication()` công khai ở Objects (context, đối tượng gốc, gọi `AddApplicationServices()` internal); harness DI gọi bốn
+   hàm `Add…`.
+2. **Tài liệu**: `docs/for-developers/architecture.md` và các tài liệu liên quan theo luật mới (AGENTS.md đã cập nhật).
+3. **Câu hỏi mở** ở [`next-steps-20261021.md`](next-steps-20261021.md).
