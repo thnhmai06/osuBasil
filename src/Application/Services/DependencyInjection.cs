@@ -10,9 +10,6 @@ using Basil.Application.Objects.Servers;
 using Basil.Application.Objects.Users;
 using Basil.Application.Services.Anticheat;
 using Basil.Application.Services.Beatmaps;
-using Basil.Application.Services.Chat;
-using Basil.Application.Services.Multiplayer;
-using Basil.Application.Services.Multiplayer.Rooms;
 using Basil.Application.Services.Scores;
 using Basil.Application.Services.Users;
 using Basil.Application.Storage.Auth;
@@ -39,7 +36,7 @@ public static class DependencyInjection
 	{
 		services.TryAddSingleton(TimeProvider.System);
 
-		services.AddSingleton<IGeneralChannelRegistry, GeneralChannelRegistry>();
+		services.AddSingleton(new GeneralChannelRegistry());
 
 		services.AddSingleton<AccountService>();
 		services.AddSingleton<IAccountService>(sp => sp.GetRequiredService<AccountService>());
@@ -60,7 +57,7 @@ public static class DependencyInjection
 		services.AddSingleton<ChannelContext>(sp => new ChannelContext(
 			sp.GetRequiredService<TimeProvider>(),
 			sp.GetRequiredService<IEventPublisher<ChannelEvent>>(),
-			sp.GetRequiredService<IGeneralChannelRegistry>(),
+			sp.GetRequiredService<GeneralChannelRegistry>(),
 			sp.GetRequiredService<IRelationshipRepository>(),
 			sp.GetRequiredService<IChannelRepository>()));
 		services.AddSingleton<SessionContext>(sp => new SessionContext(
@@ -76,29 +73,21 @@ public static class DependencyInjection
 			sp.GetRequiredService<Lobby>(),
 			sp.GetRequiredService<IUserRepository>()));
 		services.AddSingleton<Server>(sp => new Server(sp.GetRequiredService<ServerContext>()));
-		services.AddSingleton<ChannelService>();
-		services.AddSingleton<IChannelService>(sp => sp.GetRequiredService<ChannelService>());
-
 		services.AddSingleton<LobbyContext>(sp => new LobbyContext(
 			sp.GetRequiredService<TimeProvider>(),
 			sp.GetRequiredService<IEventPublisher<LobbyEvent>>(),
 			sp.GetRequiredService<IMatchRepository>(),
+			sp.GetRequiredService<IRoundRepository>(),
+			sp.GetRequiredService<IMatchEventRepository>(),
+			sp.GetRequiredService<IUserRepository>(),
 			sp.GetRequiredService<ISettingsRepository>(),
 			sp.GetRequiredService<IEventPublisher<RoomEvent>>(),
 			sp.GetRequiredService<ChannelContext>(),
 			sp.GetRequiredService<IRoomUsersPort>()));
 		services.AddSingleton<Lobby>(sp => new Lobby(sp.GetRequiredService<LobbyContext>()));
 
-		services.AddSingleton<RoomMembershipService>();
-		services.AddSingleton<RoomRoundsService>();
-		services.AddSingleton<RoomService>();
-		services.AddSingleton<IRoomService>(sp => sp.GetRequiredService<RoomService>());
-
 		services.AddSingleton<AnticheatService>();
 		services.AddSingleton<IAnticheatService>(sp => sp.GetRequiredService<AnticheatService>());
-
-		services.AddSingleton<MatchService>();
-		services.AddSingleton<IMatchService>(sp => sp.GetRequiredService<MatchService>());
 
 		services.AddSingleton<ScoreService>();
 		services.AddSingleton<IScoreService>(sp => sp.GetRequiredService<ScoreService>());

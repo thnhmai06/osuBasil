@@ -12,8 +12,7 @@ namespace Basil.Infrastructure.Runtime.Sessions;
 ///     watch and channels when one closes.
 /// </summary>
 internal sealed class ConnectionHandler(
-	IChannelService channels,
-	IRoomService rooms,
+	GeneralChannelRegistry channels,
 	Lobby lobby,
 	UserRegistry registry,
 	ILogger<ConnectionHandler> logger) : IEventHandler<UserEvent>
@@ -29,7 +28,7 @@ internal sealed class ConnectionHandler(
 			case UserConnectionClosed closed:
 				var connection = closed.Connection;
 				await RunAsync("release its room", connection.Record.Id,
-					() => rooms.Members.ReleaseAsync(connection, cancellationToken), cancellationToken);
+					() => lobby.ReleaseAsync(connection, cancellationToken), cancellationToken);
 				if (registry.FindSpectating(connection) is { } host)
 					Run("stop spectating", connection.Record.Id,
 						() => host.ScopeTo(connection).StopSpectating(), cancellationToken);

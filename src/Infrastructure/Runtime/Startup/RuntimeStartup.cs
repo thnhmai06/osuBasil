@@ -15,7 +15,7 @@ internal sealed class RuntimeStartup(
 	IChannelRepository channelRepository,
 	Server server,
 	UserRegistry sessions,
-	IMatchService matches,
+	Lobby lobby,
 	ILogger<RuntimeStartup> logger) : IHostedService
 {
 	/// <inheritdoc />
@@ -32,7 +32,7 @@ internal sealed class RuntimeStartup(
 		else
 			logger.LogInformation("BasilBot is online");
 
-		var closedMatches = await matches.CloseUnfinishedAsync(cancellationToken);
+		var closedMatches = await lobby.CloseUnfinishedAsync(cancellationToken);
 		logger.LogInformation("Closed {MatchCount} unfinished matches", closedMatches);
 	}
 

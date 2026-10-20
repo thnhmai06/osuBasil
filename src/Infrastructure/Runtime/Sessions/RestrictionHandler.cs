@@ -10,7 +10,7 @@ namespace Basil.Infrastructure.Runtime.Sessions;
 /// <summary>Applies the room and spectating consequences of a user's restrictions.</summary>
 internal sealed class RestrictionHandler(
 	UserRegistry registry,
-	IRoomService rooms,
+	Lobby lobby,
 	TimeProvider time,
 	ILogger<RestrictionHandler> logger) : IEventHandler<UserEvent>
 {
@@ -26,12 +26,12 @@ internal sealed class RestrictionHandler(
 			if ((restricted.Restriction.Value.Permissions & Permissions.RoomJoin) != 0 &&
 			    !restricted.User.Value.Permissions.Allows(Permissions.RoomManageAny))
 				await RunAsync("remove it from referee lists", restricted.User.Id,
-					() => rooms.Members.RemoveRefereeAsync(restricted.User, cancellationToken), cancellationToken);
+					() => lobby.RemoveRefereeAsync(restricted.User, cancellationToken), cancellationToken);
 			return;
 		}
 
 		await RunAsync("remove it from rooms", user.Record.Id,
-			() => rooms.Members.RemoveSuspendedAsync(user, cancellationToken), cancellationToken);
+			() => lobby.RemoveSuspendedAsync(user, cancellationToken), cancellationToken);
 
 		if (user.Check(Permissions.SpectatingWatch, time.GetUtcNow()) is Access.Allowed) return;
 

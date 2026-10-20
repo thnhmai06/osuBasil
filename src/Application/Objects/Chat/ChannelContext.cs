@@ -13,6 +13,6 @@ namespace Basil.Application.Objects.Chat;
 internal sealed record ChannelContext(
 	TimeProvider Clock,
 	IEventPublisher<ChannelEvent> Events,
-	IGeneralChannelRegistry Registry,
+	GeneralChannelRegistry Registry,
 	IRelationshipRepository Relationships,
 	IChannelRepository Channels);

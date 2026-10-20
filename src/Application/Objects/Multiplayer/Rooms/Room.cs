@@ -107,6 +107,23 @@ public sealed class Room : IEquatable<Room>
 		return null;
 	}
 
+	/// <summary>Records a score for this room's latest round when the server itself calls it; it needs no rights.</summary>
+	/// <param name="score">The relation between the stored score and its round.</param>
+	/// <param name="player">The player who submitted the score.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>Ok, RoundMismatch or RoomClosed when the room has closed.</returns>
+	public async Task<RoomResult> RecordScoreAsync(RoundScore score, UserRecord player,
+		CancellationToken cancellationToken = default)
+	{
+		await using var scope = await EnterAsync(cancellationToken);
+		if (scope is null) return RoomResult.RoomClosed;
+
+		if (Rounds.LastRound is not { } round || !round.Equals(score.Round)) return RoomResult.RoundMismatch;
+
+		Context.Events.Publish(new RoomRoundScoreSubmitted(this, round, player, score));
+		return RoomResult.Ok;
+	}
+
 	/// <summary>Seats a player in the lowest-index empty, unlocked slot.</summary>
 	/// <param name="player">The connection to seat.</param>
 	/// <returns>The assigned slot, or <see langword="null" /> when no slot is available.</returns>

@@ -2,7 +2,12 @@ using System.Collections.Concurrent;
 using Basil.Application.Objects.Multiplayer.Events;
 using Basil.Application.Objects.Multiplayer.Rooms;
 using Basil.Application.Objects.Sessions;
+using Basil.Application.Objects.Users;
+using Basil.Application.Storage.Common;
+using Basil.Application.Storage.Multiplayer;
 using Basil.Domain.Common;
+using Basil.Domain.Multiplayer;
+using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Objects.Multiplayer;
@@ -243,5 +248,100 @@ public sealed class Lobby : IRoomLobbyPort
 		if (room.Seat(creator) is null) return;
 		room.Authority.Host = creator;
 		room.JoinChannel(creator);
+	}
+
+	/// <summary>Releases a connection from room memberships when the server itself calls it; it needs no rights.</summary>
+	/// <param name="connection">The connection to release.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	public async Task ReleaseAsync(Connection connection, CancellationToken cancellationToken = default)
+	{
+		switch (connection)
+		{
+			case BanchoConnection player:
+			{
+				if (RoomOf(player) is { } room)
+				{
+					await using var scope = await room.EnterAsync(cancellationToken);
+					if (scope is not null) room.Leave(player);
+				}
+
+				break;
+			}
+			case TourneyConnection observer:
+			{
+				foreach (var room in Rooms.Values.Where(room => room.Members.Observers.Contains(observer)).ToArray())
+				{
+					await using var scope = await room.EnterAsync(cancellationToken);
+					if (scope is not null) room.ObserverLeave(observer);
+				}
+
+				break;
+			}
+		}
+
+		// Managers stay in a room's channel after leaving their seat, and IRC referees join it directly.
+		foreach (var room in Rooms.Values)
+			room.Channel.ScopeTo(connection).Part();
+	}
+
+	/// <summary>Removes a user from rooms when the server itself calls it; it needs no rights.</summary>
+	/// <param name="user">The user whose multiplayer access is suspended.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	public async Task RemoveSuspendedAsync(User user, CancellationToken cancellationToken = default)
+	{
+		if (user.Check(Permissions.RoomJoin, Context.Clock.GetUtcNow()) is Access.Allowed) return;
+
+		foreach (var connection in user.Connections)
+			await ReleaseAsync(connection, cancellationToken);
+
+		await RemoveRefereeAsync(user.Record, cancellationToken);
+	}
+
+	/// <summary>Removes a referee from open rooms when the server itself calls it; it needs no rights.</summary>
+	/// <param name="user">The user to remove from referee lists.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	public async Task RemoveRefereeAsync(UserRecord user, CancellationToken cancellationToken = default)
+	{
+		var by = await Context.UserRepository.GetAsync(BasilBot.Id, cancellationToken) ?? user;
+		foreach (var room in Rooms.Values.ToArray())
+		{
+			if (!room.Authority.Referees.Contains(user)) continue;
+
+			await using var scope = await room.EnterAsync(cancellationToken);
+			if (scope is null || !room.Authority.MutableReferees.Remove(user)) continue;
+
+			room.Context.Events.Publish(new RoomRefereeRemoved(room, by, user));
+		}
+	}
+
+	/// <summary>Closes unfinished matches when the server itself calls it at startup; it needs no rights.</summary>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>How many matches were ended.</returns>
+	public async Task<int> CloseUnfinishedAsync(CancellationToken cancellationToken = default)
+	{
+		var allMatches = await Paging.ListAllAsync(
+			page => Context.Matches.ListAsync(new MatchQuery(false), page, cancellationToken),
+			cancellationToken);
+
+		var now = Context.Clock.GetUtcNow();
+
+		foreach (var match in allMatches)
+		{
+			foreach (var round in (await Context.Rounds.ListAsync(match, cancellationToken)).Where(r =>
+				         r.EndedAt is null))
+			{
+				round.EndedAt = now;
+				round.Aborted = true;
+				await Context.Rounds.CreateOrUpdateAsync(round, cancellationToken);
+			}
+
+			match.Value.EndedAt = now;
+			await Context.Matches.UpdateAsync(match, cancellationToken);
+			await Context.MatchEvents.RecordAsync(
+				new MatchEvent(match, MatchEventType.Closed, now, Detail: "Server shutdown recovery"),
+				cancellationToken);
+		}
+
+		return allMatches.Count;
 	}
 }
