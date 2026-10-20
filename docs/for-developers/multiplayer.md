@@ -1,370 +1,114 @@
-# Multiplayer and tournament match reports
+# Multiplayer and match reports
 
 ## Overview
 
-A multiplayer match in Basil has two representations:
+A `Room` is the live multiplayer state. It owns its slots, current round, settings, authority, members and room channel. A `MatchRecord` and its round and score records preserve history after the room closes. A match report is derived from match history; Basil does not keep a second mutable report.
 
-* a live `Room` in `Basil.Application`, which exists only while the server runs and holds the slots,
-  the host, the referees and the round in progress;
-* a persisted record in `Basil.Domain` (`Match`, `Round`, `Score`) that survives the room and is used
-  to rebuild the match report after the room is gone.
+This separation keeps current play state in one place while retaining the facts needed to understand completed matches.
 
-The tournament match report is built from these sources rather than stored as a separate document.
+## Room behavior and authority
 
-> **Pending migration.** `Basil.Domain` and `Basil.Application` have been reworked; Infrastructure,
-> the hosts and the tests have not been migrated yet. Sections that describe storage, the HTTP API or
-> the report are marked where they still describe the previous wiring.
+### Room-scoped actions
 
-## Why the report is derived
-
-A completed tournament match needs to retain which rounds were played, which beatmap and rules each
-round used, which players submitted scores, the scores and team assignments, and the winner.
-
-The live room cannot provide this after it closes. Storing a second complete copy of the match while
-it runs would duplicate the room's state and create synchronization problems. Basil therefore stores
-the facts needed to rebuild the report and derives the report when it is requested.
-
-```text
-Room (runtime)                    record (persisted)
-  slots, host, referees,            Match
-  round in progress                 Rounds
-            │                       Scores
-            │ events                    │
-            └──────────► stored ────────┘
-                                        │
-                                        ▼
-                                  match report
-```
-
-There is no persisted report document that can become stale.
-
-## Contract
-
-> **Pending migration.** The API host still serves these routes from the previous model.
-
-* `GET /matches/{matchId}` builds the report at read time.
-* For an active match, the report combines persisted rounds and scores with the live room.
-* For a closed match, the report is rebuilt entirely from persistent state.
-* Every match sub-resource has a JSON endpoint and, where applicable, a `/live` SSE endpoint (see
-  [`sse.md`](sse.md)).
-* `POST /matches/{matchId}/abort` and `POST /matches/{matchId}/close` return the resulting match state.
-* The winner is derived when the report is built.
-* A match is identified by its persistent id; the Bancho room id is separate and short-lived.
-
-## Match identity
-
-### Persistent match id
-
-`Match.Id` is assigned by storage when the room opens. API routes, chat commands, database
-relationships and reports use it, and it stays valid after the room has closed.
-
-### Bancho room id
-
-The Bancho protocol identifies a room by a room id. The lobby hands out the lowest id not held by
-another open room. The protocol carries it as an unsigned 16-bit value, so at most 65,535 rooms can be
-open at once.
-
-The room id is short-lived, reused once its room closes, and unrelated to the persistent id. Code must
-not use it as the external identity of a match. A `Room` compares equal to another only when both play
-the same `Match`.
-
-## Match roles
-
-Basil models three independent roles. They must not be collapsed into a single "owner" concept.
-
-| Role | Held by | Lifetime | Grants |
-|---|---|---|---|
-| Creator | the `User` who created the match | the whole match | everything a referee may do, and adding or removing referees |
-| Referee | a `User` in `Room.Referees` | until the creator removes them | the match-management operations |
-| Host | a seated `BanchoConnection` | while that connection is seated | the in-client host operations |
-
-The creator and the referees are the room's **managers** (`Room.IsManager`). Being the host does not
-make a player a manager, and `!mp` commands are available only to managers.
-
-### Creator
-
-Whoever creates a room is its creator, however it was created: in game, with `!mp make` or
-`!mp makeprivate`, or through the API when a creator is given. A room created through the API without
-a creator has none.
-
-The creator is stored on the match, ranks above the referees and is not part of the referee list. Only
-the creator may add or remove referees, and nobody can kick or ban the creator.
-
-### Referee
-
-A referee keeps their authority after disconnecting or leaving their seat; only the creator removes
-it. A room has at most `Room.MaxReferees` (8) referees in addition to its creator.
-
-### Host
-
-The host is a seated game client. A room created in game makes its creator the first host. When the
-host leaves their slot, the next seated player by slot order becomes host; with nobody left, the room
-has no host. An IRC connection can never be host because it cannot occupy a slot.
-
-### Who may do what
-
-| Operation | Allowed caller |
-|---|---|
-| Join, leave, change own slot, ready, report having the map, change own team, choose own freemod mods | the player themselves |
-| Start a round, change settings, give or clear host, lock or unlock a slot, kick | the host or a manager |
-| Abort a round, ban, unban, move a player, set a player's team, lock the room | a manager |
-| Add or remove a referee | the creator |
-| Invite | a seated player or a manager |
-| Observe from osu!tourney | any osu!tourney client that is not playing in the room |
-| Close the room | a manager |
-
-Every operation with a rule takes its caller and checks the rule inside `Room`, returning a
-`RoomResult` instead of throwing.
-
-## Match lifecycle
-
-```mermaid
-flowchart TD
-    open["Lobby.OpenAsync<br/>(in game, !mp make, API)"] --> room["Room open<br/>creator seated as host when created in game"]
-    room --> start["Start (a client countdown may trigger it)"]
-    start --> round["Round n in progress"]
-    round -->|"last player completes or leaves"| done["Round n completed"]
-    round -->|"manager aborts"| aborted["Round n aborted"]
-    done --> start
-    aborted --> start
-    room -->|"manager closes, or room empty"| closed["Room closed<br/>match history kept"]
-```
-
-### Opening a room
-
-`Lobby.OpenAsync` opens a room for a new match:
-
-* a creator who is silenced or restricted cannot open a room;
-* a creator can have at most `Lobby.MaxRoomsPerCreator` (4) tournament rooms open;
-* a room created in game is not a tournament room: it needs the creator's game client, seats it as the
-  first host, and is refused with `AlreadyInRoom` when that client already plays in another room;
-* a tournament room (`!mp make`, the API) seats its creator only when their game client is online and
-  not in another room; otherwise it opens empty;
-* the server's bot joins the room's chat channel;
-* the lobby emits `LobbyRoomOpened` with the first host, if any.
-
-The room's chat channel is named `#mp_{room id}` and belongs to the room: it opens and closes with it.
-
-### Closing a room
-
-A manager closes a room with `Lobby.CloseAsync`. Closing aborts a round in progress, removes every player and
-the room's channel, records the match's end time and emits
-`LobbyRoomClosed`. Closing a room does not delete its match history.
-
-## Joining and leaving
-
-A player joins with `Room.Join`. The room refuses a player who is banned, silenced, restricted,
-already playing in another room, observing this room, or giving a wrong password (moderators need no
-password), and a full room. A joining player also joins the room's chat channel.
-
-If the same user is still seated through a connection that has closed but was not yet cleaned up, the
-room removes that seat as an ordinary leave, but only after the new join has passed every check. While
-the old connection is still open the new one is refused with `AlreadySeated`.
-
-A player who leaves, is kicked or is banned leaves the room's chat channel unless they are a manager:
-managers stay in the channel so they can keep running the match.
-
-## Rounds
-
-A `Round` represents one beatmap played inside a match. It is created when a round starts, not when
-the match is created.
-
-A round is identified by its match and its number. Rounds are numbered from `1` within each match in
-the order they start. An aborted round is still a round: it keeps its number, is marked as aborted, and
-the next round takes the following number. The room assigns the number itself, so starting a round does
-not wait for storage.
-
-A round records the beatmap's content hash, the settings it was played with (mode, mods, team type, win
-condition) and its start and end times.
-
-### Round flow
-
-```mermaid
-sequenceDiagram
-    participant H as Host or manager
-    participant R as Room
-    participant P as Players
-    H->>R: Start
-    R-->>P: RoomRoundStarted (players with the beatmap)
-    P->>R: MarkLoaded (each)
-    R-->>P: RoomRoundPlayerLoaded … RoomRoundAllLoaded
-    P->>R: Skip (each, optional)
-    R-->>P: RoomRoundPlayerSkipped … RoomRoundAllSkipped
-    P->>R: Fail (optional), Complete (each)
-    R-->>P: RoomRoundPlayerCompleted … RoomRoundCompleted
-```
-
-* Players who reported not having the beatmap do not take part. A round with no player ends as soon as
-  it starts.
-* The last player to load or to ask to skip produces `RoomRoundAllLoaded` or `RoomRoundAllSkipped` instead
-  of the per-player event, at most once per round.
-* When a player stops playing because they left, were kicked, banned or had their slot locked, the room
-  re-checks the round: if every remaining player has loaded or skipped, it announces that; if nobody is
-  playing any more, the round ends.
-* The round ends when the last player completes it (`RoomRoundCompleted` carries that player's slot) or
-  when the last remaining player leaves (`RoomRoundCompleted` carries no slot). Players then return to not
-  ready.
-* A manager can abort a round; players go back to not ready and the round is marked aborted.
-
-### Countdown
-
-The server runs no countdown. A countdown (`!mp start <seconds>`, `!mp timer`) is a client feature: BasilBot
-runs it, announces it in the room's channel, and when it ends starts the round as the user who asked, through the
-ordinary start operation, so the server checks that user's authority again. See
-[`basil-bot.md`](../for-client/basil-bot.md).
-
-## Settings
-
-The host or a manager changes settings with `Room.Configure`, which applies every changed field in one
-step and emits a single `RoomSettingsChanged`. Nothing changes unless every field is valid, and settings
-cannot change during a round.
-
-* Selecting or clearing the beatmap sets ready players back to not ready. The osu! client clears the
-  beatmap while the host is choosing another one; a round cannot start without a beatmap.
-* The beatmap is a reference (MD5, id, name, mode) so a room can play a beatmap the server does not
-  have.
-* Changing the mode drops mods, the room's and the players', that the new mode does not allow.
-* Turning freemod on moves the room's mods that are not speed-changing onto each player; turning it off
-  gives the room the host's mods. Under freemod the room keeps only speed-changing mods.
-* Changing the team type reassigns teams.
-* The size counts usable slots (1 to 16), not a slot range: players may sit in any slot, so the room
-  keeps enough empty slots unlocked to reach the size and locks the other empty ones.
-* The password never appears in events; the event only says whether it changed.
-
-While the room is locked (`!mp lock`), players cannot change slot or team; managers can still move them.
-
-## Current round and score submission
-
-The room's latest round is deliberately kept after the round ends, because score submission and the
-Bancho connection are independent:
-
-```text
-Bancho connection           MATCH_COMPLETE ── round ends
-Score submission (HTTP)     replay + score ── may arrive before or after MATCH_COMPLETE
-```
-
-If the latest round were forgotten when the round ended, a score that arrives shortly afterwards would
-have no round to attach to. The latest round therefore changes only when the next round starts.
-
-A score is attached to the latest round of the player's room only when it was played on that round's
-beatmap. Two consecutive rounds on the same beatmap cannot be told apart this way; a late score then
-attaches to the newer round. A score on a beatmap the server does not have is accepted only when it is
-the beatmap of that latest round; otherwise it is rejected as `UnknownBeatmap`. An attached score is
-announced by the room as `RoomRoundScoreSubmitted`.
-
-## Match mutation concurrency
-
-`Room` is mutable shared state. Every operation runs inside the room's exclusive scope:
+An action that depends on a caller starts from the room and the caller's real `Connection`:
 
 ```csharp
-await using var scope = await room.EnterAsync();
-if (scope is null) return; // the room is closed
-var result = room.Kick(by, player);
+var scopedRoom = room.ScopeTo(by);
 ```
 
-The scope is held across the complete state transition, whatever the entry point (Bancho packet, `!mp`
-command, HTTP API). Do not hold it across long-lived or unrelated waits, and do not add a second
-synchronization mechanism for the same state.
+`ScopedRoom` holds the room, caller, room roles and derived `RoomPermissions` for one request or command. Use its parts—`Slots`, `Rounds`, `Settings`, `Authority` and `Members`—rather than asking `IRoomService` to perform a player's action. Do not retain a scope after the request: its authority is a snapshot.
 
-### Round-end persistence
+Each operation returns a `RoomResult` for ordinary outcomes such as success, missing authority or a suspended permission. The caller does not pass permissions through each operation, and connection type alone never grants authority.
 
-> **Pending migration.** The previous implementation persisted round ends on an ordered background
-> queue outside the room's lock. The reworked Application stores nothing itself: the round's history is
-> stored from `RoomRoundStarted`, `RoomRoundCompleted` and `RoomRoundAborted` outside Application. The ordering and
-> retry rules below still apply to that consumer.
+**Planned:** the `!mp` command entry point will resolve the room and typist's connection, then call `room.ScopeTo(by)`. The command integration is not yet on this scoped model.
 
-A database write can be slow enough (SQLite lock contention, retry and backoff) that doing it inside
-the room's scope would block every other operation on that room. Round ends are therefore persisted
-outside the scope, in the order they happened for each match. A round's start needs no synchronous
-write: the room numbers rounds itself, so a score can reference the round by match and number at once.
-A round end that cannot be written after every retry is logged with every fact needed to restore it by
-hand.
+### Creator, referee and host
 
-## Empty-room lifecycle
+These roles have different owners and lifetimes:
 
-What happens when a room has no seated player depends on how it was created:
+| Role | Held by | Authority |
+|---|---|---|
+| Creator | The user recorded as the match creator | Permanent room authority; may manage referees |
+| Referee | A user added by the creator | Room-management authority until removed |
+| Host | The seated osu! connection selected as host | In-client host operations; does not make its user a manager |
 
-* a room created in game closes as soon as its last player leaves;
-* a tournament room stays open for `Lobby.EmptyTournamentRoomTimeout` (15 minutes) and then closes if
-  it is still empty. The lobby emits `LobbyRoomClosingAnnounced` twice, carrying the closing time: when the
-  room becomes empty (15 minutes left) and 5 minutes before it closes. Both are used to warn the room's
-  referees. A player joining at any point cancels the closing timer; if the room empties again, it starts
-  over at 15 minutes.
+Every room has a creator. The creator is not in the referee list and ranks above referees. A room created in game seats its creator as the first host. Tournament-room creation seats the creator only when their game connection is online and not already in a room. A referee keeps authority when disconnected or unseated. There can be at most eight referees in addition to the creator.
 
-A tournament room can start empty, for example when it is created over IRC or through the API, or when
-its creator already plays in another room. The closing timer then starts when the room opens. The creator
-and the referees keep their authority while nobody is seated.
+### Room roles and permissions
 
-## Report generation
+`RoomRoles` are calculated for the scoped caller. A caller may hold more than one role:
 
-> **Pending migration.** Report construction lives in the API host and still reads the previous model.
+| `RoomRoles` value | How it is held | `RoomPermissions` granted by the role |
+|---|---|---|
+| `Player` | An osu! connection occupies a slot | Post in room chat; invite users |
+| `Host` | The connection is the room's current host | Change settings, lock slots, kick players, transfer host, start or abort rounds, manage countdowns |
+| `Referee` | The caller's user is a referee and is not the creator | All room permissions except managing referees |
+| `Creator` | The caller's user is the creator | All room permissions, including managing referees |
 
-For a closed match the report is built from persisted state:
+`RoomPermissionsGroups.GetPermissions` combines permissions from the caller's `RoomRoles`. The general account permissions then constrain that set:
 
-```text
-Matches → Rounds → Scores → report builder → complete tournament report
-```
+* Effective permissions must include `RoomJoin`; otherwise the scoped room has no role-derived room permissions.
+* With effective `RoomJoin` and `RoomManageAny`, the scope grants all `RoomPermissions` in any room.
+* Restrictions remove suspended permissions before the scope is created. A user who manages an area keeps that area's permissions while restricted; for multiplayer, that manager permission is `RoomManageAny`.
 
-For an active match it combines the database history with the live room:
+This is why a creator or referee whose room permissions are suspended cannot manage a room, while an effective room manager keeps multiplayer authority. `RoomResult.Silenced` distinguishes a suspended permission from `RoomResult.NotAuthorized`.
 
-```text
-Database history ──┐
-                   ├──> report builder ──> report
-Live room ─────────┘
-```
+### System-owned operations
 
-The same endpoint therefore represents both a match being played and a finished one; clients need no
-separate "live report" and "final report" APIs.
+Some room work has no user caller. `IRoomService` retains system operations such as cleaning up room membership and recording submitted scores. These operations do not create a caller scope. Caller-authorized room behavior belongs to `ScopedRoom` and its parts.
 
-## Winner calculation
+## Membership, slots and settings
 
-The winning side is derived from completed round scores:
+The room owns membership and its channel. A join checks the caller's effective `RoomJoin` permission, bans, whether the caller is already playing or observing, the password and available slots. A successful player join also joins the room channel. When a same-user connection replaces a closed seat, the new join must pass its checks first; an open old connection prevents replacement.
 
-* for a team round, scores are grouped by team and compared;
-* for a non-team round, the highest individual score wins.
+There are 16 slot positions, numbered 1 through 16. Room size is the number of usable positions, from 1 through 16, not a limit on slot numbers: a player may occupy any slot. The room keeps enough unlocked empty slots for its configured size and locks the others. When a host leaves, the next seated player in slot order becomes host.
 
-The winner is a projection of persisted score data rather than another mutable field, so a report
-cannot become inconsistent because a stored winner was not updated.
+The room channel is named `#mp_{room id}` and opens and closes with its room. A room's settings change as one validated operation; settings cannot change during a round. Changing the team type reassigns teams, and changing mode removes mods that mode does not allow. The room's password is never included in its events.
 
-```text
-Scores
-  ├── team round ──> aggregate by team ──> winning team
-  └── individual ──> highest score ──────> winning player
-```
+## Rounds and score association
+
+A round is created when play starts. Rounds are numbered from 1 in start order; an aborted round keeps its number. The latest round remains available after it ends until another round starts, because score submission can arrive before or after round completion is recorded.
+
+The room emits round events for start, load and skip progress, completion, abort and score submission. Infrastructure records submitted scores as system work, outside caller-authorized room operations. The report and winner are projections of match, round and score data, not additional mutable room state.
+
+## Countdown
+
+The countdown is room behavior, not a BasilBot-owned timer. `ScopedRoom.Rounds` starts or cancels it; the room owns its timing and state, and a countdown may start a round when it expires. `RoomCountdown` provides the start time, length and announcement marks. The room emits countdown events for a client to announce.
+
+**Planned:** BasilBot's command integration will request countdown operations through the typist's room scope and announce the room's marks. It will not own the countdown or act with its own authority.
+
+## Room lifecycle and concurrency
+
+The lobby opens and closes rooms. A room created in game closes when its last player leaves. An empty tournament room remains open for 15 minutes; the lobby announces the scheduled close when it starts and five minutes before it, and a player joining cancels it. If the room becomes empty again, the delay starts over.
+
+Room state is mutable and shared. A read followed by a mutation must hold the exclusive scope from `room.EnterAsync()` across the complete transition. If the room is already closed, `EnterAsync()` returns `null`. Never hold two room scopes at once, and do not hold a room scope across a long-lived or unrelated wait. Do not add another synchronization mechanism for room state.
 
 ## Invariants
 
-* `Match.Id` is the stable external identity; the Bancho room id is short-lived and reused.
-* A `Round` is identified by its match and its number; numbers start at `1` and an aborted round keeps
-  its number.
-* The latest round stays set after it ends, until the next round starts.
-* A score attaches to the latest round only when it was played on that round's beatmap.
-* Creator, referee and host are separate roles; the host is not a manager.
-* Every room operation with a permission rule checks its caller inside `Room`.
-* Every room mutation holds the room's scope across the complete transition.
-* A connection's closed seat is replaced only by the same user's join, after that join passed its
-  checks.
-* A round ends when nobody is playing any more; a round nobody plays ends as soon as it starts.
-* A room created in game closes when empty; an empty tournament room closes 15 minutes after it
-  emptied, announced at 15 and at 5 minutes left.
-* The report and the winner are derived, never stored as separate documents.
-* Closing a room does not destroy its match history.
-* Performance points play no part in multiplayer rules.
+* The creator, referees and host are separate roles; host status alone grants no management authority.
+* Caller-authorized behavior is reached through `room.ScopeTo(by)` and uses effective permissions.
+* A scoped room is short-lived; its role and room-permission snapshot is for one request or command.
+* Every room state transition that reads and mutates holds one room scope throughout.
+* The 16 positions are numbered 1–16; room size controls usable positions, not the highest slot number.
+* The next host is selected by slot order.
+* Round numbers start at 1, and an aborted round keeps its number.
+* The latest round remains available until the next one starts; score association uses the latest round's beatmap.
+* A closed room's match history remains; reports and winners are derived rather than maintained separately.
+* Performance points do not affect multiplayer rules or match winners.
 
 ## Related code
 
-* [`Basil.Application/Multiplayer/Room.cs`](../../src/Basil.Application/Multiplayer/Room.cs): the live room, its rules and operations
-* [`Basil.Application/Multiplayer/Lobby.cs`](../../src/Basil.Application/Multiplayer/Lobby.cs): opening, closing and the empty-room lifecycle
-* [`Basil.Application/Multiplayer/RoomSlots.cs`](../../src/Basil.Application/Multiplayer/RoomSlots.cs), [`RoomSlot.cs`](../../src/Basil.Application/Multiplayer/RoomSlot.cs): slots
-* [`Basil.Application/Multiplayer/RoomSettingsChange.cs`](../../src/Basil.Application/Multiplayer/RoomSettingsChange.cs), [`BeatmapReference.cs`](../../src/Basil.Application/Multiplayer/BeatmapReference.cs): settings changes
-* [`Basil.Application/Multiplayer/RoomResult.cs`](../../src/Basil.Application/Multiplayer/RoomResult.cs): operation outcomes
-* [`Basil.Application/Multiplayer/Events/`](../../src/Basil.Application/Multiplayer/Events): lobby, room and round events
-* [`Basil.Application/Scores/ScoreSubmission.cs`](../../src/Basil.Application/Scores/ScoreSubmission.cs): attaching scores to the latest round
-* [`Basil.Domain/Multiplayer/`](../../src/Domain/Multiplayer): `Match`, `Round`, `MatchSettings`
+* [`Room.cs`](../../src/Application/Services/Contracts/Multiplayer/Rooms/Room.cs): live room and `ScopeTo`
+* [`ScopedRoom.cs`](../../src/Application/Services/Contracts/Multiplayer/Rooms/ScopedRoom.cs): caller, role and room-permission scope
+* [`ScopedRoomMembers.cs`](../../src/Application/Services/Contracts/Multiplayer/Rooms/ScopedRoomMembers.cs), [`ScopedRoomSlots.cs`](../../src/Application/Services/Contracts/Multiplayer/Rooms/ScopedRoomSlots.cs), [`ScopedRoomRounds.cs`](../../src/Application/Services/Contracts/Multiplayer/Rooms/ScopedRoomRounds.cs), [`ScopedRoomSettings.cs`](../../src/Application/Services/Contracts/Multiplayer/Rooms/ScopedRoomSettings.cs), [`ScopedRoomAuthority.cs`](../../src/Application/Services/Contracts/Multiplayer/Rooms/ScopedRoomAuthority.cs): caller-authorized room parts
+* [`IRoomService.cs`](../../src/Application/Services/Contracts/Multiplayer/IRoomService.cs): system-owned room operations
+* [`RoomRoles.cs`](../../src/Domain/Multiplayer/RoomRoles.cs), [`RoomPermissions.cs`](../../src/Domain/Multiplayer/RoomPermissions.cs), [`RoomPermissionsGroups.cs`](../../src/Domain/Multiplayer/RoomPermissionsGroups.cs): room rights
+* [`RoomCountdown.cs`](../../src/Application/Services/Contracts/Multiplayer/Rooms/RoomCountdown.cs): countdown state and marks
+* [`Lobby.cs`](../../src/Application/Services/Contracts/Multiplayer/Lobby.cs), [`ScopedLobby.cs`](../../src/Application/Services/Contracts/Multiplayer/ScopedLobby.cs): lobby-owned lifetime and caller-scoped operations
 
 ## See also
 
-* [`architecture.md`](architecture.md): the Application environment model
-* [`chat.md`](chat.md): room chat channels
-* [`sse.md`](sse.md): live SSE representations of match resources
-* [`database.md`](database.md): `Matches`, `Rounds` and `Scores` persistence
+* [`chat.md`](chat.md): channel ownership and room chat
+* [`privileges.md`](privileges.md): account permissions, restrictions and room-manager rights
+* [`sse.md`](sse.md): live-stream design
+* [`database.md`](database.md): match history persistence
