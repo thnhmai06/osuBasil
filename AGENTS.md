@@ -1074,6 +1074,35 @@ Agent documentation:
 * [`domain.md`](docs/for-agents/domain.md) — domain-modeling guidance
 * [`issue-tracker.md`](docs/for-agents/issue-tracker.md) — GitHub Issues workflow
 
+### Notes for the code-principles skill
+
+Principles that came up while restructuring Application and are not osuBasil-specific. They are proposals: the
+owner merges them into the skill later, nobody edits the skill silently.
+
+* **Read the IDE's suggestions** (see Code style): async overloads with the token in scope, LINQ where a loop reads as
+  a sentence, return-switch over switch over if, ignore allocation hints and serializer-filled DTO reports.
+* **Services are logic without live objects.** In a layered backend, a service takes and returns records and plain
+  results, never receives or creates a runtime object, never publishes an event and has no public contract. Anything
+  that coordinates several objects is a method of the object that is acted on or of the registry that holds them
+  (`registry.LoginAsync`, `lobby.ReleaseAsync`, `connection.SubmitScoreAsync`); a file full of former services
+  ending up as `Server.X` is the God Actor in disguise. This supersedes the old rule "one child service per part".
+* **Plain data that two layers both name in public signatures lives in the lower layer** (inputs, failure enums, import
+  results), so the upper layer can expose it while the lower one stays internal.
+* **Flip a reference direction in stages with a temporary internal bridge interface** declared in the upper project:
+  move the logic, keep the call working through the interface, flip the reference, delete the interface.
+* **Break a construction cycle with a deferred port** (`Func<T>`/`Lazy<T>` resolved at first use) rather than by
+  letting one object build another inside its constructor; check the container with a harness that resolves every
+  registration under a timeout, because a cycle shows up as a hang.
+* **Detect the kind of an uploaded file from its content when the extension is unknown or when its size is needed**
+  (ImageSharp header for images, ffprobe for audio); trust a known extension otherwise; no part of an uploaded name
+  becomes a temporary file name. Cap what the input can cost (bytes while reading, pixels per side) before using it.
+* **Give an architecture test a positive control**: after writing a no-dependency rule, assert once that the opposite
+  claim (the project does depend on X) is detected, so a rule that always passes is caught.
+* **Working with delegated agents:** stage explicit paths, never the whole tree; a worktree agent cannot use the IDE
+  tools of the main checkout, so the orchestrator runs the container check after merging; two agents at a time at most,
+  and only on disjoint files; review for the faults listed in "Final verification" item 8 and for a changed meaning
+  hidden in a "style" rewrite (a `switch` turned into a nullable result plus an `if`).
+
 ## Agent skills
 
 ### Issue tracker
