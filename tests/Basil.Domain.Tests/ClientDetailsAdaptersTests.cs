@@ -1,39 +1,38 @@
-using Basil.Domain.Client;
+using Basil.Domain.Bancho;
+using Basil.Domain.Common;
 
 namespace Basil.Domain.Tests;
 
-/// <summary>
-///     Verifies `ClientDetails.From` parses the adapters segment of a client hash string (splitting on dots, wine
-///     sentinel).
-/// </summary>
+/// <summary>Verifies the Domain rules for network-adapter fingerprints reported by osu! clients.</summary>
 public class ClientDetailsAdaptersTests
 {
-	private static string MakeHash(string adaptersString)
+	private static NetworkAdapters MakeAdapters(string adapters)
 	{
-		return $"pathmd5:{adaptersString}:adaptersmd5:uninstallmd5:disksig:";
+		return new NetworkAdapters
+		{
+			Adapters = adapters,
+			Hash = new Md5("00000000000000000000000000000000")
+		};
 	}
 
 	[Fact]
-	public void From_WineSentinel_ReturnsWineTrue()
+	public void NetworkAdapters_WineSentinel_IsRecognized()
 	{
-		var client = ClientDetails.From(MakeHash("runningunderwine"));
-
-		Assert.Equal(["runningunderwine"], client.Adapters);
-		Assert.True(client.IsRunningUnderWine);
+		Assert.True(MakeAdapters("runningunderwine").IsRunningUnderWine);
 	}
 
 	[Fact]
-	public void From_NormalAdapterList_SplitsOnDot()
+	public void NetworkAdapters_NormalAdapterString_IsRetained()
 	{
-		var client = ClientDetails.From(MakeHash("aa11bb22.cc33dd44."));
+		var adapters = MakeAdapters("aa11bb22.cc33dd44.");
 
-		Assert.Equal(["aa11bb22", "cc33dd44"], client.Adapters);
-		Assert.False(client.IsRunningUnderWine);
+		Assert.Equal("aa11bb22.cc33dd44.", adapters.Adapters);
+		Assert.False(adapters.IsRunningUnderWine);
 	}
 
 	[Fact]
-	public void From_MissingTrailingDelimiter_Throws()
+	public void NetworkAdapters_MissingTrailingDelimiter_Throws()
 	{
-		Assert.Throws<FormatException>(() => ClientDetails.From(MakeHash("aa11bb22")));
+		Assert.Throws<FormatException>(() => MakeAdapters("aa11bb22"));
 	}
 }

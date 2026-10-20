@@ -1,112 +1,96 @@
-using Basil.Domain.Beatmaps;
-using Basil.Domain.Scores;
+using Basil.Domain.Mechanics;
 
 namespace Basil.Domain.Tests;
 
-/// <summary>
-///     Verifies `Mods` conflict resolution (`FilterInvalidCombos`) and mod-string parsing (`FromModString`,
-///     `FromNowPlayingString`).
-/// </summary>
+/// <summary>Verifies gameplay-mod conflict resolution and text parsing.</summary>
 public class ModsTests
 {
 	[Theory]
-	[InlineData(Mods.DoubleTime | Mods.Nightcore, Mods.Nightcore)] // DTNC -> keep NC
-	[InlineData(Mods.DoubleTime | Mods.HalfTime, Mods.DoubleTime)] // (DT)HT -> drop HT
-	[InlineData(Mods.Nightcore | Mods.HalfTime, Mods.Nightcore)] // (NC)HT -> drop HT
-	[InlineData(Mods.Easy | Mods.HardRock, Mods.Easy)] // EZHR -> drop HR
-	[InlineData(Mods.NoFail | Mods.SuddenDeath, Mods.NoFail)] // (NF)SD -> drop SD
-	[InlineData(Mods.Relax | Mods.SuddenDeath, Mods.Relax)] // (RX)SD -> drop SD
-	[InlineData(Mods.NoFail | Mods.Perfect, Mods.NoFail)] // (NF)PF -> drop PF
-	[InlineData(Mods.Relax | Mods.NoFail, Mods.Relax)] // (RX)NF -> drop NF
-	[InlineData(Mods.Autopilot | Mods.NoFail, Mods.Autopilot)] // (AP)NF -> drop NF
-	[InlineData(Mods.Perfect | Mods.SuddenDeath, Mods.Perfect)] // PFSD -> drop SD
-	public void FilterInvalidCombos_ModeInspecificConflicts_ResolvesToExpected(Mods input, Mods expected)
+	[InlineData(GameMods.DoubleTime | GameMods.Nightcore, GameMods.Nightcore)]
+	[InlineData(GameMods.DoubleTime | GameMods.HalfTime, GameMods.DoubleTime)]
+	[InlineData(GameMods.Nightcore | GameMods.HalfTime, GameMods.Nightcore)]
+	[InlineData(GameMods.Easy | GameMods.HardRock, GameMods.Easy)]
+	[InlineData(GameMods.NoFail | GameMods.SuddenDeath, GameMods.NoFail)]
+	[InlineData(GameMods.Relax | GameMods.SuddenDeath, GameMods.Relax)]
+	[InlineData(GameMods.NoFail | GameMods.Perfect, GameMods.NoFail)]
+	[InlineData(GameMods.Relax | GameMods.NoFail, GameMods.Relax)]
+	[InlineData(GameMods.Autopilot | GameMods.NoFail, GameMods.Autopilot)]
+	[InlineData(GameMods.Perfect | GameMods.SuddenDeath, GameMods.Perfect)]
+	public void RemoveInvalidMods_ModeInspecificConflicts_ResolvesToExpected(GameMods input, GameMods expected)
 	{
-		Assert.Equal(expected, input.FilterInvalidCombos(0));
+		Assert.Equal(expected, input.RemoveInvalidMods(GameMode.Standard));
 	}
 
 	[Fact]
-	public void FilterInvalidCombos_NonOsuMode_RemovesOsuSpecificMods()
+	public void RemoveInvalidMods_NonOsuMode_RemovesOsuSpecificMods()
 	{
-		var result = (Mods.Autopilot | Mods.SpunOut | Mods.Target | Mods.Hidden).FilterInvalidCombos(GameMode.Taiko);
+		var result = (GameMods.Autopilot | GameMods.SpunOut | GameMods.Target | GameMods.Hidden)
+			.RemoveInvalidMods(GameMode.Taiko);
 
-		Assert.Equal(Mods.Hidden, result);
+		Assert.Equal(GameMods.Hidden, result);
 	}
 
 	[Fact]
-	public void FilterInvalidCombos_NonManiaMode_RemovesManiaSpecificMods()
+	public void RemoveInvalidMods_NonManiaMode_RemovesManiaSpecificMods()
 	{
-		var result =
-			(Mods.Mirror | Mods.Random | Mods.FadeIn | Mods.Key4 | Mods.Hidden).FilterInvalidCombos(GameMode.Standard);
+		var result = (GameMods.Mirror | GameMods.Random | GameMods.FadeIn | GameMods.Key4 | GameMods.Hidden)
+			.RemoveInvalidMods(GameMode.Standard);
 
-		Assert.Equal(Mods.Hidden, result);
+		Assert.Equal(GameMods.Hidden, result);
 	}
 
 	[Fact]
-	public void FilterInvalidCombos_Osu_AutopilotWithSpunOut_RemovesAutopilot()
+	public void RemoveInvalidMods_StandardAutopilotWithSpunOut_RemovesAutopilot()
 	{
-		var result = (Mods.Autopilot | Mods.SpunOut).FilterInvalidCombos(0);
-
-		Assert.Equal(Mods.SpunOut, result);
+		Assert.Equal(GameMods.SpunOut, (GameMods.Autopilot | GameMods.SpunOut).RemoveInvalidMods(GameMode.Standard));
 	}
 
 	[Fact]
-	public void FilterInvalidCombos_Osu_AutopilotWithRelax_RemovesAutopilot()
+	public void RemoveInvalidMods_StandardAutopilotWithRelax_RemovesAutopilot()
 	{
-		var result = (Mods.Autopilot | Mods.Relax).FilterInvalidCombos(0);
-
-		Assert.Equal(Mods.Relax, result);
+		Assert.Equal(GameMods.Relax, (GameMods.Autopilot | GameMods.Relax).RemoveInvalidMods(GameMode.Standard));
 	}
 
 	[Fact]
-	public void FilterInvalidCombos_Mania_RemovesRelax()
+	public void RemoveInvalidMods_Mania_RemovesRelax()
 	{
-		var result = Mods.Relax.FilterInvalidCombos(GameMode.Mania);
-
-		Assert.Equal(Mods.NoMod, result);
+		Assert.Equal(GameMods.NoMod, GameMods.Relax.RemoveInvalidMods(GameMode.Mania));
 	}
 
 	[Fact]
-	public void FilterInvalidCombos_Mania_HiddenWithFadeIn_RemovesFadeIn()
+	public void RemoveInvalidMods_ManiaHiddenWithFadeIn_RemovesFadeIn()
 	{
-		var result = (Mods.Hidden | Mods.FadeIn).FilterInvalidCombos(GameMode.Mania);
-
-		Assert.Equal(Mods.Hidden, result);
+		Assert.Equal(GameMods.Hidden,
+			(GameMods.Hidden | GameMods.FadeIn).RemoveInvalidMods(GameMode.Mania));
 	}
 
 	[Fact]
-	public void FilterInvalidCombos_MultipleKeymods_KeepsOnlyFirst()
+	public void RemoveInvalidMods_MultipleKeymods_KeepsOnlyFirst()
 	{
-		var result = (Mods.Key1 | Mods.Key2 | Mods.Key4).FilterInvalidCombos(GameMode.Mania);
-
-		Assert.Equal(Mods.Key1, result);
+		Assert.Equal(GameMods.Key1, (GameMods.Key1 | GameMods.Key2 | GameMods.Key4).RemoveInvalidMods(GameMode.Mania));
 	}
 
 	[Theory]
-	[InlineData("HDDTRX", Mods.Hidden | Mods.DoubleTime | Mods.Relax)]
-	[InlineData("", Mods.NoMod)]
-	[InlineData("hddt", Mods.Hidden | Mods.DoubleTime)] // case-insensitive
-	[InlineData("ZZHD", Mods.Hidden)] // unknown 2-char chunk ignored
-	public void FromModString_ParsesTwoCharacterChunks(string input, Mods expected)
+	[InlineData("HDDTRX", GameMods.Hidden | GameMods.DoubleTime | GameMods.Relax)]
+	[InlineData("", GameMods.NoMod)]
+	[InlineData("hddt", GameMods.Hidden | GameMods.DoubleTime)]
+	[InlineData("ZZHD", GameMods.Hidden)]
+	public void FromModString_ParsesTwoCharacterChunks(string input, GameMods expected)
 	{
 		Assert.Equal(expected, ModsExtensions.FromModString(input));
 	}
 
 	[Fact]
-	public void FromNowPlayingString_ParsesTaggedTokens_AndFiltersInvalidCombos()
+	public void FromNowPlayingString_ParsesTaggedTokensAndFiltersInvalidCombos()
 	{
-		// "+Hidden" and "+DoubleTime" are valid together; input includes an invalid
-		// combo (NoFail conflicting with nothing here, just verifying parse + filter runs).
-		var result = ModsExtensions.FromNowPlayingString("+Hidden +DoubleTime", 0);
-
-		Assert.Equal(Mods.Hidden | Mods.DoubleTime, result);
+		Assert.Equal(GameMods.Hidden | GameMods.DoubleTime,
+			ModsExtensions.FromNowPlayingString("+Hidden +DoubleTime", GameMode.Standard));
 	}
 
 	[Fact]
 	public void FromNowPlayingString_UnknownToken_Ignored()
 	{
-		var result = ModsExtensions.FromNowPlayingString("+Hidden +NotAMod", 0);
-
-		Assert.Equal(Mods.Hidden, result);
+		Assert.Equal(GameMods.Hidden,
+			ModsExtensions.FromNowPlayingString("+Hidden +NotAMod", GameMode.Standard));
 	}
 }

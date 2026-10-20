@@ -1,3 +1,5 @@
+using Basil.Protocol.Irc;
+
 namespace Basil.Protocol.Irc.Tests;
 
 public class IrcMessageParserTests
@@ -5,7 +7,7 @@ public class IrcMessageParserTests
 	[Fact]
 	public void Parse_CommandOnly_NoPrefixNoParams()
 	{
-		var message = IrcMessageParser.Parse("PING");
+		var message = IrcMessage.Parse("PING", null);
 
 		Assert.Null(message.Prefix);
 		Assert.Equal("PING", message.Command);
@@ -15,7 +17,7 @@ public class IrcMessageParserTests
 	[Fact]
 	public void Parse_WithPrefixAndMiddleParams()
 	{
-		var message = IrcMessageParser.Parse(":alice!alice@basil JOIN #osu");
+		var message = IrcMessage.Parse(":alice!alice@basil JOIN #osu", null);
 
 		Assert.Equal("alice!alice@basil", message.Prefix);
 		Assert.Equal("JOIN", message.Command);
@@ -25,7 +27,7 @@ public class IrcMessageParserTests
 	[Fact]
 	public void Parse_WithTrailingParam_KeepsSpacesInside()
 	{
-		var message = IrcMessageParser.Parse(":alice!alice@basil PRIVMSG #osu :hello there world");
+		var message = IrcMessage.Parse(":alice!alice@basil PRIVMSG #osu :hello there world", null);
 
 		Assert.Equal("PRIVMSG", message.Command);
 		Assert.Equal(["#osu", "hello there world"], message.Params);
@@ -34,7 +36,7 @@ public class IrcMessageParserTests
 	[Fact]
 	public void Parse_TrailingWithNoMiddleParams()
 	{
-		var message = IrcMessageParser.Parse("PASS :s3cret");
+		var message = IrcMessage.Parse("PASS :s3cret", null);
 
 		Assert.Equal("PASS", message.Command);
 		Assert.Equal(["s3cret"], message.Params);
@@ -43,7 +45,7 @@ public class IrcMessageParserTests
 	[Fact]
 	public void Parse_TrailingParamStartingWithColon_KeepsColon()
 	{
-		var message = IrcMessageParser.Parse("PRIVMSG #osu ::) hi");
+		var message = IrcMessage.Parse("PRIVMSG #osu ::) hi", null);
 
 		Assert.Equal(["#osu", ":) hi"], message.Params);
 	}
@@ -51,7 +53,7 @@ public class IrcMessageParserTests
 	[Fact]
 	public void Parse_EmptyLine_Fails()
 	{
-		Assert.False(IrcMessageParser.TryParse("", out _));
+		Assert.False(IrcMessage.TryParse("", null, out _));
 	}
 
 	[Theory]
@@ -60,9 +62,17 @@ public class IrcMessageParserTests
 	[InlineData(":alice!alice@basil QUIT :Connection reset")]
 	public void RoundTrip_ParseThenFormat_ProducesEquivalentLine(string line)
 	{
-		var message = IrcMessageParser.Parse(line);
-		var formatted = IrcMessageWriter.Format(message);
+		var message = IrcMessage.Parse(line, null);
+		var formatted = message.ToString(null, null);
 
 		Assert.Equal(line, formatted);
+	}
+
+	[Fact]
+	public void ToString_WithoutArguments_ReturnsTheWireLine()
+	{
+		var message = IrcMessage.Parse(":alice!alice@basil PRIVMSG #osu :hello there", null);
+
+		Assert.Equal(":alice!alice@basil PRIVMSG #osu :hello there", message.ToString());
 	}
 }

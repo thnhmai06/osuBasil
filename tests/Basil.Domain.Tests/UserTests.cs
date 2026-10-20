@@ -8,74 +8,45 @@ public class UserTests
 	[InlineData("cmyui", "cmyui")]
 	[InlineData("Cool Guy", "cool_guy")]
 	[InlineData("ALL CAPS NAME", "all_caps_name")]
-	public void MakeSafeName_LowercasesAndReplacesSpacesWithUnderscores(string name, string expected)
+	public void NormalizedName_LowercasesAndReplacesSpacesWithUnderscores(string name, string expected)
 	{
-		Assert.Equal(expected, User.MakeSafeName(name));
+		Assert.Equal(expected, new UserData { Name = name }.NormalizedName);
 	}
 
 	[Theory]
-	[InlineData("abc")] // min length
-	[InlineData("123456789abcdef")] // max length (15)
+	[InlineData("abc")]
+	[InlineData("123456789abcdef")]
 	[InlineData("cool_guy")]
 	[InlineData("cool-guy")]
 	[InlineData("[tag]player")]
 	[InlineData("Cool Guy")]
-	public void ValidateUsername_ValidNames_ReturnsTrue(string name)
+	public void Name_ValidRegistrationName_IsAccepted(string name)
 	{
-		Assert.True(User.ValidateUsername(name, out var error));
-		Assert.Null(error);
-	}
-
-	[Fact]
-	public void ValidateUsername_TooShort_ReturnsFalse()
-	{
-		Assert.False(User.ValidateUsername("ab", out var error));
-		Assert.NotNull(error);
-	}
-
-	[Fact]
-	public void ValidateUsername_OnlyDigits_ReturnsFalse()
-	{
-		Assert.False(User.ValidateUsername("123456789", out var error));
-		Assert.NotNull(error);
-	}
-
-	[Fact]
-	public void ValidateUsername_TooLong_ReturnsFalse()
-	{
-		Assert.False(User.ValidateUsername("123456789abcdefg", out var error)); // 16 chars
-		Assert.NotNull(error);
-	}
-
-	[Fact]
-	public void ValidateUsername_LeadingSpace_ReturnsFalse()
-	{
-		Assert.False(User.ValidateUsername(" cool guy", out var error));
-		Assert.NotNull(error);
-	}
-
-	[Fact]
-	public void ValidateUsername_TrailingSpace_ReturnsFalse()
-	{
-		Assert.False(User.ValidateUsername("cool guy ", out var error));
-		Assert.NotNull(error);
-	}
-
-	[Fact]
-	public void ValidateUsername_ConsecutiveSpaces_ReturnsFalse()
-	{
-		Assert.False(User.ValidateUsername("cool  guy", out var error));
-		Assert.NotNull(error);
+		Assert.Equal(name, new UserData { Name = name }.Name);
 	}
 
 	[Theory]
-	[InlineData("Tuấn Anh")] // Vietnamese diacritics
-	[InlineData("プレイヤー")] // Japanese
-	[InlineData("player@home")] // disallowed symbol
+	[InlineData("ab")]
+	[InlineData("123456789")]
+	[InlineData("123456789abcdefg")]
+	[InlineData(" cool guy")]
+	[InlineData("cool guy ")]
+	[InlineData("cool  guy")]
+	[InlineData("Tuấn Anh")]
+	[InlineData("プレイヤー")]
+	[InlineData("player@home")]
 	[InlineData("player!")]
-	public void ValidateUsername_DisallowedCharacters_ReturnsFalse(string name)
+	public void Name_InvalidRegistrationName_Throws(string name)
 	{
-		Assert.False(User.ValidateUsername(name, out var error));
-		Assert.NotNull(error);
+		Assert.Throws<ArgumentException>(() => new UserData { Name = name });
+	}
+
+	[Fact]
+	public void DeletedAt_DeletedAccountCannotBeRestored()
+	{
+		var user = new UserData { Name = "player", DeletedAt = DateTimeOffset.UnixEpoch };
+
+		Assert.Throws<InvalidOperationException>(() => user.DeletedAt = null);
+		Assert.Equal(DateTimeOffset.UnixEpoch, user.DeletedAt);
 	}
 }

@@ -2,28 +2,28 @@ using Basil.Domain.Beatmaps;
 
 namespace Basil.Domain.Tests;
 
-/// <summary>Verifies `BeatmapStatus`'s integer enum values and its `ToOsuApi()` mapping.</summary>
+/// <summary>Verifies `BeatmapsetStatus`'s integer enum values and its `ToOsuApi()` mapping.</summary>
 public class BeatmapStatusTests
 {
 	[Fact]
 	public void EnumValues_MatchPython()
 	{
-		Assert.Equal(-1, (int)BeatmapStatus.NotSubmitted);
-		Assert.Equal(0, (int)BeatmapStatus.Pending);
-		Assert.Equal(1, (int)BeatmapStatus.UpdateAvailable);
-		Assert.Equal(2, (int)BeatmapStatus.Ranked);
-		Assert.Equal(3, (int)BeatmapStatus.Approved);
-		Assert.Equal(4, (int)BeatmapStatus.Qualified);
-		Assert.Equal(5, (int)BeatmapStatus.Loved);
+		Assert.Equal(-1, (int)BeatmapsetStatus.NotSubmitted);
+		Assert.Equal(0, (int)BeatmapsetStatus.Pending);
+		Assert.Equal(1, (int)BeatmapsetStatus.UpdateAvailable);
+		Assert.Equal(2, (int)BeatmapsetStatus.Ranked);
+		Assert.Equal(3, (int)BeatmapsetStatus.Approved);
+		Assert.Equal(4, (int)BeatmapsetStatus.Qualified);
+		Assert.Equal(5, (int)BeatmapsetStatus.Loved);
 	}
 
 	[Theory]
-	[InlineData(BeatmapStatus.Pending, 0)]
-	[InlineData(BeatmapStatus.Ranked, 1)]
-	[InlineData(BeatmapStatus.Approved, 2)]
-	[InlineData(BeatmapStatus.Qualified, 3)]
-	[InlineData(BeatmapStatus.Loved, 4)]
-	public void OsuApi_MatchesPythonMapping(BeatmapStatus status, int expected)
+	[InlineData(BeatmapsetStatus.Pending, 0)]
+	[InlineData(BeatmapsetStatus.Ranked, 1)]
+	[InlineData(BeatmapsetStatus.Approved, 2)]
+	[InlineData(BeatmapsetStatus.Qualified, 3)]
+	[InlineData(BeatmapsetStatus.Loved, 4)]
+	public void OsuApi_MatchesPythonMapping(BeatmapsetStatus status, int expected)
 	{
 		Assert.Equal(expected, status.ToOsuApi());
 	}
@@ -31,34 +31,34 @@ public class BeatmapStatusTests
 	[Fact]
 	public void OsuApi_UnmappedStatus_Throws()
 	{
-		Assert.Throws<ArgumentOutOfRangeException>(() => BeatmapStatus.NotSubmitted.ToOsuApi());
-		Assert.Throws<ArgumentOutOfRangeException>(() => BeatmapStatus.UpdateAvailable.ToOsuApi());
+		Assert.Throws<ArgumentOutOfRangeException>(() => BeatmapsetStatus.NotSubmitted.ToOsuApi());
+		Assert.Throws<ArgumentOutOfRangeException>(() => BeatmapsetStatus.UpdateAvailable.ToOsuApi());
 	}
 
 	[Theory]
-	[InlineData(-2, BeatmapStatus.Pending)]
-	[InlineData(-1, BeatmapStatus.Pending)]
-	[InlineData(0, BeatmapStatus.Pending)]
-	[InlineData(1, BeatmapStatus.Ranked)]
-	[InlineData(2, BeatmapStatus.Approved)]
-	[InlineData(3, BeatmapStatus.Qualified)]
-	[InlineData(4, BeatmapStatus.Loved)]
-	[InlineData(999, BeatmapStatus.UpdateAvailable)]
-	public void FromOsuApi_MatchesPythonMapping(int osuApiStatus, BeatmapStatus expected)
+	[InlineData(-2, BeatmapsetStatus.Pending)]
+	[InlineData(-1, BeatmapsetStatus.Pending)]
+	[InlineData(0, BeatmapsetStatus.Pending)]
+	[InlineData(1, BeatmapsetStatus.Ranked)]
+	[InlineData(2, BeatmapsetStatus.Approved)]
+	[InlineData(3, BeatmapsetStatus.Qualified)]
+	[InlineData(4, BeatmapsetStatus.Loved)]
+	[InlineData(999, BeatmapsetStatus.UpdateAvailable)]
+	public void FromOsuApi_MatchesPythonMapping(int osuApiStatus, BeatmapsetStatus expected)
 	{
-		Assert.Equal(expected, BeatmapStatusExtensions.FromOsuApi(osuApiStatus));
+		Assert.Equal(expected, BeatmapsetStatusExtensions.FromOsuApi(osuApiStatus));
 	}
 
 	[Theory]
-	[InlineData(0, BeatmapStatus.Ranked)]
-	[InlineData(2, BeatmapStatus.Pending)]
-	[InlineData(3, BeatmapStatus.Qualified)]
-	[InlineData(5, BeatmapStatus.Pending)]
-	[InlineData(7, BeatmapStatus.Ranked)]
-	[InlineData(8, BeatmapStatus.Loved)]
-	[InlineData(999, BeatmapStatus.UpdateAvailable)]
-	public void FromOsuDirect_MatchesPythonMapping(int osuDirectStatus, BeatmapStatus expected)
+	[InlineData(0, BeatmapsetStatus.Ranked)]
+	[InlineData(2, BeatmapsetStatus.Pending)]
+	[InlineData(3, BeatmapsetStatus.Qualified)]
+	[InlineData(5, BeatmapsetStatus.Pending)]
+	[InlineData(7, BeatmapsetStatus.Ranked)]
+	[InlineData(8, BeatmapsetStatus.Loved)]
+	[InlineData(999, BeatmapsetStatus.UpdateAvailable)]
+	public void FromOsuDirect_MatchesPythonMapping(int osuDirectStatus, BeatmapsetStatus expected)
 	{
-		Assert.Equal(expected, BeatmapStatusExtensions.FromOsuDirect(osuDirectStatus));
+		Assert.Equal(expected, BeatmapsetStatusExtensions.FromOsuDirect(osuDirectStatus));
 	}
 }

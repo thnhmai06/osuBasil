@@ -1,5 +1,7 @@
-using Basil.Protocol.Multiplayer;
-using Basil.Protocol.Packets;
+using Basil.Protocol.Bancho.Models.Chat;
+using Basil.Protocol.Bancho.Models.Multiplayer;
+using Basil.Protocol.Bancho.Models.Replay;
+using Basil.Protocol.Bancho.Wire.Packets;
 
 namespace Basil.Protocol.Bancho.Tests;
 
@@ -12,137 +14,7 @@ public class PacketReaderTests
 {
 	private static PacketReader Reader(string hex)
 	{
-		return new PacketReader(Convert.FromHexString(hex));
-	}
-
-	[Theory]
-	[InlineData("00", 0)]
-	[InlineData("7f", 127)]
-	[InlineData("ff", -1)]
-	[InlineData("80", -128)]
-	public void ReadI8(string hex, int expected)
-	{
-		Assert.Equal(expected, Reader(hex).ReadI8());
-	}
-
-	[Theory]
-	[InlineData("00", 0)]
-	[InlineData("ff", 255)]
-	public void ReadU8(string hex, int expected)
-	{
-		Assert.Equal(expected, Reader(hex).ReadU8());
-	}
-
-	[Theory]
-	[InlineData("0000", 0)]
-	[InlineData("ff7f", 32767)]
-	[InlineData("ffff", -1)]
-	public void ReadI16(string hex, int expected)
-	{
-		Assert.Equal(expected, Reader(hex).ReadI16());
-	}
-
-	[Theory]
-	[InlineData("0000", 0)]
-	[InlineData("ffff", 65535)]
-	public void ReadU16(string hex, int expected)
-	{
-		Assert.Equal(expected, Reader(hex).ReadU16());
-	}
-
-	[Theory]
-	[InlineData("00000000", 0)]
-	[InlineData("ffffff7f", 2147483647)]
-	[InlineData("ffffffff", -1)]
-	[InlineData("00000080", -2147483648)]
-	public void ReadI32(string hex, int expected)
-	{
-		Assert.Equal(expected, Reader(hex).ReadI32());
-	}
-
-	[Theory]
-	[InlineData("00000000", 0u)]
-	[InlineData("ffffffff", 4294967295u)]
-	public void ReadU32(string hex, uint expected)
-	{
-		Assert.Equal(expected, Reader(hex).ReadU32());
-	}
-
-	[Theory]
-	[InlineData("0000000000000000", 0L)]
-	[InlineData("ffffffffffffff7f", 9223372036854775807L)]
-	[InlineData("ffffffffffffffff", -1L)]
-	public void ReadI64(string hex, long expected)
-	{
-		Assert.Equal(expected, Reader(hex).ReadI64());
-	}
-
-	[Theory]
-	[InlineData("0000000000000000", 0ul)]
-	[InlineData("ffffffffffffffff", 18446744073709551615ul)]
-	public void ReadU64(string hex, ulong expected)
-	{
-		Assert.Equal(expected, Reader(hex).ReadU64());
-	}
-
-	[Fact]
-	public void ReadF32()
-	{
-		Assert.Equal(3.140000104904175f, Reader("c3f54840").ReadF32(), 6);
-	}
-
-	[Fact]
-	public void ReadF32_Zero()
-	{
-		Assert.Equal(0.0f, Reader("00000000").ReadF32());
-	}
-
-	[Fact]
-	public void ReadF64()
-	{
-		Assert.Equal(3.141592653589793, Reader("182d4454fb210940").ReadF64(), 12);
-	}
-
-	[Fact]
-	public void ReadI32ListI16L_Empty()
-	{
-		Assert.Empty(Reader("0000").ReadI32ListI16L());
-	}
-
-	[Fact]
-	public void ReadI32ListI16L_Values()
-	{
-		Assert.Equal([1, 4, 1001], Reader("03000100000004000000e9030000").ReadI32ListI16L());
-	}
-
-	[Fact]
-	public void ReadI32ListI32L_Empty()
-	{
-		Assert.Empty(Reader("00000000").ReadI32ListI32L());
-	}
-
-	[Fact]
-	public void ReadI32ListI32L_Values()
-	{
-		Assert.Equal([5, 6], Reader("020000000500000006000000").ReadI32ListI32L());
-	}
-
-	[Fact]
-	public void ReadString_Empty()
-	{
-		Assert.Equal("", Reader("00").ReadString());
-	}
-
-	[Fact]
-	public void ReadString_Ascii()
-	{
-		Assert.Equal("cmyui", Reader("0b05636d797569").ReadString());
-	}
-
-	[Fact]
-	public void ReadString_Unicode()
-	{
-		Assert.Equal("héllo wörld", Reader("0b0d68c3a96c6c6f2077c3b6726c64").ReadString());
+		return new PacketReader(new MemoryStream(Convert.FromHexString(hex)));
 	}
 
 	[Fact]
@@ -164,10 +36,26 @@ public class PacketReaderTests
 	{
 		var frame = Reader("629500001c400130000200200008000300688307007a00270000f50000").ReadScoreFrame();
 
-		Assert.Equal(new ScoreFrame(
-			38242, 28, 320, 48, 2, 32, 8,
-			3, 492_392, 122, 39, false,
-			245, 0, false), frame);
+		Assert.Equal(new ScoreFrame
+		{
+			Time = 38242,
+			Id = 28,
+			Num300 = 320,
+			Num100 = 48,
+			Num50 = 2,
+			NumGeki = 32,
+			NumKatu = 8,
+			NumMiss = 3,
+			TotalScore = 492_392,
+			MaxCombo = 122,
+			CurrentCombo = 39,
+			Perfect = false,
+			CurrentHp = 245,
+			TagByte = 0,
+			ScoreV2 = false,
+			ComboPortion = null,
+			BonusPortion = null
+		}, frame);
 	}
 
 	[Fact]
@@ -205,12 +93,31 @@ public class PacketReaderTests
 		Assert.Equal(7, bundle.ExtraByte);
 		Assert.Equal(42, bundle.Sequence);
 		Assert.Equal(ReplayAction.Standard, bundle.Action);
-		Assert.Equal(2, bundle.Frames.Count);
+		var frames = bundle.Frames.ToArray();
+		Assert.Equal(2, frames.Length);
 		Assert.Equal(new ReplayFrame(Keys.Left1 | Keys.Left2, TaikoByte.None, 100.5f, 200.25f, 1000),
-			bundle.Frames[0]);
-		Assert.Equal(new ReplayFrame(Keys.None, TaikoByte.None, 150.0f, 250.0f, 1016), bundle.Frames[1]);
-		Assert.Equal(new ScoreFrame(1016, 0, 10, 2, 1, 0, 0, 0, 123456, 50, 12, true, 100, 0, false),
-			bundle.ScoreFrame);
+			frames[0]);
+		Assert.Equal(new ReplayFrame(Keys.None, TaikoByte.None, 150.0f, 250.0f, 1016), frames[1]);
+		Assert.Equal(new ScoreFrame
+		{
+			Time = 1016,
+			Id = 0,
+			Num300 = 10,
+			Num100 = 2,
+			Num50 = 1,
+			NumGeki = 0,
+			NumKatu = 0,
+			NumMiss = 0,
+			TotalScore = 123456,
+			MaxCombo = 50,
+			CurrentCombo = 12,
+			Perfect = true,
+			CurrentHp = 100,
+			TagByte = 0,
+			ScoreV2 = false,
+			ComboPortion = null,
+			BonusPortion = null
+		}, bundle.ScoreFrame);
 	}
 
 	[Fact]

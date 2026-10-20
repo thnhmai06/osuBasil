@@ -1,4 +1,5 @@
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
 
 namespace Basil.Domain.Tests;
@@ -9,7 +10,7 @@ public class HitCountsTests
 	public void Osu_AllTypesCounted()
 	{
 		var hits = new HitCounts(90, 5, 3, 0, 0, 2);
-		var acc = hits.CalculateAccuracy(GameMode.Standard, Mods.NoMod);
+		var acc = hits.CalculateAccuracy(GameMode.Standard, GameMods.NoMod);
 
 		const double expected = 100.0 * (90 * 300.0 + 5 * 100.0 + 3 * 50.0) / (100 * 300.0);
 		Assert.Equal(expected, acc, 10);
@@ -19,14 +20,14 @@ public class HitCountsTests
 	public void Osu_NoObjectsHit_ReturnsZero()
 	{
 		var hits = new HitCounts(0, 0, 0, 0, 0, 0);
-		Assert.Equal(0.0, hits.CalculateAccuracy(GameMode.Standard, Mods.NoMod));
+		Assert.Equal(0.0, hits.CalculateAccuracy(GameMode.Standard, GameMods.NoMod));
 	}
 
 	[Fact]
 	public void Taiko_UsesHalfWeightFor100s()
 	{
 		var hits = new HitCounts(80, 10, 0, 0, 0, 10);
-		var acc = hits.CalculateAccuracy(GameMode.Taiko, Mods.NoMod);
+		var acc = hits.CalculateAccuracy(GameMode.Taiko, GameMods.NoMod);
 
 		const double expected = 100.0 * (10 * 0.5 + 80) / 100;
 		Assert.Equal(expected, acc, 10);
@@ -36,7 +37,7 @@ public class HitCountsTests
 	public void Catch_CountsFruitsAndDropletsOnly()
 	{
 		var hits = new HitCounts(90, 5, 3, 0, 1, 1);
-		var acc = hits.CalculateAccuracy(GameMode.Catch, Mods.NoMod);
+		var acc = hits.CalculateAccuracy(GameMode.Catch, GameMods.NoMod);
 
 		const double expected = 100.0 * (90 + 5 + 3) / 100;
 		Assert.Equal(expected, acc, 10);
@@ -46,7 +47,7 @@ public class HitCountsTests
 	public void Mania_WithoutScoreV2_TreatsGekiAsPerfect300()
 	{
 		var hits = new HitCounts(50, 20, 10, 15, 5, 0);
-		var acc = hits.CalculateAccuracy(GameMode.Mania, Mods.NoMod);
+		var acc = hits.CalculateAccuracy(GameMode.Mania, GameMods.NoMod);
 
 		const int total = 50 + 20 + 10 + 15 + 5;
 		const double expected = 100.0 * (10 * 50.0 + 20 * 100.0 + 5 * 200.0 + (50 + 15) * 300.0) / (total * 300.0);
@@ -57,7 +58,7 @@ public class HitCountsTests
 	public void Mania_WithScoreV2_WeighsGekiHigherThanPerfect300()
 	{
 		var hits = new HitCounts(50, 20, 10, 15, 5, 0);
-		var acc = hits.CalculateAccuracy(GameMode.Mania, Mods.ScoreV2);
+		var acc = hits.CalculateAccuracy(GameMode.Mania, GameMods.ScoreV2);
 
 		const int total = 50 + 20 + 10 + 15 + 5;
 		const double expected =
@@ -69,6 +70,6 @@ public class HitCountsTests
 	public void InvalidMode_Throws()
 	{
 		var hits = new HitCounts(0, 0, 0, 0, 0, 0);
-		Assert.Throws<ArgumentOutOfRangeException>(() => hits.CalculateAccuracy((GameMode)4, Mods.NoMod));
+		Assert.Throws<ArgumentOutOfRangeException>(() => hits.CalculateAccuracy((GameMode)4, GameMods.NoMod));
 	}
 }

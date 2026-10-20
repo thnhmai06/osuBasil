@@ -1,16 +1,9 @@
-using Basil.Domain.Multiplayer;
-using Basil.Domain.Social;
+using Basil.Domain.Mechanics;
+using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Domain.Tests;
 
-/// <summary>
-///     Spot-checks for the flat constant enums ported from app/constants/privileges.py,
-///     app/objects/player.py (UserActivity), and app/objects/match.py (RoomSlotStatus, MatchTeam,
-///     MatchWinCondition, MatchTeamType) — these carry no logic, just bit/value constants,
-///     so a representative sample (rather than exhaustive per-value tests) guards against
-///     transcription errors.
-/// </summary>
 public class FlatEnumsTests
 {
 	[Fact]
@@ -25,35 +18,23 @@ public class FlatEnumsTests
 	}
 
 	[Fact]
-	public void PresenceFilter_MatchesPythonValues()
+	public void PresenceVisibility_MatchesPythonValues()
 	{
-		Assert.Equal(0, (int)PresenceFilter.Nil);
-		Assert.Equal(1, (int)PresenceFilter.All);
-		Assert.Equal(2, (int)PresenceFilter.Friends);
+		Assert.Equal(0, (int)PresenceVisibility.Nil);
+		Assert.Equal(1, (int)PresenceVisibility.All);
+		Assert.Equal(2, (int)PresenceVisibility.Friends);
 	}
 
 	[Fact]
-	public void Privileges_MatchesPythonBitValues()
+	public void Privileges_MatchesClientBitValues()
 	{
-		Assert.Equal(1 << 0, (int)UserPrivileges.Unrestricted);
-		Assert.Equal(1 << 1, (int)UserPrivileges.Verified);
-		Assert.Equal(1 << 13, (int)UserPrivileges.Administrator);
-		Assert.Equal(1 << 14, (int)UserPrivileges.Developer);
-		Assert.Equal(UserPrivileges.Supporter | UserPrivileges.Premium, UserPrivileges.Donator);
-		Assert.Equal(UserPrivileges.Moderator | UserPrivileges.Administrator | UserPrivileges.Developer,
-			UserPrivileges.Staff);
+		Assert.Equal(1 << 0, (int)Privileges.Player);
+		Assert.Equal(1 << 3, (int)Privileges.Owner);
+		Assert.Equal(1 << 5, (int)Privileges.Tournament);
 	}
 
 	[Fact]
-	public void ClientPrivileges_MatchesPythonBitValues()
-	{
-		Assert.Equal(1 << 0, (int)ClientPrivileges.Player);
-		Assert.Equal(1 << 3, (int)ClientPrivileges.Owner);
-		Assert.Equal(1 << 5, (int)ClientPrivileges.Tournament);
-	}
-
-	[Fact]
-	public void Action_MatchesPythonValues()
+	public void UserActivity_MatchesPythonValues()
 	{
 		Assert.Equal(0, (int)UserActivity.Idle);
 		Assert.Equal(2, (int)UserActivity.Playing);
@@ -61,40 +42,27 @@ public class FlatEnumsTests
 	}
 
 	[Fact]
-	public void SlotStatus_MatchesPythonBitValues_AndHasPlayerMask()
+	public void GameTeams_MatchPythonValues()
 	{
-		Assert.Equal(1, (int)RoomSlotStatus.Open);
-		Assert.Equal(128, (int)RoomSlotStatus.Quit);
-
-		// matches the 0b01111100 magic number used directly in app/packets.py's write_match/read_match
-		var hasPlayerMask = RoomSlotStatus.NotReady | RoomSlotStatus.Ready | RoomSlotStatus.NoMap
-		                    | RoomSlotStatus.Playing | RoomSlotStatus.Complete;
-		Assert.Equal(0b0111_1100, (int)hasPlayerMask);
+		Assert.Equal(1, (int)GameTeam.Blue);
+		Assert.Equal(2, (int)GameTeam.Red);
 	}
 
 	[Fact]
-	public void MatchTeams_MatchesPythonValues()
+	public void GameWinConditions_MatchPythonValues()
 	{
-		Assert.Equal(0, (int)MatchTeam.Neutral);
-		Assert.Equal(1, (int)MatchTeam.Blue);
-		Assert.Equal(2, (int)MatchTeam.Red);
+		Assert.Equal(0, (int)GameWinCondition.Score);
+		Assert.Equal(1, (int)GameWinCondition.Accuracy);
+		Assert.Equal(2, (int)GameWinCondition.Combo);
+		Assert.Equal(3, (int)GameWinCondition.ScoreV2);
 	}
 
 	[Fact]
-	public void MatchWinConditions_MatchesPythonValues()
+	public void GameTeamTypes_MatchPythonValues()
 	{
-		Assert.Equal(0, (int)MatchWinCondition.Score);
-		Assert.Equal(1, (int)MatchWinCondition.Accuracy);
-		Assert.Equal(2, (int)MatchWinCondition.Combo);
-		Assert.Equal(3, (int)MatchWinCondition.ScoreV2);
-	}
-
-	[Fact]
-	public void MatchTeamTypes_MatchesPythonValues()
-	{
-		Assert.Equal(0, (int)MatchTeamType.HeadToHead);
-		Assert.Equal(1, (int)MatchTeamType.TagCoop);
-		Assert.Equal(2, (int)MatchTeamType.TeamVs);
-		Assert.Equal(3, (int)MatchTeamType.TagTeamVs);
+		Assert.Equal(0, (int)GameTeamType.HeadToHead);
+		Assert.Equal(1, (int)GameTeamType.TagCoop);
+		Assert.Equal(2, (int)GameTeamType.TeamVs);
+		Assert.Equal(3, (int)GameTeamType.TagTeamVs);
 	}
 }
