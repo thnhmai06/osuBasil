@@ -3,6 +3,8 @@
 Kế hoạch gốc: [`object-scope-plan-20261016.md`](object-scope-plan-20261016.md). Tài liệu này ghi lại điểm dừng, các
 quyết định đã chốt, các câu hỏi còn mở và thứ tự làm tiếp. Việc làm tiếp (test, Host) chờ chủ dự án review xong.
 
+Bàn giao ngắn gọn, đủ để người khác làm tiếp: [`handoff-20261021.md`](handoff-20261021.md).
+
 ## 1. Điểm dừng
 
 Đã xong và đã đẩy lên `develop` (8 project build: `src/Domain`, `src/Application/{Storage,Objects,Services}`,
