@@ -149,7 +149,8 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 	{
 		live.Value.Country = from.Value.Country;
 		live.Value.Permissions = from.Value.Permissions;
-		live.Value.DeletedAt = from.Value.DeletedAt;
+		// A deletion is permanent: an older copy that does not know it must not take it back.
+		if (from.Value.DeletedAt is not null) live.Value.DeletedAt = from.Value.DeletedAt;
 		if (live.Value.DeletedAt is not null)
 			_byName.Remove(live.Value.NormalizedName, live);
 	}

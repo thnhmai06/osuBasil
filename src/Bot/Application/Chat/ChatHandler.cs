@@ -8,23 +8,23 @@ using Microsoft.Extensions.Logging;
 namespace Basil.Bot.Application.Chat;
 
 /// <summary>Runs chat commands posted in channels on the connection that typed them.</summary>
-internal sealed class ChatHandler(Server server, ChatCommands commands, ILogger<ChatHandler> logger)
+internal sealed class ChatHandler(Server server, ChatCommands commands, CommandWorker worker, ILogger<ChatHandler> logger)
 	: IEventHandler<ChannelEvent>
 {
 	private const int MaxMessageLength = 2000;
 
 	/// <inheritdoc />
-	public async ValueTask HandleAsync(ChannelEvent @event, CancellationToken cancellationToken)
+	public ValueTask HandleAsync(ChannelEvent @event, CancellationToken cancellationToken)
 	{
 		if (@event is not ChannelMessagePosted posted
 		    || posted.By is not { } by
 		    || posted.Message.IsNotice
 		    || string.IsNullOrWhiteSpace(posted.Message.Content)
 		    || BasilBot.Is(posted.Message.Author))
-			return;
+			return ValueTask.CompletedTask;
 
 		var privateMessage = posted.Channel is PmChannelSession pm && BasilBot.Is(pm.Owner.User);
-		if (posted.Channel is PmChannelSession && !privateMessage) return;
+		if (posted.Channel is PmChannelSession && !privateMessage) return ValueTask.CompletedTask;
 
 		var context = new CommandContext(
 			by,
@@ -35,14 +35,18 @@ internal sealed class ChatHandler(Server server, ChatCommands commands, ILogger<
 			(text, ct) =>
 				SendSplitAsync(text, (piece, token) => server.WhisperAsync(by.Session, piece, ct: token), ct));
 
-		try
+		worker.Enqueue(async ct =>
 		{
-			await commands.ExecuteAsync(context, posted.Message.Content, cancellationToken);
-		}
-		catch (Exception exception)
-		{
-			logger.LogError(exception, "Error handling bot command from user {UserId}", by.User.Id);
-		}
+			try
+			{
+				await commands.ExecuteAsync(context, posted.Message.Content, ct);
+			}
+			catch (Exception exception) when (exception is not OperationCanceledException || !ct.IsCancellationRequested)
+			{
+				logger.LogError(exception, "Error handling bot command from user {UserId}", by.User.Id);
+			}
+		});
+		return ValueTask.CompletedTask;
 	}
 
 	private static async Task SendSplitAsync(

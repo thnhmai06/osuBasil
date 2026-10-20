@@ -1,7 +1,9 @@
 > **Status (2026-10-20).** Completed phases: Domain redesign, storage and migrations, the Room pilot, and the wider
 > object-scope migration. The Runtime/BasilBot phase is partially complete: command and announcement handlers are
-> implemented, but the bot's own connection is not. Remaining phases and work: Host migration (including `Basil.Cli`),
-> test migration, the bot connection, and silent channel filtering for blocks. Hosts and tests still use old namespaces.
+> implemented, and BasilBot is online with a connection of its own (`BotConnection`); a blocked user's channel messages are
+> filtered per recipient by `ChannelSession.RecipientsAsync`. Remaining phases and work: Host migration (including `Basil.Cli`),
+> test migration. Host checklist: transports must deliver channel messages only to `RecipientsAsync` and must skip the bot's
+> connection when delivering; they show the bot as online. Hosts and tests still use old namespaces.
 
 # Kế hoạch: chốt use case osuBasil develop, tổ chức lại Application quanh đối tượng sở hữu hành vi
 

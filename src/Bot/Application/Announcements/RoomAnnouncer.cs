@@ -43,7 +43,7 @@ internal sealed class RoomAnnouncer(Server server, IUserRegistry users, TimeProv
 			case RoomCountdownElapsed e:
 				var elapsed = e.StartResult switch
 				{
-					RoomResult.Ok when e.Countdown.StartsRound && e.Room.Rounds.InProgress =>
+					RoomResult.Ok when e.Countdown.StartsRound =>
 						AnnouncementReplies.RoundStartedByCountdown,
 					RoomResult.Ok when !e.Countdown.StartsRound => AnnouncementReplies.CountdownElapsed,
 					RoomResult.NoBeatmap => AnnouncementReplies.CountdownElapsedForRound,

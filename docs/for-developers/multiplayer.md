@@ -47,8 +47,8 @@ Every room has a creator. The creator is not in the referee list and ranks above
 
 `RoomPermissionsGroups.GetPermissions` combines permissions from the caller's `RoomRoles`. The general account permissions then constrain that set:
 
-* Effective permissions must include `RoomJoin`; otherwise the scoped room has no role-derived room permissions.
-* With effective `RoomJoin` and `RoomManageAny`, the scope grants all `RoomPermissions` in any room.
+* With effective `RoomManageAny`, the scope grants all `RoomPermissions` in any room, joined or not: managing every room acts with the creator's authority and a restriction cannot suspend it.
+* Otherwise the effective permissions must include `RoomJoin`; without it the scoped room has no role-derived room permissions.
 * Restrictions remove suspended permissions before the scope is created. A user who manages an area keeps that area's permissions while restricted; for multiplayer, that manager permission is `RoomManageAny`.
 
 This is why a creator or referee whose room permissions are suspended cannot manage a room, while an effective room manager keeps multiplayer authority. `RoomResult.Silenced` distinguishes a suspended permission from `RoomResult.NotAuthorized`.

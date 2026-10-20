@@ -370,6 +370,9 @@ internal static class MpReplies
 	/// <summary>Reply when the target is not online.</summary>
 	public const string TargetNotOnline = "That player is not online.";
 
+	/// <summary>Reply when the invited player's settings do not allow the invitation.</summary>
+	public const string CannotInvite = "That player cannot be invited by you.";
+
 	/// <summary>Reply when the match already holds the maximum number of referees.</summary>
 	public const string RefereeLimitReached = "This match already has the most referees it can have.";
 
@@ -446,6 +449,7 @@ internal static class MpReplies
 			RoomResult.IsManager => TargetIsManager,
 			RoomResult.NotBanned => TargetNotBanned,
 			RoomResult.TargetOffline => TargetNotOnline,
+			RoomResult.Blocked => CannotInvite,
 			RoomResult.AlreadyInRoom => UserAlreadyInRoom,
 			RoomResult.TooManyReferees => RefereeLimitReached,
 			RoomResult.AlreadyReferee => TargetAlreadyReferee,
@@ -474,14 +478,4 @@ internal static class MpReplies
 		};
 	}
 
-	/// <summary>Maps a transitional room outcome with a matching name to its user-visible reply.</summary>
-	/// <typeparam name="TOutcome">The outcome enum still used by an un-migrated command surface.</typeparam>
-	/// <param name="outcome">The outcome returned by that command surface.</param>
-	/// <returns>The matching reply, or the generic failure text when no room result has that name.</returns>
-	public static string Describe<TOutcome>(TOutcome outcome) where TOutcome : struct, Enum
-	{
-		return Enum.TryParse<RoomResult>(outcome.ToString(), out var result) && Enum.IsDefined(result)
-			? Describe(result)
-			: string.Format(GenericFailed, outcome);
-	}
 }

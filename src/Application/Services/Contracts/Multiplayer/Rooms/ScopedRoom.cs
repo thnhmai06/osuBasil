@@ -61,12 +61,13 @@ public sealed class ScopedRoom
 		var effectivePermissions = by.Session.EffectivePermissions(now);
 		ManagesAnyRoom = effectivePermissions.Allows(Domain.Users.Permissions.RoomManageAny);
 
-		// If effective permissions lack RoomJoin, drop role-derived rights
-		if (!effectivePermissions.Allows(Domain.Users.Permissions.RoomJoin))
-			rights = RoomPermissions.None;
-		// If effective permissions allow RoomManageAny, grant all rights
-		else if (ManagesAnyRoom)
+		// Managing every room acts with the creator's authority, joined or not; a restriction cannot suspend it,
+		// because whoever manages an area keeps it in the effective permissions.
+		if (ManagesAnyRoom)
 			rights = RoomPermissionsGroups.All;
+		// Otherwise a user who may not join rooms has no role-derived rights.
+		else if (!effectivePermissions.Allows(Domain.Users.Permissions.RoomJoin))
+			rights = RoomPermissions.None;
 
 		Permissions = rights;
 		Slots = new ScopedRoomSlots(this);

@@ -24,6 +24,8 @@ public static class DependencyInjection
 		services.AddSingleton<MpScopes>();
 		services.AddSingleton<MpCommands>();
 		services.AddSingleton<ChatCommands>();
+		services.AddSingleton<CommandWorker>();
+		services.AddHostedService(sp => sp.GetRequiredService<CommandWorker>());
 		services.AddSingleton<IEventHandler<ChannelEvent>, ChatHandler>();
 		services.AddSingleton<RoomAnnouncer>();
 		services.AddSingleton<IEventHandler<RoomEvent>>(sp => sp.GetRequiredService<RoomAnnouncer>());
