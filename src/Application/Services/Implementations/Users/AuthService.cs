@@ -105,27 +105,6 @@ internal sealed class AuthService(
 		return await CreateCoreAsync(data, passwordHash, cancellationToken);
 	}
 
-	/// <inheritdoc />
-	public async Task<PasswordChangeResult> ChangePasswordAsync(Connection by, UserRecord user, Md5 newPasswordHash,
-		Md5? currentPasswordHash, CancellationToken cancellationToken = default)
-	{
-		if (BasilBot.Is(user)) return PasswordChangeResult.NotAuthorized;
-
-		if (by.User.Equals(user))
-		{
-			if (currentPasswordHash is not { } current || !await VerifyAsync(user, current, cancellationToken))
-				return PasswordChangeResult.WrongPassword;
-		}
-		else if (!PermissionRules.MayActOn(by, user, Permissions.UserManage, time.GetUtcNow()))
-		{
-			return PasswordChangeResult.NotAuthorized;
-		}
-
-		await credentials.CreateOrUpdateAsync(new Credentials(user, newPasswordHash), cancellationToken);
-		connections.CloseAll(user, ConnectionCloseReason.CredentialsChanged);
-		return PasswordChangeResult.Changed;
-	}
-
 	private async Task<bool> VerifyAsync(UserRecord user, Md5 passwordHash, CancellationToken cancellationToken)
 	{
 		try

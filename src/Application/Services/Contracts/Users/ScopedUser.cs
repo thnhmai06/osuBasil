@@ -1,6 +1,7 @@
 using Basil.Application.Services.Contracts.Sessions;
 using Basil.Application.Storage.Contracts.Common;
 using Basil.Domain.Auth;
+using Basil.Domain.Common;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Contracts.Users;
@@ -130,5 +131,63 @@ public sealed class ScopedUser
 		}
 
 		return (UserResult.Ok, await User.Context.Logins.ListAsync(User.Record, page, ct));
+	}
+
+	/// <summary>Closes every connection of this account.</summary>
+	/// <returns>Ok, or why the caller may not.</returns>
+	/// <remarks>
+	///     An account may close its own connections; closing another's needs <see cref="Permissions.UserManage" /> and
+	///     outranking them. The connections, the caller's own included, close as
+	///     <see cref="ConnectionCloseReason.Revoked" />.
+	/// </remarks>
+	public UserResult RevokeConnections()
+	{
+		if (BasilBot.Is(User.Record)) return UserResult.Protected;
+		if (!IsSelf && Guard(Permissions.UserManage, selfAllowed: false) is { } denied) return denied;
+
+		User.Context.Sessions.CloseAll(User.Record, ConnectionCloseReason.Revoked);
+		return UserResult.Ok;
+	}
+
+	/// <summary>Replaces this account's password and closes every connection of it.</summary>
+	/// <param name="newPasswordHash">The MD5 digest of the new password.</param>
+	/// <param name="currentPasswordHash">The MD5 digest of the current password, needed when users change their own.</param>
+	/// <param name="ct">A token that cancels the operation.</param>
+	/// <returns>Ok, WrongPassword, or why the caller may not.</returns>
+	/// <remarks>
+	///     An account changes its own password by giving the current one; changing another's needs
+	///     <see cref="Permissions.UserManage" /> and outranking them. Every connection, the caller's own included, closes as
+	///     <see cref="ConnectionCloseReason.CredentialsChanged" />.
+	/// </remarks>
+	public async Task<UserResult> ChangePasswordAsync(Md5 newPasswordHash, Md5? currentPasswordHash,
+		CancellationToken ct = default)
+	{
+		if (BasilBot.Is(User.Record)) return UserResult.Protected;
+
+		if (IsSelf)
+		{
+			if (currentPasswordHash is not { } current || !await VerifyAsync(current, ct)) return UserResult.WrongPassword;
+		}
+		else if (Guard(Permissions.UserManage, selfAllowed: false) is { } denied)
+		{
+			return denied;
+		}
+
+		await User.Context.Credentials.CreateOrUpdateAsync(new Credentials(User.Record, newPasswordHash), ct);
+		User.Context.Sessions.CloseAll(User.Record, ConnectionCloseReason.CredentialsChanged);
+		return UserResult.Ok;
+	}
+
+	private async Task<bool> VerifyAsync(Md5 passwordHash, CancellationToken ct)
+	{
+		try
+		{
+			return await User.Context.Credentials.VerifyAsync(new Credentials(User.Record, passwordHash), ct);
+		}
+		catch (ArgumentException)
+		{
+			// The client sent something that is not even a well-formed MD5 digest.
+			return false;
+		}
 	}
 }

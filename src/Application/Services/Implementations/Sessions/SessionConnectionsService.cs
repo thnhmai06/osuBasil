@@ -53,17 +53,6 @@ internal sealed class SessionConnectionsService(
 		return idleConnections.Count;
 	}
 
-	/// <inheritdoc />
-	public bool Revoke(Connection by, UserRecord user)
-	{
-		if (BasilBot.Is(user) ||
-		    (!by.User.Equals(user) && !PermissionRules.MayActOn(by, user, Permissions.UserManage, time.GetUtcNow())))
-			return false;
-
-		CloseAll(user, ConnectionCloseReason.Revoked);
-		return true;
-	}
-
 	/// <summary>Opens an authenticated connection, bringing its user online if this is their first.</summary>
 	/// <param name="connection">The new connection.</param>
 	/// <param name="restrictions">The user's restrictions that have not ended.</param>

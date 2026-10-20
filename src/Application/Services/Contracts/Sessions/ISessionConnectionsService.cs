@@ -27,16 +27,4 @@ public interface ISessionConnectionsService
 	/// </remarks>
 	int CloseIdle();
 
-	/// <summary>Closes every connection of a user.</summary>
-	/// <param name="by">
-	///     The connection asking: the user themselves, or a user with <see cref="Permissions.UserManage" /> who
-	///     outranks them.
-	/// </param>
-	/// <param name="user">The user whose connections are closed.</param>
-	/// <returns>
-	///     <see langword="true" /> if the caller may close them, even when the user had none; otherwise,
-	///     <see langword="false" />.
-	/// </returns>
-	/// <remarks>The connections, the caller's own included, are closed as <see cref="ConnectionCloseReason.Revoked" />.</remarks>
-	bool Revoke(Connection by, UserRecord user);
 }

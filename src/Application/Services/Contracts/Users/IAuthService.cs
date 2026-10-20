@@ -68,33 +68,4 @@ public interface IAuthService
 	Task<(UserRecord? User, RegistrationFailure? Failure)> CreateAccountAsync(Connection by, UserData data,
 		Md5 passwordHash, CancellationToken cancellationToken = default);
 
-	/// <summary>Replaces a user's password and ends every session they have.</summary>
-	/// <param name="by">
-	///     The connection acting: the user themselves, who must give the current password, or a user with
-	///     <see cref="Permissions.UserManage" /> who outranks them.
-	/// </param>
-	/// <param name="user">The user whose password is replaced.</param>
-	/// <param name="newPasswordHash">The MD5 digest of the new password.</param>
-	/// <param name="currentPasswordHash">The MD5 digest of the current password, needed when users change their own.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>The outcome.</returns>
-	/// <remarks>
-	///     Every connection of the user, the caller's own included, is closed as
-	///     <see cref="Sessions.ConnectionCloseReason.CredentialsChanged" />.
-	/// </remarks>
-	Task<PasswordChangeResult> ChangePasswordAsync(Connection by, UserRecord user, Md5 newPasswordHash,
-		Md5? currentPasswordHash, CancellationToken cancellationToken = default);
-}
-
-/// <summary>The outcome of replacing a password.</summary>
-public enum PasswordChangeResult : byte
-{
-	/// <summary>The password was replaced.</summary>
-	Changed,
-
-	/// <summary>The caller may not change this user's password.</summary>
-	NotAuthorized,
-
-	/// <summary>The current password given by the user is wrong.</summary>
-	WrongPassword
 }

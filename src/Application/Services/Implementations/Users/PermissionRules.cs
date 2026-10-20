@@ -43,29 +43,4 @@ internal static class PermissionRules
 		return Check(by, required, now) is Access.Allowed;
 	}
 
-	/// <summary>Gets a value that indicates whether one user outranks another.</summary>
-	/// <param name="actor">The user acting.</param>
-	/// <param name="target">The user acted on.</param>
-	/// <returns>
-	///     <see langword="true" /> if the actor is granted every permission granted to the target and at least one more.
-	/// </returns>
-	internal static bool Outranks(UserRecord actor, UserRecord target)
-	{
-		var mine = actor.Value.Permissions;
-		var theirs = target.Value.Permissions;
-		return mine.Allows(theirs) && mine != theirs;
-	}
-
-	/// <summary>Gets a value that indicates whether a staff action needing a permission may be aimed at a user.</summary>
-	/// <param name="by">The connection acting.</param>
-	/// <param name="target">The user acted on.</param>
-	/// <param name="required">The permission the action needs.</param>
-	/// <param name="now">The moment to evaluate at.</param>
-	/// <returns>
-	///     <see langword="true" /> if the permission is in effect and the actor is the target or outranks them.
-	/// </returns>
-	internal static bool MayActOn(Connection by, UserRecord target, Permissions required, DateTimeOffset now)
-	{
-		return Allows(by, required, now) && (by.User.Equals(target) || Outranks(by.Session.User, target));
-	}
 }

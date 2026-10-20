@@ -22,5 +22,8 @@ public enum UserResult
 	Self,
 
 	/// <summary>The target account is deleted.</summary>
-	Deleted
+	Deleted,
+
+	/// <summary>The current password given is wrong.</summary>
+	WrongPassword
 }

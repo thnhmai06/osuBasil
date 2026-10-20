@@ -14,6 +14,7 @@ namespace Basil.Application.Services.Contracts.Users;
 /// <param name="ModerationLog">The recorded moderation history.</param>
 /// <param name="Relationships">The friends and blocks users set toward each other.</param>
 /// <param name="Logins">The recorded logins.</param>
+/// <param name="Credentials">The stored passwords.</param>
 /// <param name="Sessions">The operations on online sessions.</param>
 internal sealed record UserContext(
 	TimeProvider Clock,
@@ -24,6 +25,7 @@ internal sealed record UserContext(
 	IModerationLogRepository ModerationLog,
 	IRelationshipRepository Relationships,
 	ILoginRepository Logins,
+	ICredentialRepository Credentials,
 	IUserSessionsPort Sessions);
 
 /// <summary>Emits account events to the user event stream.</summary>
