@@ -1,6 +1,6 @@
-using Basil.Application.Services.Contracts.Events;
-using Basil.Application.Services.Contracts.Multiplayer;
-using Basil.Application.Services.Contracts.Sessions;
+using Basil.Application.Objects.Events;
+using Basil.Application.Objects.Multiplayer;
+using Basil.Application.Objects.Sessions;
 using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 using Microsoft.Extensions.Logging;

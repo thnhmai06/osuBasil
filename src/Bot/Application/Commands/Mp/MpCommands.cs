@@ -1,10 +1,10 @@
 using System.Collections.Frozen;
 using System.Text.RegularExpressions;
-using Basil.Application.Services.Contracts.Multiplayer;
-using Basil.Application.Services.Contracts.Multiplayer.Rooms;
-using Basil.Application.Services.Contracts.Sessions;
-using Basil.Application.Storage.Contracts.Beatmaps;
-using Basil.Application.Storage.Contracts.Users;
+using Basil.Application.Objects.Multiplayer;
+using Basil.Application.Objects.Multiplayer.Rooms;
+using Basil.Application.Objects.Sessions;
+using Basil.Application.Storage.Beatmaps;
+using Basil.Application.Storage.Users;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Permissions;
 using Basil.Domain.Users;

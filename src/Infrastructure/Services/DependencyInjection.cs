@@ -1,4 +1,4 @@
-using Basil.Application.Services.Contracts.Beatmaps;
+using Basil.Application.Objects.Beatmaps;
 using Basil.Infrastructure.Services.Beatmaps;
 using Microsoft.Extensions.DependencyInjection;
 

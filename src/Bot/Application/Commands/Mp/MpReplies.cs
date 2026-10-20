@@ -1,4 +1,4 @@
-using Basil.Application.Services.Contracts.Multiplayer;
+using Basil.Application.Objects.Multiplayer;
 
 namespace Basil.Bot.Application.Commands.Mp;
 

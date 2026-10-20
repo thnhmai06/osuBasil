@@ -5,7 +5,7 @@ using System.IO.Compression;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Channels;
-using Basil.Application.Storage.Contracts.Beatmaps;
+using Basil.Application.Storage.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Content;
 using Basil.Infrastructure.Storage.Common.Options;

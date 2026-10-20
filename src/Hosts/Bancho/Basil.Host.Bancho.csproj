@@ -14,8 +14,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\Application\Services\Contracts\Basil.Application.Services.Contracts.csproj"/>
-		<ProjectReference Include="..\..\Application\Services\Implementations\Basil.Application.Services.Implementations.csproj"/>
+		<ProjectReference Include="..\..\Application\Objects\Basil.Application.Objects.csproj"/>
+		<ProjectReference Include="..\..\Application\Services\Basil.Application.Services.csproj"/>
 		<ProjectReference Include="..\..\Infrastructure\Storage\Basil.Infrastructure.Storage.csproj"/>
 		<ProjectReference Include="..\..\Infrastructure\Services\Basil.Infrastructure.Services.csproj"/>
 		<ProjectReference Include="..\..\Infrastructure\Runtime\Basil.Infrastructure.Runtime.csproj"/>

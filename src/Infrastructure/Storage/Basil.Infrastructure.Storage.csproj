@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\Application\Storage\Contracts\Basil.Application.Storage.Contracts.csproj"/>
+		<ProjectReference Include="..\..\Application\Storage\Basil.Application.Storage.csproj"/>
 	</ItemGroup>
 
 	<ItemGroup>

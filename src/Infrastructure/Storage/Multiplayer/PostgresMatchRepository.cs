@@ -1,6 +1,6 @@
-using Basil.Application.Storage.Contracts.Common;
-using Basil.Application.Storage.Contracts.Multiplayer.Matches;
-using Basil.Application.Storage.Contracts.Users;
+using Basil.Application.Storage.Common;
+using Basil.Application.Storage.Multiplayer.Matches;
+using Basil.Application.Storage.Users;
 using Basil.Domain.Multiplayer;
 using Basil.Infrastructure.Storage.Common.Database;
 using Basil.Infrastructure.Storage.Common.Writing;

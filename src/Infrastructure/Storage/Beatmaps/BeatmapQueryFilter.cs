@@ -1,5 +1,5 @@
-using Basil.Application.Storage.Contracts.Beatmaps;
-using Basil.Application.Storage.Contracts.Common;
+using Basil.Application.Storage.Beatmaps;
+using Basil.Application.Storage.Common;
 using Basil.Domain.Beatmaps;
 using Basil.Infrastructure.Storage.Common.Queries;
 using Dapper;

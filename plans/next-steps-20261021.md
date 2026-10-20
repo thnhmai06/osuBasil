@@ -5,7 +5,7 @@ quyết định đã chốt, các câu hỏi còn mở và thứ tự làm tiế
 
 ## 1. Điểm dừng
 
-Đã xong và đã đẩy lên `develop` (build 6 project: `src/Domain`, `src/Application/Services/Implementations`,
+Đã xong và đã đẩy lên `develop` (build 6 project: `src/Domain`, `src/Application/Services`,
 `src/Infrastructure/{Storage,Services,Runtime}`, `src/Bot/Application`; chưa có test nào chạy):
 
 | Phần | Nội dung |

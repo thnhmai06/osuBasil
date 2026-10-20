@@ -1,4 +1,4 @@
-using Basil.Application.Storage.Contracts.Auth;
+using Basil.Application.Storage.Auth;
 using Basil.Domain.Auth;
 using Basil.Infrastructure.Storage.Common.Database;
 using Basil.Infrastructure.Storage.Common.Writing;

@@ -1,8 +1,8 @@
-using Basil.Application.Services.Contracts.Anticheat;
-using Basil.Application.Services.Contracts.Events;
-using Basil.Application.Services.Contracts.Multiplayer.Rooms;
-using Basil.Application.Services.Contracts.Sessions;
-using Basil.Application.Services.Contracts.Servers;
+using Basil.Application.Objects.Anticheat;
+using Basil.Application.Objects.Events;
+using Basil.Application.Objects.Multiplayer.Rooms;
+using Basil.Application.Objects.Sessions;
+using Basil.Application.Objects.Servers;
 using Basil.Domain.Bancho;
 using Basil.Domain.Users;
 

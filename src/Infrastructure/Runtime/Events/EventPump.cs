@@ -1,4 +1,4 @@
-using Basil.Application.Services.Contracts.Events;
+using Basil.Application.Objects.Events;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 

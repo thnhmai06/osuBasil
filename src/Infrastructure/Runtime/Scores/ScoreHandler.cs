@@ -1,6 +1,6 @@
-using Basil.Application.Services.Contracts.Events;
-using Basil.Application.Services.Contracts.Multiplayer;
-using Basil.Application.Services.Contracts.Scores;
+using Basil.Application.Objects.Events;
+using Basil.Application.Objects.Multiplayer;
+using Basil.Application.Objects.Scores;
 
 namespace Basil.Infrastructure.Runtime.Scores;
 

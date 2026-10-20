@@ -98,13 +98,13 @@ Room state is mutable and shared. A read followed by a mutation must hold the ex
 
 ## Related code
 
-* [`Room.cs`](../../src/Application/Services/Contracts/Multiplayer/Rooms/Room.cs): live room and `ScopeTo`
-* [`ScopedRoom.cs`](../../src/Application/Services/Contracts/Multiplayer/Rooms/ScopedRoom.cs): caller, role and room-permission scope
-* [`ScopedRoomMembers.cs`](../../src/Application/Services/Contracts/Multiplayer/Rooms/ScopedRoomMembers.cs), [`ScopedRoomSlots.cs`](../../src/Application/Services/Contracts/Multiplayer/Rooms/ScopedRoomSlots.cs), [`ScopedRoomRounds.cs`](../../src/Application/Services/Contracts/Multiplayer/Rooms/ScopedRoomRounds.cs), [`ScopedRoomSettings.cs`](../../src/Application/Services/Contracts/Multiplayer/Rooms/ScopedRoomSettings.cs), [`ScopedRoomAuthority.cs`](../../src/Application/Services/Contracts/Multiplayer/Rooms/ScopedRoomAuthority.cs): caller-authorized room parts
-* [`IRoomService.cs`](../../src/Application/Services/Contracts/Multiplayer/IRoomService.cs): system-owned room operations
+* [`Room.cs`](../../src/Application/Objects/Multiplayer/Rooms/Room.cs): live room and `ScopeTo`
+* [`ScopedRoom.cs`](../../src/Application/Objects/Multiplayer/Rooms/ScopedRoom.cs): caller, role and room-permission scope
+* [`ScopedRoomMembers.cs`](../../src/Application/Objects/Multiplayer/Rooms/ScopedRoomMembers.cs), [`ScopedRoomSlots.cs`](../../src/Application/Objects/Multiplayer/Rooms/ScopedRoomSlots.cs), [`ScopedRoomRounds.cs`](../../src/Application/Objects/Multiplayer/Rooms/ScopedRoomRounds.cs), [`ScopedRoomSettings.cs`](../../src/Application/Objects/Multiplayer/Rooms/ScopedRoomSettings.cs), [`ScopedRoomAuthority.cs`](../../src/Application/Objects/Multiplayer/Rooms/ScopedRoomAuthority.cs): caller-authorized room parts
+* [`IRoomService.cs`](../../src/Application/Objects/Multiplayer/IRoomService.cs): system-owned room operations
 * [`RoomRoles.cs`](../../src/Domain/Multiplayer/RoomRoles.cs), [`RoomPermissions.cs`](../../src/Domain/Multiplayer/RoomPermissions.cs), [`RoomPermissionsGroups.cs`](../../src/Domain/Multiplayer/RoomPermissionsGroups.cs): room rights
-* [`RoomCountdown.cs`](../../src/Application/Services/Contracts/Multiplayer/Rooms/RoomCountdown.cs): countdown state and marks
-* [`Lobby.cs`](../../src/Application/Services/Contracts/Multiplayer/Lobby.cs), [`ScopedLobby.cs`](../../src/Application/Services/Contracts/Multiplayer/ScopedLobby.cs): lobby-owned lifetime and caller-scoped operations
+* [`RoomCountdown.cs`](../../src/Application/Objects/Multiplayer/Rooms/RoomCountdown.cs): countdown state and marks
+* [`Lobby.cs`](../../src/Application/Objects/Multiplayer/Lobby.cs), [`ScopedLobby.cs`](../../src/Application/Objects/Multiplayer/ScopedLobby.cs): lobby-owned lifetime and caller-scoped operations
 
 ## See also
 

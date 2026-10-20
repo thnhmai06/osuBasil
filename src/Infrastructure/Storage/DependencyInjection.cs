@@ -1,10 +1,10 @@
-using Basil.Application.Storage.Contracts.Auth;
-using Basil.Application.Storage.Contracts.Beatmaps;
-using Basil.Application.Storage.Contracts.Chat;
-using Basil.Application.Storage.Contracts.Content;
-using Basil.Application.Storage.Contracts.Multiplayer.Matches;
-using Basil.Application.Storage.Contracts.Scores;
-using Basil.Application.Storage.Contracts.Users;
+using Basil.Application.Storage.Auth;
+using Basil.Application.Storage.Beatmaps;
+using Basil.Application.Storage.Chat;
+using Basil.Application.Storage.Content;
+using Basil.Application.Storage.Multiplayer.Matches;
+using Basil.Application.Storage.Scores;
+using Basil.Application.Storage.Users;
 using Basil.Infrastructure.Storage.Auth;
 using Basil.Infrastructure.Storage.Beatmaps;
 using Basil.Infrastructure.Storage.Chat;

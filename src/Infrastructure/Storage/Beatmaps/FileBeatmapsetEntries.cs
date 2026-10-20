@@ -1,4 +1,4 @@
-using Basil.Application.Storage.Contracts.Beatmaps;
+using Basil.Application.Storage.Beatmaps;
 using Basil.Domain.Content;
 
 namespace Basil.Infrastructure.Storage.Beatmaps;

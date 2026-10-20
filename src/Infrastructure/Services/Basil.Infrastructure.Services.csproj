@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\Application\Services\Contracts\Basil.Application.Services.Contracts.csproj"/>
+		<ProjectReference Include="..\..\Application\Objects\Basil.Application.Objects.csproj"/>
 	</ItemGroup>
 
 	<ItemGroup>

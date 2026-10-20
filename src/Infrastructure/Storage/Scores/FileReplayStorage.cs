@@ -1,9 +1,9 @@
 using System.Buffers;
 using System.Globalization;
 using System.Text;
-using Basil.Application.Storage.Contracts.Beatmaps;
-using Basil.Application.Storage.Contracts.Scores;
-using Basil.Application.Storage.Contracts.Users;
+using Basil.Application.Storage.Beatmaps;
+using Basil.Application.Storage.Scores;
+using Basil.Application.Storage.Users;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
 using Basil.Infrastructure.Storage.Common;

@@ -1,7 +1,7 @@
-using Basil.Application.Services.Contracts.Chat;
-using Basil.Application.Services.Contracts.Events;
-using Basil.Application.Services.Contracts.Multiplayer;
-using Basil.Application.Services.Contracts.Sessions;
+using Basil.Application.Objects.Chat;
+using Basil.Application.Objects.Events;
+using Basil.Application.Objects.Multiplayer;
+using Basil.Application.Objects.Sessions;
 using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Runtime.Sessions;

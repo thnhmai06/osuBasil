@@ -1,5 +1,5 @@
-using Basil.Application.Services.Contracts.Beatmaps;
-using Basil.Application.Storage.Contracts.Beatmaps;
+using Basil.Application.Objects.Beatmaps;
+using Basil.Application.Storage.Beatmaps;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 

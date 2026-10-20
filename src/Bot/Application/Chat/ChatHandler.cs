@@ -1,6 +1,6 @@
-using Basil.Application.Services.Contracts.Chat;
-using Basil.Application.Services.Contracts.Events;
-using Basil.Application.Services.Contracts.Servers;
+using Basil.Application.Objects.Chat;
+using Basil.Application.Objects.Events;
+using Basil.Application.Objects.Servers;
 using Basil.Bot.Application.Commands;
 using Basil.Domain.Users;
 using Microsoft.Extensions.Logging;

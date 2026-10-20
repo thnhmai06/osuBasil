@@ -5,12 +5,10 @@
 	<Folder Name="/Sources/Bot/">
 		<Project Path="src/Bot/Application/Basil.Bot.Application.csproj"/>
 	</Folder>
-	<Folder Name="/Sources/Application/Services/">
-		<Project Path="src/Application/Services/Contracts/Basil.Application.Services.Contracts.csproj"/>
-		<Project Path="src/Application/Services/Implementations/Basil.Application.Services.Implementations.csproj"/>
-	</Folder>
-	<Folder Name="/Sources/Application/Storage/">
-		<Project Path="src/Application/Storage/Contracts/Basil.Application.Storage.Contracts.csproj"/>
+	<Folder Name="/Sources/Application/">
+		<Project Path="src/Application/Storage/Basil.Application.Storage.csproj"/>
+		<Project Path="src/Application/Objects/Basil.Application.Objects.csproj"/>
+		<Project Path="src/Application/Services/Basil.Application.Services.csproj"/>
 	</Folder>
 	<Folder Name="/Sources/Infrastructure/">
 		<Project Path="src/Infrastructure/Storage/Basil.Infrastructure.Storage.csproj"/>

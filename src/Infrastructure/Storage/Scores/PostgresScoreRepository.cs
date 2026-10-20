@@ -1,5 +1,5 @@
-using Basil.Application.Storage.Contracts.Common;
-using Basil.Application.Storage.Contracts.Scores;
+using Basil.Application.Storage.Common;
+using Basil.Application.Storage.Scores;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;

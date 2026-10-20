@@ -27,7 +27,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\src\Application\Services\Implementations\Basil.Application.Services.Implementations.csproj"/>
+		<ProjectReference Include="..\..\src\Application\Services\Basil.Application.Services.csproj"/>
 		<ProjectReference Include="..\..\src\Protocol\Bancho\Basil.Protocol.Bancho.csproj"/>
 		<ProjectReference Include="..\..\src\Protocol\Irc\Basil.Protocol.Irc.csproj"/>
 	</ItemGroup>

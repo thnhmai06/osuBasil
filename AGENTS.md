@@ -309,7 +309,7 @@ verify a change with the six projects that do build, one at a time:
 
 ```bash
 dotnet build src/Domain --nologo -v q
-dotnet build src/Application/Services/Implementations --nologo -v q
+dotnet build src/Application/Services --nologo -v q
 dotnet build src/Infrastructure/Storage --nologo -v q
 dotnet build src/Infrastructure/Services --nologo -v q
 dotnet build src/Infrastructure/Runtime --nologo -v q
@@ -332,29 +332,32 @@ See [`docs/for-technicians/docker.md`](docs/for-technicians/docker.md) for Docke
 ```text
 Basil.Domain                     business model and its own validity          -> (nothing)
 
-Basil.Application.Storage.Contracts       persistent ports, paging and query records -> Domain
-Basil.Application.Services.Contracts     runtime objects, registry contracts,       -> Domain, Storage.Contracts
-                                          scopes, contexts, events and service ports
-Basil.Application.Services.Implementations registries, factories and services       -> Services.Contracts,
-                                                                                     Storage.Contracts
+Basil.Application.Storage        persistent ports (repositories, storages),     -> Domain
+                                 paging and query records
+Basil.Application.Objects        the live objects and what they do: runtime     -> Domain, Application.Storage
+                                 objects, scopes, contexts, events, registry
+                                 contracts and the contracts of the services
+                                 that remain
+Basil.Application.Services       the services that remain, registries, the      -> Application.Objects,
+                                 factories that build objects (DI)                 Application.Storage
 
-Basil.Infrastructure.Storage     persistent ports: PostgreSQL, files,           -> Storage.Contracts
+Basil.Infrastructure.Storage     persistent ports: PostgreSQL, files,           -> Application.Storage
                                  migrations
-Basil.Infrastructure.Services    capability ports: osu! rulesets, FFMpegCore,   -> Services.Contracts
+Basil.Infrastructure.Services    capability ports: osu! rulesets, FFMpegCore,   -> Application.Objects
                                  beatmap mirror
-Basil.Infrastructure.Runtime     event pumps and handlers, background loops,    -> Services.Contracts
+Basil.Infrastructure.Runtime     event pumps and handlers, background loops,    -> Application.Objects
                                  startup work                                     (no Infrastructure project
-                                                                                   references any Implementations)
+                                                                                   references Application.Services)
 Basil.Protocol.Bancho            osu! client-server wire formats, score         -> external libraries only
                                  submission cipher (BouncyCastle)
 Basil.Protocol.Irc               IRC wire format                                -> (nothing)
-Basil.Host.Bancho / .Irc / .Api  transports                                     -> Services.Contracts, the two
-                                                                                   Implementations, Infrastructure,
-                                                                                   their Protocol
+Basil.Host.Bancho / .Irc / .Api  transports                                     -> Application.Objects,
+                                                                                   Application.Services,
+                                                                                   Infrastructure, their Protocol
 Basil.Host                       entry point, composition, logging,             -> everything
                                  diagnostics, LAN advertising
 
-Basil.Bot.Application            BasilBot: chat commands and their replies,     -> Services.Contracts
+Basil.Bot.Application            BasilBot: chat commands and their replies,     -> Application.Objects
                                  an entry point of the server (not a client)
 ```
 
@@ -367,28 +370,29 @@ format changes, only Protocol changes. `Basil.Protocol.Irc` does the same for IR
 Domain: only the transport hosts reference it, and it may use external libraries for the wire work.
 
 Projects live under `src/` in folders that mirror the solution folders under `/Sources/`, each named by
-its short name without `Basil.`: `src/Domain/`, `src/Infrastructure/`, `src/Application/Services/{Contracts,Implementations}/`,
-`src/Application/Storage/Contracts/`, `src/Hosts/{Host,Api,Bancho,Irc}/`,
+its short name without `Basil.`: `src/Domain/`, `src/Infrastructure/`, `src/Application/{Storage,Objects,Services}/`,
+`src/Hosts/{Host,Api,Bancho,Irc}/`,
 `src/Protocol/{Bancho,Irc}/`. The project file and the namespace keep the full name (`Basil.Domain.csproj`,
 `Basil.Domain.*`).
 
 Configuration is bound only in `Basil.Host`. Infrastructure and the transports receive it as `IOptions<T>` of
 an options type that the project using it owns; Application reads no configuration.
 
-Application has parallel **Storage** and **Services** parts. Storage.Contracts holds persistent repository and
-storage ports, query records and paging. Services.Contracts holds runtime objects, their registries and scoped
-behaviour, events and service contracts; Services.Implementations contains the registry and service
-implementations. `AddApplicationServices()` registers them. Services.Implementations uses storage through
-Storage.Contracts. `Basil.Infrastructure` references no Implementations project; it receives capabilities through
-their contracts. The hosts reference Services.Implementations to call `AddApplicationServices()`.
+Application has three projects named by role. **Application.Storage** holds the ports to persistence: repository and
+storage contracts, query records and paging. **Application.Objects** holds the live objects and what they do:
+runtime objects, their registries' contracts, scopes, contexts, events and the contracts of the services that
+remain. **Application.Services** holds the services that remain, the registries and the factories that build the
+objects (`AddApplicationServices()` registers them); it uses storage through Application.Storage.
+`Basil.Infrastructure` references only Application.Storage and Application.Objects, never Application.Services; it
+receives everything else through their contracts. The hosts reference Application.Services only to call
+`AddApplicationServices()`.
 
 > **Migration status (2026-10-20).** The object-scope redesign is implemented across Domain, Application,
 > Infrastructure.Runtime and Basil.Bot.Application: behaviour belongs to the owning runtime object and
 > permission-dependent operations use its short-lived `ScopeTo(connection)` view. The hosts and all test
 > projects still use old namespaces; solution-wide `dotnet build`, `dotnet test` and `Basil.ArchitectureTests`
-> do not run. The operator console (`Basil.Cli`), the bot's own connection, host migration, test migration and
-> silent channel filtering for blocks remain unfinished. Verify the migrated projects individually with
-> `dotnet build src/Domain`, `dotnet build src/Application/Services/Implementations`,
+> do not run. The operator console (`Basil.Cli`), host migration and test migration remain unfinished. Verify the migrated projects individually with
+> `dotnet build src/Domain`, `dotnet build src/Application/Services`,
 > `dotnet build src/Infrastructure/Storage`, `dotnet build src/Infrastructure/Services`,
 > `dotnet build src/Infrastructure/Runtime` and `dotnet build src/Bot/Application`. The decisions in
 > [`plans/object-scope-plan-20261016.md`](plans/object-scope-plan-20261016.md) remain authoritative where they
@@ -396,14 +400,14 @@ their contracts. The hosts reference Services.Implementations to call `AddApplic
 
 ### Application feature folders
 
-Application is sliced by feature, not by kind of type; namespace = project + folder. Storage.Contracts owns
-persistent repository and storage ports, query records and paging. Services.Contracts owns runtime objects,
+Application is sliced by feature, not by kind of type; namespace = project + folder. Application.Storage owns
+persistent repository and storage ports, query records and paging. Application.Objects owns runtime objects,
 their registries, scoped views and contexts, events, results and the contracts for services that remain.
-Services.Implementations contains registry and service implementations.
+Application.Services contains registry and service implementations.
 
 ```text
 Common/        PageRequest, Page<T>, Interval<T>                                   (Storage)
-Events/        Event, IEventPublisher<T>, IEventHandler<T>                         (Services.Contracts)
+Events/        Event, IEventPublisher<T>, IEventHandler<T>                         (Application.Objects)
 Users/         user and restriction repositories, UserQuery; User, ScopedUser,
                ScopedUserRestrictions, ScopedUserRelationships, UserResult
 Auth/          credential and login repositories; IAuthService, login and registration inputs
@@ -421,7 +425,7 @@ Content/       content repositories and storage ports
 Servers/       Server, ScopedServer, server contexts and server resources
 ```
 
-Event-handler contracts belong to Services.Contracts; dispatchers and concrete handlers live in
+Event-handler contracts belong to Application.Objects; dispatchers and concrete handlers live in
 Infrastructure.Runtime or the consumer that owns them, including `Basil.Bot.Application`. Host configuration
 (ports, TLS, data paths) belongs to the hosts. BasilBot commands and announcements are server features: a
 command is an entry point that uses the typist's scoped objects, and the bot only replies. Query **records**
@@ -435,7 +439,7 @@ not host configuration.
   source of anticheat events; BasilBot turns them into chat warnings.
 * `Sessions`, `Chat` and `Multiplayer` reference each other (`Room.Host`, `Room.Channel`,
   `ChannelSession.Members`); treat them as one cluster. Their runtime objects and registries live in Services;
-  persistent repositories remain in Storage.Contracts. Objects change their own state through behaviour, with
+  persistent repositories remain in Application.Storage. Objects change their own state through behaviour, with
   implementation access limited to the owning object and its collaborators. References run from the acted-on
   object to the actor, never back.
 
@@ -446,7 +450,7 @@ not host configuration.
   in range, its own text format, values derived purely from its own data. No runtime-only state, no events.
 * **Behaviour belongs to the object that owns it, and is reached through that object.** Every concept with state, invariants and
   rights is an **Application object** (`User`, `UserSession`, `Connection`, `Room`, `RoomSlot`, `Lobby`, the
-  channels, `Beatmapset`, and the root `Server`) in Services.Contracts. It owns its state,
+  channels, `Beatmapset`, and the root `Server`) in Application.Objects. It owns its state,
   keeps its invariants, and offers its behaviour; its state changes only inside its own behaviour. Its persistent
   value is a Domain record named `XRecord` with the plain value `XData` (`UserRecord`, `BeatmapsetRecord`,
   `MatchRecord`); the object wraps it. A persistent value that has no live object of its own, such as a
@@ -467,13 +471,13 @@ not host configuration.
   authority primitives (`Access`, effective permissions, hierarchy, "a block yields to a higher right") are a
   library each `ScopeTo` calls, not a layer to pass through. A domain record and its Application object never
   share a name.
-* **Storage holds persistence; runtime objects and registries live in Services.** Storage.Contracts holds
+* **Storage holds persistence; runtime objects and registries live in Services.** Application.Storage holds
   persistent ports, query records and paging. Runtime objects (`Room`, `RoomSlot`, `UserSession`, connections
   and `ChannelSession`s), registry contracts (`IUserRegistry`, `IGeneralChannelRegistry`) and their scoped
-  behaviour live in Services.Contracts; registry implementations live in Services.Implementations. Storage
+  behaviour live in Application.Objects; registry implementations live in Application.Services. Storage
   never decides a business rule, emits an event, calls a service or starts a timer. A state change and its
   consequences belong to the object that owns the state.
-* **Contracts exist for the services that remain.** `IXService` in Services.Contracts declares the public
+* **Contracts exist for the services that remain.** `IXService` in Application.Objects declares the public
   capabilities of a service and, where applicable, its event stream. This deliberate exception to "no
   interface with one implementation" keeps cross-object coordination and one-run operations independent of
   their implementation. Examples include `IAuthService`, `IBeatmapsetService`, `IScoreService`,
@@ -489,7 +493,7 @@ not host configuration.
 * **Objects get their collaborators through a context.** An object takes a `…Context` record of ports (clock,
   event sink, repositories, the ports of the objects it works with: `RoomContext`, `UserContext`, `LobbyContext`,
   `ChannelContext`, `SessionContext`, `BeatmapsetContext`, `ServerContext`) when it is created. The context, the
-  object's constructor and the event sinks are `internal`; `Services.Implementations` builds them in factory
+  object's constructor and the event sinks are `internal`; `Application.Services` builds them in factory
   lambdas in `DependencyInjection.cs`, because the container only sees public constructors. A service class that
   the container creates by itself needs a `public` constructor even when the class is `internal`. An object never
   reaches a service; a port is implemented by whoever owns the other object (`Lobby` implements `IRoomLobbyPort`).
@@ -512,9 +516,9 @@ not host configuration.
   from one library to another, the name would not change: `ScanAsync`, not `ScanFileAsync`;
   `IBeatmapAssets.OpenAsync`, not `ReadFromDiskAsync`.
 * **Registries belong with runtime objects.** A registry holds live runtime objects, so its contract is in
-  Services.Contracts (`IUserRegistry`, `IGeneralChannelRegistry`) and its implementation is in
-  Services.Implementations. Mutating registry members are `internal` on the contract. Persistent repositories,
-  storage ports, query records and paging belong to Storage.Contracts. Other capability ports describe what
+  Application.Objects (`IUserRegistry`, `IGeneralChannelRegistry`) and its implementation is in
+  Application.Services. Mutating registry members are `internal` on the contract. Persistent repositories,
+  storage ports, query records and paging belong to Application.Storage. Other capability ports describe what
   lies outside the process: files, network, external computation and the clock (`TimeProvider`).
 * **Outer layers use storage directly.** Infrastructure and the hosts read, list and search storage, and
   write persistent records whose write carries no rule or consequence (an admin renames a user, hides a
@@ -888,7 +892,7 @@ not host configuration.
 * Prefer primary constructors, property patterns (`room is { InProgress: false, Beatmap: not null }`) and
   one guard for conditions that return the same result; no redundant casts, `? true : false` or
   discarded-task lambdas (`_ => action()`, not `_ => _ = action()`).
-* Services.Implementations registers its services and registries in `DependencyInjection.AddApplicationServices()`.
+* Application.Services registers its services and registries in `DependencyInjection.AddApplicationServices()`.
 
 ### Important invariants
 
@@ -1060,7 +1064,7 @@ Before considering a code change complete:
    sessions emitting events, event handlers inside Application, and rules or timers on runtime models and
    registries all got through review once; do not let them back in. Nor should a service that only wraps
    a repository read, a registry used through its implementation instead of its contract, a contract name that
-   reveals its mechanism, or a reference from Infrastructure to Services.Implementations. Since the identity redesign, also
+   reveals its mechanism, or a reference from Infrastructure to Application.Services. Since the identity redesign, also
    reject: an action without a real `by`, authority decided by connection kind, a check on granted instead of
    effective permissions, a stored or configured `Privileges`, privileges used to grant anything, and a
    delegation of any kind. Since the 2026-10-16 redesign, also reject the five anti-patterns of "Behaviour belongs

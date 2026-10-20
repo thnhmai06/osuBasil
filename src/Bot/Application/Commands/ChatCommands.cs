@@ -1,6 +1,6 @@
 using Basil.Bot.Application.Commands.Mp;
-using Basil.Application.Storage.Contracts.Content;
-using Basil.Application.Storage.Contracts.Users;
+using Basil.Application.Storage.Content;
+using Basil.Application.Storage.Users;
 using Basil.Domain.Users;
 
 namespace Basil.Bot.Application.Commands;

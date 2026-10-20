@@ -1,4 +1,4 @@
-using Basil.Application.Services.Contracts.Sessions;
+using Basil.Application.Objects.Sessions;
 using Basil.Domain.Users;
 
 namespace Basil.Bot.Application.Commands;

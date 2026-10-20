@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
-using Basil.Application.Storage.Contracts.Multiplayer.Matches;
-using Basil.Application.Storage.Contracts.Scores;
+using Basil.Application.Storage.Multiplayer.Matches;
+using Basil.Application.Storage.Scores;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Infrastructure.Storage.Common.Database;

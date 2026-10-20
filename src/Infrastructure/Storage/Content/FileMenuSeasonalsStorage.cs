@@ -1,4 +1,4 @@
-using Basil.Application.Storage.Contracts.Content;
+using Basil.Application.Storage.Content;
 using Basil.Domain.Content;
 using Basil.Infrastructure.Storage.Common;
 using Basil.Infrastructure.Storage.Common.Options;

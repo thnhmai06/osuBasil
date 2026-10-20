@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Net;
-using Basil.Application.Storage.Contracts.Auth;
-using Basil.Application.Storage.Contracts.Common;
+using Basil.Application.Storage.Auth;
+using Basil.Application.Storage.Common;
 using Basil.Domain.Auth;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Storage.Common.Database;

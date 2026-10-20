@@ -105,9 +105,9 @@ The operator console is also **planned**. It is the explicit operator entry poin
 * [`PermissionsGroups.cs`](../../src/Domain/Users/PermissionsGroups.cs): permission masks, defaults and area managers
 * [`Privileges.cs`](../../src/Domain/Users/Privileges.cs): roles understood by osu! and their direct permissions
 * [`Restriction.cs`](../../src/Domain/Permissions/Restriction.cs): restriction target, permissions and time window
-* [`UserSession.cs`](../../src/Application/Services/Contracts/Sessions/UserSession.cs): effective permission checks
-* [`ScopedUser.cs`](../../src/Application/Services/Contracts/Users/ScopedUser.cs), [`ScopedUserRestrictions.cs`](../../src/Application/Services/Contracts/Users/ScopedUserRestrictions.cs): account actions and restrictions
-* [`UserResult.cs`](../../src/Application/Services/Contracts/Users/UserResult.cs): account-operation outcomes
+* [`UserSession.cs`](../../src/Application/Objects/Sessions/UserSession.cs): effective permission checks
+* [`ScopedUser.cs`](../../src/Application/Objects/Users/ScopedUser.cs), [`ScopedUserRestrictions.cs`](../../src/Application/Objects/Users/ScopedUserRestrictions.cs): account actions and restrictions
+* [`UserResult.cs`](../../src/Application/Objects/Users/UserResult.cs): account-operation outcomes
 * [`RestrictionHandler.cs`](../../src/Infrastructure/Runtime/Sessions/RestrictionHandler.cs): infrastructure reaction to restriction events
 * [`UserRecord.cs`](../../src/Domain/Users/UserRecord.cs): persistent account identity and normalized name
 

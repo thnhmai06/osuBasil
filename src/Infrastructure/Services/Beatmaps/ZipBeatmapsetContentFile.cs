@@ -1,5 +1,5 @@
 using System.IO.Compression;
-using Basil.Application.Storage.Contracts.Beatmaps;
+using Basil.Application.Storage.Beatmaps;
 
 namespace Basil.Infrastructure.Services.Beatmaps;
 

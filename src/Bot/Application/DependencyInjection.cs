@@ -2,10 +2,10 @@ using Basil.Bot.Application.Announcements;
 using Basil.Bot.Application.Chat;
 using Basil.Bot.Application.Commands;
 using Basil.Bot.Application.Commands.Mp;
-using Basil.Application.Services.Contracts.Anticheat;
-using Basil.Application.Services.Contracts.Chat;
-using Basil.Application.Services.Contracts.Events;
-using Basil.Application.Services.Contracts.Multiplayer.Events;
+using Basil.Application.Objects.Anticheat;
+using Basil.Application.Objects.Chat;
+using Basil.Application.Objects.Events;
+using Basil.Application.Objects.Multiplayer.Events;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 

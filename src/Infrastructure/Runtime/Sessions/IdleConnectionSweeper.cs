@@ -1,4 +1,4 @@
-using Basil.Application.Services.Contracts.Sessions;
+using Basil.Application.Objects.Sessions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
