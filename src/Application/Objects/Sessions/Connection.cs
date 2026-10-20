@@ -44,7 +44,7 @@ public sealed class BanchoConnection : Connection
 	{
 		UtcOffset = utcOffset;
 		Context = context;
-		SpectatorChannel = new SpectatorChannelSession(this, context.Chat);
+		SpectatorChannel = new SpectatorChannel(this, context.Chat);
 	}
 
 	/// <summary>The runtime dependencies used by this connection.</summary>
@@ -60,7 +60,7 @@ public sealed class BanchoConnection : Connection
 	public PlayerStatus Status { get; internal set; } = PlayerStatus.Idle;
 
 	/// <summary>Gets the chat channel shared with the users spectating this client.</summary>
-	public SpectatorChannelSession SpectatorChannel { get; }
+	public SpectatorChannel SpectatorChannel { get; }
 
 	/// <summary>Gets the connections spectating this client.</summary>
 	public IReadOnlySet<Connection> Spectators => _spectators;

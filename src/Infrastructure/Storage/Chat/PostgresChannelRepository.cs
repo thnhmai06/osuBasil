@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using Basil.Application.Storage.Chat;
 using Basil.Domain.Chat;
 using Basil.Domain.Permissions;
-using Basil.Domain.Users;
 using Basil.Infrastructure.Storage.Common;
 using Basil.Infrastructure.Storage.Common.Database;
 using Basil.Infrastructure.Storage.Common.Writing;
@@ -14,20 +13,22 @@ namespace Basil.Infrastructure.Storage.Chat;
 internal sealed class PostgresChannelRepository(DatabaseReader reader, DatabaseWriter writer)
 	: IChannelRepository, IResident
 {
-	private readonly ConcurrentDictionary<string, GeneralChannel> _channels = new(StringComparer.OrdinalIgnoreCase);
+	private readonly ConcurrentDictionary<string, GeneralChannelRecord> _channels =
+		new(StringComparer.OrdinalIgnoreCase);
+
 	private volatile bool _loaded;
 
 	/// <inheritdoc />
-	public Task<IEnumerable<GeneralChannel>> ListAsync(CancellationToken cancellationToken = default)
+	public Task<IEnumerable<GeneralChannelRecord>> ListAsync(CancellationToken cancellationToken = default)
 	{
 		if (!_loaded)
 			throw new InvalidOperationException("Server channels are read before the storage has started.");
-		return Task.FromResult<IEnumerable<GeneralChannel>>(
+		return Task.FromResult<IEnumerable<GeneralChannelRecord>>(
 			_channels.Values.OrderBy(channel => channel.Name, StringComparer.Ordinal));
 	}
 
 	/// <inheritdoc />
-	public Task CreateOrUpdateAsync(GeneralChannel channel, CancellationToken cancellationToken = default)
+	public Task CreateOrUpdateAsync(GeneralChannelRecord channel, CancellationToken cancellationToken = default)
 	{
 		_channels[channel.Name] = channel;
 		_ = writer.SaveAsync(Root.Server, (GetType(), channel.Name.ToLowerInvariant()), Upsert(channel));
@@ -35,7 +36,7 @@ internal sealed class PostgresChannelRepository(DatabaseReader reader, DatabaseW
 	}
 
 	/// <inheritdoc />
-	public Task DeleteAsync(GeneralChannel channel, CancellationToken cancellationToken = default)
+	public Task DeleteAsync(GeneralChannelRecord channel, CancellationToken cancellationToken = default)
 	{
 		_channels.TryRemove(channel.Name, out _);
 		_ = writer.SaveAsync(Root.Server, (GetType(), channel.Name.ToLowerInvariant()), new WriteCommand(
@@ -51,17 +52,17 @@ internal sealed class PostgresChannelRepository(DatabaseReader reader, DatabaseW
 			cancellationToken);
 		foreach (var row in rows)
 		{
-			var channel = row.ToChannel();
+			var channel = row.ToRecord();
 			_channels[channel.Name] = channel;
 		}
 
 		_loaded = true;
 	}
 
-	private static WriteCommand Upsert(GeneralChannel channel)
+	private static WriteCommand Upsert(GeneralChannelRecord channel)
 	{
-		var readPrivileges = (int)(byte)channel.ReadPrivileges;
-		var writePrivileges = (int)(byte)channel.WritePrivileges;
+		var readPrivileges = (int)(byte)channel.Value.ReadPrivileges;
+		var writePrivileges = (int)(byte)channel.Value.WritePrivileges;
 		return new WriteCommand(
 			"""
 			insert into channels (name, topic, read_privileges, write_privileges, auto_join, visible)
@@ -76,11 +77,11 @@ internal sealed class PostgresChannelRepository(DatabaseReader reader, DatabaseW
 			new
 			{
 				channel.Name,
-				channel.Topic,
+				channel.Value.Topic,
 				ReadPrivileges = readPrivileges,
 				WritePrivileges = writePrivileges,
-				channel.AutoJoin,
-				channel.Visible
+				channel.Value.AutoJoin,
+				channel.Value.Visible
 			});
 	}
 
@@ -95,16 +96,19 @@ internal sealed class PostgresChannelRepository(DatabaseReader reader, DatabaseW
 		public bool Visible { get; set; }
 
 		/// <summary>Builds a general channel from this row.</summary>
-		public GeneralChannel ToChannel()
+		public GeneralChannelRecord ToRecord()
 		{
-			return new GeneralChannel
+			return new GeneralChannelRecord
 			{
 				Name = Name,
-				Topic = Topic,
-				ReadPrivileges = (Privileges)(byte)ReadPrivileges,
-				WritePrivileges = (Privileges)(byte)WritePrivileges,
-				AutoJoin = AutoJoin,
-				Visible = Visible
+				Value = new GeneralChannelData
+				{
+					Topic = Topic,
+					ReadPrivileges = (Privileges)(byte)ReadPrivileges,
+					WritePrivileges = (Privileges)(byte)WritePrivileges,
+					AutoJoin = AutoJoin,
+					Visible = Visible
+				}
 			};
 		}
 	}

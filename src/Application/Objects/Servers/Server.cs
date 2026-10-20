@@ -27,14 +27,14 @@ public sealed class Server
 	}
 
 	/// <summary>Opens a general channel at the server's own request (startup); no rights are needed.</summary>
-	/// <param name="channel">The general channel to open.</param>
+	/// <param name="record">The channel record to open.</param>
 	/// <returns>Null when a channel with that name is already open.</returns>
-	public GeneralChannelSession? OpenChannel(GeneralChannel channel)
+	public GeneralChannel? OpenChannel(GeneralChannelRecord record)
 	{
-		var session = new GeneralChannelSession(channel, Context.Session.Chat);
-		if (!Context.Session.Chat.Registry.Add(session)) return null;
-		Context.Session.Chat.Events.Publish(new ChannelOpened(session));
-		return session;
+		var channel = new GeneralChannel(record, Context.Session.Chat);
+		if (!Context.Session.Chat.Registry.Add(channel)) return null;
+		Context.Session.Chat.Events.Publish(new ChannelOpened(channel));
+		return channel;
 	}
 
 	/// <summary>Sends a message to an open channel as BasilBot.</summary>
@@ -50,7 +50,7 @@ public sealed class Server
 	///     This system operation needs no rights because the server itself calls it. Chat commands must use the scope of
 	///     the connection that typed them, not this method, to act for a user.
 	/// </remarks>
-	public async Task<bool> SayAsync(ChannelSession channel, string text, bool notice = false,
+	public async Task<bool> SayAsync(Channel channel, string text, bool notice = false,
 		CancellationToken ct = default)
 	{
 		if (channel.IsClosed || string.IsNullOrWhiteSpace(text)) return false;
@@ -84,7 +84,7 @@ public sealed class Server
 	///     This system operation needs no rights because the server itself calls it. Chat commands must not use it to
 	///     act for a user.
 	/// </remarks>
-	public ChannelSession? FindChannel(string name)
+	public Channel? FindChannel(string name)
 	{
 		if (Context.Session.Chat.Registry.All.TryGetValue(name, out var general))
 			return general.IsClosed ? null : general;

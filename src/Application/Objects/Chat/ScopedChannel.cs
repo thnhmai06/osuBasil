@@ -8,7 +8,7 @@ namespace Basil.Application.Objects.Chat;
 public sealed class ScopedChannel
 {
 	/// <summary>The channel this scope is over.</summary>
-	public ChannelSession Channel { get; }
+	public Channel Channel { get; }
 
 	/// <summary>The connection this scope is for.</summary>
 	public Connection By { get; }
@@ -19,11 +19,11 @@ public sealed class ScopedChannel
 	/// <summary>Creates a channel scope for a connection.</summary>
 	/// <param name="channel">The channel to scope.</param>
 	/// <param name="by">The connection acting on the channel.</param>
-	internal ScopedChannel(ChannelSession channel, Connection by)
+	internal ScopedChannel(Channel channel, Connection by)
 	{
 		Channel = channel;
 		By = by;
-		General = channel is GeneralChannelSession general ? new ScopedGeneralChannel(general, by) : null;
+		General = channel is GeneralChannel general ? new ScopedGeneralChannel(general, by) : null;
 	}
 
 	/// <summary>Adds the scoped connection to the channel.</summary>
@@ -73,7 +73,7 @@ public sealed class ScopedChannel
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of the post.</returns>
 	/// <remarks>
-	///     Messages longer than <see cref="ChannelSession.MaxMessageLength" /> characters are cut. A private message is a
+	///     Messages longer than <see cref="Channel.MaxMessageLength" /> characters are cut. A private message is a
 	///     post into the recipient's channel; their away reply is carried by the same <see cref="ChannelMessagePosted" />.
 	///     Posting requires <see cref="Permissions.ChatPost" />, or <see cref="Permissions.ChatPostPrivate" /> for a
 	///     private message. Blocks and friends-only settings are bypassed with <see cref="Permissions.ChatMessageAnyone" />.
@@ -84,7 +84,7 @@ public sealed class ScopedChannel
 		if (Channel.IsClosed) return ChannelPostResult.Closed;
 
 		var now = Channel.Context.Clock.GetUtcNow();
-		var required = Channel is PmChannelSession ? Permissions.ChatPostPrivate : Permissions.ChatPost;
+		var required = Channel is PmChannel ? Permissions.ChatPostPrivate : Permissions.ChatPost;
 		switch (By.Session.Check(required, now))
 		{
 			case Access.NotGranted: return ChannelPostResult.NoWritePermission;
@@ -92,10 +92,10 @@ public sealed class ScopedChannel
 		}
 
 		if (string.IsNullOrWhiteSpace(text)) return ChannelPostResult.Empty;
-		if (Channel is not PmChannelSession && !Channel.Members.Contains(By)) return ChannelPostResult.NotMember;
+		if (Channel is not PmChannel && !Channel.Members.Contains(By)) return ChannelPostResult.NotMember;
 		if (!ChannelRules.CanWrite(Channel, By, now)) return ChannelPostResult.NoWritePermission;
 
-		if (Channel is PmChannelSession pm)
+		if (Channel is PmChannel pm)
 		{
 			if (By.Session.Check(Permissions.ChatMessageAnyone, now) is not Access.Allowed)
 			{

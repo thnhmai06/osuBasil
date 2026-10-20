@@ -8,7 +8,7 @@ namespace Basil.Application.Objects.Chat;
 public sealed class ScopedGeneralChannel
 {
 	/// <summary>The general channel this scope is over.</summary>
-	public GeneralChannelSession Channel { get; }
+	public GeneralChannel Channel { get; }
 
 	/// <summary>The connection this scope is for.</summary>
 	public Connection By { get; }
@@ -16,7 +16,7 @@ public sealed class ScopedGeneralChannel
 	/// <summary>Creates a general-channel scope for a connection.</summary>
 	/// <param name="channel">The general channel to scope.</param>
 	/// <param name="by">The connection acting on the channel.</param>
-	internal ScopedGeneralChannel(GeneralChannelSession channel, Connection by)
+	internal ScopedGeneralChannel(GeneralChannel channel, Connection by)
 	{
 		Channel = channel;
 		By = by;
@@ -40,7 +40,7 @@ public sealed class ScopedGeneralChannel
 		using (Channel.Enter())
 		{
 			if (Channel.IsClosed) return ChannelManageResult.Closed;
-			var target = Channel.Channel;
+			var target = Channel.Record.Value;
 
 			if (change.ReadPrivileges is { } readPrivileges) readPrivileges.ThrowIfUndefined();
 			if (change.WritePrivileges is { } writePrivileges) writePrivileges.ThrowIfUndefined();
@@ -58,7 +58,7 @@ public sealed class ScopedGeneralChannel
 			Channel.Context.Events.Publish(new ChannelConfigured(Channel, change, removed));
 		}
 
-		await Channel.Context.Channels.CreateOrUpdateAsync(Channel.Channel, ct);
+		await Channel.Context.Channels.CreateOrUpdateAsync(Channel.Record, ct);
 		return ChannelManageResult.Ok;
 	}
 
@@ -72,7 +72,7 @@ public sealed class ScopedGeneralChannel
 			return ChannelManageResult.NotAuthorized;
 
 		Channel.Close();
-		await Channel.Context.Channels.DeleteAsync(Channel.Channel, ct);
+		await Channel.Context.Channels.DeleteAsync(Channel.Record, ct);
 		return ChannelManageResult.Ok;
 	}
 }

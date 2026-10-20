@@ -7,26 +7,26 @@ namespace Basil.Application.Services.Chat;
 /// <remarks>Room, spectator and private-message channels belong to their owners and are not listed here.</remarks>
 internal sealed class GeneralChannelRegistry : IGeneralChannelRegistry
 {
-	private readonly ConcurrentDictionary<string, GeneralChannelSession> _channels =
+	private readonly ConcurrentDictionary<string, GeneralChannel> _channels =
 		new(StringComparer.OrdinalIgnoreCase);
 
 	/// <inheritdoc />
-	public IReadOnlyDictionary<string, GeneralChannelSession> All => _channels;
+	public IReadOnlyDictionary<string, GeneralChannel> All => _channels;
 
 	/// <inheritdoc />
-	bool IGeneralChannelRegistry.Add(GeneralChannelSession channel)
+	bool IGeneralChannelRegistry.Add(GeneralChannel channel)
 	{
-		return _channels.TryAdd(channel.Channel.Name, channel);
+		return _channels.TryAdd(channel.Name, channel);
 	}
 
 	/// <inheritdoc />
-	bool IGeneralChannelRegistry.Remove(GeneralChannelSession channel)
+	bool IGeneralChannelRegistry.Remove(GeneralChannel channel)
 	{
-		return _channels.TryRemove(new KeyValuePair<string, GeneralChannelSession>(channel.Channel.Name, channel));
+		return _channels.TryRemove(new KeyValuePair<string, GeneralChannel>(channel.Name, channel));
 	}
 
-	/// <inheritdoc />
-	public GeneralChannelSession? Find(string name)
+	/// <summary>Finds an open general channel by name.</summary>
+	public GeneralChannel? Find(string name)
 	{
 		return _channels.GetValueOrDefault(name);
 	}

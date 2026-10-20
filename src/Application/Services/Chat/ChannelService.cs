@@ -10,7 +10,7 @@ internal sealed class ChannelService(ChannelContext context) : IChannelService
 	public void JoinAutoChannels(Connection by)
 	{
 		foreach (var channel in context.Registry.All.Values)
-			if (channel.Channel.AutoJoin)
+			if (channel.Record.Value.AutoJoin)
 				channel.ScopeTo(by).Join();
 	}
 

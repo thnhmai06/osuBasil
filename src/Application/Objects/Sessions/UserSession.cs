@@ -18,7 +18,7 @@ public sealed class UserSession
 	{
 		User = user;
 		Context = context;
-		PmChannel = new PmChannelSession(this, context.Chat);
+		PmChannel = new PmChannel(this, context.Chat);
 	}
 
 	/// <summary>The runtime dependencies used by this session.</summary>
@@ -28,7 +28,7 @@ public sealed class UserSession
 	public UserRecord User { get; }
 
 	/// <summary>Gets the channel that receives the user's private messages.</summary>
-	public PmChannelSession PmChannel { get; }
+	public PmChannel PmChannel { get; }
 
 	/// <summary>Gets or sets the away message shown to other users, or <see langword="null" /> when not away.</summary>
 	public string? AwayMessage { get; internal set; }

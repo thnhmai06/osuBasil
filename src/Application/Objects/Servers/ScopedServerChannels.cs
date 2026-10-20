@@ -2,7 +2,6 @@
 using Basil.Application.Objects.Sessions;
 using Basil.Domain.Chat;
 using Basil.Domain.Permissions;
-using Basil.Domain.Users;
 
 namespace Basil.Application.Objects.Servers;
 
@@ -19,17 +18,17 @@ public sealed class ScopedServerChannels
 	}
 
 	/// <summary>Creates and opens a general channel.</summary>
-	/// <param name="channel">The channel to create.</param>
+	/// <param name="record">The channel to create.</param>
 	/// <param name="ct">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, or NameTaken when a channel with that name is already open.</returns>
 	/// <remarks>Requires <see cref="Permissions.ServerConfigure" />.</remarks>
-	public async Task<ChannelManageResult> CreateAsync(GeneralChannel channel, CancellationToken ct = default)
+	public async Task<ChannelManageResult> CreateAsync(GeneralChannelRecord record, CancellationToken ct = default)
 	{
 		var context = _scoped.Server.Context.Session;
 		if (_scoped.By.Session.Check(Permissions.ServerConfigure, context.Clock.GetUtcNow()) is not Access.Allowed)
 			return ChannelManageResult.NotAuthorized;
-		if (_scoped.Server.OpenChannel(channel) is null) return ChannelManageResult.NameTaken;
-		await context.Chat.Channels.CreateOrUpdateAsync(channel, ct);
+		if (_scoped.Server.OpenChannel(record) is null) return ChannelManageResult.NameTaken;
+		await context.Chat.Channels.CreateOrUpdateAsync(record, ct);
 		return ChannelManageResult.Ok;
 	}
 }

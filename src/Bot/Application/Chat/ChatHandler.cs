@@ -23,12 +23,12 @@ internal sealed class ChatHandler(Server server, ChatCommands commands, CommandW
 		    || BasilBot.Is(posted.Message.Author))
 			return ValueTask.CompletedTask;
 
-		var privateMessage = posted.Channel is PmChannelSession pm && BasilBot.Is(pm.Owner.User);
-		if (posted.Channel is PmChannelSession && !privateMessage) return ValueTask.CompletedTask;
+		var privateMessage = posted.Channel is PmChannel pm && BasilBot.Is(pm.Owner.User);
+		if (posted.Channel is PmChannel && !privateMessage) return ValueTask.CompletedTask;
 
 		var context = new CommandContext(
 			by,
-			privateMessage ? null : posted.Channel.Channel.Name,
+			privateMessage ? null : posted.Channel.Name,
 			(text, ct) => SendSplitAsync(text, (piece, token) => privateMessage
 				? server.WhisperAsync(by.Session, piece, ct: token)
 				: server.SayAsync(posted.Channel, piece, ct: token), ct),

@@ -31,7 +31,7 @@ public sealed class Room : IEquatable<Room>
 		Rounds = new RoomRounds();
 		IsTournament = isTournament;
 		Slots = new RoomSlots(this);
-		Channel = new RoomChannelSession(this, context.Chat);
+		Channel = new RoomChannel(this, context.Chat);
 		Context = context;
 	}
 
@@ -48,7 +48,7 @@ public sealed class Room : IEquatable<Room>
 	public bool IsTournament { get; }
 
 	/// <summary>Gets the room's chat channel.</summary>
-	public RoomChannelSession Channel { get; }
+	public RoomChannel Channel { get; }
 
 	/// <summary>The match's 16 slots, in order.</summary>
 	public RoomSlots Slots { get; }

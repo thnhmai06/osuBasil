@@ -7,8 +7,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Objects.Chat;
 
 /// <summary>A chat channel while it is open: its members and what happens in it.</summary>
-/// <remarks>Opens a runtime channel for a chat channel.</remarks>
-public abstract class ChannelSession
+public abstract class Channel
 {
 	/// <summary>The longest message kept; longer messages are cut.</summary>
 	public const int MaxMessageLength = 2000;
@@ -19,7 +18,7 @@ public abstract class ChannelSession
 
 	/// <summary>Initializes the channel and the services it needs to act.</summary>
 	/// <param name="context">The channel's runtime dependencies.</param>
-	internal ChannelSession(ChannelContext context)
+	internal Channel(ChannelContext context)
 	{
 		Context = context;
 	}
@@ -27,8 +26,11 @@ public abstract class ChannelSession
 	/// <summary>The runtime dependencies used by this channel.</summary>
 	internal ChannelContext Context { get; }
 
-	/// <summary>Gets the chat channel this session runs.</summary>
-	public abstract Channel Channel { get; }
+	/// <summary>Gets the channel name: a channel several users take part in is named <c>#name</c>; a private-message channel is named after its owner, without <c>#</c>.</summary>
+	public abstract string Name { get; }
+
+	/// <summary>Gets the topic shown to users who join the channel.</summary>
+	public abstract string Topic { get; }
 
 	/// <summary>Gets the connections currently in the channel.</summary>
 	public IReadOnlySet<Connection> Members => _members;
@@ -79,7 +81,7 @@ public abstract class ChannelSession
 		var members = Members.ToArray();
 		if (posted.By is not { } by ||
 		    by.Session.Check(Permissions.ChatMessageAnyone, Context.Clock.GetUtcNow()) is Access.Allowed ||
-		    this is PmChannelSession)
+		    this is PmChannel)
 			return members;
 
 		var blockers = new HashSet<UserRecord>();
@@ -107,7 +109,7 @@ public abstract class ChannelSession
 
 		Message? awayReply = null;
 		if (by is not null
-		    && this is PmChannelSession { Owner.AwayMessage: { } away } pmChannel
+		    && this is PmChannel { Owner.AwayMessage: { } away } pmChannel
 		    && !ReferenceEquals(by.Session, pmChannel.Owner)
 		    && !notice)
 			awayReply = new Message(pmChannel.Owner.User, away, now);
@@ -128,7 +130,7 @@ public abstract class ChannelSession
 
 		Context.Events.Publish(new ChannelClosed(this, members));
 
-		if (this is GeneralChannelSession general)
+		if (this is GeneralChannel general)
 			Context.Registry.Remove(general);
 	}
 }
