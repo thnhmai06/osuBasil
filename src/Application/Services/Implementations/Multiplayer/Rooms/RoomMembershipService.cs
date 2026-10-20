@@ -46,15 +46,21 @@ internal sealed class RoomMembershipService(
 		foreach (var connection in session.Connections)
 			await ReleaseAsync(connection, cancellationToken);
 
-		var by = await users.GetAsync(BasilBot.Id, cancellationToken) ?? session.User;
+		await RemoveRefereeAsync(session.User, cancellationToken);
+	}
+
+	/// <inheritdoc />
+	public async Task RemoveRefereeAsync(UserRecord user, CancellationToken cancellationToken = default)
+	{
+		var by = await users.GetAsync(BasilBot.Id, cancellationToken) ?? user;
 		foreach (var room in lobby.Rooms.Values.ToArray())
 		{
-			if (!room.Authority.Referees.Contains(session.User)) continue;
+			if (!room.Authority.Referees.Contains(user)) continue;
 
 			await using var scope = await room.EnterAsync(cancellationToken);
-			if (scope is null || !room.Authority.MutableReferees.Remove(session.User)) continue;
+			if (scope is null || !room.Authority.MutableReferees.Remove(user)) continue;
 
-			room.Context.Events.Emit(new RoomRefereeRemoved(room, by, session.User));
+			room.Context.Events.Emit(new RoomRefereeRemoved(room, by, user));
 		}
 	}
 }

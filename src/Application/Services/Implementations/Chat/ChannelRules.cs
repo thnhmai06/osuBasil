@@ -40,12 +40,12 @@ internal static class ChannelRules
 		};
 	}
 
-	/// <summary>Checks whether a connection takes part in a room: seated, observing, managing it, or managing every room.</summary>
+	/// <summary>Checks whether a connection takes part in a room: seated, observing, managing it while allowed to join rooms, or managing every room.</summary>
 	internal static bool InRoom(Room room, Connection connection, DateTimeOffset now)
 	{
 		return (connection is BanchoConnection player && room.Slots.Find(player) is not null)
 		       || (connection is TourneyConnection observer && room.Members.Observers.Contains(observer))
-		       || room.Authority.IsManagedBy(connection.User)
+		       || (room.Authority.IsManagedBy(connection.User) && PermissionRules.Allows(connection, Permissions.RoomJoin, now))
 		       || PermissionRules.Allows(connection, Permissions.RoomManageAny, now);
 	}
 }

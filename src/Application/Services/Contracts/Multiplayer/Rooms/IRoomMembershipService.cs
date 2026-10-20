@@ -1,4 +1,5 @@
 using Basil.Application.Services.Contracts.Sessions;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Contracts.Multiplayer.Rooms;
 
@@ -16,4 +17,10 @@ public interface IRoomMembershipService
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <remarks>Does nothing while the user may still join rooms. Called when a restriction takes effect.</remarks>
 	Task RemoveSuspendedAsync(UserSession session, CancellationToken cancellationToken = default);
+
+	/// <summary>Removes a user from the referee list of every open room.</summary>
+	/// <param name="user">The user who stops being a referee.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <remarks>Used for a user who is offline when a restriction suspends multiplayer, so no session reaches the rooms.</remarks>
+	Task RemoveRefereeAsync(UserRecord user, CancellationToken cancellationToken = default);
 }

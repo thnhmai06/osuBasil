@@ -20,7 +20,15 @@ internal sealed class RestrictionHandler(
 		if (@event is not UserRestricted restricted) return;
 
 		var session = registry.Sessions.GetValueOrDefault(restricted.User);
-		if (session is null) return;
+		if (session is null)
+		{
+			// Offline: no connection to remove, but a referee must not stay on the lists of open rooms.
+			if ((restricted.Restriction.Value.Permissions & Permissions.RoomJoin) != 0 &&
+			    !restricted.User.Value.Permissions.Allows(Permissions.RoomManageAny))
+				await RunAsync("remove it from referee lists", restricted.User.Id,
+					() => rooms.Members.RemoveRefereeAsync(restricted.User, cancellationToken), cancellationToken);
+			return;
+		}
 
 		await RunAsync("remove it from rooms", session.User.Id,
 				() => rooms.Members.RemoveSuspendedAsync(session, cancellationToken), cancellationToken)
