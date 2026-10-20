@@ -35,7 +35,10 @@ internal sealed class ScoreRecorder(
 	/// <param name="client">The osu! client information sent with the submission.</param>
 	/// <param name="round">The round the player played, or <see langword="null" />.</param>
 	/// <param name="team">The team the score was set for, or <see langword="null" />.</param>
-	/// <param name="replay">The replay bytes, or <see langword="null" /> when none is kept.</param>
+	/// <param name="replay">
+	///     The seekable stream of the replay, positioned at its start and left open, or <see langword="null" /> when
+	///     none is kept.
+	/// </param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The rejection, or the stored score and updated statistics.</returns>
 	public async Task<ScoreOutcome> ValidateAndRecordAsync(
@@ -46,7 +49,7 @@ internal sealed class ScoreRecorder(
 		SubmittedClient client,
 		Round? round,
 		GameTeam? team,
-		byte[]? replay,
+		Stream? replay,
 		CancellationToken cancellationToken = default)
 	{
 		if (Validate(submission, loginClient, checkedBeatmap, player.Value.Name, client) is { } rejection)
@@ -69,10 +72,7 @@ internal sealed class ScoreRecorder(
 			: null;
 
 		if (submission.Score.IsPassed && replay is { Length: >= MinReplayLength })
-		{
-			await using var content = new MemoryStream(replay, false);
-			await replays.SaveAsync(score, content, cancellationToken);
-		}
+			await replays.SaveAsync(score, replay, cancellationToken);
 
 		// ponytail: get-then-write per user; add an atomic increment to the contract if one user's submissions can overlap.
 		var current = await stats.GetAsync(player, submission.Score.Mode, cancellationToken);

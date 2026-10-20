@@ -51,7 +51,7 @@ public static class DependencyInjection
 			sp.GetRequiredService<TimeProvider>(),
 			sp.GetRequiredService<IEventPublisher<UserEvent>>(),
 			sp.GetRequiredService<ChannelContext>(),
-			() => sp.GetRequiredService<Lobby>(),
+			sp.GetRequiredService<Lobby>,
 			sp.GetRequiredService<ScoreRecorder>(),
 			sp.GetRequiredService<IEventPublisher<ScoreEvent>>(),
 			sp.GetRequiredService<IEventPublisher<AnticheatEvent>>()));

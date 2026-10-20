@@ -88,7 +88,10 @@ public sealed class BanchoConnection : Connection
 	///     not have it.
 	/// </param>
 	/// <param name="client">The osu! client information sent with the submission.</param>
-	/// <param name="replay">The replay bytes, or <see langword="null" /> for a failed play.</param>
+	/// <param name="replay">
+	///     The seekable stream of the replay, positioned at its start and left open, or <see langword="null" /> for a
+	///     failed play.
+	/// </param>
 	/// <param name="cancellationToken">A token that cancels the submission.</param>
 	/// <returns><see langword="null" /> when the score was stored; otherwise, why it was rejected.</returns>
 	/// <remarks>
@@ -104,7 +107,7 @@ public sealed class BanchoConnection : Connection
 		Submission submission,
 		BeatmapChecksums? beatmap,
 		SubmittedClient client,
-		byte[]? replay,
+		Stream? replay,
 		CancellationToken cancellationToken = default)
 	{
 		var room = Context.Lobby.RoomOf(this);
