@@ -2,7 +2,6 @@ using Basil.Application.Objects.Events;
 using Basil.Application.Objects.Multiplayer;
 using Basil.Application.Objects.Sessions;
 using Basil.Domain.Permissions;
-using Basil.Domain.Users;
 using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Runtime.Sessions;

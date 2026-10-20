@@ -49,7 +49,7 @@ internal sealed class BeatmapsetStorageWatcher(
 	/// <param name="cancellationToken">A token that cancels stopping.</param>
 	public override async Task StopAsync(CancellationToken cancellationToken)
 	{
-		_stopping.Cancel();
+		await _stopping.CancelAsync();
 		await base.StopAsync(cancellationToken).ConfigureAwait(false);
 	}
 
@@ -65,7 +65,7 @@ internal sealed class BeatmapsetStorageWatcher(
 	{
 		try
 		{
-			await foreach (var entry in _changes!.ConfigureAwait(false))
+			await foreach (var entry in _changes!.WithCancellation(stoppingToken).ConfigureAwait(false))
 				try
 				{
 					var result = await beatmapsets.ScanAsync(entry, stoppingToken).ConfigureAwait(false);

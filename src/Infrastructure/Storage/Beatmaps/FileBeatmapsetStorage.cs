@@ -303,18 +303,18 @@ internal sealed class FileBeatmapsetStorage(
 				await using (var input = new FileStream(archivePath, FileMode.Open, FileAccess.Read,
 					             FileShare.Read | FileShare.Delete, 81920, FileOptions.Asynchronous))
 				{
-					using var source = new ZipArchive(input, ZipArchiveMode.Read, true);
+					await using var source = new ZipArchive(input, ZipArchiveMode.Read, true);
 					await using var output = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write,
 						FileShare.None, 81920, FileOptions.Asynchronous);
-					using var destination = new ZipArchive(output, ZipArchiveMode.Create, true);
+					await using var destination = new ZipArchive(output, ZipArchiveMode.Create, true);
 					foreach (var entry in source.Entries.Where(entry => !entry.FullName.EndsWith('/')))
 					{
 						cancellationToken.ThrowIfCancellationRequested();
 						if (VideoExtensions.Contains(Path.GetExtension(entry.FullName))) continue;
 
 						var created = destination.CreateEntry(entry.FullName, CompressionLevel.Optimal);
-						await using var entryInput = entry.Open();
-						await using var entryOutput = created.Open();
+						await using var entryInput = await entry.OpenAsync(cancellationToken);
+						await using var entryOutput = await created.OpenAsync(cancellationToken);
 						await entryInput.CopyToAsync(entryOutput, cancellationToken).ConfigureAwait(false);
 					}
 				}
@@ -368,8 +368,7 @@ internal sealed class FileBeatmapsetStorage(
 			return Task.FromResult<Stream?>(null);
 		}
 
-		if (!File.Exists(path)) return Task.FromResult<Stream?>(null);
-		return Task.FromResult<Stream?>(OpenRead(path));
+		return Task.FromResult<Stream?>(File.Exists(path) ? OpenRead(path) : null);
 	}
 
 	/// <inheritdoc />
@@ -382,8 +381,7 @@ internal sealed class FileBeatmapsetStorage(
 
 		var name = withVideo ? ArchiveName : ArchiveWithoutVideoName;
 		var path = Path.Combine(folder, name);
-		if (!File.Exists(path)) return Task.FromResult<Stream?>(null);
-		return Task.FromResult<Stream?>(OpenRead(path));
+		return Task.FromResult<Stream?>(File.Exists(path) ? OpenRead(path) : null);
 	}
 
 	/// <inheritdoc />
@@ -393,22 +391,16 @@ internal sealed class FileBeatmapsetStorage(
 		var entries = new List<BeatmapsetSource>();
 		if (Directory.Exists(paths.Beatmapsets.Path))
 		{
-			foreach (var folder in Directory.EnumerateDirectories(paths.Beatmapsets.Path))
-			{
-				var name = Path.GetFileName(folder);
-				if (IsHidden(name)) continue;
-				var entry = EntryOf(name);
-				if (entry is not null) entries.Add(entry);
-			}
+			entries.AddRange(Directory.EnumerateDirectories(paths.Beatmapsets.Path)
+				.Where(folder => !IsHidden(Path.GetFileName(folder)))
+				.Select(folder => EntryOf(Path.GetFileName(folder)))
+				.OfType<BeatmapsetSource>());
 
-			foreach (var file in Directory.EnumerateFiles(paths.Beatmapsets.Path))
-			{
-				var name = Path.GetFileName(file);
-				if (IsHidden(name) ||
-				    !IsArchiveName(name)) continue;
-				var entry = EntryOf(name);
-				if (entry is not null) entries.Add(entry);
-			}
+			entries.AddRange(Directory.EnumerateFiles(paths.Beatmapsets.Path)
+				.Select(file => Path.GetFileName(file))
+				.Where(name => !IsHidden(name) && IsArchiveName(name))
+				.Select(EntryOf)
+				.OfType<BeatmapsetSource>());
 		}
 
 		return Task.FromResult<IEnumerable<BeatmapsetSource>>(entries);
@@ -570,7 +562,7 @@ internal sealed class FileBeatmapsetStorage(
 			FileOptions.Asynchronous);
 		await using (stream.ConfigureAwait(false))
 		{
-			using var zip = new ZipArchive(stream, ZipArchiveMode.Create, true);
+			await using var zip = new ZipArchive(stream, ZipArchiveMode.Create, true);
 			foreach (var file in files)
 			{
 				cancellationToken.ThrowIfCancellationRequested();
@@ -580,7 +572,7 @@ internal sealed class FileBeatmapsetStorage(
 					FileOptions.Asynchronous);
 				await using (input.ConfigureAwait(false))
 				{
-					var output = entry.Open();
+					var output = await entry.OpenAsync(cancellationToken);
 					await using (output.ConfigureAwait(false))
 					{
 						await input.CopyToAsync(output, cancellationToken).ConfigureAwait(false);
@@ -652,10 +644,7 @@ internal sealed class FileBeatmapsetStorage(
 		// Only an archive is a source; any other file placed here, such as a loose difficulty or a .zip, is not.
 		if (File.Exists(path)) return IsArchiveName(name) ? ArchiveAt(path, name) : null;
 
-		if (!IsArchiveName(name))
-			return new FileBeatmapsetFolder(path, name, LeadingId(name), false, null);
-
-		return null;
+		return IsArchiveName(name) ? null : new FileBeatmapsetFolder(path, name, LeadingId(name), false, null);
 	}
 
 	/// <summary>Builds the path of one file made from a set's archive.</summary>
@@ -738,10 +727,13 @@ internal sealed class FileBeatmapsetStorage(
 	private List<string> FoldersOf(int id)
 	{
 		if (!Directory.Exists(paths.Beatmapsets.Path)) return [];
-		return (from folder in Directory.EnumerateDirectories(paths.Beatmapsets.Path)
-			let name = Path.GetFileName(folder)
-			where !IsHidden(name) && LeadingId(name) == id
-			select folder).Order(StringComparer.Ordinal).ToList();
+		return
+		[
+			.. (from folder in Directory.EnumerateDirectories(paths.Beatmapsets.Path)
+				let name = Path.GetFileName(folder)
+				where !IsHidden(name) && LeadingId(name) == id
+				select folder).Order(StringComparer.Ordinal)
+		];
 	}
 
 	/// <summary>Finds the folder stored for a beatmapset, preferring the one named after the set.</summary>

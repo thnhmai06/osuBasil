@@ -27,10 +27,8 @@ internal sealed class FileMenuIconStorage(DataPaths paths) : IMenuIconStorage
 			return Task.FromResult<(ContentReference Reference, Stream Content)?>(null);
 
 		var stream = Files.Open(key);
-		if (stream is null)
-			return Task.FromResult<(ContentReference Reference, Stream Content)?>(null);
-
-		return Task.FromResult<(ContentReference Reference, Stream Content)?>((Files.ReferenceOf(key), stream));
+		return Task.FromResult<(ContentReference Reference, Stream Content)?>(
+			stream is null ? null : (Files.ReferenceOf(key), stream));
 	}
 
 	/// <inheritdoc />

@@ -12,7 +12,7 @@ internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage
 	/// <inheritdoc />
 	public Task<IEnumerable<string>> ListAsync(CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult<IEnumerable<string>>(
+		return Task.FromResult(
 			Files.Keys.Where(key => key.EndsWith(".txt", StringComparison.Ordinal))
 				.Order(StringComparer.OrdinalIgnoreCase)
 				.Select(key => key[..^4].Replace('/', ':')));
@@ -29,7 +29,7 @@ internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage
 	{
 		var fileName = FileNameOf(entry);
 		Files.Resolve(fileName); // an unsafe entry name is refused, not reported as missing
-		return Task.FromResult<StreamReader?>(Files.Open(fileName) is { } stream ? new StreamReader(stream) : null);
+		return Task.FromResult(Files.Open(fileName) is { } stream ? new StreamReader(stream) : null);
 	}
 
 	/// <inheritdoc />

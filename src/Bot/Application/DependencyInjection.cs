@@ -19,7 +19,7 @@ public static class DependencyInjection
 	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddBotApplication(this IServiceCollection services)
 	{
-		services.AddSingleton<Random>(Random.Shared);
+		services.AddSingleton(Random.Shared);
 		services.TryAddSingleton(TimeProvider.System);
 		services.AddSingleton<MpScopes>();
 		services.AddSingleton<MpCommands>();

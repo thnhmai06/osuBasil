@@ -44,15 +44,8 @@ internal sealed class AnticheatAnnouncer(Server server, IUserRegistry users) : I
 
 	private static string FormatFlags(BanchoFlags flags)
 	{
-		var flagNames = new List<string>();
-		foreach (var value in Enum.GetValues<BanchoFlags>())
-		{
-			if (value == BanchoFlags.Clean || value == BanchoFlagsGroups.CheatSigns)
-				continue;
-
-			if (flags.HasFlag(value)) flagNames.Add(value.ToString());
-		}
-
-		return string.Join(", ", flagNames);
+		return string.Join(", ", Enum.GetValues<BanchoFlags>()
+			.Where(value => value != BanchoFlags.Clean && value != BanchoFlagsGroups.CheatSigns && flags.HasFlag(value))
+			.Select(value => value.ToString()));
 	}
 }

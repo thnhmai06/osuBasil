@@ -1,7 +1,6 @@
 using Basil.Application.Objects.Sessions;
 using Basil.Domain.Content;
 using Basil.Domain.Permissions;
-using Basil.Domain.Users;
 
 namespace Basil.Application.Objects.Servers;
 

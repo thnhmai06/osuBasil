@@ -1,6 +1,5 @@
 using System.Net;
 using Basil.Application.Objects.Sessions;
-using Basil.Domain;
 using Basil.Domain.Bancho;
 using Basil.Domain.Common;
 using Basil.Domain.Permissions;

@@ -1,5 +1,4 @@
 using Basil.Application.Objects.Events;
-using Basil.Application.Objects.Sessions;
 using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 

@@ -413,7 +413,7 @@ Users/         user and restriction repositories, UserQuery; User, ScopedUser,
 Auth/          credential and login repositories; IAuthService, login and registration inputs
 Sessions/      UserSession, Connection tree, ScopedUserSession, UserRegistry,
                ScopedBanchoConnection; ISessionConnectionsService and events
-Chat/          ChannelSession tree, IChannelRepository; ScopedChannel, ScopedGeneralChannel,
+Chat/          Channel tree, IChannelRepository; ScopedChannel, ScopedGeneralChannel,
                GeneralChannelRegistry, IGeneralChannelRegistry, IChannelService, events and results
 Multiplayer/   Lobby, Room, their parts and scopes; match, round and score repositories;
                IMatchService, IRoomService, room and lobby events and results
@@ -438,7 +438,7 @@ not host configuration.
   wherever they arrive (score submission, `lastfm.php`), are reported by the host to `IAnticheatService`, the single
   source of anticheat events; BasilBot turns them into chat warnings.
 * `Sessions`, `Chat` and `Multiplayer` reference each other (`Room.Host`, `Room.Channel`,
-  `ChannelSession.Members`); treat them as one cluster. Their runtime objects and registries live in Services;
+  `Channel.Members`); treat them as one cluster. Their runtime objects and registries live in Services;
   persistent repositories remain in Application.Storage. Objects change their own state through behaviour, with
   implementation access limited to the owning object and its collaborators. References run from the acted-on
   object to the actor, never back.
@@ -473,7 +473,7 @@ not host configuration.
   share a name.
 * **Storage holds persistence; runtime objects and registries live in Services.** Application.Storage holds
   persistent ports, query records and paging. Runtime objects (`Room`, `RoomSlot`, `UserSession`, connections
-  and `ChannelSession`s), registry contracts (`IUserRegistry`, `IGeneralChannelRegistry`) and their scoped
+  and channels), registry contracts (`IUserRegistry`, `IGeneralChannelRegistry`) and their scoped
   behaviour live in Application.Objects; registry implementations live in Application.Services. Storage
   never decides a business rule, emits an event, calls a service or starts a timer. A state change and its
   consequences belong to the object that owns the state.
@@ -564,11 +564,11 @@ not host configuration.
   connection (`BanchoConnection` as slot occupant or host); otherwise the `User` (creator, referees,
   bans).
 * **The acted-on object owns the interaction.** An actor (a user, a session, any active object)
-  only *calls* an action. The relation is stored on the object acted on (`ChannelSession.Members`,
+  only *calls* an action. The relation is stored on the object acted on (`Channel.Members`,
   `Room.Slots`), and its short-lived scope exposes the operation (`channel.ScopeTo(by).Join()`,
   `room.ScopeTo(by).Members.JoinAsync(password)`). The event belongs to that object's category
   (`ChannelMemberJoined` is a `ChannelEvent`). The
-  session does **not** keep a `Channels` set, does **not** have a `Join(ChannelSession)` method, and nothing
+  session does **not** keep a `Channels` set, does **not** have a `Join(Channel)` method, and nothing
   emits events on its behalf. Otherwise every new joinable kind (channel, room, spectator stream, …) forces a
   new `Join*` method and a new set on the user. "Which channels is X in?" is a query over channels, not state
   on X. Ask "who is acted on?" for every relation, member and event.
@@ -711,24 +711,25 @@ not host configuration.
     operation's lambda uses only its connection and transaction and never queues another operation.
   * Without a database, creating identities and checking unique values wait for it; everything already in memory
     keeps working.
-* **Naming: Domain model `X`, runtime model `XSession`, the object that holds the live sessions
-  `XRegistry`, the contract `IXService` and its implementation `XService`.** No suffixes such as
-  "Definition". `Channel` → `ChannelSession` → `GeneralChannelRegistry` (it holds only general channels);
-  `User` → `UserSession` → `UserRegistry`. The osu! terms win for matches: `Match` → `Room` → `Lobby`. The
-  room's channel is named after the room (Domain `RoomChannel`, runtime `RoomChannelSession`) because the
-  room is where things happen and `Match` is only the record. `Channel` shares its name with
-  `System.Threading.Channels.Channel<T>` on purpose; the two differ by generic arity.
+* **Naming: Domain record `XRecord` (with `XData`), the Application object `X`, the object that holds the live
+  ones `XRegistry`, the contract `IXService` and its implementation `XService`.** There is no `*Session`
+  suffix: the Application object is the thing itself, and Domain only stores records. No suffixes such as
+  "Definition". `GeneralChannelRecord` → `GeneralChannel` → `GeneralChannelRegistry` (it holds only general
+  channels); `UserRecord` → `User` → `UserRegistry`. The osu! terms win for matches: `MatchRecord` → `Room` →
+  `Lobby`. The room's channel is named after the room (`RoomChannel`) because the room is where things happen and
+  `MatchRecord` is only the record. `Channel` shares its simple name with the static class
+  `System.Threading.Channels.Channel`: a file that uses both qualifies the .NET one.
 * **Event names are `{Group}{Subject}{PastTenseVerb}`.** The group is the category the event belongs
   to (`Room`, `Channel`, `User`, `Lobby`); when the subject is the group itself it is written once
   (`ChannelOpened`, `UserRestricted`). A subject that belongs to another is written `{Parent}{Child}`
   (`RoomRoundPlayerLoaded`, `RoomSlotTeamChanged`, `UserConnectionOpened`). The abstract category
   records follow the same rule (`RoomRoundEvent`, `ChannelMembershipEvent`).
-* **Chat channels.** Domain: abstract `Channel` (`Name`, `Topic`, IRC convention) with
-  `GeneralChannel` (configured chat; alone carries `ReadPrivileges`, `WritePrivileges`, `AutoJoin`,
-  `Visible`), `RoomChannel`, `SpectatorChannel`, `PmChannel`; messages are the record `Message`.
-  Runtime: abstract `ChannelSession` with `GeneralChannelSession`, `RoomChannelSession`,
-  `SpectatorChannelSession`, `PmChannelSession`. **Each channel lives on the record of its owner**:
-  `GeneralChannelRegistry` holds the general channels, a `Room` its room channel, a `UserSession` its PM
+* **Chat channels.** Domain stores only what is persisted: `GeneralChannelRecord` (identity: the name with its
+  `#`) and `GeneralChannelData` (`Topic`, `ReadPrivileges`, `WritePrivileges`, `AutoJoin`, `Visible`); messages
+  are the record `Message`. Application: abstract `Channel` (`Name`, `Topic`, members, IRC convention) with
+  `GeneralChannel` (wraps the record), `RoomChannel`, `SpectatorChannel`, `PmChannel`; each names itself
+  (`#mp_5`, `#spec_7`, the owner's name for a PM channel). **Each channel lives on its owner**:
+  `GeneralChannelRegistry` holds the general channels, a `Room` its room channel, a `User` its PM
   channel, a `BanchoConnection` its spectator channel. The channel service decides, per kind of channel, who
   may read and write. A private message is a post into the recipient's PM channel. Access follows osu!: a
   user may join a channel (including `/join` over IRC) only if an osu! client doing the matching in-game
@@ -876,7 +877,7 @@ not host configuration.
 * **Collections are exposed, not copied** (most mistakes so far were in registries and storages):
   * Never materialise a collection only to hand it out (`[.. _channels.Values]`, `.ToList()`, `.ToArray()` on a
     return). Return the collection itself through an interface it implements (`IReadOnlyDictionary<string,
-    GeneralChannelSession> All => _channels`), or an `IEnumerable<T>` for a sequence computed on the fly. Copy only
+    GeneralChannel> All => _channels`), or an `IEnumerable<T>` for a sequence computed on the fly. Copy only
     where the code needs a snapshot (to change the collection while walking it, or to read it outside the lock that
     guards it, as `FileBeatmapsetStorage.ListAsync` does). `ConcurrentDictionary.Values` and `.Keys` are such a copy
     (taken under every lock), so a registry exposes the dictionary, not its `Values`.
@@ -896,6 +897,32 @@ not host configuration.
   one guard for conditions that return the same result; no redundant casts, `? true : false` or
   discarded-task lambdas (`_ => action()`, not `_ => _ = action()`).
 * Application.Services registers its services and registries in `DependencyInjection.AddApplicationServices()`.
+* **Read the IDE's suggestions to find better patterns** *(notes for the future code-principles skill)*. After a
+  change, run Rider's `lint_files` / `get_file_problems` with warnings and suggestions on, and treat what it says as
+  a review comment, not noise. The agent decides each case; the IDE only finds candidates. Act on:
+  * **Async and cancellation.** When a call has an async overload, use it, and pass the `CancellationToken` that is
+    in scope (`Method has 'async' overload with cancellation support`, `Use 'await using'`, `CancelAsync`,
+    `ZipArchiveEntry.OpenAsync`, `WithCancellation` on an async stream). A private/internal method whose callers hold a
+    token takes it. Do not change a public signature just to carry a token: report it.
+  * **LINQ.** A `foreach` that only filters, maps, finds, counts or aggregates becomes a query when it reads as a
+    sentence (`Loop can be converted into LINQ-expression`; `.OfType<T>()` to drop `null`s). Keep the loop when it
+    awaits, mutates in order, has side effects, or the query would be harder to read. Never write a `ForEach`
+    extension.
+  * **Switch.** Prefer `return x switch { … }`, then a switch expression assigned to a variable, then a classic
+    `switch` statement, then an `if`/`else` chain (`Convert into 'return' statement`, `Convert 'if' to switch`,
+    `Some values of the enum are not processed`). Use property, relational and `or`/`and`/`not` patterns when they
+    replace repeated tests of one value. Keep a plain `if` for one or two unrelated tests, and do not turn a
+    `switch` statement into a nullable-result switch expression followed by an `if` just to silence a hint.
+  * **Small ones.** Unused `using`, collection expressions, redundant type arguments (`Task.FromResult(x)`), a local
+    function placed before the `return`, `static` for a member that uses no instance state, `with` for record
+    copies, a variable that hides an outer one, a logging argument that is expensive when the level is disabled
+    (guard it or use a source-generated logger).
+  * **Ignore** the allocation hints (object, closure, delegate, boxing), `Property can be made init-only` on types that
+    a serializer or Dapper fills, `init` or collection `never used/updated` reports on reflection-filled DTOs, and
+    style hints that contradict the formatter. Do not remove a deserialization setter on the IDE's word alone.
+  * **Explore.** Other inspections are worth reading once per area (unhandled enum values, possible unintended
+    reference comparison, duplicated branches, `Merge into pattern`); adopt one as a rule when it finds a real mistake
+    twice.
 
 ### Important invariants
 
@@ -1063,7 +1090,7 @@ Before considering a code change complete:
    [Domain and Application](#domain-and-application), above all "storage holds data, services hold
    behaviour", "the acted-on object owns the interaction" and "Application emits events; it does not
    consume them". This applies to code written by delegated agents too: the orchestrator reviews it
-   against these rules before accepting it. `UserSession.Channels`, `UserSession.Join(ChannelSession)`,
+   against these rules before accepting it. `UserSession.Channels`, `UserSession.Join(Channel)`,
    sessions emitting events, event handlers inside Application, and rules or timers on runtime models and
    registries all got through review once; do not let them back in. Nor should a service that only wraps
    a repository read, a registry used through its implementation instead of its contract, a contract name that

@@ -4,7 +4,6 @@ using Basil.Application.Storage.Common;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Permissions;
-using Basil.Domain.Users;
 
 namespace Basil.Application.Storage.Beatmaps;
 

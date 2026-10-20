@@ -290,7 +290,7 @@ internal sealed class PostgresBeatmapRepository(
 	{
 		var row = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<BeatmapRow>(
 			ByIdSql, new { Id = key })).ConfigureAwait(false);
-		return row is null ? null : await ToBeatmapAsync(row, default).ConfigureAwait(false);
+		return row is null ? null : await ToBeatmapAsync(row, CancellationToken.None).ConfigureAwait(false);
 	}
 
 	protected override object WriteParameters(BeatmapRecord beatmap)

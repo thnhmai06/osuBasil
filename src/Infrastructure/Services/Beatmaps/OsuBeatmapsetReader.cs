@@ -42,12 +42,9 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 		try
 		{
 			var files = new List<BeatmapsetContentFile>();
-			foreach (var entry in zip.Entries)
-			{
-				if (entry.FullName.EndsWith('/') || entry.FullName.EndsWith('\\')) continue;
-
-				files.Add(new ZipBeatmapsetContentFile(entry, entry.FullName.Replace('\\', '/')));
-			}
+			files.AddRange(zip.Entries
+				.Where(entry => !entry.FullName.EndsWith('/') && !entry.FullName.EndsWith('\\'))
+				.Select(entry => new ZipBeatmapsetContentFile(entry, entry.FullName.Replace('\\', '/'))));
 
 			if (!IsAcceptable(files)) return null;
 

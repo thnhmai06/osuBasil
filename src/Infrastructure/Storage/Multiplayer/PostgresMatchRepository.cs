@@ -98,7 +98,7 @@ internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWri
 		var row = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<MatchRow>(
 			"select id, name, creator_id, started_at, ended_at, is_private from matches where id = @Id",
 			new { Id = key }));
-		return row is null ? null : await ToMatchAsync(row, default);
+		return row is null ? null : await ToMatchAsync(row, CancellationToken.None);
 	}
 
 	protected override object WriteParameters(MatchRecord match)
@@ -118,8 +118,16 @@ internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWri
 	private static string BuildFilter(MatchQuery query)
 	{
 		var conditions = new List<string>();
-		if (query.Ended is true) conditions.Add("ended_at is not null");
-		else if (query.Ended is false) conditions.Add("ended_at is null");
+		switch (query.Ended)
+		{
+			case true:
+				conditions.Add("ended_at is not null");
+				break;
+			case false:
+				conditions.Add("ended_at is null");
+				break;
+		}
+
 		if (query.Private is { } isPrivate) conditions.Add(isPrivate ? "is_private" : "not is_private");
 		return conditions.Count == 0 ? "" : $"where {string.Join(" AND ", conditions)}";
 	}

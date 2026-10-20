@@ -13,7 +13,7 @@ internal sealed class FileMenuBannerStorage(DataPaths paths) : IMenuBannerStorag
 	/// <inheritdoc />
 	public Task<IEnumerable<ContentReference>> ListAsync(CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult<IEnumerable<ContentReference>>(
+		return Task.FromResult(
 			Files.Keys.Order(StringComparer.OrdinalIgnoreCase).Select(Files.ReferenceOf));
 	}
 

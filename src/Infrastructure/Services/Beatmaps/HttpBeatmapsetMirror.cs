@@ -93,11 +93,10 @@ internal sealed class HttpBeatmapsetMirror(
 			return DateTimeOffset.FromUnixTimeMilliseconds(ms);
 		}
 
-		if (DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal,
-			    out var parsed))
-			return parsed;
-
-		return DateTimeOffset.UnixEpoch;
+		return DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal,
+			out var parsed)
+			? parsed
+			: DateTimeOffset.UnixEpoch;
 	}
 
 	/// <summary>Reads <c>HasVideo</c> as either a JSON boolean or a <c>0</c>/<c>1</c> number.</summary>

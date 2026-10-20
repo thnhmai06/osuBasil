@@ -45,25 +45,11 @@ internal sealed class DataStorage : IReadOnlyDictionary<string, FileInfo>
 	}
 
 	/// <inheritdoc />
-	public IEnumerable<FileInfo> Values
-	{
-		get
-		{
-			foreach (var name in Keys)
-				yield return new FileInfo(Resolve(name));
-		}
-	}
+	public IEnumerable<FileInfo> Values => Keys.Select(name => new FileInfo(Resolve(name)));
 
 	/// <inheritdoc />
-	public FileInfo this[string key]
-	{
-		get
-		{
-			if (!TryGetValue(key, out var value))
-				throw new KeyNotFoundException();
-			return value;
-		}
-	}
+	public FileInfo this[string key] =>
+		TryGetValue(key, out var value) ? value : throw new KeyNotFoundException();
 
 	/// <inheritdoc />
 	public bool ContainsKey(string key)
@@ -87,8 +73,8 @@ internal sealed class DataStorage : IReadOnlyDictionary<string, FileInfo>
 	/// <inheritdoc />
 	public IEnumerator<KeyValuePair<string, FileInfo>> GetEnumerator()
 	{
-		foreach (var name in Keys)
-			yield return new KeyValuePair<string, FileInfo>(name, new FileInfo(Resolve(name)));
+		return Keys.Select(name => new KeyValuePair<string, FileInfo>(name, new FileInfo(Resolve(name))))
+			.GetEnumerator();
 	}
 
 	/// <inheritdoc />

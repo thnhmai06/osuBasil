@@ -1008,12 +1008,7 @@ internal sealed partial class MpCommands(
 		CancellationToken cancellationToken)
 	{
 		if (args.Count > 0 && int.TryParse(args[0], out var seconds) && seconds > 0)
-		{
-			if (!await StartCountdownAsync(context, roomId, seconds, true, cancellationToken))
-				return false;
-
-			return true;
-		}
+			return await StartCountdownAsync(context, roomId, seconds, true, cancellationToken);
 
 		var room = ViewRoom(context.By, roomId);
 		if (room is null)
@@ -1044,10 +1039,7 @@ internal sealed partial class MpCommands(
 				return false;
 			}
 
-		if (!await StartCountdownAsync(context, roomId, seconds, false, cancellationToken))
-			return false;
-
-		return true;
+		return await StartCountdownAsync(context, roomId, seconds, false, cancellationToken);
 	}
 
 	private async Task<bool> AbortTimerAsync(CommandContext context, int roomId, CancellationToken cancellationToken)

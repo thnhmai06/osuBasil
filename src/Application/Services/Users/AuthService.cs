@@ -10,7 +10,6 @@ using Basil.Domain;
 using Basil.Domain.Auth;
 using Basil.Domain.Bancho;
 using Basil.Domain.Common;
-using Basil.Domain.Content;
 using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
