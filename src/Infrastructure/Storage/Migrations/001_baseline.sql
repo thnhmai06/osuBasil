@@ -77,12 +77,12 @@ create table relationships
 
 create table channels
 (
-	name              text primary key,
-	topic             text    not null,
-	read_privileges   integer not null,
-	write_privileges  integer not null,
-	auto_join         boolean not null,
-	visible           boolean not null
+	name             text primary key,
+	topic            text    not null,
+	read_privileges  integer not null,
+	write_privileges integer not null,
+	auto_join        boolean not null,
+	visible          boolean not null
 );
 
 insert into channels (name, topic, read_privileges, write_privileges, auto_join, visible)

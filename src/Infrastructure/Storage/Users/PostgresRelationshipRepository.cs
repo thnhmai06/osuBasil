@@ -49,7 +49,8 @@ internal sealed class PostgresRelationshipRepository(
 	}
 
 	/// <inheritdoc />
-	public async Task<IReadOnlyList<Relationship>> ListAsync(UserRecord actor, CancellationToken cancellationToken = default)
+	public async Task<IReadOnlyList<Relationship>> ListAsync(UserRecord actor,
+		CancellationToken cancellationToken = default)
 	{
 		var liveActor = await users.GetAsync(actor.Id, cancellationToken) ?? actor;
 		return await _byActor.GetOrLoadAsync(liveActor.Id, liveActor, async () =>
