@@ -25,11 +25,10 @@ internal sealed class ChatHandler(Server server, ChatCommands commands, ILogger<
 			return;
 
 		var context = new CommandContext(
-			by.User,
+			by,
 			posted.Channel.Channel.Name,
 			(text, ct) => SendSplitAsync(text, (piece, token) => server.SayAsync(posted.Channel, piece, ct: token), ct),
-			(text, ct) => SendSplitAsync(text, (piece, token) => server.WhisperAsync(by.Session, piece, ct: token), ct),
-			by);
+			(text, ct) => SendSplitAsync(text, (piece, token) => server.WhisperAsync(by.Session, piece, ct: token), ct));
 
 		try
 		{
