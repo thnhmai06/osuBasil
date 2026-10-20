@@ -1,3 +1,8 @@
+> **Status (2026-10-20).** Completed phases: Domain redesign, storage and migrations, the Room pilot, and the wider
+> object-scope migration. The Runtime/BasilBot phase is partially complete: command and announcement handlers are
+> implemented, but the bot's own connection is not. Remaining phases and work: Host migration (including `Basil.Cli`),
+> test migration, the bot connection, and silent channel filtering for blocks. Hosts and tests still use old namespaces.
+
 # Kế hoạch: chốt use case osuBasil develop, tổ chức lại Application quanh đối tượng sở hữu hành vi
 
 Plan này (`plans/object-scope-plan-20261016.md`, đã duyệt 2026-10-16) là nguồn sự thật cho các layer sau; khi mâu thuẫn với

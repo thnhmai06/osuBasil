@@ -2,30 +2,32 @@
 
 ## Overview
 
-Basil is a single deployable process built from several projects with a strictly enforced dependency
-direction. The inner projects describe the business and the running server; the outer projects connect
-it to storage, the network and the clients.
+Basil is a single deployable process with strict dependency direction. The Domain defines persistent business
+values; Application objects own runtime state and behaviour; Infrastructure implements persistence and other
+capabilities; hosts translate client protocols into Application operations.
 
 ```text
-Basil.Domain                  business model and its own validity          -> (nothing)
-Basil.Protocol.Bancho         Bancho wire format                            -> (nothing)
-Basil.Protocol.Irc            IRC wire format                               -> (nothing)
-
-Basil.Application             the running server as an environment          -> Domain
-                              (runtime objects, events, ports, operations)
-
-Basil.Infrastructure          persistence, storage, media, background       -> Application, Protocol.*
-                              services, event handlers, concrete providers
-Basil.Host.Bancho / .Irc / .Api   transports                                -> Application, Infrastructure,
-                                                                               their Protocol
-Basil.Host                    entry point and composition root              -> everything
+Basil.Domain                              business values                         -> (nothing)
+Basil.Application.Storage.Contracts       persistence ports, query records, paging -> Domain
+Basil.Application.Services.Contracts     runtime objects, registry ports, scopes, -> Domain, Storage.Contracts
+                                          contexts, events and service contracts
+Basil.Application.Services.Implementations registries, factories and services     -> Services.Contracts,
+                                                                                       Storage.Contracts
+Basil.Infrastructure.Storage              persistence and file storage             -> Storage.Contracts
+Basil.Infrastructure.Services             external capability providers             -> Services.Contracts
+Basil.Infrastructure.Runtime              event pumps, handlers and background work -> Services.Contracts
+Basil.Protocol.Bancho / .Irc               wire formats                              -> external libraries only
+Basil.Host.*                               transports                               -> Application, Infrastructure,
+                                                                                      their Protocol
+Basil.Host                                 composition root                          -> all projects
+Basil.Bot.Application                      BasilBot commands and announcements       -> Services.Contracts
 ```
 
-> **Pending migration.** `Basil.Domain` and `Basil.Application` have been reworked into the model
-> described below. `Basil.Infrastructure`, the hosts and every test project still use the previous
-> Application types and do not build, so solution-wide `dotnet build`/`dotnet test` and the
-> architecture tests do not run until they are migrated. Verify with
-> `dotnet build src/Basil.Application/Basil.Application.csproj`.
+> **Migration status (2026-10-20).** The Domain, Application, Infrastructure and BasilBot work described here
+> is implemented. The hosts and every test project still use old namespaces; solution-wide `dotnet build`,
+> `dotnet test` and architecture tests do not run. The host migration, `Basil.Cli`, bot connection, tests and
+> silent channel filtering for blocks remain unfinished. Build the migrated projects individually; see the
+> verification note in [`AGENTS.md`](../../AGENTS.md).
 
 ## Projects and responsibilities
 
@@ -40,22 +42,28 @@ state and no events, and references no other Basil project.
 The Bancho and IRC wire formats. They are independent of every other project, so encoding and decoding
 can be tested without starting the server. Bancho packet layouts are wire contracts.
 
-### `Basil.Application`
+### `Basil.Application.Storage`
 
-The running server, modelled as an **environment**: the objects that exist while the server runs and
-the facts that happen to them. Other layers observe those facts and plug in; Application does not
-script "do this, then notify that, then save this" flows. See [The Application environment](#the-application-environment).
+`Storage.Contracts` contains repository and storage ports, query records and paging. Runtime registries are
+defined by Services.Contracts and implemented in Services.Implementations, alongside the objects they hold.
+
+### `Basil.Application.Services`
+
+`Services.Contracts` contains the runtime objects, their short-lived scoped views, contexts, events, results,
+capability ports and the contracts of services that remain. `Services.Implementations` constructs the objects
+and implements cross-object or system operations. Object behaviour is not delegated to a service: each object
+owns the state, invariants and operations for itself and its parts. See [Object scopes](#object-scopes).
 
 ### `Basil.Infrastructure`
 
-Implementations of Application's ports (SQLite repositories, file storage, beatmap analysis), the
-event handlers that react to Application's events (for example storing a round when it ends, or leaving
-the room when a connection closes) and background services.
+Implementations of storage and capability ports, event dispatchers and handlers, and background loops.
+`Infrastructure.Runtime` reacts to Application events by calling the owning object's operations, for example
+when a connection closes or a restriction takes effect.
 
 ### `Basil.Host.Bancho`, `Basil.Host.Irc`, `Basil.Host.Api`
 
-The transports. Each decodes its protocol, calls Application operations, and turns Application's
-events into messages for its clients.
+The transports decode their protocols, call Application operations and turn Application events into client
+messages. The host projects still need migration to the new Application contracts.
 
 ### `Basil.Host`
 
@@ -67,50 +75,85 @@ dependency-injection registration of every other project.
 Dependencies point inwards only:
 
 * Domain and the protocols reference nothing;
-* Application references only Domain;
-* Infrastructure references Application and the protocols;
-* each host references Application, Infrastructure and its own protocol;
-* only `Basil.Host` references everything.
+* Storage.Contracts references Domain;
+* Services.Contracts references Domain and Storage.Contracts; Services.Implementations references
+  Services.Contracts and Storage.Contracts;
+* Infrastructure references contracts and protocols, never an Implementations project;
+* hosts reference the implementations to register them and use their contracts;
+* only `Basil.Host` composes the full application.
 
 When Application needs something outside the process (storage, files, network, the clock), it declares
-a port and an outer project implements it. Application never creates a `SqlConnection`, a
-`FileStream` or an Infrastructure type. The rule is enforced by `tests/Basil.ArchitectureTests` and is
-part of the build contract; a project reference that breaks it is an architectural change.
+a port and an outer project implements it. Application never creates a database connection, a file stream or
+an Infrastructure type. The intended dependency rule is enforced by architecture tests once the test projects
+are migrated; a project reference that breaks it is an architectural change.
 
-## The Application environment
+## Object scopes
 
-### Why an environment
+### Why ownership matters
 
-The same fact matters to several parts of the server: when a player leaves a room, the room's chat
-channel must lose a member, the room may close, clients must be told and the match history may need a
-write. If the operation that removes the player scripted all of that, every new reaction would mean
-editing it, and a forgotten step would silently break a rule.
+Runtime state has owners: a room owns its slots, rounds and channel; a user session owns its private-message
+channel; a game connection owns its spectator channel. Keeping behaviour with that state prevents a central
+service from becoming a procedural actor that must know every object's rules. Cross-object reactions remain
+separate and travel through events.
 
-Instead, the object the action is performed on enforces its own rules and announces what happened.
-Everything else reacts to the announcement.
+### How a scope works
 
-### Principles
+The caller first gets the runtime object, then creates a short-lived view for its connection:
 
-* **The acted-on object owns the interaction.** An actor only calls an operation. The object the
-  operation acts on stores the resulting relation and emits the event: a connection joins a channel
-  with `channel.Join(by)`, and the channel keeps its members and emits `ChannelMemberJoined`. Sessions and
-  connections hold no channels, rooms or slots and emit no events.
-* **Each object manages only what it owns.** `UserRegistry` opens and closes connections and announces it;
-  it does not touch rooms or channels. Their clean-up is done by Infrastructure handlers that receive
-  the event and call the owning object's operation. Rules about an object's own state stay inside it:
-  a room closes itself when empty and keeps its channel in step with its players.
-* **Application emits events; it never consumes them.** Each runtime object publishes its own stream
-  of events (`IEventPublisher<T>`). One operation emits one event carrying its whole consequence.
-  Handlers, dispatchers and event-to-client routing live outside Application.
-* **Identity follows the basis object.** `Room` is identified by its `Match`, a general chat channel by
-  its name. Objects that can be recreated for the same user or name (connections, sessions, runtime
-  channels) compare by reference, so a late clean-up carrying an old object never touches its
-  replacement.
-* **Operations check their own rules.** An operation with a permission rule takes its caller `by`,
-  checks it inside the object, and returns a typed result instead of throwing.
-* **Setters only assign and validate.** Anything with consequences is a method.
+```csharp
+channel.ScopeTo(by).Join();
+await room.ScopeTo(by).Members.JoinAsync(password);
+```
 
-### Who owns what
+`ScopeTo(connection)` creates a `ScopedX` capability for one request or command. It captures the caller's
+effective permissions and role on that object; callers must not keep the scope for later work. Operations on
+the scope check authority and restrictions, then preserve the object's invariants, mutate its state and emit
+events. Parts are reached through the owner (`room.ScopeTo(by).Slots`, `.Rounds`, `.Settings`, `.Authority`,
+`.Members`), not through a service that takes the room as a parameter. No operation accepts a caller's
+permissions as plumbing through lower layers.
+
+System work that needs no caller permission uses the object directly. Examples include startup, public reads,
+event handlers and BasilBot announcements. Actions requiring authority use a scope, including commands typed
+in chat: the command uses the typist's connection, while BasilBot only sends the reply.
+
+### Services that remain
+
+Services remain for work that coordinates multiple objects or represents a system capability, not to perform
+one object's behaviour for it. `IAuthService` coordinates login and registration; `IBeatmapsetService` imports
+and scans beatmapsets; `IScoreService` submits scores while coordinating player statistics, the room round and
+anticheat; `IAnticheatService` judges client flags; `IMatchService` provides match-level operations; and
+`ISessionConnectionsService` opens, closes and expires connections. `IRoomService` retains system-only room
+operations such as recording a submitted score and removing a suspended member. `IChannelService` handles
+automatic channel joins and parts. Each service contract lists an actual public capability; runtime objects
+such as `Room` and `User` have no parallel `IX` service contract.
+
+### Ownership and events
+
+* **The acted-on object owns the interaction.** The relation belongs to the object acted on (`ChannelSession.Members`,
+  `Room.Slots`); its scope exposes the operation and the object emits the corresponding event.
+* **Each object manages its own state.** `UserRegistry` opens and closes connections and announces those events;
+  it does not clean up rooms or channels. Infrastructure handlers receive cross-object events and call the
+  owning object's operation. A room keeps its channel in step with its players and the lobby owns room closing.
+* **Application emits events; it never consumes them.** `IEventPublisher<T>` exposes event streams and
+  `IEventHandler<T>` is the handler contract in Services.Contracts. One Infrastructure dispatcher reads each
+  stream and fans events out to handlers in Infrastructure.Runtime or `Basil.Bot.Application`.
+* **Identity follows the basis object.** `Room` is identified by its `Match`, a general chat channel by its
+  name. Recreated runtime objects compare by reference, so late cleanup carrying an old object cannot touch
+  its replacement.
+* **Setters only assign and validate.** Any change with consequences is an operation on the object that owns
+  the state.
+
+## Design
+
+### Runtime objects and contexts
+
+Runtime objects and their scoped views are in Services.Contracts. Each object's `…Context` record supplies
+only the ports and collaborators needed by its behaviour; the factory in Services.Implementations builds these
+contexts. The current context types are `RoomContext`, `UserContext`, `LobbyContext`, `ChannelContext`,
+`SessionContext`, `BeatmapsetContext` and `ServerContext`. Contexts do not become a general service locator:
+they keep an object's dependencies explicit and inside the Application boundary.
+
+The object graph follows ownership:
 
 ```mermaid
 flowchart LR
@@ -129,21 +172,24 @@ Rooms, channels and the lobby hold connections, never sessions: membership is pe
 
 ### Feature folders
 
-`Basil.Application` is one project sliced by feature; namespace follows the folder.
+Application projects are sliced by feature; namespaces follow their project and folder.
 
-| Folder | Holds |
-|---|---|
-| `Common/` | the event base type and `IEventPublisher` |
-| `Users/` | login attempts, user, credential and admin-key repositories, `Registration` |
-| `Sessions/` | `UserSession`, connections, `UserRegistry`, `Gateway`, spectator channels |
-| `Chat/` | the chat channel tree and `GeneralChannelRegistry` |
-| `Multiplayer/` | `Lobby`, `Room`, slots, room channels, results and events, the match repository |
-| `Beatmaps/` | `BeatmapCatalog` and the beatmap storage and analysis ports |
-| `Scores/` | `ScoreSubmission` and the score, replay and statistics ports |
+| Feature | Storage.Contracts | Services.Contracts / Services.Implementations |
+|---|---|---|
+| `Users/` | user, restriction and relationship repositories; `UserQuery` | `User`, `ScopedUser`, restrictions, relationships and account results |
+| `Auth/` | credential and login repositories | `IAuthService` and login or registration inputs |
+| `Sessions/` | session-related persistent ports | `UserSession`, `Connection`, `IUserRegistry`, `ISessionConnectionsService` and scopes (Contracts); `UserRegistry`, `SessionConnectionsService` (Implementations), and events |
+| `Chat/` | channel repository | channel objects and scopes, `IGeneralChannelRegistry`, `IChannelService` (Contracts); `GeneralChannelRegistry`, `ChannelService` (Implementations), and events |
+| `Multiplayer/` | match, round, score-relation repositories and query records | `Lobby`, `Room`, their scopes, `IMatchService` and system-only `IRoomService` operations |
+| `Beatmaps/` | beatmapset and beatmap repositories and storage | `Beatmapset`, its scope, `IBeatmapsetService` and capability ports |
+| `Scores/` | score, replay and stats repositories | `IScoreService` and score events |
+| `Anticheat/` | — | `IAnticheatService` and anticheat events |
+| `Content/` | content repositories and storage ports | content operations on `Server` |
+| `Servers/` | — | `Server`, `ScopedServer` and server-wide resources |
 
-`Sessions`, `Chat` and `Multiplayer` reference each other and form one cluster; their invariants rely
-on `internal` members staying inside one assembly, which is why features are folders rather than
-projects.
+`Common/` contains storage paging values; `Events/` contains event types and contracts. `Sessions`, `Chat` and
+`Multiplayer` form one runtime cluster because their state and invariants refer to each other. Their runtime
+objects and registries are in Services.Contracts; registry implementations are in Services.Implementations.
 
 ### Events
 
@@ -151,7 +197,7 @@ Events form a category tree so a consumer can subscribe to a whole category:
 
 ```text
 Event
-├── UserEvent       UserConnectionOpened, UserConnectionClosed, UserConnectionStatusChanged, UserStatsChanged, UserSilenced
+├── UserEvent       UserConnectionOpened, UserConnectionClosed, UserConnectionStatusChanged, UserRestricted, UserRestrictionLifted, UserPermissionsChanged
 ├── ChannelEvent    channel lifecycle, membership, messages, spectating
 ├── LobbyEvent          LobbyRoomOpened, LobbyRoomClosed, LobbyRoomClosingAnnounced, lobby watchers
 ├── RoomEvent           settings, slots, membership, authority, access, rounds
@@ -163,14 +209,17 @@ emitted (slot numbers, statuses), never a live slot.
 
 ### Ports
 
-Ports exist only for what lies outside the process. Each repository contract is written for its model
-(`IUserRepository`, `IMatchRepository`, `IScoreRepository`, …) and declares exactly the operations
-Application needs, including creation that returns the stored model with its assigned id. Runtime
-objects (sessions, channels, rooms) are concrete Application objects, not ports.
+Ports describe capabilities an object needs from another layer or subsystem. Storage.Contracts declares
+model-specific repositories and file-storage ports; Services.Contracts declares business capabilities such as
+beatmap analysis and mirroring. Context records pass the needed ports to the runtime object. Runtime objects
+are concrete types in Services.Contracts, not ports. Objects have no `IX` service contracts; service contracts
+remain for coordination and system operations that are public capabilities.
 
-## A request end to end
+## Events across objects
 
-> **Pending migration.** The hosts and Infrastructure are being moved onto this flow.
+Application publishes events but does not consume them. One dispatcher reads each event stream and invokes
+the registered `IEventHandler<T>` handlers. Infrastructure.Runtime owns runtime handlers; BasilBot owns
+command and announcement handlers. The hosts still need migration to the new Application contracts.
 
 ```mermaid
 sequenceDiagram
@@ -179,7 +228,8 @@ sequenceDiagram
     participant A as Application object
     participant I as Infrastructure handler
     C->>H: packet / IRC line / HTTP request
-    H->>A: operation(by, …)
+    H->>A: resolve object and scope it to authenticated connection
+    H->>A: call scoped operation
     A-->>H: typed result
     A-->>I: event
     I->>A: follow-up operations (other objects)
@@ -187,8 +237,8 @@ sequenceDiagram
     H-->>C: packets / IRC lines / responses
 ```
 
-A packet handler never performs a SQL query or writes to another object's state; it calls one
-operation and the rest follows from events.
+An event handler calls operations on the objects that own the affected state. It does not directly change
+another object's state. Application objects use storage ports only for persistence and queries.
 
 ## Adding features
 
@@ -201,14 +251,14 @@ if the rule is missing, add it to the acted-on object. See [`bancho.md`](bancho.
 
 ### Adding a reaction to something that happens
 
-Subscribe an Infrastructure handler to the relevant event category and call the owning object's
-operation. Do not add the reaction to the operation that caused the event.
+Register a handler in the appropriate consumer (`Infrastructure.Runtime` or `Basil.Bot.Application`) for the
+relevant event category, then call the owning object's operation. Do not add an unrelated reaction to the
+operation that caused the event.
 
 ### Adding persisted state
 
-Add the operation to the model's repository contract in Application (or a new `IXxxRepository` for a
-new model), implement it in Infrastructure and register it in the composition root. Keep database code
-out of Application. See [`database.md`](database.md).
+Add a model-specific repository contract in Storage.Contracts, implement it in Infrastructure.Storage and
+register it in the composition root. Keep database code out of Application. See [`database.md`](database.md).
 
 ### Adding an HTTP endpoint
 
@@ -218,12 +268,13 @@ OpenAPI contract with the route rather than maintaining a separate specification
 
 ## Cross-cutting invariants
 
-* Dependency direction is enforced by tests.
-* Domain and the protocols remain dependency-free; Application references only Domain.
+* Dependency direction is enforced by architecture tests after the test projects are migrated.
+* Domain and the protocols remain dependency-free; Services.Contracts references Domain and Storage.Contracts.
 * Runtime objects are separate from persisted state; Domain holds no runtime state or events.
 * The acted-on object stores the relation and emits the event; sessions and connections do neither.
 * Application emits events and never consumes them.
-* Every room operation holds the room's scope (`Room.EnterAsync`) across the complete transition.
+* Permission-dependent room operations use `room.ScopeTo(by)`; read-modify-write transitions hold
+  `room.EnterAsync()` across the complete transition.
 * Privilege checks require every bit of the requirement.
 * A shared channel is named `#name`; a private-message channel carries its owner's name without `#`.
 * Privilege is named `Privilege`, never `Priv`.
@@ -232,6 +283,14 @@ OpenAPI contract with the route rather than maintaining a separate specification
 
 See [`working-scopes.md`](working-scopes.md) for features that are intentionally outside Basil's
 scope.
+
+## Related code
+
+* `src/Application/Services/Contracts/`: runtime objects, scopes, contexts, events and service contracts.
+* `src/Application/Services/Implementations/`: object factories and remaining service implementations.
+* `src/Application/Storage/Contracts/`: repository, storage and registry contracts.
+* `src/Infrastructure/Runtime/`: event dispatchers, handlers and background work.
+* `src/Bot/Application/`: BasilBot command and announcement handlers.
 
 ## Where to go from here
 

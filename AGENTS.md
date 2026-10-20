@@ -315,13 +315,11 @@ See [`docs/for-technicians/docker.md`](docs/for-technicians/docker.md) for Docke
 ```text
 Basil.Domain                     business model and its own validity          -> (nothing)
 
-Basil.Application.Storage.Contracts       persistent ports, registry contracts,      -> Domain
-                                          runtime models, paging and query records
-Basil.Application.Storage.Implementations in-memory registries (internal)           -> Storage.Contracts
-Basil.Application.Services.Contracts      service contracts, capability ports,       -> Storage.Contracts
-                                          events, inputs and results
-Basil.Application.Services.Implementations service implementations (internal)       -> Services.Contracts
-                                                                                    (never Storage.Implementations)
+Basil.Application.Storage.Contracts       persistent ports, paging and query records -> Domain
+Basil.Application.Services.Contracts     runtime objects, registry contracts,       -> Domain, Storage.Contracts
+                                          scopes, contexts, events and service ports
+Basil.Application.Services.Implementations registries, factories and services       -> Services.Contracts,
+                                                                                     Storage.Contracts
 
 Basil.Infrastructure.Storage     persistent ports: PostgreSQL, files,           -> Storage.Contracts
                                  migrations
@@ -353,95 +351,85 @@ Domain: only the transport hosts reference it, and it may use external libraries
 
 Projects live under `src/` in folders that mirror the solution folders under `/Sources/`, each named by
 its short name without `Basil.`: `src/Domain/`, `src/Infrastructure/`, `src/Application/Services/{Contracts,Implementations}/`,
-`src/Application/Storage/{Contracts,Implementations}/`, `src/Hosts/{Host,Api,Bancho,Irc}/`,
+`src/Application/Storage/Contracts/`, `src/Hosts/{Host,Api,Bancho,Irc}/`,
 `src/Protocol/{Bancho,Irc}/`. The project file and the namespace keep the full name (`Basil.Domain.csproj`,
 `Basil.Domain.*`).
 
 Configuration is bound only in `Basil.Host`. Infrastructure and the transports receive it as `IOptions<T>` of
 an options type that the project using it owns; Application reads no configuration.
 
-Application has two parallel parts, **Storage** and **Services**, each split into **Contracts** and
-**Implementations**. Implementations are `internal` and joined through dependency injection only:
-`AddApplicationStorage()` (Storage.Implementations) and `AddApplicationServices()` (Services.Implementations).
-Services.Implementations uses storage through Storage.Contracts and never references Storage.Implementations.
-`Basil.Infrastructure` references no Implementations project; it gets every service and registry through
-dependency injection by its contract. The hosts reference the Implementations projects only to call the two
-`Add…()` methods; they too use everything through its contract.
+Application has parallel **Storage** and **Services** parts. Storage.Contracts holds persistent repository and
+storage ports, query records and paging. Services.Contracts holds runtime objects, their registries and scoped
+behaviour, events and service contracts; Services.Implementations contains the registry and service
+implementations. `AddApplicationServices()` registers them. Services.Implementations uses storage through
+Storage.Contracts. `Basil.Infrastructure` references no Implementations project; it receives capabilities through
+their contracts. The hosts reference Services.Implementations to call `AddApplicationServices()`.
 
-> **Migration in progress.** Application has been split into Storage, Contracts and Services by
-> [`plans/storage-services-split-plan-20261003.md`](plans/storage-services-split-plan-20261003.md) (phases 1–6
-> done; its section 13 lists where the code differs from the plan); read it before touching Application. Since
-> then the projects were renamed to the four above, the registries got contracts, and the room scope moved to
-> `room.EnterAsync()`; where the plan says otherwise, this file wins. It
-> replaces the "runtime objects carry their own behaviour" part of
-> [`plans/application-environment-plan-20260930.md`](plans/application-environment-plan-20260930.md), whose
-> other decisions (naming, event tree, channel names, identity by reference) still hold. Older plans are
-> history.
->
-> Infrastructure was rewritten by [`plans/infrastructure-plan-20261007.md`](plans/infrastructure-plan-20261007.md)
-> as `Basil.Infrastructure.{Storage,Services,Runtime}`, and BasilBot became `Basil.Bot.Application`. The hosts and the
-> tests have not been migrated: `Basil.Host.*` and every test project still use old namespaces, so solution-wide
-> `dotnet build`/`dotnet test` and `Basil.ArchitectureTests` do not run. Verify with `dotnet build` of the two
-> Application Implementations projects, the three Infrastructure projects and `src/Bot/Application`.
->
-> Documentation under `docs/` may describe an older structure; rewrite each document when the code it
-> describes is migrated, not before. Where a plan conflicts with
-> [Domain and Application](#domain-and-application) below, this file wins.
+> **Migration status (2026-10-20).** The object-scope redesign is implemented across Domain, Application,
+> Infrastructure.Runtime and Basil.Bot.Application: behaviour belongs to the owning runtime object and
+> permission-dependent operations use its short-lived `ScopeTo(connection)` view. The hosts and all test
+> projects still use old namespaces; solution-wide `dotnet build`, `dotnet test` and `Basil.ArchitectureTests`
+> do not run. The operator console (`Basil.Cli`), the bot's own connection, host migration, test migration and
+> silent channel filtering for blocks remain unfinished. Verify the migrated projects individually with
+> `dotnet build src/Domain`, `dotnet build src/Application/Services/Implementations`,
+> `dotnet build src/Infrastructure/Storage`, `dotnet build src/Infrastructure/Services`,
+> `dotnet build src/Infrastructure/Runtime` and `dotnet build src/Bot/Application`. The decisions in
+> [`plans/object-scope-plan-20261016.md`](plans/object-scope-plan-20261016.md) remain authoritative where they
+> agree with this file; older plans are history.
 
 ### Application feature folders
 
-Each Application project is sliced by feature, not by kind of type; namespace = project + folder. The same
-feature folders appear in Storage, Contracts and Services.
+Application is sliced by feature, not by kind of type; namespace = project + folder. Storage.Contracts owns
+persistent repository and storage ports, query records and paging. Services.Contracts owns runtime objects,
+their registries, scoped views and contexts, events, results and the contracts for services that remain.
+Services.Implementations contains registry and service implementations.
 
 ```text
 Common/        PageRequest, Page<T>, Interval<T>                                   (Storage)
-Events/        Event, IEventPublisher<T>                                           (Contracts)
-Users/         IUserRepository, IRestrictionRepository, IRelationshipRepository,
-               IUserAvatarStorage, UserQuery; IUserService, results
-Auth/          ICredentialRepository (passwords), ILoginRepository; IAuthService,
-               LoginAttempt, RegisterAttempt
-Sessions/      UserSession, Connection (+ ConnectionType), UserRegistry, PlayerStatus,
-               SpectatorChannelSession; ISessionService and its events
-Chat/          ChannelSession tree, GeneralChannelRegistry, IChannelRepository;
-               IChannelService, channel events and results
-Multiplayer/   Lobby, Room, RoomSlot(s), RoomChannelSession, IMatchRepository, IRoundRepository,
-               IRoundScoreRepository, IMatchEventRepository, MatchQuery; ILobbyService,
-               IRoomService, IMatchService, room and lobby events, RoomResult, RoomSettingsChange
-Beatmaps/      beatmap and beatmapset repositories, IBeatmapsetStorage, BeatmapQuery;
-               IBeatmapsetService, IBeatmapAnalyser, IBeatmapsetReader, IBeatmapAssets,
-               IBeatmapsetMirror, beatmapset events
-Scores/        IScoreRepository (the play's values only), IReplayStorage, IUserStatsRepository,
-               ScoreQuery (player and beatmap only); IScoreService and its events
-Anticheat/     IAnticheatService (judges client flags) and its events
-Content/       ISettingsRepository, IMenuBannerRepository, IMenuBannerStorage, IMenuIconStorage,
-               IMenuSeasonalsStorage, IFaqStorage, IScreenshotStorage
+Events/        Event, IEventPublisher<T>, IEventHandler<T>                         (Services.Contracts)
+Users/         user and restriction repositories, UserQuery; User, ScopedUser,
+               ScopedUserRestrictions, ScopedUserRelationships, UserResult
+Auth/          credential and login repositories; IAuthService, login and registration inputs
+Sessions/      UserSession, Connection tree, ScopedUserSession, UserRegistry,
+               ScopedBanchoConnection; ISessionConnectionsService and events
+Chat/          ChannelSession tree, IChannelRepository; ScopedChannel, ScopedGeneralChannel,
+               GeneralChannelRegistry, IGeneralChannelRegistry, IChannelService, events and results
+Multiplayer/   Lobby, Room, their parts and scopes; match, round and score repositories;
+               IMatchService, IRoomService, room and lobby events and results
+Beatmaps/      beatmap and beatmapset repositories and storage; Beatmapset, ScopedBeatmapset,
+               IBeatmapsetService and capability ports
+Scores/        score, replay and stats repositories; IScoreService and score events
+Anticheat/     IAnticheatService and its events
+Content/       content repositories and storage ports
+Servers/       Server, ScopedServer, server contexts and server resources
 ```
 
-Notifications, event handlers and dispatchers, and host configuration (ports, TLS, data paths) do not
-belong in Application; they live in Infrastructure or the hosts. Chat commands and their reply strings
-belong to the server's BasilBot surface (`Basil.Bot.Application`): an entry point like IRC that runs on objects scoped to the typist's connection. Query **records** (the filter a repository applies, with `Parse` for
-the search syntax) belong to Storage; the routes and handlers that answer queries do not. Server settings
-changed at runtime (`ServerSettings`) are persistent Domain data, not host configuration.
+Event-handler contracts belong to Services.Contracts; dispatchers and concrete handlers live in
+Infrastructure.Runtime or the consumer that owns them, including `Basil.Bot.Application`. Host configuration
+(ports, TLS, data paths) belongs to the hosts. BasilBot commands and announcements are server features: a
+command is an entry point that uses the typist's scoped objects, and the bot only replies. Query **records**
+(the filter a repository applies, with `Parse` for the search syntax) belong to Storage; routes and handlers
+that answer queries do not. Server settings changed at runtime (`ServerSettings`) are persistent Domain data,
+not host configuration.
 
 * `Common` and `Events` depend on no feature. `Users`, `Beatmaps` and `Scores` do not depend on
   `Multiplayer` services; the score service only reads the player's room to find the round. Anticheat flags,
   wherever they arrive (score submission, `lastfm.php`), are reported by the host to `IAnticheatService`, the single
   source of anticheat events; BasilBot turns them into chat warnings.
 * `Sessions`, `Chat` and `Multiplayer` reference each other (`Room.Host`, `Room.Channel`,
-  `ChannelSession.Members`); treat them as one cluster. Their runtime models live together in Storage, and
-  Services changes them through `internal` members (`InternalsVisibleTo` for both Implementations projects).
-  References run from the acted-on object to the actor, never back.
+  `ChannelSession.Members`); treat them as one cluster. Their runtime objects and registries live in Services;
+  persistent repositories remain in Storage.Contracts. Objects change their own state through behaviour, with
+  implementation access limited to the owning object and its collaborators. References run from the acted-on
+  object to the actor, never back.
 
 ### Domain and Application
 
 * **Domain** holds business models that exist beyond runtime (`Match`, `Round`, `MatchSettings`,
   `User`, `Beatmap`, `Login`, `ServerSettings`, …). A model guarantees that **it is valid**: field values
   in range, its own text format, values derived purely from its own data. No runtime-only state, no events.
-* **Behaviour belongs to the object that owns it, and is reached through that object.** *(Target design of
-  [`plans/`](plans) and the user's decision of 2026-10-16; the code migrates by phase, starting with `Room`. Until
-  a type has migrated, the old rules below it still describe the code.)* Every concept with state, invariants and
+* **Behaviour belongs to the object that owns it, and is reached through that object.** Every concept with state, invariants and
   rights is an **Application object** (`User`, `UserSession`, `Connection`, `Room`, `RoomSlot`, `Lobby`, the
-  channels, `Beatmapset`, `Restriction`, `Score`, and the root `Server`) in Services.Contracts. It owns its state,
+  channels, `Beatmapset`, and the root `Server`) in Services.Contracts. It owns its state,
   keeps its invariants, and offers its behaviour; its state changes only inside its own behaviour. Its persistent
   value is a Domain record named `XRecord` with the plain value `XData` (`UserRecord`, `BeatmapsetRecord`,
   `RestrictionRecord`, `MatchRecord`); the object wraps it. A part is reached through its owner
@@ -461,22 +449,21 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   authority primitives (`Access`, effective permissions, hierarchy, "a block yields to a higher right") are a
   library each `ScopeTo` calls, not a layer to pass through. A domain record and its Application object never
   share a name.
-* **Storage holds data, Services hold behaviour.** *(Current code; migrating as above.)* Storage.Contracts holds the persistent ports and what
-  exists only at runtime (`Room`, `RoomSlot(s)`, `UserSession` and its connections, `ChannelSession`s) as
-  concrete classes, plus the contracts of the registries that keep them (`IUserRegistry`,
-  `IGeneralChannelRegistry`, `ILobby`); Storage.Implementations implements whatever storage needs nothing
-  outside the process (today the in-memory registries): data, lookups and concurrency scopes only. Storage
-  never decides a rule, emits an event, calls a service or starts a timer. Services.Implementations holds every action: a service guarantees that a
-  change **is meaningful** (authority, timing, osu! rules, not tampered with, the consequences of the
-  change). A class named like a model (`Gateway`) must not hold logic either.
-* **One contract per service.** `IXService` in Services.Contracts declares every public action of
-  `XService` and its event stream (`IRoomService : IEventPublisher<RoomEvent>`). This is a deliberate
-  exception to "no interface with one implementation": the contracts are the list of capabilities the
-  system offers, independent of how they are implemented. Implementations are `internal sealed` and
-  registered by `AddApplicationServices()`. Where one service may call another (see "Peers talk through events"), it
-  calls the contract; coordination that is
-  not a public capability (`LobbyService.RoomEmptied`, `RoomRules`) is an `internal` member called through
-  the concrete class inside Services.
+* **Storage holds persistence; runtime objects and registries live in Services.** Storage.Contracts holds
+  persistent ports, query records and paging. Runtime objects (`Room`, `RoomSlot`, `UserSession`, connections
+  and `ChannelSession`s), registry contracts (`IUserRegistry`, `IGeneralChannelRegistry`) and their scoped
+  behaviour live in Services.Contracts; registry implementations live in Services.Implementations. Storage
+  never decides a business rule, emits an event, calls a service or starts a timer. A state change and its
+  consequences belong to the object that owns the state.
+* **Contracts exist for the services that remain.** `IXService` in Services.Contracts declares the public
+  capabilities of a service and, where applicable, its event stream. This deliberate exception to "no
+  interface with one implementation" keeps cross-object coordination and one-run operations independent of
+  their implementation. Examples include `IAuthService`, `IBeatmapsetService`, `IScoreService`,
+  `IAnticheatService`, `IMatchService` and `ISessionConnectionsService`. Objects such as `Room` and `User` do
+  not have service contracts: callers reach their permission-dependent behaviour through `ScopeTo(connection)`.
+  `IRoomService` remains for system operations such as `Members.ReleaseAsync`, `Members.RemoveSuspendedAsync`,
+  `Members.RemoveRefereeAsync` and `Rounds.RecordScoreAsync`. Implementations are `internal sealed` and
+  registered by `AddApplicationServices()`.
 * **Capability ports.** A capability with business meaning whose implementation needs external libraries
   or resources is a contract in Contracts that Infrastructure implements (`IBeatmapAnalyser`,
   `IBeatmapsetReader`, `IBeatmapAssets`, `IBeatmapsetMirror`), even when only the hosts use it. Pure
@@ -485,26 +472,26 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
 * **Contract names do not reveal the mechanism.** If the work moved from the file system to the network, or
   from one library to another, the name would not change: `ScanAsync`, not `ScanFileAsync`;
   `IBeatmapAssets.OpenAsync`, not `ReadFromDiskAsync`.
-* **Registries are storage contracts; runtime models and query records are not.** A registry is storage
-  held in memory, so it has a contract in Storage.Contracts (`IUserRegistry`, `ILobby`,
-  `IGeneralChannelRegistry`) and an `internal` implementation in Storage.Implementations. Its mutating members
-  are `internal` on the contract, so only the Implementations projects can call them. Runtime models and query
-  records are data and stay concrete classes. Other ports are for what lies outside the process: storage,
-  files, network, external computation, clock (`TimeProvider`).
+* **Registries belong with runtime objects.** A registry holds live runtime objects, so its contract is in
+  Services.Contracts (`IUserRegistry`, `IGeneralChannelRegistry`) and its implementation is in
+  Services.Implementations. Mutating registry members are `internal` on the contract. Persistent repositories,
+  storage ports, query records and paging belong to Storage.Contracts. Other capability ports describe what
+  lies outside the process: files, network, external computation and the clock (`TimeProvider`).
 * **Outer layers use storage directly.** Infrastructure and the hosts read, list and search storage, and
   write persistent records whose write carries no rule or consequence (an admin renames a user, hides a
   beatmapset), directly through the repository, after the host has checked the caller's permission. Services are only for actions; a service
   never wraps a plain read or write (`ScoreService.GetAsync` forwarding to `IScoreRepository.GetAsync` is
-  wrong). Runtime state changes only through services: runtime setters are `internal`.
-* **The service of an object's kind enforces its rules in the same operation.** When a rule belongs to the
-  environment (a room closes when its last player leaves, a room keeps its channel's members in step with
-  its players), the service that performs the operation enforces it; it is never left to a hook that might
-  not be installed.
-* **Background work.** A contract declares one run of a background job (`ISessionService.Connections.CloseIdle()`,
+  wrong). Runtime state changes only through the behaviour of the object that owns that state; runtime setters
+  are `internal`.
+* **Each object enforces its own rules.** An operation keeps the owning object's parts consistent in that same
+  operation (a room keeps its channel in step with its players). A consequence that crosses object boundaries
+  (a restriction removes memberships in rooms and spectator streams) is announced as an event; Infrastructure
+  handlers call the operations owned by those objects.
+* **Background work.** A contract declares one run of a background job (`ISessionConnectionsService.CloseIdle()`,
   `IBeatmapsetService.ScanAsync()`); Services implements it; Infrastructure owns the loop, the trigger, the
   period and its configuration. A one-shot timer that is the consequence of an operation (an empty room's
-  closing) stays in Services on `TimeProvider`. So does a room's countdown: a delayed start, a plain timer and
-  cancelling it are features of the room (aborting a round cancels a pending start); BasilBot only announces its marks.
+  closing) belongs to the lobby that owns the room and runs on `TimeProvider`. A room's countdown belongs to
+  its scoped round behaviour; aborting a round cancels a pending start. BasilBot announces the countdown marks.
 * **Derive whatever is derivable.** A property a runtime object co-owns with its domain object
   (truth in Domain) is a forwarding property (`Room.Name => Match.Name`).
 * **A user online is one `UserSession`; each place they log in from is a `Connection`.**
@@ -517,8 +504,8 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   (`BanchoConnection.Status`, `BanchoConnection.SpectatorChannel`). Rooms, channels and the lobby
   hold connections, not sessions. Owned parts (a session's `PmChannel`, a connection's
   `SpectatorChannel`) are created and destroyed with their owner; they are not relations.
-  Spectating is a relation on the spectated osu! client (`BanchoConnection.Spectators`), changed only by
-  `ISessionService.Connections.Bancho.Spectators` (what only an osu! client has lives under `Connections.Bancho`:
+  Spectating is a relation on the spectated osu! client (`BanchoConnection.Spectators`), changed through
+  `host.ScopeTo(by).SpectateAsync()` (what only an osu! client has lives under `BanchoConnection`:
   spectating and its presence status), which keeps the client's spectator channel in step (the first spectator brings the
   host in, the last one out) the way the room service keeps a room's channel; the channel never stands for who is
   spectating.
@@ -534,29 +521,19 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   connection (`BanchoConnection` as slot occupant or host); otherwise the `User` (creator, referees,
   bans).
 * **The acted-on object owns the interaction.** An actor (a user, a session, any active object)
-  only *calls* an action. The relation is stored on the record of the object acted on
-  (`ChannelSession.Members`, `Room.Slots`), the operation lives in the service of that object's kind
-  (`IChannelService.Members.Join(channel, by)`, `IRoomService.Members.JoinAsync(room, by, password)`), and the event belongs to
-  that object's category (`ChannelMemberJoined` is a `ChannelEvent`, emitted by the channel service). The
+  only *calls* an action. The relation is stored on the object acted on (`ChannelSession.Members`,
+  `Room.Slots`), and its short-lived scope exposes the operation (`channel.ScopeTo(by).Join()`,
+  `room.ScopeTo(by).Members.JoinAsync(password)`). The event belongs to that object's category
+  (`ChannelMemberJoined` is a `ChannelEvent`). The
   session does **not** keep a `Channels` set, does **not** have a `Join(ChannelSession)` method, and nothing
   emits events on its behalf. Otherwise every new joinable kind (channel, room, spectator stream, …) forces a
   new `Join*` method and a new set on the user. "Which channels is X in?" is a query over channels, not state
   on X. Ask "who is acted on?" for every relation, member and event.
-* **A service whose object has parts gets one child service per part.** *(Current code for the types not yet
-  migrated to "Behaviour belongs to the object that owns it". `Room` has migrated: its parts are reached through
-  `room.ScopeTo(by)` (`.Slots`, `.Rounds`, `.Settings`, `.Authority`, `.Members`), `IRoomService` keeps only the
-  system operations `Members.ReleaseAsync`, `Members.RemoveSuspendedAsync`, `Members.RemoveRefereeAsync` and
-  `Rounds.RecordScoreAsync`. `User` has migrated: `users.Of(record).ScopeTo(by)` gives `.Restrictions`,
-  `.Relationships`, `SetPermissionsAsync`, `DeleteAsync`, `ViewLoginsAsync`.)* The parent contract exposes each
-  child as a property named after the part (`IRoomService.Members`, `.Authority`, `.Settings`, `.Slots`,
-  `.Rounds`); the object stays a parameter of every operation (`rooms.Slots.MoveAsync(room, by, player, index)`),
-  never an object-bound handle (`rooms.For(room)`). Today: `IRoomService` (`Members`, `Authority`, `Settings`,
-  `Slots`, `Rounds`), `IChannelService` (`Members`, `Messages`, `General`), `ISessionService` (`Connections`
-  with its own child `Bancho`, `Presence`), `IUserService` (`Restrictions`), `ILobbyService` (`Rooms`, `Watchers`). Children are
-  named after the parent and the part (`IRoomSlotsService`, `IGeneralChannelService`), share the parent's one
-  event stream and may call a sibling's `internal` members directly, since they act on the same object. Callers
-  reach a child only through the parent. A service whose object has no parts it acts on stays flat; size alone is
-  no reason to split.
+* **Parts are reached through the owning object's scope.** `room.ScopeTo(by)` exposes `.Slots`, `.Rounds`,
+  `.Settings`, `.Authority` and `.Members`; `users.Of(record).ScopeTo(by)` exposes the user's restrictions,
+  relationships and account operations. Channels, sessions, connections, the lobby, beatmapsets and the server
+  follow the same pattern. Services stay flat and expose only system operations or coordination that spans
+  objects; there are no child service trees for object behaviour.
 * **Each service manages its own kind, and reacts to other kinds only through events.** The session service
   opens and closes connections and announces `UserConnectionOpened`/`UserConnectionClosed`; its responsibility
   ends there. Leaving rooms and parting channels when a connection closes is done by Infrastructure handlers
@@ -564,17 +541,18 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   for a user an owner still holds, the owner **asks the old connection who it is** (`connection.IsOpen`):
   still open, refuse the new one; already closed (cleanup not run yet, or failed), remove the old one as an
   ordinary leave and admit the new one. Cleanup operations must be safe to run again.
-* **Peers talk through events; parents call their children directly.** Two services are peers when neither
-  owns the other and neither's rule depends on the other (scores and rooms, the anticheat and rooms): the
-  acting service only emits its event, and Infrastructure's dispatcher delivers it to the peer by calling the
-  peer's contract (`ScoreSubmitted` → `IRoomService.RecordScoreAsync`, `AnticheatPlayerFlagged` reaches
-  clients that watch it, such as BasilBot). A service calls another directly only for a clear parent/child or
-  ownership relation, or to keep a rule that must hold within the same operation: services use storage; a room manages its own channel and a
-  session its PM and spectator channels; the room service tells the lobby when a room empties or fills;
+* **Peers talk through events; owners call their parts directly.** Two operations are peers when neither
+  object owns the other and neither's rule depends on the other (scores and rooms, the anticheat and rooms): the
+  acting operation emits its event, and Infrastructure's dispatcher delivers it to the peer's contract
+  (`ScoreSubmitted` → `IRoomService.Rounds.RecordScoreAsync`, `AnticheatPlayerFlagged` reaches clients that
+  watch it, such as BasilBot). An object calls another directly only for a clear ownership relation or to keep
+  a rule that must hold within the same operation: objects use storage ports; a room manages its own channel, a
+  session its PM channel and a connection its spectator channel; a room tells the lobby when it empties or fills;
   logging in opens the connection; deleting a user closes their connections at once, a security rule that
   must not wait for a handler.
-* **Application emits events; it does not consume them.** Each service is one event source over its own
-  `Channel<T>`; storage never emits. One operation emits one event carrying its whole consequence. Events sit
+* **Application emits events; it does not consume them.** Each event stream is read by one Infrastructure
+  dispatcher, which fans events out to `IEventHandler<T>` implementations in Infrastructure.Runtime or
+  `Basil.Bot.Application`. Storage never emits. One operation emits one event carrying its whole consequence. Events sit
   in a nested category tree (`Event` ← `RoomEvent` ← `RoomSlotEvent` ← `RoomSlotTeamChanged`) so a consumer
   can subscribe to a whole category. Each item of a `Channel<T>` reaches one reader, so Infrastructure runs
   exactly one dispatcher per service stream that fans out to its handlers; nothing else reads `Events`
@@ -692,7 +670,7 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   (`RoomRoundPlayerLoaded`, `RoomSlotTeamChanged`, `UserConnectionOpened`). The abstract category
   records follow the same rule (`RoomRoundEvent`, `ChannelMembershipEvent`).
 * **Chat channels.** Domain: abstract `Channel` (`Name`, `Topic`, IRC convention) with
-  `GeneralChannel` (configured chat; alone carries `ReadPermissions`, `WritePermissions`, `AutoJoin`,
+  `GeneralChannel` (configured chat; alone carries `ReadPrivileges`, `WritePrivileges`, `AutoJoin`,
   `Visible`), `RoomChannel`, `SpectatorChannel`, `PmChannel`; messages are the record `Message`.
   Runtime: abstract `ChannelSession` with `GeneralChannelSession`, `RoomChannelSession`,
   `SpectatorChannelSession`, `PmChannelSession`. **Each channel lives on the record of its owner**:
@@ -701,8 +679,8 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   may read and write. A private message is a post into the recipient's PM channel. Access follows osu!: a
   user may join a channel (including `/join` over IRC) only if an osu! client doing the matching in-game
   action would have access. General channels are created, configured and deleted at runtime through
-  `IChannelService` (`DeveloperConfigureServer`); configuring a channel removes the members who may no longer read it.
-* **Assets are referred to by `AssetReference`** (Domain), never by `string` or `Uri`: either the relative path of a
+  `Server` (`ServerConfigure`); configuring a channel removes the members who may no longer read it.
+* **Assets are referred to by `ContentReference`** (Domain), never by `string` or `Uri`: either the relative path of a
   file the server stores under its data directory (`Menu/Banners/x.png`, valid on every machine) or an absolute
   http/https address of an asset hosted elsewhere, kept as given and never copied. The value is canonical (its
   parsing and normalization live on the type). File storages give out the reference of what they store; the hosts
@@ -755,12 +733,14 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   Equals cannot act on each other; acting on oneself is not subject to this rule, except that nobody restricts
   or lifts a restriction of themselves. Granting gives only bits the actor holds.
 * **BasilBot is the server's voice.** The server has one fixed user, BasilBot, with id 1, created by a migration:
-  always online, a friend of everybody, unable to sign in, holding no permission. Its record is fixed (it cannot be
+  it is a friend of everybody, cannot sign in, and holds no permission. Its record is fixed (it cannot be
   deleted, restricted, given permissions or a password, or have its connection revoked); its metadata (name,
   country, avatar) can be edited like any other user's. The bot answers chat commands (`!`, a fixed prefix) and
   posts the server's announcements. A chat command is an entry point like IRC or the API: it runs on the objects
   scoped to the connection of the user who typed it, so it needs that user's rights; the bot only replies. The
-  bot's own messages go straight to the chat, past the rights check. Countdowns are a feature of the room.
+  bot's own messages go straight to the chat, past the rights check. The command handler and event-based
+  announcers are implemented in `Basil.Bot.Application`; the bot's own online connection, private messages to
+  the bot and host integration are planned for the Host phase. Countdowns are a feature of the room.
 * **Identity on every action.** Every action has a real actor `by` (a `Connection`); `by` is never `null`.
   A room created through the API has the caller as creator. A server announcement is `by` BasilBot.
 * **There is no delegation.** No account acts for another. An outside tool signs in with its own account and the
@@ -785,9 +765,9 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   work. Country at registration comes from the host (a proxy header or an offline GeoLite2 file); Domain and
   Application receive the `Country` as an input and do not know where it came from.
 * **Creation locks.** `ServerSettings.LockedCreation` locks the creation of accounts, rooms and beatmapsets to
-  their managers (`OwnerManageAccounts`, `TournamentManageAnyRoom`, `TournamentManageBeatmaps`), on every
+  their managers (`UserManage`, `RoomManageAny`, `BeatmapsetManage`), on every
   transport. Beatmapset uploads are locked by default. Importing a beatmapset has no actor in Application: the
-  host gates it by policy (the lock, `PlayerUploadBeatmapsets`, `TournamentManageBeatmaps`). There is no
+  host gates it by policy (the lock, `BeatmapsetUpload`, `BeatmapsetManage`). There is no
   administrator key.
 * **Sessions and tokens.** Every client signs in with credentials and gets a `Connection` with an opaque
   `Token` (in memory, lost on restart, no absolute expiry). Idle connections close after 300 s for osu!,
@@ -806,7 +786,7 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
 * **Setters only assign and validate.** A Domain setter stores the value and throws if it is invalid; a
   runtime setter is `internal set` and only assigns. A setter never emits an event or changes anything else.
   A change that has consequences (emits an event, changes other fields, checks authority, groups several
-  fields into one event) is a service method. Such a method is a real operation, not a
+  fields into one event) is an operation on the object that owns the state. Such an operation is real behaviour, not a
   `Change*`/`Rename`/`With*` wrapper around a single field.
 * **Name a contract after the object it acts on.** The unit that is imported, stored, read and mirrored is
   the beatmapset, so the contracts are `IBeatmapsetService`, `IBeatmapsetReader`, `IBeatmapsetStorage`,
@@ -831,7 +811,7 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   (`DataStorage.SaveAsync`, `RoomState.IsManagedBy`), not through a static helper that is handed the state.
 * A type that is a collection implements the matching BCL interface (`DataStorage : IReadOnlyDictionary<string,
   FileInfo>`); a business value with a text form is a value type implementing `IParsable<T>` and `IFormattable`
-  (`AssetReference`).
+  (`ContentReference`).
 * **Collections are exposed, not copied** (most mistakes so far were in registries and storages):
   * Never materialise a collection only to hand it out (`[.. _channels.Values]`, `.ToList()`, `.ToArray()` on a
     return). Return the collection itself through an interface it implements (`IReadOnlyDictionary<string,
@@ -842,7 +822,7 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   * A collection that is both read and changed is exposed twice, with no methods that only forward to it: a public
     read-only interface and an `internal` read-write one named `Mutable{X}` (`public IReadOnlySet<User> Banned`,
     `internal ISet<User> MutableBanned`; `IDictionary`/`IList` likewise). A method stays only when it carries a rule
-    of its own (`ILobby.Add` releases the reserved id; `UserSession.Add` files a connection by its kind).
+    of its own (`Lobby.Add` releases the reserved id; `UserSession.Add` files a connection by its kind).
   * Expose the most derived interface the value has (`IReadOnlyDictionary`, `IReadOnlySet`, `IReadOnlyCollection`
     rather than `IEnumerable`), unless the extra property belongs to the implementation and not to the contract: a
     storage that walks files returns `IEnumerable<T>`, not `IOrderedEnumerable<T>`, even when it sorts them.
@@ -854,8 +834,7 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
 * Prefer primary constructors, property patterns (`room is { InProgress: false, Beatmap: not null }`) and
   one guard for conditions that return the same result; no redundant casts, `? true : false` or
   discarded-task lambdas (`_ => action()`, not `_ => _ = action()`).
-* Each Implementations project registers itself in a class `DependencyInjection`: `AddApplicationStorage()`,
-  `AddApplicationServices()`.
+* Services.Implementations registers its services and registries in `DependencyInjection.AddApplicationServices()`.
 
 ### Important invariants
 
@@ -876,14 +855,14 @@ See [`docs/for-developers/multiplayer.md`](docs/for-developers/multiplayer.md) f
 Referee, host, and creator are separate concepts.
 
 Whoever creates a room is its creator, however it was created (in game, or through the API, directly or
-by a client acting for the user); every room has a creator. Creating a room needs `PlayerCreateRoom`. The
+by a client acting for the user); every room has a creator. Creating a room needs `RoomCreate`. The
 creator is remembered on the match and ranks above referees; it is not added to the referee list. A creator
 who created the room in game is also its first host. When a tournament room is created, a creator whose
 game client is online and not in any room is seated in the new room as host; a creator already in another
 room stays there and does not become host. Managing a room is for the creator and the referees (and
-`TournamentManageAnyRoom`, which acts with the creator's authority in every room); being the host does not
+`RoomManageAny`, which acts with the creator's authority in every room); being the host does not
 grant management rights. A creator or referee whose permissions are all suspended cannot manage. Every room
-operation with a permission rule runs on `room.ScopeTo(by)`, which checks authority, not the transport. `!mp` itself is a client feature that calls these operations for the user.
+operation with a permission rule runs on `room.ScopeTo(by)`, which checks authority, not the transport. BasilBot's `!mp` commands call these operations using the typist's connection.
 
 Do not treat them as interchangeable.
 
@@ -939,11 +918,12 @@ Do not reintroduce the old abbreviation.
 
 ## Scope
 
-Basil is a backend platform: it offers capabilities through its protocols and its user-centric HTTP API,
-and features are built on top as clients. It is deliberately smaller than bancho.py.
+Basil is a backend platform: it offers capabilities through its protocols and its user-centric HTTP API, with
+BasilBot as a built-in chat entry point. Other features are built on top as clients. It is deliberately smaller
+than bancho.py.
 
-Do not implement a bancho.py feature simply because it exists upstream. Do not put a feature that a client
-can build with the API (chat commands, announcements, overlays) into the server.
+Do not implement a bancho.py feature simply because it exists upstream. Chat commands, announcements and room
+countdowns belong to BasilBot and the room; overlays remain client features.
 
 Before adding:
 
@@ -1026,8 +1006,7 @@ Before considering a code change complete:
    sessions emitting events, event handlers inside Application, and rules or timers on runtime models and
    registries all got through review once; do not let them back in. Nor should a service that only wraps
    a repository read, a registry used through its implementation instead of its contract, a contract name that
-   reveals its mechanism, or a reference from Services.Implementations to Storage.Implementations or from
-   Infrastructure to either Implementations project. Since the identity redesign, also
+   reveals its mechanism, or a reference from Infrastructure to Services.Implementations. Since the identity redesign, also
    reject: an action without a real `by`, authority decided by connection kind, a check on granted instead of
    effective permissions, a stored or configured `Privileges`, privileges used to grant anything, and a
    delegation of any kind. Since the 2026-10-16 redesign, also reject the five anti-patterns of "Behaviour belongs

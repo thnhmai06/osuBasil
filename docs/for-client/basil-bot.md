@@ -2,20 +2,33 @@
 
 ## Overview
 
-BasilBot is Basil's in-game chat bot, providing chat commands similar to BanchoBot.
+BasilBot is the server's built-in chat command and announcement surface. Its account is fixed, cannot sign in and
+has no permissions; it exists as the server's voice, not as an actor with authority.
 
 Commands include:
 
 * general BasilBot commands;
 * `!mp` commands for multiplayer room management.
 
-The `!mp` commands can be used for tournament operations such as creating and configuring rooms, managing referees and players, and controlling match timers.
+The `!mp` commands support tournament operations such as creating and configuring rooms, managing referees and
+players, and controlling room countdowns.
 
-Match timers (`!mp start <seconds>`, `!mp timer`, `!mp aborttimer`) are run by BasilBot itself, not by the server.
-Only the room's creator and referees can start or abort one. When a timer that starts the match ends, BasilBot starts
-the round on behalf of the user who set it, so the server checks that user's authority at that moment. A timer that
-would start the match is cancelled when the round's settings change, and any timer stops when a round starts or is
-aborted or the room closes.
+Commands run using the connection of the person who typed them, so they require that person's own rights. BasilBot
+only replies; its messages and server announcements bypass user permission checks. The command handler and
+announcement handlers are implemented in `Basil.Bot.Application`, but host integration is not migrated yet.
+
+Room countdowns belong to the room, not to BasilBot. A countdown that starts a round is cancelled when the round's
+settings change; countdowns stop when the round starts or is aborted or the room closes. BasilBot announces the
+countdown marks.
+
+## Planned
+
+The following host-phase work is not implemented yet:
+
+* BasilBot's own connection as an online user;
+* private messages sent to BasilBot;
+* integration of the new command and announcement handlers with the migrated hosts;
+* the planned operator console in `Basil.Cli`.
 
 ---
 

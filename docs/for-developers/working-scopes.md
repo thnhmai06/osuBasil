@@ -6,9 +6,9 @@ Basil is an osu! (stable) backend platform specialized for multiplayer, built on
 intentionally **not** a full osu! server.
 
 The server implements the core capabilities that multiplayer needs: accounts, sessions and permissions, rooms, chat,
-scores, beatmaps, the client protocols, and the events other programs observe. Features such as chat commands,
-tournament automation and overlays are built on top as separate clients that sign in as ordinary users through the
-HTTP API; the server works the same with or without them. Features from bancho.py are not automatically in scope
+scores, beatmaps, the client protocols, and the events other programs observe. BasilBot's chat commands and
+announcements are built into the server; tournament automation beyond those commands and overlays remain client
+features that sign in as ordinary users through the HTTP API. Features from bancho.py are not automatically in scope
 simply because they exist upstream.
 
 This page defines:
@@ -52,11 +52,12 @@ This includes:
 The IRC gateway allows real IRC clients and tools such as osu-ahr to connect alongside osu! clients.
 
 Chat commands (`!mp`, `!help`, `!roll`, `!where`, `!faq`, and the staff commands) and chat announcements (anticheat
-warnings, round and room notices) are part of the server, provided by BasilBot: a fixed user (id 1) that is always
-online, signs in nowhere and holds no permission. A command is an entry point like IRC: it runs with the rights of the
-user who typed it, and the bot only replies. Room countdowns (a delayed start, a plain timer, cancelling it) are a
-feature of the room. See the BasilBot Commands documentation at `api.<domain>/docs/basil-bot/` for the supported
-command list.
+warnings, round and room notices) are part of the server, provided by BasilBot: a fixed user (id 1) that holds no
+permission and cannot sign in. The command handler and announcers are implemented in `Basil.Bot.Application`; host
+integration is still pending. A command is an entry point like IRC: it runs against objects scoped to the connection
+of the user who typed it, and the bot only replies. Room countdowns (a delayed start, a plain timer, cancelling it)
+are features of the room; BasilBot announces their marks. See the generated BasilBot reference at
+`api.<domain>/docs/basil-bot/` for the supported command list.
 
 ### HTTP API
 
@@ -86,23 +87,24 @@ back.
 Screenshots uploaded by the osu! client (`osu-screenshot.php`) are in scope: the server stores them and hands back
 a link the client opens.
 
-### In-game registration
+### Account creation and operator console
 
-`POST /users` is supported for in-game account registration.
+New accounts receive only the default permissions; being the first account grants no special rights. The first
+administrator is created by the operator through a console command. The console is planned for the Host phase in
+`Basil.Cli`; it is not implemented yet. The design has no administrator key or bootstrap credentials. Account
+registration remains part of the supported game-client workflow, subject to `ServerSettings.LockedCreation`.
 
-The endpoint operates in bypass mode when no admin key is configured. Otherwise, the registration request must provide
-an email value matching the configured server admin key.
-
-This endpoint exists for the supported game-client workflow and should not be interpreted as a complete public
-account-management API.
+The hosts have not been migrated to the new Application contracts, so do not treat the planned console or the
+redesigned account-creation rules as already integrated into every transport.
 
 ### Friends and private messages
 
 The osu! client's friend list (`osu-getfriends.php`, adding and removing friends) is supported, together with the
-setting that accepts private messages from friends only and with blocking: a block refuses private messages, hides the
-blocked user's messages in general channels, and refuses their spectating and invitations (staff who manage the matching
-area are not bound by a block; see "a block yields to a higher right" in `AGENTS.md`). Players use these during
-tournaments to reach each other and referees, so they stay even though Basil has no other social features.
+setting that accepts private messages from friends only and with blocking: a block refuses private messages,
+spectating and invitations (staff who manage the matching area are not bound by a block; see "a block yields to a
+higher right" in `AGENTS.md`). Silent filtering of a blocked user's messages in general channels is planned but not
+implemented yet. Players use friends and blocks during tournaments to reach each other and referees, so they stay
+even though Basil has no other social features.
 
 ### Moderation
 
@@ -124,8 +126,7 @@ The following features are deliberately not part of Basil's supported surface.
 | Blocking old osu! clients (`DISALLOW_OLD_CLIENTS`)                               | ❌ Out of scope | The server does not decide which client versions may sign in; score submission still checks the version it received at login.                                 |
 | Updating a country from the IP at login, or any third-party geolocation service | ❌ Out of scope | The stored country is the source. Only registration through the game client takes a country from the host (proxy header or an offline GeoLite2 file).        |
 | PM to an offline user (`mail`, `osu-markasread.php`)                             | ❌ Out of scope | A message to someone offline is not kept.                                                                                                                     |
-| Acting for another user (delegation)                                             | ❌ Out of scope | An outside tool signs in with its own account and the rights it holds.                                                                                        |
-| Seating or hosting through the API on behalf of a player                         | ❌ Out of scope | Taking a slot is what the osu! client does; the API manages rooms (creator and referee rights), it does not play.                                             |
+| Seating or hosting through the API                                                | ❌ Out of scope | Taking a slot or becoming host requires an osu! client; the API manages rooms using the caller's own rights but does not play.                                 |
 | `ApiKey` on `User` / `UpdateApiKeyAsync`                                         | ❌ Out of scope | Clients sign in with the account's password and receive a session token; a separate API-key model has no use.                                             |
 | osu-web API v1/v2 compatibility and OAuth                                        | ❌ Out of scope | Basil's own user-centric API serves the clients built on it; reproducing osu-web's API or OAuth has no concrete requirement.                                   |
 | `!clan` and moderation/clan commands                                             | ❌ Out of scope | These belonged to the removed command surface and are outside the project's current purpose.                                                                  |
@@ -170,9 +171,12 @@ Basil intentionally has a smaller surface than bancho.py. Porting unrelated func
 persistence requirements, testing requirements, and compatibility obligations without improving the core tournament use
 case.
 
+No account acts for another. Every tool signs in as itself and receives only its own rights; a BasilBot command uses
+the connection of the person who typed it.
+
 ## Lessons from reversed decisions
 
-### Removing the entire chat command layer
+### Keeping chat commands inside the server
 
 **Previous decision**
 
@@ -195,10 +199,11 @@ Removing chat completely was therefore an overcorrection.
 
 Basil first reintroduced `BanchoBot` as a special session inside the server. The identity redesign
 ([`plans/identity-permissions-plan-20261005.md`](../../plans/identity-permissions-plan-20261005.md)) moved the commands
-out to BasilBot as a separate client. The 2026-10-16 redesign brought BasilBot back into the server, this time as a
-fixed user (id 1) with no rights and no sign-in: the commands are an entry point of the server that runs with the
-rights of whoever typed them, and the bot is only the voice that replies and announces. The earlier "special session"
-failed because the bot acted with rights of its own; that does not return.
+out to BasilBot as a separate client. The 2026-10-16 redesign brought them back as a server entry point: BasilBot is a
+fixed user (id 1) with no rights and no sign-in, commands run using the typist's connection, and the bot only replies
+and announces. The command and announcement handlers are implemented in `Basil.Bot.Application`; transport
+integration and the bot's own connection remain planned for the Host phase. The earlier "special session" failed
+because the bot acted with rights of its own; that does not return.
 
 ### Deferring the API indefinitely
 
