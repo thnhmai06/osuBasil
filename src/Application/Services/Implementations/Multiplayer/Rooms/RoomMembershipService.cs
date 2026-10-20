@@ -1,4 +1,3 @@
-using Basil.Application.Services.Contracts.Chat;
 using Basil.Application.Services.Contracts.Multiplayer;
 using Basil.Application.Services.Contracts.Multiplayer.Events;
 using Basil.Application.Services.Contracts.Multiplayer.Rooms;
@@ -11,7 +10,6 @@ namespace Basil.Application.Services.Implementations.Multiplayer.Rooms;
 /// <summary>Releases a closing connection from room memberships.</summary>
 internal sealed class RoomMembershipService(
 	Lobby lobby,
-	IChannelService channels,
 	IUserRepository users,
 	TimeProvider time) : IRoomMembershipService
 {
@@ -37,7 +35,7 @@ internal sealed class RoomMembershipService(
 
 		// Managers stay in a room's channel after leaving their seat, and IRC referees join it directly.
 		foreach (var room in lobby.Rooms.Values)
-			channels.Members.Part(room.Channel, connection);
+			room.Channel.ScopeTo(connection).Part();
 	}
 
 	/// <inheritdoc />

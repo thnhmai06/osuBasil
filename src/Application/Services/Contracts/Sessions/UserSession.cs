@@ -13,10 +13,10 @@ public sealed class UserSession
 
 	private ImmutableList<RestrictionRecord> _restrictions = [];
 
-	internal UserSession(UserRecord user)
+	internal UserSession(UserRecord user, ChannelContext chat)
 	{
 		User = user;
-		PmChannel = new PmChannelSession(this);
+		PmChannel = new PmChannelSession(this, chat);
 	}
 
 	/// <summary>Gets the user who is online.</summary>

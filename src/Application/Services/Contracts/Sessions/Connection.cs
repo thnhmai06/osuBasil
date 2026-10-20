@@ -1,3 +1,4 @@
+using Basil.Application.Services.Contracts.Chat;
 using Basil.Domain.Auth;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
@@ -42,10 +43,11 @@ namespace Basil.Application.Services.Contracts.Sessions
 		/// <param name="login">The login that opened the connection.</param>
 		/// <param name="token">The token that identifies the connection.</param>
 		/// <param name="utcOffset">The client's UTC offset reported at login.</param>
-		internal BanchoConnection(Login login, string token, int utcOffset) : base(login, token)
+		/// <param name="chat">The runtime dependencies for the spectator channel.</param>
+		internal BanchoConnection(Login login, string token, int utcOffset, ChannelContext chat) : base(login, token)
 		{
 			UtcOffset = utcOffset;
-			SpectatorChannel = new SpectatorChannelSession(this);
+			SpectatorChannel = new SpectatorChannelSession(this, chat);
 		}
 
 		/// <inheritdoc />

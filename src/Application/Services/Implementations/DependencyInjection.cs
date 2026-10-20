@@ -16,8 +16,10 @@ using Basil.Application.Services.Implementations.Multiplayer.Rooms;
 using Basil.Application.Services.Implementations.Scores;
 using Basil.Application.Services.Implementations.Sessions;
 using Basil.Application.Services.Implementations.Users;
+using Basil.Application.Storage.Contracts.Chat;
 using Basil.Application.Storage.Contracts.Content;
 using Basil.Application.Storage.Contracts.Multiplayer.Matches;
+using Basil.Application.Storage.Contracts.Users;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -55,9 +57,13 @@ public static class DependencyInjection
 		services.AddSingleton<IRoomUsersPort>(sp => sp.GetRequiredService<UserService>());
 
 		services.AddSingleton<ChannelEventStream>();
-		services.AddSingleton<ChannelMembershipService>();
-		services.AddSingleton<ChannelMessagesService>();
-		services.AddSingleton<GeneralChannelService>();
+		services.AddSingleton<IChannelEventSink>(sp => sp.GetRequiredService<ChannelEventStream>());
+		services.AddSingleton<ChannelContext>(sp => new ChannelContext(
+			sp.GetRequiredService<TimeProvider>(),
+			sp.GetRequiredService<IChannelEventSink>(),
+			sp.GetRequiredService<IGeneralChannelRegistry>(),
+			sp.GetRequiredService<IRelationshipRepository>(),
+			sp.GetRequiredService<IChannelRepository>()));
 		services.AddSingleton<ChannelService>();
 		services.AddSingleton<IChannelService>(sp => sp.GetRequiredService<ChannelService>());
 
@@ -65,15 +71,13 @@ public static class DependencyInjection
 		services.AddSingleton<ILobbyEventSink>(sp => sp.GetRequiredService<LobbyEventStream>());
 		services.AddSingleton<RoomEventStream>();
 		services.AddSingleton<IRoomEventSink>(sp => sp.GetRequiredService<RoomEventStream>());
-		services.AddSingleton<RoomChannelService>();
-		services.AddSingleton<IRoomChannelPort>(sp => sp.GetRequiredService<RoomChannelService>());
 		services.AddSingleton<LobbyContext>(sp => new LobbyContext(
 			sp.GetRequiredService<TimeProvider>(),
 			sp.GetRequiredService<ILobbyEventSink>(),
 			sp.GetRequiredService<IMatchRepository>(),
 			sp.GetRequiredService<ISettingsRepository>(),
 			sp.GetRequiredService<IRoomEventSink>(),
-			sp.GetRequiredService<IRoomChannelPort>(),
+			sp.GetRequiredService<ChannelContext>(),
 			sp.GetRequiredService<IRoomUsersPort>()));
 		services.AddSingleton<Lobby>(sp => new Lobby(sp.GetRequiredService<LobbyContext>()));
 		services.AddSingleton<LobbyService>();

@@ -1,6 +1,4 @@
-using Basil.Application.Services.Contracts.Sessions;
-
-namespace Basil.Application.Services.Implementations.Sessions;
+namespace Basil.Application.Services.Contracts.Sessions;
 
 /// <summary>The rules about the connections of each kind one user may hold.</summary>
 internal static class ConnectionRules

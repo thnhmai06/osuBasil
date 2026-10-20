@@ -1,4 +1,3 @@
-using Basil.Application.Services.Contracts.Chat;
 using Basil.Application.Services.Contracts.Sessions;
 using Basil.Application.Services.Implementations.Users;
 using Basil.Domain.Users;
@@ -9,7 +8,6 @@ namespace Basil.Application.Services.Implementations.Sessions;
 internal sealed class BanchoSpectatorsService(
 	SessionEventStream events,
 	IUserRegistry users,
-	IChannelService channels,
 	TimeProvider time) : IBanchoSpectatorsService
 {
 	/// <inheritdoc />
@@ -35,8 +33,8 @@ internal sealed class BanchoSpectatorsService(
 
 		var first = host.Spectators.Count == 0;
 		host.MutableSpectators.Add(by);
-		if (first) channels.Members.Join(host.SpectatorChannel, host);
-		channels.Members.Join(host.SpectatorChannel, by);
+		if (first) host.SpectatorChannel.ScopeTo(host).Join();
+		host.SpectatorChannel.ScopeTo(by).Join();
 		events.Emit(new UserSpectatorJoined(host, by));
 		return SpectateResult.Spectating;
 	}
@@ -50,8 +48,8 @@ internal sealed class BanchoSpectatorsService(
 		using var scope = host.EnterSpectators();
 		if (!host.MutableSpectators.Remove(by)) return false;
 
-		channels.Members.Part(host.SpectatorChannel, by);
-		if (host.Spectators.Count == 0) channels.Members.Part(host.SpectatorChannel, host);
+		host.SpectatorChannel.ScopeTo(by).Part();
+		if (host.Spectators.Count == 0) host.SpectatorChannel.ScopeTo(host).Part();
 		events.Emit(new UserSpectatorLeft(host, by));
 		return true;
 	}

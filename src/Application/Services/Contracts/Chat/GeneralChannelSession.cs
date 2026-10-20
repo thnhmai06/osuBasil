@@ -3,8 +3,13 @@ using Basil.Domain.Chat;
 namespace Basil.Application.Services.Contracts.Chat;
 
 /// <summary>A configured chat channel while it is open.</summary>
-public sealed class GeneralChannelSession(GeneralChannel channel) : ChannelSession
+public sealed class GeneralChannelSession : ChannelSession
 {
+	internal GeneralChannelSession(GeneralChannel channel, ChannelContext context) : base(context)
+	{
+		Channel = channel;
+	}
+
 	/// <summary>Gets the configured channel this session runs.</summary>
-	public override GeneralChannel Channel => channel;
+	public override GeneralChannel Channel { get; }
 }

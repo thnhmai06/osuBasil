@@ -174,7 +174,7 @@ public sealed class Lobby : IRoomLobbyPort
 		room.Match.Value.EndedAt = Context.Clock.GetUtcNow();
 		room.Members.MutableObservers.Clear();
 		room.IsClosed = true;
-		Context.Channel.Close(room);
+		room.Channel.Close();
 		Remove(room);
 		Context.Events.Emit(new LobbyRoomClosed(room, by, evicted, aborted));
 	}

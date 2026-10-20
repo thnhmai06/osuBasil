@@ -30,7 +30,7 @@ public sealed class Room : IEquatable<Room>
 		Rounds = new RoomRounds();
 		IsTournament = isTournament;
 		Slots = new RoomSlots(this);
-		Channel = new RoomChannelSession(this);
+		Channel = new RoomChannelSession(this, context.Chat);
 		Context = context;
 	}
 
@@ -215,14 +215,14 @@ public sealed class Room : IEquatable<Room>
 	/// <param name="connection">The connection that joins.</param>
 	internal void JoinChannel(Connection connection)
 	{
-		Context.Channel.Join(this, connection);
+		Channel.ScopeTo(connection).Join();
 	}
 
 	/// <summary>Removes a connection from this room's channel unless its user manages the room.</summary>
 	/// <param name="connection">The connection that leaves.</param>
 	internal void LeaveChannel(Connection connection)
 	{
-		if (!Authority.IsManagedBy(connection.User)) Context.Channel.Part(this, connection);
+		if (!Authority.IsManagedBy(connection.User)) Channel.ScopeTo(connection).Part();
 	}
 
 	/// <summary>Tells the lobby that this room has a player again.</summary>

@@ -12,7 +12,7 @@ namespace Basil.Application.Services.Implementations.Sessions;
 internal sealed class SessionConnectionsService(
 	BanchoConnectionService bancho,
 	IUserRegistry registry,
-	IChannelService channels,
+	ChannelContext chat,
 	SessionEventStream events,
 	TimeProvider time) : ISessionConnectionsService, IUserSessionsPort
 {
@@ -104,7 +104,7 @@ internal sealed class SessionConnectionsService(
 		var cameOnline = session is null;
 		if (session is null)
 		{
-			session = new UserSession(connection.User);
+			session = new UserSession(connection.User, chat);
 			registry.Add(session);
 		}
 
@@ -112,7 +112,7 @@ internal sealed class SessionConnectionsService(
 		connection.Session = session;
 		session.Add(connection);
 		if (connection.Type is not ConnectionType.Tourney)
-			channels.Members.Join(session.PmChannel, connection);
+			session.PmChannel.ScopeTo(connection).Join();
 		connection.IsOpen = true;
 		registry.Index(connection);
 
@@ -160,15 +160,15 @@ internal sealed class SessionConnectionsService(
 		connection.IsOpen = false;
 		registry.Unindex(connection);
 		connection.Session.Remove(connection);
-		channels.Members.Part(connection.Session.PmChannel, connection);
+		connection.Session.PmChannel.ScopeTo(connection).Part();
 		if (connection is BanchoConnection client)
-			channels.Close(client.SpectatorChannel);
+			client.SpectatorChannel.Close();
 
 		var wentOffline = !connection.Session.Connections.Any();
 		if (wentOffline)
 		{
 			registry.Remove(connection.Session);
-			channels.Close(connection.Session.PmChannel);
+			connection.Session.PmChannel.Close();
 		}
 
 		events.Emit(new UserConnectionClosed(connection, reason, wentOffline));

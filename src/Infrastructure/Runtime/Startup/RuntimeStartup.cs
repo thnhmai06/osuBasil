@@ -21,7 +21,7 @@ internal sealed class RuntimeStartup(
 	{
 		var openedChannels = 0;
 		foreach (var channel in await channelRepository.ListAsync(cancellationToken))
-			if (channels.General.Open(channel) is not null)
+			if (channels.Open(channel) is not null)
 				openedChannels++;
 		logger.LogInformation("Opened {ChannelCount} general channels", openedChannels);
 

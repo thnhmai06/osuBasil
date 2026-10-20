@@ -1,30 +1,49 @@
 using System.Threading.Channels;
 using Basil.Application.Services.Contracts.Chat;
+using Basil.Application.Services.Contracts.Sessions;
+using Basil.Domain.Chat;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Implementations.Chat;
 
-/// <summary>Opens and closes chat channels; joining, posting and the general channels are its parts.</summary>
-internal sealed class ChannelService(
-	ChannelMembershipService members,
-	ChannelMessagesService messages,
-	GeneralChannelService general,
-	ChannelEventStream events) : IChannelService
+/// <summary>Opens general channels and manages automatic channel membership.</summary>
+internal sealed class ChannelService(ChannelContext context, ChannelEventStream events) : IChannelService
 {
 	/// <inheritdoc />
 	public ChannelReader<ChannelEvent> Events => events.Reader;
 
 	/// <inheritdoc />
-	public void Close(ChannelSession channel)
+	public GeneralChannelSession? Open(GeneralChannel channel)
 	{
-		members.Close(channel);
+		var session = new GeneralChannelSession(channel, context);
+		if (!context.Registry.Add(session)) return null;
+		context.Events.Emit(new ChannelOpened(session));
+		return session;
 	}
 
 	/// <inheritdoc />
-	public IChannelMembershipService Members => members;
+	public async Task<ChannelManageResult> CreateAsync(GeneralChannel channel, Connection by,
+		CancellationToken cancellationToken = default)
+	{
+		if (by.Session.Check(Permissions.ServerConfigure, context.Clock.GetUtcNow()) is not Access.Allowed)
+			return ChannelManageResult.NotAuthorized;
+		if (Open(channel) is null) return ChannelManageResult.NameTaken;
+		await context.Channels.CreateOrUpdateAsync(channel, cancellationToken);
+		return ChannelManageResult.Ok;
+	}
 
 	/// <inheritdoc />
-	public IChannelMessagesService Messages => messages;
+	public void JoinAutoChannels(Connection by)
+	{
+		foreach (var channel in context.Registry.All.Values)
+			if (channel.Channel.AutoJoin)
+				channel.ScopeTo(by).Join();
+	}
 
 	/// <inheritdoc />
-	public IGeneralChannelService General => general;
+	public void PartAll(Connection by)
+	{
+		foreach (var channel in context.Registry.All.Values)
+			channel.ScopeTo(by).Part();
+	}
 }

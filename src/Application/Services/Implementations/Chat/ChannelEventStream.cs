@@ -5,7 +5,7 @@ using Channel = System.Threading.Channels.Channel;
 namespace Basil.Application.Services.Implementations.Chat;
 
 /// <summary>The one event stream of chat channels, shared by the channel service and its children.</summary>
-internal sealed class ChannelEventStream
+internal sealed class ChannelEventStream : IChannelEventSink
 {
 	private readonly Channel<ChannelEvent> _events = Channel.CreateUnbounded<ChannelEvent>();
 
@@ -14,7 +14,7 @@ internal sealed class ChannelEventStream
 
 	/// <summary>Emits an event to the stream.</summary>
 	/// <param name="event">The event to emit.</param>
-	internal void Emit(ChannelEvent @event)
+	public void Emit(ChannelEvent @event)
 	{
 		_events.Writer.TryWrite(@event);
 	}

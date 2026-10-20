@@ -110,7 +110,7 @@ public sealed class ScopedLobby
 		Room room;
 		using (Lobby.Enter())
 		{
-			var context = new RoomContext(Lobby.Context.Clock, Lobby.Context.RoomEvents, Lobby, Lobby.Context.Channel,
+			var context = new RoomContext(Lobby.Context.Clock, Lobby.Context.RoomEvents, Lobby, Lobby.Context.Chat,
 				Lobby.Context.Users);
 			room = new Room(id, match, settings ?? new MatchSettings(), isTournament, context);
 			if (!string.IsNullOrEmpty(password)) room.Settings.Password = password;

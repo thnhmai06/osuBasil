@@ -1,4 +1,5 @@
 using Basil.Application.Services.Contracts.Multiplayer.Events;
+using Basil.Application.Services.Contracts.Chat;
 using Basil.Application.Services.Contracts.Sessions;
 using Basil.Domain.Users;
 
@@ -8,13 +9,13 @@ namespace Basil.Application.Services.Contracts.Multiplayer.Rooms;
 /// <param name="Clock">The clock for checking current time.</param>
 /// <param name="Events">The event sink for emitting room events.</param>
 /// <param name="Lobby">The lobby that holds the room.</param>
-/// <param name="Channel">The chat service for the room's channel.</param>
+/// <param name="Chat">The runtime dependencies for the room's channel.</param>
 /// <param name="Users">The user service for checking blocks.</param>
 internal sealed record RoomContext(
 	TimeProvider Clock,
 	IRoomEventSink Events,
 	IRoomLobbyPort Lobby,
-	IRoomChannelPort Channel,
+	ChannelContext Chat,
 	IRoomUsersPort Users);
 
 /// <summary>Emits room events to the event stream.</summary>
@@ -46,24 +47,6 @@ internal interface IRoomLobbyPort
 	/// <param name="by">The user who closed the room, or <see langword="null" /> when the room closed itself.</param>
 	/// <remarks>The caller holds the room's scope.</remarks>
 	void Close(Room room, UserRecord? by);
-}
-
-/// <summary>What a room asks of the chat to keep its own channel in step.</summary>
-internal interface IRoomChannelPort
-{
-	/// <summary>Adds a connection to the room's channel.</summary>
-	/// <param name="room">The room whose channel to join.</param>
-	/// <param name="connection">The connection that joins.</param>
-	void Join(Room room, Connection connection);
-
-	/// <summary>Removes a connection from the room's channel.</summary>
-	/// <param name="room">The room whose channel to leave.</param>
-	/// <param name="connection">The connection that leaves.</param>
-	void Part(Room room, Connection connection);
-
-	/// <summary>Closes the room's channel.</summary>
-	/// <param name="room">The room whose channel closes.</param>
-	void Close(Room room);
 }
 
 /// <summary>What a room asks of the users: whether one blocks another.</summary>
