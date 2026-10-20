@@ -32,6 +32,7 @@ public static class DependencyInjection
 		services.AddHostedService<RuntimeStartup>();
 
 		services.AddSingleton<IEventHandler<UserEvent>, ConnectionHandler>();
+		services.AddSingleton<IEventHandler<UserEvent>, RestrictionHandler>();
 		services.AddSingleton<IEventHandler<ScoreEvent>, ScoreHandler>();
 		services.AddSingleton<MatchRecorder>();
 		services.AddSingleton<IEventHandler<RoomEvent>>(sp => sp.GetRequiredService<MatchRecorder>());
