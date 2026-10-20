@@ -15,5 +15,5 @@ internal sealed record CommandContext(
 	Func<string, CancellationToken, Task> ReplyPrivately)
 {
 	/// <summary>Gets the user who typed the command.</summary>
-	public UserRecord Sender => By.User;
+	public UserRecord Sender => By.Record;
 }

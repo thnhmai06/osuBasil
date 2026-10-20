@@ -411,7 +411,7 @@ Events/        Event, IEventPublisher<T>, IEventHandler<T>                      
 Users/         user and restriction repositories, UserQuery; User, ScopedUser,
                ScopedUserRestrictions, ScopedUserRelationships, UserResult
 Auth/          credential and login repositories; IAuthService, login and registration inputs
-Sessions/      UserSession, Connection tree, ScopedUserSession, UserRegistry,
+Sessions/      Connection tree, UserRegistry,
                ScopedBanchoConnection; ISessionConnectionsService and events
 Chat/          Channel tree, IChannelRepository; ScopedChannel, ScopedGeneralChannel,
                GeneralChannelRegistry, IGeneralChannelRegistry, IChannelService, events and results
@@ -449,7 +449,7 @@ not host configuration.
   `User`, `Beatmap`, `Login`, `ServerSettings`, …). A model guarantees that **it is valid**: field values
   in range, its own text format, values derived purely from its own data. No runtime-only state, no events.
 * **Behaviour belongs to the object that owns it, and is reached through that object.** Every concept with state, invariants and
-  rights is an **Application object** (`User`, `UserSession`, `Connection`, `Room`, `RoomSlot`, `Lobby`, the
+  rights is an **Application object** (`User`, `Connection`, `Room`, `RoomSlot`, `Lobby`, the
   channels, `Beatmapset`, and the root `Server`) in Application.Objects. It owns its state,
   keeps its invariants, and offers its behaviour; its state changes only inside its own behaviour. Its persistent
   value is a Domain record named `XRecord` with the plain value `XData` (`UserRecord`, `BeatmapsetRecord`,
@@ -472,7 +472,7 @@ not host configuration.
   library each `ScopeTo` calls, not a layer to pass through. A domain record and its Application object never
   share a name.
 * **Storage holds persistence; runtime objects and registries live in Services.** Application.Storage holds
-  persistent ports, query records and paging. Runtime objects (`Room`, `RoomSlot`, `UserSession`, connections
+  persistent ports, query records and paging. Runtime objects (`Room`, `RoomSlot`, `User`, connections
   and channels), registry contracts (`IUserRegistry`, `IGeneralChannelRegistry`) and their scoped
   behaviour live in Application.Objects; registry implementations live in Application.Services. Storage
   never decides a business rule, emits an event, calls a service or starts a timer. A state change and its
@@ -537,15 +537,15 @@ not host configuration.
   its scoped round behaviour; aborting a round cancels a pending start. BasilBot announces the countdown marks.
 * **Derive whatever is derivable.** A property a runtime object co-owns with its domain object
   (truth in Domain) is a forwarding property (`Room.Name => Match.Name`).
-* **A user online is one `UserSession`; each place they log in from is a `Connection`.**
-  `UserSession` (sealed) represents the user regardless of where they connect and holds what is
+* **A user is one `User`; each place they log in from is a `Connection`.**
+  `User` (sealed) represents the account and, while it is online, everywhere they connect from: it holds what is
   shared (`AwayMessage`, `PmChannel`, the active `Restrictions`) plus its connections as child data, keyed by
   `ConnectionType` (`Bancho`, `Tourney`, `Irc`, `Api`), with typed accessors (`Bancho`, `Irc`, `Tourneys`,
   `Apis`); only `Tourney` and `Api` allow several connections per user, a rule the session service owns.
-  `Connection` is an abstract class (`Session`, `Login`, `Token`, `IsOpen`, `Type`) with `BanchoConnection`,
+  `Connection` is an abstract class (`User`, `Record`, `Login`, `Token`, `IsOpen`, `Type`) with `BanchoConnection`,
   `TourneyConnection`, `IrcConnection`, `ApiConnection`; each holds only what exists for that kind of client
   (`BanchoConnection.Status`, `BanchoConnection.SpectatorChannel`). Rooms, channels and the lobby
-  hold connections, not sessions. Owned parts (a session's `PmChannel`, a connection's
+  hold connections, not users' sessions. Owned parts (a user's `PmChannel`, a connection's
   `SpectatorChannel`) are created and destroyed with their owner; they are not relations.
   Spectating is a relation on the spectated osu! client (`BanchoConnection.Spectators`), changed through
   `host.ScopeTo(by).SpectateAsync()` (what only an osu! client has lives under `BanchoConnection`:
@@ -554,7 +554,7 @@ not host configuration.
   spectating.
 * **Identify by the basis object**, not its id (`Room` by `Match`, `GeneralChannel` by `Name`). Runtime
   objects that can be recreated with the same user or name compare **by reference**: a connection
-  is one login, a `UserSession` is one period online (look it up by `User` through `UserRegistry`), a
+  is one login, a `User` instance is one online period (`UserRegistry.Online` holds it; an offline account gets a transient instance that is never registered), a
   runtime channel is one opening (`#mp_5` is reused when a room id is reused). Cleanup that carries
   an old object can never touch its replacement. "Is this user already here?" compares the user
   and is a separate check from object identity. Ids are for repository lookups only. Choose object vs identifier
@@ -884,7 +884,7 @@ not host configuration.
   * A collection that is both read and changed is exposed twice, with no methods that only forward to it: a public
     read-only interface and an `internal` read-write one named `Mutable{X}` (`public IReadOnlySet<User> Banned`,
     `internal ISet<User> MutableBanned`; `IDictionary`/`IList` likewise). A method stays only when it carries a rule
-    of its own (`Lobby.Add` releases the reserved id; `UserSession.Add` files a connection by its kind).
+    of its own (`Lobby.Add` releases the reserved id; `User.Add` files a connection by its kind).
   * Expose the most derived interface the value has (`IReadOnlyDictionary`, `IReadOnlySet`, `IReadOnlyCollection`
     rather than `IEnumerable`), unless the extra property belongs to the implementation and not to the contract: a
     storage that walks files returns `IEnumerable<T>`, not `IOrderedEnumerable<T>`, even when it sorts them.
@@ -1090,7 +1090,7 @@ Before considering a code change complete:
    [Domain and Application](#domain-and-application), above all "storage holds data, services hold
    behaviour", "the acted-on object owns the interaction" and "Application emits events; it does not
    consume them". This applies to code written by delegated agents too: the orchestrator reviews it
-   against these rules before accepting it. `UserSession.Channels`, `UserSession.Join(Channel)`,
+   against these rules before accepting it. `User.Channels`, `User.Join(Channel)`,
    sessions emitting events, event handlers inside Application, and rules or timers on runtime models and
    registries all got through review once; do not let them back in. Nor should a service that only wraps
    a repository read, a registry used through its implementation instead of its contract, a contract name that

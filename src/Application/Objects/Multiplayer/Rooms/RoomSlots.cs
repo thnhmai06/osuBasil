@@ -51,7 +51,7 @@ public sealed class RoomSlots : IReadOnlyList<RoomSlot>
 	/// <returns>The player's slot, or <see langword="null" /> when they have none.</returns>
 	public RoomSlot? Find(UserRecord user)
 	{
-		return _slots.FirstOrDefault(s => user.Equals(s.Player?.User));
+		return _slots.FirstOrDefault(s => user.Equals(s.Player?.Record));
 	}
 
 	/// <summary>Finds the slot occupied by a player connection.</summary>

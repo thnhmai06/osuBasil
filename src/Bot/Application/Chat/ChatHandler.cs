@@ -8,7 +8,11 @@ using Microsoft.Extensions.Logging;
 namespace Basil.Bot.Application.Chat;
 
 /// <summary>Runs chat commands posted in channels on the connection that typed them.</summary>
-internal sealed class ChatHandler(Server server, ChatCommands commands, CommandWorker worker, ILogger<ChatHandler> logger)
+internal sealed class ChatHandler(
+	Server server,
+	ChatCommands commands,
+	CommandWorker worker,
+	ILogger<ChatHandler> logger)
 	: IEventHandler<ChannelEvent>
 {
 	private const int MaxMessageLength = 2000;
@@ -23,27 +27,28 @@ internal sealed class ChatHandler(Server server, ChatCommands commands, CommandW
 		    || BasilBot.Is(posted.Message.Author))
 			return ValueTask.CompletedTask;
 
-		var privateMessage = posted.Channel is PmChannel pm && BasilBot.Is(pm.Owner.User);
+		var privateMessage = posted.Channel is PmChannel pm && BasilBot.Is(pm.Owner.Record);
 		if (posted.Channel is PmChannel && !privateMessage) return ValueTask.CompletedTask;
 
 		var context = new CommandContext(
 			by,
 			privateMessage ? null : posted.Channel.Name,
 			(text, ct) => SendSplitAsync(text, (piece, token) => privateMessage
-				? server.WhisperAsync(by.Session, piece, ct: token)
+				? server.WhisperAsync(by.User, piece, ct: token)
 				: server.SayAsync(posted.Channel, piece, ct: token), ct),
 			(text, ct) =>
-				SendSplitAsync(text, (piece, token) => server.WhisperAsync(by.Session, piece, ct: token), ct));
+				SendSplitAsync(text, (piece, token) => server.WhisperAsync(by.User, piece, ct: token), ct));
 
-		worker.Enqueue(by.User.Id, async ct =>
+		worker.Enqueue(by.Record.Id, async ct =>
 		{
 			try
 			{
 				await commands.ExecuteAsync(context, posted.Message.Content, ct);
 			}
-			catch (Exception exception) when (exception is not OperationCanceledException || !ct.IsCancellationRequested)
+			catch (Exception exception) when
+				(exception is not OperationCanceledException || !ct.IsCancellationRequested)
 			{
-				logger.LogError(exception, "Error handling bot command from user {UserId}", by.User.Id);
+				logger.LogError(exception, "Error handling bot command from user {UserId}", by.Record.Id);
 			}
 		});
 		return ValueTask.CompletedTask;

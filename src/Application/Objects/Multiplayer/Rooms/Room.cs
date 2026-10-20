@@ -114,7 +114,7 @@ public sealed class Room : IEquatable<Room>
 	/// <exception cref="InvalidOperationException">The user is banned from the room.</exception>
 	internal RoomSlot? Seat(BanchoConnection player)
 	{
-		if (Members.Banned.Contains(player.User))
+		if (Members.Banned.Contains(player.Record))
 			throw new InvalidOperationException("The user is banned from this room.");
 
 		if (Slots.Find(player) is { } existing) return existing;
@@ -169,7 +169,7 @@ public sealed class Room : IEquatable<Room>
 	/// <returns>Ok, or IsPlayer when the user is seated in the room.</returns>
 	internal RoomResult ObserverJoin(TourneyConnection by)
 	{
-		if (Slots.Find(by.User) is not null) return RoomResult.IsPlayer;
+		if (Slots.Find(by.Record) is not null) return RoomResult.IsPlayer;
 		if (!Members.MutableObservers.Add(by)) return RoomResult.Ok;
 
 		Context.Events.Publish(new RoomObserverJoined(this, by));
@@ -223,7 +223,7 @@ public sealed class Room : IEquatable<Room>
 	/// <param name="connection">The connection that leaves.</param>
 	internal void LeaveChannel(Connection connection)
 	{
-		if (!Authority.IsManagedBy(connection.User)) Channel.ScopeTo(connection).Part();
+		if (!Authority.IsManagedBy(connection.Record)) Channel.ScopeTo(connection).Part();
 	}
 
 	/// <summary>Tells the lobby that this room has a player again.</summary>

@@ -47,14 +47,15 @@ internal sealed class MatchRecorder(
 				break;
 			case RoomPlayerJoined e:
 				await RecordMatchEventAsync(e.Room.Match, MatchEventType.PlayerJoined, @event.Timestamp,
-					target: e.Player.User, cancellationToken: cancellationToken);
+					target: e.Player.Record, cancellationToken: cancellationToken);
 				break;
 			case RoomPlayerLeft e:
 				await RecordMatchEventAsync(e.Room.Match, MatchEventType.PlayerLeft, @event.Timestamp,
-					target: e.Player.User, cancellationToken: cancellationToken);
+					target: e.Player.Record, cancellationToken: cancellationToken);
 				break;
 			case RoomPlayerKicked e:
-				await RecordMatchEventAsync(e.Room.Match, MatchEventType.Kicked, @event.Timestamp, e.By, e.Player.User,
+				await RecordMatchEventAsync(e.Room.Match, MatchEventType.Kicked, @event.Timestamp, e.By,
+					e.Player.Record,
 					"Kicked", cancellationToken);
 				break;
 			case RoomPlayerBanned e:
@@ -62,7 +63,8 @@ internal sealed class MatchRecorder(
 					"Banned", cancellationToken);
 				break;
 			case RoomHostChanged { Host: { } host } e:
-				await RecordMatchEventAsync(e.Room.Match, MatchEventType.HostGranted, @event.Timestamp, e.By, host.User,
+				await RecordMatchEventAsync(e.Room.Match, MatchEventType.HostGranted, @event.Timestamp, e.By,
+					host.Record,
 					cancellationToken: cancellationToken);
 				break;
 			case RoomRefereeAdded e:

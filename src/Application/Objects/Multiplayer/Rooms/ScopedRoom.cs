@@ -58,7 +58,7 @@ public sealed class ScopedRoom
 
 		// Apply effective permissions
 		var now = room.Context.Clock.GetUtcNow();
-		var effectivePermissions = by.Session.EffectivePermissions(now);
+		var effectivePermissions = by.User.EffectivePermissions(now);
 		ManagesAnyRoom = effectivePermissions.Allows(Domain.Permissions.Permissions.RoomManageAny);
 
 		// Managing every room acts with the creator's authority, joined or not; a restriction cannot suspend it,
@@ -91,11 +91,11 @@ public sealed class ScopedRoom
 				roles |= RoomRoles.Host;
 
 			// Referee: managed by but not creator
-			if (room.Authority.IsManagedBy(by.User) && !Equals(room.Authority.Creator, by.User))
+			if (room.Authority.IsManagedBy(by.Record) && !Equals(room.Authority.Creator, by.Record))
 				roles |= RoomRoles.Referee;
 
 			// Creator: creator equals
-			if (Equals(room.Authority.Creator, by.User))
+			if (Equals(room.Authority.Creator, by.Record))
 				roles |= RoomRoles.Creator;
 
 			return roles;
@@ -111,7 +111,7 @@ public sealed class ScopedRoom
 			return null;
 
 		// Check if granted permissions allow RoomJoin but effective don't
-		return By.Session.Check(Domain.Permissions.Permissions.RoomJoin, Room.Context.Clock.GetUtcNow())
+		return By.User.Check(Domain.Permissions.Permissions.RoomJoin, Room.Context.Clock.GetUtcNow())
 			is Access.Suspended
 			? RoomResult.Silenced
 			: RoomResult.NotAuthorized;
@@ -121,7 +121,7 @@ public sealed class ScopedRoom
 	/// <returns>Null when allowed, otherwise the reason for denial.</returns>
 	internal RoomResult? RequireJoin()
 	{
-		return By.Session.Check(Domain.Permissions.Permissions.RoomJoin, Room.Context.Clock.GetUtcNow()) switch
+		return By.User.Check(Domain.Permissions.Permissions.RoomJoin, Room.Context.Clock.GetUtcNow()) switch
 		{
 			Access.NotGranted => RoomResult.NotAuthorized,
 			Access.Suspended => RoomResult.Silenced,
@@ -142,7 +142,7 @@ public sealed class ScopedRoom
 		await using var scope = await Room.EnterAsync(cancellationToken);
 		if (scope is null) return RoomResult.Ok;
 
-		Room.Context.Lobby.Close(Room, By.User);
+		Room.Context.Lobby.Close(Room, By.Record);
 		return RoomResult.Ok;
 	}
 }

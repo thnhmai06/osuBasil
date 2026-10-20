@@ -46,7 +46,7 @@ internal sealed class ScoreService(
 		if (checkedBeatmap is null) return ScoreRejection.UnknownBeatmap;
 
 		var loginClient = connection.Login.Client!;
-		if (Validate(submission, loginClient, checkedBeatmap, connection.User.Value.Name, client) is { } rejection)
+		if (Validate(submission, loginClient, checkedBeatmap, connection.Record.Value.Name, client) is { } rejection)
 			return rejection;
 
 		var team = round is not null ? room!.Slots.Find(connection)?.Team : null;
@@ -54,7 +54,7 @@ internal sealed class ScoreService(
 		try
 		{
 			score = await scores.CreateAsync(
-				submission.Score with { UserId = connection.User.Id }, cancellationToken);
+				submission.Score with { UserId = connection.Record.Id }, cancellationToken);
 		}
 		catch (AlreadyExistsException)
 		{
@@ -73,7 +73,7 @@ internal sealed class ScoreService(
 		}
 
 		// ponytail: get-then-write per user; add an atomic increment to the contract if one user's submissions can overlap.
-		var current = await stats.GetAsync(connection.User, submission.Score.Mode, cancellationToken);
+		var current = await stats.GetAsync(connection.Record, submission.Score.Mode, cancellationToken);
 		current.PlayCount++;
 		current.TotalScore += submission.Score.TotalScore;
 		if (submission.Score.IsPassed)
@@ -82,7 +82,7 @@ internal sealed class ScoreService(
 
 		await stats.CreateOrUpdateAsync(current, cancellationToken);
 
-		events.Publish(new ScoreSubmitted(connection.User, score, current, roundScore,
+		events.Publish(new ScoreSubmitted(connection.Record, score, current, roundScore,
 			round is not null ? room : null));
 		return null;
 	}

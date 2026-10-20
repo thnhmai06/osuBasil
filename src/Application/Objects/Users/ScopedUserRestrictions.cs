@@ -57,7 +57,7 @@ public sealed class ScopedUserRestrictions
 		var log = new ModerationData
 		{
 			Action = ModerationAction.Lift,
-			By = _scoped.By.User,
+			By = _scoped.By.Record,
 			Target = _scoped.User.Record,
 			Reason = reason,
 			Timestamp = now
@@ -65,7 +65,7 @@ public sealed class ScopedUserRestrictions
 
 		restriction.Value.EndsAt = now;
 		await _scoped.User.Context.Restrictions.UpdateAsync(restriction, ct);
-		_scoped.User.Context.Registry.Sessions.GetValueOrDefault(_scoped.User.Record)
+		_scoped.User.Context.Registry.Online.GetValueOrDefault(_scoped.User.Record)
 			?.ChangeRestrictions(running => running.RemoveAll(restriction.Equals));
 		await _scoped.User.Context.ModerationLog.AppendAsync(log, ct);
 
@@ -85,7 +85,7 @@ public sealed class ScopedUserRestrictions
 		var log = new ModerationData
 		{
 			Action = ModerationAction.Restrict,
-			By = _scoped.By.User,
+			By = _scoped.By.Record,
 			Target = _scoped.User.Record,
 			Reason = reason,
 			Timestamp = now
@@ -99,10 +99,10 @@ public sealed class ScopedUserRestrictions
 		};
 		var context = _scoped.User.Context;
 		var restriction = await context.Restrictions.CreateAsync(data, ct);
-		if (context.Registry.Sessions.GetValueOrDefault(_scoped.User.Record) is { } session)
+		if (context.Registry.Online.GetValueOrDefault(_scoped.User.Record) is { } user)
 		{
-			session.ChangeRestrictions(running => running.Add(restriction));
-			context.Sessions.CloseDisallowed(session);
+			user.ChangeRestrictions(running => running.Add(restriction));
+			context.Connections.CloseDisallowed(user);
 		}
 
 		await context.ModerationLog.AppendAsync(log, ct);

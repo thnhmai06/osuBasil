@@ -1,5 +1,6 @@
 ﻿using Basil.Application.Objects.Chat;
 using Basil.Application.Objects.Sessions;
+using Basil.Application.Objects.Users;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
 
@@ -53,7 +54,8 @@ public sealed class Server
 	public async Task<bool> SayAsync(Channel channel, string text, bool notice = false,
 		CancellationToken ct = default)
 	{
-		if (channel.IsClosed || string.IsNullOrWhiteSpace(text)) return false;
+		if (channel.IsClosed || channel is PmChannel { Owner.IsOnline: false } || string.IsNullOrWhiteSpace(text))
+			return false;
 
 		var bot = await Context.Users.GetAsync(BasilBot.Id, ct);
 		if (bot is null || channel.IsClosed) return false;
@@ -63,7 +65,7 @@ public sealed class Server
 	}
 
 	/// <summary>Sends a private message to an online user as BasilBot.</summary>
-	/// <param name="to">The online recipient.</param>
+	/// <param name="to">The recipient.</param>
 	/// <param name="text">The message text.</param>
 	/// <param name="notice">Whether the message is a notice.</param>
 	/// <param name="ct">A token that cancels the operation.</param>
@@ -72,8 +74,9 @@ public sealed class Server
 	///     This system operation needs no rights because the server itself calls it. Chat commands must use the scope of
 	///     the connection that typed them, not this method, to act for a user. Messages are not delivered offline.
 	/// </remarks>
-	public Task<bool> WhisperAsync(UserSession to, string text, bool notice = false, CancellationToken ct = default)
+	public Task<bool> WhisperAsync(User to, string text, bool notice = false, CancellationToken ct = default)
 	{
+		if (!to.IsOnline) return Task.FromResult(false);
 		return SayAsync(to.PmChannel, text, notice, ct);
 	}
 

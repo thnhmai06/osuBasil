@@ -43,7 +43,8 @@ public sealed class ScopedChannel
 		Connection? replaced = null;
 		if (!By.Type.AllowsMany())
 		{
-			replaced = Channel.Members.FirstOrDefault(member => member.User.Equals(By.User) && member.Type == By.Type);
+			replaced = Channel.Members.FirstOrDefault(member =>
+				member.Record.Equals(By.Record) && member.Type == By.Type);
 			if (replaced is not null)
 			{
 				if (replaced.IsOpen) return ChannelJoinResult.AlreadyMember;
@@ -85,7 +86,7 @@ public sealed class ScopedChannel
 
 		var now = Channel.Context.Clock.GetUtcNow();
 		var required = Channel is PmChannel ? Permissions.ChatPostPrivate : Permissions.ChatPost;
-		switch (By.Session.Check(required, now))
+		switch (By.User.Check(required, now))
 		{
 			case Access.NotGranted: return ChannelPostResult.NoWritePermission;
 			case Access.Suspended: return ChannelPostResult.Silenced;
@@ -97,13 +98,13 @@ public sealed class ScopedChannel
 
 		if (Channel is PmChannel pm)
 		{
-			if (By.Session.Check(Permissions.ChatMessageAnyone, now) is not Access.Allowed)
+			if (By.User.Check(Permissions.ChatMessageAnyone, now) is not Access.Allowed)
 			{
-				var relationships = await Channel.Context.Relationships.ListAsync(pm.Owner.User, cancellationToken);
+				var relationships = await Channel.Context.Relationships.ListAsync(pm.Owner.Record, cancellationToken);
 				var blocked = relationships.Any(relationship =>
-					relationship.Type == RelationshipType.Block && relationship.Target.Equals(By.User));
+					relationship.Type == RelationshipType.Block && relationship.Target.Equals(By.Record));
 				var friend = relationships.Any(relationship =>
-					relationship.Type == RelationshipType.Friend && relationship.Target.Equals(By.User));
+					relationship.Type == RelationshipType.Friend && relationship.Target.Equals(By.Record));
 				if (blocked || (pm.Owner.PmPrivate && !friend)) return ChannelPostResult.Blocked;
 			}
 
@@ -111,7 +112,7 @@ public sealed class ScopedChannel
 				return ChannelPostResult.TargetSilenced;
 		}
 
-		Channel.PostMessage(By.User, text, notice, now, By);
+		Channel.PostMessage(By.Record, text, notice, now, By);
 		return ChannelPostResult.Posted;
 	}
 }

@@ -1,12 +1,13 @@
 using Basil.Domain.Users;
+using Basil.Application.Objects.Users;
 
 namespace Basil.Application.Objects.Sessions;
 
-/// <summary>The users who are online, each with their session.</summary>
+/// <summary>The users who are online.</summary>
 public interface IUserRegistry
 {
-	/// <summary>Gets every online session by its user.</summary>
-	IReadOnlyDictionary<UserRecord, UserSession> Sessions { get; }
+	/// <summary>Gets every online user by its account.</summary>
+	IReadOnlyDictionary<UserRecord, User> Online { get; }
 
 	/// <summary>Finds the open connection a token identifies.</summary>
 	/// <param name="token">The token the client presented.</param>
@@ -18,11 +19,11 @@ public interface IUserRegistry
 	/// <returns>The online osu! client being spectated, or <see langword="null" /> when the connection is not spectating.</returns>
 	BanchoConnection? FindSpectating(Connection connection);
 
-	/// <summary>Adds an online session.</summary>
-	internal void Add(UserSession session);
+	/// <summary>Adds an online user.</summary>
+	internal void Add(User user);
 
-	/// <summary>Removes an online session; a different session of the same user is left in place.</summary>
-	internal bool Remove(UserSession session);
+	/// <summary>Removes an online user; a different online instance of the same account is left in place.</summary>
+	internal bool Remove(User user);
 
 	/// <summary>Makes a connection findable by its token.</summary>
 	internal void Index(Connection connection);

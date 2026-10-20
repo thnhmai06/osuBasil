@@ -20,6 +20,7 @@ using Basil.Application.Storage.Chat;
 using Basil.Application.Storage.Content;
 using Basil.Application.Storage.Multiplayer;
 using Basil.Application.Storage.Users;
+using Basil.Domain.Users;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -50,6 +51,7 @@ public static class DependencyInjection
 		services.AddSingleton<UserService>();
 		services.AddSingleton<IUserService>(sp => sp.GetRequiredService<UserService>());
 		services.AddSingleton<IRoomUsersPort>(sp => sp.GetRequiredService<UserService>());
+		services.AddSingleton<Func<UserRecord, User>>(sp => record => sp.GetRequiredService<IUserService>().Of(record));
 
 		services.AddSingleton<ChannelContext>(sp => new ChannelContext(
 			sp.GetRequiredService<TimeProvider>(),

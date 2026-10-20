@@ -14,8 +14,8 @@ public sealed class SpectatorChannel : Channel
 	public BanchoConnection Host { get; }
 
 	/// <inheritdoc />
-	public override string Name => $"#spec_{Host.User.Id}";
+	public override string Name => $"#spec_{Host.Record.Id}";
 
 	/// <inheritdoc />
-	public override string Topic => $"{Host.User.Value.Name}'s spectator channel";
+	public override string Topic => $"{Host.Record.Value.Name}'s spectator channel";
 }

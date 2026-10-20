@@ -1,5 +1,6 @@
 using Basil.Application.Objects.Multiplayer.Events;
 using Basil.Application.Objects.Sessions;
+using Basil.Application.Objects.Users;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Permissions;
 using Basil.Domain.Users;
@@ -30,14 +31,14 @@ public sealed class ScopedRoomMembers
 		await using var scope = await room.EnterAsync(cancellationToken);
 		if (scope is null) return RoomResult.RoomClosed;
 
-		var stale = room.Slots.Find(by.User)?.Player;
+		var stale = room.Slots.Find(by.Record)?.Player;
 		if (stale is not null && (ReferenceEquals(stale, by) || stale.IsOpen)) return RoomResult.AlreadySeated;
 
-		if (room.Members.Banned.Contains(by.User)) return RoomResult.Banned;
+		if (room.Members.Banned.Contains(by.Record)) return RoomResult.Banned;
 		if (_scoped.RequireJoin() is { } denied) return denied;
 
 		if (room.RoomOf(by) is { } other && !ReferenceEquals(other, room)) return RoomResult.InAnotherRoom;
-		if (room.Members.Observers.Any(observer => observer.User.Equals(by.User))) return RoomResult.IsObserver;
+		if (room.Members.Observers.Any(observer => observer.Record.Equals(by.Record))) return RoomResult.IsObserver;
 		if (!string.IsNullOrEmpty(room.Settings.Password) && room.Settings.Password != password &&
 		    !_scoped.ManagesAnyRoom)
 			return RoomResult.WrongPassword;
@@ -65,7 +66,7 @@ public sealed class ScopedRoomMembers
 		if (_scoped.Require(RoomPermissions.MembersSeat) is { } denied) return denied;
 		if (!player.IsOpen) return RoomResult.TargetOffline;
 
-		switch (player.Session.Check(Permissions.RoomJoin, _scoped.Room.Context.Clock.GetUtcNow()))
+		switch (player.User.Check(Permissions.RoomJoin, _scoped.Room.Context.Clock.GetUtcNow()))
 		{
 			case Access.NotGranted: return RoomResult.NotAuthorized;
 			case Access.Suspended: return RoomResult.Silenced;
@@ -73,25 +74,26 @@ public sealed class ScopedRoomMembers
 		}
 
 		var room = _scoped.Room;
-		if (room.Members.Banned.Contains(player.User)) return RoomResult.Banned;
+		if (room.Members.Banned.Contains(player.Record)) return RoomResult.Banned;
 
 		if (room.RoomOf(player) is { } other && !ReferenceEquals(other, room))
 		{
 			if (other.ScopeTo(_scoped.By).Require(RoomPermissions.MembersSeat) is not null)
 				return RoomResult.InAnotherRoom;
 			if (!room.Slots.Any(slot => slot is { Locked: false, Player: null })) return RoomResult.Full;
-			if (room.Members.Observers.Any(observer => observer.User.Equals(player.User))) return RoomResult.IsObserver;
+			if (room.Members.Observers.Any(observer => observer.Record.Equals(player.Record)))
+				return RoomResult.IsObserver;
 			await other.ScopeTo(player).Members.LeaveAsync(cancellationToken);
 		}
 
 		await using var scope = await room.EnterAsync(cancellationToken);
 		if (scope is null) return RoomResult.RoomClosed;
 
-		var stale = room.Slots.Find(player.User)?.Player;
+		var stale = room.Slots.Find(player.Record)?.Player;
 		if (stale is not null && (ReferenceEquals(stale, player) || stale.IsOpen)) return RoomResult.AlreadySeated;
-		if (room.Members.Banned.Contains(player.User)) return RoomResult.Banned;
+		if (room.Members.Banned.Contains(player.Record)) return RoomResult.Banned;
 		if (room.RoomOf(player) is { } current && !ReferenceEquals(current, room)) return RoomResult.InAnotherRoom;
-		if (room.Members.Observers.Any(observer => observer.User.Equals(player.User))) return RoomResult.IsObserver;
+		if (room.Members.Observers.Any(observer => observer.Record.Equals(player.Record))) return RoomResult.IsObserver;
 
 		return room.TakeSeat(player, stale);
 	}
@@ -114,7 +116,7 @@ public sealed class ScopedRoomMembers
 
 		var slot = room.Vacate(seated)!;
 		var progress = room.AdvanceRound();
-		room.Context.Events.Publish(new RoomPlayerKicked(room, by.User, seated, slot.Index, room.Authority.Host,
+		room.Context.Events.Publish(new RoomPlayerKicked(room, by.Record, seated, slot.Index, room.Authority.Host,
 			progress));
 		room.LeaveChannel(seated);
 		room.ReportIfEmpty();
@@ -147,7 +149,7 @@ public sealed class ScopedRoomMembers
 			progress = room.AdvanceRound();
 		}
 
-		room.Context.Events.Publish(new RoomPlayerBanned(room, by.User, player, vacated, evicted, room.Authority.Host,
+		room.Context.Events.Publish(new RoomPlayerBanned(room, by.Record, player, vacated, evicted, room.Authority.Host,
 			progress));
 		if (evicted is not null)
 		{
@@ -177,14 +179,15 @@ public sealed class ScopedRoomMembers
 	}
 
 	/// <summary>Invites an online user to the room.</summary>
-	/// <param name="target">The online session of the invited user.</param>
+	/// <param name="target">The invited user.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, Silenced, Blocked, TargetOffline, AlreadyInRoom or RoomClosed.</returns>
-	public async Task<RoomResult> InviteAsync(UserSession target, CancellationToken cancellationToken = default)
+	public async Task<RoomResult> InviteAsync(User target, CancellationToken cancellationToken = default)
 	{
 		if (_scoped.Require(RoomPermissions.MembersInvite) is { } denied) return denied;
+		if (!target.IsOnline) return RoomResult.TargetOffline;
 		if (!_scoped.ManagesAnyRoom &&
-		    await _scoped.Room.Context.Users.BlocksAsync(target.User, _scoped.By.User, cancellationToken))
+		    await _scoped.Room.Context.Users.BlocksAsync(target.Record, _scoped.By.Record, cancellationToken))
 			return RoomResult.Blocked;
 
 		await using var scope = await _scoped.Room.EnterAsync(cancellationToken);
@@ -192,9 +195,9 @@ public sealed class ScopedRoomMembers
 
 		var room = _scoped.Room;
 		if (!target.Connections.Any(connection => connection.IsOpen)) return RoomResult.TargetOffline;
-		if (room.Slots.Find(target.User) is not null) return RoomResult.AlreadyInRoom;
+		if (room.Slots.Find(target.Record) is not null) return RoomResult.AlreadyInRoom;
 
-		room.Context.Events.Publish(new RoomPlayerInvited(room, _scoped.By.User, target.User));
+		room.Context.Events.Publish(new RoomPlayerInvited(room, _scoped.By.Record, target.Record));
 		return RoomResult.Ok;
 	}
 

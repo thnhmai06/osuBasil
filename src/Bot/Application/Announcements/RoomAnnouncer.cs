@@ -96,8 +96,8 @@ internal sealed class RoomAnnouncer(Server server, IUserRegistry users, TimeProv
 
 		async Task WhisperIfOnlineAsync(UserRecord user)
 		{
-			if (users.Sessions.GetValueOrDefault(user) is { } session)
-				await server.WhisperAsync(session, text, ct: cancellationToken);
+			if (users.Online.GetValueOrDefault(user) is { } online)
+				await server.WhisperAsync(online, text, ct: cancellationToken);
 		}
 	}
 }

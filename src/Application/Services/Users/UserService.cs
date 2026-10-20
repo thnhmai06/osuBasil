@@ -1,4 +1,5 @@
 using Basil.Application.Objects.Events;
+using Basil.Application.Objects.Chat;
 using Basil.Application.Objects.Multiplayer.Rooms;
 using Basil.Application.Objects.Sessions;
 using Basil.Application.Objects.Users;
@@ -19,18 +20,20 @@ internal sealed class UserService(
 	ICredentialRepository credentials,
 	IUserRegistry registry,
 	SessionConnectionsService sessions,
+	ChannelContext chat,
 	TimeProvider clock,
 	IEventPublisher<UserEvent> events) : IUserService, IRoomUsersPort
 {
 	private readonly UserContext _context = new(clock, events, registry, users, restrictions, moderationLog,
 		relationships, logins,
 		credentials,
-		sessions);
+		sessions,
+		chat);
 
 	/// <inheritdoc />
 	public User Of(UserRecord user)
 	{
-		return new User(user, _context);
+		return registry.Online.GetValueOrDefault(user) ?? new User(user, _context);
 	}
 
 	ValueTask<bool> IRoomUsersPort.BlocksAsync(UserRecord blocker, UserRecord who, CancellationToken ct)

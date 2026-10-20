@@ -34,7 +34,7 @@ public sealed class ScopedGeneralChannel
 	public async Task<ChannelManageResult> ConfigureAsync(GeneralChannelChange change, CancellationToken ct = default)
 	{
 		var now = Channel.Context.Clock.GetUtcNow();
-		if (By.Session.Check(Permissions.ServerConfigure, now) is not Access.Allowed)
+		if (By.User.Check(Permissions.ServerConfigure, now) is not Access.Allowed)
 			return ChannelManageResult.NotAuthorized;
 
 		using (Channel.Enter())
@@ -68,7 +68,7 @@ public sealed class ScopedGeneralChannel
 	/// <remarks>Requires <see cref="Permissions.ServerConfigure" />; announces <see cref="ChannelClosed" />.</remarks>
 	public async Task<ChannelManageResult> DeleteAsync(CancellationToken ct = default)
 	{
-		if (By.Session.Check(Permissions.ServerConfigure, Channel.Context.Clock.GetUtcNow()) is not Access.Allowed)
+		if (By.User.Check(Permissions.ServerConfigure, Channel.Context.Clock.GetUtcNow()) is not Access.Allowed)
 			return ChannelManageResult.NotAuthorized;
 
 		Channel.Close();

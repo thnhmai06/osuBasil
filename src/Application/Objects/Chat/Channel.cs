@@ -80,12 +80,12 @@ public abstract class Channel
 		var author = posted.Message.Author;
 		var members = Members.ToArray();
 		if (posted.By is not { } by ||
-		    by.Session.Check(Permissions.ChatMessageAnyone, Context.Clock.GetUtcNow()) is Access.Allowed ||
+		    by.User.Check(Permissions.ChatMessageAnyone, Context.Clock.GetUtcNow()) is Access.Allowed ||
 		    this is PmChannel)
 			return members;
 
 		var blockers = new HashSet<UserRecord>();
-		foreach (var user in members.Select(member => member.User).Where(user => !user.Equals(author)).Distinct())
+		foreach (var user in members.Select(member => member.Record).Where(user => !user.Equals(author)).Distinct())
 		{
 			var relationships = await Context.Relationships.ListAsync(user, cancellationToken);
 			if (relationships.Any(relationship => relationship.Type == RelationshipType.Block &&
@@ -93,7 +93,7 @@ public abstract class Channel
 				blockers.Add(user);
 		}
 
-		return blockers.Count == 0 ? members : [.. members.Where(member => !blockers.Contains(member.User))];
+		return blockers.Count == 0 ? members : [.. members.Where(member => !blockers.Contains(member.Record))];
 	}
 
 	/// <summary>Posts a message under the given author and reports the connection that posted it.</summary>
@@ -110,9 +110,9 @@ public abstract class Channel
 		Message? awayReply = null;
 		if (by is not null
 		    && this is PmChannel { Owner.AwayMessage: { } away } pmChannel
-		    && !ReferenceEquals(by.Session, pmChannel.Owner)
+		    && !ReferenceEquals(by.User, pmChannel.Owner)
 		    && !notice)
-			awayReply = new Message(pmChannel.Owner.User, away, now);
+			awayReply = new Message(pmChannel.Owner.Record, away, now);
 
 		Context.Events.Publish(new ChannelMessagePosted(this, message, truncated, awayReply, by));
 	}

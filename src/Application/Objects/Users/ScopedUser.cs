@@ -36,9 +36,31 @@ public sealed class ScopedUser
 		User = user;
 		By = by;
 		_now = user.Context.Clock.GetUtcNow();
-		Granted = by.Session.User.Value.Permissions;
+		Granted = by.User.Record.Value.Permissions;
 		Restrictions = new ScopedUserRestrictions(this);
 		Relationships = new ScopedUserRelationships(this);
+	}
+
+	/// <summary>Sets or clears the away message other users see.</summary>
+	/// <param name="message">The away message, or <see langword="null" /> or white space to clear it.</param>
+	/// <returns><see langword="true" /> if this connection belongs to this user and the message was set.</returns>
+	public bool SetAway(string? message)
+	{
+		if (!ReferenceEquals(By.User, User)) return false;
+
+		User.AwayMessage = string.IsNullOrWhiteSpace(message) ? null : message;
+		return true;
+	}
+
+	/// <summary>Sets whether this user accepts private messages only from their friends.</summary>
+	/// <param name="pmPrivate"><see langword="true" /> to accept private messages only from friends.</param>
+	/// <returns><see langword="true" /> if this connection belongs to this user and the setting was set.</returns>
+	public bool SetPmPrivate(bool pmPrivate)
+	{
+		if (!ReferenceEquals(By.User, User)) return false;
+
+		User.PmPrivate = pmPrivate;
+		return true;
 	}
 
 	/// <summary>Checks whether the caller has a required permission in effect.</summary>
@@ -46,7 +68,7 @@ public sealed class ScopedUser
 	/// <returns><see langword="null" /> when allowed; otherwise, why the permission is unavailable.</returns>
 	internal UserResult? Require(Permissions needed)
 	{
-		return By.Session.Check(needed, _now) switch
+		return By.User.Check(needed, _now) switch
 		{
 			Access.NotGranted => UserResult.NotAuthorized,
 			Access.Suspended => UserResult.Restricted,
@@ -55,7 +77,7 @@ public sealed class ScopedUser
 	}
 
 	/// <summary>Whether the caller is acting on their own account.</summary>
-	internal bool IsSelf => By.User.Equals(User.Record);
+	internal bool IsSelf => By.Record.Equals(User.Record);
 
 	/// <summary>Whether the caller's granted permissions strictly outrank the target's.</summary>
 	internal bool Outranks => Granted.Allows(User.Record.Value.Permissions) && Granted != User.Record.Value.Permissions;
@@ -81,10 +103,10 @@ public sealed class ScopedUser
 		if (Guard(Permissions.UserManagePermissions, true) is { } denied) return denied;
 		if (!Granted.Allows(User.Record.Value.Permissions ^ permissions)) return UserResult.NotAuthorized;
 
-		User.Apply(user => user.Permissions = permissions);
+		User.Apply(data => data.Permissions = permissions);
 		await User.Context.Users.UpdateAsync(User.Record, ct);
-		if (User.Context.Registry.Sessions.GetValueOrDefault(User.Record) is { } session)
-			User.Context.Sessions.CloseDisallowed(session);
+		if (User.Context.Registry.Online.GetValueOrDefault(User.Record) is { } user)
+			User.Context.Connections.CloseDisallowed(user);
 
 		User.Context.Events.Publish(new UserPermissionsChanged(User.Record, permissions));
 		return UserResult.Ok;
@@ -106,7 +128,7 @@ public sealed class ScopedUser
 		});
 
 		await User.Context.Users.UpdateAsync(User.Record, ct);
-		User.Context.Sessions.CloseAll(User.Record, ConnectionCloseReason.Deleted);
+		User.Context.Connections.CloseAll(User.Record, ConnectionCloseReason.Deleted);
 		return UserResult.Ok;
 	}
 
@@ -124,7 +146,7 @@ public sealed class ScopedUser
 			await User.Context.ModerationLog.AppendAsync(new ModerationData
 			{
 				Action = ModerationAction.ViewLogins,
-				By = By.User,
+				By = By.Record,
 				Target = User.Record,
 				Timestamp = _now
 			}, ct);
@@ -144,7 +166,7 @@ public sealed class ScopedUser
 		if (BasilBot.Is(User.Record)) return UserResult.Protected;
 		if (!IsSelf && Guard(Permissions.UserManage, false) is { } denied) return denied;
 
-		User.Context.Sessions.CloseAll(User.Record, ConnectionCloseReason.Revoked);
+		User.Context.Connections.CloseAll(User.Record, ConnectionCloseReason.Revoked);
 		return UserResult.Ok;
 	}
 
@@ -174,7 +196,7 @@ public sealed class ScopedUser
 		}
 
 		await User.Context.Credentials.CreateOrUpdateAsync(new Credentials(User.Record, newPasswordHash), ct);
-		User.Context.Sessions.CloseAll(User.Record, ConnectionCloseReason.CredentialsChanged);
+		User.Context.Connections.CloseAll(User.Record, ConnectionCloseReason.CredentialsChanged);
 		return UserResult.Ok;
 	}
 

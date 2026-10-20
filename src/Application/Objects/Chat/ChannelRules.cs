@@ -12,14 +12,14 @@ internal static class ChannelRules
 	{
 		return channel switch
 		{
-			GeneralChannel general => connection.Session.EffectivePermissions(now)
+			GeneralChannel general => connection.User.EffectivePermissions(now)
 				.Privileges.Allows(general.Record.Value.ReadPrivileges),
-			PmChannel pm => ReferenceEquals(connection.Session, pm.Owner) &&
+			PmChannel pm => ReferenceEquals(connection.User, pm.Owner) &&
 			                connection.Type is not ConnectionType.Tourney,
 			SpectatorChannel spectator => ReferenceEquals(connection, spectator.Host) ||
 			                              spectator.Host.Spectators.Contains(connection),
 			RoomChannel room => InRoom(room.Room, connection, now) ||
-			                    connection.Session.Check(Permissions.RoomObserve, now) is Access.Allowed,
+			                    connection.User.Check(Permissions.RoomObserve, now) is Access.Allowed,
 			_ => false
 		};
 	}
@@ -29,13 +29,13 @@ internal static class ChannelRules
 	{
 		return channel switch
 		{
-			GeneralChannel general => connection.Session.EffectivePermissions(now)
+			GeneralChannel general => connection.User.EffectivePermissions(now)
 				.Privileges.Allows(general.Record.Value.WritePrivileges),
-			PmChannel => connection.IsOpen,
+			PmChannel pm => connection.IsOpen && pm.Owner.IsOnline,
 			SpectatorChannel spectator => ReferenceEquals(connection, spectator.Host) ||
 			                              spectator.Host.Spectators.Contains(connection),
 			RoomChannel room => InRoom(room.Room, connection, now) ||
-			                    connection.Session.Check(Permissions.ChatPostAnyRoom, now) is Access.Allowed,
+			                    connection.User.Check(Permissions.ChatPostAnyRoom, now) is Access.Allowed,
 			_ => false
 		};
 	}
@@ -45,8 +45,8 @@ internal static class ChannelRules
 	{
 		return (connection is BanchoConnection player && room.Slots.Find(player) is not null)
 		       || (connection is TourneyConnection observer && room.Members.Observers.Contains(observer))
-		       || (room.Authority.IsManagedBy(connection.User) &&
-		           connection.Session.Check(Permissions.RoomJoin, now) is Access.Allowed)
-		       || connection.Session.Check(Permissions.RoomManageAny, now) is Access.Allowed;
+		       || (room.Authority.IsManagedBy(connection.Record) &&
+		           connection.User.Check(Permissions.RoomJoin, now) is Access.Allowed)
+		       || connection.User.Check(Permissions.RoomManageAny, now) is Access.Allowed;
 	}
 }

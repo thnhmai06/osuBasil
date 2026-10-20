@@ -1,18 +1,19 @@
 using System.Collections.Concurrent;
 using Basil.Application.Objects.Sessions;
+using Basil.Application.Objects.Users;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Services.Sessions;
 
-/// <summary>The users who are online, each with their session.</summary>
+/// <summary>The users who are online.</summary>
 internal sealed class UserRegistry : IUserRegistry
 {
 	private readonly ConcurrentDictionary<string, Connection> _connections = new(StringComparer.Ordinal);
-	private readonly ConcurrentDictionary<UserRecord, UserSession> _sessions = new();
+	private readonly ConcurrentDictionary<UserRecord, User> _online = new();
 	private readonly Lock _sync = new(); // ponytail: one lock for all logins; per-user locks if login rate ever matters
 
 	/// <inheritdoc />
-	public IReadOnlyDictionary<UserRecord, UserSession> Sessions => _sessions;
+	public IReadOnlyDictionary<UserRecord, User> Online => _online;
 
 	/// <inheritdoc />
 	public Connection? Find(string token)
@@ -24,21 +25,21 @@ internal sealed class UserRegistry : IUserRegistry
 	public BanchoConnection? FindSpectating(Connection connection)
 	{
 		// ponytail: scans every online osu! client; add an index if the online count grows large.
-		return _sessions.Values
-			.Select(session => session.Bancho)
+		return _online.Values
+			.Select(user => user.Bancho)
 			.FirstOrDefault(host => host is not null && host.Spectators.Contains(connection));
 	}
 
 	/// <inheritdoc />
-	void IUserRegistry.Add(UserSession session)
+	void IUserRegistry.Add(User user)
 	{
-		_sessions[session.User] = session;
+		_online[user.Record] = user;
 	}
 
 	/// <inheritdoc />
-	bool IUserRegistry.Remove(UserSession session)
+	bool IUserRegistry.Remove(User user)
 	{
-		return _sessions.TryRemove(new KeyValuePair<UserRecord, UserSession>(session.User, session));
+		return _online.TryRemove(new KeyValuePair<UserRecord, User>(user.Record, user));
 	}
 
 	/// <inheritdoc />

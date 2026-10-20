@@ -27,14 +27,14 @@ internal sealed class ConnectionHandler(
 				break;
 			case UserConnectionClosed closed:
 				var connection = closed.Connection;
-				await RunAsync("release its room", connection.User.Id,
+				await RunAsync("release its room", connection.Record.Id,
 					() => rooms.Members.ReleaseAsync(connection, cancellationToken), cancellationToken);
 				if (registry.FindSpectating(connection) is { } host)
-					Run("stop spectating", connection.User.Id,
+					Run("stop spectating", connection.Record.Id,
 						() => host.ScopeTo(connection).StopSpectating(), cancellationToken);
 				if (connection is BanchoConnection bancho)
-					Run("leave the lobby", connection.User.Id, () => lobby.Unwatch(bancho), cancellationToken);
-				Run("part its channels", connection.User.Id,
+					Run("leave the lobby", connection.Record.Id, () => lobby.Unwatch(bancho), cancellationToken);
+				Run("part its channels", connection.Record.Id,
 					() => channels.PartAll(connection), cancellationToken);
 				break;
 		}

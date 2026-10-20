@@ -56,7 +56,7 @@ public sealed class ScopedRoomRounds
 		if (length <= TimeSpan.Zero) return RoomResult.InvalidSettings;
 		if (startsRound && room.Rounds.InProgress) return RoomResult.InProgress;
 
-		room.StartCountdown(_scoped.By.User, length, startsRound);
+		room.StartCountdown(_scoped.By.Record, length, startsRound);
 		return RoomResult.Ok;
 	}
 

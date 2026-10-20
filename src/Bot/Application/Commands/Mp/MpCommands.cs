@@ -61,7 +61,6 @@ internal sealed partial class MpCommands(
 	public async Task<bool> ExecuteAsync(CommandContext context, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
-		var by = context.By;
 		var subcommand = args.Count > 0 ? args[0] : "";
 		var subArgs = args.Count > 1 ? args.Skip(1).ToArray() : Array.Empty<string>();
 
@@ -196,7 +195,7 @@ internal sealed partial class MpCommands(
 		}
 
 		// (c) Seated room: where the sender is currently playing
-		var seated = by.Session.Bancho is { } client ? lobby.RoomOf(client) : null;
+		var seated = by.User.Bancho is { } client ? lobby.RoomOf(client) : null;
 		return seated?.Id;
 	}
 
@@ -339,7 +338,7 @@ internal sealed partial class MpCommands(
 			var tagText = tags.Count > 0 ? $" [{string.Join(" / ", tags)}]" : string.Empty;
 			var teamText = showTeam && slot.Team is { } team ? $"{team,-5} " : string.Empty;
 			lines.Add(
-				$"Slot {slot.Index,2}  {SlotStatusText(slot.Status),-10} {teamText}{player.User.Id,6} {player.User.Value.Name,-16}{tagText}");
+				$"Slot {slot.Index,2}  {SlotStatusText(slot.Status),-10} {teamText}{player.Record.Id,6} {player.Record.Value.Name,-16}{tagText}");
 		}
 
 		await context.Reply(string.Join('\n', lines), cancellationToken);
@@ -523,7 +522,7 @@ internal sealed partial class MpCommands(
 			return false;
 		}
 
-		var host = registry.Sessions.GetValueOrDefault(target)?.Bancho;
+		var host = registry.Online.GetValueOrDefault(target)?.Bancho;
 		var outcome = host is not { IsOpen: true }
 			? RoomResult.TargetOffline
 			: await room.ScopeTo(by).Authority.SetHostAsync(host, cancellationToken);
@@ -642,10 +641,10 @@ internal sealed partial class MpCommands(
 			return false;
 		}
 
-		var targetSession = registry.Sessions.GetValueOrDefault(target);
-		var outcome = targetSession is null
+		var targetUser = registry.Online.GetValueOrDefault(target);
+		var outcome = targetUser is null
 			? RoomResult.TargetOffline
-			: await room.ScopeTo(by).Members.InviteAsync(targetSession, cancellationToken);
+			: await room.ScopeTo(by).Members.InviteAsync(targetUser, cancellationToken);
 		if (outcome != RoomResult.Ok)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
@@ -1269,10 +1268,10 @@ internal sealed partial class MpCommands(
 	private Room? ViewRoom(Connection by, int id)
 	{
 		if (!lobby.Rooms.TryGetValue(id, out var room) || room.IsClosed) return null;
-		if (!room.Settings.IsPrivate || room.Slots.Find(by.User) is not null ||
-		    room.Members.Observers.Any(observer => observer.User.Equals(by.User)) ||
-		    room.Authority.IsManagedBy(by.User) ||
-		    by.Session.Check(Permissions.RoomViewPrivate, time.GetUtcNow()) is Access.Allowed)
+		if (!room.Settings.IsPrivate || room.Slots.Find(by.Record) is not null ||
+		    room.Members.Observers.Any(observer => observer.Record.Equals(by.Record)) ||
+		    room.Authority.IsManagedBy(by.Record) ||
+		    by.User.Check(Permissions.RoomViewPrivate, time.GetUtcNow()) is Access.Allowed)
 			return room;
 
 		return null;

@@ -18,7 +18,7 @@ internal sealed class AnticheatAnnouncer(Server server, IUserRegistry users) : I
 			return;
 
 		var reason = FormatFlags(flagged.Signs);
-		var playerName = flagged.Player.User.Value.Name;
+		var playerName = flagged.Player.Record.Value.Name;
 		var channelMessage = string.Format(AnnouncementReplies.AnticheatFlagRoom, playerName, reason);
 		await server.SayAsync(room.Channel, channelMessage, ct: cancellationToken);
 
@@ -37,8 +37,8 @@ internal sealed class AnticheatAnnouncer(Server server, IUserRegistry users) : I
 
 		async Task WhisperIfOnlineAsync(UserRecord user)
 		{
-			if (users.Sessions.GetValueOrDefault(user) is { } session)
-				await server.WhisperAsync(session, text, ct: cancellationToken);
+			if (users.Online.GetValueOrDefault(user) is { } online)
+				await server.WhisperAsync(online, text, ct: cancellationToken);
 		}
 	}
 

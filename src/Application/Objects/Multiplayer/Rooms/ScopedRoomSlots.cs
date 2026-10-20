@@ -88,7 +88,7 @@ public sealed class ScopedRoomSlots
 		if (room.Rounds.InProgress) return RoomResult.InProgress;
 
 		var seated = room.Slots.Where(s => s.Player is not null)
-			.ToDictionary(s => s.Player!.User, s => s.Capture());
+			.ToDictionary(s => s.Player!.Record, s => s.Capture());
 		var named = arrangement.Where(e => e.Player is not null).Select(e => e.Player!).ToList();
 		if (arrangement.Any(e => e.Index is < 1 or > RoomSlots.MaxSlotCount || (e.Player is not null && e.Locked)) ||
 		    arrangement.DistinctBy(e => e.Index).Count() != arrangement.Count ||

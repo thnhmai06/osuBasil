@@ -27,7 +27,7 @@ public sealed class ScopedUserRelationships
 
 		await _scoped.User.Context.Relationships.CreateOrUpdateAsync(new Relationship
 		{
-			Actor = _scoped.By.User,
+			Actor = _scoped.By.Record,
 			Target = target,
 			Type = RelationshipType.Friend
 		}, ct);
@@ -44,7 +44,7 @@ public sealed class ScopedUserRelationships
 		var target = _scoped.User.Record;
 		if (BasilBot.Is(target)) return UserResult.Protected;
 
-		var relationships = await _scoped.User.Context.Relationships.ListAsync(_scoped.By.User, ct);
+		var relationships = await _scoped.User.Context.Relationships.ListAsync(_scoped.By.Record, ct);
 		var friend = relationships.FirstOrDefault(relationship => relationship.Target.Equals(target) &&
 		                                                          relationship.Type == RelationshipType.Friend);
 		if (friend is not null)
@@ -65,7 +65,7 @@ public sealed class ScopedUserRelationships
 
 		await _scoped.User.Context.Relationships.CreateOrUpdateAsync(new Relationship
 		{
-			Actor = _scoped.By.User,
+			Actor = _scoped.By.Record,
 			Target = target,
 			Type = RelationshipType.Block
 		}, ct);
@@ -82,7 +82,7 @@ public sealed class ScopedUserRelationships
 		var target = _scoped.User.Record;
 		if (BasilBot.Is(target)) return UserResult.Ok;
 
-		var relationships = await _scoped.User.Context.Relationships.ListAsync(_scoped.By.User, ct);
+		var relationships = await _scoped.User.Context.Relationships.ListAsync(_scoped.By.Record, ct);
 		var block = relationships.FirstOrDefault(relationship => relationship.Target.Equals(target) &&
 		                                                         relationship.Type == RelationshipType.Block);
 		if (block is not null)

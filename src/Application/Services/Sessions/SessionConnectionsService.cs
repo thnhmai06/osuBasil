@@ -16,9 +16,9 @@ namespace Basil.Application.Services.Sessions;
 internal sealed class SessionConnectionsService(
 	IUserRegistry registry,
 	IUserRepository users,
-	SessionContext context,
+	Func<UserRecord, User> userFactory,
 	IEventPublisher<UserEvent> events,
-	TimeProvider time) : ISessionConnectionsService, IUserSessionsPort
+	TimeProvider time) : ISessionConnectionsService, IUserConnectionsPort
 {
 	/// <summary>How long a connection must be idle before a new login of the same kind replaces it.</summary>
 	internal static readonly TimeSpan ReplaceAfterIdle = TimeSpan.FromSeconds(10);
@@ -48,7 +48,7 @@ internal sealed class SessionConnectionsService(
 	public int CloseIdle()
 	{
 		var now = time.GetUtcNow();
-		var idleConnections = registry.Sessions.Values
+		var idleConnections = registry.Online.Values
 			.SelectMany(s => s.Connections)
 			.Where(c => c is { IsOpen: true, Type: not ConnectionType.Bot } &&
 			            now - c.LastActiveAt > c.Type.IdleTimeout())
@@ -66,8 +66,8 @@ internal sealed class SessionConnectionsService(
 		var user = await users.GetAsync(BasilBot.Id, cancellationToken);
 		if (user is null) return null;
 
-		var session = registry.Sessions.GetValueOrDefault(user);
-		if (session?.Bot is { IsOpen: true } connection) return connection;
+		var online = registry.Online.GetValueOrDefault(user);
+		if (online?.Bot is { IsOpen: true } connection) return connection;
 
 		var login = new Login { User = user, Ip = IPAddress.Loopback, Timestamp = time.GetUtcNow() };
 		var bot = new BotConnection(login, NewToken());
@@ -87,37 +87,37 @@ internal sealed class SessionConnectionsService(
 	{
 		using var scope = registry.Enter();
 
-		// An online user's session holds the current copy of the user; a login may have read an older one.
-		var user = registry.Sessions.GetValueOrDefault(connection.User)?.User ?? connection.User;
+		// The online user holds the current record; a login may have read an older one.
+		var record = registry.Online.GetValueOrDefault(connection.Record)?.Record ?? connection.Record;
 		if (connection.Type is ConnectionType.Tourney &&
-		    !user.Value.Permissions.Effective(restrictions, time.GetUtcNow())
+		    !record.Value.Permissions.Effective(restrictions, time.GetUtcNow())
 			    .Allows(Permissions.RoomObserve))
 			return LoginFailure.NoTourneyPermission;
 
-		var session = registry.Sessions.GetValueOrDefault(connection.User);
+		var user = registry.Online.GetValueOrDefault(connection.Record);
 
-		if (session is not null && !connection.Type.AllowsMany() &&
-		    session[connection.Type].FirstOrDefault() is { } old)
+		if (user is not null && !connection.Type.AllowsMany() &&
+		    user[connection.Type].FirstOrDefault() is { } old)
 		{
 			if (time.GetUtcNow() - old.LastActiveAt < ReplaceAfterIdle)
 				return LoginFailure.AlreadyOnline;
 
 			CloseCore(old, ConnectionCloseReason.Replaced);
-			session = registry.Sessions.GetValueOrDefault(connection.User);
+			user = registry.Online.GetValueOrDefault(connection.Record);
 		}
 
-		var cameOnline = session is null;
-		if (session is null)
+		var cameOnline = user is null;
+		user ??= userFactory(connection.Record);
+		if (cameOnline)
 		{
-			session = new UserSession(connection.User, context);
-			registry.Add(session);
+			registry.Add(user);
 		}
 
-		session.ChangeRestrictions(_ => [.. restrictions]);
-		connection.Session = session;
-		session.Add(connection);
+		user.ChangeRestrictions(_ => [.. restrictions]);
+		connection.User = user;
+		user.Add(connection);
 		if (connection.Type is not ConnectionType.Tourney)
-			session.PmChannel.ScopeTo(connection).Join();
+			user.PmChannel.ScopeTo(connection).Join();
 		connection.IsOpen = true;
 
 		// The bot's token is never findable: nobody can present it, and nobody should be able to try.
@@ -139,31 +139,31 @@ internal sealed class SessionConnectionsService(
 	/// <param name="reason">Why they are closed.</param>
 	internal void CloseAll(UserRecord user, ConnectionCloseReason reason)
 	{
-		var session = registry.Sessions.GetValueOrDefault(user);
-		if (session is null) return;
+		var online = registry.Online.GetValueOrDefault(user);
+		if (online is null) return;
 
-		foreach (var connection in session.Connections.Where(connection => connection.IsOpen).ToList())
+		foreach (var connection in online.Connections.Where(connection => connection.IsOpen).ToList())
 			Close(connection, reason);
 	}
 
-	void IUserSessionsPort.CloseAll(UserRecord user, ConnectionCloseReason reason)
+	void IUserConnectionsPort.CloseAll(UserRecord user, ConnectionCloseReason reason)
 	{
 		CloseAll(user, reason);
 	}
 
-	/// <summary>Closes the connections of a kind the user may no longer use.</summary>
-	/// <param name="session">The session of the user whose permissions or restrictions changed.</param>
-	internal void CloseDisallowed(UserSession session)
+	/// <summary>Closes connections of kinds the user may no longer use.</summary>
+	/// <param name="user">The online user whose permissions or restrictions changed.</param>
+	internal void CloseDisallowed(User user)
 	{
-		if (PermissionRules.Effective(session, time.GetUtcNow()).Allows(Permissions.RoomObserve)) return;
+		if (PermissionRules.Effective(user, time.GetUtcNow()).Allows(Permissions.RoomObserve)) return;
 
-		foreach (var connection in session.Tourneys.Where(connection => connection.IsOpen).ToList())
+		foreach (var connection in user.Tourneys.Where(connection => connection.IsOpen).ToList())
 			Close(connection, ConnectionCloseReason.Revoked);
 	}
 
-	void IUserSessionsPort.CloseDisallowed(UserSession session)
+	void IUserConnectionsPort.CloseDisallowed(User user)
 	{
-		CloseDisallowed(session);
+		CloseDisallowed(user);
 	}
 
 	private void CloseCore(Connection connection, ConnectionCloseReason reason)
@@ -172,19 +172,19 @@ internal sealed class SessionConnectionsService(
 
 		connection.IsOpen = false;
 		registry.Unindex(connection);
-		connection.Session.Remove(connection);
-		connection.Session.PmChannel.ScopeTo(connection).Part();
+		connection.User.Remove(connection);
+		connection.User.PmChannel.ScopeTo(connection).Part();
 		if (connection is BanchoConnection client)
 		{
 			client.ReleaseSpectators();
 			client.SpectatorChannel.Close();
 		}
 
-		var wentOffline = !connection.Session.Connections.Any();
+		var wentOffline = !connection.User.Connections.Any();
 		if (wentOffline)
 		{
-			registry.Remove(connection.Session);
-			connection.Session.PmChannel.Close();
+			registry.Remove(connection.User);
+			connection.User.PmChannel.Close();
 		}
 
 		events.Publish(new UserConnectionClosed(connection, reason, wentOffline));

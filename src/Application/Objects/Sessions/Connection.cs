@@ -1,14 +1,15 @@
 using Basil.Domain.Auth;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
+using Basil.Application.Objects.Users;
 
 namespace Basil.Application.Objects.Sessions;
 
 /// <summary>One login of a user from one client; two connections are never equal.</summary>
 public abstract class Connection(Login login, string token)
 {
-	/// <summary>Gets the online session this connection belongs to.</summary>
-	public UserSession Session { get; internal set; } = null!;
+	/// <summary>Gets the online user this connection belongs to.</summary>
+	public User User { get; internal set; } = null!;
 
 	/// <summary>Gets the login that opened this connection.</summary>
 	public Login Login { get; } = login;
@@ -17,7 +18,7 @@ public abstract class Connection(Login login, string token)
 	public string Token { get; } = token;
 
 	/// <summary>Gets the user who owns this connection.</summary>
-	public UserRecord User => Login.User;
+	public UserRecord Record => Login.User;
 
 	/// <summary>Gets the kind of connection.</summary>
 	public abstract ConnectionType Type { get; }

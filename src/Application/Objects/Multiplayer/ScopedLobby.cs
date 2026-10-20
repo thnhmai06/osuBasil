@@ -63,7 +63,7 @@ public sealed class ScopedLobby
 		var required = isTournament
 			? Permissions.RoomCreate
 			: Permissions.RoomCreate | Permissions.RoomJoin;
-		var access = By.Session.Check(required, now);
+		var access = By.User.Check(required, now);
 		switch (access)
 		{
 			case Access.NotGranted:
@@ -74,17 +74,17 @@ public sealed class ScopedLobby
 
 		if ((await Lobby.Context.Settings.GetAsync(cancellationToken)).LockedCreation.HasFlag(ServerSettings
 			    .CreationLocks.Rooms) &&
-		    By.Session.Check(Permissions.RoomManageAny, now) is not Access.Allowed)
+		    By.User.Check(Permissions.RoomManageAny, now) is not Access.Allowed)
 			return (null, RoomResult.NotAuthorized);
 
-		var creator = By.User;
-		var limited = isTournament && By.Session.Check(Permissions.RoomCreateUnlimited, now) is not Access.Allowed;
+		var creator = By.Record;
+		var limited = isTournament && By.User.Check(Permissions.RoomCreateUnlimited, now) is not Access.Allowed;
 		if (limited && Lobby.TooManyRooms(creator)) return (null, RoomResult.TooManyRooms);
 
 		// A room opened in game seats its creator; a tournament room seats the creator's osu! client when it may join.
 		var seat = isTournament
-			? By.Session.Bancho is { IsOpen: true } bancho &&
-			  bancho.Session.Check(Permissions.RoomJoin, now) is Access.Allowed
+			? By.User.Bancho is { IsOpen: true } bancho &&
+			  bancho.User.Check(Permissions.RoomJoin, now) is Access.Allowed
 				? bancho
 				: null
 			: (BanchoConnection)By;

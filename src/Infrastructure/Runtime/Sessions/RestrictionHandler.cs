@@ -18,8 +18,8 @@ internal sealed class RestrictionHandler(
 	{
 		if (@event is not UserRestricted restricted) return;
 
-		var session = registry.Sessions.GetValueOrDefault(restricted.User);
-		if (session is null)
+		var user = registry.Online.GetValueOrDefault(restricted.User);
+		if (user is null)
 		{
 			// Offline: no connection to remove, but a referee must not stay on the lists of open rooms.
 			if ((restricted.Restriction.Value.Permissions & Permissions.RoomJoin) != 0 &&
@@ -29,18 +29,18 @@ internal sealed class RestrictionHandler(
 			return;
 		}
 
-		await RunAsync("remove it from rooms", session.User.Id,
-			() => rooms.Members.RemoveSuspendedAsync(session, cancellationToken), cancellationToken);
+		await RunAsync("remove it from rooms", user.Record.Id,
+			() => rooms.Members.RemoveSuspendedAsync(user, cancellationToken), cancellationToken);
 
-		if (session.Check(Permissions.SpectatingWatch, time.GetUtcNow()) is Access.Allowed) return;
+		if (user.Check(Permissions.SpectatingWatch, time.GetUtcNow()) is Access.Allowed) return;
 
-		if (session.Bancho is { } bancho && registry.FindSpectating(bancho) is { } host)
-			Run("stop spectating", session.User.Id,
+		if (user.Bancho is { } bancho && registry.FindSpectating(bancho) is { } host)
+			Run("stop spectating", user.Record.Id,
 				() => host.ScopeTo(bancho).StopSpectating(), cancellationToken);
 
-		foreach (var connection in session.Tourneys)
+		foreach (var connection in user.Tourneys)
 			if (registry.FindSpectating(connection) is { } spectated)
-				Run("stop spectating", session.User.Id,
+				Run("stop spectating", user.Record.Id,
 					() => spectated.ScopeTo(connection).StopSpectating(), cancellationToken);
 	}
 

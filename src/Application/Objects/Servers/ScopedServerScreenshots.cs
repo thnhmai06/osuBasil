@@ -32,7 +32,7 @@ public sealed class ScopedServerScreenshots
 		CancellationToken ct = default)
 	{
 		var context = _scoped.Server.Context;
-		if (_scoped.By.Session.Check(Permissions.ScreenshotUpload, context.Session.Clock.GetUtcNow()) is not Access
+		if (_scoped.By.User.Check(Permissions.ScreenshotUpload, context.Session.Clock.GetUtcNow()) is not Access
 			    .Allowed)
 			return (null, ScreenshotUploadFailure.NotAuthorized);
 
@@ -68,7 +68,7 @@ public sealed class ScopedServerScreenshots
 	public async Task<bool> DeleteAsync(ContentReference screenshot, CancellationToken ct = default)
 	{
 		var context = _scoped.Server.Context;
-		if (_scoped.By.Session.Check(Permissions.ScreenshotDelete, context.Session.Clock.GetUtcNow()) is not Access
+		if (_scoped.By.User.Check(Permissions.ScreenshotDelete, context.Session.Clock.GetUtcNow()) is not Access
 			    .Allowed)
 			return false;
 		await context.Screenshots.DeleteAsync(screenshot, ct);

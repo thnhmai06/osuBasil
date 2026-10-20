@@ -37,13 +37,13 @@ public sealed class ScopedBanchoConnection
 			throw new ArgumentException("IRC clients cannot spectate.");
 
 		var now = Host.Context.Clock.GetUtcNow();
-		if (By.Session.Check(Permissions.SpectatingWatch, now) is not Access.Allowed)
+		if (By.User.Check(Permissions.SpectatingWatch, now) is not Access.Allowed)
 			return SpectateResult.NotPermitted;
 
-		var relationships = await Host.Context.Relationships.ListAsync(Host.User);
+		var relationships = await Host.Context.Relationships.ListAsync(Host.Record);
 		if (relationships.Any(relationship => relationship.Type == RelationshipType.Block &&
-		                                      relationship.Target.Equals(By.User)) &&
-		    By.Session.Check(Permissions.RoomObserve, now) is not Access.Allowed)
+		                                      relationship.Target.Equals(By.Record)) &&
+		    By.User.Check(Permissions.RoomObserve, now) is not Access.Allowed)
 			return SpectateResult.Blocked;
 
 		// Leave the previous host before entering this host's scope, so two spectator scopes are never held at once.
@@ -56,9 +56,9 @@ public sealed class ScopedBanchoConnection
 		// The permission was checked before the awaits above; check it again before the spectator is added, so a restriction
 		// or a closed connection in between cannot slip in.
 		if (!By.IsOpen ||
-		    By.Session.Check(Permissions.SpectatingWatch, Host.Context.Clock.GetUtcNow()) is not Access.Allowed)
+		    By.User.Check(Permissions.SpectatingWatch, Host.Context.Clock.GetUtcNow()) is not Access.Allowed)
 			return SpectateResult.NotPermitted;
-		if (By.User.Equals(Host.User)) return SpectateResult.Self;
+		if (By.Record.Equals(Host.Record)) return SpectateResult.Self;
 		if (Host.Spectators.Contains(By))
 		{
 			Host.Context.Events.Publish(new UserSpectatorJoined(Host, By));

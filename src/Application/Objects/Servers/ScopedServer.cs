@@ -40,11 +40,11 @@ public sealed class ScopedServer
 	public int? Announce(string text, IReadOnlyCollection<UserRecord>? to = null)
 	{
 		var context = Server.Context.Session;
-		if (By.Session.Check(Permissions.ChatAnnounce, context.Clock.GetUtcNow()) is not Access.Allowed) return null;
+		if (By.User.Check(Permissions.ChatAnnounce, context.Clock.GetUtcNow()) is not Access.Allowed) return null;
 
-		var recipients = context.Registry.Sessions.Values
-			.Where(session => to is null || to.Contains(session.User))
-			.Select(session => session.Bancho)
+		var recipients = context.Registry.Online.Values
+			.Where(user => to is null || to.Contains(user.Record))
+			.Select(user => user.Bancho)
 			.Where(connection => connection is not null && connection.IsOpen)
 			.Cast<BanchoConnection>()
 			.ToList();

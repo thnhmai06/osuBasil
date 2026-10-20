@@ -1,4 +1,5 @@
 using Basil.Application.Objects.Sessions;
+using Basil.Application.Objects.Users;
 using Basil.Domain.Permissions;
 
 namespace Basil.Application.Services.Users;
@@ -7,20 +8,20 @@ namespace Basil.Application.Services.Users;
 internal static class PermissionRules
 {
 	/// <summary>Gets the effective permissions of an online user at a moment.</summary>
-	/// <param name="session">The user's session, which holds their running restrictions.</param>
+	/// <param name="user">The online user whose restrictions are evaluated.</param>
 	/// <param name="now">The moment to evaluate at.</param>
 	/// <returns>The permissions granted to the user that no active restriction suspends.</returns>
-	internal static Permissions Effective(UserSession session, DateTimeOffset now)
+	internal static Permissions Effective(User user, DateTimeOffset now)
 	{
-		return session.EffectivePermissions(now);
+		return user.EffectivePermissions(now);
 	}
 
 	/// <summary>Gets the permissions granted to the user behind an open connection.</summary>
 	/// <param name="by">The connection acting.</param>
-	/// <returns>The granted permissions as the online session knows them.</returns>
+	/// <returns>The permissions granted to the user.</returns>
 	internal static Permissions Granted(Connection by)
 	{
-		return by.Session.User.Value.Permissions;
+		return by.User.Record.Value.Permissions;
 	}
 
 	/// <summary>Checks whether the user behind a connection may do something now.</summary>
@@ -30,7 +31,7 @@ internal static class PermissionRules
 	/// <returns>Whether the permissions are in effect, not granted, or granted but suspended by a restriction.</returns>
 	internal static Access Check(Connection by, Permissions required, DateTimeOffset now)
 	{
-		return by.Session.Check(required, now);
+		return by.User.Check(required, now);
 	}
 
 	/// <summary>Gets a value that indicates whether the user behind a connection may do something now.</summary>

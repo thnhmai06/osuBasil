@@ -1,3 +1,4 @@
+using Basil.Application.Objects.Chat;
 using Basil.Application.Objects.Sessions;
 using Basil.Application.Objects.Events;
 using Basil.Application.Storage.Auth;
@@ -9,14 +10,15 @@ namespace Basil.Application.Objects.Users;
 /// <summary>The ports through which an account performs its behaviour.</summary>
 /// <param name="Clock">The clock for evaluating restrictions.</param>
 /// <param name="Events">The publisher for account events.</param>
-/// <param name="Registry">The sessions of online users.</param>
+/// <param name="Registry">The users who are online.</param>
 /// <param name="Users">The stored account records.</param>
 /// <param name="Restrictions">The stored restrictions.</param>
 /// <param name="ModerationLog">The recorded moderation history.</param>
 /// <param name="Relationships">The friends and blocks users set toward each other.</param>
 /// <param name="Logins">The recorded logins.</param>
 /// <param name="Credentials">The stored passwords.</param>
-/// <param name="Sessions">The operations on online sessions.</param>
+/// <param name="Connections">The operations on the user's connections.</param>
+/// <param name="Chat">The runtime dependencies for the user's private-message channel.</param>
 internal sealed record UserContext(
 	TimeProvider Clock,
 	IEventPublisher<UserEvent> Events,
@@ -27,10 +29,11 @@ internal sealed record UserContext(
 	IRelationshipRepository Relationships,
 	ILoginRepository Logins,
 	ICredentialRepository Credentials,
-	IUserSessionsPort Sessions);
+	IUserConnectionsPort Connections,
+	ChannelContext Chat);
 
-/// <summary>What an account asks of the sessions that hold it online.</summary>
-internal interface IUserSessionsPort
+/// <summary>What an account asks of its connections.</summary>
+internal interface IUserConnectionsPort
 {
 	/// <summary>Closes every open connection of an account.</summary>
 	/// <param name="user">The account whose connections are closed.</param>
@@ -38,6 +41,6 @@ internal interface IUserSessionsPort
 	void CloseAll(UserRecord user, ConnectionCloseReason reason);
 
 	/// <summary>Closes connections of kinds the account may no longer use.</summary>
-	/// <param name="session">The online session whose connections are checked.</param>
-	void CloseDisallowed(UserSession session);
+	/// <param name="user">The online user whose connections are checked.</param>
+	void CloseDisallowed(User user);
 }

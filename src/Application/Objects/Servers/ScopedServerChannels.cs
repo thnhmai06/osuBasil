@@ -25,7 +25,7 @@ public sealed class ScopedServerChannels
 	public async Task<ChannelManageResult> CreateAsync(GeneralChannelRecord record, CancellationToken ct = default)
 	{
 		var context = _scoped.Server.Context.Session;
-		if (_scoped.By.Session.Check(Permissions.ServerConfigure, context.Clock.GetUtcNow()) is not Access.Allowed)
+		if (_scoped.By.User.Check(Permissions.ServerConfigure, context.Clock.GetUtcNow()) is not Access.Allowed)
 			return ChannelManageResult.NotAuthorized;
 		if (_scoped.Server.OpenChannel(record) is null) return ChannelManageResult.NameTaken;
 		await context.Chat.Channels.CreateOrUpdateAsync(record, ct);

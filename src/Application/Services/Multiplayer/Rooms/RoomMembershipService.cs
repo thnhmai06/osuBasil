@@ -2,6 +2,7 @@ using Basil.Application.Objects.Multiplayer;
 using Basil.Application.Objects.Multiplayer.Events;
 using Basil.Application.Objects.Multiplayer.Rooms;
 using Basil.Application.Objects.Sessions;
+using Basil.Application.Objects.Users;
 using Basil.Application.Storage.Users;
 using Basil.Domain.Permissions;
 using Basil.Domain.Users;
@@ -48,14 +49,14 @@ internal sealed class RoomMembershipService(
 	}
 
 	/// <inheritdoc />
-	public async Task RemoveSuspendedAsync(UserSession session, CancellationToken cancellationToken = default)
+	public async Task RemoveSuspendedAsync(User user, CancellationToken cancellationToken = default)
 	{
-		if (session.Check(Permissions.RoomJoin, time.GetUtcNow()) is Access.Allowed) return;
+		if (user.Check(Permissions.RoomJoin, time.GetUtcNow()) is Access.Allowed) return;
 
-		foreach (var connection in session.Connections)
+		foreach (var connection in user.Connections)
 			await ReleaseAsync(connection, cancellationToken);
 
-		await RemoveRefereeAsync(session.User, cancellationToken);
+		await RemoveRefereeAsync(user.Record, cancellationToken);
 	}
 
 	/// <inheritdoc />

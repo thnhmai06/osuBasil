@@ -68,7 +68,7 @@ public sealed class ScopedBeatmapset
 
 	private BeatmapsetResult? Require()
 	{
-		return By.Session.Check(Permissions.BeatmapsetManage, _now) switch
+		return By.User.Check(Permissions.BeatmapsetManage, _now) switch
 		{
 			Access.NotGranted => BeatmapsetResult.NotAuthorized,
 			Access.Suspended => BeatmapsetResult.Restricted,
