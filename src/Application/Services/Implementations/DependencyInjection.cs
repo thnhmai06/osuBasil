@@ -101,6 +101,7 @@ public static class DependencyInjection
 		services.AddSingleton<ScoreService>();
 		services.AddSingleton<IScoreService>(sp => sp.GetRequiredService<ScoreService>());
 
+		services.AddSingleton<BeatmapsetEventStream>();
 		services.AddSingleton<BeatmapsetService>();
 		services.AddSingleton<IBeatmapsetService>(sp => sp.GetRequiredService<BeatmapsetService>());
 

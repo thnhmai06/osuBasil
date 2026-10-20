@@ -4,7 +4,7 @@ using Basil.Domain.Beatmaps;
 
 namespace Basil.Application.Services.Contracts.Beatmaps;
 
-/// <summary>Imports, deletes and keeps track of the beatmapsets the server has.</summary>
+/// <summary>Imports and keeps track of the beatmapsets the server has.</summary>
 /// <remarks>
 ///     A set's archive in the beatmapset storage is the truth about the set; the server takes in what is placed there,
 ///     makes every file it serves from the archive when it indexes the set, and keeps its records in step with the
@@ -12,6 +12,11 @@ namespace Basil.Application.Services.Contracts.Beatmaps;
 /// </remarks>
 public interface IBeatmapsetService : IEventPublisher<BeatmapsetEvent>
 {
+	/// <summary>Gets the beatmapset object through which a stored set's behaviour is reached.</summary>
+	/// <param name="set">The stored beatmapset.</param>
+	/// <returns>The beatmapset.</returns>
+	Beatmapset Of(BeatmapsetRecord set);
+
 	/// <summary>Imports an uploaded beatmapset archive, adding or replacing the beatmapset it belongs to.</summary>
 	/// <param name="archive">The .osz archive of one beatmapset, read from its current position; not disposed.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
@@ -28,12 +33,6 @@ public interface IBeatmapsetService : IEventPublisher<BeatmapsetEvent>
 	///     </para>
 	/// </remarks>
 	Task<BeatmapsetImportResult> ImportAsync(Stream archive, CancellationToken cancellationToken = default);
-
-	/// <summary>Deletes a beatmapset with its beatmaps and files.</summary>
-	/// <param name="set">The beatmapset to delete.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns><see langword="true" /> if the beatmapset was deleted; <see langword="false" /> when the beatmapset is locked.</returns>
-	Task<bool> DeleteAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default);
 
 	/// <summary>Takes in everything waiting in the storage and brings every beatmapset in step with its archive.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>

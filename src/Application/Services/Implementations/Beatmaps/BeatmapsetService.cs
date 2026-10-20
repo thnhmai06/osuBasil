@@ -20,8 +20,12 @@ internal sealed class BeatmapsetService(
 	IBeatmapAssets assets,
 	IBeatmapsetRepository beatmapsets,
 	IBeatmapRepository beatmaps,
-	IBeatmapsetStorage storage) : IBeatmapsetService
+	IBeatmapsetStorage storage,
+	TimeProvider clock,
+	BeatmapsetEventStream eventStream) : IBeatmapsetService
 {
+	private readonly BeatmapsetContext _context = new(clock, eventStream, beatmapsets, storage);
+
 	/// <summary>The name passed when a storyboard file is stored or looked for; its kind decides where it lies.</summary>
 	private const string StoryboardFileName = "storyboard.osb";
 
@@ -33,10 +37,14 @@ internal sealed class BeatmapsetService(
 		new(@"^(CON|PRN|AUX|NUL|CONIN\$|CONOUT\$|COM[0-9¹²³]|LPT[0-9¹²³]) *$",
 			RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
-	private readonly Channel<BeatmapsetEvent> _events = Channel.CreateUnbounded<BeatmapsetEvent>();
+	/// <inheritdoc />
+	public ChannelReader<BeatmapsetEvent> Events => eventStream.Reader;
 
 	/// <inheritdoc />
-	public ChannelReader<BeatmapsetEvent> Events => _events.Reader;
+	public Beatmapset Of(BeatmapsetRecord set)
+	{
+		return new Beatmapset(set, _context);
+	}
 
 	/// <inheritdoc />
 	public async Task<BeatmapsetImportResult> ImportAsync(Stream archive, CancellationToken cancellationToken = default)
@@ -102,17 +110,6 @@ internal sealed class BeatmapsetService(
 			default:
 				return NoChange;
 		}
-	}
-
-	/// <inheritdoc />
-	public async Task<bool> DeleteAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default)
-	{
-		if (set.Locked)
-			return false;
-
-		await storage.DeleteAsync(set, cancellationToken).ConfigureAwait(false);
-		await ForgetAsync(set, cancellationToken).ConfigureAwait(false);
-		return true;
 	}
 
 	/// <summary>Brings the server in step with every entry of the storage.</summary>
@@ -221,7 +218,7 @@ internal sealed class BeatmapsetService(
 			await storage.SaveAsync(set, item.Archive, cancellationToken).ConfigureAwait(false);
 			await StoreFilesAsync(set, cancellationToken).ConfigureAwait(false);
 			var storedBeatmaps = await beatmaps.ListAsync(set, cancellationToken).ConfigureAwait(false);
-			_events.Writer.TryWrite(new BeatmapsetImported(set, storedBeatmaps));
+			eventStream.Emit(new BeatmapsetImported(set, storedBeatmaps));
 		}
 
 		for (var i = 0; i < changed.Count; i++)
@@ -236,7 +233,7 @@ internal sealed class BeatmapsetService(
 				await StoreFilesAsync(set, cancellationToken).ConfigureAwait(false);
 
 		foreach (var set in remove)
-			_events.Writer.TryWrite(new BeatmapsetDeleted(set));
+			eventStream.Emit(new BeatmapsetDeleted(set));
 
 		return new BeatmapsetScanResult(
 			indexed.Count(item => item.Existing is null),
@@ -282,7 +279,7 @@ internal sealed class BeatmapsetService(
 			return NoChange;
 		}
 
-		await ForgetAsync(held, cancellationToken).ConfigureAwait(false);
+		await Of(held).ForgetAsync(cancellationToken).ConfigureAwait(false);
 		return new BeatmapsetScanResult(0, 0, 1);
 	}
 
@@ -314,7 +311,7 @@ internal sealed class BeatmapsetService(
 			// The archive cannot be read: the set of the folder it lay in is forgotten, its files kept as they are.
 			if (stored is null) return NoChange;
 
-			await ForgetAsync(stored, cancellationToken).ConfigureAwait(false);
+			await Of(stored).ForgetAsync(cancellationToken).ConfigureAwait(false);
 			return new BeatmapsetScanResult(0, 0, 1);
 		}
 
@@ -347,7 +344,7 @@ internal sealed class BeatmapsetService(
 		await StoreFilesAsync(set, cancellationToken).ConfigureAwait(false);
 
 		var storedBeatmaps = await beatmaps.ListAsync(set, cancellationToken).ConfigureAwait(false);
-		_events.Writer.TryWrite(new BeatmapsetImported(set, storedBeatmaps));
+		eventStream.Emit(new BeatmapsetImported(set, storedBeatmaps));
 		return (set, storedBeatmaps);
 	}
 
@@ -659,15 +656,6 @@ internal sealed class BeatmapsetService(
 				beatmap.Assets));
 
 		return new BeatmapsetChange(set, new BeatmapsetData(null, fingerprint, set.Metadata, set.Assets, synced));
-	}
-
-	/// <summary>Forgets a stored beatmapset, leaving the files of its folder as they are.</summary>
-	/// <param name="set">The beatmapset to forget.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	private async Task ForgetAsync(BeatmapsetRecord set, CancellationToken cancellationToken)
-	{
-		await beatmapsets.CommitAsync(new BeatmapsetChanges([], [set]), cancellationToken).ConfigureAwait(false);
-		_events.Writer.TryWrite(new BeatmapsetDeleted(set));
 	}
 
 	/// <summary>Chooses the plain name each file of one kind is stored under.</summary>
