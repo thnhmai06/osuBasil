@@ -542,7 +542,12 @@ changed at runtime (`ServerSettings`) are persistent Domain data, not host confi
   emits events on its behalf. Otherwise every new joinable kind (channel, room, spectator stream, …) forces a
   new `Join*` method and a new set on the user. "Which channels is X in?" is a query over channels, not state
   on X. Ask "who is acted on?" for every relation, member and event.
-* **A service whose object has parts gets one child service per part.** The parent contract exposes each
+* **A service whose object has parts gets one child service per part.** *(Current code for the types not yet
+  migrated to "Behaviour belongs to the object that owns it". `Room` has migrated: its parts are reached through
+  `room.ScopeTo(by)` (`.Slots`, `.Rounds`, `.Settings`, `.Authority`, `.Members`), `IRoomService` keeps only the
+  system operations `Members.ReleaseAsync`, `Members.RemoveSuspendedAsync`, `Members.RemoveRefereeAsync` and
+  `Rounds.RecordScoreAsync`. `User` has migrated: `users.Of(record).ScopeTo(by)` gives `.Restrictions`,
+  `.Relationships`, `SetPermissionsAsync`, `DeleteAsync`, `ViewLoginsAsync`.)* The parent contract exposes each
   child as a property named after the part (`IRoomService.Members`, `.Authority`, `.Settings`, `.Slots`,
   `.Rounds`); the object stays a parameter of every operation (`rooms.Slots.MoveAsync(room, by, player, index)`),
   never an object-bound handle (`rooms.For(room)`). Today: `IRoomService` (`Members`, `Authority`, `Settings`,
@@ -878,8 +883,7 @@ game client is online and not in any room is seated in the new room as host; a c
 room stays there and does not become host. Managing a room is for the creator and the referees (and
 `TournamentManageAnyRoom`, which acts with the creator's authority in every room); being the host does not
 grant management rights. A creator or referee whose permissions are all suspended cannot manage. Every room
-operation with a permission rule takes its actor and the room service (`RoomService`) checks authority, not
-the transport. `!mp` itself is a client feature that calls these operations for the user.
+operation with a permission rule runs on `room.ScopeTo(by)`, which checks authority, not the transport. `!mp` itself is a client feature that calls these operations for the user.
 
 Do not treat them as interchangeable.
 
