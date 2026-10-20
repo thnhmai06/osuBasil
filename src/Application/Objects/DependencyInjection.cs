@@ -92,7 +92,8 @@ public static class DependencyInjection
 			sp.GetRequiredService<IBeatmapsetStorage>()));
 		services.AddSingleton<Beatmapsets>(sp => new Beatmapsets(
 			sp.GetRequiredService<BeatmapsetContext>(),
-			sp.GetRequiredService<BeatmapsetIndexer>()));
+			sp.GetRequiredService<BeatmapsetImporter>(),
+			sp.GetRequiredService<BeatmapsetScanner>()));
 
 		return services;
 	}

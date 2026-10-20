@@ -15,7 +15,14 @@ internal static class DependencyInjection
 	{
 		services.AddSingleton<AccountService>();
 		services.AddSingleton<ScoreRecorder>();
-		services.AddSingleton<BeatmapsetIndexer>();
+		services.AddSingleton<DifficultyAnalyser>();
+		services.AddSingleton<BeatmapsetMatcher>();
+		services.AddSingleton<BeatmapsetPlanner>();
+		services.AddSingleton<BeatmapsetFileWriter>();
+		services.AddSingleton<BeatmapsetFileAudit>();
+		services.AddSingleton<BeatmapsetStorer>();
+		services.AddSingleton<BeatmapsetImporter>();
+		services.AddSingleton<BeatmapsetScanner>();
 		return services;
 	}
 }

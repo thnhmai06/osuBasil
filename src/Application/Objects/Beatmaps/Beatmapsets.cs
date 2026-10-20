@@ -13,12 +13,14 @@ namespace Basil.Application.Objects.Beatmaps;
 public sealed class Beatmapsets
 {
 	private readonly BeatmapsetContext _context;
-	private readonly BeatmapsetIndexer _indexer;
+	private readonly BeatmapsetImporter _importer;
+	private readonly BeatmapsetScanner _scanner;
 
-	internal Beatmapsets(BeatmapsetContext context, BeatmapsetIndexer indexer)
+	internal Beatmapsets(BeatmapsetContext context, BeatmapsetImporter importer, BeatmapsetScanner scanner)
 	{
 		_context = context;
-		_indexer = indexer;
+		_importer = importer;
+		_scanner = scanner;
 	}
 
 	/// <summary>Gets the beatmapset object through which a stored set's behaviour is reached.</summary>
@@ -47,7 +49,7 @@ public sealed class Beatmapsets
 	public async Task<BeatmapsetImportResult> ImportAsync(Stream archive,
 		CancellationToken cancellationToken = default)
 	{
-		var (result, imported) = await _indexer.ImportAsync(archive, cancellationToken);
+		var (result, imported) = await _importer.ImportAsync(archive, cancellationToken);
 		if (imported is not null)
 			_context.Events.Publish(new BeatmapsetImported(imported.Set, imported.Beatmaps));
 		return result;
@@ -66,7 +68,7 @@ public sealed class Beatmapsets
 	/// </remarks>
 	public async Task<BeatmapsetScanResult> ScanAsync(CancellationToken cancellationToken = default)
 	{
-		var outcome = await _indexer.ScanAsync(cancellationToken);
+		var outcome = await _scanner.ScanAsync(cancellationToken);
 		Publish(outcome);
 		return outcome.Result;
 	}
@@ -86,7 +88,7 @@ public sealed class Beatmapsets
 	public async Task<BeatmapsetScanResult> ScanAsync(BeatmapsetSource entry,
 		CancellationToken cancellationToken = default)
 	{
-		var outcome = await _indexer.ScanAsync(entry, cancellationToken);
+		var outcome = await _scanner.ScanAsync(entry, cancellationToken);
 		Publish(outcome);
 		return outcome.Result;
 	}

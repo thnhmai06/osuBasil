@@ -15,7 +15,19 @@ public sealed record BeatmapsetScanResult(int Imported, int Updated, int Forgott
 public sealed record BeatmapsetScanOutcome(
 	BeatmapsetScanResult Result,
 	IReadOnlyList<BeatmapsetIndexed> Imported,
-	IReadOnlyList<BeatmapsetRecord> Deleted);
+	IReadOnlyList<BeatmapsetRecord> Deleted)
+{
+	/// <summary>Gets the outcome of a scan that changed nothing.</summary>
+	public static BeatmapsetScanOutcome NoChange { get; } = new(new BeatmapsetScanResult(0, 0, 0), [], []);
+
+	/// <summary>Gets the outcome of a scan that forgot one beatmapset.</summary>
+	/// <param name="set">The forgotten beatmapset.</param>
+	/// <returns>The outcome, with <paramref name="set" /> as the only deleted beatmapset.</returns>
+	public static BeatmapsetScanOutcome Forgotten(BeatmapsetRecord set)
+	{
+		return new BeatmapsetScanOutcome(new BeatmapsetScanResult(0, 0, 1), [], [set]);
+	}
+}
 
 /// <summary>A beatmapset and its difficulties after indexing.</summary>
 /// <param name="Set">The beatmapset that was indexed.</param>

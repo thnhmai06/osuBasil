@@ -1,3 +1,5 @@
+using Basil.Domain.Common;
+
 namespace Basil.Application.Storage.Beatmaps;
 
 /// <summary>
@@ -19,4 +21,16 @@ public abstract class BeatmapsetContentFile(string name, long length)
 	/// <returns>A new stream of the content, which the caller disposes.</returns>
 	/// <remarks>Files of one beatmapset are read one at a time.</remarks>
 	public abstract Task<Stream> OpenAsync(CancellationToken cancellationToken = default);
+
+	/// <summary>Computes the MD5 hash of the file's content.</summary>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The MD5 hash of the content, read to its end.</returns>
+	public async Task<Md5> HashAsync(CancellationToken cancellationToken = default)
+	{
+		var stream = await OpenAsync(cancellationToken).ConfigureAwait(false);
+		await using (stream.ConfigureAwait(false))
+		{
+			return await Md5.ComputeAsync(stream, cancellationToken).ConfigureAwait(false);
+		}
+	}
 }
