@@ -106,7 +106,7 @@ public sealed class ScopedRoom : Scoped<RoomPermissions>
 	///     <see langword="null" /> when allowed; a denial naming <see cref="Permissions.RoomJoin" /> when the caller may not
 	///     join rooms at all; otherwise <see cref="RoomOutcome.RoleDenied" />.
 	/// </returns>
-	internal Result<RoomOutcome>? Require(RoomPermissions needed)
+	internal new Result<RoomOutcome>? Require(RoomPermissions needed)
 	{
 		if (base.Require(needed) is null)
 			return null;

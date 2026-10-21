@@ -28,6 +28,9 @@
 	<Folder Name="/Tests/">
 		<Project Path="tests/Architecture/Basil.ArchitectureTests.csproj"/>
 	</Folder>
+	<Folder Name="/Tests/Bot/">
+		<Project Path="tests/Bot/Basil.Bot.Tests.csproj"/>
+	</Folder>
 	<Folder Name="/Tests/Domain/">
 		<Project Path="tests/Domain/Basil.Domain.Tests.csproj"/>
 	</Folder>

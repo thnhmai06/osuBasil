@@ -3,7 +3,6 @@ using System.Security.Cryptography;
 using System.Text;
 using Basil.Application.Persistence.Scores;
 using Basil.Application.Persistence.Common;
-using Basil.Application.Persistence.Scores;
 using Basil.Application.Persistence.Multiplayer;
 using Basil.Application.Persistence.Users;
 using Basil.Domain.Bancho;

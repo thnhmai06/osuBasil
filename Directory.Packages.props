@@ -28,6 +28,7 @@
          without a hosts entry. jdomnitz's maintained fork of richardschneider/net-mdns. -->
     <PackageVersion Include="Makaretu.Dns.Multicast.New" Version="0.38.0" />
     <!-- Basil.Application -->
+    <PackageVersion Include="MessageFormat" Version="8.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.12" />

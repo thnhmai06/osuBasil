@@ -2,6 +2,7 @@ using Basil.Bot.Announcements;
 using Basil.Bot.Chat;
 using Basil.Bot.Commands;
 using Basil.Bot.Commands.Mp;
+using Basil.Bot.Replies;
 using Basil.Application.Runtime.Anticheat;
 using Basil.Application.Runtime.Chat;
 using Basil.Application.Runtime.Events;
@@ -21,6 +22,12 @@ public static class DependencyInjection
 	{
 		services.AddSingleton(Random.Shared);
 		services.TryAddSingleton(TimeProvider.System);
+		services.AddOptions<RepliesOptions>();
+		services.AddSingleton(_ => ReplyDefinitions.In(typeof(Reply).Assembly).AsEnumerable());
+		services.AddSingleton<ReplyCatalog>();
+		services.AddSingleton<IReplies>(sp => sp.GetRequiredService<ReplyCatalog>());
+		services.AddSingleton<RepliesWatcher>();
+		services.AddHostedService(sp => sp.GetRequiredService<RepliesWatcher>());
 		services.AddSingleton<MpScopes>();
 		services.AddSingleton<MpCommands>();
 		services.AddSingleton<ChatCommands>();
