@@ -67,16 +67,32 @@ internal sealed class PostgresMenuBannerRepository(
 				continue;
 			}
 
-			var banner = ToBanner(row, image);
-			_banners[banner.Image] = banner;
+			try
+			{
+				var banner = ToBanner(row, image);
+				_banners[banner.Image] = banner;
+			}
+			catch (Exception exception) when (exception is ArgumentException or FormatException)
+			{
+				logger.LogWarning(exception, "The stored menu banner {Image} is not valid and is not shown", row.Image);
+			}
 		}
 	}
 
 	private static void CopyTo(MenuBanner live, MenuBanner from)
 	{
 		live.Url = from.Url;
-		live.StartsAt = from.StartsAt;
-		live.EndsAt = from.EndsAt;
+		// Each bound is checked against the other, so the one that moves past the other's old value goes second.
+		if (from.StartsAt > live.EndsAt)
+		{
+			live.EndsAt = from.EndsAt;
+			live.StartsAt = from.StartsAt;
+		}
+		else
+		{
+			live.StartsAt = from.StartsAt;
+			live.EndsAt = from.EndsAt;
+		}
 	}
 
 	private static WriteCommand Upsert(MenuBanner banner)

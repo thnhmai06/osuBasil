@@ -30,18 +30,16 @@ internal sealed class PostgresSettingsRepository(
 		_settings = new ServerSettings
 		{
 			Motd = values.GetValueOrDefault("motd"),
-			LockedCreation = values.GetValueOrDefault("locked_creation") is { } locks
-				? (ServerSettings.CreationLocks)int.Parse(locks, CultureInfo.InvariantCulture)
-				: defaults.LockedCreation,
+			LockedCreation = ParseLocks(values.GetValueOrDefault("locked_creation")) ?? defaults.LockedCreation,
 			MenuIcon = new ServerSettings.MenuIconSettings
 			{
-				Url = Parse(values.GetValueOrDefault("menu_icon_url")),
+				Url = Parse("menu_icon_url", values.GetValueOrDefault("menu_icon_url")),
 				Image = ParseImage(values.GetValueOrDefault("menu_icon_image"))
 			},
 			BeatmapMirror = new ServerSettings.BeatmapMirrorSettings
 			{
-				DownloadEndpoint = Parse(values.GetValueOrDefault("mirror_download_endpoint")),
-				SearchEndpoint = Parse(values.GetValueOrDefault("mirror_search_endpoint"))
+				DownloadEndpoint = Parse("mirror_download_endpoint", values.GetValueOrDefault("mirror_download_endpoint")),
+				SearchEndpoint = Parse("mirror_search_endpoint", values.GetValueOrDefault("mirror_search_endpoint"))
 			}
 		};
 	}
@@ -81,10 +79,25 @@ internal sealed class PostgresSettingsRepository(
 		return context.UpsertAsync(new SettingRow { Name = name, Value = value }, stored => stored.Name == name, token);
 	}
 
-	/// <summary>Reads an absolute address, or <see langword="null" /> when none is stored.</summary>
-	private static Uri? Parse(string? value)
+	/// <summary>Reads an absolute address, or <see langword="null" /> when none or an invalid one is stored.</summary>
+	private Uri? Parse(string name, string? value)
 	{
-		return value is null ? null : new Uri(value, UriKind.Absolute);
+		if (value is null) return null;
+		if (Uri.TryCreate(value, UriKind.Absolute, out var address)) return address;
+
+		logger.LogWarning("The setting {Setting} holds {Value}, which is not an absolute address, and is not used", name, value);
+		return null;
+	}
+
+	/// <summary>Reads the locked creations, or <see langword="null" /> when none or an invalid value is stored.</summary>
+	private ServerSettings.CreationLocks? ParseLocks(string? value)
+	{
+		if (value is null) return null;
+		if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var locks))
+			return (ServerSettings.CreationLocks)locks;
+
+		logger.LogWarning("The setting locked_creation holds {Value}, which is not a number, and is not used", value);
+		return null;
 	}
 
 	/// <summary>Reads the stored menu icon image, or <see langword="null" /> when none or an invalid one is stored.</summary>

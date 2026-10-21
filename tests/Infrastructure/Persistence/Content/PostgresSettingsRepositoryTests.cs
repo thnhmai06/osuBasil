@@ -2,6 +2,7 @@ using Basil.Application.Persistence.Content;
 using Basil.Domain;
 using Basil.Domain.Content;
 using Basil.Infrastructure.Persistence.Tests.Support;
+using Npgsql;
 
 namespace Basil.Infrastructure.Persistence.Tests.Content;
 
@@ -9,7 +10,9 @@ namespace Basil.Infrastructure.Persistence.Tests.Content;
 [Collection("Persistence")]
 public sealed class PostgresSettingsRepositoryTests : DatabaseTests
 {
-	public PostgresSettingsRepositoryTests(PersistenceFixture container) : base(container) { }
+	public PostgresSettingsRepositoryTests(PersistenceFixture container) : base(container)
+	{
+	}
 
 	private ISettingsRepository Settings => Get<ISettingsRepository>();
 
@@ -82,6 +85,30 @@ public sealed class PostgresSettingsRepositoryTests : DatabaseTests
 			"the stored settings", TestContext.Current.CancellationToken);
 
 		Assert.Single(rows);
+	}
+
+	[Theory]
+	[InlineData("locked_creation", "not a number")]
+	[InlineData("menu_icon_url", "not an address")]
+	[InlineData("menu_icon_url", "relative/path")]
+	[InlineData("mirror_download_endpoint", "::")]
+	[InlineData("mirror_search_endpoint", "not an address")]
+	[InlineData("menu_icon_image", "../outside.png")]
+	public async Task A_stored_value_that_is_not_valid_leaves_the_setting_at_its_default(string name, string value)
+	{
+		await using (var connection = new NpgsqlConnection(ConnectionString))
+		{
+			await connection.OpenAsync(TestContext.Current.CancellationToken);
+			await using var command =
+				new NpgsqlCommand("insert into settings (name, value) values (@name, @value)", connection);
+			command.Parameters.AddWithValue("@name", name);
+			command.Parameters.AddWithValue("@value", value);
+			await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
+		}
+
+		var reloaded = await ReloadAsync();
+
+		Assert.Equal(new ServerSettings(), reloaded);
 	}
 
 	/// <summary>Reads the settings as a fresh server would read them.</summary>

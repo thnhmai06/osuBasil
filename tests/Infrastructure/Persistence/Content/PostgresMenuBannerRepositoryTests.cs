@@ -1,6 +1,7 @@
 using Basil.Application.Persistence.Content;
 using Basil.Domain.Content;
 using Basil.Infrastructure.Persistence.Tests.Support;
+using Npgsql;
 
 namespace Basil.Infrastructure.Persistence.Tests.Content;
 
@@ -10,7 +11,9 @@ public sealed class PostgresMenuBannerRepositoryTests : DatabaseTests
 {
 	private static readonly DateTimeOffset Moment = new(2026, 10, 22, 12, 0, 0, TimeSpan.Zero);
 
-	public PostgresMenuBannerRepositoryTests(PersistenceFixture container) : base(container) { }
+	public PostgresMenuBannerRepositoryTests(PersistenceFixture container) : base(container)
+	{
+	}
 
 	private IMenuBannerRepository Banners => Get<IMenuBannerRepository>();
 
@@ -160,6 +163,67 @@ public sealed class PostgresMenuBannerRepositoryTests : DatabaseTests
 	/// <summary>Builds a banner of the main menu.</summary>
 	/// <param name="image">The path of the image the banner shows.</param>
 	/// <param name="createdAt">The instant the banner was created at.</param>
+	[Fact]
+	public async Task A_banner_can_be_moved_to_a_window_that_starts_after_the_old_one_ended()
+	{
+		var banner = Banner("banners/moving.png", Moment);
+		banner.StartsAt = Moment;
+		banner.EndsAt = Moment.AddDays(1);
+		await Banners.CreateOrUpdateAsync(banner, TestContext.Current.CancellationToken);
+		var moved = Banner("banners/moving.png", Moment);
+		moved.StartsAt = Moment.AddDays(10);
+		moved.EndsAt = Moment.AddDays(11);
+
+		await Banners.CreateOrUpdateAsync(moved, TestContext.Current.CancellationToken);
+
+		var found = await Banners.GetAsync(banner.Image, TestContext.Current.CancellationToken);
+		Assert.Equal((Moment.AddDays(10), Moment.AddDays(11)), (found!.StartsAt, found.EndsAt));
+	}
+
+	[Fact]
+	public async Task A_banner_can_be_moved_to_a_window_that_ends_before_the_old_one_started()
+	{
+		var banner = Banner("banners/moving.png", Moment);
+		banner.StartsAt = Moment.AddDays(10);
+		banner.EndsAt = Moment.AddDays(11);
+		await Banners.CreateOrUpdateAsync(banner, TestContext.Current.CancellationToken);
+		var moved = Banner("banners/moving.png", Moment);
+		moved.StartsAt = Moment;
+		moved.EndsAt = Moment.AddDays(1);
+
+		await Banners.CreateOrUpdateAsync(moved, TestContext.Current.CancellationToken);
+
+		var found = await Banners.GetAsync(banner.Image, TestContext.Current.CancellationToken);
+		Assert.Equal((Moment, Moment.AddDays(1)), (found!.StartsAt, found.EndsAt));
+	}
+
+	[Theory]
+	[InlineData("banners/bad_url.png", "http://[invalid")]
+	[InlineData("../escape.png", "https://example.com/banner")]
+	public async Task A_stored_banner_that_is_not_valid_is_left_out_without_stopping_the_others(string image,
+		string url)
+	{
+		var good = Banner("banners/good.png", Moment);
+		await Banners.CreateOrUpdateAsync(good, TestContext.Current.CancellationToken);
+		await StoredRows.WaitForAsync(ConnectionString, "select image from menu_banners where image = @image",
+			new Dictionary<string, object?> { ["@image"] = good.Image.ToString() }, rows => rows.Count == 1,
+			"the stored banner", TestContext.Current.CancellationToken);
+		await using (var connection = new NpgsqlConnection(ConnectionString))
+		{
+			await connection.OpenAsync(TestContext.Current.CancellationToken);
+			await using var command = new NpgsqlCommand(
+				"insert into menu_banners (image, url, created_at) values (@image, @url, @created)", connection);
+			command.Parameters.AddWithValue("@image", image);
+			command.Parameters.AddWithValue("@url", url);
+			command.Parameters.AddWithValue("@created", Moment);
+			await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
+		}
+
+		var reloaded = await ReloadAsync(good.Image);
+
+		Assert.NotNull(reloaded);
+	}
+
 	private static MenuBanner Banner(string image, DateTimeOffset createdAt)
 	{
 		return new MenuBanner
