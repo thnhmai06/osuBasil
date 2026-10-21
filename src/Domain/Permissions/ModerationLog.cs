@@ -5,7 +5,7 @@ namespace Basil.Domain.Permissions;
 /// <summary>
 ///     An entry of the moderation log, identified by its id.
 /// </summary>
-public sealed class ModerationRecord
+public sealed class ModerationLog
 {
 	/// <summary>Gets the unique identifier of the entry, assigned when it is stored.</summary>
 	public required long Id { get; init; }

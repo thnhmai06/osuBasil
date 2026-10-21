@@ -19,6 +19,6 @@ public interface IModerationLogRepository
 	/// <param name="page">Which part of the listing to return.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>One part of the user's moderation history, newest first, with how many entries it has in total.</returns>
-	ValueTask<Page<ModerationRecord>> ListAsync(UserRecord target, Interval<DateTimeOffset>? within,
+	ValueTask<Page<ModerationLog>> ListAsync(UserRecord target, Interval<DateTimeOffset>? within,
 		PageRequest page, CancellationToken cancellationToken = default);
 }

@@ -212,7 +212,7 @@ internal sealed class InMemoryRelationshipRepository : IRelationshipRepository
 
 internal sealed class InMemoryModerationLogRepository : IModerationLogRepository
 {
-	private readonly List<ModerationRecord> _entries = [];
+	private readonly List<ModerationLog> _entries = [];
 	private readonly List<ModerationData> _values = [];
 	private long _nextId = 1;
 
@@ -221,19 +221,19 @@ internal sealed class InMemoryModerationLogRepository : IModerationLogRepository
 	public Task AppendAsync(ModerationData entry, CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
-		_entries.Add(new ModerationRecord { Id = _nextId++, Value = entry });
+		_entries.Add(new ModerationLog { Id = _nextId++, Value = entry });
 		_values.Add(entry);
 		return Task.CompletedTask;
 	}
 
-	public ValueTask<Page<ModerationRecord>> ListAsync(UserRecord target, Interval<DateTimeOffset>? within,
+	public ValueTask<Page<ModerationLog>> ListAsync(UserRecord target, Interval<DateTimeOffset>? within,
 		PageRequest page, CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
 		var entries = _entries.Where(entry => entry.Value.Target.Equals(target) &&
 											  (within is null || within.Value.Contains(entry.Value.Timestamp)))
 			.Reverse().ToList();
-		return ValueTask.FromResult(new Page<ModerationRecord>(entries.Skip(page.Offset).Take(page.Limit).ToList(),
+		return ValueTask.FromResult(new Page<ModerationLog>(entries.Skip(page.Offset).Take(page.Limit).ToList(),
 			entries.Count));
 	}
 }

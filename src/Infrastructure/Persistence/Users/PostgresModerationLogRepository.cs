@@ -36,7 +36,7 @@ internal sealed class PostgresModerationLogRepository(
 	}
 
 	/// <inheritdoc />
-	public async ValueTask<Page<ModerationRecord>> ListAsync(UserRecord target, Interval<DateTimeOffset>? within,
+	public async ValueTask<Page<ModerationLog>> ListAsync(UserRecord target, Interval<DateTimeOffset>? within,
 		PageRequest page, CancellationToken cancellationToken = default)
 	{
 		var liveTarget = await users.GetAsync(target.Id, cancellationToken) ?? target;
@@ -68,7 +68,7 @@ internal sealed class PostgresModerationLogRepository(
 				 """,
 				parameters)), cancellationToken);
 
-		var entries = ImmutableList.CreateBuilder<ModerationRecord>();
+		var entries = ImmutableList.CreateBuilder<ModerationLog>();
 		foreach (var row in rows)
 		{
 			var by = await users.GetAsync(row.ById, cancellationToken);
@@ -81,7 +81,7 @@ internal sealed class PostgresModerationLogRepository(
 			if (entryTarget is null)
 				continue;
 
-			entries.Add(new ModerationRecord
+			entries.Add(new ModerationLog
 			{
 				Id = row.Id,
 				Value = new ModerationData
@@ -95,7 +95,7 @@ internal sealed class PostgresModerationLogRepository(
 			});
 		}
 
-		return new Page<ModerationRecord>(entries.ToImmutable(), total);
+		return new Page<ModerationLog>(entries.ToImmutable(), total);
 	}
 
 	/// <summary>A stored row of the <c>moderation_log</c> table.</summary>
