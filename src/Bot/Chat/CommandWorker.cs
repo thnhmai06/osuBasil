@@ -77,6 +77,7 @@ internal sealed class CommandWorker(ILogger<CommandWorker> logger) : BackgroundS
 
 	private void Release(int userId)
 	{
-		_pending.AddOrUpdate(userId, 0, (_, count) => Math.Max(0, count - 1));
+		if (_pending.AddOrUpdate(userId, 0, (_, count) => Math.Max(0, count - 1)) == 0)
+			_pending.TryRemove(new KeyValuePair<int, int>(userId, 0));
 	}
 }

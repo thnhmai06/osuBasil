@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using Basil.Application.Runtime.Events;
 using Basil.Application.Runtime.Multiplayer;
 using Basil.Application.Runtime.Multiplayer.Events;
@@ -6,6 +5,7 @@ using Basil.Application.Runtime.Multiplayer.Rooms;
 using Basil.Application.Runtime.Servers;
 using Basil.Application.Runtime.Users;
 using Basil.Bot.Replies;
+using Basil.Domain.Common;
 using Basil.Domain.Users;
 
 namespace Basil.Bot.Announcements;
@@ -14,7 +14,7 @@ namespace Basil.Bot.Announcements;
 internal sealed class RoomAnnouncer(Server server, UserRegistry users, TimeProvider timeProvider, IReplies replies)
 	: IEventHandler<RoomEvent>, IEventHandler<LobbyEvent>
 {
-	private readonly ConcurrentDictionary<int, Room> _closingRooms = new();
+	private readonly ConcurrentSet<Room> _closingRooms = [];
 
 	/// <inheritdoc />
 	public async ValueTask HandleAsync(RoomEvent @event, CancellationToken cancellationToken)
@@ -64,7 +64,7 @@ internal sealed class RoomAnnouncer(Server server, UserRegistry users, TimeProvi
 					_ => AnnouncementReplies.CountdownCancelled
 				}), cancellationToken: cancellationToken);
 				break;
-			case RoomPlayerJoined e when _closingRooms.TryRemove(new KeyValuePair<int, Room>(e.Room.Id, e.Room)):
+			case RoomPlayerJoined e when _closingRooms.Remove(e.Room):
 				await server.SayAsync(e.Room.Channel, replies.Text(AnnouncementReplies.RoomPlayerJoinedClosing),
 					cancellationToken: cancellationToken);
 				break;
@@ -80,7 +80,7 @@ internal sealed class RoomAnnouncer(Server server, UserRegistry users, TimeProvi
 				await AnnounceClosingAsync(e, cancellationToken);
 				break;
 			case LobbyRoomClosed e:
-				_closingRooms.TryRemove(new KeyValuePair<int, Room>(e.Room.Id, e.Room));
+				_closingRooms.Remove(e.Room);
 				break;
 		}
 	}
@@ -90,8 +90,8 @@ internal sealed class RoomAnnouncer(Server server, UserRegistry users, TimeProvi
 		var minutesUntilClose = (int)Math.Ceiling((e.ClosesAt - timeProvider.GetUtcNow()).TotalMinutes);
 		var text = replies.Text(AnnouncementReplies.RoomClosingAnnounced, new { minutes = minutesUntilClose });
 
+		_closingRooms.Add(e.Room);
 		await server.SayAsync(e.Room.Channel, text, cancellationToken: cancellationToken);
-		_closingRooms[e.Room.Id] = e.Room;
 		await WhisperStaffAsync(e.Room, text, cancellationToken);
 	}
 

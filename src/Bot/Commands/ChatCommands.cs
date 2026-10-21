@@ -114,7 +114,7 @@ internal sealed class ChatCommands(IUserRepository users, IFaqStorage faqs, MpCo
 		if (args.Count > 0 && int.TryParse(args[0], out var parsed) && parsed > 0)
 			max = parsed;
 
-		var roll = random.Next(0, max + 1);
+		var roll = random.NextInt64(0, (long)max + 1);
 		await context.Reply(BotReplies.RollResult, new { user = context.Sender.Value.Name, points = roll },
 			cancellationToken);
 		return true;

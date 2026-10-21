@@ -18,6 +18,10 @@ internal enum ChainOperator : byte
 internal sealed record CommandSegment(string Text, ChainOperator Operator);
 
 /// <summary>Splits a command message into segments and tokenises each segment.</summary>
+/// <remarks>
+///     Both steps read the same syntax: a double quote starts or ends a quoted string, and a backslash before a double
+///     quote or another backslash makes that character an ordinary one.
+/// </remarks>
 internal static class CommandLine
 {
 	/// <summary>Splits a command message into segments, respecting quoted strings and escape sequences.</summary>
@@ -27,58 +31,32 @@ internal static class CommandLine
 	{
 		var segments = new List<CommandSegment>();
 		var current = new StringBuilder();
-		var i = 0;
 		var op = ChainOperator.Semicolon;
 		var inQuote = false;
 
-		while (i < message.Length)
+		for (var i = 0; i < message.Length; i++)
 		{
 			var c = message[i];
 
-			if (inQuote)
+			if (IsEscape(message, i))
 			{
-				switch (c)
-				{
-					case '\\' when i + 1 < message.Length:
-						current.Append(c);
-						current.Append(message[i + 1]);
-						i += 2;
-						continue;
-					case '"':
-						current.Append(c);
-						inQuote = false;
-						i++;
-						continue;
-				}
-
-				current.Append(c);
-				i++;
+				current.Append(c).Append(message[++i]);
 				continue;
 			}
 
-			switch (c)
+			if (c == '"') inQuote = !inQuote;
+
+			if (!inQuote && c == ';')
+				FlushSegment(ChainOperator.Semicolon);
+			else if (!inQuote && c == '&' && i + 1 < message.Length && message[i + 1] == '&')
 			{
-				case '"':
-					current.Append(c);
-					inQuote = true;
-					i++;
-					continue;
-				case ';' when !inQuote:
-					FlushSegment(ChainOperator.Semicolon);
-					i++;
-					continue;
-				case '&' when i + 1 < message.Length && message[i + 1] == '&':
-					FlushSegment(ChainOperator.And);
-					i += 2;
-					continue;
-				default:
-					current.Append(c);
-					i++;
-					break;
+				FlushSegment(ChainOperator.And);
+				i++;
 			}
+			else
+				current.Append(c);
 		}
 
-		// Flush the last segment
 		var last = current.ToString().Trim();
 		if (last.Length > 0)
 			segments.Add(new CommandSegment(last, op));
@@ -102,76 +80,34 @@ internal static class CommandLine
 	{
 		var tokens = new List<string>();
 		var current = new StringBuilder();
-		var i = 0;
 		var inQuote = false;
 
-		while (i < segment.Length)
+		for (var i = 0; i < segment.Length; i++)
 		{
 			var c = segment[i];
 
-			if (inQuote)
+			if (IsEscape(segment, i))
+				current.Append(segment[++i]);
+			else if (c == '"')
+				inQuote = !inQuote;
+			else if (c == ' ' && !inQuote)
 			{
-				if (c == '\\' && i + 1 < segment.Length)
-				{
-					var next = segment[i + 1];
-					if (next is '"' or '\\')
-					{
-						current.Append(next);
-						i += 2;
-						continue;
-					}
-				}
-
-				if (c == '"')
-				{
-					inQuote = false;
-					i++;
-					continue;
-				}
-
+				if (current.Length == 0) continue;
+				tokens.Add(current.ToString());
+				current.Clear();
+			}
+			else
 				current.Append(c);
-				i++;
-				continue;
-			}
-
-			switch (c)
-			{
-				case '"':
-					inQuote = true;
-					i++;
-					continue;
-				case ' ':
-				{
-					if (current.Length > 0)
-					{
-						tokens.Add(current.ToString());
-						current.Clear();
-					}
-
-					i++;
-					continue;
-				}
-				case '\\' when i + 1 < segment.Length:
-				{
-					var next = segment[i + 1];
-					if (next is '"' or '\\')
-					{
-						current.Append(next);
-						i += 2;
-						continue;
-					}
-
-					break;
-				}
-			}
-
-			current.Append(c);
-			i++;
 		}
 
 		if (current.Length > 0)
 			tokens.Add(current.ToString());
 
 		return tokens;
+	}
+
+	private static bool IsEscape(string text, int index)
+	{
+		return text[index] == '\\' && index + 1 < text.Length && text[index + 1] is '"' or '\\';
 	}
 }
