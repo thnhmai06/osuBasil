@@ -174,7 +174,8 @@ internal sealed class FileBeatmapsetStorage(
 
 				if (marked is not null) RemoveMarked(marked, set);
 
-				if (placed.PackedFrom is not null && Directory.Exists(placed.PackedFrom))
+				if (placed.PackedFrom is not null && Directory.Exists(placed.PackedFrom) &&
+				    !SamePath(placed.PackedFrom, target))
 				{
 					var packedMarked = MarkDeleted(placed.PackedFrom);
 					RemoveMarked(packedMarked, set);
@@ -647,6 +648,14 @@ internal sealed class FileBeatmapsetStorage(
 		return IsArchiveName(name) ? null : new FileBeatmapsetFolder(path, name, LeadingId(name), false, null);
 	}
 
+	/// <summary>Determines whether two paths name the same file or folder on this file system.</summary>
+	private static bool SamePath(string left, string right)
+	{
+		var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+		return string.Equals(Path.GetFullPath(left).TrimEnd(Path.DirectorySeparatorChar),
+			Path.GetFullPath(right).TrimEnd(Path.DirectorySeparatorChar), comparison);
+	}
+
 	/// <summary>Builds the path of one file made from a set's archive.</summary>
 	/// <param name="setFolder">The set folder's full path.</param>
 	/// <param name="type">What the file is.</param>
@@ -655,6 +664,10 @@ internal sealed class FileBeatmapsetStorage(
 	/// <exception cref="ArgumentException"><paramref name="name" /> is not a plain file name.</exception>
 	private static string PathOf(string setFolder, BeatmapsetFileType type, string name)
 	{
+		// The storyboard has one fixed name, so the name given with it means nothing.
+		if (type == BeatmapsetFileType.Storyboard)
+			return Path.Combine(setFolder, StoryboardName);
+
 		if (string.IsNullOrEmpty(name))
 			throw new ArgumentException("The file name cannot be empty.", nameof(name));
 		if (name != Path.GetFileName(name))
@@ -666,7 +679,6 @@ internal sealed class FileBeatmapsetStorage(
 
 		return type switch
 		{
-			BeatmapsetFileType.Storyboard => Path.Combine(setFolder, StoryboardName),
 			BeatmapsetFileType.Preview => Path.Combine(setFolder, AudioFolder, PreviewPrefix + name),
 			BeatmapsetFileType.Version => Path.Combine(setFolder, VersionFolder, name),
 			BeatmapsetFileType.Background => Path.Combine(setFolder, BackgroundFolder, name),

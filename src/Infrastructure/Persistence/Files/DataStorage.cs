@@ -85,10 +85,16 @@ internal sealed class DataStorage : IReadOnlyDictionary<string, FileInfo>
 	/// <summary>Combines a file's name with the directory.</summary>
 	/// <param name="name">The file's name, relative to the directory.</param>
 	/// <returns>The absolute path of the file.</returns>
-	/// <exception cref="ArgumentException"><paramref name="name" /> is not a safe file name.</exception>
+	/// <exception cref="ArgumentException">
+	///     <paramref name="name" /> is not a safe file name, or no asset reference can refer to a file of that name.
+	/// </exception>
 	public string Resolve(string name)
 	{
-		return SafePath.Combine(Path, name);
+		var path = SafePath.Combine(Path, name);
+		if (!ContentReference.TryParse(RelativePath + "/" + name, null, out _))
+			throw new ArgumentException("No asset reference can refer to a file of this name.", nameof(name));
+
+		return path;
 	}
 
 	/// <summary>Lists the names of the files directly in the directory matching a search pattern.</summary>

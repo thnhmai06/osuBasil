@@ -43,7 +43,12 @@ internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage
 	/// <summary>Gets the name of an entry's file: its <c>:</c> segments name the folders.</summary>
 	private static string FileNameOf(string entry)
 	{
-		return string.Join('/', entry.Split(':')) + ".txt";
+		ArgumentNullException.ThrowIfNull(entry);
+		var parts = entry.Split(':');
+		if (parts.Any(string.IsNullOrWhiteSpace))
+			throw new ArgumentException("An entry name and each part of it must name something.", nameof(entry));
+
+		return string.Join('/', parts) + ".txt";
 	}
 
 	/// <summary>Writes an entry's new text to a temporary file and puts it in place once committed.</summary>
