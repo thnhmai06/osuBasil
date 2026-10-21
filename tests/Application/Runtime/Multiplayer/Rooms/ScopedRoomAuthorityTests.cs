@@ -311,7 +311,7 @@ public sealed class ScopedRoomAuthorityTests
 		{
 			Assert.Equal(RoomOutcome.Ok, result.Outcome);
 			Assert.Null(room.Rounds.Countdown);
-			Assert.IsType<RoomCountdownCancelled>(app.RoomEvents.Events[^1]);
+			Assert.Equal(RoomCountdownCancelReason.Aborted, Assert.IsType<RoomCountdownCancelled>(app.RoomEvents.Events[^1]).Reason);
 			return;
 		}
 

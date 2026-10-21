@@ -100,7 +100,7 @@ public sealed class ScopedRoomSettings
 		if (room.Rounds.Countdown is { StartsRound: true } &&
 		    (change.Beatmap is not null || change.ClearBeatmap || change.Mode is not null || change.Mods is not null ||
 		     change.Freemods is not null || change.TeamType is not null || change.WinCondition is not null))
-			room.CancelCountdown(true);
+			room.CancelCountdown(RoomCountdownCancelReason.SettingsChanged);
 
 		room.Context.Events.Publish(new RoomSettingsChanged(room, change with { Password = null },
 			change.Password is not null));

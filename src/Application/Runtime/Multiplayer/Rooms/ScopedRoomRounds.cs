@@ -34,7 +34,7 @@ public sealed class ScopedRoomRounds
 		if (room.Rounds.InProgress) return RoomOutcome.InProgress;
 		if (room.Settings.Beatmap is null) return RoomOutcome.NoBeatmap;
 
-		room.CancelCountdown(true);
+		room.CancelCountdown(RoomCountdownCancelReason.RoundStarted);
 		var (round, players) = room.BeginRound();
 		room.Context.Events.Publish(new RoomRoundStarted(room, round, players));
 		return RoomOutcome.Ok;
@@ -73,7 +73,7 @@ public sealed class ScopedRoomRounds
 		await using var scope = await _scoped.Room.EnterAsync(cancellationToken);
 		if (scope is null) return RoomOutcome.RoomClosed;
 
-		return _scoped.Room.CancelCountdown(true) ? RoomOutcome.Ok : RoomOutcome.NoCountdown;
+		return _scoped.Room.CancelCountdown(RoomCountdownCancelReason.Aborted) ? RoomOutcome.Ok : RoomOutcome.NoCountdown;
 	}
 
 	/// <summary>Aborts the round in progress; players go back to not ready.</summary>
@@ -89,7 +89,7 @@ public sealed class ScopedRoomRounds
 		var room = _scoped.Room;
 		if (!room.Rounds.InProgress) return RoomOutcome.NotInProgress;
 
-		room.CancelCountdown(true);
+		room.CancelCountdown(RoomCountdownCancelReason.RoundAborted);
 		var round = room.EndCurrentRound(true)!;
 		room.Context.Events.Publish(new RoomRoundAborted(room, round));
 		return RoomOutcome.Ok;

@@ -53,7 +53,13 @@ internal sealed class RoomAnnouncer(Server server, UserRegistry users, TimeProvi
 					await server.SayAsync(e.Room.Channel, elapsed, cancellationToken: cancellationToken);
 				break;
 			case RoomCountdownCancelled e:
-				await server.SayAsync(e.Room.Channel, AnnouncementReplies.CountdownCancelled, cancellationToken: cancellationToken);
+				await server.SayAsync(e.Room.Channel, e.Reason switch
+				{
+					RoomCountdownCancelReason.SettingsChanged => AnnouncementReplies.SettingsChangedCountdownCancelled,
+					RoomCountdownCancelReason.RoundStarted => AnnouncementReplies.CountdownCancelledByRoundStart,
+					RoomCountdownCancelReason.RoundAborted => AnnouncementReplies.CountdownCancelledByRoundAbort,
+					_ => AnnouncementReplies.CountdownCancelled
+				}, cancellationToken: cancellationToken);
 				break;
 			case RoomPlayerJoined e when _closingRooms.TryRemove(new KeyValuePair<int, Room>(e.Room.Id, e.Room)):
 				await server.SayAsync(e.Room.Channel, AnnouncementReplies.RoomPlayerJoinedClosing,

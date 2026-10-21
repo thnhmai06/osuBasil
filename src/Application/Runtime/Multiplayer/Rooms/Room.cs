@@ -280,7 +280,7 @@ public sealed class Room : IEquatable<Room>
 	/// <remarks>The caller holds the room's scope.</remarks>
 	internal RoomCountdown StartCountdown(UserRecord by, TimeSpan length, bool startsRound)
 	{
-		CancelCountdown(false);
+		CancelCountdown(null);
 
 		var countdown = new RoomCountdown(by, length, startsRound, Context.Clock.GetUtcNow());
 		Rounds.Countdown = countdown;
@@ -297,10 +297,10 @@ public sealed class Room : IEquatable<Room>
 	}
 
 	/// <summary>Cancels this room's countdown.</summary>
-	/// <param name="announce">Whether to emit a cancellation event.</param>
+	/// <param name="announce">Why the countdown is cancelled when a cancellation event is to be emitted; otherwise <see langword="null" />.</param>
 	/// <returns><see langword="true" /> when a countdown was cancelled.</returns>
 	/// <remarks>The caller holds the room's scope.</remarks>
-	internal bool CancelCountdown(bool announce)
+	internal bool CancelCountdown(RoomCountdownCancelReason? announce)
 	{
 		var countdown = Rounds.Countdown;
 		foreach (var timer in Rounds.CountdownTimers) timer.Dispose();
@@ -308,7 +308,7 @@ public sealed class Room : IEquatable<Room>
 		Rounds.Countdown = null;
 
 		if (countdown is null) return false;
-		if (announce) Context.Events.Publish(new RoomCountdownCancelled(this, countdown));
+		if (announce is { } reason) Context.Events.Publish(new RoomCountdownCancelled(this, countdown, reason));
 		return true;
 	}
 
@@ -330,7 +330,7 @@ public sealed class Room : IEquatable<Room>
 	{
 		if (!ReferenceEquals(Rounds.Countdown, countdown)) return;
 
-		CancelCountdown(false);
+		CancelCountdown(null);
 		(Round Round, IReadOnlyList<BanchoConnection> Players)? started = null;
 		var result = RoomOutcome.Ok;
 		if (countdown.StartsRound)

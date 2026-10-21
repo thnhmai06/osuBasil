@@ -171,7 +171,7 @@ public sealed class Lobby : IRoomLobbyPort, IConnectionLobbyPort
 		if (room.IsClosed) return;
 
 		var aborted = room.EndCurrentRound(true);
-		room.CancelCountdown(false);
+		room.CancelCountdown(null);
 
 		var evicted = room.Slots.Where(s => s.Player is not null).Select(s => s.Player!).ToList();
 		foreach (var player in evicted) room.Vacate(player);

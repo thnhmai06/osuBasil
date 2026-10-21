@@ -28,6 +28,12 @@ internal static class AnnouncementReplies
 	/// <summary>Reply when a countdown is cancelled.</summary>
 	public const string CountdownCancelled = "Countdown aborted.";
 
+	/// <summary>Reply when starting a round by hand cancels a countdown.</summary>
+	public const string CountdownCancelledByRoundStart = "Countdown cancelled — the round was started.";
+
+	/// <summary>Reply when aborting the round cancels a countdown.</summary>
+	public const string CountdownCancelledByRoundAbort = "Countdown cancelled — the round was aborted.";
+
 	// ── Room round ─────────────────────────────────────────────────────────────────────────
 	/// <summary>Reply when a round starts after a countdown.</summary>
 	public const string RoundStartedByCountdown = "Good luck, have fun!";

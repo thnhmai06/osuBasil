@@ -366,7 +366,7 @@ public sealed class ScopedRoomRoundsTests
 			TestContext.Current.CancellationToken)).IsOk);
 
 		Assert.Null(setup.Room.Rounds.Countdown);
-		Assert.True(IndexOf<RoomCountdownCancelled>(app) >= 0);
+		Assert.Equal(RoomCountdownCancelReason.RoundStarted, Assert.Single(app.RoomEvents.Events.OfType<RoomCountdownCancelled>()).Reason);
 	}
 
 	[Fact]
@@ -383,7 +383,7 @@ public sealed class ScopedRoomRoundsTests
 			TestContext.Current.CancellationToken)).IsOk);
 
 		Assert.Null(setup.Room.Rounds.Countdown);
-		Assert.True(IndexOf<RoomCountdownCancelled>(app) >= 0);
+		Assert.Equal(RoomCountdownCancelReason.RoundAborted, Assert.Single(app.RoomEvents.Events.OfType<RoomCountdownCancelled>()).Reason);
 	}
 
 	[Fact]
@@ -399,7 +399,7 @@ public sealed class ScopedRoomRoundsTests
 			TestContext.Current.CancellationToken)).IsOk);
 
 		Assert.Null(setup.Room.Rounds.Countdown);
-		Assert.True(IndexOf<RoomCountdownCancelled>(app) >= 0);
+		Assert.Equal(RoomCountdownCancelReason.SettingsChanged, Assert.Single(app.RoomEvents.Events.OfType<RoomCountdownCancelled>()).Reason);
 	}
 
 	private static int IndexOf<T>(TestApplication app) where T : RoomEvent

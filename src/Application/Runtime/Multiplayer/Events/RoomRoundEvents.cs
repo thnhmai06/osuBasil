@@ -96,7 +96,25 @@ public sealed record RoomCountdownTicked(Room Room, RoomCountdown Countdown, Tim
 /// <param name="StartResult">The result of starting a round, or <see cref="RoomOutcome.Ok" /> when no round was requested.</param>
 public sealed record RoomCountdownElapsed(Room Room, RoomCountdown Countdown, RoomOutcome StartResult) : RoomEvent(Room);
 
+/// <summary>Why a running countdown was cancelled.</summary>
+public enum RoomCountdownCancelReason
+{
+	/// <summary>Someone asked for the countdown to be aborted.</summary>
+	Aborted = 1,
+
+	/// <summary>A setting the countdown's round depends on changed.</summary>
+	SettingsChanged,
+
+	/// <summary>A round was started by hand while the countdown ran.</summary>
+	RoundStarted,
+
+	/// <summary>The round in progress was aborted.</summary>
+	RoundAborted
+}
+
 /// <summary>A countdown was cancelled.</summary>
 /// <param name="Room">The room.</param>
 /// <param name="Countdown">The countdown that was cancelled.</param>
-public sealed record RoomCountdownCancelled(Room Room, RoomCountdown Countdown) : RoomEvent(Room);
+/// <param name="Reason">Why it was cancelled.</param>
+public sealed record RoomCountdownCancelled(Room Room, RoomCountdown Countdown, RoomCountdownCancelReason Reason)
+	: RoomEvent(Room);
