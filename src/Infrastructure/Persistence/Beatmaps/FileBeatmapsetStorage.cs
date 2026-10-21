@@ -75,9 +75,9 @@ internal sealed class FileBeatmapsetStorage(
 		{
 			var output = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920,
 				FileOptions.Asynchronous);
-			await using (output.ConfigureAwait(false))
+			await using (output)
 			{
-				await archive.CopyToAsync(output, cancellationToken).ConfigureAwait(false);
+				await archive.CopyToAsync(output, cancellationToken);
 			}
 		}
 		catch
@@ -118,7 +118,7 @@ internal sealed class FileBeatmapsetStorage(
 
 		var target = Path.Combine(paths.Beatmapsets.Path, FolderName(set));
 		var gate = SetLocks.GetOrAdd(set.Id, static _ => new SemaphoreSlim(1, 1));
-		await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+		await gate.WaitAsync(cancellationToken);
 		try
 		{
 			var placedParent = Path.GetDirectoryName(placed.Path);
@@ -215,7 +215,7 @@ internal sealed class FileBeatmapsetStorage(
 		if (files.Count == 0 || !Directory.EnumerateFiles(placed.Path, "*.osu").Any()) return null;
 
 		var path = Incoming(".osz");
-		await PackFilesAsync(placed.Path, files, path, cancellationToken).ConfigureAwait(false);
+		await PackFilesAsync(placed.Path, files, path, cancellationToken);
 
 		var info = new FileInfo(path);
 		return new FileBeatmapsetArchive(path, folder.Name,
@@ -226,7 +226,7 @@ internal sealed class FileBeatmapsetStorage(
 	public async Task ClearAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default)
 	{
 		var gate = SetLocks.GetOrAdd(set.Id, static _ => new SemaphoreSlim(1, 1));
-		await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+		await gate.WaitAsync(cancellationToken);
 		try
 		{
 			var folder = FindFolder(set.Id, FolderName(set));
@@ -250,7 +250,7 @@ internal sealed class FileBeatmapsetStorage(
 		CancellationToken cancellationToken = default)
 	{
 		var gate = SetLocks.GetOrAdd(set.Id, static _ => new SemaphoreSlim(1, 1));
-		await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+		await gate.WaitAsync(cancellationToken);
 		try
 		{
 			var folder = FindFolder(set.Id, FolderName(set));
@@ -267,7 +267,7 @@ internal sealed class FileBeatmapsetStorage(
 					             FileShare.None,
 					             81920, FileOptions.Asynchronous))
 				{
-					await content.CopyToAsync(output, cancellationToken).ConfigureAwait(false);
+					await content.CopyToAsync(output, cancellationToken);
 				}
 
 				File.Move(temporary, path, true);
@@ -287,7 +287,7 @@ internal sealed class FileBeatmapsetStorage(
 	public async Task SaveArchiveWithoutVideoAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default)
 	{
 		var gate = SetLocks.GetOrAdd(set.Id, static _ => new SemaphoreSlim(1, 1));
-		await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+		await gate.WaitAsync(cancellationToken);
 		try
 		{
 			var folder = FindFolder(set.Id, FolderName(set));
@@ -315,7 +315,7 @@ internal sealed class FileBeatmapsetStorage(
 						var created = destination.CreateEntry(entry.FullName, CompressionLevel.Optimal);
 						await using var entryInput = await entry.OpenAsync(cancellationToken);
 						await using var entryOutput = await created.OpenAsync(cancellationToken);
-						await entryInput.CopyToAsync(entryOutput, cancellationToken).ConfigureAwait(false);
+						await entryInput.CopyToAsync(entryOutput, cancellationToken);
 					}
 				}
 
@@ -457,14 +457,14 @@ internal sealed class FileBeatmapsetStorage(
 
 			try
 			{
-				await Task.Delay(TimeSpan.FromSeconds(2), time, debounce.Token).ConfigureAwait(false);
+				await Task.Delay(TimeSpan.FromSeconds(2), time, debounce.Token);
 				lock (gate)
 				{
 					if (!pending.TryGetValue(name, out var current) || !ReferenceEquals(current, debounce)) return;
 					pending.Remove(name);
 				}
 
-				await settled.Writer.WriteAsync(name, cancellationToken).ConfigureAwait(false);
+				await settled.Writer.WriteAsync(name, cancellationToken);
 			}
 			catch (OperationCanceledException) when (debounce.IsCancellationRequested ||
 			                                         cancellationToken.IsCancellationRequested)
@@ -485,7 +485,7 @@ internal sealed class FileBeatmapsetStorage(
 			logger.LogWarning(exception, "Watching {Directory} failed; reporting every entry", paths.Beatmapsets.Path);
 			try
 			{
-				foreach (var entry in await ListAsync(cancellationToken).ConfigureAwait(false))
+				foreach (var entry in await ListAsync(cancellationToken))
 					ScheduleName(entry.Name);
 			}
 			catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -510,7 +510,7 @@ internal sealed class FileBeatmapsetStorage(
 	public async Task DeleteAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default)
 	{
 		var gate = SetLocks.GetOrAdd(set.Id, static _ => new SemaphoreSlim(1, 1));
-		await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+		await gate.WaitAsync(cancellationToken);
 		try
 		{
 			foreach (var folder in FoldersOf(set.Id).Where(IsSetFolder))
@@ -560,7 +560,7 @@ internal sealed class FileBeatmapsetStorage(
 	{
 		var stream = new FileStream(target, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920,
 			FileOptions.Asynchronous);
-		await using (stream.ConfigureAwait(false))
+		await using (stream)
 		{
 			await using var zip = new ZipArchive(stream, ZipArchiveMode.Create, true);
 			foreach (var file in files)
@@ -570,12 +570,12 @@ internal sealed class FileBeatmapsetStorage(
 					CompressionLevel.Optimal);
 				var input = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 81920,
 					FileOptions.Asynchronous);
-				await using (input.ConfigureAwait(false))
+				await using (input)
 				{
 					var output = await entry.OpenAsync(cancellationToken);
-					await using (output.ConfigureAwait(false))
+					await using (output)
 					{
-						await input.CopyToAsync(output, cancellationToken).ConfigureAwait(false);
+						await input.CopyToAsync(output, cancellationToken);
 					}
 				}
 			}
@@ -606,7 +606,7 @@ internal sealed class FileBeatmapsetStorage(
 	{
 		try
 		{
-			await foreach (var name in settled.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+			await foreach (var name in settled.Reader.ReadAllAsync(cancellationToken))
 			{
 				var entry = EntryOf(name);
 				if (entry is not null) yield return entry;

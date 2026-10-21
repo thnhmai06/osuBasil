@@ -25,18 +25,18 @@ internal sealed class BeatmapsetMatcher(IBeatmapRepository beatmaps, IBeatmapset
 	{
 		foreach (var hash in hashes.Values)
 		{
-			var beatmap = await beatmaps.GetAsync(hash, cancellationToken).ConfigureAwait(false);
+			var beatmap = await beatmaps.GetAsync(hash, cancellationToken);
 			if (beatmap is not null) return beatmap.Beatmapset;
 		}
 
 		if (folderId is { } id)
 		{
-			var inFolder = await beatmapsets.GetAsync(id, cancellationToken).ConfigureAwait(false);
+			var inFolder = await beatmapsets.GetAsync(id, cancellationToken);
 			if (inFolder is not null) return inFolder;
 		}
 
 		return content.OnlineSetId is > 0
-			? await beatmapsets.GetAsync(content.OnlineSetId.Value, cancellationToken).ConfigureAwait(false)
+			? await beatmapsets.GetAsync(content.OnlineSetId.Value, cancellationToken)
 			: null;
 	}
 
@@ -59,7 +59,7 @@ internal sealed class BeatmapsetMatcher(IBeatmapRepository beatmaps, IBeatmapset
 		foreach (var difficulty in content.Difficulties)
 		{
 			var matched = stored[difficulty] ?? (difficulty.OnlineId is > 0
-				? await beatmaps.GetAsync(difficulty.OnlineId.Value, cancellationToken).ConfigureAwait(false)
+				? await beatmaps.GetAsync(difficulty.OnlineId.Value, cancellationToken)
 				: null);
 			if (matched is null) continue;
 			if (!matched.Beatmapset.Equals(existing) && matched.IsLocked()) return true;
@@ -68,7 +68,7 @@ internal sealed class BeatmapsetMatcher(IBeatmapRepository beatmaps, IBeatmapset
 
 		if (existing is null) return false;
 		var kept = hashes.Values.ToHashSet();
-		return (await beatmaps.ListAsync(existing, cancellationToken).ConfigureAwait(false)).Any(beatmap =>
+		return (await beatmaps.ListAsync(existing, cancellationToken)).Any(beatmap =>
 			beatmap.Locked && !kept.Contains(beatmap.Hash));
 	}
 }

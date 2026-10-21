@@ -56,8 +56,7 @@ internal sealed class PostgresMenuBannerRepository(
 	public async Task LoadAsync(CancellationToken cancellationToken)
 	{
 		var rows = await reader.ReadAsync(connection => connection.QueryAsync<MenuBannerRow>(
-				"select image, url, starts_at, ends_at, created_at from menu_banners"), cancellationToken)
-			.ConfigureAwait(false);
+				"select image, url, starts_at, ends_at, created_at from menu_banners"), cancellationToken);
 		foreach (var row in rows)
 		{
 			if (!ContentReference.TryParse(row.Image, null, out var image))

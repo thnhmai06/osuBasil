@@ -21,7 +21,7 @@ internal sealed class PostgresRoundScoreRepository(
 	/// <inheritdoc />
 	public async Task<RoundScore> RecordAsync(RoundScore roundScore, CancellationToken cancellationToken = default)
 	{
-		var round = await LiveAsync(roundScore.Round, cancellationToken).ConfigureAwait(false);
+		var round = await LiveAsync(roundScore.Round, cancellationToken);
 		var saved = writer.SaveAsync(Root.Match(round.Match.Id), (GetType(), roundScore.Score.Id), new WriteCommand(
 			"""
 			insert into round_scores (score_id, match_id, round_number, team)
@@ -42,7 +42,7 @@ internal sealed class PostgresRoundScoreRepository(
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<RoundScore>> ListAsync(Round round, CancellationToken cancellationToken = default)
 	{
-		var live = await LiveAsync(round, cancellationToken).ConfigureAwait(false);
+		var live = await LiveAsync(round, cancellationToken);
 		return await _byRound.GetOrLoadAsync((live.Match.Id, live.Index), live, async () =>
 		{
 			var rows = await reader.ReadAsync(connection => connection.QueryAsync<RoundScoreRow>(
@@ -52,11 +52,11 @@ internal sealed class PostgresRoundScoreRepository(
 				where match_id = @MatchId and round_number = @Number
 				order by score_id
 				""",
-				new { MatchId = live.Match.Id, Number = live.Index }), cancellationToken).ConfigureAwait(false);
+				new { MatchId = live.Match.Id, Number = live.Index }), cancellationToken);
 
 			var result = ImmutableList.CreateBuilder<RoundScore>();
 			foreach (var row in rows)
-				if (await scores.GetAsync(row.ScoreId, cancellationToken).ConfigureAwait(false) is { } score)
+				if (await scores.GetAsync(row.ScoreId, cancellationToken) is { } score)
 					result.Add(new RoundScore
 					{
 						Score = score,
@@ -64,13 +64,13 @@ internal sealed class PostgresRoundScoreRepository(
 						Team = row.Team is { } team ? (GameTeam)team : null
 					});
 			return result.ToImmutable();
-		}).ConfigureAwait(false);
+		});
 	}
 
 	/// <summary>Finds the live instance of a round, which owns its list of scores.</summary>
 	private async Task<Round> LiveAsync(Round round, CancellationToken cancellationToken)
 	{
-		var matchRounds = await rounds.ListAsync(round.Match, cancellationToken).ConfigureAwait(false);
+		var matchRounds = await rounds.ListAsync(round.Match, cancellationToken);
 		return matchRounds.FirstOrDefault(item => item.Equals(round)) ?? round;
 	}
 

@@ -74,7 +74,7 @@ internal sealed class PostgresBeatmapsetRepository(
 		try
 		{
 			var stored = await Writer.WriteAsync(SyncRoot, (connection, transaction) =>
-				StoreAsync(changes, connection, transaction), cancellationToken).ConfigureAwait(false);
+				StoreAsync(changes, connection, transaction), cancellationToken);
 			return Remember(stored, changes.Remove);
 		}
 		catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation)
@@ -192,7 +192,7 @@ internal sealed class PostgresBeatmapsetRepository(
 			}
 			else
 			{
-				id = item.Data.OnlineId ?? await NextLocalIdAsync(connection, transaction).ConfigureAwait(false);
+				id = item.Data.OnlineId ?? await NextLocalIdAsync(connection, transaction);
 				createdAt = now;
 				locked = false;
 				visible = true;
@@ -211,16 +211,14 @@ internal sealed class PostgresBeatmapsetRepository(
 			};
 
 			await connection.ExecuteAsync(item.Existing is null ? InsertSql : UpdateSql,
-				RowParameters(set), transaction).ConfigureAwait(false);
+				RowParameters(set), transaction);
 
 			var beatmaps = await PostgresBeatmapRepository
-				.StoreAsync(set, item.Data.Beatmaps, now, connection, transaction)
-				.ConfigureAwait(false);
+				.StoreAsync(set, item.Data.Beatmaps, now, connection, transaction);
 
 			await connection.ExecuteAsync(
 					"delete from beatmaps where beatmapset_id = @Id and id <> all(@KeepIds)",
-					new { Id = id, KeepIds = beatmaps.Select(beatmap => beatmap.Beatmap.Id).ToArray() }, transaction)
-				.ConfigureAwait(false);
+					new { Id = id, KeepIds = beatmaps.Select(beatmap => beatmap.Beatmap.Id).ToArray() }, transaction);
 
 			stored.Add(new StoredSet(set, beatmaps));
 		}
@@ -228,9 +226,8 @@ internal sealed class PostgresBeatmapsetRepository(
 		foreach (var set in changes.Remove)
 		{
 			await connection.ExecuteAsync("delete from beatmaps where beatmapset_id = @Id", new { set.Id },
-				transaction).ConfigureAwait(false);
-			await connection.ExecuteAsync("delete from beatmapsets where id = @Id", new { set.Id }, transaction)
-				.ConfigureAwait(false);
+				transaction);
+			await connection.ExecuteAsync("delete from beatmapsets where id = @Id", new { set.Id }, transaction);
 		}
 
 		return stored;

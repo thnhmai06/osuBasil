@@ -27,10 +27,10 @@ public abstract class BeatmapsetContentFile(string name, long length)
 	/// <returns>The MD5 hash of the content, read to its end.</returns>
 	public async Task<Md5> HashAsync(CancellationToken cancellationToken = default)
 	{
-		var stream = await OpenAsync(cancellationToken).ConfigureAwait(false);
-		await using (stream.ConfigureAwait(false))
+		var stream = await OpenAsync(cancellationToken);
+		await using (stream)
 		{
-			return await Md5.ComputeAsync(stream, cancellationToken).ConfigureAwait(false);
+			return await Md5.ComputeAsync(stream, cancellationToken);
 		}
 	}
 }

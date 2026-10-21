@@ -31,7 +31,7 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 		try
 		{
 			zip = await ZipArchive.CreateAsync(archive, ZipArchiveMode.Read, true,
-				null, cancellationToken).ConfigureAwait(false);
+				null, cancellationToken);
 		}
 		catch (InvalidDataException)
 		{
@@ -48,13 +48,13 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 
 			if (!IsAcceptable(files)) return null;
 
-			var content = await ReadContentAsync(files, zip, cancellationToken).ConfigureAwait(false);
+			var content = await ReadContentAsync(files, zip, cancellationToken);
 			keepArchive = content is not null;
 			return content;
 		}
 		finally
 		{
-			if (!keepArchive) await zip.DisposeAsync().ConfigureAwait(false);
+			if (!keepArchive) await zip.DisposeAsync();
 		}
 	}
 
@@ -74,7 +74,7 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 			if (file.Name.Contains('/') || !file.Name.EndsWith(".osu", StringComparison.OrdinalIgnoreCase)) continue;
 			if (file.Length > MaxOsuBytes) continue;
 
-			var decoded = await TryDecodeAsync(file, cancellationToken).ConfigureAwait(false);
+			var decoded = await TryDecodeAsync(file, cancellationToken);
 			if (decoded is null) continue;
 
 			first ??= decoded.Beatmap;
@@ -111,15 +111,15 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 	{
 		try
 		{
-			var content = await file.OpenAsync(cancellationToken).ConfigureAwait(false);
-			await using var contentScope = content.ConfigureAwait(false);
+			var content = await file.OpenAsync(cancellationToken);
+			await using var contentScope = content;
 			using var buffer = new MemoryStream();
 			var chunk = new byte[81920];
 			var read = 0;
 			while (read <= MaxOsuBytes)
 			{
 				var count = await content.ReadAsync(chunk.AsMemory(0, Math.Min(chunk.Length, MaxOsuBytes + 1 - read)),
-					cancellationToken).ConfigureAwait(false);
+					cancellationToken);
 				if (count == 0) break;
 				buffer.Write(chunk, 0, count);
 				read += count;
@@ -134,7 +134,7 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 				beatmap = Decoder.GetDecoder<LazerBeatmap>(reader).Decode(reader);
 			}
 
-			var (video, storyboard) = await ReadEventsAsync(buffer, cancellationToken).ConfigureAwait(false);
+			var (video, storyboard) = await ReadEventsAsync(buffer, cancellationToken);
 			return new DecodedDifficulty(beatmap, video, storyboard);
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException)
@@ -157,7 +157,7 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 		var section = "";
 		string? video = null;
 		var storyboard = false;
-		while (await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false) is { } line)
+		while (await reader.ReadLineAsync(cancellationToken) is { } line)
 		{
 			if (line.StartsWith('[') && line.EndsWith(']'))
 			{

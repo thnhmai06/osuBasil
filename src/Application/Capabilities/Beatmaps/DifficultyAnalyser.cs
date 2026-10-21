@@ -23,8 +23,8 @@ internal sealed class DifficultyAnalyser(IBeatmapAnalyser analyser)
 
 		try
 		{
-			var stream = await difficulty.File.OpenAsync(cancellationToken).ConfigureAwait(false);
-			await using (stream.ConfigureAwait(false))
+			var stream = await difficulty.File.OpenAsync(cancellationToken);
+			await using (stream)
 			{
 				return analyser.Analyze(stream, difficulty.Mode, GameMods.NoMod);
 			}

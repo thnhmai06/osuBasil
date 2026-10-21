@@ -29,11 +29,11 @@ public abstract class BeatmapsetArchive(string name, ContentStamp stamp) : Beatm
 	/// <returns>The archive's stamp with the MD5 hash of its bytes.</returns>
 	public async Task<ContentFingerprint> FingerprintAsync(CancellationToken cancellationToken = default)
 	{
-		var stream = await OpenAsync(cancellationToken).ConfigureAwait(false);
-		await using (stream.ConfigureAwait(false))
+		var stream = await OpenAsync(cancellationToken);
+		await using (stream)
 		{
 			return new ContentFingerprint(stamp,
-				await Md5.ComputeAsync(stream, cancellationToken).ConfigureAwait(false));
+				await Md5.ComputeAsync(stream, cancellationToken));
 		}
 	}
 }

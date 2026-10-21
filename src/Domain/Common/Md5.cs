@@ -34,7 +34,7 @@ public readonly record struct Md5
 	/// <returns>The hash of the content.</returns>
 	public static async Task<Md5> ComputeAsync(Stream content, CancellationToken cancellationToken = default)
 	{
-		var hash = await MD5.HashDataAsync(content, cancellationToken).ConfigureAwait(false);
+		var hash = await MD5.HashDataAsync(content, cancellationToken);
 		return new Md5(Convert.ToHexStringLower(hash));
 	}
 

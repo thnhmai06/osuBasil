@@ -31,8 +31,7 @@ internal sealed class BeatmapAssets(
 		foreach (var (audio, previewTime) in previews)
 			try
 			{
-				await BuildPreviewAsync(set, audio, previewTime ?? TimeSpan.Zero, cancellationToken)
-					.ConfigureAwait(false);
+				await BuildPreviewAsync(set, audio, previewTime ?? TimeSpan.Zero, cancellationToken);
 			}
 			catch (OperationCanceledException)
 			{
@@ -53,10 +52,9 @@ internal sealed class BeatmapAssets(
 	private async Task BuildPreviewAsync(BeatmapsetRecord set, string audio, TimeSpan start,
 		CancellationToken cancellationToken)
 	{
-		var source = await storage.OpenAsync(set, BeatmapsetFileType.Audio, audio, cancellationToken)
-			.ConfigureAwait(false);
+		var source = await storage.OpenAsync(set, BeatmapsetFileType.Audio, audio, cancellationToken);
 		if (source is null) return;
-		await using var sourceScope = source.ConfigureAwait(false);
+		await using var sourceScope = source;
 
 		var directory = options.Value.CacheDirectory;
 		Directory.CreateDirectory(directory);
@@ -67,14 +65,13 @@ internal sealed class BeatmapAssets(
 		{
 			var file = new FileStream(audioPath, FileMode.CreateNew, FileAccess.Write, FileShare.None,
 				81920, FileOptions.Asynchronous);
-			await using (file.ConfigureAwait(false))
+			await using (file)
 			{
-				await source.CopyToAsync(file, cancellationToken).ConfigureAwait(false);
+				await source.CopyToAsync(file, cancellationToken);
 			}
 
 			// The content, not the name, says whether this is audio, how long it is and how many bytes it takes.
-			var analysis = await FFProbe.AnalyseAsync(audioPath, FfmpegOptions, cancellationToken)
-				.ConfigureAwait(false);
+			var analysis = await FFProbe.AnalyseAsync(audioPath, FfmpegOptions, cancellationToken);
 			if (analysis.PrimaryAudioStream is null) return;
 
 			if (logger.IsEnabled(LogLevel.Debug))
@@ -85,12 +82,11 @@ internal sealed class BeatmapAssets(
 			// A preview point past the end of the track starts the preview at the beginning.
 			if (start >= analysis.Duration) start = TimeSpan.Zero;
 
-			await RunFfmpegAsync(audioPath, start, outputPath, cancellationToken).ConfigureAwait(false);
+			await RunFfmpegAsync(audioPath, start, outputPath, cancellationToken);
 
 			var preview = File.OpenRead(outputPath);
-			await using var previewScope = preview.ConfigureAwait(false);
-			await storage.SaveAsync(set, BeatmapsetFileType.Preview, audio, preview, cancellationToken)
-				.ConfigureAwait(false);
+			await using var previewScope = preview;
+			await storage.SaveAsync(set, BeatmapsetFileType.Preview, audio, preview, cancellationToken);
 		}
 		finally
 		{

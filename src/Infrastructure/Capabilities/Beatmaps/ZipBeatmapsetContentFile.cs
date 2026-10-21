@@ -10,6 +10,6 @@ internal sealed class ZipBeatmapsetContentFile(ZipArchiveEntry entry, string nam
 	/// <inheritdoc />
 	public override async Task<Stream> OpenAsync(CancellationToken cancellationToken = default)
 	{
-		return await entry.OpenAsync(cancellationToken).ConfigureAwait(false);
+		return await entry.OpenAsync(cancellationToken);
 	}
 }

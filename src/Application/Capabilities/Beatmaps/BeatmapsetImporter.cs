@@ -15,18 +15,18 @@ internal sealed class BeatmapsetImporter(
 	public async Task<(BeatmapsetImportResult Result, BeatmapsetIndexed? Imported)> ImportAsync(Stream archive,
 		CancellationToken cancellationToken = default)
 	{
-		var uploaded = await storage.SaveAsync(archive, cancellationToken).ConfigureAwait(false);
+		var uploaded = await storage.SaveAsync(archive, cancellationToken);
 		try
 		{
-			var (content, stream) = await planner.ReadAsync(uploaded, cancellationToken).ConfigureAwait(false);
+			var (content, stream) = await planner.ReadAsync(uploaded, cancellationToken);
 			if (content is null)
 				return (new BeatmapsetImportResult(null, [], BeatmapsetImportFailure.Unreadable), null);
 
 			BeatmapsetPlan item;
-			await using (stream!.ConfigureAwait(false))
-			await using (content.ConfigureAwait(false))
+			await using (stream!)
+			await using (content)
 			{
-				item = await planner.PlanAsync(uploaded, null, content, null, cancellationToken).ConfigureAwait(false);
+				item = await planner.PlanAsync(uploaded, null, content, null, cancellationToken);
 			}
 
 			if (item.Locked)
@@ -37,13 +37,13 @@ internal sealed class BeatmapsetImporter(
 				return (new BeatmapsetImportResult(null, [], BeatmapsetImportFailure.Unreadable), null);
 
 			// The archive is closed first: it is moved into the set's folder.
-			var imported = await storer.StoreAsync(item, cancellationToken).ConfigureAwait(false);
+			var imported = await storer.StoreAsync(item, cancellationToken);
 			return (new BeatmapsetImportResult(imported.Set, imported.Beatmaps, null), imported);
 		}
 		finally
 		{
 			// Taken in, the archive has moved into its set's folder; rejected, nothing of it is kept.
-			await storage.DeleteAsync(uploaded, CancellationToken.None).ConfigureAwait(false);
+			await storage.DeleteAsync(uploaded, CancellationToken.None);
 		}
 	}
 }

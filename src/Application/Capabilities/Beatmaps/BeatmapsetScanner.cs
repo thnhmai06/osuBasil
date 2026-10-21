@@ -23,13 +23,13 @@ internal sealed class BeatmapsetScanner(
 		var packed = new List<BeatmapsetArchive>();
 		try
 		{
-			return await ScanAllAsync(packed, cancellationToken).ConfigureAwait(false);
+			return await ScanAllAsync(packed, cancellationToken);
 		}
 		finally
 		{
 			// What was taken in has moved into a set's folder; the rest is not kept.
 			foreach (var archive in packed)
-				await storage.DeleteAsync(archive, CancellationToken.None).ConfigureAwait(false);
+				await storage.DeleteAsync(archive, CancellationToken.None);
 		}
 	}
 
@@ -42,8 +42,8 @@ internal sealed class BeatmapsetScanner(
 	{
 		return entry switch
 		{
-			BeatmapsetArchive archive => await ScanArchiveAsync(archive, null, cancellationToken).ConfigureAwait(false),
-			BeatmapsetFolder folder => await ScanFolderAsync(folder, cancellationToken).ConfigureAwait(false),
+			BeatmapsetArchive archive => await ScanArchiveAsync(archive, null, cancellationToken),
+			BeatmapsetFolder folder => await ScanFolderAsync(folder, cancellationToken),
 			_ => BeatmapsetScanOutcome.NoChange
 		};
 	}
@@ -56,10 +56,10 @@ internal sealed class BeatmapsetScanner(
 		List<BeatmapsetArchive> packed, CancellationToken cancellationToken)
 	{
 		var claims = new SetClaims();
-		var entries = await ClassifyAsync(packed, claims, cancellationToken).ConfigureAwait(false);
-		var indexed = await PlanQueuedAsync(entries, claims, cancellationToken).ConfigureAwait(false);
-		var (remove, storedSets) = await CommitAsync(entries, indexed, cancellationToken).ConfigureAwait(false);
-		var imported = await StoreFilesAsync(entries, indexed, storedSets, cancellationToken).ConfigureAwait(false);
+		var entries = await ClassifyAsync(packed, claims, cancellationToken);
+		var indexed = await PlanQueuedAsync(entries, claims, cancellationToken);
+		var (remove, storedSets) = await CommitAsync(entries, indexed, cancellationToken);
+		var imported = await StoreFilesAsync(entries, indexed, storedSets, cancellationToken);
 
 		return new BeatmapsetScanOutcome(
 			new BeatmapsetScanResult(
@@ -84,7 +84,7 @@ internal sealed class BeatmapsetScanner(
 		var unchanged = entries.Unchanged;
 		var changed = entries.Changed;
 
-		foreach (var entry in await storage.ListAsync(cancellationToken).ConfigureAwait(false))
+		foreach (var entry in await storage.ListAsync(cancellationToken))
 			switch (entry)
 			{
 				case BeatmapsetArchive loose:
@@ -93,7 +93,7 @@ internal sealed class BeatmapsetScanner(
 
 				case BeatmapsetFolder { Exists: true, Archive: null } folder:
 				{
-					var packedArchive = await storage.PackAsync(folder, cancellationToken).ConfigureAwait(false);
+					var packedArchive = await storage.PackAsync(folder, cancellationToken);
 					if (packedArchive is null) break;
 
 					packed.Add(packedArchive);
@@ -105,7 +105,7 @@ internal sealed class BeatmapsetScanner(
 				{
 					BeatmapsetRecord? stored = null;
 					if (folder.Id is { } id)
-						stored = await beatmapsets.GetAsync(id, cancellationToken).ConfigureAwait(false);
+						stored = await beatmapsets.GetAsync(id, cancellationToken);
 
 					if (stored is not null && stored.Fingerprint.Stamp == archive.Stamp)
 					{
@@ -114,12 +114,11 @@ internal sealed class BeatmapsetScanner(
 						break;
 					}
 
-					var fingerprint = await archive.FingerprintAsync(cancellationToken).ConfigureAwait(false);
+					var fingerprint = await archive.FingerprintAsync(cancellationToken);
 					if (stored is not null && stored.Fingerprint.Hash == fingerprint.Hash)
 					{
 						seen.Add(stored.Id);
-						var change = await planner.ChangeOfAsync(stored, fingerprint, cancellationToken)
-							.ConfigureAwait(false);
+						var change = await planner.ChangeOfAsync(stored, fingerprint, cancellationToken);
 						claims.TryClaim(change);
 						changed.Add((change, stored));
 						break;
@@ -147,14 +146,13 @@ internal sealed class BeatmapsetScanner(
 		foreach (var (archive, folderId, fingerprint) in entries.Queued)
 		{
 			// An archive that cannot be read keeps its files; the set of the folder it lay in is not seen and is forgotten.
-			var (content, stream) = await planner.ReadAsync(archive, cancellationToken).ConfigureAwait(false);
+			var (content, stream) = await planner.ReadAsync(archive, cancellationToken);
 			if (content is null) continue;
 
-			await using (stream!.ConfigureAwait(false))
-			await using (content.ConfigureAwait(false))
+			await using (stream!)
+			await using (content)
 			{
-				var item = await planner.PlanAsync(archive, fingerprint, content, folderId, cancellationToken)
-					.ConfigureAwait(false);
+				var item = await planner.PlanAsync(archive, fingerprint, content, folderId, cancellationToken);
 				if (item.Locked)
 				{
 					if (item.Existing is not null) seen.Add(item.Existing.Id);
@@ -182,7 +180,7 @@ internal sealed class BeatmapsetScanner(
 	{
 		var remove = (
 				await Paging.ListAllAsync(page => beatmapsets.ListAsync(
-					new BeatmapQuery(), page, cancellationToken), cancellationToken).ConfigureAwait(false))
+					new BeatmapQuery(), page, cancellationToken), cancellationToken))
 			.Where(set => !entries.Seen.Contains(set.Id))
 			.ToList();
 
@@ -191,8 +189,7 @@ internal sealed class BeatmapsetScanner(
 			.ToList();
 
 		var storedSets =
-			await beatmapsets.CommitAsync(new BeatmapsetChanges(store, remove), cancellationToken)
-				.ConfigureAwait(false);
+			await beatmapsets.CommitAsync(new BeatmapsetChanges(store, remove), cancellationToken);
 
 		return (remove, storedSets);
 	}
@@ -212,22 +209,22 @@ internal sealed class BeatmapsetScanner(
 		{
 			var item = indexed[i];
 			var set = storedSets[i];
-			await storage.SaveAsync(set, item.Archive, cancellationToken).ConfigureAwait(false);
-			await files.StoreFilesAsync(set, cancellationToken).ConfigureAwait(false);
-			var storedBeatmaps = await beatmaps.ListAsync(set, cancellationToken).ConfigureAwait(false);
+			await storage.SaveAsync(set, item.Archive, cancellationToken);
+			await files.StoreFilesAsync(set, cancellationToken);
+			var storedBeatmaps = await beatmaps.ListAsync(set, cancellationToken);
 			imported.Add(new BeatmapsetIndexed(set, storedBeatmaps));
 		}
 
 		for (var i = 0; i < entries.Changed.Count; i++)
 		{
 			var set = storedSets[indexed.Count + i];
-			if (await audit.MissingFilesAsync(set, cancellationToken).ConfigureAwait(false))
-				await files.StoreFilesAsync(set, cancellationToken).ConfigureAwait(false);
+			if (await audit.MissingFilesAsync(set, cancellationToken))
+				await files.StoreFilesAsync(set, cancellationToken);
 		}
 
 		foreach (var set in entries.Unchanged)
-			if (await audit.MissingFilesAsync(set, cancellationToken).ConfigureAwait(false))
-				await files.StoreFilesAsync(set, cancellationToken).ConfigureAwait(false);
+			if (await audit.MissingFilesAsync(set, cancellationToken))
+				await files.StoreFilesAsync(set, cancellationToken);
 
 		return imported;
 	}
@@ -241,36 +238,36 @@ internal sealed class BeatmapsetScanner(
 		CancellationToken cancellationToken)
 	{
 		if (folder is { Exists: true, Archive: { } archive })
-			return await ScanArchiveAsync(archive, folder.Id, cancellationToken).ConfigureAwait(false);
+			return await ScanArchiveAsync(archive, folder.Id, cancellationToken);
 
 		// A folder that holds no archive holds loose files, which are packed before they are read; a folder that is
 		// gone packs to nothing.
-		var packed = await storage.PackAsync(folder, cancellationToken).ConfigureAwait(false);
+		var packed = await storage.PackAsync(folder, cancellationToken);
 		if (packed is not null)
 			try
 			{
-				return await ScanArchiveAsync(packed, folder.Id, cancellationToken).ConfigureAwait(false);
+				return await ScanArchiveAsync(packed, folder.Id, cancellationToken);
 			}
 			finally
 			{
-				await storage.DeleteAsync(packed, CancellationToken.None).ConfigureAwait(false);
+				await storage.DeleteAsync(packed, CancellationToken.None);
 			}
 
 		// The folder or its archive is gone: the beatmapset it held is forgotten.
 		if (folder.Id is not { } id) return BeatmapsetScanOutcome.NoChange;
 
-		var held = await beatmapsets.GetAsync(id, cancellationToken).ConfigureAwait(false);
+		var held = await beatmapsets.GetAsync(id, cancellationToken);
 		if (held is null) return BeatmapsetScanOutcome.NoChange;
 
 		// The set may still have its archive in another folder (the server renames folders itself).
-		var remaining = await storage.OpenArchiveAsync(held, true, cancellationToken).ConfigureAwait(false);
+		var remaining = await storage.OpenArchiveAsync(held, true, cancellationToken);
 		if (remaining is not null)
 		{
-			await remaining.DisposeAsync().ConfigureAwait(false);
+			await remaining.DisposeAsync();
 			return BeatmapsetScanOutcome.NoChange;
 		}
 
-		var deleted = await storer.ForgetAsync(held, cancellationToken).ConfigureAwait(false);
+		var deleted = await storer.ForgetAsync(held, cancellationToken);
 		return BeatmapsetScanOutcome.Forgotten(deleted);
 	}
 
@@ -286,38 +283,37 @@ internal sealed class BeatmapsetScanner(
 	private async Task<BeatmapsetScanOutcome> ScanArchiveAsync(BeatmapsetArchive archive, int? folderId,
 		CancellationToken cancellationToken)
 	{
-		var fingerprint = await archive.FingerprintAsync(cancellationToken).ConfigureAwait(false);
+		var fingerprint = await archive.FingerprintAsync(cancellationToken);
 
 		BeatmapsetRecord? stored = null;
 		if (folderId is { } id)
-			stored = await beatmapsets.GetAsync(id, cancellationToken).ConfigureAwait(false);
+			stored = await beatmapsets.GetAsync(id, cancellationToken);
 
 		// Unchanged. Missing files are not looked for here: the server's own writes into a set's folder come back as
 		// changes while an index may still be writing; the full scan makes missing files again.
 		if (stored is not null && stored.Fingerprint.Hash == fingerprint.Hash) return BeatmapsetScanOutcome.NoChange;
 
-		var (content, stream) = await planner.ReadAsync(archive, cancellationToken).ConfigureAwait(false);
+		var (content, stream) = await planner.ReadAsync(archive, cancellationToken);
 		if (content is null)
 		{
 			// The archive cannot be read: the set of the folder it lay in is forgotten, its files kept as they are.
 			if (stored is null) return BeatmapsetScanOutcome.NoChange;
 
-			var deleted = await storer.ForgetAsync(stored, cancellationToken).ConfigureAwait(false);
+			var deleted = await storer.ForgetAsync(stored, cancellationToken);
 			return BeatmapsetScanOutcome.Forgotten(deleted);
 		}
 
 		BeatmapsetPlan item;
-		await using (stream!.ConfigureAwait(false))
-		await using (content.ConfigureAwait(false))
+		await using (stream!)
+		await using (content)
 		{
-			item = await planner.PlanAsync(archive, fingerprint, content, folderId, cancellationToken)
-				.ConfigureAwait(false);
+			item = await planner.PlanAsync(archive, fingerprint, content, folderId, cancellationToken);
 		}
 
 		if (item.Locked) return BeatmapsetScanOutcome.NoChange;
 
 		// The archive is closed first: it is moved into the set's folder.
-		var imported = await storer.StoreAsync(item, cancellationToken).ConfigureAwait(false);
+		var imported = await storer.StoreAsync(item, cancellationToken);
 		return new BeatmapsetScanOutcome(
 			new BeatmapsetScanResult(item.Existing is null ? 1 : 0, item.Existing is null ? 0 : 1, 0),
 			[imported], []);

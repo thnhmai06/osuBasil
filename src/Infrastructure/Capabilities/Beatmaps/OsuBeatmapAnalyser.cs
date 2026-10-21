@@ -56,9 +56,9 @@ internal sealed class OsuBeatmapAnalyser(IBeatmapsetStorage storage) : IBeatmapA
 		if (!_contents.TryGetValue(beatmap, out var kept) || kept.Hash != hash)
 		{
 			var osu = await storage.OpenAsync(beatmap.Beatmapset, BeatmapsetFileType.Version,
-				$"{hash}.osu", cancellationToken).ConfigureAwait(false);
+				$"{hash}.osu", cancellationToken);
 			if (osu is null) return null;
-			await using var osuScope = osu.ConfigureAwait(false);
+			await using var osuScope = osu;
 
 			using var reader = new LineBufferedReader(osu, true);
 			var decoded = Decoder.GetDecoder<LazerBeatmap>(reader).Decode(reader);

@@ -41,7 +41,7 @@ internal sealed class PostgresBeatmapRepository(
 	/// <inheritdoc />
 	public async Task UpdateAsync(BeatmapRecord beatmap, CancellationToken cancellationToken = default)
 	{
-		var value = Copy(beatmap, await LiveSetAsync(beatmap.Beatmapset, cancellationToken).ConfigureAwait(false));
+		var value = Copy(beatmap, await LiveSetAsync(beatmap.Beatmapset, cancellationToken));
 		if (!Items.TryGetValue(beatmap.Id, out var current) || current.Hash != value.Hash)
 		{
 			if (_byHash.TryGetValue(value.Hash, out var known) && known.Id != beatmap.Id &&
@@ -54,8 +54,7 @@ internal sealed class PostgresBeatmapRepository(
 			try
 			{
 				await Writer.WriteAsync(Root.Beatmapset(value.Beatmapset.Id), (connection, transaction) =>
-						connection.ExecuteAsync(WriteSql, parameters, transaction), cancellationToken)
-					.ConfigureAwait(false);
+						connection.ExecuteAsync(WriteSql, parameters, transaction), cancellationToken);
 			}
 			catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation)
 			{
@@ -74,7 +73,7 @@ internal sealed class PostgresBeatmapRepository(
 	/// <inheritdoc />
 	public async ValueTask<BeatmapRecord?> GetAsync(int id, CancellationToken cancellationToken = default)
 	{
-		var beatmap = await FindAsync(id, cancellationToken).ConfigureAwait(false);
+		var beatmap = await FindAsync(id, cancellationToken);
 		if (beatmap is not null)
 			Index(beatmap);
 		return beatmap;
@@ -87,11 +86,11 @@ internal sealed class PostgresBeatmapRepository(
 			return known;
 
 		var row = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<BeatmapRow>(
-			ByHashSql, new { Hash = hash.HashValue }), cancellationToken).ConfigureAwait(false);
+			ByHashSql, new { Hash = hash.HashValue }), cancellationToken);
 		if (row is null)
 			return null;
 
-		var beatmap = Track(await ToBeatmapAsync(row, cancellationToken).ConfigureAwait(false));
+		var beatmap = Track(await ToBeatmapAsync(row, cancellationToken));
 		Index(beatmap);
 		return beatmap;
 	}
@@ -100,21 +99,21 @@ internal sealed class PostgresBeatmapRepository(
 	public async Task<IReadOnlyList<BeatmapRecord>> ListAsync(BeatmapsetRecord set,
 		CancellationToken cancellationToken = default)
 	{
-		var liveSet = await LiveSetAsync(set, cancellationToken).ConfigureAwait(false);
+		var liveSet = await LiveSetAsync(set, cancellationToken);
 		return await _bySet.GetOrLoadAsync(liveSet.Id, liveSet, async () =>
 		{
 			var rows = await Reader.ReadAsync(connection => connection.QueryAsync<BeatmapRow>(
-				BySetSql, new { SetId = liveSet.Id }), cancellationToken).ConfigureAwait(false);
+				BySetSql, new { SetId = liveSet.Id }), cancellationToken);
 			var beatmaps = ImmutableList.CreateBuilder<BeatmapRecord>();
 			foreach (var row in rows)
 			{
-				var beatmap = Track(await ToBeatmapAsync(row, cancellationToken).ConfigureAwait(false));
+				var beatmap = Track(await ToBeatmapAsync(row, cancellationToken));
 				Index(beatmap);
 				beatmaps.Add(beatmap);
 			}
 
 			return beatmaps.ToImmutable();
-		}).ConfigureAwait(false);
+		});
 	}
 
 	/// <inheritdoc />
@@ -140,11 +139,11 @@ internal sealed class PostgresBeatmapRepository(
 
 		var (rows, total) = await Reader.ReadAsync(async connection => (
 			await connection.QueryAsync<BeatmapRow>(sql, parameters),
-			await connection.ExecuteScalarAsync<int>(countSql, parameters)), cancellationToken).ConfigureAwait(false);
+			await connection.ExecuteScalarAsync<int>(countSql, parameters)), cancellationToken);
 		var items = new List<BeatmapRecord>();
 		foreach (var row in rows)
 		{
-			var beatmap = Track(await ToBeatmapAsync(row, cancellationToken).ConfigureAwait(false));
+			var beatmap = Track(await ToBeatmapAsync(row, cancellationToken));
 			Index(beatmap);
 			items.Add(beatmap);
 		}
@@ -156,7 +155,7 @@ internal sealed class PostgresBeatmapRepository(
 	public async Task RetainAsync(BeatmapsetRecord set, IReadOnlyCollection<BeatmapRecord> keep,
 		CancellationToken cancellationToken = default)
 	{
-		var liveSet = await LiveSetAsync(set, cancellationToken).ConfigureAwait(false);
+		var liveSet = await LiveSetAsync(set, cancellationToken);
 		var setId = liveSet.Id;
 		var keepIds = keep.Select(beatmap => beatmap.Id).ToArray();
 		var keepSet = keepIds.ToHashSet();
@@ -193,10 +192,10 @@ internal sealed class PostgresBeatmapRepository(
 		var stored = new List<StoredBeatmap>(data.Count);
 		foreach (var item in data)
 		{
-			var row = await FindAsync(item, connection, transaction).ConfigureAwait(false);
+			var row = await FindAsync(item, connection, transaction);
 			var beatmap = new BeatmapRecord
 			{
-				Id = row?.Id ?? item.OnlineId ?? await NextLocalIdAsync(connection, transaction).ConfigureAwait(false),
+				Id = row?.Id ?? item.OnlineId ?? await NextLocalIdAsync(connection, transaction),
 				Beatmapset = set,
 				Hash = item.Hash,
 				Metadata = item.Metadata,
@@ -207,8 +206,7 @@ internal sealed class PostgresBeatmapRepository(
 				UpdatedAt = now
 			};
 
-			await connection.ExecuteAsync(row is null ? InsertSql : UpdateSql, Parameters(beatmap), transaction)
-				.ConfigureAwait(false);
+			await connection.ExecuteAsync(row is null ? InsertSql : UpdateSql, Parameters(beatmap), transaction);
 			stored.Add(new StoredBeatmap(beatmap));
 		}
 
@@ -288,8 +286,8 @@ internal sealed class PostgresBeatmapRepository(
 	protected override async Task<BeatmapRecord?> LoadAsync(int key)
 	{
 		var row = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<BeatmapRow>(
-			ByIdSql, new { Id = key })).ConfigureAwait(false);
-		return row is null ? null : await ToBeatmapAsync(row, CancellationToken.None).ConfigureAwait(false);
+			ByIdSql, new { Id = key }));
+		return row is null ? null : await ToBeatmapAsync(row, CancellationToken.None);
 	}
 
 	protected override object WriteParameters(BeatmapRecord beatmap)
@@ -343,14 +341,13 @@ internal sealed class PostgresBeatmapRepository(
 		var row = await connection.QuerySingleOrDefaultAsync<StoredBeatmapRow>(
 			"select id, locked, visible, created_at from beatmaps where hash = @Hash",
 			new { Hash = data.Hash.HashValue },
-			transaction).ConfigureAwait(false);
+			transaction);
 		if (row is not null) return row;
 
 		return data.OnlineId is { } onlineId
 			? await connection.QuerySingleOrDefaultAsync<StoredBeatmapRow>(
 					"select id, locked, visible, created_at from beatmaps where id = @Id", new { Id = onlineId },
 					transaction)
-				.ConfigureAwait(false)
 			: null;
 	}
 
@@ -412,7 +409,7 @@ internal sealed class PostgresBeatmapRepository(
 	/// <summary>Gets the live instance of a beatmapset, or the given one when it is not stored.</summary>
 	private async ValueTask<BeatmapsetRecord> LiveSetAsync(BeatmapsetRecord set, CancellationToken cancellationToken)
 	{
-		return await beatmapsets.GetAsync(set.Id, cancellationToken).ConfigureAwait(false) ?? set;
+		return await beatmapsets.GetAsync(set.Id, cancellationToken) ?? set;
 	}
 
 	/// <summary>Copies a beatmap's values into a new instance that belongs to a given beatmapset.</summary>
@@ -451,7 +448,7 @@ internal sealed class PostgresBeatmapRepository(
 			UpdatedAt = row.SetUpdatedAt,
 			Locked = row.SetLocked,
 			Visible = row.SetVisible
-		}, cancellationToken).ConfigureAwait(false);
+		}, cancellationToken);
 		var objects = JsonSerializer.Deserialize<BeatmapObjects>(row.Objects, StoredJson)
 		              ?? BeatmapObjects.Empty((GameMode)row.Mode);
 

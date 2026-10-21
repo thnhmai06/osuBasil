@@ -16,20 +16,20 @@ internal sealed class BeatmapsetFileWriter(
 	/// <remarks>The names are chosen the same way they were when the set was planned, so they match the records.</remarks>
 	internal async Task StoreFilesAsync(BeatmapsetRecord set, CancellationToken cancellationToken)
 	{
-		await storage.ClearAsync(set, cancellationToken).ConfigureAwait(false);
+		await storage.ClearAsync(set, cancellationToken);
 
-		var stream = await storage.OpenArchiveAsync(set, true, cancellationToken).ConfigureAwait(false);
+		var stream = await storage.OpenArchiveAsync(set, true, cancellationToken);
 		if (stream is null) return;
 
 		var keep = false;
 		try
 		{
-			var content = await reader.ReadAsync(stream, cancellationToken).ConfigureAwait(false);
+			var content = await reader.ReadAsync(stream, cancellationToken);
 			keep = content is not null;
 			if (content is null) return;
 
-			await using (stream.ConfigureAwait(false))
-			await using (content.ConfigureAwait(false))
+			await using (stream)
+			await using (content)
 			{
 				var backgrounds =
 					StoredFileNames.ChooseNames(content.Difficulties.Select(difficulty => difficulty.Background));
@@ -38,12 +38,11 @@ internal sealed class BeatmapsetFileWriter(
 
 				foreach (var difficulty in content.Difficulties)
 				{
-					var hash = await difficulty.File.HashAsync(cancellationToken).ConfigureAwait(false);
-					var osu = await difficulty.File.OpenAsync(cancellationToken).ConfigureAwait(false);
-					await using (osu.ConfigureAwait(false))
+					var hash = await difficulty.File.HashAsync(cancellationToken);
+					var osu = await difficulty.File.OpenAsync(cancellationToken);
+					await using (osu)
 					{
-						await storage.SaveAsync(set, BeatmapsetFileType.Version, $"{hash}.osu", osu, cancellationToken)
-							.ConfigureAwait(false);
+						await storage.SaveAsync(set, BeatmapsetFileType.Version, $"{hash}.osu", osu, cancellationToken);
 					}
 				}
 
@@ -51,33 +50,33 @@ internal sealed class BeatmapsetFileWriter(
 				foreach (var difficulty in content.Difficulties)
 				{
 					await SaveFileAsync(set, BeatmapsetFileType.Background, difficulty.Background, backgrounds, done,
-						cancellationToken).ConfigureAwait(false);
+						cancellationToken);
 					await SaveFileAsync(set, BeatmapsetFileType.Audio, difficulty.Audio, audio, done,
-						cancellationToken).ConfigureAwait(false);
+						cancellationToken);
 					await SaveFileAsync(set, BeatmapsetFileType.Video, difficulty.Video, video, done,
-						cancellationToken).ConfigureAwait(false);
+						cancellationToken);
 				}
 
 				if (content.Storyboard is not null)
 				{
-					var storyboard = await content.Storyboard.OpenAsync(cancellationToken).ConfigureAwait(false);
-					await using (storyboard.ConfigureAwait(false))
+					var storyboard = await content.Storyboard.OpenAsync(cancellationToken);
+					await using (storyboard)
 					{
 						await storage.SaveAsync(set, BeatmapsetFileType.Storyboard, StoredFileNames.Storyboard,
 							storyboard,
-							cancellationToken).ConfigureAwait(false);
+							cancellationToken);
 					}
 				}
 			}
 		}
 		finally
 		{
-			if (!keep) await stream.DisposeAsync().ConfigureAwait(false);
+			if (!keep) await stream.DisposeAsync();
 		}
 
-		await storage.SaveArchiveWithoutVideoAsync(set, cancellationToken).ConfigureAwait(false);
-		var storedBeatmaps = await beatmaps.ListAsync(set, cancellationToken).ConfigureAwait(false);
-		await assets.BuildAsync(set, storedBeatmaps, cancellationToken).ConfigureAwait(false);
+		await storage.SaveArchiveWithoutVideoAsync(set, cancellationToken);
+		var storedBeatmaps = await beatmaps.ListAsync(set, cancellationToken);
+		await assets.BuildAsync(set, storedBeatmaps, cancellationToken);
 	}
 
 	/// <summary>Stores one file of a set, once, under the name chosen for it.</summary>
@@ -93,10 +92,10 @@ internal sealed class BeatmapsetFileWriter(
 	{
 		if (file is null || !done.Add(file)) return;
 
-		var stream = await file.OpenAsync(cancellationToken).ConfigureAwait(false);
-		await using (stream.ConfigureAwait(false))
+		var stream = await file.OpenAsync(cancellationToken);
+		await using (stream)
 		{
-			await storage.SaveAsync(set, type, names[file], stream, cancellationToken).ConfigureAwait(false);
+			await storage.SaveAsync(set, type, names[file], stream, cancellationToken);
 		}
 	}
 }

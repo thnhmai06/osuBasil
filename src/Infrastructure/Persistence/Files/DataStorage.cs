@@ -158,7 +158,7 @@ internal sealed class DataStorage : IReadOnlyDictionary<string, FileInfo>
 				             BufferSize = BufferSize
 			             }))
 			{
-				await content.CopyToAsync(stream, cancellationToken).ConfigureAwait(false);
+				await content.CopyToAsync(stream, cancellationToken);
 			}
 
 			File.Move(temporary, path, true);

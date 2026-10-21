@@ -31,7 +31,7 @@ internal sealed class BeatmapsetStorageWatcher(
 		_changes = storage.WatchAsync(_stopping.Token);
 		try
 		{
-			var result = await beatmapsets.ScanAsync(cancellationToken).ConfigureAwait(false);
+			var result = await beatmapsets.ScanAsync(cancellationToken);
 			logger.LogInformation(
 				"Scanned the beatmapset storage: {Imported} taken in, {Updated} updated, {Forgotten} forgotten",
 				result.Imported, result.Updated, result.Forgotten);
@@ -42,7 +42,7 @@ internal sealed class BeatmapsetStorageWatcher(
 			logger.LogError(exception, "Could not scan the beatmapset storage");
 		}
 
-		await base.StartAsync(cancellationToken).ConfigureAwait(false);
+		await base.StartAsync(cancellationToken);
 	}
 
 	/// <summary>Stops watching the storage, then lets the remaining hosted services stop.</summary>
@@ -50,7 +50,7 @@ internal sealed class BeatmapsetStorageWatcher(
 	public override async Task StopAsync(CancellationToken cancellationToken)
 	{
 		await _stopping.CancelAsync();
-		await base.StopAsync(cancellationToken).ConfigureAwait(false);
+		await base.StopAsync(cancellationToken);
 	}
 
 	/// <summary>Releases the watch's cancellation.</summary>
@@ -65,10 +65,10 @@ internal sealed class BeatmapsetStorageWatcher(
 	{
 		try
 		{
-			await foreach (var entry in _changes!.WithCancellation(stoppingToken).ConfigureAwait(false))
+			await foreach (var entry in _changes!.WithCancellation(stoppingToken))
 				try
 				{
-					var result = await beatmapsets.ScanAsync(entry, stoppingToken).ConfigureAwait(false);
+					var result = await beatmapsets.ScanAsync(entry, stoppingToken);
 					if (result is not { Imported: 0, Updated: 0, Forgotten: 0 })
 						logger.LogInformation(
 							"Beatmapset entry {Name}: {Imported} taken in, {Updated} updated, {Forgotten} forgotten",

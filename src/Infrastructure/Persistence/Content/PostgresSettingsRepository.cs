@@ -22,7 +22,7 @@ internal sealed class PostgresSettingsRepository(
 	public async Task LoadAsync(CancellationToken cancellationToken)
 	{
 		var rows = await reader.ReadAsync(connection => connection.QueryAsync<(string Name, string? Value)>(
-			"select name, value from settings"), cancellationToken).ConfigureAwait(false);
+			"select name, value from settings"), cancellationToken);
 		var values = rows.ToDictionary(row => row.Name, row => row.Value, StringComparer.Ordinal);
 
 		// A setting without a row keeps its default.

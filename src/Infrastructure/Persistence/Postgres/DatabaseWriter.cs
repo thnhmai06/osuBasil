@@ -98,7 +98,7 @@ internal sealed class DatabaseWriter(
 		var pending = new PendingTransaction(identity, null, async (connection, transaction) =>
 		{
 			await using var statement = command.ToCommand(connection, transaction);
-			await statement.ExecuteNonQueryAsync(_abandon.Token).ConfigureAwait(false);
+			await statement.ExecuteNonQueryAsync(_abandon.Token);
 		}, true);
 		return Enqueue(root, identity, pending).Pending.Done.Task;
 	}

@@ -17,14 +17,13 @@ internal sealed class BeatmapsetStorer(
 	public async Task<BeatmapsetIndexed> StoreAsync(BeatmapsetPlan item,
 		CancellationToken cancellationToken)
 	{
-		var storedSets = await beatmapsets.CommitAsync(new BeatmapsetChanges([item.Change], []), cancellationToken)
-			.ConfigureAwait(false);
+		var storedSets = await beatmapsets.CommitAsync(new BeatmapsetChanges([item.Change], []), cancellationToken);
 		var set = storedSets[0];
 
-		await storage.SaveAsync(set, item.Archive, cancellationToken).ConfigureAwait(false);
-		await files.StoreFilesAsync(set, cancellationToken).ConfigureAwait(false);
+		await storage.SaveAsync(set, item.Archive, cancellationToken);
+		await files.StoreFilesAsync(set, cancellationToken);
 
-		var storedBeatmaps = await beatmaps.ListAsync(set, cancellationToken).ConfigureAwait(false);
+		var storedBeatmaps = await beatmaps.ListAsync(set, cancellationToken);
 		return new BeatmapsetIndexed(set, storedBeatmaps);
 	}
 
@@ -34,7 +33,7 @@ internal sealed class BeatmapsetStorer(
 	/// <returns>The forgotten beatmapset.</returns>
 	public async Task<BeatmapsetRecord> ForgetAsync(BeatmapsetRecord set, CancellationToken cancellationToken)
 	{
-		await beatmapsets.CommitAsync(new BeatmapsetChanges([], [set]), cancellationToken).ConfigureAwait(false);
+		await beatmapsets.CommitAsync(new BeatmapsetChanges([], [set]), cancellationToken);
 		return set;
 	}
 }
