@@ -10,7 +10,12 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   `protected Permissions? Require(Permissions required)`: `null` means the requirement is met, otherwise it returns the
   mask of the permissions that are missing. An implementation never reads or compares permissions itself: it states the
   requirement of each behaviour through `Require` and returns the denial. Roles that are not permissions (creator,
-  referee, host, the owner of a PM channel) are properties of the specific scope, not of the base.
+  referee, host, the owner of a PM channel) are rights of the scope: a scope that has them derives from
+  `Scoped<TOwner, TRights> where TRights : struct, Enum` (the room scope: `Scoped<Room, RoomPermissions>`; a scope over
+  `Privileges` fits the same way). `Rights` is set once at creation and `protected TRights? RequireRight(TRights)` returns
+  `null` when met. The comparison follows the enum, found by reflection: a `[Flags]` enum is met when every required bit
+  is held (the result names the missing bits), any other enum is ordered levels and is met when the held value is
+  greater than or equal to the required one (the result is the required level).
 * **Every behaviour that can be refused returns `Result<TOutcome>`**, a `readonly record struct (TOutcome Outcome,
   Permissions? Missing)` shared by all objects. Each object owns one outcome enum (`RoomOutcome`, `ChannelOutcome`,
   `UserOutcome`, `BeatmapsetOutcome`, …) with `Ok = 1` and `0` meaning "not set" (so a denied result, whose outcome is
