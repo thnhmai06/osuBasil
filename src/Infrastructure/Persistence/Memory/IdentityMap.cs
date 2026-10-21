@@ -105,11 +105,14 @@ internal sealed class IdentityMap<TKey, T> : IReadOnlyDictionary<TKey, T>
 		if (TryGetValue(key, out var live))
 			return live;
 
+		// The factory must always return a task: a load that fails synchronously leaves its exception cached in the
+		// Lazy under ExecutionAndPublication, so later callers could never reach the loader again.
 		var loading = _loading.GetOrAdd(key, key =>
-			new Lazy<Task<T?>>(() => load(key), LazyThreadSafetyMode.ExecutionAndPublication));
+			new Lazy<Task<T?>>(async () => await load(key), LazyThreadSafetyMode.ExecutionAndPublication));
 		var task = loading.Value;
-		_ = task.ContinueWith(_ => _loading.TryRemove(new KeyValuePair<TKey, Lazy<Task<T?>>>(key, loading)),
-			TaskScheduler.Default);
+		_ = task.ContinueWith(
+			_ => _loading.TryRemove(new KeyValuePair<TKey, Lazy<Task<T?>>>(key, loading)),
+			CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
 		var loaded = await task.WaitAsync(cancellationToken);
 		return loaded is null ? null : GetOrAdd(key, loaded);
 	}

@@ -90,7 +90,12 @@ internal sealed class PostgresBeatmapRepository(
 		if (row is null)
 			return null;
 
-		var beatmap = Track(await ToBeatmapAsync(row, cancellationToken));
+		// A row whose deletion is still queued never comes back into memory.
+		var loaded = await ToBeatmapAsync(row, cancellationToken);
+		if (IsBeingRemoved(loaded))
+			return null;
+
+		var beatmap = Track(loaded);
 		Index(beatmap);
 		return beatmap;
 	}
@@ -107,7 +112,12 @@ internal sealed class PostgresBeatmapRepository(
 			var beatmaps = ImmutableList.CreateBuilder<BeatmapRecord>();
 			foreach (var row in rows)
 			{
-				var beatmap = Track(await ToBeatmapAsync(row, cancellationToken));
+				// A row whose deletion is still queued never comes back into memory.
+				var loaded = await ToBeatmapAsync(row, cancellationToken);
+				if (IsBeingRemoved(loaded))
+					continue;
+
+				var beatmap = Track(loaded);
 				Index(beatmap);
 				beatmaps.Add(beatmap);
 			}
@@ -143,7 +153,12 @@ internal sealed class PostgresBeatmapRepository(
 		var items = new List<BeatmapRecord>();
 		foreach (var row in rows)
 		{
-			var beatmap = Track(await ToBeatmapAsync(row, cancellationToken));
+			// A row whose deletion is still queued never comes back into memory.
+			var loaded = await ToBeatmapAsync(row, cancellationToken);
+			if (IsBeingRemoved(loaded))
+				continue;
+
+			var beatmap = Track(loaded);
 			Index(beatmap);
 			items.Add(beatmap);
 		}

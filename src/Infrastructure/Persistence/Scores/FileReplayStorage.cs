@@ -23,9 +23,9 @@ internal sealed class FileReplayStorage(
 	public async Task SaveAsync(ScoreRecord score, Stream content, CancellationToken cancellationToken = default)
 	{
 		var name = await NameOfAsync(score, cancellationToken);
-		if (Find(score.Id) is { } old && old != name)
-			Files.Delete(old);
 		await Files.SaveAsync(name, content, cancellationToken);
+		var old = Find(score.Id);
+		if (old is { } previous && previous != name) Files.Delete(previous);
 	}
 
 	/// <inheritdoc />

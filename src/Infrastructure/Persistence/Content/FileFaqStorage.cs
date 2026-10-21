@@ -18,9 +18,9 @@ internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage
 	}
 
 	/// <inheritdoc />
-	public Task<StreamWriter> CreateOrUpdateAsync(string entry, CancellationToken cancellationToken = default)
+	public Task<IFaqEntryWriter> CreateOrUpdateAsync(string entry, CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult<StreamWriter>(EntryWriter.Create(Files.Resolve(FileNameOf(entry))));
+		return Task.FromResult<IFaqEntryWriter>(EntryWriter.Create(Files.Resolve(FileNameOf(entry))));
 	}
 
 	/// <inheritdoc />
@@ -46,11 +46,12 @@ internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage
 		return string.Join('/', entry.Split(':')) + ".txt";
 	}
 
-	/// <summary>Writes an entry's new text to a temporary file and puts it in place once disposed.</summary>
-	private sealed class EntryWriter : StreamWriter
+	/// <summary>Writes an entry's new text to a temporary file and puts it in place once committed.</summary>
+	private sealed class EntryWriter : StreamWriter, IFaqEntryWriter
 	{
 		private readonly string _path;
 		private readonly string _temporary;
+		private bool _committed;
 
 		private EntryWriter(string path, string temporary) : base(new FileStream(temporary, new FileStreamOptions
 		{
@@ -67,21 +68,26 @@ internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage
 		public static EntryWriter Create(string path)
 		{
 			Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-			return new EntryWriter(path, path + "." + Path.GetRandomFileName() + ".tmp");
+			return new EntryWriter(path, TempFiles.Name(path));
 		}
+
+		/// <summary>Stores the text written so far, replacing the entry's previous text; committing again does nothing.</summary>
+		public void Commit()
+		{
+			if (_committed) return;
+			Flush();
+			BaseStream.Dispose();
+			File.Move(_temporary, _path, true);
+			_committed = true;
+		}
+
+		Task IFaqEntryWriter.WriteAsync(string text) => WriteAsync(text);
 
 		protected override void Dispose(bool disposing)
 		{
-			base.Dispose(disposing);
-			if (!disposing) return;
-			try
-			{
-				File.Move(_temporary, _path, true);
-			}
-			finally
-			{
-				if (File.Exists(_temporary)) File.Delete(_temporary);
-			}
+			if (!disposing || !_committed) base.Dispose(disposing);
+			if (!disposing || _committed) return;
+			if (File.Exists(_temporary)) File.Delete(_temporary);
 		}
 	}
 }

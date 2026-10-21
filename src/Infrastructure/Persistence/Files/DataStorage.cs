@@ -145,7 +145,7 @@ internal sealed class DataStorage : IReadOnlyDictionary<string, FileInfo>
 	{
 		var path = Resolve(name);
 		Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
-		var temporary = path + "." + System.IO.Path.GetRandomFileName() + ".tmp";
+		var temporary = TempFiles.Name(path);
 
 		try
 		{

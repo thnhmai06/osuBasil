@@ -12,11 +12,8 @@ public interface IFaqStorage
 	/// <summary>Opens a writer that replaces an entry's text.</summary>
 	/// <param name="entry">The name of the entry.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>
-	///     A writer whose text becomes the entry's text once the writer is disposed, replacing any text stored under
-	///     that name. Disposing it without writing stores an empty entry.
-	/// </returns>
-	Task<StreamWriter> CreateOrUpdateAsync(string entry, CancellationToken cancellationToken = default);
+	/// <returns>A writer to write the new text; see <see cref="IFaqEntryWriter" /> for the commits.</returns>
+	Task<IFaqEntryWriter> CreateOrUpdateAsync(string entry, CancellationToken cancellationToken = default);
 
 	/// <summary>Opens the text of an entry.</summary>
 	/// <param name="entry">The name of the entry to open.</param>

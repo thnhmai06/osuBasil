@@ -122,7 +122,18 @@ internal sealed class PostgresBeatmapsetRepository(
 			await connection.QueryAsync<BeatmapsetRow>(sql, parameters),
 			await connection.ExecuteScalarAsync<int>(countSql, parameters)), cancellationToken);
 
-		return new Page<BeatmapsetRecord>(rows.Select(row => Track(ToBeatmapset(row))).ToList(), total);
+		var items = new List<BeatmapsetRecord>();
+		foreach (var row in rows)
+		{
+			// A set whose deletion is still queued never comes back into memory.
+			var set = ToBeatmapset(row);
+			if (IsBeingRemoved(set))
+				continue;
+
+			items.Add(Track(set));
+		}
+
+		return new Page<BeatmapsetRecord>(items, total);
 	}
 
 	protected override int KeyOf(BeatmapsetRecord item)
