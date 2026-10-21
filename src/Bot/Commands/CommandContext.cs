@@ -20,19 +20,6 @@ internal sealed record CommandContext(
 	/// <summary>Gets the user who typed the command.</summary>
 	public UserRecord Sender => By.Record;
 
-	// Temporary: replaced by the reply overloads as each command file is converted.
-	[Obsolete("Say a Reply.")]
-	public Task Reply(string text, CancellationToken cancellationToken)
-	{
-		return Say(text, cancellationToken);
-	}
-
-	[Obsolete("Say a Reply.")]
-	public Task ReplyPrivately(string text, CancellationToken cancellationToken)
-	{
-		return SayPrivately(text, cancellationToken);
-	}
-
 	/// <summary>Answers where the command came from.</summary>
 	/// <param name="reply">The reply to say.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>

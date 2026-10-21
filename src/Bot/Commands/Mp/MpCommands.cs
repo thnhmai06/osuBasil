@@ -6,6 +6,7 @@ using Basil.Application.Runtime.Sessions;
 using Basil.Application.Runtime.Users;
 using Basil.Application.Persistence.Beatmaps;
 using Basil.Application.Persistence.Users;
+using Basil.Bot.Replies;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Permissions;
 using Basil.Domain.Users;
@@ -149,11 +150,11 @@ internal sealed partial class MpCommands(
 	/// <returns>
 	///     A context whose replies posted outside <c>#mp_{roomId}</c>
 	///     prefix each non-empty line with <see cref="MpReplies.RoomPrefix" />; a private reply always goes to a
-	///     direct message, so <see cref="CommandContext.ReplyPrivately" /> is always prefixed.
+	///     direct message, so <see cref="CommandContext.ReplyPrivately(Reply, CancellationToken)" /> is always prefixed.
 	/// </returns>
 	private static CommandContext NameRoom(CommandContext context, int roomId)
 	{
-		var prefix = string.Format(MpReplies.RoomPrefix, roomId);
+		var prefix = context.Replies.Text(MpReplies.RoomPrefix, new { room = roomId });
 
 		return context with
 		{
@@ -208,21 +209,21 @@ internal sealed partial class MpCommands(
 		var by = context.By;
 		var name = args.Count > 0
 			? string.Join(' ', args)
-			: $"{context.Sender.Value.Name}'s match";
+			: context.Replies.Text(MpReplies.DefaultRoomName, new { name = context.Sender.Value.Name });
 		if (name.Length > MaxRoomNameLength) name = name[..MaxRoomNameLength];
 
 		var (room, outcome) = await lobby.ScopeTo(by).OpenRoomAsync(name, "", true, isPrivate,
 			cancellationToken: cancellationToken);
 		if (!outcome.IsOk || room is null)
 		{
-			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
 			return false;
 		}
 
 		scopes.Set(context.Sender.Id, room.Id);
-		var privacySuffix = isPrivate ? " (private)" : string.Empty;
-		await context.Reply(
-			string.Format(MpReplies.CreatedMatch, room.Id, room.Settings.Name, privacySuffix), cancellationToken);
+		await context.Reply(MpReplies.CreatedMatch,
+			new { room = room.Id, name = room.Settings.Name, privacy = isPrivate ? "private" : "public" },
+			cancellationToken);
 		return true;
 	}
 
@@ -241,7 +242,7 @@ internal sealed partial class MpCommands(
 		var room = ViewRoom(by, roomId);
 		if (room is null)
 		{
-			await context.Reply(string.Format(MpReplies.NoActiveRoomWithId, roomId), cancellationToken);
+			await context.Reply(MpReplies.NoActiveRoomWithId, new { room = roomId }, cancellationToken);
 			return false;
 		}
 
@@ -249,12 +250,12 @@ internal sealed partial class MpCommands(
 		var outcome = await room.ScopeTo(by).Members.JoinAsync(password, cancellationToken);
 		if (!outcome.IsOk)
 		{
-			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
 			return false;
 		}
 
 		scopes.Set(context.Sender.Id, roomId);
-		await context.Reply(string.Format(MpReplies.JoinedMatch, roomId, room.Settings.Name), cancellationToken);
+		await context.Reply(MpReplies.JoinedMatch, new { room = roomId, name = room.Settings.Name }, cancellationToken);
 		return true;
 	}
 
@@ -286,12 +287,13 @@ internal sealed partial class MpCommands(
 		var room = ViewRoom(by, roomId);
 		if (room is null)
 		{
-			await context.Reply(string.Format(MpReplies.NoActiveRoomWithHashId, roomId), cancellationToken);
+			await context.Reply(MpReplies.NoActiveRoomWithHashId, new { room = roomId }, cancellationToken);
 			return false;
 		}
 
 		scopes.Set(context.Sender.Id, roomId);
-		await context.Reply(string.Format(MpReplies.NowTargetingMatch, roomId, room.Settings.Name), cancellationToken);
+		await context.Reply(MpReplies.NowTargetingMatch, new { room = roomId, name = room.Settings.Name },
+			cancellationToken);
 		return true;
 	}
 
@@ -302,56 +304,71 @@ internal sealed partial class MpCommands(
 		var room = ViewRoom(context.By, roomId);
 		if (room is null)
 		{
-			await context.Reply(string.Format(MpReplies.NoActiveRoomWithId, roomId), cancellationToken);
+			await context.Reply(MpReplies.NoActiveRoomWithId, new { room = roomId }, cancellationToken);
 			return false;
 		}
 
+		var replies = context.Replies;
 		var lines = new List<string>
 		{
-			string.Format(MpReplies.SettingsRoomName, room.Settings.Name, room.Id),
+			replies.Text(MpReplies.SettingsRoomName, new { name = room.Settings.Name, room = room.Id }),
 			room.Settings.Beatmap is not { } beatmap
-				? MpReplies.SettingsBeatmapNotSelected
-				: string.Format(MpReplies.SettingsBeatmap, beatmap.Id, beatmap.Name),
-			string.Format(MpReplies.SettingsTeamMode, room.Settings.MatchSettings.TeamType,
-				room.Settings.MatchSettings.WinCondition)
+				? replies.Text(MpReplies.SettingsBeatmapNotSelected)
+				: replies.Text(MpReplies.SettingsBeatmap, new { beatmap = beatmap.Id, name = beatmap.Name }),
+			replies.Text(MpReplies.SettingsTeamMode,
+				new
+				{
+					teamType = room.Settings.MatchSettings.TeamType.ToString(),
+					winCondition = room.Settings.MatchSettings.WinCondition.ToString()
+				})
 		};
 
 		var activeMods = new List<string>();
 		if (room.Settings.MatchSettings.Mods != GameMods.NoMod)
 			activeMods.Add(room.Settings.MatchSettings.Mods.ToString());
-		if (room.Settings.MatchSettings.Freemods) activeMods.Add("Freemod");
+		if (room.Settings.MatchSettings.Freemods) activeMods.Add(replies.Text(MpReplies.Freemod));
 		if (activeMods.Count > 0)
-			lines.Add(string.Format(MpReplies.SettingsActiveMods, string.Join(", ", activeMods)));
+			lines.Add(replies.Text(MpReplies.SettingsActiveMods, new { mods = string.Join(", ", activeMods) }));
 
 		if (room.Authority.Creator is { } creator)
-			lines.Add(string.Format(MpReplies.SettingsCreator, creator.Id, creator.Value.Name));
+			lines.Add(replies.Text(MpReplies.SettingsCreator, new { id = creator.Id, name = creator.Value.Name }));
 
 		var occupied = room.Slots.Count(slot => slot.Player is not null);
-		lines.Add(string.Format(MpReplies.SettingsPlayers, occupied));
+		lines.Add(replies.Text(MpReplies.SettingsPlayers, new { count = occupied }));
 
 		var showTeam = room.Settings.MatchSettings.TeamType is GameTeamType.TeamVs or GameTeamType.TagTeamVs;
 		foreach (var slot in room.Slots)
 		{
 			if (slot.Player is not { } player) continue;
 			var tags = new List<string>();
-			if (room.Authority.Host is not null && player == room.Authority.Host) tags.Add("Host");
+			if (room.Authority.Host is not null && player == room.Authority.Host)
+				tags.Add(replies.Text(MpReplies.HostTag));
 			if (slot.Mods is { } slotMods && slotMods != GameMods.NoMod) tags.Add(slotMods.ToString());
-			var tagText = tags.Count > 0 ? $" [{string.Join(" / ", tags)}]" : string.Empty;
+			var tagText = tags.Count > 0
+				? replies.Text(MpReplies.Tags, new { tags = string.Join(" / ", tags) })
+				: string.Empty;
 			var teamText = showTeam && slot.Team is { } team ? $"{team,-5} " : string.Empty;
-			lines.Add(
-				$"Slot {slot.Index,2}  {SlotStatusText(slot.Status),-10} {teamText}{player.Record.Id,6} {player.Record.Value.Name,-16}{tagText}");
+			lines.Add(replies.Text(MpReplies.SettingsSlot, new
+			{
+				slot = $"{slot.Index,2}",
+				status = $"{SlotStatusText(replies, slot.Status),-10}",
+				team = teamText,
+				id = $"{player.Record.Id,6}",
+				name = $"{player.Record.Value.Name,-16}",
+				tags = tagText
+			}));
 		}
 
-		await context.Reply(string.Join('\n', lines), cancellationToken);
+		await context.Say(string.Join('\n', lines), cancellationToken);
 		return true;
 	}
 
-	private static string SlotStatusText(RoomSlotStatus? status)
+	private static string SlotStatusText(IReplies replies, RoomSlotStatus? status)
 	{
 		return status switch
 		{
-			RoomSlotStatus.NotReady => "Not Ready",
-			RoomSlotStatus.NoMap => "No Map",
+			RoomSlotStatus.NotReady => replies.Text(MpReplies.SlotStatusNotReady),
+			RoomSlotStatus.NoMap => replies.Text(MpReplies.SlotStatusNoMap),
 			_ => status?.ToString() ?? string.Empty
 		};
 	}
@@ -371,7 +388,7 @@ internal sealed partial class MpCommands(
 		var outcome = await room.ScopeTo(context.By).Settings.SetLockedAsync(locked, cancellationToken);
 		if (!outcome.IsOk)
 		{
-			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
 			return false;
 		}
 
@@ -390,13 +407,12 @@ internal sealed partial class MpCommands(
 			var room = ViewRoom(by, roomId);
 			if (room is null)
 			{
-				await context.Reply(string.Format(MpReplies.NoActiveRoomWithId, roomId), cancellationToken);
+				await context.Reply(MpReplies.NoActiveRoomWithId, new { room = roomId }, cancellationToken);
 				return false;
 			}
 
-			await context.Reply(
-				string.Format(MpReplies.MatchIsPrivateNow, room.Settings.IsPrivate ? "private" : "not private"),
-				cancellationToken);
+			await context.Reply(MpReplies.MatchIsPrivateNow,
+				new { privacy = room.Settings.IsPrivate ? "private" : "public" }, cancellationToken);
 			return true;
 		}
 
@@ -417,7 +433,7 @@ internal sealed partial class MpCommands(
 			new RoomSettingsChange(IsPrivate: args[0] == "1"), cancellationToken);
 		if (!outcome.IsOk)
 		{
-			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
 			return false;
 		}
 
@@ -449,11 +465,11 @@ internal sealed partial class MpCommands(
 			cancellationToken);
 		if (!outcome.IsOk)
 		{
-			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
 			return false;
 		}
 
-		await context.Reply(string.Format(MpReplies.ChangedMatchSize, size), cancellationToken);
+		await context.Reply(MpReplies.ChangedMatchSize, new { size }, cancellationToken);
 		return true;
 	}
 
@@ -488,11 +504,11 @@ internal sealed partial class MpCommands(
 		var outcome = await room.ScopeTo(by).Slots.MoveAsync(target, slot, cancellationToken);
 		if (!outcome.IsOk)
 		{
-			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
 			return false;
 		}
 
-		await context.Reply(string.Format(MpReplies.MovedToSlot, target.Value.Name, slot), cancellationToken);
+		await context.Reply(MpReplies.MovedToSlot, new { player = target.Value.Name, slot }, cancellationToken);
 		return true;
 	}
 
@@ -529,11 +545,11 @@ internal sealed partial class MpCommands(
 			: await room.ScopeTo(by).Authority.SetHostAsync(host, cancellationToken);
 		if (!outcome.IsOk)
 		{
-			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
 			return false;
 		}
 
-		await context.Reply(string.Format(MpReplies.ChangedMatchHost, target.Value.Name), cancellationToken);
+		await context.Reply(MpReplies.ChangedMatchHost, new { player = target.Value.Name }, cancellationToken);
 		return true;
 	}
 
@@ -549,7 +565,7 @@ internal sealed partial class MpCommands(
 		var outcome = await room.ScopeTo(context.By).Authority.SetHostAsync(null, cancellationToken);
 		if (!outcome.IsOk)
 		{
-			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
 			return false;
 		}
 
@@ -582,11 +598,11 @@ internal sealed partial class MpCommands(
 			cancellationToken);
 		if (!outcome.IsOk)
 		{
-			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
 			return false;
 		}
 
-		await context.Reply(string.Format(MpReplies.RoomNameUpdated, name), cancellationToken);
+		await context.Reply(MpReplies.RoomNameUpdated, new { name }, cancellationToken);
 		return true;
 	}
 
@@ -606,7 +622,7 @@ internal sealed partial class MpCommands(
 			cancellationToken);
 		if (!outcome.IsOk)
 		{
-			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
 			return false;
 		}
 
@@ -648,11 +664,11 @@ internal sealed partial class MpCommands(
 			: await room.ScopeTo(by).Members.InviteAsync(targetUser, cancellationToken);
 		if (!outcome.IsOk)
 		{
-			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
 			return false;
 		}
 
-		await context.Reply(string.Format(MpReplies.InvitedToRoom, target.Value.Name), cancellationToken);
+		await context.Reply(MpReplies.InvitedToRoom, new { player = target.Value.Name }, cancellationToken);
 		return true;
 	}
 
@@ -686,11 +702,11 @@ internal sealed partial class MpCommands(
 		var outcome = await room.ScopeTo(by).Authority.AddRefereeAsync(target, cancellationToken);
 		if (!outcome.IsOk)
 		{
-			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
 			return false;
 		}
 
-		await context.Reply(string.Format(MpReplies.AddedReferee, target.Value.Name), cancellationToken);
+		await context.Reply(MpReplies.AddedReferee, new { player = target.Value.Name }, cancellationToken);
 		return true;
 	}
 
@@ -722,11 +738,11 @@ internal sealed partial class MpCommands(
 		var outcome = await room.ScopeTo(by).Authority.RemoveRefereeAsync(target, cancellationToken);
 		if (!outcome.IsOk)
 		{
-			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
 			return false;
 		}
 
-		await context.Reply(string.Format(MpReplies.RemovedReferee, target.Value.Name), cancellationToken);
+		await context.Reply(MpReplies.RemovedReferee, new { player = target.Value.Name }, cancellationToken);
 		return true;
 	}
 
@@ -735,7 +751,7 @@ internal sealed partial class MpCommands(
 		var room = ViewRoom(context.By, roomId);
 		if (room is null)
 		{
-			await context.Reply(string.Format(MpReplies.NoActiveRoomWithId, roomId), cancellationToken);
+			await context.Reply(MpReplies.NoActiveRoomWithId, new { room = roomId }, cancellationToken);
 			return false;
 		}
 
@@ -747,7 +763,8 @@ internal sealed partial class MpCommands(
 
 		var lines = room.Authority.Referees
 			.Select(u => $"#{u.Id} {u.Value.Name}");
-		await context.Reply(MpReplies.MatchReferees + "\n" + string.Join('\n', lines), cancellationToken);
+		await context.Say(context.Replies.Text(MpReplies.MatchReferees) + "\n" + string.Join('\n', lines),
+			cancellationToken);
 		return true;
 	}
 
@@ -758,7 +775,7 @@ internal sealed partial class MpCommands(
 		var room = ViewRoom(context.By, roomId);
 		if (room is null)
 		{
-			await context.Reply(string.Format(MpReplies.NoActiveRoomWithId, roomId), cancellationToken);
+			await context.Reply(MpReplies.NoActiveRoomWithId, new { room = roomId }, cancellationToken);
 			return false;
 		}
 
@@ -770,7 +787,8 @@ internal sealed partial class MpCommands(
 
 		var lines = room.Members.Banned
 			.Select(u => $"#{u.Id} {u.Value.Name}");
-		await context.Reply(MpReplies.MatchBans + "\n" + string.Join('\n', lines), cancellationToken);
+		await context.Say(context.Replies.Text(MpReplies.MatchBans) + "\n" + string.Join('\n', lines),
+			cancellationToken);
 		return true;
 	}
 
@@ -812,12 +830,13 @@ internal sealed partial class MpCommands(
 		var outcome = await room.ScopeTo(by).Slots.SetTeamAsync(target, team, cancellationToken);
 		if (!outcome.IsOk)
 		{
-			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
 			return false;
 		}
 
 		var teamDisplay = char.ToUpperInvariant(teamArg[0]) + teamArg[1..];
-		await context.Reply(string.Format(MpReplies.MovedToTeam, target.Value.Name, teamDisplay), cancellationToken);
+		await context.Reply(MpReplies.MovedToTeam, new { player = target.Value.Name, team = teamDisplay },
+			cancellationToken);
 		return true;
 	}
 
@@ -868,15 +887,17 @@ internal sealed partial class MpCommands(
 		var outcome = await room.ScopeTo(context.By).Settings.ConfigureAsync(change, cancellationToken);
 		if (!outcome.IsOk)
 		{
-			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
 			return false;
 		}
 
-		var liveTeamType = room.Settings.MatchSettings.TeamType;
-		var liveWinCondition = room.Settings.MatchSettings.WinCondition;
-		var sizeSuffix = size is { } sz ? $", {sz} slots." : ".";
-		await context.Reply(string.Format(MpReplies.ChangedMatchSettings, liveTeamType, liveWinCondition, sizeSuffix),
-			cancellationToken);
+		await context.Reply(MpReplies.ChangedMatchSettings,
+			new
+			{
+				teamType = room.Settings.MatchSettings.TeamType.ToString(),
+				winCondition = room.Settings.MatchSettings.WinCondition.ToString(),
+				size = size?.ToString() ?? "none"
+			}, cancellationToken);
 		return true;
 	}
 
@@ -906,7 +927,7 @@ internal sealed partial class MpCommands(
 		var beatmap = await beatmaps.GetAsync(beatmapId, cancellationToken);
 		if (beatmap is null)
 		{
-			await context.Reply(string.Format(MpReplies.NoBeatmapWithId, beatmapId), cancellationToken);
+			await context.Reply(MpReplies.NoBeatmapWithId, new { beatmap = beatmapId }, cancellationToken);
 			return false;
 		}
 
@@ -924,14 +945,17 @@ internal sealed partial class MpCommands(
 			cancellationToken);
 		if (!outcome.IsOk)
 		{
-			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
 			return false;
 		}
 
-		await context.Reply(
-			string.Format(MpReplies.ChangedBeatmap, beatmap.Beatmapset.Metadata.Artist,
-				beatmap.Beatmapset.Metadata.Title, beatmap.Metadata.Version),
-			cancellationToken);
+		await context.Reply(MpReplies.ChangedBeatmap,
+			new
+			{
+				artist = beatmap.Beatmapset.Metadata.Artist,
+				title = beatmap.Beatmapset.Metadata.Title,
+				version = beatmap.Metadata.Version
+			}, cancellationToken);
 		return true;
 	}
 
@@ -950,7 +974,7 @@ internal sealed partial class MpCommands(
 		var room = ViewRoom(by, roomId);
 		if (room is null)
 		{
-			await context.Reply(string.Format(MpReplies.NoActiveRoomWithId, roomId), cancellationToken);
+			await context.Reply(MpReplies.NoActiveRoomWithId, new { room = roomId }, cancellationToken);
 			return false;
 		}
 
@@ -978,28 +1002,31 @@ internal sealed partial class MpCommands(
 			new RoomSettingsChange(Mods: mods.RemoveInvalidMods(mode), Freemods: freemod), cancellationToken);
 		if (!outcome.IsOk)
 		{
-			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
 			return false;
 		}
 
 		var after = room.Settings.MatchSettings.Mods;
 		var isFreemod = room.Settings.MatchSettings.Freemods;
-		await context.Reply(DescribeModChange(before, after, wasFreemod, isFreemod), cancellationToken);
+		await context.Say(DescribeModChange(context.Replies, before, after, wasFreemod, isFreemod), cancellationToken);
 		return true;
 	}
 
-	private static string DescribeModChange(GameMods before, GameMods after, bool wasFreemod, bool isFreemod)
+	private static string DescribeModChange(IReplies replies, GameMods before, GameMods after, bool wasFreemod,
+		bool isFreemod)
 	{
 		var enabled = after & ~before;
 		var disabled = before & ~after;
 		var parts = new List<string>();
 
-		if (enabled != GameMods.NoMod) parts.Add(string.Format(MpReplies.EnabledMods, enabled));
-		if (disabled != GameMods.NoMod) parts.Add(string.Format(MpReplies.DisabledMods, disabled));
-		if (wasFreemod && !isFreemod) parts.Add(MpReplies.DisabledFreemod);
-		else if (!wasFreemod && isFreemod) parts.Add(MpReplies.EnabledFreemod);
+		if (enabled != GameMods.NoMod)
+			parts.Add(replies.Text(MpReplies.EnabledMods, new { mods = enabled.ToString() }));
+		if (disabled != GameMods.NoMod)
+			parts.Add(replies.Text(MpReplies.DisabledMods, new { mods = disabled.ToString() }));
+		if (wasFreemod && !isFreemod) parts.Add(replies.Text(MpReplies.DisabledFreemod));
+		else if (!wasFreemod && isFreemod) parts.Add(replies.Text(MpReplies.EnabledFreemod));
 
-		return parts.Count > 0 ? string.Join(", ", parts) : MpReplies.NoModChanges;
+		return parts.Count > 0 ? string.Join(", ", parts) : replies.Text(MpReplies.NoModChanges);
 	}
 
 	// ── !mp start / timer / aborttimer / abort ────────────────────────────────────────────
@@ -1020,7 +1047,7 @@ internal sealed partial class MpCommands(
 		var outcome = await room.ScopeTo(context.By).Rounds.StartAsync(cancellationToken);
 		if (!outcome.IsOk)
 		{
-			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
 			return false;
 		}
 
@@ -1048,14 +1075,14 @@ internal sealed partial class MpCommands(
 		var room = ViewRoom(by, roomId);
 		if (room is null)
 		{
-			await context.Reply(string.Format(MpReplies.NoActiveRoomWithId, roomId), cancellationToken);
+			await context.Reply(MpReplies.NoActiveRoomWithId, new { room = roomId }, cancellationToken);
 			return false;
 		}
 
 		var outcome = await room.ScopeTo(by).Rounds.CancelCountdownAsync(cancellationToken);
 		if (!outcome.IsOk)
 		{
-			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
 			return false;
 		}
 
@@ -1077,7 +1104,7 @@ internal sealed partial class MpCommands(
 		var room = ViewRoom(by, roomId);
 		if (room is null)
 		{
-			await context.Reply(string.Format(MpReplies.NoActiveRoomWithId, roomId), cancellationToken);
+			await context.Reply(MpReplies.NoActiveRoomWithId, new { room = roomId }, cancellationToken);
 			return false;
 		}
 
@@ -1091,7 +1118,7 @@ internal sealed partial class MpCommands(
 			cancellationToken);
 		if (!outcome.IsOk)
 		{
-			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
 			return false;
 		}
 
@@ -1110,7 +1137,7 @@ internal sealed partial class MpCommands(
 		var outcome = await room.ScopeTo(context.By).Rounds.AbortAsync(cancellationToken);
 		if (!outcome.IsOk)
 		{
-			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
 			return false;
 		}
 
@@ -1148,11 +1175,11 @@ internal sealed partial class MpCommands(
 		var outcome = await room.ScopeTo(by).Members.KickAsync(target, cancellationToken);
 		if (!outcome.IsOk)
 		{
-			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
 			return false;
 		}
 
-		await context.Reply(string.Format(MpReplies.KickedFromMatch, target.Value.Name), cancellationToken);
+		await context.Reply(MpReplies.KickedFromMatch, new { player = target.Value.Name }, cancellationToken);
 		return true;
 	}
 
@@ -1184,11 +1211,11 @@ internal sealed partial class MpCommands(
 		var outcome = await room.ScopeTo(by).Members.BanAsync(target, cancellationToken);
 		if (!outcome.IsOk)
 		{
-			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
 			return false;
 		}
 
-		await context.Reply(string.Format(MpReplies.BannedPlayerFromMatch, target.Value.Name), cancellationToken);
+		await context.Reply(MpReplies.BannedPlayerFromMatch, new { player = target.Value.Name }, cancellationToken);
 		return true;
 	}
 
@@ -1220,11 +1247,11 @@ internal sealed partial class MpCommands(
 		var outcome = await room.ScopeTo(by).Members.UnbanAsync(target, cancellationToken);
 		if (!outcome.IsOk)
 		{
-			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
 			return false;
 		}
 
-		await context.Reply(string.Format(MpReplies.UnbannedFromMatch, target.Value.Name), cancellationToken);
+		await context.Reply(MpReplies.UnbannedFromMatch, new { player = target.Value.Name }, cancellationToken);
 		return true;
 	}
 
@@ -1240,7 +1267,7 @@ internal sealed partial class MpCommands(
 		var outcome = await room.ScopeTo(context.By).CloseAsync(cancellationToken);
 		if (!outcome.IsOk)
 		{
-			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
+			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);
 			return false;
 		}
 
@@ -1253,7 +1280,7 @@ internal sealed partial class MpCommands(
 	private static async Task<bool> UnknownSubcommandAsync(CommandContext context, string subcommand,
 		CancellationToken cancellationToken)
 	{
-		await context.Reply(string.Format(MpReplies.UnknownMpSubcommand, subcommand), cancellationToken);
+		await context.Reply(MpReplies.UnknownMpSubcommand, new { subcommand }, cancellationToken);
 		return false;
 	}
 
