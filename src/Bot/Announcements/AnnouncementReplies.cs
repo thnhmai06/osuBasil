@@ -1,3 +1,5 @@
+using Basil.Bot.Replies;
+
 namespace Basil.Bot.Announcements;
 
 /// <summary>
@@ -7,62 +9,73 @@ namespace Basil.Bot.Announcements;
 internal static class AnnouncementReplies
 {
 	// ── Room countdown ─────────────────────────────────────────────────────────────────────
-	/// <summary>Reply when a countdown starts and will start the round; <c>{0}</c> is seconds.</summary>
-	public const string CountdownStartedForRound = "Queued the match to start in {0} seconds";
+	/// <summary>Reply when a countdown starts and will start the round; <c>{seconds}</c> is seconds.</summary>
+	public static readonly Reply CountdownStartedForRound = new("announce.countdownStartedForRound",
+		"Queued the match to start in {seconds} seconds", "seconds");
 
-	/// <summary>Reply when a countdown starts but won't start the round; <c>{0}</c> is seconds.</summary>
-	public const string CountdownStarted = "Started a {0}-second countdown.";
+	/// <summary>Reply when a countdown starts but won't start the round; <c>{seconds}</c> is seconds.</summary>
+	public static readonly Reply CountdownStarted = new("announce.countdownStarted",
+		"Started a {seconds}-second countdown.", "seconds");
 
-	/// <summary>Reply when a countdown ticks and will start the round; <c>{0}</c> is seconds remaining.</summary>
-	public const string CountdownTickedForRound = "Match starts in {0} seconds";
+	/// <summary>Reply when a countdown ticks and will start the round; <c>{seconds}</c> is seconds remaining.</summary>
+	public static readonly Reply CountdownTickedForRound = new("announce.countdownTickedForRound",
+		"Match starts in {seconds} seconds", "seconds");
 
-	/// <summary>Reply when a countdown ticks but won't start the round; <c>{0}</c> is seconds remaining.</summary>
-	public const string CountdownTicked = "{0} seconds remaining";
+	/// <summary>Reply when a countdown ticks but won't start the round; <c>{seconds}</c> is seconds remaining.</summary>
+	public static readonly Reply CountdownTicked = new("announce.countdownTicked", "{seconds} seconds remaining", "seconds");
 
 	/// <summary>Reply when a countdown elapses and was meant to start the round.</summary>
-	public const string CountdownElapsedForRound = "Match cannot start because no beatmap has been selected.";
+	public static readonly Reply CountdownElapsedForRound = new("announce.countdownElapsedForRound",
+		"Match cannot start because no beatmap has been selected.");
 
 	/// <summary>Reply when a countdown elapses but wasn't meant to start the round.</summary>
-	public const string CountdownElapsed = "Countdown finished";
+	public static readonly Reply CountdownElapsed = new("announce.countdownElapsed", "Countdown finished");
 
 	/// <summary>Reply when a countdown is cancelled.</summary>
-	public const string CountdownCancelled = "Countdown aborted.";
+	public static readonly Reply CountdownCancelled = new("announce.countdownCancelled", "Countdown aborted.");
 
 	/// <summary>Reply when starting a round by hand cancels a countdown.</summary>
-	public const string CountdownCancelledByRoundStart = "Countdown cancelled — the round was started.";
+	public static readonly Reply CountdownCancelledByRoundStart = new("announce.countdownCancelledByRoundStart",
+		"Countdown cancelled — the round was started.");
 
 	/// <summary>Reply when aborting the round cancels a countdown.</summary>
-	public const string CountdownCancelledByRoundAbort = "Countdown cancelled — the round was aborted.";
+	public static readonly Reply CountdownCancelledByRoundAbort = new("announce.countdownCancelledByRoundAbort",
+		"Countdown cancelled — the round was aborted.");
 
 	// ── Room round ─────────────────────────────────────────────────────────────────────────
 	/// <summary>Reply when a round starts after a countdown.</summary>
-	public const string RoundStartedByCountdown = "Good luck, have fun!";
+	public static readonly Reply RoundStartedByCountdown = new("announce.roundStartedByCountdown", "Good luck, have fun!");
 
 	/// <summary>Reply when a round cannot start because the room has no players.</summary>
-	public const string RoundStartedNoPlayers = "Match cannot start because the room has no players.";
+	public static readonly Reply RoundStartedNoPlayers = new("announce.roundStartedNoPlayers",
+		"Match cannot start because the room has no players.");
 
 	/// <summary>Reply when a round is aborted.</summary>
-	public const string RoundAborted = "Match aborted.";
+	public static readonly Reply RoundAborted = new("announce.roundAborted", "Match aborted.");
 
 	// ── Room settings ──────────────────────────────────────────────────────────────────────
 	/// <summary>Reply when room settings change cancels a countdown that would start the round.</summary>
-	public const string SettingsChangedCountdownCancelled = "Match start cancelled — room settings changed.";
+	public static readonly Reply SettingsChangedCountdownCancelled = new("announce.settingsChangedCountdownCancelled",
+		"Match start cancelled — room settings changed.");
 
 	// ── Room closing ───────────────────────────────────────────────────────────────────────
-	/// <summary>Reply when an empty room announces it will close; <c>{0}</c> is minutes.</summary>
-	public const string RoomClosingAnnounced =
-		"This room is empty and will close in {0} minutes unless a player joins.";
+	/// <summary>Reply when an empty room announces it will close; <c>{minutes}</c> is minutes.</summary>
+	public static readonly Reply RoomClosingAnnounced = new("announce.roomClosingAnnounced",
+		"This room is empty and will close in {minutes} minutes unless a player joins.", "minutes");
 
 	/// <summary>Reply when a player joins a room that was closing.</summary>
-	public const string RoomPlayerJoinedClosing = "A player joined — the room will no longer close.";
+	public static readonly Reply RoomPlayerJoinedClosing = new("announce.roomPlayerJoinedClosing",
+		"A player joined — the room will no longer close.");
 
 	// ── Anticheat ──────────────────────────────────────────────────────────────────────────
-	/// <summary>Reply in room channel when a player is flagged; <c>{0}</c> is player, <c>{1}</c> is reason.</summary>
-	public const string AnticheatFlagRoom = "Anti-cheat flag for {0}: {1}";
+	/// <summary>Reply in room channel when a player is flagged; <c>{player}</c> is player, <c>{reason}</c> is reason.</summary>
+	public static readonly Reply AnticheatFlagRoom = new("announce.anticheatFlagRoom",
+		"Anti-cheat flag for {player}: {reason}", "player", "reason");
 
 	/// <summary>
-	///     Reply in PM when a player is flagged in a match; <c>{0}</c> is room id, <c>{1}</c> is room name,
-	///     <c>{2}</c> is player, <c>{3}</c> is reason.
+	///     Reply in PM when a player is flagged in a match; <c>{room}</c> is room id, <c>{name}</c> is room name,
+	///     <c>{player}</c> is player, <c>{reason}</c> is reason.
 	/// </summary>
-	public const string AnticheatFlagPm = "Anti-cheat flag in match #{0} {1}: {2} — {3}";
+	public static readonly Reply AnticheatFlagPm = new("announce.anticheatFlagPm",
+		"Anti-cheat flag in match #{room} {name}: {player} — {reason}", "room", "name", "player", "reason");
 }

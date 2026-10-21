@@ -115,7 +115,7 @@ internal sealed class ChatCommands(IUserRepository users, IFaqStorage faqs, MpCo
 			max = parsed;
 
 		var roll = random.Next(0, max + 1);
-		await context.Reply(string.Format(BotReplies.RollResult, context.Sender.Value.Name, roll),
+		await context.Reply(BotReplies.RollResult, new { user = context.Sender.Value.Name, points = roll },
 			cancellationToken);
 		return true;
 	}
@@ -134,12 +134,12 @@ internal sealed class ChatCommands(IUserRepository users, IFaqStorage faqs, MpCo
 
 		if (user is null)
 		{
-			await context.Reply(string.Format(BotReplies.NotRegistered, name), cancellationToken);
+			await context.Reply(BotReplies.NotRegistered, new { name }, cancellationToken);
 			return true;
 		}
 
-		await context.Reply(string.Format(BotReplies.WhereIsIn, user.Value.Name, user.Value.Country.Describe()),
-			cancellationToken);
+		await context.Reply(BotReplies.WhereIsIn,
+			new { name = user.Value.Name, country = user.Value.Country.Describe() }, cancellationToken);
 		return true;
 	}
 
@@ -163,7 +163,7 @@ internal sealed class ChatCommands(IUserRepository users, IFaqStorage faqs, MpCo
 				return true;
 			}
 
-			await context.Reply(string.Format(BotReplies.AvailableFaqEntries, string.Join(", ", entries)),
+			await context.Reply(BotReplies.AvailableFaqEntries, new { entries = string.Join(", ", entries) },
 				cancellationToken);
 			return true;
 		}
@@ -171,7 +171,7 @@ internal sealed class ChatCommands(IUserRepository users, IFaqStorage faqs, MpCo
 		var reader = await faqs.ReadAsync(query, cancellationToken);
 		if (reader is null)
 		{
-			await context.Reply(string.Format(BotReplies.NoFaqEntryFound, query), cancellationToken);
+			await context.Reply(BotReplies.NoFaqEntryFound, new { entry = query }, cancellationToken);
 			return true;
 		}
 
@@ -181,7 +181,7 @@ internal sealed class ChatCommands(IUserRepository users, IFaqStorage faqs, MpCo
 			text = await reader.ReadToEndAsync(cancellationToken);
 		}
 
-		await context.Reply(text, cancellationToken);
+		await context.Say(text, cancellationToken);
 		return true;
 	}
 }

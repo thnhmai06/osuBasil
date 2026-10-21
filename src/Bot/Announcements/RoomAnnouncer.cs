@@ -5,12 +5,13 @@ using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Multiplayer.Rooms;
 using Basil.Application.Runtime.Servers;
 using Basil.Application.Runtime.Users;
+using Basil.Bot.Replies;
 using Basil.Domain.Users;
 
 namespace Basil.Bot.Announcements;
 
 /// <summary>Reacts to room and lobby events by posting announcements in the affected room.</summary>
-internal sealed class RoomAnnouncer(Server server, UserRegistry users, TimeProvider timeProvider)
+internal sealed class RoomAnnouncer(Server server, UserRegistry users, TimeProvider timeProvider, IReplies replies)
 	: IEventHandler<RoomEvent>, IEventHandler<LobbyEvent>
 {
 	private readonly ConcurrentDictionary<int, Room> _closingRooms = new();
@@ -21,23 +22,25 @@ internal sealed class RoomAnnouncer(Server server, UserRegistry users, TimeProvi
 		switch (@event)
 		{
 			case RoomRoundStarted { Players.Count: 0 } e:
-				await server.SayAsync(e.Room.Channel, AnnouncementReplies.RoundStartedNoPlayers, cancellationToken: cancellationToken);
+				await server.SayAsync(e.Room.Channel, replies.Text(AnnouncementReplies.RoundStartedNoPlayers),
+					cancellationToken: cancellationToken);
 				break;
 			case RoomRoundAborted e:
-				await server.SayAsync(e.Room.Channel, AnnouncementReplies.RoundAborted, cancellationToken: cancellationToken);
+				await server.SayAsync(e.Room.Channel, replies.Text(AnnouncementReplies.RoundAborted),
+					cancellationToken: cancellationToken);
 				break;
 			case RoomCountdownStarted e:
 				var seconds = (int)e.Countdown.Length.TotalSeconds;
 				var text = e.Countdown.StartsRound
-					? string.Format(AnnouncementReplies.CountdownStartedForRound, seconds)
-					: string.Format(AnnouncementReplies.CountdownStarted, seconds);
+					? replies.Text(AnnouncementReplies.CountdownStartedForRound, new { seconds })
+					: replies.Text(AnnouncementReplies.CountdownStarted, new { seconds });
 				await server.SayAsync(e.Room.Channel, text, cancellationToken: cancellationToken);
 				break;
 			case RoomCountdownTicked e:
 				var remainingSeconds = (int)Math.Round(e.Remaining.TotalSeconds);
 				var tick = e.Countdown.StartsRound
-					? string.Format(AnnouncementReplies.CountdownTickedForRound, remainingSeconds)
-					: string.Format(AnnouncementReplies.CountdownTicked, remainingSeconds);
+					? replies.Text(AnnouncementReplies.CountdownTickedForRound, new { seconds = remainingSeconds })
+					: replies.Text(AnnouncementReplies.CountdownTicked, new { seconds = remainingSeconds });
 				await server.SayAsync(e.Room.Channel, tick, cancellationToken: cancellationToken);
 				break;
 			case RoomCountdownElapsed e:
@@ -50,19 +53,19 @@ internal sealed class RoomAnnouncer(Server server, UserRegistry users, TimeProvi
 					_ => null
 				};
 				if (elapsed is not null)
-					await server.SayAsync(e.Room.Channel, elapsed, cancellationToken: cancellationToken);
+					await server.SayAsync(e.Room.Channel, replies.Text(elapsed), cancellationToken: cancellationToken);
 				break;
 			case RoomCountdownCancelled e:
-				await server.SayAsync(e.Room.Channel, e.Reason switch
+				await server.SayAsync(e.Room.Channel, replies.Text(e.Reason switch
 				{
 					RoomCountdownCancelReason.SettingsChanged => AnnouncementReplies.SettingsChangedCountdownCancelled,
 					RoomCountdownCancelReason.RoundStarted => AnnouncementReplies.CountdownCancelledByRoundStart,
 					RoomCountdownCancelReason.RoundAborted => AnnouncementReplies.CountdownCancelledByRoundAbort,
 					_ => AnnouncementReplies.CountdownCancelled
-				}, cancellationToken: cancellationToken);
+				}), cancellationToken: cancellationToken);
 				break;
 			case RoomPlayerJoined e when _closingRooms.TryRemove(new KeyValuePair<int, Room>(e.Room.Id, e.Room)):
-				await server.SayAsync(e.Room.Channel, AnnouncementReplies.RoomPlayerJoinedClosing,
+				await server.SayAsync(e.Room.Channel, replies.Text(AnnouncementReplies.RoomPlayerJoinedClosing),
 					cancellationToken: cancellationToken);
 				break;
 		}
@@ -85,7 +88,7 @@ internal sealed class RoomAnnouncer(Server server, UserRegistry users, TimeProvi
 	private async Task AnnounceClosingAsync(LobbyRoomClosingAnnounced e, CancellationToken cancellationToken)
 	{
 		var minutesUntilClose = (int)Math.Ceiling((e.ClosesAt - timeProvider.GetUtcNow()).TotalMinutes);
-		var text = string.Format(AnnouncementReplies.RoomClosingAnnounced, minutesUntilClose);
+		var text = replies.Text(AnnouncementReplies.RoomClosingAnnounced, new { minutes = minutesUntilClose });
 
 		await server.SayAsync(e.Room.Channel, text, cancellationToken: cancellationToken);
 		_closingRooms[e.Room.Id] = e.Room;

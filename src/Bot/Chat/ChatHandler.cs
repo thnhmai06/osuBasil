@@ -2,6 +2,7 @@ using Basil.Application.Runtime.Chat;
 using Basil.Application.Runtime.Events;
 using Basil.Application.Runtime.Servers;
 using Basil.Bot.Commands;
+using Basil.Bot.Replies;
 using Basil.Domain.Users;
 using Microsoft.Extensions.Logging;
 
@@ -12,6 +13,7 @@ internal sealed class ChatHandler(
 	Server server,
 	ChatCommands commands,
 	CommandWorker worker,
+	IReplies replies,
 	ILogger<ChatHandler> logger)
 	: IEventHandler<ChannelEvent>
 {
@@ -32,6 +34,7 @@ internal sealed class ChatHandler(
 		var context = new CommandContext(
 			by,
 			privateMessage ? null : posted.Channel.Name,
+			replies,
 			(text, sendToken) => SendSplitAsync(text, (piece, token) => privateMessage
 				? server.WhisperAsync(by.User, piece, cancellationToken: token)
 				: server.SayAsync(posted.Channel, piece, cancellationToken: token), sendToken),

@@ -1,3 +1,5 @@
+using Basil.Bot.Replies;
+
 namespace Basil.Bot.Commands;
 
 /// <summary>
@@ -8,43 +10,46 @@ internal static class BotReplies
 {
 	// ── !help ────────────────────────────────────────────────────────────────────────────────
 	/// <summary>The help text listing available commands.</summary>
-	public const string HelpText =
-		"!roll [max] - roll a random number from 0 to max (default 100)\n" +
-		"!where <username> - show a userSession's country\n" +
-		"!faq <entry>|list - print a FAQ entry, or list every entry\n" +
-		"!mp help - list multiplayer subcommands";
+	public static readonly Reply HelpText = new("bot.helpText", """
+		!roll [max] - roll a random number from 0 to max (default 100)
+		!where <username> - show a userSession's country
+		!faq <entry>|list - print a FAQ entry, or list every entry
+		!mp help - list multiplayer subcommands
+		""");
 
 	// ── !where ───────────────────────────────────────────────────────────────────────────────
 	/// <summary>Usage line for <c>!where</c>.</summary>
-	public const string WhereUsage = "Usage: !where <username>";
+	public static readonly Reply WhereUsage = new("bot.whereUsage", "Usage: !where <username>");
 
-	/// <summary>Reply when the named user is not registered; <c>{0}</c> is the name.</summary>
-	public const string NotRegistered = "{0} is not registered.";
+	/// <summary>Reply when the named user is not registered; <c>{name}</c> is the name.</summary>
+	public static readonly Reply NotRegistered = new("bot.notRegistered", "{name} is not registered.", "name");
 
-	/// <summary>Reply reporting a user's country; <c>{0}</c> is the name, <c>{1}</c> the country.</summary>
-	public const string WhereIsIn = "{0} is in {1}";
+	/// <summary>Reply reporting a user's country; <c>{name}</c> is the name, <c>{country}</c> the country.</summary>
+	public static readonly Reply WhereIsIn = new("bot.whereIsIn", "{name} is in {country}", "name", "country");
 
 	// ── !faq ─────────────────────────────────────────────────────────────────────────────────
 	/// <summary>Usage line for <c>!faq</c>.</summary>
-	public const string FaqUsage = "Usage: !faq <entry>|list";
+	public static readonly Reply FaqUsage = new("bot.faqUsage", "Usage: !faq <entry>|list");
 
-	/// <summary>Reply when no FAQ entry matches; <c>{0}</c> is the requested entry.</summary>
-	public const string NoFaqEntryFound = "No FAQ entry found for '{0}'.";
+	/// <summary>Reply when no FAQ entry matches; <c>{entry}</c> is the requested entry.</summary>
+	public static readonly Reply NoFaqEntryFound = new("bot.noFaqEntryFound",
+		"No FAQ entry found for ''{entry}''.", "entry");
 
 	/// <summary>Reply when the FAQ has no entries.</summary>
-	public const string NoFaqEntriesAvailable = "No FAQ entries available.";
+	public static readonly Reply NoFaqEntriesAvailable = new("bot.noFaqEntriesAvailable", "No FAQ entries available.");
 
-	/// <summary>Reply listing the available FAQ entries; <c>{0}</c> is the comma-joined list.</summary>
-	public const string AvailableFaqEntries = "Available FAQ entries: {0}";
+	/// <summary>Reply listing the available FAQ entries; <c>{entries}</c> is the comma-joined list.</summary>
+	public static readonly Reply AvailableFaqEntries = new("bot.availableFaqEntries",
+		"Available FAQ entries: {entries}", "entries");
 
 	// ── !roll ────────────────────────────────────────────────────────────────────────────────
-	/// <summary>Reply to <c>!roll</c>; <c>{0}</c> is the sender's name, <c>{1}</c> the roll result.</summary>
-	public const string RollResult = "{0} rolls {1} point(s)";
+	/// <summary>Reply to <c>!roll</c>; <c>{user}</c> is the sender's name, <c>{points}</c> the roll result.</summary>
+	public static readonly Reply RollResult = new("bot.rollResult", "{user} rolls {points} point(s)", "user", "points");
 
 	// ── Chain errors ─────────────────────────────────────────────────────────────────────────
 	/// <summary>Reply when a chain contains non-<c>!mp</c> commands.</summary>
-	public const string ChainOnlyMpAllowed = "Chains are only allowed for !mp commands.";
+	public static readonly Reply ChainOnlyMpAllowed = new("bot.chainOnlyMpAllowed", "Chains are only allowed for !mp commands.");
 
 	/// <summary>Reply when a chain is used in the #lobby channel.</summary>
-	public const string ChainNotInLobby = "Chains are not allowed in #lobby.";
+	public static readonly Reply ChainNotInLobby = new("bot.chainNotInLobby", "Chains are not allowed in #lobby.");
 }

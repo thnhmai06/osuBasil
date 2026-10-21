@@ -3,13 +3,15 @@ using Basil.Application.Runtime.Events;
 using Basil.Application.Runtime.Multiplayer.Rooms;
 using Basil.Application.Runtime.Servers;
 using Basil.Application.Runtime.Users;
+using Basil.Bot.Replies;
 using Basil.Domain.Bancho;
 using Basil.Domain.Users;
 
 namespace Basil.Bot.Announcements;
 
 /// <summary>Announces anticheat flags in room channels and to room staff.</summary>
-internal sealed class AnticheatAnnouncer(Server server, UserRegistry users) : IEventHandler<AnticheatEvent>
+internal sealed class AnticheatAnnouncer(Server server, UserRegistry users, IReplies replies)
+	: IEventHandler<AnticheatEvent>
 {
 	/// <inheritdoc />
 	public async ValueTask HandleAsync(AnticheatEvent @event, CancellationToken cancellationToken)
@@ -19,11 +21,12 @@ internal sealed class AnticheatAnnouncer(Server server, UserRegistry users) : IE
 
 		var reason = FormatFlags(flagged.Signs);
 		var playerName = flagged.Player.Record.Value.Name;
-		var channelMessage = string.Format(AnnouncementReplies.AnticheatFlagRoom, playerName, reason);
+		var channelMessage = replies.Text(AnnouncementReplies.AnticheatFlagRoom,
+			new { player = playerName, reason });
 		await server.SayAsync(room.Channel, channelMessage, cancellationToken: cancellationToken);
 
-		var pmMessage = string.Format(AnnouncementReplies.AnticheatFlagPm, room.Id, room.Settings.Name,
-			playerName, reason);
+		var pmMessage = replies.Text(AnnouncementReplies.AnticheatFlagPm,
+			new { room = room.Id, name = room.Settings.Name, player = playerName, reason });
 		await WhisperStaffAsync(room, pmMessage, cancellationToken);
 	}
 

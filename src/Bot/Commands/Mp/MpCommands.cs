@@ -157,10 +157,10 @@ internal sealed partial class MpCommands(
 
 		return context with
 		{
-			Reply = context.Channel == $"#mp_{roomId}"
-				? context.Reply
-				: (text, cancellationToken) => context.Reply(NameLines(text), cancellationToken),
-			ReplyPrivately = (text, cancellationToken) => context.ReplyPrivately(NameLines(text), cancellationToken)
+			Say = context.Channel == $"#mp_{roomId}"
+				? context.Say
+				: (text, cancellationToken) => context.Say(NameLines(text), cancellationToken),
+			SayPrivately = (text, cancellationToken) => context.SayPrivately(NameLines(text), cancellationToken)
 		};
 
 		string NameLines(string text)
