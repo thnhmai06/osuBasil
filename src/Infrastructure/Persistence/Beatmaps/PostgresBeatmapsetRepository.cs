@@ -47,6 +47,11 @@ internal sealed class PostgresBeatmapsetRepository(
 	{
 		try
 		{
+			// The commit replaces or removes stored sets, so what is still queued for them is stored first and
+			// nothing queued later is stored before the commit.
+			var touched = changes.Store.Where(change => change.Existing is not null).Select(change => change.Existing!)
+				.Concat(changes.Remove).Select(set => Root.Beatmapset(set.Id));
+			await using var hold = await Writer.HoldAsync(touched, cancellationToken);
 			var stored = await Writer.WriteAsync(SyncRoot, async (context, token) =>
 				await StoreAsync(changes, context, token), cancellationToken);
 			return Remember(stored, changes.Remove);

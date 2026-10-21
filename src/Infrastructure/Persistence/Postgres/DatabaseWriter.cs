@@ -138,6 +138,43 @@ internal sealed class DatabaseWriter(
 		}, cancellationToken);
 	}
 
+	/// <summary>
+	///     Stops the roots from storing anything until the returned hold is disposed, once every write queued before
+	///     the call has been stored.
+	/// </summary>
+	/// <param name="roots">The roots to stop; a write that changes several roots holds all of them.</param>
+	/// <param name="cancellationToken">A token that cancels the wait for the roots to be reached.</param>
+	/// <returns>The hold; disposing it lets the roots store their later writes.</returns>
+	/// <remarks>The roots are taken in a fixed order, so two holds over overlapping roots cannot wait for each other.</remarks>
+	public async Task<IAsyncDisposable> HoldAsync(IEnumerable<Root> roots,
+		CancellationToken cancellationToken = default)
+	{
+		var hold = new RootHold();
+		try
+		{
+			foreach (var root in roots.Distinct().OrderBy(root => root.Kind).ThenBy(root => root.Id))
+			{
+				var reached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+				var identity = new object();
+				var pending = new PendingTransaction(identity, null, null, false, async () =>
+				{
+					reached.TrySetResult();
+					await hold.Released.WaitAsync(_abandon.Token);
+				});
+				Enqueue(root, identity, pending);
+				hold.Add(pending.Done.Task);
+				await reached.Task.WaitAsync(cancellationToken);
+			}
+		}
+		catch
+		{
+			await hold.DisposeAsync();
+			throw;
+		}
+
+		return hold;
+	}
+
 	private static int ValidConnections(int count)
 	{
 		return count >= 1
@@ -213,6 +250,13 @@ internal sealed class DatabaseWriter(
 
 				try
 				{
+					if (pendingTransaction.Hold is { } hold)
+					{
+						await hold();
+						pendingTransaction.Done.TrySetResult();
+						return;
+					}
+
 					await _connections.WaitAsync(_abandon.Token);
 					try
 					{
@@ -336,17 +380,38 @@ internal sealed class DatabaseWriter(
 		public OrderedDictionary<object, PendingTransaction> Pending { get; } = new();
 	}
 
+	private sealed class RootHold : IAsyncDisposable
+	{
+		private readonly TaskCompletionSource _released = new(TaskCreationOptions.RunContinuationsAsynchronously);
+		private readonly List<Task> _holds = [];
+
+		public Task Released => _released.Task;
+
+		public void Add(Task done)
+		{
+			_holds.Add(done);
+		}
+
+		public async ValueTask DisposeAsync()
+		{
+			_released.TrySetResult();
+			await Task.WhenAll(_holds);
+		}
+	}
+
 	private sealed class PendingTransaction(
 		object identity,
 		WriteCommand? command,
 		Func<BasilDbContext, Task>? run,
-		bool logsRefusal)
+		bool logsRefusal,
+		Func<Task>? hold = null)
 	{
 		public bool Started;
 		public object Identity { get; } = identity;
 		public WriteCommand? Command { get; set; } = command;
 		public Func<BasilDbContext, Task>? Run { get; } = run;
 		public bool LogsRefusal { get; } = logsRefusal;
+		public Func<Task>? Hold { get; } = hold;
 		public TaskCompletionSource Done { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 	}
 }
