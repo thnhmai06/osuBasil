@@ -5,19 +5,20 @@ using Basil.Domain.Users;
 namespace Basil.Application.Runtime.Servers;
 
 /// <summary>The server as one connection may act on it.</summary>
-public sealed class ScopedServer : Scoped<Server>
+public sealed class ScopedServer : Scoped<Permissions>
 {
 	/// <summary>Creates a server scope for a connection.</summary>
 	/// <param name="server">The server to scope.</param>
 	/// <param name="by">The connection acting on the server.</param>
-	internal ScopedServer(Server server, Connection by) : base(server, by, server.Context.Session.Clock)
+	internal ScopedServer(Server server, Connection by) : base(by, by.User.EffectivePermissions(server.Context.Session.Clock.GetUtcNow()))
 	{
+		Server = server;
 		Channels = new ScopedServerChannels(this);
 		Screenshots = new ScopedServerScreenshots(this);
 	}
 
 	/// <summary>Gets the server this scope is over.</summary>
-	public Server Server => Owner;
+	public Server Server { get; }
 
 	/// <summary>Gets operations for general channels.</summary>
 	public ScopedServerChannels Channels { get; }

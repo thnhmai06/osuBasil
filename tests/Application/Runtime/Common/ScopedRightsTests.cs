@@ -21,29 +21,27 @@ public class ScopedRightsTests
 		Admin = 2
 	}
 
-	private sealed class FlagsScope : Scoped<object, SampleBits>
+	private sealed class FlagsScope : Scoped<SampleBits>
 	{
-		public FlagsScope(Connection by, TimeProvider clock, SampleBits held) : base(new object(), by, clock)
+		public FlagsScope(Connection by, SampleBits held) : base(by, held)
 		{
-			Rights = held;
 		}
 
 		public SampleBits? Need(SampleBits required)
 		{
-			return RequireRight(required);
+			return Require(required);
 		}
 	}
 
-	private sealed class LevelScope : Scoped<object, SampleLevel>
+	private sealed class LevelScope : Scoped<SampleLevel>
 	{
-		public LevelScope(Connection by, TimeProvider clock, SampleLevel held) : base(new object(), by, clock)
+		public LevelScope(Connection by, SampleLevel held) : base(by, held)
 		{
-			Rights = held;
 		}
 
 		public SampleLevel? Need(SampleLevel required)
 		{
-			return RequireRight(required);
+			return Require(required);
 		}
 	}
 
@@ -52,7 +50,7 @@ public class ScopedRightsTests
 	{
 		using var app = new TestApplication();
 		var by = await app.LoginAsync(await app.CreateUserAsync("FlagsHolder", "password"));
-		var scope = new FlagsScope(by, app.Clock, SampleBits.Read | SampleBits.Write);
+		var scope = new FlagsScope(by, SampleBits.Read | SampleBits.Write);
 
 		Assert.Null(scope.Need(SampleBits.Read));
 		Assert.Null(scope.Need(SampleBits.Read | SampleBits.Write));
@@ -63,7 +61,7 @@ public class ScopedRightsTests
 	{
 		using var app = new TestApplication();
 		var by = await app.LoginAsync(await app.CreateUserAsync("FlagsMissing", "password"));
-		var scope = new FlagsScope(by, app.Clock, SampleBits.Read);
+		var scope = new FlagsScope(by, SampleBits.Read);
 
 		Assert.Equal(SampleBits.Write | SampleBits.Delete, scope.Need(SampleBits.Read | SampleBits.Write | SampleBits.Delete));
 	}
@@ -73,7 +71,7 @@ public class ScopedRightsTests
 	{
 		using var app = new TestApplication();
 		var by = await app.LoginAsync(await app.CreateUserAsync("FlagsNothing", "password"));
-		var scope = new FlagsScope(by, app.Clock, SampleBits.None);
+		var scope = new FlagsScope(by, SampleBits.None);
 
 		Assert.Null(scope.Need(SampleBits.None));
 	}
@@ -88,7 +86,7 @@ public class ScopedRightsTests
 	{
 		using var app = new TestApplication();
 		var by = await app.LoginAsync(await app.CreateUserAsync("LevelHolder", "password"));
-		var scope = new LevelScope(by, app.Clock, held);
+		var scope = new LevelScope(by, held);
 
 		var missing = scope.Need(required);
 

@@ -93,8 +93,8 @@ public sealed record RoomCountdownTicked(Room Room, RoomCountdown Countdown, Tim
 /// <summary>A countdown elapsed.</summary>
 /// <param name="Room">The room.</param>
 /// <param name="Countdown">The countdown that elapsed.</param>
-/// <param name="StartResult">The result of starting a round, or <see cref="RoomResult.Ok" /> when no round was requested.</param>
-public sealed record RoomCountdownElapsed(Room Room, RoomCountdown Countdown, RoomResult StartResult) : RoomEvent(Room);
+/// <param name="StartResult">The result of starting a round, or <see cref="RoomOutcome.Ok" /> when no round was requested.</param>
+public sealed record RoomCountdownElapsed(Room Room, RoomCountdown Countdown, RoomOutcome StartResult) : RoomEvent(Room);
 
 /// <summary>A countdown was cancelled.</summary>
 /// <param name="Room">The room.</param>

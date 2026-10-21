@@ -5,18 +5,19 @@ using Basil.Domain.Users;
 namespace Basil.Application.Runtime.Chat;
 
 /// <summary>A chat channel scoped to one connection.</summary>
-public sealed class ScopedChannel : Scoped<Channel>
+public sealed class ScopedChannel : Scoped<Permissions>
 {
 	/// <summary>Creates a channel scope for a connection.</summary>
 	/// <param name="channel">The channel to scope.</param>
 	/// <param name="by">The connection acting on the channel.</param>
-	internal ScopedChannel(Channel channel, Connection by) : base(channel, by, channel.Context.Clock)
+	internal ScopedChannel(Channel channel, Connection by) : base(by, by.User.EffectivePermissions(channel.Context.Clock.GetUtcNow()))
 	{
+		Channel = channel;
 		General = channel is GeneralChannel general ? new ScopedGeneralChannel(general, by) : null;
 	}
 
 	/// <summary>The channel this scope is over.</summary>
-	public Channel Channel => Owner;
+	public Channel Channel { get; }
 
 	/// <summary>The general-channel operations, or <see langword="null" /> for another kind of channel.</summary>
 	public ScopedGeneralChannel? General { get; }
@@ -92,7 +93,7 @@ public sealed class ScopedChannel : Scoped<Channel>
 
 		if (Channel is PmChannel pm)
 		{
-			if (!Permissions.Allows(Permissions.ChatMessageAnyone))
+			if (!Rights.Allows(Permissions.ChatMessageAnyone))
 			{
 				var relationships = await Channel.Context.Relationships.ListAsync(pm.Owner.Record, cancellationToken);
 				var blocked = relationships.Any(relationship =>

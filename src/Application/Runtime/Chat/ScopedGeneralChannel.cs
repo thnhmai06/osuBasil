@@ -5,17 +5,18 @@ using Basil.Domain.Permissions;
 namespace Basil.Application.Runtime.Chat;
 
 /// <summary>A general channel scoped to one connection.</summary>
-public sealed class ScopedGeneralChannel : Scoped<GeneralChannel>
+public sealed class ScopedGeneralChannel : Scoped<Permissions>
 {
 	/// <summary>Creates a general-channel scope for a connection.</summary>
 	/// <param name="channel">The general channel to scope.</param>
 	/// <param name="by">The connection acting on the channel.</param>
-	internal ScopedGeneralChannel(GeneralChannel channel, Connection by) : base(channel, by, channel.Context.Clock)
+	internal ScopedGeneralChannel(GeneralChannel channel, Connection by) : base(by, by.User.EffectivePermissions(channel.Context.Clock.GetUtcNow()))
 	{
+		Channel = channel;
 	}
 
 	/// <summary>The general channel this scope is over.</summary>
-	public GeneralChannel Channel => Owner;
+	public GeneralChannel Channel { get; }
 
 	/// <summary>Changes the settings of this general channel.</summary>
 	/// <param name="change">The settings to change.</param>

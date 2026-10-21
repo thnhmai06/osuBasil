@@ -9,10 +9,10 @@ namespace Basil.Application.Runtime.Users;
 
 /// <summary>An account scoped to one connection and its authority snapshot.</summary>
 /// <remarks>The snapshot is for one request or command; keeping it longer lets its rights outlive changes to permissions or restrictions.</remarks>
-public sealed class ScopedUser : Scoped<User>
+public sealed class ScopedUser : Scoped<Permissions>
 {
 	/// <summary>Gets the account this scope is over.</summary>
-	public User User => Owner;
+	public User User { get; }
 
 	/// <summary>The permissions granted to the connection's user when this scope was created.</summary>
 	internal Permissions Granted { get; }
@@ -26,8 +26,9 @@ public sealed class ScopedUser : Scoped<User>
 	/// <summary>Creates a scoped account for a connection.</summary>
 	/// <param name="user">The account to scope.</param>
 	/// <param name="by">The connection acting on the account.</param>
-	internal ScopedUser(User user, Connection by) : base(user, by, user.Context.Clock)
+	internal ScopedUser(User user, Connection by) : base(by, by.User.EffectivePermissions(user.Context.Clock.GetUtcNow()))
 	{
+		User = user;
 		Granted = by.User.Record.Value.Permissions;
 		Restrictions = new ScopedUserRestrictions(this);
 		Relationships = new ScopedUserRelationships(this);

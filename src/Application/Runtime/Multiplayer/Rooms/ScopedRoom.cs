@@ -10,19 +10,16 @@ namespace Basil.Application.Runtime.Multiplayer.Rooms;
 ///     <see cref="Room.ScopeTo" />, use it, drop it. Keeping one past the request lets its rights outlive a change of
 ///     role or restriction.
 /// </remarks>
-public sealed class ScopedRoom
+public sealed class ScopedRoom : Scoped<RoomPermissions>
 {
 	/// <summary>The room this scope is over.</summary>
 	public Room Room { get; }
 
-	/// <summary>The connection this scope is for.</summary>
-	public Connection By { get; }
+	/// <summary>The permissions the connection has globally, as they were when the scope was created.</summary>
+	private readonly Permissions _global;
 
 	/// <summary>The roles this connection holds in the room.</summary>
 	public RoomRoles Roles { get; }
-
-	/// <summary>The permissions this connection has in the room, after applying effective permissions.</summary>
-	public RoomPermissions Permissions { get; }
 
 	/// <summary>The slots service for this scoped room.</summary>
 	public ScopedRoomSlots Slots { get; }
@@ -45,104 +42,101 @@ public sealed class ScopedRoom
 	/// <summary>Creates a scoped room for a connection.</summary>
 	/// <param name="room">The room to scope.</param>
 	/// <param name="by">The connection acting on the room.</param>
-	internal ScopedRoom(Room room, Connection by)
+	internal ScopedRoom(Room room, Connection by) : this(room, by, Snapshot(room, by))
+	{
+	}
+
+	private ScopedRoom(Room room, Connection by, (Permissions Global, RoomRoles Roles, RoomPermissions Rights) snapshot)
+		: base(by, snapshot.Rights)
 	{
 		Room = room;
-		By = by;
-
-		// Snapshot roles
-		Roles = ComputeRoles(room, by);
-
-		// Compute rights from roles
-		var rights = Roles.GetPermissions();
-
-		// Apply effective permissions
-		var now = room.Context.Clock.GetUtcNow();
-		var effectivePermissions = by.User.EffectivePermissions(now);
-		ManagesAnyRoom = effectivePermissions.Allows(Domain.Permissions.Permissions.RoomManageAny);
-
-		// Managing every room acts with the creator's authority, joined or not; a restriction cannot suspend it,
-		// because whoever manages an area keeps it in the effective permissions.
-		if (ManagesAnyRoom)
-			rights = RoomPermissionsGroups.All;
-		// Otherwise a user who may not join rooms has no role-derived rights.
-		else if (!effectivePermissions.Allows(Domain.Permissions.Permissions.RoomJoin))
-			rights = RoomPermissions.None;
-
-		Permissions = rights;
+		_global = snapshot.Global;
+		Roles = snapshot.Roles;
+		ManagesAnyRoom = _global.Allows(Domain.Permissions.Permissions.RoomManageAny);
 		Slots = new ScopedRoomSlots(this);
 		Rounds = new ScopedRoomRounds(this);
 		Settings = new ScopedRoomSettings(this);
 		Authority = new ScopedRoomAuthority(this);
 		Members = new ScopedRoomMembers(this);
-
-		return;
-
-		static RoomRoles ComputeRoles(Room room, Connection by)
-		{
-			var roles = RoomRoles.None;
-
-			// Player: seated BanchoConnection
-			if (by is BanchoConnection bancho && room.Slots.Find(bancho) is not null)
-				roles |= RoomRoles.Player;
-
-			// Host: reference equals
-			if (ReferenceEquals(by, room.Authority.Host))
-				roles |= RoomRoles.Host;
-
-			// Referee: managed by but not creator
-			if (room.Authority.IsManagedBy(by.Record) && !Equals(room.Authority.Creator, by.Record))
-				roles |= RoomRoles.Referee;
-
-			// Creator: creator equals
-			if (Equals(room.Authority.Creator, by.Record))
-				roles |= RoomRoles.Creator;
-
-			return roles;
-		}
 	}
 
-	/// <summary>Checks if the scoped connection has the required permissions.</summary>
-	/// <param name="needed">The permissions required.</param>
-	/// <returns>Null if allowed, otherwise the reason for denial.</returns>
-	internal RoomResult? Require(RoomPermissions needed)
+	private static (Permissions Global, RoomRoles Roles, RoomPermissions Rights) Snapshot(Room room, Connection by)
 	{
-		if ((Permissions & needed) == needed)
+		var global = by.User.EffectivePermissions(room.Context.Clock.GetUtcNow());
+		var roles = ComputeRoles(room, by);
+
+		// Managing every room acts with the creator's authority, joined or not; a restriction cannot suspend it,
+		// because whoever manages an area keeps it in the effective permissions. Otherwise a user who may not join
+		// rooms has no role-derived rights.
+		var rights = global.Allows(Domain.Permissions.Permissions.RoomManageAny)
+			? RoomPermissionsGroups.All
+			: global.Allows(Domain.Permissions.Permissions.RoomJoin)
+				? roles.GetPermissions()
+				: RoomPermissions.None;
+
+		return (global, roles, rights);
+	}
+
+	private static RoomRoles ComputeRoles(Room room, Connection by)
+	{
+		var roles = RoomRoles.None;
+
+		// Player: seated BanchoConnection
+		if (by is BanchoConnection bancho && room.Slots.Find(bancho) is not null)
+			roles |= RoomRoles.Player;
+
+		// Host: reference equals
+		if (ReferenceEquals(by, room.Authority.Host))
+			roles |= RoomRoles.Host;
+
+		// Referee: managed by but not creator
+		if (room.Authority.IsManagedBy(by.Record) && !Equals(room.Authority.Creator, by.Record))
+			roles |= RoomRoles.Referee;
+
+		// Creator: creator equals
+		if (Equals(room.Authority.Creator, by.Record))
+			roles |= RoomRoles.Creator;
+
+		return roles;
+	}
+
+	/// <summary>Checks that the scoped connection holds the room rights an action needs.</summary>
+	/// <param name="needed">The room rights required.</param>
+	/// <returns>
+	///     <see langword="null" /> when allowed; a denial naming <see cref="Permissions.RoomJoin" /> when the caller may not
+	///     join rooms at all; otherwise <see cref="RoomOutcome.RoleDenied" />.
+	/// </returns>
+	internal Result<RoomOutcome>? Require(RoomPermissions needed)
+	{
+		if (base.Require(needed) is null)
 			return null;
 
-		// Check if granted permissions allow RoomJoin but effective don't
-		return By.User.Check(Domain.Permissions.Permissions.RoomJoin, Room.Context.Clock.GetUtcNow())
-			is Access.Suspended
-			? RoomResult.Silenced
-			: RoomResult.NotAuthorized;
+		return !ManagesAnyRoom && RequireJoin() is { } cannotJoin ? cannotJoin : RoomOutcome.RoleDenied;
 	}
 
-	/// <summary>Checks whether the connection may join the room.</summary>
-	/// <returns>Null when allowed, otherwise the reason for denial.</returns>
-	internal RoomResult? RequireJoin()
+	/// <summary>Checks whether the connection may join rooms.</summary>
+	/// <returns><see langword="null" /> when allowed, otherwise a denial naming the missing permission.</returns>
+	internal Result<RoomOutcome>? RequireJoin()
 	{
-		return By.User.Check(Domain.Permissions.Permissions.RoomJoin, Room.Context.Clock.GetUtcNow()) switch
-		{
-			Access.NotGranted => RoomResult.NotAuthorized,
-			Access.Suspended => RoomResult.Silenced,
-			_ => null
-		};
+		return _global.Allows(Domain.Permissions.Permissions.RoomJoin)
+			? null
+			: Result<RoomOutcome>.Denied(Domain.Permissions.Permissions.RoomJoin);
 	}
 
 	/// <summary>Closes the room, evicting its players, ending its round, closing its channel and forgetting it.</summary>
 	/// <param name="cancellationToken">A token that cancels the wait for the room.</param>
 	/// <returns>
-	///     Ok, NotAuthorized or Silenced; a room that has closed already returns Ok and does nothing.
+	///     Ok, or a denial; a room that has closed already returns Ok and does nothing.
 	/// </returns>
 	/// <remarks>The caller needs <see cref="RoomPermissions.RoomClose" />, checked before the room is entered.</remarks>
-	public async Task<RoomResult> CloseAsync(CancellationToken cancellationToken = default)
+	public async Task<Result<RoomOutcome>> CloseAsync(CancellationToken cancellationToken = default)
 	{
 		if (Require(RoomPermissions.RoomClose) is { } denied) return denied;
 
 		await using var scope = await Room.EnterAsync(cancellationToken);
-		if (scope is null) return RoomResult.Ok;
+		if (scope is null) return RoomOutcome.Ok;
 
 		Room.Context.Lobby.Close(Room, By.Record);
-		return RoomResult.Ok;
+		return RoomOutcome.Ok;
 	}
 }

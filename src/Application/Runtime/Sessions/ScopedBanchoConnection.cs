@@ -4,17 +4,18 @@ using Basil.Domain.Users;
 namespace Basil.Application.Runtime.Sessions;
 
 /// <summary>An osu! client as one connection may act on it.</summary>
-public sealed class ScopedBanchoConnection : Scoped<BanchoConnection>
+public sealed class ScopedBanchoConnection : Scoped<Permissions>
 {
 	/// <summary>Creates a scope for an osu! client and a connection.</summary>
 	/// <param name="host">The client to scope.</param>
 	/// <param name="by">The connection acting on the client.</param>
-	internal ScopedBanchoConnection(BanchoConnection host, Connection by) : base(host, by, host.Context.Clock)
+	internal ScopedBanchoConnection(BanchoConnection host, Connection by) : base(by, by.User.EffectivePermissions(host.Context.Clock.GetUtcNow()))
 	{
+		Host = host;
 	}
 
 	/// <summary>Gets the osu! client this scope is over.</summary>
-	public BanchoConnection Host => Owner;
+	public BanchoConnection Host { get; }
 
 	/// <summary>Starts spectating this client.</summary>
 	/// <returns>The outcome, or the permissions the caller lacks.</returns>

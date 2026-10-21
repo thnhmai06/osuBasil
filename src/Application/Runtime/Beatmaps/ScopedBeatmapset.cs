@@ -4,17 +4,18 @@ using Basil.Domain.Permissions;
 namespace Basil.Application.Runtime.Beatmaps;
 
 /// <summary>A beatmapset as one connection may act on it.</summary>
-public sealed class ScopedBeatmapset : Scoped<Beatmapset>
+public sealed class ScopedBeatmapset : Scoped<Permissions>
 {
 	/// <summary>Creates a scoped beatmapset for a connection.</summary>
 	/// <param name="beatmapset">The beatmapset to scope.</param>
 	/// <param name="by">The connection acting on the beatmapset.</param>
-	internal ScopedBeatmapset(Beatmapset beatmapset, Connection by) : base(beatmapset, by, beatmapset.Context.Clock)
+	internal ScopedBeatmapset(Beatmapset beatmapset, Connection by) : base(by, by.User.EffectivePermissions(beatmapset.Context.Clock.GetUtcNow()))
 	{
+		Beatmapset = beatmapset;
 	}
 
 	/// <summary>Gets the beatmapset this scope is over.</summary>
-	public Beatmapset Beatmapset => Owner;
+	public Beatmapset Beatmapset { get; }
 
 	/// <summary>Deletes this beatmapset and its files.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>

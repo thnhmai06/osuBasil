@@ -1,22 +1,19 @@
 namespace Basil.Application.Runtime.Multiplayer;
 
 /// <summary>The outcome of an operation on the lobby or a room.</summary>
-public enum RoomResult : byte
+public enum RoomOutcome : byte
 {
 	/// <summary>The operation succeeded.</summary>
-	Ok,
+	Ok = 1,
 
-	/// <summary>The caller may not perform the operation.</summary>
-	NotAuthorized,
+	/// <summary>The caller's role in the room (player, host, referee, creator) does not allow the operation.</summary>
+	RoleDenied,
 
 	/// <summary>The user already has an open connection seated in the room.</summary>
 	AlreadySeated,
 
 	/// <summary>The user is banned from the room.</summary>
 	Banned,
-
-	/// <summary>A permission the operation needs is suspended by a restriction, such as a silence.</summary>
-	Silenced,
 
 	/// <summary>The connection is seated in another room.</summary>
 	InAnotherRoom,

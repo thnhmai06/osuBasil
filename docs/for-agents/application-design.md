@@ -4,18 +4,19 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
 
 ### Scopes and results (decided 2026-10-21; supersedes any older wording)
 
-* **Every `ScopedX` derives from one abstract `Scoped<T>`.** The base holds the owner (`T`) and `Permissions
-  Permissions { get; }`, the caller's **effective** permissions snapshotted once by `ScopeTo(connection)`. A scope lives
-  for one request or command and is then dropped; it is never stored. The base offers
-  `protected Permissions? Require(Permissions required)`: `null` means the requirement is met, otherwise it returns the
-  mask of the permissions that are missing. An implementation never reads or compares permissions itself: it states the
-  requirement of each behaviour through `Require` and returns the denial. Roles that are not permissions (creator,
-  referee, host, the owner of a PM channel) are rights of the scope: a scope that has them derives from
-  `Scoped<TOwner, TRights> where TRights : struct, Enum` (the room scope: `Scoped<Room, RoomPermissions>`; a scope over
-  `Privileges` fits the same way). `Rights` is set once at creation and `protected TRights? RequireRight(TRights)` returns
-  `null` when met. The comparison follows the enum, found by reflection: a `[Flags]` enum is met when every required bit
-  is held (the result names the missing bits), any other enum is ordered levels and is met when the held value is
-  greater than or equal to the required one (the result is the required level).
+* **Every `ScopedX` derives from one abstract `Scoped<TRights> where TRights : struct, Enum`.** The base holds the connection
+  (`By`) and `TRights Rights { get; }`, the rights the connection held when `ScopeTo(connection)` created the scope, and
+  offers `protected TRights? Require(TRights required)`: `null` means the requirement is met, otherwise it returns what
+  is missing. A scope lives for one request or command and is then dropped; it is never stored. The comparison follows
+  the enum, found by reflection: a `[Flags]` enum is met when every required bit is held (the result is the missing
+  bits), any other enum is ordered levels and is met when the held value is greater than or equal to the required one
+  (the result is the required level). Most scopes are `Scoped<Permissions>` (`Rights` = the caller's **effective**
+  permissions) and pass the missing mask to `Result<TOutcome>.Denied`; `ScopedRoom` is `Scoped<RoomPermissions>`
+  (`Rights` = the rights its roles give, computed once from creator, referee, host and player roles and the global
+  permissions) and a role refusal is the outcome `RoleDenied`, or a denial naming `RoomJoin` when the caller may not join
+  rooms at all. A scope over `Privileges` fits the same way. An implementation never compares rights itself: it states
+  the requirement of each behaviour through `Require` and returns the denial. Each scope exposes its owner as a property
+  named after it (`Channel`, `Room`, `User`, …).
 * **Every behaviour that can be refused returns `Result<TOutcome>`**, a `readonly record struct (TOutcome Outcome,
   Permissions? Missing)` shared by all objects. Each object owns one outcome enum (`RoomOutcome`, `ChannelOutcome`,
   `UserOutcome`, `BeatmapsetOutcome`, …) with `Ok = 1` and `0` meaning "not set" (so a denied result, whose outcome is

@@ -7,13 +7,16 @@ using Basil.Domain.Users;
 namespace Basil.Application.Runtime.Users;
 
 /// <summary>The user registry as one connection may act on it: creating accounts.</summary>
-public sealed class ScopedUserRegistry : Scoped<UserRegistry>
+public sealed class ScopedUserRegistry : Scoped<Permissions>
 {
+	private readonly UserRegistry _registry;
+
 	/// <summary>Creates a scoped registry for a connection.</summary>
 	/// <param name="registry">The registry whose account creation is scoped.</param>
 	/// <param name="by">The connection acting.</param>
-	internal ScopedUserRegistry(UserRegistry registry, Connection by) : base(registry, by, by.User.Context.Clock)
+	internal ScopedUserRegistry(UserRegistry registry, Connection by) : base(by, by.User.EffectivePermissions(by.User.Context.Clock.GetUtcNow()))
 	{
+		_registry = registry;
 	}
 
 	/// <summary>Creates an account with permissions the caller may grant.</summary>
@@ -30,7 +33,7 @@ public sealed class ScopedUserRegistry : Scoped<UserRegistry>
 		if (Require(Permissions.UserManage | data.Permissions) is { } missing)
 			return (null, Result<UserOutcome>.Denied(missing));
 
-		var (user, failure) = await Owner.CreateAccountAsync(data, passwordHash, cancellationToken);
+		var (user, failure) = await _registry.CreateAccountAsync(data, passwordHash, cancellationToken);
 		return failure switch
 		{
 			null => (user, UserOutcome.Ok),

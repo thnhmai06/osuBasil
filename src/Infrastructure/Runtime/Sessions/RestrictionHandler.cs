@@ -36,7 +36,7 @@ internal sealed class RestrictionHandler(
 		await HandlerStep.RunAsync(logger, "remove it from rooms", Subject, user.Record.Id,
 			() => lobby.RemoveSuspendedAsync(user, cancellationToken), cancellationToken);
 
-		if (user.Check(Permissions.SpectatingWatch, time.GetUtcNow()) is Access.Allowed) return;
+		if (user.EffectivePermissions(time.GetUtcNow()).Allows(Permissions.SpectatingWatch)) return;
 
 		if (user.Bancho is { } bancho && registry.FindSpectating(bancho) is { } host)
 			HandlerStep.Run(logger, "stop spectating", Subject, user.Record.Id,

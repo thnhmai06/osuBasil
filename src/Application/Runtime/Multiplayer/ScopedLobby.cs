@@ -9,21 +9,18 @@ namespace Basil.Application.Runtime.Multiplayer;
 
 /// <summary>A lobby scoped to one connection.</summary>
 /// <remarks>Use a scope for one request or command so permission checks use current authority.</remarks>
-public sealed class ScopedLobby
+public sealed class ScopedLobby : Scoped<Permissions>
 {
 	/// <summary>The lobby this scope is over.</summary>
 	public Lobby Lobby { get; }
-
-	/// <summary>The connection this scope is for.</summary>
-	public Connection By { get; }
 
 	/// <summary>Creates a lobby scope for a connection.</summary>
 	/// <param name="lobby">The lobby to scope.</param>
 	/// <param name="by">The connection acting on the lobby.</param>
 	internal ScopedLobby(Lobby lobby, Connection by)
+		: base(by, by.User.EffectivePermissions(lobby.Context.Clock.GetUtcNow()))
 	{
 		Lobby = lobby;
-		By = by;
 	}
 
 	/// <summary>Opens a room for a new match, created by the scoped connection.</summary>
@@ -48,7 +45,7 @@ public sealed class ScopedLobby
 	///     is reported by <see cref="LobbyRoomOpened" /> through its host.
 	/// </remarks>
 	/// <exception cref="ArgumentException">The scoped connection is not an osu! client for a non-tournament room.</exception>
-	public async Task<(Room? Room, RoomResult Result)> OpenRoomAsync(
+	public async Task<(Room? Room, Result<RoomOutcome> Result)> OpenRoomAsync(
 		string name,
 		string password,
 		bool isTournament,
@@ -63,37 +60,31 @@ public sealed class ScopedLobby
 		var required = isTournament
 			? Permissions.RoomCreate
 			: Permissions.RoomCreate | Permissions.RoomJoin;
-		var access = By.User.Check(required, now);
-		switch (access)
-		{
-			case Access.NotGranted:
-				return (null, RoomResult.NotAuthorized);
-			case Access.Suspended:
-				return (null, RoomResult.Silenced);
-		}
+		if (Require(required) is { } missingPermissions)
+			return (null, Result<RoomOutcome>.Denied(missingPermissions));
 
 		if ((await Lobby.Context.Settings.GetAsync(cancellationToken)).LockedCreation.HasFlag(ServerSettings
 			    .CreationLocks.Rooms) &&
-		    By.User.Check(Permissions.RoomManageAny, now) is not Access.Allowed)
-			return (null, RoomResult.NotAuthorized);
+		    Require(Permissions.RoomManageAny) is { } missingManage)
+			return (null, Result<RoomOutcome>.Denied(missingManage));
 
 		var creator = By.Record;
-		var limited = isTournament && By.User.Check(Permissions.RoomCreateUnlimited, now) is not Access.Allowed;
-		if (limited && Lobby.TooManyRooms(creator)) return (null, RoomResult.TooManyRooms);
+		var limited = isTournament && Require(Permissions.RoomCreateUnlimited) is not null;
+		if (limited && Lobby.TooManyRooms(creator)) return (null, RoomOutcome.TooManyRooms);
 
 		// A room opened in game seats its creator; a tournament room seats the creator's osu! client when it may join.
 		var seat = isTournament
 			? By.User.Bancho is { IsOpen: true } bancho &&
-			  bancho.User.Check(Permissions.RoomJoin, now) is Access.Allowed
+			  bancho.User.EffectivePermissions(now).Allows(Permissions.RoomJoin)
 				? bancho
 				: null
 			: (BanchoConnection)By;
-		if (!isTournament && Lobby.RoomOf(seat!) is not null) return (null, RoomResult.AlreadyInRoom);
+		if (!isTournament && Lobby.RoomOf(seat!) is not null) return (null, RoomOutcome.AlreadyInRoom);
 
-		if (!MatchData.IsValidName(name)) return (null, RoomResult.InvalidSettings);
+		if (!MatchData.IsValidName(name)) return (null, RoomOutcome.InvalidSettings);
 
 		// ponytail: two concurrent opens by one creator can both pass the room limit; count reservations per creator if that matters.
-		if (Lobby.Reserve() is not { } id) return (null, RoomResult.NoRoomId);
+		if (Lobby.Reserve() is not { } id) return (null, RoomOutcome.NoRoomId);
 
 		MatchRecord match;
 		try
@@ -128,7 +119,7 @@ public sealed class ScopedLobby
 			? Lobby.ScheduleClosing(room)
 			: null;
 		Lobby.Context.Events.Publish(new LobbyRoomOpened(room, room.Authority.Host, closesAt));
-		return (room, RoomResult.Ok);
+		return (room, RoomOutcome.Ok);
 	}
 
 	/// <summary>Starts watching the multiplayer lobby.</summary>

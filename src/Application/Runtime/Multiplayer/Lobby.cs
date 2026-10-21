@@ -309,7 +309,7 @@ public sealed class Lobby : IRoomLobbyPort, IConnectionLobbyPort
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	public async Task RemoveSuspendedAsync(User user, CancellationToken cancellationToken = default)
 	{
-		if (user.Check(Permissions.RoomJoin, Context.Clock.GetUtcNow()) is Access.Allowed) return;
+		if (user.EffectivePermissions(Context.Clock.GetUtcNow()).Allows(Permissions.RoomJoin)) return;
 
 		foreach (var connection in user.Connections)
 			await ReleaseAsync(connection, cancellationToken);

@@ -32,7 +32,7 @@ public sealed class ScopedRoomSettings
 	///     A change to the beatmap, mode, mods, freemod, team type or win condition cancels a countdown that would start the
 	///     round.
 	/// </remarks>
-	public async Task<RoomResult> ConfigureAsync(RoomSettingsChange change,
+	public async Task<Result<RoomOutcome>> ConfigureAsync(RoomSettingsChange change,
 		CancellationToken cancellationToken = default)
 	{
 		var room = _scoped.Room;
@@ -47,22 +47,22 @@ public sealed class ScopedRoomSettings
 		if (_scoped.Require(required) is { } denied) return denied;
 
 		await using var scope = await room.EnterAsync(cancellationToken);
-		if (scope is null) return RoomResult.RoomClosed;
+		if (scope is null) return RoomOutcome.RoomClosed;
 
-		if (room.Rounds.InProgress) return RoomResult.InProgress;
+		if (room.Rounds.InProgress) return RoomOutcome.InProgress;
 
 		if ((change.Name is { } newName && !MatchData.IsValidName(newName)) ||
 		    change.Size is < 1 or > RoomSlots.MaxSlotCount || change is { ClearBeatmap: true, Beatmap: not null } ||
 		    (change.Mode is { } requestedMode && !Enum.IsDefined(requestedMode)) ||
 		    (change.TeamType is { } requestedTeamType && !Enum.IsDefined(requestedTeamType)) ||
 		    (change.WinCondition is { } requestedWinCondition && !Enum.IsDefined(requestedWinCondition)))
-			return RoomResult.InvalidSettings;
+			return RoomOutcome.InvalidSettings;
 
-		if (change == new RoomSettingsChange()) return RoomResult.Ok;
+		if (change == new RoomSettingsChange()) return RoomOutcome.Ok;
 
 		var mode = change.Mode ?? room.Settings.MatchSettings.Mode;
 		var freemods = change.Freemods ?? room.Settings.MatchSettings.Freemods;
-		if (change.Mods is { } requestedMods && !requestedMods.IsValid(mode)) return RoomResult.InvalidMods;
+		if (change.Mods is { } requestedMods && !requestedMods.IsValid(mode)) return RoomOutcome.InvalidMods;
 
 		if (change.Name is { } name) room.Match.Value.Name = name;
 
@@ -104,7 +104,7 @@ public sealed class ScopedRoomSettings
 
 		room.Context.Events.Publish(new RoomSettingsChanged(room, change with { Password = null },
 			change.Password is not null));
-		return RoomResult.Ok;
+		return RoomOutcome.Ok;
 	}
 
 	/// <summary>Locks or unlocks the room, which stops players from changing slot or team.</summary>
@@ -114,19 +114,19 @@ public sealed class ScopedRoomSettings
 	///     Ok, NotAuthorized or RoomClosed when the room has closed; setting the current state again returns Ok and does
 	///     nothing.
 	/// </returns>
-	public async Task<RoomResult> SetLockedAsync(bool locked, CancellationToken cancellationToken = default)
+	public async Task<Result<RoomOutcome>> SetLockedAsync(bool locked, CancellationToken cancellationToken = default)
 	{
 		if (_scoped.Require(RoomPermissions.SlotsMovePlayers) is { } denied) return denied;
 
 		await using var scope = await _scoped.Room.EnterAsync(cancellationToken);
-		if (scope is null) return RoomResult.RoomClosed;
+		if (scope is null) return RoomOutcome.RoomClosed;
 
 		var room = _scoped.Room;
-		if (room.Slots.Locked == locked) return RoomResult.Ok;
+		if (room.Slots.Locked == locked) return RoomOutcome.Ok;
 
 		room.Slots.Locked = locked;
 		room.Context.Events.Publish(new RoomLockChanged(room, locked));
-		return RoomResult.Ok;
+		return RoomOutcome.Ok;
 	}
 
 	/// <summary>Applies the room's freemod setting to the room's own mods and every seated player.</summary>

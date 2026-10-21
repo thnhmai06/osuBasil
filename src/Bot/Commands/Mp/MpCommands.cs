@@ -17,7 +17,7 @@ namespace Basil.Bot.Commands.Mp;
 /// </summary>
 /// <remarks>
 ///     Operations run on the lobby and rooms scoped to the connection of the user who typed the command; the server
-///     enforces authority and returns a <see cref="RoomResult" />, which is mapped to a user-visible reply by
+///     enforces authority and returns a <see cref="RoomOutcome" />, which is mapped to a user-visible reply by
 ///     <see cref="MpReplies.Describe" />.
 /// </remarks>
 internal sealed partial class MpCommands(
@@ -56,7 +56,7 @@ internal sealed partial class MpCommands(
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>
 	///     <see langword="true" /> when the command was recognized and the server reported success;
-	///     <see langword="false" /> for usage errors, unknown subcommands, and any non-<see cref="RoomResult.Ok" />
+	///     <see langword="false" /> for usage errors, unknown subcommands, and any non-<see cref="RoomOutcome.Ok" />
 	///     result from the server.
 	/// </returns>
 	public async Task<bool> ExecuteAsync(CommandContext context, IReadOnlyList<string> args,
@@ -213,7 +213,7 @@ internal sealed partial class MpCommands(
 
 		var (room, outcome) = await lobby.ScopeTo(by).OpenRoomAsync(name, "", true, isPrivate,
 			cancellationToken: cancellationToken);
-		if (outcome != RoomResult.Ok || room is null)
+		if (!outcome.IsOk || room is null)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -247,7 +247,7 @@ internal sealed partial class MpCommands(
 
 		var password = args.Count > 1 ? string.Join(' ', args.Skip(1)) : string.Empty;
 		var outcome = await room.ScopeTo(by).Members.JoinAsync(password, cancellationToken);
-		if (outcome != RoomResult.Ok)
+		if (!outcome.IsOk)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -369,7 +369,7 @@ internal sealed partial class MpCommands(
 		}
 
 		var outcome = await room.ScopeTo(context.By).Settings.SetLockedAsync(locked, cancellationToken);
-		if (outcome != RoomResult.Ok)
+		if (!outcome.IsOk)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -415,7 +415,7 @@ internal sealed partial class MpCommands(
 
 		var outcome = await roomToChange.ScopeTo(by).Settings.ConfigureAsync(
 			new RoomSettingsChange(IsPrivate: args[0] == "1"), cancellationToken);
-		if (outcome != RoomResult.Ok)
+		if (!outcome.IsOk)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -447,7 +447,7 @@ internal sealed partial class MpCommands(
 
 		var outcome = await room.ScopeTo(context.By).Settings.ConfigureAsync(new RoomSettingsChange(Size: size),
 			cancellationToken);
-		if (outcome != RoomResult.Ok)
+		if (!outcome.IsOk)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -486,7 +486,7 @@ internal sealed partial class MpCommands(
 		}
 
 		var outcome = await room.ScopeTo(by).Slots.MoveAsync(target, slot, cancellationToken);
-		if (outcome != RoomResult.Ok)
+		if (!outcome.IsOk)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -525,9 +525,9 @@ internal sealed partial class MpCommands(
 
 		var host = registry.Online.GetValueOrDefault(target)?.Bancho;
 		var outcome = host is not { IsOpen: true }
-			? RoomResult.TargetOffline
+			? RoomOutcome.TargetOffline
 			: await room.ScopeTo(by).Authority.SetHostAsync(host, cancellationToken);
-		if (outcome != RoomResult.Ok)
+		if (!outcome.IsOk)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -547,7 +547,7 @@ internal sealed partial class MpCommands(
 		}
 
 		var outcome = await room.ScopeTo(context.By).Authority.SetHostAsync(null, cancellationToken);
-		if (outcome != RoomResult.Ok)
+		if (!outcome.IsOk)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -580,7 +580,7 @@ internal sealed partial class MpCommands(
 
 		var outcome = await room.ScopeTo(context.By).Settings.ConfigureAsync(new RoomSettingsChange(name),
 			cancellationToken);
-		if (outcome != RoomResult.Ok)
+		if (!outcome.IsOk)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -604,7 +604,7 @@ internal sealed partial class MpCommands(
 
 		var outcome = await room.ScopeTo(by).Settings.ConfigureAsync(new RoomSettingsChange(Password: password),
 			cancellationToken);
-		if (outcome != RoomResult.Ok)
+		if (!outcome.IsOk)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -644,9 +644,9 @@ internal sealed partial class MpCommands(
 
 		var targetUser = registry.Online.GetValueOrDefault(target);
 		var outcome = targetUser is null
-			? RoomResult.TargetOffline
+			? RoomOutcome.TargetOffline
 			: await room.ScopeTo(by).Members.InviteAsync(targetUser, cancellationToken);
-		if (outcome != RoomResult.Ok)
+		if (!outcome.IsOk)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -684,7 +684,7 @@ internal sealed partial class MpCommands(
 		}
 
 		var outcome = await room.ScopeTo(by).Authority.AddRefereeAsync(target, cancellationToken);
-		if (outcome != RoomResult.Ok)
+		if (!outcome.IsOk)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -720,7 +720,7 @@ internal sealed partial class MpCommands(
 		}
 
 		var outcome = await room.ScopeTo(by).Authority.RemoveRefereeAsync(target, cancellationToken);
-		if (outcome != RoomResult.Ok)
+		if (!outcome.IsOk)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -810,7 +810,7 @@ internal sealed partial class MpCommands(
 		}
 
 		var outcome = await room.ScopeTo(by).Slots.SetTeamAsync(target, team, cancellationToken);
-		if (outcome != RoomResult.Ok)
+		if (!outcome.IsOk)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -866,7 +866,7 @@ internal sealed partial class MpCommands(
 		var change = new RoomSettingsChange(TeamType: (GameTeamType)teamValue, WinCondition: winCondition,
 			Size: size);
 		var outcome = await room.ScopeTo(context.By).Settings.ConfigureAsync(change, cancellationToken);
-		if (outcome != RoomResult.Ok)
+		if (!outcome.IsOk)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -922,7 +922,7 @@ internal sealed partial class MpCommands(
 		var outcome = await room.ScopeTo(context.By).Settings.ConfigureAsync(
 			new RoomSettingsChange(Beatmap: reference, Mode: mode ?? beatmap.Metadata.Difficulty.Mode),
 			cancellationToken);
-		if (outcome != RoomResult.Ok)
+		if (!outcome.IsOk)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -976,7 +976,7 @@ internal sealed partial class MpCommands(
 
 		var outcome = await room.ScopeTo(by).Settings.ConfigureAsync(
 			new RoomSettingsChange(Mods: mods.RemoveInvalidMods(mode), Freemods: freemod), cancellationToken);
-		if (outcome != RoomResult.Ok)
+		if (!outcome.IsOk)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -1018,7 +1018,7 @@ internal sealed partial class MpCommands(
 		}
 
 		var outcome = await room.ScopeTo(context.By).Rounds.StartAsync(cancellationToken);
-		if (outcome != RoomResult.Ok)
+		if (!outcome.IsOk)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -1053,7 +1053,7 @@ internal sealed partial class MpCommands(
 		}
 
 		var outcome = await room.ScopeTo(by).Rounds.CancelCountdownAsync(cancellationToken);
-		if (outcome != RoomResult.Ok)
+		if (!outcome.IsOk)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -1089,7 +1089,7 @@ internal sealed partial class MpCommands(
 
 		var outcome = await room.ScopeTo(by).Rounds.StartCountdownAsync(TimeSpan.FromSeconds(seconds), startsRound,
 			cancellationToken);
-		if (outcome != RoomResult.Ok)
+		if (!outcome.IsOk)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -1108,7 +1108,7 @@ internal sealed partial class MpCommands(
 		}
 
 		var outcome = await room.ScopeTo(context.By).Rounds.AbortAsync(cancellationToken);
-		if (outcome != RoomResult.Ok)
+		if (!outcome.IsOk)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -1146,7 +1146,7 @@ internal sealed partial class MpCommands(
 		}
 
 		var outcome = await room.ScopeTo(by).Members.KickAsync(target, cancellationToken);
-		if (outcome != RoomResult.Ok)
+		if (!outcome.IsOk)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -1182,7 +1182,7 @@ internal sealed partial class MpCommands(
 		}
 
 		var outcome = await room.ScopeTo(by).Members.BanAsync(target, cancellationToken);
-		if (outcome != RoomResult.Ok)
+		if (!outcome.IsOk)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -1218,7 +1218,7 @@ internal sealed partial class MpCommands(
 		}
 
 		var outcome = await room.ScopeTo(by).Members.UnbanAsync(target, cancellationToken);
-		if (outcome != RoomResult.Ok)
+		if (!outcome.IsOk)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -1238,7 +1238,7 @@ internal sealed partial class MpCommands(
 		}
 
 		var outcome = await room.ScopeTo(context.By).CloseAsync(cancellationToken);
-		if (outcome != RoomResult.Ok)
+		if (!outcome.IsOk)
 		{
 			await context.Reply(MpReplies.Describe(outcome), cancellationToken);
 			return false;
@@ -1272,7 +1272,7 @@ internal sealed partial class MpCommands(
 		if (!room.Settings.IsPrivate || room.Slots.Find(by.Record) is not null ||
 		    room.Members.Observers.Any(observer => observer.Record.Equals(by.Record)) ||
 		    room.Authority.IsManagedBy(by.Record) ||
-		    by.User.Check(Permissions.RoomViewPrivate, time.GetUtcNow()) is Access.Allowed)
+		    by.User.EffectivePermissions(time.GetUtcNow()).Allows(Permissions.RoomViewPrivate))
 			return room;
 
 		return null;

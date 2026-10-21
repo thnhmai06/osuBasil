@@ -53,7 +53,7 @@ public sealed class UserTests
 	}
 
 	[Fact]
-	public async Task Check_ActiveRestriction_ReturnsSuspended()
+	public async Task EffectivePermissions_ActiveRestriction_SuspendsThePermission()
 	{
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("SuspendedUser", "password");
@@ -61,19 +61,19 @@ public sealed class UserTests
 		await app.LoginAsync(record);
 		var user = app.Users.Of(record);
 
-		Assert.Equal(Access.Suspended, user.Check(Permissions.ChatPost, app.Clock.GetUtcNow()));
+		Assert.True(record.Value.Permissions.Allows(Permissions.ChatPost));
 		Assert.False(user.EffectivePermissions(app.Clock.GetUtcNow()).Allows(Permissions.ChatPost));
 	}
 
 	[Fact]
-	public async Task Check_PermissionNeverGranted_ReturnsNotGranted()
+	public async Task EffectivePermissions_PermissionNeverGranted_LacksIt()
 	{
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("NoPermission", "password");
 		await app.LoginAsync(record);
 		var user = app.Users.Of(record);
 
-		Assert.Equal(Access.NotGranted, user.Check(Permissions.ServerConfigure, app.Clock.GetUtcNow()));
+		Assert.False(user.EffectivePermissions(app.Clock.GetUtcNow()).Allows(Permissions.ServerConfigure));
 	}
 
 	[Fact]
@@ -84,11 +84,11 @@ public sealed class UserTests
 		app.AddRestriction(record, Permissions.ChatPost, app.Clock.GetUtcNow().AddMinutes(1));
 		await app.LoginAsync(record);
 		var user = app.Users.Of(record);
-		Assert.Equal(Access.Suspended, user.Check(Permissions.ChatPost, app.Clock.GetUtcNow()));
+		Assert.False(user.EffectivePermissions(app.Clock.GetUtcNow()).Allows(Permissions.ChatPost));
 
 		app.Clock.Advance(TimeSpan.FromMinutes(1));
 
-		Assert.Equal(Access.Allowed, user.Check(Permissions.ChatPost, app.Clock.GetUtcNow()));
+		Assert.True(user.EffectivePermissions(app.Clock.GetUtcNow()).Allows(Permissions.ChatPost));
 	}
 
 	public static IEnumerable<object[]> ManagedAreaCases => PermissionsGroups.Areas

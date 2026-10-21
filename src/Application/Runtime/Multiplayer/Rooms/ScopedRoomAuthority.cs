@@ -21,39 +21,39 @@ public sealed class ScopedRoomAuthority
 	/// <param name="user">The user to make referee.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, IsCreator, AlreadyReferee, TooManyReferees or RoomClosed when the room has closed.</returns>
-	public async Task<RoomResult> AddRefereeAsync(UserRecord user, CancellationToken cancellationToken = default)
+	public async Task<Result<RoomOutcome>> AddRefereeAsync(UserRecord user, CancellationToken cancellationToken = default)
 	{
 		if (_scoped.Require(RoomPermissions.RefereesManage) is { } denied) return denied;
 
 		await using var scope = await _scoped.Room.EnterAsync(cancellationToken);
-		if (scope is null) return RoomResult.RoomClosed;
+		if (scope is null) return RoomOutcome.RoomClosed;
 
 		var room = _scoped.Room;
-		if (room.Authority.Creator is not null && room.Authority.Creator.Equals(user)) return RoomResult.IsCreator;
-		if (room.Authority.Referees.Contains(user)) return RoomResult.AlreadyReferee;
-		if (room.Authority.Referees.Count >= RoomAuthority.MaxReferees) return RoomResult.TooManyReferees;
+		if (room.Authority.Creator is not null && room.Authority.Creator.Equals(user)) return RoomOutcome.IsCreator;
+		if (room.Authority.Referees.Contains(user)) return RoomOutcome.AlreadyReferee;
+		if (room.Authority.Referees.Count >= RoomAuthority.MaxReferees) return RoomOutcome.TooManyReferees;
 
 		room.Authority.MutableReferees.Add(user);
 		room.Context.Events.Publish(new RoomRefereeAdded(room, _scoped.By.Record, user));
-		return RoomResult.Ok;
+		return RoomOutcome.Ok;
 	}
 
 	/// <summary>Removes a user from the referees.</summary>
 	/// <param name="user">The referee to remove.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, NotReferee or RoomClosed when the room has closed.</returns>
-	public async Task<RoomResult> RemoveRefereeAsync(UserRecord user, CancellationToken cancellationToken = default)
+	public async Task<Result<RoomOutcome>> RemoveRefereeAsync(UserRecord user, CancellationToken cancellationToken = default)
 	{
 		if (_scoped.Require(RoomPermissions.RefereesManage) is { } denied) return denied;
 
 		await using var scope = await _scoped.Room.EnterAsync(cancellationToken);
-		if (scope is null) return RoomResult.RoomClosed;
+		if (scope is null) return RoomOutcome.RoomClosed;
 
 		var room = _scoped.Room;
-		if (!room.Authority.MutableReferees.Remove(user)) return RoomResult.NotReferee;
+		if (!room.Authority.MutableReferees.Remove(user)) return RoomOutcome.NotReferee;
 
 		room.Context.Events.Publish(new RoomRefereeRemoved(room, _scoped.By.Record, user));
-		return RoomResult.Ok;
+		return RoomOutcome.Ok;
 	}
 
 	/// <summary>Gives host to a seated player, or clears it.</summary>
@@ -61,19 +61,19 @@ public sealed class ScopedRoomAuthority
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, NotInRoom or RoomClosed when the room has closed.</returns>
 	/// <remarks>Giving host to the current host does nothing.</remarks>
-	public async Task<RoomResult> SetHostAsync(BanchoConnection? host, CancellationToken cancellationToken = default)
+	public async Task<Result<RoomOutcome>> SetHostAsync(BanchoConnection? host, CancellationToken cancellationToken = default)
 	{
 		if (_scoped.Require(RoomPermissions.HostTransfer) is { } denied) return denied;
 
 		await using var scope = await _scoped.Room.EnterAsync(cancellationToken);
-		if (scope is null) return RoomResult.RoomClosed;
+		if (scope is null) return RoomOutcome.RoomClosed;
 
 		var room = _scoped.Room;
-		if (host is not null && room.Slots.Find(host) is null) return RoomResult.NotInRoom;
-		if (ReferenceEquals(room.Authority.Host, host)) return RoomResult.Ok;
+		if (host is not null && room.Slots.Find(host) is null) return RoomOutcome.NotInRoom;
+		if (ReferenceEquals(room.Authority.Host, host)) return RoomOutcome.Ok;
 
 		room.Authority.Host = host;
 		room.Context.Events.Publish(new RoomHostChanged(room, _scoped.By.Record, host));
-		return RoomResult.Ok;
+		return RoomOutcome.Ok;
 	}
 }
