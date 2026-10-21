@@ -20,12 +20,15 @@ internal sealed class DatabaseWriter(
 	private readonly SemaphoreSlim _connections = new(ValidConnections(options.Value.WriteConnections));
 	private readonly ConcurrentDictionary<RootQueue, Task> _drains = new();
 	private readonly ConcurrentDictionary<Root, RootQueue> _queues = new();
+	private readonly CancellationTokenSource _stopping = new();
 	private int _abandonedCount;
+	private Task? _ticketCleanup;
 
 	/// <inheritdoc />
 	public void Dispose()
 	{
 		_abandon.Dispose();
+		_stopping.Dispose();
 		_connections.Dispose();
 	}
 
@@ -44,13 +47,16 @@ internal sealed class DatabaseWriter(
 	/// <inheritdoc />
 	public Task StartedAsync(CancellationToken cancellationToken)
 	{
+		_ticketCleanup = ForgetTicketsEveryHourAsync();
 		return Task.CompletedTask;
 	}
 
 	/// <inheritdoc />
-	public Task StoppingAsync(CancellationToken cancellationToken)
+	public async Task StoppingAsync(CancellationToken cancellationToken)
 	{
-		return Task.CompletedTask;
+		await _stopping.CancelAsync();
+		if (_ticketCleanup is not null)
+			await _ticketCleanup;
 	}
 
 	/// <inheritdoc />
@@ -361,6 +367,29 @@ internal sealed class DatabaseWriter(
 				await Task.Delay(delay, timeProvider, _abandon.Token);
 				delay = delay + delay > TimeSpan.FromSeconds(5) ? TimeSpan.FromSeconds(5) : delay + delay;
 			}
+	}
+
+	private async Task ForgetTicketsEveryHourAsync()
+	{
+		using var timer = new PeriodicTimer(TimeSpan.FromHours(1), timeProvider);
+		try
+		{
+			do
+			{
+				try
+				{
+					await ForgetOldTicketsAsync(_stopping.Token);
+				}
+				catch (Exception exception) when (exception is not OperationCanceledException)
+				{
+					logger.LogWarning(exception, "Old write tickets could not be removed; trying again in an hour");
+				}
+			} while (await timer.WaitForNextTickAsync(_stopping.Token));
+		}
+		catch (OperationCanceledException)
+		{
+			// The server is stopping.
+		}
 	}
 
 	/// <summary>Removes the tickets that are too old to be asked about any more.</summary>
