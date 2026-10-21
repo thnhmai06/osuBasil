@@ -100,7 +100,7 @@ public sealed class Room : IEquatable<Room>
 	/// <summary>Enters the room's exclusive scope, in which one state transition of the room runs one at a time.</summary>
 	/// <param name="cancellationToken">A token that cancels the wait.</param>
 	/// <returns>The scope, to dispose when done; or <see langword="null" /> when the room has closed.</returns>
-	public async Task<IAsyncDisposable?> EnterAsync(CancellationToken cancellationToken = default)
+	internal async Task<IAsyncDisposable?> EnterAsync(CancellationToken cancellationToken = default)
 	{
 		await Gate.WaitAsync(cancellationToken);
 		if (!IsClosed) return new Scope(Gate);
