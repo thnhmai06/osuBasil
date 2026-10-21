@@ -1,9 +1,10 @@
+using Basil.Application.Capabilities.Beatmaps;
 using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Basil.Application.Storage.Beatmaps;
-using Basil.Application.Storage.Common;
-using Basil.Application.Storage.Content;
+using Basil.Application.Persistence.Beatmaps;
+using Basil.Application.Persistence.Common;
+using Basil.Application.Persistence.Content;
 using Basil.Domain.Mechanics;
 using Microsoft.Extensions.Logging;
 

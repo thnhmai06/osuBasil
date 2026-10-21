@@ -16,7 +16,7 @@ players, and controlling room countdowns.
 
 Commands run using the connection of the person who typed them, so they require that person's own rights. BasilBot
 only replies; its messages and server announcements bypass user permission checks. The command handler and
-announcement handlers are implemented in `Basil.Bot.Application`, but host integration is not migrated yet.
+announcement handlers are implemented in `Basil.Bot`, but host integration is not migrated yet.
 
 Room countdowns belong to the room, not to BasilBot. A countdown that starts a round is cancelled when the round's
 settings change; countdowns stop when the round starts or is aborted or the room closes. BasilBot announces the

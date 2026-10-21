@@ -1,8 +1,8 @@
-using Basil.Application.Objects.Chat;
-using Basil.Application.Objects.Events;
-using Basil.Application.Objects.Multiplayer;
-using Basil.Application.Objects.Sessions;
-using Basil.Application.Objects.Users;
+using Basil.Application.Runtime.Chat;
+using Basil.Application.Runtime.Events;
+using Basil.Application.Runtime.Multiplayer;
+using Basil.Application.Runtime.Sessions;
+using Basil.Application.Runtime.Users;
 using Basil.Infrastructure.Runtime.Events;
 using Microsoft.Extensions.Logging;
 

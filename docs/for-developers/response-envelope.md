@@ -304,7 +304,7 @@ Use an enveloped `200` response with `data: null` instead.
 * [`Basil.Web/Middleware/ExceptionLoggingMiddleware.cs`](../../src/Basil.Web/Middleware/ExceptionLoggingMiddleware.cs): unhandled-exception logging and the `api.` host's 500-envelope mapping
 * [`Basil.Web/OpenApi/EnvelopeBuilder.cs`](../../src/Basil.Web/OpenApi/EnvelopeBuilder.cs): envelope schema construction
 * [`Basil.Web/OpenApi/EnvelopeSchemaTransformer.cs`](../../src/Basil.Web/OpenApi/EnvelopeSchemaTransformer.cs): OpenAPI response transformation
-* [`Basil.Application/Services/Multiplayer/MatchLiveSnapshotBuilder.cs`](../../src/Basil.Application/Services/Multiplayer/MatchLiveSnapshotBuilder.cs): `UserBrief` embedding
+* [`Basil.Application/Capabilities/Multiplayer/MatchLiveSnapshotBuilder.cs`](../../src/Basil.Application/Capabilities/Multiplayer/MatchLiveSnapshotBuilder.cs): `UserBrief` embedding
 * [`Basil.Infrastructure/Cache/`](../../src/Infrastructure/Cache/): cached reference resolution
 
 ## See also

@@ -3,15 +3,15 @@
 		<Project Path="src/Domain/Basil.Domain.csproj"/>
 	</Folder>
 	<Folder Name="/Sources/Bot/">
-		<Project Path="src/Bot/Application/Basil.Bot.Application.csproj"/>
+		<Project Path="src/Bot/Basil.Bot.csproj"/>
 	</Folder>
 	<Folder Name="/Sources/Application/">
-		<Project Path="src/Application/Storage/Basil.Application.Storage.csproj"/>
-		<Project Path="src/Application/Objects/Basil.Application.Objects.csproj"/>
-		<Project Path="src/Application/Services/Basil.Application.Services.csproj"/>
+		<Project Path="src/Application/Persistence/Basil.Application.Persistence.csproj"/>
+		<Project Path="src/Application/Runtime/Basil.Application.Runtime.csproj"/>
+		<Project Path="src/Application/Capabilities/Basil.Application.Capabilities.csproj"/>
 	</Folder>
 	<Folder Name="/Sources/Infrastructure/">
-		<Project Path="src/Infrastructure/Storage/Basil.Infrastructure.Storage.csproj"/>
+		<Project Path="src/Infrastructure/Persistence/Basil.Infrastructure.Persistence.csproj"/>
 		<Project Path="src/Infrastructure/Capabilities/Basil.Infrastructure.Capabilities.csproj"/>
 		<Project Path="src/Infrastructure/Runtime/Basil.Infrastructure.Runtime.csproj"/>
 	</Folder>

@@ -157,7 +157,7 @@ resulting state or response.
 
 Contract text belongs to the production code that owns that contract.
 
-For example, `src/Basil.Application/Services/Bot/MpReplies.cs` contains the `!mp` response constants. Services emit
+For example, `src/Basil.Application/Capabilities/Bot/MpReplies.cs` contains the `!mp` response constants. Services emit
 those constants and tests assert against the same symbols.
 
 ```csharp
@@ -479,7 +479,7 @@ Do not turn a unit-level behavior into an integration test merely because it eve
 ## Related code
 
 * [`tests/`](../../tests/): all Basil test projects
-* [`src/Basil.Application/Services/Bot/MpReplies.cs`](../../src/Basil.Application/Services/Bot/MpReplies.cs): production owner of `!mp` reply constants
+* [`src/Basil.Application/Capabilities/Bot/MpReplies.cs`](../../src/Basil.Application/Capabilities/Bot/MpReplies.cs): production owner of `!mp` reply constants
 * [`tests/Basil.Application.Tests/Packets/MultiplayerTestSupport.cs`](../../tests/Basil.Application.Tests/Packets/MultiplayerTestSupport.cs): shared multiplayer test fixture
 * [`tests/Basil.Infrastructure.Tests/Persistence/SqliteFixture.cs`](../../tests/Basil.Infrastructure.Tests/Persistence/SqliteFixture.cs): temporary SQLite fixture
 * [`tests/Basil.IntegrationTests/TestDoubles.cs`](../../tests/Basil.IntegrationTests/TestDoubles.cs): integration-test doubles

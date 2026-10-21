@@ -545,11 +545,11 @@ The explicit `!mp removeref` operation makes the authority change intentional an
 * [`Basil.Application/Sessions/Channels/ChannelMembershipService.cs`](../../src/Basil.Application/Sessions/Channels/ChannelMembershipService.cs): channel roster and JOIN/PART/QUIT behavior
 * [`Basil.Application/Sessions/Irc/BanchoIrcBridgeConnection.cs`](../../src/Basil.Application/Sessions/Irc/BanchoIrcBridgeConnection.cs): Bancho-to-IRC bridge
 * [`Basil.Application/Sessions/PlayerLogoutService.cs`](../../src/Basil.Application/Sessions/PlayerLogoutService.cs): game and IRC logout handling
-* [`Basil.Application/Services/Irc/IrcAuthenticationService.cs`](../../src/Basil.Application/Services/Irc/IrcAuthenticationService.cs): IRC registration and authentication
-* [`Basil.Application/Services/Irc/IrcQueryService.cs`](../../src/Basil.Application/Services/Irc/IrcQueryService.cs): IRC read-only query responses
-* [`Basil.Application/Services/Multiplayer/MatchMembershipService.cs`](../../src/Basil.Application/Services/Multiplayer/MatchMembershipService.cs): seating, host state, and empty-room lifecycle
-* [`Basil.Application/Services/Multiplayer/MatchControlService.cs`](../../src/Basil.Application/Services/Multiplayer/MatchControlService.cs): kick, ban, referee, and invite guards
-* [`Basil.Application/Services/Bot/MpCommandService.cs`](../../src/Basil.Application/Services/Bot/MpCommandService.cs): `!mp` command behavior
+* [`Basil.Application/Capabilities/Irc/IrcAuthenticationService.cs`](../../src/Basil.Application/Capabilities/Irc/IrcAuthenticationService.cs): IRC registration and authentication
+* [`Basil.Application/Capabilities/Irc/IrcQueryService.cs`](../../src/Basil.Application/Capabilities/Irc/IrcQueryService.cs): IRC read-only query responses
+* [`Basil.Application/Capabilities/Multiplayer/MatchMembershipService.cs`](../../src/Basil.Application/Capabilities/Multiplayer/MatchMembershipService.cs): seating, host state, and empty-room lifecycle
+* [`Basil.Application/Capabilities/Multiplayer/MatchControlService.cs`](../../src/Basil.Application/Capabilities/Multiplayer/MatchControlService.cs): kick, ban, referee, and invite guards
+* [`Basil.Application/Capabilities/Bot/MpCommandService.cs`](../../src/Basil.Application/Capabilities/Bot/MpCommandService.cs): `!mp` command behavior
 * [`Basil.Infrastructure/Irc/TcpIrcListener.cs`](../../src/Infrastructure/Irc/TcpIrcListener.cs)
 * [`Basil.Infrastructure/Irc/TcpIrcConnection.cs`](../../src/Infrastructure/Irc/TcpIrcConnection.cs)
 

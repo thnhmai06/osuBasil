@@ -9,21 +9,21 @@ into Application operations.
 
 ```text
 Basil.Domain                              business values                          -> (nothing)
-Basil.Application.Storage                 ports to the outside: persistence,       -> Domain
+Basil.Application.Persistence                 ports to the outside: persistence,       -> Domain
                                           capabilities, query records, paging
-Basil.Application.Services                object-free application logic            -> Application.Storage
+Basil.Application.Capabilities                object-free application logic            -> Application.Storage
                                           (every type internal)
-Basil.Application.Objects                 runtime objects, registries, root        -> Domain, Application.Storage,
+Basil.Application.Runtime                 runtime objects, registries, root        -> Domain, Application.Storage,
                                           objects, scopes, contexts, events,          Application.Services
                                           AddApplication()
-Basil.Infrastructure.Storage              implements the persistence ports         -> Application.Storage
+Basil.Infrastructure.Persistence              implements the persistence ports         -> Application.Storage
 Basil.Infrastructure.Capabilities         implements the capability ports          -> Application.Storage
 Basil.Infrastructure.Runtime              event buses, handlers, background work   -> Application.Objects
 Basil.Protocol.Bancho / .Irc              wire formats                             -> external libraries only
 Basil.Host.*                              transports                               -> Application.Objects,
                                                                                        Infrastructure, their Protocol
 Basil.Host                                composition root                         -> all projects
-Basil.Bot.Application                     BasilBot commands and announcements      -> Application.Objects
+Basil.Bot                     BasilBot commands and announcements      -> Application.Objects
 ```
 
 > **Migration status (2026-10-21).** The Domain, Application, Infrastructure and BasilBot work described here
@@ -45,20 +45,20 @@ state and no events, and references no other Basil project.
 The Bancho and IRC wire formats. They are independent of every other project, so encoding and decoding
 can be tested without starting the server. Bancho packet layouts are wire contracts.
 
-### `Basil.Application.Storage`
+### `Basil.Application.Persistence`
 
 `Application.Storage` holds the ports to the outside of the process: repository and storage ports, query records and
 paging, and the capability ports whose implementation needs external libraries (beatmapset reading, analysis, derived
 assets, the beatmap mirror, screenshot inspection). It also holds the few plain data types that both Services and
 Objects use in their signatures (login and registration inputs, score submission inputs, import and scan results).
 
-### `Basil.Application.Services`
+### `Basil.Application.Capabilities`
 
 `Application.Services` holds application logic that needs no live object: account checks, beatmapset indexing, score
 validation and recording. It takes and returns records and plain results, never creates or receives a runtime
 object, never publishes an event and keeps no running state. Every type is `internal`; only Objects uses it.
 
-### `Basil.Application.Objects`
+### `Basil.Application.Runtime`
 
 `Application.Objects` holds the runtime objects, registries and root objects, their short-lived scoped views,
 contexts, events and results, and every coordination between objects. It calls the services for object-free logic and
@@ -152,7 +152,7 @@ parts the automatic channels. Runtime objects such as `Room` and `User` have no 
 * **Application publishes events; it never consumes them.** `IEventPublisher<T>` (`Publish`) is the only event port
   and `IEventHandler<T>` is the handler contract, both in Application.Objects; Services never publish. Infrastructure.Runtime implements the
   port with one `EventBus<T>` per event category, which delivers each event in order to the handlers in
-  Infrastructure.Runtime or `Basil.Bot.Application`.
+  Infrastructure.Runtime or `Basil.Bot`.
 * **Identity follows the basis object.** `Room` is identified by its `Match`, a general chat channel by its
   name. Recreated runtime objects compare by reference, so late cleanup carrying an old object cannot touch
   its replacement.
@@ -269,7 +269,7 @@ if the rule is missing, add it to the acted-on object. See [`bancho.md`](bancho.
 
 ### Adding a reaction to something that happens
 
-Register a handler in the appropriate consumer (`Infrastructure.Runtime` or `Basil.Bot.Application`) for the
+Register a handler in the appropriate consumer (`Infrastructure.Runtime` or `Basil.Bot`) for the
 relevant event category, then call the owning object's operation. Do not add an unrelated reaction to the
 operation that caused the event.
 
@@ -305,12 +305,12 @@ scope.
 
 ## Related code
 
-* `src/Application/Objects/`: runtime objects, registries, scopes, contexts, events and `AddApplication()`.
-* `src/Application/Services/`: object-free application logic (internal).
-* `src/Application/Storage/`: repository, storage and capability ports, query records and paging.
-* `src/Infrastructure/Storage/`, `src/Infrastructure/Capabilities/`: implementations of those ports.
+* `src/Application/Runtime/`: runtime objects, registries, scopes, contexts, events and `AddApplication()`.
+* `src/Application/Capabilities/`: object-free application logic (internal).
+* `src/Application/Persistence/`: repository, storage and capability ports, query records and paging.
+* `src/Infrastructure/Persistence/`, `src/Infrastructure/Capabilities/`: implementations of those ports.
 : event buses, handlers and background work.
-* `src/Bot/Application/`: BasilBot command and announcement handlers.
+* `src/Bot/`: BasilBot command and announcement handlers.
 
 ## Where to go from here
 

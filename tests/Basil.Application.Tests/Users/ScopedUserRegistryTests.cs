@@ -1,4 +1,4 @@
-using Basil.Application.Storage.Users;
+using Basil.Application.Persistence.Users;
 using Basil.Application.Tests.Support;
 using Basil.Domain.Common;
 using Basil.Domain.Permissions;

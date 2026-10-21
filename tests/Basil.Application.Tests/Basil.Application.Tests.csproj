@@ -27,8 +27,8 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\Domain\Basil.Domain.csproj"/>
-		<ProjectReference Include="..\..\src\Application\Storage\Basil.Application.Storage.csproj"/>
-		<ProjectReference Include="..\..\src\Application\Objects\Basil.Application.Objects.csproj"/>
+		<ProjectReference Include="..\..\src\Application\Persistence\Basil.Application.Persistence.csproj"/>
+		<ProjectReference Include="..\..\src\Application\Runtime\Basil.Application.Runtime.csproj"/>
 	</ItemGroup>
 
 </Project>

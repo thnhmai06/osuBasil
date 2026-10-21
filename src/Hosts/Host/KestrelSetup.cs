@@ -25,7 +25,7 @@ internal static class KestrelSetup
 		{
 			options.AddServerHeader = false;
 
-			var logger = options.ApplicationServices.GetService<ILoggerFactory>()?
+			var logger = options.ApplicationCapabilities.GetService<ILoggerFactory>()?
 				.CreateLogger(typeof(Bootstrap).FullName ?? "Bootstrap");
 
 			var serverSection = context.Configuration.GetSection(ServerOptions.SectionName);

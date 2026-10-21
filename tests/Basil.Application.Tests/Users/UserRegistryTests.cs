@@ -1,6 +1,6 @@
 using System.Net;
-using Basil.Application.Objects.Sessions;
-using Basil.Application.Storage.Users;
+using Basil.Application.Runtime.Sessions;
+using Basil.Application.Persistence.Users;
 using Basil.Application.Tests.Support;
 using Basil.Domain.Common;
 using Basil.Domain.Permissions;

@@ -1,6 +1,7 @@
+using Basil.Application.Capabilities.Beatmaps;
 using System.IO.Compression;
 using System.Text;
-using Basil.Application.Storage.Beatmaps;
+using Basil.Application.Persistence.Beatmaps;
 using Basil.Domain.Mechanics;
 using osu.Game.IO;
 using Decoder = osu.Game.Beatmaps.Formats.Decoder;

@@ -1,5 +1,5 @@
 using System.Threading.Channels;
-using Basil.Application.Objects.Events;
+using Basil.Application.Runtime.Events;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;

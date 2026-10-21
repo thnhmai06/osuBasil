@@ -53,7 +53,7 @@ The IRC gateway allows real IRC clients and tools such as osu-ahr to connect alo
 
 Chat commands (`!mp`, `!help`, `!roll`, `!where`, `!faq`, and the staff commands) and chat announcements (anticheat
 warnings, round and room notices) are part of the server, provided by BasilBot: a fixed user (id 1) that nobody can
-sign in as or act for, and that is the voice the server speaks with. The command handler and announcers are implemented in `Basil.Bot.Application`; host
+sign in as or act for, and that is the voice the server speaks with. The command handler and announcers are implemented in `Basil.Bot`; host
 integration is still pending. A command is an entry point like IRC: it runs against objects scoped to the connection
 of the user who typed it, and the bot only replies. Room countdowns (a delayed start, a plain timer, cancelling it)
 are features of the room; BasilBot announces their marks. See the generated BasilBot reference at
@@ -201,7 +201,7 @@ Basil first reintroduced `BanchoBot` as a special session inside the server. The
 ([`plans/identity-permissions-plan-20261005.md`](../../plans/identity-permissions-plan-20261005.md)) moved the commands
 out to BasilBot as a separate client. The 2026-10-16 redesign brought them back as a server entry point: BasilBot is a
 fixed user (id 1) that nobody can sign in as, commands run using the typist's connection, and the bot only replies
-and announces. The command and announcement handlers are implemented in `Basil.Bot.Application`; transport
+and announces. The command and announcement handlers are implemented in `Basil.Bot`; transport
 integration remains planned for the Host phase; the bot's own connection is kept by the server. The earlier "special session" failed
 because commands acted with the bot's own rights; that does not return: commands use the typist's rights, and the bot
 only speaks for the server.

@@ -87,7 +87,7 @@ same state+event multiplexing the per-match `main` and per-slot streams use.
 ## Shared per-match state
 
 The patch a mutation produces is computed once per match, not once per connection: a
-[`SnapshotChannel<T>`](../../src/Basil.Application/Services/SnapshotChannel.cs) holds the one "last published" state for
+[`SnapshotChannel<T>`](../../src/Basil.Application/Capabilities/SnapshotChannel.cs) holds the one "last published" state for
 each stream, and every publish diffs against that shared state and broadcasts the same patch bytes to every subscriber
 of that stream.
 
@@ -158,7 +158,7 @@ allocates a version and publishes itself after the mutation completes.
 ## Subscriber registry and match close
 
 Every match-scoped live connection registers with that match's
-[`SseSubscriberRegistry`](../../src/Basil.Application/Services/SseSubscriberRegistry.cs) for as long as it is open. The
+[`SseSubscriberRegistry`](../../src/Basil.Application/Capabilities/SseSubscriberRegistry.cs) for as long as it is open. The
 registry has two states, OPEN and CLOSED, and the transition is atomic with respect to registration: a connection that
 subscribes concurrently with the match closing either joins the OPEN registry and is completed moments later, or finds
 the registry already CLOSED and is completed immediately — there is no window where a subscription is silently missed.
@@ -332,7 +332,7 @@ Publishers should not construct merge patches themselves.
 
 A publisher knows that state changed, not what the patch relative to the previous published state should look like.
 
-Patch generation belongs to the stream's shared [`SnapshotChannel`](../../src/Basil.Application/Services/SnapshotChannel.cs), which owns the previous snapshot for that stream.
+Patch generation belongs to the stream's shared [`SnapshotChannel`](../../src/Basil.Application/Capabilities/SnapshotChannel.cs), which owns the previous snapshot for that stream.
 
 ### Backpressure is a per-stream decision
 
@@ -381,10 +381,10 @@ If a change occurs while `MatchSession.Lock` is held, publishing must not wait f
 * [`Basil.Application/Sessions/Multiplayer/IMatchLiveEvents.cs`](../../src/Basil.Application/Sessions/Multiplayer/IMatchLiveEvents.cs): match live event source
 * [`Basil.Application/Sessions/Spectating/IPlayerInputEvents.cs`](../../src/Basil.Application/Sessions/Spectating/IPlayerInputEvents.cs): spectator input event source
 * [`Basil.Application/Sessions/Spectating/IPlayerStatusEvents.cs`](../../src/Basil.Application/Sessions/Spectating/IPlayerStatusEvents.cs): player status event source
-* [`Basil.Application/Services/Multiplayer/MatchLiveSnapshotBuilder.cs`](../../src/Basil.Application/Services/Multiplayer/MatchLiveSnapshotBuilder.cs): live match state construction
-* [`Basil.Application/Services/SnapshotChannel.cs`](../../src/Basil.Application/Services/SnapshotChannel.cs): shared per-stream snapshot + diff
-* [`Basil.Application/Services/SseSubscriberRegistry.cs`](../../src/Basil.Application/Services/SseSubscriberRegistry.cs): per-match subscriber lifecycle, completed on match close
-* [`Basil.Application/Services/BoundedSseChannel.cs`](../../src/Basil.Application/Services/BoundedSseChannel.cs): bounded-stream eviction and gap marker
+* [`Basil.Application/Capabilities/Multiplayer/MatchLiveSnapshotBuilder.cs`](../../src/Basil.Application/Capabilities/Multiplayer/MatchLiveSnapshotBuilder.cs): live match state construction
+* [`Basil.Application/Capabilities/SnapshotChannel.cs`](../../src/Basil.Application/Capabilities/SnapshotChannel.cs): shared per-stream snapshot + diff
+* [`Basil.Application/Capabilities/SseSubscriberRegistry.cs`](../../src/Basil.Application/Capabilities/SseSubscriberRegistry.cs): per-match subscriber lifecycle, completed on match close
+* [`Basil.Application/Capabilities/BoundedSseChannel.cs`](../../src/Basil.Application/Capabilities/BoundedSseChannel.cs): bounded-stream eviction and gap marker
 
 ## See also
 

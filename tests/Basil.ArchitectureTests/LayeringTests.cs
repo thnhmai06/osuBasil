@@ -14,17 +14,17 @@ public class LayeringTests
 	private static readonly Assembly Domain = typeof(Basil.Domain.AssemblyMarker).Assembly;
 	private static readonly Assembly ProtocolBancho = typeof(Basil.Protocol.Bancho.AssemblyMarker).Assembly;
 	private static readonly Assembly ProtocolIrc = typeof(Basil.Protocol.Irc.AssemblyMarker).Assembly;
-	private static readonly Assembly Storage = Assembly.Load("Basil.Application.Storage");
-	private static readonly Assembly Services = Assembly.Load("Basil.Application.Services");
-	private static readonly Assembly Objects = Assembly.Load("Basil.Application.Objects");
-	private static readonly Assembly InfrastructureStorage = Assembly.Load("Basil.Infrastructure.Storage");
+	private static readonly Assembly Storage = Assembly.Load("Basil.Application.Persistence");
+	private static readonly Assembly Services = Assembly.Load("Basil.Application.Capabilities");
+	private static readonly Assembly Objects = Assembly.Load("Basil.Application.Runtime");
+	private static readonly Assembly InfrastructurePersistence = Assembly.Load("Basil.Infrastructure.Persistence");
 	private static readonly Assembly InfrastructureCapabilities = Assembly.Load("Basil.Infrastructure.Capabilities");
 	private static readonly Assembly InfrastructureRuntime = Assembly.Load("Basil.Infrastructure.Runtime");
-	private static readonly Assembly Bot = Assembly.Load("Basil.Bot.Application");
+	private static readonly Assembly Bot = Assembly.Load("Basil.Bot");
 
-	private const string ApplicationObjects = "Basil.Application.Objects";
-	private const string ApplicationServices = "Basil.Application.Services";
-	private const string ApplicationStorage = "Basil.Application.Storage";
+	private const string ApplicationRuntime = "Basil.Application.Runtime";
+	private const string ApplicationCapabilities = "Basil.Application.Capabilities";
+	private const string ApplicationPersistence = "Basil.Application.Persistence";
 	private const string Infrastructure = "Basil.Infrastructure";
 	private const string Host = "Basil.Host";
 	private const string Protocol = "Basil.Protocol";
@@ -46,20 +46,20 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void ApplicationStorage_DependsOnlyOnDomain()
+	public void ApplicationPersistence_DependsOnlyOnDomain()
 	{
-		AssertNoDependency(Storage, ApplicationObjects, ApplicationServices, Infrastructure, Host, Protocol,
+		AssertNoDependency(Storage, ApplicationRuntime, ApplicationCapabilities, Infrastructure, Host, Protocol,
 			"Basil.Bot");
 	}
 
 	[Fact]
-	public void ApplicationServices_DoNotSeeObjects()
+	public void ApplicationCapabilities_DoNotSeeObjects()
 	{
-		AssertNoDependency(Services, ApplicationObjects, Infrastructure, Host, Protocol, "Basil.Bot");
+		AssertNoDependency(Services, ApplicationRuntime, Infrastructure, Host, Protocol, "Basil.Bot");
 	}
 
 	[Fact]
-	public void ApplicationServices_HaveNoPublicType()
+	public void ApplicationCapabilities_HaveNoPublicType()
 	{
 		var result = Types.InAssembly(Services).That().AreNotNested().Should().NotBePublic().GetResult();
 
@@ -67,7 +67,7 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void ApplicationObjects_DoNotDependOnInfrastructureHostsOrProtocol()
+	public void ApplicationRuntime_DoNotDependOnInfrastructureHostsOrProtocol()
 	{
 		AssertNoDependency(Objects, Infrastructure, Host, Protocol, "Basil.Bot");
 	}
@@ -77,24 +77,24 @@ public class LayeringTests
 	[InlineData("Capabilities")]
 	public void InfrastructurePortImplementations_DependOnlyOnTheStoragePorts(string project)
 	{
-		var assembly = project == "Storage" ? InfrastructureStorage : InfrastructureCapabilities;
-		AssertNoDependency(assembly, ApplicationObjects, ApplicationServices, Host, Protocol, "Basil.Bot");
+		var assembly = project == "Storage" ? InfrastructurePersistence : InfrastructureCapabilities;
+		AssertNoDependency(assembly, ApplicationRuntime, ApplicationCapabilities, Host, Protocol, "Basil.Bot");
 	}
 
 	[Fact]
 	public void InfrastructureRuntime_DoesNotSeeServicesOrTheHosts()
 	{
-		AssertNoDependency(InfrastructureRuntime, ApplicationServices, Host, Protocol);
+		AssertNoDependency(InfrastructureRuntime, ApplicationCapabilities, Host, Protocol);
 	}
 
 	[Fact]
-	public void BotApplication_DoesNotSeeServicesInfrastructureOrTheHosts()
+	public void Bot_DoesNotSeeServicesInfrastructureOrTheHosts()
 	{
-		AssertNoDependency(Bot, ApplicationServices, Infrastructure, Host, Protocol);
+		AssertNoDependency(Bot, ApplicationCapabilities, Infrastructure, Host, Protocol);
 	}
 
 	[Fact]
-	public void ApplicationObjects_HaveNoSessionNamedType()
+	public void ApplicationRuntime_HaveNoSessionNamedType()
 	{
 		var result = Types.InAssembly(Objects).That().ArePublic().Should().NotHaveNameMatching(".*Session$")
 			.GetResult();
@@ -103,7 +103,7 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void ApplicationObjects_HaveNoPublicServiceContract()
+	public void ApplicationRuntime_HaveNoPublicServiceContract()
 	{
 		var result = Types.InAssembly(Objects).That().AreInterfaces().And().ArePublic().Should()
 			.NotHaveNameMatching("^I.*Service$").GetResult();

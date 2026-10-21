@@ -1,7 +1,7 @@
 using Basil.Application.Shared.Configuration;
 using Basil.Host.Api.Shared.Http;
 using Basil.Host.Api.Shared.Http.Middleware;
-using Basil.Infrastructure.Storage;
+using Basil.Infrastructure.Persistence;
 using Microsoft.Extensions.Options;
 using SixLabors.ImageSharp.Web.DependencyInjection;
 using Velopack;

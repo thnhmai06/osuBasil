@@ -1,4 +1,4 @@
-using Basil.Application.Objects.Sessions;
+using Basil.Application.Runtime.Sessions;
 using Basil.Application.Tests.Support;
 
 namespace Basil.Application.Tests.Composition;

@@ -1,4 +1,5 @@
-using Basil.Application.Storage.Content;
+using Basil.Application.Capabilities.Content;
+using Basil.Application.Persistence.Content;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Formats.Png;

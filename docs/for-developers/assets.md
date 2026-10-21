@@ -187,4 +187,4 @@ See [`configuration.md`](../for-technicians/configuration.md) for the complete `
   `BeatmapsetAssetRoutes`.
 * `src/Basil.Web/Program.cs` — `ConfigureImageSharp`.
 * `src/Domain/Content/MenuBanner.cs` — banner metadata model.
-* `src/Basil.Application/Services/Content/MenuBannerService.cs` — banner metadata service.
+* `src/Basil.Application/Capabilities/Content/MenuBannerService.cs` — banner metadata service.

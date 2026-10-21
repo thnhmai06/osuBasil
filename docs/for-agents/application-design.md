@@ -190,7 +190,7 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   has no read end. Infrastructure.Runtime implements it with one `EventBus<T>` per category (`UserEvent`,
   `RoomEvent`, `LobbyEvent`, `ChannelEvent`, `BeatmapsetEvent`, `ScoreEvent`, `AnticheatEvent`): the bus
   stamps `Timestamp`, keeps the events in order in its own queue and calls the `IEventHandler<T>` implementations
-  of Infrastructure.Runtime or `Basil.Bot.Application` one after another. The bus resolves its handlers when it
+  of Infrastructure.Runtime or `Basil.Bot` one after another. The bus resolves its handlers when it
   starts delivering, not when it is built (a handler reaches objects that publish to buses, so resolving them in the
   constructor makes buses wait for each other). Storage and Services never publish (a service returns what happened and the object publishes it). One operation publishes one event carrying
   its whole consequence. Events sit in a nested category tree (`Event` ← `RoomEvent` ← `RoomSlotEvent` ←

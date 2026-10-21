@@ -1,5 +1,5 @@
-using Basil.Application.Objects.Events;
-using Basil.Application.Objects.Scores;
+using Basil.Application.Runtime.Events;
+using Basil.Application.Runtime.Scores;
 
 namespace Basil.Infrastructure.Runtime.Scores;
 

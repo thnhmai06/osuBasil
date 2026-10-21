@@ -1,10 +1,10 @@
-using Basil.Application.Objects.Anticheat;
-using Basil.Application.Objects.Beatmaps;
-using Basil.Application.Objects.Chat;
-using Basil.Application.Objects.Events;
-using Basil.Application.Objects.Multiplayer.Events;
-using Basil.Application.Objects.Scores;
-using Basil.Application.Objects.Sessions;
+using Basil.Application.Runtime.Anticheat;
+using Basil.Application.Runtime.Beatmaps;
+using Basil.Application.Runtime.Chat;
+using Basil.Application.Runtime.Events;
+using Basil.Application.Runtime.Multiplayer.Events;
+using Basil.Application.Runtime.Scores;
+using Basil.Application.Runtime.Sessions;
 using Basil.Infrastructure.Runtime.Beatmaps;
 using Basil.Infrastructure.Runtime.Events;
 using Basil.Infrastructure.Runtime.Multiplayer;

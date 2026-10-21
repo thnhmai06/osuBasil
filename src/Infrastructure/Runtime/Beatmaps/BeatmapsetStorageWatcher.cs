@@ -1,5 +1,5 @@
-using Basil.Application.Objects.Beatmaps;
-using Basil.Application.Storage.Beatmaps;
+using Basil.Application.Runtime.Beatmaps;
+using Basil.Application.Persistence.Beatmaps;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 

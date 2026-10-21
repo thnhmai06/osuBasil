@@ -326,17 +326,17 @@ verify a change with the eight projects that do build, one at a time:
 
 ```bash
 dotnet build src/Domain --nologo -v q
-dotnet build src/Application/Storage --nologo -v q
-dotnet build src/Application/Objects --nologo -v q
-dotnet build src/Application/Services --nologo -v q
-dotnet build src/Infrastructure/Storage --nologo -v q
+dotnet build src/Application/Persistence --nologo -v q
+dotnet build src/Application/Runtime --nologo -v q
+dotnet build src/Application/Capabilities --nologo -v q
+dotnet build src/Infrastructure/Persistence --nologo -v q
 dotnet build src/Infrastructure/Capabilities --nologo -v q
 dotnet build src/Infrastructure/Runtime --nologo -v q
-dotnet build src/Bot/Application --nologo -v q
+dotnet build src/Bot --nologo -v q
 ```
 
 A change to a constructor, a context or `DependencyInjection.cs` also needs the container check: a throwaway
-console project that calls the registrations of the application (`AddApplication()` of Application.Objects), `AddInfrastructureRuntime()` and `AddBotApplication()`,
+console project that calls the registrations of the application (`AddApplication()` of Application.Objects), `AddInfrastructureRuntime()` and `AddBot()`,
 registers a stub for every external port (storage and capability), builds the provider with `ValidateOnBuild`, and
 resolves every registration (factory lambdas included). Run it with a timeout: a dependency cycle shows up as a hang,
 not as an error. It must finish without a cycle or a missing registration.
@@ -352,19 +352,19 @@ See [`docs/for-technicians/docker.md`](docs/for-technicians/docker.md) for Docke
 ```text
 Basil.Domain                     business model and its own validity          -> (nothing)
 
-Basil.Application.Storage        ports to the outside of the process: persistent  -> Domain
+Basil.Application.Persistence        ports to the outside of the process: persistent  -> Domain
                                  (repositories, storages, query records, paging)
                                  and capability ports (beatmapset reader,
                                  analyser, assets, mirror, screenshot inspector)
-Basil.Application.Services       application logic that needs no live object:     -> Application.Storage
+Basil.Application.Capabilities       application logic that needs no live object:     -> Application.Storage
                                  it takes and returns records and results,
                                  never publishes an event; every type internal
-Basil.Application.Objects        the live objects and what they do: runtime       -> Domain, Application.Storage,
+Basil.Application.Runtime        the live objects and what they do: runtime       -> Domain, Application.Storage,
                                  objects, scopes, contexts, events, registries,      Application.Services
                                  root objects, the coordination between
                                  objects; the public AddApplication()
 
-Basil.Infrastructure.Storage     implements the persistent ports: PostgreSQL,    -> Application.Storage
+Basil.Infrastructure.Persistence     implements the persistent ports: PostgreSQL,    -> Application.Storage
                                  files, memory, migrations
 Basil.Infrastructure.Capabilities implements the capability ports: osu!          -> Application.Storage
                                  rulesets, FFMpegCore, beatmap mirror, ImageSharp
@@ -379,7 +379,7 @@ Basil.Host.Bancho / .Irc / .Api  transports                                     
 Basil.Host                       entry point, composition, logging,             -> everything
                                  diagnostics, LAN advertising
 
-Basil.Bot.Application            BasilBot: chat commands and their replies,     -> Application.Objects
+Basil.Bot            BasilBot: chat commands and their replies,     -> Application.Objects
                                  an entry point of the server (not a client)
 ```
 
@@ -413,7 +413,7 @@ references only Application.Storage (Storage and Capabilities) or Application.Ob
 Application.Services. The hosts reference Application.Objects and call `AddApplication()`.
 
 > **Migration status (2026-10-21).** The object-scope redesign and the service moves are implemented across Domain,
-> Application, Infrastructure.Runtime and Basil.Bot.Application: behaviour belongs to the owning runtime object and
+> Application, Infrastructure.Runtime and Basil.Bot: behaviour belongs to the owning runtime object and
 > permission-dependent operations use its short-lived `ScopeTo(connection)` view; the user, room, lobby, channel,
 > beatmapset and score services were absorbed by the objects that own them (`UserRegistry`, `Lobby`, `Room`,
 > `GeneralChannelRegistry`, `Beatmapsets`, `BanchoConnection`). The reference is flipped (Objects ->
@@ -453,7 +453,7 @@ Servers/       Server, ScopedServer, server contexts and server resources
 ```
 
 Event-handler contracts belong to Application.Objects; event buses and concrete handlers live in
-Infrastructure.Runtime or the consumer that owns them, including `Basil.Bot.Application`. Host configuration
+Infrastructure.Runtime or the consumer that owns them, including `Basil.Bot`. Host configuration
 (ports, TLS, data paths) belongs to the hosts. BasilBot commands and announcements are server features: a
 command is an entry point that uses the typist's scoped objects, and the bot only replies. Query **records**
 (the filter a repository applies, with `Parse` for the search syntax) belong to Storage; routes and handlers
@@ -476,7 +476,7 @@ The detailed rules moved out of this file so each can be read when needed. **Rea
 
 * [`docs/for-agents/application-design.md`](docs/for-agents/application-design.md): Domain models, Application objects, scopes (`ScopeTo`), contexts, events, channels, naming. Before touching `src/Domain`, `src/Application`, `src/Bot`.
 * [`docs/for-agents/identity-permissions.md`](docs/for-agents/identity-permissions.md): permissions, privileges, restrictions, hierarchy, sessions, BasilBot. Before touching users, connections, permissions or the bot.
-* [`docs/for-agents/persistence.md`](docs/for-agents/persistence.md): repositories, byte storages, memory-first model, beatmapset storage. Before touching a repository, a storage or `src/Infrastructure/Storage`.
+* [`docs/for-agents/persistence.md`](docs/for-agents/persistence.md): repositories, byte storages, memory-first model, beatmapset storage. Before touching a repository, a storage or `src/Infrastructure/Persistence`.
 * [`docs/for-agents/code-style.md`](docs/for-agents/code-style.md): C# code style and IDE-suggestion rules. Before writing or reviewing C#.
 
 ### Important invariants

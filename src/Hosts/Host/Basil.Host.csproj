@@ -14,7 +14,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\Infrastructure\Storage\Basil.Infrastructure.Storage.csproj"/>
+		<ProjectReference Include="..\..\Infrastructure\Persistence\Basil.Infrastructure.Persistence.csproj"/>
 		<ProjectReference Include="..\..\Infrastructure\Capabilities\Basil.Infrastructure.Capabilities.csproj"/>
 		<ProjectReference Include="..\..\Infrastructure\Runtime\Basil.Infrastructure.Runtime.csproj"/>
 		<ProjectReference Include="..\Bancho\Basil.Host.Bancho.csproj"/>

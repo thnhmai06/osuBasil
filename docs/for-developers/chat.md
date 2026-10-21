@@ -101,17 +101,17 @@ BasilBot is online with a permanent `User` and a `BotConnection` that the server
 
 ## Related code
 
-* [`Channel.cs`](../../src/Application/Objects/Chat/Channel.cs): channel state and `ScopeTo`
-* [`ScopedChannel.cs`](../../src/Application/Objects/Chat/ScopedChannel.cs): join, part and post operations
-* [`ScopedGeneralChannel.cs`](../../src/Application/Objects/Chat/ScopedGeneralChannel.cs): general-channel configuration and deletion
-* [`ChannelRules.cs`](../../src/Application/Objects/Chat/ChannelRules.cs): read and write rules by kind
-* [`ChannelResults.cs`](../../src/Application/Objects/Chat/ChannelResults.cs): operation outcomes
-* [`GeneralChannelRegistry.cs`](../../src/Application/Objects/Chat/GeneralChannelRegistry.cs): general-channel ownership and the automatic joins and parts
-* [`GeneralChannel.cs`](../../src/Application/Objects/Chat/GeneralChannel.cs), [`PmChannel.cs`](../../src/Application/Objects/Chat/PmChannel.cs): general and private-message channels; [`GeneralChannelRecord.cs`](../../src/Domain/Chat/GeneralChannelRecord.cs): the stored general channel
-* [`RoomChannel.cs`](../../src/Application/Objects/Multiplayer/Rooms/RoomChannel.cs), [`SpectatorChannel.cs`](../../src/Application/Objects/Sessions/SpectatorChannel.cs): room and spectator channels
-* [`User.cs`](../../src/Application/Objects/Users/User.cs), [`ScopedUser.cs`](../../src/Application/Objects/Users/ScopedUser.cs): the user's online state (PM channel, away message, connections)
-* [`ScopedBanchoConnection.cs`](../../src/Application/Objects/Sessions/ScopedBanchoConnection.cs): spectator operations
-* [`Room.cs`](../../src/Application/Objects/Multiplayer/Rooms/Room.cs), [`RoomCountdown.cs`](../../src/Application/Objects/Multiplayer/Rooms/RoomCountdown.cs): room ownership and countdown
+* [`Channel.cs`](../../src/Application/Runtime/Chat/Channel.cs): channel state and `ScopeTo`
+* [`ScopedChannel.cs`](../../src/Application/Runtime/Chat/ScopedChannel.cs): join, part and post operations
+* [`ScopedGeneralChannel.cs`](../../src/Application/Runtime/Chat/ScopedGeneralChannel.cs): general-channel configuration and deletion
+* [`ChannelRules.cs`](../../src/Application/Runtime/Chat/ChannelRules.cs): read and write rules by kind
+* [`ChannelResults.cs`](../../src/Application/Runtime/Chat/ChannelResults.cs): operation outcomes
+* [`GeneralChannelRegistry.cs`](../../src/Application/Runtime/Chat/GeneralChannelRegistry.cs): general-channel ownership and the automatic joins and parts
+* [`GeneralChannel.cs`](../../src/Application/Runtime/Chat/GeneralChannel.cs), [`PmChannel.cs`](../../src/Application/Runtime/Chat/PmChannel.cs): general and private-message channels; [`GeneralChannelRecord.cs`](../../src/Domain/Chat/GeneralChannelRecord.cs): the stored general channel
+* [`RoomChannel.cs`](../../src/Application/Runtime/Multiplayer/Rooms/RoomChannel.cs), [`SpectatorChannel.cs`](../../src/Application/Runtime/Sessions/SpectatorChannel.cs): room and spectator channels
+* [`User.cs`](../../src/Application/Runtime/Users/User.cs), [`ScopedUser.cs`](../../src/Application/Runtime/Users/ScopedUser.cs): the user's online state (PM channel, away message, connections)
+* [`ScopedBanchoConnection.cs`](../../src/Application/Runtime/Sessions/ScopedBanchoConnection.cs): spectator operations
+* [`Room.cs`](../../src/Application/Runtime/Multiplayer/Rooms/Room.cs), [`RoomCountdown.cs`](../../src/Application/Runtime/Multiplayer/Rooms/RoomCountdown.cs): room ownership and countdown
 
 ## See also
 

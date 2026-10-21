@@ -1,5 +1,7 @@
-using Basil.Application.Storage.Beatmaps;
-using Basil.Application.Storage.Content;
+using Basil.Application.Capabilities.Content;
+using Basil.Application.Capabilities.Beatmaps;
+using Basil.Application.Persistence.Beatmaps;
+using Basil.Application.Persistence.Content;
 using Basil.Infrastructure.Capabilities.Beatmaps;
 using Basil.Infrastructure.Capabilities.Content;
 using Microsoft.Extensions.DependencyInjection;

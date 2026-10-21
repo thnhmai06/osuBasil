@@ -127,18 +127,18 @@ match and returns the live instance of each; a row whose deletion is still queue
 
 ### Migrations
 
-Migration scripts are `Migrations/NNN_name.sql`, embedded in `Basil.Infrastructure.Storage`. At startup the pending
+Migration scripts are `Migrations/NNN_name.sql`, embedded in `Basil.Infrastructure.Persistence`. At startup the pending
 scripts are applied in version order in one transaction, and the applied version is recorded in `schema_version`;
 when one fails, the database is left as it was. During the rework the baseline (`001_baseline.sql`) is edited in
 place, so a development database is recreated when it changes.
 
 ## Related code
 
-* `src/Infrastructure/Storage/Common/Database/` — `DatabaseWriter`, `DatabaseReader`, `DatabaseMigrator`
-* `src/Infrastructure/Storage/Common/Writing/` — `Root`, `WriteCommand`, environment errors
-* `src/Infrastructure/Storage/Memory/` — `MemoryRepository`, `IdentityMap`, `WeakIndex`, `OwnedLists`
-* `src/Infrastructure/Storage/Migrations/001_baseline.sql` — the schema
-* `src/Infrastructure/Storage/StorageStartup.cs` — migration and resident loading at startup
+* `src/Infrastructure/Persistence/Common/Database/` — `DatabaseWriter`, `DatabaseReader`, `DatabaseMigrator`
+* `src/Infrastructure/Persistence/Common/Writing/` — `Root`, `WriteCommand`, environment errors
+* `src/Infrastructure/Persistence/Memory/` — `MemoryRepository`, `IdentityMap`, `WeakIndex`, `OwnedLists`
+* `src/Infrastructure/Persistence/Migrations/001_baseline.sql` — the schema
+* `src/Infrastructure/Persistence/StorageStartup.cs` — migration and resident loading at startup
 
 ## See also
 

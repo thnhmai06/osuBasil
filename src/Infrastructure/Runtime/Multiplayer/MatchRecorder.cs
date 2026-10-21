@@ -1,6 +1,6 @@
-using Basil.Application.Objects.Events;
-using Basil.Application.Objects.Multiplayer.Events;
-using Basil.Application.Storage.Multiplayer;
+using Basil.Application.Runtime.Events;
+using Basil.Application.Runtime.Multiplayer.Events;
+using Basil.Application.Persistence.Multiplayer;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 
