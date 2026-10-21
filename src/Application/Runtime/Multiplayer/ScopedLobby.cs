@@ -122,6 +122,24 @@ public sealed class ScopedLobby : Scoped<Permissions>
 		return (room, RoomOutcome.Ok);
 	}
 
+	/// <summary>Finds an open room the scoped connection may see.</summary>
+	/// <param name="id">The room's id.</param>
+	/// <returns>
+	///     The room; <see langword="null" /> when there is no open room with the id, or when the room is private and the
+	///     connection neither plays in it, watches it, manages it nor holds <see cref="Permissions.RoomViewPrivate" />.
+	/// </returns>
+	public Room? Find(int id)
+	{
+		if (!Lobby.Rooms.TryGetValue(id, out var room) || room.IsClosed) return null;
+
+		var canSee = !room.Settings.IsPrivate
+		             || room.Slots.Find(By.Record) is not null
+		             || room.Members.Observers.Any(observer => observer.Record.Equals(By.Record))
+		             || room.Authority.IsManagedBy(By.Record)
+		             || Require(Permissions.RoomViewPrivate) is null;
+		return canSee ? room : null;
+	}
+
 	/// <summary>Starts watching the multiplayer lobby.</summary>
 	/// <exception cref="ArgumentException">The scoped connection is not an osu! client.</exception>
 	public void Watch()
