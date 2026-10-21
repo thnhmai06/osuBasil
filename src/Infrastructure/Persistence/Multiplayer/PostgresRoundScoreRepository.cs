@@ -5,7 +5,7 @@ using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Infrastructure.Persistence.Postgres;
 using Basil.Infrastructure.Persistence.Memory;
-using Dapper;
+using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Persistence.Multiplayer;
 
@@ -22,19 +22,15 @@ internal sealed class PostgresRoundScoreRepository(
 	public async Task<RoundScore> RecordAsync(RoundScore roundScore, CancellationToken cancellationToken = default)
 	{
 		var round = await LiveAsync(roundScore.Round, cancellationToken);
-		var saved = writer.SaveAsync(Root.Match(round.Match.Id), (GetType(), roundScore.Score.Id), new WriteCommand(
-			"""
-			insert into round_scores (score_id, match_id, round_number, team)
-			values (@ScoreId, @MatchId, @RoundNumber, @Team)
-			on conflict (score_id) do update set match_id = excluded.match_id, round_number = excluded.round_number, team = excluded.team
-			""",
-			new
-			{
-				ScoreId = roundScore.Score.Id,
-				MatchId = round.Match.Id,
-				RoundNumber = round.Index,
-				Team = roundScore.Team is { } team ? (int)team : (int?)null
-			}));
+		var row = new RoundScoreRow
+		{
+			ScoreId = roundScore.Score.Id,
+			MatchId = round.Match.Id,
+			RoundNumber = round.Index,
+			Team = roundScore.Team is { } team ? (int)team : null
+		};
+		var saved = writer.SaveAsync(Root.Match(row.MatchId), (GetType(), row.ScoreId), new WriteCommand((context, token) =>
+			context.UpsertAsync(row, stored => stored.ScoreId == row.ScoreId, token)));
 		_byRound.Change((round.Match.Id, round.Index), round, list => Insert(list, roundScore), saved);
 		return roundScore;
 	}
@@ -45,14 +41,10 @@ internal sealed class PostgresRoundScoreRepository(
 		var live = await LiveAsync(round, cancellationToken);
 		return await _byRound.GetOrLoadAsync((live.Match.Id, live.Index), live, async () =>
 		{
-			var rows = await reader.ReadAsync(connection => connection.QueryAsync<RoundScoreRow>(
-				"""
-				select score_id, team
-				from round_scores
-				where match_id = @MatchId and round_number = @Number
-				order by score_id
-				""",
-				new { MatchId = live.Match.Id, Number = live.Index }), cancellationToken);
+			var rows = await reader.ReadAsync(context => context.RoundScores
+				.Where(rs => rs.MatchId == live.Match.Id && rs.RoundNumber == live.Index)
+				.OrderBy(rs => rs.ScoreId)
+				.ToListAsync(cancellationToken), cancellationToken);
 
 			var result = ImmutableList.CreateBuilder<RoundScore>();
 			foreach (var row in rows)
@@ -80,12 +72,5 @@ internal sealed class PostgresRoundScoreRepository(
 		var rest = list.RemoveAll(item => item.Score.Equals(roundScore.Score));
 		var index = rest.FindIndex(item => item.Score.Id > roundScore.Score.Id);
 		return index < 0 ? rest.Add(roundScore) : rest.Insert(index, roundScore);
-	}
-
-	/// <summary>A stored row of the <c>round_scores</c> table.</summary>
-	private sealed class RoundScoreRow
-	{
-		public int ScoreId { get; set; }
-		public int? Team { get; set; }
 	}
 }

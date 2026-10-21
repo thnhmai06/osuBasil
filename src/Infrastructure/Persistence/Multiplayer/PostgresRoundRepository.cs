@@ -5,7 +5,7 @@ using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Infrastructure.Persistence.Postgres;
 using Basil.Infrastructure.Persistence.Memory;
-using Dapper;
+using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Persistence.Multiplayer;
 
@@ -17,23 +17,6 @@ internal sealed class PostgresRoundRepository(
 	: MemoryRepository<(int MatchId, int Index), Round>(reader, writer), IRoundRepository
 {
 	private readonly OwnedLists<int, MatchRecord, Round> _byMatch = new();
-
-	protected override string WriteSql =>
-		"""
-		insert into rounds (match_id, number, beatmap_hash, mode, mods, freemods, team_type, win_condition, seed, started_at, ended_at, aborted)
-		values (@MatchId, @Number, @BeatmapHash, @Mode, @Mods, @Freemods, @TeamType, @WinCondition, @Seed, @StartedAt, @EndedAt, @Aborted)
-		on conflict (match_id, number) do update set
-			beatmap_hash = excluded.beatmap_hash,
-			mode = excluded.mode,
-			mods = excluded.mods,
-			freemods = excluded.freemods,
-			team_type = excluded.team_type,
-			win_condition = excluded.win_condition,
-			seed = excluded.seed,
-			started_at = excluded.started_at,
-			ended_at = excluded.ended_at,
-			aborted = excluded.aborted;
-		""";
 
 	/// <inheritdoc />
 	public Task CreateOrUpdateAsync(Round round, CancellationToken cancellationToken = default)
@@ -50,14 +33,10 @@ internal sealed class PostgresRoundRepository(
 		var liveMatch = await matches.GetAsync(match.Id, cancellationToken) ?? match;
 		return await _byMatch.GetOrLoadAsync(liveMatch.Id, liveMatch, async () =>
 		{
-			var rows = await Reader.ReadAsync(connection => connection.QueryAsync<RoundRow>(
-				"""
-				select number, beatmap_hash, mode, mods, freemods, team_type, win_condition, seed, started_at, ended_at, aborted
-				from rounds
-				where match_id = @MatchId
-				order by number
-				""",
-				new { MatchId = liveMatch.Id }), cancellationToken);
+			var rows = await reader.ReadAsync(context => context.Rounds
+				.Where(row => row.MatchId == liveMatch.Id)
+				.OrderBy(row => row.Number)
+				.ToListAsync(cancellationToken), cancellationToken);
 			var result = ImmutableList.CreateBuilder<Round>();
 			foreach (var row in rows)
 				result.Add(Track(ToRound(liveMatch, row)));
@@ -75,15 +54,17 @@ internal sealed class PostgresRoundRepository(
 		return Root.Match(item.Match.Id);
 	}
 
+	protected override void CopyTo(Round live, Round from)
+	{
+		live.EndedAt = from.EndedAt;
+		live.Aborted = from.Aborted;
+	}
+
 	protected override async Task<Round?> LoadAsync((int MatchId, int Index) key)
 	{
-		var row = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<RoundRow>(
-			"""
-			select number, beatmap_hash, mode, mods, freemods, team_type, win_condition, seed, started_at, ended_at, aborted
-			from rounds
-			where match_id = @MatchId and number = @Number
-			""",
-			new { key.MatchId, Number = key.Index }));
+		var row = await Reader.ReadAsync(context => context.Rounds
+			.Where(row => row.MatchId == key.MatchId && row.Number == key.Index)
+			.FirstOrDefaultAsync(cancellationToken: CancellationToken.None));
 		if (row is null)
 			return null;
 
@@ -91,29 +72,25 @@ internal sealed class PostgresRoundRepository(
 		return match is null ? null : ToRound(match, row);
 	}
 
-	protected override void CopyTo(Round live, Round from)
+	protected override WriteCommand SaveCommand(Round round)
 	{
-		live.EndedAt = from.EndedAt;
-		live.Aborted = from.Aborted;
-	}
-
-	protected override object WriteParameters(Round round)
-	{
-		return new
+		var row = new RoundRow
 		{
 			MatchId = round.Match.Id,
 			Number = round.Index,
 			BeatmapHash = round.BeatmapHash.HashValue,
 			Mode = (int)round.Settings.Mode,
 			Mods = (int)round.Settings.Mods,
-			round.Settings.Freemods,
+			Freemods = round.Settings.Freemods,
 			TeamType = (int)round.Settings.TeamType,
 			WinCondition = (int)round.Settings.WinCondition,
-			round.Settings.Seed,
+			Seed = round.Settings.Seed,
 			StartedAt = round.StartedAt.ToUniversalTime(),
 			EndedAt = round.EndedAt?.ToUniversalTime(),
-			round.Aborted
+			Aborted = round.Aborted
 		};
+		return new WriteCommand((context, token) =>
+			context.UpsertAsync(row, stored => stored.MatchId == row.MatchId && stored.Number == row.Number, token));
 	}
 
 	private static ImmutableList<Round> AddOrReplace(ImmutableList<Round> current, Round round)
@@ -148,21 +125,5 @@ internal sealed class PostgresRoundRepository(
 			EndedAt = row.EndedAt,
 			Aborted = row.Aborted
 		};
-	}
-
-	/// <summary>A stored row of the <c>rounds</c> table.</summary>
-	private sealed class RoundRow
-	{
-		public int Number { get; set; }
-		public string BeatmapHash { get; set; } = "";
-		public int Mode { get; set; }
-		public int Mods { get; set; }
-		public bool Freemods { get; set; }
-		public int TeamType { get; set; }
-		public int WinCondition { get; set; }
-		public int Seed { get; set; }
-		public DateTimeOffset StartedAt { get; set; }
-		public DateTimeOffset? EndedAt { get; set; }
-		public bool Aborted { get; set; }
 	}
 }

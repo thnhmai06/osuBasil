@@ -4,7 +4,7 @@ using Basil.Domain;
 using Basil.Domain.Content;
 using Basil.Infrastructure.Persistence.Common;
 using Basil.Infrastructure.Persistence.Postgres;
-using Dapper;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Persistence.Content;
@@ -21,8 +21,8 @@ internal sealed class PostgresSettingsRepository(
 	/// <inheritdoc />
 	public async Task LoadAsync(CancellationToken cancellationToken)
 	{
-		var rows = await reader.ReadAsync(connection => connection.QueryAsync<(string Name, string? Value)>(
-			"select name, value from settings"), cancellationToken);
+		var rows = await reader.ReadAsync(context => context.Settings
+			.ToListAsync(cancellationToken), cancellationToken);
 		var values = rows.ToDictionary(row => row.Name, row => row.Value, StringComparer.Ordinal);
 
 		// A setting without a row keeps its default.
@@ -57,29 +57,28 @@ internal sealed class PostgresSettingsRepository(
 	/// <inheritdoc />
 	public Task CreateOrUpdateAsync(ServerSettings settings, CancellationToken cancellationToken = default)
 	{
-		var parameters = new
+		var values = new Dictionary<string, string?>
 		{
-			settings.Motd,
-			LockedCreation = ((int)settings.LockedCreation).ToString(CultureInfo.InvariantCulture),
-			MenuIconUrl = settings.MenuIcon.Url?.ToString(),
-			MenuIconImage = settings.MenuIcon.Image?.ToString(),
-			MirrorDownloadEndpoint = settings.BeatmapMirror.DownloadEndpoint?.ToString(),
-			MirrorSearchEndpoint = settings.BeatmapMirror.SearchEndpoint?.ToString()
+			["motd"] = settings.Motd,
+			["locked_creation"] = ((int)settings.LockedCreation).ToString(CultureInfo.InvariantCulture),
+			["menu_icon_url"] = settings.MenuIcon.Url?.ToString(),
+			["menu_icon_image"] = settings.MenuIcon.Image?.ToString(),
+			["mirror_download_endpoint"] = settings.BeatmapMirror.DownloadEndpoint?.ToString(),
+			["mirror_search_endpoint"] = settings.BeatmapMirror.SearchEndpoint?.ToString()
 		};
 		Interlocked.Exchange(ref _settings, settings);
 		_ = writer.SaveAsync(Root.Server, (GetType(), 1), new WriteCommand(
-			"""
-			insert into settings (name, value)
-			values ('motd', @Motd),
-				   ('locked_creation', @LockedCreation),
-				   ('menu_icon_url', @MenuIconUrl),
-				   ('menu_icon_image', @MenuIconImage),
-				   ('mirror_download_endpoint', @MirrorDownloadEndpoint),
-				   ('mirror_search_endpoint', @MirrorSearchEndpoint)
-			on conflict (name) do update set value = excluded.value;
-			""",
-			parameters));
+			async (context, token) =>
+			{
+				foreach (var (name, value) in values)
+					await UpsertSettingAsync(context, name, value, token);
+			}));
 		return Task.CompletedTask;
+	}
+
+	private static Task UpsertSettingAsync(BasilDbContext context, string name, string? value, CancellationToken token)
+	{
+		return context.UpsertAsync(new SettingRow { Name = name, Value = value }, stored => stored.Name == name, token);
 	}
 
 	/// <summary>Reads an absolute address, or <see langword="null" /> when none is stored.</summary>

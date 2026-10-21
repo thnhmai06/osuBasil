@@ -1,164 +1,129 @@
+using System.Linq.Expressions;
 using Basil.Application.Persistence.Beatmaps;
 using Basil.Application.Persistence.Common;
 using Basil.Domain.Beatmaps;
 using Basil.Infrastructure.Persistence.Postgres;
-using Dapper;
+using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Persistence.Beatmaps;
 
-/// <summary>Builds the WHERE clause and parameters for beatmap queries.</summary>
+/// <summary>Narrows the stored beatmaps to the ones a beatmap query asks for.</summary>
 internal static class BeatmapQueryFilter
 {
-	/// <summary>Appends the filter conditions for a beatmap query to the WHERE clause.</summary>
+	/// <summary>Applies the conditions of a beatmap query to the stored beatmaps.</summary>
+	/// <param name="beatmaps">The stored beatmaps, with their sets reachable through <see cref="BeatmapRow.Set" />.</param>
 	/// <param name="query">The query to filter by.</param>
-	/// <param name="parameters">The parameters to add the values to.</param>
-	/// <returns>The SQL WHERE clause fragment (without the WHERE keyword), or empty when no filter applies.</returns>
+	/// <returns>The beatmaps that match every condition of the query.</returns>
 	/// <remarks>
-	///     The caller aliases the beatmap table as <c>b</c> and the beatmapset table as <c>s</c>.
 	///     <see cref="BeatmapsetRecord.Status" /> is a static member that always returns
-	///     <see cref="BeatmapsetStatus.Approved" />; when the query asks for a different
-	///     status, the returned fragment matches no row.
+	///     <see cref="BeatmapsetStatus.Approved" />; when the query asks for a different status, no beatmap matches.
 	/// </remarks>
-	public static string Build(BeatmapQuery query, DynamicParameters parameters)
+	public static IQueryable<BeatmapRow> Apply(IQueryable<BeatmapRow> beatmaps, BeatmapQuery query)
 	{
-		var conditions = new List<string>();
+		// Basil reports every set as Approved; any other status matches nothing.
+		if (query.Status is { } status && status != BeatmapsetStatus.Approved)
+			return beatmaps.Where(row => false);
 
 		if (query.Hidden is { } hidden)
-			conditions.Add(hidden ? "not (b.visible and s.visible)" : "b.visible and s.visible");
+			beatmaps = hidden
+				? beatmaps.Where(row => !(row.Visible && row.Set.Visible))
+				: beatmaps.Where(row => row.Visible && row.Set.Visible);
 
 		if (query.Mode is { } mode)
 		{
-			parameters.Add("mode", (int)mode);
-			conditions.Add("b.mode = @mode");
+			var code = (int)mode;
+			beatmaps = beatmaps.Where(row => row.Mode == code);
 		}
 
-		if (query.Stars is { } stars)
-			AddInterval(conditions, parameters, "b.star", stars, "starsMin", "starsMax");
-
-		if (query.Ar is { } ar)
-			AddInterval(conditions, parameters, "b.ar", ar, "arMin", "arMax");
-
-		if (query.Cs is { } cs)
-			AddInterval(conditions, parameters, "b.cs", cs, "csMin", "csMax");
-
-		if (query.Od is { } od)
-			AddInterval(conditions, parameters, "b.od", od, "odMin", "odMax");
-
-		if (query.Hp is { } hp)
-			AddInterval(conditions, parameters, "b.hp", hp, "hpMin", "hpMax");
-
-		if (query.Bpm is { } bpm)
-			AddInterval(conditions, parameters, "b.bpm", bpm, "bpmMin", "bpmMax");
+		beatmaps = Within(beatmaps, row => row.Star, query.Stars);
+		beatmaps = Within(beatmaps, row => row.Ar, query.Ar);
+		beatmaps = Within(beatmaps, row => row.Cs, query.Cs);
+		beatmaps = Within(beatmaps, row => row.Od, query.Od);
+		beatmaps = Within(beatmaps, row => row.Hp, query.Hp);
+		beatmaps = Within(beatmaps, row => row.Bpm, query.Bpm);
 
 		// Length: the query is in seconds, the column stores milliseconds.
-		if (query.Length is { } length)
-			AddInterval(conditions, parameters, "b.length / 1000.0", length, "lengthMin", "lengthMax");
-
-		if (query.Circles is { } circles)
-			AddInterval(conditions, parameters, "(b.objects->>'Circles')::int", circles, "circlesMin", "circlesMax");
-
-		if (query.Sliders is { } sliders)
-			AddInterval(conditions, parameters, "(b.objects->>'Sliders')::int", sliders, "slidersMin", "slidersMax");
+		beatmaps = Within(beatmaps, row => row.Length / 1000.0, query.Length);
+		beatmaps = Within(beatmaps, row => row.Objects.GetProperty("Circles").GetInt32(), query.Circles);
+		beatmaps = Within(beatmaps, row => row.Objects.GetProperty("Sliders").GetInt32(), query.Sliders);
 
 		// Created at / Updated at: the query bounds are UTC instants.
-		if (query.Created is { } created)
-			AddDateInterval(conditions, parameters, "s.created_at", created, "createdMin", "createdMax");
-
-		if (query.Updated is { } updated)
-			AddDateInterval(conditions, parameters, "s.updated_at", updated, "updatedMin", "updatedMax");
+		beatmaps = Within(beatmaps, row => row.Set.CreatedAt, query.Created,
+			static instant => instant.ToUniversalTime());
+		beatmaps = Within(beatmaps, row => row.Set.UpdatedAt, query.Updated,
+			static instant => instant.ToUniversalTime());
 
 		// Free text: every whitespace-separated word must match artist, title, creator or version.
 		if (!string.IsNullOrWhiteSpace(query.Text))
-		{
-			var words = query.Text.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-			for (var i = 0; i < words.Length; i++)
+			foreach (var word in query.Text.Split(' ',
+				         StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
 			{
-				var p = $"tw{i}";
-				parameters.Add(p, LikePattern.Containing(words[i]));
-				conditions.Add(
-					$"(s.artist ILIKE @{p} OR s.title ILIKE @{p} OR s.creator ILIKE @{p} OR b.version ILIKE @{p})");
+				var pattern = LikePattern.Containing(word);
+				beatmaps = beatmaps.Where(row => EF.Functions.ILike(row.Set.Artist, pattern) ||
+				                                 EF.Functions.ILike(row.Set.Title, pattern) ||
+				                                 EF.Functions.ILike(row.Set.Creator, pattern) ||
+				                                 EF.Functions.ILike(row.Version, pattern));
 			}
-		}
 
 		if (!string.IsNullOrWhiteSpace(query.Creator))
 		{
-			parameters.Add("creator", LikePattern.Containing(query.Creator));
-			conditions.Add("s.creator ILIKE @creator");
+			var pattern = LikePattern.Containing(query.Creator);
+			beatmaps = beatmaps.Where(row => EF.Functions.ILike(row.Set.Creator, pattern));
 		}
 
 		if (!string.IsNullOrWhiteSpace(query.Artist))
 		{
-			parameters.Add("artist", LikePattern.Containing(query.Artist));
-			conditions.Add("s.artist ILIKE @artist");
+			var pattern = LikePattern.Containing(query.Artist);
+			beatmaps = beatmaps.Where(row => EF.Functions.ILike(row.Set.Artist, pattern));
 		}
 
 		if (!string.IsNullOrWhiteSpace(query.Title))
 		{
-			parameters.Add("title", LikePattern.Containing(query.Title));
-			conditions.Add("s.title ILIKE @title");
+			var pattern = LikePattern.Containing(query.Title);
+			beatmaps = beatmaps.Where(row => EF.Functions.ILike(row.Set.Title, pattern));
 		}
 
 		if (!string.IsNullOrWhiteSpace(query.Difficulty))
 		{
-			parameters.Add("version", LikePattern.Containing(query.Difficulty));
-			conditions.Add("b.version ILIKE @version");
+			var pattern = LikePattern.Containing(query.Difficulty);
+			beatmaps = beatmaps.Where(row => EF.Functions.ILike(row.Version, pattern));
 		}
 
 		if (!string.IsNullOrWhiteSpace(query.FileName))
 		{
-			parameters.Add("fileName", BeatmapMetadata.NormalizeOsuFileName(query.FileName));
-			conditions.Add(
-				"lower(regexp_replace(s.artist || ' - ' || s.title || ' (' || s.creator || ') [' || b.version || '].osu', '[:\\\\/*<>?\"|]', '', 'g')) = lower(@fileName)");
+			var normalized = BeatmapMetadata.NormalizeOsuFileName(query.FileName).ToLowerInvariant();
+			// The name of the .osu file of a beatmap leaves out the characters a file name cannot hold.
+			beatmaps = beatmaps.Where(row =>
+				(row.Set.Artist + " - " + row.Set.Title + " (" + row.Set.Creator + ") [" + row.Version + "].osu")
+				.Replace(":", "").Replace("\\", "").Replace("/", "").Replace("*", "").Replace("<", "").Replace(">", "")
+				.Replace("?", "").Replace("\"", "").Replace("|", "").ToLower() == normalized);
 		}
 
-		// Basil reports every set as Approved; any other status matches nothing.
-		if (query.Status is { } status
-		    && status != BeatmapsetStatus.Approved)
-			return "1 = 0";
-
-		return conditions.Count == 0 ? string.Empty : string.Join(" AND ", conditions);
+		return beatmaps;
 	}
 
-	private static void AddInterval<T>(
-		List<string> conditions,
-		DynamicParameters parameters,
-		string column,
-		Interval<T> interval,
-		string minParam,
-		string maxParam)
+	/// <summary>Keeps the beatmaps whose selected value lies within an interval, when the query gives one.</summary>
+	private static IQueryable<BeatmapRow> Within<T>(IQueryable<BeatmapRow> beatmaps,
+		Expression<Func<BeatmapRow, T>> selector, Interval<T>? interval, Func<T, T>? convert = null)
 		where T : struct, IComparable<T>
 	{
-		if (interval.Min is { } min)
-		{
-			parameters.Add(minParam, min);
-			conditions.Add(interval.MinInclusive ? $"{column} >= @{minParam}" : $"{column} > @{minParam}");
-		}
+		if (interval is not { } bounds)
+			return beatmaps;
 
-		if (interval.Max is { } max)
-		{
-			parameters.Add(maxParam, max);
-			conditions.Add(interval.MaxInclusive ? $"{column} <= @{maxParam}" : $"{column} < @{maxParam}");
-		}
+		if (bounds.Min is { } min)
+			beatmaps = beatmaps.Where(Compare(selector, convert?.Invoke(min) ?? min,
+				bounds.MinInclusive ? ExpressionType.GreaterThanOrEqual : ExpressionType.GreaterThan));
+		if (bounds.Max is { } max)
+			beatmaps = beatmaps.Where(Compare(selector, convert?.Invoke(max) ?? max,
+				bounds.MaxInclusive ? ExpressionType.LessThanOrEqual : ExpressionType.LessThan));
+		return beatmaps;
 	}
 
-	private static void AddDateInterval(
-		List<string> conditions,
-		DynamicParameters parameters,
-		string column,
-		Interval<DateTimeOffset> interval,
-		string minParam,
-		string maxParam)
+	/// <summary>Builds the condition that compares the selected value with a bound.</summary>
+	private static Expression<Func<BeatmapRow, bool>> Compare<T>(Expression<Func<BeatmapRow, T>> selector, T bound,
+		ExpressionType comparison)
 	{
-		if (interval.Min is { } min)
-		{
-			parameters.Add(minParam, min.ToUniversalTime());
-			conditions.Add(interval.MinInclusive ? $"{column} >= @{minParam}" : $"{column} > @{minParam}");
-		}
-
-		if (interval.Max is { } max)
-		{
-			parameters.Add(maxParam, max.ToUniversalTime());
-			conditions.Add(interval.MaxInclusive ? $"{column} <= @{maxParam}" : $"{column} < @{maxParam}");
-		}
+		var body = Expression.MakeBinary(comparison, selector.Body, Expression.Constant(bound, typeof(T)));
+		return Expression.Lambda<Func<BeatmapRow, bool>>(body, selector.Parameters);
 	}
 }

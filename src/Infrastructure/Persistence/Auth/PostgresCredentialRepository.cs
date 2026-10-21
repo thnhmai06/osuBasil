@@ -2,7 +2,7 @@ using Basil.Application.Persistence.Auth;
 using Basil.Domain.Auth;
 using Basil.Infrastructure.Persistence.Postgres;
 using Basil.Infrastructure.Persistence.Memory;
-using Dapper;
+using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Persistence.Auth;
 
@@ -10,13 +10,6 @@ namespace Basil.Infrastructure.Persistence.Auth;
 internal sealed class PostgresCredentialRepository(DatabaseReader reader, DatabaseWriter writer)
 	: MemoryRepository<int, PostgresCredentialRepository.StoredCredential>(reader, writer), ICredentialRepository
 {
-	protected override string WriteSql =>
-		"""
-		insert into credentials (user_id, password_hash)
-		values (@UserId, @PasswordHash)
-		on conflict (user_id) do update set password_hash = excluded.password_hash;
-		""";
-
 	/// <inheritdoc />
 	public async Task<bool> VerifyAsync(Credentials credentials, CancellationToken cancellationToken = default)
 	{
@@ -49,14 +42,16 @@ internal sealed class PostgresCredentialRepository(DatabaseReader reader, Databa
 
 	protected override async Task<StoredCredential?> LoadAsync(int key)
 	{
-		var hash = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<string?>(
-			"select password_hash from credentials where user_id = @UserId", new { UserId = key }));
-		return hash is null ? null : new StoredCredential(key, hash);
+		var row = await Reader.ReadAsync(context => context.Credentials
+			.Where(c => c.UserId == key)
+			.FirstOrDefaultAsync());
+		return row is null ? null : new StoredCredential(key, row.PasswordHash);
 	}
 
-	protected override object WriteParameters(StoredCredential item)
+	protected override WriteCommand SaveCommand(StoredCredential item)
 	{
-		return new { item.UserId, PasswordHash = item.Hash };
+		var row = new CredentialRow { UserId = item.UserId, PasswordHash = item.Hash };
+		return new WriteCommand((context, token) => context.UpsertAsync(row, stored => stored.UserId == row.UserId, token));
 	}
 
 	/// <summary>Holds one user's stored credential hash.</summary>

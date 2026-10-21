@@ -27,12 +27,36 @@ internal static class WriteErrors
 	/// </summary>
 	public static bool IsEnvironmentException(this Exception exception)
 	{
-		return exception switch
+		return exception.Database() switch
 		{
 			PostgresException postgres => postgres.IsTransient || EnvironmentStates.Contains(postgres.SqlState),
 			NpgsqlException npgsql => npgsql.IsTransient,
 			TimeoutException => true,
 			_ => false
 		};
+	}
+
+	/// <summary>Tells whether the connection to the database failed, so that it is not known whether a commit happened.</summary>
+	public static bool IsConnectionException(this Exception exception)
+	{
+		return exception.Database() is NpgsqlException and not PostgresException;
+	}
+
+	/// <summary>Tells whether a write failed because a value that must be unique is already stored.</summary>
+	public static bool IsUniqueViolation(this Exception exception)
+	{
+		return exception.Database() is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
+	}
+
+	/// <summary>
+	///     Finds the error the database itself reported inside the exceptions Entity Framework wraps it in, or gives the
+	///     exception back when it holds none.
+	/// </summary>
+	private static Exception Database(this Exception exception)
+	{
+		for (var current = exception; current is not null; current = current.InnerException)
+			if (current is NpgsqlException or TimeoutException)
+				return current;
+		return exception;
 	}
 }

@@ -4,7 +4,7 @@ using Basil.Application.Persistence.Users;
 using Basil.Domain.Multiplayer;
 using Basil.Infrastructure.Persistence.Postgres;
 using Basil.Infrastructure.Persistence.Memory;
-using Dapper;
+using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Persistence.Multiplayer;
 
@@ -12,29 +12,29 @@ namespace Basil.Infrastructure.Persistence.Multiplayer;
 internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWriter writer, IUserRepository users)
 	: MemoryRepository<int, MatchRecord>(reader, writer), IMatchRepository
 {
-	protected override string WriteSql =>
-		"""
-		update matches set
-			name = @Name,
-			creator_id = @CreatorId,
-			started_at = @StartedAt,
-			ended_at = @EndedAt,
-			is_private = @IsPrivate
-		where id = @Id;
-		""";
-
 	/// <inheritdoc />
 	public async Task<MatchRecord> CreateAsync(MatchData data, CancellationToken cancellationToken = default)
 	{
 		var value = await WithCreatorAsync(data, cancellationToken);
-		var parameters = Parameters(value);
-		var id = await Writer.WriteAsync(Root.Server, (connection, transaction) => connection.QuerySingleAsync<int>(
-			"""
-			insert into matches (name, creator_id, started_at, ended_at, is_private)
-			values (@Name, @CreatorId, @StartedAt, @EndedAt, @IsPrivate)
-			returning id;
-			""",
-			parameters, transaction), cancellationToken);
+		var name = value.Name;
+		var creatorId = value.Creator?.Id;
+		var startedAt = value.StartedAt.ToUniversalTime();
+		var endedAt = value.EndedAt?.ToUniversalTime();
+		var isPrivate = value.IsPrivate;
+		var id = await Writer.WriteAsync(Root.Server, async (context, token) =>
+		{
+			var row = new MatchRow
+			{
+				Name = name,
+				CreatorId = creatorId,
+				StartedAt = startedAt,
+				EndedAt = endedAt,
+				IsPrivate = isPrivate
+			};
+			context.Matches.Add(row);
+			await context.SaveChangesAsync(token);
+			return row.Id;
+		}, cancellationToken);
 
 		return Track(new MatchRecord { Id = id, Value = value });
 	}
@@ -56,17 +56,18 @@ internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWri
 	public async Task<Page<MatchRecord>> ListAsync(MatchQuery query, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
-		var where = BuildFilter(query);
-		var (total, rows) = await Reader.ReadAsync(async connection => (
-			await connection.ExecuteScalarAsync<int>($"select count(*) from matches {where}"),
-			await connection.QueryAsync<MatchRow>(
-				$"""
-				  select id, name, creator_id, started_at, ended_at, is_private from matches
-				  {where}
-				  order by started_at desc, id desc
-				  limit @Limit offset @Offset
-				 """,
-				new { page.Limit, page.Offset })), cancellationToken);
+		var (total, rows) = await Reader.ReadAsync(async context =>
+		{
+			var matching = Filter(context.Matches, query);
+			var count = await matching.CountAsync(cancellationToken);
+			var rows = await matching
+				.OrderByDescending(row => row.StartedAt)
+				.ThenByDescending(row => row.Id)
+				.Skip(page.Offset)
+				.Take(page.Limit)
+				.ToListAsync(cancellationToken);
+			return (count, rows);
+		}, cancellationToken);
 
 		var matches = new List<MatchRecord>();
 		foreach (var row in rows)
@@ -94,41 +95,34 @@ internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWri
 
 	protected override async Task<MatchRecord?> LoadAsync(int key)
 	{
-		var row = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<MatchRow>(
-			"select id, name, creator_id, started_at, ended_at, is_private from matches where id = @Id",
-			new { Id = key }));
+		var row = await Reader.ReadAsync(context => context.Matches
+			.Where(row => row.Id == key)
+			.FirstOrDefaultAsync(cancellationToken: CancellationToken.None));
 		return row is null ? null : await ToMatchAsync(row, CancellationToken.None);
 	}
 
-	protected override object WriteParameters(MatchRecord match)
+	protected override WriteCommand SaveCommand(MatchRecord match)
 	{
-		var value = match.Value;
-		return new
+		var row = new MatchRow
 		{
-			match.Id,
-			value.Name,
-			CreatorId = value.Creator?.Id,
-			StartedAt = value.StartedAt.ToUniversalTime(),
-			EndedAt = value.EndedAt?.ToUniversalTime(),
-			value.IsPrivate
+			Id = match.Id,
+			Name = match.Value.Name,
+			CreatorId = match.Value.Creator?.Id,
+			StartedAt = match.Value.StartedAt.ToUniversalTime(),
+			EndedAt = match.Value.EndedAt?.ToUniversalTime(),
+			IsPrivate = match.Value.IsPrivate
 		};
+		return new WriteCommand((context, token) => context.ReplaceAsync(row, stored => stored.Id == row.Id, token));
 	}
 
-	private static string BuildFilter(MatchQuery query)
+	/// <summary>Narrows the matches to the ones a query asks for.</summary>
+	private static IQueryable<MatchRow> Filter(IQueryable<MatchRow> matches, MatchQuery query)
 	{
-		var conditions = new List<string>();
-		switch (query.Ended)
-		{
-			case true:
-				conditions.Add("ended_at is not null");
-				break;
-			case false:
-				conditions.Add("ended_at is null");
-				break;
-		}
-
-		if (query.Private is { } isPrivate) conditions.Add(isPrivate ? "is_private" : "not is_private");
-		return conditions.Count == 0 ? "" : $"where {string.Join(" AND ", conditions)}";
+		if (query.Ended is { } ended)
+			matches = ended ? matches.Where(row => row.EndedAt != null) : matches.Where(row => row.EndedAt == null);
+		if (query.Private is { } isPrivate)
+			matches = matches.Where(row => row.IsPrivate == isPrivate);
+		return matches;
 	}
 
 	private async Task<MatchRecord> ToMatchAsync(MatchRow row, CancellationToken cancellationToken)
@@ -161,28 +155,5 @@ internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWri
 			EndedAt = data.EndedAt,
 			IsPrivate = data.IsPrivate
 		};
-	}
-
-	private static object Parameters(MatchData data)
-	{
-		return new
-		{
-			data.Name,
-			CreatorId = data.Creator?.Id,
-			StartedAt = data.StartedAt.ToUniversalTime(),
-			EndedAt = data.EndedAt?.ToUniversalTime(),
-			data.IsPrivate
-		};
-	}
-
-	/// <summary>A stored row of the <c>matches</c> table.</summary>
-	private sealed class MatchRow
-	{
-		public int Id { get; set; }
-		public string Name { get; set; } = "";
-		public int? CreatorId { get; set; }
-		public DateTimeOffset StartedAt { get; set; }
-		public DateTimeOffset? EndedAt { get; set; }
-		public bool IsPrivate { get; set; }
 	}
 }

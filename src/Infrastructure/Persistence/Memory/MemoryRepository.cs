@@ -12,15 +12,14 @@ internal abstract class MemoryRepository<TKey, T>(DatabaseReader reader, Databas
 	protected DatabaseReader Reader { get; } = reader;
 	protected DatabaseWriter Writer { get; } = writer;
 
-	protected abstract string WriteSql { get; }
-
 	protected abstract TKey KeyOf(T item);
 	protected abstract Root RootOf(T item);
 
 	/// <summary>Loads a stored item that is not in memory, or null when none is stored.</summary>
 	protected abstract Task<T?> LoadAsync(TKey key);
 
-	protected abstract object WriteParameters(T item);
+	/// <summary>Makes the change that stores an item: it holds the item values as they are now, not the item itself.</summary>
+	protected abstract WriteCommand SaveCommand(T item);
 
 	protected virtual WriteCommand EraseCommand(TKey key)
 	{
@@ -58,7 +57,7 @@ internal abstract class MemoryRepository<TKey, T>(DatabaseReader reader, Databas
 		var live = Track(item);
 		if (!ReferenceEquals(live, item)) CopyTo(live, item);
 		var stored = Writer.SaveAsync(RootOf(live), (GetType(), key),
-			new WriteCommand(WriteSql, WriteParameters(live)));
+			SaveCommand(live));
 		Items.Pin(live, stored);
 		return stored;
 	}

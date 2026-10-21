@@ -4,7 +4,7 @@ using Basil.Application.Persistence.Users;
 using Basil.Domain.Multiplayer;
 using Basil.Infrastructure.Persistence.Postgres;
 using Basil.Infrastructure.Persistence.Memory;
-using Dapper;
+using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Persistence.Multiplayer;
 
@@ -21,21 +21,20 @@ internal sealed class PostgresMatchEventRepository(
 	/// <inheritdoc />
 	public Task RecordAsync(MatchEvent matchEvent, CancellationToken cancellationToken = default)
 	{
-		var parameters = new
+		var row = new MatchEventRow
 		{
 			MatchId = matchEvent.Match.Id,
 			Type = (int)matchEvent.Type,
 			Timestamp = matchEvent.Timestamp.ToUniversalTime(),
 			ActorId = matchEvent.Actor?.Id,
 			TargetId = matchEvent.Target?.Id,
-			matchEvent.Detail
+			Detail = matchEvent.Detail
 		};
-		var appended = writer.AppendAsync(Root.Match(matchEvent.Match.Id), new WriteCommand(
-			"""
-			insert into match_events (match_id, type, timestamp, actor_id, target_id, detail)
-			values (@MatchId, @Type, @Timestamp, @ActorId, @TargetId, @Detail)
-			""",
-			parameters));
+		var appended = writer.AppendAsync(Root.Match(row.MatchId), new WriteCommand(async (context, token) =>
+		{
+			context.MatchEvents.Add(row);
+			await context.SaveChangesAsync(token);
+		}));
 		_byMatch.Change(matchEvent.Match.Id, matchEvent.Match, list => Insert(list, matchEvent), appended);
 		return Task.CompletedTask;
 	}
@@ -47,14 +46,11 @@ internal sealed class PostgresMatchEventRepository(
 		var liveMatch = await matches.GetAsync(match.Id, cancellationToken) ?? match;
 		return await _byMatch.GetOrLoadAsync(liveMatch.Id, liveMatch, async () =>
 		{
-			var rows = await reader.ReadAsync(connection => connection.QueryAsync<MatchEventRow>(
-				"""
-				select type, timestamp, actor_id, target_id, detail
-				from match_events
-				where match_id = @MatchId
-				order by timestamp, id
-				""",
-				new { MatchId = liveMatch.Id }), cancellationToken);
+			var rows = await reader.ReadAsync(context => context.MatchEvents
+				.Where(row => row.MatchId == liveMatch.Id)
+				.OrderBy(row => row.Timestamp)
+				.ThenBy(row => row.Id)
+				.ToListAsync(cancellationToken), cancellationToken);
 
 			var events = ImmutableList.CreateBuilder<MatchEvent>();
 			foreach (var row in rows)
@@ -89,15 +85,5 @@ internal sealed class PostgresMatchEventRepository(
 	{
 		return left.Type == right.Type && left.Timestamp.UtcTicks / 10 == right.Timestamp.UtcTicks / 10 &&
 		       Equals(left.Actor, right.Actor) && Equals(left.Target, right.Target) && left.Detail == right.Detail;
-	}
-
-	/// <summary>A stored row of the <c>match_events</c> table.</summary>
-	private sealed class MatchEventRow
-	{
-		public int Type { get; set; }
-		public DateTimeOffset Timestamp { get; set; }
-		public int? ActorId { get; set; }
-		public int? TargetId { get; set; }
-		public string? Detail { get; set; }
 	}
 }

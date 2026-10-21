@@ -3,7 +3,7 @@ using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Persistence.Postgres;
 using Basil.Infrastructure.Persistence.Memory;
-using Dapper;
+using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Persistence.Scores;
 
@@ -11,16 +11,6 @@ namespace Basil.Infrastructure.Persistence.Scores;
 internal sealed class PostgresUserStatsRepository(DatabaseReader reader, DatabaseWriter writer)
 	: MemoryRepository<(int UserId, GameMode Mode), UserStats>(reader, writer), IUserStatsRepository
 {
-	protected override string WriteSql =>
-		"""
-		insert into user_stats (user_id, mode, total_score, ranked_score, play_count)
-		values (@UserId, @Mode, @TotalScore, @RankedScore, @PlayCount)
-		on conflict (user_id, mode) do update set
-			total_score = excluded.total_score,
-			ranked_score = excluded.ranked_score,
-			play_count = excluded.play_count;
-		""";
-
 	/// <inheritdoc />
 	public async ValueTask<UserStats> GetAsync(UserRecord user, GameMode mode,
 		CancellationToken cancellationToken = default)
@@ -56,9 +46,10 @@ internal sealed class PostgresUserStatsRepository(DatabaseReader reader, Databas
 
 	protected override async Task<UserStats?> LoadAsync((int UserId, GameMode Mode) key)
 	{
-		var row = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<StatsRow>(
-			"select user_id, mode, total_score, ranked_score, play_count from user_stats where user_id = @UserId and mode = @Mode",
-			new { key.UserId, Mode = (int)key.Mode }));
+		var mode = (int)key.Mode;
+		var row = await Reader.ReadAsync(context => context.UserStats
+			.Where(row => row.UserId == key.UserId && row.Mode == mode)
+			.FirstOrDefaultAsync(cancellationToken: CancellationToken.None));
 		return row is null
 			? null
 			: new UserStats
@@ -71,26 +62,33 @@ internal sealed class PostgresUserStatsRepository(DatabaseReader reader, Databas
 			};
 	}
 
-	protected override object WriteParameters(UserStats stats)
+	protected override WriteCommand SaveCommand(UserStats stats)
 	{
 		var userId = stats.UserId;
 		var mode = (int)stats.Mode;
 		var totalScore = stats.TotalScore;
 		var rankedScore = stats.RankedScore;
 		var playCount = stats.PlayCount;
-		return new
+		return new WriteCommand(async (context, token) =>
 		{
-			UserId = userId, Mode = mode, TotalScore = totalScore, RankedScore = rankedScore, PlayCount = playCount
-		};
-	}
-
-	/// <summary>A stored row of the <c>user_stats</c> table.</summary>
-	private sealed class StatsRow
-	{
-		public int UserId { get; set; }
-		public int Mode { get; set; }
-		public long TotalScore { get; set; }
-		public long RankedScore { get; set; }
-		public int PlayCount { get; set; }
+			var updated = await context.UserStats
+				.Where(s => s.UserId == userId && s.Mode == mode)
+				.ExecuteUpdateAsync(set => set
+					.SetProperty(s => s.TotalScore, totalScore)
+					.SetProperty(s => s.RankedScore, rankedScore)
+					.SetProperty(s => s.PlayCount, playCount), token);
+			if (updated == 0)
+			{
+				context.UserStats.Add(new UserStatsRow
+				{
+					UserId = userId,
+					Mode = mode,
+					TotalScore = totalScore,
+					RankedScore = rankedScore,
+					PlayCount = playCount
+				});
+				await context.SaveChangesAsync(token);
+			}
+		});
 	}
 }

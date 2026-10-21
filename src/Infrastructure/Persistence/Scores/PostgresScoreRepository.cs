@@ -5,8 +5,7 @@ using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
 using Basil.Infrastructure.Persistence.Postgres;
 using Basil.Infrastructure.Persistence.Memory;
-using Dapper;
-using Npgsql;
+using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Persistence.Scores;
 
@@ -17,33 +16,6 @@ internal sealed class PostgresScoreRepository(
 {
 	private readonly WeakIndex<Md5, ScoreRecord> _byChecksum = new();
 
-	protected override string WriteSql =>
-		"""
-		insert into scores (id, user_id, beatmap_hash, mode, mods, num300, num100, num50, num_geki, num_katu, num_miss,
-		                    total_score, max_combo, current_combo, grade, is_passed, is_full_combo, timestamp, checksum)
-		values (@Id, @UserId, @BeatmapHash, @Mode, @Mods, @Num300, @Num100, @Num50, @NumGeki, @NumKatu, @NumMiss,
-		        @TotalScore, @MaxCombo, @CurrentCombo, @Grade, @IsPassed, @IsFullCombo, @Timestamp, @Checksum)
-		on conflict (id) do update set
-			user_id = excluded.user_id,
-			beatmap_hash = excluded.beatmap_hash,
-			mode = excluded.mode,
-			mods = excluded.mods,
-			num300 = excluded.num300,
-			num100 = excluded.num100,
-			num50 = excluded.num50,
-			num_geki = excluded.num_geki,
-			num_katu = excluded.num_katu,
-			num_miss = excluded.num_miss,
-			total_score = excluded.total_score,
-			max_combo = excluded.max_combo,
-			current_combo = excluded.current_combo,
-			grade = excluded.grade,
-			is_passed = excluded.is_passed,
-			is_full_combo = excluded.is_full_combo,
-			timestamp = excluded.timestamp,
-			checksum = excluded.checksum;
-		""";
-
 	/// <inheritdoc />
 	public async Task<ScoreRecord> CreateAsync(ScoreData data, CancellationToken cancellationToken = default)
 	{
@@ -51,29 +23,21 @@ internal sealed class PostgresScoreRepository(
 		    known.Value.Checksum == checksum)
 			throw new AlreadyExistsException($"A score with checksum {checksum} is already stored.");
 
-		var parameters = Parameters(data);
 		int id;
 		try
 		{
-			id = await Writer.WriteAsync(Root.User(data.UserId ?? 0), (connection, transaction) =>
-				connection.QuerySingleOrDefaultAsync<int>(
-					"""
-					insert into scores (user_id, beatmap_hash, mode, mods, num300, num100, num50, num_geki, num_katu, num_miss,
-					                    total_score, max_combo, current_combo, grade, is_passed, is_full_combo, timestamp, checksum)
-					values (@UserId, @BeatmapHash, @Mode, @Mods, @Num300, @Num100, @Num50, @NumGeki, @NumKatu, @NumMiss,
-					        @TotalScore, @MaxCombo, @CurrentCombo, @Grade, @IsPassed, @IsFullCombo, @Timestamp, @Checksum)
-					on conflict (checksum) do nothing
-					returning id
-					""",
-					parameters, transaction), cancellationToken);
+			id = await Writer.WriteAsync(Root.User(data.UserId ?? 0), async (context, token) =>
+			{
+				var row = ToRow(0, data);
+				context.Scores.Add(row);
+				await context.SaveChangesAsync(token);
+				return row.Id;
+			}, cancellationToken);
 		}
-		catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation)
+		catch (Exception exception) when (exception.IsUniqueViolation())
 		{
 			throw new AlreadyExistsException("A score with the same checksum is already stored.");
 		}
-
-		if (id == 0)
-			throw new AlreadyExistsException("A score with the same checksum is already stored.");
 
 		var score = Track(new ScoreRecord { Id = id, Value = data });
 		IndexScore(score);
@@ -90,34 +54,60 @@ internal sealed class PostgresScoreRepository(
 	}
 
 	/// <inheritdoc />
-	public async Task<Page<ScoreRecord>> ListAsync(ScoreQuery query, PageRequest page,
+	public async Task<Page<ScoreRecord>> ListAsync(ScoreQuery scoreQuery, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
-		var (where, parameters) = BuildFilter(query);
-		var source = query.BestPerPlayer
-			? $"(select distinct on (user_id) * from scores {where} order by user_id, total_score desc, timestamp asc, id asc) best_scores"
-			: $"scores {where}";
-		var order = query.BestPerPlayer || query.BeatmapHash is not null
-			? "total_score desc, timestamp asc, id asc"
-			: "timestamp desc, id desc";
-		parameters.Add("Limit", page.Limit);
-		parameters.Add("Offset", page.Offset);
-		var (total, rows) = await Reader.ReadAsync(async connection => (
-			await connection.ExecuteScalarAsync<int>($"select count(*) from {source}", parameters),
-			await connection.QueryAsync<ScoreRow>(
-				$"""
-				  select id, user_id, beatmap_hash, mode, mods, num300, num100, num50, num_geki, num_katu, num_miss,
-				         total_score, max_combo, current_combo, grade, is_passed, is_full_combo, timestamp, checksum
-				  from {source}
-				  order by {order}
-				  limit @Limit offset @Offset
-				 """,
-				parameters)), cancellationToken);
+		var result = await Reader.ReadAsync(async context =>
+		{
+			var matching = BuildFilter(context.Scores, scoreQuery);
+			// A player's best play is the highest score; the earlier play and then the lower id win a tie.
+			var q = scoreQuery.BestPerPlayer
+				? matching.Where(s => !matching.Any(other => other.UserId == s.UserId && (other.TotalScore > s.TotalScore ||
+					(other.TotalScore == s.TotalScore && (other.Timestamp < s.Timestamp ||
+						(other.Timestamp == s.Timestamp && other.Id < s.Id))))))
+				: matching;
+			var count = await q.CountAsync(cancellationToken);
+			q = scoreQuery.BestPerPlayer || scoreQuery.BeatmapHash is not null
+				? q.OrderByDescending(s => s.TotalScore).ThenBy(s => s.Timestamp).ThenBy(s => s.Id)
+				: q.OrderByDescending(s => s.Timestamp).ThenByDescending(s => s.Id);
+
+			var rows = await q
+				.Skip(page.Offset)
+				.Take(page.Limit)
+				.ToListAsync(cancellationToken);
+			return (count, rows);
+		}, cancellationToken);
+
+		var total = result.count;
+		var rows = result.rows;
 
 		var items = rows.Select(row => Track(ToScore(row))).ToList();
 		foreach (var score in items)
 			IndexScore(score);
 		return new Page<ScoreRecord>(items, total);
+	}
+
+	private static IQueryable<ScoreRow> BuildFilter(IQueryable<ScoreRow> q, ScoreQuery scoreQuery)
+	{
+		if (scoreQuery.Player is { } player)
+			q = q.Where(s => s.UserId == player.Id);
+
+		if (scoreQuery.BeatmapHash is { } beatmapHash)
+			q = q.Where(s => s.BeatmapHash == beatmapHash.HashValue);
+
+		if (scoreQuery.Mods is { } mods)
+			q = q.Where(s => s.Mods == (int)mods);
+
+		if (scoreQuery.Players is { } players)
+		{
+			var playerIds = players.Select(p => p.Id).ToList();
+			q = q.Where(s => s.UserId != null && playerIds.Contains(s.UserId.Value));
+		}
+
+		if (scoreQuery.BestPerPlayer)
+			q = q.Where(s => s.UserId != null);
+
+		return q;
 	}
 
 	protected override int KeyOf(ScoreRecord item)
@@ -132,53 +122,43 @@ internal sealed class PostgresScoreRepository(
 
 	protected override async Task<ScoreRecord?> LoadAsync(int key)
 	{
-		var row = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<ScoreRow>(
-			"""
-			select id, user_id, beatmap_hash, mode, mods, num300, num100, num50, num_geki, num_katu, num_miss,
-			       total_score, max_combo, current_combo, grade, is_passed, is_full_combo, timestamp, checksum
-			from scores where id = @Id
-			""",
-			new { Id = key }));
+		var row = await Reader.ReadAsync(context => context.Scores
+			.Where(row => row.Id == key)
+			.FirstOrDefaultAsync(cancellationToken: CancellationToken.None));
 		return row is null ? null : ToScore(row);
 	}
 
-	protected override object WriteParameters(ScoreRecord score)
+	protected override WriteCommand SaveCommand(ScoreRecord score)
 	{
-		return Parameters(score.Value, score.Id);
+		var row = ToRow(score.Id, score.Value);
+		return new WriteCommand((context, token) => context.ReplaceAsync(row, stored => stored.Id == row.Id, token));
 	}
 
-	private static (string Where, DynamicParameters Parameters) BuildFilter(ScoreQuery query)
+	/// <summary>Makes the row that stores a score, with the values it has now; the id is 0 for a score not stored yet.</summary>
+	private static ScoreRow ToRow(int id, ScoreData data)
 	{
-		var conditions = new List<string>();
-		var parameters = new DynamicParameters();
-		if (query.Player is { } player)
+		return new ScoreRow
 		{
-			parameters.Add("UserId", player.Id);
-			conditions.Add("user_id = @UserId");
-		}
-
-		if (query.BeatmapHash is { } beatmapHash)
-		{
-			parameters.Add("BeatmapHash", beatmapHash.HashValue);
-			conditions.Add("beatmap_hash = @BeatmapHash");
-		}
-
-		if (query.Mods is { } mods)
-		{
-			parameters.Add("Mods", (int)mods);
-			conditions.Add("mods = @Mods");
-		}
-
-		if (query.Players is { } players)
-		{
-			parameters.Add("PlayerIds", players.Select(player => player.Id).ToArray());
-			conditions.Add("user_id = any(@PlayerIds)");
-		}
-
-		if (query.BestPerPlayer)
-			conditions.Add("user_id is not null");
-
-		return (conditions.Count == 0 ? "" : $"where {string.Join(" AND ", conditions)}", parameters);
+			Id = id,
+			UserId = data.UserId,
+			BeatmapHash = data.BeatmapHash?.HashValue,
+			Mode = (int)data.Mode,
+			Mods = (int)data.Mods,
+			Num300 = data.HitCounts.Num300,
+			Num100 = data.HitCounts.Num100,
+			Num50 = data.HitCounts.Num50,
+			NumGeki = data.HitCounts.NumGeki,
+			NumKatu = data.HitCounts.NumKatu,
+			NumMiss = data.HitCounts.NumMiss,
+			TotalScore = data.TotalScore,
+			MaxCombo = data.MaxCombo,
+			CurrentCombo = data.CurrentCombo,
+			Grade = (int)data.Grade,
+			IsPassed = data.IsPassed,
+			IsFullCombo = data.IsFullCombo,
+			Timestamp = data.Timestamp.ToUniversalTime(),
+			Checksum = data.Checksum?.HashValue
+		};
 	}
 
 	private void IndexScore(ScoreRecord score)
@@ -211,55 +191,5 @@ internal sealed class PostgresScoreRepository(
 			{
 				Checksum = row.Checksum is { } checksum ? new Md5(checksum) : (Md5?)null
 			};
-	}
-
-	private static object Parameters(ScoreData value, int? id = null)
-	{
-		return new
-		{
-			Id = id,
-			value.UserId,
-			BeatmapHash = value.BeatmapHash?.HashValue,
-			Mode = (int)value.Mode,
-			Mods = (int)value.Mods,
-			value.HitCounts.Num300,
-			value.HitCounts.Num100,
-			value.HitCounts.Num50,
-			value.HitCounts.NumGeki,
-			value.HitCounts.NumKatu,
-			value.HitCounts.NumMiss,
-			value.TotalScore,
-			value.MaxCombo,
-			value.CurrentCombo,
-			Grade = (int)value.Grade,
-			value.IsPassed,
-			value.IsFullCombo,
-			Timestamp = value.Timestamp.ToUniversalTime(),
-			Checksum = value.Checksum?.HashValue
-		};
-	}
-
-	/// <summary>A stored row of the <c>scores</c> table.</summary>
-	private sealed class ScoreRow
-	{
-		public int Id { get; set; }
-		public int? UserId { get; set; }
-		public string? BeatmapHash { get; set; }
-		public int Mode { get; set; }
-		public int Mods { get; set; }
-		public int Num300 { get; set; }
-		public int Num100 { get; set; }
-		public int Num50 { get; set; }
-		public int NumGeki { get; set; }
-		public int NumKatu { get; set; }
-		public int NumMiss { get; set; }
-		public int TotalScore { get; set; }
-		public int MaxCombo { get; set; }
-		public int CurrentCombo { get; set; }
-		public int Grade { get; set; }
-		public bool IsPassed { get; set; }
-		public bool IsFullCombo { get; set; }
-		public DateTimeOffset Timestamp { get; set; }
-		public string? Checksum { get; set; }
 	}
 }

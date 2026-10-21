@@ -3,7 +3,7 @@ using Basil.Application.Persistence.Content;
 using Basil.Domain.Content;
 using Basil.Infrastructure.Persistence.Common;
 using Basil.Infrastructure.Persistence.Postgres;
-using Dapper;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Persistence.Content;
@@ -46,17 +46,18 @@ internal sealed class PostgresMenuBannerRepository(
 	public Task DeleteAsync(MenuBanner banner, CancellationToken cancellationToken = default)
 	{
 		_banners.TryRemove(banner.Image, out _);
-		_ = writer.SaveAsync(Root.Server, (GetType(), banner.Image), new WriteCommand(
-			"delete from menu_banners where image = @Image",
-			new { Image = banner.Image.ToString() }));
+		var image = banner.Image.ToString();
+		_ = writer.SaveAsync(Root.Server, (GetType(), banner.Image), new WriteCommand((context, token) => context.MenuBanners
+			.Where(row => row.Image == image)
+			.ExecuteDeleteAsync(token)));
 		return Task.CompletedTask;
 	}
 
 	/// <inheritdoc />
 	public async Task LoadAsync(CancellationToken cancellationToken)
 	{
-		var rows = await reader.ReadAsync(connection => connection.QueryAsync<MenuBannerRow>(
-				"select image, url, starts_at, ends_at, created_at from menu_banners"), cancellationToken);
+		var rows = await reader.ReadAsync(context => context.MenuBanners
+			.ToListAsync(cancellationToken), cancellationToken);
 		foreach (var row in rows)
 		{
 			if (!ContentReference.TryParse(row.Image, null, out var image))
@@ -80,24 +81,16 @@ internal sealed class PostgresMenuBannerRepository(
 
 	private static WriteCommand Upsert(MenuBanner banner)
 	{
-		var url = banner.Url.ToString();
-		var startsAt = banner.StartsAt?.ToUniversalTime();
-		var endsAt = banner.EndsAt?.ToUniversalTime();
-		var createdAt = banner.CreatedAt.ToUniversalTime();
-		return new WriteCommand(
-			"""
-			insert into menu_banners (image, url, starts_at, ends_at, created_at)
-			values (@Image, @Url, @StartsAt, @EndsAt, @CreatedAt)
-			on conflict (image) do update set
-				url = excluded.url,
-				starts_at = excluded.starts_at,
-				ends_at = excluded.ends_at,
-				created_at = excluded.created_at;
-			""",
-			new
-			{
-				Image = banner.Image.ToString(), Url = url, StartsAt = startsAt, EndsAt = endsAt, CreatedAt = createdAt
-			});
+		var row = new MenuBannerRow
+		{
+			Image = banner.Image.ToString(),
+			Url = banner.Url.ToString(),
+			StartsAt = banner.StartsAt?.ToUniversalTime(),
+			EndsAt = banner.EndsAt?.ToUniversalTime(),
+			CreatedAt = banner.CreatedAt.ToUniversalTime()
+		};
+		return new WriteCommand((context, token) =>
+			context.UpsertAsync(row, stored => stored.Image == row.Image, token));
 	}
 
 	/// <summary>Builds a banner from a stored row and its parsed image.</summary>
@@ -111,15 +104,5 @@ internal sealed class PostgresMenuBannerRepository(
 			EndsAt = row.EndsAt,
 			CreatedAt = row.CreatedAt
 		};
-	}
-
-	/// <summary>A stored row of the <c>menu_banners</c> table.</summary>
-	private sealed class MenuBannerRow
-	{
-		public string Image { get; set; } = "";
-		public string Url { get; set; } = "";
-		public DateTimeOffset? StartsAt { get; set; }
-		public DateTimeOffset? EndsAt { get; set; }
-		public DateTimeOffset CreatedAt { get; set; }
 	}
 }

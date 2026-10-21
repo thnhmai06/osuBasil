@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Npgsql;
 
 namespace Basil.Infrastructure.Persistence.Postgres;
 
@@ -95,11 +95,7 @@ internal sealed class DatabaseWriter(
 	public Task AppendAsync(Root root, WriteCommand command)
 	{
 		var identity = new object();
-		var pending = new PendingTransaction(identity, null, async (connection, transaction) =>
-		{
-			await using var statement = command.ToCommand(connection, transaction);
-			await statement.ExecuteNonQueryAsync(_abandon.Token);
-		}, true);
+		var pending = new PendingTransaction(identity, null, context => command.Run(context, _abandon.Token), true);
 		return Enqueue(root, identity, pending).Pending.Done.Task;
 	}
 
@@ -108,13 +104,13 @@ internal sealed class DatabaseWriter(
 	///     own.
 	/// </summary>
 	/// <remarks>The token cancels it only while it waits for its turn; once it runs, it runs to its result.</remarks>
-	public async Task<T> WriteAsync<T>(Root root, Func<NpgsqlConnection, NpgsqlTransaction, Task<T>> operation,
+	public async Task<T> WriteAsync<T>(Root root, Func<BasilDbContext, CancellationToken, Task<T>> operation,
 		CancellationToken cancellationToken = default)
 	{
 		T result = default!;
 		var identity = new object();
 		var pending = new PendingTransaction(identity, null,
-			async (connection, transaction) => result = await operation(connection, transaction), false);
+			async context => result = await operation(context, _abandon.Token), false);
 		var queue = Enqueue(root, identity, pending).Queue;
 		await using var registration = cancellationToken.Register(() =>
 		{
@@ -126,6 +122,20 @@ internal sealed class DatabaseWriter(
 		});
 		await pending.Done.Task;
 		return result;
+	}
+
+	/// <summary>
+	///     Runs a write that gives no value, after the earlier writes of its root, in a transaction of its own.
+	/// </summary>
+	/// <remarks>The token cancels it only while it waits for its turn; once it runs, it runs to its result.</remarks>
+	public Task WriteAsync(Root root, Func<BasilDbContext, CancellationToken, Task> operation,
+		CancellationToken cancellationToken = default)
+	{
+		return WriteAsync(root, async (context, token) =>
+		{
+			await operation(context, token);
+			return true;
+		}, cancellationToken);
 	}
 
 	private static int ValidConnections(int count)
@@ -263,74 +273,59 @@ internal sealed class DatabaseWriter(
 
 	private async Task RunSnapshotAsync(PendingTransaction pendingTransaction)
 	{
-		await using var connection = await database.AsynchronousSource.OpenConnectionAsync(_abandon.Token);
-		await using var command = pendingTransaction.Command!.ToCommand(connection);
-		await command.ExecuteNonQueryAsync(_abandon.Token);
+		await using var context = database.CreateAsynchronousContext();
+		await pendingTransaction.Command!.Run(context, _abandon.Token);
 	}
 
 	private async Task RunTryOpAsync(PendingTransaction pendingTransaction)
 	{
-		long xid = 0;
+		var ticket = Guid.CreateVersion7();
 		var committing = false;
 		try
 		{
-			await using var connection = await database.SynchronousSource.OpenConnectionAsync(_abandon.Token);
-			await using var transaction = await connection.BeginTransactionAsync(_abandon.Token);
-			await using (var timeout = new NpgsqlCommand("set local idle_in_transaction_session_timeout = '30s'",
-				             connection, transaction))
-			{
-				await timeout.ExecuteNonQueryAsync(_abandon.Token);
-			}
+			await using var context = database.CreateSynchronousContext();
+			await using var transaction = await context.Database.BeginTransactionAsync(_abandon.Token);
 
-			await using (var xactId =
-			             new NpgsqlCommand("select pg_current_xact_id()::text::bigint", connection, transaction))
-			{
-				xid = Convert.ToInt64(await xactId.ExecuteScalarAsync(_abandon.Token));
-			}
+			// The ticket commits with the write, so it tells afterwards whether the write was stored.
+			context.WriteTickets.Add(new WriteTicketRow { Id = ticket, CreatedAt = timeProvider.GetUtcNow() });
+			await context.SaveChangesAsync(_abandon.Token);
 
-			await pendingTransaction.Run!(connection, transaction);
+			await pendingTransaction.Run!(context);
 			committing = true;
 			await transaction.CommitAsync(_abandon.Token);
 		}
-		catch (NpgsqlException exception) when (committing && exception is not PostgresException)
+		catch (Exception exception) when (committing && exception.IsConnectionException())
 		{
-			if (await WasCommittedAsync(xid))
+			if (await WasCommittedAsync(ticket))
 				return;
 			throw;
 		}
 	}
 
-	private async Task<bool> WasCommittedAsync(long xid)
+	private async Task<bool> WasCommittedAsync(Guid ticket)
 	{
 		var delay = TimeSpan.FromMilliseconds(50);
 		while (true)
 			try
 			{
-				await using var connection = await database.SynchronousSource.OpenConnectionAsync(_abandon.Token);
-				await using var command = new NpgsqlCommand("select pg_xact_status(@Xid::text::xid8)", connection);
-				command.Parameters.AddWithValue("Xid", xid);
-				var status = (string?)await command.ExecuteScalarAsync(_abandon.Token);
-				switch (status)
-				{
-					case "committed":
-						return true;
-					case "in progress":
-						await Task.Delay(TimeSpan.FromMilliseconds(50), timeProvider, _abandon.Token);
-						break;
-					default:
-						return false;
-				}
+				await using var context = database.CreateSynchronousContext();
+				return await context.WriteTickets.AnyAsync(row => row.Id == ticket, _abandon.Token);
 			}
 			catch (Exception exception) when (exception.IsEnvironmentException())
 			{
-				logger.LogWarning(exception, "Transaction status could not be checked; retrying in {Delay}", delay);
+				logger.LogWarning(exception, "Transaction outcome could not be checked; retrying in {Delay}", delay);
 				await Task.Delay(delay, timeProvider, _abandon.Token);
 				delay = delay + delay > TimeSpan.FromSeconds(5) ? TimeSpan.FromSeconds(5) : delay + delay;
 			}
-			catch (PostgresException)
-			{
-				return false;
-			}
+	}
+
+	/// <summary>Removes the tickets that are too old to be asked about any more.</summary>
+	/// <param name="cancellationToken">A token that cancels the cleanup.</param>
+	public async Task ForgetOldTicketsAsync(CancellationToken cancellationToken = default)
+	{
+		var oldest = timeProvider.GetUtcNow() - TimeSpan.FromDays(1);
+		await using var context = database.CreateAsynchronousContext();
+		await context.WriteTickets.Where(row => row.CreatedAt < oldest).ExecuteDeleteAsync(cancellationToken);
 	}
 
 	private sealed class RootQueue
@@ -344,13 +339,13 @@ internal sealed class DatabaseWriter(
 	private sealed class PendingTransaction(
 		object identity,
 		WriteCommand? command,
-		Func<NpgsqlConnection, NpgsqlTransaction, Task>? run,
+		Func<BasilDbContext, Task>? run,
 		bool logsRefusal)
 	{
 		public bool Started;
 		public object Identity { get; } = identity;
 		public WriteCommand? Command { get; set; } = command;
-		public Func<NpgsqlConnection, NpgsqlTransaction, Task>? Run { get; } = run;
+		public Func<BasilDbContext, Task>? Run { get; } = run;
 		public bool LogsRefusal { get; } = logsRefusal;
 		public TaskCompletionSource Done { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 	}

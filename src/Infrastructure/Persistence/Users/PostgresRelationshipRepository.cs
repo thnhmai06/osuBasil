@@ -3,7 +3,7 @@ using Basil.Application.Persistence.Users;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Persistence.Postgres;
 using Basil.Infrastructure.Persistence.Memory;
-using Dapper;
+using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Persistence.Users;
 
@@ -11,8 +11,7 @@ namespace Basil.Infrastructure.Persistence.Users;
 internal sealed class PostgresRelationshipRepository(
 	DatabaseReader reader,
 	DatabaseWriter writer,
-	IUserRepository users)
-	: IRelationshipRepository
+	IUserRepository users) : IRelationshipRepository
 {
 	private readonly OwnedLists<int, UserRecord, Relationship> _byActor = new();
 
@@ -22,16 +21,15 @@ internal sealed class PostgresRelationshipRepository(
 		var actorId = relationship.Actor.Id;
 		var targetId = relationship.Target.Id;
 		var actor = await users.GetAsync(actorId, cancellationToken);
-		var values = Values(relationship);
-		var saved = writer.SaveAsync(Root.User(actorId), (GetType(), (actorId, targetId)), new WriteCommand(
-			"""
-			insert into relationships (actor_id, target_id, type, created_at)
-			values (@ActorId, @TargetId, @Type, @CreatedAt)
-			on conflict (actor_id, target_id) do update set
-				type = excluded.type,
-				created_at = excluded.created_at;
-			""",
-			values));
+		var row = new RelationshipRow
+		{
+			ActorId = actorId,
+			TargetId = targetId,
+			Type = (int)relationship.Type,
+			CreatedAt = relationship.CreatedAt.ToUniversalTime()
+		};
+		var saved = writer.SaveAsync(Root.User(actorId), (GetType(), (actorId, targetId)), new WriteCommand((context, token) =>
+			context.UpsertAsync(row, stored => stored.ActorId == actorId && stored.TargetId == targetId, token)));
 		_byActor.Change(actorId, actor, current => Replace(current, relationship), saved);
 	}
 
@@ -41,11 +39,14 @@ internal sealed class PostgresRelationshipRepository(
 		var actorId = relationship.Actor.Id;
 		var targetId = relationship.Target.Id;
 		var actor = await users.GetAsync(actorId, cancellationToken);
-		var parameters = new { ActorId = actorId, TargetId = targetId };
-		var deleted = writer.SaveAsync(Root.User(actorId), (GetType(), (actorId, targetId)), new WriteCommand(
-			"delete from relationships where actor_id = @ActorId and target_id = @TargetId",
-			parameters));
-		_byActor.Change(actorId, actor, current => current.RemoveAll(item => item.Target.Id == targetId), deleted);
+		var saved = writer.SaveAsync(Root.User(actorId), (GetType(), (actorId, targetId)), new WriteCommand(
+			async (context, token) =>
+			{
+				await context.Relationships
+					.Where(r => r.ActorId == actorId && r.TargetId == targetId)
+					.ExecuteDeleteAsync(token);
+			}));
+		_byActor.Change(actorId, actor, current => current.RemoveAll(item => item.Target.Id == targetId), saved);
 	}
 
 	/// <inheritdoc />
@@ -55,9 +56,9 @@ internal sealed class PostgresRelationshipRepository(
 		var liveActor = await users.GetAsync(actor.Id, cancellationToken) ?? actor;
 		return await _byActor.GetOrLoadAsync(liveActor.Id, liveActor, async () =>
 		{
-			var rows = await reader.ReadAsync(connection => connection.QueryAsync<RelationshipRow>(
-				"select actor_id, target_id, type, created_at from relationships where actor_id = @ActorId",
-				new { ActorId = liveActor.Id }), cancellationToken);
+			var rows = await reader.ReadAsync(context => context.Relationships
+				.Where(row => row.ActorId == liveActor.Id)
+				.ToListAsync(cancellationToken), cancellationToken);
 
 			var items = ImmutableList.CreateBuilder<Relationship>();
 			foreach (var row in rows)
@@ -81,25 +82,5 @@ internal sealed class PostgresRelationshipRepository(
 	{
 		var index = current.FindIndex(relationship => relationship.Target.Id == item.Target.Id);
 		return index < 0 ? current.Add(item) : current.SetItem(index, item);
-	}
-
-	private static object Values(Relationship relationship)
-	{
-		return new
-		{
-			ActorId = relationship.Actor.Id,
-			TargetId = relationship.Target.Id,
-			Type = (int)relationship.Type,
-			CreatedAt = relationship.CreatedAt.ToUniversalTime()
-		};
-	}
-
-	/// <summary>A stored row of the <c>relationships</c> table.</summary>
-	private sealed class RelationshipRow
-	{
-		public int ActorId { get; set; }
-		public int TargetId { get; set; }
-		public int Type { get; set; }
-		public DateTimeOffset CreatedAt { get; set; }
 	}
 }

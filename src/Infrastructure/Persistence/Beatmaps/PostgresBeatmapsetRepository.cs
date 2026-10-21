@@ -5,9 +5,8 @@ using Basil.Domain.Common;
 using Basil.Domain.Content;
 using Basil.Infrastructure.Persistence.Postgres;
 using Basil.Infrastructure.Persistence.Memory;
-using Dapper;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Npgsql;
 
 namespace Basil.Infrastructure.Persistence.Beatmaps;
 
@@ -19,29 +18,6 @@ internal sealed class PostgresBeatmapsetRepository(
 	IServiceProvider services)
 	: MemoryRepository<int, BeatmapsetRecord>(reader, writer), IBeatmapsetRepository
 {
-	private const string UpdateSql =
-		"""
-		update beatmapsets set
-			artist = @Artist,
-			title = @Title,
-			creator = @Creator,
-			created_at = @CreatedAt,
-			updated_at = @UpdatedAt,
-			archive_hash = @ArchiveHash,
-			archive_size = @ArchiveSize,
-			archive_modified_at = @ArchiveModifiedAt,
-			storyboard = @Storyboard,
-			locked = @Locked,
-			visible = @Visible
-		where id = @Id;
-		""";
-
-	private const string InsertSql =
-		"""
-		insert into beatmapsets (id, artist, title, creator, created_at, updated_at, archive_hash, archive_size, archive_modified_at, storyboard, locked, visible)
-		values (@Id, @Artist, @Title, @Creator, @CreatedAt, @UpdatedAt, @ArchiveHash, @ArchiveSize, @ArchiveModifiedAt, @Storyboard, @Locked, @Visible);
-		""";
-
 	/// <summary>
 	///     Gets the root a commit is stored under: it changes the rows of several beatmapsets, so it has no single root
 	///     of its own and runs after every other commit.
@@ -51,8 +27,6 @@ internal sealed class PostgresBeatmapsetRepository(
 	/// <summary>Gets the repository that stores the difficulties the stored beatmapsets have.</summary>
 	private PostgresBeatmapRepository Beatmaps =>
 		(PostgresBeatmapRepository)services.GetRequiredService<IBeatmapRepository>();
-
-	protected override string WriteSql => UpdateSql;
 
 	/// <inheritdoc />
 	public ValueTask<BeatmapsetRecord?> GetAsync(int id, CancellationToken cancellationToken = default)
@@ -73,11 +47,11 @@ internal sealed class PostgresBeatmapsetRepository(
 	{
 		try
 		{
-			var stored = await Writer.WriteAsync(SyncRoot, (connection, transaction) =>
-				StoreAsync(changes, connection, transaction), cancellationToken);
+			var stored = await Writer.WriteAsync(SyncRoot, async (context, token) =>
+				await StoreAsync(changes, context, token), cancellationToken);
 			return Remember(stored, changes.Remove);
 		}
-		catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation)
+		catch (Exception exception) when (exception.IsUniqueViolation())
 		{
 			throw new AlreadyExistsException("A stored beatmapset or beatmap already has this id or hash.");
 		}
@@ -94,33 +68,19 @@ internal sealed class PostgresBeatmapsetRepository(
 	public async Task<Page<BeatmapsetRecord>> ListAsync(BeatmapQuery query, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
-		var parameters = new DynamicParameters(new { limit = page.Limit, offset = page.Offset });
-		var where = BeatmapQueryFilter.Build(query, parameters);
-		var existsFilter = where.Length == 0 ? "" : $" AND {where}";
-
-		var sql = $"""
-		           select s.id, s.artist, s.title, s.creator, s.created_at, s.updated_at, s.archive_hash, s.archive_size, s.archive_modified_at, s.storyboard, s.locked, s.visible
-		           from beatmapsets s
-		           where exists (
-		               select 1 from beatmaps b
-		               where b.beatmapset_id = s.id{existsFilter}
-		           )
-		           order by s.id desc
-		           limit @limit offset @offset
-		           """;
-
-		var countSql = $"""
-		                select count(*)
-		                from beatmapsets s
-		                where exists (
-		                    select 1 from beatmaps b
-		                    where b.beatmapset_id = s.id{existsFilter}
-		                )
-		                """;
-
-		var (rows, total) = await Reader.ReadAsync(async connection => (
-			await connection.QueryAsync<BeatmapsetRow>(sql, parameters),
-			await connection.ExecuteScalarAsync<int>(countSql, parameters)), cancellationToken);
+		var (total, rows) = await Reader.ReadAsync(async context =>
+		{
+			// A set matches when one of its difficulties does.
+			var matching = BeatmapQueryFilter.Apply(context.Beatmaps, query);
+			var sets = context.Beatmapsets.Where(set => matching.Any(beatmap => beatmap.BeatmapsetId == set.Id));
+			var count = await sets.CountAsync(cancellationToken);
+			var rows = await sets
+				.OrderByDescending(set => set.Id)
+				.Skip(page.Offset)
+				.Take(page.Limit)
+				.ToListAsync(cancellationToken);
+			return (count, rows);
+		}, cancellationToken);
 
 		var items = new List<BeatmapsetRecord>();
 		foreach (var row in rows)
@@ -158,90 +118,108 @@ internal sealed class PostgresBeatmapsetRepository(
 
 	protected override async Task<BeatmapsetRecord?> LoadAsync(int key)
 	{
-		var row = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<BeatmapsetRow>(
-			"""
-			select id, artist, title, creator, created_at, updated_at, archive_hash, archive_size, archive_modified_at, storyboard, locked, visible
-			from beatmapsets
-			where id = @Id
-			""", new { Id = key }));
+		var row = await Reader.ReadAsync(context => context.Beatmapsets
+			.Where(s => s.Id == key)
+			.FirstOrDefaultAsync(cancellationToken: CancellationToken.None));
 		return row is null ? null : ToBeatmapset(row);
 	}
 
-	protected override object WriteParameters(BeatmapsetRecord set)
+	protected override WriteCommand SaveCommand(BeatmapsetRecord set)
 	{
-		return RowParameters(set);
+		var row = ToRow(set);
+		return new WriteCommand((context, token) => context.ReplaceAsync(row, stored => stored.Id == row.Id, token));
 	}
 
 	protected override WriteCommand EraseCommand(int key)
 	{
-		return new WriteCommand("delete from beatmapsets where id = @Id", new { Id = key });
+		return new WriteCommand((context, token) => context.Beatmapsets
+			.Where(s => s.Id == key)
+			.ExecuteDeleteAsync(token));
 	}
 
 	/// <summary>Stores every change in one transaction, keeping what a replaced beatmapset was stored with.</summary>
 	/// <param name="changes">The beatmapsets to store and to remove.</param>
-	/// <param name="connection">The connection the transaction runs on.</param>
-	/// <param name="transaction">The transaction every change is stored in.</param>
+	/// <param name="context">The EF context the transaction runs on.</param>
+	/// <param name="token">The cancellation token.</param>
 	/// <returns>What was stored, in the order of <see cref="BeatmapsetChanges.Store" />.</returns>
-	private async Task<List<StoredSet>> StoreAsync(BeatmapsetChanges changes, NpgsqlConnection connection,
-		NpgsqlTransaction transaction)
+	private async Task<List<StoredSet>> StoreAsync(BeatmapsetChanges changes, BasilDbContext context,
+		CancellationToken token)
 	{
 		var now = time.GetUtcNow();
 		var stored = new List<StoredSet>(changes.Store.Count);
 
 		foreach (var item in changes.Store)
 		{
-			int id;
-			DateTimeOffset createdAt;
-			bool locked;
-			bool visible;
-			if (item.Existing is { } existing)
+			var existing = item.Existing;
+			BeatmapsetRecord Build(int id)
 			{
-				id = existing.Id;
-				createdAt = existing.CreatedAt;
-				locked = existing.Locked;
-				visible = existing.Visible;
+				return new BeatmapsetRecord
+				{
+					Id = id,
+					Fingerprint = item.Data.Fingerprint,
+					Metadata = item.Data.Metadata,
+					Assets = item.Data.Assets,
+					CreatedAt = existing?.CreatedAt ?? now,
+					UpdatedAt = now,
+					Locked = existing?.Locked ?? false,
+					Visible = existing?.Visible ?? true
+				};
+			}
+
+			var row = ToRow(Build(existing?.Id ?? item.Data.OnlineId ?? 0));
+			if (row.Id == 0)
+			{
+				// The database gives a beatmapset without an osu! id the next local id.
+				context.Beatmapsets.Add(row);
+				await context.SaveChangesAsync(token);
 			}
 			else
 			{
-				id = item.Data.OnlineId ?? await NextLocalIdAsync(connection, transaction);
-				createdAt = now;
-				locked = false;
-				visible = true;
+				await context.UpsertAsync(row, candidate => candidate.Id == row.Id, token);
 			}
 
-			var set = new BeatmapsetRecord
-			{
-				Id = id,
-				Fingerprint = item.Data.Fingerprint,
-				Metadata = item.Data.Metadata,
-				Assets = item.Data.Assets,
-				CreatedAt = createdAt,
-				UpdatedAt = now,
-				Locked = locked,
-				Visible = visible
-			};
+			var set = Build(row.Id);
+			var beatmaps = await PostgresBeatmapRepository.StoreAsync(set, item.Data.Beatmaps, now, context, token);
 
-			await connection.ExecuteAsync(item.Existing is null ? InsertSql : UpdateSql,
-				RowParameters(set), transaction);
-
-			var beatmaps = await PostgresBeatmapRepository
-				.StoreAsync(set, item.Data.Beatmaps, now, connection, transaction);
-
-			await connection.ExecuteAsync(
-					"delete from beatmaps where beatmapset_id = @Id and id <> all(@KeepIds)",
-					new { Id = id, KeepIds = beatmaps.Select(beatmap => beatmap.Beatmap.Id).ToArray() }, transaction);
+			var keepIds = beatmaps.Select(stored => stored.Beatmap.Id).ToArray();
+			await context.Beatmaps
+				.Where(b => b.BeatmapsetId == set.Id && !keepIds.Contains(b.Id))
+				.ExecuteDeleteAsync(token);
 
 			stored.Add(new StoredSet(set, beatmaps));
 		}
 
 		foreach (var set in changes.Remove)
 		{
-			await connection.ExecuteAsync("delete from beatmaps where beatmapset_id = @Id", new { set.Id },
-				transaction);
-			await connection.ExecuteAsync("delete from beatmapsets where id = @Id", new { set.Id }, transaction);
+			await context.Beatmaps
+				.Where(b => b.BeatmapsetId == set.Id)
+				.ExecuteDeleteAsync(token);
+			await context.Beatmapsets
+				.Where(s => s.Id == set.Id)
+				.ExecuteDeleteAsync(token);
 		}
 
 		return stored;
+	}
+
+	/// <summary>Makes the row that stores a beatmapset, with the values it has now.</summary>
+	private static BeatmapsetRow ToRow(BeatmapsetRecord set)
+	{
+		return new BeatmapsetRow
+		{
+			Id = set.Id,
+			Artist = set.Metadata.Artist,
+			Title = set.Metadata.Title,
+			Creator = set.Metadata.Creator,
+			CreatedAt = set.CreatedAt.ToUniversalTime(),
+			UpdatedAt = set.UpdatedAt.ToUniversalTime(),
+			ArchiveHash = set.Fingerprint.Hash.HashValue,
+			ArchiveSize = set.Fingerprint.Stamp.Size,
+			ArchiveModifiedAt = set.Fingerprint.Stamp.ModifiedAt.ToUniversalTime(),
+			Storyboard = set.Assets.HasStoryboard,
+			Locked = set.Locked,
+			Visible = set.Visible
+		};
 	}
 
 	/// <summary>Brings the stored beatmapsets in step in memory, once every change is stored.</summary>
@@ -282,38 +260,13 @@ internal sealed class PostgresBeatmapsetRepository(
 		return live;
 	}
 
-	private static object RowParameters(BeatmapsetRecord set)
-	{
-		return new
-		{
-			set.Id,
-			set.Metadata.Artist,
-			set.Metadata.Title,
-			set.Metadata.Creator,
-			CreatedAt = set.CreatedAt.ToUniversalTime(),
-			UpdatedAt = set.UpdatedAt.ToUniversalTime(),
-			ArchiveHash = set.Fingerprint.Hash.HashValue,
-			ArchiveSize = set.Fingerprint.Stamp.Size,
-			ArchiveModifiedAt = set.Fingerprint.Stamp.ModifiedAt.ToUniversalTime(),
-			Storyboard = set.Assets.HasStoryboard,
-			set.Locked,
-			set.Visible
-		};
-	}
-
-	private static Task<int> NextLocalIdAsync(NpgsqlConnection connection, NpgsqlTransaction transaction)
-	{
-		return connection.ExecuteScalarAsync<int>("select nextval('local_beatmapset_ids')::int",
-			transaction: transaction);
-	}
-
 	private static BeatmapsetRecord ToBeatmapset(BeatmapsetRow row)
 	{
 		// A set stored before archives were recorded has no fingerprint; the next scan takes one, as for a changed archive.
-		var fingerprint = row.ArchiveHash is { } hash
+		var fingerprint = row.ArchiveHash != ""
 			? new ContentFingerprint(
-				new ContentStamp(row.ArchiveSize ?? 0, row.ArchiveModifiedAt ?? DateTimeOffset.UnixEpoch),
-				new Md5(hash))
+				new ContentStamp(row.ArchiveSize, row.ArchiveModifiedAt),
+				new Md5(row.ArchiveHash))
 			: default;
 		return new BeatmapsetRecord
 		{
@@ -326,23 +279,6 @@ internal sealed class PostgresBeatmapsetRepository(
 			Locked = row.Locked,
 			Visible = row.Visible
 		};
-	}
-
-	/// <summary>A stored row of the <c>beatmapsets</c> table.</summary>
-	private sealed class BeatmapsetRow
-	{
-		public int Id { get; set; }
-		public string Artist { get; set; } = "";
-		public string Title { get; set; } = "";
-		public string Creator { get; set; } = "";
-		public DateTimeOffset CreatedAt { get; set; }
-		public DateTimeOffset UpdatedAt { get; set; }
-		public string? ArchiveHash { get; set; }
-		public long? ArchiveSize { get; set; }
-		public DateTimeOffset? ArchiveModifiedAt { get; set; }
-		public bool Storyboard { get; set; }
-		public bool Locked { get; set; }
-		public bool Visible { get; set; }
 	}
 }
 

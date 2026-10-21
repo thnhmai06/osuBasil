@@ -4,7 +4,7 @@ using Basil.Application.Persistence.Users;
 using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Persistence.Postgres;
-using Dapper;
+using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Persistence.Users;
 
@@ -18,20 +18,24 @@ internal sealed class PostgresModerationLogRepository(
 	/// <inheritdoc />
 	public Task AppendAsync(ModerationData entry, CancellationToken cancellationToken = default)
 	{
-		var parameters = new
-		{
-			Action = (int)entry.Action,
-			ById = entry.By.Id,
-			TargetId = entry.Target.Id,
-			entry.Reason,
-			Timestamp = entry.Timestamp.ToUniversalTime()
-		};
+		var action = (int)entry.Action;
+		var byId = entry.By.Id;
+		var targetId = entry.Target.Id;
+		var reason = entry.Reason;
+		var timestamp = entry.Timestamp.ToUniversalTime();
 		_ = writer.AppendAsync(Root.User(entry.Target.Id), new WriteCommand(
-			"""
-			insert into moderation_log (action, by_id, target_id, reason, timestamp)
-			values (@Action, @ById, @TargetId, @Reason, @Timestamp)
-			""",
-			parameters));
+			async (context, token) =>
+			{
+				context.ModerationLog.Add(new ModerationLogRow
+				{
+					Action = action,
+					ById = byId,
+					TargetId = targetId,
+					Reason = reason,
+					Timestamp = timestamp
+				});
+				await context.SaveChangesAsync(token);
+			}));
 		return Task.CompletedTask;
 	}
 
@@ -40,33 +44,39 @@ internal sealed class PostgresModerationLogRepository(
 		PageRequest page, CancellationToken cancellationToken = default)
 	{
 		var liveTarget = await users.GetAsync(target.Id, cancellationToken) ?? target;
-		var parameters = new DynamicParameters(new { TargetId = liveTarget.Id, page.Limit, page.Offset });
-		var conditions = new List<string> { "target_id = @TargetId" };
-		if (within is { Min: { } min })
-		{
-			parameters.Add("MinTimestamp", min.ToUniversalTime());
-			conditions.Add(within.Value.MinInclusive ? "timestamp >= @MinTimestamp" : "timestamp > @MinTimestamp");
-		}
+		var minTimestamp = within?.Min?.ToUniversalTime();
+		var maxTimestamp = within?.Max?.ToUniversalTime();
 
-		if (within is { Max: { } max })
+		var result = await reader.ReadAsync(async context =>
 		{
-			parameters.Add("MaxTimestamp", max.ToUniversalTime());
-			conditions.Add(within.Value.MaxInclusive ? "timestamp <= @MaxTimestamp" : "timestamp < @MaxTimestamp");
-		}
+			var query = context.ModerationLog.Where(row => row.TargetId == liveTarget.Id);
 
-		var where = string.Join(" and ", conditions);
-		var (total, rows) = await reader.ReadAsync(async connection => (
-			await connection.ExecuteScalarAsync<int>(
-				$"select count(*) from moderation_log where {where}", parameters),
-			await connection.QueryAsync<ModerationLogRow>(
-				$"""
-				 select id, action, by_id, target_id, reason, timestamp
-				 from moderation_log
-				 where {where}
-				 order by timestamp desc, id desc
-				 limit @Limit offset @Offset
-				 """,
-				parameters)), cancellationToken);
+			if (minTimestamp is { } min)
+			{
+				query = within!.Value.MinInclusive
+					? query.Where(row => row.Timestamp >= min)
+					: query.Where(row => row.Timestamp > min);
+			}
+
+			if (maxTimestamp is { } max)
+			{
+				query = within!.Value.MaxInclusive
+					? query.Where(row => row.Timestamp <= max)
+					: query.Where(row => row.Timestamp < max);
+			}
+
+			var count = await query.CountAsync(cancellationToken);
+			var rows = await query
+				.OrderByDescending(row => row.Timestamp)
+				.ThenByDescending(row => row.Id)
+				.Skip(page.Offset)
+				.Take(page.Limit)
+				.ToListAsync(cancellationToken);
+			return (count, rows);
+		}, cancellationToken);
+
+		var total = result.count;
+		var rows = result.rows;
 
 		var entries = ImmutableList.CreateBuilder<ModerationLog>();
 		foreach (var row in rows)
@@ -96,16 +106,5 @@ internal sealed class PostgresModerationLogRepository(
 		}
 
 		return new Page<ModerationLog>(entries.ToImmutable(), total);
-	}
-
-	/// <summary>A stored row of the <c>moderation_log</c> table.</summary>
-	private sealed class ModerationLogRow
-	{
-		public long Id { get; set; }
-		public int Action { get; set; }
-		public int ById { get; set; }
-		public int TargetId { get; set; }
-		public string? Reason { get; set; }
-		public DateTimeOffset Timestamp { get; set; }
 	}
 }

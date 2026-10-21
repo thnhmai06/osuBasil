@@ -4,7 +4,7 @@ using Basil.Domain.Chat;
 using Basil.Domain.Permissions;
 using Basil.Infrastructure.Persistence.Common;
 using Basil.Infrastructure.Persistence.Postgres;
-using Dapper;
+using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Persistence.Chat;
 
@@ -39,76 +39,59 @@ internal sealed class PostgresChannelRepository(DatabaseReader reader, DatabaseW
 	{
 		_channels.TryRemove(channel.Name, out _);
 		_ = writer.SaveAsync(Root.Server, (GetType(), channel.Name.ToLowerInvariant()), new WriteCommand(
-			"delete from channels where name = @Name", new { channel.Name }));
+			async (context, token) =>
+			{
+				await context.Channels
+					.Where(c => c.Name == channel.Name)
+					.ExecuteDeleteAsync(token);
+			}));
 		return Task.CompletedTask;
 	}
 
 	/// <inheritdoc />
 	public async Task LoadAsync(CancellationToken cancellationToken)
 	{
-		var rows = await reader.ReadAsync(connection => connection.QueryAsync<ChannelRow>(
-				"select name, topic, read_privileges, write_privileges, auto_join, visible from channels order by name"),
-			cancellationToken);
-		foreach (var row in rows)
+		var rows = await reader.ReadAsync(context => context.Channels
+			.OrderBy(c => c.Name)
+			.ToListAsync(cancellationToken), cancellationToken);
+		foreach (var channel in rows.Select(ToRecord))
 		{
-			var channel = row.ToRecord();
 			_channels[channel.Name] = channel;
 		}
 
 		_loaded = true;
 	}
 
+	/// <summary>Builds the change that stores a channel, from the values it has now.</summary>
 	private static WriteCommand Upsert(GeneralChannelRecord channel)
 	{
-		var readPrivileges = (int)(byte)channel.Value.ReadPrivileges;
-		var writePrivileges = (int)(byte)channel.Value.WritePrivileges;
-		return new WriteCommand(
-			"""
-			insert into channels (name, topic, read_privileges, write_privileges, auto_join, visible)
-			values (@Name, @Topic, @ReadPrivileges, @WritePrivileges, @AutoJoin, @Visible)
-			on conflict (name) do update set
-				topic = excluded.topic,
-				read_privileges = excluded.read_privileges,
-				write_privileges = excluded.write_privileges,
-				auto_join = excluded.auto_join,
-				visible = excluded.visible;
-			""",
-			new
-			{
-				channel.Name,
-				channel.Value.Topic,
-				ReadPrivileges = readPrivileges,
-				WritePrivileges = writePrivileges,
-				channel.Value.AutoJoin,
-				channel.Value.Visible
-			});
+		var row = new ChannelRow
+		{
+			Name = channel.Name,
+			Topic = channel.Value.Topic,
+			ReadPrivileges = (byte)channel.Value.ReadPrivileges,
+			WritePrivileges = (byte)channel.Value.WritePrivileges,
+			AutoJoin = channel.Value.AutoJoin,
+			Visible = channel.Value.Visible
+		};
+		return new WriteCommand((context, token) =>
+			context.UpsertAsync(row, stored => stored.Name == row.Name, token));
 	}
 
-	/// <summary>A stored row of the <c>channels</c> table.</summary>
-	private sealed class ChannelRow
+	/// <summary>Builds a general channel from a stored row.</summary>
+	private static GeneralChannelRecord ToRecord(ChannelRow row)
 	{
-		public string Name { get; set; } = "";
-		public string Topic { get; set; } = "";
-		public int ReadPrivileges { get; set; }
-		public int WritePrivileges { get; set; }
-		public bool AutoJoin { get; set; }
-		public bool Visible { get; set; }
-
-		/// <summary>Builds a general channel from this row.</summary>
-		public GeneralChannelRecord ToRecord()
+		return new GeneralChannelRecord
 		{
-			return new GeneralChannelRecord
+			Name = row.Name,
+			Value = new GeneralChannelData
 			{
-				Name = Name,
-				Value = new GeneralChannelData
-				{
-					Topic = Topic,
-					ReadPrivileges = (Privileges)(byte)ReadPrivileges,
-					WritePrivileges = (Privileges)(byte)WritePrivileges,
-					AutoJoin = AutoJoin,
-					Visible = Visible
-				}
-			};
-		}
+				Topic = row.Topic,
+				ReadPrivileges = (Privileges)(byte)row.ReadPrivileges,
+				WritePrivileges = (Privileges)(byte)row.WritePrivileges,
+				AutoJoin = row.AutoJoin,
+				Visible = row.Visible
+			}
+		};
 	}
 }

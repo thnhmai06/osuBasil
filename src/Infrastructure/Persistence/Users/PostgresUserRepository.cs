@@ -3,10 +3,9 @@ using Basil.Application.Persistence.Common;
 using Basil.Application.Persistence.Users;
 using Basil.Domain.Permissions;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Persistence.Postgres;
 using Basil.Infrastructure.Persistence.Memory;
-using Dapper;
-using Npgsql;
+using Basil.Infrastructure.Persistence.Postgres;
+using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Persistence.Users;
 
@@ -14,19 +13,7 @@ namespace Basil.Infrastructure.Persistence.Users;
 internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWriter writer)
 	: MemoryRepository<int, UserRecord>(reader, writer), IUserRepository
 {
-	/// <summary>The expression that gives a stored name its identifying form: lower case, with spaces as underscores.</summary>
-	private const string NormalizedNameSql = "lower(replace(name, ' ', '_'))";
-
 	private readonly WeakIndex<string, UserRecord> _byName = new();
-
-	protected override string WriteSql =>
-		"""
-		update users set
-			country = @Country,
-			permissions = @Permissions,
-			deleted_at = @DeletedAt
-		where id = @Id;
-		""";
 
 	/// <inheritdoc />
 	public async Task<UserRecord> CreateAsync(UserData data, CancellationToken cancellationToken = default)
@@ -35,30 +22,29 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 		    known.Value.NormalizedName == data.NormalizedName)
 			throw new AlreadyExistsException($"A user is already named {data.Name}.");
 
-		var parameters = new
+		var row = new UserRow
 		{
-			data.Name,
+			Name = data.Name,
+			NormalizedName = data.NormalizedName,
 			Country = (int)data.Country,
 			Permissions = (long)data.Permissions,
 			DeletedAt = data.DeletedAt?.ToUniversalTime()
 		};
-		int id;
 		try
 		{
-			id = await Writer.WriteAsync(Root.Server, (connection, transaction) => connection.QuerySingleAsync<int>(
-				"""
-				insert into users (name, country, permissions, deleted_at)
-				values (@Name, @Country, @Permissions, @DeletedAt)
-				returning id;
-				""",
-				parameters, transaction), cancellationToken);
+			await Writer.WriteAsync(Root.Server, async (context, token) =>
+			{
+				context.Users.Add(row);
+				await context.SaveChangesAsync(token);
+				return row.Id;
+			}, cancellationToken);
 		}
-		catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation)
+		catch (Exception exception) when (exception.IsUniqueViolation())
 		{
 			throw new AlreadyExistsException($"A user is already named {data.Name}.");
 		}
 
-		return TrackUser(new UserRecord { Id = id, Value = data });
+		return TrackUser(new UserRecord { Id = row.Id, Value = data });
 	}
 
 	/// <inheritdoc />
@@ -76,19 +62,23 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 		_ = new UserData { Name = name };
 		var live = TrackUser(user);
 		var old = live.Value.NormalizedName;
-		var newSafe = UserData.NormalizeName(name);
+		var normalized = UserData.NormalizeName(name);
 
-		if (_byName.TryGetValue(newSafe, out var known) && known.Value.NormalizedName == newSafe && known != live)
+		if (_byName.TryGetValue(normalized, out var known) && known.Value.NormalizedName == normalized &&
+		    known != live)
 			return false;
 
 		// Whether the name is free is the database's to say, so the user takes the name only once it is committed.
+		var id = live.Id;
 		try
 		{
-			await Writer.WriteAsync(Root.User(live.Id), (connection, transaction) => connection.ExecuteAsync(
-				"update users set name = @Name where id = @Id",
-				new { Name = name, live.Id }, transaction), cancellationToken);
+			await Writer.WriteAsync(Root.User(id), async (context, token) => await context.Users
+				.Where(row => row.Id == id)
+				.ExecuteUpdateAsync(set => set
+					.SetProperty(row => row.Name, name)
+					.SetProperty(row => row.NormalizedName, normalized), token), cancellationToken);
 		}
-		catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation)
+		catch (Exception exception) when (exception.IsUniqueViolation())
 		{
 			return false;
 		}
@@ -108,13 +98,14 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 	/// <inheritdoc />
 	public async ValueTask<UserRecord?> GetByNameAsync(string name, CancellationToken cancellationToken = default)
 	{
-		var safeName = UserData.NormalizeName(name);
-		if (_byName.TryGetValue(safeName, out var known) && known.Value.NormalizedName == safeName)
+		var normalized = UserData.NormalizeName(name);
+		if (_byName.TryGetValue(normalized, out var known) && known.Value.NormalizedName == normalized)
 			return known;
 
-		var foundId = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<int?>(
-			$"select id from users where {NormalizedNameSql} = @NormalizedName and deleted_at is null",
-			new { NormalizedName = safeName }), cancellationToken);
+		var foundId = await Reader.ReadAsync(context => context.Users
+			.Where(row => row.NormalizedName == normalized && row.DeletedAt == null)
+			.Select(row => (int?)row.Id)
+			.FirstOrDefaultAsync(cancellationToken), cancellationToken);
 		return foundId is { } found ? await FindUserAsync(found, cancellationToken) : null;
 	}
 
@@ -122,14 +113,13 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 	public async Task<Page<UserRecord>> ListAsync(UserQuery query, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
-		var (where, parameters) = BuildFilter(query);
-		parameters.Add("Limit", page.Limit);
-		parameters.Add("Offset", page.Offset);
-		var (total, rows) = await Reader.ReadAsync(async connection => (
-			await connection.ExecuteScalarAsync<int>($"select count(*) from users {where}", parameters),
-			await connection.QueryAsync<UserRow>(
-				$"select id, name, country, permissions, deleted_at from users {where} order by id limit @Limit offset @Offset",
-				parameters)), cancellationToken);
+		var (total, rows) = await Reader.ReadAsync(async context =>
+		{
+			var matching = Filter(context.Users, query);
+			return (await matching.CountAsync(cancellationToken),
+				await matching.OrderBy(row => row.Id).Skip(page.Offset).Take(page.Limit)
+					.ToListAsync(cancellationToken));
+		}, cancellationToken);
 
 		return new Page<UserRecord>([.. rows.Select(row => TrackUser(ToUser(row)))], total);
 	}
@@ -156,22 +146,22 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 
 	protected override async Task<UserRecord?> LoadAsync(int key)
 	{
-		var row = await Reader.ReadAsync(connection => connection.QuerySingleOrDefaultAsync<UserRow>(
-			"select id, name, country, permissions, deleted_at from users where id = @Id", new { Id = key }));
+		var row = await Reader.ReadAsync(context => context.Users.Where(candidate => candidate.Id == key)
+			.FirstOrDefaultAsync());
 		return row is null ? null : ToUser(row);
 	}
 
-	protected override object WriteParameters(UserRecord user)
+	protected override WriteCommand SaveCommand(UserRecord user)
 	{
-		var value = user.Value;
-		return new
-		{
-			user.Id,
-			value.Name,
-			Country = (int)value.Country,
-			Permissions = (long)value.Permissions,
-			DeletedAt = value.DeletedAt?.ToUniversalTime()
-		};
+		var id = user.Id;
+		var country = (int)user.Value.Country;
+		var permissions = (long)user.Value.Permissions;
+		var deletedAt = user.Value.DeletedAt?.ToUniversalTime();
+		return new WriteCommand((context, token) => context.Users.Where(row => row.Id == id)
+			.ExecuteUpdateAsync(set => set
+				.SetProperty(row => row.Country, country)
+				.SetProperty(row => row.Permissions, permissions)
+				.SetProperty(row => row.DeletedAt, deletedAt), token));
 	}
 
 	private UserRecord TrackUser(UserRecord user)
@@ -196,40 +186,33 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 			_byName.Set(live.Value.NormalizedName, live);
 	}
 
-	/// <summary>Builds the shared filter and parameters for a user listing.</summary>
-	private static (string Where, DynamicParameters Parameters) BuildFilter(UserQuery query)
+	/// <summary>Narrows the users to the ones a query asks for.</summary>
+	private static IQueryable<UserRow> Filter(IQueryable<UserRow> users, UserQuery query)
 	{
-		var conditions = new List<string>();
-		var parameters = new DynamicParameters();
-		if (query.Deleted is { } deleted) conditions.Add(deleted ? "deleted_at is not null" : "deleted_at is null");
+		if (query.Deleted is { } deleted)
+			users = deleted ? users.Where(row => row.DeletedAt != null) : users.Where(row => row.DeletedAt == null);
+
 		if (query.Countries is { Count: > 0 } countries)
 		{
-			conditions.Add("country = any(@Countries)");
-			parameters.Add("Countries", countries.Select(country => (int)country).ToArray());
+			var codes = countries.Select(country => (int)country).ToList();
+			users = users.Where(row => codes.Contains(row.Country));
 		}
 
 		if (query.Permissions is { } permissions)
 		{
-			conditions.Add("(permissions & @Permissions) = @Permissions");
-			parameters.Add("Permissions", (long)permissions);
+			var mask = (long)permissions;
+			users = users.Where(row => (row.Permissions & mask) == mask);
 		}
 
 		if (query.Text is { } text)
 		{
 			var pattern = LikePattern.Containing(text.ToLowerInvariant().Replace(' ', '_'));
-			parameters.Add("Pattern", pattern);
-			if (int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var id))
-			{
-				conditions.Add($"(id = @TextId OR {NormalizedNameSql} LIKE @Pattern)");
-				parameters.Add("TextId", id);
-			}
-			else
-			{
-				conditions.Add($"{NormalizedNameSql} LIKE @Pattern");
-			}
+			users = int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var id)
+				? users.Where(row => row.Id == id || EF.Functions.Like(row.NormalizedName, pattern))
+				: users.Where(row => EF.Functions.Like(row.NormalizedName, pattern));
 		}
 
-		return (conditions.Count == 0 ? "" : $"where {string.Join(" AND ", conditions)}", parameters);
+		return users;
 	}
 
 	/// <summary>Builds a user from a stored row.</summary>
@@ -246,15 +229,5 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 				DeletedAt = row.DeletedAt
 			}
 		};
-	}
-
-	/// <summary>A stored row of the <c>users</c> table.</summary>
-	private sealed class UserRow
-	{
-		public int Id { get; set; }
-		public string Name { get; set; } = "";
-		public int Country { get; set; }
-		public long Permissions { get; set; }
-		public DateTimeOffset? DeletedAt { get; set; }
 	}
 }
