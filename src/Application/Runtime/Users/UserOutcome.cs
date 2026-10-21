@@ -1,16 +1,13 @@
 namespace Basil.Application.Runtime.Users;
 
-/// <summary>The outcome of an account operation.</summary>
-public enum UserResult
+/// <summary>What happened to an account operation that was not refused for lack of permissions.</summary>
+public enum UserOutcome : byte
 {
 	/// <summary>The operation succeeded.</summary>
-	Ok,
+	Ok = 1,
 
-	/// <summary>The caller lacks the required permission or does not outrank the target.</summary>
-	NotAuthorized,
-
-	/// <summary>The caller has the permission, but an active restriction suspends it.</summary>
-	Restricted,
+	/// <summary>The caller does not outrank the target account.</summary>
+	NotOutranking,
 
 	/// <summary>The target is BasilBot, whose account record is fixed.</summary>
 	Protected,
@@ -25,5 +22,14 @@ public enum UserResult
 	Deleted,
 
 	/// <summary>The current password given is wrong.</summary>
-	WrongPassword
+	WrongPassword,
+
+	/// <summary>The name is not a valid user name.</summary>
+	InvalidName,
+
+	/// <summary>Another account already has the name.</summary>
+	NameTaken,
+
+	/// <summary>The thing the operation names does not belong to this account.</summary>
+	NotFound
 }

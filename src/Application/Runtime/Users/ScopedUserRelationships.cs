@@ -17,13 +17,13 @@ public sealed class ScopedUserRelationships
 	/// <summary>Adds the target as a friend.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of adding the friend.</returns>
-	public async Task<UserResult> AddFriendAsync(CancellationToken cancellationToken = default)
+	public async Task<Result<UserOutcome>> AddFriendAsync(CancellationToken cancellationToken = default)
 	{
-		if (_scoped.IsSelf) return UserResult.Self;
+		if (_scoped.IsSelf) return UserOutcome.Self;
 
 		var target = _scoped.User.Record;
-		if (target.Value.DeletedAt is not null) return UserResult.Deleted;
-		if (BasilBot.Is(target)) return UserResult.Ok;
+		if (target.Value.DeletedAt is not null) return UserOutcome.Deleted;
+		if (BasilBot.Is(target)) return UserOutcome.Ok;
 
 		await _scoped.User.Context.Relationships.CreateOrUpdateAsync(new Relationship
 		{
@@ -31,37 +31,37 @@ public sealed class ScopedUserRelationships
 			Target = target,
 			Type = RelationshipType.Friend
 		}, cancellationToken);
-		return UserResult.Ok;
+		return UserOutcome.Ok;
 	}
 
 	/// <summary>Removes the target as a friend.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of removing the friend.</returns>
-	public async Task<UserResult> RemoveFriendAsync(CancellationToken cancellationToken = default)
+	public async Task<Result<UserOutcome>> RemoveFriendAsync(CancellationToken cancellationToken = default)
 	{
-		if (_scoped.IsSelf) return UserResult.Self;
+		if (_scoped.IsSelf) return UserOutcome.Self;
 
 		var target = _scoped.User.Record;
-		if (BasilBot.Is(target)) return UserResult.Protected;
+		if (BasilBot.Is(target)) return UserOutcome.Protected;
 
 		var relationships = await _scoped.User.Context.Relationships.ListAsync(_scoped.By.Record, cancellationToken);
 		var friend = relationships.FirstOrDefault(relationship => relationship.Target.Equals(target) &&
 		                                                          relationship.Type == RelationshipType.Friend);
 		if (friend is not null)
 			await _scoped.User.Context.Relationships.DeleteAsync(friend, cancellationToken);
-		return UserResult.Ok;
+		return UserOutcome.Ok;
 	}
 
 	/// <summary>Blocks the target.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of blocking the target.</returns>
-	public async Task<UserResult> BlockAsync(CancellationToken cancellationToken = default)
+	public async Task<Result<UserOutcome>> BlockAsync(CancellationToken cancellationToken = default)
 	{
-		if (_scoped.IsSelf) return UserResult.Self;
+		if (_scoped.IsSelf) return UserOutcome.Self;
 
 		var target = _scoped.User.Record;
-		if (target.Value.DeletedAt is not null) return UserResult.Deleted;
-		if (BasilBot.Is(target)) return UserResult.Protected;
+		if (target.Value.DeletedAt is not null) return UserOutcome.Deleted;
+		if (BasilBot.Is(target)) return UserOutcome.Protected;
 
 		await _scoped.User.Context.Relationships.CreateOrUpdateAsync(new Relationship
 		{
@@ -69,24 +69,24 @@ public sealed class ScopedUserRelationships
 			Target = target,
 			Type = RelationshipType.Block
 		}, cancellationToken);
-		return UserResult.Ok;
+		return UserOutcome.Ok;
 	}
 
 	/// <summary>Removes a block on the target.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of removing the block.</returns>
-	public async Task<UserResult> UnblockAsync(CancellationToken cancellationToken = default)
+	public async Task<Result<UserOutcome>> UnblockAsync(CancellationToken cancellationToken = default)
 	{
-		if (_scoped.IsSelf) return UserResult.Self;
+		if (_scoped.IsSelf) return UserOutcome.Self;
 
 		var target = _scoped.User.Record;
-		if (BasilBot.Is(target)) return UserResult.Ok;
+		if (BasilBot.Is(target)) return UserOutcome.Ok;
 
 		var relationships = await _scoped.User.Context.Relationships.ListAsync(_scoped.By.Record, cancellationToken);
 		var block = relationships.FirstOrDefault(relationship => relationship.Target.Equals(target) &&
 		                                                         relationship.Type == RelationshipType.Block);
 		if (block is not null)
 			await _scoped.User.Context.Relationships.DeleteAsync(block, cancellationToken);
-		return UserResult.Ok;
+		return UserOutcome.Ok;
 	}
 }

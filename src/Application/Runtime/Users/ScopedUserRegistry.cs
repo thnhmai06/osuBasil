@@ -1,43 +1,41 @@
+using Basil.Application.Persistence.Users;
 using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Common;
 using Basil.Domain.Permissions;
 using Basil.Domain.Users;
-using Basil.Application.Persistence.Users;
 
 namespace Basil.Application.Runtime.Users;
 
-/// <summary>A user registry scoped to one connection and its authority snapshot.</summary>
-public sealed class ScopedUserRegistry
+/// <summary>The user registry as one connection may act on it: creating accounts.</summary>
+public sealed class ScopedUserRegistry : Scoped<UserRegistry>
 {
-	private readonly DateTimeOffset _now;
-	private readonly UserRegistry _registry;
-
-	/// <summary>The connection acting.</summary>
-	public Connection By { get; }
-
 	/// <summary>Creates a scoped registry for a connection.</summary>
 	/// <param name="registry">The registry whose account creation is scoped.</param>
 	/// <param name="by">The connection acting.</param>
-	internal ScopedUserRegistry(UserRegistry registry, Connection by)
+	internal ScopedUserRegistry(UserRegistry registry, Connection by) : base(registry, by, by.User.Context.Clock)
 	{
-		_registry = registry;
-		By = by;
-		_now = by.User.Context.Clock.GetUtcNow();
 	}
 
 	/// <summary>Creates an account with permissions the caller may grant.</summary>
 	/// <param name="data">The account data.</param>
 	/// <param name="passwordHash">The MD5 digest of the password.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>The new user, or why the account could not be created.</returns>
-	public Task<(UserRecord? User, RegistrationFailure? Failure)> CreateAccountAsync(UserData data,
+	/// <returns>
+	///     The new account when the result is ok; otherwise why none was created. Granting needs
+	///     <see cref="Permissions.UserManage" /> and only permissions that are in effect for the caller.
+	/// </returns>
+	public async Task<(UserRecord? User, Result<UserOutcome> Result)> CreateAccountAsync(UserData data,
 		Md5 passwordHash, CancellationToken cancellationToken = default)
 	{
-		if (By.User.Check(Permissions.UserManage, _now) is not Access.Allowed ||
-		    !By.User.Record.Value.Permissions.Allows(data.Permissions))
-			return Task.FromResult<(UserRecord? User, RegistrationFailure? Failure)>((null,
-				RegistrationFailure.NotAuthorized));
+		if (Require(Permissions.UserManage | data.Permissions) is { } missing)
+			return (null, Result<UserOutcome>.Denied(missing));
 
-		return _registry.CreateAccountAsync(data, passwordHash, cancellationToken);
+		var (user, failure) = await Owner.CreateAccountAsync(data, passwordHash, cancellationToken);
+		return failure switch
+		{
+			null => (user, UserOutcome.Ok),
+			RegistrationFailure.InvalidName => (null, UserOutcome.InvalidName),
+			_ => (null, UserOutcome.NameTaken)
+		};
 	}
 }

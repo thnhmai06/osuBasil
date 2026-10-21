@@ -3,76 +3,59 @@ using Basil.Domain.Permissions;
 
 namespace Basil.Application.Runtime.Beatmaps;
 
-/// <summary>A beatmapset scoped to one connection and its authority snapshot.</summary>
-/// <remarks>The snapshot is for one request or command; keeping it longer lets its rights outlive changes to permissions or restrictions.</remarks>
-public sealed class ScopedBeatmapset
+/// <summary>A beatmapset as one connection may act on it.</summary>
+public sealed class ScopedBeatmapset : Scoped<Beatmapset>
 {
-	private readonly DateTimeOffset _now;
-
-	/// <summary>The beatmapset this scope is over.</summary>
-	public Beatmapset Beatmapset { get; }
-
-	/// <summary>The connection acting on the beatmapset.</summary>
-	public Connection By { get; }
-
 	/// <summary>Creates a scoped beatmapset for a connection.</summary>
 	/// <param name="beatmapset">The beatmapset to scope.</param>
 	/// <param name="by">The connection acting on the beatmapset.</param>
-	internal ScopedBeatmapset(Beatmapset beatmapset, Connection by)
+	internal ScopedBeatmapset(Beatmapset beatmapset, Connection by) : base(beatmapset, by, beatmapset.Context.Clock)
 	{
-		Beatmapset = beatmapset;
-		By = by;
-		_now = beatmapset.Context.Clock.GetUtcNow();
 	}
+
+	/// <summary>Gets the beatmapset this scope is over.</summary>
+	public Beatmapset Beatmapset => Owner;
 
 	/// <summary>Deletes this beatmapset and its files.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>The outcome of deleting the beatmapset.</returns>
-	public async Task<BeatmapsetResult> DeleteAsync(CancellationToken cancellationToken = default)
+	/// <returns>The outcome of deleting the beatmapset; a locked set is not deleted.</returns>
+	public async Task<Result<BeatmapsetOutcome>> DeleteAsync(CancellationToken cancellationToken = default)
 	{
-		if (Require() is { } denied) return denied;
-		if (Beatmapset.Record.Locked) return BeatmapsetResult.Locked;
+		if (Require(Permissions.BeatmapsetManage) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
+		if (Beatmapset.Record.Locked) return BeatmapsetOutcome.Locked;
 
 		await Beatmapset.Context.Storage.DeleteAsync(Beatmapset.Record, cancellationToken);
 		await Beatmapset.ForgetAsync(cancellationToken);
-		return BeatmapsetResult.Ok;
+		return BeatmapsetOutcome.Ok;
 	}
 
 	/// <summary>Changes whether this beatmapset is shown in public listings.</summary>
 	/// <param name="visible">Whether the beatmapset is visible.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of changing the beatmapset's visibility.</returns>
-	public async Task<BeatmapsetResult> SetVisibleAsync(bool visible, CancellationToken cancellationToken = default)
+	public async Task<Result<BeatmapsetOutcome>> SetVisibleAsync(bool visible,
+		CancellationToken cancellationToken = default)
 	{
-		if (Require() is { } denied) return denied;
-		if (Beatmapset.Record.Visible == visible) return BeatmapsetResult.Ok;
+		if (Require(Permissions.BeatmapsetManage) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
+		if (Beatmapset.Record.Visible == visible) return BeatmapsetOutcome.Ok;
 
 		Beatmapset.Record.Visible = visible;
 		await Beatmapset.Context.Repository.UpdateAsync(Beatmapset.Record, cancellationToken);
-		return BeatmapsetResult.Ok;
+		return BeatmapsetOutcome.Ok;
 	}
 
 	/// <summary>Changes whether this beatmapset is write-locked.</summary>
 	/// <param name="locked">Whether the beatmapset is write-locked.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of changing the beatmapset's lock.</returns>
-	public async Task<BeatmapsetResult> SetLockedAsync(bool locked, CancellationToken cancellationToken = default)
+	public async Task<Result<BeatmapsetOutcome>> SetLockedAsync(bool locked,
+		CancellationToken cancellationToken = default)
 	{
-		if (Require() is { } denied) return denied;
-		if (Beatmapset.Record.Locked == locked) return BeatmapsetResult.Ok;
+		if (Require(Permissions.BeatmapsetManage) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
+		if (Beatmapset.Record.Locked == locked) return BeatmapsetOutcome.Ok;
 
 		Beatmapset.Record.Locked = locked;
 		await Beatmapset.Context.Repository.UpdateAsync(Beatmapset.Record, cancellationToken);
-		return BeatmapsetResult.Ok;
-	}
-
-	private BeatmapsetResult? Require()
-	{
-		return By.User.Check(Permissions.BeatmapsetManage, _now) switch
-		{
-			Access.NotGranted => BeatmapsetResult.NotAuthorized,
-			Access.Suspended => BeatmapsetResult.Restricted,
-			_ => null
-		};
+		return BeatmapsetOutcome.Ok;
 	}
 }

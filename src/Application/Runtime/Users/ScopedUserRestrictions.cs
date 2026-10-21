@@ -20,7 +20,7 @@ public sealed class ScopedUserRestrictions
 	/// <param name="reason">Why the account is silenced, if known.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome and the new restriction, if one was created.</returns>
-	public Task<(UserResult Result, Restriction? Restriction)> SilenceAsync(DateTimeOffset endsAt,
+	public Task<(Result<UserOutcome> Result, Restriction? Restriction)> SilenceAsync(DateTimeOffset endsAt,
 		string? reason = null, CancellationToken cancellationToken = default)
 	{
 		return ImposeAsync(Permissions.UserSilence, RestrictionData.Silence, endsAt, reason, cancellationToken);
@@ -32,7 +32,7 @@ public sealed class ScopedUserRestrictions
 	/// <param name="reason">Why the account is restricted, if known.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome and the new restriction, if one was created.</returns>
-	public Task<(UserResult Result, Restriction? Restriction)> RestrictAsync(Permissions permissions,
+	public Task<(Result<UserOutcome> Result, Restriction? Restriction)> RestrictAsync(Permissions permissions,
 		DateTimeOffset? endsAt, string? reason = null, CancellationToken cancellationToken = default)
 	{
 		return ImposeAsync(Permissions.UserRestrict, permissions, endsAt, reason, cancellationToken);
@@ -43,16 +43,16 @@ public sealed class ScopedUserRestrictions
 	/// <param name="reason">Why the restriction is lifted, if known.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of lifting the restriction.</returns>
-	public async Task<UserResult> LiftAsync(Restriction restriction, string? reason = null,
+	public async Task<Result<UserOutcome>> LiftAsync(Restriction restriction, string? reason = null,
 		CancellationToken cancellationToken = default)
 	{
 		var silenceOnly = RestrictionData.Silence.Allows(restriction.Value.Permissions);
 		var needed = silenceOnly ? Permissions.UserSilence : Permissions.UserRestrict;
 		if (_scoped.Guard(needed, false) is { } denied) return denied;
-		if (!restriction.Value.User.Equals(_scoped.User.Record)) return UserResult.NotAuthorized;
+		if (!restriction.Value.User.Equals(_scoped.User.Record)) return UserOutcome.NotFound;
 
 		var now = _scoped.User.Context.Clock.GetUtcNow();
-		if (restriction.Value.EndsAt is { } endsAt && endsAt <= now) return UserResult.Ok;
+		if (restriction.Value.EndsAt is { } endsAt && endsAt <= now) return UserOutcome.Ok;
 
 		var log = new ModerationData
 		{
@@ -70,17 +70,17 @@ public sealed class ScopedUserRestrictions
 		await _scoped.User.Context.ModerationLog.AppendAsync(log, cancellationToken);
 
 		_scoped.User.Context.Events.Publish(new UserRestrictionLifted(_scoped.User.Record, restriction));
-		return UserResult.Ok;
+		return UserOutcome.Ok;
 	}
 
-	private async Task<(UserResult Result, Restriction? Restriction)> ImposeAsync(Permissions needed,
+	private async Task<(Result<UserOutcome> Result, Restriction? Restriction)> ImposeAsync(Permissions needed,
 		Permissions permissions, DateTimeOffset? endsAt, string? reason, CancellationToken cancellationToken)
 	{
 		if (_scoped.Guard(needed, false) is { } denied) return (denied, null);
 
 		var now = _scoped.User.Context.Clock.GetUtcNow();
 		if (permissions == Permissions.None || (endsAt is { } end && end <= now))
-			return (UserResult.InvalidRestriction, null);
+			return (UserOutcome.InvalidRestriction, null);
 
 		var log = new ModerationData
 		{
@@ -108,6 +108,6 @@ public sealed class ScopedUserRestrictions
 		await context.ModerationLog.AppendAsync(log, cancellationToken);
 
 		context.Events.Publish(new UserRestricted(_scoped.User.Record, restriction));
-		return (UserResult.Ok, restriction);
+		return (UserOutcome.Ok, restriction);
 	}
 }

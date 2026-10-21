@@ -10,8 +10,5 @@ public enum RegistrationFailure : byte
 	NameTaken,
 
 	/// <summary>Account creation is locked to users who manage accounts.</summary>
-	Locked,
-
-	/// <summary>The caller may not create accounts, or may not grant the permissions the account asks for.</summary>
-	NotAuthorized
+	Locked
 }

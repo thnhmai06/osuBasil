@@ -8,7 +8,7 @@ namespace Basil.Application.Runtime.Tests.Users;
 public sealed class ScopedUserTests
 {
 	[Fact]
-	public async Task RestrictAsync_EqualPermissions_ReturnsNotAuthorized()
+	public async Task RestrictAsync_EqualPermissions_ReturnsNotOutranking()
 	{
 		using var app = new TestApplication();
 		const Permissions permissions = PermissionsGroups.All;
@@ -19,11 +19,11 @@ public sealed class ScopedUserTests
 		var (result, _) = await app.Users.Of(target).ScopeTo(by).Restrictions.RestrictAsync(
 			Permissions.ChatPost, null, cancellationToken: TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserResult.NotAuthorized, result);
+		Assert.Equal(UserOutcome.NotOutranking, result.Outcome);
 	}
 
 	[Fact]
-	public async Task RestrictAsync_TargetIsActor_ReturnsNotAuthorized()
+	public async Task RestrictAsync_TargetIsActor_ReturnsNotOutranking()
 	{
 		using var app = new TestApplication();
 		var actor = await app.CreateUserAsync("SelfRestrict", "password", PermissionsGroups.All);
@@ -32,12 +32,12 @@ public sealed class ScopedUserTests
 		var (result, restriction) = await app.Users.Of(actor).ScopeTo(by).Restrictions.RestrictAsync(
 			Permissions.ChatPost, null, cancellationToken: TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserResult.NotAuthorized, result);
+		Assert.Equal(UserOutcome.NotOutranking, result.Outcome);
 		Assert.Null(restriction);
 	}
 
 	[Fact]
-	public async Task SetPermissionsAsync_GrantExceedsActorsPermissions_ReturnsNotAuthorized()
+	public async Task SetPermissionsAsync_GrantExceedsActorsPermissions_NamesTheMissingPermission()
 	{
 		using var app = new TestApplication();
 		var actorPermissions = PermissionsGroups.Default | Permissions.UserManage |
@@ -49,7 +49,8 @@ public sealed class ScopedUserTests
 		var result = await app.Users.Of(target).ScopeTo(by).SetPermissionsAsync(
 			target.Value.Permissions | Permissions.ServerConfigure, TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserResult.NotAuthorized, result);
+		Assert.False(result.IsOk);
+		Assert.Equal(Permissions.ServerConfigure, result.Missing);
 		Assert.False(target.Value.Permissions.Allows(Permissions.ServerConfigure));
 	}
 
@@ -65,7 +66,7 @@ public sealed class ScopedUserTests
 		var (result, restriction) = await app.Users.Of(target).ScopeTo(by).Restrictions.RestrictAsync(
 			Permissions.ChatPost, end, "test reason", TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserResult.Ok, result);
+		Assert.Equal(UserOutcome.Ok, result.Outcome);
 		Assert.NotNull(restriction);
 		var restricted = Assert.IsType<UserRestricted>(app.UserEvents.Events.Last());
 		Assert.Equal(target, restricted.User);
@@ -92,7 +93,7 @@ public sealed class ScopedUserTests
 		var result = await scoped.Restrictions.LiftAsync(restriction,
 			cancellationToken: TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserResult.Ok, result);
+		Assert.Equal(UserOutcome.Ok, result.Outcome);
 		Assert.Equal(app.Clock.GetUtcNow(), restriction.Value.EndsAt);
 		var lifted = Assert.IsType<UserRestrictionLifted>(app.UserEvents.Events.Last());
 		Assert.Equal(target, lifted.User);
@@ -129,14 +130,14 @@ public sealed class ScopedUserTests
 		var connection = await app.LoginAsync(target);
 		var scoped = app.Users.Of(target).ScopeTo(by);
 
-		Assert.Equal(UserResult.Ok, await scoped.DeleteAsync(TestContext.Current.CancellationToken));
+		Assert.True((await scoped.DeleteAsync(TestContext.Current.CancellationToken)).IsOk);
 		var deletedAt = target.Value.DeletedAt;
 		Assert.NotNull(deletedAt);
 		Assert.False(connection.IsOpen);
 		Assert.Equal(ConnectionCloseReason.Deleted,
 			Assert.IsType<UserConnectionClosed>(app.UserEvents.Events.Last()).Reason);
 
-		Assert.Equal(UserResult.Ok, await scoped.DeleteAsync(TestContext.Current.CancellationToken));
+		Assert.True((await scoped.DeleteAsync(TestContext.Current.CancellationToken)).IsOk);
 
 		Assert.Equal(deletedAt, target.Value.DeletedAt);
 	}
