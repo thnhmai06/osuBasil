@@ -1,6 +1,6 @@
 # Persistence rules
 
-Repository contracts, byte storages and the memory-first model. Moved out of `AGENTS.md`; the rules are binding. Read this before touching a repository, a storage, `DatabaseWriter` or anything under `Application.Storage` / `Infrastructure.Storage`.
+Repository contracts, byte storages and the memory-first model. Moved out of `AGENTS.md`; the rules are binding. Read this before touching a repository, a storage, `DatabaseWriter` or anything under `Application.Persistence` / `Infrastructure.Persistence`.
 
 * **Repository contracts are written per model** as `IXxxRepository` (`IMatchRepository`,
   `IScoreRepository`, …), each declaring the operations Services and the outer layers need. A relation

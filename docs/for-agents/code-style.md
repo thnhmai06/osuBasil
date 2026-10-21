@@ -30,8 +30,8 @@ Moved out of `AGENTS.md`; the rules are binding. Read this before writing or rev
 * Prefer primary constructors, property patterns (`room is { InProgress: false, Beatmap: not null }`) and
   one guard for conditions that return the same result; no redundant casts, `? true : false` or
   discarded-task lambdas (`_ => action()`, not `_ => _ = action()`).
-* Application.Objects registers its objects, registries and contexts, and the internal services, in the public
-  `DependencyInjection.AddApplication()` (it calls the internal `AddApplicationCapabilities()` of Application.Services).
+* Application.Runtime registers its objects, registries and contexts, and the internal services, in the public
+  `DependencyInjection.AddApplication()` (it calls the internal `AddApplicationCapabilities()` of Application.Capabilities).
 * **Read the IDE's suggestions to find better patterns** *(notes for the future code-principles skill)*. After a
   change, run Rider's `lint_files` / `get_file_problems` with warnings and suggestions on, and treat what it says as
   a review comment, not noise. The agent decides each case; the IDE only finds candidates. Act on:

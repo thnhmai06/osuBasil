@@ -32,7 +32,7 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   in range, its own text format, values derived purely from its own data. No runtime-only state, no events.
 * **Behaviour belongs to the object that owns it, and is reached through that object.** Every concept with state, invariants and
   rights is an **Application object** (`User`, `Connection`, `Room`, `RoomSlot`, `Lobby`, the
-  channels, `Beatmapset`, and the root `Server`) in Application.Objects. It owns its state,
+  channels, `Beatmapset`, and the root `Server`) in Application.Runtime. It owns its state,
   keeps its invariants, and offers its behaviour; its state changes only inside its own behaviour. Its persistent
   value is a Domain record named `XRecord` with the plain value `XData` (`UserRecord`, `BeatmapsetRecord`,
   `MatchRecord`); the object wraps it. A persistent value that has no live object of its own, such as a
@@ -57,18 +57,18 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   authority primitives (`Access`, effective permissions, hierarchy, "a block yields to a higher right") are a
   library each `ScopeTo` calls, not a layer to pass through. A domain record and its Application object never
   share a name.
-* **Storage holds the ports; runtime objects and registries live in Objects.** Application.Storage holds
-  persistent ports, capability ports, query records and paging. Runtime objects (`Room`, `RoomSlot`, `User`,
+* **Persistence holds the ports; runtime objects and registries live in Runtime.** Application.Persistence holds
+  the persistent ports (repositories, byte storages), query records and paging. Runtime objects (`Room`, `RoomSlot`, `User`,
   connections and channels), registries (`UserRegistry`, `GeneralChannelRegistry`) and their scoped
-  behaviour live in Application.Objects, as public classes. Storage
+  behaviour live in Application.Runtime, as public classes. Persistence
   never decides a business rule, emits an event, calls a service or starts a timer. A state change and its
   consequences belong to the object that owns the state.
-* **Services have no public contract.** A service is an `internal` class of Application.Services that Objects calls
+* **Services have no public contract.** A service is an `internal` class of Application.Capabilities that Runtime calls
   directly; there is no `IXService` and no registry contract. A service never sees a live object (`Room`, `User`,
-  `Connection`), never publishes an event (events and `IEventPublisher<T>` belong to Objects, so the service returns
-  what happened and the object publishes it) and holds no running state. Objects reach it through
-  `InternalsVisibleTo`; plain data that both Services and Objects use in public signatures (login, registration and
-  score submission inputs, import and scan results) lives in Application.Storage. Callers reach permission-dependent
+  `Connection`), never publishes an event (events and `IEventPublisher<T>` belong to Runtime, so the service returns
+  what happened and the object publishes it) and holds no running state. Runtime objects reach it through
+  `InternalsVisibleTo`; plain data that both Services and Runtime use in public signatures (login, registration and
+  score submission inputs, import and scan results) lives in Application.Persistence. Callers reach permission-dependent
   behaviour through `ScopeTo(connection)` and the server's own work through labelled system operations.
 * **Object or service?** One question decides it: does the operation have a caller whose rights it must
   check? Then it is behaviour of the object it changes, reached through `ScopeTo(connection)`. An operation that
@@ -87,15 +87,20 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   Because the factories hide dependencies from `ValidateOnBuild`, verify the container by resolving every
   registration with the external storage ports stubbed (see Commands).
 * **A scope is a snapshot: re-check after waiting.** A `ScopedX` is for one request or command and is never kept.
-  A behaviour that awaits between its rights check and its change (a lookup, a repository call) checks again,
-  inside the object's own scope or lock, what the wait could have changed (the permission, `IsOpen`, a block)
-  before it changes anything.
+  The permission snapshot is taken once and is not re-taken. A behaviour that awaits between its check and its change
+  (a lookup, a repository call, the room gate) re-checks, inside the object's own scope or lock, the state and roles
+  the wait could have changed (`IsOpen`, a block, the caller's role in the room, a closed room) before it changes
+  anything; a referee removed while waiting for the gate must not act.
+* **A refusal by role is not a missing permission.** Rights that come from a role in one object (creator, referee,
+  host, player in a room) are decided by that object's own role rules and reported as an outcome named after the role
+  (`NotManager`, `NotHost`) with `Missing` left `null`; `Missing` names only account-level permissions (`RoomJoin`,
+  `RoomCreate`, `ChatPost`, `ScoreSubmit`) checked through `Require`.
 * **System operations are labelled.** A public method on an object that skips the rights check (`Lobby.Unwatch`,
   `Server.SayAsync`, `Server.WhisperAsync`, `Server.OpenChannel`, `Lobby.ReleaseAsync`, `Room.RecordScoreAsync`, `Server.Notify`) says in its
   XML summary that the server itself calls it and needs no rights. A chat command, an API route or any other entry
   point that acts for a user never calls one; it uses the scope of the user's connection.
 * **Capability ports.** A capability with business meaning whose implementation needs external libraries
-  or resources is a contract in Application.Storage that Infrastructure.Capabilities implements
+  or resources is a public interface in Application.Capabilities (with the data it exchanges) that Infrastructure.Capabilities implements
   (`IBeatmapAnalyser`, `IBeatmapsetReader`, `IBeatmapAssets`, `IBeatmapsetMirror`, `IScreenshotInspector`), even
   when only the hosts use it. Pure plumbing (logging, diagnostics, metrics, SSE hub, TLS, mDNS, update checks,
   OpenAPI, the response envelope) gets no contract. Whatever kind of file a client sends, trust a known extension
@@ -107,9 +112,9 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   from one library to another, the name would not change: `ScanAsync`, not `ScanFileAsync`;
   `IBeatmapAssets.OpenAsync`, not `ReadFromDiskAsync`.
 * **Registries belong with runtime objects.** A registry holds live runtime objects, so it is a public class of
-  Application.Objects (`UserRegistry`, `GeneralChannelRegistry`) that also owns the operations on what it holds
+  Application.Runtime (`UserRegistry`, `GeneralChannelRegistry`) that also owns the operations on what it holds
   (`UserRegistry` opens and closes connections and logs users in). Mutating registry members are `internal`.
-  Persistent repositories, storage ports, query records and paging belong to Application.Storage. Other
+  Persistent repositories, storage ports, query records and paging belong to Application.Persistence. Other
   capability ports describe what lies outside the process: files, network, external computation and the clock
   (`TimeProvider`).
 * **Outer layers use storage directly.** Infrastructure and the hosts read, list and search storage, and
@@ -192,7 +197,7 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   stamps `Timestamp`, keeps the events in order in its own queue and calls the `IEventHandler<T>` implementations
   of Infrastructure.Runtime or `Basil.Bot` one after another. The bus resolves its handlers when it
   starts delivering, not when it is built (a handler reaches objects that publish to buses, so resolving them in the
-  constructor makes buses wait for each other). Storage and Services never publish (a service returns what happened and the object publishes it). One operation publishes one event carrying
+  constructor makes buses wait for each other). Persistence and Services never publish (a service returns what happened and the object publishes it). One operation publishes one event carrying
   its whole consequence. Events sit in a nested category tree (`Event` ← `RoomEvent` ← `RoomSlotEvent` ←
   `RoomSlotTeamChanged`) so a consumer can subscribe to a whole category. Buses, handlers and event →
   client-notification routing belong to Infrastructure and the hosts, never to Application.

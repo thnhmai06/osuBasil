@@ -308,16 +308,16 @@ Run all tests:
 dotnet test
 ```
 
-Run one test project:
+Run one test project (the test tree mirrors `src/`):
 
 ```bash
-dotnet test tests/Basil.Application.Tests
+dotnet test tests/Application/Runtime
 ```
 
 Run a specific test class:
 
 ```bash
-dotnet test tests/Basil.Application.Tests \
+dotnet test tests/Application/Runtime \
   --filter "FullyQualifiedName~<TestClassName>"
 ```
 
@@ -336,7 +336,7 @@ dotnet build src/Bot --nologo -v q
 ```
 
 A change to a constructor, a context or `DependencyInjection.cs` also needs the container check: a throwaway
-console project that calls the registrations of the application (`AddApplication()` of Application.Objects), `AddInfrastructureRuntime()` and `AddBot()`,
+console project that calls the registrations of the application (`AddApplication()` of Application.Runtime), `AddInfrastructureRuntime()` and `AddBot()`,
 registers a stub for every external port (storage and capability), builds the provider with `ValidateOnBuild`, and
 resolves every registration (factory lambdas included). Run it with a timeout: a dependency cycle shows up as a hang,
 not as an error. It must finish without a cycle or a missing registration.
@@ -352,34 +352,35 @@ See [`docs/for-technicians/docker.md`](docs/for-technicians/docker.md) for Docke
 ```text
 Basil.Domain                     business model and its own validity          -> (nothing)
 
-Basil.Application.Persistence        ports to the outside of the process: persistent  -> Domain
-                                 (repositories, storages, query records, paging)
-                                 and capability ports (beatmapset reader,
-                                 analyser, assets, mirror, screenshot inspector)
-Basil.Application.Capabilities       application logic that needs no live object:     -> Application.Storage
-                                 it takes and returns records and results,
-                                 never publishes an event; every type internal
-Basil.Application.Runtime        the live objects and what they do: runtime       -> Domain, Application.Storage,
-                                 objects, scopes, contexts, events, registries,      Application.Services
+Basil.Application.Persistence    ports to the persistent outside of the process:  -> Domain
+                                 repositories, byte storages, query records, paging
+Basil.Application.Capabilities  ports to external computation (beatmapset      -> Application.Persistence
+                                 reader, analyser, assets, mirror, screenshot
+                                 inspector: public interfaces and the data they
+                                 exchange) and application logic that needs no
+                                 live object (everything else internal; it
+                                 never publishes an event)
+Basil.Application.Runtime        the live objects and what they do: runtime       -> Domain, Application.Persistence,
+                                 objects, scopes, contexts, events, registries,      Application.Capabilities
                                  root objects, the coordination between
                                  objects; the public AddApplication()
 
-Basil.Infrastructure.Persistence     implements the persistent ports: PostgreSQL,    -> Application.Storage
+Basil.Infrastructure.Persistence implements the persistent ports: PostgreSQL,    -> Application.Persistence
                                  files, memory, migrations
-Basil.Infrastructure.Capabilities implements the capability ports: osu!          -> Application.Storage
+Basil.Infrastructure.Capabilities implements the capability ports: osu!          -> Application.Capabilities
                                  rulesets, FFMpegCore, beatmap mirror, ImageSharp
-Basil.Infrastructure.Runtime     event buses and handlers, background loops,     -> Application.Objects
-                                 startup work                                       (no Infrastructure project
-                                                                                    references Application.Services)
+Basil.Infrastructure.Runtime     event buses and handlers, background loops,     -> Application.Runtime
+                                 startup work                                       (does not reference
+                                                                                    Application.Capabilities)
 Basil.Protocol.Bancho            osu! client-server wire formats, score         -> external libraries only
                                  submission cipher (BouncyCastle)
 Basil.Protocol.Irc               IRC wire format                                -> (nothing)
-Basil.Host.Bancho / .Irc / .Api  transports                                     -> Application.Objects,
+Basil.Host.Bancho / .Irc / .Api  transports                                     -> Application.Runtime,
                                                                                    Infrastructure, their Protocol
 Basil.Host                       entry point, composition, logging,             -> everything
                                  diagnostics, LAN advertising
 
-Basil.Bot            BasilBot: chat commands and their replies,     -> Application.Objects
+Basil.Bot                        BasilBot: chat commands and their replies,     -> Application.Runtime
                                  an entry point of the server (not a client)
 ```
 
@@ -392,52 +393,52 @@ format changes, only Protocol changes. `Basil.Protocol.Irc` does the same for IR
 Domain: only the transport hosts reference it, and it may use external libraries for the wire work.
 
 Projects live under `src/` in folders that mirror the solution folders under `/Sources/`, each named by
-its short name without `Basil.`: `src/Domain/`, `src/Infrastructure/`, `src/Application/{Storage,Objects,Services}/`,
-`src/Hosts/{Host,Api,Bancho,Irc}/`,
-`src/Protocol/{Bancho,Irc}/`. The project file and the namespace keep the full name (`Basil.Domain.csproj`,
-`Basil.Domain.*`).
+its short name without `Basil.`: `src/Domain/`, `src/Application/{Persistence,Capabilities,Runtime}/`,
+`src/Infrastructure/{Persistence,Capabilities,Runtime}/`, `src/Hosts/{Host,Api,Bancho,Irc}/`,
+`src/Protocol/{Bancho,Irc}/`, `src/Bot/`. The project file and the namespace keep the full name
+(`Basil.Domain.csproj`, `Basil.Domain.*`). Tests mirror the same tree under `tests/`
+(`tests/Application/Runtime/Basil.Application.Runtime.Tests.csproj` tests `src/Application/Runtime`).
 
 Configuration is bound only in `Basil.Host`. Infrastructure and the transports receive it as `IOptions<T>` of
 an options type that the project using it owns; Application reads no configuration.
 
-Application has three projects named by role. **Application.Storage** holds the ports to the outside of the process:
-repository and storage contracts, query records and paging, and the capability ports (a capability with business
-meaning whose implementation needs external libraries; Infrastructure implements them). **Application.Services**
-holds the application logic that needs no live object (account checks, beatmapset indexing, score validation and
+Application has three projects named by role, and each Infrastructure project implements the Application project of
+the same name. **Application.Persistence** holds the ports to the persistent outside of the process: repository and
+byte-storage contracts, query records and paging. **Application.Capabilities** holds the ports to external
+computation (a capability with business meaning whose implementation needs external libraries: beatmapset reader,
+analyser, assets, mirror, screenshot inspector; these interfaces and the data they exchange are the only public
+types) and the application logic that needs no live object (account checks, beatmapset indexing, score validation and
 recording): it takes and returns records and plain results, never creates, receives or publishes an object or an
-event, and every type is `internal`. **Application.Objects** holds the live objects and what they do: runtime
+event, and every such type is `internal`. **Application.Runtime** holds the live objects and what they do: runtime
 objects, registries, root objects, scopes, contexts, events, and every coordination between objects; it calls the
 services and publishes the events they leave to it. Its public `AddApplication()` builds the contexts and the
-objects and registers the services (Services gives Objects access to its internals). `Basil.Infrastructure`
-references only Application.Storage (Storage and Capabilities) or Application.Objects (Runtime), never
-Application.Services. The hosts reference Application.Objects and call `AddApplication()`.
+objects and registers the services (Capabilities gives Runtime access to its internals). `Infrastructure.Persistence`
+references Application.Persistence, `Infrastructure.Capabilities` references Application.Capabilities,
+`Infrastructure.Runtime` references Application.Runtime and never Application.Capabilities. The hosts reference
+Application.Runtime and call `AddApplication()`.
 
-> **Migration status (2026-10-21).** The object-scope redesign and the service moves are implemented across Domain,
-> Application, Infrastructure.Runtime and Basil.Bot: behaviour belongs to the owning runtime object and
-> permission-dependent operations use its short-lived `ScopeTo(connection)` view; the user, room, lobby, channel,
-> beatmapset and score services were absorbed by the objects that own them (`UserRegistry`, `Lobby`, `Room`,
-> `GeneralChannelRegistry`, `Beatmapsets`, `BanchoConnection`). The reference is flipped (Objects ->
-> Services, every Services type `internal`, the public `AddApplication()` in Objects) and the temporary bridge
-> interfaces are gone. The hosts and all test projects still use old namespaces; solution-wide `dotnet build`, `dotnet test` and
-> `Basil.ArchitectureTests` do not run. The operator console (`Basil.Cli`), host migration and test migration remain
-> unfinished. Verify the migrated projects individually with the eight builds listed under Commands. The decisions in
+> **Migration status (2026-10-21).** The object-scope redesign and the project renames are implemented across Domain,
+> Application, Infrastructure and Basil.Bot; the week plan in [`plans/week-plan-20261021.md`](plans/week-plan-20261021.md)
+> unifies the scope/result pattern, rebuilds the tests and moves the bot replies to a file. The hosts and the host test
+> projects still use old namespaces and are outside the solution build until the Host migration; verify the migrated
+> projects individually with the builds listed under Commands, and run the test projects that exist. The decisions in
 > [`plans/object-scope-plan-20261016.md`](plans/object-scope-plan-20261016.md) and
 > [`plans/application-layering-plan-20261021.md`](plans/application-layering-plan-20261021.md) remain authoritative
 > where they agree with this file; older plans are history.
 
 ### Application feature folders
 
-Application is sliced by feature, not by kind of type; namespace = project + folder. Application.Storage owns the
-ports to the outside (persistent repository and storage ports, query records, paging, capability ports).
-Application.Services owns the object-free application logic. Application.Objects owns runtime objects, registries,
+Application is sliced by feature, not by kind of type; namespace = project + folder. Application.Persistence owns the
+persistent ports (repository and byte-storage contracts, query records, paging).
+Application.Capabilities owns the capability ports (public) and the object-free application logic (internal). Application.Runtime owns runtime objects, registries,
 scoped views and contexts, events, results and the coordination between objects.
 
 ```text
-Common/        PageRequest, Page<T>, Interval<T>, Paging                           (Storage)
-Events/        Event, IEventPublisher<T>, IEventHandler<T>                         (Objects)
+Common/        PageRequest, Page<T>, Interval<T>, Paging                           (Persistence)
+Events/        Event, IEventPublisher<T>, IEventHandler<T>                         (Runtime)
 Users/         user and restriction repositories, UserQuery; User, ScopedUser,
                UserRegistry, ScopedUserRegistry, UserResult, login and registration
-               inputs; AccountService                                              (Services)
+               inputs; AccountService                                              (Capabilities)
 Sessions/      Connection tree (BanchoConnection also submits scores and reports
                anticheat flags), ScopedBanchoConnection and user events
 Chat/          Channel tree, GeneralChannelRegistry, IChannelRepository; ScopedChannel,
@@ -445,18 +446,18 @@ Chat/          Channel tree, GeneralChannelRegistry, IChannelRepository; ScopedC
 Multiplayer/   Lobby, Room, their parts and scopes; match, round and score repositories;
                room and lobby events and results
 Beatmaps/      beatmap and beatmapset repositories and storage, capability ports;
-               Beatmapset, Beatmapsets, ScopedBeatmapset; BeatmapsetIndexer         (Services)
-Scores/        score, replay and stats repositories; score events; ScoreRecorder     (Services)
+               Beatmapset, Beatmapsets, ScopedBeatmapset; BeatmapsetImporter and friends (Capabilities)
+Scores/        score, replay and stats repositories; score events; ScoreRecorder     (Capabilities)
 Anticheat/     anticheat events
 Content/       content repositories, storage ports and the screenshot inspector port
 Servers/       Server, ScopedServer, server contexts and server resources
 ```
 
-Event-handler contracts belong to Application.Objects; event buses and concrete handlers live in
+Event-handler contracts belong to Application.Runtime; event buses and concrete handlers live in
 Infrastructure.Runtime or the consumer that owns them, including `Basil.Bot`. Host configuration
 (ports, TLS, data paths) belongs to the hosts. BasilBot commands and announcements are server features: a
 command is an entry point that uses the typist's scoped objects, and the bot only replies. Query **records**
-(the filter a repository applies, with `Parse` for the search syntax) belong to Storage; routes and handlers
+(the filter a repository applies, with `Parse` for the search syntax) belong to Persistence; routes and handlers
 that answer queries do not. Server settings changed at runtime (`ServerSettings`) are persistent Domain data,
 not host configuration.
 
@@ -466,7 +467,7 @@ not host configuration.
   the single source of anticheat events; BasilBot turns them into chat warnings.
 * `Sessions`, `Chat` and `Multiplayer` reference each other (`Room.Host`, `Room.Channel`,
   `Channel.Members`); treat them as one cluster. Their runtime objects and registries live in Objects;
-  persistent repositories remain in Application.Storage. Objects change their own state through behaviour, with
+  persistent repositories remain in Application.Persistence. Objects change their own state through behaviour, with
   implementation access limited to the owning object and its collaborators. References run from the acted-on
   object to the actor, never back.
 
@@ -689,8 +690,8 @@ Before considering a code change complete:
    sessions emitting events, event handlers inside Application, and rules or timers on runtime models and
    registries all got through review once; do not let them back in. Nor should a service that only wraps
    a repository read, a service that takes, returns or creates a live object or publishes an event, a public
-   service contract, a contract name that reveals its mechanism, or a reference from Infrastructure to
-   Application.Services. Since the identity redesign, also
+   service contract, a contract name that reveals its mechanism, or a reference from Infrastructure.Runtime to
+   Application.Capabilities, or from an Infrastructure project to an Application project of another name. Since the identity redesign, also
    reject: an action without a real `by`, authority decided by connection kind, a check on granted instead of
    effective permissions, a stored or configured `Privileges`, privileges used to grant anything, and a
    delegation of any kind. Since the 2026-10-16 redesign, also reject the five anti-patterns of "Behaviour belongs
