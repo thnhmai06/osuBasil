@@ -32,6 +32,16 @@ public abstract class Channel
 	/// <summary>Gets the topic shown to users who join the channel.</summary>
 	public abstract string Topic { get; }
 
+	/// <summary>Checks whether a connection may read the channel and so join it.</summary>
+	/// <param name="connection">The connection to check.</param>
+	/// <param name="now">The moment to evaluate restrictions at.</param>
+	internal abstract bool CanRead(Connection connection, DateTimeOffset now);
+
+	/// <summary>Checks whether a connection may write to the channel.</summary>
+	/// <param name="connection">The connection to check.</param>
+	/// <param name="now">The moment to evaluate restrictions at.</param>
+	internal abstract bool CanWrite(Connection connection, DateTimeOffset now);
+
 	/// <summary>Gets the connections currently in the channel.</summary>
 	public IReadOnlySet<Connection> Members => _members;
 
@@ -80,7 +90,7 @@ public abstract class Channel
 		var author = posted.Message.Author;
 		var members = Members.ToArray();
 		if (posted.By is not { } by ||
-		    by.User.Check(Permissions.ChatMessageAnyone, Context.Clock.GetUtcNow()) is Access.Allowed ||
+		    by.User.EffectivePermissions(Context.Clock.GetUtcNow()).Allows(Permissions.ChatMessageAnyone) ||
 		    this is PmChannel)
 			return members;
 

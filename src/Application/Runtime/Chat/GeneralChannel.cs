@@ -1,4 +1,6 @@
+using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Chat;
+using Basil.Domain.Permissions;
 
 namespace Basil.Application.Runtime.Chat;
 
@@ -18,4 +20,17 @@ public sealed class GeneralChannel : Channel
 
 	/// <inheritdoc />
 	public override string Topic => Record.Value.Topic;
+
+	/// <inheritdoc />
+	internal override bool CanRead(Connection connection, DateTimeOffset now)
+	{
+		return connection.User.EffectivePermissions(now).Privileges.Allows(Record.Value.ReadPrivileges);
+	}
+
+	/// <inheritdoc />
+	internal override bool CanWrite(Connection connection, DateTimeOffset now)
+	{
+		return connection.User.EffectivePermissions(now).Privileges.Allows(Record.Value.WritePrivileges);
+	}
+
 }

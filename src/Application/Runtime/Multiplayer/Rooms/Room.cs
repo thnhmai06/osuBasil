@@ -2,6 +2,7 @@ using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
+using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 using MatchRecord = Basil.Domain.Multiplayer.MatchRecord;
 using MatchSettings = Basil.Domain.Multiplayer.MatchSettings;
@@ -165,6 +166,22 @@ public sealed class Room : IEquatable<Room>
 		MarkOccupied();
 		Context.Events.Publish(new RoomPlayerJoined(this, player, slot.Index, null, null));
 		return RoomResult.Ok;
+	}
+
+	/// <summary>
+	///     Checks whether a connection takes part in the room: seated, observing, managing it while allowed to join rooms,
+	///     or managing every room.
+	/// </summary>
+	/// <param name="connection">The connection to check.</param>
+	/// <param name="now">The moment to evaluate restrictions at.</param>
+	internal bool Involves(Connection connection, DateTimeOffset now)
+	{
+		var permissions = connection.User.EffectivePermissions(now);
+
+		return (connection is BanchoConnection player && Slots.Find(player) is not null)
+		       || (connection is TourneyConnection observer && Members.Observers.Contains(observer))
+		       || (Authority.IsManagedBy(connection.Record) && permissions.Allows(Permissions.RoomJoin))
+		       || permissions.Allows(Permissions.RoomManageAny);
 	}
 
 	/// <summary>Removes a seated player and updates the room's round, channel and empty-room state.</summary>

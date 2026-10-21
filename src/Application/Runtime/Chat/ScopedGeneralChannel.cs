@@ -5,41 +5,35 @@ using Basil.Domain.Permissions;
 namespace Basil.Application.Runtime.Chat;
 
 /// <summary>A general channel scoped to one connection.</summary>
-public sealed class ScopedGeneralChannel
+public sealed class ScopedGeneralChannel : Scoped<GeneralChannel>
 {
-	/// <summary>The general channel this scope is over.</summary>
-	public GeneralChannel Channel { get; }
-
-	/// <summary>The connection this scope is for.</summary>
-	public Connection By { get; }
-
 	/// <summary>Creates a general-channel scope for a connection.</summary>
 	/// <param name="channel">The general channel to scope.</param>
 	/// <param name="by">The connection acting on the channel.</param>
-	internal ScopedGeneralChannel(GeneralChannel channel, Connection by)
+	internal ScopedGeneralChannel(GeneralChannel channel, Connection by) : base(channel, by, channel.Context.Clock)
 	{
-		Channel = channel;
-		By = by;
 	}
+
+	/// <summary>The general channel this scope is over.</summary>
+	public GeneralChannel Channel => Owner;
 
 	/// <summary>Changes the settings of this general channel.</summary>
 	/// <param name="change">The settings to change.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>Ok, NotAuthorized, or Closed when the channel has closed.</returns>
+	/// <returns>Ok, a denial that names the missing permissions, or Closed when the channel has closed.</returns>
 	/// <remarks>
 	///     Requires <see cref="Permissions.ServerConfigure" />. Members who may no longer read the channel are removed;
 	///     one <see cref="ChannelConfigured" /> reports the change and removed members.
 	/// </remarks>
 	/// <exception cref="ArgumentException">A permission or the topic in <paramref name="change" /> is invalid.</exception>
-	public async Task<ChannelManageResult> ConfigureAsync(GeneralChannelChange change, CancellationToken cancellationToken = default)
+	public async Task<Result<ChannelOutcome>> ConfigureAsync(GeneralChannelChange change,
+		CancellationToken cancellationToken = default)
 	{
-		var now = Channel.Context.Clock.GetUtcNow();
-		if (By.User.Check(Permissions.ServerConfigure, now) is not Access.Allowed)
-			return ChannelManageResult.NotAuthorized;
+		if (Require(Permissions.ServerConfigure) is { } missing) return Result<ChannelOutcome>.Denied(missing);
 
 		using (Channel.Enter())
 		{
-			if (Channel.IsClosed) return ChannelManageResult.Closed;
+			if (Channel.IsClosed) return ChannelOutcome.Closed;
 			var target = Channel.Record.Value;
 
 			if (change.ReadPrivileges is { } readPrivileges) readPrivileges.ThrowIfUndefined();
@@ -52,27 +46,27 @@ public sealed class ScopedGeneralChannel
 			if (change.AutoJoin is { } autoJoin) target.AutoJoin = autoJoin;
 			if (change.Visible is { } visible) target.Visible = visible;
 
-			var removed = Channel.Members.Where(member => !ChannelRules.CanRead(Channel, member, now)).ToArray();
+			var now = Channel.Context.Clock.GetUtcNow();
+			var removed = Channel.Members.Where(member => !Channel.CanRead(member, now)).ToArray();
 			foreach (var member in removed)
 				Channel.MutableMembers.Remove(member);
 			Channel.Context.Events.Publish(new ChannelConfigured(Channel, change, removed));
 		}
 
 		await Channel.Context.Channels.CreateOrUpdateAsync(Channel.Record, cancellationToken);
-		return ChannelManageResult.Ok;
+		return ChannelOutcome.Ok;
 	}
 
 	/// <summary>Closes and deletes this general channel.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>Ok or NotAuthorized.</returns>
+	/// <returns>Ok, or a denial that names the missing permissions.</returns>
 	/// <remarks>Requires <see cref="Permissions.ServerConfigure" />; announces <see cref="ChannelClosed" />.</remarks>
-	public async Task<ChannelManageResult> DeleteAsync(CancellationToken cancellationToken = default)
+	public async Task<Result<ChannelOutcome>> DeleteAsync(CancellationToken cancellationToken = default)
 	{
-		if (By.User.Check(Permissions.ServerConfigure, Channel.Context.Clock.GetUtcNow()) is not Access.Allowed)
-			return ChannelManageResult.NotAuthorized;
+		if (Require(Permissions.ServerConfigure) is { } missing) return Result<ChannelOutcome>.Denied(missing);
 
 		Channel.Close();
 		await Channel.Context.Channels.DeleteAsync(Channel.Record, cancellationToken);
-		return ChannelManageResult.Ok;
+		return ChannelOutcome.Ok;
 	}
 }

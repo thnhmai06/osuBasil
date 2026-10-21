@@ -1,3 +1,4 @@
+using Basil.Application.Runtime.Sessions;
 using Basil.Application.Runtime.Users;
 
 namespace Basil.Application.Runtime.Chat;
@@ -18,4 +19,17 @@ public sealed class PmChannel : Channel
 
 	/// <inheritdoc />
 	public override string Topic => string.Empty;
+
+	/// <inheritdoc />
+	internal override bool CanRead(Connection connection, DateTimeOffset now)
+	{
+		return ReferenceEquals(connection.User, Owner) && connection.Type is not ConnectionType.Tourney;
+	}
+
+	/// <inheritdoc />
+	internal override bool CanWrite(Connection connection, DateTimeOffset now)
+	{
+		return connection.IsOpen && Owner.IsOnline;
+	}
+
 }

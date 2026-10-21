@@ -18,4 +18,17 @@ public sealed class SpectatorChannel : Channel
 
 	/// <inheritdoc />
 	public override string Topic => $"{Host.Record.Value.Name}'s spectator channel";
+
+	/// <inheritdoc />
+	internal override bool CanRead(Connection connection, DateTimeOffset now)
+	{
+		return ReferenceEquals(connection, Host) || Host.Spectators.Contains(connection);
+	}
+
+	/// <inheritdoc />
+	internal override bool CanWrite(Connection connection, DateTimeOffset now)
+	{
+		return CanRead(connection, now);
+	}
+
 }
