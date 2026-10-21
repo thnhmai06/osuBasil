@@ -253,6 +253,23 @@ Important rules:
 
 User-visible contract strings must be centralized in the production code that owns them. Tests reference those constants rather than duplicating literals.
 
+Tests are what verify the software for the owner, who reads the code only for patterns and architecture. Therefore:
+
+* **Specification first.** An expected value comes from AGENTS.md, the osu! rules, the protocol or bancho.py behaviour,
+  never from running the code under test and pasting its output. A red test means the code is wrong: report it, do not
+  edit the test until it is green.
+* **Blackbox and whitebox.** Derive cases from the contract (equivalence classes, boundaries, decision tables, state
+  transitions) and then from the structure (every branch and guard); coverage is used only to find branches no case
+  reached.
+* **Pin properties of computed values, not the number** (star rating, difficulty, length: valid, finite, monotone under a
+  modifier). Pin the exact value only when the value is itself a contract (wire bytes, accuracy and grade of the
+  ruleset, the score submission checksum) with hand-written input and output pairs, never a copy of the formula.
+* **Layout mirrors the sources.** One test project per source project (`tests/` tree = `src/` tree, `Basil.X.Tests`),
+  folders inside mirror the feature folders; shared fixtures live in `tests/Support/Basil.Testing`; sample content in
+  `tests/Assets`.
+* **A refusal test checks the missing mask** of `Result<TOutcome>`, and every `Require` has a test that goes red when it
+  is removed.
+
 ### 9. User-visible reply strings
 
 User-visible chat text is public behavior.
@@ -455,494 +472,12 @@ not host configuration.
 
 ### Domain and Application
 
-* **Domain** holds business models that exist beyond runtime (`Match`, `Round`, `MatchSettings`,
-  `User`, `Beatmap`, `Login`, `ServerSettings`, …). A model guarantees that **it is valid**: field values
-  in range, its own text format, values derived purely from its own data. No runtime-only state, no events.
-* **Behaviour belongs to the object that owns it, and is reached through that object.** Every concept with state, invariants and
-  rights is an **Application object** (`User`, `Connection`, `Room`, `RoomSlot`, `Lobby`, the
-  channels, `Beatmapset`, and the root `Server`) in Application.Objects. It owns its state,
-  keeps its invariants, and offers its behaviour; its state changes only inside its own behaviour. Its persistent
-  value is a Domain record named `XRecord` with the plain value `XData` (`UserRecord`, `BeatmapsetRecord`,
-  `MatchRecord`); the object wraps it. A persistent value that has no live object of its own, such as a
-  restriction, is a plain Domain class named after the concept (`Restriction`). A part is reached through its owner
-  (`room.Slots[3]`), never through an outside object that takes the owner as a parameter.
-  **`x.ScopeTo(connection)`** returns `ScopedX`, a short-lived capability for one request or command. It snapshots
-  the caller's effective permissions and role on `X` once, and each behaviour checks that snapshot and returns
-  `NotAuthorized` or `Restricted` before it takes the object's lock, keeps the invariants, acts and emits the
-  event. The caller never passes `connection`, permissions or an actor into a call. **Anything whose actions
-  depend on permissions or privileges is scoped; only a system that needs no check is not** (the server's own work:
-  Runtime handlers, startup, the bot's announcements, public reads).
-  Services keep only application logic that needs no live object (account checks, beatmapset indexing, score
-  validation and recording); coordination between objects belongs to the object that is acted on
-  (`UserRegistry` for logins and connections, `Lobby` for what happens across rooms, `BanchoConnection` for a
-  player's score and anticheat report, `Beatmapsets` for imports). Five
-  anti-patterns to reject in review: a **God Actor** that gathers every behaviour (every former service ending up
-  as `Server.X`); **service-centric procedural
-  design** (a service takes an object and does its behaviour for it); **permission plumbing** (rights passed
-  through many layers and methods); **exposing mutable state** (callers change internals past the invariants);
-  **fake scoping** (`ScopeTo` only wraps while behaviour and checks stay in a central service). The shared
-  authority primitives (`Access`, effective permissions, hierarchy, "a block yields to a higher right") are a
-  library each `ScopeTo` calls, not a layer to pass through. A domain record and its Application object never
-  share a name.
-* **Storage holds the ports; runtime objects and registries live in Objects.** Application.Storage holds
-  persistent ports, capability ports, query records and paging. Runtime objects (`Room`, `RoomSlot`, `User`,
-  connections and channels), registries (`UserRegistry`, `GeneralChannelRegistry`) and their scoped
-  behaviour live in Application.Objects, as public classes. Storage
-  never decides a business rule, emits an event, calls a service or starts a timer. A state change and its
-  consequences belong to the object that owns the state.
-* **Services have no public contract.** A service is an `internal` class of Application.Services that Objects calls
-  directly; there is no `IXService` and no registry contract. A service never sees a live object (`Room`, `User`,
-  `Connection`), never publishes an event (events and `IEventPublisher<T>` belong to Objects, so the service returns
-  what happened and the object publishes it) and holds no running state. Objects reach it through
-  `InternalsVisibleTo`; plain data that both Services and Objects use in public signatures (login, registration and
-  score submission inputs, import and scan results) lives in Application.Storage. Callers reach permission-dependent
-  behaviour through `ScopeTo(connection)` and the server's own work through labelled system operations.
-* **Object or service?** One question decides it: does the operation have a caller whose rights it must
-  check? Then it is behaviour of the object it changes, reached through `ScopeTo(connection)`. An operation that
-  has no caller (the server's own work, a handler's reaction, startup) or that coordinates several objects
-  (login, import, score submission) is the behaviour of the object that owns the identity, the collection or the
-  actor, and it calls a service only for the part that needs no live object.
-* **Objects get their collaborators through a context.** An object takes a `…Context` record of ports (clock,
-  event publisher, repositories, the ports of the objects it works with: `RoomContext`, `UserContext`, `LobbyContext`,
-  `ChannelContext`, `SessionContext`, `BeatmapsetContext`, `ServerContext`) when it is created. The context, the
-  object's constructor are `internal`; the registration builds them in factory lambdas, because the container only
-  sees public constructors (a root object that two others need, such as the lobby for a connection, is reached
-  through a deferred port to avoid a construction cycle). A service class that the container creates by itself
-  needs a `public` constructor even when the class is `internal`. An object calls a service for pure logic only; a
-  port is implemented by whoever owns the other object (`Lobby` implements `IRoomLobbyPort` and
-  `IConnectionLobbyPort`).
-  Because the factories hide dependencies from `ValidateOnBuild`, verify the container by resolving every
-  registration with the external storage ports stubbed (see Commands).
-* **A scope is a snapshot: re-check after waiting.** A `ScopedX` is for one request or command and is never kept.
-  A behaviour that awaits between its rights check and its change (a lookup, a repository call) checks again,
-  inside the object's own scope or lock, what the wait could have changed (the permission, `IsOpen`, a block)
-  before it changes anything.
-* **System operations are labelled.** A public method on an object that skips the rights check (`Lobby.Unwatch`,
-  `Server.SayAsync`, `Server.WhisperAsync`, `Server.OpenChannel`, `Lobby.ReleaseAsync`, `Room.RecordScoreAsync`, `Server.Notify`) says in its
-  XML summary that the server itself calls it and needs no rights. A chat command, an API route or any other entry
-  point that acts for a user never calls one; it uses the scope of the user's connection.
-* **Capability ports.** A capability with business meaning whose implementation needs external libraries
-  or resources is a contract in Application.Storage that Infrastructure.Capabilities implements
-  (`IBeatmapAnalyser`, `IBeatmapsetReader`, `IBeatmapAssets`, `IBeatmapsetMirror`, `IScreenshotInspector`), even
-  when only the hosts use it. Pure plumbing (logging, diagnostics, metrics, SSE hub, TLS, mDNS, update checks,
-  OpenAPI, the response envelope) gets no contract. Whatever kind of file a client sends, trust a known extension
-  and probe the content only when it is unknown or when its size is needed: an image with ImageSharp
-  (header only, never decoded; a screenshot is always identified because its pixel size is capped), audio with
-  ffprobe through FFMpegCore (duration and bytes are read from the content); no part of an uploaded name reaches a
-  temporary file name.
-* **Contract names do not reveal the mechanism.** If the work moved from the file system to the network, or
-  from one library to another, the name would not change: `ScanAsync`, not `ScanFileAsync`;
-  `IBeatmapAssets.OpenAsync`, not `ReadFromDiskAsync`.
-* **Registries belong with runtime objects.** A registry holds live runtime objects, so it is a public class of
-  Application.Objects (`UserRegistry`, `GeneralChannelRegistry`) that also owns the operations on what it holds
-  (`UserRegistry` opens and closes connections and logs users in). Mutating registry members are `internal`.
-  Persistent repositories, storage ports, query records and paging belong to Application.Storage. Other
-  capability ports describe what lies outside the process: files, network, external computation and the clock
-  (`TimeProvider`).
-* **Outer layers use storage directly.** Infrastructure and the hosts read, list and search storage, and
-  write persistent records whose write carries no rule or consequence (an admin renames a user, hides a
-  beatmapset), directly through the repository, after the host has checked the caller's permission. Services are only for actions; a service
-  never wraps a plain read or write (a score service's `GetAsync` forwarding to `IScoreRepository.GetAsync` is
-  wrong). Runtime state changes only through the behaviour of the object that owns that state; runtime setters
-  are `internal`.
-* **Each object enforces its own rules.** An operation keeps the owning object's parts consistent in that same
-  operation (a room keeps its channel in step with its players). A consequence that crosses object boundaries
-  (a restriction removes memberships in rooms and spectator streams) is announced as an event; Infrastructure
-  handlers call the operations owned by those objects.
-* **Background work.** An object declares one run of a background job (`UserRegistry.CloseIdle()`,
-  `Beatmapsets.ScanAsync()`); Infrastructure owns the loop, the trigger, the
-  period and its configuration. A one-shot timer that is the consequence of an operation (an empty room's
-  closing) belongs to the lobby that owns the room and runs on `TimeProvider`. A room's countdown belongs to
-  its scoped round behaviour; aborting a round cancels a pending start. BasilBot announces the countdown marks.
-* **Derive whatever is derivable.** A property a runtime object co-owns with its domain object
-  (truth in Domain) is a forwarding property (`Room.Name => Match.Name`).
-* **A user is one `User`; each place they log in from is a `Connection`.**
-  `User` (sealed) represents the account and, while it is online, everywhere they connect from: it holds what is
-  shared (`AwayMessage`, `PmChannel`, the active `Restrictions`) plus its connections as child data, keyed by
-  `ConnectionType` (`Bancho`, `Tourney`, `Irc`, `Api`), with typed accessors (`Bancho`, `Irc`, `Tourneys`,
-  `Apis`); only `Tourney` and `Api` allow several connections per user, a rule the user registry owns.
-  `Connection` is an abstract class (`User`, `Record`, `Login`, `Token`, `IsOpen`, `Type`) with `BanchoConnection`,
-  `TourneyConnection`, `IrcConnection`, `ApiConnection`; each holds only what exists for that kind of client
-  (`BanchoConnection.Status`, `BanchoConnection.SpectatorChannel`). Rooms, channels and the lobby
-  hold connections, not users' sessions. Owned parts (a user's `PmChannel`, a connection's
-  `SpectatorChannel`) are created and destroyed with their owner; they are not relations.
-  Spectating is a relation on the spectated osu! client (`BanchoConnection.Spectators`), changed through
-  `host.ScopeTo(by).SpectateAsync()` (what only an osu! client has lives under `BanchoConnection`:
-  spectating and its presence status), which keeps the client's spectator channel in step (the first spectator brings the
-  host in, the last one out) the way the room service keeps a room's channel; the channel never stands for who is
-  spectating.
-* **Identify by the basis object**, not its id (`Room` by `Match`, `GeneralChannel` by `Name`). Runtime
-  objects that can be recreated with the same user or name compare **by reference**: a connection
-  is one login, a `User` instance is one online period (`UserRegistry.Online` holds it; an offline account gets a transient instance that is never registered), a
-  runtime channel is one opening (`#mp_5` is reused when a room id is reused). Cleanup that carries
-  an old object can never touch its replacement. "Is this user already here?" compares the user
-  and is a separate check from object identity. Ids are for repository lookups only. Choose object vs identifier
-  deliberately (`Room.Beatmap` object, `PlayerStatus` beatmap `Md5?`); never `string` for an MD5.
-* **Relations are references** in `ConcurrentSet<T>`, never `ConcurrentDictionary<T, byte>`.
-* **`User` or a connection?** If the information is gone once the user goes offline, store the
-  connection (`BanchoConnection` as slot occupant or host); otherwise the `User` (creator, referees,
-  bans).
-* **The acted-on object owns the interaction.** An actor (a user, a session, any active object)
-  only *calls* an action. The relation is stored on the object acted on (`Channel.Members`,
-  `Room.Slots`), and its short-lived scope exposes the operation (`channel.ScopeTo(by).Join()`,
-  `room.ScopeTo(by).Members.JoinAsync(password)`). The event belongs to that object's category
-  (`ChannelMemberJoined` is a `ChannelEvent`). The
-  session does **not** keep a `Channels` set, does **not** have a `Join(Channel)` method, and nothing
-  emits events on its behalf. Otherwise every new joinable kind (channel, room, spectator stream, …) forces a
-  new `Join*` method and a new set on the user. "Which channels is X in?" is a query over channels, not state
-  on X. Ask "who is acted on?" for every relation, member and event.
-* **Parts are reached through the owning object's scope.** `room.ScopeTo(by)` exposes `.Slots`, `.Rounds`,
-  `.Settings`, `.Authority` and `.Members`; `users.Of(record).ScopeTo(by)` exposes the user's restrictions,
-  relationships and account operations. Channels, sessions, connections, the lobby, beatmapsets and the server
-  follow the same pattern. There are no child service trees for object behaviour; coordination that spans objects
-  is a method of the object that is acted on (or of the registry that holds them).
-* **Each owner manages its own kind, and reacts to other kinds only through events.** The user registry
-  opens and closes connections and announces `UserConnectionOpened`/`UserConnectionClosed`; its responsibility
-  ends there. Leaving rooms and parting channels when a connection closes is done by Infrastructure handlers
-  that receive the event and call the owning object (`Lobby.ReleaseAsync`, `GeneralChannelRegistry.PartAll`). When a second connection of the same kind arrives
-  for a user an owner still holds, the owner **asks the old connection who it is** (`connection.IsOpen`):
-  still open, refuse the new one; already closed (cleanup not run yet, or failed), remove the old one as an
-  ordinary leave and admit the new one. Cleanup operations must be safe to run again.
-* **Peers talk through events; owners call their parts directly.** Two operations are peers when neither
-  object owns the other and neither's rule depends on the other (scores and rooms, the anticheat and rooms): the
-  acting operation publishes its event, and Infrastructure's event bus delivers it to the peer's contract
-  (`ScoreSubmitted` → `Room.RecordScoreAsync`, `AnticheatPlayerFlagged` reaches clients that
-  watch it, such as BasilBot). An object calls another directly only for a clear ownership relation or to keep
-  a rule that must hold within the same operation: objects use storage ports; a room manages its own channel, a
-  session its PM channel and a connection its spectator channel; a room tells the lobby when it empties or fills;
-  logging in opens the connection; deleting a user closes their connections at once, a security rule that
-  must not wait for a handler.
-* **Application publishes events; it does not consume them.** An object or the bot's voice publishes
-  an event through `IEventPublisher<T>` (`Publish`), the only event port of Application: it returns at once and
-  has no read end. Infrastructure.Runtime implements it with one `EventBus<T>` per category (`UserEvent`,
-  `RoomEvent`, `LobbyEvent`, `ChannelEvent`, `BeatmapsetEvent`, `ScoreEvent`, `AnticheatEvent`): the bus
-  stamps `Timestamp`, keeps the events in order in its own queue and calls the `IEventHandler<T>` implementations
-  of Infrastructure.Runtime or `Basil.Bot.Application` one after another. The bus resolves its handlers when it
-  starts delivering, not when it is built (a handler reaches objects that publish to buses, so resolving them in the
-  constructor makes buses wait for each other). Storage and Services never publish (a service returns what happened and the object publishes it). One operation publishes one event carrying
-  its whole consequence. Events sit in a nested category tree (`Event` ← `RoomEvent` ← `RoomSlotEvent` ←
-  `RoomSlotTeamChanged`) so a consumer can subscribe to a whole category. Buses, handlers and event →
-  client-notification routing belong to Infrastructure and the hosts, never to Application.
-* **Handlers are quick; slow work goes to its own queue.** A bus awaits its handlers one after another, so a
-  handler that waits (a lookup, a room, the store) holds up every later event of its category. A handler that may
-  wait only queues the work on a bounded queue of its own, with a cap per user and a timeout per item, and returns
-  (`CommandWorker` of the bot). A dropped item is logged, never silent.
-* **A consequence reaches everyone, through every path.** What a change does to the people it concerns it does
-  whether they are online or not (a restriction removes an offline referee from the open rooms too), and every
-  path that grants the same authority applies the same gate (`ScopedRoom` and `ChannelRules.InRoom` agree on
-  `RoomManageAny` and `RoomJoin`).
-* **Repository contracts are written per model** as `IXxxRepository` (`IMatchRepository`,
-  `IScoreRepository`, …), each declaring the operations Services and the outer layers need. A relation
-  between two models that is stored on its own gets its own repository rather than a column on either
-  (`IRoundScoreRepository` relates a round to a score and keeps the team it was set for). Verbs:
-  `CreateAsync(XData) → X` (the store assigns the identity) with `UpdateAsync(X)` for a record created that way
-  (nothing is created under an id the store has not given out), `CreateOrUpdateAsync(X)` only for a record keyed by
-  what it is about (credentials by user, a relationship by its two users, stats by user and mode), `GetAsync(id)`,
-  `GetByYAsync(y)` for a unique key, `ListAsync(XQuery, PageRequest) → Page<X>` for listing and search,
-  `DeleteAsync(X)`. A listing without a page is complete and is never copied to be returned: a list the
-  repository holds (an owned list) comes back as it is, through its read-only interface (`IReadOnlyList<X>`); a
-  listing computed when asked (filtered or ordered from memory) is an `IEnumerable<X>`, and the caller decides
-  whether to materialise it. Soft deletion is a service setting `DeletedAt` and calling
-  `UpdateAsync`. `Save` is only for byte storages (`IXxxStorage`: `SaveAsync`, `OpenAsync`,
-  `DeleteAsync`, plus `ListAsync` and `RenameAsync` where the content is managed); `OpenAsync` serves the server's
-  own reads, never clients, who get stored assets from the asset host. A storage lists with `IEnumerable<X>` (the
-  caller decides whether to materialise it). `IBeatmapsetStorage` keeps each set in `Data/Beatmapsets/{id} {Artist} - {Title}/`: `archive.osz`
-  exactly as given is the truth about the set (`Beatmapset.Fingerprint` records it), and
-  `archive-novideo.osz`, `versions/{md5}.osu`, `backgrounds/`, `audio/` (with `preview_{audio}`), `video/` and
-  `storyboard.osb` are made from it when the set is indexed; nothing else is extracted, and reading never makes a file
-  (a missing one reads as absent). Three kinds of type, three owners: the storage holds raw content (`BeatmapsetSource`: a
-  `BeatmapsetArchive` `.osz` or a `BeatmapsetFolder` of one set's files), `IBeatmapsetReader` understands it
-  (`BeatmapsetContent`), and the repositories hold the records (`Beatmapset`, `Beatmap`; created from `BeatmapsetData`
-  through `IBeatmapsetRepository.CommitAsync`). Raw content is identified by a `ContentFingerprint`: its `ContentStamp`
-  (size, modification time) is known without reading, the MD5 is taken (`BeatmapsetArchive.FingerprintAsync`) only when
-  the stamp differs from the one recorded on the set; a `Beatmap` is identified by the MD5 of its `.osu`. One import is
-  one beatmapset: `Beatmapsets.ImportAsync` takes one `.osz`; a folder exists only when placed by hand and is
-  packed into an `.osz` first. Difficulties lie at the top of an archive. There are no collections: a `.zip`, a loose
-  `.osu` or any other file placed by hand is not a source and is left as it is, as is an invalid source; an upload
-  that is rejected leaves nothing, and its set and beatmaps are stored in one transaction. Two sources of one scan never
-  become the same set or share a difficulty (the first found wins). A folder being deleted is
-  renamed with `.deleted_` first; anything being written (an upload, a derived file, a set folder before it moves into
-  place) lies under a top-level `.incoming_` name, which is never listed or watched, so moves stay on one volume. Every
-  name written from untrusted input avoids the names Windows keeps for devices (`CON`, `NUL.txt`, `COM1`, ...): a
-  derived file gets a `_` prefix. `Beatmapsets.ScanAsync()` runs at startup before clients are served: it checks every entry
-  (size and modification time, then the hash), indexes what changed, makes missing files again, and stores every
-  record change in one `IBeatmapsetRepository.CommitAsync` transaction; `ScanAsync(entry)` handles each change the
-  storage watcher reports. `IBeatmapsetReader` reads an archive into a `BeatmapsetContent` whose files open on demand
-  (no `byte[]` copies) and owns the input checks; only the beatmapset service uses it. `IBeatmapAssets` only makes
-  derived files at index time (audio previews). `IBeatmapAnalyser.AnalyzeAsync` reads a beatmap's `.osu` once
-  and keeps the understood file as long as that `Beatmap` instance lives (again when its hash changes), so changing mods
-  reads no file; the Domain holds no such runtime content, and metadata stays in the database. A
-  storage of text reads and writes it through `StreamReader`/`StreamWriter` (`IFaqStorage.ReadAsync`,
-  `IFaqStorage.CreateOrUpdateAsync`) instead of a raw `Stream`. Extract a shared
-  interface only when several repositories genuinely share an operation, and keep the `IXxxRepository`
-  contract callers depend on; no parallel generic ports (`ICreatable`) and no generic query system
-  (`Query<T>`, `SortOptions`). Key normalization (for example `UserData.NormalizedName`, case-insensitive with a space equal to an underscore) lives on the
-  Domain value (`UserData.SafeName`); the server writes the normalized key it looks records up by. A repository filters only by explicit criteria in its query record.
-  A query record searched with text (`UserQuery`, `BeatmapQuery`, `MatchQuery`) is `IParsable<T>`: every criterion, a
-  state included, is written in the search text (`deleted=1`,
-  `hidden=0`, `ended=0`, `private=1`, enum masks as numbers such as `permission=4`), and a state is a `bool?` (`null` for both,
-  written `*`) whose default, kept when the text has no token for it, is `null` (both). Every caller narrows a query to the asker
-  before using it, `UserQuery.Parse(text).LimitTo(effective)`: `LimitTo` sets each state the asker may not see to
-  what a user without that permission sees (`Deleted = false`, `Hidden = false`, `Private = false`). A query used
-  without `LimitTo` shows everything, so only the server's own work (a scan, startup recovery) skips it.
-* **Memory is the truth; the database is a copy of it.** Memory is where the server works; the database only keeps
-  a record of what was done. **No operation waits for the database unless its result comes from the database**
-  (a try-operation: an identity the store assigns, a unique value). Everything asks memory first and goes to the
-  database only on a miss, to verify or to load into memory; a miss means "not loaded", never "does not exist". A
-  change is applied to the live object in memory, and its copy is written to the database alongside. "Cache" means
-  only the on-disk `Cache/` directory of derived, rebuildable files (repacked `.osz` archives, audio previews); data
-  in memory is never called a cache.
-  * **Resident data**, the database records every client uses (`ServerSettings`, general channels, menu banners), is
-    loaded at startup and never released; it changes only through its repository, never in the database behind the
-    server's back. File storages are not resident and hold no file content in memory: the file system is their
-    index, read as it is when asked.
-  * **On-demand data:** a repository holds one live instance per identity, returned by every `GetAsync`,
-    `GetByYAsync` and `ListAsync`. It lives while anything holds it (a session its user, a room its match) or while
-    a change of it is not stored yet, and is then released; there is no TTL. A list owned by an object (a user's
-    restrictions and relationships, a set's beatmaps, a match's rounds and events, a round's scores) lives as long as
-    its owner instance: it is loaded whole the first time it is needed, then changed item by item.
-  * **Writes:** `CreateOrUpdateAsync`/`DeleteAsync` queue a copy of the values **as they are when queued** and return
-    at once; only a try-operation waits for the database, because its outcome comes from it. `DatabaseWriter` keeps
-    one queue per root (`Root.User`, `Root.Match`, `Root.Beatmapset`, `Root.Server`) and sends its writes one
-    statement at a time, in order; a copy not sent yet is replaced by a newer copy of the same identity. At most
-    `Basil:Database:WriteConnections` connections (8 by default, see [`plans/evidence/postgresql-direct-writes-20261008`](plans/evidence/postgresql-direct-writes-20261008/results.md)) write at once. No write is grouped with unrelated
-    writes; a business operation that must store several rows together gets one try-operation of its own. A score
-    belongs to its player (`Root.User`); which round it was played in is a relation of its own
-    (`round_scores`), listed with the round.
-  * **Errors:** only environment errors (lost connection, timeout, server shutting down, read-only after a failover,
-    deadlock, authentication, permissions) are retried, before any later write of the same root. Any other error
-    fails that write alone: a try-operation throws it to its caller, a copy is logged as an error. A try-operation
-    runs in its own transaction and settles a broken commit with `pg_xact_status`; its cancellation token counts
-    only while it waits for its turn. Appends (logins, match events) carry no business id: the database assigns it,
-    the repository queues the append and returns at once (logging in works without a database), and
-    `DatabaseWriter.AppendAsync` runs each append in its own transaction settled the same way, so it is stored
-    exactly once.
-  * **Reads** go straight to PostgreSQL on a pooled connection of their own and see only what is committed. A listing
-    asks the database which rows match and returns the live instance of each; a row whose deletion is still queued
-    never comes back into memory.
-  * **A value unique across a table** (a user's safe name, a beatmap's hash or osu! id, a score's checksum, an id the
-    store assigns): when memory holds a record with that value the repository rejects the change at once; otherwise
-    the insert runs as a try-operation and a unique violation from the database means the value is taken. Either way
-    the repository throws `AlreadyExistsException` (a rename returns `false`) and does not load the existing record.
-  * A derived read model (the match report) is projected from memory when asked; it is not stored or rebuilt.
-  * A child refers to a parent of another root only once the parent is committed (such a parent is created by an
-    awaited try-operation); parents are created before their children. One database belongs to one Basil process. An
-    operation's lambda uses only its connection and transaction and never queues another operation.
-  * Without a database, creating identities and checking unique values wait for it; everything already in memory
-    keeps working.
-* **Naming: Domain record `XRecord` (with `XData`), the Application object `X`, the object that holds the live
-  ones `XRegistry`, the contract `IXService` and its implementation `XService`.** There is no `*Session`
-  suffix: the Application object is the thing itself, and Domain only stores records. No suffixes such as
-  "Definition". `GeneralChannelRecord` → `GeneralChannel` → `GeneralChannelRegistry` (it holds only general
-  channels); `UserRecord` → `User` → `UserRegistry`. The osu! terms win for matches: `MatchRecord` → `Room` →
-  `Lobby`. The room's channel is named after the room (`RoomChannel`) because the room is where things happen and
-  `MatchRecord` is only the record. `Channel` shares its simple name with the static class
-  `System.Threading.Channels.Channel`: a file that uses both qualifies the .NET one.
-* **Event names are `{Group}{Subject}{PastTenseVerb}`.** The group is the category the event belongs
-  to (`Room`, `Channel`, `User`, `Lobby`); when the subject is the group itself it is written once
-  (`ChannelOpened`, `UserRestricted`). A subject that belongs to another is written `{Parent}{Child}`
-  (`RoomRoundPlayerLoaded`, `RoomSlotTeamChanged`, `UserConnectionOpened`). The abstract category
-  records follow the same rule (`RoomRoundEvent`, `ChannelMembershipEvent`).
-* **Chat channels.** Domain stores only what is persisted: `GeneralChannelRecord` (identity: the name with its
-  `#`) and `GeneralChannelData` (`Topic`, `ReadPrivileges`, `WritePrivileges`, `AutoJoin`, `Visible`); messages
-  are the record `Message`. Application: abstract `Channel` (`Name`, `Topic`, members, IRC convention) with
-  `GeneralChannel` (wraps the record), `RoomChannel`, `SpectatorChannel`, `PmChannel`; each names itself
-  (`#mp_5`, `#spec_7`, the owner's name for a PM channel). **Each channel lives on its owner**:
-  `GeneralChannelRegistry` holds the general channels, a `Room` its room channel, a `User` its PM
-  channel, a `BanchoConnection` its spectator channel. The channel service decides, per kind of channel, who
-  may read and write. A private message is a post into the recipient's PM channel. Access follows osu!: a
-  user may join a channel (including `/join` over IRC) only if an osu! client doing the matching in-game
-  action would have access. General channels are created, configured and deleted at runtime through
-  `Server` (`ServerConfigure`); configuring a channel removes the members who may no longer read it.
-* **Assets are referred to by `ContentReference`** (Domain), never by `string` or `Uri`: either the relative path of a
-  file the server stores under its data directory (`Menu/Banners/x.png`, valid on every machine) or an absolute
-  http/https address of an asset hosted elsewhere, kept as given and never copied. The value is canonical (its
-  parsing and normalization live on the type). File storages give out the reference of what they store; the hosts
-  serve stored files under a fixed public path per asset directory (static file provider rooted at each asset
-  directory, never at the whole data directory) and only distribute them. Replays are named
-  `{ScoreId} {Player} - {Artist} - {Title} [{Version}] ({yyyy-MM-dd}) {Mode}.osr`, as osu! names an exported
-  replay; screenshots get a UUIDv7 name.
-* **Permissions are the source of truth.** What an account may do is its `Permissions` (Domain, on
-  `UserData`): one flat enum of independent actions named `[Resource][Action]` (`RoomCreate`, `ChatPost`,
-  `UserRestrict`, `ServerConfigure`, …), split into `#region`s by resource. The enum has **no group members**.
-  A larger permission still contains the bits of the smaller ones it implies, because it is still *one
-  permission* ("whoever holds this can also do what is below it"): a manage permission includes the matching view
-  permission (`BeatmapsetManage` holds `BeatmapsetViewHidden`, `RoomManageAny` holds `RoomViewPrivate`,
-  `UserRestrict` holds `UserSilence`). A group says only "these permissions belong together" and lives in the
-  static class `PermissionsGroups` beside the enum, one mask per area (`Chat`, `Multiplayer`, `Spectating`,
-  `Beatmapsets`, `Users`, `Server`), each with the permission that manages the area. The same pattern, `{Enum}Groups`,
-  holds the combinations of every other flags enum (`GameModsGroups`, `BanchoFlagsGroups`); no flags enum has
-  combination members. A check asks for the smallest permission that allows the action, so the manager and a user
-  granted only that permission both pass; never `Allows(A) || Allows(B)` for a pair where one contains the other.
-  Do not add a permission that is merely a consequence of another (playing and submitting scores are one:
-  `ScoreSubmit`).
-* **Privileges are roles, permissions are rights.** `Privileges` (Domain; renamed from `BanchoPrivileges`) is one
-  flags enum of the roles osu! knows (`Player`, `Moderator`, `Supporter`, `Owner`, `Developer`, `Tournament`; the
-  values stay the wire bits). `privilege.Permissions` (an extension) lists the permissions that belong directly to
-  that role, at depth one. A user has the bit of a role when their **effective** permissions hold at least one of
-  those. A requirement written in privileges (a channel's `ReadPrivileges`/`WritePrivileges`) is met when the user
-  has every bit asked for. Privileges are derived, never stored or configured, and they grant nothing: a client
-  that claims a role it holds no permission for is refused.
-* **Permission checks require every bit** (`Permissions.Allows`); an empty requirement is always
-  satisfied. Checks use the **effective** permissions: the granted ones minus those suspended by the user's
-  active restrictions (`Effective(restrictions, now)`).
-* **Restrictions are timed records,** not account fields. A `Restriction` suspends a mask of permissions
-  from `StartsAt` to `EndsAt` (open-ended until lifted; lifting sets `EndsAt`, history is kept). It holds only that
-  data: no reason and no note. Named masks live on `Restriction`, not on `Permissions`:
-  `Silence = Chat | Multiplayer` follows the osu! wiki (no chatting anywhere, no multiplayer; watching others play
-  stays allowed) and `Restrict = Silence | Spectating | ScoreSubmit | BeatmapsetUpload | ScreenshotUpload`. There is
-  one restrict operation, taking a mask. **Whoever manages an area cannot be restricted in that area:** the
-  restriction is stored, but the effective permissions keep every bit of the areas the user manages (a
-  `RoomManageAny` holder who is silenced still plays and manages multiplayer, but cannot chat unless they also
-  manage chat). Expiry needs no timer: the effective permissions are computed at `now`. A result tells "suspended by
-  a restriction" (`Restricted`) apart from "never granted" (`NotAuthorized`).
-* **A block yields to a higher right.** A limit a user sets on others (a block, friends-only messages) does not
-  bind someone who manages the matching area (`ChatMessageAnyone` for messages, `RoomManageAny` for invitations,
-  `RoomObserve` for spectating). Every "prevent, unless a higher right" rule follows this pattern.
-* **Moderation history is a log.** Restricting, lifting, adding a note and viewing a user's login history append an
-  entry (action, `by`, target, reason, `Timestamp`) to the moderation log. The log is for people to trace; it
-  never affects any right.
-* **Hierarchy.** A staff action aimed at another user (restrict, lift, set permissions, set password,
-  revoke sessions, delete) requires the actor's granted permissions to be a strict superset of the target's.
-  Equals cannot act on each other; acting on oneself is not subject to this rule, except that nobody restricts
-  or lifts a restriction of themselves. Granting gives only bits the actor holds.
-* **BasilBot is the server's voice.** The server has one fixed user, BasilBot, with id 1, created by a migration:
-  it is a friend of everybody. It is not an actor: it is the voice the server speaks with, and the server protects
-  it. Nobody can sign in as it or act for it, in any form (no login, no token a client can present, no
-  delegation). It never goes through a rights check because it never asks for anything, so permissions mean
-  nothing to it, and its privileges only decide how a client shows it; they grant nothing. Its record is fixed (it
-  cannot be deleted, restricted, given permissions or a password, or have its connection revoked); its metadata
-  (name, country, avatar) can be edited like any other user's. The bot answers chat commands (`!`, a fixed prefix) and
-  posts the server's announcements. A chat command is an entry point like IRC or the API: it runs on the objects
-  scoped to the connection of the user who typed it, so it needs that user's rights; the bot only replies. The
-  bot's own messages go straight to the chat, past the rights check. The command handler and event-based
-  announcers are implemented in `Basil.Bot.Application`. The bot is online with a connection of its own (`BotConnection`,
-  brought up by the server at startup; nobody can sign in as it) and a private message to it is a command. Showing the
-  bot as online on the transports is planned for the Host phase. Countdowns are a feature of the room.
-* **Identity on every action.** Every action has a real actor `by` (a `Connection`); `by` is never `null`.
-  A room created through the API has the caller as creator. A server announcement is `by` BasilBot.
-* **There is no delegation.** No account acts for another. An outside tool signs in with its own account and the
-  rights that account holds.
-* **Accounts come only from registration, creation or the console.** Nobody is granted permissions for being first
-  or for anything else implicit; a new account gets the default permissions, and more only by being granted.
-  Anyone without an account may register one unless `ServerSettings.LockedCreation` locks it. The server creates
-  no account by itself: the first administrator is made by the operator with a console command (below).
-* **The console is the operator's entry point.** *(Planned for the Host phase, in a new project `Basil.Cli`; not
-  built yet.)* The server process offers an interactive console, like a Minecraft server, where the operator types
-  commands. A console command acts as BasilBot (by its id, `BasilBot.Id`) and is **not subject to rights checks**: it is
-  the one entry point that skips them, because whoever sits at the console owns the machine. Creating an account
-  (and so the first administrator, with every permission) is a console command. The `--noconsole` flag turns the
-  console off. The CLI is built on the `XenoAtom.*` libraries (not Spectre.Console). What the commands are and how
-  they reach the objects is decided with the Host.
-* **A name is unique among live accounts.** Deleting an account is a soft delete and is **permanent**: the account
-  is never restored, and its id is never reused. The name is unique only among accounts that are not deleted, after
-  normalization (case-insensitive; a space and an underscore are the same). `UserData.NormalizedName` does the
-  normalization and the database enforces the same rule with a partial unique expression index. A new account may
-  take the name of a deleted one.
-* **No third party in the core.** Apart from the beatmap mirror, the server uses no third-party service for core
-  work. Country at registration comes from the host (a proxy header or an offline GeoLite2 file); Domain and
-  Application receive the `Country` as an input and do not know where it came from.
-* **Creation locks.** `ServerSettings.LockedCreation` locks the creation of accounts, rooms and beatmapsets to
-  their managers (`UserManage`, `RoomManageAny`, `BeatmapsetManage`), on every
-  transport. Beatmapset uploads are locked by default. Importing a beatmapset has no actor in Application: the
-  host gates it by policy (the lock, `BeatmapsetUpload`, `BeatmapsetManage`). There is no
-  administrator key.
-* **Sessions and tokens.** Every client signs in with credentials and gets a `Connection` with an opaque
-  `Token` (in memory, lost on restart, no absolute expiry). Idle connections close after 300 s for osu!,
-  osu!tourney and IRC and after 2 hours for `Api`. Logging out, changing the password, deleting the user, a
-  permission change that removes access to a kind of client, and revoking close connections. osu! and IRC
-  allow one connection per user; osu!tourney and `Api` allow several. `Api` connections do not make the user
-  appear online in game.
-* **No authority by connection kind.** Never decide authority with `ConnectionType` or `is XConnection`. The
-  kind of client only decides what that client can technically do (only an osu! client takes a slot; an
-  osu!tourney client gets no private-message channel). The kind `Bot` is BasilBot's own connection, opened by the
-  server at startup so that the bot has a session and a private-message channel; no client can request it or
-  sign in as the bot, no token of it can be presented, and idle sweeps never close it. Transports skip it when they
-  deliver a message.
-* **A channel's name tells its kind.** A channel several users take part in (general, room,
-  spectator) is named `#name` (`#osu`, `#lobby`, `#mp_5`, `#spec_7`); a private-message channel is
-  named after its owner, without `#`, as an IRC nick is. This is a naming convention each kind of
-  channel follows when it names itself; nothing else checks it. `#multiplayer`/`#spectator` are
-  aliases the transport resolves to the sender's room or spectator channel.
-* **Setters only assign and validate.** A Domain setter stores the value and throws if it is invalid; a
-  runtime setter is `internal set` and only assigns. A setter never emits an event or changes anything else.
-  A change that has consequences (emits an event, changes other fields, checks authority, groups several
-  fields into one event) is an operation on the object that owns the state. Such an operation is real behaviour, not a
-  `Change*`/`Rename`/`With*` wrapper around a single field.
-* **Name a contract after the object it acts on.** The unit that is imported, stored, read and mirrored is
-  the beatmapset, so the root object is `Beatmapsets` and the contracts are `IBeatmapsetReader`, `IBeatmapsetStorage`,
-  `IBeatmapsetMirror` and `BeatmapsetImportResult`. A byte storage is `I{Owner}{Thing}Storage`
-  (`IUserAvatarStorage`, `IMenuBannerStorage`, `IMenuSeasonalsStorage`); medium words (`Image`,
-  `Background`, `Archive`) and redundant qualifiers (`Server` in `ISettingsRepository`) stay out of names.
-* **Knowledge about a Domain value lives on that value.** A fixed set of flags is a member of its `{Enum}Groups`
-  class (`BanchoFlagsGroups.CheatSigns`, `PermissionsGroups.Chat`) or of the owning type (`Restriction.Silence`),
-  never a combination member of the enum itself; a per-mode factory is a static member of its type
-  (`BeatmapObjects.NewFrom(mode)`);
-  services use them instead of keeping their own copies.
-* **One concept, one name.** Use the same name for the same concept in every model, parameter,
-  event and API: the moment something happened is `Timestamp`, a span is `StartedAt`/`EndedAt`, a
-  future window is `StartsAt`/`EndsAt`, a stored record's lifecycle is
-  `CreatedAt`/`UpdatedAt`/`DeletedAt`, the caller of an operation is `by`. Do not introduce
-  `OccurredAt`, `When`, `Since`, `LoginTime` or similar synonyms.
+The detailed rules moved out of this file so each can be read when needed. **Read the matching file before touching that area:**
 
-### Code style
-
-* A small type used by one type lives in that type's file (`ConnectionType` in `Connection.cs`).
-* Object-oriented, not procedural: an operation goes through the object that owns the state it changes
-  (`DataStorage.SaveAsync`, `RoomState.IsManagedBy`), not through a static helper that is handed the state.
-* A type that is a collection implements the matching BCL interface (`DataStorage : IReadOnlyDictionary<string,
-  FileInfo>`); a business value with a text form is a value type implementing `IParsable<T>` and `IFormattable`
-  (`ContentReference`).
-* **Collections are exposed, not copied** (most mistakes so far were in registries and storages):
-  * Never materialise a collection only to hand it out (`[.. _channels.Values]`, `.ToList()`, `.ToArray()` on a
-    return). Return the collection itself through an interface it implements (`IReadOnlyDictionary<string,
-    GeneralChannel> All => _channels`), or an `IEnumerable<T>` for a sequence computed on the fly. Copy only
-    where the code needs a snapshot (to change the collection while walking it, or to read it outside the lock that
-    guards it, as `FileBeatmapsetStorage.ListAsync` does). `ConcurrentDictionary.Values` and `.Keys` are such a copy
-    (taken under every lock), so a registry exposes the dictionary, not its `Values`.
-  * A collection that is both read and changed is exposed twice, with no methods that only forward to it: a public
-    read-only interface and an `internal` read-write one named `Mutable{X}` (`public IReadOnlySet<User> Banned`,
-    `internal ISet<User> MutableBanned`; `IDictionary`/`IList` likewise). A method stays only when it carries a rule
-    of its own (`Lobby.Add` releases the reserved id; `User.Add` files a connection by its kind).
-  * Expose the most derived interface the value has (`IReadOnlyDictionary`, `IReadOnlySet`, `IReadOnlyCollection`
-    rather than `IEnumerable`), unless the extra property belongs to the implementation and not to the contract: a
-    storage that walks files returns `IEnumerable<T>`, not `IOrderedEnumerable<T>`, even when it sorts them.
-* Every stored time is UTC (`DateTimeOffset.UtcNow`, `TimeProvider.GetUtcNow()`, `timestamptz` columns); only the
-  presentation converts it to a local date and time. Never `DateTimeOffset.Now` or `DateTime.Now`.
-* A folder that would share its name with a type in it is plural (`Multiplayer/Matches/Match.cs`), so code never
-  writes `Match.Match`.
-* A member that uses no instance state is `static` (`LobbyService.RoomOccupied`).
-* Prefer primary constructors, property patterns (`room is { InProgress: false, Beatmap: not null }`) and
-  one guard for conditions that return the same result; no redundant casts, `? true : false` or
-  discarded-task lambdas (`_ => action()`, not `_ => _ = action()`).
-* Application.Objects registers its objects, registries and contexts, and the internal services, in the public
-  `DependencyInjection.AddApplication()` (it calls the internal `AddApplicationServices()` of Application.Services).
-* **Read the IDE's suggestions to find better patterns** *(notes for the future code-principles skill)*. After a
-  change, run Rider's `lint_files` / `get_file_problems` with warnings and suggestions on, and treat what it says as
-  a review comment, not noise. The agent decides each case; the IDE only finds candidates. Act on:
-  * **Async and cancellation.** When a call has an async overload, use it, and pass the `CancellationToken` that is
-    in scope (`Method has 'async' overload with cancellation support`, `Use 'await using'`, `CancelAsync`,
-    `ZipArchiveEntry.OpenAsync`, `WithCancellation` on an async stream). A private/internal method whose callers hold a
-    token takes it. Do not change a public signature just to carry a token: report it.
-  * **LINQ.** A `foreach` that only filters, maps, finds, counts or aggregates becomes a query when it reads as a
-    sentence (`Loop can be converted into LINQ-expression`; `.OfType<T>()` to drop `null`s). Keep the loop when it
-    awaits, mutates in order, has side effects, or the query would be harder to read. Never write a `ForEach`
-    extension.
-  * **Switch.** Prefer `return x switch { … }`, then a switch expression assigned to a variable, then a classic
-    `switch` statement, then an `if`/`else` chain (`Convert into 'return' statement`, `Convert 'if' to switch`,
-    `Some values of the enum are not processed`). Use property, relational and `or`/`and`/`not` patterns when they
-    replace repeated tests of one value. Keep a plain `if` for one or two unrelated tests, and do not turn a
-    `switch` statement into a nullable-result switch expression followed by an `if` just to silence a hint.
-  * **Small ones.** Unused `using`, collection expressions, redundant type arguments (`Task.FromResult(x)`), a local
-    function placed before the `return`, `static` for a member that uses no instance state, `with` for record
-    copies, a variable that hides an outer one, a logging argument that is expensive when the level is disabled
-    (guard it or use a source-generated logger).
-  * **Ignore** the allocation hints (object, closure, delegate, boxing), `Property can be made init-only` on types that
-    a serializer or Dapper fills, `init` or collection `never used/updated` reports on reflection-filled DTOs, and
-    style hints that contradict the formatter. Do not remove a deserialization setter on the IDE's word alone.
-  * **Explore.** Other inspections are worth reading once per area (unhandled enum values, possible unintended
-    reference comparison, duplicated branches, `Merge into pattern`); adopt one as a rule when it finds a real mistake
-    twice.
+* [`docs/for-agents/application-design.md`](docs/for-agents/application-design.md): Domain models, Application objects, scopes (`ScopeTo`), contexts, events, channels, naming. Before touching `src/Domain`, `src/Application`, `src/Bot`.
+* [`docs/for-agents/identity-permissions.md`](docs/for-agents/identity-permissions.md): permissions, privileges, restrictions, hierarchy, sessions, BasilBot. Before touching users, connections, permissions or the bot.
+* [`docs/for-agents/persistence.md`](docs/for-agents/persistence.md): repositories, byte storages, memory-first model, beatmapset storage. Before touching a repository, a storage or `src/Infrastructure/Storage`.
+* [`docs/for-agents/code-style.md`](docs/for-agents/code-style.md): C# code style and IDE-suggestion rules. Before writing or reviewing C#.
 
 ### Important invariants
 
@@ -1102,6 +637,18 @@ owner merges them into the skill later, nobody edits the skill silently.
   tools of the main checkout, so the orchestrator runs the container check after merging; two agents at a time at most,
   and only on disjoint files; review for the faults listed in "Final verification" item 8 and for a changed meaning
   hidden in a "style" rewrite (a `switch` turned into a nullable result plus an `if`).
+
+* **Scoped base class and `Result<TOutcome>`** (2026-10-21, see `docs/for-agents/application-design.md`): one abstract
+  `Scoped<T>` holds the effective permissions snapshot and offers `Require(required)` returning the missing permissions
+  (`null` = met); behaviours return a shared `Result<TOutcome>` with per-object outcome enums starting at `Ok = 1`.
+* **Project rule that contradicts the skill: no `ConfigureAwait(false)`** in a server application; the skill's core list
+  says every library await uses it. The owner decides whether the skill gains a "server app" exception.
+* **Tests for computed values** pin properties (valid, finite, monotone under a modifier), not the exact number, unless
+  the number is a protocol or ruleset contract; expected values come from the specification, never from running the code.
+* **Test projects mirror source projects** one to one (`tests/` tree = `src/` tree, folders inside mirror feature
+  folders); shared fixtures live in one support project.
+* **A fixed-id system account** (the bot, id 1) is taken over if it exists and created if it does not, by startup code,
+  documented as the one exception to "the server creates no account".
 
 ## Agent skills
 
