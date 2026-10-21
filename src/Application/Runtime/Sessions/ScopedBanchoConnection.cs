@@ -3,48 +3,41 @@ using Basil.Domain.Users;
 
 namespace Basil.Application.Runtime.Sessions;
 
-/// <summary>An osu! client scoped to one connection.</summary>
-public sealed class ScopedBanchoConnection
+/// <summary>An osu! client as one connection may act on it.</summary>
+public sealed class ScopedBanchoConnection : Scoped<BanchoConnection>
 {
-	/// <summary>The osu! client this scope is over.</summary>
-	public BanchoConnection Host { get; }
-
-	/// <summary>The connection acting on this client.</summary>
-	public Connection By { get; }
-
 	/// <summary>Creates a scope for an osu! client and a connection.</summary>
 	/// <param name="host">The client to scope.</param>
 	/// <param name="by">The connection acting on the client.</param>
-	internal ScopedBanchoConnection(BanchoConnection host, Connection by)
+	internal ScopedBanchoConnection(BanchoConnection host, Connection by) : base(host, by, host.Context.Clock)
 	{
-		Host = host;
-		By = by;
 	}
 
+	/// <summary>Gets the osu! client this scope is over.</summary>
+	public BanchoConnection Host => Owner;
+
 	/// <summary>Starts spectating this client.</summary>
-	/// <returns>The outcome.</returns>
+	/// <returns>The outcome, or the permissions the caller lacks.</returns>
 	/// <remarks>
-	///     Needs <see cref="Permissions.SpectatingWatch" />, which <see cref="Permissions.RoomObserve" /> includes;
-	///     NotPermitted otherwise. A host's block of the spectator prevents spectating unless the spectator has
+	///     Needs <see cref="Permissions.SpectatingWatch" />, which <see cref="Permissions.RoomObserve" /> includes. A
+	///     host's block of the spectator prevents spectating unless the spectator has
 	///     <see cref="Permissions.RoomObserve" /> in effect. The spectator joins the host's spectator channel, and the
 	///     first spectator brings the host into it too. A connection spectating another client stops spectating it first.
 	///     Spectating this host again announces the spectator, as an osu! client does once it has the beatmap.
 	/// </remarks>
-	/// <exception cref="ArgumentException"><see cref="By" /> is an IRC connection, which cannot spectate.</exception>
-	public async Task<SpectateResult> SpectateAsync()
+	/// <exception cref="ArgumentException"><see cref="Scoped{TOwner}.By" /> is an IRC connection, which cannot spectate.</exception>
+	public async Task<Result<ConnectionOutcome>> SpectateAsync()
 	{
 		if (By is IrcConnection)
 			throw new ArgumentException("IRC clients cannot spectate.");
 
-		var now = Host.Context.Clock.GetUtcNow();
-		if (By.User.Check(Permissions.SpectatingWatch, now) is not Access.Allowed)
-			return SpectateResult.NotPermitted;
+		if (Require(Permissions.SpectatingWatch) is { } missing) return Result<ConnectionOutcome>.Denied(missing);
 
 		var relationships = await Host.Context.Relationships.ListAsync(Host.Record);
 		if (relationships.Any(relationship => relationship.Type == RelationshipType.Block &&
 		                                      relationship.Target.Equals(By.Record)) &&
-		    By.User.Check(Permissions.RoomObserve, now) is not Access.Allowed)
-			return SpectateResult.Blocked;
+		    Require(Permissions.RoomObserve) is not null)
+			return ConnectionOutcome.Blocked;
 
 		// Leave the previous host before entering this host's scope, so two spectator scopes are never held at once.
 		var previous = Host.Context.Registry.FindSpectating(By);
@@ -52,17 +45,14 @@ public sealed class ScopedBanchoConnection
 
 		using var scope = Host.EnterSpectators();
 
-		if (!Host.IsOpen) return SpectateResult.TargetOffline;
-		// The permission was checked before the awaits above; check it again before the spectator is added, so a restriction
-		// or a closed connection in between cannot slip in.
-		if (!By.IsOpen ||
-		    By.User.Check(Permissions.SpectatingWatch, Host.Context.Clock.GetUtcNow()) is not Access.Allowed)
-			return SpectateResult.NotPermitted;
-		if (By.Record.Equals(Host.Record)) return SpectateResult.Self;
+		if (!Host.IsOpen) return ConnectionOutcome.TargetOffline;
+		// The connection may have closed during the awaits above; check it again before the spectator is added.
+		if (!By.IsOpen) return ConnectionOutcome.Closed;
+		if (By.Record.Equals(Host.Record)) return ConnectionOutcome.Self;
 		if (Host.Spectators.Contains(By))
 		{
 			Host.Context.Events.Publish(new UserSpectatorJoined(Host, By));
-			return SpectateResult.Spectating;
+			return ConnectionOutcome.Ok;
 		}
 
 		var first = Host.Spectators.Count == 0;
@@ -70,7 +60,7 @@ public sealed class ScopedBanchoConnection
 		if (first) Host.SpectatorChannel.ScopeTo(Host).Join();
 		Host.SpectatorChannel.ScopeTo(By).Join();
 		Host.Context.Events.Publish(new UserSpectatorJoined(Host, By));
-		return SpectateResult.Spectating;
+		return ConnectionOutcome.Ok;
 	}
 
 	/// <summary>Stops this connection spectating this host.</summary>
@@ -109,23 +99,4 @@ public sealed class ScopedBanchoConnection
 		Host.Context.Events.Publish(new UserConnectionStatusChanged(Host, status));
 		return true;
 	}
-}
-
-/// <summary>The outcome of starting to spectate a player.</summary>
-public enum SpectateResult : byte
-{
-	/// <summary>The connection is now spectating the host.</summary>
-	Spectating,
-
-	/// <summary>The host's connection is closed.</summary>
-	TargetOffline,
-
-	/// <summary>A user cannot spectate themselves.</summary>
-	Self,
-
-	/// <summary>The spectator is not granted the permission to spectate, or it is suspended.</summary>
-	NotPermitted,
-
-	/// <summary>The host blocks the spectator.</summary>
-	Blocked
 }

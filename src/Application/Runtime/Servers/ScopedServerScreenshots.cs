@@ -35,13 +35,13 @@ public sealed class ScopedServerScreenshots
 	///     <see cref="MaxScreenshotWidth" /> by <see cref="MaxScreenshotHeight" /> pixels per side, told from its
 	///     content, never from a name.
 	/// </remarks>
-	public async Task<(ContentReference? Screenshot, ScreenshotUploadFailure? Failure)> UploadAsync(Stream content,
+	public async Task<(ContentReference? Screenshot, Result<ServerOutcome> Result)> UploadAsync(Stream content,
 		CancellationToken cancellationToken = default)
 	{
+		if (_scoped.Needs(Permissions.ScreenshotUpload) is { } missing)
+			return (null, Result<ServerOutcome>.Denied(missing));
+
 		var context = _scoped.Server.Context;
-		if (_scoped.By.User.Check(Permissions.ScreenshotUpload, context.Session.Clock.GetUtcNow()) is not Access
-			    .Allowed)
-			return (null, ScreenshotUploadFailure.NotAuthorized);
 
 		using var memory = new MemoryStream();
 		var buffer = new byte[81920];
@@ -54,51 +54,31 @@ public sealed class ScopedServerScreenshots
 			memory.Write(buffer, 0, read);
 		}
 
-		if (memory.Length > MaxScreenshotBytes) return (null, ScreenshotUploadFailure.TooLarge);
+		if (memory.Length > MaxScreenshotBytes) return (null, ServerOutcome.TooLarge);
 
 		memory.Position = 0;
 		var info = await context.Inspector.InspectAsync(memory, cancellationToken);
 		if (info is null || info.Width < 1 || info.Height < 1)
-			return (null, ScreenshotUploadFailure.InvalidImage);
+			return (null, ServerOutcome.InvalidImage);
 		if (info.Width > MaxScreenshotWidth || info.Height > MaxScreenshotHeight)
-			return (null, ScreenshotUploadFailure.DimensionsTooLarge);
+			return (null, ServerOutcome.DimensionsTooLarge);
 
 		memory.Position = 0;
 		var reference = await context.Screenshots.SaveAsync(memory, info.Extension, cancellationToken);
-		return (reference, null);
+		return (reference, ServerOutcome.Ok);
 	}
 
 	/// <summary>Deletes a stored screenshot.</summary>
 	/// <param name="screenshot">The reference of the screenshot to delete.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>
-	///     <see langword="true" /> if the caller may delete screenshots, even when no screenshot is stored under the
-	///     reference; otherwise, <see langword="false" />.
-	/// </returns>
+	/// <returns>Ok when the caller may delete screenshots, even when none is stored under the reference.</returns>
 	/// <remarks>Requires <see cref="Permissions.ScreenshotDelete" />.</remarks>
-	public async Task<bool> DeleteAsync(ContentReference screenshot, CancellationToken cancellationToken = default)
+	public async Task<Result<ServerOutcome>> DeleteAsync(ContentReference screenshot, CancellationToken cancellationToken = default)
 	{
-		var context = _scoped.Server.Context;
-		if (_scoped.By.User.Check(Permissions.ScreenshotDelete, context.Session.Clock.GetUtcNow()) is not Access
-			    .Allowed)
-			return false;
-		await context.Screenshots.DeleteAsync(screenshot, cancellationToken);
-		return true;
+		if (_scoped.Needs(Permissions.ScreenshotDelete) is { } missing) return Result<ServerOutcome>.Denied(missing);
+
+		await _scoped.Server.Context.Screenshots.DeleteAsync(screenshot, cancellationToken);
+		return ServerOutcome.Ok;
 	}
 }
 
-/// <summary>The reasons a screenshot is not stored.</summary>
-public enum ScreenshotUploadFailure : byte
-{
-	/// <summary>The caller may not upload screenshots, or the permission is suspended.</summary>
-	NotAuthorized,
-
-	/// <summary>The image is larger than <see cref="ScopedServerScreenshots.MaxScreenshotBytes" />.</summary>
-	TooLarge,
-
-	/// <summary>The file is not a PNG or JPEG image.</summary>
-	InvalidImage,
-
-	/// <summary>The picture is wider or taller than the accepted size.</summary>
-	DimensionsTooLarge
-}
