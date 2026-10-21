@@ -24,6 +24,21 @@ public sealed class DataStorageTests : IDisposable
 	}
 
 	[Fact]
+	public async Task A_file_placed_by_hand_under_a_name_no_reference_can_refer_to_is_not_listed()
+	{
+		await Storage.SaveAsync("fine.txt", TestStreams.Of("kept"), TestContext.Current.CancellationToken);
+		// Only a path in the extended form lets Windows keep a name that is a device name.
+		var odd = OperatingSystem.IsWindows()
+			? @"\\?\" + Path.Combine(Storage.Path, "NUL.txt")
+			: Path.Combine(Storage.Path, "NUL.txt");
+		await File.WriteAllTextAsync(odd, "placed by hand", TestContext.Current.CancellationToken);
+
+		Assert.Equal(["fine.txt"], Storage.Keys);
+		Assert.Equal(1, Storage.Count);
+		Assert.Equal(["fine.txt"], Storage.Select(pair => pair.Key));
+	}
+
+	[Fact]
 	public void Resolve_places_a_name_inside_the_directory()
 	{
 		Assert.Equal(Path.Combine(Storage.Path, "folder", "file.txt"), Storage.Resolve("folder/file.txt"));

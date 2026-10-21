@@ -37,7 +37,8 @@ internal sealed class DataStorage : IReadOnlyDictionary<string, FileInfo>
 			foreach (var file in Directory.EnumerateFiles(Path, "*", SearchOption.AllDirectories))
 			{
 				var name = System.IO.Path.GetRelativePath(Path, file).Replace('\\', '/');
-				if (name.EndsWith(".tmp", StringComparison.Ordinal)) continue;
+				// A file placed by hand under a name no reference can refer to is not one of the stored files.
+				if (name.EndsWith(".tmp", StringComparison.Ordinal) || !TryResolve(name, out _)) continue;
 				yield return name;
 			}
 		}
