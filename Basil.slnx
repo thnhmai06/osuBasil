@@ -34,6 +34,11 @@
 	<Folder Name="/Tests/Application/">
 		<Project Path="tests/Application/Runtime/Basil.Application.Runtime.Tests.csproj"/>
 	</Folder>
+	<Folder Name="/Tests/Infrastructure/">
+		<Project Path="tests/Infrastructure/Persistence/Basil.Infrastructure.Persistence.Tests.csproj"/>
+		<Project Path="tests/Infrastructure/Capabilities/Basil.Infrastructure.Capabilities.Tests.csproj"/>
+		<Project Path="tests/Infrastructure/Runtime/Basil.Infrastructure.Runtime.Tests.csproj"/>
+	</Folder>
 	<Folder Name="/Tests/Protocol/">
 		<Project Path="tests/Protocol/Bancho/Basil.Protocol.Bancho.Tests.csproj"/>
 		<Project Path="tests/Protocol/Irc/Basil.Protocol.Irc.Tests.csproj"/>

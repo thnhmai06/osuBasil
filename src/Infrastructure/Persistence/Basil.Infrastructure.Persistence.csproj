@@ -1,6 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<ItemGroup>
+		<InternalsVisibleTo Include="Basil.Infrastructure.Persistence.Tests"/>
+	</ItemGroup>
+
+	<ItemGroup>
 		<ProjectReference Include="..\..\Application\Persistence\Basil.Application.Persistence.csproj"/>
 	</ItemGroup>
 

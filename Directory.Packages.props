@@ -18,6 +18,7 @@
     <PackageVersion Include="SixLabors.ImageSharp" Version="3.1.12" />
     <PackageVersion Include="SixLabors.ImageSharp.Web" Version="3.2.0" />
     <!-- Startup update check and the update command. -->
+    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.16.0" />
     <PackageVersion Include="Velopack" Version="1.2.0" />
     <!-- Answers multicast DNS queries for the configured domain so a LAN client resolves it
          without a hosts entry. jdomnitz's maintained fork of richardschneider/net-mdns. -->

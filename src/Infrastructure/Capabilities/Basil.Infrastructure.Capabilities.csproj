@@ -1,6 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<ItemGroup>
+		<InternalsVisibleTo Include="Basil.Infrastructure.Capabilities.Tests"/>
+	</ItemGroup>
+
+	<ItemGroup>
 		<ProjectReference Include="..\..\Application\Capabilities\Basil.Application.Capabilities.csproj"/>
 	</ItemGroup>
 
