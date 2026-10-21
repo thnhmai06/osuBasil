@@ -1,9 +1,8 @@
 using Basil.Protocol.Bancho.Models.Chat;
-using Basil.Protocol.Bancho.Models.Multiplayer;
 using Basil.Protocol.Bancho.Models.Replay;
 using Basil.Protocol.Bancho.Wire.Packets;
 
-namespace Basil.Protocol.Bancho.Tests;
+namespace Basil.Protocol.Bancho.Tests.Wire.Packets;
 
 /// <summary>
 ///     Verifies `PacketReader`'s decoding of raw byte sequences into each primitive type

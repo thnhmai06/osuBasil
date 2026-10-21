@@ -1,6 +1,6 @@
 using Basil.Protocol.Bancho.Models.Multiplayer;
 
-namespace Basil.Protocol.Bancho.Tests;
+namespace Basil.Protocol.Bancho.Tests.Models.Multiplayer;
 
 public class RoomSlotPacketTests
 {

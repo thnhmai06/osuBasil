@@ -2,7 +2,7 @@ using Basil.Protocol.Bancho.Models.Multiplayer;
 using Basil.Protocol.Bancho.Models.Replay;
 using Basil.Protocol.Bancho.Wire.Packets;
 
-namespace Basil.Protocol.Bancho.Tests;
+namespace Basil.Protocol.Bancho.Tests.Wire.Packets;
 
 /// <summary>
 ///     Verifies `ServerPacketWriter`'s wire output for each server packet type, byte-for-byte
