@@ -75,7 +75,10 @@ public static class DependencyInjection
 		services.AddSingleton<IReplayStorage, FileReplayStorage>();
 
 		services.AddSingleton<IBeatmapsetRepository, PostgresBeatmapsetRepository>();
-		services.AddSingleton<IBeatmapRepository, PostgresBeatmapRepository>();
+		services.AddSingleton<PostgresBeatmapRepository>();
+		services.AddSingleton<IBeatmapRepository>(provider => provider.GetRequiredService<PostgresBeatmapRepository>());
+		// The beatmapset repository needs the difficulty repository only once it stores, which breaks their cycle.
+		services.AddSingleton(provider => new Lazy<PostgresBeatmapRepository>(provider.GetRequiredService<PostgresBeatmapRepository>));
 		services.AddSingleton<FileBeatmapsetStorage>();
 		services.AddSingleton<IBeatmapsetStorage>(provider => provider.GetRequiredService<FileBeatmapsetStorage>());
 		return services;

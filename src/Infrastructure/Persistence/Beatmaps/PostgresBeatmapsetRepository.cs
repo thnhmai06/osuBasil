@@ -6,7 +6,6 @@ using Basil.Domain.Content;
 using Basil.Infrastructure.Persistence.Postgres;
 using Basil.Infrastructure.Persistence.Memory;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Infrastructure.Persistence.Beatmaps;
 
@@ -15,7 +14,7 @@ internal sealed class PostgresBeatmapsetRepository(
 	DatabaseReader reader,
 	DatabaseWriter writer,
 	TimeProvider time,
-	IServiceProvider services)
+	Lazy<PostgresBeatmapRepository> beatmapRepository)
 	: MemoryRepository<int, BeatmapsetRecord>(reader, writer), IBeatmapsetRepository
 {
 	/// <summary>
@@ -25,8 +24,7 @@ internal sealed class PostgresBeatmapsetRepository(
 	private static Root SyncRoot => Root.Beatmapset(0);
 
 	/// <summary>Gets the repository that stores the difficulties the stored beatmapsets have.</summary>
-	private PostgresBeatmapRepository Beatmaps =>
-		(PostgresBeatmapRepository)services.GetRequiredService<IBeatmapRepository>();
+	private PostgresBeatmapRepository Beatmaps => beatmapRepository.Value;
 
 	/// <inheritdoc />
 	public ValueTask<BeatmapsetRecord?> GetAsync(int id, CancellationToken cancellationToken = default)
