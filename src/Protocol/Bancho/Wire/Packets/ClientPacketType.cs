@@ -1,7 +1,7 @@
 namespace Basil.Protocol.Bancho.Wire.Packets;
 
 /// <summary>Identifies the packet types the osu! client sends to the server, keyed by their protocol ids.</summary>
-public enum ClientPacketType : byte
+public enum ClientPacketType : ushort
 {
 	/// <summary>Updates the client's current action and status.</summary>
 	ChangeAction = 0,

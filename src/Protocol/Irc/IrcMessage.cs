@@ -12,8 +12,8 @@ namespace Basil.Protocol.Irc;
 ///     absent.
 /// </param>
 /// <param name="Command">The IRC command name or three-digit numeric reply code.</param>
-/// <param name="Params">The middle parameters of the line, plus the trailing parameter when present.</param>
-public sealed record IrcMessage(string Command, string? Prefix = null, params IReadOnlyList<string> Params)
+/// <param name="Parameters">The middle parameters of the line, plus the trailing parameter when present.</param>
+public sealed record IrcMessage(string Command, string? Prefix = null, params IReadOnlyList<string> Parameters)
 	: IParsable<IrcMessage>, IFormattable
 {
 	/// <summary>
@@ -26,23 +26,88 @@ public sealed record IrcMessage(string Command, string? Prefix = null, params IR
 	///     parameters. The final parameter is prefixed with " :" when it contains a space, starts
 	///     with a colon, or is empty; all other parameters are emitted as-is.
 	/// </returns>
+	/// <exception cref="ArgumentException">
+	///     The command, the prefix or a parameter contains a carriage return, a line feed or a null
+	///     character, or a parameter that is not the last one is empty, contains a space or starts
+	///     with a colon.
+	/// </exception>
 	public string ToString(
 		string? format = null,
 		IFormatProvider? formatProvider = null)
 	{
+		EnsureSingleLine(Command, nameof(Command));
+
+		if (Prefix is not null)
+			EnsureSingleLine(Prefix, nameof(Prefix));
+
+		for (var i = 0; i < Parameters.Count; i++)
+		{
+			var parameter = Parameters[i];
+
+			EnsureSingleLine(parameter, nameof(Parameters));
+
+			if (i < Parameters.Count - 1
+			    && (parameter.Length == 0 || parameter.Contains(' ') || parameter.StartsWith(':')))
+				throw new ArgumentException(
+					"A parameter that is not the last one must be non-empty, must not contain a space and must not start with a colon.");
+		}
+
 		var line = Prefix is null ? Command : $":{Prefix} {Command}";
 
-		for (var i = 0; i < Params.Count; i++)
+		for (var i = 0; i < Parameters.Count; i++)
 		{
-			var param = Params[i];
-			var isLast = i == Params.Count - 1;
+			var parameter = Parameters[i];
+			var isLast = i == Parameters.Count - 1;
 
-			line += isLast && (param.Contains(' ') || param.StartsWith(':') || param.Length == 0)
-				? $" :{param}"
-				: $" {param}";
+			line += isLast && (parameter.Contains(' ') || parameter.StartsWith(':') || parameter.Length == 0)
+				? $" :{parameter}"
+				: $" {parameter}";
 		}
 
 		return line;
+	}
+
+	/// <summary>
+	///     Determines whether this message has the same content as another message.
+	/// </summary>
+	/// <param name="other">The message to compare with, or <see langword="null" />.</param>
+	/// <returns>
+	///     <see langword="true" /> when the command, the prefix and every parameter are equal;
+	///     otherwise, <see langword="false" />.
+	/// </returns>
+	public bool Equals(IrcMessage? other)
+	{
+		return other is not null
+		       && string.Equals(Command, other.Command, StringComparison.Ordinal)
+		       && string.Equals(Prefix, other.Prefix, StringComparison.Ordinal)
+		       && Parameters.SequenceEqual(other.Parameters, StringComparer.Ordinal);
+	}
+
+	/// <summary>
+	///     Returns a hash code consistent with <see cref="Equals(IrcMessage?)" />.
+	/// </summary>
+	/// <returns>A hash code built from the command, the prefix and the parameters.</returns>
+	public override int GetHashCode()
+	{
+		var hash = new HashCode();
+		hash.Add(Command, StringComparer.Ordinal);
+		hash.Add(Prefix, StringComparer.Ordinal);
+
+		foreach (var parameter in Parameters)
+			hash.Add(parameter, StringComparer.Ordinal);
+
+		return hash.ToHashCode();
+	}
+
+	/// <summary>
+	///     Throws when a part of the line would split it into more than one line.
+	/// </summary>
+	private static void EnsureSingleLine(string value, string paramName)
+	{
+		if (value.AsSpan().IndexOfAny('\r', '\n', '\0') >= 0)
+			throw new ArgumentException(
+				"An IRC line may not contain a carriage return, a line feed or a null character.",
+				paramName);
 	}
 
 	/// <summary>
@@ -51,6 +116,12 @@ public sealed record IrcMessage(string Command, string? Prefix = null, params IR
 	/// <param name="s">The raw IRC line to parse, without a trailing CRLF.</param>
 	/// <param name="provider">The format provider, which is ignored.</param>
 	/// <returns>The parsed IRC message.</returns>
+	/// <remarks>
+	///     A line that contains a carriage return, a line feed or a null character is rejected, and a
+	///     prefix that is present but empty is rejected. A leading IRCv3 tag section is skipped, and
+	///     the command is upper-cased with the invariant culture. Keeping a line within the protocol's
+	///     length limit is the caller's job.
+	/// </remarks>
 	/// <exception cref="FormatException">The line is empty or malformed.</exception>
 	public static IrcMessage Parse(string s, IFormatProvider? provider)
 	{
@@ -66,6 +137,12 @@ public sealed record IrcMessage(string Command, string? Prefix = null, params IR
 	/// <param name="provider">The format provider, which is ignored.</param>
 	/// <param name="result">The parsed message, or <see langword="null" /> if parsing failed.</param>
 	/// <returns><see langword="true" /> if the line parsed successfully; otherwise, <see langword="false" />.</returns>
+	/// <remarks>
+	///     A line that contains a carriage return, a line feed or a null character is rejected, and a
+	///     prefix that is present but empty is rejected. A leading IRCv3 tag section is skipped, and
+	///     the command is upper-cased with the invariant culture. Keeping a line within the protocol's
+	///     length limit is the caller's job.
+	/// </remarks>
 	public static bool TryParse(
 		[NotNullWhen(true)] string? s,
 		IFormatProvider? provider,
@@ -76,13 +153,29 @@ public sealed record IrcMessage(string Command, string? Prefix = null, params IR
 		if (string.IsNullOrEmpty(s))
 			return false;
 
+		if (s.AsSpan().IndexOfAny('\r', '\n', '\0') >= 0)
+			return false;
+
 		var rest = s;
+
+		if (rest[0] == '@')
+		{
+			var tagEnd = rest.IndexOf(' ');
+			if (tagEnd < 0)
+				return false;
+
+			rest = rest[(tagEnd + 1)..];
+		}
+
+		if (rest.Length == 0)
+			return false;
+
 		string? prefix = null;
 
 		if (rest[0] == ':')
 		{
 			var spaceIndex = rest.IndexOf(' ');
-			if (spaceIndex < 0)
+			if (spaceIndex <= 1)
 				return false;
 
 			prefix = rest[1..spaceIndex];
@@ -115,7 +208,7 @@ public sealed record IrcMessage(string Command, string? Prefix = null, params IR
 		if (trailing is not null)
 			parameters.Add(trailing);
 
-		result = new IrcMessage(tokens[0], prefix, parameters);
+		result = new IrcMessage(tokens[0].ToUpperInvariant(), prefix, parameters);
 		return true;
 	}
 

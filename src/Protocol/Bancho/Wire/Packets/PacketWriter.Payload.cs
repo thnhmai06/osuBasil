@@ -30,7 +30,7 @@ public partial class PacketWriter
 	{
 		_writer.WriteOsuString(name);
 		_writer.WriteOsuString(topic);
-		_writer.Write((ushort)playerCount);
+		_writer.Write(checked((ushort)playerCount));
 	}
 
 	/// <summary>
@@ -55,9 +55,15 @@ public partial class PacketWriter
 	///     Whether the real password is included; <c>false</c> writes the masked form so clients
 	///     see an empty password.
 	/// </param>
+	/// <exception cref="ArgumentException">
+	///     <paramref name="room" /> does not have exactly <see cref="SlotCount" /> slots.
+	/// </exception>
 	private void WriteMatchPayload(RoomPacket room, bool sendPassword)
 	{
-		_writer.Write((ushort)room.Id);
+		if (room.Slots.Count != SlotCount)
+			throw new ArgumentException($"A match must have exactly {SlotCount} slots.", nameof(room));
+
+		_writer.Write(checked((ushort)room.Id));
 		_writer.Write(room.InProgress ? (byte)1 : (byte)0);
 		_writer.Write((byte)0); // room type, always 0
 		_writer.Write((uint)room.Mods);
@@ -80,17 +86,17 @@ public partial class PacketWriter
 		_writer.Write(room.MapId);
 		_writer.WriteOsuString(room.MapMd5);
 
-		foreach (var slot in room.Slots) _writer.Write((byte)slot.Status);
-		foreach (var slot in room.Slots) _writer.Write((byte)slot.Team);
+		foreach (var slot in room.Slots) _writer.Write(checked((byte)slot.Status));
+		foreach (var slot in room.Slots) _writer.Write(checked((byte)slot.Team));
 
 		foreach (var slot in room.Slots)
 			if (slot.HasPlayer)
 				_writer.Write((uint)slot.PlayerId!.Value);
 
 		_writer.Write((uint)room.HostId);
-		_writer.Write((byte)room.Mode);
-		_writer.Write((byte)room.WinCondition);
-		_writer.Write((byte)room.TeamType);
+		_writer.Write(checked((byte)room.Mode));
+		_writer.Write(checked((byte)room.WinCondition));
+		_writer.Write(checked((byte)room.TeamType));
 		_writer.Write(room.FreeMods ? (byte)1 : (byte)0);
 
 		if (room.FreeMods)
@@ -114,19 +120,19 @@ public partial class PacketWriter
 	private void WriteScoreFramePayload(ScoreFrame frame)
 	{
 		_writer.Write(frame.Time);
-		_writer.Write((byte)frame.Id);
-		_writer.Write((ushort)frame.Num300);
-		_writer.Write((ushort)frame.Num100);
-		_writer.Write((ushort)frame.Num50);
-		_writer.Write((ushort)frame.NumGeki);
-		_writer.Write((ushort)frame.NumKatu);
-		_writer.Write((ushort)frame.NumMiss);
+		_writer.Write(checked((byte)frame.Id));
+		_writer.Write(checked((ushort)frame.Num300));
+		_writer.Write(checked((ushort)frame.Num100));
+		_writer.Write(checked((ushort)frame.Num50));
+		_writer.Write(checked((ushort)frame.NumGeki));
+		_writer.Write(checked((ushort)frame.NumKatu));
+		_writer.Write(checked((ushort)frame.NumMiss));
 		_writer.Write(frame.TotalScore);
-		_writer.Write((ushort)frame.MaxCombo);
-		_writer.Write((ushort)frame.CurrentCombo);
+		_writer.Write(checked((ushort)frame.MaxCombo));
+		_writer.Write(checked((ushort)frame.CurrentCombo));
 		_writer.Write(frame.Perfect ? (byte)1 : (byte)0);
-		_writer.Write((byte)frame.CurrentHp);
-		_writer.Write((byte)frame.TagByte);
+		_writer.Write(checked((byte)frame.CurrentHp));
+		_writer.Write(checked((byte)frame.TagByte));
 		_writer.Write(frame.ScoreV2 ? (byte)1 : (byte)0);
 
 		if (!frame.ScoreV2) return;

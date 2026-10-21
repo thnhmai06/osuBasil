@@ -13,11 +13,7 @@ public sealed record ClientSerial(string UninstallId, string DiskSignature)
 	/// <exception cref="FormatException"><paramref name="text" /> has no <c>|</c> separator.</exception>
 	public static ClientSerial Parse(string text)
 	{
-		var parts = text.Split('|', 2);
-
-		return parts.Length == 2
-			? new ClientSerial(parts[0], parts[1])
-			: throw new FormatException("Client serial must contain 2 components.");
+		return TryParse(text, out var serial) ? serial : throw new FormatException("The client serial is malformed.");
 	}
 
 	/// <summary>Reads a client serial from its wire text without throwing.</summary>
@@ -29,15 +25,11 @@ public sealed record ClientSerial(string UninstallId, string DiskSignature)
 		serial = null;
 		if (text is null) return false;
 
-		try
-		{
-			serial = Parse(text);
-			return true;
-		}
-		catch (FormatException)
-		{
-			return false;
-		}
+		var parts = text.Split('|', 2);
+		if (parts.Length != 2) return false;
+
+		serial = new ClientSerial(parts[0], parts[1]);
+		return true;
 	}
 
 	/// <summary>Returns the wire text of this client serial.</summary>

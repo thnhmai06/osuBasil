@@ -30,7 +30,7 @@ internal static class BinaryWriterExtensions
 		///     value is written as <c>0x0B</c>, a ULEB128 byte length, then the UTF-8 bytes.
 		/// </param>
 		/// <remarks>Named to avoid colliding with <see cref="BinaryWriter.Write(string)" />, which uses .NET's own wire format.</remarks>
-		public void WriteOsuString(string value)
+		public void WriteOsuString(string? value)
 		{
 			if (string.IsNullOrEmpty(value))
 			{
@@ -46,12 +46,12 @@ internal static class BinaryWriterExtensions
 		}
 
 		/// <summary>Writes a list of 32-bit integers with a 16-bit unsigned count prefix.</summary>
-		/// <param name="values">The values to write, preceded by their count as a <see cref="ushort" />.</param>
+		/// <param name="values">The values to write, preceded by their count as a 16-bit unsigned integer.</param>
 		/// <exception cref="OverflowException">
 		///     <paramref name="values" /> contains more than <c>65535</c> entries, so its count
 		///     cannot be represented by the 16-bit prefix.
 		/// </exception>
-		public void WriteI32ListI16L(IReadOnlyList<int> values)
+		public void WriteInt32List(IReadOnlyList<int> values)
 		{
 			writer.Write(checked((ushort)values.Count));
 			foreach (var value in values)

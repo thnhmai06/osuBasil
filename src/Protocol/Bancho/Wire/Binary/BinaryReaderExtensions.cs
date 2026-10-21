@@ -8,6 +8,9 @@ namespace Basil.Protocol.Bancho.Wire.Binary;
 /// </remarks>
 internal static class BinaryReaderExtensions
 {
+	/// <summary>The largest string the reader decodes, in UTF-8 bytes.</summary>
+	public const int MaxStringBytes = 1_048_576;
+
 	extension(BinaryReader reader)
 	{
 		#region Raw
@@ -21,42 +24,15 @@ internal static class BinaryReaderExtensions
 			return value.Length == length ? value : throw new EndOfStreamException();
 		}
 
-		/// <summary>Advances past <paramref name="length" /> bytes, for skipping unhandled packet payloads.</summary>
-		/// <param name="length">The number of bytes to skip.</param>
-		private void SkipRaw(int length)
-		{
-			Span<byte> buffer = stackalloc byte[Math.Min(length, 4096)];
-
-			while (length > 0)
-			{
-				var count = reader.BaseStream.Read(buffer[..Math.Min(length, buffer.Length)]);
-				if (count == 0) throw new EndOfStreamException();
-				length -= count;
-			}
-		}
-
 		#endregion
 
 		#region Complex
 
 		/// <summary>Reads a list of 32-bit integers prefixed by a 16-bit unsigned count.</summary>
-		/// <returns>The list of values read.</returns>
-		public IReadOnlyList<int> ReadI32ListI16L()
+		/// <returns>The list of values read, empty when the count is zero.</returns>
+		public IReadOnlyList<int> ReadInt32List()
 		{
 			var length = reader.ReadUInt16();
-			var values = new int[length];
-
-			for (var i = 0; i < length; i++)
-				values[i] = reader.ReadInt32();
-
-			return values;
-		}
-
-		/// <summary>Reads a list of 32-bit integers prefixed by a 32-bit unsigned count.</summary>
-		/// <returns>The list of values read.</returns>
-		public IReadOnlyList<int> ReadI32ListI32L()
-		{
-			var length = reader.ReadUInt32();
 			var values = new int[length];
 
 			for (var i = 0; i < length; i++)
@@ -77,21 +53,30 @@ internal static class BinaryReaderExtensions
 		///     The stream ends before the existence byte, the length, or the string bytes can be
 		///     read.
 		/// </exception>
+		/// <exception cref="InvalidDataException">
+		///     The length needs more than five bytes, is negative, or is above
+		///     <see cref="MaxStringBytes" />.
+		/// </exception>
 		public string ReadOsuString()
 		{
+			const int maxLengthBytes = 5;
+
 			var exists = reader.ReadSByte() == 0x0B;
 			if (!exists) return "";
 
 			var length = 0;
-			var shift = 0;
-
-			while (true)
+			for (var index = 0;; index++)
 			{
+				if (index == maxLengthBytes)
+					throw new InvalidDataException("The osu! string length needs more than five bytes.");
+
 				var b = reader.ReadSByte();
-				length |= (b & 0x7F) << shift;
+				length |= (b & 0x7F) << (index * 7);
 				if ((b & 0x80) == 0) break;
-				shift += 7;
 			}
+
+			if (length is < 0 or > MaxStringBytes)
+				throw new InvalidDataException("The osu! string length is out of range.");
 
 			var bytes = reader.ReadRaw(length);
 			return Encoding.UTF8.GetString(bytes);

@@ -10,7 +10,7 @@ namespace Basil.Protocol.Bancho.Models.Multiplayer;
 ///     <see langword="true" /> if the room is currently in progress; otherwise,
 ///     <see langword="false" />.
 /// </param>
-/// <param name="Powerplay">The legacy powerplay flag of the room, always zero for roomes this server writes.</param>
+/// <param name="Powerplay">The legacy powerplay flag of the room, always zero for rooms this server writes.</param>
 /// <param name="Mods">The bitwise combination of mods applied to the room.</param>
 /// <param name="Name">The name of the room.</param>
 /// <param name="Password">The join password of the room, empty when no password is set.</param>

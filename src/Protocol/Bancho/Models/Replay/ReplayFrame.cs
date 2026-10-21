@@ -9,9 +9,8 @@ namespace Basil.Protocol.Bancho.Models.Replay;
 public readonly record struct ReplayFrame(Keys ButtonState, TaikoByte TaikoByte, float X, float Y, int Time);
 
 /// <summary>
-///     osu!'s mouse/keyboard button-state bitfield for a replay frame. Values match
-///     osu.Game.Replays.Legacy.ReplayButtonState (Left1/Right1 are the two mouse buttons, Left2/Right2
-///     are the two keyboard keybinds).
+///     osu!'s mouse/keyboard button-state bitfield for a replay frame: Left1 and Right1 are the two mouse
+///     buttons, and Left2 and Right2 are the two keyboard keybinds.
 /// </summary>
 [Flags]
 public enum Keys : byte
@@ -36,9 +35,8 @@ public enum Keys : byte
 }
 
 /// <summary>
-///     osu!taiko's replay-frame bitfield, which drum zone(s) were hit this frame plus whether the
-///     hit was a "big" (kat/don) or large-double-note press. Values match
-///     osu.Game.Rulesets.Taiko.Replays.Legacy's own frame bit layout.
+///     osu!taiko's replay-frame bitfield: which drum zone(s) were hit this frame, plus whether the hit was a
+///     "big" (kat/don) or large-double-note press.
 /// </summary>
 [Flags]
 public enum TaikoByte : byte

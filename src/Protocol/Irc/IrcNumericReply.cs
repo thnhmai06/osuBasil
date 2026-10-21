@@ -1,6 +1,6 @@
 namespace Basil.Protocol.Irc;
 
-/// <summary>RFC 1459/2812 numeric replies actually used by Basil's IRC bridge, not the full table.</summary>
+/// <summary>RFC 1459/2812 numeric reply codes, not the full table.</summary>
 public enum IrcNumericReply : ushort
 {
 	/// <summary>Sent as the first reply after successful registration, welcoming the client.</summary>
@@ -99,7 +99,7 @@ public enum IrcNumericReply : ushort
 	/// <summary>Indicates that the target channel does not exist.</summary>
 	ErrNoSuchChannel = 403,
 
-	/// <summary>Indicates that the sender may not send the target channel.</summary>
+	/// <summary>Indicates that the sender may not send to the target channel.</summary>
 	ErrCannotSendToChannel = 404,
 
 	/// <summary>Indicates that the command is unknown or not implemented.</summary>
@@ -126,7 +126,7 @@ public enum IrcNumericReply : ushort
 	/// <summary>Indicates that the supplied password does not match.</summary>
 	ErrPasswdMismatch = 464,
 
-	/// <summary>Indicates that the channel exists but the sender has no standing to join it.</summary>
+	/// <summary>Indicates that the channel cannot be joined because it is invite-only.</summary>
 	ErrInviteOnlyChan = 473,
 
 	/// <summary>Indicates that the command requires channel operator privileges the sender lacks.</summary>

@@ -6,9 +6,38 @@ namespace Basil.Protocol.Irc;
 /// <remarks>
 ///     The prefix has one of the forms <c>nick</c>, <c>nick@host</c>, or <c>nick!user@host</c>.
 /// </remarks>
-public readonly record struct IrcUserPrefix(string Nick, string? User = null, string? Host = null)
+public readonly record struct IrcUserPrefix
 	: IParsable<IrcUserPrefix>, IFormattable
 {
+	/// <summary>Creates a prefix from its parts.</summary>
+	/// <param name="nick">The user's nickname.</param>
+	/// <param name="user">The user name, or <see langword="null" /> when the prefix omits it.</param>
+	/// <param name="host">The host, or <see langword="null" /> when the prefix omits it.</param>
+	/// <exception cref="ArgumentException">
+	///     <paramref name="user" /> is set while <paramref name="host" /> is <see langword="null" />, a
+	///     combination that cannot be represented.
+	/// </exception>
+	public IrcUserPrefix(string nick, string? user = null, string? host = null)
+	{
+		if (user is not null && host is null)
+			throw new ArgumentException(
+				"An IRC user prefix with a user must have a host.",
+				nameof(host));
+
+		Nick = nick;
+		User = user;
+		Host = host;
+	}
+
+	/// <summary>The user's nickname.</summary>
+	public string Nick { get; }
+
+	/// <summary>The user name, or <see langword="null" /> when the prefix omits it.</summary>
+	public string? User { get; }
+
+	/// <summary>The host, or <see langword="null" /> when the prefix omits it.</summary>
+	public string? Host { get; }
+
 	/// <summary>
 	///     Formats the prefix in its wire form: <c>nick</c>, <c>nick@host</c>, or
 	///     <c>nick!user@host</c>.
@@ -16,17 +45,9 @@ public readonly record struct IrcUserPrefix(string Nick, string? User = null, st
 	/// <param name="format">Ignored.</param>
 	/// <param name="formatProvider">Ignored.</param>
 	/// <returns>The formatted prefix.</returns>
-	/// <exception cref="InvalidOperationException">
-	///     The prefix has a user but no host, a combination that cannot be represented.
-	/// </exception>
 	public string ToString(string? format = null, IFormatProvider? formatProvider = null)
 	{
-		if (User is not null)
-			return Host is not null
-				? $"{Nick}!{User}@{Host}"
-				: throw new InvalidOperationException("An IRC user prefix with a user must have a host.");
-
-		return Host is not null ? $"{Nick}@{Host}" : Nick;
+		return Format();
 	}
 
 	/// <summary>
@@ -71,18 +92,21 @@ public readonly record struct IrcUserPrefix(string Nick, string? User = null, st
 		var bang = s.IndexOf('!');
 		var at = s.IndexOf('@');
 
-		switch (bang)
+		// nick
+		if (bang < 0 && at < 0)
 		{
-			// nick
-			case < 0 when at < 0:
-				result = new IrcUserPrefix(s);
-				return true;
-			// nick@host
-			case < 0 when at <= 0 || at == s.Length - 1:
+			result = new IrcUserPrefix(s);
+			return true;
+		}
+
+		// nick@host
+		if (bang < 0)
+		{
+			if (at <= 0 || at == s.Length - 1)
 				return false;
-			case < 0:
-				result = new IrcUserPrefix(s[..at], null, s[(at + 1)..]);
-				return true;
+
+			result = new IrcUserPrefix(s[..at], null, s[(at + 1)..]);
+			return true;
 		}
 
 		// nick!user@host
@@ -103,6 +127,14 @@ public readonly record struct IrcUserPrefix(string Nick, string? User = null, st
 	/// </returns>
 	public override string ToString()
 	{
-		return ToString();
+		return Format();
+	}
+
+	private string Format()
+	{
+		if (User is not null)
+			return $"{Nick}!{User}@{Host}";
+
+		return Host is not null ? $"{Nick}@{Host}" : Nick;
 	}
 }

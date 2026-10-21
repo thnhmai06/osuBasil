@@ -19,23 +19,7 @@ public sealed partial record ClientBuild(DateOnly Date, int? Revision, ClientStr
 	/// <exception cref="FormatException"><paramref name="text" /> is not a client build string.</exception>
 	public static ClientBuild Parse(string text)
 	{
-		var match = BuildPattern().Match(text);
-		if (!match.Success)
-			throw new FormatException($"Invalid client build: {text}");
-
-		var date = DateOnly.ParseExact(match.Groups["date"].Value, "yyyyMMdd", CultureInfo.InvariantCulture);
-
-		var revisionGroup = match.Groups["revision"];
-		int? revision = revisionGroup.Success
-			? int.Parse(revisionGroup.Value, CultureInfo.InvariantCulture)
-			: null;
-
-		var streamGroup = match.Groups["stream"];
-		var stream = streamGroup.Success
-			? Enum.Parse<ClientStream>(streamGroup.Value, true)
-			: ClientStream.Stable;
-
-		return new ClientBuild(date, revision, stream);
+		return TryParse(text, out var build) ? build : throw new FormatException($"Invalid client build: {text}");
 	}
 
 	/// <summary>Reads a client build from its wire text without throwing.</summary>
@@ -47,15 +31,31 @@ public sealed partial record ClientBuild(DateOnly Date, int? Revision, ClientStr
 		build = null;
 		if (text is null) return false;
 
-		try
-		{
-			build = Parse(text);
-			return true;
-		}
-		catch (FormatException)
-		{
+		var match = BuildPattern().Match(text);
+		if (!match.Success) return false;
+
+		if (!DateOnly.TryParseExact(match.Groups["date"].Value, "yyyyMMdd", CultureInfo.InvariantCulture,
+			    DateTimeStyles.None, out var date))
 			return false;
+
+		var revisionGroup = match.Groups["revision"];
+		int? revision = null;
+		if (revisionGroup.Success)
+		{
+			if (!int.TryParse(revisionGroup.Value, NumberStyles.None, CultureInfo.InvariantCulture,
+				    out var parsedRevision))
+				return false;
+
+			revision = parsedRevision;
 		}
+
+		var streamGroup = match.Groups["stream"];
+		var stream = ClientStream.Stable;
+		if (streamGroup.Success && !Enum.TryParse(streamGroup.Value, true, out stream))
+			return false;
+
+		build = new ClientBuild(date, revision, stream);
+		return true;
 	}
 
 	/// <summary>
@@ -75,7 +75,7 @@ public sealed partial record ClientBuild(DateOnly Date, int? Revision, ClientStr
 	}
 
 	[GeneratedRegex(
-		@"^(?:b)?(?<date>(?:\d{8}|\d{4}\.\d{3}))(?:\.(?<revision>\d))?(?<stream>beta|cuttingedge|dev|tourney)?$")]
+		@"^(?:b)?(?<date>[0-9]{8})(?:\.(?<revision>[0-9]))?(?<stream>beta|cuttingedge|dev|tourney)?\z")]
 	private static partial Regex BuildPattern();
 }
 

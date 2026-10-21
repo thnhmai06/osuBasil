@@ -11,7 +11,7 @@ public class IrcMessageParserTests
 
 		Assert.Null(message.Prefix);
 		Assert.Equal("PING", message.Command);
-		Assert.Empty(message.Params);
+		Assert.Empty(message.Parameters);
 	}
 
 	[Fact]
@@ -21,7 +21,7 @@ public class IrcMessageParserTests
 
 		Assert.Equal("alice!alice@basil", message.Prefix);
 		Assert.Equal("JOIN", message.Command);
-		Assert.Equal(["#osu"], message.Params);
+		Assert.Equal(["#osu"], message.Parameters);
 	}
 
 	[Fact]
@@ -30,7 +30,7 @@ public class IrcMessageParserTests
 		var message = IrcMessage.Parse(":alice!alice@basil PRIVMSG #osu :hello there world", null);
 
 		Assert.Equal("PRIVMSG", message.Command);
-		Assert.Equal(["#osu", "hello there world"], message.Params);
+		Assert.Equal(["#osu", "hello there world"], message.Parameters);
 	}
 
 	[Fact]
@@ -39,7 +39,7 @@ public class IrcMessageParserTests
 		var message = IrcMessage.Parse("PASS :s3cret", null);
 
 		Assert.Equal("PASS", message.Command);
-		Assert.Equal(["s3cret"], message.Params);
+		Assert.Equal(["s3cret"], message.Parameters);
 	}
 
 	[Fact]
@@ -47,7 +47,7 @@ public class IrcMessageParserTests
 	{
 		var message = IrcMessage.Parse("PRIVMSG #osu ::) hi", null);
 
-		Assert.Equal(["#osu", ":) hi"], message.Params);
+		Assert.Equal(["#osu", ":) hi"], message.Parameters);
 	}
 
 	[Fact]

@@ -26,12 +26,7 @@ public sealed record ClientHash(
 	/// </exception>
 	public static ClientHash Parse(string text)
 	{
-		if (!text.EndsWith(':')) throw new FormatException("Client hash is missing trailing delimiter.");
-		var parts = text[..^1].Split(':', 5);
-
-		return parts.Length == 5
-			? new ClientHash(parts[0], parts[1], parts[2], parts[3], parts[4])
-			: throw new FormatException("Client hash must contain 5 components.");
+		return TryParse(text, out var hash) ? hash : throw new FormatException("The client hash is malformed.");
 	}
 
 	/// <summary>Reads a client hash from its wire text without throwing.</summary>
@@ -41,17 +36,13 @@ public sealed record ClientHash(
 	public static bool TryParse(string? text, [NotNullWhen(true)] out ClientHash? hash)
 	{
 		hash = null;
-		if (text is null) return false;
+		if (text is null || !text.EndsWith(':')) return false;
 
-		try
-		{
-			hash = Parse(text);
-			return true;
-		}
-		catch (FormatException)
-		{
-			return false;
-		}
+		var parts = text[..^1].Split(':');
+		if (parts.Length != 5) return false;
+
+		hash = new ClientHash(parts[0], parts[1], parts[2], parts[3], parts[4]);
+		return true;
 	}
 
 	/// <summary>Returns the wire text of this client hash, ending with a colon.</summary>

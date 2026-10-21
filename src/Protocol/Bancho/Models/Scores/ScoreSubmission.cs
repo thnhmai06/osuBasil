@@ -38,7 +38,7 @@ public sealed record ScoreSubmission(
 	int Mods,
 	bool IsPassed,
 	int Mode,
-	DateTime Timestamp,
+	DateTimeOffset Timestamp,
 	int ClientFlags)
 {
 	private const int FieldCount = 18;
@@ -46,8 +46,8 @@ public sealed record ScoreSubmission(
 	/// <summary>Reads a score submission from its colon-delimited wire text.</summary>
 	/// <param name="text">
 	///     The fields in order: beatmap MD5, username, checksum, 300, 100, 50, geki, katu, miss, total score, max
-	///     combo, full combo, grade, mods, passed, mode, time as <c>yyMMddHHmmss</c>, and the client version field
-	///     whose space count (without bit 4) is the client flags.
+	///     combo, full combo, grade, mods, passed, mode, time as <c>yyMMddHHmmss</c> in UTC, and the client version
+	///     field whose number of spaces, with the value 4 masked off, is the client flags.
 	/// </param>
 	/// <returns>The score submission.</returns>
 	/// <exception cref="FormatException"><paramref name="text" /> has too few fields or a malformed field.</exception>
@@ -74,12 +74,15 @@ public sealed record ScoreSubmission(
 			Number(13),
 			fields[14] == "True",
 			Number(15),
-			DateTime.ParseExact(fields[16], "yyMMddHHmmss", CultureInfo.InvariantCulture),
+			DateTimeOffset.ParseExact(fields[16], "yyMMddHHmmss", CultureInfo.InvariantCulture,
+				DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal),
 			fields[17].Count(c => c == ' ') & ~4);
 
 		int Number(int index)
 		{
-			return int.Parse(fields[index], CultureInfo.InvariantCulture);
+			return int.TryParse(fields[index], NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
+				? value
+				: throw new FormatException($"Score submission field {index} is not a number.");
 		}
 	}
 }

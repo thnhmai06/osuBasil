@@ -11,7 +11,7 @@ public sealed record RoomSlotPacket(int Status, int Team, int Mods, int? PlayerI
 
 	/// <summary>Gets a value that indicates whether a player occupies the slot.</summary>
 	/// <value><see langword="true" /> if the slot has an occupying player; otherwise, <see langword="false" />.</value>
-	public bool HasPlayer => IsHasPlayerStatus(Status);
+	public bool HasPlayer => HasPlayerStatus(Status);
 
 	/// <summary>
 	///     Determines whether a slot status bitmask marks the slot as occupied by a player.
@@ -22,11 +22,10 @@ public sealed record RoomSlotPacket(int Status, int Team, int Mods, int? PlayerI
 	///     (<c>0b0111_1100</c>) are set; otherwise, <see langword="false" />.
 	/// </returns>
 	/// <remarks>
-	///     The mask covers the status bits that indicate an occupant; only the placeholder statuses
-	///     -- empty, not ready, and ready -- which use the bits below the mask, report
-	///     <see langword="false" />.
+	///     The mask covers the status bits that indicate an occupant. The statuses that set no bit inside the mask
+	///     -- open (1), locked (2) and quit (128) -- report <see langword="false" />.
 	/// </remarks>
-	internal static bool IsHasPlayerStatus(int status)
+	internal static bool HasPlayerStatus(int status)
 	{
 		return (status & HasPlayerMask) != 0;
 	}

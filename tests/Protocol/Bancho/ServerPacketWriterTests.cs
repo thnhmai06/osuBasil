@@ -400,7 +400,8 @@ public class ServerPacketWriterTests
 	[Fact]
 	public void FriendsList_WithValues()
 	{
-		Assert.Equal(Hex("4800000e00000003000100000004000000e9030000"), WritePacket(writer => writer.FriendsList([1, 4, 1001])));
+		Assert.Equal(Hex("4800000e00000003000100000004000000e9030000"),
+			WritePacket(writer => writer.FriendsList([1, 4, 1001])));
 	}
 
 	[Fact]
@@ -482,7 +483,7 @@ public class ServerPacketWriterTests
 			Hex(
 				"580000400000000b05636d7975690b2c436f6d65206a6f696e206d792067616d653a205b6f73756d703a2f2f372f7365637265742070617274795d2e0b05636f766572e9030000");
 		var actual = WritePacket(writer => writer.MatchInvite(
-			1001, "cmyui", "[osump://7/secret party]", "cover"));
+			1001, "cmyui", "Come join my game: [osump://7/secret party].", "cover"));
 		Assert.Equal(expected, actual);
 	}
 

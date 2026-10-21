@@ -4,13 +4,13 @@ namespace Basil.Protocol.Bancho.Models.Replay;
 ///     Wire-shape for a live spectator score frame, serialized as the fixed 29-byte scoreframe block
 ///     plus two doubles when score v2 is active.
 /// </summary>
-public struct ScoreFrame
+public readonly record struct ScoreFrame
 {
 	/// <summary>The frame time in milliseconds since the start of the play.</summary>
 	public required int Time { get; init; }
 
 	/// <summary>The id of the player the frame belongs to.</summary>
-	public required int Id { get; set; }
+	public required int Id { get; init; }
 
 	/// <summary>The number of 300 hits so far.</summary>
 	public required int Num300 { get; init; }

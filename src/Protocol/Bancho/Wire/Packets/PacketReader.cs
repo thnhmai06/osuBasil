@@ -6,23 +6,30 @@ using Basil.Protocol.Bancho.Wire.Binary;
 namespace Basil.Protocol.Bancho.Wire.Packets;
 
 /// <summary>
-///     Reads Bancho packet primitives from a client request body. This is the read side of the
+///     Reads Bancho packets from a client stream positioned at a packet boundary. This is the read side of the
 ///     Bancho binary protocol; all multibyte integers are little-endian, per the osu! protocol.
 /// </summary>
-/// <param name="stream">The stream to read the packet body from.</param>
+/// <remarks>
+///     The reader decodes wire shapes only and gives no business meaning to the values it reads. A stream that ends
+///     before a value is complete throws <see cref="EndOfStreamException" />.
+/// </remarks>
+/// <param name="stream">The stream to read the packets from.</param>
 public sealed class PacketReader(Stream stream)
 {
 	private readonly BinaryReader _reader = new(stream);
 
 	/// <summary>Reads the 7-byte Bancho packet header (id: u16, padding: u8, length: u32).</summary>
 	/// <returns>The packet type and the declared payload length.</returns>
+	/// <exception cref="InvalidDataException">The declared payload length is negative.</exception>
 	public (ClientPacketType Type, int Length) ReadHeader()
 	{
 		var type = (ClientPacketType)_reader.ReadUInt16();
 		_reader.ReadByte(); // padding
 		var length = _reader.ReadInt32();
 
-		return (type, length);
+		return length < 0
+			? throw new InvalidDataException("The packet length is negative.")
+			: (type, length);
 	}
 
 	/// <summary>Reads a <see cref="BanchoMessage" /> from the buffer.</summary>
@@ -37,7 +44,7 @@ public sealed class PacketReader(Stream stream)
 	/// <returns>The match state read.</returns>
 	public RoomStatePacket ReadMatch()
 	{
-		var id = _reader.ReadInt16();
+		var id = _reader.ReadUInt16();
 		var inProgress = _reader.ReadSByte() == 1;
 		var powerplay = _reader.ReadSByte();
 		var mods = _reader.ReadInt32();
@@ -47,18 +54,18 @@ public sealed class PacketReader(Stream stream)
 		var mapId = _reader.ReadInt32();
 		var mapMd5 = _reader.ReadOsuString();
 
-		var slotStatuses = new int[16];
-		for (var i = 0; i < 16; i++) slotStatuses[i] = _reader.ReadSByte();
+		var slotStatuses = new int[PacketWriter.SlotCount];
+		for (var index = 0; index < PacketWriter.SlotCount; index++)
+			slotStatuses[index] = _reader.ReadByte();
 
-		var slotTeams = new int[16];
-		for (var i = 0; i < 16; i++) slotTeams[i] = _reader.ReadSByte();
+		var slotTeams = new int[PacketWriter.SlotCount];
+		for (var index = 0; index < PacketWriter.SlotCount; index++)
+			slotTeams[index] = _reader.ReadByte();
 
-		var slotIds =
-			(
-				from status in slotStatuses
-				where RoomSlotPacket.IsHasPlayerStatus(status)
-				select _reader.ReadInt32())
-			.ToList();
+		var slotIds = new List<int>();
+		for (var index = 0; index < PacketWriter.SlotCount; index++)
+			if (RoomSlotPacket.HasPlayerStatus(slotStatuses[index]))
+				slotIds.Add(_reader.ReadInt32());
 
 		var hostId = _reader.ReadInt32();
 		var mode = _reader.ReadSByte();
@@ -69,8 +76,9 @@ public sealed class PacketReader(Stream stream)
 		var slotMods = Array.Empty<int>();
 		if (freeMods)
 		{
-			slotMods = new int[16];
-			for (var i = 0; i < 16; i++) slotMods[i] = _reader.ReadInt32();
+			slotMods = new int[PacketWriter.SlotCount];
+			for (var index = 0; index < PacketWriter.SlotCount; index++)
+				slotMods[index] = _reader.ReadInt32();
 		}
 
 		var seed = _reader.ReadInt32();

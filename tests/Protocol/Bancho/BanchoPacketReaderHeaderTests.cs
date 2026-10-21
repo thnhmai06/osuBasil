@@ -1,11 +1,10 @@
-using Basil.Protocol.Bancho.Models.Multiplayer;
 using Basil.Protocol.Bancho.Wire.Packets;
 
 namespace Basil.Protocol.Bancho.Tests;
 
 /// <summary>
 ///     Verifies `PacketReader.ReadHeader` parses the type/length header and leaves the payload
-///     unconsumed, and that `SkipRaw` advances past unhandled payloads so reading continues.
+///     unconsumed.
 /// </summary>
 public class BanchoPacketReaderHeaderTests
 {
