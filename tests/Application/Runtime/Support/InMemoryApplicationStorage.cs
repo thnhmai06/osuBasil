@@ -1,10 +1,12 @@
 using Basil.Application.Persistence.Auth;
 using Basil.Application.Persistence.Common;
 using Basil.Application.Persistence.Content;
+using Basil.Application.Persistence.Multiplayer;
 using Basil.Application.Persistence.Users;
 using Basil.Domain;
 using Basil.Domain.Auth;
 using Basil.Domain.Common;
+using Basil.Domain.Multiplayer;
 using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
@@ -235,6 +237,83 @@ internal sealed class InMemoryModerationLogRepository : IModerationLogRepository
 			.Reverse().ToList();
 		return ValueTask.FromResult(new Page<ModerationLog>(entries.Skip(page.Offset).Take(page.Limit).ToList(),
 			entries.Count));
+	}
+}
+
+internal sealed class InMemoryMatchRepository : IMatchRepository
+{
+	private readonly Dictionary<int, MatchRecord> _matches = [];
+	private int _nextId = 1;
+
+	public Task<MatchRecord> CreateAsync(MatchData data, CancellationToken cancellationToken = default)
+	{
+		cancellationToken.ThrowIfCancellationRequested();
+		var match = new MatchRecord { Id = _nextId++, Value = data };
+		_matches[match.Id] = match;
+		return Task.FromResult(match);
+	}
+
+	public Task UpdateAsync(MatchRecord match, CancellationToken cancellationToken = default)
+	{
+		cancellationToken.ThrowIfCancellationRequested();
+		_matches[match.Id] = match;
+		return Task.CompletedTask;
+	}
+
+	public ValueTask<MatchRecord?> GetAsync(int id, CancellationToken cancellationToken = default)
+	{
+		cancellationToken.ThrowIfCancellationRequested();
+		return ValueTask.FromResult(_matches.GetValueOrDefault(id));
+	}
+
+	public Task<Page<MatchRecord>> ListAsync(MatchQuery query, PageRequest page,
+		CancellationToken cancellationToken = default)
+	{
+		cancellationToken.ThrowIfCancellationRequested();
+		var matches = _matches.Values
+			.Where(match => query.Ended is not { } ended || match.Value.EndedAt is not null == ended)
+			.OrderBy(match => match.Id)
+			.ToList();
+		return Task.FromResult(new Page<MatchRecord>(
+			matches.Skip(page.Offset).Take(page.Limit).ToList(), matches.Count));
+	}
+}
+
+internal sealed class InMemoryRoundRepository : IRoundRepository
+{
+	private readonly List<Round> _rounds = [];
+
+	public Task CreateOrUpdateAsync(Round round, CancellationToken cancellationToken = default)
+	{
+		cancellationToken.ThrowIfCancellationRequested();
+		_rounds.RemoveAll(existing => existing.Match.Equals(round.Match) && existing.Index == round.Index);
+		_rounds.Add(round);
+		return Task.CompletedTask;
+	}
+
+	public Task<IReadOnlyList<Round>> ListAsync(MatchRecord match, CancellationToken cancellationToken = default)
+	{
+		cancellationToken.ThrowIfCancellationRequested();
+		return Task.FromResult<IReadOnlyList<Round>>(_rounds.Where(round => round.Match.Equals(match)).ToList());
+	}
+}
+
+internal sealed class InMemoryMatchEventRepository : IMatchEventRepository
+{
+	private readonly List<MatchEvent> _events = [];
+
+	public Task RecordAsync(MatchEvent matchEvent, CancellationToken cancellationToken = default)
+	{
+		cancellationToken.ThrowIfCancellationRequested();
+		_events.Add(matchEvent);
+		return Task.CompletedTask;
+	}
+
+	public Task<IReadOnlyList<MatchEvent>> ListAsync(MatchRecord match, CancellationToken cancellationToken = default)
+	{
+		cancellationToken.ThrowIfCancellationRequested();
+		return Task.FromResult<IReadOnlyList<MatchEvent>>(_events.Where(matchEvent =>
+			matchEvent.Match.Equals(match)).ToList());
 	}
 }
 

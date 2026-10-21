@@ -14,7 +14,9 @@ using Basil.Application.Runtime.Sessions;
 using Basil.Application.Runtime.Users;
 using Basil.Application.Persistence.Auth;
 using Basil.Application.Persistence.Content;
+using Basil.Application.Persistence.Multiplayer;
 using Basil.Application.Persistence.Users;
+using Basil.Domain;
 using Basil.Domain.Auth;
 using Basil.Domain.Bancho;
 using Basil.Domain.Common;
@@ -32,6 +34,9 @@ public sealed class RecordingPublisher<T> : IEventPublisher<T> where T : Event
 {
 	private readonly List<T> _events = [];
 
+	/// <summary>Raised after an event has been recorded.</summary>
+	public event Action<T>? Recorded;
+
 	/// <summary>Gets every event published through this recorder, in order.</summary>
 	public IReadOnlyList<T> Events => _events;
 
@@ -40,6 +45,7 @@ public sealed class RecordingPublisher<T> : IEventPublisher<T> where T : Event
 	public void Publish(T @event)
 	{
 		_events.Add(@event);
+		Recorded?.Invoke(@event);
 	}
 }
 
@@ -102,6 +108,7 @@ public sealed class TestApplication : IDisposable
 	private readonly InMemoryRestrictionRepository _restrictions;
 	private readonly InMemoryLoginRepository _logins;
 	private readonly InMemoryModerationLogRepository _moderationLog;
+	private readonly InMemorySettingsRepository _settings;
 
 	/// <summary>Creates the application and resolves its public roots.</summary>
 	public TestApplication()
@@ -113,7 +120,7 @@ public sealed class TestApplication : IDisposable
 		_logins = new InMemoryLoginRepository();
 		var relationships = new InMemoryRelationshipRepository();
 		_moderationLog = new InMemoryModerationLogRepository();
-		var settings = new InMemorySettingsRepository();
+		_settings = new InMemorySettingsRepository();
 
 		var services = new ServiceCollection();
 		services.AddLogging();
@@ -125,7 +132,10 @@ public sealed class TestApplication : IDisposable
 		services.AddSingleton<ILoginRepository>(_logins);
 		services.AddSingleton<IRelationshipRepository>(relationships);
 		services.AddSingleton<IModerationLogRepository>(_moderationLog);
-		services.AddSingleton<ISettingsRepository>(settings);
+		services.AddSingleton<ISettingsRepository>(_settings);
+		services.AddSingleton<IMatchRepository>(new InMemoryMatchRepository());
+		services.AddSingleton<IRoundRepository>(new InMemoryRoundRepository());
+		services.AddSingleton<IMatchEventRepository>(new InMemoryMatchEventRepository());
 		services.AddSingleton<IEventPublisher<UserEvent>>(UserEvents);
 		services.AddSingleton<IEventPublisher<RoomEvent>>(RoomEvents);
 		services.AddSingleton<IEventPublisher<LobbyEvent>>(LobbyEvents);
@@ -217,6 +227,13 @@ public sealed class TestApplication : IDisposable
 		DateTimeOffset? startsAt = null)
 	{
 		return _restrictions.Seed(user, permissions, startsAt ?? Clock.GetUtcNow().AddSeconds(-1), endsAt);
+	}
+
+	/// <summary>Stores the server settings the application reads.</summary>
+	/// <param name="settings">The settings to store.</param>
+	public Task SetSettingsAsync(ServerSettings settings)
+	{
+		return _settings.CreateOrUpdateAsync(settings);
 	}
 
 	/// <inheritdoc />

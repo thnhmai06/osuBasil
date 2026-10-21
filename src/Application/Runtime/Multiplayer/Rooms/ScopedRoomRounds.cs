@@ -8,6 +8,9 @@ namespace Basil.Application.Runtime.Multiplayer.Rooms;
 /// <summary>Round operations on a room, scoped to a connection with its permissions.</summary>
 public sealed class ScopedRoomRounds
 {
+	/// <summary>The longest countdown a room accepts.</summary>
+	public static readonly TimeSpan MaxCountdown = TimeSpan.FromHours(1);
+
 	private readonly ScopedRoom _scoped;
 
 	/// <summary>Creates a scoped rounds service for a room.</summary>
@@ -41,7 +44,7 @@ public sealed class ScopedRoomRounds
 	/// <param name="length">How long the countdown runs.</param>
 	/// <param name="startsRound">Whether the countdown starts a round when it elapses.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>Ok, NotAuthorized, InvalidSettings, InProgress or RoomClosed when the room has closed.</returns>
+	/// <returns>Ok, NotAuthorized, InvalidSettings (shorter than one second or longer than <see cref="MaxCountdown" />), InProgress or RoomClosed when the room has closed.</returns>
 	public async Task<Result<RoomOutcome>> StartCountdownAsync(TimeSpan length, bool startsRound,
 		CancellationToken cancellationToken = default)
 	{
@@ -53,7 +56,7 @@ public sealed class ScopedRoomRounds
 		if (scope is null) return RoomOutcome.RoomClosed;
 
 		var room = _scoped.Room;
-		if (length <= TimeSpan.Zero) return RoomOutcome.InvalidSettings;
+		if (length < TimeSpan.FromSeconds(1) || length > MaxCountdown) return RoomOutcome.InvalidSettings;
 		if (startsRound && room.Rounds.InProgress) return RoomOutcome.InProgress;
 
 		room.StartCountdown(_scoped.By.Record, length, startsRound);
