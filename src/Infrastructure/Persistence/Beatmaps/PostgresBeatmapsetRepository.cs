@@ -147,10 +147,15 @@ internal sealed class PostgresBeatmapsetRepository(
 	{
 		var now = time.GetUtcNow();
 		var stored = new List<StoredSet>(changes.Store.Count);
+		// The difficulties of a replaced or removed set may move to another set of the same commit.
+		var releasable = changes.Store.Where(change => change.Existing is not null)
+			.Select(change => change.Existing!.Id)
+			.Concat(changes.Remove.Select(removed => removed.Id)).ToHashSet();
 
 		foreach (var item in changes.Store)
 		{
 			var existing = item.Existing;
+
 			BeatmapsetRecord Build(int id)
 			{
 				return new BeatmapsetRecord
@@ -166,10 +171,15 @@ internal sealed class PostgresBeatmapsetRepository(
 				};
 			}
 
-			var row = ToRow(Build(existing?.Id ?? item.Data.OnlineId ?? 0));
-			if (row.Id == 0)
+			var knownId = existing?.Id ?? item.Data.OnlineId;
+			// A record needs an id; the row of a set without an osu! id has none until the sequence gives it one.
+			var row = ToRow(Build(knownId ?? 1));
+			if (knownId is null)
+				row.Id = 0;
+
+			if (existing is null)
 			{
-				// The database gives a beatmapset without an osu! id the next local id.
+				// A new set never replaces a stored one: an id another set has is refused by the database.
 				context.Beatmapsets.Add(row);
 				await context.SaveChangesAsync(token);
 			}
@@ -179,7 +189,8 @@ internal sealed class PostgresBeatmapsetRepository(
 			}
 
 			var set = Build(row.Id);
-			var beatmaps = await PostgresBeatmapRepository.StoreAsync(set, item.Data.Beatmaps, now, context, token);
+			var beatmaps =
+				await PostgresBeatmapRepository.StoreAsync(set, item.Data.Beatmaps, now, releasable, context, token);
 
 			var keepIds = beatmaps.Select(stored => stored.Beatmap.Id).ToArray();
 			await context.Beatmaps

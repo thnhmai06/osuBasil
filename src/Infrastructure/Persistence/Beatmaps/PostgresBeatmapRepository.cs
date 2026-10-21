@@ -51,7 +51,8 @@ internal sealed class PostgresBeatmapRepository(
 			{
 				var row = ToRow(value);
 				await Writer.WriteAsync(Root.Beatmapset(value.Beatmapset.Id),
-					(context, token) => context.UpsertAsync(row, stored => stored.Id == row.Id, token), cancellationToken);
+					(context, token) => context.UpsertAsync(row, stored => stored.Id == row.Id, token),
+					cancellationToken);
 			}
 			catch (Exception exception) when (exception.IsUniqueViolation())
 			{
@@ -172,12 +173,12 @@ internal sealed class PostgresBeatmapRepository(
 		var keepIds = keep.Select(beatmap => beatmap.Id).ToArray();
 		var keepSet = keepIds.ToHashSet();
 		foreach (var beatmap in Items.Values.Where(beatmap =>
-				         beatmap.Beatmapset.Id == setId && !keepSet.Contains(beatmap.Id)))
+			         beatmap.Beatmapset.Id == setId && !keepSet.Contains(beatmap.Id)))
 			RemoveFromMemory(beatmap);
 
 		_retaining[setId] = keepSet;
-		var retained = Writer.SaveAsync(Root.Beatmapset(setId), (GetType(), "retain", setId), new WriteCommand(
-			async (context, token) =>
+		var retained = Writer.SaveAsync(Root.Beatmapset(setId), (GetType(), "retain", setId),
+			new WriteCommand(async (context, token) =>
 			{
 				await context.Beatmaps
 					.Where(b => b.BeatmapsetId == setId && !keepIds.Contains(b.Id))
@@ -194,19 +195,26 @@ internal sealed class PostgresBeatmapRepository(
 	/// <param name="set">The beatmapset the difficulties belong to.</param>
 	/// <param name="data">Every difficulty the set has, in order.</param>
 	/// <param name="now">The time of the import, in UTC.</param>
+	/// <param name="releasable">The ids of the sets whose difficulties this commit replaces or removes.</param>
 	/// <param name="context">The EF context the commit runs on.</param>
 	/// <returns>Each stored difficulty, in the same order.</returns>
 	/// <remarks>
 	///     A difficulty already stored under the same file's hash, or under the same osu! id, is moved to this set and
-	///     keeps its id, its creation time and whether it is locked or shown.
+	///     keeps its id, its creation time and whether it is locked or shown, when its set is replaced or removed by the
+	///     same commit; otherwise it is refused.
 	/// </remarks>
 	internal static async Task<List<StoredBeatmap>> StoreAsync(BeatmapsetRecord set,
-		IReadOnlyList<BeatmapData> data, DateTimeOffset now, BasilDbContext context, CancellationToken token)
+		IReadOnlyList<BeatmapData> data, DateTimeOffset now, IReadOnlySet<int> releasable, BasilDbContext context,
+		CancellationToken token)
 	{
 		var stored = new List<StoredBeatmap>(data.Count);
 		foreach (var item in data)
 		{
 			var row = await FindAsync(item, context, token);
+			if (row is not null && row.BeatmapsetId != set.Id && !releasable.Contains(row.BeatmapsetId))
+				throw new AlreadyExistsException(
+					$"A difficulty of another beatmapset already has the hash {item.Hash} or the id {row.Id}.");
+
 			BeatmapRecord Build(int id)
 			{
 				return new BeatmapRecord
@@ -223,7 +231,12 @@ internal sealed class PostgresBeatmapRepository(
 				};
 			}
 
-			var toStore = ToRow(Build(row?.Id ?? item.OnlineId ?? 0));
+			var knownId = row?.Id ?? item.OnlineId;
+			// A record needs an id; the row of a difficulty without an osu! id has none until the sequence gives it one.
+			var toStore = ToRow(Build(knownId ?? 1));
+			if (knownId is null)
+				toStore.Id = 0;
+
 			if (toStore.Id == 0)
 			{
 				// The database gives a difficulty without an osu! id the next local id.

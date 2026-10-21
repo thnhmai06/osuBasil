@@ -65,4 +65,59 @@ internal static class StoredBeatmaps
 		return new BeatmapsetData(setId, set.Fingerprint, set.Metadata, set.Assets,
 			[new BeatmapData(321, beatmap.Hash, beatmap.Metadata, beatmap.Assets)]);
 	}
+
+	/// <summary>Creates the data of a beatmapset, with the difficulties it has.</summary>
+	/// <param name="onlineId">The set's osu! id, or <see langword="null" /> for a new local id.</param>
+	/// <param name="artist">The artist of the set's music.</param>
+	/// <param name="title">The title of the set's music.</param>
+	/// <param name="creator">The name of the set's mapper.</param>
+	/// <param name="beatmaps">The difficulties the set has.</param>
+	/// <returns>The set's data, as a commit stores it.</returns>
+	public static BeatmapsetData Data(int? onlineId, string artist, string title, string creator,
+		IReadOnlyList<BeatmapData>? beatmaps = null)
+	{
+		var now = DateTimeOffset.UnixEpoch;
+		return new BeatmapsetData(onlineId,
+			new ContentFingerprint(new ContentStamp(0, now), new Md5("00000000000000000000000000000000")),
+			new BeatmapsetMetadata { Artist = artist, Title = title, Creator = creator },
+			new BeatmapsetAssets(), beatmaps ?? []);
+	}
+
+	/// <summary>Creates the data of a difficulty of a beatmapset.</summary>
+	/// <param name="onlineId">The difficulty's osu! id, or <see langword="null" /> for a new local id.</param>
+	/// <param name="hash">The MD5 of the difficulty's file.</param>
+	/// <param name="version">The name of the difficulty.</param>
+	/// <param name="mode">The game mode the difficulty is played in.</param>
+	/// <param name="cs">The circle size setting.</param>
+	/// <param name="ar">The approach rate setting.</param>
+	/// <param name="od">The overall difficulty setting.</param>
+	/// <param name="hp">The health drain rate setting.</param>
+	/// <param name="bpm">The beats per minute of the difficulty.</param>
+	/// <param name="lengthSeconds">The length of the difficulty, in seconds.</param>
+	/// <param name="circles">The number of circles the difficulty has.</param>
+	/// <param name="sliders">The number of sliders the difficulty has.</param>
+	/// <returns>The difficulty's data, as a commit stores it.</returns>
+	public static BeatmapData Difficulty(int? onlineId, Md5 hash, string version,
+		GameMode mode = GameMode.Standard, double cs = 4, double ar = 9, double od = 8, double hp = 5,
+		double bpm = 180, int lengthSeconds = 120, int circles = 0, int sliders = 0)
+	{
+		return new BeatmapData(onlineId, hash, new BeatmapMetadata
+		{
+			Version = version,
+			Difficulty = new BeatmapDifficulty(mode, bpm, TimeSpan.FromSeconds(lengthSeconds), cs, ar, od, hp, 5.0),
+			Objects = Objects(mode, circles, sliders)
+		}, new BeatmapAssets());
+	}
+
+	/// <summary>Gets the hit objects of a difficulty of the given mode.</summary>
+	/// <param name="mode">The game mode the difficulty is played in.</param>
+	/// <param name="circles">The number of circles the difficulty has.</param>
+	/// <param name="sliders">The number of sliders the difficulty has.</param>
+	/// <returns>The hit objects of the difficulty.</returns>
+	private static BeatmapObjects Objects(GameMode mode, int circles, int sliders)
+	{
+		return mode == GameMode.Standard
+			? new OsuObjects { Circles = circles, Sliders = sliders }
+			: BeatmapObjects.Empty(mode);
+	}
 }
