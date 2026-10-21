@@ -72,7 +72,7 @@ internal sealed class HttpBeatmapsetMirror : IBeatmapsetMirror
 			exception is (HttpRequestException or JsonException or TaskCanceledException) &&
 			!cancellationToken.IsCancellationRequested)
 		{
-			_logger.LogWarning(exception, "Mirror search request failed: {Url}", url);
+			_logger.LogWarning(exception, "Mirror search request failed: {Endpoint}", endpoint.GetLeftPart(UriPartial.Path));
 			return null;
 		}
 	}

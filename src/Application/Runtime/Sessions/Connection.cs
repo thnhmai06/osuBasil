@@ -1,14 +1,9 @@
 using Basil.Domain.Auth;
 using Basil.Domain.Bancho;
 using Basil.Domain.Common;
-using Basil.Domain.Mechanics;
-using Basil.Domain.Multiplayer;
-using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Application.Runtime.Anticheat;
-using Basil.Application.Runtime.Scores;
 using Basil.Application.Runtime.Users;
-using Basil.Application.Persistence.Scores;
 
 namespace Basil.Application.Runtime.Sessions;
 
@@ -79,50 +74,6 @@ public sealed class BanchoConnection : Connection
 	public ScopedBanchoConnection ScopeTo(Connection by)
 	{
 		return new ScopedBanchoConnection(this, by);
-	}
-
-	/// <summary>Validates and records the score this game client submitted.</summary>
-	/// <param name="submission">The parsed submission.</param>
-	/// <param name="beatmap">
-	///     The beatmap the server knows for the submission, or <see langword="null" /> when the server does
-	///     not have it.
-	/// </param>
-	/// <param name="client">The osu! client information sent with the submission.</param>
-	/// <param name="replay">
-	///     The seekable stream of the replay, positioned at its start and left open, or <see langword="null" /> for a
-	///     failed play.
-	/// </param>
-	/// <param name="cancellationToken">A token that cancels the submission.</param>
-	/// <returns><see langword="null" /> when the score was stored; otherwise, why it was rejected.</returns>
-	/// <remarks>
-	///     A score on a beatmap the server does not have is accepted only when it is the beatmap of the
-	///     latest round in the player's room. A score played in that round carries the round, and
-	///     <see cref="ScoreSubmitted" /> names the room so the round can record it. Every accepted play
-	///     adds to the play count and the total score; passed plays also add to the ranked score. The
-	///     submission is checked against the player's latest recorded login. A submission whose checksum
-	///     was already stored is refused. Only a passed play keeps its replay, and only when the replay
-	///     is at least 24 bytes long.
-	/// </remarks>
-	public async Task<ScoreRejection?> SubmitScoreAsync(
-		Submission submission,
-		BeatmapChecksums? beatmap,
-		SubmittedClient client,
-		Stream? replay,
-		CancellationToken cancellationToken = default)
-	{
-		var room = Context.Lobby.RoomOf(this);
-		var round = room?.Rounds.LastRound is { } last && last.BeatmapHash == client.BeatmapHash ? last : null;
-		var checkedBeatmap = beatmap ?? (round is not null ? new BeatmapChecksums(client.BeatmapHash, null) : null);
-		if (checkedBeatmap is null) return ScoreRejection.UnknownBeatmap;
-
-		var team = round is not null ? room!.Slots.Find(this)?.Team : null;
-		var outcome = await Context.Scores.ValidateAndRecordAsync(
-			Record, Login.Client!, submission, checkedBeatmap, client, round, team, replay, cancellationToken);
-		if (outcome.Rejection is { } rejection) return rejection;
-
-		Context.ScoreEvents.Publish(new ScoreSubmitted(Record, outcome.Score!, outcome.Stats!, outcome.RoundScore,
-			round is not null ? room : null));
-		return null;
 	}
 
 	/// <summary>Reports the anticheat flags this game client sent.</summary>

@@ -16,5 +16,11 @@ public enum ConnectionOutcome : byte
 	Blocked,
 
 	/// <summary>The caller's own connection closed while the operation was waiting.</summary>
-	Closed
+	Closed,
+
+	/// <summary>Only the client itself may do this; another connection tried.</summary>
+	OtherClient,
+
+	/// <summary>The operation ran but its input was rejected; the rejection says why.</summary>
+	Rejected
 }

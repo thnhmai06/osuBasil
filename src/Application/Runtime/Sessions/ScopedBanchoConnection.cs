@@ -1,4 +1,7 @@
+using Basil.Application.Persistence.Scores;
+using Basil.Application.Runtime.Scores;
 using Basil.Domain.Permissions;
+using Basil.Domain.Scores;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Runtime.Sessions;
@@ -99,5 +102,54 @@ public sealed class ScopedBanchoConnection : Scoped<Permissions>
 		Host.Status = status;
 		Host.Context.Events.Publish(new UserConnectionStatusChanged(Host, status));
 		return true;
+	}
+	/// <summary>Validates and records the score this game client submitted.</summary>
+	/// <param name="submission">The parsed submission.</param>
+	/// <param name="beatmap">
+	///     The beatmap the server knows for the submission, or <see langword="null" /> when the server does
+	///     not have it.
+	/// </param>
+	/// <param name="client">The osu! client information sent with the submission.</param>
+	/// <param name="replay">
+	///     The seekable stream of the replay, positioned at its start and left open, or <see langword="null" /> for a
+	///     failed play.
+	/// </param>
+	/// <param name="cancellationToken">A token that cancels the submission.</param>
+	/// <returns>
+	///     Ok when the score was stored; otherwise the outcome (<see cref="ConnectionOutcome.Rejected" /> carries the
+	///     rejection) or the permissions the caller lacks.
+	/// </returns>
+	/// <remarks>
+	///     Needs <see cref="Permissions.ScoreSubmit" />, and only the client itself submits its own scores. A score on a
+	///     beatmap the server does not have is accepted only when it is the beatmap of the latest round in the player's
+	///     room. A score played in that round carries the round, and <see cref="ScoreSubmitted" /> names the room so the
+	///     round can record it. Every accepted play adds to the play count and the total score; passed plays also add to
+	///     the ranked score. The submission is checked against the player's latest recorded login. A submission whose
+	///     checksum was already stored is refused. Only a passed play keeps its replay, and only when the replay is at
+	///     least 24 bytes long.
+	/// </remarks>
+	public async Task<(Result<ConnectionOutcome> Result, ScoreRejection? Rejection)> SubmitScoreAsync(
+		Submission submission,
+		BeatmapChecksums? beatmap,
+		SubmittedClient client,
+		Stream? replay,
+		CancellationToken cancellationToken = default)
+	{
+		if (Require(Permissions.ScoreSubmit) is { } missing) return (Result<ConnectionOutcome>.Denied(missing), null);
+		if (!ReferenceEquals(By, Host)) return (ConnectionOutcome.OtherClient, null);
+
+		var room = Host.Context.Lobby.RoomOf(Host);
+		var round = room?.Rounds.LastRound is { } last && last.BeatmapHash == client.BeatmapHash ? last : null;
+		var checkedBeatmap = beatmap ?? (round is not null ? new BeatmapChecksums(client.BeatmapHash, null) : null);
+		if (checkedBeatmap is null) return (ConnectionOutcome.Rejected, ScoreRejection.UnknownBeatmap);
+
+		var team = round is not null ? room!.Slots.Find(Host)?.Team : null;
+		var outcome = await Host.Context.Scores.ValidateAndRecordAsync(
+			Host.Record, Host.Login.Client!, submission, checkedBeatmap, client, round, team, replay, cancellationToken);
+		if (outcome.Rejection is { } rejection) return (ConnectionOutcome.Rejected, rejection);
+
+		Host.Context.ScoreEvents.Publish(new ScoreSubmitted(Host.Record, outcome.Score!, outcome.Stats!,
+			outcome.RoundScore, round is not null ? room : null));
+		return (ConnectionOutcome.Ok, null);
 	}
 }
