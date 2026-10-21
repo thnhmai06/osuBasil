@@ -65,7 +65,7 @@ internal sealed class FileBeatmapsetStorage(
 		"LPT9", "LPT¹", "LPT²", "LPT³"
 	}.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
-	private static readonly ConcurrentDictionary<int, SemaphoreSlim> SetLocks = new();
+	private readonly Dictionary<int, SetLock> _setLocks = [];
 
 	/// <inheritdoc />
 	public async Task<BeatmapsetArchive> SaveAsync(Stream archive, CancellationToken cancellationToken = default)
@@ -109,6 +109,55 @@ internal sealed class FileBeatmapsetStorage(
 		return Task.CompletedTask;
 	}
 
+	/// <summary>Waits for the turn on one beatmapset; operations on different sets do not wait for each other.</summary>
+	/// <param name="id">The id of the beatmapset.</param>
+	/// <param name="cancellationToken">A token that cancels the wait.</param>
+	/// <returns>The turn; releasing it lets the next operation on the set run.</returns>
+	private async Task<SetLock> LockAsync(int id, CancellationToken cancellationToken)
+	{
+		SetLock gate;
+		lock (_setLocks)
+		{
+			if (!_setLocks.TryGetValue(id, out gate!))
+				_setLocks[id] = gate = new SetLock(this, id);
+			gate.Users++;
+		}
+
+		try
+		{
+			await gate.Semaphore.WaitAsync(cancellationToken);
+		}
+		catch
+		{
+			gate.Forget();
+			throw;
+		}
+
+		return gate;
+	}
+
+	/// <summary>The turn on one beatmapset, forgotten once nobody waits for it.</summary>
+	private sealed class SetLock(FileBeatmapsetStorage storage, int id)
+	{
+		public SemaphoreSlim Semaphore { get; } = new(1, 1);
+		public int Users { get; set; }
+
+		public void Release()
+		{
+			Semaphore.Release();
+			Forget();
+		}
+
+		public void Forget()
+		{
+			lock (storage._setLocks)
+			{
+				if (--Users == 0)
+					storage._setLocks.Remove(id);
+			}
+		}
+	}
+
 	/// <inheritdoc />
 	public async Task SaveAsync(BeatmapsetRecord set, BeatmapsetArchive archive,
 		CancellationToken cancellationToken = default)
@@ -117,8 +166,7 @@ internal sealed class FileBeatmapsetStorage(
 			throw new ArgumentException("The archive does not belong to this storage.", nameof(archive));
 
 		var target = Path.Combine(paths.Beatmapsets.Path, FolderName(set));
-		var gate = SetLocks.GetOrAdd(set.Id, static _ => new SemaphoreSlim(1, 1));
-		await gate.WaitAsync(cancellationToken);
+		var gate = await LockAsync(set.Id, cancellationToken);
 		try
 		{
 			var placedParent = Path.GetDirectoryName(placed.Path);
@@ -226,8 +274,7 @@ internal sealed class FileBeatmapsetStorage(
 	/// <inheritdoc />
 	public async Task ClearAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default)
 	{
-		var gate = SetLocks.GetOrAdd(set.Id, static _ => new SemaphoreSlim(1, 1));
-		await gate.WaitAsync(cancellationToken);
+		var gate = await LockAsync(set.Id, cancellationToken);
 		try
 		{
 			var folder = FindFolder(set.Id, FolderName(set));
@@ -250,8 +297,7 @@ internal sealed class FileBeatmapsetStorage(
 	public async Task SaveAsync(BeatmapsetRecord set, BeatmapsetFileType type, string name, Stream content,
 		CancellationToken cancellationToken = default)
 	{
-		var gate = SetLocks.GetOrAdd(set.Id, static _ => new SemaphoreSlim(1, 1));
-		await gate.WaitAsync(cancellationToken);
+		var gate = await LockAsync(set.Id, cancellationToken);
 		try
 		{
 			var folder = FindFolder(set.Id, FolderName(set));
@@ -287,8 +333,7 @@ internal sealed class FileBeatmapsetStorage(
 	/// <inheritdoc />
 	public async Task SaveArchiveWithoutVideoAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default)
 	{
-		var gate = SetLocks.GetOrAdd(set.Id, static _ => new SemaphoreSlim(1, 1));
-		await gate.WaitAsync(cancellationToken);
+		var gate = await LockAsync(set.Id, cancellationToken);
 		try
 		{
 			var folder = FindFolder(set.Id, FolderName(set));
@@ -510,8 +555,7 @@ internal sealed class FileBeatmapsetStorage(
 	/// <inheritdoc />
 	public async Task DeleteAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default)
 	{
-		var gate = SetLocks.GetOrAdd(set.Id, static _ => new SemaphoreSlim(1, 1));
-		await gate.WaitAsync(cancellationToken);
+		var gate = await LockAsync(set.Id, cancellationToken);
 		try
 		{
 			foreach (var folder in FoldersOf(set.Id).Where(IsSetFolder))
