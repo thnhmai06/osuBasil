@@ -29,7 +29,8 @@ public sealed class ScopedUserRelationships
 		{
 			Actor = _scoped.By.Record,
 			Target = target,
-			Type = RelationshipType.Friend
+			Type = RelationshipType.Friend,
+			CreatedAt = _scoped.User.Context.Clock.GetUtcNow()
 		}, cancellationToken);
 		return UserOutcome.Ok;
 	}
@@ -67,7 +68,8 @@ public sealed class ScopedUserRelationships
 		{
 			Actor = _scoped.By.Record,
 			Target = target,
-			Type = RelationshipType.Block
+			Type = RelationshipType.Block,
+			CreatedAt = _scoped.User.Context.Clock.GetUtcNow()
 		}, cancellationToken);
 		return UserOutcome.Ok;
 	}

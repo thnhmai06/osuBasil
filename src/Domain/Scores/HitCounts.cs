@@ -21,44 +21,45 @@ public readonly record struct HitCounts(int Num300, int Num100, int Num50, int N
 	/// <summary>
 	///     Gets the number of 300 judgments.
 	/// </summary>
-	public int Num300 { get; init; } = Num300 >= 0
-		? Num300
-		: throw new ArgumentOutOfRangeException(nameof(Num300), "Hit count cannot be negative.");
+	/// <exception cref="ArgumentOutOfRangeException">The count is negative.</exception>
+	public int Num300 { get; init => field = Check(value, nameof(Num300)); } = Check(Num300, nameof(Num300));
 
 	/// <summary>
 	///     Gets the number of 100 judgments.
 	/// </summary>
-	public int Num100 { get; init; } = Num100 >= 0
-		? Num100
-		: throw new ArgumentOutOfRangeException(nameof(Num100), "Hit count cannot be negative.");
+	/// <exception cref="ArgumentOutOfRangeException">The count is negative.</exception>
+	public int Num100 { get; init => field = Check(value, nameof(Num100)); } = Check(Num100, nameof(Num100));
 
 	/// <summary>
 	///     Gets the number of 50 judgments.
 	/// </summary>
-	public int Num50 { get; init; } = Num50 >= 0
-		? Num50
-		: throw new ArgumentOutOfRangeException(nameof(Num50), "Hit count cannot be negative.");
+	/// <exception cref="ArgumentOutOfRangeException">The count is negative.</exception>
+	public int Num50 { get; init => field = Check(value, nameof(Num50)); } = Check(Num50, nameof(Num50));
 
 	/// <summary>
 	///     Gets the number of geki judgments.
 	/// </summary>
-	public int NumGeki { get; init; } = NumGeki >= 0
-		? NumGeki
-		: throw new ArgumentOutOfRangeException(nameof(NumGeki), "Hit count cannot be negative.");
+	/// <exception cref="ArgumentOutOfRangeException">The count is negative.</exception>
+	public int NumGeki { get; init => field = Check(value, nameof(NumGeki)); } = Check(NumGeki, nameof(NumGeki));
 
 	/// <summary>
 	///     Gets the number of katu judgments.
 	/// </summary>
-	public int NumKatu { get; init; } = NumKatu >= 0
-		? NumKatu
-		: throw new ArgumentOutOfRangeException(nameof(NumKatu), "Hit count cannot be negative.");
+	/// <exception cref="ArgumentOutOfRangeException">The count is negative.</exception>
+	public int NumKatu { get; init => field = Check(value, nameof(NumKatu)); } = Check(NumKatu, nameof(NumKatu));
 
 	/// <summary>
 	///     Gets the number of miss judgments.
 	/// </summary>
-	public int NumMiss { get; init; } = NumMiss >= 0
-		? NumMiss
-		: throw new ArgumentOutOfRangeException(nameof(NumMiss), "Hit count cannot be negative.");
+	/// <exception cref="ArgumentOutOfRangeException">The count is negative.</exception>
+	public int NumMiss { get; init => field = Check(value, nameof(NumMiss)); } = Check(NumMiss, nameof(NumMiss));
+
+	private static int Check(int value, string name)
+	{
+		return value >= 0
+			? value
+			: throw new ArgumentOutOfRangeException(name, "Hit count cannot be negative.");
+	}
 
 	/// <summary>
 	///     Computes the accuracy percentage from the hit counts.
@@ -114,7 +115,7 @@ public readonly record struct HitCounts(int Num300, int Num100, int Num50, int N
 			}
 
 			default:
-				throw new ArgumentOutOfRangeException(nameof(GameMode), mode, "Invalid game mode.");
+				throw new ArgumentOutOfRangeException(nameof(mode), mode, "Invalid game mode.");
 		}
 	}
 }

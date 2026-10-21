@@ -1,6 +1,6 @@
 using Basil.Domain.Chat;
 
-namespace Basil.Domain.Tests;
+namespace Basil.Domain.Tests.Chat;
 
 public class GeneralChannelRecordTests
 {
@@ -20,5 +20,11 @@ public class GeneralChannelRecordTests
 	public void Name_InvalidChannelName_Throws(string name)
 	{
 		Assert.Throws<ArgumentException>(() => new GeneralChannelRecord { Name = name, Value = new GeneralChannelData() });
+	}
+
+	[Fact]
+	public void Topic_Null_Throws()
+	{
+		Assert.Throws<ArgumentNullException>(() => new GeneralChannelData { Topic = null! });
 	}
 }

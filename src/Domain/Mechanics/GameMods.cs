@@ -6,8 +6,8 @@ namespace Basil.Domain.Mechanics;
 ///     Represents the gameplay modifier flags an osu! client can apply to a play.
 /// </summary>
 /// <remarks>
-///     A bitwise combination of the individual mods. The key mods only apply to osu!mania, and
-///     several mods apply to specific game modes only.
+///     A bitwise combination of the individual mods. The key-count mods apply to osu!mania, the
+///     cooperative key mod is not tied to a mode, and several mods apply to specific game modes only.
 /// </remarks>
 [Flags]
 public enum GameMods
@@ -267,9 +267,14 @@ public static class ModsExtensions
 		/// <summary>Determines whether the mods can be used together in a game mode.</summary>
 		/// <param name="mode">The game mode.</param>
 		/// <returns><see langword="true" /> when removing the mods invalid for the mode would change nothing.</returns>
+		/// <remarks>
+		///     The wire form a client sends for a mod counts as that mod: Nightcore arrives as DoubleTime and
+		///     Nightcore together, and Perfect as Perfect and SuddenDeath together.
+		/// </remarks>
 		public bool IsValid(GameMode mode)
 		{
-			return gameMods == gameMods.RemoveInvalidMods(mode);
+			var canonical = Canonical(gameMods);
+			return canonical == canonical.RemoveInvalidMods(mode);
 		}
 
 		/// <summary>Throws when the mods cannot be used together in a game mode.</summary>
@@ -317,6 +322,22 @@ public static class ModsExtensions
 				mods |= mod;
 
 		return mods.RemoveInvalidMods(mode);
+	}
+
+	/// <summary>
+	///     Reduces a mod combination the way a client sends it to the combination the server reasons about.
+	/// </summary>
+	/// <param name="mods">The mod combination to reduce.</param>
+	/// <returns>The combination without the bits a client adds to send a single mod.</returns>
+	private static GameMods Canonical(GameMods mods)
+	{
+		if ((mods & (GameMods.DoubleTime | GameMods.Nightcore)) == (GameMods.DoubleTime | GameMods.Nightcore))
+			mods &= ~GameMods.DoubleTime;
+
+		if ((mods & (GameMods.Perfect | GameMods.SuddenDeath)) == (GameMods.Perfect | GameMods.SuddenDeath))
+			mods &= ~GameMods.SuddenDeath;
+
+		return mods;
 	}
 
 	private static int CountSetBits(GameMods value)

@@ -1,3 +1,4 @@
+using Basil.Domain.Common;
 using Basil.Domain.Users;
 
 namespace Basil.Domain.Permissions;
@@ -18,7 +19,12 @@ public sealed class ModerationLog
 public sealed class ModerationData
 {
 	/// <summary>Gets the kind of moderation action that was recorded.</summary>
-	public required ModerationAction Action { get; init; }
+	/// <exception cref="ArgumentOutOfRangeException">The value is not a defined action.</exception>
+	public required ModerationAction Action
+	{
+		get;
+		init => field = value.ThrowIfUndefined();
+	}
 
 	/// <summary>Gets the user who performed the action.</summary>
 	public required UserRecord By { get; init; }

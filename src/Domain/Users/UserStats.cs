@@ -1,3 +1,4 @@
+using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 
 namespace Basil.Domain.Users;
@@ -25,16 +26,42 @@ public sealed class UserStats : IEquatable<UserStats>
 	public required int UserId { get; init; }
 
 	/// <summary>The game mode these statistics are for.</summary>
-	public required GameMode Mode { get; init; }
+	/// <exception cref="ArgumentOutOfRangeException">The value is not a defined game mode.</exception>
+	public required GameMode Mode
+	{
+		get;
+		init => field = value.ThrowIfUndefined();
+	}
 
 	/// <summary>The cumulative score across every submitted play.</summary>
-	public long TotalScore { get; set; }
+	/// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
+	public long TotalScore
+	{
+		get;
+		set => field = value >= 0
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), value, "The value must not be negative.");
+	}
 
 	/// <summary>The cumulative score across every submitted play on ranked beatmaps.</summary>
-	public long RankedScore { get; set; }
+	/// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
+	public long RankedScore
+	{
+		get;
+		set => field = value >= 0
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), value, "The value must not be negative.");
+	}
 
 	/// <summary>The number of plays submitted.</summary>
-	public int PlayCount { get; set; }
+	/// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
+	public int PlayCount
+	{
+		get;
+		set => field = value >= 0
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), value, "The value must not be negative.");
+	}
 
 	/// <summary>Determines whether another record is the statistics of the same user in the same game mode.</summary>
 	/// <param name="other">The statistics to compare against, or <see langword="null" />.</param>

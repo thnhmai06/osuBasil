@@ -10,10 +10,13 @@ public sealed class BeatmapMetadata
 	private const string InvalidOsuFileNameCharacters = ":\\/*<>?\"|";
 
 	/// <summary>The difficulty name, such as "Insane".</summary>
+	/// <exception cref="ArgumentException">The name is empty, blank, or contains the NUL character.</exception>
 	public required string Version
 	{
 		get;
-		init => field = value.ThrowIfHasNul();
+		init => field = string.IsNullOrWhiteSpace(value)
+			? throw new ArgumentException("Version cannot be empty.", nameof(value))
+			: value.ThrowIfHasNul();
 	}
 
 	/// <summary>The gameplay stats of the beatmap without mods.</summary>

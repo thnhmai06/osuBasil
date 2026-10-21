@@ -35,7 +35,7 @@ public sealed class Relationship : IEquatable<Relationship>
 	}
 
 	/// <summary>When the relationship was set.</summary>
-	public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
+	public required DateTimeOffset CreatedAt { get; init; }
 
 	/// <summary>Determines whether another relationship has the same actor, target and type.</summary>
 	/// <param name="other">The relationship to compare against, or <see langword="null" />.</param>

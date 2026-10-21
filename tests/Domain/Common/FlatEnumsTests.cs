@@ -2,7 +2,7 @@ using Basil.Domain.Mechanics;
 using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
-namespace Basil.Domain.Tests;
+namespace Basil.Domain.Tests.Common;
 
 public class FlatEnumsTests
 {

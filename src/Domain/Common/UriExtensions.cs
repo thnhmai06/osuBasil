@@ -13,13 +13,17 @@ public static class UriExtensions
 			return value.IsAbsoluteUri && (value.Scheme == Uri.UriSchemeHttp || value.Scheme == Uri.UriSchemeHttps);
 		}
 
-		/// <summary>Returns the address unchanged, or throws when it is not absolute.</summary>
-		/// <exception cref="ArgumentException">The address is not absolute.</exception>
-		public Uri ThrowIfNotAbsolute([CallerArgumentExpression(nameof(value))] string? paramName = null)
+		/// <summary>Returns the address unchanged, or throws when it is not absolute with the http or https scheme.</summary>
+		/// <exception cref="ArgumentNullException">The address is <see langword="null" />.</exception>
+		/// <exception cref="ArgumentException">The address is not absolute with an http or https scheme.</exception>
+		public Uri ThrowIfHttp([CallerArgumentExpression(nameof(value))] string? paramName = null)
 		{
-			return value.IsAbsoluteUri
+			if (value is null)
+				throw new ArgumentNullException(paramName);
+
+			return value.IsHttp()
 				? value
-				: throw new ArgumentException("The address must be absolute.", paramName);
+				: throw new ArgumentException("The address must be absolute with an http or https scheme.", paramName);
 		}
 	}
 }

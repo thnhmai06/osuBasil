@@ -1,10 +1,10 @@
 using Basil.Domain.Bancho;
 using Basil.Domain.Common;
 
-namespace Basil.Domain.Tests;
+namespace Basil.Domain.Tests.Bancho;
 
 /// <summary>Verifies the Domain rules for network-adapter fingerprints reported by osu! clients.</summary>
-public class ClientDetailsAdaptersTests
+public class NetworkAdaptersTests
 {
 	private static NetworkAdapters MakeAdapters(string adapters)
 	{
@@ -34,5 +34,29 @@ public class ClientDetailsAdaptersTests
 	public void NetworkAdapters_MissingTrailingDelimiter_Throws()
 	{
 		Assert.Throws<FormatException>(() => MakeAdapters("aa11bb22"));
+	}
+
+	[Fact]
+	public void NetworkAdapters_NullAdapters_Throws()
+	{
+		Assert.Throws<ArgumentNullException>(() => new NetworkAdapters
+		{
+			Adapters = null!,
+			Hash = new Md5("00000000000000000000000000000000")
+		});
+	}
+
+	[Theory]
+	[InlineData(".")]
+	[InlineData("a..b.")]
+	public void NetworkAdapters_EmptyChunk_Throws(string adapters)
+	{
+		Assert.Throws<FormatException>(() => MakeAdapters(adapters));
+	}
+
+	[Fact]
+	public void NetworkAdapters_Default_IsNotRunningUnderWine()
+	{
+		Assert.False(default(NetworkAdapters).IsRunningUnderWine);
 	}
 }

@@ -31,12 +31,12 @@ public enum Grade : byte
 	/// <summary>S grade.</summary>
 	S = 6,
 
-	/// <summary>S grade achieved with the Hidden mod.</summary>
+	/// <summary>S grade achieved with the Hidden or Flashlight mod.</summary>
 	Sh = 7,
 
 	/// <summary>SS grade, achieved with all 300 judgments.</summary>
 	X = 8,
 
-	/// <summary>SS grade achieved with the Hidden mod.</summary>
+	/// <summary>SS grade achieved with the Hidden or Flashlight mod.</summary>
 	Xh = 9
 }

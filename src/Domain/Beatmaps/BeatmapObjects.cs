@@ -7,9 +7,7 @@ namespace Basil.Domain.Beatmaps;
 /// </summary>
 /// <remarks>
 ///     <see cref="Total" /> and <see cref="MaxCombo" /> are the only fields every mode shares;
-///     everything else is named after that mode's own object types. Each subtype is serialized
-///     with a <c>mode</c> discriminator whose values match <see cref="GameMode" />'s own wire
-///     values, so a client can dispatch on the same integer either way.
+///     everything else is named after that mode's own object types.
 /// </remarks>
 public abstract class BeatmapObjects
 {

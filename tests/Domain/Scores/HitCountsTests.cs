@@ -2,7 +2,7 @@ using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
 
-namespace Basil.Domain.Tests;
+namespace Basil.Domain.Tests.Scores;
 
 public class HitCountsTests
 {
@@ -71,5 +71,32 @@ public class HitCountsTests
 	{
 		var hits = new HitCounts(0, 0, 0, 0, 0, 0);
 		Assert.Throws<ArgumentOutOfRangeException>(() => hits.CalculateAccuracy((GameMode)4, GameMods.NoMod));
+	}
+
+	[Theory]
+	[InlineData(-1, 0, 0, 0, 0, 0)]
+	[InlineData(0, -1, 0, 0, 0, 0)]
+	[InlineData(0, 0, -1, 0, 0, 0)]
+	[InlineData(0, 0, 0, -1, 0, 0)]
+	[InlineData(0, 0, 0, 0, -1, 0)]
+	[InlineData(0, 0, 0, 0, 0, -1)]
+	public void NegativeCount_Constructor_Throws(int n300, int n100, int n50, int geki, int katu, int miss)
+	{
+		Assert.Throws<ArgumentOutOfRangeException>(() => new HitCounts(n300, n100, n50, geki, katu, miss));
+	}
+
+	[Theory]
+	[InlineData(-1)]
+	[InlineData(-100)]
+	public void NegativeCount_With_Throws(int negative)
+	{
+		var hits = new HitCounts(1, 2, 3, 4, 5, 6);
+
+		Assert.Throws<ArgumentOutOfRangeException>(() => _ = hits with { Num300 = negative });
+		Assert.Throws<ArgumentOutOfRangeException>(() => _ = hits with { Num100 = negative });
+		Assert.Throws<ArgumentOutOfRangeException>(() => _ = hits with { Num50 = negative });
+		Assert.Throws<ArgumentOutOfRangeException>(() => _ = hits with { NumGeki = negative });
+		Assert.Throws<ArgumentOutOfRangeException>(() => _ = hits with { NumKatu = negative });
+		Assert.Throws<ArgumentOutOfRangeException>(() => _ = hits with { NumMiss = negative });
 	}
 }

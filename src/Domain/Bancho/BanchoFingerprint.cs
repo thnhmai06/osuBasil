@@ -30,11 +30,14 @@ public readonly record struct NetworkAdapters
 	private const string WineAdapterSentinel = "runningunderwine";
 
 	/// <summary>The raw adapter string reported by the client, without modification.</summary>
+	/// <exception cref="ArgumentNullException">The value is <see langword="null" />.</exception>
 	public required string Adapters
 	{
 		get;
 		init
 		{
+			ArgumentNullException.ThrowIfNull(value);
+
 			if (!IsValidAdaptersString(value))
 				throw new FormatException("Adapter string is invalid.");
 
@@ -54,8 +57,8 @@ public readonly record struct NetworkAdapters
 
 				return value.EndsWith('.')
 				       && value[..^1]
-					       .Split('.', StringSplitOptions.RemoveEmptyEntries)
-					       .All(a => !a.Equals(WineAdapterSentinel, StringComparison.OrdinalIgnoreCase));
+					       .Split('.')
+					       .All(a => a.Length > 0 && !a.Equals(WineAdapterSentinel, StringComparison.OrdinalIgnoreCase));
 			}
 		}
 	}
@@ -70,9 +73,10 @@ public readonly record struct NetworkAdapters
 	/// </summary>
 	/// <remarks>
 	///     <see langword="true" /> when <see cref="Adapters" /> equals the
-	///     <c>runningunderwine</c> sentinel, ignoring case.
+	///     <c>runningunderwine</c> sentinel, ignoring case; <see langword="false" /> when there is no
+	///     adapter string at all.
 	/// </remarks>
-	public bool IsRunningUnderWine => Adapters.Equals(WineAdapterSentinel, StringComparison.OrdinalIgnoreCase);
+	public bool IsRunningUnderWine => string.Equals(Adapters, WineAdapterSentinel, StringComparison.OrdinalIgnoreCase);
 
 	/// <summary>
 	///     Determines whether this adapter value has the same MD5 checksum as
@@ -93,9 +97,9 @@ public readonly record struct NetworkAdapters
 	}
 
 	/// <summary>
-	///     Returns a hash code based on the MD5 checksum, ignoring case.
+	///     Returns a hash code based on the MD5 checksum.
 	/// </summary>
-	/// <returns>The hash code of <see cref="Hash" /> under ordinal, case-insensitive comparison.</returns>
+	/// <returns>The hash code of <see cref="Hash" />.</returns>
 	public override int GetHashCode()
 	{
 		return StringComparer.OrdinalIgnoreCase.GetHashCode(Hash);

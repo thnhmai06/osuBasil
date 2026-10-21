@@ -1,6 +1,6 @@
 using Basil.Domain.Beatmaps;
 
-namespace Basil.Domain.Tests;
+namespace Basil.Domain.Tests.Beatmaps;
 
 /// <summary>Verifies `BeatmapsetStatus`'s integer enum values and its `ToOsuApi()` mapping.</summary>
 public class BeatmapStatusTests

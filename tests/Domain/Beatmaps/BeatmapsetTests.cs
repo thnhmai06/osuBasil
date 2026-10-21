@@ -2,7 +2,7 @@ using Basil.Domain.Beatmaps;
 using Basil.Domain.Common;
 using Basil.Domain.Content;
 
-namespace Basil.Domain.Tests;
+namespace Basil.Domain.Tests.Beatmaps;
 
 public class BeatmapsetTests
 {

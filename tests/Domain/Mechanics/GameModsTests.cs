@@ -1,9 +1,9 @@
 using Basil.Domain.Mechanics;
 
-namespace Basil.Domain.Tests;
+namespace Basil.Domain.Tests.Mechanics;
 
 /// <summary>Verifies gameplay-mod conflict resolution and text parsing.</summary>
-public class ModsTests
+public class GameModsTests
 {
 	[Theory]
 	[InlineData(GameMods.DoubleTime | GameMods.Nightcore, GameMods.Nightcore)]
@@ -92,5 +92,41 @@ public class ModsTests
 	{
 		Assert.Equal(GameMods.Hidden,
 			ModsExtensions.FromNowPlayingString("+Hidden +NotAMod", GameMode.Standard));
+	}
+
+	[Fact]
+	public void NightcoreWireForm_IsDoubleTimeWithNightcore()
+	{
+		var wireForm = GameMods.DoubleTime | GameMods.Nightcore;
+
+		Assert.Equal(576, (int)wireForm);
+	}
+
+	[Fact]
+	public void PerfectWireForm_IsPerfectWithSuddenDeath()
+	{
+		var wireForm = GameMods.Perfect | GameMods.SuddenDeath;
+
+		Assert.Equal(16416, (int)wireForm);
+	}
+
+	[Theory]
+	[InlineData(GameMods.Nightcore)]
+	[InlineData(GameMods.Perfect)]
+	[InlineData(GameMods.DoubleTime | GameMods.Nightcore)]
+	[InlineData(GameMods.Perfect | GameMods.SuddenDeath)]
+	public void IsValid_SingleAndWireFormMods_Accepted(GameMods mods)
+	{
+		Assert.True(mods.IsValid(GameMode.Standard));
+	}
+
+	[Theory]
+	[InlineData(GameMods.DoubleTime | GameMods.HalfTime)]
+	[InlineData(GameMods.Nightcore | GameMods.HalfTime)]
+	[InlineData(GameMods.DoubleTime | GameMods.Nightcore | GameMods.HalfTime)]
+	[InlineData(GameMods.Perfect | GameMods.NoFail)]
+	public void IsValid_ConflictingMods_Rejected(GameMods mods)
+	{
+		Assert.False(mods.IsValid(GameMode.Standard));
 	}
 }

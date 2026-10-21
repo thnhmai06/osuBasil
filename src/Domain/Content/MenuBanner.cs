@@ -1,7 +1,9 @@
+using Basil.Domain.Common;
+
 namespace Basil.Domain.Content;
 
 /// <summary>
-///     Represents one main-menu promotional banner (`assets.&lt;domain&gt;/menu-content.json`).
+///     Represents one main-menu promotional banner.
 /// </summary>
 public sealed class MenuBanner : IEquatable<MenuBanner>
 {
@@ -16,22 +18,47 @@ public sealed class MenuBanner : IEquatable<MenuBanner>
 	}
 
 	/// <summary>The click-through URI opened when the banner is clicked.</summary>
-	public required Uri Url { get; set; }
+	/// <exception cref="ArgumentException">The address is not absolute with an http or https scheme.</exception>
+	public required Uri Url
+	{
+		get;
+		set => field = value.ThrowIfHttp();
+	}
 
 	/// <summary>
 	///     The UTC instant the banner starts being current, or <see langword="null" /> for no lower bound
 	///     (already current).
 	/// </summary>
-	public required DateTimeOffset? StartsAt { get; set; }
+	/// <exception cref="ArgumentOutOfRangeException">The value is after <see cref="EndsAt" />.</exception>
+	public required DateTimeOffset? StartsAt
+	{
+		get;
+		set
+		{
+			if (value > EndsAt)
+				throw new ArgumentOutOfRangeException(nameof(value), value, "A banner cannot start after it ends.");
+			field = value;
+		}
+	}
 
 	/// <summary>
 	///     The UTC instant the banner stops being current, or <see langword="null" /> for no upper
 	///     bound (never expires).
 	/// </summary>
-	public required DateTimeOffset? EndsAt { get; set; }
+	/// <exception cref="ArgumentOutOfRangeException">The value is before <see cref="StartsAt" />.</exception>
+	public required DateTimeOffset? EndsAt
+	{
+		get;
+		set
+		{
+			if (value < StartsAt)
+				throw new ArgumentOutOfRangeException(nameof(value), value, "A banner cannot end before it starts.");
+			field = value;
+		}
+	}
 
 	/// <summary>The UTC instant the banner was created.</summary>
-	public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
+	public required DateTimeOffset CreatedAt { get; init; }
 
 	/// <summary>Gets a value that indicates whether this banner equals another by image.</summary>
 	/// <param name="other">The banner to compare, or <see langword="null" />.</param>
@@ -47,9 +74,12 @@ public sealed class MenuBanner : IEquatable<MenuBanner>
 
 	/// <summary>Gets whether the banner is currently within its display window.</summary>
 	/// <param name="now">The instant to check against, in UTC.</param>
+	/// <returns>
+	///     <see langword="true" /> from <see cref="StartsAt" /> up to, but not including, <see cref="EndsAt" />.
+	/// </returns>
 	public bool IsCurrent(DateTimeOffset now)
 	{
-		return (StartsAt is null || StartsAt <= now) && (EndsAt is null || now <= EndsAt);
+		return (StartsAt is null || StartsAt <= now) && (EndsAt is null || now < EndsAt);
 	}
 
 	/// <summary>Gets a value that indicates whether this banner equals another object by image.</summary>

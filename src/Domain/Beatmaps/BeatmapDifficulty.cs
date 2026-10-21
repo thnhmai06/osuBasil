@@ -1,3 +1,4 @@
+using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 
 namespace Basil.Domain.Beatmaps;
@@ -14,7 +15,6 @@ namespace Basil.Domain.Beatmaps;
 /// <param name="Hp">The health drain rate setting.</param>
 /// <param name="Star">The star rating of the beatmap.</param>
 /// <remarks>
-///     <see cref="Length" /> serializes as a whole number of seconds on the wire.
 ///     Under mods the settings may leave the range a beatmap file allows (approach rate above 10 under DoubleTime,
 ///     below 0 under HalfTime), so they are only required to be finite.
 /// </remarks>
@@ -29,72 +29,56 @@ public readonly record struct BeatmapDifficulty(
 	double Star)
 {
 	/// <summary>The game mode the beatmap is played in.</summary>
-	public GameMode Mode { get; init; } = Mode;
+	/// <exception cref="ArgumentOutOfRangeException">The value is not a defined game mode.</exception>
+	public GameMode Mode { get; init => field = value.ThrowIfUndefined(); } = Mode.ThrowIfUndefined();
 
 	/// <summary>The beats per minute of the beatmap.</summary>
-	public double Bpm
-	{
-		get;
-		init
-		{
-			ArgumentOutOfRangeException.ThrowIfNegative(value);
-			field = value;
-		}
-	} = Bpm;
+	/// <exception cref="ArgumentOutOfRangeException">The value is negative or not a finite number.</exception>
+	public double Bpm { get; init => field = CheckPositive(value); } = CheckPositive(Bpm);
 
 	/// <summary>The total length of the beatmap.</summary>
-	public TimeSpan Length
-	{
-		get;
-		init => field = value >= TimeSpan.Zero
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), "Length cannot be negative.");
-	} = Length;
+	/// <exception cref="ArgumentOutOfRangeException">The length is negative.</exception>
+	public TimeSpan Length { get; init => field = CheckLength(value); } = CheckLength(Length);
 
 	/// <summary>The circle size setting.</summary>
-	public double Cs
-	{
-		get;
-		init => field = double.IsFinite(value)
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), "Circle size must be a finite number.");
-	} = Cs;
+	/// <exception cref="ArgumentOutOfRangeException">The value is not a finite number.</exception>
+	public double Cs { get; init => field = CheckFinite(value); } = CheckFinite(Cs);
 
 	/// <summary>The approach rate setting.</summary>
-	public double Ar
-	{
-		get;
-		init => field = double.IsFinite(value)
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), "Approach rate must be a finite number.");
-	} = Ar;
+	/// <exception cref="ArgumentOutOfRangeException">The value is not a finite number.</exception>
+	public double Ar { get; init => field = CheckFinite(value); } = CheckFinite(Ar);
 
 	/// <summary>The overall difficulty setting.</summary>
-	public double Od
-	{
-		get;
-		init => field = double.IsFinite(value)
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), "Overall difficulty must be a finite number.");
-	} = Od;
+	/// <exception cref="ArgumentOutOfRangeException">The value is not a finite number.</exception>
+	public double Od { get; init => field = CheckFinite(value); } = CheckFinite(Od);
 
 	/// <summary>The health drain rate setting.</summary>
-	public double Hp
-	{
-		get;
-		init => field = double.IsFinite(value)
-			? value
-			: throw new ArgumentOutOfRangeException(nameof(value), "Health drain must be a finite number.");
-	} = Hp;
+	/// <exception cref="ArgumentOutOfRangeException">The value is not a finite number.</exception>
+	public double Hp { get; init => field = CheckFinite(value); } = CheckFinite(Hp);
 
 	/// <summary>The star rating of the beatmap.</summary>
-	public double Star
+	/// <exception cref="ArgumentOutOfRangeException">The value is negative or not a finite number.</exception>
+	public double Star { get; init => field = CheckPositive(value); } = CheckPositive(Star);
+
+	private static double CheckPositive(double value)
 	{
-		get;
-		init
-		{
-			ArgumentOutOfRangeException.ThrowIfNegative(value);
-			field = value;
-		}
-	} = Star;
+		return double.IsFinite(value) && value >= 0
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), value,
+				"The value must be a finite number of at least zero.");
+	}
+
+	private static double CheckFinite(double value)
+	{
+		return double.IsFinite(value)
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), value, "The value must be a finite number.");
+	}
+
+	private static TimeSpan CheckLength(TimeSpan value)
+	{
+		return value >= TimeSpan.Zero
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), value, "Length cannot be negative.");
+	}
 }

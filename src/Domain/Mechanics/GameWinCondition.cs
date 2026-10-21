@@ -1,4 +1,5 @@
-﻿using Basil.Domain.Scores;
+﻿using Basil.Domain.Common;
+using Basil.Domain.Scores;
 
 namespace Basil.Domain.Mechanics;
 
@@ -13,7 +14,7 @@ public enum GameWinCondition : byte
 	/// <summary>The match is decided by the accuracy of each team.</summary>
 	Accuracy = 1,
 
-	/// <summary>The match is decided by the combo of each team.</summary>
+	/// <summary>The match is decided by the highest combo each team reached.</summary>
 	Combo = 2,
 
 	/// <summary>The match is decided by the ScoreV2 scoring rules.</summary>
@@ -45,14 +46,16 @@ public static class GameWinConditionExtensions
 
 		/// <summary>Gets the metric this win condition compares.</summary>
 		/// <param name="score">The score to measure.</param>
-		/// <returns>The total score, the accuracy, or the combo count at the end of the beatmap.</returns>
+		/// <returns>The total score, the accuracy, or the highest combo reached.</returns>
+		/// <exception cref="ArgumentOutOfRangeException">The win condition is not a defined value.</exception>
 		public double Metric(ScoreData score)
 		{
 			return condition switch
 			{
+				GameWinCondition.Score or GameWinCondition.ScoreV2 => score.TotalScore,
 				GameWinCondition.Accuracy => score.Accuracy,
-				GameWinCondition.Combo => score.CurrentCombo,
-				_ => score.TotalScore
+				GameWinCondition.Combo => score.MaxCombo,
+				_ => throw new ArgumentOutOfRangeException(nameof(condition), condition, "Unknown win condition.")
 			};
 		}
 	}
@@ -109,13 +112,13 @@ public static class GameWinConditionExtensions
 			if (byAccuracy != 0) return byAccuracy;
 
 			// Equals
-			var isPerfect = x.Accuracy >= 1.0;
+			var isPerfect = x.Accuracy.NearlyEqual(100.0, 1e-9);
 			return isPerfect ? ScoreComparer.Instance.Compare(x, y) : 0; // osu! domain, do not change!
 		}
 	}
 
 	/// <summary>
-	///     Compares scores by the combo count at the end of the beatmap; a higher count compares greater. A
+	///     Compares scores by the highest combo reached; a higher count compares greater. A
 	///     tie is broken by total score.
 	/// </summary>
 	private sealed class ComboComparer : IComparer<ScoreData>
@@ -132,7 +135,7 @@ public static class GameWinConditionExtensions
 		{
 			if (Nulls(x, y) is { } order) return order;
 
-			var byCombo = x!.CurrentCombo.CompareTo(y!.CurrentCombo);
+			var byCombo = x!.MaxCombo.CompareTo(y!.MaxCombo);
 			return byCombo != 0 ? byCombo : ScoreComparer.Instance.Compare(x, y);
 		}
 	}

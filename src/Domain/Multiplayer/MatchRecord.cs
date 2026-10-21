@@ -9,12 +9,14 @@ namespace Basil.Domain.Multiplayer;
 public sealed class MatchRecord : IEquatable<MatchRecord>
 {
 	/// <summary>Gets the unique identifier of the match.</summary>
+	/// <exception cref="ArgumentOutOfRangeException">The value is less than 1.</exception>
 	public required int Id
 	{
 		get;
 		init
 		{
-			ArgumentOutOfRangeException.ThrowIfNegative(value);
+			if (value < 1)
+				throw new ArgumentOutOfRangeException(nameof(value), value, "Match ids start at 1.");
 			field = value;
 		}
 	}

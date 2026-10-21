@@ -76,17 +76,29 @@ public sealed record ScoreData(
 	bool IsFullCombo,
 	DateTimeOffset Timestamp)
 {
+	/// <summary>Gets the user ID of the player, when known.</summary>
+	/// <exception cref="ArgumentOutOfRangeException">The user id is not positive.</exception>
+	public int? UserId { get; init => field = CheckUserId(value); } = CheckUserId(UserId);
+
+	/// <summary>Gets the game mode the play used.</summary>
+	/// <exception cref="ArgumentOutOfRangeException">The game mode is not a defined value.</exception>
+	public GameMode Mode { get; init => field = value.ThrowIfUndefined(); } = Mode.ThrowIfUndefined();
+
+	/// <summary>Gets the grade earned.</summary>
+	/// <exception cref="ArgumentOutOfRangeException">The grade is not a defined value.</exception>
+	public Grade Grade { get; init => field = value.ThrowIfUndefined(); } = Grade.ThrowIfUndefined();
+
 	/// <summary>Gets the total score achieved.</summary>
 	/// <exception cref="ArgumentOutOfRangeException">The total score is negative.</exception>
-	public int TotalScore { get; init; } = TotalScore >= 0
-		? TotalScore
-		: throw new ArgumentOutOfRangeException(nameof(TotalScore), "TotalScore must be non-negative.");
+	public int TotalScore { get; init => field = Check(value); } = Check(TotalScore);
 
 	/// <summary>Gets the maximum combo reached.</summary>
 	/// <exception cref="ArgumentOutOfRangeException">The maximum combo is negative.</exception>
-	public short MaxCombo { get; init; } = MaxCombo >= 0
-		? MaxCombo
-		: throw new ArgumentOutOfRangeException(nameof(MaxCombo), "MaxCombo must be non-negative.");
+	public short MaxCombo { get; init => field = Check(value); } = Check(MaxCombo);
+
+	/// <summary>Gets the combo count at the end of the beatmap.</summary>
+	/// <exception cref="ArgumentOutOfRangeException">The combo count is negative.</exception>
+	public short CurrentCombo { get; init => field = Check(value); } = Check(CurrentCombo);
 
 	/// <summary>
 	///     Gets the checksum the client computed for the submission of this score, which identifies the submission,
@@ -98,4 +110,25 @@ public sealed record ScoreData(
 	///     Gets the play's accuracy, computed from its hit counts under its mode and mods.
 	/// </summary>
 	public double Accuracy => HitCounts.CalculateAccuracy(Mode, Mods);
+
+	private static int Check(int value)
+	{
+		return value >= 0
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), value, "The value must not be negative.");
+	}
+
+	private static short Check(short value)
+	{
+		return value >= 0
+			? value
+			: throw new ArgumentOutOfRangeException(nameof(value), value, "The value must not be negative.");
+	}
+
+	private static int? CheckUserId(int? value)
+	{
+		return value is { } id && id < 1
+			? throw new ArgumentOutOfRangeException(nameof(value), value, "User ids start at 1.")
+			: value;
+	}
 }

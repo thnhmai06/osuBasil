@@ -3,7 +3,7 @@ using Basil.Domain.Common;
 using Basil.Domain.Content;
 using Basil.Domain.Mechanics;
 
-namespace Basil.Domain.Tests;
+namespace Basil.Domain.Tests.Beatmaps;
 
 /// <summary>
 ///     Verifies the beatmap record's display name.

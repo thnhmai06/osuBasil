@@ -18,6 +18,6 @@ public sealed record Submission
 	/// <remarks>Kept as reported, including bits that no <see cref="BanchoFlags" /> member names.</remarks>
 	public BanchoFlags BanchoFlags { get; init; } = BanchoFlags.Clean;
 
-	/// <summary>Gets or sets the submission checksum that the client sent.</summary>
+	/// <summary>Gets the submission checksum that the client sent.</summary>
 	public required Md5 HashByClient { get; init; }
 }

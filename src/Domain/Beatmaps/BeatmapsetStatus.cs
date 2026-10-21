@@ -1,7 +1,7 @@
 namespace Basil.Domain.Beatmaps;
 
 /// <summary>
-///     Represents the ranked status of a beatmap.
+///     Represents the ranked status of a beatmapset.
 /// </summary>
 public enum BeatmapsetStatus : sbyte
 {

@@ -32,31 +32,6 @@ public readonly record struct ContentReference : IParsable<ContentReference>, IF
 		if (!TryNormalizePath(path, out var canonical))
 			throw new ArgumentException("The path must be a canonical relative asset path.", nameof(path));
 		Value = canonical;
-		return;
-
-		static bool TryNormalizePath(string path, [NotNullWhen(true)] out string? canonical)
-		{
-			canonical = null;
-			var trimmed = path.Trim();
-			if (trimmed.Length == 0) return false;
-			if (trimmed.Any(c => c == '\0' || char.IsControl(c))) return false;
-			var text = trimmed.Replace('\\', '/');
-			if (text.StartsWith('/') || text.Contains(':')) return false;
-
-			var segments = text.Split('/');
-			var parts = new List<string>(segments.Length);
-			foreach (var segment in segments)
-			{
-				if (segment.Length == 0 || segment == ".") continue;
-				if (segment == "..") return false;
-				parts.Add(segment);
-			}
-
-			if (parts.Count == 0) return false;
-
-			canonical = string.Join('/', parts);
-			return true;
-		}
 	}
 
 	/// <summary>Gets the canonical text of the reference; null for the default value.</summary>
@@ -75,6 +50,9 @@ public readonly record struct ContentReference : IParsable<ContentReference>, IF
 	/// <exception cref="FormatException"><paramref name="format" /> is not empty or "G".</exception>
 	public string ToString(string? format, IFormatProvider? formatProvider)
 	{
+		if (!string.IsNullOrEmpty(format) && format != "G")
+			throw new FormatException($"The '{format}' format is not supported.");
+
 		return ToString();
 	}
 
@@ -86,7 +64,7 @@ public readonly record struct ContentReference : IParsable<ContentReference>, IF
 	/// <exception cref="FormatException"><paramref name="s" /> is not a canonical reference.</exception>
 	public static ContentReference Parse(string s, IFormatProvider? provider)
 	{
-		ArgumentException.ThrowIfNullOrWhiteSpace(s);
+		ArgumentNullException.ThrowIfNull(s);
 		try
 		{
 			return IsAddress(s)
@@ -153,5 +131,56 @@ public readonly record struct ContentReference : IParsable<ContentReference>, IF
 	private static bool IsAddress(string s)
 	{
 		return Uri.TryCreate(s, UriKind.Absolute, out var u) && u.IsHttp();
+	}
+
+	private static bool TryNormalizePath(string path, [NotNullWhen(true)] out string? canonical)
+	{
+		canonical = null;
+		var trimmed = path.Trim();
+		if (trimmed.Length == 0) return false;
+		if (trimmed.Any(c => c == '\0' || char.IsControl(c))) return false;
+		var text = trimmed.Replace('\\', '/');
+		if (text.StartsWith('/') || text.Contains(':')) return false;
+
+		var segments = text.Split('/');
+		var parts = new List<string>(segments.Length);
+		foreach (var segment in segments)
+		{
+			if (segment.Length == 0 || segment == ".") continue;
+			if (segment == "..") return false;
+			if (!IsValidSegment(segment)) return false;
+			parts.Add(segment);
+		}
+
+		if (parts.Count == 0) return false;
+
+		canonical = string.Join('/', parts);
+		return true;
+	}
+
+	private static bool IsValidSegment(string segment)
+	{
+		if (segment.EndsWith('.') || segment.EndsWith(' ')) return false;
+		if (segment.Any(c => c is '<' or '>' or ':' or '"' or '|' or '?' or '*' || char.IsControl(c))) return false;
+
+		var dot = segment.IndexOf('.');
+		return !IsWindowsDeviceName(dot < 0 ? segment : segment[..dot]);
+	}
+
+	private static bool IsWindowsDeviceName(string name)
+	{
+		if (name.Length == 0) return false;
+
+		if (name.Length == 3)
+			return name.Equals("CON", StringComparison.OrdinalIgnoreCase)
+			       || name.Equals("PRN", StringComparison.OrdinalIgnoreCase)
+			       || name.Equals("AUX", StringComparison.OrdinalIgnoreCase)
+			       || name.Equals("NUL", StringComparison.OrdinalIgnoreCase);
+
+		if (name.Length != 4) return false;
+		if (!name.StartsWith("COM", StringComparison.OrdinalIgnoreCase)
+		    && !name.StartsWith("LPT", StringComparison.OrdinalIgnoreCase)) return false;
+
+		return name[3] is >= '1' and <= '9';
 	}
 }

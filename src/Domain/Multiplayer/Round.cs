@@ -17,11 +17,7 @@ public sealed class Round : IMatchEntry, IEquatable<Round>
 			: throw new ArgumentOutOfRangeException(nameof(value), "Round number must be positive.");
 	}
 
-	/// <summary>Gets or sets the currently selected beatmap.</summary>
-	/// <remarks>
-	///     A <see langword="null" /> value means that no beatmap has been selected yet — not that a
-	///     selected beatmap could not be found.
-	/// </remarks>
+	/// <summary>Gets the currently selected beatmap.</summary>
 	public required Md5 BeatmapHash { get; init; }
 
 	/// <summary>The match settings the round was played under.</summary>

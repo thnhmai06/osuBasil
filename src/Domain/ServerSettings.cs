@@ -43,11 +43,11 @@ public sealed record ServerSettings
 	public sealed record MenuIconSettings
 	{
 		/// <summary>Gets the address the icon links to, or <see langword="null" /> for none.</summary>
-		/// <exception cref="ArgumentException">The value is not an absolute address.</exception>
+		/// <exception cref="ArgumentException">The value is not absolute with an http or https scheme.</exception>
 		public Uri? Url
 		{
 			get;
-			init => field = value?.ThrowIfNotAbsolute();
+			init => field = value?.ThrowIfHttp();
 		}
 
 		/// <summary>Gets the image of the icon, or <see langword="null" /> for none.</summary>
@@ -61,22 +61,22 @@ public sealed record ServerSettings
 		///     Gets the address beatmapset downloads are sent to, or <see langword="null" /> when the server has no
 		///     download mirror.
 		/// </summary>
-		/// <exception cref="ArgumentException">The value is not an absolute address.</exception>
+		/// <exception cref="ArgumentException">The value is not absolute with an http or https scheme.</exception>
 		public Uri? DownloadEndpoint
 		{
 			get;
-			init => field = value?.ThrowIfNotAbsolute();
+			init => field = value?.ThrowIfHttp();
 		}
 
 		/// <summary>
 		///     Gets the address beatmap searches are sent to, or <see langword="null" /> when the server has no search
 		///     mirror.
 		/// </summary>
-		/// <exception cref="ArgumentException">The value is not an absolute address.</exception>
+		/// <exception cref="ArgumentException">The value is not absolute with an http or https scheme.</exception>
 		public Uri? SearchEndpoint
 		{
 			get;
-			init => field = value?.ThrowIfNotAbsolute();
+			init => field = value?.ThrowIfHttp();
 		}
 	}
 

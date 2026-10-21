@@ -1,6 +1,6 @@
 using Basil.Domain.Users;
 
-namespace Basil.Domain.Tests;
+namespace Basil.Domain.Tests.Users;
 
 public class UserTests
 {
@@ -48,5 +48,29 @@ public class UserTests
 
 		Assert.Throws<InvalidOperationException>(() => user.DeletedAt = null);
 		Assert.Equal(DateTimeOffset.UnixEpoch, user.DeletedAt);
+	}
+
+	[Fact]
+	public void Name_TrailingNewline_Throws()
+	{
+		Assert.Throws<ArgumentException>(() => new UserData { Name = "abc\n" });
+	}
+
+	[Fact]
+	public void Name_Null_Throws()
+	{
+		Assert.Throws<ArgumentNullException>(() => new UserData { Name = null! });
+	}
+
+	[Fact]
+	public void Country_Undefined_Throws()
+	{
+		Assert.Throws<ArgumentOutOfRangeException>(() => new UserData { Name = "player", Country = (Country)255 });
+	}
+
+	[Fact]
+	public void Country_UndefinedCode_Throws()
+	{
+		Assert.Throws<ArgumentOutOfRangeException>(() => new UserData { Name = "player", Country = default });
 	}
 }

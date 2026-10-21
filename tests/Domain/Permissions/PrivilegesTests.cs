@@ -1,7 +1,7 @@
 using Basil.Domain.Permissions;
 using Permission = Basil.Domain.Permissions.Permissions;
 
-namespace Basil.Domain.Tests;
+namespace Basil.Domain.Tests.Permissions;
 
 public class PrivilegesTests
 {

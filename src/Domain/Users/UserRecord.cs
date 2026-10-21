@@ -74,6 +74,7 @@ public sealed partial class UserData
 	/// <summary>
 	///     Gets or sets the username.
 	/// </summary>
+	/// <exception cref="ArgumentNullException">The value is <see langword="null" />.</exception>
 	/// <exception cref="ArgumentException">
 	///     Thrown when the username does not satisfy osu!'s registration rules.
 	/// </exception>
@@ -82,6 +83,7 @@ public sealed partial class UserData
 		get;
 		set
 		{
+			ArgumentNullException.ThrowIfNull(value);
 			if (value.Length is < 3 or > 15)
 				throw new ArgumentException("Username must be between 3 and 15 characters.", nameof(value));
 			if (value.StartsWith(' ') || value.EndsWith(' '))
@@ -98,7 +100,12 @@ public sealed partial class UserData
 	}
 
 	/// <summary>Gets or sets the country the user is registered in.</summary>
-	public Country Country { get; set; } = Country.Xx;
+	/// <exception cref="ArgumentOutOfRangeException">The value is not a defined country.</exception>
+	public Country Country
+	{
+		get;
+		set => field = value.ThrowIfUndefined();
+	} = Country.Xx;
 
 	/// <summary>Gets or sets the permissions granted to the user.</summary>
 	/// <remarks>New users are granted every player and supporter permission.</remarks>
@@ -128,6 +135,6 @@ public sealed partial class UserData
 		return name.ToLowerInvariant().Replace(' ', '_');
 	}
 
-	[GeneratedRegex(@"^[a-zA-Z0-9_\-\[\] ]+$")]
+	[GeneratedRegex(@"^[a-zA-Z0-9_\-\[\] ]+\z")]
 	private static partial Regex OsuUsernameChars();
 }

@@ -49,10 +49,15 @@ public sealed class GeneralChannelRecord : IEquatable<GeneralChannelRecord>
 public sealed class GeneralChannelData
 {
 	/// <summary>Gets or sets the topic shown to users who join the channel.</summary>
+	/// <exception cref="ArgumentNullException">The value is <see langword="null" />.</exception>
 	public string Topic
 	{
 		get;
-		set => field = value.ThrowIfHasNul();
+		set
+		{
+			ArgumentNullException.ThrowIfNull(value);
+			field = value.ThrowIfHasNul();
+		}
 	} = string.Empty;
 
 	/// <summary>Gets or sets the roles a user must all have to read the channel; <see cref="Privileges.None" /> lets anyone read.</summary>
