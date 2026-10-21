@@ -17,9 +17,7 @@ namespace Basil.Infrastructure.Capabilities.Beatmaps;
 ///     <c>ChildrenBeatmaps</c> array. <c>HasVideo</c> is read leniently as either a JSON boolean or
 ///     a <c>0</c>/<c>1</c> number, since mirrors are inconsistent about which they send.
 /// </remarks>
-internal sealed class HttpBeatmapsetMirror(
-	ISettingsRepository settings,
-	ILogger<HttpBeatmapsetMirror> logger) : IBeatmapsetMirror
+internal sealed class HttpBeatmapsetMirror : IBeatmapsetMirror
 {
 	private static readonly HttpClient Http =
 		new(new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(15) })
@@ -29,11 +27,34 @@ internal sealed class HttpBeatmapsetMirror(
 
 	private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
+	private readonly ISettingsRepository _settings;
+	private readonly ILogger<HttpBeatmapsetMirror> _logger;
+	private readonly HttpClient _http;
+
+	/// <summary>Creates the mirror client that reaches the configured mirror over the server's shared connection pool.</summary>
+	/// <param name="settings">The settings holding the mirror addresses.</param>
+	/// <param name="logger">The logger failures are reported to.</param>
+	public HttpBeatmapsetMirror(ISettingsRepository settings, ILogger<HttpBeatmapsetMirror> logger)
+		: this(settings, logger, Http)
+	{
+	}
+
+	/// <summary>Creates the mirror client that reaches the mirror over the given connection pool.</summary>
+	/// <param name="settings">The settings holding the mirror addresses.</param>
+	/// <param name="logger">The logger failures are reported to.</param>
+	/// <param name="http">The client the requests are sent through.</param>
+	internal HttpBeatmapsetMirror(ISettingsRepository settings, ILogger<HttpBeatmapsetMirror> logger, HttpClient http)
+	{
+		_settings = settings;
+		_logger = logger;
+		_http = http;
+	}
+
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<MirrorBeatmapset>?> SearchAsync(string? text, GameMode? mode, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
-		var serverSettings = await settings.GetAsync(cancellationToken);
+		var serverSettings = await _settings.GetAsync(cancellationToken);
 		var endpoint = serverSettings.BeatmapMirror.SearchEndpoint;
 		if (endpoint is null) return null;
 
@@ -44,12 +65,14 @@ internal sealed class HttpBeatmapsetMirror(
 
 		try
 		{
-			var payload = await Http.GetFromJsonAsync<List<RawSet>>(url, JsonOptions, cancellationToken);
+			var payload = await _http.GetFromJsonAsync<List<RawSet>>(url, JsonOptions, cancellationToken);
 			return payload?.Where(set => set.ChildrenBeatmaps is not null).Select(ToBeatmapset).ToList();
 		}
-		catch (Exception ex) when (ex is HttpRequestException or JsonException or TaskCanceledException)
+		catch (Exception exception) when (
+			exception is (HttpRequestException or JsonException or TaskCanceledException) &&
+			!cancellationToken.IsCancellationRequested)
 		{
-			logger.LogWarning(ex, "Mirror search request failed: {Url}", url);
+			_logger.LogWarning(exception, "Mirror search request failed: {Url}", url);
 			return null;
 		}
 	}
@@ -58,7 +81,7 @@ internal sealed class HttpBeatmapsetMirror(
 	public async Task<Uri?> GetDownloadAddressAsync(int beatmapsetId, bool withVideo,
 		CancellationToken cancellationToken = default)
 	{
-		var serverSettings = await settings.GetAsync(cancellationToken);
+		var serverSettings = await _settings.GetAsync(cancellationToken);
 		var endpoint = serverSettings.BeatmapMirror.DownloadEndpoint;
 		if (endpoint is null) return null;
 
@@ -113,10 +136,10 @@ internal sealed class HttpBeatmapsetMirror(
 
 	private sealed class RawSet
 	{
-		public string Artist { get; } = "";
-		public string Title { get; } = "";
-		public string Creator { get; } = "";
-		public string LastUpdate { get; } = "";
+		public string Artist { get; init; } = "";
+		public string Title { get; init; } = "";
+		public string Creator { get; init; } = "";
+		public string LastUpdate { get; init; } = "";
 		public int SetId { get; init; }
 		public JsonElement HasVideo { get; init; }
 		public List<RawBeatmap>? ChildrenBeatmaps { get; init; }
@@ -125,7 +148,7 @@ internal sealed class HttpBeatmapsetMirror(
 	private sealed class RawBeatmap
 	{
 		public int BeatmapId { get; init; }
-		public string DiffName { get; } = "";
+		public string DiffName { get; init; } = "";
 		public double DifficultyRating { get; init; }
 		public int Mode { get; init; }
 	}

@@ -12,8 +12,12 @@ namespace Basil.Infrastructure.Runtime.Beatmaps;
 internal sealed class BeatmapsetStorageWatcher(
 	Beatmapsets beatmapsets,
 	IBeatmapsetStorage storage,
+	TimeProvider time,
 	ILogger<BeatmapsetStorageWatcher> logger) : BackgroundService
 {
+	/// <summary>How long to wait before watching the storage again after its watch stops.</summary>
+	private static readonly TimeSpan RestartDelay = TimeSpan.FromSeconds(5);
+
 	private readonly CancellationTokenSource _stopping = new();
 
 	/// <summary>The watched entries to scan once the full scan is done.</summary>
@@ -47,10 +51,26 @@ internal sealed class BeatmapsetStorageWatcher(
 
 	/// <summary>Stops watching the storage, then lets the remaining hosted services stop.</summary>
 	/// <param name="cancellationToken">A token that cancels stopping.</param>
+	/// <remarks>
+	///     A start-up that was cancelled ends before the watch is read; stopping reads it here instead, so the storage
+	///     is not left watched.
+	/// </remarks>
 	public override async Task StopAsync(CancellationToken cancellationToken)
 	{
 		await _stopping.CancelAsync();
 		await base.StopAsync(cancellationToken);
+
+		if (Interlocked.Exchange(ref _changes, null) is not { } changes) return;
+
+		try
+		{
+			await foreach (var _ in changes.WithCancellation(_stopping.Token))
+			{
+			}
+		}
+		catch (OperationCanceledException)
+		{
+		}
 	}
 
 	/// <summary>Releases the watch's cancellation.</summary>
@@ -61,28 +81,55 @@ internal sealed class BeatmapsetStorageWatcher(
 	}
 
 	/// <inheritdoc />
+	/// <remarks>
+	///     A watch that stops for any reason other than stopping the service is logged, and the storage is watched again
+	///     after a short delay, so one broken entry or one broken storage call does not leave the server with stale
+	///     beatmapsets.
+	/// </remarks>
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
-		try
+		// The watch belongs to this method once it runs; a start-up that ended before this leaves it to StopAsync.
+		if (Interlocked.Exchange(ref _changes, null) is not { } changes) return;
+
+		while (true)
 		{
-			await foreach (var entry in _changes!.WithCancellation(stoppingToken))
-				try
-				{
-					var result = await beatmapsets.ScanAsync(entry, stoppingToken);
-					if (result is not { Imported: 0, Updated: 0, Forgotten: 0 })
-						logger.LogInformation(
-							"Beatmapset entry {Name}: {Imported} taken in, {Updated} updated, {Forgotten} forgotten",
-							entry.Name, result.Imported, result.Updated, result.Forgotten);
-				}
-				catch (Exception exception) when (exception is not OperationCanceledException ||
-				                                  !stoppingToken.IsCancellationRequested)
-				{
-					logger.LogError(exception, "Could not scan beatmapset entry {Name}", entry.Name);
-				}
-		}
-		catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested ||
-		                                         _stopping.IsCancellationRequested)
-		{
+			try
+			{
+				await foreach (var entry in changes.WithCancellation(stoppingToken))
+					try
+					{
+						var result = await beatmapsets.ScanAsync(entry, stoppingToken);
+						if (result is not { Imported: 0, Updated: 0, Forgotten: 0 })
+							logger.LogInformation(
+								"Beatmapset entry {Name}: {Imported} taken in, {Updated} updated, {Forgotten} forgotten",
+								entry.Name, result.Imported, result.Updated, result.Forgotten);
+					}
+					catch (Exception exception) when (exception is not OperationCanceledException ||
+					                                  !stoppingToken.IsCancellationRequested)
+					{
+						logger.LogError(exception, "Could not scan beatmapset entry {Name}", entry.Name);
+					}
+			}
+			catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested ||
+			                                         _stopping.IsCancellationRequested)
+			{
+				return;
+			}
+			catch (Exception exception)
+			{
+				logger.LogError(exception, "The beatmapset storage watch stopped; watching the storage again");
+			}
+
+			try
+			{
+				await Task.Delay(RestartDelay, time, stoppingToken);
+			}
+			catch (OperationCanceledException)
+			{
+				return;
+			}
+
+			changes = storage.WatchAsync(stoppingToken);
 		}
 	}
 }

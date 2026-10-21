@@ -9,9 +9,9 @@
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="Microsoft.Extensions.Logging"/>
 		<PackageReference Include="Microsoft.Extensions.TimeProvider.Testing"/>
 		<PackageReference Include="Microsoft.NET.Test.Sdk"/>
+		<PackageReference Include="NSubstitute"/>
 		<PackageReference Include="xunit.v3"/>
 		<PackageReference Include="xunit.runner.visualstudio">
 			<PrivateAssets>all</PrivateAssets>
@@ -25,8 +25,14 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\..\..\src\Domain\Basil.Domain.csproj"/>
-		<ProjectReference Include="..\..\..\src\Application$p\Basil.Application.Capabilities.csproj"/>
-		<ProjectReference Include="..\..\..\src\Infrastructure$p\Basil.Infrastructure.Capabilities.csproj"/>
+		<ProjectReference Include="..\..\..\src\Application\Capabilities\Basil.Application.Capabilities.csproj"/>
+		<ProjectReference Include="..\..\..\src\Application\Persistence\Basil.Application.Persistence.csproj"/>
+		<ProjectReference Include="..\..\..\src\Infrastructure\Capabilities\Basil.Infrastructure.Capabilities.csproj"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Sample beatmaps and audio shared by the capability tests, copied beside the test binary. -->
+		<None Include="..\..\Assets\**\*" LinkBase="Assets" CopyToOutputDirectory="PreserveNewest"/>
 	</ItemGroup>
 
 </Project>
