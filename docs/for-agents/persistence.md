@@ -92,6 +92,7 @@ Repository contracts, byte storages and the memory-first model. Moved out of `AG
   * **Reads** go straight to PostgreSQL on a context of their own (a pooled connection, no change tracking: memory is the truth, not the context) and see only what is committed. A listing
     asks the database which rows match and returns the live instance of each; a row whose deletion is still queued
     never comes back into memory.
+  * **A stored row is trusted.** Rows are written only by the server, through the Domain, so a row that fails the Domain rules on load is a fault of the database, not a case to work around: the read throws. The exception is configuration an operator edits by hand (the settings and the menu banners): a value that cannot be read is logged and the default is kept, or the banner is left out, so the server still starts.
   * **A value unique across a table** (a user's safe name, a beatmap's hash or osu! id, a score's checksum, an id the
     store assigns): when memory holds a record with that value the repository rejects the change at once; otherwise
     the insert runs as a try-operation and a unique violation from the database means the value is taken. Either way
