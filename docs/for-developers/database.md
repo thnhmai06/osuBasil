@@ -97,18 +97,18 @@ Each repository keeps its live instances itself:
 ```mermaid
 flowchart LR
     op["Repository change"] -->|"copy of the values now"| q["Queue of its root"]
-    q -->|"one statement at a time, in order"| pg[(PostgreSQL)]
+    q -->|"one change at a time, in order"| pg[(PostgreSQL)]
     try["Try-operation"] -->|"own transaction, awaited"| q
     app["Append"] -->|"own transaction, not awaited"| q
 ```
 
 * `DatabaseWriter` keeps one queue per **root**: `Root.User`, `Root.Match`, `Root.Beatmapset`, `Root.Server`. Writes
-  of one root are sent in order, one statement at a time; a copy not sent yet is replaced by a newer copy of the same
+  of one root are sent in order, one change at a time; a copy not sent yet is replaced by a newer copy of the same
   identity. At most `Basil:Database:WriteConnections` connections (8 by default) write at once.
 * A **copy** (`CreateOrUpdateAsync`, `DeleteAsync`) carries the values as they were when queued and returns at once.
 * A **try-operation** runs in a transaction of its own after the earlier writes of its root; its cancellation token
-  counts only while it waits for its turn. A commit whose outcome was lost with the connection is settled with
-  `pg_xact_status`, so it is neither lost nor run twice.
+  counts only while it waits for its turn. Its transaction also stores a ticket row (`write_tickets`); a commit whose outcome was lost with the connection is
+  settled by asking whether the ticket exists, so the write is neither lost nor run twice. Old tickets are removed.
 * An **append** runs the same way as a try-operation but nobody waits for it; a refusal is logged.
 * No write is grouped with unrelated writes. A business operation that must store several rows together gets one
   try-operation of its own.
@@ -122,22 +122,23 @@ logged as an error. On shutdown the server waits for the queues to drain and log
 
 ### Reads
 
-A read runs on a pooled connection of its own and sees only what is committed. A listing asks the database which rows
+A read runs on a context of its own, on a pooled connection, and sees only what is committed. A listing asks the database which rows
 match and returns the live instance of each; a row whose deletion is still queued never comes back into memory.
 
 ### Migrations
 
-Migration scripts are `Migrations/NNN_name.sql`, embedded in `Basil.Infrastructure.Persistence`. At startup the pending
-scripts are applied in version order in one transaction, and the applied version is recorded in `schema_version`;
-when one fails, the database is left as it was. During the rework the baseline (`001_baseline.sql`) is edited in
-place, so a development database is recreated when it changes.
+The schema is the Entity Framework model (`BasilDbContext` and the `XxxRow` types next to their repositories). Migrations
+are Entity Framework migrations (`Migrations/`, created with `dotnet ef migrations add`); at startup the pending ones
+are applied in order and recorded by Entity Framework. Persistence holds no SQL text and no Dapper: reads and writes
+are LINQ and row objects. During the rework the `InitialCreate` migration is regenerated in place, so a development
+database is recreated when the model changes.
 
 ## Related code
 
 * `src/Infrastructure/Persistence/Common/Database/` — `DatabaseWriter`, `DatabaseReader`, `DatabaseMigrator`
 * `src/Infrastructure/Persistence/Common/Writing/` — `Root`, `WriteCommand`, environment errors
 * `src/Infrastructure/Persistence/Memory/` — `MemoryRepository`, `IdentityMap`, `WeakIndex`, `OwnedLists`
-* `src/Infrastructure/Persistence/Migrations/001_baseline.sql` — the schema
+* `src/Infrastructure/Persistence/Postgres/BasilDbContext.cs`, the `XxxRow` types and `Migrations/` — the schema
 * `src/Infrastructure/Persistence/StorageStartup.cs` — migration and resident loading at startup
 
 ## See also

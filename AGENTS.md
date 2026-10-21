@@ -648,6 +648,10 @@ owner merges them into the skill later, nobody edits the skill silently.
   the number is a protocol or ruleset contract; expected values come from the specification, never from running the code.
 * **Test projects mirror source projects** one to one (`tests/` tree = `src/` tree, folders inside mirror feature
   folders); shared fixtures live in one support project.
+* **A persistence layer has no SQL text** (owner decision, 2026-10-22): Entity Framework Core with LINQ and row objects,
+  never Dapper or raw SQL (`FromSql`, `ExecuteSql`, `SqlQuery`, `NpgsqlCommand`); the few schema details EF cannot
+  express (a filtered unique index, check constraints) are written in the model configuration and listed in the
+  review. Rows are separate entity types, never the Domain types; migrations are EF migrations.
 * **A fixed-id system account** (the bot, id 1) is taken over if it exists and created if it does not, by startup code,
   documented as the one exception to "the server creates no account".
 

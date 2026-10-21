@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Net;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -135,7 +136,7 @@ namespace Basil.Infrastructure.Persistence.Migrations
                     ar = table.Column<double>(type: "double precision", nullable: false),
                     od = table.Column<double>(type: "double precision", nullable: false),
                     hp = table.Column<double>(type: "double precision", nullable: false),
-                    objects = table.Column<string>(type: "jsonb", nullable: false),
+                    objects = table.Column<JsonElement>(type: "jsonb", nullable: false),
                     background = table.Column<string>(type: "text", nullable: true),
                     audio = table.Column<string>(type: "text", nullable: true),
                     video = table.Column<string>(type: "text", nullable: true),
@@ -445,6 +446,11 @@ namespace Basil.Infrastructure.Persistence.Migrations
                     { "#lobby", false, 0, "Multiplayer lobby discussion.", true, 0 },
                     { "#osu", true, 0, "General discussion.", true, 0 }
                 });
+
+            migrationBuilder.InsertData(
+                table: "users",
+                columns: new[] { "id", "country", "deleted_at", "name", "normalized_name", "permissions" },
+                values: new object[] { 1, 244, null, "BasilBot", "basilbot", 0L });
 
             migrationBuilder.CreateIndex(
                 name: "ix_beatmaps_beatmapset_id",

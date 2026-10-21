@@ -59,34 +59,34 @@ internal static class BeatmapQueryFilter
 				         StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
 			{
 				var pattern = LikePattern.Containing(word);
-				beatmaps = beatmaps.Where(row => EF.Functions.ILike(row.Set.Artist, pattern) ||
-				                                 EF.Functions.ILike(row.Set.Title, pattern) ||
-				                                 EF.Functions.ILike(row.Set.Creator, pattern) ||
-				                                 EF.Functions.ILike(row.Version, pattern));
+				beatmaps = beatmaps.Where(row => EF.Functions.ILike(row.Set.Artist, pattern, LikePattern.Escape) ||
+				                                 EF.Functions.ILike(row.Set.Title, pattern, LikePattern.Escape) ||
+				                                 EF.Functions.ILike(row.Set.Creator, pattern, LikePattern.Escape) ||
+				                                 EF.Functions.ILike(row.Version, pattern, LikePattern.Escape));
 			}
 
 		if (!string.IsNullOrWhiteSpace(query.Creator))
 		{
 			var pattern = LikePattern.Containing(query.Creator);
-			beatmaps = beatmaps.Where(row => EF.Functions.ILike(row.Set.Creator, pattern));
+			beatmaps = beatmaps.Where(row => EF.Functions.ILike(row.Set.Creator, pattern, LikePattern.Escape));
 		}
 
 		if (!string.IsNullOrWhiteSpace(query.Artist))
 		{
 			var pattern = LikePattern.Containing(query.Artist);
-			beatmaps = beatmaps.Where(row => EF.Functions.ILike(row.Set.Artist, pattern));
+			beatmaps = beatmaps.Where(row => EF.Functions.ILike(row.Set.Artist, pattern, LikePattern.Escape));
 		}
 
 		if (!string.IsNullOrWhiteSpace(query.Title))
 		{
 			var pattern = LikePattern.Containing(query.Title);
-			beatmaps = beatmaps.Where(row => EF.Functions.ILike(row.Set.Title, pattern));
+			beatmaps = beatmaps.Where(row => EF.Functions.ILike(row.Set.Title, pattern, LikePattern.Escape));
 		}
 
 		if (!string.IsNullOrWhiteSpace(query.Difficulty))
 		{
 			var pattern = LikePattern.Containing(query.Difficulty);
-			beatmaps = beatmaps.Where(row => EF.Functions.ILike(row.Version, pattern));
+			beatmaps = beatmaps.Where(row => EF.Functions.ILike(row.Version, pattern, LikePattern.Escape));
 		}
 
 		if (!string.IsNullOrWhiteSpace(query.FileName))

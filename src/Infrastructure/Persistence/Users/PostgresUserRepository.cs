@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using Basil.Application.Persistence.Common;
 using Basil.Application.Persistence.Users;
@@ -15,12 +16,18 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 {
 	private readonly WeakIndex<string, UserRecord> _byName = new();
 
+	// The queued saves of deleted accounts, by the name the deletion frees: a new account of that name waits for them.
+	private readonly ConcurrentDictionary<string, Task> _freeing = new();
+
 	/// <inheritdoc />
 	public async Task<UserRecord> CreateAsync(UserData data, CancellationToken cancellationToken = default)
 	{
 		if (_byName.TryGetValue(data.NormalizedName, out var known) &&
 		    known.Value.NormalizedName == data.NormalizedName)
 			throw new AlreadyExistsException($"A user is already named {data.Name}.");
+
+		if (_freeing.TryGetValue(data.NormalizedName, out var freeing))
+			await Task.WhenAny(freeing);
 
 		var row = new UserRow
 		{
@@ -50,9 +57,15 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 	/// <inheritdoc />
 	public Task UpdateAsync(UserRecord user, CancellationToken cancellationToken = default)
 	{
-		_ = SaveAsync(user);
+		var saved = SaveAsync(user);
 		if (user.Value.DeletedAt is not null)
-			_byName.Remove(user.Value.NormalizedName, user);
+		{
+			var name = user.Value.NormalizedName;
+			_byName.Remove(name, user);
+			_freeing[name] = saved;
+			_ = saved.ContinueWith(_ => _freeing.TryRemove(new KeyValuePair<string, Task>(name, saved)),
+				TaskScheduler.Default);
+		}
 		return Task.CompletedTask;
 	}
 
@@ -208,8 +221,8 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 		{
 			var pattern = LikePattern.Containing(text.ToLowerInvariant().Replace(' ', '_'));
 			users = int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var id)
-				? users.Where(row => row.Id == id || EF.Functions.Like(row.NormalizedName, pattern))
-				: users.Where(row => EF.Functions.Like(row.NormalizedName, pattern));
+				? users.Where(row => row.Id == id || EF.Functions.Like(row.NormalizedName, pattern, LikePattern.Escape))
+				: users.Where(row => EF.Functions.Like(row.NormalizedName, pattern, LikePattern.Escape));
 		}
 
 		return users;

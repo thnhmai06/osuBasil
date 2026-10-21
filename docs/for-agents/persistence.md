@@ -83,12 +83,13 @@ Repository contracts, byte storages and the memory-first model. Moved out of `AG
   * **Errors:** only environment errors (lost connection, timeout, server shutting down, read-only after a failover,
     deadlock, authentication, permissions) are retried, before any later write of the same root. Any other error
     fails that write alone: a try-operation throws it to its caller, a copy is logged as an error. A try-operation
-    runs in its own transaction and settles a broken commit with `pg_xact_status`; its cancellation token counts
+    runs in its own transaction and settles a broken commit with a write ticket row stored in the same transaction; its cancellation token counts
     only while it waits for its turn. Appends (logins, match events) carry no business id: the database assigns it,
     the repository queues the append and returns at once (logging in works without a database), and
     `DatabaseWriter.AppendAsync` runs each append in its own transaction settled the same way, so it is stored
     exactly once.
-  * **Reads** go straight to PostgreSQL on a pooled connection of their own and see only what is committed. A listing
+  * **No SQL in Persistence.** Everything is Entity Framework Core with LINQ and row objects (`XxxRow` entities, never the Domain types); no Dapper, no `FromSql`/`ExecuteSql`/`SqlQuery`, no `NpgsqlCommand`. A snapshot write builds its row when it is queued and applies it with `RowWrites.UpsertAsync`/`ReplaceAsync` (or `ExecuteUpdate` for a few columns); a row with a store-generated key is created inside the lambda so a retry starts clean. Unique violations are recognised through `exception.IsUniqueViolation()`, which looks through Entity Framework wrappers.
+  * **Reads** go straight to PostgreSQL on a context of their own (a pooled connection, no change tracking: memory is the truth, not the context) and see only what is committed. A listing
     asks the database which rows match and returns the live instance of each; a row whose deletion is still queued
     never comes back into memory.
   * **A value unique across a table** (a user's safe name, a beatmap's hash or osu! id, a score's checksum, an id the
