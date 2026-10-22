@@ -10,30 +10,51 @@ public sealed class RoundScore : IEquatable<RoundScore>
 	public required ScoreRecord Score { get; init; }
 
 	/// <summary>Gets the round the score was played in.</summary>
-	public required Round Round { get; init; }
-
-	/// <summary>Gets the team the score was set for, or <see langword="null" /> in a round without teams.</summary>
 	/// <exception cref="ArgumentException">
-	///     The team presence does not match the round: a team-versus round requires a team, and a
+	///     The team already assigned does not match the round: a team-versus round requires a team, and a
 	///     head-to-head round forbids one.
 	/// </exception>
-	public required GameTeam? Team
+	public required Round Round
 	{
 		get;
 		init
 		{
-			var isTeamMode = Round.Settings.TeamType.IsTeamMode();
-			var isBelongToTeam = value is not null;
-
-			if (isTeamMode != isBelongToTeam)
-				throw new ArgumentException(
-					isTeamMode
-						? "All scores must belong to a team in team-versus mode."
-						: "All scores must not belong to a team in head-to-head mode.",
-					nameof(value));
-
 			field = value;
+			if (_teamAssigned) ValidateTeam(value, _team, nameof(value));
 		}
+	}
+
+	/// <summary>Gets the team the score was set for, or <see langword="null" /> in a round without teams.</summary>
+	/// <exception cref="ArgumentException">
+	///     The team presence does not match the round: a team-versus round requires a team, and a
+	///     head-to-head round forbids one. The check runs once both the round and the team are set,
+	///     whichever is set first.
+	/// </exception>
+	public required GameTeam? Team
+	{
+		get => _team;
+		init
+		{
+			_team = value;
+			_teamAssigned = true;
+			if (Round is not null) ValidateTeam(Round, value, nameof(value));
+		}
+	}
+
+	private GameTeam? _team;
+	private bool _teamAssigned;
+
+	private static void ValidateTeam(Round round, GameTeam? team, string paramName)
+	{
+		var isTeamMode = round.Settings.TeamType.IsTeamMode();
+		var isBelongToTeam = team is not null;
+
+		if (isTeamMode != isBelongToTeam)
+			throw new ArgumentException(
+				isTeamMode
+					? "All scores must belong to a team in team-versus mode."
+					: "All scores must not belong to a team in head-to-head mode.",
+				paramName);
 	}
 
 	/// <summary>Determines whether another entry refers to the same stored score.</summary>
