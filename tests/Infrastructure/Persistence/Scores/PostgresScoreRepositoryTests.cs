@@ -244,6 +244,79 @@ public sealed class PostgresScoreRepositoryTests : DatabaseTests
 		Assert.Equal(2, page.Total);
 	}
 
+	private const int Racers = 8;
+
+	[Fact]
+	public async Task Scores_created_at_once_with_one_checksum_by_one_player_store_exactly_one()
+	{
+		var player = await CreatePlayerAsync("racing_player");
+		var checksum = StoredScores.Hash("racing_checksum");
+
+		var outcomes = await RaceAsync(Enumerable.Repeat(player, Racers).ToList(), checksum);
+
+		await AssertOneStoredAsync(outcomes, checksum);
+	}
+
+	[Fact]
+	public async Task Scores_created_at_once_with_one_checksum_by_different_players_store_exactly_one()
+	{
+		var players = new List<UserRecord>();
+		for (var i = 0; i < Racers; i++)
+			players.Add(await CreatePlayerAsync($"racing_player_{i}"));
+		var checksum = StoredScores.Hash("racing_checksum_players");
+
+		var outcomes = await RaceAsync(players, checksum);
+
+		await AssertOneStoredAsync(outcomes, checksum);
+	}
+
+	[Fact]
+	public async Task Scores_created_at_once_with_one_checksum_leave_the_winner_findable()
+	{
+		var player = await CreatePlayerAsync("racing_found");
+		var checksum = StoredScores.Hash("racing_checksum_found");
+
+		var outcomes = await RaceAsync(Enumerable.Repeat(player, Racers).ToList(), checksum);
+
+		var winner = Assert.Single(outcomes.OfType<ScoreRecord>());
+		Assert.Same(winner, await Scores.GetAsync(winner.Id, TestContext.Current.CancellationToken));
+	}
+
+	/// <summary>Creates a play for every player at the same moment, all with the same checksum.</summary>
+	/// <param name="players">The players, one creation each.</param>
+	/// <param name="checksum">The checksum every play carries.</param>
+	/// <returns>The stored score or the exception of every creation.</returns>
+	private async Task<List<object>> RaceAsync(IReadOnlyList<UserRecord> players, Md5 checksum)
+	{
+		var start = new TaskCompletionSource();
+		var attempts = players.Select(async (player, index) =>
+		{
+			await start.Task;
+			try
+			{
+				return (object)await Scores.CreateAsync(
+					StoredScores.Data(player, StoredScores.Hash($"racing_beatmap_{index}"), 1000 + index, First, checksum),
+					TestContext.Current.CancellationToken);
+			}
+			catch (Exception exception)
+			{
+				return exception;
+			}
+		}).ToList();
+		start.SetResult();
+		return [.. await Task.WhenAll(attempts)];
+	}
+
+	private async Task AssertOneStoredAsync(List<object> outcomes, Md5 checksum)
+	{
+		Assert.Single(outcomes.OfType<ScoreRecord>());
+		Assert.All(outcomes.OfType<Exception>(), exception => Assert.IsType<AlreadyExistsException>(exception));
+		Assert.Equal(Racers - 1, outcomes.OfType<Exception>().Count());
+		var rows = await StoredRows.ReadAsync(ConnectionString, "select count(*) as n from scores where checksum = @c",
+			new Dictionary<string, object?> { ["@c"] = checksum.HashValue }, TestContext.Current.CancellationToken);
+		Assert.Equal(1, Assert.Single(rows).Number("n"));
+	}
+
 	/// <summary>Creates the account that played.</summary>
 	/// <param name="name">The name of the account.</param>
 	/// <returns>The account.</returns>

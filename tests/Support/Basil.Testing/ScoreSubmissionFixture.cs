@@ -88,20 +88,17 @@ public sealed class ScoreSubmissionFixture : IDisposable
 			});
 
 		var stats = provider.GetRequiredService<IUserStatsRepository>();
-		stats.GetAsync(Arg.Any<UserRecord>(), Arg.Any<GameMode>(), Arg.Any<CancellationToken>())
+		stats.AddPlayAsync(Arg.Any<UserRecord>(), Arg.Any<GameMode>(), Arg.Any<long>(), Arg.Any<long>(),
+				Arg.Any<CancellationToken>())
 			.Returns(call =>
 			{
-				var key = (call.Arg<UserRecord>().Id, call.Arg<GameMode>());
-				return ValueTask.FromResult(_stats.TryGetValue(key, out var known)
-					? known
-					: new UserStats { UserId = key.Item1, Mode = key.Item2 });
-			});
-		stats.CreateOrUpdateAsync(Arg.Any<UserStats>(), Arg.Any<CancellationToken>())
-			.Returns(call =>
-			{
-				var value = call.Arg<UserStats>();
-				_stats[(value.UserId, value.Mode)] = value;
-				return Task.CompletedTask;
+				var key = (call.Arg<UserRecord>().Id, call.ArgAt<GameMode>(1));
+				if (!_stats.TryGetValue(key, out var known))
+					_stats[key] = known = new UserStats { UserId = key.Item1, Mode = key.Item2 };
+				known.PlayCount++;
+				known.TotalScore += call.ArgAt<long>(2);
+				known.RankedScore += call.ArgAt<long>(3);
+				return ValueTask.FromResult(known);
 			});
 	}
 
@@ -165,12 +162,11 @@ public sealed class ScoreSubmissionFixture : IDisposable
 	}
 
 	/// <summary>Creates a passed standard-mode score of 100 great hits.</summary>
-	/// <param name="userChecksum">The checksum that identifies the score, or <see langword="null" />.</param>
 	/// <returns>The score.</returns>
-	public static ScoreData PassedScore(Md5? userChecksum = null)
+	public static ScoreData PassedScore()
 	{
 		return new ScoreData(null, Beatmap, GameMode.Standard, GameMods.NoMod, new HitCounts(100, 0, 0, 0, 0, 0),
-			1000, 100, 100, Grade.S, true, true, PlayedAt) { Checksum = userChecksum };
+			1000, 100, 100, Grade.S, true, true, PlayedAt);
 	}
 
 	/// <summary>Wraps a score in a submission whose checksum is the one a genuine client computes.</summary>

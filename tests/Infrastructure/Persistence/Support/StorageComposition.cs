@@ -2,6 +2,7 @@ using Basil.Infrastructure.Persistence.Common;
 using Basil.Infrastructure.Persistence.Postgres;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Persistence.Tests.Support;
@@ -18,12 +19,18 @@ internal sealed class StorageComposition : IAsyncDisposable
 
 	/// <summary>Builds a composition of the storage against a database.</summary>
 	/// <param name="connectionString">How to reach the database.</param>
-	public StorageComposition(string connectionString)
+	/// <param name="time">The clock the storage reads, or <see langword="null" /> for the system clock.</param>
+	/// <param name="logs">Receives the storage's log entries, or <see langword="null" /> for none.</param>
+	public StorageComposition(string connectionString, TimeProvider? time = null, ILoggerProvider? logs = null)
 	{
 		_root = Path.Combine(Path.GetTempPath(), "basil-test-storage-" + Guid.NewGuid().ToString("N"));
 		var services = new ServiceCollection();
+		if (time is not null) services.AddSingleton(time);
 		services.AddInfrastructurePersistence();
-		services.AddLogging();
+		services.AddLogging(builder =>
+		{
+			if (logs is not null) builder.AddProvider(logs);
+		});
 		services.AddSingleton(Options.Create(new StorageOptions { DataDirectory = _root }));
 		services.AddSingleton(Options.Create(new DatabaseOptions { ConnectionString = connectionString }));
 		_provider = services.BuildServiceProvider();
@@ -50,7 +57,10 @@ internal sealed class StorageComposition : IAsyncDisposable
 	{
 		var hosted = _provider.GetServices<IHostedService>().ToArray();
 		foreach (var service in hosted.Reverse())
+		{
+			if (service is IHostedLifecycleService lifecycle) await lifecycle.StoppingAsync(CancellationToken.None);
 			await service.StopAsync(CancellationToken.None);
+		}
 		await _provider.DisposeAsync();
 		if (Directory.Exists(_root)) Directory.Delete(_root, true);
 	}

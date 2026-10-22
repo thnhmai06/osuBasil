@@ -71,7 +71,7 @@ public sealed class ScoreSubmissionTests
 
 		var withStoryboard = await SubmitAsync(f, f.Genuine(score, storyboard),
 			beatmap: new BeatmapChecksums(ScoreSubmissionFixture.Beatmap, storyboard));
-		var without = await SubmitAsync(f, f.Genuine(score with { Checksum = new Md5("00000000000000000000000000000001") }),
+		var without = await SubmitAsync(f, f.Genuine(score),
 			beatmap: new BeatmapChecksums(ScoreSubmissionFixture.Beatmap, storyboard));
 
 		Assert.Equal(ConnectionOutcome.Ok, withStoryboard.Result.Outcome);
@@ -257,7 +257,7 @@ public sealed class ScoreSubmissionTests
 	public async Task SubmitScoreAsync_WithAChecksumAlreadyStored_IsRejectedAsDuplicate()
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
-		var submission = f.Genuine(ScoreSubmissionFixture.PassedScore(new Md5("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")));
+		var submission = f.Genuine(ScoreSubmissionFixture.PassedScore());
 		Assert.Equal(ConnectionOutcome.Ok, (await SubmitAsync(f, submission)).Result.Outcome);
 
 		var (result, rejection) = await SubmitAsync(f, submission, replay: Replay(100));
@@ -270,10 +270,21 @@ public sealed class ScoreSubmissionTests
 	}
 
 	[Fact]
+	public async Task SubmitScoreAsync_WithAValidScore_StoresTheClientChecksumToIdentifyTheSubmission()
+	{
+		using var f = await ScoreSubmissionFixture.CreateAsync();
+		var submission = f.Genuine(ScoreSubmissionFixture.PassedScore());
+
+		await SubmitAsync(f, submission);
+
+		Assert.Equal(submission.HashByClient, Assert.Single(f.Scores).Value.Checksum);
+	}
+
+	[Fact]
 	public async Task SubmitScoreAsync_WithADuplicate_DoesNotCountAgainstTheStatistics()
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
-		var submission = f.Genuine(ScoreSubmissionFixture.PassedScore(new Md5("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")));
+		var submission = f.Genuine(ScoreSubmissionFixture.PassedScore());
 		await SubmitAsync(f, submission);
 
 		await SubmitAsync(f, submission);
@@ -347,8 +358,8 @@ public sealed class ScoreSubmissionTests
 	public async Task SubmitScoreAsync_WithSeveralScores_AccumulatesTheStatistics()
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
-		var first = ScoreSubmissionFixture.PassedScore(new Md5("00000000000000000000000000000001"));
-		var second = first with { Checksum = new Md5("00000000000000000000000000000002"), TotalScore = 250 };
+		var first = ScoreSubmissionFixture.PassedScore();
+		var second = first with { TotalScore = 250 };
 
 		await SubmitAsync(f, f.Genuine(first));
 		await SubmitAsync(f, f.Genuine(second));
