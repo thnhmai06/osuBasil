@@ -1,11 +1,13 @@
 using Basil.Application.Persistence.Beatmaps;
 using Basil.Application.Persistence.Content;
 using Basil.Application.Persistence.Users;
+using Basil.Application.Runtime.Chat;
 using Basil.Application.Runtime.Multiplayer.Rooms;
 using Basil.Application.Runtime.Sessions;
 using Basil.Bot.Commands;
 using Basil.Bot.Commands.Mp;
 using Basil.Bot.Replies;
+using Basil.Domain.Chat;
 using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -73,6 +75,48 @@ internal sealed class BotHarness : IDisposable
 	public void Dispose()
 	{
 		App.Dispose();
+	}
+
+	/// <summary>Seeds BasilBot and connects it, so the server can speak as the bot.</summary>
+	/// <returns>The bot's connection; its user owns the private-message channel users write to.</returns>
+	public async Task<BotConnection> StartBotAsync()
+	{
+		await App.SeedBotAsync();
+		var connection = await App.Users.ConnectBotAsync(TestContext.Current.CancellationToken);
+		Assert.NotNull(connection);
+		return connection;
+	}
+
+	/// <summary>Opens a general channel the bot may speak in.</summary>
+	/// <param name="name">The channel name, starting with <c>#</c>.</param>
+	/// <returns>The open channel.</returns>
+	public Task<GeneralChannel> OpenChannelAsync(string name)
+	{
+		var channel = App.Server.OpenChannel(new GeneralChannelRecord
+			{ Name = name, Value = new GeneralChannelData() });
+		Assert.NotNull(channel);
+		return Task.FromResult(channel);
+	}
+
+	/// <summary>Gets the texts the server said in a channel, in the order they were posted.</summary>
+	/// <param name="channel">The channel.</param>
+	/// <returns>The posted texts.</returns>
+	public List<string> SaidIn(Channel channel)
+	{
+		return
+		[
+			.. App.ChannelEvents.Events.OfType<ChannelMessagePosted>()
+				.Where(posted => ReferenceEquals(posted.Channel, channel))
+				.Select(posted => posted.Message.Content)
+		];
+	}
+
+	/// <summary>Gets the texts the server whispered to a user, in the order they were posted.</summary>
+	/// <param name="connection">A connection of the user.</param>
+	/// <returns>The whispered texts.</returns>
+	public List<string> WhisperedTo(Connection connection)
+	{
+		return SaidIn(connection.User.PmChannel);
 	}
 
 	/// <summary>Types a message as a user and collects what the bot says.</summary>

@@ -63,6 +63,11 @@ The room owns membership and its channel. A join checks the caller's effective `
 
 There are 16 slot positions, numbered 1 through 16. Room size is the number of usable positions, from 1 through 16, not a limit on slot numbers: a player may occupy any slot. The room keeps enough unlocked empty slots for its configured size and locks the others. When a host leaves, the next seated player in slot order becomes host.
 
+A room can be private. Private means unlisted, as an unlisted video is: the room is left out of the lobby and out of the
+match lists of the API for users who do not hold `RoomViewPrivate`, but it never keeps anybody out. Whoever knows the
+room's id can still find it (`Lobby.Find`), join it with the password if it has one, and read its match. An invitation
+only tells a user where the room is; it grants no access, because nothing needs granting.
+
 The room channel is named `#mp_{room id}` and opens and closes with its room. A room's settings change as one validated operation; settings cannot change during a round. Changing the team type reassigns teams, and changing mode removes mods that mode does not allow. The room's password is never included in its events.
 
 ## Rounds and score association
