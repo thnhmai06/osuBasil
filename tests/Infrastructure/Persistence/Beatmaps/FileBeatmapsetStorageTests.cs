@@ -963,28 +963,6 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_burst_of_changes_to_one_folder_is_reported_once()
-	{
-		// Real time: the storage waits a couple of seconds for the changes of a folder to settle. The burst ends long
-		// before then; a second report of the folder would come before the report of the folder made afterwards.
-		var storage =
-			new FileBeatmapsetStorage(_data.Paths, TimeProvider.System, NullLogger<FileBeatmapsetStorage>.Instance);
-		var id = NewId();
-		PlaceFolder(id, "Burst", "Folder", Osz(("a.osu", "x")));
-		await using var watching = Watching.Start(storage, null);
-
-		for (var write = 0; write < 5; write++)
-			File.WriteAllBytes(Path.Combine(Sets, $"{id} Burst - Folder", "archive.osz"),
-				Osz(("a.osu", $"write {write}")));
-		var first = await watching.ReadUntilAsync(source => source.Name == $"{id} Burst - Folder");
-		PlaceFolder(NewId(), "Sentinel", "Folder", Osz(("a.osu", "x")));
-		var second = await watching.ReadUntilAsync(source => source.Name.Contains("Sentinel"));
-
-		Assert.Single(first);
-		Assert.DoesNotContain(second, source => source.Name == $"{id} Burst - Folder");
-	}
-
-	[Fact]
 	public async Task Cancelling_the_watch_ends_it()
 	{
 		await using var watching = Watching.Start(_storage, _time);

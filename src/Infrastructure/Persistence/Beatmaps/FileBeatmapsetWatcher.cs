@@ -17,6 +17,7 @@ internal sealed class FileBeatmapsetWatcher : IAsyncEnumerable<BeatmapsetSource>
 	private readonly Lock _gate = new();
 	private readonly ILogger _logger;
 	private readonly Dictionary<string, CancellationTokenSource> _pending = new(StringComparer.Ordinal);
+	private readonly CancellationTokenRegistration _registration;
 	private readonly string _root;
 	private readonly Channel<string> _settled = Channel.CreateUnbounded<string>();
 	private readonly TimeProvider _time;
@@ -52,6 +53,7 @@ internal sealed class FileBeatmapsetWatcher : IAsyncEnumerable<BeatmapsetSource>
 		};
 		_watcher.Error += (_, args) => ReportEveryEntry(args.GetException(), listEntries);
 		_watcher.EnableRaisingEvents = true;
+		_registration = stopping.UnsafeRegister(static state => ((FileBeatmapsetWatcher)state!).Dispose(), this);
 	}
 
 	/// <summary>Gets whether watching has stopped: nothing more is reported and the file system is no longer watched.</summary>
@@ -78,6 +80,7 @@ internal sealed class FileBeatmapsetWatcher : IAsyncEnumerable<BeatmapsetSource>
 		}
 
 		_watcher.Dispose();
+		_registration.Dispose();
 		_settled.Writer.TryComplete();
 	}
 
