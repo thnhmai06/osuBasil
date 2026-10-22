@@ -165,12 +165,11 @@ public sealed class ScoreSubmissionFixture : IDisposable
 	}
 
 	/// <summary>Creates a passed standard-mode score of 100 great hits.</summary>
-	/// <param name="userChecksum">The checksum that identifies the score, or <see langword="null" />.</param>
 	/// <returns>The score.</returns>
-	public static ScoreData PassedScore(Md5? userChecksum = null)
+	public static ScoreData PassedScore()
 	{
 		return new ScoreData(null, Beatmap, GameMode.Standard, GameMods.NoMod, new HitCounts(100, 0, 0, 0, 0, 0),
-			1000, 100, 100, Grade.S, true, true, PlayedAt) { Checksum = userChecksum };
+			1000, 100, 100, Grade.S, true, true, PlayedAt);
 	}
 
 	/// <summary>Wraps a score in a submission whose checksum is the one a genuine client computes.</summary>

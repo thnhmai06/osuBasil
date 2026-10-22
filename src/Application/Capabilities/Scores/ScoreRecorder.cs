@@ -58,7 +58,7 @@ internal sealed class ScoreRecorder(
 		try
 		{
 			score = await scores.CreateAsync(
-				submission.Score with { UserId = player.Id }, cancellationToken);
+				submission.Score with { UserId = player.Id, Checksum = submission.HashByClient }, cancellationToken);
 		}
 		catch (AlreadyExistsException)
 		{
