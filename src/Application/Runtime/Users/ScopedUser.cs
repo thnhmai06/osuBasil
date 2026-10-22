@@ -85,7 +85,7 @@ public sealed class ScopedUser : Scoped<Permissions>
 		if (Require(User.Record.Value.Permissions ^ permissions) is { } cannotGrant)
 			return Result<UserOutcome>.Denied(cannotGrant);
 
-		User.Apply(data => data.Permissions = permissions);
+		User.ReplacePermissions(permissions);
 		await User.Context.Users.UpdateAsync(User.Record, cancellationToken);
 		if (User.Context.Registry.Online.GetValueOrDefault(User.Record) is { } user)
 			User.Context.Connections.CloseDisallowed(user);
@@ -102,13 +102,7 @@ public sealed class ScopedUser : Scoped<Permissions>
 		if (Guard(Permissions.UserManage, true) is { } denied) return denied;
 		if (User.Record.Value.DeletedAt is not null) return UserOutcome.Ok;
 
-		var now = User.Context.Clock.GetUtcNow();
-		User.Apply(user =>
-		{
-			user.DeletedAt = now;
-			user.Permissions = Permissions.None;
-		});
-
+		User.MarkDeleted(User.Context.Clock.GetUtcNow());
 		await User.Context.Users.UpdateAsync(User.Record, cancellationToken);
 		User.Context.Connections.CloseAll(User.Record, ConnectionCloseReason.Deleted);
 		return UserOutcome.Ok;

@@ -143,11 +143,9 @@ public sealed class Server
 		if (string.IsNullOrWhiteSpace(text)) return 0;
 
 		var context = Context.Session;
-		var recipients = context.Registry.Online.Values
-			.Where(user => to is null || to.Contains(user.Record))
-			.Select(user => user.Bancho)
-			.OfType<BanchoConnection>()
-			.Where(connection => connection.IsOpen)
+		var recipients = (to is null
+				? context.Registry.OpenBanchoClients()
+				: to.Select(context.Registry.OpenBanchoClient).OfType<BanchoConnection>())
 			.ToList();
 		if (recipients.Count == 0) return 0;
 

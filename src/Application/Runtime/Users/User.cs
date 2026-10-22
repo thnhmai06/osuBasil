@@ -98,14 +98,22 @@ public sealed class User
 		                                         relationship.Type == RelationshipType.Block);
 	}
 
-	/// <summary>Changes the account data and keeps its online user in sync.</summary>
-	/// <param name="change">The change to apply to the account.</param>
-	internal void Apply(Action<UserData> change)
+	/// <summary>Replaces the permissions granted to the account and keeps its online user in sync.</summary>
+	/// <param name="permissions">The permissions to grant.</param>
+	internal void ReplacePermissions(Permissions permissions)
 	{
-		change(Record.Value);
-		var online = Context.Registry.Online.GetValueOrDefault(Record);
-		if (online is not null && !ReferenceEquals(online.Record, Record))
-			change(online.Record.Value);
+		Change(data => data.Permissions = permissions);
+	}
+
+	/// <summary>Marks the account as deleted at a moment, taking all its permissions away.</summary>
+	/// <param name="at">When the account was deleted.</param>
+	internal void MarkDeleted(DateTimeOffset at)
+	{
+		Change(data =>
+		{
+			data.DeletedAt = at;
+			data.Permissions = Permissions.None;
+		});
 	}
 
 	/// <summary>Adds a restriction that has started to the running ones.</summary>
@@ -127,6 +135,14 @@ public sealed class User
 	internal void ReplaceRestrictions(IEnumerable<Restriction> restrictions)
 	{
 		Interlocked.Exchange(ref _restrictions, [.. restrictions]);
+	}
+
+	private void Change(Action<UserData> change)
+	{
+		change(Record.Value);
+		var online = Context.Registry.Online.GetValueOrDefault(Record);
+		if (online is not null && !ReferenceEquals(online.Record, Record))
+			change(online.Record.Value);
 	}
 
 	/// <summary>Adds a connection.</summary>

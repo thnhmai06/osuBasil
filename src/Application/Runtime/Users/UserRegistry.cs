@@ -79,6 +79,21 @@ public sealed class UserRegistry : IUserConnectionsPort, IRoomUsersPort
 	/// <summary>Gets every online user by its account.</summary>
 	public IReadOnlyDictionary<UserRecord, User> Online => _online;
 
+	/// <summary>Gets the open osu! game client of an online user.</summary>
+	/// <param name="user">The account to look up.</param>
+	/// <returns>The open game client, or <see langword="null" /> when the user has none.</returns>
+	internal BanchoConnection? OpenBanchoClient(UserRecord user)
+	{
+		return _online.GetValueOrDefault(user)?.Bancho is { IsOpen: true } client ? client : null;
+	}
+
+	/// <summary>Gets the open osu! game client of every online user.</summary>
+	/// <returns>The open game clients.</returns>
+	internal IEnumerable<BanchoConnection> OpenBanchoClients()
+	{
+		return _online.Keys.Select(OpenBanchoClient).OfType<BanchoConnection>();
+	}
+
 	/// <summary>Finds the open connection a token identifies.</summary>
 	/// <param name="token">The token the client presented.</param>
 	/// <returns>The connection, or <see langword="null" /> when no open connection has that token.</returns>
@@ -195,7 +210,8 @@ public sealed class UserRegistry : IUserConnectionsPort, IRoomUsersPort
 	/// <param name="connection">The connection to close.</param>
 	/// <param name="reason">Why the connection is closed.</param>
 	/// <remarks>
-	///     An osu! client's logout within one second of login is ignored. Closing an already closed connection does nothing.
+	///     This system operation needs no rights because the server itself calls it. An osu! client's logout within one
+	///     second of login is ignored. Closing an already closed connection does nothing.
 	/// </remarks>
 	public void Close(Connection connection, ConnectionCloseReason reason)
 	{
@@ -209,6 +225,7 @@ public sealed class UserRegistry : IUserConnectionsPort, IRoomUsersPort
 
 	/// <summary>Records that a client just sent something.</summary>
 	/// <param name="connection">The connection that sent a message.</param>
+	/// <remarks>This system operation needs no rights because the server itself calls it.</remarks>
 	public void MarkActive(Connection connection)
 	{
 		if (connection.IsOpen)
@@ -217,7 +234,10 @@ public sealed class UserRegistry : IUserConnectionsPort, IRoomUsersPort
 
 	/// <summary>Closes every connection that has sent nothing for too long.</summary>
 	/// <returns>How many connections were closed.</returns>
-	/// <remarks>The bot connection is not closed by this operation.</remarks>
+	/// <remarks>
+	///     This system operation needs no rights because the server itself calls it. The bot connection is not closed by
+	///     this operation.
+	/// </remarks>
 	public int CloseIdle()
 	{
 		var now = _clock.GetUtcNow();
@@ -239,7 +259,7 @@ public sealed class UserRegistry : IUserConnectionsPort, IRoomUsersPort
 	///     The existing connection when BasilBot is already online, or <see langword="null" /> when its record is not
 	///     stored or its connection could not be opened.
 	/// </returns>
-	/// <remarks>Used by the server at startup.</remarks>
+	/// <remarks>This system operation needs no rights because the server itself calls it at startup.</remarks>
 	public async Task<BotConnection?> ConnectBotAsync(CancellationToken cancellationToken = default)
 	{
 		var user = await _users.GetAsync(BasilBot.Id, cancellationToken);

@@ -26,6 +26,7 @@ public sealed class Beatmapsets
 	/// <summary>Gets the beatmapset object through which a stored set's behaviour is reached.</summary>
 	/// <param name="set">The stored beatmapset.</param>
 	/// <returns>The beatmapset.</returns>
+	/// <remarks>This system operation needs no rights because the server itself calls it.</remarks>
 	public Beatmapset Of(BeatmapsetRecord set)
 	{
 		return new Beatmapset(set, _context);
@@ -36,6 +37,7 @@ public sealed class Beatmapsets
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The result of the import.</returns>
 	/// <remarks>
+	///     <para>This system operation needs no rights because the server itself calls it.</para>
 	///     <para>
 	///         An archive that cannot be read, or that belongs to a locked beatmapset, is rejected and nothing of it is
 	///         kept. The beatmapset and its beatmaps are stored at once, or not at all.
@@ -59,6 +61,7 @@ public sealed class Beatmapsets
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>How many beatmapsets were taken in, updated and forgotten.</returns>
 	/// <remarks>
+	///     This system operation needs no rights because the server itself calls it.
 	///     First every entry is checked: an archive whose size and modification time match the stored ones is not hashed;
 	///     any other is hashed, and one whose hash differs from the stored one, or that no stored set has, is indexed
 	///     again, as are loose archives and folders of loose files. Then each of those is indexed and its files are made
@@ -78,6 +81,7 @@ public sealed class Beatmapsets
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>How many beatmapsets were taken in, updated and forgotten.</returns>
 	/// <remarks>
+	///     This system operation needs no rights because the server itself calls it.
 	///     The entry's archive is hashed and indexed again when its hash differs from the stored one, even when the folder
 	///     held no valid set before. A loose archive is moved into its set's folder; a folder of loose files is packed into
 	///     an archive first. The beatmapset is the stored one that already has a beatmap of the archive; otherwise the
