@@ -57,7 +57,10 @@ internal sealed class StorageComposition : IAsyncDisposable
 	{
 		var hosted = _provider.GetServices<IHostedService>().ToArray();
 		foreach (var service in hosted.Reverse())
+		{
+			if (service is IHostedLifecycleService lifecycle) await lifecycle.StoppingAsync(CancellationToken.None);
 			await service.StopAsync(CancellationToken.None);
+		}
 		await _provider.DisposeAsync();
 		if (Directory.Exists(_root)) Directory.Delete(_root, true);
 	}
