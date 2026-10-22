@@ -102,7 +102,7 @@ public sealed class ScopedUserRestrictions
 		if (context.Registry.Online.GetValueOrDefault(_scoped.User.Record) is { } user)
 		{
 			user.AddRestriction(restriction);
-			context.Connections.CloseDisallowed(user);
+			context.Registry.CloseDisallowed(user);
 		}
 
 		await context.ModerationLog.AppendAsync(log, cancellationToken);
