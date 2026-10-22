@@ -66,7 +66,7 @@ public sealed class ScopedUserRestrictions
 		restriction.Value.EndsAt = now;
 		await _scoped.User.Context.Restrictions.UpdateAsync(restriction, cancellationToken);
 		_scoped.User.Context.Registry.Online.GetValueOrDefault(_scoped.User.Record)
-			?.ChangeRestrictions(running => running.RemoveAll(restriction.Equals));
+			?.RemoveRestriction(restriction);
 		await _scoped.User.Context.ModerationLog.AppendAsync(log, cancellationToken);
 
 		_scoped.User.Context.Events.Publish(new UserRestrictionLifted(_scoped.User.Record, restriction));
@@ -101,7 +101,7 @@ public sealed class ScopedUserRestrictions
 		var restriction = await context.Restrictions.CreateAsync(data, cancellationToken);
 		if (context.Registry.Online.GetValueOrDefault(_scoped.User.Record) is { } user)
 		{
-			user.ChangeRestrictions(running => running.Add(restriction));
+			user.AddRestriction(restriction);
 			context.Connections.CloseDisallowed(user);
 		}
 

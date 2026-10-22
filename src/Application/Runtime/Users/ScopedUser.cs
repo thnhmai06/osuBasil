@@ -1,5 +1,6 @@
 using Basil.Application.Runtime.Sessions;
 using Basil.Application.Persistence.Common;
+using Basil.Application.Capabilities.Users;
 using Basil.Domain.Auth;
 using Basil.Domain.Common;
 using Basil.Domain.Permissions;
@@ -168,7 +169,7 @@ public sealed class ScopedUser : Scoped<Permissions>
 
 		if (IsSelf)
 		{
-			if (currentPasswordHash is not { } current || !await VerifyAsync(current, cancellationToken))
+			if (currentPasswordHash is not { } current || !await User.Context.Credentials.IsPasswordAsync(User.Record, current, cancellationToken))
 				return UserOutcome.WrongPassword;
 		}
 		else if (Guard(Permissions.UserManage, false) is { } denied)
@@ -179,18 +180,5 @@ public sealed class ScopedUser : Scoped<Permissions>
 		await User.Context.Credentials.CreateOrUpdateAsync(new Credentials(User.Record, newPasswordHash), cancellationToken);
 		User.Context.Connections.CloseAll(User.Record, ConnectionCloseReason.CredentialsChanged);
 		return UserOutcome.Ok;
-	}
-
-	private async Task<bool> VerifyAsync(Md5 passwordHash, CancellationToken cancellationToken)
-	{
-		try
-		{
-			return await User.Context.Credentials.VerifyAsync(new Credentials(User.Record, passwordHash), cancellationToken);
-		}
-		catch (ArgumentException)
-		{
-			// The client sent something that is not even a well-formed MD5 digest.
-			return false;
-		}
 	}
 }

@@ -108,11 +108,25 @@ public sealed class User
 			change(online.Record.Value);
 	}
 
-	/// <summary>Replaces the user's restrictions in one step, so concurrent changes never lose each other.</summary>
-	/// <param name="change">Computes the new restrictions from the current ones.</param>
-	internal void ChangeRestrictions(Func<ImmutableList<Restriction>, ImmutableList<Restriction>> change)
+	/// <summary>Adds a restriction that has started to the running ones.</summary>
+	/// <param name="restriction">The restriction.</param>
+	internal void AddRestriction(Restriction restriction)
 	{
-		ImmutableInterlocked.Update(ref _restrictions, change);
+		ImmutableInterlocked.Update(ref _restrictions, running => running.Add(restriction));
+	}
+
+	/// <summary>Removes a restriction from the running ones.</summary>
+	/// <param name="restriction">The restriction.</param>
+	internal void RemoveRestriction(Restriction restriction)
+	{
+		ImmutableInterlocked.Update(ref _restrictions, running => running.RemoveAll(restriction.Equals));
+	}
+
+	/// <summary>Replaces the running restrictions with the ones the user has now, as at login.</summary>
+	/// <param name="restrictions">The restrictions that have not ended.</param>
+	internal void ReplaceRestrictions(IEnumerable<Restriction> restrictions)
+	{
+		Interlocked.Exchange(ref _restrictions, [.. restrictions]);
 	}
 
 	/// <summary>Adds a connection.</summary>

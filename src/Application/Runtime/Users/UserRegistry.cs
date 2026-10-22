@@ -28,6 +28,7 @@ public sealed class UserRegistry : IUserConnectionsPort, IRoomUsersPort
 	private readonly Lock _sync = new(); // ponytail: one lock for all logins; per-user locks if login rate ever matters
 	private readonly AccountService _accounts;
 	private readonly IUserRepository _users;
+	private readonly IRestrictionRepository _restrictions;
 	private readonly ILoginRepository _logins;
 	private readonly TimeProvider _clock;
 	private readonly IEventPublisher<UserEvent> _events;
@@ -63,6 +64,7 @@ public sealed class UserRegistry : IUserConnectionsPort, IRoomUsersPort
 	{
 		_accounts = accounts;
 		_users = users;
+		_restrictions = restrictions;
 		_logins = logins;
 		_clock = clock;
 		_events = events;
@@ -143,7 +145,9 @@ public sealed class UserRegistry : IUserConnectionsPort, IRoomUsersPort
 		if (record is null) return LoginResult.Fail(LoginFailure.UnknownUser);
 
 		var now = _clock.GetUtcNow();
-		var restrictions = await _accounts.ListRunningRestrictionsAsync(record, now, cancellationToken);
+		var restrictions = (await _restrictions.ListAsync(record, cancellationToken))
+			.Where(restriction => restriction.Value.EndsAt is null || restriction.Value.EndsAt > now)
+			.ToList();
 		var login = new Login { User = record, Ip = ip, Client = client, Timestamp = now };
 		var token = NewToken();
 		Connection connection = type switch
@@ -285,7 +289,7 @@ public sealed class UserRegistry : IUserConnectionsPort, IRoomUsersPort
 		user ??= Of(connection.Record);
 		if (cameOnline) Add(user);
 
-		user.ChangeRestrictions(_ => [.. restrictions]);
+		user.ReplaceRestrictions(restrictions);
 		connection.User = user;
 		user.Add(connection);
 		if (connection.Type is not ConnectionType.Tourney)

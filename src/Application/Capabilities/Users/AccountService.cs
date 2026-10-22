@@ -14,7 +14,6 @@ namespace Basil.Application.Capabilities.Users;
 internal sealed class AccountService(
 	IUserRepository users,
 	ICredentialRepository credentials,
-	IRestrictionRepository restrictions,
 	ISettingsRepository settings)
 {
 	/// <inheritdoc />
@@ -36,20 +35,6 @@ internal sealed class AccountService(
 		return await users.GetByNameAsync(attempt.Username, cancellationToken) is not null
 			? RegistrationFailure.NameTaken
 			: null;
-	}
-
-	/// <inheritdoc />
-	public async Task<bool> VerifyAsync(UserRecord user, Md5 passwordHash, CancellationToken cancellationToken)
-	{
-		try
-		{
-			return await credentials.VerifyAsync(new Credentials(user, passwordHash), cancellationToken);
-		}
-		catch (ArgumentException)
-		{
-			// The client sent something that is not even a well-formed MD5 digest.
-			return false;
-		}
 	}
 
 	/// <inheritdoc />
@@ -77,18 +62,9 @@ internal sealed class AccountService(
 		var user = await users.GetByNameAsync(attempt.Username, cancellationToken);
 		if (user is null || BasilBot.Is(user)) return (null, LoginFailure.UnknownUser);
 		if (user.Value.DeletedAt is not null) return (null, LoginFailure.AccountDeleted);
-		if (!await VerifyAsync(user, attempt.PasswordHash, cancellationToken))
+		if (!await credentials.IsPasswordAsync(user, attempt.PasswordHash, cancellationToken))
 			return (null, LoginFailure.WrongPassword);
 
 		return (user, null);
-	}
-
-	/// <inheritdoc />
-	public async Task<IReadOnlyList<Restriction>> ListRunningRestrictionsAsync(UserRecord user, DateTimeOffset now,
-		CancellationToken cancellationToken)
-	{
-		return (await restrictions.ListAsync(user, cancellationToken))
-			.Where(restriction => restriction.Value.EndsAt is null || restriction.Value.EndsAt > now)
-			.ToList();
 	}
 }
