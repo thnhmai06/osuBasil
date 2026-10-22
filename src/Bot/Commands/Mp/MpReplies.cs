@@ -150,10 +150,6 @@ internal static class MpReplies
 	/// <summary>Usage line for <c>!mp move</c>.</summary>
 	public static readonly Reply MoveUsage = new("mp.moveUsage", "Usage: !mp move <name/id> <slot 1-16>");
 
-	/// <summary>Reply when the target cannot be resolved to a seated player.</summary>
-	public static readonly Reply UserNotInMatchOrUnregistered = new("mp.userNotInMatchOrUnregistered",
-		"User is not in this match or not registered.");
-
 	/// <summary>Reply when the destination slot is occupied or otherwise not open.</summary>
 	public static readonly Reply DestinationSlotNotOpen =
 		new("mp.destinationSlotNotOpen", "Destination slot is not open.");
@@ -202,10 +198,6 @@ internal static class MpReplies
 	// ── !mp invite ─────────────────────────────────────────────────────────────────────────
 	/// <summary>Usage line for <c>!mp invite</c>.</summary>
 	public static readonly Reply InviteUsage = new("mp.inviteUsage", "Usage: !mp invite <name/id>");
-
-	/// <summary>Reply when the target is not connected with the osu! client.</summary>
-	public static readonly Reply InviteRequiresClient = new("mp.inviteRequiresClient",
-		"User must be connected via the osu! client to be invited.");
 
 	/// <summary>Reply when the target is already seated in the room.</summary>
 	public static readonly Reply UserAlreadyInRoom = new("mp.userAlreadyInRoom", "User is already in the room");

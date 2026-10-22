@@ -12,13 +12,12 @@ internal sealed partial class MpCommands
 		CancellationToken cancellationToken)
 	{
 		var by = context.By;
-		if (args.Count < 2 || !int.TryParse(args[^1], out var slot))
+		if (args.Count < 2 || !int.TryParse(args[^1], out var slot) || slot is < 1 or > MaxSlotIndex)
 		{
 			await context.Reply(MpReplies.MoveUsage, cancellationToken);
 			return false;
 		}
 
-		slot = Math.Clamp(slot, 1, MaxSlotIndex);
 		var rawTarget = string.Join(' ', args.Take(args.Count - 1));
 		var target = await ResolveUserAsync(rawTarget, cancellationToken);
 		if (target is null)
@@ -101,7 +100,7 @@ internal sealed partial class MpCommands
 		var target = await ResolveUserAsync(rawTarget, cancellationToken);
 		if (target is null)
 		{
-			await context.Reply(MpReplies.InviteRequiresClient, cancellationToken);
+			await context.Reply(MpReplies.UserNotFound, cancellationToken);
 			return false;
 		}
 

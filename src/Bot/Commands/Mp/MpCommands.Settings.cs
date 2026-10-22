@@ -217,13 +217,13 @@ internal sealed partial class MpCommands
 		int? size = null;
 		if (args.Count >= 3)
 		{
-			if (!int.TryParse(args[2], out var parsedSize))
+			if (!int.TryParse(args[2], out var parsedSize) || parsedSize is < 1 or > MaxRoomSize)
 			{
 				await context.Reply(MpReplies.SetUsage, cancellationToken);
 				return false;
 			}
 
-			size = Math.Clamp(parsedSize, 1, MaxRoomSize);
+			size = parsedSize;
 		}
 
 		var change = new RoomSettingsChange(TeamType: (GameTeamType)teamValue, WinCondition: winCondition,
