@@ -85,10 +85,10 @@ public sealed class ScopedUser : Scoped<Permissions>
 		if (Require(User.Record.Value.Permissions ^ permissions) is { } cannotGrant)
 			return Result<UserOutcome>.Denied(cannotGrant);
 
-		User.Apply(data => data.Permissions = permissions);
+		User.ReplacePermissions(permissions);
 		await User.Context.Users.UpdateAsync(User.Record, cancellationToken);
 		if (User.Context.Registry.Online.GetValueOrDefault(User.Record) is { } user)
-			User.Context.Connections.CloseDisallowed(user);
+			User.Context.Registry.CloseDisallowed(user);
 
 		User.Context.Events.Publish(new UserPermissionsChanged(User.Record, permissions));
 		return UserOutcome.Ok;
@@ -102,15 +102,9 @@ public sealed class ScopedUser : Scoped<Permissions>
 		if (Guard(Permissions.UserManage, true) is { } denied) return denied;
 		if (User.Record.Value.DeletedAt is not null) return UserOutcome.Ok;
 
-		var now = User.Context.Clock.GetUtcNow();
-		User.Apply(user =>
-		{
-			user.DeletedAt = now;
-			user.Permissions = Permissions.None;
-		});
-
+		User.MarkDeleted(User.Context.Clock.GetUtcNow());
 		await User.Context.Users.UpdateAsync(User.Record, cancellationToken);
-		User.Context.Connections.CloseAll(User.Record, ConnectionCloseReason.Deleted);
+		User.Context.Registry.CloseAll(User.Record, ConnectionCloseReason.Deleted);
 		return UserOutcome.Ok;
 	}
 
@@ -148,7 +142,7 @@ public sealed class ScopedUser : Scoped<Permissions>
 		if (BasilBot.Is(User.Record)) return UserOutcome.Protected;
 		if (!IsSelf && Guard(Permissions.UserManage, false) is { } denied) return denied;
 
-		User.Context.Connections.CloseAll(User.Record, ConnectionCloseReason.Revoked);
+		User.Context.Registry.CloseAll(User.Record, ConnectionCloseReason.Revoked);
 		return UserOutcome.Ok;
 	}
 
@@ -178,7 +172,7 @@ public sealed class ScopedUser : Scoped<Permissions>
 		}
 
 		await User.Context.Credentials.CreateOrUpdateAsync(new Credentials(User.Record, newPasswordHash), cancellationToken);
-		User.Context.Connections.CloseAll(User.Record, ConnectionCloseReason.CredentialsChanged);
+		User.Context.Registry.CloseAll(User.Record, ConnectionCloseReason.CredentialsChanged);
 		return UserOutcome.Ok;
 	}
 }

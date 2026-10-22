@@ -41,21 +41,32 @@ public static class DependencyInjection
 
 		services.AddSingleton(new GeneralChannelRegistry());
 
-		services.AddSingleton<UserRegistry>(sp => new UserRegistry(
-			sp.GetRequiredService<AccountService>(),
+		// The contexts and the registry refer to each other, so the contexts resolve the registry at first use.
+		services.AddSingleton<UserContext>(sp => new UserContext(
+			sp.GetRequiredService<TimeProvider>(),
+			sp.GetRequiredService<IEventPublisher<UserEvent>>(),
+			new Lazy<UserRegistry>(sp.GetRequiredService<UserRegistry>),
 			sp.GetRequiredService<IUserRepository>(),
 			sp.GetRequiredService<IRestrictionRepository>(),
 			sp.GetRequiredService<IModerationLogRepository>(),
 			sp.GetRequiredService<IRelationshipRepository>(),
 			sp.GetRequiredService<ILoginRepository>(),
 			sp.GetRequiredService<ICredentialRepository>(),
+			sp.GetRequiredService<ChannelContext>()));
+		services.AddSingleton<SessionContext>(sp => new SessionContext(
 			sp.GetRequiredService<TimeProvider>(),
 			sp.GetRequiredService<IEventPublisher<UserEvent>>(),
+			new Lazy<UserRegistry>(sp.GetRequiredService<UserRegistry>),
+			sp.GetRequiredService<IRelationshipRepository>(),
 			sp.GetRequiredService<ChannelContext>(),
-			sp.GetRequiredService<Lobby>,
+			new DeferredConnectionLobbyPort(sp.GetRequiredService<Lobby>),
 			sp.GetRequiredService<ScoreRecorder>(),
 			sp.GetRequiredService<IEventPublisher<ScoreEvent>>(),
 			sp.GetRequiredService<IEventPublisher<AnticheatEvent>>()));
+		services.AddSingleton<UserRegistry>(sp => new UserRegistry(
+			sp.GetRequiredService<AccountService>(),
+			sp.GetRequiredService<UserContext>(),
+			sp.GetRequiredService<SessionContext>()));
 		services.AddSingleton<IRoomUsersPort>(sp => sp.GetRequiredService<UserRegistry>());
 		services.AddSingleton<Func<UserRecord, User>>(sp => sp.GetRequiredService<UserRegistry>().Of);
 
@@ -65,7 +76,6 @@ public static class DependencyInjection
 			sp.GetRequiredService<GeneralChannelRegistry>(),
 			sp.GetRequiredService<IRelationshipRepository>(),
 			sp.GetRequiredService<IChannelRepository>()));
-		services.AddSingleton<SessionContext>(sp => sp.GetRequiredService<UserRegistry>().Session);
 		services.AddSingleton<ServerContext>(sp => new ServerContext(
 			sp.GetRequiredService<SessionContext>(),
 			sp.GetRequiredService<IScreenshotInspector>(),

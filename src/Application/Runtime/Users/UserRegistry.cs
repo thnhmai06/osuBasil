@@ -2,11 +2,7 @@ using System.Buffers.Text;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Security.Cryptography;
-using Basil.Application.Runtime.Anticheat;
-using Basil.Application.Runtime.Chat;
-using Basil.Application.Runtime.Events;
 using Basil.Application.Runtime.Multiplayer.Rooms;
-using Basil.Application.Runtime.Scores;
 using Basil.Application.Runtime.Sessions;
 using Basil.Application.Persistence.Auth;
 using Basil.Application.Persistence.Users;
@@ -16,22 +12,16 @@ using Basil.Domain.Common;
 using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 using Basil.Application.Capabilities.Users;
-using Basil.Application.Capabilities.Scores;
 
 namespace Basil.Application.Runtime.Users;
 
 /// <summary>The users who are online and the connections through which they act.</summary>
-public sealed class UserRegistry : IUserConnectionsPort, IRoomUsersPort
+public sealed class UserRegistry : IRoomUsersPort
 {
 	private readonly ConcurrentDictionary<string, Connection> _connections = new(StringComparer.Ordinal);
 	private readonly ConcurrentDictionary<UserRecord, User> _online = new();
 	private readonly Lock _sync = new(); // ponytail: one lock for all logins; per-user locks if login rate ever matters
 	private readonly AccountService _accounts;
-	private readonly IUserRepository _users;
-	private readonly IRestrictionRepository _restrictions;
-	private readonly ILoginRepository _logins;
-	private readonly TimeProvider _clock;
-	private readonly IEventPublisher<UserEvent> _events;
 	private readonly UserContext _context;
 	private readonly SessionContext _session;
 
@@ -43,41 +33,32 @@ public sealed class UserRegistry : IUserConnectionsPort, IRoomUsersPort
 
 	/// <summary>Creates the registry that owns online users and their connections.</summary>
 	/// <param name="accounts">The account operations that use persistence.</param>
-	/// <param name="users">The stored accounts.</param>
-	/// <param name="restrictions">The stored restrictions.</param>
-	/// <param name="moderationLog">The recorded moderation history.</param>
-	/// <param name="relationships">The relationships users set toward each other.</param>
-	/// <param name="logins">The recorded logins.</param>
-	/// <param name="credentials">The stored passwords.</param>
-	/// <param name="clock">The clock for connection and permission times.</param>
-	/// <param name="events">The publisher for user events.</param>
-	/// <param name="chat">The runtime dependencies for user channels.</param>
-	/// <param name="lobby">The deferred lookup for rooms containing game clients.</param>
-	/// <param name="scores">The score validation and persistence operations.</param>
-	/// <param name="scoreEvents">The publisher for score events.</param>
-	/// <param name="anticheatEvents">The publisher for anticheat events.</param>
-	internal UserRegistry(AccountService accounts, IUserRepository users, IRestrictionRepository restrictions,
-		IModerationLogRepository moderationLog, IRelationshipRepository relationships, ILoginRepository logins,
-		ICredentialRepository credentials, TimeProvider clock, IEventPublisher<UserEvent> events, ChannelContext chat,
-		Func<IConnectionLobbyPort> lobby, ScoreRecorder scores, IEventPublisher<ScoreEvent> scoreEvents,
-		IEventPublisher<AnticheatEvent> anticheatEvents)
+	/// <param name="context">The ports through which the users of this registry perform their behaviour.</param>
+	/// <param name="session">The ports through which the connections of this registry perform their behaviour.</param>
+	internal UserRegistry(AccountService accounts, UserContext context, SessionContext session)
 	{
 		_accounts = accounts;
-		_users = users;
-		_restrictions = restrictions;
-		_logins = logins;
-		_clock = clock;
-		_events = events;
-		_context = new UserContext(clock, events, this, users, restrictions, moderationLog, relationships, logins,
-			credentials, this, chat);
-		_session = new SessionContext(clock, events, this, relationships, chat,
-			new DeferredConnectionLobbyPort(lobby), scores, scoreEvents, anticheatEvents);
+		_context = context;
+		_session = session;
 	}
-
-	internal SessionContext Session => _session;
 
 	/// <summary>Gets every online user by its account.</summary>
 	public IReadOnlyDictionary<UserRecord, User> Online => _online;
+
+	/// <summary>Gets the open osu! game client of an online user.</summary>
+	/// <param name="user">The account to look up.</param>
+	/// <returns>The open game client, or <see langword="null" /> when the user has none.</returns>
+	internal BanchoConnection? OpenBanchoClient(UserRecord user)
+	{
+		return _online.GetValueOrDefault(user)?.Bancho is { IsOpen: true } client ? client : null;
+	}
+
+	/// <summary>Gets the open osu! game client of every online user.</summary>
+	/// <returns>The open game clients.</returns>
+	internal IEnumerable<BanchoConnection> OpenBanchoClients()
+	{
+		return _online.Keys.Select(OpenBanchoClient).OfType<BanchoConnection>();
+	}
 
 	/// <summary>Finds the open connection a token identifies.</summary>
 	/// <param name="token">The token the client presented.</param>
@@ -144,8 +125,8 @@ public sealed class UserRegistry : IUserConnectionsPort, IRoomUsersPort
 		if (failure is { } loginFailure) return LoginResult.Fail(loginFailure);
 		if (record is null) return LoginResult.Fail(LoginFailure.UnknownUser);
 
-		var now = _clock.GetUtcNow();
-		var restrictions = (await _restrictions.ListAsync(record, cancellationToken))
+		var now = _context.Clock.GetUtcNow();
+		var restrictions = (await _context.Restrictions.ListAsync(record, cancellationToken))
 			.Where(restriction => restriction.Value.EndsAt is null || restriction.Value.EndsAt > now)
 			.ToList();
 		var login = new Login { User = record, Ip = ip, Client = client, Timestamp = now };
@@ -161,7 +142,7 @@ public sealed class UserRegistry : IUserConnectionsPort, IRoomUsersPort
 		var openFailure = Open(connection, restrictions);
 		if (openFailure is not null) return LoginResult.Fail(openFailure.Value);
 
-		await _logins.RecordAsync(login, cancellationToken);
+		await _context.Logins.RecordAsync(login, cancellationToken);
 		return LoginResult.Success(connection);
 	}
 
@@ -195,12 +176,13 @@ public sealed class UserRegistry : IUserConnectionsPort, IRoomUsersPort
 	/// <param name="connection">The connection to close.</param>
 	/// <param name="reason">Why the connection is closed.</param>
 	/// <remarks>
-	///     An osu! client's logout within one second of login is ignored. Closing an already closed connection does nothing.
+	///     This system operation needs no rights because the server itself calls it. An osu! client's logout within one
+	///     second of login is ignored. Closing an already closed connection does nothing.
 	/// </remarks>
 	public void Close(Connection connection, ConnectionCloseReason reason)
 	{
 		if (reason is ConnectionCloseReason.LoggedOut && connection is BanchoConnection &&
-		    _clock.GetUtcNow() - connection.Login.Timestamp < IgnoreLogoutWithin)
+		    _context.Clock.GetUtcNow() - connection.Login.Timestamp < IgnoreLogoutWithin)
 			return;
 
 		using var scope = Enter();
@@ -209,18 +191,22 @@ public sealed class UserRegistry : IUserConnectionsPort, IRoomUsersPort
 
 	/// <summary>Records that a client just sent something.</summary>
 	/// <param name="connection">The connection that sent a message.</param>
+	/// <remarks>This system operation needs no rights because the server itself calls it.</remarks>
 	public void MarkActive(Connection connection)
 	{
 		if (connection.IsOpen)
-			connection.LastActiveAt = _clock.GetUtcNow();
+			connection.LastActiveAt = _context.Clock.GetUtcNow();
 	}
 
 	/// <summary>Closes every connection that has sent nothing for too long.</summary>
 	/// <returns>How many connections were closed.</returns>
-	/// <remarks>The bot connection is not closed by this operation.</remarks>
+	/// <remarks>
+	///     This system operation needs no rights because the server itself calls it. The bot connection is not closed by
+	///     this operation.
+	/// </remarks>
 	public int CloseIdle()
 	{
-		var now = _clock.GetUtcNow();
+		var now = _context.Clock.GetUtcNow();
 		var idleConnections = _online.Values
 			.SelectMany(user => user.Connections)
 			.Where(connection => connection is { IsOpen: true, Type: not ConnectionType.Bot } &&
@@ -239,16 +225,16 @@ public sealed class UserRegistry : IUserConnectionsPort, IRoomUsersPort
 	///     The existing connection when BasilBot is already online, or <see langword="null" /> when its record is not
 	///     stored or its connection could not be opened.
 	/// </returns>
-	/// <remarks>Used by the server at startup.</remarks>
+	/// <remarks>This system operation needs no rights because the server itself calls it at startup.</remarks>
 	public async Task<BotConnection?> ConnectBotAsync(CancellationToken cancellationToken = default)
 	{
-		var user = await _users.GetAsync(BasilBot.Id, cancellationToken);
+		var user = await _context.Users.GetAsync(BasilBot.Id, cancellationToken);
 		if (user is null) return null;
 
 		var online = _online.GetValueOrDefault(user);
 		if (online?.Bot is { IsOpen: true } connection) return connection;
 
-		var login = new Login { User = user, Ip = IPAddress.Loopback, Timestamp = _clock.GetUtcNow() };
+		var login = new Login { User = user, Ip = IPAddress.Loopback, Timestamp = _context.Clock.GetUtcNow() };
 		var bot = new BotConnection(login, NewToken());
 		return Open(bot, []) is null ? bot : null;
 	}
@@ -269,7 +255,7 @@ public sealed class UserRegistry : IUserConnectionsPort, IRoomUsersPort
 		// The online user holds the current record; a login may have read an older one.
 		var record = _online.GetValueOrDefault(connection.Record)?.Record ?? connection.Record;
 		if (connection.Type is ConnectionType.Tourney &&
-		    !record.Value.Permissions.Effective(restrictions, _clock.GetUtcNow())
+		    !record.Value.Permissions.Effective(restrictions, _context.Clock.GetUtcNow())
 			    .Allows(Permissions.RoomObserve))
 			return LoginFailure.NoTourneyPermission;
 
@@ -278,7 +264,7 @@ public sealed class UserRegistry : IUserConnectionsPort, IRoomUsersPort
 		if (user is not null && !connection.Type.AllowsMany() &&
 		    user[connection.Type].FirstOrDefault() is { } old)
 		{
-			if (_clock.GetUtcNow() - old.LastActiveAt < ReplaceAfterIdle)
+			if (_context.Clock.GetUtcNow() - old.LastActiveAt < ReplaceAfterIdle)
 				return LoginFailure.AlreadyOnline;
 
 			CloseCore(old, ConnectionCloseReason.Replaced);
@@ -299,7 +285,7 @@ public sealed class UserRegistry : IUserConnectionsPort, IRoomUsersPort
 		// The bot's token is never findable: nobody can present it, and nobody should be able to try.
 		if (connection.Type is not ConnectionType.Bot) Index(connection);
 
-		_events.Publish(new UserConnectionOpened(connection, cameOnline));
+		_context.Events.Publish(new UserConnectionOpened(connection, cameOnline));
 		return null;
 	}
 
@@ -322,24 +308,14 @@ public sealed class UserRegistry : IUserConnectionsPort, IRoomUsersPort
 			Close(connection, reason);
 	}
 
-	void IUserConnectionsPort.CloseAll(UserRecord user, ConnectionCloseReason reason)
-	{
-		CloseAll(user, reason);
-	}
-
 	/// <summary>Closes connections of kinds the user may no longer use.</summary>
 	/// <param name="user">The online user whose permissions or restrictions changed.</param>
 	internal void CloseDisallowed(User user)
 	{
-		if (user.EffectivePermissions(_clock.GetUtcNow()).Allows(Permissions.RoomObserve)) return;
+		if (user.EffectivePermissions(_context.Clock.GetUtcNow()).Allows(Permissions.RoomObserve)) return;
 
 		foreach (var connection in user.Tourneys.Where(connection => connection.IsOpen).ToList())
 			Close(connection, ConnectionCloseReason.Revoked);
-	}
-
-	void IUserConnectionsPort.CloseDisallowed(User user)
-	{
-		CloseDisallowed(user);
 	}
 
 	ValueTask<bool> IRoomUsersPort.BlocksAsync(UserRecord blocker, UserRecord who, CancellationToken cancellationToken)
@@ -393,22 +369,12 @@ public sealed class UserRegistry : IUserConnectionsPort, IRoomUsersPort
 			connection.User.PmChannel.Close();
 		}
 
-		_events.Publish(new UserConnectionClosed(connection, reason, wentOffline));
+		_context.Events.Publish(new UserConnectionClosed(connection, reason, wentOffline));
 	}
 
 	internal Task<(UserRecord? User, RegistrationFailure? Failure)> CreateAccountAsync(UserData data,
 		Md5 passwordHash, CancellationToken cancellationToken)
 	{
 		return _accounts.CreateAsync(data, passwordHash, cancellationToken);
-	}
-
-	private sealed class DeferredConnectionLobbyPort(Func<IConnectionLobbyPort> resolve) : IConnectionLobbyPort
-	{
-		private readonly Lazy<IConnectionLobbyPort> _lobby = new(resolve);
-
-		public Room? RoomOf(BanchoConnection player)
-		{
-			return _lobby.Value.RoomOf(player);
-		}
 	}
 }
