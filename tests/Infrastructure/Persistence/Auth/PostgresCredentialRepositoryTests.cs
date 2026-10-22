@@ -58,6 +58,43 @@ public sealed class PostgresCredentialRepositoryTests : DatabaseTests
 	}
 
 	[Fact]
+	public async Task A_deleted_credential_verifies_nothing()
+	{
+		var user = await Get<IUserRepository>().CreateAsync(new UserData { Name = "cred_user" }, TestContext.Current.CancellationToken);
+		await Credentials.CreateOrUpdateAsync(new Credentials(user, HashOf(Password)), TestContext.Current.CancellationToken);
+
+		await Credentials.DeleteAsync(user, TestContext.Current.CancellationToken);
+
+		Assert.False(await Credentials.VerifyAsync(new Credentials(user, HashOf(Password)), TestContext.Current.CancellationToken));
+	}
+
+	[Fact]
+	public async Task A_deleted_credential_is_removed_from_the_database()
+	{
+		var user = await Get<IUserRepository>().CreateAsync(new UserData { Name = "cred_user" }, TestContext.Current.CancellationToken);
+		await Credentials.CreateOrUpdateAsync(new Credentials(user, HashOf(Password)), TestContext.Current.CancellationToken);
+		await StoredRows.WaitForAsync(ConnectionString, "select user_id from credentials where user_id = @id",
+			new Dictionary<string, object?> { ["@id"] = user.Id }, rows => rows.Count == 1,
+			"the stored credential", TestContext.Current.CancellationToken);
+
+		await Credentials.DeleteAsync(user, TestContext.Current.CancellationToken);
+
+		await StoredRows.WaitForAsync(ConnectionString, "select user_id from credentials where user_id = @id",
+			new Dictionary<string, object?> { ["@id"] = user.Id }, rows => rows.Count == 0,
+			"no credential", TestContext.Current.CancellationToken);
+	}
+
+	[Fact]
+	public async Task Deleting_the_credential_of_an_account_without_one_changes_nothing()
+	{
+		var user = await Get<IUserRepository>().CreateAsync(new UserData { Name = "no_cred" }, TestContext.Current.CancellationToken);
+
+		await Credentials.DeleteAsync(user, TestContext.Current.CancellationToken);
+
+		Assert.False(await Credentials.VerifyAsync(new Credentials(user, HashOf(Password)), TestContext.Current.CancellationToken));
+	}
+
+	[Fact]
 	public async Task The_stored_credential_is_not_the_password()
 	{
 		var user = await Get<IUserRepository>().CreateAsync(new UserData { Name = "cred_user" }, TestContext.Current.CancellationToken);

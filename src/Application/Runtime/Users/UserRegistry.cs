@@ -219,6 +219,50 @@ public sealed class UserRegistry : IRoomUsersPort
 		return idleConnections.Count;
 	}
 
+	/// <summary>Makes the account with BasilBot's fixed id the bot, whatever that id holds.</summary>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The bot's account.</returns>
+	/// <remarks>
+	///     <para>
+	///         An account that holds the id is taken over: it loses its permissions, its password and its restrictions,
+	///         a deleted one is restored, and its connections are closed (the bot's own connection stays open when the
+	///         account is the bot already). A live account keeps its name and country; a deleted one gets
+	///         <see cref="BasilBot.DefaultName" />. When the id holds nothing, the bot is created.
+	///     </para>
+	///     <para>
+	///         This system operation needs no rights because the server itself calls it at startup. Calling it again
+	///         changes nothing.
+	///     </para>
+	/// </remarks>
+	/// <exception cref="Basil.Application.Persistence.Common.AlreadyExistsException">
+	///     The id holds a deleted account or nothing, and another user already has <see cref="BasilBot.DefaultName" />.
+	/// </exception>
+	public async Task<UserRecord> EnsureBotAsync(CancellationToken cancellationToken = default)
+	{
+		var stored = await _context.Users.GetAsync(BasilBot.Id, cancellationToken);
+		var isBot = stored is { Value: { DeletedAt: null, Permissions: Permissions.None } };
+
+		if (!isBot && stored is not null) CloseAll(stored, ConnectionCloseReason.Revoked);
+
+		var bot = isBot
+			? stored!
+			: await _context.Users.ReplaceAsync(BasilBot.Id, stored is { Value.DeletedAt: null }
+				? new UserData { Name = stored.Value.Name, Country = stored.Value.Country, Permissions = Permissions.None }
+				: new UserData { Name = BasilBot.DefaultName, Permissions = Permissions.None }, cancellationToken);
+
+		var now = _context.Clock.GetUtcNow();
+		foreach (var restriction in await _context.Restrictions.ListAsync(bot, cancellationToken))
+		{
+			if (restriction.Value.EndsAt <= now) continue;
+
+			restriction.Value.EndsAt = restriction.Value.StartsAt > now ? restriction.Value.StartsAt : now;
+			await _context.Restrictions.UpdateAsync(restriction, cancellationToken);
+		}
+
+		await _context.Credentials.DeleteAsync(bot, cancellationToken);
+		return bot;
+	}
+
 	/// <summary>Brings BasilBot online with a connection of its own.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>

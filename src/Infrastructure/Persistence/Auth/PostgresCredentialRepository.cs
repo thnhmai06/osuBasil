@@ -1,5 +1,6 @@
 using Basil.Application.Persistence.Auth;
 using Basil.Domain.Auth;
+using Basil.Domain.Users;
 using Basil.Infrastructure.Persistence.Postgres;
 using Basil.Infrastructure.Persistence.Memory;
 using Microsoft.EntityFrameworkCore;
@@ -25,6 +26,13 @@ internal sealed class PostgresCredentialRepository(DatabaseReader reader, Databa
 		return Task.CompletedTask;
 	}
 
+	/// <inheritdoc />
+	public async Task DeleteAsync(UserRecord user, CancellationToken cancellationToken = default)
+	{
+		if (await FindAsync(user.Id, cancellationToken) is { } stored)
+			await RemoveAsync(stored);
+	}
+
 	protected override int KeyOf(StoredCredential item)
 	{
 		return item.UserId;
@@ -46,6 +54,13 @@ internal sealed class PostgresCredentialRepository(DatabaseReader reader, Databa
 			.Where(c => c.UserId == key)
 			.FirstOrDefaultAsync());
 		return row is null ? null : new StoredCredential(key, row.PasswordHash);
+	}
+
+	protected override WriteCommand EraseCommand(int key)
+	{
+		return new WriteCommand((context, token) => context.Credentials
+			.Where(c => c.UserId == key)
+			.ExecuteDeleteAsync(token));
 	}
 
 	protected override WriteCommand SaveCommand(StoredCredential item)

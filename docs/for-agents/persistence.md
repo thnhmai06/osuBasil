@@ -7,7 +7,7 @@ Repository contracts, byte storages and the memory-first model. Moved out of `AG
   between two models that is stored on its own gets its own repository rather than a column on either
   (`IRoundScoreRepository` relates a round to a score and keeps the team it was set for). Verbs:
   `CreateAsync(XData) → X` (the store assigns the identity) with `UpdateAsync(X)` for a record created that way
-  (nothing is created under an id the store has not given out), `CreateOrUpdateAsync(X)` only for a record keyed by
+  (nothing is created under an id the store has not given out, except BasilBot's fixed id through `IUserRepository.ReplaceAsync`), `CreateOrUpdateAsync(X)` only for a record keyed by
   what it is about (credentials by user, a relationship by its two users, stats by user and mode), `GetAsync(id)`,
   `GetByYAsync(y)` for a unique key, `ListAsync(XQuery, PageRequest) → Page<X>` for listing and search,
   `DeleteAsync(X)`. A listing without a page is complete and is never copied to be returned: a list the
