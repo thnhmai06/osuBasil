@@ -19,7 +19,7 @@ internal sealed class AnticheatAnnouncer(Server server, UserRegistry users, IRep
 		if (@event is not AnticheatPlayerFlagged { Room: { } room } flagged)
 			return;
 
-		var reason = FormatFlags(flagged.Signs);
+		var reason = string.Join(", ", flagged.Signs.SignNames());
 		var playerName = flagged.Player.Record.Value.Name;
 		var channelMessage = replies.Text(AnnouncementReplies.AnticheatFlagRoom,
 			new { player = playerName, reason });
@@ -44,12 +44,5 @@ internal sealed class AnticheatAnnouncer(Server server, UserRegistry users, IRep
 			if (users.Online.GetValueOrDefault(user) is { } online)
 				await server.WhisperAsync(online, text, cancellationToken: cancellationToken);
 		}
-	}
-
-	private static string FormatFlags(BanchoFlags flags)
-	{
-		return string.Join(", ", Enum.GetValues<BanchoFlags>()
-			.Where(value => value != BanchoFlags.Clean && value != BanchoFlagsGroups.CheatSigns && flags.HasFlag(value))
-			.Select(value => value.ToString()));
 	}
 }
