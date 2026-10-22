@@ -311,7 +311,6 @@ internal sealed partial class MpCommands
 
 		var before = room.Settings.MatchSettings.Mods;
 		var wasFreemod = room.Settings.MatchSettings.Freemods;
-		var mode = room.Settings.MatchSettings.Mode;
 
 		var mods = GameMods.NoMod;
 		var freemod = false;
@@ -330,7 +329,7 @@ internal sealed partial class MpCommands
 		}
 
 		var outcome = await room.ScopeTo(by).Settings.ConfigureAsync(
-			new RoomSettingsChange(Mods: mods.RemoveInvalidMods(mode), Freemods: freemod), cancellationToken);
+			new RoomSettingsChange(Mods: mods, Freemods: freemod), cancellationToken);
 		if (!outcome.IsOk)
 		{
 			await context.Say(MpReplies.Describe(context.Replies, outcome), cancellationToken);

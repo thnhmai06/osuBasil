@@ -62,7 +62,7 @@ internal sealed partial class MpCommands
 		CancellationToken cancellationToken)
 	{
 		var by = context.By;
-		if (seconds < 1 || seconds > 3600)
+		if (seconds < 1 || TimeSpan.FromSeconds(seconds) > ScopedRoomRounds.MaxCountdown)
 		{
 			await context.Reply(MpReplies.CountdownOutOfRange, cancellationToken);
 			return false;
