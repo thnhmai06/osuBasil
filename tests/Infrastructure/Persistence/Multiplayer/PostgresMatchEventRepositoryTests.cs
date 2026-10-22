@@ -128,7 +128,7 @@ public sealed class PostgresMatchEventRepositoryTests : DatabaseTests
 	/// <returns>The match.</returns>
 	private async Task<MatchRecord> CreateMatchAsync(string name)
 	{
-		return await Matches.CreateAsync(StoredMatches.Data(name, First), TestContext.Current.CancellationToken);
+		return await CreateStoredMatchAsync(name, First);
 	}
 
 	/// <summary>Waits until the given number of events of a match is stored.</summary>

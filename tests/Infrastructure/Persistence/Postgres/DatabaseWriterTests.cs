@@ -24,7 +24,7 @@ public sealed class DatabaseWriterTests : DatabaseTests
 	[Fact]
 	public async Task The_writes_of_one_root_leave_the_last_value_in_the_table()
 	{
-		var match = await Matches.CreateAsync(StoredMatches.Data("queued_match", First), TestContext.Current.CancellationToken);
+		var match = await CreateStoredMatchAsync("queued_match", First);
 		match.Value.Name = "first_name";
 		await Matches.UpdateAsync(match, TestContext.Current.CancellationToken);
 		match.Value.Name = "second_name";
@@ -41,7 +41,7 @@ public sealed class DatabaseWriterTests : DatabaseTests
 	[Fact]
 	public async Task An_append_does_not_hold_up_the_caller()
 	{
-		var match = await Matches.CreateAsync(StoredMatches.Data("appended_match", First), TestContext.Current.CancellationToken);
+		var match = await CreateStoredMatchAsync("appended_match", First);
 
 		await using (var connection = new NpgsqlConnection(ConnectionString))
 		{

@@ -10,7 +10,7 @@ internal static class SafePath
 	/// <param name="name">The file's name, relative to the directory.</param>
 	/// <returns>The absolute path of the file.</returns>
 	/// <exception cref="ArgumentException">
-	///     <paramref name="name" /> is empty or white space, is rooted, contains a null character or a <c>.</c> or
+	///     <paramref name="name" /> is empty or white space, is rooted, contains a backslash, a null character or a <c>.</c> or
 	///     <c>..</c> segment, or resolves outside <paramref name="root" />.
 	/// </exception>
 	public static string Combine(string root, string name)
@@ -20,10 +20,13 @@ internal static class SafePath
 		if (name.HasNul())
 			throw new ArgumentException("The name cannot contain a null character.", nameof(name));
 
+		if (name.Contains('\\'))
+			throw new ArgumentException("The name cannot contain a backslash.", nameof(name));
+
 		if (Path.IsPathRooted(name))
 			throw new ArgumentException("The name must be relative.", nameof(name));
 
-		var segments = name.Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries);
+		var segments = name.Split('/', StringSplitOptions.RemoveEmptyEntries);
 		if (segments.Any(segment => segment is "." or ".."))
 			throw new ArgumentException("The name cannot contain a '.' or '..' segment.", nameof(name));
 

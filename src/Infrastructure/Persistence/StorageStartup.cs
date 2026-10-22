@@ -36,10 +36,10 @@ internal sealed class StorageStartup(DataPaths paths, DatabaseMigrator migrator,
 	private void RemoveLeftovers()
 	{
 		foreach (var folder in Directory.EnumerateDirectories(paths.Beatmapsets.Path))
-			if (FileBeatmapsetStorage.IsHidden(Path.GetFileName(folder)))
+			if (FileBeatmapsetNames.IsHidden(Path.GetFileName(folder)))
 				DeleteLeftover(folder);
 		foreach (var file in Directory.EnumerateFiles(paths.Beatmapsets.Path))
-			if (FileBeatmapsetStorage.IsHidden(Path.GetFileName(file)))
+			if (FileBeatmapsetNames.IsHidden(Path.GetFileName(file)))
 				DeleteLeftoverFile(file);
 
 		foreach (var former in new[]

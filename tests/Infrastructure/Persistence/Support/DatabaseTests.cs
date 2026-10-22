@@ -1,3 +1,7 @@
+using Basil.Application.Persistence.Multiplayer;
+using Basil.Application.Persistence.Users;
+using Basil.Domain.Multiplayer;
+using Basil.Domain.Users;
 using Basil.Infrastructure.Persistence.Common;
 using Basil.Infrastructure.Persistence.Postgres;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,6 +22,7 @@ public abstract class DatabaseTests(PersistenceFixture container) : IAsyncLifeti
 	private string _root = Path.Combine(Path.GetTempPath(), "basil-test-db-" + Guid.NewGuid().ToString("N"));
 	private string _connection = "";
 	private ServiceProvider? _provider;
+	private UserRecord? _matchCreator;
 
 	/// <summary>The connection string of the database created for the test.</summary>
 	protected string ConnectionString => _connection;
@@ -57,5 +62,21 @@ public abstract class DatabaseTests(PersistenceFixture container) : IAsyncLifeti
 	protected T Get<T>() where T : notnull
 	{
 		return _provider!.GetRequiredService<T>();
+	}
+
+	/// <summary>Creates a match in the store, created by an account the test shares.</summary>
+	/// <param name="name">The name of the match.</param>
+	/// <param name="startedAt">The moment the match started.</param>
+	/// <param name="endedAt">The moment the match ended, or <see langword="null" /> while it runs.</param>
+	/// <param name="isPrivate">Whether the match history is visible only to its creator and participants.</param>
+	/// <returns>The stored match.</returns>
+	protected async Task<MatchRecord> CreateStoredMatchAsync(string name, DateTimeOffset startedAt,
+		DateTimeOffset? endedAt = null, bool isPrivate = false)
+	{
+		_matchCreator ??= await Get<IUserRepository>().CreateAsync(new UserData { Name = "match_creator" },
+			TestContext.Current.CancellationToken);
+		return await Get<IMatchRepository>().CreateAsync(
+			StoredMatches.Data(name, startedAt, _matchCreator, endedAt, isPrivate),
+			TestContext.Current.CancellationToken);
 	}
 }

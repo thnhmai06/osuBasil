@@ -14,11 +14,11 @@ internal static class StoredMatches
 	/// <summary>Creates the data of a match.</summary>
 	/// <param name="name">The name of the match.</param>
 	/// <param name="startedAt">The moment the match started.</param>
-	/// <param name="creator">The account that created the match, or <see langword="null" /> for an unattended room.</param>
+	/// <param name="creator">The account that created the match.</param>
 	/// <param name="endedAt">The moment the match ended, or <see langword="null" /> while it runs.</param>
 	/// <param name="isPrivate">Whether the match history is visible only to its creator and participants.</param>
 	/// <returns>The match's data, as a commit stores it.</returns>
-	public static MatchData Data(string name, DateTimeOffset startedAt, UserRecord? creator = null,
+	public static MatchData Data(string name, DateTimeOffset startedAt, UserRecord creator,
 		DateTimeOffset? endedAt = null, bool isPrivate = false)
 	{
 		return new MatchData

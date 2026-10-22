@@ -154,7 +154,7 @@ public sealed class PostgresRoundScoreRepositoryTests : DatabaseTests
 	/// <returns>The match.</returns>
 	private async Task<MatchRecord> CreateMatchAsync(string name)
 	{
-		return await Matches.CreateAsync(StoredMatches.Data(name, First), TestContext.Current.CancellationToken);
+		return await CreateStoredMatchAsync(name, First);
 	}
 
 	/// <summary>Creates a round of a match.</summary>

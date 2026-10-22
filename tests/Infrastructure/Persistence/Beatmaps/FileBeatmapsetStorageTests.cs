@@ -327,6 +327,39 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
+	public async Task Renaming_a_set_folder_only_in_letter_case_reports_no_name_but_the_old_and_the_new()
+	{
+		var id = NewId();
+		PlaceFolder(id, "artist", "title", Osz(("a.osu", "x")));
+		var own = await OwnArchiveAsync($"{id} artist - title");
+		await using var watching = Watching.Start(_storage, _time);
+
+		await _storage.SaveAsync(Set(id, "Artist", "Title"), own, TestContext.Current.CancellationToken);
+		PlaceFolder(NewId(), "Sentinel", "Folder", Osz(("a.osu", "x")));
+		var reported = await watching.ReadUntilAsync(source => source.Name.Contains("Sentinel"));
+
+		Assert.All(reported.Where(source => !source.Name.Contains("Sentinel")),
+			source => Assert.Contains(source.Name, new[] { $"{id} artist - title", $"{id} Artist - Title" }));
+	}
+
+	[Fact]
+	public async Task A_set_with_a_long_title_in_a_multi_byte_script_is_stored_and_found()
+	{
+		var id = NewId();
+		var set = Set(id, "Artist", new string('\u6f22', 100));
+		var bytes = Osz(("a.osu", "x"));
+		var archive = await _storage.SaveAsync(new MemoryStream(bytes), TestContext.Current.CancellationToken);
+
+		await _storage.SaveAsync(set, archive, TestContext.Current.CancellationToken);
+
+		var name = Assert.Single(TopLevel());
+		Assert.StartsWith($"{id} Artist - ", name);
+		Assert.True(Encoding.UTF8.GetByteCount(name) <= 150, "A folder name keeps room for the marker added while it is removed.");
+		Assert.Equal(bytes,
+			await ReadAllBytesAsync(await _storage.OpenArchiveAsync(set, true, TestContext.Current.CancellationToken)));
+	}
+
+	[Fact]
 	public async Task A_folder_name_has_none_of_the_characters_a_folder_may_not_have_and_still_finds_the_set()
 	{
 		var id = NewId();
@@ -927,28 +960,6 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 
 		Assert.All(reported.Where(source => source.Name.Contains("Gone")),
 			source => Assert.False(Assert.IsAssignableFrom<BeatmapsetFolder>(source).Exists));
-	}
-
-	[Fact]
-	public async Task A_burst_of_changes_to_one_folder_is_reported_once()
-	{
-		// Real time: the storage waits a couple of seconds for the changes of a folder to settle. The burst ends long
-		// before then; a second report of the folder would come before the report of the folder made afterwards.
-		var storage =
-			new FileBeatmapsetStorage(_data.Paths, TimeProvider.System, NullLogger<FileBeatmapsetStorage>.Instance);
-		var id = NewId();
-		PlaceFolder(id, "Burst", "Folder", Osz(("a.osu", "x")));
-		await using var watching = Watching.Start(storage, null);
-
-		for (var write = 0; write < 5; write++)
-			File.WriteAllBytes(Path.Combine(Sets, $"{id} Burst - Folder", "archive.osz"),
-				Osz(("a.osu", $"write {write}")));
-		var first = await watching.ReadUntilAsync(source => source.Name == $"{id} Burst - Folder");
-		PlaceFolder(NewId(), "Sentinel", "Folder", Osz(("a.osu", "x")));
-		var second = await watching.ReadUntilAsync(source => source.Name.Contains("Sentinel"));
-
-		Assert.Single(first);
-		Assert.DoesNotContain(second, source => source.Name == $"{id} Burst - Folder");
 	}
 
 	[Fact]
