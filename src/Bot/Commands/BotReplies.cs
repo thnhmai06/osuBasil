@@ -12,7 +12,7 @@ internal static class BotReplies
 	/// <summary>The help text listing available commands.</summary>
 	public static readonly Reply HelpText = new("bot.helpText", """
 		!roll [max] - roll a random number from 0 to max (default 100)
-		!where <username> - show a userSession's country
+		!where <username> - show a user's country
 		!faq <entry>|list - print a FAQ entry, or list every entry
 		!mp help - list multiplayer subcommands
 		""");
