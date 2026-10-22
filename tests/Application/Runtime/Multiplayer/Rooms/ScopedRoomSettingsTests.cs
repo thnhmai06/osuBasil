@@ -1,7 +1,7 @@
 using Basil.Application.Runtime.Multiplayer;
 using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Multiplayer.Rooms;
-using Basil.Application.Runtime.Tests.Support;
+using Basil.Testing;
 using Basil.Domain.Mechanics;
 
 namespace Basil.Application.Runtime.Tests.Multiplayer.Rooms;

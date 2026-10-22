@@ -1,5 +1,5 @@
 using Basil.Application.Runtime.Multiplayer;
-using Basil.Application.Runtime.Tests.Support;
+using Basil.Testing;
 
 namespace Basil.Application.Runtime.Tests.Multiplayer.Rooms;
 

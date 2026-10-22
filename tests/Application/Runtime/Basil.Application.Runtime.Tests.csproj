@@ -30,6 +30,7 @@
 		<ProjectReference Include="..\..\..\src\Application\Persistence\Basil.Application.Persistence.csproj"/>
 		<ProjectReference Include="..\..\..\src\Application\Capabilities\Basil.Application.Capabilities.csproj"/>
 		<ProjectReference Include="..\..\..\src\Application\Runtime\Basil.Application.Runtime.csproj"/>
+		<ProjectReference Include="..\..\Support\Basil.Testing\Basil.Testing.csproj"/>
 	</ItemGroup>
 
 </Project>

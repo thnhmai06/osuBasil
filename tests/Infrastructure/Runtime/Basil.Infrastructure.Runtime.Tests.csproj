@@ -31,11 +31,7 @@
 		<ProjectReference Include="..\..\..\src\Application\Capabilities\Basil.Application.Capabilities.csproj"/>
 		<ProjectReference Include="..\..\..\src\Application\Runtime\Basil.Application.Runtime.csproj"/>
 		<ProjectReference Include="..\..\..\src\Infrastructure\Runtime\Basil.Infrastructure.Runtime.csproj"/>
-	</ItemGroup>
-
-	<ItemGroup>
-		<!-- The application composition the background work is exercised against, shared with its own tests. -->
-		<Compile Include="..\..\Application\Runtime\Support\*.cs" LinkBase="Support"/>
+		<ProjectReference Include="..\..\Support\Basil.Testing\Basil.Testing.csproj"/>
 	</ItemGroup>
 
 </Project>

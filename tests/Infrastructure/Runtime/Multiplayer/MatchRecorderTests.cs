@@ -1,7 +1,7 @@
 using Basil.Application.Persistence.Multiplayer;
 using Basil.Application.Runtime.Multiplayer;
 using Basil.Application.Runtime.Multiplayer.Events;
-using Basil.Application.Runtime.Tests.Support;
+using Basil.Testing;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Infrastructure.Runtime.Multiplayer;

@@ -1,6 +1,6 @@
 using Basil.Application.Persistence.Chat;
 using Basil.Application.Persistence.Multiplayer;
-using Basil.Application.Runtime.Tests.Support;
+using Basil.Testing;
 using Basil.Domain.Chat;
 using Basil.Domain.Multiplayer;
 using Basil.Infrastructure.Runtime.Startup;

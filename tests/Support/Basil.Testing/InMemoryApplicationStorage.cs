@@ -10,7 +10,7 @@ using Basil.Domain.Multiplayer;
 using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
-namespace Basil.Application.Runtime.Tests.Support;
+namespace Basil.Testing;
 
 internal sealed class InMemoryUserRepository : IUserRepository
 {

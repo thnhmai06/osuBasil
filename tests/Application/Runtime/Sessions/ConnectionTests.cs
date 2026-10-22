@@ -1,5 +1,5 @@
 using Basil.Application.Runtime.Sessions;
-using Basil.Application.Runtime.Tests.Support;
+using Basil.Testing;
 
 namespace Basil.Application.Runtime.Tests.Sessions;
 

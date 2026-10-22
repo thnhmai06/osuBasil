@@ -1,5 +1,5 @@
 using Basil.Application.Persistence.Beatmaps;
-using Basil.Application.Runtime.Tests.Support;
+using Basil.Testing;
 using Basil.Infrastructure.Runtime.Beatmaps;
 using Basil.Infrastructure.Runtime.Tests.Support;
 using Microsoft.Extensions.DependencyInjection;

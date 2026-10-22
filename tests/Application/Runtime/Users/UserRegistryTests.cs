@@ -1,7 +1,7 @@
 using System.Net;
 using Basil.Application.Runtime.Sessions;
 using Basil.Application.Persistence.Users;
-using Basil.Application.Runtime.Tests.Support;
+using Basil.Testing;
 using Basil.Domain.Common;
 using Basil.Domain.Permissions;
 

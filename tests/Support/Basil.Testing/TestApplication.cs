@@ -26,7 +26,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 
-namespace Basil.Application.Runtime.Tests.Support;
+namespace Basil.Testing;
 
 /// <summary>Collects events of one category without changing their observable values.</summary>
 /// <typeparam name="T">The event category.</typeparam>

@@ -7,7 +7,7 @@ using Basil.Domain.Permissions;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 
-namespace Basil.Application.Runtime.Tests.Support;
+namespace Basil.Testing;
 
 /// <summary>The roles a caller can hold in a room, for the authority tests.</summary>
 public enum RoomRole
