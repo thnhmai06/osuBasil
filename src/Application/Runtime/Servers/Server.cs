@@ -141,7 +141,7 @@ public sealed class Server
 
 	private int NotifyCore(string text, IReadOnlyCollection<UserRecord>? to)
 	{
-		if (string.IsNullOrWhiteSpace(text)) return 0;
+		if (string.IsNullOrEmpty(text)) return 0;
 
 		var context = Context.Session;
 		var recipients = (to is null

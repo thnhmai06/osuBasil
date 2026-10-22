@@ -151,19 +151,32 @@ public sealed class ServerNotifyTests
 		Assert.Empty(Notifications(app));
 	}
 
-	[Theory]
-	[InlineData("")]
-	[InlineData("   ")]
-	[InlineData("\t\n")]
-	public async Task Notify_BlankText_SendsNothing(string text)
+	[Fact]
+	public async Task Notify_EmptyText_SendsNothing()
 	{
 		using var app = new TestApplication();
 		var (user, _) = await OnlineClientAsync(app, "Target");
 
-		var sent = app.Server.Notify(text, user);
+		var sent = app.Server.Notify("", user);
 
 		Assert.Equal(0, sent);
 		Assert.Empty(Notifications(app));
+	}
+
+	[Theory]
+	[InlineData("   ")]
+	[InlineData("\t\n")]
+	public async Task Notify_WhitespaceOnlyText_IsSentAsIs(string text)
+	{
+		using var app = new TestApplication();
+		var (user, client) = await OnlineClientAsync(app, "Target");
+
+		var sent = app.Server.Notify(text, user);
+
+		Assert.Equal(1, sent);
+		var notification = Assert.Single(Notifications(app));
+		Assert.Equal(text, notification.Text);
+		Assert.Equal([client], notification.Recipients);
 	}
 
 	[Fact]
@@ -213,18 +226,30 @@ public sealed class ServerNotifyTests
 		Assert.Empty(Notifications(app));
 	}
 
-	[Theory]
-	[InlineData("")]
-	[InlineData("  ")]
-	public async Task NotifyAll_BlankText_SendsNothing(string text)
+	[Fact]
+	public async Task NotifyAll_EmptyText_SendsNothing()
 	{
 		using var app = new TestApplication();
 		await OnlineClientAsync(app, "Target");
 
-		var sent = app.Server.NotifyAll(text);
+		var sent = app.Server.NotifyAll("");
 
 		Assert.Equal(0, sent);
 		Assert.Empty(Notifications(app));
+	}
+
+	[Fact]
+	public async Task NotifyAll_WhitespaceOnlyText_IsSentAsIs()
+	{
+		using var app = new TestApplication();
+		var (_, client) = await OnlineClientAsync(app, "Target");
+
+		var sent = app.Server.NotifyAll("  ");
+
+		Assert.Equal(1, sent);
+		var notification = Assert.Single(Notifications(app));
+		Assert.Equal("  ", notification.Text);
+		Assert.Equal([client], notification.Recipients);
 	}
 
 	#endregion
@@ -274,13 +299,13 @@ public sealed class ServerNotifyTests
 	}
 
 	[Fact]
-	public async Task ScopedNotifyAll_BlankTextWithChatAnnounce_IsOkAndSendsNothing()
+	public async Task ScopedNotifyAll_EmptyTextWithChatAnnounce_IsOkAndSendsNothing()
 	{
 		using var app = new TestApplication();
 		var by = await AnnouncerAsync(app, PermissionsGroups.Default | Permissions.ChatAnnounce);
 		await OnlineClientAsync(app, "Target");
 
-		var (result, sent) = app.Server.ScopeTo(by).NotifyAll(" ");
+		var (result, sent) = app.Server.ScopeTo(by).NotifyAll("");
 
 		Assert.True(result.IsOk);
 		Assert.Equal(0, sent);
