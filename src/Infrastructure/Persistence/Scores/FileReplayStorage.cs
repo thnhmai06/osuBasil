@@ -24,20 +24,20 @@ internal sealed class FileReplayStorage(
 	{
 		var name = await NameOfAsync(score, cancellationToken);
 		await Files.SaveAsync(name, content, cancellationToken);
-		var old = Find(score.Id);
-		if (old is { } previous && previous != name) Files.Delete(previous);
+		foreach (var previous in Find(score.Id).Where(previous => previous != name).ToList())
+			Files.Delete(previous);
 	}
 
 	/// <inheritdoc />
 	public Task<Stream?> OpenAsync(ScoreRecord score, CancellationToken cancellationToken = default)
 	{
-		return Task.FromResult<Stream?>(Find(score.Id) is { } name ? Files.Open(name) : null);
+		return Task.FromResult<Stream?>(Find(score.Id).FirstOrDefault() is { } name ? Files.Open(name) : null);
 	}
 
-	private string? Find(int id)
+	private IEnumerable<string> Find(int id)
 	{
 		var prefix = id.ToString(CultureInfo.InvariantCulture);
-		return Files.Search(prefix + "*.osr").FirstOrDefault(name =>
+		return Files.Search(prefix + "*.osr").Where(name =>
 			name.EndsWith(".osr", StringComparison.Ordinal) &&
 			name.Length > prefix.Length &&
 			name[prefix.Length] is ' ' or '.' &&
