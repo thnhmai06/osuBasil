@@ -63,7 +63,7 @@ public sealed record MatchQuery(bool? Ended = null, bool? Private = null) : IPar
 
 	/// <summary>Narrows the query to what a user with the given permissions may see.</summary>
 	/// <param name="effective">The asker's effective permissions.</param>
-	/// <returns>The query, which leaves matches with private history out unless the asker may see them.</returns>
+	/// <returns>The query, which leaves private matches out of the listing unless the asker may see them.</returns>
 	public MatchQuery LimitTo(Permissions effective)
 	{
 		return effective.Allows(Permissions.RoomViewPrivate) ? this : this with { Private = false };

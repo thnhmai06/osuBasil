@@ -185,7 +185,7 @@ internal sealed partial class MpCommands(
 			var match = MpChannelRegex.Match(context.Channel);
 			if (match.Success && int.TryParse(match.Groups[1].Value, out var channelRoomId))
 			{
-				var channelRoom = lobby.ScopeTo(by).Find(channelRoomId);
+				var channelRoom = lobby.Find(channelRoomId);
 				if (channelRoom is not null) return channelRoom;
 			}
 		}
@@ -195,7 +195,7 @@ internal sealed partial class MpCommands(
 		if (targeted is not null)
 		{
 			// A room id is reused after a room closes, so the remembered room must still be the open room.
-			if (ReferenceEquals(lobby.ScopeTo(by).Find(targeted.Id), targeted)) return targeted;
+			if (ReferenceEquals(lobby.Find(targeted.Id), targeted)) return targeted;
 			targets.Clear(context.Sender.Id);
 		}
 

@@ -154,7 +154,7 @@ public sealed class MpRoomResolutionTests
 	}
 
 	[Fact]
-	public async Task In_ForAPrivateRoomOfAStranger_SaysNoActiveRoomAndRemembersNothing()
+	public async Task In_ForAPrivateRoomOfAStranger_TargetsItBecausePrivateOnlyKeepsARoomOutOfListings()
 	{
 		using var bot = new BotHarness();
 		var owner = await RoomFixture.PlayerAsync(bot.App, "Owner");
@@ -163,9 +163,9 @@ public sealed class MpRoomResolutionTests
 
 		var (succeeded, said) = await bot.TypeAsync(stranger, null, $"!mp in {room.Id}");
 
-		Assert.False(succeeded);
-		Assert.Equal([bot.Text(MpReplies.NoActiveRoomWithHashId, new { room = room.Id })], said.Here);
-		Assert.Null(bot.Targets.Get(stranger.Record.Id));
+		Assert.True(succeeded);
+		Assert.Equal([bot.Text(MpReplies.NowTargetingMatch, new { room = room.Id, name = "Secret" })], said.Here);
+		Assert.Same(room, bot.Targets.Get(stranger.Record.Id));
 	}
 
 	[Fact]

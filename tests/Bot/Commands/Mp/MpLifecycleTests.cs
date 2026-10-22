@@ -230,7 +230,7 @@ public sealed class MpLifecycleTests
 	}
 
 	[Fact]
-	public async Task Join_ForAPrivateRoomOfAStranger_SaysThereIsNoActiveMatch()
+	public async Task Join_ForAPrivateRoomOfAStranger_JoinsItBecausePrivateOnlyKeepsARoomOutOfListings()
 	{
 		using var bot = new BotHarness();
 		var owner = await RoomFixture.PlayerAsync(bot.App, "Owner");
@@ -239,9 +239,9 @@ public sealed class MpLifecycleTests
 
 		var (succeeded, said) = await bot.TypeAsync(stranger, "#osu", $"!mp join {room.Id}");
 
-		Assert.False(succeeded);
-		Assert.Equal([bot.Text(MpReplies.NoActiveRoomWithId, new { room = room.Id })], said.Here);
-		Assert.Null(room.Slots.Find(stranger.Record));
+		Assert.True(succeeded);
+		Assert.Equal([bot.Text(MpReplies.JoinedMatch, new { room = room.Id, name = "Secret" })], said.Here);
+		Assert.NotNull(room.Slots.Find(stranger.Record));
 	}
 
 	[Fact]

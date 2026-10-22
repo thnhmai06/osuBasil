@@ -38,10 +38,6 @@ internal static class MpReplies
 	public static readonly Reply NoActiveRoomWithId =
 		new("mp.noActiveRoomWithId", "No active match with id {room}.", "room");
 
-	/// <summary>Reply when a private room rejects a non-invitee; <c>{room}</c> is the room id.</summary>
-	public static readonly Reply PrivateRoomJoinDenied = new("mp.privateRoomJoinDenied",
-		"Cannot join match #{room} — the room is private. Ask a referee for an invite.", "room");
-
 	/// <summary>Reply when the sender is banned from the room.</summary>
 	public static readonly Reply BannedFromMatch = new("mp.bannedFromMatch", "You're banned from this match.");
 
@@ -187,7 +183,7 @@ internal static class MpReplies
 
 	/// <summary>Reply after making the room private.</summary>
 	public static readonly Reply MatchNowPrivate = new("mp.matchNowPrivate",
-		"The match is now private. It will be hidden from the lobby and open only to invited players.");
+		"The match is now private. It is hidden from the lobby and the match lists, but anyone who knows its id can still join.");
 
 	/// <summary>Reply after making the room public.</summary>
 	public static readonly Reply MatchNowPublic = new("mp.matchNowPublic", "The match is now public.");
@@ -365,7 +361,7 @@ internal static class MpReplies
 		"!mp settings - show match id, map, team type, win condition, mods, and slots" + "\n" +
 		"!mp lock - lock the slots, so players cannot change slot or team" + "\n" +
 		"!mp unlock - unlock the room" + "\n" +
-		"!mp private [0|1] - show or set the room's private status (hidden from lobby, invite-only)" + "\n" +
+		"!mp private [0|1] - show or set the room's private status (hidden from the lobby and the match lists)" + "\n" +
 		"!mp size <1-16> - set the number of available slots" + "\n" +
 		"!mp move <name/id> <slot 1-16> - move a user to another slot" + "\n" +
 		"!mp host <name/id> - transfer host to another user" + "\n" +

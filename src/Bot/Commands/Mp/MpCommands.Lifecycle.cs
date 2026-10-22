@@ -42,7 +42,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		var room = lobby.ScopeTo(by).Find(roomId);
+		var room = lobby.Find(roomId);
 		if (room is null)
 		{
 			await context.Reply(MpReplies.NoActiveRoomWithId, new { room = roomId }, cancellationToken);
@@ -87,7 +87,7 @@ internal sealed partial class MpCommands
 			return false;
 		}
 
-		var room = lobby.ScopeTo(by).Find(roomId);
+		var room = lobby.Find(roomId);
 		if (room is null)
 		{
 			await context.Reply(MpReplies.NoActiveRoomWithHashId, new { room = roomId }, cancellationToken);

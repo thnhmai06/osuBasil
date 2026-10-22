@@ -106,6 +106,45 @@ public sealed class LobbyTests
 		Assert.Equal(0, ended);
 	}
 
+	[Fact]
+	public void Find_AnIdNoRoomHas_ReturnsNothing()
+	{
+		using var app = new TestApplication();
+
+		Assert.Null(app.Lobby.Find(99));
+	}
+
+	[Fact]
+	public async Task Find_AnOpenRoom_ReturnsIt()
+	{
+		using var app = new TestApplication();
+		var setup = await RoomFixture.CreateAsync(app);
+
+		Assert.Same(setup.Room, app.Lobby.Find(setup.Room.Id));
+	}
+
+	[Fact]
+	public async Task Find_APrivateRoom_ReturnsItLikeAnyOtherBecausePrivateOnlyKeepsARoomOutOfListings()
+	{
+		using var app = new TestApplication();
+		var creator = await RoomFixture.PlayerAsync(app, "Creator");
+		var (room, result) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("private room", "", false, true,
+			cancellationToken: TestContext.Current.CancellationToken);
+		Assert.True(result.IsOk);
+
+		Assert.Same(room, app.Lobby.Find(room!.Id));
+	}
+
+	[Fact]
+	public async Task Find_ARoomThatClosed_ReturnsNothing()
+	{
+		using var app = new TestApplication();
+		var setup = await RoomFixture.CreateAsync(app);
+		Assert.True((await setup.Room.ScopeTo(setup.Creator).CloseAsync(TestContext.Current.CancellationToken)).IsOk);
+
+		Assert.Null(app.Lobby.Find(setup.Room.Id));
+	}
+
 	private static async Task RestrictRoomJoinAsync(TestApplication app, UserRecord target)
 	{
 		var moderator = await app.CreateUserAsync("Moderator", "password",

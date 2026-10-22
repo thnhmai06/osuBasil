@@ -27,7 +27,7 @@ public sealed class ScopedLobby : Scoped<Permissions>
 	/// <param name="name">The room's name.</param>
 	/// <param name="password">The room's password, or an empty string for none.</param>
 	/// <param name="isTournament">Whether the room is a tournament room.</param>
-	/// <param name="isPrivate">Whether the room's history is private.</param>
+	/// <param name="isPrivate">Whether the room is private: left out of the lobby and of public match lists, but open to anyone who knows its id.</param>
 	/// <param name="settings">The room's initial settings, or <see langword="null" /> for the defaults.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>
@@ -120,24 +120,6 @@ public sealed class ScopedLobby : Scoped<Permissions>
 			: null;
 		Lobby.Context.Events.Publish(new LobbyRoomOpened(room, room.Authority.Host, closesAt));
 		return (room, RoomOutcome.Ok);
-	}
-
-	/// <summary>Finds an open room the scoped connection may see.</summary>
-	/// <param name="id">The room's id.</param>
-	/// <returns>
-	///     The room; <see langword="null" /> when there is no open room with the id, or when the room is private and the
-	///     connection neither plays in it, watches it, manages it nor holds <see cref="Permissions.RoomViewPrivate" />.
-	/// </returns>
-	public Room? Find(int id)
-	{
-		if (!Lobby.Rooms.TryGetValue(id, out var room) || room.IsClosed) return null;
-
-		var canSee = !room.Settings.IsPrivate
-		             || room.Slots.Find(By.Record) is not null
-		             || room.Members.Observers.Any(observer => observer.Record.Equals(By.Record))
-		             || room.Authority.IsManagedBy(By.Record)
-		             || Require(Permissions.RoomViewPrivate) is null;
-		return canSee ? room : null;
 	}
 
 	/// <summary>Starts watching the multiplayer lobby.</summary>
