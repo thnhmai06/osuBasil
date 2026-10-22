@@ -36,6 +36,16 @@ internal sealed class InMemoryUserRepository : IUserRepository
 		return Task.FromResult(Seed(data));
 	}
 
+	public Task<UserRecord> ReplaceAsync(int id, UserData data, CancellationToken cancellationToken = default)
+	{
+		cancellationToken.ThrowIfCancellationRequested();
+		if (_users.Values.Any(user => user.Id != id && user.Value.DeletedAt is null &&
+									  user.Value.NormalizedName == data.NormalizedName))
+			throw new AlreadyExistsException(data.Name);
+
+		return Task.FromResult(Seed(data, id));
+	}
+
 	public Task UpdateAsync(UserRecord user, CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
@@ -92,6 +102,13 @@ internal sealed class InMemoryCredentialRepository : ICredentialRepository
 	{
 		cancellationToken.ThrowIfCancellationRequested();
 		_passwords[credentials.User.Id] = credentials.PasswordHash;
+		return Task.CompletedTask;
+	}
+
+	public Task DeleteAsync(UserRecord user, CancellationToken cancellationToken = default)
+	{
+		cancellationToken.ThrowIfCancellationRequested();
+		_passwords.Remove(user.Id);
 		return Task.CompletedTask;
 	}
 }

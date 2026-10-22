@@ -48,8 +48,7 @@ Permissions, privileges, restrictions, hierarchy, sessions and BasilBot. Moved o
   or lifts a restriction of themselves. Granting gives only bits that are **in effect** for the actor.
 * **BasilBot is the server's voice.** The server has one fixed user, the bot, with id 1. Its name is not fixed (it can
   be renamed). At startup the server makes sure id 1 is the bot: if id 1 exists (even as another or a deleted account)
-  the server takes it over (undeletes it, resets its fixed record: no password, no permissions, no restriction, its
-  connections closed); if it does not exist the server creates it at id 1. This is the one account the server creates by
+  the server takes it over (`UserRegistry.EnsureBotAsync`: it restores a deleted account under the default name `BasilBot`, keeps the name and country of a live one, and removes its permissions, its password and its restrictions, closing its connections); if it does not exist the server creates it at id 1. This is the one account the server creates by
   itself and the one id it chooses. The bot is a friend of everybody. It is not an actor: it is the voice the server speaks with, and the server protects
   it. Nobody can sign in as it or act for it, in any form (no login, no token a client can present, no
   delegation). It never goes through a rights check because it never asks for anything, so permissions mean

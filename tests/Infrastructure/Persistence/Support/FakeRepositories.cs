@@ -20,6 +20,9 @@ internal sealed class FakeUserRepository : IUserRepository
 	public Task<UserRecord> CreateAsync(UserData data, CancellationToken cancellationToken = default) =>
 		throw new NotSupportedException();
 
+	public Task<UserRecord> ReplaceAsync(int id, UserData data, CancellationToken cancellationToken = default) =>
+		throw new NotSupportedException();
+
 	public Task UpdateAsync(UserRecord user, CancellationToken cancellationToken = default) =>
 		throw new NotSupportedException();
 

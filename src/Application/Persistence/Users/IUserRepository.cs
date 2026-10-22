@@ -20,6 +20,15 @@ public interface IUserRepository
 	/// <remarks>The name of a user already stored is kept; a stored user changes name only through <see cref="RenameAsync" />.</remarks>
 	Task UpdateAsync(UserRecord user, CancellationToken cancellationToken = default);
 
+	/// <summary>Stores a user under a given id, replacing the user that holds the id or creating it.</summary>
+	/// <param name="id">The id to store the user under.</param>
+	/// <param name="data">The account data the id holds afterwards.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The stored user.</returns>
+	/// <remarks>This is the one place a store takes an id it did not give out: the server uses it to make BasilBot the user of its fixed id.</remarks>
+	/// <exception cref="AlreadyExistsException">Another user already has the same safe name.</exception>
+	Task<UserRecord> ReplaceAsync(int id, UserData data, CancellationToken cancellationToken = default);
+
 	/// <summary>Gives a stored user a new name, unless another user already has it.</summary>
 	/// <param name="user">The user to rename.</param>
 	/// <param name="name">The new name; names that differ only in case or in spaces versus underscores are the same name.</param>

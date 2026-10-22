@@ -55,6 +55,41 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 	}
 
 	/// <inheritdoc />
+	public async Task<UserRecord> ReplaceAsync(int id, UserData data, CancellationToken cancellationToken = default)
+	{
+		if (_byName.TryGetValue(data.NormalizedName, out var known) &&
+		    known.Value.NormalizedName == data.NormalizedName && known.Id != id)
+			throw new AlreadyExistsException($"A user is already named {data.Name}.");
+
+		if (_freeing.TryGetValue(data.NormalizedName, out var freeing))
+			await Task.WhenAny(freeing);
+
+		var row = new UserRow
+		{
+			Id = id,
+			Name = data.Name,
+			NormalizedName = data.NormalizedName,
+			Country = (int)data.Country,
+			Permissions = (long)data.Permissions,
+			DeletedAt = data.DeletedAt?.ToUniversalTime()
+		};
+		try
+		{
+			await Writer.WriteAsync(Root.User(id),
+				(context, token) => context.UpsertAsync(row, stored => stored.Id == id, token), cancellationToken);
+		}
+		catch (Exception exception) when (exception.IsUniqueViolation())
+		{
+			throw new AlreadyExistsException($"A user is already named {data.Name}.");
+		}
+
+		// The stored user is a different account now: the instance memory holds for the id is dropped.
+		if (Items.TryGetValue(id, out var old)) _byName.Remove(old.Value.NormalizedName, old);
+		Items.Remove(id);
+		return TrackUser(new UserRecord { Id = id, Value = data });
+	}
+
+	/// <inheritdoc />
 	public Task UpdateAsync(UserRecord user, CancellationToken cancellationToken = default)
 	{
 		var saved = SaveAsync(user);

@@ -171,6 +171,35 @@ public sealed class TestApplication : IDisposable
 		return user;
 	}
 
+	/// <summary>Stores an account under a chosen id, with its password.</summary>
+	/// <param name="id">The id of the account.</param>
+	/// <param name="name">The account name.</param>
+	/// <param name="password">The account password.</param>
+	/// <param name="permissions">The permissions to grant, or the normal new-account permissions.</param>
+	/// <param name="deletedAt">When the account was deleted, or <see langword="null" /> for a live account.</param>
+	/// <returns>The stored account.</returns>
+	public async Task<UserRecord> SeedAccountAsync(int id, string name, string password,
+		Permissions? permissions = null, DateTimeOffset? deletedAt = null)
+	{
+		var user = _users.Seed(new UserData
+		{
+			Name = name,
+			Permissions = permissions ?? PermissionsGroups.Default,
+			DeletedAt = deletedAt
+		}, id);
+		await _credentials.CreateOrUpdateAsync(new Credentials(user, PasswordHash(password)));
+		return user;
+	}
+
+	/// <summary>Determines whether the stored credential of an account accepts a password.</summary>
+	/// <param name="user">The account.</param>
+	/// <param name="password">The password to check.</param>
+	/// <returns><see langword="true" /> when the password verifies for the account.</returns>
+	public Task<bool> VerifiesPasswordAsync(UserRecord user, string password)
+	{
+		return _credentials.VerifyAsync(new Credentials(user, PasswordHash(password)));
+	}
+
 	/// <summary>Seeds the fixed BasilBot account for tests that exercise its server-owned connection.</summary>
 	/// <returns>The stored BasilBot account.</returns>
 	public async Task<UserRecord> SeedBotAsync()

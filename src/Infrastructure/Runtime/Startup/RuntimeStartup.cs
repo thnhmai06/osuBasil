@@ -8,8 +8,8 @@ using Microsoft.Extensions.Logging;
 namespace Basil.Infrastructure.Runtime.Startup;
 
 /// <summary>
-///     Prepares the runtime before the server serves anyone: opens the general channels, brings BasilBot online and
-///     closes matches left unfinished.
+///     Prepares the runtime before the server serves anyone: opens the general channels, makes sure BasilBot's account
+///     exists, brings the bot online and closes matches left unfinished.
 /// </summary>
 internal sealed class RuntimeStartup(
 	IChannelRepository channelRepository,
@@ -27,8 +27,9 @@ internal sealed class RuntimeStartup(
 				openedChannels++;
 		logger.LogInformation("Opened {ChannelCount} general channels", openedChannels);
 
+		await registry.EnsureBotAsync(cancellationToken);
 		if (await registry.ConnectBotAsync(cancellationToken) is null)
-			logger.LogWarning("BasilBot's record is missing; the bot stays offline");
+			logger.LogWarning("BasilBot could not be brought online");
 		else
 			logger.LogInformation("BasilBot is online");
 

@@ -1,4 +1,5 @@
 using Basil.Domain.Auth;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Persistence.Auth;
 
@@ -18,4 +19,10 @@ public interface ICredentialRepository
 	/// <param name="credentials">The credential to store.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	Task CreateOrUpdateAsync(Credentials credentials, CancellationToken cancellationToken = default);
+
+	/// <summary>Removes the credential stored for a user, so no password verifies for them any more.</summary>
+	/// <param name="user">The user whose credential is removed.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <remarks>Nothing happens when the user has no credential.</remarks>
+	Task DeleteAsync(UserRecord user, CancellationToken cancellationToken = default);
 }

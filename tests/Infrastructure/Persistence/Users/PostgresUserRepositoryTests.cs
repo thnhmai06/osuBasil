@@ -119,6 +119,85 @@ public sealed class PostgresUserRepositoryTests : DatabaseTests
 	}
 
 	[Fact]
+	public async Task A_replaced_account_holds_the_new_data_under_the_same_id()
+	{
+		var replaced = await Users.ReplaceAsync(BasilBot.Id,
+			new UserData { Name = "renamed_bot", Permissions = Permissions.None }, TestContext.Current.CancellationToken);
+
+		var found = await Users.GetAsync(BasilBot.Id, TestContext.Current.CancellationToken);
+
+		Assert.Equal(BasilBot.Id, replaced.Id);
+		Assert.Same(replaced, found);
+		Assert.Equal("renamed_bot", found.Value.Name);
+		Assert.Same(replaced, await Users.GetByNameAsync("renamed_bot", TestContext.Current.CancellationToken));
+	}
+
+	[Fact]
+	public async Task A_replaced_account_is_stored()
+	{
+		await Users.ReplaceAsync(BasilBot.Id, new UserData { Name = "stored_bot", Permissions = Permissions.None },
+			TestContext.Current.CancellationToken);
+
+		var rows = await StoredRows.WaitForAsync(ConnectionString,
+			"select name, permissions from users where id = @id",
+			new Dictionary<string, object?> { ["@id"] = BasilBot.Id },
+			rows => rows.Count == 1 && rows[0].Text("name") == "stored_bot", "the replaced account",
+			TestContext.Current.CancellationToken);
+		Assert.Equal(0, rows[0].Number("permissions"));
+	}
+
+	[Fact]
+	public async Task A_deleted_account_is_restored_by_replacing_it()
+	{
+		var user = await Users.CreateAsync(new UserData { Name = "was_deleted" }, TestContext.Current.CancellationToken);
+		await DeleteAsync(user);
+		await WaitForDeletionAsync(user.Id);
+
+		var restored = await Users.ReplaceAsync(user.Id, new UserData { Name = "restored_user" },
+			TestContext.Current.CancellationToken);
+
+		Assert.Null(restored.Value.DeletedAt);
+		Assert.Same(restored, await Users.GetByNameAsync("restored_user", TestContext.Current.CancellationToken));
+		await StoredRows.WaitForAsync(ConnectionString, "select id from users where id = @id and deleted_at is null",
+			new Dictionary<string, object?> { ["@id"] = user.Id }, rows => rows.Count == 1,
+			"the restored account", TestContext.Current.CancellationToken);
+	}
+
+	[Fact]
+	public async Task An_id_the_store_holds_nothing_under_is_created_by_replacing()
+	{
+		const int id = 5000;
+
+		var created = await Users.ReplaceAsync(id, new UserData { Name = "chosen_id" },
+			TestContext.Current.CancellationToken);
+
+		Assert.Equal(id, created.Id);
+		Assert.Same(created, await Users.GetAsync(id, TestContext.Current.CancellationToken));
+		await StoredRows.WaitForAsync(ConnectionString, "select id from users where id = @id",
+			new Dictionary<string, object?> { ["@id"] = id }, rows => rows.Count == 1,
+			"the created account", TestContext.Current.CancellationToken);
+	}
+
+	[Fact]
+	public async Task Replacing_an_account_with_a_name_another_account_has_is_refused()
+	{
+		await Users.CreateAsync(new UserData { Name = "name_in_use" }, TestContext.Current.CancellationToken);
+
+		await Assert.ThrowsAsync<AlreadyExistsException>(() => Users.ReplaceAsync(BasilBot.Id,
+			new UserData { Name = "Name In Use" }, TestContext.Current.CancellationToken));
+	}
+
+	[Fact]
+	public async Task Replacing_an_account_leaves_the_ids_the_store_gives_out_unchanged()
+	{
+		await Users.ReplaceAsync(BasilBot.Id, new UserData { Name = "bot_again" }, TestContext.Current.CancellationToken);
+
+		var user = await Users.CreateAsync(new UserData { Name = "after_replace" }, TestContext.Current.CancellationToken);
+
+		Assert.Equal(BasilBot.Id + 1, user.Id);
+	}
+
+	[Fact]
 	public async Task Two_reads_of_one_account_return_the_same_instance()
 	{
 		var user = await Users.CreateAsync(new UserData { Name = "same_one" }, TestContext.Current.CancellationToken);
