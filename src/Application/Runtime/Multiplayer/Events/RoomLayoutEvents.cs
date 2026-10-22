@@ -4,16 +4,16 @@ using Basil.Domain.Mechanics;
 
 namespace Basil.Application.Runtime.Multiplayer.Events;
 
-/// <summary>A room's slots or their lock state changed.</summary>
-public abstract record RoomSlotsEvent(Room Room) : RoomEvent(Room);
+/// <summary>The layout of a room changed: its slots or its lock state.</summary>
+public abstract record RoomLayoutEvent(Room Room) : RoomEvent(Room);
 
 /// <summary>The room was locked or unlocked; while locked, players cannot change slot or team.</summary>
-public sealed record RoomLockChanged(Room Room, bool Locked) : RoomSlotsEvent(Room);
+public sealed record RoomLockChanged(Room Room, bool Locked) : RoomLayoutEvent(Room);
 
 /// <summary>Something happened to one of a room's slots.</summary>
 /// <param name="Room">The room the slot belongs to.</param>
 /// <param name="Slot">The number of the slot, from 1 to 16.</param>
-public abstract record RoomSlotEvent(Room Room, int Slot) : RoomSlotsEvent(Room);
+public abstract record RoomSlotEvent(Room Room, int Slot) : RoomLayoutEvent(Room);
 
 /// <summary>A slot's lock was toggled, evicting any occupant when locked.</summary>
 /// <param name="Room">The room the slot belongs to.</param>
@@ -54,4 +54,4 @@ public sealed record RoomSlotStatusChanged(Room Room, int Slot, RoomSlotStatus? 
 
 /// <summary>The slots of a room were arranged at once.</summary>
 /// <param name="Room">The room.</param>
-public sealed record RoomSlotsArranged(Room Room) : RoomSlotsEvent(Room);
+public sealed record RoomSlotsArranged(Room Room) : RoomLayoutEvent(Room);
