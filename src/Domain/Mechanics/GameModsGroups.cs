@@ -14,5 +14,5 @@ public static class GameModsGroups
 	public const GameMods OsuSpecific = GameMods.Autopilot | GameMods.SpunOut | GameMods.Target;
 
 	/// <summary>The mods that only apply to osu!mania.</summary>
-	public const GameMods ManiaSpecific = GameMods.Mirror | GameMods.Random | GameMods.FadeIn | Key;
+	public const GameMods ManiaSpecific = GameMods.Mirror | GameMods.Random | GameMods.FadeIn | GameMods.KeyCoop | Key;
 }

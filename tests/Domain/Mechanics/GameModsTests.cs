@@ -39,6 +39,37 @@ public class GameModsTests
 		Assert.Equal(GameMods.Hidden, result);
 	}
 
+	[Theory]
+	[InlineData(GameMode.Standard)]
+	[InlineData(GameMode.Taiko)]
+	[InlineData(GameMode.Catch)]
+	public void RemoveInvalidMods_KeyCoopOutsideMania_IsRemoved(GameMode mode)
+	{
+		Assert.Equal(GameMods.Hidden, (GameMods.KeyCoop | GameMods.Hidden).RemoveInvalidMods(mode));
+	}
+
+	[Fact]
+	public void RemoveInvalidMods_KeyCoopInMania_IsKept()
+	{
+		Assert.Equal(GameMods.Key5 | GameMods.KeyCoop,
+			(GameMods.Key5 | GameMods.KeyCoop).RemoveInvalidMods(GameMode.Mania));
+	}
+
+	[Theory]
+	[InlineData(GameMode.Standard)]
+	[InlineData(GameMode.Taiko)]
+	[InlineData(GameMode.Catch)]
+	public void IsValid_KeyCoopOutsideMania_Rejected(GameMode mode)
+	{
+		Assert.False(GameMods.KeyCoop.IsValid(mode));
+	}
+
+	[Fact]
+	public void IsValid_KeyCoopInMania_Accepted()
+	{
+		Assert.True(GameMods.KeyCoop.IsValid(GameMode.Mania));
+	}
+
 	[Fact]
 	public void RemoveInvalidMods_StandardAutopilotWithSpunOut_RemovesAutopilot()
 	{

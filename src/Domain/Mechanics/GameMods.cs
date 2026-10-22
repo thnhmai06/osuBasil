@@ -6,8 +6,8 @@ namespace Basil.Domain.Mechanics;
 ///     Represents the gameplay modifier flags an osu! client can apply to a play.
 /// </summary>
 /// <remarks>
-///     A bitwise combination of the individual mods. The key-count mods apply to osu!mania, the
-///     cooperative key mod is not tied to a mode, and several mods apply to specific game modes only.
+///     A bitwise combination of the individual mods. The key-count mods and the cooperative key mod
+///     apply to osu!mania, and several mods apply to specific game modes only.
 /// </remarks>
 [Flags]
 public enum GameMods
