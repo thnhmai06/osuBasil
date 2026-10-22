@@ -27,6 +27,22 @@ internal sealed class PostgresUserStatsRepository(DatabaseReader reader, Databas
 		return Task.CompletedTask;
 	}
 
+	/// <inheritdoc />
+	public async ValueTask<UserStats> AddPlayAsync(UserRecord user, GameMode mode, long totalScore, long rankedScore,
+		CancellationToken cancellationToken = default)
+	{
+		var stats = await GetAsync(user, mode, cancellationToken);
+		lock (stats)
+		{
+			stats.PlayCount++;
+			stats.TotalScore += totalScore;
+			stats.RankedScore += rankedScore;
+			_ = SaveAsync(stats);
+		}
+
+		return stats;
+	}
+
 	protected override (int UserId, GameMode Mode) KeyOf(UserStats item)
 	{
 		return (item.UserId, item.Mode);

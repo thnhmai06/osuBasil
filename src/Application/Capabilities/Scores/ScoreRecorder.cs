@@ -73,15 +73,9 @@ internal sealed class ScoreRecorder(
 		if (submission.Score.IsPassed && replay is { Length: >= MinReplayLength })
 			await replays.SaveAsync(score, replay, cancellationToken);
 
-		// ponytail: get-then-write per user; add an atomic increment to the contract if one user's submissions can overlap.
-		var current = await stats.GetAsync(player, submission.Score.Mode, cancellationToken);
-		current.PlayCount++;
-		current.TotalScore += submission.Score.TotalScore;
-		if (submission.Score.IsPassed)
-			// Every beatmap reports as Approved (see Beatmapset.Status), so every passed score counts toward ranked score.
-			current.RankedScore += submission.Score.TotalScore;
-
-		await stats.CreateOrUpdateAsync(current, cancellationToken);
+		// Every beatmap reports as Approved (see Beatmapset.Status), so every passed score counts toward ranked score.
+		var current = await stats.AddPlayAsync(player, submission.Score.Mode, submission.Score.TotalScore,
+			submission.Score.IsPassed ? submission.Score.TotalScore : 0, cancellationToken);
 
 		return new ScoreOutcome(null, score, roundScore, current);
 	}

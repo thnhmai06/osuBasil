@@ -23,4 +23,17 @@ public interface IUserStatsRepository
 	/// <param name="stats">The statistics to store.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	Task CreateOrUpdateAsync(UserStats stats, CancellationToken cancellationToken = default);
+
+	/// <summary>
+	///     Adds one submitted play to the statistics of a user in a game mode; plays added at the same time are all
+	///     counted.
+	/// </summary>
+	/// <param name="user">The user.</param>
+	/// <param name="mode">The game mode.</param>
+	/// <param name="totalScore">The score the play adds to the total score.</param>
+	/// <param name="rankedScore">The score the play adds to the ranked score, zero when it does not count.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The statistics including the play.</returns>
+	ValueTask<UserStats> AddPlayAsync(UserRecord user, GameMode mode, long totalScore, long rankedScore,
+		CancellationToken cancellationToken = default);
 }

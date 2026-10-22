@@ -88,20 +88,17 @@ public sealed class ScoreSubmissionFixture : IDisposable
 			});
 
 		var stats = provider.GetRequiredService<IUserStatsRepository>();
-		stats.GetAsync(Arg.Any<UserRecord>(), Arg.Any<GameMode>(), Arg.Any<CancellationToken>())
+		stats.AddPlayAsync(Arg.Any<UserRecord>(), Arg.Any<GameMode>(), Arg.Any<long>(), Arg.Any<long>(),
+				Arg.Any<CancellationToken>())
 			.Returns(call =>
 			{
-				var key = (call.Arg<UserRecord>().Id, call.Arg<GameMode>());
-				return ValueTask.FromResult(_stats.TryGetValue(key, out var known)
-					? known
-					: new UserStats { UserId = key.Item1, Mode = key.Item2 });
-			});
-		stats.CreateOrUpdateAsync(Arg.Any<UserStats>(), Arg.Any<CancellationToken>())
-			.Returns(call =>
-			{
-				var value = call.Arg<UserStats>();
-				_stats[(value.UserId, value.Mode)] = value;
-				return Task.CompletedTask;
+				var key = (call.Arg<UserRecord>().Id, call.ArgAt<GameMode>(1));
+				if (!_stats.TryGetValue(key, out var known))
+					_stats[key] = known = new UserStats { UserId = key.Item1, Mode = key.Item2 };
+				known.PlayCount++;
+				known.TotalScore += call.ArgAt<long>(2);
+				known.RankedScore += call.ArgAt<long>(3);
+				return ValueTask.FromResult(known);
 			});
 	}
 
