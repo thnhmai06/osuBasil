@@ -42,8 +42,7 @@ It includes:
 * `!mp` subcommands;
 * command arguments;
 * required arguments;
-* command behaviour;
-* exact reply text.
+* command behaviour.
 
 ### Running server
 
@@ -59,7 +58,7 @@ The same documentation is available without a running Basil server:
 
 [BasilBot documentation](https://thnhmai06.github.io/osuBasil/)
 
-The generated reference is the authoritative source for the current command syntax and reply text. This page intentionally does not duplicate the command list.
+The generated reference is the authoritative source for the current command syntax. This page intentionally does not duplicate the command list. Reply wording is not part of it: the server operator owns the wording (see [Reply text](#reply-text)).
 
 ---
 
@@ -85,11 +84,17 @@ The exact subcommands and argument syntax are defined by the generated BasilBot 
 
 ## Reply text
 
-BasilBot's replies are part of the client-visible command contract.
+BasilBot's replies are part of the client-visible command contract, but their wording belongs to the server operator.
 
-Clients, tournament tooling, and automated integrations should not assume that arbitrary human-readable text represents a stable command result unless that behaviour is explicitly documented.
+Every reply is a text in the operator-editable file `Data/Bot/replies.json`, a JSON object that maps a reply's key to an
+[ICU MessageFormat](https://unicode-org.github.io/icu/userguide/format_parse/messages/) string with named placeholders
+such as `{room}`. The file is written with the default wording when it does not exist, is reloaded while the server
+runs, and a missing key keeps its default wording. If an edit leaves the file unreadable, the last good wording stays
+in use; a single text that is invalid is replaced by its default.
 
-For the exact current reply text, use the generated BasilBot reference.
+Because an operator can rewrite any reply, clients, tournament tooling, and automated integrations must not assume that a
+human-readable reply text is a stable command result. Use the HTTP API for machine-readable state. See
+[`../for-technicians/configuration.md`](../for-technicians/configuration.md) for the data directories.
 
 ---
 

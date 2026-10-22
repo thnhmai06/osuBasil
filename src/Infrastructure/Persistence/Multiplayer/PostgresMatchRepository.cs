@@ -17,7 +17,7 @@ internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWri
 	{
 		var value = await WithCreatorAsync(data, cancellationToken);
 		var name = value.Name;
-		var creatorId = value.Creator?.Id;
+		var creatorId = value.Creator.Id;
 		var startedAt = value.StartedAt.ToUniversalTime();
 		var endedAt = value.EndedAt?.ToUniversalTime();
 		var isPrivate = value.IsPrivate;
@@ -107,7 +107,7 @@ internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWri
 		{
 			Id = match.Id,
 			Name = match.Value.Name,
-			CreatorId = match.Value.Creator?.Id,
+			CreatorId = match.Value.Creator.Id,
 			StartedAt = match.Value.StartedAt.ToUniversalTime(),
 			EndedAt = match.Value.EndedAt?.ToUniversalTime(),
 			IsPrivate = match.Value.IsPrivate
@@ -130,6 +130,8 @@ internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWri
 		var creator = row.CreatorId is { } creatorId
 			? await users.GetAsync(creatorId, cancellationToken)
 			: null;
+		if (creator is null)
+			throw new InvalidDataException($"Stored match {row.Id} has no existing creator.");
 		return new MatchRecord
 		{
 			Id = row.Id,
@@ -146,7 +148,7 @@ internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWri
 
 	private async Task<MatchData> WithCreatorAsync(MatchData data, CancellationToken cancellationToken)
 	{
-		var creator = data.Creator is { } user ? await users.GetAsync(user.Id, cancellationToken) ?? user : null;
+		var creator = await users.GetAsync(data.Creator.Id, cancellationToken) ?? data.Creator;
 		return new MatchData
 		{
 			Name = data.Name,

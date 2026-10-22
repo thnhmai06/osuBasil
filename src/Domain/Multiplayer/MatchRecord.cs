@@ -77,8 +77,8 @@ public sealed class MatchData
 			: throw new ArgumentException("Match name cannot be empty or contain the NUL character.", nameof(value));
 	}
 
-	/// <summary>Gets the user who created the match, or <see langword="null" /> for an unattended room.</summary>
-	public UserRecord? Creator { get; init; }
+	/// <summary>Gets the user who created the match; every match has a creator.</summary>
+	public required UserRecord Creator { get; init; }
 
 	/// <summary>Gets the date and time when the match started.</summary>
 	public required DateTimeOffset StartedAt { get; init; }

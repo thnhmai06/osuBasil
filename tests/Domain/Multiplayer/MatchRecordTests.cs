@@ -1,4 +1,6 @@
+using System.Reflection;
 using Basil.Domain.Multiplayer;
+using Basil.Domain.Users;
 
 namespace Basil.Domain.Tests.Multiplayer;
 
@@ -23,11 +25,23 @@ public class MatchRecordTests
 		Assert.Equal(1, new MatchRecord { Id = 1, Value = MakeData() }.Id);
 	}
 
+	[Fact]
+	public void Creator_IsRequired_EveryMatchHasOne()
+	{
+		var creator = typeof(MatchData).GetProperty(nameof(MatchData.Creator))!;
+
+		Assert.Contains(creator.CustomAttributes,
+			a => a.AttributeType == typeof(System.Runtime.CompilerServices.RequiredMemberAttribute));
+		Assert.Equal(typeof(UserRecord), creator.PropertyType);
+		Assert.True(new NullabilityInfoContext().Create(creator).WriteState == NullabilityState.NotNull);
+	}
+
 	private static MatchData MakeData()
 	{
 		return new MatchData
 		{
 			Name = "match",
+			Creator = new UserRecord { Id = 1, Value = new UserData { Name = "creator" } },
 			StartedAt = DateTimeOffset.UnixEpoch,
 			EndedAt = null
 		};
