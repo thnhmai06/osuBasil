@@ -31,8 +31,11 @@ public abstract class RoundResult : IEquatable<RoundResult>
 	/// </summary>
 	public double Margin { get; protected init; }
 
-	/// <summary>Gets a value that indicates whether the round is a draw, with no winner ahead.</summary>
-	public bool IsDraw => Margin.NearlyEqual(0);
+	/// <summary>
+	///     Gets a value that indicates whether the round has no winner: the leading players or teams tie, or
+	///     nobody scored. A sole contender wins even with a metric of zero.
+	/// </summary>
+	public bool IsDraw { get; protected init; }
 
 	/// <summary>Determines whether another result was decided for the same round.</summary>
 	/// <param name="other">The result to compare against, or <see langword="null" />.</param>
@@ -130,9 +133,10 @@ public sealed class HeadToHeadResult : RoundResult
 			1 => condition.Metric(contenders[0].Score.Value),
 			_ => MarginOf(contenders[0], contenders[1], condition)
 		};
-		WinnerId = contenders.Count != 0 && (contenders.Count <= 1 || !IsDraw)
+		WinnerId = contenders.Count != 0 && (contenders.Count == 1 || !Margin.NearlyEqual(0))
 			? contenders[0].Score.Value.UserId
 			: null;
+		IsDraw = WinnerId is null;
 	}
 
 	/// <summary>
@@ -180,6 +184,7 @@ public sealed class TeamVersusResult : RoundResult
 		Winner = teams.Count == 0 || (teams.Count > 1 && teams[0].Total.NearlyEqual(teams[1].Total))
 			? null
 			: teams[0].Team;
+		IsDraw = Winner is null;
 		Margin = teams.Count switch
 		{
 			0 => 0,
