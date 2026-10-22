@@ -159,6 +159,6 @@ public sealed class PostgresRoundRepositoryTests : DatabaseTests
 	/// <returns>The match.</returns>
 	private async Task<MatchRecord> CreateMatchAsync(string name)
 	{
-		return await Matches.CreateAsync(StoredMatches.Data(name, First), TestContext.Current.CancellationToken);
+		return await CreateStoredMatchAsync(name, First);
 	}
 }
