@@ -139,8 +139,6 @@ public sealed class ScopedRoomSettings
 	/// </remarks>
 	private static void ApplyFreemods(Room room, bool value)
 	{
-		room.Settings.MatchSettings.Freemods = value;
-
 		var seated = room.Slots.Where(s => s.Player is not null).ToList();
 		if (value)
 		{
@@ -149,9 +147,11 @@ public sealed class ScopedRoomSettings
 			foreach (var slot in seated)
 				slot.Mods = room.Settings.MatchSettings.Mods & ~GameModsGroups.SpeedChanging;
 			room.Settings.MatchSettings.Mods &= GameModsGroups.SpeedChanging;
+			room.Settings.MatchSettings.Freemods = true;
 		}
 		else
 		{
+			room.Settings.MatchSettings.Freemods = false;
 			// The room keeps its speed-changing mods and takes the host's own mods.
 			var hostMods = (room.Authority.Host is { } host ? room.Slots.Find(host)?.Mods : null) ?? GameMods.NoMod;
 			room.Settings.MatchSettings.Mods =

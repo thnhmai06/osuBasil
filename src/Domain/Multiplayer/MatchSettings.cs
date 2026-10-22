@@ -24,18 +24,38 @@ public sealed class MatchSettings
 	} = GameMode.Standard;
 
 	/// <summary>Gets or sets the mods applied to the whole room.</summary>
+	/// <exception cref="ArgumentException">
+	///     The mods are not valid in the current <see cref="Mode" />, or <see cref="Freemods" /> is on and the mods
+	///     include any that are not speed-changing.
+	/// </exception>
 	public GameMods Mods
 	{
 		get;
 		set
 		{
 			value.ThrowIfInvalid(Mode);
+			if (Freemods && (value & ~GameModsGroups.SpeedChanging) != GameMods.NoMod)
+				throw new ArgumentException("With freemods on, the room mods may only be speed-changing mods.",
+					nameof(value));
 			field = value;
 		}
 	} = GameMods.NoMod;
 
 	/// <summary>Gets or sets a value that indicates whether freemod mode is enabled.</summary>
-	public bool Freemods { get; set; } = false;
+	/// <exception cref="ArgumentException">
+	///     Freemods is being turned on while the current <see cref="Mods" /> include any that are not speed-changing.
+	/// </exception>
+	public bool Freemods
+	{
+		get;
+		set
+		{
+			if (value && (Mods & ~GameModsGroups.SpeedChanging) != GameMods.NoMod)
+				throw new ArgumentException("Freemods needs the room mods to be speed-changing mods only.",
+					nameof(value));
+			field = value;
+		}
+	} = false;
 
 	/// <summary>Gets or sets the team arrangement used for the room.</summary>
 	public GameTeamType TeamType
