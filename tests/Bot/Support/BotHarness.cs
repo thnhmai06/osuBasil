@@ -1,6 +1,7 @@
 using Basil.Application.Persistence.Beatmaps;
 using Basil.Application.Persistence.Content;
 using Basil.Application.Persistence.Users;
+using Basil.Application.Runtime.Multiplayer.Rooms;
 using Basil.Application.Runtime.Sessions;
 using Basil.Bot.Commands;
 using Basil.Bot.Commands.Mp;
@@ -104,6 +105,38 @@ internal sealed class BotHarness : IDisposable
 	public string Text(Reply reply, object? arguments = null)
 	{
 		return Replies.Text(reply, arguments);
+	}
+
+	/// <summary>Gets the text of a reply as the bot says it for a room-scoped command typed outside that room's channel.</summary>
+	/// <param name="room">The id of the room the command applied to.</param>
+	/// <param name="reply">The reply.</param>
+	/// <param name="arguments">The values of its arguments, or <see langword="null" /> when it has none.</param>
+	/// <returns>The text, with every non-empty line starting with the room prefix.</returns>
+	public string TextIn(int room, Reply reply, object? arguments = null)
+	{
+		return Prefixed(room, Text(reply, arguments));
+	}
+
+	/// <summary>Puts the room prefix in front of every non-empty line of a text.</summary>
+	/// <param name="room">The id of the room the command applied to.</param>
+	/// <param name="text">The text, one or more lines.</param>
+	/// <returns>The prefixed text.</returns>
+	public string Prefixed(int room, string text)
+	{
+		var prefix = Text(MpReplies.RoomPrefix, new { room });
+		return string.Join('\n', text.Split('\n').Select(line => line.Length == 0 ? line : prefix + line));
+	}
+
+	/// <summary>Has a user make a room with <c>!mp make</c> or <c>!mp makeprivate</c>.</summary>
+	/// <param name="by">The connection of the user.</param>
+	/// <param name="name">The name of the room.</param>
+	/// <param name="isPrivate">Whether to make a private room.</param>
+	/// <returns>The room that was opened.</returns>
+	public async Task<Room> MakeAsync(Connection by, string name, bool isPrivate = false)
+	{
+		var (succeeded, _) = await TypeAsync(by, "#osu", $"!mp {(isPrivate ? "makeprivate" : "make")} {name}");
+		Assert.True(succeeded);
+		return App.Lobby.Rooms.Values.Single(room => room.Settings.Name == name);
 	}
 
 	/// <summary>Dice that always give the same number.</summary>
