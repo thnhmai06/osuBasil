@@ -111,7 +111,8 @@ public sealed class TestApplication : IDisposable
 	private readonly InMemorySettingsRepository _settings;
 
 	/// <summary>Creates the application and resolves its public roots.</summary>
-	public TestApplication()
+	/// <param name="configure">Replaces ports of the application, such as storage, before it is composed; or <see langword="null" />.</param>
+	public TestApplication(Action<IServiceCollection>? configure = null)
 	{
 		Clock = new FakeTimeProvider(Start);
 		_users = new InMemoryUserRepository();
@@ -143,6 +144,7 @@ public sealed class TestApplication : IDisposable
 		services.AddSingleton<IEventPublisher<BeatmapsetEvent>>(BeatmapsetEvents);
 		services.AddSingleton<IEventPublisher<ScoreEvent>>(ScoreEvents);
 		services.AddSingleton<IEventPublisher<AnticheatEvent>>(AnticheatEvents);
+		configure?.Invoke(services);
 		services.AddApplication();
 
 		Provider = services.BuildServiceProvider(new ServiceProviderOptions
