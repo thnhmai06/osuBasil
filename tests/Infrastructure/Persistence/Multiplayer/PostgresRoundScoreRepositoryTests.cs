@@ -43,7 +43,7 @@ public sealed class PostgresRoundScoreRepositoryTests : DatabaseTests
 	}
 
 	[Fact]
-	public async Task A_round_score_is_stored()
+	public async Task A_round_score_is_stored_when_recording_it_returns()
 	{
 		var match = await CreateMatchAsync("stored_round_score_match");
 		var round = await CreateRoundAsync(match, 1);
@@ -53,13 +53,13 @@ public sealed class PostgresRoundScoreRepositoryTests : DatabaseTests
 		await RoundScores.RecordAsync(new RoundScore { Score = score, Round = round, Team = null },
 			TestContext.Current.CancellationToken);
 
-		var rows = await StoredRows.WaitForAsync(ConnectionString,
+		var rows = await StoredRows.ReadAsync(ConnectionString,
 			"select score_id, match_id, round_number from round_scores where score_id = @id",
-			new Dictionary<string, object?> { ["@id"] = score.Id },
-			rows => rows.Count == 1 && rows[0].Number("match_id") == match.Id && rows[0].Number("round_number") == 1,
-			"the stored round score", TestContext.Current.CancellationToken);
+			new Dictionary<string, object?> { ["@id"] = score.Id }, TestContext.Current.CancellationToken);
 
-		Assert.Equal(score.Id, rows[0].Number("score_id"));
+		var stored = Assert.Single(rows);
+		Assert.Equal((score.Id, match.Id, 1), (stored.Number("score_id"), stored.Number("match_id"),
+			stored.Number("round_number")));
 	}
 
 	[Fact]
@@ -79,6 +79,26 @@ public sealed class PostgresRoundScoreRepositoryTests : DatabaseTests
 		var listed = await RoundScores.ListAsync(round, TestContext.Current.CancellationToken);
 
 		Assert.Equal(new[] { first.Id, second.Id }, listed.Select(roundScore => roundScore.Score.Id));
+	}
+
+	[Fact]
+	public async Task A_server_that_starts_afterwards_lists_the_recorded_scores_of_a_round()
+	{
+		var match = await CreateMatchAsync("restart_round_score_match");
+		var round = await CreateTeamRoundAsync(match, 1);
+		var player = await CreatePlayerAsync("restart_rs");
+		var score = await CreateScoreAsync(player, 1000, First);
+		await RoundScores.RecordAsync(new RoundScore { Score = score, Round = round, Team = GameTeam.Red },
+			TestContext.Current.CancellationToken);
+
+		await using var other = new StorageComposition(ConnectionString);
+		var otherRound = Assert.Single(await other.Get<IRoundRepository>().ListAsync(match,
+			TestContext.Current.CancellationToken));
+		var listed = await other.Get<IRoundScoreRepository>().ListAsync(otherRound,
+			TestContext.Current.CancellationToken);
+
+		var roundScore = Assert.Single(listed);
+		Assert.Equal((score.Id, GameTeam.Red), (roundScore.Score.Id, roundScore.Team));
 	}
 
 	[Fact]
@@ -108,12 +128,10 @@ public sealed class PostgresRoundScoreRepositoryTests : DatabaseTests
 		await RoundScores.RecordAsync(new RoundScore { Score = score, Round = round, Team = GameTeam.Red },
 			TestContext.Current.CancellationToken);
 
-		var rows = await StoredRows.WaitForAsync(ConnectionString, "select team from round_scores where score_id = @id",
-			new Dictionary<string, object?> { ["@id"] = score.Id },
-			rows => rows.Count == 1 && rows[0].Number("team") == (int)GameTeam.Red,
-			"the stored team of the round score", TestContext.Current.CancellationToken);
+		var rows = await StoredRows.ReadAsync(ConnectionString, "select team from round_scores where score_id = @id",
+			new Dictionary<string, object?> { ["@id"] = score.Id }, TestContext.Current.CancellationToken);
 
-		Assert.Single(rows);
+		Assert.Equal((int)GameTeam.Red, Assert.Single(rows).Number("team"));
 	}
 
 	[Fact]

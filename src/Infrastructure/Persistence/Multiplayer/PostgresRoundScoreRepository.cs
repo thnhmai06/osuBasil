@@ -1,10 +1,8 @@
-using System.Collections.Immutable;
 using Basil.Application.Persistence.Multiplayer;
 using Basil.Application.Persistence.Scores;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Infrastructure.Persistence.Postgres;
-using Basil.Infrastructure.Persistence.Memory;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Persistence.Multiplayer;
@@ -16,8 +14,6 @@ internal sealed class PostgresRoundScoreRepository(
 	IRoundRepository rounds,
 	IScoreRepository scores) : IRoundScoreRepository
 {
-	private readonly OwnedLists<(int MatchId, int Index), Round, RoundScore> _byRound = new();
-
 	/// <inheritdoc />
 	public async Task<RoundScore> RecordAsync(RoundScore roundScore, CancellationToken cancellationToken = default)
 	{
@@ -29,9 +25,8 @@ internal sealed class PostgresRoundScoreRepository(
 			RoundNumber = round.Index,
 			Team = roundScore.Team is { } team ? (int)team : null
 		};
-		var saved = writer.SaveAsync(Root.Match(row.MatchId), (GetType(), row.ScoreId), new WriteCommand((context, token) =>
+		await writer.SaveAsync(Root.Match(row.MatchId), (GetType(), row.ScoreId), new WriteCommand((context, token) =>
 			context.UpsertAsync(row, stored => stored.ScoreId == row.ScoreId, token)));
-		_byRound.Change((round.Match.Id, round.Index), round, list => Insert(list, roundScore), saved);
 		return roundScore;
 	}
 
@@ -39,38 +34,27 @@ internal sealed class PostgresRoundScoreRepository(
 	public async Task<IReadOnlyList<RoundScore>> ListAsync(Round round, CancellationToken cancellationToken = default)
 	{
 		var live = await LiveAsync(round, cancellationToken);
-		return await _byRound.GetOrLoadAsync((live.Match.Id, live.Index), live, async () =>
-		{
-			var rows = await reader.ReadAsync(context => context.RoundScores
-				.Where(rs => rs.MatchId == live.Match.Id && rs.RoundNumber == live.Index)
-				.OrderBy(rs => rs.ScoreId)
-				.ToListAsync(cancellationToken), cancellationToken);
+		var rows = await reader.ReadAsync(context => context.RoundScores
+			.Where(rs => rs.MatchId == live.Match.Id && rs.RoundNumber == live.Index)
+			.OrderBy(rs => rs.ScoreId)
+			.ToListAsync(cancellationToken), cancellationToken);
 
-			var result = ImmutableList.CreateBuilder<RoundScore>();
-			foreach (var row in rows)
-				if (await scores.GetAsync(row.ScoreId, cancellationToken) is { } score)
-					result.Add(new RoundScore
-					{
-						Score = score,
-						Round = live,
-						Team = row.Team is { } team ? (GameTeam)team : null
-					});
-			return result.ToImmutable();
-		});
+		var result = new List<RoundScore>(rows.Count);
+		foreach (var row in rows)
+			if (await scores.GetAsync(row.ScoreId, cancellationToken) is { } score)
+				result.Add(new RoundScore
+				{
+					Score = score,
+					Round = live,
+					Team = row.Team is { } team ? (GameTeam)team : null
+				});
+		return result;
 	}
 
-	/// <summary>Finds the live instance of a round, which owns its list of scores.</summary>
+	/// <summary>Finds the live instance of a round, which the listed scores refer to.</summary>
 	private async Task<Round> LiveAsync(Round round, CancellationToken cancellationToken)
 	{
 		var matchRounds = await rounds.ListAsync(round.Match, cancellationToken);
 		return matchRounds.FirstOrDefault(item => item.Equals(round)) ?? round;
-	}
-
-	/// <summary>Adds a round score, replacing the one of the same score, keeping the list in submission order.</summary>
-	private static ImmutableList<RoundScore> Insert(ImmutableList<RoundScore> list, RoundScore roundScore)
-	{
-		var rest = list.RemoveAll(item => item.Score.Equals(roundScore.Score));
-		var index = rest.FindIndex(item => item.Score.Id > roundScore.Score.Id);
-		return index < 0 ? rest.Add(roundScore) : rest.Insert(index, roundScore);
 	}
 }

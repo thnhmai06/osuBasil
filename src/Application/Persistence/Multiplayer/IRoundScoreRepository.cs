@@ -8,7 +8,7 @@ public interface IRoundScoreRepository
 	/// <summary>Stores the relation between a round and a score.</summary>
 	/// <param name="roundScore">The round, the score, and the team the score was set for.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>The stored relation.</returns>
+	/// <returns>The stored relation, once it is committed.</returns>
 	Task<RoundScore> RecordAsync(RoundScore roundScore, CancellationToken cancellationToken = default);
 
 	/// <summary>Lists the scores of a round, in submission order.</summary>

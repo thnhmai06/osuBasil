@@ -70,10 +70,10 @@ Repository contracts, byte storages and the memory-first model. Moved out of `AG
   * **On-demand data:** a repository holds one live instance per identity, returned by every `GetAsync`,
     `GetByYAsync` and `ListAsync`. It lives while anything holds it (a session its user, a room its match) or while
     a change of it is not stored yet, and is then released; there is no TTL. A list owned by an object (a user's
-    restrictions and relationships, a set's beatmaps, a match's rounds and events, a round's scores) lives as long as
+    restrictions and relationships, a set's beatmaps, a match's rounds and events) lives as long as
     its owner instance: it is loaded whole the first time it is needed, then changed item by item.
   * **Writes:** `CreateOrUpdateAsync`/`DeleteAsync` queue a copy of the values **as they are when queued** and return
-    at once; only a try-operation waits for the database, because its outcome comes from it. `DatabaseWriter` keeps
+    at once; only a try-operation waits for the database, because its outcome comes from it. A relation recorded once and never changed (`round_scores`) is no object of memory: its repository awaits the write and lists from the database. `DatabaseWriter` keeps
     one queue per root (`Root.User`, `Root.Match`, `Root.Beatmapset`, `Root.Server`) and sends its writes one
     statement at a time, in order; a copy not sent yet is replaced by a newer copy of the same identity. At most
     `Basil:Database:WriteConnections` connections (8 by default, see [`plans/evidence/postgresql-direct-writes-20261008`](plans/evidence/postgresql-direct-writes-20261008/results.md)) write at once. No write is grouped with unrelated
