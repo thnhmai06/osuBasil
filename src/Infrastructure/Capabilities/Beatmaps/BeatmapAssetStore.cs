@@ -12,10 +12,10 @@ namespace Basil.Infrastructure.Capabilities.Beatmaps;
 ///     Makes the files derived from a beatmapset's stored files: a ten-second audio preview of each audio track its
 ///     difficulties use, rendered through <c>ffmpeg</c>.
 /// </summary>
-internal sealed class BeatmapAssets(
+internal sealed class BeatmapAssetStore(
 	IOptions<AssetOptions> options,
 	IBeatmapsetStorage storage,
-	ILogger<BeatmapAssets> logger) : IBeatmapAssets
+	ILogger<BeatmapAssetStore> logger) : IBeatmapAssets
 {
 	/// <inheritdoc />
 	public async Task BuildAsync(BeatmapsetRecord set, IReadOnlyList<BeatmapRecord> beatmaps,

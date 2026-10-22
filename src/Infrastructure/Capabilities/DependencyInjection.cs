@@ -18,7 +18,7 @@ public static class DependencyInjection
 	{
 		services.AddSingleton<IBeatmapsetReader, OsuBeatmapsetReader>();
 		services.AddSingleton<IBeatmapAnalyser, OsuBeatmapAnalyser>();
-		services.AddSingleton<IBeatmapAssets, BeatmapAssets>();
+		services.AddSingleton<IBeatmapAssets, BeatmapAssetStore>();
 		services.AddSingleton<IBeatmapsetMirror, HttpBeatmapsetMirror>();
 		services.AddSingleton<IScreenshotInspector, ImageSharpScreenshotInspector>();
 		return services;
