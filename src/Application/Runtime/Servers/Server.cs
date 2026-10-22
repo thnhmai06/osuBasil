@@ -46,7 +46,7 @@ public sealed class Server
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>
 	///     <see langword="true" /> when the message was posted; otherwise, <see langword="false" /> when the channel is
-	///     closed, the text is empty, whitespace or holds a control character, or BasilBot's record is unavailable.
+	///     closed, the text is empty or holds a control character, or BasilBot's record is unavailable.
 	/// </returns>
 	/// <remarks>
 	///     This system operation needs no rights because the server itself calls it. Chat commands must use the scope of
@@ -55,7 +55,7 @@ public sealed class Server
 	public async Task<bool> SayAsync(Channel channel, string text, bool notice = false,
 		CancellationToken cancellationToken = default)
 	{
-		if (channel.IsClosed || channel is PmChannel { Owner.IsOnline: false } || string.IsNullOrWhiteSpace(text) ||
+		if (channel.IsClosed || channel is PmChannel { Owner.IsOnline: false } || string.IsNullOrEmpty(text) ||
 		    !Message.IsValidContent(text))
 			return false;
 

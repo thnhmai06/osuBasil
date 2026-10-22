@@ -192,10 +192,8 @@ public sealed class ScopedChannelTests
 		Assert.Equal(Channel.MaxMessageLength, posted.Message.Content.Length);
 	}
 
-	[Theory]
-	[InlineData("")]
-	[InlineData("   ")]
-	public async Task PostAsync_BlankText_ReturnsEmptyAndPublishesNothing(string text)
+	[Fact]
+	public async Task PostAsync_EmptyText_ReturnsEmptyAndPublishesNothing()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -203,10 +201,25 @@ public sealed class ScopedChannelTests
 		var before = app.ChannelEvents.Events.Count;
 
 		var result = await channel.ScopeTo(connection)
-			.PostAsync(text, cancellationToken: TestContext.Current.CancellationToken);
+			.PostAsync("", cancellationToken: TestContext.Current.CancellationToken);
 
 		Assert.Equal(ChannelOutcome.Empty, result.Outcome);
 		Assert.Equal(before, app.ChannelEvents.Events.Count);
+	}
+
+	[Fact]
+	public async Task PostAsync_WhitespaceOnlyText_IsPostedAsIs()
+	{
+		using var app = new TestApplication();
+		var channel = await OpenChannelAsync(app);
+		var connection = await MemberOfAsync(app, channel, "Mute");
+
+		var result = await channel.ScopeTo(connection)
+			.PostAsync("   ", cancellationToken: TestContext.Current.CancellationToken);
+
+		Assert.True(result.IsOk);
+		var posted = Assert.IsType<ChannelMessagePosted>(app.ChannelEvents.Events.Last());
+		Assert.Equal("   ", posted.Message.Content);
 	}
 
 	[Fact]

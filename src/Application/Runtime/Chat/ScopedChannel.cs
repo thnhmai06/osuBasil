@@ -86,7 +86,7 @@ public sealed class ScopedChannel : Scoped<Permissions>
 		if (Require(Channel is PmChannel ? Permissions.ChatPostPrivate : Permissions.ChatPost) is { } missing)
 			return Result<ChannelOutcome>.Denied(missing);
 
-		if (string.IsNullOrWhiteSpace(text)) return ChannelOutcome.Empty;
+		if (string.IsNullOrEmpty(text)) return ChannelOutcome.Empty;
 		if (!Message.IsValidContent(text)) return ChannelOutcome.InvalidText;
 		if (Channel is not PmChannel && !Channel.Members.Contains(By)) return ChannelOutcome.NotMember;
 
