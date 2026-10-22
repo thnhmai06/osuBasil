@@ -301,20 +301,11 @@ internal static class MpReplies
 	public static readonly Reply MatchAlreadyInProgress =
 		new("mp.matchAlreadyInProgress", "Match is already in progress.");
 
-	/// <summary>Reply when a start countdown was queued; <c>{seconds}</c> is the delay in seconds.</summary>
-	public static readonly Reply MatchStartsInSeconds = new("mp.matchStartsInSeconds",
-		"Match starts in {seconds} seconds",
-		"seconds");
-
 	/// <summary>Reply after starting the match immediately.</summary>
 	public static readonly Reply MatchStarted = new("mp.matchStarted", "Match started");
 
 	/// <summary>Usage line for <c>!mp timer</c>.</summary>
 	public static readonly Reply TimerUsage = new("mp.timerUsage", "Usage: !mp timer [seconds]");
-
-	/// <summary>Reply after starting a countdown; <c>{seconds}</c> is the duration in seconds.</summary>
-	public static readonly Reply CountdownStarted =
-		new("mp.countdownStarted", "Countdown started: {seconds} seconds", "seconds");
 
 	/// <summary>Reply when no countdown is running.</summary>
 	public static readonly Reply NoCountdownRunning = new("mp.noCountdownRunning", "No countdown is running.");
@@ -506,9 +497,6 @@ internal static class MpReplies
 
 	/// <summary>Reply when the match is closed.</summary>
 	public static readonly Reply MatchClosed = new("mp.matchClosed", "The match is closed.");
-
-	/// <summary>Reply when the requested room, user or beatmap does not exist.</summary>
-	public static readonly Reply NotFound = new("mp.notFound", "Not found.");
 
 	/// <summary>Maps a result to the user-visible text the bot sends.</summary>
 	/// <param name="replies">Gives the text of the replies.</param>

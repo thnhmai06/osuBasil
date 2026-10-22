@@ -28,7 +28,7 @@ public static class DependencyInjection
 		services.AddSingleton<IReplies>(sp => sp.GetRequiredService<ReplyCatalog>());
 		services.AddSingleton<RepliesWatcher>();
 		services.AddHostedService(sp => sp.GetRequiredService<RepliesWatcher>());
-		services.AddSingleton<MpScopes>();
+		services.AddSingleton<MpTargets>();
 		services.AddSingleton<MpCommands>();
 		services.AddSingleton<ChatCommands>();
 		services.AddSingleton<CommandWorker>();
