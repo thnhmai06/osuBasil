@@ -139,6 +139,20 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
+	public async Task ScanAsync_WithAFolderOfLooseFilesThatIsNotABeatmapset_ChangesNothingAndKeepsNoPackedArchive()
+	{
+		var world = new BeatmapsetWorld();
+		using var app = world.CreateApplication();
+		world.Storage.PlaceLooseFolder("not a set", [1, 2, 3]);
+
+		var result = await ScanAsync(app);
+
+		Assert.Equal(new BeatmapsetScanResult(0, 0, 0), result);
+		Assert.Empty(world.Sets.Records);
+		Assert.Empty(world.Storage.Uploaded);
+	}
+
+	[Fact]
 	public async Task ScanAsync_WithAFolderThatPacksToNothing_ChangesNothing()
 	{
 		var world = new BeatmapsetWorld();
@@ -504,6 +518,21 @@ public sealed class BeatmapsetsScanTests
 		Assert.Equal(new BeatmapsetScanResult(1, 0, 0), result);
 		Assert.Equal(10, Assert.IsType<BeatmapsetImported>(Assert.Single(app.BeatmapsetEvents.Events)).Set.Id);
 		Assert.Empty(world.Storage.Uploaded);
+	}
+
+	[Fact]
+	public async Task ScanAsync_OfAFolderOfLooseFilesThatIsNotABeatmapset_ChangesNothingAndKeepsNoPackedArchive()
+	{
+		var world = new BeatmapsetWorld();
+		using var app = world.CreateApplication();
+		var folder = world.Storage.PlaceLooseFolder("not a set", [1, 2, 3]);
+
+		var result = await ScanAsync(app, folder);
+
+		Assert.Equal(new BeatmapsetScanResult(0, 0, 0), result);
+		Assert.Empty(world.Sets.Records);
+		Assert.Empty(world.Storage.Uploaded);
+		Assert.Empty(app.BeatmapsetEvents.Events);
 	}
 
 	[Fact]
