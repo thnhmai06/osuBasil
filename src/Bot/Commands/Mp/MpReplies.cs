@@ -371,7 +371,7 @@ internal static class MpReplies
 	/// <summary>The <c>!mp help</c> listing, one subcommand per line.</summary>
 	public static readonly Reply HelpText = new("mp.helpText",
 		"!mp settings - show match id, map, team type, win condition, mods, and slots" + "\n" +
-		"!mp lock - lock the room, blocking new joins" + "\n" +
+		"!mp lock - lock the slots, so players cannot change slot or team" + "\n" +
 		"!mp unlock - unlock the room" + "\n" +
 		"!mp private [0|1] - show or set the room's private status (hidden from lobby, invite-only)" + "\n" +
 		"!mp size <1-16> - set the number of available slots" + "\n" +

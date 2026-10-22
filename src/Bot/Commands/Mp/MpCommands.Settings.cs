@@ -129,13 +129,12 @@ internal sealed partial class MpCommands
 	private static async Task<bool> SetSizeAsync(CommandContext context, Room room, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
-		if (args.Count < 1 || !int.TryParse(args[0], out var size))
+		if (args.Count < 1 || !int.TryParse(args[0], out var size) || size is < 1 or > MaxRoomSize)
 		{
 			await context.Reply(MpReplies.SizeUsage, cancellationToken);
 			return false;
 		}
 
-		size = Math.Clamp(size, 1, MaxRoomSize);
 		var outcome = await room.ScopeTo(context.By).Settings.ConfigureAsync(new RoomSettingsChange(Size: size),
 			cancellationToken);
 		if (!outcome.IsOk)
