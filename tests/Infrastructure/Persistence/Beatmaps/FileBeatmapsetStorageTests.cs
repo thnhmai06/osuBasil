@@ -343,6 +343,23 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
+	public async Task A_set_with_a_long_title_in_a_multi_byte_script_is_stored_and_found()
+	{
+		var id = NewId();
+		var set = Set(id, "Artist", new string('\u6f22', 100));
+		var bytes = Osz(("a.osu", "x"));
+		var archive = await _storage.SaveAsync(new MemoryStream(bytes), TestContext.Current.CancellationToken);
+
+		await _storage.SaveAsync(set, archive, TestContext.Current.CancellationToken);
+
+		var name = Assert.Single(TopLevel());
+		Assert.StartsWith($"{id} Artist - ", name);
+		Assert.True(Encoding.UTF8.GetByteCount(name) <= 150, "A folder name keeps room for the marker added while it is removed.");
+		Assert.Equal(bytes,
+			await ReadAllBytesAsync(await _storage.OpenArchiveAsync(set, true, TestContext.Current.CancellationToken)));
+	}
+
+	[Fact]
 	public async Task A_folder_name_has_none_of_the_characters_a_folder_may_not_have_and_still_finds_the_set()
 	{
 		var id = NewId();

@@ -1,6 +1,5 @@
 using System.Buffers;
 using System.Globalization;
-using System.Text;
 using Basil.Application.Persistence.Beatmaps;
 using Basil.Application.Persistence.Scores;
 using Basil.Application.Persistence.Users;
@@ -16,6 +15,9 @@ internal sealed class FileReplayStorage(
 	IUserRepository users,
 	IBeatmapRepository beatmaps) : IReplayStorage
 {
+	/// <summary>The most bytes a replay's file name may take: the 255 of common file systems, less the extension.</summary>
+	private const int MaxNameBytes = 255 - 4;
+
 	private static readonly SearchValues<char> UnportableChars = SearchValues.Create("<>:\"/\\|?*");
 	private DataStorage Files => paths.Replays;
 
@@ -55,7 +57,7 @@ internal sealed class FileReplayStorage(
 			"{0} {1} - {2} ({3:yyyy-MM-dd}) {4}",
 			score.Id, user.Value.Name, beatmap.Name, score.Value.Timestamp.UtcDateTime,
 			ModeName(score.Value.Mode));
-		return Fitted(Portable(name)) + ".osr";
+		return FileNames.Fitted(Portable(name), MaxNameBytes) + ".osr";
 	}
 
 	private static string ModeName(GameMode mode)
@@ -68,19 +70,6 @@ internal sealed class FileReplayStorage(
 			GameMode.Mania => "OsuMania",
 			_ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null)
 		};
-	}
-
-	/// <summary>Shortens a name so that, with its extension, it fits the 255-byte file name limit of common file systems.</summary>
-	/// <remarks>The score id at its start is kept, so the replay is still found by it.</remarks>
-	private static string Fitted(string name)
-	{
-		const int maxBytes = 255 - 4; // ".osr"
-		if (Encoding.UTF8.GetByteCount(name) <= maxBytes) return name;
-
-		var length = name.Length;
-		while (Encoding.UTF8.GetByteCount(name.AsSpan(0, length)) > maxBytes || char.IsHighSurrogate(name[length - 1]))
-			length--;
-		return name[..length].TrimEnd(' ', '.');
 	}
 
 	/// <summary>Replaces every character some operating system refuses in a file name with an underscore.</summary>

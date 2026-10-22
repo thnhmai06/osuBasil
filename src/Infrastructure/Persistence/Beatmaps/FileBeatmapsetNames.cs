@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text;
 using Basil.Application.Persistence.Beatmaps;
 using Basil.Domain.Beatmaps;
+using Basil.Infrastructure.Persistence.Files;
 
 namespace Basil.Infrastructure.Persistence.Beatmaps;
 
@@ -37,6 +38,12 @@ internal static class FileBeatmapsetNames
 
 	/// <summary>The prefix of an audio preview file, stored in the audio folder.</summary>
 	internal const string PreviewPrefix = "preview_";
+
+	/// <summary>
+	///     The most bytes a set folder's name may take: the 255 of common file systems, less the deleted marker and the
+	///     identifier that follow it while the folder is being removed.
+	/// </summary>
+	private const int MaxFolderNameBytes = 150;
 
 	private static readonly FrozenSet<char> InvalidNameChars = "\"<>:/\\|?*".ToFrozenSet();
 
@@ -104,9 +111,7 @@ internal static class FileBeatmapsetNames
 			if (!char.IsControl(character) && !InvalidNameChars.Contains(character))
 				builder.Append(character);
 
-		var folder = builder.ToString().TrimEnd('.', ' ');
-		if (folder.Length > 150) folder = folder[..150].TrimEnd('.', ' ');
-		return folder;
+		return FileNames.Fitted(builder.ToString().TrimEnd('.', ' '), MaxFolderNameBytes);
 	}
 
 	/// <summary>Builds the path of one file made from a set's archive.</summary>
