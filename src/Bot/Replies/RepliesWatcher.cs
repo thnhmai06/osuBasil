@@ -14,6 +14,9 @@ internal sealed class RepliesWatcher(ReplyCatalog catalog, TimeProvider time, IL
 	private bool _stopped;
 	private FileSystemWatcher? _watcher;
 
+	/// <summary>Gets a value that indicates whether saves of the file are noticed by the file system; tests turn it off and signal changes themselves.</summary>
+	internal bool WatchFileSystem { get; init; } = true;
+
 	/// <inheritdoc />
 	public void Dispose()
 	{
@@ -31,6 +34,8 @@ internal sealed class RepliesWatcher(ReplyCatalog catalog, TimeProvider time, IL
 	public Task StartAsync(CancellationToken cancellationToken)
 	{
 		catalog.Load();
+
+		if (!WatchFileSystem) return Task.CompletedTask;
 
 		var directory = Path.GetDirectoryName(catalog.Path)!;
 		try

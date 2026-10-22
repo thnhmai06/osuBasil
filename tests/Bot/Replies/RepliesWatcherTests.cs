@@ -128,7 +128,8 @@ public sealed class RepliesWatcherTests : IDisposable
 	{
 		var catalog = new ReplyCatalog([Plain], Options.Create(new RepliesOptions { Path = FilePath }),
 			NullLogger<ReplyCatalog>.Instance);
-		return (catalog, new RepliesWatcher(catalog, _time, NullLogger<RepliesWatcher>.Instance));
+		return (catalog,
+			new RepliesWatcher(catalog, _time, NullLogger<RepliesWatcher>.Instance) { WatchFileSystem = false });
 	}
 
 	private void WriteFile(string plain)
