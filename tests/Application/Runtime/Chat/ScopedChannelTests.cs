@@ -303,6 +303,23 @@ public sealed class ScopedChannelTests
 		Assert.Equal(ChannelOutcome.AccessDenied, result.Outcome);
 	}
 
+	[Theory]
+	[InlineData("a\0b")]
+	[InlineData("\u001b[0m")]
+	public async Task PostAsync_ControlCharacters_ReturnsInvalidTextAndPublishesNothing(string text)
+	{
+		using var app = new TestApplication();
+		var channel = await OpenChannelAsync(app);
+		var connection = await MemberOfAsync(app, channel, "Ctrl");
+		var before = app.ChannelEvents.Events.Count;
+
+		var result = await channel.ScopeTo(connection)
+			.PostAsync(text, cancellationToken: TestContext.Current.CancellationToken);
+
+		Assert.Equal(ChannelOutcome.InvalidText, result.Outcome);
+		Assert.Equal(before, app.ChannelEvents.Events.Count);
+	}
+
 	[Fact]
 	public async Task PostAsync_ToUserWithAwayMessage_CarriesTheAwayReplyInTheSameEvent()
 	{

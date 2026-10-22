@@ -116,10 +116,9 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	}
 
 	[Theory]
-	[InlineData("")]
 	[InlineData("   ")]
 	[InlineData("\t")]
-	public async Task AnEmptyOrWhitespaceMessage_IsIgnored(string content)
+	public async Task AWhitespaceMessage_IsIgnored(string content)
 	{
 		await PostAsync(_botConnection.User.PmChannel, content);
 
@@ -137,7 +136,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	[Fact]
 	public async Task AMessageTheServerSaidItself_IsIgnored()
 	{
-		var message = new Message(_typist.Record, "!roll", _bot.App.Clock.GetUtcNow());
+		var message = new Message { Author = _typist.Record, Content = "!roll", Timestamp = _bot.App.Clock.GetUtcNow() };
 
 		await _handler.HandleAsync(new ChannelMessagePosted(_channel, message, false, null), Token);
 		await DrainAsync();
@@ -266,7 +265,11 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	/// <summary>Has the typist post a message and waits until the worker has run what the handler queued.</summary>
 	private async Task PostAsync(Channel channel, string content, bool isNotice = false, UserRecord? author = null)
 	{
-		var message = new Message(author ?? _typist.Record, content, _bot.App.Clock.GetUtcNow(), isNotice);
+		var message = new Message
+		{
+			Author = author ?? _typist.Record, Content = content, Timestamp = _bot.App.Clock.GetUtcNow(),
+			IsNotice = isNotice
+		};
 
 		await _handler.HandleAsync(new ChannelMessagePosted(channel, message, false, null, _typist), Token);
 		await DrainAsync();

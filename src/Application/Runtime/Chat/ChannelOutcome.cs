@@ -18,6 +18,9 @@ public enum ChannelOutcome : byte
 	/// <summary>The message text is empty.</summary>
 	Empty,
 
+	/// <summary>The message text holds a control character that chat does not carry.</summary>
+	InvalidText,
+
 	/// <summary>The recipient does not accept private messages from the author.</summary>
 	Blocked,
 

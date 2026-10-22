@@ -1,4 +1,5 @@
 using Basil.Application.Runtime.Sessions;
+using Basil.Domain.Chat;
 using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
@@ -68,7 +69,7 @@ public sealed class ScopedChannel : Scoped<Permissions>
 	/// <param name="notice">Whether the message is a notice, which never triggers an automatic reply.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>
-	///     Ok, or Closed, Empty, NotMember, AccessDenied, Blocked or TargetSilenced; a denial that names the missing
+	///     Ok, or Closed, Empty, InvalidText, NotMember, AccessDenied, Blocked or TargetSilenced; a denial that names the missing
 	///     permissions when the sender lacks the permission to post.
 	/// </returns>
 	/// <remarks>
@@ -86,6 +87,7 @@ public sealed class ScopedChannel : Scoped<Permissions>
 			return Result<ChannelOutcome>.Denied(missing);
 
 		if (string.IsNullOrWhiteSpace(text)) return ChannelOutcome.Empty;
+		if (!Message.IsValidContent(text)) return ChannelOutcome.InvalidText;
 		if (Channel is not PmChannel && !Channel.Members.Contains(By)) return ChannelOutcome.NotMember;
 
 		var now = Channel.Context.Clock.GetUtcNow();

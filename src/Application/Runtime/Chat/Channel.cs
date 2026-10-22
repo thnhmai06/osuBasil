@@ -115,14 +115,17 @@ public abstract class Channel
 	internal void PostMessage(UserRecord author, string text, bool notice, DateTimeOffset now, Connection? by)
 	{
 		var truncated = text.Length > MaxMessageLength;
-		var message = new Message(author, truncated ? text[..MaxMessageLength] : text, now, notice);
+		var message = new Message
+		{
+			Author = author, Content = truncated ? text[..MaxMessageLength] : text, Timestamp = now, IsNotice = notice
+		};
 
 		Message? awayReply = null;
 		if (by is not null
 		    && this is PmChannel { Owner.AwayMessage: { } away } pmChannel
 		    && !ReferenceEquals(by.User, pmChannel.Owner)
 		    && !notice)
-			awayReply = new Message(pmChannel.Owner.Record, away, now);
+			awayReply = new Message { Author = pmChannel.Owner.Record, Content = away, Timestamp = now };
 
 		Context.Events.Publish(new ChannelMessagePosted(this, message, truncated, awayReply, by));
 	}
