@@ -327,6 +327,22 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
+	public async Task Renaming_a_set_folder_only_in_letter_case_reports_no_name_but_the_old_and_the_new()
+	{
+		var id = NewId();
+		PlaceFolder(id, "artist", "title", Osz(("a.osu", "x")));
+		var own = await OwnArchiveAsync($"{id} artist - title");
+		await using var watching = Watching.Start(_storage, _time);
+
+		await _storage.SaveAsync(Set(id, "Artist", "Title"), own, TestContext.Current.CancellationToken);
+		PlaceFolder(NewId(), "Sentinel", "Folder", Osz(("a.osu", "x")));
+		var reported = await watching.ReadUntilAsync(source => source.Name.Contains("Sentinel"));
+
+		Assert.All(reported.Where(source => !source.Name.Contains("Sentinel")),
+			source => Assert.Contains(source.Name, new[] { $"{id} artist - title", $"{id} Artist - Title" }));
+	}
+
+	[Fact]
 	public async Task A_folder_name_has_none_of_the_characters_a_folder_may_not_have_and_still_finds_the_set()
 	{
 		var id = NewId();

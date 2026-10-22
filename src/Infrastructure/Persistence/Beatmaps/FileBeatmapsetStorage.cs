@@ -144,7 +144,7 @@ internal sealed class FileBeatmapsetStorage(
 					// Same folder, at most a change of letter case.
 					if (!string.Equals(placedParent, target, StringComparison.Ordinal))
 					{
-						var renaming = placedParent + ".renaming";
+						var renaming = Incoming();
 						Directory.Move(placedParent!, renaming);
 						Directory.Move(renaming, target);
 					}
