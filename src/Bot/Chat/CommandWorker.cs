@@ -11,7 +11,7 @@ namespace Basil.Bot.Chat;
 ///     it. Commands keep the order in which they were typed. The queue is bounded, one user cannot fill it, and a
 ///     command that takes too long is cancelled, so no user can hold the others up.
 /// </remarks>
-internal sealed class CommandWorker(ILogger<CommandWorker> logger) : BackgroundService
+internal sealed class CommandWorker(ILogger<CommandWorker> logger, TimeProvider time) : BackgroundService
 {
 	/// <summary>How many commands may wait in all.</summary>
 	internal const int QueueCapacity = 256;
@@ -51,9 +51,9 @@ internal sealed class CommandWorker(ILogger<CommandWorker> logger) : BackgroundS
 		await foreach (var (userId, run) in _commands.Reader.ReadAllAsync(stoppingToken))
 			try
 			{
-				using var timeout = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
-				timeout.CancelAfter(CommandTimeout);
-				await run(timeout.Token);
+				using var timeout = new CancellationTokenSource(CommandTimeout, time);
+				using var limited = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, timeout.Token);
+				await run(limited.Token);
 			}
 			catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
 			{

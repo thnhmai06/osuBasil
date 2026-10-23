@@ -1,19 +1,26 @@
 using Basil.Bot.Chat;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Basil.Bot.Tests.Chat;
 
 /// <summary>
 ///     How the queue that runs chat commands behaves: commands keep their order, one user cannot fill the queue,
-///     the queue is bounded and a failing command does not stop the commands after it. The cancellation of a command
-///     that outlives <see cref="CommandWorker.CommandTimeout" /> is not tested: it counts real time.
+///     the queue is bounded, a failing command does not stop the commands after it and a command that outlives
+///     <see cref="CommandWorker.CommandTimeout" /> is cancelled.
 /// </summary>
 public sealed class CommandWorkerTests : IAsyncLifetime
 {
 	private static readonly TimeSpan HangGuard = TimeSpan.FromSeconds(10);
 
 	private readonly TaskCompletionSource _gate = new(TaskCreationOptions.RunContinuationsAsynchronously);
-	private readonly CommandWorker _worker = new(NullLogger<CommandWorker>.Instance);
+	private readonly FakeTimeProvider _time = new();
+	private readonly CommandWorker _worker;
+
+	public CommandWorkerTests()
+	{
+		_worker = new CommandWorker(NullLogger<CommandWorker>.Instance, _time);
+	}
 
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
 
@@ -163,6 +170,83 @@ public sealed class CommandWorkerTests : IAsyncLifetime
 
 		Assert.True(accepted);
 		await ran.Task.WaitAsync(HangGuard, Token);
+	}
+
+	[Fact]
+	public async Task A_command_that_runs_for_the_whole_timeout_is_cancelled()
+	{
+		var started = NewSignal();
+		var cancelled = NewSignal();
+		Assert.True(_worker.Enqueue(1, async cancellationToken =>
+		{
+			started.SetResult();
+			try
+			{
+				await Task.Delay(Timeout.Infinite, cancellationToken);
+			}
+			catch (OperationCanceledException)
+			{
+				cancelled.SetResult();
+			}
+		}));
+		await started.Task.WaitAsync(HangGuard, Token);
+
+		_time.Advance(CommandWorker.CommandTimeout);
+
+		await cancelled.Task.WaitAsync(HangGuard, Token);
+	}
+
+	[Fact]
+	public async Task A_command_is_not_cancelled_before_the_timeout()
+	{
+		var started = NewSignal();
+		CancellationToken seen = default;
+		Assert.True(_worker.Enqueue(1, async cancellationToken =>
+		{
+			seen = cancellationToken;
+			started.SetResult();
+			await _gate.Task.WaitAsync(HangGuard);
+		}));
+		await started.Task.WaitAsync(HangGuard, Token);
+
+		_time.Advance(CommandWorker.CommandTimeout - TimeSpan.FromMilliseconds(1));
+
+		Assert.False(seen.IsCancellationRequested);
+	}
+
+	[Fact]
+	public async Task The_commands_after_one_that_timed_out_still_run()
+	{
+		var started = NewSignal();
+		Assert.True(_worker.Enqueue(1, async cancellationToken =>
+		{
+			started.SetResult();
+			await Task.Delay(Timeout.Infinite, cancellationToken);
+		}));
+		var ran = NewSignal();
+		Assert.True(_worker.Enqueue(2, Signal(ran)));
+		await started.Task.WaitAsync(HangGuard, Token);
+
+		_time.Advance(CommandWorker.CommandTimeout);
+
+		await ran.Task.WaitAsync(HangGuard, Token);
+	}
+
+	[Fact]
+	public async Task A_user_whose_command_timed_out_can_enqueue_again()
+	{
+		var started = NewSignal();
+		Assert.True(_worker.Enqueue(1, async cancellationToken =>
+		{
+			started.SetResult();
+			await Task.Delay(Timeout.Infinite, cancellationToken);
+		}));
+		await started.Task.WaitAsync(HangGuard, Token);
+		_time.Advance(CommandWorker.CommandTimeout);
+		await DrainAsync();
+
+		for (var count = 0; count < CommandWorker.PendingPerUser; count++)
+			Assert.True(_worker.Enqueue(1, _ => Task.CompletedTask));
 	}
 
 	/// <summary>Gives a user the most commands they may have waiting, the first of which holds the worker until the gate opens.</summary>

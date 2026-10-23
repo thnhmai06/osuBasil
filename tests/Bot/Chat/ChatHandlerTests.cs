@@ -23,7 +23,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 
 	private readonly BotHarness _bot = new();
 	private readonly ChatHandler _handler;
-	private readonly CommandWorker _worker = new(NullLogger<CommandWorker>.Instance);
+	private readonly CommandWorker _worker = new(NullLogger<CommandWorker>.Instance, TimeProvider.System);
 	private GeneralChannel _channel = null!;
 	private BotConnection _botConnection = null!;
 	private BanchoConnection _typist = null!;
