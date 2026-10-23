@@ -1,560 +1,233 @@
-# IRC and the dual-session model
+# IRC transport
+
+> **Status: the IRC host is pending migration** (see [`plans/handoff-20261022.md`](../../plans/handoff-20261022.md)).
+> `src/Hosts/Irc` still uses the previous Application API and is outside the solution build. This page describes the
+> **design the host must implement on the current Application model**. The Application behaviour it relies on exists
+> today (`Basil.Application.Runtime`); the wire-level rules are the contract the migrated host must keep.
+> Sections marked "host rule" are not implemented against the new model yet.
 
 ## Overview
 
-An account can have up to two independent live sessions:
+### Why
 
-* a `GameSession` from an osu! stable client;
-* an `IrcSession` from a native IRC client or bouncer.
+Basil's chat is one model shared by every transport. IRC exists so that referees and operators can use standard IRC
+clients, bouncers and bots next to (or instead of) the osu! stable client: read chat, run BasilBot commands and
+manage rooms without a game client.
 
-These are deliberately different session types.
+The IRC transport therefore adds no rules of its own. It decodes IRC lines, calls the Application operation of the
+object being acted on with the IRC connection as the actor, and encodes the typed result as IRC lines. Authority is
+decided by the user's effective permissions, never by the fact that the request came over IRC.
 
-A game client carries gameplay state such as multiplayer membership, spectating, status, statistics, and the Bancho packet queue. An IRC client has none of that state and must never be treated as a multiplayer player.
+### What
 
-Both session types share `UserSession` for identity and chat-related state.
+* A user can hold a Bancho connection **and** an IRC connection at the same time. Neither evicts the other.
+* The IRC connection is a full chat participant: it joins channels, sends and receives messages, runs BasilBot
+  commands, and referees or creates rooms to the extent the user's permissions allow.
+* The IRC connection is never a player: it cannot be seated in a room slot and cannot spectate.
 
-The separation is enforced by the type system rather than by a runtime `IsIrc` flag.
+### Messages and line breaks
 
-## Session model
+A chat message may contain CR and LF. `Message.Content` accepts any text that is not empty and holds no control
+character other than tab, CR, LF and U+0001 (the action wrapper); only empty text or other control characters are
+refused. An IRC line cannot carry CR or LF, and `IrcMessage.ToString` throws on them. **Host rule:** before writing a
+message to the wire, the IRC host splits it at line breaks and sends one `PRIVMSG`/`NOTICE` per non-empty line (or
+escapes the breaks). This applies to every message it delivers: chat, BasilBot replies (multi-line output such as
+`!mp settings` or `!mp listrefs`) and away replies.
 
-```text
-UserSession
-├── GameSession
-│   ├── gameplay state
-│   ├── multiplayer membership
-│   ├── spectating
-│   ├── player status
-│   ├── per-mode statistics
-│   └── BanchoIrcBridgeConnection
-│
-└── IrcSession
-    └── real IRC connection
-```
+## Connection model
 
-### `UserSession`
-
-`UserSession` is the shared base for both session types.
-
-It contains state that is meaningful for any connected account:
-
-* user id;
-* name;
-* privileges;
-* silence state;
-* channel membership;
-* `IIrcConnection`.
-
-Chat is therefore expressed in terms of the shared session abstraction, while gameplay operations require the more specific `GameSession` type.
-
-### `GameSession`
-
-`GameSession` represents an osu! client connection.
-
-It owns gameplay-specific state, including:
-
-* Bancho packet queue;
-* `Match`;
-* `Spectating`;
-* `Spectators`;
-* player `Status`;
-* per-mode statistics.
-
-Only a `GameSession` can occupy a multiplayer slot.
-
-Match-seating methods such as `JoinAsync`, `ForceJoinAsync`, and `OccupySlot` therefore accept `GameSession` rather than `UserSession`.
-
-This is intentional type safety:
+### Public contract
 
 ```text
-GameSession ──► JoinAsync(...)
-     │
-     └── valid
-
-IrcSession ──► JoinAsync(...)
-     │
-     └── does not compile
+User (one account, online)
+├── BanchoConnection   osu! stable client       (at most one)
+├── IrcConnection      IRC client or bouncer    (at most one)
+├── BotConnection      the server's own, BasilBot only
+├── TourneyConnection  osu!tourney clients      (several)
+└── ApiConnection      HTTP API clients         (several)
 ```
 
-### `IrcSession`
+| Statement | Enforced by |
+| --- | --- |
+| A user may be online through Bancho and IRC at once | `User` holds connections by kind; `UserRegistry.Open` only compares connections of the same kind |
+| A second IRC login while the first IRC connection was active within the last 10 seconds is refused (`AlreadyOnline`); an older idle one is closed as `Replaced` | `UserRegistry.Open` |
+| An IRC connection is closed after 300 seconds without traffic | `UserRegistry.CloseIdle` and `MarkActive` |
+| Only a `BanchoConnection` can be seated in a slot or hold host | the slot, `Room.Seat`, `SeatAsync` and `SetHostAsync` take `BanchoConnection`; `ScopedRoomMembers.JoinAsync` and `LeaveAsync` answer `NotInRoom` for any other connection |
+| An IRC connection cannot spectate | `ScopedBanchoConnection.SpectateAsync` throws `ArgumentException` for an `IrcConnection`; the host must not call it |
+| A room opened in game needs the creator's `BanchoConnection`; a tournament room can be created by any connection with `RoomCreate` | `ScopedLobby.OpenRoomAsync` throws `ArgumentException` for a non-tournament room opened by another kind |
+| BasilBot is the user with id 1 and its connection is a `BotConnection`, not a client; nobody can log in as it | `UserRegistry.EnsureBotAsync`, `ConnectBotAsync`; the login lookup answers `UnknownUser` for it |
 
-`IrcSession` represents a native IRC connection.
+The previous design enforced "an IRC client is not a player" with separate `GameSession` and `IrcSession` types. The
+current code enforces it through the parameter types of the seating and host operations (`BanchoConnection`) and
+through the results of the operations that take a plain `Connection`, not through a session type hierarchy.
 
-It contains no gameplay state.
+### Authority
 
-It owns a real `IIrcConnection` backed by the TCP connection accepted by the IRC gateway.
+Every action has a real actor: the `IrcConnection` that sent the line. Objects are scoped to it
+(`room.ScopeTo(by)`, `channel.ScopeTo(by)`, `user.ScopeTo(by)`), and the scope checks the user's **effective**
+permissions at that moment. A silenced referee therefore cannot manage a room from IRC either. The transport never
+adds or removes rights.
 
-An IRC session can:
+What an IRC connection can do:
 
-* join channels;
-* send and receive chat;
-* run commands;
-* referee matches;
-* create matches;
-* appear in match-related IRC output.
+* join channels it may read and post to channels it may write (`ScopedChannel.Join`, `Part`, `PostAsync`);
+* send private messages, including to BasilBot, and set or clear its user's away message (`ScopedUser.SetAway`);
+* run BasilBot commands: the bot runs them with the typist's connection and permissions, so `!mp` from IRC uses the
+  IRC connection's rights;
+* referee a room (kick, ban, referees, settings) when the user is its creator or a referee, or holds
+  `RoomManageAny`;
+* create a **tournament** room (`RoomCreate`). The creator's Bancho client is seated as host only if the user has an
+  open one that may join rooms and is in no room; otherwise the room starts with a creator and no host.
 
-It cannot become a seated multiplayer player.
+What it cannot do: be seated, hold host, spectate, open a room in game.
 
-## Session coexistence
+### Login and logout
 
-An account may have:
+Registration (`PASS`, `NICK`) maps to `UserRegistry.LoginAsync` with `ConnectionType.Irc` and no osu! client. A
+failure (`UnknownUser`, `WrongPassword`, `AccountDeleted`, `AlreadyOnline`) is answered with a registration error
+numeric. A success opens the connection, which joins its user's private-message channel and, through the connection
+handler, the auto-join general channels.
 
-* no session;
-* only a `GameSession`;
-* only an `IrcSession`;
-* both simultaneously.
+Closing the socket, `QUIT`, a write failure or the idle sweep closes the connection with `UserRegistry.Close`. The
+user goes offline only when this was the last connection. Closing an IRC connection does not touch the user's Bancho
+connection, its room seat or its spectators, and closing a Bancho connection does not disconnect IRC.
 
-Logging in through one transport never evicts the other session.
+## Wire protocol
+
+`Basil.Protocol.Irc` only turns lines into `IrcMessage` records, numerics and user prefixes and back. It gives no
+meaning and does not limit line length; the host keeps lines within the protocol limit. A line holding CR, LF or NUL
+is rejected on parse and on format.
+
+### Commands
+
+| Command | Behaviour |
+| --- | --- |
+| `PASS` / `NICK` / `USER` | Registration needs `PASS` and `NICK`; `USER` is accepted and ignored. Registration does not wait for `CAP`. Before registration any other command gets `451`. |
+| `CAP` | No capability is offered: `LS`/`LIST` return an empty list, `REQ` is refused with `NAK`, `END` needs no reply. SASL `AUTHENTICATE` is never offered and gets no reply. |
+| `PRIVMSG` / `NOTICE` | Posts through `ScopedChannel.PostAsync`. A `NOTICE` never triggers a command or an away reply. A channel target that does not exist gets `403`; one the connection cannot write to gets `404`. |
+| `JOIN` / `PART` | `ScopedChannel.Join` / `Part`. Unknown channel `403`; not allowed to read it `473`. |
+| `LIST` / `NAMES` / `WHO` / `WHOIS` / `ISON` | Read-only queries. A channel the connection cannot read is not listed. |
+| `TOPIC` / `MODE` | Read only; any change is refused. User modes do not exist. |
+| `MOTD` / `VERSION` / `TIME` / `LUSERS` | Informational replies. |
+| `AWAY` | Sets or clears the user's away message, which all of the user's connections share. |
+| `PING` / `PONG` | `PING` is answered with `PONG` and the same token. The host sends a keepalive `PING` periodically and treats every received line as activity (`MarkActive`). |
+| `QUIT` | Closes the connection. |
+
+Missing parameters get `461`. After registration `NICK`, `PASS` and `USER` get `462`: identity is fixed at login. Any
+other command gets `421`; nothing is silently ignored except the protocol exceptions above.
+
+A `PRIVMSG` to a nickname is a post into that user's private-message channel. An unknown nickname gets `401`; a
+refusal by the channel (`Blocked`, `TargetSilenced`, `AccessDenied`) is answered with the matching numeric, and
+`Empty`/`InvalidText` are dropped.
+
+### What IRC cannot change
+
+Nickname, topics, channel modes, the password and the `USER` data are server-controlled. Presence is the only thing a
+client changes: joining, parting, chatting and `AWAY`.
+
+### Channel names
+
+| Channel | IRC name | Notes |
+| --- | --- | --- |
+| General | configured name, such as `#osu` | read and write rights come from the channel's configured privileges |
+| Room | `#mp_{room id}` | opens and closes with the room |
+| Spectator | `#spec_{user id}` | only the spectated Bancho client and its spectators can read it, so an IRC connection cannot join it |
+| Private message | the user's name, no `#` | every connection of the user is in it, osu!tourney excluded |
+
+### Delivery
+
+A posted message goes to `Channel.RecipientsAsync(posted)`: the members who do not block the author, unless the author
+has `ChatMessageAnyone`. **Host rule:** the host writes the line to every IRC connection among them except the one
+that sent it (IRC does not echo). The user's other connection, such as its Bancho client, is a recipient like any
+other member. If the event carries an away reply, it goes to the author's private-message channel.
+
+## Rooms on IRC
+
+### Room channel access
+
+A room channel can be read by a connection that takes part in the room: a seated Bancho player, an observing
+osu!tourney client, the creator or a referee whose permissions include `RoomJoin`, or an account with
+`RoomManageAny` or `RoomObserve`. Writing needs the same involvement or `ChatPostAnyRoom`.
 
 ```text
-UserId 42
-│
-├── GameSession ─── osu! client
-│
-└── IrcSession  ─── IRC client
+JOIN #mp_5     -> 473  the room exists, the caller may not enter
+JOIN #mp_999   -> 403  there is no such channel
 ```
 
-The two sessions share the same account identity but remain independent connections.
+The existence of a room is not hidden, but an unauthorized connection can neither join it nor see it in `LIST`.
+**Host rule:** `LIST` lists only the room channels the connection could join.
 
-This is important for tournament workflows where a referee may play through osu! while simultaneously connecting through IRC for remote administration.
+A creator or referee joins the room channel from IRC with an ordinary `JOIN`. They stay in it after leaving a slot,
+because leaving a seat parts the channel only for users who do not manage the room. Players are placed in the
+channel by the room when they are seated.
 
-## Session registries
+### Status prefixes (host rule)
 
-The two session types have separate typed registries:
+Prefixes are computed per channel, not from a global privilege: `@` for authority in that channel, `+` for a member who
+may write, none for read-only. In a room channel authority belongs to the creator and the referees
+(`Room.Authority.IsManagedBy`), so a referee can be `@` in `#mp_5` and unprefixed in `#osu`. `NAMES` and `WHO` for a
+channel use this rule; `WHO` for a bare nickname has no channel and shows no prefix. How `@` is derived for general
+channels is not fixed by the Application model and is decided when the host is ported.
+
+### Host, creator and protection
+
+* A room created from IRC starts with a creator and no seated player, and possibly no host. An empty tournament room
+  closes after 15 minutes (with a warning 5 minutes before), whichever transport created it.
+* The creator is not in the referee list and ranks above referees. The creator and the referees cannot be kicked or
+  banned (`IsManager`); removing a referee is the explicit `!mp removeref`.
+* A ban is a rule on the account, not on a connection, so banning an offline user works. A kick removes the target's
+  seated Bancho connection; an IRC-only user is not seated, so a kick answers `NotInRoom`.
+* BasilBot cannot be the target of account operations (`UserOutcome.Protected`).
+
+## Presence on IRC (host rule)
+
+Channel membership in the Application is per connection: a user with a Bancho and an IRC connection has two members
+in `#osu`. Other IRC clients should see the user, not the connection, so the host derives `JOIN`, `PART` and `QUIT`
+from `ChannelMemberJoined`, `ChannelMemberParted` and `UserConnectionClosed` (`WentOffline`) with the rule of the
+previous design:
 
 ```text
-ISessionRegistry<GameSession>
-ISessionRegistry<IrcSession>
+a connection joins a channel
+  the user already has another connection in it?   no line for other clients
+  otherwise                                        JOIN to the channel's IRC members
+
+a connection leaves or closes
+  the user keeps another connection in the channel?        nothing
+  else the user still has a connection somewhere else?     PART from this channel
+  else (the user went offline)                             one QUIT to everyone sharing a channel
 ```
 
-A lookup is therefore explicit about what kind of session the caller expects.
-
-For example:
-
-```text
-gameRegistry.GetByUserId(id)
-ircRegistry.GetByUserId(id)
-```
-
-Consumers that intentionally accept either session type can combine the registries explicitly:
-
-```text
-GameSession? game = gameRegistry.GetByUserId(id);
-IrcSession? irc = ircRegistry.GetByUserId(id);
-```
-
-There is no ambiguous `GetSessionByUserId` returning an arbitrary session.
-
-Registration is atomic through `TryAdd`, so concurrent logins of the same session type cannot race through a check-then-add sequence.
-
-## BasilBot
-
-BasilBot is represented as a synthetic `GameSession`.
-
-It is not an `IrcSession` and does not establish a TCP connection.
-
-The current implementation uses `GameSession` because spectator functionality expects `GameSession` state such as `Spectating` and `Spectators`.
-
-This allows `SpectatorService` to expose BasilBot through the same SSE spectator path used for real players.
-
-This is an implementation compatibility shape, not a claim that BasilBot is an osu! client.
-
-BasilBot is also exempt from the idle-disconnect sweep because it has no real client connection that can send keepalive traffic.
-
-## IRC connection model
-
-Every `UserSession` has an `IIrcConnection`.
-
-The implementation depends on the session type.
-
-### Bancho clients
-
-A `GameSession` uses `BanchoIrcBridgeConnection`.
-
-This translates IRC-shaped chat operations into Bancho packets:
-
-```text
-IRC-shaped PRIVMSG
-       │
-       ▼
-BanchoIrcBridgeConnection
-       │
-       ▼
-Bancho SEND_MESSAGE
-       │
-       ▼
-osu! client
-```
-
-The bridge does not emulate a full IRC connection.
-
-Operations that have no Bancho equivalent, such as `JOIN`, `PART`, and `QUIT`, are not sent through the bridge. The osu! client receives channel membership through Bancho `ChannelInfo` packets instead.
-
-### Native IRC clients
-
-An `IrcSession` uses the actual TCP-backed IRC connection.
-
-The IRC gateway is embedded directly in the Basil process. It does not require a separate service or container.
-
-```text
-IRC client
-    │
-    │ TCP
-    ▼
-TcpIrcListener
-    │
-    ▼
-IrcSession
-```
-
-## IRC protocol surface
-
-The IRC gateway implements the subset required by standard IRC clients and Basil's chat model.
-
-| Command                                | Parameters              | Behavior                                                                                                 |
-| -------------------------------------- | ----------------------- | -------------------------------------------------------------------------------------------------------- |
-| `PASS` / `NICK` / `USER`               | password, nick          | Registration handshake. `USER` is accepted and ignored; `PASS` and `NICK` authenticate the account.      |
-| `CAP`                                  | subcommand              | No capabilities are offered. Capability negotiation is refused; `CAP END` requires no response.          |
-| `PRIVMSG`                              | target, text            | Routes the message through the shared chat system. A command prefix therefore invokes BasilBot commands. |
-| `NOTICE`                               | target, text            | Uses normal message delivery but never invokes commands or away replies.                                 |
-| `JOIN` / `PART`                        | channel                 | Joins or leaves a channel and returns the appropriate membership responses.                              |
-| `LIST`                                 | optional channel        | Lists channels visible to the caller. Match-room visibility is permission-gated.                         |
-| `NAMES`                                | optional channel        | Returns channel membership, or visible channels when no channel is specified.                            |
-| `TOPIC`                                | channel, optional topic | Reads the topic. Topic changes are refused.                                                              |
-| `MODE`                                 | channel, optional mode  | Reads channel modes. Mode changes are refused. Nick targets are ignored because Basil has no user modes. |
-| `WHO`                                  | channel or nick         | Returns matching users.                                                                                  |
-| `WHOIS`                                | nick                    | Returns hostmask, visible channels, away state, idle time, and sign-on time.                             |
-| `ISON`                                 | nicks                   | Reports which supplied nicknames are online using their stored spelling.                                 |
-| `MOTD` / `VERSION` / `TIME` / `LUSERS` | none                    | Returns the MOTD, gateway version, server time, and online counts.                                       |
-| `AWAY`                                 | optional message        | Sets or clears the caller's away message.                                                                |
-| `PING`                                 | optional token          | Returns `PONG` with the same token.                                                                      |
-| `QUIT`                                 | none                    | Closes the connection and runs normal logout handling.                                                   |
-
-Unknown commands are refused rather than silently ignored.
-
-Before registration, unsupported commands receive the appropriate not-registered error. After registration, they receive an unknown-command error.
-
-`CAP`, `PONG`, and `AUTHENTICATE` are protocol exceptions: `CAP` participates in capability negotiation, `PONG` completes the client's keepalive exchange, and SASL `AUTHENTICATE` is accepted only as an unsupported authentication flow rather than being offered by the server.
-
-## IRC mutability
-
-IRC commands do not provide administrative control over Basil's channel configuration.
-
-The client may change only its own presence state.
-
-Allowed mutations include:
-
-* joining;
-* parting;
-* sending chat;
-* setting or clearing `AWAY`.
-
-The following are server-controlled and cannot be changed through IRC:
-
-* nickname;
-* channel topics;
-* channel modes;
-* account password;
-* `USER` registration data.
-
-For example:
-
-```text
-TOPIC #osu :new topic
-MODE #osu +m
-NICK another-name
-```
-
-are refused.
-
-## Channel status prefixes
-
-IRC status prefixes are calculated per channel.
-
-They do not represent a user's global privilege.
-
-For a particular channel:
-
-* `@` represents channel authority;
-* `+` represents a member allowed to write;
-* no prefix represents a member who may only read.
-
-For normal channels, channel authority comes from staff privileges.
-
-For a match room, channel authority comes from referee status.
-
-Therefore, a referee may have `@` in the match channel while appearing without `@` in `#osu`.
-
-The same channel-specific rule is used for:
-
-* `/NAMES`;
-* `/WHO`.
-
-A `/WHO` query for a bare nickname has no channel context, so it cannot determine a channel-specific status prefix.
-
-## Match-room visibility
-
-A multiplayer match room has stricter channel access than ordinary channels.
-
-A match channel is visible and joinable only to:
-
-* referees of that match;
-* players currently seated in that match.
-
-`ChannelMembershipService.CanJoinMatchChannel` applies the same authorization rule to both `JOIN` and `LIST`.
-
-Consequently:
-
-```text
-JOIN #mp_5
-```
-
-returns `ErrInviteOnlyChan` when the caller lacks permission.
-
-A genuinely nonexistent channel instead returns `ErrNoSuchChannel`.
-
-The distinction is intentional: the existence of a match room is not hidden, but unauthorized users cannot enter it or discover it through `/LIST`.
-
-### Internal joins
-
-Some internal paths deliberately bypass the IRC channel gate because they have already performed their own authorization.
-
-These include:
-
-* `MatchMembershipService.OccupySlot`;
-* `TourneyMatchJoinChannelHandler`.
-
-The former has already passed the multiplayer seat gate. The latter has already validated the tournament observer's required privileges.
-
-The match creator always counts as a referee for channel access, regardless of their current referee-list representation. This prevents a creator from locking themselves out of their own match.
-
-If a referee loses referee status while not seated, Basil proactively parts them from the match channel rather than leaving them in the channel until they manually leave.
-
-## Match command state
-
-`!mp settings` reports three independent categories:
-
-```text
-Players
-Refs
-IRC
-```
-
-They represent different facts:
-
-* **Players**: users currently seated in the match;
-* **Refs**: users with referee authority;
-* **IRC**: users with a live `IrcSession` in the match channel.
-
-A single account can appear in all three categories.
-
-For example:
-
-```text
-Alice
-├── seated
-├── referee
-└── connected through IRC
-```
-
-These properties must not be collapsed into a single "match member" concept.
-
-## Match host state
-
-Every match starts with:
-
-```text
-MatchSession.HostId == null
-```
-
-This means that nobody is currently seated as host. It does not mean that the match has never had a host.
-
-A `GameSession` becomes host only after actually occupying a slot.
-
-An `IrcSession` can create a match without becoming its host. The same applies when a seated game client creates another match while already belonging to a different match.
-
-The resulting room can therefore initially have:
-
-* a creator/referee;
-* no seated players;
-* no host.
-
-Such a room is still valid and is subject to the normal empty-room auto-close timer.
-
-## Session disconnects and IRC presence
-
-IRC channel rosters are tracked by `UserId`, not by session instance.
-
-This means that two sessions belonging to the same account count as one IRC member.
-
-For example:
-
-```text
-GameSession joins #osu
-    roster: Alice = 1 session
-    → broadcast JOIN
-
-IrcSession joins #osu
-    roster: Alice = 2 sessions
-    → no broadcast to other users
-    → IRC session still receives its own JOIN/NAMES responses
-
-IrcSession parts #osu
-    roster: Alice = 1 session
-    → no broadcast
-
-GameSession parts #osu
-    roster: Alice = 0 sessions
-    → broadcast PART
-```
-
-### PART versus QUIT
-
-Whether IRC sends `PART` or `QUIT` depends on whether the account still has another live session.
-
-The session type that disconnected does not determine the result.
-
-```text
-session disconnects
-       │
-       ▼
-another session for this UserId in this channel?
-       │
-   ┌───┴───┐
-  yes      no
-   │        │
-   ▼        ▼
-nothing   another session anywhere?
-             │
-         ┌───┴───┐
-        yes      no
-         │        │
-         ▼        ▼
-       PART      QUIT
-```
-
-More precisely:
-
-* another session in the same channel → no IRC presence change;
-* another session elsewhere → `PART` from this channel;
-* no other session anywhere → one `QUIT` to every IRC member sharing a channel with the user.
-
-A user must never receive both `PART` and `QUIT` for the same disconnect.
-
-### Bancho logout
-
-The IRC presence rules are independent of Bancho logout.
-
-When a `GameSession` logs out, Basil still broadcasts the Bancho `Logout` packet to other `GameSession`s.
-
-An `IrcSession` disconnect does not produce a Bancho `Logout` packet and does not modify match or spectator state.
-
-An IRC-only connection was never a Bancho player.
-
-## Kick and ban semantics
-
-Kick and ban operate on different concepts.
-
-### Kick
-
-A kick applies to someone currently present in the match.
-
-The implementation resolves all live sessions for the target `UserId` across both registries and removes whichever session is currently:
-
-* seated in the match;
-* present in the match channel.
-
-This is presence-dependent.
-
-### Ban
-
-A match ban is a rule attached to a `UserId`, not to a live session.
-
-The target does not need to be online:
-
-```text
-!mp ban offline-player
-```
-
-can still succeed.
-
-The user repository is therefore used to resolve the account, while the session registries are not required.
-
-The ban applies to the user's future attempts to join the match.
-
-## Referee and BasilBot protection
-
-Referees cannot be kicked or banned while they retain referee authority.
-
-Removing a referee is an explicit operation:
-
-```text
-!mp removeref
-```
-
-Kick and ban must not silently remove match authority as a side effect.
-
-BasilBot is excluded from:
-
-* kick;
-* ban;
-* `addref`;
-* invite.
-
-BasilBot is not a participant in the match and therefore does not belong to these participant-management operations.
+A client never receives both `PART` and `QUIT` for one disconnect. The joining connection still receives its own
+`JOIN` and `NAMES` replies. The Bancho client has its own channel packets and does not depend on these lines.
 
 ## Design rationale
 
-### Why use types instead of `IsIrc`?
-
-A runtime flag does not prevent code from accessing gameplay state on an IRC-only connection.
-
-With separate types, the compiler enforces the boundary:
-
-```text
-JoinAsync(GameSession)
-```
-
-cannot accidentally receive an `IrcSession`.
-
-This moves an entire class of bugs from runtime behavior to compile-time errors.
-
-### Why is BasilBot a `GameSession`?
-
-The current spectator implementation requires `GameSession` state.
-
-`SpectatorService.AddSpectator` and `RemoveSpectator` operate on gameplay-session concepts such as `Spectating` and `Spectators`.
-
-A future `ISpectatorObserver` abstraction could remove this compatibility requirement, but that would be a separate architectural refactor.
-
-### Why can a referee not simply be kicked?
-
-Referee authority and physical presence are separate concepts.
-
-A referee may be responsible for controlling a match without currently occupying a player slot. Kicking the user directly would therefore silently remove both their presence and their authority.
-
-The explicit `!mp removeref` operation makes the authority change intentional and visible.
+* **One model, thin transport.** Rules live on the acted-on object and see the actor's permissions, so a rule is added
+  once and holds on every transport.
+* **Connections instead of session subtypes.** Gameplay state lives on `BanchoConnection` and the room seat; what all
+  connections share (identity, permissions, away message, private-message channel) lives on `User`.
+* **BasilBot is a user.** The bot is account 1 with a `BotConnection`, so it appears in `WHO`, `NAMES` and `WHOIS`
+  like any user. It has no socket, no idle timeout and no login, and it is not a player.
 
 ## Related code
 
-* [`Basil.Application/Sessions/UserSession.cs`](../../src/Basil.Application/Sessions/UserSession.cs)
-* [`Basil.Application/Sessions/GameSession.cs`](../../src/Basil.Application/Sessions/GameSession.cs)
-* [`Basil.Application/Sessions/IrcSession.cs`](../../src/Basil.Application/Sessions/IrcSession.cs)
-* [`Basil.Application/Sessions/ISessionRegistry.cs`](../../src/Basil.Application/Sessions/ISessionRegistry.cs)
-* [`Basil.Infrastructure/Sessions/GameSessionRegistry.cs`](../../src/Infrastructure/Sessions/GameSessionRegistry.cs)
-* [`Basil.Infrastructure/Sessions/IrcSessionRegistry.cs`](../../src/Infrastructure/Sessions/IrcSessionRegistry.cs)
-* [`Basil.Application/Sessions/Channels/ChannelMembershipService.cs`](../../src/Basil.Application/Sessions/Channels/ChannelMembershipService.cs): channel roster and JOIN/PART/QUIT behavior
-* [`Basil.Application/Sessions/Irc/BanchoIrcBridgeConnection.cs`](../../src/Basil.Application/Sessions/Irc/BanchoIrcBridgeConnection.cs): Bancho-to-IRC bridge
-* [`Basil.Application/Sessions/PlayerLogoutService.cs`](../../src/Basil.Application/Sessions/PlayerLogoutService.cs): game and IRC logout handling
-* [`Basil.Application/Capabilities/Irc/IrcAuthenticationService.cs`](../../src/Basil.Application/Capabilities/Irc/IrcAuthenticationService.cs): IRC registration and authentication
-* [`Basil.Application/Capabilities/Irc/IrcQueryService.cs`](../../src/Basil.Application/Capabilities/Irc/IrcQueryService.cs): IRC read-only query responses
-* [`Basil.Application/Capabilities/Multiplayer/MatchMembershipService.cs`](../../src/Basil.Application/Capabilities/Multiplayer/MatchMembershipService.cs): seating, host state, and empty-room lifecycle
-* [`Basil.Application/Capabilities/Multiplayer/MatchControlService.cs`](../../src/Basil.Application/Capabilities/Multiplayer/MatchControlService.cs): kick, ban, referee, and invite guards
-* [`Basil.Application/Capabilities/Bot/MpCommandService.cs`](../../src/Basil.Application/Capabilities/Bot/MpCommandService.cs): `!mp` command behavior
-* [`Basil.Infrastructure/Irc/TcpIrcListener.cs`](../../src/Infrastructure/Irc/TcpIrcListener.cs)
-* [`Basil.Infrastructure/Irc/TcpIrcConnection.cs`](../../src/Infrastructure/Irc/TcpIrcConnection.cs)
+* [`Connection.cs`](../../src/Application/Runtime/Sessions/Connection.cs): connection kinds, including `IrcConnection` and `BotConnection`
+* [`ConnectionRules.cs`](../../src/Application/Runtime/Sessions/ConnectionRules.cs): one-per-kind rule and idle timeouts
+* [`UserEvents.cs`](../../src/Application/Runtime/Sessions/UserEvents.cs): connection opened and closed events
+* [`User.cs`](../../src/Application/Runtime/Users/User.cs), [`ScopedUser.cs`](../../src/Application/Runtime/Users/ScopedUser.cs): online user, away message
+* [`UserRegistry.cs`](../../src/Application/Runtime/Users/UserRegistry.cs): login, close, idle sweep, BasilBot's connection
+* [`Channel.cs`](../../src/Application/Runtime/Chat/Channel.cs), [`ScopedChannel.cs`](../../src/Application/Runtime/Chat/ScopedChannel.cs): membership, posting, recipients
+* [`RoomChannel.cs`](../../src/Application/Runtime/Multiplayer/Rooms/RoomChannel.cs), [`Room.Seating.cs`](../../src/Application/Runtime/Multiplayer/Rooms/Room.Seating.cs): room channel access and seating
+* [`ScopedRoomMembers.cs`](../../src/Application/Runtime/Multiplayer/Rooms/ScopedRoomMembers.cs), [`ScopedRoomAuthority.cs`](../../src/Application/Runtime/Multiplayer/Rooms/ScopedRoomAuthority.cs): kick, ban, referees, host
+* [`ScopedLobby.cs`](../../src/Application/Runtime/Multiplayer/ScopedLobby.cs): room creation
+* [`Message.cs`](../../src/Domain/Chat/Message.cs): message content rules
+* [`IrcMessage.cs`](../../src/Protocol/Irc/IrcMessage.cs), [`IrcNumericReply.cs`](../../src/Protocol/Irc/IrcNumericReply.cs), [`IrcUserPrefix.cs`](../../src/Protocol/Irc/IrcUserPrefix.cs): wire format
+* [`src/Hosts/Irc`](../../src/Hosts/Irc): listener and connection loop, pending migration
 
 ## See also
 
-* [`chat.md`](chat.md): the shared chat dispatch pipeline used by Bancho and IRC
-* [`multiplayer.md`](multiplayer.md): match creation, rounds, and empty-room auto-close
-* [`../for-technicians/https.md`](../for-technicians/https.md): IRC gateway networking and why IRC does not use HTTPS/TLS
+* [`chat.md`](chat.md): the shared chat model used by Bancho and IRC
+* [`multiplayer.md`](multiplayer.md): room authority, seating and the empty-room timer
+* [`privileges.md`](privileges.md): permissions and restrictions
+* [`../for-client/irc-client.md`](../for-client/irc-client.md): how a user connects an IRC client
+* [`../for-technicians/https.md`](../for-technicians/https.md): why IRC does not use HTTPS/TLS
