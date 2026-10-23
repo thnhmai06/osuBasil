@@ -15,6 +15,8 @@ internal sealed class PostgresChannelRepository(DatabaseReader reader, DatabaseW
 	private readonly ConcurrentDictionary<string, GeneralChannelRecord> _channels =
 		new(StringComparer.OrdinalIgnoreCase);
 
+	private readonly ResidentWrites<string> _writes = new(StringComparer.OrdinalIgnoreCase);
+
 	private volatile bool _loaded;
 
 	/// <inheritdoc />
@@ -27,25 +29,25 @@ internal sealed class PostgresChannelRepository(DatabaseReader reader, DatabaseW
 	}
 
 	/// <inheritdoc />
-	public Task CreateOrUpdateAsync(GeneralChannelRecord channel, CancellationToken cancellationToken = default)
+	public async Task CreateOrUpdateAsync(GeneralChannelRecord channel, CancellationToken cancellationToken = default)
 	{
-		_channels[channel.Name] = channel;
-		_ = writer.SaveAsync(Root.Server, (GetType(), channel.Name.ToLowerInvariant()), Upsert(channel));
-		return Task.CompletedTask;
+		await _writes.WriteAsync(channel.Name,
+			() => writer.SaveAsync(Root.Server, (GetType(), channel.Name.ToLowerInvariant()), Upsert(channel)),
+			() => _channels[channel.Name] = channel);
 	}
 
 	/// <inheritdoc />
-	public Task DeleteAsync(GeneralChannelRecord channel, CancellationToken cancellationToken = default)
+	public async Task DeleteAsync(GeneralChannelRecord channel, CancellationToken cancellationToken = default)
 	{
-		_channels.TryRemove(channel.Name, out _);
-		_ = writer.SaveAsync(Root.Server, (GetType(), channel.Name.ToLowerInvariant()), new WriteCommand(
-			async (context, token) =>
-			{
-				await context.Channels
-					.Where(c => c.Name == channel.Name)
-					.ExecuteDeleteAsync(token);
-			}));
-		return Task.CompletedTask;
+		await _writes.WriteAsync(channel.Name,
+			() => writer.SaveAsync(Root.Server, (GetType(), channel.Name.ToLowerInvariant()), new WriteCommand(
+				async (context, token) =>
+				{
+					await context.Channels
+						.Where(c => c.Name == channel.Name)
+						.ExecuteDeleteAsync(token);
+				})),
+			() => _channels.TryRemove(channel.Name, out _));
 	}
 
 	/// <inheritdoc />
