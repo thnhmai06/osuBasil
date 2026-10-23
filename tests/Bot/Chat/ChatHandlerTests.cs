@@ -118,7 +118,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	[Theory]
 	[InlineData("   ")]
 	[InlineData("\t")]
-	public async Task AWhitespaceMessage_IsIgnored(string content)
+	public async Task AWhitespaceMessage_IsRunAsACommandLineAndGetsNoReply(string content)
 	{
 		await PostAsync(_botConnection.User.PmChannel, content);
 

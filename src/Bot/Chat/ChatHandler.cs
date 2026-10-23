@@ -24,7 +24,6 @@ internal sealed class ChatHandler(
 	{
 		if (@event is not ChannelMessagePosted { By: { } by } posted
 		    || posted.Message.IsNotice
-		    || string.IsNullOrWhiteSpace(posted.Message.Content)
 		    || BasilBot.Is(posted.Message.Author))
 			return ValueTask.CompletedTask;
 
