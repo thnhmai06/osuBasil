@@ -15,11 +15,11 @@ This page describes the application model and its authorization rules. It does n
 | Spectator | `SpectatorChannel` | The spectated `BanchoConnection` | The host and its spectators |
 | Private message | `PmChannel` | The recipient's `User` | The recipient's connections, except osu!tourney connections |
 
-General channels use configured names such as `#osu`; room and spectator channels use `#mp_{room id}` and `#spec_{user id}`. A private-message channel uses its owner's name without `#`. The room channel opens and closes with its room. A user session owns the away message and private-message settings shared across its connections.
+General channels use configured names such as `#osu`; room and spectator channels use `#mp_{room id}` and `#spec_{user id}`. A private-message channel uses its owner's name without `#`. The room channel opens and closes with its room. The `User` owns the away message and private-message settings shared across its connections.
 
 ## Read and write rules
 
-`ChannelRules` defines access by channel kind. General-channel requirements are masks of derived `Privileges`; every requested bit must be present, and an empty requirement allows access.
+Each kind of channel decides who may read and write it (`CanRead` and `CanWrite` on the channel). General-channel requirements are masks of derived `Privileges`; every requested bit must be present, and an empty requirement allows access.
 
 | Kind | Read | Write |
 |---|---|---|
@@ -39,35 +39,30 @@ var scopedChannel = channel.ScopeTo(by);
 var result = scopedChannel.Join();
 ```
 
-`ScopedChannel` provides `Join`, `Part` and `PostAsync`. For a general channel, `scopedChannel.General` provides `ConfigureAsync` and `DeleteAsync`; both require effective `ServerConfigure` and return `ChannelManageResult`. A configuration returns `Ok`, `NotAuthorized` or `Closed`. Configuring a channel removes members who can no longer read it.
+`ScopedChannel` provides `Join`, `Part` and `PostAsync`. For a general channel, `scopedChannel.General` provides `ConfigureAsync` and `DeleteAsync`; both require effective `ServerConfigure`. A missing permission comes back as a denial naming the missing permissions; otherwise `ConfigureAsync` returns `Ok` or `Closed`. Configuring a channel removes members who can no longer read it.
 
-### Membership results
+### Results
 
-| Operation | Result | Meaning |
+Every operation returns `Result<ChannelOutcome>` rather than throwing for ordinary refusals. A refusal for lack of a permission carries the missing permissions.
+
+| Operation | Outcome | Meaning |
 |---|---|---|
-| `Join` | `Joined` | The connection joined |
-| | `NoPermission` | The caller may not read the channel |
+| `Join` | `Ok` | The connection joined |
+| | `AccessDenied` | The kind of channel does not let the caller read it |
 | | `AlreadyMember` | The connection is already a member or an open same-kind connection is already present |
 | | `Closed` | The channel is closed |
-| `Part` | `Parted` | The connection left |
+| `Part` | `Ok` | The connection left |
 | | `NotMember` | The connection was not a member |
+| `PostAsync` | `Ok` | The message was accepted |
+| | `Empty` | The text is empty; text of only whitespace is a message |
+| | `InvalidText` | The text holds a control character chat does not carry (tab, CR, LF and U+0001 are carried) |
+| | `NotMember` | The sender is not a member of a channel that requires membership |
+| | `AccessDenied` | The kind of channel does not let the sender write |
+| | `Blocked` | The recipient blocks the sender or accepts private messages only from friends |
+| | `TargetSilenced` | An active restriction suspends the recipient's private-message permission |
+| | `Closed` | The channel is closed |
 
-A closed same-kind connection may be replaced during a join; an open one cannot. osu!tourney and API connections may have multiple concurrent memberships of their kind. `Join` and `Part` return `ChannelJoinResult` and `ChannelPartResult` respectively.
-
-### Posting results
-
-`PostAsync` returns `ChannelPostResult` rather than throwing for ordinary authorization and message outcomes:
-
-| Result | Meaning |
-|---|---|
-| `Posted` | The message was accepted |
-| `NoWritePermission` | The sender lacks a required permission or channel write right |
-| `Silenced` | An active restriction suspends the sender's chat permission |
-| `Blocked` | The recipient blocks the sender or accepts private messages only from friends |
-| `TargetSilenced` | An active restriction suspends the recipient's private-message permission |
-| `NotMember` | The sender is not a member of a channel that requires membership |
-| `Empty` | The text is empty or whitespace |
-| `Closed` | The channel is closed |
+A sender without the permission to post (`ChatPost`, or `ChatPostPrivate` for a private message) is refused with a denial that names it; an active restriction on the sender shows up the same way, because the check is on effective permissions. A closed same-kind connection may be replaced during a join; an open one cannot. osu!tourney and API connections may have multiple concurrent memberships of their kind.
 
 Text over the channel's maximum length is truncated. The message event reports whether truncation occurred.
 
@@ -101,11 +96,10 @@ BasilBot is online with a permanent `User` and a `BotConnection` that the server
 
 ## Related code
 
-* [`Channel.cs`](../../src/Application/Runtime/Chat/Channel.cs): channel state and `ScopeTo`
+* [`Channel.cs`](../../src/Application/Runtime/Chat/Channel.cs): channel state, `ScopeTo` and the read and write rules each kind overrides
 * [`ScopedChannel.cs`](../../src/Application/Runtime/Chat/ScopedChannel.cs): join, part and post operations
 * [`ScopedGeneralChannel.cs`](../../src/Application/Runtime/Chat/ScopedGeneralChannel.cs): general-channel configuration and deletion
-* [`ChannelRules.cs`](../../src/Application/Runtime/Chat/ChannelRules.cs): read and write rules by kind
-* [`ChannelResults.cs`](../../src/Application/Runtime/Chat/ChannelResults.cs): operation outcomes
+* [`ChannelOutcome.cs`](../../src/Application/Runtime/Chat/ChannelOutcome.cs): operation outcomes
 * [`GeneralChannelRegistry.cs`](../../src/Application/Runtime/Chat/GeneralChannelRegistry.cs): general-channel ownership and the automatic joins and parts
 * [`GeneralChannel.cs`](../../src/Application/Runtime/Chat/GeneralChannel.cs), [`PmChannel.cs`](../../src/Application/Runtime/Chat/PmChannel.cs): general and private-message channels; [`GeneralChannelRecord.cs`](../../src/Domain/Chat/GeneralChannelRecord.cs): the stored general channel
 * [`RoomChannel.cs`](../../src/Application/Runtime/Multiplayer/Rooms/RoomChannel.cs), [`SpectatorChannel.cs`](../../src/Application/Runtime/Sessions/SpectatorChannel.cs): room and spectator channels
