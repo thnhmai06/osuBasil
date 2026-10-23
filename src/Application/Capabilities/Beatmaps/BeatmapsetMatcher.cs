@@ -63,7 +63,6 @@ internal sealed class BeatmapsetMatcher(IBeatmapRepository beatmaps, IBeatmapset
 				: null);
 			if (matched is null) continue;
 			if (!matched.Beatmapset.Equals(existing) && matched.IsLocked()) return true;
-			if (matched.Locked && matched.Hash != hashes[difficulty]) return true;
 		}
 
 		if (existing is null) return false;

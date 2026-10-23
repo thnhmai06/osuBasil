@@ -97,8 +97,7 @@ internal sealed class RoomAnnouncer(Server server, UserRegistry users, TimeProvi
 
 	private async Task WhisperStaffAsync(Room room, string text, CancellationToken cancellationToken)
 	{
-		if (room.Authority.Creator is { } creator)
-			await WhisperIfOnlineAsync(creator);
+		await WhisperIfOnlineAsync(room.Authority.Creator);
 
 		foreach (var referee in room.Authority.Referees)
 			await WhisperIfOnlineAsync(referee);

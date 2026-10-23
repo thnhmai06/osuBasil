@@ -29,7 +29,7 @@ public sealed class ScopedRoomAuthority
 		if (scope is null) return RoomOutcome.RoomClosed;
 
 		var room = _scoped.Room;
-		if (room.Authority.Creator is not null && room.Authority.Creator.Equals(user)) return RoomOutcome.IsCreator;
+		if (room.Authority.Creator.Equals(user)) return RoomOutcome.IsCreator;
 		if (room.Authority.Referees.Contains(user)) return RoomOutcome.AlreadyReferee;
 		if (room.Authority.Referees.Count >= RoomAuthority.MaxReferees) return RoomOutcome.TooManyReferees;
 

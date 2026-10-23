@@ -22,7 +22,7 @@ public sealed class RoomAuthority
 	}
 
 	/// <summary>Gets the user who created the match.</summary>
-	public UserRecord? Creator => _match.Value.Creator;
+	public UserRecord Creator => _match.Value.Creator;
 
 	/// <summary>Gets the users with referee authority for this room.</summary>
 	public IReadOnlySet<UserRecord> Referees => _referees;
@@ -39,6 +39,6 @@ public sealed class RoomAuthority
 	/// <returns><see langword="true" /> if the user is the creator or a referee.</returns>
 	public bool IsManagedBy(UserRecord user)
 	{
-		return (Creator is not null && Creator.Equals(user)) || Referees.Contains(user);
+		return Creator.Equals(user) || Referees.Contains(user);
 	}
 }

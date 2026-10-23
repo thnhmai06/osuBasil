@@ -33,8 +33,8 @@ internal sealed partial class MpCommands
 		if (activeMods.Count > 0)
 			lines.Add(replies.Text(MpReplies.SettingsActiveMods, new { mods = string.Join(", ", activeMods) }));
 
-		if (room.Authority.Creator is { } creator)
-			lines.Add(replies.Text(MpReplies.SettingsCreator, new { id = creator.Id, name = creator.Value.Name }));
+		var creator = room.Authority.Creator;
+		lines.Add(replies.Text(MpReplies.SettingsCreator, new { id = creator.Id, name = creator.Value.Name }));
 
 		var occupied = room.Slots.Count(slot => slot.Player is not null);
 		lines.Add(replies.Text(MpReplies.SettingsPlayers, new { count = occupied }));
