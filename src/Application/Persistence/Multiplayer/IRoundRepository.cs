@@ -12,7 +12,7 @@ public interface IRoundRepository
 	Task CreateOrUpdateAsync(Round round, CancellationToken cancellationToken = default);
 
 	/// <summary>Lists the rounds of a match in the order they were played.</summary>
-	/// <remarks>The rounds are new instances built from what is stored.</remarks>
+	/// <remarks>A round that is in use elsewhere is returned as that same instance.</remarks>
 	/// <param name="match">The match whose rounds to list.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The rounds of the match.</returns>

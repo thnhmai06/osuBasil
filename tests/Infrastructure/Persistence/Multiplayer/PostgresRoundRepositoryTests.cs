@@ -104,6 +104,35 @@ public sealed class PostgresRoundRepositoryTests : DatabaseTests
 	}
 
 	[Fact]
+	public async Task A_round_in_use_is_listed_as_the_same_instance()
+	{
+		var match = await CreateMatchAsync("held_round_match");
+		var round = StoredMatches.Round(match, 1, First);
+		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
+
+		var listed = await Rounds.ListAsync(match, TestContext.Current.CancellationToken);
+
+		Assert.Same(round, Assert.Single(listed));
+		GC.KeepAlive(round);
+	}
+
+	[Fact]
+	public async Task A_round_in_use_takes_the_end_stored_for_another_instance_of_it()
+	{
+		var match = await CreateMatchAsync("held_end_match");
+		var round = StoredMatches.Round(match, 1, First);
+		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
+		var ended = StoredMatches.Round(match, 1, First);
+		ended.EndedAt = Second;
+		await Rounds.CreateOrUpdateAsync(ended, TestContext.Current.CancellationToken);
+
+		var listed = Assert.Single(await Rounds.ListAsync(match, TestContext.Current.CancellationToken));
+
+		Assert.Equal(Second, listed.EndedAt);
+		GC.KeepAlive(round);
+	}
+
+	[Fact]
 	public async Task A_round_keeps_the_beatmap_it_is_played_on()
 	{
 		var match = await CreateMatchAsync("hash_match");
