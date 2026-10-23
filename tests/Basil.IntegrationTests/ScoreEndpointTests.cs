@@ -1,11 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
-using Basil.Application.Abstractions.Scores;
-using Basil.Application.Configurations;
+using Basil.Application.Shared.Configuration;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Scores;
-using Basil.Web;
-using Basil.Web.OpenApi;
+using Basil.Host;
+using Basil.Application.Shared.Http;
+using Basil.Application.Scores;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,14 +18,14 @@ namespace Basil.IntegrationTests;
 ///     Covers the public `/scores` routes: `GET /scores/{scoreId}` (a score's full row) and
 ///     `GET /scores/{scoreId}/replay` (its replay file).
 /// </summary>
-public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 	private ScoreOwner? _owner;
 	private byte[]? _replayBytes;
 	private ScoreRow? _row;
 
-	public ScoreEndpointTests(WebApplicationFactory<Program> factory)
+	public ScoreEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		var scores = Substitute.For<IScoreRepository>();
 		scores.FetchCountAsync(Arg.Any<CancellationToken>()).Returns(_ => _row is null ? 0 : 1);
@@ -51,7 +51,7 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton(TestDoubles.BypassAdminKeySettingsRepository());
 				services.AddSingleton(scores);
 				services.AddSingleton(replayStorage);
@@ -69,7 +69,7 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 	[Fact]
 	public async Task GetScore_UnknownId_ReturnsNotFound()
 	{
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/scores/999"));
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/scores/999"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -82,8 +82,8 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 			300, 10, 5, 0, 0, 0, "S", GameMode.Standard, DateTime.UtcNow, 120_000,
 			ClientFlags.Clean, 7, false, "checksum", DateTime.UtcNow);
 
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/scores/42"));
-		var envelope = await response.Content.ReadFromJsonAsync<Envelope<ScoreShape>>();
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/scores/42"), TestContext.Current.CancellationToken);
+		var envelope = await response.Content.ReadFromJsonAsync<Envelope<ScoreShape>>(cancellationToken: TestContext.Current.CancellationToken);
 
 		response.EnsureSuccessStatusCode();
 		var body = envelope!.Data;
@@ -96,7 +96,7 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 	[Fact]
 	public async Task GetReplay_UnknownScore_ReturnsNotFound()
 	{
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/scores/999/replay"));
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/scores/999/replay"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -106,7 +106,7 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 	{
 		_owner = new ScoreOwner(7, GameMode.Standard);
 
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/scores/42/replay"));
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/scores/42/replay"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -117,8 +117,8 @@ public class ScoreEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 		_owner = new ScoreOwner(7, GameMode.Standard);
 		_replayBytes = [1, 2, 3, 4];
 
-		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/scores/42/replay"));
-		var bytes = await response.Content.ReadAsByteArrayAsync();
+		var response = await _factory.CreateClient().SendAsync(MakeRequest(HttpMethod.Get, "/scores/42/replay"), TestContext.Current.CancellationToken);
+		var bytes = await response.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken);
 
 		response.EnsureSuccessStatusCode();
 		Assert.Equal("application/x-osu-replay", response.Content.Headers.ContentType?.MediaType);

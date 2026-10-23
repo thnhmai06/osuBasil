@@ -1,0 +1,41 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<IsPackable>false</IsPackable>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="coverlet.collector">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="Microsoft.NET.Test.Sdk"/>
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection"/>
+		<PackageReference Include="Microsoft.Extensions.Logging"/>
+		<PackageReference Include="NetArchTest.Rules"/>
+		<PackageReference Include="NSubstitute"/>
+		<PackageReference Include="xunit.v3"/>
+		<PackageReference Include="xunit.runner.visualstudio">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
+
+	<ItemGroup>
+		<Using Include="Xunit"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\src\Domain\Basil.Domain.csproj"/>
+		<ProjectReference Include="..\..\src\Protocol\Bancho\Basil.Protocol.Bancho.csproj"/>
+		<ProjectReference Include="..\..\src\Protocol\Irc\Basil.Protocol.Irc.csproj"/>
+		<ProjectReference Include="..\..\src\Application\Persistence\Basil.Application.Persistence.csproj"/>
+		<ProjectReference Include="..\..\src\Application\Capabilities\Basil.Application.Capabilities.csproj"/>
+		<ProjectReference Include="..\..\src\Application\Runtime\Basil.Application.Runtime.csproj"/>
+		<ProjectReference Include="..\..\src\Infrastructure\Persistence\Basil.Infrastructure.Persistence.csproj"/>
+		<ProjectReference Include="..\..\src\Infrastructure\Capabilities\Basil.Infrastructure.Capabilities.csproj"/>
+		<ProjectReference Include="..\..\src\Infrastructure\Runtime\Basil.Infrastructure.Runtime.csproj"/>
+		<ProjectReference Include="..\..\src\Bot\Basil.Bot.csproj"/>
+	</ItemGroup>
+
+</Project>

@@ -1,0 +1,12 @@
+<Project>
+
+	<Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)..'))"/>
+
+	<PropertyGroup>
+		<!-- xunit.v3 test projects are executables that host their own console runner. -->
+		<OutputType>Exe</OutputType>
+		<!-- Keep running on VSTest (the platform xunit v2 used here), not Microsoft.Testing.Platform. -->
+		<IsTestingPlatformApplication>false</IsTestingPlatformApplication>
+	</PropertyGroup>
+
+</Project>

@@ -3,7 +3,7 @@
 	"ServerHost": {
 		"Kind": "Dotnet",
 		"Domain": "basil.local",
-		"Port": 8443,
+		"Port": 9443,
 		"IrcPort": 16667,
 		"CertPath": "data/certs/basil.local.pfx",
 		"CertPassword": "your-password",
@@ -23,7 +23,7 @@
 		"PollIntervalSeconds": 60
 	},
 	"Accounts": {
-		"Count": 2000,
+		"Count": 5000,
 		"NamePrefix": "load",
 		"Password": "loadtest-pw"
 	},
@@ -161,13 +161,15 @@
 			"WarmUpSeconds": 300,
 			"ReportingIntervalSeconds": 300,
 			"Weights": {
-				"chat": 40,
+				"chat": 35,
 				"multiplayer": 20,
-				"api": 25,
+				"api": 20,
+				"sse": 10,
 				"idle": 15
 			},
 			"LeakSlopeThresholds": {
 				"WorkingSetMbPerHour": 25,
+				"GcHeapMbPerHour": 25,
 				"ThreadsPerHour": 5,
 				"HandlesPerHour": 50,
 				"P95MsPerHour": 10

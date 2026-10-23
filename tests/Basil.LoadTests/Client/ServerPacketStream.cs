@@ -12,7 +12,7 @@ public static class ServerPacketStream
 {
 	/// <summary>Splits a response body into its constituent packets.</summary>
 	/// <param name="body">The raw response body bytes.</param>
-	/// <returns>Every packet found, in order. Empty when the body is empty (nothing was queued).</returns>
+	/// <returns>Every packet found, in order. IsEmpty when the body is empty (nothing was queued).</returns>
 	public static IReadOnlyList<ServerPacketFrame> ReadFrames(ReadOnlyMemory<byte> body)
 	{
 		var frames = new List<ServerPacketFrame>();

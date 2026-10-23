@@ -1,0 +1,46 @@
+using Basil.Application.Persistence.Users;
+using Basil.Domain.Users;
+using Basil.Infrastructure.Persistence.Postgres;
+using Basil.Infrastructure.Persistence.Tests.Support;
+
+namespace Basil.Infrastructure.Persistence.Tests.Postgres;
+
+/// <summary>Contract tests of the migrator that brings the database up to date.</summary>
+[Collection("Persistence")]
+public sealed class DatabaseMigratorTests : DatabaseTests
+{
+	public DatabaseMigratorTests(PersistenceFixture container) : base(container) { }
+
+	[Fact]
+	public async Task Migrating_a_migrated_database_applies_no_further_migration()
+	{
+		var before = await AppliedMigrationsAsync();
+
+		await Get<DatabaseMigrator>().MigrateAsync(TestContext.Current.CancellationToken);
+
+		var after = await AppliedMigrationsAsync();
+		Assert.Equal(before, after);
+	}
+
+	[Fact]
+	public async Task Migrating_a_migrated_database_keeps_the_data()
+	{
+		var user = await Get<IUserRepository>().CreateAsync(new UserData { Name = "kept_user" },
+			TestContext.Current.CancellationToken);
+
+		await Get<DatabaseMigrator>().MigrateAsync(TestContext.Current.CancellationToken);
+
+		var found = await Get<IUserRepository>().GetAsync(user.Id, TestContext.Current.CancellationToken);
+		Assert.NotNull(found);
+		Assert.Equal("kept_user", found.Value.Name);
+	}
+
+	/// <summary>Reads the migrations the database has been given.</summary>
+	/// <returns>The migrations, in the order the database holds them.</returns>
+	private async Task<IReadOnlyList<string>> AppliedMigrationsAsync()
+	{
+		var rows = await StoredRows.ReadAsync(ConnectionString, "select * from \"__EFMigrationsHistory\" order by 1",
+			null, TestContext.Current.CancellationToken);
+		return rows.Select(row => string.Join("|", row.Values.Values.Select(value => value?.ToString()))).ToList();
+	}
+}

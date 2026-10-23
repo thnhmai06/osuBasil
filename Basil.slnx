@@ -1,23 +1,52 @@
 <Solution>
 	<Folder Name="/Sources/">
-		<Project Path="src/Basil.Application/Basil.Application.csproj"/>
-		<Project Path="src/Basil.Domain/Basil.Domain.csproj"/>
-		<Project Path="src/Basil.Infrastructure/Basil.Infrastructure.csproj"/>
-		<Project Path="src/Basil.Protocol/Basil.Protocol.csproj"/>
-		<Project Path="src/Basil.Web/Basil.Web.csproj"/>
+		<Project Path="src/Domain/Basil.Domain.csproj"/>
+	</Folder>
+	<Folder Name="/Sources/Bot/">
+		<Project Path="src/Bot/Basil.Bot.csproj"/>
+	</Folder>
+	<Folder Name="/Sources/Application/">
+		<Project Path="src/Application/Persistence/Basil.Application.Persistence.csproj"/>
+		<Project Path="src/Application/Runtime/Basil.Application.Runtime.csproj"/>
+		<Project Path="src/Application/Capabilities/Basil.Application.Capabilities.csproj"/>
+	</Folder>
+	<Folder Name="/Sources/Infrastructure/">
+		<Project Path="src/Infrastructure/Persistence/Basil.Infrastructure.Persistence.csproj"/>
+		<Project Path="src/Infrastructure/Capabilities/Basil.Infrastructure.Capabilities.csproj"/>
+		<Project Path="src/Infrastructure/Runtime/Basil.Infrastructure.Runtime.csproj"/>
+	</Folder>
+	<Folder Name="/Sources/Hosts/">
+		<Project Path="src/Hosts/Bancho/Basil.Host.Bancho.csproj"/>
+		<Project Path="src/Hosts/Irc/Basil.Host.Irc.csproj"/>
+		<Project Path="src/Hosts/Api/Basil.Host.Api.csproj"/>
+		<Project Path="src/Hosts/Host/Basil.Host.csproj"/>
+	</Folder>
+	<Folder Name="/Sources/Protocol/">
+		<Project Path="src/Protocol/Bancho/Basil.Protocol.Bancho.csproj"/>
+		<Project Path="src/Protocol/Irc/Basil.Protocol.Irc.csproj"/>
 	</Folder>
 	<Folder Name="/Tests/">
-		<Project
-			Path="tests/Basil.Application.Tests/Basil.Application.Tests.csproj"/>
-		<Project
-			Path="tests/Basil.ArchitectureTests/Basil.ArchitectureTests.csproj"/>
-		<Project Path="tests/Basil.Domain.Tests/Basil.Domain.Tests.csproj"/>
-		<Project
-			Path="tests/Basil.Infrastructure.Tests/Basil.Infrastructure.Tests.csproj"/>
-		<Project
-			Path="tests/Basil.IntegrationTests/Basil.IntegrationTests.csproj"/>
-		<Project
-			Path="tests/Basil.LoadTests/Basil.LoadTests.csproj"/>
-		<Project Path="tests/Basil.Protocol.Tests/Basil.Protocol.Tests.csproj"/>
+		<Project Path="tests/Architecture/Basil.ArchitectureTests.csproj"/>
+	</Folder>
+	<Folder Name="/Tests/Support/">
+		<Project Path="tests/Support/Basil.Testing/Basil.Testing.csproj"/>
+	</Folder>
+	<Folder Name="/Tests/Bot/">
+		<Project Path="tests/Bot/Basil.Bot.Tests.csproj"/>
+	</Folder>
+	<Folder Name="/Tests/Domain/">
+		<Project Path="tests/Domain/Basil.Domain.Tests.csproj"/>
+	</Folder>
+	<Folder Name="/Tests/Application/">
+		<Project Path="tests/Application/Runtime/Basil.Application.Runtime.Tests.csproj"/>
+	</Folder>
+	<Folder Name="/Tests/Infrastructure/">
+		<Project Path="tests/Infrastructure/Persistence/Basil.Infrastructure.Persistence.Tests.csproj"/>
+		<Project Path="tests/Infrastructure/Capabilities/Basil.Infrastructure.Capabilities.Tests.csproj"/>
+		<Project Path="tests/Infrastructure/Runtime/Basil.Infrastructure.Runtime.Tests.csproj"/>
+	</Folder>
+	<Folder Name="/Tests/Protocol/">
+		<Project Path="tests/Protocol/Bancho/Basil.Protocol.Bancho.Tests.csproj"/>
+		<Project Path="tests/Protocol/Irc/Basil.Protocol.Irc.Tests.csproj"/>
 	</Folder>
 </Solution>

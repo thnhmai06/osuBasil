@@ -59,7 +59,7 @@ Use this section when working on Basil through an automated coding agent or simi
 
 It contains guidance for navigating the repository, respecting architectural boundaries, and making changes safely.
 
-The authoritative agent instructions remain in [`CLAUDE.md`](../CLAUDE.md). `for-agents/guidelines.md` explains how those instructions relate to the documentation layout.
+The authoritative agent instructions remain in [`AGENTS.md`](../AGENTS.md). `for-agents/guidelines.md` explains how those instructions relate to the documentation layout.
 
 ## API and command reference
 
@@ -107,6 +107,7 @@ When two documents disagree, the authoritative document wins.
 | Privilege flags and their meanings                     | [`for-developers/privileges.md`](for-developers/privileges.md)         |
 | System architecture                                    | [`for-developers/architecture.md`](for-developers/architecture.md)     |
 | Image/asset serving (`assets.<domain>`, ImageSharp.Web) | [`for-developers/assets.md`](for-developers/assets.md)                 |
+| Diagnostic API design (samplers, live streams, shared per-tick collection) | [`for-developers/diagnostics.md`](for-developers/diagnostics.md) |
 
 Other documents may link to or summarize these topics, but they must not silently establish a conflicting definition.
 
@@ -140,8 +141,9 @@ This prevents the documentation from developing multiple competing versions of t
 
 * [`for-developers/architecture.md`](for-developers/architecture.md): system architecture and dependency direction
 * [`for-developers/assets.md`](for-developers/assets.md): the `assets.<domain>` host and ImageSharp.Web image serving
+* [`for-developers/diagnostics.md`](for-developers/diagnostics.md): the Diagnostic API's samplers, live streams, and shared per-tick collection
 * [`for-developers/working-scopes.md`](for-developers/working-scopes.md): supported and excluded functionality
 * [`for-technicians/configuration.md`](for-technicians/configuration.md): server configuration
 * [`for-technicians/https.md`](for-technicians/https.md): TLS requirements
 * [`for-agents/guidelines.md`](for-agents/guidelines.md): documentation and repository guidance for agents
-* [`CLAUDE.md`](../CLAUDE.md): authoritative instructions for coding agents
+* [`AGENTS.md`](../AGENTS.md): authoritative instructions for coding agents

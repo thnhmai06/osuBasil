@@ -337,7 +337,7 @@ Known handlers should still report or handle genuine application failures accord
 | ------------------------ | ------------------------------------------------------------------ |
 | Packet dispatcher        | [`Basil.Application/Packets/PacketDispatcher.cs`](../../src/Basil.Application/Packets/PacketDispatcher.cs)                    |
 | Match creation handler   | [`Basil.Application/Packets/Multiplayer/CreateMatchHandler.cs`](../../src/Basil.Application/Packets/Multiplayer/CreateMatchHandler.cs)      |
-| Match membership service | [`Basil.Application/Services/Multiplayer/MatchMembershipService.cs`](../../src/Basil.Application/Services/Multiplayer/MatchMembershipService.cs) |
+| Match membership service | [`Basil.Application/Capabilities/Multiplayer/MatchMembershipService.cs`](../../src/Basil.Application/Capabilities/Multiplayer/MatchMembershipService.cs) |
 | Match runtime state      | [`Basil.Application/Sessions/Multiplayer/MatchSession.cs`](../../src/Basil.Application/Sessions/Multiplayer/MatchSession.cs)           |
 | Match race tests         | [`tests/Basil.Application.Tests/Sessions/MatchSessionRaceTests.cs`](../../tests/Basil.Application.Tests/Sessions/MatchSessionRaceTests.cs)  |
 

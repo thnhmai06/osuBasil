@@ -157,7 +157,7 @@ resulting state or response.
 
 Contract text belongs to the production code that owns that contract.
 
-For example, `src/Basil.Application/Services/Bot/MpReplies.cs` contains the `!mp` response constants. Services emit
+For example, `src/Basil.Application/Capabilities/Bot/MpReplies.cs` contains the `!mp` response constants. Services emit
 those constants and tests assert against the same symbols.
 
 ```csharp
@@ -299,6 +299,31 @@ Do not depend on:
 Use temporary directories and temporary SQLite databases created by the test infrastructure.
 
 Resources must be cleaned up after the test.
+
+#### A test host runs the real background services
+
+`WebApplicationFactory<Bootstrap>` starts every hosted service the application registers, including
+the ones that read and rewrite files on disk. If a test seeds a file under a path one of those
+services watches, the service will act on it, and the test is then racing production code for its own
+temporary directory.
+
+Two services do this today, both over `StorageOptions.BeatmapsetsPath`:
+
+* `BeatmapsetMigrationService` sweeps that path once at startup, looking for legacy-layout folders to
+  zip into the asset cache. It runs whether or not a database is configured.
+* `BeatmapWatcherService` watches the same path continuously.
+
+A test that seeds a beatmapset folder must remove both from its factory, as
+`BeatmapDifficultyEndpointTests` and `BeatmapsetManagementEndpointTests` do. The symptom when it does
+not is an `IOException` during teardown — the directory cannot be deleted because the migration pass
+still has a file open — and because it depends on timing it looks like a flaky test rather than a
+test sharing state with a background service.
+
+The inverse is also a defect, and one example is still open:
+`BeatmapsetManagementEndpointTests.PutBeatmapset_Valid_ReplacesTheBeatmapsetsFilesAndReturns202`
+passes because the migration pass usually finishes in time, not because anything makes it. A test
+whose outcome depends on winning a race passes for the wrong reason and will eventually fail for the
+right one.
 
 ### Keep Arrange sections short
 
@@ -454,12 +479,12 @@ Do not turn a unit-level behavior into an integration test merely because it eve
 ## Related code
 
 * [`tests/`](../../tests/): all Basil test projects
-* [`src/Basil.Application/Services/Bot/MpReplies.cs`](../../src/Basil.Application/Services/Bot/MpReplies.cs): production owner of `!mp` reply constants
+* [`src/Basil.Application/Capabilities/Bot/MpReplies.cs`](../../src/Basil.Application/Capabilities/Bot/MpReplies.cs): production owner of `!mp` reply constants
 * [`tests/Basil.Application.Tests/Packets/MultiplayerTestSupport.cs`](../../tests/Basil.Application.Tests/Packets/MultiplayerTestSupport.cs): shared multiplayer test fixture
 * [`tests/Basil.Infrastructure.Tests/Persistence/SqliteFixture.cs`](../../tests/Basil.Infrastructure.Tests/Persistence/SqliteFixture.cs): temporary SQLite fixture
 * [`tests/Basil.IntegrationTests/TestDoubles.cs`](../../tests/Basil.IntegrationTests/TestDoubles.cs): integration-test doubles
 * [`tests/Basil.IntegrationTests/InMemorySettingsRepository.cs`](../../tests/Basil.IntegrationTests/InMemorySettingsRepository.cs): in-memory settings repository
-* `CLAUDE.md` rule 8: condensed testing rules
+* `AGENTS.md` rule 8: condensed testing rules
 
 ## See also
 

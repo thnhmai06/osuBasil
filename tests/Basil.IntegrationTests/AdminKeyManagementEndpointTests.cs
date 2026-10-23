@@ -1,8 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
-using Basil.Application.Abstractions.Settings;
-using Basil.Application.Configurations;
-using Basil.Web;
+using Basil.Application.Shared.Configuration;
+using Basil.Host;
+using Basil.Application.Content;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,17 +11,17 @@ using Microsoft.Extensions.Options;
 namespace Basil.IntegrationTests;
 
 /// <summary>
-///     Covers `GET`/`PUT`/`DELETE /adminkey`. Backed by a real, stateful
+///     Covers `GET`/`PUT`/`DELETE /settings/adminkey`. Backed by a real, stateful
 ///     <see cref="InMemorySettingsRepository" /> (not a canned substitute) so a `PUT` followed by a
 ///     `GET`/further request reflects the just-written state, matching how the real
 ///     Settings-table-backed repository behaves.
 /// </summary>
-public class AdminKeyManagementEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class AdminKeyManagementEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 	private readonly InMemorySettingsRepository _settings = new();
 
-	public AdminKeyManagementEndpointTests(WebApplicationFactory<Program> factory)
+	public AdminKeyManagementEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		_factory = factory.WithWebHostBuilder(builder =>
 		{
@@ -35,7 +35,7 @@ public class AdminKeyManagementEndpointTests : IClassFixture<WebApplicationFacto
 			});
 			builder.ConfigureServices(services =>
 			{
-				services.AddSingleton<IOptions<DatabaseOptions>>(Options.Create(new DatabaseOptions { Path = "" }));
+				services.AddSingleton(Options.Create(new DatabaseOptions { Path = "" }));
 				services.AddSingleton<ISettingsRepository>(_settings);
 			});
 		});
@@ -53,8 +53,8 @@ public class AdminKeyManagementEndpointTests : IClassFixture<WebApplicationFacto
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/adminkey"));
-		var body = await response.Content.ReadAsStringAsync();
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/settings/adminkey"), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 		Assert.Contains("\"lastChanged\":null", body);
@@ -65,10 +65,10 @@ public class AdminKeyManagementEndpointTests : IClassFixture<WebApplicationFacto
 	{
 		var client = _factory.CreateClient();
 
-		var request = MakeRequest(HttpMethod.Put, "/adminkey");
+		var request = MakeRequest(HttpMethod.Put, "/settings/adminkey");
 		request.Content = JsonContent.Create(new { key = "new-secret" });
 
-		var response = await client.SendAsync(request);
+		var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 	}
@@ -78,15 +78,36 @@ public class AdminKeyManagementEndpointTests : IClassFixture<WebApplicationFacto
 	{
 		var client = _factory.CreateClient();
 
-		var setRequest = MakeRequest(HttpMethod.Put, "/adminkey");
+		var setRequest = MakeRequest(HttpMethod.Put, "/settings/adminkey");
 		setRequest.Content = JsonContent.Create(new { key = "new-secret" });
-		await client.SendAsync(setRequest);
+		await client.SendAsync(setRequest, TestContext.Current.CancellationToken);
 
-		var withoutKey = await client.SendAsync(MakeRequest(HttpMethod.Get, "/adminkey"));
+		var withoutKey = await client.SendAsync(MakeRequest(HttpMethod.Get, "/settings/adminkey"), TestContext.Current.CancellationToken);
 		Assert.Equal(HttpStatusCode.Unauthorized, withoutKey.StatusCode);
 
-		var withNewKey = await client.SendAsync(MakeRequest(HttpMethod.Get, "/adminkey", "new-secret"));
+		var withNewKey = await client.SendAsync(MakeRequest(HttpMethod.Get, "/settings/adminkey", "new-secret"), TestContext.Current.CancellationToken);
 		Assert.Equal(HttpStatusCode.OK, withNewKey.StatusCode);
+	}
+
+	/// <summary>
+	///     Regression test (Issue #4): "Responses unnecessarily Unicode-escape string values, e.g.
+	///     GET /settings/adminkey has `+` returned as `+`." `lastChanged` always carries a `+00:00` UTC
+	///     offset suffix (`DateTimeOffset`'s round-trip format never uses a bare `Z`), so this is where
+	///     the literal `+` Issue #4 saw comes from.
+	/// </summary>
+	[Fact]
+	public async Task SetKey_ThenGet_LastChangedPlusIsNotUnicodeEscaped()
+	{
+		var client = _factory.CreateClient();
+		var setRequest = MakeRequest(HttpMethod.Put, "/settings/adminkey");
+		setRequest.Content = JsonContent.Create(new { key = "new-secret" });
+		await client.SendAsync(setRequest, TestContext.Current.CancellationToken);
+
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/settings/adminkey", "new-secret"), TestContext.Current.CancellationToken);
+		var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+		Assert.DoesNotContain("\\u002B", body);
+		Assert.Contains("+00:00", body);
 	}
 
 	[Fact]
@@ -94,10 +115,10 @@ public class AdminKeyManagementEndpointTests : IClassFixture<WebApplicationFacto
 	{
 		var client = _factory.CreateClient();
 
-		var request = MakeRequest(HttpMethod.Put, "/adminkey");
+		var request = MakeRequest(HttpMethod.Put, "/settings/adminkey");
 		request.Content = JsonContent.Create(new { key = new string('a', 73) });
 
-		var response = await client.SendAsync(request);
+		var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 	}
@@ -107,14 +128,14 @@ public class AdminKeyManagementEndpointTests : IClassFixture<WebApplicationFacto
 	{
 		var client = _factory.CreateClient();
 
-		var setRequest = MakeRequest(HttpMethod.Put, "/adminkey");
+		var setRequest = MakeRequest(HttpMethod.Put, "/settings/adminkey");
 		setRequest.Content = JsonContent.Create(new { key = "new-secret" });
-		await client.SendAsync(setRequest);
+		await client.SendAsync(setRequest, TestContext.Current.CancellationToken);
 
-		var deleteResponse = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/adminkey", "new-secret"));
+		var deleteResponse = await client.SendAsync(MakeRequest(HttpMethod.Delete, "/settings/adminkey", "new-secret"), TestContext.Current.CancellationToken);
 		Assert.Equal(HttpStatusCode.OK, deleteResponse.StatusCode);
 
-		var afterDelete = await client.SendAsync(MakeRequest(HttpMethod.Get, "/adminkey"));
+		var afterDelete = await client.SendAsync(MakeRequest(HttpMethod.Get, "/settings/adminkey"), TestContext.Current.CancellationToken);
 		Assert.Equal(HttpStatusCode.OK, afterDelete.StatusCode);
 	}
 }

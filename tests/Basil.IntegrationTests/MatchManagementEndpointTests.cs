@@ -2,12 +2,13 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Basil.Application.Abstractions.Multiplayer;
-using Basil.Application.Configurations;
+using Basil.Application.Shared.Configuration;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
-using Basil.Web;
+using Basil.Host;
+using Basil.Application.Multiplayer;
+using Basil.Host.Api.Auth;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,16 +20,16 @@ namespace Basil.IntegrationTests;
 
 /// <summary>
 ///     Covers the new `/matches` list/create/settings/action routes end to end — in particular, this is
-///     the first real endpoint <see cref="Basil.Web.Auth.AdminKeyAuthenticationHandler" />'s
+///     the first real endpoint <see cref="AdminKeyAuthenticationHandler" />'s
 ///     `RequireAuthorization` policy is actually attached to, so the missing/wrong-key -&gt; 401 path
 ///     is verified through the full middleware pipeline here, not just the handler in isolation.
 /// </summary>
-public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<Bootstrap>>
 {
 	private const string AdminKey = "correct-key";
-	private readonly WebApplicationFactory<Program> _factory;
+	private readonly WebApplicationFactory<Bootstrap> _factory;
 
-	public MatchManagementEndpointTests(WebApplicationFactory<Program> factory)
+	public MatchManagementEndpointTests(WebApplicationFactory<Bootstrap> factory)
 	{
 		// Minimal in-memory fake so CreateMatchAsync/FetchAllMatchesAsync/DeleteMatchAsync behave
 		// realistically without a real SQLite file.
@@ -51,7 +52,7 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
 				matches[id] = new Match(id, call.ArgAt<string>(0), call.ArgAt<DateTime>(1), null);
 				return id;
 			});
-		matchPersistence.WhenForAnyArgs(m => m.SetMatchEndedAsync(default, default))
+		matchPersistence.WhenForAnyArgs(m => m.SetMatchEndedAsync(0, default))
 			.Do(call =>
 			{
 				if (matches.TryGetValue(call.ArgAt<int>(0), out var row))
@@ -62,8 +63,8 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
 		matchPersistence.FetchRoundsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
 			.Returns(Task.FromResult<IReadOnlyList<Round>>([]));
 		matchPersistence.FetchAllMatchesAsync(Arg.Any<CancellationToken>())
-			.Returns(_ => (IReadOnlyList<Match>)[.. matches.Values.OrderByDescending(m => m.Id)]);
-		matchPersistence.WhenForAnyArgs(m => m.DeleteMatchAsync(default))
+			.Returns(_ => [.. matches.Values.OrderByDescending(m => m.Id)]);
+		matchPersistence.WhenForAnyArgs(m => m.DeleteMatchAsync(0))
 			.Do(call => matches.Remove(call.ArgAt<int>(0)));
 		matchPersistence.FetchEventsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
 			.Returns(Task.FromResult<IReadOnlyList<MatchEvent>>([]));
@@ -88,6 +89,7 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
 				services.AddSingleton(TestDoubles.FixedAdminKeySettingsRepository());
 				services.AddSingleton(matchPersistence);
 				services.AddSingleton(TestDoubles.NullUserRepository());
+				services.AddSingleton(TestDoubles.NullMapRepository());
 			});
 		});
 	}
@@ -108,7 +110,7 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
 		var request = MakeRequest(HttpMethod.Post, "/matches", adminKey);
 		request.Content = JsonContent.Create(new { name = "Test" });
 
-		var response = await client.SendAsync(request);
+		var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 	}
@@ -120,10 +122,10 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
 		var request = MakeRequest(HttpMethod.Post, "/matches", AdminKey);
 		request.Content = JsonContent.Create(new { name = "Grand Finals" });
 
-		var response = await client.SendAsync(request);
+		var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
 		response.EnsureSuccessStatusCode();
-		var envelope = await response.Content.ReadFromJsonAsync<JsonElement>();
+		var envelope = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: TestContext.Current.CancellationToken);
 		var json = envelope.GetProperty("data");
 		Assert.Equal("Grand Finals", json.GetProperty("name").GetString());
 		Assert.False(json.GetProperty("hasPassword").GetBoolean());
@@ -131,20 +133,46 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
 		Assert.True(json.GetProperty("host").ValueKind is JsonValueKind.Null);
 	}
 
+	/// <summary>
+	///     Regression test (Issue #4): "INVALID MATCH DATA CAN STILL CREATE A MATCH" -- an invalid
+	///     mapId used to return the 400 error only after the match was already registered
+	///     (<c>CreateEmptyAsync</c> ran first), leaving an orphaned, half-initialized match behind with
+	///     nothing left to close it. The mapId is now validated before the match is created at all.
+	/// </summary>
+	[Fact]
+	public async Task PostMatch_InvalidMapId_ReturnsBadRequestAndCreatesNoMatch()
+	{
+		var client = _factory.CreateClient();
+		var before = await client.SendAsync(MakeRequest(HttpMethod.Get, "/matches?status=all"), TestContext.Current.CancellationToken);
+		var beforeCount = (await before.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: TestContext.Current.CancellationToken))
+			.GetProperty("data").GetArrayLength();
+
+		var request = MakeRequest(HttpMethod.Post, "/matches", AdminKey);
+		request.Content = JsonContent.Create(new { name = "Bad Map", mapId = 999999 });
+		var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+
+		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+		var after = await client.SendAsync(MakeRequest(HttpMethod.Get, "/matches?status=all"), TestContext.Current.CancellationToken);
+		var afterCount = (await after.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: TestContext.Current.CancellationToken))
+			.GetProperty("data").GetArrayLength();
+		Assert.Equal(beforeCount, afterCount);
+	}
+
 	[Fact]
 	public async Task GetMatch_ListsCreatedMatchByDefault_OnlineStatus()
 	{
 		var client = _factory.CreateClient();
 		var createRequest = MakeRequest(HttpMethod.Post, "/matches", AdminKey);
-		createRequest.Content = JsonContent.Create(new { name = "Listed Match" });
-		var createResponse = await client.SendAsync(createRequest);
-		var createdEnvelope = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+		createRequest.Content = JsonContent.Create(new { name = "Listed Room" });
+		var createResponse = await client.SendAsync(createRequest, TestContext.Current.CancellationToken);
+		var createdEnvelope = await createResponse.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: TestContext.Current.CancellationToken);
 		var id = createdEnvelope.GetProperty("data").GetProperty("id").GetInt32();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/matches"));
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/matches"), TestContext.Current.CancellationToken);
 
 		response.EnsureSuccessStatusCode();
-		var envelope = await response.Content.ReadFromJsonAsync<JsonElement>();
+		var envelope = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: TestContext.Current.CancellationToken);
 		var items = envelope.GetProperty("data").EnumerateArray().ToList();
 		// "online" status means the match is currently live -- reflected by a non-null `live` object
 		// (isOpen was dropped in the Phase 2 record redesign; MatchListItem.Live replaces it).
@@ -153,21 +181,31 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
 	}
 
 	[Fact]
+	public async Task GetMatch_InvalidStatus_ReturnsBadRequestInsteadOfSilentlyDefaulting()
+	{
+		var client = _factory.CreateClient();
+
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/matches?status=notarealstatus"), TestContext.Current.CancellationToken);
+
+		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+	}
+
+	[Fact]
 	public async Task PatchSettings_UpdatesNameAndSize()
 	{
 		var client = _factory.CreateClient();
 		var createRequest = MakeRequest(HttpMethod.Post, "/matches", AdminKey);
 		createRequest.Content = JsonContent.Create(new { });
-		var createResponse = await client.SendAsync(createRequest);
-		var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+		var createResponse = await client.SendAsync(createRequest, TestContext.Current.CancellationToken);
+		var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: TestContext.Current.CancellationToken);
 		var id = created.GetProperty("data").GetProperty("id").GetInt32();
 
 		var patchRequest = MakeRequest(HttpMethod.Patch, $"/matches/{id}/settings", AdminKey);
 		patchRequest.Content = JsonContent.Create(new { name = "Renamed", size = 4 });
-		var patchResponse = await client.SendAsync(patchRequest);
+		var patchResponse = await client.SendAsync(patchRequest, TestContext.Current.CancellationToken);
 
 		patchResponse.EnsureSuccessStatusCode();
-		var envelope = await patchResponse.Content.ReadFromJsonAsync<JsonElement>();
+		var envelope = await patchResponse.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: TestContext.Current.CancellationToken);
 		var json = envelope.GetProperty("data");
 		Assert.Equal("Renamed", json.GetProperty("name").GetString());
 		Assert.Equal(4, json.GetProperty("size").GetInt32());
@@ -180,7 +218,7 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
 		var request = MakeRequest(HttpMethod.Patch, "/matches/999999/settings", AdminKey);
 		request.Content = JsonContent.Create(new { name = "Nope" });
 
-		var response = await client.SendAsync(request);
+		var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
 		Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 	}
@@ -191,17 +229,17 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
 		var client = _factory.CreateClient();
 		var createRequest = MakeRequest(HttpMethod.Post, "/matches", AdminKey);
 		createRequest.Content = JsonContent.Create(new { });
-		var createResponse = await client.SendAsync(createRequest);
-		var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+		var createResponse = await client.SendAsync(createRequest, TestContext.Current.CancellationToken);
+		var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: TestContext.Current.CancellationToken);
 		var id = created.GetProperty("data").GetProperty("id").GetInt32();
 
 		var closeRequest = MakeRequest(HttpMethod.Post, $"/matches/{id}/close", AdminKey);
 		closeRequest.Content = JsonContent.Create(new { });
-		var closeResponse = await client.SendAsync(closeRequest);
+		var closeResponse = await client.SendAsync(closeRequest, TestContext.Current.CancellationToken);
 		closeResponse.EnsureSuccessStatusCode();
 
-		var listResponse = await client.SendAsync(MakeRequest(HttpMethod.Get, "/matches"));
-		var envelope = await listResponse.Content.ReadFromJsonAsync<JsonElement>();
+		var listResponse = await client.SendAsync(MakeRequest(HttpMethod.Get, "/matches"), TestContext.Current.CancellationToken);
+		var envelope = await listResponse.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: TestContext.Current.CancellationToken);
 		var items = envelope.GetProperty("data").EnumerateArray().ToList();
 		Assert.DoesNotContain(items, item => item.GetProperty("id").GetInt32() == id);
 	}
@@ -218,8 +256,8 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
 		var client = _factory.CreateClient();
 		var createRequest = MakeRequest(HttpMethod.Post, "/matches", AdminKey);
 		createRequest.Content = JsonContent.Create(new { name = "Smoke Test", password = "hunter2" });
-		var createResponse = await client.SendAsync(createRequest);
-		var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+		var createResponse = await client.SendAsync(createRequest, TestContext.Current.CancellationToken);
+		var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: TestContext.Current.CancellationToken);
 		var id = created.GetProperty("data").GetProperty("id").GetInt32();
 
 		var streamClient = _factory.CreateClient();
@@ -260,7 +298,7 @@ public class MatchManagementEndpointTests : IClassFixture<WebApplicationFactory<
 	{
 		var client = _factory.CreateClient();
 
-		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users/0/live"));
+		var response = await client.SendAsync(MakeRequest(HttpMethod.Get, "/users/0/live"), TestContext.Current.CancellationToken);
 
 		// BasilBot (user id 0) has no gameplay stream of its own -- blocked rather than opening a
 		// stream that would never receive a frame. Implemented as 400 (not the plan's literal "404"

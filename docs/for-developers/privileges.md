@@ -1,275 +1,119 @@
-# User privileges
+# Permissions and privileges
 
 ## Overview
 
-Basil represents account privileges as a bitfield: [`Basil.Domain.Users.Privileges`](../../src/Basil.Domain/Users/Privileges.cs).
+Basil separates **permissions**, which authorize actions, from **privileges**, which describe roles the osu! client knows. A permission is the source of authority. `Privileges` is derived from effective permissions and grants nothing by itself.
 
-A user can therefore hold any combination of privileges simultaneously. Basil does not model mutually exclusive roles
-such as "moderator" or "tournament manager".
+This separation lets Basil suspend specific actions without inventing special account states, while still reporting the appropriate client-facing roles.
 
-For example, a user who is both a moderator and a tournament manager has both `Moderator` and `TourneyManager` bits set
-in the same `Privilege` value.
+## Permissions
 
-This representation also allows individual features to check only the capability they require without introducing a
-hierarchy between unrelated privileges.
+`Permissions` is a flat flags enum of independent actions, grouped in its source by resource. Examples include `RoomJoin`, `RoomManageAny`, `ChatPost`, `ChatMessageAnyone`, `UserRestrict` and `ServerConfigure`. A group of permissions is a mask in `PermissionsGroups`; groups are not extra enum members.
 
-## Privilege flags
+Some permissions include the bits of actions they imply. For example, `RoomManageAny` includes `RoomViewPrivate`, and `UserRestrict` includes the permissions to silence, add moderation notes and view login history. Checks ask for the smallest permission that allows the action. `Permissions.Allows(required)` succeeds only when every required bit is present; an empty requirement succeeds.
 
-| Flag             | Bit | Value | Consumers                                 | Description                                                                                                               |
-|------------------|----:|------:|-------------------------------------------|---------------------------------------------------------------------------------------------------------------------------|
-| `Unrestricted`   |   0 |     1 | Login, match join, chat, score submission | Core gameplay privilege. Users without this flag are restricted and cannot play multiplayer, send chat, or submit scores. |
-| `Verified`       |   1 |     2 | Login                                     | Automatically granted after a successful login. It does not independently gate a feature.                                 |
-| `Whitelighted`   |   2 |     4 | None                                      | Legacy `bancho.py` compatibility flag. No consumer in Basil.                                                              |
-| `Supporter`      |   4 |    16 | Login, `Donator`                          | Contributes to the client-facing supporter status.                                                                        |
-| `Premium`        |   5 |    32 | `Donator`                                 | Legacy privilege with no direct consumer.                                                                                 |
-| `Alumni`         |   7 |   128 | None                                      | Legacy `bancho.py` compatibility flag. No consumer in Basil.                                                              |
-| `TourneyManager` |  10 |  1024 | `!mp`                                     | Allows tournament management commands in multiplayer matches.                                                             |
-| `Nominator`      |  11 |  2048 | None                                      | Legacy `bancho.py` compatibility flag. No consumer in Basil.                                                              |
-| `Moderator`      |  12 |  4096 | Channels, match join, IRC                 | Grants staff channel access, bypasses match password checks, and gives IRC operator status where applicable.              |
-| `Administrator`  |  13 |  8192 | Channels, match join, IRC                 | Same authorization behavior as `Moderator` for these consumers.                                                           |
-| `Developer`      |  14 | 16384 | Channels, match join, IRC                 | Same authorization behavior as `Moderator` for these consumers.                                                           |
+### Area managers
 
-The bit position is part of the compatibility contract because the resulting integer is persisted in the database and
-mapped to client-facing privileges.
+`PermissionsGroups.Areas` identifies the permissions in each area and, where one exists, the permission that manages that area:
 
-## Testing a privilege
+| Area | Manager permission |
+|---|---|
+| Chat | `ChatMessageAnyone` |
+| Multiplayer | `RoomManageAny` |
+| Spectating | `RoomObserve` |
+| Scores | None |
+| Beatmapsets | `BeatmapsetManage` |
+| Screenshots | `ScreenshotDelete` |
 
-Because privileges are independent bits, authorization checks should test the relevant bit rather than compare the
-entire privilege value.
+These manager permissions also determine which area permissions a user keeps while restricted. `PermissionsGroups.Default` is the initial permission set for a new account. Basil grants no extra permissions because an account is first or first to connect.
 
-Use:
+## Privileges are derived roles
 
-```csharp
-if ((user.Privilege & Privileges.Unrestricted) != 0)
-{
-    // allowed
-}
-```
+`Privileges` contains the roles understood by osu!: `Player`, `Moderator`, `Supporter`, `Owner`, `Developer` and `Tournament`. It is computed from effective permissions and is neither stored nor configured. A role maps to the permissions it directly represents through `privilege.Permissions`; the role itself authorizes nothing.
 
-Do not use an equality check such as:
+The derived roles may be used where a client-facing role requirement is part of a channel's configuration. Such a requirement is met only when every requested role is present. Server-side actions must check `Permissions`, not infer authority from a reported role or a client's claim.
 
-```csharp
-if (user.Privilege == Privileges.Unrestricted)
-{
-    // ...
-}
-```
+## Authorization and restrictions
 
-The equality form incorrectly rejects users who have the required privilege plus any unrelated privilege.
+Account actions are exposed through a `ScopedUser` bound to the actor's connection. Permission changes, restrictions and other caller-authorized operations use that scope instead of accepting an actor or permission mask at each step. The scope is short-lived, so its authority cannot outlive the request that created it.
 
-For a required combination, test the complete mask:
+### Effective permissions
 
-```csharp
-const Privileges required = Privileges.Moderator | Privileges.TourneyManager;
-
-if ((user.Privilege & required) == required)
-{
-    // both privileges are present
-}
-```
-
-## Composite privileges
-
-Some commonly used capabilities are represented as combinations of individual flags.
-
-| Composite | Value | Composition                               |
-|-----------|------:|-------------------------------------------|
-| `Donator` |    48 | `Supporter \| Premium`                    |
-| `Staff`   | 28672 | `Moderator \| Administrator \| Developer` |
-
-These composites are convenience masks, not additional persisted privilege bits.
-
-For example:
-
-```csharp
-Privileges.Donator
-```
-
-is equivalent to:
-
-```csharp
-Privileges.Supporter | Privileges.Premium
-```
-
-and:
-
-```csharp
-Privileges.Staff
-```
-
-is equivalent to:
-
-```csharp
-Privileges.Moderator |
-Privileges.Administrator |
-Privileges.Developer
-```
-
-This distinction matters when adding new privilege flags: a composite should only be changed when its intended
-constituent capabilities change.
-
-## Default privileges
-
-New accounts receive the following privilege set by default:
+A user's granted permissions are reduced by active restrictions:
 
 ```text
-Unrestricted | Verified | Supporter
+effective = granted permissions minus permissions suspended now
 ```
 
-The resulting value is `19`.
+A `Restriction` suspends a permission mask from `StartsAt` through, but not including, `EndsAt`. A `null` end time means the restriction lasts until lifted. Expiry is evaluated at the time of the check; it does not require a separate expiry timer.
 
-This applies to accounts created through:
+A silence suspends chat and multiplayer permissions. A full restriction also suspends spectating, score submission, beatmapset upload and screenshot upload. Restrictions do not remove granted permissions from the account; they change which permissions are effective for a period.
 
-* in-game registration;
-* `POST /users` on the `osu.` host with a matching `AdminKey`;
-* `POST /users` on the `api.` host.
+An area manager keeps the permissions of the area they manage while restricted. For example, an effective `RoomManageAny` holder keeps multiplayer permissions during a restriction. A manager of one area receives no exemption in other areas.
 
-The admin API can explicitly provide a different `privilege` value.
+### Distinguishing denial outcomes
 
-In-game registration always uses the default privilege set.
+`User.Check` distinguishes these permission states:
 
-## Verified auto-grant
+| `Access` result | Meaning |
+|---|---|
+| `Allowed` | The account has the required permission and it is effective now |
+| `NotGranted` | The account was not granted every required permission |
+| `Suspended` | The account was granted the permission, but an active restriction suspends it |
 
-`Verified` is also enforced during successful login.
+Scoped user operations report these outcomes as `UserResult.Ok`, `UserResult.NotAuthorized` or `UserResult.Restricted`. `NotAuthorized` also covers an actor who does not outrank the target. Other `UserResult` values describe operation-specific conditions, such as a protected account or invalid restriction.
 
-If an account does not have the flag, [`LoginService`](../../src/Basil.Application/Services/Authentication/LoginService.cs) adds it:
+### Hierarchy
 
-```csharp
-if ((user.Privilege & Privileges.Verified) == 0)
-    newPrivilege = user.Privilege | Privileges.Verified;
-```
+Staff actions against another account—restricting it, changing permissions or password, revoking sessions, or deleting it—require the actor's **granted** permissions to be a strict superset of the target's granted permissions. Equal permission sets cannot act on each other. Granting permissions can give only permissions the actor holds.
 
-This operation only adds `Verified`.
+The strict-superset rule does not apply to actions on oneself, except that nobody may restrict or lift a restriction on themselves. Action permission checks still use the actor's effective permissions.
 
-Login does not automatically grant:
+### Limits that yield to higher rights
 
-* `Unrestricted`;
-* `Supporter`;
-* `TourneyManager`;
-* `Moderator`;
-* `Administrator`;
-* `Developer`;
-* any other privilege.
+A limit one user sets on another does not bind an account with the matching higher permission. `ChatMessageAnyone` bypasses blocks and friends-only private-message settings. The same principle applies to room invitations with `RoomManageAny` and spectating with `RoomObserve`.
 
-There is no special "first user" privilege escalation.
+## Moderation history
 
-## Restricted accounts
+Restrictions are records of the target, suspended permissions and time window. They do not contain a reason or note. Moderation actions append history with the action, actor, target, reason and timestamp; notes and login-history views are also recorded. This log explains past actions but never grants or removes a permission.
 
-`Unrestricted` is the core privilege for normal player activity.
+## Account identity and BasilBot
 
-An account without `Unrestricted` is considered restricted.
+A name is unique among live accounts after normalization: matching is case-insensitive, and a space is equivalent to an underscore. Deletion is permanent; a deleted account is not restored, its id is not reused, and its name becomes available again.
 
-The restriction affects:
+BasilBot is the server's fixed user identity (id 1), is the voice the server speaks with, not an actor: nobody can sign in as it or act for it, permissions mean nothing to it, and its privileges only decide how a client shows it. Its record cannot be deleted, restricted, given permissions or a password, or have its connections revoked; its public metadata may be edited.
 
-* multiplayer participation;
-* chat;
-* score submission.
+**Planned:** BasilBot will be represented as a permanently online `User` with a connection. Its announcements will be server-originated and will not pass through an ordinary user's permission check. A BasilBot command will act with the typist's scoped permissions, never with permissions belonging to BasilBot.
 
-Other privileges do not implicitly grant `Unrestricted`.
-
-For example, a staff account without `Unrestricted` may still have staff-specific authorization while remaining
-restricted from normal player actions.
-
-Authorization code should therefore check `Unrestricted` explicitly when the operation requires unrestricted player
-access rather than assuming that another privilege implies it.
-
-## Staff privileges
-
-`Moderator`, `Administrator`, and `Developer` form the `Staff` composite.
-
-For the features currently implemented by Basil, these three flags have the same authorization behavior for:
-
-* `#staff` channel access;
-* match password bypass;
-* IRC operator status.
-
-They remain separate flags because the privilege model is also responsible for client-facing privilege mapping, where
-they have different meanings.
-
-A future feature may therefore distinguish these flags without changing the underlying representation.
-
-## Tournament manager
-
-`TourneyManager` is independent of `Staff`.
-
-It grants access to tournament-management functionality exposed through `!mp` commands.
-
-A tournament manager does not automatically become:
-
-* a moderator;
-* an administrator;
-* a developer;
-* a staff IRC operator.
-
-Likewise, staff privileges do not automatically grant `TourneyManager`.
-
-This separation is intentional: tournament control and server administration are different capabilities.
-
-## Client-facing privileges
-
-The server-side privilege model is not identical to the privilege names understood by the osu! client.
-
-During Bancho login, Basil maps server privileges to protocol-level [`ClientPrivileges`](../../src/Basil.Domain/Users/Privileges.cs):
-
-| Server privilege | Client privilege |
-|------------------|------------------|
-| `Unrestricted`   | `Player`         |
-| `Donator`        | `Supporter`      |
-| `Moderator`      | `Moderator`      |
-| `Administrator`  | `Developer`      |
-| `Developer`      | `Owner`          |
-
-The mapping is intentionally asymmetric.
-
-In particular, `Administrator` becomes the client's `Developer` privilege, while Basil's `Developer` becomes the
-client's `Owner` privilege.
-
-Code handling authorization should use `Privileges`, not `ClientPrivileges`. `ClientPrivileges` exists for protocol
-compatibility and should not become the server's authorization model.
-
-## Legacy flags
-
-Several flags exist for compatibility with the original `bancho.py` privilege representation but currently have no
-consumer in Basil:
-
-* `Whitelighted`;
-* `Alumni`;
-* `Nominator`.
-
-They should not be assigned new meaning merely because a bit is available.
-
-If a new feature requires authorization, add or reuse an explicitly defined privilege with a clear consumer rather than
-repurposing a legacy flag.
+The operator console is also **planned**. It is the explicit operator entry point for creating the first administrator; no account receives administrator permissions implicitly.
 
 ## Invariants
 
-The privilege model depends on several rules:
-
-* `Privilege` is a bitfield, not a single role.
-* Individual authorization checks test bits with bitwise operations.
-* Composite privileges are masks composed of individual flags.
-* `Donator` is `Supporter | Premium`.
-* `Staff` is `Moderator | Administrator | Developer`.
-* `Unrestricted` is independent from staff and tournament-management privileges.
-* Login only auto-grants `Verified`.
-* There is no first-account privilege escalation.
-* `ClientPrivileges` is a protocol representation, not the server's authorization model.
-* Legacy unused privilege bits should not be repurposed without an explicit compatibility decision.
+* `Permissions` is the authority source; `Privileges` is derived and grants nothing.
+* A permission check requires every requested bit and uses effective permissions.
+* An active restriction suspends only its selected permissions and time window.
+* A manager keeps permissions in the area they manage while restricted, not in unrelated areas.
+* A permission that implies another includes its bits; callers check the smallest sufficient permission.
+* Staff actions against another account require a strict superset of the target's granted permissions.
+* A moderation log is history, not an authorization source.
+* Names are unique among live accounts after normalization; deletion is permanent.
+* BasilBot's commands use the typist's authority; its connected session and command integration are planned.
 
 ## Related code
 
-* [`Basil.Domain/Users/Privileges.cs`](../../src/Basil.Domain/Users/Privileges.cs): privilege definitions and composite masks
-* [`Basil.Application/Services/Authentication/LoginService.cs`](../../src/Basil.Application/Services/Authentication/LoginService.cs): `Verified` auto-grant and login privilege handling
-* [`Basil.Application/Services/Multiplayer/MatchMembershipService.cs`](../../src/Basil.Application/Services/Multiplayer/MatchMembershipService.cs): privilege checks during match joining
-* [`Basil.Application/Services/Chat/ChatDispatchService.cs`](../../src/Basil.Application/Services/Chat/ChatDispatchService.cs): unrestricted chat authorization
-* [`Basil.Application/Services/Bot/MpCommandService.cs`](../../src/Basil.Application/Services/Bot/MpCommandService.cs): tournament-manager authorization
-* [`Basil.Application/Services/Irc/IrcAuthenticationService.cs`](../../src/Basil.Application/Services/Irc/IrcAuthenticationService.cs): staff IRC behavior
-* [`Basil.Web/`](../../src/Basil.Web/): HTTP-level administrative authorization
+* [`Permissions.cs`](../../src/Domain/Users/Permissions.cs): action permissions, `Allows`, effective permissions and derived roles
+* [`PermissionsGroups.cs`](../../src/Domain/Users/PermissionsGroups.cs): permission masks, defaults and area managers
+* [`Privileges.cs`](../../src/Domain/Users/Privileges.cs): roles understood by osu! and their direct permissions
+* [`Restriction.cs`](../../src/Domain/Permissions/Restriction.cs): restriction target, permissions and time window
+* [`User.cs`](../../src/Application/Runtime/Users/User.cs): effective permission checks
+* [`ScopedUser.cs`](../../src/Application/Runtime/Users/ScopedUser.cs), [`ScopedUserRestrictions.cs`](../../src/Application/Runtime/Users/ScopedUserRestrictions.cs): account actions and restrictions
+* [`UserResult.cs`](../../src/Application/Runtime/Users/UserResult.cs): account-operation outcomes
+* [`RestrictionHandler.cs`](../../src/Infrastructure/Runtime/Sessions/RestrictionHandler.cs): infrastructure reaction to restriction events
+* [`UserRecord.cs`](../../src/Domain/Users/UserRecord.cs): persistent account identity and normalized name
 
 ## See also
 
-* [`authentication.md`](../for-client/bancho/authentication.md): client login and the `Verified` auto-grant
-* [`deployment.md`](../for-technicians/deployment.md): creating accounts and granting staff privileges
-* [`chat.md`](chat.md): chat authorization and command dispatch
-* [`irc.md`](irc.md): IRC staff status and channel permissions
-* [`multiplayer.md`](multiplayer.md): match membership and tournament permissions
+* [`multiplayer.md`](multiplayer.md): room authority and `RoomManageAny`
+* [`chat.md`](chat.md): channel access, blocks and `ChatMessageAnyone`
+* [`authentication.md`](../for-client/bancho/authentication.md): client authentication
+* [`working-scopes.md`](working-scopes.md): supported and excluded account features
