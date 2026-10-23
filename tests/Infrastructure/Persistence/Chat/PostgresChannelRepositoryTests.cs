@@ -55,7 +55,7 @@ public sealed class PostgresChannelRepositoryTests : DatabaseTests
 	}
 
 	[Fact]
-	public async Task A_channel_is_stored()
+	public async Task A_channel_is_stored_when_storing_it_returns()
 	{
 		await Channels.CreateOrUpdateAsync(new GeneralChannelRecord
 		{
@@ -63,12 +63,11 @@ public sealed class PostgresChannelRepositoryTests : DatabaseTests
 			Value = new GeneralChannelData { Topic = "The news." }
 		}, TestContext.Current.CancellationToken);
 
-		var rows = await StoredRows.WaitForAsync(ConnectionString,
+		var rows = await StoredRows.ReadAsync(ConnectionString,
 			"select name, topic, auto_join, visible from channels where name = @name",
-			new Dictionary<string, object?> { ["@name"] = "#news" }, rows => rows.Count == 1,
-			"the stored channel", TestContext.Current.CancellationToken);
+			new Dictionary<string, object?> { ["@name"] = "#news" }, TestContext.Current.CancellationToken);
 
-		var row = rows[0];
+		var row = Assert.Single(rows);
 		Assert.Equal("#news", row.Text("name"));
 		Assert.Equal("The news.", row.Text("topic"));
 		Assert.False(row.Bool("auto_join"));
@@ -90,7 +89,7 @@ public sealed class PostgresChannelRepositoryTests : DatabaseTests
 	}
 
 	[Fact]
-	public async Task A_changed_channel_is_stored()
+	public async Task A_changed_channel_is_stored_when_storing_it_returns()
 	{
 		await Channels.CreateOrUpdateAsync(new GeneralChannelRecord
 		{
@@ -98,12 +97,10 @@ public sealed class PostgresChannelRepositoryTests : DatabaseTests
 			Value = new GeneralChannelData { Topic = "A new topic." }
 		}, TestContext.Current.CancellationToken);
 
-		var rows = await StoredRows.WaitForAsync(ConnectionString, "select topic from channels where name = @name",
-			new Dictionary<string, object?> { ["@name"] = "#osu" },
-			rows => rows.Count == 1 && rows[0].Text("topic") == "A new topic.",
-			"the changed channel", TestContext.Current.CancellationToken);
+		var rows = await StoredRows.ReadAsync(ConnectionString, "select topic from channels where name = @name",
+			new Dictionary<string, object?> { ["@name"] = "#osu" }, TestContext.Current.CancellationToken);
 
-		Assert.Single(rows);
+		Assert.Equal("A new topic.", Assert.Single(rows).Text("topic"));
 	}
 
 	[Fact]
@@ -122,7 +119,7 @@ public sealed class PostgresChannelRepositoryTests : DatabaseTests
 	}
 
 	[Fact]
-	public async Task A_deleted_channel_is_stored_as_gone()
+	public async Task A_deleted_channel_is_gone_from_the_database_when_deleting_it_returns()
 	{
 		var channel = new GeneralChannelRecord
 		{
@@ -130,15 +127,44 @@ public sealed class PostgresChannelRepositoryTests : DatabaseTests
 			Value = new GeneralChannelData { Topic = "The news." }
 		};
 		await Channels.CreateOrUpdateAsync(channel, TestContext.Current.CancellationToken);
-		await StoredRows.WaitForAsync(ConnectionString, "select name from channels where name = @name",
-			new Dictionary<string, object?> { ["@name"] = "#news" }, rows => rows.Count == 1,
-			"the stored channel", TestContext.Current.CancellationToken);
 
 		await Channels.DeleteAsync(channel, TestContext.Current.CancellationToken);
 
-		await StoredRows.WaitForAsync(ConnectionString, "select name from channels where name = @name",
-			new Dictionary<string, object?> { ["@name"] = "#news" }, rows => rows.Count == 0,
-			"the deleted channel", TestContext.Current.CancellationToken);
+		var rows = await StoredRows.ReadAsync(ConnectionString, "select name from channels where name = @name",
+			new Dictionary<string, object?> { ["@name"] = "#news" }, TestContext.Current.CancellationToken);
+		Assert.Empty(rows);
+	}
+
+	[Fact]
+	public async Task A_channel_the_database_refuses_leaves_the_channels_unchanged()
+	{
+		var refused = new GeneralChannelRecord
+		{
+			Name = "#osu",
+			Value = new GeneralChannelData { Topic = "A topic with a lone surrogate \uD800." }
+		};
+
+		await Assert.ThrowsAnyAsync<Exception>(() =>
+			Channels.CreateOrUpdateAsync(refused, TestContext.Current.CancellationToken));
+
+		var channels = await Channels.ListAsync(TestContext.Current.CancellationToken);
+		Assert.Equal("General discussion.", channels.Single(channel => channel.Name == "#osu").Value.Topic);
+	}
+
+	[Fact]
+	public async Task Of_two_concurrent_changes_of_a_channel_memory_holds_the_one_stored_last()
+	{
+		var changes = new[]
+		{
+			Channels.CreateOrUpdateAsync(Osu("First topic."), TestContext.Current.CancellationToken),
+			Channels.CreateOrUpdateAsync(Osu("Second topic."), TestContext.Current.CancellationToken)
+		};
+		await Task.WhenAll(changes);
+
+		var rows = await StoredRows.ReadAsync(ConnectionString, "select topic from channels where name = @name",
+			new Dictionary<string, object?> { ["@name"] = "#osu" }, TestContext.Current.CancellationToken);
+		var channels = await Channels.ListAsync(TestContext.Current.CancellationToken);
+		Assert.Equal(Assert.Single(rows).Text("topic"), channels.Single(channel => channel.Name == "#osu").Value.Topic);
 	}
 
 	[Fact]
@@ -147,5 +173,13 @@ public sealed class PostgresChannelRepositoryTests : DatabaseTests
 		await using var fresh = new StorageComposition(ConnectionString);
 
 		await Assert.ThrowsAsync<InvalidOperationException>(() => fresh.Get<IChannelRepository>().ListAsync(TestContext.Current.CancellationToken));
+	}
+
+	/// <summary>Builds the #osu channel with the given topic.</summary>
+	/// <param name="topic">The topic of the channel.</param>
+	/// <returns>The channel.</returns>
+	private static GeneralChannelRecord Osu(string topic)
+	{
+		return new GeneralChannelRecord { Name = "#osu", Value = new GeneralChannelData { Topic = topic } };
 	}
 }

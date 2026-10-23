@@ -43,7 +43,6 @@ public sealed class PostgresSettingsRepositoryTests : DatabaseTests
 			}
 		};
 		await Settings.CreateOrUpdateAsync(settings, TestContext.Current.CancellationToken);
-		await WaitForSettingAsync("motd", settings.Motd);
 
 		var reloaded = await ReloadAsync();
 
@@ -64,7 +63,6 @@ public sealed class PostgresSettingsRepositoryTests : DatabaseTests
 			}
 		};
 		await Settings.CreateOrUpdateAsync(settings, TestContext.Current.CancellationToken);
-		await WaitForSettingAsync("motd", null);
 
 		var reloaded = await ReloadAsync();
 
@@ -72,19 +70,44 @@ public sealed class PostgresSettingsRepositoryTests : DatabaseTests
 	}
 
 	[Fact]
-	public async Task The_settings_are_stored()
+	public async Task The_settings_are_stored_when_storing_them_returns()
 	{
 		var settings = new ServerSettings { Motd = "Welcome to the server." };
 
 		await Settings.CreateOrUpdateAsync(settings, TestContext.Current.CancellationToken);
 
-		var rows = await StoredRows.WaitForAsync(ConnectionString,
+		var rows = await StoredRows.ReadAsync(ConnectionString,
 			"select name, value from settings where name = @name",
-			new Dictionary<string, object?> { ["@name"] = "motd" },
-			rows => rows.Count == 1 && rows[0].Text("value") == "Welcome to the server.",
-			"the stored settings", TestContext.Current.CancellationToken);
+			new Dictionary<string, object?> { ["@name"] = "motd" }, TestContext.Current.CancellationToken);
 
-		Assert.Single(rows);
+		Assert.Equal("Welcome to the server.", Assert.Single(rows).Text("value"));
+	}
+
+	[Fact]
+	public async Task Settings_the_database_refuses_leave_the_settings_unchanged()
+	{
+		var before = await Settings.GetAsync(TestContext.Current.CancellationToken);
+
+		await Assert.ThrowsAnyAsync<Exception>(() => Settings.CreateOrUpdateAsync(
+			new ServerSettings { Motd = "A message with a lone surrogate \uD800." }, TestContext.Current.CancellationToken));
+
+		Assert.Null((await Settings.GetAsync(TestContext.Current.CancellationToken)).Motd);
+		Assert.Same(before, await Settings.GetAsync(TestContext.Current.CancellationToken));
+	}
+
+	[Fact]
+	public async Task Of_two_concurrent_changes_of_the_settings_memory_holds_the_ones_stored_last()
+	{
+		var changes = new[]
+		{
+			Settings.CreateOrUpdateAsync(new ServerSettings { Motd = "First message." }, TestContext.Current.CancellationToken),
+			Settings.CreateOrUpdateAsync(new ServerSettings { Motd = "Second message." }, TestContext.Current.CancellationToken)
+		};
+		await Task.WhenAll(changes);
+
+		var rows = await StoredRows.ReadAsync(ConnectionString, "select value from settings where name = @name",
+			new Dictionary<string, object?> { ["@name"] = "motd" }, TestContext.Current.CancellationToken);
+		Assert.Equal(Assert.Single(rows).Text("value"), (await Settings.GetAsync(TestContext.Current.CancellationToken)).Motd);
 	}
 
 	[Theory]
@@ -119,16 +142,5 @@ public sealed class PostgresSettingsRepositoryTests : DatabaseTests
 		var repository = fresh.Get<ISettingsRepository>();
 		await fresh.ResidentOf(repository).LoadAsync(TestContext.Current.CancellationToken);
 		return await repository.GetAsync(TestContext.Current.CancellationToken);
-	}
-
-	/// <summary>Waits until a setting is stored with the given value.</summary>
-	/// <param name="name">The name of the setting.</param>
-	/// <param name="value">The value the setting must hold.</param>
-	private async Task WaitForSettingAsync(string name, string? value)
-	{
-		await StoredRows.WaitForAsync(ConnectionString, "select name, value from settings where name = @name",
-			new Dictionary<string, object?> { ["@name"] = name },
-			rows => rows.Count == 1 && rows[0].Text("value") == value,
-			$"the stored setting {name}", TestContext.Current.CancellationToken);
 	}
 }
