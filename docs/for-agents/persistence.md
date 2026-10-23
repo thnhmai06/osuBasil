@@ -91,7 +91,8 @@ Repository contracts, byte storages and the memory-first model. Moved out of `AG
   * **No SQL in Persistence.** Everything is Entity Framework Core with LINQ and row objects (`XxxRow` entities, never the Domain types); no Dapper, no `FromSql`/`ExecuteSql`/`SqlQuery`, no `NpgsqlCommand`. A snapshot write builds its row when it is queued and applies it with `RowWrites.UpsertAsync`/`ReplaceAsync` (or `ExecuteUpdate` for a few columns); a row with a store-generated key is created inside the lambda so a retry starts clean. Unique violations are recognised through `exception.IsUniqueViolation()`, which looks through Entity Framework wrappers.
   * **Reads** go straight to PostgreSQL on a context of their own (a pooled connection, no change tracking: memory is the truth, not the context) and see only what is committed. A listing
     asks the database which rows match and returns the live instance of each; a row whose deletion is still queued
-    never comes back into memory.
+    never comes back into memory, and neither does one whose deletion committed while the read was running: a read
+    that overlapped a committed deletion starts again, so a deleted record cannot come back into memory.
   * **A stored row is trusted.** Rows are written only by the server, through the Domain, so a row that fails the Domain rules on load is a fault of the database, not a case to work around: the read throws. The exception is configuration an operator edits by hand (the settings and the menu banners): a value that cannot be read is logged and the default is kept, or the banner is left out, so the server still starts.
   * **A value unique across a table** (a user's safe name, a beatmap's hash or osu! id, a score's checksum, an id the
     store assigns): when memory holds a record with that value the repository rejects the change at once; otherwise

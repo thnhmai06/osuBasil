@@ -83,21 +83,28 @@ internal sealed class PostgresBeatmapRepository(
 		if (_byHash.TryGetValue(hash, out var known) && known.Hash == hash)
 			return known;
 
-		var row = await Reader.ReadAsync(context => context.Beatmaps
-			.Include(b => b.Set)
-			.Where(b => b.Hash == hash.HashValue)
-			.FirstOrDefaultAsync(cancellationToken), cancellationToken);
-		if (row is null)
-			return null;
+		while (true)
+		{
+			var generation = RemovalGeneration;
+			var row = await Reader.ReadAsync(context => context.Beatmaps
+				.Include(b => b.Set)
+				.Where(b => b.Hash == hash.HashValue)
+				.FirstOrDefaultAsync(cancellationToken), cancellationToken);
+			if (row is null)
+				return null;
 
-		// A row whose deletion is still queued never comes back into memory.
-		var loaded = await ToBeatmapAsync(row, cancellationToken);
-		if (IsBeingRemoved(loaded))
-			return null;
+			// A row whose deletion is still queued never comes back into memory.
+			var loaded = await ToBeatmapAsync(row, cancellationToken);
+			if (IsBeingRemoved(loaded))
+				return null;
+			// The read may have seen the row before a deletion that has since committed; read again.
+			if (generation != RemovalGeneration)
+				continue;
 
-		var beatmap = Track(loaded);
-		Index(beatmap);
-		return beatmap;
+			var beatmap = Track(loaded);
+			Index(beatmap);
+			return beatmap;
+		}
 	}
 
 	/// <inheritdoc />
@@ -107,25 +114,37 @@ internal sealed class PostgresBeatmapRepository(
 		var liveSet = await LiveSetAsync(set, cancellationToken);
 		return await _bySet.GetOrLoadAsync(liveSet.Id, liveSet, async () =>
 		{
-			var rows = await Reader.ReadAsync(context => context.Beatmaps
-				.Include(b => b.Set)
-				.Where(b => b.BeatmapsetId == liveSet.Id)
-				.OrderBy(b => b.Id)
-				.ToListAsync(cancellationToken), cancellationToken);
-			var beatmaps = ImmutableList.CreateBuilder<BeatmapRecord>();
-			foreach (var row in rows)
+			while (true)
 			{
-				// A row whose deletion is still queued never comes back into memory.
-				var loaded = await ToBeatmapAsync(row, cancellationToken);
-				if (IsBeingRemoved(loaded))
+				var generation = RemovalGeneration;
+				var rows = await Reader.ReadAsync(context => context.Beatmaps
+					.Include(b => b.Set)
+					.Where(b => b.BeatmapsetId == liveSet.Id)
+					.OrderBy(b => b.Id)
+					.ToListAsync(cancellationToken), cancellationToken);
+				var loadedRows = new List<BeatmapRecord>();
+				foreach (var row in rows)
+				{
+					// A row whose deletion is still queued never comes back into memory.
+					var loaded = await ToBeatmapAsync(row, cancellationToken);
+					if (!IsBeingRemoved(loaded))
+						loadedRows.Add(loaded);
+				}
+
+				// The read may have seen rows before a deletion that has since committed; read again.
+				if (generation != RemovalGeneration)
 					continue;
 
-				var beatmap = Track(loaded);
-				Index(beatmap);
-				beatmaps.Add(beatmap);
-			}
+				var beatmaps = ImmutableList.CreateBuilder<BeatmapRecord>();
+				foreach (var loaded in loadedRows)
+				{
+					var beatmap = Track(loaded);
+					Index(beatmap);
+					beatmaps.Add(beatmap);
+				}
 
-			return beatmaps.ToImmutable();
+				return beatmaps.ToImmutable();
+			}
 		});
 	}
 
@@ -133,35 +152,47 @@ internal sealed class PostgresBeatmapRepository(
 	public async Task<Page<BeatmapRecord>> ListAsync(BeatmapQuery query, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
-		var (total, rows) = await Reader.ReadAsync(async context =>
+		while (true)
 		{
-			var matching = BeatmapQueryFilter.Apply(context.Beatmaps, query);
-			var count = await matching.CountAsync(cancellationToken);
-			var rows = await matching
-				.Include(b => b.Set)
-				.OrderByDescending(b => b.BeatmapsetId)
-				.ThenBy(b => b.Star)
-				.ThenBy(b => b.Id)
-				.Skip(page.Offset)
-				.Take(page.Limit)
-				.ToListAsync(cancellationToken);
-			return (count, rows);
-		}, cancellationToken);
+			var generation = RemovalGeneration;
+			var (total, rows) = await Reader.ReadAsync(async context =>
+			{
+				var matching = BeatmapQueryFilter.Apply(context.Beatmaps, query);
+				var count = await matching.CountAsync(cancellationToken);
+				var rows = await matching
+					.Include(b => b.Set)
+					.OrderByDescending(b => b.BeatmapsetId)
+					.ThenBy(b => b.Star)
+					.ThenBy(b => b.Id)
+					.Skip(page.Offset)
+					.Take(page.Limit)
+					.ToListAsync(cancellationToken);
+				return (count, rows);
+			}, cancellationToken);
 
-		var items = new List<BeatmapRecord>();
-		foreach (var row in rows)
-		{
-			// A row whose deletion is still queued never comes back into memory.
-			var loaded = await ToBeatmapAsync(row, cancellationToken);
-			if (IsBeingRemoved(loaded))
+			var loadedRows = new List<BeatmapRecord>();
+			foreach (var row in rows)
+			{
+				// A row whose deletion is still queued never comes back into memory.
+				var loaded = await ToBeatmapAsync(row, cancellationToken);
+				if (!IsBeingRemoved(loaded))
+					loadedRows.Add(loaded);
+			}
+
+			// The read may have seen rows before a deletion that has since committed; read again.
+			if (generation != RemovalGeneration)
 				continue;
 
-			var beatmap = Track(loaded);
-			Index(beatmap);
-			items.Add(beatmap);
-		}
+			var items = new List<BeatmapRecord>();
+			foreach (var loaded in loadedRows)
+			{
+				var beatmap = Track(loaded);
+				Index(beatmap);
+				items.Add(beatmap);
+			}
 
-		return new Page<BeatmapRecord>(items, total);
+			return new Page<BeatmapRecord>(items, total);
+		}
 	}
 
 	/// <inheritdoc />
@@ -187,8 +218,11 @@ internal sealed class PostgresBeatmapRepository(
 		_bySet.Change(setId, liveSet,
 			current => [.. current.Where(beatmap => keepSet.Contains(beatmap.Id))],
 			retained);
-		_ = retained.ContinueWith(_ => _retaining.TryRemove(new KeyValuePair<int, HashSet<int>>(setId, keepSet)),
-			TaskScheduler.Default);
+		_ = retained.ContinueWith(_ =>
+		{
+			NoteRemovalCommitted();
+			_retaining.TryRemove(new KeyValuePair<int, HashSet<int>>(setId, keepSet));
+		}, TaskScheduler.Default);
 	}
 
 	/// <summary>Stores the difficulties of a beatmapset as a scan or import brings them in.</summary>

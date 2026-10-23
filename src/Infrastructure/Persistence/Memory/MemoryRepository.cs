@@ -8,6 +8,7 @@ internal abstract class MemoryRepository<TKey, T>(DatabaseReader reader, Databas
 	where TKey : notnull where T : class
 {
 	private readonly ConcurrentDictionary<TKey, Task> _removing = new();
+	private long _removals;
 	protected IdentityMap<TKey, T> Items { get; } = new();
 	protected DatabaseReader Reader { get; } = reader;
 	protected DatabaseWriter Writer { get; } = writer;
@@ -31,12 +32,34 @@ internal abstract class MemoryRepository<TKey, T>(DatabaseReader reader, Databas
 	{
 	}
 
+	/// <summary>Counts the removals that have committed; a read compares it before and after it queries.</summary>
+	protected long RemovalGeneration => Volatile.Read(ref _removals);
+
+	/// <summary>Records that a removal has committed; it runs before the removal's marker is dropped.</summary>
+	protected void NoteRemovalCommitted()
+	{
+		Interlocked.Increment(ref _removals);
+	}
+
 	protected ValueTask<T?> FindAsync(TKey key, CancellationToken cancellationToken)
 	{
 		return _removing.ContainsKey(key)
 			? ValueTask.FromResult<T?>(null)
-			: Items.GetOrAddAsync(key, async miss =>
-				await LoadAsync(miss) is { } loaded && !IsBeingRemoved(loaded) ? loaded : null, cancellationToken);
+			: Items.GetOrAddAsync(key, LoadUnlessRemovedAsync, cancellationToken);
+	}
+
+	/// <summary>Loads an item, starting again when a removal committed while the load was running.</summary>
+	private async Task<T?> LoadUnlessRemovedAsync(TKey key)
+	{
+		while (true)
+		{
+			var generation = RemovalGeneration;
+			if (await LoadAsync(key) is not { } loaded || IsBeingRemoved(loaded))
+				return null;
+			// The load may have read the item before a removal that has since committed and dropped its marker.
+			if (generation == RemovalGeneration)
+				return loaded;
+		}
 	}
 
 	protected T Track(T item)
@@ -69,8 +92,11 @@ internal abstract class MemoryRepository<TKey, T>(DatabaseReader reader, Databas
 		var erased = Writer.SaveAsync(RootOf(item), (GetType(), key), EraseCommand(key));
 		_removing[key] = erased;
 		Items.Remove(key);
-		_ = erased.ContinueWith(_ => _removing.TryRemove(new KeyValuePair<TKey, Task>(key, erased)),
-			TaskScheduler.Default);
+		_ = erased.ContinueWith(_ =>
+		{
+			NoteRemovalCommitted();
+			_removing.TryRemove(new KeyValuePair<TKey, Task>(key, erased));
+		}, TaskScheduler.Default);
 		return erased;
 	}
 }

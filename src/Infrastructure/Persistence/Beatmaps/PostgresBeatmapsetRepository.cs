@@ -71,32 +71,31 @@ internal sealed class PostgresBeatmapsetRepository(
 	public async Task<Page<BeatmapsetRecord>> ListAsync(BeatmapQuery query, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
-		var (total, rows) = await Reader.ReadAsync(async context =>
+		while (true)
 		{
-			// A set matches when one of its difficulties does.
-			var matching = BeatmapQueryFilter.Apply(context.Beatmaps, query);
-			var sets = context.Beatmapsets.Where(set => matching.Any(beatmap => beatmap.BeatmapsetId == set.Id));
-			var count = await sets.CountAsync(cancellationToken);
-			var rows = await sets
-				.OrderByDescending(set => set.Id)
-				.Skip(page.Offset)
-				.Take(page.Limit)
-				.ToListAsync(cancellationToken);
-			return (count, rows);
-		}, cancellationToken);
+			var generation = RemovalGeneration;
+			var (total, rows) = await Reader.ReadAsync(async context =>
+			{
+				// A set matches when one of its difficulties does.
+				var matching = BeatmapQueryFilter.Apply(context.Beatmaps, query);
+				var sets = context.Beatmapsets.Where(set => matching.Any(beatmap => beatmap.BeatmapsetId == set.Id));
+				var count = await sets.CountAsync(cancellationToken);
+				var rows = await sets
+					.OrderByDescending(set => set.Id)
+					.Skip(page.Offset)
+					.Take(page.Limit)
+					.ToListAsync(cancellationToken);
+				return (count, rows);
+			}, cancellationToken);
 
-		var items = new List<BeatmapsetRecord>();
-		foreach (var row in rows)
-		{
 			// A set whose deletion is still queued never comes back into memory.
-			var set = ToBeatmapset(row);
-			if (IsBeingRemoved(set))
+			var found = rows.Select(ToBeatmapset).Where(set => !IsBeingRemoved(set)).ToList();
+			// The read may have seen rows before a deletion that has since committed; read again.
+			if (generation != RemovalGeneration)
 				continue;
 
-			items.Add(Track(set));
+			return new Page<BeatmapsetRecord>(found.Select(Track).ToList(), total);
 		}
-
-		return new Page<BeatmapsetRecord>(items, total);
 	}
 
 	protected override int KeyOf(BeatmapsetRecord item)
