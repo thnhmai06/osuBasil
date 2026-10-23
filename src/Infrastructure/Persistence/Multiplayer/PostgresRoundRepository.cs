@@ -1,10 +1,9 @@
-using System.Collections.Immutable;
 using Basil.Application.Persistence.Multiplayer;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
-using Basil.Infrastructure.Persistence.Postgres;
 using Basil.Infrastructure.Persistence.Memory;
+using Basil.Infrastructure.Persistence.Postgres;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Persistence.Multiplayer;
@@ -16,32 +15,23 @@ internal sealed class PostgresRoundRepository(
 	IMatchRepository matches)
 	: MemoryRepository<(int MatchId, int Index), Round>(reader, writer), IRoundRepository
 {
-	private readonly OwnedLists<int, MatchRecord, Round> _byMatch = new();
-
 	/// <inheritdoc />
-	public Task CreateOrUpdateAsync(Round round, CancellationToken cancellationToken = default)
+	public async Task CreateOrUpdateAsync(Round round, CancellationToken cancellationToken = default)
 	{
-		var saved = SaveAsync(round);
+		// The write does not decide what stays in memory: the live round is held by whoever uses it.
 		var live = Track(round);
-		_byMatch.Change(live.Match.Id, live.Match, current => AddOrReplace(current, live), saved);
-		return Task.CompletedTask;
+		if (!ReferenceEquals(live, round)) CopyTo(live, round);
+		await Writer.SaveAsync(RootOf(live), (GetType(), KeyOf(live)), SaveCommand(live));
 	}
 
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<Round>> ListAsync(MatchRecord match, CancellationToken cancellationToken = default)
 	{
-		var liveMatch = await matches.GetAsync(match.Id, cancellationToken) ?? match;
-		return await _byMatch.GetOrLoadAsync(liveMatch.Id, liveMatch, async () =>
-		{
-			var rows = await reader.ReadAsync(context => context.Rounds
-				.Where(row => row.MatchId == liveMatch.Id)
-				.OrderBy(row => row.Number)
-				.ToListAsync(cancellationToken), cancellationToken);
-			var result = ImmutableList.CreateBuilder<Round>();
-			foreach (var row in rows)
-				result.Add(Track(ToRound(liveMatch, row)));
-			return result.ToImmutable();
-		});
+		var rows = await Reader.ReadAsync(context => context.Rounds
+			.Where(row => row.MatchId == match.Id)
+			.OrderBy(row => row.Number)
+			.ToListAsync(cancellationToken), cancellationToken);
+		return [.. rows.Select(row => Track(ToRound(match, row)))];
 	}
 
 	protected override (int MatchId, int Index) KeyOf(Round item)
@@ -91,13 +81,6 @@ internal sealed class PostgresRoundRepository(
 		};
 		return new WriteCommand((context, token) =>
 			context.UpsertAsync(row, stored => stored.MatchId == row.MatchId && stored.Number == row.Number, token));
-	}
-
-	private static ImmutableList<Round> AddOrReplace(ImmutableList<Round> current, Round round)
-	{
-		var index = current.FindIndex(item => item.Index == round.Index);
-		var next = index < 0 ? current.Add(round) : current.SetItem(index, round);
-		return next.Sort(static (left, right) => left.Index.CompareTo(right.Index));
 	}
 
 	/// <summary>Builds a round of the given match from its stored row.</summary>

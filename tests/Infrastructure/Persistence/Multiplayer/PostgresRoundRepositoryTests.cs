@@ -44,17 +44,92 @@ public sealed class PostgresRoundRepositoryTests : DatabaseTests
 	}
 
 	[Fact]
-	public async Task A_round_is_stored()
+	public async Task A_round_is_stored_when_storing_it_returns()
 	{
 		var match = await CreateMatchAsync("stored_round_match");
 		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, First), TestContext.Current.CancellationToken);
 
-		var rows = await StoredRows.WaitForAsync(ConnectionString, "select number from rounds where match_id = @id",
-			new Dictionary<string, object?> { ["@id"] = match.Id },
-			rows => rows.Count == 1 && rows[0].Number("number") == 1,
-			"the stored round", TestContext.Current.CancellationToken);
+		var rows = await StoredRows.ReadAsync(ConnectionString, "select number from rounds where match_id = @id",
+			new Dictionary<string, object?> { ["@id"] = match.Id }, TestContext.Current.CancellationToken);
 
-		Assert.Single(rows);
+		Assert.Equal(1, Assert.Single(rows).Number("number"));
+	}
+
+	[Fact]
+	public async Task The_end_of_a_round_is_stored_when_storing_it_returns()
+	{
+		var match = await CreateMatchAsync("ended_round_match");
+		var round = StoredMatches.Round(match, 1, First);
+		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
+		round.EndedAt = Second;
+		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
+
+		var rows = await StoredRows.ReadAsync(ConnectionString, "select ended_at from rounds where match_id = @id",
+			new Dictionary<string, object?> { ["@id"] = match.Id }, TestContext.Current.CancellationToken);
+
+		Assert.Equal(Second, Assert.Single(rows).Instant("ended_at"));
+	}
+
+	[Fact]
+	public async Task The_abortion_of_a_round_is_stored_when_storing_it_returns()
+	{
+		var match = await CreateMatchAsync("aborted_round_match");
+		var round = StoredMatches.Round(match, 1, First);
+		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
+		round.EndedAt = Second;
+		round.Aborted = true;
+		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
+
+		var rows = await StoredRows.ReadAsync(ConnectionString, "select aborted from rounds where match_id = @id",
+			new Dictionary<string, object?> { ["@id"] = match.Id }, TestContext.Current.CancellationToken);
+
+		Assert.True(Assert.Single(rows).Bool("aborted"));
+	}
+
+	[Fact]
+	public async Task A_server_that_starts_afterwards_lists_the_stored_rounds_of_a_match()
+	{
+		var match = await CreateMatchAsync("restart_round_match");
+		var round = StoredMatches.Round(match, 1, First);
+		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
+		round.EndedAt = Second;
+		round.Aborted = true;
+		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
+
+		await using var other = new StorageComposition(ConnectionString);
+		var listed = Assert.Single(await other.Get<IRoundRepository>().ListAsync(match,
+			TestContext.Current.CancellationToken));
+
+		Assert.Equal((1, Second, true), (listed.Index, listed.EndedAt, listed.Aborted));
+	}
+
+	[Fact]
+	public async Task A_round_in_use_is_listed_as_the_same_instance()
+	{
+		var match = await CreateMatchAsync("held_round_match");
+		var round = StoredMatches.Round(match, 1, First);
+		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
+
+		var listed = await Rounds.ListAsync(match, TestContext.Current.CancellationToken);
+
+		Assert.Same(round, Assert.Single(listed));
+		GC.KeepAlive(round);
+	}
+
+	[Fact]
+	public async Task A_round_in_use_takes_the_end_stored_for_another_instance_of_it()
+	{
+		var match = await CreateMatchAsync("held_end_match");
+		var round = StoredMatches.Round(match, 1, First);
+		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
+		var ended = StoredMatches.Round(match, 1, First);
+		ended.EndedAt = Second;
+		await Rounds.CreateOrUpdateAsync(ended, TestContext.Current.CancellationToken);
+
+		var listed = Assert.Single(await Rounds.ListAsync(match, TestContext.Current.CancellationToken));
+
+		Assert.Equal(Second, listed.EndedAt);
+		GC.KeepAlive(round);
 	}
 
 	[Fact]

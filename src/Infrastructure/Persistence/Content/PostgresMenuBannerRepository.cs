@@ -16,18 +16,21 @@ internal sealed class PostgresMenuBannerRepository(
 	: IMenuBannerRepository, IResident
 {
 	private readonly ConcurrentDictionary<ContentReference, MenuBanner> _banners = new();
+	private readonly ResidentWrites<ContentReference> _writes = new();
 
 	/// <inheritdoc />
-	public Task CreateOrUpdateAsync(MenuBanner banner, CancellationToken cancellationToken = default)
+	public async Task CreateOrUpdateAsync(MenuBanner banner, CancellationToken cancellationToken = default)
 	{
-		var live = _banners.AddOrUpdate(banner.Image, banner, (_, current) =>
-		{
-			if (!ReferenceEquals(current, banner))
-				CopyTo(current, banner);
-			return current;
-		});
-		_ = writer.SaveAsync(Root.Server, (GetType(), live.Image), Upsert(live));
-		return Task.CompletedTask;
+		// A banner keeps the instant it was created at when it is replaced.
+		var createdAt = _banners.TryGetValue(banner.Image, out var current) ? current.CreatedAt : banner.CreatedAt;
+		await _writes.WriteAsync(banner.Image,
+			() => writer.SaveAsync(Root.Server, (GetType(), banner.Image), Upsert(banner, createdAt)),
+			() => _banners.AddOrUpdate(banner.Image, banner, (_, current) =>
+			{
+				if (!ReferenceEquals(current, banner))
+					CopyTo(current, banner);
+				return current;
+			}));
 	}
 
 	/// <inheritdoc />
@@ -43,14 +46,14 @@ internal sealed class PostgresMenuBannerRepository(
 	}
 
 	/// <inheritdoc />
-	public Task DeleteAsync(MenuBanner banner, CancellationToken cancellationToken = default)
+	public async Task DeleteAsync(MenuBanner banner, CancellationToken cancellationToken = default)
 	{
-		_banners.TryRemove(banner.Image, out _);
 		var image = banner.Image.ToString();
-		_ = writer.SaveAsync(Root.Server, (GetType(), banner.Image), new WriteCommand((context, token) => context.MenuBanners
-			.Where(row => row.Image == image)
-			.ExecuteDeleteAsync(token)));
-		return Task.CompletedTask;
+		await _writes.WriteAsync(banner.Image,
+			() => writer.SaveAsync(Root.Server, (GetType(), banner.Image), new WriteCommand((context, token) => context.MenuBanners
+				.Where(row => row.Image == image)
+				.ExecuteDeleteAsync(token))),
+			() => _banners.TryRemove(banner.Image, out _));
 	}
 
 	/// <inheritdoc />
@@ -95,7 +98,7 @@ internal sealed class PostgresMenuBannerRepository(
 		}
 	}
 
-	private static WriteCommand Upsert(MenuBanner banner)
+	private static WriteCommand Upsert(MenuBanner banner, DateTimeOffset createdAt)
 	{
 		var row = new MenuBannerRow
 		{
@@ -103,7 +106,7 @@ internal sealed class PostgresMenuBannerRepository(
 			Url = banner.Url.ToString(),
 			StartsAt = banner.StartsAt?.ToUniversalTime(),
 			EndsAt = banner.EndsAt?.ToUniversalTime(),
-			CreatedAt = banner.CreatedAt.ToUniversalTime()
+			CreatedAt = createdAt.ToUniversalTime()
 		};
 		return new WriteCommand((context, token) =>
 			context.UpsertAsync(row, stored => stored.Image == row.Image, token));

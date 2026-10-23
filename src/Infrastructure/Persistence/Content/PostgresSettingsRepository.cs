@@ -16,6 +16,7 @@ internal sealed class PostgresSettingsRepository(
 	ILogger<PostgresSettingsRepository> logger)
 	: ISettingsRepository, IResident
 {
+	private readonly ResidentWrites<int> _writes = new();
 	private ServerSettings? _settings;
 
 	/// <inheritdoc />
@@ -53,7 +54,7 @@ internal sealed class PostgresSettingsRepository(
 	}
 
 	/// <inheritdoc />
-	public Task CreateOrUpdateAsync(ServerSettings settings, CancellationToken cancellationToken = default)
+	public async Task CreateOrUpdateAsync(ServerSettings settings, CancellationToken cancellationToken = default)
 	{
 		var values = new Dictionary<string, string?>
 		{
@@ -64,14 +65,12 @@ internal sealed class PostgresSettingsRepository(
 			["mirror_download_endpoint"] = settings.BeatmapMirror.DownloadEndpoint?.ToString(),
 			["mirror_search_endpoint"] = settings.BeatmapMirror.SearchEndpoint?.ToString()
 		};
-		Interlocked.Exchange(ref _settings, settings);
-		_ = writer.SaveAsync(Root.Server, (GetType(), 1), new WriteCommand(
+		await _writes.WriteAsync(1, () => writer.SaveAsync(Root.Server, (GetType(), 1), new WriteCommand(
 			async (context, token) =>
 			{
 				foreach (var (name, value) in values)
 					await UpsertSettingAsync(context, name, value, token);
-			}));
-		return Task.CompletedTask;
+			})), () => Interlocked.Exchange(ref _settings, settings));
 	}
 
 	private static Task UpsertSettingAsync(BasilDbContext context, string name, string? value, CancellationToken token)

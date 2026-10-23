@@ -18,7 +18,7 @@ public sealed class PostgresMenuBannerRepositoryTests : DatabaseTests
 	private IMenuBannerRepository Banners => Get<IMenuBannerRepository>();
 
 	[Fact]
-	public async Task A_banner_is_stored()
+	public async Task A_stored_banner_is_kept_in_memory()
 	{
 		var banner = Banner("banners/one.png", Moment);
 
@@ -40,20 +40,21 @@ public sealed class PostgresMenuBannerRepositoryTests : DatabaseTests
 	}
 
 	[Fact]
-	public async Task A_banner_is_written_to_the_database()
+	public async Task A_banner_is_stored_when_storing_it_returns()
 	{
 		var banner = Banner("banners/one.png", Moment);
 
 		await Banners.CreateOrUpdateAsync(banner, TestContext.Current.CancellationToken);
 
-		var rows = await StoredRows.WaitForAsync(ConnectionString,
+		var rows = await StoredRows.ReadAsync(ConnectionString,
 			"select image, url, created_at from menu_banners where image = @image",
 			new Dictionary<string, object?> { ["@image"] = banner.Image.ToString() },
-			rows => rows.Count == 1, "the stored banner", TestContext.Current.CancellationToken);
+			TestContext.Current.CancellationToken);
 
-		Assert.Equal("banners/one.png", rows[0].Text("image"));
-		Assert.Equal(banner.Url.ToString(), rows[0].Text("url"));
-		Assert.Equal(Moment, rows[0].Instant("created_at"));
+		var stored = Assert.Single(rows);
+		Assert.Equal("banners/one.png", stored.Text("image"));
+		Assert.Equal(banner.Url.ToString(), stored.Text("url"));
+		Assert.Equal(Moment, stored.Instant("created_at"));
 	}
 
 	[Fact]
@@ -74,7 +75,6 @@ public sealed class PostgresMenuBannerRepositoryTests : DatabaseTests
 	{
 		var banner = Banner("banners/one.png", Moment);
 		await Banners.CreateOrUpdateAsync(banner, TestContext.Current.CancellationToken);
-		await WaitForBannerAsync(banner.Image);
 
 		var reloaded = await ReloadAsync(banner.Image);
 
@@ -95,18 +95,19 @@ public sealed class PostgresMenuBannerRepositoryTests : DatabaseTests
 	}
 
 	[Fact]
-	public async Task A_deleted_banner_is_written_to_the_database_as_gone()
+	public async Task A_deleted_banner_is_gone_from_the_database_when_deleting_it_returns()
 	{
 		var banner = Banner("banners/one.png", Moment);
 		await Banners.CreateOrUpdateAsync(banner, TestContext.Current.CancellationToken);
-		await WaitForBannerAsync(banner.Image);
 
 		await Banners.DeleteAsync(banner, TestContext.Current.CancellationToken);
 
-		await StoredRows.WaitForAsync(ConnectionString,
+		var rows = await StoredRows.ReadAsync(ConnectionString,
 			"select image from menu_banners where image = @image",
 			new Dictionary<string, object?> { ["@image"] = banner.Image.ToString() },
-			rows => rows.Count == 0, "the deleted banner", TestContext.Current.CancellationToken);
+			TestContext.Current.CancellationToken);
+
+		Assert.Empty(rows);
 	}
 
 	[Fact]
@@ -123,7 +124,7 @@ public sealed class PostgresMenuBannerRepositoryTests : DatabaseTests
 	}
 
 	[Fact]
-	public async Task A_replaced_banner_is_written_to_the_database()
+	public async Task A_replaced_banner_is_stored_when_storing_it_returns()
 	{
 		var banner = Banner("banners/one.png", Moment);
 		await Banners.CreateOrUpdateAsync(banner, TestContext.Current.CancellationToken);
@@ -131,12 +132,11 @@ public sealed class PostgresMenuBannerRepositoryTests : DatabaseTests
 
 		await Banners.CreateOrUpdateAsync(banner, TestContext.Current.CancellationToken);
 
-		var rows = await StoredRows.WaitForAsync(ConnectionString, "select url from menu_banners where image = @image",
+		var rows = await StoredRows.ReadAsync(ConnectionString, "select url from menu_banners where image = @image",
 			new Dictionary<string, object?> { ["@image"] = banner.Image.ToString() },
-			rows => rows.Count == 1 && rows[0].Text("url") == "https://example.com/changed",
-			"the replaced banner", TestContext.Current.CancellationToken);
+			TestContext.Current.CancellationToken);
 
-		Assert.Single(rows);
+		Assert.Equal("https://example.com/changed", Assert.Single(rows).Text("url"));
 	}
 
 	[Fact]
@@ -152,12 +152,35 @@ public sealed class PostgresMenuBannerRepositoryTests : DatabaseTests
 			EndsAt = null,
 			CreatedAt = Moment.AddDays(1)
 		}, TestContext.Current.CancellationToken);
-		await WaitForBannerAsync(created.Image);
 
 		var reloaded = await ReloadAsync(created.Image);
 
 		Assert.NotNull(reloaded);
 		Assert.Equal(created.CreatedAt, reloaded.CreatedAt);
+	}
+
+	[Fact]
+	public async Task Of_two_concurrent_changes_of_a_banner_memory_holds_the_one_stored_last()
+	{
+		var banner = Banner("banners/one.png", Moment);
+		await Banners.CreateOrUpdateAsync(banner, TestContext.Current.CancellationToken);
+		var first = Banner("banners/one.png", Moment);
+		first.Url = new Uri("https://example.com/first");
+		var second = Banner("banners/one.png", Moment);
+		second.Url = new Uri("https://example.com/second");
+
+		var changes = new[]
+		{
+			Banners.CreateOrUpdateAsync(first, TestContext.Current.CancellationToken),
+			Banners.CreateOrUpdateAsync(second, TestContext.Current.CancellationToken)
+		};
+		await Task.WhenAll(changes);
+
+		var rows = await StoredRows.ReadAsync(ConnectionString, "select url from menu_banners where image = @image",
+			new Dictionary<string, object?> { ["@image"] = banner.Image.ToString() },
+			TestContext.Current.CancellationToken);
+		var found = await Banners.GetAsync(banner.Image, TestContext.Current.CancellationToken);
+		Assert.Equal(Assert.Single(rows).Text("url"), found!.Url.ToString());
 	}
 
 	/// <summary>Builds a banner of the main menu.</summary>
@@ -205,9 +228,6 @@ public sealed class PostgresMenuBannerRepositoryTests : DatabaseTests
 	{
 		var good = Banner("banners/good.png", Moment);
 		await Banners.CreateOrUpdateAsync(good, TestContext.Current.CancellationToken);
-		await StoredRows.WaitForAsync(ConnectionString, "select image from menu_banners where image = @image",
-			new Dictionary<string, object?> { ["@image"] = good.Image.ToString() }, rows => rows.Count == 1,
-			"the stored banner", TestContext.Current.CancellationToken);
 		await using (var connection = new NpgsqlConnection(ConnectionString))
 		{
 			await connection.OpenAsync(TestContext.Current.CancellationToken);
@@ -245,14 +265,5 @@ public sealed class PostgresMenuBannerRepositoryTests : DatabaseTests
 		var repository = fresh.Get<IMenuBannerRepository>();
 		await fresh.ResidentOf(repository).LoadAsync(TestContext.Current.CancellationToken);
 		return await repository.GetAsync(image, TestContext.Current.CancellationToken);
-	}
-
-	/// <summary>Waits until a banner is stored.</summary>
-	/// <param name="image">The image of the banner to wait for.</param>
-	private async Task WaitForBannerAsync(ContentReference image)
-	{
-		await StoredRows.WaitForAsync(ConnectionString, "select image from menu_banners where image = @image",
-			new Dictionary<string, object?> { ["@image"] = image.ToString() }, rows => rows.Count == 1,
-			"the stored banner", TestContext.Current.CancellationToken);
 	}
 }
