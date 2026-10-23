@@ -11,13 +11,12 @@ namespace Basil.Infrastructure.Persistence.Multiplayer;
 internal sealed class PostgresRoundScoreRepository(
 	DatabaseReader reader,
 	DatabaseWriter writer,
-	IRoundRepository rounds,
 	IScoreRepository scores) : IRoundScoreRepository
 {
 	/// <inheritdoc />
 	public async Task<RoundScore> RecordAsync(RoundScore roundScore, CancellationToken cancellationToken = default)
 	{
-		var round = await LiveAsync(roundScore.Round, cancellationToken);
+		var round = roundScore.Round;
 		var row = new RoundScoreRow
 		{
 			ScoreId = roundScore.Score.Id,
@@ -33,9 +32,8 @@ internal sealed class PostgresRoundScoreRepository(
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<RoundScore>> ListAsync(Round round, CancellationToken cancellationToken = default)
 	{
-		var live = await LiveAsync(round, cancellationToken);
 		var rows = await reader.ReadAsync(context => context.RoundScores
-			.Where(rs => rs.MatchId == live.Match.Id && rs.RoundNumber == live.Index)
+			.Where(rs => rs.MatchId == round.Match.Id && rs.RoundNumber == round.Index)
 			.OrderBy(rs => rs.ScoreId)
 			.ToListAsync(cancellationToken), cancellationToken);
 
@@ -45,16 +43,9 @@ internal sealed class PostgresRoundScoreRepository(
 				result.Add(new RoundScore
 				{
 					Score = score,
-					Round = live,
+					Round = round,
 					Team = row.Team is { } team ? (GameTeam)team : null
 				});
 		return result;
-	}
-
-	/// <summary>Finds the live instance of a round, which the listed scores refer to.</summary>
-	private async Task<Round> LiveAsync(Round round, CancellationToken cancellationToken)
-	{
-		var matchRounds = await rounds.ListAsync(round.Match, cancellationToken);
-		return matchRounds.FirstOrDefault(item => item.Equals(round)) ?? round;
 	}
 }
