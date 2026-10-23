@@ -231,6 +231,7 @@ internal sealed class PostgresBeatmapRepository(
 	/// <param name="now">The time of the import, in UTC.</param>
 	/// <param name="releasable">The ids of the sets whose difficulties this commit replaces or removes.</param>
 	/// <param name="context">The EF context the commit runs on.</param>
+	/// <param name="token">A token that cancels the commit.</param>
 	/// <returns>Each stored difficulty, in the same order.</returns>
 	/// <remarks>
 	///     A difficulty already stored under the same file's hash, or under the same osu! id, is moved to this set and
