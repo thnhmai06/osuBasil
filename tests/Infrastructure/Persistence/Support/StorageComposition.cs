@@ -21,12 +21,15 @@ internal sealed class StorageComposition : IAsyncDisposable
 	/// <param name="connectionString">How to reach the database.</param>
 	/// <param name="time">The clock the storage reads, or <see langword="null" /> for the system clock.</param>
 	/// <param name="logs">Receives the storage's log entries, or <see langword="null" /> for none.</param>
-	public StorageComposition(string connectionString, TimeProvider? time = null, ILoggerProvider? logs = null)
+	/// <param name="configure">Changes the registrations after the storage's own, or <see langword="null" /> for none.</param>
+	public StorageComposition(string connectionString, TimeProvider? time = null, ILoggerProvider? logs = null,
+		Action<IServiceCollection>? configure = null)
 	{
 		_root = Path.Combine(Path.GetTempPath(), "basil-test-storage-" + Guid.NewGuid().ToString("N"));
 		var services = new ServiceCollection();
 		if (time is not null) services.AddSingleton(time);
 		services.AddInfrastructurePersistence();
+		configure?.Invoke(services);
 		services.AddLogging(builder =>
 		{
 			if (logs is not null) builder.AddProvider(logs);
