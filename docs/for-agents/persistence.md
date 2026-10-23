@@ -65,15 +65,22 @@ Repository contracts, byte storages and the memory-first model. Moved out of `AG
   in memory is never called a cache.
   * **Resident data**, the database records every client uses (`ServerSettings`, general channels, menu banners), is
     loaded at startup and never released; it changes only through its repository, never in the database behind the
-    server's back. File storages are not resident and hold no file content in memory: the file system is their
+    server's back. A change is written first: `CreateOrUpdateAsync`/`DeleteAsync` return once the database has
+    committed it, and only then does the resident copy follow (`ResidentWrites`), so a refused write leaves memory
+    unchanged and reaches the caller; of concurrent changes of one identity, memory ends equal to the last one
+    committed. Reads come from the resident copy. File storages are not resident and hold no file content in memory: the file system is their
     index, read as it is when asked.
   * **On-demand data:** a repository holds one live instance per identity, returned by every `GetAsync`,
     `GetByYAsync` and `ListAsync`. It lives while anything holds it (a session its user, a room its match) or while
     a change of it is not stored yet, and is then released; there is no TTL. A list owned by an object (a user's
     restrictions and relationships, a set's beatmaps, a match's rounds and events) lives as long as
     its owner instance: it is loaded whole the first time it is needed, then changed item by item.
-  * **Writes:** `CreateOrUpdateAsync`/`DeleteAsync` queue a copy of the values **as they are when queued** and return
-    at once; only a try-operation waits for the database, because its outcome comes from it. A relation recorded once and never changed (`round_scores`) is no object of memory: its repository awaits the write and lists from the database. `DatabaseWriter` keeps
+  * **Writes:** for the memory-first objects (users, matches, beatmaps, scores), `CreateOrUpdateAsync`/`DeleteAsync` queue
+    a copy of the values **as they are when queued** and return at once; only a try-operation waits for the database,
+    because its outcome comes from it. Resident data (above) and records that no business need keeps as live objects
+    await the write instead: a relation recorded once and never changed (`round_scores`) lists from the database, and a
+    round (`rounds`) is stored when `CreateOrUpdateAsync` returns, its write never pins the live instance (a room's
+    round is the instance `ListAsync` returns while it is held). `DatabaseWriter` keeps
     one queue per root (`Root.User`, `Root.Match`, `Root.Beatmapset`, `Root.Server`) and sends its writes one
     statement at a time, in order; a copy not sent yet is replaced by a newer copy of the same identity. At most
     `Basil:Database:WriteConnections` connections (8 by default, see [`plans/evidence/postgresql-direct-writes-20261008`](plans/evidence/postgresql-direct-writes-20261008/results.md)) write at once. No write is grouped with unrelated
