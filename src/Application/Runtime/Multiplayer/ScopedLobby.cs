@@ -128,7 +128,7 @@ public sealed class ScopedLobby : Scoped<Permissions>
 	/// <returns>
 	///     <see langword="true" /> for a public match, and for a private one when the user holds
 	///     <see cref="Permissions.RoomViewPrivate" />, took part in the match, or manages it (its creator, or a referee
-	///     that is still one). A suspended permission does not count.
+	///     that is still one), or sits in or manages the match's open room. A suspended permission does not count.
 	/// </returns>
 	/// <remarks>
 	///     This is the one gate for everything the match owns: the match itself, its rounds, its events, its report and
@@ -141,7 +141,15 @@ public sealed class ScopedLobby : Scoped<Permissions>
 		ArgumentNullException.ThrowIfNull(match);
 		return !match.Value.IsPrivate
 		       || Require(Permissions.RoomViewPrivate) is null
+		       || TakesPartInOpenRoom(match)
 		       || await Lobby.Context.Matches.IsVisibleToAsync(match, By.Record, cancellationToken);
+	}
+
+	/// <summary>Tells whether the user manages the match's open room or sits in it, which the stored history may not show yet.</summary>
+	private bool TakesPartInOpenRoom(MatchRecord match)
+	{
+		return Lobby.Find(match.Id) is { } room
+		       && (room.Authority.IsManagedBy(By.Record) || room.Slots.Find(By.Record) is not null);
 	}
 
 	/// <summary>Starts watching the multiplayer lobby.</summary>

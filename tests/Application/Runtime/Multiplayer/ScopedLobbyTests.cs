@@ -407,6 +407,33 @@ public sealed class ScopedLobbyTests
 		Assert.False(await app.Lobby.ScopeTo(connection).CanViewAsync(match, TestContext.Current.CancellationToken));
 	}
 
+	[Fact]
+	public async Task CanViewAsync_APrivateOpenRoom_IsOpenToAPlayerSeatedInItBeforeItsHistoryIsStored()
+	{
+		using var app = new TestApplication();
+		var creator = await RoomFixture.PlayerAsync(app, "Creator");
+		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("secret room", "", false, true,
+			cancellationToken: TestContext.Current.CancellationToken);
+		Assert.True(opened.IsOk);
+		var player = await RoomFixture.PlayerAsync(app, "Player");
+		Assert.True((await room!.ScopeTo(player).Members.JoinAsync("", TestContext.Current.CancellationToken)).IsOk);
+
+		Assert.True(await app.Lobby.ScopeTo(player).CanViewAsync(room.Match, TestContext.Current.CancellationToken));
+	}
+
+	[Fact]
+	public async Task CanViewAsync_APrivateOpenRoom_IsClosedToAStrangerWhoIsNotInIt()
+	{
+		using var app = new TestApplication();
+		var creator = await RoomFixture.PlayerAsync(app, "Creator");
+		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("secret room", "", false, true,
+			cancellationToken: TestContext.Current.CancellationToken);
+		Assert.True(opened.IsOk);
+		var stranger = await RoomFixture.PlayerAsync(app, "Stranger");
+
+		Assert.False(await app.Lobby.ScopeTo(stranger).CanViewAsync(room!.Match, TestContext.Current.CancellationToken));
+	}
+
 	private static async Task<MatchRecord> MatchAsync(TestApplication app, UserRecord creator, bool isPrivate)
 	{
 		return await app.Provider.GetRequiredService<IMatchRepository>().CreateAsync(new MatchData
