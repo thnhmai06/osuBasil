@@ -31,9 +31,9 @@ Repository contracts, byte storages and the memory-first model. Moved out of `AG
   packed into an `.osz` first. Difficulties lie at the top of an archive. There are no collections: a `.zip`, a loose
   `.osu` or any other file placed by hand is not a source and is left as it is, as is an invalid source; an upload
   that is rejected leaves nothing, and its set and beatmaps are stored in one transaction. Two sources of one scan never
-  become the same set or share a difficulty (the first found wins). A folder being deleted is
-  renamed with `.deleted_` first; anything being written (an upload, a derived file, a set folder before it moves into
-  place) lies under a top-level `.incoming_` name, which is never listed or watched, so moves stay on one volume. Every
+  become the same set or share a difficulty (the first found wins). Deleting is instant: a folder is
+  removed recursively at once and a failure reaches the caller; nothing is renamed first. Anything being written (an upload, a derived file, a set folder before it moves into
+  place) or set aside (the previous folder of a set while its replacement moves in, so a failed move can put it back; it is deleted right after) lies under a top-level `.incoming_` name, which is never listed or watched, so moves stay on one volume. Every
   name written from untrusted input avoids the names Windows keeps for devices (`CON`, `NUL.txt`, `COM1`, ...): a
   derived file gets a `_` prefix. `Beatmapsets.ScanAsync()` runs at startup before clients are served: it checks every entry
   (size and modification time, then the hash), indexes what changed, makes missing files again, and stores every

@@ -111,17 +111,27 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Names_marked_incoming_or_deleted_are_never_listed()
+	public async Task Names_marked_incoming_are_never_listed()
 	{
 		File.WriteAllBytes(Path.Combine(Sets, ".incoming_upload.osz"), Osz(("a.osu", "x")));
 		Directory.CreateDirectory(Path.Combine(Sets, ".incoming_folder"));
-		Directory.CreateDirectory(Path.Combine(Sets, "5 Artist - Title.deleted_0123"));
-		Directory.CreateDirectory(Path.Combine(Sets, ".deleted_other"));
 		PlaceFolder(1, "Artist", "Title", Osz(("a.osu", "x")));
 
 		var sources = await _storage.ListAsync(TestContext.Current.CancellationToken);
 
 		Assert.Equal(["1 Artist - Title"], sources.Select(source => source.Name));
+	}
+
+	[Fact]
+	public async Task A_folder_named_like_a_deleted_one_is_an_ordinary_entry()
+	{
+		Directory.CreateDirectory(Path.Combine(Sets, "5 Artist - Title.deleted_0123"));
+		Directory.CreateDirectory(Path.Combine(Sets, ".deleted_other"));
+
+		var sources = await _storage.ListAsync(TestContext.Current.CancellationToken);
+
+		Assert.Equal([".deleted_other", "5 Artist - Title.deleted_0123"],
+			sources.Select(source => source.Name).Order(StringComparer.Ordinal));
 	}
 
 	[Fact]
@@ -276,6 +286,32 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
+	public async Task A_replaced_folder_leaves_no_set_aside_copy_in_the_storage()
+	{
+		var id = NewId();
+		PlaceFolder(id, "Artist", "Title", Osz(("a.osu", "old")), ("versions/stale.osu", "stale"));
+		var archive = await _storage.SaveAsync(new MemoryStream(Osz(("a.osu", "new"))),
+			TestContext.Current.CancellationToken);
+
+		await _storage.SaveAsync(Set(id, "Artist", "Title"), archive, TestContext.Current.CancellationToken);
+
+		Assert.Equal([$"{id} Artist - Title", Path.Combine($"{id} Artist - Title", "archive.osz")], Everything());
+	}
+
+	[Fact]
+	public async Task A_set_folder_moved_over_an_existing_target_leaves_only_the_target()
+	{
+		var id = NewId();
+		PlaceFolder(id, "Old Artist", "Old Title", Osz(("a.osu", "old")), ("versions/stale.osu", "stale"));
+		var own = await OwnArchiveAsync($"{id} Old Artist - Old Title");
+		PlaceFolder(id, "New Artist", "New Title", Osz(("a.osu", "other")), ("versions/stale2.osu", "stale"));
+
+		await _storage.SaveAsync(Set(id, "New Artist", "New Title"), own, TestContext.Current.CancellationToken);
+
+		Assert.Equal([$"{id} New Artist - New Title"], TopLevel());
+	}
+
+	[Fact]
 	public async Task A_new_archive_deletes_the_other_folder_stored_for_the_set()
 	{
 		var id = NewId();
@@ -354,7 +390,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 
 		var name = Assert.Single(TopLevel());
 		Assert.StartsWith($"{id} Artist - ", name);
-		Assert.True(Encoding.UTF8.GetByteCount(name) <= 150, "A folder name keeps room for the marker added while it is removed.");
+		Assert.True(Encoding.UTF8.GetByteCount(name) <= 150, "A folder name stays well within the limit of common file systems.");
 		Assert.Equal(bytes,
 			await ReadAllBytesAsync(await _storage.OpenArchiveAsync(set, true, TestContext.Current.CancellationToken)));
 	}
@@ -769,6 +805,31 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
+	public async Task Deleting_a_set_leaves_no_renamed_leftover_beside_the_other_folders()
+	{
+		var id = NewId();
+		var other = NewId();
+		PlaceFolder(id, "Artist", "Title", Osz(("a.osu", "x")));
+		PlaceFolder(other, "Other", "Set", Osz(("a.osu", "x")));
+		var before = Everything().Where(path => path.StartsWith($"{other} ", StringComparison.Ordinal)).ToArray();
+
+		await _storage.DeleteAsync(Set(id, "Artist", "Title"), TestContext.Current.CancellationToken);
+
+		Assert.Equal(before, Everything());
+	}
+
+	[Fact]
+	public async Task Deleting_a_set_with_nested_files_removes_all_of_them_at_once()
+	{
+		var id = NewId();
+		PlaceFolder(id, "Artist", "Title", Osz(("a.osu", "x")), ("audio/preview_a.mp3", "p"), ("versions/h.osu", "v"));
+
+		await _storage.DeleteAsync(Set(id, "Artist", "Title"), TestContext.Current.CancellationToken);
+
+		Assert.Empty(Everything());
+	}
+
+	[Fact]
 	public async Task Deleting_a_set_that_is_not_stored_does_nothing()
 	{
 		PlaceFolder(NewId(), "Artist", "Title", Osz(("a.osu", "x")));
@@ -783,7 +844,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	public async Task A_set_with_a_file_in_use_keeps_its_folder_and_deleting_it_fails_with_an_IO_error()
 	{
 		Assert.SkipUnless(OperatingSystem.IsWindows(),
-			"Only Windows refuses to rename a folder with an open file in it.");
+			"Only Windows refuses to delete a folder with an open file in it; no portable way to make a deletion fail.");
 		var id = NewId();
 		var bytes = Osz(("a.osu", "x"));
 		var folder = PlaceFolder(id, "Artist", "Title", bytes);
@@ -932,19 +993,18 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Names_marked_incoming_or_deleted_are_never_reported()
+	public async Task Names_marked_incoming_are_never_reported()
 	{
 		await using var watching = Watching.Start(_storage, _time);
 
 		File.WriteAllBytes(Path.Combine(Sets, ".incoming_upload.osz"), Osz(("a.osu", "x")));
 		Directory.CreateDirectory(Path.Combine(Sets, ".incoming_folder"));
 		File.WriteAllText(Path.Combine(Sets, ".incoming_folder", "archive.osz"), "inside");
-		Directory.CreateDirectory(Path.Combine(Sets, "5 Artist - Title.deleted_0123"));
 		PlaceFolder(NewId(), "Sentinel", "Folder", Osz(("a.osu", "x")));
 		var reported = await watching.ReadUntilAsync(source => source.Name.Contains("Sentinel"));
 
 		Assert.DoesNotContain(reported,
-			source => source.Name.StartsWith(".incoming_") || source.Name.Contains(".deleted_"));
+			source => source.Name.StartsWith(".incoming_"));
 	}
 
 	[Fact]

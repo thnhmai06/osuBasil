@@ -32,7 +32,7 @@ internal sealed class StorageStartup(DataPaths paths, DatabaseMigrator migrator,
 		return Task.CompletedTask;
 	}
 
-	/// <summary>Removes the set folders that were being removed or written when the server last stopped.</summary>
+	/// <summary>Removes the set folders that were being written or set aside when the server last stopped.</summary>
 	private void RemoveLeftovers()
 	{
 		foreach (var folder in Directory.EnumerateDirectories(paths.Beatmapsets.Path))

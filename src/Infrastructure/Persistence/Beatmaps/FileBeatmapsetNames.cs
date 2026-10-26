@@ -11,14 +11,8 @@ namespace Basil.Infrastructure.Persistence.Beatmaps;
 internal static class FileBeatmapsetNames
 {
 	/// <summary>
-	///     The marker a top-level name carries while its folder is being removed from the storage; such a name is never
-	///     a set, an entry, or watched.
-	/// </summary>
-	internal const string DeletedMarker = ".deleted_";
-
-	/// <summary>
-	///     The marker a top-level name starts with while it is being written: an upload, a file or a set folder before
-	///     it is moved into place. Such a name is never a set, an entry, or watched.
+	///     The marker a top-level name starts with while it is being written or set aside: an upload, a file, a set
+	///     folder before it is moved into place or the previous folder while its replacement is moved in. Such a name is never a set, an entry, or watched.
 	/// </summary>
 	internal const string IncomingMarker = ".incoming_";
 
@@ -40,8 +34,7 @@ internal static class FileBeatmapsetNames
 	internal const string PreviewPrefix = "preview_";
 
 	/// <summary>
-	///     The most bytes a set folder's name may take: the 255 of common file systems, less the deleted marker and the
-	///     identifier that follow it while the folder is being removed.
+	///     The most bytes a set folder's name may take: well within the 255 of common file systems.
 	/// </summary>
 	private const int MaxFolderNameBytes = 150;
 
@@ -57,11 +50,10 @@ internal static class FileBeatmapsetNames
 
 	/// <summary>Determines whether a top-level name is hidden from listing and watching.</summary>
 	/// <param name="name">The name.</param>
-	/// <returns><see langword="true" /> while the name is being removed or written.</returns>
+	/// <returns><see langword="true" /> while the name is being written or set aside.</returns>
 	internal static bool IsHidden(string name)
 	{
-		return name.Contains(DeletedMarker, StringComparison.Ordinal) ||
-		       name.StartsWith(IncomingMarker, StringComparison.Ordinal);
+		return name.StartsWith(IncomingMarker, StringComparison.Ordinal);
 	}
 
 	/// <summary>Determines whether a name is that of a beatmapset archive.</summary>

@@ -151,7 +151,7 @@ internal sealed class FileBeatmapsetStorage(
 				}
 				else
 				{
-					if (Directory.Exists(target)) RemoveMarked(MarkDeleted(target), set);
+					DeleteDirectoryIfExists(target);
 					Directory.Move(placedParent!, target);
 				}
 			}
@@ -161,38 +161,41 @@ internal sealed class FileBeatmapsetStorage(
 				var stagingFolder = Incoming();
 				Directory.CreateDirectory(stagingFolder);
 				var stagedArchive = Path.Combine(stagingFolder, ArchiveName);
-				string? marked = null;
+				string? aside = null;
 				try
 				{
 					File.Move(placed.Path, stagedArchive);
-					if (Directory.Exists(target)) marked = MarkDeleted(target);
+					if (Directory.Exists(target))
+					{
+						aside = Incoming();
+						Directory.Move(target, aside);
+					}
+
 					Directory.Move(stagingFolder, target);
 				}
 				catch
 				{
-					if (marked is not null && Directory.Exists(marked) && !Directory.Exists(target))
-						Directory.Move(marked, target);
+					if (aside is not null && Directory.Exists(aside) && !Directory.Exists(target))
+						Directory.Move(aside, target);
 					// Never lose the archive: put it back where it was before dropping the staging folder.
 					if (File.Exists(stagedArchive) && !File.Exists(placed.Path)) File.Move(stagedArchive, placed.Path);
 					DeleteDirectoryIfExists(stagingFolder);
 					throw;
 				}
 
-				if (marked is not null) RemoveMarked(marked, set);
+				if (aside is not null) RemoveAside(aside, set);
 
 				if (placed.PackedFrom is not null && Directory.Exists(placed.PackedFrom) &&
 				    !SamePath(placed.PackedFrom, target))
 				{
-					var packedMarked = MarkDeleted(placed.PackedFrom);
-					RemoveMarked(packedMarked, set);
+					Directory.Delete(placed.PackedFrom, true);
 				}
 			}
 
 			foreach (var other in FoldersOf(set.Id).Where(folder =>
 				         IsSetFolder(folder) && !string.Equals(folder, target, StringComparison.Ordinal)))
 			{
-				var otherMarked = MarkDeleted(other);
-				RemoveMarked(otherMarked, set);
+				Directory.Delete(other, true);
 			}
 		}
 		finally
@@ -429,7 +432,7 @@ internal sealed class FileBeatmapsetStorage(
 		try
 		{
 			foreach (var folder in FoldersOf(set.Id).Where(IsSetFolder))
-				RemoveMarked(MarkDeleted(folder), set);
+				Directory.Delete(folder, true);
 		}
 		finally
 		{
@@ -525,28 +528,14 @@ internal sealed class FileBeatmapsetStorage(
 		       ?? candidates.MinBy(folder => Path.GetFileName(folder), StringComparer.Ordinal);
 	}
 
-	/// <summary>
-	///     Renames a folder out of the way before its files are removed, so nothing new is stored under its name
-	///     meanwhile.
-	/// </summary>
-	/// <param name="folder">The folder's full path.</param>
-	/// <returns>The folder's new path, carrying the deleted marker.</returns>
-	/// <exception cref="IOException">The folder could not be renamed; nothing was changed.</exception>
-	private static string MarkDeleted(string folder)
-	{
-		var marked = folder + DeletedMarker + Guid.NewGuid().ToString("N");
-		Directory.Move(folder, marked);
-		return marked;
-	}
-
-	/// <summary>Removes a folder that was renamed out of the way, leaving what is still in use to the startup sweep.</summary>
-	/// <param name="markedFolder">The folder's renamed path.</param>
+	/// <summary>Removes the previous folder of a set that was moved aside while the new one was moved in.</summary>
+	/// <param name="asideFolder">The folder's path outside the set's name.</param>
 	/// <param name="set">The beatmapset whose previous files these are.</param>
-	private void RemoveMarked(string markedFolder, BeatmapsetRecord set)
+	private void RemoveAside(string asideFolder, BeatmapsetRecord set)
 	{
 		try
 		{
-			Directory.Delete(markedFolder, true);
+			Directory.Delete(asideFolder, true);
 		}
 		catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
 		{
