@@ -1,17 +1,16 @@
 using Basil.Application.Runtime.Common;
-using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Runtime.Beatmaps;
 
-/// <summary>A beatmapset as one connection may act on it.</summary>
+/// <summary>A beatmapset as one actor may act on it.</summary>
 public sealed class ScopedBeatmapset : Scoped<UserPermissions>
 {
-	/// <summary>Creates a scoped beatmapset for a connection.</summary>
+	/// <summary>Creates a scoped beatmapset for an actor.</summary>
 	/// <param name="beatmapset">The beatmapset to scope.</param>
-	/// <param name="by">The connection acting on the beatmapset.</param>
-	internal ScopedBeatmapset(Beatmapset beatmapset, Connection by) : base(by,
-		by.User.EffectivePermissions(beatmapset.Context.Clock.GetUtcNow()))
+	/// <param name="by">The actor acting on the beatmapset.</param>
+	internal ScopedBeatmapset(Beatmapset beatmapset, IActor by) : base(by,
+		by.EffectivePermissions(beatmapset.Context.Clock.GetUtcNow()))
 	{
 		Beatmapset = beatmapset;
 	}

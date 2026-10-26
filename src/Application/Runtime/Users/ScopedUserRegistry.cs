@@ -7,7 +7,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Runtime.Users;
 
 /// <summary>The user registry as one connection may act on it: creating accounts.</summary>
-public sealed class ScopedUserRegistry : Scoped<UserPermissions>
+public sealed class ScopedUserRegistry : Scoped<UserPermissions, Connection>
 {
 	private readonly UserRegistry _registry;
 

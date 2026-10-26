@@ -6,7 +6,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Runtime.Chat;
 
 /// <summary>A chat channel scoped to one connection.</summary>
-public sealed class ScopedChannel : Scoped<UserPermissions>
+public sealed class ScopedChannel : Scoped<UserPermissions, Connection>
 {
 	/// <summary>Creates a channel scope for a connection.</summary>
 	/// <param name="channel">The channel to scope.</param>

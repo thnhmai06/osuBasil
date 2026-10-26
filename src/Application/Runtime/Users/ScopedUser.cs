@@ -14,7 +14,7 @@ namespace Basil.Application.Runtime.Users;
 ///     The snapshot is for one request or command; keeping it longer lets its rights outlive changes to permissions
 ///     or restrictions.
 /// </remarks>
-public sealed class ScopedUser : Scoped<UserPermissions>
+public sealed class ScopedUser : Scoped<UserPermissions, Connection>
 {
 	/// <summary>Creates a scoped account for a connection.</summary>
 	/// <param name="user">The account to scope.</param>

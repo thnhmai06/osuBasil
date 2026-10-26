@@ -1,5 +1,5 @@
 using Basil.Application.Persistence.Beatmaps;
-using Basil.Application.Runtime.Sessions;
+using Basil.Application.Runtime.Common;
 using Basil.Domain.Beatmaps;
 
 namespace Basil.Application.Runtime.Beatmaps;
@@ -22,10 +22,10 @@ public sealed class Beatmapset
 	/// <summary>The runtime context for beatmapset behaviour.</summary>
 	internal BeatmapsetContext Context { get; }
 
-	/// <summary>Scopes this beatmapset's behaviour to a connection and its authority.</summary>
-	/// <param name="by">The connection acting on the beatmapset.</param>
-	/// <returns>A short-lived scope for this beatmapset and connection.</returns>
-	public ScopedBeatmapset ScopeTo(Connection by)
+	/// <summary>Scopes this beatmapset's behaviour to an actor and its authority.</summary>
+	/// <param name="by">The actor acting on the beatmapset.</param>
+	/// <returns>A short-lived scope for this beatmapset and actor.</returns>
+	public ScopedBeatmapset ScopeTo(IActor by)
 	{
 		return new ScopedBeatmapset(this, by);
 	}

@@ -1,6 +1,4 @@
 using System.Reflection;
-using Basil.Application.Runtime.Sessions;
-
 namespace Basil.Application.Runtime.Common;
 
 /// <summary>
@@ -18,15 +16,17 @@ namespace Basil.Application.Runtime.Common;
 ///     scope's
 ///     own room permissions, or any other flags or levels enum.
 /// </typeparam>
-/// <remarks>Creates a scope for a connection with the permissions it holds.</remarks>
-/// <param name="by">The connection acting.</param>
+/// <typeparam name="TActor">The kind of actor the scope is for.</typeparam>
+/// <remarks>Creates a scope for an actor with the permissions it holds.</remarks>
+/// <param name="by">The actor acting.</param>
 /// <param name="permissions">The permissions the connection holds, as they are when the scope is created.</param>
-public abstract class Scoped<TPermissions>(Connection by, TPermissions permissions) where TPermissions : struct, Enum
+public abstract class Scoped<TPermissions, TActor>(TActor by, TPermissions permissions)
+	where TPermissions : struct, Enum where TActor : IActor
 {
 	private static readonly bool IsFlagsEnum = typeof(TPermissions).GetCustomAttribute<FlagsAttribute>() is not null;
 
-	/// <summary>Gets the connection this scope is for.</summary>
-	public Connection By { get; } = by;
+	/// <summary>Gets the actor this scope is for.</summary>
+	public TActor By { get; } = by;
 
 	/// <summary>Gets the permissions the connection held when the scope was created.</summary>
 	public TPermissions Permissions { get; } = permissions;
@@ -49,3 +49,10 @@ public abstract class Scoped<TPermissions>(Connection by, TPermissions permissio
 		return missing == 0 ? null : (TPermissions)Enum.ToObject(typeof(TPermissions), missing);
 	}
 }
+
+/// <summary>A scope for any actor.</summary>
+/// <typeparam name="TPermissions">The enum of the permissions the scope checks.</typeparam>
+/// <param name="by">The actor acting.</param>
+/// <param name="permissions">The permissions the actor holds, as they are when the scope is created.</param>
+public abstract class Scoped<TPermissions>(IActor by, TPermissions permissions)
+	: Scoped<TPermissions, IActor>(by, permissions) where TPermissions : struct, Enum;

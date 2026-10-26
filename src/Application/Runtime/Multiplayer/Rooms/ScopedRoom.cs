@@ -11,7 +11,7 @@ namespace Basil.Application.Runtime.Multiplayer.Rooms;
 ///     <see cref="Room.ScopeTo" />, use it, drop it. Keeping one past the request lets its rights outlive a change of
 ///     role or restriction.
 /// </remarks>
-public sealed class ScopedRoom : Scoped<RoomPermissions>
+public sealed class ScopedRoom : Scoped<RoomPermissions, Connection>
 {
 	/// <summary>The permissions the connection has globally, as they were when the scope was created.</summary>
 	private readonly UserPermissions _global;

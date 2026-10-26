@@ -7,7 +7,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Runtime.Sessions;
 
 /// <summary>An osu! client as one connection may act on it.</summary>
-public sealed class ScopedBanchoConnection : Scoped<UserPermissions>
+public sealed class ScopedBanchoConnection : Scoped<UserPermissions, Connection>
 {
 	/// <summary>Creates a scope for an osu! client and a connection.</summary>
 	/// <param name="host">The client to scope.</param>

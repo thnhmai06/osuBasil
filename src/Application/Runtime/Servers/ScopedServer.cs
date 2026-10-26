@@ -5,7 +5,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Runtime.Servers;
 
 /// <summary>The server as one connection may act on it.</summary>
-public sealed class ScopedServer : Scoped<UserPermissions>
+public sealed class ScopedServer : Scoped<UserPermissions, Connection>
 {
 	/// <summary>Creates a server scope for a connection.</summary>
 	/// <param name="server">The server to scope.</param>

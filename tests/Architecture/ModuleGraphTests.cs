@@ -40,9 +40,6 @@ public class ModuleGraphTests
 	/// <summary>Edges that exist today and are not in the target; each one is to be removed.</summary>
 	private static readonly HashSet<(string From, string To)> Debt =
 	[
-		// The Scoped base names its actor's Connection, so every scoped object reaches Sessions and Users: an actor
-		// interface in Common cuts these.
-		("Beatmaps", "Sessions"), ("Beatmaps", "Users"),
 		// The room owns its channel: Chat should react to room events instead.
 		("Multiplayer", "Chat"),
 		// The connection reports anticheat flags with the room in the event; the event should name the player only.
@@ -97,8 +94,7 @@ public class ModuleGraphTests
 			.Where(pair => !Types.InAssembly(Runtime).That()
 				.ResideInNamespaceStartingWith($"Basil.Application.Runtime.{pair.Kernel}")
 				.ShouldNot().HaveDependencyOn($"Basil.Application.Runtime.{pair.Area}").GetResult().IsSuccessful)
-			.Select(pair => $"{pair.Kernel} -> {pair.Area}")
-			.Except(["Common -> Sessions"]);
+			.Select(pair => $"{pair.Kernel} -> {pair.Area}");
 
 		Assert.Empty(edges);
 	}

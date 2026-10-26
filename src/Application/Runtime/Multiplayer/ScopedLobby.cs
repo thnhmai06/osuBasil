@@ -10,7 +10,7 @@ namespace Basil.Application.Runtime.Multiplayer;
 
 /// <summary>A lobby scoped to one connection.</summary>
 /// <remarks>Use a scope for one request or command so permission checks use current authority.</remarks>
-public sealed class ScopedLobby : Scoped<UserPermissions>
+public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
 {
 	/// <summary>Creates a lobby scope for a connection.</summary>
 	/// <param name="lobby">The lobby to scope.</param>

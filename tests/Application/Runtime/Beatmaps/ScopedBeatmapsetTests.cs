@@ -1,4 +1,5 @@
 using Basil.Application.Runtime.Beatmaps;
+using Basil.Application.Runtime.Common;
 using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Users;
 using Basil.Testing;
@@ -41,6 +42,43 @@ public sealed class ScopedBeatmapsetTests
 		Assert.Empty(world.Beatmaps.Records);
 		Assert.Empty(world.Storage.Stored);
 		Assert.Equal(set.Record, Assert.IsType<BeatmapsetDeleted>(app.BeatmapsetEvents.Events[^1]).Set);
+	}
+
+	[Fact]
+	public async Task DeleteAsync_ByAnActorThatIsNoConnection_FollowsItsEffectivePermissions()
+	{
+		var (app, world, set, by) = await SetupAsync();
+		using var _ = app;
+
+		var allowed = await set.ScopeTo(new FixedActor(by.Record, Manager)).DeleteAsync(
+			TestContext.Current.CancellationToken);
+
+		Assert.Equal(BeatmapsetOutcome.Ok, allowed.Outcome);
+		Assert.Empty(world.Sets.Records);
+	}
+
+	[Fact]
+	public async Task DeleteAsync_ByAnActorWithoutBeatmapsetManage_IsDeniedAndChangesNothing()
+	{
+		var (app, world, set, by) = await SetupAsync();
+		using var _ = app;
+
+		var denied = await set.ScopeTo(new FixedActor(by.Record, UserPermissionsGroups.Default)).DeleteAsync(
+			TestContext.Current.CancellationToken);
+
+		Assert.Equal(UserPermissions.BeatmapsetManage, denied.Missing);
+		Assert.NotEmpty(world.Sets.Records);
+	}
+
+	/// <summary>An actor with permissions fixed in advance, as a caller other than a connection would be.</summary>
+	private sealed class FixedActor(UserRecord record, UserPermissions permissions) : IActor
+	{
+		public UserRecord Record { get; } = record;
+
+		public UserPermissions EffectivePermissions(DateTimeOffset now)
+		{
+			return permissions;
+		}
 	}
 
 	[Fact]

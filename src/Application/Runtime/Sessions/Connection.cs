@@ -1,4 +1,5 @@
 using Basil.Application.Runtime.Anticheat;
+using Basil.Application.Runtime.Common;
 using Basil.Application.Runtime.Users;
 using Basil.Domain.Auth;
 using Basil.Domain.Bancho;
@@ -8,7 +9,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Runtime.Sessions;
 
 /// <summary>One login of a user from one client; two connections are never equal.</summary>
-public abstract class Connection(Login login, string token)
+public abstract class Connection(Login login, string token) : IActor
 {
 	/// <summary>Gets the online user this connection belongs to.</summary>
 	public User User { get; internal set; } = null!;
@@ -21,6 +22,12 @@ public abstract class Connection(Login login, string token)
 
 	/// <summary>Gets the user who owns this connection.</summary>
 	public UserRecord Record => Login.User;
+
+	/// <inheritdoc />
+	public UserPermissions EffectivePermissions(DateTimeOffset now)
+	{
+		return User.EffectivePermissions(now);
+	}
 
 	/// <summary>Gets the kind of connection.</summary>
 	public abstract ConnectionType Type { get; }
