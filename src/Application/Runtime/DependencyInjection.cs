@@ -62,9 +62,13 @@ public static class DependencyInjection
 			sp.GetRequiredService<IRelationshipRepository>(),
 			sp.GetRequiredService<ChannelContext>(),
 			new DeferredConnectionLobbyPort(sp.GetRequiredService<Lobby>),
+			sp.GetRequiredService<IEventPublisher<AnticheatEvent>>()));
+		services.AddSingleton<IScoreBeatmapAcceptance>(sp => sp.GetRequiredService<Lobby>());
+		services.AddSingleton<ScoreSubmitter>(sp => new ScoreSubmitter(
 			sp.GetRequiredService<ScoreRecorder>(),
 			sp.GetRequiredService<IEventPublisher<ScoreEvent>>(),
-			sp.GetRequiredService<IEventPublisher<AnticheatEvent>>()));
+			sp.GetRequiredService<IScoreBeatmapAcceptance>(),
+			sp.GetRequiredService<TimeProvider>()));
 		services.AddSingleton<UserRegistry>(sp => new UserRegistry(
 			sp.GetRequiredService<AccountService>(),
 			sp.GetRequiredService<UserContext>(),

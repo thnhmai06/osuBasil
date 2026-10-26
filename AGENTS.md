@@ -439,7 +439,7 @@ Events/        Event, IEventPublisher<T>, EventQueue, event handlers (INotificat
 Users/         user and restriction repositories, UserQuery; User, ScopedUser,
                UserRegistry, ScopedUserRegistry, UserResult, login and registration
                inputs; AccountService                                              (Capabilities)
-Sessions/      Connection tree (BanchoConnection also submits scores and reports
+Sessions/      Connection tree (BanchoConnection reports
                anticheat flags), ScopedBanchoConnection and user events
 Chat/          Channel tree, GeneralChannelRegistry, IChannelRepository; ScopedChannel,
                ScopedGeneralChannel, events and results
@@ -447,7 +447,8 @@ Multiplayer/   Lobby, Room, their parts and scopes; match, round and score repos
                room and lobby events and results
 Beatmaps/      beatmap and beatmapset repositories and storage, capability ports;
                Beatmapset, Beatmapsets, ScopedBeatmapset; BeatmapsetImporter and friends (Capabilities)
-Scores/        score, replay and stats repositories; score events; ScoreRecorder     (Capabilities)
+Scores/        score, replay and stats repositories; score events; ScoreSubmitter and ScopedScoreSubmitter
+               (game clients submit scores); ScoreRecorder                           (Capabilities)
 Anticheat/     anticheat events
 Content/       content repositories, storage ports and the screenshot inspector port
 Servers/       Server, ScopedServer, server contexts and server resources
@@ -620,7 +621,7 @@ owner merges them into the skill later, nobody edits the skill silently.
 * **Services are logic without live objects.** In a layered backend, a service takes and returns records and plain
   results, never receives or creates a runtime object, never publishes an event and has no public contract. Anything
   that coordinates several objects is a method of the object that is acted on or of the registry that holds them
-  (`registry.LoginAsync`, `lobby.ReleaseAsync`, `connection.SubmitScoreAsync`); a file full of former services
+  (`registry.LoginAsync`, `lobby.ReleaseAsync`, `scoreSubmitter.ScopeTo(connection).SubmitAsync`); a file full of former services
   ending up as `Server.X` is the God Actor in disguise. This supersedes the old rule "one child service per part".
 * **Plain data that two layers both name in public signatures lives in the lower layer** (inputs, failure enums, import
   results), so the upper layer can expose it while the lower one stays internal.

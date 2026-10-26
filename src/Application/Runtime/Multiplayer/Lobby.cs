@@ -3,6 +3,7 @@ using Basil.Application.Persistence.Common;
 using Basil.Application.Persistence.Multiplayer;
 using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Multiplayer.Rooms;
+using Basil.Application.Runtime.Scores;
 using Basil.Application.Runtime.Sessions;
 using Basil.Application.Runtime.Users;
 using Basil.Domain.Common;
@@ -11,7 +12,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Runtime.Multiplayer;
 
 /// <summary>The open multiplayer rooms and the osu! clients watching the multiplayer lobby.</summary>
-public sealed class Lobby : IRoomLobbyPort, IConnectionLobbyPort
+public sealed class Lobby : IRoomLobbyPort, IConnectionLobbyPort, IScoreBeatmapAcceptance
 {
 	private const int MaxRoomId = ushort.MaxValue;
 
@@ -65,7 +66,7 @@ public sealed class Lobby : IRoomLobbyPort, IConnectionLobbyPort
 		return RoomOf(player);
 	}
 
-	bool IConnectionLobbyPort.AwaitsScore(UserRecord player, Md5 beatmap)
+	bool IScoreBeatmapAcceptance.AcceptsUnknown(UserRecord player, Md5 beatmap)
 	{
 		return _rooms.Values.Any(room => room.AwaitsScore(player, beatmap));
 	}

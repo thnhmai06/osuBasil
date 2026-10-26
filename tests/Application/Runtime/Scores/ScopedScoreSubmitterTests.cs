@@ -1,18 +1,20 @@
 using Basil.Application.Persistence.Scores;
+using Basil.Application.Runtime.Scores;
 using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Testing;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace Basil.Application.Runtime.Tests.Sessions;
+namespace Basil.Application.Runtime.Tests.Scores;
 
 /// <summary>
 ///     Verifies who may submit a score on an osu! client: the client itself, holding
 ///     <see cref="UserPermissions.ScoreSubmit" />.
 /// </summary>
-public sealed class ScopedBanchoConnectionTests
+public sealed class ScopedScoreSubmitterTests
 {
 	private static readonly Md5 Hash = new("0123456789abcdef0123456789abcdef");
 
@@ -30,15 +32,15 @@ public sealed class ScopedBanchoConnectionTests
 	}
 
 	[Fact]
-	public async Task SubmitScoreAsync_WithScoreSubmitSuspended_IsDeniedWithThatPermission()
+	public async Task SubmitAsync_WithScoreSubmitSuspended_IsDeniedWithThatPermission()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("NoScores", "password");
 		app.AddRestriction(user, UserPermissions.ScoreSubmit);
 		var client = Assert.IsType<BanchoConnection>(await app.LoginAsync(user, ConnectionType.Bancho));
 
-		var (result, rejection) = await client.ScopeTo(client)
-			.SubmitScoreAsync(Submission(), new BeatmapChecksums(Hash, null), Client(), null,
+		var (result, rejection) = await app.Provider.GetRequiredService<ScoreSubmitter>().ScopeTo(client)
+			.SubmitAsync(Submission(), new BeatmapChecksums(Hash, null), Client(), null,
 				TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsOk);
@@ -48,33 +50,16 @@ public sealed class ScopedBanchoConnectionTests
 	}
 
 	[Fact]
-	public async Task SubmitScoreAsync_ByAnotherConnection_IsRefusedAsOtherClient()
-	{
-		using var app = new TestApplication();
-		var owner = await app.CreateUserAsync("ScoreOwner", "password");
-		var other = await app.CreateUserAsync("ScoreOther", "password");
-		var client = Assert.IsType<BanchoConnection>(await app.LoginAsync(owner, ConnectionType.Bancho));
-		var stranger = await app.LoginAsync(other, ConnectionType.Bancho);
-
-		var (result, _) = await client.ScopeTo(stranger)
-			.SubmitScoreAsync(Submission(), new BeatmapChecksums(Hash, null), Client(), null,
-				TestContext.Current.CancellationToken);
-
-		Assert.Equal(ConnectionOutcome.OtherClient, result.Outcome);
-		Assert.Null(result.Missing);
-	}
-
-	[Fact]
-	public async Task SubmitScoreAsync_OnABeatmapTheServerDoesNotHaveAndNoRound_IsRejectedAsUnknownBeatmap()
+	public async Task SubmitAsync_OnABeatmapTheServerDoesNotHaveAndNoRound_IsRejectedAsUnknownBeatmap()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("UnknownMap", "password");
 		var client = Assert.IsType<BanchoConnection>(await app.LoginAsync(user, ConnectionType.Bancho));
 
-		var (result, rejection) = await client.ScopeTo(client)
-			.SubmitScoreAsync(Submission(), null, Client(), null, TestContext.Current.CancellationToken);
+		var (result, rejection) = await app.Provider.GetRequiredService<ScoreSubmitter>().ScopeTo(client)
+			.SubmitAsync(Submission(), null, Client(), null, TestContext.Current.CancellationToken);
 
-		Assert.Equal(ConnectionOutcome.Rejected, result.Outcome);
+		Assert.Equal(ScoreSubmissionOutcome.Rejected, result.Outcome);
 		Assert.Equal(ScoreRejection.UnknownBeatmap, rejection);
 	}
 }
