@@ -439,8 +439,7 @@ Events/        Event, IEventPublisher<T>, EventQueue, event handlers (INotificat
 Users/         user and restriction repositories, UserQuery; User, ScopedUser,
                UserRegistry, ScopedUserRegistry, UserResult, login and registration
                inputs; AccountService                                              (Capabilities)
-Sessions/      Connection tree (BanchoConnection reports
-               anticheat flags), ScopedBanchoConnection and user events
+Sessions/      Connection tree, ScopedBanchoConnection and user events
 Chat/          Channel tree, GeneralChannelRegistry, IChannelRepository; ScopedChannel,
                ScopedGeneralChannel, events and results
 Multiplayer/   Lobby, Room, their parts and scopes; match, round and score repositories;
@@ -449,7 +448,7 @@ Beatmaps/      beatmap and beatmapset repositories and storage, capability ports
                Beatmapset, Beatmapsets, ScopedBeatmapset; BeatmapsetImporter and friends (Capabilities)
 Scores/        score, replay and stats repositories; score events; ScoreSubmitter and ScopedScoreSubmitter
                (game clients submit scores); ScoreRecorder                           (Capabilities)
-Anticheat/     anticheat events
+Anticheat/     anticheat events; AnticheatReporter reports the flags a game client sends
 Content/       content repositories, storage ports and the screenshot inspector port
 Servers/       Server, ScopedServer, server contexts and server resources
 ```
@@ -463,10 +462,10 @@ that answer queries do not. Server settings changed at runtime (`ServerSettings`
 server runs and are stored through `ISettingsRepository`; they are not Domain and not host configuration.
 
 * `Common` and `Events` depend on no feature. `Users`, `Beatmaps` and `Scores` do not depend on
-  `Multiplayer` objects; a game client's connection only reads its player's room to find the round. Anticheat flags,
-  wherever they arrive (score submission, `lastfm.php`), are reported by the host through `BanchoConnection.Report`,
+  `Multiplayer` objects. Anticheat flags,
+  wherever they arrive (score submission, `lastfm.php`), are reported by the host through `AnticheatReporter.Report`,
   the single source of anticheat events; BasilBot turns them into chat warnings.
-* `Sessions`, `Chat` and `Multiplayer` reference each other (`Room.Host`, `Room.Channel`,
+* `Chat` and `Multiplayer` reference each other and both reference `Sessions` (`Room.Host`, `Room.Channel`,
   `Channel.Members`); treat them as one cluster. Their runtime objects and registries live in Objects;
   persistent repositories remain in Application.Persistence. Objects change their own state through behaviour, with
   implementation access limited to the owning object and its collaborators. References run from the acted-on

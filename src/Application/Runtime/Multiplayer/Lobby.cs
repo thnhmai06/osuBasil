@@ -12,7 +12,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Runtime.Multiplayer;
 
 /// <summary>The open multiplayer rooms and the osu! clients watching the multiplayer lobby.</summary>
-public sealed class Lobby : IRoomLobbyPort, IConnectionLobbyPort, IScoreBeatmapAcceptance
+public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 {
 	private const int MaxRoomId = ushort.MaxValue;
 
@@ -60,11 +60,6 @@ public sealed class Lobby : IRoomLobbyPort, IConnectionLobbyPort, IScoreBeatmapA
 
 	/// <summary>Gets the osu! clients watching the multiplayer lobby, for changing them.</summary>
 	internal ISet<BanchoConnection> MutableWatchers => _watchers;
-
-	Room? IConnectionLobbyPort.RoomOf(BanchoConnection player)
-	{
-		return RoomOf(player);
-	}
 
 	bool IScoreBeatmapAcceptance.AcceptsUnknown(UserRecord player, Md5 beatmap)
 	{

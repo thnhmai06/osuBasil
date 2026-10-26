@@ -1,8 +1,6 @@
-using Basil.Application.Runtime.Anticheat;
 using Basil.Application.Runtime.Common;
 using Basil.Application.Runtime.Users;
 using Basil.Domain.Auth;
-using Basil.Domain.Bancho;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
 
@@ -87,23 +85,6 @@ public sealed class BanchoConnection : Connection
 	public ScopedBanchoConnection ScopeTo(Connection by)
 	{
 		return new ScopedBanchoConnection(this, by);
-	}
-
-	/// <summary>Reports the anticheat flags this game client sent.</summary>
-	/// <param name="flags">The flags the client reported.</param>
-	/// <returns>The reported flags that are signs of cheating; <see cref="BanchoFlags.Clean" /> when there are none.</returns>
-	/// <remarks>
-	///     This system operation needs no rights because the server itself calls it.
-	///     Nothing is blocked. When the flags show signs of cheating, one <see cref="AnticheatPlayerFlagged" /> carries
-	///     them and the player; whoever warns the room's chat, referees and creator finds the room itself.
-	/// </remarks>
-	public BanchoFlags Report(BanchoFlags flags)
-	{
-		var signs = flags & BanchoFlagsGroups.CheatSigns;
-		if (signs == BanchoFlags.Clean) return signs;
-
-		Context.AnticheatEvents.Publish(new AnticheatPlayerFlagged(this, signs));
-		return signs;
 	}
 
 	/// <summary>Enters the scope in which the client's spectators change one at a time.</summary>

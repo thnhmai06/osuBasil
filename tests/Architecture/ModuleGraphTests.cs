@@ -42,9 +42,8 @@ public class ModuleGraphTests
 	[
 		// The room owns its channel: Chat should react to room events instead.
 		("Multiplayer", "Chat"),
-		// A connection joins channels and reaches its lobby through ports: spectator channels belong to Chat and
-		// the lobby port is replaced by an event.
-		("Sessions", "Anticheat"), ("Sessions", "Chat"), ("Sessions", "Multiplayer"),
+		// A connection joins channels and sets its spectators through sessions: spectator channels belong to Chat.
+		("Sessions", "Chat"),
 		// The online user holds its connections and reaches channels and rooms: the online user belongs to Sessions.
 		("Users", "Chat"), ("Users", "Multiplayer"), ("Users", "Sessions")
 	];

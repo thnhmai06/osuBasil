@@ -85,11 +85,10 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   event publisher, repositories, the ports of the objects it works with: `RoomContext`, `UserContext`, `LobbyContext`,
   `ChannelContext`, `SessionContext`, `BeatmapsetContext`, `ServerContext`) when it is created. The context, the
   object's constructor are `internal`; the registration builds them in factory lambdas, because the container only
-  sees public constructors (a root object that two others need, such as the lobby for a connection, is reached
+  sees public constructors (a root object that two others need, such as the user registry for a session, is reached
   through a deferred port to avoid a construction cycle). A service class that the container creates by itself
   needs a `public` constructor even when the class is `internal`. An object calls a service for pure logic only; a
-  port is implemented by whoever owns the other object (`Lobby` implements `IRoomLobbyPort` and
-  `IConnectionLobbyPort`).
+  port is implemented by whoever owns the other object (`Lobby` implements `IRoomLobbyPort`).
   Because the factories hide dependencies from `ValidateOnBuild`, verify the container by resolving every
   registration with the external storage ports stubbed (see Commands).
 * **A scope is a snapshot: re-check after waiting.** A `ScopedX` is for one request or command and is never kept.
