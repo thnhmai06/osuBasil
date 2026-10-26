@@ -42,8 +42,6 @@ public class ModuleGraphTests
 	[
 		// The room owns its channel: Chat should react to room events instead.
 		("Multiplayer", "Chat"),
-		// The connection reports anticheat flags with the room in the event; the event should name the player only.
-		("Anticheat", "Multiplayer"),
 		// A connection submits scores, joins channels and reaches its lobby through ports: score submission belongs to
 		// a Scores object scoped to the connection, spectator channels to Chat, the lobby port to an event.
 		("Sessions", "Anticheat"), ("Sessions", "Chat"), ("Sessions", "Multiplayer"), ("Sessions", "Scores"),

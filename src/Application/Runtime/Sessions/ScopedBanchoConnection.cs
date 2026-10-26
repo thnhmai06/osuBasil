@@ -30,7 +30,7 @@ public sealed class ScopedBanchoConnection : Scoped<UserPermissions, Connection>
 	///     first spectator brings the host into it too. A connection spectating another client stops spectating it first.
 	///     Spectating this host again announces the spectator, as an osu! client does once it has the beatmap.
 	/// </remarks>
-	/// <exception cref="ArgumentException"><see cref="Scoped{TOwner}.By" /> is an IRC connection, which cannot spectate.</exception>
+	/// <exception cref="ArgumentException"><see cref="Scoped{TPermissions,TActor}.By" /> is an IRC connection, which cannot spectate.</exception>
 	public async Task<Result<ConnectionOutcome>> SpectateAsync()
 	{
 		if (By is IrcConnection)

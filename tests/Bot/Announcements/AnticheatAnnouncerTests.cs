@@ -3,6 +3,7 @@ using Basil.Application.Runtime.Chat;
 using Basil.Bot.Announcements;
 using Basil.Bot.Tests.Support;
 using Basil.Domain.Bancho;
+using Basil.Testing;
 
 namespace Basil.Bot.Tests.Announcements;
 
@@ -22,7 +23,7 @@ public sealed class AnticheatAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 
-		await AnnouncerFor(bot).Handle(new AnticheatPlayerFlagged(staff.Player, TwoFlags, staff.Room), Token);
+		await AnnouncerFor(bot).Handle(new AnticheatPlayerFlagged(staff.Player, TwoFlags), Token);
 
 		Assert.Equal([
 			bot.Text(AnnouncementReplies.AnticheatFlagRoom,
@@ -36,7 +37,7 @@ public sealed class AnticheatAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 
-		await AnnouncerFor(bot).Handle(new AnticheatPlayerFlagged(staff.Player, TwoFlags, staff.Room), Token);
+		await AnnouncerFor(bot).Handle(new AnticheatPlayerFlagged(staff.Player, TwoFlags), Token);
 
 		Assert.Equal([ExpectedWhisper(bot, staff)], bot.WhisperedTo(staff.Creator));
 	}
@@ -47,7 +48,7 @@ public sealed class AnticheatAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 
-		await AnnouncerFor(bot).Handle(new AnticheatPlayerFlagged(staff.Player, TwoFlags, staff.Room), Token);
+		await AnnouncerFor(bot).Handle(new AnticheatPlayerFlagged(staff.Player, TwoFlags), Token);
 
 		Assert.Equal([ExpectedWhisper(bot, staff)], bot.WhisperedTo(staff.Referee));
 	}
@@ -58,7 +59,7 @@ public sealed class AnticheatAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 
-		await AnnouncerFor(bot).Handle(new AnticheatPlayerFlagged(staff.Player, TwoFlags, staff.Room), Token);
+		await AnnouncerFor(bot).Handle(new AnticheatPlayerFlagged(staff.Player, TwoFlags), Token);
 
 		Assert.DoesNotContain(bot.App.ChannelEvents.Events.OfType<ChannelMessagePosted>(),
 			posted => posted.Channel is PmChannel pm && pm.Owner.Record.Equals(staff.OfflineReferee));
@@ -70,7 +71,7 @@ public sealed class AnticheatAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 
-		await AnnouncerFor(bot).Handle(new AnticheatPlayerFlagged(staff.Player, TwoFlags, staff.Room), Token);
+		await AnnouncerFor(bot).Handle(new AnticheatPlayerFlagged(staff.Player, TwoFlags), Token);
 
 		Assert.Empty(bot.WhisperedTo(staff.Player));
 	}
@@ -82,7 +83,7 @@ public sealed class AnticheatAnnouncerTests
 		var staff = await SetUpAsync(bot);
 
 		await AnnouncerFor(bot).Handle(
-			new AnticheatPlayerFlagged(staff.Player, BanchoFlags.Clean | BanchoFlags.FastPress, staff.Room),
+			new AnticheatPlayerFlagged(staff.Player, BanchoFlags.Clean | BanchoFlags.FastPress),
 			Token);
 
 		Assert.Equal([
@@ -98,7 +99,7 @@ public sealed class AnticheatAnnouncerTests
 		var staff = await SetUpAsync(bot);
 
 		await AnnouncerFor(bot).Handle(
-			new AnticheatPlayerFlagged(staff.Player, BanchoFlagsGroups.CheatSigns, staff.Room), Token);
+			new AnticheatPlayerFlagged(staff.Player, BanchoFlagsGroups.CheatSigns), Token);
 
 		const string reason = "SpeedHackDetected, IncorrectModValue, MultipleOsuClients, ChecksumFailure, "
 		                      + "FlashlightChecksumIncorrect, OsuExecutableChecksum, MissingProcessesInList, "
@@ -115,8 +116,7 @@ public sealed class AnticheatAnnouncerTests
 		var staff = await SetUpAsync(bot);
 
 		await AnnouncerFor(bot).Handle(
-			new AnticheatPlayerFlagged(staff.Player, BanchoFlags.ConsoleOpen | BanchoFlags.Sdl2Library,
-				staff.Room),
+			new AnticheatPlayerFlagged(staff.Player, BanchoFlags.ConsoleOpen | BanchoFlags.Sdl2Library),
 			Token);
 
 		Assert.Equal([
@@ -129,16 +129,17 @@ public sealed class AnticheatAnnouncerTests
 	public async Task PlayerFlagged_WithoutARoom_SaysNothing()
 	{
 		using var bot = new BotHarness();
-		var staff = await SetUpAsync(bot);
+		await SetUpAsync(bot);
+		var roamer = await RoomFixture.PlayerAsync(bot.App, "Roamer");
 
-		await AnnouncerFor(bot).Handle(new AnticheatPlayerFlagged(staff.Player, TwoFlags, null), Token);
+		await AnnouncerFor(bot).Handle(new AnticheatPlayerFlagged(roamer, TwoFlags), Token);
 
 		Assert.Empty(bot.App.ChannelEvents.Events.OfType<ChannelMessagePosted>());
 	}
 
 	private static AnticheatAnnouncer AnnouncerFor(BotHarness bot)
 	{
-		return new AnticheatAnnouncer(bot.App.Server, bot.App.Users, bot.Replies);
+		return new AnticheatAnnouncer(bot.App.Server, bot.App.Lobby, bot.App.Users, bot.Replies);
 	}
 
 	private static async Task<StaffRoom> SetUpAsync(BotHarness bot)

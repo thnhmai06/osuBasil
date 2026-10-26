@@ -95,14 +95,14 @@ public sealed class BanchoConnection : Connection
 	/// <remarks>
 	///     This system operation needs no rights because the server itself calls it.
 	///     Nothing is blocked. When the flags show signs of cheating, one <see cref="AnticheatPlayerFlagged" /> carries
-	///     them and the room the player sits in, so the room's chat, referees and creator can be warned.
+	///     them and the player; whoever warns the room's chat, referees and creator finds the room itself.
 	/// </remarks>
 	public BanchoFlags Report(BanchoFlags flags)
 	{
 		var signs = flags & BanchoFlagsGroups.CheatSigns;
 		if (signs == BanchoFlags.Clean) return signs;
 
-		Context.AnticheatEvents.Publish(new AnticheatPlayerFlagged(this, signs, Context.Lobby.RoomOf(this)));
+		Context.AnticheatEvents.Publish(new AnticheatPlayerFlagged(this, signs));
 		return signs;
 	}
 
