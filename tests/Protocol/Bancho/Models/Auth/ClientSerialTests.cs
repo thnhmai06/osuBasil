@@ -24,8 +24,8 @@ public class ClientSerialTests
 	{
 		return new TheoryData<string>
 		{
-			{ "ab" },
-			{ "" }
+			"ab",
+			""
 		};
 	}
 

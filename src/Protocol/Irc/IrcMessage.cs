@@ -17,6 +17,22 @@ public sealed record IrcMessage(string Command, string? Prefix = null, params IR
 	: IParsable<IrcMessage>, IFormattable
 {
 	/// <summary>
+	///     Determines whether this message has the same content as another message.
+	/// </summary>
+	/// <param name="other">The message to compare with, or <see langword="null" />.</param>
+	/// <returns>
+	///     <see langword="true" /> when the command, the prefix and every parameter are equal;
+	///     otherwise, <see langword="false" />.
+	/// </returns>
+	public bool Equals(IrcMessage? other)
+	{
+		return other is not null
+		       && string.Equals(Command, other.Command, StringComparison.Ordinal)
+		       && string.Equals(Prefix, other.Prefix, StringComparison.Ordinal)
+		       && Parameters.SequenceEqual(other.Parameters, StringComparer.Ordinal);
+	}
+
+	/// <summary>
 	///     Formats the message as a single IRC wire line.
 	/// </summary>
 	/// <param name="format">Ignored.</param>
@@ -65,49 +81,6 @@ public sealed record IrcMessage(string Command, string? Prefix = null, params IR
 		}
 
 		return line;
-	}
-
-	/// <summary>
-	///     Determines whether this message has the same content as another message.
-	/// </summary>
-	/// <param name="other">The message to compare with, or <see langword="null" />.</param>
-	/// <returns>
-	///     <see langword="true" /> when the command, the prefix and every parameter are equal;
-	///     otherwise, <see langword="false" />.
-	/// </returns>
-	public bool Equals(IrcMessage? other)
-	{
-		return other is not null
-		       && string.Equals(Command, other.Command, StringComparison.Ordinal)
-		       && string.Equals(Prefix, other.Prefix, StringComparison.Ordinal)
-		       && Parameters.SequenceEqual(other.Parameters, StringComparer.Ordinal);
-	}
-
-	/// <summary>
-	///     Returns a hash code consistent with <see cref="Equals(IrcMessage?)" />.
-	/// </summary>
-	/// <returns>A hash code built from the command, the prefix and the parameters.</returns>
-	public override int GetHashCode()
-	{
-		var hash = new HashCode();
-		hash.Add(Command, StringComparer.Ordinal);
-		hash.Add(Prefix, StringComparer.Ordinal);
-
-		foreach (var parameter in Parameters)
-			hash.Add(parameter, StringComparer.Ordinal);
-
-		return hash.ToHashCode();
-	}
-
-	/// <summary>
-	///     Throws when a part of the line would split it into more than one line.
-	/// </summary>
-	private static void EnsureSingleLine(string value, string paramName)
-	{
-		if (value.AsSpan().IndexOfAny('\r', '\n', '\0') >= 0)
-			throw new ArgumentException(
-				"An IRC line may not contain a carriage return, a line feed or a null character.",
-				paramName);
 	}
 
 	/// <summary>
@@ -212,6 +185,33 @@ public sealed record IrcMessage(string Command, string? Prefix = null, params IR
 		return true;
 	}
 
+	/// <summary>
+	///     Returns a hash code consistent with <see cref="Equals(IrcMessage?)" />.
+	/// </summary>
+	/// <returns>A hash code built from the command, the prefix and the parameters.</returns>
+	public override int GetHashCode()
+	{
+		var hash = new HashCode();
+		hash.Add(Command, StringComparer.Ordinal);
+		hash.Add(Prefix, StringComparer.Ordinal);
+
+		foreach (var parameter in Parameters)
+			hash.Add(parameter, StringComparer.Ordinal);
+
+		return hash.ToHashCode();
+	}
+
+	/// <summary>
+	///     Throws when a part of the line would split it into more than one line.
+	/// </summary>
+	private static void EnsureSingleLine(string value, string paramName)
+	{
+		if (value.AsSpan().IndexOfAny('\r', '\n', '\0') >= 0)
+			throw new ArgumentException(
+				"An IRC line may not contain a carriage return, a line feed or a null character.",
+				paramName);
+	}
+
 	/// <summary>Builds an IRC numeric reply from a numeric reply code.</summary>
 	/// <param name="serverName">The name of the server, used as the message prefix.</param>
 	/// <param name="numericReply">The numeric reply code.</param>
@@ -313,6 +313,6 @@ public sealed record IrcMessage(string Command, string? Prefix = null, params IR
 	/// </returns>
 	public override string ToString()
 	{
-		return ToString(null, null);
+		return ToString();
 	}
 }

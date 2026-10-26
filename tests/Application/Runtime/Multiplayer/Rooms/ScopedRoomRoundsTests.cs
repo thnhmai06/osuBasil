@@ -1,8 +1,8 @@
 using Basil.Application.Runtime.Multiplayer;
 using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Multiplayer.Rooms;
-using Basil.Testing;
 using Basil.Domain.Mechanics;
+using Basil.Testing;
 
 namespace Basil.Application.Runtime.Tests.Multiplayer.Rooms;
 
@@ -216,39 +216,6 @@ public sealed class ScopedRoomRoundsTests
 	}
 
 	[Fact]
-	public async Task RecordScoreAsync_ForTheLatestRound_IsAccepted()
-	{
-		using var app = new TestApplication();
-		var setup = await RoomFixture.CreateAsync(app);
-		await SelectBeatmapAsync(setup);
-		await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync(TestContext.Current.CancellationToken);
-		var round = setup.Room.Rounds.LastRound!;
-
-		var result = await setup.Room.RecordScoreAsync(RoomFixture.Score(1, round), setup.Player.Record,
-			TestContext.Current.CancellationToken);
-
-		Assert.Equal(RoomOutcome.Ok, result);
-		Assert.IsType<RoomRoundScoreSubmitted>(app.RoomEvents.Events[^1]);
-	}
-
-	[Fact]
-	public async Task RecordScoreAsync_ForAnOlderRound_IsRefused()
-	{
-		using var app = new TestApplication();
-		var setup = await RoomFixture.CreateAsync(app);
-		await SelectBeatmapAsync(setup);
-		await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync(TestContext.Current.CancellationToken);
-		var first = setup.Room.Rounds.LastRound!;
-		await CompleteRoundAsync(setup);
-		await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync(TestContext.Current.CancellationToken);
-
-		var result = await setup.Room.RecordScoreAsync(RoomFixture.Score(1, first), setup.Player.Record,
-			TestContext.Current.CancellationToken);
-
-		Assert.Equal(RoomOutcome.RoundMismatch, result);
-	}
-
-	[Fact]
 	public async Task StartCountdownAsync_ForATimer_AnnouncesTheSixtyThirtyTenAndFiveSecondMarks()
 	{
 		using var app = new TestApplication();
@@ -296,6 +263,21 @@ public sealed class ScopedRoomRoundsTests
 		Assert.True(elapsed >= 0);
 		Assert.True(started > elapsed);
 		Assert.Equal(1, setup.Room.Rounds.LastRound!.Index);
+	}
+
+	[Theory]
+	[InlineData(false)]
+	[InlineData(true)]
+	public async Task StartCountdownAsync_ByAPlainPlayer_IsRefusedAndStartsNothing(bool startsRound)
+	{
+		using var app = new TestApplication();
+		var setup = await RoomFixture.CreateAsync(app);
+
+		var result = await setup.Room.ScopeTo(setup.Player).Rounds.StartCountdownAsync(TimeSpan.FromMinutes(5),
+			startsRound, TestContext.Current.CancellationToken);
+
+		Assert.Equal(RoomOutcome.RoleDenied, result.Outcome);
+		Assert.Null(setup.Room.Rounds.Countdown);
 	}
 
 	[Theory]
@@ -366,7 +348,8 @@ public sealed class ScopedRoomRoundsTests
 			TestContext.Current.CancellationToken)).IsOk);
 
 		Assert.Null(setup.Room.Rounds.Countdown);
-		Assert.Equal(RoomCountdownCancelReason.RoundStarted, Assert.Single(app.RoomEvents.Events.OfType<RoomCountdownCancelled>()).Reason);
+		Assert.Equal(RoomCountdownCancelReason.RoundStarted,
+			Assert.Single(app.RoomEvents.Events.OfType<RoomCountdownCancelled>()).Reason);
 	}
 
 	[Fact]
@@ -383,7 +366,8 @@ public sealed class ScopedRoomRoundsTests
 			TestContext.Current.CancellationToken)).IsOk);
 
 		Assert.Null(setup.Room.Rounds.Countdown);
-		Assert.Equal(RoomCountdownCancelReason.RoundAborted, Assert.Single(app.RoomEvents.Events.OfType<RoomCountdownCancelled>()).Reason);
+		Assert.Equal(RoomCountdownCancelReason.RoundAborted,
+			Assert.Single(app.RoomEvents.Events.OfType<RoomCountdownCancelled>()).Reason);
 	}
 
 	[Fact]
@@ -399,7 +383,8 @@ public sealed class ScopedRoomRoundsTests
 			TestContext.Current.CancellationToken)).IsOk);
 
 		Assert.Null(setup.Room.Rounds.Countdown);
-		Assert.Equal(RoomCountdownCancelReason.SettingsChanged, Assert.Single(app.RoomEvents.Events.OfType<RoomCountdownCancelled>()).Reason);
+		Assert.Equal(RoomCountdownCancelReason.SettingsChanged,
+			Assert.Single(app.RoomEvents.Events.OfType<RoomCountdownCancelled>()).Reason);
 	}
 
 	private static int IndexOf<T>(TestApplication app) where T : RoomEvent

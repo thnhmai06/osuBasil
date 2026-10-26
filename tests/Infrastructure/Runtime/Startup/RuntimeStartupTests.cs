@@ -1,10 +1,9 @@
 using Basil.Application.Persistence.Chat;
-using Basil.Application.Persistence.Multiplayer;
-using Basil.Testing;
+using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Domain.Chat;
-using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Runtime.Startup;
+using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -116,9 +115,7 @@ public sealed class RuntimeStartupTests
 		await Startup(app, channels).StartAsync(TestContext.Current.CancellationToken);
 
 		Assert.NotNull(room.Match.Value.EndedAt);
-		var events = await app.Provider.GetRequiredService<IMatchEventRepository>()
-			.ListAsync(room.Match, TestContext.Current.CancellationToken);
-		Assert.Single(events, matchEvent => matchEvent.Type == MatchEventType.Closed);
+		Assert.Equal(room.Match, Assert.Single(app.LobbyEvents.Events.OfType<LobbyMatchRecovered>()).Match);
 	}
 
 	private static RuntimeStartup Startup(TestApplication app, IChannelRepository channels)

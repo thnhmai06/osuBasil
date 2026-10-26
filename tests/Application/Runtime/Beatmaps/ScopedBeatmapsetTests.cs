@@ -28,7 +28,8 @@ public sealed class ScopedBeatmapsetTests
 	}
 
 	[Fact]
-	public async Task DeleteAsync_WithBeatmapsetManage_DeletesTheSetItsBeatmapsAndItsFilesAndPublishesBeatmapsetDeleted()
+	public async Task
+		DeleteAsync_WithBeatmapsetManage_DeletesTheSetItsBeatmapsAndItsFilesAndPublishesBeatmapsetDeleted()
 	{
 		var (app, world, set, by) = await SetupAsync();
 		using var _ = app;
@@ -75,7 +76,8 @@ public sealed class ScopedBeatmapsetTests
 	[Fact]
 	public async Task DeleteAsync_WithBeatmapsetManageSuspended_IsDenied()
 	{
-		var (app, world, set, by) = await SetupAsync(restrict: (app, user) => app.AddRestriction(user, UserPermissions.BeatmapsetManage));
+		var (app, world, set, by) =
+			await SetupAsync(restrict: (app, user) => app.AddRestriction(user, UserPermissions.BeatmapsetManage));
 		using var _ = app;
 
 		var result = await set.ScopeTo(by).DeleteAsync(TestContext.Current.CancellationToken);

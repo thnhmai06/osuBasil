@@ -29,15 +29,15 @@ public class ClientBuildTests
 		// "20241399" has month 13: the shape matches but the date is not a date.
 		return new TheoryData<string>
 		{
-			{ "" },
-			{ "xb20240815" },
-			{ "b20240815gamma" },
-			{ "b20240815.23" },
-			{ "b20240815\n" },
-			{ "20241399" },
-			{ "B20240815" },
-			{ "b20240815BETA" },
-			{ "b20240815Tourney" }
+			"",
+			"xb20240815",
+			"b20240815gamma",
+			"b20240815.23",
+			"b20240815\n",
+			"20241399",
+			"B20240815",
+			"b20240815BETA",
+			"b20240815Tourney"
 		};
 	}
 

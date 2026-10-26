@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using Basil.Bot.Replies;
 using Basil.Bot.Tests.Support;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Bot.Tests.Replies;
@@ -11,10 +12,12 @@ public sealed class ReplyDefinitionsTests : IDisposable
 {
 	private static readonly IReadOnlyList<Reply> All = ReplyDefinitions.In(typeof(Reply).Assembly);
 
+	private static readonly Regex KeyShapePattern = new(@"^(bot|announce|mp)\.[a-z][A-Za-z0-9]*$");
+
 	private readonly string _directory =
 		Path.Combine(Path.GetTempPath(), "basil-reply-definitions-" + Guid.NewGuid().ToString("N"));
 
-	public static TheoryData<string> Keys => [..All.Select(reply => reply.Key)];
+	public static TheoryData<string> Keys => [.. All.Select(reply => reply.Key)];
 
 	public void Dispose()
 	{
@@ -108,8 +111,6 @@ public sealed class ReplyDefinitionsTests : IDisposable
 	{
 		return new ReplyCatalog(All,
 			Options.Create(new RepliesOptions { Path = Path.Combine(_directory, "Bot", "replies.json") }),
-			logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<ReplyCatalog>.Instance);
+			logger ?? NullLogger<ReplyCatalog>.Instance);
 	}
-
-	private static readonly Regex KeyShapePattern = new(@"^(bot|announce|mp)\.[a-z][A-Za-z0-9]*$");
 }

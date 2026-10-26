@@ -12,6 +12,9 @@
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <PackageVersion Include="Npgsql" Version="10.0.3" />
     <PackageVersion Include="SharpZipLib" Version="1.4.2" />
+    <!-- Event handlers: found at compile time by the source generator. -->
+    <PackageVersion Include="Mediator.Abstractions" Version="3.0.2" />
+    <PackageVersion Include="Mediator.SourceGenerator" Version="3.0.2" />
     <PackageVersion Include="FFMpegCore" Version="5.5.0" />
     <PackageVersion Include="ppy.osu.Game.Rulesets.Osu" Version="2026.916.0" />
     <PackageVersion Include="ppy.osu.Game.Rulesets.Taiko" Version="2026.916.0" />

@@ -64,7 +64,8 @@ internal sealed partial class MpCommands
 		return true;
 	}
 
-	private static async Task<bool> ListRefsAsync(CommandContext context, Room room, CancellationToken cancellationToken)
+	private static async Task<bool> ListRefsAsync(CommandContext context, Room room,
+		CancellationToken cancellationToken)
 	{
 		if (room.Authority.Referees.Count == 0)
 		{

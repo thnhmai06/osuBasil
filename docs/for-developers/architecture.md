@@ -149,10 +149,10 @@ parts the automatic channels. Runtime objects such as `Room` and `User` have no 
 * **Each object manages its own state.** `UserRegistry` opens and closes connections and announces those events;
   it does not clean up rooms or channels. Infrastructure handlers receive cross-object events and call the
   owning object's operation (`Lobby.ReleaseAsync`, `GeneralChannelRegistry.PartAll`). A room keeps its channel in step with its players and the lobby owns room closing.
-* **Application publishes events; it never consumes them.** `IEventPublisher<T>` (`Publish`) is the only event port
-  and `IEventHandler<T>` is the handler contract, both in Application.Objects; Services never publish. Infrastructure.Runtime implements the
-  port with one `EventBus<T>` per event category, which delivers each event in order to the handlers in
-  Infrastructure.Runtime or `Basil.Bot`.
+* **Application publishes events and handles those of its own module; Infrastructure only ships them.**
+  `IEventPublisher<T>` (`Publish`) is the event port; a handler is a `Mediator.INotificationHandler<TEvent>` for one
+  event type, in Application.Runtime or `Basil.Bot`. Infrastructure.Runtime runs the shared queue
+  (`EventDispatcher`) that delivers each event in publish order. Services never publish.
 * **Identity follows the basis object.** `Room` is identified by its `Match`, a general chat channel by its
   name. Recreated runtime objects compare by reference, so late cleanup carrying an old object cannot touch
   its replacement.
@@ -235,9 +235,10 @@ other (`Lobby` implements the room-lobby and connection-lobby ports).
 
 
 
-Application publishes events but does not consume them. One `EventBus<T>` per event category queues what is
-published and invokes the registered `IEventHandler<T>` handlers in order. Infrastructure.Runtime owns runtime handlers; BasilBot owns
-command and announcement handlers. The hosts still need migration to the new Application contracts.
+Application publishes events and handles those of its own module. One shared queue (`EventQueue`, owned by Application), run by `EventDispatcher` in
+Infrastructure.Runtime, delivers every published event in order to its `INotificationHandler<TEvent>` handlers;
+Application.Runtime owns the runtime handlers and BasilBot owns command and announcement handlers. The hosts still need
+migration to the new Application contracts.
 
 ```mermaid
 sequenceDiagram
@@ -291,9 +292,9 @@ OpenAPI contract with the route rather than maintaining a separate specification
 * Domain and the protocols remain dependency-free; Application.Services references only Application.Storage and has no public type.
 * Runtime objects are separate from persisted state; Domain holds no runtime state or events.
 * The acted-on object stores the relation and emits the event; sessions and connections do neither.
-* Application publishes events and never consumes them; Services never publish.
-* Permission-dependent room operations use `room.ScopeTo(by)`; read-modify-write transitions hold
-  `room.EnterAsync()` across the complete transition.
+* Application publishes events and handles those of its own module; Infrastructure only ships them; Services never publish.
+* Permission-dependent room operations use `room.ScopeTo(by)`; read-modify-write transitions are synchronous methods
+  of `Room` that hold the room's own lock across the complete transition.
 * Privilege checks require every bit of the requirement.
 * A shared channel is named `#name`; a private-message channel carries its owner's name without `#`.
 * Privilege is named `Privilege`, never `Priv`.

@@ -102,7 +102,7 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   (`NotManager`, `NotHost`) with `Missing` left `null`; `Missing` names only account-level permissions (`RoomJoin`,
   `RoomCreate`, `ChatPost`, `ScoreSubmit`) checked through `Require`.
 * **System operations are labelled.** A public method on an object that skips the rights check (`Lobby.Unwatch`,
-  `Server.SayAsync`, `Server.WhisperAsync`, `Server.OpenChannel`, `Lobby.ReleaseAsync`, `Room.RecordScoreAsync`, `Server.Notify`) says in its
+  `Server.SayAsync`, `Server.WhisperAsync`, `Server.OpenChannel`, `Lobby.ReleaseAsync`, `Room.ReceiveScore`, `Server.Notify`) says in its
   XML summary that the server itself calls it and needs no rights. A chat command, an API route or any other entry
   point that acts for a user never calls one; it uses the scope of the user's connection.
 * **Capability ports.** A capability with business meaning whose implementation needs external libraries
@@ -189,26 +189,28 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   ordinary leave and admit the new one. Cleanup operations must be safe to run again.
 * **Peers talk through events; owners call their parts directly.** Two operations are peers when neither
   object owns the other and neither's rule depends on the other (scores and rooms, the anticheat and rooms): the
-  acting operation publishes its event, and Infrastructure's event bus delivers it to the peer's contract
-  (`ScoreSubmitted` → `Room.RecordScoreAsync`, `AnticheatPlayerFlagged` reaches clients that
+  acting operation publishes its event, and the shared event queue delivers it to the peer's handler
+  (`ScoreSubmitted` → `ScoreHandler` → `Room.ReceiveScore`, `AnticheatPlayerFlagged` reaches clients that
   watch it, such as BasilBot). An object calls another directly only for a clear ownership relation or to keep
   a rule that must hold within the same operation: objects use storage ports; a room manages its own channel, a
   session its PM channel and a connection its spectator channel; a room tells the lobby when it empties or fills;
   logging in opens the connection; deleting a user closes their connections at once, a security rule that
   must not wait for a handler.
-* **Application publishes events; it does not consume them.** An object or the bot's voice publishes
-  an event through `IEventPublisher<T>` (`Publish`), the only event port of Application: it returns at once and
-  has no read end. Infrastructure.Runtime implements it with one `EventBus<T>` per category (`UserEvent`,
-  `RoomEvent`, `LobbyEvent`, `ChannelEvent`, `BeatmapsetEvent`, `ScoreEvent`, `AnticheatEvent`): the bus
-  stamps `Timestamp`, keeps the events in order in its own queue and calls the `IEventHandler<T>` implementations
-  of Infrastructure.Runtime or `Basil.Bot` one after another. The bus resolves its handlers when it
-  starts delivering, not when it is built (a handler reaches objects that publish to buses, so resolving them in the
-  constructor makes buses wait for each other). Persistence and Services never publish (a service returns what happened and the object publishes it). One operation publishes one event carrying
-  its whole consequence. Events sit in a nested category tree (`Event` ← `RoomEvent` ← `RoomSlotEvent` ←
-  `RoomSlotTeamChanged`) so a consumer can subscribe to a whole category. Buses, handlers and event →
-  client-notification routing belong to Infrastructure and the hosts, never to Application.
-* **Handlers are quick; slow work goes to its own queue.** A bus awaits its handlers one after another, so a
-  handler that waits (a lookup, a room, the store) holds up every later event of its category. A handler that may
+* **Application publishes events and handles the ones that concern its own module; Infrastructure only ships them**
+  (plan `module-events-plan-20261027.md`, D5-D8, supersedes "Application does not consume events"). An object or the
+  bot's voice publishes an event through `IEventPublisher<T>` (`Publish`): it stamps `Timestamp`, queues the delivery
+  and returns at once. A handler is a class implementing `Mediator.INotificationHandler<TEvent>` for one concrete
+  event type (`ConnectionHandler`, `RestrictionHandler`, `ScoreHandler`, `MatchRecorder` in Application.Runtime;
+  `RoomAnnouncer`, `AnticheatAnnouncer`, `ChatHandler` in `Basil.Bot`). One shared queue (`EventQueue`, owned by Application and run by
+  `EventDispatcher`, the one hosted service Infrastructure.Runtime adds for it) delivers the events one at a time in the order they were published,
+  across all event types; a failing handler is logged and the others still run. The mediator resolves handlers at
+  first publish, not when the publisher is built (a handler reaches objects that publish). Persistence and Services
+  never publish (a service returns what happened and the object publishes it). One operation publishes one event
+  carrying its whole consequence. Events are `sealed record`s in a category tree (`Event` <- `RoomEvent` <-
+  `RoomSlotEvent` <- `RoomSlotTeamChanged`), but a handler serves one concrete type. A handler only reacts to an
+  event by calling the owning object's operation; event -> client-notification routing belongs to the hosts.
+* **Handlers are quick; slow work goes to its own queue.** The queue awaits its handlers one after another, so a
+  handler that waits (a lookup, a room, the store) holds up every later event of the server. A handler that may
   wait only queues the work on a bounded queue of its own, with a cap per user and a timeout per item, and returns
   (`CommandWorker` of the bot). A dropped item is logged, never silent.
 * **A consequence reaches everyone, through every path.** What a change does to the people it concerns it does

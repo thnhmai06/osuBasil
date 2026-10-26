@@ -2,33 +2,32 @@ using System.Buffers.Text;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Security.Cryptography;
+using Basil.Application.Capabilities.Users;
+using Basil.Application.Persistence.Users;
 using Basil.Application.Runtime.Multiplayer.Rooms;
 using Basil.Application.Runtime.Sessions;
-using Basil.Application.Persistence.Auth;
-using Basil.Application.Persistence.Users;
 using Basil.Domain.Auth;
 using Basil.Domain.Bancho;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
-using Basil.Application.Capabilities.Users;
 
 namespace Basil.Application.Runtime.Users;
 
 /// <summary>The users who are online and the connections through which they act.</summary>
 public sealed class UserRegistry : IRoomUsersPort
 {
-	private readonly ConcurrentDictionary<string, Connection> _connections = new(StringComparer.Ordinal);
-	private readonly ConcurrentDictionary<UserRecord, User> _online = new();
-	private readonly Lock _sync = new(); // ponytail: one lock for all logins; per-user locks if login rate ever matters
-	private readonly AccountService _accounts;
-	private readonly UserContext _context;
-	private readonly SessionContext _session;
-
 	/// <summary>How long a connection must be idle before a new login of the same kind replaces it.</summary>
 	internal static readonly TimeSpan ReplaceAfterIdle = TimeSpan.FromSeconds(10);
 
 	/// <summary>A logout an osu! client sends this soon after login is ignored.</summary>
 	internal static readonly TimeSpan IgnoreLogoutWithin = TimeSpan.FromSeconds(1);
+
+	private readonly AccountService _accounts;
+	private readonly ConcurrentDictionary<string, Connection> _connections = new(StringComparer.Ordinal);
+	private readonly UserContext _context;
+	private readonly ConcurrentDictionary<UserRecord, User> _online = new();
+	private readonly SessionContext _session;
+	private readonly Lock _sync = new(); // ponytail: one lock for all logins; per-user locks if login rate ever matters
 
 	/// <summary>Creates the registry that owns online users and their connections.</summary>
 	/// <param name="accounts">The account operations that use persistence.</param>
@@ -43,6 +42,11 @@ public sealed class UserRegistry : IRoomUsersPort
 
 	/// <summary>Gets every online user by its account.</summary>
 	public IReadOnlyDictionary<UserRecord, User> Online => _online;
+
+	ValueTask<bool> IRoomUsersPort.BlocksAsync(UserRecord blocker, UserRecord who, CancellationToken cancellationToken)
+	{
+		return Of(blocker).HasBlockedAsync(who, cancellationToken);
+	}
 
 	/// <summary>Gets the open osu! game client of an online user.</summary>
 	/// <param name="user">The account to look up.</param>
@@ -107,7 +111,10 @@ public sealed class UserRegistry : IRoomUsersPort
 	/// <exception cref="ArgumentNullException">
 	///     <paramref name="client" /> is <see langword="null" /> for an osu! or osu!tourney login.
 	/// </exception>
-	/// <remarks>An osu!tourney login needs <see cref="UserPermissions.RoomObserve" /> in effect. Successful logins are recorded.</remarks>
+	/// <remarks>
+	///     An osu!tourney login needs <see cref="UserPermissions.RoomObserve" /> in effect. Successful logins are
+	///     recorded.
+	/// </remarks>
 	public async Task<LoginResult> LoginAsync(LoginAttempt attempt, ConnectionType type, IPAddress ip,
 		BanchoClient? client, int utcOffset, CancellationToken cancellationToken = default)
 	{
@@ -246,7 +253,8 @@ public sealed class UserRegistry : IRoomUsersPort
 		var bot = isBot
 			? stored!
 			: await _context.Users.ReplaceAsync(BasilBot.Id, stored is { Value.DeletedAt: null }
-				? new UserData { Name = stored.Value.Name, Country = stored.Value.Country, Permissions = UserPermissions.None }
+				? new UserData
+					{ Name = stored.Value.Name, Country = stored.Value.Country, Permissions = UserPermissions.None }
 				: new UserData { Name = BasilBot.DefaultName, Permissions = UserPermissions.None }, cancellationToken);
 
 		var now = _context.Clock.GetUtcNow();
@@ -359,11 +367,6 @@ public sealed class UserRegistry : IRoomUsersPort
 
 		foreach (var connection in user.Tourneys.Where(connection => connection.IsOpen).ToList())
 			Close(connection, ConnectionCloseReason.Revoked);
-	}
-
-	ValueTask<bool> IRoomUsersPort.BlocksAsync(UserRecord blocker, UserRecord who, CancellationToken cancellationToken)
-	{
-		return Of(blocker).HasBlockedAsync(who, cancellationToken);
 	}
 
 	internal void Add(User user)

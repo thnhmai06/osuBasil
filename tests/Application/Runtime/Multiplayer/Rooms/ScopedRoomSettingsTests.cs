@@ -1,8 +1,8 @@
 using Basil.Application.Runtime.Multiplayer;
 using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Multiplayer.Rooms;
-using Basil.Testing;
 using Basil.Domain.Mechanics;
+using Basil.Testing;
 
 namespace Basil.Application.Runtime.Tests.Multiplayer.Rooms;
 
@@ -20,7 +20,7 @@ public sealed class ScopedRoomSettingsTests
 		var setup = await RoomFixture.CreateAsync(app);
 
 		var result = await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
-			new RoomSettingsChange(Name: "renamed"), TestContext.Current.CancellationToken);
+			new RoomSettingsChange("renamed"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(RoomOutcome.Ok, result.Outcome);
 		Assert.Equal("renamed", setup.Room.Settings.Name);
@@ -176,7 +176,7 @@ public sealed class ScopedRoomSettingsTests
 		var setup = await RoomFixture.CreateAsync(app);
 
 		var result = await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
-			new RoomSettingsChange(Name: name), TestContext.Current.CancellationToken);
+			new RoomSettingsChange(name), TestContext.Current.CancellationToken);
 
 		Assert.Equal(RoomOutcome.InvalidSettings, result.Outcome);
 		Assert.NotEqual(name, setup.Room.Settings.Name);
@@ -219,7 +219,7 @@ public sealed class ScopedRoomSettingsTests
 		await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync(TestContext.Current.CancellationToken);
 
 		var result = await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
-			new RoomSettingsChange(Name: "renamed"), TestContext.Current.CancellationToken);
+			new RoomSettingsChange("renamed"), TestContext.Current.CancellationToken);
 
 		Assert.Equal(RoomOutcome.InProgress, result.Outcome);
 		Assert.NotEqual("renamed", setup.Room.Settings.Name);

@@ -1,4 +1,14 @@
+using Basil.Application.Capabilities;
+using Basil.Application.Capabilities.Beatmaps;
 using Basil.Application.Capabilities.Content;
+using Basil.Application.Capabilities.Scores;
+using Basil.Application.Capabilities.Users;
+using Basil.Application.Persistence.Auth;
+using Basil.Application.Persistence.Beatmaps;
+using Basil.Application.Persistence.Chat;
+using Basil.Application.Persistence.Content;
+using Basil.Application.Persistence.Multiplayer;
+using Basil.Application.Persistence.Users;
 using Basil.Application.Runtime.Anticheat;
 using Basil.Application.Runtime.Beatmaps;
 using Basil.Application.Runtime.Chat;
@@ -10,17 +20,8 @@ using Basil.Application.Runtime.Scores;
 using Basil.Application.Runtime.Servers;
 using Basil.Application.Runtime.Sessions;
 using Basil.Application.Runtime.Users;
-using Basil.Application.Capabilities;
-using Basil.Application.Capabilities.Beatmaps;
-using Basil.Application.Capabilities.Scores;
-using Basil.Application.Capabilities.Users;
-using Basil.Application.Persistence.Auth;
-using Basil.Application.Persistence.Beatmaps;
-using Basil.Application.Persistence.Chat;
-using Basil.Application.Persistence.Content;
-using Basil.Application.Persistence.Multiplayer;
-using Basil.Application.Persistence.Users;
 using Basil.Domain.Users;
+using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -38,6 +39,7 @@ public static class DependencyInjection
 	{
 		services.TryAddSingleton(TimeProvider.System);
 		services.AddApplicationCapabilities();
+		services.AddEvents();
 
 		services.AddSingleton(new GeneralChannelRegistry());
 
@@ -88,7 +90,6 @@ public static class DependencyInjection
 			sp.GetRequiredService<IEventPublisher<LobbyEvent>>(),
 			sp.GetRequiredService<IMatchRepository>(),
 			sp.GetRequiredService<IRoundRepository>(),
-			sp.GetRequiredService<IMatchEventRepository>(),
 			sp.GetRequiredService<IUserRepository>(),
 			sp.GetRequiredService<ISettingsRepository>(),
 			sp.GetRequiredService<IEventPublisher<RoomEvent>>(),
@@ -107,5 +108,35 @@ public static class DependencyInjection
 			sp.GetRequiredService<BeatmapsetScanner>()));
 
 		return services;
+	}
+
+	/// <summary>
+	///     Registers the publishing of events: every category is published by the one publisher, and the handlers
+	///     found in this assembly observe the events they name.
+	/// </summary>
+	internal static IServiceCollection AddEvents(this IServiceCollection services)
+	{
+		services.AddMediator(options =>
+		{
+			options.ServiceLifetime = ServiceLifetime.Singleton;
+			options.GenerateTypesAsInternal = true;
+			options.NotificationPublisherType = typeof(QueuedNotificationPublisher);
+		});
+		services.AddSingleton<EventQueue>();
+		services.AddSingleton(sp => new EventPublisher(new Lazy<IPublisher>(sp.GetRequiredService<IPublisher>),
+			sp.GetRequiredService<TimeProvider>()));
+		AddCategory<UserEvent>(services);
+		AddCategory<ChannelEvent>(services);
+		AddCategory<LobbyEvent>(services);
+		AddCategory<RoomEvent>(services);
+		AddCategory<AnticheatEvent>(services);
+		AddCategory<ScoreEvent>(services);
+		AddCategory<BeatmapsetEvent>(services);
+		return services;
+	}
+
+	private static void AddCategory<T>(IServiceCollection services) where T : Event
+	{
+		services.AddSingleton<IEventPublisher<T>>(sp => sp.GetRequiredService<EventPublisher>());
 	}
 }

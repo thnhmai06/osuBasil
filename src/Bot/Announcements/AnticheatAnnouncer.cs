@@ -1,22 +1,22 @@
 using Basil.Application.Runtime.Anticheat;
-using Basil.Application.Runtime.Events;
 using Basil.Application.Runtime.Multiplayer.Rooms;
 using Basil.Application.Runtime.Servers;
 using Basil.Application.Runtime.Users;
 using Basil.Bot.Replies;
 using Basil.Domain.Bancho;
 using Basil.Domain.Users;
+using Mediator;
 
 namespace Basil.Bot.Announcements;
 
 /// <summary>Announces anticheat flags in room channels and to room staff.</summary>
 internal sealed class AnticheatAnnouncer(Server server, UserRegistry users, IReplies replies)
-	: IEventHandler<AnticheatEvent>
+	: INotificationHandler<AnticheatPlayerFlagged>
 {
 	/// <inheritdoc />
-	public async ValueTask HandleAsync(AnticheatEvent @event, CancellationToken cancellationToken)
+	public async ValueTask Handle(AnticheatPlayerFlagged flagged, CancellationToken cancellationToken)
 	{
-		if (@event is not AnticheatPlayerFlagged { Room: { } room } flagged)
+		if (flagged.Room is not { } room)
 			return;
 
 		var reason = string.Join(", ", flagged.Signs.SignNames());

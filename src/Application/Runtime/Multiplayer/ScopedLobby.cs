@@ -3,7 +3,6 @@ using Basil.Application.Runtime.Common;
 using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Multiplayer.Rooms;
 using Basil.Application.Runtime.Sessions;
-using Basil.Domain;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 
@@ -13,9 +12,6 @@ namespace Basil.Application.Runtime.Multiplayer;
 /// <remarks>Use a scope for one request or command so permission checks use current authority.</remarks>
 public sealed class ScopedLobby : Scoped<UserPermissions>
 {
-	/// <summary>The lobby this scope is over.</summary>
-	public Lobby Lobby { get; }
-
 	/// <summary>Creates a lobby scope for a connection.</summary>
 	/// <param name="lobby">The lobby to scope.</param>
 	/// <param name="by">The connection acting on the lobby.</param>
@@ -25,11 +21,18 @@ public sealed class ScopedLobby : Scoped<UserPermissions>
 		Lobby = lobby;
 	}
 
+	/// <summary>The lobby this scope is over.</summary>
+	public Lobby Lobby { get; }
+
 	/// <summary>Opens a room for a new match, created by the scoped connection.</summary>
 	/// <param name="name">The room's name.</param>
 	/// <param name="password">The room's password, or an empty string for none.</param>
 	/// <param name="isTournament">Whether the room is a tournament room.</param>
-	/// <param name="isPrivate">Whether the room is private: hidden from the lobby, with a match history that only its participants, its managers and users with <see cref="UserPermissions.RoomViewPrivate" /> can view. Joining is not affected.</param>
+	/// <param name="isPrivate">
+	///     Whether the room is private: hidden from the lobby, with a match history that only its
+	///     participants, its managers and users with <see cref="UserPermissions.RoomViewPrivate" /> can view. Joining is not
+	///     affected.
+	/// </param>
 	/// <param name="settings">The room's initial settings, or <see langword="null" /> for the defaults.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>
@@ -113,7 +116,16 @@ public sealed class ScopedLobby : Scoped<UserPermissions>
 				Lobby.Context.Users);
 			room = new Room(id, match, settings ?? new MatchSettings(), isTournament, context);
 			if (!string.IsNullOrEmpty(password)) room.Settings.Password = password;
-			if (seat is not null && Lobby.RoomOf(seat) is null) Lobby.SeatCreator(room, seat);
+			if (seat is not null && Lobby.RoomOf(seat) is null && Lobby.TryClaim(seat, room))
+				try
+				{
+					Lobby.SeatCreator(room, seat);
+				}
+				finally
+				{
+					Lobby.Release(seat, room);
+				}
+
 			Lobby.Add(room);
 		}
 

@@ -1,5 +1,5 @@
-using Basil.Application.Runtime.Sessions;
 using Basil.Application.Persistence.Beatmaps;
+using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Beatmaps;
 
 namespace Basil.Application.Runtime.Beatmaps;
@@ -7,12 +7,6 @@ namespace Basil.Application.Runtime.Beatmaps;
 /// <summary>Owns the state changes of one beatmapset.</summary>
 public sealed class Beatmapset
 {
-	/// <summary>Gets the stored set this object represents.</summary>
-	public BeatmapsetRecord Record { get; }
-
-	/// <summary>The runtime context for beatmapset behaviour.</summary>
-	internal BeatmapsetContext Context { get; }
-
 	/// <summary>Creates the beatmapset object for a stored set.</summary>
 	/// <param name="record">The set to represent.</param>
 	/// <param name="context">The runtime context for beatmapset behaviour.</param>
@@ -21,6 +15,12 @@ public sealed class Beatmapset
 		Record = record;
 		Context = context;
 	}
+
+	/// <summary>Gets the stored set this object represents.</summary>
+	public BeatmapsetRecord Record { get; }
+
+	/// <summary>The runtime context for beatmapset behaviour.</summary>
+	internal BeatmapsetContext Context { get; }
 
 	/// <summary>Scopes this beatmapset's behaviour to a connection and its authority.</summary>
 	/// <param name="by">The connection acting on the beatmapset.</param>

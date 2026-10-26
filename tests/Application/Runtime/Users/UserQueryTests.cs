@@ -1,3 +1,4 @@
+using System.Globalization;
 using Basil.Application.Persistence.Users;
 using Basil.Domain.Users;
 
@@ -82,7 +83,7 @@ public sealed class UserQueryTests
 	[Fact]
 	public void Parse_IgnoresTheFormatProvider()
 	{
-		var turkish = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+		var turkish = CultureInfo.GetCultureInfo("tr-TR");
 
 		Assert.Equal([Country.Id], UserQuery.Parse("country=ID", turkish).Countries);
 	}

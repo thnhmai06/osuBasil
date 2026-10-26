@@ -49,32 +49,6 @@ public sealed class RoomFixture
 	public static BeatmapReference Beatmap { get; } =
 		new(new Md5("0123456789abcdef0123456789abcdef"), 1, "beatmap", GameMode.Standard, null);
 
-	/// <summary>Creates a score played in a round.</summary>
-	/// <param name="id">The score's id.</param>
-	/// <param name="round">The round the score was played in.</param>
-	/// <returns>The score.</returns>
-	public static RoundScore Score(int id, Round round)
-	{
-		var score = new ScoreRecord
-		{
-			Id = id,
-			Value = new ScoreData(
-				null,
-				round.BeatmapHash,
-				GameMode.Standard,
-				GameMods.NoMod,
-				new HitCounts(1, 0, 0, 0, 0, 0),
-				1000,
-				10,
-				0,
-				Grade.A,
-				true,
-				false,
-				DateTimeOffset.UnixEpoch)
-		};
-		return new RoundScore(score, round, null);
-	}
-
 	/// <summary>Gets the room the roles act in.</summary>
 	public Room Room { get; private init; } = null!;
 
@@ -104,6 +78,59 @@ public sealed class RoomFixture
 
 	/// <summary>Gets the connection of the creator whose right to join rooms is suspended.</summary>
 	public BanchoConnection SuspendedCreator { get; private init; } = null!;
+
+	/// <summary>Creates a score played in a round.</summary>
+	/// <param name="id">The score's id.</param>
+	/// <param name="round">The round the score was played in.</param>
+	/// <returns>The score.</returns>
+	public static RoundScore Score(int id, Round round)
+	{
+		var score = new ScoreRecord
+		{
+			Id = id,
+			Value = new ScoreData(
+				null,
+				round.BeatmapHash,
+				GameMode.Standard,
+				GameMods.NoMod,
+				new HitCounts(1, 0, 0, 0, 0, 0),
+				1000,
+				10,
+				0,
+				Grade.A,
+				true,
+				false,
+				DateTimeOffset.UnixEpoch)
+		};
+		return new RoundScore(score, round, null);
+	}
+
+	/// <summary>Creates a stored score of a player.</summary>
+	/// <param name="id">The score's id.</param>
+	/// <param name="player">The player who set the score.</param>
+	/// <param name="beatmap">The beatmap played.</param>
+	/// <param name="totalScore">The total score.</param>
+	/// <returns>The score.</returns>
+	public static ScoreRecord PlayerScore(int id, UserRecord player, Md5 beatmap, int totalScore = 1000)
+	{
+		return new ScoreRecord
+		{
+			Id = id,
+			Value = new ScoreData(
+				player.Id,
+				beatmap,
+				GameMode.Standard,
+				GameMods.NoMod,
+				new HitCounts(1, 0, 0, 0, 0, 0),
+				totalScore,
+				10,
+				0,
+				Grade.A,
+				true,
+				false,
+				DateTimeOffset.UnixEpoch)
+		};
+	}
 
 	/// <summary>Opens the rooms and the connections the roles act with.</summary>
 	/// <param name="app">The application the rooms live in.</param>

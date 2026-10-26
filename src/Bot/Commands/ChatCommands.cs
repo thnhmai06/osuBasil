@@ -1,6 +1,6 @@
-using Basil.Bot.Commands.Mp;
 using Basil.Application.Persistence.Content;
 using Basil.Application.Persistence.Users;
+using Basil.Bot.Commands.Mp;
 using Basil.Domain.Users;
 
 namespace Basil.Bot.Commands;

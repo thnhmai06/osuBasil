@@ -435,7 +435,7 @@ scoped views and contexts, events, results and the coordination between objects.
 
 ```text
 Common/        PageRequest, Page<T>, Interval<T>, Paging                           (Persistence)
-Events/        Event, IEventPublisher<T>, IEventHandler<T>                         (Runtime)
+Events/        Event, IEventPublisher<T>, EventQueue, event handlers (INotificationHandler<T>)  (Runtime)
 Users/         user and restriction repositories, UserQuery; User, ScopedUser,
                UserRegistry, ScopedUserRegistry, UserResult, login and registration
                inputs; AccountService                                              (Capabilities)
@@ -486,11 +486,11 @@ The detailed rules moved out of this file so each can be read when needed. **Rea
 
 `Room` is mutable shared state.
 
-Operations that read and then mutate a room must hold the room's exclusive scope across the complete state transition. That scope comes from `room.EnterAsync()`, which returns `null` once the room is closed; the room owns the lock, like a database transaction.
+Operations that read and then mutate a room are synchronous methods of `Room` that hold the room's own `Lock` across the complete state transition and publish inside it; a closed room answers `RoomClosed`. `ScopedRoom` only checks permissions and calls them.
 
 Do not introduce a second synchronization mechanism for the same state.
 
-Do not hold the room scope across long-lived or unrelated waits.
+Never await under the room lock.
 
 See [`docs/for-developers/multiplayer.md`](docs/for-developers/multiplayer.md) for the complete model.
 
@@ -689,9 +689,9 @@ Before considering a code change complete:
 6. Review the final diff for unrelated changes.
 7. Check every new or changed member in the Application projects against
    [Domain and Application](#domain-and-application), above all "behaviour belongs to the object that owns it", "the acted-on object owns the interaction" and
-   "Application publishes events; it does not consume them". This applies to code written by delegated agents too: the orchestrator reviews it
+   "Application publishes events; Infrastructure only ships them" (plan `module-events-plan-20261027.md`, D5). This applies to code written by delegated agents too: the orchestrator reviews it
    against these rules before accepting it. `User.Channels`, `User.Join(Channel)`,
-   sessions emitting events, event handlers inside Application, and rules or timers on runtime models and
+   sessions emitting events, a handler that waits or serves several event types, and rules or timers on runtime models and
    registries all got through review once; do not let them back in. Nor should a service that only wraps
    a repository read, a service that takes, returns or creates a live object or publishes an event, a public
    service contract, a contract name that reveals its mechanism, or a reference from Infrastructure.Runtime to

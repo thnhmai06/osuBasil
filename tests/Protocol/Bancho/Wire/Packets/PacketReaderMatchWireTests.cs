@@ -80,10 +80,10 @@ public class PacketReaderMatchWireTests
 			[.. Enumerable.Repeat<byte>(0x80, 16)],
 			[.. Enumerable.Repeat<byte>(0, 16)],
 			[],
-			hostId: 0,
-			freeMods: false,
-			slotMods: [],
-			seed: 0);
+			0,
+			false,
+			[],
+			0);
 
 		var match = new PacketReader(stream).ReadMatch();
 
@@ -105,10 +105,10 @@ public class PacketReaderMatchWireTests
 			],
 			[.. Enumerable.Repeat<byte>(1, 16)],
 			[250],
-			hostId: 3,
-			freeMods: false,
-			slotMods: [],
-			seed: 42);
+			3,
+			false,
+			[],
+			42);
 
 		var match = new PacketReader(stream).ReadMatch();
 
@@ -126,10 +126,10 @@ public class PacketReaderMatchWireTests
 			[.. Enumerable.Repeat<byte>(0x01, 16)],
 			[.. Enumerable.Repeat<byte>(2, 16)],
 			[],
-			hostId: 3,
-			freeMods: false,
-			slotMods: [],
-			seed: 42);
+			3,
+			false,
+			[],
+			42);
 
 		var match = new PacketReader(stream).ReadMatch();
 
@@ -146,10 +146,10 @@ public class PacketReaderMatchWireTests
 			[.. Enumerable.Repeat<byte>(0x01, 16)],
 			[.. Enumerable.Repeat<byte>(2, 16)],
 			[],
-			hostId: 3,
-			freeMods: true,
-			slotMods: [.. Enumerable.Repeat(7, 16)],
-			seed: 42);
+			3,
+			true,
+			[.. Enumerable.Repeat(7, 16)],
+			42);
 
 		var match = new PacketReader(stream).ReadMatch();
 

@@ -12,7 +12,8 @@ namespace Basil.Bot.Tests.Commands.Mp;
 public sealed class MpRoomResolutionTests
 {
 	/// <summary>Everyone who must lock a room they do not create can do so with this, wherever they sit.</summary>
-	private static readonly UserPermissions ManagerPermissions = UserPermissionsGroups.Default | UserPermissions.RoomManageAny;
+	private static readonly UserPermissions ManagerPermissions =
+		UserPermissionsGroups.Default | UserPermissions.RoomManageAny;
 
 	[Fact]
 	public async Task RoomScopedCommand_WithNoRoomAnywhere_SaysNotInARoom()

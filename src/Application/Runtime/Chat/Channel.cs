@@ -25,32 +25,17 @@ public abstract class Channel
 	/// <summary>The runtime dependencies used by this channel.</summary>
 	internal ChannelContext Context { get; }
 
-	/// <summary>Gets the channel name: a channel several users take part in is named <c>#name</c>; a private-message channel is named after its owner, without <c>#</c>.</summary>
+	/// <summary>
+	///     Gets the channel name: a channel several users take part in is named <c>#name</c>; a private-message channel
+	///     is named after its owner, without <c>#</c>.
+	/// </summary>
 	public abstract string Name { get; }
 
 	/// <summary>Gets the topic shown to users who join the channel.</summary>
 	public abstract string Topic { get; }
 
-	/// <summary>Checks whether a connection may read the channel and so join it.</summary>
-	/// <param name="connection">The connection to check.</param>
-	/// <param name="now">The moment to evaluate restrictions at.</param>
-	internal abstract bool CanRead(Connection connection, DateTimeOffset now);
-
-	/// <summary>Checks whether a connection may write to the channel.</summary>
-	/// <param name="connection">The connection to check.</param>
-	/// <param name="now">The moment to evaluate restrictions at.</param>
-	internal abstract bool CanWrite(Connection connection, DateTimeOffset now);
-
 	/// <summary>Gets the connections currently in the channel.</summary>
 	public IReadOnlySet<Connection> Members => _members;
-
-	/// <summary>Creates a channel scope for a connection.</summary>
-	/// <param name="by">The connection acting on this channel.</param>
-	/// <returns>A scope for the channel and connection.</returns>
-	public ScopedChannel ScopeTo(Connection by)
-	{
-		return new ScopedChannel(this, by);
-	}
 
 	/// <summary>
 	///     Gets the connections currently in the channel, for changing them; the caller holds the scope and reports the
@@ -63,6 +48,24 @@ public abstract class Channel
 	{
 		get => _closed;
 		internal set => _closed = value;
+	}
+
+	/// <summary>Checks whether a connection may read the channel and so join it.</summary>
+	/// <param name="connection">The connection to check.</param>
+	/// <param name="now">The moment to evaluate restrictions at.</param>
+	internal abstract bool CanRead(Connection connection, DateTimeOffset now);
+
+	/// <summary>Checks whether a connection may write to the channel.</summary>
+	/// <param name="connection">The connection to check.</param>
+	/// <param name="now">The moment to evaluate restrictions at.</param>
+	internal abstract bool CanWrite(Connection connection, DateTimeOffset now);
+
+	/// <summary>Creates a channel scope for a connection.</summary>
+	/// <param name="by">The connection acting on this channel.</param>
+	/// <returns>A scope for the channel and connection.</returns>
+	public ScopedChannel ScopeTo(Connection by)
+	{
+		return new ScopedChannel(this, by);
 	}
 
 	/// <summary>

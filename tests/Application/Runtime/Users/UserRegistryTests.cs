@@ -1,9 +1,9 @@
 using System.Net;
-using Basil.Application.Runtime.Sessions;
 using Basil.Application.Persistence.Users;
-using Basil.Testing;
+using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
+using Basil.Testing;
 
 namespace Basil.Application.Runtime.Tests.Users;
 

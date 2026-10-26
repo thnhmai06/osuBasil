@@ -1,34 +1,33 @@
-using Basil.Application.Runtime.Multiplayer.Events;
+using Basil.Application.Runtime.Multiplayer;
 using Basil.Application.Runtime.Sessions;
-using Basil.Testing;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Runtime.Sessions;
+using Basil.Testing;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace Basil.Infrastructure.Runtime.Tests.Sessions;
+namespace Basil.Application.Runtime.Tests.Multiplayer;
 
 /// <summary>
 ///     What a restriction costs a user in multiplayer: a suspended right to join rooms takes away the seat and the
 ///     referee entries, while a restriction that does not cover that right, or a manager who needs no such right,
 ///     leaves them where they are. The expected values come from docs/for-agents/identity-permissions.md.
 /// </summary>
-public sealed class RestrictionHandlerTests
+public sealed class RestrictionLobbyHandlerTests
 {
 	[Fact]
-	public async Task HandleAsync_RestrictedRoomJoin_RemovesTheOnlineUserFromTheirRoom()
+	public async Task Handle_RestrictedRoomJoin_RemovesTheOnlineUserFromTheirRoom()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		var handler = Handler(app);
 		var restricted = await RestrictAsync(app, setup.Player.Record, UserPermissions.RoomJoin);
 
-		await handler.HandleAsync(restricted, TestContext.Current.CancellationToken);
+		await handler.Handle(restricted, TestContext.Current.CancellationToken);
 
 		Assert.Null(setup.Room.Slots.Find(setup.Player));
 	}
 
 	[Fact]
-	public async Task HandleAsync_RestrictedRoomJoin_RemovesTheOfflineRefereeFromOpenRooms()
+	public async Task Handle_RestrictedRoomJoin_RemovesTheOfflineRefereeFromOpenRooms()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -36,13 +35,13 @@ public sealed class RestrictionHandlerTests
 		app.Users.Close(setup.Referee, ConnectionCloseReason.ConnectionLost);
 		var restricted = await RestrictAsync(app, setup.Referee.Record, UserPermissions.RoomJoin);
 
-		await handler.HandleAsync(restricted, TestContext.Current.CancellationToken);
+		await handler.Handle(restricted, TestContext.Current.CancellationToken);
 
 		Assert.DoesNotContain(setup.Referee.Record, setup.Room.Authority.Referees);
 	}
 
 	[Fact]
-	public async Task HandleAsync_RestrictedRoomJoin_LeavesAnOfflineManagerOnTheRefereeList()
+	public async Task Handle_RestrictedRoomJoin_LeavesAnOfflineManagerOnTheRefereeList()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -52,28 +51,28 @@ public sealed class RestrictionHandlerTests
 		app.Users.Close(setup.Manager, ConnectionCloseReason.ConnectionLost);
 		var restricted = await RestrictAsync(app, setup.Manager.Record, UserPermissions.RoomJoin);
 
-		await handler.HandleAsync(restricted, TestContext.Current.CancellationToken);
+		await handler.Handle(restricted, TestContext.Current.CancellationToken);
 
 		Assert.Contains(setup.Manager.Record, setup.Room.Authority.Referees);
 	}
 
 	[Fact]
-	public async Task HandleAsync_RestrictedOtherRight_LeavesTheSeatAlone()
+	public async Task Handle_RestrictedOtherRight_LeavesTheSeatAlone()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		var handler = Handler(app);
 		var restricted = await RestrictAsync(app, setup.Player.Record, UserPermissions.ChatPost);
 
-		await handler.HandleAsync(restricted, TestContext.Current.CancellationToken);
+		await handler.Handle(restricted, TestContext.Current.CancellationToken);
 
 		Assert.NotNull(setup.Room.Slots.Find(setup.Player));
 	}
 
-	private static RestrictionHandler Handler(TestApplication app)
+	private static RestrictionLobbyHandler Handler(TestApplication app)
 	{
-		return new RestrictionHandler(app.Users, app.Lobby, app.Clock,
-			NullLogger<RestrictionHandler>.Instance);
+		return new RestrictionLobbyHandler(app.Users, app.Lobby,
+			NullLogger<RestrictionLobbyHandler>.Instance);
 	}
 
 	/// <summary>Suspends one right of a user as a moderator who outranks everyone and reports the published event.</summary>

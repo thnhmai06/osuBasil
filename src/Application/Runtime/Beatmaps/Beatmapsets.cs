@@ -1,6 +1,6 @@
+using Basil.Application.Capabilities.Beatmaps;
 using Basil.Application.Persistence.Beatmaps;
 using Basil.Domain.Beatmaps;
-using Basil.Application.Capabilities.Beatmaps;
 
 namespace Basil.Application.Runtime.Beatmaps;
 

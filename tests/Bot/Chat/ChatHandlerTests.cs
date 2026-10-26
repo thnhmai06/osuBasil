@@ -24,8 +24,8 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	private readonly BotHarness _bot = new();
 	private readonly ChatHandler _handler;
 	private readonly CommandWorker _worker = new(NullLogger<CommandWorker>.Instance, TimeProvider.System);
-	private GeneralChannel _channel = null!;
 	private BotConnection _botConnection = null!;
+	private GeneralChannel _channel = null!;
 	private BanchoConnection _typist = null!;
 
 	public ChatHandlerTests()
@@ -49,6 +49,54 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 		await _worker.StopAsync(CancellationToken.None);
 		_worker.Dispose();
 		_bot.Dispose();
+	}
+
+	/// <summary>Has the typist post a message and waits until the worker has run what the handler queued.</summary>
+	private async Task PostAsync(Channel channel, string content, bool isNotice = false, UserRecord? author = null)
+	{
+		var message = new Message
+		{
+			Author = author ?? _typist.Record, Content = content, Timestamp = _bot.App.Clock.GetUtcNow(),
+			IsNotice = isNotice
+		};
+
+		await _handler.Handle(new ChannelMessagePosted(channel, message, false, null, _typist), Token);
+		await DrainAsync();
+	}
+
+	/// <summary>Waits until every command queued so far has run, by queueing one more behind them.</summary>
+	private async Task DrainAsync()
+	{
+		var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+		Assert.True(_worker.Enqueue(int.MaxValue, _ =>
+		{
+			done.SetResult();
+			return Task.CompletedTask;
+		}));
+		await done.Task.WaitAsync(TimeSpan.FromSeconds(10), Token);
+	}
+
+	private List<ChannelMessagePosted> Posts()
+	{
+		return [.. _bot.App.ChannelEvents.Events.OfType<ChannelMessagePosted>()];
+	}
+
+	private void GivenFaq(string entry, string text)
+	{
+		_bot.Faqs.ReadAsync(entry, Arg.Any<CancellationToken>())
+			.Returns(new StreamReader(new MemoryStream(Encoding.UTF8.GetBytes(text))));
+	}
+
+	private void GivenFailingFaq(string entry)
+	{
+		_bot.Faqs.ReadAsync(entry, Arg.Any<CancellationToken>())
+			.Returns(Task.FromException<StreamReader?>(new InvalidOperationException()));
+	}
+
+	/// <summary>Gets the non-empty lines of a reply, which is how the bot posts a reply of several lines.</summary>
+	private static List<string> Lines(string text)
+	{
+		return [.. text.Split('\n').Select(line => line.TrimEnd('\r')).Where(line => line.Length > 0)];
 	}
 
 	#region Which messages are commands
@@ -136,9 +184,10 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	[Fact]
 	public async Task AMessageTheServerSaidItself_IsIgnored()
 	{
-		var message = new Message { Author = _typist.Record, Content = "!roll", Timestamp = _bot.App.Clock.GetUtcNow() };
+		var message = new Message
+			{ Author = _typist.Record, Content = "!roll", Timestamp = _bot.App.Clock.GetUtcNow() };
 
-		await _handler.HandleAsync(new ChannelMessagePosted(_channel, message, false, null), Token);
+		await _handler.Handle(new ChannelMessagePosted(_channel, message, false, null), Token);
 		await DrainAsync();
 
 		Assert.Empty(Posts());
@@ -261,52 +310,4 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	}
 
 	#endregion
-
-	/// <summary>Has the typist post a message and waits until the worker has run what the handler queued.</summary>
-	private async Task PostAsync(Channel channel, string content, bool isNotice = false, UserRecord? author = null)
-	{
-		var message = new Message
-		{
-			Author = author ?? _typist.Record, Content = content, Timestamp = _bot.App.Clock.GetUtcNow(),
-			IsNotice = isNotice
-		};
-
-		await _handler.HandleAsync(new ChannelMessagePosted(channel, message, false, null, _typist), Token);
-		await DrainAsync();
-	}
-
-	/// <summary>Waits until every command queued so far has run, by queueing one more behind them.</summary>
-	private async Task DrainAsync()
-	{
-		var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-		Assert.True(_worker.Enqueue(int.MaxValue, _ =>
-		{
-			done.SetResult();
-			return Task.CompletedTask;
-		}));
-		await done.Task.WaitAsync(TimeSpan.FromSeconds(10), Token);
-	}
-
-	private List<ChannelMessagePosted> Posts()
-	{
-		return [.. _bot.App.ChannelEvents.Events.OfType<ChannelMessagePosted>()];
-	}
-
-	private void GivenFaq(string entry, string text)
-	{
-		_bot.Faqs.ReadAsync(entry, Arg.Any<CancellationToken>())
-			.Returns(new StreamReader(new MemoryStream(Encoding.UTF8.GetBytes(text))));
-	}
-
-	private void GivenFailingFaq(string entry)
-	{
-		_bot.Faqs.ReadAsync(entry, Arg.Any<CancellationToken>())
-			.Returns(Task.FromException<StreamReader?>(new InvalidOperationException()));
-	}
-
-	/// <summary>Gets the non-empty lines of a reply, which is how the bot posts a reply of several lines.</summary>
-	private static List<string> Lines(string text)
-	{
-		return [.. text.Split('\n').Select(line => line.TrimEnd('\r')).Where(line => line.Length > 0)];
-	}
 }

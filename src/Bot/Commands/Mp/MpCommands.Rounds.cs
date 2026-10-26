@@ -37,7 +37,8 @@ internal sealed partial class MpCommands
 		return await StartCountdownAsync(context, room, seconds, false, cancellationToken);
 	}
 
-	private static async Task<bool> AbortTimerAsync(CommandContext context, Room room, CancellationToken cancellationToken)
+	private static async Task<bool> AbortTimerAsync(CommandContext context, Room room,
+		CancellationToken cancellationToken)
 	{
 		var by = context.By;
 		var outcome = await room.ScopeTo(by).Rounds.CancelCountdownAsync(cancellationToken);
@@ -58,7 +59,8 @@ internal sealed partial class MpCommands
 	/// <param name="startsRound">Whether the round starts when the countdown ends.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns><see langword="true" /> when it started; otherwise the reason was replied.</returns>
-	private static async Task<bool> StartCountdownAsync(CommandContext context, Room room, int seconds, bool startsRound,
+	private static async Task<bool> StartCountdownAsync(CommandContext context, Room room, int seconds,
+		bool startsRound,
 		CancellationToken cancellationToken)
 	{
 		var by = context.By;

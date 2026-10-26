@@ -79,6 +79,20 @@ public sealed class BeatmapsetsImportTests
 	}
 
 	[Fact]
+	public async Task ImportAsync_WithDeclaredVideos_MakesTheArchiveWithoutVideoWithoutExactlyThoseFiles()
+	{
+		var world = new BeatmapsetWorld();
+		using var app = world.CreateApplication();
+		var withVideo = new Diff("Easy", "easy file", Video: "intro.ogv");
+		var sharing = new Diff("Hard", "hard file", Video: "intro.ogv");
+		var plain = new Diff("Insane", "insane file");
+
+		var result = await ImportAsync(app, Osz.Build(null, withVideo, sharing, plain));
+
+		Assert.Equal(["intro.ogv"], world.Storage.Stored[result.Set!.Id].VideoFiles);
+	}
+
+	[Fact]
 	public async Task ImportAsync_WithADeclaredSetId_GivesTheNewSetThatId()
 	{
 		var world = new BeatmapsetWorld();
@@ -277,7 +291,8 @@ public sealed class BeatmapsetsImportTests
 		await ImportAsync(app, Osz.Build(null, Easy with { OnlineId = 9001 }, Hard));
 		world.Beatmaps.Records[Osz.HashOf(Easy)].Locked = true;
 
-		var second = await ImportAsync(app, Osz.Build(null, Easy with { OnlineId = 9001, Content = "easy file, edited" }, Hard));
+		var second = await ImportAsync(app,
+			Osz.Build(null, Easy with { OnlineId = 9001, Content = "easy file, edited" }, Hard));
 
 		Assert.Equal(BeatmapsetImportFailure.Locked, second.Failure);
 		Assert.Contains(Osz.HashOf(Easy), world.Beatmaps.Records.Keys);

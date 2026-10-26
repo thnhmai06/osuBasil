@@ -1,7 +1,5 @@
 using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Sessions;
-using Basil.Domain.Multiplayer;
-using Basil.Domain.Users;
 using MatchRecord = Basil.Domain.Multiplayer.MatchRecord;
 using MatchSettings = Basil.Domain.Multiplayer.MatchSettings;
 
@@ -13,6 +11,11 @@ namespace Basil.Application.Runtime.Multiplayer.Rooms;
 /// </summary>
 public sealed partial class Room : IEquatable<Room>
 {
+	/// <summary>Admits one state transition of the room at a time.</summary>
+	private readonly Lock _sync = new();
+
+	private bool _settlePending;
+
 	/// <summary>Opens a room for a match.</summary>
 	/// <param name="id">The room id, carried by the client protocol.</param>
 	/// <param name="match">The match the room plays.</param>
@@ -65,10 +68,11 @@ public sealed partial class Room : IEquatable<Room>
 	public RoomRounds Rounds { get; }
 
 	/// <summary>Gets a value that indicates whether the room has closed.</summary>
-	public bool IsClosed { get; internal set; }
-
-	/// <summary>Admits one state transition of the room at a time.</summary>
-	internal SemaphoreSlim Gate { get; } = new(1, 1);
+	public bool IsClosed
+	{
+		get => Volatile.Read(ref field);
+		internal set => Volatile.Write(ref field, value);
+	}
 
 	/// <summary>The timer that closes the room while it is empty.</summary>
 	internal ITimer? ClosingTimer { get; set; }
@@ -95,32 +99,26 @@ public sealed partial class Room : IEquatable<Room>
 		return new ScopedRoom(this, by);
 	}
 
-	/// <summary>Enters the room's exclusive scope, in which one state transition of the room runs one at a time.</summary>
-	/// <param name="cancellationToken">A token that cancels the wait.</param>
-	/// <returns>The scope, to dispose when done; or <see langword="null" /> when the room has closed.</returns>
-	internal async Task<IAsyncDisposable?> EnterAsync(CancellationToken cancellationToken = default)
+	/// <summary>Enters the room's exclusive scope, in which one state transition of the room runs at a time.</summary>
+	/// <returns>The scope, to dispose when done.</returns>
+	/// <remarks>The caller checks <see cref="IsClosed" /> inside the scope.</remarks>
+	internal Lock.Scope Enter()
 	{
-		await Gate.WaitAsync(cancellationToken);
-		if (!IsClosed) return new Scope(Gate);
-		Gate.Release();
-		return null;
+		return _sync.EnterScope();
 	}
 
-	/// <summary>Records a score for this room's latest round when the server itself calls it; it needs no rights.</summary>
-	/// <param name="score">The relation between the stored score and its round.</param>
-	/// <param name="player">The player who submitted the score.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>Ok, RoundMismatch or RoomClosed when the room has closed.</returns>
-	public async Task<RoomOutcome> RecordScoreAsync(RoundScore score, UserRecord player,
-		CancellationToken cancellationToken = default)
+	/// <summary>
+	///     Publishes an event of the room, then settles a round that ended in the same transition: the decision of a
+	///     round is published after the event that ended it.
+	/// </summary>
+	/// <param name="event">The event.</param>
+	private void Emit(RoomEvent @event)
 	{
-		await using var scope = await EnterAsync(cancellationToken);
-		if (scope is null) return RoomOutcome.RoomClosed;
+		Context.Events.Publish(@event);
+		if (!_settlePending) return;
 
-		if (Rounds.LastRound is not { } round || !round.Equals(score.Round)) return RoomOutcome.RoundMismatch;
-
-		Context.Events.Publish(new RoomRoundScoreSubmitted(this, round, player, score));
-		return RoomOutcome.Ok;
+		_settlePending = false;
+		SettleRound();
 	}
 
 	/// <inheritdoc />
@@ -133,16 +131,5 @@ public sealed partial class Room : IEquatable<Room>
 	public override int GetHashCode()
 	{
 		return Match.GetHashCode();
-	}
-
-	private sealed class Scope(SemaphoreSlim held) : IAsyncDisposable
-	{
-		private int _released;
-
-		public ValueTask DisposeAsync()
-		{
-			if (Interlocked.Exchange(ref _released, 1) == 0) held.Release();
-			return ValueTask.CompletedTask;
-		}
 	}
 }

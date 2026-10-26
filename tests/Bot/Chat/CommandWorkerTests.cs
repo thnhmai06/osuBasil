@@ -249,7 +249,10 @@ public sealed class CommandWorkerTests : IAsyncLifetime
 			Assert.True(_worker.Enqueue(1, _ => Task.CompletedTask));
 	}
 
-	/// <summary>Gives a user the most commands they may have waiting, the first of which holds the worker until the gate opens.</summary>
+	/// <summary>
+	///     Gives a user the most commands they may have waiting, the first of which holds the worker until the gate
+	///     opens.
+	/// </summary>
 	private async Task FillUserAsync(int userId, Func<CancellationToken, Task>? rest = null)
 	{
 		await BlockWorkerAsync(userId);

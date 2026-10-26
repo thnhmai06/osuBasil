@@ -47,7 +47,7 @@ public sealed partial class Room
 
 		JoinChannel(player);
 		MarkOccupied();
-		Context.Events.Publish(new RoomPlayerJoined(this, player, slot.Index, null, null));
+		Emit(new RoomPlayerJoined(this, player, slot.Index, null, null));
 		return RoomOutcome.Ok;
 	}
 
@@ -70,39 +70,14 @@ public sealed partial class Room
 	/// <summary>Removes a seated player and updates the room's round, channel and empty-room state.</summary>
 	/// <param name="by">The player's game connection.</param>
 	/// <returns>Ok when the player left, otherwise NotInRoom.</returns>
-	internal RoomOutcome Leave(BanchoConnection by)
+	private RoomOutcome LeaveSeat(BanchoConnection by)
 	{
 		if (Vacate(by) is not { } slot) return RoomOutcome.NotInRoom;
 
 		var progress = AdvanceRound();
-		Context.Events.Publish(new RoomPlayerLeft(this, by, slot.Index, Authority.Host, progress));
+		Emit(new RoomPlayerLeft(this, by, slot.Index, Authority.Host, progress));
 		LeaveChannel(by);
 		ReportIfEmpty();
-		return RoomOutcome.Ok;
-	}
-
-	/// <summary>Adds a tournament connection as an observer.</summary>
-	/// <param name="by">The tournament connection observing.</param>
-	/// <returns>Ok, or IsPlayer when the user is seated in the room.</returns>
-	internal RoomOutcome ObserverJoin(TourneyConnection by)
-	{
-		if (Slots.Find(by.Record) is not null) return RoomOutcome.IsPlayer;
-		if (!Members.MutableObservers.Add(by)) return RoomOutcome.Ok;
-
-		Context.Events.Publish(new RoomObserverJoined(this, by));
-		JoinChannel(by);
-		return RoomOutcome.Ok;
-	}
-
-	/// <summary>Removes a tournament connection from the room's observers.</summary>
-	/// <param name="by">The tournament connection leaving.</param>
-	/// <returns>Ok when the observer left, otherwise NotObserver.</returns>
-	internal RoomOutcome ObserverLeave(TourneyConnection by)
-	{
-		if (!Members.MutableObservers.Remove(by)) return RoomOutcome.NotObserver;
-
-		Context.Events.Publish(new RoomObserverLeft(this, by));
-		LeaveChannel(by);
 		return RoomOutcome.Ok;
 	}
 
@@ -117,6 +92,7 @@ public sealed partial class Room
 
 		PassHostFrom(player);
 
+		Rounds.Settlement?.Leave(player.Record);
 		slot.Clear();
 		return slot;
 	}
@@ -182,7 +158,7 @@ public sealed partial class Room
 		var progress = AdvanceRound();
 		JoinChannel(player);
 		MarkOccupied();
-		Context.Events.Publish(new RoomPlayerJoined(this, player, slot.Index, stale, progress));
+		Emit(new RoomPlayerJoined(this, player, slot.Index, stale, progress));
 		return RoomOutcome.Ok;
 	}
 }

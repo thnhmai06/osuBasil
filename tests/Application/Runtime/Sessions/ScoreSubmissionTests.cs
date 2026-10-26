@@ -1,10 +1,13 @@
 using Basil.Application.Persistence.Scores;
-using Basil.Application.Runtime.Multiplayer.Rooms;
+using Basil.Application.Runtime.Common;
 using Basil.Application.Runtime.Multiplayer;
+using Basil.Application.Runtime.Multiplayer.Events;
+using Basil.Application.Runtime.Multiplayer.Rooms;
 using Basil.Application.Runtime.Scores;
 using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
+using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Basil.Testing;
@@ -20,7 +23,7 @@ public sealed class ScoreSubmissionTests
 {
 	private static readonly BeatmapChecksums Checksums = new(ScoreSubmissionFixture.Beatmap, null);
 
-	private static Task<(Runtime.Common.Result<ConnectionOutcome> Result, ScoreRejection? Rejection)> SubmitAsync(
+	private static Task<(Result<ConnectionOutcome> Result, ScoreRejection? Rejection)> SubmitAsync(
 		ScoreSubmissionFixture f, Submission submission, SubmittedClient? client = null,
 		BeatmapChecksums? beatmap = null, Stream? replay = null, bool unknownBeatmap = false)
 	{
@@ -83,7 +86,9 @@ public sealed class ScoreSubmissionTests
 	[Fact]
 	public async Task SubmitScoreAsync_WithoutTheScoreSubmitPermission_IsDeniedWithExactlyThatPermission()
 	{
-		using var f = await ScoreSubmissionFixture.CreateAsync(permissions: UserPermissionsGroups.Default & ~UserPermissions.ScoreSubmit);
+		using var f =
+			await ScoreSubmissionFixture.CreateAsync(permissions: UserPermissionsGroups.Default &
+			                                                      ~UserPermissions.ScoreSubmit);
 
 		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()));
 
@@ -310,8 +315,6 @@ public sealed class ScoreSubmissionTests
 		var published = Assert.IsType<ScoreSubmitted>(Assert.Single(f.App.ScoreEvents.Events));
 		Assert.Equal(f.User, published.Player);
 		Assert.Equal(stored, published.Score);
-		Assert.Null(published.RoundScore);
-		Assert.Null(published.Room);
 	}
 
 	[Fact]
@@ -452,7 +455,8 @@ public sealed class ScoreSubmissionTests
 
 	// ----- rounds -----
 
-	private static async Task<Room> StartRoundAsync(ScoreSubmissionFixture f, GameTeamType teamType = GameTeamType.HeadToHead)
+	private static async Task<Room> StartRoundAsync(ScoreSubmissionFixture f,
+		GameTeamType teamType = GameTeamType.HeadToHead)
 	{
 		var (room, opened) = await f.App.Lobby.ScopeTo(f.Client).OpenRoomAsync("round room", "", false, false,
 			cancellationToken: TestContext.Current.CancellationToken);
@@ -466,47 +470,68 @@ public sealed class ScoreSubmissionTests
 	}
 
 	[Fact]
-	public async Task SubmitScoreAsync_OnTheBeatmapOfTheLatestRound_CarriesTheRoundAndNamesTheRoom()
+	public async Task SubmitScoreAsync_OnTheRoundBeatmapTheServerDoesNotHave_IsAccepted()
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
-		var room = await StartRoundAsync(f);
-
-		var (result, _) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()));
-
-		Assert.Equal(ConnectionOutcome.Ok, result.Outcome);
-		var published = Assert.IsType<ScoreSubmitted>(Assert.Single(f.App.ScoreEvents.Events));
-		Assert.Equal(room, published.Room);
-		Assert.Equal(room.Rounds.LastRound, published.RoundScore!.Round);
-		Assert.Equal(published.Score, published.RoundScore.Score);
-		Assert.Null(published.RoundScore.Team);
-	}
-
-	[Fact]
-	public async Task SubmitScoreAsync_InATeamRound_CarriesTheTeamOfThePlayersSlot()
-	{
-		using var f = await ScoreSubmissionFixture.CreateAsync();
-		var room = await StartRoundAsync(f, GameTeamType.TeamVs);
-
-		await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()));
-
-		var published = Assert.IsType<ScoreSubmitted>(Assert.Single(f.App.ScoreEvents.Events));
-		Assert.NotNull(room.Slots.Find(f.Client)!.Team);
-		Assert.Equal(room.Slots.Find(f.Client)!.Team, published.RoundScore!.Team);
-	}
-
-	[Fact]
-	public async Task SubmitScoreAsync_OnTheRoundBeatmapTheServerDoesNotHave_IsAcceptedAsARoundScore()
-	{
-		using var f = await ScoreSubmissionFixture.CreateAsync();
-		var room = await StartRoundAsync(f);
+		await StartRoundAsync(f);
 
 		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()),
 			unknownBeatmap: true);
 
 		Assert.Equal(ConnectionOutcome.Ok, result.Outcome);
 		Assert.Null(rejection);
-		var published = Assert.IsType<ScoreSubmitted>(Assert.Single(f.App.ScoreEvents.Events));
-		Assert.Equal(room, published.Room);
+		Assert.IsType<ScoreSubmitted>(Assert.Single(f.App.ScoreEvents.Events));
+	}
+
+	[Fact]
+	public async Task SubmitScoreAsync_InARound_IsTakenByTheRoundOnceTheHandlerGetsTheEvent()
+	{
+		using var f = await ScoreSubmissionFixture.CreateAsync();
+		var room = await StartRoundAsync(f);
+		await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()));
+		var submitted = Assert.IsType<ScoreSubmitted>(Assert.Single(f.App.ScoreEvents.Events));
+
+		await new ScoreHandler(f.App.Lobby).Handle(submitted, TestContext.Current.CancellationToken);
+		Assert.True((await room.ScopeTo(f.Client).Rounds.CompleteAsync(TestContext.Current.CancellationToken)).IsOk);
+
+		var taken = Assert.Single(f.App.RoomEvents.Events.OfType<RoomRoundScoreSubmitted>());
+		Assert.Equal(submitted.Score, taken.Score.Score);
+		Assert.Equal(room.Rounds.LastRound, taken.Round);
+		var decided = Assert.Single(f.App.RoomEvents.Events.OfType<RoomRoundDecided>());
+		Assert.Equal(f.User.Id, Assert.IsType<HeadToHeadResult>(decided.Result).WinnerId);
+	}
+
+	[Fact]
+	public async Task
+		SubmitScoreAsync_AfterCompletingTheRoundAndLeaving_StillAcceptsTheRoundBeatmapTheServerDoesNotHave()
+	{
+		using var f = await ScoreSubmissionFixture.CreateAsync();
+		var room = await StartRoundAsync(f);
+		var stays = await RoomFixture.PlayerAsync(f.App, "Stays");
+		Assert.True((await room.ScopeTo(stays).Members.JoinAsync("", TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await room.ScopeTo(f.Client).Rounds.CompleteAsync(TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await room.ScopeTo(f.Client).Members.LeaveAsync(TestContext.Current.CancellationToken)).IsOk);
+
+		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()),
+			unknownBeatmap: true);
+
+		Assert.Equal(ConnectionOutcome.Ok, result.Outcome);
+		Assert.Null(rejection);
+	}
+
+	[Fact]
+	public async Task SubmitScoreAsync_OnTheRoundBeatmapTheServerDoesNotHave_OnceTheRoundIsDecided_IsRejected()
+	{
+		using var f = await ScoreSubmissionFixture.CreateAsync();
+		var room = await StartRoundAsync(f);
+		Assert.True((await room.ScopeTo(f.Client).Rounds.CompleteAsync(TestContext.Current.CancellationToken)).IsOk);
+		f.App.Clock.Advance(RoomRounds.ScoreWait);
+
+		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()),
+			unknownBeatmap: true);
+
+		Assert.Equal(ConnectionOutcome.Rejected, result.Outcome);
+		Assert.Equal(ScoreRejection.UnknownBeatmap, rejection);
 	}
 
 	[Fact]
@@ -521,38 +546,5 @@ public sealed class ScoreSubmissionTests
 
 		Assert.Equal(ConnectionOutcome.Rejected, result.Outcome);
 		Assert.Equal(ScoreRejection.UnknownBeatmap, rejection);
-	}
-
-	[Fact]
-	public async Task SubmitScoreAsync_OnAKnownBeatmapOtherThanTheRoundsBeatmap_BelongsToNoRound()
-	{
-		using var f = await ScoreSubmissionFixture.CreateAsync();
-		await StartRoundAsync(f);
-		var other = new Md5("11111111111111111111111111111111");
-		var score = ScoreSubmissionFixture.PassedScore();
-
-		var submission = new Submission
-		{
-			Score = score,
-			HashByClient = ScoreSubmissionFixture.SubmissionChecksum(score, f.User.Value.Name, null, other)
-		};
-		var (result, _) = await SubmitAsync(f, submission, ScoreSubmissionFixture.GenuineClient(other),
-			new BeatmapChecksums(other, null));
-
-		Assert.Equal(ConnectionOutcome.Ok, result.Outcome);
-		var published = Assert.IsType<ScoreSubmitted>(Assert.Single(f.App.ScoreEvents.Events));
-		Assert.Null(published.RoundScore);
-		Assert.Null(published.Room);
-	}
-
-	[Fact]
-	public async Task SubmitScoreAsync_OutsideAnyRoom_BelongsToNoRound()
-	{
-		using var f = await ScoreSubmissionFixture.CreateAsync();
-
-		await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()));
-
-		var published = Assert.IsType<ScoreSubmitted>(Assert.Single(f.App.ScoreEvents.Events));
-		Assert.Null(published.RoundScore);
 	}
 }

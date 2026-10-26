@@ -1,7 +1,7 @@
-using Basil.Application.Runtime.Sessions;
-using Basil.Application.Persistence.Common;
 using Basil.Application.Capabilities.Users;
+using Basil.Application.Persistence.Common;
 using Basil.Application.Runtime.Common;
+using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Auth;
 using Basil.Domain.Common;
 using Basil.Domain.Moderation;
@@ -10,9 +10,24 @@ using Basil.Domain.Users;
 namespace Basil.Application.Runtime.Users;
 
 /// <summary>An account scoped to one connection and its authority snapshot.</summary>
-/// <remarks>The snapshot is for one request or command; keeping it longer lets its rights outlive changes to permissions or restrictions.</remarks>
+/// <remarks>
+///     The snapshot is for one request or command; keeping it longer lets its rights outlive changes to permissions
+///     or restrictions.
+/// </remarks>
 public sealed class ScopedUser : Scoped<UserPermissions>
 {
+	/// <summary>Creates a scoped account for a connection.</summary>
+	/// <param name="user">The account to scope.</param>
+	/// <param name="by">The connection acting on the account.</param>
+	internal ScopedUser(User user, Connection by) : base(by,
+		by.User.EffectivePermissions(user.Context.Clock.GetUtcNow()))
+	{
+		User = user;
+		Granted = by.User.Record.Value.Permissions;
+		Restrictions = new ScopedUserRestrictions(this);
+		Relationships = new ScopedUserRelationships(this);
+	}
+
 	/// <summary>Gets the account this scope is over.</summary>
 	public User User { get; }
 
@@ -25,16 +40,11 @@ public sealed class ScopedUser : Scoped<UserPermissions>
 	/// <summary>The friends and blocks this account sets toward other users.</summary>
 	public ScopedUserRelationships Relationships { get; }
 
-	/// <summary>Creates a scoped account for a connection.</summary>
-	/// <param name="user">The account to scope.</param>
-	/// <param name="by">The connection acting on the account.</param>
-	internal ScopedUser(User user, Connection by) : base(by, by.User.EffectivePermissions(user.Context.Clock.GetUtcNow()))
-	{
-		User = user;
-		Granted = by.User.Record.Value.Permissions;
-		Restrictions = new ScopedUserRestrictions(this);
-		Relationships = new ScopedUserRelationships(this);
-	}
+	/// <summary>Whether the caller is acting on their own account.</summary>
+	internal bool IsSelf => By.Record.Equals(User.Record);
+
+	/// <summary>Whether the caller's granted permissions strictly outrank the target's.</summary>
+	internal bool Outranks => Granted.Allows(User.Record.Value.Permissions) && Granted != User.Record.Value.Permissions;
 
 	/// <summary>Sets or clears the away message other users see.</summary>
 	/// <param name="message">The away message, or <see langword="null" /> or white space to clear it.</param>
@@ -57,12 +67,6 @@ public sealed class ScopedUser : Scoped<UserPermissions>
 		User.PmPrivate = pmPrivate;
 		return true;
 	}
-
-	/// <summary>Whether the caller is acting on their own account.</summary>
-	internal bool IsSelf => By.Record.Equals(User.Record);
-
-	/// <summary>Whether the caller's granted permissions strictly outrank the target's.</summary>
-	internal bool Outranks => Granted.Allows(User.Record.Value.Permissions) && Granted != User.Record.Value.Permissions;
 
 	/// <summary>Checks the required permission and account hierarchy.</summary>
 	/// <param name="needed">The permission required.</param>
@@ -154,7 +158,8 @@ public sealed class ScopedUser : Scoped<UserPermissions>
 	/// <returns>Ok, WrongPassword, or why the caller may not.</returns>
 	/// <remarks>
 	///     An account changes its own password by giving the current one; changing another's needs
-	///     <see cref="UserPermissions.UserManage" /> and outranking them. Every connection, the caller's own included, closes as
+	///     <see cref="UserPermissions.UserManage" /> and outranking them. Every connection, the caller's own included, closes
+	///     as
 	///     <see cref="ConnectionCloseReason.CredentialsChanged" />.
 	/// </remarks>
 	public async Task<Result<UserOutcome>> ChangePasswordAsync(Md5 newPasswordHash, Md5? currentPasswordHash,
@@ -164,7 +169,8 @@ public sealed class ScopedUser : Scoped<UserPermissions>
 
 		if (IsSelf)
 		{
-			if (currentPasswordHash is not { } current || !await User.Context.Credentials.IsPasswordAsync(User.Record, current, cancellationToken))
+			if (currentPasswordHash is not { } current ||
+			    !await User.Context.Credentials.IsPasswordAsync(User.Record, current, cancellationToken))
 				return UserOutcome.WrongPassword;
 		}
 		else if (Guard(UserPermissions.UserManage, false) is { } denied)
@@ -172,7 +178,8 @@ public sealed class ScopedUser : Scoped<UserPermissions>
 			return denied;
 		}
 
-		await User.Context.Credentials.CreateOrUpdateAsync(new Credentials(User.Record, newPasswordHash), cancellationToken);
+		await User.Context.Credentials.CreateOrUpdateAsync(new Credentials(User.Record, newPasswordHash),
+			cancellationToken);
 		User.Context.Registry.CloseAll(User.Record, ConnectionCloseReason.CredentialsChanged);
 		return UserOutcome.Ok;
 	}

@@ -12,7 +12,8 @@ public sealed class ScopedBanchoConnection : Scoped<UserPermissions>
 	/// <summary>Creates a scope for an osu! client and a connection.</summary>
 	/// <param name="host">The client to scope.</param>
 	/// <param name="by">The connection acting on the client.</param>
-	internal ScopedBanchoConnection(BanchoConnection host, Connection by) : base(by, by.User.EffectivePermissions(host.Context.Clock.GetUtcNow()))
+	internal ScopedBanchoConnection(BanchoConnection host, Connection by) : base(by,
+		by.User.EffectivePermissions(host.Context.Clock.GetUtcNow()))
 	{
 		Host = host;
 	}
@@ -103,6 +104,7 @@ public sealed class ScopedBanchoConnection : Scoped<UserPermissions>
 		Host.Context.Events.Publish(new UserConnectionStatusChanged(Host, status));
 		return true;
 	}
+
 	/// <summary>Validates and records the score this game client submitted.</summary>
 	/// <param name="submission">The parsed submission.</param>
 	/// <param name="beatmap">
@@ -121,9 +123,9 @@ public sealed class ScopedBanchoConnection : Scoped<UserPermissions>
 	/// </returns>
 	/// <remarks>
 	///     Needs <see cref="UserPermissions.ScoreSubmit" />, and only the client itself submits its own scores. A score on a
-	///     beatmap the server does not have is accepted only when it is the beatmap of the latest round in the player's
-	///     room. A score played in that round carries the round, and <see cref="ScoreSubmitted" /> names the room so the
-	///     round can record it. Every accepted play adds to the play count and the total score; passed plays also add to
+	///     beatmap the server does not have is accepted only when it is the beatmap of a round of an open room that still
+	///     awaits a score from the player (a player who completed and then
+	///     left is still awaited). Every accepted play adds to the play count and the total score; passed plays also add to
 	///     the ranked score. The submission is checked against the player's latest recorded login. A submission whose
 	///     checksum was already stored is refused. Only a passed play keeps its replay, and only when the replay is at
 	///     least 24 bytes long.
@@ -135,21 +137,21 @@ public sealed class ScopedBanchoConnection : Scoped<UserPermissions>
 		Stream? replay,
 		CancellationToken cancellationToken = default)
 	{
-		if (Require(UserPermissions.ScoreSubmit) is { } missing) return (Result<ConnectionOutcome>.Denied(missing), null);
+		if (Require(UserPermissions.ScoreSubmit) is { } missing)
+			return (Result<ConnectionOutcome>.Denied(missing), null);
 		if (!ReferenceEquals(By, Host)) return (ConnectionOutcome.OtherClient, null);
 
-		var room = Host.Context.Lobby.RoomOf(Host);
-		var round = room?.Rounds.LastRound is { } last && last.BeatmapHash == client.BeatmapHash ? last : null;
-		var checkedBeatmap = beatmap ?? (round is not null ? new BeatmapChecksums(client.BeatmapHash, null) : null);
+		var checkedBeatmap = beatmap ??
+		                     (Host.Context.Lobby.AwaitsScore(Host.Record, client.BeatmapHash)
+			                     ? new BeatmapChecksums(client.BeatmapHash, null)
+			                     : null);
 		if (checkedBeatmap is null) return (ConnectionOutcome.Rejected, ScoreRejection.UnknownBeatmap);
 
-		var team = round is not null ? room!.Slots.Find(Host)?.Team : null;
 		var outcome = await Host.Context.Scores.ValidateAndRecordAsync(
-			Host.Record, Host.Login.Client!, submission, checkedBeatmap, client, round, team, replay, cancellationToken);
+			Host.Record, Host.Login.Client!, submission, checkedBeatmap, client, replay, cancellationToken);
 		if (outcome.Rejection is { } rejection) return (ConnectionOutcome.Rejected, rejection);
 
-		Host.Context.ScoreEvents.Publish(new ScoreSubmitted(Host.Record, outcome.Score!, outcome.Stats!,
-			outcome.RoundScore, round is not null ? room : null));
+		Host.Context.ScoreEvents.Publish(new ScoreSubmitted(Host.Record, outcome.Score!, outcome.Stats!));
 		return (ConnectionOutcome.Ok, null);
 	}
 }

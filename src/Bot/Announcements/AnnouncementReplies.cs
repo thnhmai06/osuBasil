@@ -22,7 +22,8 @@ internal static class AnnouncementReplies
 		"Match starts in {seconds} seconds", "seconds");
 
 	/// <summary>Reply when a countdown ticks but won't start the round; <c>{seconds}</c> is seconds remaining.</summary>
-	public static readonly Reply CountdownTicked = new("announce.countdownTicked", "{seconds} seconds remaining", "seconds");
+	public static readonly Reply CountdownTicked =
+		new("announce.countdownTicked", "{seconds} seconds remaining", "seconds");
 
 	/// <summary>Reply when a countdown elapses and was meant to start the round.</summary>
 	public static readonly Reply CountdownElapsedForRound = new("announce.countdownElapsedForRound",
@@ -44,7 +45,8 @@ internal static class AnnouncementReplies
 
 	// ── Room round ─────────────────────────────────────────────────────────────────────────
 	/// <summary>Reply when a round starts after a countdown.</summary>
-	public static readonly Reply RoundStartedByCountdown = new("announce.roundStartedByCountdown", "Good luck, have fun!");
+	public static readonly Reply RoundStartedByCountdown =
+		new("announce.roundStartedByCountdown", "Good luck, have fun!");
 
 	/// <summary>Reply when a round cannot start because the room has no players.</summary>
 	public static readonly Reply RoundStartedNoPlayers = new("announce.roundStartedNoPlayers",
@@ -52,6 +54,13 @@ internal static class AnnouncementReplies
 
 	/// <summary>Reply when a round is aborted.</summary>
 	public static readonly Reply RoundAborted = new("announce.roundAborted", "Match aborted.");
+
+	/// <summary>
+	///     Reply for a player whose score did not come in before a round was decided; <c>{player}</c> and
+	///     <c>{seconds}</c> are filled in.
+	/// </summary>
+	public static readonly Reply ScoreMissing = new("announce.scoreMissing",
+		"{player} didn't submit a score (timeout: {seconds}s).", "player", "seconds");
 
 	// ── Room settings ──────────────────────────────────────────────────────────────────────
 	/// <summary>Reply when room settings change cancels a countdown that would start the round.</summary>

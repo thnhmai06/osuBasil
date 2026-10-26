@@ -1,6 +1,4 @@
-﻿using Basil.Application.Runtime.Chat;
 using Basil.Application.Runtime.Common;
-using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
 
@@ -23,7 +21,8 @@ public sealed class ScopedServerChannels
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome; NameTaken when a channel with that name is already open.</returns>
 	/// <remarks>Requires <see cref="UserPermissions.ServerConfigure" />.</remarks>
-	public async Task<Result<ServerOutcome>> CreateAsync(GeneralChannelRecord record, CancellationToken cancellationToken = default)
+	public async Task<Result<ServerOutcome>> CreateAsync(GeneralChannelRecord record,
+		CancellationToken cancellationToken = default)
 	{
 		if (_scoped.Needs(UserPermissions.ServerConfigure) is { } missing) return Result<ServerOutcome>.Denied(missing);
 

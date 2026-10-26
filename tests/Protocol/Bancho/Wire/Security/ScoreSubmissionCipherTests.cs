@@ -16,6 +16,11 @@ namespace Basil.Protocol.Bancho.Tests.Wire.Security;
 /// </summary>
 public class ScoreSubmissionCipherTests
 {
+	private static string ValidIvBase64 =>
+		Convert.ToBase64String(Enumerable.Range(1, 32).Select(i => (byte)i).ToArray());
+
+	private static string ValidCiphertextBase64 => Encrypt("body", "20240815").Item1;
+
 	public static TheoryData<string, string> RoundTripCases()
 	{
 		return new TheoryData<string, string>
@@ -32,8 +37,8 @@ public class ScoreSubmissionCipherTests
 		// twenty-four constant bytes plus the version: 6 characters -> 30 bytes, 9 characters -> 33 bytes.
 		return new TheoryData<string>
 		{
-			{ "abcdef" },
-			{ "abcdefghi" }
+			"abcdef",
+			"abcdefghi"
 		};
 	}
 
@@ -46,11 +51,6 @@ public class ScoreSubmissionCipherTests
 			{ ValidCiphertextBase64, "!!" } // malformed initialization vector
 		};
 	}
-
-	private static string ValidIvBase64 =>
-		Convert.ToBase64String(Enumerable.Range(1, 32).Select(i => (byte)i).ToArray());
-
-	private static string ValidCiphertextBase64 => Encrypt("body", "20240815").Item1;
 
 	[Theory]
 	[MemberData(nameof(RoundTripCases))]

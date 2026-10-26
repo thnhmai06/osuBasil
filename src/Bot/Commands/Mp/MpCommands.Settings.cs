@@ -9,7 +9,8 @@ internal sealed partial class MpCommands
 {
 	// ── !mp settings ─────────────────────────────────────────────────────────────────────
 
-	private static async Task<bool> SettingsAsync(CommandContext context, Room room, CancellationToken cancellationToken)
+	private static async Task<bool> SettingsAsync(CommandContext context, Room room,
+		CancellationToken cancellationToken)
 	{
 		var replies = context.Replies;
 		var lines = new List<string>

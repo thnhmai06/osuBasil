@@ -1,5 +1,4 @@
 using Basil.Application.Runtime.Common;
-using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Sessions;
 using Basil.Application.Runtime.Users;
 using Basil.Domain.Multiplayer;
@@ -22,156 +21,95 @@ public sealed class ScopedRoomMembers
 	/// <summary>Seats the caller in the room.</summary>
 	/// <param name="password">The password supplied by the player.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>Ok, AlreadySeated, Banned, Silenced, NotAuthorized, InAnotherRoom, IsObserver, WrongPassword, Full or RoomClosed.</returns>
-	public async Task<Result<RoomOutcome>> JoinAsync(string password, CancellationToken cancellationToken = default)
+	/// <returns>
+	///     Ok, AlreadySeated, Banned, Silenced, NotAuthorized, InAnotherRoom, IsObserver, WrongPassword, Full or
+	///     RoomClosed.
+	/// </returns>
+	public Task<Result<RoomOutcome>> JoinAsync(string password, CancellationToken cancellationToken = default)
 	{
-		if (_scoped.By is not BanchoConnection by) return RoomOutcome.NotInRoom;
+		return Task.FromResult(_scoped.By is BanchoConnection by
+			? Claiming(by, () => _scoped.Room.Join(by, password, _scoped.RequireJoin(), _scoped.ManagesAnyRoom))
+			: RoomOutcome.NotInRoom);
+	}
 
+	/// <summary>Runs a seating of a player while the lobby knows that this room is about to seat them.</summary>
+	/// <param name="player">The player to be seated.</param>
+	/// <param name="seat">The seating.</param>
+	/// <returns>InAnotherRoom when another room is seating the same player right now; otherwise the seating's result.</returns>
+	private Result<RoomOutcome> Claiming(BanchoConnection player, Func<Result<RoomOutcome>> seat)
+	{
 		var room = _scoped.Room;
-		await using var scope = await room.EnterAsync(cancellationToken);
-		if (scope is null) return RoomOutcome.RoomClosed;
+		var lobby = room.Context.Lobby;
+		if (!lobby.TryClaim(player, room)) return RoomOutcome.InAnotherRoom;
 
-		var stale = room.Slots.Find(by.Record)?.Player;
-		if (stale is not null && (ReferenceEquals(stale, by) || stale.IsOpen)) return RoomOutcome.AlreadySeated;
-
-		if (room.Members.Banned.Contains(by.Record)) return RoomOutcome.Banned;
-		if (_scoped.RequireJoin() is { } denied) return denied;
-
-		if (room.RoomOf(by) is { } other && !ReferenceEquals(other, room)) return RoomOutcome.InAnotherRoom;
-		if (room.Members.Observers.Any(observer => observer.Record.Equals(by.Record))) return RoomOutcome.IsObserver;
-		if (!string.IsNullOrEmpty(room.Settings.Password) && room.Settings.Password != password &&
-		    !_scoped.ManagesAnyRoom)
-			return RoomOutcome.WrongPassword;
-
-		return room.TakeSeat(by, stale);
+		try
+		{
+			return seat();
+		}
+		finally
+		{
+			lobby.Release(player, room);
+		}
 	}
 
 	/// <summary>Removes the caller from the room.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotInRoom or RoomClosed; leaving again returns NotInRoom.</returns>
-	public async Task<Result<RoomOutcome>> LeaveAsync(CancellationToken cancellationToken = default)
+	public Task<Result<RoomOutcome>> LeaveAsync(CancellationToken cancellationToken = default)
 	{
-		if (_scoped.By is not BanchoConnection by) return RoomOutcome.NotInRoom;
-
-		await using var scope = await _scoped.Room.EnterAsync(cancellationToken);
-		return scope is null ? RoomOutcome.RoomClosed : _scoped.Room.Leave(by);
+		return Task.FromResult(_scoped.By is BanchoConnection by
+			? _scoped.Room.Leave(by)
+			: RoomOutcome.NotInRoom);
 	}
 
 	/// <summary>Seats an online player in the room on behalf of a manager.</summary>
 	/// <param name="player">The player's game connection.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>Ok, a denial naming the missing permission (also when the player may not join rooms), TargetOffline, AlreadySeated, Banned, InAnotherRoom, IsObserver, Full or RoomClosed.</returns>
-	public async Task<Result<RoomOutcome>> SeatAsync(BanchoConnection player, CancellationToken cancellationToken = default)
+	/// <returns>
+	///     Ok, a denial naming the missing permission (also when the player may not join rooms), TargetOffline,
+	///     AlreadySeated, Banned, InAnotherRoom, IsObserver, Full or RoomClosed.
+	/// </returns>
+	public Task<Result<RoomOutcome>> SeatAsync(BanchoConnection player,
+		CancellationToken cancellationToken = default)
 	{
-		if (_scoped.Require(RoomPermissions.MembersSeat) is { } denied) return denied;
-		if (!player.IsOpen) return RoomOutcome.TargetOffline;
+		if (_scoped.Require(RoomPermissions.MembersSeat) is { } denied) return Task.FromResult(denied);
+		if (!player.IsOpen) return Task.FromResult<Result<RoomOutcome>>(RoomOutcome.TargetOffline);
 
 		if (!player.User.EffectivePermissions(_scoped.Room.Context.Clock.GetUtcNow()).Allows(UserPermissions.RoomJoin))
-			return Result<RoomOutcome>.Denied(UserPermissions.RoomJoin);
+			return Task.FromResult(Result<RoomOutcome>.Denied(UserPermissions.RoomJoin));
 
-		var room = _scoped.Room;
-		if (room.Members.Banned.Contains(player.Record)) return RoomOutcome.Banned;
-
-		if (room.RoomOf(player) is { } other && !ReferenceEquals(other, room))
-		{
-			if (other.ScopeTo(_scoped.By).Require(RoomPermissions.MembersSeat) is not null)
-				return RoomOutcome.InAnotherRoom;
-			if (!room.Slots.Any(slot => slot is { Locked: false, Player: null })) return RoomOutcome.Full;
-			if (room.Members.Observers.Any(observer => observer.Record.Equals(player.Record)))
-				return RoomOutcome.IsObserver;
-			await other.ScopeTo(player).Members.LeaveAsync(cancellationToken);
-		}
-
-		await using var scope = await room.EnterAsync(cancellationToken);
-		if (scope is null) return RoomOutcome.RoomClosed;
-
-		var stale = room.Slots.Find(player.Record)?.Player;
-		if (stale is not null && (ReferenceEquals(stale, player) || stale.IsOpen)) return RoomOutcome.AlreadySeated;
-		if (room.Members.Banned.Contains(player.Record)) return RoomOutcome.Banned;
-		if (room.RoomOf(player) is { } current && !ReferenceEquals(current, room)) return RoomOutcome.InAnotherRoom;
-		if (room.Members.Observers.Any(observer => observer.Record.Equals(player.Record))) return RoomOutcome.IsObserver;
-
-		return room.TakeSeat(player, stale);
+		return Task.FromResult(_scoped.Room.MakeRoomFor(player, _scoped.By) ??
+		                       Claiming(player, () => _scoped.Room.SeatPlayer(player)));
 	}
 
 	/// <summary>Removes a player from the room.</summary>
 	/// <param name="player">The user to remove.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, Silenced, IsManager, NotInRoom or RoomClosed.</returns>
-	public async Task<Result<RoomOutcome>> KickAsync(UserRecord player, CancellationToken cancellationToken = default)
+	public Task<Result<RoomOutcome>> KickAsync(UserRecord player, CancellationToken cancellationToken = default)
 	{
-		if (_scoped.Require(RoomPermissions.MembersKick) is { } denied) return denied;
-
-		await using var scope = await _scoped.Room.EnterAsync(cancellationToken);
-		if (scope is null) return RoomOutcome.RoomClosed;
-
-		var room = _scoped.Room;
-		var by = _scoped.By;
-		if (room.Authority.IsManagedBy(player)) return RoomOutcome.IsManager;
-		if (room.Slots.Find(player) is not { Player: { } seated }) return RoomOutcome.NotInRoom;
-
-		var slot = room.Vacate(seated)!;
-		var progress = room.AdvanceRound();
-		room.Context.Events.Publish(new RoomPlayerKicked(room, by.Record, seated, slot.Index, room.Authority.Host,
-			progress));
-		room.LeaveChannel(seated);
-		room.ReportIfEmpty();
-		return RoomOutcome.Ok;
+		return Task.FromResult(_scoped.Require(RoomPermissions.MembersKick) ??
+		                       _scoped.Room.Kick(_scoped.By.Record, player));
 	}
 
 	/// <summary>Bans a user from the room and removes them if seated.</summary>
 	/// <param name="player">The user to ban.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, Silenced, IsManager or RoomClosed; banning a banned user again returns Ok.</returns>
-	public async Task<Result<RoomOutcome>> BanAsync(UserRecord player, CancellationToken cancellationToken = default)
+	public Task<Result<RoomOutcome>> BanAsync(UserRecord player, CancellationToken cancellationToken = default)
 	{
-		if (_scoped.Require(RoomPermissions.MembersBan) is { } denied) return denied;
-
-		await using var scope = await _scoped.Room.EnterAsync(cancellationToken);
-		if (scope is null) return RoomOutcome.RoomClosed;
-
-		var room = _scoped.Room;
-		var by = _scoped.By;
-		if (room.Authority.IsManagedBy(player)) return RoomOutcome.IsManager;
-		if (!room.Members.MutableBanned.Add(player)) return RoomOutcome.Ok;
-
-		int? vacated = null;
-		BanchoConnection? evicted = null;
-		RoomRoundProgress? progress = null;
-		if (room.Slots.Find(player) is { Player: { } seated })
-		{
-			evicted = seated;
-			vacated = room.Vacate(seated)?.Index;
-			progress = room.AdvanceRound();
-		}
-
-		room.Context.Events.Publish(new RoomPlayerBanned(room, by.Record, player, vacated, evicted, room.Authority.Host,
-			progress));
-		if (evicted is not null)
-		{
-			room.LeaveChannel(evicted);
-			room.ReportIfEmpty();
-		}
-
-		return RoomOutcome.Ok;
+		return Task.FromResult(_scoped.Require(RoomPermissions.MembersBan) ??
+		                       _scoped.Room.Ban(_scoped.By.Record, player));
 	}
 
 	/// <summary>Lifts a user's ban from the room.</summary>
 	/// <param name="player">The user to unban.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotAuthorized, Silenced, NotBanned or RoomClosed.</returns>
-	public async Task<Result<RoomOutcome>> UnbanAsync(UserRecord player, CancellationToken cancellationToken = default)
+	public Task<Result<RoomOutcome>> UnbanAsync(UserRecord player, CancellationToken cancellationToken = default)
 	{
-		if (_scoped.Require(RoomPermissions.MembersBan) is { } denied) return denied;
-
-		await using var scope = await _scoped.Room.EnterAsync(cancellationToken);
-		if (scope is null) return RoomOutcome.RoomClosed;
-
-		var room = _scoped.Room;
-		if (!room.Members.MutableBanned.Remove(player)) return RoomOutcome.NotBanned;
-
-		room.Context.Events.Publish(new RoomPlayerUnbanned(room, player));
-		return RoomOutcome.Ok;
+		return Task.FromResult(_scoped.Require(RoomPermissions.MembersBan) ??
+		                       _scoped.Room.Unban(player));
 	}
 
 	/// <summary>Invites an online user to the room.</summary>
@@ -186,36 +124,26 @@ public sealed class ScopedRoomMembers
 		    await _scoped.Room.Context.Users.BlocksAsync(target.Record, _scoped.By.Record, cancellationToken))
 			return RoomOutcome.Blocked;
 
-		await using var scope = await _scoped.Room.EnterAsync(cancellationToken);
-		if (scope is null) return RoomOutcome.RoomClosed;
-
-		var room = _scoped.Room;
-		if (!target.Connections.Any(connection => connection.IsOpen)) return RoomOutcome.TargetOffline;
-		if (room.Slots.Find(target.Record) is not null) return RoomOutcome.AlreadyInRoom;
-
-		room.Context.Events.Publish(new RoomPlayerInvited(room, _scoped.By.Record, target.Record));
-		return RoomOutcome.Ok;
+		return _scoped.Room.Invite(_scoped.By.Record, target);
 	}
 
 	/// <summary>Adds the caller's tournament connection as an observer.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, IsPlayer or RoomClosed when called by a tournament connection; otherwise NotObserver.</returns>
-	public async Task<Result<RoomOutcome>> ObserverJoinAsync(CancellationToken cancellationToken = default)
+	public Task<Result<RoomOutcome>> ObserverJoinAsync(CancellationToken cancellationToken = default)
 	{
-		if (_scoped.By is not TourneyConnection by) return RoomOutcome.NotObserver;
-
-		await using var scope = await _scoped.Room.EnterAsync(cancellationToken);
-		return scope is not null ? _scoped.Room.ObserverJoin(by) : RoomOutcome.RoomClosed;
+		return Task.FromResult(_scoped.By is TourneyConnection by
+			? _scoped.Room.ObserverJoin(by)
+			: RoomOutcome.NotObserver);
 	}
 
 	/// <summary>Removes the caller's tournament connection from the room's observers.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, NotObserver or RoomClosed.</returns>
-	public async Task<Result<RoomOutcome>> ObserverLeaveAsync(CancellationToken cancellationToken = default)
+	public Task<Result<RoomOutcome>> ObserverLeaveAsync(CancellationToken cancellationToken = default)
 	{
-		if (_scoped.By is not TourneyConnection by) return RoomOutcome.NotObserver;
-
-		await using var scope = await _scoped.Room.EnterAsync(cancellationToken);
-		return scope is not null ? _scoped.Room.ObserverLeave(by) : RoomOutcome.RoomClosed;
+		return Task.FromResult(_scoped.By is TourneyConnection by
+			? _scoped.Room.ObserverLeave(by)
+			: RoomOutcome.NotObserver);
 	}
 }

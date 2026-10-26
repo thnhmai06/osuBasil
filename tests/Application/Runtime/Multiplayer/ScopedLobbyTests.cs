@@ -1,13 +1,13 @@
 using Basil.Application.Persistence.Content;
+using Basil.Application.Persistence.Multiplayer;
+using Basil.Application.Runtime.Common;
 using Basil.Application.Runtime.Multiplayer;
 using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Multiplayer.Rooms;
 using Basil.Application.Runtime.Sessions;
-using Basil.Testing;
-using Basil.Domain;
-using Basil.Application.Persistence.Multiplayer;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
+using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Application.Runtime.Tests.Multiplayer;
@@ -104,7 +104,7 @@ public sealed class ScopedLobbyTests
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
 		var (first, _) = await OpenAsync(app, creator);
 
-		var (second, result) = await OpenAsync(app, creator, "second", isTournament: true);
+		var (second, result) = await OpenAsync(app, creator, "second", true);
 
 		Assert.True(result.IsOk);
 		Assert.NotNull(second);
@@ -133,9 +133,9 @@ public sealed class ScopedLobbyTests
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
 		for (var index = 0; index < 4; index++)
-			Assert.True((await OpenAsync(app, creator, $"room {index}", isTournament: true)).Result.IsOk);
+			Assert.True((await OpenAsync(app, creator, $"room {index}", true)).Result.IsOk);
 
-		var (room, result) = await OpenAsync(app, creator, "room 4", isTournament: true);
+		var (room, result) = await OpenAsync(app, creator, "room 4", true);
 
 		Assert.Null(room);
 		Assert.Equal(RoomOutcome.TooManyRooms, result.Outcome);
@@ -148,9 +148,9 @@ public sealed class ScopedLobbyTests
 		var creator = await RoomFixture.PlayerAsync(app, "Creator",
 			UserPermissionsGroups.Default | UserPermissions.RoomCreateUnlimited);
 		for (var index = 0; index < 4; index++)
-			Assert.True((await OpenAsync(app, creator, $"room {index}", isTournament: true)).Result.IsOk);
+			Assert.True((await OpenAsync(app, creator, $"room {index}", true)).Result.IsOk);
 
-		var (room, result) = await OpenAsync(app, creator, "room 4", isTournament: true);
+		var (room, result) = await OpenAsync(app, creator, "room 4", true);
 
 		Assert.True(result.IsOk);
 		Assert.NotNull(room);
@@ -224,7 +224,7 @@ public sealed class ScopedLobbyTests
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
 
 		var (first, _) = await OpenAsync(app, creator, "first");
-		var (second, _) = await OpenAsync(app, creator, "second", isTournament: true);
+		var (second, _) = await OpenAsync(app, creator, "second", true);
 
 		Assert.NotEqual(first!.Id, second!.Id);
 	}
@@ -302,13 +302,20 @@ public sealed class ScopedLobbyTests
 		Assert.True(room.IsClosed);
 	}
 
+	private static Task<(Room? Room, Result<RoomOutcome> Result)> OpenAsync(TestApplication app, Connection by,
+		string name = "test room", bool isTournament = false, string password = "")
+	{
+		return app.Lobby.ScopeTo(by).OpenRoomAsync(name, password, isTournament, false,
+			cancellationToken: TestContext.Current.CancellationToken);
+	}
+
 	#region CanViewAsync
 
 	[Fact]
 	public async Task CanViewAsync_APublicMatch_IsOpenToAnyone()
 	{
 		using var app = new TestApplication();
-		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), isPrivate: false);
+		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), false);
 		var stranger = await app.LoginAsync(await app.CreateUserAsync("Stranger", "password"));
 
 		Assert.True(await app.Lobby.ScopeTo(stranger).CanViewAsync(match, TestContext.Current.CancellationToken));
@@ -318,7 +325,7 @@ public sealed class ScopedLobbyTests
 	public async Task CanViewAsync_APrivateMatch_IsClosedToAStranger()
 	{
 		using var app = new TestApplication();
-		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), isPrivate: true);
+		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), true);
 		var stranger = await app.LoginAsync(await app.CreateUserAsync("Stranger", "password"));
 
 		Assert.False(await app.Lobby.ScopeTo(stranger).CanViewAsync(match, TestContext.Current.CancellationToken));
@@ -328,7 +335,7 @@ public sealed class ScopedLobbyTests
 	public async Task CanViewAsync_APrivateMatch_IsOpenToAHolderOfRoomViewPrivate()
 	{
 		using var app = new TestApplication();
-		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), isPrivate: true);
+		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), true);
 		var viewer = await app.LoginAsync(await app.CreateUserAsync("Viewer", "password",
 			UserPermissionsGroups.Default | UserPermissions.RoomViewPrivate));
 
@@ -339,7 +346,7 @@ public sealed class ScopedLobbyTests
 	public async Task CanViewAsync_APrivateMatch_IsOpenToAHolderOfRoomManageAny()
 	{
 		using var app = new TestApplication();
-		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), isPrivate: true);
+		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), true);
 		var manager = await app.LoginAsync(await app.CreateUserAsync("Manager", "password",
 			UserPermissionsGroups.Default | UserPermissions.RoomManageAny));
 
@@ -350,7 +357,7 @@ public sealed class ScopedLobbyTests
 	public async Task CanViewAsync_RoomViewPrivateSuspendedByARestriction_DoesNotOpenAPrivateMatch()
 	{
 		using var app = new TestApplication();
-		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), isPrivate: true);
+		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), true);
 		var user = await app.CreateUserAsync("Viewer", "password",
 			UserPermissionsGroups.Default | UserPermissions.RoomViewPrivate);
 		app.AddRestriction(user, UserPermissions.RoomViewPrivate);
@@ -364,7 +371,7 @@ public sealed class ScopedLobbyTests
 	{
 		using var app = new TestApplication();
 		var creator = await app.CreateUserAsync("Creator", "password");
-		var match = await MatchAsync(app, creator, isPrivate: true);
+		var match = await MatchAsync(app, creator, true);
 		var connection = await app.LoginAsync(creator);
 
 		Assert.True(await app.Lobby.ScopeTo(connection).CanViewAsync(match, TestContext.Current.CancellationToken));
@@ -374,7 +381,7 @@ public sealed class ScopedLobbyTests
 	public async Task CanViewAsync_APrivateMatch_IsOpenToAPlayerWhoJoined()
 	{
 		using var app = new TestApplication();
-		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), isPrivate: true);
+		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), true);
 		var player = await app.CreateUserAsync("Player", "password");
 		await RecordAsync(app, match, MatchEventType.PlayerJoined, player);
 		var connection = await app.LoginAsync(player);
@@ -386,7 +393,7 @@ public sealed class ScopedLobbyTests
 	public async Task CanViewAsync_APrivateMatch_IsOpenToACurrentReferee()
 	{
 		using var app = new TestApplication();
-		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), isPrivate: true);
+		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), true);
 		var referee = await app.CreateUserAsync("Referee", "password");
 		await RecordAsync(app, match, MatchEventType.RefAdded, referee);
 		var connection = await app.LoginAsync(referee);
@@ -398,7 +405,7 @@ public sealed class ScopedLobbyTests
 	public async Task CanViewAsync_APrivateMatch_IsClosedToARemovedReferee()
 	{
 		using var app = new TestApplication();
-		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), isPrivate: true);
+		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), true);
 		var referee = await app.CreateUserAsync("Referee", "password");
 		await RecordAsync(app, match, MatchEventType.RefAdded, referee);
 		await RecordAsync(app, match, MatchEventType.RefRemoved, referee);
@@ -431,7 +438,8 @@ public sealed class ScopedLobbyTests
 		Assert.True(opened.IsOk);
 		var stranger = await RoomFixture.PlayerAsync(app, "Stranger");
 
-		Assert.False(await app.Lobby.ScopeTo(stranger).CanViewAsync(room!.Match, TestContext.Current.CancellationToken));
+		Assert.False(await app.Lobby.ScopeTo(stranger)
+			.CanViewAsync(room!.Match, TestContext.Current.CancellationToken));
 	}
 
 	private static async Task<MatchRecord> MatchAsync(TestApplication app, UserRecord creator, bool isPrivate)
@@ -454,11 +462,4 @@ public sealed class ScopedLobbyTests
 	}
 
 	#endregion
-
-	private static Task<(Room? Room, Runtime.Common.Result<RoomOutcome> Result)> OpenAsync(TestApplication app, Connection by,
-		string name = "test room", bool isTournament = false, string password = "")
-	{
-		return app.Lobby.ScopeTo(by).OpenRoomAsync(name, password, isTournament, false,
-			cancellationToken: TestContext.Current.CancellationToken);
-	}
 }

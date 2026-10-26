@@ -47,14 +47,18 @@ internal static class CommandLine
 			if (c == '"') inQuote = !inQuote;
 
 			if (!inQuote && c == ';')
+			{
 				FlushSegment(ChainOperator.Semicolon);
+			}
 			else if (!inQuote && c == '&' && i + 1 < message.Length && message[i + 1] == '&')
 			{
 				FlushSegment(ChainOperator.And);
 				i++;
 			}
 			else
+			{
 				current.Append(c);
+			}
 		}
 
 		var last = current.ToString().Trim();
@@ -87,9 +91,13 @@ internal static class CommandLine
 			var c = segment[i];
 
 			if (IsEscape(segment, i))
+			{
 				current.Append(segment[++i]);
+			}
 			else if (c == '"')
+			{
 				inQuote = !inQuote;
+			}
 			else if (c == ' ' && !inQuote)
 			{
 				if (current.Length == 0) continue;
@@ -97,7 +105,9 @@ internal static class CommandLine
 				current.Clear();
 			}
 			else
+			{
 				current.Append(c);
+			}
 		}
 
 		if (current.Length > 0)

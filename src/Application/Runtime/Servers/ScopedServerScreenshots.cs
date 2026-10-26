@@ -1,5 +1,4 @@
 using Basil.Application.Runtime.Common;
-using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Content;
 using Basil.Domain.Users;
 
@@ -74,12 +73,13 @@ public sealed class ScopedServerScreenshots
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok when the caller may delete screenshots, even when none is stored under the reference.</returns>
 	/// <remarks>Requires <see cref="UserPermissions.ScreenshotDelete" />.</remarks>
-	public async Task<Result<ServerOutcome>> DeleteAsync(ContentReference screenshot, CancellationToken cancellationToken = default)
+	public async Task<Result<ServerOutcome>> DeleteAsync(ContentReference screenshot,
+		CancellationToken cancellationToken = default)
 	{
-		if (_scoped.Needs(UserPermissions.ScreenshotDelete) is { } missing) return Result<ServerOutcome>.Denied(missing);
+		if (_scoped.Needs(UserPermissions.ScreenshotDelete) is { } missing)
+			return Result<ServerOutcome>.Denied(missing);
 
 		await _scoped.Server.Context.Screenshots.DeleteAsync(screenshot, cancellationToken);
 		return ServerOutcome.Ok;
 	}
 }
-

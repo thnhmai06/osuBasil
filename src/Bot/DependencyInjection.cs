@@ -1,12 +1,12 @@
+using Basil.Application.Runtime.Anticheat;
+using Basil.Application.Runtime.Chat;
+using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Bot.Announcements;
 using Basil.Bot.Chat;
 using Basil.Bot.Commands;
 using Basil.Bot.Commands.Mp;
 using Basil.Bot.Replies;
-using Basil.Application.Runtime.Anticheat;
-using Basil.Application.Runtime.Chat;
-using Basil.Application.Runtime.Events;
-using Basil.Application.Runtime.Multiplayer.Events;
+using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -33,11 +33,25 @@ public static class DependencyInjection
 		services.AddSingleton<ChatCommands>();
 		services.AddSingleton<CommandWorker>();
 		services.AddHostedService(sp => sp.GetRequiredService<CommandWorker>());
-		services.AddSingleton<IEventHandler<ChannelEvent>, ChatHandler>();
+		services.AddSingleton<INotificationHandler<ChannelMessagePosted>, ChatHandler>();
+		services.AddSingleton<INotificationHandler<AnticheatPlayerFlagged>, AnticheatAnnouncer>();
 		services.AddSingleton<RoomAnnouncer>();
-		services.AddSingleton<IEventHandler<RoomEvent>>(sp => sp.GetRequiredService<RoomAnnouncer>());
-		services.AddSingleton<IEventHandler<LobbyEvent>>(sp => sp.GetRequiredService<RoomAnnouncer>());
-		services.AddSingleton<IEventHandler<AnticheatEvent>, AnticheatAnnouncer>();
+		AddRoomAnnouncer<LobbyRoomClosingAnnounced>(services);
+		AddRoomAnnouncer<LobbyRoomClosed>(services);
+		AddRoomAnnouncer<RoomRoundStarted>(services);
+		AddRoomAnnouncer<RoomRoundAborted>(services);
+		AddRoomAnnouncer<RoomRoundDecided>(services);
+		AddRoomAnnouncer<RoomCountdownStarted>(services);
+		AddRoomAnnouncer<RoomCountdownTicked>(services);
+		AddRoomAnnouncer<RoomCountdownElapsed>(services);
+		AddRoomAnnouncer<RoomCountdownCancelled>(services);
+		AddRoomAnnouncer<RoomPlayerJoined>(services);
 		return services;
+	}
+
+	private static void AddRoomAnnouncer<TEvent>(IServiceCollection services) where TEvent : INotification
+	{
+		services.AddSingleton<INotificationHandler<TEvent>>(sp =>
+			(INotificationHandler<TEvent>)(object)sp.GetRequiredService<RoomAnnouncer>());
 	}
 }

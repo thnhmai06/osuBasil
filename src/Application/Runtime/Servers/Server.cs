@@ -75,7 +75,8 @@ public sealed class Server
 	///     This system operation needs no rights because the server itself calls it. Chat commands must use the scope of
 	///     the connection that typed them, not this method, to act for a user. Messages are not delivered offline.
 	/// </remarks>
-	public Task<bool> WhisperAsync(User to, string text, bool notice = false, CancellationToken cancellationToken = default)
+	public Task<bool> WhisperAsync(User to, string text, bool notice = false,
+		CancellationToken cancellationToken = default)
 	{
 		if (!to.IsOnline) return Task.FromResult(false);
 		return SayAsync(to.PmChannel, text, notice, cancellationToken);

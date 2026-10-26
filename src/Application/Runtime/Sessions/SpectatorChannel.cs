@@ -30,5 +30,4 @@ public sealed class SpectatorChannel : Channel
 	{
 		return CanRead(connection, now);
 	}
-
 }

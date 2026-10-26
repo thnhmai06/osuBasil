@@ -1,7 +1,7 @@
+using Basil.Application.Persistence.Chat;
 using Basil.Application.Runtime.Multiplayer;
 using Basil.Application.Runtime.Servers;
 using Basil.Application.Runtime.Users;
-using Basil.Application.Persistence.Chat;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 

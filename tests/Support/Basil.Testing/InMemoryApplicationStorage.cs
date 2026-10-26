@@ -3,7 +3,6 @@ using Basil.Application.Persistence.Common;
 using Basil.Application.Persistence.Content;
 using Basil.Application.Persistence.Multiplayer;
 using Basil.Application.Persistence.Users;
-using Basil.Domain;
 using Basil.Domain.Auth;
 using Basil.Domain.Common;
 using Basil.Domain.Moderation;
@@ -17,20 +16,11 @@ internal sealed class InMemoryUserRepository : IUserRepository
 	private readonly Dictionary<int, UserRecord> _users = [];
 	private int _nextId = 2;
 
-	public UserRecord Seed(UserData data, int? id = null)
-	{
-		var userId = id ?? _nextId++;
-		_nextId = Math.Max(_nextId, userId + 1);
-		var user = new UserRecord { Id = userId, Value = data };
-		_users[user.Id] = user;
-		return user;
-	}
-
 	public Task<UserRecord> CreateAsync(UserData data, CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
 		if (_users.Values.Any(user => user.Value.DeletedAt is null &&
-									  user.Value.NormalizedName == data.NormalizedName))
+		                              user.Value.NormalizedName == data.NormalizedName))
 			throw new AlreadyExistsException(data.Name);
 
 		return Task.FromResult(Seed(data));
@@ -40,7 +30,7 @@ internal sealed class InMemoryUserRepository : IUserRepository
 	{
 		cancellationToken.ThrowIfCancellationRequested();
 		if (_users.Values.Any(user => user.Id != id && user.Value.DeletedAt is null &&
-									  user.Value.NormalizedName == data.NormalizedName))
+		                              user.Value.NormalizedName == data.NormalizedName))
 			throw new AlreadyExistsException(data.Name);
 
 		return Task.FromResult(Seed(data, id));
@@ -58,7 +48,7 @@ internal sealed class InMemoryUserRepository : IUserRepository
 		cancellationToken.ThrowIfCancellationRequested();
 		var normalized = UserData.NormalizeName(name);
 		if (_users.Values.Any(other => other.Id != user.Id && other.Value.DeletedAt is null &&
-									   other.Value.NormalizedName == normalized))
+		                               other.Value.NormalizedName == normalized))
 			return Task.FromResult(false);
 
 		user.Value.Name = name;
@@ -85,6 +75,15 @@ internal sealed class InMemoryUserRepository : IUserRepository
 		cancellationToken.ThrowIfCancellationRequested();
 		return Task.FromResult(new Page<UserRecord>([], 0));
 	}
+
+	public UserRecord Seed(UserData data, int? id = null)
+	{
+		var userId = id ?? _nextId++;
+		_nextId = Math.Max(_nextId, userId + 1);
+		var user = new UserRecord { Id = userId, Value = data };
+		_users[user.Id] = user;
+		return user;
+	}
 }
 
 internal sealed class InMemoryCredentialRepository : ICredentialRepository
@@ -95,7 +94,7 @@ internal sealed class InMemoryCredentialRepository : ICredentialRepository
 	{
 		cancellationToken.ThrowIfCancellationRequested();
 		return Task.FromResult(_passwords.TryGetValue(credentials.User.Id, out var password) &&
-							   password == credentials.PasswordHash);
+		                       password == credentials.PasswordHash);
 	}
 
 	public Task CreateOrUpdateAsync(Credentials credentials, CancellationToken cancellationToken = default)
@@ -117,24 +116,6 @@ internal sealed class InMemoryRestrictionRepository : IRestrictionRepository
 {
 	private readonly Dictionary<int, List<UserRestriction>> _restrictions = [];
 	private int _nextId = 1;
-
-	public UserRestriction Seed(UserRecord user, UserPermissions permissions, DateTimeOffset startsAt,
-		DateTimeOffset? endsAt = null)
-	{
-		var restriction = new UserRestriction
-		{
-			Id = _nextId++,
-			Value = new RestrictionData
-			{
-				User = user,
-				Permissions = permissions,
-				StartsAt = startsAt,
-				EndsAt = endsAt
-			}
-		};
-		GetFor(user).Add(restriction);
-		return restriction;
-	}
 
 	public Task<UserRestriction> CreateAsync(RestrictionData data, CancellationToken cancellationToken = default)
 	{
@@ -162,6 +143,24 @@ internal sealed class InMemoryRestrictionRepository : IRestrictionRepository
 	{
 		cancellationToken.ThrowIfCancellationRequested();
 		return Task.FromResult<IReadOnlyList<UserRestriction>>(GetFor(user));
+	}
+
+	public UserRestriction Seed(UserRecord user, UserPermissions permissions, DateTimeOffset startsAt,
+		DateTimeOffset? endsAt = null)
+	{
+		var restriction = new UserRestriction
+		{
+			Id = _nextId++,
+			Value = new RestrictionData
+			{
+				User = user,
+				Permissions = permissions,
+				StartsAt = startsAt,
+				EndsAt = endsAt
+			}
+		};
+		GetFor(user).Add(restriction);
+		return restriction;
 	}
 
 	private List<UserRestriction> GetFor(UserRecord user)
@@ -208,7 +207,7 @@ internal sealed class InMemoryRelationshipRepository : IRelationshipRepository
 	{
 		cancellationToken.ThrowIfCancellationRequested();
 		_relationships.RemoveAll(existing => existing.Actor.Equals(relationship.Actor) &&
-											 existing.Target.Equals(relationship.Target));
+		                                     existing.Target.Equals(relationship.Target));
 		_relationships.Add(relationship);
 		return Task.CompletedTask;
 	}
@@ -250,7 +249,7 @@ internal sealed class InMemoryModerationLogRepository : IModerationLogRepository
 	{
 		cancellationToken.ThrowIfCancellationRequested();
 		var entries = _entries.Where(entry => entry.Value.Target.Equals(target) &&
-											  (within is null || within.Value.Contains(entry.Value.Timestamp)))
+		                                      (within is null || within.Value.Contains(entry.Value.Timestamp)))
 			.Reverse().ToList();
 		return ValueTask.FromResult(new Page<ModerationLog>(entries.Skip(page.Offset).Take(page.Limit).ToList(),
 			entries.Count));
@@ -308,10 +307,12 @@ internal sealed class InMemoryMatchRepository(InMemoryMatchEventRepository event
 	{
 		if (!match.Value.IsPrivate || match.Value.Creator.Id == viewer) return true;
 		var history = events.EventsOf(match);
-		return history.Any(matchEvent => matchEvent.Type == MatchEventType.PlayerJoined && matchEvent.Target?.Id == viewer)
+		return history.Any(matchEvent =>
+			       matchEvent.Type == MatchEventType.PlayerJoined && matchEvent.Target?.Id == viewer)
 		       || history.LastOrDefault(matchEvent => matchEvent.Target?.Id == viewer
 		                                              && matchEvent.Type is MatchEventType.RefAdded
-			                                              or MatchEventType.RefRemoved)?.Type == MatchEventType.RefAdded;
+			                                              or MatchEventType.RefRemoved)?.Type ==
+		       MatchEventType.RefAdded;
 	}
 }
 
@@ -338,11 +339,6 @@ internal sealed class InMemoryMatchEventRepository : IMatchEventRepository
 {
 	private readonly List<MatchEvent> _events = [];
 
-	public IEnumerable<MatchEvent> EventsOf(MatchRecord match)
-	{
-		return _events.Where(matchEvent => matchEvent.Match.Equals(match));
-	}
-
 	public Task RecordAsync(MatchEvent matchEvent, CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
@@ -355,6 +351,11 @@ internal sealed class InMemoryMatchEventRepository : IMatchEventRepository
 		cancellationToken.ThrowIfCancellationRequested();
 		return Task.FromResult<IReadOnlyList<MatchEvent>>(_events.Where(matchEvent =>
 			matchEvent.Match.Equals(match)).ToList());
+	}
+
+	public IEnumerable<MatchEvent> EventsOf(MatchRecord match)
+	{
+		return _events.Where(matchEvent => matchEvent.Match.Equals(match));
 	}
 }
 

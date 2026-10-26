@@ -1,6 +1,9 @@
 namespace Basil.ArchitectureTests;
 
-/// <summary>Pins the rule that Infrastructure.Persistence holds no SQL text: Entity Framework Core with LINQ and row objects only.</summary>
+/// <summary>
+///     Pins the rule that Infrastructure.Persistence holds no SQL text: Entity Framework Core with LINQ and row
+///     objects only.
+/// </summary>
 public sealed class PersistenceSqlTests
 {
 	private static readonly string[] ForbiddenTokens =
@@ -12,7 +15,8 @@ public sealed class PersistenceSqlTests
 		var persistence = Path.Combine(FindRepositoryRoot(), "src", "Infrastructure", "Persistence");
 		var offenders = Directory.EnumerateFiles(persistence, "*.cs", SearchOption.AllDirectories)
 			.Where(path => !IsGenerated(path))
-			.SelectMany(path => ForbiddenIn(File.ReadAllText(path)).Select(token => $"{Path.GetFileName(path)}: {token}"))
+			.SelectMany(path =>
+				ForbiddenIn(File.ReadAllText(path)).Select(token => $"{Path.GetFileName(path)}: {token}"))
 			.ToList();
 
 		Assert.True(offenders.Count == 0, "Persistence holds no SQL text: " + string.Join(", ", offenders));
@@ -29,7 +33,8 @@ public sealed class PersistenceSqlTests
 	[Fact]
 	public void ForbiddenIn_IgnoresCodeWithoutRawSql()
 	{
-		Assert.Empty(ForbiddenIn("await context.Users.Where(row => row.Id == id).ExecuteUpdateAsync(set => set, token);"));
+		Assert.Empty(
+			ForbiddenIn("await context.Users.Where(row => row.Id == id).ExecuteUpdateAsync(set => set, token);"));
 	}
 
 	private static IEnumerable<string> ForbiddenIn(string source)

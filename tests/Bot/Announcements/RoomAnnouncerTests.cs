@@ -16,6 +16,48 @@ public sealed class RoomAnnouncerTests
 {
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
 
+	private static RoomAnnouncer AnnouncerFor(BotHarness bot)
+	{
+		return new RoomAnnouncer(bot.App.Server, bot.App.Users, bot.App.Clock, bot.Replies);
+	}
+
+	private static async Task<StaffRoom> SetUpAsync(BotHarness bot)
+	{
+		await bot.StartBotAsync();
+		return await StaffRoom.OpenAsync(bot, "Finals");
+	}
+
+	private static RoomCountdown CountdownIn(BotHarness bot, StaffRoom staff, TimeSpan length, bool startsRound)
+	{
+		return new RoomCountdown(staff.Creator.Record, length, startsRound, bot.App.Clock.GetUtcNow());
+	}
+
+	private static LobbyRoomClosingAnnounced ClosingIn(BotHarness bot, StaffRoom staff, TimeSpan untilClosing)
+	{
+		return new LobbyRoomClosingAnnounced(staff.Room, bot.App.Clock.GetUtcNow() + untilClosing);
+	}
+
+	private static RoomPlayerJoined JoinedRoom(StaffRoom staff)
+	{
+		return new RoomPlayerJoined(staff.Room, staff.Player, 2, null, null);
+	}
+
+	private static Task CancelCountdownAsync(BotHarness bot, StaffRoom staff, RoomCountdownCancelReason reason)
+	{
+		return AnnouncerFor(bot).Handle(
+			new RoomCountdownCancelled(staff.Room, CountdownIn(bot, staff, TimeSpan.FromSeconds(60), true), reason),
+			Token).AsTask();
+	}
+
+	/// <summary>Has the creator start a round in the room and returns the event the room published for it.</summary>
+	private static async Task<RoomRoundStarted> StartRoundAsync(BotHarness bot, StaffRoom staff)
+	{
+		Assert.True((await staff.Room.ScopeTo(staff.Creator).Settings.ConfigureAsync(
+			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap), Token)).IsOk);
+		Assert.True((await bot.TypeAsync(staff.Creator, "#osu", "!mp start")).Succeeded);
+		return Assert.Single(bot.App.RoomEvents.Events.OfType<RoomRoundStarted>());
+	}
+
 	#region Countdown started
 
 	[Fact]
@@ -24,7 +66,7 @@ public sealed class RoomAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 
-		await AnnouncerFor(bot).HandleAsync(
+		await AnnouncerFor(bot).Handle(
 			new RoomCountdownStarted(staff.Room, CountdownIn(bot, staff, TimeSpan.FromSeconds(90), true)), Token);
 
 		Assert.Equal([bot.Text(AnnouncementReplies.CountdownStartedForRound, new { seconds = 90 })],
@@ -37,7 +79,7 @@ public sealed class RoomAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 
-		await AnnouncerFor(bot).HandleAsync(
+		await AnnouncerFor(bot).Handle(
 			new RoomCountdownStarted(staff.Room, CountdownIn(bot, staff, TimeSpan.FromSeconds(45), false)), Token);
 
 		Assert.Equal([bot.Text(AnnouncementReplies.CountdownStarted, new { seconds = 45 })],
@@ -54,7 +96,7 @@ public sealed class RoomAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 
-		await AnnouncerFor(bot).HandleAsync(
+		await AnnouncerFor(bot).Handle(
 			new RoomCountdownTicked(staff.Room, CountdownIn(bot, staff, TimeSpan.FromSeconds(90), true),
 				TimeSpan.FromSeconds(30)), Token);
 
@@ -68,7 +110,7 @@ public sealed class RoomAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 
-		await AnnouncerFor(bot).HandleAsync(
+		await AnnouncerFor(bot).Handle(
 			new RoomCountdownTicked(staff.Room, CountdownIn(bot, staff, TimeSpan.FromSeconds(90), false),
 				TimeSpan.FromSeconds(30)), Token);
 
@@ -82,7 +124,7 @@ public sealed class RoomAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 
-		await AnnouncerFor(bot).HandleAsync(
+		await AnnouncerFor(bot).Handle(
 			new RoomCountdownTicked(staff.Room, CountdownIn(bot, staff, TimeSpan.FromSeconds(90), false),
 				TimeSpan.FromSeconds(59.6)), Token);
 
@@ -96,7 +138,7 @@ public sealed class RoomAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 
-		await AnnouncerFor(bot).HandleAsync(
+		await AnnouncerFor(bot).Handle(
 			new RoomCountdownTicked(staff.Room, CountdownIn(bot, staff, TimeSpan.FromSeconds(90), false),
 				TimeSpan.FromSeconds(59.4)), Token);
 
@@ -114,7 +156,7 @@ public sealed class RoomAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 
-		await AnnouncerFor(bot).HandleAsync(
+		await AnnouncerFor(bot).Handle(
 			new RoomCountdownElapsed(staff.Room, CountdownIn(bot, staff, TimeSpan.FromSeconds(30), true),
 				RoomOutcome.Ok), Token);
 
@@ -127,7 +169,7 @@ public sealed class RoomAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 
-		await AnnouncerFor(bot).HandleAsync(
+		await AnnouncerFor(bot).Handle(
 			new RoomCountdownElapsed(staff.Room, CountdownIn(bot, staff, TimeSpan.FromSeconds(30), false),
 				RoomOutcome.Ok), Token);
 
@@ -140,7 +182,7 @@ public sealed class RoomAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 
-		await AnnouncerFor(bot).HandleAsync(
+		await AnnouncerFor(bot).Handle(
 			new RoomCountdownElapsed(staff.Room, CountdownIn(bot, staff, TimeSpan.FromSeconds(30), true),
 				RoomOutcome.NoBeatmap), Token);
 
@@ -155,7 +197,7 @@ public sealed class RoomAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 
-		await AnnouncerFor(bot).HandleAsync(
+		await AnnouncerFor(bot).Handle(
 			new RoomCountdownElapsed(staff.Room, CountdownIn(bot, staff, TimeSpan.FromSeconds(30), true), result),
 			Token);
 
@@ -222,7 +264,7 @@ public sealed class RoomAnnouncerTests
 		var staff = await SetUpAsync(bot);
 		var started = await StartRoundAsync(bot, staff);
 
-		await AnnouncerFor(bot).HandleAsync(started with { Players = [] }, Token);
+		await AnnouncerFor(bot).Handle(started with { Players = [] }, Token);
 
 		Assert.Equal([bot.Text(AnnouncementReplies.RoundStartedNoPlayers)], bot.SaidIn(staff.Room.Channel));
 	}
@@ -235,7 +277,7 @@ public sealed class RoomAnnouncerTests
 		var started = await StartRoundAsync(bot, staff);
 		Assert.NotEmpty(started.Players);
 
-		await AnnouncerFor(bot).HandleAsync(started, Token);
+		await AnnouncerFor(bot).Handle(started, Token);
 
 		Assert.Empty(bot.SaidIn(staff.Room.Channel));
 	}
@@ -249,9 +291,38 @@ public sealed class RoomAnnouncerTests
 		Assert.True((await bot.TypeAsync(staff.Creator, "#osu", "!mp abort")).Succeeded);
 		var aborted = Assert.Single(bot.App.RoomEvents.Events.OfType<RoomRoundAborted>());
 
-		await AnnouncerFor(bot).HandleAsync(aborted, Token);
+		await AnnouncerFor(bot).Handle(aborted, Token);
 
 		Assert.Equal([bot.Text(AnnouncementReplies.RoundAborted)], bot.SaidIn(staff.Room.Channel));
+	}
+
+	[Fact]
+	public async Task RoundDecided_NamesEachPlayerWhoseScoreDidNotCome()
+	{
+		using var bot = new BotHarness();
+		var staff = await SetUpAsync(bot);
+		var decided = new RoomRoundDecided(staff.Room,
+			staff.Room.Rounds.LastRound ?? (await StartRoundAsync(bot, staff)).Round,
+			null, [staff.Player.Record, staff.Creator.Record]);
+
+		await AnnouncerFor(bot).Handle(decided, Token);
+
+		Assert.Equal([
+			bot.Text(AnnouncementReplies.ScoreMissing, new { player = staff.Player.Record.Value.Name, seconds = 10 }),
+			bot.Text(AnnouncementReplies.ScoreMissing, new { player = staff.Creator.Record.Value.Name, seconds = 10 })
+		], bot.SaidIn(staff.Room.Channel));
+	}
+
+	[Fact]
+	public async Task RoundDecided_WithNobodyMissing_SaysNothing()
+	{
+		using var bot = new BotHarness();
+		var staff = await SetUpAsync(bot);
+		var started = await StartRoundAsync(bot, staff);
+
+		await AnnouncerFor(bot).Handle(new RoomRoundDecided(staff.Room, started.Round, null, []), Token);
+
+		Assert.Empty(bot.SaidIn(staff.Room.Channel));
 	}
 
 	#endregion
@@ -269,7 +340,7 @@ public sealed class RoomAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 
-		await AnnouncerFor(bot).HandleAsync(ClosingIn(bot, staff, TimeSpan.FromSeconds(secondsLeft)), Token);
+		await AnnouncerFor(bot).Handle(ClosingIn(bot, staff, TimeSpan.FromSeconds(secondsLeft)), Token);
 
 		Assert.Equal([bot.Text(AnnouncementReplies.RoomClosingAnnounced, new { minutes })],
 			bot.SaidIn(staff.Room.Channel));
@@ -281,7 +352,8 @@ public sealed class RoomAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 
-		await AnnouncerFor(bot).HandleAsync(ClosingIn(bot, staff, TimeSpan.FromMinutes(14).Add(TimeSpan.FromSeconds(1))),
+		await AnnouncerFor(bot).Handle(
+			ClosingIn(bot, staff, TimeSpan.FromMinutes(14).Add(TimeSpan.FromSeconds(1))),
 			Token);
 
 		Assert.Equal([bot.Text(AnnouncementReplies.RoomClosingAnnounced, new { minutes = 15 })],
@@ -294,7 +366,8 @@ public sealed class RoomAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 
-		await AnnouncerFor(bot).HandleAsync(ClosingIn(bot, staff, TimeSpan.FromMinutes(14).Add(TimeSpan.FromSeconds(1))),
+		await AnnouncerFor(bot).Handle(
+			ClosingIn(bot, staff, TimeSpan.FromMinutes(14).Add(TimeSpan.FromSeconds(1))),
 			Token);
 
 		Assert.Equal([bot.Text(AnnouncementReplies.RoomClosingAnnounced, new { minutes = 15 })],
@@ -307,7 +380,7 @@ public sealed class RoomAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 
-		await AnnouncerFor(bot).HandleAsync(ClosingIn(bot, staff, TimeSpan.FromMinutes(10)), Token);
+		await AnnouncerFor(bot).Handle(ClosingIn(bot, staff, TimeSpan.FromMinutes(10)), Token);
 
 		Assert.DoesNotContain(bot.App.ChannelEvents.Events.OfType<ChannelMessagePosted>(),
 			posted => posted.Channel is PmChannel pm && pm.Owner.Record.Equals(staff.OfflineReferee));
@@ -319,7 +392,7 @@ public sealed class RoomAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 
-		await AnnouncerFor(bot).HandleAsync(ClosingIn(bot, staff, TimeSpan.FromMinutes(10)), Token);
+		await AnnouncerFor(bot).Handle(ClosingIn(bot, staff, TimeSpan.FromMinutes(10)), Token);
 
 		Assert.Empty(bot.WhisperedTo(staff.Player));
 	}
@@ -330,10 +403,10 @@ public sealed class RoomAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 		var announcer = AnnouncerFor(bot);
-		await announcer.HandleAsync(ClosingIn(bot, staff, TimeSpan.FromMinutes(10)), Token);
+		await announcer.Handle(ClosingIn(bot, staff, TimeSpan.FromMinutes(10)), Token);
 		var saidBefore = bot.SaidIn(staff.Room.Channel).Count;
 
-		await announcer.HandleAsync(JoinedRoom(staff), Token);
+		await announcer.Handle(JoinedRoom(staff), Token);
 
 		Assert.Equal([bot.Text(AnnouncementReplies.RoomPlayerJoinedClosing)],
 			bot.SaidIn(staff.Room.Channel).Skip(saidBefore).ToList());
@@ -345,11 +418,11 @@ public sealed class RoomAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 		var announcer = AnnouncerFor(bot);
-		await announcer.HandleAsync(ClosingIn(bot, staff, TimeSpan.FromMinutes(10)), Token);
-		await announcer.HandleAsync(JoinedRoom(staff), Token);
+		await announcer.Handle(ClosingIn(bot, staff, TimeSpan.FromMinutes(10)), Token);
+		await announcer.Handle(JoinedRoom(staff), Token);
 		var saidBefore = bot.SaidIn(staff.Room.Channel).Count;
 
-		await announcer.HandleAsync(JoinedRoom(staff), Token);
+		await announcer.Handle(JoinedRoom(staff), Token);
 
 		Assert.Equal(saidBefore, bot.SaidIn(staff.Room.Channel).Count);
 	}
@@ -360,7 +433,7 @@ public sealed class RoomAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 
-		await AnnouncerFor(bot).HandleAsync(JoinedRoom(staff), Token);
+		await AnnouncerFor(bot).Handle(JoinedRoom(staff), Token);
 
 		Assert.Empty(bot.SaidIn(staff.Room.Channel));
 	}
@@ -371,11 +444,11 @@ public sealed class RoomAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 		var announcer = AnnouncerFor(bot);
-		await announcer.HandleAsync(ClosingIn(bot, staff, TimeSpan.FromMinutes(10)), Token);
-		await announcer.HandleAsync(new LobbyRoomClosed(staff.Room, null, [], null), Token);
+		await announcer.Handle(ClosingIn(bot, staff, TimeSpan.FromMinutes(10)), Token);
+		await announcer.Handle(new LobbyRoomClosed(staff.Room, null, [], null), Token);
 		var saidBefore = bot.SaidIn(staff.Room.Channel).Count;
 
-		await announcer.HandleAsync(JoinedRoom(staff), Token);
+		await announcer.Handle(JoinedRoom(staff), Token);
 
 		Assert.Equal(saidBefore, bot.SaidIn(staff.Room.Channel).Count);
 	}
@@ -388,58 +461,16 @@ public sealed class RoomAnnouncerTests
 		var first = await StaffRoom.OpenAsync(bot, "First");
 		var second = await StaffRoom.OpenAsync(bot, "Second");
 		var announcer = AnnouncerFor(bot);
-		await announcer.HandleAsync(ClosingIn(bot, first, TimeSpan.FromMinutes(10)), Token);
-		await announcer.HandleAsync(ClosingIn(bot, second, TimeSpan.FromMinutes(10)), Token);
-		await announcer.HandleAsync(new LobbyRoomClosed(first.Room, null, [], null), Token);
+		await announcer.Handle(ClosingIn(bot, first, TimeSpan.FromMinutes(10)), Token);
+		await announcer.Handle(ClosingIn(bot, second, TimeSpan.FromMinutes(10)), Token);
+		await announcer.Handle(new LobbyRoomClosed(first.Room, null, [], null), Token);
 
-		await announcer.HandleAsync(JoinedRoom(first), Token);
-		await announcer.HandleAsync(JoinedRoom(second), Token);
+		await announcer.Handle(JoinedRoom(first), Token);
+		await announcer.Handle(JoinedRoom(second), Token);
 
 		Assert.DoesNotContain(bot.Text(AnnouncementReplies.RoomPlayerJoinedClosing), bot.SaidIn(first.Room.Channel));
 		Assert.Contains(bot.Text(AnnouncementReplies.RoomPlayerJoinedClosing), bot.SaidIn(second.Room.Channel));
 	}
 
 	#endregion
-
-	private static RoomAnnouncer AnnouncerFor(BotHarness bot)
-	{
-		return new RoomAnnouncer(bot.App.Server, bot.App.Users, bot.App.Clock, bot.Replies);
-	}
-
-	private static async Task<StaffRoom> SetUpAsync(BotHarness bot)
-	{
-		await bot.StartBotAsync();
-		return await StaffRoom.OpenAsync(bot, "Finals");
-	}
-
-	private static RoomCountdown CountdownIn(BotHarness bot, StaffRoom staff, TimeSpan length, bool startsRound)
-	{
-		return new RoomCountdown(staff.Creator.Record, length, startsRound, bot.App.Clock.GetUtcNow());
-	}
-
-	private static LobbyRoomClosingAnnounced ClosingIn(BotHarness bot, StaffRoom staff, TimeSpan untilClosing)
-	{
-		return new LobbyRoomClosingAnnounced(staff.Room, bot.App.Clock.GetUtcNow() + untilClosing);
-	}
-
-	private static RoomPlayerJoined JoinedRoom(StaffRoom staff)
-	{
-		return new RoomPlayerJoined(staff.Room, staff.Player, 2, null, null);
-	}
-
-	private static Task CancelCountdownAsync(BotHarness bot, StaffRoom staff, RoomCountdownCancelReason reason)
-	{
-		return AnnouncerFor(bot).HandleAsync(
-			new RoomCountdownCancelled(staff.Room, CountdownIn(bot, staff, TimeSpan.FromSeconds(60), true), reason),
-			Token).AsTask();
-	}
-
-	/// <summary>Has the creator start a round in the room and returns the event the room published for it.</summary>
-	private static async Task<RoomRoundStarted> StartRoundAsync(BotHarness bot, StaffRoom staff)
-	{
-		Assert.True((await staff.Room.ScopeTo(staff.Creator).Settings.ConfigureAsync(
-			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap), Token)).IsOk);
-		Assert.True((await bot.TypeAsync(staff.Creator, "#osu", "!mp start")).Succeeded);
-		return Assert.Single(bot.App.RoomEvents.Events.OfType<RoomRoundStarted>());
-	}
 }

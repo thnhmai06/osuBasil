@@ -55,7 +55,7 @@ This is why a creator or referee whose room permissions are suspended cannot man
 
 ### System-owned operations
 
-Some room work has no user caller. The `Lobby` and the `Room` keep system operations such as releasing a connection from the rooms, removing a suspended member or referee, recovering unfinished matches (`Lobby`) and recording a submitted score (`Room.RecordScoreAsync`). Their summaries say that the server itself calls them and that they need no rights; they do not create a caller scope. Caller-authorized room behavior belongs to `ScopedRoom` and its parts.
+Some room work has no user caller. The `Lobby` and the `Room` keep system operations such as releasing a connection from the rooms, removing a suspended member or referee, recovering unfinished matches (`Lobby`) and taking a submitted score for a round (`Room.ReceiveScore`). Their summaries say that the server itself calls them and that they need no rights; they do not create a caller scope. Caller-authorized room behavior belongs to `ScopedRoom` and its parts.
 
 ## Membership, slots and settings
 
@@ -83,9 +83,11 @@ The room channel is named `#mp_{room id}` and opens and closes with its room. A 
 
 ## Rounds and score association
 
-A round is created when play starts. Rounds are numbered from 1 in start order; an aborted round keeps its number. The latest round remains available after it ends until another round starts, because score submission can arrive before or after round completion is recorded.
+A round is created when play starts. Rounds are numbered from 1 in start order; an aborted round keeps its number. The latest round remains available after it ends until another round starts.
 
-The room emits round events for start, load and skip progress, completion, abort and score submission. Infrastructure records submitted scores as system work, outside caller-authorized room operations. The report and winner are projections of match, round and score data, not additional mutable room state.
+Scores and rounds are two separate businesses. The score module stores every score the same way, solo or multiplayer, and publishes `ScoreSubmitted`; it knows nothing about rounds and the client names no room. When a round starts, the room snapshots the players who take part with the team of each slot. The lobby offers every `ScoreSubmitted` to the rooms; a room takes the score as the score of its latest round when its player takes part, the beatmap is the round's, the round is not yet decided or aborted, and the player has no score in it yet. A player who leaves before completing is struck off and no score is awaited from them; a player who completed and then left is still awaited. Taking a score publishes `RoomRoundScoreSubmitted`, which a handler stores as the relation between the score and the round.
+
+A round is decided once, automatically, as soon as it has ended and every awaited player has a score, or ten seconds after it ended with the scores that came in (the wait is total, not per player). The players whose score did not come in are named in `RoomRoundDecided`, and BasilBot says so in the room. An aborted round is never decided; a room that closes while its round waits decides it at once. The decision (`RoundVerdict`) is stored on the round when it is decided, so a later change of the rules leaves old decisions as they were. The report only reads the stored decision; it never decides and never writes.
 
 ## Countdown
 
@@ -97,19 +99,21 @@ The countdown is room behavior, not a BasilBot-owned timer. `ScopedRoom.Rounds` 
 
 The lobby opens and closes rooms. A room created in game closes when its last player leaves. An empty tournament room remains open for 15 minutes; the lobby announces the scheduled close when it starts and five minutes before it, and a player joining cancels it. If the room becomes empty again, the delay starts over.
 
-Room state is mutable and shared. A read followed by a mutation must hold the exclusive scope from `room.EnterAsync()` across the complete transition. If the room is already closed, `EnterAsync()` returns `null`. Never hold two room scopes at once, and do not hold a room scope across a long-lived or unrelated wait. Do not add another synchronization mechanism for room state.
+Room state is mutable and shared. Every transition that reads and then mutates is a synchronous method of `Room` (`Join`, `Kick`, `StartRound`, `Configure` and the rest) that takes the room's own lock, checks the state, changes it and publishes its events before releasing the lock; publishing only queues the event, so nothing is awaited under the lock. A closed room answers `RoomClosed`. `ScopedRoom` only checks the caller's permissions, does any asynchronous lookup that must come first, and calls the room's method. Never hold two room locks at once. Do not add another synchronization mechanism for room state.
+
+A player is in at most one room. A room's own check cannot see another room's seating that is still under way, so the shell of a join claims the player through `Lobby.TryClaim` before calling the room and releases the claim afterwards; a second room that meets a claim answers `InAnotherRoom`.
 
 ## Invariants
 
 * The creator, referees and host are separate roles; host status alone grants no management authority.
 * Caller-authorized behavior is reached through `room.ScopeTo(by)` and uses effective permissions.
 * A scoped room is short-lived; its role and room-permission snapshot is for one request or command.
-* Every room state transition that reads and mutates holds one room scope throughout.
+* Every room state transition that reads and mutates runs inside one method of `Room` under the room's lock.
 * The 16 positions are numbered 1–16; room size controls usable positions, not the highest slot number.
 * The next host is selected by slot order.
 * Round numbers start at 1, and an aborted round keeps its number.
-* The latest round remains available until the next one starts; score association uses the latest round's beatmap.
-* A closed room's match history remains; reports and winners are derived rather than maintained separately.
+* The latest round remains available until the next one starts; a score is taken for it by the player, the beatmap and the round's state, never by the score module.
+* A closed room's match history remains; a round's decision is stored when it is decided and reports read it.
 * Performance points do not affect multiplayer rules or match winners.
 
 ## Related code

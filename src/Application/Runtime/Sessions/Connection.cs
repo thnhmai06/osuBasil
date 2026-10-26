@@ -1,9 +1,9 @@
+using Basil.Application.Runtime.Anticheat;
+using Basil.Application.Runtime.Users;
 using Basil.Domain.Auth;
 using Basil.Domain.Bancho;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
-using Basil.Application.Runtime.Anticheat;
-using Basil.Application.Runtime.Users;
 
 namespace Basil.Application.Runtime.Sessions;
 
@@ -68,6 +68,12 @@ public sealed class BanchoConnection : Connection
 	/// <summary>Gets the connections spectating this client.</summary>
 	public IReadOnlySet<Connection> Spectators => _spectators;
 
+	/// <summary>
+	///     Gets the connections spectating this client, for changing them; the caller holds the scope and reports the
+	///     change itself.
+	/// </summary>
+	internal ISet<Connection> MutableSpectators => _spectators;
+
 	/// <summary>Scopes this client's behaviour to a connection.</summary>
 	/// <param name="by">The connection acting on this client.</param>
 	/// <returns>A short-lived scope for this client and connection.</returns>
@@ -92,12 +98,6 @@ public sealed class BanchoConnection : Connection
 		Context.AnticheatEvents.Publish(new AnticheatPlayerFlagged(this, signs, Context.Lobby.RoomOf(this)));
 		return signs;
 	}
-
-	/// <summary>
-	///     Gets the connections spectating this client, for changing them; the caller holds the scope and reports the
-	///     change itself.
-	/// </summary>
-	internal ISet<Connection> MutableSpectators => _spectators;
 
 	/// <summary>Enters the scope in which the client's spectators change one at a time.</summary>
 	/// <returns>A scope that must be disposed when the change is complete.</returns>

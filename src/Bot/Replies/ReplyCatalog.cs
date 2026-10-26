@@ -21,7 +21,10 @@ namespace Basil.Bot.Replies;
 /// <param name="replies">Every reply, each with a key no other reply has.</param>
 /// <param name="options">Where the replies file is.</param>
 /// <param name="logger">Receives what is wrong with the replies file.</param>
-internal sealed class ReplyCatalog(IEnumerable<Reply> replies, IOptions<RepliesOptions> options, ILogger<ReplyCatalog> logger) : IReplies
+internal sealed class ReplyCatalog(
+	IEnumerable<Reply> replies,
+	IOptions<RepliesOptions> options,
+	ILogger<ReplyCatalog> logger) : IReplies
 {
 	private static readonly CultureInfo Culture = CultureInfo.GetCultureInfo("en");
 
@@ -33,7 +36,10 @@ internal sealed class ReplyCatalog(IEnumerable<Reply> replies, IOptions<RepliesO
 
 	private readonly MessageFormatter _formatter = new();
 	private readonly ILogger<ReplyCatalog> _logger = logger;
-	private readonly FrozenDictionary<string, Reply> _replies = replies.ToFrozenDictionary(reply => reply.Key, StringComparer.Ordinal);
+
+	private readonly FrozenDictionary<string, Reply> _replies =
+		replies.ToFrozenDictionary(reply => reply.Key, StringComparer.Ordinal);
+
 	private FrozenDictionary<string, string> _texts = FrozenDictionary<string, string>.Empty;
 
 	/// <summary>Gets the full path of the replies file.</summary>

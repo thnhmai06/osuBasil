@@ -1,8 +1,8 @@
 using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Users;
-using Basil.Testing;
 using Basil.Infrastructure.Runtime.Sessions;
 using Basil.Infrastructure.Runtime.Tests.Support;
+using Basil.Testing;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Infrastructure.Runtime.Tests.Sessions;
@@ -58,7 +58,7 @@ public sealed class IdleConnectionSweeperTests
 		var quietClosed = NextCloseAsync(app, quiet);
 		using var running = await StartAsync(app);
 
-		await SweepUntilAsync(app, quietClosed);
+		await SweepUntilAsync(app, quietClosed, active);
 
 		Assert.True(active.IsOpen);
 	}
@@ -69,7 +69,7 @@ public sealed class IdleConnectionSweeperTests
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Api", "password");
-		var connection = await app.LoginAsync(user, ConnectionType.Api);
+		var connection = await app.LoginAsync(user);
 		var canaryUser = await app.CreateUserAsync("Canary", "password");
 		var canary = await app.LoginAsync(canaryUser, ConnectionType.Bancho);
 		app.Clock.Advance(TimeSpan.FromSeconds(301));
@@ -87,7 +87,7 @@ public sealed class IdleConnectionSweeperTests
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Api", "password");
-		var connection = await app.LoginAsync(user, ConnectionType.Api);
+		var connection = await app.LoginAsync(user);
 		app.Clock.Advance(TimeSpan.FromHours(2) + TimeSpan.FromSeconds(1));
 		var closed = NextCloseAsync(app, connection);
 		using var running = await StartAsync(app);
@@ -147,11 +147,18 @@ public sealed class IdleConnectionSweeperTests
 	}
 
 	/// <summary>Moves the clock one sweep at a time until the awaited change has happened.</summary>
-	private static async Task SweepUntilAsync(TestApplication app, Task until)
+	/// <param name="app">The application whose clock moves.</param>
+	/// <param name="until">The change to wait for.</param>
+	/// <param name="keepActive">
+	///     Connections that speak after every move of the clock, so that how many moves happen before a sweep gets to
+	///     run cannot make them idle.
+	/// </param>
+	private static async Task SweepUntilAsync(TestApplication app, Task until, params Connection[] keepActive)
 	{
 		for (var sweep = 0; sweep < 20 && !until.IsCompleted; sweep++)
 		{
 			app.Clock.Advance(SweepPeriod);
+			foreach (var connection in keepActive) app.Users.MarkActive(connection);
 			await Task.Yield();
 		}
 

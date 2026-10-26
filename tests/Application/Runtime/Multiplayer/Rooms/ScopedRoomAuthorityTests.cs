@@ -2,9 +2,9 @@ using Basil.Application.Runtime.Common;
 using Basil.Application.Runtime.Multiplayer;
 using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Multiplayer.Rooms;
-using Basil.Testing;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
+using Basil.Testing;
 
 namespace Basil.Application.Runtime.Tests.Multiplayer.Rooms;
 
@@ -233,7 +233,7 @@ public sealed class ScopedRoomAuthorityTests
 		var before = room.Settings.Name;
 		var events = app.RoomEvents.Events.Count;
 
-		var result = await room.ScopeTo(caller).Settings.ConfigureAsync(new RoomSettingsChange(Name: "renamed"),
+		var result = await room.ScopeTo(caller).Settings.ConfigureAsync(new RoomSettingsChange("renamed"),
 			TestContext.Current.CancellationToken);
 
 		if (expected == RoomExpectation.Allowed)
@@ -312,7 +312,8 @@ public sealed class ScopedRoomAuthorityTests
 		{
 			Assert.Equal(RoomOutcome.Ok, result.Outcome);
 			Assert.Null(room.Rounds.Countdown);
-			Assert.Equal(RoomCountdownCancelReason.Aborted, Assert.IsType<RoomCountdownCancelled>(app.RoomEvents.Events[^1]).Reason);
+			Assert.Equal(RoomCountdownCancelReason.Aborted,
+				Assert.IsType<RoomCountdownCancelled>(app.RoomEvents.Events[^1]).Reason);
 			return;
 		}
 
@@ -668,6 +669,20 @@ public sealed class ScopedRoomAuthorityTests
 		Assert.Equal(lobbyEvents, app.LobbyEvents.Events.Count);
 	}
 
+	private static void AssertRefused(Result<RoomOutcome> result, RoomExpectation expected)
+	{
+		Assert.False(result.IsOk);
+
+		if (expected == RoomExpectation.RoomJoinDenied)
+		{
+			Assert.Equal(UserPermissions.RoomJoin, result.Missing);
+			return;
+		}
+
+		Assert.Equal(RoomOutcome.RoleDenied, result.Outcome);
+		Assert.Null(result.Missing);
+	}
+
 	#region Outcomes about the target
 
 	[Fact]
@@ -741,18 +756,4 @@ public sealed class ScopedRoomAuthorityTests
 	}
 
 	#endregion
-
-	private static void AssertRefused(Result<RoomOutcome> result, RoomExpectation expected)
-	{
-		Assert.False(result.IsOk);
-
-		if (expected == RoomExpectation.RoomJoinDenied)
-		{
-			Assert.Equal(UserPermissions.RoomJoin, result.Missing);
-			return;
-		}
-
-		Assert.Equal(RoomOutcome.RoleDenied, result.Outcome);
-		Assert.Null(result.Missing);
-	}
 }

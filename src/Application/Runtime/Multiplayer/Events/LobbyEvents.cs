@@ -9,6 +9,11 @@ namespace Basil.Application.Runtime.Multiplayer.Events;
 /// <summary>Something happened to the set of open rooms or to who is watching the lobby.</summary>
 public abstract record LobbyEvent : Event;
 
+/// <summary>A match found unfinished at start-up was ended.</summary>
+/// <param name="Match">The match, with its end set.</param>
+/// <param name="AbortedRounds">The rounds of the match that were still open and ended as aborted.</param>
+public sealed record LobbyMatchRecovered(MatchRecord Match, IReadOnlyList<Round> AbortedRounds) : LobbyEvent;
+
 /// <summary>A room was opened.</summary>
 /// <param name="Room">The room that was opened.</param>
 /// <param name="Host">The room's first host, or <see langword="null" /> when nobody was seated.</param>

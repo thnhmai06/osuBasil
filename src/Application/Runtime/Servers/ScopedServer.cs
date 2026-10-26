@@ -10,7 +10,8 @@ public sealed class ScopedServer : Scoped<UserPermissions>
 	/// <summary>Creates a server scope for a connection.</summary>
 	/// <param name="server">The server to scope.</param>
 	/// <param name="by">The connection acting on the server.</param>
-	internal ScopedServer(Server server, Connection by) : base(by, by.User.EffectivePermissions(server.Context.Session.Clock.GetUtcNow()))
+	internal ScopedServer(Server server, Connection by) : base(by,
+		by.User.EffectivePermissions(server.Context.Session.Clock.GetUtcNow()))
 	{
 		Server = server;
 		Channels = new ScopedServerChannels(this);

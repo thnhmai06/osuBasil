@@ -5,12 +5,6 @@ namespace Basil.Application.Runtime.Tests.Common;
 
 public class ResultTests
 {
-	private enum SampleOutcome : byte
-	{
-		Ok = 1,
-		NotFound = 2
-	}
-
 	[Fact]
 	public void IsOk_OutcomeOkWithNothingMissing_IsTrue()
 	{
@@ -62,5 +56,11 @@ public class ResultTests
 		Result<SampleOutcome> result = SampleOutcome.NotFound;
 
 		Assert.Null(result.Missing);
+	}
+
+	private enum SampleOutcome : byte
+	{
+		Ok = 1,
+		NotFound = 2
 	}
 }

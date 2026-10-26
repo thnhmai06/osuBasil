@@ -11,7 +11,8 @@ public sealed class ScopedChannel : Scoped<UserPermissions>
 	/// <summary>Creates a channel scope for a connection.</summary>
 	/// <param name="channel">The channel to scope.</param>
 	/// <param name="by">The connection acting on the channel.</param>
-	internal ScopedChannel(Channel channel, Connection by) : base(by, by.User.EffectivePermissions(channel.Context.Clock.GetUtcNow()))
+	internal ScopedChannel(Channel channel, Connection by) : base(by,
+		by.User.EffectivePermissions(channel.Context.Clock.GetUtcNow()))
 	{
 		Channel = channel;
 		General = channel is GeneralChannel general ? new ScopedGeneralChannel(general, by) : null;
@@ -69,14 +70,16 @@ public sealed class ScopedChannel : Scoped<UserPermissions>
 	/// <param name="notice">Whether the message is a notice, which never triggers an automatic reply.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>
-	///     Ok, or Closed, Empty, InvalidText, NotMember, AccessDenied, Blocked or TargetSilenced; a denial that names the missing
+	///     Ok, or Closed, Empty, InvalidText, NotMember, AccessDenied, Blocked or TargetSilenced; a denial that names the
+	///     missing
 	///     permissions when the sender lacks the permission to post.
 	/// </returns>
 	/// <remarks>
 	///     Messages longer than <see cref="Channel.MaxMessageLength" /> characters are cut. A private message is a
 	///     post into the recipient's channel; their away reply is carried by the same <see cref="ChannelMessagePosted" />.
 	///     Posting requires <see cref="UserPermissions.ChatPost" />, or <see cref="UserPermissions.ChatPostPrivate" /> for a
-	///     private message. Blocks and friends-only settings are bypassed with <see cref="UserPermissions.ChatMessageAnyone" />.
+	///     private message. Blocks and friends-only settings are bypassed with
+	///     <see cref="UserPermissions.ChatMessageAnyone" />.
 	/// </remarks>
 	public async Task<Result<ChannelOutcome>> PostAsync(string text, bool notice = false,
 		CancellationToken cancellationToken = default)

@@ -42,7 +42,7 @@ public sealed class ScopedUserTests
 	{
 		using var app = new TestApplication();
 		var actorPermissions = UserPermissionsGroups.Default | UserPermissions.UserManage |
-							   UserPermissions.UserManagePermissions;
+		                       UserPermissions.UserManagePermissions;
 		var actor = await app.CreateUserAsync("PermissionActor", "password", actorPermissions);
 		var target = await app.CreateUserAsync("PermTarget", "password");
 		var by = await app.LoginAsync(actor);

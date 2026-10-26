@@ -23,17 +23,20 @@ public sealed partial class Room
 		Rounds.CountdownTimers =
 		[
 			.. RoomCountdown.MarksFor(length, startsRound).Select(mark =>
-				Context.Clock.CreateTimer(_ => Fire(() => TickCountdownAsync(countdown, mark)), null, length - mark,
+				Context.Clock.CreateTimer(_ => Fire(() => TickCountdown(countdown, mark)), null, length - mark,
 					Timeout.InfiniteTimeSpan)),
-			Context.Clock.CreateTimer(_ => Fire(() => ElapseCountdownAsync(countdown)), null, length,
+			Context.Clock.CreateTimer(_ => Fire(() => ElapseCountdown(countdown)), null, length,
 				Timeout.InfiniteTimeSpan)
 		];
-		Context.Events.Publish(new RoomCountdownStarted(this, countdown));
+		Emit(new RoomCountdownStarted(this, countdown));
 		return countdown;
 	}
 
 	/// <summary>Cancels this room's countdown.</summary>
-	/// <param name="announce">Why the countdown is cancelled when a cancellation event is to be emitted; otherwise <see langword="null" />.</param>
+	/// <param name="announce">
+	///     Why the countdown is cancelled when a cancellation event is to be emitted; otherwise
+	///     <see langword="null" />.
+	/// </param>
 	/// <returns><see langword="true" /> when a countdown was cancelled.</returns>
 	/// <remarks>The caller holds the room's scope.</remarks>
 	internal bool CancelCountdown(RoomCountdownCancelReason? announce)
@@ -44,48 +47,55 @@ public sealed partial class Room
 		Rounds.Countdown = null;
 
 		if (countdown is null) return false;
-		if (announce is { } reason) Context.Events.Publish(new RoomCountdownCancelled(this, countdown, reason));
+		if (announce is { } reason) Emit(new RoomCountdownCancelled(this, countdown, reason));
 		return true;
 	}
 
-	private async Task TickCountdownAsync(RoomCountdown countdown, TimeSpan remaining)
+	private void TickCountdown(RoomCountdown countdown, TimeSpan remaining)
 	{
-		await using var scope = await EnterAsync();
-		if (scope is null || !ReferenceEquals(Rounds.Countdown, countdown)) return;
-		Context.Events.Publish(new RoomCountdownTicked(this, countdown, remaining));
-	}
-
-	private async Task ElapseCountdownAsync(RoomCountdown countdown)
-	{
-		await using var scope = await EnterAsync();
-		if (scope is null) return;
-		ElapseCountdown(countdown);
+		lock (_sync)
+		{
+			if (IsClosed || !ReferenceEquals(Rounds.Countdown, countdown)) return;
+			Emit(new RoomCountdownTicked(this, countdown, remaining));
+		}
 	}
 
 	private void ElapseCountdown(RoomCountdown countdown)
 	{
-		if (!ReferenceEquals(Rounds.Countdown, countdown)) return;
-
-		CancelCountdown(null);
-		(Round Round, IReadOnlyList<BanchoConnection> Players)? started = null;
-		var result = RoomOutcome.Ok;
-		if (countdown.StartsRound)
+		lock (_sync)
 		{
-			if (Rounds.InProgress)
-				result = RoomOutcome.InProgress;
-			else if (Settings.Beatmap is null)
-				result = RoomOutcome.NoBeatmap;
-			else
-				started = BeginRound();
-		}
+			if (IsClosed || !ReferenceEquals(Rounds.Countdown, countdown)) return;
 
-		Context.Events.Publish(new RoomCountdownElapsed(this, countdown, result));
-		if (started is { } round) Context.Events.Publish(new RoomRoundStarted(this, round.Round, round.Players));
+			CancelCountdown(null);
+			(Round Round, IReadOnlyList<BanchoConnection> Players)? started = null;
+			var result = RoomOutcome.Ok;
+			if (countdown.StartsRound)
+			{
+				if (Rounds.InProgress)
+					result = RoomOutcome.InProgress;
+				else if (Settings.Beatmap is null)
+					result = RoomOutcome.NoBeatmap;
+				else
+					started = BeginRound();
+			}
+
+			Emit(new RoomCountdownElapsed(this, countdown, result));
+			if (started is { } round) Emit(new RoomRoundStarted(this, round.Round, round.Players));
+		}
 	}
 
-	private static void Fire(Func<Task> action)
+	/// <summary>Runs the work of a timer so that a fault in it cannot end the process.</summary>
+	/// <param name="action">The work.</param>
+	internal static void Fire(Action action)
 	{
-		_ = action().ContinueWith(static task => _ = task.Exception, TaskContinuationOptions.OnlyOnFaulted);
+		try
+		{
+			action();
+		}
+		catch (Exception)
+		{
+			// A timer that fails has nothing to report to; the countdown just does not tick.
+		}
 	}
 
 	/// <summary>Ends a room's round in progress and sets its players back to not ready.</summary>
@@ -98,6 +108,10 @@ public sealed partial class Room
 		round.EndedAt = Context.Clock.GetUtcNow();
 		round.Aborted = aborted;
 		Slots.ResetPlayers();
+		if (aborted)
+			Rounds.Settlement?.Close();
+		else
+			_settlePending = true;
 		return round;
 	}
 
@@ -125,6 +139,7 @@ public sealed partial class Room
 			players.Add(slot.Player!);
 		}
 
+		BeginSettlement(round, players);
 		if (players.Count == 0) EndCurrentRound(false);
 		return (round, players);
 	}

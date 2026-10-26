@@ -418,7 +418,8 @@ public sealed class BeatmapsetsScanTests
 	}
 
 	[Fact]
-	public async Task ScanAsync_OfAFolderWhoseNameStartsWithTheIdOfAStoredSet_ReplacesThatSetEvenWithoutASharedDifficulty()
+	public async Task
+		ScanAsync_OfAFolderWhoseNameStartsWithTheIdOfAStoredSet_ReplacesThatSetEvenWithoutASharedDifficulty()
 	{
 		var world = new BeatmapsetWorld();
 		using var app = world.CreateApplication();

@@ -11,7 +11,9 @@ public sealed class RepliesWatcherTests : IDisposable
 {
 	private static readonly Reply Plain = new("test.plain", "You're not in a match.");
 
-	private readonly string _directory = Path.Combine(Path.GetTempPath(), "basil-watcher-" + Guid.NewGuid().ToString("N"));
+	private readonly string _directory =
+		Path.Combine(Path.GetTempPath(), "basil-watcher-" + Guid.NewGuid().ToString("N"));
+
 	private readonly FakeTimeProvider _time = new();
 
 	private string FilePath => Path.Combine(_directory, "replies.json");

@@ -32,5 +32,4 @@ public sealed class GeneralChannel : Channel
 	{
 		return connection.User.EffectivePermissions(now).Privileges.Allows(Record.Value.WritePrivileges);
 	}
-
 }

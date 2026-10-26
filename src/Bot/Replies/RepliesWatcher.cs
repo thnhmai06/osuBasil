@@ -3,7 +3,10 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Bot.Replies;
 
-/// <summary>Reads the replies file at startup and again whenever it is saved, so the wording changes while the server runs.</summary>
+/// <summary>
+///     Reads the replies file at startup and again whenever it is saved, so the wording changes while the server
+///     runs.
+/// </summary>
 internal sealed class RepliesWatcher(ReplyCatalog catalog, TimeProvider time, ILogger<RepliesWatcher> logger)
 	: IHostedService, IDisposable
 {
@@ -14,7 +17,10 @@ internal sealed class RepliesWatcher(ReplyCatalog catalog, TimeProvider time, IL
 	private bool _stopped;
 	private FileSystemWatcher? _watcher;
 
-	/// <summary>Gets a value that indicates whether saves of the file are noticed by the file system; tests turn it off and signal changes themselves.</summary>
+	/// <summary>
+	///     Gets a value that indicates whether saves of the file are noticed by the file system; tests turn it off and
+	///     signal changes themselves.
+	/// </summary>
 	internal bool WatchFileSystem { get; init; } = true;
 
 	/// <inheritdoc />
@@ -49,9 +55,11 @@ internal sealed class RepliesWatcher(ReplyCatalog catalog, TimeProvider time, IL
 			_watcher.Renamed += (_, _) => Changed();
 			_watcher.EnableRaisingEvents = true;
 		}
-		catch (Exception exception) when (exception is IOException or ArgumentException or PlatformNotSupportedException)
+		catch (Exception exception) when
+			(exception is IOException or ArgumentException or PlatformNotSupportedException)
 		{
-			logger.LogWarning(exception, "The replies file {Path} is not watched; the wording changes at the next start",
+			logger.LogWarning(exception,
+				"The replies file {Path} is not watched; the wording changes at the next start",
 				catalog.Path);
 		}
 

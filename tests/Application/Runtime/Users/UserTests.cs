@@ -1,4 +1,3 @@
-using Basil.Application.Runtime.Sessions;
 using Basil.Application.Runtime.Users;
 using Basil.Domain.Users;
 using Basil.Testing;
@@ -7,6 +6,10 @@ namespace Basil.Application.Runtime.Tests.Users;
 
 public sealed class UserTests
 {
+	public static IEnumerable<object[]> ManagedAreaCases => UserPermissionsGroups.Areas
+		.Where(area => area.Manager != UserPermissions.None)
+		.Select(area => new object[] { area.Permissions, area.Manager });
+
 	[Fact]
 	public async Task Of_OnlineAccount_ReturnsSameUserInstance()
 	{
@@ -90,10 +93,6 @@ public sealed class UserTests
 
 		Assert.True(user.EffectivePermissions(app.Clock.GetUtcNow()).Allows(UserPermissions.ChatPost));
 	}
-
-	public static IEnumerable<object[]> ManagedAreaCases => UserPermissionsGroups.Areas
-		.Where(area => area.Manager != UserPermissions.None)
-		.Select(area => new object[] { area.Permissions, area.Manager });
 
 	[Theory]
 	[MemberData(nameof(ManagedAreaCases))]

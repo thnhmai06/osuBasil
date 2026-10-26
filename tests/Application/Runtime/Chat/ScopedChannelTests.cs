@@ -1,8 +1,8 @@
 using Basil.Application.Runtime.Chat;
 using Basil.Application.Runtime.Sessions;
-using Basil.Testing;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
+using Basil.Testing;
 
 namespace Basil.Application.Runtime.Tests.Chat;
 
@@ -14,7 +14,8 @@ public sealed class ScopedChannelTests
 {
 	private const string ChannelName = "#lobby";
 
-	private static async Task<GeneralChannel> OpenChannelAsync(TestApplication app, UserPrivileges read = UserPrivileges.None,
+	private static async Task<GeneralChannel> OpenChannelAsync(TestApplication app,
+		UserPrivileges read = UserPrivileges.None,
 		UserPrivileges write = UserPrivileges.None)
 	{
 		var admin = await app.CreateUserAsync("ChannelAdmin", "password", UserPermissionsGroups.All);
@@ -359,7 +360,7 @@ public sealed class ScopedChannelTests
 		var sender = await app.LoginAsync(await app.CreateUserAsync("NoticeSender", "password"));
 
 		await app.Users.Of(owner).PmChannel.ScopeTo(sender)
-			.PostAsync("fyi", notice: true, cancellationToken: TestContext.Current.CancellationToken);
+			.PostAsync("fyi", true, TestContext.Current.CancellationToken);
 
 		Assert.Null(Assert.IsType<ChannelMessagePosted>(app.ChannelEvents.Events.Last()).AwayReply);
 	}
@@ -476,7 +477,7 @@ public sealed class ScopedChannelTests
 		var channel = await OpenChannelAsync(app);
 		var connection = await app.LoginAsync(await app.CreateUserAsync("NotAnAdmin", "password"));
 
-		var result = await channel.ScopeTo(connection).General!.ConfigureAsync(new GeneralChannelChange(Topic: "new"),
+		var result = await channel.ScopeTo(connection).General!.ConfigureAsync(new GeneralChannelChange("new"),
 			TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsOk);
@@ -490,8 +491,10 @@ public sealed class ScopedChannelTests
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
 		var player = await MemberOfAsync(app, channel, "Demoted");
-		var moderator = await MemberOfAsync(app, channel, "Kept", UserPermissionsGroups.Default | UserPermissions.UserSilence);
-		var admin = await app.LoginAsync(await app.CreateUserAsync("Configurer", "password", UserPermissionsGroups.All));
+		var moderator = await MemberOfAsync(app, channel, "Kept",
+			UserPermissionsGroups.Default | UserPermissions.UserSilence);
+		var admin = await app.LoginAsync(await app.CreateUserAsync("Configurer", "password",
+			UserPermissionsGroups.All));
 
 		var result = await channel.ScopeTo(admin).General!.ConfigureAsync(
 			new GeneralChannelChange(ReadPrivileges: UserPrivileges.Moderator), TestContext.Current.CancellationToken);

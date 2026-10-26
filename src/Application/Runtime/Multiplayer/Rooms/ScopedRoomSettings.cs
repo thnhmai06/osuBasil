@@ -1,7 +1,4 @@
 using Basil.Application.Runtime.Common;
-using Basil.Application.Runtime.Multiplayer.Events;
-using Basil.Application.Runtime.Sessions;
-using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 
 namespace Basil.Application.Runtime.Multiplayer.Rooms;
@@ -33,80 +30,19 @@ public sealed class ScopedRoomSettings
 	///     A change to the beatmap, mode, mods, freemod, team type or win condition cancels a countdown that would start the
 	///     round.
 	/// </remarks>
-	public async Task<Result<RoomOutcome>> ConfigureAsync(RoomSettingsChange change,
+	public Task<Result<RoomOutcome>> ConfigureAsync(RoomSettingsChange change,
 		CancellationToken cancellationToken = default)
 	{
-		var room = _scoped.Room;
-		var by = _scoped.By;
-
 		// Build required permissions from the change
 		var required = RoomPermissions.SettingsChange;
 		if (change.Name is not null) required |= RoomPermissions.SettingsRename;
 		if (change.Password is not null) required |= RoomPermissions.SettingsPassword;
 		if (change.IsPrivate is not null) required |= RoomPermissions.SettingsPrivate;
 
-		if (_scoped.Require(required) is { } denied) return denied;
-
-		await using var scope = await room.EnterAsync(cancellationToken);
-		if (scope is null) return RoomOutcome.RoomClosed;
-
-		if (room.Rounds.InProgress) return RoomOutcome.InProgress;
-
-		if ((change.Name is { } newName && !MatchData.IsValidName(newName)) ||
-		    change.Size is < 1 or > RoomSlots.MaxSlotCount || change is { ClearBeatmap: true, Beatmap: not null } ||
-		    (change.Mode is { } requestedMode && !Enum.IsDefined(requestedMode)) ||
-		    (change.TeamType is { } requestedTeamType && !Enum.IsDefined(requestedTeamType)) ||
-		    (change.WinCondition is { } requestedWinCondition && !Enum.IsDefined(requestedWinCondition)))
-			return RoomOutcome.InvalidSettings;
-
-		if (change == new RoomSettingsChange()) return RoomOutcome.Ok;
-
-		var mode = change.Mode ?? room.Settings.MatchSettings.Mode;
-		var freemods = change.Freemods ?? room.Settings.MatchSettings.Freemods;
-		if (change.Mods is { } requestedMods && !requestedMods.IsValid(mode)) return RoomOutcome.InvalidMods;
-
-		if (change.Name is { } name) room.Match.Value.Name = name;
-
-		if (change.Password is { } password) room.Settings.Password = password;
-		if (change.Beatmap is not null || change.ClearBeatmap)
-		{
-			room.Settings.Beatmap = change.Beatmap;
-			foreach (var slot in room.Slots.Where(s => s.Status is RoomSlotStatus.Ready))
-				slot.SetStatus(RoomSlotStatus.NotReady);
-		}
-
-		if (change.Mode is { } newMode)
-		{
-			room.Settings.MatchSettings.Mods = room.Settings.MatchSettings.Mods.RemoveInvalidMods(newMode);
-			room.Settings.MatchSettings.Mode = newMode;
-			foreach (var slot in room.Slots.Where(s => s.Mods is not null))
-				slot.Mods = slot.Mods!.Value.RemoveInvalidMods(newMode);
-		}
-
-		if (change.Freemods is { } newFreemods && newFreemods != room.Settings.MatchSettings.Freemods)
-			ApplyFreemods(room, newFreemods);
-		if (change.Mods is { } newMods)
-		{
-			room.Settings.MatchSettings.Mods = freemods ? newMods & GameModsGroups.SpeedChanging : newMods;
-			// Under freemod a seated caller keeps the rest of the mods as their own, as the osu! client expects.
-			if (freemods && by is BanchoConnection caller && room.Slots.Find(caller) is { } callerSlot)
-				callerSlot.Mods = newMods & ~GameModsGroups.SpeedChanging;
-		}
-
-		if (change.TeamType is { } teamType) ApplyTeamType(room, teamType);
-		if (change.WinCondition is { } winCondition) room.Settings.MatchSettings.WinCondition = winCondition;
-		if (change.Size is { } size) room.Slots.Resize(size);
-		if (change.IsPrivate is { } isPrivate) room.Match.Value.IsPrivate = isPrivate;
-
-		if (room.Rounds.Countdown is { StartsRound: true } &&
-		    (change.Beatmap is not null || change.ClearBeatmap || change.Mode is not null || change.Mods is not null ||
-		     change.Freemods is not null || change.TeamType is not null || change.WinCondition is not null))
-			room.CancelCountdown(RoomCountdownCancelReason.SettingsChanged);
-
-		room.Context.Events.Publish(new RoomSettingsChanged(room, change with { Password = null },
-			change.Password is not null));
-		return RoomOutcome.Ok;
+		return Task.FromResult(_scoped.Require(required) ??
+		                       _scoped.Room.Configure(_scoped.By, change));
 	}
+
 
 	/// <summary>Locks or unlocks the room, which stops players from changing slot or team.</summary>
 	/// <param name="locked">The lock state to set.</param>
@@ -115,80 +51,9 @@ public sealed class ScopedRoomSettings
 	///     Ok, NotAuthorized or RoomClosed when the room has closed; setting the current state again returns Ok and does
 	///     nothing.
 	/// </returns>
-	public async Task<Result<RoomOutcome>> SetLockedAsync(bool locked, CancellationToken cancellationToken = default)
+	public Task<Result<RoomOutcome>> SetLockedAsync(bool locked, CancellationToken cancellationToken = default)
 	{
-		if (_scoped.Require(RoomPermissions.SlotsMovePlayers) is { } denied) return denied;
-
-		await using var scope = await _scoped.Room.EnterAsync(cancellationToken);
-		if (scope is null) return RoomOutcome.RoomClosed;
-
-		var room = _scoped.Room;
-		if (room.Slots.Locked == locked) return RoomOutcome.Ok;
-
-		room.Slots.Locked = locked;
-		room.Context.Events.Publish(new RoomLockChanged(room, locked));
-		return RoomOutcome.Ok;
-	}
-
-	/// <summary>Applies the room's freemod setting to the room's own mods and every seated player.</summary>
-	/// <param name="room">The room to change.</param>
-	/// <param name="value">Whether freemod is on.</param>
-	/// <remarks>
-	///     Turning freemod on hands the room's non-speed-changing mods to every seated player and
-	///     leaves the room with only its speed-changing mods. Turning it off gives the room its
-	///     speed-changing mods plus the host's own mods, and clears every player's own mods.
-	/// </remarks>
-	private static void ApplyFreemods(Room room, bool value)
-	{
-		var seated = room.Slots.Where(s => s.Player is not null).ToList();
-		if (value)
-		{
-			// Players take the room's mods that combine per player; the room keeps only the
-			// speed-changing ones, which must stay the same for everyone.
-			foreach (var slot in seated)
-				slot.Mods = room.Settings.MatchSettings.Mods & ~GameModsGroups.SpeedChanging;
-			room.Settings.MatchSettings.Mods &= GameModsGroups.SpeedChanging;
-			room.Settings.MatchSettings.Freemods = true;
-		}
-		else
-		{
-			room.Settings.MatchSettings.Freemods = false;
-			// The room keeps its speed-changing mods and takes the host's own mods.
-			var hostMods = (room.Authority.Host is { } host ? room.Slots.Find(host)?.Mods : null) ?? GameMods.NoMod;
-			room.Settings.MatchSettings.Mods =
-				(room.Settings.MatchSettings.Mods & GameModsGroups.SpeedChanging) | hostMods;
-			foreach (var slot in seated)
-				slot.Mods = GameMods.NoMod;
-		}
-	}
-
-	/// <summary>Applies the room's team arrangement, reassigning the teams of the seated players.</summary>
-	/// <param name="room">The room to change.</param>
-	/// <param name="value">The team arrangement to set.</param>
-	private static void ApplyTeamType(Room room, GameTeamType value)
-	{
-		room.Settings.MatchSettings.TeamType = value;
-
-		if (value.IsTeamMode())
-		{
-			var redCount = 0;
-			var blueCount = 0;
-
-			foreach (var slot in room.Slots.Where(s => s.Player is not null))
-			{
-				var team = redCount <= blueCount ? GameTeam.Red : GameTeam.Blue;
-				slot.Team = team;
-
-				if (team == GameTeam.Red)
-					redCount++;
-				else
-					blueCount++;
-			}
-		}
-		else
-		{
-			foreach (var slot in room.Slots.Where(s => s.Player is not null))
-				slot.Team = null;
-		}
+		return Task.FromResult(_scoped.Require(RoomPermissions.SlotsMovePlayers) ??
+		                       _scoped.Room.SetLocked(locked));
 	}
 }

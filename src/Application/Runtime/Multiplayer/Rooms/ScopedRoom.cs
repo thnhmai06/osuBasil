@@ -13,11 +13,33 @@ namespace Basil.Application.Runtime.Multiplayer.Rooms;
 /// </remarks>
 public sealed class ScopedRoom : Scoped<RoomPermissions>
 {
-	/// <summary>The room this scope is over.</summary>
-	public Room Room { get; }
-
 	/// <summary>The permissions the connection has globally, as they were when the scope was created.</summary>
 	private readonly UserPermissions _global;
+
+	/// <summary>Creates a scoped room for a connection.</summary>
+	/// <param name="room">The room to scope.</param>
+	/// <param name="by">The connection acting on the room.</param>
+	internal ScopedRoom(Room room, Connection by) : this(room, by, Snapshot(room, by))
+	{
+	}
+
+	private ScopedRoom(Room room, Connection by,
+		(UserPermissions Global, RoomRoles Roles, RoomPermissions Rights) snapshot)
+		: base(by, snapshot.Rights)
+	{
+		Room = room;
+		_global = snapshot.Global;
+		Roles = snapshot.Roles;
+		ManagesAnyRoom = _global.Allows(UserPermissions.RoomManageAny);
+		Slots = new ScopedRoomSlots(this);
+		Rounds = new ScopedRoomRounds(this);
+		Settings = new ScopedRoomSettings(this);
+		Authority = new ScopedRoomAuthority(this);
+		Members = new ScopedRoomMembers(this);
+	}
+
+	/// <summary>The room this scope is over.</summary>
+	public Room Room { get; }
 
 	/// <summary>The roles this connection holds in the room.</summary>
 	public RoomRoles Roles { get; }
@@ -39,27 +61,6 @@ public sealed class ScopedRoom : Scoped<RoomPermissions>
 
 	/// <summary>Whether the connection may manage every room.</summary>
 	internal bool ManagesAnyRoom { get; }
-
-	/// <summary>Creates a scoped room for a connection.</summary>
-	/// <param name="room">The room to scope.</param>
-	/// <param name="by">The connection acting on the room.</param>
-	internal ScopedRoom(Room room, Connection by) : this(room, by, Snapshot(room, by))
-	{
-	}
-
-	private ScopedRoom(Room room, Connection by, (UserPermissions Global, RoomRoles Roles, RoomPermissions Rights) snapshot)
-		: base(by, snapshot.Rights)
-	{
-		Room = room;
-		_global = snapshot.Global;
-		Roles = snapshot.Roles;
-		ManagesAnyRoom = _global.Allows(UserPermissions.RoomManageAny);
-		Slots = new ScopedRoomSlots(this);
-		Rounds = new ScopedRoomRounds(this);
-		Settings = new ScopedRoomSettings(this);
-		Authority = new ScopedRoomAuthority(this);
-		Members = new ScopedRoomMembers(this);
-	}
 
 	private static (UserPermissions Global, RoomRoles Roles, RoomPermissions Rights) Snapshot(Room room, Connection by)
 	{
@@ -104,7 +105,8 @@ public sealed class ScopedRoom : Scoped<RoomPermissions>
 	/// <summary>Checks that the scoped connection holds the room rights an action needs.</summary>
 	/// <param name="needed">The room rights required.</param>
 	/// <returns>
-	///     <see langword="null" /> when allowed; a denial naming <see cref="UserPermissions.RoomJoin" /> when the caller may not
+	///     <see langword="null" /> when allowed; a denial naming <see cref="UserPermissions.RoomJoin" /> when the caller may
+	///     not
 	///     join rooms at all; otherwise <see cref="RoomOutcome.RoleDenied" />.
 	/// </returns>
 	internal new Result<RoomOutcome>? Require(RoomPermissions needed)
@@ -130,14 +132,8 @@ public sealed class ScopedRoom : Scoped<RoomPermissions>
 	///     Ok, or a denial; a room that has closed already returns Ok and does nothing.
 	/// </returns>
 	/// <remarks>The caller needs <see cref="RoomPermissions.RoomClose" />, checked before the room is entered.</remarks>
-	public async Task<Result<RoomOutcome>> CloseAsync(CancellationToken cancellationToken = default)
+	public Task<Result<RoomOutcome>> CloseAsync(CancellationToken cancellationToken = default)
 	{
-		if (Require(RoomPermissions.RoomClose) is { } denied) return denied;
-
-		await using var scope = await Room.EnterAsync(cancellationToken);
-		if (scope is null) return RoomOutcome.Ok;
-
-		Room.Context.Lobby.Close(Room, By.Record);
-		return RoomOutcome.Ok;
+		return Task.FromResult(Require(RoomPermissions.RoomClose) ?? Room.Close(By.Record));
 	}
 }

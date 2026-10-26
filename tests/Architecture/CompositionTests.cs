@@ -1,10 +1,12 @@
 using Basil.Application.Capabilities.Beatmaps;
-using Basil.Application.Runtime;
 using Basil.Application.Persistence.Users;
+using Basil.Application.Runtime;
 using Basil.Bot;
 using Basil.Infrastructure.Runtime;
+using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
+using DependencyInjection = Basil.Application.Runtime.DependencyInjection;
 
 namespace Basil.ArchitectureTests;
 
@@ -37,6 +39,34 @@ public sealed class CompositionTests
 			.WaitAsync(Deadline, TestContext.Current.CancellationToken);
 
 		Assert.Empty(unresolved);
+	}
+
+	/// <summary>Every handler class of the application and the bot is registered for each event type it handles.</summary>
+	[Fact]
+	public void EveryEventHandlerIsRegisteredForTheEventsItHandles()
+	{
+		var services = new ServiceCollection();
+		services.AddLogging();
+		AddPortStubs(services);
+		services.AddApplication();
+		services.AddInfrastructureRuntime();
+		services.AddBot();
+		using var provider = services.BuildServiceProvider();
+
+		var contracts = new[] { typeof(DependencyInjection).Assembly, typeof(Bot.DependencyInjection).Assembly }
+			.SelectMany(assembly => assembly.GetTypes())
+			.Where(type => type is { IsClass: true, IsAbstract: false })
+			.SelectMany(type => type.GetInterfaces()
+				.Where(contract => contract.IsGenericType &&
+				                   contract.GetGenericTypeDefinition() == typeof(INotificationHandler<>))
+				.Select(contract => (Handler: type, Contract: contract)))
+			.ToList();
+
+		Assert.NotEmpty(contracts);
+		var missing = contracts
+			.Where(pair => !provider.GetServices(pair.Contract).Any(handler => handler!.GetType() == pair.Handler))
+			.Select(pair => $"{pair.Handler.Name} for {pair.Contract.GetGenericArguments()[0].Name}");
+		Assert.Empty(missing);
 	}
 
 	private static List<string> Resolve(ServiceProvider provider, ServiceCollection services)

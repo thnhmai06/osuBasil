@@ -13,6 +13,16 @@ public sealed class User
 	private readonly ConcurrentDictionary<ConnectionType, ConcurrentSet<Connection>> _connections = new();
 	private ImmutableList<UserRestriction> _restrictions = [];
 
+	/// <summary>Creates the account object for a stored user.</summary>
+	/// <param name="record">The account to represent.</param>
+	/// <param name="context">The runtime context for account behaviour.</param>
+	internal User(UserRecord record, UserContext context)
+	{
+		Record = record;
+		Context = context;
+		PmChannel = new PmChannel(this, context.Chat);
+	}
+
 	/// <summary>Gets the account this object represents.</summary>
 	public UserRecord Record { get; }
 
@@ -34,32 +44,6 @@ public sealed class User
 
 	/// <summary>The runtime context for account behaviour.</summary>
 	internal UserContext Context { get; }
-
-	/// <summary>Creates the account object for a stored user.</summary>
-	/// <param name="record">The account to represent.</param>
-	/// <param name="context">The runtime context for account behaviour.</param>
-	internal User(UserRecord record, UserContext context)
-	{
-		Record = record;
-		Context = context;
-		PmChannel = new PmChannel(this, context.Chat);
-	}
-
-	/// <summary>Scopes this account's behaviour to a connection and its authority.</summary>
-	/// <param name="by">The connection acting on the account.</param>
-	/// <returns>A short-lived scope for this account and connection.</returns>
-	public ScopedUser ScopeTo(Connection by)
-	{
-		return new ScopedUser(this, by);
-	}
-
-	/// <summary>Gets the user's permissions that are in effect at a moment.</summary>
-	/// <param name="now">The moment to evaluate restrictions at.</param>
-	/// <returns>The granted permissions not suspended by an active restriction.</returns>
-	public UserPermissions EffectivePermissions(DateTimeOffset now)
-	{
-		return Record.Value.Permissions.Effective(Restrictions, now);
-	}
 
 	/// <summary>Gets the open connections of one kind.</summary>
 	/// <param name="type">The kind of connection.</param>
@@ -83,6 +67,22 @@ public sealed class User
 
 	/// <summary>Gets the user's HTTP API connections.</summary>
 	public IEnumerable<ApiConnection> Apis => this[ConnectionType.Api].Cast<ApiConnection>();
+
+	/// <summary>Scopes this account's behaviour to a connection and its authority.</summary>
+	/// <param name="by">The connection acting on the account.</param>
+	/// <returns>A short-lived scope for this account and connection.</returns>
+	public ScopedUser ScopeTo(Connection by)
+	{
+		return new ScopedUser(this, by);
+	}
+
+	/// <summary>Gets the user's permissions that are in effect at a moment.</summary>
+	/// <param name="now">The moment to evaluate restrictions at.</param>
+	/// <returns>The granted permissions not suspended by an active restriction.</returns>
+	public UserPermissions EffectivePermissions(DateTimeOffset now)
+	{
+		return Record.Value.Permissions.Effective(Restrictions, now);
+	}
 
 	/// <summary>Gets a value that indicates whether this user blocks another.</summary>
 	/// <param name="who">The user to check.</param>

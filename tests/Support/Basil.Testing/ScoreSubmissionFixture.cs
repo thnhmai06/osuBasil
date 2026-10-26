@@ -49,9 +49,10 @@ public sealed class ScoreSubmissionFixture : IDisposable
 	/// <summary>A timestamp for the scores.</summary>
 	public static readonly DateTimeOffset PlayedAt = new(2026, 1, 2, 3, 4, 5, TimeSpan.Zero);
 
-	private readonly Dictionary<(int UserId, GameMode Mode), UserStats> _stats = [];
-	private readonly List<ScoreRecord> _scores = [];
 	private readonly List<(ScoreRecord Score, byte[] Content)> _replays = [];
+	private readonly List<ScoreRecord> _scores = [];
+
+	private readonly Dictionary<(int UserId, GameMode Mode), UserStats> _stats = [];
 
 	private ScoreSubmissionFixture(TestApplication app, BanchoConnection client, UserRecord user)
 	{
@@ -116,6 +117,12 @@ public sealed class ScoreSubmissionFixture : IDisposable
 	/// <summary>Gets the replays stored so far with the bytes they were stored with.</summary>
 	public IReadOnlyList<(ScoreRecord Score, byte[] Content)> Replays => _replays;
 
+	/// <inheritdoc />
+	public void Dispose()
+	{
+		App.Dispose();
+	}
+
 	/// <summary>Gets the statistics of the account in a mode.</summary>
 	/// <param name="mode">The game mode.</param>
 	/// <returns>The stored statistics, or <see langword="null" /> when none were stored.</returns>
@@ -145,7 +152,8 @@ public sealed class ScoreSubmissionFixture : IDisposable
 	public static BanchoClient LoginClient()
 	{
 		var hash = new Md5("0123456789abcdef0123456789abcdef");
-		var fingerprint = new BanchoFingerprint(hash, new NetworkAdapters { Adapters = "runningunderwine", Hash = hash },
+		var fingerprint = new BanchoFingerprint(hash,
+			new NetworkAdapters { Adapters = "runningunderwine", Hash = hash },
 			Md5Of(UninstallId), Md5Of(DiskSignature));
 		return new BanchoClient(new BanchoVersion(new DateOnly(2026, 1, 1), null, BanchoVersionStream.Stable),
 			fingerprint);
@@ -195,12 +203,6 @@ public sealed class ScoreSubmissionFixture : IDisposable
 			$"{(score.IsPassed ? "True" : "False")}{(int)score.Mode}{VersionDate}{timestamp}{ClientHash}" +
 			$"{storyboard?.ToString() ?? string.Empty}");
 		return new Md5(Convert.ToHexStringLower(MD5.HashData(Encoding.UTF8.GetBytes(raw))));
-	}
-
-	/// <inheritdoc />
-	public void Dispose()
-	{
-		App.Dispose();
 	}
 
 	private static Md5 Md5Of(string text)

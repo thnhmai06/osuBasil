@@ -126,7 +126,8 @@ public sealed class MpAuthorityTests
 				actor = await RoomFixture.PlayerAsync(bot.App, "Outsider");
 				break;
 			case RoomRole.Manager:
-				actor = await RoomFixture.PlayerAsync(bot.App, "Manager", UserPermissionsGroups.Default | UserPermissions.RoomManageAny);
+				actor = await RoomFixture.PlayerAsync(bot.App, "Manager",
+					UserPermissionsGroups.Default | UserPermissions.RoomManageAny);
 				break;
 			default:
 				throw new ArgumentOutOfRangeException(nameof(role), role, "This role is not part of the scenario.");

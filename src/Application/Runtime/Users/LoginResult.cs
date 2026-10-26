@@ -1,5 +1,5 @@
-using Basil.Application.Runtime.Sessions;
 using Basil.Application.Persistence.Users;
+using Basil.Application.Runtime.Sessions;
 
 namespace Basil.Application.Runtime.Users;
 

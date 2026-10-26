@@ -22,22 +22,6 @@ public class ScopedRightsTests
 		Admin = 2
 	}
 
-	private sealed class FlagsScope(Connection by, SampleBits held) : Scoped<SampleBits>(by, held)
-	{
-		public SampleBits? Need(SampleBits required)
-		{
-			return Require(required);
-		}
-	}
-
-	private sealed class LevelScope(Connection by, SampleLevel held) : Scoped<SampleLevel>(by, held)
-	{
-		public SampleLevel? Need(SampleLevel required)
-		{
-			return Require(required);
-		}
-	}
-
 	[Fact]
 	public async Task RequireRight_FlagsHoldingEveryRequiredBit_IsMet()
 	{
@@ -56,7 +40,8 @@ public class ScopedRightsTests
 		var by = await app.LoginAsync(await app.CreateUserAsync("FlagsMissing", "password"));
 		var scope = new FlagsScope(by, SampleBits.Read);
 
-		Assert.Equal(SampleBits.Write | SampleBits.Delete, scope.Need(SampleBits.Read | SampleBits.Write | SampleBits.Delete));
+		Assert.Equal(SampleBits.Write | SampleBits.Delete,
+			scope.Need(SampleBits.Read | SampleBits.Write | SampleBits.Delete));
 	}
 
 	[Fact]
@@ -75,7 +60,8 @@ public class ScopedRightsTests
 	[InlineData(SampleLevel.Guest, SampleLevel.Guest, true)]
 	[InlineData(SampleLevel.Member, SampleLevel.Admin, false)]
 	[InlineData(SampleLevel.Guest, SampleLevel.Member, false)]
-	public async Task RequireRight_Levels_AreMetWhenHeldIsAtLeastRequired(SampleLevel held, SampleLevel required, bool met)
+	public async Task RequireRight_Levels_AreMetWhenHeldIsAtLeastRequired(SampleLevel held, SampleLevel required,
+		bool met)
 	{
 		using var app = new TestApplication();
 		var by = await app.LoginAsync(await app.CreateUserAsync("LevelHolder", "password"));
@@ -84,5 +70,21 @@ public class ScopedRightsTests
 		var missing = scope.Need(required);
 
 		Assert.Equal(met ? null : required, missing);
+	}
+
+	private sealed class FlagsScope(Connection by, SampleBits held) : Scoped<SampleBits>(by, held)
+	{
+		public SampleBits? Need(SampleBits required)
+		{
+			return Require(required);
+		}
+	}
+
+	private sealed class LevelScope(Connection by, SampleLevel held) : Scoped<SampleLevel>(by, held)
+	{
+		public SampleLevel? Need(SampleLevel required)
+		{
+			return Require(required);
+		}
 	}
 }

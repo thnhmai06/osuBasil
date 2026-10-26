@@ -1,9 +1,8 @@
-using Basil.Application.Runtime.Chat;
-using Basil.Application.Runtime.Sessions;
-using Basil.Application.Runtime.Events;
 using Basil.Application.Persistence.Auth;
 using Basil.Application.Persistence.Users;
-using Basil.Domain.Users;
+using Basil.Application.Runtime.Chat;
+using Basil.Application.Runtime.Events;
+using Basil.Application.Runtime.Sessions;
 
 namespace Basil.Application.Runtime.Users;
 

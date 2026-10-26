@@ -1,10 +1,10 @@
 using Basil.Application.Persistence.Scores;
 using Basil.Application.Runtime.Sessions;
-using Basil.Testing;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
+using Basil.Testing;
 
 namespace Basil.Application.Runtime.Tests.Sessions;
 
@@ -38,7 +38,8 @@ public sealed class ScopedBanchoConnectionTests
 		var client = Assert.IsType<BanchoConnection>(await app.LoginAsync(user, ConnectionType.Bancho));
 
 		var (result, rejection) = await client.ScopeTo(client)
-			.SubmitScoreAsync(Submission(), new BeatmapChecksums(Hash, null), Client(), null, TestContext.Current.CancellationToken);
+			.SubmitScoreAsync(Submission(), new BeatmapChecksums(Hash, null), Client(), null,
+				TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsOk);
 		Assert.Equal(UserPermissions.ScoreSubmit, result.Missing);
@@ -56,7 +57,8 @@ public sealed class ScopedBanchoConnectionTests
 		var stranger = await app.LoginAsync(other, ConnectionType.Bancho);
 
 		var (result, _) = await client.ScopeTo(stranger)
-			.SubmitScoreAsync(Submission(), new BeatmapChecksums(Hash, null), Client(), null, TestContext.Current.CancellationToken);
+			.SubmitScoreAsync(Submission(), new BeatmapChecksums(Hash, null), Client(), null,
+				TestContext.Current.CancellationToken);
 
 		Assert.Equal(ConnectionOutcome.OtherClient, result.Outcome);
 		Assert.Null(result.Missing);
@@ -69,7 +71,8 @@ public sealed class ScopedBanchoConnectionTests
 		var user = await app.CreateUserAsync("UnknownMap", "password");
 		var client = Assert.IsType<BanchoConnection>(await app.LoginAsync(user, ConnectionType.Bancho));
 
-		var (result, rejection) = await client.ScopeTo(client).SubmitScoreAsync(Submission(), null, Client(), null, TestContext.Current.CancellationToken);
+		var (result, rejection) = await client.ScopeTo(client)
+			.SubmitScoreAsync(Submission(), null, Client(), null, TestContext.Current.CancellationToken);
 
 		Assert.Equal(ConnectionOutcome.Rejected, result.Outcome);
 		Assert.Equal(ScoreRejection.UnknownBeatmap, rejection);

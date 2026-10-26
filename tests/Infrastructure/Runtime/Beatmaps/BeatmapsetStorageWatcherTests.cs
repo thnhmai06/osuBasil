@@ -1,7 +1,7 @@
 using Basil.Application.Persistence.Beatmaps;
-using Basil.Testing;
 using Basil.Infrastructure.Runtime.Beatmaps;
 using Basil.Infrastructure.Runtime.Tests.Support;
+using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;

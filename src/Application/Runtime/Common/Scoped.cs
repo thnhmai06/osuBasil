@@ -14,7 +14,8 @@ namespace Basil.Application.Runtime.Common;
 ///     other enum is ordered levels and is met when the held value is greater than or equal to the required one.
 /// </remarks>
 /// <typeparam name="TPermissions">
-///     The enum of the permissions the scope checks: <c>Permissions</c> for the caller's effective permissions, a room scope's
+///     The enum of the permissions the scope checks: <c>Permissions</c> for the caller's effective permissions, a room
+///     scope's
 ///     own room permissions, or any other flags or levels enum.
 /// </typeparam>
 /// <remarks>Creates a scope for a connection with the permissions it holds.</remarks>

@@ -214,7 +214,7 @@ public class IrcMessageTests
 	public void RoundTrip_ParseThenFormat_ProducesEquivalentLine(string line)
 	{
 		var message = IrcMessage.Parse(line, null);
-		var formatted = message.ToString(null, null);
+		var formatted = message.ToString();
 
 		Assert.Equal(line, formatted);
 	}

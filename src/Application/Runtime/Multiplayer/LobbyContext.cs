@@ -1,10 +1,10 @@
+using Basil.Application.Persistence.Content;
+using Basil.Application.Persistence.Multiplayer;
+using Basil.Application.Persistence.Users;
 using Basil.Application.Runtime.Chat;
 using Basil.Application.Runtime.Events;
 using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Multiplayer.Rooms;
-using Basil.Application.Persistence.Content;
-using Basil.Application.Persistence.Multiplayer;
-using Basil.Application.Persistence.Users;
 
 namespace Basil.Application.Runtime.Multiplayer;
 
@@ -13,7 +13,6 @@ namespace Basil.Application.Runtime.Multiplayer;
 /// <param name="Events">The publisher for lobby events.</param>
 /// <param name="Matches">The stored matches.</param>
 /// <param name="Rounds">The stored match rounds.</param>
-/// <param name="MatchEvents">The stored match events.</param>
 /// <param name="UserRepository">The stored user records.</param>
 /// <param name="Settings">The server settings.</param>
 /// <param name="RoomEvents">The publisher for room events.</param>
@@ -24,7 +23,6 @@ internal sealed record LobbyContext(
 	IEventPublisher<LobbyEvent> Events,
 	IMatchRepository Matches,
 	IRoundRepository Rounds,
-	IMatchEventRepository MatchEvents,
 	IUserRepository UserRepository,
 	ISettingsRepository Settings,
 	IEventPublisher<RoomEvent> RoomEvents,

@@ -120,7 +120,8 @@ public sealed class MpLifecycleTests
 	{
 		using var bot = new BotHarness();
 		var typist =
-			await RoomFixture.PlayerAsync(bot.App, "Typist", UserPermissionsGroups.Default & ~UserPermissions.RoomCreate);
+			await RoomFixture.PlayerAsync(bot.App, "Typist",
+				UserPermissionsGroups.Default & ~UserPermissions.RoomCreate);
 
 		var (succeeded, said) = await bot.TypeAsync(typist, "#osu", "!mp make Finals");
 

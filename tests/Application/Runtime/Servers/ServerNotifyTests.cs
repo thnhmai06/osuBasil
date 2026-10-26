@@ -127,7 +127,7 @@ public sealed class ServerNotifyTests
 		using var app = new TestApplication();
 		var (user, client) = await OnlineClientAsync(app, "Many");
 		await app.LoginAsync(user, ConnectionType.Irc);
-		await app.LoginAsync(user, ConnectionType.Api);
+		await app.LoginAsync(user);
 
 		var sent = app.Server.Notify(Text, user);
 
@@ -359,7 +359,8 @@ public sealed class ServerNotifyTests
 	public async Task ScopedNotifyAll_ChatAnnounceSuspendedByRestriction_IsDenied()
 	{
 		using var app = new TestApplication();
-		var user = await app.CreateUserAsync("Muted", "password", UserPermissionsGroups.Default | UserPermissions.ChatAnnounce);
+		var user = await app.CreateUserAsync("Muted", "password",
+			UserPermissionsGroups.Default | UserPermissions.ChatAnnounce);
 		app.AddRestriction(user, UserPermissions.ChatAnnounce);
 		var by = await app.LoginAsync(user);
 		await OnlineClientAsync(app, "Target");

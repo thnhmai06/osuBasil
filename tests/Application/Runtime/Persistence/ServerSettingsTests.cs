@@ -19,7 +19,8 @@ public class ServerSettingsTests
 	{
 		Assert.Throws<ArgumentException>(() => new ServerSettings
 		{
-			BeatmapMirror = new ServerSettings.BeatmapMirrorSettings { DownloadEndpoint = new Uri("ftp://example.test/d") }
+			BeatmapMirror = new ServerSettings.BeatmapMirrorSettings
+				{ DownloadEndpoint = new Uri("ftp://example.test/d") }
 		});
 	}
 

@@ -71,13 +71,24 @@ public sealed record RoomRoundPlayerFailed(Room Room, Round Round, int Slot) : R
 /// <param name="Slot">The slot number, from 1 to 16.</param>
 public sealed record RoomRoundPlayerCompleted(Room Room, Round Round, int Slot) : RoomRoundEvent(Room, Round);
 
-/// <summary>A player's score for a round was stored.</summary>
+/// <summary>A player's score was taken as a score of a round.</summary>
 /// <param name="Room">The room.</param>
 /// <param name="Round">The round the score was played in.</param>
 /// <param name="Player">The player who submitted the score.</param>
 /// <param name="Score">The relation between the stored score and the round.</param>
 public sealed record RoomRoundScoreSubmitted(Room Room, Round Round, UserRecord Player, RoundScore Score)
 	: RoomRoundEvent(Room, Round);
+
+/// <summary>A round was decided from the scores that came in.</summary>
+/// <param name="Room">The room.</param>
+/// <param name="Round">The round, with its <see cref="Domain.Multiplayer.Round.Result" /> set.</param>
+/// <param name="Result">The result, or <see langword="null" /> when no score came in.</param>
+/// <param name="Missing">The players whose score did not come in before the wait ended.</param>
+public sealed record RoomRoundDecided(
+	Room Room,
+	Round Round,
+	RoundResult? Result,
+	IReadOnlyList<UserRecord> Missing) : RoomRoundEvent(Room, Round);
 
 /// <summary>A countdown started in a room.</summary>
 /// <param name="Room">The room.</param>
@@ -94,7 +105,8 @@ public sealed record RoomCountdownTicked(Room Room, RoomCountdown Countdown, Tim
 /// <param name="Room">The room.</param>
 /// <param name="Countdown">The countdown that elapsed.</param>
 /// <param name="StartResult">The result of starting a round, or <see cref="RoomOutcome.Ok" /> when no round was requested.</param>
-public sealed record RoomCountdownElapsed(Room Room, RoomCountdown Countdown, RoomOutcome StartResult) : RoomEvent(Room);
+public sealed record RoomCountdownElapsed(Room Room, RoomCountdown Countdown, RoomOutcome StartResult)
+	: RoomEvent(Room);
 
 /// <summary>Why a running countdown was cancelled.</summary>
 public enum RoomCountdownCancelReason

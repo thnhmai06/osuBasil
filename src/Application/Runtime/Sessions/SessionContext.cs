@@ -1,12 +1,13 @@
-using Basil.Application.Runtime.Chat;
+using Basil.Application.Capabilities.Scores;
+using Basil.Application.Persistence.Users;
 using Basil.Application.Runtime.Anticheat;
+using Basil.Application.Runtime.Chat;
 using Basil.Application.Runtime.Events;
 using Basil.Application.Runtime.Multiplayer.Rooms;
 using Basil.Application.Runtime.Scores;
 using Basil.Application.Runtime.Users;
-using Basil.Application.Persistence.Scores;
-using Basil.Application.Persistence.Users;
-using Basil.Application.Capabilities.Scores;
+using Basil.Domain.Common;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Runtime.Sessions;
 
@@ -42,6 +43,12 @@ internal interface IConnectionLobbyPort
 	/// <param name="player">The game client to look up.</param>
 	/// <returns>The room containing the player, or <see langword="null" />.</returns>
 	Room? RoomOf(BanchoConnection player);
+
+	/// <summary>Tells whether a room awaits a score from a player on a beatmap, as the score of a round.</summary>
+	/// <param name="player">The player.</param>
+	/// <param name="beatmap">The hash of the beatmap the score was played on.</param>
+	/// <returns><see langword="true" /> when a round of an open room awaits such a score.</returns>
+	bool AwaitsScore(UserRecord player, Md5 beatmap);
 }
 
 /// <summary>Looks up rooms through the lobby the first time a game client asks, once the lobby exists.</summary>
@@ -54,5 +61,11 @@ internal sealed class DeferredConnectionLobbyPort(Func<IConnectionLobbyPort> res
 	public Room? RoomOf(BanchoConnection player)
 	{
 		return _lobby.Value.RoomOf(player);
+	}
+
+	/// <inheritdoc />
+	public bool AwaitsScore(UserRecord player, Md5 beatmap)
+	{
+		return _lobby.Value.AwaitsScore(player, beatmap);
 	}
 }

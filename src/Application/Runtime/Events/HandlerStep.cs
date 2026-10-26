@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace Basil.Infrastructure.Runtime.Events;
+namespace Basil.Application.Runtime.Events;
 
 /// <summary>Runs one step of an event handler so that a failure is logged and the handler's remaining steps still run.</summary>
 internal static class HandlerStep

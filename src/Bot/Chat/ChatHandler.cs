@@ -1,9 +1,9 @@
 using Basil.Application.Runtime.Chat;
-using Basil.Application.Runtime.Events;
 using Basil.Application.Runtime.Servers;
 using Basil.Bot.Commands;
 using Basil.Bot.Replies;
 using Basil.Domain.Users;
+using Mediator;
 using Microsoft.Extensions.Logging;
 
 namespace Basil.Bot.Chat;
@@ -15,14 +15,14 @@ internal sealed class ChatHandler(
 	CommandWorker worker,
 	IReplies replies,
 	ILogger<ChatHandler> logger)
-	: IEventHandler<ChannelEvent>
+	: INotificationHandler<ChannelMessagePosted>
 {
 	private const int MaxMessageLength = 2000;
 
 	/// <inheritdoc />
-	public ValueTask HandleAsync(ChannelEvent @event, CancellationToken cancellationToken)
+	public ValueTask Handle(ChannelMessagePosted posted, CancellationToken cancellationToken)
 	{
-		if (@event is not ChannelMessagePosted { By: { } by } posted
+		if (posted.By is not { } by
 		    || posted.Message.IsNotice
 		    || posted.Message.Author.IsBasilBot())
 			return ValueTask.CompletedTask;
@@ -38,7 +38,8 @@ internal sealed class ChatHandler(
 				? server.WhisperAsync(by.User, piece, cancellationToken: token)
 				: server.SayAsync(posted.Channel, piece, cancellationToken: token), sendToken),
 			(text, sendToken) =>
-				SendSplitAsync(text, (piece, token) => server.WhisperAsync(by.User, piece, cancellationToken: token), sendToken));
+				SendSplitAsync(text, (piece, token) => server.WhisperAsync(by.User, piece, cancellationToken: token),
+					sendToken));
 
 		worker.Enqueue(by.Record.Id, async workerToken =>
 		{

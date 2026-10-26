@@ -5,7 +5,8 @@ namespace Basil.Application.Runtime.Tests.Multiplayer;
 
 /// <summary>
 ///     Narrowing a match query to its asker. The rule comes from the owner's decision: an asker without
-///     <see cref="UserPermissions.RoomViewPrivate" /> sees private matches only when they took part in them or manage them.
+///     <see cref="UserPermissions.RoomViewPrivate" /> sees private matches only when they took part in them or manage
+///     them.
 /// </summary>
 public sealed class MatchQueryTests
 {

@@ -11,7 +11,10 @@ namespace Basil.Protocol.Bancho.Tests.Wire.Packets;
 /// </summary>
 public class PacketReaderReplayFrameBundleTests
 {
-	/// <remarks>Verbatim copy of the fixture constant in <see cref="PacketReaderScoreFrameTests" /> so this file is self-contained.</remarks>
+	/// <remarks>
+	///     Verbatim copy of the fixture constant in <see cref="PacketReaderScoreFrameTests" /> so this file is
+	///     self-contained.
+	/// </remarks>
 	// time 1000, id 5, counts 2/3/4/5/6/7, score 0x11223344, maxCombo 300, combo 11,
 	// perfect false, hp 142, tag 9, scoreV2 off.
 	private const string V1Hex = "e8030000" + "05" + "0200" + "0300" + "0400" + "0500" + "0600" + "0700"

@@ -1,6 +1,6 @@
-using Basil.Application.Runtime.Multiplayer.Events;
-using Basil.Application.Runtime.Events;
 using Basil.Application.Runtime.Chat;
+using Basil.Application.Runtime.Events;
+using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Users;
 
@@ -40,6 +40,21 @@ internal interface IRoomLobbyPort
 	/// <param name="by">The user who closed the room, or <see langword="null" /> when the room closed itself.</param>
 	/// <remarks>The caller holds the room's scope.</remarks>
 	void Close(Room room, UserRecord? by);
+
+	/// <summary>Marks that a seating of a player in a room is under way, so no other room seats the same player meanwhile.</summary>
+	/// <param name="player">The player's game connection.</param>
+	/// <param name="room">The room that is about to seat the player.</param>
+	/// <returns><see langword="false" /> when another room is seating the same player.</returns>
+	/// <remarks>
+	///     The caller does not hold a room's scope, and releases the claim with <see cref="Release" /> when the seating
+	///     is over.
+	/// </remarks>
+	bool TryClaim(BanchoConnection player, Room room);
+
+	/// <summary>Ends the claim a room made on a player, whatever the seating came to.</summary>
+	/// <param name="player">The player's game connection.</param>
+	/// <param name="room">The room that made the claim.</param>
+	void Release(BanchoConnection player, Room room);
 }
 
 /// <summary>What a room asks of the users: whether one blocks another.</summary>

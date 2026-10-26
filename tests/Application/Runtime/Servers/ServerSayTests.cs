@@ -27,7 +27,8 @@ public sealed class ServerSayTests
 		await app.SeedBotAsync();
 		var channel = await OpenChannelAsync(app);
 
-		var said = await app.Server.SayAsync(channel, "Hello", cancellationToken: TestContext.Current.CancellationToken);
+		var said = await app.Server.SayAsync(channel, "Hello",
+			cancellationToken: TestContext.Current.CancellationToken);
 
 		Assert.True(said);
 		var posted = Assert.IsType<ChannelMessagePosted>(app.ChannelEvents.Events.Last());

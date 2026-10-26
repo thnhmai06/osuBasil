@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection;
 
 namespace Basil.ArchitectureTests;
@@ -12,7 +13,8 @@ public class OutcomeConventionTests
 
 	private static IEnumerable<Type> OutcomeEnums()
 	{
-		return RuntimeAssembly.GetTypes().Where(type => type is { IsEnum: true, IsPublic: true } && type.Name.EndsWith("Outcome", StringComparison.Ordinal));
+		return RuntimeAssembly.GetTypes().Where(type =>
+			type is { IsEnum: true, IsPublic: true } && type.Name.EndsWith("Outcome", StringComparison.Ordinal));
 	}
 
 	[Fact]
@@ -27,8 +29,10 @@ public class OutcomeConventionTests
 		foreach (var outcome in OutcomeEnums())
 		{
 			Assert.True(Enum.IsDefined(outcome, "Ok"), $"{outcome.Name} has no Ok member.");
-			Assert.Equal(1, Convert.ToInt32(Enum.Parse(outcome, "Ok"), System.Globalization.CultureInfo.InvariantCulture));
-			Assert.False(Enum.GetNames(outcome).Any(name => Convert.ToInt32(Enum.Parse(outcome, name), System.Globalization.CultureInfo.InvariantCulture) == 0),
+			Assert.Equal(1, Convert.ToInt32(Enum.Parse(outcome, "Ok"), CultureInfo.InvariantCulture));
+			Assert.False(
+				Enum.GetNames(outcome).Any(name =>
+					Convert.ToInt32(Enum.Parse(outcome, name), CultureInfo.InvariantCulture) == 0),
 				$"{outcome.Name} defines a member for the value 0, which means \"not set\".");
 		}
 	}

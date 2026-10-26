@@ -9,16 +9,19 @@ namespace Basil.Infrastructure.Runtime.Tests.Support;
 /// </summary>
 internal sealed class FakeWatch
 {
+	private readonly Lock _gate = new();
 	private readonly List<FakeWatchStream> _streams = [];
 	private readonly Dictionary<int, TaskCompletionSource<FakeWatchStream>> _waiting = [];
-	private readonly Lock _gate = new();
 
 	/// <summary>Gets how many streams were handed out.</summary>
 	public int Count
 	{
 		get
 		{
-			lock (_gate) return _streams.Count;
+			lock (_gate)
+			{
+				return _streams.Count;
+			}
 		}
 	}
 
@@ -29,7 +32,10 @@ internal sealed class FakeWatch
 	{
 		get
 		{
-			lock (_gate) return _streams[index];
+			lock (_gate)
+			{
+				return _streams[index];
+			}
 		}
 	}
 
@@ -43,7 +49,7 @@ internal sealed class FakeWatch
 		lock (_gate)
 		{
 			_streams.Add(stream);
-			ready = [.._waiting.Values];
+			ready = [.. _waiting.Values];
 			_waiting.Clear();
 		}
 
@@ -73,6 +79,9 @@ internal sealed class FakeWatch
 /// <summary>A stream the storage hands out from its watch, which ends when it fails or when its watch stops.</summary>
 internal sealed class FakeWatchStream : IAsyncEnumerable<BeatmapsetSource>
 {
+	private readonly TaskCompletionSource _released =
+		new(TaskCreationOptions.RunContinuationsAsynchronously);
+
 	/// <summary>Gets the failure the stream throws instead of yielding, or <see langword="null" /> for none.</summary>
 	public Exception? Failure { get; init; }
 
@@ -81,9 +90,6 @@ internal sealed class FakeWatchStream : IAsyncEnumerable<BeatmapsetSource>
 
 	/// <summary>Gets a task that completes when the stream's watch is released.</summary>
 	public Task Ending => _released.Task;
-
-	private readonly TaskCompletionSource _released =
-		new(TaskCreationOptions.RunContinuationsAsynchronously);
 
 	/// <inheritdoc />
 	public IAsyncEnumerator<BeatmapsetSource> GetAsyncEnumerator(CancellationToken cancellationToken = default)

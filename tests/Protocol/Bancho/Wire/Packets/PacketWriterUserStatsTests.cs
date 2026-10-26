@@ -53,7 +53,7 @@ public class PacketWriterUserStatsTests
 	[Fact]
 	public void UserStats_ActionAboveByteMaximum_ThrowsOverflow()
 	{
-		Assert.Throws<OverflowException>(() => Write(action: 256));
+		Assert.Throws<OverflowException>(() => Write(256));
 	}
 
 	[Fact]

@@ -11,11 +11,11 @@ internal static class BotReplies
 	// ── !help ────────────────────────────────────────────────────────────────────────────────
 	/// <summary>The help text listing available commands.</summary>
 	public static readonly Reply HelpText = new("bot.helpText", """
-		!roll [max] - roll a random number from 0 to max (default 100)
-		!where <username> - show a user's country
-		!faq <entry>|list - print a FAQ entry, or list every entry
-		!mp help - list multiplayer subcommands
-		""");
+	                                                            !roll [max] - roll a random number from 0 to max (default 100)
+	                                                            !where <username> - show a user's country
+	                                                            !faq <entry>|list - print a FAQ entry, or list every entry
+	                                                            !mp help - list multiplayer subcommands
+	                                                            """);
 
 	// ── !where ───────────────────────────────────────────────────────────────────────────────
 	/// <summary>Usage line for <c>!where</c>.</summary>
@@ -48,7 +48,8 @@ internal static class BotReplies
 
 	// ── Chain errors ─────────────────────────────────────────────────────────────────────────
 	/// <summary>Reply when a chain contains non-<c>!mp</c> commands.</summary>
-	public static readonly Reply ChainOnlyMpAllowed = new("bot.chainOnlyMpAllowed", "Chains are only allowed for !mp commands.");
+	public static readonly Reply ChainOnlyMpAllowed =
+		new("bot.chainOnlyMpAllowed", "Chains are only allowed for !mp commands.");
 
 	/// <summary>Reply when a chain is used in the #lobby channel.</summary>
 	public static readonly Reply ChainNotInLobby = new("bot.chainNotInLobby", "Chains are not allowed in #lobby.");

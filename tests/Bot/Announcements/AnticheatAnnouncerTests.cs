@@ -22,7 +22,7 @@ public sealed class AnticheatAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 
-		await AnnouncerFor(bot).HandleAsync(new AnticheatPlayerFlagged(staff.Player, TwoFlags, staff.Room), Token);
+		await AnnouncerFor(bot).Handle(new AnticheatPlayerFlagged(staff.Player, TwoFlags, staff.Room), Token);
 
 		Assert.Equal([
 			bot.Text(AnnouncementReplies.AnticheatFlagRoom,
@@ -36,7 +36,7 @@ public sealed class AnticheatAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 
-		await AnnouncerFor(bot).HandleAsync(new AnticheatPlayerFlagged(staff.Player, TwoFlags, staff.Room), Token);
+		await AnnouncerFor(bot).Handle(new AnticheatPlayerFlagged(staff.Player, TwoFlags, staff.Room), Token);
 
 		Assert.Equal([ExpectedWhisper(bot, staff)], bot.WhisperedTo(staff.Creator));
 	}
@@ -47,7 +47,7 @@ public sealed class AnticheatAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 
-		await AnnouncerFor(bot).HandleAsync(new AnticheatPlayerFlagged(staff.Player, TwoFlags, staff.Room), Token);
+		await AnnouncerFor(bot).Handle(new AnticheatPlayerFlagged(staff.Player, TwoFlags, staff.Room), Token);
 
 		Assert.Equal([ExpectedWhisper(bot, staff)], bot.WhisperedTo(staff.Referee));
 	}
@@ -58,7 +58,7 @@ public sealed class AnticheatAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 
-		await AnnouncerFor(bot).HandleAsync(new AnticheatPlayerFlagged(staff.Player, TwoFlags, staff.Room), Token);
+		await AnnouncerFor(bot).Handle(new AnticheatPlayerFlagged(staff.Player, TwoFlags, staff.Room), Token);
 
 		Assert.DoesNotContain(bot.App.ChannelEvents.Events.OfType<ChannelMessagePosted>(),
 			posted => posted.Channel is PmChannel pm && pm.Owner.Record.Equals(staff.OfflineReferee));
@@ -70,7 +70,7 @@ public sealed class AnticheatAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 
-		await AnnouncerFor(bot).HandleAsync(new AnticheatPlayerFlagged(staff.Player, TwoFlags, staff.Room), Token);
+		await AnnouncerFor(bot).Handle(new AnticheatPlayerFlagged(staff.Player, TwoFlags, staff.Room), Token);
 
 		Assert.Empty(bot.WhisperedTo(staff.Player));
 	}
@@ -81,7 +81,7 @@ public sealed class AnticheatAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 
-		await AnnouncerFor(bot).HandleAsync(
+		await AnnouncerFor(bot).Handle(
 			new AnticheatPlayerFlagged(staff.Player, BanchoFlags.Clean | BanchoFlags.FastPress, staff.Room),
 			Token);
 
@@ -97,7 +97,7 @@ public sealed class AnticheatAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 
-		await AnnouncerFor(bot).HandleAsync(
+		await AnnouncerFor(bot).Handle(
 			new AnticheatPlayerFlagged(staff.Player, BanchoFlagsGroups.CheatSigns, staff.Room), Token);
 
 		const string reason = "SpeedHackDetected, IncorrectModValue, MultipleOsuClients, ChecksumFailure, "
@@ -114,7 +114,7 @@ public sealed class AnticheatAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 
-		await AnnouncerFor(bot).HandleAsync(
+		await AnnouncerFor(bot).Handle(
 			new AnticheatPlayerFlagged(staff.Player, BanchoFlags.ConsoleOpen | BanchoFlags.Sdl2Library,
 				staff.Room),
 			Token);
@@ -131,18 +131,7 @@ public sealed class AnticheatAnnouncerTests
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
 
-		await AnnouncerFor(bot).HandleAsync(new AnticheatPlayerFlagged(staff.Player, TwoFlags, null), Token);
-
-		Assert.Empty(bot.App.ChannelEvents.Events.OfType<ChannelMessagePosted>());
-	}
-
-	[Fact]
-	public async Task AnotherKindOfAnticheatEvent_SaysNothing()
-	{
-		using var bot = new BotHarness();
-		await SetUpAsync(bot);
-
-		await AnnouncerFor(bot).HandleAsync(new OtherAnticheatEvent(), Token);
+		await AnnouncerFor(bot).Handle(new AnticheatPlayerFlagged(staff.Player, TwoFlags, null), Token);
 
 		Assert.Empty(bot.App.ChannelEvents.Events.OfType<ChannelMessagePosted>());
 	}
@@ -169,6 +158,4 @@ public sealed class AnticheatAnnouncerTests
 				reason = "SpeedHackDetected, FastPress"
 			});
 	}
-
-	private sealed record OtherAnticheatEvent : AnticheatEvent;
 }

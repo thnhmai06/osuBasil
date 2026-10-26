@@ -10,7 +10,8 @@ public sealed class ScopedBeatmapset : Scoped<UserPermissions>
 	/// <summary>Creates a scoped beatmapset for a connection.</summary>
 	/// <param name="beatmapset">The beatmapset to scope.</param>
 	/// <param name="by">The connection acting on the beatmapset.</param>
-	internal ScopedBeatmapset(Beatmapset beatmapset, Connection by) : base(by, by.User.EffectivePermissions(beatmapset.Context.Clock.GetUtcNow()))
+	internal ScopedBeatmapset(Beatmapset beatmapset, Connection by) : base(by,
+		by.User.EffectivePermissions(beatmapset.Context.Clock.GetUtcNow()))
 	{
 		Beatmapset = beatmapset;
 	}

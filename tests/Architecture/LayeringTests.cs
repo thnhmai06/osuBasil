@@ -1,5 +1,7 @@
 using System.Reflection;
+using Basil.Domain;
 using NetArchTest.Rules;
+using TestResult = NetArchTest.Rules.TestResult;
 
 namespace Basil.ArchitectureTests;
 
@@ -19,7 +21,7 @@ public class LayeringTests
 	private const string Host = "Basil.Host";
 	private const string Protocol = "Basil.Protocol";
 	private const string Bot = "Basil.Bot";
-	private static readonly Assembly DomainAssembly = typeof(Domain.AssemblyMarker).Assembly;
+	private static readonly Assembly DomainAssembly = typeof(AssemblyMarker).Assembly;
 	private static readonly Assembly ProtocolBancho = typeof(Protocol.Bancho.AssemblyMarker).Assembly;
 	private static readonly Assembly ProtocolIrc = typeof(Protocol.Irc.AssemblyMarker).Assembly;
 	private static readonly Assembly PersistenceAssembly = Assembly.Load(ApplicationPersistence);
@@ -74,9 +76,8 @@ public class LayeringTests
 		{
 			if (!exchanged.Add(type)) continue;
 			foreach (var property in type.GetProperties())
-			{
-				foreach (var inner in Unwrap(property.PropertyType)) pending.Push(inner);
-			}
+			foreach (var inner in Unwrap(property.PropertyType))
+				pending.Push(inner);
 		}
 
 		var logic = publicTypes.Where(type => !type.IsInterface && !exchanged.Contains(type)).Select(type => type.Name)
@@ -89,10 +90,7 @@ public class LayeringTests
 	{
 		yield return type;
 		var inner = type.HasElementType ? [type.GetElementType()!] : type.GetGenericArguments();
-		foreach (var nested in inner.SelectMany(Unwrap))
-		{
-			yield return nested;
-		}
+		foreach (var nested in inner.SelectMany(Unwrap)) yield return nested;
 	}
 
 	[Fact]
@@ -171,9 +169,7 @@ public class LayeringTests
 	{
 		var directory = new DirectoryInfo(AppContext.BaseDirectory);
 		while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Basil.slnx")))
-		{
 			directory = directory.Parent;
-		}
 
 		return directory?.FullName ??
 		       throw new InvalidOperationException("Basil.slnx was not found above the test binaries.");
@@ -186,7 +182,7 @@ public class LayeringTests
 		Assert.True(result.IsSuccessful, FailureMessage(result));
 	}
 
-	private static string FailureMessage(NetArchTest.Rules.TestResult result)
+	private static string FailureMessage(TestResult result)
 	{
 		return result.IsSuccessful
 			? string.Empty

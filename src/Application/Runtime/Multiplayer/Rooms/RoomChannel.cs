@@ -34,5 +34,4 @@ public sealed class RoomChannel : Channel
 		return Room.Involves(connection, now) ||
 		       connection.User.EffectivePermissions(now).Allows(UserPermissions.ChatPostAnyRoom);
 	}
-
 }

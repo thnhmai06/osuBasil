@@ -71,7 +71,8 @@ internal sealed partial class MpCommands
 		return true;
 	}
 
-	private static async Task<bool> ClearHostAsync(CommandContext context, Room room, CancellationToken cancellationToken)
+	private static async Task<bool> ClearHostAsync(CommandContext context, Room room,
+		CancellationToken cancellationToken)
 	{
 		var outcome = await room.ScopeTo(context.By).Authority.SetHostAsync(null, cancellationToken);
 		if (!outcome.IsOk)

@@ -159,7 +159,8 @@ public sealed class ChatCommandsTests
 	public async Task Faq_List_NamesEveryEntry()
 	{
 		using var bot = new BotHarness();
-		bot.Faqs.ListAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult<IEnumerable<string>>(["rules", "mods"]));
+		bot.Faqs.ListAsync(Arg.Any<CancellationToken>())
+			.Returns(Task.FromResult<IEnumerable<string>>(["rules", "mods"]));
 		var typist = await RoomFixture.PlayerAsync(bot.App, "Typist");
 
 		var (_, said) = await bot.TypeAsync(typist, "#osu", "!faq list");

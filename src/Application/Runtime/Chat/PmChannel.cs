@@ -31,5 +31,4 @@ public sealed class PmChannel : Channel
 	{
 		return connection.IsOpen && Owner.IsOnline;
 	}
-
 }

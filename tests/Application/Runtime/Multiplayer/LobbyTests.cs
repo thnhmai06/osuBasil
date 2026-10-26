@@ -1,7 +1,7 @@
 using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Sessions;
-using Basil.Testing;
 using Basil.Domain.Users;
+using Basil.Testing;
 
 namespace Basil.Application.Runtime.Tests.Multiplayer;
 
@@ -93,6 +93,7 @@ public sealed class LobbyTests
 
 		Assert.Equal(1, ended);
 		Assert.NotNull(room!.Match.Value.EndedAt);
+		Assert.Equal(room.Match, app.LobbyEvents.Events.OfType<LobbyMatchRecovered>().Single().Match);
 	}
 
 	[Fact]

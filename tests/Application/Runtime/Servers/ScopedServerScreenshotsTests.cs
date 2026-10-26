@@ -1,7 +1,6 @@
 using Basil.Application.Capabilities.Content;
 using Basil.Application.Persistence.Content;
 using Basil.Application.Runtime.Servers;
-using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Content;
 using Basil.Domain.Users;
 using Basil.Testing;
@@ -18,6 +17,11 @@ namespace Basil.Application.Runtime.Tests.Servers;
 public sealed class ScopedServerScreenshotsTests
 {
 	private static readonly ContentReference Stored = new("screenshots/stored.png");
+
+	private static MemoryStream Bytes(int length)
+	{
+		return new MemoryStream(new byte[length]);
+	}
 
 	private sealed class Fixture : IDisposable
 	{
@@ -55,13 +59,8 @@ public sealed class ScopedServerScreenshotsTests
 
 		public void AssertNothingStored()
 		{
-			Storage.DidNotReceiveWithAnyArgs().SaveAsync(default!, default!, default);
+			Storage.DidNotReceiveWithAnyArgs().SaveAsync(default!, default!);
 		}
-	}
-
-	private static MemoryStream Bytes(int length)
-	{
-		return new MemoryStream(new byte[length]);
 	}
 
 	#region Upload: permissions
@@ -295,7 +294,7 @@ public sealed class ScopedServerScreenshotsTests
 		await screenshots.UploadAsync(Bytes(ScopedServerScreenshots.MaxScreenshotBytes + 1),
 			TestContext.Current.CancellationToken);
 
-		await f.Inspector.DidNotReceiveWithAnyArgs().InspectAsync(default!, default);
+		await f.Inspector.DidNotReceiveWithAnyArgs().InspectAsync(default!);
 	}
 
 	#endregion
@@ -324,7 +323,7 @@ public sealed class ScopedServerScreenshotsTests
 
 		Assert.False(result.IsOk);
 		Assert.Equal(UserPermissions.ScreenshotDelete, result.Missing);
-		await f.Storage.DidNotReceiveWithAnyArgs().DeleteAsync(default, default);
+		await f.Storage.DidNotReceiveWithAnyArgs().DeleteAsync(default);
 	}
 
 	[Fact]

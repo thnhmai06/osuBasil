@@ -1,12 +1,14 @@
 using Basil.Application.Runtime.Users;
-using Basil.Testing;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
+using Basil.Testing;
 
 namespace Basil.Application.Runtime.Tests.Users;
 
 public sealed class ScopedUserRegistryTests
 {
+	private static Md5 Hash => new("0123456789abcdef0123456789abcdef");
+
 	[Fact]
 	public async Task CreateAccountAsync_ActorLacksUserManage_NamesTheMissingPermission()
 	{
@@ -67,6 +69,4 @@ public sealed class ScopedUserRegistryTests
 		Assert.Null(user);
 		Assert.Equal(UserOutcome.NameTaken, result.Outcome);
 	}
-
-	private static Md5 Hash => new("0123456789abcdef0123456789abcdef");
 }
