@@ -56,6 +56,22 @@ public sealed class BeatmapAssetStoreTests : IDisposable
 		Assert.Empty(Directory.EnumerateFiles(_cache));
 	}
 
+	/// <summary>An Ogg Vorbis track gets a preview like an mp3 does.</summary>
+	[Fact]
+	public async Task BuildAsync_MakesAPreviewOfAnOggTrack()
+	{
+		Assert.SkipWhen(!FfmpegIsInstalled(), "ffmpeg and ffprobe are not installed.");
+		var set = StoredBeatmaps.Set();
+		var beatmap = StoredBeatmaps.Beatmap(set, "audio.ogg", TimeSpan.Zero);
+		GiveAudio("audio.ogg", OszArchive.Sample(Path.Combine("Audio", "hitsound.ogg")));
+
+		await _assets.BuildAsync(set, [beatmap], TestContext.Current.CancellationToken);
+
+		var preview = Assert.Single(_previews);
+		Assert.Equal("audio.ogg", preview.Name);
+		Assert.NotEmpty(preview.Content);
+	}
+
 	/// <summary>Every distinct audio track gets one preview, however many difficulties use it.</summary>
 	[Fact]
 	public async Task BuildAsync_MakesOnePreviewPerAudioTrack()

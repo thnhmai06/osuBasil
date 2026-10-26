@@ -115,3 +115,43 @@ public sealed class ImageSharpScreenshotInspectorTests
 		return content;
 	}
 }
+
+/// <summary>Pins the inspector on pictures that real clients and users supply.</summary>
+public sealed class ImageSharpScreenshotInspectorRealPictureTests
+{
+	private readonly ImageSharpScreenshotInspector _inspector = new();
+
+	private static CancellationToken Token => TestContext.Current.CancellationToken;
+
+	private static MemoryStream Open(string name)
+	{
+		return new MemoryStream(Basil.Infrastructure.Capabilities.Tests.Support.OszArchive.Sample(Path.Combine("Images", name)), false);
+	}
+
+	/// <summary>A square RGBA avatar is a PNG of its own size.</summary>
+	[Fact]
+	public async Task InspectAsync_ReportsARealAvatarPng()
+	{
+		await using var content = Open("avatar-default.png");
+
+		Assert.Equal(new ScreenshotInfo("png", 512, 512), await _inspector.InspectAsync(content, Token));
+	}
+
+	/// <summary>A baseline JPEG with EXIF data is a JPEG of its own size.</summary>
+	[Fact]
+	public async Task InspectAsync_ReportsARealJpegWithExifData()
+	{
+		await using var content = Open("background-1920x1200.jpg");
+
+		Assert.Equal(new ScreenshotInfo("jpg", 1920, 1200), await _inspector.InspectAsync(content, Token));
+	}
+
+	/// <summary>The header of a large interlaced PNG, cut off before its pixel data, gives its dimensions.</summary>
+	[Fact]
+	public async Task InspectAsync_ReportsTheDimensionsOfAnInterlacedPngFromItsHeader()
+	{
+		await using var content = Open("seasonal-3500x2487-header.png");
+
+		Assert.Equal(new ScreenshotInfo("png", 3500, 2487), await _inspector.InspectAsync(content, Token));
+	}
+}

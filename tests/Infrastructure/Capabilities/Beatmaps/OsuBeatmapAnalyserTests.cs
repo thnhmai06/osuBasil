@@ -47,6 +47,36 @@ public sealed class OsuBeatmapAnalyserTests
 		Assert.Equal(ExpectedType(mode), analysis.Objects.GetType());
 	}
 
+	/// <summary>Every difficulty of a real set gives usable numbers, and a speed-up never lowers its stars.</summary>
+	[Fact]
+	public void Analyze_EveryDifficultyOfARealSetIsUsableAndDoubleTimeNeverLowersIt()
+	{
+		using var archive = new System.IO.Compression.ZipArchive(
+			new MemoryStream(OszArchive.Sample(Path.Combine("Sets", "padoru-standard.osz")), false));
+		var files = archive.Entries.Where(entry => entry.Name.EndsWith(".osu", StringComparison.Ordinal)).ToList();
+		Assert.Equal(26, files.Count);
+
+		foreach (var entry in files)
+		{
+			var normal = _analyser.Analyze(Read(entry), GameMode.Standard, GameMods.NoMod);
+			var fast = _analyser.Analyze(Read(entry), GameMode.Standard, GameMods.DoubleTime);
+
+			Assert.True(double.IsFinite(normal.Difficulty.Star) && normal.Difficulty.Star > 0, entry.Name);
+			Assert.True(fast.Difficulty.Star >= normal.Difficulty.Star, entry.Name);
+			Assert.True(fast.Difficulty.Length < normal.Difficulty.Length, entry.Name);
+			Assert.True(normal.Objects.Total > 0, entry.Name);
+		}
+	}
+
+	private static MemoryStream Read(System.IO.Compression.ZipArchiveEntry entry)
+	{
+		using var stream = entry.Open();
+		var buffer = new MemoryStream();
+		stream.CopyTo(buffer);
+		buffer.Position = 0;
+		return buffer;
+	}
+
 	/// <summary>A speed-up raises the star rating and shortens the playable length.</summary>
 	[Fact]
 	public void Analyze_WithDoubleTimeRaisesTheStarsAndShortensTheLength()
