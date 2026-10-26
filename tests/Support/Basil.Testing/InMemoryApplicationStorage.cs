@@ -257,7 +257,7 @@ internal sealed class InMemoryModerationLogRepository : IModerationLogRepository
 	}
 }
 
-internal sealed class InMemoryMatchRepository : IMatchRepository
+internal sealed class InMemoryMatchRepository(InMemoryMatchEventRepository events) : IMatchRepository
 {
 	private readonly Dictionary<int, MatchRecord> _matches = [];
 	private int _nextId = 1;
@@ -289,10 +289,29 @@ internal sealed class InMemoryMatchRepository : IMatchRepository
 		cancellationToken.ThrowIfCancellationRequested();
 		var matches = _matches.Values
 			.Where(match => query.Ended is not { } ended || match.Value.EndedAt is not null == ended)
+			.Where(match => query.Private is not { } isPrivate || match.Value.IsPrivate == isPrivate)
+			.Where(match => query.VisibleTo is not { } viewer || IsVisibleTo(match, viewer))
 			.OrderBy(match => match.Id)
 			.ToList();
 		return Task.FromResult(new Page<MatchRecord>(
 			matches.Skip(page.Offset).Take(page.Limit).ToList(), matches.Count));
+	}
+
+	public Task<bool> IsVisibleToAsync(MatchRecord match, UserRecord viewer,
+		CancellationToken cancellationToken = default)
+	{
+		cancellationToken.ThrowIfCancellationRequested();
+		return Task.FromResult(IsVisibleTo(match, viewer.Id));
+	}
+
+	private bool IsVisibleTo(MatchRecord match, int viewer)
+	{
+		if (!match.Value.IsPrivate || match.Value.Creator.Id == viewer) return true;
+		var history = events.EventsOf(match);
+		return history.Any(matchEvent => matchEvent.Type == MatchEventType.PlayerJoined && matchEvent.Target?.Id == viewer)
+		       || history.LastOrDefault(matchEvent => matchEvent.Target?.Id == viewer
+		                                              && matchEvent.Type is MatchEventType.RefAdded
+			                                              or MatchEventType.RefRemoved)?.Type == MatchEventType.RefAdded;
 	}
 }
 
@@ -318,6 +337,11 @@ internal sealed class InMemoryRoundRepository : IRoundRepository
 internal sealed class InMemoryMatchEventRepository : IMatchEventRepository
 {
 	private readonly List<MatchEvent> _events = [];
+
+	public IEnumerable<MatchEvent> EventsOf(MatchRecord match)
+	{
+		return _events.Where(matchEvent => matchEvent.Match.Equals(match));
+	}
 
 	public Task RecordAsync(MatchEvent matchEvent, CancellationToken cancellationToken = default)
 	{
