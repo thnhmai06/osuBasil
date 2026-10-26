@@ -60,6 +60,20 @@ public sealed class ScopedRoomMembersTests
 	}
 
 	[Fact]
+	public async Task JoinAsync_ToARoomWhoseSlotsAreLocked_SeatsThePlayer()
+	{
+		using var app = new TestApplication();
+		var setup = await RoomFixture.CreateAsync(app);
+		await setup.Room.ScopeTo(setup.Creator).Settings.SetLockedAsync(true, TestContext.Current.CancellationToken);
+		var player = await RoomFixture.PlayerAsync(app, "Latecomer");
+
+		var result = await setup.Room.ScopeTo(player).Members.JoinAsync("", TestContext.Current.CancellationToken);
+
+		Assert.Equal(RoomOutcome.Ok, result.Outcome);
+		Assert.NotNull(setup.Room.Slots.Find(player));
+	}
+
+	[Fact]
 	public async Task JoinAsync_ForABannedUser_IsRefused()
 	{
 		using var app = new TestApplication();
