@@ -22,7 +22,7 @@ public class ScopedRightsTests
 		Admin = 2
 	}
 
-	private sealed class FlagsScope(Connection by, ScopedRightsTests.SampleBits held) : Scoped<SampleBits>(by, held)
+	private sealed class FlagsScope(Connection by, SampleBits held) : Scoped<SampleBits>(by, held)
 	{
 		public SampleBits? Need(SampleBits required)
 		{
@@ -30,7 +30,7 @@ public class ScopedRightsTests
 		}
 	}
 
-	private sealed class LevelScope(Connection by, ScopedRightsTests.SampleLevel held) : Scoped<SampleLevel>(by, held)
+	private sealed class LevelScope(Connection by, SampleLevel held) : Scoped<SampleLevel>(by, held)
 	{
 		public SampleLevel? Need(SampleLevel required)
 		{

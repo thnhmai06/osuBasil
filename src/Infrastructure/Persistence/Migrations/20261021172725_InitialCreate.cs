@@ -8,8 +8,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
 
-namespace Basil.Infrastructure.Persistence.Migrations
-{
+namespace Basil.Infrastructure.Persistence.Migrations;
+
     /// <inheritdoc />
     public partial class InitialCreate : Migration
     {
@@ -618,4 +618,3 @@ namespace Basil.Infrastructure.Persistence.Migrations
                 name: "local_beatmapset_ids");
         }
     }
-}

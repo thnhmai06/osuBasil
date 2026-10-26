@@ -226,10 +226,7 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 		if (string.IsNullOrEmpty(name)) return false;
 		if (Path.IsPathRooted(name)) return false;
 		if (name.Contains(':', StringComparison.Ordinal)) return false;
-		foreach (var segment in name.Split('/'))
-			if (segment is "" or "." or "..")
-				return false;
-		return true;
+		return !name.Split('/').Any(segment => segment is "" or "." or "..");
 	}
 
 	/// <summary>A decoded difficulty together with the video and storyboard its <c>.osu</c> file declares.</summary>

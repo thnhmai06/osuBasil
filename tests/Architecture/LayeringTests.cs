@@ -19,9 +19,9 @@ public class LayeringTests
 	private const string Host = "Basil.Host";
 	private const string Protocol = "Basil.Protocol";
 	private const string Bot = "Basil.Bot";
-	private static readonly Assembly DomainAssembly = typeof(Basil.Domain.AssemblyMarker).Assembly;
-	private static readonly Assembly ProtocolBancho = typeof(Basil.Protocol.Bancho.AssemblyMarker).Assembly;
-	private static readonly Assembly ProtocolIrc = typeof(Basil.Protocol.Irc.AssemblyMarker).Assembly;
+	private static readonly Assembly DomainAssembly = typeof(Domain.AssemblyMarker).Assembly;
+	private static readonly Assembly ProtocolBancho = typeof(Protocol.Bancho.AssemblyMarker).Assembly;
+	private static readonly Assembly ProtocolIrc = typeof(Protocol.Irc.AssemblyMarker).Assembly;
 	private static readonly Assembly PersistenceAssembly = Assembly.Load(ApplicationPersistence);
 	private static readonly Assembly CapabilitiesAssembly = Assembly.Load(ApplicationCapabilities);
 	private static readonly Assembly RuntimeAssembly = Assembly.Load(ApplicationRuntime);

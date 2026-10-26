@@ -154,26 +154,9 @@ internal sealed class PostgresBeatmapsetRepository(
 			.Select(change => change.Existing!.Id)
 			.Concat(changes.Remove.Select(removed => removed.Id)).ToHashSet();
 
-		foreach (var item in changes.Store)
+		foreach (var (existing, data) in changes.Store)
 		{
-			var existing = item.Existing;
-
-			BeatmapsetRecord Build(int id)
-			{
-				return new BeatmapsetRecord
-				{
-					Id = id,
-					Fingerprint = item.Data.Fingerprint,
-					Metadata = item.Data.Metadata,
-					Assets = item.Data.Assets,
-					CreatedAt = existing?.CreatedAt ?? now,
-					UpdatedAt = now,
-					Locked = existing?.Locked ?? false,
-					Visible = existing?.Visible ?? true
-				};
-			}
-
-			var knownId = existing?.Id ?? item.Data.OnlineId;
+			var knownId = existing?.Id ?? data.OnlineId;
 			// A record needs an id; the row of a set without an osu! id has none until the sequence gives it one.
 			var row = ToRow(Build(knownId ?? 1));
 			if (knownId is null)
@@ -192,14 +175,30 @@ internal sealed class PostgresBeatmapsetRepository(
 
 			var set = Build(row.Id);
 			var beatmaps =
-				await PostgresBeatmapRepository.StoreAsync(set, item.Data.Beatmaps, now, releasable, context, token);
+				await PostgresBeatmapRepository.StoreAsync(set, data.Beatmaps, now, releasable, context, token);
 
-			var keepIds = beatmaps.Select(stored => stored.Beatmap.Id).ToArray();
+			var keepIds = beatmaps.Select(storedBeatmap => storedBeatmap.Beatmap.Id).ToArray();
 			await context.Beatmaps
-				.Where(b => b.BeatmapsetId == set.Id && !keepIds.Contains(b.Id))
+				.Where(b => b.BeatmapsetId == set.Id && !((IEnumerable<int>)keepIds).Contains(b.Id))
 				.ExecuteDeleteAsync(token);
 
 			stored.Add(new StoredSet(set, beatmaps));
+			continue;
+
+			BeatmapsetRecord Build(int id)
+			{
+				return new BeatmapsetRecord
+				{
+					Id = id,
+					Fingerprint = data.Fingerprint,
+					Metadata = data.Metadata,
+					Assets = data.Assets,
+					CreatedAt = existing?.CreatedAt ?? now,
+					UpdatedAt = now,
+					Locked = existing?.Locked ?? false,
+					Visible = existing?.Visible ?? true
+				};
+			}
 		}
 
 		foreach (var set in changes.Remove)

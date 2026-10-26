@@ -136,9 +136,8 @@ internal sealed class PostgresBeatmapRepository(
 					continue;
 
 				var beatmaps = ImmutableList.CreateBuilder<BeatmapRecord>();
-				foreach (var loaded in loadedRows)
+				foreach (var beatmap in loadedRows.Select(Track))
 				{
-					var beatmap = Track(loaded);
 					Index(beatmap);
 					beatmaps.Add(beatmap);
 				}
@@ -184,9 +183,8 @@ internal sealed class PostgresBeatmapRepository(
 				continue;
 
 			var items = new List<BeatmapRecord>();
-			foreach (var loaded in loadedRows)
+			foreach (var beatmap in loadedRows.Select(Track))
 			{
-				var beatmap = Track(loaded);
 				Index(beatmap);
 				items.Add(beatmap);
 			}
@@ -212,7 +210,7 @@ internal sealed class PostgresBeatmapRepository(
 			new WriteCommand(async (context, token) =>
 			{
 				await context.Beatmaps
-					.Where(b => b.BeatmapsetId == setId && !keepIds.Contains(b.Id))
+					.Where(b => b.BeatmapsetId == setId && !((IEnumerable<int>)keepIds).Contains(b.Id))
 					.ExecuteDeleteAsync(token);
 			}));
 		_bySet.Change(setId, liveSet,
@@ -250,22 +248,6 @@ internal sealed class PostgresBeatmapRepository(
 				throw new AlreadyExistsException(
 					$"A difficulty of another beatmapset already has the hash {item.Hash} or the id {row.Id}.");
 
-			BeatmapRecord Build(int id)
-			{
-				return new BeatmapRecord
-				{
-					Id = id,
-					Beatmapset = set,
-					Hash = item.Hash,
-					Metadata = item.Metadata,
-					Assets = item.Assets,
-					Locked = row?.Locked ?? false,
-					Visible = row?.Visible ?? true,
-					CreatedAt = row?.CreatedAt ?? now,
-					UpdatedAt = now
-				};
-			}
-
 			var knownId = row?.Id ?? item.OnlineId;
 			// A record needs an id; the row of a difficulty without an osu! id has none until the sequence gives it one.
 			var toStore = ToRow(Build(knownId ?? 1));
@@ -284,6 +266,23 @@ internal sealed class PostgresBeatmapRepository(
 			}
 
 			stored.Add(new StoredBeatmap(Build(toStore.Id)));
+			continue;
+
+			BeatmapRecord Build(int id)
+			{
+				return new BeatmapRecord
+				{
+					Id = id,
+					Beatmapset = set,
+					Hash = item.Hash,
+					Metadata = item.Metadata,
+					Assets = item.Assets,
+					Locked = row?.Locked ?? false,
+					Visible = row?.Visible ?? true,
+					CreatedAt = row?.CreatedAt ?? now,
+					UpdatedAt = now
+				};
+			}
 		}
 
 		return stored;
@@ -512,7 +511,7 @@ internal sealed class PostgresBeatmapRepository(
 			Ar = difficulty.Ar,
 			Od = difficulty.Od,
 			Hp = difficulty.Hp,
-			Objects = JsonSerializer.SerializeToElement<BeatmapObjects>(beatmap.Metadata.Objects, StoredJson),
+			Objects = JsonSerializer.SerializeToElement(beatmap.Metadata.Objects, StoredJson),
 			Background = beatmap.Assets.BackgroundFile,
 			Audio = beatmap.Assets.AudioFile,
 			Video = beatmap.Assets.VideoFile,

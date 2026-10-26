@@ -55,15 +55,13 @@ internal static class BeatmapQueryFilter
 
 		// Free text: every whitespace-separated word must match artist, title, creator or version.
 		if (!string.IsNullOrWhiteSpace(query.Text))
-			foreach (var word in query.Text.Split(' ',
-				         StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-			{
-				var pattern = LikePattern.Containing(word);
-				beatmaps = beatmaps.Where(row => EF.Functions.ILike(row.Set.Artist, pattern, LikePattern.Escape) ||
-				                                 EF.Functions.ILike(row.Set.Title, pattern, LikePattern.Escape) ||
-				                                 EF.Functions.ILike(row.Set.Creator, pattern, LikePattern.Escape) ||
-				                                 EF.Functions.ILike(row.Version, pattern, LikePattern.Escape));
-			}
+			beatmaps = query.Text.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+				.Select(LikePattern.Containing).Aggregate(beatmaps, (current, pattern)
+					=> current.Where(row =>
+						EF.Functions.ILike(row.Set.Artist, pattern, LikePattern.Escape) ||
+						EF.Functions.ILike(row.Set.Title, pattern, LikePattern.Escape) ||
+						EF.Functions.ILike(row.Set.Creator, pattern, LikePattern.Escape) ||
+						EF.Functions.ILike(row.Version, pattern, LikePattern.Escape)));
 
 		if (!string.IsNullOrWhiteSpace(query.Creator))
 		{
@@ -96,7 +94,8 @@ internal static class BeatmapQueryFilter
 			beatmaps = beatmaps.Where(row =>
 				(row.Set.Artist + " - " + row.Set.Title + " (" + row.Set.Creator + ") [" + row.Version + "].osu")
 				.Replace(":", "").Replace("\\", "").Replace("/", "").Replace("*", "").Replace("<", "").Replace(">", "")
-				.Replace("?", "").Replace("\"", "").Replace("|", "").ToLower() == normalized);
+				.Replace("?", "").Replace("\"", "").Replace("|", "")
+				.Equals(normalized, StringComparison.CurrentCultureIgnoreCase));
 		}
 
 		return beatmaps;

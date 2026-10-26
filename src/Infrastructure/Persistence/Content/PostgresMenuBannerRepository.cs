@@ -25,11 +25,11 @@ internal sealed class PostgresMenuBannerRepository(
 		var createdAt = _banners.TryGetValue(banner.Image, out var current) ? current.CreatedAt : banner.CreatedAt;
 		await _writes.WriteAsync(banner.Image,
 			() => writer.SaveAsync(Root.Server, (GetType(), banner.Image), Upsert(banner, createdAt)),
-			() => _banners.AddOrUpdate(banner.Image, banner, (_, current) =>
+			() => _banners.AddOrUpdate(banner.Image, banner, (_, currentBanner) =>
 			{
-				if (!ReferenceEquals(current, banner))
-					CopyTo(current, banner);
-				return current;
+				if (!ReferenceEquals(currentBanner, banner))
+					CopyTo(currentBanner, banner);
+				return currentBanner;
 			}));
 	}
 

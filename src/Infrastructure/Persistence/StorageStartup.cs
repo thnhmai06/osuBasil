@@ -35,12 +35,12 @@ internal sealed class StorageStartup(DataPaths paths, DatabaseMigrator migrator,
 	/// <summary>Removes the set folders that were being written or set aside when the server last stopped.</summary>
 	private void RemoveLeftovers()
 	{
-		foreach (var folder in Directory.EnumerateDirectories(paths.Beatmapsets.Path))
-			if (FileBeatmapsetNames.IsHidden(Path.GetFileName(folder)))
-				DeleteLeftover(folder);
-		foreach (var file in Directory.EnumerateFiles(paths.Beatmapsets.Path))
-			if (FileBeatmapsetNames.IsHidden(Path.GetFileName(file)))
-				DeleteLeftoverFile(file);
+		foreach (var folder in Directory.EnumerateDirectories(paths.Beatmapsets.Path)
+			         .Where(folder => FileBeatmapsetNames.IsHidden(Path.GetFileName(folder))))
+			DeleteLeftover(folder);
+		foreach (var file in Directory.EnumerateFiles(paths.Beatmapsets.Path)
+			         .Where(file => FileBeatmapsetNames.IsHidden(Path.GetFileName(file))))
+			DeleteLeftoverFile(file);
 
 		foreach (var former in new[]
 			         { Path.Combine(paths.Root, "Cache", "Beatmaps"), Path.Combine(paths.Root, "Cache", "Staging") })

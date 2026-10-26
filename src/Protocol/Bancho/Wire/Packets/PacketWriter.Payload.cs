@@ -89,9 +89,8 @@ public partial class PacketWriter
 		foreach (var slot in room.Slots) _writer.Write(checked((byte)slot.Status));
 		foreach (var slot in room.Slots) _writer.Write(checked((byte)slot.Team));
 
-		foreach (var slot in room.Slots)
-			if (slot.HasPlayer)
-				_writer.Write((uint)slot.PlayerId!.Value);
+		foreach (var slot in room.Slots.Where(slot => slot.HasPlayer))
+			_writer.Write((uint)slot.PlayerId!.Value);
 
 		_writer.Write((uint)room.HostId);
 		_writer.Write(checked((byte)room.Mode));

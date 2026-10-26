@@ -8,6 +8,6 @@ internal static class TempFiles
 	/// <returns>The absolute path of the temporary file.</returns>
 	public static string Name(string path)
 	{
-		return System.IO.Path.Combine(System.IO.Path.GetDirectoryName(path)!, "." + Guid.NewGuid().ToString("N") + ".tmp");
+		return Path.Combine(Path.GetDirectoryName(path)!, "." + Guid.NewGuid().ToString("N") + ".tmp");
 	}
 }

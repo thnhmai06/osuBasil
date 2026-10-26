@@ -10,7 +10,7 @@ namespace Basil.Infrastructure.Persistence.Common;
 internal sealed class ResidentWrites<TKey>(IEqualityComparer<TKey>? comparer = null) where TKey : notnull
 {
 	private readonly Lock _gate = new();
-	private readonly Dictionary<TKey, long> _applied = new Dictionary<TKey, long>(comparer);
+	private readonly Dictionary<TKey, long> _applied = new(comparer);
 	private long _issued;
 
 	/// <summary>Queues a write and waits for its commit, then applies the change to the resident copy.</summary>

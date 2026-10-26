@@ -125,7 +125,7 @@ public sealed class ImageSharpScreenshotInspectorRealPictureTests
 
 	private static MemoryStream Open(string name)
 	{
-		return new MemoryStream(Basil.Infrastructure.Capabilities.Tests.Support.OszArchive.Sample(Path.Combine("Images", name)), false);
+		return new MemoryStream(Support.OszArchive.Sample(Path.Combine("Images", name)), false);
 	}
 
 	/// <summary>A square RGBA avatar is a PNG of its own size.</summary>

@@ -41,9 +41,8 @@ public sealed class GeneralChannelRegistry
 	/// <param name="by">The connection that opened.</param>
 	public void JoinAutoChannels(Connection by)
 	{
-		foreach (var channel in All.Values)
-			if (channel.Record.Value.AutoJoin)
-				channel.ScopeTo(by).Join();
+		foreach (var channel in All.Values.Where(channel => channel.Record.Value.AutoJoin))
+			channel.ScopeTo(by).Join();
 	}
 
 	/// <summary>Parts a connection from every open general channel when the server itself calls it; it needs no rights.</summary>

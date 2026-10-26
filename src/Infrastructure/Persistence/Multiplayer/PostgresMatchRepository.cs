@@ -161,11 +161,9 @@ internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWri
 
 	private async Task<MatchRecord> ToMatchAsync(MatchRow row, CancellationToken cancellationToken)
 	{
-		var creator = row.CreatorId is { } creatorId
+		var creator = (row.CreatorId is { } creatorId
 			? await users.GetAsync(creatorId, cancellationToken)
-			: null;
-		if (creator is null)
-			throw new InvalidDataException($"Stored match {row.Id} has no existing creator.");
+			: null) ?? throw new InvalidDataException($"Stored match {row.Id} has no existing creator.");
 		return new MatchRecord
 		{
 			Id = row.Id,

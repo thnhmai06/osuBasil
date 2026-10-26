@@ -99,9 +99,9 @@ internal static class FileBeatmapsetNames
 	{
 		var name = $"{set.Id} {set.Metadata.Artist} - {set.Metadata.Title}";
 		var builder = new StringBuilder(name.Length);
-		foreach (var character in name)
-			if (!char.IsControl(character) && !InvalidNameChars.Contains(character))
-				builder.Append(character);
+		foreach (var character in name.Where(character =>
+			         !char.IsControl(character) && !InvalidNameChars.Contains(character)))
+			builder.Append(character);
 
 		return FileNames.Fitted(builder.ToString().TrimEnd('.', ' '), MaxFolderNameBytes);
 	}

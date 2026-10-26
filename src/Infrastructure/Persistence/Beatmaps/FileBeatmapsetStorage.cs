@@ -261,9 +261,7 @@ internal sealed class FileBeatmapsetStorage(
 		var gate = await LockAsync(set.Id, cancellationToken);
 		try
 		{
-			var folder = FindFolder(set.Id, FolderName(set));
-			if (folder is null) throw new InvalidOperationException("The beatmapset has no folder.");
-
+			var folder = FindFolder(set.Id, FolderName(set)) ?? throw new InvalidOperationException("The beatmapset has no folder.");
 			var path = PathOf(folder, type, name);
 			var parent = Path.GetDirectoryName(path);
 			if (!string.IsNullOrEmpty(parent)) Directory.CreateDirectory(parent);
@@ -297,9 +295,7 @@ internal sealed class FileBeatmapsetStorage(
 		var gate = await LockAsync(set.Id, cancellationToken);
 		try
 		{
-			var folder = FindFolder(set.Id, FolderName(set));
-			if (folder is null) throw new InvalidOperationException("The beatmapset has no folder.");
-
+			var folder = FindFolder(set.Id, FolderName(set)) ?? throw new InvalidOperationException("The beatmapset has no folder.");
 			var archivePath = Path.Combine(folder, ArchiveName);
 			if (!File.Exists(archivePath)) throw new InvalidOperationException("The beatmapset has no archive.");
 
@@ -477,7 +473,7 @@ internal sealed class FileBeatmapsetStorage(
 	/// <returns>The full path, on the same volume as the set folders it is moved into.</returns>
 	private string Incoming(string extension = "")
 	{
-		return Path.Combine(paths.Beatmapsets.Path, $"{FileBeatmapsetNames.IncomingMarker}{Guid.NewGuid():N}{extension}");
+		return Path.Combine(paths.Beatmapsets.Path, $"{IncomingMarker}{Guid.NewGuid():N}{extension}");
 	}
 
 	/// <summary>Determines whether two paths name the same file or folder on this file system.</summary>

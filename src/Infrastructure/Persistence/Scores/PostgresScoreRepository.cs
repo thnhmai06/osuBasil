@@ -57,14 +57,14 @@ internal sealed class PostgresScoreRepository(
 	public async Task<Page<ScoreRecord>> ListAsync(ScoreQuery scoreQuery, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
-		var result = await Reader.ReadAsync(async context =>
+		var (total, rows) = await Reader.ReadAsync(async context =>
 		{
 			var matching = BuildFilter(context.Scores, scoreQuery);
 			// A player's best play is the highest score; the earlier play and then the lower id win a tie.
 			var q = scoreQuery.BestPerPlayer
 				? matching.Where(s => !matching.Any(other => other.UserId == s.UserId && (other.TotalScore > s.TotalScore ||
 					(other.TotalScore == s.TotalScore && (other.Timestamp < s.Timestamp ||
-						(other.Timestamp == s.Timestamp && other.Id < s.Id))))))
+					                                      (other.Timestamp == s.Timestamp && other.Id < s.Id))))))
 				: matching;
 			var count = await q.CountAsync(cancellationToken);
 			q = scoreQuery.BestPerPlayer || scoreQuery.BeatmapHash is not null
@@ -77,9 +77,6 @@ internal sealed class PostgresScoreRepository(
 				.ToListAsync(cancellationToken);
 			return (count, rows);
 		}, cancellationToken);
-
-		var total = result.count;
-		var rows = result.rows;
 
 		var items = rows.Select(row => Track(ToScore(row))).ToList();
 		foreach (var score in items)
