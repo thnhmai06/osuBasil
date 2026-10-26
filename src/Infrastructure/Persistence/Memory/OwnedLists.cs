@@ -39,16 +39,21 @@ internal sealed class OwnedLists<TKey, TOwner, T> where TKey : notnull where TOw
 			{
 				stored = await load();
 			}
-			finally
+			catch
 			{
 				lock (_gate)
 				{
 					Remove(_loading, key, ticket);
 				}
+
+				throw;
 			}
 
+			// The load stops being watched in the same step that decides whether it stands, so no change can slip
+			// between the two.
 			lock (_gate)
 			{
+				Remove(_loading, key, ticket);
 				if (ticket.Changed)
 					continue;
 
