@@ -23,19 +23,12 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 	{
 		if (_byName.TryGetValue(data.NormalizedName, out var known) &&
 		    known.Value.NormalizedName == data.NormalizedName)
-			throw new AlreadyExistsException($"A user is already named {data.Name}.");
+			throw AlreadyNamed(data.Name);
 
 		if (_freeing.TryGetValue(data.NormalizedName, out var freeing))
 			await Task.WhenAny(freeing);
 
-		var row = new UserRow
-		{
-			Name = data.Name,
-			NormalizedName = data.NormalizedName,
-			Country = (int)data.Country,
-			Permissions = (long)data.Permissions,
-			DeletedAt = data.DeletedAt?.ToUniversalTime()
-		};
+		var row = ToRow(0, data);
 		try
 		{
 			await Writer.WriteAsync(Root.Server, async (context, token) =>
@@ -47,7 +40,7 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 		}
 		catch (Exception exception) when (exception.IsUniqueViolation())
 		{
-			throw new AlreadyExistsException($"A user is already named {data.Name}.");
+			throw AlreadyNamed(data.Name);
 		}
 
 		return TrackUser(new UserRecord { Id = row.Id, Value = data });
@@ -58,20 +51,12 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 	{
 		if (_byName.TryGetValue(data.NormalizedName, out var known) &&
 		    known.Value.NormalizedName == data.NormalizedName && known.Id != id)
-			throw new AlreadyExistsException($"A user is already named {data.Name}.");
+			throw AlreadyNamed(data.Name);
 
 		if (_freeing.TryGetValue(data.NormalizedName, out var freeing))
 			await Task.WhenAny(freeing);
 
-		var row = new UserRow
-		{
-			Id = id,
-			Name = data.Name,
-			NormalizedName = data.NormalizedName,
-			Country = (int)data.Country,
-			Permissions = (long)data.Permissions,
-			DeletedAt = data.DeletedAt?.ToUniversalTime()
-		};
+		var row = ToRow(id, data);
 		try
 		{
 			await Writer.WriteAsync(Root.User(id),
@@ -79,7 +64,7 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 		}
 		catch (Exception exception) when (exception.IsUniqueViolation())
 		{
-			throw new AlreadyExistsException($"A user is already named {data.Name}.");
+			throw AlreadyNamed(data.Name);
 		}
 
 		// The stored user is a different account now: the instance memory holds for the id is dropped.
@@ -100,6 +85,7 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 			_ = saved.ContinueWith(_ => _freeing.TryRemove(new KeyValuePair<string, Task>(name, saved)),
 				TaskScheduler.Default);
 		}
+
 		return Task.CompletedTask;
 	}
 
@@ -260,6 +246,31 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 		}
 
 		return users;
+	}
+
+	/// <summary>Builds the row of an account; an id of zero stands for an account that has none yet.</summary>
+	/// <param name="id">The id of the account the row stores.</param>
+	/// <param name="data">The data of the account.</param>
+	/// <returns>The row to store.</returns>
+	private static UserRow ToRow(int id, UserData data)
+	{
+		return new UserRow
+		{
+			Id = id,
+			Name = data.Name,
+			NormalizedName = data.NormalizedName,
+			Country = (int)data.Country,
+			Permissions = (long)data.Permissions,
+			DeletedAt = data.DeletedAt?.ToUniversalTime()
+		};
+	}
+
+	/// <summary>Builds the refusal for a name that another account already holds.</summary>
+	/// <param name="name">The name that is taken.</param>
+	/// <returns>The refusal to throw.</returns>
+	private static AlreadyExistsException AlreadyNamed(string name)
+	{
+		return new AlreadyExistsException($"A user is already named {name}.");
 	}
 
 	/// <summary>Builds a user from a stored row.</summary>

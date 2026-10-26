@@ -8,7 +8,8 @@ public class UserPermissionsTests
 	public void Effective_ActiveRestriction_ManagerKeepsManagedArea()
 	{
 		var now = DateTimeOffset.UnixEpoch;
-		var granted = UserPermissionsGroups.Default | UserPermissions.RoomManageAny | UserPermissions.RoomCreateUnlimited;
+		var granted = UserPermissionsGroups.Default | UserPermissions.RoomManageAny |
+		              UserPermissions.RoomCreateUnlimited;
 		var user = new UserRecord { Id = 1, Value = new UserData { Name = "manager", Permissions = granted } };
 		var restriction = new UserRestriction
 		{
@@ -32,7 +33,8 @@ public class UserPermissionsTests
 	[Fact]
 	public void All_EqualsTheOrOfEveryMember()
 	{
-		var orOfMembers = Enum.GetValues<UserPermissions>().Aggregate(UserPermissions.None, (all, member) => all | member);
+		var orOfMembers = Enum.GetValues<UserPermissions>()
+			.Aggregate(UserPermissions.None, (all, member) => all | member);
 
 		Assert.Equal(UserPermissionsGroups.All, orOfMembers);
 	}
@@ -92,7 +94,8 @@ public class UserPermissionsTests
 		Assert.True(effective.Allows(UserPermissions.ScoreSubmit));
 	}
 
-	private static UserRestriction MakeRestriction(UserPermissions suspended, DateTimeOffset startsAt, DateTimeOffset? endsAt)
+	private static UserRestriction MakeRestriction(UserPermissions suspended, DateTimeOffset startsAt,
+		DateTimeOffset? endsAt)
 	{
 		var user = new UserRecord { Id = 1, Value = new UserData { Name = "restricted" } };
 		return new UserRestriction

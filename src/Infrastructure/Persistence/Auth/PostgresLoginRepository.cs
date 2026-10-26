@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Net;
 using Basil.Application.Persistence.Auth;
 using Basil.Application.Persistence.Common;
 using Basil.Domain.Auth;

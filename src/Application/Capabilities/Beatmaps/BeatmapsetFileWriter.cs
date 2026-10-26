@@ -22,6 +22,7 @@ internal sealed class BeatmapsetFileWriter(
 		if (stream is null) return;
 
 		var keep = false;
+		List<string> videoFiles = [];
 		try
 		{
 			var content = await reader.ReadAsync(stream, cancellationToken);
@@ -35,6 +36,7 @@ internal sealed class BeatmapsetFileWriter(
 					StoredFileNames.ChooseNames(content.Difficulties.Select(difficulty => difficulty.Background));
 				var audio = StoredFileNames.ChooseNames(content.Difficulties.Select(difficulty => difficulty.Audio));
 				var video = StoredFileNames.ChooseNames(content.Difficulties.Select(difficulty => difficulty.Video));
+				videoFiles = [.. video.Keys.Select(file => file.Name)];
 
 				foreach (var difficulty in content.Difficulties)
 				{
@@ -74,7 +76,7 @@ internal sealed class BeatmapsetFileWriter(
 			if (!keep) await stream.DisposeAsync();
 		}
 
-		await storage.SaveArchiveWithoutVideoAsync(set, cancellationToken);
+		await storage.SaveArchiveWithoutVideoAsync(set, videoFiles, cancellationToken);
 		var storedBeatmaps = await beatmaps.ListAsync(set, cancellationToken);
 		await assets.BuildAsync(set, storedBeatmaps, cancellationToken);
 	}

@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 
@@ -31,7 +32,7 @@ public class MatchRecordTests
 		var creator = typeof(MatchData).GetProperty(nameof(MatchData.Creator))!;
 
 		Assert.Contains(creator.CustomAttributes,
-			a => a.AttributeType == typeof(System.Runtime.CompilerServices.RequiredMemberAttribute));
+			a => a.AttributeType == typeof(RequiredMemberAttribute));
 		Assert.Equal(typeof(UserRecord), creator.PropertyType);
 		Assert.True(new NullabilityInfoContext().Create(creator).WriteState == NullabilityState.NotNull);
 	}

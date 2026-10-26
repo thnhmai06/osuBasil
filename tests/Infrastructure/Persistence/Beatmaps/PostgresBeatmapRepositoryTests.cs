@@ -115,7 +115,7 @@ public sealed class PostgresBeatmapRepositoryTests(PersistenceFixture container)
 		await CommitAsync(StoredBeatmaps.Data(22, "Nanahira", "Beta", "Mapper",
 			[StoredBeatmaps.Difficulty(302, BeatmapHash, "Easy")]));
 
-		var page = await Beatmaps.ListAsync(new BeatmapQuery(Text: "Camellia"), new PageRequest(0, 10),
+		var page = await Beatmaps.ListAsync(new BeatmapQuery("Camellia"), new PageRequest(0, 10),
 			TestContext.Current.CancellationToken);
 
 		Assert.Equal(301, Assert.Single(page.Items).Id);
@@ -129,7 +129,7 @@ public sealed class PostgresBeatmapRepositoryTests(PersistenceFixture container)
 		await CommitAsync(StoredBeatmaps.Data(22, "Camellia", "Beta", "Mapper",
 			[StoredBeatmaps.Difficulty(302, BeatmapHash, "Easy")]));
 
-		var page = await Beatmaps.ListAsync(new BeatmapQuery(Text: "Alpha"), new PageRequest(0, 10),
+		var page = await Beatmaps.ListAsync(new BeatmapQuery("Alpha"), new PageRequest(0, 10),
 			TestContext.Current.CancellationToken);
 
 		Assert.Equal(301, Assert.Single(page.Items).Id);
@@ -143,7 +143,7 @@ public sealed class PostgresBeatmapRepositoryTests(PersistenceFixture container)
 		await CommitAsync(StoredBeatmaps.Data(22, "Camellia", "Beta", "SecondMapper",
 			[StoredBeatmaps.Difficulty(302, BeatmapHash, "Easy")]));
 
-		var page = await Beatmaps.ListAsync(new BeatmapQuery(Text: "SecondMapper"), new PageRequest(0, 10),
+		var page = await Beatmaps.ListAsync(new BeatmapQuery("SecondMapper"), new PageRequest(0, 10),
 			TestContext.Current.CancellationToken);
 
 		Assert.Equal(302, Assert.Single(page.Items).Id);
@@ -157,7 +157,7 @@ public sealed class PostgresBeatmapRepositoryTests(PersistenceFixture container)
 		await CommitAsync(StoredBeatmaps.Data(22, "Camellia", "Beta", "Mapper",
 			[StoredBeatmaps.Difficulty(302, BeatmapHash, "Extra")]));
 
-		var page = await Beatmaps.ListAsync(new BeatmapQuery(Text: "Insane"), new PageRequest(0, 10),
+		var page = await Beatmaps.ListAsync(new BeatmapQuery("Insane"), new PageRequest(0, 10),
 			TestContext.Current.CancellationToken);
 
 		Assert.Equal(301, Assert.Single(page.Items).Id);
@@ -171,7 +171,7 @@ public sealed class PostgresBeatmapRepositoryTests(PersistenceFixture container)
 		await CommitAsync(StoredBeatmaps.Data(22, "Nanahira", "Beta", "Mapper",
 			[StoredBeatmaps.Difficulty(302, BeatmapHash, "Easy")]));
 
-		var page = await Beatmaps.ListAsync(new BeatmapQuery(Text: "cAMELLIA"), new PageRequest(0, 10),
+		var page = await Beatmaps.ListAsync(new BeatmapQuery("cAMELLIA"), new PageRequest(0, 10),
 			TestContext.Current.CancellationToken);
 
 		Assert.Equal(301, Assert.Single(page.Items).Id);
@@ -185,7 +185,7 @@ public sealed class PostgresBeatmapRepositoryTests(PersistenceFixture container)
 		await CommitAsync(StoredBeatmaps.Data(22, "1000", "Beta", "Mapper",
 			[StoredBeatmaps.Difficulty(302, BeatmapHash, "Easy")]));
 
-		var page = await Beatmaps.ListAsync(new BeatmapQuery(Text: "100%"), new PageRequest(0, 10),
+		var page = await Beatmaps.ListAsync(new BeatmapQuery("100%"), new PageRequest(0, 10),
 			TestContext.Current.CancellationToken);
 
 		Assert.Equal(301, Assert.Single(page.Items).Id);
@@ -199,7 +199,7 @@ public sealed class PostgresBeatmapRepositoryTests(PersistenceFixture container)
 		await CommitAsync(StoredBeatmaps.Data(22, "axb", "Beta", "Mapper",
 			[StoredBeatmaps.Difficulty(302, BeatmapHash, "Easy")]));
 
-		var page = await Beatmaps.ListAsync(new BeatmapQuery(Text: "a_b"), new PageRequest(0, 10),
+		var page = await Beatmaps.ListAsync(new BeatmapQuery("a_b"), new PageRequest(0, 10),
 			TestContext.Current.CancellationToken);
 
 		Assert.Equal(301, Assert.Single(page.Items).Id);
@@ -356,6 +356,32 @@ public sealed class PostgresBeatmapRepositoryTests(PersistenceFixture container)
 	}
 
 	[Fact]
+	public async Task A_listing_finds_a_difficulty_by_its_file_name_whatever_the_letter_case()
+	{
+		await CommitAsync(StoredBeatmaps.Data(11, "Camellia", "Alpha", "Mapper",
+			[StoredBeatmaps.Difficulty(301, OtherHash, "Easy")]));
+
+		var page = await Beatmaps.ListAsync(new BeatmapQuery(FileName: "CAMELLIA - alpha (mapper) [EASY].OSU"),
+			new PageRequest(0, 10), TestContext.Current.CancellationToken);
+
+		Assert.Equal(301, Assert.Single(page.Items).Id);
+	}
+
+	[Fact]
+	public async Task A_listing_finds_a_difficulty_whose_names_hold_characters_a_file_name_cannot_hold()
+	{
+		await CommitAsync(StoredBeatmaps.Data(11, "A:B/C", "100%_Sure*?", "Map|per",
+			[StoredBeatmaps.Difficulty(301, OtherHash, "Hard <1>")]));
+		await CommitAsync(StoredBeatmaps.Data(22, "ABC", "100xxSure", "Mapper",
+			[StoredBeatmaps.Difficulty(302, BeatmapHash, "Hard 1")]));
+
+		var page = await Beatmaps.ListAsync(new BeatmapQuery(FileName: "ABC - 100%_Sure (Mapper) [Hard 1].osu"),
+			new PageRequest(0, 10), TestContext.Current.CancellationToken);
+
+		Assert.Equal(301, Assert.Single(page.Items).Id);
+	}
+
+	[Fact]
 	public async Task A_listing_returns_the_requested_part()
 	{
 		await CommitAsync(StoredBeatmaps.Data(11, "Camellia", "Alpha", "Mapper",
@@ -391,9 +417,14 @@ public sealed class PostgresBeatmapRepositoryTests(PersistenceFixture container)
 		await CommitAsync(StoredBeatmaps.Data(11, "Camellia", "Alpha", "Mapper",
 			[StoredBeatmaps.Difficulty(301, OtherHash, "Easy")]));
 		await using (var other = new StorageComposition(ConnectionString))
+		{
 			await other.Get<IBeatmapsetRepository>().CommitAsync(new BeatmapsetChanges(
-				[new BeatmapsetChange(null, StoredBeatmaps.Data(22, "Camellia", "Beta", "Mapper",
-					[StoredBeatmaps.Difficulty(302, BeatmapHash, "Hard")]))], []), TestContext.Current.CancellationToken);
+			[
+				new BeatmapsetChange(null, StoredBeatmaps.Data(22, "Camellia", "Beta", "Mapper",
+					[StoredBeatmaps.Difficulty(302, BeatmapHash, "Hard")]))
+			], []), TestContext.Current.CancellationToken);
+		}
+
 		var beatmap = await Beatmaps.GetAsync(301, TestContext.Current.CancellationToken);
 
 		await Assert.ThrowsAsync<AlreadyExistsException>(() =>

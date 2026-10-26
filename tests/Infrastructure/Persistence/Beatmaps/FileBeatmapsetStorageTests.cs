@@ -20,8 +20,8 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	private static int _nextId = 1000;
 
 	private readonly TempData _data = new();
-	private readonly FakeTimeProvider _time = new();
 	private readonly FileBeatmapsetStorage _storage;
+	private readonly FakeTimeProvider _time = new();
 
 	public FileBeatmapsetStorageTests()
 	{
@@ -29,6 +29,11 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 	}
 
 	private string Sets => _data.Paths.Beatmapsets.Path;
+
+	public void Dispose()
+	{
+		_data.Dispose();
+	}
 
 	// ---- Listing ----------------------------------------------------------------------------------------------
 
@@ -390,7 +395,8 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 
 		var name = Assert.Single(TopLevel());
 		Assert.StartsWith($"{id} Artist - ", name);
-		Assert.True(Encoding.UTF8.GetByteCount(name) <= 150, "A folder name stays well within the limit of common file systems.");
+		Assert.True(Encoding.UTF8.GetByteCount(name) <= 150,
+			"A folder name stays well within the limit of common file systems.");
 		Assert.Equal(bytes,
 			await ReadAllBytesAsync(await _storage.OpenArchiveAsync(set, true, TestContext.Current.CancellationToken)));
 	}
@@ -719,7 +725,8 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		PlaceFolder(id, "Artist", "Title", bytes);
 		var set = Set(id, "Artist", "Title");
 
-		await _storage.SaveArchiveWithoutVideoAsync(set, TestContext.Current.CancellationToken);
+		await _storage.SaveArchiveWithoutVideoAsync(set, ["video.mp4", "sub/clip.avi"],
+			TestContext.Current.CancellationToken);
 
 		var made = await ReadAllBytesAsync(await _storage.OpenArchiveAsync(set, false,
 			TestContext.Current.CancellationToken));
@@ -727,6 +734,36 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		Assert.Equal("audio", ReadEntry(made, "sub/song.mp3"));
 		Assert.Equal(bytes,
 			await ReadAllBytesAsync(await _storage.OpenArchiveAsync(set, true, TestContext.Current.CancellationToken)));
+	}
+
+	[Fact]
+	public async Task The_archive_without_video_drops_a_declared_video_whatever_its_extension_or_letter_case()
+	{
+		var id = NewId();
+		PlaceFolder(id, "Artist", "Title",
+			Osz(("a.osu", "difficulty"), ("Movie.OGV", "video"), ("sub\\intro.webm", "video")));
+		var set = Set(id, "Artist", "Title");
+
+		await _storage.SaveArchiveWithoutVideoAsync(set, ["movie.ogv", "sub/intro.webm"],
+			TestContext.Current.CancellationToken);
+
+		var made = await ReadAllBytesAsync(await _storage.OpenArchiveAsync(set, false,
+			TestContext.Current.CancellationToken));
+		Assert.Equal(["a.osu"], EntriesOf(made));
+	}
+
+	[Fact]
+	public async Task The_archive_without_video_keeps_a_file_with_a_video_extension_that_no_difficulty_declares()
+	{
+		var id = NewId();
+		PlaceFolder(id, "Artist", "Title", Osz(("a.osu", "difficulty"), ("storyboard.mp4", "an animation")));
+		var set = Set(id, "Artist", "Title");
+
+		await _storage.SaveArchiveWithoutVideoAsync(set, [], TestContext.Current.CancellationToken);
+
+		var made = await ReadAllBytesAsync(await _storage.OpenArchiveAsync(set, false,
+			TestContext.Current.CancellationToken));
+		Assert.Equal(["a.osu", "storyboard.mp4"], EntriesOf(made));
 	}
 
 	[Fact]
@@ -738,7 +775,7 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		var set = Set(id, "Artist", "Title");
 
 		var failure = await Record.ExceptionAsync(() =>
-			_storage.SaveArchiveWithoutVideoAsync(set, TestContext.Current.CancellationToken));
+			_storage.SaveArchiveWithoutVideoAsync(set, [], TestContext.Current.CancellationToken));
 
 		Assert.NotNull(failure);
 		Assert.Null(await _storage.OpenArchiveAsync(set, false, TestContext.Current.CancellationToken));
@@ -1034,18 +1071,24 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 
 	// ---- Helpers -----------------------------------------------------------------------------------------------
 
-	private static int NewId() => Interlocked.Increment(ref _nextId);
-
-	private static BeatmapsetRecord Set(int id, string artist, string title) => new()
+	private static int NewId()
 	{
-		Id = id,
-		Metadata = new BeatmapsetMetadata { Artist = artist, Title = title, Creator = "Mapper" },
-		Fingerprint = new ContentFingerprint(new ContentStamp(0, DateTimeOffset.UnixEpoch),
-			new Md5("00000000000000000000000000000000")),
-		Assets = new BeatmapsetAssets(),
-		UpdatedAt = DateTimeOffset.UnixEpoch,
-		CreatedAt = DateTimeOffset.UnixEpoch
-	};
+		return Interlocked.Increment(ref _nextId);
+	}
+
+	private static BeatmapsetRecord Set(int id, string artist, string title)
+	{
+		return new BeatmapsetRecord
+		{
+			Id = id,
+			Metadata = new BeatmapsetMetadata { Artist = artist, Title = title, Creator = "Mapper" },
+			Fingerprint = new ContentFingerprint(new ContentStamp(0, DateTimeOffset.UnixEpoch),
+				new Md5("00000000000000000000000000000000")),
+			Assets = new BeatmapsetAssets(),
+			UpdatedAt = DateTimeOffset.UnixEpoch,
+			CreatedAt = DateTimeOffset.UnixEpoch
+		};
+	}
 
 	/// <summary>Places a set folder by hand, as the server would have left it, and gives the set it holds.</summary>
 	private BeatmapsetRecord StoredSet(out string folder)
@@ -1143,8 +1186,6 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		}
 	}
 
-	public void Dispose() => _data.Dispose();
-
 	/// <summary>A running watch: reads the reports, moving the fake clock past the settling time while it waits for them.</summary>
 	private sealed class Watching(
 		FakeTimeProvider? time,
@@ -1152,6 +1193,13 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 		CancellationTokenSource stop) : IAsyncDisposable
 	{
 		private readonly IAsyncEnumerator<BeatmapsetSource> _reports = reports.GetAsyncEnumerator(stop.Token);
+
+		public async ValueTask DisposeAsync()
+		{
+			await stop.CancelAsync();
+			await _reports.DisposeAsync();
+			stop.Dispose();
+		}
 
 		public static Watching Start(FileBeatmapsetStorage storage, FakeTimeProvider? time)
 		{
@@ -1186,13 +1234,6 @@ public sealed class FileBeatmapsetStorageTests : IDisposable
 			await stop.CancelAsync();
 			return await Record.ExceptionAsync(() =>
 				next.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
-		}
-
-		public async ValueTask DisposeAsync()
-		{
-			await stop.CancelAsync();
-			await _reports.DisposeAsync();
-			stop.Dispose();
 		}
 	}
 }

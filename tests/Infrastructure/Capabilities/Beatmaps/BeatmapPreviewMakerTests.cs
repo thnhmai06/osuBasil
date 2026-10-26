@@ -10,15 +10,15 @@ using NSubstitute;
 namespace Basil.Infrastructure.Capabilities.Tests.Beatmaps;
 
 /// <summary>Pins which audio tracks get a preview, and that a failure leaves the rest of the set alone.</summary>
-public sealed class BeatmapAssetStoreTests : IDisposable
+public sealed class BeatmapPreviewMakerTests : IDisposable
 {
+	private readonly BeatmapPreviewMaker _assets;
 	private readonly string _cache = Path.Combine(Path.GetTempPath(), "basil-assets-" + Guid.NewGuid().ToString("N"));
-	private readonly IBeatmapsetStorage _storage = Substitute.For<IBeatmapsetStorage>();
 	private readonly List<(string Name, byte[] Content)> _previews = [];
-	private readonly BeatmapAssetStore _assets;
+	private readonly IBeatmapsetStorage _storage = Substitute.For<IBeatmapsetStorage>();
 
 	/// <summary>Composes the capability over a storage the test controls and a temporary cache directory.</summary>
-	public BeatmapAssetStoreTests()
+	public BeatmapPreviewMakerTests()
 	{
 		_storage.SaveAsync(Arg.Any<BeatmapsetRecord>(), BeatmapsetFileType.Preview, Arg.Any<string>(),
 				Arg.Any<Stream>(), Arg.Any<CancellationToken>())
@@ -29,8 +29,8 @@ public sealed class BeatmapAssetStoreTests : IDisposable
 				_previews.Add((call.ArgAt<string>(2), content.ToArray()));
 				return Task.CompletedTask;
 			});
-		_assets = new BeatmapAssetStore(Options.Create(new AssetOptions { CacheDirectory = _cache }), _storage,
-			NullLogger<BeatmapAssetStore>.Instance);
+		_assets = new BeatmapPreviewMaker(Options.Create(new AssetOptions { CacheDirectory = _cache }), _storage,
+			NullLogger<BeatmapPreviewMaker>.Instance);
 	}
 
 	/// <inheritdoc />

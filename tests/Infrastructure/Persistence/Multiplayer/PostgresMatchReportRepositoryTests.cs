@@ -77,20 +77,56 @@ public sealed class PostgresMatchReportRepositoryTests(PersistenceFixture contai
 	}
 
 	[Fact]
-	public async Task A_report_decides_the_result_of_a_round_from_its_scores()
+	public async Task A_report_shows_the_decision_stored_for_a_round()
 	{
 		var match = await CreateMatchAsync("decided_report_match");
 		var round = StoredMatches.Round(match, 1, First);
-		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
 		var winner = await CreatePlayerAsync("round_winner");
 		var loser = await CreatePlayerAsync("round_loser");
-		await RecordScoreAsync(round, winner, 5000, First);
-		await RecordScoreAsync(round, loser, 1000, First);
+		var won = await RecordScoreAsync(round, winner, 5000, First);
+		var lost = await RecordScoreAsync(round, loser, 1000, First);
+		round.Decision = RoundResult.Decide(round, [lost, won])!.Verdict;
+		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
 
 		var report = await Reports.GetAsync(match, TestContext.Current.CancellationToken);
 
 		var result = Assert.IsType<HeadToHeadResult>(Assert.Single(report.Records.OfType<Round>()).Result);
 		Assert.Equal(winner.Id, result.WinnerId);
+		Assert.Equal([won.Score.Id, lost.Score.Id], result.Scores.Select(score => score.Score.Id));
+	}
+
+	[Fact]
+	public async Task A_report_shows_the_stored_decision_even_when_the_rules_would_decide_differently_now()
+	{
+		var match = await CreateMatchAsync("rules_changed_match");
+		var round = StoredMatches.Round(match, 1, First);
+		var first = await CreatePlayerAsync("first_player");
+		var second = await CreatePlayerAsync("second_player");
+		var low = await RecordScoreAsync(round, first, 1000, First);
+		var high = await RecordScoreAsync(round, second, 5000, First);
+
+		// The stored decision names the player with the lower score as the winner; a fresh decision would not.
+		round.Decision = new RoundVerdict([low.Score.Id, high.Score.Id], first.Id, null, 4000, false, null, null);
+		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
+
+		var report = await Reports.GetAsync(match, TestContext.Current.CancellationToken);
+
+		var result = Assert.IsType<HeadToHeadResult>(Assert.Single(report.Records.OfType<Round>()).Result);
+		Assert.Equal(first.Id, result.WinnerId);
+	}
+
+	[Fact]
+	public async Task A_report_leaves_a_round_nobody_decided_without_a_result_and_decides_nothing()
+	{
+		var match = await CreateMatchAsync("undecided_report_match");
+		var round = StoredMatches.Round(match, 1, First);
+		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
+		await RecordScoreAsync(round, await CreatePlayerAsync("undecided"), 5000, First);
+
+		var report = await Reports.GetAsync(match, TestContext.Current.CancellationToken);
+
+		Assert.Null(Assert.Single(report.Records.OfType<Round>()).Result);
+		Assert.Null((await Rounds.ListAsync(match, TestContext.Current.CancellationToken)).Single().Decision);
 	}
 
 	[Fact]
@@ -116,7 +152,8 @@ public sealed class PostgresMatchReportRepositoryTests(PersistenceFixture contai
 	/// <returns>The account.</returns>
 	private async Task<UserRecord> CreatePlayerAsync(string name)
 	{
-		return await Get<IUserRepository>().CreateAsync(new UserData { Name = name }, TestContext.Current.CancellationToken);
+		return await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = name }, TestContext.Current.CancellationToken);
 	}
 
 	/// <summary>Records a play in a round.</summary>
@@ -124,11 +161,13 @@ public sealed class PostgresMatchReportRepositoryTests(PersistenceFixture contai
 	/// <param name="player">The account that played.</param>
 	/// <param name="totalScore">The total score the play achieved.</param>
 	/// <param name="timestamp">The moment the play happened.</param>
-	private async Task RecordScoreAsync(Round round, UserRecord player, int totalScore, DateTimeOffset timestamp)
+	/// <returns>The relation between the round and the score.</returns>
+	private async Task<RoundScore> RecordScoreAsync(Round round, UserRecord player, int totalScore,
+		DateTimeOffset timestamp)
 	{
 		var score = await Scores.CreateAsync(StoredScores.Data(player, StoredScores.Hash($"beatmap_{totalScore}"),
 			totalScore, timestamp), TestContext.Current.CancellationToken);
-		await RoundScores.RecordAsync(new RoundScore(score, round, null),
+		return await RoundScores.RecordAsync(new RoundScore(score, round, null),
 			TestContext.Current.CancellationToken);
 	}
 }

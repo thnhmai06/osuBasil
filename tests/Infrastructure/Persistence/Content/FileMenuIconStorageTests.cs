@@ -16,6 +16,17 @@ public sealed class FileMenuIconStorageTests : IDisposable
 		_icon = new FileMenuIconStorage(_data.Paths);
 	}
 
+	public static TheoryData<string> EscapingNames => UnsafeNames.Escaping;
+
+	public static TheoryData<string> DeviceNames => UnsafeNames.Devices;
+
+	public static TheoryData<string> NotCanonicalNames => UnsafeNames.NotCanonical;
+
+	public void Dispose()
+	{
+		_data.Dispose();
+	}
+
 	[Fact]
 	public async Task Nothing_is_stored_at_first()
 	{
@@ -111,12 +122,4 @@ public sealed class FileMenuIconStorageTests : IDisposable
 
 		return (opened.Value.Reference, await TestStreams.ReadAllAsync(opened.Value.Content));
 	}
-
-	public static TheoryData<string> EscapingNames => UnsafeNames.Escaping;
-
-	public static TheoryData<string> DeviceNames => UnsafeNames.Devices;
-
-	public static TheoryData<string> NotCanonicalNames => UnsafeNames.NotCanonical;
-
-	public void Dispose() => _data.Dispose();
 }

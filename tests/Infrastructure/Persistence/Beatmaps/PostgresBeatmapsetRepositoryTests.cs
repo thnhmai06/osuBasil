@@ -3,8 +3,8 @@ using Basil.Application.Persistence.Common;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Common;
 using Basil.Infrastructure.Persistence.Postgres;
-using Npgsql;
 using Basil.Infrastructure.Persistence.Tests.Support;
+using Npgsql;
 
 namespace Basil.Infrastructure.Persistence.Tests.Beatmaps;
 
@@ -212,7 +212,7 @@ public sealed class PostgresBeatmapsetRepositoryTests(PersistenceFixture contain
 	public async Task An_update_changes_the_lock_of_the_set_the_store_returns()
 	{
 		var set = Assert.Single(await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper")));
-		var changed = Changed(set, locked: true);
+		var changed = Changed(set, true);
 
 		await Sets.UpdateAsync(changed, TestContext.Current.CancellationToken);
 
@@ -236,7 +236,7 @@ public sealed class PostgresBeatmapsetRepositoryTests(PersistenceFixture contain
 	public async Task An_update_is_stored()
 	{
 		var set = Assert.Single(await CommitAsync(StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper")));
-		await Sets.UpdateAsync(Changed(set, locked: true, visible: false), TestContext.Current.CancellationToken);
+		await Sets.UpdateAsync(Changed(set, true, false), TestContext.Current.CancellationToken);
 
 		var rows = await StoredRows.WaitForAsync(ConnectionString,
 			"select locked, visible from beatmapsets where id = @id",
@@ -292,7 +292,7 @@ public sealed class PostgresBeatmapsetRepositoryTests(PersistenceFixture contain
 		await CommitAsync(StoredBeatmaps.Data(22, "Camellia", "Second", "Mapper",
 			[StoredBeatmaps.Difficulty(302, HardHash, "Hard")]));
 
-		var page = await Sets.ListAsync(new BeatmapQuery(Text: "Hard"), new PageRequest(0, 10),
+		var page = await Sets.ListAsync(new BeatmapQuery("Hard"), new PageRequest(0, 10),
 			TestContext.Current.CancellationToken);
 
 		Assert.Equal(22, Assert.Single(page.Items).Id);
@@ -354,10 +354,10 @@ public sealed class PostgresBeatmapsetRepositoryTests(PersistenceFixture contain
 			await Sets.UpdateAsync(set, TestContext.Current.CancellationToken);
 			await beatmaps.UpdateAsync(easy, TestContext.Current.CancellationToken);
 			commit = Sets.CommitAsync(new BeatmapsetChanges(
-				[
-					new BeatmapsetChange(set, StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper",
-						[StoredBeatmaps.Difficulty(301, EasyHash, "Easy renamed")]))
-				], []), TestContext.Current.CancellationToken);
+			[
+				new BeatmapsetChange(set, StoredBeatmaps.Data(42, "Camellia", "Title", "Mapper",
+					[StoredBeatmaps.Difficulty(301, EasyHash, "Easy renamed")]))
+			], []), TestContext.Current.CancellationToken);
 
 			// A commit that is stored before the writes queued earlier would be overwritten by them afterwards.
 			await Assert.ThrowsAsync<TimeoutException>(() =>

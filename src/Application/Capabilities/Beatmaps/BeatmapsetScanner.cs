@@ -132,7 +132,10 @@ internal sealed class BeatmapsetScanner(
 		return entries;
 	}
 
-	/// <summary>Reads and plans the queued archives; those that a set of this scan already has, or that are locked, are left out.</summary>
+	/// <summary>
+	///     Reads and plans the queued archives; those that a set of this scan already has, or that are locked, are left
+	///     out.
+	/// </summary>
 	/// <param name="entries">The entries of the scan; the sets it finds are added to <see cref="ScanEntries.Seen" />.</param>
 	/// <param name="claims">The claims of this scan.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>

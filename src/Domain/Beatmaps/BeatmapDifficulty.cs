@@ -30,35 +30,67 @@ public readonly record struct BeatmapDifficulty(
 {
 	/// <summary>The game mode the beatmap is played in.</summary>
 	/// <exception cref="ArgumentOutOfRangeException">The value is not a defined game mode.</exception>
-	public GameMode Mode { get; init => field = value.ThrowIfUndefined(); } = Mode.ThrowIfUndefined();
+	public GameMode Mode
+	{
+		get;
+		init => field = value.ThrowIfUndefined();
+	} = Mode.ThrowIfUndefined();
 
 	/// <summary>The beats per minute of the beatmap.</summary>
 	/// <exception cref="ArgumentOutOfRangeException">The value is negative or not a finite number.</exception>
-	public double Bpm { get; init => field = CheckPositive(value); } = CheckPositive(Bpm);
+	public double Bpm
+	{
+		get;
+		init => field = CheckPositive(value);
+	} = CheckPositive(Bpm);
 
 	/// <summary>The total length of the beatmap.</summary>
 	/// <exception cref="ArgumentOutOfRangeException">The length is negative.</exception>
-	public TimeSpan Length { get; init => field = CheckLength(value); } = CheckLength(Length);
+	public TimeSpan Length
+	{
+		get;
+		init => field = CheckLength(value);
+	} = CheckLength(Length);
 
 	/// <summary>The circle size setting.</summary>
 	/// <exception cref="ArgumentOutOfRangeException">The value is not a finite number.</exception>
-	public double Cs { get; init => field = CheckFinite(value); } = CheckFinite(Cs);
+	public double Cs
+	{
+		get;
+		init => field = CheckFinite(value);
+	} = CheckFinite(Cs);
 
 	/// <summary>The approach rate setting.</summary>
 	/// <exception cref="ArgumentOutOfRangeException">The value is not a finite number.</exception>
-	public double Ar { get; init => field = CheckFinite(value); } = CheckFinite(Ar);
+	public double Ar
+	{
+		get;
+		init => field = CheckFinite(value);
+	} = CheckFinite(Ar);
 
 	/// <summary>The overall difficulty setting.</summary>
 	/// <exception cref="ArgumentOutOfRangeException">The value is not a finite number.</exception>
-	public double Od { get; init => field = CheckFinite(value); } = CheckFinite(Od);
+	public double Od
+	{
+		get;
+		init => field = CheckFinite(value);
+	} = CheckFinite(Od);
 
 	/// <summary>The health drain rate setting.</summary>
 	/// <exception cref="ArgumentOutOfRangeException">The value is not a finite number.</exception>
-	public double Hp { get; init => field = CheckFinite(value); } = CheckFinite(Hp);
+	public double Hp
+	{
+		get;
+		init => field = CheckFinite(value);
+	} = CheckFinite(Hp);
 
 	/// <summary>The star rating of the beatmap.</summary>
 	/// <exception cref="ArgumentOutOfRangeException">The value is negative or not a finite number.</exception>
-	public double Star { get; init => field = CheckPositive(value); } = CheckPositive(Star);
+	public double Star
+	{
+		get;
+		init => field = CheckPositive(value);
+	} = CheckPositive(Star);
 
 	private static double CheckPositive(double value)
 	{

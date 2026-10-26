@@ -17,6 +17,11 @@ public sealed class FileFaqStorageTests : IDisposable
 		_faqs = new FileFaqStorage(_data.Paths);
 	}
 
+	public void Dispose()
+	{
+		_data.Dispose();
+	}
+
 	[Fact]
 	public async Task Commit_stores_the_written_text()
 	{
@@ -62,7 +67,8 @@ public sealed class FileFaqStorageTests : IDisposable
 	}
 
 	[Fact]
-	public async Task A_new_entry_is_neither_listed_nor_readable_until_the_writer_commits_and_not_at_all_if_it_never_does()
+	public async Task
+		A_new_entry_is_neither_listed_nor_readable_until_the_writer_commits_and_not_at_all_if_it_never_does()
 	{
 		var writer = await _faqs.CreateOrUpdateAsync(Entry, TestContext.Current.CancellationToken);
 		await writer.WriteAsync("Draft");
@@ -176,7 +182,8 @@ public sealed class FileFaqStorageTests : IDisposable
 	[Fact]
 	public async Task An_entry_name_that_climbs_out_of_the_directory_reads_nothing_outside_it()
 	{
-		await File.WriteAllTextAsync(Path.Combine(_data.Root, "secret.txt"), "Secret", TestContext.Current.CancellationToken);
+		await File.WriteAllTextAsync(Path.Combine(_data.Root, "secret.txt"), "Secret",
+			TestContext.Current.CancellationToken);
 		string? read = null;
 
 		var failure = await Record.ExceptionAsync(async () =>
@@ -237,10 +244,5 @@ public sealed class FileFaqStorageTests : IDisposable
 		{
 			return await reader.ReadToEndAsync(TestContext.Current.CancellationToken);
 		}
-	}
-
-	public void Dispose()
-	{
-		_data.Dispose();
 	}
 }

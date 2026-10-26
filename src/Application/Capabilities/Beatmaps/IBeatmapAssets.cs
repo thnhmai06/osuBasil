@@ -1,4 +1,3 @@
-using Basil.Application.Persistence.Beatmaps;
 using Basil.Domain.Beatmaps;
 
 namespace Basil.Application.Capabilities.Beatmaps;

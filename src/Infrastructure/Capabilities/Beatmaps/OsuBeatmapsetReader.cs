@@ -1,6 +1,6 @@
-using Basil.Application.Capabilities.Beatmaps;
 using System.IO.Compression;
 using System.Text;
+using Basil.Application.Capabilities.Beatmaps;
 using Basil.Application.Persistence.Beatmaps;
 using Basil.Domain.Mechanics;
 using osu.Game.IO;
@@ -12,14 +12,16 @@ namespace Basil.Infrastructure.Capabilities.Beatmaps;
 /// <summary>Reads what a beatmapset archive contains, with ppy's osu!lazer legacy decoder.</summary>
 internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 {
-	// ponytail: at most 2,000 files per set; raise this only if legitimate osu! sets exceed it.
+	// At most 2,000 files per set; raise this only if legitimate osu! sets exceed it.
 	private const int MaxFiles = 2_000;
 
-	// ponytail: at most 2 GiB unpacked per set; raise this only if legitimate osu! sets exceed it.
+	// At most 2 GiB unpacked per set; raise this only if legitimate osu! sets exceed it.
 	private const long MaxTotalBytes = 2L * 1024 * 1024 * 1024;
 
-	// ponytail: cap each difficulty at 16 MiB; raise this only if valid osu! difficulty files exceed it.
+	// Each difficulty is capped at 16 MiB; raise this only if valid osu! difficulty files exceed it.
 	private const int MaxOsuBytes = 16 * 1024 * 1024;
+
+	private const int BufferSize = 81920;
 
 	/// <inheritdoc />
 	/// <remarks>
@@ -114,7 +116,7 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 			var content = await file.OpenAsync(cancellationToken);
 			await using var contentScope = content;
 			using var buffer = new MemoryStream();
-			var chunk = new byte[81920];
+			var chunk = new byte[BufferSize];
 			var read = 0;
 			while (read <= MaxOsuBytes)
 			{

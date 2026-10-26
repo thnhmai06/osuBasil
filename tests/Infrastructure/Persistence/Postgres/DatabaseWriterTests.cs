@@ -52,10 +52,12 @@ public sealed class DatabaseWriterTests(PersistenceFixture container) : Database
 				.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
 			try
 			{
-				await Events.RecordAsync(StoredMatches.Event(match, MatchEventType.Created, First), TestContext.Current.CancellationToken)
+				await Events.RecordAsync(StoredMatches.Event(match, MatchEventType.Created, First),
+						TestContext.Current.CancellationToken)
 					.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
-				var rows = await StoredRows.ReadAsync(ConnectionString, "select id from match_events where match_id = @id",
+				var rows = await StoredRows.ReadAsync(ConnectionString,
+					"select id from match_events where match_id = @id",
 					new Dictionary<string, object?> { ["@id"] = match.Id }, TestContext.Current.CancellationToken);
 
 				Assert.Empty(rows);

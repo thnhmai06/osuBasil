@@ -31,7 +31,8 @@ public sealed class OsuBeatmapsetReaderRealSetsTests
 		Assert.Equal(26, content.Difficulties.Count);
 		Assert.All(content.Difficulties, difficulty => Assert.Equal(GameMode.Standard, difficulty.Mode));
 		Assert.Equal(26, content.Difficulties.Select(difficulty => difficulty.Version).Distinct().Count());
-		Assert.Contains(content.Difficulties, difficulty => difficulty.OnlineId == 2245767 && difficulty.Version == "Agatsu's Insane");
+		Assert.Contains(content.Difficulties,
+			difficulty => difficulty.OnlineId == 2245767 && difficulty.Version == "Agatsu's Insane");
 		Assert.All(content.Difficulties, difficulty =>
 		{
 			Assert.Equal("audio.mp3", difficulty.Audio?.Name);
@@ -50,7 +51,8 @@ public sealed class OsuBeatmapsetReaderRealSetsTests
 		Assert.Equal("Garoad", content.Artist);
 		Assert.Equal("Hopes and Dreams", content.Title);
 		Assert.Equal("bighzonda", content.Creator);
-		Assert.Equal(new[] { "Calm", "Serenity" }, content.Difficulties.Select(difficulty => difficulty.Version).Order());
+		Assert.Equal(new[] { "Calm", "Serenity" },
+			content.Difficulties.Select(difficulty => difficulty.Version).Order());
 		Assert.All(content.Difficulties, difficulty =>
 		{
 			Assert.Equal(GameMode.Catch, difficulty.Mode);

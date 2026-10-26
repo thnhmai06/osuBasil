@@ -70,12 +70,6 @@ internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage
 			_temporary = temporary;
 		}
 
-		public static EntryWriter Create(string path)
-		{
-			Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-			return new EntryWriter(path, TempFiles.Name(path));
-		}
-
 		/// <summary>Stores the text written so far, replacing the entry's previous text; committing again does nothing.</summary>
 		public void Commit()
 		{
@@ -86,7 +80,16 @@ internal sealed class FileFaqStorage(DataPaths paths) : IFaqStorage
 			_committed = true;
 		}
 
-		Task IFaqEntryWriter.WriteAsync(string text) => WriteAsync(text);
+		Task IFaqEntryWriter.WriteAsync(string text)
+		{
+			return WriteAsync(text);
+		}
+
+		public static EntryWriter Create(string path)
+		{
+			Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+			return new EntryWriter(path, TempFiles.Name(path));
+		}
 
 		protected override void Dispose(bool disposing)
 		{

@@ -14,8 +14,8 @@ namespace Basil.Infrastructure.Persistence.Tests.Support;
 /// </summary>
 internal sealed class StorageComposition : IAsyncDisposable
 {
-	private readonly string _root;
 	private readonly ServiceProvider _provider;
+	private readonly string _root;
 
 	/// <summary>Builds a composition of the storage against a database.</summary>
 	/// <param name="connectionString">How to reach the database.</param>
@@ -39,6 +39,20 @@ internal sealed class StorageComposition : IAsyncDisposable
 		_provider = services.BuildServiceProvider();
 	}
 
+	/// <summary>Stops the storage and deletes the data directory.</summary>
+	public async ValueTask DisposeAsync()
+	{
+		var hosted = _provider.GetServices<IHostedService>().ToArray();
+		foreach (var service in hosted.Reverse())
+		{
+			if (service is IHostedLifecycleService lifecycle) await lifecycle.StoppingAsync(CancellationToken.None);
+			await service.StopAsync(CancellationToken.None);
+		}
+
+		await _provider.DisposeAsync();
+		if (Directory.Exists(_root)) Directory.Delete(_root, true);
+	}
+
 	/// <summary>Gets a service of the composition.</summary>
 	/// <typeparam name="T">The type of the service.</typeparam>
 	public T Get<T>() where T : notnull
@@ -53,18 +67,5 @@ internal sealed class StorageComposition : IAsyncDisposable
 	public IResident ResidentOf<T>(T service) where T : notnull
 	{
 		return _provider.GetServices<IResident>().Single(resident => ReferenceEquals(resident, service));
-	}
-
-	/// <summary>Stops the storage and deletes the data directory.</summary>
-	public async ValueTask DisposeAsync()
-	{
-		var hosted = _provider.GetServices<IHostedService>().ToArray();
-		foreach (var service in hosted.Reverse())
-		{
-			if (service is IHostedLifecycleService lifecycle) await lifecycle.StoppingAsync(CancellationToken.None);
-			await service.StopAsync(CancellationToken.None);
-		}
-		await _provider.DisposeAsync();
-		if (Directory.Exists(_root)) Directory.Delete(_root, true);
 	}
 }

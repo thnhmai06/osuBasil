@@ -35,9 +35,16 @@ internal static class TestStreams
 		public override bool CanSeek => false;
 		public override bool CanWrite => false;
 		public override long Length => throw new NotSupportedException();
-		public override long Position { get => 0; set => throw new NotSupportedException(); }
 
-		public override void Flush() { }
+		public override long Position
+		{
+			get => 0;
+			set => throw new NotSupportedException();
+		}
+
+		public override void Flush()
+		{
+		}
 
 		public override int Read(byte[] buffer, int offset, int count)
 		{
@@ -47,11 +54,20 @@ internal static class TestStreams
 			return 1;
 		}
 
-		public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+		public override long Seek(long offset, SeekOrigin origin)
+		{
+			throw new NotSupportedException();
+		}
 
-		public override void SetLength(long value) => throw new NotSupportedException();
+		public override void SetLength(long value)
+		{
+			throw new NotSupportedException();
+		}
 
-		public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+		public override void Write(byte[] buffer, int offset, int count)
+		{
+			throw new NotSupportedException();
+		}
 	}
 
 	/// <summary>A stream that delivers its first part at once and its last part only after it is released.</summary>
@@ -59,25 +75,36 @@ internal static class TestStreams
 	/// <param name="last">The text delivered after <see cref="Release" />.</param>
 	public sealed class Gated(string first, string last) : Stream
 	{
-		private readonly TaskCompletionSource _started = new(TaskCreationOptions.RunContinuationsAsynchronously);
 		private readonly TaskCompletionSource _released = new(TaskCreationOptions.RunContinuationsAsynchronously);
+		private readonly TaskCompletionSource _started = new(TaskCreationOptions.RunContinuationsAsynchronously);
 		private int _stage;
 
 		/// <summary>Gets a task that ends once the first part has been read.</summary>
 		public Task Started => _started.Task;
 
-		/// <summary>Lets the last part be read.</summary>
-		public void Release() => _released.TrySetResult();
-
 		public override bool CanRead => true;
 		public override bool CanSeek => false;
 		public override bool CanWrite => false;
 		public override long Length => throw new NotSupportedException();
-		public override long Position { get => 0; set => throw new NotSupportedException(); }
 
-		public override void Flush() { }
+		public override long Position
+		{
+			get => 0;
+			set => throw new NotSupportedException();
+		}
 
-		public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+		/// <summary>Lets the last part be read.</summary>
+		public void Release()
+		{
+			_released.TrySetResult();
+		}
+
+		public override void Flush()
+		{
+		}
+
+		public override async ValueTask<int> ReadAsync(Memory<byte> buffer,
+			CancellationToken cancellationToken = default)
 		{
 			switch (_stage++)
 			{
@@ -96,12 +123,24 @@ internal static class TestStreams
 			}
 		}
 
-		public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+		public override int Read(byte[] buffer, int offset, int count)
+		{
+			throw new NotSupportedException();
+		}
 
-		public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+		public override long Seek(long offset, SeekOrigin origin)
+		{
+			throw new NotSupportedException();
+		}
 
-		public override void SetLength(long value) => throw new NotSupportedException();
+		public override void SetLength(long value)
+		{
+			throw new NotSupportedException();
+		}
 
-		public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+		public override void Write(byte[] buffer, int offset, int count)
+		{
+			throw new NotSupportedException();
+		}
 	}
 }

@@ -1,4 +1,3 @@
-using Basil.Application.Persistence.Beatmaps;
 using Basil.Application.Persistence.Common;
 using Basil.Domain.Mechanics;
 

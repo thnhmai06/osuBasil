@@ -40,8 +40,8 @@ internal sealed class PostgresChannelRepository(DatabaseReader reader, DatabaseW
 	public async Task DeleteAsync(GeneralChannelRecord channel, CancellationToken cancellationToken = default)
 	{
 		await _writes.WriteAsync(channel.Name,
-			() => writer.SaveAsync(Root.Server, (GetType(), channel.Name.ToLowerInvariant()), new WriteCommand(
-				async (context, token) =>
+			() => writer.SaveAsync(Root.Server, (GetType(), channel.Name.ToLowerInvariant()),
+				new WriteCommand(async (context, token) =>
 				{
 					await context.Channels
 						.Where(c => c.Name == channel.Name)
@@ -56,10 +56,7 @@ internal sealed class PostgresChannelRepository(DatabaseReader reader, DatabaseW
 		var rows = await reader.ReadAsync(context => context.Channels
 			.OrderBy(c => c.Name)
 			.ToListAsync(cancellationToken), cancellationToken);
-		foreach (var channel in rows.Select(ToRecord))
-		{
-			_channels[channel.Name] = channel;
-		}
+		foreach (var channel in rows.Select(ToRecord)) _channels[channel.Name] = channel;
 
 		_loaded = true;
 	}

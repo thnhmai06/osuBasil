@@ -60,7 +60,10 @@ public sealed class GeneralChannelData
 		}
 	} = string.Empty;
 
-	/// <summary>Gets or sets the roles a user must all have to read the channel; <see cref="UserPrivileges.None" /> lets anyone read.</summary>
+	/// <summary>
+	///     Gets or sets the roles a user must all have to read the channel; <see cref="UserPrivileges.None" /> lets
+	///     anyone read.
+	/// </summary>
 	/// <exception cref="ArgumentOutOfRangeException">The value sets an undefined privilege bit.</exception>
 	public UserPrivileges ReadPrivileges
 	{
@@ -68,7 +71,10 @@ public sealed class GeneralChannelData
 		set => field = value.ThrowIfUndefined();
 	} = UserPrivileges.None;
 
-	/// <summary>Gets or sets the roles a user must all have, besides the right to chat, to post in the channel; <see cref="UserPrivileges.None" /> lets anyone post.</summary>
+	/// <summary>
+	///     Gets or sets the roles a user must all have, besides the right to chat, to post in the channel;
+	///     <see cref="UserPrivileges.None" /> lets anyone post.
+	/// </summary>
 	/// <exception cref="ArgumentOutOfRangeException">The value sets an undefined privilege bit.</exception>
 	public UserPrivileges WritePrivileges
 	{

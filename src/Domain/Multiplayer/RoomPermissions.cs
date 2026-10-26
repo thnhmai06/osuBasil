@@ -61,7 +61,8 @@ public enum RoomPermissions : uint
 
 /// <summary>The permissions granted by each room role, and the union of all permissions.</summary>
 /// <remarks>
-/// The rights of a role are what the osu! client lets that role do, at least; finer rights only apply to the commands and the API.
+///     The rights of a role are what the osu! client lets that role do, at least; finer rights only apply to the commands
+///     and the API.
 /// </remarks>
 public static class RoomPermissionsGroups
 {

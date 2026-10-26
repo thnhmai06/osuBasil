@@ -1,15 +1,16 @@
 using Basil.Application.Persistence.Auth;
 using Basil.Domain.Auth;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Persistence.Postgres;
 using Basil.Infrastructure.Persistence.Memory;
+using Basil.Infrastructure.Persistence.Postgres;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Persistence.Auth;
 
 /// <summary>Stores the login credential of each user.</summary>
 internal sealed class PostgresCredentialRepository(DatabaseReader reader, DatabaseWriter writer)
-	: MemoryRepository<int, PostgresCredentialRepository.StoredCredential>(reader, writer), ICredentialRepository
+	: RemovableMemoryRepository<int, PostgresCredentialRepository.StoredCredential>(reader, writer),
+		ICredentialRepository
 {
 	/// <inheritdoc />
 	public async Task<bool> VerifyAsync(Credentials credentials, CancellationToken cancellationToken = default)
@@ -66,7 +67,8 @@ internal sealed class PostgresCredentialRepository(DatabaseReader reader, Databa
 	protected override WriteCommand SaveCommand(StoredCredential item)
 	{
 		var row = new CredentialRow { UserId = item.UserId, PasswordHash = item.Hash };
-		return new WriteCommand((context, token) => context.UpsertAsync(row, stored => stored.UserId == row.UserId, token));
+		return new WriteCommand((context, token) =>
+			context.UpsertAsync(row, stored => stored.UserId == row.UserId, token));
 	}
 
 	/// <summary>Holds one user's stored credential hash.</summary>

@@ -3,12 +3,6 @@ namespace Basil.Application.Persistence.Common;
 /// <summary>Which part of a listing to return.</summary>
 public sealed record PageRequest
 {
-	/// <summary>Gets how many items to skip.</summary>
-	public int Offset { get; }
-
-	/// <summary>Gets the most items to return.</summary>
-	public int Limit { get; }
-
 	/// <summary>Initializes a request for the items starting at an offset.</summary>
 	/// <param name="offset">How many items to skip.</param>
 	/// <param name="limit">The most items to return.</param>
@@ -23,4 +17,10 @@ public sealed record PageRequest
 		Offset = offset;
 		Limit = limit;
 	}
+
+	/// <summary>Gets how many items to skip.</summary>
+	public int Offset { get; }
+
+	/// <summary>Gets the most items to return.</summary>
+	public int Limit { get; }
 }

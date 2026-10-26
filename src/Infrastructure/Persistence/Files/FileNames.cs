@@ -15,7 +15,8 @@ internal static class FileNames
 
 		var length = name.Length;
 		while (length > 0 &&
-		       (Encoding.UTF8.GetByteCount(name.AsSpan(0, length)) > maxBytes || char.IsHighSurrogate(name[length - 1])))
+		       (Encoding.UTF8.GetByteCount(name.AsSpan(0, length)) > maxBytes ||
+		        char.IsHighSurrogate(name[length - 1])))
 			length--;
 		return name[..length].TrimEnd(' ', '.');
 	}

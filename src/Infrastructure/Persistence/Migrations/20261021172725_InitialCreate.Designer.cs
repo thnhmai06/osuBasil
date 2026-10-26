@@ -522,6 +522,10 @@ namespace Basil.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("mods");
 
+                    b.Property<string>("Result")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("result");
+
                     b.Property<int>("Seed")
                         .HasColumnType("integer")
                         .HasColumnName("seed");
@@ -832,6 +836,7 @@ namespace Basil.Infrastructure.Persistence.Migrations
                         .HasColumnName("id");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.HasIdentityOptions(b.Property<int>("Id"), 2L, null, null, null, null, null);
 
                     b.Property<int>("Country")
                         .HasColumnType("integer")
@@ -866,16 +871,6 @@ namespace Basil.Infrastructure.Persistence.Migrations
                     b.ToTable("users", null, t =>
                         {
                             t.HasCheckConstraint("users_id_check", "id >= 1");
-                        });
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Country = 244,
-                            Name = "BasilBot",
-                            NormalizedName = "basilbot",
-                            Permissions = 0L
                         });
                 });
 

@@ -12,7 +12,8 @@ internal static class FileBeatmapsetNames
 {
 	/// <summary>
 	///     The marker a top-level name starts with while it is being written or set aside: an upload, a file, a set
-	///     folder before it is moved into place or the previous folder while its replacement is moved in. Such a name is never a set, an entry, or watched.
+	///     folder before it is moved into place or the previous folder while its replacement is moved in. Such a name is never
+	///     a set, an entry, or watched.
 	/// </summary>
 	internal const string IncomingMarker = ".incoming_";
 

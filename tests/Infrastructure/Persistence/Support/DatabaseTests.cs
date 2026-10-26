@@ -7,7 +7,6 @@ using Basil.Infrastructure.Persistence.Postgres;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-using Xunit;
 
 namespace Basil.Infrastructure.Persistence.Tests.Support;
 
@@ -20,8 +19,8 @@ public abstract class DatabaseTests(PersistenceFixture container) : IAsyncLifeti
 {
 	private readonly string _database = "basil-" + Guid.NewGuid().ToString("N");
 	private readonly string _root = Path.Combine(Path.GetTempPath(), "basil-test-db-" + Guid.NewGuid().ToString("N"));
-	private ServiceProvider? _provider;
 	private UserRecord? _matchCreator;
+	private ServiceProvider? _provider;
 
 	/// <summary>The connection string of the database created for the test.</summary>
 	protected string ConnectionString { get; private set; } = "";

@@ -23,19 +23,18 @@ internal sealed class PostgresModerationLogRepository(
 		var targetId = entry.Target.Id;
 		var reason = entry.Reason;
 		var timestamp = entry.Timestamp.ToUniversalTime();
-		_ = writer.AppendAsync(Root.User(entry.Target.Id), new WriteCommand(
-			async (context, token) =>
+		_ = writer.AppendAsync(Root.User(entry.Target.Id), new WriteCommand(async (context, token) =>
+		{
+			context.ModerationLog.Add(new ModerationLogRow
 			{
-				context.ModerationLog.Add(new ModerationLogRow
-				{
-					Action = action,
-					ById = byId,
-					TargetId = targetId,
-					Reason = reason,
-					Timestamp = timestamp
-				});
-				await context.SaveChangesAsync(token);
-			}));
+				Action = action,
+				ById = byId,
+				TargetId = targetId,
+				Reason = reason,
+				Timestamp = timestamp
+			});
+			await context.SaveChangesAsync(token);
+		}));
 		return Task.CompletedTask;
 	}
 
@@ -52,18 +51,14 @@ internal sealed class PostgresModerationLogRepository(
 			var query = context.ModerationLog.Where(row => row.TargetId == liveTarget.Id);
 
 			if (minTimestamp is { } min)
-			{
 				query = within!.Value.MinInclusive
 					? query.Where(row => row.Timestamp >= min)
 					: query.Where(row => row.Timestamp > min);
-			}
 
 			if (maxTimestamp is { } max)
-			{
 				query = within!.Value.MaxInclusive
 					? query.Where(row => row.Timestamp <= max)
 					: query.Where(row => row.Timestamp < max);
-			}
 
 			var count = await query.CountAsync(cancellationToken);
 			var rows = await query

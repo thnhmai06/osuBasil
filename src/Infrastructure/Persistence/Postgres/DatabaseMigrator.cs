@@ -10,7 +10,7 @@ internal sealed class DatabaseMigrator(Database database)
 	/// <param name="cancellationToken">A token that cancels the migration.</param>
 	public async Task MigrateAsync(CancellationToken cancellationToken = default)
 	{
-		await using var context = database.CreateSynchronousContext();
+		await using var context = database.CreateConfirmedContext();
 		await context.Database.MigrateAsync(cancellationToken);
 	}
 }

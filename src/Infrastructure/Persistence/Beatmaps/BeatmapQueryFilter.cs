@@ -89,13 +89,13 @@ internal static class BeatmapQueryFilter
 
 		if (!string.IsNullOrWhiteSpace(query.FileName))
 		{
-			var normalized = BeatmapMetadata.NormalizeOsuFileName(query.FileName).ToLowerInvariant();
+			var pattern = LikePattern.Literal(BeatmapMetadata.NormalizeOsuFileName(query.FileName));
 			// The name of the .osu file of a beatmap leaves out the characters a file name cannot hold.
-			beatmaps = beatmaps.Where(row =>
+			beatmaps = beatmaps.Where(row => EF.Functions.ILike(
 				(row.Set.Artist + " - " + row.Set.Title + " (" + row.Set.Creator + ") [" + row.Version + "].osu")
 				.Replace(":", "").Replace("\\", "").Replace("/", "").Replace("*", "").Replace("<", "").Replace(">", "")
-				.Replace("?", "").Replace("\"", "").Replace("|", "")
-				.Equals(normalized, StringComparison.CurrentCultureIgnoreCase));
+				.Replace("?", "").Replace("\"", "").Replace("|", ""),
+				pattern, LikePattern.Escape));
 		}
 
 		return beatmaps;

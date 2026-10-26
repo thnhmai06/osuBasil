@@ -40,6 +40,13 @@ public sealed class Round : IMatchEntry, IEquatable<Round>
 		}
 	} = null;
 
+	/// <summary>
+	///     Gets or sets what was decided for the round when it was decided, or <see langword="null" /> before that and
+	///     for a round nobody scored in.
+	/// </summary>
+	/// <remarks>This is what is stored; <see cref="Result" /> is built from it and the round's scores.</remarks>
+	public RoundVerdict? Decision { get; set; }
+
 	/// <summary>The time the round started.</summary>
 	public required DateTimeOffset StartedAt { get; init; }
 

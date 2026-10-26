@@ -19,10 +19,18 @@ public readonly record struct ContentStamp(long Size, DateTimeOffset ModifiedAt)
 {
 	/// <summary>Gets the content's size in bytes.</summary>
 	/// <exception cref="ArgumentOutOfRangeException">The value is negative.</exception>
-	public long Size { get; init => field = Check(value); } = Check(Size);
+	public long Size
+	{
+		get;
+		init => field = Check(value);
+	} = Check(Size);
 
 	/// <summary>Gets when the content last changed, in UTC.</summary>
-	public DateTimeOffset ModifiedAt { get; init => field = value.ToUniversalTime(); } = ModifiedAt.ToUniversalTime();
+	public DateTimeOffset ModifiedAt
+	{
+		get;
+		init => field = value.ToUniversalTime();
+	} = ModifiedAt.ToUniversalTime();
 
 	private static long Check(long value)
 	{

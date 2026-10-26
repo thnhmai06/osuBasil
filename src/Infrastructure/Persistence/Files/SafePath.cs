@@ -10,7 +10,8 @@ internal static class SafePath
 	/// <param name="name">The file's name, relative to the directory.</param>
 	/// <returns>The absolute path of the file.</returns>
 	/// <exception cref="ArgumentException">
-	///     <paramref name="name" /> is empty or white space, is rooted, contains a backslash, a null character or a <c>.</c> or
+	///     <paramref name="name" /> is empty or white space, is rooted, contains a backslash, a null character or a <c>.</c>
+	///     or
 	///     <c>..</c> segment, or resolves outside <paramref name="root" />.
 	/// </exception>
 	public static string Combine(string root, string name)

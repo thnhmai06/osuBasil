@@ -81,9 +81,10 @@ Repository contracts, byte storages and the memory-first model. Moved out of `AG
   * **Writes:** for the memory-first objects (users, matches, beatmaps, scores), `CreateOrUpdateAsync`/`DeleteAsync` queue
     a copy of the values **as they are when queued** and return at once; only a try-operation waits for the database,
     because its outcome comes from it. Resident data (above) and records that no business need keeps as live objects
-    await the write instead: a relation recorded once and never changed (`round_scores`) lists from the database, and a
-    round (`rounds`) is stored when `CreateOrUpdateAsync` returns, its write never pins the live instance (a room's
-    round is the instance `ListAsync` returns while it is held). `DatabaseWriter` keeps
+    await the write instead (none today). A relation recorded once and never changed (`round_scores`) is queued like the rest and its listing adds the relations still queued. A
+    round (`rounds`) is queued like the memory-first objects (`CreateOrUpdateAsync` returns at once, because handlers
+    never wait) and `ListAsync` adds the live rounds whose first write is still queued to what the database returns; a
+    room's round is the instance `ListAsync` returns while it is held. `DatabaseWriter` keeps
     one queue per root (`Root.User`, `Root.Match`, `Root.Beatmapset`, `Root.Server`) and sends its writes one
     statement at a time, in order; a copy not sent yet is replaced by a newer copy of the same identity. At most
     `Basil:Database:WriteConnections` connections (8 by default, see [`plans/evidence/postgresql-direct-writes-20261008`](plans/evidence/postgresql-direct-writes-20261008/results.md)) write at once. No write is grouped with unrelated

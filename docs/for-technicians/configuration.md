@@ -335,8 +335,7 @@ Data/Beatmapsets/{set id} {Artist} - {Title}/
 `archive.osz` is what counts: everything else is made from it when the set is indexed, and made again if it goes
 missing. Drop a `.osz`, or a folder of a set's loose files, into `Data/Beatmapsets/` to add it; the server moves or
 packs it into a set folder. Deleting a set folder's `archive.osz` removes the set from the server and leaves the folder
-as it is. A `Data/Songs/` or `Data/Beatmaps/` directory from an older version is moved to `Data/Beatmapsets/` on
-startup. See [`beatmap-ingestion.md`](../for-developers/beatmap-ingestion.md).
+as it is. See [`beatmap-ingestion.md`](../for-developers/beatmap-ingestion.md).
 
 A standalone `.osu` file is **not** imported because a difficulty file alone does not provide enough information to
 identify its beatmapset.

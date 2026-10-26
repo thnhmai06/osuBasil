@@ -6,7 +6,10 @@ using Basil.Infrastructure.Persistence.Tests.Support;
 namespace Basil.Infrastructure.Persistence.Tests.Users;
 
 /// <summary>Contract tests of the storing of registered users.</summary>
-/// <remarks>The migration stores BasilBot as account <see cref="BasilBot.Id" />, so every database starts with that one account.</remarks>
+/// <remarks>
+///     A new database holds no account. BasilBot is stored under <see cref="BasilBot.Id" /> by the server at start-up,
+///     so the first account the database numbers is <c>BasilBot.Id + 1</c>.
+/// </remarks>
 [Collection("Persistence")]
 public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
@@ -23,8 +26,10 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 	[Fact]
 	public async Task Created_users_are_given_increasing_ids()
 	{
-		var first = await Users.CreateAsync(new UserData { Name = "older_user" }, TestContext.Current.CancellationToken);
-		var second = await Users.CreateAsync(new UserData { Name = "newer_user" }, TestContext.Current.CancellationToken);
+		var first = await Users.CreateAsync(new UserData { Name = "older_user" },
+			TestContext.Current.CancellationToken);
+		var second =
+			await Users.CreateAsync(new UserData { Name = "newer_user" }, TestContext.Current.CancellationToken);
 
 		Assert.True(second.Id > first.Id);
 	}
@@ -51,7 +56,8 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 	public async Task A_name_another_account_holds_in_the_database_is_refused()
 	{
 		await using var other = new StorageComposition(ConnectionString);
-		await other.Get<IUserRepository>().CreateAsync(new UserData { Name = "taken_elsewhere" }, TestContext.Current.CancellationToken);
+		await other.Get<IUserRepository>().CreateAsync(new UserData { Name = "taken_elsewhere" },
+			TestContext.Current.CancellationToken);
 
 		await Assert.ThrowsAsync<AlreadyExistsException>(() =>
 			Users.CreateAsync(new UserData { Name = "taken_elsewhere" }, TestContext.Current.CancellationToken));
@@ -75,7 +81,8 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 		await DeleteAsync(user);
 		await WaitForDeletionAsync(user.Id);
 
-		var second = await Users.CreateAsync(new UserData { Name = "freed_name" }, TestContext.Current.CancellationToken);
+		var second =
+			await Users.CreateAsync(new UserData { Name = "freed_name" }, TestContext.Current.CancellationToken);
 
 		Assert.NotEqual(user.Id, second.Id);
 	}
@@ -87,7 +94,8 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 		user.Value.DeletedAt = DateTimeOffset.UtcNow;
 		await Users.UpdateAsync(user, TestContext.Current.CancellationToken);
 
-		var second = await Users.CreateAsync(new UserData { Name = "taken_name" }, TestContext.Current.CancellationToken);
+		var second =
+			await Users.CreateAsync(new UserData { Name = "taken_name" }, TestContext.Current.CancellationToken);
 
 		Assert.NotEqual(user.Id, second.Id);
 	}
@@ -95,7 +103,8 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 	[Fact]
 	public async Task A_deleted_account_is_still_found_by_id()
 	{
-		var user = await Users.CreateAsync(new UserData { Name = "deleted_user" }, TestContext.Current.CancellationToken);
+		var user = await Users.CreateAsync(new UserData { Name = "deleted_user" },
+			TestContext.Current.CancellationToken);
 		await DeleteAsync(user);
 
 		var found = await Users.GetAsync(user.Id, TestContext.Current.CancellationToken);
@@ -108,7 +117,8 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 	[Fact]
 	public async Task A_deleted_account_is_not_found_by_name()
 	{
-		var user = await Users.CreateAsync(new UserData { Name = "hidden_name" }, TestContext.Current.CancellationToken);
+		var user = await Users.CreateAsync(new UserData { Name = "hidden_name" },
+			TestContext.Current.CancellationToken);
 		await DeleteAsync(user);
 		await WaitForDeletionAsync(user.Id);
 
@@ -119,7 +129,8 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 	public async Task A_replaced_account_holds_the_new_data_under_the_same_id()
 	{
 		var replaced = await Users.ReplaceAsync(BasilBot.Id,
-			new UserData { Name = "renamed_bot", Permissions = UserPermissions.None }, TestContext.Current.CancellationToken);
+			new UserData { Name = "renamed_bot", Permissions = UserPermissions.None },
+			TestContext.Current.CancellationToken);
 
 		var found = await Users.GetAsync(BasilBot.Id, TestContext.Current.CancellationToken);
 
@@ -146,7 +157,8 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 	[Fact]
 	public async Task A_deleted_account_is_restored_by_replacing_it()
 	{
-		var user = await Users.CreateAsync(new UserData { Name = "was_deleted" }, TestContext.Current.CancellationToken);
+		var user = await Users.CreateAsync(new UserData { Name = "was_deleted" },
+			TestContext.Current.CancellationToken);
 		await DeleteAsync(user);
 		await WaitForDeletionAsync(user.Id);
 
@@ -187,9 +199,11 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 	[Fact]
 	public async Task Replacing_an_account_leaves_the_ids_the_store_gives_out_unchanged()
 	{
-		await Users.ReplaceAsync(BasilBot.Id, new UserData { Name = "bot_again" }, TestContext.Current.CancellationToken);
+		await Users.ReplaceAsync(BasilBot.Id, new UserData { Name = "bot_again" },
+			TestContext.Current.CancellationToken);
 
-		var user = await Users.CreateAsync(new UserData { Name = "after_replace" }, TestContext.Current.CancellationToken);
+		var user = await Users.CreateAsync(new UserData { Name = "after_replace" },
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal(BasilBot.Id + 1, user.Id);
 	}
@@ -210,7 +224,8 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 	[Fact]
 	public async Task An_update_is_seen_at_once()
 	{
-		var user = await Users.CreateAsync(new UserData { Name = "updated_user", Country = Country.Jp }, TestContext.Current.CancellationToken);
+		var user = await Users.CreateAsync(new UserData { Name = "updated_user", Country = Country.Jp },
+			TestContext.Current.CancellationToken);
 		user.Value.Country = Country.De;
 
 		await Users.UpdateAsync(user, TestContext.Current.CancellationToken);
@@ -222,7 +237,8 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 	[Fact]
 	public async Task An_update_is_stored()
 	{
-		var user = await Users.CreateAsync(new UserData { Name = "stored_user", Country = Country.Jp }, TestContext.Current.CancellationToken);
+		var user = await Users.CreateAsync(new UserData { Name = "stored_user", Country = Country.Jp },
+			TestContext.Current.CancellationToken);
 		user.Value.Country = Country.De;
 		await Users.UpdateAsync(user, TestContext.Current.CancellationToken);
 
@@ -246,7 +262,8 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 	[Fact]
 	public async Task A_rename_to_a_free_name_gives_the_account_the_new_name()
 	{
-		var user = await Users.CreateAsync(new UserData { Name = "before_rename" }, TestContext.Current.CancellationToken);
+		var user = await Users.CreateAsync(new UserData { Name = "before_rename" },
+			TestContext.Current.CancellationToken);
 
 		Assert.True(await Users.RenameAsync(user, "after_rename", TestContext.Current.CancellationToken));
 
@@ -258,7 +275,8 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 	[Fact]
 	public async Task A_rename_frees_the_old_name()
 	{
-		var user = await Users.CreateAsync(new UserData { Name = "before_rename" }, TestContext.Current.CancellationToken);
+		var user = await Users.CreateAsync(new UserData { Name = "before_rename" },
+			TestContext.Current.CancellationToken);
 		await Users.RenameAsync(user, "after_rename", TestContext.Current.CancellationToken);
 
 		Assert.Null(await Users.GetByNameAsync("before_rename", TestContext.Current.CancellationToken));
@@ -268,7 +286,8 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 	public async Task A_rename_to_a_taken_name_leaves_the_account_alone()
 	{
 		await Users.CreateAsync(new UserData { Name = "taken_first" }, TestContext.Current.CancellationToken);
-		var second = await Users.CreateAsync(new UserData { Name = "taken_second" }, TestContext.Current.CancellationToken);
+		var second =
+			await Users.CreateAsync(new UserData { Name = "taken_second" }, TestContext.Current.CancellationToken);
 
 		Assert.False(await Users.RenameAsync(second, "taken_first", TestContext.Current.CancellationToken));
 
@@ -290,7 +309,8 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 	public async Task A_rename_to_a_name_another_account_holds_in_the_database_is_refused()
 	{
 		await using var other = new StorageComposition(ConnectionString);
-		await other.Get<IUserRepository>().CreateAsync(new UserData { Name = "taken_elsewhere" }, TestContext.Current.CancellationToken);
+		await other.Get<IUserRepository>().CreateAsync(new UserData { Name = "taken_elsewhere" },
+			TestContext.Current.CancellationToken);
 		var user = await Users.CreateAsync(new UserData { Name = "mover_user" }, TestContext.Current.CancellationToken);
 
 		Assert.False(await Users.RenameAsync(user, "taken_elsewhere", TestContext.Current.CancellationToken));
@@ -304,7 +324,8 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 		await Users.CreateAsync(new UserData { Name = "alpha_one" }, TestContext.Current.CancellationToken);
 		await Users.CreateAsync(new UserData { Name = "beta_two" }, TestContext.Current.CancellationToken);
 
-		var page = await Users.ListAsync(new UserQuery(Text: "alpha"), new PageRequest(0, 10), TestContext.Current.CancellationToken);
+		var page = await Users.ListAsync(new UserQuery("alpha"), new PageRequest(0, 10),
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal("alpha_one", Assert.Single(page.Items).Value.Name);
 	}
@@ -315,7 +336,8 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 		await Users.CreateAsync(new UserData { Name = "alpha_one" }, TestContext.Current.CancellationToken);
 		await Users.CreateAsync(new UserData { Name = "beta_two" }, TestContext.Current.CancellationToken);
 
-		var page = await Users.ListAsync(new UserQuery(Text: "alpha_one"), new PageRequest(0, 10), TestContext.Current.CancellationToken);
+		var page = await Users.ListAsync(new UserQuery("alpha_one"), new PageRequest(0, 10),
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal("alpha_one", Assert.Single(page.Items).Value.Name);
 	}
@@ -326,7 +348,8 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 		await Users.CreateAsync(new UserData { Name = "alpha_one" }, TestContext.Current.CancellationToken);
 		await Users.CreateAsync(new UserData { Name = "beta_two" }, TestContext.Current.CancellationToken);
 
-		var page = await Users.ListAsync(new UserQuery(Text: "ALPHA ONE"), new PageRequest(0, 10), TestContext.Current.CancellationToken);
+		var page = await Users.ListAsync(new UserQuery("ALPHA ONE"), new PageRequest(0, 10),
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal("alpha_one", Assert.Single(page.Items).Value.Name);
 	}
@@ -337,7 +360,8 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 		var user = await Users.CreateAsync(new UserData { Name = "id_user" }, TestContext.Current.CancellationToken);
 		await Users.CreateAsync(new UserData { Name = "other_one" }, TestContext.Current.CancellationToken);
 
-		var page = await Users.ListAsync(new UserQuery(Text: user.Id.ToString()), new PageRequest(0, 10), TestContext.Current.CancellationToken);
+		var page = await Users.ListAsync(new UserQuery(user.Id.ToString()), new PageRequest(0, 10),
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal(user.Id, Assert.Single(page.Items).Id);
 	}
@@ -345,10 +369,13 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 	[Fact]
 	public async Task A_listing_finds_accounts_by_their_country()
 	{
-		await Users.CreateAsync(new UserData { Name = "from_jp", Country = Country.Jp }, TestContext.Current.CancellationToken);
-		await Users.CreateAsync(new UserData { Name = "from_de", Country = Country.De }, TestContext.Current.CancellationToken);
+		await Users.CreateAsync(new UserData { Name = "from_jp", Country = Country.Jp },
+			TestContext.Current.CancellationToken);
+		await Users.CreateAsync(new UserData { Name = "from_de", Country = Country.De },
+			TestContext.Current.CancellationToken);
 
-		var page = await Users.ListAsync(new UserQuery(Countries: [Country.Jp]), new PageRequest(0, 10), TestContext.Current.CancellationToken);
+		var page = await Users.ListAsync(new UserQuery(Countries: [Country.Jp]), new PageRequest(0, 10),
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal(Country.Jp, Assert.Single(page.Items).Value.Country);
 	}
@@ -356,7 +383,8 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 	[Fact]
 	public async Task A_listing_finds_accounts_by_the_permissions_they_hold()
 	{
-		await Users.CreateAsync(new UserData { Name = "plain_user", Permissions = UserPermissions.None }, TestContext.Current.CancellationToken);
+		await Users.CreateAsync(new UserData { Name = "plain_user", Permissions = UserPermissions.None },
+			TestContext.Current.CancellationToken);
 		await Users.CreateAsync(new UserData
 		{
 			Name = "admin_user",
@@ -374,9 +402,10 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 	{
 		await TwoAccountsOneDeletedAsync();
 
-		var page = await Users.ListAsync(new UserQuery(), new PageRequest(0, 10), TestContext.Current.CancellationToken);
+		var page = await Users.ListAsync(new UserQuery(), new PageRequest(0, 10),
+			TestContext.Current.CancellationToken);
 
-		Assert.Equal(3, page.Total);
+		Assert.Equal(2, page.Total);
 	}
 
 	[Fact]
@@ -384,9 +413,10 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 	{
 		await TwoAccountsOneDeletedAsync();
 
-		var page = await Users.ListAsync(new UserQuery(Deleted: false), new PageRequest(0, 10), TestContext.Current.CancellationToken);
+		var page = await Users.ListAsync(new UserQuery(Deleted: false), new PageRequest(0, 10),
+			TestContext.Current.CancellationToken);
 
-		Assert.Equal(2, page.Total);
+		Assert.Equal(1, page.Total);
 	}
 
 	[Fact]
@@ -394,7 +424,8 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 	{
 		await TwoAccountsOneDeletedAsync();
 
-		var page = await Users.ListAsync(new UserQuery(Deleted: true), new PageRequest(0, 10), TestContext.Current.CancellationToken);
+		var page = await Users.ListAsync(new UserQuery(Deleted: true), new PageRequest(0, 10),
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal(1, page.Total);
 		Assert.NotNull(page.Items[0].Value.DeletedAt);
@@ -409,7 +440,7 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 
 		var page = await Users.ListAsync(new UserQuery(), new PageRequest(1, 2), TestContext.Current.CancellationToken);
 
-		Assert.Equal(4, page.Total);
+		Assert.Equal(3, page.Total);
 		Assert.Equal(2, page.Items.Count);
 	}
 
@@ -422,7 +453,7 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 
 		var page = await Users.ListAsync(new UserQuery(), new PageRequest(0, 2), TestContext.Current.CancellationToken);
 
-		Assert.Equal(4, page.Total);
+		Assert.Equal(3, page.Total);
 		Assert.Equal(2, page.Items.Count);
 	}
 
@@ -430,12 +461,15 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 	public async Task A_listing_is_ordered_by_id()
 	{
 		var first = await Users.CreateAsync(new UserData { Name = "order_one" }, TestContext.Current.CancellationToken);
-		var second = await Users.CreateAsync(new UserData { Name = "order_two" }, TestContext.Current.CancellationToken);
-		var third = await Users.CreateAsync(new UserData { Name = "order_three" }, TestContext.Current.CancellationToken);
+		var second =
+			await Users.CreateAsync(new UserData { Name = "order_two" }, TestContext.Current.CancellationToken);
+		var third = await Users.CreateAsync(new UserData { Name = "order_three" },
+			TestContext.Current.CancellationToken);
 
-		var page = await Users.ListAsync(new UserQuery(), new PageRequest(0, 10), TestContext.Current.CancellationToken);
+		var page = await Users.ListAsync(new UserQuery(), new PageRequest(0, 10),
+			TestContext.Current.CancellationToken);
 
-		Assert.Equal(new[] { BasilBot.Id, first.Id, second.Id, third.Id }, page.Items.Select(account => account.Id));
+		Assert.Equal(new[] { first.Id, second.Id, third.Id }, page.Items.Select(account => account.Id));
 	}
 
 	/// <summary>Deletes an account and waits until the deletion is stored.</summary>
@@ -459,7 +493,8 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 	private async Task TwoAccountsOneDeletedAsync()
 	{
 		await Users.CreateAsync(new UserData { Name = "living_user" }, TestContext.Current.CancellationToken);
-		var deleted = await Users.CreateAsync(new UserData { Name = "dead_user" }, TestContext.Current.CancellationToken);
+		var deleted =
+			await Users.CreateAsync(new UserData { Name = "dead_user" }, TestContext.Current.CancellationToken);
 		await DeleteAsync(deleted);
 		await WaitForDeletionAsync(deleted.Id);
 	}

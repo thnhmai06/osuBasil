@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using Basil.Application.Persistence.Beatmaps;
 using Microsoft.Extensions.Logging;
@@ -68,22 +67,6 @@ internal sealed class FileBeatmapsetWatcher : IAsyncEnumerable<BeatmapsetSource>
 		}
 	}
 
-	/// <summary>Stops watching; entries that have not settled are not reported, and reading ends.</summary>
-	public void Dispose()
-	{
-		lock (_gate)
-		{
-			if (_stopped) return;
-			_stopped = true;
-			foreach (var debounce in _pending.Values) debounce.Cancel();
-			_pending.Clear();
-		}
-
-		_watcher.Dispose();
-		_registration.Dispose();
-		_settled.Writer.TryComplete();
-	}
-
 	/// <summary>Reads the reports; ending the read stops watching.</summary>
 	/// <param name="cancellationToken">A token that ends the read.</param>
 	/// <returns>Each entry that changed, as it is once its changes have settled.</returns>
@@ -101,6 +84,22 @@ internal sealed class FileBeatmapsetWatcher : IAsyncEnumerable<BeatmapsetSource>
 		{
 			Dispose();
 		}
+	}
+
+	/// <summary>Stops watching; entries that have not settled are not reported, and reading ends.</summary>
+	public void Dispose()
+	{
+		lock (_gate)
+		{
+			if (_stopped) return;
+			_stopped = true;
+			foreach (var debounce in _pending.Values) debounce.Cancel();
+			_pending.Clear();
+		}
+
+		_watcher.Dispose();
+		_registration.Dispose();
+		_settled.Writer.TryComplete();
 	}
 
 	/// <summary>Notes that a top-level name changed: it is reported once it stays unchanged for the settling time.</summary>

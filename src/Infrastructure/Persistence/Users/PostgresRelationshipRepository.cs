@@ -1,8 +1,8 @@
 using System.Collections.Immutable;
 using Basil.Application.Persistence.Users;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Persistence.Postgres;
 using Basil.Infrastructure.Persistence.Memory;
+using Basil.Infrastructure.Persistence.Postgres;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Persistence.Users;
@@ -28,8 +28,9 @@ internal sealed class PostgresRelationshipRepository(
 			Type = (int)relationship.Type,
 			CreatedAt = relationship.CreatedAt.ToUniversalTime()
 		};
-		var saved = writer.SaveAsync(Root.User(actorId), (GetType(), (actorId, targetId)), new WriteCommand((context, token) =>
-			context.UpsertAsync(row, stored => stored.ActorId == actorId && stored.TargetId == targetId, token)));
+		var saved = writer.SaveAsync(Root.User(actorId), (GetType(), (actorId, targetId)),
+			new WriteCommand((context, token) =>
+				context.UpsertAsync(row, stored => stored.ActorId == actorId && stored.TargetId == targetId, token)));
 		_byActor.Change(actorId, actor, current => Replace(current, relationship), saved);
 	}
 
@@ -39,8 +40,8 @@ internal sealed class PostgresRelationshipRepository(
 		var actorId = relationship.Actor.Id;
 		var targetId = relationship.Target.Id;
 		var actor = await users.GetAsync(actorId, cancellationToken);
-		var saved = writer.SaveAsync(Root.User(actorId), (GetType(), (actorId, targetId)), new WriteCommand(
-			async (context, token) =>
+		var saved = writer.SaveAsync(Root.User(actorId), (GetType(), (actorId, targetId)),
+			new WriteCommand(async (context, token) =>
 			{
 				await context.Relationships
 					.Where(r => r.ActorId == actorId && r.TargetId == targetId)

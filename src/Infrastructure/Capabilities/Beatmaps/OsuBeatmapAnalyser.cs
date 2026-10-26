@@ -1,5 +1,5 @@
-using Basil.Application.Capabilities.Beatmaps;
 using System.Runtime.CompilerServices;
+using Basil.Application.Capabilities.Beatmaps;
 using Basil.Application.Persistence.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Common;
@@ -41,10 +41,7 @@ internal sealed class OsuBeatmapAnalyser(IBeatmapsetStorage storage) : IBeatmapA
 	/// <exception cref="Exception">The beatmap file could not be decoded or analyzed.</exception>
 	public BeatmapAnalysis Analyze(Stream content, GameMode mode, GameMods mods)
 	{
-		using var reader = new LineBufferedReader(content, true);
-		var beatmap = Decoder.GetDecoder<LazerBeatmap>(reader).Decode(reader);
-
-		return Analyze(new OsuBeatmapContent(new StreamlessWorkingBeatmap(beatmap)), mode, mods);
+		return Analyze(new StreamlessWorkingBeatmap(Decode(content)), mode, mods);
 	}
 
 	/// <inheritdoc />
@@ -60,26 +57,31 @@ internal sealed class OsuBeatmapAnalyser(IBeatmapsetStorage storage) : IBeatmapA
 			if (osu is null) return null;
 			await using var osuScope = osu;
 
-			using var reader = new LineBufferedReader(osu, true);
-			var decoded = Decoder.GetDecoder<LazerBeatmap>(reader).Decode(reader);
-			kept = new KeptContent(hash, new OsuBeatmapContent(new StreamlessWorkingBeatmap(decoded)));
+			var decoded = Decode(osu);
+			kept = new KeptContent(hash, new StreamlessWorkingBeatmap(decoded));
 			_contents.AddOrUpdate(beatmap, kept);
 		}
 
-		return Analyze(kept.Content, beatmap.Metadata.Difficulty.Mode, mods);
+		return Analyze(kept.Working, beatmap.Metadata.Difficulty.Mode, mods);
+	}
+
+	/// <summary>Decodes the content of a <c>.osu</c> file.</summary>
+	private static LazerBeatmap Decode(Stream content)
+	{
+		using var reader = new LineBufferedReader(content, true);
+		return Decoder.GetDecoder<LazerBeatmap>(reader).Decode(reader);
 	}
 
 	/// <summary>Computes the gameplay stats of an already-decoded difficulty under the given mode and mods.</summary>
-	private static BeatmapAnalysis Analyze(OsuBeatmapContent content, GameMode mode, GameMods mods)
+	private static BeatmapAnalysis Analyze(IWorkingBeatmap working, GameMode mode, GameMods mods)
 	{
 		var ruleset = CreateRuleset(mode);
-		var workingBeatmap = content.Working;
 
 		var legacyMods = ruleset.ConvertFromLegacyMods((LegacyMods)mods).ToArray();
-		var attributes = ruleset.CreateDifficultyCalculator(workingBeatmap).Calculate(legacyMods);
-		var playable = workingBeatmap.GetPlayableBeatmap(ruleset.RulesetInfo, legacyMods);
+		var attributes = ruleset.CreateDifficultyCalculator(working).Calculate(legacyMods);
+		var playable = working.GetPlayableBeatmap(ruleset.RulesetInfo, legacyMods);
 
-		var displayDifficulty = ruleset.GetAdjustedDisplayDifficulty(workingBeatmap.Beatmap.BeatmapInfo, legacyMods);
+		var displayDifficulty = ruleset.GetAdjustedDisplayDifficulty(working.Beatmap.BeatmapInfo, legacyMods);
 		var maxCombo = playable.GetMaxCombo();
 		var mostCommonBeatLength = playable.GetMostCommonBeatLength();
 		var rate = ModUtils.CalculateRateWithMods(legacyMods);
@@ -120,72 +122,72 @@ internal sealed class OsuBeatmapAnalyser(IBeatmapsetStorage storage) : IBeatmapA
 			case GameMode.Standard:
 			{
 				int circles = 0, sliders = 0, spinners = 0;
-				foreach (var h in hitObjects)
-					switch (h)
+				foreach (var hitObject in hitObjects)
+					switch (hitObject)
 					{
 						case HitCircle: circles++; break;
 						case Slider: sliders++; break;
 						case Spinner: spinners++; break;
 					}
 
-				var o = (OsuObjects)BeatmapObjects.Empty(mode);
-				o.Total = circles + sliders + spinners;
-				o.MaxCombo = maxCombo;
-				o.Circles = circles;
-				o.Sliders = sliders;
-				o.Spinners = spinners;
-				return o;
+				var counts = (OsuObjects)BeatmapObjects.Empty(mode);
+				counts.Total = circles + sliders + spinners;
+				counts.MaxCombo = maxCombo;
+				counts.Circles = circles;
+				counts.Sliders = sliders;
+				counts.Spinners = spinners;
+				return counts;
 			}
 			case GameMode.Taiko:
 			{
 				int hits = 0, drumRolls = 0, dendens = 0;
-				foreach (var h in hitObjects)
-					switch (h)
+				foreach (var hitObject in hitObjects)
+					switch (hitObject)
 					{
 						case DrumRoll: drumRolls++; break;
 						case Swell: dendens++; break;
 						case Hit: hits++; break;
 					}
 
-				var o = (TaikoObjects)BeatmapObjects.Empty(mode);
-				o.Total = hits + drumRolls + dendens;
-				o.MaxCombo = maxCombo;
-				o.Hits = hits;
-				o.DrumRolls = drumRolls;
-				o.Dendens = dendens;
-				return o;
+				var counts = (TaikoObjects)BeatmapObjects.Empty(mode);
+				counts.Total = hits + drumRolls + dendens;
+				counts.MaxCombo = maxCombo;
+				counts.Hits = hits;
+				counts.DrumRolls = drumRolls;
+				counts.Dendens = dendens;
+				return counts;
 			}
 			case GameMode.Catch:
 			{
 				int fruits = 0, droplets = 0, tinyDroplets = 0, bananas = 0;
-				foreach (var h in hitObjects)
-					CountCatchRecursive(h, ref fruits, ref droplets, ref tinyDroplets, ref bananas);
+				foreach (var hitObject in hitObjects)
+					CountCatchRecursive(hitObject, ref fruits, ref droplets, ref tinyDroplets, ref bananas);
 
-				var o = (CatchObjects)BeatmapObjects.Empty(mode);
-				o.Total = fruits + droplets + tinyDroplets + bananas;
-				o.MaxCombo = maxCombo;
-				o.Fruits = fruits;
-				o.Droplets = droplets;
-				o.TinyDroplets = tinyDroplets;
-				o.Bananas = bananas;
-				return o;
+				var counts = (CatchObjects)BeatmapObjects.Empty(mode);
+				counts.Total = fruits + droplets + tinyDroplets + bananas;
+				counts.MaxCombo = maxCombo;
+				counts.Fruits = fruits;
+				counts.Droplets = droplets;
+				counts.TinyDroplets = tinyDroplets;
+				counts.Bananas = bananas;
+				return counts;
 			}
 			case GameMode.Mania:
 			{
 				int notes = 0, holdNotes = 0;
-				foreach (var h in hitObjects)
-					switch (h)
+				foreach (var hitObject in hitObjects)
+					switch (hitObject)
 					{
 						case HoldNote: holdNotes++; break;
 						case Note: notes++; break;
 					}
 
-				var o = (ManiaObjects)BeatmapObjects.Empty(mode);
-				o.Total = notes + holdNotes;
-				o.MaxCombo = maxCombo;
-				o.Notes = notes;
-				o.HoldNotes = holdNotes;
-				return o;
+				var counts = (ManiaObjects)BeatmapObjects.Empty(mode);
+				counts.Total = notes + holdNotes;
+				counts.MaxCombo = maxCombo;
+				counts.Notes = notes;
+				counts.HoldNotes = holdNotes;
+				return counts;
 			}
 			default:
 				throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown ruleset for game mode.");
@@ -222,5 +224,5 @@ internal sealed class OsuBeatmapAnalyser(IBeatmapsetStorage storage) : IBeatmapA
 	}
 
 	/// <summary>The decoded content of a beatmap's .osu file, with the hash of the file it was decoded from.</summary>
-	private sealed record KeptContent(Md5 Hash, OsuBeatmapContent Content);
+	private sealed record KeptContent(Md5 Hash, IWorkingBeatmap Working);
 }

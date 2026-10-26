@@ -73,25 +73,37 @@ internal sealed record StoredRow(IReadOnlyDictionary<string, object?> Values)
 	/// <summary>Gets the value of a column as text.</summary>
 	/// <param name="column">The name of the column.</param>
 	/// <returns>The text, or <see langword="null" /> when the column holds nothing.</returns>
-	public string? Text(string column) => Values[column] as string;
+	public string? Text(string column)
+	{
+		return Values[column] as string;
+	}
 
 	/// <summary>Gets the value of a column as a number.</summary>
 	/// <param name="column">The name of the column.</param>
 	/// <returns>The number.</returns>
-	public long Number(string column) => Convert.ToInt64(Values[column], CultureInfo.InvariantCulture);
+	public long Number(string column)
+	{
+		return Convert.ToInt64(Values[column], CultureInfo.InvariantCulture);
+	}
 
 	/// <summary>Gets the value of a column as a yes or no.</summary>
 	/// <param name="column">The name of the column.</param>
 	/// <returns>The value of the column.</returns>
-	public bool Bool(string column) => (bool)Values[column]!;
+	public bool Bool(string column)
+	{
+		return (bool)Values[column]!;
+	}
 
 	/// <summary>Gets the value of a column as the instant it names.</summary>
 	/// <param name="column">The name of the column.</param>
 	/// <returns>The instant, in UTC.</returns>
-	public DateTimeOffset Instant(string column) => Values[column] switch
+	public DateTimeOffset Instant(string column)
 	{
-		DateTimeOffset offset => offset,
-		DateTime time => new DateTimeOffset(DateTime.SpecifyKind(time, DateTimeKind.Utc)),
-		_ => throw new InvalidOperationException($"The column {column} does not hold a timestamp.")
-	};
+		return Values[column] switch
+		{
+			DateTimeOffset offset => offset,
+			DateTime time => new DateTimeOffset(DateTime.SpecifyKind(time, DateTimeKind.Utc)),
+			_ => throw new InvalidOperationException($"The column {column} does not hold a timestamp.")
+		};
+	}
 }

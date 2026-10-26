@@ -113,7 +113,8 @@ public sealed class PostgresChannelRepositoryTests(PersistenceFixture container)
 
 		await Channels.DeleteAsync(channel, TestContext.Current.CancellationToken);
 
-		Assert.DoesNotContain(await Channels.ListAsync(TestContext.Current.CancellationToken), candidate => candidate.Name == "#news");
+		Assert.DoesNotContain(await Channels.ListAsync(TestContext.Current.CancellationToken),
+			candidate => candidate.Name == "#news");
 	}
 
 	[Fact]
@@ -170,7 +171,8 @@ public sealed class PostgresChannelRepositoryTests(PersistenceFixture container)
 	{
 		await using var fresh = new StorageComposition(ConnectionString);
 
-		await Assert.ThrowsAsync<InvalidOperationException>(() => fresh.Get<IChannelRepository>().ListAsync(TestContext.Current.CancellationToken));
+		await Assert.ThrowsAsync<InvalidOperationException>(() =>
+			fresh.Get<IChannelRepository>().ListAsync(TestContext.Current.CancellationToken));
 	}
 
 	/// <summary>Builds the #osu channel with the given topic.</summary>

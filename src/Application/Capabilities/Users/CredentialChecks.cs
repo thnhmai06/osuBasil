@@ -13,7 +13,10 @@ internal static class CredentialChecks
 	/// <param name="user">The account.</param>
 	/// <param name="passwordHash">The claimed password hash.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns><see langword="true" /> when it is the account's password; a hash that is not even well formed is simply wrong.</returns>
+	/// <returns>
+	///     <see langword="true" /> when it is the account's password; a hash that is not even well formed is simply
+	///     wrong.
+	/// </returns>
 	public static async Task<bool> IsPasswordAsync(this ICredentialRepository credentials, UserRecord user,
 		Md5 passwordHash, CancellationToken cancellationToken)
 	{

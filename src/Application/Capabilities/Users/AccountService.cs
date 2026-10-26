@@ -1,8 +1,7 @@
-using Basil.Application.Persistence.Users;
 using Basil.Application.Persistence.Auth;
 using Basil.Application.Persistence.Common;
 using Basil.Application.Persistence.Content;
-using Basil.Domain;
+using Basil.Application.Persistence.Users;
 using Basil.Domain.Auth;
 using Basil.Domain.Common;
 using Basil.Domain.Users;

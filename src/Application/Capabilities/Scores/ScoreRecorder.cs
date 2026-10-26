@@ -1,14 +1,11 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
-using Basil.Application.Persistence.Scores;
 using Basil.Application.Persistence.Common;
-using Basil.Application.Persistence.Multiplayer;
+using Basil.Application.Persistence.Scores;
 using Basil.Application.Persistence.Users;
 using Basil.Domain.Bancho;
 using Basil.Domain.Common;
-using Basil.Domain.Mechanics;
-using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 
@@ -19,21 +16,18 @@ namespace Basil.Application.Capabilities.Scores;
 /// </summary>
 internal sealed class ScoreRecorder(
 	IScoreRepository scores,
-	IRoundScoreRepository roundScores,
 	IReplayStorage replays,
 	IUserStatsRepository stats)
 {
 	/// <summary>The shortest replay, in bytes, that is kept.</summary>
 	internal const int MinReplayLength = 24;
 
-	/// <summary>Validates and records a score with its optional round, replay and updated statistics.</summary>
+	/// <summary>Validates and records a score with its optional replay and updated statistics.</summary>
 	/// <param name="player">The account that submitted the score.</param>
 	/// <param name="loginClient">The osu! client the player logged in with.</param>
 	/// <param name="submission">The parsed submission.</param>
 	/// <param name="checkedBeatmap">The checksums of the beatmap the score is checked against.</param>
 	/// <param name="client">The osu! client information sent with the submission.</param>
-	/// <param name="round">The round the player played, or <see langword="null" />.</param>
-	/// <param name="team">The team the score was set for, or <see langword="null" />.</param>
 	/// <param name="replay">
 	///     The seekable stream of the replay, positioned at its start and left open, or <see langword="null" /> when
 	///     none is kept.
@@ -46,13 +40,11 @@ internal sealed class ScoreRecorder(
 		Submission submission,
 		BeatmapChecksums checkedBeatmap,
 		SubmittedClient client,
-		Round? round,
-		GameTeam? team,
 		Stream? replay,
 		CancellationToken cancellationToken = default)
 	{
 		if (Validate(submission, loginClient, checkedBeatmap, player.Value.Name, client) is { } rejection)
-			return new ScoreOutcome(rejection, null, null, null);
+			return new ScoreOutcome(rejection, null, null);
 
 		ScoreRecord score;
 		try
@@ -62,13 +54,8 @@ internal sealed class ScoreRecorder(
 		}
 		catch (AlreadyExistsException)
 		{
-			return new ScoreOutcome(ScoreRejection.Duplicate, null, null, null);
+			return new ScoreOutcome(ScoreRejection.Duplicate, null, null);
 		}
-
-		var roundScore = round is not null
-			? await roundScores.RecordAsync(new RoundScore(score, round, team),
-				cancellationToken)
-			: null;
 
 		if (submission.Score.IsPassed && replay is { Length: >= MinReplayLength })
 			await replays.SaveAsync(score, replay, cancellationToken);
@@ -77,7 +64,7 @@ internal sealed class ScoreRecorder(
 		var current = await stats.AddPlayAsync(player, submission.Score.Mode, submission.Score.TotalScore,
 			submission.Score.IsPassed ? submission.Score.TotalScore : 0, cancellationToken);
 
-		return new ScoreOutcome(null, score, roundScore, current);
+		return new ScoreOutcome(null, score, current);
 	}
 
 

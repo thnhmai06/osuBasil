@@ -3,8 +3,8 @@ using Basil.Application.Persistence.Multiplayer;
 using Basil.Application.Persistence.Users;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Persistence.Postgres;
 using Basil.Infrastructure.Persistence.Memory;
+using Basil.Infrastructure.Persistence.Postgres;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Persistence.Multiplayer;
@@ -107,7 +107,7 @@ internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWri
 	{
 		var row = await Reader.ReadAsync(context => context.Matches
 			.Where(row => row.Id == key)
-			.FirstOrDefaultAsync(cancellationToken: CancellationToken.None));
+			.FirstOrDefaultAsync(CancellationToken.None));
 		return row is null ? null : await ToMatchAsync(row, CancellationToken.None);
 	}
 

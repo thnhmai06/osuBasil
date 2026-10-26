@@ -1,5 +1,6 @@
 using Basil.Application.Capabilities.Content;
 using Basil.Infrastructure.Capabilities.Content;
+using Basil.Infrastructure.Capabilities.Tests.Support;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.Formats.Bmp;
@@ -125,7 +126,7 @@ public sealed class ImageSharpScreenshotInspectorRealPictureTests
 
 	private static MemoryStream Open(string name)
 	{
-		return new MemoryStream(Support.OszArchive.Sample(Path.Combine("Images", name)), false);
+		return new MemoryStream(OszArchive.Sample(Path.Combine("Images", name)), false);
 	}
 
 	/// <summary>A square RGBA avatar is a PNG of its own size.</summary>

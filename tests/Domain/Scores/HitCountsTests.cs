@@ -1,4 +1,3 @@
-using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
 

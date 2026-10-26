@@ -69,7 +69,8 @@ public sealed record UserQuery(
 			for (var i = 0; i < rawValue.Length; i += 2)
 			{
 				if (!char.IsAsciiLetter(rawValue[i]) || !char.IsAsciiLetter(rawValue[i + 1])
-				    || !Enum.TryParse<Country>(rawValue.AsSpan(i, 2), true, out var country)) return false;
+				                                     || !Enum.TryParse<Country>(rawValue.AsSpan(i, 2), true,
+					                                     out var country)) return false;
 				parsed.Add(country);
 			}
 

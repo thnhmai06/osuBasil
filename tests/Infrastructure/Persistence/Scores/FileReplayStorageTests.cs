@@ -12,11 +12,11 @@ namespace Basil.Infrastructure.Persistence.Tests.Scores;
 public sealed class FileReplayStorageTests : IDisposable
 {
 	private const int ScoreId = 17;
+	private readonly FakeBeatmapRepository _beatmaps;
 
 	private readonly TempData _data = new();
-	private readonly FakeUserRepository _users;
-	private readonly FakeBeatmapRepository _beatmaps;
 	private readonly FileReplayStorage _replays;
+	private readonly FakeUserRepository _users;
 
 	public FileReplayStorageTests()
 	{
@@ -26,6 +26,11 @@ public sealed class FileReplayStorageTests : IDisposable
 	}
 
 	private string ReplayDirectory => _data.Paths.Replays.Path;
+
+	public void Dispose()
+	{
+		_data.Dispose();
+	}
 
 	[Fact]
 	public async Task ReplacedReplay_keeps_only_the_new_name()
@@ -45,7 +50,8 @@ public sealed class FileReplayStorageTests : IDisposable
 		await _replays.SaveAsync(Score(), Bytes("first"), TestContext.Current.CancellationToken);
 
 		_users.User = StoredUsers.Renamed;
-		await Assert.ThrowsAsync<IOException>(() => _replays.SaveAsync(Score(), new TestStreams.Failing(), TestContext.Current.CancellationToken));
+		await Assert.ThrowsAsync<IOException>(() =>
+			_replays.SaveAsync(Score(), new TestStreams.Failing(), TestContext.Current.CancellationToken));
 
 		Assert.Equal("first", await TextAsync());
 		Assert.Single(Directory.GetFiles(ReplayDirectory));
@@ -93,9 +99,9 @@ public sealed class FileReplayStorageTests : IDisposable
 	{
 		await _replays.SaveAsync(Score(170), Bytes("longer id"), TestContext.Current.CancellationToken);
 
-		Assert.Null(await _replays.OpenAsync(Score(ScoreId), TestContext.Current.CancellationToken));
+		Assert.Null(await _replays.OpenAsync(Score(), TestContext.Current.CancellationToken));
 
-		await _replays.SaveAsync(Score(ScoreId), Bytes("shorter id"), TestContext.Current.CancellationToken);
+		await _replays.SaveAsync(Score(), Bytes("shorter id"), TestContext.Current.CancellationToken);
 
 		Assert.Equal("shorter id", await TextAsync());
 		Assert.Equal("longer id", await TextAsync(Score(170)));
@@ -144,7 +150,8 @@ public sealed class FileReplayStorageTests : IDisposable
 		await _replays.SaveAsync(Score(), Bytes("replay"), TestContext.Current.CancellationToken);
 
 		var name = Path.GetFileName(Assert.Single(Directory.GetFiles(ReplayDirectory)));
-		Assert.True(Encoding.UTF8.GetByteCount(name) <= 255, $"The name takes {Encoding.UTF8.GetByteCount(name)} bytes.");
+		Assert.True(Encoding.UTF8.GetByteCount(name) <= 255,
+			$"The name takes {Encoding.UTF8.GetByteCount(name)} bytes.");
 		Assert.StartsWith("17 Regular - Camellia - ", name);
 		Assert.EndsWith(".osr", name);
 		Assert.Equal(name, Encoding.UTF8.GetString(Encoding.UTF8.GetBytes(name)));
@@ -166,7 +173,8 @@ public sealed class FileReplayStorageTests : IDisposable
 	private void SetBeatmapNames(string artist, string title)
 	{
 		var beatmap = StoredBeatmaps.Beatmap();
-		beatmap.Beatmapset.Metadata = new BeatmapsetMetadata { Artist = artist, Title = title, Creator = "ProfessionalBox" };
+		beatmap.Beatmapset.Metadata = new BeatmapsetMetadata
+			{ Artist = artist, Title = title, Creator = "ProfessionalBox" };
 		_beatmaps.Beatmap = beatmap;
 	}
 
@@ -182,16 +190,20 @@ public sealed class FileReplayStorageTests : IDisposable
 		}
 	}
 
-	private static ScoreRecord Score(int id = ScoreId, GameMode mode = GameMode.Standard) => new()
+	private static ScoreRecord Score(int id = ScoreId, GameMode mode = GameMode.Standard)
 	{
-		Id = id,
-		Value = new ScoreData(
-			8, new Md5("d41d8cd98f00b204e9800998ecf8427e"), mode, GameMods.NoMod,
-			new HitCounts(100, 10, 2, 1, 3, 0), 51_000, 500, 312, Grade.A, true, false,
-			new DateTimeOffset(2026, 3, 5, 12, 0, 0, TimeSpan.Zero))
-	};
+		return new ScoreRecord
+		{
+			Id = id,
+			Value = new ScoreData(
+				8, new Md5("d41d8cd98f00b204e9800998ecf8427e"), mode, GameMods.NoMod,
+				new HitCounts(100, 10, 2, 1, 3, 0), 51_000, 500, 312, Grade.A, true, false,
+				new DateTimeOffset(2026, 3, 5, 12, 0, 0, TimeSpan.Zero))
+		};
+	}
 
-	private static MemoryStream Bytes(string text) => new(Encoding.UTF8.GetBytes(text));
-
-	public void Dispose() => _data.Dispose();
+	private static MemoryStream Bytes(string text)
+	{
+		return new MemoryStream(Encoding.UTF8.GetBytes(text));
+	}
 }

@@ -1,6 +1,3 @@
-using Basil.Application.Persistence.Content;
-using Basil.Domain;
-
 namespace Basil.Application.Persistence.Content;
 
 /// <summary>Stores the server-wide settings.</summary>

@@ -23,7 +23,8 @@ public sealed class PostgresLoginRepositoryTests(PersistenceFixture container) :
 	[Fact]
 	public async Task A_recorded_login_is_stored()
 	{
-		var user = await Get<IUserRepository>().CreateAsync(new UserData { Name = "login_user" }, TestContext.Current.CancellationToken);
+		var user = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "login_user" }, TestContext.Current.CancellationToken);
 
 		await Logins.RecordAsync(new Login
 		{
@@ -56,7 +57,8 @@ public sealed class PostgresLoginRepositoryTests(PersistenceFixture container) :
 	[Fact]
 	public async Task A_login_without_a_client_is_stored_without_client_data()
 	{
-		var user = await Get<IUserRepository>().CreateAsync(new UserData { Name = "login_user" }, TestContext.Current.CancellationToken);
+		var user = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "login_user" }, TestContext.Current.CancellationToken);
 
 		await Logins.RecordAsync(new Login
 		{
@@ -84,7 +86,8 @@ public sealed class PostgresLoginRepositoryTests(PersistenceFixture container) :
 	[Fact]
 	public async Task A_login_history_is_listed_newest_first()
 	{
-		var user = await Get<IUserRepository>().CreateAsync(new UserData { Name = "login_user" }, TestContext.Current.CancellationToken);
+		var user = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "login_user" }, TestContext.Current.CancellationToken);
 		await RecordAsync(user, First);
 		await RecordAsync(user, Second);
 		await RecordAsync(user, Third);
@@ -101,7 +104,8 @@ public sealed class PostgresLoginRepositoryTests(PersistenceFixture container) :
 	[Fact]
 	public async Task A_login_history_returns_the_requested_part()
 	{
-		var user = await Get<IUserRepository>().CreateAsync(new UserData { Name = "login_user" }, TestContext.Current.CancellationToken);
+		var user = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "login_user" }, TestContext.Current.CancellationToken);
 		await RecordAsync(user, First);
 		await RecordAsync(user, Second);
 		await RecordAsync(user, Third);

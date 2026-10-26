@@ -15,8 +15,9 @@ internal sealed class MatchReportRepository(
 	{
 		var matchRounds = await rounds.ListAsync(match, cancellationToken);
 		foreach (var round in matchRounds)
-			round.Result = RoundResult.Decide(round,
-				await roundScores.ListAsync(round, cancellationToken));
+			round.Result = round.Decision is { } decision
+				? RoundResult.Restore(round, await roundScores.ListAsync(round, cancellationToken), decision)
+				: null;
 
 		var matchEvents = await events.ListAsync(match, cancellationToken);
 		return new MatchReport(match,

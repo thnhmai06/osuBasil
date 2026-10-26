@@ -21,7 +21,8 @@ internal sealed class BeatmapsetFileAudit(IBeatmapsetStorage storage, IBeatmapRe
 		await withoutVideo.DisposeAsync();
 
 		if (set.Assets.HasStoryboard &&
-		    !await storage.ExistsAsync(set, BeatmapsetFileType.Storyboard, StoredFileNames.Storyboard, cancellationToken))
+		    !await storage.ExistsAsync(set, BeatmapsetFileType.Storyboard, StoredFileNames.Storyboard,
+			    cancellationToken))
 			return true;
 
 		foreach (var beatmap in await beatmaps.ListAsync(set, cancellationToken))

@@ -1,8 +1,8 @@
 using System.Collections.Immutable;
 using Basil.Application.Persistence.Users;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Persistence.Postgres;
 using Basil.Infrastructure.Persistence.Memory;
+using Basil.Infrastructure.Persistence.Postgres;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Persistence.Users;
@@ -102,7 +102,7 @@ internal sealed class PostgresRestrictionRepository(
 	{
 		var row = await Reader.ReadAsync(context => context.Restrictions
 			.Where(row => row.Id == key)
-			.FirstOrDefaultAsync(cancellationToken: CancellationToken.None));
+			.FirstOrDefaultAsync(CancellationToken.None));
 		if (row is null)
 			return null;
 

@@ -58,7 +58,8 @@ public readonly record struct NetworkAdapters
 				return value.EndsWith('.')
 				       && value[..^1]
 					       .Split('.')
-					       .All(a => a.Length > 0 && !a.Equals(WineAdapterSentinel, StringComparison.OrdinalIgnoreCase));
+					       .All(a => a.Length > 0 &&
+					                 !a.Equals(WineAdapterSentinel, StringComparison.OrdinalIgnoreCase));
 			}
 		}
 	}

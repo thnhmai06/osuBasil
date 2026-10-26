@@ -10,6 +10,11 @@ public sealed class DataPathsTests : IDisposable
 {
 	private readonly TempData _data = new(false);
 
+	public void Dispose()
+	{
+		_data.Dispose();
+	}
+
 	[Fact]
 	public void A_relative_data_directory_is_resolved_against_the_directory_the_server_runs_from()
 	{
@@ -78,21 +83,4 @@ public sealed class DataPathsTests : IDisposable
 
 		Assert.Equal("kept", File.ReadAllText(Path.Combine(_data.Paths.Faqs.Path, "kept.txt")));
 	}
-
-	[Theory]
-	[InlineData("Songs")]
-	[InlineData("Beatmaps")]
-	public void CreateDirectories_moves_beatmapsets_stored_under_a_former_directory(string former)
-	{
-		var formerDirectory = Path.Combine(_data.Root, former, "1 Artist - Title");
-		Directory.CreateDirectory(formerDirectory);
-		File.WriteAllText(Path.Combine(formerDirectory, "archive.osz"), "set");
-
-		_data.Paths.CreateDirectories();
-
-		Assert.Equal("set", File.ReadAllText(Path.Combine(_data.Paths.Beatmapsets.Path, "1 Artist - Title", "archive.osz")));
-		Assert.False(Directory.Exists(Path.Combine(_data.Root, former)));
-	}
-
-	public void Dispose() => _data.Dispose();
 }

@@ -11,6 +11,11 @@ public sealed class DataStorageTests : IDisposable
 
 	private DataStorage Storage => _data.Paths.Replays;
 
+	public void Dispose()
+	{
+		_data.Dispose();
+	}
+
 	[Theory]
 	[InlineData("..\\escape.txt")]
 	[InlineData("../escape.txt")]
@@ -325,6 +330,4 @@ public sealed class DataStorageTests : IDisposable
 			out _));
 		Assert.False(storage.TryGetName(default, out _));
 	}
-
-	public void Dispose() => _data.Dispose();
 }

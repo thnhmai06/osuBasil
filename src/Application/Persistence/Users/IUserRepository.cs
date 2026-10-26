@@ -25,7 +25,10 @@ public interface IUserRepository
 	/// <param name="data">The account data the id holds afterwards.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The stored user.</returns>
-	/// <remarks>This is the one place a store takes an id it did not give out: the server uses it to make BasilBot the user of its fixed id.</remarks>
+	/// <remarks>
+	///     This is the one place a store takes an id it did not give out: the server uses it to make BasilBot the user of
+	///     its fixed id.
+	/// </remarks>
 	/// <exception cref="AlreadyExistsException">Another user already has the same safe name.</exception>
 	Task<UserRecord> ReplaceAsync(int id, UserData data, CancellationToken cancellationToken = default);
 

@@ -1,6 +1,5 @@
 using Basil.Infrastructure.Persistence.Postgres;
 using Basil.Infrastructure.Persistence.Tests.Support;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using Npgsql;
@@ -33,8 +32,10 @@ public sealed class WriteTicketTests(PersistenceFixture container) : DatabaseTes
 
 		await Writer.ForgetOldTicketsAsync(TestContext.Current.CancellationToken);
 
-		var rows = await StoredRows.ReadAsync(ConnectionString, "select id::text as id from write_tickets where id in (@old, @recent)",
-			new Dictionary<string, object?> { ["@old"] = old, ["@recent"] = recent }, TestContext.Current.CancellationToken);
+		var rows = await StoredRows.ReadAsync(ConnectionString,
+			"select id::text as id from write_tickets where id in (@old, @recent)",
+			new Dictionary<string, object?> { ["@old"] = old, ["@recent"] = recent },
+			TestContext.Current.CancellationToken);
 		Assert.Equal([recent.ToString()], rows.Select(row => row.Text("id")));
 	}
 
@@ -93,7 +94,7 @@ public sealed class WriteTicketTests(PersistenceFixture container) : DatabaseTes
 	{
 		var sentinel = Guid.NewGuid();
 		await InsertTicketAsync(sentinel, DateTimeOffset.UtcNow.AddYears(-30));
-		await ((IHostedLifecycleService)composition.Get<DatabaseWriter>()).StartedAsync(TestContext.Current.CancellationToken);
+		await composition.Get<DatabaseWriter>().StartedAsync(TestContext.Current.CancellationToken);
 		await WaitUntilForgottenAsync(sentinel);
 	}
 
@@ -117,28 +118,43 @@ public sealed class WriteTicketTests(PersistenceFixture container) : DatabaseTes
 		await new NpgsqlCommand(sql, connection).ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
 	}
 
+	private async Task InsertTicketAsync(Guid id, DateTimeOffset createdAt)
+	{
+		await using var connection = new NpgsqlConnection(ConnectionString);
+		await connection.OpenAsync(TestContext.Current.CancellationToken);
+		await using var command = new NpgsqlCommand("insert into write_tickets (id, created_at) values (@id, @created)",
+			connection);
+		command.Parameters.AddWithValue("@id", id);
+		command.Parameters.AddWithValue("@created", createdAt);
+		await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
+	}
+
 	/// <summary>Completes a task when the storage logs a warning, which only tells the test that a cleanup failed.</summary>
 	private sealed class WarningSignal(TaskCompletionSource signal) : ILoggerProvider, ILogger
 	{
-		public ILogger CreateLogger(string categoryName) => this;
-		public void Dispose() { }
-		public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-		public bool IsEnabled(LogLevel logLevel) => true;
+		public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+		{
+			return null;
+		}
+
+		public bool IsEnabled(LogLevel logLevel)
+		{
+			return true;
+		}
 
 		public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
 			Func<TState, Exception?, string> formatter)
 		{
 			if (logLevel == LogLevel.Warning) signal.TrySetResult();
 		}
-	}
 
-	private async Task InsertTicketAsync(Guid id, DateTimeOffset createdAt)
-	{
-		await using var connection = new NpgsqlConnection(ConnectionString);
-		await connection.OpenAsync(TestContext.Current.CancellationToken);
-		await using var command = new NpgsqlCommand("insert into write_tickets (id, created_at) values (@id, @created)", connection);
-		command.Parameters.AddWithValue("@id", id);
-		command.Parameters.AddWithValue("@created", createdAt);
-		await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
+		public ILogger CreateLogger(string categoryName)
+		{
+			return this;
+		}
+
+		public void Dispose()
+		{
+		}
 	}
 }

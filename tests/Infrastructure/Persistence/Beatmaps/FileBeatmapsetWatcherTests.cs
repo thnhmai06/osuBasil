@@ -10,8 +10,8 @@ namespace Basil.Infrastructure.Persistence.Tests.Beatmaps;
 public sealed class FileBeatmapsetWatcherTests : IDisposable
 {
 	private readonly TempData _data = new();
-	private readonly FakeTimeProvider _time = new();
 	private readonly CancellationTokenSource _stop = new();
+	private readonly FakeTimeProvider _time = new();
 
 	private string Sets => _data.Paths.Beatmapsets.Path;
 

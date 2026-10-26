@@ -16,7 +16,7 @@ public sealed class RoundScore : IEquatable<RoundScore>
 	public RoundScore(ScoreRecord score, Round round, GameTeam? team)
 	{
 		var isTeamMode = round.Settings.TeamType.IsTeamMode();
-		if (isTeamMode != (team is not null))
+		if (isTeamMode != team is not null)
 			throw new ArgumentException(
 				isTeamMode
 					? "All scores must belong to a team in team-versus mode."

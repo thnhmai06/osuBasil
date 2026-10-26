@@ -34,6 +34,20 @@ public enum UserPrivileges : byte
 /// <summary>The permissions that belong directly to each role.</summary>
 public static class PrivilegesExtensions
 {
+	/// <summary>The permissions that belong to the player role.</summary>
+	private const UserPermissions PlayerPermissions =
+		UserPermissions.RoomCreate | UserPermissions.RoomJoin | UserPermissions.ChatPost |
+		UserPermissions.ChatPostPrivate | UserPermissions.SpectatingWatch |
+		UserPermissions.ScoreSubmit | UserPermissions.BeatmapsetUpload |
+		UserPermissions.ScreenshotUpload;
+
+	/// <summary>The permissions that belong to the tournament role, without the player's.</summary>
+	private const UserPermissions TournamentPermissions =
+		(UserPermissions.RoomObserve | UserPermissions.RoomViewPrivate |
+		 UserPermissions.RoomManageAny | UserPermissions.RoomCreateUnlimited |
+		 UserPermissions.ChatPostAnyRoom | UserPermissions.BeatmapsetManage |
+		 UserPermissions.BeatmapsetViewHidden) & ~PlayerPermissions;
+
 	/// <param name="role">The roles; a combination is the union of its roles' permissions.</param>
 	extension(UserPrivileges role)
 	{
@@ -48,7 +62,8 @@ public static class PrivilegesExtensions
 				if ((role & UserPrivileges.Supporter) != 0) permissions |= UserPermissions.BeatmapsetDirect;
 				if ((role & UserPrivileges.Tournament) != 0) permissions |= TournamentPermissions;
 				if ((role & UserPrivileges.Moderator) != 0)
-					permissions |= UserPermissions.UserSilence | UserPermissions.UserRestrict | UserPermissions.UserNote |
+					permissions |= UserPermissions.UserSilence | UserPermissions.UserRestrict |
+					               UserPermissions.UserNote |
 					               UserPermissions.UserViewLogins |
 					               UserPermissions.ChatMessageAnyone | UserPermissions.ChatAnnounce |
 					               UserPermissions.ScreenshotDelete;
@@ -70,16 +85,4 @@ public static class PrivilegesExtensions
 			return (role & required) == required;
 		}
 	}
-
-	/// <summary>The permissions that belong to the player role.</summary>
-	private const UserPermissions PlayerPermissions = UserPermissions.RoomCreate | UserPermissions.RoomJoin | UserPermissions.ChatPost |
-	                                              UserPermissions.ChatPostPrivate | UserPermissions.SpectatingWatch |
-	                                              UserPermissions.ScoreSubmit | UserPermissions.BeatmapsetUpload |
-	                                              UserPermissions.ScreenshotUpload;
-
-	/// <summary>The permissions that belong to the tournament role, without the player's.</summary>
-	private const UserPermissions TournamentPermissions = (UserPermissions.RoomObserve | UserPermissions.RoomViewPrivate |
-	                                                   UserPermissions.RoomManageAny | UserPermissions.RoomCreateUnlimited |
-	                                                   UserPermissions.ChatPostAnyRoom | UserPermissions.BeatmapsetManage |
-	                                                   UserPermissions.BeatmapsetViewHidden) & ~PlayerPermissions;
 }

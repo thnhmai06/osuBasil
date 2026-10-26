@@ -1,7 +1,7 @@
 using Basil.Infrastructure.Persistence.Beatmaps;
 using Basil.Infrastructure.Persistence.Common;
-using Basil.Infrastructure.Persistence.Postgres;
 using Basil.Infrastructure.Persistence.Files;
+using Basil.Infrastructure.Persistence.Postgres;
 using Microsoft.Extensions.Hosting;
 
 namespace Basil.Infrastructure.Persistence;
@@ -41,11 +41,6 @@ internal sealed class StorageStartup(DataPaths paths, DatabaseMigrator migrator,
 		foreach (var file in Directory.EnumerateFiles(paths.Beatmapsets.Path)
 			         .Where(file => FileBeatmapsetNames.IsHidden(Path.GetFileName(file))))
 			DeleteLeftoverFile(file);
-
-		foreach (var former in new[]
-			         { Path.Combine(paths.Root, "Cache", "Beatmaps"), Path.Combine(paths.Root, "Cache", "Staging") })
-			if (Directory.Exists(former))
-				DeleteLeftover(former);
 	}
 
 	/// <summary>Removes one leftover file, leaving what it cannot remove to the next startup.</summary>

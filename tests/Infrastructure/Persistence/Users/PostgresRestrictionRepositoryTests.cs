@@ -15,7 +15,8 @@ public sealed class PostgresRestrictionRepositoryTests(PersistenceFixture contai
 	[Fact]
 	public async Task A_created_restriction_is_given_an_id_by_the_store()
 	{
-		var user = await Get<IUserRepository>().CreateAsync(new UserData { Name = "restricted" }, TestContext.Current.CancellationToken);
+		var user = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "restricted" }, TestContext.Current.CancellationToken);
 
 		var restriction = await Restrictions.CreateAsync(new RestrictionData
 		{
@@ -30,7 +31,8 @@ public sealed class PostgresRestrictionRepositoryTests(PersistenceFixture contai
 	[Fact]
 	public async Task A_restriction_is_found_by_id()
 	{
-		var user = await Get<IUserRepository>().CreateAsync(new UserData { Name = "restricted" }, TestContext.Current.CancellationToken);
+		var user = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "restricted" }, TestContext.Current.CancellationToken);
 		var created = await CreateAsync(user, Moment);
 
 		var found = await Restrictions.GetAsync(created.Id, TestContext.Current.CancellationToken);
@@ -42,7 +44,8 @@ public sealed class PostgresRestrictionRepositoryTests(PersistenceFixture contai
 	[Fact]
 	public async Task A_user_restrictions_are_listed()
 	{
-		var user = await Get<IUserRepository>().CreateAsync(new UserData { Name = "restricted" }, TestContext.Current.CancellationToken);
+		var user = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "restricted" }, TestContext.Current.CancellationToken);
 		var created = await CreateAsync(user, Moment);
 
 		var listed = await Restrictions.ListAsync(user, TestContext.Current.CancellationToken);
@@ -53,7 +56,8 @@ public sealed class PostgresRestrictionRepositoryTests(PersistenceFixture contai
 	[Fact]
 	public async Task An_update_changes_the_permissions_of_a_restriction()
 	{
-		var user = await Get<IUserRepository>().CreateAsync(new UserData { Name = "restricted" }, TestContext.Current.CancellationToken);
+		var user = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "restricted" }, TestContext.Current.CancellationToken);
 		var created = await CreateAsync(user, Moment);
 		created.Value.Permissions = RestrictionData.Restricted;
 
@@ -66,7 +70,8 @@ public sealed class PostgresRestrictionRepositoryTests(PersistenceFixture contai
 	[Fact]
 	public async Task An_update_changes_the_end_of_a_restriction()
 	{
-		var user = await Get<IUserRepository>().CreateAsync(new UserData { Name = "restricted" }, TestContext.Current.CancellationToken);
+		var user = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "restricted" }, TestContext.Current.CancellationToken);
 		var created = await CreateAsync(user, Moment);
 		created.Value.EndsAt = Moment.AddHours(2);
 
@@ -79,7 +84,8 @@ public sealed class PostgresRestrictionRepositoryTests(PersistenceFixture contai
 	[Fact]
 	public async Task An_update_is_stored()
 	{
-		var user = await Get<IUserRepository>().CreateAsync(new UserData { Name = "restricted" }, TestContext.Current.CancellationToken);
+		var user = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "restricted" }, TestContext.Current.CancellationToken);
 		var created = await CreateAsync(user, Moment);
 		created.Value.EndsAt = Moment.AddHours(2);
 		created.Value.Permissions = RestrictionData.Restricted;
@@ -97,7 +103,8 @@ public sealed class PostgresRestrictionRepositoryTests(PersistenceFixture contai
 	[Fact]
 	public async Task A_user_restrictions_are_listed_oldest_first()
 	{
-		var user = await Get<IUserRepository>().CreateAsync(new UserData { Name = "restricted" }, TestContext.Current.CancellationToken);
+		var user = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "restricted" }, TestContext.Current.CancellationToken);
 		await CreateAsync(user, Moment.AddHours(2));
 		await CreateAsync(user, Moment);
 		await CreateAsync(user, Moment.AddHours(1));
@@ -112,7 +119,8 @@ public sealed class PostgresRestrictionRepositoryTests(PersistenceFixture contai
 	[Fact]
 	public async Task Restrictions_that_start_together_are_listed_by_id()
 	{
-		var user = await Get<IUserRepository>().CreateAsync(new UserData { Name = "restricted" }, TestContext.Current.CancellationToken);
+		var user = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "restricted" }, TestContext.Current.CancellationToken);
 		var first = await CreateAsync(user, Moment);
 		var second = await CreateAsync(user, Moment);
 

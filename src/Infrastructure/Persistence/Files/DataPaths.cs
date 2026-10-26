@@ -59,21 +59,9 @@ internal sealed class DataPaths
 	public DataStorage Cache { get; }
 
 	/// <summary>Creates every directory the server stores files in.</summary>
-	/// <remarks>
-	///     Beatmapsets stored under the former <c>Songs</c> directory, or under the older <c>Beatmaps</c> directory, are
-	///     moved to <see cref="Beatmapsets" /> first.
-	/// </remarks>
 	public void CreateDirectories()
 	{
 		Directory.CreateDirectory(Root);
-		if (!Directory.Exists(Beatmapsets.Path))
-		{
-			var formerSongs = Path.Combine(Root, "Songs");
-			var formerBeatmaps = Path.Combine(Root, "Beatmaps");
-			if (Directory.Exists(formerSongs)) Directory.Move(formerSongs, Beatmapsets.Path);
-			else if (Directory.Exists(formerBeatmaps)) Directory.Move(formerBeatmaps, Beatmapsets.Path);
-		}
-
 		foreach (var storage in new[]
 		         {
 			         Beatmapsets, Replays, Avatars, MenuBanners, MenuSeasonals, MenuIcon, Faqs, Screenshots, Cache

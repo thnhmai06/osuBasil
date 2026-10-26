@@ -23,9 +23,9 @@ internal sealed class UserRowConfiguration : IEntityTypeConfiguration<UserRow>
 	{
 		builder.ToTable("users", table => table.HasCheckConstraint("users_id_check", "id >= 1"));
 		builder.HasKey(row => row.Id);
-		builder.Property(row => row.Id).UseIdentityByDefaultColumn();
+		// Id 1 is BasilBot, the fixed account the server speaks as; it is stored at startup under that id, so the
+		// accounts the database numbers start at 2.
+		builder.Property(row => row.Id).UseIdentityByDefaultColumn().HasIdentityOptions(2);
 		builder.HasIndex(row => row.NormalizedName).IsUnique().HasFilter("deleted_at is null");
-		// BasilBot, the fixed account the server speaks as: no permission, no credential. Accounts created later start at 2.
-		builder.HasData(new UserRow { Id = 1, Name = "BasilBot", NormalizedName = "basilbot", Country = 244 });
 	}
 }

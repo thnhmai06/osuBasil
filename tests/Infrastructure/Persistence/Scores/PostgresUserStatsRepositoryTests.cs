@@ -175,7 +175,8 @@ public sealed class PostgresUserStatsRepositoryTests(PersistenceFixture containe
 		var player = await CreatePlayerAsync("racing_stats");
 		await Stats.GetAsync(player, GameMode.Standard, TestContext.Current.CancellationToken);
 		await Parallel.ForEachAsync(Enumerable.Range(1, plays),
-			new ParallelOptions { MaxDegreeOfParallelism = 16, CancellationToken = TestContext.Current.CancellationToken },
+			new ParallelOptions
+				{ MaxDegreeOfParallelism = 16, CancellationToken = TestContext.Current.CancellationToken },
 			async (score, token) => await Stats.AddPlayAsync(player, GameMode.Standard, score, score * 10L, token));
 
 		var stats = await Stats.GetAsync(player, GameMode.Standard, TestContext.Current.CancellationToken);
@@ -196,6 +197,7 @@ public sealed class PostgresUserStatsRepositoryTests(PersistenceFixture containe
 	/// <returns>The account.</returns>
 	private async Task<UserRecord> CreatePlayerAsync(string name)
 	{
-		return await Get<IUserRepository>().CreateAsync(new UserData { Name = name }, TestContext.Current.CancellationToken);
+		return await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = name }, TestContext.Current.CancellationToken);
 	}
 }

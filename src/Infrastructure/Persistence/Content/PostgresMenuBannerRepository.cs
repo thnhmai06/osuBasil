@@ -50,7 +50,8 @@ internal sealed class PostgresMenuBannerRepository(
 	{
 		var image = banner.Image.ToString();
 		await _writes.WriteAsync(banner.Image,
-			() => writer.SaveAsync(Root.Server, (GetType(), banner.Image), new WriteCommand((context, token) => context.MenuBanners
+			() => writer.SaveAsync(Root.Server, (GetType(), banner.Image), new WriteCommand((context, token) => context
+				.MenuBanners
 				.Where(row => row.Image == image)
 				.ExecuteDeleteAsync(token))),
 			() => _banners.TryRemove(banner.Image, out _));

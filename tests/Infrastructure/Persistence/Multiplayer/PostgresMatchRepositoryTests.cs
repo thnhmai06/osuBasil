@@ -93,7 +93,8 @@ public sealed class PostgresMatchRepositoryTests(PersistenceFixture container) :
 			id = (int)(await command.ExecuteScalarAsync(TestContext.Current.CancellationToken))!;
 		}
 
-		await Assert.ThrowsAsync<InvalidDataException>(async () => await Matches.GetAsync(id, TestContext.Current.CancellationToken));
+		await Assert.ThrowsAsync<InvalidDataException>(async () =>
+			await Matches.GetAsync(id, TestContext.Current.CancellationToken));
 	}
 
 	[Fact]
@@ -162,7 +163,8 @@ public sealed class PostgresMatchRepositoryTests(PersistenceFixture container) :
 		await CreateStoredMatchAsync("newest_match", Third);
 		await CreateStoredMatchAsync("middle_match", Second);
 
-		var page = await Matches.ListAsync(new MatchQuery(), new PageRequest(0, 10), TestContext.Current.CancellationToken);
+		var page = await Matches.ListAsync(new MatchQuery(), new PageRequest(0, 10),
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal(new[] { "newest_match", "middle_match", "oldest_match" },
 			page.Items.Select(match => match.Value.Name));
@@ -172,9 +174,9 @@ public sealed class PostgresMatchRepositoryTests(PersistenceFixture container) :
 	public async Task A_listing_leaves_out_the_matches_that_ended()
 	{
 		await CreateStoredMatchAsync("running_match", First);
-		await CreateStoredMatchAsync("ended_match", Second, endedAt: Second);
+		await CreateStoredMatchAsync("ended_match", Second, Second);
 
-		var page = await Matches.ListAsync(new MatchQuery(Ended: false), new PageRequest(0, 10),
+		var page = await Matches.ListAsync(new MatchQuery(false), new PageRequest(0, 10),
 			TestContext.Current.CancellationToken);
 
 		Assert.Equal("running_match", Assert.Single(page.Items).Value.Name);
@@ -184,9 +186,9 @@ public sealed class PostgresMatchRepositoryTests(PersistenceFixture container) :
 	public async Task A_listing_shows_only_the_matches_that_ended()
 	{
 		await CreateStoredMatchAsync("running_match", First);
-		await CreateStoredMatchAsync("ended_match", Second, endedAt: Second);
+		await CreateStoredMatchAsync("ended_match", Second, Second);
 
-		var page = await Matches.ListAsync(new MatchQuery(Ended: true), new PageRequest(0, 10),
+		var page = await Matches.ListAsync(new MatchQuery(true), new PageRequest(0, 10),
 			TestContext.Current.CancellationToken);
 
 		Assert.Equal("ended_match", Assert.Single(page.Items).Value.Name);
@@ -223,7 +225,8 @@ public sealed class PostgresMatchRepositoryTests(PersistenceFixture container) :
 		await CreateStoredMatchAsync("second_match", Second);
 		await CreateStoredMatchAsync("third_match", Third);
 
-		var page = await Matches.ListAsync(new MatchQuery(), new PageRequest(1, 1), TestContext.Current.CancellationToken);
+		var page = await Matches.ListAsync(new MatchQuery(), new PageRequest(1, 1),
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal(3, page.Total);
 		Assert.Equal("second_match", Assert.Single(page.Items).Value.Name);
@@ -235,7 +238,8 @@ public sealed class PostgresMatchRepositoryTests(PersistenceFixture container) :
 		await CreateStoredMatchAsync("first_match", First);
 		await CreateStoredMatchAsync("second_match", Second);
 
-		var page = await Matches.ListAsync(new MatchQuery(), new PageRequest(0, 1), TestContext.Current.CancellationToken);
+		var page = await Matches.ListAsync(new MatchQuery(), new PageRequest(0, 1),
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal(2, page.Total);
 	}

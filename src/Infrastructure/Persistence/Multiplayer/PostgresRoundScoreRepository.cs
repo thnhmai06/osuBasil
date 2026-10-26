@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Basil.Application.Persistence.Multiplayer;
 using Basil.Application.Persistence.Scores;
 using Basil.Domain.Mechanics;
@@ -13,8 +14,10 @@ internal sealed class PostgresRoundScoreRepository(
 	DatabaseWriter writer,
 	IScoreRepository scores) : IRoundScoreRepository
 {
+	private readonly ConcurrentDictionary<int, RoundScore> _pending = new();
+
 	/// <inheritdoc />
-	public async Task<RoundScore> RecordAsync(RoundScore roundScore, CancellationToken cancellationToken = default)
+	public Task<RoundScore> RecordAsync(RoundScore roundScore, CancellationToken cancellationToken = default)
 	{
 		var round = roundScore.Round;
 		var row = new RoundScoreRow
@@ -24,9 +27,12 @@ internal sealed class PostgresRoundScoreRepository(
 			RoundNumber = round.Index,
 			Team = roundScore.Team is { } team ? (int)team : null
 		};
-		await writer.SaveAsync(Root.Match(row.MatchId), (GetType(), row.ScoreId), new WriteCommand((context, token) =>
-			context.UpsertAsync(row, stored => stored.ScoreId == row.ScoreId, token)));
-		return roundScore;
+		_pending[row.ScoreId] = roundScore;
+		var queued = writer.SaveAsync(Root.Match(row.MatchId), (GetType(), row.ScoreId),
+			new WriteCommand((context, token) =>
+				context.UpsertAsync(row, stored => stored.ScoreId == row.ScoreId, token)));
+		_ = queued.ContinueWith(task => _pending.TryRemove(row.ScoreId, out _), TaskScheduler.Default);
+		return Task.FromResult(roundScore);
 	}
 
 	/// <inheritdoc />
@@ -41,6 +47,10 @@ internal sealed class PostgresRoundScoreRepository(
 		foreach (var row in rows)
 			if (await scores.GetAsync(row.ScoreId, cancellationToken) is { } score)
 				result.Add(new RoundScore(score, round, row.Team is { } team ? (GameTeam)team : null));
-		return result;
+
+		// A relation whose write is still queued is not in the database yet.
+		result.AddRange(_pending.Values.Where(pending => pending.Round.Equals(round) &&
+		                                                 result.All(stored => stored.Score.Id != pending.Score.Id)));
+		return [.. result.OrderBy(roundScore => roundScore.Score.Id)];
 	}
 }

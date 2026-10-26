@@ -19,7 +19,8 @@ public class GeneralChannelRecordTests
 	[InlineData("#staff\0room")]
 	public void Name_InvalidChannelName_Throws(string name)
 	{
-		Assert.Throws<ArgumentException>(() => new GeneralChannelRecord { Name = name, Value = new GeneralChannelData() });
+		Assert.Throws<ArgumentException>(() => new GeneralChannelRecord
+			{ Name = name, Value = new GeneralChannelData() });
 	}
 
 	[Fact]

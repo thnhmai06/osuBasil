@@ -3,7 +3,10 @@ using Basil.Domain.Multiplayer;
 
 namespace Basil.Domain.Tests.Multiplayer;
 
-/// <summary>Verifies that the room's mods and freemod setting agree: with freemods on the room mods are only speed-changing mods.</summary>
+/// <summary>
+///     Verifies that the room's mods and freemod setting agree: with freemods on the room mods are only
+///     speed-changing mods.
+/// </summary>
 public class MatchSettingsTests
 {
 	[Fact]

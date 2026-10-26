@@ -9,8 +9,6 @@ namespace Basil.Infrastructure.Persistence.Tests.Memory;
 /// </summary>
 public class OwnedListsTests
 {
-	private sealed class Owner;
-
 	private static Task<ImmutableList<int>> Loaded(params int[] items)
 	{
 		return Task.FromResult(ImmutableList.CreateRange(items));
@@ -112,4 +110,6 @@ public class OwnedListsTests
 		Assert.Equal([1, 2], during);
 		Assert.Equal([1, 2], after);
 	}
+
+	private sealed class Owner;
 }

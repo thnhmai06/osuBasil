@@ -72,8 +72,13 @@ public interface IBeatmapsetStorage
 
 	/// <summary>Makes the set's archive without video from its archive.</summary>
 	/// <param name="set">The beatmapset.</param>
+	/// <param name="videoFiles">
+	///     The names, as they are in the archive, of the files that the set's difficulties declare as their video; the
+	///     letter case of a name does not matter.
+	/// </param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task SaveArchiveWithoutVideoAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default);
+	Task SaveArchiveWithoutVideoAsync(BeatmapsetRecord set, IReadOnlyCollection<string> videoFiles,
+		CancellationToken cancellationToken = default);
 
 	/// <summary>Determines whether a file made from a set's archive is stored.</summary>
 	/// <param name="set">The beatmapset.</param>

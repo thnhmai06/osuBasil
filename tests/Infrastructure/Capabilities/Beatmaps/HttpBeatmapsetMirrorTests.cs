@@ -2,7 +2,6 @@ using System.Net;
 using Basil.Application.Capabilities.Beatmaps;
 using Basil.Application.Persistence.Common;
 using Basil.Application.Persistence.Content;
-using Basil.Domain;
 using Basil.Domain.Mechanics;
 using Basil.Infrastructure.Capabilities.Beatmaps;
 using Basil.Infrastructure.Capabilities.Tests.Support;
@@ -15,25 +14,25 @@ namespace Basil.Infrastructure.Capabilities.Tests.Beatmaps;
 public sealed class HttpBeatmapsetMirrorTests
 {
 	private const string SetJson = """
-		[
-			{
-				"SetId": 123,
-				"Artist": "Camellia",
-				"Title": "Exit This Earth's Atomosphere",
-				"Creator": "ProfessionalBox",
-				"LastUpdate": "1700000000",
-				"HasVideo": 1,
-				"ChildrenBeatmaps": [
-					{
-						"BeatmapId": 456,
-						"DiffName": "Primordial Nucleosynthesis",
-						"Mode": 0,
-						"DifficultyRating": 7.25
-					}
-				]
-			}
-		]
-		""";
+	                               [
+	                               	{
+	                               		"SetId": 123,
+	                               		"Artist": "Camellia",
+	                               		"Title": "Exit This Earth's Atomosphere",
+	                               		"Creator": "ProfessionalBox",
+	                               		"LastUpdate": "1700000000",
+	                               		"HasVideo": 1,
+	                               		"ChildrenBeatmaps": [
+	                               			{
+	                               				"BeatmapId": 456,
+	                               				"DiffName": "Primordial Nucleosynthesis",
+	                               				"Mode": 0,
+	                               				"DifficultyRating": 7.25
+	                               			}
+	                               		]
+	                               	}
+	                               ]
+	                               """;
 
 	private static readonly PageRequest Page = new(0, 50);
 
@@ -114,18 +113,18 @@ public sealed class HttpBeatmapsetMirrorTests
 	public async Task SearchAsync_DropsSetsThatCarryNoDifficulties()
 	{
 		const string json = """
-			[
-				{ "SetId": 1, "LastUpdate": "1700000000", "HasVideo": 1, "ChildrenBeatmaps": null },
-				{
-					"SetId": 2,
-					"LastUpdate": "1700000000",
-					"HasVideo": 1,
-					"ChildrenBeatmaps": [
-						{ "BeatmapId": 3, "DiffName": "Another", "Mode": 0, "DifficultyRating": 2.0 }
-					]
-				}
-			]
-			""";
+		                    [
+		                    	{ "SetId": 1, "LastUpdate": "1700000000", "HasVideo": 1, "ChildrenBeatmaps": null },
+		                    	{
+		                    		"SetId": 2,
+		                    		"LastUpdate": "1700000000",
+		                    		"HasVideo": 1,
+		                    		"ChildrenBeatmaps": [
+		                    			{ "BeatmapId": 3, "DiffName": "Another", "Mode": 0, "DifficultyRating": 2.0 }
+		                    		]
+		                    	}
+		                    ]
+		                    """;
 		var mirror = Mirror(FakeHttpHandler.Json(json), "https://mirror.test/search");
 
 		var sets = await mirror.SearchAsync(null, null, Page, TestContext.Current.CancellationToken);
@@ -139,10 +138,10 @@ public sealed class HttpBeatmapsetMirrorTests
 	public async Task SearchAsync_ReadsUnixMillisecondTimestamps()
 	{
 		const string json = """
-			[
-				{ "SetId": 5, "LastUpdate": "1700000000000", "HasVideo": 1, "ChildrenBeatmaps": [] }
-			]
-			""";
+		                    [
+		                    	{ "SetId": 5, "LastUpdate": "1700000000000", "HasVideo": 1, "ChildrenBeatmaps": [] }
+		                    ]
+		                    """;
 		var mirror = Mirror(FakeHttpHandler.Json(json), "https://mirror.test/search");
 
 		var sets = await mirror.SearchAsync(null, null, Page, TestContext.Current.CancellationToken);
@@ -156,10 +155,10 @@ public sealed class HttpBeatmapsetMirrorTests
 	public async Task SearchAsync_ReadsANumericHasVideoOfZeroAsNoVideo()
 	{
 		const string json = """
-			[
-				{ "SetId": 6, "LastUpdate": "1700000000", "HasVideo": 0, "ChildrenBeatmaps": [] }
-			]
-			""";
+		                    [
+		                    	{ "SetId": 6, "LastUpdate": "1700000000", "HasVideo": 0, "ChildrenBeatmaps": [] }
+		                    ]
+		                    """;
 		var mirror = Mirror(FakeHttpHandler.Json(json), "https://mirror.test/search");
 
 		var sets = await mirror.SearchAsync(null, null, Page, TestContext.Current.CancellationToken);
@@ -173,7 +172,7 @@ public sealed class HttpBeatmapsetMirrorTests
 	public async Task SearchAsync_ReturnsNullWithoutASearchMirror()
 	{
 		var handler = FakeHttpHandler.Json("[]");
-		var mirror = Mirror(handler, searchEndpoint: null);
+		var mirror = Mirror(handler, null);
 
 		var sets = await mirror.SearchAsync(null, null, Page, TestContext.Current.CancellationToken);
 
@@ -242,8 +241,8 @@ public sealed class HttpBeatmapsetMirrorTests
 	[InlineData(false, "https://mirror.test/d/123?n=1")]
 	public async Task GetDownloadAddressAsync_BuildsTheMirrorsAddress(bool withVideo, string expected)
 	{
-		var mirror = Mirror(FakeHttpHandler.Json("[]"), searchEndpoint: null,
-			downloadEndpoint: "https://mirror.test/d/");
+		var mirror = Mirror(FakeHttpHandler.Json("[]"), null,
+			"https://mirror.test/d/");
 
 		var address = await mirror.GetDownloadAddressAsync(123, withVideo, TestContext.Current.CancellationToken);
 
@@ -254,7 +253,7 @@ public sealed class HttpBeatmapsetMirrorTests
 	[Fact]
 	public async Task GetDownloadAddressAsync_ReturnsNullWithoutADownloadMirror()
 	{
-		var mirror = Mirror(FakeHttpHandler.Json("[]"), searchEndpoint: null);
+		var mirror = Mirror(FakeHttpHandler.Json("[]"), null);
 
 		var address = await mirror.GetDownloadAddressAsync(123, false, TestContext.Current.CancellationToken);
 

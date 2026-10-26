@@ -6,10 +6,9 @@ using Basil.Application.Persistence.Beatmaps;
 using Basil.Application.Persistence.Common;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Common;
-using Basil.Domain.Content;
 using Basil.Domain.Mechanics;
-using Basil.Infrastructure.Persistence.Postgres;
 using Basil.Infrastructure.Persistence.Memory;
+using Basil.Infrastructure.Persistence.Postgres;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Persistence.Beatmaps;
@@ -83,9 +82,8 @@ internal sealed class PostgresBeatmapRepository(
 		if (_byHash.TryGetValue(hash, out var known) && known.Hash == hash)
 			return known;
 
-		while (true)
+		var loaded = await ReadUntilStableAsync(async () =>
 		{
-			var generation = RemovalGeneration;
 			var row = await Reader.ReadAsync(context => context.Beatmaps
 				.Include(b => b.Set)
 				.Where(b => b.Hash == hash.HashValue)
@@ -94,17 +92,15 @@ internal sealed class PostgresBeatmapRepository(
 				return null;
 
 			// A row whose deletion is still queued never comes back into memory.
-			var loaded = await ToBeatmapAsync(row, cancellationToken);
-			if (IsBeingRemoved(loaded))
-				return null;
-			// The read may have seen the row before a deletion that has since committed; read again.
-			if (generation != RemovalGeneration)
-				continue;
+			var stored = await ToBeatmapAsync(row, cancellationToken);
+			return IsBeingRemoved(stored) ? null : stored;
+		});
+		if (loaded is null)
+			return null;
 
-			var beatmap = Track(loaded);
-			Index(beatmap);
-			return beatmap;
-		}
+		var beatmap = Track(loaded);
+		Index(beatmap);
+		return beatmap;
 	}
 
 	/// <inheritdoc />
@@ -114,36 +110,33 @@ internal sealed class PostgresBeatmapRepository(
 		var liveSet = await LiveSetAsync(set, cancellationToken);
 		return await _bySet.GetOrLoadAsync(liveSet.Id, liveSet, async () =>
 		{
-			while (true)
+			var loadedRows = await ReadUntilStableAsync(async () =>
 			{
-				var generation = RemovalGeneration;
 				var rows = await Reader.ReadAsync(context => context.Beatmaps
 					.Include(b => b.Set)
 					.Where(b => b.BeatmapsetId == liveSet.Id)
 					.OrderBy(b => b.Id)
 					.ToListAsync(cancellationToken), cancellationToken);
-				var loadedRows = new List<BeatmapRecord>();
+				var loaded = new List<BeatmapRecord>();
 				foreach (var row in rows)
 				{
 					// A row whose deletion is still queued never comes back into memory.
-					var loaded = await ToBeatmapAsync(row, cancellationToken);
-					if (!IsBeingRemoved(loaded))
-						loadedRows.Add(loaded);
+					var stored = await ToBeatmapAsync(row, cancellationToken);
+					if (!IsBeingRemoved(stored))
+						loaded.Add(stored);
 				}
 
-				// The read may have seen rows before a deletion that has since committed; read again.
-				if (generation != RemovalGeneration)
-					continue;
+				return loaded;
+			});
 
-				var beatmaps = ImmutableList.CreateBuilder<BeatmapRecord>();
-				foreach (var beatmap in loadedRows.Select(Track))
-				{
-					Index(beatmap);
-					beatmaps.Add(beatmap);
-				}
-
-				return beatmaps.ToImmutable();
+			var beatmaps = ImmutableList.CreateBuilder<BeatmapRecord>();
+			foreach (var beatmap in loadedRows.Select(Track))
+			{
+				Index(beatmap);
+				beatmaps.Add(beatmap);
 			}
+
+			return beatmaps.ToImmutable();
 		});
 	}
 
@@ -151,10 +144,9 @@ internal sealed class PostgresBeatmapRepository(
 	public async Task<Page<BeatmapRecord>> ListAsync(BeatmapQuery query, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
-		while (true)
+		var (total, loadedRows) = await ReadUntilStableAsync<(int Total, List<BeatmapRecord> Rows)>(async () =>
 		{
-			var generation = RemovalGeneration;
-			var (total, rows) = await Reader.ReadAsync(async context =>
+			var (count, rows) = await Reader.ReadAsync(async context =>
 			{
 				var matching = BeatmapQueryFilter.Apply(context.Beatmaps, query);
 				var count = await matching.CountAsync(cancellationToken);
@@ -169,28 +161,26 @@ internal sealed class PostgresBeatmapRepository(
 				return (count, rows);
 			}, cancellationToken);
 
-			var loadedRows = new List<BeatmapRecord>();
+			var loaded = new List<BeatmapRecord>();
 			foreach (var row in rows)
 			{
 				// A row whose deletion is still queued never comes back into memory.
-				var loaded = await ToBeatmapAsync(row, cancellationToken);
-				if (!IsBeingRemoved(loaded))
-					loadedRows.Add(loaded);
+				var stored = await ToBeatmapAsync(row, cancellationToken);
+				if (!IsBeingRemoved(stored))
+					loaded.Add(stored);
 			}
 
-			// The read may have seen rows before a deletion that has since committed; read again.
-			if (generation != RemovalGeneration)
-				continue;
+			return (count, loaded);
+		});
 
-			var items = new List<BeatmapRecord>();
-			foreach (var beatmap in loadedRows.Select(Track))
-			{
-				Index(beatmap);
-				items.Add(beatmap);
-			}
-
-			return new Page<BeatmapRecord>(items, total);
+		var items = new List<BeatmapRecord>();
+		foreach (var beatmap in loadedRows.Select(Track))
+		{
+			Index(beatmap);
+			items.Add(beatmap);
 		}
+
+		return new Page<BeatmapRecord>(items, total);
 	}
 
 	/// <inheritdoc />
@@ -236,11 +226,11 @@ internal sealed class PostgresBeatmapRepository(
 	///     keeps its id, its creation time and whether it is locked or shown, when its set is replaced or removed by the
 	///     same commit; otherwise it is refused.
 	/// </remarks>
-	internal static async Task<List<StoredBeatmap>> StoreAsync(BeatmapsetRecord set,
+	internal static async Task<List<BeatmapRecord>> StoreAsync(BeatmapsetRecord set,
 		IReadOnlyList<BeatmapData> data, DateTimeOffset now, IReadOnlySet<int> releasable, BasilDbContext context,
 		CancellationToken token)
 	{
-		var stored = new List<StoredBeatmap>(data.Count);
+		var stored = new List<BeatmapRecord>(data.Count);
 		foreach (var item in data)
 		{
 			var row = await FindAsync(item, context, token);
@@ -265,7 +255,7 @@ internal sealed class PostgresBeatmapRepository(
 				await context.UpsertAsync(toStore, candidate => candidate.Id == toStore.Id, token);
 			}
 
-			stored.Add(new StoredBeatmap(Build(toStore.Id)));
+			stored.Add(Build(toStore.Id));
 			continue;
 
 			BeatmapRecord Build(int id)
@@ -302,9 +292,9 @@ internal sealed class PostgresBeatmapRepository(
 	/// <param name="set">The live beatmapset the difficulty belongs to.</param>
 	/// <param name="stored">The stored difficulty.</param>
 	/// <returns>The live difficulty.</returns>
-	internal BeatmapRecord Apply(BeatmapsetRecord set, StoredBeatmap stored)
+	internal BeatmapRecord Apply(BeatmapsetRecord set, BeatmapRecord stored)
 	{
-		var beatmap = Copy(stored.Beatmap, set);
+		var beatmap = Copy(stored, set);
 		var live = Track(beatmap);
 		if (ReferenceEquals(live, beatmap))
 		{
@@ -382,13 +372,6 @@ internal sealed class PostgresBeatmapRepository(
 		return new WriteCommand((context, token) => context.ReplaceAsync(row, stored => stored.Id == row.Id, token));
 	}
 
-	protected override WriteCommand EraseCommand(int key)
-	{
-		return new WriteCommand((context, token) => context.Beatmaps
-			.Where(b => b.Id == key)
-			.ExecuteDeleteAsync(token));
-	}
-
 	protected override bool IsBeingRemoved(BeatmapRecord beatmap)
 	{
 		return base.IsBeingRemoved(beatmap) ||
@@ -444,25 +427,7 @@ internal sealed class PostgresBeatmapRepository(
 	/// <summary>Builds a beatmap from a stored row, which holds its set.</summary>
 	private async Task<BeatmapRecord> ToBeatmapAsync(BeatmapRow row, CancellationToken cancellationToken)
 	{
-		var setRow = row.Set;
-		// A set stored before archives were recorded has no fingerprint; the next scan takes one, as for a changed archive.
-		var fingerprint = setRow.ArchiveHash != ""
-			? new ContentFingerprint(
-				new ContentStamp(setRow.ArchiveSize, setRow.ArchiveModifiedAt),
-				new Md5(setRow.ArchiveHash))
-			: default;
-		var set = await LiveSetAsync(new BeatmapsetRecord
-		{
-			Id = setRow.Id,
-			Fingerprint = fingerprint,
-			Metadata =
-				new BeatmapsetMetadata { Artist = setRow.Artist, Title = setRow.Title, Creator = setRow.Creator },
-			Assets = new BeatmapsetAssets { HasStoryboard = setRow.Storyboard },
-			CreatedAt = setRow.CreatedAt,
-			UpdatedAt = setRow.UpdatedAt,
-			Locked = setRow.Locked,
-			Visible = setRow.Visible
-		}, cancellationToken);
+		var set = await LiveSetAsync(row.Set.ToRecord(), cancellationToken);
 		var objects = row.Objects.Deserialize<BeatmapObjects>(StoredJson)
 		              ?? BeatmapObjects.Empty((GameMode)row.Mode);
 

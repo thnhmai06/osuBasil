@@ -12,11 +12,15 @@ namespace Basil.Infrastructure.Capabilities.Beatmaps;
 ///     Makes the files derived from a beatmapset's stored files: a ten-second audio preview of each audio track its
 ///     difficulties use, rendered through <c>ffmpeg</c>.
 /// </summary>
-internal sealed class BeatmapAssetStore(
+internal sealed class BeatmapPreviewMaker(
 	IOptions<AssetOptions> options,
 	IBeatmapsetStorage storage,
-	ILogger<BeatmapAssetStore> logger) : IBeatmapAssets
+	ILogger<BeatmapPreviewMaker> logger) : IBeatmapAssets
 {
+	private const int BufferSize = 81920;
+
+	private FFOptions FfmpegOptions => new() { BinaryFolder = options.Value.FfmpegFolder ?? string.Empty };
+
 	/// <inheritdoc />
 	public async Task BuildAsync(BeatmapsetRecord set, IReadOnlyList<BeatmapRecord> beatmaps,
 		CancellationToken cancellationToken = default)
@@ -64,7 +68,7 @@ internal sealed class BeatmapAssetStore(
 		try
 		{
 			var file = new FileStream(audioPath, FileMode.CreateNew, FileAccess.Write, FileShare.None,
-				81920, FileOptions.Asynchronous);
+				BufferSize, FileOptions.Asynchronous);
 			await using (file)
 			{
 				await source.CopyToAsync(file, cancellationToken);
@@ -110,6 +114,4 @@ internal sealed class BeatmapAssetStore(
 			.CancellableThrough(cancellationToken)
 			.ProcessAsynchronously(true, FfmpegOptions);
 	}
-
-	private FFOptions FfmpegOptions => new() { BinaryFolder = options.Value.FfmpegFolder ?? string.Empty };
 }

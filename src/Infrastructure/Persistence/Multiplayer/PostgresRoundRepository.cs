@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Basil.Application.Persistence.Multiplayer;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
@@ -16,12 +17,10 @@ internal sealed class PostgresRoundRepository(
 	: MemoryRepository<(int MatchId, int Index), Round>(reader, writer), IRoundRepository
 {
 	/// <inheritdoc />
-	public async Task CreateOrUpdateAsync(Round round, CancellationToken cancellationToken = default)
+	public Task CreateOrUpdateAsync(Round round, CancellationToken cancellationToken = default)
 	{
-		// The write does not decide what stays in memory: the live round is held by whoever uses it.
-		var live = Track(round);
-		if (!ReferenceEquals(live, round)) CopyTo(live, round);
-		await Writer.SaveAsync(RootOf(live), (GetType(), KeyOf(live)), SaveCommand(live));
+		_ = SaveAsync(round);
+		return Task.CompletedTask;
 	}
 
 	/// <inheritdoc />
@@ -31,7 +30,12 @@ internal sealed class PostgresRoundRepository(
 			.Where(row => row.MatchId == match.Id)
 			.OrderBy(row => row.Number)
 			.ToListAsync(cancellationToken), cancellationToken);
-		return [.. rows.Select(row => Track(ToRound(match, row)))];
+		var stored = rows.Select(row => Track(ToRound(match, row))).ToList();
+
+		// A round whose first write is still queued is not in the database yet, but it is live here.
+		var pending =
+			Items.Values.Where(round => round.Match.Id == match.Id && stored.All(s => s.Index != round.Index));
+		return [.. stored.Concat(pending).OrderBy(round => round.Index)];
 	}
 
 	protected override (int MatchId, int Index) KeyOf(Round item)
@@ -48,13 +52,15 @@ internal sealed class PostgresRoundRepository(
 	{
 		live.EndedAt = from.EndedAt;
 		live.Aborted = from.Aborted;
+		live.Decision = from.Decision;
+		live.Result = from.Result;
 	}
 
 	protected override async Task<Round?> LoadAsync((int MatchId, int Index) key)
 	{
 		var row = await Reader.ReadAsync(context => context.Rounds
 			.Where(row => row.MatchId == key.MatchId && row.Number == key.Index)
-			.FirstOrDefaultAsync(cancellationToken: CancellationToken.None));
+			.FirstOrDefaultAsync(CancellationToken.None));
 		if (row is null)
 			return null;
 
@@ -77,7 +83,8 @@ internal sealed class PostgresRoundRepository(
 			Seed = round.Settings.Seed,
 			StartedAt = round.StartedAt.ToUniversalTime(),
 			EndedAt = round.EndedAt?.ToUniversalTime(),
-			Aborted = round.Aborted
+			Aborted = round.Aborted,
+			Result = round.Decision is { } decision ? JsonSerializer.Serialize(decision) : null
 		};
 		return new WriteCommand((context, token) =>
 			context.UpsertAsync(row, stored => stored.MatchId == row.MatchId && stored.Number == row.Number, token));
@@ -106,7 +113,8 @@ internal sealed class PostgresRoundRepository(
 			Settings = settings,
 			StartedAt = row.StartedAt,
 			EndedAt = row.EndedAt,
-			Aborted = row.Aborted
+			Aborted = row.Aborted,
+			Decision = row.Result is null ? null : JsonSerializer.Deserialize<RoundVerdict>(row.Result)
 		};
 	}
 }

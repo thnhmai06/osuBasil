@@ -22,37 +22,61 @@ public readonly record struct HitCounts(int Num300, int Num100, int Num50, int N
 	///     Gets the number of 300 judgments.
 	/// </summary>
 	/// <exception cref="ArgumentOutOfRangeException">The count is negative.</exception>
-	public int Num300 { get; init => field = Check(value, nameof(Num300)); } = Check(Num300, nameof(Num300));
+	public int Num300
+	{
+		get;
+		init => field = Check(value, nameof(Num300));
+	} = Check(Num300, nameof(Num300));
 
 	/// <summary>
 	///     Gets the number of 100 judgments.
 	/// </summary>
 	/// <exception cref="ArgumentOutOfRangeException">The count is negative.</exception>
-	public int Num100 { get; init => field = Check(value, nameof(Num100)); } = Check(Num100, nameof(Num100));
+	public int Num100
+	{
+		get;
+		init => field = Check(value, nameof(Num100));
+	} = Check(Num100, nameof(Num100));
 
 	/// <summary>
 	///     Gets the number of 50 judgments.
 	/// </summary>
 	/// <exception cref="ArgumentOutOfRangeException">The count is negative.</exception>
-	public int Num50 { get; init => field = Check(value, nameof(Num50)); } = Check(Num50, nameof(Num50));
+	public int Num50
+	{
+		get;
+		init => field = Check(value, nameof(Num50));
+	} = Check(Num50, nameof(Num50));
 
 	/// <summary>
 	///     Gets the number of geki judgments.
 	/// </summary>
 	/// <exception cref="ArgumentOutOfRangeException">The count is negative.</exception>
-	public int NumGeki { get; init => field = Check(value, nameof(NumGeki)); } = Check(NumGeki, nameof(NumGeki));
+	public int NumGeki
+	{
+		get;
+		init => field = Check(value, nameof(NumGeki));
+	} = Check(NumGeki, nameof(NumGeki));
 
 	/// <summary>
 	///     Gets the number of katu judgments.
 	/// </summary>
 	/// <exception cref="ArgumentOutOfRangeException">The count is negative.</exception>
-	public int NumKatu { get; init => field = Check(value, nameof(NumKatu)); } = Check(NumKatu, nameof(NumKatu));
+	public int NumKatu
+	{
+		get;
+		init => field = Check(value, nameof(NumKatu));
+	} = Check(NumKatu, nameof(NumKatu));
 
 	/// <summary>
 	///     Gets the number of miss judgments.
 	/// </summary>
 	/// <exception cref="ArgumentOutOfRangeException">The count is negative.</exception>
-	public int NumMiss { get; init => field = Check(value, nameof(NumMiss)); } = Check(NumMiss, nameof(NumMiss));
+	public int NumMiss
+	{
+		get;
+		init => field = Check(value, nameof(NumMiss));
+	} = Check(NumMiss, nameof(NumMiss));
 
 	private static int Check(int value, string name)
 	{

@@ -52,7 +52,8 @@ matches ──┬── match_events        lifecycle history (creation, closure
 
 Beatmap, mode, mods, team type and win condition can change every round, so they live on `rounds`, and a round
 refers to its beatmap by content hash rather than by copying its names. Which round a score was played in is a
-relation of its own (`round_scores`) so the score stays a record of its player.
+relation of its own (`round_scores`) so the score stays a record of its player. What was decided for a round (who won,
+by how much, the ranking of the scores) is stored as JSON in `rounds.result` when it is decided.
 
 ## Invariants
 

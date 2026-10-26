@@ -95,6 +95,7 @@ namespace Basil.Infrastructure.Persistence.Migrations;
                 columns: table => new
                 {
                     id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:IdentitySequenceOptions", "'2', '1', '', '', 'False', '1'")
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     name = table.Column<string>(type: "text", nullable: false),
                     normalized_name = table.Column<string>(type: "text", nullable: false),
@@ -407,7 +408,8 @@ namespace Basil.Infrastructure.Persistence.Migrations;
                     seed = table.Column<int>(type: "integer", nullable: false),
                     started_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     ended_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
-                    aborted = table.Column<bool>(type: "boolean", nullable: false)
+                    aborted = table.Column<bool>(type: "boolean", nullable: false),
+                    result = table.Column<string>(type: "jsonb", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -446,11 +448,6 @@ namespace Basil.Infrastructure.Persistence.Migrations;
                     { "#lobby", false, 0, "Multiplayer lobby discussion.", true, 0 },
                     { "#osu", true, 0, "General discussion.", true, 0 }
                 });
-
-            migrationBuilder.InsertData(
-                table: "users",
-                columns: new[] { "id", "country", "deleted_at", "name", "normalized_name", "permissions" },
-                values: new object[] { 1, 244, null, "BasilBot", "basilbot", 0L });
 
             migrationBuilder.CreateIndex(
                 name: "ix_beatmaps_beatmapset_id",

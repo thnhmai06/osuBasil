@@ -86,7 +86,11 @@ public sealed class MatchData
 	/// <summary>Gets or sets the date and time when the match ended, if it has ended.</summary>
 	public required DateTimeOffset? EndedAt { get; set; }
 
-	/// <summary>Gets or sets a value that indicates whether the match is private: hidden from the lobby and from public match lists, and its history can be viewed only by the players who took part, its creator and referees, and users allowed to view private matches. It does not restrict joining.</summary>
+	/// <summary>
+	///     Gets or sets a value that indicates whether the match is private: hidden from the lobby and from public match
+	///     lists, and its history can be viewed only by the players who took part, its creator and referees, and users allowed
+	///     to view private matches. It does not restrict joining.
+	/// </summary>
 	public bool IsPrivate { get; set; } = false;
 
 	/// <summary>Tells whether a text can be a match's name: not empty or blank, and without the NUL character.</summary>

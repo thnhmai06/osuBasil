@@ -6,6 +6,23 @@ namespace Basil.Application.Persistence.Content;
 /// <summary>The server-wide settings an administrator changes while the server runs.</summary>
 public sealed record ServerSettings
 {
+	/// <summary>The kinds of thing whose creation can be locked to their managers.</summary>
+	[Flags]
+	public enum CreationLocks : byte
+	{
+		/// <summary>Nothing is locked.</summary>
+		None = 0,
+
+		/// <summary>Only users who manage accounts create accounts; registration is refused.</summary>
+		Accounts = 1 << 0,
+
+		/// <summary>Only users who manage every room create rooms.</summary>
+		Rooms = 1 << 1,
+
+		/// <summary>Only users who manage beatmapsets upload them.</summary>
+		Beatmapsets = 1 << 2
+	}
+
 	/// <summary>Gets the message of the day shown to users when they log in, or <see langword="null" /> for none.</summary>
 	/// <exception cref="ArgumentException">The value contains the NUL character.</exception>
 	public string? Motd
@@ -78,22 +95,5 @@ public sealed record ServerSettings
 			get;
 			init => field = value?.ThrowIfHttp();
 		}
-	}
-
-	/// <summary>The kinds of thing whose creation can be locked to their managers.</summary>
-	[Flags]
-	public enum CreationLocks : byte
-	{
-		/// <summary>Nothing is locked.</summary>
-		None = 0,
-
-		/// <summary>Only users who manage accounts create accounts; registration is refused.</summary>
-		Accounts = 1 << 0,
-
-		/// <summary>Only users who manage every room create rooms.</summary>
-		Rooms = 1 << 1,
-
-		/// <summary>Only users who manage beatmapsets upload them.</summary>
-		Beatmapsets = 1 << 2
 	}
 }

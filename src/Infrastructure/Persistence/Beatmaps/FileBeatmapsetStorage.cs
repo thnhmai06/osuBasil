@@ -1,4 +1,3 @@
-using System.Collections.Frozen;
 using System.IO.Compression;
 using Basil.Application.Persistence.Beatmaps;
 using Basil.Domain.Beatmaps;
@@ -19,9 +18,7 @@ internal sealed class FileBeatmapsetStorage(
 	TimeProvider time,
 	ILogger<FileBeatmapsetStorage> logger) : IBeatmapsetStorage
 {
-	private static readonly FrozenSet<string> VideoExtensions =
-		new[] { ".mp4", ".avi", ".flv", ".m4v", ".mkv", ".mov", ".mpg", ".mpeg", ".webm", ".wmv" }.ToFrozenSet(
-			StringComparer.OrdinalIgnoreCase);
+	private const int BufferSize = 81920;
 
 	private readonly Dictionary<int, SetLock> _setLocks = [];
 
@@ -31,7 +28,7 @@ internal sealed class FileBeatmapsetStorage(
 		var path = Incoming(".osz");
 		try
 		{
-			var output = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920,
+			var output = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, BufferSize,
 				FileOptions.Asynchronous);
 			await using (output)
 			{
@@ -67,55 +64,6 @@ internal sealed class FileBeatmapsetStorage(
 		return Task.CompletedTask;
 	}
 
-	/// <summary>Waits for the turn on one beatmapset; operations on different sets do not wait for each other.</summary>
-	/// <param name="id">The id of the beatmapset.</param>
-	/// <param name="cancellationToken">A token that cancels the wait.</param>
-	/// <returns>The turn; releasing it lets the next operation on the set run.</returns>
-	private async Task<SetLock> LockAsync(int id, CancellationToken cancellationToken)
-	{
-		SetLock gate;
-		lock (_setLocks)
-		{
-			if (!_setLocks.TryGetValue(id, out gate!))
-				_setLocks[id] = gate = new SetLock(this, id);
-			gate.Users++;
-		}
-
-		try
-		{
-			await gate.Semaphore.WaitAsync(cancellationToken);
-		}
-		catch
-		{
-			gate.Forget();
-			throw;
-		}
-
-		return gate;
-	}
-
-	/// <summary>The turn on one beatmapset, forgotten once nobody waits for it.</summary>
-	private sealed class SetLock(FileBeatmapsetStorage storage, int id)
-	{
-		public SemaphoreSlim Semaphore { get; } = new(1, 1);
-		public int Users { get; set; }
-
-		public void Release()
-		{
-			Semaphore.Release();
-			Forget();
-		}
-
-		public void Forget()
-		{
-			lock (storage._setLocks)
-			{
-				if (--Users == 0)
-					storage._setLocks.Remove(id);
-			}
-		}
-	}
-
 	/// <inheritdoc />
 	public async Task SaveAsync(BeatmapsetRecord set, BeatmapsetArchive archive,
 		CancellationToken cancellationToken = default)
@@ -137,66 +85,13 @@ internal sealed class FileBeatmapsetStorage(
 				                         StringComparison.OrdinalIgnoreCase);
 
 			if (isSetFolderArchive)
-			{
-				// The archive is already a set folder's archive.osz; move or rename the folder to the target.
-				if (string.Equals(placedParent, target, StringComparison.OrdinalIgnoreCase))
-				{
-					// Same folder, at most a change of letter case.
-					if (!string.Equals(placedParent, target, StringComparison.Ordinal))
-					{
-						var renaming = Incoming();
-						Directory.Move(placedParent!, renaming);
-						Directory.Move(renaming, target);
-					}
-				}
-				else
-				{
-					DeleteDirectoryIfExists(target);
-					Directory.Move(placedParent!, target);
-				}
-			}
+				MoveSetFolder(placedParent!, target);
 			else
-			{
-				// A loose .osz, an uploaded or a packed archive: build a set folder around it and move it into place.
-				var stagingFolder = Incoming();
-				Directory.CreateDirectory(stagingFolder);
-				var stagedArchive = Path.Combine(stagingFolder, ArchiveName);
-				string? aside = null;
-				try
-				{
-					File.Move(placed.Path, stagedArchive);
-					if (Directory.Exists(target))
-					{
-						aside = Incoming();
-						Directory.Move(target, aside);
-					}
-
-					Directory.Move(stagingFolder, target);
-				}
-				catch
-				{
-					if (aside is not null && Directory.Exists(aside) && !Directory.Exists(target))
-						Directory.Move(aside, target);
-					// Never lose the archive: put it back where it was before dropping the staging folder.
-					if (File.Exists(stagedArchive) && !File.Exists(placed.Path)) File.Move(stagedArchive, placed.Path);
-					DeleteDirectoryIfExists(stagingFolder);
-					throw;
-				}
-
-				if (aside is not null) RemoveAside(aside, set);
-
-				if (placed.PackedFrom is not null && Directory.Exists(placed.PackedFrom) &&
-				    !SamePath(placed.PackedFrom, target))
-				{
-					Directory.Delete(placed.PackedFrom, true);
-				}
-			}
+				PlaceArchive(placed, set, target);
 
 			foreach (var other in FoldersOf(set.Id).Where(folder =>
 				         IsSetFolder(folder) && !string.Equals(folder, target, StringComparison.Ordinal)))
-			{
 				Directory.Delete(other, true);
-			}
 		}
 		finally
 		{
@@ -225,7 +120,15 @@ internal sealed class FileBeatmapsetStorage(
 		if (files.Count == 0 || !Directory.EnumerateFiles(placed.Path, "*.osu").Any()) return null;
 
 		var path = Incoming(".osz");
-		await PackFilesAsync(placed.Path, files, path, cancellationToken);
+		try
+		{
+			await PackFilesAsync(placed.Path, files, path, cancellationToken);
+		}
+		catch
+		{
+			DeleteFileIfExists(path);
+			throw;
+		}
 
 		var info = new FileInfo(path);
 		return new FileBeatmapsetArchive(path, folder.Name,
@@ -261,7 +164,8 @@ internal sealed class FileBeatmapsetStorage(
 		var gate = await LockAsync(set.Id, cancellationToken);
 		try
 		{
-			var folder = FindFolder(set.Id, FolderName(set)) ?? throw new InvalidOperationException("The beatmapset has no folder.");
+			var folder = FindFolder(set.Id, FolderName(set)) ??
+			             throw new InvalidOperationException("The beatmapset has no folder.");
 			var path = PathOf(folder, type, name);
 			var parent = Path.GetDirectoryName(path);
 			if (!string.IsNullOrEmpty(parent)) Directory.CreateDirectory(parent);
@@ -271,7 +175,7 @@ internal sealed class FileBeatmapsetStorage(
 			{
 				await using (var output = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write,
 					             FileShare.None,
-					             81920, FileOptions.Asynchronous))
+					             BufferSize, FileOptions.Asynchronous))
 				{
 					await content.CopyToAsync(output, cancellationToken);
 				}
@@ -290,12 +194,15 @@ internal sealed class FileBeatmapsetStorage(
 	}
 
 	/// <inheritdoc />
-	public async Task SaveArchiveWithoutVideoAsync(BeatmapsetRecord set, CancellationToken cancellationToken = default)
+	public async Task SaveArchiveWithoutVideoAsync(BeatmapsetRecord set, IReadOnlyCollection<string> videoFiles,
+		CancellationToken cancellationToken = default)
 	{
+		var videos = videoFiles.Select(name => name.Replace('\\', '/')).ToHashSet(StringComparer.OrdinalIgnoreCase);
 		var gate = await LockAsync(set.Id, cancellationToken);
 		try
 		{
-			var folder = FindFolder(set.Id, FolderName(set)) ?? throw new InvalidOperationException("The beatmapset has no folder.");
+			var folder = FindFolder(set.Id, FolderName(set)) ??
+			             throw new InvalidOperationException("The beatmapset has no folder.");
 			var archivePath = Path.Combine(folder, ArchiveName);
 			if (!File.Exists(archivePath)) throw new InvalidOperationException("The beatmapset has no archive.");
 
@@ -304,16 +211,16 @@ internal sealed class FileBeatmapsetStorage(
 			try
 			{
 				await using (var input = new FileStream(archivePath, FileMode.Open, FileAccess.Read,
-					             FileShare.Read | FileShare.Delete, 81920, FileOptions.Asynchronous))
+					             FileShare.Read | FileShare.Delete, BufferSize, FileOptions.Asynchronous))
 				{
 					await using var source = new ZipArchive(input, ZipArchiveMode.Read, true);
 					await using var output = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write,
-						FileShare.None, 81920, FileOptions.Asynchronous);
+						FileShare.None, BufferSize, FileOptions.Asynchronous);
 					await using var destination = new ZipArchive(output, ZipArchiveMode.Create, true);
 					foreach (var entry in source.Entries.Where(entry => !entry.FullName.EndsWith('/')))
 					{
 						cancellationToken.ThrowIfCancellationRequested();
-						if (VideoExtensions.Contains(Path.GetExtension(entry.FullName))) continue;
+						if (videos.Contains(entry.FullName.Replace('\\', '/'))) continue;
 
 						var created = destination.CreateEntry(entry.FullName, CompressionLevel.Optimal);
 						await using var entryInput = await entry.OpenAsync(cancellationToken);
@@ -394,27 +301,6 @@ internal sealed class FileBeatmapsetStorage(
 		return Task.FromResult(ListEntries());
 	}
 
-	private IEnumerable<BeatmapsetSource> ListEntries()
-	{
-		var root = paths.Beatmapsets.Path;
-		var entries = new List<BeatmapsetSource>();
-		if (Directory.Exists(root))
-		{
-			entries.AddRange(Directory.EnumerateDirectories(root)
-				.Where(folder => !IsHidden(Path.GetFileName(folder)))
-				.Select(folder => EntryOf(root, Path.GetFileName(folder)))
-				.OfType<BeatmapsetSource>());
-
-			entries.AddRange(Directory.EnumerateFiles(root)
-				.Select(file => Path.GetFileName(file))
-				.Where(name => !IsHidden(name) && IsArchiveName(name))
-				.Select(name => EntryOf(root, name))
-				.OfType<BeatmapsetSource>());
-		}
-
-		return entries;
-	}
-
 	/// <inheritdoc />
 	public IAsyncEnumerable<BeatmapsetSource> WatchAsync(CancellationToken cancellationToken)
 	{
@@ -436,6 +322,115 @@ internal sealed class FileBeatmapsetStorage(
 		}
 	}
 
+	/// <summary>Moves the folder that already holds the archive to the folder the set is stored in.</summary>
+	/// <param name="placedParent">The folder that holds the archive.</param>
+	/// <param name="target">The folder the set is stored in.</param>
+	private void MoveSetFolder(string placedParent, string target)
+	{
+		if (string.Equals(placedParent, target, StringComparison.OrdinalIgnoreCase))
+		{
+			// Same folder, at most a change of letter case.
+			if (!string.Equals(placedParent, target, StringComparison.Ordinal))
+			{
+				var renaming = Incoming();
+				Directory.Move(placedParent, renaming);
+				Directory.Move(renaming, target);
+			}
+		}
+		else
+		{
+			DeleteDirectoryIfExists(target);
+			Directory.Move(placedParent, target);
+		}
+	}
+
+	/// <summary>Moves a loose, uploaded or packed archive into a folder of its own for the set.</summary>
+	/// <param name="placed">The archive to place, as the caller holds it.</param>
+	/// <param name="set">The beatmapset the archive holds.</param>
+	/// <param name="target">The folder the set is stored in.</param>
+	private void PlaceArchive(FileBeatmapsetArchive placed, BeatmapsetRecord set, string target)
+	{
+		// A loose .osz, an uploaded or a packed archive: build a set folder around it and move it into place.
+		var stagingFolder = Incoming();
+		Directory.CreateDirectory(stagingFolder);
+		var stagedArchive = Path.Combine(stagingFolder, ArchiveName);
+		string? aside = null;
+		try
+		{
+			File.Move(placed.Path, stagedArchive);
+			if (Directory.Exists(target))
+			{
+				aside = Incoming();
+				Directory.Move(target, aside);
+			}
+
+			Directory.Move(stagingFolder, target);
+		}
+		catch
+		{
+			if (aside is not null && Directory.Exists(aside) && !Directory.Exists(target))
+				Directory.Move(aside, target);
+			// Never lose the archive: put it back where it was before dropping the staging folder.
+			if (File.Exists(stagedArchive) && !File.Exists(placed.Path)) File.Move(stagedArchive, placed.Path);
+			DeleteDirectoryIfExists(stagingFolder);
+			throw;
+		}
+
+		if (aside is not null) RemoveAside(aside, set);
+
+		if (placed.PackedFrom is not null && Directory.Exists(placed.PackedFrom) &&
+		    !SamePath(placed.PackedFrom, target))
+			Directory.Delete(placed.PackedFrom, true);
+	}
+
+	/// <summary>Waits for the turn on one beatmapset; operations on different sets do not wait for each other.</summary>
+	/// <param name="id">The id of the beatmapset.</param>
+	/// <param name="cancellationToken">A token that cancels the wait.</param>
+	/// <returns>The turn; releasing it lets the next operation on the set run.</returns>
+	private async Task<SetLock> LockAsync(int id, CancellationToken cancellationToken)
+	{
+		SetLock gate;
+		lock (_setLocks)
+		{
+			if (!_setLocks.TryGetValue(id, out gate!))
+				_setLocks[id] = gate = new SetLock(this, id);
+			gate.Users++;
+		}
+
+		try
+		{
+			await gate.Semaphore.WaitAsync(cancellationToken);
+		}
+		catch
+		{
+			gate.Forget();
+			throw;
+		}
+
+		return gate;
+	}
+
+	private IEnumerable<BeatmapsetSource> ListEntries()
+	{
+		var root = paths.Beatmapsets.Path;
+		var entries = new List<BeatmapsetSource>();
+		if (Directory.Exists(root))
+		{
+			entries.AddRange(Directory.EnumerateDirectories(root)
+				.Where(folder => !IsHidden(Path.GetFileName(folder)))
+				.Select(folder => EntryOf(root, Path.GetFileName(folder)))
+				.OfType<BeatmapsetSource>());
+
+			entries.AddRange(Directory.EnumerateFiles(root)
+				.Select(file => Path.GetFileName(file))
+				.Where(name => !IsHidden(name) && IsArchiveName(name))
+				.Select(name => EntryOf(root, name))
+				.OfType<BeatmapsetSource>());
+		}
+
+		return entries;
+	}
+
 	/// <summary>Packs files of a folder into a new archive, each under its path inside the folder.</summary>
 	/// <param name="folder">The folder's full path.</param>
 	/// <param name="files">The full paths of the files to pack, all inside the folder.</param>
@@ -444,7 +439,7 @@ internal sealed class FileBeatmapsetStorage(
 	private static async Task PackFilesAsync(string folder, IEnumerable<string> files, string target,
 		CancellationToken cancellationToken)
 	{
-		var stream = new FileStream(target, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920,
+		var stream = new FileStream(target, FileMode.CreateNew, FileAccess.Write, FileShare.None, BufferSize,
 			FileOptions.Asynchronous);
 		await using (stream)
 		{
@@ -454,7 +449,7 @@ internal sealed class FileBeatmapsetStorage(
 				cancellationToken.ThrowIfCancellationRequested();
 				var entry = zip.CreateEntry(Path.GetRelativePath(folder, file).Replace('\\', '/'),
 					CompressionLevel.Optimal);
-				var input = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 81920,
+				var input = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, BufferSize,
 					FileOptions.Asynchronous);
 				await using (input)
 				{
@@ -541,7 +536,7 @@ internal sealed class FileBeatmapsetStorage(
 
 	private static FileStream OpenRead(string path)
 	{
-		return new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete, 81920,
+		return new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete, BufferSize,
 			FileOptions.Asynchronous);
 	}
 
@@ -553,5 +548,27 @@ internal sealed class FileBeatmapsetStorage(
 	private static void DeleteDirectoryIfExists(string path)
 	{
 		if (Directory.Exists(path)) Directory.Delete(path, true);
+	}
+
+	/// <summary>The turn on one beatmapset, forgotten once nobody waits for it.</summary>
+	private sealed class SetLock(FileBeatmapsetStorage storage, int id)
+	{
+		public SemaphoreSlim Semaphore { get; } = new(1, 1);
+		public int Users { get; set; }
+
+		public void Release()
+		{
+			Semaphore.Release();
+			Forget();
+		}
+
+		public void Forget()
+		{
+			lock (storage._setLocks)
+			{
+				if (--Users == 0)
+					storage._setLocks.Remove(id);
+			}
+		}
 	}
 }

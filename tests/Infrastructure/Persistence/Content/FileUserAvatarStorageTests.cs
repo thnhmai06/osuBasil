@@ -10,13 +10,18 @@ public sealed class FileUserAvatarStorageTests : IDisposable
 {
 	private static readonly UserRecord Alice = User(8, "Alice");
 	private static readonly UserRecord Bob = User(9, "Bob");
+	private readonly IUserAvatarStorage _avatars;
 
 	private readonly TempData _data = new();
-	private readonly IUserAvatarStorage _avatars;
 
 	public FileUserAvatarStorageTests()
 	{
 		_avatars = new FileUserAvatarStorage(_data.Paths);
+	}
+
+	public void Dispose()
+	{
+		_data.Dispose();
 	}
 
 	[Fact]
@@ -30,7 +35,8 @@ public sealed class FileUserAvatarStorageTests : IDisposable
 	{
 		await _avatars.SaveAsync(Alice, TestStreams.Of("alice"), TestContext.Current.CancellationToken);
 
-		Assert.Equal("alice", await TestStreams.ReadAllAsync(await _avatars.OpenAsync(Alice, TestContext.Current.CancellationToken)));
+		Assert.Equal("alice",
+			await TestStreams.ReadAllAsync(await _avatars.OpenAsync(Alice, TestContext.Current.CancellationToken)));
 	}
 
 	[Fact]
@@ -40,7 +46,8 @@ public sealed class FileUserAvatarStorageTests : IDisposable
 
 		await _avatars.SaveAsync(Alice, TestStreams.Of("new"), TestContext.Current.CancellationToken);
 
-		Assert.Equal("new", await TestStreams.ReadAllAsync(await _avatars.OpenAsync(Alice, TestContext.Current.CancellationToken)));
+		Assert.Equal("new",
+			await TestStreams.ReadAllAsync(await _avatars.OpenAsync(Alice, TestContext.Current.CancellationToken)));
 		Assert.Single(TempData.FilesUnder(_data.Paths.Avatars.Path));
 	}
 
@@ -52,7 +59,8 @@ public sealed class FileUserAvatarStorageTests : IDisposable
 
 		await _avatars.DeleteAsync(Bob, TestContext.Current.CancellationToken);
 
-		Assert.Equal("alice", await TestStreams.ReadAllAsync(await _avatars.OpenAsync(Alice, TestContext.Current.CancellationToken)));
+		Assert.Equal("alice",
+			await TestStreams.ReadAllAsync(await _avatars.OpenAsync(Alice, TestContext.Current.CancellationToken)));
 		Assert.Null(await _avatars.OpenAsync(Bob, TestContext.Current.CancellationToken));
 	}
 
@@ -64,7 +72,8 @@ public sealed class FileUserAvatarStorageTests : IDisposable
 		await Assert.ThrowsAsync<IOException>(() =>
 			_avatars.SaveAsync(Alice, new TestStreams.Failing(), TestContext.Current.CancellationToken));
 
-		Assert.Equal("previous", await TestStreams.ReadAllAsync(await _avatars.OpenAsync(Alice, TestContext.Current.CancellationToken)));
+		Assert.Equal("previous",
+			await TestStreams.ReadAllAsync(await _avatars.OpenAsync(Alice, TestContext.Current.CancellationToken)));
 		Assert.Single(TempData.FilesUnder(_data.Paths.Avatars.Path));
 	}
 
@@ -90,6 +99,4 @@ public sealed class FileUserAvatarStorageTests : IDisposable
 	{
 		return new UserRecord { Id = id, Value = new UserData { Name = name } };
 	}
-
-	public void Dispose() => _data.Dispose();
 }

@@ -16,22 +16,31 @@ public sealed class FileScreenshotStorageTests : IDisposable
 		_screenshots = new FileScreenshotStorage(_data.Paths);
 	}
 
+	public void Dispose()
+	{
+		_data.Dispose();
+	}
+
 	[Fact]
 	public async Task A_saved_screenshot_opens_with_the_bytes_it_was_saved_with()
 	{
-		var reference = await _screenshots.SaveAsync(TestStreams.Of("shot"), "png", TestContext.Current.CancellationToken);
+		var reference =
+			await _screenshots.SaveAsync(TestStreams.Of("shot"), "png", TestContext.Current.CancellationToken);
 
-		Assert.Equal("shot", await TestStreams.ReadAllAsync(await _screenshots.OpenAsync(reference, TestContext.Current.CancellationToken)));
+		Assert.Equal("shot",
+			await TestStreams.ReadAllAsync(await _screenshots.OpenAsync(reference,
+				TestContext.Current.CancellationToken)));
 	}
 
 	[Fact]
 	public async Task A_screenshot_is_stored_under_a_uuid_name_with_the_extension()
 	{
-		var reference = await _screenshots.SaveAsync(TestStreams.Of("shot"), "png", TestContext.Current.CancellationToken);
+		var reference =
+			await _screenshots.SaveAsync(TestStreams.Of("shot"), "png", TestContext.Current.CancellationToken);
 
 		Assert.StartsWith("Screenshots/", reference.Value);
 		var name = reference.Value["Screenshots/".Length..];
-		Assert.Equal(".png", Path.GetExtension(name), ignoreCase: true);
+		Assert.Equal(".png", Path.GetExtension(name), true);
 		Assert.True(Guid.TryParse(Path.GetFileNameWithoutExtension(name), out _));
 	}
 
@@ -39,7 +48,8 @@ public sealed class FileScreenshotStorageTests : IDisposable
 	public async Task Two_screenshots_get_different_references_and_neither_replaces_the_other()
 	{
 		var first = await _screenshots.SaveAsync(TestStreams.Of("first"), "png", TestContext.Current.CancellationToken);
-		var second = await _screenshots.SaveAsync(TestStreams.Of("first"), "png", TestContext.Current.CancellationToken);
+		var second =
+			await _screenshots.SaveAsync(TestStreams.Of("first"), "png", TestContext.Current.CancellationToken);
 
 		Assert.NotEqual(first, second);
 		Assert.Equal(2, (await _screenshots.ListAsync(TestContext.Current.CancellationToken)).Count());
@@ -71,10 +81,13 @@ public sealed class FileScreenshotStorageTests : IDisposable
 	[InlineData("PNG")]
 	public async Task An_extension_of_one_to_eight_ascii_letters_or_digits_is_accepted(string extension)
 	{
-		var reference = await _screenshots.SaveAsync(TestStreams.Of("shot"), extension, TestContext.Current.CancellationToken);
+		var reference =
+			await _screenshots.SaveAsync(TestStreams.Of("shot"), extension, TestContext.Current.CancellationToken);
 
 		Assert.EndsWith("." + extension, reference.Value, StringComparison.OrdinalIgnoreCase);
-		Assert.Equal("shot", await TestStreams.ReadAllAsync(await _screenshots.OpenAsync(reference, TestContext.Current.CancellationToken)));
+		Assert.Equal("shot",
+			await TestStreams.ReadAllAsync(await _screenshots.OpenAsync(reference,
+				TestContext.Current.CancellationToken)));
 	}
 
 	[Theory]
@@ -116,7 +129,8 @@ public sealed class FileScreenshotStorageTests : IDisposable
 		await _screenshots.DeleteAsync(gone, TestContext.Current.CancellationToken);
 
 		Assert.Null(await _screenshots.OpenAsync(gone, TestContext.Current.CancellationToken));
-		Assert.Equal([kept.Value], (await _screenshots.ListAsync(TestContext.Current.CancellationToken)).Select(reference => reference.Value));
+		Assert.Equal([kept.Value],
+			(await _screenshots.ListAsync(TestContext.Current.CancellationToken)).Select(reference => reference.Value));
 	}
 
 	[Fact]
@@ -134,7 +148,8 @@ public sealed class FileScreenshotStorageTests : IDisposable
 		var stored = await _screenshots.SaveAsync(TestStreams.Of("kept"), "png", TestContext.Current.CancellationToken);
 		var banner = new ContentReference("Menu/Banners/shot.png");
 		var address = new ContentReference(new Uri("https://example.com/Screenshots/shot.png"));
-		await File.WriteAllTextAsync(Path.Combine(_data.Paths.MenuBanners.Path, "shot.png"), "banner", TestContext.Current.CancellationToken);
+		await File.WriteAllTextAsync(Path.Combine(_data.Paths.MenuBanners.Path, "shot.png"), "banner",
+			TestContext.Current.CancellationToken);
 
 		Assert.Null(await _screenshots.OpenAsync(banner, TestContext.Current.CancellationToken));
 		Assert.Null(await _screenshots.OpenAsync(address, TestContext.Current.CancellationToken));
@@ -142,8 +157,8 @@ public sealed class FileScreenshotStorageTests : IDisposable
 		await _screenshots.DeleteAsync(address, TestContext.Current.CancellationToken);
 
 		Assert.True(File.Exists(Path.Combine(_data.Paths.MenuBanners.Path, "shot.png")));
-		Assert.Equal("kept", await TestStreams.ReadAllAsync(await _screenshots.OpenAsync(stored, TestContext.Current.CancellationToken)));
+		Assert.Equal("kept",
+			await TestStreams.ReadAllAsync(await _screenshots.OpenAsync(stored,
+				TestContext.Current.CancellationToken)));
 	}
-
-	public void Dispose() => _data.Dispose();
 }

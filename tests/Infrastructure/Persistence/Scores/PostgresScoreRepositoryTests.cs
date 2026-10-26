@@ -13,6 +13,7 @@ namespace Basil.Infrastructure.Persistence.Tests.Scores;
 [Collection("Persistence")]
 public sealed class PostgresScoreRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
+	private const int Racers = 8;
 	private static readonly DateTimeOffset First = new(2026, 10, 22, 12, 0, 0, TimeSpan.Zero);
 	private static readonly DateTimeOffset Second = new(2026, 10, 22, 13, 0, 0, TimeSpan.Zero);
 	private static readonly DateTimeOffset Third = new(2026, 10, 22, 14, 0, 0, TimeSpan.Zero);
@@ -104,7 +105,7 @@ public sealed class PostgresScoreRepositoryTests(PersistenceFixture container) :
 		await CreateScoreAsync(player, StoredScores.Hash("beatmap_one"), 1000, First);
 		await CreateScoreAsync(other, StoredScores.Hash("beatmap_two"), 2000, Second);
 
-		var page = await Scores.ListAsync(new ScoreQuery(Player: player), new PageRequest(0, 10),
+		var page = await Scores.ListAsync(new ScoreQuery(player), new PageRequest(0, 10),
 			TestContext.Current.CancellationToken);
 
 		Assert.Equal(1000, Assert.Single(page.Items).Value.TotalScore);
@@ -211,7 +212,8 @@ public sealed class PostgresScoreRepositoryTests(PersistenceFixture container) :
 		await CreateScoreAsync(player, StoredScores.Hash("beatmap_one"), 1000, First);
 		await CreateScoreAsync(player, StoredScores.Hash("beatmap_two"), 2000, Third);
 
-		var page = await Scores.ListAsync(new ScoreQuery(), new PageRequest(0, 10), TestContext.Current.CancellationToken);
+		var page = await Scores.ListAsync(new ScoreQuery(), new PageRequest(0, 10),
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal(new[] { Third, First }, page.Items.Select(score => score.Value.Timestamp));
 	}
@@ -224,7 +226,8 @@ public sealed class PostgresScoreRepositoryTests(PersistenceFixture container) :
 		await CreateScoreAsync(player, StoredScores.Hash("beatmap_two"), 2000, Second);
 		await CreateScoreAsync(player, StoredScores.Hash("beatmap_three"), 3000, Third);
 
-		var page = await Scores.ListAsync(new ScoreQuery(), new PageRequest(1, 1), TestContext.Current.CancellationToken);
+		var page = await Scores.ListAsync(new ScoreQuery(), new PageRequest(1, 1),
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal(3, page.Total);
 		Assert.Equal(Second, Assert.Single(page.Items).Value.Timestamp);
@@ -237,12 +240,11 @@ public sealed class PostgresScoreRepositoryTests(PersistenceFixture container) :
 		await CreateScoreAsync(player, StoredScores.Hash("beatmap_one"), 1000, First);
 		await CreateScoreAsync(player, StoredScores.Hash("beatmap_two"), 2000, Second);
 
-		var page = await Scores.ListAsync(new ScoreQuery(), new PageRequest(0, 1), TestContext.Current.CancellationToken);
+		var page = await Scores.ListAsync(new ScoreQuery(), new PageRequest(0, 1),
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal(2, page.Total);
 	}
-
-	private const int Racers = 8;
 
 	[Fact]
 	public async Task Scores_created_at_once_with_one_checksum_by_one_player_store_exactly_one()
@@ -293,7 +295,8 @@ public sealed class PostgresScoreRepositoryTests(PersistenceFixture container) :
 			try
 			{
 				return (object)await Scores.CreateAsync(
-					StoredScores.Data(player, StoredScores.Hash($"racing_beatmap_{index}"), 1000 + index, First, checksum),
+					StoredScores.Data(player, StoredScores.Hash($"racing_beatmap_{index}"), 1000 + index, First,
+						checksum),
 					TestContext.Current.CancellationToken);
 			}
 			catch (Exception exception)
@@ -320,7 +323,8 @@ public sealed class PostgresScoreRepositoryTests(PersistenceFixture container) :
 	/// <returns>The account.</returns>
 	private async Task<UserRecord> CreatePlayerAsync(string name)
 	{
-		return await Get<IUserRepository>().CreateAsync(new UserData { Name = name }, TestContext.Current.CancellationToken);
+		return await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = name }, TestContext.Current.CancellationToken);
 	}
 
 	/// <summary>Creates a play of the given account.</summary>

@@ -5,7 +5,10 @@ using Basil.Domain.Users;
 namespace Basil.Application.Persistence.Auth;
 
 /// <summary>Records the history of logins.</summary>
-/// <remarks>The history is kept for audit; staff read it back, and each read is itself logged to the moderation log by the caller.</remarks>
+/// <remarks>
+///     The history is kept for audit; staff read it back, and each read is itself logged to the moderation log by the
+///     caller.
+/// </remarks>
 public interface ILoginRepository
 {
 	/// <summary>Records a login.</summary>

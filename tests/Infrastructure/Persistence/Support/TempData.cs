@@ -4,7 +4,10 @@ using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Persistence.Tests.Support;
 
-/// <summary>A data directory of its own in the temporary directory, with every storage directory created; deleted when disposed.</summary>
+/// <summary>
+///     A data directory of its own in the temporary directory, with every storage directory created; deleted when
+///     disposed.
+/// </summary>
 internal sealed class TempData : IDisposable
 {
 	/// <summary>Creates the data directory.</summary>
@@ -22,6 +25,16 @@ internal sealed class TempData : IDisposable
 	/// <summary>Gets the locations of the storages in the data directory.</summary>
 	public DataPaths Paths { get; }
 
+	/// <summary>Deletes the data directory.</summary>
+	public void Dispose()
+	{
+		if (!Directory.Exists(Root)) return;
+
+		// A refused-but-written file may carry a name Windows keeps for a device (CON, AUX.png), which only the
+		// extended-length form can delete.
+		Directory.Delete(OperatingSystem.IsWindows() ? @"\\?\" + Root : Root, true);
+	}
+
 	/// <summary>Lists every file under a directory, relative to it and with '/' between folders.</summary>
 	/// <param name="directory">The directory.</param>
 	/// <returns>The relative names, in alphabetical order.</returns>
@@ -33,15 +46,5 @@ internal sealed class TempData : IDisposable
 				.Order(StringComparer.Ordinal)
 				.ToArray()
 			: [];
-	}
-
-	/// <summary>Deletes the data directory.</summary>
-	public void Dispose()
-	{
-		if (!Directory.Exists(Root)) return;
-
-		// A refused-but-written file may carry a name Windows keeps for a device (CON, AUX.png), which only the
-		// extended-length form can delete.
-		Directory.Delete(OperatingSystem.IsWindows() ? @"\\?\" + Root : Root, true);
 	}
 }

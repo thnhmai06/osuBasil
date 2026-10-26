@@ -1,6 +1,5 @@
 using System.Globalization;
 using Basil.Application.Persistence.Content;
-using Basil.Domain;
 using Basil.Domain.Content;
 using Basil.Infrastructure.Persistence.Common;
 using Basil.Infrastructure.Persistence.Postgres;
@@ -30,17 +29,20 @@ internal sealed class PostgresSettingsRepository(
 		var defaults = new ServerSettings();
 		_settings = new ServerSettings
 		{
-			Motd = values.GetValueOrDefault("motd"),
-			LockedCreation = ParseLocks(values.GetValueOrDefault("locked_creation")) ?? defaults.LockedCreation,
+			Motd = values.GetValueOrDefault(SettingNames.Motd),
+			LockedCreation = ParseLocks(values.GetValueOrDefault(SettingNames.LockedCreation)) ??
+			                 defaults.LockedCreation,
 			MenuIcon = new ServerSettings.MenuIconSettings
 			{
-				Url = Parse("menu_icon_url", values.GetValueOrDefault("menu_icon_url")),
-				Image = ParseImage(values.GetValueOrDefault("menu_icon_image"))
+				Url = Parse(SettingNames.MenuIconUrl, values.GetValueOrDefault(SettingNames.MenuIconUrl)),
+				Image = ParseImage(values.GetValueOrDefault(SettingNames.MenuIconImage))
 			},
 			BeatmapMirror = new ServerSettings.BeatmapMirrorSettings
 			{
-				DownloadEndpoint = Parse("mirror_download_endpoint", values.GetValueOrDefault("mirror_download_endpoint")),
-				SearchEndpoint = Parse("mirror_search_endpoint", values.GetValueOrDefault("mirror_search_endpoint"))
+				DownloadEndpoint = Parse(SettingNames.MirrorDownloadEndpoint,
+					values.GetValueOrDefault(SettingNames.MirrorDownloadEndpoint)),
+				SearchEndpoint = Parse(SettingNames.MirrorSearchEndpoint,
+					values.GetValueOrDefault(SettingNames.MirrorSearchEndpoint))
 			}
 		};
 	}
@@ -58,15 +60,15 @@ internal sealed class PostgresSettingsRepository(
 	{
 		var values = new Dictionary<string, string?>
 		{
-			["motd"] = settings.Motd,
-			["locked_creation"] = ((int)settings.LockedCreation).ToString(CultureInfo.InvariantCulture),
-			["menu_icon_url"] = settings.MenuIcon.Url?.ToString(),
-			["menu_icon_image"] = settings.MenuIcon.Image?.ToString(),
-			["mirror_download_endpoint"] = settings.BeatmapMirror.DownloadEndpoint?.ToString(),
-			["mirror_search_endpoint"] = settings.BeatmapMirror.SearchEndpoint?.ToString()
+			[SettingNames.Motd] = settings.Motd,
+			[SettingNames.LockedCreation] = ((int)settings.LockedCreation).ToString(CultureInfo.InvariantCulture),
+			[SettingNames.MenuIconUrl] = settings.MenuIcon.Url?.ToString(),
+			[SettingNames.MenuIconImage] = settings.MenuIcon.Image?.ToString(),
+			[SettingNames.MirrorDownloadEndpoint] = settings.BeatmapMirror.DownloadEndpoint?.ToString(),
+			[SettingNames.MirrorSearchEndpoint] = settings.BeatmapMirror.SearchEndpoint?.ToString()
 		};
-		await _writes.WriteAsync(1, () => writer.SaveAsync(Root.Server, (GetType(), 1), new WriteCommand(
-			async (context, token) =>
+		await _writes.WriteAsync(1, () => writer.SaveAsync(Root.Server, (GetType(), 1),
+			new WriteCommand(async (context, token) =>
 			{
 				foreach (var (name, value) in values)
 					await UpsertSettingAsync(context, name, value, token);
@@ -84,7 +86,8 @@ internal sealed class PostgresSettingsRepository(
 		if (value is null) return null;
 		if (Uri.TryCreate(value, UriKind.Absolute, out var address)) return address;
 
-		logger.LogWarning("The setting {Setting} holds {Value}, which is not an absolute address, and is not used", name, value);
+		logger.LogWarning("The setting {Setting} holds {Value}, which is not an absolute address, and is not used",
+			name, value);
 		return null;
 	}
 
@@ -95,7 +98,8 @@ internal sealed class PostgresSettingsRepository(
 		if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var locks))
 			return (ServerSettings.CreationLocks)locks;
 
-		logger.LogWarning("The setting locked_creation holds {Value}, which is not a number, and is not used", value);
+		logger.LogWarning("The setting {Setting} holds {Value}, which is not a number, and is not used",
+			SettingNames.LockedCreation, value);
 		return null;
 	}
 
@@ -107,5 +111,16 @@ internal sealed class PostgresSettingsRepository(
 
 		logger.LogWarning("The menu icon image {Image} is not a valid asset reference and is not shown", value);
 		return null;
+	}
+
+	/// <summary>The names the settings are stored under.</summary>
+	private static class SettingNames
+	{
+		public const string Motd = "motd";
+		public const string LockedCreation = "locked_creation";
+		public const string MenuIconUrl = "menu_icon_url";
+		public const string MenuIconImage = "menu_icon_image";
+		public const string MirrorDownloadEndpoint = "mirror_download_endpoint";
+		public const string MirrorSearchEndpoint = "mirror_search_endpoint";
 	}
 }

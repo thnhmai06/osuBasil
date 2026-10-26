@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using Basil.Application.Persistence.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
@@ -51,7 +52,7 @@ public sealed class OsuBeatmapAnalyserTests
 	[Fact]
 	public void Analyze_EveryDifficultyOfARealSetIsUsableAndDoubleTimeNeverLowersIt()
 	{
-		using var archive = new System.IO.Compression.ZipArchive(
+		using var archive = new ZipArchive(
 			new MemoryStream(OszArchive.Sample(Path.Combine("Sets", "padoru-standard.osz")), false));
 		var files = archive.Entries.Where(entry => entry.Name.EndsWith(".osu", StringComparison.Ordinal)).ToList();
 		Assert.Equal(26, files.Count);
@@ -68,7 +69,7 @@ public sealed class OsuBeatmapAnalyserTests
 		}
 	}
 
-	private static MemoryStream Read(System.IO.Compression.ZipArchiveEntry entry)
+	private static MemoryStream Read(ZipArchiveEntry entry)
 	{
 		using var stream = entry.Open();
 		var buffer = new MemoryStream();

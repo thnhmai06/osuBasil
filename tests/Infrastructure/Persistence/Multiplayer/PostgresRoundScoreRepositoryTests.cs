@@ -41,7 +41,21 @@ public sealed class PostgresRoundScoreRepositoryTests(PersistenceFixture contain
 	}
 
 	[Fact]
-	public async Task A_round_score_is_stored_when_recording_it_returns()
+	public async Task A_round_score_just_recorded_is_listed_at_once()
+	{
+		var match = await CreateMatchAsync("pending_round_score_match");
+		var round = await CreateRoundAsync(match, 1);
+		var player = await CreatePlayerAsync("pending_rs");
+		var score = await CreateScoreAsync(player, 1000, First);
+
+		await RoundScores.RecordAsync(new RoundScore(score, round, null), TestContext.Current.CancellationToken);
+		var listed = await RoundScores.ListAsync(round, TestContext.Current.CancellationToken);
+
+		Assert.Equal(score.Id, Assert.Single(listed).Score.Id);
+	}
+
+	[Fact]
+	public async Task A_round_score_is_stored_after_it_was_recorded()
 	{
 		var match = await CreateMatchAsync("stored_round_score_match");
 		var round = await CreateRoundAsync(match, 1);
@@ -51,9 +65,10 @@ public sealed class PostgresRoundScoreRepositoryTests(PersistenceFixture contain
 		await RoundScores.RecordAsync(new RoundScore(score, round, null),
 			TestContext.Current.CancellationToken);
 
-		var rows = await StoredRows.ReadAsync(ConnectionString,
+		var rows = await StoredRows.WaitForAsync(ConnectionString,
 			"select score_id, match_id, round_number from round_scores where score_id = @id",
-			new Dictionary<string, object?> { ["@id"] = score.Id }, TestContext.Current.CancellationToken);
+			new Dictionary<string, object?> { ["@id"] = score.Id }, rows => rows.Count == 1, "the round score",
+			TestContext.Current.CancellationToken);
 
 		var stored = Assert.Single(rows);
 		Assert.Equal((score.Id, match.Id, 1), (stored.Number("score_id"), stored.Number("match_id"),
@@ -87,6 +102,9 @@ public sealed class PostgresRoundScoreRepositoryTests(PersistenceFixture contain
 		var player = await CreatePlayerAsync("restart_rs");
 		var score = await CreateScoreAsync(player, 1000, First);
 		await RoundScores.RecordAsync(new RoundScore(score, round, GameTeam.Red),
+			TestContext.Current.CancellationToken);
+		await StoredRows.WaitForAsync(ConnectionString, "select score_id from round_scores where score_id = @id",
+			new Dictionary<string, object?> { ["@id"] = score.Id }, rows => rows.Count == 1, "the round score",
 			TestContext.Current.CancellationToken);
 
 		await using var other = new StorageComposition(ConnectionString);
@@ -126,8 +144,9 @@ public sealed class PostgresRoundScoreRepositoryTests(PersistenceFixture contain
 		await RoundScores.RecordAsync(new RoundScore(score, round, GameTeam.Red),
 			TestContext.Current.CancellationToken);
 
-		var rows = await StoredRows.ReadAsync(ConnectionString, "select team from round_scores where score_id = @id",
-			new Dictionary<string, object?> { ["@id"] = score.Id }, TestContext.Current.CancellationToken);
+		var rows = await StoredRows.WaitForAsync(ConnectionString, "select team from round_scores where score_id = @id",
+			new Dictionary<string, object?> { ["@id"] = score.Id }, rows => rows.Count == 1, "the round score",
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal((int)GameTeam.Red, Assert.Single(rows).Number("team"));
 	}
@@ -200,7 +219,8 @@ public sealed class PostgresRoundScoreRepositoryTests(PersistenceFixture contain
 	/// <returns>The account.</returns>
 	private async Task<UserRecord> CreatePlayerAsync(string name)
 	{
-		return await Get<IUserRepository>().CreateAsync(new UserData { Name = name }, TestContext.Current.CancellationToken);
+		return await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = name }, TestContext.Current.CancellationToken);
 	}
 
 	/// <summary>Creates a play of the given account.</summary>
@@ -210,7 +230,8 @@ public sealed class PostgresRoundScoreRepositoryTests(PersistenceFixture contain
 	/// <returns>The play.</returns>
 	private async Task<ScoreRecord> CreateScoreAsync(UserRecord player, int totalScore, DateTimeOffset timestamp)
 	{
-		return await Scores.CreateAsync(StoredScores.Data(player, StoredScores.Hash($"beatmap_{totalScore}"), totalScore,
+		return await Scores.CreateAsync(StoredScores.Data(player, StoredScores.Hash($"beatmap_{totalScore}"),
+			totalScore,
 			timestamp), TestContext.Current.CancellationToken);
 	}
 }

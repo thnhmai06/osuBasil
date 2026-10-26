@@ -15,8 +15,10 @@ public sealed class PostgresRelationshipRepositoryTests(PersistenceFixture conta
 	[Fact]
 	public async Task A_relationship_is_added()
 	{
-		var actor = await Get<IUserRepository>().CreateAsync(new UserData { Name = "actor_one" }, TestContext.Current.CancellationToken);
-		var target = await Get<IUserRepository>().CreateAsync(new UserData { Name = "target_one" }, TestContext.Current.CancellationToken);
+		var actor = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "actor_one" }, TestContext.Current.CancellationToken);
+		var target = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "target_one" }, TestContext.Current.CancellationToken);
 
 		await Relationships.CreateOrUpdateAsync(new Relationship
 		{
@@ -36,8 +38,10 @@ public sealed class PostgresRelationshipRepositoryTests(PersistenceFixture conta
 	[Fact]
 	public async Task A_relationship_toward_the_same_account_replaces_the_earlier_one()
 	{
-		var actor = await Get<IUserRepository>().CreateAsync(new UserData { Name = "actor_one" }, TestContext.Current.CancellationToken);
-		var target = await Get<IUserRepository>().CreateAsync(new UserData { Name = "target_one" }, TestContext.Current.CancellationToken);
+		var actor = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "actor_one" }, TestContext.Current.CancellationToken);
+		var target = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "target_one" }, TestContext.Current.CancellationToken);
 		await Relationships.CreateOrUpdateAsync(new Relationship
 		{
 			Actor = actor,
@@ -70,8 +74,10 @@ public sealed class PostgresRelationshipRepositoryTests(PersistenceFixture conta
 	[Fact]
 	public async Task A_replaced_relationship_is_listed_once()
 	{
-		var actor = await Get<IUserRepository>().CreateAsync(new UserData { Name = "actor_one" }, TestContext.Current.CancellationToken);
-		var target = await Get<IUserRepository>().CreateAsync(new UserData { Name = "target_one" }, TestContext.Current.CancellationToken);
+		var actor = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "actor_one" }, TestContext.Current.CancellationToken);
+		var target = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "target_one" }, TestContext.Current.CancellationToken);
 		await Relationships.CreateOrUpdateAsync(new Relationship
 		{
 			Actor = actor,
@@ -96,8 +102,10 @@ public sealed class PostgresRelationshipRepositoryTests(PersistenceFixture conta
 	[Fact]
 	public async Task A_relationship_is_deleted()
 	{
-		var actor = await Get<IUserRepository>().CreateAsync(new UserData { Name = "actor_one" }, TestContext.Current.CancellationToken);
-		var target = await Get<IUserRepository>().CreateAsync(new UserData { Name = "target_one" }, TestContext.Current.CancellationToken);
+		var actor = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "actor_one" }, TestContext.Current.CancellationToken);
+		var target = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "target_one" }, TestContext.Current.CancellationToken);
 		var relationship = new Relationship
 		{
 			Actor = actor,
@@ -116,8 +124,10 @@ public sealed class PostgresRelationshipRepositoryTests(PersistenceFixture conta
 	[Fact]
 	public async Task A_deleted_relationship_is_stored_as_gone()
 	{
-		var actor = await Get<IUserRepository>().CreateAsync(new UserData { Name = "actor_one" }, TestContext.Current.CancellationToken);
-		var target = await Get<IUserRepository>().CreateAsync(new UserData { Name = "target_one" }, TestContext.Current.CancellationToken);
+		var actor = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "actor_one" }, TestContext.Current.CancellationToken);
+		var target = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "target_one" }, TestContext.Current.CancellationToken);
 		var relationship = new Relationship
 		{
 			Actor = actor,
@@ -143,9 +153,12 @@ public sealed class PostgresRelationshipRepositoryTests(PersistenceFixture conta
 	[Fact]
 	public async Task A_user_lists_only_the_relationships_they_hold()
 	{
-		var first = await Get<IUserRepository>().CreateAsync(new UserData { Name = "actor_one" }, TestContext.Current.CancellationToken);
-		var second = await Get<IUserRepository>().CreateAsync(new UserData { Name = "actor_two" }, TestContext.Current.CancellationToken);
-		var target = await Get<IUserRepository>().CreateAsync(new UserData { Name = "target_one" }, TestContext.Current.CancellationToken);
+		var first = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "actor_one" }, TestContext.Current.CancellationToken);
+		var second = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "actor_two" }, TestContext.Current.CancellationToken);
+		var target = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "target_one" }, TestContext.Current.CancellationToken);
 		await Relationships.CreateOrUpdateAsync(new Relationship
 		{
 			Actor = first,

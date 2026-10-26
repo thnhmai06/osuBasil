@@ -3,8 +3,8 @@ using Basil.Application.Persistence.Scores;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
-using Basil.Infrastructure.Persistence.Postgres;
 using Basil.Infrastructure.Persistence.Memory;
+using Basil.Infrastructure.Persistence.Postgres;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Persistence.Scores;
@@ -62,9 +62,11 @@ internal sealed class PostgresScoreRepository(
 			var matching = BuildFilter(context.Scores, scoreQuery);
 			// A player's best play is the highest score; the earlier play and then the lower id win a tie.
 			var q = scoreQuery.BestPerPlayer
-				? matching.Where(s => !matching.Any(other => other.UserId == s.UserId && (other.TotalScore > s.TotalScore ||
-					(other.TotalScore == s.TotalScore && (other.Timestamp < s.Timestamp ||
-					                                      (other.Timestamp == s.Timestamp && other.Id < s.Id))))))
+				? matching.Where(s => !matching.Any(other => other.UserId == s.UserId &&
+				                                             (other.TotalScore > s.TotalScore ||
+				                                              (other.TotalScore == s.TotalScore &&
+				                                               (other.Timestamp < s.Timestamp ||
+				                                                (other.Timestamp == s.Timestamp && other.Id < s.Id))))))
 				: matching;
 			var count = await q.CountAsync(cancellationToken);
 			q = scoreQuery.BestPerPlayer || scoreQuery.BeatmapHash is not null
@@ -121,7 +123,7 @@ internal sealed class PostgresScoreRepository(
 	{
 		var row = await Reader.ReadAsync(context => context.Scores
 			.Where(row => row.Id == key)
-			.FirstOrDefaultAsync(cancellationToken: CancellationToken.None));
+			.FirstOrDefaultAsync(CancellationToken.None));
 		return row is null ? null : ToScore(row);
 	}
 

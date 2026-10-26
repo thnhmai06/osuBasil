@@ -11,7 +11,10 @@ public sealed class FileBeatmapsetEntryReaderTests : IDisposable
 
 	private string Sets => _data.Paths.Beatmapsets.Path;
 
-	public void Dispose() => _data.Dispose();
+	public void Dispose()
+	{
+		_data.Dispose();
+	}
 
 	[Fact]
 	public void A_folder_that_vanishes_while_it_is_read_reads_as_a_folder_that_does_not_exist()

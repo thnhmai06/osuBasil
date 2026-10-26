@@ -16,6 +16,9 @@ internal sealed class DatabaseWriter(
 	TimeProvider timeProvider,
 	ILogger<DatabaseWriter> logger) : IHostedLifecycleService, IDisposable
 {
+	private static readonly TimeSpan FirstRetryDelay = TimeSpan.FromMilliseconds(50);
+	private static readonly TimeSpan LongestRetryDelay = TimeSpan.FromSeconds(5);
+
 	private readonly CancellationTokenSource _abandon = new();
 	private readonly SemaphoreSlim _connections = new(ValidConnections(options.Value.WriteConnections));
 	private readonly ConcurrentDictionary<RootQueue, Task> _drains = new();
@@ -246,7 +249,7 @@ internal sealed class DatabaseWriter(
 
 	private async Task RunAsync(Root root, PendingTransaction pendingTransaction)
 	{
-		var delay = TimeSpan.FromMilliseconds(50);
+		var delay = FirstRetryDelay;
 		DateTimeOffset? firstFailure = null;
 		while (true)
 			try
@@ -300,7 +303,7 @@ internal sealed class DatabaseWriter(
 						logger.LogError(environmentException,
 							"A write of {Root} could not be stored; trying again in {Delay}", root, delay);
 					await Task.Delay(delay, timeProvider, _abandon.Token);
-					delay = delay + delay > TimeSpan.FromSeconds(5) ? TimeSpan.FromSeconds(5) : delay + delay;
+					delay = NextRetryDelay(delay);
 					continue;
 				}
 
@@ -323,7 +326,7 @@ internal sealed class DatabaseWriter(
 
 	private async Task RunSnapshotAsync(PendingTransaction pendingTransaction)
 	{
-		await using var context = database.CreateAsynchronousContext();
+		await using var context = database.CreateUnconfirmedContext();
 		await pendingTransaction.Command!.Run(context, _abandon.Token);
 	}
 
@@ -333,7 +336,7 @@ internal sealed class DatabaseWriter(
 		var committing = false;
 		try
 		{
-			await using var context = database.CreateSynchronousContext();
+			await using var context = database.CreateConfirmedContext();
 			await using var transaction = await context.Database.BeginTransactionAsync(_abandon.Token);
 
 			// The ticket commits with the write, so it tells afterwards whether the write was stored.
@@ -354,19 +357,25 @@ internal sealed class DatabaseWriter(
 
 	private async Task<bool> WasCommittedAsync(Guid ticket)
 	{
-		var delay = TimeSpan.FromMilliseconds(50);
+		var delay = FirstRetryDelay;
 		while (true)
 			try
 			{
-				await using var context = database.CreateSynchronousContext();
+				await using var context = database.CreateConfirmedContext();
 				return await context.WriteTickets.AnyAsync(row => row.Id == ticket, _abandon.Token);
 			}
 			catch (Exception exception) when (exception.IsEnvironmentException())
 			{
 				logger.LogWarning(exception, "Transaction outcome could not be checked; retrying in {Delay}", delay);
 				await Task.Delay(delay, timeProvider, _abandon.Token);
-				delay = delay + delay > TimeSpan.FromSeconds(5) ? TimeSpan.FromSeconds(5) : delay + delay;
+				delay = NextRetryDelay(delay);
 			}
+	}
+
+	/// <summary>Returns the delay before the next try, after a try that waited the given delay.</summary>
+	private static TimeSpan NextRetryDelay(TimeSpan delay)
+	{
+		return delay + delay > LongestRetryDelay ? LongestRetryDelay : delay + delay;
 	}
 
 	private async Task ForgetTicketsEveryHourAsync()
@@ -397,7 +406,7 @@ internal sealed class DatabaseWriter(
 	public async Task ForgetOldTicketsAsync(CancellationToken cancellationToken = default)
 	{
 		var oldest = timeProvider.GetUtcNow() - TimeSpan.FromDays(1);
-		await using var context = database.CreateAsynchronousContext();
+		await using var context = database.CreateUnconfirmedContext();
 		await context.WriteTickets.Where(row => row.CreatedAt < oldest).ExecuteDeleteAsync(cancellationToken);
 	}
 
@@ -411,20 +420,20 @@ internal sealed class DatabaseWriter(
 
 	private sealed class RootHold : IAsyncDisposable
 	{
-		private readonly TaskCompletionSource _released = new(TaskCreationOptions.RunContinuationsAsynchronously);
 		private readonly List<Task> _holds = [];
+		private readonly TaskCompletionSource _released = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
 		public Task Released => _released.Task;
-
-		public void Add(Task done)
-		{
-			_holds.Add(done);
-		}
 
 		public async ValueTask DisposeAsync()
 		{
 			_released.TrySetResult();
 			await Task.WhenAll(_holds);
+		}
+
+		public void Add(Task done)
+		{
+			_holds.Add(done);
 		}
 	}
 

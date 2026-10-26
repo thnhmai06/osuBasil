@@ -152,6 +152,28 @@ public static class PermissionsExtensions
 	/// <param name="held">The permissions held.</param>
 	extension(UserPermissions held)
 	{
+		/// <summary>Gets the roles an osu! client is told the user has, from their effective permissions.</summary>
+		/// <returns>The role of every role whose permissions the user holds at least one of.</returns>
+		/// <remarks>
+		///     Watching rooms with osu!tourney also turns on <see cref="UserPrivileges.Supporter" />, which osu!tourney
+		///     requires.
+		/// </remarks>
+		public UserPrivileges Privileges
+		{
+			get
+			{
+				var privileges = UserPrivileges.None;
+				if ((held & UserPrivileges.Player.Permissions) != 0) privileges |= UserPrivileges.Player;
+				if ((held & UserPrivileges.Supporter.Permissions) != 0 || held.Allows(UserPermissions.RoomObserve))
+					privileges |= UserPrivileges.Supporter;
+				if ((held & UserPrivileges.Tournament.Permissions) != 0) privileges |= UserPrivileges.Tournament;
+				if ((held & UserPrivileges.Moderator.Permissions) != 0) privileges |= UserPrivileges.Moderator;
+				if ((held & UserPrivileges.Developer.Permissions) != 0) privileges |= UserPrivileges.Developer;
+				if ((held & UserPrivileges.Owner.Permissions) != 0) privileges |= UserPrivileges.Owner;
+				return privileges;
+			}
+		}
+
 		/// <summary>Determines whether every permission of a requirement is held.</summary>
 		/// <param name="required">The permissions that must all be held; none is always satisfied.</param>
 		/// <returns><see langword="true" /> if every permission in <paramref name="required" /> is held.</returns>
@@ -177,49 +199,29 @@ public static class PermissionsExtensions
 				.Aggregate(UserPermissions.None, (current, area) => current | area.Permissions);
 			return held & ~(suspended & ~kept);
 		}
-
-		/// <summary>Gets the roles an osu! client is told the user has, from their effective permissions.</summary>
-		/// <returns>The role of every role whose permissions the user holds at least one of.</returns>
-		/// <remarks>
-		///     Watching rooms with osu!tourney also turns on <see cref="UserPrivileges.Supporter" />, which osu!tourney
-		///     requires.
-		/// </remarks>
-		public UserPrivileges Privileges
-		{
-			get
-			{
-				var privileges = UserPrivileges.None;
-				if ((held & UserPrivileges.Player.Permissions) != 0) privileges |= UserPrivileges.Player;
-				if ((held & UserPrivileges.Supporter.Permissions) != 0 || held.Allows(UserPermissions.RoomObserve))
-					privileges |= UserPrivileges.Supporter;
-				if ((held & UserPrivileges.Tournament.Permissions) != 0) privileges |= UserPrivileges.Tournament;
-				if ((held & UserPrivileges.Moderator.Permissions) != 0) privileges |= UserPrivileges.Moderator;
-				if ((held & UserPrivileges.Developer.Permissions) != 0) privileges |= UserPrivileges.Developer;
-				if ((held & UserPrivileges.Owner.Permissions) != 0) privileges |= UserPrivileges.Owner;
-				return privileges;
-			}
-		}
 	}
 }
-
 
 /// <summary>The masks of permissions by area, and the permission that manages each area.</summary>
 public static class UserPermissionsGroups
 {
 	/// <summary>Every permission the server defines.</summary>
 	public const UserPermissions All =
-		UserPermissions.RoomCreate | UserPermissions.RoomJoin | UserPermissions.RoomObserve | UserPermissions.RoomViewPrivate |
+		UserPermissions.RoomCreate | UserPermissions.RoomJoin | UserPermissions.RoomObserve |
+		UserPermissions.RoomViewPrivate |
 		UserPermissions.RoomManageAny | UserPermissions.RoomCreateUnlimited | UserPermissions.ChatPost |
 		UserPermissions.ChatPostPrivate | UserPermissions.ChatPostAnyRoom | UserPermissions.ChatMessageAnyone |
 		UserPermissions.ChatAnnounce | UserPermissions.SpectatingWatch | UserPermissions.ScoreSubmit |
 		UserPermissions.BeatmapsetUpload | UserPermissions.BeatmapsetDirect | UserPermissions.BeatmapsetViewHidden |
 		UserPermissions.BeatmapsetManage | UserPermissions.ScreenshotUpload | UserPermissions.ScreenshotDelete |
-		UserPermissions.UserNote | UserPermissions.UserSilence | UserPermissions.UserViewLogins | UserPermissions.UserRestrict |
+		UserPermissions.UserNote | UserPermissions.UserSilence | UserPermissions.UserViewLogins |
+		UserPermissions.UserRestrict |
 		UserPermissions.UserViewDeleted | UserPermissions.UserManage | UserPermissions.UserManagePermissions |
 		UserPermissions.ServerConfigure | UserPermissions.ServerViewDiagnostics | UserPermissions.ServerManageContent;
 
 	/// <summary>The permissions a new account holds.</summary>
-	public static readonly UserPermissions Default = UserPrivileges.Player.Permissions | UserPrivileges.Supporter.Permissions;
+	public static readonly UserPermissions Default =
+		UserPrivileges.Player.Permissions | UserPrivileges.Supporter.Permissions;
 
 	/// <summary>The chatting permissions and the permission that manages them.</summary>
 	public static readonly ModerationArea Chat =
@@ -228,16 +230,19 @@ public static class UserPermissionsGroups
 
 	/// <summary>The multiplayer permissions and the permission that manages them.</summary>
 	public static readonly ModerationArea Multiplayer =
-		new(UserPermissions.RoomCreate | UserPermissions.RoomJoin | UserPermissions.RoomCreateUnlimited, UserPermissions.RoomManageAny);
+		new(UserPermissions.RoomCreate | UserPermissions.RoomJoin | UserPermissions.RoomCreateUnlimited,
+			UserPermissions.RoomManageAny);
 
 	/// <summary>The spectating permissions and the permission that manages them.</summary>
-	public static readonly ModerationArea Spectating = new(UserPermissions.SpectatingWatch, UserPermissions.RoomObserve);
+	public static readonly ModerationArea
+		Spectating = new(UserPermissions.SpectatingWatch, UserPermissions.RoomObserve);
 
 	/// <summary>The scoring permissions and the permission that manages them.</summary>
 	public static readonly ModerationArea Scores = new(UserPermissions.ScoreSubmit, UserPermissions.None);
 
 	/// <summary>The beatmapset permissions and the permission that manages them.</summary>
-	public static readonly ModerationArea Beatmapsets = new(UserPermissions.BeatmapsetUpload, UserPermissions.BeatmapsetManage);
+	public static readonly ModerationArea Beatmapsets = new(UserPermissions.BeatmapsetUpload,
+		UserPermissions.BeatmapsetManage);
 
 	/// <summary>The screenshot permissions and the permission that manages them.</summary>
 	public static readonly ModerationArea Screenshots =

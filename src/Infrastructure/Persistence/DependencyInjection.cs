@@ -10,9 +10,9 @@ using Basil.Infrastructure.Persistence.Beatmaps;
 using Basil.Infrastructure.Persistence.Chat;
 using Basil.Infrastructure.Persistence.Common;
 using Basil.Infrastructure.Persistence.Content;
-using Basil.Infrastructure.Persistence.Postgres;
 using Basil.Infrastructure.Persistence.Files;
 using Basil.Infrastructure.Persistence.Multiplayer;
+using Basil.Infrastructure.Persistence.Postgres;
 using Basil.Infrastructure.Persistence.Scores;
 using Basil.Infrastructure.Persistence.Users;
 using Microsoft.Extensions.DependencyInjection;
@@ -78,7 +78,8 @@ public static class DependencyInjection
 		services.AddSingleton<PostgresBeatmapRepository>();
 		services.AddSingleton<IBeatmapRepository>(provider => provider.GetRequiredService<PostgresBeatmapRepository>());
 		// The beatmapset repository needs the difficulty repository only once it stores, which breaks their cycle.
-		services.AddSingleton(provider => new Lazy<PostgresBeatmapRepository>(provider.GetRequiredService<PostgresBeatmapRepository>));
+		services.AddSingleton(provider =>
+			new Lazy<PostgresBeatmapRepository>(provider.GetRequiredService<PostgresBeatmapRepository>));
 		services.AddSingleton<FileBeatmapsetStorage>();
 		services.AddSingleton<IBeatmapsetStorage>(provider => provider.GetRequiredService<FileBeatmapsetStorage>());
 		return services;

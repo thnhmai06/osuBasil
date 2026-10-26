@@ -1,5 +1,4 @@
 using Basil.Application.Persistence.Content;
-using Basil.Domain;
 using Basil.Domain.Content;
 using Basil.Infrastructure.Persistence.Tests.Support;
 using Npgsql;
@@ -85,7 +84,8 @@ public sealed class PostgresSettingsRepositoryTests(PersistenceFixture container
 		var before = await Settings.GetAsync(TestContext.Current.CancellationToken);
 
 		await Assert.ThrowsAnyAsync<Exception>(() => Settings.CreateOrUpdateAsync(
-			new ServerSettings { Motd = "A message with a lone surrogate \uD800." }, TestContext.Current.CancellationToken));
+			new ServerSettings { Motd = "A message with a lone surrogate \uD800." },
+			TestContext.Current.CancellationToken));
 
 		Assert.Null((await Settings.GetAsync(TestContext.Current.CancellationToken)).Motd);
 		Assert.Same(before, await Settings.GetAsync(TestContext.Current.CancellationToken));
@@ -96,14 +96,17 @@ public sealed class PostgresSettingsRepositoryTests(PersistenceFixture container
 	{
 		var changes = new[]
 		{
-			Settings.CreateOrUpdateAsync(new ServerSettings { Motd = "First message." }, TestContext.Current.CancellationToken),
-			Settings.CreateOrUpdateAsync(new ServerSettings { Motd = "Second message." }, TestContext.Current.CancellationToken)
+			Settings.CreateOrUpdateAsync(new ServerSettings { Motd = "First message." },
+				TestContext.Current.CancellationToken),
+			Settings.CreateOrUpdateAsync(new ServerSettings { Motd = "Second message." },
+				TestContext.Current.CancellationToken)
 		};
 		await Task.WhenAll(changes);
 
 		var rows = await StoredRows.ReadAsync(ConnectionString, "select value from settings where name = @name",
 			new Dictionary<string, object?> { ["@name"] = "motd" }, TestContext.Current.CancellationToken);
-		Assert.Equal(Assert.Single(rows).Text("value"), (await Settings.GetAsync(TestContext.Current.CancellationToken)).Motd);
+		Assert.Equal(Assert.Single(rows).Text("value"),
+			(await Settings.GetAsync(TestContext.Current.CancellationToken)).Motd);
 	}
 
 	[Theory]

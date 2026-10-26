@@ -1,10 +1,8 @@
 using Basil.Application.Persistence.Beatmaps;
 using Basil.Application.Persistence.Common;
 using Basil.Domain.Beatmaps;
-using Basil.Domain.Common;
-using Basil.Domain.Content;
-using Basil.Infrastructure.Persistence.Postgres;
 using Basil.Infrastructure.Persistence.Memory;
+using Basil.Infrastructure.Persistence.Postgres;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Persistence.Beatmaps;
@@ -15,7 +13,7 @@ internal sealed class PostgresBeatmapsetRepository(
 	DatabaseWriter writer,
 	TimeProvider time,
 	Lazy<PostgresBeatmapRepository> beatmapRepository)
-	: MemoryRepository<int, BeatmapsetRecord>(reader, writer), IBeatmapsetRepository
+	: RemovableMemoryRepository<int, BeatmapsetRecord>(reader, writer), IBeatmapsetRepository
 {
 	/// <summary>
 	///     Gets the root a commit is stored under: it changes the rows of several beatmapsets, so it has no single root
@@ -71,10 +69,9 @@ internal sealed class PostgresBeatmapsetRepository(
 	public async Task<Page<BeatmapsetRecord>> ListAsync(BeatmapQuery query, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
-		while (true)
+		var (total, found) = await ReadUntilStableAsync<(int Total, List<BeatmapsetRecord> Sets)>(async () =>
 		{
-			var generation = RemovalGeneration;
-			var (total, rows) = await Reader.ReadAsync(async context =>
+			var (count, rows) = await Reader.ReadAsync(async context =>
 			{
 				// A set matches when one of its difficulties does.
 				var matching = BeatmapQueryFilter.Apply(context.Beatmaps, query);
@@ -89,13 +86,11 @@ internal sealed class PostgresBeatmapsetRepository(
 			}, cancellationToken);
 
 			// A set whose deletion is still queued never comes back into memory.
-			var found = rows.Select(ToBeatmapset).Where(set => !IsBeingRemoved(set)).ToList();
-			// The read may have seen rows before a deletion that has since committed; read again.
-			if (generation != RemovalGeneration)
-				continue;
+			var loaded = rows.Select(row => row.ToRecord()).Where(set => !IsBeingRemoved(set)).ToList();
+			return (count, loaded);
+		});
 
-			return new Page<BeatmapsetRecord>(found.Select(Track).ToList(), total);
-		}
+		return new Page<BeatmapsetRecord>(found.Select(Track).ToList(), total);
 	}
 
 	protected override int KeyOf(BeatmapsetRecord item)
@@ -122,8 +117,8 @@ internal sealed class PostgresBeatmapsetRepository(
 	{
 		var row = await Reader.ReadAsync(context => context.Beatmapsets
 			.Where(s => s.Id == key)
-			.FirstOrDefaultAsync(cancellationToken: CancellationToken.None));
-		return row is null ? null : ToBeatmapset(row);
+			.FirstOrDefaultAsync(CancellationToken.None));
+		return row is null ? null : row.ToRecord();
 	}
 
 	protected override WriteCommand SaveCommand(BeatmapsetRecord set)
@@ -177,7 +172,7 @@ internal sealed class PostgresBeatmapsetRepository(
 			var beatmaps =
 				await PostgresBeatmapRepository.StoreAsync(set, data.Beatmaps, now, releasable, context, token);
 
-			var keepIds = beatmaps.Select(storedBeatmap => storedBeatmap.Beatmap.Id).ToArray();
+			var keepIds = beatmaps.Select(beatmap => beatmap.Id).ToArray();
 			await context.Beatmaps
 				.Where(b => b.BeatmapsetId == set.Id && !((IEnumerable<int>)keepIds).Contains(b.Id))
 				.ExecuteDeleteAsync(token);
@@ -271,34 +266,9 @@ internal sealed class PostgresBeatmapsetRepository(
 		if (!ReferenceEquals(live, set)) CopyTo(live, set);
 		return live;
 	}
-
-	private static BeatmapsetRecord ToBeatmapset(BeatmapsetRow row)
-	{
-		// A set stored before archives were recorded has no fingerprint; the next scan takes one, as for a changed archive.
-		var fingerprint = row.ArchiveHash != ""
-			? new ContentFingerprint(
-				new ContentStamp(row.ArchiveSize, row.ArchiveModifiedAt),
-				new Md5(row.ArchiveHash))
-			: default;
-		return new BeatmapsetRecord
-		{
-			Id = row.Id,
-			Fingerprint = fingerprint,
-			Metadata = new BeatmapsetMetadata { Artist = row.Artist, Title = row.Title, Creator = row.Creator },
-			Assets = new BeatmapsetAssets { HasStoryboard = row.Storyboard },
-			CreatedAt = row.CreatedAt,
-			UpdatedAt = row.UpdatedAt,
-			Locked = row.Locked,
-			Visible = row.Visible
-		};
-	}
 }
-
-/// <summary>One difficulty of a beatmapset, as a commit stored it.</summary>
-/// <param name="Beatmap">The difficulty with the values it was stored with.</param>
-internal sealed record StoredBeatmap(BeatmapRecord Beatmap);
 
 /// <summary>One beatmapset, as a commit stored it.</summary>
 /// <param name="Set">The beatmapset, with the values it now has.</param>
-/// <param name="Beatmaps">Every difficulty the set now has, in order.</param>
-internal sealed record StoredSet(BeatmapsetRecord Set, List<StoredBeatmap> Beatmaps);
+/// <param name="Beatmaps">The difficulties the set now has, in order.</param>
+internal sealed record StoredSet(BeatmapsetRecord Set, List<BeatmapRecord> Beatmaps);

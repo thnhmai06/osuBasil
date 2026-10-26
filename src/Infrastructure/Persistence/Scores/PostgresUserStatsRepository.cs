@@ -1,8 +1,8 @@
 using Basil.Application.Persistence.Users;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Persistence.Postgres;
 using Basil.Infrastructure.Persistence.Memory;
+using Basil.Infrastructure.Persistence.Postgres;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Persistence.Scores;
@@ -65,7 +65,7 @@ internal sealed class PostgresUserStatsRepository(DatabaseReader reader, Databas
 		var mode = (int)key.Mode;
 		var row = await Reader.ReadAsync(context => context.UserStats
 			.Where(row => row.UserId == key.UserId && row.Mode == mode)
-			.FirstOrDefaultAsync(cancellationToken: CancellationToken.None));
+			.FirstOrDefaultAsync(CancellationToken.None));
 		return row is null
 			? null
 			: new UserStats

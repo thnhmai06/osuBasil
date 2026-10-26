@@ -29,6 +29,18 @@ public sealed class PostgresRoundRepositoryTests(PersistenceFixture container) :
 	}
 
 	[Fact]
+	public async Task A_round_just_given_to_the_repository_is_listed_at_once()
+	{
+		var match = await CreateMatchAsync("pending_round_match");
+		var round = StoredMatches.Round(match, 1, First);
+
+		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
+		var listed = await Rounds.ListAsync(match, TestContext.Current.CancellationToken);
+
+		Assert.Same(round, Assert.Single(listed));
+	}
+
+	[Fact]
 	public async Task The_rounds_of_a_match_are_listed_in_the_order_they_were_played()
 	{
 		var match = await CreateMatchAsync("ordered_match");
@@ -42,19 +54,20 @@ public sealed class PostgresRoundRepositoryTests(PersistenceFixture container) :
 	}
 
 	[Fact]
-	public async Task A_round_is_stored_when_storing_it_returns()
+	public async Task A_round_is_stored_after_it_was_given_to_the_repository()
 	{
 		var match = await CreateMatchAsync("stored_round_match");
 		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, First), TestContext.Current.CancellationToken);
 
-		var rows = await StoredRows.ReadAsync(ConnectionString, "select number from rounds where match_id = @id",
-			new Dictionary<string, object?> { ["@id"] = match.Id }, TestContext.Current.CancellationToken);
+		var rows = await StoredRows.WaitForAsync(ConnectionString, "select number from rounds where match_id = @id",
+			new Dictionary<string, object?> { ["@id"] = match.Id }, rows => rows.Count == 1, "the round",
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal(1, Assert.Single(rows).Number("number"));
 	}
 
 	[Fact]
-	public async Task The_end_of_a_round_is_stored_when_storing_it_returns()
+	public async Task The_end_of_a_round_is_stored_after_it_was_given_to_the_repository()
 	{
 		var match = await CreateMatchAsync("ended_round_match");
 		var round = StoredMatches.Round(match, 1, First);
@@ -62,14 +75,16 @@ public sealed class PostgresRoundRepositoryTests(PersistenceFixture container) :
 		round.EndedAt = Second;
 		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
 
-		var rows = await StoredRows.ReadAsync(ConnectionString, "select ended_at from rounds where match_id = @id",
-			new Dictionary<string, object?> { ["@id"] = match.Id }, TestContext.Current.CancellationToken);
+		var rows = await StoredRows.WaitForAsync(ConnectionString, "select ended_at from rounds where match_id = @id",
+			new Dictionary<string, object?> { ["@id"] = match.Id },
+			rows => rows.Count == 1 && rows[0].Instant("ended_at") == Second, "the end of the round",
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal(Second, Assert.Single(rows).Instant("ended_at"));
 	}
 
 	[Fact]
-	public async Task The_abortion_of_a_round_is_stored_when_storing_it_returns()
+	public async Task The_abortion_of_a_round_is_stored_after_it_was_given_to_the_repository()
 	{
 		var match = await CreateMatchAsync("aborted_round_match");
 		var round = StoredMatches.Round(match, 1, First);
@@ -78,10 +93,33 @@ public sealed class PostgresRoundRepositoryTests(PersistenceFixture container) :
 		round.Aborted = true;
 		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
 
-		var rows = await StoredRows.ReadAsync(ConnectionString, "select aborted from rounds where match_id = @id",
-			new Dictionary<string, object?> { ["@id"] = match.Id }, TestContext.Current.CancellationToken);
+		var rows = await StoredRows.WaitForAsync(ConnectionString, "select aborted from rounds where match_id = @id",
+			new Dictionary<string, object?> { ["@id"] = match.Id },
+			rows => rows.Count == 1 && rows[0].Bool("aborted"), "the abortion of the round",
+			TestContext.Current.CancellationToken);
 
 		Assert.True(Assert.Single(rows).Bool("aborted"));
+	}
+
+	[Fact]
+	public async Task The_decision_of_a_round_is_stored_and_read_by_a_server_that_starts_afterwards()
+	{
+		var match = await CreateMatchAsync("decision_round_match");
+		var round = StoredMatches.Round(match, 1, First);
+		round.Decision = new RoundVerdict([7, 3], 42, null, 1500.5, false, null, null);
+		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
+		await StoredRows.WaitForAsync(ConnectionString, "select result from rounds where match_id = @id",
+			new Dictionary<string, object?> { ["@id"] = match.Id },
+			rows => rows.Count == 1 && rows[0]["result"] is not null,
+			"the decision", TestContext.Current.CancellationToken);
+
+		await using var other = new StorageComposition(ConnectionString);
+		var decision = Assert.Single(await other.Get<IRoundRepository>().ListAsync(match,
+			TestContext.Current.CancellationToken)).Decision;
+
+		Assert.NotNull(decision);
+		Assert.Equal([7, 3], decision.ScoreOrder);
+		Assert.Equal((42, 1500.5, false), (decision.WinnerId, decision.Margin, decision.IsDraw));
 	}
 
 	[Fact]
@@ -93,6 +131,10 @@ public sealed class PostgresRoundRepositoryTests(PersistenceFixture container) :
 		round.EndedAt = Second;
 		round.Aborted = true;
 		await Rounds.CreateOrUpdateAsync(round, TestContext.Current.CancellationToken);
+		await StoredRows.WaitForAsync(ConnectionString, "select aborted from rounds where match_id = @id",
+			new Dictionary<string, object?> { ["@id"] = match.Id },
+			rows => rows.Count == 1 && rows[0].Bool("aborted"), "the abortion of the round",
+			TestContext.Current.CancellationToken);
 
 		await using var other = new StorageComposition(ConnectionString);
 		var listed = Assert.Single(await other.Get<IRoundRepository>().ListAsync(match,
@@ -135,7 +177,8 @@ public sealed class PostgresRoundRepositoryTests(PersistenceFixture container) :
 	{
 		var match = await CreateMatchAsync("hash_match");
 		var hash = StoredScores.Hash("round_beatmap");
-		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, First, hash), TestContext.Current.CancellationToken);
+		await Rounds.CreateOrUpdateAsync(StoredMatches.Round(match, 1, First, hash),
+			TestContext.Current.CancellationToken);
 
 		var listed = await Rounds.ListAsync(match, TestContext.Current.CancellationToken);
 
@@ -174,7 +217,8 @@ public sealed class PostgresRoundRepositoryTests(PersistenceFixture container) :
 	public async Task A_round_keeps_the_team_arrangement_it_is_played_with()
 	{
 		var match = await CreateMatchAsync("team_match");
-		await Rounds.CreateOrUpdateAsync(StoredMatches.TeamRound(match, 1, First), TestContext.Current.CancellationToken);
+		await Rounds.CreateOrUpdateAsync(StoredMatches.TeamRound(match, 1, First),
+			TestContext.Current.CancellationToken);
 
 		var listed = await Rounds.ListAsync(match, TestContext.Current.CancellationToken);
 

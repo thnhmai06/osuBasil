@@ -58,19 +58,19 @@ public class ScoreDataTests
 	[Fact]
 	public void UserId_Zero_Constructor_Throws()
 	{
-		Assert.Throws<ArgumentOutOfRangeException>(() => Make(userId: 0));
+		Assert.Throws<ArgumentOutOfRangeException>(() => Make(0));
 	}
 
 	[Fact]
 	public void UserId_Negative_Constructor_Throws()
 	{
-		Assert.Throws<ArgumentOutOfRangeException>(() => Make(userId: -1));
+		Assert.Throws<ArgumentOutOfRangeException>(() => Make(-1));
 	}
 
 	[Fact]
 	public void UserId_Negative_With_Throws()
 	{
-		var score = Make(userId: 5);
+		var score = Make(5);
 
 		Assert.Throws<ArgumentOutOfRangeException>(() => _ = score with { UserId = -1 });
 	}
@@ -78,7 +78,7 @@ public class ScoreDataTests
 	[Fact]
 	public void UserId_Unknown_IsAccepted()
 	{
-		Assert.Null(Make(userId: null).UserId);
+		Assert.Null(Make().UserId);
 	}
 
 	[Fact]

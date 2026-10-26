@@ -12,27 +12,41 @@ internal sealed class FakeUserRepository(UserRecord? user) : IUserRepository
 {
 	public UserRecord? User { get; set; } = user;
 
-	public ValueTask<UserRecord?> GetAsync(int id, CancellationToken cancellationToken = default) =>
-		ValueTask.FromResult(User is { } found && found.Id == id ? found : null);
+	public ValueTask<UserRecord?> GetAsync(int id, CancellationToken cancellationToken = default)
+	{
+		return ValueTask.FromResult(User is { } found && found.Id == id ? found : null);
+	}
 
-	public Task<UserRecord> CreateAsync(UserData data, CancellationToken cancellationToken = default) =>
+	public Task<UserRecord> CreateAsync(UserData data, CancellationToken cancellationToken = default)
+	{
 		throw new NotSupportedException();
+	}
 
-	public Task<UserRecord> ReplaceAsync(int id, UserData data, CancellationToken cancellationToken = default) =>
+	public Task<UserRecord> ReplaceAsync(int id, UserData data, CancellationToken cancellationToken = default)
+	{
 		throw new NotSupportedException();
+	}
 
-	public Task UpdateAsync(UserRecord user, CancellationToken cancellationToken = default) =>
+	public Task UpdateAsync(UserRecord user, CancellationToken cancellationToken = default)
+	{
 		throw new NotSupportedException();
+	}
 
-	public Task<bool> RenameAsync(UserRecord user, string name, CancellationToken cancellationToken = default) =>
+	public Task<bool> RenameAsync(UserRecord user, string name, CancellationToken cancellationToken = default)
+	{
 		throw new NotSupportedException();
+	}
 
-	public ValueTask<UserRecord?> GetByNameAsync(string name, CancellationToken cancellationToken = default) =>
+	public ValueTask<UserRecord?> GetByNameAsync(string name, CancellationToken cancellationToken = default)
+	{
 		throw new NotSupportedException();
+	}
 
 	public Task<Page<UserRecord>> ListAsync(UserQuery query, PageRequest page,
-		CancellationToken cancellationToken = default) =>
+		CancellationToken cancellationToken = default)
+	{
 		throw new NotSupportedException();
+	}
 }
 
 /// <summary>Stores one beatmap in memory, for tests that drive only the lookups of a repository.</summary>
@@ -40,24 +54,36 @@ internal sealed class FakeBeatmapRepository(BeatmapRecord? beatmap) : IBeatmapRe
 {
 	public BeatmapRecord? Beatmap { get; set; } = beatmap;
 
-	public ValueTask<BeatmapRecord?> GetAsync(Md5 hash, CancellationToken cancellationToken = default) =>
-		ValueTask.FromResult(Beatmap is { } found && found.Hash == hash ? found : null);
+	public ValueTask<BeatmapRecord?> GetAsync(Md5 hash, CancellationToken cancellationToken = default)
+	{
+		return ValueTask.FromResult(Beatmap is { } found && found.Hash == hash ? found : null);
+	}
 
-	public Task UpdateAsync(BeatmapRecord beatmap, CancellationToken cancellationToken = default) =>
+	public Task UpdateAsync(BeatmapRecord beatmap, CancellationToken cancellationToken = default)
+	{
 		throw new NotSupportedException();
+	}
 
-	public ValueTask<BeatmapRecord?> GetAsync(int id, CancellationToken cancellationToken = default) =>
-		ValueTask.FromResult(Beatmap is { } found && found.Id == id ? found : null);
+	public ValueTask<BeatmapRecord?> GetAsync(int id, CancellationToken cancellationToken = default)
+	{
+		return ValueTask.FromResult(Beatmap is { } found && found.Id == id ? found : null);
+	}
 
 	public Task<IReadOnlyList<BeatmapRecord>> ListAsync(BeatmapsetRecord set,
-		CancellationToken cancellationToken = default) =>
+		CancellationToken cancellationToken = default)
+	{
 		throw new NotSupportedException();
+	}
 
 	public Task<Page<BeatmapRecord>> ListAsync(BeatmapQuery query, PageRequest page,
-		CancellationToken cancellationToken = default) =>
+		CancellationToken cancellationToken = default)
+	{
 		throw new NotSupportedException();
+	}
 
 	public Task RetainAsync(BeatmapsetRecord set, IReadOnlyCollection<BeatmapRecord> keep,
-		CancellationToken cancellationToken = default) =>
+		CancellationToken cancellationToken = default)
+	{
 		throw new NotSupportedException();
+	}
 }

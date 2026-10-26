@@ -167,7 +167,7 @@ public sealed class OsuBeatmapsetReaderTests
 	[Fact]
 	public async Task ReadAsync_AcceptsTheLargestAllowedSet()
 	{
-		await using var archive = OszArchive.Build([("Camellia - Ghost.osu", Standard), ..Filler(1_999)]);
+		await using var archive = OszArchive.Build([("Camellia - Ghost.osu", Standard), .. Filler(1_999)]);
 		var reader = new OsuBeatmapsetReader();
 
 		var content = await reader.ReadAsync(archive, Token);
@@ -180,7 +180,7 @@ public sealed class OsuBeatmapsetReaderTests
 	[Fact]
 	public async Task ReadAsync_ReturnsNullPastTheLargestAllowedSet()
 	{
-		await using var archive = OszArchive.Build([("Camellia - Ghost.osu", Standard), ..Filler(2_000)]);
+		await using var archive = OszArchive.Build([("Camellia - Ghost.osu", Standard), .. Filler(2_000)]);
 		var reader = new OsuBeatmapsetReader();
 
 		var content = await reader.ReadAsync(archive, Token);

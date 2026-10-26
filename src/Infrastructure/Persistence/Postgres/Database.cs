@@ -7,10 +7,10 @@ namespace Basil.Infrastructure.Persistence.Postgres;
 /// <summary>Gives access to the server's database: pooled connections through which data is read and stored.</summary>
 internal sealed class Database : IAsyncDisposable
 {
-	private readonly NpgsqlDataSource _asynchronousSource;
 	private readonly DbContextOptions<BasilDbContext> _asynchronousOptions;
-	private readonly NpgsqlDataSource _synchronousSource;
+	private readonly NpgsqlDataSource _asynchronousSource;
 	private readonly DbContextOptions<BasilDbContext> _synchronousOptions;
+	private readonly NpgsqlDataSource _synchronousSource;
 
 	public Database(IOptions<DatabaseOptions> options)
 	{
@@ -33,13 +33,13 @@ internal sealed class Database : IAsyncDisposable
 	///     Makes a context whose commits are confirmed before it returns, for reads and for writes whose outcome the
 	///     caller needs.
 	/// </summary>
-	public BasilDbContext CreateSynchronousContext()
+	public BasilDbContext CreateConfirmedContext()
 	{
 		return new BasilDbContext(_synchronousOptions);
 	}
 
 	/// <summary>Makes a context whose commits return before the database has flushed them, for copies of memory.</summary>
-	public BasilDbContext CreateAsynchronousContext()
+	public BasilDbContext CreateUnconfirmedContext()
 	{
 		return new BasilDbContext(_asynchronousOptions);
 	}

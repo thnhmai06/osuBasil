@@ -19,7 +19,7 @@ public class BeatmapDifficultyTests
 	[InlineData(double.NegativeInfinity)]
 	public void Bpm_NotAPositiveNumber_Constructor_Throws(double bpm)
 	{
-		Assert.Throws<ArgumentOutOfRangeException>(() => Make(bpm: bpm));
+		Assert.Throws<ArgumentOutOfRangeException>(() => Make(bpm));
 	}
 
 	[Fact]

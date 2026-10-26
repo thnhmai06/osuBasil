@@ -1,8 +1,7 @@
-using Basil.Application.Capabilities.Beatmaps;
 using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Basil.Application.Persistence.Beatmaps;
+using Basil.Application.Capabilities.Beatmaps;
 using Basil.Application.Persistence.Common;
 using Basil.Application.Persistence.Content;
 using Basil.Domain.Mechanics;
@@ -26,10 +25,10 @@ internal sealed class HttpBeatmapsetMirror : IBeatmapsetMirror
 		};
 
 	private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
+	private readonly HttpClient _http;
+	private readonly ILogger<HttpBeatmapsetMirror> _logger;
 
 	private readonly ISettingsRepository _settings;
-	private readonly ILogger<HttpBeatmapsetMirror> _logger;
-	private readonly HttpClient _http;
 
 	/// <summary>Creates the mirror client that reaches the configured mirror over the server's shared connection pool.</summary>
 	/// <param name="settings">The settings holding the mirror addresses.</param>
@@ -69,10 +68,11 @@ internal sealed class HttpBeatmapsetMirror : IBeatmapsetMirror
 			return payload?.Where(set => set.ChildrenBeatmaps is not null).Select(ToBeatmapset).ToList();
 		}
 		catch (Exception exception) when (
-			exception is (HttpRequestException or JsonException or TaskCanceledException) &&
+			exception is HttpRequestException or JsonException or TaskCanceledException &&
 			!cancellationToken.IsCancellationRequested)
 		{
-			_logger.LogWarning(exception, "Mirror search request failed: {Endpoint}", endpoint.GetLeftPart(UriPartial.Path));
+			_logger.LogWarning(exception, "Mirror search request failed: {Endpoint}",
+				endpoint.GetLeftPart(UriPartial.Path));
 			return null;
 		}
 	}
@@ -113,8 +113,8 @@ internal sealed class HttpBeatmapsetMirror : IBeatmapsetMirror
 	{
 		if (long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var raw))
 		{
-			var ms = raw > 1_000_000_000_000 ? raw : raw * 1000;
-			return DateTimeOffset.FromUnixTimeMilliseconds(ms);
+			var milliseconds = raw > 1_000_000_000_000 ? raw : raw * 1000;
+			return DateTimeOffset.FromUnixTimeMilliseconds(milliseconds);
 		}
 
 		return DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal,
@@ -134,12 +134,14 @@ internal sealed class HttpBeatmapsetMirror : IBeatmapsetMirror
 		};
 	}
 
+	// Filled by the JSON serializer: the setters must stay.
+	// Filled by the JSON serializer: the setters must stay.
 	private sealed class RawSet
 	{
-		public string Artist { get; init; } = "";
-		public string Title { get; init; } = "";
-		public string Creator { get; init; } = "";
-		public string LastUpdate { get; init; } = "";
+		public string Artist { get; } = "";
+		public string Title { get; } = "";
+		public string Creator { get; } = "";
+		public string LastUpdate { get; } = "";
 		public int SetId { get; init; }
 		public JsonElement HasVideo { get; init; }
 		public List<RawBeatmap>? ChildrenBeatmaps { get; init; }
@@ -148,7 +150,7 @@ internal sealed class HttpBeatmapsetMirror : IBeatmapsetMirror
 	private sealed class RawBeatmap
 	{
 		public int BeatmapId { get; init; }
-		public string DiffName { get; init; } = "";
+		public string DiffName { get; } = "";
 		public double DifficultyRating { get; init; }
 		public int Mode { get; init; }
 	}
