@@ -61,7 +61,7 @@ Some room work has no user caller. The `Lobby` and the `Room` keep system operat
 
 The room owns membership and its channel. A join checks the caller's effective `RoomJoin` permission, bans, whether the caller is already playing or observing, the password and available slots. A successful player join also joins the room channel. When a same-user connection replaces a closed seat, the new join must pass its checks first; an open old connection prevents replacement.
 
-There are 16 slot positions, numbered 1 through 16. Room size is the number of usable positions, from 1 through 16, not a limit on slot numbers: a player may occupy any slot. The room keeps enough unlocked empty slots for its configured size and locks the others. When a host leaves, the next seated player in slot order becomes host.
+There are 16 slot positions, numbered 1 through 16. Room size is the number of usable positions, from 1 through 16, not a limit on slot numbers: a player may occupy any slot. The room keeps enough unlocked empty slots for its configured size and locks the others. When a host leaves, the next seated player in slot order becomes host. Locking a room (`!mp lock`) only freezes the slots: players cannot move to another slot or change team, but joining is unaffected, as in osu!.
 
 A room can be private. Private means unlisted, as an unlisted video is: the room is left out of the lobby and out of the
 match lists of the API for users who do not hold `RoomViewPrivate`, but it never keeps anybody out. Whoever knows the

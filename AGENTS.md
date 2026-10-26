@@ -642,8 +642,8 @@ owner merges them into the skill later, nobody edits the skill silently.
 * **Scoped base class and `Result<TOutcome>`** (2026-10-21, see `docs/for-agents/application-design.md`): one abstract
   `Scoped<T>` holds the effective permissions snapshot and offers `Require(required)` returning the missing permissions
   (`null` = met); behaviours return a shared `Result<TOutcome>` with per-object outcome enums starting at `Ok = 1`.
-* **Project rule that contradicts the skill: no `ConfigureAwait(false)`** in a server application; the skill's core list
-  says every library await uses it. The owner decides whether the skill gains a "server app" exception.
+* **No `ConfigureAwait(false)`** in a server application (owner decision, 2026-10-26: the project rule stands and the
+  skill's "every library await uses it" does not apply here).
 * **Tests for computed values** pin properties (valid, finite, monotone under a modifier), not the exact number, unless
   the number is a protocol or ruleset contract; expected values come from the specification, never from running the code.
 * **Test projects mirror source projects** one to one (`tests/` tree = `src/` tree, folders inside mirror feature
