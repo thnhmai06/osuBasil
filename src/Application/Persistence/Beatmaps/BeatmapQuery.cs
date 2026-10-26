@@ -3,7 +3,7 @@ using System.Globalization;
 using Basil.Application.Persistence.Common;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Mechanics;
-using Basil.Domain.Permissions;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Persistence.Beatmaps;
 
@@ -200,8 +200,8 @@ public sealed record BeatmapQuery(
 	/// <summary>Narrows the query to what a user with the given permissions may see.</summary>
 	/// <param name="effective">The asker's effective permissions.</param>
 	/// <returns>The query, which leaves hidden beatmaps out unless the asker may see them.</returns>
-	public BeatmapQuery LimitTo(Permissions effective)
+	public BeatmapQuery LimitTo(UserPermissions effective)
 	{
-		return effective.Allows(Permissions.BeatmapsetViewHidden) ? this : this with { Hidden = false };
+		return effective.Allows(UserPermissions.BeatmapsetViewHidden) ? this : this with { Hidden = false };
 	}
 }

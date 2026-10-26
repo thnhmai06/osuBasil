@@ -1,7 +1,7 @@
 using Basil.Domain.Common;
 using Basil.Domain.Users;
 
-namespace Basil.Domain.Permissions;
+namespace Basil.Domain.Moderation;
 
 /// <summary>
 ///     An entry of the moderation log, identified by its id.

@@ -1,22 +1,23 @@
 using Basil.Application.Runtime.Sessions;
 using Basil.Application.Persistence.Common;
 using Basil.Application.Capabilities.Users;
+using Basil.Application.Runtime.Common;
 using Basil.Domain.Auth;
 using Basil.Domain.Common;
-using Basil.Domain.Permissions;
+using Basil.Domain.Moderation;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Runtime.Users;
 
 /// <summary>An account scoped to one connection and its authority snapshot.</summary>
 /// <remarks>The snapshot is for one request or command; keeping it longer lets its rights outlive changes to permissions or restrictions.</remarks>
-public sealed class ScopedUser : Scoped<Permissions>
+public sealed class ScopedUser : Scoped<UserPermissions>
 {
 	/// <summary>Gets the account this scope is over.</summary>
 	public User User { get; }
 
 	/// <summary>The permissions granted to the connection's user when this scope was created.</summary>
-	internal Permissions Granted { get; }
+	internal UserPermissions Granted { get; }
 
 	/// <summary>The restriction operations for this account.</summary>
 	public ScopedUserRestrictions Restrictions { get; }
@@ -67,9 +68,9 @@ public sealed class ScopedUser : Scoped<Permissions>
 	/// <param name="needed">The permission required.</param>
 	/// <param name="selfAllowed">Whether the caller may act on their own account.</param>
 	/// <returns><see langword="null" /> when allowed; otherwise, why the operation is unavailable.</returns>
-	internal Result<UserOutcome>? Guard(Permissions needed, bool selfAllowed)
+	internal Result<UserOutcome>? Guard(UserPermissions needed, bool selfAllowed)
 	{
-		if (BasilBot.Is(User.Record)) return UserOutcome.Protected;
+		if (User.Record.IsBasilBot()) return UserOutcome.Protected;
 		if (Require(needed) is { } missing) return Result<UserOutcome>.Denied(missing);
 		return (IsSelf && selfAllowed) || Outranks ? null : UserOutcome.NotOutranking;
 	}
@@ -78,10 +79,10 @@ public sealed class ScopedUser : Scoped<Permissions>
 	/// <param name="permissions">The permissions to grant.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of replacing the permissions.</returns>
-	public async Task<Result<UserOutcome>> SetPermissionsAsync(Permissions permissions,
+	public async Task<Result<UserOutcome>> SetPermissionsAsync(UserPermissions permissions,
 		CancellationToken cancellationToken = default)
 	{
-		if (Guard(Permissions.UserManagePermissions, true) is { } denied) return denied;
+		if (Guard(UserPermissions.UserManagePermissions, true) is { } denied) return denied;
 		if (Require(User.Record.Value.Permissions ^ permissions) is { } cannotGrant)
 			return Result<UserOutcome>.Denied(cannotGrant);
 
@@ -99,7 +100,7 @@ public sealed class ScopedUser : Scoped<Permissions>
 	/// <returns>The outcome of deleting the account.</returns>
 	public async Task<Result<UserOutcome>> DeleteAsync(CancellationToken cancellationToken = default)
 	{
-		if (Guard(Permissions.UserManage, true) is { } denied) return denied;
+		if (Guard(UserPermissions.UserManage, true) is { } denied) return denied;
 		if (User.Record.Value.DeletedAt is not null) return UserOutcome.Ok;
 
 		User.MarkDeleted(User.Context.Clock.GetUtcNow());
@@ -116,7 +117,7 @@ public sealed class ScopedUser : Scoped<Permissions>
 	public async Task<(Result<UserOutcome> Result, Page<LoginEntry>? Logins)> ViewLoginsAsync(PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
-		if (Guard(Permissions.UserViewLogins, true) is { } denied) return (denied, null);
+		if (Guard(UserPermissions.UserViewLogins, true) is { } denied) return (denied, null);
 
 		if (!IsSelf)
 			await User.Context.ModerationLog.AppendAsync(new ModerationData
@@ -133,14 +134,14 @@ public sealed class ScopedUser : Scoped<Permissions>
 	/// <summary>Closes every connection of this account.</summary>
 	/// <returns>Ok, or why the caller may not.</returns>
 	/// <remarks>
-	///     An account may close its own connections; closing another's needs <see cref="Permissions.UserManage" /> and
+	///     An account may close its own connections; closing another's needs <see cref="UserPermissions.UserManage" /> and
 	///     outranking them. The connections, the caller's own included, close as
 	///     <see cref="ConnectionCloseReason.Revoked" />.
 	/// </remarks>
 	public Result<UserOutcome> RevokeConnections()
 	{
-		if (BasilBot.Is(User.Record)) return UserOutcome.Protected;
-		if (!IsSelf && Guard(Permissions.UserManage, false) is { } denied) return denied;
+		if (User.Record.IsBasilBot()) return UserOutcome.Protected;
+		if (!IsSelf && Guard(UserPermissions.UserManage, false) is { } denied) return denied;
 
 		User.Context.Registry.CloseAll(User.Record, ConnectionCloseReason.Revoked);
 		return UserOutcome.Ok;
@@ -153,20 +154,20 @@ public sealed class ScopedUser : Scoped<Permissions>
 	/// <returns>Ok, WrongPassword, or why the caller may not.</returns>
 	/// <remarks>
 	///     An account changes its own password by giving the current one; changing another's needs
-	///     <see cref="Permissions.UserManage" /> and outranking them. Every connection, the caller's own included, closes as
+	///     <see cref="UserPermissions.UserManage" /> and outranking them. Every connection, the caller's own included, closes as
 	///     <see cref="ConnectionCloseReason.CredentialsChanged" />.
 	/// </remarks>
 	public async Task<Result<UserOutcome>> ChangePasswordAsync(Md5 newPasswordHash, Md5? currentPasswordHash,
 		CancellationToken cancellationToken = default)
 	{
-		if (BasilBot.Is(User.Record)) return UserOutcome.Protected;
+		if (User.Record.IsBasilBot()) return UserOutcome.Protected;
 
 		if (IsSelf)
 		{
 			if (currentPasswordHash is not { } current || !await User.Context.Credentials.IsPasswordAsync(User.Record, current, cancellationToken))
 				return UserOutcome.WrongPassword;
 		}
-		else if (Guard(Permissions.UserManage, false) is { } denied)
+		else if (Guard(UserPermissions.UserManage, false) is { } denied)
 		{
 			return denied;
 		}

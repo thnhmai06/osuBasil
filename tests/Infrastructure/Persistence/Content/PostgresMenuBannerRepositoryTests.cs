@@ -7,13 +7,9 @@ namespace Basil.Infrastructure.Persistence.Tests.Content;
 
 /// <summary>Contract tests of the storing of the banners shown on the main menu.</summary>
 [Collection("Persistence")]
-public sealed class PostgresMenuBannerRepositoryTests : DatabaseTests
+public sealed class PostgresMenuBannerRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
 	private static readonly DateTimeOffset Moment = new(2026, 10, 22, 12, 0, 0, TimeSpan.Zero);
-
-	public PostgresMenuBannerRepositoryTests(PersistenceFixture container) : base(container)
-	{
-	}
 
 	private IMenuBannerRepository Banners => Get<IMenuBannerRepository>();
 

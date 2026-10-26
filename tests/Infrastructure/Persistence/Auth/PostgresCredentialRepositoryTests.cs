@@ -10,11 +10,9 @@ namespace Basil.Infrastructure.Persistence.Tests.Auth;
 
 /// <summary>Contract tests of the storing of the login credential of an account.</summary>
 [Collection("Persistence")]
-public sealed class PostgresCredentialRepositoryTests : DatabaseTests
+public sealed class PostgresCredentialRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
 	private const string Password = "correct horse battery staple";
-
-	public PostgresCredentialRepositoryTests(PersistenceFixture container) : base(container) { }
 
 	private ICredentialRepository Credentials => Get<ICredentialRepository>();
 

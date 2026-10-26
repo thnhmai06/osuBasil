@@ -1,10 +1,9 @@
 using Basil.Domain.Common;
-using Basil.Domain.Users;
 
-namespace Basil.Domain.Permissions;
+namespace Basil.Domain.Users;
 
 /// <summary>A restriction of a user, identified by its id.</summary>
-public sealed class Restriction : IEquatable<Restriction>
+public sealed class UserRestriction : IEquatable<UserRestriction>
 {
 	/// <summary>Gets the unique identifier of the restriction.</summary>
 	public required int Id { get; init; }
@@ -15,7 +14,7 @@ public sealed class Restriction : IEquatable<Restriction>
 	/// <summary>Determines whether another restriction is the same record.</summary>
 	/// <param name="other">The restriction to compare against, or <see langword="null" />.</param>
 	/// <returns><see langword="true" /> if <paramref name="other" /> has the same <see cref="Id" />.</returns>
-	public bool Equals(Restriction? other)
+	public bool Equals(UserRestriction? other)
 	{
 		return other is not null && Id == other.Id;
 	}
@@ -23,7 +22,7 @@ public sealed class Restriction : IEquatable<Restriction>
 	/// <inheritdoc />
 	public override bool Equals(object? obj)
 	{
-		return obj is Restriction other && Equals(other);
+		return obj is UserRestriction other && Equals(other);
 	}
 
 	/// <inheritdoc />
@@ -37,14 +36,14 @@ public sealed class Restriction : IEquatable<Restriction>
 public sealed class RestrictionData
 {
 	/// <summary>The permissions a silence suspends: chatting and multiplayer.</summary>
-	public static readonly Permissions Silence =
-		PermissionsGroups.Chat.Permissions | PermissionsGroups.Multiplayer.Permissions;
+	public static readonly UserPermissions Silence =
+		UserPermissionsGroups.Chat.Permissions | UserPermissionsGroups.Multiplayer.Permissions;
 
 	/// <summary>The permissions a full restriction suspends.</summary>
-	public static readonly Permissions Restricted = Silence | PermissionsGroups.Spectating.Permissions |
-	                                                PermissionsGroups.Scores.Permissions |
-	                                                PermissionsGroups.Beatmapsets.Permissions |
-	                                                PermissionsGroups.Screenshots.Permissions;
+	public static readonly UserPermissions Restricted = Silence | UserPermissionsGroups.Spectating.Permissions |
+	                                                UserPermissionsGroups.Scores.Permissions |
+	                                                UserPermissionsGroups.Beatmapsets.Permissions |
+	                                                UserPermissionsGroups.Screenshots.Permissions;
 
 	/// <summary>Gets the restricted user.</summary>
 	public required UserRecord User { get; init; }
@@ -53,13 +52,13 @@ public sealed class RestrictionData
 	/// <exception cref="ArgumentOutOfRangeException">
 	///     The value is none, or sets a bit no permission defines.
 	/// </exception>
-	public required Permissions Permissions
+	public required UserPermissions Permissions
 	{
 		get;
 		set
 		{
 			value.ThrowIfUndefined();
-			if (value == Permissions.None)
+			if (value == UserPermissions.None)
 				throw new ArgumentOutOfRangeException(nameof(value), value, "A restriction must suspend a permission.");
 			field = value;
 		}

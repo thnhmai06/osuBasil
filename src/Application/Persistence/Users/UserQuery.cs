@@ -1,7 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Basil.Application.Persistence.Common;
-using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Persistence.Users;
@@ -20,7 +19,7 @@ namespace Basil.Application.Persistence.Users;
 public sealed record UserQuery(
 	string? Text = null,
 	IReadOnlyList<Country>? Countries = null,
-	Permissions? Permissions = null,
+	UserPermissions? Permissions = null,
 	bool? Deleted = null) : IParsable<UserQuery>
 {
 	/// <summary>Reads a query written in the user search syntax.</summary>
@@ -36,7 +35,7 @@ public sealed record UserQuery(
 		ArgumentNullException.ThrowIfNull(s);
 
 		IReadOnlyList<Country>? countries = null;
-		Permissions? permissions = null;
+		UserPermissions? permissions = null;
 		bool? deleted = null;
 
 		var keywords = SearchSyntax.Parse(s, (key, op, rawValue) =>
@@ -49,7 +48,7 @@ public sealed record UserQuery(
 					return true;
 				case "permission" when ulong.TryParse(rawValue, NumberStyles.None, CultureInfo.InvariantCulture,
 					out var mask):
-					permissions = (Permissions)mask;
+					permissions = (UserPermissions)mask;
 					return true;
 				case "deleted" when SearchSyntax.TryParseState(rawValue, out var state):
 					deleted = state;
@@ -94,8 +93,8 @@ public sealed record UserQuery(
 	/// <summary>Narrows the query to what a user with the given permissions may see.</summary>
 	/// <param name="effective">The asker's effective permissions.</param>
 	/// <returns>The query, which leaves deleted users out unless the asker may see them.</returns>
-	public UserQuery LimitTo(Permissions effective)
+	public UserQuery LimitTo(UserPermissions effective)
 	{
-		return effective.Allows(Domain.Permissions.Permissions.UserViewDeleted) ? this : this with { Deleted = false };
+		return effective.Allows(UserPermissions.UserViewDeleted) ? this : this with { Deleted = false };
 	}
 }

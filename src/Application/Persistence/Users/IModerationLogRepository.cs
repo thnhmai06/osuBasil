@@ -1,5 +1,5 @@
 using Basil.Application.Persistence.Common;
-using Basil.Domain.Permissions;
+using Basil.Domain.Moderation;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Persistence.Users;

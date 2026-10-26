@@ -9,7 +9,6 @@ using Basil.Application.Persistence.Users;
 using Basil.Domain.Auth;
 using Basil.Domain.Bancho;
 using Basil.Domain.Common;
-using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 using Basil.Application.Capabilities.Users;
 
@@ -108,7 +107,7 @@ public sealed class UserRegistry : IRoomUsersPort
 	/// <exception cref="ArgumentNullException">
 	///     <paramref name="client" /> is <see langword="null" /> for an osu! or osu!tourney login.
 	/// </exception>
-	/// <remarks>An osu!tourney login needs <see cref="Permissions.RoomObserve" /> in effect. Successful logins are recorded.</remarks>
+	/// <remarks>An osu!tourney login needs <see cref="UserPermissions.RoomObserve" /> in effect. Successful logins are recorded.</remarks>
 	public async Task<LoginResult> LoginAsync(LoginAttempt attempt, ConnectionType type, IPAddress ip,
 		BanchoClient? client, int utcOffset, CancellationToken cancellationToken = default)
 	{
@@ -240,15 +239,15 @@ public sealed class UserRegistry : IRoomUsersPort
 	public async Task<UserRecord> EnsureBotAsync(CancellationToken cancellationToken = default)
 	{
 		var stored = await _context.Users.GetAsync(BasilBot.Id, cancellationToken);
-		var isBot = stored is { Value: { DeletedAt: null, Permissions: Permissions.None } };
+		var isBot = stored is { Value: { DeletedAt: null, Permissions: UserPermissions.None } };
 
 		if (!isBot && stored is not null) CloseAll(stored, ConnectionCloseReason.Revoked);
 
 		var bot = isBot
 			? stored!
 			: await _context.Users.ReplaceAsync(BasilBot.Id, stored is { Value.DeletedAt: null }
-				? new UserData { Name = stored.Value.Name, Country = stored.Value.Country, Permissions = Permissions.None }
-				: new UserData { Name = BasilBot.DefaultName, Permissions = Permissions.None }, cancellationToken);
+				? new UserData { Name = stored.Value.Name, Country = stored.Value.Country, Permissions = UserPermissions.None }
+				: new UserData { Name = BasilBot.DefaultName, Permissions = UserPermissions.None }, cancellationToken);
 
 		var now = _context.Clock.GetUtcNow();
 		foreach (var restriction in await _context.Restrictions.ListAsync(bot, cancellationToken))
@@ -290,9 +289,9 @@ public sealed class UserRegistry : IRoomUsersPort
 	/// <remarks>
 	///     A kind that allows one connection per user replaces a connection of the same kind that has been
 	///     idle for at least <see cref="ReplaceAfterIdle" />, and refuses the new one otherwise. An osu!tourney
-	///     connection needs <see cref="Permissions.RoomObserve" /> in effect.
+	///     connection needs <see cref="UserPermissions.RoomObserve" /> in effect.
 	/// </remarks>
-	internal LoginFailure? Open(Connection connection, IReadOnlyList<Restriction> restrictions)
+	internal LoginFailure? Open(Connection connection, IReadOnlyList<UserRestriction> restrictions)
 	{
 		using var scope = Enter();
 
@@ -300,7 +299,7 @@ public sealed class UserRegistry : IRoomUsersPort
 		var record = _online.GetValueOrDefault(connection.Record)?.Record ?? connection.Record;
 		if (connection.Type is ConnectionType.Tourney &&
 		    !record.Value.Permissions.Effective(restrictions, _context.Clock.GetUtcNow())
-			    .Allows(Permissions.RoomObserve))
+			    .Allows(UserPermissions.RoomObserve))
 			return LoginFailure.NoTourneyPermission;
 
 		var user = _online.GetValueOrDefault(connection.Record);
@@ -356,7 +355,7 @@ public sealed class UserRegistry : IRoomUsersPort
 	/// <param name="user">The online user whose permissions or restrictions changed.</param>
 	internal void CloseDisallowed(User user)
 	{
-		if (user.EffectivePermissions(_context.Clock.GetUtcNow()).Allows(Permissions.RoomObserve)) return;
+		if (user.EffectivePermissions(_context.Clock.GetUtcNow()).Allows(UserPermissions.RoomObserve)) return;
 
 		foreach (var connection in user.Tourneys.Where(connection => connection.IsOpen).ToList())
 			Close(connection, ConnectionCloseReason.Revoked);

@@ -17,7 +17,11 @@ namespace Basil.Bot.Replies;
 ///     default is used. A file that cannot be read leaves the wording that was in use. Saying a reply never fails because
 ///     of the file.
 /// </remarks>
-internal sealed class ReplyCatalog : IReplies
+/// <remarks>Initializes the catalog of the replies BasilBot can say.</remarks>
+/// <param name="replies">Every reply, each with a key no other reply has.</param>
+/// <param name="options">Where the replies file is.</param>
+/// <param name="logger">Receives what is wrong with the replies file.</param>
+internal sealed class ReplyCatalog(IEnumerable<Reply> replies, IOptions<RepliesOptions> options, ILogger<ReplyCatalog> logger) : IReplies
 {
 	private static readonly CultureInfo Culture = CultureInfo.GetCultureInfo("en");
 
@@ -28,23 +32,12 @@ internal sealed class ReplyCatalog : IReplies
 	};
 
 	private readonly MessageFormatter _formatter = new();
-	private readonly ILogger<ReplyCatalog> _logger;
-	private readonly FrozenDictionary<string, Reply> _replies;
+	private readonly ILogger<ReplyCatalog> _logger = logger;
+	private readonly FrozenDictionary<string, Reply> _replies = replies.ToFrozenDictionary(reply => reply.Key, StringComparer.Ordinal);
 	private FrozenDictionary<string, string> _texts = FrozenDictionary<string, string>.Empty;
 
-	/// <summary>Initializes the catalog of the replies BasilBot can say.</summary>
-	/// <param name="replies">Every reply, each with a key no other reply has.</param>
-	/// <param name="options">Where the replies file is.</param>
-	/// <param name="logger">Receives what is wrong with the replies file.</param>
-	public ReplyCatalog(IEnumerable<Reply> replies, IOptions<RepliesOptions> options, ILogger<ReplyCatalog> logger)
-	{
-		_replies = replies.ToFrozenDictionary(reply => reply.Key, StringComparer.Ordinal);
-		Path = System.IO.Path.GetFullPath(options.Value.Path);
-		_logger = logger;
-	}
-
 	/// <summary>Gets the full path of the replies file.</summary>
-	public string Path { get; }
+	public string Path { get; } = System.IO.Path.GetFullPath(options.Value.Path);
 
 	/// <inheritdoc />
 	public string Text(Reply reply, object? arguments = null)

@@ -1,4 +1,4 @@
-using Basil.Domain.Permissions;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Runtime.Chat;
 
@@ -10,7 +10,7 @@ namespace Basil.Application.Runtime.Chat;
 /// <param name="Visible">Whether the channel is shown in channel listings.</param>
 public sealed record GeneralChannelChange(
 	string? Topic = null,
-	Privileges? ReadPrivileges = null,
-	Privileges? WritePrivileges = null,
+	UserPrivileges? ReadPrivileges = null,
+	UserPrivileges? WritePrivileges = null,
 	bool? AutoJoin = null,
 	bool? Visible = null);

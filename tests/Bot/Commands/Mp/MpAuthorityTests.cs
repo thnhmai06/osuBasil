@@ -2,7 +2,7 @@ using Basil.Application.Runtime.Multiplayer.Rooms;
 using Basil.Application.Runtime.Sessions;
 using Basil.Bot.Commands.Mp;
 using Basil.Bot.Tests.Support;
-using Basil.Domain.Permissions;
+using Basil.Domain.Users;
 using Basil.Testing;
 
 namespace Basil.Bot.Tests.Commands.Mp;
@@ -82,7 +82,7 @@ public sealed class MpAuthorityTests
 	public async Task Lock_ByTheCreatorWhoMayNotJoinRooms_IsNotElevatedByTheBotAndNamesTheMissingPermission()
 	{
 		using var bot = new BotHarness();
-		var creator = await RoomFixture.PlayerAsync(bot.App, "Creator", Permissions.RoomCreate);
+		var creator = await RoomFixture.PlayerAsync(bot.App, "Creator", UserPermissions.RoomCreate);
 		var room = await bot.MakeAsync(creator, "Finals");
 		Assert.Equal(creator.Record, room.Authority.Creator);
 
@@ -126,7 +126,7 @@ public sealed class MpAuthorityTests
 				actor = await RoomFixture.PlayerAsync(bot.App, "Outsider");
 				break;
 			case RoomRole.Manager:
-				actor = await RoomFixture.PlayerAsync(bot.App, "Manager", PermissionsGroups.Default | Permissions.RoomManageAny);
+				actor = await RoomFixture.PlayerAsync(bot.App, "Manager", UserPermissionsGroups.Default | UserPermissions.RoomManageAny);
 				break;
 			default:
 				throw new ArgumentOutOfRangeException(nameof(role), role, "This role is not part of the scenario.");

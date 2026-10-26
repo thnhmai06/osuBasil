@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using Basil.Application.Persistence.Chat;
 using Basil.Domain.Chat;
-using Basil.Domain.Permissions;
+using Basil.Domain.Users;
 using Basil.Infrastructure.Persistence.Common;
 using Basil.Infrastructure.Persistence.Postgres;
 using Microsoft.EntityFrameworkCore;
@@ -89,8 +89,8 @@ internal sealed class PostgresChannelRepository(DatabaseReader reader, DatabaseW
 			Value = new GeneralChannelData
 			{
 				Topic = row.Topic,
-				ReadPrivileges = (Privileges)(byte)row.ReadPrivileges,
-				WritePrivileges = (Privileges)(byte)row.WritePrivileges,
+				ReadPrivileges = (UserPrivileges)(byte)row.ReadPrivileges,
+				WritePrivileges = (UserPrivileges)(byte)row.WritePrivileges,
 				AutoJoin = row.AutoJoin,
 				Visible = row.Visible
 			}

@@ -12,11 +12,9 @@ namespace Basil.Infrastructure.Persistence.Tests.Beatmaps;
 ///     delivers its answer after the deletion has committed.
 /// </summary>
 [Collection("Persistence")]
-public sealed class PostgresBeatmapRepositoryRemovalRaceTests : DatabaseTests
+public sealed class PostgresBeatmapRepositoryRemovalRaceTests(PersistenceFixture container) : DatabaseTests(container)
 {
 	private static readonly Md5 Hash = new("d41d8cd98f00b204e9800998ecf8427e");
-
-	public PostgresBeatmapRepositoryRemovalRaceTests(PersistenceFixture container) : base(container) { }
 
 	[Fact]
 	public async Task A_hash_lookup_that_overlaps_a_committed_deletion_does_not_bring_the_beatmap_back()

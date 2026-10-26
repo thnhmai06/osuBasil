@@ -3,7 +3,6 @@ using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Permissions;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 
@@ -131,12 +130,12 @@ public sealed class RoomFixture
 			.SetHostAsync(host, TestContext.Current.CancellationToken)).IsOk);
 
 		var outsider = await PlayerAsync(app, "Outsider");
-		var manager = await PlayerAsync(app, "Manager", PermissionsGroups.Default | Permissions.RoomManageAny);
-		var noRoomJoin = await PlayerAsync(app, "NoJoin", PermissionsGroups.Default & ~Permissions.RoomJoin);
+		var manager = await PlayerAsync(app, "Manager", UserPermissionsGroups.Default | UserPermissions.RoomManageAny);
+		var noRoomJoin = await PlayerAsync(app, "NoJoin", UserPermissionsGroups.Default & ~UserPermissions.RoomJoin);
 
 		// The suspended creator may create a tournament room, but may not be seated in it.
 		var suspendedUser = await app.CreateUserAsync("Suspended", "password");
-		app.AddRestriction(suspendedUser, Permissions.RoomJoin);
+		app.AddRestriction(suspendedUser, UserPermissions.RoomJoin);
 		var suspendedCreator = await PlayerAsync(app, suspendedUser);
 		var (suspendedRoom, suspendedOpened) = await app.Lobby.ScopeTo(suspendedCreator)
 			.OpenRoomAsync("tournament room", "", true, false,
@@ -192,7 +191,7 @@ public sealed class RoomFixture
 	/// <param name="permissions">The permissions to grant, or the normal new-account permissions.</param>
 	/// <returns>The opened connection.</returns>
 	public static async Task<BanchoConnection> PlayerAsync(TestApplication app, string name,
-		Permissions? permissions = null)
+		UserPermissions? permissions = null)
 	{
 		var user = await app.CreateUserAsync(name, "password", permissions);
 		return await PlayerAsync(app, user);

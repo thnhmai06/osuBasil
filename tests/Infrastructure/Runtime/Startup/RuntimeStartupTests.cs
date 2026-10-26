@@ -3,7 +3,6 @@ using Basil.Application.Persistence.Multiplayer;
 using Basil.Testing;
 using Basil.Domain.Chat;
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Runtime.Startup;
 using Microsoft.Extensions.DependencyInjection;
@@ -52,12 +51,12 @@ public sealed class RuntimeStartupTests
 	{
 		using var app = new TestApplication();
 		var channels = app.Provider.GetRequiredService<IChannelRepository>();
-		var other = await app.SeedAccountAsync(BasilBot.Id, "Somebody", "secret", Permissions.RoomManageAny);
+		var other = await app.SeedAccountAsync(BasilBot.Id, "Somebody", "secret", UserPermissions.RoomManageAny);
 
 		await Startup(app, channels).StartAsync(TestContext.Current.CancellationToken);
 
 		var bot = Assert.Single(app.Users.Online.Keys, user => user.Id == BasilBot.Id);
-		Assert.Equal(Permissions.None, bot.Value.Permissions);
+		Assert.Equal(UserPermissions.None, bot.Value.Permissions);
 		Assert.False(await app.VerifiesPasswordAsync(other, "secret"));
 	}
 

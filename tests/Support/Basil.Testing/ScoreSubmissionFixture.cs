@@ -11,7 +11,6 @@ using Basil.Domain.Bancho;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Permissions;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 using Microsoft.Extensions.DependencyInjection;
@@ -130,7 +129,7 @@ public sealed class ScoreSubmissionFixture : IDisposable
 	/// <param name="permissions">The permissions to grant, or the normal new-account permissions.</param>
 	/// <returns>The fixture.</returns>
 	public static async Task<ScoreSubmissionFixture> CreateAsync(string name = "Submitter",
-		Permissions? permissions = null)
+		UserPermissions? permissions = null)
 	{
 		var app = new TestApplication();
 		var user = await app.CreateUserAsync(name, Password, permissions);

@@ -1,6 +1,5 @@
 using Basil.Application.Persistence.Common;
 using Basil.Application.Persistence.Users;
-using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Persistence.Tests.Support;
 
@@ -9,10 +8,8 @@ namespace Basil.Infrastructure.Persistence.Tests.Users;
 /// <summary>Contract tests of the storing of registered users.</summary>
 /// <remarks>The migration stores BasilBot as account <see cref="BasilBot.Id" />, so every database starts with that one account.</remarks>
 [Collection("Persistence")]
-public sealed class PostgresUserRepositoryTests : DatabaseTests
+public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
-	public PostgresUserRepositoryTests(PersistenceFixture container) : base(container) { }
-
 	private IUserRepository Users => Get<IUserRepository>();
 
 	[Fact]
@@ -122,7 +119,7 @@ public sealed class PostgresUserRepositoryTests : DatabaseTests
 	public async Task A_replaced_account_holds_the_new_data_under_the_same_id()
 	{
 		var replaced = await Users.ReplaceAsync(BasilBot.Id,
-			new UserData { Name = "renamed_bot", Permissions = Permissions.None }, TestContext.Current.CancellationToken);
+			new UserData { Name = "renamed_bot", Permissions = UserPermissions.None }, TestContext.Current.CancellationToken);
 
 		var found = await Users.GetAsync(BasilBot.Id, TestContext.Current.CancellationToken);
 
@@ -135,7 +132,7 @@ public sealed class PostgresUserRepositoryTests : DatabaseTests
 	[Fact]
 	public async Task A_replaced_account_is_stored()
 	{
-		await Users.ReplaceAsync(BasilBot.Id, new UserData { Name = "stored_bot", Permissions = Permissions.None },
+		await Users.ReplaceAsync(BasilBot.Id, new UserData { Name = "stored_bot", Permissions = UserPermissions.None },
 			TestContext.Current.CancellationToken);
 
 		var rows = await StoredRows.WaitForAsync(ConnectionString,
@@ -359,14 +356,14 @@ public sealed class PostgresUserRepositoryTests : DatabaseTests
 	[Fact]
 	public async Task A_listing_finds_accounts_by_the_permissions_they_hold()
 	{
-		await Users.CreateAsync(new UserData { Name = "plain_user", Permissions = Permissions.None }, TestContext.Current.CancellationToken);
+		await Users.CreateAsync(new UserData { Name = "plain_user", Permissions = UserPermissions.None }, TestContext.Current.CancellationToken);
 		await Users.CreateAsync(new UserData
 		{
 			Name = "admin_user",
-			Permissions = PermissionsGroups.Default | Permissions.ServerConfigure
+			Permissions = UserPermissionsGroups.Default | UserPermissions.ServerConfigure
 		}, TestContext.Current.CancellationToken);
 
-		var page = await Users.ListAsync(new UserQuery(Permissions: Permissions.ServerConfigure),
+		var page = await Users.ListAsync(new UserQuery(Permissions: UserPermissions.ServerConfigure),
 			new PageRequest(0, 10), TestContext.Current.CancellationToken);
 
 		Assert.Equal("admin_user", Assert.Single(page.Items).Value.Name);

@@ -8,12 +8,8 @@ namespace Basil.Infrastructure.Persistence.Tests.Content;
 
 /// <summary>Contract tests of the storing of the settings of the server.</summary>
 [Collection("Persistence")]
-public sealed class PostgresSettingsRepositoryTests : DatabaseTests
+public sealed class PostgresSettingsRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
-	public PostgresSettingsRepositoryTests(PersistenceFixture container) : base(container)
-	{
-	}
-
 	private ISettingsRepository Settings => Get<ISettingsRepository>();
 
 	[Fact]

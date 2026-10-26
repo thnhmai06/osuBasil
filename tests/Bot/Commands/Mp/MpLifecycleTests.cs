@@ -1,6 +1,6 @@
 using Basil.Bot.Commands.Mp;
 using Basil.Bot.Tests.Support;
-using Basil.Domain.Permissions;
+using Basil.Domain.Users;
 using Basil.Testing;
 
 namespace Basil.Bot.Tests.Commands.Mp;
@@ -120,7 +120,7 @@ public sealed class MpLifecycleTests
 	{
 		using var bot = new BotHarness();
 		var typist =
-			await RoomFixture.PlayerAsync(bot.App, "Typist", PermissionsGroups.Default & ~Permissions.RoomCreate);
+			await RoomFixture.PlayerAsync(bot.App, "Typist", UserPermissionsGroups.Default & ~UserPermissions.RoomCreate);
 
 		var (succeeded, said) = await bot.TypeAsync(typist, "#osu", "!mp make Finals");
 

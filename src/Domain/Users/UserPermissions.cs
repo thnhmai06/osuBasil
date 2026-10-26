@@ -1,4 +1,7 @@
-namespace Basil.Domain.Permissions;
+using System.Collections.Immutable;
+using Basil.Domain.Moderation;
+
+namespace Basil.Domain.Users;
 
 /// <summary>The actions an account may take.</summary>
 /// <remarks>
@@ -6,10 +9,10 @@ namespace Basil.Domain.Permissions;
 ///     matching view permission) holds their bits too, so a check asks for the bit of the smallest permission that
 ///     allows the action. Restrictions suspend some granted permissions for a while; the rest are the account's
 ///     effective permissions. The mask of an area and the permission that manages it live in
-///     <see cref="PermissionsGroups" />.
+///     <see cref="UserPermissionsGroups" />.
 /// </remarks>
 [Flags]
-public enum Permissions : ulong
+public enum UserPermissions : ulong
 {
 	/// <summary>No permission.</summary>
 	None = 0,
@@ -143,16 +146,16 @@ public enum Permissions : ulong
 	#endregion
 }
 
-/// <summary>Provides the rules for combining and reporting <see cref="Permissions" />.</summary>
+/// <summary>Provides the rules for combining and reporting <see cref="UserPermissions" />.</summary>
 public static class PermissionsExtensions
 {
 	/// <param name="held">The permissions held.</param>
-	extension(Permissions held)
+	extension(UserPermissions held)
 	{
 		/// <summary>Determines whether every permission of a requirement is held.</summary>
 		/// <param name="required">The permissions that must all be held; none is always satisfied.</param>
 		/// <returns><see langword="true" /> if every permission in <paramref name="required" /> is held.</returns>
-		public bool Allows(Permissions required)
+		public bool Allows(UserPermissions required)
 		{
 			return (held & required) == required;
 		}
@@ -164,37 +167,85 @@ public static class PermissionsExtensions
 		///     The granted permissions that no active restriction suspends; a user who manages an area keeps every
 		///     permission of that area.
 		/// </returns>
-		public Permissions Effective(IEnumerable<Restriction> restrictions, DateTimeOffset now)
+		public UserPermissions Effective(IEnumerable<UserRestriction> restrictions, DateTimeOffset now)
 		{
 			var suspended = restrictions
 				.Where(restriction => restriction.Value.IsActive(now))
-				.Aggregate(Permissions.None, (all, restriction) => all | restriction.Value.Permissions);
-			var kept = PermissionsGroups.Areas
-				.Where(area => area.Manager != Permissions.None && held.Allows(area.Manager))
-				.Aggregate(Permissions.None, (current, area) => current | area.Permissions);
+				.Aggregate(UserPermissions.None, (all, restriction) => all | restriction.Value.Permissions);
+			var kept = UserPermissionsGroups.Areas
+				.Where(area => area.Manager != UserPermissions.None && held.Allows(area.Manager))
+				.Aggregate(UserPermissions.None, (current, area) => current | area.Permissions);
 			return held & ~(suspended & ~kept);
 		}
 
 		/// <summary>Gets the roles an osu! client is told the user has, from their effective permissions.</summary>
 		/// <returns>The role of every role whose permissions the user holds at least one of.</returns>
 		/// <remarks>
-		///     Watching rooms with osu!tourney also turns on <see cref="Privileges.Supporter" />, which osu!tourney
+		///     Watching rooms with osu!tourney also turns on <see cref="UserPrivileges.Supporter" />, which osu!tourney
 		///     requires.
 		/// </remarks>
-		public Privileges Privileges
+		public UserPrivileges Privileges
 		{
 			get
 			{
-				var privileges = Privileges.None;
-				if ((held & Privileges.Player.Permissions) != 0) privileges |= Privileges.Player;
-				if ((held & Privileges.Supporter.Permissions) != 0 || held.Allows(Permissions.RoomObserve))
-					privileges |= Privileges.Supporter;
-				if ((held & Privileges.Tournament.Permissions) != 0) privileges |= Privileges.Tournament;
-				if ((held & Privileges.Moderator.Permissions) != 0) privileges |= Privileges.Moderator;
-				if ((held & Privileges.Developer.Permissions) != 0) privileges |= Privileges.Developer;
-				if ((held & Privileges.Owner.Permissions) != 0) privileges |= Privileges.Owner;
+				var privileges = UserPrivileges.None;
+				if ((held & UserPrivileges.Player.Permissions) != 0) privileges |= UserPrivileges.Player;
+				if ((held & UserPrivileges.Supporter.Permissions) != 0 || held.Allows(UserPermissions.RoomObserve))
+					privileges |= UserPrivileges.Supporter;
+				if ((held & UserPrivileges.Tournament.Permissions) != 0) privileges |= UserPrivileges.Tournament;
+				if ((held & UserPrivileges.Moderator.Permissions) != 0) privileges |= UserPrivileges.Moderator;
+				if ((held & UserPrivileges.Developer.Permissions) != 0) privileges |= UserPrivileges.Developer;
+				if ((held & UserPrivileges.Owner.Permissions) != 0) privileges |= UserPrivileges.Owner;
 				return privileges;
 			}
 		}
 	}
+}
+
+
+/// <summary>The masks of permissions by area, and the permission that manages each area.</summary>
+public static class UserPermissionsGroups
+{
+	/// <summary>Every permission the server defines.</summary>
+	public const UserPermissions All =
+		UserPermissions.RoomCreate | UserPermissions.RoomJoin | UserPermissions.RoomObserve | UserPermissions.RoomViewPrivate |
+		UserPermissions.RoomManageAny | UserPermissions.RoomCreateUnlimited | UserPermissions.ChatPost |
+		UserPermissions.ChatPostPrivate | UserPermissions.ChatPostAnyRoom | UserPermissions.ChatMessageAnyone |
+		UserPermissions.ChatAnnounce | UserPermissions.SpectatingWatch | UserPermissions.ScoreSubmit |
+		UserPermissions.BeatmapsetUpload | UserPermissions.BeatmapsetDirect | UserPermissions.BeatmapsetViewHidden |
+		UserPermissions.BeatmapsetManage | UserPermissions.ScreenshotUpload | UserPermissions.ScreenshotDelete |
+		UserPermissions.UserNote | UserPermissions.UserSilence | UserPermissions.UserViewLogins | UserPermissions.UserRestrict |
+		UserPermissions.UserViewDeleted | UserPermissions.UserManage | UserPermissions.UserManagePermissions |
+		UserPermissions.ServerConfigure | UserPermissions.ServerViewDiagnostics | UserPermissions.ServerManageContent;
+
+	/// <summary>The permissions a new account holds.</summary>
+	public static readonly UserPermissions Default = UserPrivileges.Player.Permissions | UserPrivileges.Supporter.Permissions;
+
+	/// <summary>The chatting permissions and the permission that manages them.</summary>
+	public static readonly ModerationArea Chat =
+		new(UserPermissions.ChatPost | UserPermissions.ChatPostPrivate | UserPermissions.ChatPostAnyRoom,
+			UserPermissions.ChatMessageAnyone);
+
+	/// <summary>The multiplayer permissions and the permission that manages them.</summary>
+	public static readonly ModerationArea Multiplayer =
+		new(UserPermissions.RoomCreate | UserPermissions.RoomJoin | UserPermissions.RoomCreateUnlimited, UserPermissions.RoomManageAny);
+
+	/// <summary>The spectating permissions and the permission that manages them.</summary>
+	public static readonly ModerationArea Spectating = new(UserPermissions.SpectatingWatch, UserPermissions.RoomObserve);
+
+	/// <summary>The scoring permissions and the permission that manages them.</summary>
+	public static readonly ModerationArea Scores = new(UserPermissions.ScoreSubmit, UserPermissions.None);
+
+	/// <summary>The beatmapset permissions and the permission that manages them.</summary>
+	public static readonly ModerationArea Beatmapsets = new(UserPermissions.BeatmapsetUpload, UserPermissions.BeatmapsetManage);
+
+	/// <summary>The screenshot permissions and the permission that manages them.</summary>
+	public static readonly ModerationArea Screenshots =
+		new(UserPermissions.ScreenshotUpload, UserPermissions.ScreenshotDelete);
+
+	/// <summary>Every area, in a fixed order.</summary>
+	public static readonly ImmutableArray<ModerationArea> Areas =
+	[
+		Chat, Multiplayer, Spectating, Scores, Beatmapsets, Screenshots
+	];
 }

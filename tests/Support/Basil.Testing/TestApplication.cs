@@ -20,7 +20,7 @@ using Basil.Domain;
 using Basil.Domain.Auth;
 using Basil.Domain.Bancho;
 using Basil.Domain.Common;
-using Basil.Domain.Permissions;
+using Basil.Domain.Moderation;
 using Basil.Domain.Users;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
@@ -166,9 +166,9 @@ public sealed class TestApplication : IDisposable
 	/// <param name="permissions">The permissions to grant, or the normal new-account permissions.</param>
 	/// <returns>The stored account.</returns>
 	public async Task<UserRecord> CreateUserAsync(string name, string password,
-		Permissions? permissions = null)
+		UserPermissions? permissions = null)
 	{
-		var data = new UserData { Name = name, Permissions = permissions ?? PermissionsGroups.Default };
+		var data = new UserData { Name = name, Permissions = permissions ?? UserPermissionsGroups.Default };
 		var user = await _users.CreateAsync(data);
 		await _credentials.CreateOrUpdateAsync(new Credentials(user, PasswordHash(password)));
 		return user;
@@ -182,12 +182,12 @@ public sealed class TestApplication : IDisposable
 	/// <param name="deletedAt">When the account was deleted, or <see langword="null" /> for a live account.</param>
 	/// <returns>The stored account.</returns>
 	public async Task<UserRecord> SeedAccountAsync(int id, string name, string password,
-		Permissions? permissions = null, DateTimeOffset? deletedAt = null)
+		UserPermissions? permissions = null, DateTimeOffset? deletedAt = null)
 	{
 		var user = _users.Seed(new UserData
 		{
 			Name = name,
-			Permissions = permissions ?? PermissionsGroups.Default,
+			Permissions = permissions ?? UserPermissionsGroups.Default,
 			DeletedAt = deletedAt
 		}, id);
 		await _credentials.CreateOrUpdateAsync(new Credentials(user, PasswordHash(password)));
@@ -207,7 +207,7 @@ public sealed class TestApplication : IDisposable
 	/// <returns>The stored BasilBot account.</returns>
 	public async Task<UserRecord> SeedBotAsync()
 	{
-		var bot = _users.Seed(new UserData { Name = "BasilBot", Permissions = Permissions.None }, BasilBot.Id);
+		var bot = _users.Seed(new UserData { Name = "BasilBot", Permissions = UserPermissions.None }, BasilBot.Id);
 		await _credentials.CreateOrUpdateAsync(new Credentials(bot, PasswordHash("basil-bot")));
 		return bot;
 	}
@@ -255,7 +255,7 @@ public sealed class TestApplication : IDisposable
 	/// <param name="endsAt">When it ends, or <see langword="null" /> for an open-ended restriction.</param>
 	/// <param name="startsAt">When it starts, or the fixture's current time minus one second.</param>
 	/// <returns>The stored restriction.</returns>
-	public Restriction AddRestriction(UserRecord user, Permissions permissions, DateTimeOffset? endsAt = null,
+	public UserRestriction AddRestriction(UserRecord user, UserPermissions permissions, DateTimeOffset? endsAt = null,
 		DateTimeOffset? startsAt = null)
 	{
 		return _restrictions.Seed(user, permissions, startsAt ?? Clock.GetUtcNow().AddSeconds(-1), endsAt);

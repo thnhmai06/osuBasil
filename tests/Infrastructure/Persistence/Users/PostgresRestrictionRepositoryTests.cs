@@ -1,5 +1,4 @@
 using Basil.Application.Persistence.Users;
-using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Persistence.Tests.Support;
 
@@ -7,11 +6,9 @@ namespace Basil.Infrastructure.Persistence.Tests.Users;
 
 /// <summary>Contract tests of the storing of the restrictions of an account.</summary>
 [Collection("Persistence")]
-public sealed class PostgresRestrictionRepositoryTests : DatabaseTests
+public sealed class PostgresRestrictionRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
 	private static readonly DateTimeOffset Moment = new(2026, 10, 22, 12, 0, 0, TimeSpan.Zero);
-
-	public PostgresRestrictionRepositoryTests(PersistenceFixture container) : base(container) { }
 
 	private IRestrictionRepository Restrictions => Get<IRestrictionRepository>();
 
@@ -127,7 +124,7 @@ public sealed class PostgresRestrictionRepositoryTests : DatabaseTests
 	/// <summary>Creates a restriction of an account.</summary>
 	/// <param name="user">The restricted account.</param>
 	/// <param name="startsAt">The moment the restriction starts.</param>
-	private async Task<Restriction> CreateAsync(UserRecord user, DateTimeOffset startsAt)
+	private async Task<UserRestriction> CreateAsync(UserRecord user, DateTimeOffset startsAt)
 	{
 		return await Restrictions.CreateAsync(new RestrictionData
 		{

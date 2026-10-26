@@ -1,6 +1,6 @@
 using Basil.Application.Persistence.Common;
 using Basil.Application.Persistence.Users;
-using Basil.Domain.Permissions;
+using Basil.Domain.Moderation;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Persistence.Tests.Support;
 
@@ -8,13 +8,11 @@ namespace Basil.Infrastructure.Persistence.Tests.Users;
 
 /// <summary>Contract tests of the storing of the moderation history of an account.</summary>
 [Collection("Persistence")]
-public sealed class PostgresModerationLogRepositoryTests : DatabaseTests
+public sealed class PostgresModerationLogRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
 	private static readonly DateTimeOffset First = new(2026, 10, 22, 12, 0, 0, TimeSpan.Zero);
 	private static readonly DateTimeOffset Second = new(2026, 10, 22, 13, 0, 0, TimeSpan.Zero);
 	private static readonly DateTimeOffset Third = new(2026, 10, 22, 14, 0, 0, TimeSpan.Zero);
-
-	public PostgresModerationLogRepositoryTests(PersistenceFixture container) : base(container) { }
 
 	private IModerationLogRepository Log => Get<IModerationLogRepository>();
 

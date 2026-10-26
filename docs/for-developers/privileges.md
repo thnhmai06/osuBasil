@@ -2,19 +2,19 @@
 
 ## Overview
 
-Basil separates **permissions**, which authorize actions, from **privileges**, which describe roles the osu! client knows. A permission is the source of authority. `Privileges` is derived from effective permissions and grants nothing by itself.
+Basil separates **permissions**, which authorize actions, from **privileges**, which describe roles the osu! client knows. A permission is the source of authority. `UserPrivileges` is derived from effective permissions and grants nothing by itself.
 
 This separation lets Basil suspend specific actions without inventing special account states, while still reporting the appropriate client-facing roles.
 
 ## Permissions
 
-`Permissions` is a flat flags enum of independent actions, grouped in its source by resource. Examples include `RoomJoin`, `RoomManageAny`, `ChatPost`, `ChatMessageAnyone`, `UserRestrict` and `ServerConfigure`. A group of permissions is a mask in `PermissionsGroups`; groups are not extra enum members.
+`UserPermissions` is a flat flags enum of independent actions, grouped in its source by resource. Examples include `RoomJoin`, `RoomManageAny`, `ChatPost`, `ChatMessageAnyone`, `UserRestrict` and `ServerConfigure`. A group of permissions is a mask in `UserPermissionsGroups`; groups are not extra enum members.
 
 Some permissions include the bits of actions they imply. For example, `RoomManageAny` includes `RoomViewPrivate`, and `UserRestrict` includes the permissions to silence, add moderation notes and view login history. Checks ask for the smallest permission that allows the action. `Permissions.Allows(required)` succeeds only when every required bit is present; an empty requirement succeeds.
 
 ### Area managers
 
-`PermissionsGroups.Areas` identifies the permissions in each area and, where one exists, the permission that manages that area:
+`UserPermissionsGroups.Areas` identifies the permissions in each area and, where one exists, the permission that manages that area:
 
 | Area | Manager permission |
 |---|---|
@@ -25,13 +25,13 @@ Some permissions include the bits of actions they imply. For example, `RoomManag
 | Beatmapsets | `BeatmapsetManage` |
 | Screenshots | `ScreenshotDelete` |
 
-These manager permissions also determine which area permissions a user keeps while restricted. `PermissionsGroups.Default` is the initial permission set for a new account. Basil grants no extra permissions because an account is first or first to connect.
+These manager permissions also determine which area permissions a user keeps while restricted. `UserPermissionsGroups.Default` is the initial permission set for a new account. Basil grants no extra permissions because an account is first or first to connect.
 
-## Privileges are derived roles
+## Privileges are derived roles, and `UserPermissionsGroups` (permission masks, defaults and area managers)
 
-`Privileges` contains the roles understood by osu!: `Player`, `Moderator`, `Supporter`, `Owner`, `Developer` and `Tournament`. It is computed from effective permissions and is neither stored nor configured. A role maps to the permissions it directly represents through `privilege.Permissions`; the role itself authorizes nothing.
+`UserPrivileges` contains the roles understood by osu!: `Player`, `Moderator`, `Supporter`, `Owner`, `Developer` and `Tournament`. It is computed from effective permissions and is neither stored nor configured. A role maps to the permissions it directly represents through `privilege.Permissions`; the role itself authorizes nothing.
 
-The derived roles may be used where a client-facing role requirement is part of a channel's configuration. Such a requirement is met only when every requested role is present. Server-side actions must check `Permissions`, not infer authority from a reported role or a client's claim.
+The derived roles may be used where a client-facing role requirement is part of a channel's configuration. Such a requirement is met only when every requested role is present. Server-side actions must check `UserPermissions`, not infer authority from a reported role or a client's claim.
 
 ## Authorization and restrictions
 
@@ -45,7 +45,7 @@ A user's granted permissions are reduced by active restrictions:
 effective = granted permissions minus permissions suspended now
 ```
 
-A `Restriction` suspends a permission mask from `StartsAt` through, but not including, `EndsAt`. A `null` end time means the restriction lasts until lifted. Expiry is evaluated at the time of the check; it does not require a separate expiry timer.
+A `UserRestriction` suspends a permission mask from `StartsAt` through, but not including, `EndsAt`. A `null` end time means the restriction lasts until lifted. Expiry is evaluated at the time of the check; it does not require a separate expiry timer.
 
 A silence suspends chat and multiplayer permissions. A full restriction also suspends spectating, score submission, beatmapset upload and screenshot upload. Restrictions do not remove granted permissions from the account; they change which permissions are effective for a period.
 
@@ -89,7 +89,7 @@ The operator console is also **planned**. It is the explicit operator entry poin
 
 ## Invariants
 
-* `Permissions` is the authority source; `Privileges` is derived and grants nothing.
+* `UserPermissions` is the authority source; `UserPrivileges` is derived and grants nothing.
 * A permission check requires every requested bit and uses effective permissions.
 * An active restriction suspends only its selected permissions and time window.
 * A manager keeps permissions in the area they manage while restricted, not in unrelated areas.
@@ -101,10 +101,9 @@ The operator console is also **planned**. It is the explicit operator entry poin
 
 ## Related code
 
-* [`Permissions.cs`](../../src/Domain/Users/Permissions.cs): action permissions, `Allows`, effective permissions and derived roles
-* [`PermissionsGroups.cs`](../../src/Domain/Users/PermissionsGroups.cs): permission masks, defaults and area managers
-* [`Privileges.cs`](../../src/Domain/Users/Privileges.cs): roles understood by osu! and their direct permissions
-* [`Restriction.cs`](../../src/Domain/Permissions/Restriction.cs): restriction target, permissions and time window
+* [`UserPermissions.cs`](../../src/Domain/Users/UserPermissions.cs): action permissions, `Allows`, effective permissions and derived roles
+* [`UserPrivileges.cs`](../../src/Domain/Users/UserPrivileges.cs): roles understood by osu! and their direct permissions
+* [`UserRestriction.cs`](../../src/Domain/Users/UserRestriction.cs): restriction target, permissions and time window
 * [`User.cs`](../../src/Application/Runtime/Users/User.cs): effective permission checks
 * [`ScopedUser.cs`](../../src/Application/Runtime/Users/ScopedUser.cs), [`ScopedUserRestrictions.cs`](../../src/Application/Runtime/Users/ScopedUserRestrictions.cs): account actions and restrictions
 * [`UserResult.cs`](../../src/Application/Runtime/Users/UserResult.cs): account-operation outcomes

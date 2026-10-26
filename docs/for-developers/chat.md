@@ -19,7 +19,7 @@ General channels use configured names such as `#osu`; room and spectator channel
 
 ## Read and write rules
 
-Each kind of channel decides who may read and write it (`CanRead` and `CanWrite` on the channel). General-channel requirements are masks of derived `Privileges`; every requested bit must be present, and an empty requirement allows access.
+Each kind of channel decides who may read and write it (`CanRead` and `CanWrite` on the channel). General-channel requirements are masks of derived `UserPrivileges`; every requested bit must be present, and an empty requirement allows access.
 
 | Kind | Read | Write |
 |---|---|---|

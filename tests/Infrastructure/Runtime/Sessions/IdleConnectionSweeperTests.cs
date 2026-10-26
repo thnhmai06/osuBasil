@@ -1,6 +1,6 @@
 using Basil.Application.Runtime.Sessions;
+using Basil.Domain.Users;
 using Basil.Testing;
-using Basil.Domain.Permissions;
 using Basil.Infrastructure.Runtime.Sessions;
 using Basil.Infrastructure.Runtime.Tests.Support;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -29,8 +29,8 @@ public sealed class IdleConnectionSweeperTests
 	{
 		using var app = new TestApplication();
 		var permissions = type is ConnectionType.Tourney
-			? PermissionsGroups.Default | Permissions.RoomObserve
-			: PermissionsGroups.Default;
+			? UserPermissionsGroups.Default | UserPermissions.RoomObserve
+			: UserPermissionsGroups.Default;
 		var user = await app.CreateUserAsync("Idle", "password", permissions);
 		var connection = await app.LoginAsync(user, type);
 		app.Clock.Advance(TimeSpan.FromSeconds(301));

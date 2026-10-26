@@ -3,7 +3,7 @@ using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Sessions;
 using Basil.Testing;
 using Basil.Application.Persistence.Users;
-using Basil.Domain.Permissions;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Runtime.Tests.Multiplayer.Rooms;
 
@@ -280,7 +280,7 @@ public sealed class ScopedRoomMembersTests
 			cancellationToken: TestContext.Current.CancellationToken);
 		Assert.True(opened.IsOk);
 		var user = await app.CreateUserAsync("Watcher", "password",
-			PermissionsGroups.Default | Permissions.RoomObserve);
+			UserPermissionsGroups.Default | UserPermissions.RoomObserve);
 		var player = await RoomFixture.PlayerAsync(app, user);
 		Assert.True((await room!.ScopeTo(player).Members.JoinAsync("", TestContext.Current.CancellationToken)).IsOk);
 		var observer = (TourneyConnection)await app.LoginAsync(user, ConnectionType.Tourney);
@@ -327,7 +327,7 @@ public sealed class ScopedRoomMembersTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		var user = await app.CreateUserAsync("Watcher", "password",
-			PermissionsGroups.Default | Permissions.RoomObserve);
+			UserPermissionsGroups.Default | UserPermissions.RoomObserve);
 		var player = await RoomFixture.PlayerAsync(app, user);
 		var observer = (TourneyConnection)await app.LoginAsync(user, ConnectionType.Tourney);
 		Assert.True((await setup.Room.ScopeTo(observer).Members.ObserverJoinAsync(
@@ -430,7 +430,7 @@ public sealed class ScopedRoomMembersTests
 			TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsOk);
-		Assert.Equal(Permissions.RoomJoin, result.Missing);
+		Assert.Equal(UserPermissions.RoomJoin, result.Missing);
 		Assert.Null(setup.Room.Slots.Find(setup.NoRoomJoin));
 	}
 
@@ -444,7 +444,7 @@ public sealed class ScopedRoomMembersTests
 			TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsOk);
-		Assert.Equal(Permissions.RoomJoin, result.Missing);
+		Assert.Equal(UserPermissions.RoomJoin, result.Missing);
 		Assert.Null(setup.Room.Slots.Find(setup.NoRoomJoin));
 	}
 
@@ -468,7 +468,7 @@ public sealed class ScopedRoomMembersTests
 	private static async Task<TourneyConnection> ObserverAsync(TestApplication app, string name)
 	{
 		var user = await app.CreateUserAsync(name, "password",
-			PermissionsGroups.Default | Permissions.RoomObserve);
+			UserPermissionsGroups.Default | UserPermissions.RoomObserve);
 		return (TourneyConnection)await app.LoginAsync(user, ConnectionType.Tourney);
 	}
 }

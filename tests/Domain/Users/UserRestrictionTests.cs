@@ -1,10 +1,8 @@
-using Basil.Domain.Permissions;
 using Basil.Domain.Users;
-using Permission = Basil.Domain.Permissions.Permissions;
 
-namespace Basil.Domain.Tests.Permissions;
+namespace Basil.Domain.Tests.Users;
 
-public class RestrictionTests
+public class UserRestrictionTests
 {
 	[Fact]
 	public void IsActive_StartInclusiveAndEndExclusive()
@@ -22,7 +20,7 @@ public class RestrictionTests
 		Assert.Throws<ArgumentOutOfRangeException>(() => new RestrictionData
 		{
 			User = MakeUser(),
-			Permissions = Permission.None,
+			Permissions = UserPermissions.None,
 			StartsAt = DateTimeOffset.UnixEpoch
 		});
 	}
@@ -33,7 +31,7 @@ public class RestrictionTests
 		Assert.Throws<ArgumentOutOfRangeException>(() => new RestrictionData
 		{
 			User = MakeUser(),
-			Permissions = (Permission)(1UL << 60),
+			Permissions = (UserPermissions)(1UL << 60),
 			StartsAt = DateTimeOffset.UnixEpoch
 		});
 	}
@@ -66,9 +64,9 @@ public class RestrictionTests
 		});
 	}
 
-	private static Restriction MakeRestriction(DateTimeOffset startsAt, DateTimeOffset? endsAt)
+	private static UserRestriction MakeRestriction(DateTimeOffset startsAt, DateTimeOffset? endsAt)
 	{
-		return new Restriction
+		return new UserRestriction
 		{
 			Id = 1,
 			Value = new RestrictionData

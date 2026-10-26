@@ -131,7 +131,7 @@ public sealed class ScopedRoomTests
 		var scope = setup.Room.ScopeTo(setup.Outsider);
 
 		Assert.Equal(RoomRoles.None, scope.Roles);
-		Assert.Equal(RoomPermissions.None, scope.Rights);
+		Assert.Equal(RoomPermissions.None, scope.Permissions);
 	}
 
 	[Fact]
@@ -143,7 +143,7 @@ public sealed class ScopedRoomTests
 		var scope = setup.SuspendedRoom.ScopeTo(setup.SuspendedCreator);
 
 		Assert.True(scope.Roles.HasFlag(RoomRoles.Creator));
-		Assert.Equal(RoomPermissions.None, scope.Rights);
+		Assert.Equal(RoomPermissions.None, scope.Permissions);
 	}
 
 	[Fact]
@@ -154,6 +154,6 @@ public sealed class ScopedRoomTests
 
 		var scope = setup.Room.ScopeTo(setup.Manager);
 
-		Assert.Equal(RoomPermissionsGroups.All, scope.Rights);
+		Assert.Equal(RoomPermissionsGroups.All, scope.Permissions);
 	}
 }

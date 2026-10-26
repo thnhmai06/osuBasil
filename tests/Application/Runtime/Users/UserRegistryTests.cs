@@ -3,7 +3,7 @@ using Basil.Application.Runtime.Sessions;
 using Basil.Application.Persistence.Users;
 using Basil.Testing;
 using Basil.Domain.Common;
-using Basil.Domain.Permissions;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Runtime.Tests.Users;
 
@@ -114,7 +114,7 @@ public sealed class UserRegistryTests
 	public async Task LoginAsync_TourneyWithoutRoomObserve_ReturnsNoTourneyPermission()
 	{
 		using var app = new TestApplication();
-		var user = await app.CreateUserAsync("NoTourney", "password", PermissionsGroups.Default);
+		var user = await app.CreateUserAsync("NoTourney", "password", UserPermissionsGroups.Default);
 
 		var result = await app.AttemptLoginAsync(user.Value.Name, "password", ConnectionType.Tourney);
 

@@ -3,14 +3,14 @@ using Basil.Application.Runtime.Sessions;
 using Basil.Testing;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
-using Basil.Domain.Permissions;
 using Basil.Domain.Scores;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Runtime.Tests.Sessions;
 
 /// <summary>
 ///     Verifies who may submit a score on an osu! client: the client itself, holding
-///     <see cref="Permissions.ScoreSubmit" />.
+///     <see cref="UserPermissions.ScoreSubmit" />.
 /// </summary>
 public sealed class ScopedBanchoConnectionTests
 {
@@ -34,14 +34,14 @@ public sealed class ScopedBanchoConnectionTests
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("NoScores", "password");
-		app.AddRestriction(user, Permissions.ScoreSubmit);
+		app.AddRestriction(user, UserPermissions.ScoreSubmit);
 		var client = Assert.IsType<BanchoConnection>(await app.LoginAsync(user, ConnectionType.Bancho));
 
 		var (result, rejection) = await client.ScopeTo(client)
 			.SubmitScoreAsync(Submission(), new BeatmapChecksums(Hash, null), Client(), null, TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsOk);
-		Assert.Equal(Permissions.ScoreSubmit, result.Missing);
+		Assert.Equal(UserPermissions.ScoreSubmit, result.Missing);
 		Assert.Null(rejection);
 		Assert.Empty(app.ScoreEvents.Events);
 	}

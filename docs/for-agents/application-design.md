@@ -14,7 +14,7 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   permissions) and pass the missing mask to `Result<TOutcome>.Denied`; `ScopedRoom` is `Scoped<RoomPermissions>`
   (`Rights` = the rights its roles give, computed once from creator, referee, host and player roles and the global
   permissions) and a role refusal is the outcome `RoleDenied`, or a denial naming `RoomJoin` when the caller may not join
-  rooms at all. A scope over `Privileges` fits the same way. An implementation never compares rights itself: it states
+  rooms at all. A scope over `UserPrivileges` fits the same way. An implementation never compares rights itself: it states
   the requirement of each behaviour through `Require` and returns the denial. Each scope exposes its owner as a property
   named after it (`Channel`, `Room`, `User`, …).
 * **Every behaviour that can be refused returns `Result<TOutcome>`**, a `readonly record struct (TOutcome Outcome,
@@ -42,7 +42,7 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   keeps its invariants, and offers its behaviour; its state changes only inside its own behaviour. Its persistent
   value is a Domain record named `XRecord` with the plain value `XData` (`UserRecord`, `BeatmapsetRecord`,
   `MatchRecord`); the object wraps it. A persistent value that has no live object of its own, such as a
-  restriction, is a plain Domain class named after the concept (`Restriction`). A part is reached through its owner
+  restriction, is a plain Domain class named after the concept (`UserRestriction`). A part is reached through its owner
   (`room.Slots[3]`), never through an outside object that takes the owner as a parameter.
   **`x.ScopeTo(connection)`** returns `ScopedX`, a short-lived capability for one request or command (see "Scopes and
   results" below). It snapshots the caller's effective permissions once, and each behaviour checks that snapshot through
@@ -263,7 +263,7 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   (`IUserAvatarStorage`, `IMenuBannerStorage`, `IMenuSeasonalsStorage`); medium words (`Image`,
   `Background`, `Archive`) and redundant qualifiers (`Server` in `ISettingsRepository`) stay out of names.
 * **Knowledge about a Domain value lives on that value.** A fixed set of flags is a member of its `{Enum}Groups`
-  class (`BanchoFlagsGroups.CheatSigns`, `PermissionsGroups.Chat`) or of the owning type (`Restriction.Silence`),
+  class (`BanchoFlagsGroups.CheatSigns`, `UserPermissionsGroups.Chat`) or of the owning type (`UserRestriction.Silence`),
   never a combination member of the enum itself; a per-mode factory is a static member of its type
   (`BeatmapObjects.NewFrom(mode)`);
   services use them instead of keeping their own copies.

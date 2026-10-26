@@ -2,33 +2,33 @@
 
 Permissions, privileges, restrictions, hierarchy, sessions and BasilBot. Moved out of `AGENTS.md`; the rules are binding. Read this before touching users, connections, permissions, restrictions or the bot.
 
-* **Permissions are the source of truth.** What an account may do is its `Permissions` (Domain, on
+* **Permissions are the source of truth.** What an account may do is its `UserPermissions` (Domain, on
   `UserData`): one flat enum of independent actions named `[Resource][Action]` (`RoomCreate`, `ChatPost`,
   `UserRestrict`, `ServerConfigure`, …), split into `#region`s by resource. The enum has **no group members**.
   A larger permission still contains the bits of the smaller ones it implies, because it is still *one
   permission* ("whoever holds this can also do what is below it"): a manage permission includes the matching view
   permission (`BeatmapsetManage` holds `BeatmapsetViewHidden`, `RoomManageAny` holds `RoomViewPrivate`,
   `UserRestrict` holds `UserSilence`). A group says only "these permissions belong together" and lives in the
-  static class `PermissionsGroups` beside the enum, one mask per area (`Chat`, `Multiplayer`, `Spectating`,
+  static class `UserPermissionsGroups` beside the enum, one mask per area (`Chat`, `Multiplayer`, `Spectating`,
   `Beatmapsets`, `Users`, `Server`), each with the permission that manages the area. The same pattern, `{Enum}Groups`,
   holds the combinations of every other flags enum (`GameModsGroups`, `BanchoFlagsGroups`); no flags enum has
   combination members. A check asks for the smallest permission that allows the action, so the manager and a user
   granted only that permission both pass; never `Allows(A) || Allows(B)` for a pair where one contains the other.
   Do not add a permission that is merely a consequence of another (playing and submitting scores are one:
   `ScoreSubmit`).
-* **Privileges are roles, permissions are rights.** `Privileges` (Domain; renamed from `BanchoPrivileges`) is one
+* **Privileges are roles, permissions are rights.** `UserPrivileges` (Domain; renamed from `BanchoPrivileges`) is one
   flags enum of the roles osu! knows (`Player`, `Moderator`, `Supporter`, `Owner`, `Developer`, `Tournament`; the
   values stay the wire bits). `privilege.Permissions` (an extension) lists the permissions that belong directly to
   that role, at depth one. A user has the bit of a role when their **effective** permissions hold at least one of
   those. A requirement written in privileges (a channel's `ReadPrivileges`/`WritePrivileges`) is met when the user
   has every bit asked for. Privileges are derived, never stored or configured, and they grant nothing: a client
   that claims a role it holds no permission for is refused.
-* **Permission checks require every bit** (`Permissions.Allows`); an empty requirement is always
+* **Permission checks require every bit** (`UserPermissions.Allows`); an empty requirement is always
   satisfied. Checks use the **effective** permissions: the granted ones minus those suspended by the user's
   active restrictions (`Effective(restrictions, now)`).
-* **Restrictions are timed records,** not account fields. A `Restriction` suspends a mask of permissions
+* **Restrictions are timed records,** not account fields. A `UserRestriction` suspends a mask of permissions
   from `StartsAt` to `EndsAt` (open-ended until lifted; lifting sets `EndsAt`, history is kept). It holds only that
-  data: no reason and no note. Named masks live on `Restriction`, not on `Permissions`:
+  data: no reason and no note. Named masks live on `UserRestriction`, not on `UserPermissions`:
   `Silence = Chat | Multiplayer` follows the osu! wiki (no chatting anywhere, no multiplayer; watching others play
   stays allowed) and `Restrict = Silence | Spectating | ScoreSubmit | BeatmapsetUpload | ScreenshotUpload`. There is
   one restrict operation, taking a mask. **Whoever manages an area cannot be restricted in that area:** the

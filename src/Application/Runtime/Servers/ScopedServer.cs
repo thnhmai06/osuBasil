@@ -1,11 +1,11 @@
+using Basil.Application.Runtime.Common;
 using Basil.Application.Runtime.Sessions;
-using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Runtime.Servers;
 
 /// <summary>The server as one connection may act on it.</summary>
-public sealed class ScopedServer : Scoped<Permissions>
+public sealed class ScopedServer : Scoped<UserPermissions>
 {
 	/// <summary>Creates a server scope for a connection.</summary>
 	/// <param name="server">The server to scope.</param>
@@ -31,7 +31,7 @@ public sealed class ScopedServer : Scoped<Permissions>
 	/// <param name="to">The user to notify.</param>
 	/// <returns>Whether the caller may announce and how many clients were sent the notification.</returns>
 	/// <remarks>
-	///     Requires <see cref="Permissions.ChatAnnounce" />; only open osu! clients receive the notification.
+	///     Requires <see cref="UserPermissions.ChatAnnounce" />; only open osu! clients receive the notification.
 	/// </remarks>
 	public (Result<ServerOutcome> Result, int Sent) Notify(string text, UserRecord to)
 	{
@@ -43,7 +43,7 @@ public sealed class ScopedServer : Scoped<Permissions>
 	/// <param name="to">The users to notify.</param>
 	/// <returns>Whether the caller may announce and how many clients were sent the notification.</returns>
 	/// <remarks>
-	///     Requires <see cref="Permissions.ChatAnnounce" />; only open osu! clients receive the notification.
+	///     Requires <see cref="UserPermissions.ChatAnnounce" />; only open osu! clients receive the notification.
 	/// </remarks>
 	public (Result<ServerOutcome> Result, int Sent) Notify(string text, IReadOnlyCollection<UserRecord> to)
 	{
@@ -54,7 +54,7 @@ public sealed class ScopedServer : Scoped<Permissions>
 	/// <param name="text">The text to show.</param>
 	/// <returns>Whether the caller may announce and how many clients were sent the notification.</returns>
 	/// <remarks>
-	///     Requires <see cref="Permissions.ChatAnnounce" />; only open osu! clients receive the notification.
+	///     Requires <see cref="UserPermissions.ChatAnnounce" />; only open osu! clients receive the notification.
 	/// </remarks>
 	public (Result<ServerOutcome> Result, int Sent) NotifyAll(string text)
 	{
@@ -63,7 +63,7 @@ public sealed class ScopedServer : Scoped<Permissions>
 
 	private (Result<ServerOutcome> Result, int Sent) Announce(Func<int> send)
 	{
-		return Require(Permissions.ChatAnnounce) is { } missing
+		return Require(UserPermissions.ChatAnnounce) is { } missing
 			? (Result<ServerOutcome>.Denied(missing), 0)
 			: (ServerOutcome.Ok, send());
 	}
@@ -71,7 +71,7 @@ public sealed class ScopedServer : Scoped<Permissions>
 	/// <summary>Checks whether the caller holds the permissions an action on this server needs.</summary>
 	/// <param name="required">The permissions the action needs.</param>
 	/// <returns><see langword="null" /> when all are in effect; otherwise the permissions that are missing.</returns>
-	internal Permissions? Needs(Permissions required)
+	internal UserPermissions? Needs(UserPermissions required)
 	{
 		return Require(required);
 	}

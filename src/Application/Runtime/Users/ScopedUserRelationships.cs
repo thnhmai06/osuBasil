@@ -1,3 +1,4 @@
+using Basil.Application.Runtime.Common;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Runtime.Users;
@@ -23,7 +24,7 @@ public sealed class ScopedUserRelationships
 
 		var target = _scoped.User.Record;
 		if (target.Value.DeletedAt is not null) return UserOutcome.Deleted;
-		if (BasilBot.Is(target)) return UserOutcome.Ok;
+		if (target.IsBasilBot()) return UserOutcome.Ok;
 
 		await _scoped.User.Context.Relationships.CreateOrUpdateAsync(new Relationship
 		{
@@ -43,7 +44,7 @@ public sealed class ScopedUserRelationships
 		if (_scoped.IsSelf) return UserOutcome.Self;
 
 		var target = _scoped.User.Record;
-		if (BasilBot.Is(target)) return UserOutcome.Protected;
+		if (target.IsBasilBot()) return UserOutcome.Protected;
 
 		var relationships = await _scoped.User.Context.Relationships.ListAsync(_scoped.By.Record, cancellationToken);
 		var friend = relationships.FirstOrDefault(relationship => relationship.Target.Equals(target) &&
@@ -62,7 +63,7 @@ public sealed class ScopedUserRelationships
 
 		var target = _scoped.User.Record;
 		if (target.Value.DeletedAt is not null) return UserOutcome.Deleted;
-		if (BasilBot.Is(target)) return UserOutcome.Protected;
+		if (target.IsBasilBot()) return UserOutcome.Protected;
 
 		await _scoped.User.Context.Relationships.CreateOrUpdateAsync(new Relationship
 		{
@@ -82,7 +83,7 @@ public sealed class ScopedUserRelationships
 		if (_scoped.IsSelf) return UserOutcome.Self;
 
 		var target = _scoped.User.Record;
-		if (BasilBot.Is(target)) return UserOutcome.Ok;
+		if (target.IsBasilBot()) return UserOutcome.Ok;
 
 		var relationships = await _scoped.User.Context.Relationships.ListAsync(_scoped.By.Record, cancellationToken);
 		var block = relationships.FirstOrDefault(relationship => relationship.Target.Equals(target) &&

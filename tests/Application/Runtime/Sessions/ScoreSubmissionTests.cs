@@ -5,8 +5,8 @@ using Basil.Application.Runtime.Scores;
 using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
-using Basil.Domain.Permissions;
 using Basil.Domain.Scores;
+using Basil.Domain.Users;
 using Basil.Testing;
 
 namespace Basil.Application.Runtime.Tests.Sessions;
@@ -20,7 +20,7 @@ public sealed class ScoreSubmissionTests
 {
 	private static readonly BeatmapChecksums Checksums = new(ScoreSubmissionFixture.Beatmap, null);
 
-	private static Task<(Result<ConnectionOutcome> Result, ScoreRejection? Rejection)> SubmitAsync(
+	private static Task<(Runtime.Common.Result<ConnectionOutcome> Result, ScoreRejection? Rejection)> SubmitAsync(
 		ScoreSubmissionFixture f, Submission submission, SubmittedClient? client = null,
 		BeatmapChecksums? beatmap = null, Stream? replay = null, bool unknownBeatmap = false)
 	{
@@ -83,12 +83,12 @@ public sealed class ScoreSubmissionTests
 	[Fact]
 	public async Task SubmitScoreAsync_WithoutTheScoreSubmitPermission_IsDeniedWithExactlyThatPermission()
 	{
-		using var f = await ScoreSubmissionFixture.CreateAsync(permissions: PermissionsGroups.Default & ~Permissions.ScoreSubmit);
+		using var f = await ScoreSubmissionFixture.CreateAsync(permissions: UserPermissionsGroups.Default & ~UserPermissions.ScoreSubmit);
 
 		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()));
 
 		Assert.False(result.IsOk);
-		Assert.Equal(Permissions.ScoreSubmit, result.Missing);
+		Assert.Equal(UserPermissions.ScoreSubmit, result.Missing);
 		Assert.Null(rejection);
 		AssertNothingRecorded(f);
 	}

@@ -1,7 +1,6 @@
 using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Sessions;
 using Basil.Testing;
-using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Runtime.Sessions;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -21,7 +20,7 @@ public sealed class RestrictionHandlerTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		var handler = Handler(app);
-		var restricted = await RestrictAsync(app, setup.Player.Record, Permissions.RoomJoin);
+		var restricted = await RestrictAsync(app, setup.Player.Record, UserPermissions.RoomJoin);
 
 		await handler.HandleAsync(restricted, TestContext.Current.CancellationToken);
 
@@ -35,7 +34,7 @@ public sealed class RestrictionHandlerTests
 		var setup = await RoomFixture.CreateAsync(app);
 		var handler = Handler(app);
 		app.Users.Close(setup.Referee, ConnectionCloseReason.ConnectionLost);
-		var restricted = await RestrictAsync(app, setup.Referee.Record, Permissions.RoomJoin);
+		var restricted = await RestrictAsync(app, setup.Referee.Record, UserPermissions.RoomJoin);
 
 		await handler.HandleAsync(restricted, TestContext.Current.CancellationToken);
 
@@ -51,7 +50,7 @@ public sealed class RestrictionHandlerTests
 		Assert.True((await setup.Room.ScopeTo(setup.Creator).Authority
 			.AddRefereeAsync(setup.Manager.Record, TestContext.Current.CancellationToken)).IsOk);
 		app.Users.Close(setup.Manager, ConnectionCloseReason.ConnectionLost);
-		var restricted = await RestrictAsync(app, setup.Manager.Record, Permissions.RoomJoin);
+		var restricted = await RestrictAsync(app, setup.Manager.Record, UserPermissions.RoomJoin);
 
 		await handler.HandleAsync(restricted, TestContext.Current.CancellationToken);
 
@@ -64,7 +63,7 @@ public sealed class RestrictionHandlerTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		var handler = Handler(app);
-		var restricted = await RestrictAsync(app, setup.Player.Record, Permissions.ChatPost);
+		var restricted = await RestrictAsync(app, setup.Player.Record, UserPermissions.ChatPost);
 
 		await handler.HandleAsync(restricted, TestContext.Current.CancellationToken);
 
@@ -83,9 +82,9 @@ public sealed class RestrictionHandlerTests
 	/// <param name="permissions">The right to suspend.</param>
 	/// <returns>The restriction event the server published.</returns>
 	private static async Task<UserRestricted> RestrictAsync(TestApplication app, UserRecord target,
-		Permissions permissions)
+		UserPermissions permissions)
 	{
-		var moderator = await app.CreateUserAsync("Moderator", "password", PermissionsGroups.All);
+		var moderator = await app.CreateUserAsync("Moderator", "password", UserPermissionsGroups.All);
 		var by = await app.LoginAsync(moderator);
 		var (result, _) = await app.Users.Of(target).ScopeTo(by).Restrictions.RestrictAsync(permissions, null,
 			cancellationToken: TestContext.Current.CancellationToken);

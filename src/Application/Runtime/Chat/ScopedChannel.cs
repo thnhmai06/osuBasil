@@ -1,12 +1,12 @@
+using Basil.Application.Runtime.Common;
 using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Chat;
-using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Runtime.Chat;
 
 /// <summary>A chat channel scoped to one connection.</summary>
-public sealed class ScopedChannel : Scoped<Permissions>
+public sealed class ScopedChannel : Scoped<UserPermissions>
 {
 	/// <summary>Creates a channel scope for a connection.</summary>
 	/// <param name="channel">The channel to scope.</param>
@@ -75,15 +75,15 @@ public sealed class ScopedChannel : Scoped<Permissions>
 	/// <remarks>
 	///     Messages longer than <see cref="Channel.MaxMessageLength" /> characters are cut. A private message is a
 	///     post into the recipient's channel; their away reply is carried by the same <see cref="ChannelMessagePosted" />.
-	///     Posting requires <see cref="Permissions.ChatPost" />, or <see cref="Permissions.ChatPostPrivate" /> for a
-	///     private message. Blocks and friends-only settings are bypassed with <see cref="Permissions.ChatMessageAnyone" />.
+	///     Posting requires <see cref="UserPermissions.ChatPost" />, or <see cref="UserPermissions.ChatPostPrivate" /> for a
+	///     private message. Blocks and friends-only settings are bypassed with <see cref="UserPermissions.ChatMessageAnyone" />.
 	/// </remarks>
 	public async Task<Result<ChannelOutcome>> PostAsync(string text, bool notice = false,
 		CancellationToken cancellationToken = default)
 	{
 		if (Channel.IsClosed) return ChannelOutcome.Closed;
 
-		if (Require(Channel is PmChannel ? Permissions.ChatPostPrivate : Permissions.ChatPost) is { } missing)
+		if (Require(Channel is PmChannel ? UserPermissions.ChatPostPrivate : UserPermissions.ChatPost) is { } missing)
 			return Result<ChannelOutcome>.Denied(missing);
 
 		if (string.IsNullOrEmpty(text)) return ChannelOutcome.Empty;
@@ -95,7 +95,7 @@ public sealed class ScopedChannel : Scoped<Permissions>
 
 		if (Channel is PmChannel pm)
 		{
-			if (!Rights.Allows(Permissions.ChatMessageAnyone))
+			if (!Permissions.Allows(UserPermissions.ChatMessageAnyone))
 			{
 				var relationships = await Channel.Context.Relationships.ListAsync(pm.Owner.Record, cancellationToken);
 				var blocked = relationships.Any(relationship =>
@@ -105,7 +105,7 @@ public sealed class ScopedChannel : Scoped<Permissions>
 				if (blocked || (pm.Owner.PmPrivate && !friend)) return ChannelOutcome.Blocked;
 			}
 
-			if (!pm.Owner.EffectivePermissions(now).Allows(Permissions.ChatPostPrivate))
+			if (!pm.Owner.EffectivePermissions(now).Allows(UserPermissions.ChatPostPrivate))
 				return ChannelOutcome.TargetSilenced;
 		}
 

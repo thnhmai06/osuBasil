@@ -7,10 +7,8 @@ namespace Basil.Infrastructure.Persistence.Tests.Postgres;
 
 /// <summary>Contract tests of the migrator that brings the database up to date.</summary>
 [Collection("Persistence")]
-public sealed class DatabaseMigratorTests : DatabaseTests
+public sealed class DatabaseMigratorTests(PersistenceFixture container) : DatabaseTests(container)
 {
-	public DatabaseMigratorTests(PersistenceFixture container) : base(container) { }
-
 	[Fact]
 	public async Task Migrating_a_migrated_database_applies_no_further_migration()
 	{

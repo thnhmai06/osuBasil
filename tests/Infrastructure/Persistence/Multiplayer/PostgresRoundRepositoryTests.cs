@@ -7,13 +7,11 @@ namespace Basil.Infrastructure.Persistence.Tests.Multiplayer;
 
 /// <summary>Contract tests of the storing of the rounds played in matches.</summary>
 [Collection("Persistence")]
-public sealed class PostgresRoundRepositoryTests : DatabaseTests
+public sealed class PostgresRoundRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
 	private static readonly DateTimeOffset First = new(2026, 10, 22, 12, 0, 0, TimeSpan.Zero);
 	private static readonly DateTimeOffset Second = new(2026, 10, 22, 13, 0, 0, TimeSpan.Zero);
 	private static readonly DateTimeOffset Third = new(2026, 10, 22, 14, 0, 0, TimeSpan.Zero);
-
-	public PostgresRoundRepositoryTests(PersistenceFixture container) : base(container) { }
 
 	private IMatchRepository Matches => Get<IMatchRepository>();
 

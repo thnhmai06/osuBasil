@@ -24,10 +24,10 @@ internal sealed class ChatHandler(
 	{
 		if (@event is not ChannelMessagePosted { By: { } by } posted
 		    || posted.Message.IsNotice
-		    || BasilBot.Is(posted.Message.Author))
+		    || posted.Message.Author.IsBasilBot())
 			return ValueTask.CompletedTask;
 
-		var privateMessage = posted.Channel is PmChannel pm && BasilBot.Is(pm.Owner.Record);
+		var privateMessage = posted.Channel is PmChannel pm && pm.Owner.Record.IsBasilBot();
 		if (posted.Channel is PmChannel && !privateMessage) return ValueTask.CompletedTask;
 
 		var context = new CommandContext(

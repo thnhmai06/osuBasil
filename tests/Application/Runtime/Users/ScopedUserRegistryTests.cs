@@ -1,7 +1,6 @@
 using Basil.Application.Runtime.Users;
 using Basil.Testing;
 using Basil.Domain.Common;
-using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Runtime.Tests.Users;
@@ -19,46 +18,46 @@ public sealed class ScopedUserRegistryTests
 			new UserData { Name = "NewAccount" }, Hash, TestContext.Current.CancellationToken);
 
 		Assert.Null(user);
-		Assert.Equal(Permissions.UserManage, result.Missing);
+		Assert.Equal(UserPermissions.UserManage, result.Missing);
 	}
 
 	[Fact]
 	public async Task CreateAccountAsync_RequestedPermissionNotHeld_NamesTheMissingPermission()
 	{
 		using var app = new TestApplication();
-		var permissions = PermissionsGroups.Default | Permissions.UserManage;
+		var permissions = UserPermissionsGroups.Default | UserPermissions.UserManage;
 		var actor = await app.CreateUserAsync("LimitedMod", "password", permissions);
 		var by = await app.LoginAsync(actor);
 
 		var (user, result) = await app.Users.ScopeTo(by).CreateAccountAsync(
-			new UserData { Name = "TooMuchPower", Permissions = Permissions.ServerConfigure }, Hash,
+			new UserData { Name = "TooMuchPower", Permissions = UserPermissions.ServerConfigure }, Hash,
 			TestContext.Current.CancellationToken);
 
 		Assert.Null(user);
-		Assert.Equal(Permissions.ServerConfigure, result.Missing);
+		Assert.Equal(UserPermissions.ServerConfigure, result.Missing);
 	}
 
 	[Fact]
 	public async Task CreateAccountAsync_AllowedPermissionsWithinActorsGrant_CreatesAccount()
 	{
 		using var app = new TestApplication();
-		var actor = await app.CreateUserAsync("AccountManager", "password", PermissionsGroups.All);
+		var actor = await app.CreateUserAsync("AccountManager", "password", UserPermissionsGroups.All);
 		var by = await app.LoginAsync(actor);
-		var data = new UserData { Name = "CreatedAccount", Permissions = Permissions.UserNote };
+		var data = new UserData { Name = "CreatedAccount", Permissions = UserPermissions.UserNote };
 
 		var (user, result) = await app.Users.ScopeTo(by).CreateAccountAsync(data, Hash,
 			TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsOk);
 		Assert.NotNull(user);
-		Assert.Equal(Permissions.UserNote, user.Value.Permissions);
+		Assert.Equal(UserPermissions.UserNote, user.Value.Permissions);
 	}
 
 	[Fact]
 	public async Task CreateAccountAsync_DuplicateName_ReturnsNameTaken()
 	{
 		using var app = new TestApplication();
-		var actor = await app.CreateUserAsync("DupManager", "password", PermissionsGroups.All);
+		var actor = await app.CreateUserAsync("DupManager", "password", UserPermissionsGroups.All);
 		await app.CreateUserAsync("AlreadyCreated", "password");
 		var by = await app.LoginAsync(actor);
 

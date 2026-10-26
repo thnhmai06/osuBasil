@@ -1,5 +1,5 @@
 ﻿using Basil.Domain.Common;
-using Basil.Domain.Permissions;
+using Basil.Domain.Users;
 
 namespace Basil.Domain.Chat;
 
@@ -60,21 +60,21 @@ public sealed class GeneralChannelData
 		}
 	} = string.Empty;
 
-	/// <summary>Gets or sets the roles a user must all have to read the channel; <see cref="Privileges.None" /> lets anyone read.</summary>
+	/// <summary>Gets or sets the roles a user must all have to read the channel; <see cref="UserPrivileges.None" /> lets anyone read.</summary>
 	/// <exception cref="ArgumentOutOfRangeException">The value sets an undefined privilege bit.</exception>
-	public Privileges ReadPrivileges
+	public UserPrivileges ReadPrivileges
 	{
 		get;
 		set => field = value.ThrowIfUndefined();
-	} = Privileges.None;
+	} = UserPrivileges.None;
 
-	/// <summary>Gets or sets the roles a user must all have, besides the right to chat, to post in the channel; <see cref="Privileges.None" /> lets anyone post.</summary>
+	/// <summary>Gets or sets the roles a user must all have, besides the right to chat, to post in the channel; <see cref="UserPrivileges.None" /> lets anyone post.</summary>
 	/// <exception cref="ArgumentOutOfRangeException">The value sets an undefined privilege bit.</exception>
-	public Privileges WritePrivileges
+	public UserPrivileges WritePrivileges
 	{
 		get;
 		set => field = value.ThrowIfUndefined();
-	} = Privileges.None;
+	} = UserPrivileges.None;
 
 	/// <summary>A value that indicates whether the channel is joined automatically at login.</summary>
 	public bool AutoJoin { get; set; }

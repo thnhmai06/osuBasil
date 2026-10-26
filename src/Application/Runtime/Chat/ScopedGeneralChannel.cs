@@ -1,11 +1,12 @@
+using Basil.Application.Runtime.Common;
 using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Common;
-using Basil.Domain.Permissions;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Runtime.Chat;
 
 /// <summary>A general channel scoped to one connection.</summary>
-public sealed class ScopedGeneralChannel : Scoped<Permissions>
+public sealed class ScopedGeneralChannel : Scoped<UserPermissions>
 {
 	/// <summary>Creates a general-channel scope for a connection.</summary>
 	/// <param name="channel">The general channel to scope.</param>
@@ -23,14 +24,14 @@ public sealed class ScopedGeneralChannel : Scoped<Permissions>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, a denial that names the missing permissions, or Closed when the channel has closed.</returns>
 	/// <remarks>
-	///     Requires <see cref="Permissions.ServerConfigure" />. Members who may no longer read the channel are removed;
+	///     Requires <see cref="UserPermissions.ServerConfigure" />. Members who may no longer read the channel are removed;
 	///     one <see cref="ChannelConfigured" /> reports the change and removed members.
 	/// </remarks>
 	/// <exception cref="ArgumentException">A permission or the topic in <paramref name="change" /> is invalid.</exception>
 	public async Task<Result<ChannelOutcome>> ConfigureAsync(GeneralChannelChange change,
 		CancellationToken cancellationToken = default)
 	{
-		if (Require(Permissions.ServerConfigure) is { } missing) return Result<ChannelOutcome>.Denied(missing);
+		if (Require(UserPermissions.ServerConfigure) is { } missing) return Result<ChannelOutcome>.Denied(missing);
 
 		using (Channel.Enter())
 		{
@@ -61,10 +62,10 @@ public sealed class ScopedGeneralChannel : Scoped<Permissions>
 	/// <summary>Closes and deletes this general channel.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok, or a denial that names the missing permissions.</returns>
-	/// <remarks>Requires <see cref="Permissions.ServerConfigure" />; announces <see cref="ChannelClosed" />.</remarks>
+	/// <remarks>Requires <see cref="UserPermissions.ServerConfigure" />; announces <see cref="ChannelClosed" />.</remarks>
 	public async Task<Result<ChannelOutcome>> DeleteAsync(CancellationToken cancellationToken = default)
 	{
-		if (Require(Permissions.ServerConfigure) is { } missing) return Result<ChannelOutcome>.Denied(missing);
+		if (Require(UserPermissions.ServerConfigure) is { } missing) return Result<ChannelOutcome>.Denied(missing);
 
 		Channel.Close();
 		await Channel.Context.Channels.DeleteAsync(Channel.Record, cancellationToken);

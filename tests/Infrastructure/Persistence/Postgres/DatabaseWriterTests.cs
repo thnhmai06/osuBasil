@@ -9,11 +9,9 @@ namespace Basil.Infrastructure.Persistence.Tests.Postgres;
 
 /// <summary>Contract tests of the queue the storage keeps the writes of one root in.</summary>
 [Collection("Persistence")]
-public sealed class DatabaseWriterTests : DatabaseTests
+public sealed class DatabaseWriterTests(PersistenceFixture container) : DatabaseTests(container)
 {
 	private static readonly DateTimeOffset First = new(2026, 10, 22, 12, 0, 0, TimeSpan.Zero);
-
-	public DatabaseWriterTests(PersistenceFixture container) : base(container) { }
 
 	private IMatchRepository Matches => Get<IMatchRepository>();
 

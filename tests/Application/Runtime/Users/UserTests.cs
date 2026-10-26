@@ -1,7 +1,7 @@
 using Basil.Application.Runtime.Sessions;
 using Basil.Application.Runtime.Users;
+using Basil.Domain.Users;
 using Basil.Testing;
-using Basil.Domain.Permissions;
 
 namespace Basil.Application.Runtime.Tests.Users;
 
@@ -40,13 +40,13 @@ public sealed class UserTests
 	public async Task RestrictAsync_OfflineAccount_DoesNotBringItOnline()
 	{
 		using var app = new TestApplication();
-		var actor = await app.CreateUserAsync("OfflineMod", "password", PermissionsGroups.All);
+		var actor = await app.CreateUserAsync("OfflineMod", "password", UserPermissionsGroups.All);
 		var by = await app.LoginAsync(actor);
 		var target = await app.CreateUserAsync("OfflineTarget", "password");
 		var offlineUser = app.Users.Of(target);
 
 		var (result, _) = await offlineUser.ScopeTo(by).Restrictions.RestrictAsync(
-			Permissions.ChatPost, null, cancellationToken: TestContext.Current.CancellationToken);
+			UserPermissions.ChatPost, null, cancellationToken: TestContext.Current.CancellationToken);
 
 		Assert.Equal(UserOutcome.Ok, result.Outcome);
 		Assert.False(app.Users.Online.ContainsKey(target));
@@ -57,12 +57,12 @@ public sealed class UserTests
 	{
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("SuspendedUser", "password");
-		app.AddRestriction(record, Permissions.ChatPost);
+		app.AddRestriction(record, UserPermissions.ChatPost);
 		await app.LoginAsync(record);
 		var user = app.Users.Of(record);
 
-		Assert.True(record.Value.Permissions.Allows(Permissions.ChatPost));
-		Assert.False(user.EffectivePermissions(app.Clock.GetUtcNow()).Allows(Permissions.ChatPost));
+		Assert.True(record.Value.Permissions.Allows(UserPermissions.ChatPost));
+		Assert.False(user.EffectivePermissions(app.Clock.GetUtcNow()).Allows(UserPermissions.ChatPost));
 	}
 
 	[Fact]
@@ -73,7 +73,7 @@ public sealed class UserTests
 		await app.LoginAsync(record);
 		var user = app.Users.Of(record);
 
-		Assert.False(user.EffectivePermissions(app.Clock.GetUtcNow()).Allows(Permissions.ServerConfigure));
+		Assert.False(user.EffectivePermissions(app.Clock.GetUtcNow()).Allows(UserPermissions.ServerConfigure));
 	}
 
 	[Fact]
@@ -81,28 +81,28 @@ public sealed class UserTests
 	{
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("ExpiryUser", "password");
-		app.AddRestriction(record, Permissions.ChatPost, app.Clock.GetUtcNow().AddMinutes(1));
+		app.AddRestriction(record, UserPermissions.ChatPost, app.Clock.GetUtcNow().AddMinutes(1));
 		await app.LoginAsync(record);
 		var user = app.Users.Of(record);
-		Assert.False(user.EffectivePermissions(app.Clock.GetUtcNow()).Allows(Permissions.ChatPost));
+		Assert.False(user.EffectivePermissions(app.Clock.GetUtcNow()).Allows(UserPermissions.ChatPost));
 
 		app.Clock.Advance(TimeSpan.FromMinutes(1));
 
-		Assert.True(user.EffectivePermissions(app.Clock.GetUtcNow()).Allows(Permissions.ChatPost));
+		Assert.True(user.EffectivePermissions(app.Clock.GetUtcNow()).Allows(UserPermissions.ChatPost));
 	}
 
-	public static IEnumerable<object[]> ManagedAreaCases => PermissionsGroups.Areas
-		.Where(area => area.Manager != Permissions.None)
+	public static IEnumerable<object[]> ManagedAreaCases => UserPermissionsGroups.Areas
+		.Where(area => area.Manager != UserPermissions.None)
 		.Select(area => new object[] { area.Permissions, area.Manager });
 
 	[Theory]
 	[MemberData(nameof(ManagedAreaCases))]
 	public async Task EffectivePermissions_AreaManagerIsRestricted_KeepsAreaPermissions(
-		Permissions area, Permissions manager)
+		UserPermissions area, UserPermissions manager)
 	{
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("AreaManager", "password",
-			PermissionsGroups.Default | area | manager);
+			UserPermissionsGroups.Default | area | manager);
 		app.AddRestriction(record, area);
 		await app.LoginAsync(record);
 

@@ -1,3 +1,4 @@
+using Basil.Application.Runtime.Common;
 using Basil.Application.Runtime.Sessions;
 using Basil.Testing;
 
@@ -21,24 +22,16 @@ public class ScopedRightsTests
 		Admin = 2
 	}
 
-	private sealed class FlagsScope : Scoped<SampleBits>
+	private sealed class FlagsScope(Connection by, ScopedRightsTests.SampleBits held) : Scoped<SampleBits>(by, held)
 	{
-		public FlagsScope(Connection by, SampleBits held) : base(by, held)
-		{
-		}
-
 		public SampleBits? Need(SampleBits required)
 		{
 			return Require(required);
 		}
 	}
 
-	private sealed class LevelScope : Scoped<SampleLevel>
+	private sealed class LevelScope(Connection by, ScopedRightsTests.SampleLevel held) : Scoped<SampleLevel>(by, held)
 	{
-		public LevelScope(Connection by, SampleLevel held) : base(by, held)
-		{
-		}
-
 		public SampleLevel? Need(SampleLevel required)
 		{
 			return Require(required);

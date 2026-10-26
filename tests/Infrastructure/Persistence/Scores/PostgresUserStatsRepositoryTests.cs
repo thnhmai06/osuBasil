@@ -7,10 +7,8 @@ namespace Basil.Infrastructure.Persistence.Tests.Scores;
 
 /// <summary>Contract tests of the storing of the cumulative statistics of an account.</summary>
 [Collection("Persistence")]
-public sealed class PostgresUserStatsRepositoryTests : DatabaseTests
+public sealed class PostgresUserStatsRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
-	public PostgresUserStatsRepositoryTests(PersistenceFixture container) : base(container) { }
-
 	private IUserStatsRepository Stats => Get<IUserStatsRepository>();
 
 	[Fact]

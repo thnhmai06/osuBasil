@@ -12,13 +12,11 @@ namespace Basil.Infrastructure.Persistence.Tests.Auth;
 
 /// <summary>Contract tests of the recording of the login history of an account.</summary>
 [Collection("Persistence")]
-public sealed class PostgresLoginRepositoryTests : DatabaseTests
+public sealed class PostgresLoginRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
 	private static readonly DateTimeOffset First = new(2026, 10, 22, 12, 0, 0, TimeSpan.Zero);
 	private static readonly DateTimeOffset Second = new(2026, 10, 22, 13, 0, 0, TimeSpan.Zero);
 	private static readonly DateTimeOffset Third = new(2026, 10, 22, 14, 0, 0, TimeSpan.Zero);
-
-	public PostgresLoginRepositoryTests(PersistenceFixture container) : base(container) { }
 
 	private ILoginRepository Logins => Get<ILoginRepository>();
 

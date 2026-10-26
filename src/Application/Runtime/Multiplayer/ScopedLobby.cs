@@ -1,16 +1,17 @@
 using Basil.Application.Persistence.Content;
+using Basil.Application.Runtime.Common;
 using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Multiplayer.Rooms;
 using Basil.Application.Runtime.Sessions;
 using Basil.Domain;
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Permissions;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Runtime.Multiplayer;
 
 /// <summary>A lobby scoped to one connection.</summary>
 /// <remarks>Use a scope for one request or command so permission checks use current authority.</remarks>
-public sealed class ScopedLobby : Scoped<Permissions>
+public sealed class ScopedLobby : Scoped<UserPermissions>
 {
 	/// <summary>The lobby this scope is over.</summary>
 	public Lobby Lobby { get; }
@@ -28,7 +29,7 @@ public sealed class ScopedLobby : Scoped<Permissions>
 	/// <param name="name">The room's name.</param>
 	/// <param name="password">The room's password, or an empty string for none.</param>
 	/// <param name="isTournament">Whether the room is a tournament room.</param>
-	/// <param name="isPrivate">Whether the room is private: hidden from the lobby, with a match history that only its participants, its managers and users with <see cref="Permissions.RoomViewPrivate" /> can view. Joining is not affected.</param>
+	/// <param name="isPrivate">Whether the room is private: hidden from the lobby, with a match history that only its participants, its managers and users with <see cref="UserPermissions.RoomViewPrivate" /> can view. Joining is not affected.</param>
 	/// <param name="settings">The room's initial settings, or <see langword="null" /> for the defaults.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>
@@ -39,9 +40,9 @@ public sealed class ScopedLobby : Scoped<Permissions>
 	///     A room that is not a tournament room is opened in game: the scoped connection's osu! client is seated as the first
 	///     host, and the call fails with AlreadyInRoom when that client already plays in a room. When a tournament room opens,
 	///     the creator's osu! client is seated as host if it is online, may join rooms and is not in any room. A creator
-	///     can have at most 4 tournament rooms open unless they hold <see cref="Permissions.RoomCreateUnlimited" />.
+	///     can have at most 4 tournament rooms open unless they hold <see cref="UserPermissions.RoomCreateUnlimited" />.
 	///     While room creation is locked (<see cref="ServerSettings.CreationLocks.Rooms" />), only a user with
-	///     <see cref="Permissions.RoomManageAny" /> may open a room; anyone else gets NotAuthorized.
+	///     <see cref="UserPermissions.RoomManageAny" /> may open a room; anyone else gets NotAuthorized.
 	///     A tournament room opened with nobody seated closes after 15 minutes unless someone joins. Seating the creator
 	///     is reported by <see cref="LobbyRoomOpened" /> through its host.
 	/// </remarks>
@@ -59,24 +60,24 @@ public sealed class ScopedLobby : Scoped<Permissions>
 
 		var now = Lobby.Context.Clock.GetUtcNow();
 		var required = isTournament
-			? Permissions.RoomCreate
-			: Permissions.RoomCreate | Permissions.RoomJoin;
+			? UserPermissions.RoomCreate
+			: UserPermissions.RoomCreate | UserPermissions.RoomJoin;
 		if (Require(required) is { } missingPermissions)
 			return (null, Result<RoomOutcome>.Denied(missingPermissions));
 
 		if ((await Lobby.Context.Settings.GetAsync(cancellationToken)).LockedCreation.HasFlag(ServerSettings
 			    .CreationLocks.Rooms) &&
-		    Require(Permissions.RoomManageAny) is { } missingManage)
+		    Require(UserPermissions.RoomManageAny) is { } missingManage)
 			return (null, Result<RoomOutcome>.Denied(missingManage));
 
 		var creator = By.Record;
-		var limited = isTournament && Require(Permissions.RoomCreateUnlimited) is not null;
+		var limited = isTournament && Require(UserPermissions.RoomCreateUnlimited) is not null;
 		if (limited && Lobby.TooManyRooms(creator)) return (null, RoomOutcome.TooManyRooms);
 
 		// A room opened in game seats its creator; a tournament room seats the creator's osu! client when it may join.
 		var seat = isTournament
 			? By.User.Bancho is { IsOpen: true } bancho &&
-			  bancho.User.EffectivePermissions(now).Allows(Permissions.RoomJoin)
+			  bancho.User.EffectivePermissions(now).Allows(UserPermissions.RoomJoin)
 				? bancho
 				: null
 			: (BanchoConnection)By;
@@ -128,7 +129,7 @@ public sealed class ScopedLobby : Scoped<Permissions>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>
 	///     <see langword="true" /> for a public match, and for a private one when the user holds
-	///     <see cref="Permissions.RoomViewPrivate" />, took part in the match, or manages it (its creator, or a referee
+	///     <see cref="UserPermissions.RoomViewPrivate" />, took part in the match, or manages it (its creator, or a referee
 	///     that is still one), or sits in or manages the match's open room. A suspended permission does not count.
 	/// </returns>
 	/// <remarks>
@@ -141,7 +142,7 @@ public sealed class ScopedLobby : Scoped<Permissions>
 	{
 		ArgumentNullException.ThrowIfNull(match);
 		return !match.Value.IsPrivate
-		       || Require(Permissions.RoomViewPrivate) is null
+		       || Require(UserPermissions.RoomViewPrivate) is null
 		       || TakesPartInOpenRoom(match)
 		       || await Lobby.Context.Matches.IsVisibleToAsync(match, By.Record, cancellationToken);
 	}

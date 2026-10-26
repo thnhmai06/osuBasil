@@ -1,6 +1,6 @@
 using Basil.Application.Runtime.Beatmaps;
 using Basil.Application.Runtime.Sessions;
-using Basil.Domain.Permissions;
+using Basil.Domain.Users;
 using Basil.Testing;
 using static Basil.Testing.BeatmapsetWorld;
 
@@ -8,14 +8,14 @@ namespace Basil.Application.Runtime.Tests.Beatmaps;
 
 /// <summary>
 ///     Managing a stored beatmapset as a connection: deleting, hiding and locking need
-///     <see cref="Permissions.BeatmapsetManage" />, and a locked set cannot be deleted.
+///     <see cref="UserPermissions.BeatmapsetManage" />, and a locked set cannot be deleted.
 /// </summary>
 public sealed class ScopedBeatmapsetTests
 {
-	private static readonly Permissions Manager = PermissionsGroups.Default | Permissions.BeatmapsetManage;
+	private static readonly UserPermissions Manager = UserPermissionsGroups.Default | UserPermissions.BeatmapsetManage;
 
 	private static async Task<(TestApplication App, BeatmapsetWorld World, Beatmapset Set, Connection By)> SetupAsync(
-		Permissions? permissions = null, Action<TestApplication, Basil.Domain.Users.UserRecord>? restrict = null)
+		UserPermissions? permissions = null, Action<TestApplication, Basil.Domain.Users.UserRecord>? restrict = null)
 	{
 		var world = new BeatmapsetWorld();
 		var app = world.CreateApplication();
@@ -61,13 +61,13 @@ public sealed class ScopedBeatmapsetTests
 	[Fact]
 	public async Task DeleteAsync_WithoutBeatmapsetManage_IsDeniedWithExactlyThatPermission()
 	{
-		var (app, world, set, by) = await SetupAsync(PermissionsGroups.Default);
+		var (app, world, set, by) = await SetupAsync(UserPermissionsGroups.Default);
 		using var _ = app;
 
 		var result = await set.ScopeTo(by).DeleteAsync(TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsOk);
-		Assert.Equal(Permissions.BeatmapsetManage, result.Missing);
+		Assert.Equal(UserPermissions.BeatmapsetManage, result.Missing);
 		Assert.Single(world.Sets.Records);
 		Assert.Single(world.Storage.Stored);
 	}
@@ -75,12 +75,12 @@ public sealed class ScopedBeatmapsetTests
 	[Fact]
 	public async Task DeleteAsync_WithBeatmapsetManageSuspended_IsDenied()
 	{
-		var (app, world, set, by) = await SetupAsync(restrict: (app, user) => app.AddRestriction(user, Permissions.BeatmapsetManage));
+		var (app, world, set, by) = await SetupAsync(restrict: (app, user) => app.AddRestriction(user, UserPermissions.BeatmapsetManage));
 		using var _ = app;
 
 		var result = await set.ScopeTo(by).DeleteAsync(TestContext.Current.CancellationToken);
 
-		Assert.Equal(Permissions.BeatmapsetManage, result.Missing);
+		Assert.Equal(UserPermissions.BeatmapsetManage, result.Missing);
 		Assert.Single(world.Sets.Records);
 	}
 
@@ -112,12 +112,12 @@ public sealed class ScopedBeatmapsetTests
 	[Fact]
 	public async Task SetVisibleAsync_WithoutBeatmapsetManage_IsDeniedAndChangesNothing()
 	{
-		var (app, _, set, by) = await SetupAsync(PermissionsGroups.Default);
+		var (app, _, set, by) = await SetupAsync(UserPermissionsGroups.Default);
 		using var _ = app;
 
 		var result = await set.ScopeTo(by).SetVisibleAsync(false, TestContext.Current.CancellationToken);
 
-		Assert.Equal(Permissions.BeatmapsetManage, result.Missing);
+		Assert.Equal(UserPermissions.BeatmapsetManage, result.Missing);
 		Assert.True(set.Record.Visible);
 	}
 
@@ -150,12 +150,12 @@ public sealed class ScopedBeatmapsetTests
 	[Fact]
 	public async Task SetLockedAsync_WithoutBeatmapsetManage_IsDeniedAndChangesNothing()
 	{
-		var (app, _, set, by) = await SetupAsync(PermissionsGroups.Default);
+		var (app, _, set, by) = await SetupAsync(UserPermissionsGroups.Default);
 		using var _ = app;
 
 		var result = await set.ScopeTo(by).SetLockedAsync(true, TestContext.Current.CancellationToken);
 
-		Assert.Equal(Permissions.BeatmapsetManage, result.Missing);
+		Assert.Equal(UserPermissions.BeatmapsetManage, result.Missing);
 		Assert.False(set.Record.Locked);
 	}
 

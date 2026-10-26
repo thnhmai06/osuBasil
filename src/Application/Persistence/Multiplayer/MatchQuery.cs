@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using Basil.Application.Persistence.Common;
-using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Persistence.Multiplayer;
@@ -71,12 +70,12 @@ public sealed record MatchQuery(bool? Ended = null, bool? Private = null, int? V
 	/// <param name="effective">The asker's effective permissions.</param>
 	/// <param name="viewer">The asker.</param>
 	/// <returns>
-	///     The query as asked when the asker may view private matches (<see cref="Permissions.RoomViewPrivate" />);
+	///     The query as asked when the asker may view private matches (<see cref="UserPermissions.RoomViewPrivate" />);
 	///     otherwise a query whose private matches are only the ones the asker took part in or manages.
 	/// </returns>
-	public MatchQuery LimitTo(Permissions effective, UserRecord viewer)
+	public MatchQuery LimitTo(UserPermissions effective, UserRecord viewer)
 	{
 		ArgumentNullException.ThrowIfNull(viewer);
-		return effective.Allows(Permissions.RoomViewPrivate) ? this : this with { VisibleTo = viewer.Id };
+		return effective.Allows(UserPermissions.RoomViewPrivate) ? this : this with { VisibleTo = viewer.Id };
 	}
 }

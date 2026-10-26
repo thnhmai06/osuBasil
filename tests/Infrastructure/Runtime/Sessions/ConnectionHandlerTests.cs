@@ -3,7 +3,7 @@ using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Sessions;
 using Basil.Testing;
 using Basil.Domain.Chat;
-using Basil.Domain.Permissions;
+using Basil.Domain.Users;
 using Basil.Infrastructure.Runtime.Sessions;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -96,7 +96,7 @@ public sealed class ConnectionHandlerTests
 	/// <returns>The open channel.</returns>
 	private static async Task<GeneralChannel> OpenChannelAsync(TestApplication app, string name, bool autoJoin = false)
 	{
-		var admin = await app.CreateUserAsync($"Admin{name.TrimStart('#')}", "password", PermissionsGroups.All);
+		var admin = await app.CreateUserAsync($"Admin{name.TrimStart('#')}", "password", UserPermissionsGroups.All);
 		var by = await app.LoginAsync(admin);
 		var record = new GeneralChannelRecord
 		{

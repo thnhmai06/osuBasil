@@ -1,6 +1,6 @@
 using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Chat;
-using Basil.Domain.Permissions;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Runtime.Chat;
 

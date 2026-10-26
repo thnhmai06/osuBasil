@@ -6,11 +6,9 @@ namespace Basil.Infrastructure.Persistence.Tests.Users;
 
 /// <summary>Contract tests of the storing of the relationships between accounts.</summary>
 [Collection("Persistence")]
-public sealed class PostgresRelationshipRepositoryTests : DatabaseTests
+public sealed class PostgresRelationshipRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
 	private static readonly DateTimeOffset Moment = new(2026, 10, 22, 12, 0, 0, TimeSpan.Zero);
-
-	public PostgresRelationshipRepositoryTests(PersistenceFixture container) : base(container) { }
 
 	private IRelationshipRepository Relationships => Get<IRelationshipRepository>();
 

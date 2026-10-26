@@ -6,10 +6,8 @@ namespace Basil.Infrastructure.Persistence.Tests.Postgres;
 
 /// <summary>Contract tests of holding roots, which a write that changes several roots uses to be stored in order.</summary>
 [Collection("Persistence")]
-public sealed class DatabaseWriterHoldTests : DatabaseTests
+public sealed class DatabaseWriterHoldTests(PersistenceFixture container) : DatabaseTests(container)
 {
-	public DatabaseWriterHoldTests(PersistenceFixture container) : base(container) { }
-
 	private DatabaseWriter Writer => Get<DatabaseWriter>();
 
 	[Fact]

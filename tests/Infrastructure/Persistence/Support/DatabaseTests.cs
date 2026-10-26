@@ -18,20 +18,19 @@ namespace Basil.Infrastructure.Persistence.Tests.Support;
 /// </summary>
 public abstract class DatabaseTests(PersistenceFixture container) : IAsyncLifetime
 {
-	private string _database = "basil-" + Guid.NewGuid().ToString("N");
-	private string _root = Path.Combine(Path.GetTempPath(), "basil-test-db-" + Guid.NewGuid().ToString("N"));
-	private string _connection = "";
+	private readonly string _database = "basil-" + Guid.NewGuid().ToString("N");
+	private readonly string _root = Path.Combine(Path.GetTempPath(), "basil-test-db-" + Guid.NewGuid().ToString("N"));
 	private ServiceProvider? _provider;
 	private UserRecord? _matchCreator;
 
 	/// <summary>The connection string of the database created for the test.</summary>
-	protected string ConnectionString => _connection;
+	protected string ConnectionString { get; private set; } = "";
 
 	/// <summary>Creates and starts the storage for a fresh database.</summary>
 	public async ValueTask InitializeAsync()
 	{
 		var connection = await container.CreateDatabaseAsync(_database);
-		_connection = connection;
+		ConnectionString = connection;
 		var services = new ServiceCollection();
 		services.AddInfrastructurePersistence();
 		services.AddLogging();

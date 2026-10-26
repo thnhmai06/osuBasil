@@ -1,7 +1,6 @@
 using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Sessions;
 using Basil.Testing;
-using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Runtime.Tests.Multiplayer;
@@ -30,7 +29,7 @@ public sealed class LobbyTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		var observerUser = await app.CreateUserAsync("Observer", "password",
-			PermissionsGroups.Default | Permissions.RoomObserve);
+			UserPermissionsGroups.Default | UserPermissions.RoomObserve);
 		var observer = (TourneyConnection)await app.LoginAsync(observerUser, ConnectionType.Tourney);
 		Assert.True((await setup.Room.ScopeTo(observer).Members.ObserverJoinAsync(
 			TestContext.Current.CancellationToken)).IsOk);
@@ -148,10 +147,10 @@ public sealed class LobbyTests
 	private static async Task RestrictRoomJoinAsync(TestApplication app, UserRecord target)
 	{
 		var moderator = await app.CreateUserAsync("Moderator", "password",
-			PermissionsGroups.Default | Permissions.UserRestrict);
+			UserPermissionsGroups.Default | UserPermissions.UserRestrict);
 		var by = await app.LoginAsync(moderator);
 		var (result, _) = await app.Users.Of(target).ScopeTo(by).Restrictions.RestrictAsync(
-			Permissions.RoomJoin, null, cancellationToken: TestContext.Current.CancellationToken);
+			UserPermissions.RoomJoin, null, cancellationToken: TestContext.Current.CancellationToken);
 		Assert.True(result.IsOk);
 	}
 }

@@ -1,10 +1,11 @@
+using Basil.Application.Runtime.Common;
 using Basil.Application.Runtime.Sessions;
-using Basil.Domain.Permissions;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Runtime.Beatmaps;
 
 /// <summary>A beatmapset as one connection may act on it.</summary>
-public sealed class ScopedBeatmapset : Scoped<Permissions>
+public sealed class ScopedBeatmapset : Scoped<UserPermissions>
 {
 	/// <summary>Creates a scoped beatmapset for a connection.</summary>
 	/// <param name="beatmapset">The beatmapset to scope.</param>
@@ -22,7 +23,7 @@ public sealed class ScopedBeatmapset : Scoped<Permissions>
 	/// <returns>The outcome of deleting the beatmapset; a locked set is not deleted.</returns>
 	public async Task<Result<BeatmapsetOutcome>> DeleteAsync(CancellationToken cancellationToken = default)
 	{
-		if (Require(Permissions.BeatmapsetManage) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
+		if (Require(UserPermissions.BeatmapsetManage) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
 		if (Beatmapset.Record.Locked) return BeatmapsetOutcome.Locked;
 
 		await Beatmapset.Context.Storage.DeleteAsync(Beatmapset.Record, cancellationToken);
@@ -37,7 +38,7 @@ public sealed class ScopedBeatmapset : Scoped<Permissions>
 	public async Task<Result<BeatmapsetOutcome>> SetVisibleAsync(bool visible,
 		CancellationToken cancellationToken = default)
 	{
-		if (Require(Permissions.BeatmapsetManage) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
+		if (Require(UserPermissions.BeatmapsetManage) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
 		if (Beatmapset.Record.Visible == visible) return BeatmapsetOutcome.Ok;
 
 		Beatmapset.Record.Visible = visible;
@@ -52,7 +53,7 @@ public sealed class ScopedBeatmapset : Scoped<Permissions>
 	public async Task<Result<BeatmapsetOutcome>> SetLockedAsync(bool locked,
 		CancellationToken cancellationToken = default)
 	{
-		if (Require(Permissions.BeatmapsetManage) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
+		if (Require(UserPermissions.BeatmapsetManage) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
 		if (Beatmapset.Record.Locked == locked) return BeatmapsetOutcome.Ok;
 
 		Beatmapset.Record.Locked = locked;

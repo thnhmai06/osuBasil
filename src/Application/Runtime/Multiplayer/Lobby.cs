@@ -7,7 +7,6 @@ using Basil.Application.Persistence.Common;
 using Basil.Application.Persistence.Multiplayer;
 using Basil.Domain.Common;
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Runtime.Multiplayer;
@@ -320,7 +319,7 @@ public sealed class Lobby : IRoomLobbyPort, IConnectionLobbyPort
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	public async Task RemoveSuspendedAsync(User user, CancellationToken cancellationToken = default)
 	{
-		if (user.EffectivePermissions(Context.Clock.GetUtcNow()).Allows(Permissions.RoomJoin)) return;
+		if (user.EffectivePermissions(Context.Clock.GetUtcNow()).Allows(UserPermissions.RoomJoin)) return;
 
 		foreach (var connection in user.Connections)
 			await ReleaseAsync(connection, cancellationToken);

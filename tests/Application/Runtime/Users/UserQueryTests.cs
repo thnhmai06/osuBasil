@@ -1,5 +1,4 @@
 using Basil.Application.Persistence.Users;
-using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Runtime.Tests.Users;
@@ -70,7 +69,7 @@ public sealed class UserQueryTests
 
 		Assert.Equal("bob", query.Text);
 		Assert.Equal([Country.Us, Country.Vn], query.Countries);
-		Assert.Equal((Permissions)4, query.Permissions);
+		Assert.Equal((UserPermissions)4, query.Permissions);
 		Assert.Null(query.Deleted);
 	}
 
@@ -175,14 +174,14 @@ public sealed class UserQueryTests
 	{
 		var query = UserQuery.Parse($"permission={mask}");
 
-		Assert.Equal((Permissions)expected, query.Permissions);
+		Assert.Equal((UserPermissions)expected, query.Permissions);
 		Assert.Null(query.Text);
 	}
 
 	[Fact]
 	public void Parse_PermissionWithColonOperator_IsRead()
 	{
-		Assert.Equal((Permissions)8, UserQuery.Parse("permission:8").Permissions);
+		Assert.Equal((UserPermissions)8, UserQuery.Parse("permission:8").Permissions);
 	}
 
 	[Theory]
@@ -308,7 +307,7 @@ public sealed class UserQueryTests
 	{
 		var query = new UserQuery("bob", Deleted: deleted);
 
-		Assert.Equal(deleted, query.LimitTo(Permissions.UserViewDeleted).Deleted);
+		Assert.Equal(deleted, query.LimitTo(UserPermissions.UserViewDeleted).Deleted);
 	}
 
 	[Fact]
@@ -316,7 +315,7 @@ public sealed class UserQueryTests
 	{
 		var query = new UserQuery(Deleted: true);
 
-		Assert.True(query.LimitTo(Permissions.UserManage).Deleted);
+		Assert.True(query.LimitTo(UserPermissions.UserManage).Deleted);
 	}
 
 	[Theory]
@@ -327,21 +326,21 @@ public sealed class UserQueryTests
 	{
 		var query = new UserQuery(Deleted: deleted);
 
-		Assert.False(query.LimitTo(PermissionsGroups.Default).Deleted);
+		Assert.False(query.LimitTo(UserPermissionsGroups.Default).Deleted);
 	}
 
 	[Fact]
 	public void LimitTo_AskerWithNoPermissions_ShowsExistingUsersOnly()
 	{
-		Assert.False(new UserQuery().LimitTo(Permissions.None).Deleted);
+		Assert.False(new UserQuery().LimitTo(UserPermissions.None).Deleted);
 	}
 
 	[Fact]
 	public void LimitTo_AskerMayNotViewDeleted_KeepsEveryOtherFilter()
 	{
-		var query = new UserQuery("bob", [Country.Us], (Permissions)4, true);
+		var query = new UserQuery("bob", [Country.Us], (UserPermissions)4, true);
 
-		var limited = query.LimitTo(Permissions.None);
+		var limited = query.LimitTo(UserPermissions.None);
 
 		Assert.Equal("bob", limited.Text);
 		Assert.Equal(query.Countries, limited.Countries);
@@ -353,7 +352,7 @@ public sealed class UserQueryTests
 	{
 		var query = new UserQuery(Deleted: true);
 
-		query.LimitTo(Permissions.None);
+		query.LimitTo(UserPermissions.None);
 
 		Assert.True(query.Deleted);
 	}
@@ -361,7 +360,7 @@ public sealed class UserQueryTests
 	[Fact]
 	public void LimitTo_AfterParsingDeletedStar_StillHidesDeletedFromAnAskerWhoMayNot()
 	{
-		var limited = UserQuery.Parse("deleted=*").LimitTo(PermissionsGroups.Default);
+		var limited = UserQuery.Parse("deleted=*").LimitTo(UserPermissionsGroups.Default);
 
 		Assert.False(limited.Deleted);
 	}

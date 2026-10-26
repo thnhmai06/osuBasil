@@ -5,7 +5,6 @@ using Basil.Application.Persistence.Content;
 using Basil.Domain;
 using Basil.Domain.Auth;
 using Basil.Domain.Common;
-using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Capabilities.Users;
@@ -60,7 +59,7 @@ internal sealed class AccountService(
 		CancellationToken cancellationToken)
 	{
 		var user = await users.GetByNameAsync(attempt.Username, cancellationToken);
-		if (user is null || BasilBot.Is(user)) return (null, LoginFailure.UnknownUser);
+		if (user is null || user.IsBasilBot()) return (null, LoginFailure.UnknownUser);
 		if (user.Value.DeletedAt is not null) return (null, LoginFailure.AccountDeleted);
 		if (!await credentials.IsPasswordAsync(user, attempt.PasswordHash, cancellationToken))
 			return (null, LoginFailure.WrongPassword);

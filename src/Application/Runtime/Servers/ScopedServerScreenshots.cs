@@ -1,6 +1,7 @@
+using Basil.Application.Runtime.Common;
 using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Content;
-using Basil.Domain.Permissions;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Runtime.Servers;
 
@@ -30,7 +31,7 @@ public sealed class ScopedServerScreenshots
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The reference to the stored screenshot, or why it was not stored.</returns>
 	/// <remarks>
-	///     Requires <see cref="Permissions.ScreenshotUpload" />. The image may be at most
+	///     Requires <see cref="UserPermissions.ScreenshotUpload" />. The image may be at most
 	///     <see cref="MaxScreenshotBytes" /> bytes and must be a PNG or JPEG picture of at most
 	///     <see cref="MaxScreenshotWidth" /> by <see cref="MaxScreenshotHeight" /> pixels per side, told from its
 	///     content, never from a name.
@@ -38,7 +39,7 @@ public sealed class ScopedServerScreenshots
 	public async Task<(ContentReference? Screenshot, Result<ServerOutcome> Result)> UploadAsync(Stream content,
 		CancellationToken cancellationToken = default)
 	{
-		if (_scoped.Needs(Permissions.ScreenshotUpload) is { } missing)
+		if (_scoped.Needs(UserPermissions.ScreenshotUpload) is { } missing)
 			return (null, Result<ServerOutcome>.Denied(missing));
 
 		var context = _scoped.Server.Context;
@@ -72,10 +73,10 @@ public sealed class ScopedServerScreenshots
 	/// <param name="screenshot">The reference of the screenshot to delete.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>Ok when the caller may delete screenshots, even when none is stored under the reference.</returns>
-	/// <remarks>Requires <see cref="Permissions.ScreenshotDelete" />.</remarks>
+	/// <remarks>Requires <see cref="UserPermissions.ScreenshotDelete" />.</remarks>
 	public async Task<Result<ServerOutcome>> DeleteAsync(ContentReference screenshot, CancellationToken cancellationToken = default)
 	{
-		if (_scoped.Needs(Permissions.ScreenshotDelete) is { } missing) return Result<ServerOutcome>.Denied(missing);
+		if (_scoped.Needs(UserPermissions.ScreenshotDelete) is { } missing) return Result<ServerOutcome>.Denied(missing);
 
 		await _scoped.Server.Context.Screenshots.DeleteAsync(screenshot, cancellationToken);
 		return ServerOutcome.Ok;

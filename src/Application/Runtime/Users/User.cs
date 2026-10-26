@@ -3,7 +3,6 @@ using System.Collections.Immutable;
 using Basil.Application.Runtime.Chat;
 using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Common;
-using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Runtime.Users;
@@ -12,7 +11,7 @@ namespace Basil.Application.Runtime.Users;
 public sealed class User
 {
 	private readonly ConcurrentDictionary<ConnectionType, ConcurrentSet<Connection>> _connections = new();
-	private ImmutableList<Restriction> _restrictions = [];
+	private ImmutableList<UserRestriction> _restrictions = [];
 
 	/// <summary>Gets the account this object represents.</summary>
 	public UserRecord Record { get; }
@@ -31,7 +30,7 @@ public sealed class User
 		Context.Registry.Online.TryGetValue(Record, out var online) && ReferenceEquals(online, this);
 
 	/// <summary>Gets the user's restrictions that had not ended when they were last loaded or changed.</summary>
-	public IReadOnlyList<Restriction> Restrictions => _restrictions;
+	public IReadOnlyList<UserRestriction> Restrictions => _restrictions;
 
 	/// <summary>The runtime context for account behaviour.</summary>
 	internal UserContext Context { get; }
@@ -57,7 +56,7 @@ public sealed class User
 	/// <summary>Gets the user's permissions that are in effect at a moment.</summary>
 	/// <param name="now">The moment to evaluate restrictions at.</param>
 	/// <returns>The granted permissions not suspended by an active restriction.</returns>
-	public Permissions EffectivePermissions(DateTimeOffset now)
+	public UserPermissions EffectivePermissions(DateTimeOffset now)
 	{
 		return Record.Value.Permissions.Effective(Restrictions, now);
 	}
@@ -91,7 +90,7 @@ public sealed class User
 	/// <returns><see langword="true" /> when this user blocks <paramref name="who" />.</returns>
 	public async ValueTask<bool> HasBlockedAsync(UserRecord who, CancellationToken cancellationToken = default)
 	{
-		if (BasilBot.Is(Record)) return false;
+		if (Record.IsBasilBot()) return false;
 
 		var relationships = await Context.Relationships.ListAsync(Record, cancellationToken);
 		return relationships.Any(relationship => relationship.Target.Equals(who) &&
@@ -100,7 +99,7 @@ public sealed class User
 
 	/// <summary>Replaces the permissions granted to the account and keeps its online user in sync.</summary>
 	/// <param name="permissions">The permissions to grant.</param>
-	internal void ReplacePermissions(Permissions permissions)
+	internal void ReplacePermissions(UserPermissions permissions)
 	{
 		Change(data => data.Permissions = permissions);
 	}
@@ -112,27 +111,27 @@ public sealed class User
 		Change(data =>
 		{
 			data.DeletedAt = at;
-			data.Permissions = Permissions.None;
+			data.Permissions = UserPermissions.None;
 		});
 	}
 
 	/// <summary>Adds a restriction that has started to the running ones.</summary>
 	/// <param name="restriction">The restriction.</param>
-	internal void AddRestriction(Restriction restriction)
+	internal void AddRestriction(UserRestriction restriction)
 	{
 		ImmutableInterlocked.Update(ref _restrictions, running => running.Add(restriction));
 	}
 
 	/// <summary>Removes a restriction from the running ones.</summary>
 	/// <param name="restriction">The restriction.</param>
-	internal void RemoveRestriction(Restriction restriction)
+	internal void RemoveRestriction(UserRestriction restriction)
 	{
 		ImmutableInterlocked.Update(ref _restrictions, running => running.RemoveAll(restriction.Equals));
 	}
 
 	/// <summary>Replaces the running restrictions with the ones the user has now, as at login.</summary>
 	/// <param name="restrictions">The restrictions that have not ended.</param>
-	internal void ReplaceRestrictions(IEnumerable<Restriction> restrictions)
+	internal void ReplaceRestrictions(IEnumerable<UserRestriction> restrictions)
 	{
 		Interlocked.Exchange(ref _restrictions, [.. restrictions]);
 	}

@@ -1,6 +1,5 @@
 using System.Text.RegularExpressions;
 using Basil.Domain.Common;
-using Basil.Domain.Permissions;
 
 namespace Basil.Domain.Users;
 
@@ -110,11 +109,11 @@ public sealed partial class UserData
 	/// <summary>Gets or sets the permissions granted to the user.</summary>
 	/// <remarks>New users are granted every player and supporter permission.</remarks>
 	/// <exception cref="ArgumentOutOfRangeException">The value sets a bit no permission defines.</exception>
-	public Permissions.Permissions Permissions
+	public UserPermissions Permissions
 	{
 		get;
 		set => field = value.ThrowIfUndefined();
-	} = PermissionsGroups.Default;
+	} = UserPermissionsGroups.Default;
 
 	/// <summary>Gets or sets the date and time when the user was permanently deleted, if any.</summary>
 	/// <exception cref="InvalidOperationException">The account was deleted already and the value is <see langword="null" />.</exception>

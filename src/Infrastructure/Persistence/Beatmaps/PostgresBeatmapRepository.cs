@@ -464,7 +464,7 @@ internal sealed class PostgresBeatmapRepository(
 			Locked = setRow.Locked,
 			Visible = setRow.Visible
 		}, cancellationToken);
-		var objects = JsonSerializer.Deserialize<BeatmapObjects>(row.Objects, StoredJson)
+		var objects = row.Objects.Deserialize<BeatmapObjects>(StoredJson)
 		              ?? BeatmapObjects.Empty((GameMode)row.Mode);
 
 		return new BeatmapRecord

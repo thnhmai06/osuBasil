@@ -1,9 +1,10 @@
+using Basil.Application.Runtime.Common;
 using Basil.Application.Runtime.Multiplayer;
 using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Multiplayer.Rooms;
 using Basil.Testing;
 using Basil.Domain.Mechanics;
-using Basil.Domain.Permissions;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Runtime.Tests.Multiplayer.Rooms;
 
@@ -747,7 +748,7 @@ public sealed class ScopedRoomAuthorityTests
 
 		if (expected == RoomExpectation.RoomJoinDenied)
 		{
-			Assert.Equal(Permissions.RoomJoin, result.Missing);
+			Assert.Equal(UserPermissions.RoomJoin, result.Missing);
 			return;
 		}
 

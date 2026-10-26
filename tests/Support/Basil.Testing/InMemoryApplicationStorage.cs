@@ -6,8 +6,8 @@ using Basil.Application.Persistence.Users;
 using Basil.Domain;
 using Basil.Domain.Auth;
 using Basil.Domain.Common;
+using Basil.Domain.Moderation;
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Testing;
@@ -115,13 +115,13 @@ internal sealed class InMemoryCredentialRepository : ICredentialRepository
 
 internal sealed class InMemoryRestrictionRepository : IRestrictionRepository
 {
-	private readonly Dictionary<int, List<Restriction>> _restrictions = [];
+	private readonly Dictionary<int, List<UserRestriction>> _restrictions = [];
 	private int _nextId = 1;
 
-	public Restriction Seed(UserRecord user, Permissions permissions, DateTimeOffset startsAt,
+	public UserRestriction Seed(UserRecord user, UserPermissions permissions, DateTimeOffset startsAt,
 		DateTimeOffset? endsAt = null)
 	{
-		var restriction = new Restriction
+		var restriction = new UserRestriction
 		{
 			Id = _nextId++,
 			Value = new RestrictionData
@@ -136,42 +136,42 @@ internal sealed class InMemoryRestrictionRepository : IRestrictionRepository
 		return restriction;
 	}
 
-	public Task<Restriction> CreateAsync(RestrictionData data, CancellationToken cancellationToken = default)
+	public Task<UserRestriction> CreateAsync(RestrictionData data, CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
-		var restriction = new Restriction { Id = _nextId++, Value = data };
+		var restriction = new UserRestriction { Id = _nextId++, Value = data };
 		GetFor(data.User).Add(restriction);
 		return Task.FromResult(restriction);
 	}
 
-	public Task UpdateAsync(Restriction restriction, CancellationToken cancellationToken = default)
+	public Task UpdateAsync(UserRestriction restriction, CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
 		return Task.CompletedTask;
 	}
 
-	public ValueTask<Restriction?> GetAsync(int id, CancellationToken cancellationToken = default)
+	public ValueTask<UserRestriction?> GetAsync(int id, CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
 		return ValueTask.FromResult(_restrictions.Values.SelectMany(items => items)
 			.FirstOrDefault(restriction => restriction.Id == id));
 	}
 
-	public Task<IReadOnlyList<Restriction>> ListAsync(UserRecord user,
+	public Task<IReadOnlyList<UserRestriction>> ListAsync(UserRecord user,
 		CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
-		return Task.FromResult<IReadOnlyList<Restriction>>(GetFor(user));
+		return Task.FromResult<IReadOnlyList<UserRestriction>>(GetFor(user));
 	}
 
-	private List<Restriction> GetFor(UserRecord user)
+	private List<UserRestriction> GetFor(UserRecord user)
 	{
 		return _restrictions.GetValueOrDefault(user.Id) ?? AddList(user.Id);
 	}
 
-	private List<Restriction> AddList(int userId)
+	private List<UserRestriction> AddList(int userId)
 	{
-		var list = new List<Restriction>();
+		var list = new List<UserRestriction>();
 		_restrictions.Add(userId, list);
 		return list;
 	}

@@ -1,8 +1,8 @@
+using Basil.Application.Runtime.Common;
 using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Sessions;
 using Basil.Application.Runtime.Users;
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Runtime.Multiplayer.Rooms;
@@ -66,8 +66,8 @@ public sealed class ScopedRoomMembers
 		if (_scoped.Require(RoomPermissions.MembersSeat) is { } denied) return denied;
 		if (!player.IsOpen) return RoomOutcome.TargetOffline;
 
-		if (!player.User.EffectivePermissions(_scoped.Room.Context.Clock.GetUtcNow()).Allows(Permissions.RoomJoin))
-			return Result<RoomOutcome>.Denied(Permissions.RoomJoin);
+		if (!player.User.EffectivePermissions(_scoped.Room.Context.Clock.GetUtcNow()).Allows(UserPermissions.RoomJoin))
+			return Result<RoomOutcome>.Denied(UserPermissions.RoomJoin);
 
 		var room = _scoped.Room;
 		if (room.Members.Banned.Contains(player.Record)) return RoomOutcome.Banned;

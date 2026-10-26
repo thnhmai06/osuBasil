@@ -9,10 +9,8 @@ namespace Basil.Infrastructure.Persistence.Tests.Postgres;
 
 /// <summary>Contract tests of the marks writes leave to tell afterwards whether they were stored.</summary>
 [Collection("Persistence")]
-public sealed class WriteTicketTests : DatabaseTests
+public sealed class WriteTicketTests(PersistenceFixture container) : DatabaseTests(container)
 {
-	public WriteTicketTests(PersistenceFixture container) : base(container) { }
-
 	private DatabaseWriter Writer => Get<DatabaseWriter>();
 
 	[Fact]

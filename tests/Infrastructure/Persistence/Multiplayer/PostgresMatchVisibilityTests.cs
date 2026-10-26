@@ -14,11 +14,9 @@ namespace Basil.Infrastructure.Persistence.Tests.Multiplayer;
 ///     user). The permission that lets a user view every private match is not a persistence concern.
 /// </summary>
 [Collection("Persistence")]
-public sealed class PostgresMatchVisibilityTests : DatabaseTests
+public sealed class PostgresMatchVisibilityTests(PersistenceFixture container) : DatabaseTests(container)
 {
 	private static readonly DateTimeOffset At = new(2026, 10, 22, 12, 0, 0, TimeSpan.Zero);
-
-	public PostgresMatchVisibilityTests(PersistenceFixture container) : base(container) { }
 
 	private IMatchRepository Matches => Get<IMatchRepository>();
 

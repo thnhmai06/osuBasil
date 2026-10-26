@@ -1,13 +1,13 @@
 using Basil.Application.Persistence.Scores;
+using Basil.Application.Runtime.Common;
 using Basil.Application.Runtime.Scores;
-using Basil.Domain.Permissions;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Runtime.Sessions;
 
 /// <summary>An osu! client as one connection may act on it.</summary>
-public sealed class ScopedBanchoConnection : Scoped<Permissions>
+public sealed class ScopedBanchoConnection : Scoped<UserPermissions>
 {
 	/// <summary>Creates a scope for an osu! client and a connection.</summary>
 	/// <param name="host">The client to scope.</param>
@@ -23,9 +23,9 @@ public sealed class ScopedBanchoConnection : Scoped<Permissions>
 	/// <summary>Starts spectating this client.</summary>
 	/// <returns>The outcome, or the permissions the caller lacks.</returns>
 	/// <remarks>
-	///     Needs <see cref="Permissions.SpectatingWatch" />, which <see cref="Permissions.RoomObserve" /> includes. A
+	///     Needs <see cref="UserPermissions.SpectatingWatch" />, which <see cref="UserPermissions.RoomObserve" /> includes. A
 	///     host's block of the spectator prevents spectating unless the spectator has
-	///     <see cref="Permissions.RoomObserve" /> in effect. The spectator joins the host's spectator channel, and the
+	///     <see cref="UserPermissions.RoomObserve" /> in effect. The spectator joins the host's spectator channel, and the
 	///     first spectator brings the host into it too. A connection spectating another client stops spectating it first.
 	///     Spectating this host again announces the spectator, as an osu! client does once it has the beatmap.
 	/// </remarks>
@@ -35,12 +35,12 @@ public sealed class ScopedBanchoConnection : Scoped<Permissions>
 		if (By is IrcConnection)
 			throw new ArgumentException("IRC clients cannot spectate.");
 
-		if (Require(Permissions.SpectatingWatch) is { } missing) return Result<ConnectionOutcome>.Denied(missing);
+		if (Require(UserPermissions.SpectatingWatch) is { } missing) return Result<ConnectionOutcome>.Denied(missing);
 
 		var relationships = await Host.Context.Relationships.ListAsync(Host.Record);
 		if (relationships.Any(relationship => relationship.Type == RelationshipType.Block &&
 		                                      relationship.Target.Equals(By.Record)) &&
-		    Require(Permissions.RoomObserve) is not null)
+		    Require(UserPermissions.RoomObserve) is not null)
 			return ConnectionOutcome.Blocked;
 
 		// Leave the previous host before entering this host's scope, so two spectator scopes are never held at once.
@@ -120,7 +120,7 @@ public sealed class ScopedBanchoConnection : Scoped<Permissions>
 	///     rejection) or the permissions the caller lacks.
 	/// </returns>
 	/// <remarks>
-	///     Needs <see cref="Permissions.ScoreSubmit" />, and only the client itself submits its own scores. A score on a
+	///     Needs <see cref="UserPermissions.ScoreSubmit" />, and only the client itself submits its own scores. A score on a
 	///     beatmap the server does not have is accepted only when it is the beatmap of the latest round in the player's
 	///     room. A score played in that round carries the round, and <see cref="ScoreSubmitted" /> names the room so the
 	///     round can record it. Every accepted play adds to the play count and the total score; passed plays also add to
@@ -135,7 +135,7 @@ public sealed class ScopedBanchoConnection : Scoped<Permissions>
 		Stream? replay,
 		CancellationToken cancellationToken = default)
 	{
-		if (Require(Permissions.ScoreSubmit) is { } missing) return (Result<ConnectionOutcome>.Denied(missing), null);
+		if (Require(UserPermissions.ScoreSubmit) is { } missing) return (Result<ConnectionOutcome>.Denied(missing), null);
 		if (!ReferenceEquals(By, Host)) return (ConnectionOutcome.OtherClient, null);
 
 		var room = Host.Context.Lobby.RoomOf(Host);

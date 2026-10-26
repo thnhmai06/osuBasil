@@ -10,13 +10,11 @@ namespace Basil.Infrastructure.Persistence.Tests.Beatmaps;
 
 /// <summary>Contract tests of the reading of stored difficulties.</summary>
 [Collection("Persistence")]
-public sealed class PostgresBeatmapRepositoryTests : DatabaseTests
+public sealed class PostgresBeatmapRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
 	private static readonly Md5 BeatmapHash = new("d41d8cd98f00b204e9800998ecf8427e");
 	private static readonly Md5 OtherHash = new("11111111111111111111111111111111");
 	private static readonly Md5 ThirdHash = new("22222222222222222222222222222222");
-
-	public PostgresBeatmapRepositoryTests(PersistenceFixture container) : base(container) { }
 
 	private IBeatmapsetRepository Sets => Get<IBeatmapsetRepository>();
 

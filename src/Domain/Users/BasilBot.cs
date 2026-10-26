@@ -12,7 +12,7 @@ public static class BasilBot
 	/// <summary>Determines whether an account is BasilBot.</summary>
 	/// <param name="user">The account to check.</param>
 	/// <returns><see langword="true" /> when the account has BasilBot's fixed id.</returns>
-	public static bool Is(UserRecord user)
+	public static bool IsBasilBot(this UserRecord user)
 	{
 		return user.Id == Id;
 	}

@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using Basil.Application.Persistence.Common;
 using Basil.Application.Persistence.Users;
-using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Persistence.Memory;
 using Basil.Infrastructure.Persistence.Postgres;
@@ -273,7 +272,7 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 			{
 				Name = row.Name,
 				Country = (Country)row.Country,
-				Permissions = (Permissions)(ulong)row.Permissions,
+				Permissions = (UserPermissions)(ulong)row.Permissions,
 				DeletedAt = row.DeletedAt
 			}
 		};

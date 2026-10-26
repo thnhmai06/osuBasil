@@ -11,13 +11,11 @@ namespace Basil.Infrastructure.Persistence.Tests.Scores;
 
 /// <summary>Contract tests of the storing of submitted scores.</summary>
 [Collection("Persistence")]
-public sealed class PostgresScoreRepositoryTests : DatabaseTests
+public sealed class PostgresScoreRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
 	private static readonly DateTimeOffset First = new(2026, 10, 22, 12, 0, 0, TimeSpan.Zero);
 	private static readonly DateTimeOffset Second = new(2026, 10, 22, 13, 0, 0, TimeSpan.Zero);
 	private static readonly DateTimeOffset Third = new(2026, 10, 22, 14, 0, 0, TimeSpan.Zero);
-
-	public PostgresScoreRepositoryTests(PersistenceFixture container) : base(container) { }
 
 	private IScoreRepository Scores => Get<IScoreRepository>();
 

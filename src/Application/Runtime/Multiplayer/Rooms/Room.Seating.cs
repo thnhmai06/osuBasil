@@ -1,7 +1,7 @@
 using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Mechanics;
-using Basil.Domain.Permissions;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Runtime.Multiplayer.Rooms;
 
@@ -63,8 +63,8 @@ public sealed partial class Room
 
 		return (connection is BanchoConnection player && Slots.Find(player) is not null)
 		       || (connection is TourneyConnection observer && Members.Observers.Contains(observer))
-		       || (Authority.IsManagedBy(connection.Record) && permissions.Allows(Permissions.RoomJoin))
-		       || permissions.Allows(Permissions.RoomManageAny);
+		       || (Authority.IsManagedBy(connection.Record) && permissions.Allows(UserPermissions.RoomJoin))
+		       || permissions.Allows(UserPermissions.RoomManageAny);
 	}
 
 	/// <summary>Removes a seated player and updates the room's round, channel and empty-room state.</summary>

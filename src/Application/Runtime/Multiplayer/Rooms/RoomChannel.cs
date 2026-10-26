@@ -1,6 +1,6 @@
 using Basil.Application.Runtime.Chat;
 using Basil.Application.Runtime.Sessions;
-using Basil.Domain.Permissions;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Runtime.Multiplayer.Rooms;
 
@@ -25,14 +25,14 @@ public sealed class RoomChannel : Channel
 	internal override bool CanRead(Connection connection, DateTimeOffset now)
 	{
 		return Room.Involves(connection, now) ||
-		       connection.User.EffectivePermissions(now).Allows(Permissions.RoomObserve);
+		       connection.User.EffectivePermissions(now).Allows(UserPermissions.RoomObserve);
 	}
 
 	/// <inheritdoc />
 	internal override bool CanWrite(Connection connection, DateTimeOffset now)
 	{
 		return Room.Involves(connection, now) ||
-		       connection.User.EffectivePermissions(now).Allows(Permissions.ChatPostAnyRoom);
+		       connection.User.EffectivePermissions(now).Allows(UserPermissions.ChatPostAnyRoom);
 	}
 
 }

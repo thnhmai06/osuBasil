@@ -1,6 +1,6 @@
 using Basil.Bot.Commands.Mp;
 using Basil.Bot.Tests.Support;
-using Basil.Domain.Permissions;
+using Basil.Domain.Users;
 using Basil.Testing;
 
 namespace Basil.Bot.Tests.Commands.Mp;
@@ -12,7 +12,7 @@ namespace Basil.Bot.Tests.Commands.Mp;
 public sealed class MpRoomResolutionTests
 {
 	/// <summary>Everyone who must lock a room they do not create can do so with this, wherever they sit.</summary>
-	private static readonly Permissions ManagerPermissions = PermissionsGroups.Default | Permissions.RoomManageAny;
+	private static readonly UserPermissions ManagerPermissions = UserPermissionsGroups.Default | UserPermissions.RoomManageAny;
 
 	[Fact]
 	public async Task RoomScopedCommand_WithNoRoomAnywhere_SaysNotInARoom()

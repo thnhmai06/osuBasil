@@ -6,10 +6,8 @@ namespace Basil.Infrastructure.Persistence.Tests.Chat;
 
 /// <summary>Contract tests of the storing of the general chat channels of the server.</summary>
 [Collection("Persistence")]
-public sealed class PostgresChannelRepositoryTests : DatabaseTests
+public sealed class PostgresChannelRepositoryTests(PersistenceFixture container) : DatabaseTests(container)
 {
-	public PostgresChannelRepositoryTests(PersistenceFixture container) : base(container) { }
-
 	private IChannelRepository Channels => Get<IChannelRepository>();
 
 	[Fact]

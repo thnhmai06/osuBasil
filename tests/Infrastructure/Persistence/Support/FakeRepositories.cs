@@ -8,11 +8,9 @@ using Basil.Domain.Users;
 namespace Basil.Infrastructure.Persistence.Tests.Support;
 
 /// <summary>Stores one user in memory, for tests that drive only the lookups of a repository.</summary>
-internal sealed class FakeUserRepository : IUserRepository
+internal sealed class FakeUserRepository(UserRecord? user) : IUserRepository
 {
-	public FakeUserRepository(UserRecord? user) => User = user;
-
-	public UserRecord? User { get; set; }
+	public UserRecord? User { get; set; } = user;
 
 	public ValueTask<UserRecord?> GetAsync(int id, CancellationToken cancellationToken = default) =>
 		ValueTask.FromResult(User is { } found && found.Id == id ? found : null);
@@ -38,11 +36,9 @@ internal sealed class FakeUserRepository : IUserRepository
 }
 
 /// <summary>Stores one beatmap in memory, for tests that drive only the lookups of a repository.</summary>
-internal sealed class FakeBeatmapRepository : IBeatmapRepository
+internal sealed class FakeBeatmapRepository(BeatmapRecord? beatmap) : IBeatmapRepository
 {
-	public FakeBeatmapRepository(BeatmapRecord? beatmap) => Beatmap = beatmap;
-
-	public BeatmapRecord? Beatmap { get; set; }
+	public BeatmapRecord? Beatmap { get; set; } = beatmap;
 
 	public ValueTask<BeatmapRecord?> GetAsync(Md5 hash, CancellationToken cancellationToken = default) =>
 		ValueTask.FromResult(Beatmap is { } found && found.Hash == hash ? found : null);

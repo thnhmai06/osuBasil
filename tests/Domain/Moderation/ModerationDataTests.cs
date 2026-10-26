@@ -1,7 +1,7 @@
-using Basil.Domain.Permissions;
+using Basil.Domain.Moderation;
 using Basil.Domain.Users;
 
-namespace Basil.Domain.Tests.Permissions;
+namespace Basil.Domain.Tests.Moderation;
 
 /// <summary>Verifies the validation of a recorded moderation action.</summary>
 public class ModerationDataTests

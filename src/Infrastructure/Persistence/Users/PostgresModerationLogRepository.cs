@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
 using Basil.Application.Persistence.Common;
 using Basil.Application.Persistence.Users;
-using Basil.Domain.Permissions;
+using Basil.Domain.Moderation;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Persistence.Postgres;
 using Microsoft.EntityFrameworkCore;

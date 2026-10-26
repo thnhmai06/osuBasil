@@ -1,6 +1,5 @@
 using Basil.Application.Runtime.Chat;
 using Basil.Domain.Chat;
-using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 using Basil.Testing;
 
@@ -13,7 +12,7 @@ public sealed class ServerSayTests
 
 	private static async Task<GeneralChannel> OpenChannelAsync(TestApplication app)
 	{
-		var admin = await app.CreateUserAsync("ChannelAdmin", "password", PermissionsGroups.All);
+		var admin = await app.CreateUserAsync("ChannelAdmin", "password", UserPermissionsGroups.All);
 		var by = await app.LoginAsync(admin);
 		var record = new GeneralChannelRecord { Name = ChannelName, Value = new GeneralChannelData() };
 		var created = await app.Server.ScopeTo(by).Channels.CreateAsync(record, TestContext.Current.CancellationToken);
@@ -33,7 +32,7 @@ public sealed class ServerSayTests
 		Assert.True(said);
 		var posted = Assert.IsType<ChannelMessagePosted>(app.ChannelEvents.Events.Last());
 		Assert.Equal("Hello", posted.Message.Content);
-		Assert.True(BasilBot.Is(posted.Message.Author));
+		Assert.True(posted.Message.Author.IsBasilBot());
 	}
 
 	[Fact]

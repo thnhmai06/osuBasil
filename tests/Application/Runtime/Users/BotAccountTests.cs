@@ -1,6 +1,5 @@
 using Basil.Application.Persistence.Common;
 using Basil.Application.Persistence.Users;
-using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,12 +33,12 @@ public sealed class BotAccountTests
 	public async Task EnsureBotAsync_AccountHoldsTheId_RemovesItsPermissions()
 	{
 		using var app = new TestApplication();
-		await app.SeedAccountAsync(BasilBot.Id, "Somebody", "secret", Permissions.RoomManageAny);
+		await app.SeedAccountAsync(BasilBot.Id, "Somebody", "secret", UserPermissions.RoomManageAny);
 
 		var bot = await app.Users.EnsureBotAsync(Token);
 
-		Assert.Equal(Permissions.None, bot.Value.Permissions);
-		Assert.Equal(Permissions.None, (await StoredBotAsync(app)).Value.Permissions);
+		Assert.Equal(UserPermissions.None, bot.Value.Permissions);
+		Assert.Equal(UserPermissions.None, (await StoredBotAsync(app)).Value.Permissions);
 	}
 
 	[Fact]
@@ -105,7 +104,7 @@ public sealed class BotAccountTests
 
 		Assert.Null(bot.Value.DeletedAt);
 		Assert.Equal(BasilBot.DefaultName, bot.Value.Name);
-		Assert.Equal(Permissions.None, bot.Value.Permissions);
+		Assert.Equal(UserPermissions.None, bot.Value.Permissions);
 		Assert.Null((await StoredBotAsync(app)).Value.DeletedAt);
 	}
 
@@ -139,7 +138,7 @@ public sealed class BotAccountTests
 
 		Assert.Equal(BasilBot.Id, bot.Id);
 		Assert.Equal(BasilBot.DefaultName, bot.Value.Name);
-		Assert.Equal(Permissions.None, bot.Value.Permissions);
+		Assert.Equal(UserPermissions.None, bot.Value.Permissions);
 		Assert.Null(bot.Value.DeletedAt);
 		Assert.Same(bot, await StoredBotAsync(app));
 	}
@@ -159,7 +158,7 @@ public sealed class BotAccountTests
 	public async Task EnsureBotAsync_AfterTakeover_BotCanComeOnline()
 	{
 		using var app = new TestApplication();
-		await app.SeedAccountAsync(BasilBot.Id, "Somebody", "secret", Permissions.RoomManageAny);
+		await app.SeedAccountAsync(BasilBot.Id, "Somebody", "secret", UserPermissions.RoomManageAny);
 
 		var bot = await app.Users.EnsureBotAsync(Token);
 		var connection = await app.Users.ConnectBotAsync(Token);
@@ -185,14 +184,14 @@ public sealed class BotAccountTests
 	public async Task EnsureBotAsync_CalledTwice_ChangesNothing()
 	{
 		using var app = new TestApplication();
-		await app.SeedAccountAsync(BasilBot.Id, "Somebody", "secret", Permissions.RoomManageAny);
+		await app.SeedAccountAsync(BasilBot.Id, "Somebody", "secret", UserPermissions.RoomManageAny);
 		var first = await app.Users.EnsureBotAsync(Token);
 
 		var second = await app.Users.EnsureBotAsync(Token);
 
 		Assert.Same(first, second);
 		Assert.Equal("Somebody", second.Value.Name);
-		Assert.Equal(Permissions.None, second.Value.Permissions);
+		Assert.Equal(UserPermissions.None, second.Value.Permissions);
 		Assert.Null(second.Value.DeletedAt);
 	}
 
@@ -216,13 +215,13 @@ public sealed class BotAccountTests
 		using var app = new TestApplication();
 		var bot = await app.Users.EnsureBotAsync(Token);
 		var connection = await app.Users.ConnectBotAsync(Token);
-		bot.Value.Permissions = Permissions.RoomManageAny;
+		bot.Value.Permissions = UserPermissions.RoomManageAny;
 
 		var restored = await app.Users.EnsureBotAsync(Token);
 
 		Assert.NotNull(connection);
 		Assert.False(connection.IsOpen);
-		Assert.Equal(Permissions.None, restored.Value.Permissions);
+		Assert.Equal(UserPermissions.None, restored.Value.Permissions);
 	}
 
 	private static async Task<UserRecord> StoredBotAsync(TestApplication app)
@@ -231,7 +230,7 @@ public sealed class BotAccountTests
 		       ?? throw new InvalidOperationException("The bot is not stored.");
 	}
 
-	private static async Task<List<Restriction>> ActiveRestrictionsAsync(TestApplication app, UserRecord user)
+	private static async Task<List<UserRestriction>> ActiveRestrictionsAsync(TestApplication app, UserRecord user)
 	{
 		var now = app.Clock.GetUtcNow();
 		return (await app.Provider.GetRequiredService<IRestrictionRepository>().ListAsync(user, Token))

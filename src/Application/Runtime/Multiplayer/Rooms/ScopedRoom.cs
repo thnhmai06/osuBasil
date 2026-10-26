@@ -1,6 +1,7 @@
+using Basil.Application.Runtime.Common;
 using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Multiplayer;
-using Basil.Domain.Permissions;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Runtime.Multiplayer.Rooms;
 
@@ -16,7 +17,7 @@ public sealed class ScopedRoom : Scoped<RoomPermissions>
 	public Room Room { get; }
 
 	/// <summary>The permissions the connection has globally, as they were when the scope was created.</summary>
-	private readonly Permissions _global;
+	private readonly UserPermissions _global;
 
 	/// <summary>The roles this connection holds in the room.</summary>
 	public RoomRoles Roles { get; }
@@ -46,13 +47,13 @@ public sealed class ScopedRoom : Scoped<RoomPermissions>
 	{
 	}
 
-	private ScopedRoom(Room room, Connection by, (Permissions Global, RoomRoles Roles, RoomPermissions Rights) snapshot)
+	private ScopedRoom(Room room, Connection by, (UserPermissions Global, RoomRoles Roles, RoomPermissions Rights) snapshot)
 		: base(by, snapshot.Rights)
 	{
 		Room = room;
 		_global = snapshot.Global;
 		Roles = snapshot.Roles;
-		ManagesAnyRoom = _global.Allows(Domain.Permissions.Permissions.RoomManageAny);
+		ManagesAnyRoom = _global.Allows(UserPermissions.RoomManageAny);
 		Slots = new ScopedRoomSlots(this);
 		Rounds = new ScopedRoomRounds(this);
 		Settings = new ScopedRoomSettings(this);
@@ -60,7 +61,7 @@ public sealed class ScopedRoom : Scoped<RoomPermissions>
 		Members = new ScopedRoomMembers(this);
 	}
 
-	private static (Permissions Global, RoomRoles Roles, RoomPermissions Rights) Snapshot(Room room, Connection by)
+	private static (UserPermissions Global, RoomRoles Roles, RoomPermissions Rights) Snapshot(Room room, Connection by)
 	{
 		var global = by.User.EffectivePermissions(room.Context.Clock.GetUtcNow());
 		var roles = ComputeRoles(room, by);
@@ -68,9 +69,9 @@ public sealed class ScopedRoom : Scoped<RoomPermissions>
 		// Managing every room acts with the creator's authority, joined or not; a restriction cannot suspend it,
 		// because whoever manages an area keeps it in the effective permissions. Otherwise a user who may not join
 		// rooms has no role-derived rights.
-		var rights = global.Allows(Domain.Permissions.Permissions.RoomManageAny)
+		var rights = global.Allows(UserPermissions.RoomManageAny)
 			? RoomPermissionsGroups.All
-			: global.Allows(Domain.Permissions.Permissions.RoomJoin)
+			: global.Allows(UserPermissions.RoomJoin)
 				? roles.GetPermissions()
 				: RoomPermissions.None;
 
@@ -103,7 +104,7 @@ public sealed class ScopedRoom : Scoped<RoomPermissions>
 	/// <summary>Checks that the scoped connection holds the room rights an action needs.</summary>
 	/// <param name="needed">The room rights required.</param>
 	/// <returns>
-	///     <see langword="null" /> when allowed; a denial naming <see cref="Permissions.RoomJoin" /> when the caller may not
+	///     <see langword="null" /> when allowed; a denial naming <see cref="UserPermissions.RoomJoin" /> when the caller may not
 	///     join rooms at all; otherwise <see cref="RoomOutcome.RoleDenied" />.
 	/// </returns>
 	internal new Result<RoomOutcome>? Require(RoomPermissions needed)
@@ -118,9 +119,9 @@ public sealed class ScopedRoom : Scoped<RoomPermissions>
 	/// <returns><see langword="null" /> when allowed, otherwise a denial naming the missing permission.</returns>
 	internal Result<RoomOutcome>? RequireJoin()
 	{
-		return _global.Allows(Domain.Permissions.Permissions.RoomJoin)
+		return _global.Allows(UserPermissions.RoomJoin)
 			? null
-			: Result<RoomOutcome>.Denied(Domain.Permissions.Permissions.RoomJoin);
+			: Result<RoomOutcome>.Denied(UserPermissions.RoomJoin);
 	}
 
 	/// <summary>Closes the room, evicting its players, ending its round, closing its channel and forgetting it.</summary>

@@ -1,4 +1,5 @@
-using Basil.Domain.Permissions;
+using Basil.Application.Runtime.Common;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Runtime.Tests.Common;
 
@@ -35,16 +36,16 @@ public class ResultTests
 	[Fact]
 	public void Denied_NamesTheMissingPermissionsAndIsNotOk()
 	{
-		var result = Result<SampleOutcome>.Denied(Permissions.RoomJoin | Permissions.ChatPost);
+		var result = Result<SampleOutcome>.Denied(UserPermissions.RoomJoin | UserPermissions.ChatPost);
 
 		Assert.False(result.IsOk);
-		Assert.Equal(Permissions.RoomJoin | Permissions.ChatPost, result.Missing);
+		Assert.Equal(UserPermissions.RoomJoin | UserPermissions.ChatPost, result.Missing);
 	}
 
 	[Fact]
 	public void Denied_EvenWithOkOutcome_IsNotOk()
 	{
-		var result = new Result<SampleOutcome>(SampleOutcome.Ok, Permissions.RoomJoin);
+		var result = new Result<SampleOutcome>(SampleOutcome.Ok, UserPermissions.RoomJoin);
 
 		Assert.False(result.IsOk);
 	}
@@ -52,7 +53,7 @@ public class ResultTests
 	[Fact]
 	public void Denied_NoPermissions_Throws()
 	{
-		Assert.Throws<ArgumentOutOfRangeException>(() => Result<SampleOutcome>.Denied(Permissions.None));
+		Assert.Throws<ArgumentOutOfRangeException>(() => Result<SampleOutcome>.Denied(UserPermissions.None));
 	}
 
 	[Fact]

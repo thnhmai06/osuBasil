@@ -1,5 +1,4 @@
 using Basil.Domain.Mechanics;
-using Basil.Domain.Permissions;
 using Basil.Domain.Users;
 
 namespace Basil.Domain.Tests.Common;
@@ -28,9 +27,9 @@ public class FlatEnumsTests
 	[Fact]
 	public void Privileges_MatchesClientBitValues()
 	{
-		Assert.Equal(1 << 0, (int)Privileges.Player);
-		Assert.Equal(1 << 3, (int)Privileges.Owner);
-		Assert.Equal(1 << 5, (int)Privileges.Tournament);
+		Assert.Equal(1 << 0, (int)UserPrivileges.Player);
+		Assert.Equal(1 << 3, (int)UserPrivileges.Owner);
+		Assert.Equal(1 << 5, (int)UserPrivileges.Tournament);
 	}
 
 	[Fact]

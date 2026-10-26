@@ -5,18 +5,13 @@ namespace Basil.Infrastructure.Persistence.Common;
 ///     of several concurrent changes of one identity the last one committed is the one memory holds.
 /// </summary>
 /// <typeparam name="TKey">The identity of a resident record.</typeparam>
-internal sealed class ResidentWrites<TKey> where TKey : notnull
+/// <remarks>Creates the writes of one kind of resident record.</remarks>
+/// <param name="comparer">How identities are compared, or <see langword="null" /> for the default.</param>
+internal sealed class ResidentWrites<TKey>(IEqualityComparer<TKey>? comparer = null) where TKey : notnull
 {
 	private readonly Lock _gate = new();
-	private readonly Dictionary<TKey, long> _applied;
+	private readonly Dictionary<TKey, long> _applied = new Dictionary<TKey, long>(comparer);
 	private long _issued;
-
-	/// <summary>Creates the writes of one kind of resident record.</summary>
-	/// <param name="comparer">How identities are compared, or <see langword="null" /> for the default.</param>
-	public ResidentWrites(IEqualityComparer<TKey>? comparer = null)
-	{
-		_applied = new Dictionary<TKey, long>(comparer);
-	}
 
 	/// <summary>Queues a write and waits for its commit, then applies the change to the resident copy.</summary>
 	/// <param name="key">The identity the write changes.</param>
