@@ -34,7 +34,7 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
 ### Domain and Application
 
 * **Domain** holds business models that exist beyond runtime (`Match`, `Round`, `MatchSettings`,
-  `User`, `Beatmap`, `Login`, `ServerSettings`, …). A model guarantees that **it is valid**: field values
+  `User`, `Beatmap`, `Login`, …). A model guarantees that **it is valid**: field values
   in range, its own text format, values derived purely from its own data. No runtime-only state, no events.
 * **Behaviour belongs to the object that owns it, and is reached through that object.** Every concept with state, invariants and
   rights is an **Application object** (`User`, `Connection`, `Room`, `RoomSlot`, `Lobby`, the

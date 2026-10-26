@@ -1,7 +1,7 @@
 using Basil.Domain.Common;
 using Basil.Domain.Content;
 
-namespace Basil.Domain;
+namespace Basil.Application.Persistence.Content;
 
 /// <summary>The server-wide settings an administrator changes while the server runs.</summary>
 public sealed record ServerSettings

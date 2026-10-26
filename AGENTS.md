@@ -458,8 +458,8 @@ Infrastructure.Runtime or the consumer that owns them, including `Basil.Bot`. Ho
 (ports, TLS, data paths) belongs to the hosts. BasilBot commands and announcements are server features: a
 command is an entry point that uses the typist's scoped objects, and the bot only replies. Query **records**
 (the filter a repository applies, with `Parse` for the search syntax) belong to Persistence; routes and handlers
-that answer queries do not. Server settings changed at runtime (`ServerSettings`) are persistent Domain data,
-not host configuration.
+that answer queries do not. Server settings changed at runtime (`ServerSettings`, owned by Application.Persistence) exist only while the
+server runs and are stored through `ISettingsRepository`; they are not Domain and not host configuration.
 
 * `Common` and `Events` depend on no feature. `Users`, `Beatmaps` and `Scores` do not depend on
   `Multiplayer` objects; a game client's connection only reads its player's room to find the round. Anticheat flags,
