@@ -27,7 +27,7 @@ public sealed class ScopedLobby : Scoped<Permissions>
 	/// <param name="name">The room's name.</param>
 	/// <param name="password">The room's password, or an empty string for none.</param>
 	/// <param name="isTournament">Whether the room is a tournament room.</param>
-	/// <param name="isPrivate">Whether the room is private: left out of the lobby and of public match lists, but open to anyone who knows its id.</param>
+	/// <param name="isPrivate">Whether the room is private: hidden from the lobby, with a match history that only its participants, its managers and users with <see cref="Permissions.RoomViewPrivate" /> can view. Joining is not affected.</param>
 	/// <param name="settings">The room's initial settings, or <see langword="null" /> for the defaults.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>
@@ -120,6 +120,28 @@ public sealed class ScopedLobby : Scoped<Permissions>
 			: null;
 		Lobby.Context.Events.Publish(new LobbyRoomOpened(room, room.Authority.Host, closesAt));
 		return (room, RoomOutcome.Ok);
+	}
+
+	/// <summary>Tells whether the scoped connection's user may view the data that belongs to a match.</summary>
+	/// <param name="match">The match.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>
+	///     <see langword="true" /> for a public match, and for a private one when the user holds
+	///     <see cref="Permissions.RoomViewPrivate" />, took part in the match, or manages it (its creator, or a referee
+	///     that is still one). A suspended permission does not count.
+	/// </returns>
+	/// <remarks>
+	///     This is the one gate for everything the match owns: the match itself, its rounds, its events, its report and
+	///     which scores were played in which round. It does not cover independent resources the match only links to:
+	///     scores with their replays and leaderboards, beatmaps and users are read by their own ids as before. The call only
+	///     answers the question; it changes nothing and publishes nothing.
+	/// </remarks>
+	public async Task<bool> CanViewAsync(MatchRecord match, CancellationToken cancellationToken = default)
+	{
+		ArgumentNullException.ThrowIfNull(match);
+		return !match.Value.IsPrivate
+		       || Require(Permissions.RoomViewPrivate) is null
+		       || await Lobby.Context.Matches.IsVisibleToAsync(match, By.Record, cancellationToken);
 	}
 
 	/// <summary>Starts watching the multiplayer lobby.</summary>

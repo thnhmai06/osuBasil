@@ -4,7 +4,11 @@ using Basil.Application.Runtime.Multiplayer.Rooms;
 using Basil.Application.Runtime.Sessions;
 using Basil.Testing;
 using Basil.Domain;
+using Basil.Application.Persistence.Multiplayer;
+using Basil.Domain.Multiplayer;
 using Basil.Domain.Permissions;
+using Basil.Domain.Users;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Application.Runtime.Tests.Multiplayer;
 
@@ -297,6 +301,132 @@ public sealed class ScopedLobbyTests
 
 		Assert.True(room.IsClosed);
 	}
+
+	#region CanViewAsync
+
+	[Fact]
+	public async Task CanViewAsync_APublicMatch_IsOpenToAnyone()
+	{
+		using var app = new TestApplication();
+		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), isPrivate: false);
+		var stranger = await app.LoginAsync(await app.CreateUserAsync("Stranger", "password"));
+
+		Assert.True(await app.Lobby.ScopeTo(stranger).CanViewAsync(match, TestContext.Current.CancellationToken));
+	}
+
+	[Fact]
+	public async Task CanViewAsync_APrivateMatch_IsClosedToAStranger()
+	{
+		using var app = new TestApplication();
+		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), isPrivate: true);
+		var stranger = await app.LoginAsync(await app.CreateUserAsync("Stranger", "password"));
+
+		Assert.False(await app.Lobby.ScopeTo(stranger).CanViewAsync(match, TestContext.Current.CancellationToken));
+	}
+
+	[Fact]
+	public async Task CanViewAsync_APrivateMatch_IsOpenToAHolderOfRoomViewPrivate()
+	{
+		using var app = new TestApplication();
+		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), isPrivate: true);
+		var viewer = await app.LoginAsync(await app.CreateUserAsync("Viewer", "password",
+			PermissionsGroups.Default | Permissions.RoomViewPrivate));
+
+		Assert.True(await app.Lobby.ScopeTo(viewer).CanViewAsync(match, TestContext.Current.CancellationToken));
+	}
+
+	[Fact]
+	public async Task CanViewAsync_APrivateMatch_IsOpenToAHolderOfRoomManageAny()
+	{
+		using var app = new TestApplication();
+		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), isPrivate: true);
+		var manager = await app.LoginAsync(await app.CreateUserAsync("Manager", "password",
+			PermissionsGroups.Default | Permissions.RoomManageAny));
+
+		Assert.True(await app.Lobby.ScopeTo(manager).CanViewAsync(match, TestContext.Current.CancellationToken));
+	}
+
+	[Fact]
+	public async Task CanViewAsync_RoomViewPrivateSuspendedByARestriction_DoesNotOpenAPrivateMatch()
+	{
+		using var app = new TestApplication();
+		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), isPrivate: true);
+		var user = await app.CreateUserAsync("Viewer", "password",
+			PermissionsGroups.Default | Permissions.RoomViewPrivate);
+		app.AddRestriction(user, Permissions.RoomViewPrivate);
+		var viewer = await app.LoginAsync(user);
+
+		Assert.False(await app.Lobby.ScopeTo(viewer).CanViewAsync(match, TestContext.Current.CancellationToken));
+	}
+
+	[Fact]
+	public async Task CanViewAsync_APrivateMatch_IsOpenToItsCreator()
+	{
+		using var app = new TestApplication();
+		var creator = await app.CreateUserAsync("Creator", "password");
+		var match = await MatchAsync(app, creator, isPrivate: true);
+		var connection = await app.LoginAsync(creator);
+
+		Assert.True(await app.Lobby.ScopeTo(connection).CanViewAsync(match, TestContext.Current.CancellationToken));
+	}
+
+	[Fact]
+	public async Task CanViewAsync_APrivateMatch_IsOpenToAPlayerWhoJoined()
+	{
+		using var app = new TestApplication();
+		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), isPrivate: true);
+		var player = await app.CreateUserAsync("Player", "password");
+		await RecordAsync(app, match, MatchEventType.PlayerJoined, player);
+		var connection = await app.LoginAsync(player);
+
+		Assert.True(await app.Lobby.ScopeTo(connection).CanViewAsync(match, TestContext.Current.CancellationToken));
+	}
+
+	[Fact]
+	public async Task CanViewAsync_APrivateMatch_IsOpenToACurrentReferee()
+	{
+		using var app = new TestApplication();
+		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), isPrivate: true);
+		var referee = await app.CreateUserAsync("Referee", "password");
+		await RecordAsync(app, match, MatchEventType.RefAdded, referee);
+		var connection = await app.LoginAsync(referee);
+
+		Assert.True(await app.Lobby.ScopeTo(connection).CanViewAsync(match, TestContext.Current.CancellationToken));
+	}
+
+	[Fact]
+	public async Task CanViewAsync_APrivateMatch_IsClosedToARemovedReferee()
+	{
+		using var app = new TestApplication();
+		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), isPrivate: true);
+		var referee = await app.CreateUserAsync("Referee", "password");
+		await RecordAsync(app, match, MatchEventType.RefAdded, referee);
+		await RecordAsync(app, match, MatchEventType.RefRemoved, referee);
+		var connection = await app.LoginAsync(referee);
+
+		Assert.False(await app.Lobby.ScopeTo(connection).CanViewAsync(match, TestContext.Current.CancellationToken));
+	}
+
+	private static async Task<MatchRecord> MatchAsync(TestApplication app, UserRecord creator, bool isPrivate)
+	{
+		return await app.Provider.GetRequiredService<IMatchRepository>().CreateAsync(new MatchData
+		{
+			Name = "match",
+			Creator = creator,
+			StartedAt = app.Clock.GetUtcNow(),
+			EndedAt = null,
+			IsPrivate = isPrivate
+		}, TestContext.Current.CancellationToken);
+	}
+
+	private static Task RecordAsync(TestApplication app, MatchRecord match, MatchEventType type, UserRecord target)
+	{
+		return app.Provider.GetRequiredService<IMatchEventRepository>().RecordAsync(
+			new MatchEvent(match, type, app.Clock.GetUtcNow(), Target: target),
+			TestContext.Current.CancellationToken);
+	}
+
+	#endregion
 
 	private static Task<(Room? Room, Result<RoomOutcome> Result)> OpenAsync(TestApplication app, Connection by,
 		string name = "test room", bool isTournament = false, string password = "")

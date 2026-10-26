@@ -60,7 +60,7 @@ public sealed class Lobby : IRoomLobbyPort, IConnectionLobbyPort
 	/// <param name="id">The room's id.</param>
 	/// <returns>
 	///     The room; <see langword="null" /> when there is no open room with the id. A private room is found like any other,
-	///     because private only keeps a room out of listings.
+	///     because private hides a match from the lobby and its history from the public, not the live room.
 	/// </returns>
 	public Room? Find(int id)
 	{

@@ -63,10 +63,21 @@ The room owns membership and its channel. A join checks the caller's effective `
 
 There are 16 slot positions, numbered 1 through 16. Room size is the number of usable positions, from 1 through 16, not a limit on slot numbers: a player may occupy any slot. The room keeps enough unlocked empty slots for its configured size and locks the others. When a host leaves, the next seated player in slot order becomes host. Locking a room (`!mp lock`) only freezes the slots: players cannot move to another slot or change team, but joining is unaffected, as in osu!.
 
-A room can be private. Private means unlisted, as an unlisted video is: the room is left out of the lobby and out of the
-match lists of the API for users who do not hold `RoomViewPrivate`, but it never keeps anybody out. Whoever knows the
-room's id can still find it (`Lobby.Find`), join it with the password if it has one, and read its match. An invitation
-only tells a user where the room is; it grants no access, because nothing needs granting.
+A room can be private. A private match is hidden from the lobby and from the public match lists, and its history and
+report can be viewed only by (a) a user who took part in it (a `PlayerJoined` event targets them), (b) its managers: the
+creator and the referees that are still referees (a `RefAdded` event not followed by a `RefRemoved` for the same user), and
+(c) a user with the effective permission `RoomViewPrivate` (`RoomManageAny` includes it). A public match can be viewed by
+everyone. Private never changes who can join: whoever knows the room's id can still find it (`Lobby.Find`) and join it, with
+the password if it has one, subject to the usual `RoomJoin` and ban rules. There is no invite-only mode, and an
+invitation only tells a user where the room is.
+
+The view restriction covers everything the match owns: the match record, its rounds, its events, its report and the
+relation that says which scores were played in which round. It does not cover independent resources the room only links
+to: a score with its replay and leaderboards is read by its own id as before, and beatmaps and users stay as they are.
+`ScopedLobby.CanViewAsync` is the single gate for the match-owned data.
+
+A match listing is narrowed to its asker with `MatchQuery.LimitTo(effective, viewer)`, and a single match is checked with
+`ScopedLobby.CanViewAsync`; both apply the same rule (`IMatchRepository.IsVisibleToAsync` is the check for one match).
 
 The room channel is named `#mp_{room id}` and opens and closes with its room. A room's settings change as one validated operation; settings cannot change during a round. Changing the team type reassigns teams, and changing mode removes mods that mode does not allow. The room's password is never included in its events.
 

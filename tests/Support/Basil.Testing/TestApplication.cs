@@ -134,9 +134,10 @@ public sealed class TestApplication : IDisposable
 		services.AddSingleton<IRelationshipRepository>(relationships);
 		services.AddSingleton<IModerationLogRepository>(_moderationLog);
 		services.AddSingleton<ISettingsRepository>(_settings);
-		services.AddSingleton<IMatchRepository>(new InMemoryMatchRepository());
+		var matchEvents = new InMemoryMatchEventRepository();
+		services.AddSingleton<IMatchRepository>(new InMemoryMatchRepository(matchEvents));
 		services.AddSingleton<IRoundRepository>(new InMemoryRoundRepository());
-		services.AddSingleton<IMatchEventRepository>(new InMemoryMatchEventRepository());
+		services.AddSingleton<IMatchEventRepository>(matchEvents);
 		services.AddSingleton<IEventPublisher<UserEvent>>(UserEvents);
 		services.AddSingleton<IEventPublisher<RoomEvent>>(RoomEvents);
 		services.AddSingleton<IEventPublisher<LobbyEvent>>(LobbyEvents);

@@ -14,7 +14,7 @@ namespace Basil.Application.Runtime.Multiplayer;
 /// <param name="Password">The room's new password.</param>
 /// <param name="Size">The number of usable slots, from 1 to 16.</param>
 /// <param name="ClearBeatmap">Whether the room drops its beatmap while the host chooses another one.</param>
-/// <param name="IsPrivate">Whether the match is private (left out of listings, still open to anyone who knows its id), or <see langword="null" /> to leave it.</param>
+/// <param name="IsPrivate">Whether the match is private (hidden from the lobby, its history viewable only by participants, managers and users with <c>RoomViewPrivate</c>; joining is not affected), or <see langword="null" /> to leave it.</param>
 public sealed record RoomSettingsChange(
 	string? Name = null,
 	BeatmapReference? Beatmap = null,

@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Basil.Application.Persistence.Common;
 using Basil.Domain.Permissions;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Persistence.Multiplayer;
 
@@ -10,11 +11,16 @@ namespace Basil.Application.Persistence.Multiplayer;
 ///     included, or <see langword="null" /> for both.
 /// </param>
 /// <param name="Private">
-///     Whether only matches with private history (<see langword="true" />) or only public ones
-///     (<see langword="false" />) are included, or <see langword="null" /> for both; a user's search is narrowed
-///     with <see cref="LimitTo" />.
+///     Whether only private matches (<see langword="true" />) or only public ones (<see langword="false" />) are
+///     included, or <see langword="null" /> for both; a user's search is narrowed with <see cref="LimitTo" />.
 /// </param>
-public sealed record MatchQuery(bool? Ended = null, bool? Private = null) : IParsable<MatchQuery>
+/// <param name="VisibleTo">
+///     The id of the user the listing is for, or <see langword="null" /> for no restriction. A private match is then
+///     included only when the user took part in it or manages it (its creator, or a referee that is still one); public
+///     matches are included regardless. It is not part of the search syntax.
+/// </param>
+public sealed record MatchQuery(bool? Ended = null, bool? Private = null, int? VisibleTo = null)
+	: IParsable<MatchQuery>
 {
 	/// <summary>Reads a query written in the match search syntax.</summary>
 	/// <param name="s">
@@ -63,9 +69,14 @@ public sealed record MatchQuery(bool? Ended = null, bool? Private = null) : IPar
 
 	/// <summary>Narrows the query to what a user with the given permissions may see.</summary>
 	/// <param name="effective">The asker's effective permissions.</param>
-	/// <returns>The query, which leaves private matches out of the listing unless the asker may see them.</returns>
-	public MatchQuery LimitTo(Permissions effective)
+	/// <param name="viewer">The asker.</param>
+	/// <returns>
+	///     The query as asked when the asker may view private matches (<see cref="Permissions.RoomViewPrivate" />);
+	///     otherwise a query whose private matches are only the ones the asker took part in or manages.
+	/// </returns>
+	public MatchQuery LimitTo(Permissions effective, UserRecord viewer)
 	{
-		return effective.Allows(Permissions.RoomViewPrivate) ? this : this with { Private = false };
+		ArgumentNullException.ThrowIfNull(viewer);
+		return effective.Allows(Permissions.RoomViewPrivate) ? this : this with { VisibleTo = viewer.Id };
 	}
 }

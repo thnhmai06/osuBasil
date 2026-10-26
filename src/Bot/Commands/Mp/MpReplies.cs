@@ -183,7 +183,7 @@ internal static class MpReplies
 
 	/// <summary>Reply after making the room private.</summary>
 	public static readonly Reply MatchNowPrivate = new("mp.matchNowPrivate",
-		"The match is now private. It is hidden from the lobby and the match lists, but anyone who knows its id can still join.");
+		"The match is now private. It is hidden from the lobby, and only players who took part in it, its referees and server managers can view its history.");
 
 	/// <summary>Reply after making the room public.</summary>
 	public static readonly Reply MatchNowPublic = new("mp.matchNowPublic", "The match is now public.");

@@ -1,5 +1,6 @@
 using Basil.Application.Persistence.Common;
 using Basil.Domain.Multiplayer;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Persistence.Multiplayer;
 
@@ -30,4 +31,15 @@ public interface IMatchRepository
 	/// <returns>A page of matches.</returns>
 	Task<Page<MatchRecord>> ListAsync(MatchQuery query, PageRequest page,
 		CancellationToken cancellationToken = default);
+
+	/// <summary>Tells whether a user may view a match's history and report.</summary>
+	/// <param name="match">The match.</param>
+	/// <param name="viewer">The user asking.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>
+	///     <see langword="true" /> when the match is public, or when the user took part in it or manages it (its
+	///     creator, or a referee that is still one); this is the rule <see cref="MatchQuery.VisibleTo" /> applies to a
+	///     listing. A permission that lets a user view every private match is not considered here.
+	/// </returns>
+	Task<bool> IsVisibleToAsync(MatchRecord match, UserRecord viewer, CancellationToken cancellationToken = default);
 }

@@ -2,6 +2,7 @@ using Basil.Application.Persistence.Common;
 using Basil.Application.Persistence.Multiplayer;
 using Basil.Application.Persistence.Users;
 using Basil.Domain.Multiplayer;
+using Basil.Domain.Users;
 using Basil.Infrastructure.Persistence.Postgres;
 using Basil.Infrastructure.Persistence.Memory;
 using Microsoft.EntityFrameworkCore;
@@ -58,7 +59,7 @@ internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWri
 	{
 		var (total, rows) = await Reader.ReadAsync(async context =>
 		{
-			var matching = Filter(context.Matches, query);
+			var matching = Filter(context, context.Matches, query);
 			var count = await matching.CountAsync(cancellationToken);
 			var rows = await matching
 				.OrderByDescending(row => row.StartedAt)
@@ -74,6 +75,15 @@ internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWri
 			matches.Add(Track(await ToMatchAsync(row, cancellationToken)));
 
 		return new Page<MatchRecord>(matches, total);
+	}
+
+	/// <inheritdoc />
+	public async Task<bool> IsVisibleToAsync(MatchRecord match, UserRecord viewer,
+		CancellationToken cancellationToken = default)
+	{
+		return await Reader.ReadAsync(context =>
+			WhereVisibleTo(context, context.Matches.Where(row => row.Id == match.Id), viewer.Id)
+				.AnyAsync(cancellationToken), cancellationToken);
 	}
 
 	protected override int KeyOf(MatchRecord item)
@@ -116,13 +126,37 @@ internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWri
 	}
 
 	/// <summary>Narrows the matches to the ones a query asks for.</summary>
-	private static IQueryable<MatchRow> Filter(IQueryable<MatchRow> matches, MatchQuery query)
+	private static IQueryable<MatchRow> Filter(BasilDbContext context, IQueryable<MatchRow> matches, MatchQuery query)
 	{
 		if (query.Ended is { } ended)
 			matches = ended ? matches.Where(row => row.EndedAt != null) : matches.Where(row => row.EndedAt == null);
 		if (query.Private is { } isPrivate)
 			matches = matches.Where(row => row.IsPrivate == isPrivate);
+		if (query.VisibleTo is { } viewer)
+			matches = WhereVisibleTo(context, matches, viewer);
 		return matches;
+	}
+
+	/// <summary>Keeps the public matches and the private ones the user took part in or manages.</summary>
+	private static IQueryable<MatchRow> WhereVisibleTo(BasilDbContext context, IQueryable<MatchRow> matches,
+		int viewer)
+	{
+		const int refAdded = (int)MatchEventType.RefAdded;
+		const int refRemoved = (int)MatchEventType.RefRemoved;
+		const int playerJoined = (int)MatchEventType.PlayerJoined;
+		return matches.Where(row => !row.IsPrivate
+		                            || row.CreatorId == viewer
+		                            || context.MatchEvents.Any(added => added.MatchId == row.Id
+		                                                                && added.TargetId == viewer
+		                                                                && added.Type == refAdded
+		                                                                && !context.MatchEvents.Any(removed =>
+			                                                                removed.MatchId == row.Id
+			                                                                && removed.TargetId == viewer
+			                                                                && removed.Type == refRemoved
+			                                                                && removed.Id > added.Id))
+		                            || context.MatchEvents.Any(joined => joined.MatchId == row.Id
+		                                                                 && joined.TargetId == viewer
+		                                                                 && joined.Type == playerJoined));
 	}
 
 	private async Task<MatchRecord> ToMatchAsync(MatchRow row, CancellationToken cancellationToken)
