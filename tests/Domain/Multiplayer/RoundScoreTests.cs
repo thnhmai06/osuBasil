@@ -43,25 +43,17 @@ public class RoundScoreTests
 	}
 
 	[Fact]
-	public void Initializer_TeamBeforeRound_ValidTeamIsAccepted()
+	public void Constructor_TeamInTeamVersus_IsAccepted()
 	{
-		var score = new RoundScore { Score = MakeScore(), Team = GameTeam.Red, Round = MakeRound(GameTeamType.TeamVs) };
+		var score = new RoundScore(MakeScore(), MakeRound(GameTeamType.TeamVs), GameTeam.Red);
 
 		Assert.Equal(GameTeam.Red, score.Team);
 	}
 
 	[Fact]
-	public void Initializer_RoundBeforeTeam_ValidTeamIsAccepted()
+	public void Constructor_NoTeamInHeadToHead_IsAccepted()
 	{
-		var score = new RoundScore { Score = MakeScore(), Round = MakeRound(GameTeamType.TeamVs), Team = GameTeam.Red };
-
-		Assert.Equal(GameTeam.Red, score.Team);
-	}
-
-	[Fact]
-	public void Initializer_TeamBeforeRound_NoTeamInHeadToHeadIsAccepted()
-	{
-		var score = new RoundScore { Score = MakeScore(), Team = null, Round = MakeRound(GameTeamType.HeadToHead) };
+		var score = new RoundScore(MakeScore(), MakeRound(GameTeamType.HeadToHead), null);
 
 		Assert.Null(score.Team);
 	}
@@ -70,18 +62,8 @@ public class RoundScoreTests
 	[InlineData(GameTeamType.TeamVs, null)]
 	[InlineData(GameTeamType.TagTeamVs, null)]
 	[InlineData(GameTeamType.HeadToHead, GameTeam.Blue)]
-	public void Initializer_TeamBeforeRound_MismatchThrowsArgumentException(GameTeamType type, GameTeam? team)
+	public void Constructor_TeamNotMatchingTheRound_ThrowsArgumentException(GameTeamType type, GameTeam? team)
 	{
-		Assert.Throws<ArgumentException>(() =>
-			new RoundScore { Score = MakeScore(), Team = team, Round = MakeRound(type) });
-	}
-
-	[Theory]
-	[InlineData(GameTeamType.TeamVs, null)]
-	[InlineData(GameTeamType.HeadToHead, GameTeam.Blue)]
-	public void Initializer_RoundBeforeTeam_MismatchThrowsArgumentException(GameTeamType type, GameTeam? team)
-	{
-		Assert.Throws<ArgumentException>(() =>
-			new RoundScore { Score = MakeScore(), Round = MakeRound(type), Team = team });
+		Assert.Throws<ArgumentException>(() => new RoundScore(MakeScore(), MakeRound(type), team));
 	}
 }

@@ -130,7 +130,7 @@ public sealed class PostgresMatchReportRepositoryTests : DatabaseTests
 	{
 		var score = await Scores.CreateAsync(StoredScores.Data(player, StoredScores.Hash($"beatmap_{totalScore}"),
 			totalScore, timestamp), TestContext.Current.CancellationToken);
-		await RoundScores.RecordAsync(new RoundScore { Score = score, Round = round, Team = null },
+		await RoundScores.RecordAsync(new RoundScore(score, round, null),
 			TestContext.Current.CancellationToken);
 	}
 }

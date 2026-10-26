@@ -66,7 +66,7 @@ internal sealed class ScoreRecorder(
 		}
 
 		var roundScore = round is not null
-			? await roundScores.RecordAsync(new RoundScore { Score = score, Round = round, Team = team },
+			? await roundScores.RecordAsync(new RoundScore(score, round, team),
 				cancellationToken)
 			: null;
 

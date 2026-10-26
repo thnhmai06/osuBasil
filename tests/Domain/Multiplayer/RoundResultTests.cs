@@ -35,17 +35,13 @@ public class RoundResultTests
 	private static RoundScore Play(Round round, int id, int userId, int totalScore, bool passed = true,
 		GameTeam? team = null)
 	{
-		return new RoundScore
+		var score = new ScoreRecord
 		{
-			Round = round,
-			Team = team,
-			Score = new ScoreRecord
-			{
-				Id = id,
-				Value = new ScoreData(userId, null, GameMode.Standard, GameMods.NoMod, new HitCounts(1, 0, 0, 0, 0, 0),
-					totalScore, 1, 1, Grade.A, passed, false, DateTimeOffset.UnixEpoch)
-			}
+			Id = id,
+			Value = new ScoreData(userId, null, GameMode.Standard, GameMods.NoMod, new HitCounts(1, 0, 0, 0, 0, 0),
+				totalScore, 1, 1, Grade.A, passed, false, DateTimeOffset.UnixEpoch)
 		};
+		return new RoundScore(score, round, team);
 	}
 
 	[Fact]

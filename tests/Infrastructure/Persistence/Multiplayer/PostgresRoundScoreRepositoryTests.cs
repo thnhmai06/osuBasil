@@ -34,7 +34,7 @@ public sealed class PostgresRoundScoreRepositoryTests : DatabaseTests
 		var player = await CreatePlayerAsync("rs_player");
 		var score = await CreateScoreAsync(player, 1000, First);
 
-		await RoundScores.RecordAsync(new RoundScore { Score = score, Round = round, Team = null },
+		await RoundScores.RecordAsync(new RoundScore(score, round, null),
 			TestContext.Current.CancellationToken);
 
 		var listed = await RoundScores.ListAsync(round, TestContext.Current.CancellationToken);
@@ -50,7 +50,7 @@ public sealed class PostgresRoundScoreRepositoryTests : DatabaseTests
 		var player = await CreatePlayerAsync("stored_rs");
 		var score = await CreateScoreAsync(player, 1000, First);
 
-		await RoundScores.RecordAsync(new RoundScore { Score = score, Round = round, Team = null },
+		await RoundScores.RecordAsync(new RoundScore(score, round, null),
 			TestContext.Current.CancellationToken);
 
 		var rows = await StoredRows.ReadAsync(ConnectionString,
@@ -71,9 +71,9 @@ public sealed class PostgresRoundScoreRepositoryTests : DatabaseTests
 		var first = await CreateScoreAsync(player, 1000, First);
 		var second = await CreateScoreAsync(player, 2000, Second);
 
-		await RoundScores.RecordAsync(new RoundScore { Score = first, Round = round, Team = null },
+		await RoundScores.RecordAsync(new RoundScore(first, round, null),
 			TestContext.Current.CancellationToken);
-		await RoundScores.RecordAsync(new RoundScore { Score = second, Round = round, Team = null },
+		await RoundScores.RecordAsync(new RoundScore(second, round, null),
 			TestContext.Current.CancellationToken);
 
 		var listed = await RoundScores.ListAsync(round, TestContext.Current.CancellationToken);
@@ -88,7 +88,7 @@ public sealed class PostgresRoundScoreRepositoryTests : DatabaseTests
 		var round = await CreateTeamRoundAsync(match, 1);
 		var player = await CreatePlayerAsync("restart_rs");
 		var score = await CreateScoreAsync(player, 1000, First);
-		await RoundScores.RecordAsync(new RoundScore { Score = score, Round = round, Team = GameTeam.Red },
+		await RoundScores.RecordAsync(new RoundScore(score, round, GameTeam.Red),
 			TestContext.Current.CancellationToken);
 
 		await using var other = new StorageComposition(ConnectionString);
@@ -109,7 +109,7 @@ public sealed class PostgresRoundScoreRepositoryTests : DatabaseTests
 		var player = await CreatePlayerAsync("team_rs_player");
 		var score = await CreateScoreAsync(player, 1000, First);
 
-		await RoundScores.RecordAsync(new RoundScore { Score = score, Round = round, Team = GameTeam.Blue },
+		await RoundScores.RecordAsync(new RoundScore(score, round, GameTeam.Blue),
 			TestContext.Current.CancellationToken);
 
 		var listed = await RoundScores.ListAsync(round, TestContext.Current.CancellationToken);
@@ -125,7 +125,7 @@ public sealed class PostgresRoundScoreRepositoryTests : DatabaseTests
 		var player = await CreatePlayerAsync("stored_team_rs");
 		var score = await CreateScoreAsync(player, 1000, First);
 
-		await RoundScores.RecordAsync(new RoundScore { Score = score, Round = round, Team = GameTeam.Red },
+		await RoundScores.RecordAsync(new RoundScore(score, round, GameTeam.Red),
 			TestContext.Current.CancellationToken);
 
 		var rows = await StoredRows.ReadAsync(ConnectionString, "select team from round_scores where score_id = @id",
@@ -142,7 +142,7 @@ public sealed class PostgresRoundScoreRepositoryTests : DatabaseTests
 		var player = await CreatePlayerAsync("owning_rs");
 		var score = await CreateScoreAsync(player, 1000, First);
 
-		await RoundScores.RecordAsync(new RoundScore { Score = score, Round = round, Team = null },
+		await RoundScores.RecordAsync(new RoundScore(score, round, null),
 			TestContext.Current.CancellationToken);
 
 		var listed = await RoundScores.ListAsync(round, TestContext.Current.CancellationToken);
@@ -159,7 +159,7 @@ public sealed class PostgresRoundScoreRepositoryTests : DatabaseTests
 		var player = await CreatePlayerAsync("other_rs");
 		var score = await CreateScoreAsync(player, 1000, First);
 
-		await RoundScores.RecordAsync(new RoundScore { Score = score, Round = other, Team = null },
+		await RoundScores.RecordAsync(new RoundScore(score, other, null),
 			TestContext.Current.CancellationToken);
 
 		var listed = await RoundScores.ListAsync(round, TestContext.Current.CancellationToken);

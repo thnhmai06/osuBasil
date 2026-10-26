@@ -56,28 +56,24 @@ public sealed class RoomFixture
 	/// <returns>The score.</returns>
 	public static RoundScore Score(int id, Round round)
 	{
-		return new RoundScore
+		var score = new ScoreRecord
 		{
-			Score = new ScoreRecord
-			{
-				Id = id,
-				Value = new ScoreData(
-					null,
-					round.BeatmapHash,
-					GameMode.Standard,
-					GameMods.NoMod,
-					new HitCounts(1, 0, 0, 0, 0, 0),
-					1000,
-					10,
-					0,
-					Grade.A,
-					true,
-					false,
-					DateTimeOffset.UnixEpoch)
-			},
-			Round = round,
-			Team = null
+			Id = id,
+			Value = new ScoreData(
+				null,
+				round.BeatmapHash,
+				GameMode.Standard,
+				GameMods.NoMod,
+				new HitCounts(1, 0, 0, 0, 0, 0),
+				1000,
+				10,
+				0,
+				Grade.A,
+				true,
+				false,
+				DateTimeOffset.UnixEpoch)
 		};
+		return new RoundScore(score, round, null);
 	}
 
 	/// <summary>Gets the room the roles act in.</summary>

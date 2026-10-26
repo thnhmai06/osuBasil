@@ -6,56 +6,36 @@ namespace Basil.Domain.Multiplayer;
 /// <summary>The relation between a round and a score played in it, with the team it was set for.</summary>
 public sealed class RoundScore : IEquatable<RoundScore>
 {
-	/// <summary>Gets the stored score.</summary>
-	public required ScoreRecord Score { get; init; }
-
-	/// <summary>Gets the round the score was played in.</summary>
+	/// <summary>Creates the relation between a round and a score played in it.</summary>
+	/// <param name="score">The stored score.</param>
+	/// <param name="round">The round the score was played in.</param>
+	/// <param name="team">The team the score was set for, or <see langword="null" /> in a round without teams.</param>
 	/// <exception cref="ArgumentException">
-	///     The team already assigned does not match the round: a team-versus round requires a team, and a
-	///     head-to-head round forbids one.
+	///     The team does not match the round: a team-versus round requires a team, and a head-to-head round forbids one.
 	/// </exception>
-	public required Round Round
-	{
-		get;
-		init
-		{
-			field = value;
-			if (_teamAssigned) ValidateTeam(value, _team, nameof(value));
-		}
-	}
-
-	/// <summary>Gets the team the score was set for, or <see langword="null" /> in a round without teams.</summary>
-	/// <exception cref="ArgumentException">
-	///     The team presence does not match the round: a team-versus round requires a team, and a
-	///     head-to-head round forbids one. The check runs once both the round and the team are set,
-	///     whichever is set first.
-	/// </exception>
-	public required GameTeam? Team
-	{
-		get => _team;
-		init
-		{
-			_team = value;
-			_teamAssigned = true;
-			if (Round is not null) ValidateTeam(Round, value, nameof(value));
-		}
-	}
-
-	private GameTeam? _team;
-	private bool _teamAssigned;
-
-	private static void ValidateTeam(Round round, GameTeam? team, string paramName)
+	public RoundScore(ScoreRecord score, Round round, GameTeam? team)
 	{
 		var isTeamMode = round.Settings.TeamType.IsTeamMode();
-		var isBelongToTeam = team is not null;
-
-		if (isTeamMode != isBelongToTeam)
+		if (isTeamMode != (team is not null))
 			throw new ArgumentException(
 				isTeamMode
 					? "All scores must belong to a team in team-versus mode."
 					: "All scores must not belong to a team in head-to-head mode.",
-				paramName);
+				nameof(team));
+
+		Score = score;
+		Round = round;
+		Team = team;
 	}
+
+	/// <summary>Gets the stored score.</summary>
+	public ScoreRecord Score { get; }
+
+	/// <summary>Gets the round the score was played in.</summary>
+	public Round Round { get; }
+
+	/// <summary>Gets the team the score was set for, or <see langword="null" /> in a round without teams.</summary>
+	public GameTeam? Team { get; }
 
 	/// <summary>Determines whether another entry refers to the same stored score.</summary>
 	/// <param name="other">The entry to compare with, or <see langword="null" />.</param>

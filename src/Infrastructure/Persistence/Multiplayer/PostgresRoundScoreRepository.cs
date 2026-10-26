@@ -40,12 +40,7 @@ internal sealed class PostgresRoundScoreRepository(
 		var result = new List<RoundScore>(rows.Count);
 		foreach (var row in rows)
 			if (await scores.GetAsync(row.ScoreId, cancellationToken) is { } score)
-				result.Add(new RoundScore
-				{
-					Score = score,
-					Round = round,
-					Team = row.Team is { } team ? (GameTeam)team : null
-				});
+				result.Add(new RoundScore(score, round, row.Team is { } team ? (GameTeam)team : null));
 		return result;
 	}
 }
