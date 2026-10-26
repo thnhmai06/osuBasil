@@ -71,6 +71,11 @@ everyone. Private never changes who can join: whoever knows the room's id can st
 the password if it has one, subject to the usual `RoomJoin` and ban rules. There is no invite-only mode, and an
 invitation only tells a user where the room is.
 
+The view restriction covers everything the match owns: the match record, its rounds, its events, its report and the
+relation that says which scores were played in which round. It does not cover independent resources the room only links
+to: a score with its replay and leaderboards is read by its own id as before, and beatmaps and users stay as they are.
+`ScopedLobby.CanViewAsync` is the single gate for the match-owned data.
+
 A match listing is narrowed to its asker with `MatchQuery.LimitTo(effective, viewer)`, and a single match is checked with
 `ScopedLobby.CanViewAsync`; both apply the same rule (`IMatchRepository.IsVisibleToAsync` is the check for one match).
 

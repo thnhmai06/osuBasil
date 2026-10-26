@@ -56,7 +56,8 @@ Repository contracts, byte storages and the memory-first model. Moved out of `AG
   before using it, `UserQuery.Parse(text).LimitTo(effective)`: `LimitTo` sets each state the asker may not see to
   what a user without that permission sees (`Deleted = false`, `Hidden = false`); `MatchQuery.LimitTo(effective, viewer)` sets
   `VisibleTo` to the viewer when they lack `RoomViewPrivate`, so private matches are listed only when the viewer took part in
-  them or manages them (`private=1` then returns just those). A query used
+  them or manages them (`private=1` then returns just those). A caller that serves match-owned data (the match, its rounds, events, report or round-score relation) to a
+  user must check `ScopedLobby.CanViewAsync` first; the match repositories are plain storage and do not gate. A query used
   without `LimitTo` shows everything, so only the server's own work (a scan, startup recovery) skips it.
 * **Memory is the truth; the database is a copy of it.** Memory is where the server works; the database only keeps
   a record of what was done. **No operation waits for the database unless its result comes from the database**
