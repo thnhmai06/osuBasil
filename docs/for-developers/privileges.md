@@ -106,7 +106,7 @@ The operator console is also **planned**. It is the explicit operator entry poin
 * [`UserRestriction.cs`](../../src/Domain/Users/UserRestriction.cs): restriction target, permissions and time window
 * [`User.cs`](../../src/Application/Runtime/Users/User.cs): effective permission checks
 * [`ScopedUser.cs`](../../src/Application/Runtime/Users/ScopedUser.cs), [`ScopedUserRestrictions.cs`](../../src/Application/Runtime/Users/ScopedUserRestrictions.cs): account actions and restrictions
-* [`UserResult.cs`](../../src/Application/Runtime/Users/UserResult.cs): account-operation outcomes
+* [`UserOutcome.cs`](../../src/Application/Runtime/Users/UserOutcome.cs): account-operation outcomes
 * [`RestrictionHandler.cs`](../../src/Infrastructure/Runtime/Sessions/RestrictionHandler.cs): infrastructure reaction to restriction events
 * [`UserRecord.cs`](../../src/Domain/Users/UserRecord.cs): persistent account identity and normalized name
 

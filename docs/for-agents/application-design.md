@@ -53,8 +53,8 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   Runtime handlers, startup, the bot's announcements, public reads).
   Services keep only application logic that needs no live object (account checks, beatmapset indexing, score
   validation and recording); coordination between objects belongs to the object that is acted on
-  (`UserRegistry` for logins and connections, `Lobby` for what happens across rooms, `BanchoConnection` for a
-  player's score and anticheat report, `Beatmapsets` for imports). Five
+  (`UserRegistry` for logins and connections, `Lobby` for what happens across rooms, `ScoreSubmitter` for a
+  game client's score, `AnticheatReporter` for its anticheat flags, `Beatmapsets` for imports). Five
   anti-patterns to reject in review: a **God Actor** that gathers every behaviour (every former service ending up
   as `Server.X`); **service-centric procedural
   design** (a service takes an object and does its behaviour for it); **permission plumbing** (rights passed
@@ -66,7 +66,8 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
 * **Persistence holds the ports; runtime objects and registries live in Runtime.** Application.Persistence holds
   the persistent ports (repositories, byte storages), query records and paging. Runtime objects (`Room`, `RoomSlot`, `User`,
   connections and channels), registries (`UserRegistry`, `GeneralChannelRegistry`) and their scoped
-  behaviour live in Application.Runtime, as public classes. Persistence
+  behaviour live in Application.Runtime, as public classes; the online user and its registry are in `Users/`, and
+  its connections with their context are in `Connections/`. Persistence
   never decides a business rule, emits an event, calls a service or starts a timer. A state change and its
   consequences belong to the object that owns the state.
 * **Services have no public contract.** A service is an `internal` class of Application.Capabilities that Runtime calls
@@ -83,7 +84,7 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   actor, and it calls a service only for the part that needs no live object.
 * **Objects get their collaborators through a context.** An object takes a `…Context` record of ports (clock,
   event publisher, repositories, the ports of the objects it works with: `RoomContext`, `UserContext`, `LobbyContext`,
-  `ChannelContext`, `SessionContext`, `BeatmapsetContext`, `ServerContext`) when it is created. The context, the
+  `ChannelContext`, `ConnectionContext`, `BeatmapsetContext`, `ServerContext`) when it is created. The context, the
   object's constructor are `internal`; the registration builds them in factory lambdas, because the container only
   sees public constructors (a root object that two others need, such as the user registry for a session, is reached
   through a deferred port to avoid a construction cycle). A service class that the container creates by itself
@@ -141,19 +142,18 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   (truth in Domain) is a forwarding property (`Room.Name => Match.Name`).
 * **A user is one `User`; each place they log in from is a `Connection`.**
   `User` (sealed) represents the account and, while it is online, everywhere they connect from: it holds what is
-  shared (`AwayMessage`, `PmChannel`, the active `Restrictions`) plus its connections as child data, keyed by
+  shared (`AwayMessage`, the active `Restrictions`) plus its connections as child data, keyed by
   `ConnectionType` (`Bancho`, `Tourney`, `Irc`, `Api`), with typed accessors (`Bancho`, `Irc`, `Tourneys`,
   `Apis`); only `Tourney` and `Api` allow several connections per user, a rule the user registry owns.
   `Connection` is an abstract class (`User`, `Record`, `Login`, `Token`, `IsOpen`, `Type`) with `BanchoConnection`,
   `TourneyConnection`, `IrcConnection`, `ApiConnection`; each holds only what exists for that kind of client
-  (`BanchoConnection.Status`, `BanchoConnection.SpectatorChannel`). Rooms, channels and the lobby
-  hold connections, not users' sessions. Owned parts (a user's `PmChannel`, a connection's
-  `SpectatorChannel`) are created and destroyed with their owner; they are not relations.
+  (`BanchoConnection.Status`). Rooms, channels and the lobby hold connections, not users' sessions.
+  Chat keeps a PM channel per online user; it is opened when the user is first needed and closed when they go offline.
   Spectating is a relation on the spectated osu! client (`BanchoConnection.Spectators`), changed through
   `host.ScopeTo(by).SpectateAsync()` (what only an osu! client has lives under `BanchoConnection`:
-  spectating and its presence status), which keeps the client's spectator channel in step (the first spectator brings the
-  host in, the last one out) the way the room service keeps a room's channel; the channel never stands for who is
-  spectating.
+  spectating and its presence status). Chat keeps the client's spectator channel in step by reacting to the
+  spectator events (the first spectator brings the host in, the last one out), so membership of that channel is
+  eventually consistent with them; the channel never stands for who is spectating.
 * **Identify by the basis object**, not its id (`Room` by `Match`, `GeneralChannel` by `Name`). Runtime
   objects that can be recreated with the same user or name compare **by reference**: a connection
   is one login, a `User` instance is one online period (`UserRegistry.Online` holds it; an offline account gets a transient instance that is never registered), a
@@ -191,8 +191,8 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   acting operation publishes its event, and the shared event queue delivers it to the peer's handler
   (`ScoreSubmitted` → `ScoreHandler` → `Room.ReceiveScore`, `AnticheatPlayerFlagged` reaches clients that
   watch it, such as BasilBot). An object calls another directly only for a clear ownership relation or to keep
-  a rule that must hold within the same operation: objects use storage ports; a room manages its own channel, a
-  session its PM channel and a connection its spectator channel; a room tells the lobby when it empties or fills;
+  a rule that must hold within the same operation: objects use storage ports; a room manages its own channel, Chat
+  a user's PM channel and each client's spectator channel; a room tells the lobby when it empties or fills;
   logging in opens the connection; deleting a user closes their connections at once, a security rule that
   must not wait for a handler.
 * **Application publishes events and handles the ones that concern its own module; Infrastructure only ships them**
@@ -233,12 +233,12 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   `#`) and `GeneralChannelData` (`Topic`, `ReadPrivileges`, `WritePrivileges`, `AutoJoin`, `Visible`); messages
   are the record `Message`. Application: abstract `Channel` (`Name`, `Topic`, members, IRC convention) with
   `GeneralChannel` (wraps the record), `RoomChannel`, `SpectatorChannel`, `PmChannel`; each names itself
-  (`#mp_5`, `#spec_7`, the owner's name for a PM channel). **Each channel lives on its owner**:
-  `GeneralChannelRegistry` holds the general channels, a `Room` its room channel, a `User` its PM
-  channel, a `BanchoConnection` its spectator channel. The channel service decides, per kind of channel, who
-  may read and write. A private message is a post into the recipient's PM channel. Access follows osu!: a
-  user may join a channel (including `/join` over IRC) only if an osu! client doing the matching in-game
-  action would have access. General channels are created, configured and deleted at runtime through
+  (`#mp_5`, `#spec_7`, the owner's name for a PM channel). **Each channel lives with the object that manages
+  it**: `GeneralChannelRegistry` holds the general channels, a `Room` its room channel, `PmChannels` the PM
+  channel of each online user, `SpectatorChannels` the spectator channel of each watched `BanchoConnection`. Each kind of
+  channel decides who may read and write it. A private message is a post into the recipient's PM channel.
+  Access follows osu!: a user may join a channel (including `/join` over IRC) only if an osu! client doing the
+  matching in-game action would have access. General channels are created, configured and deleted at runtime through
   `Server` (`ServerConfigure`); configuring a channel removes the members who may no longer read it.
 * **Assets are referred to by `ContentReference`** (Domain), never by `string` or `Uri`: either the relative path of a
   file the server stores under its data directory (`Menu/Banners/x.png`, valid on every machine) or an absolute

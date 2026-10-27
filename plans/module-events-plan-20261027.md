@@ -478,7 +478,8 @@ Phase D1 follow-ups after the advisor's review:
   round that ended in the same transition after publishing). Both are pinned by `RoomScoringTests` and were mutation
   checked.
 - A score on a beatmap the server does not have is accepted when the lobby says a round of an open room still awaits
-  it from the player (`IConnectionLobbyPort.AwaitsScore`): a completer who left is accepted, a decided round's late
+  it from the player (then `IConnectionLobbyPort.AwaitsScore`, now `IScoreBeatmapAcceptance.AcceptsUnknown`, implemented
+  by `Lobby`): a completer who left is accepted, a decided round's late
   score is rejected as `UnknownBeatmap`. Known limit (D16 as written): a late score of a decided round on the same
   beatmap as the next round is taken by the next round if it awaits that player, because the match is by player and
   beatmap only.
@@ -497,24 +498,42 @@ Phase D1 follow-ups after the advisor's review:
   Sessions, Servers and Anticheat is debt until their target edges are decided (A2 answered: each is its own module).
 - Cut so far: the connection and restriction handlers were split by the module that owns each reaction
   (`Chat.ConnectionChannelHandler`, `Multiplayer.ConnectionLobbyHandler`, `Multiplayer.RestrictionLobbyHandler`;
-  `Sessions.ConnectionHandler`/`RestrictionHandler` keep spectating), with their tests moved.
-- Debt that remains, and why it needs a decision or a larger change: `Common -> Sessions` (the `Scoped` base names its
-  actor's `Connection`); `Multiplayer -> Chat` (the room owns its channel: moving it to events changes every reader of
-  `Room.Channel` in Bot, hosts and tests, and makes room-channel membership eventually consistent, since handler order
-  across modules is not guaranteed); `Users <-> Sessions`, `Sessions -> Chat/Multiplayer/Scores/Anticheat` (the
-  connection's ports to the lobby, score submission and spectator channel; the score submission action should move
-  to a Scores object); `Servers -> *` (the server object reaches every module).
+  `Connections.ConnectionHandler`/`RestrictionHandler` keep spectating), with their tests moved.
+- Sessions debt cut (2026-10-27): `2f53ddfd` moves score submission to `ScoreSubmitter.ScopeTo(connection).SubmitAsync`
+  and drops the score members of the connection and `ConnectionContext` (Sessions -> Scores); `b35d0671` moves the report
+  to `AnticheatReporter.Report(player, flags)` and removes `IConnectionLobbyPort` (Sessions -> Anticheat and
+  Sessions -> Multiplayer); `a0765cfd` moves `SpectatorChannel` into `Chat.SpectatorChannels`, kept in step by the
+  handlers for `UserSpectatorJoined`, `UserSpectatorLeft` and `UserConnectionClosed` (Sessions -> Chat).
+- Debt cut afterwards (2026-10-28, uncommitted): `Chat.RoomChannels` keeps a room's channel (handlers for the lobby and
+  room events; `Of(room)` synchronises membership under the room lock and never resurrects a closed room's channel;
+  Multiplayer -> Chat); `Multiplayer.Rooms.RoomBlocks` answers block questions from `IRelationshipRepository`
+  (Users -> Multiplayer, `User.HasBlockedAsync` removed); `Chat.PmChannels` keeps a private-message channel per online
+  user, synchronised at `Of(user)` so a whisper right after a login is delivered (Users -> Chat); then the online-user
+  types (`User`, `UserRegistry`, `ScopedUser*`, `UserContext`, `LoginResult`, `UserOutcome`) moved out of `Users/` into
+  the sessions area (Users -> Sessions). Channel membership of room and PM channels is eventually consistent with the events.
+  The debt list in `ModuleGraphTests` is empty.
+- Sessions dissolved (2026-10-27, uncommitted, owner decision): "Sessions" is a technique, not a module, so the
+  folder and namespace are gone. Pure move, no behaviour change. The online-user types (`User`, `UserContext`,
+  `UserRegistry`, `ScopedUser*`, `LoginResult`, `UserOutcome`, `UserEvents`) live in `Users/`; the connections
+  (`Connection` and its kinds, `ScopedBanchoConnection`, `ConnectionContext`, `ConnectionRules`, `ConnectionOutcome`,
+  `PlayerStatus`, the connection and restriction handlers) live in `Connections/`. `Users` and `Connections` use each
+  other and are accepted as one cluster (the one target cycle); the `ModuleGraphTests` areas are `Users` and
+  `Connections` again with an empty debt list, and a new test rejects any other cycle between areas.
+- **Known deviations:** `AnticheatAnnouncer` finds the room when it handles the event, not when the flag is reported,
+  so a player who leaves the room within the event queue's latency is not announced in that room's chat; the flag is
+  still published and recorded. The planned fix is a Multiplayer-side handler.
 - Not done in D2: chat decoupling, the other cycles, the project split (Phase E).
 
 Target edges proposed 2026-10-27 and encoded in `ModuleGraphTests` (Auth has no Runtime namespace; it is Persistence and
-Capabilities only): Users and Beatmaps depend on nothing; Sessions -> Users; Anticheat -> Sessions, Users;
-Scores -> Sessions, Users, Beatmaps; Multiplayer -> Sessions, Users, Beatmaps, Scores; Chat -> Sessions, Users,
-Multiplayer; Servers -> every module, and nothing references Servers. 11 debt edges remain: an actor interface in Common
-(cuts Beatmaps -> Sessions/Users), Chat reacting to room events (Multiplayer -> Chat), the anticheat event naming the
-player only (Anticheat -> Multiplayer), score submission as a Scores object scoped to the connection plus spectator
-channels in Chat (Sessions -> Scores/Chat/Multiplayer/Anticheat), and the online user (with its connections) moving to
-Sessions (Users -> Chat/Multiplayer/Sessions).
+Capabilities only): Beatmaps depends on nothing; Users and Connections use each other (the one accepted cycle: a user
+holds its connections, a connection knows its user); Anticheat -> Connections, Users;
+Scores -> Connections, Users, Beatmaps; Multiplayer -> Connections, Users, Beatmaps, Scores; Chat -> Connections, Users,
+Multiplayer; Servers -> every module, and nothing references Servers. Of the 11 debt edges listed when the ratchet was
+written, the actor interface in Common (Beatmaps -> Connections/Users), the anticheat event naming the player only
+(Anticheat -> Multiplayer) and the four Connections edges (Scores, Anticheat, Multiplayer, Chat) are cut; four remain:
+Chat reacting to room events (Multiplayer -> Chat) and the online user (with its connections) moving to Connections
+(Users -> Chat/Multiplayer/Connections).
 
-Next: cut the debt edges one by one, then E (module projects).
+Next: E (module projects).
 
 Later on 2026-10-27 the owner asked whether `IEventQueue` was still needed: the queue is (order, handlers never run under a room lock), the interface is not. `EventQueue` now belongs to Application (`RunAsync`, internal `Enqueue`/`DrainAsync`); `EventDispatcher` only calls `RunAsync`. Tests hold events by not running the queue, so `TestApplication` needs no stub.

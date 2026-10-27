@@ -12,10 +12,10 @@ This page describes the application model and its authorization rules. It does n
 |---|---|---|---|
 | General | `GeneralChannel` | `GeneralChannelRegistry` | Connections whose effective privileges satisfy the channel's read requirement |
 | Room | `RoomChannel` | The `Room` | Room participants and users allowed to observe the room |
-| Spectator | `SpectatorChannel` | The spectated `BanchoConnection` | The host and its spectators |
-| Private message | `PmChannel` | The recipient's `User` | The recipient's connections, except osu!tourney connections |
+| Spectator | `SpectatorChannel` | `SpectatorChannels`, one per watched `BanchoConnection` | The host and its spectators |
+| Private message | `PmChannel` | `PmChannels`, one per online user | The recipient's connections, except osu!tourney connections |
 
-General channels use configured names such as `#osu`; room and spectator channels use `#mp_{room id}` and `#spec_{user id}`. A private-message channel uses its owner's name without `#`. The room channel opens and closes with its room. The `User` owns the away message and private-message settings shared across its connections.
+General channels use configured names such as `#osu`; room and spectator channels use `#mp_{room id}` and `#spec_{user id}`. A private-message channel uses its owner's name without `#`. The room channel opens and closes with its room. A spectator channel is opened for a watched client when its first spectator joins and closed when that client closes. Chat opens a private-message channel when the online user is first needed and closes it when the user goes offline. The `User` owns the away message and private-message settings shared across its connections.
 
 ## Read and write rules
 
@@ -74,7 +74,7 @@ The recipient's block and friends-only setting both apply. A sender with effecti
 
 ## Events and session behavior
 
-Membership and message events belong to the channel that changed, not to the sender's `User`. A private-message event can carry both the posted message and an away reply. Spectating is owned by the spectated osu! connection: its first spectator brings it into the spectator channel, and its last departing spectator removes it. Closing that connection closes its spectator channel.
+Membership and message events belong to the channel that changed, not to the sender's `User`. A private-message event can carry both the posted message and an away reply. Spectating is a relation on the spectated osu! connection, and Chat keeps that client's spectator channel in step by reacting to the spectator events: the first spectator brings the host into the channel, the last departing spectator removes it, and closing the connection closes the channel. Channel membership therefore follows the events and is eventually consistent with them.
 
 These ownership rules keep channel membership on the object being joined and avoid a second, competing list of channels on the user.
 
@@ -101,10 +101,10 @@ BasilBot is online with a permanent `User` and a `BotConnection` that the server
 * [`ScopedGeneralChannel.cs`](../../src/Application/Runtime/Chat/ScopedGeneralChannel.cs): general-channel configuration and deletion
 * [`ChannelOutcome.cs`](../../src/Application/Runtime/Chat/ChannelOutcome.cs): operation outcomes
 * [`GeneralChannelRegistry.cs`](../../src/Application/Runtime/Chat/GeneralChannelRegistry.cs): general-channel ownership and the automatic joins and parts
-* [`GeneralChannel.cs`](../../src/Application/Runtime/Chat/GeneralChannel.cs), [`PmChannel.cs`](../../src/Application/Runtime/Chat/PmChannel.cs): general and private-message channels; [`GeneralChannelRecord.cs`](../../src/Domain/Chat/GeneralChannelRecord.cs): the stored general channel
-* [`RoomChannel.cs`](../../src/Application/Runtime/Multiplayer/Rooms/RoomChannel.cs), [`SpectatorChannel.cs`](../../src/Application/Runtime/Sessions/SpectatorChannel.cs): room and spectator channels
-* [`User.cs`](../../src/Application/Runtime/Users/User.cs), [`ScopedUser.cs`](../../src/Application/Runtime/Users/ScopedUser.cs): the user's online state (PM channel, away message, connections)
-* [`ScopedBanchoConnection.cs`](../../src/Application/Runtime/Sessions/ScopedBanchoConnection.cs): spectator operations
+* [`GeneralChannel.cs`](../../src/Application/Runtime/Chat/GeneralChannel.cs), [`PmChannel.cs`](../../src/Application/Runtime/Chat/PmChannel.cs), [`PmChannels.cs`](../../src/Application/Runtime/Chat/PmChannels.cs): general and private-message channels, and the private-message channel of each online user; [`GeneralChannelRecord.cs`](../../src/Domain/Chat/GeneralChannelRecord.cs): the stored general channel
+* [`RoomChannel.cs`](../../src/Application/Runtime/Multiplayer/Rooms/RoomChannel.cs), [`SpectatorChannel.cs`](../../src/Application/Runtime/Chat/SpectatorChannel.cs), [`SpectatorChannels.cs`](../../src/Application/Runtime/Chat/SpectatorChannels.cs): room and spectator channels, and the spectator channel of each watched client
+* [`User.cs`](../../src/Application/Runtime/Users/User.cs), [`ScopedUser.cs`](../../src/Application/Runtime/Users/ScopedUser.cs): the user's online state (away message, connections)
+* [`ScopedBanchoConnection.cs`](../../src/Application/Runtime/Connections/ScopedBanchoConnection.cs): spectator operations
 * [`Room.cs`](../../src/Application/Runtime/Multiplayer/Rooms/Room.cs), [`RoomCountdown.cs`](../../src/Application/Runtime/Multiplayer/Rooms/RoomCountdown.cs): room ownership and countdown
 
 ## See also

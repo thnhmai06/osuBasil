@@ -205,15 +205,16 @@ A client never receives both `PART` and `QUIT` for one disconnect. The joining c
 * **One model, thin transport.** Rules live on the acted-on object and see the actor's permissions, so a rule is added
   once and holds on every transport.
 * **Connections instead of session subtypes.** Gameplay state lives on `BanchoConnection` and the room seat; what all
-  connections share (identity, permissions, away message, private-message channel) lives on `User`.
+  connections share (identity, permissions, away message) lives on `User`; Chat keeps a private-message channel per
+  online user.
 * **BasilBot is a user.** The bot is account 1 with a `BotConnection`, so it appears in `WHO`, `NAMES` and `WHOIS`
   like any user. It has no socket, no idle timeout and no login, and it is not a player.
 
 ## Related code
 
-* [`Connection.cs`](../../src/Application/Runtime/Sessions/Connection.cs): connection kinds, including `IrcConnection` and `BotConnection`
-* [`ConnectionRules.cs`](../../src/Application/Runtime/Sessions/ConnectionRules.cs): one-per-kind rule and idle timeouts
-* [`UserEvents.cs`](../../src/Application/Runtime/Sessions/UserEvents.cs): connection opened and closed events
+* [`Connection.cs`](../../src/Application/Runtime/Connections/Connection.cs): connection kinds, including `IrcConnection` and `BotConnection`
+* [`ConnectionRules.cs`](../../src/Application/Runtime/Connections/ConnectionRules.cs): one-per-kind rule and idle timeouts
+* [`UserEvents.cs`](../../src/Application/Runtime/Users/UserEvents.cs): connection opened and closed events
 * [`User.cs`](../../src/Application/Runtime/Users/User.cs), [`ScopedUser.cs`](../../src/Application/Runtime/Users/ScopedUser.cs): online user, away message
 * [`UserRegistry.cs`](../../src/Application/Runtime/Users/UserRegistry.cs): login, close, idle sweep, BasilBot's connection
 * [`Channel.cs`](../../src/Application/Runtime/Chat/Channel.cs), [`ScopedChannel.cs`](../../src/Application/Runtime/Chat/ScopedChannel.cs): membership, posting, recipients
