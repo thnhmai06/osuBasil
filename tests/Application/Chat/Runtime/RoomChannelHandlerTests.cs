@@ -23,6 +23,20 @@ public sealed class RoomChannelHandlerTests
 	}
 
 	[Fact]
+	public async Task Of_ForAClosedRoom_ReturnsAClosedChannelAndKeepsNone()
+	{
+		using var app = new TestApplication();
+		var setup = await RoomFixture.CreateAsync(app);
+		Assert.True((await setup.Room.ScopeTo(setup.Creator).CloseAsync(
+			TestContext.Current.CancellationToken)).IsOk);
+
+		var channel = app.RoomChannels.Of(setup.Room);
+
+		Assert.True(channel.IsClosed);
+		Assert.Null(app.RoomChannels.Find(setup.Room));
+	}
+
+	[Fact]
 	public async Task Handle_LobbyRoomClosed_ClosesAndForgetsTheChannel()
 	{
 		using var app = new TestApplication();
