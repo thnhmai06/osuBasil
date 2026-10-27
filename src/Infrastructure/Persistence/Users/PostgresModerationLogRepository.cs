@@ -23,18 +23,19 @@ internal sealed class PostgresModerationLogRepository(
 		var targetId = entry.Target.Id;
 		var reason = entry.Reason;
 		var timestamp = entry.Timestamp.ToUniversalTime();
-		_ = writer.AppendAsync(Root.User(entry.Target.Id), new WriteCommand(async (context, token) =>
-		{
-			context.ModerationLog.Add(new ModerationLogRow
+		_ = writer.AppendAsync(Root.User(entry.Target.Id),
+			new WriteCommand<UsersDbContext>(async (context, token) =>
 			{
-				Action = action,
-				ById = byId,
-				TargetId = targetId,
-				Reason = reason,
-				Timestamp = timestamp
-			});
-			await context.SaveChangesAsync(token);
-		}));
+				context.ModerationLog.Add(new ModerationLogRow
+				{
+					Action = action,
+					ById = byId,
+					TargetId = targetId,
+					Reason = reason,
+					Timestamp = timestamp
+				});
+				await context.SaveChangesAsync(token);
+			}));
 		return Task.CompletedTask;
 	}
 
@@ -46,7 +47,7 @@ internal sealed class PostgresModerationLogRepository(
 		var minTimestamp = within?.Min?.ToUniversalTime();
 		var maxTimestamp = within?.Max?.ToUniversalTime();
 
-		var result = await reader.ReadAsync(async context =>
+		var result = await reader.ReadAsync(async (UsersDbContext context) =>
 		{
 			var query = context.ModerationLog.Where(row => row.TargetId == liveTarget.Id);
 

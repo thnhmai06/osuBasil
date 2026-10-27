@@ -51,23 +51,23 @@ internal sealed class PostgresCredentialRepository(DatabaseReader reader, Databa
 
 	protected override async Task<StoredCredential?> LoadAsync(int key)
 	{
-		var row = await Reader.ReadAsync(context => context.Credentials
+		var row = await Reader.ReadAsync((AuthDbContext context) => context.Credentials
 			.Where(c => c.UserId == key)
 			.FirstOrDefaultAsync());
 		return row is null ? null : new StoredCredential(key, row.PasswordHash);
 	}
 
-	protected override WriteCommand EraseCommand(int key)
+	protected override WriteCommand<AuthDbContext> EraseCommand(int key)
 	{
-		return new WriteCommand((context, token) => context.Credentials
+		return new WriteCommand<AuthDbContext>((context, token) => context.Credentials
 			.Where(c => c.UserId == key)
 			.ExecuteDeleteAsync(token));
 	}
 
-	protected override WriteCommand SaveCommand(StoredCredential item)
+	protected override WriteCommand<AuthDbContext> SaveCommand(StoredCredential item)
 	{
 		var row = new CredentialRow { UserId = item.UserId, PasswordHash = item.Hash };
-		return new WriteCommand((context, token) =>
+		return new WriteCommand<AuthDbContext>((context, token) =>
 			context.UpsertAsync(row, stored => stored.UserId == row.UserId, token));
 	}
 

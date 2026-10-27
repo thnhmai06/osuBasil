@@ -29,7 +29,7 @@ internal sealed class PostgresRestrictionRepository(
 			EndsAt = data.EndsAt
 		};
 
-		var id = await Writer.WriteAsync(Root.User(user.Id), async (context, token) =>
+		var id = await Writer.WriteAsync(Root.User(user.Id), async (UsersDbContext context, CancellationToken token) =>
 		{
 			var row = new RestrictionRow
 			{
@@ -70,7 +70,7 @@ internal sealed class PostgresRestrictionRepository(
 		var liveUser = await users.GetAsync(user.Id, cancellationToken) ?? user;
 		return await _byUser.GetOrLoadAsync(liveUser.Id, liveUser, async () =>
 		{
-			var rows = await Reader.ReadAsync(context => context.Restrictions
+			var rows = await Reader.ReadAsync((UsersDbContext context) => context.Restrictions
 				.Where(row => row.UserId == liveUser.Id)
 				.OrderBy(row => row.StartsAt)
 				.ThenBy(row => row.Id)
@@ -100,7 +100,7 @@ internal sealed class PostgresRestrictionRepository(
 
 	protected override async Task<UserRestriction?> LoadAsync(int key)
 	{
-		var row = await Reader.ReadAsync(context => context.Restrictions
+		var row = await Reader.ReadAsync((UsersDbContext context) => context.Restrictions
 			.Where(row => row.Id == key)
 			.FirstOrDefaultAsync(CancellationToken.None));
 		if (row is null)
@@ -110,10 +110,11 @@ internal sealed class PostgresRestrictionRepository(
 		return user is null ? null : ToRestriction(row, user);
 	}
 
-	protected override WriteCommand SaveCommand(UserRestriction restriction)
+	protected override WriteCommand<UsersDbContext> SaveCommand(UserRestriction restriction)
 	{
 		var row = ToRow(restriction);
-		return new WriteCommand((context, token) => context.ReplaceAsync(row, stored => stored.Id == row.Id, token));
+		return new WriteCommand<UsersDbContext>((context, token) =>
+			context.ReplaceAsync(row, stored => stored.Id == row.Id, token));
 	}
 
 	private static ImmutableList<UserRestriction> Replace(ImmutableList<UserRestriction> current,

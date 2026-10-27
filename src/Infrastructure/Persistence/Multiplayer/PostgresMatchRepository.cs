@@ -22,7 +22,7 @@ internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWri
 		var startedAt = value.StartedAt.ToUniversalTime();
 		var endedAt = value.EndedAt?.ToUniversalTime();
 		var isPrivate = value.IsPrivate;
-		var id = await Writer.WriteAsync(Root.Server, async (context, token) =>
+		var id = await Writer.WriteAsync(Root.Server, async (MultiplayerDbContext context, CancellationToken token) =>
 		{
 			var row = new MatchRow
 			{
@@ -57,7 +57,7 @@ internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWri
 	public async Task<Page<MatchRecord>> ListAsync(MatchQuery query, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
-		var (total, rows) = await Reader.ReadAsync(async context =>
+		var (total, rows) = await Reader.ReadAsync(async (MultiplayerDbContext context) =>
 		{
 			var matching = Filter(context, context.Matches, query);
 			var count = await matching.CountAsync(cancellationToken);
@@ -81,7 +81,7 @@ internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWri
 	public async Task<bool> IsVisibleToAsync(MatchRecord match, UserRecord viewer,
 		CancellationToken cancellationToken = default)
 	{
-		return await Reader.ReadAsync(context =>
+		return await Reader.ReadAsync((MultiplayerDbContext context) =>
 			WhereVisibleTo(context, context.Matches.Where(row => row.Id == match.Id), viewer.Id)
 				.AnyAsync(cancellationToken), cancellationToken);
 	}
@@ -105,13 +105,13 @@ internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWri
 
 	protected override async Task<MatchRecord?> LoadAsync(int key)
 	{
-		var row = await Reader.ReadAsync(context => context.Matches
+		var row = await Reader.ReadAsync((MultiplayerDbContext context) => context.Matches
 			.Where(row => row.Id == key)
 			.FirstOrDefaultAsync(CancellationToken.None));
 		return row is null ? null : await ToMatchAsync(row, CancellationToken.None);
 	}
 
-	protected override WriteCommand SaveCommand(MatchRecord match)
+	protected override WriteCommand<MultiplayerDbContext> SaveCommand(MatchRecord match)
 	{
 		var row = new MatchRow
 		{
@@ -122,11 +122,13 @@ internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWri
 			EndedAt = match.Value.EndedAt?.ToUniversalTime(),
 			IsPrivate = match.Value.IsPrivate
 		};
-		return new WriteCommand((context, token) => context.ReplaceAsync(row, stored => stored.Id == row.Id, token));
+		return new WriteCommand<MultiplayerDbContext>((context, token) =>
+			context.ReplaceAsync(row, stored => stored.Id == row.Id, token));
 	}
 
 	/// <summary>Narrows the matches to the ones a query asks for.</summary>
-	private static IQueryable<MatchRow> Filter(BasilDbContext context, IQueryable<MatchRow> matches, MatchQuery query)
+	private static IQueryable<MatchRow> Filter(MultiplayerDbContext context, IQueryable<MatchRow> matches,
+		MatchQuery query)
 	{
 		if (query.Ended is { } ended)
 			matches = ended ? matches.Where(row => row.EndedAt != null) : matches.Where(row => row.EndedAt == null);
@@ -138,7 +140,7 @@ internal sealed class PostgresMatchRepository(DatabaseReader reader, DatabaseWri
 	}
 
 	/// <summary>Keeps the public matches and the private ones the user took part in or manages.</summary>
-	private static IQueryable<MatchRow> WhereVisibleTo(BasilDbContext context, IQueryable<MatchRow> matches,
+	private static IQueryable<MatchRow> WhereVisibleTo(MultiplayerDbContext context, IQueryable<MatchRow> matches,
 		int viewer)
 	{
 		const int refAdded = (int)MatchEventType.RefAdded;

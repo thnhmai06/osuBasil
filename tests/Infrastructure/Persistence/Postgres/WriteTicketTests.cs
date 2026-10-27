@@ -1,4 +1,5 @@
 using Basil.Infrastructure.Persistence.Postgres;
+using Basil.Infrastructure.Persistence.Common;
 using Basil.Infrastructure.Persistence.Tests.Support;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
@@ -15,7 +16,8 @@ public sealed class WriteTicketTests(PersistenceFixture container) : DatabaseTes
 	[Fact]
 	public async Task A_write_the_caller_waits_for_leaves_a_ticket_with_it()
 	{
-		await Writer.WriteAsync(Root.Server, (_, _) => Task.CompletedTask, TestContext.Current.CancellationToken);
+		await Writer.WriteAsync<CommonDbContext>(Root.Server, (_, _) => Task.CompletedTask,
+			TestContext.Current.CancellationToken);
 
 		var rows = await StoredRows.ReadAsync(ConnectionString, "select id from write_tickets",
 			new Dictionary<string, object?>(), TestContext.Current.CancellationToken);

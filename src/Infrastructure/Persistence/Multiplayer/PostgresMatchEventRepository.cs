@@ -30,11 +30,12 @@ internal sealed class PostgresMatchEventRepository(
 			TargetId = matchEvent.Target?.Id,
 			Detail = matchEvent.Detail
 		};
-		var appended = writer.AppendAsync(Root.Match(row.MatchId), new WriteCommand(async (context, token) =>
-		{
-			context.MatchEvents.Add(row);
-			await context.SaveChangesAsync(token);
-		}));
+		var appended = writer.AppendAsync(Root.Match(row.MatchId),
+			new WriteCommand<MultiplayerDbContext>(async (context, token) =>
+			{
+				context.MatchEvents.Add(row);
+				await context.SaveChangesAsync(token);
+			}));
 		_byMatch.Change(matchEvent.Match.Id, matchEvent.Match, list => Insert(list, matchEvent), appended);
 		return Task.CompletedTask;
 	}
@@ -46,7 +47,7 @@ internal sealed class PostgresMatchEventRepository(
 		var liveMatch = await matches.GetAsync(match.Id, cancellationToken) ?? match;
 		return await _byMatch.GetOrLoadAsync(liveMatch.Id, liveMatch, async () =>
 		{
-			var rows = await reader.ReadAsync(context => context.MatchEvents
+			var rows = await reader.ReadAsync((MultiplayerDbContext context) => context.MatchEvents
 				.Where(row => row.MatchId == liveMatch.Id)
 				.OrderBy(row => row.Timestamp)
 				.ThenBy(row => row.Id)

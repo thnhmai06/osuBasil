@@ -31,11 +31,12 @@ internal sealed class PostgresLoginRepository(DatabaseWriter writer, DatabaseRea
 			DiskSignatureHash = client?.Fingerprint.DiskSignatureHash.HashValue
 		};
 
-		_ = writer.AppendAsync(Root.User(login.User.Id), new WriteCommand(async (context, token) =>
-		{
-			context.Logins.Add(row);
-			await context.SaveChangesAsync(token);
-		}));
+		_ = writer.AppendAsync(Root.User(login.User.Id),
+			new WriteCommand<AuthDbContext>(async (context, token) =>
+			{
+				context.Logins.Add(row);
+				await context.SaveChangesAsync(token);
+			}));
 		return Task.CompletedTask;
 	}
 
@@ -43,7 +44,7 @@ internal sealed class PostgresLoginRepository(DatabaseWriter writer, DatabaseRea
 	public async ValueTask<Page<LoginEntry>> ListAsync(UserRecord user, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
-		var (total, rows) = await reader.ReadAsync(async context =>
+		var (total, rows) = await reader.ReadAsync(async (AuthDbContext context) =>
 		{
 			var query = context.Logins.Where(row => row.UserId == user.Id);
 			var count = await query.CountAsync(cancellationToken);

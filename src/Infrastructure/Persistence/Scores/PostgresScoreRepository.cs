@@ -26,13 +26,14 @@ internal sealed class PostgresScoreRepository(
 		int id;
 		try
 		{
-			id = await Writer.WriteAsync(Root.User(data.UserId ?? 0), async (context, token) =>
-			{
-				var row = ToRow(0, data);
-				context.Scores.Add(row);
-				await context.SaveChangesAsync(token);
-				return row.Id;
-			}, cancellationToken);
+			id = await Writer.WriteAsync(Root.User(data.UserId ?? 0),
+				async (ScoresDbContext context, CancellationToken token) =>
+				{
+					var row = ToRow(0, data);
+					context.Scores.Add(row);
+					await context.SaveChangesAsync(token);
+					return row.Id;
+				}, cancellationToken);
 		}
 		catch (Exception exception) when (exception.IsUniqueViolation())
 		{
@@ -57,7 +58,7 @@ internal sealed class PostgresScoreRepository(
 	public async Task<Page<ScoreRecord>> ListAsync(ScoreQuery scoreQuery, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
-		var (total, rows) = await Reader.ReadAsync(async context =>
+		var (total, rows) = await Reader.ReadAsync(async (ScoresDbContext context) =>
 		{
 			var matching = BuildFilter(context.Scores, scoreQuery);
 			// A player's best play is the highest score; the earlier play and then the lower id win a tie.
@@ -121,16 +122,17 @@ internal sealed class PostgresScoreRepository(
 
 	protected override async Task<ScoreRecord?> LoadAsync(int key)
 	{
-		var row = await Reader.ReadAsync(context => context.Scores
+		var row = await Reader.ReadAsync((ScoresDbContext context) => context.Scores
 			.Where(row => row.Id == key)
 			.FirstOrDefaultAsync(CancellationToken.None));
 		return row is null ? null : ToScore(row);
 	}
 
-	protected override WriteCommand SaveCommand(ScoreRecord score)
+	protected override WriteCommand<ScoresDbContext> SaveCommand(ScoreRecord score)
 	{
 		var row = ToRow(score.Id, score.Value);
-		return new WriteCommand((context, token) => context.ReplaceAsync(row, stored => stored.Id == row.Id, token));
+		return new WriteCommand<ScoresDbContext>((context, token) =>
+			context.ReplaceAsync(row, stored => stored.Id == row.Id, token));
 	}
 
 	/// <summary>Makes the row that stores a score, with the values it has now; the id is 0 for a score not stored yet.</summary>

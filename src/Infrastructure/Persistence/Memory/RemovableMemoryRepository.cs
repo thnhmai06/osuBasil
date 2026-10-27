@@ -13,7 +13,7 @@ internal abstract class RemovableMemoryRepository<TKey, T>(DatabaseReader reader
 	private readonly ConcurrentDictionary<TKey, Task> _removing = new();
 
 	/// <summary>Makes the change that deletes the item stored under a key.</summary>
-	protected abstract WriteCommand EraseCommand(TKey key);
+	protected abstract IDatabaseCommand EraseCommand(TKey key);
 
 	/// <inheritdoc />
 	protected override bool IsRemoving(TKey key)

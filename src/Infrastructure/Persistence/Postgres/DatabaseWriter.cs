@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Basil.Infrastructure.Persistence.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -87,9 +88,9 @@ internal sealed class DatabaseWriter(
 	///     A task that completes once the state is committed and fails when the database refuses it; callers that only
 	///     record a change need not wait.
 	/// </returns>
-	public Task SaveAsync(Root root, object identity, WriteCommand command)
+	public Task SaveAsync(Root root, object identity, IDatabaseCommand command)
 	{
-		var pending = new PendingTransaction(identity, command, null, false);
+		var pending = new PendingTransaction(identity, command, false, false);
 		return Enqueue(root, identity, pending).Pending.Done.Task;
 	}
 
@@ -101,10 +102,10 @@ internal sealed class DatabaseWriter(
 	///     A task that completes once the write is committed and fails when the database refuses it; a refusal is logged,
 	///     so callers that only record a change need not wait.
 	/// </returns>
-	public Task AppendAsync(Root root, WriteCommand command)
+	public Task AppendAsync(Root root, IDatabaseCommand command)
 	{
 		var identity = new object();
-		var pending = new PendingTransaction(identity, null, context => command.Run(context, _abandon.Token), true);
+		var pending = new PendingTransaction(identity, command, true, true);
 		return Enqueue(root, identity, pending).Pending.Done.Task;
 	}
 
@@ -113,13 +114,14 @@ internal sealed class DatabaseWriter(
 	///     own.
 	/// </summary>
 	/// <remarks>The token cancels it only while it waits for its turn; once it runs, it runs to its result.</remarks>
-	public async Task<T> WriteAsync<T>(Root root, Func<BasilDbContext, CancellationToken, Task<T>> operation,
-		CancellationToken cancellationToken = default)
+	public async Task<T> WriteAsync<TContext, T>(Root root,
+		Func<TContext, CancellationToken, Task<T>> operation, CancellationToken cancellationToken = default)
+		where TContext : DbContext, IDatabaseContext<TContext>, IWriteTicketContext
 	{
 		T result = default!;
 		var identity = new object();
-		var pending = new PendingTransaction(identity, null,
-			async context => result = await operation(context, _abandon.Token), false);
+		var command = new WriteCommand<TContext>(async (context, token) => result = await operation(context, token));
+		var pending = new PendingTransaction(identity, command, true, false);
 		var queue = Enqueue(root, identity, pending).Queue;
 		await using var registration = cancellationToken.Register(() =>
 		{
@@ -137,10 +139,11 @@ internal sealed class DatabaseWriter(
 	///     Runs a write that gives no value, after the earlier writes of its root, in a transaction of its own.
 	/// </summary>
 	/// <remarks>The token cancels it only while it waits for its turn; once it runs, it runs to its result.</remarks>
-	public Task WriteAsync(Root root, Func<BasilDbContext, CancellationToken, Task> operation,
+	public Task WriteAsync<TContext>(Root root, Func<TContext, CancellationToken, Task> operation,
 		CancellationToken cancellationToken = default)
+		where TContext : DbContext, IDatabaseContext<TContext>, IWriteTicketContext
 	{
-		return WriteAsync(root, async (context, token) =>
+		return WriteAsync<TContext, bool>(root, async (context, token) =>
 		{
 			await operation(context, token);
 			return true;
@@ -165,7 +168,7 @@ internal sealed class DatabaseWriter(
 			{
 				var reached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 				var identity = new object();
-				var pending = new PendingTransaction(identity, null, null, false, async () =>
+				var pending = new PendingTransaction(identity, null, false, false, async () =>
 				{
 					reached.TrySetResult();
 					await hold.Released.WaitAsync(_abandon.Token);
@@ -202,7 +205,7 @@ internal sealed class DatabaseWriter(
 				if (queue.Retired)
 					continue;
 				if (pendingTransaction.Command is not null && queue.Pending.TryGetValue(identity, out var queued) &&
-				    queued.Command is not null && queued.Run is null)
+				    queued.Command is not null && !queued.IsTryOperation)
 				{
 					queued.Command = pendingTransaction.Command;
 					return (queue, queued);
@@ -269,7 +272,7 @@ internal sealed class DatabaseWriter(
 					await _connections.WaitAsync(_abandon.Token);
 					try
 					{
-						if (pendingTransaction.Run is null)
+						if (!pendingTransaction.IsTryOperation)
 							await RunSnapshotAsync(pendingTransaction);
 						else
 							await RunTryOpAsync(pendingTransaction);
@@ -309,7 +312,7 @@ internal sealed class DatabaseWriter(
 
 				if (failException is not null)
 				{
-					if (pendingTransaction.Run is null || pendingTransaction.LogsRefusal)
+					if (!pendingTransaction.IsTryOperation || pendingTransaction.LogsRefusal)
 						logger.LogError(failException, "A write of {Root} for {Identity} was refused and not stored",
 							root, pendingTransaction.Identity);
 					pendingTransaction.Done.TrySetException(failException);
@@ -326,8 +329,9 @@ internal sealed class DatabaseWriter(
 
 	private async Task RunSnapshotAsync(PendingTransaction pendingTransaction)
 	{
-		await using var context = database.CreateUnconfirmedContext();
-		await pendingTransaction.Command!.Run(context, _abandon.Token);
+		var command = pendingTransaction.Command!;
+		await using var context = command.CreateContext(database, confirmed: false);
+		await command.RunAsync(context, _abandon.Token);
 	}
 
 	private async Task RunTryOpAsync(PendingTransaction pendingTransaction)
@@ -336,33 +340,34 @@ internal sealed class DatabaseWriter(
 		var committing = false;
 		try
 		{
-			await using var context = database.CreateConfirmedContext();
+			var command = pendingTransaction.Command!;
+			await using var context = command.CreateContext(database, confirmed: true);
 			await using var transaction = await context.Database.BeginTransactionAsync(_abandon.Token);
 
 			// The ticket commits with the write, so it tells afterwards whether the write was stored.
-			context.WriteTickets.Add(new WriteTicketRow { Id = ticket, CreatedAt = timeProvider.GetUtcNow() });
+			command.Tickets(context).Add(new WriteTicketRow { Id = ticket, CreatedAt = timeProvider.GetUtcNow() });
 			await context.SaveChangesAsync(_abandon.Token);
 
-			await pendingTransaction.Run!(context);
+			await command.RunAsync(context, _abandon.Token);
 			committing = true;
 			await transaction.CommitAsync(_abandon.Token);
 		}
 		catch (Exception exception) when (committing && exception.IsConnectionException())
 		{
-			if (await WasCommittedAsync(ticket))
+			if (await WasCommittedAsync(pendingTransaction.Command!, ticket))
 				return;
 			throw;
 		}
 	}
 
-	private async Task<bool> WasCommittedAsync(Guid ticket)
+	private async Task<bool> WasCommittedAsync(IDatabaseCommand command, Guid ticket)
 	{
 		var delay = FirstRetryDelay;
 		while (true)
 			try
 			{
-				await using var context = database.CreateConfirmedContext();
-				return await context.WriteTickets.AnyAsync(row => row.Id == ticket, _abandon.Token);
+				await using var context = command.CreateContext(database, confirmed: true);
+				return await command.Tickets(context).AnyAsync(row => row.Id == ticket, _abandon.Token);
 			}
 			catch (Exception exception) when (exception.IsEnvironmentException())
 			{
@@ -406,7 +411,7 @@ internal sealed class DatabaseWriter(
 	public async Task ForgetOldTicketsAsync(CancellationToken cancellationToken = default)
 	{
 		var oldest = timeProvider.GetUtcNow() - TimeSpan.FromDays(1);
-		await using var context = database.CreateUnconfirmedContext();
+		await using var context = database.CreateUnconfirmedContext<CommonDbContext>();
 		await context.WriteTickets.Where(row => row.CreatedAt < oldest).ExecuteDeleteAsync(cancellationToken);
 	}
 
@@ -439,15 +444,15 @@ internal sealed class DatabaseWriter(
 
 	private sealed class PendingTransaction(
 		object identity,
-		WriteCommand? command,
-		Func<BasilDbContext, Task>? run,
+		IDatabaseCommand? command,
+		bool isTryOperation,
 		bool logsRefusal,
 		Func<Task>? hold = null)
 	{
 		public bool Started;
 		public object Identity { get; } = identity;
-		public WriteCommand? Command { get; set; } = command;
-		public Func<BasilDbContext, Task>? Run { get; } = run;
+		public IDatabaseCommand? Command { get; set; } = command;
+		public bool IsTryOperation { get; } = isTryOperation;
 		public bool LogsRefusal { get; } = logsRefusal;
 		public Func<Task>? Hold { get; } = hold;
 		public TaskCompletionSource Done { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);

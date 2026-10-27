@@ -1,6 +1,3 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
-
 namespace Basil.Infrastructure.Persistence.Postgres;
 
 /// <summary>
@@ -11,15 +8,4 @@ internal sealed class WriteTicketRow
 {
 	public Guid Id { get; set; }
 	public DateTimeOffset CreatedAt { get; set; }
-}
-
-internal sealed class WriteTicketRowConfiguration : IEntityTypeConfiguration<WriteTicketRow>
-{
-	public void Configure(EntityTypeBuilder<WriteTicketRow> builder)
-	{
-		builder.ToTable("write_tickets");
-		builder.HasKey(row => row.Id);
-		builder.Property(row => row.Id).ValueGeneratedNever();
-		builder.HasIndex(row => row.CreatedAt);
-	}
 }

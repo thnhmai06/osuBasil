@@ -63,7 +63,7 @@ internal sealed class PostgresUserStatsRepository(DatabaseReader reader, Databas
 	protected override async Task<UserStats?> LoadAsync((int UserId, GameMode Mode) key)
 	{
 		var mode = (int)key.Mode;
-		var row = await Reader.ReadAsync(context => context.UserStats
+		var row = await Reader.ReadAsync((ScoresDbContext context) => context.UserStats
 			.Where(row => row.UserId == key.UserId && row.Mode == mode)
 			.FirstOrDefaultAsync(CancellationToken.None));
 		return row is null
@@ -78,14 +78,14 @@ internal sealed class PostgresUserStatsRepository(DatabaseReader reader, Databas
 			};
 	}
 
-	protected override WriteCommand SaveCommand(UserStats stats)
+	protected override WriteCommand<ScoresDbContext> SaveCommand(UserStats stats)
 	{
 		var userId = stats.UserId;
 		var mode = (int)stats.Mode;
 		var totalScore = stats.TotalScore;
 		var rankedScore = stats.RankedScore;
 		var playCount = stats.PlayCount;
-		return new WriteCommand(async (context, token) =>
+		return new WriteCommand<ScoresDbContext>(async (context, token) =>
 		{
 			var updated = await context.UserStats
 				.Where(s => s.UserId == userId && s.Mode == mode)

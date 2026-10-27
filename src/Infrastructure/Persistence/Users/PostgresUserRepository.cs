@@ -31,7 +31,7 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 		var row = ToRow(0, data);
 		try
 		{
-			await Writer.WriteAsync(Root.Server, async (context, token) =>
+			await Writer.WriteAsync(Root.Server, async (UsersDbContext context, CancellationToken token) =>
 			{
 				context.Users.Add(row);
 				await context.SaveChangesAsync(token);
@@ -60,7 +60,8 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 		try
 		{
 			await Writer.WriteAsync(Root.User(id),
-				(context, token) => context.UpsertAsync(row, stored => stored.Id == id, token), cancellationToken);
+				(UsersDbContext context, CancellationToken token) =>
+					context.UpsertAsync(row, stored => stored.Id == id, token), cancellationToken);
 		}
 		catch (Exception exception) when (exception.IsUniqueViolation())
 		{
@@ -105,11 +106,12 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 		var id = live.Id;
 		try
 		{
-			await Writer.WriteAsync(Root.User(id), async (context, token) => await context.Users
-				.Where(row => row.Id == id)
-				.ExecuteUpdateAsync(set => set
-					.SetProperty(row => row.Name, name)
-					.SetProperty(row => row.NormalizedName, normalized), token), cancellationToken);
+			await Writer.WriteAsync(Root.User(id), async (UsersDbContext context, CancellationToken token) =>
+				await context.Users
+					.Where(row => row.Id == id)
+					.ExecuteUpdateAsync(set => set
+						.SetProperty(row => row.Name, name)
+						.SetProperty(row => row.NormalizedName, normalized), token), cancellationToken);
 		}
 		catch (Exception exception) when (exception.IsUniqueViolation())
 		{
@@ -135,7 +137,7 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 		if (_byName.TryGetValue(normalized, out var known) && known.Value.NormalizedName == normalized)
 			return known;
 
-		var foundId = await Reader.ReadAsync(context => context.Users
+		var foundId = await Reader.ReadAsync((UsersDbContext context) => context.Users
 			.Where(row => row.NormalizedName == normalized && row.DeletedAt == null)
 			.Select(row => (int?)row.Id)
 			.FirstOrDefaultAsync(cancellationToken), cancellationToken);
@@ -146,7 +148,7 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 	public async Task<Page<UserRecord>> ListAsync(UserQuery query, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
-		var (total, rows) = await Reader.ReadAsync(async context =>
+		var (total, rows) = await Reader.ReadAsync(async (UsersDbContext context) =>
 		{
 			var matching = Filter(context.Users, query);
 			return (await matching.CountAsync(cancellationToken),
@@ -179,18 +181,20 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 
 	protected override async Task<UserRecord?> LoadAsync(int key)
 	{
-		var row = await Reader.ReadAsync(context => context.Users.Where(candidate => candidate.Id == key)
+		var row = await Reader.ReadAsync((UsersDbContext context) => context.Users
+			.Where(candidate => candidate.Id == key)
 			.FirstOrDefaultAsync());
 		return row is null ? null : ToUser(row);
 	}
 
-	protected override WriteCommand SaveCommand(UserRecord user)
+	protected override WriteCommand<UsersDbContext> SaveCommand(UserRecord user)
 	{
 		var id = user.Id;
 		var country = (int)user.Value.Country;
 		var permissions = (long)user.Value.Permissions;
 		var deletedAt = user.Value.DeletedAt?.ToUniversalTime();
-		return new WriteCommand((context, token) => context.Users.Where(row => row.Id == id)
+		return new WriteCommand<UsersDbContext>((context, token) => context.Users
+			.Where(row => row.Id == id)
 			.ExecuteUpdateAsync(set => set
 				.SetProperty(row => row.Country, country)
 				.SetProperty(row => row.Permissions, permissions)

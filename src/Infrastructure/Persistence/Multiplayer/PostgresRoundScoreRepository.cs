@@ -29,7 +29,7 @@ internal sealed class PostgresRoundScoreRepository(
 		};
 		_pending[row.ScoreId] = roundScore;
 		var queued = writer.SaveAsync(Root.Match(row.MatchId), (GetType(), row.ScoreId),
-			new WriteCommand((context, token) =>
+			new WriteCommand<MultiplayerDbContext>((context, token) =>
 				context.UpsertAsync(row, stored => stored.ScoreId == row.ScoreId, token)));
 		_ = queued.ContinueWith(task => _pending.TryRemove(row.ScoreId, out _), TaskScheduler.Default);
 		return Task.FromResult(roundScore);
@@ -38,7 +38,7 @@ internal sealed class PostgresRoundScoreRepository(
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<RoundScore>> ListAsync(Round round, CancellationToken cancellationToken = default)
 	{
-		var rows = await reader.ReadAsync(context => context.RoundScores
+		var rows = await reader.ReadAsync((MultiplayerDbContext context) => context.RoundScores
 			.Where(rs => rs.MatchId == round.Match.Id && rs.RoundNumber == round.Index)
 			.OrderBy(rs => rs.ScoreId)
 			.ToListAsync(cancellationToken), cancellationToken);

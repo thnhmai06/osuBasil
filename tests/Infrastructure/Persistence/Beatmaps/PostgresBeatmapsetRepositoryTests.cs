@@ -2,6 +2,7 @@ using Basil.Application.Persistence.Beatmaps;
 using Basil.Application.Persistence.Common;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Common;
+using Basil.Infrastructure.Persistence.Beatmaps;
 using Basil.Infrastructure.Persistence.Postgres;
 using Basil.Infrastructure.Persistence.Tests.Support;
 using Npgsql;
@@ -329,9 +330,6 @@ public sealed class PostgresBeatmapsetRepositoryTests(PersistenceFixture contain
 		Assert.Equal(22, Assert.Single(page.Items).Id);
 	}
 
-	/// <summary>Commits one beatmapset as a new set.</summary>
-	/// <param name="data">The set as it is stored.</param>
-	/// <returns>The stored set.</returns>
 	[Fact]
 	public async Task A_commit_is_stored_after_the_writes_queued_before_it_for_the_set_it_replaces()
 	{
@@ -366,13 +364,17 @@ public sealed class PostgresBeatmapsetRepositoryTests(PersistenceFixture contain
 		}
 
 		await commit;
-		await Get<DatabaseWriter>().WriteAsync(Root.Beatmapset(42), (_, _) => Task.CompletedTask,
+		await Get<DatabaseWriter>().WriteAsync<BeatmapsDbContext>(Root.Beatmapset(42),
+			(_, _) => Task.CompletedTask,
 			TestContext.Current.CancellationToken);
 		var rows = await StoredRows.ReadAsync(ConnectionString, "select version from beatmaps where hash = @hash",
 			new Dictionary<string, object?> { ["@hash"] = EasyHash.HashValue }, TestContext.Current.CancellationToken);
 		Assert.Equal("Easy renamed", Assert.Single(rows).Text("version"));
 	}
 
+	/// <summary>Commits one beatmapset as a new set.</summary>
+	/// <param name="data">The set as it is stored.</param>
+	/// <returns>The stored set.</returns>
 	private async Task<IReadOnlyList<BeatmapsetRecord>> CommitAsync(BeatmapsetData data)
 	{
 		return await Sets.CommitAsync(new BeatmapsetChanges([new BeatmapsetChange(null, data)], []),
