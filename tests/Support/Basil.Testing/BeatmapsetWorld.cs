@@ -1,8 +1,8 @@
 using System.Runtime.CompilerServices;
 using System.Text;
-using Basil.Application.Capabilities.Beatmaps;
-using Basil.Application.Persistence.Beatmaps;
-using Basil.Common.Application;
+using Basil.Application.Beatmaps.Capabilities;
+using Basil.Application.Beatmaps.Persistence;
+using Basil.Application.Common;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Common;
 using Basil.Domain.Content;

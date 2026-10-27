@@ -1,6 +1,6 @@
 using System.Text;
-using Basil.Application.Runtime.Chat;
-using Basil.Application.Runtime.Connections;
+using Basil.Application.Chat.Runtime;
+using Basil.Application.Users.Connections;
 using Basil.Bot.Chat;
 using Basil.Bot.Commands;
 using Basil.Bot.Tests.Support;

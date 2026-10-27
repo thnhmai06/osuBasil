@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<RootNamespace>Basil.Composition</RootNamespace>
+		<NoWarn>$(NoWarn);MSG0005</NoWarn>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Application\Common\Basil.Application.Common.csproj"/>
+		<ProjectReference Include="..\Infrastructure\Common\Basil.Infrastructure.Common.csproj"/>
+		<ProjectReference Include="..\Domain\Basil.Domain.csproj"/>
+		<ProjectReference Include="..\Application\Auth\Basil.Application.Auth.csproj"/>
+		<ProjectReference Include="..\Application\Beatmaps\Basil.Application.Beatmaps.csproj"/>
+		<ProjectReference Include="..\Application\Content\Basil.Application.Content.csproj"/>
+		<ProjectReference Include="..\Application\Users\Basil.Application.Users.csproj"/>
+		<ProjectReference Include="..\Application\Anticheat\Basil.Application.Anticheat.csproj"/>
+		<ProjectReference Include="..\Application\Scores\Basil.Application.Scores.csproj"/>
+		<ProjectReference Include="..\Application\Multiplayer\Basil.Application.Multiplayer.csproj"/>
+		<ProjectReference Include="..\Application\Chat\Basil.Application.Chat.csproj"/>
+		<ProjectReference Include="..\Application\Servers\Basil.Application.Servers.csproj"/>
+		<ProjectReference Include="..\Infrastructure\Auth\Basil.Infrastructure.Auth.csproj"/>
+		<ProjectReference Include="..\Infrastructure\Beatmaps\Basil.Infrastructure.Beatmaps.csproj"/>
+		<ProjectReference Include="..\Infrastructure\Content\Basil.Infrastructure.Content.csproj"/>
+		<ProjectReference Include="..\Infrastructure\Users\Basil.Infrastructure.Users.csproj"/>
+		<ProjectReference Include="..\Infrastructure\Scores\Basil.Infrastructure.Scores.csproj"/>
+		<ProjectReference Include="..\Infrastructure\Multiplayer\Basil.Infrastructure.Multiplayer.csproj"/>
+		<ProjectReference Include="..\Infrastructure\Chat\Basil.Infrastructure.Chat.csproj"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Basil.Composition.Tests"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Mediator.Abstractions"/>
+		<PackageReference Include="Mediator.SourceGenerator" PrivateAssets="all"/>
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.Options"/>
+	</ItemGroup>
+</Project>

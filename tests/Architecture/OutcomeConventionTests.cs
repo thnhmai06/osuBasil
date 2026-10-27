@@ -9,16 +9,14 @@ namespace Basil.ArchitectureTests;
 /// </summary>
 public class OutcomeConventionTests
 {
-	private static readonly Assembly RuntimeAssembly = Assembly.Load("Basil.Application.Runtime");
-
 	private static IEnumerable<Type> OutcomeEnums()
 	{
-		return RuntimeAssembly.GetTypes().Where(type =>
+		return ModuleAssemblies.Applications.SelectMany(assembly => assembly.GetTypes()).Where(type =>
 			type is { IsEnum: true, IsPublic: true } && type.Name.EndsWith("Outcome", StringComparison.Ordinal));
 	}
 
 	[Fact]
-	public void OutcomeEnums_AreFoundInRuntime_PositiveControl()
+	public void OutcomeEnums_AreFoundInTheModules_PositiveControl()
 	{
 		Assert.True(OutcomeEnums().Count() >= 6);
 	}

@@ -1,5 +1,5 @@
 using System.Collections.Concurrent;
-using Basil.Application.Runtime.Multiplayer.Rooms;
+using Basil.Application.Multiplayer.Runtime.Rooms;
 
 namespace Basil.Bot.Commands.Mp;
 

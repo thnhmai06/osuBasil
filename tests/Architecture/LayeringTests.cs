@@ -6,37 +6,38 @@ using TestResult = NetArchTest.Rules.TestResult;
 namespace Basil.ArchitectureTests;
 
 /// <summary>
-///     Enforces the dependency direction of the solution:
-///     <c>Domain &lt;- Application.Persistence &lt;- Application.Capabilities &lt;- Application.Runtime</c>, with
-///     each Infrastructure project implementing the Application project of the same name and the hosts and the bot
-///     on top.
+///     Enforces the dependency direction inside and around the module projects: <c>Domain</c> knows no other project,
+///     the <c>Persistence</c> namespaces of a module Application project know neither its capabilities nor its runtime,
+///     the capabilities do not see the runtime, the Application projects do not see Infrastructure, and the
+///     Infrastructure projects do not see the runtime, the hosts or the bot. Which project may reference which is the
+///     business of <see cref="ModuleGraphTests" />.
 /// </summary>
 /// <remarks>The hosts are not covered yet: they are migrated after the tests.</remarks>
 public class LayeringTests
 {
-	private const string ApplicationRuntime = "Basil.Application.Runtime";
-	private const string ApplicationCapabilities = "Basil.Application.Capabilities";
-	private const string ApplicationPersistence = "Basil.Application.Persistence";
-	private const string Infrastructure = "Basil.Infrastructure";
 	private const string Host = "Basil.Host";
 	private const string Protocol = "Basil.Protocol";
 	private const string Bot = "Basil.Bot";
+	private const string Composition = "Basil.Composition";
+	private const string Persistence = @"^Basil\.Application\.\w+\.Persistence";
+	private const string Capabilities = @"^Basil\.Application\.\w+\.Capabilities";
+	private const string Runtime = @"^Basil\.Application\.\w+\.(Runtime|Users|Connections)";
+	private const string InfrastructureRuntime = @"^Basil\.Infrastructure\.\w+\.Runtime";
 	private static readonly Assembly DomainAssembly = typeof(AssemblyMarker).Assembly;
 	private static readonly Assembly ProtocolBancho = typeof(Protocol.Bancho.AssemblyMarker).Assembly;
 	private static readonly Assembly ProtocolIrc = typeof(Protocol.Irc.AssemblyMarker).Assembly;
-	private static readonly Assembly PersistenceAssembly = Assembly.Load(ApplicationPersistence);
-	private static readonly Assembly CapabilitiesAssembly = Assembly.Load(ApplicationCapabilities);
-	private static readonly Assembly RuntimeAssembly = Assembly.Load(ApplicationRuntime);
-	private static readonly Assembly InfrastructurePersistence = Assembly.Load("Basil.Infrastructure.Persistence");
-	private static readonly Assembly InfrastructureCapabilities = Assembly.Load("Basil.Infrastructure.Capabilities");
-	private static readonly Assembly InfrastructureRuntime = Assembly.Load("Basil.Infrastructure.Runtime");
 	private static readonly Assembly BotAssembly = Assembly.Load(Bot);
+
+	private static readonly string[] ModuleRoots =
+		ModuleAssemblies.Modules.SelectMany(module => new[] { $"Basil.Application.{module}", $"Basil.Infrastructure.{module}" })
+			.Concat(["Basil.Application.Common", "Basil.Infrastructure.Common"]).ToArray();
 
 	[Fact]
 	public void Domain_DependsOnNoOtherProjectOrFramework()
 	{
-		AssertNoDependency(DomainAssembly, "Basil.Application", Infrastructure, Host, Protocol, Bot,
-			"Microsoft.AspNetCore", "Microsoft.EntityFrameworkCore", "Npgsql", "Dapper");
+		AssertNoDependency(DomainAssembly,
+			[..ModuleRoots, Composition, Host, Protocol, Bot, "Microsoft.AspNetCore", "Microsoft.EntityFrameworkCore",
+				"Npgsql", "Dapper"]);
 	}
 
 	[Theory]
@@ -45,26 +46,34 @@ public class LayeringTests
 	public void Protocol_DependsOnNoOtherProject(string protocol)
 	{
 		var assembly = protocol == "Bancho" ? ProtocolBancho : ProtocolIrc;
-		AssertNoDependency(assembly, "Basil.Domain", "Basil.Application", Infrastructure, Host, Bot);
+		AssertNoDependency(assembly, ["Basil.Domain", ..ModuleRoots, Composition, Host, Bot]);
 	}
 
 	[Fact]
-	public void ApplicationPersistence_DependsOnlyOnDomain()
+	public void ApplicationPersistence_DoesNotSeeCapabilitiesRuntimeInfrastructureOrTheHosts()
 	{
-		AssertNoDependency(PersistenceAssembly, ApplicationRuntime, ApplicationCapabilities, Infrastructure, Host,
-			Protocol, Bot);
+		var result = Types.InAssemblies(ModuleAssemblies.Applications).That().ResideInNamespaceMatching(Persistence)
+			.ShouldNot().HaveDependencyOnAny([..CapabilityAndRuntimeNamespaces(), Composition]).GetResult();
+
+		Assert.True(result.IsSuccessful, FailureMessage(result));
 	}
 
 	[Fact]
 	public void ApplicationCapabilities_DoNotSeeRuntime()
 	{
-		AssertNoDependency(CapabilitiesAssembly, ApplicationRuntime, Infrastructure, Host, Protocol, Bot);
+		var result = Types.InAssemblies(ModuleAssemblies.Applications).That().ResideInNamespaceMatching(Capabilities)
+			.ShouldNot().HaveDependencyOnAny(RuntimeNamespaces()).GetResult();
+
+		Assert.True(result.IsSuccessful, FailureMessage(result));
 	}
 
 	[Fact]
 	public void ApplicationCapabilities_PublicTypesAreOnlyThePortsAndTheDataTheyExchange()
 	{
-		var publicTypes = CapabilitiesAssembly.GetTypes().Where(type => type is { IsPublic: true, IsNested: false })
+		var publicTypes = ModuleAssemblies.Applications.SelectMany(assembly => assembly.GetTypes())
+			.Where(type => type is { IsPublic: true, IsNested: false } &&
+			               type.Namespace is not null &&
+			               System.Text.RegularExpressions.Regex.IsMatch(type.Namespace, Capabilities))
 			.ToList();
 		var exchanged = new HashSet<Type>();
 		var pending = new Stack<Type>(publicTypes.Where(type => type.IsInterface)
@@ -94,52 +103,67 @@ public class LayeringTests
 	}
 
 	[Fact]
-	public void ApplicationRuntime_DoesNotDependOnInfrastructureHostsOrProtocol()
+	public void ApplicationProjects_DoNotDependOnInfrastructureHostsOrProtocol()
 	{
-		AssertNoDependency(RuntimeAssembly, Infrastructure, Host, Protocol, Bot);
+		foreach (var assembly in ModuleAssemblies.Applications)
+			AssertNoDependency(assembly,
+				["Basil.Infrastructure.Common", ..InfrastructureNamespaces(), Host, Protocol, Bot, Composition]);
 	}
 
 	[Fact]
 	public void ApplicationRuntime_DoesDependOnPersistence_PositiveControl()
 	{
-		var result = Types.InAssembly(RuntimeAssembly).Should().NotHaveDependencyOnAny(ApplicationPersistence)
-			.GetResult();
+		var result = Types.InAssemblies(ModuleAssemblies.Applications).That().ResideInNamespaceMatching(Runtime)
+			.Should().NotHaveDependencyOnAny(PersistenceNamespaces()).GetResult();
 
 		Assert.False(result.IsSuccessful);
 	}
 
-	[Theory]
-	[InlineData("Persistence")]
-	[InlineData("Capabilities")]
-	public void InfrastructurePortImplementations_DoNotSeeRuntimeHostsOrBot(string project)
+	[Fact]
+	public void InfrastructureProjects_OutsideTheirRuntimeFolderDoNotSeeRuntimeHostsOrBot()
 	{
-		var assembly = project == "Persistence" ? InfrastructurePersistence : InfrastructureCapabilities;
-		AssertNoDependency(assembly, ApplicationRuntime, Host, Protocol, Bot);
+		var result = Types.InAssemblies(ModuleAssemblies.Infrastructures).That()
+			.DoNotResideInNamespaceMatching(InfrastructureRuntime).ShouldNot()
+			.HaveDependencyOnAny([..RuntimeNamespaces(), Host, Protocol, Bot, Composition]).GetResult();
+
+		Assert.True(result.IsSuccessful, FailureMessage(result));
 	}
 
 	[Fact]
-	public void InfrastructurePersistence_DoesNotSeeCapabilities()
+	public void InfrastructureProjects_DoNotSeeCapabilitiesOutsideTheirOwnModule()
 	{
-		AssertNoDependency(InfrastructurePersistence, ApplicationCapabilities);
+		foreach (var assembly in ModuleAssemblies.Infrastructures.Where(assembly =>
+			         assembly.GetName().Name != "Basil.Infrastructure.Common"))
+		{
+			var module = assembly.GetName().Name!.Split('.')[1];
+			var others = ModuleAssemblies.Modules.Where(other => other != module)
+				.Select(other => $"Basil.{other}.");
+			AssertNoDependency(assembly, [..others]);
+		}
 	}
 
 	[Fact]
 	public void InfrastructureRuntime_DoesNotSeeCapabilitiesOrTheHosts()
 	{
-		AssertNoDependency(InfrastructureRuntime, ApplicationCapabilities, Host, Protocol);
+		var result = Types.InAssemblies(ModuleAssemblies.Infrastructures).That()
+			.ResideInNamespaceMatching(InfrastructureRuntime).ShouldNot()
+			.HaveDependencyOnAny(CapabilityNamespaces()).GetResult();
+
+		Assert.True(result.IsSuccessful, FailureMessage(result));
 	}
 
 	[Fact]
 	public void Bot_DoesNotSeeCapabilitiesInfrastructureOrTheHosts()
 	{
-		AssertNoDependency(BotAssembly, ApplicationCapabilities, Infrastructure, Host, Protocol);
+		AssertNoDependency(BotAssembly, [..CapabilityNamespaces(), "Basil.Infrastructure.Common", ..InfrastructureNamespaces(),
+			Host, Protocol, Composition]);
 	}
 
 	[Fact]
 	public void ApplicationRuntime_HasNoSessionNamedType()
 	{
-		var result = Types.InAssembly(RuntimeAssembly).That().ArePublic().Should().NotHaveNameMatching(".*Session$")
-			.GetResult();
+		var result = Types.InAssemblies(ModuleAssemblies.Applications).That().ResideInNamespaceMatching(Runtime)
+			.And().ArePublic().Should().NotHaveNameMatching(".*Session$").GetResult();
 
 		Assert.True(result.IsSuccessful, FailureMessage(result));
 	}
@@ -147,8 +171,8 @@ public class LayeringTests
 	[Fact]
 	public void ApplicationRuntime_HasNoPublicServiceContract()
 	{
-		var result = Types.InAssembly(RuntimeAssembly).That().AreInterfaces().And().ArePublic().Should()
-			.NotHaveNameMatching("^I.*Service$").GetResult();
+		var result = Types.InAssemblies(ModuleAssemblies.Applications).That().ResideInNamespaceMatching(Runtime)
+			.And().AreInterfaces().And().ArePublic().Should().NotHaveNameMatching("^I.*Service$").GetResult();
 
 		Assert.True(result.IsSuccessful, FailureMessage(result));
 	}
@@ -163,6 +187,35 @@ public class LayeringTests
 			.ToList();
 
 		Assert.True(offenders.Count == 0, "ConfigureAwait is not used: " + string.Join(", ", offenders));
+	}
+
+	private static string[] PersistenceNamespaces()
+	{
+		return ModuleAssemblies.Modules.Select(module => $"Basil.Application.{module}.Persistence").ToArray();
+	}
+
+	private static string[] CapabilityNamespaces()
+	{
+		return ModuleAssemblies.Modules.Select(module => $"Basil.Application.{module}.Capabilities").ToArray();
+	}
+
+	private static string[] RuntimeNamespaces()
+	{
+		return
+		[
+			..ModuleAssemblies.Modules.Select(module => $"Basil.Application.{module}.Runtime"),
+			"Basil.Application.Users.Users", "Basil.Application.Users.Connections"
+		];
+	}
+
+	private static string[] CapabilityAndRuntimeNamespaces()
+	{
+		return [..CapabilityNamespaces(), ..RuntimeNamespaces(), ..InfrastructureNamespaces(), Host, Protocol, Bot];
+	}
+
+	private static string[] InfrastructureNamespaces()
+	{
+		return ModuleAssemblies.Modules.Select(module => $"Basil.Infrastructure.{module}").ToArray();
 	}
 
 	private static string FindRepositoryRoot()

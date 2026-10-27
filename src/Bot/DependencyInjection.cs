@@ -1,6 +1,6 @@
-using Basil.Application.Runtime.Anticheat;
-using Basil.Application.Runtime.Chat;
-using Basil.Application.Runtime.Multiplayer.Events;
+using Basil.Application.Anticheat.Runtime;
+using Basil.Application.Chat.Runtime;
+using Basil.Application.Multiplayer.Runtime.Events;
 using Basil.Bot.Announcements;
 using Basil.Bot.Chat;
 using Basil.Bot.Commands;

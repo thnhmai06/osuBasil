@@ -1,8 +1,8 @@
-using Basil.Application.Persistence.Auth;
-using Basil.Common.Application;
-using Basil.Application.Persistence.Content;
-using Basil.Application.Persistence.Multiplayer;
-using Basil.Application.Persistence.Users;
+using Basil.Application.Auth.Persistence;
+using Basil.Application.Common;
+using Basil.Application.Content.Persistence;
+using Basil.Application.Multiplayer.Persistence;
+using Basil.Application.Users.Persistence;
 using Basil.Domain.Auth;
 using Basil.Domain.Common;
 using Basil.Domain.Moderation;

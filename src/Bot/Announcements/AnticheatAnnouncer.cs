@@ -1,9 +1,9 @@
-using Basil.Application.Runtime.Anticheat;
-using Basil.Application.Runtime.Chat;
-using Basil.Application.Runtime.Multiplayer;
-using Basil.Application.Runtime.Multiplayer.Rooms;
-using Basil.Application.Runtime.Servers;
-using Basil.Application.Runtime.Users;
+using Basil.Application.Anticheat.Runtime;
+using Basil.Application.Chat.Runtime;
+using Basil.Application.Multiplayer.Runtime;
+using Basil.Application.Multiplayer.Runtime.Rooms;
+using Basil.Application.Servers.Runtime;
+using Basil.Application.Users.Users;
 using Basil.Bot.Replies;
 using Basil.Domain.Bancho;
 using Basil.Domain.Users;

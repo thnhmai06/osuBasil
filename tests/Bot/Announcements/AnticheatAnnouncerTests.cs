@@ -1,5 +1,5 @@
-using Basil.Application.Runtime.Anticheat;
-using Basil.Application.Runtime.Chat;
+using Basil.Application.Anticheat.Runtime;
+using Basil.Application.Chat.Runtime;
 using Basil.Bot.Announcements;
 using Basil.Bot.Tests.Support;
 using Basil.Domain.Bancho;

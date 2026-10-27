@@ -1,5 +1,5 @@
-using Basil.Common.Application;
-using Basil.Application.Runtime.Multiplayer;
+using Basil.Application.Common;
+using Basil.Application.Multiplayer.Runtime;
 using Basil.Bot.Replies;
 
 namespace Basil.Bot.Commands.Mp;

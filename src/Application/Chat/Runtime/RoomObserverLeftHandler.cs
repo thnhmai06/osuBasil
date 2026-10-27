@@ -1,0 +1,17 @@
+using Basil.Application.Multiplayer.Runtime.Events;
+using Mediator;
+
+namespace Basil.Application.Chat.Runtime;
+
+/// <summary>Parts a room observer from the room's chat channel unless they manage the room.</summary>
+internal sealed class RoomObserverLeftHandler(RoomChannels channels) : INotificationHandler<RoomObserverLeft>
+{
+	/// <inheritdoc />
+	public ValueTask Handle(RoomObserverLeft @event, CancellationToken cancellationToken)
+	{
+		if (channels.Find(@event.Room) is { } channel && !@event.Room.Authority.IsManagedBy(@event.Observer.Record))
+			channel.ScopeTo(@event.Observer).Part();
+
+		return ValueTask.CompletedTask;
+	}
+}

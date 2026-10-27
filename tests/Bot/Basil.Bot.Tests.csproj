@@ -27,7 +27,6 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\Domain\Basil.Domain.csproj"/>
-		<ProjectReference Include="..\..\src\Application\Runtime\Basil.Application.Runtime.csproj"/>
 		<ProjectReference Include="..\..\src\Bot\Basil.Bot.csproj"/>
 		<ProjectReference Include="..\Support\Basil.Testing\Basil.Testing.csproj"/>
 	</ItemGroup>

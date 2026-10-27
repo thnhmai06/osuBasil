@@ -1,5 +1,5 @@
-using Basil.Application.Persistence.Content;
-using Basil.Application.Persistence.Users;
+using Basil.Application.Content.Persistence;
+using Basil.Application.Users.Persistence;
 using Basil.Bot.Commands.Mp;
 using Basil.Domain.Users;
 

@@ -5,9 +5,15 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\Common\Application\Basil.Common.Application.csproj"/>
+		<ProjectReference Include="..\Application\Common\Basil.Application.Common.csproj"/>
 		<ProjectReference Include="..\Domain\Basil.Domain.csproj"/>
-		<ProjectReference Include="..\Application\Runtime\Basil.Application.Runtime.csproj"/>
+		<ProjectReference Include="..\Application\Anticheat\Basil.Application.Anticheat.csproj"/>
+		<ProjectReference Include="..\Application\Beatmaps\Basil.Application.Beatmaps.csproj"/>
+		<ProjectReference Include="..\Application\Chat\Basil.Application.Chat.csproj"/>
+		<ProjectReference Include="..\Application\Multiplayer\Basil.Application.Multiplayer.csproj"/>
+		<ProjectReference Include="..\Application\Scores\Basil.Application.Scores.csproj"/>
+		<ProjectReference Include="..\Application\Servers\Basil.Application.Servers.csproj"/>
+		<ProjectReference Include="..\Application\Users\Basil.Application.Users.csproj"/>
 	</ItemGroup>
 
 	<ItemGroup>

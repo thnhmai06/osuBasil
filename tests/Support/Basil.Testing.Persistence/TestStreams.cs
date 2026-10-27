@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace Basil.Infrastructure.Persistence.Tests.Support;
+namespace Basil.Testing.Persistence;
 
 /// <summary>Builds the content streams the file storage tests hand to a storage.</summary>
 public static class TestStreams
