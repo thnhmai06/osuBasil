@@ -61,7 +61,7 @@ public sealed class Server
 		var bot = await Context.Users.GetAsync(BasilBot.Id, cancellationToken);
 		if (bot is null || channel.IsClosed) return false;
 
-		channel.PostMessage(bot, text, notice, Context.Session.Clock.GetUtcNow(), null);
+		channel.PostMessage(bot, text, notice, Context.Connections.Clock.GetUtcNow(), null);
 		return true;
 	}
 
@@ -144,7 +144,7 @@ public sealed class Server
 	{
 		if (string.IsNullOrEmpty(text)) return 0;
 
-		var context = Context.Session;
+		var context = Context.Connections;
 		var recipients = (to is null
 				? context.Registry.OpenBanchoClients()
 				: to.Select(context.Registry.OpenBanchoClient).OfType<BanchoConnection>())

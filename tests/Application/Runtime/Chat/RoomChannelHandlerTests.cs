@@ -146,7 +146,7 @@ public sealed class RoomChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_RoomObserverJoined_AddsTheObserverAndRoomObserverLeftPartsThem()
+	public async Task Handle_RoomObserverJoined_AddsTheObserver()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
@@ -159,11 +159,26 @@ public sealed class RoomChannelHandlerTests
 		var joined = Assert.Single(app.RoomEvents.Events.OfType<RoomObserverJoined>());
 
 		await new RoomObserverJoinedHandler(app.RoomChannels).Handle(joined, TestContext.Current.CancellationToken);
-		Assert.Contains(observer, channel.Members);
 
+		Assert.Contains(observer, channel.Members);
+	}
+
+	[Fact]
+	public async Task Handle_RoomObserverLeft_PartsTheObserver()
+	{
+		using var app = new TestApplication();
+		var setup = await RoomFixture.CreateAsync(app);
+		var observerRecord = await app.CreateUserAsync("Observer", "password",
+			UserPermissionsGroups.Default | UserPermissions.RoomObserve);
+		var observer = (TourneyConnection)await app.LoginAsync(observerRecord, ConnectionType.Tourney);
+		Assert.True((await setup.Room.ScopeTo(observer).Members.ObserverJoinAsync(
+			TestContext.Current.CancellationToken)).IsOk);
+		var channel = app.RoomChannels.Of(setup.Room);
+		Assert.Contains(observer, channel.Members);
 		Assert.True((await setup.Room.ScopeTo(observer).Members.ObserverLeaveAsync(
 			TestContext.Current.CancellationToken)).IsOk);
 		var left = Assert.Single(app.RoomEvents.Events.OfType<RoomObserverLeft>());
+
 		await new RoomObserverLeftHandler(app.RoomChannels).Handle(left, TestContext.Current.CancellationToken);
 
 		Assert.DoesNotContain(observer, channel.Members);

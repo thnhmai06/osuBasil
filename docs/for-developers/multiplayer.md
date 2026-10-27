@@ -2,7 +2,7 @@
 
 ## Overview
 
-A `Room` is the live multiplayer state. It owns its slots, current round, settings, authority, members and room channel. A `MatchRecord` and its round and score records preserve history after the room closes. A match report is derived from match history; Basil does not keep a second mutable report.
+A `Room` is the live multiplayer state. It owns its slots, current round, settings, authority, members; Chat keeps its room channel. A `MatchRecord` and its round and score records preserve history after the room closes. A match report is derived from match history; Basil does not keep a second mutable report.
 
 This separation keeps current play state in one place while retaining the facts needed to understand completed matches.
 
@@ -59,7 +59,7 @@ Some room work has no user caller. The `Lobby` and the `Room` keep system operat
 
 ## Membership, slots and settings
 
-The room owns membership and its channel. A join checks the caller's effective `RoomJoin` permission, bans, whether the caller is already playing or observing, the password and available slots. A successful player join also joins the room channel. When a same-user connection replaces a closed seat, the new join must pass its checks first; an open old connection prevents replacement.
+The room owns membership; Chat keeps its channel in step with the room's events. A join checks the caller's effective `RoomJoin` permission, bans, whether the caller is already playing or observing, the password and available slots. A successful player join also joins the room channel. When a same-user connection replaces a closed seat, the new join must pass its checks first; an open old connection prevents replacement.
 
 There are 16 slot positions, numbered 1 through 16. Room size is the number of usable positions, from 1 through 16, not a limit on slot numbers: a player may occupy any slot. The room keeps enough unlocked empty slots for its configured size and locks the others. When a host leaves, the next seated player in slot order becomes host. Locking a room (`!mp lock`) only freezes the slots: players cannot move to another slot or change team, but joining is unaffected, as in osu!.
 

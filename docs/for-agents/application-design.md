@@ -191,8 +191,8 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   acting operation publishes its event, and the shared event queue delivers it to the peer's handler
   (`ScoreSubmitted` → `ScoreHandler` → `Room.ReceiveScore`, `AnticheatPlayerFlagged` reaches clients that
   watch it, such as BasilBot). An object calls another directly only for a clear ownership relation or to keep
-  a rule that must hold within the same operation: objects use storage ports; a room manages its own channel, Chat
-  a user's PM channel and each client's spectator channel; a room tells the lobby when it empties or fills;
+  a rule that must hold within the same operation: objects use storage ports; Chat keeps the channel of each open room,
+  of each online user (PM) and of each watched client (spectator); a room tells the lobby when it empties or fills;
   logging in opens the connection; deleting a user closes their connections at once, a security rule that
   must not wait for a handler.
 * **Application publishes events and handles the ones that concern its own module; Infrastructure only ships them**
@@ -221,7 +221,7 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   suffix: the Application object is the thing itself, and Domain only stores records. No suffixes such as
   "Definition". `GeneralChannelRecord` → `GeneralChannel` → `GeneralChannelRegistry` (it holds only general
   channels); `UserRecord` → `User` → `UserRegistry`. The osu! terms win for matches: `MatchRecord` → `Room` →
-  `Lobby`. The room's channel is named after the room (`RoomChannel`) because the room is where things happen and
+  `Lobby`. The room's channel is named after the room (`RoomChannel`, kept by `RoomChannels`) because the room is where things happen and
   `MatchRecord` is only the record. `Channel` shares its simple name with the static class
   `System.Threading.Channels.Channel`: a file that uses both qualifies the .NET one.
 * **Event names are `{Group}{Subject}{PastTenseVerb}`.** The group is the category the event belongs
@@ -234,7 +234,7 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   are the record `Message`. Application: abstract `Channel` (`Name`, `Topic`, members, IRC convention) with
   `GeneralChannel` (wraps the record), `RoomChannel`, `SpectatorChannel`, `PmChannel`; each names itself
   (`#mp_5`, `#spec_7`, the owner's name for a PM channel). **Each channel lives with the object that manages
-  it**: `GeneralChannelRegistry` holds the general channels, a `Room` its room channel, `PmChannels` the PM
+  it**: `GeneralChannelRegistry` holds the general channels, `RoomChannels` the channel of each open room, `PmChannels` the PM
   channel of each online user, `SpectatorChannels` the spectator channel of each watched `BanchoConnection`. Each kind of
   channel decides who may read and write it. A private message is a post into the recipient's PM channel.
   Access follows osu!: a user may join a channel (including `/join` over IRC) only if an osu! client doing the

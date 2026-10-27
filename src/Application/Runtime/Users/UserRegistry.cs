@@ -25,18 +25,18 @@ public sealed class UserRegistry
 	private readonly ConcurrentDictionary<string, Connection> _connections = new(StringComparer.Ordinal);
 	private readonly UserContext _context;
 	private readonly ConcurrentDictionary<UserRecord, User> _online = new();
-	private readonly ConnectionContext _session;
+	private readonly ConnectionContext _connectionContext;
 	private readonly Lock _sync = new(); // ponytail: one lock for all logins; per-user locks if login rate ever matters
 
 	/// <summary>Creates the registry that owns online users and their connections.</summary>
 	/// <param name="accounts">The account operations that use persistence.</param>
 	/// <param name="context">The ports through which the users of this registry perform their behaviour.</param>
-	/// <param name="session">The ports through which the connections of this registry perform their behaviour.</param>
-	internal UserRegistry(AccountService accounts, UserContext context, ConnectionContext session)
+	/// <param name="connectionContext">The ports through which the connections of this registry perform their behaviour.</param>
+	internal UserRegistry(AccountService accounts, UserContext context, ConnectionContext connectionContext)
 	{
 		_accounts = accounts;
 		_context = context;
-		_session = session;
+		_connectionContext = connectionContext;
 	}
 
 	/// <summary>Gets every online user by its account.</summary>
@@ -133,7 +133,7 @@ public sealed class UserRegistry
 		var token = NewToken();
 		Connection connection = type switch
 		{
-			ConnectionType.Bancho => new BanchoConnection(login, token, utcOffset, _session),
+			ConnectionType.Bancho => new BanchoConnection(login, token, utcOffset, _connectionContext),
 			ConnectionType.Tourney => new TourneyConnection(login, token),
 			ConnectionType.Irc => new IrcConnection(login, token),
 			_ => new ApiConnection(login, token)

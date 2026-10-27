@@ -218,7 +218,7 @@ A client never receives both `PART` and `QUIT` for one disconnect. The joining c
 * [`User.cs`](../../src/Application/Runtime/Users/User.cs), [`ScopedUser.cs`](../../src/Application/Runtime/Users/ScopedUser.cs): online user, away message
 * [`UserRegistry.cs`](../../src/Application/Runtime/Users/UserRegistry.cs): login, close, idle sweep, BasilBot's connection
 * [`Channel.cs`](../../src/Application/Runtime/Chat/Channel.cs), [`ScopedChannel.cs`](../../src/Application/Runtime/Chat/ScopedChannel.cs): membership, posting, recipients
-* [`RoomChannel.cs`](../../src/Application/Runtime/Multiplayer/Rooms/RoomChannel.cs), [`Room.Seating.cs`](../../src/Application/Runtime/Multiplayer/Rooms/Room.Seating.cs): room channel access and seating
+* [`RoomChannel.cs`](../../src/Application/Runtime/Chat/RoomChannel.cs), [`Room.Seating.cs`](../../src/Application/Runtime/Multiplayer/Rooms/Room.Seating.cs): room channel access and seating
 * [`ScopedRoomMembers.cs`](../../src/Application/Runtime/Multiplayer/Rooms/ScopedRoomMembers.cs), [`ScopedRoomAuthority.cs`](../../src/Application/Runtime/Multiplayer/Rooms/ScopedRoomAuthority.cs): kick, ban, referees, host
 * [`ScopedLobby.cs`](../../src/Application/Runtime/Multiplayer/ScopedLobby.cs): room creation
 * [`Message.cs`](../../src/Domain/Chat/Message.cs): message content rules
