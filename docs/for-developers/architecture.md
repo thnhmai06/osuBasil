@@ -106,8 +106,8 @@ are migrated; a project reference that breaks it is an architectural change.
 
 ### Why ownership matters
 
-Runtime state has owners: a room owns its slots, rounds and channel; a user owns its private-message channel while it
-is online; a game connection owns its spectator channel. Keeping behaviour with that state prevents a central
+Runtime state has owners: a room owns its slots, rounds and channel; Chat keeps a private-message channel per online
+user and a spectator channel per watched game client. Keeping behaviour with that state prevents a central
 service from becoming a procedural actor that must know every object's rules. Coordination that spans objects is a
 method of the object that is acted on or of the registry that holds them. Cross-object reactions remain
 separate and travel through events.
@@ -138,9 +138,10 @@ Services hold only logic that needs no live object (`AccountService`, `Beatmapse
 no public contract, receive and return records and plain results, and never publish events: the object that called
 them publishes what happened. The coordination itself belongs to an object: `UserRegistry` logs users in and opens,
 closes and expires connections; `Lobby` releases connections from rooms, removes suspended members and referees and
-recovers unfinished matches; `Room` records submitted scores for its round; `BanchoConnection` submits its player's
-scores and reports anticheat flags; `Beatmapsets` imports and scans beatmapsets; `GeneralChannelRegistry` joins and
-parts the automatic channels. Runtime objects such as `Room` and `User` have no parallel `IX` contract.
+recovers unfinished matches; `Room` records submitted scores for its round; `ScoreSubmitter` takes a game client's
+submitted score and `AnticheatReporter` reports its anticheat flags; `Beatmapsets` imports and scans beatmapsets;
+`GeneralChannelRegistry` joins and parts the automatic channels. Runtime objects such as `Room` and `User` have no
+parallel `IX` contract.
 
 
 
@@ -166,7 +167,7 @@ parts the automatic channels. Runtime objects such as `Room` and `User` have no 
 Runtime objects and their scoped views are in Application.Objects. Each object's `…Context` record supplies
 only the ports and collaborators needed by its behaviour; the registration in Application.Objects builds these
 contexts. The current context types are `RoomContext`, `UserContext`, `LobbyContext`, `ChannelContext`,
-`SessionContext`, `BeatmapsetContext` and `ServerContext`. Contexts do not become a general service locator:
+`ConnectionContext`, `BeatmapsetContext` and `ServerContext`. Contexts do not become a general service locator:
 they keep an object's dependencies explicit and inside the Application boundary.
 
 The object graph follows ownership:
@@ -174,10 +175,10 @@ The object graph follows ownership:
 ```mermaid
 flowchart LR
     UserRegistry -->|holds online| User
-    User -->|owns| PM[PmChannel]
+    PmChannels -->|holds, one per online user| PM[PmChannel]
     User -->|holds, by kind| Connection
     Connection --- Bancho[BanchoConnection]
-    Bancho -->|owns| Spec[SpectatorChannel]
+    SpectatorChannels -->|holds, one per watched client| Spec[SpectatorChannel]
     GeneralChannelRegistry -->|holds| General[GeneralChannel]
     Lobby -->|owns| Room
     Room -->|owns| RoomChannel[RoomChannel]
@@ -193,18 +194,18 @@ Application projects are sliced by feature; namespaces follow their project and 
 
 | Feature | Application.Storage | Application.Services / Application.Objects |
 |---|---|---|
-| `Users/` | user, restriction, relationship, credential and login repositories; `UserQuery`; login and registration inputs | `AccountService` (Services); `User`, `UserRegistry`, scopes, restrictions, relationships and account results (Objects) |
-| `Sessions/` | — | `Connection` and its kinds, `ScopedBanchoConnection`, user events (Objects) |
-| `Chat/` | channel repository | `Channel` and its kinds, `GeneralChannelRegistry`, scopes and events (Objects) |
+| `Users/` | user, restriction, relationship, credential and login repositories; `UserQuery`; login and registration inputs | `AccountService` (Capabilities); `User`, `UserContext`, `UserRegistry`, `ScopedUser*`, `LoginResult`, `UserOutcome`, user events (Runtime) |
+| `Connections/` | — | `Connection` and its kinds, `ConnectionContext`, `ScopedBanchoConnection`, connection rules and outcomes, connection and restriction handlers (Runtime) |
+| `Chat/` | channel repository | `Channel` and its kinds, `GeneralChannelRegistry`, `PmChannels`, `SpectatorChannels`, scopes and events (Objects) |
 | `Multiplayer/` | match, round, score-relation repositories and query records | `Lobby`, `Room`, their scopes and events (Objects) |
 | `Beatmaps/` | beatmapset and beatmap repositories and storage, capability ports, import and scan results | `BeatmapsetIndexer` (Services); `Beatmapset`, `Beatmapsets`, scope and events (Objects) |
-| `Scores/` | score, replay and stats repositories; score submission inputs | `ScoreRecorder` (Services); score events (Objects) |
-| `Anticheat/` | — | anticheat events (Objects) |
+| `Scores/` | score, replay and stats repositories; score submission inputs | `ScoreRecorder` (Services); `ScoreSubmitter`, `ScopedScoreSubmitter`, score events (Objects) |
+| `Anticheat/` | — | `AnticheatReporter`, anticheat events (Objects) |
 | `Content/` | content repositories and storage ports, the screenshot inspector port | content operations on `Server` |
 | `Servers/` | — | `Server`, `ScopedServer` and server-wide resources (Objects) |
 
- `Events/` contains event types and contracts. `Sessions`, `Chat` and
-`Multiplayer` form one runtime cluster because their state and invariants refer to each other. Their runtime
+ `Events/` contains event types and contracts. `Users` and `Connections` form one runtime cluster because a user
+holds its connections and a connection knows its user; `Chat` and `Multiplayer` refer to both. Their runtime
 objects and registries are in Application.Objects.
 
 ### Events
@@ -231,7 +232,7 @@ Ports describe capabilities an object or a service needs from another layer or s
 declares model-specific repositories, file-storage ports and business capabilities such as beatmap analysis,
 mirroring and screenshot inspection. Context records pass the needed ports to the runtime object. Runtime objects
 are concrete types in Application.Objects, not ports; a port between two objects is implemented by whichever owns the
-other (`Lobby` implements the room-lobby and connection-lobby ports).
+other (`Lobby` implements `IRoomLobbyPort` and answers the score module's `IScoreBeatmapAcceptance`).
 
 
 

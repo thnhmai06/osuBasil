@@ -436,12 +436,14 @@ scoped views and contexts, events, results and the coordination between objects.
 ```text
 Common/        PageRequest, Page<T>, Interval<T>, Paging                           (Persistence)
 Events/        Event, IEventPublisher<T>, EventQueue, event handlers (INotificationHandler<T>)  (Runtime)
-Users/         user and restriction repositories, UserQuery; User, ScopedUser,
-               UserRegistry, ScopedUserRegistry, UserResult, login and registration
+Users/         user and restriction repositories, UserQuery; login and registration
                inputs; AccountService                                              (Capabilities)
-Sessions/      Connection tree, ScopedBanchoConnection and user events
-Chat/          Channel tree, GeneralChannelRegistry, IChannelRepository; ScopedChannel,
-               ScopedGeneralChannel, events and results
+               User, UserContext, UserRegistry, ScopedUser*, LoginResult,
+               UserOutcome, user events                                            (Runtime)
+Connections/   Connection tree, ScopedBanchoConnection, ConnectionContext,
+               connection rules and outcomes, connection and restriction handlers (Runtime)
+Chat/          Channel tree, GeneralChannelRegistry, RoomChannels, RoomChannel;
+               IChannelRepository, ScopedChannel, events and results
 Multiplayer/   Lobby, Room, their parts and scopes; match, round and score repositories;
                room and lobby events and results
 Beatmaps/      beatmap and beatmapset repositories and storage, capability ports;
@@ -461,12 +463,13 @@ command is an entry point that uses the typist's scoped objects, and the bot onl
 that answer queries do not. Server settings changed at runtime (`ServerSettings`, owned by Application.Persistence) exist only while the
 server runs and are stored through `ISettingsRepository`; they are not Domain and not host configuration.
 
-* `Common` and `Events` depend on no feature. `Users`, `Beatmaps` and `Scores` do not depend on
+* `Common` and `Events` depend on no feature. `Users`, `Connections`, `Beatmaps` and `Scores` do not depend on
   `Multiplayer` objects. Anticheat flags,
   wherever they arrive (score submission, `lastfm.php`), are reported by the host through `AnticheatReporter.Report`,
   the single source of anticheat events; BasilBot turns them into chat warnings.
-* `Chat` and `Multiplayer` reference each other and both reference `Sessions` (`Room.Host`, `Room.Channel`,
-  `Channel.Members`); treat them as one cluster. Their runtime objects and registries live in Objects;
+* `Chat` references `Multiplayer`, and both reference `Users` and `Connections` (`Room.Host`, `Channel.Members`, the online
+  `User`); treat them as one cluster. `Users` and `Connections` reference each other (a user holds its connections, a
+  connection knows its user), so those two form one cluster of their own. Their runtime objects and registries live in Objects;
   persistent repositories remain in Application.Persistence. Objects change their own state through behaviour, with
   implementation access limited to the owning object and its collaborators. References run from the acted-on
   object to the actor, never back.
