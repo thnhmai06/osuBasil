@@ -78,6 +78,12 @@ For example, using an IRC client:
 
 Authenticate using your Basil account password.
 
+### Resetting the development database
+
+The server has not been deployed yet, so each module's `InitialCreate` migration is edited in place instead of adding
+a new migration. A development database that already applied an older `InitialCreate` fails to migrate: drop it
+(and let the server create it again) after pulling a change that touches a migration.
+
 ## Running an osu! client against a development server
 
 Running the actual osu! client against a local Basil instance requires the same two things as any other Basil
