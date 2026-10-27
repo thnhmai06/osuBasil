@@ -2,7 +2,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using Basil.Application.Capabilities.Beatmaps;
 using Basil.Application.Persistence.Beatmaps;
-using Basil.Application.Persistence.Common;
+using Basil.Common.Application;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Common;
 using Basil.Domain.Content;

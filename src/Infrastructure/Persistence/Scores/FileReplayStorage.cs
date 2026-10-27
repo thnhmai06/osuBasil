@@ -5,7 +5,7 @@ using Basil.Application.Persistence.Scores;
 using Basil.Application.Persistence.Users;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
-using Basil.Infrastructure.Persistence.Files;
+using Basil.Common.Infrastructure.Files;
 
 namespace Basil.Infrastructure.Persistence.Scores;
 

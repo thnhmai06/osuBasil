@@ -1,4 +1,5 @@
-using Basil.Infrastructure.Persistence.Postgres;
+using Basil.Common.Infrastructure.Postgres;
+using Basil.Infrastructure.Persistence.Users;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Persistence.Auth;
@@ -17,7 +18,7 @@ internal sealed class AuthDbContext(DbContextOptions<AuthDbContext> options) : D
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
-		ContextModel.MapUserReference(modelBuilder);
+		UserContextModel.MapUserReference(modelBuilder);
 		ContextModel.ApplyModuleConfigurations<AuthDbContext>(modelBuilder);
 		ContextModel.MapWriteTicketReference(modelBuilder);
 	}

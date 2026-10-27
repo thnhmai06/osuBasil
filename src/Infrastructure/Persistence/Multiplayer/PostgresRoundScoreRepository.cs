@@ -3,7 +3,7 @@ using Basil.Application.Persistence.Multiplayer;
 using Basil.Application.Persistence.Scores;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
-using Basil.Infrastructure.Persistence.Postgres;
+using Basil.Common.Infrastructure.Postgres;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Persistence.Multiplayer;

@@ -12,6 +12,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<ProjectReference Include="..\..\Common\Application\Basil.Common.Application.csproj"/>
 		<ProjectReference Include="..\Persistence\Basil.Application.Persistence.csproj"/>
 		<ProjectReference Include="..\Capabilities\Basil.Application.Capabilities.csproj"/>
 	</ItemGroup>

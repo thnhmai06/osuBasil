@@ -5,18 +5,16 @@ using Basil.Application.Persistence.Content;
 using Basil.Application.Persistence.Multiplayer;
 using Basil.Application.Persistence.Scores;
 using Basil.Application.Persistence.Users;
+using Basil.Common.Infrastructure;
 using Basil.Infrastructure.Persistence.Auth;
 using Basil.Infrastructure.Persistence.Beatmaps;
 using Basil.Infrastructure.Persistence.Chat;
-using Basil.Infrastructure.Persistence.Common;
 using Basil.Infrastructure.Persistence.Content;
-using Basil.Infrastructure.Persistence.Files;
 using Basil.Infrastructure.Persistence.Multiplayer;
-using Basil.Infrastructure.Persistence.Postgres;
+using Basil.Common.Infrastructure.Postgres;
 using Basil.Infrastructure.Persistence.Scores;
 using Basil.Infrastructure.Persistence.Users;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Basil.Infrastructure.Persistence;
 
@@ -28,11 +26,7 @@ public static class DependencyInjection
 	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddInfrastructurePersistence(this IServiceCollection services)
 	{
-		services.AddSingleton<DataPaths>();
-		services.AddSingleton<Database>();
-		services.AddSingleton<DatabaseReader>();
-		services.AddSingleton<DatabaseMigrator>();
-		services.AddSingleton<IModuleMigration, ModuleMigration<CommonDbContext>>();
+		services.AddCommonInfrastructure();
 		services.AddSingleton<IModuleMigration, ModuleMigration<UsersDbContext>>();
 		services.AddSingleton<IModuleMigration, ModuleMigration<AuthDbContext>>();
 		services.AddSingleton<IModuleMigration, ModuleMigration<BeatmapsDbContext>>();
@@ -41,10 +35,6 @@ public static class DependencyInjection
 		services.AddSingleton<IModuleMigration, ModuleMigration<MultiplayerDbContext>>();
 		services.AddSingleton<IModuleMigration, ModuleMigration<ChatDbContext>>();
 		services.AddHostedService<StorageStartup>();
-		services.TryAddSingleton(TimeProvider.System);
-		services.AddSingleton<DatabaseWriter>();
-		services.AddHostedService(provider => provider.GetRequiredService<DatabaseWriter>());
-
 		services.AddSingleton<IUserRepository, PostgresUserRepository>();
 		services.AddSingleton<ICredentialRepository, PostgresCredentialRepository>();
 		services.AddSingleton<ILoginRepository, PostgresLoginRepository>();

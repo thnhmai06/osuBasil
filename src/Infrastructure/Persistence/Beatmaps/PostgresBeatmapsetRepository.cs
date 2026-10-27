@@ -1,8 +1,8 @@
 using Basil.Application.Persistence.Beatmaps;
-using Basil.Application.Persistence.Common;
+using Basil.Common.Application;
 using Basil.Domain.Beatmaps;
-using Basil.Infrastructure.Persistence.Memory;
-using Basil.Infrastructure.Persistence.Postgres;
+using Basil.Common.Infrastructure.Memory;
+using Basil.Common.Infrastructure.Postgres;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Persistence.Beatmaps;
@@ -243,9 +243,7 @@ internal sealed class PostgresBeatmapsetRepository(
 		foreach (var item in stored)
 		{
 			var set = Live(item.Set);
-			var difficulties = new List<BeatmapRecord>(item.Beatmaps.Count);
-			foreach (var storedBeatmap in item.Beatmaps)
-				difficulties.Add(beatmaps.Apply(set, storedBeatmap));
+			var difficulties = item.Beatmaps.Select(storedBeatmap => beatmaps.Apply(set, storedBeatmap)).ToList();
 			beatmaps.Replace(set, difficulties);
 			live.Add(set);
 		}

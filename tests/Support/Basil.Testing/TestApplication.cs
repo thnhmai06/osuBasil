@@ -10,7 +10,7 @@ using Basil.Application.Runtime.Anticheat;
 using Basil.Application.Runtime.Beatmaps;
 using Basil.Application.Runtime.Chat;
 using Basil.Application.Runtime.Connections;
-using Basil.Application.Runtime.Events;
+using Basil.Common.Application.Events;
 using Basil.Application.Runtime.Multiplayer;
 using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Scores;

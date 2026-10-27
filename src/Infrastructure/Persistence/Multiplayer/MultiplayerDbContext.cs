@@ -1,4 +1,6 @@
-using Basil.Infrastructure.Persistence.Postgres;
+using Basil.Common.Infrastructure.Postgres;
+using Basil.Infrastructure.Persistence.Scores;
+using Basil.Infrastructure.Persistence.Users;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Persistence.Multiplayer;
@@ -19,8 +21,8 @@ internal sealed class MultiplayerDbContext(DbContextOptions<MultiplayerDbContext
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
-		ContextModel.MapUserReference(modelBuilder);
-		ContextModel.MapScoreReference(modelBuilder);
+		UserContextModel.MapUserReference(modelBuilder);
+		ScoreContextModel.MapScoreReference(modelBuilder);
 		ContextModel.ApplyModuleConfigurations<MultiplayerDbContext>(modelBuilder);
 		ContextModel.MapWriteTicketReference(modelBuilder);
 	}

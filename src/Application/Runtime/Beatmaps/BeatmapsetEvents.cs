@@ -1,4 +1,4 @@
-using Basil.Application.Runtime.Events;
+using Basil.Common.Application.Events;
 using Basil.Domain.Beatmaps;
 
 namespace Basil.Application.Runtime.Beatmaps;

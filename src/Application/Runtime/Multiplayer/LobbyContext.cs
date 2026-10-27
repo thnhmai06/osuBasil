@@ -1,7 +1,7 @@
 using Basil.Application.Persistence.Content;
 using Basil.Application.Persistence.Multiplayer;
 using Basil.Application.Persistence.Users;
-using Basil.Application.Runtime.Events;
+using Basil.Common.Application.Events;
 using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Multiplayer.Rooms;
 

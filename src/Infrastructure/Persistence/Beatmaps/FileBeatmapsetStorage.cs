@@ -2,7 +2,7 @@ using System.IO.Compression;
 using Basil.Application.Persistence.Beatmaps;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Content;
-using Basil.Infrastructure.Persistence.Files;
+using Basil.Common.Infrastructure.Files;
 using Microsoft.Extensions.Logging;
 using static Basil.Infrastructure.Persistence.Beatmaps.FileBeatmapsetEntryReader;
 using static Basil.Infrastructure.Persistence.Beatmaps.FileBeatmapsetNames;

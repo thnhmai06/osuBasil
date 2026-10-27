@@ -1,7 +1,7 @@
 using Basil.Infrastructure.Persistence.Beatmaps;
-using Basil.Infrastructure.Persistence.Common;
-using Basil.Infrastructure.Persistence.Files;
-using Basil.Infrastructure.Persistence.Postgres;
+using Basil.Common.Infrastructure;
+using Basil.Common.Infrastructure.Files;
+using Basil.Common.Infrastructure.Postgres;
 using Microsoft.Extensions.Hosting;
 
 namespace Basil.Infrastructure.Persistence;

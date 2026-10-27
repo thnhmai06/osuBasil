@@ -1,0 +1,23 @@
+using Basil.Common.Infrastructure.Postgres;
+using Microsoft.EntityFrameworkCore;
+
+namespace Basil.Common.Infrastructure;
+
+/// <summary>Stores the common records used to coordinate writes across modules.</summary>
+/// <param name="options">The options that configure the database context.</param>
+public sealed class CommonDbContext(DbContextOptions<CommonDbContext> options) : DbContext(options),
+	IDatabaseContext<CommonDbContext>, IWriteTicketContext
+{
+	/// <summary>Gets the records that identify committed writes.</summary>
+	public DbSet<WriteTicketRow> WriteTickets => Set<WriteTicketRow>();
+
+	static string IDatabaseContext<CommonDbContext>.HistoryTable => "__ef_migrations_common";
+
+	static CommonDbContext IDatabaseContext<CommonDbContext>.Create(DbContextOptions<CommonDbContext> options) =>
+		new(options);
+
+	protected override void OnModelCreating(ModelBuilder modelBuilder)
+	{
+		modelBuilder.ApplyConfiguration(new WriteTicketRowConfiguration());
+	}
+}

@@ -5,6 +5,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<ProjectReference Include="..\Common\Application\Basil.Common.Application.csproj"/>
 		<ProjectReference Include="..\Domain\Basil.Domain.csproj"/>
 		<ProjectReference Include="..\Application\Runtime\Basil.Application.Runtime.csproj"/>
 	</ItemGroup>

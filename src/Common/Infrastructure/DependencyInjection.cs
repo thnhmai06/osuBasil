@@ -1,0 +1,36 @@
+using Basil.Common.Application;
+using Basil.Common.Infrastructure.Events;
+using Basil.Common.Infrastructure.Files;
+using Basil.Common.Infrastructure.Postgres;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+
+namespace Basil.Common.Infrastructure;
+
+/// <summary>Registers the infrastructure services shared by every module.</summary>
+public static class DependencyInjection
+{
+	/// <summary>Adds the shared database, file paths and event delivery services.</summary>
+	/// <param name="services">The service collection to add to.</param>
+	/// <returns><paramref name="services" />, for chaining.</returns>
+	public static IServiceCollection AddCommonInfrastructure(this IServiceCollection services)
+	{
+		if (services.Any(descriptor => descriptor.ServiceType == typeof(CommonInfrastructureRegistration)))
+			return services;
+
+		services.AddSingleton<CommonInfrastructureRegistration>();
+		services.AddCommonApplication();
+		services.TryAddSingleton(TimeProvider.System);
+		services.AddSingleton<DataPaths>();
+		services.AddSingleton<Database>();
+		services.AddSingleton<DatabaseReader>();
+		services.AddSingleton<DatabaseMigrator>();
+		services.AddSingleton<IModuleMigration, ModuleMigration<CommonDbContext>>();
+		services.AddSingleton<DatabaseWriter>();
+		services.AddHostedService(provider => provider.GetRequiredService<DatabaseWriter>());
+		services.AddHostedService<EventDispatcher>();
+		return services;
+	}
+
+	private sealed class CommonInfrastructureRegistration;
+}

@@ -1,4 +1,5 @@
-using Basil.Infrastructure.Persistence.Postgres;
+using Basil.Common.Infrastructure.Postgres;
+using Basil.Infrastructure.Persistence.Users;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Persistence.Scores;
@@ -17,7 +18,7 @@ internal sealed class ScoresDbContext(DbContextOptions<ScoresDbContext> options)
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
-		ContextModel.MapUserReference(modelBuilder);
+		UserContextModel.MapUserReference(modelBuilder);
 		ContextModel.ApplyModuleConfigurations<ScoresDbContext>(modelBuilder);
 		ContextModel.MapWriteTicketReference(modelBuilder);
 	}

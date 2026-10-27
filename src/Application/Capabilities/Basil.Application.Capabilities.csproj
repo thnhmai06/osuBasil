@@ -6,6 +6,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<ProjectReference Include="..\..\Common\Application\Basil.Common.Application.csproj"/>
 		<ProjectReference Include="..\Persistence\Basil.Application.Persistence.csproj"/>
 	</ItemGroup>
 

@@ -3,6 +3,10 @@
 		<Project Path="src/Bot/Basil.Bot.csproj"/>
 		<Project Path="src/Domain/Basil.Domain.csproj"/>
 	</Folder>
+	<Folder Name="/Sources/Common/">
+		<Project Path="src/Common/Application/Basil.Common.Application.csproj"/>
+		<Project Path="src/Common/Infrastructure/Basil.Common.Infrastructure.csproj"/>
+	</Folder>
 	<Folder Name="/Sources/Application/">
 		<Project Path="src/Application/Persistence/Basil.Application.Persistence.csproj"/>
 		<Project Path="src/Application/Runtime/Basil.Application.Runtime.csproj"/>
@@ -28,6 +32,11 @@
 	</Folder>
 	<Folder Name="/Tests/Support/">
 		<Project Path="tests/Support/Basil.Testing/Basil.Testing.csproj"/>
+		<Project Path="tests/Support/Basil.Testing.Persistence/Basil.Testing.Persistence.csproj"/>
+	</Folder>
+	<Folder Name="/Tests/Common/">
+		<Project Path="tests/Common/Application/Basil.Common.Application.Tests.csproj"/>
+		<Project Path="tests/Common/Infrastructure/Basil.Common.Infrastructure.Tests.csproj"/>
 	</Folder>
 	<Folder Name="/Tests/Bot/">
 		<Project Path="tests/Bot/Basil.Bot.Tests.csproj"/>

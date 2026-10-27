@@ -214,7 +214,7 @@ namespace Basil.Infrastructure.Persistence.Migrations.Beatmaps
 						});
 				});
 
-			modelBuilder.Entity("Basil.Infrastructure.Persistence.Postgres.WriteTicketRow", b =>
+			modelBuilder.Entity("Basil.Common.Infrastructure.Postgres.WriteTicketRow", b =>
 				{
 					b.Property<Guid>("Id")
 						.HasColumnType("uuid")

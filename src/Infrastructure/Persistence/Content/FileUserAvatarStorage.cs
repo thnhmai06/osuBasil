@@ -1,6 +1,6 @@
 using Basil.Application.Persistence.Users;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Persistence.Files;
+using Basil.Common.Infrastructure.Files;
 
 namespace Basil.Infrastructure.Persistence.Content;
 

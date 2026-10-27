@@ -1,6 +1,5 @@
 using Basil.Application.Capabilities.Users;
-using Basil.Application.Persistence.Common;
-using Basil.Application.Runtime.Common;
+using Basil.Common.Application;
 using Basil.Application.Runtime.Connections;
 using Basil.Domain.Auth;
 using Basil.Domain.Common;

@@ -1,5 +1,5 @@
 using Basil.Application.Runtime.Connections;
-using Basil.Application.Runtime.Events;
+using Basil.Common.Application.Events;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Runtime.Users;

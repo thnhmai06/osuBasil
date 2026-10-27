@@ -1,4 +1,4 @@
-using Basil.Infrastructure.Persistence.Postgres;
+using Basil.Common.Infrastructure.Postgres;
 using Microsoft.EntityFrameworkCore.Design;
 
 namespace Basil.Infrastructure.Persistence.Chat;

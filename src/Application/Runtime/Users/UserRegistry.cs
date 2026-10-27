@@ -234,7 +234,7 @@ public sealed class UserRegistry
 	///         changes nothing.
 	///     </para>
 	/// </remarks>
-	/// <exception cref="Basil.Application.Persistence.Common.AlreadyExistsException">
+	/// <exception cref="Basil.Common.Application.AlreadyExistsException">
 	///     The id holds a deleted account or nothing, and another user already has <see cref="BasilBot.DefaultName" />.
 	/// </exception>
 	public async Task<UserRecord> EnsureBotAsync(CancellationToken cancellationToken = default)

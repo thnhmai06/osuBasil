@@ -1,5 +1,5 @@
 using Basil.Application.Persistence.Auth;
-using Basil.Application.Persistence.Common;
+using Basil.Common.Application;
 using Basil.Application.Persistence.Content;
 using Basil.Application.Persistence.Users;
 using Basil.Domain.Auth;
@@ -14,7 +14,10 @@ internal sealed class AccountService(
 	ICredentialRepository credentials,
 	ISettingsRepository settings)
 {
-	/// <inheritdoc />
+	/// <summary>Checks whether an account may be registered with the given attempt.</summary>
+	/// <param name="attempt">The registration the client asked for.</param>
+	/// <param name="cancellationToken">A token that cancels the check.</param>
+	/// <returns><see langword="null" /> when the attempt may be registered; otherwise the reason it may not.</returns>
 	public async Task<RegistrationFailure?> CheckRegistrationAsync(RegisterAttempt attempt,
 		CancellationToken cancellationToken)
 	{
@@ -35,7 +38,11 @@ internal sealed class AccountService(
 			: null;
 	}
 
-	/// <inheritdoc />
+	/// <summary>Creates an account with the given data and its password.</summary>
+	/// <param name="data">The data of the new account.</param>
+	/// <param name="passwordHash">The password hash of the account.</param>
+	/// <param name="cancellationToken">A token that cancels the creation.</param>
+	/// <returns>The created account, or <see langword="null" /> and the reason when the name is taken.</returns>
 	public async Task<(UserRecord? User, RegistrationFailure? Failure)> CreateAsync(UserData data, Md5 passwordHash,
 		CancellationToken cancellationToken)
 	{
@@ -53,7 +60,10 @@ internal sealed class AccountService(
 		return (user, null);
 	}
 
-	/// <inheritdoc />
+	/// <summary>Finds the account a login attempt names and checks its password.</summary>
+	/// <param name="attempt">The login the client sent.</param>
+	/// <param name="cancellationToken">A token that cancels the lookup.</param>
+	/// <returns>The account to sign in, or <see langword="null" /> and the reason the attempt fails.</returns>
 	public async Task<(UserRecord? User, LoginFailure? Failure)> FindLoginUserAsync(LoginAttempt attempt,
 		CancellationToken cancellationToken)
 	{

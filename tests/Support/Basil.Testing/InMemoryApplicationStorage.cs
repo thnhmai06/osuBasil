@@ -1,5 +1,5 @@
 using Basil.Application.Persistence.Auth;
-using Basil.Application.Persistence.Common;
+using Basil.Common.Application;
 using Basil.Application.Persistence.Content;
 using Basil.Application.Persistence.Multiplayer;
 using Basil.Application.Persistence.Users;
@@ -306,7 +306,7 @@ internal sealed class InMemoryMatchRepository(InMemoryMatchEventRepository event
 	private bool IsVisibleTo(MatchRecord match, int viewer)
 	{
 		if (!match.Value.IsPrivate || match.Value.Creator.Id == viewer) return true;
-		var history = events.EventsOf(match);
+		var history = events.EventsOf(match).ToList();
 		return history.Any(matchEvent =>
 			       matchEvent.Type == MatchEventType.PlayerJoined && matchEvent.Target?.Id == viewer)
 		       || history.LastOrDefault(matchEvent => matchEvent.Target?.Id == viewer

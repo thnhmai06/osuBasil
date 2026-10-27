@@ -1,4 +1,4 @@
-using Basil.Application.Persistence.Common;
+using Basil.Common.Application;
 using Basil.Application.Persistence.Users;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Persistence.Tests.Support;
@@ -136,7 +136,7 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 
 		Assert.Equal(BasilBot.Id, replaced.Id);
 		Assert.Same(replaced, found);
-		Assert.Equal("renamed_bot", found.Value.Name);
+		Assert.Equal("renamed_bot", found!.Value.Name);
 		Assert.Same(replaced, await Users.GetByNameAsync("renamed_bot", TestContext.Current.CancellationToken));
 	}
 

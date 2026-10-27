@@ -1,8 +1,8 @@
 using System.Globalization;
 using Basil.Application.Persistence.Content;
 using Basil.Domain.Content;
-using Basil.Infrastructure.Persistence.Common;
-using Basil.Infrastructure.Persistence.Postgres;
+using Basil.Common.Infrastructure;
+using Basil.Common.Infrastructure.Postgres;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 

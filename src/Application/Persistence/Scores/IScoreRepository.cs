@@ -1,4 +1,4 @@
-using Basil.Application.Persistence.Common;
+using Basil.Common.Application;
 using Basil.Domain.Scores;
 
 namespace Basil.Application.Persistence.Scores;
