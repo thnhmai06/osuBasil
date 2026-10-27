@@ -106,8 +106,8 @@ are migrated; a project reference that breaks it is an architectural change.
 
 ### Why ownership matters
 
-Runtime state has owners: a room owns its slots, rounds and channel; Chat keeps a private-message channel per online
-user and a spectator channel per watched game client. Keeping behaviour with that state prevents a central
+Runtime state has owners: a room owns its slots and rounds; Chat keeps a room channel per open room, a private-message
+channel per online user and a spectator channel per watched game client. Keeping behaviour with that state prevents a central
 service from becoming a procedural actor that must know every object's rules. Coordination that spans objects is a
 method of the object that is acted on or of the registry that holds them. Cross-object reactions remain
 separate and travel through events.
@@ -181,7 +181,7 @@ flowchart LR
     SpectatorChannels -->|holds, one per watched client| Spec[SpectatorChannel]
     GeneralChannelRegistry -->|holds| General[GeneralChannel]
     Lobby -->|owns| Room
-    Room -->|owns| RoomChannel[RoomChannel]
+    RoomChannels -->|holds, one per open room| RoomChannel[RoomChannel]
     Room -->|owns| RoomSlots
 ```
 

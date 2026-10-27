@@ -442,8 +442,8 @@ Users/         user and restriction repositories, UserQuery; login and registrat
                UserOutcome, user events                                            (Runtime)
 Connections/   Connection tree, ScopedBanchoConnection, ConnectionContext,
                connection rules and outcomes, connection and restriction handlers (Runtime)
-Chat/          Channel tree, GeneralChannelRegistry, RoomChannels, RoomChannel;
-               IChannelRepository, ScopedChannel, events and results
+Chat/          Channel tree, GeneralChannelRegistry, RoomChannels, PmChannels, SpectatorChannels;
+               IChannelRepository, ScopedChannel, ScopedGeneralChannel, events and results
 Multiplayer/   Lobby, Room, their parts and scopes; match, round and score repositories;
                room and lobby events and results
 Beatmaps/      beatmap and beatmapset repositories and storage, capability ports;

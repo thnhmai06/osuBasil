@@ -4,7 +4,7 @@ using Basil.Application.Runtime.Users;
 
 namespace Basil.Application.Runtime.Connections;
 
-/// <summary>The ports through which a session and its connections perform their behaviour.</summary>
+/// <summary>The ports through which the connections perform their behaviour.</summary>
 /// <param name="Clock">The clock for checking current time.</param>
 /// <param name="Events">The publisher for user events.</param>
 /// <param name="RegistryOf">Resolves the sessions of online users, once the registry exists.</param>

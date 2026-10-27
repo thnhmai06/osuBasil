@@ -8,7 +8,7 @@ using Basil.Application.Runtime.Multiplayer;
 namespace Basil.Application.Runtime.Servers;
 
 /// <summary>The ports through which the server performs its behaviour.</summary>
-/// <param name="Session">The runtime dependencies for online users.</param>
+/// <param name="Connections">The runtime dependencies for online users.</param>
 /// <param name="Chat">The runtime dependencies for general channels.</param>
 /// <param name="RoomChannels">The channels of open multiplayer rooms.</param>
 /// <param name="PmChannels">The private-message channels of online users.</param>
@@ -17,7 +17,7 @@ namespace Basil.Application.Runtime.Servers;
 /// <param name="Lobby">The open multiplayer rooms.</param>
 /// <param name="Users">The stored users.</param>
 internal sealed record ServerContext(
-	ConnectionContext Session,
+	ConnectionContext Connections,
 	ChannelContext Chat,
 	RoomChannels RoomChannels,
 	PmChannels PmChannels,
