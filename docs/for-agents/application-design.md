@@ -197,7 +197,7 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   logging in opens the connection; deleting a user closes their connections at once, a security rule that
   must not wait for a handler.
 * **Application publishes events and handles the ones that concern its own module; Infrastructure only ships them**
-  (plan `module-events-plan-20261027.md`, D5-D8, supersedes "Application does not consume events"). The base event,
+  (this supersedes the older rule "Application does not consume events"). The base event,
   `IEventPublisher<T>` and `EventQueue` live in Application.Common; feature categories and handlers live in Runtime. An object or the
   bot's voice publishes an event through `IEventPublisher<T>` (`Publish`): it stamps `Timestamp`, queues the delivery
   and returns at once. A handler is a class implementing `Mediator.INotificationHandler<TEvent>` for one concrete

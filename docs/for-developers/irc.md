@@ -1,6 +1,6 @@
 # IRC transport
 
-> **Status: the IRC host is pending migration** (see [`plans/handoff-20261022.md`](../../plans/handoff-20261022.md)).
+> **Status: the IRC host is pending migration** (see "Host phase" in `AGENTS.md`).
 > `src/Hosts/Irc` still uses the previous Application API and is outside the solution build. This page describes the
 > **design the host must implement on the current Application model**. The Application behaviour it relies on exists
 > today (`Basil.Application.Runtime`); the wire-level rules are the contract the migrated host must keep.

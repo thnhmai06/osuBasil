@@ -3,7 +3,7 @@ using System.Xml.Linq;
 namespace Basil.ArchitectureTests;
 
 /// <summary>
-///     The project graph of the server (plan <c>phase-e-plan-20261028.md</c>): every module is a pair of projects whose
+///     The project graph of the server: every module is a pair of projects whose
 ///     references the compiler enforces, so this test reads the <c>ProjectReference</c> items of every project under
 ///     <c>src</c> (except the hosts, which are migrated separately) and fails on an edge outside the allowed graph or on a
 ///     cycle. Domain is shared by every project; the module Application projects follow

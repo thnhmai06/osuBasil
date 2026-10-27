@@ -26,8 +26,7 @@ So:
 
 PostgreSQL replaced the earlier SQLite file to scale and to write in parallel: SQLite allows one writer at a time,
 PostgreSQL many concurrent transactions. The trade-off is that Basil is no longer self-contained: a deployment now
-needs a database server and its credentials. The write path was measured before it was fixed; see
-[`plans/evidence/postgresql-direct-writes-20261008`](../../plans/evidence/postgresql-direct-writes-20261008/results.md).
+needs a database server and its credentials. The write path was measured before it was fixed: 8 write connections is the smallest count within 10% of the best capacity (about 18 600 committed writes per second against 19 900 at 16) with the lowest p99 latency of a try-operation.
 
 ## What is stored
 

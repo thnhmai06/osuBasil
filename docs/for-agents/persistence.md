@@ -87,7 +87,7 @@ Repository contracts, byte storages and the memory-first model. Moved out of `AG
     room's round is the instance `ListAsync` returns while it is held. `DatabaseWriter` keeps
     one queue per root (`Root.User`, `Root.Match`, `Root.Beatmapset`, `Root.Server`) and sends its writes one
     statement at a time, in order; a copy not sent yet is replaced by a newer copy of the same identity. At most
-    `Basil:Database:WriteConnections` connections (8 by default, see [`plans/evidence/postgresql-direct-writes-20261008`](plans/evidence/postgresql-direct-writes-20261008/results.md)) write at once. No write is grouped with unrelated
+    `Basil:Database:WriteConnections` connections (8 by default) write at once. No write is grouped with unrelated
     writes; a business operation that must store several rows together gets one try-operation of its own. A score
     belongs to its player (`Root.User`); which round it was played in is a relation of its own
     (`round_scores`), listed with the round.

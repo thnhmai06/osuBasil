@@ -12,9 +12,8 @@ of it, each signing in as an ordinary user. The server works the same with or wi
 
 It is built on [bancho.py](https://github.com/osuAkatsuki/bancho.py), but it is **not a full bancho.py port**. Basil deliberately has a smaller feature surface. pp calculation, clans, osu-web v1/v2 API compatibility, and other unrelated features are intentionally out of scope. Chat commands, announcements and room countdowns are in scope: they are BasilBot, a feature of the server.
 
-The direction of the current redesign (identity, permissions, restrictions) is in
-[`plans/identity-permissions-plan-20261005.md`](plans/identity-permissions-plan-20261005.md); read it before
-touching users, sessions, permissions, rooms or chat.
+The identity, permissions and restriction rules are in [`docs/for-agents/identity-permissions.md`](docs/for-agents/identity-permissions.md); read
+them before touching users, sessions, permissions, rooms or chat.
 
 Before porting or recreating anything from bancho.py, read:
 
@@ -442,17 +441,62 @@ implementations of its ports and its migration. Handlers stay `internal`; a modu
 `InternalsVisibleTo("Basil.Composition")` (the generated Mediator code names them) and to its own test project, and
 nothing else is made visible. The hosts reference Basil.Composition and call `AddBasil()`.
 
-> **Module projects (2026-10-28, Phase E).** Application and Infrastructure are split by module, not by technique; see
-> [`plans/phase-e-plan-20261028.md`](plans/phase-e-plan-20261028.md). The Migration status below predates it.
->
-> **Migration status (2026-10-21).** The object-scope redesign and the project renames are implemented across Domain,
-> Application, Infrastructure and Basil.Bot; the week plan in [`plans/week-plan-20261021.md`](plans/week-plan-20261021.md)
-> unifies the scope/result pattern, rebuilds the tests and moves the bot replies to a file. The hosts and the host test
-> projects still use old namespaces and are outside the solution build until the Host migration; verify the migrated
-> projects individually with the builds listed under Commands, and run the test projects that exist. The decisions in
-> [`plans/object-scope-plan-20261016.md`](plans/object-scope-plan-20261016.md) and
-> [`plans/application-layering-plan-20261021.md`](plans/application-layering-plan-20261021.md) remain authoritative
-> where they agree with this file; older plans are history.
+> **Module projects.** Application and Infrastructure are split by module, one project per module and layer; the
+> Domain, Application and Infrastructure projects, `Basil.Composition` and `Basil.Bot` build and are tested. The
+> hosts (`src/Hosts/*`) and their test projects (`Host.*.Tests`, `IntegrationTests`, `LoadTests`) still use the
+> previous Application API: `dotnet build Basil.slnx` fails only in `src/Hosts`. Verify a change with the builds listed
+> under Commands and with the test projects that exist. The host phase is described in
+> [Host phase](#host-phase-next-session) below.
+
+### Host phase (next session)
+
+The hosts are the transports on top of `Basil.Composition`. They are the next piece of work, and nothing of it is
+done yet. Read [`docs/for-developers/architecture.md`](docs/for-developers/architecture.md),
+[`docs/for-developers/irc.md`](docs/for-developers/irc.md) and [`docs/for-developers/multiplayer.md`](docs/for-developers/multiplayer.md) first.
+
+**Ask the owner at the start** (the owner speaks Vietnamese; do not guess): ports, TLS and the domain (`api.<domain>`),
+where the data directory lives, how the first admin is created (decided: `Basil.Cli`, the server never creates an
+account), whether the external beatmap mirror is enabled, a copy of real `Data/` for tests (`BASIL_TEST_DATA`), and the
+order of the migration. Proposed order: Bancho, Irc, Api, then `Basil.Host`, then `Basil.Cli`, then the host tests.
+
+**Rules for every host**
+
+* A host references `Basil.Composition` (and its own Protocol project) and calls `AddBasil()`; it references no module
+  Infrastructure and no Application type that is not public. It takes the actor from the typist's connection and
+  works through scopes (`x.ScopeTo(connection)`), never through a service.
+* Configuration is bound in `Basil.Host` only; a transport receives `IOptions<T>` of an options type it owns.
+  `RepliesOptions` of the bot is bound there too (`Data/Bot/replies.json` is written with the defaults when missing).
+* Bancho: packets, routes and SSE; GeoIP (proxy header first, then the offline GeoLite2 file); BasilBot is shown as an
+  online user (the bot's own connection is kept by the server, skip it when delivering packets); channel messages are
+  delivered only to `Channel.RecipientsAsync`; `osu-getfriends.php`, `osu-getbeatmapinfo.php` (the `filename`
+  criterion), `osu-osz2-getscores.php` (`ScoreQuery`); screenshot upload maps `ScreenshotUploadFailure.DimensionsTooLarge`;
+  room API, timers, moderation, friends and notifications (`Notify`). Anticheat flags from score submission and
+  `lastfm.php` go through `AnticheatReporter.Report`.
+* Irc: the rules in `docs/for-developers/irc.md` are the contract (channel prefixes `@`/`+`, `ChannelOutcome` to numeric
+  mapping, command table, PART/QUIT/JOIN, PING). A `Message` may contain CR/LF, so the host splits or escapes it.
+* Api: every list of matches goes through `LimitTo(effective, viewer)` and every match-owned datum (match, round, events,
+  report, round-score relation; not scores, replays, leaderboards) is preceded by `CanViewAsync`; answer "not found" when
+  the viewer may not see it. A private room is unlisted, not closed.
+* Live HTTP streams are dedicated `/live` routes (SSE); the response envelope and the OpenAPI schema must agree.
+* `Round.Result` is still set by `MatchReportRepository` on the live round only because the Api host reads it. When the
+  Api is migrated, read the stored verdict from the report instead and remove the setter.
+
+**Open decisions to put to the owner before the hosts depend on them**
+
+* D11, copy-on-write snapshots of slots, authority, settings and members, was not carried out: reads are lock-free over
+  concurrent sets and a fixed slot array, so a reader can see a slot between two writes of one transition. Decide
+  whether a Bancho packet may depend on a consistent view.
+* The rule "a round is decided 10 s after its end, for every round" (bancho.py: scrims only) is in force; confirm it
+  against the room API.
+
+**After the hosts**: `Basil.Cli` (operator console: first admin, run a command as BasilBot ignoring permission checks,
+`--noconsole`); `Host.Bancho.Tests`, `Host.Irc.Tests`, `Host.Api.Tests`, `Host.Tests`, `IntegrationTests`, `LoadTests`; the
+tests for parsing the client, login form and geolocation that left Domain; a host rule in `ArchitectureTests`;
+refresh `docs/for-client/basil-bot.md` (it still mentions a generated reference; the replies live in `replies.json`).
+
+**Known leftovers**: the IRC page is a design for a host that does not exist yet; an in-place `InitialCreate` edit
+assumes no database applied the old one; the `!mp` command timeout (30 s `CancelAfter`) has no test; the anticheat
+flag-name helper still lives in `AnticheatAnnouncer.FormatFlags` instead of `BanchoFlags`.
 
 ### Application feature folders
 
@@ -720,7 +764,7 @@ Before considering a code change complete:
 6. Review the final diff for unrelated changes.
 7. Check every new or changed member in the Application projects against
    [Domain and Application](#domain-and-application), above all "behaviour belongs to the object that owns it", "the acted-on object owns the interaction" and
-   "Application publishes events; Infrastructure only ships them" (plan `module-events-plan-20261027.md`, D5). This applies to code written by delegated agents too: the orchestrator reviews it
+   "Application publishes events; Infrastructure only ships them". This applies to code written by delegated agents too: the orchestrator reviews it
    against these rules before accepting it. `User.Channels`, `User.Join(Channel)`,
    sessions emitting events, a handler that waits or serves several event types, and rules or timers on runtime models and
    registries all got through review once; do not let them back in. Nor should a service that only wraps

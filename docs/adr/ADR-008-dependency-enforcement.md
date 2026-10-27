@@ -30,8 +30,7 @@ The alternative was to stop reading IL and verify dependencies from source with 
 constant references regardless of how they compile. That is more complete and considerably more
 work, and it was only worth doing if the cheap remedy failed.
 
-It did not fail. The experiment is recorded in
-`plans/execution/const-visibility-experiment.md`: four members changed from `const` to
+It did not fail. The experiment: four members changed from `const` to
 `static readonly` — `AdminKeyDefaults.Scheme`, `.Policy`, `.Role`, and `BotBootstrapService.BotId` —
 and the suite went from 6 passed to 4 passed / 2 failed, naming nineteen types across seven
 undeclared edges.
@@ -62,4 +61,3 @@ was the one most quietly weakened.
 * `tests/Basil.ArchitectureTests/SliceBoundaryTests.cs`
 * `src/Basil.Server/Features/Auth/AdminKeyAuthenticationHandler.cs`
 * `src/Basil.Server/Features/Bot/BotBootstrapService.cs`
-* `plans/execution/const-visibility-experiment.md`
