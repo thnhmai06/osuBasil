@@ -1,5 +1,6 @@
+using Basil.Application.Runtime.Connections;
 using Basil.Application.Runtime.Servers;
-using Basil.Application.Runtime.Sessions;
+using Basil.Application.Runtime.Users;
 using Basil.Domain.Users;
 using Basil.Testing;
 
@@ -16,7 +17,7 @@ public sealed class ServerNotifyTests
 
 	private static UserNotificationSent[] Notifications(TestApplication app)
 	{
-		return app.UserEvents.Events.OfType<UserNotificationSent>().ToArray();
+		return [.. app.UserEvents.Events.OfType<UserNotificationSent>()];
 	}
 
 	private static async Task<(UserRecord User, BanchoConnection Client)> OnlineClientAsync(TestApplication app,

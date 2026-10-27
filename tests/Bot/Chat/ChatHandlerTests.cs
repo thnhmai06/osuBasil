@@ -1,6 +1,6 @@
 using System.Text;
 using Basil.Application.Runtime.Chat;
-using Basil.Application.Runtime.Sessions;
+using Basil.Application.Runtime.Connections;
 using Basil.Bot.Chat;
 using Basil.Bot.Commands;
 using Basil.Bot.Tests.Support;
@@ -130,7 +130,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	[Fact]
 	public async Task AMessageToTheBotInPrivate_NeedsNoPrefix()
 	{
-		await PostAsync(_botConnection.User.PmChannel, "help");
+		await PostAsync(_bot.App.PmChannels.Of(_botConnection.User), "help");
 
 		Assert.Equal(Lines(_bot.Text(BotReplies.HelpText)), _bot.WhisperedTo(_typist));
 	}
@@ -138,11 +138,11 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	[Fact]
 	public async Task AMessageToTheBotInPrivate_IsAnsweredByWhisperAndNotPostedInTheBotsChannel()
 	{
-		await PostAsync(_botConnection.User.PmChannel, "roll");
+		await PostAsync(_bot.App.PmChannels.Of(_botConnection.User), "roll");
 
 		Assert.Equal([_bot.Text(BotReplies.RollResult, new { user = "Typist", points = 0L })],
 			_bot.WhisperedTo(_typist));
-		Assert.Empty(_bot.SaidIn(_botConnection.User.PmChannel));
+		Assert.Empty(_bot.SaidIn(_bot.App.PmChannels.Of(_botConnection.User)));
 	}
 
 	[Fact]
@@ -150,7 +150,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	{
 		var other = await RoomFixture.PlayerAsync(_bot.App, "Other");
 
-		await PostAsync(other.User.PmChannel, "!roll");
+		await PostAsync(_bot.App.PmChannels.Of(other.User), "!roll");
 
 		Assert.Empty(Posts());
 	}
@@ -168,7 +168,7 @@ public sealed class ChatHandlerTests : IAsyncLifetime
 	[InlineData("\t")]
 	public async Task AWhitespaceMessage_IsRunAsACommandLineAndGetsNoReply(string content)
 	{
-		await PostAsync(_botConnection.User.PmChannel, content);
+		await PostAsync(_bot.App.PmChannels.Of(_botConnection.User), content);
 
 		Assert.Empty(Posts());
 	}

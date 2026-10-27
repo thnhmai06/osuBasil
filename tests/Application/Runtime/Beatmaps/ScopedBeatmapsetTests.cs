@@ -1,6 +1,6 @@
 using Basil.Application.Runtime.Beatmaps;
 using Basil.Application.Runtime.Common;
-using Basil.Application.Runtime.Sessions;
+using Basil.Application.Runtime.Connections;
 using Basil.Domain.Users;
 using Basil.Testing;
 using static Basil.Testing.BeatmapsetWorld;

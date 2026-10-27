@@ -1,7 +1,8 @@
+using Basil.Application.Runtime.Connections;
 using Basil.Application.Runtime.Events;
 using Basil.Domain.Users;
 
-namespace Basil.Application.Runtime.Sessions;
+namespace Basil.Application.Runtime.Users;
 
 /// <summary>Something happened to who is online.</summary>
 public abstract record UserEvent : Event;

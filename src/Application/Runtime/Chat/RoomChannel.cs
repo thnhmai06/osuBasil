@@ -1,8 +1,8 @@
-using Basil.Application.Runtime.Chat;
-using Basil.Application.Runtime.Sessions;
+using Basil.Application.Runtime.Connections;
+using Basil.Application.Runtime.Multiplayer.Rooms;
 using Basil.Domain.Users;
 
-namespace Basil.Application.Runtime.Multiplayer.Rooms;
+namespace Basil.Application.Runtime.Chat;
 
 /// <summary>A multiplayer room's chat channel while the room is open.</summary>
 public sealed class RoomChannel : Channel
@@ -12,7 +12,7 @@ public sealed class RoomChannel : Channel
 		Room = room;
 	}
 
-	/// <summary>Gets the room that owns this channel.</summary>
+	/// <summary>Gets the room this channel belongs to.</summary>
 	public Room Room { get; }
 
 	/// <inheritdoc />

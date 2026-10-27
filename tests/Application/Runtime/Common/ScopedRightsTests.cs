@@ -1,5 +1,5 @@
 using Basil.Application.Runtime.Common;
-using Basil.Application.Runtime.Sessions;
+using Basil.Application.Runtime.Connections;
 using Basil.Testing;
 
 namespace Basil.Application.Runtime.Tests.Common;

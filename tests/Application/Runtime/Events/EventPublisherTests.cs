@@ -1,5 +1,5 @@
 using Basil.Application.Runtime.Events;
-using Basil.Application.Runtime.Sessions;
+using Basil.Application.Runtime.Users;
 using Basil.Testing;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;

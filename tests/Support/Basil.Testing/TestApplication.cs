@@ -9,12 +9,12 @@ using Basil.Application.Runtime;
 using Basil.Application.Runtime.Anticheat;
 using Basil.Application.Runtime.Beatmaps;
 using Basil.Application.Runtime.Chat;
+using Basil.Application.Runtime.Connections;
 using Basil.Application.Runtime.Events;
 using Basil.Application.Runtime.Multiplayer;
 using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Scores;
 using Basil.Application.Runtime.Servers;
-using Basil.Application.Runtime.Sessions;
 using Basil.Application.Runtime.Users;
 using Basil.Domain.Auth;
 using Basil.Domain.Bancho;
@@ -111,6 +111,8 @@ public sealed class TestApplication : IDisposable
 		Users = Provider.GetRequiredService<UserRegistry>();
 		Lobby = Provider.GetRequiredService<Lobby>();
 		Channels = Provider.GetRequiredService<GeneralChannelRegistry>();
+		RoomChannels = Provider.GetRequiredService<RoomChannels>();
+		PmChannels = Provider.GetRequiredService<PmChannels>();
 		Server = Provider.GetRequiredService<Server>();
 		Beatmapsets = Provider.GetRequiredService<Beatmapsets>();
 	}
@@ -129,6 +131,12 @@ public sealed class TestApplication : IDisposable
 
 	/// <summary>Gets the configured general chat channels.</summary>
 	public GeneralChannelRegistry Channels { get; }
+
+	/// <summary>Gets the chat channels of open multiplayer rooms.</summary>
+	public RoomChannels RoomChannels { get; }
+
+	/// <summary>Gets the private-message channels of online users.</summary>
+	public PmChannels PmChannels { get; }
 
 	/// <summary>Gets the server root object.</summary>
 	public Server Server { get; }
@@ -292,9 +300,8 @@ public sealed class TestApplication : IDisposable
 		};
 		var portAssemblies = new[] { typeof(IUserRepository).Assembly, typeof(IBeatmapsetReader).Assembly };
 		foreach (var port in portAssemblies.SelectMany(assembly => assembly.GetTypes()).Where(type =>
-			         type.IsInterface &&
-			         !type.ContainsGenericParameters &&
+			         type is { IsInterface: true, ContainsGenericParameters: false } &&
 			         !inMemoryPortTypes.Contains(type)))
-			services.AddSingleton(port, _ => Substitute.For([port], Array.Empty<object>()));
+			services.AddSingleton(port, _ => Substitute.For([port], []));
 	}
 }

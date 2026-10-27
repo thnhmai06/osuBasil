@@ -1,7 +1,8 @@
-using Basil.Application.Runtime.Sessions;
+using Basil.Application.Runtime.Connections;
+using Basil.Application.Runtime.Users;
 using Basil.Testing;
 
-namespace Basil.Application.Runtime.Tests.Sessions;
+namespace Basil.Application.Runtime.Tests.Connections;
 
 public sealed class ConnectionTests
 {
@@ -14,9 +15,9 @@ public sealed class ConnectionTests
 		var second = await app.LoginAsync(user);
 
 		app.Users.Close(first, ConnectionCloseReason.LoggedOut);
-		var firstClosed = Assert.IsType<UserConnectionClosed>(app.UserEvents.Events.Last());
+		var firstClosed = Assert.IsType<UserConnectionClosed>(app.UserEvents.Events[^1]);
 		app.Users.Close(second, ConnectionCloseReason.LoggedOut);
-		var secondClosed = Assert.IsType<UserConnectionClosed>(app.UserEvents.Events.Last());
+		var secondClosed = Assert.IsType<UserConnectionClosed>(app.UserEvents.Events[^1]);
 
 		Assert.False(firstClosed.WentOffline);
 		Assert.True(secondClosed.WentOffline);
@@ -67,7 +68,7 @@ public sealed class ConnectionTests
 		Assert.Equal(1, closedCount);
 		Assert.False(connection.IsOpen);
 		Assert.Equal(ConnectionCloseReason.TimedOut,
-			Assert.IsType<UserConnectionClosed>(app.UserEvents.Events.Last()).Reason);
+			Assert.IsType<UserConnectionClosed>(app.UserEvents.Events[^1]).Reason);
 	}
 
 	[Fact]

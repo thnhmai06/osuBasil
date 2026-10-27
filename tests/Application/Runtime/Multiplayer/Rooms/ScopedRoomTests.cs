@@ -1,5 +1,6 @@
-using Basil.Application.Runtime.Multiplayer;
+using Basil.Application.Runtime.Chat;
 using Basil.Application.Runtime.Multiplayer.Events;
+using Basil.Application.Runtime.Multiplayer;
 using Basil.Domain.Multiplayer;
 using Basil.Testing;
 
@@ -16,6 +17,7 @@ public sealed class ScopedRoomTests
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
+		var channel = app.RoomChannels.Of(setup.Room);
 		await setup.Room.ScopeTo(setup.Creator).Settings.ConfigureAsync(
 			new RoomSettingsChange(Beatmap: RoomFixture.Beatmap), TestContext.Current.CancellationToken);
 		await setup.Room.ScopeTo(setup.Creator).Rounds.StartAsync(TestContext.Current.CancellationToken);
@@ -26,10 +28,11 @@ public sealed class ScopedRoomTests
 		Assert.True(setup.Room.IsClosed);
 		Assert.Null(setup.Room.Slots.Find(setup.Player));
 		Assert.True(setup.Room.Rounds.LastRound!.Aborted);
-		Assert.True(setup.Room.Channel.IsClosed);
 		Assert.DoesNotContain(setup.Room, app.Lobby.Rooms.Values);
 		var closed = Assert.IsType<LobbyRoomClosed>(app.LobbyEvents.Events[^1]);
 		Assert.Equal(3, closed.Evicted.Count);
+		await new LobbyRoomClosedHandler(app.RoomChannels).Handle(closed, TestContext.Current.CancellationToken);
+		Assert.True(channel.IsClosed);
 	}
 
 	[Fact]

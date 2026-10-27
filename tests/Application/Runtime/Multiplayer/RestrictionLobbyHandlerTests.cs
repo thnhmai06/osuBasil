@@ -1,5 +1,5 @@
 using Basil.Application.Runtime.Multiplayer;
-using Basil.Application.Runtime.Sessions;
+using Basil.Application.Runtime.Users;
 using Basil.Domain.Users;
 using Basil.Testing;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -89,6 +89,6 @@ public sealed class RestrictionLobbyHandlerTests
 			cancellationToken: TestContext.Current.CancellationToken);
 		Assert.True(result.IsOk);
 		return Assert.Single(app.UserEvents.Events.OfType<UserRestricted>(),
-			@event => @event.User == target);
+			@event => @event.User.Equals(target));
 	}
 }

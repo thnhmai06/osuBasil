@@ -6,7 +6,7 @@ using Basil.Application.Persistence.Common;
 using Basil.Application.Persistence.Multiplayer;
 using Basil.Application.Persistence.Scores;
 using Basil.Application.Persistence.Users;
-using Basil.Application.Runtime.Sessions;
+using Basil.Application.Runtime.Connections;
 using Basil.Domain.Bancho;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
@@ -92,9 +92,9 @@ public sealed class ScoreSubmissionFixture : IDisposable
 				Arg.Any<CancellationToken>())
 			.Returns(call =>
 			{
-				var key = (call.Arg<UserRecord>().Id, call.ArgAt<GameMode>(1));
+				var key = (UserId: call.Arg<UserRecord>().Id, Mode: call.ArgAt<GameMode>(1));
 				if (!_stats.TryGetValue(key, out var known))
-					_stats[key] = known = new UserStats { UserId = key.Item1, Mode = key.Item2 };
+					_stats[key] = known = new UserStats { UserId = key.UserId, Mode = key.Mode };
 				known.PlayCount++;
 				known.TotalScore += call.ArgAt<long>(2);
 				known.RankedScore += call.ArgAt<long>(3);

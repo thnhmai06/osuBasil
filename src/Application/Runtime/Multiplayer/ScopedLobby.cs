@@ -1,8 +1,8 @@
 using Basil.Application.Persistence.Content;
 using Basil.Application.Runtime.Common;
+using Basil.Application.Runtime.Connections;
 using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Multiplayer.Rooms;
-using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 
@@ -112,8 +112,7 @@ public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
 		Room room;
 		using (Lobby.Enter())
 		{
-			var context = new RoomContext(Lobby.Context.Clock, Lobby.Context.RoomEvents, Lobby, Lobby.Context.Chat,
-				Lobby.Context.Users);
+			var context = new RoomContext(Lobby.Context.Clock, Lobby.Context.RoomEvents, Lobby, Lobby.Context.Users);
 			room = new Room(id, match, settings ?? new MatchSettings(), isTournament, context);
 			if (!string.IsNullOrEmpty(password)) room.Settings.Password = password;
 			if (seat is not null && Lobby.RoomOf(seat) is null && Lobby.TryClaim(seat, room))

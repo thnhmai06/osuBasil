@@ -1,7 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Basil.Application.Runtime.Common;
+using Basil.Application.Runtime.Connections;
 using Basil.Application.Runtime.Multiplayer.Events;
-using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 

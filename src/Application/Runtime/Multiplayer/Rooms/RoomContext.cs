@@ -1,7 +1,6 @@
-using Basil.Application.Runtime.Chat;
+using Basil.Application.Runtime.Connections;
 using Basil.Application.Runtime.Events;
 using Basil.Application.Runtime.Multiplayer.Events;
-using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Runtime.Multiplayer.Rooms;
@@ -10,14 +9,12 @@ namespace Basil.Application.Runtime.Multiplayer.Rooms;
 /// <param name="Clock">The clock for checking current time.</param>
 /// <param name="Events">The publisher for room events.</param>
 /// <param name="Lobby">The lobby that holds the room.</param>
-/// <param name="Chat">The runtime dependencies for the room's channel.</param>
-/// <param name="Users">The user service for checking blocks.</param>
+/// <param name="Users">The questions a room asks about blocks between users.</param>
 internal sealed record RoomContext(
 	TimeProvider Clock,
 	IEventPublisher<RoomEvent> Events,
 	IRoomLobbyPort Lobby,
-	ChannelContext Chat,
-	IRoomUsersPort Users);
+	RoomBlocks Users);
 
 /// <summary>What a room asks of the lobby that holds it.</summary>
 internal interface IRoomLobbyPort
@@ -35,7 +32,7 @@ internal interface IRoomLobbyPort
 	/// <param name="room">The room that may be empty.</param>
 	void Emptied(Room room);
 
-	/// <summary>Closes the room: the lobby evicts its players, ends its round, closes its channel and forgets it.</summary>
+	/// <summary>Closes the room: the lobby evicts its players, ends its round and forgets it.</summary>
 	/// <param name="room">The room to close.</param>
 	/// <param name="by">The user who closed the room, or <see langword="null" /> when the room closed itself.</param>
 	/// <remarks>The caller holds the room's scope.</remarks>
@@ -55,14 +52,4 @@ internal interface IRoomLobbyPort
 	/// <param name="player">The player's game connection.</param>
 	/// <param name="room">The room that made the claim.</param>
 	void Release(BanchoConnection player, Room room);
-}
-
-/// <summary>What a room asks of the users: whether one blocks another.</summary>
-internal interface IRoomUsersPort
-{
-	/// <summary>Gets whether one user blocks another.</summary>
-	/// <param name="blocker">The user whose blocks are checked.</param>
-	/// <param name="who">The user who may be blocked.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	ValueTask<bool> BlocksAsync(UserRecord blocker, UserRecord who, CancellationToken cancellationToken);
 }

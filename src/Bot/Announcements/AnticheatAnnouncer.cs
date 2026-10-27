@@ -1,4 +1,5 @@
 using Basil.Application.Runtime.Anticheat;
+using Basil.Application.Runtime.Chat;
 using Basil.Application.Runtime.Multiplayer;
 using Basil.Application.Runtime.Multiplayer.Rooms;
 using Basil.Application.Runtime.Servers;
@@ -11,20 +12,25 @@ using Mediator;
 namespace Basil.Bot.Announcements;
 
 /// <summary>Announces anticheat flags in room channels and to room staff.</summary>
-internal sealed class AnticheatAnnouncer(Server server, Lobby lobby, UserRegistry users, IReplies replies)
+internal sealed class AnticheatAnnouncer(
+	Server server,
+	Lobby lobby,
+	RoomChannels channels,
+	UserRegistry users,
+	IReplies replies)
 	: INotificationHandler<AnticheatPlayerFlagged>
 {
 	/// <inheritdoc />
 	public async ValueTask Handle(AnticheatPlayerFlagged flagged, CancellationToken cancellationToken)
 	{
-		if (lobby.RoomOf(flagged.Player) is not { } room)
+		if (lobby.RoomOf(flagged.Player) is not { } room || room.IsClosed)
 			return;
 
 		var reason = string.Join(", ", flagged.Signs.SignNames());
 		var playerName = flagged.Player.Record.Value.Name;
 		var channelMessage = replies.Text(AnnouncementReplies.AnticheatFlagRoom,
 			new { player = playerName, reason });
-		await server.SayAsync(room.Channel, channelMessage, cancellationToken: cancellationToken);
+		await server.SayAsync(channels.Of(room), channelMessage, cancellationToken: cancellationToken);
 
 		var pmMessage = replies.Text(AnnouncementReplies.AnticheatFlagPm,
 			new { room = room.Id, name = room.Settings.Name, player = playerName, reason });

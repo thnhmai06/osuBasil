@@ -4,7 +4,7 @@ using Basil.Domain.Users;
 using Mediator;
 using Microsoft.Extensions.Logging;
 
-namespace Basil.Application.Runtime.Sessions;
+namespace Basil.Application.Runtime.Connections;
 
 /// <summary>Stops a restricted user from spectating when the restriction suspends spectating.</summary>
 internal sealed class RestrictionHandler(
@@ -18,9 +18,7 @@ internal sealed class RestrictionHandler(
 	public ValueTask Handle(UserRestricted restricted, CancellationToken cancellationToken)
 	{
 		var user = registry.Online.GetValueOrDefault(restricted.User);
-		if (user is null) return ValueTask.CompletedTask;
-
-		if (user.EffectivePermissions(time.GetUtcNow()).Allows(UserPermissions.SpectatingWatch))
+		if (user is null || user.EffectivePermissions(time.GetUtcNow()).Allows(UserPermissions.SpectatingWatch))
 			return ValueTask.CompletedTask;
 
 		if (user.Bancho is { } bancho && registry.FindSpectating(bancho) is { } host)

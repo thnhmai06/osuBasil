@@ -1,5 +1,6 @@
+using Basil.Application.Runtime.Connections;
 using Basil.Application.Runtime.Multiplayer.Rooms;
-using Basil.Application.Runtime.Sessions;
+using Basil.Application.Runtime.Users;
 using Basil.Domain.Users;
 using Basil.Testing;
 

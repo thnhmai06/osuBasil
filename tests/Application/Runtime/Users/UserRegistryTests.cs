@@ -1,6 +1,7 @@
 using System.Net;
 using Basil.Application.Persistence.Users;
-using Basil.Application.Runtime.Sessions;
+using Basil.Application.Runtime.Connections;
+using Basil.Application.Runtime.Users;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
 using Basil.Testing;
@@ -53,7 +54,7 @@ public sealed class UserRegistryTests
 		Assert.True(result.Succeeded);
 		Assert.True(result.Connection!.IsOpen);
 		Assert.Same(app.Users.Online[user], result.Connection.User);
-		var opened = Assert.IsType<UserConnectionOpened>(app.UserEvents.Events.Last());
+		var opened = Assert.IsType<UserConnectionOpened>(app.UserEvents.Events[^1]);
 		Assert.Same(result.Connection, opened.Connection);
 		Assert.True(opened.CameOnline);
 	}

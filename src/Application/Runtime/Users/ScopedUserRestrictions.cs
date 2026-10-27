@@ -1,5 +1,4 @@
 using Basil.Application.Runtime.Common;
-using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Moderation;
 using Basil.Domain.Users;
 

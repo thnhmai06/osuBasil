@@ -2,8 +2,8 @@ using Basil.Application.Persistence.Beatmaps;
 using Basil.Application.Persistence.Content;
 using Basil.Application.Persistence.Users;
 using Basil.Application.Runtime.Chat;
+using Basil.Application.Runtime.Connections;
 using Basil.Application.Runtime.Multiplayer.Rooms;
-using Basil.Application.Runtime.Sessions;
 using Basil.Bot.Commands;
 using Basil.Bot.Commands.Mp;
 using Basil.Bot.Replies;
@@ -116,7 +116,7 @@ internal sealed class BotHarness : IDisposable
 	/// <returns>The whispered texts.</returns>
 	public List<string> WhisperedTo(Connection connection)
 	{
-		return SaidIn(connection.User.PmChannel);
+		return SaidIn(App.PmChannels.Of(connection.User));
 	}
 
 	/// <summary>Types a message as a user and collects what the bot says.</summary>

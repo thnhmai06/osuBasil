@@ -1,6 +1,6 @@
 using Basil.Application.Runtime.Common;
+using Basil.Application.Runtime.Connections;
 using Basil.Application.Runtime.Multiplayer.Events;
-using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Common;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Scores;
@@ -79,7 +79,7 @@ public sealed partial class Room
 	/// <summary>Decides a round that ended and still waits for scores, because the room closes or the next round starts.</summary>
 	internal void DecideForClosing()
 	{
-		if (Rounds.Settlement is { Closed: false } settlement && settlement.Round.EndedAt is not null)
+		if (Rounds.Settlement is { Closed: false, Round.EndedAt: not null } settlement)
 			Decide(settlement);
 	}
 

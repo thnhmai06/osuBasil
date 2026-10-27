@@ -2,7 +2,7 @@ using Basil.Application.Runtime.Users;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace Basil.Infrastructure.Runtime.Sessions;
+namespace Basil.Infrastructure.Runtime.Connections;
 
 /// <summary>Closes idle connections every 100 seconds.</summary>
 internal sealed class IdleConnectionSweeper(

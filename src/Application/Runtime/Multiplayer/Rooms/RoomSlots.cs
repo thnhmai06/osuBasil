@@ -1,6 +1,6 @@
 using System.Collections;
 using System.Collections.Immutable;
-using Basil.Application.Runtime.Sessions;
+using Basil.Application.Runtime.Connections;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Runtime.Multiplayer.Rooms;

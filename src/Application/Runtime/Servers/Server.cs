@@ -1,5 +1,5 @@
 ﻿using Basil.Application.Runtime.Chat;
-using Basil.Application.Runtime.Sessions;
+using Basil.Application.Runtime.Connections;
 using Basil.Application.Runtime.Users;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
@@ -79,7 +79,7 @@ public sealed class Server
 		CancellationToken cancellationToken = default)
 	{
 		if (!to.IsOnline) return Task.FromResult(false);
-		return SayAsync(to.PmChannel, text, notice, cancellationToken);
+		return SayAsync(Context.PmChannels.Of(to), text, notice, cancellationToken);
 	}
 
 	/// <summary>Finds an open channel the bot may speak in by the name clients use.</summary>
@@ -97,10 +97,11 @@ public sealed class Server
 		if (!name.StartsWith("#mp_", StringComparison.Ordinal)
 		    || !int.TryParse(name.AsSpan(4), out var roomId)
 		    || !Context.Lobby.Rooms.TryGetValue(roomId, out var room)
-		    || room.Channel.IsClosed)
+		    || room.IsClosed)
 			return null;
 
-		return room.Channel;
+		var roomChannel = Context.RoomChannels.Of(room);
+		return room.IsClosed || roomChannel.IsClosed ? null : roomChannel;
 	}
 
 	/// <summary>

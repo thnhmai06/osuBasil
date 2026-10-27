@@ -1,11 +1,12 @@
-using Basil.Application.Runtime.Sessions;
+using Basil.Application.Runtime.Connections;
+using Basil.Application.Runtime.Users;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Runtime.Sessions;
+using Basil.Infrastructure.Runtime.Connections;
 using Basil.Infrastructure.Runtime.Tests.Support;
 using Basil.Testing;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace Basil.Infrastructure.Runtime.Tests.Sessions;
+namespace Basil.Infrastructure.Runtime.Tests.Connections;
 
 /// <summary>
 ///     Pins that a sweep closes what has been quiet for the time its kind allows, leaves a connection that just spoke

@@ -1,5 +1,6 @@
 using Basil.Application.Runtime.Chat;
-using Basil.Application.Runtime.Sessions;
+using Basil.Application.Runtime.Connections;
+using Basil.Application.Runtime.Users;
 using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;
 

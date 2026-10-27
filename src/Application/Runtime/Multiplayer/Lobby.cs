@@ -1,10 +1,10 @@
 using System.Collections.Concurrent;
 using Basil.Application.Persistence.Common;
 using Basil.Application.Persistence.Multiplayer;
+using Basil.Application.Runtime.Connections;
 using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Multiplayer.Rooms;
 using Basil.Application.Runtime.Scores;
-using Basil.Application.Runtime.Sessions;
 using Basil.Application.Runtime.Users;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
@@ -251,7 +251,6 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 		room.Match.Value.EndedAt = Context.Clock.GetUtcNow();
 		room.Members.MutableObservers.Clear();
 		room.IsClosed = true;
-		room.Channel.Close();
 		Remove(room);
 		Context.Events.Publish(new LobbyRoomClosed(room, by, evicted, aborted));
 	}
@@ -315,7 +314,6 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 	{
 		if (room.Seat(creator) is null) return;
 		room.Authority.Host = creator;
-		room.JoinChannel(creator);
 	}
 
 	/// <summary>Releases a connection from room memberships when the server itself calls it; it needs no rights.</summary>
@@ -339,10 +337,7 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 			}
 		}
 
-		// Managers stay in a room's channel after leaving their seat, and IRC referees join it directly.
-		foreach (var room in Rooms.Values)
-			room.Channel.ScopeTo(connection).Part();
-
+		Context.Events.Publish(new LobbyConnectionReleased(connection));
 		return Task.CompletedTask;
 	}
 

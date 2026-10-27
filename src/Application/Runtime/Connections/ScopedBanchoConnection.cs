@@ -1,7 +1,8 @@
 using Basil.Application.Runtime.Common;
+using Basil.Application.Runtime.Users;
 using Basil.Domain.Users;
 
-namespace Basil.Application.Runtime.Sessions;
+namespace Basil.Application.Runtime.Connections;
 
 /// <summary>An osu! client as one connection may act on it.</summary>
 public sealed class ScopedBanchoConnection : Scoped<UserPermissions, Connection>

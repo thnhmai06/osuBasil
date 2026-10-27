@@ -1,5 +1,5 @@
+using Basil.Application.Runtime.Connections;
 using Basil.Application.Runtime.Multiplayer.Events;
-using Basil.Application.Runtime.Sessions;
 using MatchRecord = Basil.Domain.Multiplayer.MatchRecord;
 using MatchSettings = Basil.Domain.Multiplayer.MatchSettings;
 
@@ -33,7 +33,6 @@ public sealed partial class Room : IEquatable<Room>
 		Rounds = new RoomRounds();
 		IsTournament = isTournament;
 		Slots = new RoomSlots(this);
-		Channel = new RoomChannel(this, context.Chat);
 		Context = context;
 	}
 
@@ -48,9 +47,6 @@ public sealed partial class Room : IEquatable<Room>
 
 	/// <summary>Gets a value that indicates whether the room is a tournament room, which stays open for a while when empty.</summary>
 	public bool IsTournament { get; }
-
-	/// <summary>Gets the room's chat channel.</summary>
-	public RoomChannel Channel { get; }
 
 	/// <summary>The match's 16 slots, in order.</summary>
 	public RoomSlots Slots { get; }

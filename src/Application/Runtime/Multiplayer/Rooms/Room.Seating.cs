@@ -1,5 +1,5 @@
+using Basil.Application.Runtime.Connections;
 using Basil.Application.Runtime.Multiplayer.Events;
-using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 
@@ -45,7 +45,6 @@ public sealed partial class Room
 
 		if (Seat(player) is not { } slot) return RoomOutcome.Full;
 
-		JoinChannel(player);
 		MarkOccupied();
 		Emit(new RoomPlayerJoined(this, player, slot.Index, null, null));
 		return RoomOutcome.Ok;
@@ -67,7 +66,7 @@ public sealed partial class Room
 		       || permissions.Allows(UserPermissions.RoomManageAny);
 	}
 
-	/// <summary>Removes a seated player and updates the room's round, channel and empty-room state.</summary>
+	/// <summary>Removes a seated player and updates the room's round and empty-room state.</summary>
 	/// <param name="by">The player's game connection.</param>
 	/// <returns>Ok when the player left, otherwise NotInRoom.</returns>
 	private RoomOutcome LeaveSeat(BanchoConnection by)
@@ -76,7 +75,6 @@ public sealed partial class Room
 
 		var progress = AdvanceRound();
 		Emit(new RoomPlayerLeft(this, by, slot.Index, Authority.Host, progress));
-		LeaveChannel(by);
 		ReportIfEmpty();
 		return RoomOutcome.Ok;
 	}
@@ -103,20 +101,6 @@ public sealed partial class Room
 	internal Room? RoomOf(BanchoConnection player)
 	{
 		return Context.Lobby.RoomOf(player);
-	}
-
-	/// <summary>Adds a connection to this room's channel.</summary>
-	/// <param name="connection">The connection that joins.</param>
-	internal void JoinChannel(Connection connection)
-	{
-		Channel.ScopeTo(connection).Join();
-	}
-
-	/// <summary>Removes a connection from this room's channel unless its user manages the room.</summary>
-	/// <param name="connection">The connection that leaves.</param>
-	internal void LeaveChannel(Connection connection)
-	{
-		if (!Authority.IsManagedBy(connection.Record)) Channel.ScopeTo(connection).Part();
 	}
 
 	/// <summary>Tells the lobby that this room has a player again.</summary>
@@ -154,9 +138,7 @@ public sealed partial class Room
 		slot.Team = team;
 		if (wasHost) Authority.Host = player;
 
-		LeaveChannel(stale);
 		var progress = AdvanceRound();
-		JoinChannel(player);
 		MarkOccupied();
 		Emit(new RoomPlayerJoined(this, player, slot.Index, stale, progress));
 		return RoomOutcome.Ok;

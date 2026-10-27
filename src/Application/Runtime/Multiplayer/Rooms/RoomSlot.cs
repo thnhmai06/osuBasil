@@ -1,4 +1,4 @@
-using Basil.Application.Runtime.Sessions;
+using Basil.Application.Runtime.Connections;
 using Basil.Domain.Mechanics;
 
 namespace Basil.Application.Runtime.Multiplayer.Rooms;
