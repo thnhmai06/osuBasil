@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using Basil.Application.Users.Connections;
 using Basil.Application.Multiplayer.Runtime.Rooms;
 
 namespace Basil.Application.Chat.Runtime;
@@ -17,30 +16,22 @@ public sealed class RoomChannels
 		_context = context;
 	}
 
-	/// <summary>Gets the channel of an open room, adding its seated players and observers.</summary>
+	/// <summary>Gets the channel of an open room.</summary>
 	/// <param name="room">The open room.</param>
 	/// <returns>The room's chat channel.</returns>
+	/// <remarks>The channel's members follow the room's events; a caller right after a change may not see it yet.</remarks>
 	public RoomChannel Of(Room room)
 	{
-		using var scope = room.Enter();
-		if (room.IsClosed)
-		{
-			if (_channels.TryRemove(room, out var closed))
-			{
-				closed.Close();
-				return closed;
-			}
+		if (!room.IsClosed)
+			return _channels.GetOrAdd(room, static (current, context) => new RoomChannel(current, context), _context);
 
-			return new RoomChannel(room, _context) { IsClosed = true };
+		if (_channels.TryRemove(room, out var closed))
+		{
+			closed.Close();
+			return closed;
 		}
 
-		var channel = _channels.GetOrAdd(room, current => new RoomChannel(current, _context));
-		foreach (var player in room.Slots.Select(slot => slot.Player).OfType<BanchoConnection>())
-			channel.ScopeTo(player).Join();
-		foreach (var observer in room.Members.Observers)
-			channel.ScopeTo(observer).Join();
-
-		return channel;
+		return new RoomChannel(room, _context) { IsClosed = true };
 	}
 
 	/// <summary>Gets a room's channel if it has one.</summary>
