@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Basil.Application.Capabilities.Beatmaps;
-using Basil.Application.Persistence.Common;
+using Basil.Common.Application;
 using Basil.Application.Persistence.Content;
 using Basil.Domain.Mechanics;
 using Microsoft.Extensions.Logging;
@@ -30,7 +30,7 @@ internal sealed class HttpBeatmapsetMirror : IBeatmapsetMirror
 
 	private readonly ISettingsRepository _settings;
 
-	/// <summary>Creates the mirror client that reaches the configured mirror over the server's shared connection pool.</summary>
+	/// <summary>Creates the mirror client that reaches the configured mirror.</summary>
 	/// <param name="settings">The settings holding the mirror addresses.</param>
 	/// <param name="logger">The logger failures are reported to.</param>
 	public HttpBeatmapsetMirror(ISettingsRepository settings, ILogger<HttpBeatmapsetMirror> logger)
@@ -38,7 +38,7 @@ internal sealed class HttpBeatmapsetMirror : IBeatmapsetMirror
 	{
 	}
 
-	/// <summary>Creates the mirror client that reaches the mirror over the given connection pool.</summary>
+	/// <summary>Creates the mirror client that sends its requests through the given client.</summary>
 	/// <param name="settings">The settings holding the mirror addresses.</param>
 	/// <param name="logger">The logger failures are reported to.</param>
 	/// <param name="http">The client the requests are sent through.</param>

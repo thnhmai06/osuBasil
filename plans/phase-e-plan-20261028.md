@@ -63,6 +63,8 @@ Protocol.Irc 117; all together 3464 passed and 4 skipped, by `plans/evidence/pha
   database migrates from empty, the `InitialCreate` precondition (no database applied the old migration) restated.
 - **E1 done (2026-10-28).** Eight module contexts (Common, Users, Auth, Beatmaps, Content, Scores, Multiplayer, Chat) with one history table each, applied by `DatabaseMigrator` in the order of their registration; `Database`, `DatabaseWriter`, `DatabaseReader` generic over the context; one regenerated `InitialCreate` per module. Proof: a fresh database migrated by the new contexts has a `pg_dump -s` schema identical to the old one except for the history tables, 16 foreign keys; totals 3467 passed (3464 + 3 new), 4 skipped.
 - **E2 Common.** Create `Basil.Common.Application` / `.Infrastructure`, move Common/Events/Postgres infra. Gate: totals.
+- **E2 done (2026-10-28).** Added both Common projects, moved shared code and independent tests, and replaced the shared-kernel
+  namespace check with a Common project-reference guard (same architecture test count). Total: 3467 passed, 4 skipped.
 - **E3 Leaves.** Beatmaps, Auth, Content, one at a time.
 - **E4 Users (with Connections), Anticheat.**
 - **E5 Scores, Multiplayer, Chat.**

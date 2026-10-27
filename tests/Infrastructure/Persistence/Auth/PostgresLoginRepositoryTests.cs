@@ -1,6 +1,6 @@
 using System.Net;
 using Basil.Application.Persistence.Auth;
-using Basil.Application.Persistence.Common;
+using Basil.Common.Application;
 using Basil.Application.Persistence.Users;
 using Basil.Domain.Auth;
 using Basil.Domain.Bancho;

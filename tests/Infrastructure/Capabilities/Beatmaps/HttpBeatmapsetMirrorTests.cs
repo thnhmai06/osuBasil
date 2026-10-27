@@ -1,6 +1,6 @@
 using System.Net;
 using Basil.Application.Capabilities.Beatmaps;
-using Basil.Application.Persistence.Common;
+using Basil.Common.Application;
 using Basil.Application.Persistence.Content;
 using Basil.Domain.Mechanics;
 using Basil.Infrastructure.Capabilities.Beatmaps;

@@ -1,4 +1,4 @@
-using Basil.Application.Runtime.Events;
+using Basil.Common.Application.Events;
 using Basil.Application.Runtime.Users;
 using Basil.Testing;
 using Mediator;

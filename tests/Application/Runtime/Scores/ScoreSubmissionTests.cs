@@ -1,5 +1,5 @@
 using Basil.Application.Persistence.Scores;
-using Basil.Application.Runtime.Common;
+using Basil.Common.Application;
 using Basil.Application.Runtime.Multiplayer;
 using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Multiplayer.Rooms;

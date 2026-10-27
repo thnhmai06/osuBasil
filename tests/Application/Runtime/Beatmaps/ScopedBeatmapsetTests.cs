@@ -1,5 +1,5 @@
 using Basil.Application.Runtime.Beatmaps;
-using Basil.Application.Runtime.Common;
+using Basil.Common.Application;
 using Basil.Application.Runtime.Connections;
 using Basil.Domain.Users;
 using Basil.Testing;

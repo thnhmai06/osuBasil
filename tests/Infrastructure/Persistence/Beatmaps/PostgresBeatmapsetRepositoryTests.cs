@@ -1,9 +1,9 @@
 using Basil.Application.Persistence.Beatmaps;
-using Basil.Application.Persistence.Common;
+using Basil.Common.Application;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Common;
 using Basil.Infrastructure.Persistence.Beatmaps;
-using Basil.Infrastructure.Persistence.Postgres;
+using Basil.Common.Infrastructure.Postgres;
 using Basil.Infrastructure.Persistence.Tests.Support;
 using Npgsql;
 

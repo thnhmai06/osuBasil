@@ -1,11 +1,12 @@
 using System.Reflection;
+using System.Xml.Linq;
 using NetArchTest.Rules;
 
 namespace Basil.ArchitectureTests;
 
 /// <summary>
 ///     The module graph of Application.Runtime, measured on its namespaces (plan <c>module-events-plan-20261027.md</c>):
-///     every area may use the shared kernel (<c>Common</c>, <c>Events</c>); beyond that <c>Anticheat -&gt; Connections,
+///     beyond the shared Common assemblies, every area follows <c>Anticheat -&gt; Connections,
 ///     Users</c>, <c>Scores -&gt; Connections, Users, Beatmaps</c>, <c>Multiplayer -&gt; Connections, Users, Beatmaps,
 ///     Scores</c>, <c>Chat -&gt; Connections, Users, Multiplayer</c> and <c>Servers</c> on top of all of them;
 ///     <c>Beatmaps</c> depends on nothing, and <c>Users</c> and <c>Connections</c> are one cluster that uses only each
@@ -18,9 +19,6 @@ public class ModuleGraphTests
 	[
 		"Anticheat", "Beatmaps", "Chat", "Connections", "Multiplayer", "Scores", "Servers", "Users"
 	];
-
-	/// <summary>Namespaces every area may use without it being an edge.</summary>
-	private static readonly string[] SharedKernel = ["Common", "Events"];
 
 	/// <summary>The one pair of areas that may reference each other: a user holds its connections, a connection its user.</summary>
 	private static readonly (string From, string To) UserConnectionCycle = ("Users", "Connections");
@@ -77,15 +75,33 @@ public class ModuleGraphTests
 	}
 
 	[Fact]
-	public void TheSharedKernelDependsOnNoArea()
+	public void CommonProjectsReferenceNoFeatureProjects()
 	{
-		var edges = SharedKernel.SelectMany(kernel => Areas.Select(area => (Kernel: kernel, Area: area)))
-			.Where(pair => !Types.InAssembly(Runtime).That()
-				.ResideInNamespaceStartingWith($"Basil.Application.Runtime.{pair.Kernel}")
-				.ShouldNot().HaveDependencyOn($"Basil.Application.Runtime.{pair.Area}").GetResult().IsSuccessful)
-			.Select(pair => $"{pair.Kernel} -> {pair.Area}");
+		var source = Path.Combine(RepositoryRoot(), "src");
+		var common = Path.Combine(source, "Common");
+		var domain = Path.GetFullPath(Path.Combine(source, "Domain", "Basil.Domain.csproj"));
+		var pathComparison =
+			OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+		var projects = Directory.GetFiles(common, "*.csproj", SearchOption.AllDirectories);
+		var references = projects.SelectMany(project =>
+				XDocument.Load(project).Descendants()
+					.Where(element => element.Name.LocalName == "ProjectReference")
+					.Select(element =>
+					{
+						var include = element.Attribute("Include")!.Value;
+						return (From: project,
+							To: Path.GetFullPath(Path.Combine(Path.GetDirectoryName(project)!, include)));
+					}))
+			.ToArray();
 
-		Assert.Empty(edges);
+		Assert.Contains(references, edge => edge.From.EndsWith("Basil.Common.Infrastructure.csproj") &&
+		                                    edge.To.EndsWith("Basil.Common.Application.csproj"));
+
+		// Domain is the explicitly required shared project; no feature project may be referenced here.
+		var featureReferences = references.Where(edge =>
+			!IsUnder(edge.To, common) && !Path.GetFullPath(edge.To).Equals(domain, pathComparison));
+
+		Assert.Empty(featureReferences.Select(edge => $"{Path.GetFileName(edge.From)} -> {edge.To}"));
 	}
 
 	[Fact]
@@ -109,6 +125,19 @@ public class ModuleGraphTests
 	public void TheMeasureSeesAnEdgeItShould()
 	{
 		Assert.Contains(("Multiplayer", "Connections"), Measure());
+	}
+
+	private static string RepositoryRoot()
+	{
+		var directory = new DirectoryInfo(AppContext.BaseDirectory);
+		while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Basil.slnx")))
+			directory = directory.Parent;
+		return directory?.FullName ?? throw new DirectoryNotFoundException("Basil.slnx was not found.");
+	}
+
+	private static bool IsUnder(string path, string directory)
+	{
+		return !Path.GetRelativePath(directory, path).StartsWith("..", StringComparison.Ordinal);
 	}
 
 	/// <summary>Finds the cycles among a set of edges, each reported as the areas it passes through.</summary>

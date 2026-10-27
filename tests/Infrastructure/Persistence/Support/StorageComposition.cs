@@ -1,5 +1,5 @@
-using Basil.Infrastructure.Persistence.Common;
-using Basil.Infrastructure.Persistence.Postgres;
+using Basil.Common.Infrastructure;
+using Basil.Common.Infrastructure.Postgres;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;

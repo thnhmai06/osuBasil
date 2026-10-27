@@ -1,5 +1,5 @@
 using Basil.Application.Persistence.Beatmaps;
-using Basil.Application.Persistence.Common;
+using Basil.Common.Application;
 using Basil.Application.Persistence.Users;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Common;

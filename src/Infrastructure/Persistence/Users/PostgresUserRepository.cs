@@ -1,10 +1,10 @@
 using System.Collections.Concurrent;
 using System.Globalization;
-using Basil.Application.Persistence.Common;
+using Basil.Common.Application;
 using Basil.Application.Persistence.Users;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Persistence.Memory;
-using Basil.Infrastructure.Persistence.Postgres;
+using Basil.Common.Infrastructure.Memory;
+using Basil.Common.Infrastructure.Postgres;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Persistence.Users;
@@ -99,7 +99,7 @@ internal sealed class PostgresUserRepository(DatabaseReader reader, DatabaseWrit
 		var normalized = UserData.NormalizeName(name);
 
 		if (_byName.TryGetValue(normalized, out var known) && known.Value.NormalizedName == normalized &&
-		    known != live)
+		    !ReferenceEquals(known, live))
 			return false;
 
 		// Whether the name is free is the database's to say, so the user takes the name only once it is committed.

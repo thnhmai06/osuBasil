@@ -9,25 +9,30 @@ into Application operations.
 
 ```text
 Basil.Domain                              business values                          -> (nothing)
-Basil.Application.Persistence                 ports to the outside: persistence,       -> Domain
-                                          capabilities, query records, paging
-Basil.Application.Capabilities                object-free application logic            -> Application.Storage
-                                          (every type internal)
-Basil.Application.Runtime                 runtime objects, registries, root        -> Domain, Application.Storage,
-                                          objects, scopes, contexts, events,          Application.Services
-                                          AddApplication()
-Basil.Infrastructure.Persistence              implements the persistence ports         -> Application.Storage
-Basil.Infrastructure.Capabilities         implements the capability ports          -> Application.Storage
-Basil.Infrastructure.Runtime              event buses, handlers, background work   -> Application.Objects
+Basil.Common.Application                 shared values and event contracts/queue   -> Domain, external packages
+Basil.Common.Infrastructure              shared database, memory, files,            -> Common.Application, Domain
+                                          migrations and event dispatcher
+Basil.Application.Persistence            persistence ports and query records       -> Common.Application, Domain
+Basil.Application.Capabilities           capability ports and object-free logic   -> Common.Application,
+                                                                                       Application.Persistence
+Basil.Application.Runtime                runtime objects, feature events, scopes,  -> Domain, Common.Application,
+                                          contexts and AddApplication()                Application.Persistence,
+                                                                                       Application.Capabilities
+Basil.Infrastructure.Persistence         module persistence implementations       -> Common.Infrastructure,
+                                                                                       Application.Persistence
+Basil.Infrastructure.Capabilities       capability implementations               -> Application.Capabilities
+Basil.Infrastructure.Runtime            handlers and background work             -> Common.Infrastructure,
+                                                                                       Application.Runtime
 Basil.Protocol.Bancho / .Irc              wire formats                             -> external libraries only
 Basil.Host.*                              transports                               -> Application.Objects,
                                                                                        Infrastructure, their Protocol
 Basil.Host                                composition root                         -> all projects
-Basil.Bot                     BasilBot commands and announcements      -> Application.Objects
+Basil.Bot                     BasilBot commands and announcements      -> Application.Runtime,
+                                                                         Common.Application
 ```
 
 > **Migration status (2026-10-21).** The Domain, Application, Infrastructure and BasilBot work described here
-> is implemented. The hosts and every test project still use old namespaces; solution-wide `dotnet build`,
+> is implemented. The hosts and host test projects still use old namespaces; solution-wide `dotnet build`,
 > `dotnet test` and architecture tests do not run. The host migration, `Basil.Cli`, tests and silent channel
 > delivery for blocks remain unfinished. Build the migrated projects individually; see the verification note in
 > [`AGENTS.md`](../../AGENTS.md).
@@ -47,10 +52,16 @@ can be tested without starting the server. Bancho packet layouts are wire contra
 
 ### `Basil.Application.Persistence`
 
-`Application.Storage` holds the ports to the outside of the process: repository and storage ports, query records and
-paging, and the capability ports whose implementation needs external libraries (beatmapset reading, analysis, derived
-assets, the beatmap mirror, screenshot inspection). It also holds the few plain data types that both Services and
-Objects use in their signatures (login and registration inputs, score submission inputs, import and scan results).
+This project holds repository and storage ports, query records, and the capability ports whose implementation needs
+external libraries (beatmapset reading, analysis, derived assets, the beatmap mirror, screenshot inspection). Shared
+query values and paging live in `Basil.Common.Application`.
+
+### `Basil.Common.Application` and `Basil.Common.Infrastructure`
+
+The shared application project holds cross-feature values (`Result<T>`, `Scoped<T>`, paging and search syntax) and the
+base event contract, publisher and queue. Its infrastructure partner owns the shared PostgreSQL, in-memory and file
+implementations, common migration, and the event dispatcher. The application project depends on Domain; the
+infrastructure project depends on both Common.Application and Domain.
 
 ### `Basil.Application.Capabilities`
 
@@ -61,16 +72,17 @@ object, never publishes an event and keeps no running state. Every type is `inte
 ### `Basil.Application.Runtime`
 
 `Application.Objects` holds the runtime objects, registries and root objects, their short-lived scoped views,
-contexts, events and results, and every coordination between objects. It calls the services for object-free logic and
+contexts, feature events and every coordination between objects. It calls the services for object-free logic and
 publishes the events they leave to it. Its public `AddApplication()` builds the contexts and objects and registers
 the services. Object behaviour is never delegated to a service: each object owns the state, invariants and operations
 for itself and its parts. See [Object scopes](#object-scopes).
 
 ### `Basil.Infrastructure`
 
-Implementations of the storage ports (`Infrastructure.Storage`: PostgreSQL, files, memory) and capability ports
-(`Infrastructure.Capabilities`: osu! rulesets, FFMpegCore, the beatmap mirror, ImageSharp), event buses and handlers, and
-background loops (`Infrastructure.Runtime`).
+Implementations of module storage ports (`Infrastructure.Storage`: PostgreSQL and file-backed repositories) and
+capability ports (`Infrastructure.Capabilities`: osu! rulesets, FFMpegCore, the beatmap mirror, ImageSharp), handlers
+and background loops (`Infrastructure.Runtime`). Shared persistence and event-delivery infrastructure lives in
+`Basil.Common.Infrastructure`.
 `Infrastructure.Runtime` reacts to Application events by calling the owning object's operations, for example
 when a connection closes or a restriction takes effect.
 
@@ -89,11 +101,13 @@ dependency-injection registration of every other project.
 Dependencies point inwards only:
 
 * Domain and the protocols reference nothing;
-* Application.Storage references Domain;
-* Application.Services references Application.Storage; Application.Objects references Domain, Application.Storage
-  and Application.Services (Services' internals are visible to Objects only);
-* Infrastructure.Storage and Infrastructure.Capabilities reference Application.Storage; Infrastructure.Runtime
-  references Application.Objects; none references Application.Services;
+* Common.Application references Domain; Common.Infrastructure references Common.Application and Domain;
+* Application.Persistence references Common.Application and Domain; Application.Capabilities references Common.Application
+  and Application.Persistence; Application.Runtime references Domain, Common.Application, Application.Persistence and
+  Application.Capabilities (Capabilities' internals are visible to Runtime only);
+* Infrastructure.Persistence references Common.Infrastructure and Application.Persistence; Infrastructure.Capabilities
+  references Application.Capabilities; Infrastructure.Runtime references Common.Infrastructure and Application.Runtime;
+  Infrastructure.Runtime does not reference Application.Capabilities;
 * hosts reference Application.Objects, call `AddApplication()` and use the objects;
 * only `Basil.Host` composes the full application.
 
@@ -151,9 +165,9 @@ parallel `IX` contract.
   it does not clean up rooms or channels. Infrastructure handlers receive cross-object events and call the
   owning object's operation (`Lobby.ReleaseAsync`, `GeneralChannelRegistry.PartAll`). A room keeps its channel in step with its players and the lobby owns room closing.
 * **Application publishes events and handles those of its own module; Infrastructure only ships them.**
-  `IEventPublisher<T>` (`Publish`) is the event port; a handler is a `Mediator.INotificationHandler<TEvent>` for one
-  event type, in Application.Runtime or `Basil.Bot`. Infrastructure.Runtime runs the shared queue
-  (`EventDispatcher`) that delivers each event in publish order. Services never publish.
+  `IEventPublisher<T>` and the base event/queue live in Common.Application. Feature event categories and handlers remain
+  in Application.Runtime; a handler is a `Mediator.INotificationHandler<TEvent>` for one event type, in Runtime or
+  `Basil.Bot`. Common.Infrastructure runs the shared queue through `EventDispatcher`. Services never publish.
 * **Identity follows the basis object.** `Room` is identified by its `Match`, a general chat channel by its
   name. Recreated runtime objects compare by reference, so late cleanup carrying an old object cannot touch
   its replacement.
@@ -190,7 +204,8 @@ online period; an offline account gets a transient instance that is never regist
 
 ### Feature folders
 
-Application projects are sliced by feature; namespaces follow their project and folder.
+Application projects are sliced by feature; namespaces follow their project and folder. Shared application and
+infrastructure code is in `src/Common/Application` and `src/Common/Infrastructure` respectively.
 
 | Feature | Application.Storage | Application.Services / Application.Objects |
 |---|---|---|
@@ -204,8 +219,9 @@ Application projects are sliced by feature; namespaces follow their project and 
 | `Content/` | content repositories and storage ports, the screenshot inspector port | content operations on `Server` |
 | `Servers/` | — | `Server`, `ScopedServer` and server-wide resources (Objects) |
 
- `Events/` contains event types and contracts. `Users` and `Connections` form one runtime cluster because a user
-holds its connections and a connection knows its user; `Chat` and `Multiplayer` refer to both. Their runtime
+  Feature event categories and handlers live with their owning feature in Application.Runtime; shared event contracts
+  and the queue live in Common.Application. `Users` and `Connections` form one runtime cluster because a user holds its
+  connections and a connection knows its user; `Chat` and `Multiplayer` refer to both. Their runtime
 objects and registries are in Application.Objects.
 
 ### Events
@@ -236,8 +252,9 @@ other (`Lobby` implements `IRoomLobbyPort` and answers the score module's `IScor
 
 
 
-Application publishes events and handles those of its own module. One shared queue (`EventQueue`, owned by Application), run by `EventDispatcher` in
-Infrastructure.Runtime, delivers every published event in order to its `INotificationHandler<TEvent>` handlers;
+Application publishes events and handles those of its own module. One shared queue (`EventQueue`, owned by
+Common.Application), run by `EventDispatcher` in Common.Infrastructure, delivers every published event in order to its
+`INotificationHandler<TEvent>` handlers;
 Application.Runtime owns the runtime handlers and BasilBot owns command and announcement handlers. The hosts still need
 migration to the new Application contracts.
 
@@ -307,11 +324,13 @@ scope.
 
 ## Related code
 
-* `src/Application/Runtime/`: runtime objects, registries, scopes, contexts, events and `AddApplication()`.
+* `src/Common/Application/`: shared application values and event contracts/queue.
+* `src/Common/Infrastructure/`: shared database, memory, files and event dispatcher.
+* `src/Application/Runtime/`: runtime objects, registries, scopes, contexts, feature events and `AddApplication()`.
 * `src/Application/Capabilities/`: object-free application logic (internal).
-* `src/Application/Persistence/`: repository, storage and capability ports, query records and paging.
-* `src/Infrastructure/Persistence/`, `src/Infrastructure/Capabilities/`: implementations of those ports.
-: event buses, handlers and background work.
+* `src/Application/Persistence/`: repository, storage and capability ports and query records.
+* `src/Infrastructure/Persistence/`, `src/Infrastructure/Capabilities/`: module implementations of those ports.
+* `src/Infrastructure/Runtime/`: handlers and background work; shared event dispatch is in `src/Common/Infrastructure/`.
 * `src/Bot/`: BasilBot command and announcement handlers.
 
 ## Where to go from here

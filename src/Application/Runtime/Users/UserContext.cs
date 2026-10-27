@@ -1,6 +1,6 @@
 using Basil.Application.Persistence.Auth;
 using Basil.Application.Persistence.Users;
-using Basil.Application.Runtime.Events;
+using Basil.Common.Application.Events;
 
 namespace Basil.Application.Runtime.Users;
 

@@ -1,5 +1,5 @@
 using System.Collections.Concurrent;
-using Basil.Application.Persistence.Common;
+using Basil.Common.Application;
 using Basil.Application.Persistence.Multiplayer;
 using Basil.Application.Runtime.Connections;
 using Basil.Application.Runtime.Multiplayer.Events;

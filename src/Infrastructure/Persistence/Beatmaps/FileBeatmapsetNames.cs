@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Text;
 using Basil.Application.Persistence.Beatmaps;
 using Basil.Domain.Beatmaps;
-using Basil.Infrastructure.Persistence.Files;
+using Basil.Common.Infrastructure.Files;
 
 namespace Basil.Infrastructure.Persistence.Beatmaps;
 

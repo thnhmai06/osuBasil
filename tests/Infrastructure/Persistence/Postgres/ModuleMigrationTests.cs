@@ -1,5 +1,5 @@
 using System.Reflection;
-using Basil.Infrastructure.Persistence.Postgres;
+using Basil.Common.Infrastructure.Postgres;
 using Basil.Infrastructure.Persistence.Tests.Support;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -29,10 +29,14 @@ public sealed class ModuleMigrationTests(PersistenceFixture container) : Databas
 		var assembly = typeof(DatabaseMigrator).Assembly;
 		foreach (var (module, ownedTables) in Modules)
 		{
-			var context = assembly.GetType($"Basil.Infrastructure.Persistence.{module}.{module}DbContext");
+			var moduleAssembly = module == "Common" ? assembly : Assembly.Load("Basil.Infrastructure.Persistence");
+			var contextName = module == "Common"
+				? "Basil.Common.Infrastructure.CommonDbContext"
+				: $"Basil.Infrastructure.Persistence.{module}.{module}DbContext";
+			var context = moduleAssembly.GetType(contextName);
 			Assert.NotNull(context);
 
-			var migrations = assembly.GetTypes()
+			var migrations = moduleAssembly.GetTypes()
 				.Where(type => typeof(Migration).IsAssignableFrom(type) && !type.IsAbstract)
 				.Where(type => type.GetCustomAttribute<DbContextAttribute>()?.ContextType == context)
 				.ToArray();

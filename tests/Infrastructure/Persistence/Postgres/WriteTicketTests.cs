@@ -1,5 +1,5 @@
-using Basil.Infrastructure.Persistence.Postgres;
-using Basil.Infrastructure.Persistence.Common;
+using Basil.Common.Infrastructure.Postgres;
+using Basil.Common.Infrastructure;
 using Basil.Infrastructure.Persistence.Tests.Support;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;

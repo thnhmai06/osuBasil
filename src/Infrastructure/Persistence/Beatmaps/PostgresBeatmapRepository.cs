@@ -3,12 +3,12 @@ using System.Collections.Immutable;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using Basil.Application.Persistence.Beatmaps;
-using Basil.Application.Persistence.Common;
+using Basil.Common.Application;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
-using Basil.Infrastructure.Persistence.Memory;
-using Basil.Infrastructure.Persistence.Postgres;
+using Basil.Common.Infrastructure.Memory;
+using Basil.Common.Infrastructure.Postgres;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Persistence.Beatmaps;

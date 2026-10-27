@@ -1,8 +1,8 @@
 using System.Linq.Expressions;
 using Basil.Application.Persistence.Beatmaps;
-using Basil.Application.Persistence.Common;
+using Basil.Common.Application;
 using Basil.Domain.Beatmaps;
-using Basil.Infrastructure.Persistence.Postgres;
+using Basil.Common.Infrastructure.Postgres;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Persistence.Beatmaps;

@@ -13,16 +13,15 @@ using Basil.Application.Runtime.Anticheat;
 using Basil.Application.Runtime.Beatmaps;
 using Basil.Application.Runtime.Chat;
 using Basil.Application.Runtime.Connections;
-using Basil.Application.Runtime.Events;
+using Basil.Common.Application.Events;
 using Basil.Application.Runtime.Multiplayer;
 using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Multiplayer.Rooms;
 using Basil.Application.Runtime.Scores;
 using Basil.Application.Runtime.Servers;
 using Basil.Application.Runtime.Users;
-using Mediator;
+using Basil.Common.Application;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Basil.Application.Runtime;
 
@@ -36,7 +35,7 @@ public static class DependencyInjection
 	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddApplication(this IServiceCollection services)
 	{
-		services.TryAddSingleton(TimeProvider.System);
+		services.AddCommonApplication();
 		services.AddApplicationCapabilities();
 		services.AddEvents();
 
@@ -129,9 +128,6 @@ public static class DependencyInjection
 			options.GenerateTypesAsInternal = true;
 			options.NotificationPublisherType = typeof(QueuedNotificationPublisher);
 		});
-		services.AddSingleton<EventQueue>();
-		services.AddSingleton(sp => new EventPublisher(new Lazy<IPublisher>(sp.GetRequiredService<IPublisher>),
-			sp.GetRequiredService<TimeProvider>()));
 		AddCategory<UserEvent>(services);
 		AddCategory<ChannelEvent>(services);
 		AddCategory<LobbyEvent>(services);

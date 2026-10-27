@@ -1,8 +1,8 @@
 using Basil.Application.Persistence.Auth;
 using Basil.Domain.Auth;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Persistence.Memory;
-using Basil.Infrastructure.Persistence.Postgres;
+using Basil.Common.Infrastructure.Memory;
+using Basil.Common.Infrastructure.Postgres;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Persistence.Auth;

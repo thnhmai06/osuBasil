@@ -1,9 +1,9 @@
 using System.Collections.Immutable;
-using Basil.Application.Persistence.Common;
+using Basil.Common.Application;
 using Basil.Application.Persistence.Users;
 using Basil.Domain.Moderation;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Persistence.Postgres;
+using Basil.Common.Infrastructure.Postgres;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Persistence.Users;
@@ -47,7 +47,7 @@ internal sealed class PostgresModerationLogRepository(
 		var minTimestamp = within?.Min?.ToUniversalTime();
 		var maxTimestamp = within?.Max?.ToUniversalTime();
 
-		var result = await reader.ReadAsync(async (UsersDbContext context) =>
+		var (total, rows) = await reader.ReadAsync(async (UsersDbContext context) =>
 		{
 			var query = context.ModerationLog.Where(row => row.TargetId == liveTarget.Id);
 
@@ -70,9 +70,6 @@ internal sealed class PostgresModerationLogRepository(
 				.ToListAsync(cancellationToken);
 			return (count, rows);
 		}, cancellationToken);
-
-		var total = result.count;
-		var rows = result.rows;
 
 		var entries = ImmutableList.CreateBuilder<ModerationLog>();
 		foreach (var row in rows)

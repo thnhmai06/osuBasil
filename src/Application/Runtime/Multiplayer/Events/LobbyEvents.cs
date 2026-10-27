@@ -1,5 +1,5 @@
 using Basil.Application.Runtime.Connections;
-using Basil.Application.Runtime.Events;
+using Basil.Common.Application.Events;
 using Basil.Application.Runtime.Multiplayer.Rooms;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;

@@ -1,5 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
-using Basil.Application.Runtime.Common;
+using Basil.Common.Application;
 using Basil.Application.Runtime.Connections;
 using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Domain.Multiplayer;

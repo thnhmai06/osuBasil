@@ -26,9 +26,11 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<ProjectReference Include="..\..\..\src\Common\Infrastructure\Basil.Common.Infrastructure.csproj"/>
 		<ProjectReference Include="..\..\..\src\Domain\Basil.Domain.csproj"/>
 		<ProjectReference Include="..\..\..\src\Application\Persistence\Basil.Application.Persistence.csproj"/>
 		<ProjectReference Include="..\..\..\src\Infrastructure\Persistence\Basil.Infrastructure.Persistence.csproj"/>
+		<ProjectReference Include="..\..\Support\Basil.Testing.Persistence\Basil.Testing.Persistence.csproj"/>
 	</ItemGroup>
 
 </Project>

@@ -2,9 +2,12 @@ using Basil.Application.Capabilities.Beatmaps;
 using Basil.Application.Persistence.Users;
 using Basil.Application.Runtime;
 using Basil.Bot;
+using Basil.Common.Infrastructure;
+using Basil.Common.Infrastructure.Postgres;
 using Basil.Infrastructure.Runtime;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 using DependencyInjection = Basil.Application.Runtime.DependencyInjection;
 
@@ -25,6 +28,7 @@ public sealed class CompositionTests
 		var services = new ServiceCollection();
 		services.AddLogging();
 		AddPortStubs(services);
+		AddCommonOptions(services);
 		services.AddApplication();
 		services.AddInfrastructureRuntime();
 		services.AddBot();
@@ -48,6 +52,7 @@ public sealed class CompositionTests
 		var services = new ServiceCollection();
 		services.AddLogging();
 		AddPortStubs(services);
+		AddCommonOptions(services);
 		services.AddApplication();
 		services.AddInfrastructureRuntime();
 		services.AddBot();
@@ -89,7 +94,14 @@ public sealed class CompositionTests
 	{
 		var portAssemblies = new[] { typeof(IUserRepository).Assembly, typeof(IBeatmapsetReader).Assembly };
 		foreach (var port in portAssemblies.SelectMany(assembly => assembly.GetTypes())
-			         .Where(type => type.IsInterface && type.IsPublic && !type.ContainsGenericParameters))
+			         .Where(type => type is { IsInterface: true, IsPublic: true, ContainsGenericParameters: false }))
 			services.AddSingleton(port, _ => Substitute.For([port], []));
+	}
+
+	private static void AddCommonOptions(IServiceCollection services)
+	{
+		services.AddSingleton(Options.Create(new StorageOptions { DataDirectory = Path.GetTempPath() }));
+		services.AddSingleton(
+			Options.Create(new DatabaseOptions { ConnectionString = "Host=localhost;Database=basil" }));
 	}
 }

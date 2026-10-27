@@ -64,7 +64,8 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   library each `ScopeTo` calls, not a layer to pass through. A domain record and its Application object never
   share a name.
 * **Persistence holds the ports; runtime objects and registries live in Runtime.** Application.Persistence holds
-  the persistent ports (repositories, byte storages), query records and paging. Runtime objects (`Room`, `RoomSlot`, `User`,
+  the persistent ports (repositories, byte storages) and query records; Common.Application holds shared paging and
+  search syntax. Runtime objects (`Room`, `RoomSlot`, `User`,
   connections and channels), registries (`UserRegistry`, `GeneralChannelRegistry`) and their scoped
   behaviour live in Application.Runtime, as public classes; the online user and its registry are in `Users/`, and
   its connections with their context are in `Connections/`. Persistence
@@ -196,12 +197,13 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   logging in opens the connection; deleting a user closes their connections at once, a security rule that
   must not wait for a handler.
 * **Application publishes events and handles the ones that concern its own module; Infrastructure only ships them**
-  (plan `module-events-plan-20261027.md`, D5-D8, supersedes "Application does not consume events"). An object or the
+  (plan `module-events-plan-20261027.md`, D5-D8, supersedes "Application does not consume events"). The base event,
+  `IEventPublisher<T>` and `EventQueue` live in Common.Application; feature categories and handlers live in Runtime. An object or the
   bot's voice publishes an event through `IEventPublisher<T>` (`Publish`): it stamps `Timestamp`, queues the delivery
   and returns at once. A handler is a class implementing `Mediator.INotificationHandler<TEvent>` for one concrete
   event type (`ConnectionHandler`, `RestrictionHandler`, `ScoreHandler`, `MatchRecorder` in Application.Runtime;
-  `RoomAnnouncer`, `AnticheatAnnouncer`, `ChatHandler` in `Basil.Bot`). One shared queue (`EventQueue`, owned by Application and run by
-  `EventDispatcher`, the one hosted service Infrastructure.Runtime adds for it) delivers the events one at a time in the order they were published,
+  `RoomAnnouncer`, `AnticheatAnnouncer`, `ChatHandler` in `Basil.Bot`). The shared queue (`EventQueue`) is run by
+  `EventDispatcher` in Common.Infrastructure and delivers the events one at a time in the order they were published,
   across all event types; a failing handler is logged and the others still run. The mediator resolves handlers at
   first publish, not when the publisher is built (a handler reaches objects that publish). Persistence and Services
   never publish (a service returns what happened and the object publishes it). One operation publishes one event

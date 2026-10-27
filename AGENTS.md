@@ -321,11 +321,13 @@ dotnet test tests/Application/Runtime \
   --filter "FullyQualifiedName~<TestClassName>"
 ```
 
-While the hosts and the tests are not migrated (see the migration status under [Architecture](#architecture)),
-verify a change with the eight projects that do build, one at a time:
+While the hosts and host tests are not migrated (see the migration status under [Architecture](#architecture)),
+verify a change with the projects that do build, one at a time:
 
 ```bash
 dotnet build src/Domain --nologo -v q
+dotnet build src/Common/Application --nologo -v q
+dotnet build src/Common/Infrastructure --nologo -v q
 dotnet build src/Application/Persistence --nologo -v q
 dotnet build src/Application/Runtime --nologo -v q
 dotnet build src/Application/Capabilities --nologo -v q
@@ -352,26 +354,28 @@ See [`docs/for-technicians/docker.md`](docs/for-technicians/docker.md) for Docke
 ```text
 Basil.Domain                     business model and its own validity          -> (nothing)
 
-Basil.Application.Persistence    ports to the persistent outside of the process:  -> Domain
-                                 repositories, byte storages, query records, paging
-Basil.Application.Capabilities  ports to external computation (beatmapset      -> Application.Persistence
-                                 reader, analyser, assets, mirror, screenshot
+Basil.Common.Application         shared application contracts and eventing     -> Domain, Mediator.Abstractions
+Basil.Common.Infrastructure      shared database, memory, files and event     -> Common.Application, Domain
+                                 dispatch infrastructure
+
+Basil.Application.Persistence    ports to the persistent outside of the process:  -> Domain, Common.Application
+                                 repositories, byte storages and query records
+Basil.Application.Capabilities  ports to external computation (beatmapset      -> Application.Persistence,
+                                 reader, analyser, assets, mirror, screenshot       Common.Application
                                  inspector: public interfaces and the data they
                                  exchange) and application logic that needs no
                                  live object (everything else internal; it
                                  never publishes an event)
-Basil.Application.Runtime        the live objects and what they do: runtime       -> Domain, Application.Persistence,
-                                 objects, scopes, contexts, events, registries,      Application.Capabilities
-                                 root objects, the coordination between
-                                 objects; the public AddApplication()
+Basil.Application.Runtime        live objects, scopes, contexts, feature events, -> Domain, Application.Persistence,
+                                 registries and coordination; AddApplication()    Application.Capabilities,
+                                                                                    Common.Application
 
-Basil.Infrastructure.Persistence implements the persistent ports: PostgreSQL,    -> Application.Persistence
-                                 files, memory, migrations
+Basil.Infrastructure.Persistence module persistence: PostgreSQL, files, memory -> Application.Persistence,
+                                 and migrations                                      Common.Infrastructure
 Basil.Infrastructure.Capabilities implements the capability ports: osu!          -> Application.Capabilities
                                  rulesets, FFMpegCore, beatmap mirror, ImageSharp
-Basil.Infrastructure.Runtime     event buses and handlers, background loops,     -> Application.Runtime
-                                 startup work                                       (does not reference
-                                                                                    Application.Capabilities)
+Basil.Infrastructure.Runtime    handlers, background loops and startup work    -> Application.Runtime,
+                                                                                    Common.Infrastructure
 Basil.Protocol.Bancho            osu! client-server wire formats, score         -> external libraries only
                                  submission cipher (BouncyCastle)
 Basil.Protocol.Irc               IRC wire format                                -> (nothing)
@@ -380,7 +384,8 @@ Basil.Host.Bancho / .Irc / .Api  transports                                     
 Basil.Host                       entry point, composition, logging,             -> everything
                                  diagnostics, LAN advertising
 
-Basil.Bot                        BasilBot: chat commands and their replies,     -> Application.Runtime
+Basil.Bot                        BasilBot: chat commands and their replies,     -> Application.Runtime,
+                                                                                    Common.Application
                                  an entry point of the server (not a client)
 ```
 
@@ -393,28 +398,34 @@ format changes, only Protocol changes. `Basil.Protocol.Irc` does the same for IR
 Domain: only the transport hosts reference it, and it may use external libraries for the wire work.
 
 Projects live under `src/` in folders that mirror the solution folders under `/Sources/`, each named by
-its short name without `Basil.`: `src/Domain/`, `src/Application/{Persistence,Capabilities,Runtime}/`,
+its short name without `Basil.`: `src/Domain/`, `src/Common/{Application,Infrastructure}/`,
+`src/Application/{Persistence,Capabilities,Runtime}/`,
 `src/Infrastructure/{Persistence,Capabilities,Runtime}/`, `src/Hosts/{Host,Api,Bancho,Irc}/`,
 `src/Protocol/{Bancho,Irc}/`, `src/Bot/`. The project file and the namespace keep the full name
 (`Basil.Domain.csproj`, `Basil.Domain.*`). Tests mirror the same tree under `tests/`
-(`tests/Application/Runtime/Basil.Application.Runtime.Tests.csproj` tests `src/Application/Runtime`).
+(`tests/Application/Runtime/Basil.Application.Runtime.Tests.csproj` tests `src/Application/Runtime`; Common tests live under `tests/Common/`).
 
 Configuration is bound only in `Basil.Host`. Infrastructure and the transports receive it as `IOptions<T>` of
 an options type that the project using it owns; Application reads no configuration.
 
-Application has three projects named by role, and each Infrastructure project implements the Application project of
-the same name. **Application.Persistence** holds the ports to the persistent outside of the process: repository and
-byte-storage contracts, query records and paging. **Application.Capabilities** holds the ports to external
+`Common.Application` owns `IActor`, `Result<T>`, `Scoped<T>`, shared query values and event contracts/queue; it depends
+on Domain and external packages. `Common.Infrastructure` owns shared database, memory and file implementations and the
+event dispatcher; it depends on Domain, Common.Application and its external packages.
+The remaining Application projects are named by role, and each module Infrastructure project implements the Application
+project of the same name. **Application.Persistence** holds the ports to the persistent outside of the process:
+repository and byte-storage contracts and query records. Shared paging and search syntax live in Common.Application.
+**Application.Capabilities** holds the ports to external
 computation (a capability with business meaning whose implementation needs external libraries: beatmapset reader,
 analyser, assets, mirror, screenshot inspector; these interfaces and the data they exchange are the only public
 types) and the application logic that needs no live object (account checks, beatmapset indexing, score validation and
 recording): it takes and returns records and plain results, never creates, receives or publishes an object or an
 event, and every such type is `internal`. **Application.Runtime** holds the live objects and what they do: runtime
-objects, registries, root objects, scopes, contexts, events, and every coordination between objects; it calls the
+objects, registries, root objects, scopes, contexts, feature events, and every coordination between objects; it calls the
 services and publishes the events they leave to it. Its public `AddApplication()` builds the contexts and the
 objects and registers the services (Capabilities gives Runtime access to its internals). `Infrastructure.Persistence`
-references Application.Persistence, `Infrastructure.Capabilities` references Application.Capabilities,
-`Infrastructure.Runtime` references Application.Runtime and never Application.Capabilities. The hosts reference
+references Application.Persistence and Common.Infrastructure, `Infrastructure.Capabilities` references
+Application.Capabilities, `Infrastructure.Runtime` references Application.Runtime and Common.Infrastructure and never
+Application.Capabilities. The hosts reference
 Application.Runtime and call `AddApplication()`.
 
 > **Migration status (2026-10-21).** The object-scope redesign and the project renames are implemented across Domain,
@@ -428,14 +439,13 @@ Application.Runtime and call `AddApplication()`.
 
 ### Application feature folders
 
-Application is sliced by feature, not by kind of type; namespace = project + folder. Application.Persistence owns the
-persistent ports (repository and byte-storage contracts, query records, paging).
-Application.Capabilities owns the capability ports (public) and the object-free application logic (internal). Application.Runtime owns runtime objects, registries,
-scoped views and contexts, events, results and the coordination between objects.
+Application is sliced by feature, not by kind of type; namespace = project + folder. Common.Application owns shared
+values, paging/search syntax and event contracts/queue; Common.Infrastructure owns shared persistence and event delivery.
+Application.Persistence owns the persistent ports (repository and byte-storage contracts and query records).
+Application.Capabilities owns the capability ports (public) and object-free application logic (internal).
+Application.Runtime owns runtime objects, registries, scoped views, contexts, feature events and their coordination.
 
 ```text
-Common/        PageRequest, Page<T>, Interval<T>, Paging                           (Persistence)
-Events/        Event, IEventPublisher<T>, EventQueue, event handlers (INotificationHandler<T>)  (Runtime)
 Users/         user and restriction repositories, UserQuery; login and registration
                inputs; AccountService                                              (Capabilities)
                User, UserContext, UserRegistry, ScopedUser*, LoginResult,
@@ -455,15 +465,16 @@ Content/       content repositories, storage ports and the screenshot inspector 
 Servers/       Server, ScopedServer, server contexts and server resources
 ```
 
-Event-handler contracts belong to Application.Runtime; event buses and concrete handlers live in
-Infrastructure.Runtime or the consumer that owns them, including `Basil.Bot`. Host configuration
+Feature event categories and handlers belong to Application.Runtime; the shared event contract, publisher and queue
+belong to Common.Application. The dispatcher belongs to Common.Infrastructure; concrete handlers live in
+Application.Runtime or the consumer that owns them, including `Basil.Bot`. Host configuration
 (ports, TLS, data paths) belongs to the hosts. BasilBot commands and announcements are server features: a
 command is an entry point that uses the typist's scoped objects, and the bot only replies. Query **records**
 (the filter a repository applies, with `Parse` for the search syntax) belong to Persistence; routes and handlers
 that answer queries do not. Server settings changed at runtime (`ServerSettings`, owned by Application.Persistence) exist only while the
 server runs and are stored through `ISettingsRepository`; they are not Domain and not host configuration.
 
-* `Common` and `Events` depend on no feature. `Users`, `Connections`, `Beatmaps` and `Scores` do not depend on
+* Common projects depend only on Domain and shared external packages. `Users`, `Connections`, `Beatmaps` and `Scores` do not depend on
   `Multiplayer` objects. Anticheat flags,
   wherever they arrive (score submission, `lastfm.php`), are reported by the host through `AnticheatReporter.Report`,
   the single source of anticheat events; BasilBot turns them into chat warnings.

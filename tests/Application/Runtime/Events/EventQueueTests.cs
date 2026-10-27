@@ -1,5 +1,5 @@
 using System.Threading.Channels;
-using Basil.Application.Runtime.Events;
+using Basil.Common.Application.Events;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Basil.Application.Runtime.Tests.Events;

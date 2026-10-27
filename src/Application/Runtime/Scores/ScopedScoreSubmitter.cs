@@ -1,5 +1,5 @@
 using Basil.Application.Persistence.Scores;
-using Basil.Application.Runtime.Common;
+using Basil.Common.Application;
 using Basil.Application.Runtime.Connections;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;

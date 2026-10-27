@@ -1,6 +1,6 @@
 using Basil.Application.Persistence.Users;
 using Basil.Domain.Users;
-using Basil.Infrastructure.Persistence.Postgres;
+using Basil.Common.Infrastructure.Postgres;
 using Basil.Infrastructure.Persistence.Tests.Support;
 
 namespace Basil.Infrastructure.Persistence.Tests.Postgres;
