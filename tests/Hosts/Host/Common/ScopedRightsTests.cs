@@ -2,7 +2,7 @@ using Basil.Application.Common;
 using Basil.Application.Users.Connections;
 using Basil.Testing;
 
-namespace Basil.Composition.Tests.Common;
+namespace Basil.Host.Tests.Common;
 
 public class ScopedRightsTests
 {

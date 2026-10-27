@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
 
-namespace Basil.Composition.Tests;
+namespace Basil.Host.Tests;
 
 /// <summary>Checks the module migrations preserve table ownership, migration order and foreign keys.</summary>
 [Collection("Persistence")]

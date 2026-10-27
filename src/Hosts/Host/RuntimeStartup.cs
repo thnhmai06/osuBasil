@@ -5,7 +5,7 @@ using Basil.Application.Users.Users;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace Basil.Composition;
+namespace Basil.Host;
 
 /// <summary>
 ///     Prepares the runtime before the server serves anyone: opens the general channels, makes sure BasilBot's account

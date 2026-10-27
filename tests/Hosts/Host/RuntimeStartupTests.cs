@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
-namespace Basil.Composition.Tests;
+namespace Basil.Host.Tests;
 
 /// <summary>
 ///     What the server does before it serves anyone: opens the configured channels, makes the account of the bot's

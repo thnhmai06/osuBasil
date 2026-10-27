@@ -1,10 +1,10 @@
 using Basil.Application.Content.Persistence;
 using Basil.Application.Beatmaps.Capabilities;
-using Basil.Composition;
+using Basil.Host;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 
-namespace Basil.Composition.Tests;
+namespace Basil.Host.Tests;
 
 /// <summary>The Beatmaps module reads the current mirror endpoints from server settings on each request.</summary>
 public sealed class BeatmapMirrorSettingsTests

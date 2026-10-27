@@ -1,7 +1,6 @@
 <Solution>
 	<Folder Name="/Sources/">
 		<Project Path="src/Domain/Basil.Domain.csproj"/>
-		<Project Path="src/Composition/Basil.Composition.csproj"/>
 		<Project Path="src/Bot/Basil.Bot.csproj"/>
 	</Folder>
 	<Folder Name="/Sources/Application/">
@@ -27,9 +26,6 @@
 		<Project Path="src/Infrastructure/Users/Basil.Infrastructure.Users.csproj"/>
 	</Folder>
 	<Folder Name="/Sources/Hosts/">
-		<Project Path="src/Hosts/Bancho/Basil.Host.Bancho.csproj"/>
-		<Project Path="src/Hosts/Irc/Basil.Host.Irc.csproj"/>
-		<Project Path="src/Hosts/Api/Basil.Host.Api.csproj"/>
 		<Project Path="src/Hosts/Host/Basil.Host.csproj"/>
 	</Folder>
 	<Folder Name="/Sources/Protocol/">
@@ -38,7 +34,7 @@
 	</Folder>
 	<Folder Name="/Tests/">
 		<Project Path="tests/Architecture/Basil.ArchitectureTests.csproj"/>
-		<Project Path="tests/Composition/Basil.Composition.Tests.csproj"/>
+		<Project Path="tests/Hosts/Host/Basil.Host.Tests.csproj"/>
 	</Folder>
 	<Folder Name="/Tests/Support/">
 		<Project Path="tests/Support/Basil.Testing.Persistence/Basil.Testing.Persistence.csproj"/>

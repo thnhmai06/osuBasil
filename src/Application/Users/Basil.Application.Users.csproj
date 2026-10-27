@@ -14,7 +14,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<InternalsVisibleTo Include="Basil.Composition"/>
+		<InternalsVisibleTo Include="Basil.Host"/>
 		<InternalsVisibleTo Include="Basil.Application.Users.Tests"/>
 	</ItemGroup>
 

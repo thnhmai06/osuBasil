@@ -5,7 +5,7 @@ using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 
-namespace Basil.Composition.Tests.Common;
+namespace Basil.Host.Tests.Common;
 
 /// <summary>Pins what publishing an event does: it is stamped, queued, and delivered later to the handlers of its type.</summary>
 public sealed class EventPublisherTests
