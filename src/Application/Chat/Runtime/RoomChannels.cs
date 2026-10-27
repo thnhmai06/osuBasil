@@ -22,15 +22,19 @@ public sealed class RoomChannels
 	/// <remarks>The channel's members follow the room's events; a caller right after a change may not see it yet.</remarks>
 	public RoomChannel Of(Room room)
 	{
-		if (!room.IsClosed)
-			return _channels.GetOrAdd(room, static (current, context) => new RoomChannel(current, context), _context);
+		if (room.IsClosed) return Closed(room);
 
-		if (_channels.TryRemove(room, out var closed))
-		{
-			closed.Close();
-			return closed;
-		}
+		var channel = _channels.GetOrAdd(room, static (current, context) => new RoomChannel(current, context), _context);
+		if (!room.IsClosed) return channel;
 
+		// The room closed after the check, and its close event may already have been handled: do not keep a channel
+		// nobody will remove.
+		Remove(room)?.Close();
+		return Closed(room);
+	}
+
+	private RoomChannel Closed(Room room)
+	{
 		return new RoomChannel(room, _context) { IsClosed = true };
 	}
 
