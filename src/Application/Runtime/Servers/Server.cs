@@ -32,9 +32,9 @@ public sealed class Server
 	/// <returns>Null when a channel with that name is already open.</returns>
 	public GeneralChannel? OpenChannel(GeneralChannelRecord record)
 	{
-		var channel = new GeneralChannel(record, Context.Session.Chat);
-		if (!Context.Session.Chat.Registry.Add(channel)) return null;
-		Context.Session.Chat.Events.Publish(new ChannelOpened(channel));
+		var channel = new GeneralChannel(record, Context.Chat);
+		if (!Context.Chat.Registry.Add(channel)) return null;
+		Context.Chat.Events.Publish(new ChannelOpened(channel));
 		return channel;
 	}
 
@@ -91,7 +91,7 @@ public sealed class Server
 	/// </remarks>
 	public Channel? FindChannel(string name)
 	{
-		if (Context.Session.Chat.Registry.All.TryGetValue(name, out var general))
+		if (Context.Chat.Registry.All.TryGetValue(name, out var general))
 			return general.IsClosed ? null : general;
 
 		if (!name.StartsWith("#mp_", StringComparison.Ordinal)

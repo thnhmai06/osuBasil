@@ -1,6 +1,6 @@
-using Basil.Application.Runtime.Chat;
+using Basil.Application.Runtime.Sessions;
 
-namespace Basil.Application.Runtime.Sessions;
+namespace Basil.Application.Runtime.Chat;
 
 /// <summary>The chat channel of an osu! client and the users spectating it.</summary>
 public sealed class SpectatorChannel : Channel
