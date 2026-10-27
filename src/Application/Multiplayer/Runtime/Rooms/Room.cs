@@ -98,7 +98,7 @@ public sealed partial class Room : IEquatable<Room>
 	/// <summary>Enters the room's exclusive scope, in which one state transition of the room runs at a time.</summary>
 	/// <returns>The scope, to dispose when done.</returns>
 	/// <remarks>The caller checks <see cref="IsClosed" /> inside the scope.</remarks>
-	public Lock.Scope Enter()
+	internal Lock.Scope Enter()
 	{
 		return _sync.EnterScope();
 	}

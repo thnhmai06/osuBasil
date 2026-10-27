@@ -11,16 +11,15 @@ namespace Basil.Application.Chat.Tests.Runtime;
 public sealed class RoomChannelHandlerTests
 {
 	[Fact]
-	public async Task Of_WhenCreatedAfterPlayersJoin_IncludesTheRoomMembers()
+	public async Task Of_ForAnOpenRoom_ReturnsTheSameOpenChannelEachTime()
 	{
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 
 		var channel = app.RoomChannels.Of(setup.Room);
 
-		Assert.Contains(setup.Creator, channel.Members);
-		Assert.Contains(setup.Host, channel.Members);
-		Assert.Contains(setup.Player, channel.Members);
+		Assert.False(channel.IsClosed);
+		Assert.Same(channel, app.RoomChannels.Of(setup.Room));
 	}
 
 	[Fact]
@@ -43,19 +42,18 @@ public sealed class RoomChannelHandlerTests
 	}
 
 	[Fact]
-	public async Task Handle_LobbyRoomOpened_AddsTheFirstHostToAnExistingChannel()
+	public async Task Handle_LobbyRoomOpened_OpensTheChannelWithTheFirstHost()
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
 		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", false, false,
 			cancellationToken: TestContext.Current.CancellationToken);
 		Assert.True(opened.IsOk);
-		var channel = app.RoomChannels.Of(room!);
 		var openedEvent = Assert.Single(app.LobbyEvents.Events.OfType<LobbyRoomOpened>());
 
 		await new LobbyRoomOpenedHandler(app.RoomChannels).Handle(openedEvent, TestContext.Current.CancellationToken);
 
-		Assert.Contains(creator, channel.Members);
+		Assert.Contains(creator, app.RoomChannels.Of(room!).Members);
 	}
 
 	[Fact]
@@ -174,6 +172,8 @@ public sealed class RoomChannelHandlerTests
 		Assert.True((await setup.Room.ScopeTo(observer).Members.ObserverJoinAsync(
 			TestContext.Current.CancellationToken)).IsOk);
 		var channel = app.RoomChannels.Of(setup.Room);
+		var joined = Assert.Single(app.RoomEvents.Events.OfType<RoomObserverJoined>());
+		await new RoomObserverJoinedHandler(app.RoomChannels).Handle(joined, TestContext.Current.CancellationToken);
 		Assert.Contains(observer, channel.Members);
 		Assert.True((await setup.Room.ScopeTo(observer).Members.ObserverLeaveAsync(
 			TestContext.Current.CancellationToken)).IsOk);
