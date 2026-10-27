@@ -25,6 +25,7 @@ shared `Basil.Common.*` pair, one DbContext per module. Hosts and Protocol are u
 | E5 | Anticheat, Auth and Servers are their own modules (A2). Anticheat -> Users; Auth -> (Domain only); Users -> Auth; Servers -> every module. | A2 |
 | E6 | One composition project (`Basil.Composition`) references every module, calls `AddMediator` once and holds the only reference to `Mediator.SourceGenerator`; every module references `Mediator.Abstractions`. Each module registers itself with a public `Add<Module>()`; its contexts and constructors stay `internal`. | spike S2 (proposed) |
 | E7 | Handlers stay `internal`; each module grants `InternalsVisibleTo("Basil.Composition")` (the generated code names them) and to its own test project. No other `InternalsVisibleTo`. Handlers registered by hand in addition to the generated ones run twice, so none are. | spikes S1, S2 (proposed) |
+| E9 | Each module context maps the foreign tables it references as entity types with `ToTable("…", t => t.ExcludeFromMigrations())` and declares the FK with `HasOne<Row>().WithMany().HasForeignKey(...)`; only the owning context creates the table. 8 of the 16 FKs cross a module (all to `users`, plus `round_scores.score_id` -> `scores`). Migrations are applied in the FK order Common, Users, Auth, Beatmaps, Content, Scores, Multiplayer, Chat, one history table `__ef_migrations_<module>` each. | spike S3 (proposed) |
 | E8 | Cross-module internals (18 real uses): `Servers` -> `Chat`/`Users` internals move into those modules (7 + 6 members); `Room.Enter` stays internal and `RoomChannels` gets a Multiplayer method that returns the participants; `HandlerStep`, `Room.Involves`, `ConnectionRules.AllowsMany` become public. | spike S1 (proposed) |
 
 ## 3. Modules and references (all pointing down, acyclic)
@@ -84,10 +85,16 @@ Reports and the code that produced them are in `plans/evidence/phase-e/`.
   notifications an unknown event is silently dropped, so a handler test must publish a real event and assert it ran.
   `QueuedNotificationPublisher` must be nameable from the composition project.
 
+* **S3 (DbContext split).** EF keeps the cross-module foreign keys without SQL text when the referencing context maps the
+  principal table as an entity type excluded from migrations. Applying a referencing module before its principal fails
+  with `42P01`, so the migrator orders the contexts by the FK graph (Auth after Users even though the code reference
+  goes Users -> Auth). Each context has its own history table and never touches another's. `Database`, `DatabaseWriter`,
+  `DatabaseReader` and `WriteTicketRow` stay shared and become generic over the context type; every context maps
+  `write_tickets`. Regenerating the single `InitialCreate` per module needs the same precondition as before.
+
 ## 6. Blockers still open before E2
 
-1. **E1 foreign keys (spike S3, not run yet).** `ExcludeFromMigrations` on the foreign table in the referencing context: does EF still emit the
-   FK constraint?
+None from the spikes. E1 must prove the schema is unchanged (see section 4).
 
 ## 7. Related
 
