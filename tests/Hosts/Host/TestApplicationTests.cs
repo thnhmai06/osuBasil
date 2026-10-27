@@ -2,7 +2,7 @@ using Basil.Application.Users.Connections;
 using Basil.Application.Users.Users;
 using Basil.Testing;
 
-namespace Basil.Composition.Tests;
+namespace Basil.Host.Tests;
 
 public sealed class TestApplicationTests
 {

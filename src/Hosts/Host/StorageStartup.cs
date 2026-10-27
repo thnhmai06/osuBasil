@@ -3,7 +3,7 @@ using Basil.Infrastructure.Common.Files;
 using Basil.Infrastructure.Common.Postgres;
 using Microsoft.Extensions.Hosting;
 
-namespace Basil.Composition;
+namespace Basil.Host;
 
 /// <summary>Prepares the server's storage before anything else uses it.</summary>
 internal sealed class StorageStartup(DataPaths paths, DatabaseMigrator migrator, IEnumerable<IResident> residents)

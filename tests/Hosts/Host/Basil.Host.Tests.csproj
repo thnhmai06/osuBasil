@@ -26,14 +26,14 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\src\Composition\Basil.Composition.csproj"/>
-		<ProjectReference Include="..\..\src\Domain\Basil.Domain.csproj"/>
-		<ProjectReference Include="..\..\src\Application\Common\Basil.Application.Common.csproj"/>
-		<ProjectReference Include="..\Support\Basil.Testing\Basil.Testing.csproj"/>
-		<ProjectReference Include="..\Support\Basil.Testing.Persistence\Basil.Testing.Persistence.csproj"/>
+		<ProjectReference Include="..\..\..\src\Hosts\Host\Basil.Host.csproj"/>
+		<ProjectReference Include="..\..\..\src\Domain\Basil.Domain.csproj"/>
+		<ProjectReference Include="..\..\..\src\Application\Common\Basil.Application.Common.csproj"/>
+		<ProjectReference Include="..\..\Support\Basil.Testing\Basil.Testing.csproj"/>
+		<ProjectReference Include="..\..\Support\Basil.Testing.Persistence\Basil.Testing.Persistence.csproj"/>
 	</ItemGroup>
 
 	<ItemGroup>
-		<None Include="..\..\tests\Assets\**\*" LinkBase="Assets" CopyToOutputDirectory="PreserveNewest"/>
+		<None Include="..\..\Assets\**\*" LinkBase="Assets" CopyToOutputDirectory="PreserveNewest"/>
 	</ItemGroup>
 </Project>

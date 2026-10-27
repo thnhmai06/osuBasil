@@ -5,7 +5,7 @@ using Basil.Application.Auth.Persistence;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Users.Persistence;
-using Basil.Composition;
+using Basil.Host;
 using Basil.Application.Anticheat.Runtime;
 using Basil.Application.Beatmaps.Runtime;
 using Basil.Application.Chat.Runtime;

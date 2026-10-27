@@ -1,7 +1,7 @@
 using Basil.Bot;
 using Basil.Infrastructure.Common;
 using Basil.Infrastructure.Common.Postgres;
-using Basil.Composition;
+using Basil.Host;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;

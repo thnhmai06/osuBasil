@@ -26,7 +26,7 @@ using Basil.Application.Users.Users;
 using Basil.Infrastructure.Users;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Basil.Composition;
+namespace Basil.Host;
 
 /// <summary>Registers every module of the server, which the hosts call once.</summary>
 public static class DependencyInjection
