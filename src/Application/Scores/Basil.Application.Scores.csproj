@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<RootNamespace>Basil.Application.Scores</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Common\Basil.Application.Common.csproj"/>
+		<ProjectReference Include="..\..\Domain\Basil.Domain.csproj"/>
+		<ProjectReference Include="..\Users\Basil.Application.Users.csproj"/>
+		<ProjectReference Include="..\Beatmaps\Basil.Application.Beatmaps.csproj"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Basil.Composition"/>
+		<InternalsVisibleTo Include="Basil.Application.Scores.Tests"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Mediator.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
+	</ItemGroup>
+</Project>

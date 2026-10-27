@@ -1,9 +1,9 @@
-using Basil.Application.Persistence.Beatmaps;
-using Basil.Application.Persistence.Content;
-using Basil.Application.Persistence.Users;
-using Basil.Application.Runtime.Chat;
-using Basil.Application.Runtime.Connections;
-using Basil.Application.Runtime.Multiplayer.Rooms;
+using Basil.Application.Beatmaps.Persistence;
+using Basil.Application.Content.Persistence;
+using Basil.Application.Users.Persistence;
+using Basil.Application.Chat.Runtime;
+using Basil.Application.Users.Connections;
+using Basil.Application.Multiplayer.Runtime.Rooms;
 using Basil.Bot.Commands;
 using Basil.Bot.Commands.Mp;
 using Basil.Bot.Replies;

@@ -1,21 +1,21 @@
 using System.Net;
 using System.Text;
-using Basil.Application.Capabilities.Beatmaps;
-using Basil.Application.Persistence.Auth;
-using Basil.Application.Persistence.Content;
-using Basil.Application.Persistence.Multiplayer;
-using Basil.Application.Persistence.Users;
-using Basil.Application.Runtime;
-using Basil.Application.Runtime.Anticheat;
-using Basil.Application.Runtime.Beatmaps;
-using Basil.Application.Runtime.Chat;
-using Basil.Application.Runtime.Connections;
-using Basil.Common.Application.Events;
-using Basil.Application.Runtime.Multiplayer;
-using Basil.Application.Runtime.Multiplayer.Events;
-using Basil.Application.Runtime.Scores;
-using Basil.Application.Runtime.Servers;
-using Basil.Application.Runtime.Users;
+using Basil.Application.Beatmaps.Capabilities;
+using Basil.Application.Auth.Persistence;
+using Basil.Application.Content.Persistence;
+using Basil.Application.Multiplayer.Persistence;
+using Basil.Application.Users.Persistence;
+using Basil.Composition;
+using Basil.Application.Anticheat.Runtime;
+using Basil.Application.Beatmaps.Runtime;
+using Basil.Application.Chat.Runtime;
+using Basil.Application.Users.Connections;
+using Basil.Application.Common.Events;
+using Basil.Application.Multiplayer.Runtime;
+using Basil.Application.Multiplayer.Runtime.Events;
+using Basil.Application.Scores.Runtime;
+using Basil.Application.Servers.Runtime;
+using Basil.Application.Users.Users;
 using Basil.Domain.Auth;
 using Basil.Domain.Bancho;
 using Basil.Domain.Common;
@@ -94,7 +94,7 @@ public sealed class TestApplication : IDisposable
 		services.AddSingleton<IRoundRepository>(new InMemoryRoundRepository());
 		services.AddSingleton<IMatchEventRepository>(matchEvents);
 		configure?.Invoke(services);
-		services.AddApplication();
+		services.AddBasilApplication();
 		services.AddSingleton<IEventPublisher<UserEvent>>(UserEvents);
 		services.AddSingleton<IEventPublisher<RoomEvent>>(RoomEvents);
 		services.AddSingleton<IEventPublisher<LobbyEvent>>(LobbyEvents);
@@ -298,9 +298,17 @@ public sealed class TestApplication : IDisposable
 			typeof(ILoginRepository), typeof(IRelationshipRepository), typeof(IModerationLogRepository),
 			typeof(ISettingsRepository)
 		};
-		var portAssemblies = new[] { typeof(IUserRepository).Assembly, typeof(IBeatmapsetReader).Assembly };
+		var portAssemblies = new[]
+		{
+			typeof(IUserRepository).Assembly, typeof(IBeatmapsetReader).Assembly, typeof(ICredentialRepository).Assembly,
+			typeof(ISettingsRepository).Assembly, typeof(Basil.Application.Scores.Persistence.IScoreRepository).Assembly,
+			typeof(IMatchRepository).Assembly, typeof(Basil.Application.Chat.Persistence.IChannelRepository).Assembly
+		}.Distinct();
 		foreach (var port in portAssemblies.SelectMany(assembly => assembly.GetTypes()).Where(type =>
 			         type is { IsInterface: true, ContainsGenericParameters: false } &&
+			         type.Namespace is not null &&
+			         (type.Namespace.EndsWith(".Persistence", StringComparison.Ordinal) ||
+			          type.Namespace.EndsWith(".Capabilities", StringComparison.Ordinal)) &&
 			         !inMemoryPortTypes.Contains(type)))
 			services.AddSingleton(port, _ => Substitute.For([port], []));
 	}

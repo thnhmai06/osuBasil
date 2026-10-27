@@ -1,7 +1,7 @@
 namespace Basil.ArchitectureTests;
 
 /// <summary>
-///     Pins the rule that Infrastructure.Persistence holds no SQL text: Entity Framework Core with LINQ and row
+///     Pins the rule that the Infrastructure projects hold no SQL text: Entity Framework Core with LINQ and row
 ///     objects only.
 /// </summary>
 public sealed class PersistenceSqlTests
@@ -10,16 +10,17 @@ public sealed class PersistenceSqlTests
 		["Dapper", "FromSql", "ExecuteSql", "SqlQuery", "NpgsqlCommand", "new NpgsqlConnection("];
 
 	[Fact]
-	public void InfrastructurePersistence_HoldsNoSqlText()
+	public void InfrastructureProjects_HoldNoSqlText()
 	{
-		var persistence = Path.Combine(FindRepositoryRoot(), "src", "Infrastructure", "Persistence");
-		var offenders = Directory.EnumerateFiles(persistence, "*.cs", SearchOption.AllDirectories)
+		var source = Path.Combine(FindRepositoryRoot(), "src");
+		var projects = Directory.EnumerateDirectories(Path.Combine(source, "Infrastructure"));
+		var offenders = projects.SelectMany(project => Directory.EnumerateFiles(project, "*.cs", SearchOption.AllDirectories))
 			.Where(path => !IsGenerated(path))
 			.SelectMany(path =>
 				ForbiddenIn(File.ReadAllText(path)).Select(token => $"{Path.GetFileName(path)}: {token}"))
 			.ToList();
 
-		Assert.True(offenders.Count == 0, "Persistence holds no SQL text: " + string.Join(", ", offenders));
+		Assert.True(offenders.Count == 0, "The infrastructure holds no SQL text: " + string.Join(", ", offenders));
 	}
 
 	[Fact]

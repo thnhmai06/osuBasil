@@ -1,5 +1,5 @@
-using Basil.Application.Runtime.Chat;
-using Basil.Application.Runtime.Servers;
+using Basil.Application.Chat.Runtime;
+using Basil.Application.Servers.Runtime;
 using Basil.Bot.Commands;
 using Basil.Bot.Replies;
 using Basil.Domain.Users;

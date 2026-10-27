@@ -1,8 +1,8 @@
-using Basil.Common.Infrastructure;
-using Basil.Common.Infrastructure.Files;
+using Basil.Infrastructure.Common;
+using Basil.Infrastructure.Common.Files;
 using Microsoft.Extensions.Options;
 
-namespace Basil.Infrastructure.Persistence.Tests.Support;
+namespace Basil.Testing.Persistence;
 
 /// <summary>
 ///     A data directory of its own in the temporary directory, with every storage directory created; deleted when

@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<RootNamespace>Basil.Infrastructure.Beatmaps</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Basil.Infrastructure.Beatmaps.Tests"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Application\Common\Basil.Application.Common.csproj"/>
+		<ProjectReference Include="..\Common\Basil.Infrastructure.Common.csproj"/>
+		<ProjectReference Include="..\..\Domain\Basil.Domain.csproj"/>
+		<ProjectReference Include="..\..\Application\Beatmaps\Basil.Application.Beatmaps.csproj"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Npgsql"/>
+		<PackageReference Include="Microsoft.EntityFrameworkCore"/>
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational"/>
+		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL"/>
+		<PackageReference Include="EFCore.NamingConventions"/>
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all"/>
+		<PackageReference Include="FFMpegCore"/>
+		<PackageReference Include="ppy.osu.Game.Rulesets.Osu"/>
+		<PackageReference Include="ppy.osu.Game.Rulesets.Taiko"/>
+		<PackageReference Include="ppy.osu.Game.Rulesets.Catch"/>
+		<PackageReference Include="ppy.osu.Game.Rulesets.Mania"/>
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.Options"/>
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
+	</ItemGroup>
+</Project>

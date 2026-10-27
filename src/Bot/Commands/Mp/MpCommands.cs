@@ -1,10 +1,10 @@
 using System.Collections.Frozen;
 using System.Text.RegularExpressions;
-using Basil.Application.Persistence.Beatmaps;
-using Basil.Application.Persistence.Users;
-using Basil.Application.Runtime.Multiplayer;
-using Basil.Application.Runtime.Multiplayer.Rooms;
-using Basil.Application.Runtime.Users;
+using Basil.Application.Beatmaps.Persistence;
+using Basil.Application.Users.Persistence;
+using Basil.Application.Multiplayer.Runtime;
+using Basil.Application.Multiplayer.Runtime.Rooms;
+using Basil.Application.Users.Users;
 using Basil.Bot.Replies;
 using Basil.Domain.Users;
 
