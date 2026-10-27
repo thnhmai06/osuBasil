@@ -1,0 +1,10 @@
+variant	visibility	build	tests
+v1	public	ok	Passed!  - Failed:     0, Passed:     6, Skipped:     0, Total:     6, Duration: 91 ms - Tests.dll (net10.0)
+v1	internal	failed	not run
+v1	internal-ivt	ok	Passed!  - Failed:     0, Passed:     5, Skipped:     0, Total:     5, Duration: 79 ms - Tests.dll (net10.0)
+v2	public	failed	not run
+v2	internal	failed	not run
+v2	internal-ivt	failed	not run
+v3	public	ok	Failed!  - Failed:     5, Passed:     1, Skipped:     0, Total:     6, Duration: 89 ms - Tests.dll (net10.0)
+v3	internal	ok	Failed!  - Failed:     4, Passed:     1, Skipped:     0, Total:     5, Duration: 127 ms - Tests.dll (net10.0)
+v3	internal-ivt	ok	Failed!  - Failed:     4, Passed:     1, Skipped:     0, Total:     5, Duration: 86 ms - Tests.dll (net10.0)

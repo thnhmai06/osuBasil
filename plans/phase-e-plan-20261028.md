@@ -23,6 +23,9 @@ shared `Basil.Common.*` pair, one DbContext per module. Hosts and Protocol are u
 | E3 | Naming: `Basil.<Module>.Application`, `Basil.<Module>.Infrastructure`, namespaces equal the project name, tests `Basil.<Module>.Application.Tests` under `tests/Modules/<Module>/...` mirroring `src/Modules/<Module>/...`. | proposed |
 | E4 | Users and Connections are two folders of ONE project, `Basil.Users.*` (they reference each other, and project references cannot form a cycle). The owner's "Connection riêng" holds at folder and namespace level. | forced by the compiler; to confirm |
 | E5 | Anticheat, Auth and Servers are their own modules (A2). Anticheat -> Users; Auth -> (Domain only); Users -> Auth; Servers -> every module. | A2 |
+| E6 | One composition project (`Basil.Composition`) references every module, calls `AddMediator` once and holds the only reference to `Mediator.SourceGenerator`; every module references `Mediator.Abstractions`. Each module registers itself with a public `Add<Module>()`; its contexts and constructors stay `internal`. | spike S2 (proposed) |
+| E7 | Handlers stay `internal`; each module grants `InternalsVisibleTo("Basil.Composition")` (the generated code names them) and to its own test project. No other `InternalsVisibleTo`. Handlers registered by hand in addition to the generated ones run twice, so none are. | spikes S1, S2 (proposed) |
+| E8 | Cross-module internals (18 real uses): `Servers` -> `Chat`/`Users` internals move into those modules (7 + 6 members); `Room.Enter` stays internal and `RoomChannels` gets a Multiplayer method that returns the participants; `HandlerStep`, `Room.Involves`, `ConnectionRules.AllowsMany` become public. | spike S1 (proposed) |
 
 ## 3. Modules and references (all pointing down, acyclic)
 
@@ -65,19 +68,28 @@ Protocol.Irc 117; all together 3464 passed and 4 skipped, by `plans/evidence/pha
 - **E7 Architecture tests.** `ModuleGraphTests` becomes a project-reference test with a positive control; delete the
   namespace ratchet or keep it for namespaces inside a project.
 
-## 5. Blockers to settle before E2
+## 5. Spike results (2026-10-28)
 
-1. **Internal access across modules.** Today `internal` reaches across modules. Known hits: `Room.Enter()` and
-   `Room.Involves` used by Chat; `MutableX` sets; internal setters on `Connection`; internal constructors wired in
-   `AddApplication`. Each hit becomes public with a reason, a moved behaviour, or a listed `InternalsVisibleTo`. No
-   IVT to make a build green.
-2. **Mediator across assemblies (A4).** Publishing an event type declared outside the generator's assembly threw
-   `MissingMessageHandlerException` before. After the split events live in many assemblies. Spike: one leaf project,
-   one real event published through the real publisher, handler ran. Fallback: `AddMediator` in the composing project.
-3. **E1 foreign keys.** `ExcludeFromMigrations` on the foreign table in the referencing context: does EF still emit the
+Reports and the code that produced them are in `plans/evidence/phase-e/`.
+
+* **S1 (internal access).** 3265 method bodies scanned, 226 references, 76 members. Beyond composition and generated
+  code only 18 members are used across modules: `Servers` -> `Chat` (7) and `Users` (6), `Chat` -> `Multiplayer`
+  (`Room.Enter`, `Room.Involves`), `Chat` -> `Users` (`ConnectionRules.AllowsMany`), several modules -> `Events`
+  (`HandlerStep`). No `InternalsVisibleTo` is needed for any of them. `Bot` and `Basil.Testing` use only public members.
+  Blind spots: reflection, expression trees, serializers.
+* **S2 (Mediator).** Exactly one arrangement works: the generator runs in the one assembly that calls `AddMediator` and that
+  assembly references every module. The generator finds messages and handlers of referenced assemblies, but its code names
+  the handler types, so handlers are public or internal with `InternalsVisibleTo` to that assembly. Generator in several
+  modules fails (`CS0121`); generator only in a shared base builds and throws `MissingMessageHandlerException`. Below 17
+  notifications an unknown event is silently dropped, so a handler test must publish a real event and assert it ran.
+  `QueuedNotificationPublisher` must be nameable from the composition project.
+
+## 6. Blockers still open before E2
+
+1. **E1 foreign keys (spike S3, not run yet).** `ExcludeFromMigrations` on the foreign table in the referencing context: does EF still emit the
    FK constraint?
 
-## 6. Related
+## 7. Related
 
 * `plans/module-events-plan-20261027.md` (D1..D25, progress).
 * `docs/for-developers/architecture.md`, `tests/Architecture/ModuleGraphTests.cs`.
