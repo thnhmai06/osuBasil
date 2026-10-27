@@ -48,7 +48,7 @@ internal sealed class PostgresBeatmapsetRepository(
 			var touched = changes.Store.Where(change => change.Existing is not null).Select(change => change.Existing!)
 				.Concat(changes.Remove).Select(set => Root.Beatmapset(set.Id));
 			await using var hold = await Writer.HoldAsync(touched, cancellationToken);
-			var stored = await Writer.WriteAsync(SyncRoot, async (context, token) =>
+			var stored = await Writer.WriteAsync(SyncRoot, async (BeatmapsDbContext context, CancellationToken token) =>
 				await StoreAsync(changes, context, token), cancellationToken);
 			return Remember(stored, changes.Remove);
 		}
@@ -71,7 +71,7 @@ internal sealed class PostgresBeatmapsetRepository(
 	{
 		var (total, found) = await ReadUntilStableAsync<(int Total, List<BeatmapsetRecord> Sets)>(async () =>
 		{
-			var (count, rows) = await Reader.ReadAsync(async context =>
+			var (count, rows) = await Reader.ReadAsync(async (BeatmapsDbContext context) =>
 			{
 				// A set matches when one of its difficulties does.
 				var matching = BeatmapQueryFilter.Apply(context.Beatmaps, query);
@@ -115,21 +115,23 @@ internal sealed class PostgresBeatmapsetRepository(
 
 	protected override async Task<BeatmapsetRecord?> LoadAsync(int key)
 	{
-		var row = await Reader.ReadAsync(context => context.Beatmapsets
+		var row = await Reader.ReadAsync((BeatmapsDbContext context) => context.Beatmapsets
 			.Where(s => s.Id == key)
 			.FirstOrDefaultAsync(CancellationToken.None));
-		return row is null ? null : row.ToRecord();
+		return row?.ToRecord();
 	}
 
-	protected override WriteCommand SaveCommand(BeatmapsetRecord set)
+	protected override WriteCommand<BeatmapsDbContext> SaveCommand(BeatmapsetRecord set)
 	{
 		var row = ToRow(set);
-		return new WriteCommand((context, token) => context.ReplaceAsync(row, stored => stored.Id == row.Id, token));
+		return new WriteCommand<BeatmapsDbContext>((context, token) =>
+			context.ReplaceAsync(row, stored => stored.Id == row.Id, token));
 	}
 
-	protected override WriteCommand EraseCommand(int key)
+	protected override WriteCommand<BeatmapsDbContext> EraseCommand(int key)
 	{
-		return new WriteCommand((context, token) => context.Beatmapsets
+		return new WriteCommand<BeatmapsDbContext>((context, token) => context
+			.Beatmapsets
 			.Where(s => s.Id == key)
 			.ExecuteDeleteAsync(token));
 	}
@@ -139,7 +141,7 @@ internal sealed class PostgresBeatmapsetRepository(
 	/// <param name="context">The EF context the transaction runs on.</param>
 	/// <param name="token">The cancellation token.</param>
 	/// <returns>What was stored, in the order of <see cref="BeatmapsetChanges.Store" />.</returns>
-	private async Task<List<StoredSet>> StoreAsync(BeatmapsetChanges changes, BasilDbContext context,
+	private async Task<List<StoredSet>> StoreAsync(BeatmapsetChanges changes, BeatmapsDbContext context,
 		CancellationToken token)
 	{
 		var now = time.GetUtcNow();

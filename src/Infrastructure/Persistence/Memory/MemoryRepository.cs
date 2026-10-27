@@ -21,7 +21,7 @@ internal abstract class MemoryRepository<TKey, T>(DatabaseReader reader, Databas
 	protected abstract Task<T?> LoadAsync(TKey key);
 
 	/// <summary>Makes the change that stores an item: it holds the item values as they are now, not the item itself.</summary>
-	protected abstract WriteCommand SaveCommand(T item);
+	protected abstract IDatabaseCommand SaveCommand(T item);
 
 	/// <summary>Gives the live instance the values of another instance of the same item.</summary>
 	protected virtual void CopyTo(T live, T from)

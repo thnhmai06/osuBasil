@@ -20,7 +20,7 @@ internal sealed class GatedDatabaseReader(Database database, ReadGate gate) : Da
 	}
 
 	/// <inheritdoc />
-	public override async Task<T> ReadAsync<T>(Func<BasilDbContext, Task<T>> query,
+	public override async Task<T> ReadAsync<TContext, T>(Func<TContext, Task<T>> query,
 		CancellationToken cancellationToken = default)
 	{
 		var answer = await base.ReadAsync(query, cancellationToken);

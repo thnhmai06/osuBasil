@@ -50,7 +50,8 @@ internal sealed class PostgresBeatmapRepository(
 			{
 				var row = ToRow(value);
 				await Writer.WriteAsync(Root.Beatmapset(value.Beatmapset.Id),
-					(context, token) => context.UpsertAsync(row, stored => stored.Id == row.Id, token),
+					(BeatmapsDbContext context, CancellationToken token) =>
+						context.UpsertAsync(row, stored => stored.Id == row.Id, token),
 					cancellationToken);
 			}
 			catch (Exception exception) when (exception.IsUniqueViolation())
@@ -84,7 +85,7 @@ internal sealed class PostgresBeatmapRepository(
 
 		var loaded = await ReadUntilStableAsync(async () =>
 		{
-			var row = await Reader.ReadAsync(context => context.Beatmaps
+			var row = await Reader.ReadAsync((BeatmapsDbContext context) => context.Beatmaps
 				.Include(b => b.Set)
 				.Where(b => b.Hash == hash.HashValue)
 				.FirstOrDefaultAsync(cancellationToken), cancellationToken);
@@ -112,7 +113,7 @@ internal sealed class PostgresBeatmapRepository(
 		{
 			var loadedRows = await ReadUntilStableAsync(async () =>
 			{
-				var rows = await Reader.ReadAsync(context => context.Beatmaps
+				var rows = await Reader.ReadAsync((BeatmapsDbContext context) => context.Beatmaps
 					.Include(b => b.Set)
 					.Where(b => b.BeatmapsetId == liveSet.Id)
 					.OrderBy(b => b.Id)
@@ -146,7 +147,7 @@ internal sealed class PostgresBeatmapRepository(
 	{
 		var (total, loadedRows) = await ReadUntilStableAsync<(int Total, List<BeatmapRecord> Rows)>(async () =>
 		{
-			var (count, rows) = await Reader.ReadAsync(async context =>
+			var (count, rows) = await Reader.ReadAsync(async (BeatmapsDbContext context) =>
 			{
 				var matching = BeatmapQueryFilter.Apply(context.Beatmaps, query);
 				var count = await matching.CountAsync(cancellationToken);
@@ -197,7 +198,7 @@ internal sealed class PostgresBeatmapRepository(
 
 		_retaining[setId] = keepSet;
 		var retained = Writer.SaveAsync(Root.Beatmapset(setId), (GetType(), "retain", setId),
-			new WriteCommand(async (context, token) =>
+			new WriteCommand<BeatmapsDbContext>(async (context, token) =>
 			{
 				await context.Beatmaps
 					.Where(b => b.BeatmapsetId == setId && !((IEnumerable<int>)keepIds).Contains(b.Id))
@@ -227,7 +228,7 @@ internal sealed class PostgresBeatmapRepository(
 	///     same commit; otherwise it is refused.
 	/// </remarks>
 	internal static async Task<List<BeatmapRecord>> StoreAsync(BeatmapsetRecord set,
-		IReadOnlyList<BeatmapData> data, DateTimeOffset now, IReadOnlySet<int> releasable, BasilDbContext context,
+		IReadOnlyList<BeatmapData> data, DateTimeOffset now, IReadOnlySet<int> releasable, BeatmapsDbContext context,
 		CancellationToken token)
 	{
 		var stored = new List<BeatmapRecord>(data.Count);
@@ -278,7 +279,8 @@ internal sealed class PostgresBeatmapRepository(
 		return stored;
 	}
 
-	private static async Task<BeatmapRow?> FindAsync(BeatmapData data, BasilDbContext context, CancellationToken token)
+	private static async Task<BeatmapRow?> FindAsync(BeatmapData data, BeatmapsDbContext context,
+		CancellationToken token)
 	{
 		var hash = data.Hash.HashValue;
 		var row = await context.Beatmaps.FirstOrDefaultAsync(b => b.Hash == hash, token);
@@ -360,16 +362,17 @@ internal sealed class PostgresBeatmapRepository(
 
 	protected override async Task<BeatmapRecord?> LoadAsync(int key)
 	{
-		var row = await Reader.ReadAsync(context => context.Beatmaps
+		var row = await Reader.ReadAsync((BeatmapsDbContext context) => context.Beatmaps
 			.Include(b => b.Set)
 			.FirstOrDefaultAsync(b => b.Id == key));
 		return row is null ? null : await ToBeatmapAsync(row, CancellationToken.None);
 	}
 
-	protected override WriteCommand SaveCommand(BeatmapRecord beatmap)
+	protected override WriteCommand<BeatmapsDbContext> SaveCommand(BeatmapRecord beatmap)
 	{
 		var row = ToRow(beatmap);
-		return new WriteCommand((context, token) => context.ReplaceAsync(row, stored => stored.Id == row.Id, token));
+		return new WriteCommand<BeatmapsDbContext>((context, token) =>
+			context.ReplaceAsync(row, stored => stored.Id == row.Id, token));
 	}
 
 	protected override bool IsBeingRemoved(BeatmapRecord beatmap)

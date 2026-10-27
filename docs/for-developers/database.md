@@ -128,18 +128,25 @@ match and returns the live instance of each; a row whose deletion is still queue
 
 ### Migrations
 
-The schema is the Entity Framework model (`BasilDbContext` and the `XxxRow` types next to their repositories). Migrations
-are Entity Framework migrations (`Migrations/`, created with `dotnet ef migrations add`); at startup the pending ones
-are applied in order and recorded by Entity Framework. Persistence holds no SQL text and no Dapper: reads and writes
-are LINQ and row objects. During the rework the `InitialCreate` migration is regenerated in place, so a development
-database is recreated when the model changes.
+Each module owns its schema through a dedicated Entity Framework context and migration history. This keeps a module's
+tables and schema changes together while preserving foreign keys between modules; a referencing context maps the
+principal table without taking ownership of its migration.
+
+At startup `DatabaseMigrator` applies the module migrations in foreign-key order: Common, Users, Auth, Beatmaps, Content,
+Scores, Multiplayer, then Chat. Each records its migrations in `__ef_migrations_<module>`. `write_tickets` belongs to
+Common, the beatmap id sequences belong to Beatmaps, and the seeded channels belong to Chat. Persistence holds no SQL
+text: schema changes are Entity Framework migrations and reads and writes use LINQ and row objects.
+
+The module `InitialCreate` migrations replace the former single `InitialCreate`. This is safe only because no database
+has applied that old migration; an already-migrated database would need a separate one-time adoption before using the
+new histories.
 
 ## Related code
 
 * `src/Infrastructure/Persistence/Common/Database/` — `DatabaseWriter`, `DatabaseReader`, `DatabaseMigrator`
 * `src/Infrastructure/Persistence/Common/Writing/` — `Root`, `WriteCommand`, environment errors
 * `src/Infrastructure/Persistence/Memory/` — `MemoryRepository`, `IdentityMap`, `WeakIndex`, `OwnedLists`
-* `src/Infrastructure/Persistence/Postgres/BasilDbContext.cs`, the `XxxRow` types and `Migrations/` — the schema
+* `src/Infrastructure/Persistence/<Module>/`, the `XxxRow` types and `Migrations/<Module>/` — the module schemas
 * `src/Infrastructure/Persistence/StorageStartup.cs` — migration and resident loading at startup
 
 ## See also

@@ -26,7 +26,7 @@ internal sealed class PostgresRoundRepository(
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<Round>> ListAsync(MatchRecord match, CancellationToken cancellationToken = default)
 	{
-		var rows = await Reader.ReadAsync(context => context.Rounds
+		var rows = await Reader.ReadAsync((MultiplayerDbContext context) => context.Rounds
 			.Where(row => row.MatchId == match.Id)
 			.OrderBy(row => row.Number)
 			.ToListAsync(cancellationToken), cancellationToken);
@@ -58,7 +58,7 @@ internal sealed class PostgresRoundRepository(
 
 	protected override async Task<Round?> LoadAsync((int MatchId, int Index) key)
 	{
-		var row = await Reader.ReadAsync(context => context.Rounds
+		var row = await Reader.ReadAsync((MultiplayerDbContext context) => context.Rounds
 			.Where(row => row.MatchId == key.MatchId && row.Number == key.Index)
 			.FirstOrDefaultAsync(CancellationToken.None));
 		if (row is null)
@@ -68,7 +68,7 @@ internal sealed class PostgresRoundRepository(
 		return match is null ? null : ToRound(match, row);
 	}
 
-	protected override WriteCommand SaveCommand(Round round)
+	protected override WriteCommand<MultiplayerDbContext> SaveCommand(Round round)
 	{
 		var row = new RoundRow
 		{
@@ -86,7 +86,7 @@ internal sealed class PostgresRoundRepository(
 			Aborted = round.Aborted,
 			Result = round.Decision is { } decision ? JsonSerializer.Serialize(decision) : null
 		};
-		return new WriteCommand((context, token) =>
+		return new WriteCommand<MultiplayerDbContext>((context, token) =>
 			context.UpsertAsync(row, stored => stored.MatchId == row.MatchId && stored.Number == row.Number, token));
 	}
 

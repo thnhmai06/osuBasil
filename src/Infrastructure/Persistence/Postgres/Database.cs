@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Npgsql;
@@ -7,10 +8,10 @@ namespace Basil.Infrastructure.Persistence.Postgres;
 /// <summary>Gives access to the server's database: pooled connections through which data is read and stored.</summary>
 internal sealed class Database : IAsyncDisposable
 {
-	private readonly DbContextOptions<BasilDbContext> _asynchronousOptions;
 	private readonly NpgsqlDataSource _asynchronousSource;
-	private readonly DbContextOptions<BasilDbContext> _synchronousOptions;
 	private readonly NpgsqlDataSource _synchronousSource;
+	private readonly ConcurrentDictionary<Type, object> _asynchronousOptions = new();
+	private readonly ConcurrentDictionary<Type, object> _synchronousOptions = new();
 
 	public Database(IOptions<DatabaseOptions> options)
 	{
@@ -19,8 +20,6 @@ internal sealed class Database : IAsyncDisposable
 			"-c idle_in_transaction_session_timeout=30s"));
 		_asynchronousSource = NpgsqlDataSource.Create(WithServerOptions(connectionString,
 			"-c synchronous_commit=off"));
-		_synchronousOptions = CreateOptions(_synchronousSource);
-		_asynchronousOptions = CreateOptions(_asynchronousSource);
 	}
 
 	public async ValueTask DisposeAsync()
@@ -33,22 +32,31 @@ internal sealed class Database : IAsyncDisposable
 	///     Makes a context whose commits are confirmed before it returns, for reads and for writes whose outcome the
 	///     caller needs.
 	/// </summary>
-	public BasilDbContext CreateConfirmedContext()
+	public TContext CreateConfirmedContext<TContext>()
+		where TContext : DbContext, IDatabaseContext<TContext>
 	{
-		return new BasilDbContext(_synchronousOptions);
+		return TContext.Create(OptionsFor<TContext>(_synchronousOptions, _synchronousSource));
 	}
 
 	/// <summary>Makes a context whose commits return before the database has flushed them, for copies of memory.</summary>
-	public BasilDbContext CreateUnconfirmedContext()
+	public TContext CreateUnconfirmedContext<TContext>()
+		where TContext : DbContext, IDatabaseContext<TContext>
 	{
-		return new BasilDbContext(_asynchronousOptions);
+		return TContext.Create(OptionsFor<TContext>(_asynchronousOptions, _asynchronousSource));
 	}
 
-	private static DbContextOptions<BasilDbContext> CreateOptions(NpgsqlDataSource source)
+	private static DbContextOptions<TContext> OptionsFor<TContext>(ConcurrentDictionary<Type, object> cache,
+		NpgsqlDataSource source) where TContext : DbContext, IDatabaseContext<TContext>
+	{
+		return (DbContextOptions<TContext>)cache.GetOrAdd(typeof(TContext), _ => CreateOptions<TContext>(source));
+	}
+
+	private static DbContextOptions<TContext> CreateOptions<TContext>(NpgsqlDataSource source)
+		where TContext : DbContext, IDatabaseContext<TContext>
 	{
 		// No retrying execution strategy: DatabaseWriter retries, in the order the writes of a root were made.
-		return new DbContextOptionsBuilder<BasilDbContext>()
-			.UseNpgsql(source)
+		return new DbContextOptionsBuilder<TContext>()
+			.UseNpgsql(source, postgres => postgres.MigrationsHistoryTable(TContext.HistoryTable))
 			.UseSnakeCaseNamingConvention()
 			.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
 			.Options;

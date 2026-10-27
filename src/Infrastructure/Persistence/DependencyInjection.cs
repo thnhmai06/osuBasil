@@ -32,6 +32,14 @@ public static class DependencyInjection
 		services.AddSingleton<Database>();
 		services.AddSingleton<DatabaseReader>();
 		services.AddSingleton<DatabaseMigrator>();
+		services.AddSingleton<IModuleMigration, ModuleMigration<CommonDbContext>>();
+		services.AddSingleton<IModuleMigration, ModuleMigration<UsersDbContext>>();
+		services.AddSingleton<IModuleMigration, ModuleMigration<AuthDbContext>>();
+		services.AddSingleton<IModuleMigration, ModuleMigration<BeatmapsDbContext>>();
+		services.AddSingleton<IModuleMigration, ModuleMigration<ContentDbContext>>();
+		services.AddSingleton<IModuleMigration, ModuleMigration<ScoresDbContext>>();
+		services.AddSingleton<IModuleMigration, ModuleMigration<MultiplayerDbContext>>();
+		services.AddSingleton<IModuleMigration, ModuleMigration<ChatDbContext>>();
 		services.AddHostedService<StorageStartup>();
 		services.TryAddSingleton(TimeProvider.System);
 		services.AddSingleton<DatabaseWriter>();

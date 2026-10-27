@@ -6,7 +6,7 @@ namespace Basil.Infrastructure.Persistence.Postgres;
 /// <summary>Stores a row whole, whether or not the database holds it already.</summary>
 internal static class RowWrites
 {
-	extension(BasilDbContext context)
+	extension(DbContext context)
 	{
 		/// <summary>Stores a row: replaces the stored row with the same key, or adds the row when none is stored.</summary>
 		/// <typeparam name="TRow">The type of the row.</typeparam>

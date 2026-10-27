@@ -21,7 +21,7 @@ internal sealed class PostgresSettingsRepository(
 	/// <inheritdoc />
 	public async Task LoadAsync(CancellationToken cancellationToken)
 	{
-		var rows = await reader.ReadAsync(context => context.Settings
+		var rows = await reader.ReadAsync((ContentDbContext context) => context.Settings
 			.ToListAsync(cancellationToken), cancellationToken);
 		var values = rows.ToDictionary(row => row.Name, row => row.Value, StringComparer.Ordinal);
 
@@ -68,14 +68,15 @@ internal sealed class PostgresSettingsRepository(
 			[SettingNames.MirrorSearchEndpoint] = settings.BeatmapMirror.SearchEndpoint?.ToString()
 		};
 		await _writes.WriteAsync(1, () => writer.SaveAsync(Root.Server, (GetType(), 1),
-			new WriteCommand(async (context, token) =>
+			new WriteCommand<ContentDbContext>(async (context, token) =>
 			{
 				foreach (var (name, value) in values)
 					await UpsertSettingAsync(context, name, value, token);
 			})), () => Interlocked.Exchange(ref _settings, settings));
 	}
 
-	private static Task UpsertSettingAsync(BasilDbContext context, string name, string? value, CancellationToken token)
+	private static Task UpsertSettingAsync(ContentDbContext context, string name, string? value,
+		CancellationToken token)
 	{
 		return context.UpsertAsync(new SettingRow { Name = name, Value = value }, stored => stored.Name == name, token);
 	}

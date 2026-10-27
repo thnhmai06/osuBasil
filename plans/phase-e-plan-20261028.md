@@ -61,6 +61,7 @@ Protocol.Irc 117; all together 3464 passed and 4 skipped, by `plans/evidence/pha
   infrastructure decided (generic over the context or owned by Common). Cross-module foreign keys are kept if EF can
   generate them without SQL text (see the spike); otherwise the owner decides. Gate: Persistence tests green, a fresh
   database migrates from empty, the `InitialCreate` precondition (no database applied the old migration) restated.
+- **E1 done (2026-10-28).** Eight module contexts (Common, Users, Auth, Beatmaps, Content, Scores, Multiplayer, Chat) with one history table each, applied by `DatabaseMigrator` in the order of their registration; `Database`, `DatabaseWriter`, `DatabaseReader` generic over the context; one regenerated `InitialCreate` per module. Proof: a fresh database migrated by the new contexts has a `pg_dump -s` schema identical to the old one except for the history tables, 16 foreign keys; totals 3467 passed (3464 + 3 new), 4 skipped.
 - **E2 Common.** Create `Basil.Common.Application` / `.Infrastructure`, move Common/Events/Postgres infra. Gate: totals.
 - **E3 Leaves.** Beatmaps, Auth, Content, one at a time.
 - **E4 Users (with Connections), Anticheat.**

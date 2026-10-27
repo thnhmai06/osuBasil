@@ -67,9 +67,9 @@ public sealed class DatabaseWriterHoldTests(PersistenceFixture container) : Data
 		return true;
 	}
 
-	private static WriteCommand Setting(string name)
+	private static WriteCommand<ContentDbContext> Setting(string name)
 	{
-		return new WriteCommand((context, token) =>
+		return new WriteCommand<ContentDbContext>((context, token) =>
 			context.UpsertAsync(new SettingRow { Name = name, Value = name }, stored => stored.Name == name, token));
 	}
 }

@@ -41,7 +41,7 @@ internal sealed class PostgresChannelRepository(DatabaseReader reader, DatabaseW
 	{
 		await _writes.WriteAsync(channel.Name,
 			() => writer.SaveAsync(Root.Server, (GetType(), channel.Name.ToLowerInvariant()),
-				new WriteCommand(async (context, token) =>
+				new WriteCommand<ChatDbContext>(async (context, token) =>
 				{
 					await context.Channels
 						.Where(c => c.Name == channel.Name)
@@ -53,7 +53,7 @@ internal sealed class PostgresChannelRepository(DatabaseReader reader, DatabaseW
 	/// <inheritdoc />
 	public async Task LoadAsync(CancellationToken cancellationToken)
 	{
-		var rows = await reader.ReadAsync(context => context.Channels
+		var rows = await reader.ReadAsync((ChatDbContext context) => context.Channels
 			.OrderBy(c => c.Name)
 			.ToListAsync(cancellationToken), cancellationToken);
 		foreach (var channel in rows.Select(ToRecord)) _channels[channel.Name] = channel;
@@ -62,7 +62,7 @@ internal sealed class PostgresChannelRepository(DatabaseReader reader, DatabaseW
 	}
 
 	/// <summary>Builds the change that stores a channel, from the values it has now.</summary>
-	private static WriteCommand Upsert(GeneralChannelRecord channel)
+	private static WriteCommand<ChatDbContext> Upsert(GeneralChannelRecord channel)
 	{
 		var row = new ChannelRow
 		{
@@ -73,7 +73,7 @@ internal sealed class PostgresChannelRepository(DatabaseReader reader, DatabaseW
 			AutoJoin = channel.Value.AutoJoin,
 			Visible = channel.Value.Visible
 		};
-		return new WriteCommand((context, token) =>
+		return new WriteCommand<ChatDbContext>((context, token) =>
 			context.UpsertAsync(row, stored => stored.Name == row.Name, token));
 	}
 

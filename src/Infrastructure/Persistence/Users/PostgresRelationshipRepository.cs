@@ -29,7 +29,7 @@ internal sealed class PostgresRelationshipRepository(
 			CreatedAt = relationship.CreatedAt.ToUniversalTime()
 		};
 		var saved = writer.SaveAsync(Root.User(actorId), (GetType(), (actorId, targetId)),
-			new WriteCommand((context, token) =>
+			new WriteCommand<UsersDbContext>((context, token) =>
 				context.UpsertAsync(row, stored => stored.ActorId == actorId && stored.TargetId == targetId, token)));
 		_byActor.Change(actorId, actor, current => Replace(current, relationship), saved);
 	}
@@ -41,7 +41,7 @@ internal sealed class PostgresRelationshipRepository(
 		var targetId = relationship.Target.Id;
 		var actor = await users.GetAsync(actorId, cancellationToken);
 		var saved = writer.SaveAsync(Root.User(actorId), (GetType(), (actorId, targetId)),
-			new WriteCommand(async (context, token) =>
+			new WriteCommand<UsersDbContext>(async (context, token) =>
 			{
 				await context.Relationships
 					.Where(r => r.ActorId == actorId && r.TargetId == targetId)
@@ -57,7 +57,7 @@ internal sealed class PostgresRelationshipRepository(
 		var liveActor = await users.GetAsync(actor.Id, cancellationToken) ?? actor;
 		return await _byActor.GetOrLoadAsync(liveActor.Id, liveActor, async () =>
 		{
-			var rows = await reader.ReadAsync(context => context.Relationships
+			var rows = await reader.ReadAsync((UsersDbContext context) => context.Relationships
 				.Where(row => row.ActorId == liveActor.Id)
 				.ToListAsync(cancellationToken), cancellationToken);
 
