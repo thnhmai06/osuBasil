@@ -1,0 +1,77 @@
+/home/haith/RiderProjects/osuBasil-s3/spikes/DbContextSplit/Migrations/Common/20261027045617_InitialCreate.cs(6,11): warning IDE0161: Convert to file-scoped namespace (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/style-rules/ide0161) [/home/haith/RiderProjects/osuBasil-s3/spikes/DbContextSplit/Spike.csproj]
+/home/haith/RiderProjects/osuBasil-s3/spikes/DbContextSplit/Migrations/ScoresV1/20261027045403_InitialCreate.cs(6,11): warning IDE0161: Convert to file-scoped namespace (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/style-rules/ide0161) [/home/haith/RiderProjects/osuBasil-s3/spikes/DbContextSplit/Spike.csproj]
+/home/haith/RiderProjects/osuBasil-s3/spikes/DbContextSplit/Migrations/ScoresV2/20261027045238_InitialCreate.cs(6,11): warning IDE0161: Convert to file-scoped namespace (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/style-rules/ide0161) [/home/haith/RiderProjects/osuBasil-s3/spikes/DbContextSplit/Spike.csproj]
+/home/haith/RiderProjects/osuBasil-s3/spikes/DbContextSplit/Migrations/ScoresV3/20261027045240_InitialCreate.cs(6,11): warning IDE0161: Convert to file-scoped namespace (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/style-rules/ide0161) [/home/haith/RiderProjects/osuBasil-s3/spikes/DbContextSplit/Spike.csproj]
+/home/haith/RiderProjects/osuBasil-s3/spikes/DbContextSplit/Migrations/Users/20261027045620_InitialCreate.cs(6,11): warning IDE0161: Convert to file-scoped namespace (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/style-rules/ide0161) [/home/haith/RiderProjects/osuBasil-s3/spikes/DbContextSplit/Spike.csproj]
+
+===== VARIANT 1 stub users row + HasOne =====
+scores-first: FAILED PostgresException
+    42P01: relation "users" does not exist
+scores history after the failed run: []
+tables after the failed run: [__ef_migrations_scores]
+common applied: [20261027045617_InitialCreate]
+tables after common: [__ef_migrations_common, write_tickets]
+users applied: [20261027045620_InitialCreate]
+tables after users: [__ef_migrations_common, __ef_migrations_users, users, write_tickets]
+users history: [20261027045620_InitialCreate]
+scores applied: [20261027045403_InitialCreate]
+tables after scores: [__ef_migrations_common, __ef_migrations_scores, __ef_migrations_users, scores, users, write_tickets]
+users history after scores: [20261027045620_InitialCreate]
+scores history after scores: [20261027045403_InitialCreate]
+users columns unchanged by scores: True
+foreign keys on scores: [fk_scores_users_user_id FOREIGN KEY (user_id) REFERENCES users(id)]
+users re-applied: pending []
+tables after users re-applied: [__ef_migrations_common, __ef_migrations_scores, __ef_migrations_users, scores, users, write_tickets]
+users history after re-apply: [20261027045620_InitialCreate]
+scores history after re-apply: [20261027045403_InitialCreate]
+
+===== VARIANT 2 shadow principal entity type =====
+scores-first: FAILED PostgresException
+    42P01: relation "users" does not exist
+scores history after the failed run: []
+tables after the failed run: [__ef_migrations_scores]
+common applied: [20261027045617_InitialCreate]
+tables after common: [__ef_migrations_common, write_tickets]
+users applied: [20261027045620_InitialCreate]
+tables after users: [__ef_migrations_common, __ef_migrations_users, users, write_tickets]
+users history: [20261027045620_InitialCreate]
+scores applied: [20261027045238_InitialCreate]
+tables after scores: [__ef_migrations_common, __ef_migrations_scores, __ef_migrations_users, scores, users, write_tickets]
+users history after scores: [20261027045620_InitialCreate]
+scores history after scores: [20261027045238_InitialCreate]
+users columns unchanged by scores: True
+foreign keys on scores: [fk_scores_users_user_id FOREIGN KEY (user_id) REFERENCES users(id)]
+users re-applied: pending []
+tables after users re-applied: [__ef_migrations_common, __ef_migrations_scores, __ef_migrations_users, scores, users, write_tickets]
+users history after re-apply: [20261027045620_InitialCreate]
+scores history after re-apply: [20261027045238_InitialCreate]
+
+===== VARIANT 3 plain column, no relationship =====
+scores-first: APPLIED (unexpected)
+scores history after the failed run: [20261027045240_InitialCreate]
+tables after the failed run: [__ef_migrations_scores, scores]
+common applied: [20261027045617_InitialCreate]
+tables after common: [__ef_migrations_common, write_tickets]
+users applied: [20261027045620_InitialCreate]
+tables after users: [__ef_migrations_common, __ef_migrations_users, users, write_tickets]
+users history: [20261027045620_InitialCreate]
+scores applied: [20261027045240_InitialCreate]
+tables after scores: [__ef_migrations_common, __ef_migrations_scores, __ef_migrations_users, scores, users, write_tickets]
+users history after scores: [20261027045620_InitialCreate]
+scores history after scores: [20261027045240_InitialCreate]
+users columns unchanged by scores: True
+foreign keys on scores: []
+users re-applied: pending []
+tables after users re-applied: [__ef_migrations_common, __ef_migrations_scores, __ef_migrations_users, scores, users, write_tickets]
+users history after re-apply: [20261027045620_InitialCreate]
+scores history after re-apply: [20261027045240_InitialCreate]
+
+===== shared table: write_tickets owned by Common, mapped by Users =====
+common applied: [20261027045617_InitialCreate]
+tables after common: [__ef_migrations_common, write_tickets]
+users applied: [20261027045620_InitialCreate]
+tables after users: [__ef_migrations_common, __ef_migrations_users, users, write_tickets]
+ticket read back through UsersDbContext: 1
+write_tickets rows: [01a17bb7-c304-7d20-b401-880fe1219aeb]
+
+spike_split dropped: True
