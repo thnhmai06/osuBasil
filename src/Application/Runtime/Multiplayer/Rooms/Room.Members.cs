@@ -1,6 +1,6 @@
 using Basil.Application.Runtime.Common;
+using Basil.Application.Runtime.Connections;
 using Basil.Application.Runtime.Multiplayer.Events;
-using Basil.Application.Runtime.Sessions;
 using Basil.Application.Runtime.Users;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
@@ -69,8 +69,8 @@ public sealed partial class Room
 	///     seating rights there), Full or IsObserver.
 	/// </returns>
 	/// <remarks>
-	///     The player leaves the other room before this one seats them; the two steps are not one transition, because no
-	///     two room locks are held at once.
+	///     The player leaves the other room before this one seats them, and the two steps are separate: when this
+	///     method returns, the player is in no room and seating them here is still to do.
 	/// </remarks>
 	internal Result<RoomOutcome>? MakeRoomFor(BanchoConnection player, Connection by)
 	{
@@ -111,7 +111,6 @@ public sealed partial class Room
 			var slot = Vacate(seated)!;
 			var progress = AdvanceRound();
 			Emit(new RoomPlayerKicked(this, by, seated, slot.Index, Authority.Host, progress));
-			LeaveChannel(seated);
 			ReportIfEmpty();
 			return RoomOutcome.Ok;
 		}
@@ -142,7 +141,6 @@ public sealed partial class Room
 			Emit(new RoomPlayerBanned(this, by, player, vacated, evicted, Authority.Host, progress));
 			if (evicted is not null)
 			{
-				LeaveChannel(evicted);
 				ReportIfEmpty();
 			}
 
@@ -194,7 +192,6 @@ public sealed partial class Room
 			if (!Members.MutableObservers.Add(by)) return RoomOutcome.Ok;
 
 			Emit(new RoomObserverJoined(this, by));
-			JoinChannel(by);
 			return RoomOutcome.Ok;
 		}
 	}
@@ -210,12 +207,11 @@ public sealed partial class Room
 			if (!Members.MutableObservers.Remove(by)) return RoomOutcome.NotObserver;
 
 			Emit(new RoomObserverLeft(this, by));
-			LeaveChannel(by);
 			return RoomOutcome.Ok;
 		}
 	}
 
-	/// <summary>Closes the room, evicting its players, ending its round and closing its channel.</summary>
+	/// <summary>Closes the room, evicting its players and ending its round.</summary>
 	/// <param name="by">The user who closes the room.</param>
 	/// <returns>Ok; a room that has closed already returns Ok and does nothing.</returns>
 	internal Result<RoomOutcome> Close(UserRecord by)

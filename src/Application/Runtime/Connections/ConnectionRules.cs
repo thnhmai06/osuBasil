@@ -1,4 +1,4 @@
-namespace Basil.Application.Runtime.Sessions;
+namespace Basil.Application.Runtime.Connections;
 
 /// <summary>The rules about the connections of each kind one user may hold.</summary>
 internal static class ConnectionRules

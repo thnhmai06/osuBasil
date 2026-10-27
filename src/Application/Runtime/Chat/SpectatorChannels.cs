@@ -1,5 +1,5 @@
 using System.Collections.Concurrent;
-using Basil.Application.Runtime.Sessions;
+using Basil.Application.Runtime.Connections;
 
 namespace Basil.Application.Runtime.Chat;
 

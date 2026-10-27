@@ -1,5 +1,6 @@
+using Basil.Application.Runtime.Connections;
 using Basil.Application.Runtime.Events;
-using Basil.Application.Runtime.Sessions;
+using Basil.Application.Runtime.Users;
 using Mediator;
 using Microsoft.Extensions.Logging;
 

@@ -4,7 +4,7 @@ using Basil.Domain.Auth;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
 
-namespace Basil.Application.Runtime.Sessions;
+namespace Basil.Application.Runtime.Connections;
 
 /// <summary>One login of a user from one client; two connections are never equal.</summary>
 public abstract class Connection(Login login, string token) : IActor
@@ -48,14 +48,14 @@ public sealed class BanchoConnection : Connection
 	/// <param name="token">The token that identifies the connection.</param>
 	/// <param name="utcOffset">The client's UTC offset reported at login.</param>
 	/// <param name="context">The runtime dependencies for the connection's behaviour.</param>
-	internal BanchoConnection(Login login, string token, int utcOffset, SessionContext context) : base(login, token)
+	internal BanchoConnection(Login login, string token, int utcOffset, ConnectionContext context) : base(login, token)
 	{
 		UtcOffset = utcOffset;
 		Context = context;
 	}
 
 	/// <summary>The runtime dependencies used by this connection.</summary>
-	internal SessionContext Context { get; }
+	internal ConnectionContext Context { get; }
 
 	/// <inheritdoc />
 	public override ConnectionType Type => ConnectionType.Bancho;

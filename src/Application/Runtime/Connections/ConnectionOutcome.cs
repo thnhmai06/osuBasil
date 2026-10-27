@@ -1,4 +1,4 @@
-namespace Basil.Application.Runtime.Sessions;
+namespace Basil.Application.Runtime.Connections;
 
 /// <summary>What happened to an operation on a connection that was not refused for lack of permissions.</summary>
 public enum ConnectionOutcome : byte

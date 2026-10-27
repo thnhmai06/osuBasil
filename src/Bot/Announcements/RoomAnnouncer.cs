@@ -1,3 +1,4 @@
+using Basil.Application.Runtime.Chat;
 using Basil.Application.Runtime.Multiplayer;
 using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Multiplayer.Rooms;
@@ -11,7 +12,12 @@ using Mediator;
 namespace Basil.Bot.Announcements;
 
 /// <summary>Reacts to room and lobby events by posting announcements in the affected room.</summary>
-internal sealed class RoomAnnouncer(Server server, UserRegistry users, TimeProvider timeProvider, IReplies replies)
+internal sealed class RoomAnnouncer(
+	Server server,
+	RoomChannels channels,
+	UserRegistry users,
+	TimeProvider timeProvider,
+	IReplies replies)
 	: INotificationHandler<LobbyRoomClosingAnnounced>,
 		INotificationHandler<LobbyRoomClosed>,
 		INotificationHandler<RoomRoundStarted>,
@@ -41,13 +47,13 @@ internal sealed class RoomAnnouncer(Server server, UserRegistry users, TimeProvi
 	/// <inheritdoc />
 	public async ValueTask Handle(RoomCountdownCancelled @event, CancellationToken cancellationToken)
 	{
-		await server.SayAsync(@event.Room.Channel, replies.Text(@event.Reason switch
+		await SayInRoomAsync(@event.Room, replies.Text(@event.Reason switch
 		{
 			RoomCountdownCancelReason.SettingsChanged => AnnouncementReplies.SettingsChangedCountdownCancelled,
 			RoomCountdownCancelReason.RoundStarted => AnnouncementReplies.CountdownCancelledByRoundStart,
 			RoomCountdownCancelReason.RoundAborted => AnnouncementReplies.CountdownCancelledByRoundAbort,
 			_ => AnnouncementReplies.CountdownCancelled
-		}), cancellationToken: cancellationToken);
+		}), cancellationToken);
 	}
 
 	/// <inheritdoc />
@@ -61,7 +67,7 @@ internal sealed class RoomAnnouncer(Server server, UserRegistry users, TimeProvi
 			_ => null
 		};
 		if (elapsed is not null)
-			await server.SayAsync(@event.Room.Channel, replies.Text(elapsed), cancellationToken: cancellationToken);
+			await SayInRoomAsync(@event.Room, replies.Text(elapsed), cancellationToken);
 	}
 
 	/// <inheritdoc />
@@ -71,7 +77,7 @@ internal sealed class RoomAnnouncer(Server server, UserRegistry users, TimeProvi
 		var text = @event.Countdown.StartsRound
 			? replies.Text(AnnouncementReplies.CountdownStartedForRound, new { seconds })
 			: replies.Text(AnnouncementReplies.CountdownStarted, new { seconds });
-		await server.SayAsync(@event.Room.Channel, text, cancellationToken: cancellationToken);
+		await SayInRoomAsync(@event.Room, text, cancellationToken);
 	}
 
 	/// <inheritdoc />
@@ -81,22 +87,21 @@ internal sealed class RoomAnnouncer(Server server, UserRegistry users, TimeProvi
 		var tick = @event.Countdown.StartsRound
 			? replies.Text(AnnouncementReplies.CountdownTickedForRound, new { seconds = remainingSeconds })
 			: replies.Text(AnnouncementReplies.CountdownTicked, new { seconds = remainingSeconds });
-		await server.SayAsync(@event.Room.Channel, tick, cancellationToken: cancellationToken);
+		await SayInRoomAsync(@event.Room, tick, cancellationToken);
 	}
 
 	/// <inheritdoc />
 	public async ValueTask Handle(RoomPlayerJoined @event, CancellationToken cancellationToken)
 	{
 		if (_closingRooms.Remove(@event.Room))
-			await server.SayAsync(@event.Room.Channel, replies.Text(AnnouncementReplies.RoomPlayerJoinedClosing),
-				cancellationToken: cancellationToken);
+			await SayInRoomAsync(@event.Room, replies.Text(AnnouncementReplies.RoomPlayerJoinedClosing),
+				cancellationToken);
 	}
 
 	/// <inheritdoc />
 	public async ValueTask Handle(RoomRoundAborted @event, CancellationToken cancellationToken)
 	{
-		await server.SayAsync(@event.Room.Channel, replies.Text(AnnouncementReplies.RoundAborted),
-			cancellationToken: cancellationToken);
+		await SayInRoomAsync(@event.Room, replies.Text(AnnouncementReplies.RoundAborted), cancellationToken);
 	}
 
 	/// <inheritdoc />
@@ -104,17 +109,17 @@ internal sealed class RoomAnnouncer(Server server, UserRegistry users, TimeProvi
 	{
 		var seconds = (int)RoomRounds.ScoreWait.TotalSeconds;
 		foreach (var player in @event.Missing)
-			await server.SayAsync(@event.Room.Channel,
+			await SayInRoomAsync(@event.Room,
 				replies.Text(AnnouncementReplies.ScoreMissing, new { player = player.Value.Name, seconds }),
-				cancellationToken: cancellationToken);
+				cancellationToken);
 	}
 
 	/// <inheritdoc />
 	public async ValueTask Handle(RoomRoundStarted @event, CancellationToken cancellationToken)
 	{
 		if (@event.Players.Count == 0)
-			await server.SayAsync(@event.Room.Channel, replies.Text(AnnouncementReplies.RoundStartedNoPlayers),
-				cancellationToken: cancellationToken);
+			await SayInRoomAsync(@event.Room, replies.Text(AnnouncementReplies.RoundStartedNoPlayers),
+				cancellationToken);
 	}
 
 	private async Task AnnounceClosingAsync(LobbyRoomClosingAnnounced e, CancellationToken cancellationToken)
@@ -123,8 +128,15 @@ internal sealed class RoomAnnouncer(Server server, UserRegistry users, TimeProvi
 		var text = replies.Text(AnnouncementReplies.RoomClosingAnnounced, new { minutes = minutesUntilClose });
 
 		_closingRooms.Add(e.Room);
-		await server.SayAsync(e.Room.Channel, text, cancellationToken: cancellationToken);
+		await SayInRoomAsync(e.Room, text, cancellationToken);
 		await WhisperStaffAsync(e.Room, text, cancellationToken);
+	}
+
+	private Task SayInRoomAsync(Room room, string text, CancellationToken cancellationToken)
+	{
+		return room.IsClosed
+			? Task.CompletedTask
+			: server.SayAsync(channels.Of(room), text, cancellationToken: cancellationToken);
 	}
 
 	private async Task WhisperStaffAsync(Room room, string text, CancellationToken cancellationToken)

@@ -1,4 +1,3 @@
-using Basil.Application.Runtime.Sessions;
 using Basil.Application.Runtime.Users;
 using Basil.Domain.Moderation;
 using Basil.Domain.Users;
@@ -69,7 +68,7 @@ public sealed class ScopedUserTests
 
 		Assert.Equal(UserOutcome.Ok, result.Outcome);
 		Assert.NotNull(restriction);
-		var restricted = Assert.IsType<UserRestricted>(app.UserEvents.Events.Last());
+		var restricted = Assert.IsType<UserRestricted>(app.UserEvents.Events[^1]);
 		Assert.Equal(target, restricted.User);
 		Assert.Same(restriction, restricted.Restriction);
 		var entry = Assert.Single(app.ModerationEntries);
@@ -96,10 +95,10 @@ public sealed class ScopedUserTests
 
 		Assert.Equal(UserOutcome.Ok, result.Outcome);
 		Assert.Equal(app.Clock.GetUtcNow(), restriction.Value.EndsAt);
-		var lifted = Assert.IsType<UserRestrictionLifted>(app.UserEvents.Events.Last());
+		var lifted = Assert.IsType<UserRestrictionLifted>(app.UserEvents.Events[^1]);
 		Assert.Equal(target, lifted.User);
 		Assert.Same(restriction, lifted.Restriction);
-		Assert.Equal(ModerationAction.Lift, app.ModerationEntries.Last().Action);
+		Assert.Equal(ModerationAction.Lift, app.ModerationEntries[^1].Action);
 	}
 
 	[Fact]
@@ -136,7 +135,7 @@ public sealed class ScopedUserTests
 		Assert.NotNull(deletedAt);
 		Assert.False(connection.IsOpen);
 		Assert.Equal(ConnectionCloseReason.Deleted,
-			Assert.IsType<UserConnectionClosed>(app.UserEvents.Events.Last()).Reason);
+			Assert.IsType<UserConnectionClosed>(app.UserEvents.Events[^1]).Reason);
 
 		Assert.True((await scoped.DeleteAsync(TestContext.Current.CancellationToken)).IsOk);
 

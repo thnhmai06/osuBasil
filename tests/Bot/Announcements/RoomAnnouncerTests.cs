@@ -1,7 +1,7 @@
 using Basil.Application.Runtime.Chat;
-using Basil.Application.Runtime.Multiplayer;
 using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Multiplayer.Rooms;
+using Basil.Application.Runtime.Multiplayer;
 using Basil.Bot.Announcements;
 using Basil.Bot.Tests.Support;
 using Basil.Testing;
@@ -18,7 +18,7 @@ public sealed class RoomAnnouncerTests
 
 	private static RoomAnnouncer AnnouncerFor(BotHarness bot)
 	{
-		return new RoomAnnouncer(bot.App.Server, bot.App.Users, bot.App.Clock, bot.Replies);
+		return new RoomAnnouncer(bot.App.Server, bot.App.RoomChannels, bot.App.Users, bot.App.Clock, bot.Replies);
 	}
 
 	private static async Task<StaffRoom> SetUpAsync(BotHarness bot)
@@ -70,7 +70,7 @@ public sealed class RoomAnnouncerTests
 			new RoomCountdownStarted(staff.Room, CountdownIn(bot, staff, TimeSpan.FromSeconds(90), true)), Token);
 
 		Assert.Equal([bot.Text(AnnouncementReplies.CountdownStartedForRound, new { seconds = 90 })],
-			bot.SaidIn(staff.Room.Channel));
+			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
 	}
 
 	[Fact]
@@ -83,7 +83,7 @@ public sealed class RoomAnnouncerTests
 			new RoomCountdownStarted(staff.Room, CountdownIn(bot, staff, TimeSpan.FromSeconds(45), false)), Token);
 
 		Assert.Equal([bot.Text(AnnouncementReplies.CountdownStarted, new { seconds = 45 })],
-			bot.SaidIn(staff.Room.Channel));
+			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
 	}
 
 	#endregion
@@ -101,7 +101,7 @@ public sealed class RoomAnnouncerTests
 				TimeSpan.FromSeconds(30)), Token);
 
 		Assert.Equal([bot.Text(AnnouncementReplies.CountdownTickedForRound, new { seconds = 30 })],
-			bot.SaidIn(staff.Room.Channel));
+			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
 	}
 
 	[Fact]
@@ -115,7 +115,7 @@ public sealed class RoomAnnouncerTests
 				TimeSpan.FromSeconds(30)), Token);
 
 		Assert.Equal([bot.Text(AnnouncementReplies.CountdownTicked, new { seconds = 30 })],
-			bot.SaidIn(staff.Room.Channel));
+			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
 	}
 
 	[Fact]
@@ -129,7 +129,7 @@ public sealed class RoomAnnouncerTests
 				TimeSpan.FromSeconds(59.6)), Token);
 
 		Assert.Equal([bot.Text(AnnouncementReplies.CountdownTicked, new { seconds = 60 })],
-			bot.SaidIn(staff.Room.Channel));
+			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
 	}
 
 	[Fact]
@@ -143,7 +143,7 @@ public sealed class RoomAnnouncerTests
 				TimeSpan.FromSeconds(59.4)), Token);
 
 		Assert.Equal([bot.Text(AnnouncementReplies.CountdownTicked, new { seconds = 59 })],
-			bot.SaidIn(staff.Room.Channel));
+			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
 	}
 
 	#endregion
@@ -160,7 +160,8 @@ public sealed class RoomAnnouncerTests
 			new RoomCountdownElapsed(staff.Room, CountdownIn(bot, staff, TimeSpan.FromSeconds(30), true),
 				RoomOutcome.Ok), Token);
 
-		Assert.Equal([bot.Text(AnnouncementReplies.RoundStartedByCountdown)], bot.SaidIn(staff.Room.Channel));
+		Assert.Equal([bot.Text(AnnouncementReplies.RoundStartedByCountdown)],
+			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
 	}
 
 	[Fact]
@@ -173,7 +174,7 @@ public sealed class RoomAnnouncerTests
 			new RoomCountdownElapsed(staff.Room, CountdownIn(bot, staff, TimeSpan.FromSeconds(30), false),
 				RoomOutcome.Ok), Token);
 
-		Assert.Equal([bot.Text(AnnouncementReplies.CountdownElapsed)], bot.SaidIn(staff.Room.Channel));
+		Assert.Equal([bot.Text(AnnouncementReplies.CountdownElapsed)], bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
 	}
 
 	[Fact]
@@ -186,7 +187,8 @@ public sealed class RoomAnnouncerTests
 			new RoomCountdownElapsed(staff.Room, CountdownIn(bot, staff, TimeSpan.FromSeconds(30), true),
 				RoomOutcome.NoBeatmap), Token);
 
-		Assert.Equal([bot.Text(AnnouncementReplies.CountdownElapsedForRound)], bot.SaidIn(staff.Room.Channel));
+		Assert.Equal([bot.Text(AnnouncementReplies.CountdownElapsedForRound)],
+			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
 	}
 
 	[Theory]
@@ -201,7 +203,7 @@ public sealed class RoomAnnouncerTests
 			new RoomCountdownElapsed(staff.Room, CountdownIn(bot, staff, TimeSpan.FromSeconds(30), true), result),
 			Token);
 
-		Assert.Empty(bot.SaidIn(staff.Room.Channel));
+		Assert.Empty(bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
 	}
 
 	#endregion
@@ -216,7 +218,8 @@ public sealed class RoomAnnouncerTests
 
 		await CancelCountdownAsync(bot, staff, RoomCountdownCancelReason.Aborted);
 
-		Assert.Equal([bot.Text(AnnouncementReplies.CountdownCancelled)], bot.SaidIn(staff.Room.Channel));
+		Assert.Equal([bot.Text(AnnouncementReplies.CountdownCancelled)],
+			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
 	}
 
 	[Fact]
@@ -228,7 +231,7 @@ public sealed class RoomAnnouncerTests
 		await CancelCountdownAsync(bot, staff, RoomCountdownCancelReason.SettingsChanged);
 
 		Assert.Equal([bot.Text(AnnouncementReplies.SettingsChangedCountdownCancelled)],
-			bot.SaidIn(staff.Room.Channel));
+			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
 	}
 
 	[Fact]
@@ -239,7 +242,8 @@ public sealed class RoomAnnouncerTests
 
 		await CancelCountdownAsync(bot, staff, RoomCountdownCancelReason.RoundStarted);
 
-		Assert.Equal([bot.Text(AnnouncementReplies.CountdownCancelledByRoundStart)], bot.SaidIn(staff.Room.Channel));
+		Assert.Equal([bot.Text(AnnouncementReplies.CountdownCancelledByRoundStart)],
+			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
 	}
 
 	[Fact]
@@ -250,7 +254,8 @@ public sealed class RoomAnnouncerTests
 
 		await CancelCountdownAsync(bot, staff, RoomCountdownCancelReason.RoundAborted);
 
-		Assert.Equal([bot.Text(AnnouncementReplies.CountdownCancelledByRoundAbort)], bot.SaidIn(staff.Room.Channel));
+		Assert.Equal([bot.Text(AnnouncementReplies.CountdownCancelledByRoundAbort)],
+			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
 	}
 
 	#endregion
@@ -266,7 +271,8 @@ public sealed class RoomAnnouncerTests
 
 		await AnnouncerFor(bot).Handle(started with { Players = [] }, Token);
 
-		Assert.Equal([bot.Text(AnnouncementReplies.RoundStartedNoPlayers)], bot.SaidIn(staff.Room.Channel));
+		Assert.Equal([bot.Text(AnnouncementReplies.RoundStartedNoPlayers)],
+			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
 	}
 
 	[Fact]
@@ -279,7 +285,7 @@ public sealed class RoomAnnouncerTests
 
 		await AnnouncerFor(bot).Handle(started, Token);
 
-		Assert.Empty(bot.SaidIn(staff.Room.Channel));
+		Assert.Empty(bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
 	}
 
 	[Fact]
@@ -293,7 +299,7 @@ public sealed class RoomAnnouncerTests
 
 		await AnnouncerFor(bot).Handle(aborted, Token);
 
-		Assert.Equal([bot.Text(AnnouncementReplies.RoundAborted)], bot.SaidIn(staff.Room.Channel));
+		Assert.Equal([bot.Text(AnnouncementReplies.RoundAborted)], bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
 	}
 
 	[Fact]
@@ -310,7 +316,7 @@ public sealed class RoomAnnouncerTests
 		Assert.Equal([
 			bot.Text(AnnouncementReplies.ScoreMissing, new { player = staff.Player.Record.Value.Name, seconds = 10 }),
 			bot.Text(AnnouncementReplies.ScoreMissing, new { player = staff.Creator.Record.Value.Name, seconds = 10 })
-		], bot.SaidIn(staff.Room.Channel));
+		], bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
 	}
 
 	[Fact]
@@ -322,7 +328,7 @@ public sealed class RoomAnnouncerTests
 
 		await AnnouncerFor(bot).Handle(new RoomRoundDecided(staff.Room, started.Round, null, []), Token);
 
-		Assert.Empty(bot.SaidIn(staff.Room.Channel));
+		Assert.Empty(bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
 	}
 
 	#endregion
@@ -343,7 +349,7 @@ public sealed class RoomAnnouncerTests
 		await AnnouncerFor(bot).Handle(ClosingIn(bot, staff, TimeSpan.FromSeconds(secondsLeft)), Token);
 
 		Assert.Equal([bot.Text(AnnouncementReplies.RoomClosingAnnounced, new { minutes })],
-			bot.SaidIn(staff.Room.Channel));
+			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
 	}
 
 	[Fact]
@@ -404,12 +410,12 @@ public sealed class RoomAnnouncerTests
 		var staff = await SetUpAsync(bot);
 		var announcer = AnnouncerFor(bot);
 		await announcer.Handle(ClosingIn(bot, staff, TimeSpan.FromMinutes(10)), Token);
-		var saidBefore = bot.SaidIn(staff.Room.Channel).Count;
+		var saidBefore = bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)).Count;
 
 		await announcer.Handle(JoinedRoom(staff), Token);
 
 		Assert.Equal([bot.Text(AnnouncementReplies.RoomPlayerJoinedClosing)],
-			bot.SaidIn(staff.Room.Channel).Skip(saidBefore).ToList());
+			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)).Skip(saidBefore).ToList());
 	}
 
 	[Fact]
@@ -420,11 +426,11 @@ public sealed class RoomAnnouncerTests
 		var announcer = AnnouncerFor(bot);
 		await announcer.Handle(ClosingIn(bot, staff, TimeSpan.FromMinutes(10)), Token);
 		await announcer.Handle(JoinedRoom(staff), Token);
-		var saidBefore = bot.SaidIn(staff.Room.Channel).Count;
+		var saidBefore = bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)).Count;
 
 		await announcer.Handle(JoinedRoom(staff), Token);
 
-		Assert.Equal(saidBefore, bot.SaidIn(staff.Room.Channel).Count);
+		Assert.Equal(saidBefore, bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)).Count);
 	}
 
 	[Fact]
@@ -435,7 +441,7 @@ public sealed class RoomAnnouncerTests
 
 		await AnnouncerFor(bot).Handle(JoinedRoom(staff), Token);
 
-		Assert.Empty(bot.SaidIn(staff.Room.Channel));
+		Assert.Empty(bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
 	}
 
 	[Fact]
@@ -446,11 +452,11 @@ public sealed class RoomAnnouncerTests
 		var announcer = AnnouncerFor(bot);
 		await announcer.Handle(ClosingIn(bot, staff, TimeSpan.FromMinutes(10)), Token);
 		await announcer.Handle(new LobbyRoomClosed(staff.Room, null, [], null), Token);
-		var saidBefore = bot.SaidIn(staff.Room.Channel).Count;
+		var saidBefore = bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)).Count;
 
 		await announcer.Handle(JoinedRoom(staff), Token);
 
-		Assert.Equal(saidBefore, bot.SaidIn(staff.Room.Channel).Count);
+		Assert.Equal(saidBefore, bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)).Count);
 	}
 
 	[Fact]
@@ -468,8 +474,10 @@ public sealed class RoomAnnouncerTests
 		await announcer.Handle(JoinedRoom(first), Token);
 		await announcer.Handle(JoinedRoom(second), Token);
 
-		Assert.DoesNotContain(bot.Text(AnnouncementReplies.RoomPlayerJoinedClosing), bot.SaidIn(first.Room.Channel));
-		Assert.Contains(bot.Text(AnnouncementReplies.RoomPlayerJoinedClosing), bot.SaidIn(second.Room.Channel));
+		Assert.DoesNotContain(bot.Text(AnnouncementReplies.RoomPlayerJoinedClosing),
+			bot.SaidIn(bot.App.RoomChannels.Of(first.Room)));
+		Assert.Contains(bot.Text(AnnouncementReplies.RoomPlayerJoinedClosing),
+			bot.SaidIn(bot.App.RoomChannels.Of(second.Room)));
 	}
 
 	#endregion

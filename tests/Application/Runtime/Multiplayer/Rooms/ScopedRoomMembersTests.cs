@@ -1,7 +1,9 @@
 using Basil.Application.Persistence.Users;
+using Basil.Application.Runtime.Chat;
+using Basil.Application.Runtime.Connections;
 using Basil.Application.Runtime.Multiplayer;
 using Basil.Application.Runtime.Multiplayer.Events;
-using Basil.Application.Runtime.Sessions;
+using Basil.Application.Runtime.Users;
 using Basil.Domain.Users;
 using Basil.Testing;
 
@@ -158,12 +160,14 @@ public sealed class ScopedRoomMembersTests
 		var (room, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("test room", "", false, false,
 			cancellationToken: TestContext.Current.CancellationToken);
 		Assert.True(opened.IsOk);
+		var channel = app.RoomChannels.Of(room!);
 
 		Assert.True((await room!.ScopeTo(creator).Members.LeaveAsync(TestContext.Current.CancellationToken)).IsOk);
 
 		Assert.True(room.IsClosed);
-		Assert.True(room.Channel.IsClosed);
-		Assert.IsType<LobbyRoomClosed>(app.LobbyEvents.Events[^1]);
+		var closed = Assert.IsType<LobbyRoomClosed>(app.LobbyEvents.Events[^1]);
+		await new LobbyRoomClosedHandler(app.RoomChannels).Handle(closed, TestContext.Current.CancellationToken);
+		Assert.True(channel.IsClosed);
 	}
 
 	[Fact]
@@ -178,7 +182,7 @@ public sealed class ScopedRoomMembersTests
 		Assert.True((await room!.ScopeTo(creator).Members.LeaveAsync(TestContext.Current.CancellationToken)).IsOk);
 
 		Assert.False(room.IsClosed);
-		Assert.False(room.Channel.IsClosed);
+		Assert.False(app.RoomChannels.Of(room).IsClosed);
 	}
 
 	[Fact]

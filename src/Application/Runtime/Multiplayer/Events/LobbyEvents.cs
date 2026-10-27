@@ -1,6 +1,6 @@
+using Basil.Application.Runtime.Connections;
 using Basil.Application.Runtime.Events;
 using Basil.Application.Runtime.Multiplayer.Rooms;
-using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 
@@ -39,6 +39,10 @@ public sealed record LobbyRoomClosed(
 	IReadOnlyList<BanchoConnection> Evicted,
 	Round? AbortedRound)
 	: LobbyEvent;
+
+/// <summary>A connection was released from every open room.</summary>
+/// <param name="Connection">The connection that was released.</param>
+public sealed record LobbyConnectionReleased(Connection Connection) : LobbyEvent;
 
 /// <summary>An empty tournament room will close unless a player joins.</summary>
 /// <remarks>Announced when the room becomes empty after having players, and again shortly before it closes.</remarks>

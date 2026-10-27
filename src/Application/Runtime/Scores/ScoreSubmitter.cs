@@ -1,16 +1,13 @@
 using Basil.Application.Capabilities.Scores;
+using Basil.Application.Runtime.Connections;
 using Basil.Application.Runtime.Events;
-using Basil.Application.Runtime.Sessions;
 
 namespace Basil.Application.Runtime.Scores;
 
 /// <summary>Takes the scores that osu! clients submit: validates and stores them, then publishes <see cref="ScoreSubmitted" />.</summary>
 public sealed class ScoreSubmitter
 {
-	private readonly IScoreBeatmapAcceptance _acceptance;
 	private readonly TimeProvider _clock;
-	private readonly IEventPublisher<ScoreEvent> _events;
-	private readonly ScoreRecorder _recorder;
 
 	/// <summary>Creates the score submitter with the ports its work needs.</summary>
 	/// <param name="recorder">Validates and stores a score.</param>
@@ -20,17 +17,17 @@ public sealed class ScoreSubmitter
 	internal ScoreSubmitter(ScoreRecorder recorder, IEventPublisher<ScoreEvent> events,
 		IScoreBeatmapAcceptance acceptance, TimeProvider clock)
 	{
-		_recorder = recorder;
-		_events = events;
-		_acceptance = acceptance;
+		Recorder = recorder;
+		Events = events;
+		Acceptance = acceptance;
 		_clock = clock;
 	}
 
-	internal ScoreRecorder Recorder => _recorder;
+	internal ScoreRecorder Recorder { get; }
 
-	internal IEventPublisher<ScoreEvent> Events => _events;
+	internal IEventPublisher<ScoreEvent> Events { get; }
 
-	internal IScoreBeatmapAcceptance Acceptance => _acceptance;
+	internal IScoreBeatmapAcceptance Acceptance { get; }
 
 	/// <summary>Scopes score submission to a game client and its permissions.</summary>
 	/// <param name="by">The game client that submits.</param>

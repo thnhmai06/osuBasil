@@ -1,5 +1,5 @@
 using Basil.Application.Runtime.Anticheat;
-using Basil.Application.Runtime.Sessions;
+using Basil.Application.Runtime.Connections;
 using Basil.Domain.Bancho;
 using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;

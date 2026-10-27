@@ -4,8 +4,7 @@ using System.Net;
 using System.Security.Cryptography;
 using Basil.Application.Capabilities.Users;
 using Basil.Application.Persistence.Users;
-using Basil.Application.Runtime.Multiplayer.Rooms;
-using Basil.Application.Runtime.Sessions;
+using Basil.Application.Runtime.Connections;
 using Basil.Domain.Auth;
 using Basil.Domain.Bancho;
 using Basil.Domain.Common;
@@ -14,7 +13,7 @@ using Basil.Domain.Users;
 namespace Basil.Application.Runtime.Users;
 
 /// <summary>The users who are online and the connections through which they act.</summary>
-public sealed class UserRegistry : IRoomUsersPort
+public sealed class UserRegistry
 {
 	/// <summary>How long a connection must be idle before a new login of the same kind replaces it.</summary>
 	internal static readonly TimeSpan ReplaceAfterIdle = TimeSpan.FromSeconds(10);
@@ -26,14 +25,14 @@ public sealed class UserRegistry : IRoomUsersPort
 	private readonly ConcurrentDictionary<string, Connection> _connections = new(StringComparer.Ordinal);
 	private readonly UserContext _context;
 	private readonly ConcurrentDictionary<UserRecord, User> _online = new();
-	private readonly SessionContext _session;
+	private readonly ConnectionContext _session;
 	private readonly Lock _sync = new(); // ponytail: one lock for all logins; per-user locks if login rate ever matters
 
 	/// <summary>Creates the registry that owns online users and their connections.</summary>
 	/// <param name="accounts">The account operations that use persistence.</param>
 	/// <param name="context">The ports through which the users of this registry perform their behaviour.</param>
 	/// <param name="session">The ports through which the connections of this registry perform their behaviour.</param>
-	internal UserRegistry(AccountService accounts, UserContext context, SessionContext session)
+	internal UserRegistry(AccountService accounts, UserContext context, ConnectionContext session)
 	{
 		_accounts = accounts;
 		_context = context;
@@ -42,11 +41,6 @@ public sealed class UserRegistry : IRoomUsersPort
 
 	/// <summary>Gets every online user by its account.</summary>
 	public IReadOnlyDictionary<UserRecord, User> Online => _online;
-
-	ValueTask<bool> IRoomUsersPort.BlocksAsync(UserRecord blocker, UserRecord who, CancellationToken cancellationToken)
-	{
-		return Of(blocker).HasBlockedAsync(who, cancellationToken);
-	}
 
 	/// <summary>Gets the open osu! game client of an online user.</summary>
 	/// <param name="user">The account to look up.</param>
@@ -329,8 +323,6 @@ public sealed class UserRegistry : IRoomUsersPort
 		user.ReplaceRestrictions(restrictions);
 		connection.User = user;
 		user.Add(connection);
-		if (connection.Type is not ConnectionType.Tourney)
-			user.PmChannel.ScopeTo(connection).Join();
 		connection.IsOpen = true;
 
 		// The bot's token is never findable: nobody can present it, and nobody should be able to try.
@@ -401,16 +393,11 @@ public sealed class UserRegistry : IRoomUsersPort
 		connection.IsOpen = false;
 		Unindex(connection);
 		connection.User.Remove(connection);
-		connection.User.PmChannel.ScopeTo(connection).Part();
 		if (connection is BanchoConnection client)
 			client.ReleaseSpectators();
 
 		var wentOffline = !connection.User.Connections.Any();
-		if (wentOffline)
-		{
-			Remove(connection.User);
-			connection.User.PmChannel.Close();
-		}
+		if (wentOffline) Remove(connection.User);
 
 		_context.Events.Publish(new UserConnectionClosed(connection, reason, wentOffline));
 	}

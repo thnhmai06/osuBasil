@@ -4,7 +4,6 @@ using Basil.Application.Runtime.Multiplayer;
 using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Multiplayer.Rooms;
 using Basil.Application.Runtime.Scores;
-using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
@@ -28,13 +27,14 @@ public sealed class ScoreSubmissionTests
 		ScoreSubmissionFixture f, Submission submission, SubmittedClient? client = null,
 		BeatmapChecksums? beatmap = null, Stream? replay = null, bool unknownBeatmap = false)
 	{
-		return f.App.Provider.GetRequiredService<ScoreSubmitter>().ScopeTo(f.Client).SubmitAsync(submission, unknownBeatmap ? null : beatmap ?? Checksums,
+		return f.App.Provider.GetRequiredService<ScoreSubmitter>().ScopeTo(f.Client).SubmitAsync(submission,
+			unknownBeatmap ? null : beatmap ?? Checksums,
 			client ?? ScoreSubmissionFixture.GenuineClient(), replay, TestContext.Current.CancellationToken);
 	}
 
 	private static MemoryStream Replay(int length)
 	{
-		return new MemoryStream(Enumerable.Range(0, length).Select(i => (byte)(i + 1)).ToArray());
+		return new MemoryStream([.. Enumerable.Range(0, length).Select(i => (byte)(i + 1))]);
 	}
 
 	private static void AssertNothingRecorded(ScoreSubmissionFixture f)

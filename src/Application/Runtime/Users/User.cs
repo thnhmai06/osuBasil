@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
-using Basil.Application.Runtime.Chat;
-using Basil.Application.Runtime.Sessions;
+using Basil.Application.Runtime.Connections;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
 
@@ -20,14 +19,10 @@ public sealed class User
 	{
 		Record = record;
 		Context = context;
-		PmChannel = new PmChannel(this, context.Chat);
 	}
 
 	/// <summary>Gets the account this object represents.</summary>
 	public UserRecord Record { get; }
-
-	/// <summary>Gets the channel that receives the user's private messages.</summary>
-	public PmChannel PmChannel { get; }
 
 	/// <summary>Gets or sets the away message shown to other users, or <see langword="null" /> when not away.</summary>
 	public string? AwayMessage { get; internal set; }
@@ -82,19 +77,6 @@ public sealed class User
 	public UserPermissions EffectivePermissions(DateTimeOffset now)
 	{
 		return Record.Value.Permissions.Effective(Restrictions, now);
-	}
-
-	/// <summary>Gets a value that indicates whether this user blocks another.</summary>
-	/// <param name="who">The user to check.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns><see langword="true" /> when this user blocks <paramref name="who" />.</returns>
-	public async ValueTask<bool> HasBlockedAsync(UserRecord who, CancellationToken cancellationToken = default)
-	{
-		if (Record.IsBasilBot()) return false;
-
-		var relationships = await Context.Relationships.ListAsync(Record, cancellationToken);
-		return relationships.Any(relationship => relationship.Target.Equals(who) &&
-		                                         relationship.Type == RelationshipType.Block);
 	}
 
 	/// <summary>Replaces the permissions granted to the account and keeps its online user in sync.</summary>

@@ -1,5 +1,5 @@
 using Basil.Application.Runtime.Common;
-using Basil.Application.Runtime.Sessions;
+using Basil.Application.Runtime.Connections;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 
@@ -126,7 +126,7 @@ public sealed class ScopedRoom : Scoped<RoomPermissions, Connection>
 			: Result<RoomOutcome>.Denied(UserPermissions.RoomJoin);
 	}
 
-	/// <summary>Closes the room, evicting its players, ending its round, closing its channel and forgetting it.</summary>
+	/// <summary>Closes the room, evicting its players, ending its round and forgetting it.</summary>
 	/// <param name="cancellationToken">A token that cancels the wait for the room.</param>
 	/// <returns>
 	///     Ok, or a denial; a room that has closed already returns Ok and does nothing.

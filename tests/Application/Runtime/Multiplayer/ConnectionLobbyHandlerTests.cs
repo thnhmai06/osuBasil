@@ -1,6 +1,6 @@
 using Basil.Application.Runtime.Multiplayer;
 using Basil.Application.Runtime.Multiplayer.Events;
-using Basil.Application.Runtime.Sessions;
+using Basil.Application.Runtime.Users;
 using Basil.Testing;
 using Microsoft.Extensions.Logging.Abstractions;
 

@@ -12,15 +12,14 @@ using Basil.Application.Persistence.Users;
 using Basil.Application.Runtime.Anticheat;
 using Basil.Application.Runtime.Beatmaps;
 using Basil.Application.Runtime.Chat;
+using Basil.Application.Runtime.Connections;
 using Basil.Application.Runtime.Events;
 using Basil.Application.Runtime.Multiplayer;
 using Basil.Application.Runtime.Multiplayer.Events;
 using Basil.Application.Runtime.Multiplayer.Rooms;
 using Basil.Application.Runtime.Scores;
 using Basil.Application.Runtime.Servers;
-using Basil.Application.Runtime.Sessions;
 using Basil.Application.Runtime.Users;
-using Basil.Domain.Users;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -53,9 +52,8 @@ public static class DependencyInjection
 			sp.GetRequiredService<IModerationLogRepository>(),
 			sp.GetRequiredService<IRelationshipRepository>(),
 			sp.GetRequiredService<ILoginRepository>(),
-			sp.GetRequiredService<ICredentialRepository>(),
-			sp.GetRequiredService<ChannelContext>()));
-		services.AddSingleton<SessionContext>(sp => new SessionContext(
+			sp.GetRequiredService<ICredentialRepository>()));
+		services.AddSingleton<ConnectionContext>(sp => new ConnectionContext(
 			sp.GetRequiredService<TimeProvider>(),
 			sp.GetRequiredService<IEventPublisher<UserEvent>>(),
 			new Lazy<UserRegistry>(sp.GetRequiredService<UserRegistry>),
@@ -71,9 +69,9 @@ public static class DependencyInjection
 		services.AddSingleton<UserRegistry>(sp => new UserRegistry(
 			sp.GetRequiredService<AccountService>(),
 			sp.GetRequiredService<UserContext>(),
-			sp.GetRequiredService<SessionContext>()));
-		services.AddSingleton<IRoomUsersPort>(sp => sp.GetRequiredService<UserRegistry>());
-		services.AddSingleton<Func<UserRecord, User>>(sp => sp.GetRequiredService<UserRegistry>().Of);
+			sp.GetRequiredService<ConnectionContext>()));
+		services.AddSingleton<RoomBlocks>(sp => new RoomBlocks(
+			sp.GetRequiredService<IRelationshipRepository>()));
 
 		services.AddSingleton<ChannelContext>(sp => new ChannelContext(
 			sp.GetRequiredService<TimeProvider>(),
@@ -83,9 +81,13 @@ public static class DependencyInjection
 			sp.GetRequiredService<IChannelRepository>()));
 		services.AddSingleton<SpectatorChannels>(sp =>
 			new SpectatorChannels(sp.GetRequiredService<ChannelContext>()));
+		services.AddSingleton<RoomChannels>(sp => new RoomChannels(sp.GetRequiredService<ChannelContext>()));
+		services.AddSingleton<PmChannels>(sp => new PmChannels(sp.GetRequiredService<ChannelContext>()));
 		services.AddSingleton<ServerContext>(sp => new ServerContext(
-			sp.GetRequiredService<SessionContext>(),
+			sp.GetRequiredService<ConnectionContext>(),
 			sp.GetRequiredService<ChannelContext>(),
+			sp.GetRequiredService<RoomChannels>(),
+			sp.GetRequiredService<PmChannels>(),
 			sp.GetRequiredService<IScreenshotInspector>(),
 			sp.GetRequiredService<IScreenshotStorage>(),
 			sp.GetRequiredService<Lobby>(),
@@ -99,8 +101,7 @@ public static class DependencyInjection
 			sp.GetRequiredService<IUserRepository>(),
 			sp.GetRequiredService<ISettingsRepository>(),
 			sp.GetRequiredService<IEventPublisher<RoomEvent>>(),
-			sp.GetRequiredService<ChannelContext>(),
-			sp.GetRequiredService<IRoomUsersPort>()));
+			sp.GetRequiredService<RoomBlocks>()));
 		services.AddSingleton<Lobby>(sp => new Lobby(sp.GetRequiredService<LobbyContext>()));
 
 		services.AddSingleton<BeatmapsetContext>(sp => new BeatmapsetContext(

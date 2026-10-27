@@ -1,4 +1,4 @@
-using Basil.Application.Runtime.Sessions;
+using Basil.Application.Runtime.Connections;
 using Basil.Application.Runtime.Users;
 
 namespace Basil.Application.Runtime.Chat;

@@ -1,5 +1,5 @@
+using Basil.Application.Runtime.Connections;
 using Basil.Application.Runtime.Events;
-using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Bancho;
 
 namespace Basil.Application.Runtime.Anticheat;

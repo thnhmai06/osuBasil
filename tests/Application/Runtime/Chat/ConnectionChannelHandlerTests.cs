@@ -1,5 +1,5 @@
 using Basil.Application.Runtime.Chat;
-using Basil.Application.Runtime.Sessions;
+using Basil.Application.Runtime.Users;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
 using Basil.Testing;

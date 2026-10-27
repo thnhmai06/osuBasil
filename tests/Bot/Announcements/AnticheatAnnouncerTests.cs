@@ -28,7 +28,7 @@ public sealed class AnticheatAnnouncerTests
 		Assert.Equal([
 			bot.Text(AnnouncementReplies.AnticheatFlagRoom,
 				new { player = "FinalsPlayer", reason = "SpeedHackDetected, FastPress" })
-		], bot.SaidIn(staff.Room.Channel));
+		], bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
 	}
 
 	[Fact]
@@ -89,7 +89,7 @@ public sealed class AnticheatAnnouncerTests
 		Assert.Equal([
 			bot.Text(AnnouncementReplies.AnticheatFlagRoom,
 				new { player = "FinalsPlayer", reason = "FastPress" })
-		], bot.SaidIn(staff.Room.Channel));
+		], bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
 	}
 
 	[Fact]
@@ -106,7 +106,7 @@ public sealed class AnticheatAnnouncerTests
 		                      + "FlashlightImageHack, SpinnerHack, TransparentWindow, FastPress, RawMouseDiscrepancy, "
 		                      + "RawKeyboardDiscrepancy, HqAssembly, HqFile, RegistryEdits";
 		Assert.Equal([bot.Text(AnnouncementReplies.AnticheatFlagRoom, new { player = "FinalsPlayer", reason })],
-			bot.SaidIn(staff.Room.Channel));
+			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
 	}
 
 	[Fact]
@@ -122,7 +122,7 @@ public sealed class AnticheatAnnouncerTests
 		Assert.Equal([
 			bot.Text(AnnouncementReplies.AnticheatFlagRoom,
 				new { player = "FinalsPlayer", reason = "ConsoleOpen, Sdl2Library" })
-		], bot.SaidIn(staff.Room.Channel));
+		], bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
 	}
 
 	[Fact]
@@ -139,7 +139,7 @@ public sealed class AnticheatAnnouncerTests
 
 	private static AnticheatAnnouncer AnnouncerFor(BotHarness bot)
 	{
-		return new AnticheatAnnouncer(bot.App.Server, bot.App.Lobby, bot.App.Users, bot.Replies);
+		return new AnticheatAnnouncer(bot.App.Server, bot.App.Lobby, bot.App.RoomChannels, bot.App.Users, bot.Replies);
 	}
 
 	private static async Task<StaffRoom> SetUpAsync(BotHarness bot)

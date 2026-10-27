@@ -1,6 +1,6 @@
 using Basil.Application.Runtime.Common;
+using Basil.Application.Runtime.Connections;
 using Basil.Application.Runtime.Multiplayer.Events;
-using Basil.Application.Runtime.Sessions;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
 
@@ -205,7 +205,6 @@ public sealed partial class Room
 
 			if (evicted is not null)
 			{
-				LeaveChannel(evicted);
 				ReportIfEmpty();
 			}
 

@@ -1,8 +1,6 @@
 using Basil.Application.Persistence.Auth;
 using Basil.Application.Persistence.Users;
-using Basil.Application.Runtime.Chat;
 using Basil.Application.Runtime.Events;
-using Basil.Application.Runtime.Sessions;
 
 namespace Basil.Application.Runtime.Users;
 
@@ -16,7 +14,6 @@ namespace Basil.Application.Runtime.Users;
 /// <param name="Relationships">The friends and blocks users set toward each other.</param>
 /// <param name="Logins">The recorded logins.</param>
 /// <param name="Credentials">The stored passwords.</param>
-/// <param name="Chat">The runtime dependencies for the user's private-message channel.</param>
 internal sealed record UserContext(
 	TimeProvider Clock,
 	IEventPublisher<UserEvent> Events,
@@ -26,8 +23,7 @@ internal sealed record UserContext(
 	IModerationLogRepository ModerationLog,
 	IRelationshipRepository Relationships,
 	ILoginRepository Logins,
-	ICredentialRepository Credentials,
-	ChannelContext Chat)
+	ICredentialRepository Credentials)
 {
 	/// <summary>Gets the users who are online.</summary>
 	public UserRegistry Registry => RegistryOf.Value;
