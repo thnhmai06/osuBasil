@@ -198,8 +198,7 @@ Removing chat completely was therefore an overcorrection.
 **Current resolution**
 
 Basil first reintroduced `BanchoBot` as a special session inside the server. The identity redesign
-([`plans/identity-permissions-plan-20261005.md`](../../plans/identity-permissions-plan-20261005.md)) moved the commands
-out to BasilBot as a separate client. The 2026-10-16 redesign brought them back as a server entry point: BasilBot is a
+moved the commands out to BasilBot as a separate client. The 2026-10-16 redesign brought them back as a server entry point: BasilBot is a
 fixed user (id 1) that nobody can sign in as, commands run using the typist's connection, and the bot only replies
 and announces. The command and announcement handlers are implemented in `Basil.Bot`; transport
 integration remains planned for the Host phase; the bot's own connection is kept by the server. The earlier "special session" failed

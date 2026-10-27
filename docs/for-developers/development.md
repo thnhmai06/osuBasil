@@ -141,7 +141,7 @@ You generally do not need to configure anything manually for local development.
 The test tree mirrors `src/`: one test project per source project, `tests/{Application,Infrastructure}/<Module>`
 for the modules, `tests/Common/`, `tests/Domain/`, `tests/Protocol/`, `tests/Bot/`, `tests/Architecture/` (the project
 graph, the layering and the container check) and `tests/Composition/` (tests that need the whole composition). Run them
-individually, or all with `plans/evidence/phase-e/count-tests.sh`:
+individually or all with `dotnet test`:
 
 ```bash
 dotnet test tests/Domain
