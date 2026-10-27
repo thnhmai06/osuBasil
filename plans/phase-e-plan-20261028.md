@@ -8,7 +8,7 @@ Status: stage E0 (this document), 2026-10-28. Replaces section 2 of `module-even
 now clean at the namespace level (`ModuleGraphTests`, no debt), so the split by module can follow: each module is a pair
 of projects whose references the compiler enforces.
 
-**What.** One pair `Basil.<Module>.Application` / `Basil.<Module>.Infrastructure` per module, one shared Domain, one
+**What.** One pair `Basil.Application.<Module>` / `Basil.Infrastructure.<Module>` per module, one shared Domain, one
 shared `Basil.Common.*` pair, one DbContext per module. Hosts and Protocol are untouched (they are outside the build).
 
 **How.** In stages, one worker at a time (the moves all touch `Basil.slnx`, `DependencyInjection.cs` and
@@ -20,7 +20,7 @@ shared `Basil.Common.*` pair, one DbContext per module. Hosts and Protocol are u
 |---|---|---|
 | E1 | One `Basil.Domain` project, shared. | owner, 2026-10-28 |
 | E2 | One DbContext per module; one migration history per module. | owner, 2026-10-28 |
-| E3 | Naming: `Basil.<Module>.Application`, `Basil.<Module>.Infrastructure`, namespaces equal the project name, tests `Basil.<Module>.Application.Tests` under `tests/Modules/<Module>/...` mirroring `src/Modules/<Module>/...`. | proposed |
+| E3 | Naming (owner decision 2026-10-28, replaces the module-first scheme): `Basil.Application.<Module>`, `Basil.Infrastructure.<Module>`, solution folders `/Sources/Application/` and `/Sources/Infrastructure/`, Clean Architecture layers kept and split by module inside, namespaces equal the project name, tests `Basil.Application.<Module>.Tests` under `tests/{Application,Infrastructure}/<Module>/...` mirroring `src/Modules/<Module>/...`. | proposed |
 | E4 | Users and Connections are two folders of ONE project, `Basil.Users.*` (they reference each other, and project references cannot form a cycle). The owner's "Connection riêng" holds at folder and namespace level. | forced by the compiler; to confirm |
 | E5 | Anticheat, Auth and Servers are their own modules (A2). Anticheat -> Users; Auth -> (Domain only); Users -> Auth; Servers -> every module. | A2 |
 | E6 | One composition project (`Basil.Composition`) references every module, calls `AddMediator` once and holds the only reference to `Mediator.SourceGenerator`; every module references `Mediator.Abstractions`. Each module registers itself with a public `Add<Module>()`; its contexts and constructors stay `internal`. | spike S2 (proposed) |
@@ -62,15 +62,28 @@ Protocol.Irc 117; all together 3464 passed and 4 skipped, by `plans/evidence/pha
   generate them without SQL text (see the spike); otherwise the owner decides. Gate: Persistence tests green, a fresh
   database migrates from empty, the `InitialCreate` precondition (no database applied the old migration) restated.
 - **E1 done (2026-10-28).** Eight module contexts (Common, Users, Auth, Beatmaps, Content, Scores, Multiplayer, Chat) with one history table each, applied by `DatabaseMigrator` in the order of their registration; `Database`, `DatabaseWriter`, `DatabaseReader` generic over the context; one regenerated `InitialCreate` per module. Proof: a fresh database migrated by the new contexts has a `pg_dump -s` schema identical to the old one except for the history tables, 16 foreign keys; totals 3467 passed (3464 + 3 new), 4 skipped.
-- **E2 Common.** Create `Basil.Common.Application` / `.Infrastructure`, move Common/Events/Postgres infra. Gate: totals.
+- **E2 Common.** Create `Basil.Application.Common` / `.Infrastructure`, move Common/Events/Postgres infra. Gate: totals.
 - **E2 done (2026-10-28).** Added both Common projects, moved shared code and independent tests, and replaced the shared-kernel
   namespace check with a Common project-reference guard (same architecture test count). Total: 3467 passed, 4 skipped.
-- **E3 Leaves.** Beatmaps, Auth, Content, one at a time.
-- **E4 Users (with Connections), Anticheat.**
-- **E5 Scores, Multiplayer, Chat.**
-- **E6 Servers, Bot wiring, hosts' DI entry point.**
-- **E7 Architecture tests.** `ModuleGraphTests` becomes a project-reference test with a positive control; delete the
-  namespace ratchet or keep it for namespaces inside a project.
+- **E3 All remaining modules in one stage** (owner decision 2026-10-28: one phase, not one per module). Beatmaps, Auth,
+  Content, Users with Connections, Anticheat, Scores, Multiplayer, Chat, Servers, and the composition project that calls
+  `AddMediator` once; then the architecture tests become project-reference tests (a positive control kept) and the
+  namespace ratchet stays only for namespaces inside a project. The pattern is the one of E2 and of the Beatmaps move:
+  `git mv` the folders into `src/{Application,Infrastructure}/<Module>` and `tests/{Application,Infrastructure}/<Module>/...`, add the
+  projects to `Basil.slnx`, let Rider align namespaces and usings (`reorganize_namespaces`), fix visibility only where the
+  compiler asks, one `Add<Module>()` per layer. Gate once at the end: the same totals, schema identical, Release build of
+  every project in the build.
+- **E3 done (2026-10-28).** Every module is a pair of projects under `src/{Application,Infrastructure}/<Module>/` (Anticheat and Servers have
+  Application only; Users holds Users and Connections), `src/Composition` is the only project that calls `AddMediator`
+  and offers `AddBasil()` / `AddBasilStorage()` / `AddBasilApplication()`. The six technique projects and their test
+  projects are gone. `ModuleGraphTests` reads the project references (positive controls kept); the namespace ratchet is
+  removed because nothing inside a project needs one. Visibility opened for a real cross-module need: `Room.Enter`,
+  `Room.Involves`, `ConnectionRules`, `UserRegistry.OpenBanchoClient(s)`, `Channel.PostMessage`, `ConnectionContext`,
+  `ChannelContext` (with `OpenGeneral`), `LobbyRoomClosedHandler` and `ScoreHandler` (driven by tests of another module).
+  `IUserStatsRepository` moved to Scores; cross-module foreign keys use the shared `UsersPrincipal` / `ScoresPrincipal`
+  entities of `ContextModel`. Proof: totals 3467 passed, 4 skipped; a fresh database migrated by `AddBasilStorage()` has a
+  `pg_dump -s` identical to the one migrated by the previous commit; Release build of every project outside `src/Hosts`
+  is clean; `dotnet build Basil.slnx` fails only in `src/Hosts`.
 
 ## 5. Spike results (2026-10-28)
 

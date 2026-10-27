@@ -9,7 +9,7 @@ every decision taken in that conversation and every finding of the review. Nothi
 
 - **D1. Modules, not techniques.** Application and Infrastructure are no longer split into
   Persistence/Capabilities/Runtime. They are split into **one project per module and per layer**
-  (`Basil.Scores.Application`, `Basil.Scores.Infrastructure`, ...). Inside a project, folders may still group by
+  (`Basil.Application.Scores`, `Basil.Infrastructure.Scores`, ...). Inside a project, folders may still group by
   technique (`Persistence/`, `Capabilities/`, `Events/`). The existing rules still hold (`internal` types,
   `DependencyInjection.cs`, no SQL text, and so on).
 - **D2. Modules talk only through events.** Holding a reference that says "who" (a slot knows its player) is
@@ -91,9 +91,9 @@ every decision taken in that conversation and every finding of the review. Nothi
 ```text
 src/
   Domain/                           Basil.Domain                 (stays one project, see A1)
-  Common/Application/               Basil.Common.Application     Result, Scoped base, Paging, PageRequest,
+  Common/Application/               Basil.Application.Common     Result, Scoped base, Paging, PageRequest,
                                                                  event base, IEventPublisher
-  Common/Infrastructure/            Basil.Common.Infrastructure  Database, DatabaseWriter, DatabaseReader,
+  Common/Infrastructure/            Basil.Infrastructure.Common  Database, DatabaseWriter, DatabaseReader,
                                                                  MemoryRepository, IdentityMap, WeakIndex,
                                                                  OwnedLists, Files, event dispatcher
   Modules/Users/{Application,Infrastructure}       users, credentials, logins, restrictions, relationships,

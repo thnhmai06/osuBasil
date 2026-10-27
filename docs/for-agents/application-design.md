@@ -1,6 +1,6 @@
 # Application design rules
 
-Rules for Domain and Application objects, scopes, events and naming. Moved out of `AGENTS.md`; the rules are binding. Read this before touching `src/Domain`, `src/Application` or `src/Bot`.
+Rules for Domain and Application objects, scopes, events and naming. Moved out of `AGENTS.md`; the rules are binding. Read this before touching `src/Domain`, `src/Modules/*/Application` or `src/Bot`.
 
 ### Scopes and results (decided 2026-10-21; supersedes any older wording)
 
@@ -38,7 +38,7 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   in range, its own text format, values derived purely from its own data. No runtime-only state, no events.
 * **Behaviour belongs to the object that owns it, and is reached through that object.** Every concept with state, invariants and
   rights is an **Application object** (`User`, `Connection`, `Room`, `RoomSlot`, `Lobby`, the
-  channels, `Beatmapset`, and the root `Server`) in Application.Runtime. It owns its state,
+  channels, `Beatmapset`, and the root `Server`) in the Runtime folder of its module (`Basil.Application.<Module>`). It owns its state,
   keeps its invariants, and offers its behaviour; its state changes only inside its own behaviour. Its persistent
   value is a Domain record named `XRecord` with the plain value `XData` (`UserRecord`, `BeatmapsetRecord`,
   `MatchRecord`); the object wraps it. A persistent value that has no live object of its own, such as a
@@ -63,20 +63,20 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   authority primitives (`Access`, effective permissions, hierarchy, "a block yields to a higher right") are a
   library each `ScopeTo` calls, not a layer to pass through. A domain record and its Application object never
   share a name.
-* **Persistence holds the ports; runtime objects and registries live in Runtime.** Application.Persistence holds
-  the persistent ports (repositories, byte storages) and query records; Common.Application holds shared paging and
+* **Persistence holds the ports; runtime objects and registries live in Runtime.** The Persistence folder of a module holds
+  the persistent ports (repositories, byte storages) and query records; Application.Common holds shared paging and
   search syntax. Runtime objects (`Room`, `RoomSlot`, `User`,
   connections and channels), registries (`UserRegistry`, `GeneralChannelRegistry`) and their scoped
-  behaviour live in Application.Runtime, as public classes; the online user and its registry are in `Users/`, and
+  behaviour live in the module's Runtime folder, as public classes; in the Users module the online user and its registry are in `Users/`, and
   its connections with their context are in `Connections/`. Persistence
   never decides a business rule, emits an event, calls a service or starts a timer. A state change and its
   consequences belong to the object that owns the state.
-* **Services have no public contract.** A service is an `internal` class of Application.Capabilities that Runtime calls
+* **Services have no public contract.** A service is an `internal` class of a module's Capabilities folder that its Runtime folder calls
   directly; there is no `IXService` and no registry contract. A service never sees a live object (`Room`, `User`,
   `Connection`), never publishes an event (events and `IEventPublisher<T>` belong to Runtime, so the service returns
   what happened and the object publishes it) and holds no running state. Runtime objects reach it through
   `InternalsVisibleTo`; plain data that both Services and Runtime use in public signatures (login, registration and
-  score submission inputs, import and scan results) lives in Application.Persistence. Callers reach permission-dependent
+  score submission inputs, import and scan results) lives in the Persistence folder. Callers reach permission-dependent
   behaviour through `ScopeTo(connection)` and the server's own work through labelled system operations.
 * **Object or service?** One question decides it: does the operation have a caller whose rights it must
   check? Then it is behaviour of the object it changes, reached through `ScopeTo(connection)`. An operation that
@@ -107,7 +107,7 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   XML summary that the server itself calls it and needs no rights. A chat command, an API route or any other entry
   point that acts for a user never calls one; it uses the scope of the user's connection.
 * **Capability ports.** A capability with business meaning whose implementation needs external libraries
-  or resources is a public interface in Application.Capabilities (with the data it exchanges) that Infrastructure.Capabilities implements
+  or resources is a public interface in a module's Capabilities folder (with the data it exchanges) that the module's Infrastructure project implements
   (`IBeatmapAnalyser`, `IBeatmapsetReader`, `IBeatmapAssets`, `IBeatmapsetMirror`, `IScreenshotInspector`), even
   when only the hosts use it. Pure plumbing (logging, diagnostics, metrics, SSE hub, TLS, mDNS, update checks,
   OpenAPI, the response envelope) gets no contract. Whatever kind of file a client sends, trust a known extension
@@ -119,9 +119,9 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   from one library to another, the name would not change: `ScanAsync`, not `ScanFileAsync`;
   `IBeatmapAssets.OpenAsync`, not `ReadFromDiskAsync`.
 * **Registries belong with runtime objects.** A registry holds live runtime objects, so it is a public class of
-  Application.Runtime (`UserRegistry`, `GeneralChannelRegistry`) that also owns the operations on what it holds
+  a module's Runtime folder (`UserRegistry`, `GeneralChannelRegistry`) that also owns the operations on what it holds
   (`UserRegistry` opens and closes connections and logs users in). Mutating registry members are `internal`.
-  Persistent repositories, storage ports, query records and paging belong to Application.Persistence. Other
+  Persistent repositories, storage ports, query records and paging belong to the module's Persistence folder. Other
   capability ports describe what lies outside the process: files, network, external computation and the clock
   (`TimeProvider`).
 * **Outer layers use storage directly.** Infrastructure and the hosts read, list and search storage, and
@@ -198,12 +198,12 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
   must not wait for a handler.
 * **Application publishes events and handles the ones that concern its own module; Infrastructure only ships them**
   (plan `module-events-plan-20261027.md`, D5-D8, supersedes "Application does not consume events"). The base event,
-  `IEventPublisher<T>` and `EventQueue` live in Common.Application; feature categories and handlers live in Runtime. An object or the
+  `IEventPublisher<T>` and `EventQueue` live in Application.Common; feature categories and handlers live in Runtime. An object or the
   bot's voice publishes an event through `IEventPublisher<T>` (`Publish`): it stamps `Timestamp`, queues the delivery
   and returns at once. A handler is a class implementing `Mediator.INotificationHandler<TEvent>` for one concrete
-  event type (`ConnectionHandler`, `RestrictionHandler`, `ScoreHandler`, `MatchRecorder` in Application.Runtime;
+  event type (`ConnectionHandler`, `RestrictionHandler`, `ScoreHandler`, `MatchRecorder` in the Runtime folders of their modules;
   `RoomAnnouncer`, `AnticheatAnnouncer`, `ChatHandler` in `Basil.Bot`). The shared queue (`EventQueue`) is run by
-  `EventDispatcher` in Common.Infrastructure and delivers the events one at a time in the order they were published,
+  `EventDispatcher` in Infrastructure.Common and delivers the events one at a time in the order they were published,
   across all event types; a failing handler is logged and the others still run. The mediator resolves handlers at
   first publish, not when the publisher is built (a handler reaches objects that publish). Persistence and Services
   never publish (a service returns what happened and the object publishes it). One operation publishes one event

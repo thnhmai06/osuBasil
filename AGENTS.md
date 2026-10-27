@@ -311,13 +311,13 @@ dotnet test
 Run one test project (the test tree mirrors `src/`):
 
 ```bash
-dotnet test tests/Application/Runtime
+dotnet test tests/Application/Users
 ```
 
 Run a specific test class:
 
 ```bash
-dotnet test tests/Application/Runtime \
+dotnet test tests/Application/Users \
   --filter "FullyQualifiedName~<TestClassName>"
 ```
 
@@ -326,22 +326,20 @@ verify a change with the projects that do build, one at a time:
 
 ```bash
 dotnet build src/Domain --nologo -v q
-dotnet build src/Common/Application --nologo -v q
-dotnet build src/Common/Infrastructure --nologo -v q
-dotnet build src/Application/Persistence --nologo -v q
-dotnet build src/Application/Runtime --nologo -v q
-dotnet build src/Application/Capabilities --nologo -v q
-dotnet build src/Infrastructure/Persistence --nologo -v q
-dotnet build src/Infrastructure/Capabilities --nologo -v q
-dotnet build src/Infrastructure/Runtime --nologo -v q
+dotnet build src/Application/Common --nologo -v q
+dotnet build src/Infrastructure/Common --nologo -v q
+dotnet build src/Composition --nologo -v q
 dotnet build src/Bot --nologo -v q
 ```
 
-A change to a constructor, a context or `DependencyInjection.cs` also needs the container check: a throwaway
-console project that calls the registrations of the application (`AddApplication()` of Application.Runtime), `AddInfrastructureRuntime()` and `AddBot()`,
-registers a stub for every external port (storage and capability), builds the provider with `ValidateOnBuild`, and
-resolves every registration (factory lambdas included). Run it with a timeout: a dependency cycle shows up as a hang,
-not as an error. It must finish without a cycle or a missing registration.
+`src/Composition` builds every module project (`src/{Application,Infrastructure}/<Module>`) through its
+references, so it is the one build that proves the modules; build a single module project when you only touch it
+(`dotnet build src/Application/Users --nologo -v q`).
+
+A change to a constructor, a context or a `DependencyInjection.cs` also needs the container check, which
+`tests/Architecture/CompositionTests.cs` runs: it calls `AddBasil()` of Basil.Composition and `AddBot()`, builds the
+provider with `ValidateOnBuild`, resolves every registration (factory lambdas included) and checks that every event
+handler is registered, against a deadline: a dependency cycle shows up as a hang, not as an error.
 
 See [`docs/for-developers/development.md`](docs/for-developers/development.md) for the complete development workflow.
 
@@ -354,40 +352,57 @@ See [`docs/for-technicians/docker.md`](docs/for-technicians/docker.md) for Docke
 ```text
 Basil.Domain                     business model and its own validity          -> (nothing)
 
-Basil.Common.Application         shared application contracts and eventing     -> Domain, Mediator.Abstractions
-Basil.Common.Infrastructure      shared database, memory, files and event     -> Common.Application, Domain
+Basil.Application.Common         shared application contracts and eventing     -> Domain, Mediator.Abstractions
+Basil.Infrastructure.Common      shared database, memory, files and event     -> Application.Common, Domain
                                  dispatch infrastructure
 
-Basil.Application.Persistence    ports to the persistent outside of the process:  -> Domain, Common.Application
-                                 repositories, byte storages and query records
-Basil.Application.Capabilities  ports to external computation (beatmapset      -> Application.Persistence,
-                                 reader, analyser, assets, mirror, screenshot       Common.Application
-                                 inspector: public interfaces and the data they
-                                 exchange) and application logic that needs no
-                                 live object (everything else internal; it
-                                 never publishes an event)
-Basil.Application.Runtime        live objects, scopes, contexts, feature events, -> Domain, Application.Persistence,
-                                 registries and coordination; AddApplication()    Application.Capabilities,
-                                                                                    Common.Application
-
-Basil.Infrastructure.Persistence module persistence: PostgreSQL, files, memory -> Application.Persistence,
-                                 and migrations                                      Common.Infrastructure
-Basil.Infrastructure.Capabilities implements the capability ports: osu!          -> Application.Capabilities
-                                 rulesets, FFMpegCore, beatmap mirror, ImageSharp
-Basil.Infrastructure.Runtime    handlers, background loops and startup work    -> Application.Runtime,
-                                                                                    Common.Infrastructure
+Basil.Application.<Module>       the module's ports and objects: Persistence/       -> Domain, Application.Common,
+                                 (repository and byte-storage ports, query           the Application projects of the
+                                 records), Capabilities/ (ports to external          modules it uses (below)
+                                 computation, public, and application logic
+                                 that needs no live object, internal) and
+                                 Runtime/ (live objects, scopes, contexts,
+                                 feature events, handlers); Add<Module>Application()
+Basil.Infrastructure.<Module>    the module's implementations: PostgreSQL,       -> its own Application,
+                                 files, osu! rulesets, FFMpegCore, ImageSharp,       Infrastructure.Common,
+                                 its DbContext and migrations, background work       Application.Common
+                                 (Add<Module>Infrastructure())
+Basil.Composition                the one project that references every module,  -> every module, Common.*
+                                 calls AddMediator once (the only reference to
+                                 Mediator.SourceGenerator) and offers AddBasil();
+                                 startup work that is not module-specific
 Basil.Protocol.Bancho            osu! client-server wire formats, score         -> external libraries only
                                  submission cipher (BouncyCastle)
 Basil.Protocol.Irc               IRC wire format                                -> (nothing)
-Basil.Host.Bancho / .Irc / .Api  transports                                     -> Application.Runtime,
-                                                                                   Infrastructure, their Protocol
+Basil.Host.Bancho / .Irc / .Api  transports                                     -> Composition, their Protocol
 Basil.Host                       entry point, composition, logging,             -> everything
                                  diagnostics, LAN advertising
 
-Basil.Bot                        BasilBot: chat commands and their replies,     -> Application.Runtime,
-                                                                                    Common.Application
-                                 an entry point of the server (not a client)
+Basil.Bot                        BasilBot: chat commands and their replies,     -> the Application projects of the
+                                 an entry point of the server (not a client)        modules it uses, Application.Common
 ```
+
+The layers stay Clean Architecture (Domain, Application, Infrastructure, hosts); inside the Application and Infrastructure layers
+the code is split by module, one project per module and layer (`Basil.Application.<Module>`,
+`Basil.Infrastructure.<Module>`; the solution folders `/Sources/Application/` and `/Sources/Infrastructure/` list them).
+References only point down:
+
+```text
+Auth        -> Common
+Beatmaps    -> Common
+Content     -> Common
+Users       -> Common, Auth, Content        (folders Users/ and Connections/: they reference each other)
+Anticheat   -> Users
+Scores      -> Users, Beatmaps
+Multiplayer -> Users, Beatmaps, Content, Scores
+Chat        -> Users, Multiplayer
+Servers     -> every module above
+```
+
+A module Infrastructure project never references another module; the foreign keys between the module databases
+decide the order in which `AddBasil()` registers the migrations (Common, Users, Auth, Beatmaps, Content, Scores,
+Multiplayer, Chat), not these references. `tests/Architecture/ModuleGraphTests.cs` reads the project references and fails on
+an edge outside this graph or on a cycle.
 
 `Basil.Protocol.Bancho` wraps the communication between the osu! client and the server, as an API wrapper
 wraps a remote API: it turns what the client sends (bancho packets, the delimited strings of the web
@@ -398,36 +413,38 @@ format changes, only Protocol changes. `Basil.Protocol.Irc` does the same for IR
 Domain: only the transport hosts reference it, and it may use external libraries for the wire work.
 
 Projects live under `src/` in folders that mirror the solution folders under `/Sources/`, each named by
-its short name without `Basil.`: `src/Domain/`, `src/Common/{Application,Infrastructure}/`,
-`src/Application/{Persistence,Capabilities,Runtime}/`,
-`src/Infrastructure/{Persistence,Capabilities,Runtime}/`, `src/Hosts/{Host,Api,Bancho,Irc}/`,
+its short name without `Basil.`: `src/Domain/`,
+`src/{Application,Infrastructure}/{Common,<Module>}/`, `src/Composition/`, `src/Hosts/{Host,Api,Bancho,Irc}/`,
 `src/Protocol/{Bancho,Irc}/`, `src/Bot/`. The project file and the namespace keep the full name
-(`Basil.Domain.csproj`, `Basil.Domain.*`). Tests mirror the same tree under `tests/`
-(`tests/Application/Runtime/Basil.Application.Runtime.Tests.csproj` tests `src/Application/Runtime`; Common tests live under `tests/Common/`).
+(`Basil.Domain.csproj`, `Basil.Domain.*`, `Basil.Application.Users.Persistence`). Tests mirror the same tree under
+`tests/` (`tests/Application/Users/Basil.Application.Users.Tests.csproj` tests
+`src/Application/Users`; Common tests live under `tests/{Application,Infrastructure}/Common/`, the tests that need the whole composition
+under `tests/Composition/`).
 
 Configuration is bound only in `Basil.Host`. Infrastructure and the transports receive it as `IOptions<T>` of
 an options type that the project using it owns; Application reads no configuration.
 
-`Common.Application` owns `IActor`, `Result<T>`, `Scoped<T>`, shared query values and event contracts/queue; it depends
-on Domain and external packages. `Common.Infrastructure` owns shared database, memory and file implementations and the
-event dispatcher; it depends on Domain, Common.Application and its external packages.
-The remaining Application projects are named by role, and each module Infrastructure project implements the Application
-project of the same name. **Application.Persistence** holds the ports to the persistent outside of the process:
-repository and byte-storage contracts and query records. Shared paging and search syntax live in Common.Application.
-**Application.Capabilities** holds the ports to external
+`Application.Common` owns `IActor`, `Result<T>`, `Scoped<T>`, shared query values and event contracts/queue; it depends
+on Domain and external packages. `Infrastructure.Common` owns shared database, memory and file implementations and the
+event dispatcher; it depends on Domain, Application.Common and its external packages.
+
+Inside a module Application project, **Persistence/** holds the ports to the persistent outside of the process:
+repository and byte-storage contracts and query records. **Capabilities/** holds the ports to external
 computation (a capability with business meaning whose implementation needs external libraries: beatmapset reader,
 analyser, assets, mirror, screenshot inspector; these interfaces and the data they exchange are the only public
 types) and the application logic that needs no live object (account checks, beatmapset indexing, score validation and
 recording): it takes and returns records and plain results, never creates, receives or publishes an object or an
-event, and every such type is `internal`. **Application.Runtime** holds the live objects and what they do: runtime
-objects, registries, root objects, scopes, contexts, feature events, and every coordination between objects; it calls the
-services and publishes the events they leave to it. Its public `AddApplication()` builds the contexts and the
-objects and registers the services (Capabilities gives Runtime access to its internals). `Infrastructure.Persistence`
-references Application.Persistence and Common.Infrastructure, `Infrastructure.Capabilities` references
-Application.Capabilities, `Infrastructure.Runtime` references Application.Runtime and Common.Infrastructure and never
-Application.Capabilities. The hosts reference
-Application.Runtime and call `AddApplication()`.
+event, and every such type is `internal`. **Runtime/** (for Users: `Users/` and `Connections/`) holds the live objects
+and what they do: runtime objects, registries, root objects, scopes, contexts, feature events, and every coordination
+between objects; it calls the services and publishes the events they leave to it. Each module's public
+`Add<Module>Application()` builds its contexts and objects; its `Add<Module>Infrastructure()` registers the
+implementations of its ports and its migration. Handlers stay `internal`; a module that has them grants
+`InternalsVisibleTo("Basil.Composition")` (the generated Mediator code names them) and to its own test project, and
+nothing else is made visible. The hosts reference Basil.Composition and call `AddBasil()`.
 
+> **Module projects (2026-10-28, Phase E).** Application and Infrastructure are split by module, not by technique; see
+> [`plans/phase-e-plan-20261028.md`](plans/phase-e-plan-20261028.md). The Migration status below predates it.
+>
 > **Migration status (2026-10-21).** The object-scope redesign and the project renames are implemented across Domain,
 > Application, Infrastructure and Basil.Bot; the week plan in [`plans/week-plan-20261021.md`](plans/week-plan-20261021.md)
 > unifies the scope/result pattern, rebuilds the tests and moves the bot replies to a file. The hosts and the host test
@@ -439,11 +456,11 @@ Application.Runtime and call `AddApplication()`.
 
 ### Application feature folders
 
-Application is sliced by feature, not by kind of type; namespace = project + folder. Common.Application owns shared
-values, paging/search syntax and event contracts/queue; Common.Infrastructure owns shared persistence and event delivery.
-Application.Persistence owns the persistent ports (repository and byte-storage contracts and query records).
-Application.Capabilities owns the capability ports (public) and object-free application logic (internal).
-Application.Runtime owns runtime objects, registries, scoped views, contexts, feature events and their coordination.
+Application is sliced by module first, then by kind of type; namespace = project + folder (`Basil.Application.Chat.Runtime`).
+Application.Common owns shared values, paging/search syntax and event contracts/queue; Infrastructure.Common owns
+shared persistence and event delivery. In a module, `Persistence/` owns the persistent ports (repository and byte-storage
+contracts and query records), `Capabilities/` the capability ports (public) and object-free application logic (internal),
+`Runtime/` runtime objects, registries, scoped views, contexts, feature events and their coordination.
 
 ```text
 Users/         user and restriction repositories, UserQuery; login and registration
@@ -465,13 +482,13 @@ Content/       content repositories, storage ports and the screenshot inspector 
 Servers/       Server, ScopedServer, server contexts and server resources
 ```
 
-Feature event categories and handlers belong to Application.Runtime; the shared event contract, publisher and queue
-belong to Common.Application. The dispatcher belongs to Common.Infrastructure; concrete handlers live in
-Application.Runtime or the consumer that owns them, including `Basil.Bot`. Host configuration
+Feature event categories and handlers belong to the Runtime folder of their module; the shared event contract, publisher and queue
+belong to Application.Common. The dispatcher belongs to Infrastructure.Common; concrete handlers live in
+the module's Runtime folder or the consumer that owns them, including `Basil.Bot`. Host configuration
 (ports, TLS, data paths) belongs to the hosts. BasilBot commands and announcements are server features: a
 command is an entry point that uses the typist's scoped objects, and the bot only replies. Query **records**
 (the filter a repository applies, with `Parse` for the search syntax) belong to Persistence; routes and handlers
-that answer queries do not. Server settings changed at runtime (`ServerSettings`, owned by Application.Persistence) exist only while the
+that answer queries do not. Server settings changed at runtime (`ServerSettings`, owned by Content.Application) exist only while the
 server runs and are stored through `ISettingsRepository`; they are not Domain and not host configuration.
 
 * Common projects depend only on Domain and shared external packages. `Users`, `Connections`, `Beatmaps` and `Scores` do not depend on
@@ -481,7 +498,7 @@ server runs and are stored through `ISettingsRepository`; they are not Domain an
 * `Chat` references `Multiplayer`, and both reference `Users` and `Connections` (`Room.Host`, `Channel.Members`, the online
   `User`); treat them as one cluster. `Users` and `Connections` reference each other (a user holds its connections, a
   connection knows its user), so those two form one cluster of their own. Their runtime objects and registries live in Objects;
-  persistent repositories remain in Application.Persistence. Objects change their own state through behaviour, with
+  persistent repositories remain in each module's Persistence folder. Objects change their own state through behaviour, with
   implementation access limited to the owning object and its collaborators. References run from the acted-on
   object to the actor, never back.
 
@@ -489,9 +506,9 @@ server runs and are stored through `ISettingsRepository`; they are not Domain an
 
 The detailed rules moved out of this file so each can be read when needed. **Read the matching file before touching that area:**
 
-* [`docs/for-agents/application-design.md`](docs/for-agents/application-design.md): Domain models, Application objects, scopes (`ScopeTo`), contexts, events, channels, naming. Before touching `src/Domain`, `src/Application`, `src/Bot`.
+* [`docs/for-agents/application-design.md`](docs/for-agents/application-design.md): Domain models, Application objects, scopes (`ScopeTo`), contexts, events, channels, naming. Before touching `src/Domain`, `src/Modules/*/Application`, `src/Bot`.
 * [`docs/for-agents/identity-permissions.md`](docs/for-agents/identity-permissions.md): permissions, privileges, restrictions, hierarchy, sessions, BasilBot. Before touching users, connections, permissions or the bot.
-* [`docs/for-agents/persistence.md`](docs/for-agents/persistence.md): repositories, byte storages, memory-first model, beatmapset storage. Before touching a repository, a storage or `src/Infrastructure/Persistence`.
+* [`docs/for-agents/persistence.md`](docs/for-agents/persistence.md): repositories, byte storages, memory-first model, beatmapset storage. Before touching a repository, a storage or `src/Modules/*/Infrastructure` or `src/Infrastructure/Common`.
 * [`docs/for-agents/code-style.md`](docs/for-agents/code-style.md): C# code style and IDE-suggestion rules. Before writing or reviewing C#.
 
 ### Important invariants
@@ -708,8 +725,8 @@ Before considering a code change complete:
    sessions emitting events, a handler that waits or serves several event types, and rules or timers on runtime models and
    registries all got through review once; do not let them back in. Nor should a service that only wraps
    a repository read, a service that takes, returns or creates a live object or publishes an event, a public
-   service contract, a contract name that reveals its mechanism, or a reference from Infrastructure.Runtime to
-   Application.Capabilities, or from an Infrastructure project to an Application project of another name. Since the identity redesign, also
+   service contract, a contract name that reveals its mechanism, or a reference from a module's Infrastructure project to another module,
+   or any project reference outside the graph of the modules. Since the identity redesign, also
    reject: an action without a real `by`, authority decided by connection kind, a check on granted instead of
    effective permissions, a stored or configured `Privileges`, privileges used to grant anything, and a
    delegation of any kind. Since the 2026-10-16 redesign, also reject the five anti-patterns of "Behaviour belongs

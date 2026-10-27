@@ -212,15 +212,15 @@ A client never receives both `PART` and `QUIT` for one disconnect. The joining c
 
 ## Related code
 
-* [`Connection.cs`](../../src/Application/Runtime/Connections/Connection.cs): connection kinds, including `IrcConnection` and `BotConnection`
-* [`ConnectionRules.cs`](../../src/Application/Runtime/Connections/ConnectionRules.cs): one-per-kind rule and idle timeouts
-* [`UserEvents.cs`](../../src/Application/Runtime/Users/UserEvents.cs): connection opened and closed events
-* [`User.cs`](../../src/Application/Runtime/Users/User.cs), [`ScopedUser.cs`](../../src/Application/Runtime/Users/ScopedUser.cs): online user, away message
-* [`UserRegistry.cs`](../../src/Application/Runtime/Users/UserRegistry.cs): login, close, idle sweep, BasilBot's connection
-* [`Channel.cs`](../../src/Application/Runtime/Chat/Channel.cs), [`ScopedChannel.cs`](../../src/Application/Runtime/Chat/ScopedChannel.cs): membership, posting, recipients
-* [`RoomChannel.cs`](../../src/Application/Runtime/Chat/RoomChannel.cs), [`Room.Seating.cs`](../../src/Application/Runtime/Multiplayer/Rooms/Room.Seating.cs): room channel access and seating
-* [`ScopedRoomMembers.cs`](../../src/Application/Runtime/Multiplayer/Rooms/ScopedRoomMembers.cs), [`ScopedRoomAuthority.cs`](../../src/Application/Runtime/Multiplayer/Rooms/ScopedRoomAuthority.cs): kick, ban, referees, host
-* [`ScopedLobby.cs`](../../src/Application/Runtime/Multiplayer/ScopedLobby.cs): room creation
+* [`Connection.cs`](../../src/Application/Users/Connections/Connection.cs): connection kinds, including `IrcConnection` and `BotConnection`
+* [`ConnectionRules.cs`](../../src/Application/Users/Connections/ConnectionRules.cs): one-per-kind rule and idle timeouts
+* [`UserEvents.cs`](../../src/Application/Users/Users/UserEvents.cs): connection opened and closed events
+* [`User.cs`](../../src/Application/Users/Users/User.cs), [`ScopedUser.cs`](../../src/Application/Users/Users/ScopedUser.cs): online user, away message
+* [`UserRegistry.cs`](../../src/Application/Users/Users/UserRegistry.cs): login, close, idle sweep, BasilBot's connection
+* [`Channel.cs`](../../src/Application/Chat/Runtime/Channel.cs), [`ScopedChannel.cs`](../../src/Application/Chat/Runtime/ScopedChannel.cs): membership, posting, recipients
+* [`RoomChannel.cs`](../../src/Application/Chat/Runtime/RoomChannel.cs), [`Room.Seating.cs`](../../src/Application/Multiplayer/Runtime/Rooms/Room.Seating.cs): room channel access and seating
+* [`ScopedRoomMembers.cs`](../../src/Application/Multiplayer/Runtime/Rooms/ScopedRoomMembers.cs), [`ScopedRoomAuthority.cs`](../../src/Application/Multiplayer/Runtime/Rooms/ScopedRoomAuthority.cs): kick, ban, referees, host
+* [`ScopedLobby.cs`](../../src/Application/Multiplayer/Runtime/ScopedLobby.cs): room creation
 * [`Message.cs`](../../src/Domain/Chat/Message.cs): message content rules
 * [`IrcMessage.cs`](../../src/Protocol/Irc/IrcMessage.cs), [`IrcNumericReply.cs`](../../src/Protocol/Irc/IrcNumericReply.cs), [`IrcUserPrefix.cs`](../../src/Protocol/Irc/IrcUserPrefix.cs): wire format
 * [`src/Hosts/Irc`](../../src/Hosts/Irc): listener and connection loop, pending migration

@@ -130,7 +130,11 @@ match and returns the live instance of each; a row whose deletion is still queue
 
 Each module owns its schema through a dedicated Entity Framework context and migration history. This keeps a module's
 tables and schema changes together while preserving foreign keys between modules; a referencing context maps the
-principal table without taking ownership of its migration.
+principal table without taking ownership of its migration. Because project references forbid one module's Infrastructure to
+reference another's, the principal is not the other module's row type: `ContextModel.MapUsersReference` and
+`MapScoresReference` (Infrastructure.Common) map the `users` and `scores` tables as shared-type entities named
+`UsersPrincipal` and `ScoresPrincipal`, excluded from migrations, and a row declares the key with
+`HasOne(ContextModel.UsersTable, null).WithMany().HasForeignKey("UserId")`. The generated constraint is the same as with a row type.
 
 At startup `DatabaseMigrator` applies the module migrations in foreign-key order: Common, Users, Auth, Beatmaps, Content,
 Scores, Multiplayer, then Chat. Each records its migrations in `__ef_migrations_<module>`. `write_tickets` belongs to
@@ -143,11 +147,12 @@ new histories.
 
 ## Related code
 
-* `src/Infrastructure/Persistence/Common/Database/` — `DatabaseWriter`, `DatabaseReader`, `DatabaseMigrator`
-* `src/Infrastructure/Persistence/Common/Writing/` — `Root`, `WriteCommand`, environment errors
-* `src/Infrastructure/Persistence/Memory/` — `MemoryRepository`, `IdentityMap`, `WeakIndex`, `OwnedLists`
-* `src/Infrastructure/Persistence/<Module>/`, the `XxxRow` types and `Migrations/<Module>/` — the module schemas
-* `src/Infrastructure/Persistence/StorageStartup.cs` — migration and resident loading at startup
+* `src/Infrastructure/Common/Postgres/` — `DatabaseWriter`, `DatabaseReader`, `DatabaseMigrator`, `ContextModel`
+* `src/Infrastructure/Common/Memory/` — `MemoryRepository`, `IdentityMap`, `WeakIndex`, `OwnedLists`
+* `src/Infrastructure/<Module>/Persistence/` — the module's `DbContext`, the `XxxRow` types and the repositories
+* `src/Infrastructure/<Module>/Migrations/` — the module's migrations and their history table
+* `src/Composition/StorageStartup.cs` — migration and resident loading at startup; `AddBasilStorage()` registers the
+  module migrations in the order above
 
 ## See also
 
