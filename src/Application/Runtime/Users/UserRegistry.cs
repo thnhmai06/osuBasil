@@ -403,10 +403,7 @@ public sealed class UserRegistry : IRoomUsersPort
 		connection.User.Remove(connection);
 		connection.User.PmChannel.ScopeTo(connection).Part();
 		if (connection is BanchoConnection client)
-		{
 			client.ReleaseSpectators();
-			client.SpectatorChannel.Close();
-		}
 
 		var wentOffline = !connection.User.Connections.Any();
 		if (wentOffline)

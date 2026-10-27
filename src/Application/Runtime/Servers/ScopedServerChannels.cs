@@ -26,9 +26,9 @@ public sealed class ScopedServerChannels
 	{
 		if (_scoped.Needs(UserPermissions.ServerConfigure) is { } missing) return Result<ServerOutcome>.Denied(missing);
 
-		var context = _scoped.Server.Context.Session;
+		var chat = _scoped.Server.Context.Chat;
 		if (_scoped.Server.OpenChannel(record) is null) return ServerOutcome.NameTaken;
-		await context.Chat.Channels.CreateOrUpdateAsync(record, cancellationToken);
+		await chat.Channels.CreateOrUpdateAsync(record, cancellationToken);
 		return ServerOutcome.Ok;
 	}
 }

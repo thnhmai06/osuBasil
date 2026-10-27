@@ -59,8 +59,7 @@ public static class DependencyInjection
 			sp.GetRequiredService<TimeProvider>(),
 			sp.GetRequiredService<IEventPublisher<UserEvent>>(),
 			new Lazy<UserRegistry>(sp.GetRequiredService<UserRegistry>),
-			sp.GetRequiredService<IRelationshipRepository>(),
-			sp.GetRequiredService<ChannelContext>()));
+			sp.GetRequiredService<IRelationshipRepository>()));
 		services.AddSingleton<AnticheatReporter>(sp => new AnticheatReporter(
 			sp.GetRequiredService<IEventPublisher<AnticheatEvent>>()));
 		services.AddSingleton<IScoreBeatmapAcceptance>(sp => sp.GetRequiredService<Lobby>());
@@ -82,8 +81,11 @@ public static class DependencyInjection
 			sp.GetRequiredService<GeneralChannelRegistry>(),
 			sp.GetRequiredService<IRelationshipRepository>(),
 			sp.GetRequiredService<IChannelRepository>()));
+		services.AddSingleton<SpectatorChannels>(sp =>
+			new SpectatorChannels(sp.GetRequiredService<ChannelContext>()));
 		services.AddSingleton<ServerContext>(sp => new ServerContext(
 			sp.GetRequiredService<SessionContext>(),
+			sp.GetRequiredService<ChannelContext>(),
 			sp.GetRequiredService<IScreenshotInspector>(),
 			sp.GetRequiredService<IScreenshotStorage>(),
 			sp.GetRequiredService<Lobby>(),

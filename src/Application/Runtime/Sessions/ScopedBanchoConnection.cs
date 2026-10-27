@@ -57,10 +57,7 @@ public sealed class ScopedBanchoConnection : Scoped<UserPermissions, Connection>
 			return ConnectionOutcome.Ok;
 		}
 
-		var first = Host.Spectators.Count == 0;
 		Host.MutableSpectators.Add(By);
-		if (first) Host.SpectatorChannel.ScopeTo(Host).Join();
-		Host.SpectatorChannel.ScopeTo(By).Join();
 		Host.Context.Events.Publish(new UserSpectatorJoined(Host, By));
 		return ConnectionOutcome.Ok;
 	}
@@ -73,8 +70,6 @@ public sealed class ScopedBanchoConnection : Scoped<UserPermissions, Connection>
 		using var scope = Host.EnterSpectators();
 		if (!Host.MutableSpectators.Remove(By)) return false;
 
-		Host.SpectatorChannel.ScopeTo(By).Part();
-		if (Host.Spectators.Count == 0) Host.SpectatorChannel.ScopeTo(Host).Part();
 		Host.Context.Events.Publish(new UserSpectatorLeft(Host, By));
 		return true;
 	}
