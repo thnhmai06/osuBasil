@@ -61,7 +61,9 @@ public sealed class ScopedUserSessions(ScopedUser scoped)
 	{
 		if (scoped.User.Record.IsBasilBot()) return UserOutcome.SystemAccount;
 		if (!scoped.IsSelf && scoped.Guard(UserPermissions.UserManage, false) is { } denied) return denied;
-		if (await scoped.User.Context.Sessions.GetAsync(scoped.User.Record, id, cancellationToken) is null)
+		// A session whose client is online exists even before its record reaches the store.
+		if (!scoped.User.Connections.Any(connection => connection.Session.Id == id) &&
+		    await scoped.User.Context.Sessions.GetAsync(scoped.User.Record, id, cancellationToken) is null)
 			return UserOutcome.NotFound;
 
 		await Close(id, null, cancellationToken);
