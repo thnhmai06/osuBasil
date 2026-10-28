@@ -29,6 +29,7 @@ public static class DependencyInjection
 		services.AddSingleton<DatabaseWriter>();
 		services.AddHostedService(provider => provider.GetRequiredService<DatabaseWriter>());
 		services.AddHostedService<EventDispatcher>();
+		services.AddHostedService<StorageStartup>();
 		return services;
 	}
 
