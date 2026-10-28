@@ -18,6 +18,9 @@ public enum IrcNumericReply : ushort
 	/// <summary>Carries the space-separated feature tokens the server supports.</summary>
 	RplIsupport = 5,
 
+	/// <summary>Carries the user modes the client has.</summary>
+	RplUModeIs = 221,
+
 	/// <summary>Carries the count of visible users and servers.</summary>
 	RplLuserClient = 251,
 
@@ -32,6 +35,15 @@ public enum IrcNumericReply : ushort
 
 	/// <summary>Carries the subset of the queried nicknames that are currently online.</summary>
 	RplIson = 303,
+
+	/// <summary>Confirms that the client is no longer marked away.</summary>
+	RplUnaway = 305,
+
+	/// <summary>Confirms that the client is now marked away.</summary>
+	RplNowAway = 306,
+
+	/// <summary>Carries the hostmask replies of a USERHOST query.</summary>
+	RplUserHost = 302,
 
 	/// <summary>Carries a user's nick, hostmask, and real name.</summary>
 	RplWhoIsUser = 311,
@@ -65,6 +77,9 @@ public enum IrcNumericReply : ushort
 
 	/// <summary>Indicates that a channel has no topic set.</summary>
 	RplNoTopic = 331,
+
+	/// <summary>Carries the account a user is logged in as.</summary>
+	RplWhoIsAccount = 330,
 
 	/// <summary>Carries the topic of a channel.</summary>
 	RplTopic = 332,
@@ -102,17 +117,32 @@ public enum IrcNumericReply : ushort
 	/// <summary>Indicates that the sender may not send to the target channel.</summary>
 	ErrCannotSendToChannel = 404,
 
+	/// <summary>Indicates that a message command named no recipient.</summary>
+	ErrNoRecipient = 411,
+
+	/// <summary>Indicates that a message command carried no text.</summary>
+	ErrNoTextToSend = 412,
+
+	/// <summary>Indicates that the line was longer than the server reads.</summary>
+	ErrInputTooLong = 417,
+
 	/// <summary>Indicates that the command is unknown or not implemented.</summary>
 	ErrUnknownCommand = 421,
 
 	/// <summary>Indicates that no message of the day is configured.</summary>
 	ErrNoMotd = 422,
 
+	/// <summary>Indicates that a nickname command carried no nickname.</summary>
+	ErrNoNicknameGiven = 431,
+
 	/// <summary>Indicates that the supplied nickname is malformed.</summary>
 	ErrErroneousNickname = 432,
 
 	/// <summary>Indicates that the requested nickname is already in use.</summary>
 	ErrNicknameInUse = 433,
+
+	/// <summary>Indicates that the client is not on the channel the command names.</summary>
+	ErrNotOnChannel = 442,
 
 	/// <summary>Indicates that the client must register before the command can be used.</summary>
 	ErrNotRegistered = 451,
@@ -130,5 +160,29 @@ public enum IrcNumericReply : ushort
 	ErrInviteOnlyChan = 473,
 
 	/// <summary>Indicates that the command requires channel operator privileges the sender lacks.</summary>
-	ErrChanOPrivsNeeded = 482
+	ErrChanOPrivsNeeded = 482,
+
+	/// <summary>Indicates that the client names a user mode the server does not have.</summary>
+	ErrUModeUnknownFlag = 501,
+
+	/// <summary>Indicates that the client may not change or view the modes of another user.</summary>
+	ErrUsersDontMatch = 502,
+
+	/// <summary>Reports that the client is logged in to an account (SASL).</summary>
+	RplLoggedIn = 900,
+
+	/// <summary>Reports that SASL authentication succeeded.</summary>
+	RplSaslSuccess = 903,
+
+	/// <summary>Reports that SASL authentication failed.</summary>
+	ErrSaslFail = 904,
+
+	/// <summary>Reports that the SASL exchange was aborted by the client.</summary>
+	ErrSaslAborted = 906,
+
+	/// <summary>Reports that the client already authenticated with SASL.</summary>
+	ErrSaslAlready = 907,
+
+	/// <summary>Lists the SASL mechanisms the server offers.</summary>
+	RplSaslMechs = 908
 }

@@ -1,6 +1,10 @@
+using Basil.Bot;
+using Basil.Bot.Replies;
 using Basil.Host.Bancho;
+using Basil.Host.Irc;
 using Basil.Infrastructure.Common;
 using Basil.Infrastructure.Common.Postgres;
+using Microsoft.Extensions.Options;
 
 namespace Basil.Host;
 
@@ -17,7 +21,15 @@ public static class HostApplication
 		builder.Services.Configure<ServerOptions>(builder.Configuration.GetSection("Basil:Server"));
 		builder.Services.AddOptions<StorageOptions>().Bind(builder.Configuration.GetSection("Basil:Storage"));
 		builder.Services.AddOptions<DatabaseOptions>().Bind(builder.Configuration.GetSection("Basil:Database"));
+		builder.Services.AddOptions<IrcOptions>().Configure<IOptions<ServerOptions>>((irc, server) =>
+		{
+			irc.Port = server.Value.Ports.Irc;
+			irc.Domain = server.Value.Domain;
+		});
+		builder.Services.AddOptions<RepliesOptions>().Bind(builder.Configuration.GetSection("Basil:Bot:Replies"));
 		builder.Services.AddBasil();
+		builder.Services.AddBot();
+		builder.Services.AddIrcListener();
 		configure?.Invoke(builder);
 
 		var app = builder.Build();

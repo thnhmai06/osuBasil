@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text;
 using Basil.Application.Auth.Persistence;
 using Basil.Application.Beatmaps.Persistence;
@@ -10,7 +11,10 @@ using Basil.Application.Users.Persistence;
 using Basil.Domain.Auth;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
+using Basil.Application.Users.Connections;
+using Basil.Application.Users.Users;
 using Basil.Host;
+using Basil.Host.Irc;
 using Basil.Testing.Persistence;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -36,6 +40,7 @@ public sealed class BasilHost : IAsyncDisposable
 	private readonly PersistenceFixture _database;
 	private readonly string _databaseName = "basil-host-" + Guid.NewGuid().ToString("N");
 	private readonly string _root = Path.Combine(Path.GetTempPath(), "basil-host-" + Guid.NewGuid().ToString("N"));
+	private readonly Dictionary<string, Guid> _keySessions = [];
 	private WebApplication? _app;
 
 	private BasilHost(PersistenceFixture database)
@@ -49,6 +54,9 @@ public sealed class BasilHost : IAsyncDisposable
 	public Uri Url { get; private set; } = null!;
 
 	public string Domain => DomainName;
+
+	/// <summary>Gets the port the IRC host listens on.</summary>
+	public int IrcPort => Services.GetRequiredService<IrcState>().Port;
 
 	public IServiceProvider Services => _app!.Services;
 
@@ -70,6 +78,9 @@ public sealed class BasilHost : IAsyncDisposable
 			{
 				["Basil:Database:ConnectionString"] = connection,
 				["Basil:Storage:DataDirectory"] = Path.Combine(_root, "Data"),
+				["Basil:Server:Domain"] = DomainName,
+				["Basil:Server:Ports:Irc"] = "0",
+				["Basil:Bot:Replies:Path"] = Path.Combine(_root, "Configurations", "Templates", "replies.json"),
 				["Basil:Server:TrustedProxies:0"] = "127.0.0.1",
 				["Basil:Server:TrustedProxies:1"] = "::1"
 			});
@@ -101,6 +112,47 @@ public sealed class BasilHost : IAsyncDisposable
 		await Services.GetRequiredService<ICredentialRepository>()
 			.CreateOrUpdateAsync(new Credentials(user, new Md5(Encoding.UTF8.GetBytes(password))));
 		return user;
+	}
+
+	/// <summary>Issues an IRC key for an account, the way the account's owner would through the API.</summary>
+	/// <param name="name">The username.</param>
+	/// <param name="label">The label of the device.</param>
+	/// <returns>The key, shown only once.</returns>
+	public async Task<string> CreateIrcKeyAsync(string name, string label = "test-device")
+	{
+		var registry = Services.GetRequiredService<UserRegistry>();
+		var attempt = new LoginAttempt(name, new Md5(Encoding.UTF8.GetBytes("password")));
+		var login = await registry.LoginAsync(attempt, ConnectionType.Api, IPAddress.Loopback, null, 0);
+		var api = login.Connection ?? throw new InvalidOperationException($"Login failed: {login.Failure}.");
+		var (result, key, session) = await api.User.ScopeTo(api).Sessions.OpenIrcAsync(label);
+		registry.Close(api, SessionEndReason.LoggedOut);
+		if (!result.IsOk) throw new InvalidOperationException($"No key: {result.Outcome}.");
+		_keySessions[key!] = session!.Id;
+		return key!;
+	}
+
+	/// <summary>Revokes an IRC key, the way the account's owner would through the API.</summary>
+	/// <param name="name">The username.</param>
+	/// <param name="key">The key to revoke.</param>
+	public async Task RevokeIrcKeyAsync(string name, string key)
+	{
+		var registry = Services.GetRequiredService<UserRegistry>();
+		var attempt = new LoginAttempt(name, new Md5(Encoding.UTF8.GetBytes("password")));
+		var api = (await registry.LoginAsync(attempt, ConnectionType.Api, IPAddress.Loopback, null, 0)).Connection!;
+		await api.User.ScopeTo(api).Sessions.CloseAsync(_keySessions[key]);
+		registry.Close(api, SessionEndReason.LoggedOut);
+	}
+
+	/// <summary>Stores an account with an IRC key and returns an IRC client for it, connected but not registered.</summary>
+	/// <param name="name">The username.</param>
+	/// <param name="permissions">The account's permissions, or the default ones.</param>
+	/// <returns>The client and the key.</returns>
+	public async Task<(IrcClient Client, string Key)> NewIrcClientAsync(string name,
+		UserPermissions? permissions = null)
+	{
+		await CreateUserAsync(name, "password", permissions);
+		var key = await CreateIrcKeyAsync(name);
+		return (await IrcClient.ConnectAsync(this), key);
 	}
 
 	/// <summary>Stores an account and returns an osu! client for it, not yet logged in.</summary>

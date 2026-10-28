@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Basil.Application.Users.Connections;
+using Basil.Domain.Users;
 
 namespace Basil.Application.Chat.Runtime;
 
@@ -35,6 +36,23 @@ public sealed class GeneralChannelRegistry
 	public GeneralChannel? Find(string name)
 	{
 		return _channels.GetValueOrDefault(name);
+	}
+
+	/// <summary>Lists the open channels a connection may see.</summary>
+	/// <param name="by">The connection that asks.</param>
+	/// <returns>
+	///     The channels the connection may read that are visible; a connection that holds
+	///     <see cref="UserPermissions.ChatManageChannels" /> also sees the hidden ones, so it can manage them.
+	/// </returns>
+	public IEnumerable<GeneralChannel> VisibleTo(Connection by)
+	{
+		foreach (var channel in _channels.Values)
+		{
+			var now = channel.Context.Clock.GetUtcNow();
+			if (!channel.IsClosed && channel.CanRead(by, now) &&
+			    (channel.Record.Value.Visible || by.EffectivePermissions(now).Allows(UserPermissions.ChatManageChannels)))
+				yield return channel;
+		}
 	}
 
 	/// <summary>Joins a connection to auto-join channels when the server itself calls it; it needs no rights.</summary>

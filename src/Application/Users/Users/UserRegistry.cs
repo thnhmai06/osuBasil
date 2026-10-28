@@ -104,7 +104,10 @@ public sealed class UserRegistry
 	/// <param name="cancellationToken">A token that cancels the login.</param>
 	/// <returns>The login's outcome: the new connection on success, or the reason it failed.</returns>
 	/// <exception cref="ArgumentOutOfRangeException"><paramref name="type" /> is not a defined value.</exception>
-	/// <exception cref="ArgumentException"><paramref name="type" /> is BasilBot's own connection.</exception>
+	/// <exception cref="ArgumentException">
+	///     <paramref name="type" /> is BasilBot's own connection, or an IRC client, which signs in with a key through
+	///     <see cref="LoginWithTokenAsync" />.
+	/// </exception>
 	/// <exception cref="ArgumentNullException">
 	///     <paramref name="client" /> is <see langword="null" /> for an osu! or osu!tourney login.
 	/// </exception>
@@ -120,6 +123,8 @@ public sealed class UserRegistry
 		{
 			case ConnectionType.Bot:
 				throw new ArgumentException("The bot's connection cannot be requested.", nameof(type));
+			case ConnectionType.Irc:
+				throw new ArgumentException("An IRC client signs in with a key, not a password.", nameof(type));
 			case ConnectionType.Osu or ConnectionType.Tourney when client is null:
 				throw new ArgumentNullException(nameof(client), "An osu! client login must report its client.");
 		}
@@ -160,16 +165,21 @@ public sealed class UserRegistry
 	/// <param name="type">The kind of client: <see cref="ConnectionType.Api" /> or <see cref="ConnectionType.Irc" />.</param>
 	/// <param name="token">The token or key the client presented.</param>
 	/// <param name="ip">The IP address the client came from.</param>
+	/// <param name="accepts">
+	///     Decides, before anything is opened, whether the key's owner is the account the client claims to be;
+	///     <see langword="null" /> accepts every owner.
+	/// </param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The connection the token opens, or why none could be opened.</returns>
 	/// <remarks>
 	///     A token that is not held by an open connection is verified against the stored sessions; only a valid one
-	///     is brought into memory. A token whose session has ended or expired opens nothing. Using an API token renews
-	///     its expiry.
+	///     is brought into memory. A token whose session has ended or expired opens nothing, and so does a token whose
+	///     owner <paramref name="accepts" /> refuses (<see cref="LoginFailure.InvalidToken" />). Using an API token
+	///     renews its expiry.
 	/// </remarks>
 	/// <exception cref="ArgumentException"><paramref name="type" /> is not Api or Irc.</exception>
 	public async Task<LoginResult> LoginWithTokenAsync(ConnectionType type, string token, IPAddress ip,
-		CancellationToken cancellationToken = default)
+		Func<UserRecord, bool>? accepts = null, CancellationToken cancellationToken = default)
 	{
 		if (type is not (ConnectionType.Api or ConnectionType.Irc))
 			throw new ArgumentException("Only an API token or an IRC key opens a connection.", nameof(type));
@@ -177,6 +187,8 @@ public sealed class UserRegistry
 		var now = _context.Clock.GetUtcNow();
 		if (_connections.GetValueOrDefault(token) is { IsOpen: true } open && open.Type == type)
 		{
+			if (accepts?.Invoke(open.Record) == false) return LoginResult.Fail(LoginFailure.InvalidToken);
+
 			if (open.Session.ExpiresAt <= now)
 			{
 				Close(open, SessionEndReason.TimedOut);
@@ -191,6 +203,7 @@ public sealed class UserRegistry
 		var record = stored is null ? null : await _context.Users.GetAsync(stored.UserId, cancellationToken);
 		if (stored is null || record is null) return LoginResult.Fail(LoginFailure.InvalidToken);
 		if (record.Value.DeletedAt is not null) return LoginResult.Fail(LoginFailure.AccountDeleted);
+		if (accepts?.Invoke(record) == false) return LoginResult.Fail(LoginFailure.InvalidToken);
 
 		var lifetime = (await _context.Settings.GetAsync(cancellationToken)).Sessions.ApiToken.Lifetime;
 		var session = new Session

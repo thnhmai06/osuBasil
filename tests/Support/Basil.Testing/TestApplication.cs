@@ -1,10 +1,12 @@
 using System.Net;
+using System.Security.Cryptography;
 using System.Text;
 using Basil.Application.Beatmaps.Capabilities;
 using Basil.Application.Auth.Persistence;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Users.Persistence;
+using Basil.Bot;
 using Basil.Host;
 using Basil.Application.Anticheat.Runtime;
 using Basil.Application.Beatmaps.Runtime;
@@ -95,6 +97,8 @@ public sealed class TestApplication : IDisposable
 		services.AddSingleton<IMatchEventRepository>(matchEvents);
 		configure?.Invoke(services);
 		services.AddBasilApplication();
+		// The host registers the bot's handlers with the others, so a container built like the host needs the bot's services too.
+		services.AddBot();
 		services.AddSingleton<IEventPublisher<UserEvent>>(UserEvents);
 		services.AddSingleton<IEventPublisher<RoomEvent>>(RoomEvents);
 		services.AddSingleton<IEventPublisher<LobbyEvent>>(LobbyEvents);
@@ -253,9 +257,12 @@ public sealed class TestApplication : IDisposable
 	/// <param name="password">The claimed password.</param>
 	/// <param name="type">The requested connection kind.</param>
 	/// <returns>The public login result.</returns>
+	/// <remarks>An IRC client signs in with a key: the password is ignored and a key is issued for the account.</remarks>
 	public Task<LoginResult> AttemptLoginAsync(string username, string password,
 		ConnectionType type = ConnectionType.Api)
 	{
+		if (type is ConnectionType.Irc) return OpenIrcAsync(username);
+
 		var client = type is ConnectionType.Osu or ConnectionType.Tourney ? CreateClient() : null;
 		return Users.LoginAsync(new LoginAttempt(username, PasswordHash(password)), type, IPAddress.Loopback,
 			client, 0);
@@ -291,6 +298,23 @@ public sealed class TestApplication : IDisposable
 	public Task SetSettingsAsync(ServerSettings settings)
 	{
 		return _settings.CreateOrUpdateAsync(settings);
+	}
+
+	private async Task<LoginResult> OpenIrcAsync(string username)
+	{
+		if (await _users.GetByNameAsync(username) is not { } record) return LoginResult.Fail(LoginFailure.UnknownUser);
+
+		var key = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+		await _sessions.RecordAsync(new Session
+		{
+			Id = Guid.NewGuid(),
+			User = record,
+			Type = ConnectionType.Irc,
+			Ip = IPAddress.Loopback,
+			StartedAt = Clock.GetUtcNow(),
+			TokenHash = SHA256.HashData(Encoding.UTF8.GetBytes(key))
+		});
+		return await Users.LoginWithTokenAsync(ConnectionType.Irc, key, IPAddress.Loopback);
 	}
 
 	private static Md5 PasswordHash(string password)

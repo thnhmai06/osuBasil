@@ -1,234 +1,252 @@
 # IRC transport
 
-> **Status: the IRC host is pending migration** (see "Host phase" in `AGENTS.md`).
-> `src/Hosts/Irc` still uses the previous Application API and is outside the solution build. This page describes the
-> **design the host must implement on the current Application model**. The Application behaviour it relies on exists
-> today (`Basil.Application.Runtime`); the wire-level rules are the contract the migrated host must keep.
-> Sections marked "host rule" are not implemented against the new model yet.
-
 ## Overview
 
 ### Why
 
-Basil's chat is one model shared by every transport. IRC exists so that referees and operators can use standard IRC
-clients, bouncers and bots next to (or instead of) the osu! stable client: read chat, run BasilBot commands and
-manage rooms without a game client.
+Basil's chat is one model shared by every transport. IRC exists so that referees, operators and bots (osu-ahr style
+tools, bouncers, desktop IRC clients) can read chat, run BasilBot commands and referee rooms next to, or instead of,
+the osu! stable client. The osu! client does not use IRC; it receives chat as Bancho packets.
 
-The IRC transport therefore adds no rules of its own. It decodes IRC lines, calls the Application operation of the
-object being acted on with the IRC connection as the actor, and encodes the typed result as IRC lines. Authority is
-decided by the user's effective permissions, never by the fact that the request came over IRC.
+The IRC transport adds no rules of its own. It decodes IRC lines, calls the Application operation of the object being
+acted on with the IRC connection as the actor, and encodes the typed result as IRC lines. Authority is decided by the
+user's effective permissions, never by the fact that the request came over IRC.
+
+The wire behaviour follows [Modern IRC](https://modern.ircdocs.horse/) and the [IRCv3](https://ircv3.net/irc/)
+specifications that are listed below. Where this page and a specification differ, this page is the contract.
 
 ### What
 
-* A user can hold a Bancho connection **and** an IRC connection at the same time. Neither evicts the other.
-* The IRC connection is a full chat participant: it joins channels, sends and receives messages, runs BasilBot
-  commands, and referees or creates rooms to the extent the user's permissions allow.
-* The IRC connection is never a player: it cannot be seated in a room slot and cannot spectate.
+* A user can hold a Bancho connection **and** several IRC connections at the same time. Neither evicts the other.
+* An IRC connection is a full chat participant: it joins channels, sends and receives messages, runs BasilBot commands
+  and referees or creates rooms to the extent the user's permissions allow.
+* An IRC connection is never a player: it cannot be seated in a room slot and cannot spectate.
+* IRC is read-and-chat only. Nothing is *managed* through IRC: topics, channel modes, kicks and invitations are refused
+  with `482`. Channels are managed through the HTTP API or by messaging BasilBot (`!channel list|create|set|delete`).
+* The server keeps **no chat history**, so there is no `chathistory`.
 
-### Messages and line breaks
+## Public contract
 
-A chat message may contain CR and LF. `Message.Content` accepts any text that is not empty and holds no control
-character other than tab, CR, LF and U+0001 (the action wrapper); only empty text or other control characters are
-refused. An IRC line cannot carry CR or LF, and `IrcMessage.ToString` throws on them. **Host rule:** before writing a
-message to the wire, the IRC host splits it at line breaks and sends one `PRIVMSG`/`NOTICE` per non-empty line (or
-escapes the breaks). This applies to every message it delivers: chat, BasilBot replies (multi-line output such as
-`!mp settings` or `!mp listrefs`) and away replies.
+### Endpoint
 
-## Connection model
+`irc.<domain>:6667`, plain TCP, **no TLS**, so that existing IRC software works unchanged. There is no IRCv3 `sts` and
+no SASL `EXTERNAL`. The port is `Server:Ports:Irc`.
 
-### Public contract
+Because the connection is not encrypted, **the IRC key crosses the network in clear text on every connection**. Whoever
+captures it can chat as the key's owner until the key is revoked. Keys are per device, so revoke the one that leaked
+(closing that IRC session in the HTTP API revokes exactly that key) and prefer connecting from a trusted network or
+through a tunnel. [`https.md`](../for-technicians/https.md) explains why HTTPS and IRC differ.
+
+### Identity
+
+* A **nickname** is the account's username with spaces replaced by `_`. It cannot be changed: `NICK` after registration
+  gets `462`. Nicknames compare case-insensitively with ASCII case folding (`CASEMAPPING=ascii`).
+* The visible mask of every user is `nick!nick@<domain>`. The real address of a client never appears in `WHO`, `WHOIS`,
+  `USERHOST`, `NAMES` or any prefix.
+* An **IRC key** is a long-lived secret that belongs to one device. It is issued once through the HTTP API
+  (`POST /v1/users/{id}/sessions/irc`), stored only as a hash, and is the only credential IRC accepts: the account
+  password is never accepted. Every connection made with a key is recorded as an IRC session of that key.
+* A key that is wrong, revoked or whose account is deleted is refused with `464`.
+
+### Registration
 
 ```text
-User (one account, online)
-├── BanchoConnection   osu! stable client       (at most one)
-├── IrcConnection      IRC client or bouncer    (at most one)
-├── BotConnection      the server's own, BasilBot only
-├── TourneyConnection  osu!tourney clients      (several)
-└── ApiConnection      HTTP API clients         (several)
+client                                  server
+CAP LS 302            ->                :irc.<domain> CAP * LS :... sasl=PLAIN ...
+CAP REQ :sasl ...     ->                :irc.<domain> CAP * ACK :sasl ...
+PASS <key>            ->               (or SASL PLAIN below)
+NICK <nick>           ->
+USER <u> 0 * :<real>  ->
+CAP END               ->                001 .. 005, 375/372/376 (MOTD)
 ```
 
-| Statement | Enforced by |
+Registration completes when `NICK`, `USER`, a credential and the end of capability negotiation are all present
+(negotiation is "ended" if it never started). Before that, every command except `CAP`, `PASS`, `NICK`, `USER`,
+`AUTHENTICATE`, `PING`, `PONG` and `QUIT` gets `451`.
+
+| Credential | Rule |
 | --- | --- |
-| A user may be online through Bancho and IRC at once | `User` holds connections by kind; `UserRegistry.Open` only compares connections of the same kind |
-| A second IRC login while the first IRC connection was active within the last 10 seconds is refused (`AlreadyOnline`); an older idle one is closed as `Replaced` | `UserRegistry.Open` |
-| An IRC connection is closed after 300 seconds without traffic | `UserRegistry.CloseIdle` and `MarkActive` |
-| Only a `BanchoConnection` can be seated in a slot or hold host | the slot, `Room.Seat`, `SeatAsync` and `SetHostAsync` take `BanchoConnection`; `ScopedRoomMembers.JoinAsync` and `LeaveAsync` answer `NotInRoom` for any other connection |
-| An IRC connection cannot spectate | `ScopedBanchoConnection.SpectateAsync` throws `ArgumentException` for an `IrcConnection`; the host must not call it |
-| A room opened in game needs the creator's `BanchoConnection`; a tournament room can be created by any connection with `RoomCreate` | `ScopedLobby.OpenRoomAsync` throws `ArgumentException` for a non-tournament room opened by another kind |
-| BasilBot is the user with id 1 and its connection is a `BotConnection`, not a client; nobody can log in as it | `UserRegistry.EnsureBotAsync`, `ConnectBotAsync`; the login lookup answers `UnknownUser` for it |
+| `PASS <key>` | The key must be valid. `NICK` must equal the nickname of the key's owner (case-insensitive), else `464`. |
+| SASL `PLAIN` | `authcid` is the username, the password is the key. A wrong pair is `904`. If `NICK` differs from the account's nickname the server renames the client with a `NICK` message before the welcome. |
 
-The previous design enforced "an IRC client is not a player" with separate `GameSession` and `IrcSession` types. The
-current code enforces it through the parameter types of the seating and host operations (`BanchoConnection`) and
-through the results of the operations that take a plain `Connection`, not through a session type hierarchy.
+A failed registration is answered with `464` and the connection is closed with `ERROR`. Repeated failures from one
+address, or for one account from one address, are limited by the server's login-failure settings, and the number of
+simultaneous connections from one address by its connection limit; both are refused with `ERROR :Closing Link:`.
 
-### Authority
+A key can be used by one socket at a time; a second socket with the same key is closed with `ERROR`.
 
-Every action has a real actor: the `IrcConnection` that sent the line. Objects are scoped to it
-(`room.ScopeTo(by)`, `channel.ScopeTo(by)`, `user.ScopeTo(by)`), and the scope checks the user's **effective**
-permissions at that moment. A silenced referee therefore cannot manage a room from IRC either. The transport never
-adds or removes rights.
+On success the server sends `001`-`004`, `005` (ISUPPORT, enough lines for the tokens below) and the message of the day
+(`375`, `372`..., `376`, or `422` when none is set). The user joins the channels set to auto-join, and the client
+receives `JOIN` (and topic/`NAMES` replies) for each of them.
 
-What an IRC connection can do:
+ISUPPORT tokens: `CASEMAPPING=ascii`, `CHANTYPES=#`, `PREFIX=(ov)@+`, `CHANMODES=,,,`, `NETWORK=Basil`,
+`NICKLEN=15`, `MODES=1`, `MAXTARGETS=1`, `LINELEN=512`.
 
-* join channels it may read and post to channels it may write (`ScopedChannel.Join`, `Part`, `PostAsync`);
-* send private messages, including to BasilBot, and set or clear its user's away message (`ScopedUser.SetAway`);
-* run BasilBot commands: the bot runs them with the typist's connection and permissions, so `!mp` from IRC uses the
-  IRC connection's rights;
-* referee a room (kick, ban, referees, settings) when the user is its creator or a referee, or holds
-  `RoomManageAny`;
-* create a **tournament** room (`RoomCreate`). The creator's Bancho client is seated as host only if the user has an
-  open one that may join rooms and is in no room; otherwise the room starts with a creator and no host.
+### Capabilities
 
-What it cannot do: be seated, hold host, spectate, open a room in game.
+Only these IRCv3 capabilities are offered. `cap-notify` is implied by `CAP LS 302`; the list never changes at runtime.
 
-### Login and logout
+| Capability | Behaviour |
+| --- | --- |
+| `cap-notify` | Accepted with `CAP LS 302`. |
+| `sasl` | Value `PLAIN`. `AUTHENTICATE PLAIN`, then the base64 of `authzid NUL authcid NUL password`. `900`/`903` on success, `904` on failure, `906` when aborted with `*`, `907` when repeated. |
+| `server-time` | Relayed messages carry `time=` (UTC, millisecond precision). |
+| `message-tags` | Clients may send tags. The server does not relay client-only tags and does not support `TAGMSG`. |
+| `account-tag` | Relayed messages carry `account=<username>`. |
+| `account-notify` | Accepted. An account never changes during a connection, so `ACCOUNT` is never sent. |
+| `away-notify` | `AWAY` from an IRC client is relayed to the other IRC clients that share a channel. An away message set from the osu! client is not relayed. |
+| `extended-join` | `JOIN` carries the account and the real name (the nickname). |
+| `multi-prefix` | `NAMES` and `WHO` list every status prefix of a member. |
+| `userhost-in-names` | `NAMES` lists `nick!user@host`. |
+| `echo-message` | The sender receives its own `PRIVMSG`/`NOTICE` back. |
+| `standard-replies` | Errors the server raises on its own (such as flood control) are `FAIL`; without it they are a `NOTICE`. |
 
-Registration (`PASS`, `NICK`) maps to `UserRegistry.LoginAsync` with `ConnectionType.Irc` and no osu! client. A
-failure (`UnknownUser`, `WrongPassword`, `AccountDeleted`, `AlreadyOnline`) is answered with a registration error
-numeric. A success opens the connection, which joins its user's private-message channel and, through the connection
-handler, the auto-join general channels.
-
-Closing the socket, `QUIT`, a write failure or the idle sweep closes the connection with `UserRegistry.Close`. The
-user goes offline only when this was the last connection. Closing an IRC connection does not touch the user's Bancho
-connection, its room seat or its spectators, and closing a Bancho connection does not disconnect IRC.
-
-## Wire protocol
-
-`Basil.Protocol.Irc` only turns lines into `IrcMessage` records, numerics and user prefixes and back. It gives no
-meaning and does not limit line length; the host keeps lines within the protocol limit. A line holding CR, LF or NUL
-is rejected on parse and on format.
+`CAP REQ` with any unknown capability is refused as a whole with `NAK`. Not offered: `invite-notify`, `batch`,
+`labeled-response`, `chathistory`, `sts`, `sasl` `EXTERNAL`.
 
 ### Commands
 
 | Command | Behaviour |
 | --- | --- |
-| `PASS` / `NICK` / `USER` | Registration needs `PASS` and `NICK`; `USER` is accepted and ignored. Registration does not wait for `CAP`. Before registration any other command gets `451`. |
-| `CAP` | No capability is offered: `LS`/`LIST` return an empty list, `REQ` is refused with `NAK`, `END` needs no reply. SASL `AUTHENTICATE` is never offered and gets no reply. |
-| `PRIVMSG` / `NOTICE` | Posts through `ScopedChannel.PostAsync`. A `NOTICE` never triggers a command or an away reply. A channel target that does not exist gets `403`; one the connection cannot write to gets `404`. |
-| `JOIN` / `PART` | `ScopedChannel.Join` / `Part`. Unknown channel `403`; not allowed to read it `473`. |
-| `LIST` / `NAMES` / `WHO` / `WHOIS` / `ISON` | Read-only queries. A channel the connection cannot read is not listed. |
-| `TOPIC` / `MODE` | Read only; any change is refused. User modes do not exist. |
-| `MOTD` / `VERSION` / `TIME` / `LUSERS` | Informational replies. |
-| `AWAY` | Sets or clears the user's away message, which all of the user's connections share. |
-| `PING` / `PONG` | `PING` is answered with `PONG` and the same token. The host sends a keepalive `PING` periodically and treats every received line as activity (`MarkActive`). |
-| `QUIT` | Closes the connection. |
+| `CAP`, `AUTHENTICATE`, `PASS`, `NICK`, `USER` | Registration as above. After registration `NICK`, `PASS` and `USER` get `462`. |
+| `PING` / `PONG` | `PING` is answered with `PONG` and the same token. Any received line counts as activity; the server also sends a `PING` every 2 minutes, and a connection with no traffic for 5 minutes is closed. |
+| `QUIT` | Closes the connection with `ERROR :Closing Link: <domain> (Quit: <reason>)`. |
+| `JOIN` / `PART` | Comma-separated channel lists are accepted. See [Channels](#channels). |
+| `PRIVMSG` / `NOTICE` | To a channel, to a nickname, or to BasilBot. A `NOTICE` never triggers a command or an away reply. |
+| `NAMES` / `LIST` / `WHO` / `WHOIS` / `ISON` / `USERHOST` | Read-only queries. |
+| `AWAY` | Sets (`306`) or clears (`305`) the away message, which all of the user's connections share. |
+| `TOPIC` / `MODE` | Reading only. |
+| `MOTD` | Repeats the message of the day. |
+| `KICK`, `INVITE` | Always `482` (for an unknown channel `403`). |
+| anything else, including `OPER`, `VERSION`, `TIME`, `LUSERS` | `421`. |
 
-Missing parameters get `461`. After registration `NICK`, `PASS` and `USER` get `462`: identity is fixed at login. Any
-other command gets `421`; nothing is silently ignored except the protocol exceptions above.
+A missing parameter is `461`; an empty `PRIVMSG` target is `411`, empty text `412`. A line longer than 8703 bytes
+(8191 for tags plus 512 for the body), or a body longer than 512 bytes, gets `417` and is dropped.
 
-A `PRIVMSG` to a nickname is a post into that user's private-message channel. An unknown nickname gets `401`; a
-refusal by the channel (`Blocked`, `TargetSilenced`, `AccessDenied`) is answered with the matching numeric, and
-`Empty`/`InvalidText` are dropped.
+`TOPIC #c` answers `331`/`332` for a channel the client is on (else `442`, unknown `403`); `TOPIC #c :text` is `482`.
+`MODE #c` answers `324` with no modes; any change or list query is `482`. `MODE <ownnick>` answers `221 +`, another
+nickname `502`, and a change `501`. There are no user modes and no `+o`/`+v`: nobody is ever made an operator.
 
-### What IRC cannot change
+### Channels
 
-Nickname, topics, channel modes, the password and the `USER` data are server-controlled. Presence is the only thing a
-client changes: joining, parting, chatting and `AWAY`.
-
-### Channel names
-
-| Channel | IRC name | Notes |
+| Channel | IRC name | Rules |
 | --- | --- | --- |
-| General | configured name, such as `#osu` | read and write rights come from the channel's configured privileges |
-| Room | `#mp_{room id}` | opens and closes with the room |
-| Spectator | `#spec_{user id}` | only the spectated Bancho client and its spectators can read it, so an IRC connection cannot join it |
-| Private message | the user's name, no `#` | every connection of the user is in it, osu!tourney excluded |
+| General | the configured name, for example `#osu` | Read and write rights come from the channel's configured privileges. |
+| Room | `#mp_{room id}` | Opens and closes with the room. |
+| Spectator | `#spec_{user id}` | Never joinable from IRC: `473`. |
+| Private message | the nickname, no `#` | A message to a nickname goes to that user's private-message channel, which every connection of the user shares. |
 
-### Delivery
+* `JOIN` of an unknown or closed channel is `403`; of a channel the connection may not read `473`. Joining a channel the
+  connection is already in does nothing.
+* A room channel can be read by a connection that takes part in the room: a seated player, an observing osu!tourney
+  client, the creator or a referee whose permissions include `RoomJoin`, or an account with `RoomManageAny` or
+  `RoomObserve`. Writing needs the same involvement or `ChatManagePostAnyRoom`. `JOIN #mp_5` is `473` when the room exists and
+  the caller may not enter, `403` when it does not exist. `LIST` lists only the room channels the connection could join.
+* A creator or referee joins the room channel with an ordinary `JOIN` and stays in it after leaving a slot.
+* `LIST` shows the visible general channels the connection may read, and the joinable room channels.
 
-A posted message goes to `Channel.RecipientsAsync(posted)`: the members who do not block the author, unless the author
-has `ChatMessageAnyone`. **Host rule:** the host writes the line to every IRC connection among them except the one
-that sent it (IRC does not echo). The user's other connection, such as its Bancho client, is a recipient like any
-other member. If the event carries an away reply, it goes to the author's private-message channel.
+**Status prefixes** mirror Basil's rights and are computed per channel, never granted by IRC. `@` marks authority:
+the creator and the referees of a room (`#mp_*`), and any user with `ChatManageChannels` in a general channel. `+` marks
+a member who may write. A read-only member has no prefix. `PREFIX=(ov)@+` is advertised only to say which symbols
+exist.
 
-## Rooms on IRC
+### Sending and receiving
 
-### Room channel access
+* A message goes through `ScopedChannel.PostAsync` for a channel or a nickname; the result is mapped below. IRC does not
+  echo a message to its sender unless `echo-message` is on. A message reaches every other member of the channel,
+  including the same user's Bancho client, and an osu! user's message reaches IRC members the same way.
+* A message longer than 450 characters is cut to 450, as for the osu! client. Chat is limited per account by the
+  server's chat rate limit, shared with the osu! client; when it is exceeded the message is dropped and the client
+  gets `FAIL PRIVMSG RATE_LIMITED` (with `standard-replies`) or a `NOTICE`.
+* A message may contain CR or LF, which a line cannot. Every message the server delivers (chat, BasilBot replies,
+  away replies) is split at line breaks into one `PRIVMSG` or `NOTICE` per non-empty line, and a line longer than the
+  protocol allows is split further. An announcement from BasilBot is a `NOTICE`.
+* A private message to a user whose "away" message is set makes the sender receive `301`.
 
-A room channel can be read by a connection that takes part in the room: a seated Bancho player, an observing
-osu!tourney client, the creator or a referee whose permissions include `RoomJoin`, or an account with
-`RoomManageAny` or `RoomObserve`. Writing needs the same involvement or `ChatPostAnyRoom`.
+| Application result | IRC reply |
+| --- | --- |
+| `Ok`, `AlreadyMember` (join) | nothing extra |
+| `Closed` | `403` |
+| `AccessDenied` on join | `473` |
+| `NotMember` on part | `442` |
+| `AccessDenied`, `NotMember`, `Blocked`, `TargetSilenced` on send, or a missing `ChatPost`/`ChatPostPrivate` | `404` with a text that names the reason |
+| unknown nickname | `401` |
+| `Empty` | `412` |
+| `InvalidText` | the message is dropped |
 
-```text
-JOIN #mp_5     -> 473  the room exists, the caller may not enter
-JOIN #mp_999   -> 403  there is no such channel
-```
+### Presence
 
-The existence of a room is not hidden, but an unauthorized connection can neither join it nor see it in `LIST`.
-**Host rule:** `LIST` lists only the room channels the connection could join.
-
-A creator or referee joins the room channel from IRC with an ordinary `JOIN`. They stay in it after leaving a slot,
-because leaving a seat parts the channel only for users who do not manage the room. Players are placed in the
-channel by the room when they are seated.
-
-### Status prefixes (host rule)
-
-Prefixes are computed per channel, not from a global privilege: `@` for authority in that channel, `+` for a member who
-may write, none for read-only. In a room channel authority belongs to the creator and the referees
-(`Room.Authority.IsManagedBy`), so a referee can be `@` in `#mp_5` and unprefixed in `#osu`. `NAMES` and `WHO` for a
-channel use this rule; `WHO` for a bare nickname has no channel and shows no prefix. How `@` is derived for general
-channels is not fixed by the Application model and is decided when the host is ported.
-
-### Host, creator and protection
-
-* A room created from IRC starts with a creator and no seated player, and possibly no host. An empty tournament room
-  closes after 15 minutes (with a warning 5 minutes before), whichever transport created it.
-* The creator is not in the referee list and ranks above referees. The creator and the referees cannot be kicked or
-  banned (`IsManager`); removing a referee is the explicit `!mp removeref`.
-* A ban is a rule on the account, not on a connection, so banning an offline user works. A kick removes the target's
-  seated Bancho connection; an IRC-only user is not seated, so a kick answers `NotInRoom`.
-* BasilBot cannot be the target of account operations (`UserOutcome.Protected`).
-
-## Presence on IRC (host rule)
-
-Channel membership in the Application is per connection: a user with a Bancho and an IRC connection has two members
-in `#osu`. Other IRC clients should see the user, not the connection, so the host derives `JOIN`, `PART` and `QUIT`
-from `ChannelMemberJoined`, `ChannelMemberParted` and `UserConnectionClosed` (`WentOffline`) with the rule of the
-previous design:
+Channel membership in the Application is per connection: a user with a Bancho and an IRC connection has two members in
+`#osu`. Other IRC clients should see the user, not the connection:
 
 ```text
 a connection joins a channel
   the user already has another connection in it?   no line for other clients
   otherwise                                        JOIN to the channel's IRC members
 
-a connection leaves or closes
-  the user keeps another connection in the channel?        nothing
-  else the user still has a connection somewhere else?     PART from this channel
-  else (the user went offline)                             one QUIT to everyone sharing a channel
+a connection leaves a channel
+  the user keeps another connection in it?         nothing
+  else the user is still online elsewhere?         PART to the channel's IRC members
+  else (the user went offline)                     nothing here; one QUIT instead
+
+a user goes offline
+  one QUIT to every IRC client that shared a channel with the user
 ```
 
-A client never receives both `PART` and `QUIT` for one disconnect. The joining connection still receives its own
-`JOIN` and `NAMES` replies. The Bancho client has its own channel packets and does not depend on these lines.
+A client never receives both `PART` and `QUIT` for one disconnect. A connection removed from a channel by the server
+(the channel closed, or its read privileges were raised) receives a `KICK` from the server. The joining connection always
+receives its own `JOIN`, the topic and `NAMES`.
 
-## Design rationale
+### Shutdown
 
-* **One model, thin transport.** Rules live on the acted-on object and see the actor's permissions, so a rule is added
-  once and holds on every transport.
-* **Connections instead of session subtypes.** Gameplay state lives on `BanchoConnection` and the room seat; what all
-  connections share (identity, permissions, away message) lives on `User`; Chat keeps a private-message channel per
-  online user.
-* **BasilBot is a user.** The bot is account 1 with a `BotConnection`, so it appears in `WHO`, `NAMES` and `WHOIS`
-  like any user. It has no socket, no idle timeout and no login, and it is not a player.
+On shutdown or restart the server refuses new IRC connections, sends every client a `NOTICE` ("Server is shutting
+down" or "Server is restarting"), then `ERROR :Closing Link: <domain> (Server shutting down)` (or `restarting`) and
+closes the socket.
+
+## Design / Implementation
+
+### Host rules
+
+* The host takes the actor from the connection that opened the socket and works through scopes
+  (`channel.ScopeTo(connection)`); it holds no chat rule of its own.
+* One handler class per event type delivers chat to IRC (message, join, part, closed channel, configured channel,
+  closed connection), like the Bancho host. Delivery is done by the event dispatcher, not by the command that caused it,
+  so a command only calls the Application and answers errors. The one exception is `away-notify`: changing the away
+  message publishes no event, so the `AWAY` command relays it to the interested clients itself.
+* The IRC host writes each client's lines from one writer queue, so lines of different events never interleave inside a
+  line.
+* The wire format is in `Basil.Protocol.Irc`: lines, IRCv3 tags (escaping per the message-tags specification),
+  numerics and user prefixes. It gives no meaning and does not limit line length.
+
+### Rationale
+
+* **One model, thin transport.** A rule added to the Application holds on every transport.
+* **Keys, not passwords.** A client library or bot stores its credential in plain text and sends it unencrypted; a
+  per-device key limits what a leak costs and can be revoked alone.
+* **No management over IRC.** Channels and rooms already have an API and BasilBot commands with permission checks;
+  duplicating them as IRC modes would be a second, weaker surface.
+* **BasilBot is a user.** The bot is account 1 with a `BotConnection`, so it appears in `WHO`, `NAMES` and `WHOIS` and
+  can be messaged like any user. It has no socket, and nobody can log in as it.
+
+### Invariants
+
+* No IRC line, to any client, contains a real address.
+* An IRC connection is never seated in a room and never spectates.
+* The credential for IRC is an IRC key, never the password.
+* A client sees one `JOIN`/`PART`/`QUIT` per user, not per connection.
 
 ## Related code
 
-* [`Connection.cs`](../../src/Application/Users/Connections/Connection.cs): connection kinds, including `IrcConnection` and `BotConnection`
-* [`ConnectionRules.cs`](../../src/Application/Users/Connections/ConnectionRules.cs): one-per-kind rule and idle timeouts
-* [`UserEvents.cs`](../../src/Application/Users/Users/UserEvents.cs): connection opened and closed events
-* [`User.cs`](../../src/Application/Users/Users/User.cs), [`ScopedUser.cs`](../../src/Application/Users/Users/ScopedUser.cs): online user, away message
-* [`UserRegistry.cs`](../../src/Application/Users/Users/UserRegistry.cs): login, close, idle sweep, BasilBot's connection
+* [`Connection.cs`](../../src/Application/Users/Connections/Connection.cs): connection kinds
+* [`UserRegistry.cs`](../../src/Application/Users/Users/UserRegistry.cs): `LoginWithTokenAsync`, idle sweep
+* [`ScopedUserSessions.cs`](../../src/Application/Users/Users/ScopedUserSessions.cs): issuing an IRC key
 * [`Channel.cs`](../../src/Application/Chat/Runtime/Channel.cs), [`ScopedChannel.cs`](../../src/Application/Chat/Runtime/ScopedChannel.cs): membership, posting, recipients
-* [`RoomChannel.cs`](../../src/Application/Chat/Runtime/RoomChannel.cs), [`Room.Seating.cs`](../../src/Application/Multiplayer/Runtime/Rooms/Room.Seating.cs): room channel access and seating
-* [`ScopedRoomMembers.cs`](../../src/Application/Multiplayer/Runtime/Rooms/ScopedRoomMembers.cs), [`ScopedRoomAuthority.cs`](../../src/Application/Multiplayer/Runtime/Rooms/ScopedRoomAuthority.cs): kick, ban, referees, host
-* [`ScopedLobby.cs`](../../src/Application/Multiplayer/Runtime/ScopedLobby.cs): room creation
-* [`Message.cs`](../../src/Domain/Chat/Message.cs): message content rules
-* [`IrcMessage.cs`](../../src/Protocol/Irc/IrcMessage.cs), [`IrcNumericReply.cs`](../../src/Protocol/Irc/IrcNumericReply.cs), [`IrcUserPrefix.cs`](../../src/Protocol/Irc/IrcUserPrefix.cs): wire format
-* [`src/Hosts/Irc`](../../src/Hosts/Irc): listener and connection loop, pending migration
+* [`RoomChannel.cs`](../../src/Application/Chat/Runtime/RoomChannel.cs): room channel access
+* [`IrcMessage.cs`](../../src/Protocol/Irc/IrcMessage.cs), [`IrcTag.cs`](../../src/Protocol/Irc/IrcTag.cs), [`IrcNumericReply.cs`](../../src/Protocol/Irc/IrcNumericReply.cs), [`IrcUserPrefix.cs`](../../src/Protocol/Irc/IrcUserPrefix.cs): wire format
+* [`src/Hosts/Irc`](../../src/Hosts/Irc): listener, session, commands and delivery
 
 ## See also
 
-* [`chat.md`](chat.md): the shared chat model used by Bancho and IRC
 * [`multiplayer.md`](multiplayer.md): room authority, seating and the empty-room timer
-* [`privileges.md`](privileges.md): permissions and restrictions
 * [`../for-client/irc-client.md`](../for-client/irc-client.md): how a user connects an IRC client
 * [`../for-technicians/https.md`](../for-technicians/https.md): why IRC does not use HTTPS/TLS

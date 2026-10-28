@@ -22,7 +22,7 @@ public sealed class ScopedUserSessionsTests
 
 	private static Task<LoginResult> OpenWithTokenAsync(TestApplication app, ConnectionType type, string token)
 	{
-		return app.Users.LoginWithTokenAsync(type, token, IPAddress.Loopback, Token);
+		return app.Users.LoginWithTokenAsync(type, token, IPAddress.Loopback, cancellationToken: Token);
 	}
 
 	/// <summary>Opens an IRC key for a user acting on their own account.</summary>

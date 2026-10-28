@@ -15,6 +15,7 @@ internal static class BotReplies
 	                                                            !where <username> - show a user's country
 	                                                            !faq <entry>|list - print a FAQ entry, or list every entry
 	                                                            !mp help - list multiplayer subcommands
+	                                                            !channel list|create|set|delete - manage the general channels (needs permission)
 	                                                            """);
 
 	// ── !where ───────────────────────────────────────────────────────────────────────────────

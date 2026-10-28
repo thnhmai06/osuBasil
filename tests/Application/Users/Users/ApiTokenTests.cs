@@ -27,7 +27,7 @@ public sealed class ApiTokenTests
 	private static Task<LoginResult> OpenAsync(TestApplication app, string token,
 		ConnectionType type = ConnectionType.Api)
 	{
-		return app.Users.LoginWithTokenAsync(type, token, IPAddress.Loopback, Token);
+		return app.Users.LoginWithTokenAsync(type, token, IPAddress.Loopback, cancellationToken: Token);
 	}
 
 	[Fact]

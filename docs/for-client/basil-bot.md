@@ -9,14 +9,20 @@ and its privileges only decide how a client shows it. Commands run with the righ
 Commands include:
 
 * general BasilBot commands;
-* `!mp` commands for multiplayer room management.
+* `!mp` commands for multiplayer room management;
+* `!channel` commands for managing the general channels.
+
+`!channel list|create|set|delete` does what the HTTP API for channels does, and needs the permission to manage
+channels. Options are written `name=value`: `topic`, `read` and `write` (the privilege masks that may read and write),
+`autojoin` and `visible` (`true` or `false`), for example `!channel create #events topic="Big event" autojoin=true`.
+`list` shows the channels you can see; with the permission it also shows the hidden ones.
 
 The `!mp` commands support tournament operations such as creating and configuring rooms, managing referees and
 players, and controlling room countdowns.
 
 Commands run using the connection of the person who typed them, so they require that person's own rights. BasilBot
 only replies; its messages and server announcements bypass user permission checks. The command handler and
-announcement handlers are implemented in `Basil.Bot`, but host integration is not migrated yet.
+announcement handlers are implemented in `Basil.Bot` and run in the server for the osu! client and IRC.
 
 Room countdowns belong to the room, not to BasilBot. A countdown that starts a round is cancelled when the round's
 settings change; countdowns stop when the round starts or is aborted or the room closes. BasilBot announces the
@@ -26,8 +32,7 @@ countdown marks.
 
 The following host-phase work is not implemented yet:
 
-* showing BasilBot as an online user on the transports (the server already keeps its connection);
-* integration of the new command and announcement handlers with the migrated hosts;
+* showing BasilBot as an online user to the osu! client (IRC already shows it);
 * the planned operator console in `Basil.Cli`.
 
 ---
