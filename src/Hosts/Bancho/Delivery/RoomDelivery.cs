@@ -30,7 +30,9 @@ internal sealed class RoomAudience(Lobby lobby, Outbox outbox)
 	{
 		if (room.IsClosed) return;
 		var match = BanchoView.Match(room);
-		outbox.Send(Of(room), writer => writer.UpdateMatch(match));
+		outbox.Send(room.Slots.Select(slot => (Connection?)slot.Player).OfType<Connection>(),
+			writer => writer.UpdateMatch(match));
+		outbox.Send(room.Members.Observers, writer => writer.UpdateMatch(match, false));
 		if (!room.Settings.IsPrivate) outbox.Send(lobby.Watchers, writer => writer.UpdateMatch(match, false));
 	}
 }
@@ -123,7 +125,7 @@ internal sealed class RoomObserverDelivery(Outbox outbox) : INotificationHandler
 	public ValueTask Handle(RoomObserverJoined notification, CancellationToken cancellationToken)
 	{
 		var match = BanchoView.Match(notification.Room);
-		outbox.Send(notification.Observer, writer => writer.UpdateMatch(match));
+		outbox.Send(notification.Observer, writer => writer.UpdateMatch(match, false));
 		return ValueTask.CompletedTask;
 	}
 }

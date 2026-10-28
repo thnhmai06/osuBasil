@@ -35,6 +35,19 @@ public sealed class RateLimiter(TimeProvider clock)
 		}
 	}
 
+	/// <summary>Takes back the latest event of a key, such as an attempt that turned out to be a success.</summary>
+	/// <param name="key">What is counted.</param>
+	public void Refund(string key)
+	{
+		if (!_events.TryGetValue(key, out var queue)) return;
+		lock (queue)
+		{
+			var kept = queue.Take(Math.Max(queue.Count - 1, 0)).ToArray();
+			queue.Clear();
+			foreach (var moment in kept) queue.Enqueue(moment);
+		}
+	}
+
 	/// <summary>Counts the events of a key inside the window.</summary>
 	/// <param name="key">What is counted.</param>
 	/// <param name="window">The length of the window.</param>

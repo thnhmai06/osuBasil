@@ -150,7 +150,7 @@ internal sealed partial class PacketHandlers
 		if (by is not TourneyConnection || lobby.Find(matchId) is not { IsClosed: false } room) return;
 		if (!await lobby.ScopeTo(by).CanViewAsync(room.Match, cancellationToken)) return;
 		var match = Support.BanchoView.Match(room);
-		outbox.Send(by, writer => writer.UpdateMatch(match));
+		outbox.Send(by, writer => writer.UpdateMatch(match, false));
 	}
 
 	private async Task TourneyJoinAsync(Connection by, int matchId, CancellationToken cancellationToken)

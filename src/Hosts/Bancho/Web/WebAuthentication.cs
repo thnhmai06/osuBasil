@@ -41,21 +41,27 @@ internal sealed class WebAuthentication(
 		var rules = (await settings.GetAsync(cancellationToken)).RateLimits.Login;
 		var ipKey = $"login-fail:{ClientAddress.Resolve(context)}";
 		var pairKey = $"{ipKey}:{normalized}";
-		if (limiter.Count(ipKey, rules.Window) >= rules.MaxAttempts * 4 ||
-		    limiter.Count(pairKey, rules.Window) >= rules.MaxAttempts)
+		// An attempt is reserved before the check so that concurrent guesses cannot all pass the limit together.
+		if (!limiter.TryAcquire(pairKey, rules.MaxAttempts, rules.Window)) return null;
+		if (!limiter.TryAcquire(ipKey, rules.MaxAttempts * 4, rules.Window))
+		{
+			limiter.Refund(pairKey);
 			return null;
+		}
 
 		try
 		{
 			if (await credentials.VerifyAsync(new Credentials(online.Record, new Md5(passwordMd5)), cancellationToken))
+			{
+				limiter.Refund(ipKey);
+				limiter.Refund(pairKey);
 				return client;
+			}
 		}
 		catch (ArgumentException)
 		{
 		}
 
-		limiter.Record(ipKey);
-		limiter.Record(pairKey);
 		return null;
 	}
 }
