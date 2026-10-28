@@ -4,6 +4,7 @@ using Basil.Application.Users.Connections;
 using Basil.Application.Multiplayer.Runtime;
 using Basil.Application.Multiplayer.Runtime.Events;
 using Basil.Application.Users.Users;
+using Basil.Domain.Auth;
 using Basil.Domain.Users;
 using Basil.Testing;
 
@@ -458,7 +459,7 @@ public sealed class ScopedRoomMembersTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		app.Clock.Advance(TimeSpan.FromSeconds(2));
-		app.Users.Close(setup.Player, ConnectionCloseReason.LoggedOut);
+		app.Users.Close(setup.Player, SessionEndReason.LoggedOut);
 		var again = await RoomFixture.PlayerAsync(app, setup.Player.Record);
 
 		var result = await setup.Room.ScopeTo(again).Members.JoinAsync("", TestContext.Current.CancellationToken);

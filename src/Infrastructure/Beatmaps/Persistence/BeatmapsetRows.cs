@@ -23,7 +23,8 @@ internal static class BeatmapsetRows
 				CreatedAt = row.CreatedAt,
 				UpdatedAt = row.UpdatedAt,
 				Locked = row.Locked,
-				Visible = row.Visible
+				Visible = row.Visible,
+				Status = row.Status
 			};
 		}
 	}

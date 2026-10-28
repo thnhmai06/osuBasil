@@ -1,5 +1,6 @@
 using Basil.Application.Anticheat.Runtime;
 using Basil.Application.Users.Connections;
+using Basil.Domain.Auth;
 using Basil.Domain.Bancho;
 using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -55,6 +56,6 @@ public sealed class AnticheatReporterTests
 	private static async Task<BanchoConnection> LoginAsync(TestApplication app)
 	{
 		var user = await app.CreateUserAsync("Flagged", "password");
-		return Assert.IsType<BanchoConnection>(await app.LoginAsync(user, ConnectionType.Bancho));
+		return Assert.IsType<BanchoConnection>(await app.LoginAsync(user, ConnectionType.Osu));
 	}
 }

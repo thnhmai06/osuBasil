@@ -1,5 +1,6 @@
 using Basil.Application.Multiplayer.Runtime;
 using Basil.Application.Users.Users;
+using Basil.Domain.Auth;
 using Basil.Domain.Users;
 using Basil.Testing;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -32,7 +33,7 @@ public sealed class RestrictionLobbyHandlerTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		var handler = Handler(app);
-		app.Users.Close(setup.Referee, ConnectionCloseReason.ConnectionLost);
+		app.Users.Close(setup.Referee, SessionEndReason.ConnectionLost);
 		var restricted = await RestrictAsync(app, setup.Referee.Record, UserPermissions.RoomJoin);
 
 		await handler.Handle(restricted, TestContext.Current.CancellationToken);
@@ -48,7 +49,7 @@ public sealed class RestrictionLobbyHandlerTests
 		var handler = Handler(app);
 		Assert.True((await setup.Room.ScopeTo(setup.Creator).Authority
 			.AddRefereeAsync(setup.Manager.Record, TestContext.Current.CancellationToken)).IsOk);
-		app.Users.Close(setup.Manager, ConnectionCloseReason.ConnectionLost);
+		app.Users.Close(setup.Manager, SessionEndReason.ConnectionLost);
 		var restricted = await RestrictAsync(app, setup.Manager.Record, UserPermissions.RoomJoin);
 
 		await handler.Handle(restricted, TestContext.Current.CancellationToken);

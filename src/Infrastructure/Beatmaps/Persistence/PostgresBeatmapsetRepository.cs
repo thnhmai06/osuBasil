@@ -111,6 +111,7 @@ internal sealed class PostgresBeatmapsetRepository(
 		live.UpdatedAt = from.UpdatedAt;
 		live.Locked = from.Locked;
 		live.Visible = from.Visible;
+		live.Status = from.Status;
 	}
 
 	protected override async Task<BeatmapsetRecord?> LoadAsync(int key)
@@ -193,7 +194,8 @@ internal sealed class PostgresBeatmapsetRepository(
 					CreatedAt = existing?.CreatedAt ?? now,
 					UpdatedAt = now,
 					Locked = existing?.Locked ?? false,
-					Visible = existing?.Visible ?? true
+					Visible = existing?.Visible ?? true,
+					Status = existing?.Status ?? BeatmapsetStatus.Ranked
 				};
 			}
 		}
@@ -227,7 +229,8 @@ internal sealed class PostgresBeatmapsetRepository(
 			ArchiveModifiedAt = set.Fingerprint.Stamp.ModifiedAt.ToUniversalTime(),
 			Storyboard = set.Assets.HasStoryboard,
 			Locked = set.Locked,
-			Visible = set.Visible
+			Visible = set.Visible,
+			Status = set.Status
 		};
 	}
 

@@ -16,5 +16,11 @@ public enum LoginFailure : byte
 	AlreadyOnline,
 
 	/// <summary>The account may not connect with an osu!tourney client.</summary>
-	NoTourneyPermission
+	NoTourneyPermission,
+
+	/// <summary>The device was logged out remotely and must show its login form once before it signs in again.</summary>
+	PasswordResetRequired,
+
+	/// <summary>The token or key matches no active session.</summary>
+	InvalidToken
 }

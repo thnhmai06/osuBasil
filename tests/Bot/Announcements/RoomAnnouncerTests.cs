@@ -303,24 +303,41 @@ public sealed class RoomAnnouncerTests
 	}
 
 	[Fact]
-	public async Task RoundDecided_NamesEachPlayerWhoseScoreDidNotCome()
+	public async Task RoundDecided_NamesEachPlayerWhoseScoreDidNotCome_OnTheirOwnLine()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
-		var decided = new RoomRoundDecided(staff.Room,
-			staff.Room.Rounds.LastRound ?? (await StartRoundAsync(bot, staff)).Round,
-			null, [staff.Player.Record, staff.Creator.Record]);
+		var round = staff.Room.Rounds.LastRound ?? (await StartRoundAsync(bot, staff)).Round;
+		var announcer = AnnouncerFor(bot);
+		await announcer.Handle(new RoomRoundEnded(staff.Room, round, TimeSpan.FromSeconds(10)), Token);
+		var decided = new RoomRoundDecided(staff.Room, round, null, [staff.Player.Record, staff.Creator.Record]);
 
-		await AnnouncerFor(bot).Handle(decided, Token);
+		await announcer.Handle(decided, Token);
 
 		Assert.Equal([
-			bot.Text(AnnouncementReplies.ScoreMissing, new { player = staff.Player.Record.Value.Name, seconds = 10 }),
-			bot.Text(AnnouncementReplies.ScoreMissing, new { player = staff.Creator.Record.Value.Name, seconds = 10 })
-		], bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
+			bot.Text(AnnouncementReplies.ScoresReceivedExcept),
+			bot.Text(AnnouncementReplies.ScoreMissing, new { player = staff.Player.Record.Value.Name }),
+			bot.Text(AnnouncementReplies.ScoreMissing, new { player = staff.Creator.Record.Value.Name })
+		], bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)).Skip(1));
 	}
 
 	[Fact]
-	public async Task RoundDecided_WithNobodyMissing_SaysNothing()
+	public async Task RoundDecided_WithNobodyMissing_SaysAllScoresWereReceived()
+	{
+		using var bot = new BotHarness();
+		var staff = await SetUpAsync(bot);
+		var started = await StartRoundAsync(bot, staff);
+		var announcer = AnnouncerFor(bot);
+		await announcer.Handle(new RoomRoundEnded(staff.Room, started.Round, TimeSpan.FromSeconds(10)), Token);
+
+		await announcer.Handle(new RoomRoundDecided(staff.Room, started.Round, null, []), Token);
+
+		Assert.Equal([bot.Text(AnnouncementReplies.ScoresReceived)],
+			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)).Skip(1));
+	}
+
+	[Fact]
+	public async Task RoundDecided_OfARoundNotAnnouncedAsEnded_SaysNothing()
 	{
 		using var bot = new BotHarness();
 		var staff = await SetUpAsync(bot);
@@ -329,6 +346,21 @@ public sealed class RoomAnnouncerTests
 		await AnnouncerFor(bot).Handle(new RoomRoundDecided(staff.Room, started.Round, null, []), Token);
 
 		Assert.Empty(bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
+	}
+
+	[Fact]
+	public async Task RoundEnded_TellsTheRoundNumberAndTheWaitInSeconds()
+	{
+		using var bot = new BotHarness();
+		var staff = await SetUpAsync(bot);
+		var started = await StartRoundAsync(bot, staff);
+
+		await AnnouncerFor(bot).Handle(
+			new RoomRoundEnded(staff.Room, started.Round, TimeSpan.FromSeconds(7)), Token);
+
+		Assert.Equal(
+			[bot.Text(AnnouncementReplies.RoundEnded, new { id = started.Round.Index, seconds = 7 })],
+			bot.SaidIn(bot.App.RoomChannels.Of(staff.Room)));
 	}
 
 	#endregion

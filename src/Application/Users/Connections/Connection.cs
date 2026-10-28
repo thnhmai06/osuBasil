@@ -7,19 +7,19 @@ using Basil.Domain.Users;
 namespace Basil.Application.Users.Connections;
 
 /// <summary>One login of a user from one client; two connections are never equal.</summary>
-public abstract class Connection(Login login, string token) : IActor
+public abstract class Connection(Session login, string token) : IActor
 {
 	/// <summary>Gets the online user this connection belongs to.</summary>
 	public User User { get; internal set; } = null!;
 
 	/// <summary>Gets the login that opened this connection.</summary>
-	public Login Login { get; } = login;
+	public Session Session { get; } = login;
 
 	/// <summary>Gets the opaque token that identifies this connection.</summary>
 	public string Token { get; } = token;
 
 	/// <summary>Gets the user who owns this connection.</summary>
-	public UserRecord Record => Login.User;
+	public UserRecord Record => Session.User;
 
 	/// <inheritdoc />
 	public UserPermissions EffectivePermissions(DateTimeOffset now)
@@ -34,7 +34,11 @@ public abstract class Connection(Login login, string token) : IActor
 	public bool IsOpen { get; internal set; }
 
 	/// <summary>Gets when this connection was last active.</summary>
-	public DateTimeOffset LastActiveAt { get; internal set; } = login.Timestamp;
+	public DateTimeOffset LastActiveAt
+	{
+		get => Session.LastActiveAt;
+		internal set => Session.MarkActive(value);
+	}
 }
 
 /// <summary>A connection from an osu! game client.</summary>
@@ -48,7 +52,7 @@ public sealed class BanchoConnection : Connection
 	/// <param name="token">The token that identifies the connection.</param>
 	/// <param name="utcOffset">The client's UTC offset reported at login.</param>
 	/// <param name="context">The runtime dependencies for the connection's behaviour.</param>
-	internal BanchoConnection(Login login, string token, int utcOffset, ConnectionContext context) : base(login, token)
+	internal BanchoConnection(Session login, string token, int utcOffset, ConnectionContext context) : base(login, token)
 	{
 		UtcOffset = utcOffset;
 		Context = context;
@@ -58,7 +62,7 @@ public sealed class BanchoConnection : Connection
 	internal ConnectionContext Context { get; }
 
 	/// <inheritdoc />
-	public override ConnectionType Type => ConnectionType.Bancho;
+	public override ConnectionType Type => ConnectionType.Osu;
 
 	/// <summary>Gets the client's UTC offset reported at login.</summary>
 	public int UtcOffset { get; }
@@ -68,6 +72,10 @@ public sealed class BanchoConnection : Connection
 
 	/// <summary>Gets the connections spectating this client.</summary>
 	public IReadOnlySet<Connection> Spectators => _spectators;
+
+	/// <summary>Gets a value that indicates whether an HTTP API connection is spectating this client.</summary>
+	/// <remarks>The host decodes the client's frames only while this is <see langword="true" />.</remarks>
+	public bool HasApiSpectators => _spectators.Any(spectator => spectator is ApiConnection);
 
 	/// <summary>
 	///     Gets the connections spectating this client, for changing them; the caller holds the scope and reports the
@@ -107,7 +115,7 @@ public sealed class TourneyConnection : Connection
 	/// <summary>Initializes the connection a login opened.</summary>
 	/// <param name="login">The login that opened the connection.</param>
 	/// <param name="token">The token that identifies the connection.</param>
-	internal TourneyConnection(Login login, string token) : base(login, token)
+	internal TourneyConnection(Session login, string token) : base(login, token)
 	{
 	}
 
@@ -121,7 +129,7 @@ public sealed class IrcConnection : Connection
 	/// <summary>Initializes the connection a login opened.</summary>
 	/// <param name="login">The login that opened the connection.</param>
 	/// <param name="token">The token that identifies the connection.</param>
-	internal IrcConnection(Login login, string token) : base(login, token)
+	internal IrcConnection(Session login, string token) : base(login, token)
 	{
 	}
 
@@ -135,9 +143,14 @@ public sealed class ApiConnection : Connection
 	/// <summary>Initializes the connection a login opened.</summary>
 	/// <param name="login">The login that opened the connection.</param>
 	/// <param name="token">The token that identifies the connection.</param>
-	internal ApiConnection(Login login, string token) : base(login, token)
+	/// <param name="tokenLifetime">How long the token stays valid after each use.</param>
+	internal ApiConnection(Session login, string token, TimeSpan tokenLifetime) : base(login, token)
 	{
+		TokenLifetime = tokenLifetime;
 	}
+
+	/// <summary>Gets how long the token stays valid after each use.</summary>
+	public TimeSpan TokenLifetime { get; }
 
 	/// <inheritdoc />
 	public override ConnectionType Type => ConnectionType.Api;
@@ -149,29 +162,10 @@ public sealed class BotConnection : Connection
 	/// <summary>Initializes the server's connection for BasilBot.</summary>
 	/// <param name="login">The login that opened the connection.</param>
 	/// <param name="token">The token that identifies the connection.</param>
-	internal BotConnection(Login login, string token) : base(login, token)
+	internal BotConnection(Session login, string token) : base(login, token)
 	{
 	}
 
 	/// <inheritdoc />
 	public override ConnectionType Type => ConnectionType.Bot;
-}
-
-/// <summary>The kinds of connection a user can hold.</summary>
-public enum ConnectionType : byte
-{
-	/// <summary>An osu! game client.</summary>
-	Bancho,
-
-	/// <summary>An osu!tourney spectator client.</summary>
-	Tourney,
-
-	/// <summary>An IRC client.</summary>
-	Irc,
-
-	/// <summary>A client of the HTTP API.</summary>
-	Api,
-
-	/// <summary>The server's own connection for BasilBot; no client is behind it.</summary>
-	Bot
 }

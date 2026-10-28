@@ -30,7 +30,7 @@ public abstract class Scoped<TPermissions, TActor>(TActor by, TPermissions permi
 	public TActor By { get; } = by;
 
 	/// <summary>Gets the permissions the connection held when the scope was created.</summary>
-	public TPermissions Permissions { get; } = permissions;
+	public TPermissions Rights { get; } = permissions;
 
 	/// <summary>Checks whether the connection holds the right an action needs.</summary>
 	/// <param name="required">The right the action needs.</param>
@@ -40,7 +40,7 @@ public abstract class Scoped<TPermissions, TActor>(TActor by, TPermissions permi
 	/// </returns>
 	protected TPermissions? Require(TPermissions required)
 	{
-		var held = Convert.ToInt64(Permissions);
+		var held = Convert.ToInt64(Rights);
 		var needed = Convert.ToInt64(required);
 
 		if (!IsFlagsEnum)

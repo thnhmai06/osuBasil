@@ -131,6 +131,13 @@ internal sealed class InMemoryRestrictionRepository : IRestrictionRepository
 		return Task.CompletedTask;
 	}
 
+	public Task DeleteAsync(UserRestriction restriction, CancellationToken cancellationToken = default)
+	{
+		cancellationToken.ThrowIfCancellationRequested();
+		GetFor(restriction.Value.User).RemoveAll(item => item.Id == restriction.Id);
+		return Task.CompletedTask;
+	}
+
 	public ValueTask<UserRestriction?> GetAsync(int id, CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
@@ -176,26 +183,132 @@ internal sealed class InMemoryRestrictionRepository : IRestrictionRepository
 	}
 }
 
-internal sealed class InMemoryLoginRepository : ILoginRepository
+internal sealed class InMemorySessionRepository : ISessionRepository
 {
-	private readonly List<LoginEntry> _entries = [];
+	private readonly List<SessionEntry> _entries = [];
+	private readonly Dictionary<Guid, (byte[]? Hash, DateTimeOffset? ExpiresAt)> _tokens = [];
 
-	public IReadOnlyList<LoginEntry> Entries => _entries;
+	public IReadOnlyList<SessionEntry> Entries => _entries;
 
-	public Task RecordAsync(Login login, CancellationToken cancellationToken = default)
+	public Task RecordAsync(Session login, CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
-		_entries.Add(new LoginEntry(login.User, login.Ip, login.Timestamp));
+		_entries.Add(ToEntry(login));
+		_tokens[login.Id] = (login.TokenHash, login.ExpiresAt);
 		return Task.CompletedTask;
 	}
 
-	public ValueTask<Page<LoginEntry>> ListAsync(UserRecord user, PageRequest page,
+	public Task UpdateAsync(Session session)
+	{
+		var index = _entries.FindIndex(entry => entry.Id == session.Id);
+		if (index >= 0)
+		{
+			_entries[index] = ToEntry(session);
+			_tokens[session.Id] = (session.TokenHash, session.ExpiresAt);
+		}
+
+		return Task.CompletedTask;
+	}
+
+	public ValueTask<Page<SessionEntry>> ListAsync(UserRecord user, SessionFilter filter, PageRequest page,
 		CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
-		var entries = _entries.Where(entry => entry.User.Equals(user)).Reverse().ToList();
-		return ValueTask.FromResult(new Page<LoginEntry>(entries.Skip(page.Offset).Take(page.Limit).ToList(),
+		var entries = _entries.Where(entry => entry.User.Equals(user) &&
+		                                      (filter.Types is null || filter.Types.Contains(entry.Type)) &&
+		                                      filter.State switch
+		                                      {
+			                                      SessionState.Active => IsActive(entry, filter.Now),
+			                                      SessionState.Ended => !IsActive(entry, filter.Now),
+			                                      _ => true
+		                                      }).Reverse().ToList();
+		return ValueTask.FromResult(new Page<SessionEntry>(entries.Skip(page.Offset).Take(page.Limit).ToList(),
 			entries.Count));
+	}
+
+	public Task<SessionEntry?> GetAsync(UserRecord user, Guid id, CancellationToken cancellationToken = default)
+	{
+		return Task.FromResult(_entries.FirstOrDefault(entry => entry.Id == id && entry.User.Equals(user)));
+	}
+
+	public Task<StoredSession?> FindByTokenAsync(ConnectionType type, byte[] tokenHash, DateTimeOffset now,
+		CancellationToken cancellationToken = default)
+	{
+		var found = _entries.FirstOrDefault(entry => entry.Type == type && entry.EndedAt is null &&
+		                                             _tokens.GetValueOrDefault(entry.Id) is { Hash: { } hash } token &&
+		                                             hash.AsSpan().SequenceEqual(tokenHash) &&
+		                                             (token.ExpiresAt is null || token.ExpiresAt > now));
+		return Task.FromResult(found is null
+			? null
+			: new StoredSession(found.Id, found.User.Id, found.Type, found.Ip, found.ClientInfo, found.StartedAt,
+				_tokens[found.Id].ExpiresAt));
+	}
+
+	public Task EndAsync(UserRecord user, Guid? only, Guid? except, IReadOnlyList<ConnectionType> types,
+		DateTimeOffset at, SessionEndReason reason, bool requireReauthentication,
+		CancellationToken cancellationToken = default)
+	{
+		for (var index = 0; index < _entries.Count; index++)
+		{
+			var entry = _entries[index];
+			if (!entry.User.Equals(user) || !types.Contains(entry.Type) || (only is not null && entry.Id != only) ||
+			    entry.Id == except)
+				continue;
+
+			_entries[index] = entry with
+			{
+				EndedAt = entry.EndedAt ?? at,
+				EndReason = entry.EndReason ?? (entry.EndedAt is null ? reason : null),
+				MustReauthenticate = entry.MustReauthenticate ||
+				                     (requireReauthentication && entry.Type is ConnectionType.Osu or ConnectionType.Tourney)
+			};
+		}
+
+		return Task.CompletedTask;
+	}
+
+	public Task WriteActivityAsync(IReadOnlyCollection<SessionActivity> activity,
+		CancellationToken cancellationToken = default)
+	{
+		foreach (var item in activity)
+		{
+			var index = _entries.FindIndex(entry => entry.Id == item.Id && entry.EndedAt is null);
+			if (index < 0) continue;
+
+			_entries[index] = _entries[index] with { LastActiveAt = item.LastActiveAt };
+			_tokens[item.Id] = (_tokens[item.Id].Hash, item.ExpiresAt);
+		}
+
+		return Task.CompletedTask;
+	}
+
+	public Task<bool> TakeReauthenticationAsync(UserRecord user, DeviceId device,
+		CancellationToken cancellationToken = default)
+	{
+		var index = _entries.FindIndex(entry => entry.User.Equals(user) && entry.MustReauthenticate);
+		if (index < 0) return Task.FromResult(false);
+
+		_entries[index] = _entries[index] with { MustReauthenticate = false };
+		return Task.FromResult(true);
+	}
+
+	/// <summary>Reads the stored expiry of a session's token.</summary>
+	/// <param name="id">The session.</param>
+	/// <returns>When the token expires, or <see langword="null" /> if it has no expiry.</returns>
+	public DateTimeOffset? ExpiryOf(Guid id)
+	{
+		return _tokens.GetValueOrDefault(id).ExpiresAt;
+	}
+
+	private bool IsActive(SessionEntry entry, DateTimeOffset now)
+	{
+		return entry.EndedAt is null && (ExpiryOf(entry.Id) is not { } expiresAt || expiresAt > now);
+	}
+
+	private static SessionEntry ToEntry(Session session)
+	{
+		return new SessionEntry(session.Id, session.User, session.Type, session.Ip, session.ClientInfo,
+			session.StartedAt, session.LastActiveAt, session.EndedAt, session.EndReason, session.MustReauthenticate);
 	}
 }
 
@@ -362,6 +475,8 @@ internal sealed class InMemoryMatchEventRepository : IMatchEventRepository
 internal sealed class InMemorySettingsRepository : ISettingsRepository
 {
 	private ServerSettings _settings = new();
+
+	public ServerSettings Current => _settings;
 
 	public ValueTask<ServerSettings> GetAsync(CancellationToken cancellationToken = default)
 	{

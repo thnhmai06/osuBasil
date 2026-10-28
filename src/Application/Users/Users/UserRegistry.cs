@@ -2,6 +2,8 @@ using System.Buffers.Text;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Security.Cryptography;
+using System.Text;
+using Basil.Application.Auth.Persistence;
 using Basil.Application.Users.Capabilities;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Connections;
@@ -24,6 +26,7 @@ public sealed class UserRegistry
 	private readonly AccountService _accounts;
 	private readonly ConcurrentDictionary<string, Connection> _connections = new(StringComparer.Ordinal);
 	private readonly UserContext _context;
+	private readonly ConcurrentDictionary<Guid, Session> _activity = new();
 	private readonly ConcurrentDictionary<UserRecord, User> _online = new();
 	private readonly ConnectionContext _connectionContext;
 	private readonly Lock _sync = new(); // ponytail: one lock for all logins; per-user locks if login rate ever matters
@@ -117,7 +120,7 @@ public sealed class UserRegistry
 		{
 			case ConnectionType.Bot:
 				throw new ArgumentException("The bot's connection cannot be requested.", nameof(type));
-			case ConnectionType.Bancho or ConnectionType.Tourney when client is null:
+			case ConnectionType.Osu or ConnectionType.Tourney when client is null:
 				throw new ArgumentNullException(nameof(client), "An osu! client login must report its client.");
 		}
 
@@ -125,25 +128,124 @@ public sealed class UserRegistry
 		if (failure is { } loginFailure) return LoginResult.Fail(loginFailure);
 		if (record is null) return LoginResult.Fail(LoginFailure.UnknownUser);
 
-		var now = _context.Clock.GetUtcNow();
-		var restrictions = (await _context.Restrictions.ListAsync(record, cancellationToken))
-			.Where(restriction => restriction.Value.EndsAt is null || restriction.Value.EndsAt > now)
-			.ToList();
-		var login = new Login { User = record, Ip = ip, Client = client, Timestamp = now };
-		var token = NewToken();
-		Connection connection = type switch
-		{
-			ConnectionType.Bancho => new BanchoConnection(login, token, utcOffset, _connectionContext),
-			ConnectionType.Tourney => new TourneyConnection(login, token),
-			ConnectionType.Irc => new IrcConnection(login, token),
-			_ => new ApiConnection(login, token)
-		};
+		if (client is not null && await _context.Sessions.TakeReauthenticationAsync(record,
+			    new DeviceId(client.Fingerprint.UninstallHash.HashValue, client.Fingerprint.DiskSignatureHash.HashValue),
+			    cancellationToken))
+			return LoginResult.Fail(LoginFailure.PasswordResetRequired);
 
-		var openFailure = Open(connection, restrictions);
+		var now = _context.Clock.GetUtcNow();
+		var lifetime = (await _context.Settings.GetAsync(cancellationToken)).Sessions.ApiToken.Lifetime;
+		var token = NewToken();
+		var session = new Session
+		{
+			Id = Guid.NewGuid(),
+			User = record,
+			Type = type,
+			Ip = ip,
+			Client = client,
+			StartedAt = now,
+			TokenHash = type is ConnectionType.Api ? HashToken(token) : null,
+			ExpiresAt = type is ConnectionType.Api ? now + lifetime : null
+		};
+		var connection = NewConnection(session, token, utcOffset, lifetime);
+
+		var openFailure = Open(connection, await ActiveRestrictionsAsync(record, cancellationToken));
 		if (openFailure is not null) return LoginResult.Fail(openFailure.Value);
 
-		await _context.Logins.RecordAsync(login, cancellationToken);
+		_ = _context.Sessions.RecordAsync(session, CancellationToken.None);
 		return LoginResult.Success(connection);
+	}
+
+	/// <summary>Opens a connection for the HTTP API token or IRC key a client presents.</summary>
+	/// <param name="type">The kind of client: <see cref="ConnectionType.Api" /> or <see cref="ConnectionType.Irc" />.</param>
+	/// <param name="token">The token or key the client presented.</param>
+	/// <param name="ip">The IP address the client came from.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The connection the token opens, or why none could be opened.</returns>
+	/// <remarks>
+	///     A token that is not held by an open connection is verified against the stored sessions; only a valid one
+	///     is brought into memory. A token whose session has ended or expired opens nothing. Using an API token renews
+	///     its expiry.
+	/// </remarks>
+	/// <exception cref="ArgumentException"><paramref name="type" /> is not Api or Irc.</exception>
+	public async Task<LoginResult> LoginWithTokenAsync(ConnectionType type, string token, IPAddress ip,
+		CancellationToken cancellationToken = default)
+	{
+		if (type is not (ConnectionType.Api or ConnectionType.Irc))
+			throw new ArgumentException("Only an API token or an IRC key opens a connection.", nameof(type));
+
+		var now = _context.Clock.GetUtcNow();
+		if (_connections.GetValueOrDefault(token) is { IsOpen: true } open && open.Type == type)
+		{
+			if (open.Session.ExpiresAt <= now)
+			{
+				Close(open, SessionEndReason.TimedOut);
+				return LoginResult.Fail(LoginFailure.InvalidToken);
+			}
+
+			MarkActive(open);
+			return LoginResult.Success(open);
+		}
+
+		var stored = await _context.Sessions.FindByTokenAsync(type, HashToken(token), now, cancellationToken);
+		var record = stored is null ? null : await _context.Users.GetAsync(stored.UserId, cancellationToken);
+		if (stored is null || record is null) return LoginResult.Fail(LoginFailure.InvalidToken);
+		if (record.Value.DeletedAt is not null) return LoginResult.Fail(LoginFailure.AccountDeleted);
+
+		var lifetime = (await _context.Settings.GetAsync(cancellationToken)).Sessions.ApiToken.Lifetime;
+		var session = new Session
+		{
+			Id = stored.Id,
+			User = record,
+			Type = type,
+			Ip = ip,
+			ClientInfo = stored.ClientInfo,
+			StartedAt = stored.StartedAt,
+			TokenHash = HashToken(token),
+			ExpiresAt = stored.ExpiresAt
+		};
+		var connection = NewConnection(session, token, 0, lifetime);
+
+		var restrictions = await ActiveRestrictionsAsync(record, cancellationToken);
+		using (Enter())
+		{
+			// Another request may have brought the same token in while this one read the database.
+			if (_connections.GetValueOrDefault(token) is { IsOpen: true } raced) return LoginResult.Success(raced);
+
+			var failure = Open(connection, restrictions);
+			if (failure is not null) return LoginResult.Fail(failure.Value);
+		}
+
+		MarkActive(connection);
+		return LoginResult.Success(connection);
+	}
+
+	private Connection NewConnection(Session session, string token, int utcOffset, TimeSpan lifetime)
+	{
+		return session.Type switch
+		{
+			ConnectionType.Osu => new BanchoConnection(session, token, utcOffset, _connectionContext),
+			ConnectionType.Tourney => new TourneyConnection(session, token),
+			ConnectionType.Irc => new IrcConnection(session, token),
+			_ => new ApiConnection(session, token, lifetime)
+		};
+	}
+
+	private async Task<List<UserRestriction>> ActiveRestrictionsAsync(UserRecord record,
+		CancellationToken cancellationToken)
+	{
+		var now = _context.Clock.GetUtcNow();
+		return (await _context.Restrictions.ListAsync(record, cancellationToken))
+			.Where(restriction => restriction.Value.EndsAt is null || restriction.Value.EndsAt > now)
+			.ToList();
+	}
+
+	/// <summary>Creates the stored form of a token or key.</summary>
+	/// <param name="token">The token or key.</param>
+	/// <returns>The SHA-256 hash of the token.</returns>
+	internal static byte[] HashToken(string token)
+	{
+		return SHA256.HashData(Encoding.UTF8.GetBytes(token));
 	}
 
 	/// <summary>Checks a registration attempt without creating the account.</summary>
@@ -179,10 +281,10 @@ public sealed class UserRegistry
 	///     This system operation needs no rights because the server itself calls it. An osu! client's logout within one
 	///     second of login is ignored. Closing an already closed connection does nothing.
 	/// </remarks>
-	public void Close(Connection connection, ConnectionCloseReason reason)
+	public void Close(Connection connection, SessionEndReason reason)
 	{
-		if (reason is ConnectionCloseReason.LoggedOut && connection is BanchoConnection &&
-		    _context.Clock.GetUtcNow() - connection.Login.Timestamp < IgnoreLogoutWithin)
+		if (reason is SessionEndReason.LoggedOut && connection is BanchoConnection &&
+		    _context.Clock.GetUtcNow() - connection.Session.StartedAt < IgnoreLogoutWithin)
 			return;
 
 		using var scope = Enter();
@@ -195,7 +297,12 @@ public sealed class UserRegistry
 	public void MarkActive(Connection connection)
 	{
 		if (connection.IsOpen)
-			connection.LastActiveAt = _context.Clock.GetUtcNow();
+		{
+			var now = _context.Clock.GetUtcNow();
+			connection.LastActiveAt = now;
+			if (connection is ApiConnection api) api.Session.ExtendExpiry(now, api.TokenLifetime);
+			if (connection.Session.TokenHash is not null) _activity[connection.Session.Id] = connection.Session;
+		}
 	}
 
 	/// <summary>Closes every connection that has sent nothing for too long.</summary>
@@ -214,7 +321,7 @@ public sealed class UserRegistry
 			.ToList();
 
 		foreach (var connection in idleConnections)
-			Close(connection, ConnectionCloseReason.TimedOut);
+			Close(connection, SessionEndReason.TimedOut);
 
 		return idleConnections.Count;
 	}
@@ -242,7 +349,7 @@ public sealed class UserRegistry
 		var stored = await _context.Users.GetAsync(BasilBot.Id, cancellationToken);
 		var isBot = stored is { Value: { DeletedAt: null, Permissions: UserPermissions.None } };
 
-		if (!isBot && stored is not null) CloseAll(stored, ConnectionCloseReason.Revoked);
+		if (!isBot && stored is not null) CloseAll(stored, SessionEndReason.Revoked);
 
 		var bot = isBot
 			? stored!
@@ -279,7 +386,14 @@ public sealed class UserRegistry
 		var online = _online.GetValueOrDefault(user);
 		if (online?.Bot is { IsOpen: true } connection) return connection;
 
-		var login = new Login { User = user, Ip = IPAddress.Loopback, Timestamp = _context.Clock.GetUtcNow() };
+		var login = new Session
+		{
+			Id = Guid.NewGuid(),
+			User = user,
+			Type = ConnectionType.Bot,
+			Ip = IPAddress.Loopback,
+			StartedAt = _context.Clock.GetUtcNow()
+		};
 		var bot = new BotConnection(login, NewToken());
 		return Open(bot, []) is null ? bot : null;
 	}
@@ -312,7 +426,7 @@ public sealed class UserRegistry
 			if (_context.Clock.GetUtcNow() - old.LastActiveAt < ReplaceAfterIdle)
 				return LoginFailure.AlreadyOnline;
 
-			CloseCore(old, ConnectionCloseReason.Replaced);
+			CloseCore(old, SessionEndReason.Replaced);
 			user = _online.GetValueOrDefault(connection.Record);
 		}
 
@@ -320,7 +434,7 @@ public sealed class UserRegistry
 		user ??= Of(connection.Record);
 		if (cameOnline) Add(user);
 
-		user.ReplaceRestrictions(restrictions);
+		user.Restrictions.Replace(restrictions);
 		connection.User = user;
 		user.Add(connection);
 		connection.IsOpen = true;
@@ -342,13 +456,37 @@ public sealed class UserRegistry
 	/// <summary>Closes every open connection of a user.</summary>
 	/// <param name="user">The user whose connections are closed.</param>
 	/// <param name="reason">Why they are closed.</param>
-	internal void CloseAll(UserRecord user, ConnectionCloseReason reason)
+	/// <param name="except">A session whose connection stays open, or <see langword="null" /> to keep none.</param>
+	/// <param name="requireReauthentication">Whether the devices of the closed osu! clients must enter their password again.</param>
+	/// <param name="only">The one session to close, or <see langword="null" /> to close every session.</param>
+	internal void CloseAll(UserRecord user, SessionEndReason reason, Guid? except = null,
+		bool requireReauthentication = false, Guid? only = null)
 	{
 		var online = _online.GetValueOrDefault(user);
 		if (online is null) return;
 
-		foreach (var connection in online.Connections.Where(connection => connection.IsOpen).ToList())
+		foreach (var connection in online.Connections
+			         .Where(connection => connection.IsOpen && connection.Session.Id != except &&
+			                              (only is null || connection.Session.Id == only)).ToList())
+		{
+			if (requireReauthentication && connection.Type is ConnectionType.Osu or ConnectionType.Tourney)
+				connection.Session.RequireReauthentication();
+
 			Close(connection, reason);
+		}
+	}
+
+	/// <summary>Stores the activity of the token sessions that were used since the last time.</summary>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <remarks>Run regularly instead of storing each request.</remarks>
+	public async Task FlushActivityAsync(CancellationToken cancellationToken = default)
+	{
+		var batch = new List<SessionActivity>();
+		foreach (var id in _activity.Keys)
+			if (_activity.TryRemove(id, out var session))
+				batch.Add(new SessionActivity(session.Id, session.LastActiveAt, session.ExpiresAt));
+
+		await _context.Sessions.WriteActivityAsync(batch, cancellationToken);
 	}
 
 	/// <summary>Closes connections of kinds the user may no longer use.</summary>
@@ -358,7 +496,7 @@ public sealed class UserRegistry
 		if (user.EffectivePermissions(_context.Clock.GetUtcNow()).Allows(UserPermissions.RoomObserve)) return;
 
 		foreach (var connection in user.Tourneys.Where(connection => connection.IsOpen).ToList())
-			Close(connection, ConnectionCloseReason.Revoked);
+			Close(connection, SessionEndReason.Revoked);
 	}
 
 	internal void Add(User user)
@@ -386,10 +524,15 @@ public sealed class UserRegistry
 		return _sync.EnterScope();
 	}
 
-	private void CloseCore(Connection connection, ConnectionCloseReason reason)
+	private void CloseCore(Connection connection, SessionEndReason reason)
 	{
 		if (!connection.IsOpen) return;
 
+		// A token or key outlives its connection: only revoking it, or logging out of the API, ends the session.
+		if (connection.Session.TokenHash is null || EndsToken(connection.Type, reason))
+			connection.Session.End(_context.Clock.GetUtcNow(), reason);
+		_ = _context.Sessions.UpdateAsync(connection.Session);
+		_activity.TryRemove(connection.Session.Id, out _);
 		connection.IsOpen = false;
 		Unindex(connection);
 		connection.User.Remove(connection);
@@ -400,6 +543,12 @@ public sealed class UserRegistry
 		if (wentOffline) Remove(connection.User);
 
 		_context.Events.Publish(new UserConnectionClosed(connection, reason, wentOffline));
+	}
+
+	private static bool EndsToken(ConnectionType type, SessionEndReason reason)
+	{
+		return reason is SessionEndReason.Revoked or SessionEndReason.CredentialsChanged or SessionEndReason.Deleted ||
+		       (reason is SessionEndReason.LoggedOut && type is ConnectionType.Api);
 	}
 
 	internal Task<(UserRecord? User, RegistrationFailure? Failure)> CreateAccountAsync(UserData data,

@@ -60,5 +60,14 @@ public enum ModerationAction : byte
 	Note = 2,
 
 	/// <summary>The login history of a user was read.</summary>
-	ViewLogins = 3
+	ViewLogins = 3,
+
+	/// <summary>A restriction was removed from a user's history.</summary>
+	Delete = 4,
+
+	/// <summary>A user's sessions were closed by a moderator.</summary>
+	CloseSessions = 5,
+
+	/// <summary>A user's password was changed by a moderator.</summary>
+	ChangePassword = 6
 }

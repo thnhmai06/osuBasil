@@ -9,7 +9,7 @@ public class UserPermissionsTests
 	{
 		var now = DateTimeOffset.UnixEpoch;
 		var granted = UserPermissionsGroups.Default | UserPermissions.RoomManageAny |
-		              UserPermissions.RoomCreateUnlimited;
+		              UserPermissions.RoomManageCreateUnlimited;
 		var user = new UserRecord { Id = 1, Value = new UserData { Name = "manager", Permissions = granted } };
 		var restriction = new UserRestriction
 		{
@@ -41,11 +41,11 @@ public class UserPermissionsTests
 
 	[Theory]
 	[InlineData(UserPermissions.RoomObserve, UserPermissions.SpectatingWatch)]
-	[InlineData(UserPermissions.RoomManageAny, UserPermissions.RoomViewPrivate)]
-	[InlineData(UserPermissions.BeatmapsetManage, UserPermissions.BeatmapsetViewHidden)]
-	[InlineData(UserPermissions.UserSilence, UserPermissions.UserNote)]
-	[InlineData(UserPermissions.UserRestrict, UserPermissions.UserSilence)]
-	[InlineData(UserPermissions.UserManage, UserPermissions.UserViewDeleted)]
+	[InlineData(UserPermissions.RoomManageAny, UserPermissions.RoomManageViewPrivate)]
+	[InlineData(UserPermissions.BeatmapsetManage, UserPermissions.BeatmapsetManageViewHidden)]
+	[InlineData(UserPermissions.UserManageSilence, UserPermissions.UserManageNote)]
+	[InlineData(UserPermissions.UserManageRestrict, UserPermissions.UserManageSilence)]
+	[InlineData(UserPermissions.UserManage, UserPermissions.UserManageViewDeleted)]
 	public void LargerPermission_ContainsTheSmallerOne(UserPermissions larger, UserPermissions smaller)
 	{
 		Assert.True(larger.Allows(smaller));

@@ -20,11 +20,11 @@ public sealed class ScopedServerChannels
 	/// <param name="record">The channel to create.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome; NameTaken when a channel with that name is already open.</returns>
-	/// <remarks>Requires <see cref="UserPermissions.ServerConfigure" />.</remarks>
+	/// <remarks>Requires <see cref="UserPermissions.ChatManageChannels" />.</remarks>
 	public async Task<Result<ServerOutcome>> CreateAsync(GeneralChannelRecord record,
 		CancellationToken cancellationToken = default)
 	{
-		if (_scoped.Needs(UserPermissions.ServerConfigure) is { } missing) return Result<ServerOutcome>.Denied(missing);
+		if (_scoped.Needs(UserPermissions.ChatManageChannels) is { } missing) return Result<ServerOutcome>.Denied(missing);
 
 		var chat = _scoped.Server.Context.Chat;
 		if (_scoped.Server.OpenChannel(record) is null) return ServerOutcome.NameTaken;

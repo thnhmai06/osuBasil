@@ -104,6 +104,50 @@ public sealed class BeatmapsetsImportTests
 		Assert.False(result.Set.IsLocallyIngested);
 	}
 
+	[Theory]
+	[InlineData(0)]
+	[InlineData(-5)]
+	public async Task ImportAsync_WithADeclaredSetIdThatIsNotPositive_GivesTheNewSetALocalId(int declared)
+	{
+		var world = new BeatmapsetWorld();
+		using var app = world.CreateApplication();
+
+		var result = await ImportAsync(app, Osz.Build(declared, Easy));
+
+		Assert.Null(result.Failure);
+		Assert.True(result.Set!.IsLocallyIngested);
+	}
+
+	[Fact]
+	public async Task ImportAsync_WithoutReplacing_RejectsTheArchiveOfAStoredSetAndKeepsTheStoredOne()
+	{
+		var world = new BeatmapsetWorld();
+		using var app = world.CreateApplication();
+		var first = await ImportAsync(app, Osz.Build(100, Easy));
+
+		var again = await app.Beatmapsets.ImportAsync(new MemoryStream(Osz.Build(100, Easy, Hard)), false,
+			TestContext.Current.CancellationToken);
+
+		Assert.Equal(BeatmapsetImportFailure.AlreadyExists, again.Failure);
+		Assert.Null(again.Set);
+		var stored = Assert.Single(world.Sets.Records.Values);
+		Assert.Equal(first.Set, stored);
+		Assert.Single(world.Beatmaps.Records);
+	}
+
+	[Fact]
+	public async Task ImportAsync_WithoutReplacing_StoresAnArchiveOfANewSet()
+	{
+		var world = new BeatmapsetWorld();
+		using var app = world.CreateApplication();
+
+		var result = await app.Beatmapsets.ImportAsync(new MemoryStream(Osz.Build(100, Easy)), false,
+			TestContext.Current.CancellationToken);
+
+		Assert.Null(result.Failure);
+		Assert.Equal(100, result.Set!.Id);
+	}
+
 	[Fact]
 	public async Task ImportAsync_WithoutADeclaredSetId_GivesTheNewSetALocalId()
 	{

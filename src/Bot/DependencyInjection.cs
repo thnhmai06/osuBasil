@@ -41,6 +41,7 @@ public static class DependencyInjection
 		AddRoomAnnouncer<RoomRoundStarted>(services);
 		AddRoomAnnouncer<RoomRoundAborted>(services);
 		AddRoomAnnouncer<RoomRoundDecided>(services);
+		AddRoomAnnouncer<RoomRoundEnded>(services);
 		AddRoomAnnouncer<RoomCountdownStarted>(services);
 		AddRoomAnnouncer<RoomCountdownTicked>(services);
 		AddRoomAnnouncer<RoomCountdownElapsed>(services);

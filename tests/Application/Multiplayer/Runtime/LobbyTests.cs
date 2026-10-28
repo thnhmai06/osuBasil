@@ -1,5 +1,6 @@
 using Basil.Application.Users.Connections;
 using Basil.Application.Multiplayer.Runtime.Events;
+using Basil.Domain.Auth;
 using Basil.Domain.Users;
 using Basil.Testing;
 
@@ -148,7 +149,7 @@ public sealed class LobbyTests
 	private static async Task RestrictRoomJoinAsync(TestApplication app, UserRecord target)
 	{
 		var moderator = await app.CreateUserAsync("Moderator", "password",
-			UserPermissionsGroups.Default | UserPermissions.UserRestrict);
+			UserPermissionsGroups.Default | UserPermissions.UserManageRestrict);
 		var by = await app.LoginAsync(moderator);
 		var (result, _) = await app.Users.Of(target).ScopeTo(by).Restrictions.RestrictAsync(
 			UserPermissions.RoomJoin, null, cancellationToken: TestContext.Current.CancellationToken);

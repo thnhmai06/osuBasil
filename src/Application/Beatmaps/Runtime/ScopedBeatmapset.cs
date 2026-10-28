@@ -1,4 +1,5 @@
 using Basil.Application.Common;
+using Basil.Domain.Beatmaps;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Beatmaps.Runtime;
@@ -57,6 +58,21 @@ public sealed class ScopedBeatmapset : Scoped<UserPermissions>
 		if (Beatmapset.Record.Locked == locked) return BeatmapsetOutcome.Ok;
 
 		Beatmapset.Record.Locked = locked;
+		await Beatmapset.Context.Repository.UpdateAsync(Beatmapset.Record, cancellationToken);
+		return BeatmapsetOutcome.Ok;
+	}
+
+	/// <summary>Changes the ranked status the beatmapset is reported with.</summary>
+	/// <param name="status">The new status.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The outcome of changing the beatmapset's status.</returns>
+	public async Task<Result<BeatmapsetOutcome>> SetStatusAsync(BeatmapsetStatus status,
+		CancellationToken cancellationToken = default)
+	{
+		if (Require(UserPermissions.BeatmapsetManage) is { } missing) return Result<BeatmapsetOutcome>.Denied(missing);
+		if (Beatmapset.Record.Status == status) return BeatmapsetOutcome.Ok;
+
+		Beatmapset.Record.Status = status;
 		await Beatmapset.Context.Repository.UpdateAsync(Beatmapset.Record, cancellationToken);
 		return BeatmapsetOutcome.Ok;
 	}

@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Basil.Infrastructure.Users.Runtime;
 
-/// <summary>Closes idle connections every 100 seconds.</summary>
+/// <summary>Closes idle connections and stores the activity of token sessions every 100 seconds.</summary>
 internal sealed class IdleConnectionSweeper(
 	UserRegistry registry,
 	TimeProvider time,
@@ -18,6 +18,7 @@ internal sealed class IdleConnectionSweeper(
 			{
 				var closed = registry.CloseIdle();
 				if (closed > 0) logger.LogDebug("Closed {ConnectionCount} idle connections", closed);
+				await registry.FlushActivityAsync(stoppingToken);
 			}
 			catch (Exception exception)
 			{

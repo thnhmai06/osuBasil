@@ -1,5 +1,6 @@
 using Basil.Application.Users.Connections;
 using Basil.Application.Users.Users;
+using Basil.Domain.Auth;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Users.Runtime;
 
@@ -23,7 +24,7 @@ public sealed class IdleConnectionSweeperTests
 	/// <summary>A game, IRC or tournament connection is closed once it has sent nothing for 300 seconds.</summary>
 	/// <param name="type">The kind of connection.</param>
 	[Theory]
-	[InlineData(ConnectionType.Bancho)]
+	[InlineData(ConnectionType.Osu)]
 	[InlineData(ConnectionType.Irc)]
 	[InlineData(ConnectionType.Tourney)]
 	public async Task ExecuteAsync_ClosesAnIdleGameIrcOrTourneyConnection(ConnectionType type)
@@ -41,7 +42,7 @@ public sealed class IdleConnectionSweeperTests
 		await SweepUntilAsync(app, closed);
 
 		var @event = await closed;
-		Assert.Equal(ConnectionCloseReason.TimedOut, @event.Reason);
+		Assert.Equal(SessionEndReason.TimedOut, @event.Reason);
 		Assert.False(connection.IsOpen);
 	}
 
@@ -51,9 +52,9 @@ public sealed class IdleConnectionSweeperTests
 	{
 		using var app = new TestApplication();
 		var quietUser = await app.CreateUserAsync("Quiet", "password");
-		var quiet = await app.LoginAsync(quietUser, ConnectionType.Bancho);
+		var quiet = await app.LoginAsync(quietUser, ConnectionType.Osu);
 		var activeUser = await app.CreateUserAsync("Active", "password");
-		var active = await app.LoginAsync(activeUser, ConnectionType.Bancho);
+		var active = await app.LoginAsync(activeUser, ConnectionType.Osu);
 		app.Clock.Advance(TimeSpan.FromSeconds(301));
 		app.Users.MarkActive(active);
 		var quietClosed = NextCloseAsync(app, quiet);
@@ -64,16 +65,17 @@ public sealed class IdleConnectionSweeperTests
 		Assert.True(active.IsOpen);
 	}
 
-	/// <summary>An HTTP API connection is allowed to be quiet for two hours.</summary>
+	/// <summary>A recently active HTTP API connection remains open while an older client is swept.</summary>
 	[Fact]
-	public async Task ExecuteAsync_LeavesAnApiConnectionQuietForLessThanTwoHoursOpen()
+	public async Task ExecuteAsync_LeavesARecentlyActiveApiConnectionOpen()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Api", "password");
 		var connection = await app.LoginAsync(user);
 		var canaryUser = await app.CreateUserAsync("Canary", "password");
-		var canary = await app.LoginAsync(canaryUser, ConnectionType.Bancho);
+		var canary = await app.LoginAsync(canaryUser, ConnectionType.Osu);
 		app.Clock.Advance(TimeSpan.FromSeconds(301));
+		app.Users.MarkActive(connection);
 		var canaryClosed = NextCloseAsync(app, canary);
 		using var running = await StartAsync(app);
 
@@ -82,14 +84,14 @@ public sealed class IdleConnectionSweeperTests
 		Assert.True(connection.IsOpen);
 	}
 
-	/// <summary>An HTTP API connection is closed once it has been quiet for more than two hours.</summary>
+	/// <summary>An HTTP API connection closes once it has been quiet for more than 300 seconds.</summary>
 	[Fact]
-	public async Task ExecuteAsync_ClosesAnApiConnectionQuietForMoreThanTwoHours()
+	public async Task ExecuteAsync_ClosesAnApiConnectionQuietForMoreThan300Seconds()
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Api", "password");
 		var connection = await app.LoginAsync(user);
-		app.Clock.Advance(TimeSpan.FromHours(2) + TimeSpan.FromSeconds(1));
+		app.Clock.Advance(TimeSpan.FromSeconds(301));
 		var closed = NextCloseAsync(app, connection);
 		using var running = await StartAsync(app);
 
@@ -107,7 +109,7 @@ public sealed class IdleConnectionSweeperTests
 		var bot = await app.Users.ConnectBotAsync(TestContext.Current.CancellationToken);
 		Assert.NotNull(bot);
 		var canaryUser = await app.CreateUserAsync("Canary", "password");
-		var canary = await app.LoginAsync(canaryUser, ConnectionType.Bancho);
+		var canary = await app.LoginAsync(canaryUser, ConnectionType.Osu);
 		app.Clock.Advance(TimeSpan.FromHours(3));
 		var canaryClosed = NextCloseAsync(app, canary);
 		using var running = await StartAsync(app);
@@ -123,13 +125,13 @@ public sealed class IdleConnectionSweeperTests
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Once", "password");
-		var first = await app.LoginAsync(user, ConnectionType.Bancho);
+		var first = await app.LoginAsync(user, ConnectionType.Osu);
 		var firstClosed = NextCloseAsync(app, first);
 		using var running = await StartAsync(app);
 		await SweepUntilAsync(app, firstClosed);
 
 		var laterUser = await app.CreateUserAsync("Later", "password");
-		var later = await app.LoginAsync(laterUser, ConnectionType.Bancho);
+		var later = await app.LoginAsync(laterUser, ConnectionType.Osu);
 		var laterClosed = NextCloseAsync(app, later);
 		await SweepUntilAsync(app, laterClosed);
 

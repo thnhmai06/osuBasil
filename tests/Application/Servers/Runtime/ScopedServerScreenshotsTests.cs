@@ -12,7 +12,7 @@ namespace Basil.Application.Servers.Tests.Runtime;
 /// <summary>
 ///     Behaviour of screenshot upload and deletion, from the XML contract of <see cref="ScopedServerScreenshots" />: an
 ///     upload needs <see cref="UserPermissions.ScreenshotUpload" />, is at most 4 MiB and a PNG or JPEG of at most
-///     8192 by 8192 pixels, told from content; a deletion needs <see cref="UserPermissions.ScreenshotDelete" />.
+///     8192 by 8192 pixels, told from content; a deletion needs <see cref="UserPermissions.ScreenshotManage" />.
 /// </summary>
 public sealed class ScopedServerScreenshotsTests
 {
@@ -86,7 +86,7 @@ public sealed class ScopedServerScreenshotsTests
 		using var f = new Fixture();
 		f.InspectedAs(new ScreenshotInfo("png", 100, 100));
 		var screenshots = await f.ScreenshotsOfAsync(
-			(UserPermissionsGroups.Default & ~UserPermissions.ScreenshotUpload) | UserPermissions.ScreenshotDelete);
+			(UserPermissionsGroups.Default & ~UserPermissions.ScreenshotUpload) | UserPermissions.ScreenshotManage);
 
 		var (_, result) = await screenshots.UploadAsync(Bytes(10), TestContext.Current.CancellationToken);
 
@@ -305,7 +305,7 @@ public sealed class ScopedServerScreenshotsTests
 	public async Task DeleteAsync_WithScreenshotDelete_IsOkAndRemovesTheScreenshot()
 	{
 		using var f = new Fixture();
-		var screenshots = await f.ScreenshotsOfAsync(UserPermissionsGroups.Default | UserPermissions.ScreenshotDelete);
+		var screenshots = await f.ScreenshotsOfAsync(UserPermissionsGroups.Default | UserPermissions.ScreenshotManage);
 
 		var result = await screenshots.DeleteAsync(Stored, TestContext.Current.CancellationToken);
 
@@ -317,12 +317,12 @@ public sealed class ScopedServerScreenshotsTests
 	public async Task DeleteAsync_WithoutScreenshotDelete_IsDeniedNamingItAndRemovesNothing()
 	{
 		using var f = new Fixture();
-		var screenshots = await f.ScreenshotsOfAsync(UserPermissionsGroups.Default & ~UserPermissions.ScreenshotDelete);
+		var screenshots = await f.ScreenshotsOfAsync(UserPermissionsGroups.Default & ~UserPermissions.ScreenshotManage);
 
 		var result = await screenshots.DeleteAsync(Stored, TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsOk);
-		Assert.Equal(UserPermissions.ScreenshotDelete, result.Missing);
+		Assert.Equal(UserPermissions.ScreenshotManage, result.Missing);
 		await f.Storage.DidNotReceiveWithAnyArgs().DeleteAsync(default);
 	}
 
@@ -331,11 +331,11 @@ public sealed class ScopedServerScreenshotsTests
 	{
 		using var f = new Fixture();
 		var screenshots = await f.ScreenshotsOfAsync(
-			(UserPermissionsGroups.Default & ~UserPermissions.ScreenshotDelete) | UserPermissions.ScreenshotUpload);
+			(UserPermissionsGroups.Default & ~UserPermissions.ScreenshotManage) | UserPermissions.ScreenshotUpload);
 
 		var result = await screenshots.DeleteAsync(Stored, TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserPermissions.ScreenshotDelete, result.Missing);
+		Assert.Equal(UserPermissions.ScreenshotManage, result.Missing);
 	}
 
 	[Fact]
@@ -343,13 +343,13 @@ public sealed class ScopedServerScreenshotsTests
 	{
 		using var f = new Fixture();
 		var user = await f.App.CreateUserAsync("NoDeleter", "password",
-			UserPermissionsGroups.Default | UserPermissions.ScreenshotDelete);
-		f.App.AddRestriction(user, UserPermissions.ScreenshotDelete);
+			UserPermissionsGroups.Default | UserPermissions.ScreenshotManage);
+		f.App.AddRestriction(user, UserPermissions.ScreenshotManage);
 		var screenshots = f.App.Server.ScopeTo(await f.App.LoginAsync(user)).Screenshots;
 
 		var result = await screenshots.DeleteAsync(Stored, TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserPermissions.ScreenshotDelete, result.Missing);
+		Assert.Equal(UserPermissions.ScreenshotManage, result.Missing);
 	}
 
 	#endregion

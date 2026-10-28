@@ -1,6 +1,7 @@
 using Basil.Application.Chat.Runtime;
 using Basil.Application.Users.Connections;
 using Basil.Application.Users.Users;
+using Basil.Domain.Auth;
 using Basil.Domain.Users;
 using Basil.Testing;
 
@@ -43,10 +44,10 @@ public sealed class PmChannelHandlerTests
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("StillHere", "password");
 		var irc = await app.LoginAsync(record, ConnectionType.Irc);
-		var bancho = await app.LoginAsync(record, ConnectionType.Bancho);
+		var bancho = await app.LoginAsync(record, ConnectionType.Osu);
 		var owner = app.Users.Of(record);
 		var channel = app.PmChannels.Of(owner);
-		app.Users.Close(irc, ConnectionCloseReason.ConnectionLost);
+		app.Users.Close(irc, SessionEndReason.ConnectionLost);
 		var closed = Assert.Single(app.UserEvents.Events.OfType<UserConnectionClosed>(),
 			@event => @event.Connection == irc);
 
@@ -66,7 +67,7 @@ public sealed class PmChannelHandlerTests
 		var connection = await app.LoginAsync(record, ConnectionType.Irc);
 		var owner = app.Users.Of(record);
 		var channel = app.PmChannels.Of(owner);
-		app.Users.Close(connection, ConnectionCloseReason.LoggedOut);
+		app.Users.Close(connection, SessionEndReason.LoggedOut);
 		var closed = Assert.Single(app.UserEvents.Events.OfType<UserConnectionClosed>(),
 			@event => @event.Connection == connection);
 

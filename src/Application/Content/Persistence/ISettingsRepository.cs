@@ -3,6 +3,9 @@ namespace Basil.Application.Content.Persistence;
 /// <summary>Stores the server-wide settings.</summary>
 public interface ISettingsRepository
 {
+	/// <summary>Gets the settings as they are now, read from memory.</summary>
+	ServerSettings Current { get; }
+
 	/// <summary>Gets the server-wide settings.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The stored settings, or settings with every value unset when none are stored. Never <see langword="null" />.</returns>

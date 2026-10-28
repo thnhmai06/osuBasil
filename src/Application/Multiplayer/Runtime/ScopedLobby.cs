@@ -30,7 +30,7 @@ public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
 	/// <param name="isTournament">Whether the room is a tournament room.</param>
 	/// <param name="isPrivate">
 	///     Whether the room is private: hidden from the lobby, with a match history that only its
-	///     participants, its managers and users with <see cref="UserPermissions.RoomViewPrivate" /> can view. Joining is not
+	///     participants, its managers and users with <see cref="UserPermissions.RoomManageViewPrivate" /> can view. Joining is not
 	///     affected.
 	/// </param>
 	/// <param name="settings">The room's initial settings, or <see langword="null" /> for the defaults.</param>
@@ -43,9 +43,9 @@ public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
 	///     A room that is not a tournament room is opened in game: the scoped connection's osu! client is seated as the first
 	///     host, and the call fails with AlreadyInRoom when that client already plays in a room. When a tournament room opens,
 	///     the creator's osu! client is seated as host if it is online, may join rooms and is not in any room. A creator
-	///     can have at most 4 tournament rooms open unless they hold <see cref="UserPermissions.RoomCreateUnlimited" />.
-	///     While room creation is locked (<see cref="ServerSettings.CreationLocks.Rooms" />), only a user with
-	///     <see cref="UserPermissions.RoomManageAny" /> may open a room; anyone else gets NotAuthorized.
+	///     can have at most 4 tournament rooms open unless they hold <see cref="UserPermissions.RoomManageCreateUnlimited" />.
+	///     While room creation is locked (<see cref="Locks.Rooms" />), only a user with
+	///     <see cref="UserPermissions.RoomManageAny" /> may open a room; anyone else gets Locked.
 	///     A tournament room opened with nobody seated closes after 15 minutes unless someone joins. Seating the creator
 	///     is reported by <see cref="LobbyRoomOpened" /> through its host.
 	/// </remarks>
@@ -68,13 +68,12 @@ public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
 		if (Require(required) is { } missingPermissions)
 			return (null, Result<RoomOutcome>.Denied(missingPermissions));
 
-		if ((await Lobby.Context.Settings.GetAsync(cancellationToken)).LockedCreation.HasFlag(ServerSettings
-			    .CreationLocks.Rooms) &&
-		    Require(UserPermissions.RoomManageAny) is { } missingManage)
-			return (null, Result<RoomOutcome>.Denied(missingManage));
+		if ((await Lobby.Context.Settings.GetAsync(cancellationToken)).Locks.HasFlag(Locks.Rooms) &&
+		    Require(UserPermissions.RoomManageAny) is not null)
+			return (null, RoomOutcome.Locked);
 
 		var creator = By.Record;
-		var limited = isTournament && Require(UserPermissions.RoomCreateUnlimited) is not null;
+		var limited = isTournament && Require(UserPermissions.RoomManageCreateUnlimited) is not null;
 		if (limited && Lobby.TooManyRooms(creator)) return (null, RoomOutcome.TooManyRooms);
 
 		// A room opened in game seats its creator; a tournament room seats the creator's osu! client when it may join.
@@ -112,7 +111,8 @@ public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
 		Room room;
 		using (Lobby.Enter())
 		{
-			var context = new RoomContext(Lobby.Context.Clock, Lobby.Context.RoomEvents, Lobby, Lobby.Context.Users);
+			var context = new RoomContext(Lobby.Context.Clock, Lobby.Context.RoomEvents, Lobby, Lobby.Context.Users,
+				Lobby.Context.Settings);
 			room = new Room(id, match, settings ?? new MatchSettings(), isTournament, context);
 			if (!string.IsNullOrEmpty(password)) room.Settings.Password = password;
 			if (seat is not null && Lobby.RoomOf(seat) is null && Lobby.TryClaim(seat, room))
@@ -140,7 +140,7 @@ public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>
 	///     <see langword="true" /> for a public match, and for a private one when the user holds
-	///     <see cref="UserPermissions.RoomViewPrivate" />, took part in the match, or manages it (its creator, or a referee
+	///     <see cref="UserPermissions.RoomManageViewPrivate" />, took part in the match, or manages it (its creator, or a referee
 	///     that is still one), or sits in or manages the match's open room. A suspended permission does not count.
 	/// </returns>
 	/// <remarks>
@@ -153,7 +153,7 @@ public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
 	{
 		ArgumentNullException.ThrowIfNull(match);
 		return !match.Value.IsPrivate
-		       || Require(UserPermissions.RoomViewPrivate) is null
+		       || Require(UserPermissions.RoomManageViewPrivate) is null
 		       || TakesPartInOpenRoom(match)
 		       || await Lobby.Context.Matches.IsVisibleToAsync(match, By.Record, cancellationToken);
 	}

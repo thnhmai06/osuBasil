@@ -1,3 +1,4 @@
+using Basil.Application.Beatmaps.Runtime;
 using Basil.Application.Content.Capabilities;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Persistence;
@@ -27,4 +28,6 @@ internal sealed record ServerContext(
 	IScreenshotStorage Screenshots,
 	Lobby Lobby,
 	IChannelRepository Channels,
-	IUserRepository Users);
+	IUserRepository Users,
+	Beatmapsets Beatmapsets,
+	ISettingsRepository Settings);

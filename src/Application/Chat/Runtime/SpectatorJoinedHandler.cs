@@ -1,3 +1,4 @@
+using Basil.Application.Users.Connections;
 using Basil.Application.Users.Users;
 using Mediator;
 
@@ -9,6 +10,9 @@ internal sealed class SpectatorJoinedHandler(SpectatorChannels channels) : INoti
 	/// <inheritdoc />
 	public ValueTask Handle(UserSpectatorJoined @event, CancellationToken cancellationToken)
 	{
+		// An HTTP API connection only watches: it takes no part in the spectator chat.
+		if (@event.Spectator is ApiConnection) return ValueTask.CompletedTask;
+
 		var channel = channels.Of(@event.Host);
 		channel.ScopeTo(@event.Spectator).Join();
 		if (!channel.Members.Contains(@event.Host))

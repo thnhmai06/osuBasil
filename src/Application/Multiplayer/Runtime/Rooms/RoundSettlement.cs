@@ -39,6 +39,9 @@ internal sealed class RoundSettlement
 	/// <summary>Whether any player took part.</summary>
 	internal bool HasParticipants => _participants.Count > 0;
 
+	/// <summary>Whether at least one player completed the round instead of leaving it.</summary>
+	internal bool HasCompletions => _completed.Count > 0;
+
 	/// <summary>Records that a player completed the round.</summary>
 	/// <param name="player">The player.</param>
 	internal void Complete(UserRecord player)

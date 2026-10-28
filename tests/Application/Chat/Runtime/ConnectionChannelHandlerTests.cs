@@ -1,5 +1,6 @@
 using Basil.Application.Chat.Runtime;
 using Basil.Application.Users.Users;
+using Basil.Domain.Auth;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
 using Basil.Testing;
@@ -38,7 +39,7 @@ public sealed class ConnectionChannelHandlerTests
 		var handler = Handler(app);
 		var player = await RoomFixture.PlayerAsync(app, "Chatter");
 		Assert.True(channel.ScopeTo(player).Join().IsOk);
-		app.Users.Close(player, ConnectionCloseReason.ConnectionLost);
+		app.Users.Close(player, SessionEndReason.ConnectionLost);
 		var closed = Assert.Single(app.UserEvents.Events.OfType<UserConnectionClosed>(),
 			@event => @event.Connection == player);
 

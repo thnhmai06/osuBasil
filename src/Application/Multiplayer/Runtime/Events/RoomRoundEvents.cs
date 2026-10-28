@@ -79,6 +79,13 @@ public sealed record RoomRoundPlayerCompleted(Room Room, Round Round, int Slot) 
 public sealed record RoomRoundScoreSubmitted(Room Room, Round Round, UserRecord Player, RoundScore Score)
 	: RoomRoundEvent(Room, Round);
 
+/// <summary>A round was played out and now waits for the scores of its players.</summary>
+/// <param name="Room">The room.</param>
+/// <param name="Round">The round.</param>
+/// <param name="ScoreWait">How long the room waits for the scores before deciding the round.</param>
+/// <remarks>Followed by <see cref="RoomRoundDecided" /> once every score is in or the wait is over.</remarks>
+public sealed record RoomRoundEnded(Room Room, Round Round, TimeSpan ScoreWait) : RoomRoundEvent(Room, Round);
+
 /// <summary>A round was decided from the scores that came in.</summary>
 /// <param name="Room">The room.</param>
 /// <param name="Round">The round, with its <see cref="Domain.Multiplayer.Round.Result" /> set.</param>

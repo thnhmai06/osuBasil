@@ -1,5 +1,6 @@
 using Basil.Application.Auth.Persistence;
 using Basil.Application.Common.Events;
+using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Capabilities;
 using Basil.Application.Users.Connections;
 using Basil.Application.Users.Persistence;
@@ -26,8 +27,10 @@ public static class DependencyInjection
 			sp.GetRequiredService<IRestrictionRepository>(),
 			sp.GetRequiredService<IModerationLogRepository>(),
 			sp.GetRequiredService<IRelationshipRepository>(),
-			sp.GetRequiredService<ILoginRepository>(),
-			sp.GetRequiredService<ICredentialRepository>()));
+			sp.GetRequiredService<ISessionRepository>(),
+			sp.GetRequiredService<ICredentialRepository>(),
+			sp.GetRequiredService<IUserAvatarStorage>(),
+			sp.GetRequiredService<ISettingsRepository>()));
 		services.AddSingleton<ConnectionContext>(sp => new ConnectionContext(
 			sp.GetRequiredService<TimeProvider>(),
 			sp.GetRequiredService<IEventPublisher<UserEvent>>(),

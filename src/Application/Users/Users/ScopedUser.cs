@@ -1,9 +1,8 @@
-using Basil.Application.Users.Capabilities;
 using Basil.Application.Common;
+using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Connections;
 using Basil.Domain.Auth;
 using Basil.Domain.Common;
-using Basil.Domain.Moderation;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Users;
@@ -23,12 +22,28 @@ public sealed class ScopedUser : Scoped<UserPermissions, Connection>
 	{
 		User = user;
 		Granted = by.User.Record.Value.Permissions;
+		Profile = new ScopedUserProfile(this);
+		Credentials = new ScopedUserCredentials(this);
+		Sessions = new ScopedUserSessions(this);
+		Permissions = new ScopedUserPermissions(this);
 		Restrictions = new ScopedUserRestrictions(this);
 		Relationships = new ScopedUserRelationships(this);
 	}
 
 	/// <summary>Gets the account this scope is over.</summary>
 	public User User { get; }
+
+	/// <summary>The profile operations for this account.</summary>
+	public ScopedUserProfile Profile { get; }
+
+	/// <summary>The credential operations for this account.</summary>
+	public ScopedUserCredentials Credentials { get; }
+
+	/// <summary>The session operations for this account.</summary>
+	public ScopedUserSessions Sessions { get; }
+
+	/// <summary>The permission operations for this account.</summary>
+	public ScopedUserPermissions Permissions { get; }
 
 	/// <summary>The permissions granted to the connection's user when this scope was created.</summary>
 	internal UserPermissions Granted { get; }
@@ -45,57 +60,32 @@ public sealed class ScopedUser : Scoped<UserPermissions, Connection>
 	/// <summary>Whether the caller's granted permissions strictly outrank the target's.</summary>
 	internal bool Outranks => Granted.Allows(User.Record.Value.Permissions) && Granted != User.Record.Value.Permissions;
 
-	/// <summary>Sets or clears the away message other users see.</summary>
-	/// <param name="message">The away message, or <see langword="null" /> or white space to clear it.</param>
-	/// <returns><see langword="true" /> if this connection belongs to this user and the message was set.</returns>
-	public bool SetAway(string? message)
-	{
-		if (!ReferenceEquals(By.User, User)) return false;
-
-		User.AwayMessage = string.IsNullOrWhiteSpace(message) ? null : message;
-		return true;
-	}
-
-	/// <summary>Sets whether this user accepts private messages only from their friends.</summary>
-	/// <param name="pmPrivate"><see langword="true" /> to accept private messages only from friends.</param>
-	/// <returns><see langword="true" /> if this connection belongs to this user and the setting was set.</returns>
-	public bool SetPmPrivate(bool pmPrivate)
-	{
-		if (!ReferenceEquals(By.User, User)) return false;
-
-		User.PmPrivate = pmPrivate;
-		return true;
-	}
-
 	/// <summary>Checks the required permission and account hierarchy.</summary>
 	/// <param name="needed">The permission required.</param>
 	/// <param name="selfAllowed">Whether the caller may act on their own account.</param>
 	/// <returns><see langword="null" /> when allowed; otherwise, why the operation is unavailable.</returns>
 	internal Result<UserOutcome>? Guard(UserPermissions needed, bool selfAllowed)
 	{
-		if (User.Record.IsBasilBot()) return UserOutcome.Protected;
+		if (User.Record.IsBasilBot()) return UserOutcome.SystemAccount;
 		if (Require(needed) is { } missing) return Result<UserOutcome>.Denied(missing);
 		return (IsSelf && selfAllowed) || Outranks ? null : UserOutcome.NotOutranking;
 	}
 
-	/// <summary>Replaces this account's permissions.</summary>
-	/// <param name="permissions">The permissions to grant.</param>
+	/// <summary>Checks whether an area is locked for the caller.</summary>
+	/// <param name="area">The area to check.</param>
+	/// <param name="manager">The permission that manages the area and bypasses its lock.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>The outcome of replacing the permissions.</returns>
-	public async Task<Result<UserOutcome>> SetPermissionsAsync(UserPermissions permissions,
-		CancellationToken cancellationToken = default)
+	/// <returns><see langword="true" /> when the area is locked and the caller does not hold <paramref name="manager" />.</returns>
+	internal async Task<bool> IsLockedAsync(Locks area, UserPermissions manager,
+		CancellationToken cancellationToken)
 	{
-		if (Guard(UserPermissions.UserManagePermissions, true) is { } denied) return denied;
-		if (Require(User.Record.Value.Permissions ^ permissions) is { } cannotGrant)
-			return Result<UserOutcome>.Denied(cannotGrant);
+		return (await User.Context.Settings.GetAsync(cancellationToken)).Locks.HasFlag(area) &&
+		       Require(manager) is not null;
+	}
 
-		User.ReplacePermissions(permissions);
-		await User.Context.Users.UpdateAsync(User.Record, cancellationToken);
-		if (User.Context.Registry.Online.GetValueOrDefault(User.Record) is { } user)
-			User.Context.Registry.CloseDisallowed(user);
-
-		User.Context.Events.Publish(new UserPermissionsChanged(User.Record, permissions));
-		return UserOutcome.Ok;
+	internal UserPermissions? MissingPermissions(UserPermissions needed)
+	{
+		return Require(needed);
 	}
 
 	/// <summary>Permanently deletes this account.</summary>
@@ -106,80 +96,10 @@ public sealed class ScopedUser : Scoped<UserPermissions, Connection>
 		if (Guard(UserPermissions.UserManage, true) is { } denied) return denied;
 		if (User.Record.Value.DeletedAt is not null) return UserOutcome.Ok;
 
-		User.MarkDeleted(User.Context.Clock.GetUtcNow());
+		User.Grants.MarkDeleted(User.Context.Clock.GetUtcNow());
 		await User.Context.Users.UpdateAsync(User.Record, cancellationToken);
-		User.Context.Registry.CloseAll(User.Record, ConnectionCloseReason.Deleted);
+		User.Context.Registry.CloseAll(User.Record, SessionEndReason.Deleted);
 		return UserOutcome.Ok;
 	}
 
-	/// <summary>Reads the login history of this account.</summary>
-	/// <param name="page">Which part of the history to return.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>The outcome and, when it is Ok, one part of the history, newest first.</returns>
-	/// <remarks>Reading the history of another account is recorded in the moderation log.</remarks>
-	public async Task<(Result<UserOutcome> Result, Page<LoginEntry>? Logins)> ViewLoginsAsync(PageRequest page,
-		CancellationToken cancellationToken = default)
-	{
-		if (Guard(UserPermissions.UserViewLogins, true) is { } denied) return (denied, null);
-
-		if (!IsSelf)
-			await User.Context.ModerationLog.AppendAsync(new ModerationData
-			{
-				Action = ModerationAction.ViewLogins,
-				By = By.Record,
-				Target = User.Record,
-				Timestamp = User.Context.Clock.GetUtcNow()
-			}, cancellationToken);
-
-		return (UserOutcome.Ok, await User.Context.Logins.ListAsync(User.Record, page, cancellationToken));
-	}
-
-	/// <summary>Closes every connection of this account.</summary>
-	/// <returns>Ok, or why the caller may not.</returns>
-	/// <remarks>
-	///     An account may close its own connections; closing another's needs <see cref="UserPermissions.UserManage" /> and
-	///     outranking them. The connections, the caller's own included, close as
-	///     <see cref="ConnectionCloseReason.Revoked" />.
-	/// </remarks>
-	public Result<UserOutcome> RevokeConnections()
-	{
-		if (User.Record.IsBasilBot()) return UserOutcome.Protected;
-		if (!IsSelf && Guard(UserPermissions.UserManage, false) is { } denied) return denied;
-
-		User.Context.Registry.CloseAll(User.Record, ConnectionCloseReason.Revoked);
-		return UserOutcome.Ok;
-	}
-
-	/// <summary>Replaces this account's password and closes every connection of it.</summary>
-	/// <param name="newPasswordHash">The MD5 digest of the new password.</param>
-	/// <param name="currentPasswordHash">The MD5 digest of the current password, needed when users change their own.</param>
-	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	/// <returns>Ok, WrongPassword, or why the caller may not.</returns>
-	/// <remarks>
-	///     An account changes its own password by giving the current one; changing another's needs
-	///     <see cref="UserPermissions.UserManage" /> and outranking them. Every connection, the caller's own included, closes
-	///     as
-	///     <see cref="ConnectionCloseReason.CredentialsChanged" />.
-	/// </remarks>
-	public async Task<Result<UserOutcome>> ChangePasswordAsync(Md5 newPasswordHash, Md5? currentPasswordHash,
-		CancellationToken cancellationToken = default)
-	{
-		if (User.Record.IsBasilBot()) return UserOutcome.Protected;
-
-		if (IsSelf)
-		{
-			if (currentPasswordHash is not { } current ||
-			    !await User.Context.Credentials.IsPasswordAsync(User.Record, current, cancellationToken))
-				return UserOutcome.WrongPassword;
-		}
-		else if (Guard(UserPermissions.UserManage, false) is { } denied)
-		{
-			return denied;
-		}
-
-		await User.Context.Credentials.CreateOrUpdateAsync(new Credentials(User.Record, newPasswordHash),
-			cancellationToken);
-		User.Context.Registry.CloseAll(User.Record, ConnectionCloseReason.CredentialsChanged);
-		return UserOutcome.Ok;
-	}
 }

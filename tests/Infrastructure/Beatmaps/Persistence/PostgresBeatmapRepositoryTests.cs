@@ -316,14 +316,14 @@ public sealed class PostgresBeatmapRepositoryTests(PersistenceFixture container)
 	}
 
 	[Fact]
-	public async Task A_listing_finds_the_difficulties_of_an_approved_set()
+	public async Task A_listing_finds_the_difficulties_of_a_ranked_set()
 	{
 		await CommitAsync(StoredBeatmaps.Data(11, "Camellia", "Alpha", "Mapper",
 			[StoredBeatmaps.Difficulty(301, OtherHash, "Easy")]));
 		await CommitAsync(StoredBeatmaps.Data(22, "Camellia", "Beta", "Mapper",
 			[StoredBeatmaps.Difficulty(302, BeatmapHash, "Hard")]));
 
-		var page = await Beatmaps.ListAsync(new BeatmapQuery(Status: BeatmapsetStatus.Approved),
+		var page = await Beatmaps.ListAsync(new BeatmapQuery(Status: BeatmapsetStatus.Ranked),
 			new PageRequest(0, 10), TestContext.Current.CancellationToken);
 
 		Assert.Equal(2, page.Total);
@@ -335,7 +335,7 @@ public sealed class PostgresBeatmapRepositoryTests(PersistenceFixture container)
 		await CommitAsync(StoredBeatmaps.Data(11, "Camellia", "Alpha", "Mapper",
 			[StoredBeatmaps.Difficulty(301, OtherHash, "Easy")]));
 
-		var page = await Beatmaps.ListAsync(new BeatmapQuery(Status: BeatmapsetStatus.Ranked),
+		var page = await Beatmaps.ListAsync(new BeatmapQuery(Status: BeatmapsetStatus.Approved),
 			new PageRequest(0, 10), TestContext.Current.CancellationToken);
 
 		Assert.Equal(0, page.Total);

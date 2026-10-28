@@ -79,7 +79,7 @@ public sealed class ScopedChannel : Scoped<UserPermissions, Connection>
 	///     post into the recipient's channel; their away reply is carried by the same <see cref="ChannelMessagePosted" />.
 	///     Posting requires <see cref="UserPermissions.ChatPost" />, or <see cref="UserPermissions.ChatPostPrivate" /> for a
 	///     private message. Blocks and friends-only settings are bypassed with
-	///     <see cref="UserPermissions.ChatMessageAnyone" />.
+	///     <see cref="UserPermissions.ChatManageMessageAnyone" />.
 	/// </remarks>
 	public async Task<Result<ChannelOutcome>> PostAsync(string text, bool notice = false,
 		CancellationToken cancellationToken = default)
@@ -98,7 +98,7 @@ public sealed class ScopedChannel : Scoped<UserPermissions, Connection>
 
 		if (Channel is PmChannel pm)
 		{
-			if (!Permissions.Allows(UserPermissions.ChatMessageAnyone))
+			if (!Rights.Allows(UserPermissions.ChatManageMessageAnyone))
 			{
 				var relationships = await Channel.Context.Relationships.ListAsync(pm.Owner.Record, cancellationToken);
 				var blocked = relationships.Any(relationship =>

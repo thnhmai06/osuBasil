@@ -41,14 +41,8 @@ public sealed class BeatmapsetRecord : IEquatable<BeatmapsetRecord>
 	/// <summary>Gets or sets the files the set has besides its difficulties.</summary>
 	public required BeatmapsetAssets Assets { get; set; }
 
-	/// <summary>
-	///     Gets the ranked status of the set.
-	/// </summary>
-	/// <remarks>
-	///     This member is static because Basil reports every beatmapset as approved; the status is
-	///     not stored per set.
-	/// </remarks>
-	public static BeatmapsetStatus Status => BeatmapsetStatus.Approved;
+	/// <summary>Gets or sets the ranked status the set is reported with; a new set is ranked.</summary>
+	public BeatmapsetStatus Status { get; set; } = BeatmapsetStatus.Ranked;
 
 	/// <summary>The time of the latest import of the set, in UTC.</summary>
 	public required DateTimeOffset UpdatedAt { get; set; }

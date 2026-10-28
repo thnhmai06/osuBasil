@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Net;
 using Microsoft.EntityFrameworkCore.Migrations;
-using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
@@ -32,14 +31,21 @@ public partial class InitialCreate : Migration
 			});
 
 		migrationBuilder.CreateTable(
-			name: "logins",
+			name: "sessions",
 			columns: table => new
 			{
-				id = table.Column<long>(type: "bigint", nullable: false)
-					.Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityAlwaysColumn),
+				id = table.Column<Guid>(type: "uuid", nullable: false),
 				user_id = table.Column<int>(type: "integer", nullable: false),
+				type = table.Column<short>(type: "smallint", nullable: false),
 				ip = table.Column<IPAddress>(type: "inet", nullable: false),
-				timestamp = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+				client_info = table.Column<string>(type: "text", nullable: true),
+				started_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+				last_active_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+				ended_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+				end_reason = table.Column<short>(type: "smallint", nullable: true),
+				token_hash = table.Column<byte[]>(type: "bytea", nullable: true),
+				expires_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+				must_reauthenticate = table.Column<bool>(type: "boolean", nullable: false),
 				client_date = table.Column<string>(type: "text", nullable: true),
 				client_revision = table.Column<int>(type: "integer", nullable: true),
 				client_stream = table.Column<int>(type: "integer", nullable: true),
@@ -51,9 +57,9 @@ public partial class InitialCreate : Migration
 			},
 			constraints: table =>
 			{
-				table.PrimaryKey("pk_logins", x => x.id);
+				table.PrimaryKey("pk_sessions", x => x.id);
 				table.ForeignKey(
-					name: "fk_logins_users_user_id",
+					name: "fk_sessions_users_user_id",
 					column: x => x.user_id,
 					principalTable: "users",
 					principalColumn: "id",
@@ -61,9 +67,14 @@ public partial class InitialCreate : Migration
 			});
 
 		migrationBuilder.CreateIndex(
-			name: "ix_logins_user_id_timestamp",
-			table: "logins",
-			columns: ["user_id", "timestamp"],
+			name: "ix_sessions_token_hash",
+			table: "sessions",
+			column: "token_hash");
+
+		migrationBuilder.CreateIndex(
+			name: "ix_sessions_user_id_started_at",
+			table: "sessions",
+			columns: ["user_id", "started_at"],
 			descending: [false, true]);
 	}
 
@@ -74,6 +85,6 @@ public partial class InitialCreate : Migration
 			name: "credentials");
 
 		migrationBuilder.DropTable(
-			name: "logins");
+			name: "sessions");
 	}
 }

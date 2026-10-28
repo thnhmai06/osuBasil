@@ -10,7 +10,7 @@ public enum UserOutcome : byte
 	NotOutranking,
 
 	/// <summary>The target is BasilBot, whose account record is fixed.</summary>
-	Protected,
+	SystemAccount,
 
 	/// <summary>The restriction has no permissions to suspend or ends in the past.</summary>
 	InvalidRestriction,
@@ -31,5 +31,17 @@ public enum UserOutcome : byte
 	NameTaken,
 
 	/// <summary>The thing the operation names does not belong to this account.</summary>
-	NotFound
+	NotFound,
+
+	/// <summary>The area is locked and the caller does not manage it.</summary>
+	Locked,
+
+	/// <summary>Only the account's own user may do this.</summary>
+	NotSelf,
+
+	/// <summary>The label is empty or longer than the allowed length.</summary>
+	InvalidLabel,
+
+	/// <summary>The country is not a valid country.</summary>
+	InvalidCountry
 }

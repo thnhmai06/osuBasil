@@ -1,6 +1,7 @@
 using Basil.Application.Chat.Runtime;
 using Basil.Application.Users.Connections;
 using Basil.Application.Users.Users;
+using Basil.Domain.Auth;
 using Basil.Domain.Users;
 using Basil.Testing;
 
@@ -28,7 +29,7 @@ public sealed class PmChannelsTests
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("ManyClients", "password");
 		var irc = await app.LoginAsync(record, ConnectionType.Irc);
-		var bancho = await app.LoginAsync(record, ConnectionType.Bancho);
+		var bancho = await app.LoginAsync(record, ConnectionType.Osu);
 
 		var channel = app.PmChannels.Of(app.Users.Of(record));
 
@@ -84,7 +85,7 @@ public sealed class PmChannelsTests
 		var connection = await app.LoginAsync(record, ConnectionType.Irc);
 		var owner = app.Users.Of(record);
 		var channel = app.PmChannels.Of(owner);
-		app.Users.Close(connection, ConnectionCloseReason.LoggedOut);
+		app.Users.Close(connection, SessionEndReason.LoggedOut);
 
 		var returned = app.PmChannels.Of(owner);
 

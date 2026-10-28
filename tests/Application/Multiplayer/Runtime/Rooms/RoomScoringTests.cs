@@ -20,6 +20,9 @@ namespace Basil.Application.Multiplayer.Tests.Runtime.Rooms;
 /// </summary>
 public sealed class RoomScoringTests
 {
+	/// <summary>The wait for scores the server settings default to, 10 seconds.</summary>
+	private static readonly TimeSpan ScoreWait = TimeSpan.FromSeconds(10);
+
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
 
 	private static async Task<(TestApplication App, RoomFixture Setup)> StartedAsync(
@@ -159,7 +162,7 @@ public sealed class RoomScoringTests
 		Assert.Equal(2, decided.Missing.Count);
 		Assert.True(events.ToList().FindIndex(e => e is RoomRoundDecided) <
 		            events.ToList().FindLastIndex(e => e is RoomRoundStarted));
-		app.Clock.Advance(RoomRounds.ScoreWait * 2);
+		app.Clock.Advance(ScoreWait * 2);
 		Assert.Single(events.OfType<RoomRoundDecided>());
 	}
 
@@ -186,7 +189,7 @@ public sealed class RoomScoringTests
 		setup.Room.ReceiveScore(ScoreOf(1, setup.Creator), setup.Creator.Record);
 		await CompleteAsync(setup, setup.Creator, setup.Host, setup.Player);
 
-		app.Clock.Advance(RoomRounds.ScoreWait - TimeSpan.FromMilliseconds(1));
+		app.Clock.Advance(ScoreWait - TimeSpan.FromMilliseconds(1));
 		Assert.Empty(app.RoomEvents.Events.OfType<RoomRoundDecided>());
 		app.Clock.Advance(TimeSpan.FromMilliseconds(1));
 
@@ -196,13 +199,48 @@ public sealed class RoomScoringTests
 	}
 
 	[Fact]
+	public async Task TheRound_AnnouncesItEndedWithTheScoreWaitBeforeItIsDecided()
+	{
+		var (app, setup) = await StartedAsync();
+		using var _ = app;
+
+		await CompleteAsync(setup, setup.Creator, setup.Host, setup.Player);
+
+		var ended = Assert.Single(app.RoomEvents.Events.OfType<RoomRoundEnded>());
+		Assert.Same(setup.Room.Rounds.LastRound, ended.Round);
+		Assert.Equal(ScoreWait, ended.ScoreWait);
+		Assert.Empty(app.RoomEvents.Events.OfType<RoomRoundDecided>());
+	}
+
+	[Fact]
+	public async Task TheRound_UsesTheScoreWaitOfTheServerSettings()
+	{
+		var (app, setup) = await StartedAsync();
+		using var _ = app;
+		await app.SetSettingsAsync(new Basil.Application.Content.Persistence.ServerSettings
+		{
+			Multiplayer = new Basil.Application.Content.Persistence.ServerSettings.MultiplayerSettings
+			{
+				Rounds = new Basil.Application.Content.Persistence.ServerSettings.RoundSettings
+					{ ScoreWait = TimeSpan.FromSeconds(3) }
+			}
+		});
+		await CompleteAsync(setup, setup.Creator, setup.Host, setup.Player);
+
+		app.Clock.Advance(TimeSpan.FromSeconds(3));
+
+		Assert.Equal(TimeSpan.FromSeconds(3), Assert.Single(app.RoomEvents.Events.OfType<RoomRoundEnded>()).ScoreWait);
+		Assert.Single(app.RoomEvents.Events.OfType<RoomRoundDecided>());
+	}
+
+	[Fact]
 	public async Task TheRound_WithNoScoreAtAll_IsDecidedWithoutAResultAndNamesEveryone()
 	{
 		var (app, setup) = await StartedAsync();
 		using var _ = app;
 		await CompleteAsync(setup, setup.Creator, setup.Host, setup.Player);
 
-		app.Clock.Advance(RoomRounds.ScoreWait);
+		app.Clock.Advance(ScoreWait);
 
 		var decided = Assert.Single(app.RoomEvents.Events.OfType<RoomRoundDecided>());
 		Assert.Null(decided.Result);
@@ -217,7 +255,7 @@ public sealed class RoomScoringTests
 		setup.Room.ReceiveScore(ScoreOf(1, setup.Creator), setup.Creator.Record);
 		Assert.True((await setup.Room.ScopeTo(setup.Creator).Rounds.AbortAsync(Token)).IsOk);
 
-		app.Clock.Advance(RoomRounds.ScoreWait * 2);
+		app.Clock.Advance(ScoreWait * 2);
 		var late = setup.Room.ReceiveScore(ScoreOf(2, setup.Host), setup.Host.Record);
 
 		Assert.Empty(app.RoomEvents.Events.OfType<RoomRoundDecided>());
@@ -230,7 +268,7 @@ public sealed class RoomScoringTests
 		var (app, setup) = await StartedAsync();
 		using var _ = app;
 		await CompleteAsync(setup, setup.Creator, setup.Host, setup.Player);
-		app.Clock.Advance(RoomRounds.ScoreWait);
+		app.Clock.Advance(ScoreWait);
 
 		var late = setup.Room.ReceiveScore(ScoreOf(1, setup.Player), setup.Player.Record);
 
@@ -252,6 +290,18 @@ public sealed class RoomScoringTests
 		Assert.Empty(decided.Missing);
 		Assert.Equal(RoomOutcome.RoundMismatch,
 			setup.Room.ReceiveScore(ScoreOf(3, setup.Player), setup.Player.Record).Outcome);
+	}
+
+	[Fact]
+	public async Task WhenEveryPlayerLeavesBeforeCompleting_TheRoundIsNotAnnouncedAsEnded()
+	{
+		var (app, setup) = await StartedAsync();
+		using var _ = app;
+
+		foreach (var player in new[] { setup.Player, setup.Host, setup.Creator })
+			Assert.True((await setup.Room.ScopeTo(player).Members.LeaveAsync(Token)).IsOk);
+
+		Assert.Empty(app.RoomEvents.Events.OfType<RoomRoundEnded>());
 	}
 
 	[Fact]

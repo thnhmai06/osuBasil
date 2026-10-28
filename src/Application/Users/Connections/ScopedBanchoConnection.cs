@@ -1,5 +1,6 @@
 using Basil.Application.Common;
 using Basil.Application.Users.Users;
+using Basil.Domain.Bancho;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Connections;
@@ -82,6 +83,17 @@ public sealed class ScopedBanchoConnection : Scoped<UserPermissions, Connection>
 		if (!Host.Spectators.Contains(By)) return false;
 
 		Host.Context.Events.Publish(new UserSpectatorFailed(Host, By));
+		return true;
+	}
+
+	/// <summary>Hands the frames this client sent to the HTTP API connections spectating it.</summary>
+	/// <param name="bundle">The decoded frames.</param>
+	/// <returns><see langword="true" /> if the frames were published; only the client itself may, and only while an API connection spectates it.</returns>
+	public bool PublishFrames(SpectatorBundle bundle)
+	{
+		if (!ReferenceEquals(By, Host) || !Host.IsOpen || !Host.HasApiSpectators) return false;
+
+		Host.Context.Events.Publish(new UserSpectatorFramesReceived(Host, bundle));
 		return true;
 	}
 

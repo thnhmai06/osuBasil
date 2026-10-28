@@ -1,5 +1,6 @@
 using Basil.Application.Users.Connections;
 using Basil.Application.Multiplayer.Runtime.Rooms;
+using Basil.Domain.Auth;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
@@ -230,6 +231,6 @@ public sealed class RoomFixture
 	/// <returns>The opened connection.</returns>
 	public static async Task<BanchoConnection> PlayerAsync(TestApplication app, UserRecord user)
 	{
-		return (BanchoConnection)await app.LoginAsync(user, ConnectionType.Bancho);
+		return (BanchoConnection)await app.LoginAsync(user, ConnectionType.Osu);
 	}
 }

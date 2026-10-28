@@ -16,6 +16,11 @@ public interface IRestrictionRepository
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	Task UpdateAsync(UserRestriction restriction, CancellationToken cancellationToken = default);
 
+	/// <summary>Removes a restriction from the user's history.</summary>
+	/// <param name="restriction">The restriction to remove.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	Task DeleteAsync(UserRestriction restriction, CancellationToken cancellationToken = default);
+
 	/// <summary>Gets a restriction by id.</summary>
 	/// <param name="id">The restriction id.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>

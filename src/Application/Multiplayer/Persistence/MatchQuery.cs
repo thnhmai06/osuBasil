@@ -70,12 +70,12 @@ public sealed record MatchQuery(bool? Ended = null, bool? Private = null, int? V
 	/// <param name="effective">The asker's effective permissions.</param>
 	/// <param name="viewer">The asker.</param>
 	/// <returns>
-	///     The query as asked when the asker may view private matches (<see cref="UserPermissions.RoomViewPrivate" />);
+	///     The query as asked when the asker may view private matches (<see cref="UserPermissions.RoomManageViewPrivate" />);
 	///     otherwise a query whose private matches are only the ones the asker took part in or manages.
 	/// </returns>
 	public MatchQuery LimitTo(UserPermissions effective, UserRecord viewer)
 	{
 		ArgumentNullException.ThrowIfNull(viewer);
-		return effective.Allows(UserPermissions.RoomViewPrivate) ? this : this with { VisibleTo = viewer.Id };
+		return effective.Allows(UserPermissions.RoomManageViewPrivate) ? this : this with { VisibleTo = viewer.Id };
 	}
 }

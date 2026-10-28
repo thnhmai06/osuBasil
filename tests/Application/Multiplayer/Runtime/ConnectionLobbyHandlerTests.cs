@@ -1,6 +1,7 @@
 using Basil.Application.Multiplayer.Runtime;
 using Basil.Application.Multiplayer.Runtime.Events;
 using Basil.Application.Users.Users;
+using Basil.Domain.Auth;
 using Basil.Testing;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -18,7 +19,7 @@ public sealed class ConnectionLobbyHandlerTests
 		using var app = new TestApplication();
 		var setup = await RoomFixture.CreateAsync(app);
 		var handler = Handler(app);
-		app.Users.Close(setup.Player, ConnectionCloseReason.ConnectionLost);
+		app.Users.Close(setup.Player, SessionEndReason.ConnectionLost);
 		var closed = Assert.Single(app.UserEvents.Events.OfType<UserConnectionClosed>(),
 			@event => @event.Connection == setup.Player);
 		Assert.NotNull(setup.Room.Slots.Find(setup.Player));
@@ -37,7 +38,7 @@ public sealed class ConnectionLobbyHandlerTests
 		var player = await RoomFixture.PlayerAsync(app, "Watcher");
 		app.Lobby.ScopeTo(player).Watch();
 		Assert.Contains(player, app.Lobby.Watchers);
-		app.Users.Close(player, ConnectionCloseReason.ConnectionLost);
+		app.Users.Close(player, SessionEndReason.ConnectionLost);
 		var closed = Assert.Single(app.UserEvents.Events.OfType<UserConnectionClosed>(),
 			@event => @event.Connection == player);
 

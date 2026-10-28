@@ -21,6 +21,9 @@ namespace Basil.Application.Scores.Tests.Runtime;
 /// </summary>
 public sealed class ScoreSubmissionTests
 {
+	/// <summary>The wait for scores the server settings default to, 10 seconds.</summary>
+	private static readonly TimeSpan ScoreWait = TimeSpan.FromSeconds(10);
+
 	private static readonly BeatmapChecksums Checksums = new(ScoreSubmissionFixture.Beatmap, null);
 
 	private static Task<(Result<ScoreSubmissionOutcome> Result, ScoreRejection? Rejection)> SubmitAsync(
@@ -511,7 +514,7 @@ public sealed class ScoreSubmissionTests
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var room = await StartRoundAsync(f);
 		Assert.True((await room.ScopeTo(f.Client).Rounds.CompleteAsync(TestContext.Current.CancellationToken)).IsOk);
-		f.App.Clock.Advance(RoomRounds.ScoreWait);
+		f.App.Clock.Advance(ScoreWait);
 
 		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()),
 			unknownBeatmap: true);

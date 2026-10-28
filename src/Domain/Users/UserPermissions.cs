@@ -29,16 +29,16 @@ public enum UserPermissions : ulong
 	RoomObserve = (1UL << 16) | SpectatingWatch,
 
 	/// <summary>See the private rooms and private match history of other users.</summary>
-	RoomViewPrivate = 1UL << 18,
+	RoomManageViewPrivate = 1UL << 18,
 
 	/// <summary>
 	///     Act with the authority of the creator in every room, and join any room without its password; includes seeing
 	///     private matches.
 	/// </summary>
-	RoomManageAny = (1UL << 19) | RoomViewPrivate,
+	RoomManageAny = (1UL << 19) | RoomManageViewPrivate,
 
 	/// <summary>Open more rooms than one creator may otherwise have open.</summary>
-	RoomCreateUnlimited = 1UL << 20,
+	RoomManageCreateUnlimited = 1UL << 20,
 
 	#endregion
 
@@ -51,13 +51,16 @@ public enum UserPermissions : ulong
 	ChatPostPrivate = 1UL << 3,
 
 	/// <summary>Post in the channel of any room.</summary>
-	ChatPostAnyRoom = 1UL << 17,
+	ChatManagePostAnyRoom = 1UL << 17,
 
 	/// <summary>Send private messages past blocks and friends-only settings.</summary>
-	ChatMessageAnyone = 1UL << 26,
+	ChatManageMessageAnyone = 1UL << 26,
 
 	/// <summary>Show a notification to online users.</summary>
-	ChatAnnounce = 1UL << 27,
+	ChatManageAnnounce = 1UL << 27,
+
+	/// <summary>Create, configure and delete general chat channels.</summary>
+	ChatManageChannels = 1UL << 44,
 
 	#endregion
 
@@ -84,10 +87,10 @@ public enum UserPermissions : ulong
 	BeatmapsetDirect = 1UL << 8,
 
 	/// <summary>See hidden beatmaps and beatmapsets.</summary>
-	BeatmapsetViewHidden = 1UL << 23,
+	BeatmapsetManageViewHidden = 1UL << 23,
 
 	/// <summary>Import, replace, delete, hide and lock beatmapsets; includes seeing hidden ones.</summary>
-	BeatmapsetManage = (1UL << 22) | BeatmapsetViewHidden,
+	BeatmapsetManage = (1UL << 22) | BeatmapsetManageViewHidden,
 
 	#endregion
 
@@ -97,35 +100,35 @@ public enum UserPermissions : ulong
 	ScreenshotUpload = 1UL << 6,
 
 	/// <summary>Delete any stored screenshot.</summary>
-	ScreenshotDelete = 1UL << 28,
+	ScreenshotManage = 1UL << 28,
 
 	#endregion
 
 	#region Users
 
 	/// <summary>Add notes about users and read the moderation log.</summary>
-	UserNote = 1UL << 30,
+	UserManageNote = 1UL << 30,
 
 	/// <summary>Silence other users for a while; includes adding notes and reading the moderation log.</summary>
-	UserSilence = (1UL << 24) | UserNote,
+	UserManageSilence = (1UL << 24) | UserManageNote,
 
 	/// <summary>View a user's login history and IP addresses.</summary>
-	UserViewLogins = 1UL << 29,
+	UserManageViewSessions = 1UL << 29,
 
 	/// <summary>
 	///     Suspend any permissions of other users, for a while or until lifted, and lift such suspensions; includes
 	///     silencing, viewing login history and reading the moderation log.
 	/// </summary>
-	UserRestrict = (1UL << 25) | UserSilence | UserViewLogins,
+	UserManageRestrict = (1UL << 25) | UserManageSilence | UserManageViewSessions,
 
 	/// <summary>See deleted accounts.</summary>
-	UserViewDeleted = 1UL << 43,
+	UserManageViewDeleted = 1UL << 43,
 
 	/// <summary>
 	///     Create, edit and delete accounts, set other users' passwords and end their sessions; includes seeing deleted
 	///     accounts.
 	/// </summary>
-	UserManage = (1UL << 40) | UserViewDeleted,
+	UserManage = (1UL << 40) | UserManageViewDeleted,
 
 	/// <summary>Grant and remove permissions.</summary>
 	UserManagePermissions = 1UL << 41,
@@ -135,10 +138,10 @@ public enum UserPermissions : ulong
 	#region Server
 
 	/// <summary>Change the settings of the running server.</summary>
-	ServerConfigure = 1UL << 32,
+	ServerManageSettings = 1UL << 32,
 
 	/// <summary>Read the server's diagnostics.</summary>
-	ServerViewDiagnostics = 1UL << 33,
+	ServerManageDiagnostics = 1UL << 33,
 
 	/// <summary>Edit the message of the day, the main menu, the FAQ, seasonal backgrounds and banners.</summary>
 	ServerManageContent = 1UL << 42
@@ -208,16 +211,16 @@ public static class UserPermissionsGroups
 	/// <summary>Every permission the server defines.</summary>
 	public const UserPermissions All =
 		UserPermissions.RoomCreate | UserPermissions.RoomJoin | UserPermissions.RoomObserve |
-		UserPermissions.RoomViewPrivate |
-		UserPermissions.RoomManageAny | UserPermissions.RoomCreateUnlimited | UserPermissions.ChatPost |
-		UserPermissions.ChatPostPrivate | UserPermissions.ChatPostAnyRoom | UserPermissions.ChatMessageAnyone |
-		UserPermissions.ChatAnnounce | UserPermissions.SpectatingWatch | UserPermissions.ScoreSubmit |
-		UserPermissions.BeatmapsetUpload | UserPermissions.BeatmapsetDirect | UserPermissions.BeatmapsetViewHidden |
-		UserPermissions.BeatmapsetManage | UserPermissions.ScreenshotUpload | UserPermissions.ScreenshotDelete |
-		UserPermissions.UserNote | UserPermissions.UserSilence | UserPermissions.UserViewLogins |
-		UserPermissions.UserRestrict |
-		UserPermissions.UserViewDeleted | UserPermissions.UserManage | UserPermissions.UserManagePermissions |
-		UserPermissions.ServerConfigure | UserPermissions.ServerViewDiagnostics | UserPermissions.ServerManageContent;
+		UserPermissions.RoomManageViewPrivate |
+		UserPermissions.RoomManageAny | UserPermissions.RoomManageCreateUnlimited | UserPermissions.ChatPost |
+		UserPermissions.ChatPostPrivate | UserPermissions.ChatManagePostAnyRoom | UserPermissions.ChatManageMessageAnyone |
+		UserPermissions.ChatManageAnnounce | UserPermissions.ChatManageChannels | UserPermissions.SpectatingWatch | UserPermissions.ScoreSubmit |
+		UserPermissions.BeatmapsetUpload | UserPermissions.BeatmapsetDirect | UserPermissions.BeatmapsetManageViewHidden |
+		UserPermissions.BeatmapsetManage | UserPermissions.ScreenshotUpload | UserPermissions.ScreenshotManage |
+		UserPermissions.UserManageNote | UserPermissions.UserManageSilence | UserPermissions.UserManageViewSessions |
+		UserPermissions.UserManageRestrict |
+		UserPermissions.UserManageViewDeleted | UserPermissions.UserManage | UserPermissions.UserManagePermissions |
+		UserPermissions.ServerManageSettings | UserPermissions.ServerManageDiagnostics | UserPermissions.ServerManageContent;
 
 	/// <summary>The permissions a new account holds.</summary>
 	public static readonly UserPermissions Default =
@@ -225,12 +228,13 @@ public static class UserPermissionsGroups
 
 	/// <summary>The chatting permissions and the permission that manages them.</summary>
 	public static readonly ModerationArea Chat =
-		new(UserPermissions.ChatPost | UserPermissions.ChatPostPrivate | UserPermissions.ChatPostAnyRoom,
-			UserPermissions.ChatMessageAnyone);
+		new(UserPermissions.ChatPost | UserPermissions.ChatPostPrivate | UserPermissions.ChatManagePostAnyRoom |
+		    UserPermissions.ChatManageMessageAnyone | UserPermissions.ChatManageAnnounce |
+		    UserPermissions.ChatManageChannels, UserPermissions.ChatManageMessageAnyone);
 
 	/// <summary>The multiplayer permissions and the permission that manages them.</summary>
 	public static readonly ModerationArea Multiplayer =
-		new(UserPermissions.RoomCreate | UserPermissions.RoomJoin | UserPermissions.RoomCreateUnlimited,
+		new(UserPermissions.RoomCreate | UserPermissions.RoomJoin | UserPermissions.RoomManageCreateUnlimited,
 			UserPermissions.RoomManageAny);
 
 	/// <summary>The spectating permissions and the permission that manages them.</summary>
@@ -246,7 +250,7 @@ public static class UserPermissionsGroups
 
 	/// <summary>The screenshot permissions and the permission that manages them.</summary>
 	public static readonly ModerationArea Screenshots =
-		new(UserPermissions.ScreenshotUpload, UserPermissions.ScreenshotDelete);
+		new(UserPermissions.ScreenshotUpload, UserPermissions.ScreenshotManage);
 
 	/// <summary>Every area, in a fixed order.</summary>
 	public static readonly ImmutableArray<ModerationArea> Areas =

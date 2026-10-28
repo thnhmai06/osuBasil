@@ -7,7 +7,7 @@ internal sealed class AuthDbContext(DbContextOptions<AuthDbContext> options) : D
 	IDatabaseContext<AuthDbContext>, IWriteTicketContext
 {
 	public DbSet<CredentialRow> Credentials => Set<CredentialRow>();
-	public DbSet<LoginRow> Logins => Set<LoginRow>();
+	public DbSet<SessionRow> Sessions => Set<SessionRow>();
 	public DbSet<WriteTicketRow> WriteTickets => Set<WriteTicketRow>();
 
 	static string IDatabaseContext<AuthDbContext>.HistoryTable => "__ef_migrations_auth";

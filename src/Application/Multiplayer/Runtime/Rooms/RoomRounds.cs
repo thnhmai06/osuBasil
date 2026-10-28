@@ -5,9 +5,6 @@ namespace Basil.Application.Multiplayer.Runtime.Rooms;
 /// <summary>The rounds and countdown of a room.</summary>
 public sealed class RoomRounds
 {
-	/// <summary>How long after a round ended the room still waits for the scores of the players who played it.</summary>
-	public static readonly TimeSpan ScoreWait = TimeSpan.FromSeconds(10);
-
 	/// <summary>Gets the most recently started round, or <see langword="null" /> before the first round.</summary>
 	/// <remarks>Stays set after the round ends, until the next round starts.</remarks>
 	public Round? LastRound { get; internal set; }

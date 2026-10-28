@@ -35,7 +35,8 @@ public partial class InitialCreate : Migration
 				archive_modified_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
 				storyboard = table.Column<bool>(type: "boolean", nullable: false),
 				locked = table.Column<bool>(type: "boolean", nullable: false),
-				visible = table.Column<bool>(type: "boolean", nullable: false)
+				visible = table.Column<bool>(type: "boolean", nullable: false),
+				status = table.Column<sbyte>(type: "smallint", nullable: false)
 			},
 			constraints: table =>
 			{

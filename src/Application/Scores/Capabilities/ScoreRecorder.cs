@@ -60,7 +60,7 @@ internal sealed class ScoreRecorder(
 		if (submission.Score.IsPassed && replay is { Length: >= MinReplayLength })
 			await replays.SaveAsync(score, replay, cancellationToken);
 
-		// Every beatmap reports as Approved (see Beatmapset.Status), so every passed score counts toward ranked score.
+		// Every passed score counts toward ranked score, whatever status the beatmapset is reported with.
 		var current = await stats.AddPlayAsync(player, submission.Score.Mode, submission.Score.TotalScore,
 			submission.Score.IsPassed ? submission.Score.TotalScore : 0, cancellationToken);
 

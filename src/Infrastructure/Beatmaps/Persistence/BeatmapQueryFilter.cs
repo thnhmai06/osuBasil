@@ -14,15 +14,10 @@ internal static class BeatmapQueryFilter
 	/// <param name="beatmaps">The stored beatmaps, with their sets reachable through <see cref="BeatmapRow.Set" />.</param>
 	/// <param name="query">The query to filter by.</param>
 	/// <returns>The beatmaps that match every condition of the query.</returns>
-	/// <remarks>
-	///     <see cref="BeatmapsetRecord.Status" /> is a static member that always returns
-	///     <see cref="BeatmapsetStatus.Approved" />; when the query asks for a different status, no beatmap matches.
-	/// </remarks>
 	public static IQueryable<BeatmapRow> Apply(IQueryable<BeatmapRow> beatmaps, BeatmapQuery query)
 	{
-		// Basil reports every set as Approved; any other status matches nothing.
-		if (query.Status is { } status && status != BeatmapsetStatus.Approved)
-			return beatmaps.Where(row => false);
+		if (query.Status is { } status)
+			beatmaps = beatmaps.Where(row => row.Set.Status == status);
 
 		if (query.Hidden is { } hidden)
 			beatmaps = hidden

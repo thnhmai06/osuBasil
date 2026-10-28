@@ -76,7 +76,7 @@ public sealed class UserTests
 		await app.LoginAsync(record);
 		var user = app.Users.Of(record);
 
-		Assert.False(user.EffectivePermissions(app.Clock.GetUtcNow()).Allows(UserPermissions.ServerConfigure));
+		Assert.False(user.EffectivePermissions(app.Clock.GetUtcNow()).Allows(UserPermissions.ServerManageSettings));
 	}
 
 	[Fact]

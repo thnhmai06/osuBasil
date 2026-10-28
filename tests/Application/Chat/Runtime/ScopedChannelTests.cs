@@ -1,5 +1,6 @@
 using Basil.Application.Chat.Runtime;
 using Basil.Application.Users.Connections;
+using Basil.Domain.Auth;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
 using Basil.Testing;
@@ -90,7 +91,7 @@ public sealed class ScopedChannelTests
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app, UserPrivileges.Moderator);
 		var user = await app.CreateUserAsync("Moderator", "password",
-			UserPermissionsGroups.Default | UserPermissions.UserSilence);
+			UserPermissionsGroups.Default | UserPermissions.UserManageSilence);
 		var connection = await app.LoginAsync(user);
 
 		var result = channel.ScopeTo(connection).Join();
@@ -104,8 +105,8 @@ public sealed class ScopedChannelTests
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app, UserPrivileges.Moderator);
 		var user = await app.CreateUserAsync("SuspendedMod", "password",
-			UserPermissionsGroups.Default | UserPermissions.UserSilence);
-		app.AddRestriction(user, UserPermissions.UserSilence);
+			UserPermissionsGroups.Default | UserPermissions.UserManageSilence);
+		app.AddRestriction(user, UserPermissions.UserManageSilence);
 		var connection = await app.LoginAsync(user);
 
 		var result = channel.ScopeTo(connection).Join();
@@ -339,7 +340,7 @@ public sealed class ScopedChannelTests
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("AwayOwner", "password");
 		var ownerConnection = await app.LoginAsync(owner, ConnectionType.Irc);
-		Assert.True(app.Users.Of(owner).ScopeTo(ownerConnection).SetAway("brb"));
+		Assert.True(app.Users.Of(owner).ScopeTo(ownerConnection).Profile.SetAway("brb"));
 		var sender = await app.LoginAsync(await app.CreateUserAsync("AwaySender", "password"));
 
 		await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(sender)
@@ -356,7 +357,7 @@ public sealed class ScopedChannelTests
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("NoticeOwner", "password");
 		var ownerConnection = await app.LoginAsync(owner, ConnectionType.Irc);
-		app.Users.Of(owner).ScopeTo(ownerConnection).SetAway("brb");
+		app.Users.Of(owner).ScopeTo(ownerConnection).Profile.SetAway("brb");
 		var sender = await app.LoginAsync(await app.CreateUserAsync("NoticeSender", "password"));
 
 		await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(sender)
@@ -405,7 +406,7 @@ public sealed class ScopedChannelTests
 		var owner = await app.CreateUserAsync("BlockerOfStaff", "password");
 		var ownerConnection = await app.LoginAsync(owner, ConnectionType.Irc);
 		var staffRecord = await app.CreateUserAsync("Staff", "password",
-			UserPermissionsGroups.Default | UserPermissions.ChatMessageAnyone);
+			UserPermissionsGroups.Default | UserPermissions.ChatManageMessageAnyone);
 		var staff = await app.LoginAsync(staffRecord);
 		await app.Users.Of(staffRecord).ScopeTo(ownerConnection).Relationships
 			.BlockAsync(TestContext.Current.CancellationToken);
@@ -422,7 +423,7 @@ public sealed class ScopedChannelTests
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("FriendsOnly", "password");
 		var ownerConnection = await app.LoginAsync(owner, ConnectionType.Irc);
-		Assert.True(app.Users.Of(owner).ScopeTo(ownerConnection).SetPmPrivate(true));
+		Assert.True(app.Users.Of(owner).ScopeTo(ownerConnection).Profile.SetPmPrivate(true));
 		var friendRecord = await app.CreateUserAsync("TheFriend", "password");
 		var friend = await app.LoginAsync(friendRecord);
 		var stranger = await app.LoginAsync(await app.CreateUserAsync("TheStranger", "password"));
@@ -472,7 +473,7 @@ public sealed class ScopedChannelTests
 	#region General channel management
 
 	[Fact]
-	public async Task ConfigureAsync_WithoutServerConfigure_IsDeniedNamingIt()
+	public async Task ConfigureAsync_WithoutChatManageChannels_IsDeniedNamingIt()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -482,7 +483,7 @@ public sealed class ScopedChannelTests
 			TestContext.Current.CancellationToken);
 
 		Assert.False(result.IsOk);
-		Assert.Equal(UserPermissions.ServerConfigure, result.Missing);
+		Assert.Equal(UserPermissions.ChatManageChannels, result.Missing);
 		Assert.NotEqual("new", channel.Topic);
 	}
 
@@ -493,7 +494,7 @@ public sealed class ScopedChannelTests
 		var channel = await OpenChannelAsync(app);
 		var player = await MemberOfAsync(app, channel, "Demoted");
 		var moderator = await MemberOfAsync(app, channel, "Kept",
-			UserPermissionsGroups.Default | UserPermissions.UserSilence);
+			UserPermissionsGroups.Default | UserPermissions.UserManageSilence);
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Configurer", "password",
 			UserPermissionsGroups.All));
 
@@ -508,7 +509,7 @@ public sealed class ScopedChannelTests
 	}
 
 	[Fact]
-	public async Task DeleteAsync_WithoutServerConfigure_IsDeniedAndLeavesTheChannelOpen()
+	public async Task DeleteAsync_WithoutChatManageChannels_IsDeniedAndLeavesTheChannelOpen()
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
@@ -516,7 +517,7 @@ public sealed class ScopedChannelTests
 
 		var result = await channel.ScopeTo(connection).General!.DeleteAsync(TestContext.Current.CancellationToken);
 
-		Assert.Equal(UserPermissions.ServerConfigure, result.Missing);
+		Assert.Equal(UserPermissions.ChatManageChannels, result.Missing);
 		Assert.False(channel.IsClosed);
 		Assert.Same(channel, app.Channels.Find(ChannelName));
 	}
