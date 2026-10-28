@@ -188,6 +188,10 @@ namespace Basil.Infrastructure.Beatmaps.Migrations
 						.HasColumnType("boolean")
 						.HasColumnName("locked");
 
+					b.Property<sbyte>("Status")
+					    .HasColumnType("smallint")
+					    .HasColumnName("status");
+
 					b.Property<bool>("Storyboard")
 						.HasColumnType("boolean")
 						.HasColumnName("storyboard");

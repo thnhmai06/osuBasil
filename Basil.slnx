@@ -27,6 +27,11 @@
 	</Folder>
 	<Folder Name="/Sources/Hosts/">
 		<Project Path="src/Hosts/Host/Basil.Host.csproj"/>
+		<Project Path="src/Hosts/Bancho/Basil.Host.Bancho.csproj"/>
+		<Project Path="src/Hosts/Irc/Basil.Host.Irc.csproj"/>
+		<Project Path="src/Hosts/Rest/Basil.Host.Rest.csproj"/>
+		<Project Path="src/Hosts/Cli/Basil.Host.Cli.csproj"/>
+		<Project Path="src/Hosts/Shared/Basil.Host.Shared.csproj"/>
 	</Folder>
 	<Folder Name="/Sources/Protocol/">
 		<Project Path="src/Protocol/Bancho/Basil.Protocol.Bancho.csproj"/>

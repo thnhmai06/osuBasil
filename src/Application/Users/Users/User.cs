@@ -1,6 +1,5 @@
-using System.Collections.Concurrent;
-using System.Collections.Immutable;
 using Basil.Application.Users.Connections;
+using Basil.Domain.Auth;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
 
@@ -9,8 +8,7 @@ namespace Basil.Application.Users.Users;
 /// <summary>Owns the state changes of one account.</summary>
 public sealed class User
 {
-	private readonly ConcurrentDictionary<ConnectionType, ConcurrentSet<Connection>> _connections = new();
-	private ImmutableList<UserRestriction> _restrictions = [];
+	private readonly Lock _sync = new();
 
 	/// <summary>Creates the account object for a stored user.</summary>
 	/// <param name="record">The account to represent.</param>
@@ -19,49 +17,72 @@ public sealed class User
 	{
 		Record = record;
 		Context = context;
+		Profile = new UserProfile(this);
+		Credentials = new UserCredentials(this);
+		Sessions = new UserSessions(this);
+		Grants = new UserGrants(this);
+		Restrictions = new UserRestrictions(this);
+		Relationships = new UserRelationships(this);
 	}
 
 	/// <summary>Gets the account this object represents.</summary>
 	public UserRecord Record { get; }
 
 	/// <summary>Gets or sets the away message shown to other users, or <see langword="null" /> when not away.</summary>
-	public string? AwayMessage { get; internal set; }
+	public string? AwayMessage => Profile.AwayMessage;
 
 	/// <summary>Gets a value that indicates whether the user accepts private messages only from their friends.</summary>
-	public bool PmPrivate { get; internal set; }
+	public bool PmPrivate => Profile.PmPrivate;
 
 	/// <summary>Gets a value that indicates whether this is the user's current online instance.</summary>
 	public bool IsOnline =>
 		Context.Registry.Online.TryGetValue(Record, out var online) && ReferenceEquals(online, this);
 
 	/// <summary>Gets the user's restrictions that had not ended when they were last loaded or changed.</summary>
-	public IReadOnlyList<UserRestriction> Restrictions => _restrictions;
+	public UserRestrictions Restrictions { get; }
+
+	/// <summary>Gets the profile data and settings of this account.</summary>
+	public UserProfile Profile { get; }
+
+	/// <summary>Gets the password of this account.</summary>
+	public UserCredentials Credentials { get; }
+
+	/// <summary>Gets the live connections of this account.</summary>
+	public UserSessions Sessions { get; }
+
+	/// <summary>Gets the permissions granted to this account.</summary>
+	public UserGrants Grants { get; }
+
+	/// <summary>Gets the friends and blocks this account has set.</summary>
+	public UserRelationships Relationships { get; }
 
 	/// <summary>The runtime context for account behaviour.</summary>
 	internal UserContext Context { get; }
 
 	/// <summary>Gets the open connections of one kind.</summary>
 	/// <param name="type">The kind of connection.</param>
-	public IReadOnlySet<Connection> this[ConnectionType type] =>
-		_connections.TryGetValue(type, out var set) ? set : ImmutableHashSet<Connection>.Empty;
+	public IReadOnlySet<Connection> this[ConnectionType type] => Sessions[type];
 
 	/// <summary>Gets every open connection of the user.</summary>
-	public IEnumerable<Connection> Connections => _connections.Values.SelectMany(set => set);
+	public IEnumerable<Connection> Connections => Sessions.Connections;
 
 	/// <summary>Gets the user's osu! game client connection, if any.</summary>
-	public BanchoConnection? Bancho => (BanchoConnection?)this[ConnectionType.Bancho].SingleOrDefault();
+	public BanchoConnection? Bancho => Sessions.Osu;
 
-	/// <summary>Gets the user's IRC connection, if any.</summary>
-	public IrcConnection? Irc => (IrcConnection?)this[ConnectionType.Irc].SingleOrDefault();
+	/// <summary>Gets one of the user's IRC connections, if any.</summary>
+	public IrcConnection? Irc => Sessions.Irc;
+
+	/// <summary>Gets the user's IRC connections.</summary>
+	public IEnumerable<IrcConnection> Ircs => Sessions.Ircs;
 
 	/// <summary>Gets the server's connection for BasilBot, if any.</summary>
-	public BotConnection? Bot => (BotConnection?)this[ConnectionType.Bot].SingleOrDefault();
+	public BotConnection? Bot => Sessions.Bot;
 
 	/// <summary>Gets the user's osu!tourney connections.</summary>
-	public IEnumerable<TourneyConnection> Tourneys => this[ConnectionType.Tourney].Cast<TourneyConnection>();
+	public IEnumerable<TourneyConnection> Tourneys => Sessions.Tourneys;
 
 	/// <summary>Gets the user's HTTP API connections.</summary>
-	public IEnumerable<ApiConnection> Apis => this[ConnectionType.Api].Cast<ApiConnection>();
+	public IEnumerable<ApiConnection> Apis => Sessions.Apis;
 
 	/// <summary>Scopes this account's behaviour to a connection and its authority.</summary>
 	/// <param name="by">The connection acting on the account.</param>
@@ -76,49 +97,33 @@ public sealed class User
 	/// <returns>The granted permissions not suspended by an active restriction.</returns>
 	public UserPermissions EffectivePermissions(DateTimeOffset now)
 	{
-		return Record.Value.Permissions.Effective(Restrictions, now);
-	}
-
-	/// <summary>Replaces the permissions granted to the account and keeps its online user in sync.</summary>
-	/// <param name="permissions">The permissions to grant.</param>
-	internal void ReplacePermissions(UserPermissions permissions)
-	{
-		Change(data => data.Permissions = permissions);
-	}
-
-	/// <summary>Marks the account as deleted at a moment, taking all its permissions away.</summary>
-	/// <param name="at">When the account was deleted.</param>
-	internal void MarkDeleted(DateTimeOffset at)
-	{
-		Change(data =>
-		{
-			data.DeletedAt = at;
-			data.Permissions = UserPermissions.None;
-		});
+		return Grants.Effective(now);
 	}
 
 	/// <summary>Adds a restriction that has started to the running ones.</summary>
 	/// <param name="restriction">The restriction.</param>
 	internal void AddRestriction(UserRestriction restriction)
 	{
-		ImmutableInterlocked.Update(ref _restrictions, running => running.Add(restriction));
+		Restrictions.Add(restriction);
 	}
 
 	/// <summary>Removes a restriction from the running ones.</summary>
 	/// <param name="restriction">The restriction.</param>
 	internal void RemoveRestriction(UserRestriction restriction)
 	{
-		ImmutableInterlocked.Update(ref _restrictions, running => running.RemoveAll(restriction.Equals));
+		Restrictions.Remove(restriction);
 	}
 
 	/// <summary>Replaces the running restrictions with the ones the user has now, as at login.</summary>
 	/// <param name="restrictions">The restrictions that have not ended.</param>
 	internal void ReplaceRestrictions(IEnumerable<UserRestriction> restrictions)
 	{
-		Interlocked.Exchange(ref _restrictions, [.. restrictions]);
+		Restrictions.Replace(restrictions);
 	}
 
-	private void Change(Action<UserData> change)
+	/// <summary>Changes the account data, keeping the online user's copy of the record in step.</summary>
+	/// <param name="change">The change to apply to the data.</param>
+	internal void Change(Action<UserData> change)
 	{
 		change(Record.Value);
 		var online = Context.Registry.Online.GetValueOrDefault(Record);
@@ -129,14 +134,20 @@ public sealed class User
 	/// <summary>Adds a connection.</summary>
 	internal void Add(Connection connection)
 	{
-		var set = _connections.GetOrAdd(connection.Type, _ => []);
-		set.Add(connection);
+		Sessions.Add(connection);
 	}
 
 	/// <summary>Removes a connection.</summary>
 	/// <returns><see langword="true" /> if the connection was held and has been removed.</returns>
 	internal bool Remove(Connection connection)
 	{
-		return _connections.TryGetValue(connection.Type, out var set) && set.Remove(connection);
+		return Sessions.Remove(connection);
+	}
+
+	/// <summary>Enters the scope that synchronizes this account's parts.</summary>
+	/// <returns>A scope that must be disposed when the state change is complete.</returns>
+	internal Lock.Scope Enter()
+	{
+		return _sync.EnterScope();
 	}
 }

@@ -5,7 +5,7 @@ namespace Basil.Application.Multiplayer.Tests.Persistence;
 
 /// <summary>
 ///     Narrowing a match query to its asker. The rule comes from the owner's decision: an asker without
-///     <see cref="UserPermissions.RoomViewPrivate" /> sees private matches only when they took part in them or manage
+///     <see cref="UserPermissions.RoomManageViewPrivate" /> sees private matches only when they took part in them or manage
 ///     them.
 /// </summary>
 public sealed class MatchQueryTests
@@ -15,7 +15,7 @@ public sealed class MatchQueryTests
 	[Fact]
 	public void LimitTo_AskerHoldingRoomViewPrivate_LeavesTheQueryUnrestricted()
 	{
-		Assert.Null(new MatchQuery().LimitTo(UserPermissions.RoomViewPrivate, Viewer).VisibleTo);
+		Assert.Null(new MatchQuery().LimitTo(UserPermissions.RoomManageViewPrivate, Viewer).VisibleTo);
 	}
 
 	[Fact]

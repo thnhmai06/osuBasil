@@ -1,24 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-	<ItemGroup>
-		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions"/>
-	</ItemGroup>
+	<PropertyGroup>
+		<RootNamespace>Basil.Host.Irc</RootNamespace>
+	</PropertyGroup>
 
 	<ItemGroup>
-		<Using Include="Microsoft.Extensions.Hosting"/>
-		<Using Include="Microsoft.Extensions.Logging"/>
-	</ItemGroup>
-
-	<ItemGroup>
-		<ProjectReference Include="..\..\Application\Runtime\Basil.Application.Runtime.csproj"/>
-		<ProjectReference Include="..\..\Infrastructure\Persistence\Basil.Infrastructure.Persistence.csproj"/>
-		<ProjectReference Include="..\..\Infrastructure\Capabilities\Basil.Infrastructure.Capabilities.csproj"/>
-		<ProjectReference Include="..\..\Infrastructure\Runtime\Basil.Infrastructure.Runtime.csproj"/>
+		<ProjectReference Include="..\Shared\Basil.Host.Shared.csproj"/>
 		<ProjectReference Include="..\..\Protocol\Irc\Basil.Protocol.Irc.csproj"/>
-	</ItemGroup>
-
-	<ItemGroup>
-		<InternalsVisibleTo Include="Basil.Host.Irc.Tests"/>
+		<ProjectReference Include="..\..\Application\Chat\Basil.Application.Chat.csproj"/>
+		<ProjectReference Include="..\..\Application\Multiplayer\Basil.Application.Multiplayer.csproj"/>
+		<ProjectReference Include="..\..\Application\Users\Basil.Application.Users.csproj"/>
 	</ItemGroup>
 
 </Project>

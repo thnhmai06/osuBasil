@@ -58,6 +58,20 @@ internal sealed class PostgresRestrictionRepository(
 	}
 
 	/// <inheritdoc />
+	public async Task DeleteAsync(UserRestriction restriction, CancellationToken cancellationToken = default)
+	{
+		var user = restriction.Value.User;
+		var removed = await Writer.WriteAsync<UsersDbContext, int>(Root.User(user.Id),
+			(context, token) => context.Restrictions.Where(row => row.Id == restriction.Id)
+				.ExecuteDeleteAsync(token), cancellationToken);
+		if (removed == 0) return;
+
+		Items.Remove(restriction.Id);
+		_byUser.Change(user.Id, user,
+			current => current.RemoveAll(item => item.Id == restriction.Id), Task.CompletedTask);
+	}
+
+	/// <inheritdoc />
 	public ValueTask<UserRestriction?> GetAsync(int id, CancellationToken cancellationToken = default)
 	{
 		return FindAsync(id, cancellationToken);

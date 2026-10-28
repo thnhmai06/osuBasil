@@ -21,7 +21,7 @@ public sealed partial class Room
 	/// </returns>
 	/// <remarks>
 	///     The round is decided as soon as it has ended and every player still awaited has a score; otherwise
-	///     <see cref="RoomRounds.ScoreWait" /> after it ended, with the scores that came in.
+	///     the score wait of the server settings (10 seconds by default) after it ended, with the scores that came in.
 	/// </remarks>
 	internal Result<RoomOutcome> ReceiveScore(ScoreRecord score, UserRecord player)
 	{
@@ -69,11 +69,15 @@ public sealed partial class Room
 	{
 		if (Rounds.Settlement is not { Closed: false } settlement || settlement.Round.EndedAt is null) return;
 
+		var wait = Context.Settings.Current.Multiplayer.Rounds.ScoreWait;
+		if (settlement.HasCompletions)
+			Context.Events.Publish(new RoomRoundEnded(this, settlement.Round, wait));
+
 		if (settlement.Missing().Count == 0)
 			Decide(settlement);
 		else
 			settlement.Timer = Context.Clock.CreateTimer(_ => Fire(() => DecideAfterWait(settlement)), null,
-				RoomRounds.ScoreWait, Timeout.InfiniteTimeSpan);
+				wait, Timeout.InfiniteTimeSpan);
 	}
 
 	/// <summary>Decides a round that ended and still waits for scores, because the room closes or the next round starts.</summary>

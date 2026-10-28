@@ -16,6 +16,7 @@ public sealed class ScopedServer : Scoped<UserPermissions, Connection>
 		Server = server;
 		Channels = new ScopedServerChannels(this);
 		Screenshots = new ScopedServerScreenshots(this);
+		Beatmapsets = new ScopedServerBeatmapsets(this);
 	}
 
 	/// <summary>Gets the server this scope is over.</summary>
@@ -27,12 +28,15 @@ public sealed class ScopedServer : Scoped<UserPermissions, Connection>
 	/// <summary>Gets operations for screenshots.</summary>
 	public ScopedServerScreenshots Screenshots { get; }
 
+	/// <summary>The beatmapset uploads of this server.</summary>
+	public ScopedServerBeatmapsets Beatmapsets { get; }
+
 	/// <summary>Sends a notification to one user's open osu! client.</summary>
 	/// <param name="text">The text to show.</param>
 	/// <param name="to">The user to notify.</param>
 	/// <returns>Whether the caller may announce and how many clients were sent the notification.</returns>
 	/// <remarks>
-	///     Requires <see cref="UserPermissions.ChatAnnounce" />; only open osu! clients receive the notification.
+	///     Requires <see cref="UserPermissions.ChatManageAnnounce" />; only open osu! clients receive the notification.
 	/// </remarks>
 	public (Result<ServerOutcome> Result, int Sent) Notify(string text, UserRecord to)
 	{
@@ -44,7 +48,7 @@ public sealed class ScopedServer : Scoped<UserPermissions, Connection>
 	/// <param name="to">The users to notify.</param>
 	/// <returns>Whether the caller may announce and how many clients were sent the notification.</returns>
 	/// <remarks>
-	///     Requires <see cref="UserPermissions.ChatAnnounce" />; only open osu! clients receive the notification.
+	///     Requires <see cref="UserPermissions.ChatManageAnnounce" />; only open osu! clients receive the notification.
 	/// </remarks>
 	public (Result<ServerOutcome> Result, int Sent) Notify(string text, IReadOnlyCollection<UserRecord> to)
 	{
@@ -55,7 +59,7 @@ public sealed class ScopedServer : Scoped<UserPermissions, Connection>
 	/// <param name="text">The text to show.</param>
 	/// <returns>Whether the caller may announce and how many clients were sent the notification.</returns>
 	/// <remarks>
-	///     Requires <see cref="UserPermissions.ChatAnnounce" />; only open osu! clients receive the notification.
+	///     Requires <see cref="UserPermissions.ChatManageAnnounce" />; only open osu! clients receive the notification.
 	/// </remarks>
 	public (Result<ServerOutcome> Result, int Sent) NotifyAll(string text)
 	{
@@ -64,7 +68,7 @@ public sealed class ScopedServer : Scoped<UserPermissions, Connection>
 
 	private (Result<ServerOutcome> Result, int Sent) Announce(Func<int> send)
 	{
-		return Require(UserPermissions.ChatAnnounce) is { } missing
+		return Require(UserPermissions.ChatManageAnnounce) is { } missing
 			? (Result<ServerOutcome>.Denied(missing), 0)
 			: (ServerOutcome.Ok, send());
 	}

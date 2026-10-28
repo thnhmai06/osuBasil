@@ -14,10 +14,13 @@ public sealed class BeatmapMirrorSettingsTests
 	{
 		var current = new ServerSettings
 		{
-			BeatmapMirror = new ServerSettings.BeatmapMirrorSettings
+			Beatmaps = new ServerSettings.BeatmapSettings
 			{
-				SearchEndpoint = new Uri("https://first.test/search"),
-				DownloadEndpoint = new Uri("https://first.test/download")
+				Mirror = new ServerSettings.BeatmapMirrorSettings
+				{
+					SearchEndpoint = new Uri("https://first.test/search"),
+					DownloadEndpoint = new Uri("https://first.test/download")
+				}
 			}
 		};
 		var settings = Substitute.For<ISettingsRepository>();
@@ -31,10 +34,13 @@ public sealed class BeatmapMirrorSettingsTests
 		var first = await mirrorSettings.GetAsync(TestContext.Current.CancellationToken);
 		current = new ServerSettings
 		{
-			BeatmapMirror = new ServerSettings.BeatmapMirrorSettings
+			Beatmaps = new ServerSettings.BeatmapSettings
 			{
-				SearchEndpoint = new Uri("https://second.test/search"),
-				DownloadEndpoint = new Uri("https://second.test/download")
+				Mirror = new ServerSettings.BeatmapMirrorSettings
+				{
+					SearchEndpoint = new Uri("https://second.test/search"),
+					DownloadEndpoint = new Uri("https://second.test/download")
+				}
 			}
 		};
 		var second = await mirrorSettings.GetAsync(TestContext.Current.CancellationToken);

@@ -2,6 +2,7 @@ using Basil.Application.Chat.Runtime;
 using Basil.Application.Users.Connections;
 using Basil.Application.Multiplayer.Runtime.Events;
 using Basil.Application.Users.Users;
+using Basil.Domain.Auth;
 using Basil.Domain.Users;
 using Basil.Testing;
 
@@ -77,8 +78,8 @@ public sealed class RoomChannelHandlerTests
 		var setup = await RoomFixture.CreateAsync(app);
 		var channel = app.RoomChannels.Of(setup.Room);
 		channel.ScopeTo(setup.Player).Join();
-		app.Users.Close(setup.Player, ConnectionCloseReason.ConnectionLost);
-		var replacement = (BanchoConnection)await app.LoginAsync(setup.Player.Record, ConnectionType.Bancho);
+		app.Users.Close(setup.Player, SessionEndReason.ConnectionLost);
+		var replacement = (BanchoConnection)await app.LoginAsync(setup.Player.Record, ConnectionType.Osu);
 		Assert.True((await setup.Room.ScopeTo(replacement).Members.JoinAsync("",
 			TestContext.Current.CancellationToken)).IsOk);
 		var joined = app.RoomEvents.Events.OfType<RoomPlayerJoined>().Last();

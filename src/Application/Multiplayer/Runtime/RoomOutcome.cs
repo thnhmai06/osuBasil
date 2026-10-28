@@ -72,6 +72,9 @@ public enum RoomOutcome : byte
 	/// <summary>The room is locked, so players cannot change slot or team.</summary>
 	RoomLocked,
 
+	/// <summary>The server has locked room creation to room managers.</summary>
+	Locked,
+
 	/// <summary>A round is in progress.</summary>
 	InProgress,
 

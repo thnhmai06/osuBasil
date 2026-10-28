@@ -4,5 +4,5 @@ namespace Basil.Bot.Replies;
 public sealed class RepliesOptions
 {
 	/// <summary>Gets or sets the path of the replies file, which the bot writes with its default wording when it is absent.</summary>
-	public string Path { get; set; } = "Data/Bot/replies.json";
+	public string Path { get; set; } = "Configurations/Templates/replies.json";
 }

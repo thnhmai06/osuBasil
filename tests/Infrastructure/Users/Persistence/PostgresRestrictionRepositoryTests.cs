@@ -101,6 +101,22 @@ public sealed class PostgresRestrictionRepositoryTests(PersistenceFixture contai
 	}
 
 	[Fact]
+	public async Task A_deleted_restriction_is_removed_from_the_database_and_history()
+	{
+		var user = await Get<IUserRepository>()
+			.CreateAsync(new UserData { Name = "restricted" }, TestContext.Current.CancellationToken);
+		var created = await CreateAsync(user, Moment);
+
+		await Restrictions.DeleteAsync(created, TestContext.Current.CancellationToken);
+
+		var rows = await StoredRows.ReadAsync(ConnectionString,
+			"select id from restrictions where id = @id",
+			new Dictionary<string, object?> { ["@id"] = created.Id }, TestContext.Current.CancellationToken);
+		Assert.Empty(rows);
+		Assert.Empty(await Restrictions.ListAsync(user, TestContext.Current.CancellationToken));
+	}
+
+	[Fact]
 	public async Task A_user_restrictions_are_listed_oldest_first()
 	{
 		var user = await Get<IUserRepository>()

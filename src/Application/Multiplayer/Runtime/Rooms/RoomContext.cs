@@ -1,3 +1,4 @@
+using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Connections;
 using Basil.Application.Common.Events;
 using Basil.Application.Multiplayer.Runtime.Events;
@@ -14,7 +15,8 @@ internal sealed record RoomContext(
 	TimeProvider Clock,
 	IEventPublisher<RoomEvent> Events,
 	IRoomLobbyPort Lobby,
-	RoomBlocks Users);
+	RoomBlocks Users,
+	ISettingsRepository Settings);
 
 /// <summary>What a room asks of the lobby that holds it.</summary>
 internal interface IRoomLobbyPort

@@ -1,3 +1,4 @@
+using Basil.Domain.Beatmaps;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -21,6 +22,7 @@ internal sealed class BeatmapsetRow
 	public bool Storyboard { get; set; }
 	public bool Locked { get; set; }
 	public bool Visible { get; set; }
+	public BeatmapsetStatus Status { get; set; }
 	public List<BeatmapRow> Beatmaps { get; set; } = [];
 }
 

@@ -56,7 +56,7 @@ public sealed class ScopedScoreSubmitter : Scoped<UserPermissions, BanchoConnect
 		if (checkedBeatmap is null) return (ScoreSubmissionOutcome.Rejected, ScoreRejection.UnknownBeatmap);
 
 		var outcome = await _submitter.Recorder.ValidateAndRecordAsync(
-			By.Record, By.Login.Client!, submission, checkedBeatmap, client, replay, cancellationToken);
+			By.Record, By.Session.Client!, submission, checkedBeatmap, client, replay, cancellationToken);
 		if (outcome.Rejection is { } rejection) return (ScoreSubmissionOutcome.Rejected, rejection);
 
 		_submitter.Events.Publish(new ScoreSubmitted(By.Record, outcome.Score!, outcome.Stats!));

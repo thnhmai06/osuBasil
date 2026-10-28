@@ -1,3 +1,4 @@
+using Basil.Application.Users.Connections;
 using Basil.Application.Users.Users;
 using Mediator;
 
@@ -9,10 +10,11 @@ internal sealed class SpectatorLeftHandler(SpectatorChannels channels) : INotifi
 	/// <inheritdoc />
 	public ValueTask Handle(UserSpectatorLeft @event, CancellationToken cancellationToken)
 	{
-		if (channels.Find(@event.Host) is not { } channel) return ValueTask.CompletedTask;
+		if (@event.Spectator is ApiConnection || channels.Find(@event.Host) is not { } channel)
+			return ValueTask.CompletedTask;
 
 		channel.ScopeTo(@event.Spectator).Part();
-		if (@event.Host.Spectators.Count == 0)
+		if (@event.Host.Spectators.All(spectator => spectator is ApiConnection))
 			channel.ScopeTo(@event.Host).Part();
 
 		return ValueTask.CompletedTask;

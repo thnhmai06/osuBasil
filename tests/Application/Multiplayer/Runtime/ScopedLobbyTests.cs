@@ -146,7 +146,7 @@ public sealed class ScopedLobbyTests
 	{
 		using var app = new TestApplication();
 		var creator = await RoomFixture.PlayerAsync(app, "Creator",
-			UserPermissionsGroups.Default | UserPermissions.RoomCreateUnlimited);
+			UserPermissionsGroups.Default | UserPermissions.RoomManageCreateUnlimited);
 		for (var index = 0; index < 4; index++)
 			Assert.True((await OpenAsync(app, creator, $"room {index}", true)).Result.IsOk);
 
@@ -157,12 +157,12 @@ public sealed class ScopedLobbyTests
 	}
 
 	[Fact]
-	public async Task OpenRoomAsync_WhileRoomCreationIsLocked_IsDeniedNamingRoomManageAny()
+	public async Task OpenRoomAsync_WhileRoomCreationIsLocked_ReturnsLocked()
 	{
 		using var app = new TestApplication();
 		await app.SetSettingsAsync(new ServerSettings
 		{
-			LockedCreation = ServerSettings.CreationLocks.Rooms
+			Locks = Locks.Rooms
 		});
 		var creator = await RoomFixture.PlayerAsync(app, "Creator");
 
@@ -170,7 +170,8 @@ public sealed class ScopedLobbyTests
 
 		Assert.Null(room);
 		Assert.False(result.IsOk);
-		Assert.Equal(UserPermissions.RoomManageAny, result.Missing);
+		Assert.Equal(RoomOutcome.Locked, result.Outcome);
+		Assert.Null(result.Missing);
 	}
 
 	[Fact]
@@ -179,7 +180,7 @@ public sealed class ScopedLobbyTests
 		using var app = new TestApplication();
 		await app.SetSettingsAsync(new ServerSettings
 		{
-			LockedCreation = ServerSettings.CreationLocks.Rooms
+			Locks = Locks.Rooms
 		});
 		var creator = await RoomFixture.PlayerAsync(app, "Creator",
 			UserPermissionsGroups.Default | UserPermissions.RoomManageAny);
@@ -337,7 +338,7 @@ public sealed class ScopedLobbyTests
 		using var app = new TestApplication();
 		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), true);
 		var viewer = await app.LoginAsync(await app.CreateUserAsync("Viewer", "password",
-			UserPermissionsGroups.Default | UserPermissions.RoomViewPrivate));
+			UserPermissionsGroups.Default | UserPermissions.RoomManageViewPrivate));
 
 		Assert.True(await app.Lobby.ScopeTo(viewer).CanViewAsync(match, TestContext.Current.CancellationToken));
 	}
@@ -359,8 +360,8 @@ public sealed class ScopedLobbyTests
 		using var app = new TestApplication();
 		var match = await MatchAsync(app, await app.CreateUserAsync("Creator", "password"), true);
 		var user = await app.CreateUserAsync("Viewer", "password",
-			UserPermissionsGroups.Default | UserPermissions.RoomViewPrivate);
-		app.AddRestriction(user, UserPermissions.RoomViewPrivate);
+			UserPermissionsGroups.Default | UserPermissions.RoomManageViewPrivate);
+		app.AddRestriction(user, UserPermissions.RoomManageViewPrivate);
 		var viewer = await app.LoginAsync(user);
 
 		Assert.False(await app.Lobby.ScopeTo(viewer).CanViewAsync(match, TestContext.Current.CancellationToken));

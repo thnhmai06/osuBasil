@@ -32,6 +32,6 @@ public sealed class RoomChannel : Channel
 	internal override bool CanWrite(Connection connection, DateTimeOffset now)
 	{
 		return Room.Involves(connection, now) ||
-		       connection.User.EffectivePermissions(now).Allows(UserPermissions.ChatPostAnyRoom);
+		       connection.User.EffectivePermissions(now).Allows(UserPermissions.ChatManagePostAnyRoom);
 	}
 }

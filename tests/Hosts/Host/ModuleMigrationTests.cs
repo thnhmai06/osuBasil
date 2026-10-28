@@ -15,7 +15,7 @@ public sealed class ModuleMigrationTests(PersistenceFixture container) : Databas
 	[
 		("Common", ["write_tickets"]),
 		("Users", ["users", "restrictions", "moderation_log", "relationships"]),
-		("Auth", ["credentials", "logins"]),
+		("Auth", ["credentials", "sessions"]),
 		("Beatmaps", ["beatmapsets", "beatmaps"]),
 		("Content", ["settings", "menu_banners"]),
 		("Scores", ["scores", "user_stats"]),
@@ -85,7 +85,6 @@ public sealed class ModuleMigrationTests(PersistenceFixture container) : Databas
 		[
 			"fk_beatmaps_beatmapsets_beatmapset_id",
 			"fk_credentials_users_user_id",
-			"fk_logins_users_user_id",
 			"fk_match_events_matches_match_id",
 			"fk_match_events_users_actor_id",
 			"fk_match_events_users_target_id",
@@ -98,6 +97,7 @@ public sealed class ModuleMigrationTests(PersistenceFixture container) : Databas
 			"fk_round_scores_scores_score_id",
 			"fk_rounds_matches_match_id",
 			"fk_scores_users_user_id",
+			"fk_sessions_users_user_id",
 			"fk_user_stats_users_user_id"
 		];
 

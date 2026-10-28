@@ -308,7 +308,7 @@ public sealed class UserQueryTests
 	{
 		var query = new UserQuery("bob", Deleted: deleted);
 
-		Assert.Equal(deleted, query.LimitTo(UserPermissions.UserViewDeleted).Deleted);
+		Assert.Equal(deleted, query.LimitTo(UserPermissions.UserManageViewDeleted).Deleted);
 	}
 
 	[Fact]

@@ -127,7 +127,7 @@ public static class DependencyInjection
 		public async Task<(Uri? SearchEndpoint, Uri? DownloadEndpoint)> GetAsync(
 			CancellationToken cancellationToken = default)
 		{
-			var mirror = (await settings.GetAsync(cancellationToken)).BeatmapMirror;
+			var mirror = (await settings.GetAsync(cancellationToken)).Beatmaps.Mirror;
 			return (mirror.SearchEndpoint, mirror.DownloadEndpoint);
 		}
 	}

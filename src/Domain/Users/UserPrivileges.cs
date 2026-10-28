@@ -43,10 +43,10 @@ public static class PrivilegesExtensions
 
 	/// <summary>The permissions that belong to the tournament role, without the player's.</summary>
 	private const UserPermissions TournamentPermissions =
-		(UserPermissions.RoomObserve | UserPermissions.RoomViewPrivate |
-		 UserPermissions.RoomManageAny | UserPermissions.RoomCreateUnlimited |
-		 UserPermissions.ChatPostAnyRoom | UserPermissions.BeatmapsetManage |
-		 UserPermissions.BeatmapsetViewHidden) & ~PlayerPermissions;
+		(UserPermissions.RoomObserve | UserPermissions.RoomManageViewPrivate |
+		 UserPermissions.RoomManageAny | UserPermissions.RoomManageCreateUnlimited |
+		 UserPermissions.ChatManagePostAnyRoom | UserPermissions.BeatmapsetManage |
+		 UserPermissions.BeatmapsetManageViewHidden) & ~PlayerPermissions;
 
 	/// <param name="role">The roles; a combination is the union of its roles' permissions.</param>
 	extension(UserPrivileges role)
@@ -62,15 +62,15 @@ public static class PrivilegesExtensions
 				if ((role & UserPrivileges.Supporter) != 0) permissions |= UserPermissions.BeatmapsetDirect;
 				if ((role & UserPrivileges.Tournament) != 0) permissions |= TournamentPermissions;
 				if ((role & UserPrivileges.Moderator) != 0)
-					permissions |= UserPermissions.UserSilence | UserPermissions.UserRestrict |
-					               UserPermissions.UserNote |
-					               UserPermissions.UserViewLogins |
-					               UserPermissions.ChatMessageAnyone | UserPermissions.ChatAnnounce |
-					               UserPermissions.ScreenshotDelete;
+					permissions |= UserPermissions.UserManageSilence | UserPermissions.UserManageRestrict |
+					               UserPermissions.UserManageNote |
+					               UserPermissions.UserManageViewSessions |
+					               UserPermissions.ChatManageMessageAnyone | UserPermissions.ChatManageAnnounce |
+					               UserPermissions.ScreenshotManage;
 				if ((role & UserPrivileges.Developer) != 0)
-					permissions |= UserPermissions.ServerConfigure | UserPermissions.ServerViewDiagnostics;
+					permissions |= UserPermissions.ServerManageSettings | UserPermissions.ServerManageDiagnostics;
 				if ((role & UserPrivileges.Owner) != 0)
-					permissions |= UserPermissions.UserManage | UserPermissions.UserViewDeleted |
+					permissions |= UserPermissions.UserManage | UserPermissions.UserManageViewDeleted |
 					               UserPermissions.UserManagePermissions |
 					               UserPermissions.ServerManageContent;
 				return permissions;

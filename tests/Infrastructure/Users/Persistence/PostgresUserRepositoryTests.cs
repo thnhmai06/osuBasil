@@ -388,10 +388,10 @@ public sealed class PostgresUserRepositoryTests(PersistenceFixture container) : 
 		await Users.CreateAsync(new UserData
 		{
 			Name = "admin_user",
-			Permissions = UserPermissionsGroups.Default | UserPermissions.ServerConfigure
+			Permissions = UserPermissionsGroups.Default | UserPermissions.ServerManageSettings
 		}, TestContext.Current.CancellationToken);
 
-		var page = await Users.ListAsync(new UserQuery(Permissions: UserPermissions.ServerConfigure),
+		var page = await Users.ListAsync(new UserQuery(Permissions: UserPermissions.ServerManageSettings),
 			new PageRequest(0, 10), TestContext.Current.CancellationToken);
 
 		Assert.Equal("admin_user", Assert.Single(page.Items).Value.Name);

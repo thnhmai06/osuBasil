@@ -32,11 +32,11 @@ public sealed class ScopedUserRegistryTests
 		var by = await app.LoginAsync(actor);
 
 		var (user, result) = await app.Users.ScopeTo(by).CreateAccountAsync(
-			new UserData { Name = "TooMuchPower", Permissions = UserPermissions.ServerConfigure }, Hash,
+			new UserData { Name = "TooMuchPower", Permissions = UserPermissions.ServerManageSettings }, Hash,
 			TestContext.Current.CancellationToken);
 
 		Assert.Null(user);
-		Assert.Equal(UserPermissions.ServerConfigure, result.Missing);
+		Assert.Equal(UserPermissions.ServerManageSettings, result.Missing);
 	}
 
 	[Fact]
@@ -45,14 +45,14 @@ public sealed class ScopedUserRegistryTests
 		using var app = new TestApplication();
 		var actor = await app.CreateUserAsync("AccountManager", "password", UserPermissionsGroups.All);
 		var by = await app.LoginAsync(actor);
-		var data = new UserData { Name = "CreatedAccount", Permissions = UserPermissions.UserNote };
+		var data = new UserData { Name = "CreatedAccount", Permissions = UserPermissions.UserManageNote };
 
 		var (user, result) = await app.Users.ScopeTo(by).CreateAccountAsync(data, Hash,
 			TestContext.Current.CancellationToken);
 
 		Assert.True(result.IsOk);
 		Assert.NotNull(user);
-		Assert.Equal(UserPermissions.UserNote, user.Value.Permissions);
+		Assert.Equal(UserPermissions.UserManageNote, user.Value.Permissions);
 	}
 
 	[Fact]

@@ -1,3 +1,4 @@
+using Basil.Application.Beatmaps.Runtime;
 using Basil.Application.Chat.Persistence;
 using Basil.Application.Chat.Runtime;
 using Basil.Application.Content.Capabilities;
@@ -27,7 +28,9 @@ public static class DependencyInjection
 			sp.GetRequiredService<IScreenshotStorage>(),
 			sp.GetRequiredService<Lobby>(),
 			sp.GetRequiredService<IChannelRepository>(),
-			sp.GetRequiredService<IUserRepository>()));
+			sp.GetRequiredService<IUserRepository>(),
+			sp.GetRequiredService<Beatmapsets>(),
+			sp.GetRequiredService<ISettingsRepository>()));
 		services.AddSingleton<Server>(sp => new Server(sp.GetRequiredService<ServerContext>()));
 		return services;
 	}

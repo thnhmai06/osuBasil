@@ -15,7 +15,7 @@ public static class DependencyInjection
 	{
 		services.AddSingleton<IModuleMigration, ModuleMigration<AuthDbContext>>();
 		services.AddSingleton<ICredentialRepository, PostgresCredentialRepository>();
-		services.AddSingleton<ILoginRepository, PostgresLoginRepository>();
+		services.AddSingleton<ISessionRepository, PostgresSessionRepository>();
 		return services;
 	}
 }

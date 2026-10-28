@@ -182,7 +182,8 @@ public sealed class ScopedRoomRoundsTests
 		Assert.False(setup.Room.Rounds.InProgress);
 		Assert.NotNull(setup.Room.Rounds.LastRound!.EndedAt);
 		Assert.Equal(RoomSlotStatus.NotReady, setup.Room.Slots.Find(setup.Player)!.Status);
-		Assert.IsType<RoomRoundCompleted>(app.RoomEvents.Events[^1]);
+		Assert.IsType<RoomRoundCompleted>(app.RoomEvents.Events[^2]);
+		Assert.IsType<RoomRoundEnded>(app.RoomEvents.Events[^1]);
 	}
 
 	[Fact]

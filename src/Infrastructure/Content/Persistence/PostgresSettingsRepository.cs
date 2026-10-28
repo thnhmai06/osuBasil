@@ -1,4 +1,5 @@
-using System.Globalization;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Basil.Application.Content.Persistence;
 using Basil.Domain.Content;
 using Basil.Infrastructure.Common;
@@ -25,27 +26,27 @@ internal sealed class PostgresSettingsRepository(
 			.ToListAsync(cancellationToken), cancellationToken);
 		var values = rows.ToDictionary(row => row.Name, row => row.Value, StringComparer.Ordinal);
 
-		// A setting without a row keeps its default.
-		var defaults = new ServerSettings();
-		_settings = new ServerSettings
-		{
-			Motd = values.GetValueOrDefault(SettingNames.Motd),
-			LockedCreation = ParseLocks(values.GetValueOrDefault(SettingNames.LockedCreation)) ??
-			                 defaults.LockedCreation,
-			MenuIcon = new ServerSettings.MenuIconSettings
-			{
-				Url = Parse(SettingNames.MenuIconUrl, values.GetValueOrDefault(SettingNames.MenuIconUrl)),
-				Image = ParseImage(values.GetValueOrDefault(SettingNames.MenuIconImage))
-			},
-			BeatmapMirror = new ServerSettings.BeatmapMirrorSettings
-			{
-				DownloadEndpoint = Parse(SettingNames.MirrorDownloadEndpoint,
-					values.GetValueOrDefault(SettingNames.MirrorDownloadEndpoint)),
-				SearchEndpoint = Parse(SettingNames.MirrorSearchEndpoint,
-					values.GetValueOrDefault(SettingNames.MirrorSearchEndpoint))
-			}
-		};
+		// A category without a row, or whose row cannot be read, keeps its defaults.
+		var settings = new ServerSettings();
+		foreach (var category in Categories)
+			if (values.GetValueOrDefault(category.Name) is { } json)
+				try
+				{
+					settings = category.Read(settings, json);
+				}
+				catch (Exception exception) when (exception is JsonException or ArgumentException or FormatException)
+				{
+					logger.LogWarning(exception, "The setting category {Category} is not valid and keeps its defaults",
+						category.Name);
+				}
+
+		_settings = settings;
 	}
+
+	/// <inheritdoc />
+	public ServerSettings Current =>
+		Volatile.Read(ref _settings) ?? throw new InvalidOperationException(
+			"Server settings are read before the storage has started.");
 
 	/// <inheritdoc />
 	public ValueTask<ServerSettings> GetAsync(CancellationToken cancellationToken = default)
@@ -58,15 +59,8 @@ internal sealed class PostgresSettingsRepository(
 	/// <inheritdoc />
 	public async Task CreateOrUpdateAsync(ServerSettings settings, CancellationToken cancellationToken = default)
 	{
-		var values = new Dictionary<string, string?>
-		{
-			[SettingNames.Motd] = settings.Motd,
-			[SettingNames.LockedCreation] = ((int)settings.LockedCreation).ToString(CultureInfo.InvariantCulture),
-			[SettingNames.MenuIconUrl] = settings.MenuIcon.Url?.ToString(),
-			[SettingNames.MenuIconImage] = settings.MenuIcon.Image?.ToString(),
-			[SettingNames.MirrorDownloadEndpoint] = settings.BeatmapMirror.DownloadEndpoint?.ToString(),
-			[SettingNames.MirrorSearchEndpoint] = settings.BeatmapMirror.SearchEndpoint?.ToString()
-		};
+		var values = Categories.ToDictionary(category => category.Name, category => category.Write(settings),
+			StringComparer.Ordinal);
 		await _writes.WriteAsync(1, () => writer.SaveAsync(Root.Server, (GetType(), 1),
 			new WriteCommand<ContentDbContext>(async (context, token) =>
 			{
@@ -81,47 +75,48 @@ internal sealed class PostgresSettingsRepository(
 		return context.UpsertAsync(new SettingRow { Name = name, Value = value }, stored => stored.Name == name, token);
 	}
 
-	/// <summary>Reads an absolute address, or <see langword="null" /> when none or an invalid one is stored.</summary>
-	private Uri? Parse(string name, string? value)
-	{
-		if (value is null) return null;
-		if (Uri.TryCreate(value, UriKind.Absolute, out var address)) return address;
+	/// <summary>One nested category of the settings, stored as one JSON row.</summary>
+	private sealed record Category(string Name, Func<ServerSettings, string> Write,
+		Func<ServerSettings, string, ServerSettings> Read);
 
-		logger.LogWarning("The setting {Setting} holds {Value}, which is not an absolute address, and is not used",
-			name, value);
-		return null;
+	private static Category Of<T>(string name, Func<ServerSettings, T> get, Func<ServerSettings, T, ServerSettings> set)
+		where T : notnull
+	{
+		return new Category(name, settings => JsonSerializer.Serialize(get(settings), Json),
+			(settings, json) => set(settings, JsonSerializer.Deserialize<T>(json, Json) ??
+			                                  throw new JsonException("The category is null.")));
 	}
 
-	/// <summary>Reads the locked creations, or <see langword="null" /> when none or an invalid value is stored.</summary>
-	private ServerSettings.CreationLocks? ParseLocks(string? value)
+	private static readonly JsonSerializerOptions Json = new()
 	{
-		if (value is null) return null;
-		if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var locks))
-			return (ServerSettings.CreationLocks)locks;
+		Converters = { new JsonStringEnumConverter(), new ContentReferenceConverter() }
+	};
 
-		logger.LogWarning("The setting {Setting} holds {Value}, which is not a number, and is not used",
-			SettingNames.LockedCreation, value);
-		return null;
-	}
+	private static readonly Category[] Categories =
+	[
+		Of("general", settings => settings.General, (settings, value) => settings with { General = value }),
+		Of("locks", settings => settings.Locks, (settings, value) => settings with { Locks = value }),
+		Of("sessions", settings => settings.Sessions, (settings, value) => settings with { Sessions = value }),
+		Of("rate_limits", settings => settings.RateLimits, (settings, value) => settings with { RateLimits = value }),
+		Of("uploads", settings => settings.Uploads, (settings, value) => settings with { Uploads = value }),
+		Of("beatmaps", settings => settings.Beatmaps, (settings, value) => settings with { Beatmaps = value }),
+		Of("multiplayer", settings => settings.Multiplayer, (settings, value) => settings with { Multiplayer = value }),
+		Of("bot", settings => settings.Bot, (settings, value) => settings with { Bot = value }),
+		Of("cors", settings => settings.Cors, (settings, value) => settings with { Cors = value }),
+		Of("menu_icon", settings => settings.MenuIcon, (settings, value) => settings with { MenuIcon = value })
+	];
 
-	/// <summary>Reads the stored menu icon image, or <see langword="null" /> when none or an invalid one is stored.</summary>
-	private ContentReference? ParseImage(string? value)
+	private sealed class ContentReferenceConverter : JsonConverter<ContentReference>
 	{
-		if (value is null) return null;
-		if (ContentReference.TryParse(value, null, out var image)) return image;
+		public override ContentReference Read(ref Utf8JsonReader reader, Type typeToConvert,
+			JsonSerializerOptions options)
+		{
+			return ContentReference.Parse(reader.GetString() ?? throw new JsonException(), null);
+		}
 
-		logger.LogWarning("The menu icon image {Image} is not a valid asset reference and is not shown", value);
-		return null;
-	}
-
-	/// <summary>The names the settings are stored under.</summary>
-	private static class SettingNames
-	{
-		public const string Motd = "motd";
-		public const string LockedCreation = "locked_creation";
-		public const string MenuIconUrl = "menu_icon_url";
-		public const string MenuIconImage = "menu_icon_image";
-		public const string MirrorDownloadEndpoint = "mirror_download_endpoint";
-		public const string MirrorSearchEndpoint = "mirror_search_endpoint";
+		public override void Write(Utf8JsonWriter writer, ContentReference value, JsonSerializerOptions options)
+		{
+			writer.WriteStringValue(value.ToString());
+		}
 	}
 }

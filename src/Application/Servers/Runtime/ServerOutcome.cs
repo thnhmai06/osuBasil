@@ -16,5 +16,8 @@ public enum ServerOutcome : byte
 	InvalidImage,
 
 	/// <summary>The screenshot is wider or taller than the allowed number of pixels.</summary>
-	DimensionsTooLarge
+	DimensionsTooLarge,
+
+	/// <summary>The area is locked and the caller does not manage it.</summary>
+	Locked
 }

@@ -71,6 +71,42 @@ public sealed class ScopedBeatmapsetTests
 	}
 
 	/// <summary>An actor with permissions fixed in advance, as a caller other than a connection would be.</summary>
+	[Fact]
+	public async Task NewSet_IsRanked()
+	{
+		var (app, _, set, _) = await SetupAsync();
+		using var _ = app;
+
+		Assert.Equal(Basil.Domain.Beatmaps.BeatmapsetStatus.Ranked, set.Record.Status);
+	}
+
+	[Fact]
+	public async Task SetStatusAsync_WithBeatmapsetManage_ChangesTheStatusAndStoresIt()
+	{
+		var (app, world, set, by) = await SetupAsync();
+		using var _ = app;
+
+		var result = await set.ScopeTo(by).SetStatusAsync(Basil.Domain.Beatmaps.BeatmapsetStatus.Loved,
+			TestContext.Current.CancellationToken);
+
+		Assert.Equal(BeatmapsetOutcome.Ok, result.Outcome);
+		Assert.Equal(Basil.Domain.Beatmaps.BeatmapsetStatus.Loved, set.Record.Status);
+		Assert.Equal(Basil.Domain.Beatmaps.BeatmapsetStatus.Loved, world.Sets.Records[set.Record.Id].Status);
+	}
+
+	[Fact]
+	public async Task SetStatusAsync_WithoutBeatmapsetManage_IsDeniedAndChangesNothing()
+	{
+		var (app, _, set, by) = await SetupAsync();
+		using var _ = app;
+
+		var denied = await set.ScopeTo(new FixedActor(by.Record, UserPermissionsGroups.Default)).SetStatusAsync(
+			Basil.Domain.Beatmaps.BeatmapsetStatus.Loved, TestContext.Current.CancellationToken);
+
+		Assert.Equal(UserPermissions.BeatmapsetManage, denied.Missing);
+		Assert.Equal(Basil.Domain.Beatmaps.BeatmapsetStatus.Ranked, set.Record.Status);
+	}
+
 	private sealed class FixedActor(UserRecord record, UserPermissions permissions) : IActor
 	{
 		public UserRecord Record { get; } = record;

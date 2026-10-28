@@ -1,6 +1,7 @@
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Users.Connections;
 using Basil.Application.Scores.Runtime;
+using Basil.Domain.Auth;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
@@ -37,7 +38,7 @@ public sealed class ScopedScoreSubmitterTests
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("NoScores", "password");
 		app.AddRestriction(user, UserPermissions.ScoreSubmit);
-		var client = Assert.IsType<BanchoConnection>(await app.LoginAsync(user, ConnectionType.Bancho));
+		var client = Assert.IsType<BanchoConnection>(await app.LoginAsync(user, ConnectionType.Osu));
 
 		var (result, rejection) = await app.Provider.GetRequiredService<ScoreSubmitter>().ScopeTo(client)
 			.SubmitAsync(Submission(), new BeatmapChecksums(Hash, null), Client(), null,
@@ -54,7 +55,7 @@ public sealed class ScopedScoreSubmitterTests
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("UnknownMap", "password");
-		var client = Assert.IsType<BanchoConnection>(await app.LoginAsync(user, ConnectionType.Bancho));
+		var client = Assert.IsType<BanchoConnection>(await app.LoginAsync(user, ConnectionType.Osu));
 
 		var (result, rejection) = await app.Provider.GetRequiredService<ScoreSubmitter>().ScopeTo(client)
 			.SubmitAsync(Submission(), null, Client(), null, TestContext.Current.CancellationToken);

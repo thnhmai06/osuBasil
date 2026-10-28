@@ -6,6 +6,7 @@ using Basil.Application.Servers.Runtime;
 using Basil.Application.Users.Users;
 using Basil.Bot.Replies;
 using Basil.Domain.Common;
+using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 using Mediator;
 
@@ -23,6 +24,7 @@ internal sealed class RoomAnnouncer(
 		INotificationHandler<RoomRoundStarted>,
 		INotificationHandler<RoomRoundAborted>,
 		INotificationHandler<RoomRoundDecided>,
+		INotificationHandler<RoomRoundEnded>,
 		INotificationHandler<RoomCountdownStarted>,
 		INotificationHandler<RoomCountdownTicked>,
 		INotificationHandler<RoomCountdownElapsed>,
@@ -30,6 +32,9 @@ internal sealed class RoomAnnouncer(
 		INotificationHandler<RoomPlayerJoined>
 {
 	private readonly ConcurrentSet<Room> _closingRooms = [];
+
+	// Rounds announced as ended; only those are announced as decided, so a round nobody completed stays silent.
+	private readonly ConcurrentSet<Round> _awaitingScores = [];
 
 	/// <inheritdoc />
 	public ValueTask Handle(LobbyRoomClosed @event, CancellationToken cancellationToken)
@@ -107,11 +112,29 @@ internal sealed class RoomAnnouncer(
 	/// <inheritdoc />
 	public async ValueTask Handle(RoomRoundDecided @event, CancellationToken cancellationToken)
 	{
-		var seconds = (int)RoomRounds.ScoreWait.TotalSeconds;
+		if (!_awaitingScores.Remove(@event.Round)) return;
+
+		if (@event.Missing.Count == 0)
+		{
+			await SayInRoomAsync(@event.Room, replies.Text(AnnouncementReplies.ScoresReceived), cancellationToken);
+			return;
+		}
+
+		await SayInRoomAsync(@event.Room, replies.Text(AnnouncementReplies.ScoresReceivedExcept), cancellationToken);
 		foreach (var player in @event.Missing)
 			await SayInRoomAsync(@event.Room,
-				replies.Text(AnnouncementReplies.ScoreMissing, new { player = player.Value.Name, seconds }),
+				replies.Text(AnnouncementReplies.ScoreMissing, new { player = player.Value.Name }),
 				cancellationToken);
+	}
+
+	/// <inheritdoc />
+	public async ValueTask Handle(RoomRoundEnded @event, CancellationToken cancellationToken)
+	{
+		var seconds = (int)Math.Round(@event.ScoreWait.TotalSeconds);
+		_awaitingScores.Add(@event.Round);
+		await SayInRoomAsync(@event.Room,
+			replies.Text(AnnouncementReplies.RoundEnded, new { id = @event.Round.Index, seconds }),
+			cancellationToken);
 	}
 
 	/// <inheritdoc />

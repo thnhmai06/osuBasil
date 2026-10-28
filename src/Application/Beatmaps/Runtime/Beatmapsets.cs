@@ -45,13 +45,28 @@ public sealed class Beatmapsets
 	///     <para>
 	///         The beatmapset is the stored one that already has a beatmap of the archive; otherwise the stored one with
 	///         the id the archive declares; otherwise a new beatmapset, given the declared id when it has one.
-	///         Difficulties the new version no longer has are removed.
+	///         An archive that declares no beatmapset id, or an id that is zero or negative, is a new beatmapset with an
+	///         id the server gives it. Difficulties the new version no longer has are removed.
 	///     </para>
 	/// </remarks>
-	public async Task<BeatmapsetImportResult> ImportAsync(Stream archive,
+	public Task<BeatmapsetImportResult> ImportAsync(Stream archive, CancellationToken cancellationToken = default)
+	{
+		return ImportAsync(archive, true, cancellationToken);
+	}
+
+	/// <summary>Imports an uploaded beatmapset archive.</summary>
+	/// <param name="archive">The .osz archive of one beatmapset, read from its current position; not disposed.</param>
+	/// <param name="replaceExisting">
+	///     Whether an archive of a beatmapset the server already has replaces it; otherwise it is rejected with
+	///     <see cref="BeatmapsetImportFailure.AlreadyExists" />.
+	/// </param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The result of the import.</returns>
+	/// <remarks>This system operation needs no rights; the caller that serves a user checks them.</remarks>
+	public async Task<BeatmapsetImportResult> ImportAsync(Stream archive, bool replaceExisting,
 		CancellationToken cancellationToken = default)
 	{
-		var (result, imported) = await _importer.ImportAsync(archive, cancellationToken);
+		var (result, imported) = await _importer.ImportAsync(archive, replaceExisting, cancellationToken);
 		if (imported is not null)
 			_context.Events.Publish(new BeatmapsetImported(imported.Set, imported.Beatmaps));
 		return result;

@@ -7,6 +7,7 @@ using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Connections;
+using Basil.Domain.Auth;
 using Basil.Domain.Bancho;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
@@ -141,7 +142,7 @@ public sealed class ScoreSubmissionFixture : IDisposable
 		var app = new TestApplication();
 		var user = await app.CreateUserAsync(name, Password, permissions);
 		var result = await app.Users.LoginAsync(
-			new LoginAttempt(name, new Md5(Encoding.UTF8.GetBytes(Password))), ConnectionType.Bancho,
+			new LoginAttempt(name, new Md5(Encoding.UTF8.GetBytes(Password))), ConnectionType.Osu,
 			IPAddress.Loopback, LoginClient(), 0);
 		var client = Assert.IsType<BanchoConnection>(result.Connection);
 		return new ScoreSubmissionFixture(app, client, user);

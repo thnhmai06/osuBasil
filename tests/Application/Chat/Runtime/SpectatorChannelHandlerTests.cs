@@ -1,6 +1,7 @@
 using Basil.Application.Chat.Runtime;
 using Basil.Application.Users.Connections;
 using Basil.Application.Users.Users;
+using Basil.Domain.Auth;
 using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -50,6 +51,43 @@ public sealed class SpectatorChannelHandlerTests
 		Assert.Contains(second, channel.Members);
 		Assert.Single(app.ChannelEvents.Events.OfType<ChannelMemberJoined>(),
 			@event => @event.Channel == channel && @event.Member == host);
+	}
+
+	[Fact]
+	public async Task Handle_ApiSpectator_JoinsNoChannel()
+	{
+		using var app = new TestApplication();
+		var host = await RoomFixture.PlayerAsync(app, "Watched");
+		var user = await app.CreateUserAsync("ApiWatcher", "password");
+		var watcher = await app.LoginAsync(user);
+		Assert.True((await host.ScopeTo(watcher).SpectateAsync()).IsOk);
+		var channels = Channels(app);
+		var joined = Assert.Single(app.UserEvents.Events.OfType<UserSpectatorJoined>());
+
+		await new SpectatorJoinedHandler(channels).Handle(joined, TestContext.Current.CancellationToken);
+
+		var channel = channels.Of(host);
+		Assert.DoesNotContain(watcher, channel.Members);
+		Assert.DoesNotContain(host, channel.Members);
+	}
+
+	[Fact]
+	public async Task Handle_LastGameSpectatorLeaving_PartsTheHostEvenWhileAnApiConnectionWatches()
+	{
+		using var app = new TestApplication();
+		var host = await RoomFixture.PlayerAsync(app, "Watched");
+		var spectator = await RoomFixture.PlayerAsync(app, "Watcher");
+		var apiWatcher = await app.LoginAsync(await app.CreateUserAsync("ApiWatcher", "password"));
+		Assert.True((await host.ScopeTo(spectator).SpectateAsync()).IsOk);
+		Assert.True((await host.ScopeTo(apiWatcher).SpectateAsync()).IsOk);
+		var channels = Channels(app);
+		await JoinBothAsync(app, channels, host);
+		Assert.True(host.ScopeTo(spectator).StopSpectating());
+		var left = Assert.Single(app.UserEvents.Events.OfType<UserSpectatorLeft>());
+
+		await new SpectatorLeftHandler(channels).Handle(left, TestContext.Current.CancellationToken);
+
+		Assert.DoesNotContain(host, channels.Of(host).Members);
 	}
 
 	[Fact]
@@ -125,7 +163,7 @@ public sealed class SpectatorChannelHandlerTests
 		var channels = Channels(app);
 		await JoinBothAsync(app, channels, host);
 		var channel = channels.Of(host);
-		app.Users.Close(host, ConnectionCloseReason.ConnectionLost);
+		app.Users.Close(host, SessionEndReason.ConnectionLost);
 		var closed = Assert.Single(app.UserEvents.Events.OfType<UserConnectionClosed>(),
 			@event => @event.Connection == host);
 

@@ -43,14 +43,16 @@ namespace Basil.Infrastructure.Auth.Migrations
 					b.ToTable("credentials", (string)null);
 				});
 
-			modelBuilder.Entity("Basil.Infrastructure.Auth.Persistence.LoginRow", b =>
-				{
-					b.Property<long>("Id")
-						.ValueGeneratedOnAdd()
-						.HasColumnType("bigint")
-						.HasColumnName("id");
+            modelBuilder.Entity("Basil.Infrastructure.Auth.Persistence.SessionRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedNever()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
-					NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Id"));
+                    b.Property<byte>("Type")
+                        .HasColumnType("smallint")
+                        .HasColumnName("type");
 
 					b.Property<string>("ClientDate")
 						.HasColumnType("text")
@@ -60,18 +62,46 @@ namespace Basil.Infrastructure.Auth.Migrations
 						.HasColumnType("integer")
 						.HasColumnName("client_revision");
 
-					b.Property<int?>("ClientStream")
-						.HasColumnType("integer")
-						.HasColumnName("client_stream");
+                    b.Property<int?>("ClientStream")
+                        .HasColumnType("integer")
+                        .HasColumnName("client_stream");
+
+                    b.Property<string>("ClientInfo")
+                        .HasColumnType("text")
+                        .HasColumnName("client_info");
 
 					b.Property<string>("DiskSignatureHash")
 						.HasColumnType("text")
 						.HasColumnName("disk_signature_hash");
 
-					b.Property<IPAddress>("Ip")
-						.IsRequired()
-						.HasColumnType("inet")
-						.HasColumnName("ip");
+                    b.Property<IPAddress>("Ip")
+                        .IsRequired()
+                        .HasColumnType("inet")
+                        .HasColumnName("ip");
+
+                    b.Property<DateTimeOffset>("LastActiveAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_active_at");
+
+                    b.Property<DateTimeOffset?>("EndedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ended_at");
+
+                    b.Property<byte?>("EndReason")
+                        .HasColumnType("smallint")
+                        .HasColumnName("end_reason");
+
+                    b.Property<byte[]>("TokenHash")
+                        .HasColumnType("bytea")
+                        .HasColumnName("token_hash");
+
+                    b.Property<DateTimeOffset?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<bool>("MustReauthenticate")
+                        .HasColumnType("boolean")
+                        .HasColumnName("must_reauthenticate");
 
 					b.Property<string>("NetworkAdapters")
 						.HasColumnType("text")
@@ -85,9 +115,9 @@ namespace Basil.Infrastructure.Auth.Migrations
 						.HasColumnType("text")
 						.HasColumnName("osu_path_hash");
 
-					b.Property<DateTimeOffset>("Timestamp")
-						.HasColumnType("timestamp with time zone")
-						.HasColumnName("timestamp");
+                    b.Property<DateTimeOffset>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
 
 					b.Property<string>("UninstallHash")
 						.HasColumnType("text")
@@ -98,13 +128,16 @@ namespace Basil.Infrastructure.Auth.Migrations
 						.HasColumnName("user_id");
 
 					b.HasKey("Id")
-						.HasName("pk_logins");
+                        .HasName("pk_sessions");
 
-					b.HasIndex("UserId", "Timestamp")
-						.IsDescending(false, true)
-						.HasDatabaseName("ix_logins_user_id_timestamp");
+                    b.HasIndex("TokenHash")
+                        .HasDatabaseName("ix_sessions_token_hash");
 
-					b.ToTable("logins", (string)null);
+                    b.HasIndex("UserId", "StartedAt")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_sessions_user_id_started_at");
+
+                    b.ToTable("sessions", (string)null);
 				});
 
 			modelBuilder.Entity("Basil.Infrastructure.Common.Postgres.WriteTicketRow", b =>
@@ -179,14 +212,14 @@ namespace Basil.Infrastructure.Auth.Migrations
 						.HasConstraintName("fk_credentials_users_user_id");
 				});
 
-			modelBuilder.Entity("Basil.Infrastructure.Auth.Persistence.LoginRow", b =>
+            modelBuilder.Entity("Basil.Infrastructure.Auth.Persistence.SessionRow", b =>
 				{
 					b.HasOne("Basil.Infrastructure.Users.Persistence.UserRow", null)
 						.WithMany()
 						.HasForeignKey("UserId")
 						.OnDelete(DeleteBehavior.Cascade)
 						.IsRequired()
-						.HasConstraintName("fk_logins_users_user_id");
+                        .HasConstraintName("fk_sessions_users_user_id");
 				});
 #pragma warning restore 612, 618
 		}

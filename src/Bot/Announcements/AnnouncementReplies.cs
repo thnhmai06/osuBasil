@@ -55,12 +55,19 @@ internal static class AnnouncementReplies
 	/// <summary>Reply when a round is aborted.</summary>
 	public static readonly Reply RoundAborted = new("announce.roundAborted", "Match aborted.");
 
-	/// <summary>
-	///     Reply for a player whose score did not come in before a round was decided; <c>{player}</c> and
-	///     <c>{seconds}</c> are filled in.
-	/// </summary>
-	public static readonly Reply ScoreMissing = new("announce.scoreMissing",
-		"{player} didn't submit a score (timeout: {seconds}s).", "player", "seconds");
+	/// <summary>Reply when a round has been played out; <c>{id}</c> and <c>{seconds}</c> are filled in.</summary>
+	public static readonly Reply RoundEnded = new("announce.roundEnded",
+		"Round #{id} has ended. Please wait {seconds} seconds while the final results arrive.", "id", "seconds");
+
+	/// <summary>Reply when every score of a round has come in.</summary>
+	public static readonly Reply ScoresReceived = new("announce.scoresReceived", "All scores have been received.");
+
+	/// <summary>Reply that introduces the players whose score did not come in; one line per player follows.</summary>
+	public static readonly Reply ScoresReceivedExcept = new("announce.scoresReceivedExcept",
+		"All scores have been received except from:");
+
+	/// <summary>Reply for one player whose score did not come in; <c>{player}</c> is filled in.</summary>
+	public static readonly Reply ScoreMissing = new("announce.scoreMissing", "{player}", "player");
 
 	// ── Room settings ──────────────────────────────────────────────────────────────────────
 	/// <summary>Reply when room settings change cancels a countdown that would start the round.</summary>

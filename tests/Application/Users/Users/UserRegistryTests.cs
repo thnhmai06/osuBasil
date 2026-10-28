@@ -2,6 +2,8 @@ using System.Net;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Connections;
 using Basil.Application.Users.Users;
+using Basil.Application.Content.Persistence;
+using Basil.Domain.Auth;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
 using Basil.Testing;
@@ -10,6 +12,36 @@ namespace Basil.Application.Users.Tests.Users;
 
 public sealed class UserRegistryTests
 {
+	[Fact]
+	public async Task CheckRegistrationAsync_AccountsAreLocked_ReturnsLocked()
+	{
+		using var app = new TestApplication();
+		await app.SetSettingsAsync(new ServerSettings { Locks = Locks.Accounts });
+
+		var failure = await app.Users.CheckRegistrationAsync(
+			new RegisterAttempt("LockedUser", new Md5("0123456789abcdef0123456789abcdef")),
+			TestContext.Current.CancellationToken);
+
+		Assert.Equal(RegistrationFailure.Locked, failure);
+	}
+
+	[Fact]
+	public async Task CreateAccountAsync_AccountManagerBypassesAccountLock()
+	{
+		using var app = new TestApplication();
+		var manager = await app.CreateUserAsync("LockManager", "password",
+			UserPermissionsGroups.Default | UserPermissions.UserManage);
+		await app.SetSettingsAsync(new ServerSettings { Locks = Locks.Accounts });
+		var by = await app.LoginAsync(manager);
+
+		var (user, result) = await app.Users.ScopeTo(by).CreateAccountAsync(
+			new UserData { Name = "StaffMade" }, new Md5("0123456789abcdef0123456789abcdef"),
+			TestContext.Current.CancellationToken);
+
+		Assert.True(result.IsOk);
+		Assert.NotNull(user);
+	}
+
 	[Fact]
 	public async Task LoginAsync_UnknownName_ReturnsUnknownUser()
 	{
@@ -85,10 +117,10 @@ public sealed class UserRegistryTests
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("AlreadyOnline", "password");
-		await app.LoginAsync(user, ConnectionType.Bancho);
+		await app.LoginAsync(user, ConnectionType.Osu);
 		app.Clock.Advance(TimeSpan.FromSeconds(9));
 
-		var result = await app.AttemptLoginAsync(user.Value.Name, "password", ConnectionType.Bancho);
+		var result = await app.AttemptLoginAsync(user.Value.Name, "password", ConnectionType.Osu);
 
 		Assert.Equal(LoginFailure.AlreadyOnline, result.Failure);
 	}
@@ -98,17 +130,17 @@ public sealed class UserRegistryTests
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("ReplaceIdle", "password");
-		var old = await app.LoginAsync(user, ConnectionType.Bancho);
+		var old = await app.LoginAsync(user, ConnectionType.Osu);
 		app.Clock.Advance(TimeSpan.FromSeconds(10));
 
-		var result = await app.AttemptLoginAsync(user.Value.Name, "password", ConnectionType.Bancho);
+		var result = await app.AttemptLoginAsync(user.Value.Name, "password", ConnectionType.Osu);
 
 		Assert.True(result.Succeeded);
 		Assert.False(old.IsOpen);
 		Assert.NotSame(old, result.Connection);
 		var closed = Assert.IsType<UserConnectionClosed>(app.UserEvents.Events
 			.Last(@event => @event is UserConnectionClosed));
-		Assert.Equal(ConnectionCloseReason.Replaced, closed.Reason);
+		Assert.Equal(SessionEndReason.Replaced, closed.Reason);
 	}
 
 	[Fact]
@@ -123,7 +155,7 @@ public sealed class UserRegistryTests
 	}
 
 	[Theory]
-	[InlineData(ConnectionType.Bancho)]
+	[InlineData(ConnectionType.Osu)]
 	[InlineData(ConnectionType.Tourney)]
 	public async Task LoginAsync_OsuKindWithoutClient_ThrowsArgumentNullException(ConnectionType type)
 	{

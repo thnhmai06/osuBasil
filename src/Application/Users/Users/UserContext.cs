@@ -1,4 +1,5 @@
 using Basil.Application.Auth.Persistence;
+using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Common.Events;
 
@@ -12,8 +13,10 @@ namespace Basil.Application.Users.Users;
 /// <param name="Restrictions">The stored restrictions.</param>
 /// <param name="ModerationLog">The recorded moderation history.</param>
 /// <param name="Relationships">The friends and blocks users set toward each other.</param>
-/// <param name="Logins">The recorded logins.</param>
+/// <param name="Sessions">The recorded sessions.</param>
 /// <param name="Credentials">The stored passwords.</param>
+/// <param name="Avatars">The stored avatar images.</param>
+/// <param name="Settings">The server settings that decide token lifetimes and locks.</param>
 internal sealed record UserContext(
 	TimeProvider Clock,
 	IEventPublisher<UserEvent> Events,
@@ -22,8 +25,10 @@ internal sealed record UserContext(
 	IRestrictionRepository Restrictions,
 	IModerationLogRepository ModerationLog,
 	IRelationshipRepository Relationships,
-	ILoginRepository Logins,
-	ICredentialRepository Credentials)
+	ISessionRepository Sessions,
+	ICredentialRepository Credentials,
+	IUserAvatarStorage Avatars,
+	ISettingsRepository Settings)
 {
 	/// <summary>Gets the users who are online.</summary>
 	public UserRegistry Registry => RegistryOf.Value;

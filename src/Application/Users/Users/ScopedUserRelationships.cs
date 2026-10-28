@@ -26,13 +26,7 @@ public sealed class ScopedUserRelationships
 		if (target.Value.DeletedAt is not null) return UserOutcome.Deleted;
 		if (target.IsBasilBot()) return UserOutcome.Ok;
 
-		await _scoped.User.Context.Relationships.CreateOrUpdateAsync(new Relationship
-		{
-			Actor = _scoped.By.Record,
-			Target = target,
-			Type = RelationshipType.Friend,
-			CreatedAt = _scoped.User.Context.Clock.GetUtcNow()
-		}, cancellationToken);
+		await _scoped.By.User.Relationships.SetAsync(target, RelationshipType.Friend, cancellationToken);
 		return UserOutcome.Ok;
 	}
 
@@ -44,13 +38,9 @@ public sealed class ScopedUserRelationships
 		if (_scoped.IsSelf) return UserOutcome.Self;
 
 		var target = _scoped.User.Record;
-		if (target.IsBasilBot()) return UserOutcome.Protected;
+		if (target.IsBasilBot()) return UserOutcome.SystemAccount;
 
-		var relationships = await _scoped.User.Context.Relationships.ListAsync(_scoped.By.Record, cancellationToken);
-		var friend = relationships.FirstOrDefault(relationship => relationship.Target.Equals(target) &&
-		                                                          relationship.Type == RelationshipType.Friend);
-		if (friend is not null)
-			await _scoped.User.Context.Relationships.DeleteAsync(friend, cancellationToken);
+		await _scoped.By.User.Relationships.RemoveAsync(target, RelationshipType.Friend, cancellationToken);
 		return UserOutcome.Ok;
 	}
 
@@ -63,15 +53,9 @@ public sealed class ScopedUserRelationships
 
 		var target = _scoped.User.Record;
 		if (target.Value.DeletedAt is not null) return UserOutcome.Deleted;
-		if (target.IsBasilBot()) return UserOutcome.Protected;
+		if (target.IsBasilBot()) return UserOutcome.SystemAccount;
 
-		await _scoped.User.Context.Relationships.CreateOrUpdateAsync(new Relationship
-		{
-			Actor = _scoped.By.Record,
-			Target = target,
-			Type = RelationshipType.Block,
-			CreatedAt = _scoped.User.Context.Clock.GetUtcNow()
-		}, cancellationToken);
+		await _scoped.By.User.Relationships.SetAsync(target, RelationshipType.Block, cancellationToken);
 		return UserOutcome.Ok;
 	}
 
@@ -85,11 +69,34 @@ public sealed class ScopedUserRelationships
 		var target = _scoped.User.Record;
 		if (target.IsBasilBot()) return UserOutcome.Ok;
 
-		var relationships = await _scoped.User.Context.Relationships.ListAsync(_scoped.By.Record, cancellationToken);
-		var block = relationships.FirstOrDefault(relationship => relationship.Target.Equals(target) &&
-		                                                         relationship.Type == RelationshipType.Block);
-		if (block is not null)
-			await _scoped.User.Context.Relationships.DeleteAsync(block, cancellationToken);
+		await _scoped.By.User.Relationships.RemoveAsync(target, RelationshipType.Block, cancellationToken);
 		return UserOutcome.Ok;
+	}
+
+	/// <summary>Lists the users this account has friended.</summary>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The outcome and, when successful, the friends; only the account's own user may read them.</returns>
+	public Task<(Result<UserOutcome> Result, IReadOnlyList<UserRecord> Users)> FriendsAsync(
+		CancellationToken cancellationToken = default)
+	{
+		return ListAsync(RelationshipType.Friend, cancellationToken);
+	}
+
+	/// <summary>Lists the users this account has blocked.</summary>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The outcome and, when successful, the blocked users; only the account's own user may read them.</returns>
+	public Task<(Result<UserOutcome> Result, IReadOnlyList<UserRecord> Users)> BlocksAsync(
+		CancellationToken cancellationToken = default)
+	{
+		return ListAsync(RelationshipType.Block, cancellationToken);
+	}
+
+	private async Task<(Result<UserOutcome> Result, IReadOnlyList<UserRecord> Users)> ListAsync(
+		RelationshipType type, CancellationToken cancellationToken)
+	{
+		if (!_scoped.IsSelf) return (UserOutcome.NotSelf, []);
+
+		var relationships = await _scoped.User.Relationships.ListAsync(type, cancellationToken);
+		return (UserOutcome.Ok, relationships.Select(relationship => relationship.Target).ToList());
 	}
 }

@@ -21,7 +21,7 @@ internal sealed class AccountService(
 	public async Task<RegistrationFailure?> CheckRegistrationAsync(RegisterAttempt attempt,
 		CancellationToken cancellationToken)
 	{
-		if ((await settings.GetAsync(cancellationToken)).LockedCreation.HasFlag(ServerSettings.CreationLocks.Accounts))
+		if ((await settings.GetAsync(cancellationToken)).Locks.HasFlag(Locks.Accounts))
 			return RegistrationFailure.Locked;
 
 		try

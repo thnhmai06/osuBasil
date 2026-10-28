@@ -55,7 +55,7 @@ public sealed class TestApplication : IDisposable
 		new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
 
 	private readonly InMemoryCredentialRepository _credentials;
-	private readonly InMemoryLoginRepository _logins;
+	private readonly InMemorySessionRepository _sessions;
 	private readonly InMemoryModerationLogRepository _moderationLog;
 	private readonly InMemoryRestrictionRepository _restrictions;
 	private readonly InMemorySettingsRepository _settings;
@@ -73,7 +73,7 @@ public sealed class TestApplication : IDisposable
 		_users = new InMemoryUserRepository();
 		_credentials = new InMemoryCredentialRepository();
 		_restrictions = new InMemoryRestrictionRepository();
-		_logins = new InMemoryLoginRepository();
+		_sessions = new InMemorySessionRepository();
 		var relationships = new InMemoryRelationshipRepository();
 		_moderationLog = new InMemoryModerationLogRepository();
 		_settings = new InMemorySettingsRepository();
@@ -85,7 +85,7 @@ public sealed class TestApplication : IDisposable
 		services.AddSingleton<IUserRepository>(_users);
 		services.AddSingleton<ICredentialRepository>(_credentials);
 		services.AddSingleton<IRestrictionRepository>(_restrictions);
-		services.AddSingleton<ILoginRepository>(_logins);
+		services.AddSingleton<ISessionRepository>(_sessions);
 		services.AddSingleton<IRelationshipRepository>(relationships);
 		services.AddSingleton<IModerationLogRepository>(_moderationLog);
 		services.AddSingleton<ISettingsRepository>(_settings);
@@ -166,7 +166,15 @@ public sealed class TestApplication : IDisposable
 	public RecordingPublisher<AnticheatEvent> AnticheatEvents { get; } = new();
 
 	/// <summary>Gets the login history written by the application.</summary>
-	public IReadOnlyList<LoginEntry> LoginEntries => _logins.Entries;
+	public IReadOnlyList<SessionEntry> SessionEntries => _sessions.Entries;
+
+	/// <summary>Reads the stored expiry of a session's token.</summary>
+	/// <param name="id">The session.</param>
+	/// <returns>When the token expires, or <see langword="null" /> if it has no expiry.</returns>
+	public DateTimeOffset? TokenExpiryOf(Guid id)
+	{
+		return _sessions.ExpiryOf(id);
+	}
 
 	/// <summary>Gets the moderation history written by the application.</summary>
 	public IReadOnlyList<ModerationData> ModerationEntries => _moderationLog.Entries;
@@ -248,7 +256,7 @@ public sealed class TestApplication : IDisposable
 	public Task<LoginResult> AttemptLoginAsync(string username, string password,
 		ConnectionType type = ConnectionType.Api)
 	{
-		var client = type is ConnectionType.Bancho or ConnectionType.Tourney ? CreateClient() : null;
+		var client = type is ConnectionType.Osu or ConnectionType.Tourney ? CreateClient() : null;
 		return Users.LoginAsync(new LoginAttempt(username, PasswordHash(password)), type, IPAddress.Loopback,
 			client, 0);
 	}
@@ -295,7 +303,7 @@ public sealed class TestApplication : IDisposable
 		var inMemoryPortTypes = new HashSet<Type>
 		{
 			typeof(IUserRepository), typeof(ICredentialRepository), typeof(IRestrictionRepository),
-			typeof(ILoginRepository), typeof(IRelationshipRepository), typeof(IModerationLogRepository),
+			typeof(ISessionRepository), typeof(IRelationshipRepository), typeof(IModerationLogRepository),
 			typeof(ISettingsRepository)
 		};
 		var portAssemblies = new[]

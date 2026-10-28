@@ -18,5 +18,8 @@ public enum BeatmapsetImportFailure : byte
 	Unreadable,
 
 	/// <summary>The beatmapset it belongs to is locked.</summary>
-	Locked
+	Locked,
+
+	/// <summary>The server already has the beatmapset, and an existing beatmapset is never overwritten.</summary>
+	AlreadyExists
 }
