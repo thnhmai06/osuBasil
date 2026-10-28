@@ -155,8 +155,9 @@ internal sealed partial class PacketHandlers
 
 	private async Task TourneyJoinAsync(Connection by, int matchId, CancellationToken cancellationToken)
 	{
-		if (by is TourneyConnection && lobby.Find(matchId) is { IsClosed: false } room)
-			await room.ScopeTo(by).Members.ObserverJoinAsync(cancellationToken);
+		if (by is not TourneyConnection || lobby.Find(matchId) is not { IsClosed: false } room) return;
+		if (!await lobby.ScopeTo(by).CanViewAsync(room.Match, cancellationToken)) return;
+		await room.ScopeTo(by).Members.ObserverJoinAsync(cancellationToken);
 	}
 
 	private async Task TourneyLeaveAsync(Connection by, int matchId, CancellationToken cancellationToken)

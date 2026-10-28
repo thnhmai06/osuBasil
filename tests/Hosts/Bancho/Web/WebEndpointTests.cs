@@ -1,7 +1,9 @@
 using System.Net;
+using Basil.Application.Content.Persistence;
 using Basil.Domain.Bancho;
 using Basil.Host.Bancho.Tests.Support;
 using Basil.Testing.Clients;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Host.Bancho.Tests.Web;
 
@@ -167,5 +169,65 @@ public sealed class WebEndpointTests(BanchoHostFixture fixture)
 		Assert.Equal(HttpStatusCode.OK, allowed);
 		Assert.Equal(HttpStatusCode.OK, searched);
 		Assert.StartsWith($"{map.Beatmapset.Id}.osz|", line);
+	}
+
+	private async Task<int> LoginLimitAsync() =>
+		(await Host.Services.GetRequiredService<ISettingsRepository>().GetAsync()).RateLimits.Login.MaxAttempts;
+
+	[Fact]
+	public async Task WebEndpoint_CorrectHashBeforeTheLimit_StillSucceeds()
+	{
+		using var client = await OnlineAsync("WebRateOk");
+		using var impostor = OsuClient.Create(Host, "WebRateOk", "wrong");
+		await impostor.GetFriendsAsync("203.0.113.30");
+
+		var (status, _) = await client.GetFriendsAsync("203.0.113.30");
+
+		Assert.Equal(HttpStatusCode.OK, status);
+	}
+
+	[Fact]
+	public async Task WebEndpoint_AfterTooManyWrongHashes_RefusesEvenTheCorrectOne()
+	{
+		using var client = await OnlineAsync("WebRateLocked");
+		using var impostor = OsuClient.Create(Host, "WebRateLocked", "wrong");
+		for (var attempt = 0; attempt < await LoginLimitAsync(); attempt++) await impostor.GetFriendsAsync("203.0.113.31");
+
+		var (status, _) = await client.GetFriendsAsync("203.0.113.31");
+
+		Assert.Equal(HttpStatusCode.Unauthorized, status);
+	}
+
+	[Fact]
+	public async Task WebEndpoint_AfterTheWindowPasses_AcceptsTheCorrectHashAgain()
+	{
+		using var client = await OnlineAsync("WebRateWindow");
+		using var impostor = OsuClient.Create(Host, "WebRateWindow", "wrong");
+		for (var attempt = 0; attempt < await LoginLimitAsync(); attempt++) await impostor.GetFriendsAsync("203.0.113.32");
+		var window = (await Host.Services.GetRequiredService<ISettingsRepository>().GetAsync()).RateLimits.Login.Window;
+
+		// advance in steps shorter than the idle limit, polling so the client stays online
+		for (var elapsed = TimeSpan.Zero; elapsed <= window; elapsed += TimeSpan.FromMinutes(2))
+		{
+			Host.Time.Advance(TimeSpan.FromMinutes(2));
+			await client.PollAsync();
+		}
+
+		var (status, _) = await client.GetFriendsAsync("203.0.113.32");
+
+		Assert.Equal(HttpStatusCode.OK, status);
+	}
+
+	[Fact]
+	public async Task WebEndpoint_WrongHashesOnOneAccount_DoNotBlockAnotherAccountFromAnotherAddress()
+	{
+		using var victim = await OnlineAsync("WebRateVictim");
+		using var other = await OnlineAsync("WebRateOther");
+		using var impostor = OsuClient.Create(Host, "WebRateVictim", "wrong");
+		for (var attempt = 0; attempt < await LoginLimitAsync(); attempt++) await impostor.GetFriendsAsync("203.0.113.33");
+
+		var (status, _) = await other.GetFriendsAsync("203.0.113.34");
+
+		Assert.Equal(HttpStatusCode.OK, status);
 	}
 }

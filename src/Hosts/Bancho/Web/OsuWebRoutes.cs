@@ -58,7 +58,7 @@ internal static class OsuWebRoutes
 		IBeatmapRepository beatmaps, IScoreRepository scores, IUserRepository users, CancellationToken ct)
 	{
 		var query = context.Request.Query;
-		if (await auth.AuthenticateAsync(query["us"], query["ha"], ct) is not { } player) return Results.Unauthorized();
+		if (await auth.AuthenticateAsync(context, query["us"], query["ha"], ct) is not { } player) return Results.Unauthorized();
 		if (!Md5Text.TryParse(query["c"], out var hash)) return Text("-1|false");
 		if (await beatmaps.GetAsync(hash, ct) is not { } map) return Text("-1|false");
 		_ = int.TryParse(query["mods"], out var mods);
@@ -88,7 +88,7 @@ internal static class OsuWebRoutes
 	private static async Task<IResult> GetFriendsAsync(HttpContext context, WebAuthentication auth, CancellationToken ct)
 	{
 		var query = context.Request.Query;
-		if (await auth.AuthenticateAsync(query["u"], query["h"], ct) is not { } player) return Results.Unauthorized();
+		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is not { } player) return Results.Unauthorized();
 		var (_, friends) = await player.User.ScopeTo(player).Relationships.FriendsAsync(ct);
 		return Text(string.Join('\n', friends.Select(friend => friend.Id)));
 	}
@@ -97,7 +97,7 @@ internal static class OsuWebRoutes
 		IBeatmapRepository beatmaps, CancellationToken ct)
 	{
 		var query = context.Request.Query;
-		if (await auth.AuthenticateAsync(query["u"], query["h"], ct) is null) return Results.Unauthorized();
+		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is null) return Results.Unauthorized();
 		var request = await JsonSerializer.DeserializeAsync<BeatmapInfoBody>(context.Request.Body, cancellationToken: ct)
 		              ?? new BeatmapInfoBody();
 		var lines = new List<string>();
@@ -126,7 +126,7 @@ internal static class OsuWebRoutes
 			var version = form["osuver"].ToString();
 			var iv = form["iv"].ToString();
 			var data = ScoreSubmission.Parse(ScoreSubmissionCipher.Decrypt(form["score"].First()!, iv, version));
-			if (await auth.AuthenticateAsync(data.Username.TrimEnd(), form["pass"], ct) is not { } client)
+			if (await auth.AuthenticateAsync(context, data.Username.TrimEnd(), form["pass"], ct) is not { } client)
 				return Text("error: no");
 			var clientHashText = ScoreSubmissionCipher.Decrypt(form["s"].ToString(), iv, version);
 			var hash = ClientHash.Parse(clientHashText);
@@ -169,7 +169,7 @@ internal static class OsuWebRoutes
 		IReplayStorage replays, CancellationToken ct)
 	{
 		var query = context.Request.Query;
-		if (await auth.AuthenticateAsync(query["u"], query["h"], ct) is null) return Results.Unauthorized();
+		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is null) return Results.Unauthorized();
 		if (!int.TryParse(query["c"], out var id) || await scores.GetAsync(id, ct) is not { } score ||
 		    await replays.OpenAsync(score, ct) is not { } stream)
 			return Results.NotFound();
@@ -181,7 +181,7 @@ internal static class OsuWebRoutes
 		CancellationToken ct)
 	{
 		var form = await context.Request.ReadFormAsync(ct);
-		if (await auth.AuthenticateAsync(form["u"], form["p"], ct) is not { } player) return Results.Unauthorized();
+		if (await auth.AuthenticateAsync(context, form["u"], form["p"], ct) is not { } player) return Results.Unauthorized();
 		if (form.Files.GetFile("ss") is not { } file) return Results.BadRequest();
 		await using var stream = file.OpenReadStream();
 		var (reference, result) = await server.ScopeTo(player).Screenshots.UploadAsync(stream, ct);
@@ -192,7 +192,7 @@ internal static class OsuWebRoutes
 		CancellationToken ct)
 	{
 		var query = context.Request.Query;
-		if (await auth.AuthenticateAsync(query["us"], query["ha"], ct) is not { } player) return Results.Unauthorized();
+		if (await auth.AuthenticateAsync(context, query["us"], query["ha"], ct) is not { } player) return Results.Unauthorized();
 		var b = query["b"].ToString();
 		// bancho.py: a leading "a" marks the flags the client detected; the rest is the flag bitmask.
 		if (!b.StartsWith('a') || !int.TryParse(b.AsSpan(1), out var flags)) return Text(string.Empty);
@@ -204,7 +204,7 @@ internal static class OsuWebRoutes
 		IBeatmapsetRepository sets, CancellationToken ct)
 	{
 		var query = context.Request.Query;
-		if (await auth.AuthenticateAsync(query["u"], query["h"], ct) is not { } player) return Results.Unauthorized();
+		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is not { } player) return Results.Unauthorized();
 		if (!auth.MayUseDirect(player)) return Results.StatusCode(StatusCodes.Status403Forbidden);
 		var page = await sets.ListAsync(new BeatmapQuery(Text: query["q"]), new PageRequest(0, 100), ct);
 		return Text(string.Join('\n', new[] { page.Items.Count.ToString(CultureInfo.InvariantCulture) }
@@ -215,7 +215,7 @@ internal static class OsuWebRoutes
 		IBeatmapsetRepository sets, CancellationToken ct)
 	{
 		var query = context.Request.Query;
-		if (await auth.AuthenticateAsync(query["u"], query["h"], ct) is not { } player) return Results.Unauthorized();
+		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is not { } player) return Results.Unauthorized();
 		if (!auth.MayUseDirect(player)) return Results.StatusCode(StatusCodes.Status403Forbidden);
 		if (!int.TryParse(query["s"], out var id) || await sets.GetAsync(id, ct) is not { } set) return Text(string.Empty);
 		return Text(DirectLine(set));
@@ -226,7 +226,7 @@ internal static class OsuWebRoutes
 		IBeatmapsetRepository sets, IBeatmapsetStorage storage, IBeatmapsetMirror mirror, CancellationToken ct)
 	{
 		var query = context.Request.Query;
-		if (await auth.AuthenticateAsync(query["u"], query["h"], ct) is not { } player) return Results.Unauthorized();
+		if (await auth.AuthenticateAsync(context, query["u"], query["h"], ct) is not { } player) return Results.Unauthorized();
 		if (!auth.MayUseDirect(player)) return Results.StatusCode(StatusCodes.Status403Forbidden);
 		var withVideo = !setId.EndsWith('n');
 		if (!int.TryParse(setId.TrimEnd('n'), out var id)) return Results.NotFound();
