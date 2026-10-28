@@ -12,6 +12,12 @@ public enum LoginFailureReason : sbyte
 	/// <summary>The account is banned or restricted.</summary>
 	Banned = -3,
 
+	/// <summary>
+	///     The account is banned; a second ban reply id that clients treat like <see cref="Banned" />. bancho.py
+	///     lists it only as a commented duplicate of <see cref="Banned" />.
+	/// </summary>
+	BannedAlternate = -4,
+
 	/// <summary>An internal error occurred while processing the login.</summary>
 	ErrorOccurred = -5,
 
