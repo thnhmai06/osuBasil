@@ -35,6 +35,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<None Include="..\..\..\..\tests\Assets\**\*" LinkBase="Assets" CopyToOutputDirectory="PreserveNewest"/>
+		<None Include="..\..\Assets\**\*" LinkBase="Assets" CopyToOutputDirectory="PreserveNewest"/>
 	</ItemGroup>
 </Project>
