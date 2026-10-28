@@ -456,6 +456,21 @@ public sealed class ScopedChannelTests
 	}
 
 	[Fact]
+	public async Task PostAsync_ToBasilBot_IsDeliveredEvenThoughTheBotHoldsNoPermissions()
+	{
+		using var app = new TestApplication();
+		await app.SeedBotAsync();
+		await app.Users.EnsureBotAsync(TestContext.Current.CancellationToken);
+		await app.Users.ConnectBotAsync(TestContext.Current.CancellationToken);
+		var sender = await app.LoginAsync(await app.CreateUserAsync("BotAsker", "password"));
+
+		var result = await app.PmChannels.Of(app.Users.Of(app.Users.Online.Keys.Single(user => user.IsBasilBot())))
+			.ScopeTo(sender).PostAsync("!help", cancellationToken: TestContext.Current.CancellationToken);
+
+		Assert.Equal(ChannelOutcome.Ok, result.Outcome);
+	}
+
+	[Fact]
 	public async Task Join_OtherUsersPrivateMessageChannel_IsRefused()
 	{
 		using var app = new TestApplication();

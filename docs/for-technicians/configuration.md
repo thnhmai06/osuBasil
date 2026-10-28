@@ -42,8 +42,7 @@ All settings below are under the `Basil` section.
 | `Bot:Name`                | Display name of BasilBot. Changing it after the first startup also renames the seeded `id=0` user.                                                                                                 |
 | `Bot:CommandPrefix`       | Prefix required for BasilBot commands, such as `!help`, `!roll`, and `!mp`.                                                                                                                        |
 | `Bot:Country`             | BasilBot's country code. Defaults to `vn`.                                                                                                                                                         |
-| `Irc:Name`                | IRC server name.                                                                                                                                                                                   |
-| `Irc:Port`                | TCP port used by Basil's embedded IRC gateway. Defaults to `6667`.                                                                                                                                 |
+| `Server:Ports:Irc`        | Plain TCP port of the IRC host (`irc.<Server:Domain>`). Defaults to `6667`; `0` picks a free port. The port has no TLS, see [`irc.md`](../for-developers/irc.md).                                  |
 | `Logging:MinimumLevel`    | Minimum log level written to stdout and the full log file. Defaults to `Information`. See [`logging.md`](logging.md).                                                                              |
 
 The beatmap mirror endpoints are **not** configured here — see [Beatmap mirror](#beatmap-mirror) below.

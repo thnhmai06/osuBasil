@@ -102,6 +102,47 @@ public sealed class UserRegistryTests
 	}
 
 	[Fact]
+	public async Task LoginAsync_IrcWithTheAccountPassword_ThrowsArgumentException()
+	{
+		using var app = new TestApplication();
+		await app.CreateUserAsync("IrcByPassword", "password");
+
+		await Assert.ThrowsAsync<ArgumentException>(() => app.Users.LoginAsync(
+			new LoginAttempt("IrcByPassword", new Md5(System.Text.Encoding.UTF8.GetBytes("password"))),
+			ConnectionType.Irc, IPAddress.Loopback, null, 0, TestContext.Current.CancellationToken));
+	}
+
+	[Fact]
+	public async Task LoginWithTokenAsync_OwnerRefusedByTheCaller_OpensNothingForAnOpenOrAStoredKey()
+	{
+		using var app = new TestApplication();
+		var opened = await app.LoginAsync(await app.CreateUserAsync("KeyClaimed", "password"), ConnectionType.Irc);
+
+		var refused = await app.Users.LoginWithTokenAsync(ConnectionType.Irc, opened.Token, IPAddress.Loopback,
+			owner => owner.Value.Name == "SomeoneElse", TestContext.Current.CancellationToken);
+		var accepted = await app.Users.LoginWithTokenAsync(ConnectionType.Irc, opened.Token, IPAddress.Loopback,
+			owner => owner.Value.Name == "KeyClaimed", TestContext.Current.CancellationToken);
+
+		Assert.Equal(LoginFailure.InvalidToken, refused.Failure);
+		Assert.Same(opened, accepted.Connection);
+	}
+
+	[Fact]
+	public async Task LoginWithTokenAsync_StoredKeyWhoseOwnerIsRefused_IsNotBroughtOnline()
+	{
+		using var app = new TestApplication();
+		var user = await app.CreateUserAsync("KeyStored", "password");
+		var api = await app.LoginAsync(user);
+		var (_, key, _) = await app.Users.Of(user).ScopeTo(api).Sessions.OpenIrcAsync("device", TestContext.Current.CancellationToken);
+
+		var refused = await app.Users.LoginWithTokenAsync(ConnectionType.Irc, key!, IPAddress.Loopback, _ => false,
+			TestContext.Current.CancellationToken);
+
+		Assert.Equal(LoginFailure.InvalidToken, refused.Failure);
+		Assert.Empty(app.Users.Of(user).Ircs);
+	}
+
+	[Fact]
 	public async Task LoginAsync_BasilBotName_ReturnsUnknownUser()
 	{
 		using var app = new TestApplication();

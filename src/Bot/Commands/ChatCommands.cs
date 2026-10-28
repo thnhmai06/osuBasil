@@ -6,7 +6,8 @@ using Basil.Domain.Users;
 namespace Basil.Bot.Commands;
 
 /// <summary>Dispatches chat commands to their handlers.</summary>
-internal sealed class ChatCommands(IUserRepository users, IFaqStorage faqs, MpCommands mpCommands, Random random)
+internal sealed class ChatCommands(IUserRepository users, IFaqStorage faqs, MpCommands mpCommands, ChannelCommands channelCommands,
+	Random random)
 {
 	/// <summary>The text that starts a command.</summary>
 	public const string CommandPrefix = "!";
@@ -97,6 +98,7 @@ internal sealed class ChatCommands(IUserRepository users, IFaqStorage faqs, MpCo
 			"where" => await HandleWhereAsync(context, args, cancellationToken),
 			"faq" => await HandleFaqAsync(context, args, cancellationToken),
 			"mp" => await mpCommands.ExecuteAsync(context, args, cancellationToken),
+			"channel" => await channelCommands.ExecuteAsync(context, args, cancellationToken),
 			_ => false
 		};
 	}

@@ -1,9 +1,9 @@
 using System.Collections.Concurrent;
 
-namespace Basil.Host.Bancho.Support;
+namespace Basil.Host.Shared;
 
 /// <summary>Counts events per key inside a sliding window.</summary>
-internal sealed class RateLimiter(TimeProvider clock)
+public sealed class RateLimiter(TimeProvider clock)
 {
 	private readonly ConcurrentDictionary<string, Queue<DateTimeOffset>> _events = new();
 

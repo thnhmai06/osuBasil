@@ -23,6 +23,7 @@
 		<ProjectReference Include="..\..\..\src\Domain\Basil.Domain.csproj"/>
 		<ProjectReference Include="..\..\..\src\Application\Common\Basil.Application.Common.csproj"/>
 		<ProjectReference Include="..\..\..\src\Hosts\Host\Basil.Host.csproj"/>
+		<ProjectReference Include="..\..\..\src\Bot\Basil.Bot.csproj"/>
 	</ItemGroup>
 
 </Project>

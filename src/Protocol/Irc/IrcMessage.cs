@@ -16,6 +16,33 @@ namespace Basil.Protocol.Irc;
 public sealed record IrcMessage(string Command, string? Prefix = null, params IReadOnlyList<string> Parameters)
 	: IParsable<IrcMessage>, IFormattable
 {
+	/// <summary>Gets the IRCv3 message tags in wire order; empty when the line carries none.</summary>
+	public IReadOnlyList<IrcTag> Tags { get; init; } = [];
+
+	/// <summary>
+	///     Gets a value that indicates whether the last parameter is always written as a trailing parameter (with a
+	///     colon), as servers write the text of a chat message even when it has no space.
+	/// </summary>
+	/// <remarks>Only the written form changes; two messages that differ only here are equal.</remarks>
+	public bool ForceTrailing { get; init; }
+
+	/// <summary>Finds the value of a message tag.</summary>
+	/// <param name="key">The tag key, including a leading <c>+</c> for a client-only tag.</param>
+	/// <returns>The tag's value, an empty string for a tag without a value, or <see langword="null" /> when absent.</returns>
+	public string? Tag(string key)
+	{
+		return Tags.FirstOrDefault(tag => tag.Key == key) is { } found ? found.Value ?? string.Empty : null;
+	}
+
+	/// <summary>Returns a copy of this message that carries one more tag.</summary>
+	/// <param name="key">The tag key.</param>
+	/// <param name="value">The tag value, or <see langword="null" /> for a tag without a value.</param>
+	/// <returns>The tagged message.</returns>
+	public IrcMessage WithTag(string key, string? value = null)
+	{
+		return this with { Tags = [.. Tags, new IrcTag(key, value)] };
+	}
+
 	/// <summary>
 	///     Determines whether this message has the same content as another message.
 	/// </summary>
@@ -29,6 +56,7 @@ public sealed record IrcMessage(string Command, string? Prefix = null, params IR
 		return other is not null
 		       && string.Equals(Command, other.Command, StringComparison.Ordinal)
 		       && string.Equals(Prefix, other.Prefix, StringComparison.Ordinal)
+		       && Tags.SequenceEqual(other.Tags)
 		       && Parameters.SequenceEqual(other.Parameters, StringComparer.Ordinal);
 	}
 
@@ -38,8 +66,8 @@ public sealed record IrcMessage(string Command, string? Prefix = null, params IR
 	/// <param name="format">Ignored.</param>
 	/// <param name="formatProvider">Ignored.</param>
 	/// <returns>
-	///     The wire line: the prefix (prefixed with ':') when present, then the command, then the
-	///     parameters. The final parameter is prefixed with " :" when it contains a space, starts
+	///     The wire line: the tags (prefixed with '@') when present, then the prefix (prefixed with ':') when
+	///     present, then the command, then the parameters. The final parameter is prefixed with " :" when it contains a space, starts
 	///     with a colon, or is empty; all other parameters are emitted as-is.
 	/// </returns>
 	/// <exception cref="ArgumentException">
@@ -69,13 +97,15 @@ public sealed record IrcMessage(string Command, string? Prefix = null, params IR
 		}
 
 		var line = Prefix is null ? Command : $":{Prefix} {Command}";
+		if (Tags.Count > 0)
+			line = $"@{string.Join(';', Tags.Select(tag => tag.ToString()))} {line}";
 
 		for (var i = 0; i < Parameters.Count; i++)
 		{
 			var parameter = Parameters[i];
 			var isLast = i == Parameters.Count - 1;
 
-			line += isLast && (parameter.Contains(' ') || parameter.StartsWith(':') || parameter.Length == 0)
+			line += isLast && (ForceTrailing || parameter.Contains(' ') || parameter.StartsWith(':') || parameter.Length == 0)
 				? $" :{parameter}"
 				: $" {parameter}";
 		}
@@ -91,8 +121,8 @@ public sealed record IrcMessage(string Command, string? Prefix = null, params IR
 	/// <returns>The parsed IRC message.</returns>
 	/// <remarks>
 	///     A line that contains a carriage return, a line feed or a null character is rejected, and a
-	///     prefix that is present but empty is rejected. A leading IRCv3 tag section is skipped, and
-	///     the command is upper-cased with the invariant culture. Keeping a line within the protocol's
+	///     prefix that is present but empty is rejected. A leading IRCv3 tag section is read into
+	///     <see cref="Tags" />, and the command is upper-cased with the invariant culture. Keeping a line within the protocol's
 	///     length limit is the caller's job.
 	/// </remarks>
 	/// <exception cref="FormatException">The line is empty or malformed.</exception>
@@ -112,8 +142,8 @@ public sealed record IrcMessage(string Command, string? Prefix = null, params IR
 	/// <returns><see langword="true" /> if the line parsed successfully; otherwise, <see langword="false" />.</returns>
 	/// <remarks>
 	///     A line that contains a carriage return, a line feed or a null character is rejected, and a
-	///     prefix that is present but empty is rejected. A leading IRCv3 tag section is skipped, and
-	///     the command is upper-cased with the invariant culture. Keeping a line within the protocol's
+	///     prefix that is present but empty is rejected. A leading IRCv3 tag section is read into
+	///     <see cref="Tags" />, and the command is upper-cased with the invariant culture. Keeping a line within the protocol's
 	///     length limit is the caller's job.
 	/// </remarks>
 	public static bool TryParse(
@@ -130,6 +160,7 @@ public sealed record IrcMessage(string Command, string? Prefix = null, params IR
 			return false;
 
 		var rest = s;
+		IrcTag[] tags = [];
 
 		if (rest[0] == '@')
 		{
@@ -137,7 +168,8 @@ public sealed record IrcMessage(string Command, string? Prefix = null, params IR
 			if (tagEnd < 0)
 				return false;
 
-			rest = rest[(tagEnd + 1)..];
+			tags = [.. rest[1..tagEnd].Split(';', StringSplitOptions.RemoveEmptyEntries).Select(IrcTag.Parse)];
+			rest = rest[(tagEnd + 1)..].TrimStart(' ');
 		}
 
 		if (rest.Length == 0)
@@ -181,7 +213,7 @@ public sealed record IrcMessage(string Command, string? Prefix = null, params IR
 		if (trailing is not null)
 			parameters.Add(trailing);
 
-		result = new IrcMessage(tokens[0].ToUpperInvariant(), prefix, parameters);
+		result = new IrcMessage(tokens[0].ToUpperInvariant(), prefix, parameters) { Tags = tags };
 		return true;
 	}
 
@@ -194,6 +226,9 @@ public sealed record IrcMessage(string Command, string? Prefix = null, params IR
 		var hash = new HashCode();
 		hash.Add(Command, StringComparer.Ordinal);
 		hash.Add(Prefix, StringComparer.Ordinal);
+
+		foreach (var tag in Tags)
+			hash.Add(tag);
 
 		foreach (var parameter in Parameters)
 			hash.Add(parameter, StringComparer.Ordinal);

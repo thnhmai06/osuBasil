@@ -12,7 +12,7 @@ public sealed class ReplyDefinitionsTests : IDisposable
 {
 	private static readonly IReadOnlyList<Reply> All = ReplyDefinitions.In(typeof(Reply).Assembly);
 
-	private static readonly Regex KeyShapePattern = new(@"^(bot|announce|mp)\.[a-z][A-Za-z0-9]*$");
+	private static readonly Regex KeyShapePattern = new(@"^(bot|announce|mp|channel)\.[a-z][A-Za-z0-9]*$");
 
 	private readonly string _directory =
 		Path.Combine(Path.GetTempPath(), "basil-reply-definitions-" + Guid.NewGuid().ToString("N"));
