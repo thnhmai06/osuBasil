@@ -219,6 +219,21 @@ public sealed class WebEndpointTests(BanchoHostFixture fixture)
 	}
 
 	[Fact]
+	public async Task WebEndpoint_ConcurrentWrongHashes_CannotExceedTheLimit()
+	{
+		using var client = await OnlineAsync("WebRateParallel");
+		using var impostor = OsuClient.Create(Host, "WebRateParallel", "wrong");
+		var limit = await LoginLimitAsync();
+
+		// Every request reaches the check at once; the check must still stop at the limit.
+		await Task.WhenAll(Enumerable.Range(0, limit * 3)
+			.Select(_ => impostor.GetFriendsAsync("203.0.113.35")));
+		var (status, _) = await client.GetFriendsAsync("203.0.113.35");
+
+		Assert.Equal(HttpStatusCode.Unauthorized, status);
+	}
+
+	[Fact]
 	public async Task WebEndpoint_WrongHashesOnOneAccount_DoNotBlockAnotherAccountFromAnotherAddress()
 	{
 		using var victim = await OnlineAsync("WebRateVictim");
