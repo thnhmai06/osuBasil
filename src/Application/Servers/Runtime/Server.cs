@@ -27,6 +27,30 @@ public sealed class Server
 		return new ScopedServer(this, by);
 	}
 
+	/// <summary>
+	///     Recovers the runtime when the server itself calls it at startup: opens the stored general channels, makes
+	///     sure BasilBot's account exists and brings it online, and ends the matches left unfinished; it needs no rights.
+	/// </summary>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>
+	///     What the recovery did: how many general channels were opened, whether BasilBot is online and how many
+	///     matches were ended.
+	/// </returns>
+	public async Task<ServerRecovery> RecoverAsync(CancellationToken cancellationToken = default)
+	{
+		var openedChannels = 0;
+		foreach (var channel in await Context.Channels.ListAsync(cancellationToken))
+			if (OpenChannel(channel) is not null)
+				openedChannels++;
+
+		var registry = Context.Connections.Registry;
+		await registry.EnsureBotAsync(cancellationToken);
+		var botOnline = await registry.ConnectBotAsync(cancellationToken) is not null;
+
+		var closedMatches = await Context.Lobby.CloseUnfinishedAsync(cancellationToken);
+		return new ServerRecovery(openedChannels, botOnline, closedMatches);
+	}
+
 	/// <summary>Opens a general channel at the server's own request (startup); no rights are needed.</summary>
 	/// <param name="record">The channel record to open.</param>
 	/// <returns>Null when a channel with that name is already open.</returns>

@@ -1,6 +1,7 @@
 using Basil.Application.Content.Capabilities;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Persistence;
+using Basil.Application.Chat.Persistence;
 using Basil.Application.Chat.Runtime;
 using Basil.Application.Users.Connections;
 using Basil.Application.Multiplayer.Runtime;
@@ -15,6 +16,7 @@ namespace Basil.Application.Servers.Runtime;
 /// <param name="Inspector">Identifies uploaded picture formats and dimensions.</param>
 /// <param name="Screenshots">The stored screenshots.</param>
 /// <param name="Lobby">The open multiplayer rooms.</param>
+/// <param name="Channels">The stored general channels.</param>
 /// <param name="Users">The stored users.</param>
 internal sealed record ServerContext(
 	ConnectionContext Connections,
@@ -24,4 +26,5 @@ internal sealed record ServerContext(
 	IScreenshotInspector Inspector,
 	IScreenshotStorage Screenshots,
 	Lobby Lobby,
+	IChannelRepository Channels,
 	IUserRepository Users);
