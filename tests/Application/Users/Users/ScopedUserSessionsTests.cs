@@ -86,6 +86,21 @@ public sealed class ScopedUserSessionsTests
 	}
 
 	[Fact]
+	public async Task CloseAsync_OfAnOnlineSessionNotYetStored_StillClosesIt()
+	{
+		using var app = new TestApplication();
+		var user = await app.CreateUserAsync("UnstoredUser", "password");
+		var api = await app.LoginAsync(user);
+		var osu = await app.LoginAsync(user, ConnectionType.Osu);
+		app.ForgetStoredSession(osu.Session.Id);
+
+		var result = await app.Users.Of(user).ScopeTo(api).Sessions.CloseAsync(osu.Session.Id, Token);
+
+		Assert.True(result.IsOk);
+		Assert.False(osu.IsOpen);
+	}
+
+	[Fact]
 	public async Task CloseAsync_OfAnOfflineOsuSession_StillMarksTheDevice()
 	{
 		using var app = new TestApplication();

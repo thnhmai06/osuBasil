@@ -190,6 +190,13 @@ internal sealed class InMemorySessionRepository : ISessionRepository
 
 	public IReadOnlyList<SessionEntry> Entries => _entries;
 
+	/// <summary>Drops a stored session, as if its record had not reached the store yet.</summary>
+	public void Forget(Guid id)
+	{
+		_entries.RemoveAll(entry => entry.Id == id);
+		_tokens.Remove(id);
+	}
+
 	public Task RecordAsync(Session login, CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();

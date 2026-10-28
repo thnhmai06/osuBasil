@@ -172,6 +172,13 @@ public sealed class TestApplication : IDisposable
 	/// <summary>Gets the login history written by the application.</summary>
 	public IReadOnlyList<SessionEntry> SessionEntries => _sessions.Entries;
 
+	/// <summary>Drops a session from the store while its client stays online, as before its record is written.</summary>
+	/// <param name="id">The session.</param>
+	public void ForgetStoredSession(Guid id)
+	{
+		_sessions.Forget(id);
+	}
+
 	/// <summary>Reads the stored expiry of a session's token.</summary>
 	/// <param name="id">The session.</param>
 	/// <returns>When the token expires, or <see langword="null" /> if it has no expiry.</returns>
