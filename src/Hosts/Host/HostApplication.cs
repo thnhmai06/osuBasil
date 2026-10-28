@@ -2,9 +2,14 @@ using Basil.Bot;
 using Basil.Bot.Replies;
 using Basil.Host.Bancho;
 using Basil.Host.Irc;
+using Basil.Host.Rest;
+using Basil.Host.Rest.Http;
+using Basil.Host.Rest.Images;
+using Basil.Host.Shared.Diagnostics;
 using Basil.Infrastructure.Common;
 using Basil.Infrastructure.Common.Postgres;
 using Microsoft.Extensions.Options;
+using SixLabors.ImageSharp.Web.Caching;
 
 namespace Basil.Host;
 
@@ -30,11 +35,22 @@ public static class HostApplication
 		builder.Services.AddBasil();
 		builder.Services.AddBot();
 		builder.Services.AddIrcListener();
+		builder.Services.AddRestApi();
+		builder.Services.AddRestImages();
+		builder.Services.AddOptions<PhysicalFileSystemCacheOptions>().Configure<IOptions<StorageOptions>>((cache, storage) =>
+		{
+			cache.CacheRootPath = Path.Combine(storage.Value.DataDirectory, "Cache");
+			cache.CacheFolder = "imagesharp";
+		});
+		builder.Services.AddSingleton<ICacheCleaner, CacheCleaner>();
 		configure?.Invoke(builder);
 
 		var app = builder.Build();
+		app.UseRequestMetrics();
 		app.UseTrustedProxies();
+		app.UseRestImages();
 		app.UseBancho();
+		app.UseRest();
 		return app;
 	}
 }

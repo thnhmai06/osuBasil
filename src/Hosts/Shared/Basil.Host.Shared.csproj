@@ -4,4 +4,17 @@
 		<RootNamespace>Basil.Host.Shared</RootNamespace>
 	</PropertyGroup>
 
+	<ItemGroup>
+		<ProjectReference Include="..\..\Application\Common\Basil.Application.Common.csproj"/>
+		<ProjectReference Include="..\..\Application\Beatmaps\Basil.Application.Beatmaps.csproj"/>
+		<ProjectReference Include="..\..\Application\Chat\Basil.Application.Chat.csproj"/>
+		<ProjectReference Include="..\..\Application\Multiplayer\Basil.Application.Multiplayer.csproj"/>
+		<ProjectReference Include="..\..\Application\Servers\Basil.Application.Servers.csproj"/>
+		<ProjectReference Include="..\..\Application\Users\Basil.Application.Users.csproj"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Basil.Host.Rest.Tests"/>
+	</ItemGroup>
+
 </Project>

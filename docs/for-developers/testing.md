@@ -490,3 +490,15 @@ Do not turn a unit-level behavior into an integration test merely because it eve
 
 * [`architecture.md`](architecture.md): dependency direction and architectural boundaries
 * [`docs-guideline.md`](docs-guideline.md): documentation conventions
+
+## REST contract tests (Postman)
+
+The xUnit tests of `tests/Hosts/Rest` pin the behaviour of the REST API through a real host. The Postman collection in
+`tests/Hosts/Rest/postman/` checks only the HTTP contract against a running server: status codes, the envelope shape, the
+public/token matrix of every route, the `307` aliases and the error statuses (401, 403, 404, 409, 422, 429). A rule that an
+xUnit test pins is not tested again there.
+
+`generate-collection.py` builds the collection from `openapi.v1.json`, the document the running server serves at
+`/openapi/v1.json`; regenerate both when a route changes. CI starts a PostgreSQL service, creates an administrator with
+`Basil.Host users create --username ... --password ... --admin`, starts the server and runs the collection with the
+Postman CLI (`postman collection run ... --ignore-redirects`).

@@ -34,6 +34,7 @@
 		<ProjectReference Include="..\..\Application\Servers\Basil.Application.Servers.csproj"/>
 		<ProjectReference Include="..\Bancho\Basil.Host.Bancho.csproj"/>
 		<ProjectReference Include="..\Irc\Basil.Host.Irc.csproj"/>
+		<ProjectReference Include="..\Rest\Basil.Host.Rest.csproj"/>
 		<ProjectReference Include="..\..\Bot\Basil.Bot.csproj"/>
 		<ProjectReference Include="..\..\Infrastructure\Auth\Basil.Infrastructure.Auth.csproj"/>
 		<ProjectReference Include="..\..\Infrastructure\Beatmaps\Basil.Infrastructure.Beatmaps.csproj"/>
@@ -88,6 +89,7 @@
 		<PackageReference Include="Serilog.Sinks.Console"/>
 		<PackageReference Include="Serilog.Sinks.File"/>
 		<PackageReference Include="Velopack"/>
+		<PackageReference Include="XenoAtom.CommandLine"/>
 		<PackageReference Include="Makaretu.Dns.Multicast.New"/>
 	</ItemGroup>
 

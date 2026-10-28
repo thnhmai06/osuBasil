@@ -99,6 +99,15 @@ For example:
 }
 ```
 
+A failed answer also names the failure in `errors`, which is the stable, machine-readable part:
+
+```json
+{ "success": false, "code": 403, "message": "Missing permissions.", "data": null, "meta": null,
+  "errors": { "code": "permissionDenied", "missing": 4398046511104 }, "timestamp": "2026-08-03T12:00:00Z" }
+```
+
+`errors.code` is a camelCase code such as `notFound`, `locked`, `systemAccount`, `wrongPassword`, `rateLimited` or `invalid`. `errors.missing` is the bitmask of the permissions the caller lacks and is present only for a refusal for lack of permissions. The table that maps outcomes to codes and HTTP statuses is in [ADR-009](../../adr/ADR-009-rest-v1.md).
+
 Clients should use the HTTP status code or `code` field to determine whether the request succeeded.
 
 The `message` field is intended for human-readable information and should not normally be used as a stable machine-readable error identifier.
@@ -127,10 +136,9 @@ For example:
     }
   ],
   "meta": {
-    "page": 1,
-    "pageSize": 20,
-    "totalRecords": 42,
-    "totalPages": 3
+    "offset": 0,
+    "limit": 20,
+    "total": 42
   },
   "errors": null,
   "timestamp": "2026-08-03T12:00:00Z"
@@ -139,12 +147,7 @@ For example:
 
 `data` contains the result items directly.
 
-The pagination fields are:
-
-* `page`
-* `pageSize`
-* `totalRecords`
-* `totalPages`
+The pagination fields are `offset`, `limit` and `total`. Lists take `offset` (default 0) and `limit` (default 25, at most 100; a larger value is answered with 422).
 
 ---
 
@@ -170,25 +173,9 @@ Beatmap references can similarly contain information about both the difficulty a
 
 ## Enum values
 
-Enum fields are normally serialized as numeric values.
+Enum fields are serialized as camelCase strings, for example `"status": "loved"`. Sets of permissions and privileges are bitmasks and are serialized as numbers, for example `"permissions": 19`.
 
-For example:
-
-```json
-{
-  "privilege": 19
-}
-```
-
-`Country` is the documented exception. It is serialized as a lowercase two-letter country code:
-
-```json
-{
-  "country": "vn"
-}
-```
-
-Do not treat `Country` as a numeric enum when parsing API responses.
+`Country` is a lowercase two-letter country code, for example `"country": "vn"`.
 
 ---
 
