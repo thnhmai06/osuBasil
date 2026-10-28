@@ -30,4 +30,9 @@ internal sealed record ServerContext(
 	IChannelRepository Channels,
 	IUserRepository Users,
 	Beatmapsets Beatmapsets,
-	ISettingsRepository Settings);
+	ISettingsRepository Settings,
+	IFaqStorage Faqs,
+	IMenuBannerRepository Banners,
+	IMenuBannerStorage BannerImages,
+	IMenuSeasonalsStorage Seasonals,
+	IMenuIconStorage Icon);

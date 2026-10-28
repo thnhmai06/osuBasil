@@ -103,6 +103,12 @@ public sealed class BasilHost : IAsyncDisposable
 		Url = new Uri(_app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.First());
 	}
 
+	/// <summary>Waits until every event published so far has been delivered to its handlers.</summary>
+	public Task DrainEventsAsync()
+	{
+		return Services.GetRequiredService<Basil.Application.Common.Events.EventQueue>().DrainAsync();
+	}
+
 	/// <summary>Stores an account with a password.</summary>
 	public async Task<UserRecord> CreateUserAsync(string name, string password = "password",
 		UserPermissions? permissions = null)

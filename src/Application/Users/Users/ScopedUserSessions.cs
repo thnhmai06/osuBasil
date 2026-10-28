@@ -48,6 +48,36 @@ public sealed class ScopedUserSessions(ScopedUser scoped)
 		return (UserOutcome.Ok, sessions);
 	}
 
+	/// <summary>Reads one session of this account.</summary>
+	/// <param name="id">The session's public identifier.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The outcome and, when successful, the session.</returns>
+	/// <remarks>
+	///     A user may read their own sessions. Reading another account's session needs
+	///     <see cref="UserPermissions.UserManageViewSessions" /> and is recorded in the moderation log. A session that
+	///     does not belong to this account is not found.
+	/// </remarks>
+	public async Task<(Result<UserOutcome> Result, SessionEntry? Session)> GetAsync(Guid id,
+		CancellationToken cancellationToken = default)
+	{
+		if (!scoped.IsSelf && scoped.Guard(UserPermissions.UserManageViewSessions, false) is { } denied)
+			return (denied, null);
+
+		var session = await scoped.User.Context.Sessions.GetAsync(scoped.User.Record, id, cancellationToken);
+		if (session is null) return (UserOutcome.NotFound, null);
+
+		if (!scoped.IsSelf)
+			await scoped.User.Context.ModerationLog.AppendAsync(new ModerationData
+			{
+				Action = ModerationAction.ViewLogins,
+				By = scoped.By.Record,
+				Target = scoped.User.Record,
+				Timestamp = scoped.User.Context.Clock.GetUtcNow()
+			}, cancellationToken);
+
+		return (UserOutcome.Ok, session);
+	}
+
 	/// <summary>Closes one session of this account, whether its client is online or not.</summary>
 	/// <param name="id">The session's public identifier.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>

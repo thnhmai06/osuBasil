@@ -17,6 +17,9 @@ public sealed class ScopedServer : Scoped<UserPermissions, Connection>
 		Channels = new ScopedServerChannels(this);
 		Screenshots = new ScopedServerScreenshots(this);
 		Beatmapsets = new ScopedServerBeatmapsets(this);
+		Settings = new ScopedServerSettings(this);
+		Diagnostics = new ScopedServerDiagnostics(this);
+		Content = new ScopedServerContent(this);
 	}
 
 	/// <summary>Gets the server this scope is over.</summary>
@@ -24,6 +27,15 @@ public sealed class ScopedServer : Scoped<UserPermissions, Connection>
 
 	/// <summary>Gets operations for general channels.</summary>
 	public ScopedServerChannels Channels { get; }
+
+	/// <summary>Gets operations for the policy settings.</summary>
+	public ScopedServerSettings Settings { get; }
+
+	/// <summary>Gets operations for the content shown to players: FAQ entries and the main menu.</summary>
+	public ScopedServerContent Content { get; }
+
+	/// <summary>Gets the access check of the diagnostics.</summary>
+	public ScopedServerDiagnostics Diagnostics { get; }
 
 	/// <summary>Gets operations for screenshots.</summary>
 	public ScopedServerScreenshots Screenshots { get; }

@@ -30,7 +30,12 @@ public static class DependencyInjection
 			sp.GetRequiredService<IChannelRepository>(),
 			sp.GetRequiredService<IUserRepository>(),
 			sp.GetRequiredService<Beatmapsets>(),
-			sp.GetRequiredService<ISettingsRepository>()));
+			sp.GetRequiredService<ISettingsRepository>(),
+			sp.GetRequiredService<IFaqStorage>(),
+			sp.GetRequiredService<IMenuBannerRepository>(),
+			sp.GetRequiredService<IMenuBannerStorage>(),
+			sp.GetRequiredService<IMenuSeasonalsStorage>(),
+			sp.GetRequiredService<IMenuIconStorage>()));
 		services.AddSingleton<Server>(sp => new Server(sp.GetRequiredService<ServerContext>()));
 		return services;
 	}

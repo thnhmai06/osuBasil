@@ -1,0 +1,73 @@
+using Basil.Application.Beatmaps.Persistence;
+using Basil.Application.Common;
+using Basil.Application.Scores.Persistence;
+using Basil.Application.Users.Persistence;
+using Basil.Domain.Mechanics;
+using Basil.Domain.Scores;
+using Basil.Host.Rest.Http;
+
+namespace Basil.Host.Rest.Routes;
+
+/// <summary>Scores and their replays.</summary>
+internal static class ScoreRoutes
+{
+	/// <summary>A score as the API shows it.</summary>
+	public sealed record ScoreView(int Id, int? UserId, string? BeatmapHash, GameMode Mode, string Mods, int TotalScore,
+		short MaxCombo, double Accuracy, Grade Grade, bool Passed, bool FullCombo, DateTimeOffset Timestamp);
+
+	public static void MapScores(this RouteGroupBuilder v1)
+	{
+		var scores = v1.MapGroup("/scores").WithTags("Scores");
+		scores.MapGet("/", ListAsync).WithSummary("List scores.")
+			.WithDescription("Filter by `beatmap` (a beatmap id) and `user` (a user id). Newest first, paged with `offset` and `limit`.");
+		scores.MapGet("/{id:int}", GetAsync).WithSummary("Retrieve a score.");
+		scores.MapGet("/{id:int}/replay", ReplayAsync).RequireToken().WithSummary("Download the replay of a score.");
+	}
+
+	private static ScoreView ViewOf(ScoreRecord score)
+	{
+		var v = score.Value;
+		return new ScoreView(score.Id, v.UserId, v.BeatmapHash?.HashValue, v.Mode, v.Mods.ToString(), v.TotalScore,
+			v.MaxCombo, v.Accuracy, v.Grade, v.IsPassed, v.IsFullCombo, v.Timestamp);
+	}
+
+	private static async Task<IResult> ListAsync(HttpContext context, int? beatmap, int? user, int? offset, int? limit,
+		IScoreRepository scores, IBeatmapRepository beatmaps, IUserRepository users)
+	{
+		var (page, error) = Targets.Paging(offset, limit);
+		if (error is not null) return error;
+
+		var ct = context.RequestAborted;
+		Domain.Common.Md5? hash = null;
+		if (beatmap is { } beatmapId)
+		{
+			if (await beatmaps.GetAsync(beatmapId, ct) is not { } map) return Api.NotFound("No such beatmap.");
+			hash = map.Hash;
+		}
+
+		Domain.Users.UserRecord? player = null;
+		if (user is { } userId && (player = await users.GetAsync(userId, ct)) is null)
+			return Api.NotFound("No such user.");
+
+		var found = await scores.ListAsync(new ScoreQuery(player, hash), page!, ct);
+		return Api.Paged(new Page<ScoreView>([.. found.Items.Select(ViewOf)], found.Total), page!);
+	}
+
+	private static async Task<IResult> GetAsync(HttpContext context, int id, IScoreRepository scores)
+	{
+		return await scores.GetAsync(id, context.RequestAborted) is { } score
+			? Api.Ok(ViewOf(score))
+			: Api.NotFound("No such score.");
+	}
+
+	private static async Task<IResult> ReplayAsync(HttpContext context, int id, IScoreRepository scores,
+		IReplayStorage replays)
+	{
+		if (await scores.GetAsync(id, context.RequestAborted) is not { } score) return Api.NotFound("No such score.");
+
+		var stream = await replays.OpenAsync(score, context.RequestAborted);
+		return stream is null
+			? Api.NotFound("The score has no replay.")
+			: Results.Stream(stream, "application/octet-stream", $"{id}.osr");
+	}
+}

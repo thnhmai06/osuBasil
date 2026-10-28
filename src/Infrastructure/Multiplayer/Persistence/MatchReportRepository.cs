@@ -4,21 +4,13 @@ using Basil.Domain.Multiplayer;
 namespace Basil.Infrastructure.Multiplayer.Persistence;
 
 /// <summary>Builds reports from the rounds and scores of each match.</summary>
-internal sealed class MatchReportRepository(
-	IRoundRepository rounds,
-	IRoundScoreRepository roundScores,
-	IMatchEventRepository events)
+internal sealed class MatchReportRepository(IRoundRepository rounds, IMatchEventRepository events)
 	: IMatchReportRepository
 {
 	/// <inheritdoc />
 	public async ValueTask<MatchReport> GetAsync(MatchRecord match, CancellationToken cancellationToken = default)
 	{
 		var matchRounds = await rounds.ListAsync(match, cancellationToken);
-		foreach (var round in matchRounds)
-			round.Result = round.Decision is { } decision
-				? RoundResult.Restore(round, await roundScores.ListAsync(round, cancellationToken), decision)
-				: null;
-
 		var matchEvents = await events.ListAsync(match, cancellationToken);
 		return new MatchReport(match,
 			[.. matchRounds.Cast<IMatchEntry>().Concat(matchEvents).OrderBy(record => record.Timestamp)]);

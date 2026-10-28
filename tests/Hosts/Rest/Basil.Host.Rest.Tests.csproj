@@ -2,6 +2,7 @@
 
 	<PropertyGroup>
 		<IsPackable>false</IsPackable>
+		<RootNamespace>Basil.Host.Rest.Tests</RootNamespace>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -9,12 +10,7 @@
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="Microsoft.Extensions.Configuration"/>
-		<PackageReference Include="Microsoft.Extensions.Configuration.Binder"/>
-		<PackageReference Include="Microsoft.Extensions.DependencyInjection"/>
-		<PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions"/>
 		<PackageReference Include="Microsoft.NET.Test.Sdk"/>
-		<PackageReference Include="NSubstitute"/>
 		<PackageReference Include="xunit.v3"/>
 		<PackageReference Include="xunit.runner.visualstudio">
 			<PrivateAssets>all</PrivateAssets>
@@ -23,11 +19,23 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<Using Include="Xunit"/>
+		<FrameworkReference Include="Microsoft.AspNetCore.App"/>
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\src\Hosts\Api\Basil.Host.Api.csproj"/>
+		<Using Include="Xunit"/>
+		<Using Include="Basil.Testing.Clients"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\..\src\Hosts\Rest\Basil.Host.Rest.csproj"/>
+		<ProjectReference Include="..\..\..\src\Hosts\Shared\Basil.Host.Shared.csproj"/>
+		<ProjectReference Include="..\..\Support\Basil.Testing.Clients\Basil.Testing.Clients.csproj"/>
+		<ProjectReference Include="..\..\Support\Basil.Testing.Persistence\Basil.Testing.Persistence.csproj"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="..\..\Assets\**\*" LinkBase="Assets" CopyToOutputDirectory="PreserveNewest"/>
 	</ItemGroup>
 
 </Project>

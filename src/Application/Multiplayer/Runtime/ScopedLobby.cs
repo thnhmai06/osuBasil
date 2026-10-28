@@ -135,6 +135,22 @@ public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
 		return (room, RoomOutcome.Ok);
 	}
 
+	/// <summary>Lists the matches that were or are being played.</summary>
+	/// <param name="query">The filter to apply; it is narrowed to what the caller may view.</param>
+	/// <param name="page">Which part of the matches to return.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The outcome and, when successful, one part of the matches, newest first.</returns>
+	/// <remarks>Requires <see cref="UserPermissions.RoomManageAny" />.</remarks>
+	public async Task<(Result<RoomOutcome> Result, Page<MatchRecord>? Matches)> ListMatchesAsync(
+		Persistence.MatchQuery query, PageRequest page, CancellationToken cancellationToken = default)
+	{
+		if (Require(UserPermissions.RoomManageAny) is { } missing)
+			return (Result<RoomOutcome>.Denied(missing), null);
+
+		return (RoomOutcome.Ok,
+			await Lobby.Context.Matches.ListAsync(query.LimitTo(Rights, By.Record), page, cancellationToken));
+	}
+
 	/// <summary>Tells whether the scoped connection's user may view the data that belongs to a match.</summary>
 	/// <param name="match">The match.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>

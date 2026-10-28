@@ -219,6 +219,8 @@ public sealed class RegistrationTests(IrcHostFixture fixture)
 		{
 			RateLimits = before.RateLimits with { Login = new ServerSettings.LoginLimitSettings { MaxAttempts = 1 } }
 		});
+		// Failed logins of other tests count against the address of this one until their window ends.
+		Host.Time.Advance(before.RateLimits.Login.Window + TimeSpan.FromSeconds(1));
 		try
 		{
 			var (first, key) = await Host.NewIrcClientAsync("RegLimited");

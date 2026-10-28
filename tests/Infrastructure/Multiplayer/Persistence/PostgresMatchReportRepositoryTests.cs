@@ -90,9 +90,10 @@ public sealed class PostgresMatchReportRepositoryTests(PersistenceFixture contai
 
 		var report = await Reports.GetAsync(match, TestContext.Current.CancellationToken);
 
-		var result = Assert.IsType<HeadToHeadResult>(Assert.Single(report.Records.OfType<Round>()).Result);
-		Assert.Equal(winner.Id, result.WinnerId);
-		Assert.Equal([won.Score.Id, lost.Score.Id], result.Scores.Select(score => score.Score.Id));
+		var decision = Assert.Single(report.Records.OfType<Round>()).Decision;
+		Assert.NotNull(decision);
+		Assert.Equal(winner.Id, decision.WinnerId);
+		Assert.Equal([won.Score.Id, lost.Score.Id], decision.ScoreOrder);
 	}
 
 	[Fact]
@@ -111,8 +112,9 @@ public sealed class PostgresMatchReportRepositoryTests(PersistenceFixture contai
 
 		var report = await Reports.GetAsync(match, TestContext.Current.CancellationToken);
 
-		var result = Assert.IsType<HeadToHeadResult>(Assert.Single(report.Records.OfType<Round>()).Result);
-		Assert.Equal(first.Id, result.WinnerId);
+		var decision = Assert.Single(report.Records.OfType<Round>()).Decision;
+		Assert.NotNull(decision);
+		Assert.Equal(first.Id, decision.WinnerId);
 	}
 
 	[Fact]
@@ -125,7 +127,7 @@ public sealed class PostgresMatchReportRepositoryTests(PersistenceFixture contai
 
 		var report = await Reports.GetAsync(match, TestContext.Current.CancellationToken);
 
-		Assert.Null(Assert.Single(report.Records.OfType<Round>()).Result);
+		Assert.Null(Assert.Single(report.Records.OfType<Round>()).Decision);
 		Assert.Null((await Rounds.ListAsync(match, TestContext.Current.CancellationToken)).Single().Decision);
 	}
 

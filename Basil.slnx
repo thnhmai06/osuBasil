@@ -42,6 +42,7 @@
 		<Project Path="tests/Hosts/Host/Basil.Host.Tests.csproj"/>
 		<Project Path="tests/Hosts/Bancho/Basil.Host.Bancho.Tests.csproj"/>
 		<Project Path="tests/Hosts/Irc/Basil.Host.Irc.Tests.csproj"/>
+		<Project Path="tests/Hosts/Rest/Basil.Host.Rest.Tests.csproj"/>
 	</Folder>
 	<Folder Name="/Tests/Support/">
 		<Project Path="tests/Support/Basil.Testing.Persistence/Basil.Testing.Persistence.csproj"/>
