@@ -152,12 +152,17 @@ public sealed class OsuClient : IDisposable
 
 	/// <summary>Calls GET on the web host with the client's credentials added.</summary>
 	public async Task<(HttpStatusCode Status, string Text)> WebGetAsync(string path, string userKey, string hashKey,
-		params (string Key, string Value)[] query)
+		params (string Key, string Value)[] query) => await WebGetAsync(path, userKey, hashKey, null, query);
+
+	/// <summary>Calls GET on the web host with the client's credentials added, from the given forwarded address.</summary>
+	public async Task<(HttpStatusCode Status, string Text)> WebGetAsync(string path, string userKey, string hashKey,
+		string? forwardedFor, params (string Key, string Value)[] query)
 	{
 		var parts = new List<(string, string)>(query) { (userKey, Name), (hashKey, PasswordMd5(Password)) };
 		var url = path + "?" + string.Join('&', parts.Select(part => $"{part.Item1}={Uri.EscapeDataString(part.Item2)}"));
 		using var request = new HttpRequestMessage(HttpMethod.Get, url);
 		request.Headers.Host = _webHost;
+		if (forwardedFor is not null) request.Headers.Add("X-Forwarded-For", forwardedFor);
 		using var response = await _http.SendAsync(request);
 		return (response.StatusCode, await response.Content.ReadAsStringAsync());
 	}
@@ -166,8 +171,8 @@ public sealed class OsuClient : IDisposable
 		WebGetAsync("/web/osu-osz2-getscores.php", "us", "ha", ("c", beatmapMd5), ("m", mode.ToString()),
 			("mods", mods.ToString()), ("v", "1"));
 
-	public Task<(HttpStatusCode Status, string Text)> GetFriendsAsync() =>
-		WebGetAsync("/web/osu-getfriends.php", "u", "h");
+	public Task<(HttpStatusCode Status, string Text)> GetFriendsAsync(string? forwardedFor = null) =>
+		WebGetAsync("/web/osu-getfriends.php", "u", "h", forwardedFor);
 
 	public Task<(HttpStatusCode Status, string Text)> LastFmAsync(string b) =>
 		WebGetAsync("/web/lastfm.php", "us", "ha", ("b", b));

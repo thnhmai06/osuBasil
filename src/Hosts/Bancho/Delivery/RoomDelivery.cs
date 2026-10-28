@@ -147,7 +147,7 @@ internal sealed class LobbyRoomOpenedDelivery(Lobby lobby, Outbox outbox) : INot
 	public ValueTask Handle(LobbyRoomOpened notification, CancellationToken cancellationToken)
 	{
 		var match = BanchoView.Match(notification.Room);
-		if (!notification.Room.Settings.IsPrivate) outbox.Send(lobby.Watchers, writer => writer.NewMatch(match));
+		if (!notification.Room.Settings.IsPrivate) outbox.Send(lobby.Watchers, writer => writer.NewMatch(match, false));
 		if (notification.Host is { } host) outbox.Send(host, writer => writer.MatchJoinSuccess(match));
 		return ValueTask.CompletedTask;
 	}
@@ -173,7 +173,7 @@ internal sealed class LobbyWatcherDelivery(Lobby lobby, Outbox outbox) : INotifi
 			.Select(BanchoView.Match).ToList();
 		outbox.Send(notification.Watcher, writer =>
 		{
-			foreach (var match in matches) writer.NewMatch(match);
+			foreach (var match in matches) writer.NewMatch(match, false);
 		});
 		return ValueTask.CompletedTask;
 	}

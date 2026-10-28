@@ -56,4 +56,27 @@ public class PacketWriterMatchPasswordTests
 				"1a0000d400000007000100400000000b057061727479000b2843616d656c6c6961202d2045786974205468697320456172746827732041746f6d6f7370686572653c8400000b2036306237323566313063396338356337306439373838306466653831393162330408010101010101010101010101010101020000000000000000000000000000e90300002000000020000000000202014000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000040e20100"),
 			Write(writer => writer.UpdateMatch(Room())));
 	}
+
+	[Fact]
+	public void NewMatch_SendPasswordFalse_WritesTheSameBlankPasswordBytesAsUpdateMatch()
+	{
+		var room = Room() with { Password = "secret" };
+
+		var created = Write(writer => writer.NewMatch(room, false));
+		var updated = Write(writer => writer.UpdateMatch(room, false));
+
+		// the packets differ only in the packet id (26 UpdateMatch, 27 NewMatch)
+		Assert.Equal(27, BitConverter.ToUInt16(created, 0));
+		Assert.Equal(updated[2..], created[2..]);
+		Assert.DoesNotContain("secret", System.Text.Encoding.UTF8.GetString(created));
+	}
+
+	[Fact]
+	public void NewMatch_DefaultSendPassword_IsByteIdenticalToSendingThePassword()
+	{
+		var room = Room() with { Password = "secret" };
+
+		Assert.Equal(Write(writer => writer.NewMatch(room, true)), Write(writer => writer.NewMatch(room)));
+		Assert.Contains("secret", System.Text.Encoding.UTF8.GetString(Write(writer => writer.NewMatch(room))));
+	}
 }

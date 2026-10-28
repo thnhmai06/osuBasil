@@ -241,15 +241,19 @@ public sealed partial class PacketWriter
 	// packet id: 27
 	/// <summary>Writes the new-room packet to the stream, announcing a room to the lobby.</summary>
 	/// <param name="room">The room data to send.</param>
+	/// <param name="sendPassword">
+	///     <see langword="true" /> to include the real password; otherwise, <see langword="false" /> to
+	///     send a blank password.
+	/// </param>
 	/// <exception cref="ArgumentException">
 	///     <paramref name="room" /> does not have exactly <see cref="SlotCount" /> slots.
 	/// </exception>
 	/// <exception cref="OverflowException">
 	///     A value of <paramref name="room" /> is outside the range of the field that carries it.
 	/// </exception>
-	public void NewMatch(RoomPacket room)
+	public void NewMatch(RoomPacket room, bool sendPassword = true)
 	{
-		Wrap(ServerPacketType.NewMatch, () => WriteMatchPayload(room, true));
+		Wrap(ServerPacketType.NewMatch, () => WriteMatchPayload(room, sendPassword));
 	}
 
 	// packet id: 28
