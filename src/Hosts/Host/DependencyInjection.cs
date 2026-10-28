@@ -56,7 +56,6 @@ public static class DependencyInjection
 	public static IServiceCollection AddBasilStorage(this IServiceCollection services)
 	{
 		services.AddCommonInfrastructure();
-		services.AddHostedService<StorageStartup>();
 
 		// The foreign keys decide the order of the migrations, not the project references.
 		services.AddUsersInfrastructure();

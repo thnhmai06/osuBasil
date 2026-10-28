@@ -3,6 +3,7 @@ using Basil.Application.Beatmaps.Persistence;
 using Basil.Infrastructure.Beatmaps.Capabilities;
 using Basil.Infrastructure.Beatmaps.Persistence;
 using Basil.Infrastructure.Beatmaps.Runtime;
+using Basil.Infrastructure.Common;
 using Basil.Infrastructure.Common.Postgres;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -17,6 +18,7 @@ public static class DependencyInjection
 	public static IServiceCollection AddBeatmapsInfrastructure(this IServiceCollection services)
 	{
 		services.AddSingleton<IModuleMigration, ModuleMigration<BeatmapsDbContext>>();
+		services.AddSingleton<IResident, IncomingLeftovers>();
 		services.AddSingleton<IBeatmapsetRepository, PostgresBeatmapsetRepository>();
 		services.AddSingleton<PostgresBeatmapRepository>();
 		services.AddSingleton<IBeatmapRepository>(provider => provider.GetRequiredService<PostgresBeatmapRepository>());

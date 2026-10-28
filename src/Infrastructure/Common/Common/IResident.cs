@@ -1,6 +1,6 @@
 namespace Basil.Infrastructure.Common;
 
-/// <summary>Data every client uses, loaded into memory at startup and kept there.</summary>
+/// <summary>Data every client uses, or storage state readied at startup, loaded once after the database is up to date.</summary>
 public interface IResident
 {
 	/// <summary>Loads the data into memory; called once at startup, after the database is up to date.</summary>
