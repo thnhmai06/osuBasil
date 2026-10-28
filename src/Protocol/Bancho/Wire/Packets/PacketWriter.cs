@@ -1,4 +1,5 @@
 using Basil.Protocol.Bancho.Models.Auth;
+using Basil.Protocol.Bancho.Models.Beatmaps;
 using Basil.Protocol.Bancho.Models.Multiplayer;
 using Basil.Protocol.Bancho.Models.Replay;
 using Basil.Protocol.Bancho.Wire.Binary;
@@ -670,5 +671,62 @@ public sealed partial class PacketWriter
 	public void SwitchTournamentServer(string ip)
 	{
 		Wrap(ServerPacketType.SwitchTournamentServer, () => _writer.WriteOsuString(ip));
+	}
+
+	// packet id: 10
+	/// <summary>Writes the IRC-quit packet to the stream, carrying the name of the player who quit.</summary>
+	/// <param name="name">The name of the player who quit.</param>
+	public void HandleIrcQuit(string name)
+	{
+		Wrap(ServerPacketType.HandleIrcQuit, () => _writer.WriteOsuString(name));
+	}
+
+	// packet id: 45
+	/// <summary>Writes the empty all-players-loaded packet to the stream.</summary>
+	public void AllPlayersLoaded()
+	{
+		Wrap(ServerPacketType.AllPlayersLoaded, () => { });
+	}
+
+	// packet id: 62 (unused, kept for parity)
+	/// <summary>Writes the empty unauthorized packet to the stream; unused by this server and kept for parity.</summary>
+	public void Unauthorized()
+	{
+		Wrap(ServerPacketType.Unauthorized, () => { });
+	}
+
+	// packet id: 69
+	/// <summary>Writes the beatmap-info-reply packet to the stream, describing the beatmaps a client asked about.</summary>
+	/// <param name="maps">The beatmaps to describe; the count is written as a 32-bit integer.</param>
+	/// <exception cref="OverflowException">A value of <paramref name="maps" /> is outside the range of its field.</exception>
+	public void BeatmapInfoReply(IReadOnlyList<BeatmapInfoReplyEntry> maps)
+	{
+		Wrap(ServerPacketType.BeatmapInfoReply, () =>
+		{
+			_writer.Write(maps.Count);
+			foreach (var map in maps)
+			{
+				_writer.Write(map.Index);
+				_writer.Write(map.MapId);
+				_writer.Write(map.MapSetId);
+				_writer.Write(map.ThreadId);
+				_writer.Write(map.RankedStatus);
+				_writer.Write(map.GradeOsu);
+				_writer.Write(map.GradeCatch);
+				_writer.Write(map.GradeTaiko);
+				_writer.Write(map.GradeMania);
+				_writer.WriteOsuString(map.Checksum);
+			}
+		});
+	}
+
+	/// <summary>Builds the bytes of the packets written by <paramref name="write" />.</summary>
+	/// <param name="write">Writes one or more packets to the writer it is given.</param>
+	/// <returns>The bytes of every packet written.</returns>
+	public static byte[] Build(Action<PacketWriter> write)
+	{
+		using var stream = new MemoryStream();
+		write(new PacketWriter(stream));
+		return stream.ToArray();
 	}
 }

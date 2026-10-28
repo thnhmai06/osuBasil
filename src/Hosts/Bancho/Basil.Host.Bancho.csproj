@@ -5,6 +5,10 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App"/>
+	</ItemGroup>
+
+	<ItemGroup>
 		<ProjectReference Include="..\Shared\Basil.Host.Shared.csproj"/>
 		<ProjectReference Include="..\..\Protocol\Bancho\Basil.Protocol.Bancho.csproj"/>
 		<ProjectReference Include="..\..\Application\Anticheat\Basil.Application.Anticheat.csproj"/>
@@ -14,7 +18,25 @@
 		<ProjectReference Include="..\..\Application\Content\Basil.Application.Content.csproj"/>
 		<ProjectReference Include="..\..\Application\Multiplayer\Basil.Application.Multiplayer.csproj"/>
 		<ProjectReference Include="..\..\Application\Scores\Basil.Application.Scores.csproj"/>
+		<ProjectReference Include="..\..\Application\Servers\Basil.Application.Servers.csproj"/>
 		<ProjectReference Include="..\..\Application\Users\Basil.Application.Users.csproj"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<Using Include="Microsoft.AspNetCore.Builder"/>
+		<Using Include="Microsoft.AspNetCore.Http"/>
+		<Using Include="Microsoft.AspNetCore.Routing"/>
+		<Using Include="Microsoft.Extensions.DependencyInjection"/>
+		<Using Include="Microsoft.Extensions.Logging"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Basil.Host"/>
+		<InternalsVisibleTo Include="Basil.Host.Bancho.Tests"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Mediator.Abstractions"/>
 	</ItemGroup>
 
 </Project>

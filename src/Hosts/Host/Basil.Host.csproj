@@ -32,6 +32,7 @@
 		<ProjectReference Include="..\..\Application\Multiplayer\Basil.Application.Multiplayer.csproj"/>
 		<ProjectReference Include="..\..\Application\Chat\Basil.Application.Chat.csproj"/>
 		<ProjectReference Include="..\..\Application\Servers\Basil.Application.Servers.csproj"/>
+		<ProjectReference Include="..\Bancho\Basil.Host.Bancho.csproj"/>
 		<ProjectReference Include="..\..\Infrastructure\Auth\Basil.Infrastructure.Auth.csproj"/>
 		<ProjectReference Include="..\..\Infrastructure\Beatmaps\Basil.Infrastructure.Beatmaps.csproj"/>
 		<ProjectReference Include="..\..\Infrastructure\Content\Basil.Infrastructure.Content.csproj"/>
