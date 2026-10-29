@@ -102,19 +102,12 @@ internal sealed class IrcListener(
 		var counted = _perAddress.AddOrUpdate(session.Address, 1, (_, count) => count + 1);
 		var stream = tcp.GetStream();
 		var writer = session.WriteAsync(stream, CancellationToken.None);
-		using var deadline = session.Every(() =>
-		{
-			if (!session.Registered) session.Close(IrcReplies.RegistrationTimeout);
-		}, RegistrationDeadline, Timeout.InfiniteTimeSpan);
-		using var ping = session.Every(() =>
-		{
-			if (session.Registered) session.Send(new IrcMessage("PING", null, session.ServerName) { ForceTrailing = true });
-		}, KeepAlive, KeepAlive);
+		using var deadline = session.Every(() => CloseIfUnregistered(session), RegistrationDeadline, Timeout.InfiniteTimeSpan);
+		using var ping = session.Every(() => PingIfRegistered(session), KeepAlive, KeepAlive);
 		try
 		{
 			var perIp = (await settings.GetAsync(stoppingToken)).RateLimits.Connections.PerIp;
-			if (!state.AcceptingLogins) session.Close(IrcReplies.ServerStopping);
-			else if (counted > perIp) session.Close(IrcReplies.TooManyConnections);
+			RejectIfOverLimit(session, counted, perIp);
 
 			await foreach (var text in IrcLines.ReadAsync(stream, stoppingToken))
 				await HandleLineAsync(session, text, stoppingToken);
@@ -125,14 +118,35 @@ internal sealed class IrcListener(
 		}
 		finally
 		{
-			if (session.Connection is { IsOpen: true } connection)
-				registry.Close(connection, session.Quit ? SessionEndReason.LoggedOut : SessionEndReason.ConnectionLost);
-			if (session.Key is { } key) clients.Release(key, session);
-			session.Close("Connection closed");
-			await writer;
-			_perAddress.AddOrUpdate(session.Address, 0, (_, count) => count - 1);
-			_sessions.TryRemove(session, out _);
+			await ReleaseAsync(session, writer);
 		}
+	}
+
+	private static void CloseIfUnregistered(IrcSession session)
+	{
+		if (!session.Registered) session.Close(IrcReplies.RegistrationTimeout);
+	}
+
+	private static void PingIfRegistered(IrcSession session)
+	{
+		if (session.Registered) session.Send(new IrcMessage("PING", null, session.ServerName) { ForceTrailing = true });
+	}
+
+	private void RejectIfOverLimit(IrcSession session, int counted, int perIp)
+	{
+		if (!state.AcceptingLogins) session.Close(IrcReplies.ServerStopping);
+		else if (counted > perIp) session.Close(IrcReplies.TooManyConnections);
+	}
+
+	private async Task ReleaseAsync(IrcSession session, Task writer)
+	{
+		if (session.Connection is { IsOpen: true } connection)
+			registry.Close(connection, session.Quit ? SessionEndReason.LoggedOut : SessionEndReason.ConnectionLost);
+		if (session.Key is { } key) clients.Release(key, session);
+		session.Close("Connection closed");
+		await writer;
+		_perAddress.AddOrUpdate(session.Address, 0, (_, count) => count - 1);
+		_sessions.TryRemove(session, out _);
 	}
 
 	private async Task HandleLineAsync(IrcSession session, string? text, CancellationToken cancellationToken)

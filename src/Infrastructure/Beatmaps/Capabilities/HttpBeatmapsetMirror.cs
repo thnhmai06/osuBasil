@@ -55,10 +55,7 @@ internal sealed class HttpBeatmapsetMirror : IBeatmapsetMirror
 		var (endpoint, _) = await _settings.GetAsync(cancellationToken);
 		if (endpoint is null) return null;
 
-		var separator = endpoint.ToString().Contains('?') ? '&' : '?';
-		var url = $"{endpoint}{separator}amount={page.Limit}&offset={page.Offset}";
-		if (!string.IsNullOrEmpty(text)) url += $"&query={Uri.EscapeDataString(text)}";
-		if (mode is not null) url += $"&mode={(int)mode}";
+		var url = SearchUrl(endpoint, text, mode, page);
 
 		try
 		{
@@ -73,6 +70,15 @@ internal sealed class HttpBeatmapsetMirror : IBeatmapsetMirror
 				endpoint.GetLeftPart(UriPartial.Path));
 			return null;
 		}
+	}
+
+	private static string SearchUrl(Uri endpoint, string? text, GameMode? mode, PageRequest page)
+	{
+		var separator = endpoint.ToString().Contains('?') ? '&' : '?';
+		var url = $"{endpoint}{separator}amount={page.Limit}&offset={page.Offset}";
+		if (!string.IsNullOrEmpty(text)) url += $"&query={Uri.EscapeDataString(text)}";
+		if (mode is not null) url += $"&mode={(int)mode}";
+		return url;
 	}
 
 	/// <inheritdoc />

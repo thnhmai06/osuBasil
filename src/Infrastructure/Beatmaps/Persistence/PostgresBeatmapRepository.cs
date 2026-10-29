@@ -232,51 +232,53 @@ internal sealed class PostgresBeatmapRepository(
 		CancellationToken token)
 	{
 		var stored = new List<BeatmapRecord>(data.Count);
-		foreach (var item in data)
-		{
-			var row = await FindAsync(item, context, token);
-			if (row is not null && row.BeatmapsetId != set.Id && !releasable.Contains(row.BeatmapsetId))
-				throw new AlreadyExistsException(
-					$"A difficulty of another beatmapset already has the hash {item.Hash} or the id {row.Id}.");
-
-			var knownId = row?.Id ?? item.OnlineId;
-			// A record needs an id; the row of a difficulty without an osu! id has none until the sequence gives it one.
-			var toStore = ToRow(Build(knownId ?? 1));
-			if (knownId is null)
-				toStore.Id = 0;
-
-			if (toStore.Id == 0)
-			{
-				// The database gives a difficulty without an osu! id the next local id.
-				context.Beatmaps.Add(toStore);
-				await context.SaveChangesAsync(token);
-			}
-			else
-			{
-				await context.UpsertAsync(toStore, candidate => candidate.Id == toStore.Id, token);
-			}
-
-			stored.Add(Build(toStore.Id));
-			continue;
-
-			BeatmapRecord Build(int id)
-			{
-				return new BeatmapRecord
-				{
-					Id = id,
-					Beatmapset = set,
-					Hash = item.Hash,
-					Metadata = item.Metadata,
-					Assets = item.Assets,
-					Locked = row?.Locked ?? false,
-					Visible = row?.Visible ?? true,
-					CreatedAt = row?.CreatedAt ?? now,
-					UpdatedAt = now
-				};
-			}
-		}
+		foreach (var item in data) stored.Add(await StoreOneAsync(set, item, now, releasable, context, token));
 
 		return stored;
+	}
+
+	private static async Task<BeatmapRecord> StoreOneAsync(BeatmapsetRecord set, BeatmapData item, DateTimeOffset now,
+		IReadOnlySet<int> releasable, BeatmapsDbContext context, CancellationToken token)
+	{
+		var row = await FindAsync(item, context, token);
+		if (row is not null && row.BeatmapsetId != set.Id && !releasable.Contains(row.BeatmapsetId))
+			throw new AlreadyExistsException(
+				$"A difficulty of another beatmapset already has the hash {item.Hash} or the id {row.Id}.");
+
+		var knownId = row?.Id ?? item.OnlineId;
+		// A record needs an id; the row of a difficulty without an osu! id has none until the sequence gives it one.
+		var toStore = ToRow(Build(set, item, row, now, knownId ?? 1));
+		if (knownId is null)
+			toStore.Id = 0;
+
+		if (toStore.Id == 0)
+		{
+			// The database gives a difficulty without an osu! id the next local id.
+			context.Beatmaps.Add(toStore);
+			await context.SaveChangesAsync(token);
+		}
+		else
+		{
+			await context.UpsertAsync(toStore, candidate => candidate.Id == toStore.Id, token);
+		}
+
+		return Build(set, item, row, now, toStore.Id);
+	}
+
+	private static BeatmapRecord Build(BeatmapsetRecord set, BeatmapData item, BeatmapRow? row, DateTimeOffset now, int id)
+	{
+		return new BeatmapRecord
+		{
+			Id = id,
+			Beatmapset = set,
+			Hash = item.Hash,
+			Metadata = item.Metadata,
+			Assets = item.Assets,
+			Locked = row?.Locked ?? false,
+			Visible = row?.Visible ?? true,
+			CreatedAt = row?.CreatedAt ?? now,
+			UpdatedAt = now
+		};
 	}
 
 	private static async Task<BeatmapRow?> FindAsync(BeatmapData data, BeatmapsDbContext context,

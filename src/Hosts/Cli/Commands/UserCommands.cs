@@ -197,6 +197,15 @@ internal static class UserCommands
 	{
 		if (await call.ScopeUserAsync() is not { } scoped) return call.NotFound(NoUser);
 
+		if (await SetProfileAsync(call, scoped) is { } profileRefusal) return profileRefusal;
+		if (await SetCredentialsAsync(call, scoped) is { } credentialsRefusal) return credentialsRefusal;
+
+		call.Output.Ok("Updated.");
+		return ExitCodes.Success;
+	}
+
+	private static async Task<int?> SetProfileAsync(CommandCall call, ScopedUser scoped)
+	{
 		var ct = call.CancellationToken;
 		if (call.Text("username") is { } name && await scoped.Profile.RenameAsync(name, ct) is { IsOk: false } renamed)
 			return call.Refuse(renamed);
@@ -210,6 +219,12 @@ internal static class UserCommands
 
 		if (call.Text("away") is { } away) scoped.Profile.SetAway(away.Length == 0 ? null : away);
 		if (call.Bool("pmPrivate") is { } pm) scoped.Profile.SetPmPrivate(pm);
+		return null;
+	}
+
+	private static async Task<int?> SetCredentialsAsync(CommandCall call, ScopedUser scoped)
+	{
+		var ct = call.CancellationToken;
 		if (call.Mask("permissions") is { } permissions &&
 		    await scoped.Permissions.SetAsync((UserPermissions)permissions, ct) is { IsOk: false } set)
 			return call.Refuse(set);
@@ -218,8 +233,7 @@ internal static class UserCommands
 		    await scoped.Credentials.ChangePasswordAsync(CommandHelpers.Md5Of(password), null, false, ct) is { IsOk: false } changedPassword)
 			return call.Refuse(changedPassword);
 
-		call.Output.Ok("Updated.");
-		return ExitCodes.Success;
+		return null;
 	}
 
 	private static async Task<int> SetAvatarAsync(CommandCall call)

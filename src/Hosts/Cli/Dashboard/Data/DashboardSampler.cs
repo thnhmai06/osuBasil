@@ -31,20 +31,35 @@ public sealed class DashboardSampler(IServiceProvider services, DashboardModel m
 		model.Allocations.Add(Number(json, "gc", "allocatedBytesPerSecond") / 1_048_576);
 		model.UsersOnline.Add(Number(json, "application", "usersOnline"));
 		model.Rooms.Add(Number(json, "application", "rooms"));
-		model.Requests.Add(json["http"] is JsonObject hosts
-			? hosts.Sum(host => host.Value is JsonObject window && window["requestsPerSecond"] is { } value ? (double)value : 0)
-			: 0);
+		model.Requests.Add(RequestsPerSecond(json));
 		model.Cores = _cores.Read();
-		model.Sessions = json["sessions"] is JsonObject sessions
-			? sessions.ToDictionary(pair => pair.Key, pair => (int)(pair.Value ?? 0))
-			: new Dictionary<string, int>();
+		model.Sessions = SessionCounts(json);
 
 		var lines = new List<(string, string)>();
 		foreach (var (category, value) in json) Flatten(lines, category, value);
 		model.Diagnostics = lines;
 
-		var now = clock.GetUtcNow();
-		model.Users =
+		model.Users = UserRows(registry, lobby, clock.GetUtcNow());
+		model.RoomList = RoomRows(lobby);
+	}
+
+	private static double RequestsPerSecond(JsonObject json)
+	{
+		return json["http"] is JsonObject hosts
+			? hosts.Sum(host => host.Value is JsonObject window && window["requestsPerSecond"] is { } value ? (double)value : 0)
+			: 0;
+	}
+
+	private static Dictionary<string, int> SessionCounts(JsonObject json)
+	{
+		return json["sessions"] is JsonObject sessions
+			? sessions.ToDictionary(pair => pair.Key, pair => (int)(pair.Value ?? 0))
+			: new Dictionary<string, int>();
+	}
+
+	private static List<UserRow> UserRows(UserRegistry registry, Lobby lobby, DateTimeOffset now)
+	{
+		return
 		[
 			.. registry.Online.Values.Where(user => user.Bot is null).OrderBy(user => user.Record.Id).Select(user => new UserRow(
 				user.Record.Id, user.Record.Value.Name,
@@ -53,7 +68,11 @@ public sealed class DashboardSampler(IServiceProvider services, DashboardModel m
 				now - user.Connections.Select(c => c.LastActiveAt).DefaultIfEmpty(now).Max(),
 				(ulong)user.EffectivePermissions(now)))
 		];
-		model.RoomList =
+	}
+
+	private static List<RoomRow> RoomRows(Lobby lobby)
+	{
+		return
 		[
 			.. lobby.Rooms.Values.OrderBy(room => room.Id).Select(room => new RoomRow(room.Id, room.Settings.Name,
 				room.Slots.Count(slot => slot.Player is not null), room.Slots.Count(slot => !slot.Locked),

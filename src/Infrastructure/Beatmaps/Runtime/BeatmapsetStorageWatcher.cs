@@ -96,19 +96,7 @@ internal sealed class BeatmapsetStorageWatcher(
 			try
 			{
 				await foreach (var entry in changes.WithCancellation(stoppingToken))
-					try
-					{
-						var result = await beatmapsets.ScanAsync(entry, stoppingToken);
-						if (result is not { Imported: 0, Updated: 0, Forgotten: 0 })
-							logger.LogInformation(
-								"Beatmapset entry {Name}: {Imported} taken in, {Updated} updated, {Forgotten} forgotten",
-								entry.Name, result.Imported, result.Updated, result.Forgotten);
-					}
-					catch (Exception exception) when (exception is not OperationCanceledException ||
-					                                  !stoppingToken.IsCancellationRequested)
-					{
-						logger.LogError(exception, "Could not scan beatmapset entry {Name}", entry.Name);
-					}
+					await ScanEntryAsync(entry, stoppingToken);
 			}
 			catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested ||
 			                                         _stopping.IsCancellationRequested)
@@ -120,16 +108,39 @@ internal sealed class BeatmapsetStorageWatcher(
 				logger.LogError(exception, "The beatmapset storage watch stopped; watching the storage again");
 			}
 
-			try
-			{
-				await Task.Delay(RestartDelay, time, stoppingToken);
-			}
-			catch (OperationCanceledException)
-			{
-				return;
-			}
+			if (!await WaitToRestartAsync(stoppingToken)) return;
 
 			changes = storage.WatchAsync(stoppingToken);
+		}
+	}
+
+	private async Task ScanEntryAsync(BeatmapsetSource entry, CancellationToken stoppingToken)
+	{
+		try
+		{
+			var result = await beatmapsets.ScanAsync(entry, stoppingToken);
+			if (result is not { Imported: 0, Updated: 0, Forgotten: 0 })
+				logger.LogInformation(
+					"Beatmapset entry {Name}: {Imported} taken in, {Updated} updated, {Forgotten} forgotten",
+					entry.Name, result.Imported, result.Updated, result.Forgotten);
+		}
+		catch (Exception exception) when (exception is not OperationCanceledException ||
+		                                  !stoppingToken.IsCancellationRequested)
+		{
+			logger.LogError(exception, "Could not scan beatmapset entry {Name}", entry.Name);
+		}
+	}
+
+	private async Task<bool> WaitToRestartAsync(CancellationToken stoppingToken)
+	{
+		try
+		{
+			await Task.Delay(RestartDelay, time, stoppingToken);
+			return true;
+		}
+		catch (OperationCanceledException)
+		{
+			return false;
 		}
 	}
 }

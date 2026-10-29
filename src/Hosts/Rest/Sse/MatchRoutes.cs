@@ -78,49 +78,64 @@ internal static class MatchRoutes
 		var ct = context.RequestAborted;
 		if (await matches.GetAsync(id, ct) is not { } match) return Api.NotFound("No such match.");
 
-		var connection = context.ConnectionOrNull();
-		var visible = connection is null
-			? !match.Value.IsPrivate
-			: await lobby.ScopeTo(connection).CanViewAsync(match, ct);
-		if (!visible) return Api.NotFound("No such match.");
+		if (!await IsVisibleAsync(context, lobby, match, ct)) return Api.NotFound("No such match.");
 
 		var report = await reports.GetAsync(match, ct);
 		var entries = report.Records.OrderBy(r => r.Timestamp).ToList();
 		var lastId = entries.Count == 0 ? null : (entries.Count - 1).ToString();
 
-		async Task<(object, string?)> Snapshot(CancellationToken token)
-		{
-			var current = await reports.GetAsync(match, token);
-			var list = new List<object>();
-			foreach (var entry in current.Records.OrderBy(r => r.Timestamp)) list.Add(await EntryOf(entry, roundScores, token));
-			return (new ReportView(MatchView.Of(match), list), list.Count == 0 ? null : (list.Count - 1).ToString());
-		}
-
-		if (match.Value.EndedAt is not null)
-		{
-			// An ended match has no root: its report never changes, so the snapshot is built and the stream ends.
-			if (lastId is not null && context.Request.Headers["Last-Event-ID"].ToString() == lastId)
-				return Results.StatusCode(StatusCodes.Status204NoContent);
-
-			var (data, snapshotId) = await Snapshot(ct);
-			return new SnapshotOnlyResult(SseHub.Frame("snapshot", snapshotId, JsonSerializer.SerializeToUtf8Bytes(data, Api.Json)));
-		}
+		if (match.Value.EndedAt is not null) return await EndedAsync(context, reports, roundScores, match, lastId, ct);
 
 		var sent = entries.Count;
 		return await context.StreamAsync($"match:{id}", async token =>
 		{
-			var (data, snapshotId) = await Snapshot(token);
+			var (data, snapshotId) = await SnapshotAsync(reports, roundScores, match, token);
 			sent = ((ReportView)data).Entries.Count;
 			return (data, snapshotId);
 		}, null, async token =>
 		{
-			var current = await reports.GetAsync(match, token);
-			var all = current.Records.OrderBy(r => r.Timestamp).ToList();
-			var fresh = new List<SseEvent>();
-			for (var index = sent; index < all.Count; index++)
-				fresh.Add(new SseEvent(await EntryOf(all[index], roundScores, token), index.ToString()));
-			sent = all.Count;
-			return new SsePoll(fresh, current.Match.Value.EndedAt is not null);
+			var (poll, total) = await PollAsync(reports, roundScores, match, sent, token);
+			sent = total;
+			return poll;
 		});
+	}
+
+	private static async Task<bool> IsVisibleAsync(HttpContext context, Lobby lobby, MatchRecord match, CancellationToken ct)
+	{
+		var connection = context.ConnectionOrNull();
+		return connection is null
+			? !match.Value.IsPrivate
+			: await lobby.ScopeTo(connection).CanViewAsync(match, ct);
+	}
+
+	private static async Task<(object, string?)> SnapshotAsync(IMatchReportRepository reports, IRoundScoreRepository roundScores,
+		MatchRecord match, CancellationToken token)
+	{
+		var current = await reports.GetAsync(match, token);
+		var list = new List<object>();
+		foreach (var entry in current.Records.OrderBy(r => r.Timestamp)) list.Add(await EntryOf(entry, roundScores, token));
+		return (new ReportView(MatchView.Of(match), list), list.Count == 0 ? null : (list.Count - 1).ToString());
+	}
+
+	// An ended match has no root: its report never changes, so the snapshot is built and the stream ends.
+	private static async Task<IResult> EndedAsync(HttpContext context, IMatchReportRepository reports,
+		IRoundScoreRepository roundScores, MatchRecord match, string? lastId, CancellationToken ct)
+	{
+		if (lastId is not null && context.Request.Headers["Last-Event-ID"].ToString() == lastId)
+			return Results.StatusCode(StatusCodes.Status204NoContent);
+
+		var (data, snapshotId) = await SnapshotAsync(reports, roundScores, match, ct);
+		return new SnapshotOnlyResult(SseHub.Frame("snapshot", snapshotId, JsonSerializer.SerializeToUtf8Bytes(data, Api.Json)));
+	}
+
+	private static async Task<(SsePoll Poll, int Total)> PollAsync(IMatchReportRepository reports,
+		IRoundScoreRepository roundScores, MatchRecord match, int sent, CancellationToken token)
+	{
+		var current = await reports.GetAsync(match, token);
+		var all = current.Records.OrderBy(r => r.Timestamp).ToList();
+		var fresh = new List<SseEvent>();
+		for (var index = sent; index < all.Count; index++)
+			fresh.Add(new SseEvent(await EntryOf(all[index], roundScores, token), index.ToString()));
+		return (new SsePoll(fresh, current.Match.Value.EndedAt is not null), all.Count);
 	}
 }

@@ -117,20 +117,29 @@ internal static class BeatmapScoreCommands
 		if (await call.Get<IBeatmapsetRepository>().GetAsync(call.Id("id"), call.CancellationToken) is not { } set)
 			return call.NotFound("beatmapset");
 
-		BeatmapsetStatus? status = null;
-		if (call.Text("status") is { } text)
-			status = Enum.TryParse<BeatmapsetStatus>(text, true, out var parsed) && Enum.IsDefined(parsed)
-				? parsed
-				: throw CommandException.Invalid("--status is not a beatmapset status.");
+		var status = call.Text("status") is { } text ? ParseStatus(text) : (BeatmapsetStatus?)null;
 
 		var scoped = call.Get<Beatmapsets>().Of(set).ScopeTo(await call.ByAsync());
+		if (await ApplyPatchAsync(call, scoped, status) is { } refused) return refused;
+
+		call.Output.Ok("Updated.");
+		return ExitCodes.Success;
+	}
+
+	private static BeatmapsetStatus ParseStatus(string text)
+	{
+		return Enum.TryParse<BeatmapsetStatus>(text, true, out var parsed) && Enum.IsDefined(parsed)
+			? parsed
+			: throw CommandException.Invalid("--status is not a beatmapset status.");
+	}
+
+	private static async Task<int?> ApplyPatchAsync(CommandCall call, ScopedBeatmapset scoped, BeatmapsetStatus? status)
+	{
 		var ct = call.CancellationToken;
 		if (status is { } s && await scoped.SetStatusAsync(s, ct) is { IsOk: false } a) return call.Refuse(a);
 		if (call.Bool("visible") is { } v && await scoped.SetVisibleAsync(v, ct) is { IsOk: false } b) return call.Refuse(b);
 		if (call.Bool("locked") is { } l && await scoped.SetLockedAsync(l, ct) is { IsOk: false } c) return call.Refuse(c);
-
-		call.Output.Ok("Updated.");
-		return ExitCodes.Success;
+		return null;
 	}
 
 	private static async Task<int> RefreshAsync(CommandCall call)

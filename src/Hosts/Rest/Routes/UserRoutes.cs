@@ -153,16 +153,25 @@ internal static class UserRoutes
 		if (await context.ScopeAsync(id) is not { } scoped) return Api.NotFound("No such user.");
 
 		var ct = context.RequestAborted;
+		if (await PatchNameAndCountryAsync(scoped, request, ct) is { } refusal) return refusal;
+		if (await PatchSelfAndPermissionsAsync(scoped, request, ct) is { } denied) return denied;
+
+		return Api.Ok(UserView.Of(registry, scoped.User.Record, clock), "Updated successfully");
+	}
+
+	private static async Task<IResult?> PatchNameAndCountryAsync(ScopedUser scoped, PatchUserRequest request, CancellationToken ct)
+	{
 		if (request.Name is not null && await scoped.Profile.RenameAsync(request.Name, ct) is { IsOk: false } renamed)
 			return renamed.Refusal();
 
-		if (request.Country is not null)
-		{
-			if (Targets.ParseCountry(request.Country) is not { } country)
-				return Api.Invalid("country must be a two-letter code.");
-			if (await scoped.Profile.SetCountryAsync(country, ct) is { IsOk: false } changed) return changed.Refusal();
-		}
+		if (request.Country is null) return null;
+		if (Targets.ParseCountry(request.Country) is not { } country)
+			return Api.Invalid("country must be a two-letter code.");
+		return await scoped.Profile.SetCountryAsync(country, ct) is { IsOk: false } changed ? changed.Refusal() : null;
+	}
 
+	private static async Task<IResult?> PatchSelfAndPermissionsAsync(ScopedUser scoped, PatchUserRequest request, CancellationToken ct)
+	{
 		if (request.Away is not null && !scoped.Profile.SetAway(request.Away.Length == 0 ? null : request.Away))
 			return Api.Error(StatusCodes.Status403Forbidden, "notSelf", "Only the account itself can do this.");
 		if (request.PmPrivate is { } pm && !scoped.Profile.SetPmPrivate(pm))
@@ -171,7 +180,7 @@ internal static class UserRoutes
 		    await scoped.Permissions.SetAsync((UserPermissions)permissions, ct) is { IsOk: false } set)
 			return set.Refusal();
 
-		return Api.Ok(UserView.Of(registry, scoped.User.Record, clock), "Updated successfully");
+		return null;
 	}
 
 	private static async Task<IResult> PasswordAsync(HttpContext context, int id, PasswordRequest request)

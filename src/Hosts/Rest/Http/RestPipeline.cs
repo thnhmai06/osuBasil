@@ -30,35 +30,45 @@ internal sealed class RestPipeline(RequestDelegate next)
 		try
 		{
 			var authenticated = await context.AuthenticateAsync(registry);
-			var limits = (await settings.GetAsync(context.RequestAborted)).RateLimits.Rest;
-			var mutation = !HttpMethods.IsGet(context.Request.Method) && !HttpMethods.IsHead(context.Request.Method) &&
-			               !HttpMethods.IsOptions(context.Request.Method);
-			if (authenticated && mutation)
-			{
-				var user = context.Connection().Record.Id;
-				if (!limiter.TryAcquire($"rest-mutation:{user}", limits.Mutations.Count, limits.Mutations.Window))
-				{
-					await TooManyAsync(context, limits.Mutations.Window);
-					return;
-				}
-			}
-			else if (!authenticated &&
-			         !limiter.TryAcquire($"rest-anonymous:{context.Ip()}", limits.Anonymous.PerIp.Count,
-				         limits.Anonymous.PerIp.Window))
-			{
-				await TooManyAsync(context, limits.Anonymous.PerIp.Window);
-				return;
-			}
+			if (await RateLimitedAsync(context, authenticated, settings, limiter)) return;
 
 			await next(context);
 		}
 		catch (Exception ex) when (!context.Response.HasStarted && ex is not OperationCanceledException)
 		{
-			logger.LogError(ex, "Unhandled exception in {Route}", context.GetEndpoint()?.DisplayName ?? "an unknown route");
-			context.Response.Clear();
-			await Api.Error(StatusCodes.Status500InternalServerError, "internalError", "Internal server error.")
-				.ExecuteAsync(context);
+			await FailAsync(context, logger, ex);
 		}
+	}
+
+	private static async Task<bool> RateLimitedAsync(HttpContext context, bool authenticated, ISettingsRepository settings,
+		RateLimiter limiter)
+	{
+		var limits = (await settings.GetAsync(context.RequestAborted)).RateLimits.Rest;
+		var mutation = !HttpMethods.IsGet(context.Request.Method) && !HttpMethods.IsHead(context.Request.Method) &&
+		               !HttpMethods.IsOptions(context.Request.Method);
+		if (authenticated && mutation)
+		{
+			var user = context.Connection().Record.Id;
+			if (limiter.TryAcquire($"rest-mutation:{user}", limits.Mutations.Count, limits.Mutations.Window)) return false;
+
+			await TooManyAsync(context, limits.Mutations.Window);
+			return true;
+		}
+
+		if (authenticated ||
+		    limiter.TryAcquire($"rest-anonymous:{context.Ip()}", limits.Anonymous.PerIp.Count, limits.Anonymous.PerIp.Window))
+			return false;
+
+		await TooManyAsync(context, limits.Anonymous.PerIp.Window);
+		return true;
+	}
+
+	private static async Task FailAsync(HttpContext context, ILogger<RestPipeline> logger, Exception ex)
+	{
+		logger.LogError(ex, "Unhandled exception in {Route}", context.GetEndpoint()?.DisplayName ?? "an unknown route");
+		context.Response.Clear();
+		await Api.Error(StatusCodes.Status500InternalServerError, "internalError", "Internal server error.")
+			.ExecuteAsync(context);
 	}
 
 	private static Task TooManyAsync(HttpContext context, TimeSpan retryAfter)

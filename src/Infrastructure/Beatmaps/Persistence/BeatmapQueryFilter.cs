@@ -16,6 +16,16 @@ internal static class BeatmapQueryFilter
 	/// <returns>The beatmaps that match every condition of the query.</returns>
 	public static IQueryable<BeatmapRow> Apply(IQueryable<BeatmapRow> beatmaps, BeatmapQuery query)
 	{
+		beatmaps = ByState(beatmaps, query);
+		beatmaps = ByRanges(beatmaps, query);
+		beatmaps = ByFreeText(beatmaps, query);
+		beatmaps = ByNames(beatmaps, query);
+		return ByVersionAndFileName(beatmaps, query);
+	}
+
+	/// <summary>Keeps the beatmaps in the asked status, visibility and mode.</summary>
+	private static IQueryable<BeatmapRow> ByState(IQueryable<BeatmapRow> beatmaps, BeatmapQuery query)
+	{
 		if (query.Status is { } status)
 			beatmaps = beatmaps.Where(row => row.Set.Status == status);
 
@@ -30,6 +40,12 @@ internal static class BeatmapQueryFilter
 			beatmaps = beatmaps.Where(row => row.Mode == code);
 		}
 
+		return beatmaps;
+	}
+
+	/// <summary>Keeps the beatmaps whose numbers and dates lie within the asked intervals.</summary>
+	private static IQueryable<BeatmapRow> ByRanges(IQueryable<BeatmapRow> beatmaps, BeatmapQuery query)
+	{
 		beatmaps = Within(beatmaps, row => row.Star, query.Stars);
 		beatmaps = Within(beatmaps, row => row.Ar, query.Ar);
 		beatmaps = Within(beatmaps, row => row.Cs, query.Cs);
@@ -48,6 +64,12 @@ internal static class BeatmapQueryFilter
 		beatmaps = Within(beatmaps, row => row.Set.UpdatedAt, query.Updated,
 			static instant => instant.ToUniversalTime());
 
+		return beatmaps;
+	}
+
+	/// <summary>Keeps the beatmaps that match every word of the free text.</summary>
+	private static IQueryable<BeatmapRow> ByFreeText(IQueryable<BeatmapRow> beatmaps, BeatmapQuery query)
+	{
 		// Free text: every whitespace-separated word must match artist, title, creator or version.
 		if (!string.IsNullOrWhiteSpace(query.Text))
 			beatmaps = query.Text.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -58,6 +80,12 @@ internal static class BeatmapQueryFilter
 						EF.Functions.ILike(row.Set.Creator, pattern, LikePattern.Escape) ||
 						EF.Functions.ILike(row.Version, pattern, LikePattern.Escape)));
 
+		return beatmaps;
+	}
+
+	/// <summary>Keeps the beatmaps whose creator, artist and title contain the asked text.</summary>
+	private static IQueryable<BeatmapRow> ByNames(IQueryable<BeatmapRow> beatmaps, BeatmapQuery query)
+	{
 		if (!string.IsNullOrWhiteSpace(query.Creator))
 		{
 			var pattern = LikePattern.Containing(query.Creator);
@@ -76,6 +104,12 @@ internal static class BeatmapQueryFilter
 			beatmaps = beatmaps.Where(row => EF.Functions.ILike(row.Set.Title, pattern, LikePattern.Escape));
 		}
 
+		return beatmaps;
+	}
+
+	/// <summary>Keeps the beatmaps with the asked difficulty name and file name.</summary>
+	private static IQueryable<BeatmapRow> ByVersionAndFileName(IQueryable<BeatmapRow> beatmaps, BeatmapQuery query)
+	{
 		if (!string.IsNullOrWhiteSpace(query.Difficulty))
 		{
 			var pattern = LikePattern.Containing(query.Difficulty);

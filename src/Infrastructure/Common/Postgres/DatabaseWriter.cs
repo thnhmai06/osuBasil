@@ -267,67 +267,18 @@ public sealed class DatabaseWriter(
 		while (true)
 			try
 			{
-				Exception? environmentException = null;
-				Exception? failException = null;
-
-				try
-				{
-					if (pendingTransaction.Hold is { } hold)
-					{
-						await hold();
-						pendingTransaction.Done.TrySetResult();
-						return;
-					}
-
-					await _connections.WaitAsync(_abandon.Token);
-					try
-					{
-						if (!pendingTransaction.IsTryOperation)
-							await RunSnapshotAsync(pendingTransaction);
-						else
-							await RunTryOpAsync(pendingTransaction);
-						pendingTransaction.Done.TrySetResult();
-						return;
-					}
-					finally
-					{
-						_connections.Release();
-					}
-				}
-				catch (Exception exception) when (!_abandon.IsCancellationRequested &&
-				                                  exception.IsEnvironmentException())
-				{
-					environmentException = exception;
-				}
-				catch (Exception exception) when (exception is not OperationCanceledException ||
-				                                  !_abandon.IsCancellationRequested)
-				{
-					failException = exception;
-				}
+				var (environmentException, failException) = await AttemptAsync(pendingTransaction);
 
 				if (environmentException is not null)
 				{
-					firstFailure ??= timeProvider.GetUtcNow();
-					var elapsed = timeProvider.GetUtcNow() - firstFailure.Value;
-					if (elapsed < TimeSpan.FromMinutes(1))
-						logger.LogWarning(environmentException,
-							"A write of {Root} could not be stored; trying again in {Delay}", root, delay);
-					else
-						logger.LogError(environmentException,
-							"A write of {Root} could not be stored; trying again in {Delay}", root, delay);
+					ReportEnvironmentFailure(root, environmentException, delay, ref firstFailure);
 					await Task.Delay(delay, timeProvider, _abandon.Token);
 					delay = NextRetryDelay(delay);
 					continue;
 				}
 
-				if (failException is not null)
-				{
-					if (!pendingTransaction.IsTryOperation || pendingTransaction.LogsRefusal)
-						logger.LogError(failException, "A write of {Root} for {Identity} was refused and not stored",
-							root, pendingTransaction.Identity);
-					pendingTransaction.Done.TrySetException(failException);
-					return;
-				}
+				if (failException is not null) RefuseWrite(root, pendingTransaction, failException);
+				return;
 			}
 			catch (OperationCanceledException) when (_abandon.IsCancellationRequested)
 			{
@@ -335,6 +286,68 @@ public sealed class DatabaseWriter(
 				pendingTransaction.Done.TrySetException(new OperationCanceledException(_abandon.Token));
 				return;
 			}
+	}
+
+	/// <summary>Tries the write once; both results are <see langword="null" /> when it was stored.</summary>
+	private async Task<(Exception? Environment, Exception? Failure)> AttemptAsync(PendingTransaction pendingTransaction)
+	{
+		try
+		{
+			await RunOnceAsync(pendingTransaction);
+			return (null, null);
+		}
+		catch (Exception exception) when (!_abandon.IsCancellationRequested &&
+		                                  exception.IsEnvironmentException())
+		{
+			return (exception, null);
+		}
+		catch (Exception exception) when (exception is not OperationCanceledException ||
+		                                  !_abandon.IsCancellationRequested)
+		{
+			return (null, exception);
+		}
+	}
+
+	private async Task RunOnceAsync(PendingTransaction pendingTransaction)
+	{
+		if (pendingTransaction.Hold is { } hold)
+		{
+			await hold();
+			pendingTransaction.Done.TrySetResult();
+			return;
+		}
+
+		await _connections.WaitAsync(_abandon.Token);
+		try
+		{
+			if (!pendingTransaction.IsTryOperation)
+				await RunSnapshotAsync(pendingTransaction);
+			else
+				await RunTryOpAsync(pendingTransaction);
+			pendingTransaction.Done.TrySetResult();
+		}
+		finally
+		{
+			_connections.Release();
+		}
+	}
+
+	private void ReportEnvironmentFailure(Root root, Exception exception, TimeSpan delay, ref DateTimeOffset? firstFailure)
+	{
+		firstFailure ??= timeProvider.GetUtcNow();
+		var elapsed = timeProvider.GetUtcNow() - firstFailure.Value;
+		if (elapsed < TimeSpan.FromMinutes(1))
+			logger.LogWarning(exception, "A write of {Root} could not be stored; trying again in {Delay}", root, delay);
+		else
+			logger.LogError(exception, "A write of {Root} could not be stored; trying again in {Delay}", root, delay);
+	}
+
+	private void RefuseWrite(Root root, PendingTransaction pendingTransaction, Exception exception)
+	{
+		if (!pendingTransaction.IsTryOperation || pendingTransaction.LogsRefusal)
+			logger.LogError(exception, "A write of {Root} for {Identity} was refused and not stored",
+				root, pendingTransaction.Identity);
+		pendingTransaction.Done.TrySetException(exception);
 	}
 
 	private async Task RunSnapshotAsync(PendingTransaction pendingTransaction)
