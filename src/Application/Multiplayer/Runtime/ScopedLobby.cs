@@ -62,27 +62,10 @@ public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
 			throw new ArgumentException("A room opened in game needs the creator's osu! client.");
 
 		var now = Lobby.Context.Clock.GetUtcNow();
-		var required = isTournament
-			? UserPermissions.RoomCreate
-			: UserPermissions.RoomCreate | UserPermissions.RoomJoin;
-		if (Require(required) is { } missingPermissions)
-			return (null, Result<RoomOutcome>.Denied(missingPermissions));
-
-		if ((await Lobby.Context.Settings.GetAsync(cancellationToken)).Locks.HasFlag(Locks.Rooms) &&
-		    Require(UserPermissions.RoomManageAny) is not null)
-			return (null, RoomOutcome.Locked);
+		if (await OpenRefusalAsync(isTournament, cancellationToken) is { } refusal) return (null, refusal);
 
 		var creator = By.Record;
-		var limited = isTournament && Require(UserPermissions.RoomManageCreateUnlimited) is not null;
-		if (limited && Lobby.TooManyRooms(creator)) return (null, RoomOutcome.TooManyRooms);
-
-		// A room opened in game seats its creator; a tournament room seats the creator's osu! client when it may join.
-		var seat = isTournament
-			? By.User.Bancho is { IsOpen: true } bancho &&
-			  bancho.User.EffectivePermissions(now).Allows(UserPermissions.RoomJoin)
-				? bancho
-				: null
-			: (BanchoConnection)By;
+		var seat = SeatFor(isTournament, now);
 		if (!isTournament && Lobby.RoomOf(seat!) is not null) return (null, RoomOutcome.AlreadyInRoom);
 
 		if (!MatchData.IsValidName(name)) return (null, RoomOutcome.InvalidSettings);
@@ -90,10 +73,48 @@ public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
 		// ponytail: two concurrent opens by one creator can both pass the room limit; count reservations per creator if that matters.
 		if (Lobby.Reserve() is not { } id) return (null, RoomOutcome.NoRoomId);
 
-		MatchRecord match;
+		var match = await CreateMatchAsync(id, name, creator, isPrivate, now, cancellationToken);
+		var room = Establish(id, match, settings, isTournament, password, seat);
+
+		var closesAt = ScheduleEmptyClosing(room);
+		Lobby.Context.Events.Publish(new LobbyRoomOpened(room, room.Authority.Host, closesAt));
+		return (room, RoomOutcome.Ok);
+	}
+
+	private async Task<Result<RoomOutcome>?> OpenRefusalAsync(bool isTournament, CancellationToken cancellationToken)
+	{
+		var required = isTournament
+			? UserPermissions.RoomCreate
+			: UserPermissions.RoomCreate | UserPermissions.RoomJoin;
+		if (Require(required) is { } missingPermissions) return Result<RoomOutcome>.Denied(missingPermissions);
+
+		if ((await Lobby.Context.Settings.GetAsync(cancellationToken)).Locks.HasFlag(Locks.Rooms) &&
+		    Require(UserPermissions.RoomManageAny) is not null)
+			return RoomOutcome.Locked;
+
+		var limited = isTournament && Require(UserPermissions.RoomManageCreateUnlimited) is not null;
+		if (limited && Lobby.TooManyRooms(By.Record)) return RoomOutcome.TooManyRooms;
+
+		return null;
+	}
+
+	private BanchoConnection? SeatFor(bool isTournament, DateTimeOffset now)
+	{
+		// A room opened in game seats its creator; a tournament room seats the creator's osu! client when it may join.
+		return isTournament
+			? By.User.Bancho is { IsOpen: true } bancho &&
+			  bancho.User.EffectivePermissions(now).Allows(UserPermissions.RoomJoin)
+				? bancho
+				: null
+			: (BanchoConnection)By;
+	}
+
+	private async Task<MatchRecord> CreateMatchAsync(int id, string name, UserRecord creator, bool isPrivate,
+		DateTimeOffset now, CancellationToken cancellationToken)
+	{
 		try
 		{
-			match = await Lobby.Context.Matches.CreateAsync(new MatchData
+			return await Lobby.Context.Matches.CreateAsync(new MatchData
 			{
 				Name = name,
 				StartedAt = now,
@@ -107,7 +128,11 @@ public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
 			Lobby.Release(id);
 			throw;
 		}
+	}
 
+	private Room Establish(int id, MatchRecord match, MatchSettings? settings, bool isTournament, string password,
+		BanchoConnection? seat)
+	{
 		Room room;
 		using (Lobby.Enter())
 		{
@@ -128,11 +153,14 @@ public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
 			Lobby.Add(room);
 		}
 
-		DateTimeOffset? closesAt = room.IsTournament && !room.Slots.Any(slot => slot.Player is not null)
+		return room;
+	}
+
+	private DateTimeOffset? ScheduleEmptyClosing(Room room)
+	{
+		return room.IsTournament && !room.Slots.Any(slot => slot.Player is not null)
 			? Lobby.ScheduleClosing(room)
 			: null;
-		Lobby.Context.Events.Publish(new LobbyRoomOpened(room, room.Authority.Host, closesAt));
-		return (room, RoomOutcome.Ok);
 	}
 
 	/// <summary>Lists the matches that were or are being played.</summary>

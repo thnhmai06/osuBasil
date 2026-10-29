@@ -1,7 +1,9 @@
 using Basil.Application.Chat.Runtime;
 using Basil.Application.Servers.Runtime;
+using Basil.Application.Users.Connections;
 using Basil.Bot.Commands;
 using Basil.Bot.Replies;
+using Basil.Domain.Chat;
 using Basil.Domain.Users;
 using Mediator;
 using Microsoft.Extensions.Logging;
@@ -22,15 +24,25 @@ internal sealed class ChatHandler(
 	/// <inheritdoc />
 	public ValueTask Handle(ChannelMessagePosted posted, CancellationToken cancellationToken)
 	{
-		if (posted.By is not { } by
-		    || posted.Message.IsNotice
-		    || posted.Message.Author.IsBasilBot())
+		if (posted.By is not { } by || IsIgnored(posted.Message))
 			return ValueTask.CompletedTask;
 
 		var privateMessage = posted.Channel is PmChannel pm && pm.Owner.Record.IsBasilBot();
 		if (posted.Channel is PmChannel && !privateMessage) return ValueTask.CompletedTask;
 
-		var context = new CommandContext(
+		var context = NewContext(posted, by, privateMessage);
+		worker.Enqueue(by.Record.Id, workerToken => RunCommandAsync(context, posted.Message.Content, workerToken));
+		return ValueTask.CompletedTask;
+	}
+
+	private static bool IsIgnored(Message message)
+	{
+		return message.IsNotice || message.Author.IsBasilBot();
+	}
+
+	private CommandContext NewContext(ChannelMessagePosted posted, Connection by, bool privateMessage)
+	{
+		return new CommandContext(
 			by,
 			privateMessage ? null : posted.Channel.Name,
 			replies,
@@ -40,20 +52,19 @@ internal sealed class ChatHandler(
 			(text, sendToken) =>
 				SendSplitAsync(text, (piece, token) => server.WhisperAsync(by.User, piece, cancellationToken: token),
 					sendToken));
+	}
 
-		worker.Enqueue(by.Record.Id, async workerToken =>
+	private async Task RunCommandAsync(CommandContext context, string content, CancellationToken workerToken)
+	{
+		try
 		{
-			try
-			{
-				await commands.ExecuteAsync(context, posted.Message.Content, workerToken);
-			}
-			catch (Exception exception) when
-				(exception is not OperationCanceledException || !workerToken.IsCancellationRequested)
-			{
-				logger.LogError(exception, "Error handling bot command from user {UserId}", by.Record.Id);
-			}
-		});
-		return ValueTask.CompletedTask;
+			await commands.ExecuteAsync(context, content, workerToken);
+		}
+		catch (Exception exception) when
+			(exception is not OperationCanceledException || !workerToken.IsCancellationRequested)
+		{
+			logger.LogError(exception, "Error handling bot command from user {UserId}", context.By.Record.Id);
+		}
 	}
 
 	private static async Task SendSplitAsync(

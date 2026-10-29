@@ -1,5 +1,6 @@
 using Basil.Application.Multiplayer.Runtime;
 using Basil.Application.Multiplayer.Runtime.Rooms;
+using Basil.Application.Users.Connections;
 using Basil.Bot.Replies;
 using Basil.Domain.Mechanics;
 
@@ -27,12 +28,7 @@ internal sealed partial class MpCommands
 				})
 		};
 
-		var activeMods = new List<string>();
-		if (room.Settings.MatchSettings.Mods != GameMods.NoMod)
-			activeMods.Add(room.Settings.MatchSettings.Mods.ToString());
-		if (room.Settings.MatchSettings.Freemods) activeMods.Add(replies.Text(MpReplies.Freemod));
-		if (activeMods.Count > 0)
-			lines.Add(replies.Text(MpReplies.SettingsActiveMods, new { mods = string.Join(", ", activeMods) }));
+		if (ActiveModsLine(replies, room) is { } modsLine) lines.Add(modsLine);
 
 		var creator = room.Authority.Creator;
 		lines.Add(replies.Text(MpReplies.SettingsCreator, new { id = creator.Id, name = creator.Value.Name }));
@@ -44,27 +40,43 @@ internal sealed partial class MpCommands
 		foreach (var slot in room.Slots)
 		{
 			if (slot.Player is not { } player) continue;
-			var tags = new List<string>();
-			if (room.Authority.Host is not null && player == room.Authority.Host)
-				tags.Add(replies.Text(MpReplies.HostTag));
-			if (slot.Mods is { } slotMods && slotMods != GameMods.NoMod) tags.Add(slotMods.ToString());
-			var tagText = tags.Count > 0
-				? replies.Text(MpReplies.Tags, new { tags = string.Join(" / ", tags) })
-				: string.Empty;
-			var teamText = showTeam && slot.Team is { } team ? $"{team,-5} " : string.Empty;
-			lines.Add(replies.Text(MpReplies.SettingsSlot, new
-			{
-				slot = $"{slot.Index,2}",
-				status = $"{SlotStatusText(replies, slot.Status),-10}",
-				team = teamText,
-				id = $"{player.Record.Id,6}",
-				name = $"{player.Record.Value.Name,-16}",
-				tags = tagText
-			}));
+			lines.Add(SlotLine(replies, room, slot, player, showTeam));
 		}
 
 		await context.Say(string.Join('\n', lines), cancellationToken);
 		return true;
+	}
+
+	private static string? ActiveModsLine(IReplies replies, Room room)
+	{
+		var activeMods = new List<string>();
+		if (room.Settings.MatchSettings.Mods != GameMods.NoMod)
+			activeMods.Add(room.Settings.MatchSettings.Mods.ToString());
+		if (room.Settings.MatchSettings.Freemods) activeMods.Add(replies.Text(MpReplies.Freemod));
+		return activeMods.Count > 0
+			? replies.Text(MpReplies.SettingsActiveMods, new { mods = string.Join(", ", activeMods) })
+			: null;
+	}
+
+	private static string SlotLine(IReplies replies, Room room, RoomSlot slot, BanchoConnection player, bool showTeam)
+	{
+		var tags = new List<string>();
+		if (room.Authority.Host is not null && player == room.Authority.Host)
+			tags.Add(replies.Text(MpReplies.HostTag));
+		if (slot.Mods is { } slotMods && slotMods != GameMods.NoMod) tags.Add(slotMods.ToString());
+		var tagText = tags.Count > 0
+			? replies.Text(MpReplies.Tags, new { tags = string.Join(" / ", tags) })
+			: string.Empty;
+		var teamText = showTeam && slot.Team is { } team ? $"{team,-5} " : string.Empty;
+		return replies.Text(MpReplies.SettingsSlot, new
+		{
+			slot = $"{slot.Index,2}",
+			status = $"{SlotStatusText(replies, slot.Status),-10}",
+			team = teamText,
+			id = $"{player.Record.Id,6}",
+			name = $"{player.Record.Value.Name,-16}",
+			tags = tagText
+		});
 	}
 
 	private static string SlotStatusText(IReplies replies, RoomSlotStatus? status)
@@ -197,34 +209,10 @@ internal sealed partial class MpCommands
 	private static async Task<bool> SetAsync(CommandContext context, Room room, IReadOnlyList<string> args,
 		CancellationToken cancellationToken)
 	{
-		if (args.Count < 1 || !int.TryParse(args[0], out var teamValue) || teamValue is < 0 or > 3)
+		if (!TryParseSetArguments(args, out var teamValue, out var winCondition, out var size))
 		{
 			await context.Reply(MpReplies.SetUsage, cancellationToken);
 			return false;
-		}
-
-		GameWinCondition? winCondition = null;
-		if (args.Count >= 2)
-		{
-			if (!int.TryParse(args[1], out var winValue) || winValue is < 0 or > 3)
-			{
-				await context.Reply(MpReplies.SetUsage, cancellationToken);
-				return false;
-			}
-
-			winCondition = (GameWinCondition)winValue;
-		}
-
-		int? size = null;
-		if (args.Count >= 3)
-		{
-			if (!int.TryParse(args[2], out var parsedSize) || parsedSize is < 1 or > MaxRoomSize)
-			{
-				await context.Reply(MpReplies.SetUsage, cancellationToken);
-				return false;
-			}
-
-			size = parsedSize;
 		}
 
 		var change = new RoomSettingsChange(TeamType: (GameTeamType)teamValue, WinCondition: winCondition,
@@ -243,6 +231,37 @@ internal sealed partial class MpCommands
 				winCondition = room.Settings.MatchSettings.WinCondition.ToString(),
 				size = size?.ToString() ?? "none"
 			}, cancellationToken);
+		return true;
+	}
+
+	private static bool TryParseSetArguments(IReadOnlyList<string> args, out int teamValue,
+		out GameWinCondition? winCondition, out int? size)
+	{
+		winCondition = null;
+		size = null;
+		teamValue = 0;
+		if (args.Count < 1 || !int.TryParse(args[0], out teamValue) || teamValue is < 0 or > 3) return false;
+
+		return TryParseWinCondition(args, out winCondition) && TryParseSize(args, out size);
+	}
+
+	private static bool TryParseWinCondition(IReadOnlyList<string> args, out GameWinCondition? winCondition)
+	{
+		winCondition = null;
+		if (args.Count < 2) return true;
+		if (!int.TryParse(args[1], out var winValue) || winValue is < 0 or > 3) return false;
+
+		winCondition = (GameWinCondition)winValue;
+		return true;
+	}
+
+	private static bool TryParseSize(IReadOnlyList<string> args, out int? size)
+	{
+		size = null;
+		if (args.Count < 3) return true;
+		if (!int.TryParse(args[2], out var parsedSize) || parsedSize is < 1 or > MaxRoomSize) return false;
+
+		size = parsedSize;
 		return true;
 	}
 

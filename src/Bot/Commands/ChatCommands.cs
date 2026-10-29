@@ -35,7 +35,14 @@ internal sealed class ChatCommands(IUserRepository users, IFaqStorage faqs, MpCo
 		if (segments.Count == 1)
 			return await ExecuteSingleAsync(context, segments[0].Text, cancellationToken);
 
-		// ── Chain validation ─────────────────────────────────────────────────────────────
+		if (!await IsChainAllowedAsync(context, segments, cancellationToken)) return false;
+
+		return await ExecuteChainAsync(context, segments, cancellationToken);
+	}
+
+	private async Task<bool> IsChainAllowedAsync(CommandContext context, IReadOnlyList<CommandSegment> segments,
+		CancellationToken cancellationToken)
+	{
 		if (context.Channel == "#lobby")
 		{
 			await context.Reply(BotReplies.ChainNotInLobby, cancellationToken);
@@ -54,7 +61,12 @@ internal sealed class ChatCommands(IUserRepository users, IFaqStorage faqs, MpCo
 			return false;
 		}
 
-		// ── Chain execution ──────────────────────────────────────────────────────────────
+		return true;
+	}
+
+	private async Task<bool> ExecuteChainAsync(CommandContext context, IReadOnlyList<CommandSegment> segments,
+		CancellationToken cancellationToken)
+	{
 		var succeeded = true;
 		foreach (var segment in segments)
 		{
