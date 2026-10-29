@@ -1,15 +1,14 @@
 name: Load tests
 
+# Paused: tests/Basil.LoadTests predates the host phase and is replaced in the load-test phase.
+# Run it by hand with workflow_dispatch; the pull_request and nightly triggers return with the port.
 on:
-  pull_request:
   workflow_dispatch:
     inputs:
       profile:
         description: "Profile to run (quick, full, stress, soak)"
         required: false
         default: quick
-  schedule:
-    - cron: "0 2 * * *" # nightly, full profile
 
 permissions:
   contents: read
