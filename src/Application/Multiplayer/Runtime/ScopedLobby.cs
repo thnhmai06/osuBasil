@@ -168,10 +168,13 @@ public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
 	public async Task<bool> CanViewAsync(MatchRecord match, CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(match);
-		return !match.Value.IsPrivate
-		       || Require(UserPermissions.RoomManageViewPrivate) is null
-		       || TakesPartInOpenRoom(match)
-		       || await Lobby.Context.Matches.IsVisibleToAsync(match, By.Record, cancellationToken);
+		if (!match.Value.IsPrivate || Require(UserPermissions.RoomManageViewPrivate) is null || TakesPartInOpenRoom(match))
+			return true;
+
+		// An open room is judged by its live privacy: the stored copy of the flag can lag behind a change, and the
+		// stored view would then show a private room to anyone. Participants who left an open room see it once it closes.
+		if (Lobby.Find(match.Id) is { IsClosed: false }) return false;
+		return await Lobby.Context.Matches.IsVisibleToAsync(match, By.Record, cancellationToken);
 	}
 
 	/// <summary>Tells whether the user manages the match's open room or sits in it, which the stored history may not show yet.</summary>
