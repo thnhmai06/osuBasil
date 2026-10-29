@@ -12,7 +12,7 @@ public sealed class ScopedGeneralChannel : Scoped<UserPermissions, Connection>
 	/// <param name="channel">The general channel to scope.</param>
 	/// <param name="by">The connection acting on the channel.</param>
 	internal ScopedGeneralChannel(GeneralChannel channel, Connection by) : base(by,
-		by.User.EffectivePermissions(channel.Context.Clock.GetUtcNow()))
+		by.EffectivePermissions(channel.Context.Clock.GetUtcNow()))
 	{
 		Channel = channel;
 	}

@@ -384,6 +384,28 @@ public sealed class UserRegistry
 		return bot;
 	}
 
+	/// <summary>Opens the operator's connection, which acts as BasilBot and skips the rights checks.</summary>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>A connection for the console; it is not registered, so it never appears online.</returns>
+	/// <remarks>
+	///     Only the server's own console calls this. BasilBot's account is created first when it does not exist yet, as the
+	///     server does at startup.
+	/// </remarks>
+	public async Task<OperatorConnection> OperateAsync(CancellationToken cancellationToken = default)
+	{
+		var bot = await _context.Users.GetAsync(BasilBot.Id, cancellationToken) ??
+		          await EnsureBotAsync(cancellationToken);
+		var login = new Session
+		{
+			Id = Guid.NewGuid(),
+			User = bot,
+			Type = ConnectionType.Bot,
+			Ip = IPAddress.Loopback,
+			StartedAt = _context.Clock.GetUtcNow()
+		};
+		return new OperatorConnection(login, NewToken()) { User = Of(bot), IsOpen = true };
+	}
+
 	/// <summary>Brings BasilBot online with a connection of its own.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>

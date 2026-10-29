@@ -70,8 +70,10 @@ Permissions, privileges, restrictions, hierarchy, sessions and BasilBot. Moved o
   or for anything else implicit; a new account gets the default permissions, and more only by being granted.
   Anyone without an account may register one unless `ServerSettings.LockedCreation` locks it. The server creates
   no account by itself: the first administrator is made by the operator with a console command (below).
-* **The console is the operator's entry point.** *(Planned for the Host phase, in a new project `Basil.Cli`; not
-  built yet.)* The server process offers an interactive console, like a Minecraft server, where the operator types
+* **The console is the operator's entry point.** *(Built in `Basil.Host.Cli`; the commands are specified in
+  `docs/for-technicians/console.md`. It acts through `UserRegistry.OperateAsync`, which returns the `OperatorConnection`:
+  BasilBot's identity with every permission and outranking every account. It is never registered, so no client can
+  present it and BasilBot's own connection gains nothing from it.)* The server process offers an interactive console, like a Minecraft server, where the operator types
   commands. A console command acts as BasilBot (by its id, `BasilBot.Id`) and is **not subject to rights checks**: it is
   the one entry point that skips them, because whoever sits at the console owns the machine. Creating an account
   (and so the first administrator, with every permission) is a console command. The `--noconsole` flag turns the

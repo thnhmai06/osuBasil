@@ -1,6 +1,8 @@
 using Basil.Bot;
 using Basil.Bot.Replies;
 using Basil.Host.Bancho;
+using Basil.Host.Cli;
+using Basil.Host.Cli.Socket;
 using Basil.Host.Irc;
 using Basil.Host.Rest;
 using Basil.Host.Rest.Http;
@@ -8,6 +10,8 @@ using Basil.Host.Rest.Images;
 using Basil.Host.Shared.Diagnostics;
 using Basil.Infrastructure.Common;
 using Basil.Infrastructure.Common.Postgres;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
 using Microsoft.Extensions.Options;
 using SixLabors.ImageSharp.Web.Caching;
 
@@ -22,7 +26,17 @@ public static class HostApplication
 	/// <returns>The application, not started.</returns>
 	public static WebApplication Create(string[] args, Action<WebApplicationBuilder>? configure = null)
 	{
+		var mode = CliModes.Choose(args, Console.IsInputRedirected, Console.IsOutputRedirected, CliModes.TerminalSupportsColour());
+		args = CliModes.Strip(args);
 		var builder = WebApplication.CreateBuilder(args);
+		builder.Logging.ClearProviders();
+		if (mode == CliMode.NoGui)
+			builder.Logging.AddSimpleConsole(options =>
+			{
+				options.ColorBehavior = LoggerColorBehavior.Disabled;
+				options.SingleLine = true;
+				options.TimestampFormat = "HH:mm:ss ";
+			});
 		builder.Services.Configure<ServerOptions>(builder.Configuration.GetSection("Basil:Server"));
 		builder.Services.AddOptions<StorageOptions>().Bind(builder.Configuration.GetSection("Basil:Storage"));
 		builder.Services.AddOptions<DatabaseOptions>().Bind(builder.Configuration.GetSection("Basil:Database"));
@@ -31,6 +45,8 @@ public static class HostApplication
 			irc.Port = server.Value.Ports.Irc;
 			irc.Domain = server.Value.Domain;
 		});
+		builder.Services.AddOptions<RestOptions>().Configure<IOptions<ServerOptions>>((rest, server) =>
+			rest.Domain = server.Value.Domain);
 		builder.Services.AddOptions<RepliesOptions>().Bind(builder.Configuration.GetSection("Basil:Bot:Replies"));
 		builder.Services.AddBasil();
 		builder.Services.AddBot();
@@ -43,6 +59,8 @@ public static class HostApplication
 			cache.CacheFolder = "imagesharp";
 		});
 		builder.Services.AddSingleton<ICacheCleaner, CacheCleaner>();
+		builder.Services.AddCli(mode, provider => ControlSocket.PathIn(provider.GetRequiredService<IOptions<StorageOptions>>().Value.DataDirectory),
+			Path.Combine(AppContext.BaseDirectory, "Configurations"));
 		configure?.Invoke(builder);
 
 		var app = builder.Build();

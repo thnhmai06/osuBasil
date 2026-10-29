@@ -5,16 +5,13 @@ using Basil.Application.Users.Persistence;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
 using Basil.Host.Rest.Http;
+using Basil.Host.Shared.Views;
 
 namespace Basil.Host.Rest.Routes;
 
 /// <summary>Scores and their replays.</summary>
 internal static class ScoreRoutes
 {
-	/// <summary>A score as the API shows it.</summary>
-	public sealed record ScoreView(int Id, int? UserId, string? BeatmapHash, GameMode Mode, string Mods, int TotalScore,
-		short MaxCombo, double Accuracy, Grade Grade, bool Passed, bool FullCombo, DateTimeOffset Timestamp);
-
 	public static void MapScores(this RouteGroupBuilder v1)
 	{
 		var scores = v1.MapGroup("/scores").WithTags("Scores");
@@ -22,13 +19,6 @@ internal static class ScoreRoutes
 			.WithDescription("Filter by `beatmap` (a beatmap id) and `user` (a user id). Newest first, paged with `offset` and `limit`.");
 		scores.MapGet("/{id:int}", GetAsync).WithSummary("Retrieve a score.");
 		scores.MapGet("/{id:int}/replay", ReplayAsync).RequireToken().WithSummary("Download the replay of a score.");
-	}
-
-	private static ScoreView ViewOf(ScoreRecord score)
-	{
-		var v = score.Value;
-		return new ScoreView(score.Id, v.UserId, v.BeatmapHash?.HashValue, v.Mode, v.Mods.ToString(), v.TotalScore,
-			v.MaxCombo, v.Accuracy, v.Grade, v.IsPassed, v.IsFullCombo, v.Timestamp);
 	}
 
 	private static async Task<IResult> ListAsync(HttpContext context, int? beatmap, int? user, int? offset, int? limit,
@@ -50,13 +40,13 @@ internal static class ScoreRoutes
 			return Api.NotFound("No such user.");
 
 		var found = await scores.ListAsync(new ScoreQuery(player, hash), page!, ct);
-		return Api.Paged(new Page<ScoreView>([.. found.Items.Select(ViewOf)], found.Total), page!);
+		return Api.Paged(new Page<ScoreView>([.. found.Items.Select(ScoreView.Of)], found.Total), page!);
 	}
 
 	private static async Task<IResult> GetAsync(HttpContext context, int id, IScoreRepository scores)
 	{
 		return await scores.GetAsync(id, context.RequestAborted) is { } score
-			? Api.Ok(ViewOf(score))
+			? Api.Ok(ScoreView.Of(score))
 			: Api.NotFound("No such score.");
 	}
 

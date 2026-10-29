@@ -92,7 +92,7 @@ public abstract class Channel
 		var author = posted.Message.Author;
 		var members = Members.ToArray();
 		if (posted.By is not { } by ||
-		    by.User.EffectivePermissions(Context.Clock.GetUtcNow()).Allows(UserPermissions.ChatManageMessageAnyone) ||
+		    by.EffectivePermissions(Context.Clock.GetUtcNow()).Allows(UserPermissions.ChatManageMessageAnyone) ||
 		    this is PmChannel)
 			return members;
 

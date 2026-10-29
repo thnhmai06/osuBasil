@@ -11,7 +11,7 @@ public sealed class ScopedServer : Scoped<UserPermissions, Connection>
 	/// <param name="server">The server to scope.</param>
 	/// <param name="by">The connection acting on the server.</param>
 	internal ScopedServer(Server server, Connection by) : base(by,
-		by.User.EffectivePermissions(server.Context.Connections.Clock.GetUtcNow()))
+		by.EffectivePermissions(server.Context.Connections.Clock.GetUtcNow()))
 	{
 		Server = server;
 		Channels = new ScopedServerChannels(this);

@@ -1,4 +1,5 @@
 using Basil.Application.Common;
+using Basil.Application.Users.Connections;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Users;
@@ -73,6 +74,29 @@ public sealed class ScopedUserRelationships
 		return UserOutcome.Ok;
 	}
 
+	/// <summary>Sets or removes a friend or block that another account holds toward this account.</summary>
+	/// <param name="owner">The account that holds the relationship.</param>
+	/// <param name="type">Whether it is a friend or a block.</param>
+	/// <param name="present"><see langword="true" /> to set it, <see langword="false" /> to remove it.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>The outcome; only the operator may act for another account, anyone else gets NotSelf.</returns>
+	public async Task<Result<UserOutcome>> HeldByAsync(UserRecord owner, RelationshipType type, bool present,
+		CancellationToken cancellationToken = default)
+	{
+		if (_scoped.By is not OperatorConnection) return UserOutcome.NotSelf;
+
+		var target = _scoped.User.Record;
+		if (owner.Equals(target)) return UserOutcome.Self;
+		if (owner.IsBasilBot() || target.IsBasilBot()) return UserOutcome.SystemAccount;
+		if (owner.Value.DeletedAt is not null || (present && target.Value.DeletedAt is not null))
+			return UserOutcome.Deleted;
+
+		var relationships = _scoped.User.Context.Registry.Of(owner).Relationships;
+		if (present) await relationships.SetAsync(target, type, cancellationToken);
+		else await relationships.RemoveAsync(target, type, cancellationToken);
+		return UserOutcome.Ok;
+	}
+
 	/// <summary>Lists the users this account has friended.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome and, when successful, the friends; only the account's own user may read them.</returns>
@@ -94,7 +118,8 @@ public sealed class ScopedUserRelationships
 	private async Task<(Result<UserOutcome> Result, IReadOnlyList<UserRecord> Users)> ListAsync(
 		RelationshipType type, CancellationToken cancellationToken)
 	{
-		if (!_scoped.IsSelf) return (UserOutcome.NotSelf, []);
+		// The operator reads any account's lists; everyone else reads their own.
+		if (!_scoped.IsSelf && _scoped.By is not OperatorConnection) return (UserOutcome.NotSelf, []);
 
 		var relationships = await _scoped.User.Relationships.ListAsync(type, cancellationToken);
 		return (UserOutcome.Ok, relationships.Select(relationship => relationship.Target).ToList());

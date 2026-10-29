@@ -21,6 +21,7 @@ public static class BanchoRoutes
 	{
 		services.AddSingleton<Outbox>();
 		services.AddSingleton<RateLimiter>();
+		services.AddSingleton<LoginAttemptGuard>();
 		services.AddSingleton<BanchoState>();
 		services.AddSingleton<RestartAnnouncer>();
 		services.AddSingleton<BanchoLogin>();

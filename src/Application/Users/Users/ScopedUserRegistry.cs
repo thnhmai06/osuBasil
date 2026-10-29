@@ -15,7 +15,7 @@ public sealed class ScopedUserRegistry : Scoped<UserPermissions, Connection>
 	/// <param name="registry">The registry whose account creation is scoped.</param>
 	/// <param name="by">The connection acting.</param>
 	internal ScopedUserRegistry(UserRegistry registry, Connection by) : base(by,
-		by.User.EffectivePermissions(by.User.Context.Clock.GetUtcNow()))
+		by.EffectivePermissions(by.User.Context.Clock.GetUtcNow()))
 	{
 		_registry = registry;
 	}

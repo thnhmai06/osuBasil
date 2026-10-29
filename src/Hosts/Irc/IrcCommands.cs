@@ -23,6 +23,7 @@ internal sealed partial class IrcCommands(
 	PmChannels pmChannels,
 	ISettingsRepository settings,
 	RateLimiter limiter,
+	LoginAttemptGuard attempts,
 	IrcClients clients,
 	IrcPresence presence,
 	IrcState state,
@@ -131,9 +132,8 @@ internal sealed partial class IrcCommands(
 		var rules = (await settings.GetAsync(cancellationToken)).RateLimits;
 		var ipKey = $"irc-login-fail:{session.Address}";
 		var pairKey = $"{ipKey}:{claimed.ToLowerInvariant()}";
-		if (limiter.Count(ipKey, rules.Login.Window) >= rules.Login.MaxAttempts * 4 ||
-		    limiter.Count(pairKey, rules.Login.Window) >= rules.Login.MaxAttempts)
-			return IrcReplies.TooManyAttempts;
+		using var attempt = attempts.TryReserve(ipKey, pairKey, rules.Login.MaxAttempts, rules.Login.Window);
+		if (attempt is null) return IrcReplies.TooManyAttempts;
 
 		if (!clients.Reserve(key, session)) return IrcReplies.KeyInUse;
 
@@ -147,8 +147,8 @@ internal sealed partial class IrcCommands(
 		}
 
 		clients.Release(key, session);
-		limiter.Record(ipKey);
-		limiter.Record(pairKey);
+		// Only a key that matches no session counts against the sign-in limit.
+		if (result.Failure is LoginFailure.InvalidToken) attempt.Keep();
 		return IrcReplies.BadCredentials;
 	}
 

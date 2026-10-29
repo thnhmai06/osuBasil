@@ -11,8 +11,7 @@ namespace Basil.Host.Rest.Sse;
 /// <summary>Server diagnostics: live measurements and maintenance actions.</summary>
 internal static class DiagnosticsRoutes
 {
-	private static readonly string[] Categories =
-		["process", "gc", "threadpool", "runtime", "exceptions", "http", "application", "database", "bancho", "irc", "events", "sessions"];
+	private static readonly string[] Categories = DiagnosticsSample.Categories;
 
 	private static readonly string[] Actions = ["gc/collect", "caches/clear", "exceptions/reset"];
 
@@ -36,24 +35,7 @@ internal static class DiagnosticsRoutes
 
 	private static object Sample(RuntimeSampler runtime, UserRegistry registry, Lobby lobby, SseHub hub, string? category)
 	{
-		var all = new Dictionary<string, object>(runtime.Sample())
-		{
-			["application"] = new
-			{
-				usersOnline = registry.Online.Count, rooms = lobby.Rooms.Count,
-				roundsInProgress = lobby.Rooms.Values.Count(room => room.Rounds.InProgress), openStreams = hub.OpenStreams
-			},
-			["sessions"] = Enum.GetValues<ConnectionType>().ToDictionary(type => type.ToString().ToLowerInvariant(),
-				type => registry.Online.Values.Sum(user => user.Connections.Count(c => c.Type == type))),
-			["bancho"] = new
-			{
-				osu = registry.Online.Values.Sum(u => u.Connections.Count(c => c.Type == ConnectionType.Osu)),
-				tourney = registry.Online.Values.Sum(u => u.Connections.Count(c => c.Type == ConnectionType.Tourney))
-			},
-			["irc"] = new { connections = registry.Online.Values.Sum(u => u.Connections.Count(c => c.Type == ConnectionType.Irc)) },
-			["database"] = new { available = false },
-			["events"] = new { available = false }
-		};
+		var all = DiagnosticsSample.Create(runtime, registry, lobby, hub.OpenStreams);
 		return category is null ? all : all[category];
 	}
 

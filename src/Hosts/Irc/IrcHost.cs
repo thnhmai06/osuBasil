@@ -11,6 +11,7 @@ public static class IrcHost
 	public static IServiceCollection AddIrcHost(this IServiceCollection services)
 	{
 		services.TryAddSingleton<RateLimiter>();
+		services.TryAddSingleton<LoginAttemptGuard>();
 		services.AddSingleton<IrcClients>();
 		services.AddSingleton<IrcPresence>();
 		services.AddSingleton<IrcState>();

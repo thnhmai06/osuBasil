@@ -12,7 +12,7 @@ public sealed class ScopedBanchoConnection : Scoped<UserPermissions, Connection>
 	/// <param name="host">The client to scope.</param>
 	/// <param name="by">The connection acting on the client.</param>
 	internal ScopedBanchoConnection(BanchoConnection host, Connection by) : base(by,
-		by.User.EffectivePermissions(host.Context.Clock.GetUtcNow()))
+		by.EffectivePermissions(host.Context.Clock.GetUtcNow()))
 	{
 		Host = host;
 	}

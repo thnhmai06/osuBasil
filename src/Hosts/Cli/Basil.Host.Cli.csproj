@@ -6,6 +6,28 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\Shared\Basil.Host.Shared.csproj"/>
+		<ProjectReference Include="..\..\Application\Anticheat\Basil.Application.Anticheat.csproj"/>
+		<ProjectReference Include="..\..\Application\Auth\Basil.Application.Auth.csproj"/>
+		<ProjectReference Include="..\..\Application\Beatmaps\Basil.Application.Beatmaps.csproj"/>
+		<ProjectReference Include="..\..\Application\Chat\Basil.Application.Chat.csproj"/>
+		<ProjectReference Include="..\..\Application\Content\Basil.Application.Content.csproj"/>
+		<ProjectReference Include="..\..\Application\Multiplayer\Basil.Application.Multiplayer.csproj"/>
+		<ProjectReference Include="..\..\Application\Scores\Basil.Application.Scores.csproj"/>
+		<ProjectReference Include="..\..\Application\Servers\Basil.Application.Servers.csproj"/>
+		<ProjectReference Include="..\..\Application\Users\Basil.Application.Users.csproj"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Mediator.Abstractions"/>
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions"/>
+		<PackageReference Include="XenoAtom.CommandLine"/>
+		<PackageReference Include="XenoAtom.Terminal"/>
+		<PackageReference Include="XenoAtom.Terminal.UI"/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Basil.Host"/>
+		<InternalsVisibleTo Include="Basil.Host.Cli.Tests"/>
 	</ItemGroup>
 
 </Project>

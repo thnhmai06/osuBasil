@@ -22,9 +22,18 @@ public abstract class Connection(Session login, string token) : IActor
 	public UserRecord Record => Session.User;
 
 	/// <inheritdoc />
-	public UserPermissions EffectivePermissions(DateTimeOffset now)
+	public virtual UserPermissions EffectivePermissions(DateTimeOffset now)
 	{
 		return User.EffectivePermissions(now);
+	}
+
+	/// <summary>Tells whether this connection's authority is above an account's permissions.</summary>
+	/// <param name="granted">The permissions granted to this connection's user when the scope was made.</param>
+	/// <param name="target">The permissions granted to the account acted on.</param>
+	/// <returns><see langword="true" /> when the granted permissions strictly include the target's.</returns>
+	internal virtual bool Outranks(UserPermissions granted, UserPermissions target)
+	{
+		return granted.Allows(target) && granted != target;
 	}
 
 	/// <summary>Gets the kind of connection.</summary>
@@ -168,4 +177,34 @@ public sealed class BotConnection : Connection
 
 	/// <inheritdoc />
 	public override ConnectionType Type => ConnectionType.Bot;
+}
+
+/// <summary>
+///     The operator's connection: BasilBot acting for whoever sits at the server's console. It is the one authority
+///     that skips the rights checks, because the operator owns the machine; it is never registered, so no client can
+///     present it and BasilBot's own connection gains nothing from it.
+/// </summary>
+public sealed class OperatorConnection : Connection
+{
+	/// <summary>Initializes the operator's connection.</summary>
+	/// <param name="login">The login that stands for the console.</param>
+	/// <param name="token">The token that identifies the connection.</param>
+	internal OperatorConnection(Session login, string token) : base(login, token)
+	{
+	}
+
+	/// <inheritdoc />
+	public override ConnectionType Type => ConnectionType.Bot;
+
+	/// <inheritdoc />
+	public override UserPermissions EffectivePermissions(DateTimeOffset now)
+	{
+		return UserPermissionsGroups.All;
+	}
+
+	/// <inheritdoc />
+	internal override bool Outranks(UserPermissions granted, UserPermissions target)
+	{
+		return true;
+	}
 }

@@ -45,6 +45,22 @@ public sealed class LimitTests(RestHostFixture fixture)
 	}
 
 	[Fact]
+	public async Task ParallelWrongLogins_NeverExceedTheLoginLimit()
+	{
+		await using var host = await BasilHost.StartAsync(fixture.Database);
+		await RestHostFixture.RaiseLimitsAsync(host);
+		await host.CreateUserAsync("LimitRace");
+		var maxAttempts = (await host.Services.GetRequiredService<ISettingsRepository>().GetAsync()).RateLimits.Login.MaxAttempts;
+		using var client = new RestClient(host.Url, host.Domain);
+
+		var statuses = await Task.WhenAll(Enumerable.Range(0, maxAttempts * 6).Select(async _ =>
+			(await client.CallAsync(HttpMethod.Post, "/v1/auth/login", new { username = "LimitRace", password = "wrong" })).Status));
+
+		Assert.Equal(maxAttempts, statuses.Count(status => status == 401));
+		Assert.All(statuses.Where(status => status != 401), status => Assert.Equal(429, status));
+	}
+
+	[Fact]
 	public async Task AnonymousRequests_BeyondTheLimitOfAnAddress_Answer429_ButATokenIsNotCounted() // the login is anonymous too, so 3 allowed = login + 2
 	{
 		await using var host = await BasilHost.StartAsync(fixture.Database);

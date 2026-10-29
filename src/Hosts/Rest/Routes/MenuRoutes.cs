@@ -2,6 +2,7 @@ using Basil.Application.Content.Persistence;
 using Basil.Application.Servers.Runtime;
 using Basil.Domain.Content;
 using Basil.Host.Rest.Http;
+using Basil.Host.Shared.Views;
 
 namespace Basil.Host.Rest.Routes;
 
@@ -10,17 +11,8 @@ internal static class MenuRoutes
 {
 	private const long MaxImageBytes = 10L * 1024 * 1024;
 
-	/// <summary>A FAQ entry.</summary>
-	public sealed record FaqView(string Entry, string Text);
-
 	/// <summary>The text of a FAQ entry.</summary>
 	public sealed record FaqRequest(string? Text);
-
-	/// <summary>A main-menu banner; <c>Image</c> names the image on the assets host under <c>/menu/banners</c>.</summary>
-	public sealed record BannerView(string Image, string Url, DateTimeOffset? StartsAt, DateTimeOffset? EndsAt, bool Current);
-
-	/// <summary>The main-menu icon.</summary>
-	public sealed record IconView(string? Image, string? Url);
 
 	public static void MapMenu(this RouteGroupBuilder v1)
 	{
@@ -98,7 +90,7 @@ internal static class MenuRoutes
 	{
 		var now = clock.GetUtcNow();
 		return Api.Ok((await banners.ListAsync(ct)).Select(b =>
-			new BannerView(Path.GetFileName(b.Image.Value), b.Url.AbsoluteUri, b.StartsAt, b.EndsAt, b.IsCurrent(now))).ToList());
+			BannerView.Of(b, now)).ToList());
 	}
 
 	private static async Task<(IFormFile? File, IResult? Error)> ImageAsync(HttpContext context, IFormCollection? form = null)

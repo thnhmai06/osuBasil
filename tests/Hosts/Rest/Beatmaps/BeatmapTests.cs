@@ -173,6 +173,43 @@ public sealed class BeatmapTests(RestHostFixture fixture)
 		}
 	}
 
+	[Fact]
+	public async Task AHiddenBeatmap_IsNotFoundForEveryoneButViewersOfHiddenContent_AndNeverTheRedirectTarget()
+	{
+		var beatmaps = await fixture.Host.ImportSampleAsync("Sets/selene-ui-mania.osz");
+		var hidden = beatmaps.OrderBy(b => b.Id).First();
+		var repository = fixture.Host.Services.GetRequiredService<IBeatmapRepository>();
+		var viewer = await fixture.SignInAsync("BmHiddenViewer", UserPermissionsGroups.Default | UserPermissions.BeatmapsetManageViewHidden);
+		hidden.Visible = false;
+		await repository.UpdateAsync(hidden);
+		try
+		{
+			using (viewer.Client)
+			using (var anon = new RestClient(fixture.Host.Url, fixture.Host.Domain))
+			{
+				var (anonymous, _) = await anon.CallAsync(HttpMethod.Get, $"/v1/beatmaps/{hidden.Id}");
+				var (permitted, _) = await viewer.Client.CallAsync(HttpMethod.Get, $"/v1/beatmaps/{hidden.Id}");
+				var (anonymousFile, _) = await anon.CallAsync(HttpMethod.Get, $"/v1/beatmaps/{hidden.Id}/background");
+				var (setForAnon, set) = await anon.CallAsync(HttpMethod.Get, $"/v1/beatmapsets/{hidden.Beatmapset.Id}");
+				var (_, setForViewer) = await viewer.Client.CallAsync(HttpMethod.Get, $"/v1/beatmapsets/{hidden.Beatmapset.Id}");
+				using var redirect = await anon.GetAsync($"/v1/beatmapsets/{hidden.Beatmapset.Id}/background");
+
+				Assert.Equal(404, anonymous);
+				Assert.Equal(200, permitted);
+				Assert.Equal(404, anonymousFile);
+				Assert.Equal(200, setForAnon);
+				Assert.DoesNotContain(set!["data"]!["beatmaps"]!.AsArray(), b => (int)b!["id"]! == hidden.Id);
+				Assert.Contains(setForViewer!["data"]!["beatmaps"]!.AsArray(), b => (int)b!["id"]! == hidden.Id);
+				Assert.DoesNotContain($"/v1/beatmaps/{hidden.Id}/", redirect.Headers.Location?.OriginalString ?? "");
+			}
+		}
+		finally
+		{
+			hidden.Visible = true;
+			await repository.UpdateAsync(hidden);
+		}
+	}
+
 	[Theory]
 	[InlineData("pic.png", "image/png")]
 	[InlineData("pic.JPG", "image/jpeg")]
