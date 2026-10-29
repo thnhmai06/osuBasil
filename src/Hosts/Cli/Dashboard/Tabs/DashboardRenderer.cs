@@ -99,13 +99,13 @@ public sealed class DashboardRenderer(DashboardModel model, ViewFormatter format
 			return;
 		}
 
-		var graphs = rest.Left(rest.Width * 2 / 3);
-		var side = rest.After(rest.Width * 2 / 3 + 1);
+		var graphs = rest.Left((rest.Width * 2 / 3));
+		var side = rest.After((rest.Width * 2 / 3) + 1);
 		var each = Math.Max(graphs.Height / 4, 3);
 		Graph(surface, new Area(graphs.X, graphs.Y, graphs.Width, each), "cpu %", model.Cpu, 100);
 		Graph(surface, new Area(graphs.X, graphs.Y + each, graphs.Width, each), "memory MB", model.Memory, Math.Max(model.Memory.Max(), 1));
-		Graph(surface, new Area(graphs.X, graphs.Y + 2 * each, graphs.Width, each), "users online", model.UsersOnline, Math.Max(model.UsersOnline.Max(), 10));
-		Graph(surface, new Area(graphs.X, graphs.Y + 3 * each, graphs.Width, graphs.Height - 3 * each), "rooms", model.Rooms, Math.Max(model.Rooms.Max(), 5));
+		Graph(surface, new Area(graphs.X, graphs.Y + (2 * each), graphs.Width, each), "users online", model.UsersOnline, Math.Max(model.UsersOnline.Max(), 10));
+		Graph(surface, new Area(graphs.X, graphs.Y + (3 * each), graphs.Width, graphs.Height - (3 * each)), "rooms", model.Rooms, Math.Max(model.Rooms.Max(), 5));
 		PaintCores(surface, side.Top(Math.Min(model.Cores.Length + 1, side.Height / 2)));
 		PaintRecentLog(surface, side.Below(Math.Min(model.Cores.Length + 1, side.Height / 2)));
 	}
@@ -188,7 +188,7 @@ public sealed class DashboardRenderer(DashboardModel model, ViewFormatter format
 		var rows = area;
 		if (BrailleGraph.FitsGraphs(area.Width) && area.Height >= 16)
 		{
-			var half = area.Width / 2 - 1;
+			var half = (area.Width / 2) - 1;
 			Graph(surface, new Area(area.X, area.Y, half, 5), "cpu %", model.Cpu, 100);
 			Graph(surface, new Area(area.X + half + 2, area.Y, half, 5), "requests/s", model.Requests, Math.Max(model.Requests.Max(), 10));
 			Graph(surface, new Area(area.X, area.Y + 5, half, 5), "memory MB", model.Memory, Math.Max(model.Memory.Max(), 1));

@@ -39,7 +39,7 @@ public class PacketWriterInt32ListTests
 
 		var bytes = Write(writer => writer.FriendsList(friends));
 
-		Assert.Equal(7 + 2 + 65535 * 4, bytes.Length);
+		Assert.Equal(7 + 2 + (65535 * 4), bytes.Length);
 		Assert.Equal(0xFF, bytes[7]); // count low byte
 		Assert.Equal(0xFF, bytes[8]); // count high byte
 		Assert.Equal([0x00, 0x00, 0x00, 0x00], bytes[9..13]); // first element, 0
