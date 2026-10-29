@@ -50,7 +50,7 @@ internal static class SseRoutes
 			context.RequestAborted, poll);
 		if (refusal is not null)
 		{
-			if (hub.Stopping) context.Response.Headers.RetryAfter = "5";
+			if (hub.Stopping) context.Response.Headers.RetryAfter = RestPipeline.RetryAfterWhileStopping;
 			return refusal;
 		}
 

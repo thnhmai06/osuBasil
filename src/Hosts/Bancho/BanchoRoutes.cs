@@ -24,6 +24,7 @@ public static class BanchoRoutes
 		services.AddSingleton<LoginAttemptGuard>();
 		services.AddSingleton<BanchoState>();
 		services.AddSingleton<RestartAnnouncer>();
+		services.AddSingleton<BanchoShutdown>();
 		services.AddSingleton<BanchoLogin>();
 		services.AddSingleton<ChannelResolver>();
 		services.AddSingleton<PacketHandlers>();

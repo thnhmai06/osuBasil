@@ -98,6 +98,49 @@ public sealed class LobbyTests
 	}
 
 	[Fact]
+	public async Task CloseAll_EndsTheMatchOfEveryOpenRoom_AndRemovesThemFromTheLobby()
+	{
+		using var app = new TestApplication();
+		var first = await RoomFixture.CreateAsync(app);
+		var creator = await RoomFixture.PlayerAsync(app, "SecondCreator");
+		var (second, opened) = await app.Lobby.ScopeTo(creator).OpenRoomAsync("second room", "", false, false,
+			cancellationToken: TestContext.Current.CancellationToken);
+		Assert.True(opened.IsOk);
+
+		var open = app.Lobby.Rooms.Count;
+
+		var closed = app.Lobby.CloseAll();
+
+		Assert.True(open >= 2);
+		Assert.Equal(open, closed);
+		Assert.NotNull(first.Room.Match.Value.EndedAt);
+		Assert.NotNull(second!.Match.Value.EndedAt);
+		Assert.Empty(app.Lobby.Rooms);
+		Assert.Equal(open, app.LobbyEvents.Events.OfType<LobbyRoomClosed>().Count());
+	}
+
+	[Fact]
+	public void CloseAll_WithoutAnyRoom_ClosesNothing()
+	{
+		using var app = new TestApplication();
+
+		Assert.Equal(0, app.Lobby.CloseAll());
+	}
+
+	[Fact]
+	public async Task CloseAll_CalledTwice_ClosesEachRoomOnce()
+	{
+		using var app = new TestApplication();
+		await RoomFixture.CreateAsync(app);
+		var open = app.Lobby.Rooms.Count;
+
+		app.Lobby.CloseAll();
+		Assert.Equal(0, app.Lobby.CloseAll());
+
+		Assert.Equal(open, app.LobbyEvents.Events.OfType<LobbyRoomClosed>().Count());
+	}
+
+	[Fact]
 	public async Task CloseUnfinishedAsync_WithoutAnyMatch_EndsNothing()
 	{
 		using var app = new TestApplication();

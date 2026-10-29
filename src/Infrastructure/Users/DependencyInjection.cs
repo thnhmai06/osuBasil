@@ -23,12 +23,13 @@ public static class DependencyInjection
 		return services;
 	}
 
-	/// <summary>Adds the background work of Users: closing connections that stay idle.</summary>
+	/// <summary>Adds the background work of Users: closing connections that stay idle and deleting old ended sessions.</summary>
 	/// <param name="services">The service collection to add to.</param>
 	/// <returns><paramref name="services" />, for chaining.</returns>
 	public static IServiceCollection AddUsersBackgroundWork(this IServiceCollection services)
 	{
 		services.AddHostedService<IdleConnectionSweeper>();
+		services.AddHostedService<SessionRetentionSweeper>();
 		return services;
 	}
 }

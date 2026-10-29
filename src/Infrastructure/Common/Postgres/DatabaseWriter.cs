@@ -79,11 +79,18 @@ public sealed class DatabaseWriter(
 	public async Task StoppedAsync(CancellationToken cancellationToken)
 	{
 		await using var registration = cancellationToken.Register(_abandon.Cancel);
-		while (_drains.Values.Where(task => !task.IsCompleted).ToArray() is { Length: > 0 } running)
-			await Task.WhenAll(running);
+		await DrainAsync();
 		var count = Volatile.Read(ref _abandonedCount);
 		if (count > 0)
 			logger.LogCritical("{Count} writes were not stored before the server stopped", count);
+	}
+
+	/// <summary>Waits until every write queued so far, and every write they queue, is stored.</summary>
+	/// <param name="cancellationToken">A token that stops the wait; the writes themselves go on.</param>
+	public async Task DrainAsync(CancellationToken cancellationToken = default)
+	{
+		while (_drains.Values.Where(task => !task.IsCompleted).ToArray() is { Length: > 0 } running)
+			await Task.WhenAll(running).WaitAsync(cancellationToken);
 	}
 
 	/// <summary>Queues the state of an identity, replacing a queued state of the same identity that has not been sent yet.</summary>

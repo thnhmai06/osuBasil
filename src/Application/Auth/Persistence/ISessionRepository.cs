@@ -102,6 +102,16 @@ public interface ISessionRepository
 	Task WriteActivityAsync(IReadOnlyCollection<SessionActivity> activity,
 		CancellationToken cancellationToken = default);
 
+	/// <summary>Deletes the sessions that ended or expired before a moment, which are no longer worth keeping.</summary>
+	/// <param name="cutoff">The moment before which a session must have ended to be deleted.</param>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>How many sessions were deleted.</returns>
+	/// <remarks>
+	///     A session that still marks a device as having to enter its password again is kept, so deleting history never
+	///     lets a saved password work again.
+	/// </remarks>
+	Task<int> DeleteEndedBeforeAsync(DateTimeOffset cutoff, CancellationToken cancellationToken = default);
+
 	/// <summary>Takes the one-time mark that makes an osu! device enter its password again.</summary>
 	/// <param name="user">The user logging in.</param>
 	/// <param name="device">The hashes that identify the device.</param>

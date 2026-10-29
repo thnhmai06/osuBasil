@@ -100,6 +100,21 @@ public sealed class EventQueueTests
 		return values;
 	}
 
+	[Fact]
+	public async Task Outstanding_CountsQueuedDeliveriesUntilTheyHaveRun_EvenWhenTheyFail()
+	{
+		var done = Channel.CreateUnbounded<string>();
+		var queue = NewQueue();
+
+		queue.Enqueue(new RecordingDelivery("one", done));
+		queue.Enqueue(new ThrowingDelivery());
+		Assert.Equal(2, queue.Outstanding);
+
+		await queue.DrainAsync(Token);
+
+		Assert.Equal(0, queue.Outstanding);
+	}
+
 	/// <summary>Reports its name when it runs.</summary>
 	private sealed class RecordingDelivery(string name, Channel<string> done) : IEventDelivery
 	{

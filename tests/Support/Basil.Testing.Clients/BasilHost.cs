@@ -42,6 +42,7 @@ public sealed class BasilHost : IAsyncDisposable
 	private readonly string _root = Path.Combine(Path.GetTempPath(), "basil-host-" + Guid.NewGuid().ToString("N"));
 	private readonly Dictionary<string, Guid> _keySessions = [];
 	private WebApplication? _app;
+	private bool _stopped;
 
 	private BasilHost(PersistenceFixture database)
 	{
@@ -81,6 +82,8 @@ public sealed class BasilHost : IAsyncDisposable
 				["Basil:Server:Domain"] = DomainName,
 				["Basil:Server:Ports:Irc"] = "0",
 				["Basil:Bot:Replies:Path"] = Path.Combine(_root, "Configurations", "Templates", "replies.json"),
+				["Basil:Server:LanAdvertise"] = "false",
+				["Basil:Updates:CheckOnStartup"] = "false",
 				["Basil:Server:TrustedProxies:0"] = "127.0.0.1",
 				["Basil:Server:TrustedProxies:1"] = "::1"
 			});
@@ -191,11 +194,30 @@ public sealed class BasilHost : IAsyncDisposable
 		return existing.Items;
 	}
 
+	/// <summary>
+	///     Stops the server the way a shutdown does, so that the graceful steps run. The clock of the server is fake, so it
+	///     is advanced while the server stops; the steps' time limits then pass without waiting.
+	/// </summary>
+	public async Task StopAsync()
+	{
+		if (_app is null || _stopped) return;
+
+		_stopped = true;
+		var stopping = _app.StopAsync();
+		while (!stopping.IsCompleted)
+		{
+			Time.Advance(TimeSpan.FromSeconds(1));
+			await Task.WhenAny(stopping, Task.Delay(5));
+		}
+
+		await stopping;
+	}
+
 	public async ValueTask DisposeAsync()
 	{
 		if (_app is not null)
 		{
-			await _app.StopAsync();
+			await StopAsync();
 			await _app.DisposeAsync();
 		}
 

@@ -368,6 +368,23 @@ public sealed class Lobby : IRoomLobbyPort, IScoreBeatmapAcceptance
 		}
 	}
 
+	/// <summary>Closes every open room when the server itself calls it at shutdown; it needs no rights.</summary>
+	/// <returns>How many rooms were closed.</returns>
+	/// <remarks>Each room ends its match and its round in progress, and publishes one <see cref="LobbyRoomClosed" />.</remarks>
+	public int CloseAll()
+	{
+		var closed = 0;
+		foreach (var room in Rooms.Values.ToArray())
+		{
+			if (room.IsClosed) continue;
+
+			room.Close(null);
+			closed++;
+		}
+
+		return closed;
+	}
+
 	/// <summary>Closes unfinished matches when the server itself calls it at startup; it needs no rights.</summary>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>How many matches were ended.</returns>
