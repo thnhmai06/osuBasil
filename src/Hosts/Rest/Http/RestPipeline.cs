@@ -54,7 +54,7 @@ internal sealed class RestPipeline(RequestDelegate next)
 		}
 		catch (Exception ex) when (!context.Response.HasStarted && ex is not OperationCanceledException)
 		{
-			logger.LogError(ex, "Unhandled exception in {Path}", context.Request.Path);
+			logger.LogError(ex, "Unhandled exception in {Route}", context.GetEndpoint()?.DisplayName ?? "an unknown route");
 			context.Response.Clear();
 			await Api.Error(StatusCodes.Status500InternalServerError, "internalError", "Internal server error.")
 				.ExecuteAsync(context);

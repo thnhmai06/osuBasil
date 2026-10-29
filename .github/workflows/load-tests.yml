@@ -11,6 +11,9 @@ on:
   schedule:
     - cron: "0 2 * * *" # nightly, full profile
 
+permissions:
+  contents: read
+
 jobs:
   quick:
     if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.profile == 'quick')
