@@ -13,7 +13,7 @@ public static class ConfigurationSetup
 
 	/// <summary>
 	///     Adds <c>Configurations/appsettings.json</c> and <c>Configurations/appsettings.{Environment}.json</c>, which are read
-	///     again when they change, and reads the command line last so that it wins.
+	///     again when they change; the environment and the command line win over them.
 	/// </summary>
 	/// <param name="builder">The builder to add the files to.</param>
 	/// <param name="args">The command-line arguments.</param>
@@ -22,6 +22,8 @@ public static class ConfigurationSetup
 		builder.Configuration.AddJsonFile(Path.Combine(Directory, "appsettings.json"), true, true);
 		builder.Configuration.AddJsonFile(Path.Combine(Directory, $"appsettings.{builder.Environment.EnvironmentName}.json"), true,
 			true);
+		// The builder added the environment before these files; adding it again puts it, and the command line, last.
+		builder.Configuration.AddEnvironmentVariables();
 		builder.Configuration.AddCommandLine(args);
 	}
 
