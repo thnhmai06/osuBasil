@@ -1,276 +1,75 @@
 # Logging
 
-## Overview
+## Why
 
-Basil uses [Serilog](https://serilog.net/) as its application logging pipeline.
+The old server logged every packet and request, which filled memory and made the log unreadable. Basil's log is a
+record of the server's **lifecycle**: what started and stopped, who signed in, which room or round opened or closed,
+moderation actions, console commands and failures. Per-request and per-packet work belongs to metrics and the
+diagnostics, not to the log.
 
-Logging is configured in code in `Basil.Web/Program.cs`. Application logs are enriched with a category and, where applicable, request or connection scopes so that developers can trace a business operation across the layers that handle it.
+## What is logged
 
-The logging system has two distinct responsibilities:
+* start, stop and each phase of shutdown, including timeouts and a forced exit;
+* login and logout of every connection type;
+* a room opened or closed and a round started or ended;
+* restrictions and other moderation actions;
+* console commands (with passwords and keys masked);
+* errors and warnings from any component.
 
-* provide useful human-readable logs for development and operation;
-* attach structured context so individual requests, packets, connections, and domain resources can be correlated.
+Nothing logs each Bancho packet, IRC line or REST request. Those are counted by diagnostics, which the dashboard and
+`/v1/diagnostics` read.
 
-Operational details such as log locations and changing the minimum level are documented in [`logging.md`](../for-technicians/logging.md).
+## How it is built
 
-## Logging configuration
+`src/Hosts/Host/Logging/ServerLogging.cs` configures [Serilog](https://serilog.net/):
 
-Most logging decisions are intentionally code-defined.
+* one rolling file, `Logs/basil-*.log`, UTF-8, rolled daily or at 256 MB and limited by `Logging:RetentionPeriod`
+  (swept at startup and every six hours; a file is kept while it was written within the period);
+* a console sink only in `--nogui` mode, plain text without colour;
+* a dashboard log panel, a fixed ring buffer, in the full and `--noconsole` modes;
+* optional OpenTelemetry log export when `Telemetry:Logs` is on and an endpoint is set.
 
-The configured sinks, rolling policy, file layout, category rules, and enrichment are part of the application's implementation rather than `appsettings.json`.
+Every sink is written by one background thread behind a bounded queue (`Logging:QueueCapacity`, 10 000 by default).
+When the queue is full the newest event is dropped and counted; the count is exposed in diagnostics. Logging therefore
+never blocks the thread that produced the event and never grows without bound.
 
-The only logging behavior exposed through configuration is the minimum log level:
+`Logging:MinimumLevel` sets the lowest level; `Logging:Overrides` raises or lowers it for a source prefix, and the
+longest matching prefix wins. Both are read on every event, so a change to the file applies at once.
 
-```json
-{
-  "Basil": {
-    "Logging": {
-      "MinimumLevel": "Information"
-    }
-  }
-}
-```
+## Logging a business event
 
-This setting controls the minimum level written to stdout and the full application log.
+Log once, where the state changes, and let the event handlers do it. `LifecycleLog.cs` contains the handlers for user
+connections, rooms, rounds and restrictions; a new lifecycle event gets a handler there, not a copy in each transport.
+A transport may log a transport-specific failure, but not the business event again.
 
-The error log is independent of this setting and always receives `Error` and `Fatal` events.
+Use the level that matches the meaning: `Information` for lifecycle, `Warning` for an abnormal condition that continues,
+`Error` for a failed operation, `Fatal` when the server cannot continue. A message that fires on every request or packet
+belongs at `Debug` (or is a metric) even when it helps during an investigation.
 
-Keeping the rest of the configuration in code makes changes to logging behavior explicit and reviewable alongside the implementation that produces the logs.
+## Exceptions
 
-## Sinks
-
-Basil writes to three primary destinations:
-
-| Sink           | Minimum level | Purpose                             |
-| -------------- | ------------- | ----------------------------------- |
-| Console        | Configurable  | Development and live process output |
-| `Logs/full/`   | Configurable  | Complete application log            |
-| `Logs/errors/` | `Error`       | Errors and fatal failures only      |
-
-The file sinks roll daily, or at 256 MB, whichever comes first, and retain 30 days of logs. Rolling
-on size as well as on the day exists specifically so a burst of request volume cannot silently
-truncate the log mid-incident the way an unbounded file once did — this happened twice during the
-2026 performance investigation, both times destroying the evidence for the failure under study.
-
-All three sinks are wrapped in `Serilog.Sinks.Async`: a log event is handed to a bounded in-memory
-queue and written by one dedicated background thread, so a slow console pipe or a slow disk can
-never block the thread that produced the event. If the queue fills, the sink drops the newest event
-rather than blocking the caller — logging is diagnostic output, not a channel Basil's request
-handling can depend on staying unblocked.
-
-Two fixed filenames provide stable paths to the currently active files:
-
-```text
-Logs/latest.log
-Logs/errors_latest.log
-```
-
-These are hardlinks to the corresponding currently-open dated log files.
-
-A consumer can therefore tail `latest.log` without having to determine the current date or track log rotation itself.
-
-## Categories
-
-Every log event is assigned a category by `CategoryEnricher`.
-
-The category is derived from the namespace of the class producing the log rather than being manually specified at every call site.
-
-The currently recognized application categories include:
-
-* `Beatmapsets`
-* `Matches`
-* `Scores`
-* `Online`
-* `IRC`
-* `Database`
-* `Cache`
-* `Host`
-* `Api`
-
-Unclassified application code falls back to `App`.
-
-`App` is intentionally treated more conservatively and defaults to Warning-and-above. This prevents unrelated framework or infrastructure messages from filling the Information-level application log without an explicit category decision.
-
-The important rule for new code is therefore:
-
-**A new subsystem should either naturally map to an existing category or have its category explicitly added to `CategoryEnricher`.**
-
-Do not introduce ad-hoc category names at individual logging call sites.
-
-## Structured scopes
-
-Basil uses logging scopes to attach correlation information to all events produced during an operation.
-
-### HTTP requests
-
-Every HTTP request receives a `RequestId` scope.
-
-Logs produced while handling the request therefore contain the same identifier, allowing a request to be followed across middleware, routing, application services, and infrastructure code.
-
-### Bancho packets
-
-A dispatched Bancho packet carries relevant context such as:
-
-* `UserId`
-* `PacketType`
-* `MatchId`, when applicable
-
-This makes it possible to distinguish concurrent packets that otherwise produce identical log messages.
-
-For example, a generic packet-processing message becomes useful when combined with its structured context:
-
-```text
-UserId=42 PacketType=SendMessage MatchId=7
-```
-
-The packet handler itself should not need to manually repeat these values in every message.
-
-### IRC connections
-
-A live IRC TCP connection receives a `ConnectionId` scope.
-
-All messages produced while processing that connection can therefore be correlated without embedding the connection identifier into every log string.
-
-## Domain-event markers
-
-Logs that represent a resource lifecycle transition use a prefix marker:
-
-| Marker | Meaning  |
-| ------ | -------- |
-| `+`    | Created  |
-| `-`    | Removed  |
-| `~`    | Modified |
-
-Examples include:
-
-```text
-+ Beatmapset ...
-~ Match ...
-- User ...
-```
-
-These markers are intended to make state transitions easy to find with ordinary text search.
-
-They should be used for **business state changes**, not for every informational log line.
-
-For example, successfully handling an HTTP request is not itself a domain event. Creating a match or ingesting a beatmapset is.
-
-## Logging business events
-
-A business event should generally be logged at the shared service method where the state transition occurs.
-
-For example:
-
-```text
-HTTP route
-    \
-Bancho packet ---> MatchControlService ---> state change
-    /                    |
-!mp command              +-- log once
-```
-
-The service is the correct logging boundary because all entry points converge there.
-
-Do not log the same state transition independently in:
-
-* an HTTP route;
-* a packet handler;
-* a command handler;
-* the shared application service.
-
-Otherwise one action can produce several apparently independent events.
-
-The preferred rule is:
-
-> **Log a business event once, at the layer where the business state actually changes.**
-
-Entry points may still log transport-specific failures or diagnostics when those details are useful, but they should not duplicate the business event.
-
-## Log levels
-
-Choose the level according to what the event means, not according to which subsystem produced it.
-
-Typical usage is:
-
-* `Trace`: extremely detailed execution information that is normally too noisy to retain.
-* `Debug`: diagnostic information useful when investigating a specific behavior.
-* `Information`: normal application lifecycle and business events.
-* `Warning`: an abnormal condition that does not prevent the operation from continuing.
-* `Error`: an operation failed and requires attention.
-* `Fatal`: the application cannot continue safely.
-
-The configured minimum level may be lowered during development or troubleshooting.
-
-Do not compensate for a missing log level by logging everything at `Information`. A noisy Information log makes the normal application lifecycle harder to understand and reduces the value of the category and scope system.
-
-A per-request or per-operation event — one line for a completed HTTP request, a completed background
-job iteration, a cache lookup — belongs at `Debug`, not `Information`, regardless of how useful it is
-while troubleshooting: its volume scales with traffic, not with anything a reader needs to see by
-default. `Information` is for the domain lifecycle events this document already describes (a match
-created or closed, a beatmapset ingested, a user registered) — events whose *rate* is itself
-meaningful, not events that fire on every unit of routine throughput.
-
-## Logging and exceptions
-
-Logs should provide enough context to understand **what operation failed** and **which resource was involved**.
-
-Prefer structured scope data and concise messages over constructing large strings containing every available value.
-
-For example, a service handling a match operation should rely on its existing `MatchId` scope where available rather than repeatedly embedding the match id into unrelated log messages.
-
-When an exception represents a failure that the application is already handling, log it at the appropriate boundary rather than repeatedly logging the same exception as it propagates through the layers.
-
-This follows the same one-event principle used for business events.
-
-## Hardlinked current-log files
-
-The `latest` files are maintained by `HardLinkFileLifecycleHooks`.
-
-They are filesystem links to the active rolling file rather than separately written copies:
-
-```text
-Logs/
-├── full/
-│   ├── 2026-08-10.log
-│   └── ...
-├── errors/
-│   ├── 2026-08-10.log
-│   └── ...
-├── latest.log
-└── errors_latest.log
-```
-
-A hardlink gives both filenames access to the same underlying file.
-
-This avoids writing each log event twice merely to maintain a convenient stable filename.
-
-The lifecycle hook updates the link when the active rolling file changes — a daily rollover, a size
-rollover, or process start all count.
+An exception in a connection is isolated: it is logged, counted in diagnostics, and the connection is closed if its
+state is unknown; the server keeps running. Thrown from a REST route, it becomes a `500` envelope without a stack.
+A background service logs the failure and continues its loop.
 
 ## Invariants
 
-The logging implementation relies on several architectural rules:
-
-* Application logging goes through Serilog.
-* The minimum level for stdout and the full log comes from `Basil:Logging:MinimumLevel`.
-* The errors log always records `Error` and `Fatal`, regardless of that configured minimum.
-* Every sink is async-wrapped; no sink write may block the thread that produced the log event.
-* Categories are assigned centrally by `CategoryEnricher`.
-* Request, packet, and IRC correlation data is carried through logging scopes.
-* Domain lifecycle changes use `+`, `-`, or `~` markers.
-* A business state transition is logged once at the shared service boundary rather than once per transport.
-* Derived context should come from structured properties and scopes where possible instead of being duplicated in message text.
-* `latest.log` and `errors_latest.log` are filesystem links, not independently written log streams.
+* The log carries lifecycle events, not routine traffic.
+* Every sink is behind the bounded async queue; a full queue drops and counts, never blocks or grows.
+* No log message contains a password, a token, an IRC key or a certificate password.
+* File retention follows `Logging:RetentionPeriod`; the default is 14 days.
+* A lifecycle event is logged once, by its handler, not by every entry point.
 
 ## Related code
 
-* [`Basil.Web/Program.cs`](../../src/Basil.Web/Program.cs) (`ConfigureSerilog`): Serilog pipeline and sink configuration
-* [`Basil.Web/Logging/CategoryEnricher.cs`](../../src/Basil.Web/Logging/CategoryEnricher.cs): category assignment
-* [`Basil.Web/Logging/HardLinkFileLifecycleHooks.cs`](../../src/Basil.Web/Logging/HardLinkFileLifecycleHooks.cs): active-file hardlink lifecycle
-* [`Basil.Infrastructure/System/HardLink.cs`](../../src/Infrastructure/System/HardLink.cs): filesystem hardlink implementation
+* `src/Hosts/Host/Logging/ServerLogging.cs` — sinks, queue, level policy.
+* `src/Hosts/Host/Logging/LifecycleLog.cs` — the lifecycle event handlers.
+* `src/Hosts/Host/Logging/LogRetention.cs` — retention sweep.
+* `src/Hosts/Host/Logging/TelemetrySetup.cs` — optional OpenTelemetry.
+* `src/Hosts/Cli/Dashboard/` — the log panel buffer.
 
 ## See also
 
-* [`../for-technicians/logging.md`](../for-technicians/logging.md): log locations, retention, and operational configuration
-* [`architecture.md`](architecture.md): application-layer boundaries and service responsibilities
-* [`testing.md`](testing.md): testing conventions for behavior that may otherwise be over-coupled to log text
+* [`../for-technicians/logging.md`](../for-technicians/logging.md) — log files, levels, retention and troubleshooting
+* [`configuration.md`](../for-technicians/configuration.md) — `Logging` settings
+* [`diagnostics.md`](diagnostics.md) — metrics and the dropped-event count

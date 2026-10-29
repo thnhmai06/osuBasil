@@ -4,6 +4,8 @@
 
 Chat uses one channel model for general, room, spectator and private-message conversations. A `Channel` owns its members and events; the channel's kind and owner determine who may read and write. A connection acts on a channel through a short-lived scope.
 
+The osu! client chats through the Bancho host (chat is pushed in game packets) and IRC clients through the IRC host. The HTTP API neither sends nor receives chat: it manages general channels and sends announcements. The server stores no chat history on any surface.
+
 This page describes the application model and its authorization rules. It does not document transport routes or packet formats.
 
 ## Channel kinds and owners
@@ -39,7 +41,7 @@ var scopedChannel = channel.ScopeTo(by);
 var result = scopedChannel.Join();
 ```
 
-`ScopedChannel` provides `Join`, `Part` and `PostAsync`. For a general channel, `scopedChannel.General` provides `ConfigureAsync` and `DeleteAsync`; both require effective `ServerConfigure`. A missing permission comes back as a denial naming the missing permissions; otherwise `ConfigureAsync` returns `Ok` or `Closed`. Configuring a channel removes members who can no longer read it.
+`ScopedChannel` provides `Join`, `Part` and `PostAsync`. For a general channel, `scopedChannel.General` provides `ConfigureAsync` and `DeleteAsync`; both require effective `ChatManageChannels`. A missing permission comes back as a denial naming the missing permissions; otherwise `ConfigureAsync` returns `Ok` or `Closed`. Configuring a channel removes members who can no longer read it.
 
 ### Results
 
@@ -70,7 +72,7 @@ Text over the channel's maximum length is truncated. The message event reports w
 
 A private message is a post into the recipient's `PmChannel`. It reaches the recipient's open connections except osu!tourney connections. The sender needs effective `ChatPostPrivate`; the recipient's active restriction can refuse the message with `TargetSilenced`.
 
-The recipient's block and friends-only setting both apply. A sender with effective `ChatMessageAnyone` bypasses those limits. If the recipient has an away message, the same posted-message event carries the automatic reply; a notice does not trigger an away reply.
+The recipient's block and friends-only setting both apply. A sender with effective `ChatManageMessageAnyone` bypasses those limits. If the recipient has an away message, the same posted-message event carries the automatic reply; a notice does not trigger an away reply.
 
 ## Events and session behavior
 
@@ -82,14 +84,14 @@ These ownership rules keep channel membership on the object being joined and avo
 
 BasilBot is the server's voice, not an authority that users borrow.
 
-BasilBot is online with a permanent `User` and a `BotConnection` that the server opens at startup; a private message to it is a command. Commands act with the typist's connection and permissions, a room command calls the room through `room.ScopeTo(by)`, and countdown announcements follow room-owned countdown events. Server-originated bot messages will not go through an ordinary caller's permission check. BasilBot itself will not own countdown timing or room authority.
+BasilBot is online with a permanent `User` and a `BotConnection` that the server opens at startup; a private message to it is a command. Commands act with the typist's connection and permissions, a room command calls the room through `room.ScopeTo(by)`, and countdown announcements follow room-owned countdown events. Server-originated bot messages do not go through an ordinary caller's permission check, and the bot never owns countdown timing or room authority.
 
 ## Invariants
 
 * Each channel belongs to its owner and is opened and closed with that owner.
 * A channel's read and write rules depend on its kind; a transport does not supply authority.
 * Every required general-channel privilege bit must be present; an empty requirement is satisfied.
-* Private-message posting requires `ChatPostPrivate`; recipient blocks and friends-only settings yield to effective `ChatMessageAnyone`.
+* Private-message posting requires `ChatPostPrivate`; recipient blocks and friends-only settings yield to effective `ChatManageMessageAnyone`.
 * Restrictions apply to effective permissions for both sender and recipient.
 * Channel events describe the channel that changed, not a relation stored on the sender.
 * BasilBot commands use the typist's authority; the transports must deliver channel messages only to `Channel.RecipientsAsync`.
@@ -110,6 +112,6 @@ BasilBot is online with a permanent `User` and a `BotConnection` that the server
 ## See also
 
 * [`multiplayer.md`](multiplayer.md): room authority and room channels
-* [`privileges.md`](privileges.md): permissions, restrictions and `ChatMessageAnyone`
+* [`privileges.md`](privileges.md): permissions, restrictions and `ChatManageMessageAnyone`
 * [`irc.md`](irc.md): IRC integration
 * [`working-scopes.md`](working-scopes.md): supported and excluded chat features

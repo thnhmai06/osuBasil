@@ -1,5 +1,22 @@
 # ADR-004 — SSE subsystem design contract
 
+> **Amended by the Host phase (2026-10-29).** The design below describes the earlier per-match channel pipeline. The
+> server now has one SSE hub in `Basil.Host.Rest` with these rules:
+>
+> * a route belongs to a **root** (`match:{id}`, `room:{id}`, `spectate:{userId}`, `diagnostics:{category}`); the first
+>   stream creates the root and the last stream to leave removes it;
+> * the first event is always a full `snapshot`; later events are one `bundle` per second, an array of everything the
+>   root collected, serialized once and shared by every stream of that root;
+> * a quiet second sends a `: keep-alive` comment; every frame carries `retry: 3000`, and ids belong to event-oriented
+>   entries only, never to resumable state;
+> * each stream has a bounded queue of 8 chunks; a stream more than 3 ticks behind is closed and reconnects to a fresh
+>   snapshot, so it cannot slow the root;
+> * open streams count against `RateLimits.Connections.PerIp` and keep their Api session active;
+> * on shutdown every stream receives a final `event: server` with `{"state":"shuttingDown"}` or `"restarting"` and is
+>   ended immediately; new streams answer `503`.
+>
+> The historical body below is kept for the decisions it records. `docs/for-developers/sse.md` is the current contract.
+
 > Status: **Accepted, implemented (4a, 4b, and the Join/Leave publish-hoist follow-up).** Approved
 > 2026-09-01 (user decision on every open sub-decision below, including the subscriber-registry
 > lifecycle design); 4b's design approved 2026-09-02 and implemented the same session; the

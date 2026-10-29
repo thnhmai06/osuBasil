@@ -1,5 +1,9 @@
 # Load testing
 
+> **The `tests/Basil.LoadTests` harness described on this page was removed while closing the Host phase.** Load
+> testing is rebuilt in the next round on `tests/Support/Basil.Testing.Clients`; the commands below do not work until
+> then.
+
 ## Overview
 
 `tests/Basil.LoadTests` is Basil's end-to-end load-testing harness.

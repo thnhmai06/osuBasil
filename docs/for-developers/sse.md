@@ -1,394 +1,119 @@
-# Live updates pipeline
+# Live updates (SSE)
 
 ## Overview
 
-Basil's live API uses **Server-Sent Events (SSE)** to push changes to clients without polling.
+Basil pushes one-way, observable state to HTTP clients with **Server-Sent Events**. There is no WebSocket route: the
+API manages state, it does not carry chat, and a client that needs to watch something opens an SSE stream.
 
-The client-facing wire contract is documented in [`sse.md`](../for-client/api/sse.md). This page describes the
-server-side implementation: where live events are published, how connections maintain state, how patches are generated,
-and how the response pipeline keeps SSE streams unbuffered.
+The client-facing wire contract is the generated OpenAPI page. This page explains the server design behind it.
 
-The implementation has three event sources:
+## Why one hub
 
-* [`IMatchLiveEvents`](../../src/Basil.Application/Sessions/Multiplayer/IMatchLiveEvents.cs) for match-scoped state.
-* [`IPlayerInputEvents`](../../src/Basil.Application/Sessions/Spectating/IPlayerInputEvents.cs) for a player's spectator input.
-* [`IPlayerStatusEvents`](../../src/Basil.Application/Sessions/Spectating/IPlayerStatusEvents.cs) for a player's
-  online/offline and activity status.
+Every live route has the same shape: a root owns some state (a player, a room, a match, the server), several clients
+watch it, and the state changes independently of those clients. Building one pipeline per route would duplicate
+bundling, backpressure, connection limits and shutdown. `Basil.Host.Rest/Sse/SseHub.cs` is that one pipeline.
 
-Each SSE connection subscribes to the relevant event source and maintains its own last-sent state.
-
-## Architecture
-
-The live pipeline is:
+## How a stream works
 
 ```text
-State mutation
-      │
-      ▼
-publish event
-      │
-      ▼
-IMatchLiveEvents / IPlayerInputEvents
-      │
-      ├──────────────► connection A buffer
-      │
-      ├──────────────► connection B buffer
-      │
-      └──────────────► connection C buffer
-                           │
-                           ▼
-                     SSE response
+state changes            a root collects events
+                             │
+                             ▼
+                     once a second: bundle, serialize once
+                             │
+                             ▼
+              every stream of that root gets the same bytes
 ```
 
-A publisher never writes directly to an HTTP response.
+* A **root** is identified by a key such as `room:5`, `match:12`, `spectate:8` or `diagnostics:all`. The first stream
+  creates it; the last stream to leave removes it and its buffer.
+* The first event on every stream is `event: snapshot` with the full current state.
+* Later events are `event: bundle` whose `data` is a JSON array of everything the root collected during that second.
+  Data is therefore up to about one second old.
+* A second with nothing to send produces an SSE comment (`: keep-alive`), not an empty bundle.
+* Every frame carries `retry: 3000`. An `id:` is set to the last id of the bundle, and only events that have one (for
+  example a match entry) supply it. The server never resumes from `Last-Event-ID`; ids let a client spot a gap or
+  deduplicate.
 
-Each connection owns its own delivery buffer, allowing state mutation to remain independent from network I/O.
+The hub bundles and serializes on a one-second timer driven by `TimeProvider`, which the tests replace with a fake
+clock.
 
-This matters for multiplayer state changes even though most publishing now runs after
-[`MatchSession.Lock`](../../src/Basil.Application/Sessions/Multiplayer/MatchSession.cs) has already been released
-— a few call sites still publish while holding it (see "Publishing after the lock is released" below for exactly
-which, and why). A slow SSE consumer must never extend that critical section regardless of which case applies.
+## Routes
 
-## Event sources
+| Route | Token | Stream |
+|---|---|---|
+| `GET /v1/matches/{id}` | optional | the full match report, entries in time order; a private match needs a viewer who may see it |
+| `GET /v1/rooms/{id}/live` | required | the room view; ends with `{"type":"closed"}` when the room closes |
+| `GET /v1/users/{id}/spectate` | required | a player's gameplay, as an osu! spectator sees it |
+| `GET /v1/diagnostics` and `/{category}` | required | live server measurements |
 
-### `IMatchLiveEvents`
+An optional-token route authenticates when it can and otherwise behaves as an anonymous viewer, which is subject to the
+same visibility rules as the JSON API.
 
-`IMatchLiveEvents` publishes changes associated with a specific match.
+### Matches
 
-Typical publishers are services that mutate match state, such as:
+The first event is the full report with its rounds and events. A live match keeps sending bundles with new entries. An
+ended match never changes, so its stream is the snapshot and then ends; reconnecting with the `Last-Event-ID` of the last
+entry answers `204`, which stops a browser from reconnecting.
 
-* slot changes;
-* host or referee changes;
-* room settings;
-* match timers;
-* bans;
-* other state exposed by the match live API.
+### Spectate
 
-Publishing an event only signals that the underlying state changed. The event does not contain a precomputed JSON
-response or a connection-specific patch.
+Opening the route spectates the player as an osu! client would: the player sees a spectator, and the spectating
+permission, blocks and restrictions apply. The stream only watches; the Api connection joins no chat channel. Frames and
+score updates are decoded once in the Bancho host and published as Application events; every Api spectator of the player
+gets the same bundle. The stream ends when the player goes offline or the spectator stops watching.
 
-### `IPlayerInputEvents`
+### Diagnostics
 
-`IPlayerInputEvents` publishes spectator input associated with a single player.
+The first event is the current sample; every later second sends a new sample for the requested category, or for every
+category.
 
-The event source is scoped to the player whose input is being observed rather than to a match as a whole.
+## Slow consumers and limits
 
-As with match events, publishers do not perform HTTP or SSE writes.
-
-### `IPlayerStatusEvents`
-
-`IPlayerStatusEvents` publishes a single player's online/offline transitions and in-game activity changes (login,
-logout, and the `ChangeAction` packet). Scoped to the player, the same shape as `IPlayerInputEvents`.
-
-`GET /users/{userId}/live` combines both player-scoped sources into one stream: `status` (state-oriented, a full
-snapshot on connect and on every change) alongside `input` (event-oriented, only while the player is playing) — the
-same state+event multiplexing the per-match `main` and per-slot streams use.
-
-## Shared per-match state
-
-The patch a mutation produces is computed once per match, not once per connection: a
-[`SnapshotChannel<T>`](../../src/Basil.Application/Capabilities/SnapshotChannel.cs) holds the one "last published" state for
-each stream, and every publish diffs against that shared state and broadcasts the same patch bytes to every subscriber
-of that stream.
-
-The lifecycle is:
-
-```text
-connection established
-        │
-        ▼
-read the stream's current shared snapshot
-        │
-        ▼
-send full snapshot
-        │
-        ▼
-event received (shared patch, already computed)
-        │
-        ▼
-forward patch as-is
-```
-
-The first event a connection receives is therefore always a complete snapshot, read directly from the shared state at
-subscribe time rather than reconstructed from patches. Subsequent events are the same merge patch every other
-subscriber of that stream receives.
-
-## Why a shared diff is safe
-
-A merge patch is only meaningful relative to the state it was computed from. What makes a *shared* patch safe, despite
-different connections joining at different times, is that a connection never has to apply a patch to a baseline it
-doesn't have:
-
-```text
-Client A connected earlier ──┐
-                              ├── both read the SAME shared snapshot at subscribe time
-Client B connected later  ───┘
-```
-
-Every connection's very first event is a fresh read of the shared snapshot, not a patch. From that point on, both
-clients hold the same state as the shared publisher, so the same subsequent patch applies cleanly to both. There is no
-per-connection baseline to reconcile.
-
-A publish that produces no observable change (nothing in the diffed state actually differs) returns no patch at all,
-so a stream with no real activity emits no events — earlier revisions of this pipeline broadcast an empty `{}` patch
-on every publish regardless of whether anything changed; that is no longer the behavior.
-
-## Publishing after the lock is released
-
-Most publishing happens after `MatchSession.Lock` has already been released, not while holding it — the
-snapshot build and the diff/broadcast are the expensive part, and running them unlocked keeps the lock's hold time
-down to the mutation itself. This reopens a question the shared-diff model doesn't answer on its own: two publishes
-for the same stream can now run concurrently and finish in either order, so what stops an older mutation's publish
-from completing *after* a newer one's and reverting the shared state back to something stale?
-
-The answer is a version number, not a lock. Whoever mutates the match allocates a state version
-(`MatchSession.NextStateVersion()`) at the moment the mutation completes, while the lock is still held — so the
-version reflects true mutation order even though nothing after that point is ordered by the lock anymore. Each
-stream's `SnapshotChannel` (and the packet broadcast, via its own `SequenceGate`) only accepts a publish whose version
-is newer than the last one it actually applied; an older version arriving late is dropped instead of applied. A
-dropped publish is not an error — it means a newer version already reflects everything that one would have added — so
-it is only counted (`basil.match.publish.stale_dropped`), never logged as a failure.
-
-Not every call site needed to change to get this benefit. A few (starting a round, a countdown's own final tick, and
-the `!mp kick`/`!mp ban` bot commands specifically) still publish before releasing the lock, because hoisting them
-would require restructuring how several different callers share that lock, not just shrinking one function's hold
-time. Seating and leaving a match (`OccupySlot`/`LeaveAsync`) no longer publish internally at all; every caller
-allocates a version and publishes itself after the mutation completes.
-
-## Subscriber registry and match close
-
-Every match-scoped live connection registers with that match's
-[`SseSubscriberRegistry`](../../src/Basil.Application/Capabilities/SseSubscriberRegistry.cs) for as long as it is open. The
-registry has two states, OPEN and CLOSED, and the transition is atomic with respect to registration: a connection that
-subscribes concurrently with the match closing either joins the OPEN registry and is completed moments later, or finds
-the registry already CLOSED and is completed immediately — there is no window where a subscription is silently missed.
-
-When a match closes, its registry completes every currently registered connection, ending their SSE streams without
-waiting for the client to disconnect on its own. This is what makes a match's live streams bounded in lifetime by the
-match itself rather than by client behavior.
-
-The per-player live stream (`GET /users/{userId}/live`, combining status and spectator input) is not match-scoped and
-is deliberately not registered with any match's registry — its lifetime is the player's session, not any one match.
-
-## Snapshot consistency
-
-A connection reads the current state before subscribing to or consuming subsequent updates according to the live route's
-subscription protocol.
-
-The implementation must preserve the snapshot-first invariant:
-
-```text
-first event = complete current state
-subsequent events = changes relative to that state
-```
-
-The snapshot is not merely an optimization. It establishes the baseline from which every later patch is interpreted.
-
-A connection must never start with a partial state reconstructed from individual events.
-
-## Non-blocking publication
-
-Publishing a live event must not wait for network consumers.
-
-The event path is intentionally separated from SSE I/O:
-
-```text
-state mutation
-    │
-    ├── publish
-    │     └── enqueue/non-blocking delivery
-    │
-    └── return
-```
-
-A slow or disconnected client is handled by its own connection lifecycle rather than by the publisher.
-
-This prevents a slow HTTP connection from affecting unrelated match operations.
-
-In particular, code executing under `MatchSession.Lock` must never await an SSE client.
-
-## SSE response handling
-
-SSE responses are intentionally excluded from [`EnvelopeMiddleware`](../../src/Basil.Web/Middleware/EnvelopeMiddleware.cs).
-
-Normal `api.` JSON responses use the response envelope, but an SSE response must remain a streaming response:
-
-```text
-HTTP response
-    │
-    ├── JSON
-    │      └── EnvelopeMiddleware
-    │
-    └── /live SSE
-           └── streamed directly
-```
-
-The middleware recognizes live routes by their `/live` path segment.
-
-It does not use the `Accept` header as the routing decision.
-
-This distinction matters because buffering a streaming response until completion would prevent live events from reaching
-the client while the connection remains open.
+Each stream has a bounded queue of 8 ready-to-send chunks. A stream that falls more than 3 ticks behind is closed
+instead of slowing the bundle for everyone else; the client reconnects and gets a fresh snapshot. The number of open
+streams per user, or per IP for a public stream, is limited by `ServerSettings.RateLimits.Connections.PerIp`; beyond it
+the route answers `429` in the JSON envelope.
 
 ## Errors before streaming
 
-A live route can fail before the SSE stream is established.
+A live route validates before it starts streaming. A missing or invisible match or room, an offline player, a missing
+token or too many streams produce a normal JSON response through the API envelope. Once the stream has started, an
+error closes it.
 
-For example:
+## Shutdown
 
-```text
-GET /matches/999/live
-        │
-        ▼
-match does not exist
-        │
-        ▼
-404 JSON response
-```
-
-This is still a normal JSON response and therefore goes through the envelope middleware.
-
-The streaming bypass applies once the route is being served as a live stream, not to every possible error returned by a
-`/live` route.
-
-The same rule applies to other synchronous errors such as `409 Conflict`.
-
-## Route semantics
-
-Live routes are available independently of the current state of the resource.
-
-For example, a match can have a valid identifier but still be unsuitable for a live stream because of its current state.
-
-The route therefore reports an application-level error rather than relying on connection failure to communicate the
-condition.
-
-This keeps resource existence and stream availability as separate concepts.
-
-## Lifecycle
-
-A typical match live connection follows this flow:
+When the server stops taking work, new streams answer `503` with `Retry-After: 5`. On shutdown or restart the hub sends
+every open stream one final event at once:
 
 ```text
-GET /matches/{id}/live
-        │
-        ▼
-validate match
-        │
-        ├── invalid/unavailable
-        │       └── normal JSON error
-        │
-        ▼
-subscribe to match events
-        │
-        ▼
-build current snapshot
-        │
-        ▼
-send snapshot
-        │
-        ▼
-wait for event
-        │
-        ▼
-build current state
-        │
-        ▼
-diff against connection state
-        │
-        ├── no effective change
-        │       └── continue waiting
-        │
-        └── changed
-                │
-                ▼
-          send merge patch
-                │
-                ▼
-          update connection state
-                │
-                └── repeat
+event: server
+data: {"state":"shuttingDown"}
 ```
 
-Disconnecting the HTTP request terminates the connection's subscription and releases its resources.
+`state` is `restarting` when the server is coming back. The hub then ends the streams. The final event is not delayed to
+the next tick.
 
-## Design constraints
+## Invariants
 
-### Publishers must not know about HTTP
-
-Application services should publish domain/application events rather than writing SSE messages directly.
-
-This keeps packet handlers, multiplayer services, and other mutation paths independent of the transport used to observe
-their state.
-
-The same state mutation can therefore serve:
-
-* SSE consumers;
-* future live transports;
-* internal observers.
-
-### Patches must be generated from state
-
-Publishers should not construct merge patches themselves.
-
-A publisher knows that state changed, not what the patch relative to the previous published state should look like.
-
-Patch generation belongs to the stream's shared [`SnapshotChannel`](../../src/Basil.Application/Capabilities/SnapshotChannel.cs), which owns the previous snapshot for that stream.
-
-### Backpressure is a per-stream decision
-
-A stream that only ever needs the *latest* state does not need a bound: a slow connection just falls behind on
-intermediate values and catches up when it reads. The `/matches/{id}/live` and `/matches/{id}/live/{slotIndex}`
-streams are different — each carries a mix of high-frequency `gameplay` (and, for the slot stream, `input`) events
-alongside lower-frequency state events (`main`, `slot`) on one connection, so both are bounded and evict the oldest
-queued events once full, emitting a `gap` SSE event in their place so the client can tell that a drop happened
-instead of silently missing updates.
-
-Whether a given stream needs this treatment is decided per stream, not applied uniformly.
-
-### `retry:` and `id:` follow the same event/state split as backpressure
-
-Every stream sends an SSE `retry:` hint, telling a disconnected client how long to wait before
-reconnecting.
-
-An SSE `id:` is different: it implies resumption is meaningful, so it's assigned only to
-event-oriented items (`chat`, `gameplay`, `input`) — a coalescing state item (`main`, `settings`,
-`hosts`, `refs`, `ban`, `timer`, `slots`, per-slot `slot`) never gets one, since a fresh snapshot
-always supersedes anything resumption from an id could offer. On the multiplexed streams
-(`/matches/{id}/live`, `/matches/{id}/live/{slotIndex}`), this means only some of the items
-sharing that one connection carry an id.
-
-The id is a monotonic counter, scoped to that one connection — not a durable sequence number, and
-not persisted. The server does not read an incoming `Last-Event-ID` on reconnect: `chat` (the
-stream this most plausibly applies to) is explicitly not stored, so there is nothing to replay
-from. Assigning the id is about giving the client something to reason about mid-connection (spot a
-gap, dedupe), not about building resumption.
-
-### Do not perform network I/O inside match locks
-
-Any live notification mechanism must remain non-blocking from the perspective of match mutation.
-
-If a change occurs while `MatchSession.Lock` is held, publishing must not wait for:
-
-* socket writes;
-* client consumption;
-* HTTP flushes;
-* disconnected-client cleanup.
+* Every live route uses the one hub; there is no second streaming mechanism.
+* The first event of a stream is a complete snapshot; later bundles are relative to it.
+* A bundle is serialized once and shared by every stream of that root.
+* A root exists while it has a stream and disappears with its last stream.
+* Slow streams are cut off, never allowed to delay the root or other streams.
+* An open stream counts as activity for its Api session.
+* No stream carries chat history or any replayable history; the server stores none.
 
 ## Related code
 
-* [`Basil.Web/Routing/Api/LiveSseRoutes.cs`](../../src/Basil.Web/Routing/Api/LiveSseRoutes.cs): live SSE endpoints and connection lifecycle
-* [`Basil.Web/Middleware/EnvelopeMiddleware.cs`](../../src/Basil.Web/Middleware/EnvelopeMiddleware.cs): JSON response wrapping and SSE bypass
-* [`Basil.Application/Sessions/Multiplayer/IMatchLiveEvents.cs`](../../src/Basil.Application/Sessions/Multiplayer/IMatchLiveEvents.cs): match live event source
-* [`Basil.Application/Sessions/Spectating/IPlayerInputEvents.cs`](../../src/Basil.Application/Sessions/Spectating/IPlayerInputEvents.cs): spectator input event source
-* [`Basil.Application/Sessions/Spectating/IPlayerStatusEvents.cs`](../../src/Basil.Application/Sessions/Spectating/IPlayerStatusEvents.cs): player status event source
-* [`Basil.Application/Capabilities/Multiplayer/MatchLiveSnapshotBuilder.cs`](../../src/Basil.Application/Capabilities/Multiplayer/MatchLiveSnapshotBuilder.cs): live match state construction
-* [`Basil.Application/Capabilities/SnapshotChannel.cs`](../../src/Basil.Application/Capabilities/SnapshotChannel.cs): shared per-stream snapshot + diff
-* [`Basil.Application/Capabilities/SseSubscriberRegistry.cs`](../../src/Basil.Application/Capabilities/SseSubscriberRegistry.cs): per-match subscriber lifecycle, completed on match close
-* [`Basil.Application/Capabilities/BoundedSseChannel.cs`](../../src/Basil.Application/Capabilities/BoundedSseChannel.cs): bounded-stream eviction and gap marker
+* `src/Hosts/Rest/Sse/SseHub.cs` — roots, bundling, streams, limits, shutdown announcement.
+* `src/Hosts/Rest/Sse/SseResult.cs` — writes a stream and releases it.
+* `src/Hosts/Rest/Sse/MatchRoutes.cs`, `SpectateRoutes.cs`, `DiagnosticsRoutes.cs` — the live roots.
+* `src/Hosts/Rest/Routes/RoomRoutes.cs` — room live route.
+* `src/Hosts/Rest/Http/RestPipeline.cs` — 503 while stopping and the shared error envelope.
 
 ## See also
 
-* [`sse.md`](../for-client/api/sse.md): client-facing SSE contract
-* [`multiplayer.md`](multiplayer.md): match state and tournament report
-* [`response-envelope.md`](../for-client/api/response-envelope.md): JSON response format
-* [`bancho.md`](bancho.md): protocol handlers that mutate and publish match state
+* [`../for-client/api/sse.md`](../for-client/api/sse.md) — client-facing SSE usage
+* [`multiplayer.md`](multiplayer.md) — match report and room state
+* [`architecture.md`](architecture.md) — transports and the dependency rule

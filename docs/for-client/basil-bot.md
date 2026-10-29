@@ -28,18 +28,15 @@ Room countdowns belong to the room, not to BasilBot. A countdown that starts a r
 settings change; countdowns stop when the round starts or is aborted or the room closes. BasilBot announces the
 countdown marks.
 
-## Planned
-
-The following host-phase work is not implemented yet:
-
-* showing BasilBot as an online user to the osu! client (IRC already shows it);
-* the planned operator console in `Basil.Cli`.
+BasilBot is shown as an online user to both the osu! client and IRC. Operators also have a console in the server
+process (`Basil.Host`): it runs a command as the operator, which is the one entry point that skips permission checks,
+while a chat command always runs with the typist's rights. See [`../for-technicians/console.md`](../for-technicians/console.md).
 
 ---
 
 ## Command reference
 
-The complete command reference is generated from Basil's OpenAPI documentation.
+The complete command reference is generated from the code.
 
 It includes:
 
@@ -49,21 +46,12 @@ It includes:
 * required arguments;
 * command behaviour.
 
-### Running server
+The generated reference is published on [GitHub Pages](https://thnhmai06.github.io/osuBasil/). A running instance
+serves its generated API reference at `https://api.<domain>/docs/`.
 
-Open:
-
-```text
-https://api.<domain>/docs/basil-bot/
-```
-
-### Online documentation
-
-The same documentation is available without a running Basil server:
-
-[BasilBot documentation](https://thnhmai06.github.io/osuBasil/)
-
-The generated reference is the authoritative source for the current command syntax. This page intentionally does not duplicate the command list. Reply wording is not part of it: the server operator owns the wording (see [Reply text](#reply-text)).
+The generated reference is the authoritative source for the current command syntax. This page intentionally does not
+duplicate the command list. Reply wording is not part of it: the server operator owns the wording (see
+[Reply text](#reply-text)).
 
 ---
 
@@ -91,7 +79,8 @@ The exact subcommands and argument syntax are defined by the generated BasilBot 
 
 BasilBot's replies are part of the client-visible command contract, but their wording belongs to the server operator.
 
-Every reply is a text in the operator-editable file `Data/Bot/replies.json`, a JSON object that maps a reply's key to an
+Every reply is a text in the operator-editable file `Configurations/Templates/replies.json`, a JSON object that maps a
+reply's key to an
 [ICU MessageFormat](https://unicode-org.github.io/icu/userguide/format_parse/messages/) string with named placeholders
 such as `{room}`. The file is written with the default wording when it does not exist, is reloaded while the server
 runs, and a missing key keeps its default wording. If an edit leaves the file unreadable, the last good wording stays

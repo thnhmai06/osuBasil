@@ -1,5 +1,9 @@
 # Diagnostic API
 
+> **Out of date.** This page still describes the pre-Host diagnostics design. The current implementation is in
+> `src/Hosts/Shared/Diagnostics/` (samplers and the meter), `src/Hosts/Rest/Sse/DiagnosticsRoutes.cs` (the live
+> routes) and `tests/Hosts/Rest/Sse/DiagnosticsTests.cs`; the tests named below no longer exist.
+
 ## Overview
 
 Basil runs as a private tournament server, usually operated by one person watching a match rather

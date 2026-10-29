@@ -6,7 +6,7 @@
 ## Summary
 
 BasilBot's replies stay natural-language chat text. The wording is not in code: it lives in the
-operator-editable file `Data/Bot/replies.json`. A broad rewrite into machine-parsable replies was
+operator-editable file `Configurations/Templates/replies.json`. A broad rewrite into machine-parsable replies was
 considered and declined; machine-readable state is served by the HTTP API.
 
 ## Current mechanism
@@ -14,7 +14,7 @@ considered and declined; machine-readable state is served by the HTTP API.
 The earlier implementation (a `ReplyLocale` loader, category-nested `BasilBot.json`/`Irc.json` locale files, and
 `static readonly` reply fields in `Basil.Application`) no longer exists. The redesigned bot replaced it:
 
-* **One file.** `Data/Bot/replies.json` maps a reply key to an ICU MessageFormat string with named placeholders
+* **One file.** `Configurations/Templates/replies.json` maps a reply key to an ICU MessageFormat string with named placeholders
   (`{room}`, plural selectors). There is one language and no fallback chain. The path is `RepliesOptions.Path`.
 * **Defaults live in the bot.** Each reply is a typed key owned by `Basil.Bot` that carries its default wording and
   the arguments it declares. The file is written with every default when it does not exist.
