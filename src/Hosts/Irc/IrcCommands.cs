@@ -275,26 +275,13 @@ internal sealed partial class IrcCommands(
 		switch (message.Parameters[0].ToUpperInvariant())
 		{
 			case "LS":
-				if (!session.Registered) session.Negotiating = true;
-				var v302 = message.Parameters.Count > 1 && int.TryParse(message.Parameters[1], out var version) && version >= 302;
-				Reply("LS", string.Join(' ', Offered.Select(cap => cap == "sasl" && v302 ? "sasl=PLAIN" : cap)));
+				CapLs(session, message, Reply);
 				break;
 			case "LIST":
 				Reply("LIST", string.Join(' ', session.Caps));
 				break;
 			case "REQ":
-				if (!session.Registered) session.Negotiating = true;
-				var requested = message.Parameters.Count > 1 ? message.Parameters[1].Split(' ', StringSplitOptions.RemoveEmptyEntries) : [];
-				if (requested.All(cap => Offered.Contains(cap.TrimStart('-'))))
-				{
-					foreach (var cap in requested) session.Set(cap.TrimStart('-'), !cap.StartsWith('-'));
-					Reply("ACK", message.Parameters[1]);
-				}
-				else
-				{
-					Reply("NAK", message.Parameters.Count > 1 ? message.Parameters[1] : string.Empty);
-				}
-
+				CapReq(session, message, Reply);
 				break;
 			case "END":
 				session.Negotiating = false;
@@ -303,6 +290,28 @@ internal sealed partial class IrcCommands(
 			default:
 				session.Numeric(IrcNumericReply.ErrUnknownCommand, "CAP", IrcReplies.UnknownCommand);
 				break;
+		}
+	}
+
+	private static void CapLs(IrcSession session, IrcMessage message, Action<string, string> reply)
+	{
+		if (!session.Registered) session.Negotiating = true;
+		var v302 = message.Parameters.Count > 1 && int.TryParse(message.Parameters[1], out var version) && version >= 302;
+		reply("LS", string.Join(' ', Offered.Select(cap => cap == "sasl" && v302 ? "sasl=PLAIN" : cap)));
+	}
+
+	private static void CapReq(IrcSession session, IrcMessage message, Action<string, string> reply)
+	{
+		if (!session.Registered) session.Negotiating = true;
+		var requested = message.Parameters.Count > 1 ? message.Parameters[1].Split(' ', StringSplitOptions.RemoveEmptyEntries) : [];
+		if (requested.All(cap => Offered.Contains(cap.TrimStart('-'))))
+		{
+			foreach (var cap in requested) session.Set(cap.TrimStart('-'), !cap.StartsWith('-'));
+			reply("ACK", message.Parameters[1]);
+		}
+		else
+		{
+			reply("NAK", message.Parameters.Count > 1 ? message.Parameters[1] : string.Empty);
 		}
 	}
 
@@ -336,24 +345,33 @@ internal sealed partial class IrcCommands(
 
 		if (session.Sasl is null)
 		{
-			if (data.Equals("PLAIN", StringComparison.OrdinalIgnoreCase))
-			{
-				session.Sasl = new StringBuilder();
-				session.Send(new IrcMessage("AUTHENTICATE", null, "+"));
-			}
-			else
-			{
-				session.Numeric(IrcNumericReply.RplSaslMechs, "PLAIN", "are available SASL mechanisms");
-				session.Numeric(IrcNumericReply.ErrSaslFail, "SASL authentication failed");
-			}
-
+			StartSasl(session, data);
 			return;
 		}
 
 		if (data != "+") session.Sasl.Append(data);
 		if (data.Length == 400) return;
 
-		var payload = session.Sasl.ToString();
+		await FinishSaslAsync(session, cancellationToken);
+	}
+
+	private static void StartSasl(IrcSession session, string mechanism)
+	{
+		if (mechanism.Equals("PLAIN", StringComparison.OrdinalIgnoreCase))
+		{
+			session.Sasl = new StringBuilder();
+			session.Send(new IrcMessage("AUTHENTICATE", null, "+"));
+		}
+		else
+		{
+			session.Numeric(IrcNumericReply.RplSaslMechs, "PLAIN", "are available SASL mechanisms");
+			session.Numeric(IrcNumericReply.ErrSaslFail, "SASL authentication failed");
+		}
+	}
+
+	private async Task FinishSaslAsync(IrcSession session, CancellationToken cancellationToken)
+	{
+		var payload = session.Sasl!.ToString();
 		session.Sasl = null;
 		if (!TryDecodePlain(payload, out var account, out var key) ||
 		    await SignInAsync(session, key, account, cancellationToken) is not null)

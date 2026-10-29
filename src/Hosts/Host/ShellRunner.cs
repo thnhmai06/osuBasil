@@ -55,22 +55,7 @@ public static class ShellRunner
 		var path = ControlSocket.PathIn(app.Services.GetRequiredService<IOptions<StorageOptions>>().Value.DataDirectory);
 		using (var running = await ControlClient.ConnectAsync(path, cancellationToken))
 		{
-			if (running is not null)
-			{
-				var forwarded = args;
-				if (IsShutdown(parsed) && !parsed.Options.ContainsKey("now"))
-				{
-					if (!await ConfirmAsync(output, input, $"Really {(parsed.Command.Words[0] == "restart" ? "restart" : "shut down")} the server?"))
-					{
-						await output.WriteLineAsync("Cancelled.");
-						return ExitCodes.Declined;
-					}
-
-					forwarded = [.. args, "--now"];
-				}
-
-				return await running.RunAsync(forwarded, output, cancellationToken);
-			}
+			if (running is not null) return await ForwardAsync(running, parsed, args, output, input, cancellationToken);
 		}
 
 		if (!parsed.Command.Offline)
@@ -84,6 +69,30 @@ public static class ShellRunner
 			return await runner.RunAsync(args, new PlainOutput(output), false, null, cancellationToken);
 
 		var started = app.Services.GetServices<IHostedService>().Where(service => OfflineServices.Contains(service.GetType().Name)).ToList();
+		return await RunWithServicesAsync(runner, started, args, output, cancellationToken);
+	}
+
+	private static async Task<int> ForwardAsync(ControlConnection running, ParsedCommand parsed, string[] args, TextWriter output,
+		TextReader input, CancellationToken cancellationToken)
+	{
+		var forwarded = args;
+		if (IsShutdown(parsed) && !parsed.Options.ContainsKey("now"))
+		{
+			if (!await ConfirmAsync(output, input, $"Really {(parsed.Command.Words[0] == "restart" ? "restart" : "shut down")} the server?"))
+			{
+				await output.WriteLineAsync("Cancelled.");
+				return ExitCodes.Declined;
+			}
+
+			forwarded = [.. args, "--now"];
+		}
+
+		return await running.RunAsync(forwarded, output, cancellationToken);
+	}
+
+	private static async Task<int> RunWithServicesAsync(CommandRunner runner, List<IHostedService> started, string[] args,
+		TextWriter output, CancellationToken cancellationToken)
+	{
 		var lifecycle = started.OfType<IHostedLifecycleService>().ToList();
 		foreach (var service in lifecycle) await service.StartingAsync(cancellationToken);
 		foreach (var service in started) await service.StartAsync(cancellationToken);

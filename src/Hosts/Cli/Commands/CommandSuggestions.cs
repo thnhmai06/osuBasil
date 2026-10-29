@@ -124,33 +124,38 @@ public sealed class CommandSuggestions(CommandCatalog catalog, ISuggestionSource
 		var typedOptions = done.Skip(positional.Count).ToList();
 		var result = new List<string>();
 
-		if (typedOptions.Count == 0 && !partial.StartsWith('-'))
-		{
-			foreach (var command in catalog.Starting(positional).Where(command => command.Words.Length > positional.Count))
-			{
-				var word = command.Words[positional.Count];
-				if (CommandDef.IsParameter(word))
-				{
-					var resource = positional.Count > 0 ? positional[^1] : string.Empty;
-					foreach (var id in source.Ids(resource).Where(id => id.StartsWith(partial, StringComparison.OrdinalIgnoreCase)))
-						result.Add(id);
-				}
-				else if (word.StartsWith(partial, StringComparison.OrdinalIgnoreCase))
-				{
-					result.Add(word);
-				}
-			}
-		}
+		if (typedOptions.Count == 0 && !partial.StartsWith('-')) AddWordSuggestions(result, positional, partial);
 
 		var exact = catalog.All.FirstOrDefault(command => Fits(command, positional));
 		if (exact is not null && (partial.StartsWith('-') || partial.Length == 0))
-		{
-			var given = typedOptions.Where(CommandCatalog.IsOption).Select(option => option.TrimStart('-')).ToHashSet(StringComparer.OrdinalIgnoreCase);
-			result.AddRange(exact.Options.Where(option => !given.Contains(option.Name) && $"--{option.Name}".StartsWith(partial, StringComparison.OrdinalIgnoreCase))
-				.Select(option => $"--{option.Name}"));
-		}
+			AddOptionSuggestions(result, exact, typedOptions, partial);
 
 		return ([.. result.Distinct()], start, partial.Length);
+	}
+
+	private void AddWordSuggestions(List<string> result, List<string> positional, string partial)
+	{
+		foreach (var command in catalog.Starting(positional).Where(command => command.Words.Length > positional.Count))
+		{
+			var word = command.Words[positional.Count];
+			if (CommandDef.IsParameter(word))
+			{
+				var resource = positional.Count > 0 ? positional[^1] : string.Empty;
+				foreach (var id in source.Ids(resource).Where(id => id.StartsWith(partial, StringComparison.OrdinalIgnoreCase)))
+					result.Add(id);
+			}
+			else if (word.StartsWith(partial, StringComparison.OrdinalIgnoreCase))
+			{
+				result.Add(word);
+			}
+		}
+	}
+
+	private static void AddOptionSuggestions(List<string> result, CommandDef exact, List<string> typedOptions, string partial)
+	{
+		var given = typedOptions.Where(CommandCatalog.IsOption).Select(option => option.TrimStart('-')).ToHashSet(StringComparer.OrdinalIgnoreCase);
+		result.AddRange(exact.Options.Where(option => !given.Contains(option.Name) && $"--{option.Name}".StartsWith(partial, StringComparison.OrdinalIgnoreCase))
+			.Select(option => $"--{option.Name}"));
 	}
 
 	/// <summary>Describes the command a line is heading for: <c>pattern  summary</c>.</summary>

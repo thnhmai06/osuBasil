@@ -62,19 +62,14 @@ internal static class OsuWebRoutes
 		if (!Md5Text.TryParse(query["c"], out var hash)) return Text("-1|false");
 		if (await beatmaps.GetAsync(hash, ct) is not { } map) return Text("-1|false");
 		_ = int.TryParse(query["mods"], out var mods);
-		var mode = int.TryParse(query["m"], out var m) && Enum.IsDefined((GameMode)m) ? (GameMode)m : GameMode.Standard;
+		var mode = ParseMode(query["m"]);
 		var rankedType = int.TryParse(query["v"], out var v) ? v : 1;
 		var page = await scores.ListAsync(
 			new ScoreQuery(BeatmapHash: hash, Mods: rankedType == 3 ? (GameMods)mods : null, BestPerPlayer: true),
 			new PageRequest(0, 50), ct);
 		var rows = new List<string>();
 		foreach (var (score, index) in page.Items.Where(score => score.Value.Mode == mode).Select((score, i) => (score, i)))
-		{
-			var name = score.Value.UserId is { } id && await users.GetAsync(id, ct) is { } user ? user.Value.Name : "?";
-			var hits = score.Value.HitCounts;
-			rows.Add(string.Create(CultureInfo.InvariantCulture,
-				$"{score.Id}|{name}|{score.Value.TotalScore}|{score.Value.MaxCombo}|{hits.Num50}|{hits.Num100}|{hits.Num300}|{hits.NumMiss}|{hits.NumKatu}|{hits.NumGeki}|{(score.Value.IsFullCombo ? 1 : 0)}|{(int)score.Value.Mods}|{score.Value.UserId}|{index + 1}|{score.Value.Timestamp.ToUnixTimeSeconds()}|1"));
-		}
+			rows.Add(await ScoreRowAsync(score, index, users, ct));
 
 		var lines = new List<string>
 		{
@@ -83,6 +78,19 @@ internal static class OsuWebRoutes
 		};
 		lines.AddRange(rows);
 		return Text(string.Join('\n', lines));
+	}
+
+	private static GameMode ParseMode(string? text)
+	{
+		return int.TryParse(text, out var m) && Enum.IsDefined((GameMode)m) ? (GameMode)m : GameMode.Standard;
+	}
+
+	private static async Task<string> ScoreRowAsync(ScoreRecord score, int index, IUserRepository users, CancellationToken ct)
+	{
+		var name = score.Value.UserId is { } id && await users.GetAsync(id, ct) is { } user ? user.Value.Name : "?";
+		var hits = score.Value.HitCounts;
+		return string.Create(CultureInfo.InvariantCulture,
+			$"{score.Id}|{name}|{score.Value.TotalScore}|{score.Value.MaxCombo}|{hits.Num50}|{hits.Num100}|{hits.Num300}|{hits.NumMiss}|{hits.NumKatu}|{hits.NumGeki}|{(score.Value.IsFullCombo ? 1 : 0)}|{(int)score.Value.Mods}|{score.Value.UserId}|{index + 1}|{score.Value.Timestamp.ToUnixTimeSeconds()}|1");
 	}
 
 	private static async Task<IResult> GetFriendsAsync(HttpContext context, WebAuthentication auth, CancellationToken ct)
@@ -131,25 +139,15 @@ internal static class OsuWebRoutes
 			var clientHashText = ScoreSubmissionCipher.Decrypt(form["s"].ToString(), iv, version);
 			var hash = ClientHash.Parse(clientHashText);
 			var ids = form["c1"].ToString().Split('|');
-			var fingerprint = new BanchoFingerprint(new Md5(hash.OsuPathHash),
-				new NetworkAdapters { Adapters = hash.Adapters, Hash = new Md5(hash.AdaptersHash) },
-				new Md5(hash.UninstallHash), new Md5(hash.DiskSignatureHash));
+			var fingerprint = Fingerprint(hash);
 			var beatmapHash = new Md5(data.BeatmapHash);
 			var submittedClient = new SubmittedClient(clientHashText, fingerprint, ids[0], ids.ElementAtOrDefault(1) ?? string.Empty,
 				version[..8], beatmapHash);
 			var known = await beatmaps.GetAsync(beatmapHash, ct);
 			Md5? storyboard = Md5Text.TryParse(form["sbk"], out var sb) ? sb : (Md5?)null;
-			var score = new ScoreData(null, beatmapHash, (GameMode)data.Mode, (GameMods)data.Mods,
-				new HitCounts(data.Num300, data.Num100, data.Num50, data.NumGeki, data.NumKatu, data.NumMiss),
-				data.TotalScore, (short)data.MaxCombo, (short)data.MaxCombo, ParseGrade(data.Grade), data.IsPassed,
-				data.IsFullCombo, data.Timestamp);
-			var submission = new Submission
-			{
-				Score = score, BanchoFlags = (BanchoFlags)data.ClientFlags, HashByClient = new Md5(data.Checksum)
-			};
+			var submission = ToSubmission(data, beatmapHash);
 			anticheat.Report(client, submission.BanchoFlags);
-			Stream? replay = null;
-			if (context.Request.Form.Files.GetFile("score") is { } file) replay = file.OpenReadStream();
+			var replay = OpenReplay(context);
 			var (result, rejection) = await submitter.ScopeTo(client).SubmitAsync(submission,
 				known is null ? null : new BeatmapChecksums(known.Hash, storyboard), submittedClient, replay, ct);
 			return Text(result.IsOk ? "beatmapId:0|beatmapSetId:0|beatmapPlaycount:0|beatmapPasscount:0|approvedDate:\n" : "error: no");
@@ -158,6 +156,27 @@ internal static class OsuWebRoutes
 		{
 			return Text("error: no");
 		}
+	}
+
+	private static BanchoFingerprint Fingerprint(ClientHash hash)
+	{
+		return new BanchoFingerprint(new Md5(hash.OsuPathHash),
+			new NetworkAdapters { Adapters = hash.Adapters, Hash = new Md5(hash.AdaptersHash) },
+			new Md5(hash.UninstallHash), new Md5(hash.DiskSignatureHash));
+	}
+
+	private static Submission ToSubmission(ScoreSubmission data, Md5 beatmapHash)
+	{
+		var score = new ScoreData(null, beatmapHash, (GameMode)data.Mode, (GameMods)data.Mods,
+			new HitCounts(data.Num300, data.Num100, data.Num50, data.NumGeki, data.NumKatu, data.NumMiss),
+			data.TotalScore, (short)data.MaxCombo, (short)data.MaxCombo, ParseGrade(data.Grade), data.IsPassed,
+			data.IsFullCombo, data.Timestamp);
+		return new Submission { Score = score, BanchoFlags = (BanchoFlags)data.ClientFlags, HashByClient = new Md5(data.Checksum) };
+	}
+
+	private static Stream? OpenReplay(HttpContext context)
+	{
+		return context.Request.Form.Files.GetFile("score") is { } file ? file.OpenReadStream() : null;
 	}
 
 	private static Grade ParseGrade(string grade)

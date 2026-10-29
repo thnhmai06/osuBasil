@@ -81,18 +81,30 @@ internal sealed class OsuBeatmapsetReader : IBeatmapsetReader
 
 			first ??= decoded.Beatmap;
 
-			var info = decoded.Beatmap.BeatmapInfo;
-			var metadata = info.Metadata;
-			difficulties.Add(new BeatmapsetDifficulty(
-				info.OnlineID > 0 ? info.OnlineID : null, info.DifficultyName, (GameMode)info.Ruleset.OnlineID, file,
-				FindFile(byName, metadata.BackgroundFile), FindFile(byName, metadata.AudioFile),
-				FindFile(byName, decoded.Video),
-				metadata.PreviewTime >= 0 ? TimeSpan.FromMilliseconds(metadata.PreviewTime) : null,
-				decoded.Storyboard));
+			difficulties.Add(DifficultyOf(file, decoded, byName));
 		}
 
 		if (first is null) return null;
 
+		return ContentOf(first, difficulties, files, source);
+	}
+
+	private static BeatmapsetDifficulty DifficultyOf(BeatmapsetContentFile file, DecodedDifficulty decoded,
+		Dictionary<string, BeatmapsetContentFile> byName)
+	{
+		var info = decoded.Beatmap.BeatmapInfo;
+		var metadata = info.Metadata;
+		return new BeatmapsetDifficulty(
+			info.OnlineID > 0 ? info.OnlineID : null, info.DifficultyName, (GameMode)info.Ruleset.OnlineID, file,
+			FindFile(byName, metadata.BackgroundFile), FindFile(byName, metadata.AudioFile),
+			FindFile(byName, decoded.Video),
+			metadata.PreviewTime >= 0 ? TimeSpan.FromMilliseconds(metadata.PreviewTime) : null,
+			decoded.Storyboard);
+	}
+
+	private static BeatmapsetContent ContentOf(LazerBeatmap first, List<BeatmapsetDifficulty> difficulties,
+		IReadOnlyList<BeatmapsetContentFile> files, IAsyncDisposable? source)
+	{
 		var meta = first.BeatmapInfo;
 		var onlineSetId = meta.BeatmapSet?.OnlineID is > 0 ? meta.BeatmapSet.OnlineID : (int?)null;
 		var artist = string.IsNullOrWhiteSpace(meta.Metadata.Artist) ? "Unknown" : meta.Metadata.Artist;

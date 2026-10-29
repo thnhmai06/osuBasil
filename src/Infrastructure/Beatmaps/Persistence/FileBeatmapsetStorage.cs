@@ -368,16 +368,27 @@ internal sealed class FileBeatmapsetStorage(
 		}
 		catch
 		{
-			if (aside is not null && Directory.Exists(aside) && !Directory.Exists(target))
-				Directory.Move(aside, target);
-			// Never lose the archive: put it back where it was before dropping the staging folder.
-			if (File.Exists(stagedArchive) && !File.Exists(placed.Path)) File.Move(stagedArchive, placed.Path);
-			DeleteDirectoryIfExists(stagingFolder);
+			RestoreAfterFailure(placed, target, stagingFolder, stagedArchive, aside);
 			throw;
 		}
 
 		if (aside is not null) RemoveAside(aside, set);
 
+		DeletePackedSource(placed, target);
+	}
+
+	private void RestoreAfterFailure(FileBeatmapsetArchive placed, string target, string stagingFolder, string stagedArchive,
+		string? aside)
+	{
+		if (aside is not null && Directory.Exists(aside) && !Directory.Exists(target))
+			Directory.Move(aside, target);
+		// Never lose the archive: put it back where it was before dropping the staging folder.
+		if (File.Exists(stagedArchive) && !File.Exists(placed.Path)) File.Move(stagedArchive, placed.Path);
+		DeleteDirectoryIfExists(stagingFolder);
+	}
+
+	private static void DeletePackedSource(FileBeatmapsetArchive placed, string target)
+	{
 		if (placed.PackedFrom is not null && Directory.Exists(placed.PackedFrom) &&
 		    !SamePath(placed.PackedFrom, target))
 			Directory.Delete(placed.PackedFrom, true);

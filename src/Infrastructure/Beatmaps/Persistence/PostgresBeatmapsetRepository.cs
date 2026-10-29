@@ -153,52 +153,7 @@ internal sealed class PostgresBeatmapsetRepository(
 			.Concat(changes.Remove.Select(removed => removed.Id)).ToHashSet();
 
 		foreach (var (existing, data) in changes.Store)
-		{
-			var knownId = existing?.Id ?? data.OnlineId;
-			// A record needs an id; the row of a set without an osu! id has none until the sequence gives it one.
-			var row = ToRow(Build(knownId ?? 1));
-			if (knownId is null)
-				row.Id = 0;
-
-			if (existing is null)
-			{
-				// A new set never replaces a stored one: an id another set has is refused by the database.
-				context.Beatmapsets.Add(row);
-				await context.SaveChangesAsync(token);
-			}
-			else
-			{
-				await context.UpsertAsync(row, candidate => candidate.Id == row.Id, token);
-			}
-
-			var set = Build(row.Id);
-			var beatmaps =
-				await PostgresBeatmapRepository.StoreAsync(set, data.Beatmaps, now, releasable, context, token);
-
-			var keepIds = beatmaps.Select(beatmap => beatmap.Id).ToArray();
-			await context.Beatmaps
-				.Where(b => b.BeatmapsetId == set.Id && !((IEnumerable<int>)keepIds).Contains(b.Id))
-				.ExecuteDeleteAsync(token);
-
-			stored.Add(new StoredSet(set, beatmaps));
-			continue;
-
-			BeatmapsetRecord Build(int id)
-			{
-				return new BeatmapsetRecord
-				{
-					Id = id,
-					Fingerprint = data.Fingerprint,
-					Metadata = data.Metadata,
-					Assets = data.Assets,
-					CreatedAt = existing?.CreatedAt ?? now,
-					UpdatedAt = now,
-					Locked = existing?.Locked ?? false,
-					Visible = existing?.Visible ?? true,
-					Status = existing?.Status ?? BeatmapsetStatus.Ranked
-				};
-			}
-		}
+			stored.Add(await StoreOneAsync(existing, data, now, releasable, context, token));
 
 		foreach (var set in changes.Remove)
 		{
@@ -211,6 +166,54 @@ internal sealed class PostgresBeatmapsetRepository(
 		}
 
 		return stored;
+	}
+
+	private static async Task<StoredSet> StoreOneAsync(BeatmapsetRecord? existing, BeatmapsetData data, DateTimeOffset now,
+		IReadOnlySet<int> releasable, BeatmapsDbContext context, CancellationToken token)
+	{
+		var knownId = existing?.Id ?? data.OnlineId;
+		// A record needs an id; the row of a set without an osu! id has none until the sequence gives it one.
+		var row = ToRow(Build(existing, data, now, knownId ?? 1));
+		if (knownId is null)
+			row.Id = 0;
+
+		if (existing is null)
+		{
+			// A new set never replaces a stored one: an id another set has is refused by the database.
+			context.Beatmapsets.Add(row);
+			await context.SaveChangesAsync(token);
+		}
+		else
+		{
+			await context.UpsertAsync(row, candidate => candidate.Id == row.Id, token);
+		}
+
+		var set = Build(existing, data, now, row.Id);
+		var beatmaps =
+			await PostgresBeatmapRepository.StoreAsync(set, data.Beatmaps, now, releasable, context, token);
+
+		var keepIds = beatmaps.Select(beatmap => beatmap.Id).ToArray();
+		await context.Beatmaps
+			.Where(b => b.BeatmapsetId == set.Id && !((IEnumerable<int>)keepIds).Contains(b.Id))
+			.ExecuteDeleteAsync(token);
+
+		return new StoredSet(set, beatmaps);
+	}
+
+	private static BeatmapsetRecord Build(BeatmapsetRecord? existing, BeatmapsetData data, DateTimeOffset now, int id)
+	{
+		return new BeatmapsetRecord
+		{
+			Id = id,
+			Fingerprint = data.Fingerprint,
+			Metadata = data.Metadata,
+			Assets = data.Assets,
+			CreatedAt = existing?.CreatedAt ?? now,
+			UpdatedAt = now,
+			Locked = existing?.Locked ?? false,
+			Visible = existing?.Visible ?? true,
+			Status = existing?.Status ?? BeatmapsetStatus.Ranked
+		};
 	}
 
 	/// <summary>Makes the row that stores a beatmapset, with the values it has now.</summary>

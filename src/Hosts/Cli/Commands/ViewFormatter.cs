@@ -53,14 +53,8 @@ public sealed class ViewFormatter(TimeZoneInfo zone)
 		{
 			var value = property.GetValue(view);
 			var label = Camel(property.Name);
-			if (value is null) fields.Add((label, "-"));
-			else if (IsScalar(value)) fields.Add((label, Scalar(label, value)));
-			else if (value is IEnumerable list and not string && Items(list) is { } items && items.All(IsScalar))
-				fields.Add((label, items.Count == 0 ? "-" : string.Join(", ", items.Select(item => Scalar(label, item)))));
-			else if (IsRef(value)) fields.Add((label, Ref(value)));
-			else if (value is IEnumerable sequence && Items(sequence) is { } rows && rows.All(IsRef))
-				fields.Add((label, rows.Count == 0 ? "-" : string.Join(", ", rows.Select(Ref))));
-			else nested.Add((label, value));
+			if (FieldText(label, value) is { } text) fields.Add((label, text));
+			else nested.Add((label, value!));
 		}
 
 		output.Fields(fields, indent);
@@ -70,6 +64,25 @@ public sealed class ViewFormatter(TimeZoneInfo zone)
 			if (value is IEnumerable sequence and not string) PrintTable(output, Items(sequence)!, indent + "  ");
 			else Print(output, value, indent + "  ");
 		}
+	}
+
+	private string? FieldText(string label, object? value)
+	{
+		if (value is null) return "-";
+		if (IsScalar(value)) return Scalar(label, value);
+		if (ScalarItems(value) is { } items) return items.Count == 0 ? "-" : string.Join(", ", items.Select(item => Scalar(label, item)));
+		if (IsRef(value)) return Ref(value);
+		return RefItems(value) is { } rows ? rows.Count == 0 ? "-" : string.Join(", ", rows.Select(Ref)) : null;
+	}
+
+	private static List<object>? ScalarItems(object value)
+	{
+		return value is IEnumerable list and not string && Items(list) is { } items && items.All(IsScalar) ? items : null;
+	}
+
+	private static List<object>? RefItems(object value)
+	{
+		return value is IEnumerable sequence && Items(sequence) is { } rows && rows.All(IsRef) ? rows : null;
 	}
 
 	/// <summary>Prints a list of views as a table.</summary>

@@ -40,23 +40,8 @@ internal sealed class BanchoLogin(
 		var ip = ClientAddress.Resolve(context);
 		if (!state.AcceptingLogins) return Fail(LoginFailureReason.ErrorOccurred, BanchoReplies.ServerStopping);
 
-		LoginRequestBody request;
-		ClientBuild build;
-		BanchoClient client;
-		try
-		{
-			request = LoginRequestBody.Parse(body);
-			build = ClientBuild.Parse(request.OsuVersion);
-			client = new BanchoClient(
-				new BanchoVersion(build.Date, build.Revision, (BanchoVersionStream)(byte)build.Stream),
-				new BanchoFingerprint(new Md5(request.ClientHash.OsuPathHash),
-					new NetworkAdapters { Adapters = request.ClientHash.Adapters, Hash = new Md5(request.ClientHash.AdaptersHash) },
-					new Md5(request.ClientHash.UninstallHash), new Md5(request.ClientHash.DiskSignatureHash)));
-		}
-		catch (Exception ex) when (ex is FormatException or ArgumentException)
-		{
+		if (!TryParse(body, out var request, out var build, out var client))
 			return Fail(LoginFailureReason.ErrorOccurred);
-		}
 
 		var ipKey = $"login-fail:{ip}";
 		var pairKey = $"{ipKey}:{request.Username.ToLowerInvariant()}";
@@ -64,8 +49,7 @@ internal sealed class BanchoLogin(
 		using var attempt = attempts.TryReserve(ipKey, pairKey, rules.Login.MaxAttempts, rules.Login.Window);
 		if (attempt is null) return Fail(LoginFailureReason.AuthenticationFailed, BanchoReplies.TooManyAttempts);
 
-		if (registry.Online.Values.SelectMany(user => user.Connections)
-			    .Count(connection => connection.IsOpen && Equals(connection.Session.Ip, ip)) >= rules.Connections.PerIp)
+		if (CountOpenConnections(ip) >= rules.Connections.PerIp)
 			return Fail(LoginFailureReason.ErrorOccurred, BanchoReplies.TooManyConnections);
 
 		var type = build.Stream == ClientStream.Tourney ? ConnectionType.Tourney : ConnectionType.Osu;
@@ -82,23 +66,52 @@ internal sealed class BanchoLogin(
 
 		if (result.Connection is not { } connection)
 		{
-			if (result.Failure is LoginFailure.UnknownUser or LoginFailure.WrongPassword)
-			{
-				attempt.Keep();
-			}
-
-			return result.Failure switch
-			{
-				LoginFailure.PasswordResetRequired => Fail(LoginFailureReason.PasswordReset),
-				LoginFailure.AlreadyOnline => Fail(LoginFailureReason.AuthenticationFailed, BanchoReplies.AlreadyOnline),
-				LoginFailure.NoTourneyPermission => Fail(LoginFailureReason.AuthenticationFailed,
-					BanchoReplies.NoTourneyPermission),
-				_ => Fail(LoginFailureReason.AuthenticationFailed)
-			};
+			if (result.Failure is LoginFailure.UnknownUser or LoginFailure.WrongPassword) attempt.Keep();
+			return FailureReply(result.Failure);
 		}
 
 		if (request.BlockNonFriendDms) connection.User.ScopeTo(connection).Profile.SetPmPrivate(true);
 		return (connection.Token, await WelcomeAsync(connection, cancellationToken));
+	}
+
+	private static bool TryParse(byte[] body, out LoginRequestBody request, out ClientBuild build, out BanchoClient client)
+	{
+		try
+		{
+			request = LoginRequestBody.Parse(body);
+			build = ClientBuild.Parse(request.OsuVersion);
+			client = new BanchoClient(
+				new BanchoVersion(build.Date, build.Revision, (BanchoVersionStream)(byte)build.Stream),
+				new BanchoFingerprint(new Md5(request.ClientHash.OsuPathHash),
+					new NetworkAdapters { Adapters = request.ClientHash.Adapters, Hash = new Md5(request.ClientHash.AdaptersHash) },
+					new Md5(request.ClientHash.UninstallHash), new Md5(request.ClientHash.DiskSignatureHash)));
+			return true;
+		}
+		catch (Exception ex) when (ex is FormatException or ArgumentException)
+		{
+			request = null!;
+			build = null!;
+			client = null!;
+			return false;
+		}
+	}
+
+	private int CountOpenConnections(System.Net.IPAddress? ip)
+	{
+		return registry.Online.Values.SelectMany(user => user.Connections)
+			.Count(connection => connection.IsOpen && Equals(connection.Session.Ip, ip));
+	}
+
+	private static (string Token, byte[] Reply) FailureReply(LoginFailure? failure)
+	{
+		return failure switch
+		{
+			LoginFailure.PasswordResetRequired => Fail(LoginFailureReason.PasswordReset),
+			LoginFailure.AlreadyOnline => Fail(LoginFailureReason.AuthenticationFailed, BanchoReplies.AlreadyOnline),
+			LoginFailure.NoTourneyPermission => Fail(LoginFailureReason.AuthenticationFailed,
+				BanchoReplies.NoTourneyPermission),
+			_ => Fail(LoginFailureReason.AuthenticationFailed)
+		};
 	}
 
 	private async Task<byte[]> WelcomeAsync(Connection connection, CancellationToken cancellationToken)

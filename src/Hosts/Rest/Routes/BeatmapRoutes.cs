@@ -189,12 +189,17 @@ internal static class BeatmapRoutes
 		if (request.Status is { } status && !Enum.IsDefined(status)) return Api.Invalid("status is not valid.");
 
 		var scoped = beatmapsets.Of(set).ScopeTo(context.Connection());
-		var ct = context.RequestAborted;
+		if (await ApplyPatchAsync(scoped, request, context.RequestAborted) is { } refusal) return refusal;
+
+		return Api.Ok(SetView.Of(set), "Updated successfully");
+	}
+
+	private static async Task<IResult?> ApplyPatchAsync(ScopedBeatmapset scoped, PatchSetRequest request, CancellationToken ct)
+	{
 		if (request.Status is { } s && await scoped.SetStatusAsync(s, ct) is { IsOk: false } a) return a.Refusal();
 		if (request.Visible is { } v && await scoped.SetVisibleAsync(v, ct) is { IsOk: false } b) return b.Refusal();
 		if (request.Locked is { } l && await scoped.SetLockedAsync(l, ct) is { IsOk: false } c) return c.Refusal();
-
-		return Api.Ok(SetView.Of(set), "Updated successfully");
+		return null;
 	}
 
 	private static async Task<IResult> SetFileAsync(HttpContext context, int id, IBeatmapsetRepository sets,
