@@ -5,6 +5,7 @@ using Basil.Application.Users.Connections;
 using Basil.Application.Multiplayer.Runtime;
 using Basil.Application.Multiplayer.Runtime.Events;
 using Basil.Application.Multiplayer.Runtime.Rooms;
+using Basil.Domain.Auth;
 using Basil.Domain.Multiplayer;
 using Basil.Domain.Users;
 using Basil.Testing;
@@ -352,6 +353,28 @@ public sealed class ScopedLobbyTests
 			UserPermissionsGroups.Default | UserPermissions.RoomManageAny));
 
 		Assert.True(await app.Lobby.ScopeTo(manager).CanViewAsync(match, TestContext.Current.CancellationToken));
+	}
+
+	[Fact]
+	public async Task CanViewAsync_APlayerWhoLeftAPrivateOpenRoom_LosesTheViewWhileItStaysOpen()
+	{
+		using var app = new TestApplication();
+		var creator = await app.LoginAsync(await app.CreateUserAsync("Creator", "password"), ConnectionType.Osu);
+		var (room, result) = await OpenAsync(app, creator);
+		Assert.True(result.IsOk);
+		Assert.True((await room!.ScopeTo(creator).Settings.ConfigureAsync(new RoomSettingsChange(IsPrivate: true),
+			TestContext.Current.CancellationToken)).IsOk);
+		var player = await RoomFixture.PlayerAsync(app, "Player");
+		Assert.True((await room.ScopeTo(player).Members.JoinAsync("", TestContext.Current.CancellationToken)).IsOk);
+		Assert.True((await room.ScopeTo(player).Members.LeaveAsync(TestContext.Current.CancellationToken)).IsOk);
+		// The stored history shows the join (the store's copy of the room can say it is visible).
+		await app.Provider.GetRequiredService<IMatchEventRepository>().RecordAsync(
+			new MatchEvent(room.Match, MatchEventType.PlayerJoined, app.Clock.GetUtcNow(), null, player.Record),
+			TestContext.Current.CancellationToken);
+		Assert.True(await app.Provider.GetRequiredService<IMatchRepository>().IsVisibleToAsync(room.Match, player.Record,
+			TestContext.Current.CancellationToken), "precondition: the stored history shows the player");
+
+		Assert.False(await app.Lobby.ScopeTo(player).CanViewAsync(room.Match, TestContext.Current.CancellationToken));
 	}
 
 	[Fact]
