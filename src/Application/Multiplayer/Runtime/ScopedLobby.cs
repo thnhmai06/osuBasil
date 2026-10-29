@@ -199,7 +199,7 @@ public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
 
 		// An open room is judged by its live privacy: the copy of the flag in a caller's record or in the store can lag
 		// behind a change. Participants who left an open room see it again once it closes.
-		if (Lobby.Find(match.Id) is { IsClosed: false } room)
+		if (OpenRoomOf(match) is { } room)
 			return !room.Settings.IsPrivate
 			       || Require(UserPermissions.RoomManageViewPrivate) is null
 			       || TakesPartInOpenRoom(match);
@@ -213,8 +213,14 @@ public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
 	/// <summary>Tells whether the user manages the match's open room or sits in it, which the stored history may not show yet.</summary>
 	private bool TakesPartInOpenRoom(MatchRecord match)
 	{
-		return Lobby.Find(match.Id) is { } room
+		return OpenRoomOf(match) is { } room
 		       && (room.Authority.IsManagedBy(By.Record) || room.Slots.Find(By.Record) is not null);
+	}
+
+	/// <summary>Finds the open room that runs a match: a room's id is not its match's id.</summary>
+	private Room? OpenRoomOf(MatchRecord match)
+	{
+		return Lobby.Rooms.Values.FirstOrDefault(room => !room.IsClosed && room.Match.Id == match.Id);
 	}
 
 	/// <summary>Starts watching the multiplayer lobby.</summary>
