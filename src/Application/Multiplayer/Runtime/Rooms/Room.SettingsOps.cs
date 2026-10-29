@@ -36,12 +36,7 @@ public sealed partial class Room
 
 			if (Rounds.InProgress) return RoomOutcome.InProgress;
 
-			if ((change.Name is { } newName && !MatchData.IsValidName(newName)) ||
-			    change.Size is < 1 or > RoomSlots.MaxSlotCount || change is { ClearBeatmap: true, Beatmap: not null } ||
-			    (change.Mode is { } requestedMode && !Enum.IsDefined(requestedMode)) ||
-			    (change.TeamType is { } requestedTeamType && !Enum.IsDefined(requestedTeamType)) ||
-			    (change.WinCondition is { } requestedWinCondition && !Enum.IsDefined(requestedWinCondition)))
-				return RoomOutcome.InvalidSettings;
+			if (!AreValid(change)) return RoomOutcome.InvalidSettings;
 
 			if (change == new RoomSettingsChange()) return RoomOutcome.Ok;
 
@@ -52,46 +47,70 @@ public sealed partial class Room
 			if (change.Name is { } name) Match.Value.Name = name;
 
 			if (change.Password is { } password) Settings.Password = password;
-			if (change.Beatmap is not null || change.ClearBeatmap)
-			{
-				Settings.Beatmap = change.Beatmap;
-				foreach (var slot in Slots.Where(s => s.Status is RoomSlotStatus.Ready))
-					slot.SetStatus(RoomSlotStatus.NotReady);
-			}
-
-			if (change.Mode is { } newMode)
-			{
-				Settings.MatchSettings.Mods = Settings.MatchSettings.Mods.RemoveInvalidMods(newMode);
-				Settings.MatchSettings.Mode = newMode;
-				foreach (var slot in Slots.Where(s => s.Mods is not null))
-					slot.Mods = slot.Mods!.Value.RemoveInvalidMods(newMode);
-			}
-
+			ApplyBeatmap(change);
+			if (change.Mode is { } newMode) ApplyMode(newMode);
 			if (change.Freemods is { } newFreemods && newFreemods != Settings.MatchSettings.Freemods)
 				ApplyFreemods(newFreemods);
-			if (change.Mods is { } newMods)
-			{
-				Settings.MatchSettings.Mods = freemods ? newMods & GameModsGroups.SpeedChanging : newMods;
-				// Under freemod a seated caller keeps the rest of the mods as their own, as the osu! client expects.
-				if (freemods && by is BanchoConnection caller && Slots.Find(caller) is { } callerSlot)
-					callerSlot.Mods = newMods & ~GameModsGroups.SpeedChanging;
-			}
+			if (change.Mods is { } newMods) ApplyMods(by, newMods, freemods);
 
 			if (change.TeamType is { } teamType) ApplyTeamType(teamType);
 			if (change.WinCondition is { } winCondition) Settings.MatchSettings.WinCondition = winCondition;
 			if (change.Size is { } size) Slots.Resize(size);
 			if (change.IsPrivate is { } isPrivate) Match.Value.IsPrivate = isPrivate;
 
-			if (Rounds.Countdown is { StartsRound: true } &&
-			    (change.Beatmap is not null || change.ClearBeatmap || change.Mode is not null ||
-			     change.Mods is not null ||
-			     change.Freemods is not null || change.TeamType is not null || change.WinCondition is not null))
+			if (Rounds.Countdown is { StartsRound: true } && ChangesTheRound(change))
 				CancelCountdown(RoomCountdownCancelReason.SettingsChanged);
 
 			Emit(new RoomSettingsChanged(this, change with { Password = null },
 				change.Password is not null));
 			return RoomOutcome.Ok;
 		}
+	}
+
+	/// <summary>Tells whether every value of a change is one the room accepts.</summary>
+	private static bool AreValid(RoomSettingsChange change)
+	{
+		return !((change.Name is { } newName && !MatchData.IsValidName(newName)) ||
+		         change.Size is < 1 or > RoomSlots.MaxSlotCount || change is { ClearBeatmap: true, Beatmap: not null } ||
+		         (change.Mode is { } requestedMode && !Enum.IsDefined(requestedMode)) ||
+		         (change.TeamType is { } requestedTeamType && !Enum.IsDefined(requestedTeamType)) ||
+		         (change.WinCondition is { } requestedWinCondition && !Enum.IsDefined(requestedWinCondition)));
+	}
+
+	/// <summary>Selects or drops the beatmap; every ready player must ready up again for the new one.</summary>
+	private void ApplyBeatmap(RoomSettingsChange change)
+	{
+		if (change.Beatmap is null && !change.ClearBeatmap) return;
+
+		Settings.Beatmap = change.Beatmap;
+		foreach (var slot in Slots.Where(s => s.Status is RoomSlotStatus.Ready))
+			slot.SetStatus(RoomSlotStatus.NotReady);
+	}
+
+	/// <summary>Changes the mode and drops the mods, of the room and of every seated player, that the mode does not allow.</summary>
+	private void ApplyMode(GameMode newMode)
+	{
+		Settings.MatchSettings.Mods = Settings.MatchSettings.Mods.RemoveInvalidMods(newMode);
+		Settings.MatchSettings.Mode = newMode;
+		foreach (var slot in Slots.Where(s => s.Mods is not null))
+			slot.Mods = slot.Mods!.Value.RemoveInvalidMods(newMode);
+	}
+
+	/// <summary>Applies the room's mods; under freemod a seated caller keeps the rest of the mods as their own.</summary>
+	private void ApplyMods(Connection by, GameMods newMods, bool freemods)
+	{
+		Settings.MatchSettings.Mods = freemods ? newMods & GameModsGroups.SpeedChanging : newMods;
+		// Under freemod a seated caller keeps the rest of the mods as their own, as the osu! client expects.
+		if (freemods && by is BanchoConnection caller && Slots.Find(caller) is { } callerSlot)
+			callerSlot.Mods = newMods & ~GameModsGroups.SpeedChanging;
+	}
+
+	/// <summary>Tells whether a change alters the round that a countdown would start.</summary>
+	private static bool ChangesTheRound(RoomSettingsChange change)
+	{
+		return change.Beatmap is not null || change.ClearBeatmap || change.Mode is not null ||
+		       change.Mods is not null ||
+		       change.Freemods is not null || change.TeamType is not null || change.WinCondition is not null;
 	}
 
 	/// <summary>Applies the this's freemod setting to the this's own mods and every seated player.</summary>
