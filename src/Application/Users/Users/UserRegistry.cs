@@ -524,6 +524,16 @@ public sealed class UserRegistry
 		await _context.Sessions.WriteActivityAsync(batch, cancellationToken);
 	}
 
+	/// <summary>Deletes the sessions that ended longer ago than the server settings keep them; the moderation log is never touched.</summary>
+	/// <param name="cancellationToken">A token that cancels the operation.</param>
+	/// <returns>How many sessions were deleted.</returns>
+	/// <remarks>Run regularly; the server calls it on its own, so it needs no rights.</remarks>
+	public async Task<int> PurgeEndedSessionsAsync(CancellationToken cancellationToken = default)
+	{
+		var retention = (await _context.Settings.GetAsync(cancellationToken)).Sessions.RetentionPeriod;
+		return await _context.Sessions.DeleteEndedBeforeAsync(_context.Clock.GetUtcNow() - retention, cancellationToken);
+	}
+
 	/// <summary>Closes connections of kinds the user may no longer use.</summary>
 	/// <param name="user">The online user whose permissions or restrictions changed.</param>
 	internal void CloseDisallowed(User user)

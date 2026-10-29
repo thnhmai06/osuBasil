@@ -17,6 +17,7 @@ public sealed class EventQueue
 		Channel.CreateUnbounded<IEventDelivery>(new UnboundedChannelOptions { SingleReader = true });
 
 	private readonly ILogger<EventQueue> _logger;
+	private int _outstanding;
 
 	/// <summary>Creates an empty queue.</summary>
 	/// <param name="logger">The logger that reports a delivery that failed.</param>
@@ -25,11 +26,15 @@ public sealed class EventQueue
 		_logger = logger;
 	}
 
+	/// <summary>Gets how many deliveries are queued or being delivered.</summary>
+	public int Outstanding => Volatile.Read(ref _outstanding);
+
 	/// <summary>Adds a delivery behind the ones already waiting; returns at once.</summary>
 	/// <param name="delivery">The delivery to run.</param>
 	public void Enqueue(IEventDelivery delivery)
 	{
-		_deliveries.Writer.TryWrite(delivery);
+		Interlocked.Increment(ref _outstanding);
+		if (!_deliveries.Writer.TryWrite(delivery)) Interlocked.Decrement(ref _outstanding);
 	}
 
 	/// <summary>Delivers the queued events, and the ones queued later, until the server stops.</summary>
@@ -67,6 +72,10 @@ public sealed class EventQueue
 		catch (Exception exception)
 		{
 			_logger.LogError(exception, "An event could not be delivered");
+		}
+		finally
+		{
+			Interlocked.Decrement(ref _outstanding);
 		}
 	}
 }

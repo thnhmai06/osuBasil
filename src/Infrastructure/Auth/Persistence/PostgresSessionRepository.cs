@@ -130,6 +130,17 @@ internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseR
 	}
 
 	/// <inheritdoc />
+	public Task<int> DeleteEndedBeforeAsync(DateTimeOffset cutoff, CancellationToken cancellationToken = default)
+	{
+		var before = cutoff.ToUniversalTime();
+		return writer.WriteAsync(Root.Server, async (AuthDbContext context, CancellationToken token) =>
+			await context.Sessions.Where(row => !row.MustReauthenticate &&
+			                                    ((row.EndedAt != null && row.EndedAt < before) ||
+			                                     (row.EndedAt == null && row.ExpiresAt != null && row.ExpiresAt < before)))
+				.ExecuteDeleteAsync(token), cancellationToken);
+	}
+
+	/// <inheritdoc />
 	public async Task<bool> TakeReauthenticationAsync(UserRecord user, DeviceId device,
 		CancellationToken cancellationToken = default)
 	{

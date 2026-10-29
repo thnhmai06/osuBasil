@@ -10,6 +10,16 @@ internal sealed class Outbox
 	private readonly ConcurrentDictionary<Connection, ConcurrentQueue<byte[]>> _queues =
 		new(ReferenceEqualityComparer.Instance);
 
+	/// <summary>Occurs when a connection polls and takes what was queued for it.</summary>
+	public event Action<Connection>? Polled;
+
+	/// <summary>Tells whether packets are waiting for a connection.</summary>
+	/// <param name="connection">The connection.</param>
+	public bool HasPending(Connection connection)
+	{
+		return _queues.TryGetValue(connection, out var queue) && !queue.IsEmpty;
+	}
+
 	/// <summary>Builds the packets once and queues them for every open osu! client among the recipients.</summary>
 	/// <param name="recipients">The connections to deliver to; connections that are not osu! clients are skipped.</param>
 	/// <param name="write">Writes the packets.</param>
@@ -36,9 +46,15 @@ internal sealed class Outbox
 	/// <returns>The packets, concatenated in the order they were queued.</returns>
 	public byte[] Drain(Connection connection)
 	{
-		if (!_queues.TryGetValue(connection, out var queue)) return [];
+		if (!_queues.TryGetValue(connection, out var queue))
+		{
+			Polled?.Invoke(connection);
+			return [];
+		}
+
 		using var stream = new MemoryStream();
 		while (queue.TryDequeue(out var bytes)) stream.Write(bytes);
+		Polled?.Invoke(connection);
 		return stream.ToArray();
 	}
 

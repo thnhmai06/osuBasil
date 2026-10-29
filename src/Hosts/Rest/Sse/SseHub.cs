@@ -104,6 +104,23 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsR
 	/// <inheritdoc />
 	public Task StopAsync(CancellationToken cancellationToken)
 	{
+		Announce(false);
+		return Task.CompletedTask;
+	}
+
+	/// <summary>Stops taking new streams and makes the API answer new requests with 503, without touching the streams that are open.</summary>
+	public void StopAccepting()
+	{
+		_stopping = true;
+	}
+
+	/// <summary>
+	///     Tells every open stream that the server is going away with one final <c>server</c> event, at once and not at the
+	///     next second, and ends the streams.
+	/// </summary>
+	/// <param name="restarting">Whether the server comes back, which the event says as <c>restarting</c> or <c>shuttingDown</c>.</param>
+	public void Announce(bool restarting)
+	{
 		_stopping = true;
 		_timer?.Dispose();
 		Root[] roots;
@@ -112,15 +129,14 @@ public sealed class SseHub(TimeProvider clock, UserRegistry registry, ISettingsR
 			roots = [.. _roots.Values];
 		}
 
-		var final = Frame("server", null, "{\"shutdown\":true}"u8.ToArray());
+		var state = restarting ? "restarting" : "shuttingDown";
+		var final = Frame("server", null, Encoding.UTF8.GetBytes($"{{\"state\":\"{state}\"}}"));
 		foreach (var root in roots)
 		foreach (var stream in root.Streams.ToArray())
 		{
 			stream.Offer(final);
 			stream.Complete();
 		}
-
-		return Task.CompletedTask;
 	}
 
 	/// <summary>Gives an event to the root with a key; nothing happens when nobody follows it.</summary>

@@ -1,6 +1,7 @@
 using System.Globalization;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Users;
+using Basil.Host.Rest.Sse;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.Extensions.Logging;
 
@@ -12,10 +13,20 @@ namespace Basil.Host.Rest.Http;
 /// </summary>
 internal sealed class RestPipeline(RequestDelegate next)
 {
+	/// <summary>The seconds a client waits before it tries again while the server is stopping.</summary>
+	internal const string RetryAfterWhileStopping = "5";
+
 	/// <summary>Runs the steps for one request.</summary>
 	public async Task InvokeAsync(HttpContext context, UserRegistry registry, ISettingsRepository settings,
-		RateLimiter limiter, ILogger<RestPipeline> logger)
+		RateLimiter limiter, SseHub hub, ILogger<RestPipeline> logger)
 	{
+		if (hub.Stopping)
+		{
+			context.Response.Headers.RetryAfter = RetryAfterWhileStopping;
+			await Api.Error(StatusCodes.Status503ServiceUnavailable, "shuttingDown", "The server is shutting down.").ExecuteAsync(context);
+			return;
+		}
+
 		try
 		{
 			var authenticated = await context.AuthenticateAsync(registry);

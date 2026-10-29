@@ -91,7 +91,7 @@ public sealed class RuntimeSampler : IDisposable
 				{
 					version = RuntimeInformation.FrameworkDescription, os = RuntimeInformation.OSDescription,
 					build = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(),
-					uptimeSeconds = (long)(now - _started).TotalSeconds, cpus = Environment.ProcessorCount,
+					uptimeSeconds = (long)(now - _started).TotalSeconds, cpus = Environment.ProcessorCount, logsDropped = LogsDropped(),
 					environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production"
 				},
 				["exceptions"] = new { perSecond = (exceptions - _lastExceptions) / elapsed, total = exceptions, recent = _recent.ToArray() },
@@ -105,6 +105,9 @@ public sealed class RuntimeSampler : IDisposable
 			return _cache = result;
 		}
 	}
+
+	/// <summary>Gets or sets how the sample reads the number of log events dropped because the log queue was full.</summary>
+	public Func<long> LogsDropped { get; set; } = () => 0;
 
 	/// <summary>Forgets the counted exceptions and the list of recent ones.</summary>
 	public void ResetExceptions()

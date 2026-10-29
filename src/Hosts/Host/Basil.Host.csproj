@@ -55,20 +55,14 @@
 		<Content Include="..\..\..\assets\icon.png" Link="docs-site\icon.png">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
-		<Content Include="..\..\..\data\certs\basil.local.pfx" Link="Data\basil.local.pfx">
+		<Content Include="..\..\..\data\certs\basil.local.pfx" Link="Configurations\basil.local.pfx">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
 		<Content Include="..\..\..\assets\menu-banner.png" Link="Data\Menu\Banners\default-banner@2x.png">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
-		<!-- Lives under Data/ (see ConfigurationSetup.Configure in Host/ConfigurationSetup.cs) so it moves along with the
-		     rest of the server's persistent state when relocating a deployment. Already picked up as
-		     a Content item by the SDK's default globbing (it's just a normal file under the project
-		     directory); Update only adds the CopyToOutputDirectory metadata that globbing alone
-		     doesn't set. -->
-		<Content Update="Data\appsettings.json">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</Content>
+		<!-- The operator's files live in Configurations/ beside the executable (settings, schema, certificate, templates). -->
+		<Content Update="Configurations\**" CopyToOutputDirectory="PreserveNewest"/>
 		<Content Update="Data\Localizations\*.json">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
@@ -89,6 +83,11 @@
 		<PackageReference Include="Serilog.Sinks.Async"/>
 		<PackageReference Include="Serilog.Sinks.Console"/>
 		<PackageReference Include="Serilog.Sinks.File"/>
+		<PackageReference Include="Serilog.Sinks.OpenTelemetry"/>
+		<PackageReference Include="OpenTelemetry.Extensions.Hosting"/>
+		<PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol"/>
+		<PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore"/>
+		<PackageReference Include="OpenTelemetry.Instrumentation.Runtime"/>
 		<PackageReference Include="Velopack"/>
 		<PackageReference Include="XenoAtom.CommandLine"/>
 		<PackageReference Include="Makaretu.Dns.Multicast.New"/>

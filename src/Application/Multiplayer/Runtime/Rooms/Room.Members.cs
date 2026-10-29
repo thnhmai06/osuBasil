@@ -212,9 +212,9 @@ public sealed partial class Room
 	}
 
 	/// <summary>Closes the room, evicting its players and ending its round.</summary>
-	/// <param name="by">The user who closes the room.</param>
+	/// <param name="by">The user who closes the room, or <see langword="null" /> when the server closes it.</param>
 	/// <returns>Ok; a room that has closed already returns Ok and does nothing.</returns>
-	internal Result<RoomOutcome> Close(UserRecord by)
+	internal Result<RoomOutcome> Close(UserRecord? by)
 	{
 		lock (_sync)
 		{

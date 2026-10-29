@@ -342,6 +342,37 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 	}
 
 	[Fact]
+	public async Task Deleting_ended_sessions_keeps_active_ones_and_the_marks_of_devices_that_must_reauthenticate()
+	{
+		var user = await UserAsync();
+		var cancel = TestContext.Current.CancellationToken;
+		await RecordTokenAsync(user, FirstId, ConnectionType.Api, Hash);
+		await RecordTokenAsync(user, SecondId, ConnectionType.Irc, SHA([2]));
+		await RecordAsync(user, First, ThirdId);
+		await Sessions.EndAsync(user, FirstId, null, [ConnectionType.Api], Second, SessionEndReason.LoggedOut, false, cancel);
+		await Sessions.EndAsync(user, ThirdId, null, [ConnectionType.Osu], Second, SessionEndReason.Revoked, true, cancel);
+
+		var deleted = await Sessions.DeleteEndedBeforeAsync(Third, cancel);
+
+		Assert.Equal(1, deleted);
+		Assert.Null(await Sessions.GetAsync(user, FirstId, cancel));
+		Assert.NotNull(await Sessions.GetAsync(user, SecondId, cancel));
+		Assert.NotNull(await Sessions.GetAsync(user, ThirdId, cancel));
+	}
+
+	[Fact]
+	public async Task Deleting_ended_sessions_keeps_the_ones_that_ended_after_the_cutoff()
+	{
+		var user = await UserAsync();
+		var cancel = TestContext.Current.CancellationToken;
+		await RecordTokenAsync(user, FirstId, ConnectionType.Api, Hash);
+		await Sessions.EndAsync(user, FirstId, null, [ConnectionType.Api], Third, SessionEndReason.LoggedOut, false, cancel);
+
+		Assert.Equal(0, await Sessions.DeleteEndedBeforeAsync(Second, cancel));
+		Assert.NotNull(await Sessions.GetAsync(user, FirstId, cancel));
+	}
+
+	[Fact]
 	public async Task A_session_list_filters_by_state_and_kind()
 	{
 		var user = await UserAsync();

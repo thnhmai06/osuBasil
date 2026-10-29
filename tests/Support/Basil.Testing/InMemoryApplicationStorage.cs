@@ -289,6 +289,14 @@ internal sealed class InMemorySessionRepository : ISessionRepository
 		return Task.CompletedTask;
 	}
 
+	public Task<int> DeleteEndedBeforeAsync(DateTimeOffset cutoff, CancellationToken cancellationToken = default)
+	{
+		var deleted = _entries.RemoveAll(entry => !entry.MustReauthenticate &&
+		                                          (entry.EndedAt < cutoff ||
+		                                           (entry.EndedAt is null && _tokens.GetValueOrDefault(entry.Id).ExpiresAt < cutoff)));
+		return Task.FromResult(deleted);
+	}
+
 	public Task<bool> TakeReauthenticationAsync(UserRecord user, DeviceId device,
 		CancellationToken cancellationToken = default)
 	{
