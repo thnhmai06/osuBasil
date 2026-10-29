@@ -51,18 +51,26 @@ public sealed class ScopedUserCredentials(ScopedUser scoped)
 		await user.Credentials.ReplaceAsync(newPasswordHash, cancellationToken);
 		if (unchanged) return UserOutcome.Ok;
 
-		Guid? keep = scoped.IsSelf && !includeCurrent && scoped.By is ApiConnection api ? api.Session.Id : null;
-		await ScopedUserSessions.CloseCore(user, null, keep, SessionEndReason.CredentialsChanged, !scoped.IsSelf,
-			cancellationToken);
-		if (!scoped.IsSelf)
-			await user.Context.ModerationLog.AppendAsync(new ModerationData
-			{
-				Action = ModerationAction.ChangePassword,
-				By = scoped.By.Record,
-				Target = user.Record,
-				Timestamp = user.Context.Clock.GetUtcNow()
-			}, cancellationToken);
+		await ScopedUserSessions.CloseCore(user, null, SessionToKeep(includeCurrent), SessionEndReason.CredentialsChanged,
+			!scoped.IsSelf, cancellationToken);
+		if (!scoped.IsSelf) await LogChangeAsync(user, cancellationToken);
 
 		return UserOutcome.Ok;
+	}
+
+	private Guid? SessionToKeep(bool includeCurrent)
+	{
+		return scoped.IsSelf && !includeCurrent && scoped.By is ApiConnection api ? api.Session.Id : null;
+	}
+
+	private async Task LogChangeAsync(User user, CancellationToken cancellationToken)
+	{
+		await user.Context.ModerationLog.AppendAsync(new ModerationData
+		{
+			Action = ModerationAction.ChangePassword,
+			By = scoped.By.Record,
+			Target = user.Record,
+			Timestamp = user.Context.Clock.GetUtcNow()
+		}, cancellationToken);
 	}
 }

@@ -28,16 +28,28 @@ public sealed partial class Room
 			var stale = Slots.Find(by.Record)?.Player;
 			if (stale is not null && (ReferenceEquals(stale, by) || stale.IsOpen)) return RoomOutcome.AlreadySeated;
 
-			if (Members.Banned.Contains(by.Record)) return RoomOutcome.Banned;
-			if (joinDenied is { } denied) return denied;
-
-			if (RoomOf(by) is { } other && !ReferenceEquals(other, this)) return RoomOutcome.InAnotherRoom;
-			if (Members.Observers.Any(observer => observer.Record.Equals(by.Record))) return RoomOutcome.IsObserver;
-			if (!string.IsNullOrEmpty(Settings.Password) && Settings.Password != password && !managesAnyRoom)
-				return RoomOutcome.WrongPassword;
+			if (JoinRefusal(by, password, joinDenied, managesAnyRoom) is { } refusal) return refusal;
 
 			return TakeSeat(by, stale);
 		}
+	}
+
+	private Result<RoomOutcome>? JoinRefusal(BanchoConnection by, string password,
+		Result<RoomOutcome>? joinDenied, bool managesAnyRoom)
+	{
+		if (Members.Banned.Contains(by.Record)) return RoomOutcome.Banned;
+		if (joinDenied is { } denied) return denied;
+
+		if (RoomOf(by) is { } other && !ReferenceEquals(other, this)) return RoomOutcome.InAnotherRoom;
+		if (Members.Observers.Any(observer => observer.Record.Equals(by.Record))) return RoomOutcome.IsObserver;
+		if (WrongPassword(password, managesAnyRoom)) return RoomOutcome.WrongPassword;
+
+		return null;
+	}
+
+	private bool WrongPassword(string password, bool managesAnyRoom)
+	{
+		return !string.IsNullOrEmpty(Settings.Password) && Settings.Password != password && !managesAnyRoom;
 	}
 
 	/// <summary>Seats a connection on behalf of a manager, once the manager's rights were checked.</summary>

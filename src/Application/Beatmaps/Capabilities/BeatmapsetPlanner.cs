@@ -67,28 +67,8 @@ internal sealed class BeatmapsetPlanner(
 		var synced = new List<BeatmapData>(content.Difficulties.Count);
 
 		foreach (var difficulty in content.Difficulties)
-		{
-			var analysis = await analyser.AnalyseAsync(difficulty, stored[difficulty], cancellationToken);
-			var background = difficulty.Background is null ? null : backgrounds[difficulty.Background];
-			var sound = difficulty.Audio is null ? null : audio[difficulty.Audio];
-			var clip = difficulty.Video is null ? null : video[difficulty.Video];
-
-			synced.Add(new BeatmapData(
-				difficulty.OnlineId is > 0 ? difficulty.OnlineId : null,
-				hashes[difficulty],
-				new BeatmapMetadata
-				{
-					Version = difficulty.Version, Difficulty = analysis.Difficulty, Objects = analysis.Objects
-				},
-				new BeatmapAssets
-				{
-					HasStoryboard = difficulty.Storyboard,
-					BackgroundFile = background,
-					AudioFile = sound,
-					VideoFile = clip,
-					PreviewTime = difficulty.PreviewTime
-				}));
-		}
+			synced.Add(await SyncDifficultyAsync(difficulty, hashes[difficulty], stored[difficulty], backgrounds, audio,
+				video, cancellationToken));
 
 		var data = new BeatmapsetData(
 			existing is null && content.OnlineSetId is > 0 ? content.OnlineSetId : null,
@@ -99,6 +79,33 @@ internal sealed class BeatmapsetPlanner(
 
 		return new BeatmapsetPlan(archive, existing, data,
 			await matcher.TouchesLockedAsync(existing, content, hashes, stored, cancellationToken));
+	}
+
+	private async Task<BeatmapData> SyncDifficultyAsync(BeatmapsetDifficulty difficulty, Md5 hash,
+		BeatmapRecord? stored, IReadOnlyDictionary<BeatmapsetContentFile, string> backgrounds,
+		IReadOnlyDictionary<BeatmapsetContentFile, string> audio, IReadOnlyDictionary<BeatmapsetContentFile, string> video,
+		CancellationToken cancellationToken)
+	{
+		var analysis = await analyser.AnalyseAsync(difficulty, stored, cancellationToken);
+		var background = difficulty.Background is null ? null : backgrounds[difficulty.Background];
+		var sound = difficulty.Audio is null ? null : audio[difficulty.Audio];
+		var clip = difficulty.Video is null ? null : video[difficulty.Video];
+
+		return new BeatmapData(
+			difficulty.OnlineId is > 0 ? difficulty.OnlineId : null,
+			hash,
+			new BeatmapMetadata
+			{
+				Version = difficulty.Version, Difficulty = analysis.Difficulty, Objects = analysis.Objects
+			},
+			new BeatmapAssets
+			{
+				HasStoryboard = difficulty.Storyboard,
+				BackgroundFile = background,
+				AudioFile = sound,
+				VideoFile = clip,
+				PreviewTime = difficulty.PreviewTime
+			});
 	}
 
 	/// <summary>Describes a stored beatmapset as it is, with its archive's new fingerprint.</summary>

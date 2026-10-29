@@ -37,22 +37,14 @@ public sealed class ScopedBanchoConnection : Scoped<UserPermissions, Connection>
 
 		if (Require(UserPermissions.SpectatingWatch) is { } missing) return Result<ConnectionOutcome>.Denied(missing);
 
-		var relationships = await Host.Context.Relationships.ListAsync(Host.Record);
-		if (relationships.Any(relationship => relationship.Type == RelationshipType.Block &&
-		                                      relationship.Target.Equals(By.Record)) &&
-		    Require(UserPermissions.RoomObserve) is not null)
-			return ConnectionOutcome.Blocked;
+		if (await IsBlockedAsync()) return ConnectionOutcome.Blocked;
 
 		// Leave the previous host before entering this host's scope, so two spectator scopes are never held at once.
-		var previous = Host.Context.Registry.FindSpectating(By);
-		if (previous is not null && !ReferenceEquals(previous, Host)) previous.ScopeTo(By).StopSpectating();
+		LeavePreviousHost();
 
 		using var scope = Host.EnterSpectators();
 
-		if (!Host.IsOpen) return ConnectionOutcome.TargetOffline;
-		// The connection may have closed during the awaits above; check it again before the spectator is added.
-		if (!By.IsOpen) return ConnectionOutcome.Closed;
-		if (By.Record.Equals(Host.Record)) return ConnectionOutcome.Self;
+		if (SpectatorRefusal() is { } refusal) return refusal;
 		if (Host.Spectators.Contains(By))
 		{
 			Host.Context.Events.Publish(new UserSpectatorJoined(Host, By));
@@ -62,6 +54,29 @@ public sealed class ScopedBanchoConnection : Scoped<UserPermissions, Connection>
 		Host.MutableSpectators.Add(By);
 		Host.Context.Events.Publish(new UserSpectatorJoined(Host, By));
 		return ConnectionOutcome.Ok;
+	}
+
+	private async Task<bool> IsBlockedAsync()
+	{
+		var relationships = await Host.Context.Relationships.ListAsync(Host.Record);
+		return relationships.Any(relationship => relationship.Type == RelationshipType.Block &&
+		                                         relationship.Target.Equals(By.Record)) &&
+		       Require(UserPermissions.RoomObserve) is not null;
+	}
+
+	private void LeavePreviousHost()
+	{
+		var previous = Host.Context.Registry.FindSpectating(By);
+		if (previous is not null && !ReferenceEquals(previous, Host)) previous.ScopeTo(By).StopSpectating();
+	}
+
+	private ConnectionOutcome? SpectatorRefusal()
+	{
+		if (!Host.IsOpen) return ConnectionOutcome.TargetOffline;
+		// The connection may have closed during the awaits above; check it again before the spectator is added.
+		if (!By.IsOpen) return ConnectionOutcome.Closed;
+		if (By.Record.Equals(Host.Record)) return ConnectionOutcome.Self;
+		return null;
 	}
 
 	/// <summary>Stops this connection spectating this host.</summary>

@@ -118,6 +118,30 @@ public sealed class UserRegistry
 	public async Task<LoginResult> LoginAsync(LoginAttempt attempt, ConnectionType type, IPAddress ip,
 		BanchoClient? client, int utcOffset, CancellationToken cancellationToken = default)
 	{
+		ThrowIfInvalidLogin(type, client);
+
+		var (record, failure) = await _accounts.FindLoginUserAsync(attempt, cancellationToken);
+		if (failure is { } loginFailure) return LoginResult.Fail(loginFailure);
+		if (record is null) return LoginResult.Fail(LoginFailure.UnknownUser);
+
+		if (await NeedsReauthenticationAsync(record, client, cancellationToken))
+			return LoginResult.Fail(LoginFailure.PasswordResetRequired);
+
+		var now = _context.Clock.GetUtcNow();
+		var lifetime = (await _context.Settings.GetAsync(cancellationToken)).Sessions.ApiToken.Lifetime;
+		var token = NewToken();
+		var session = NewLoginSession(record, type, ip, client, now, lifetime, token);
+		var connection = NewConnection(session, token, utcOffset, lifetime);
+
+		var openFailure = Open(connection, await ActiveRestrictionsAsync(record, cancellationToken));
+		if (openFailure is not null) return LoginResult.Fail(openFailure.Value);
+
+		_ = _context.Sessions.RecordAsync(session, CancellationToken.None);
+		return LoginResult.Success(connection);
+	}
+
+	private static void ThrowIfInvalidLogin(ConnectionType type, BanchoClient? client)
+	{
 		type.ThrowIfUndefined();
 		switch (type)
 		{
@@ -128,20 +152,20 @@ public sealed class UserRegistry
 			case ConnectionType.Osu or ConnectionType.Tourney when client is null:
 				throw new ArgumentNullException(nameof(client), "An osu! client login must report its client.");
 		}
+	}
 
-		var (record, failure) = await _accounts.FindLoginUserAsync(attempt, cancellationToken);
-		if (failure is { } loginFailure) return LoginResult.Fail(loginFailure);
-		if (record is null) return LoginResult.Fail(LoginFailure.UnknownUser);
+	private async Task<bool> NeedsReauthenticationAsync(UserRecord record, BanchoClient? client,
+		CancellationToken cancellationToken)
+	{
+		return client is not null && await _context.Sessions.TakeReauthenticationAsync(record,
+			new DeviceId(client.Fingerprint.UninstallHash.HashValue, client.Fingerprint.DiskSignatureHash.HashValue),
+			cancellationToken);
+	}
 
-		if (client is not null && await _context.Sessions.TakeReauthenticationAsync(record,
-			    new DeviceId(client.Fingerprint.UninstallHash.HashValue, client.Fingerprint.DiskSignatureHash.HashValue),
-			    cancellationToken))
-			return LoginResult.Fail(LoginFailure.PasswordResetRequired);
-
-		var now = _context.Clock.GetUtcNow();
-		var lifetime = (await _context.Settings.GetAsync(cancellationToken)).Sessions.ApiToken.Lifetime;
-		var token = NewToken();
-		var session = new Session
+	private static Session NewLoginSession(UserRecord record, ConnectionType type, IPAddress ip, BanchoClient? client,
+		DateTimeOffset now, TimeSpan lifetime, string token)
+	{
+		return new Session
 		{
 			Id = Guid.NewGuid(),
 			User = record,
@@ -152,13 +176,6 @@ public sealed class UserRegistry
 			TokenHash = type is ConnectionType.Api ? HashToken(token) : null,
 			ExpiresAt = type is ConnectionType.Api ? now + lifetime : null
 		};
-		var connection = NewConnection(session, token, utcOffset, lifetime);
-
-		var openFailure = Open(connection, await ActiveRestrictionsAsync(record, cancellationToken));
-		if (openFailure is not null) return LoginResult.Fail(openFailure.Value);
-
-		_ = _context.Sessions.RecordAsync(session, CancellationToken.None);
-		return LoginResult.Success(connection);
 	}
 
 	/// <summary>Opens a connection for the HTTP API token or IRC key a client presents.</summary>
@@ -185,28 +202,53 @@ public sealed class UserRegistry
 			throw new ArgumentException("Only an API token or an IRC key opens a connection.", nameof(type));
 
 		var now = _context.Clock.GetUtcNow();
-		if (_connections.GetValueOrDefault(token) is { IsOpen: true } open && open.Type == type)
-		{
-			if (accepts?.Invoke(open.Record) == false) return LoginResult.Fail(LoginFailure.InvalidToken);
-
-			if (open.Session.ExpiresAt <= now)
-			{
-				Close(open, SessionEndReason.TimedOut);
-				return LoginResult.Fail(LoginFailure.InvalidToken);
-			}
-
-			MarkActive(open);
-			return LoginResult.Success(open);
-		}
+		if (ReuseOpenConnection(type, token, accepts, now) is { } reused) return reused;
 
 		var stored = await _context.Sessions.FindByTokenAsync(type, HashToken(token), now, cancellationToken);
 		var record = stored is null ? null : await _context.Users.GetAsync(stored.UserId, cancellationToken);
-		if (stored is null || record is null) return LoginResult.Fail(LoginFailure.InvalidToken);
-		if (record.Value.DeletedAt is not null) return LoginResult.Fail(LoginFailure.AccountDeleted);
-		if (accepts?.Invoke(record) == false) return LoginResult.Fail(LoginFailure.InvalidToken);
+		if (StoredTokenRefusal(stored, record, accepts) is { } refusal) return LoginResult.Fail(refusal);
 
 		var lifetime = (await _context.Settings.GetAsync(cancellationToken)).Sessions.ApiToken.Lifetime;
-		var session = new Session
+		var session = ResumedSession(stored!, record!, type, ip, token);
+		var connection = NewConnection(session, token, 0, lifetime);
+
+		var restrictions = await ActiveRestrictionsAsync(record!, cancellationToken);
+		if (OpenUnlessRaced(token, connection, restrictions) is { } settled) return settled;
+
+		MarkActive(connection);
+		return LoginResult.Success(connection);
+	}
+
+	private LoginResult? ReuseOpenConnection(ConnectionType type, string token, Func<UserRecord, bool>? accepts,
+		DateTimeOffset now)
+	{
+		if (_connections.GetValueOrDefault(token) is not { IsOpen: true } open || open.Type != type) return null;
+
+		if (accepts?.Invoke(open.Record) == false) return LoginResult.Fail(LoginFailure.InvalidToken);
+
+		if (open.Session.ExpiresAt <= now)
+		{
+			Close(open, SessionEndReason.TimedOut);
+			return LoginResult.Fail(LoginFailure.InvalidToken);
+		}
+
+		MarkActive(open);
+		return LoginResult.Success(open);
+	}
+
+	private static LoginFailure? StoredTokenRefusal(StoredSession? stored, UserRecord? record,
+		Func<UserRecord, bool>? accepts)
+	{
+		if (stored is null || record is null) return LoginFailure.InvalidToken;
+		if (record.Value.DeletedAt is not null) return LoginFailure.AccountDeleted;
+		if (accepts?.Invoke(record) == false) return LoginFailure.InvalidToken;
+		return null;
+	}
+
+	private static Session ResumedSession(StoredSession stored, UserRecord record, ConnectionType type, IPAddress ip,
+		string token)
+	{
+		return new Session
 		{
 			Id = stored.Id,
 			User = record,
@@ -217,9 +259,10 @@ public sealed class UserRegistry
 			TokenHash = HashToken(token),
 			ExpiresAt = stored.ExpiresAt
 		};
-		var connection = NewConnection(session, token, 0, lifetime);
+	}
 
-		var restrictions = await ActiveRestrictionsAsync(record, cancellationToken);
+	private LoginResult? OpenUnlessRaced(string token, Connection connection, IReadOnlyList<UserRestriction> restrictions)
+	{
 		using (Enter())
 		{
 			// Another request may have brought the same token in while this one read the database.
@@ -229,8 +272,7 @@ public sealed class UserRegistry
 			if (failure is not null) return LoginResult.Fail(failure.Value);
 		}
 
-		MarkActive(connection);
-		return LoginResult.Success(connection);
+		return null;
 	}
 
 	private Connection NewConnection(Session session, string token, int utcOffset, TimeSpan lifetime)

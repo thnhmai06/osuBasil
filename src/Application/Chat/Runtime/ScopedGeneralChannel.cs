@@ -1,5 +1,6 @@
 using Basil.Application.Common;
 using Basil.Application.Users.Connections;
+using Basil.Domain.Chat;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
 
@@ -39,15 +40,8 @@ public sealed class ScopedGeneralChannel : Scoped<UserPermissions, Connection>
 			if (Channel.IsClosed) return ChannelOutcome.Closed;
 			var target = Channel.Record.Value;
 
-			if (change.ReadPrivileges is { } readPrivileges) readPrivileges.ThrowIfUndefined();
-			if (change.WritePrivileges is { } writePrivileges) writePrivileges.ThrowIfUndefined();
-			change.Topic?.ThrowIfHasNul();
-
-			if (change.Topic is { } topic) target.Topic = topic;
-			if (change.ReadPrivileges is { } read) target.ReadPrivileges = read;
-			if (change.WritePrivileges is { } write) target.WritePrivileges = write;
-			if (change.AutoJoin is { } autoJoin) target.AutoJoin = autoJoin;
-			if (change.Visible is { } visible) target.Visible = visible;
+			Validate(change);
+			Apply(target, change);
 
 			var now = Channel.Context.Clock.GetUtcNow();
 			var removed = Channel.Members.Where(member => !Channel.CanRead(member, now)).ToArray();
@@ -71,5 +65,21 @@ public sealed class ScopedGeneralChannel : Scoped<UserPermissions, Connection>
 		Channel.Close();
 		await Channel.Context.Channels.DeleteAsync(Channel.Record, cancellationToken);
 		return ChannelOutcome.Ok;
+	}
+
+	private static void Validate(GeneralChannelChange change)
+	{
+		if (change.ReadPrivileges is { } readPrivileges) readPrivileges.ThrowIfUndefined();
+		if (change.WritePrivileges is { } writePrivileges) writePrivileges.ThrowIfUndefined();
+		change.Topic?.ThrowIfHasNul();
+	}
+
+	private static void Apply(GeneralChannelData target, GeneralChannelChange change)
+	{
+		if (change.Topic is { } topic) target.Topic = topic;
+		if (change.ReadPrivileges is { } read) target.ReadPrivileges = read;
+		if (change.WritePrivileges is { } write) target.WritePrivileges = write;
+		if (change.AutoJoin is { } autoJoin) target.AutoJoin = autoJoin;
+		if (change.Visible is { } visible) target.Visible = visible;
 	}
 }

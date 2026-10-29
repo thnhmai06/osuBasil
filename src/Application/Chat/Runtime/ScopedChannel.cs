@@ -96,23 +96,29 @@ public sealed class ScopedChannel : Scoped<UserPermissions, Connection>
 		var now = Channel.Context.Clock.GetUtcNow();
 		if (!Channel.CanWrite(By, now)) return ChannelOutcome.AccessDenied;
 
-		if (Channel is PmChannel pm)
-		{
-			if (!Rights.Allows(UserPermissions.ChatManageMessageAnyone))
-			{
-				var relationships = await Channel.Context.Relationships.ListAsync(pm.Owner.Record, cancellationToken);
-				var blocked = relationships.Any(relationship =>
-					relationship.Type == RelationshipType.Block && relationship.Target.Equals(By.Record));
-				var friend = relationships.Any(relationship =>
-					relationship.Type == RelationshipType.Friend && relationship.Target.Equals(By.Record));
-				if (blocked || (pm.Owner.PmPrivate && !friend)) return ChannelOutcome.Blocked;
-			}
-
-			if (!pm.Owner.Record.IsBasilBot() && !pm.Owner.EffectivePermissions(now).Allows(UserPermissions.ChatPostPrivate))
-				return ChannelOutcome.TargetSilenced;
-		}
+		if (Channel is PmChannel pm && await PrivateMessageRefusalAsync(pm, now, cancellationToken) is { } refusal)
+			return refusal;
 
 		Channel.PostMessage(By.Record, text, notice, now, By);
 		return ChannelOutcome.Ok;
+	}
+
+	private async Task<ChannelOutcome?> PrivateMessageRefusalAsync(PmChannel pm, DateTimeOffset now,
+		CancellationToken cancellationToken)
+	{
+		if (!Rights.Allows(UserPermissions.ChatManageMessageAnyone))
+		{
+			var relationships = await Channel.Context.Relationships.ListAsync(pm.Owner.Record, cancellationToken);
+			var blocked = relationships.Any(relationship =>
+				relationship.Type == RelationshipType.Block && relationship.Target.Equals(By.Record));
+			var friend = relationships.Any(relationship =>
+				relationship.Type == RelationshipType.Friend && relationship.Target.Equals(By.Record));
+			if (blocked || (pm.Owner.PmPrivate && !friend)) return ChannelOutcome.Blocked;
+		}
+
+		if (!pm.Owner.Record.IsBasilBot() && !pm.Owner.EffectivePermissions(now).Allows(UserPermissions.ChatPostPrivate))
+			return ChannelOutcome.TargetSilenced;
+
+		return null;
 	}
 }

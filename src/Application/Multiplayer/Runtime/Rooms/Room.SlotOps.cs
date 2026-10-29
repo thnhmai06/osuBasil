@@ -59,27 +59,38 @@ public sealed partial class Room
 			var seated = Slots.Where(s => s.Player is not null)
 				.ToDictionary(s => s.Player!.Record, s => s.Capture());
 			var named = arrangement.Where(e => e.Player is not null).Select(e => e.Player!).ToList();
-			if (arrangement.Any(e =>
-				    e.Index is < 1 or > RoomSlots.MaxSlotCount || (e.Player is not null && e.Locked)) ||
-			    arrangement.DistinctBy(e => e.Index).Count() != arrangement.Count ||
-			    named.Count != seated.Count || !seated.Keys.ToHashSet().SetEquals(named))
-				return RoomOutcome.InvalidSettings;
+			if (!IsValidArrangement(arrangement, seated, named)) return RoomOutcome.InvalidSettings;
 
-			foreach (var slot in Slots)
-				slot.Clear();
-
-			foreach (var entry in arrangement)
-			{
-				var slot = Slots.At(entry.Index)!;
-				slot.Locked = entry.Locked;
-				if (entry.Player is null) continue;
-
-				slot.Restore(seated[entry.Player]);
-				if (entry.Team is { } team && Settings.MatchSettings.TeamType.IsTeamMode()) slot.Team = team;
-			}
+			ApplyArrangement(arrangement, seated);
 
 			Emit(new RoomSlotsArranged(this));
 			return RoomOutcome.Ok;
+		}
+	}
+
+	private static bool IsValidArrangement(IReadOnlyList<SlotArrangement> arrangement,
+		Dictionary<UserRecord, RoomSlotState> seated, List<UserRecord> named)
+	{
+		return !(arrangement.Any(e =>
+			         e.Index is < 1 or > RoomSlots.MaxSlotCount || (e.Player is not null && e.Locked)) ||
+		         arrangement.DistinctBy(e => e.Index).Count() != arrangement.Count ||
+		         named.Count != seated.Count || !seated.Keys.ToHashSet().SetEquals(named));
+	}
+
+	private void ApplyArrangement(IReadOnlyList<SlotArrangement> arrangement,
+		Dictionary<UserRecord, RoomSlotState> seated)
+	{
+		foreach (var slot in Slots)
+			slot.Clear();
+
+		foreach (var entry in arrangement)
+		{
+			var slot = Slots.At(entry.Index)!;
+			slot.Locked = entry.Locked;
+			if (entry.Player is null) continue;
+
+			slot.Restore(seated[entry.Player]);
+			if (entry.Team is { } team && Settings.MatchSettings.TeamType.IsTeamMode()) slot.Team = team;
 		}
 	}
 

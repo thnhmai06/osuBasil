@@ -59,24 +59,24 @@ public sealed record UserQuery(
 		});
 
 		return new UserQuery(keywords, countries, permissions, deleted);
+	}
 
-		static bool TryParseCountries(string rawValue, out IReadOnlyList<Country> parsedCountries)
+	private static bool TryParseCountries(string rawValue, out IReadOnlyList<Country> parsedCountries)
+	{
+		parsedCountries = [];
+		if (rawValue.Length == 0 || rawValue.Length % 2 != 0) return false;
+
+		var parsed = new List<Country>(rawValue.Length / 2);
+		for (var i = 0; i < rawValue.Length; i += 2)
 		{
-			parsedCountries = [];
-			if (rawValue.Length == 0 || rawValue.Length % 2 != 0) return false;
-
-			var parsed = new List<Country>(rawValue.Length / 2);
-			for (var i = 0; i < rawValue.Length; i += 2)
-			{
-				if (!char.IsAsciiLetter(rawValue[i]) || !char.IsAsciiLetter(rawValue[i + 1])
-				                                     || !Enum.TryParse<Country>(rawValue.AsSpan(i, 2), true,
-					                                     out var country)) return false;
-				parsed.Add(country);
-			}
-
-			parsedCountries = parsed;
-			return true;
+			if (!char.IsAsciiLetter(rawValue[i]) || !char.IsAsciiLetter(rawValue[i + 1])
+			                                     || !Enum.TryParse<Country>(rawValue.AsSpan(i, 2), true,
+				                                     out var country)) return false;
+			parsed.Add(country);
 		}
+
+		parsedCountries = parsed;
+		return true;
 	}
 
 	/// <summary>Reads a query written in the user search syntax.</summary>
