@@ -5,51 +5,18 @@ using Basil.Application.Servers.Runtime;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Users;
 using Basil.Host.Rest.Http;
+using Basil.Host.Shared.Views;
 
 namespace Basil.Host.Rest.Routes;
 
 /// <summary>The server settings, announcements and screenshots.</summary>
 internal static class ContentRoutes
 {
-	/// <summary>The settings categories and how each one is read and replaced.</summary>
-	private static readonly Dictionary<string, (Func<ServerSettings, object> Get, Func<ServerSettings, JsonNode, ServerSettings> Apply)>
-		Categories = new(StringComparer.OrdinalIgnoreCase)
-		{
-			["general"] = Category(s => s.General, (s, v) => s with { General = v }),
-			["locks"] = Category(s => LocksView.Of(s.Locks), (s, v) => s with { Locks = v.ToLocks() }),
-			["sessions"] = Category(s => s.Sessions, (s, v) => s with { Sessions = v }),
-			["rateLimits"] = Category(s => s.RateLimits, (s, v) => s with { RateLimits = v }),
-			["uploads"] = Category(s => s.Uploads, (s, v) => s with { Uploads = v }),
-			["beatmaps"] = Category(s => s.Beatmaps, (s, v) => s with { Beatmaps = v }),
-			["multiplayer"] = Category(s => s.Multiplayer, (s, v) => s with { Multiplayer = v }),
-			["bot"] = Category(s => s.Bot, (s, v) => s with { Bot = v }),
-			["cors"] = Category(s => s.Cors, (s, v) => s with { Cors = v })
-		};
-
-	/// <summary>The locks as one flag each.</summary>
-	public sealed record LocksView(bool Accounts, bool Rooms, bool Beatmapsets, bool Profiles)
-	{
-		public static LocksView Of(Locks locks)
-		{
-			return new LocksView(locks.HasFlag(Locks.Accounts), locks.HasFlag(Locks.Rooms),
-				locks.HasFlag(Locks.Beatmapsets), locks.HasFlag(Locks.Profiles));
-		}
-
-		public Locks ToLocks()
-		{
-			return (Accounts ? Locks.Accounts : 0) | (Rooms ? Locks.Rooms : 0) | (Beatmapsets ? Locks.Beatmapsets : 0) |
-			       (Profiles ? Locks.Profiles : 0);
-		}
-	}
-
 	/// <summary>The body of an announcement; no recipients means everyone.</summary>
 	public sealed record AnnounceRequest(string? Text, int[]? To);
 
 	/// <summary>The answer to an announcement.</summary>
 	public sealed record AnnounceResponse(int Sent);
-
-	/// <summary>A stored screenshot.</summary>
-	public sealed record ScreenshotView(string Id);
 
 	public static void MapContent(this RouteGroupBuilder v1)
 	{
@@ -68,32 +35,26 @@ internal static class ContentRoutes
 		screenshots.MapDelete("/{id}", DeleteScreenshotAsync).WithSummary("Delete a screenshot.");
 	}
 
-	private static (Func<ServerSettings, object>, Func<ServerSettings, JsonNode, ServerSettings>) Category<T>(
-		Func<ServerSettings, T> get, Func<ServerSettings, T, ServerSettings> set)
-	{
-		return (s => get(s)!, (s, node) => set(s, node.Deserialize<T>(Api.Json)!));
-	}
-
 	private static async Task<IResult> GetAllAsync(HttpContext context, Server server)
 	{
 		var (result, settings) = await server.ScopeTo(context.Connection()).Settings.GetAsync(context.RequestAborted);
 		return result.IsOk
-			? Api.Ok(Categories.ToDictionary(c => c.Key, c => c.Value.Get(settings!)))
+			? Api.Ok(SettingsCategories.GetAll(settings!))
 			: result.Refusal();
 	}
 
 	private static async Task<IResult> GetCategoryAsync(HttpContext context, string category, Server server)
 	{
-		if (!Categories.TryGetValue(category, out var entry)) return Api.NotFound("No such settings category.");
+		if (!SettingsCategories.Exists(category)) return Api.NotFound("No such settings category.");
 
 		var (result, settings) = await server.ScopeTo(context.Connection()).Settings.GetAsync(context.RequestAborted);
-		return result.IsOk ? Api.Ok(entry.Get(settings!)) : result.Refusal();
+		return result.IsOk ? Api.Ok(SettingsCategories.Get(category, settings!)) : result.Refusal();
 	}
 
 	private static async Task<IResult> PatchCategoryAsync(HttpContext context, string category, JsonObject patch,
 		Server server)
 	{
-		if (!Categories.TryGetValue(category, out var entry)) return Api.NotFound("No such settings category.");
+		if (!SettingsCategories.Exists(category)) return Api.NotFound("No such settings category.");
 
 		var scoped = server.ScopeTo(context.Connection()).Settings;
 		var (read, current) = await scoped.GetAsync(context.RequestAborted);
@@ -101,29 +62,15 @@ internal static class ContentRoutes
 
 		try
 		{
-			var merged = JsonSerializer.SerializeToNode(entry.Get(current!), Api.Json)!;
-			Merge(merged, patch);
-			var changed = entry.Apply(current!, merged);
+			var changed = SettingsCategories.Patch(category, current!, patch);
 			var stored = await scoped.UpdateAsync(changed, context.RequestAborted);
-			return stored.IsOk ? Api.Ok(entry.Get(changed), "Updated successfully") : stored.Refusal();
+			return stored.IsOk ? Api.Ok(SettingsCategories.Get(category, changed), "Updated successfully") : stored.Refusal();
 		}
 		catch (Exception ex) when (ex is ArgumentException or JsonException or InvalidOperationException
 			                           or FormatException)
 		{
 			return Api.Invalid("The settings are not valid.");
 		}
-	}
-
-	/// <summary>Merges a patch into a node the way JSON merge patch does: objects merge, anything else replaces.</summary>
-	private static void Merge(JsonNode target, JsonObject patch)
-	{
-		if (target is not JsonObject targetObject) return;
-
-		foreach (var (key, value) in patch)
-			if (value is JsonObject nested && targetObject[key] is JsonObject existing)
-				Merge(existing, nested);
-			else
-				targetObject[key] = value?.DeepClone();
 	}
 
 	private static async Task<IResult> AnnounceAsync(HttpContext context, AnnounceRequest request, Server server,

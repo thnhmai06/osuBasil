@@ -64,7 +64,7 @@ public sealed class ScopedRoom : Scoped<RoomPermissions, Connection>
 
 	private static (UserPermissions Global, RoomRoles Roles, RoomPermissions Rights) Snapshot(Room room, Connection by)
 	{
-		var global = by.User.EffectivePermissions(room.Context.Clock.GetUtcNow());
+		var global = by.EffectivePermissions(room.Context.Clock.GetUtcNow());
 		var roles = ComputeRoles(room, by);
 
 		// Managing every room acts with the creator's authority, joined or not; a restriction cannot suspend it,

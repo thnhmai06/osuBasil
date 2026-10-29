@@ -18,7 +18,7 @@ public sealed class ScopedUser : Scoped<UserPermissions, Connection>
 	/// <param name="user">The account to scope.</param>
 	/// <param name="by">The connection acting on the account.</param>
 	internal ScopedUser(User user, Connection by) : base(by,
-		by.User.EffectivePermissions(user.Context.Clock.GetUtcNow()))
+		by.EffectivePermissions(user.Context.Clock.GetUtcNow()))
 	{
 		User = user;
 		Granted = by.User.Record.Value.Permissions;
@@ -58,7 +58,7 @@ public sealed class ScopedUser : Scoped<UserPermissions, Connection>
 	internal bool IsSelf => By.Record.Equals(User.Record);
 
 	/// <summary>Whether the caller's granted permissions strictly outrank the target's.</summary>
-	internal bool Outranks => Granted.Allows(User.Record.Value.Permissions) && Granted != User.Record.Value.Permissions;
+	internal bool Outranks => By.Outranks(Granted, User.Record.Value.Permissions);
 
 	/// <summary>Checks the required permission and account hierarchy.</summary>
 	/// <param name="needed">The permission required.</param>

@@ -1,6 +1,12 @@
 using Basil.Host;
+using Basil.Host.Cli.Shutdown;
 
-if (OfflineRunner.Handles(args)) return await OfflineRunner.RunAsync(args);
+if (ShellRunner.IsCommand(args)) return await ShellRunner.RunAsync(args);
 
-await HostApplication.Create(args).RunAsync();
-return 0;
+var app = HostApplication.Create(args);
+await app.RunAsync();
+var control = app.Services.GetRequiredService<ShutdownController>();
+if (control is { RestartRequested: true } && !Restarter.UnderManager())
+    Restarter.Start(args);
+
+return control.ExitCode;

@@ -32,12 +32,13 @@ public sealed class OfflineRunnerTests(RestHostFixture fixture)
 		{
 			var args = new[] { "users", "create", "--username", "FirstAdmin", "--password", "s3cret", "--admin" };
 
-			var created = await OfflineRunner.RunAsync(args, b => b.Configuration.AddInMemoryCollection(Settings(connection, root)));
+			var text = new StringWriter();
+			var created = await ShellRunner.RunAsync(args, b => b.Configuration.AddInMemoryCollection(Settings(connection, root)), text);
 			var again = await OfflineRunner.RunAsync(args, b => b.Configuration.AddInMemoryCollection(Settings(connection, root)));
 			var missing = await OfflineRunner.RunAsync(["users", "create", "--username", "NoPassword"],
 				b => b.Configuration.AddInMemoryCollection(Settings(connection, root)));
 
-			Assert.Equal(0, created);
+			Assert.True(created == 0, text.ToString());
 			Assert.Equal(1, again);
 			Assert.NotEqual(0, missing);
 

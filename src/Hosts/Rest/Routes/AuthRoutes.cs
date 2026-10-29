@@ -42,7 +42,7 @@ internal static class AuthRoutes
 	}
 
 	private static async Task<IResult> LoginAsync(HttpContext context, LoginRequest request, UserRegistry registry,
-		ISettingsRepository settings, RateLimiter limiter)
+		ISettingsRepository settings, LoginAttemptGuard attempts)
 	{
 		if (string.IsNullOrEmpty(request.Username) || string.IsNullOrEmpty(request.Password))
 			return Api.Invalid("username and password are required.");
@@ -51,8 +51,8 @@ internal static class AuthRoutes
 		var ip = context.Ip();
 		var ipKey = $"login-fail:{ip}";
 		var pairKey = $"{ipKey}:{request.Username.ToLowerInvariant()}";
-		if (limiter.Count(ipKey, rules.Window) >= rules.MaxAttempts * 4 ||
-		    limiter.Count(pairKey, rules.Window) >= rules.MaxAttempts)
+		using var reservation = attempts.TryReserve(ipKey, pairKey, rules.MaxAttempts, rules.Window);
+		if (reservation is null)
 		{
 			context.Response.Headers.RetryAfter = ((int)rules.Lockout.TotalSeconds).ToString();
 			return Api.Error(StatusCodes.Status429TooManyRequests, "rateLimited", "Too many attempts.");
@@ -64,8 +64,7 @@ internal static class AuthRoutes
 		{
 			if (result.Failure is LoginFailure.UnknownUser or LoginFailure.WrongPassword)
 			{
-				limiter.Record(ipKey);
-				limiter.Record(pairKey);
+				reservation.Keep();
 			}
 
 			return Api.Error(StatusCodes.Status401Unauthorized, "invalidCredentials",

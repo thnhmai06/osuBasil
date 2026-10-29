@@ -5,17 +5,13 @@ using Basil.Application.Multiplayer.Runtime;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 using Basil.Host.Rest.Http;
-using Basil.Host.Rest.Routes;
+using Basil.Host.Shared.Views;
 
 namespace Basil.Host.Rest.Sse;
 
 /// <summary>Match reports: the list for managers and the live report of one match.</summary>
 internal static class MatchRoutes
 {
-	/// <summary>A match as the API shows it.</summary>
-	public sealed record MatchView(int Id, string Name, bool IsPrivate, DateTimeOffset StartedAt, DateTimeOffset? EndedAt,
-		RoomRoutes.UserRef Creator);
-
 	/// <summary>The full report of a match: the match and its entries in time order.</summary>
 	public sealed record ReportView(MatchView Match, IReadOnlyList<object> Entries);
 
@@ -32,17 +28,6 @@ internal static class MatchRoutes
 				""");
 	}
 
-	private static RoomRoutes.UserRef Ref(Domain.Users.UserRecord user)
-	{
-		return new RoomRoutes.UserRef(user.Id, user.Value.Name);
-	}
-
-	private static MatchView ViewOf(MatchRecord match)
-	{
-		return new MatchView(match.Id, match.Value.Name, match.Value.IsPrivate, match.Value.StartedAt,
-			match.Value.EndedAt, Ref(match.Value.Creator));
-	}
-
 	private static async Task<IResult> ListAsync(HttpContext context, string? query, int? offset, int? limit, Lobby lobby)
 	{
 		var (page, error) = Targets.Paging(offset, limit);
@@ -51,7 +36,7 @@ internal static class MatchRoutes
 		var (result, found) = await lobby.ScopeTo(context.Connection()).ListMatchesAsync(
 			MatchQuery.Parse(query ?? string.Empty), page!, context.RequestAborted);
 		return result.IsOk
-			? Api.Paged(new Page<MatchView>([.. found!.Items.Select(ViewOf)], found.Total), page!)
+			? Api.Paged(new Page<MatchView>([.. found!.Items.Select(MatchView.Of)], found.Total), page!)
 			: result.Refusal();
 	}
 
@@ -79,8 +64,8 @@ internal static class MatchRoutes
 			case MatchEvent e:
 				return new
 				{
-					type = "event", eventType = e.Type, timestamp = e.Timestamp, actor = e.Actor is null ? null : Ref(e.Actor),
-					target = e.Target is null ? null : Ref(e.Target), detail = e.Detail
+					type = "event", eventType = e.Type, timestamp = e.Timestamp, actor = e.Actor is null ? null : UserRef.Of(e.Actor),
+					target = e.Target is null ? null : UserRef.Of(e.Target), detail = e.Detail
 				};
 			default:
 				throw new InvalidOperationException("Unknown match entry.");
@@ -108,7 +93,7 @@ internal static class MatchRoutes
 			var current = await reports.GetAsync(match, token);
 			var list = new List<object>();
 			foreach (var entry in current.Records.OrderBy(r => r.Timestamp)) list.Add(await EntryOf(entry, roundScores, token));
-			return (new ReportView(ViewOf(match), list), list.Count == 0 ? null : (list.Count - 1).ToString());
+			return (new ReportView(MatchView.Of(match), list), list.Count == 0 ? null : (list.Count - 1).ToString());
 		}
 
 		if (match.Value.EndedAt is not null)

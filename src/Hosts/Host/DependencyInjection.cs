@@ -1,6 +1,7 @@
 using Basil.Application.Anticheat;
 using Basil.Application.Anticheat.Runtime;
 using Basil.Host.Bancho;
+using Basil.Host.Cli;
 using Basil.Host.Irc;
 using Basil.Host.Rest;
 using Basil.Infrastructure.Auth;
@@ -107,6 +108,7 @@ public static class DependencyInjection
 		services.AddBanchoHost();
 		services.AddIrcHost();
 		services.AddRestHost();
+		services.AddCliFeeds();
 		services.AddMediator(options =>
 		{
 			options.ServiceLifetime = ServiceLifetime.Singleton;

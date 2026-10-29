@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Basil.Application.Common;
 using Basil.Domain.Users;
+using Basil.Host.Shared;
 
 namespace Basil.Host.Rest.Http;
 
@@ -32,10 +33,7 @@ public sealed record PageMeta(int Offset, int Limit, int Total);
 public static class Api
 {
 	/// <summary>The serializer options of the API: camelCase, enums as camelCase strings.</summary>
-	public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
-	{
-		Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
-	};
+	public static readonly JsonSerializerOptions Json = ApiJson.Options;
 
 	/// <summary>The largest page a client may ask for.</summary>
 	public const int MaxLimit = 100;

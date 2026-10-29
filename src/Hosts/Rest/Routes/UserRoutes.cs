@@ -7,6 +7,7 @@ using Basil.Domain.Auth;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
 using Basil.Host.Rest.Http;
+using Basil.Host.Shared.Views;
 using Basil.Host.Rest.Sse;
 using Basil.Application.Auth.Persistence;
 
@@ -15,17 +16,6 @@ namespace Basil.Host.Rest.Routes;
 /// <summary>Accounts, their sessions, friends, blocks and restrictions.</summary>
 internal static class UserRoutes
 {
-	/// <summary>An account as the API shows it.</summary>
-	public sealed record UserView(int Id, string Name, string Country, ulong Permissions, ulong EffectivePermissions,
-		IReadOnlyList<RestrictionView>? Restrictions);
-
-	/// <summary>A restriction as the API shows it.</summary>
-	public sealed record RestrictionView(int Id, ulong Permissions, DateTimeOffset StartsAt, DateTimeOffset? EndsAt);
-
-	/// <summary>A session as the API shows it.</summary>
-	public sealed record SessionView(Guid Id, ConnectionType Type, string Ip, string? ClientInfo,
-		DateTimeOffset StartedAt, DateTimeOffset LastActiveAt, DateTimeOffset? EndedAt, SessionEndReason? EndReason);
-
 	/// <summary>The fields of an account that can change; absent fields stay as they are.</summary>
 	public sealed record PatchUserRequest(string? Name, string? Country, string? Away, bool? PmPrivate,
 		ulong? Permissions);
@@ -111,28 +101,13 @@ internal static class UserRoutes
 			.WithSummary("End a restriction and remove it from the history.");
 	}
 
-	private static UserView ViewOf(UserRegistry registry, UserRecord record, TimeProvider clock,
-		IReadOnlyList<UserRestriction>? restrictions = null)
-	{
-		var user = registry.Of(record);
-		var now = clock.GetUtcNow();
-		return new UserView(record.Id, record.Value.Name, record.Value.Country.ToAcronym().ToLowerInvariant(),
-			(ulong)record.Value.Permissions, (ulong)user.EffectivePermissions(now),
-			restrictions is null ? null : [.. restrictions.Where(r => r.Value.IsActive(now)).Select(RestrictionOf)]);
-	}
-
-	private static RestrictionView RestrictionOf(UserRestriction r)
-	{
-		return new RestrictionView(r.Id, (ulong)r.Value.Permissions, r.Value.StartsAt, r.Value.EndsAt);
-	}
-
 	private static async Task<IResult> GetAsync(int id, IUserRepository users, IRestrictionRepository restrictions,
 		UserRegistry registry, TimeProvider clock, CancellationToken cancellationToken)
 	{
 		var record = await users.GetAsync(id, cancellationToken);
 		return record is null || record.Value.DeletedAt is not null
 			? Api.NotFound("No such user.")
-			: Api.Ok(ViewOf(registry, record, clock, await restrictions.ListAsync(record, cancellationToken)));
+			: Api.Ok(UserView.Of(registry, record, clock, await restrictions.ListAsync(record, cancellationToken)));
 	}
 
 	private static async Task<IResult> RestrictionsAsync(int id, IUserRepository users, IRestrictionRepository restrictions,
@@ -141,7 +116,7 @@ internal static class UserRoutes
 		var record = await users.GetAsync(id, cancellationToken);
 		if (record is null || record.Value.DeletedAt is not null) return Api.NotFound("No such user.");
 
-		return Api.Ok((await restrictions.ListAsync(record, cancellationToken)).Select(RestrictionOf).ToList());
+		return Api.Ok((await restrictions.ListAsync(record, cancellationToken)).Select(RestrictionView.Of).ToList());
 	}
 
 	private static async Task<IResult> SearchAsync(string? query, int? offset, int? limit, IUserRepository users,
@@ -151,7 +126,7 @@ internal static class UserRoutes
 		if (error is not null) return error;
 
 		var found = await users.ListAsync(UserQuery.Parse(query ?? string.Empty), page!, cancellationToken);
-		return Api.Paged(new Page<UserView>([.. found.Items.Select(u => ViewOf(registry, u, clock))], found.Total), page!);
+		return Api.Paged(new Page<UserView>([.. found.Items.Select(u => UserView.Of(registry, u, clock))], found.Total), page!);
 	}
 
 	private static async Task<IResult> CreateAsync(HttpContext context, CreateUserRequest request, UserRegistry registry,
@@ -169,7 +144,7 @@ internal static class UserRoutes
 
 		var (record, result) = await registry.ScopeTo(context.Connection()).CreateAccountAsync(data,
 			new Md5(Encoding.UTF8.GetBytes(request.Password)), context.RequestAborted);
-		return result.IsOk ? Api.Created(ViewOf(registry, record!, clock)) : result.Refusal();
+		return result.IsOk ? Api.Created(UserView.Of(registry, record!, clock)) : result.Refusal();
 	}
 
 	private static async Task<IResult> PatchAsync(HttpContext context, int id, PatchUserRequest request,
@@ -196,7 +171,7 @@ internal static class UserRoutes
 		    await scoped.Permissions.SetAsync((UserPermissions)permissions, ct) is { IsOk: false } set)
 			return set.Refusal();
 
-		return Api.Ok(ViewOf(registry, scoped.User.Record, clock), "Updated successfully");
+		return Api.Ok(UserView.Of(registry, scoped.User.Record, clock), "Updated successfully");
 	}
 
 	private static async Task<IResult> PasswordAsync(HttpContext context, int id, PasswordRequest request)
@@ -260,12 +235,7 @@ internal static class UserRoutes
 		var (result, sessions) = await scoped.Sessions.ListAsync(page!, sessionState.Value, kinds, context.RequestAborted);
 		if (!result.IsOk) return result.Refusal();
 
-		return Api.Paged(new Page<SessionView>([.. sessions!.Items.Select(SessionOf)], sessions.Total), page!);
-	}
-
-	private static SessionView SessionOf(SessionEntry s)
-	{
-		return new SessionView(s.Id, s.Type, s.Ip.ToString(), s.ClientInfo, s.StartedAt, s.LastActiveAt, s.EndedAt, s.EndReason);
+		return Api.Paged(new Page<SessionView>([.. sessions!.Items.Select(SessionView.Of)], sessions.Total), page!);
 	}
 
 	private static async Task<IResult> GetSessionAsync(HttpContext context, int id, Guid sid)
@@ -273,7 +243,7 @@ internal static class UserRoutes
 		if (await context.ScopeAsync(id) is not { } scoped) return Api.NotFound("No such user.");
 
 		var (result, session) = await scoped.Sessions.GetAsync(sid, context.RequestAborted);
-		return result.IsOk ? Api.Ok(SessionOf(session!)) : result.Refusal();
+		return result.IsOk ? Api.Ok(SessionView.Of(session!)) : result.Refusal();
 	}
 
 	private static async Task<IResult> CloseSessionAsync(HttpContext context, int id, Guid sid)
@@ -305,7 +275,7 @@ internal static class UserRoutes
 		if (await context.ScopeAsync(id) is not { } scoped) return Api.NotFound("No such user.");
 
 		var (result, list) = await scoped.Relationships.FriendsAsync(context.RequestAborted);
-		return result.IsOk ? Api.Ok(list.Select(Brief).ToList()) : result.Refusal();
+		return result.IsOk ? Api.Ok(list.Select(UserRef.Of).ToList()) : result.Refusal();
 	}
 
 	private static async Task<IResult> BlocksAsync(HttpContext context, int id)
@@ -313,12 +283,7 @@ internal static class UserRoutes
 		if (await context.ScopeAsync(id) is not { } scoped) return Api.NotFound("No such user.");
 
 		var (result, list) = await scoped.Relationships.BlocksAsync(context.RequestAborted);
-		return result.IsOk ? Api.Ok(list.Select(Brief).ToList()) : result.Refusal();
-	}
-
-	private static object Brief(UserRecord u)
-	{
-		return new { u.Id, u.Value.Name };
+		return result.IsOk ? Api.Ok(list.Select(UserRef.Of).ToList()) : result.Refusal();
 	}
 
 	private static async Task<IResult> RelationAsync(HttpContext context, int id, int otherId,
@@ -338,7 +303,7 @@ internal static class UserRoutes
 
 		var (result, restriction) = await scoped.Restrictions.RestrictAsync((UserPermissions)request.Permissions,
 			request.EndsAt, request.Reason, context.RequestAborted);
-		return result.IsOk ? Api.Created(RestrictionOf(restriction!)) : result.Refusal();
+		return result.IsOk ? Api.Created(RestrictionView.Of(restriction!)) : result.Refusal();
 	}
 
 	private static async Task<IResult> LiftAsync(HttpContext context, int id, int rid, IRestrictionRepository repo)

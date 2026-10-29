@@ -16,7 +16,7 @@ public sealed class ScopedLobby : Scoped<UserPermissions, Connection>
 	/// <param name="lobby">The lobby to scope.</param>
 	/// <param name="by">The connection acting on the lobby.</param>
 	internal ScopedLobby(Lobby lobby, Connection by)
-		: base(by, by.User.EffectivePermissions(lobby.Context.Clock.GetUtcNow()))
+		: base(by, by.EffectivePermissions(lobby.Context.Clock.GetUtcNow()))
 	{
 		Lobby = lobby;
 	}

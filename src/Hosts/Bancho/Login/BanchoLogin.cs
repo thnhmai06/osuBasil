@@ -22,7 +22,7 @@ internal sealed class BanchoLogin(
 	IUserStatsRepository statsRepository,
 	ISettingsRepository settings,
 	Outbox outbox,
-	RateLimiter limiter,
+	LoginAttemptGuard attempts,
 	BanchoState state,
 	TimeProvider clock)
 {
@@ -60,9 +60,9 @@ internal sealed class BanchoLogin(
 
 		var ipKey = $"login-fail:{ip}";
 		var pairKey = $"{ipKey}:{request.Username.ToLowerInvariant()}";
-		if (limiter.Count(ipKey, rules.Login.Window) >= rules.Login.MaxAttempts * 4 ||
-		    limiter.Count(pairKey, rules.Login.Window) >= rules.Login.MaxAttempts)
-			return Fail(LoginFailureReason.AuthenticationFailed, BanchoReplies.TooManyAttempts);
+		// The attempt is reserved before the check and stays counted only for wrong credentials.
+		using var attempt = attempts.TryReserve(ipKey, pairKey, rules.Login.MaxAttempts, rules.Login.Window);
+		if (attempt is null) return Fail(LoginFailureReason.AuthenticationFailed, BanchoReplies.TooManyAttempts);
 
 		if (registry.Online.Values.SelectMany(user => user.Connections)
 			    .Count(connection => connection.IsOpen && Equals(connection.Session.Ip, ip)) >= rules.Connections.PerIp)
@@ -84,8 +84,7 @@ internal sealed class BanchoLogin(
 		{
 			if (result.Failure is LoginFailure.UnknownUser or LoginFailure.WrongPassword)
 			{
-				limiter.Record(ipKey);
-				limiter.Record(pairKey);
+				attempt.Keep();
 			}
 
 			return result.Failure switch

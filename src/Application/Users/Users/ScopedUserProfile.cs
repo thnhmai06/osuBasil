@@ -9,10 +9,10 @@ public sealed class ScopedUserProfile(ScopedUser scoped)
 {
 	/// <summary>Sets or clears the away message other users see.</summary>
 	/// <param name="message">The away message, or <see langword="null" /> or white space to clear it.</param>
-	/// <returns><see langword="true" /> if this connection belongs to this user and the message was set.</returns>
+	/// <returns><see langword="true" /> if this connection belongs to this user (or is the operator's) and the message was set.</returns>
 	public bool SetAway(string? message)
 	{
-		if (!ReferenceEquals(scoped.By.User, scoped.User)) return false;
+		if (!ReferenceEquals(scoped.By.User, scoped.User) && scoped.By is not OperatorConnection) return false;
 
 		scoped.User.Profile.SetAway(message);
 		return true;
@@ -23,7 +23,7 @@ public sealed class ScopedUserProfile(ScopedUser scoped)
 	/// <returns><see langword="true" /> if this connection belongs to this user and the setting was set.</returns>
 	public bool SetPmPrivate(bool pmPrivate)
 	{
-		if (!ReferenceEquals(scoped.By.User, scoped.User)) return false;
+		if (!ReferenceEquals(scoped.By.User, scoped.User) && scoped.By is not OperatorConnection) return false;
 
 		scoped.User.Profile.SetPmPrivate(pmPrivate);
 		return true;

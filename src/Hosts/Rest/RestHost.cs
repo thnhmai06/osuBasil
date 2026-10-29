@@ -16,6 +16,7 @@ public static class RestHost
 	public static IServiceCollection AddRestHost(this IServiceCollection services)
 	{
 		services.AddSingleton<RateLimiter>();
+		services.AddSingleton<LoginAttemptGuard>();
 		services.AddSingleton<RuntimeSampler>(sp => new RuntimeSampler(sp.GetRequiredService<TimeProvider>()));
 		services.AddHostedService<DiagnosticsStarter>();
 		services.AddSingleton<SseHub>();

@@ -37,9 +37,11 @@ public sealed class RuntimeSampler : IDisposable
 		_started = clock.GetUtcNow();
 		_lastSample = _started;
 		AppDomain.CurrentDomain.FirstChanceException += OnException;
+		// The meter must exist before the listener starts, or its own creation would hide the instrument from the listener.
+		var duration = BasilMeter.HttpDuration;
 		_listener.InstrumentPublished = (instrument, listener) =>
 		{
-			if (ReferenceEquals(instrument, BasilMeter.HttpDuration)) listener.EnableMeasurementEvents(instrument);
+			if (ReferenceEquals(instrument, duration)) listener.EnableMeasurementEvents(instrument);
 		};
 		_listener.SetMeasurementEventCallback<double>(OnDuration);
 		_listener.Start();
@@ -141,6 +143,8 @@ public sealed class RuntimeSampler : IDisposable
 			if (tag.Key == "host") host = tag.Value?.ToString() ?? host;
 			else if (tag.Key == "status") status = tag.Value?.ToString() ?? status;
 
+		// Whoever calls the meter, the windows stay bounded to the known labels.
+		if (!HostLabels.All.Contains(host)) host = HostLabels.Other;
 		_hosts.GetOrAdd(host, _ => new HostWindow()).Add(value, status);
 	}
 

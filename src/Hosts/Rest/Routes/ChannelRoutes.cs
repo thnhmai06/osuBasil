@@ -4,16 +4,13 @@ using Basil.Application.Servers.Runtime;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
 using Basil.Host.Rest.Http;
+using Basil.Host.Shared.Views;
 
 namespace Basil.Host.Rest.Routes;
 
 /// <summary>Management of the general channels; chat itself is not part of this API.</summary>
 internal static class ChannelRoutes
 {
-	/// <summary>A general channel as the API shows it; the privileges are bitmasks.</summary>
-	public sealed record ChannelView(string Name, string Topic, byte ReadPrivileges, byte WritePrivileges, bool AutoJoin,
-		bool Visible);
-
 	/// <summary>A new general channel.</summary>
 	public sealed record CreateChannelRequest(string? Name, string? Topic, byte? ReadPrivileges, byte? WritePrivileges,
 		bool? AutoJoin, bool? Visible);
@@ -32,16 +29,9 @@ internal static class ChannelRoutes
 		channels.MapDelete("/{name}", DeleteAsync).WithSummary("Delete a general channel.");
 	}
 
-	private static ChannelView ViewOf(GeneralChannelRecord record)
-	{
-		var value = record.Value;
-		return new ChannelView(record.Name, value.Topic, (byte)value.ReadPrivileges, (byte)value.WritePrivileges,
-			value.AutoJoin, value.Visible);
-	}
-
 	private static IResult List(HttpContext context, GeneralChannelRegistry registry)
 	{
-		return Api.Ok(registry.VisibleTo(context.Connection()).OrderBy(c => c.Name).Select(c => ViewOf(c.Record)).ToList());
+		return Api.Ok(registry.VisibleTo(context.Connection()).OrderBy(c => c.Name).Select(c => ChannelView.Of(c.Record)).ToList());
 	}
 
 	private static async Task<IResult> CreateAsync(HttpContext context, CreateChannelRequest request, Server server)
@@ -70,7 +60,7 @@ internal static class ChannelRoutes
 		}
 
 		var result = await server.ScopeTo(context.Connection()).Channels.CreateAsync(record, context.RequestAborted);
-		return result.IsOk ? Api.Created(ViewOf(record)) : result.Refusal();
+		return result.IsOk ? Api.Created(ChannelView.Of(record)) : result.Refusal();
 	}
 
 	private static async Task<IResult> PatchAsync(HttpContext context, string name, PatchChannelRequest request,
@@ -84,7 +74,7 @@ internal static class ChannelRoutes
 			var result = await scoped.ConfigureAsync(new GeneralChannelChange(request.Topic,
 				(UserPrivileges?)request.ReadPrivileges, (UserPrivileges?)request.WritePrivileges, request.AutoJoin,
 				request.Visible), context.RequestAborted);
-			return result.IsOk ? Api.Ok(ViewOf(channel.Record), "Updated successfully") : result.Refusal();
+			return result.IsOk ? Api.Ok(ChannelView.Of(channel.Record), "Updated successfully") : result.Refusal();
 		}
 		catch (ArgumentException)
 		{
