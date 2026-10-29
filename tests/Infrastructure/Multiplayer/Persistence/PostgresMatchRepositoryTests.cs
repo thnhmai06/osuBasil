@@ -150,7 +150,8 @@ public sealed class PostgresMatchRepositoryTests(PersistenceFixture container) :
 
 		var rows = await StoredRows.WaitForAsync(ConnectionString, "select name, ended_at from matches where id = @id",
 			new Dictionary<string, object?> { ["@id"] = match.Id },
-			rows => rows.Count == 1 && rows[0].Text("name") == "renamed_match" && rows[0].Instant("ended_at") == Second,
+			rows => rows.Count == 1 && rows[0].Text("name") == "renamed_match" && rows[0].Values["ended_at"] is not null &&
+				rows[0].Instant("ended_at") == Second,
 			"the stored match", TestContext.Current.CancellationToken);
 
 		Assert.Single(rows);
