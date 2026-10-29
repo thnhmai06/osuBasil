@@ -77,7 +77,8 @@ public sealed class PostgresRoundRepositoryTests(PersistenceFixture container) :
 
 		var rows = await StoredRows.WaitForAsync(ConnectionString, "select ended_at from rounds where match_id = @id",
 			new Dictionary<string, object?> { ["@id"] = match.Id },
-			rows => rows.Count == 1 && rows[0].Instant("ended_at") == Second, "the end of the round",
+			rows => rows.Count == 1 && rows[0].Values["ended_at"] is not null && rows[0].Instant("ended_at") == Second,
+			"the end of the round",
 			TestContext.Current.CancellationToken);
 
 		Assert.Equal(Second, Assert.Single(rows).Instant("ended_at"));
