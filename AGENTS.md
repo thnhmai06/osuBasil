@@ -301,10 +301,11 @@ Run Basil locally:
 dotnet run --project src/Hosts/Host
 ```
 
-Run all tests:
+Run every test project listed in `Basil.slnx`, one at a time; never pass the solution to `dotnet test`:
 
 ```bash
-dotnet test
+dotnet test tests/Domain -c Release --nologo -v q
+dotnet test tests/Application/Users -c Release --nologo -v q
 ```
 
 Run one test project (the test tree mirrors `src/`):
@@ -320,25 +321,20 @@ dotnet test tests/Application/Users \
   --filter "FullyQualifiedName~<TestClassName>"
 ```
 
-While the hosts and host tests are not migrated (see the migration status under [Architecture](#architecture)),
-verify a change with the projects that do build, one at a time:
+Verify a change with the whole solution in Release, then run the affected test projects one at a time:
 
 ```bash
-dotnet build src/Domain --nologo -v q
-dotnet build src/Application/Common --nologo -v q
-dotnet build src/Infrastructure/Common --nologo -v q
-dotnet build src/Composition --nologo -v q
-dotnet build src/Bot --nologo -v q
+dotnet build Basil.slnx -c Release --nologo -v q
+dotnet test tests/Application/Users -c Release --no-build --nologo -v q
 ```
 
-`src/Composition` builds every module project (`src/{Application,Infrastructure}/<Module>`) through its
-references, so it is the one build that proves the modules; build a single module project when you only touch it
-(`dotnet build src/Application/Users --nologo -v q`).
+Projects that need PostgreSQL start a container; set `DOCKER_HOST` when the daemon is not on the default socket, or set
+`BASIL_TEST_POSTGRES` to use an existing server. Never run every project in one `dotnet test` invocation.
 
 A change to a constructor, a context or a `DependencyInjection.cs` also needs the container check, which
-`tests/Architecture/CompositionTests.cs` runs: it calls `AddBasil()` of Basil.Composition and `AddBot()`, builds the
-provider with `ValidateOnBuild`, resolves every registration (factory lambdas included) and checks that every event
-handler is registered, against a deadline: a dependency cycle shows up as a hang, not as an error.
+`tests/Architecture/CompositionTests.cs` runs: it calls `AddBasil()` of `Basil.Host` and `AddBot()`, builds the provider
+with `ValidateOnBuild`, resolves every registration (factory lambdas included) and checks that every event handler is
+registered, against a deadline: a dependency cycle shows up as a hang, not as an error.
 
 See [`docs/for-developers/development.md`](docs/for-developers/development.md) for the complete development workflow.
 
@@ -366,16 +362,15 @@ Basil.Infrastructure.<Module>    the module's implementations: PostgreSQL,      
                                  files, osu! rulesets, FFMpegCore, ImageSharp,       Infrastructure.Common,
                                  its DbContext and migrations, background work       Application.Common
                                  (Add<Module>Infrastructure())
-Basil.Composition                the one project that references every module,  -> every module, Common.*
-                                 calls AddMediator once (the only reference to
-                                 Mediator.SourceGenerator) and offers AddBasil();
-                                 startup work that is not module-specific
+Basil.Host.Shared               views and outcome-to-error mapping used      -> Application projects
+                                 by the API and the console
 Basil.Protocol.Bancho            osu! client-server wire formats, score         -> external libraries only
                                  submission cipher (BouncyCastle)
 Basil.Protocol.Irc               IRC wire format                                -> (nothing)
-Basil.Host.Bancho / .Irc / .Api  transports                                     -> Composition, their Protocol
-Basil.Host                       entry point, composition, logging,             -> everything
-                                 diagnostics, LAN advertising
+Basil.Host.Bancho / .Irc /       transports                                     -> Host.Shared, their Application
+.Rest / .Cli                                                                       projects, their Protocol
+Basil.Host                       entry point, composition root, configuration,  -> everything
+                                 logging, shutdown, LAN advertising
 
 Basil.Bot                        BasilBot: chat commands and their replies,     -> the Application projects of the
                                  an entry point of the server (not a client)        modules it uses, Application.Common
@@ -401,7 +396,7 @@ Servers     -> every module above
 A module Infrastructure project never references another module; the foreign keys between the module databases
 decide the order in which `AddBasil()` registers the migrations (Common, Users, Auth, Beatmaps, Content, Scores,
 Multiplayer, Chat), not these references. `tests/Architecture/ModuleGraphTests.cs` reads the project references and fails on
-an edge outside this graph or on a cycle.
+an edge outside this graph or on a cycle; `HostGraphTests.cs` does the same for the hosts.
 
 `Basil.Protocol.Bancho` wraps the communication between the osu! client and the server, as an API wrapper
 wraps a remote API: it turns what the client sends (bancho packets, the delimited strings of the web
@@ -413,12 +408,12 @@ Domain: only the transport hosts reference it, and it may use external libraries
 
 Projects live under `src/` in folders that mirror the solution folders under `/Sources/`, each named by
 its short name without `Basil.`: `src/Domain/`,
-`src/{Application,Infrastructure}/{Common,<Module>}/`, `src/Composition/`, `src/Hosts/{Host,Api,Bancho,Irc}/`,
+`src/{Application,Infrastructure}/{Common,<Module>}/`, `src/Hosts/{Host,Shared,Bancho,Irc,Rest,Cli}/`,
 `src/Protocol/{Bancho,Irc}/`, `src/Bot/`. The project file and the namespace keep the full name
 (`Basil.Domain.csproj`, `Basil.Domain.*`, `Basil.Application.Users.Persistence`). Tests mirror the same tree under
-`tests/` (`tests/Application/Users/Basil.Application.Users.Tests.csproj` tests
-`src/Application/Users`; Common tests live under `tests/{Application,Infrastructure}/Common/`, the tests that need the whole composition
-under `tests/Composition/`).
+`tests/` (`tests/Application/Users/Basil.Application.Users.Tests.csproj` tests `src/Application/Users`;
+shared fixtures are under `tests/Support/`, and the tests that build the whole composition and run several hosts
+under `tests/Architecture/` and `tests/Hosts/`).
 
 Configuration is bound only in `Basil.Host`. Infrastructure and the transports receive it as `IOptions<T>` of
 an options type that the project using it owns; Application reads no configuration.
@@ -438,65 +433,27 @@ and what they do: runtime objects, registries, root objects, scopes, contexts, f
 between objects; it calls the services and publishes the events they leave to it. Each module's public
 `Add<Module>Application()` builds its contexts and objects; its `Add<Module>Infrastructure()` registers the
 implementations of its ports and its migration. Handlers stay `internal`; a module that has them grants
-`InternalsVisibleTo("Basil.Composition")` (the generated Mediator code names them) and to its own test project, and
-nothing else is made visible. The hosts reference Basil.Composition and call `AddBasil()`.
+`InternalsVisibleTo("Basil.Host")` (the generated Mediator code names them) and to its own test project, and
+nothing else is made visible. `Basil.Host` calls `AddBasil()`.
 
-> **Module projects.** Application and Infrastructure are split by module, one project per module and layer; the
-> Domain, Application and Infrastructure projects, `Basil.Composition` and `Basil.Bot` build and are tested. The
-> hosts (`src/Hosts/*`) and their test projects (`Host.*.Tests`, `IntegrationTests`, `LoadTests`) still use the
-> previous Application API: `dotnet build Basil.slnx` fails only in `src/Hosts`. Verify a change with the builds listed
-> under Commands and with the test projects that exist. The host phase is described in
-> [Host phase](#host-phase-next-session) below.
+### Hosts
 
-### Host phase (next session)
+`Basil.Host` is the composition root: the one `AddMediator` call, configuration binding, logging, shutdown/restart and
+host and subdomain routing. It holds no business rule and no recovery logic (those belong to Application and
+Infrastructure). The transports are `Basil.Host.Bancho` (osu! packets, polling and legacy web endpoints),
+`Basil.Host.Irc` (plain TCP), `Basil.Host.Rest` (`api.`, images on `a.`/`assets.`, SSE, diagnostics) and
+`Basil.Host.Cli` (terminal dashboard and command box).
 
-The hosts are the transports on top of `Basil.Composition`. They are the next piece of work, and nothing of it is
-done yet. Read [`docs/for-developers/architecture.md`](docs/for-developers/architecture.md),
-[`docs/for-developers/irc.md`](docs/for-developers/irc.md) and [`docs/for-developers/multiplayer.md`](docs/for-developers/multiplayer.md) first.
-
-**Ask the owner at the start** (the owner speaks Vietnamese; do not guess): ports, TLS and the domain (`api.<domain>`),
-where the data directory lives, how the first admin is created (decided: `Basil.Cli`, the server never creates an
-account), whether the external beatmap mirror is enabled, a copy of real `Data/` for tests (`BASIL_TEST_DATA`), and the
-order of the migration. Proposed order: Bancho, Irc, Api, then `Basil.Host`, then `Basil.Cli`, then the host tests.
-
-**Rules for every host**
-
-* A host references `Basil.Composition` (and its own Protocol project) and calls `AddBasil()`; it references no module
-  Infrastructure and no Application type that is not public. It takes the actor from the typist's connection and
-  works through scopes (`x.ScopeTo(connection)`), never through a service.
+* Every transport references `Basil.Host.Shared` and never another transport. Rest and Cli never reference
+  `Protocol.Bancho`. `tests/Architecture/HostGraphTests.cs` enforces this.
+* A transport takes the actor from the connection that opened the request or socket and works through scopes
+  (`x.ScopeTo(connection)`), never through a service, and holds no business, permission or state rule of its own.
 * Configuration is bound in `Basil.Host` only; a transport receives `IOptions<T>` of an options type it owns.
-  `RepliesOptions` of the bot is bound there too (`Data/Bot/replies.json` is written with the defaults when missing).
-* Bancho: packets, routes and SSE; GeoIP (proxy header first, then the offline GeoLite2 file); BasilBot is shown as an
-  online user (the bot's own connection is kept by the server, skip it when delivering packets); channel messages are
-  delivered only to `Channel.RecipientsAsync`; `osu-getfriends.php`, `osu-getbeatmapinfo.php` (the `filename`
-  criterion), `osu-osz2-getscores.php` (`ScoreQuery`); screenshot upload maps `ScreenshotUploadFailure.DimensionsTooLarge`;
-  room API, timers, moderation, friends and notifications (`Notify`). Anticheat flags from score submission and
-  `lastfm.php` go through `AnticheatReporter.Report`.
-* Irc: the rules in `docs/for-developers/irc.md` are the contract (channel prefixes `@`/`+`, `ChannelOutcome` to numeric
-  mapping, command table, PART/QUIT/JOIN, PING). A `Message` may contain CR/LF, so the host splits or escapes it.
-* Api: every list of matches goes through `LimitTo(effective, viewer)` and every match-owned datum (match, round, events,
-  report, round-score relation; not scores, replays, leaderboards) is preceded by `CanViewAsync`; answer "not found" when
-  the viewer may not see it. A private room is unlisted, not closed.
-* Live HTTP streams are dedicated `/live` routes (SSE); the response envelope and the OpenAPI schema must agree.
-* `Round.Result` is still set by `MatchReportRepository` on the live round only because the Api host reads it. When the
-  Api is migrated, read the stored verdict from the report instead and remove the setter.
-
-**Open decisions to put to the owner before the hosts depend on them**
-
-* D11, copy-on-write snapshots of slots, authority, settings and members, was not carried out: reads are lock-free over
-  concurrent sets and a fixed slot array, so a reader can see a slot between two writes of one transition. Decide
-  whether a Bancho packet may depend on a consistent view.
-* The rule "a round is decided 10 s after its end, for every round" (bancho.py: scrims only) is in force; confirm it
-  against the room API.
-
-**After the hosts**: `Basil.Cli` (operator console: first admin, run a command as BasilBot ignoring permission checks,
-`--noconsole`); `Host.Bancho.Tests`, `Host.Irc.Tests`, `Host.Api.Tests`, `Host.Tests`, `IntegrationTests`, `LoadTests`; the
-tests for parsing the client, login form and geolocation that left Domain; a host rule in `ArchitectureTests`;
-refresh `docs/for-client/basil-bot.md` (it still mentions a generated reference; the replies live in `replies.json`).
-
-**Known leftovers**: the IRC page is a design for a host that does not exist yet; an in-place `InitialCreate` edit
-assumes no database applied the old one; the `!mp` command timeout (30 s `CancelAfter`) has no test; the anticheat
-flag-name helper still lives in `AnticheatAnnouncer.FormatFlags` instead of `BanchoFlags`.
+  BasilBot's reply file is bound there too (`Configurations/Templates/replies.json`, written with the defaults when
+  missing).
+* Live HTTP streams use the one hub in `Basil.Host.Rest`; see [`docs/for-developers/sse.md`](docs/for-developers/sse.md).
+* The console is the one entry point that skips rights checks (`OperatorConnection`); a chat command still uses the
+  typist's rights. See [`docs/for-agents/identity-permissions.md`](docs/for-agents/identity-permissions.md).
 
 ### Application feature folders
 
@@ -550,9 +507,9 @@ server runs and are stored through `ISettingsRepository`; they are not Domain an
 
 The detailed rules moved out of this file so each can be read when needed. **Read the matching file before touching that area:**
 
-* [`docs/for-agents/application-design.md`](docs/for-agents/application-design.md): Domain models, Application objects, scopes (`ScopeTo`), contexts, events, channels, naming. Before touching `src/Domain`, `src/Modules/*/Application`, `src/Bot`.
+* [`docs/for-agents/application-design.md`](docs/for-agents/application-design.md): Domain models, Application objects, scopes (`ScopeTo`), contexts, events, channels, naming. Before touching `src/Domain`, `src/Application/*`, `src/Bot`.
 * [`docs/for-agents/identity-permissions.md`](docs/for-agents/identity-permissions.md): permissions, privileges, restrictions, hierarchy, sessions, BasilBot. Before touching users, connections, permissions or the bot.
-* [`docs/for-agents/persistence.md`](docs/for-agents/persistence.md): repositories, byte storages, memory-first model, beatmapset storage. Before touching a repository, a storage or `src/Modules/*/Infrastructure` or `src/Infrastructure/Common`.
+* [`docs/for-agents/persistence.md`](docs/for-agents/persistence.md): repositories, byte storages, memory-first model, beatmapset storage. Before touching a repository, a storage or `src/Infrastructure/*` or `src/Infrastructure/Common`.
 * [`docs/for-agents/code-style.md`](docs/for-agents/code-style.md): C# code style and IDE-suggestion rules. Before writing or reviewing C#.
 
 ### Important invariants
@@ -619,7 +576,7 @@ The generated OpenAPI schema must describe the same contract that the runtime re
 
 Do not manually work around the envelope in individual routes without first checking the API middleware and schema transformation rules.
 
-See [`docs/for-client/response-envelope.md`](docs/for-client/response-envelope.md).
+See [`docs/for-client/api/response-envelope.md`](docs/for-client/api/response-envelope.md).
 
 #### User-visible enums
 
@@ -687,8 +644,8 @@ Agent documentation:
 
 ### Notes for the code-principles skill
 
-Principles that came up while restructuring Application and are not osuBasil-specific. They are proposals: the
-owner merges them into the skill later, nobody edits the skill silently.
+Principles that came up while restructuring Application and the hosts and are not osuBasil-specific. They are proposals:
+the owner merges them into the skill later, nobody edits the skill silently.
 
 * **Read the IDE's suggestions** (see Code style): async overloads with the token in scope, LINQ where a loop reads as
   a sentence, return-switch over switch over if, ignore allocation hints and serializer-filled DTO reports.
@@ -709,6 +666,12 @@ owner merges them into the skill later, nobody edits the skill silently.
   becomes a temporary file name. Cap what the input can cost (bytes while reading, pixels per side) before using it.
 * **Give an architecture test a positive control**: after writing a no-dependency rule, assert once that the opposite
   claim (the project does depend on X) is detected, so a rule that always passes is caught.
+* **Review reads the code, not only the green tests.** A passing suite proves the cases it covers; it does not prove
+  that the code implements the contract, that every branch is reachable, or that a test was not weakened to pass. Read
+  the diff line by line against the contract, the failure modes and the untested paths.
+* **Delegated work is fast and time-boxed.** Give a subagent explicit files, a target state, what it must not change,
+  the command that verifies it and a deadline (about 10 minutes for mechanical work, 20 for design). When the deadline
+  passes, stop and report what was done instead of exploring outside the task.
 * **Working with delegated agents:** stage explicit paths, never the whole tree; a worktree agent cannot use the IDE
   tools of the main checkout, so the orchestrator runs the container check after merging; two agents at a time at most,
   and only on disjoint files; review for the faults listed in "Final verification" item 8 and for a changed meaning
@@ -759,8 +722,7 @@ Before considering a code change complete:
 2. Run the complete test suite for the final change.
 3. Run a Release build when the change affects production code.
 4. Check architecture tests for cross-layer changes.
-5. Update authoritative documentation when behavior or design changes (except during the
-   Application rework, see the migration note under [Architecture](#architecture)).
+5. Update authoritative documentation when behavior or design changes.
 6. Review the final diff for unrelated changes.
 7. Check every new or changed member in the Application projects against
    [Domain and Application](#domain-and-application), above all "behaviour belongs to the object that owns it", "the acted-on object owns the interaction" and

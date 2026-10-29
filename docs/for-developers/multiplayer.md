@@ -20,7 +20,7 @@ var scopedRoom = room.ScopeTo(by);
 
 Each operation returns a `RoomResult` for ordinary outcomes such as success, missing authority or a suspended permission. The caller does not pass permissions through each operation, and connection type alone never grants authority.
 
-**Planned:** the `!mp` command entry point will resolve the room and typist's connection, then call `room.ScopeTo(by)`. The command integration is not yet on this scoped model.
+The `!mp` command entry point resolves the room and the typist's connection, then calls `room.ScopeTo(by)`; BasilBot only posts the replies.
 
 ### Creator, referee and host
 
@@ -66,7 +66,7 @@ There are 16 slot positions, numbered 1 through 16. Room size is the number of u
 A room can be private. A private match is hidden from the lobby and from the public match lists, and its history and
 report can be viewed only by (a) a user who took part in it (a `PlayerJoined` event targets them), (b) its managers: the
 creator and the referees that are still referees (a `RefAdded` event not followed by a `RefRemoved` for the same user), and
-(c) a user with the effective permission `RoomViewPrivate` (`RoomManageAny` includes it). A public match can be viewed by
+(c) a user with the effective permission `RoomManageViewPrivate` (`RoomManageAny` includes it). A public match can be viewed by
 everyone. Private never changes who can join: whoever knows the room's id can still find it (`Lobby.Find`) and join it, with
 the password if it has one, subject to the usual `RoomJoin` and ban rules. There is no invite-only mode, and an
 invitation only tells a user where the room is.
@@ -87,13 +87,11 @@ A round is created when play starts. Rounds are numbered from 1 in start order; 
 
 Scores and rounds are two separate businesses. The score module stores every score the same way, solo or multiplayer, and publishes `ScoreSubmitted`; it knows nothing about rounds and the client names no room. When a round starts, the room snapshots the players who take part with the team of each slot. The lobby offers every `ScoreSubmitted` to the rooms; a room takes the score as the score of its latest round when its player takes part, the beatmap is the round's, the round is not yet decided or aborted, and the player has no score in it yet. A player who leaves before completing is struck off and no score is awaited from them; a player who completed and then left is still awaited. Taking a score publishes `RoomRoundScoreSubmitted`, which a handler stores as the relation between the score and the round.
 
-A round is decided once, automatically, as soon as it has ended and every awaited player has a score, or ten seconds after it ended with the scores that came in (the wait is total, not per player). The players whose score did not come in are named in `RoomRoundDecided`, and BasilBot says so in the room. An aborted round is never decided; a room that closes while its round waits decides it at once. The decision (`RoundVerdict`) is stored on the round when it is decided, so a later change of the rules leaves old decisions as they were. The report only reads the stored decision; it never decides and never writes.
+A round is decided once, automatically, as soon as it has ended and every awaited player has a score, or after `ServerSettings.Multiplayer.Rounds.ScoreWait` (10 seconds by default) with the scores that came in (the wait is total, not per player). A round with no participants is not decided, and an aborted round is never decided. BasilBot announces the end of the round only when someone completed, then either that all scores arrived or the names of the players still missing, in the room channel. A room that closes while its round waits decides it at once. The decision (`RoundVerdict`) is stored on the round when it is decided, so a later change of the rules leaves old decisions as they were. The report only reads the stored decision; it never decides and never writes.
 
 ## Countdown
 
-The countdown is room behavior, not a BasilBot-owned timer. `ScopedRoom.Rounds` starts or cancels it; the room owns its timing and state, and a countdown may start a round when it expires. `RoomCountdown` provides the start time, length and announcement marks. The room emits countdown events for a client to announce.
-
-**Planned:** BasilBot's command integration will request countdown operations through the typist's room scope and announce the room's marks. It will not own the countdown or act with its own authority.
+The countdown is room behavior, not a BasilBot-owned timer. `ScopedRoom.Rounds` starts or cancels it; the room owns its timing and state, and a countdown may start a round when it expires. `RoomCountdown` provides the start time, length and announcement marks. The room emits countdown events, and BasilBot announces the marks.
 
 ## Room lifecycle and concurrency
 
@@ -122,7 +120,7 @@ A player is in at most one room. A room's own check cannot see another room's se
 * [`ScopedRoom.cs`](../../src/Application/Multiplayer/Runtime/Rooms/ScopedRoom.cs): caller, role and room-permission scope
 * [`ScopedRoomMembers.cs`](../../src/Application/Multiplayer/Runtime/Rooms/ScopedRoomMembers.cs), [`ScopedRoomSlots.cs`](../../src/Application/Multiplayer/Runtime/Rooms/ScopedRoomSlots.cs), [`ScopedRoomRounds.cs`](../../src/Application/Multiplayer/Runtime/Rooms/ScopedRoomRounds.cs), [`ScopedRoomSettings.cs`](../../src/Application/Multiplayer/Runtime/Rooms/ScopedRoomSettings.cs), [`ScopedRoomAuthority.cs`](../../src/Application/Multiplayer/Runtime/Rooms/ScopedRoomAuthority.cs): caller-authorized room parts
 * [`Lobby.cs`](../../src/Application/Multiplayer/Runtime/Lobby.cs), [`Room.cs`](../../src/Application/Multiplayer/Runtime/Rooms/Room.cs): system-owned room operations
-* [`RoomRoles.cs`](../../src/Domain/Multiplayer/RoomRoles.cs), [`RoomPermissions.cs`](../../src/Domain/Multiplayer/RoomPermissions.cs), [`RoomPermissionsGroups.cs`](../../src/Domain/Multiplayer/RoomPermissionsGroups.cs): room rights
+* [`RoomRoles.cs`](../../src/Domain/Multiplayer/RoomRoles.cs), [`RoomPermissions.cs`](../../src/Domain/Multiplayer/RoomPermissions.cs), [`RoomPermissionsGroups.cs`](../../src/Domain/Multiplayer/RoomPermissions.cs): room rights
 * [`RoomCountdown.cs`](../../src/Application/Multiplayer/Runtime/Rooms/RoomCountdown.cs): countdown state and marks
 * [`Lobby.cs`](../../src/Application/Multiplayer/Runtime/Lobby.cs), [`ScopedLobby.cs`](../../src/Application/Multiplayer/Runtime/ScopedLobby.cs): lobby-owned lifetime and caller-scoped operations
 

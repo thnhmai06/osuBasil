@@ -279,9 +279,9 @@ Rules for Domain and Application objects, scopes, events and naming. Moved out o
 
 ### BasilBot replies
 
-* Everything the bot says is text the operator can edit: one JSON file, `Data/Bot/replies.json`, keys to ICU
+* Everything the bot says is text the operator can edit: one JSON file, `Configurations/Templates/replies.json`, keys to ICU
   MessageFormat strings with named placeholders (`{room}`, plural selectors). One language. The defaults are embedded
-  in the assembly and written to the data directory when the file does not exist. The file is watched and reloaded
+  in the assembly and written to the configuration folder when the file does not exist. The file is watched and reloaded
   while the server runs; an invalid file keeps the last good set and logs a warning; a missing key falls back to its
   default. Reply keys are typed constants owned by the bot; tests reference the keys, never copy the default text.
 * A reply to a refused command names the missing permissions from `Result<TOutcome>.Missing`.
