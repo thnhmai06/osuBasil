@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
@@ -26,17 +27,22 @@ public sealed class IrcClient : IDisposable
 
 	/// <summary>Connects to the IRC port of a running server.</summary>
 	/// <param name="host">The server.</param>
+	/// <param name="localAddress">The address the socket calls from, or the one the system picks when omitted.</param>
 	/// <returns>A connected client that has sent nothing.</returns>
-	public static async Task<IrcClient> ConnectAsync(BasilHost host)
+	public static async Task<IrcClient> ConnectAsync(BasilHost host, IPAddress? localAddress = null)
 	{
 		var client = new IrcClient { Server = $"irc.{host.Domain}" };
-		await client.ConnectAsync("127.0.0.1", host.IrcPort);
+		await client.ConnectAsync("127.0.0.1", host.IrcPort, localAddress);
 		return client;
 	}
 
 	/// <summary>Connects to an address.</summary>
-	public async Task ConnectAsync(string host, int port)
+	/// <param name="host">The address to connect to.</param>
+	/// <param name="port">The port to connect to.</param>
+	/// <param name="localAddress">The address the socket calls from, or the one the system picks when omitted.</param>
+	public async Task ConnectAsync(string host, int port, IPAddress? localAddress = null)
 	{
+		if (localAddress is not null) _tcp.Client.Bind(new IPEndPoint(localAddress, 0));
 		await _tcp.ConnectAsync(host, port);
 		var stream = _tcp.GetStream();
 		_reader = new StreamReader(stream, Encoding.UTF8);
