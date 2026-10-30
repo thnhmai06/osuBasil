@@ -25,8 +25,10 @@ internal static class ChannelRoutes
 		channels.MapGet("/", List).WithSummary("List the general channels the caller may see.")
 			.WithDescription("Channels the caller cannot read are not listed. Hidden channels are listed for those who manage channels.");
 		channels.MapPost("/", CreateAsync).WithSummary("Create a general channel.");
-		channels.MapPatch("/{name}", PatchAsync).WithSummary("Change a general channel.");
-		channels.MapDelete("/{name}", DeleteAsync).WithSummary("Delete a general channel.");
+		channels.MapPatch("/{name}", PatchAsync).WithSummary("Change a general channel.")
+			.WithDescription("A caller who may not manage channels is refused with 403 whether or not the channel exists; 404 means no channel has the name.");
+		channels.MapDelete("/{name}", DeleteAsync).WithSummary("Delete a general channel.")
+			.WithDescription("A caller who may not manage channels is refused with 403 whether or not the channel exists; 404 means no channel has the name.");
 	}
 
 	private static IResult List(HttpContext context, GeneralChannelRegistry registry)
