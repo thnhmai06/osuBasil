@@ -156,6 +156,10 @@ external address is handed to the client as it is.
 
 Screenshots are stored under a new UUIDv7 name with the upload's extension.
 
+An uploaded avatar is accepted only when its content is a PNG or JPEG picture of at most `Uploads.AvatarMaxSide` pixels
+per side and at most `Uploads.AvatarMaxSize` bytes; the file name is not consulted. A refused upload leaves the user's
+previous avatar in place.
+
 > **Pending migration.** The hosts still use the previous wiring: the providers below, and the startup move of
 > `Data/MenuIcon.{ext}`, predate the storage contracts.
 

@@ -1,15 +1,19 @@
+using System.Text;
+using Basil.Application.Content.Capabilities;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Users;
 using Basil.Domain.Users;
 using Basil.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using NSubstitute;
 
 namespace Basil.Application.Users.Tests.Users;
 
 /// <summary>
 ///     Changing a profile: a user changes their own; staff change another account's under hierarchy; the area locked
-///     for profiles refuses everyone who does not manage accounts; BasilBot's profile changes like anyone's.
+///     for profiles refuses everyone who does not manage accounts; BasilBot's profile changes like anyone's. An avatar
+///     is a PNG or JPEG picture within the configured byte and pixel limits, told from its content.
 /// </summary>
 public sealed class ScopedUserProfileTests
 {
@@ -39,12 +43,42 @@ public sealed class ScopedUserProfileTests
 		}
 	}
 
-	private static async Task<(TestApplication App, MemoryAvatars Avatars)> StartAsync(Locks locks = Locks.None)
+	/// <summary>A stream that counts the bytes handed to its reader.</summary>
+	private sealed class CountingStream(byte[] content) : MemoryStream(content)
+	{
+		public long BytesRead { get; private set; }
+
+		public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+		{
+			var read = await base.ReadAsync(buffer, cancellationToken);
+			BytesRead += read;
+			return read;
+		}
+	}
+
+	private static IScreenshotInspector InspectorOf(TestApplication app)
+	{
+		return (IScreenshotInspector)app.Provider.GetRequiredService(typeof(IScreenshotInspector));
+	}
+
+	private static void InspectedAs(TestApplication app, ScreenshotInfo? info)
+	{
+		InspectorOf(app).InspectAsync(Arg.Any<Stream>(), Arg.Any<CancellationToken>()).Returns(info);
+	}
+
+	private static async Task<(TestApplication App, MemoryAvatars Avatars)> StartAsync(Locks locks = Locks.None,
+		ServerSettings.UploadSettings? uploads = null)
 	{
 		var avatars = new MemoryAvatars();
 		var app = new TestApplication(services => services.AddSingleton<IUserAvatarStorage>(avatars));
-		await app.SetSettingsAsync(new ServerSettings { Locks = locks });
+		InspectedAs(app, new ScreenshotInfo("png", 64, 64));
+		await app.SetSettingsAsync(new ServerSettings { Locks = locks, Uploads = uploads ?? new() });
 		return (app, avatars);
+	}
+
+	private static Task<byte[]> AssetAsync(string name)
+	{
+		return File.ReadAllBytesAsync(Path.Combine(AppContext.BaseDirectory, "Assets", "Images", name), Token);
 	}
 
 	[Fact]
@@ -128,6 +162,108 @@ public sealed class ScopedUserProfileTests
 		Assert.True((await profile.SetAvatarAsync(new MemoryStream([1, 2, 3]), Token)).IsOk);
 		Assert.Equal([1, 2, 3], avatars.Images[user.Id]);
 		Assert.True((await profile.RemoveAvatarAsync(Token)).IsOk);
+		Assert.Empty(avatars.Images);
+	}
+
+	[Fact]
+	public async Task SetAvatarAsync_APngPicture_IsStored()
+	{
+		var (app, avatars) = await StartAsync();
+		using var _ = app;
+		var user = await app.CreateUserAsync("Pictured", "password");
+		var by = await app.LoginAsync(user);
+		var png = await AssetAsync("avatar-default.png");
+
+		var result = await app.Users.Of(user).ScopeTo(by).Profile.SetAvatarAsync(new MemoryStream(png), Token);
+
+		Assert.True(result.IsOk);
+		Assert.Equal(png, avatars.Images[user.Id]);
+	}
+
+	[Fact]
+	public async Task SetAvatarAsync_AJpegPicture_IsStored()
+	{
+		var (app, avatars) = await StartAsync();
+		using var _ = app;
+		var user = await app.CreateUserAsync("Pictured", "password");
+		var by = await app.LoginAsync(user);
+		var jpeg = await AssetAsync("background-1920x1200.jpg");
+		InspectedAs(app, new ScreenshotInfo("jpg", 1920, 1200));
+
+		var result = await app.Users.Of(user).ScopeTo(by).Profile.SetAvatarAsync(new MemoryStream(jpeg), Token);
+
+		Assert.True(result.IsOk);
+		Assert.Equal(jpeg, avatars.Images[user.Id]);
+	}
+
+	[Fact]
+	public async Task SetAvatarAsync_ContentThatIsNotAPicture_IsRefusedAndLeavesThePreviousAvatar()
+	{
+		var (app, avatars) = await StartAsync();
+		using var _ = app;
+		var user = await app.CreateUserAsync("Pictured", "password");
+		var by = await app.LoginAsync(user);
+		var profile = app.Users.Of(user).ScopeTo(by).Profile;
+		var previous = await AssetAsync("avatar-default.png");
+		Assert.True((await profile.SetAvatarAsync(new MemoryStream(previous), Token)).IsOk);
+
+		InspectedAs(app, null);
+		var html = Encoding.UTF8.GetBytes("<!doctype html><script>alert(1)</script>");
+		var result = await profile.SetAvatarAsync(new MemoryStream(html), Token);
+
+		Assert.Equal(UserOutcome.InvalidImage, result.Outcome);
+		Assert.Equal(previous, avatars.Images[user.Id]);
+	}
+
+	[Theory]
+	[InlineData(0, 8)]
+	[InlineData(8, 0)]
+	public async Task SetAvatarAsync_PictureWithANonPositiveSide_IsRefusedAsInvalidImage(int width, int height)
+	{
+		var (app, avatars) = await StartAsync();
+		using var _ = app;
+		var user = await app.CreateUserAsync("Pictured", "password");
+		var by = await app.LoginAsync(user);
+		InspectedAs(app, new ScreenshotInfo("png", width, height));
+
+		var result = await app.Users.Of(user).ScopeTo(by).Profile
+			.SetAvatarAsync(new MemoryStream(await AssetAsync("avatar-default.png")), Token);
+
+		Assert.Equal(UserOutcome.InvalidImage, result.Outcome);
+		Assert.Empty(avatars.Images);
+	}
+
+	[Theory]
+	[InlineData(9, 8)]
+	[InlineData(8, 9)]
+	public async Task SetAvatarAsync_PictureOverThePixelLimit_IsRefusedAndStoresNothing(int width, int height)
+	{
+		var (app, avatars) = await StartAsync(uploads: new ServerSettings.UploadSettings { AvatarMaxSide = 8 });
+		using var _ = app;
+		var user = await app.CreateUserAsync("Pictured", "password");
+		var by = await app.LoginAsync(user);
+		InspectedAs(app, new ScreenshotInfo("png", width, height));
+
+		var result = await app.Users.Of(user).ScopeTo(by).Profile
+			.SetAvatarAsync(new MemoryStream(await AssetAsync("avatar-default.png")), Token);
+
+		Assert.Equal(UserOutcome.DimensionsTooLarge, result.Outcome);
+		Assert.Empty(avatars.Images);
+	}
+
+	[Fact]
+	public async Task SetAvatarAsync_ContentOverTheByteLimit_IsRefusedWithoutReadingItAll()
+	{
+		var (app, avatars) = await StartAsync(uploads: new ServerSettings.UploadSettings { AvatarMaxSize = 64 });
+		using var _ = app;
+		var user = await app.CreateUserAsync("Pictured", "password");
+		var by = await app.LoginAsync(user);
+		var content = new CountingStream(new byte[256]);
+
+		var result = await app.Users.Of(user).ScopeTo(by).Profile.SetAvatarAsync(content, Token);
+
+		Assert.Equal(UserOutcome.TooLarge, result.Outcome);
+		Assert.Equal(65, content.BytesRead);
 		Assert.Empty(avatars.Images);
 	}
 

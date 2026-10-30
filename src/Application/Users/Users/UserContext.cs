@@ -1,4 +1,5 @@
 using Basil.Application.Auth.Persistence;
+using Basil.Application.Content.Capabilities;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Common.Events;
@@ -16,6 +17,7 @@ namespace Basil.Application.Users.Users;
 /// <param name="Sessions">The recorded sessions.</param>
 /// <param name="Credentials">The stored passwords.</param>
 /// <param name="Avatars">The stored avatar images.</param>
+/// <param name="Inspector">Identifies the format and dimensions of uploaded pictures.</param>
 /// <param name="Settings">The server settings that decide token lifetimes and locks.</param>
 internal sealed record UserContext(
 	TimeProvider Clock,
@@ -28,6 +30,7 @@ internal sealed record UserContext(
 	ISessionRepository Sessions,
 	ICredentialRepository Credentials,
 	IUserAvatarStorage Avatars,
+	IScreenshotInspector Inspector,
 	ISettingsRepository Settings)
 {
 	/// <summary>Gets the users who are online.</summary>
