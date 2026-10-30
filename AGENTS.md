@@ -693,6 +693,40 @@ the owner merges them into the skill later, nobody edits the skill silently.
 * **A fixed-id system account** (the bot, id 1) is taken over if it exists and created if it does not, by startup code,
   documented as the one exception to "the server creates no account".
 
+* **Run the real binary before calling a host done** (2026-10-30). Tests that start the server inside the test process
+  never execute `Program`, the exit path or the signal handling: the first run of the real executable found a crash
+  at every stop, a fatal log line from a listener and an image route answering 500. Start it against a real database,
+  create an account with the offline command, and exercise one request per protocol, one refusal, the stop signal and
+  the exit code.
+* **Resolve what the exit path needs before running the host.** The service provider is disposed when the host has
+  stopped; reading a service from it afterwards throws and loses the exit code. Take the object first, run, then use it.
+* **Read the memory-first store in the order that cannot lose a record.** When a list is the database rows plus the
+  writes still queued, snapshot the queued writes before reading the rows: a write that finishes in between is then in
+  one of the two, never in neither.
+* **Validate at the boundary what the consumer will need, and let the consumer survive what slipped through.** A
+  header-only inspection accepts a picture that cannot be decoded; the serving side answers 404, not 500. Probe only the
+  formats the server accepts, so the parsers of the others never see uploaded bytes.
+* **Authorize before you look up.** A command or route that answers "no such X" before it checks the right to manage X
+  tells an unauthorized caller which names exist. Check the right first; the refusal must be identical whether or not
+  the target exists (same status, same missing-permission mask).
+* **Tests that share one running host own their identities.** A limit counted per address or per account is shared
+  with every earlier test that is still closing sockets; give each limit test addresses or accounts nobody else uses.
+* **Read a reply to its last line, and pace every poll.** A long list is split over several lines, so look at all of
+  them. A loop that polls a fixed number of times without a pause ends before an asynchronous queue delivers; use the
+  helper that pauses between polls.
+* **A flake gets its failure message and a root cause, never a longer timeout or a retry.** Quiet test output hides the
+  message: log to a result file (trx) and loop the test until it fails. Most of the flakes of the Host phase were the
+  test reading too early or too little; one was a real race in production code.
+* **Adding a member to an enum means running the exhaustive tables.** Run the whole test project of every area the
+  change touches, not the filtered tests of the feature: a table that lists every outcome only goes red there.
+* **Delegated agents are hands; the orchestrator decides how.** Write the files, the exact change, the cases and the
+  verification into the prompt, pass it as a file, bound it with a timeout and have it write an exit marker (a long
+  prompt passed on the command line hung a run for seven hours). Read the agent's diff, not its summary.
+* **Re-verify a suspected defect in the code before dispatching it.** A handover list is a hypothesis: three of its
+  fifteen items were already handled (the code closed the connection, or the lock had nothing left to block).
+* **Check the license before bumping a dependency to a fixed version.** A security release can change its terms; the
+  version that fixes the advisories may not build without a key, which is the owner's decision, not a build detail.
+
 ## Agent skills
 
 ### Issue tracker
