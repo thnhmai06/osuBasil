@@ -62,7 +62,8 @@ internal sealed class IrcListener(
 			{
 				tcp = await _listener!.AcceptTcpClientAsync(stoppingToken);
 			}
-			catch (Exception ex) when (ex is OperationCanceledException or ObjectDisposedException)
+			catch (Exception ex) when (ex is OperationCanceledException or ObjectDisposedException or
+				                          SocketException { SocketErrorCode: SocketError.OperationAborted })
 			{
 				return;
 			}

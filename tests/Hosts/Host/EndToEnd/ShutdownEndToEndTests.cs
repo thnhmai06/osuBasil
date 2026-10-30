@@ -39,6 +39,20 @@ public sealed class ShutdownEndToEndTests(HostEndToEndFixture fixture)
 	}
 
 	[Fact]
+	public async Task Stopping_TheHost_LeavesNoBackgroundServiceFaulted()
+	{
+		await using var host = await StartAsync();
+		var (irc, _) = await RegisteredIrcAsync(host, "E2eStopQuiet");
+		using var ircClient = irc;
+
+		await host.StopAsync();
+
+		var faulted = host.Services.GetRequiredService<IEnumerable<IHostedService>>().OfType<BackgroundService>()
+			.Where(service => service.ExecuteTask is { IsFaulted: true }).Select(service => service.GetType().Name);
+		Assert.Empty(faulted);
+	}
+
+	[Fact]
 	public async Task Shutdown_RefusesNewWork_TellsEveryClient_ClosesRooms_AndDrains()
 	{
 		await using var host = await StartAsync();
