@@ -43,12 +43,16 @@ var result = scopedChannel.Join();
 
 `ScopedChannel` provides `Join`, `Part` and `PostAsync`. For a general channel, `scopedChannel.General` provides `ConfigureAsync` and `DeleteAsync`; both require effective `ChatManageChannels`. A missing permission comes back as a denial naming the missing permissions; otherwise `ConfigureAsync` returns `Ok` or `Closed`. Configuring a channel removes members who can no longer read it.
 
+The channel to manage is found through `server.ScopeTo(by).Channels.Find(name)`. It requires effective `ChatManageChannels` and answers `NotFound` only once that right is met, so a connection without it is refused the same way whether or not the channel exists.
+
 ### Results
 
 Every operation returns `Result<ChannelOutcome>` rather than throwing for ordinary refusals. A refusal for lack of a permission carries the missing permissions.
 
 | Operation | Outcome | Meaning |
 |---|---|---|
+| `Find` | `Ok` | The connection may manage channels and the channel has that name |
+| | `NotFound` | No open general channel has that name |
 | `Join` | `Ok` | The connection joined |
 | | `AccessDenied` | The kind of channel does not let the caller read it |
 | | `AlreadyMember` | The connection is already a member or an open same-kind connection is already present |
@@ -101,6 +105,7 @@ BasilBot is online with a permanent `User` and a `BotConnection` that the server
 * [`Channel.cs`](../../src/Application/Chat/Runtime/Channel.cs): channel state, `ScopeTo` and the read and write rules each kind overrides
 * [`ScopedChannel.cs`](../../src/Application/Chat/Runtime/ScopedChannel.cs): join, part and post operations
 * [`ScopedGeneralChannel.cs`](../../src/Application/Chat/Runtime/ScopedGeneralChannel.cs): general-channel configuration and deletion
+* [`ScopedServerChannels.cs`](../../src/Application/Servers/Runtime/ScopedServerChannels.cs): general-channel creation, and the lookup of the channel to manage
 * [`ChannelOutcome.cs`](../../src/Application/Chat/Runtime/ChannelOutcome.cs): operation outcomes
 * [`GeneralChannelRegistry.cs`](../../src/Application/Chat/Runtime/GeneralChannelRegistry.cs): general-channel ownership and the automatic joins and parts
 * [`GeneralChannel.cs`](../../src/Application/Chat/Runtime/GeneralChannel.cs), [`PmChannel.cs`](../../src/Application/Chat/Runtime/PmChannel.cs), [`PmChannels.cs`](../../src/Application/Chat/Runtime/PmChannels.cs): general and private-message channels, and the private-message channel of each online user; [`GeneralChannelRecord.cs`](../../src/Domain/Chat/GeneralChannelRecord.cs): the stored general channel

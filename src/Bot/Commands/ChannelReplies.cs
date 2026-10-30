@@ -74,7 +74,7 @@ internal static class ChannelReplies
 		return result.Outcome switch
 		{
 			ChannelOutcome.Ok => (success, new { name }),
-			ChannelOutcome.Closed => (NotFound, new { name }),
+			ChannelOutcome.NotFound or ChannelOutcome.Closed => (NotFound, new { name }),
 			_ => (Refused, new { outcome = result.Outcome.ToString() })
 		};
 	}

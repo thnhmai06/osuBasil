@@ -43,7 +43,7 @@ public sealed class OutcomeErrorsTests
 	{
 		[ChannelOutcome.AlreadyMember] = Conflict, [ChannelOutcome.NotMember] = Conflict, [ChannelOutcome.Closed] = Conflict,
 		[ChannelOutcome.Empty] = Invalid, [ChannelOutcome.InvalidText] = Invalid, [ChannelOutcome.Blocked] = Forbidden,
-		[ChannelOutcome.TargetSilenced] = Conflict, [ChannelOutcome.AccessDenied] = Forbidden
+		[ChannelOutcome.TargetSilenced] = Conflict, [ChannelOutcome.AccessDenied] = Forbidden, [ChannelOutcome.NotFound] = NotFound
 	};
 
 	private static readonly Dictionary<ServerOutcome, ErrorKind> Servers = new()

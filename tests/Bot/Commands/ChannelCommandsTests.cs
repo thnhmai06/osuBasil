@@ -111,6 +111,22 @@ public sealed class ChannelCommandsTests
 	}
 
 	[Fact]
+	public async Task Set_WithoutTheManagePermission_RefusesTheSameWhetherOrNotTheChannelExists()
+	{
+		using var bot = new BotHarness();
+		var manager = await RoomFixture.PlayerAsync(bot.App, "Manager", Manager);
+		await bot.TypeAsync(manager, null, "channel create #secret visible=false");
+		var player = await RoomFixture.PlayerAsync(bot.App, "Player");
+
+		var (_, exists) = await bot.TypeAsync(player, null, "channel set #secret topic=changed");
+		var (_, missing) = await bot.TypeAsync(player, null, "channel set #nothere topic=changed");
+
+		Assert.Equal([bot.Text(ChannelReplies.MissingPermissions, new { permissions = nameof(UserPermissions.ChatManageChannels) })],
+			exists.Here);
+		Assert.Equal(exists.Here, missing.Here);
+	}
+
+	[Fact]
 	public async Task Set_AnUnknownChannel_SaysItDoesNotExist()
 	{
 		using var bot = new BotHarness();
@@ -163,6 +179,22 @@ public sealed class ChannelCommandsTests
 		Assert.Equal([bot.Text(ChannelReplies.MissingPermissions, new { permissions = nameof(UserPermissions.ChatManageChannels) })],
 			said.Here);
 		Assert.NotNull(bot.App.Channels.Find("#kept"));
+	}
+
+	[Fact]
+	public async Task Delete_WithoutTheManagePermission_RefusesTheSameWhetherOrNotTheChannelExists()
+	{
+		using var bot = new BotHarness();
+		var manager = await RoomFixture.PlayerAsync(bot.App, "Manager", Manager);
+		await bot.TypeAsync(manager, null, "channel create #secret2 visible=false");
+		var player = await RoomFixture.PlayerAsync(bot.App, "Player");
+
+		var (_, exists) = await bot.TypeAsync(player, null, "channel delete #secret2");
+		var (_, missing) = await bot.TypeAsync(player, null, "channel delete #nothere2");
+
+		Assert.Equal([bot.Text(ChannelReplies.MissingPermissions, new { permissions = nameof(UserPermissions.ChatManageChannels) })],
+			exists.Here);
+		Assert.Equal(exists.Here, missing.Here);
 	}
 
 	[Fact]

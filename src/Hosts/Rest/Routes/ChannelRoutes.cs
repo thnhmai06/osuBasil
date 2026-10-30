@@ -64,14 +64,15 @@ internal static class ChannelRoutes
 	}
 
 	private static async Task<IResult> PatchAsync(HttpContext context, string name, PatchChannelRequest request,
-		GeneralChannelRegistry registry)
+		Server server)
 	{
-		if (registry.Find(name) is not { } channel) return Api.NotFound("No such channel.");
+		var (found, channel) = server.ScopeTo(context.Connection()).Channels.Find(name);
+		if (channel is null) return found.Refusal();
 
-		var scoped = channel.ScopeTo(context.Connection()).General!;
 		try
 		{
-			var result = await scoped.ConfigureAsync(new GeneralChannelChange(request.Topic,
+			var result = await channel.ScopeTo(context.Connection()).General!.ConfigureAsync(new GeneralChannelChange(
+				request.Topic,
 				(UserPrivileges?)request.ReadPrivileges, (UserPrivileges?)request.WritePrivileges, request.AutoJoin,
 				request.Visible), context.RequestAborted);
 			return result.IsOk ? Api.Ok(ChannelView.Of(channel.Record), "Updated successfully") : result.Refusal();
@@ -82,10 +83,11 @@ internal static class ChannelRoutes
 		}
 	}
 
-	private static async Task<IResult> DeleteAsync(HttpContext context, string name, GeneralChannelRegistry registry)
+	private static async Task<IResult> DeleteAsync(HttpContext context, string name, Server server)
 	{
-		return registry.Find(name) is not { } channel
-			? Api.NotFound("No such channel.")
+		var (found, channel) = server.ScopeTo(context.Connection()).Channels.Find(name);
+		return channel is null
+			? found.Refusal()
 			: (await channel.ScopeTo(context.Connection()).General!.DeleteAsync(context.RequestAborted)).Answer();
 	}
 }

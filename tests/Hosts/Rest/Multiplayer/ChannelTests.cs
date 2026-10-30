@@ -97,4 +97,44 @@ public sealed class ChannelTests(RestHostFixture fixture)
 			Assert.Equal(404, again);
 		}
 	}
+
+	[Fact]
+	public async Task Patch_WithoutTheManagePermission_AnswersTheSameWhetherOrNotTheChannelExists()
+	{
+		var (manager, _) = await fixture.SignInAsync("ChanPatchDenied", Manager);
+		var (plain, _) = await fixture.SignInAsync("ChanPatchPlain");
+		using (manager)
+		using (plain)
+		{
+			await manager.CallAsync(HttpMethod.Post, "/v1/channels", new { name = "#restpatchhid", visible = false });
+
+			var (exists, hidden) = await plain.CallAsync(HttpMethod.Patch, "/v1/channels/%23restpatchhid", new { topic = "x" });
+			var (missing, ghost) = await plain.CallAsync(HttpMethod.Patch, "/v1/channels/%23restpatchghost", new { topic = "x" });
+
+			Assert.Equal(403, exists);
+			Assert.Equal(exists, missing);
+			Assert.Equal((ulong)UserPermissions.ChatManageChannels, (ulong)hidden!["errors"]!["missing"]!);
+			Assert.Equal((ulong)UserPermissions.ChatManageChannels, (ulong)ghost!["errors"]!["missing"]!);
+		}
+	}
+
+	[Fact]
+	public async Task Delete_WithoutTheManagePermission_AnswersTheSameWhetherOrNotTheChannelExists()
+	{
+		var (manager, _) = await fixture.SignInAsync("ChanDelDenied", Manager);
+		var (plain, _) = await fixture.SignInAsync("ChanDelPlain");
+		using (manager)
+		using (plain)
+		{
+			await manager.CallAsync(HttpMethod.Post, "/v1/channels", new { name = "#restdeletehid", visible = false });
+
+			var (exists, hidden) = await plain.CallAsync(HttpMethod.Delete, "/v1/channels/%23restdeletehid");
+			var (missing, ghost) = await plain.CallAsync(HttpMethod.Delete, "/v1/channels/%23restdeleteghost");
+
+			Assert.Equal(403, exists);
+			Assert.Equal(exists, missing);
+			Assert.Equal((ulong)UserPermissions.ChatManageChannels, (ulong)hidden!["errors"]!["missing"]!);
+			Assert.Equal((ulong)UserPermissions.ChatManageChannels, (ulong)ghost!["errors"]!["missing"]!);
+		}
+	}
 }
