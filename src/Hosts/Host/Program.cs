@@ -14,8 +14,9 @@ if (Restarter.WasRestarted())
 		TimeProvider.System, TimeSpan.FromSeconds(10));
 }
 
-await app.RunAsync();
+// Resolved before the run: the services are disposed once the host has stopped.
 var control = app.Services.GetRequiredService<ShutdownController>();
+await app.RunAsync();
 if (control is { RestartRequested: true } && !Restarter.UnderManager())
     Restarter.Start(args);
 
