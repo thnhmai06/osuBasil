@@ -15,9 +15,8 @@ public sealed class QueryTests(IrcHostFixture fixture)
 	{
 		using var irc = await Host.SignInAsync("QnPlus");
 
-		await irc.SendAsync("NAMES #osu");
+		var names = await irc.NamesOfAsync("#osu");
 
-		var names = (await irc.ExpectAsync("353")).Split(" :")[1].Split(' ');
 		Assert.Contains("+QnPlus", names);
 		Assert.Contains("+BasilBot", names);
 	}
@@ -28,9 +27,7 @@ public sealed class QueryTests(IrcHostFixture fixture)
 		var permissions = UserPermissionsGroups.Default | UserPermissions.ChatManageChannels;
 		using var manager = await Host.SignInAsync("QnManager", "multi-prefix userhost-in-names", permissions);
 
-		await manager.SendAsync("NAMES #osu");
-
-		Assert.Contains("@+QnManager!QnManager@basil.test", (await manager.ExpectAsync("353")).Split(' '));
+		Assert.Contains("@+QnManager!QnManager@basil.test", await manager.NamesOfAsync("#osu"));
 	}
 
 	[Fact]
@@ -39,9 +36,7 @@ public sealed class QueryTests(IrcHostFixture fixture)
 		var permissions = UserPermissionsGroups.Default | UserPermissions.ChatManageChannels;
 		using var manager = await Host.SignInAsync("QnSingle", permissions: permissions);
 
-		await manager.SendAsync("NAMES #osu");
-
-		Assert.Contains("@QnSingle", (await manager.ExpectAsync("353")).Split(' '));
+		Assert.Contains("@QnSingle", await manager.NamesOfAsync("#osu"));
 	}
 
 	[Fact]

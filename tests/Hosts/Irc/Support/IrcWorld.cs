@@ -43,6 +43,16 @@ internal static class IrcWorld
 		});
 	}
 
+	/// <summary>Asks for the members of a channel and returns every entry of the reply, across all its <c>353</c> lines.</summary>
+	/// <remarks>A long member list is split into several lines, so an entry is not necessarily on the first one.</remarks>
+	public static async Task<IReadOnlyList<string>> NamesOfAsync(this IrcClient irc, string channel)
+	{
+		await irc.SendAsync($"NAMES {channel}");
+		var lines = await irc.BarrierAsync();
+		return [.. lines.Where(line => IrcClient.CommandOf(line) == "353" && line.Contains($" {channel} :"))
+			.SelectMany(line => line.Split(" :", 2)[1].Split(' '))];
+	}
+
 	/// <summary>Waits until a line of the given command arrives for the client and returns it.</summary>
 	public static Task<string> ExpectFromAsync(this IrcClient irc, string command, string containing)
 	{
