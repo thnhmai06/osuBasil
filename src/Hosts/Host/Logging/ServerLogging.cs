@@ -1,4 +1,5 @@
 using Basil.Host.Cli;
+using Basil.Host.Configuration;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;

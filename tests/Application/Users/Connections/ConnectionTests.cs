@@ -32,7 +32,7 @@ public sealed class ConnectionTests
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("EarlyLogout", "password");
-		var connection = await app.LoginAsync(user, ConnectionType.Osu);
+		var connection = await app.LoginAsync(user, SessionType.Osu);
 
 		app.Users.Close(connection, SessionEndReason.LoggedOut);
 
@@ -41,9 +41,9 @@ public sealed class ConnectionTests
 	}
 
 	[Theory]
-	[InlineData(ConnectionType.Osu, 300)]
-	[InlineData(ConnectionType.Api, 300)]
-	public async Task CloseIdle_AtTimeoutBoundary_LeavesConnectionOpen(ConnectionType type, int timeoutSeconds)
+	[InlineData(SessionType.Osu, 300)]
+	[InlineData(SessionType.Api, 300)]
+	public async Task CloseIdle_AtTimeoutBoundary_LeavesConnectionOpen(SessionType type, int timeoutSeconds)
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync($"Boundary{type}", "password");
@@ -57,9 +57,9 @@ public sealed class ConnectionTests
 	}
 
 	[Theory]
-	[InlineData(ConnectionType.Osu, 300)]
-	[InlineData(ConnectionType.Api, 300)]
-	public async Task CloseIdle_OneSecondPastTimeout_ClosesConnection(ConnectionType type, int timeoutSeconds)
+	[InlineData(SessionType.Osu, 300)]
+	[InlineData(SessionType.Api, 300)]
+	public async Task CloseIdle_OneSecondPastTimeout_ClosesConnection(SessionType type, int timeoutSeconds)
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync($"Expired{type}", "password");
@@ -125,7 +125,7 @@ public sealed class ConnectionTests
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("ApiSession", "password");
-		var connection = await app.LoginAsync(user, ConnectionType.Api);
+		var connection = await app.LoginAsync(user, SessionType.Api);
 		var session = connection.Session;
 
 		Assert.Equal(SHA256.HashData(Encoding.UTF8.GetBytes(connection.Token)), session.TokenHash);

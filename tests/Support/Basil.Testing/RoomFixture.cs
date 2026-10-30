@@ -231,6 +231,6 @@ public sealed class RoomFixture
 	/// <returns>The opened connection.</returns>
 	public static async Task<BanchoConnection> PlayerAsync(TestApplication app, UserRecord user)
 	{
-		return (BanchoConnection)await app.LoginAsync(user, ConnectionType.Osu);
+		return (BanchoConnection)await app.LoginAsync(user, SessionType.Osu);
 	}
 }

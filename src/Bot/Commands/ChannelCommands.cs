@@ -1,4 +1,5 @@
 using Basil.Application.Chat.Runtime;
+using Basil.Application.Common.Common;
 using Basil.Application.Servers.Runtime;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
@@ -99,7 +100,7 @@ internal sealed class ChannelCommands(Server server, GeneralChannelRegistry chan
 			return false;
 		}
 
-		Application.Common.Result<ChannelOutcome> result;
+		Result<ChannelOutcome> result;
 		try
 		{
 			result = await channel.ScopeTo(context.By).General!.ConfigureAsync(change, cancellationToken);

@@ -11,7 +11,7 @@ internal sealed class SessionRow
 {
 	public Guid Id { get; set; }
 	public int UserId { get; set; }
-	public ConnectionType Type { get; set; }
+	public SessionType Type { get; set; }
 	public IPAddress Ip { get; set; } = IPAddress.None;
 	public string? ClientInfo { get; set; }
 	public DateTimeOffset StartedAt { get; set; }

@@ -50,10 +50,10 @@ public sealed class ScopedChannelRulesTests
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
 		var user = await app.CreateUserAsync("Reconnects", "password");
-		var first = await app.LoginAsync(user, ConnectionType.Osu);
+		var first = await app.LoginAsync(user, SessionType.Osu);
 		Assert.True(channel.ScopeTo(first).Join().IsOk);
 		app.Users.Close(first, SessionEndReason.ConnectionLost);
-		var second = await app.LoginAsync(user, ConnectionType.Osu);
+		var second = await app.LoginAsync(user, SessionType.Osu);
 
 		var result = channel.ScopeTo(second).Join();
 
@@ -69,7 +69,7 @@ public sealed class ScopedChannelRulesTests
 	{
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
-		var connection = await app.LoginAsync(await app.CreateUserAsync("Fresh", "password"), ConnectionType.Irc);
+		var connection = await app.LoginAsync(await app.CreateUserAsync("Fresh", "password"), SessionType.Irc);
 
 		channel.ScopeTo(connection).Join();
 
@@ -100,8 +100,8 @@ public sealed class ScopedChannelRulesTests
 		using var app = new TestApplication();
 		var channel = await OpenChannelAsync(app);
 		var user = await app.CreateUserAsync("IrcAndGame", "password");
-		var irc = await app.LoginAsync(user, ConnectionType.Irc);
-		var game = await app.LoginAsync(user, ConnectionType.Osu);
+		var irc = await app.LoginAsync(user, SessionType.Irc);
+		var game = await app.LoginAsync(user, SessionType.Osu);
 		channel.ScopeTo(irc).Join();
 
 		var result = channel.ScopeTo(game).Join();
@@ -168,7 +168,7 @@ public sealed class ScopedChannelRulesTests
 	{
 		using var app = new TestApplication();
 		var ownerRecord = await app.CreateUserAsync("WentOffline", "password");
-		var ownerConnection = await app.LoginAsync(ownerRecord, ConnectionType.Irc);
+		var ownerConnection = await app.LoginAsync(ownerRecord, SessionType.Irc);
 		var pm = app.PmChannels.Of(app.Users.Of(ownerRecord));
 		var sender = await app.LoginAsync(await app.CreateUserAsync("Sender", "password"));
 		app.Users.Close(ownerConnection, SessionEndReason.LoggedOut);
@@ -250,7 +250,7 @@ public sealed class ScopedChannelRulesTests
 	{
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("Selective", "password");
-		var ownerConnection = await app.LoginAsync(owner, ConnectionType.Irc);
+		var ownerConnection = await app.LoginAsync(owner, SessionType.Irc);
 		var blockedRecord = await app.CreateUserAsync("TheBlocked", "password");
 		await app.Users.Of(blockedRecord).ScopeTo(ownerConnection).Relationships
 			.BlockAsync(TestContext.Current.CancellationToken);
@@ -267,7 +267,7 @@ public sealed class ScopedChannelRulesTests
 	{
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("FriendsOwner", "password");
-		var ownerConnection = await app.LoginAsync(owner, ConnectionType.Irc);
+		var ownerConnection = await app.LoginAsync(owner, SessionType.Irc);
 		Assert.True(app.Users.Of(owner).ScopeTo(ownerConnection).Profile.SetPmPrivate(true));
 		var staff = await app.LoginAsync(await app.CreateUserAsync("StaffSender", "password",
 			UserPermissionsGroups.Default | UserPermissions.ChatManageMessageAnyone));
@@ -285,7 +285,7 @@ public sealed class ScopedChannelRulesTests
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("SilencedOwner", "password",
 			UserPermissionsGroups.Default & ~UserPermissions.ChatPostPrivate);
-		await app.LoginAsync(owner, ConnectionType.Irc);
+		await app.LoginAsync(owner, SessionType.Irc);
 		var staff = await app.LoginAsync(await app.CreateUserAsync("StaffToSilenced", "password",
 			UserPermissionsGroups.Default | UserPermissions.ChatManageMessageAnyone));
 
@@ -300,7 +300,7 @@ public sealed class ScopedChannelRulesTests
 	{
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("TalksToSelf", "password");
-		var connection = await app.LoginAsync(owner, ConnectionType.Irc);
+		var connection = await app.LoginAsync(owner, SessionType.Irc);
 		app.Users.Of(owner).ScopeTo(connection).Profile.SetAway("brb");
 
 		var result = await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(connection)
@@ -319,7 +319,7 @@ public sealed class ScopedChannelRulesTests
 	{
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("PmOwner", "password");
-		var connection = await app.LoginAsync(owner, ConnectionType.Irc);
+		var connection = await app.LoginAsync(owner, SessionType.Irc);
 
 		Assert.Null(app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(connection).General);
 	}

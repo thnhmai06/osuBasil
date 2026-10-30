@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Basil.Application.Common.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Servers.Runtime;
 using Basil.Application.Users.Persistence;
@@ -418,7 +419,7 @@ internal static class ContentCommands
 		if (!result.IsOk) return call.Refuse(result);
 
 		var views = list.Select(reference => new ScreenshotView(Path.GetFileName(reference.Value))).ToList();
-		call.PrintPage(new Basil.Application.Common.Page<ScreenshotView>([.. views.Skip(page.Offset).Take(page.Limit)], views.Count), page);
+		call.PrintPage(new Page<ScreenshotView>([.. views.Skip(page.Offset).Take(page.Limit)], views.Count), page);
 		return ExitCodes.Success;
 	}
 

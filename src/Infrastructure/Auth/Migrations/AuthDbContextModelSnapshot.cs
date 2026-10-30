@@ -108,7 +108,7 @@ namespace Basil.Infrastructure.Auth.Migrations
                         .HasColumnType("text")
                         .HasColumnName("network_adapters_hash");
 
-                    b.Property<string>("OsuPathHash")
+                    b.Property<string>("PathHash")
                         .HasColumnType("text")
                         .HasColumnName("osu_path_hash");
 

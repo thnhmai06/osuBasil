@@ -290,7 +290,7 @@ public sealed class ScopedChannelTests
 	{
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("PmOwner", "password");
-		await app.LoginAsync(owner, ConnectionType.Irc);
+		await app.LoginAsync(owner, SessionType.Irc);
 		var sender = await app.LoginAsync(await app.CreateUserAsync("PmSender", "password"));
 		var pm = app.PmChannels.Of(app.Users.Of(owner));
 
@@ -339,7 +339,7 @@ public sealed class ScopedChannelTests
 	{
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("AwayOwner", "password");
-		var ownerConnection = await app.LoginAsync(owner, ConnectionType.Irc);
+		var ownerConnection = await app.LoginAsync(owner, SessionType.Irc);
 		Assert.True(app.Users.Of(owner).ScopeTo(ownerConnection).Profile.SetAway("brb"));
 		var sender = await app.LoginAsync(await app.CreateUserAsync("AwaySender", "password"));
 
@@ -356,7 +356,7 @@ public sealed class ScopedChannelTests
 	{
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("NoticeOwner", "password");
-		var ownerConnection = await app.LoginAsync(owner, ConnectionType.Irc);
+		var ownerConnection = await app.LoginAsync(owner, SessionType.Irc);
 		app.Users.Of(owner).ScopeTo(ownerConnection).Profile.SetAway("brb");
 		var sender = await app.LoginAsync(await app.CreateUserAsync("NoticeSender", "password"));
 
@@ -371,7 +371,7 @@ public sealed class ScopedChannelTests
 	{
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("DeniedOwner", "password");
-		await app.LoginAsync(owner, ConnectionType.Irc);
+		await app.LoginAsync(owner, SessionType.Irc);
 		var sender = await app.LoginAsync(await app.CreateUserAsync("DeniedSender", "password",
 			UserPermissionsGroups.Default & ~UserPermissions.ChatPostPrivate));
 
@@ -387,7 +387,7 @@ public sealed class ScopedChannelTests
 	{
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("Blocker", "password");
-		var ownerConnection = await app.LoginAsync(owner, ConnectionType.Irc);
+		var ownerConnection = await app.LoginAsync(owner, SessionType.Irc);
 		var senderRecord = await app.CreateUserAsync("Blocked", "password");
 		var sender = await app.LoginAsync(senderRecord);
 		await app.Users.Of(senderRecord).ScopeTo(ownerConnection).Relationships
@@ -404,7 +404,7 @@ public sealed class ScopedChannelTests
 	{
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("BlockerOfStaff", "password");
-		var ownerConnection = await app.LoginAsync(owner, ConnectionType.Irc);
+		var ownerConnection = await app.LoginAsync(owner, SessionType.Irc);
 		var staffRecord = await app.CreateUserAsync("Staff", "password",
 			UserPermissionsGroups.Default | UserPermissions.ChatManageMessageAnyone);
 		var staff = await app.LoginAsync(staffRecord);
@@ -422,7 +422,7 @@ public sealed class ScopedChannelTests
 	{
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("FriendsOnly", "password");
-		var ownerConnection = await app.LoginAsync(owner, ConnectionType.Irc);
+		var ownerConnection = await app.LoginAsync(owner, SessionType.Irc);
 		Assert.True(app.Users.Of(owner).ScopeTo(ownerConnection).Profile.SetPmPrivate(true));
 		var friendRecord = await app.CreateUserAsync("TheFriend", "password");
 		var friend = await app.LoginAsync(friendRecord);
@@ -446,7 +446,7 @@ public sealed class ScopedChannelTests
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("SilencedOwner", "password");
 		app.AddRestriction(owner, UserPermissions.ChatPostPrivate);
-		await app.LoginAsync(owner, ConnectionType.Irc);
+		await app.LoginAsync(owner, SessionType.Irc);
 		var sender = await app.LoginAsync(await app.CreateUserAsync("SilencedSender", "password"));
 
 		var result = await app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(sender)
@@ -475,7 +475,7 @@ public sealed class ScopedChannelTests
 	{
 		using var app = new TestApplication();
 		var owner = await app.CreateUserAsync("PmChannelOwner", "password");
-		await app.LoginAsync(owner, ConnectionType.Irc);
+		await app.LoginAsync(owner, SessionType.Irc);
 		var intruder = await app.LoginAsync(await app.CreateUserAsync("Intruder", "password"));
 
 		var result = app.PmChannels.Of(app.Users.Of(owner)).ScopeTo(intruder).Join();

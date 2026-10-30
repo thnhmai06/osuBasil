@@ -1,10 +1,10 @@
-namespace Basil.Domain.Bancho;
+namespace Basil.Domain.Client;
 
 /// <summary>
 ///     Represents the anticheat flags reported by an osu! client.
 /// </summary>
 [Flags]
-public enum BanchoFlags : uint
+public enum OsuFlags : uint
 {
 	#region Legacy
 
@@ -130,4 +130,41 @@ public enum BanchoFlags : uint
 	AqnMenuSample = 1 << 22,
 
 	#endregion
+}
+
+/// <summary>Reads <see cref="OsuFlags" /> as the names of the signs it carries.</summary>
+public static class OsuFlagsExtensions
+{
+	/// <param name="flags">The flags to read.</param>
+	extension(OsuFlags flags)
+	{
+		/// <summary>Lists the names of the signs the flags carry.</summary>
+		/// <returns>
+		///     The name of each set sign, in ascending bit order; empty for a clean client. Bits that are not a
+		///     defined sign are ignored.
+		/// </returns>
+		public IReadOnlyList<string> SignNames()
+		{
+			return
+			[
+				.. Enum.GetValues<OsuFlags>()
+					.Where(sign => sign != OsuFlags.Clean && flags.HasFlag(sign))
+					.Select(sign => sign.ToString())
+			];
+		}
+	}
+}
+
+/// <summary>The combinations of <see cref="OsuFlags" /> the server reasons about.</summary>
+public static class OsuFlagsGroups
+{
+	/// <summary>The flags that indicate tampering with the client or its environment.</summary>
+	public const OsuFlags CheatSigns = OsuFlags.SpeedHackDetected | OsuFlags.IncorrectModValue |
+	                                            OsuFlags.MultipleOsuClients | OsuFlags.ChecksumFailure |
+	                                            OsuFlags.FlashlightChecksumIncorrect | OsuFlags.OsuExecutableChecksum |
+	                                            OsuFlags.MissingProcessesInList | OsuFlags.FlashlightImageHack |
+	                                            OsuFlags.SpinnerHack | OsuFlags.TransparentWindow |
+	                                            OsuFlags.FastPress | OsuFlags.RawMouseDiscrepancy |
+	                                            OsuFlags.RawKeyboardDiscrepancy | OsuFlags.HqAssembly |
+	                                            OsuFlags.HqFile | OsuFlags.RegistryEdits;
 }

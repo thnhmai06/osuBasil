@@ -6,14 +6,14 @@ namespace Basil.Application.Users.Connections;
 public static class ConnectionRules
 {
 	/// <param name="type">The kind of connection.</param>
-	extension(ConnectionType type)
+	extension(SessionType type)
 	{
 		/// <summary>Gets a value that indicates whether one user may hold several connections of a kind at once.</summary>
 		/// <returns><see langword="true" /> for IRC, osu!tourney and HTTP API connections.</returns>
 		/// <remarks>Each IRC client of a user has a key of its own, so several can be connected at once.</remarks>
 		public bool AllowsMany()
 		{
-			return type is ConnectionType.Tourney or ConnectionType.Irc or ConnectionType.Api;
+			return type is SessionType.OsuTourney or SessionType.Irc or SessionType.Api;
 		}
 
 		/// <summary>Gets how long a connection of a kind may send nothing before it is closed.</summary>

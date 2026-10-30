@@ -25,7 +25,7 @@ public sealed class ServerNotifyTests
 		string name)
 	{
 		var user = await app.CreateUserAsync(name, "password");
-		var client = Assert.IsType<BanchoConnection>(await app.LoginAsync(user, ConnectionType.Osu));
+		var client = Assert.IsType<BanchoConnection>(await app.LoginAsync(user, SessionType.Osu));
 		return (user, client);
 	}
 
@@ -107,10 +107,10 @@ public sealed class ServerNotifyTests
 	}
 
 	[Theory]
-	[InlineData(ConnectionType.Irc)]
-	[InlineData(ConnectionType.Api)]
-	[InlineData(ConnectionType.Tourney)]
-	public async Task Notify_UserWhoseOnlyConnectionIsNotAnOsuGameClient_SendsNothing(ConnectionType type)
+	[InlineData(SessionType.Irc)]
+	[InlineData(SessionType.Api)]
+	[InlineData(SessionType.OsuTourney)]
+	public async Task Notify_UserWhoseOnlyConnectionIsNotAnOsuGameClient_SendsNothing(SessionType type)
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync($"Only{type}", "password",
@@ -128,7 +128,7 @@ public sealed class ServerNotifyTests
 	{
 		using var app = new TestApplication();
 		var (user, client) = await OnlineClientAsync(app, "Many");
-		await app.LoginAsync(user, ConnectionType.Irc);
+		await app.LoginAsync(user, SessionType.Irc);
 		await app.LoginAsync(user);
 
 		var sent = app.Server.Notify(Text, user);
@@ -205,10 +205,10 @@ public sealed class ServerNotifyTests
 		var (_, closed) = await OnlineClientAsync(app, "Closed");
 		app.Clock.Advance(TimeSpan.FromSeconds(5));
 		app.Users.Close(closed, SessionEndReason.LoggedOut);
-		await app.LoginAsync(await app.CreateUserAsync("Chatter", "password"), ConnectionType.Irc);
+		await app.LoginAsync(await app.CreateUserAsync("Chatter", "password"), SessionType.Irc);
 		await app.LoginAsync(await app.CreateUserAsync("Integrator", "password"));
 		await app.LoginAsync(await app.CreateUserAsync("Referee", "password",
-			UserPermissionsGroups.Default | UserPermissions.RoomObserve), ConnectionType.Tourney);
+			UserPermissionsGroups.Default | UserPermissions.RoomObserve), SessionType.OsuTourney);
 
 		var sent = app.Server.NotifyAll(Text);
 

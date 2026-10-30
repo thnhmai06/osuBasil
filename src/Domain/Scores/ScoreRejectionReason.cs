@@ -1,7 +1,7 @@
 namespace Basil.Domain.Scores;
 
 /// <summary>The reasons a score submission is rejected.</summary>
-public enum ScoreRejection : byte
+public enum ScoreRejectionReason : byte
 {
 	/// <summary>The client version date does not match the version the client logged in with.</summary>
 	VersionMismatch,

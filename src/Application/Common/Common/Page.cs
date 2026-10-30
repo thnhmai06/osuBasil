@@ -1,4 +1,4 @@
-namespace Basil.Application.Common;
+namespace Basil.Application.Common.Common;
 
 /// <summary>One part of a listing.</summary>
 /// <param name="Items">The items in this part, in the listing's order.</param>

@@ -13,7 +13,7 @@ internal sealed class UserOnlineDelivery(UserRegistry registry, Outbox outbox, I
 {
 	public async ValueTask Handle(UserConnectionOpened notification, CancellationToken cancellationToken)
 	{
-		if (!notification.CameOnline || notification.Connection.Type is not (ConnectionType.Osu or ConnectionType.Bot))
+		if (!notification.CameOnline || notification.Connection.Type is not (SessionType.Osu or SessionType.Bot))
 			return;
 		var user = notification.Connection.User;
 		var stats = await statsRepository.GetAsync(user.Record, user.Bancho?.Status.GameMode ?? Basil.Domain.Mechanics.GameMode.Standard,
@@ -34,7 +34,7 @@ internal sealed class UserOfflineDelivery(UserRegistry registry, Outbox outbox) 
 	{
 		var connection = notification.Connection;
 		outbox.Remove(connection);
-		if (notification.WentOffline && connection.Type is ConnectionType.Osu)
+		if (notification.WentOffline && connection.Type is SessionType.Osu)
 			outbox.Send(registry.OpenBanchoClients(), writer => writer.Logout(connection.Record.Id));
 
 		return ValueTask.CompletedTask;

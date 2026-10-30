@@ -1,5 +1,5 @@
 using Basil.Application.Users.Connections;
-using Basil.Domain.Bancho;
+using Basil.Domain.Client;
 using Basil.Protocol.Bancho.Models.Replay;
 using Basil.Protocol.Bancho.Wire.Packets;
 

@@ -1,3 +1,4 @@
+using Basil.Host.Configuration;
 using Basil.Host.Shared.Diagnostics;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;

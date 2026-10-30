@@ -4,11 +4,12 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using Basil.Application.Auth.Persistence;
+using Basil.Application.Common.Common;
 using Basil.Application.Users.Capabilities;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Connections;
 using Basil.Domain.Auth;
-using Basil.Domain.Bancho;
+using Basil.Domain.Client;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
 
@@ -115,8 +116,8 @@ public sealed class UserRegistry
 	///     An osu!tourney login needs <see cref="UserPermissions.RoomObserve" /> in effect. Successful logins are
 	///     recorded.
 	/// </remarks>
-	public async Task<LoginResult> LoginAsync(LoginAttempt attempt, ConnectionType type, IPAddress ip,
-		BanchoClient? client, int utcOffset, CancellationToken cancellationToken = default)
+	public async Task<LoginResult> LoginAsync(LoginAttempt attempt, SessionType type, IPAddress ip,
+		OsuClient? client, int utcOffset, CancellationToken cancellationToken = default)
 	{
 		ThrowIfInvalidLogin(type, client);
 
@@ -140,21 +141,21 @@ public sealed class UserRegistry
 		return LoginResult.Success(connection);
 	}
 
-	private static void ThrowIfInvalidLogin(ConnectionType type, BanchoClient? client)
+	private static void ThrowIfInvalidLogin(SessionType type, OsuClient? client)
 	{
 		type.ThrowIfUndefined();
 		switch (type)
 		{
-			case ConnectionType.Bot:
+			case SessionType.Bot:
 				throw new ArgumentException("The bot's connection cannot be requested.", nameof(type));
-			case ConnectionType.Irc:
+			case SessionType.Irc:
 				throw new ArgumentException("An IRC client signs in with a key, not a password.", nameof(type));
-			case ConnectionType.Osu or ConnectionType.Tourney when client is null:
+			case SessionType.Osu or SessionType.OsuTourney when client is null:
 				throw new ArgumentNullException(nameof(client), "An osu! client login must report its client.");
 		}
 	}
 
-	private async Task<bool> NeedsReauthenticationAsync(UserRecord record, BanchoClient? client,
+	private async Task<bool> NeedsReauthenticationAsync(UserRecord record, OsuClient? client,
 		CancellationToken cancellationToken)
 	{
 		return client is not null && await _context.Sessions.TakeReauthenticationAsync(record,
@@ -162,7 +163,7 @@ public sealed class UserRegistry
 			cancellationToken);
 	}
 
-	private static Session NewLoginSession(UserRecord record, ConnectionType type, IPAddress ip, BanchoClient? client,
+	private static Session NewLoginSession(UserRecord record, SessionType type, IPAddress ip, OsuClient? client,
 		DateTimeOffset now, TimeSpan lifetime, string token)
 	{
 		return new Session
@@ -173,13 +174,13 @@ public sealed class UserRegistry
 			Ip = ip,
 			Client = client,
 			StartedAt = now,
-			TokenHash = type is ConnectionType.Api ? HashToken(token) : null,
-			ExpiresAt = type is ConnectionType.Api ? now + lifetime : null
+			TokenHash = type is SessionType.Api ? HashToken(token) : null,
+			ExpiresAt = type is SessionType.Api ? now + lifetime : null
 		};
 	}
 
 	/// <summary>Opens a connection for the HTTP API token or IRC key a client presents.</summary>
-	/// <param name="type">The kind of client: <see cref="ConnectionType.Api" /> or <see cref="ConnectionType.Irc" />.</param>
+	/// <param name="type">The kind of client: <see cref="SessionType.Api" /> or <see cref="SessionType.Irc" />.</param>
 	/// <param name="token">The token or key the client presented.</param>
 	/// <param name="ip">The IP address the client came from.</param>
 	/// <param name="accepts">
@@ -195,10 +196,10 @@ public sealed class UserRegistry
 	///     renews its expiry.
 	/// </remarks>
 	/// <exception cref="ArgumentException"><paramref name="type" /> is not Api or Irc.</exception>
-	public async Task<LoginResult> LoginWithTokenAsync(ConnectionType type, string token, IPAddress ip,
+	public async Task<LoginResult> LoginWithTokenAsync(SessionType type, string token, IPAddress ip,
 		Func<UserRecord, bool>? accepts = null, CancellationToken cancellationToken = default)
 	{
-		if (type is not (ConnectionType.Api or ConnectionType.Irc))
+		if (type is not (SessionType.Api or SessionType.Irc))
 			throw new ArgumentException("Only an API token or an IRC key opens a connection.", nameof(type));
 
 		var now = _context.Clock.GetUtcNow();
@@ -219,7 +220,7 @@ public sealed class UserRegistry
 		return LoginResult.Success(connection);
 	}
 
-	private LoginResult? ReuseOpenConnection(ConnectionType type, string token, Func<UserRecord, bool>? accepts,
+	private LoginResult? ReuseOpenConnection(SessionType type, string token, Func<UserRecord, bool>? accepts,
 		DateTimeOffset now)
 	{
 		if (_connections.GetValueOrDefault(token) is not { IsOpen: true } open || open.Type != type) return null;
@@ -245,7 +246,7 @@ public sealed class UserRegistry
 		return null;
 	}
 
-	private static Session ResumedSession(StoredSession stored, UserRecord record, ConnectionType type, IPAddress ip,
+	private static Session ResumedSession(StoredSession stored, UserRecord record, SessionType type, IPAddress ip,
 		string token)
 	{
 		return new Session
@@ -279,9 +280,9 @@ public sealed class UserRegistry
 	{
 		return session.Type switch
 		{
-			ConnectionType.Osu => new BanchoConnection(session, token, utcOffset, _connectionContext),
-			ConnectionType.Tourney => new TourneyConnection(session, token),
-			ConnectionType.Irc => new IrcConnection(session, token),
+			SessionType.Osu => new BanchoConnection(session, token, utcOffset, _connectionContext),
+			SessionType.OsuTourney => new TourneyConnection(session, token),
+			SessionType.Irc => new IrcConnection(session, token),
 			_ => new ApiConnection(session, token, lifetime)
 		};
 	}
@@ -371,7 +372,7 @@ public sealed class UserRegistry
 		var now = _context.Clock.GetUtcNow();
 		var idleConnections = _online.Values
 			.SelectMany(user => user.Connections)
-			.Where(connection => connection is { IsOpen: true, Type: not ConnectionType.Bot } &&
+			.Where(connection => connection is { IsOpen: true, Type: not SessionType.Bot } &&
 			                     now - connection.LastActiveAt > connection.Type.IdleTimeout())
 			.ToList();
 
@@ -396,7 +397,7 @@ public sealed class UserRegistry
 	///         changes nothing.
 	///     </para>
 	/// </remarks>
-	/// <exception cref="Basil.Application.Common.AlreadyExistsException">
+	/// <exception cref="AlreadyExistsException">
 	///     The id holds a deleted account or nothing, and another user already has <see cref="BasilBot.DefaultName" />.
 	/// </exception>
 	public async Task<UserRecord> EnsureBotAsync(CancellationToken cancellationToken = default)
@@ -441,7 +442,7 @@ public sealed class UserRegistry
 		{
 			Id = Guid.NewGuid(),
 			User = bot,
-			Type = ConnectionType.Bot,
+			Type = SessionType.Bot,
 			Ip = IPAddress.Loopback,
 			StartedAt = _context.Clock.GetUtcNow()
 		};
@@ -467,7 +468,7 @@ public sealed class UserRegistry
 		{
 			Id = Guid.NewGuid(),
 			User = user,
-			Type = ConnectionType.Bot,
+			Type = SessionType.Bot,
 			Ip = IPAddress.Loopback,
 			StartedAt = _context.Clock.GetUtcNow()
 		};
@@ -490,7 +491,7 @@ public sealed class UserRegistry
 
 		// The online user holds the current record; a login may have read an older one.
 		var record = _online.GetValueOrDefault(connection.Record)?.Record ?? connection.Record;
-		if (connection.Type is ConnectionType.Tourney &&
+		if (connection.Type is SessionType.OsuTourney &&
 		    !record.Value.Permissions.Effective(restrictions, _context.Clock.GetUtcNow())
 			    .Allows(UserPermissions.RoomObserve))
 			return LoginFailure.NoTourneyPermission;
@@ -517,7 +518,7 @@ public sealed class UserRegistry
 		connection.IsOpen = true;
 
 		// The bot's token is never findable: nobody can present it, and nobody should be able to try.
-		if (connection.Type is not ConnectionType.Bot) Index(connection);
+		if (connection.Type is not SessionType.Bot) Index(connection);
 
 		_context.Events.Publish(new UserConnectionOpened(connection, cameOnline));
 		return null;
@@ -546,7 +547,7 @@ public sealed class UserRegistry
 			         .Where(connection => connection.IsOpen && connection.Session.Id != except &&
 			                              (only is null || connection.Session.Id == only)).ToList())
 		{
-			if (requireReauthentication && connection.Type is ConnectionType.Osu or ConnectionType.Tourney)
+			if (requireReauthentication && connection.Type is SessionType.Osu or SessionType.OsuTourney)
 				connection.Session.RequireReauthentication();
 
 			Close(connection, reason);
@@ -632,10 +633,10 @@ public sealed class UserRegistry
 		_context.Events.Publish(new UserConnectionClosed(connection, reason, wentOffline));
 	}
 
-	private static bool EndsToken(ConnectionType type, SessionEndReason reason)
+	private static bool EndsToken(SessionType type, SessionEndReason reason)
 	{
 		return reason is SessionEndReason.Revoked or SessionEndReason.CredentialsChanged or SessionEndReason.Deleted ||
-		       (reason is SessionEndReason.LoggedOut && type is ConnectionType.Api);
+		       (reason is SessionEndReason.LoggedOut && type is SessionType.Api);
 	}
 
 	internal Task<(UserRecord? User, RegistrationFailure? Failure)> CreateAccountAsync(UserData data,

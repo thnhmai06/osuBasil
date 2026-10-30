@@ -1,5 +1,6 @@
 using System.Net;
 using Basil.Application.Common;
+using Basil.Application.Common.Common;
 using Basil.Domain.Auth;
 using Basil.Domain.Users;
 
@@ -22,7 +23,7 @@ public enum SessionState : byte
 /// <param name="State">Whether to include active sessions, ended sessions, or both.</param>
 /// <param name="Types">The kinds of session to include, or <see langword="null" /> for every kind.</param>
 /// <param name="Now">The moment that decides whether a session has expired.</param>
-public sealed record SessionFilter(SessionState State, IReadOnlyList<ConnectionType>? Types, DateTimeOffset Now);
+public sealed record SessionFilter(SessionState State, IReadOnlyList<SessionType>? Types, DateTimeOffset Now);
 
 /// <summary>A session found by the token or key that opens it.</summary>
 /// <param name="Id">The session's public identifier.</param>
@@ -32,7 +33,7 @@ public sealed record SessionFilter(SessionState State, IReadOnlyList<ConnectionT
 /// <param name="ClientInfo">The client details or label of the session.</param>
 /// <param name="StartedAt">When the session started.</param>
 /// <param name="ExpiresAt">When the token expires, or <see langword="null" /> if it never does.</param>
-public sealed record StoredSession(Guid Id, int UserId, ConnectionType Type, IPAddress Ip, string? ClientInfo,
+public sealed record StoredSession(Guid Id, int UserId, SessionType Type, IPAddress Ip, string? ClientInfo,
 	DateTimeOffset StartedAt, DateTimeOffset? ExpiresAt);
 
 /// <summary>The latest activity of one session.</summary>
@@ -79,7 +80,7 @@ public interface ISessionRepository
 	/// <param name="now">The moment that decides whether the token has expired.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The session, or <see langword="null" /> when none is active and unexpired with that hash.</returns>
-	Task<StoredSession?> FindByTokenAsync(ConnectionType type, byte[] tokenHash, DateTimeOffset now,
+	Task<StoredSession?> FindByTokenAsync(SessionType type, byte[] tokenHash, DateTimeOffset now,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>Ends the unended sessions of a user that match a selection.</summary>
@@ -93,7 +94,7 @@ public interface ISessionRepository
 	///     Whether the devices of the ended osu! and osu!tourney sessions must enter their password again.
 	/// </param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
-	Task EndAsync(UserRecord user, Guid? only, Guid? except, IReadOnlyList<ConnectionType> types, DateTimeOffset at,
+	Task EndAsync(UserRecord user, Guid? only, Guid? except, IReadOnlyList<SessionType> types, DateTimeOffset at,
 		SessionEndReason reason, bool requireReauthentication, CancellationToken cancellationToken = default);
 
 	/// <summary>Stores the latest activity of several sessions at once.</summary>

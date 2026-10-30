@@ -1,7 +1,7 @@
 using Basil.Infrastructure.Common.Postgres;
 using Microsoft.EntityFrameworkCore;
 
-namespace Basil.Infrastructure.Common;
+namespace Basil.Infrastructure.Common.Common;
 
 /// <summary>Stores the common records used to coordinate writes across modules.</summary>
 /// <param name="options">The options that configure the database context.</param>

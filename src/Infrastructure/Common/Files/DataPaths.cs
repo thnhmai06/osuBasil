@@ -1,3 +1,4 @@
+using Basil.Infrastructure.Common.Common;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Infrastructure.Common.Files;

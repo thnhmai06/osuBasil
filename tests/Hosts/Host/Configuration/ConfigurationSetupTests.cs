@@ -1,3 +1,4 @@
+using Basil.Host.Configuration;
 using Microsoft.AspNetCore.Builder;
 
 namespace Basil.Host.Tests.Configuration;

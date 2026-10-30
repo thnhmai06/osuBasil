@@ -19,7 +19,7 @@ public sealed class ViewFormatter(TimeZoneInfo zone)
 	{
 		["permissions"] = typeof(UserPermissions), ["effectivePermissions"] = typeof(UserPermissions),
 		["readPrivileges"] = typeof(UserPrivileges), ["writePrivileges"] = typeof(UserPrivileges),
-		["types"] = typeof(ConnectionType)
+		["types"] = typeof(SessionType)
 	};
 
 	/// <summary>Formats a time.</summary>

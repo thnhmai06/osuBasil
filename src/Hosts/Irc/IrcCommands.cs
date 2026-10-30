@@ -137,7 +137,7 @@ internal sealed partial class IrcCommands(
 
 		if (!clients.Reserve(key, session)) return IrcReplies.KeyInUse;
 
-		var result = await registry.LoginWithTokenAsync(ConnectionType.Irc, key, session.Address,
+		var result = await registry.LoginWithTokenAsync(SessionType.Irc, key, session.Address,
 			owner => IrcView.IsNick(owner, claimed), cancellationToken);
 		if (result.Connection is IrcConnection connection)
 		{

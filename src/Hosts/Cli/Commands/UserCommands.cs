@@ -1,4 +1,5 @@
 using Basil.Application.Auth.Persistence;
+using Basil.Application.Common.Common;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Users;
 using Basil.Domain.Auth;
@@ -151,7 +152,7 @@ internal static class UserCommands
 		var clock = call.Get<TimeProvider>();
 		var found = await call.Get<IUserRepository>().ListAsync(UserQuery.Parse(call.Text("query") ?? string.Empty), page,
 			call.CancellationToken);
-		call.PrintPage(new Basil.Application.Common.Page<UserView>(
+		call.PrintPage(new Page<UserView>(
 			[.. found.Items.Select(user => UserView.Of(registry, user, clock))], found.Total), page);
 		return ExitCodes.Success;
 	}
@@ -327,14 +328,14 @@ internal static class UserCommands
 			_ => null
 		} ?? throw CommandException.Invalid("--state must be all, online or offline.");
 		var kinds = call.Mask("types") is { } types
-			? Enum.GetValues<ConnectionType>().Where(type => (types & (ulong)type) != 0).ToList()
+			? Enum.GetValues<SessionType>().Where(type => (types & (ulong)type) != 0).ToList()
 			: null;
 		if (await call.ScopeUserAsync() is not { } scoped) return call.NotFound(NoUser);
 
 		var (result, sessions) = await scoped.Sessions.ListAsync(page, state, kinds, call.CancellationToken);
 		if (!result.IsOk) return call.Refuse(result);
 
-		call.PrintPage(new Basil.Application.Common.Page<SessionView>([.. sessions!.Items.Select(SessionView.Of)],
+		call.PrintPage(new Page<SessionView>([.. sessions!.Items.Select(SessionView.Of)],
 			sessions.Total), page);
 		return ExitCodes.Success;
 	}

@@ -1,6 +1,6 @@
 using Basil.Domain.Common;
 
-namespace Basil.Domain.Bancho;
+namespace Basil.Domain.Client;
 
 /// <summary>
 ///     Represents the client fingerprint captured from an osu! client at login.
@@ -9,11 +9,11 @@ namespace Basil.Domain.Bancho;
 ///     The fingerprint is the osu! client hash: five components identifying the
 ///     installation (and, after re-installation, the machine) a player is using.
 /// </remarks>
-public readonly record struct BanchoFingerprint(
-	Md5 OsuPathHash,
-	NetworkAdapters NetworkAdapters,
+public readonly record struct OsuFingerprint(
+	Md5 PathHash,
 	Md5 UninstallHash,
-	Md5 DiskSignatureHash);
+	Md5 DiskSignatureHash,
+	NetworkAdapters NetworkAdapters);
 
 /// <summary>
 ///     Represents the network adapter data an osu! client reports: the raw adapter string and the

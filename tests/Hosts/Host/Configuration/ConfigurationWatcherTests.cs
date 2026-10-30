@@ -1,3 +1,4 @@
+using Basil.Host.Configuration;
 using Basil.Host.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;

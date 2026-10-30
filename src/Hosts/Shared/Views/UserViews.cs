@@ -41,7 +41,7 @@ public sealed record RestrictionView(int Id, ulong Permissions, DateTimeOffset S
 }
 
 /// <summary>A session as the API shows it.</summary>
-public sealed record SessionView(Guid Id, ConnectionType Type, string Ip, string? ClientInfo,
+public sealed record SessionView(Guid Id, SessionType Type, string Ip, string? ClientInfo,
 	DateTimeOffset StartedAt, DateTimeOffset LastActiveAt, DateTimeOffset? EndedAt, SessionEndReason? EndReason)
 {
 	/// <summary>Describes a session.</summary>

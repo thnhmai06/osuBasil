@@ -14,6 +14,6 @@ namespace Basil.Domain.Auth;
 /// <param name="EndedAt">When the session ended, or <see langword="null" /> while active.</param>
 /// <param name="EndReason">Why the session ended, or <see langword="null" /> while active.</param>
 /// <param name="MustReauthenticate">Whether the osu! device must enter its password again.</param>
-public sealed record SessionEntry(Guid Id, UserRecord User, ConnectionType Type, IPAddress Ip, string? ClientInfo,
+public sealed record SessionEntry(Guid Id, UserRecord User, SessionType Type, IPAddress Ip, string? ClientInfo,
 	DateTimeOffset StartedAt, DateTimeOffset LastActiveAt, DateTimeOffset? EndedAt, SessionEndReason? EndReason,
 	bool MustReauthenticate);

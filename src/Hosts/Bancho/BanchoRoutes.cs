@@ -80,7 +80,7 @@ public static class BanchoRoutes
 			return Results.Bytes(reply, "text/html; charset=UTF-8");
 		}
 
-		if (registry.Find(token) is not { IsOpen: true, Type: ConnectionType.Osu or ConnectionType.Tourney } connection)
+		if (registry.Find(token) is not { IsOpen: true, Type: SessionType.Osu or SessionType.OsuTourney } connection)
 			return Results.Bytes(Outbox.Build(writer => writer.RestartServer(0)), "text/html; charset=UTF-8");
 
 		registry.MarkActive(connection);

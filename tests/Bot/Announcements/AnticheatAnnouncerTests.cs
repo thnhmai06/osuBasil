@@ -2,7 +2,7 @@ using Basil.Application.Anticheat.Runtime;
 using Basil.Application.Chat.Runtime;
 using Basil.Bot.Announcements;
 using Basil.Bot.Tests.Support;
-using Basil.Domain.Bancho;
+using Basil.Domain.Client;
 using Basil.Testing;
 
 namespace Basil.Bot.Tests.Announcements;
@@ -13,7 +13,7 @@ namespace Basil.Bot.Tests.Announcements;
 /// </summary>
 public sealed class AnticheatAnnouncerTests
 {
-	private const BanchoFlags TwoFlags = BanchoFlags.SpeedHackDetected | BanchoFlags.FastPress;
+	private const OsuFlags TwoFlags = OsuFlags.SpeedHackDetected | OsuFlags.FastPress;
 
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
 
@@ -83,7 +83,7 @@ public sealed class AnticheatAnnouncerTests
 		var staff = await SetUpAsync(bot);
 
 		await AnnouncerFor(bot).Handle(
-			new AnticheatPlayerFlagged(staff.Player, BanchoFlags.Clean | BanchoFlags.FastPress),
+			new AnticheatPlayerFlagged(staff.Player, OsuFlags.Clean | OsuFlags.FastPress),
 			Token);
 
 		Assert.Equal([
@@ -99,7 +99,7 @@ public sealed class AnticheatAnnouncerTests
 		var staff = await SetUpAsync(bot);
 
 		await AnnouncerFor(bot).Handle(
-			new AnticheatPlayerFlagged(staff.Player, BanchoFlagsGroups.CheatSigns), Token);
+			new AnticheatPlayerFlagged(staff.Player, OsuFlagsGroups.CheatSigns), Token);
 
 		const string reason = "SpeedHackDetected, IncorrectModValue, MultipleOsuClients, ChecksumFailure, "
 		                      + "FlashlightChecksumIncorrect, OsuExecutableChecksum, MissingProcessesInList, "
@@ -116,7 +116,7 @@ public sealed class AnticheatAnnouncerTests
 		var staff = await SetUpAsync(bot);
 
 		await AnnouncerFor(bot).Handle(
-			new AnticheatPlayerFlagged(staff.Player, BanchoFlags.ConsoleOpen | BanchoFlags.Sdl2Library),
+			new AnticheatPlayerFlagged(staff.Player, OsuFlags.ConsoleOpen | OsuFlags.Sdl2Library),
 			Token);
 
 		Assert.Equal([

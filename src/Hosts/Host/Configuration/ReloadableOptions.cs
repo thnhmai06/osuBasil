@@ -1,4 +1,4 @@
-namespace Basil.Host;
+namespace Basil.Host.Configuration;
 
 /// <summary>Logging settings; a change applies at once.</summary>
 public sealed class LoggingOptions

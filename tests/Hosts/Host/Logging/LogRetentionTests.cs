@@ -1,3 +1,4 @@
+using Basil.Host.Configuration;
 using Basil.Host.Logging;
 
 namespace Basil.Host.Tests.Logging;

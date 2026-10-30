@@ -1,6 +1,7 @@
 using System.Net;
 using Basil.Application.Auth.Persistence;
 using Basil.Application.Common;
+using Basil.Application.Common.Common;
 using Basil.Application.Users.Connections;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Users;
@@ -20,7 +21,7 @@ public sealed class ScopedUserSessionsTests
 {
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
 
-	private static Task<LoginResult> OpenWithTokenAsync(TestApplication app, ConnectionType type, string token)
+	private static Task<LoginResult> OpenWithTokenAsync(TestApplication app, SessionType type, string token)
 	{
 		return app.Users.LoginWithTokenAsync(type, token, IPAddress.Loopback, cancellationToken: Token);
 	}
@@ -47,7 +48,7 @@ public sealed class ScopedUserSessionsTests
 		Assert.True(result.IsOk);
 		Assert.False(other.IsOpen);
 		Assert.True(current.IsOpen);
-		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, ConnectionType.Api, other.Token)).Failure);
+		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, SessionType.Api, other.Token)).Failure);
 	}
 
 	[Fact]
@@ -65,7 +66,7 @@ public sealed class ScopedUserSessionsTests
 		var result = await app.Users.Of(user).ScopeTo(current).Sessions.CloseAsync(offline.Session.Id, Token);
 
 		Assert.True(result.IsOk);
-		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, ConnectionType.Api, offline.Token)).Failure);
+		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, SessionType.Api, offline.Token)).Failure);
 	}
 
 	[Fact]
@@ -74,15 +75,15 @@ public sealed class ScopedUserSessionsTests
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("DeviceUser", "password");
 		var api = await app.LoginAsync(user);
-		var osu = await app.LoginAsync(user, ConnectionType.Osu);
+		var osu = await app.LoginAsync(user, SessionType.Osu);
 
 		var result = await app.Users.Of(user).ScopeTo(api).Sessions.CloseAsync(osu.Session.Id, Token);
 
 		Assert.True(result.IsOk);
 		Assert.False(osu.IsOpen);
 		Assert.Equal(LoginFailure.PasswordResetRequired,
-			(await app.AttemptLoginAsync("DeviceUser", "password", ConnectionType.Osu)).Failure);
-		Assert.True((await app.AttemptLoginAsync("DeviceUser", "password", ConnectionType.Osu)).Succeeded);
+			(await app.AttemptLoginAsync("DeviceUser", "password", SessionType.Osu)).Failure);
+		Assert.True((await app.AttemptLoginAsync("DeviceUser", "password", SessionType.Osu)).Succeeded);
 	}
 
 	[Fact]
@@ -91,7 +92,7 @@ public sealed class ScopedUserSessionsTests
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("UnstoredUser", "password");
 		var api = await app.LoginAsync(user);
-		var osu = await app.LoginAsync(user, ConnectionType.Osu);
+		var osu = await app.LoginAsync(user, SessionType.Osu);
 		app.ForgetStoredSession(osu.Session.Id);
 
 		var result = await app.Users.Of(user).ScopeTo(api).Sessions.CloseAsync(osu.Session.Id, Token);
@@ -106,13 +107,13 @@ public sealed class ScopedUserSessionsTests
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("OfflineDevice", "password");
 		var api = await app.LoginAsync(user);
-		var osu = await app.LoginAsync(user, ConnectionType.Osu);
+		var osu = await app.LoginAsync(user, SessionType.Osu);
 		app.Users.Close(osu, SessionEndReason.ConnectionLost);
 
 		Assert.True((await app.Users.Of(user).ScopeTo(api).Sessions.CloseAsync(osu.Session.Id, Token)).IsOk);
 
 		Assert.Equal(LoginFailure.PasswordResetRequired,
-			(await app.AttemptLoginAsync("OfflineDevice", "password", ConnectionType.Osu)).Failure);
+			(await app.AttemptLoginAsync("OfflineDevice", "password", SessionType.Osu)).Failure);
 	}
 
 	[Fact]
@@ -126,8 +127,8 @@ public sealed class ScopedUserSessionsTests
 
 		Assert.True((await app.Users.Of(user).ScopeTo(api).Sessions.CloseAsync(first.Id, Token)).IsOk);
 
-		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, ConnectionType.Irc, firstKey)).Failure);
-		Assert.True((await OpenWithTokenAsync(app, ConnectionType.Irc, secondKey)).Succeeded);
+		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, SessionType.Irc, firstKey)).Failure);
+		Assert.True((await OpenWithTokenAsync(app, SessionType.Irc, secondKey)).Succeeded);
 	}
 
 	[Fact]
@@ -182,8 +183,8 @@ public sealed class ScopedUserSessionsTests
 		var (laptopKey, laptop) = await OpenIrcAsync(app, api, "laptop");
 		var (vpsKey, _) = await OpenIrcAsync(app, api, "vps");
 
-		var first = (await OpenWithTokenAsync(app, ConnectionType.Irc, laptopKey)).Connection!;
-		var second = (await OpenWithTokenAsync(app, ConnectionType.Irc, vpsKey)).Connection!;
+		var first = (await OpenWithTokenAsync(app, SessionType.Irc, laptopKey)).Connection!;
+		var second = (await OpenWithTokenAsync(app, SessionType.Irc, vpsKey)).Connection!;
 		await app.Users.Of(api.Record).ScopeTo(api).Sessions.CloseAsync(laptop.Id, Token);
 
 		Assert.NotSame(first, second);
@@ -199,7 +200,7 @@ public sealed class ScopedUserSessionsTests
 		var user = await app.CreateUserAsync("AllOut", "password");
 		var current = await app.LoginAsync(user);
 		var otherApi = await app.LoginAsync(user);
-		var osu = await app.LoginAsync(user, ConnectionType.Osu);
+		var osu = await app.LoginAsync(user, SessionType.Osu);
 		var (ircKey, _) = await OpenIrcAsync(app, current, "bot");
 
 		var result = await app.Users.Of(user).ScopeTo(current).Sessions.CloseAllAsync(true, Token);
@@ -208,9 +209,9 @@ public sealed class ScopedUserSessionsTests
 		Assert.True(current.IsOpen);
 		Assert.False(otherApi.IsOpen);
 		Assert.False(osu.IsOpen);
-		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, ConnectionType.Api, otherApi.Token)).Failure);
-		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, ConnectionType.Irc, ircKey)).Failure);
-		Assert.True((await OpenWithTokenAsync(app, ConnectionType.Api, current.Token)).Succeeded);
+		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, SessionType.Api, otherApi.Token)).Failure);
+		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, SessionType.Irc, ircKey)).Failure);
+		Assert.True((await OpenWithTokenAsync(app, SessionType.Api, current.Token)).Succeeded);
 	}
 
 	[Fact]
@@ -223,7 +224,7 @@ public sealed class ScopedUserSessionsTests
 		Assert.True((await app.Users.Of(user).ScopeTo(current).Sessions.CloseAllAsync(false, Token)).IsOk);
 
 		Assert.False(current.IsOpen);
-		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, ConnectionType.Api, current.Token)).Failure);
+		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, SessionType.Api, current.Token)).Failure);
 	}
 
 	[Fact]
@@ -233,7 +234,7 @@ public sealed class ScopedUserSessionsTests
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPermissionsGroups.All));
 		var user = await app.CreateUserAsync("Target", "password");
 		var api = await app.LoginAsync(user);
-		var osu = await app.LoginAsync(user, ConnectionType.Osu);
+		var osu = await app.LoginAsync(user, SessionType.Osu);
 
 		var result = await app.Users.Of(user).ScopeTo(admin).Sessions.CloseAllAsync(true, Token);
 
@@ -244,7 +245,7 @@ public sealed class ScopedUserSessionsTests
 		Assert.Equal(admin.Record, entry.By);
 		Assert.Equal(user, entry.Target);
 		Assert.Equal(LoginFailure.PasswordResetRequired,
-			(await app.AttemptLoginAsync("Target", "password", ConnectionType.Osu)).Failure);
+			(await app.AttemptLoginAsync("Target", "password", SessionType.Osu)).Failure);
 	}
 
 	[Fact]
@@ -281,13 +282,13 @@ public sealed class ScopedUserSessionsTests
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Lister", "password", UserPermissions.None);
 		var api = await app.LoginAsync(user);
-		var osu = await app.LoginAsync(user, ConnectionType.Osu);
+		var osu = await app.LoginAsync(user, SessionType.Osu);
 		app.Users.Close(osu, SessionEndReason.ConnectionLost);
 		var scoped = app.Users.Of(user).ScopeTo(api).Sessions;
 
 		var (_, active) = await scoped.ListAsync(new PageRequest(0, 10), SessionState.Active, null, Token);
 		var (_, ended) = await scoped.ListAsync(new PageRequest(0, 10), SessionState.Ended, null, Token);
-		var (_, osuOnly) = await scoped.ListAsync(new PageRequest(0, 10), SessionState.Any, [ConnectionType.Osu], Token);
+		var (_, osuOnly) = await scoped.ListAsync(new PageRequest(0, 10), SessionState.Any, [SessionType.Osu], Token);
 
 		Assert.Equal(api.Session.Id, Assert.Single(active!.Items).Id);
 		Assert.Equal(osu.Session.Id, Assert.Single(ended!.Items).Id);
@@ -323,10 +324,10 @@ public sealed class ScopedUserSessionsTests
 		var api = await app.LoginAsync(user);
 
 		var (key, session) = await OpenIrcAsync(app, api, "osu-ahr VPS");
-		var result = await OpenWithTokenAsync(app, ConnectionType.Irc, key);
+		var result = await OpenWithTokenAsync(app, SessionType.Irc, key);
 
 		Assert.Equal("osu-ahr VPS", session.ClientInfo);
-		Assert.Equal(ConnectionType.Irc, session.Type);
+		Assert.Equal(SessionType.Irc, session.Type);
 		Assert.True(result.Succeeded);
 		Assert.Equal(session.Id, result.Connection!.Session.Id);
 		Assert.IsType<IrcConnection>(result.Connection);
@@ -339,12 +340,12 @@ public sealed class ScopedUserSessionsTests
 		var user = await app.CreateUserAsync("Reconnect", "password");
 		var api = await app.LoginAsync(user);
 		var (key, _) = await OpenIrcAsync(app, api, "laptop");
-		var first = (await OpenWithTokenAsync(app, ConnectionType.Irc, key)).Connection!;
+		var first = (await OpenWithTokenAsync(app, SessionType.Irc, key)).Connection!;
 
 		app.Users.Close(first, SessionEndReason.LoggedOut);
 
-		Assert.True((await OpenWithTokenAsync(app, ConnectionType.Irc, key)).Succeeded);
-		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, ConnectionType.Irc, key + "x")).Failure);
+		Assert.True((await OpenWithTokenAsync(app, SessionType.Irc, key)).Succeeded);
+		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, SessionType.Irc, key + "x")).Failure);
 	}
 
 	[Fact]

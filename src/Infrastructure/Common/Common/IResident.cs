@@ -1,4 +1,4 @@
-namespace Basil.Infrastructure.Common;
+namespace Basil.Infrastructure.Common.Common;
 
 /// <summary>Data every client uses, or storage state readied at startup, loaded once after the database is up to date.</summary>
 public interface IResident

@@ -2,7 +2,7 @@ using Basil.Infrastructure.Common.Postgres;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace Basil.Infrastructure.Common;
+namespace Basil.Infrastructure.Common.Common;
 
 internal sealed class WriteTicketRowConfiguration : IEntityTypeConfiguration<WriteTicketRow>
 {

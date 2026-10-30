@@ -1,4 +1,5 @@
 using Basil.Application.Beatmaps.Persistence;
+using Basil.Application.Common.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Domain.Beatmaps;
 using Basil.Host.Cli.Commands;
@@ -24,7 +25,7 @@ public sealed class ContentCommandTests(CliFixture fixture)
 	public async Task Beatmapsets_Create_ImportsAnOsz_ThenShowListAndBeatmapsPrintIt()
 	{
 		var (code, text) = await fixture.RunAsync($"beatmapsets create --file {SamplePath("hopes-and-dreams-catch.osz")}");
-		var set = (await Get<IBeatmapsetRepository>().ListAsync(new BeatmapQuery(), new Basil.Application.Common.PageRequest(0, 100)))
+		var set = (await Get<IBeatmapsetRepository>().ListAsync(new BeatmapQuery(), new PageRequest(0, 100)))
 			.Items.First(item => item.Metadata.Title.Contains("Hopes", StringComparison.OrdinalIgnoreCase));
 		var maps = await Get<IBeatmapRepository>().ListAsync(set);
 

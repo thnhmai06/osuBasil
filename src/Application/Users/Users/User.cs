@@ -61,7 +61,7 @@ public sealed class User
 
 	/// <summary>Gets the open connections of one kind.</summary>
 	/// <param name="type">The kind of connection.</param>
-	public IReadOnlySet<Connection> this[ConnectionType type] => Sessions[type];
+	public IReadOnlySet<Connection> this[SessionType type] => Sessions[type];
 
 	/// <summary>Gets every open connection of the user.</summary>
 	public IEnumerable<Connection> Connections => Sessions.Connections;

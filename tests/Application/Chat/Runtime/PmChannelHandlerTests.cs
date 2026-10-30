@@ -15,7 +15,7 @@ public sealed class PmChannelHandlerTests
 	{
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("Opened", "password");
-		var connection = await app.LoginAsync(record, ConnectionType.Irc);
+		var connection = await app.LoginAsync(record, SessionType.Irc);
 		var opened = Assert.Single(app.UserEvents.Events.OfType<UserConnectionOpened>());
 
 		await new PmConnectionOpenedHandler(app.PmChannels).Handle(opened, TestContext.Current.CancellationToken);
@@ -30,7 +30,7 @@ public sealed class PmChannelHandlerTests
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("TourneyObserver", "password",
 			UserPermissionsGroups.Default | UserPermissions.RoomObserve);
-		await app.LoginAsync(record, ConnectionType.Tourney);
+		await app.LoginAsync(record, SessionType.OsuTourney);
 		var opened = Assert.Single(app.UserEvents.Events.OfType<UserConnectionOpened>());
 
 		await new PmConnectionOpenedHandler(app.PmChannels).Handle(opened, TestContext.Current.CancellationToken);
@@ -43,8 +43,8 @@ public sealed class PmChannelHandlerTests
 	{
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("StillHere", "password");
-		var irc = await app.LoginAsync(record, ConnectionType.Irc);
-		var bancho = await app.LoginAsync(record, ConnectionType.Osu);
+		var irc = await app.LoginAsync(record, SessionType.Irc);
+		var bancho = await app.LoginAsync(record, SessionType.Osu);
 		var owner = app.Users.Of(record);
 		var channel = app.PmChannels.Of(owner);
 		app.Users.Close(irc, SessionEndReason.ConnectionLost);
@@ -64,7 +64,7 @@ public sealed class PmChannelHandlerTests
 	{
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("Leaving", "password");
-		var connection = await app.LoginAsync(record, ConnectionType.Irc);
+		var connection = await app.LoginAsync(record, SessionType.Irc);
 		var owner = app.Users.Of(record);
 		var channel = app.PmChannels.Of(owner);
 		app.Users.Close(connection, SessionEndReason.LoggedOut);

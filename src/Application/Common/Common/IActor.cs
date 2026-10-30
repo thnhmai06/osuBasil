@@ -1,6 +1,6 @@
 using Basil.Domain.Users;
 
-namespace Basil.Application.Common;
+namespace Basil.Application.Common.Common;
 
 /// <summary>Whoever acts on an object through a scope: a user's connection, as far as a scope needs to know it.</summary>
 public interface IActor

@@ -1,5 +1,5 @@
 ﻿using System.Net;
-using Basil.Domain.Bancho;
+using Basil.Domain.Client;
 using Basil.Domain.Users;
 
 namespace Basil.Domain.Auth;
@@ -17,13 +17,13 @@ public sealed class Session
 	public required UserRecord User { get; init; }
 
 	/// <summary>Gets the kind of client that opened this session.</summary>
-	public required ConnectionType Type { get; init; }
+	public required SessionType Type { get; init; }
 
 	/// <summary>Gets the IP address the session came from.</summary>
 	public required IPAddress Ip { get; init; }
 
 	/// <summary>Gets the osu! client that logged in, or <see langword="null" /> for a login without an osu! client.</summary>
-	public BanchoClient? Client { get; init; }
+	public OsuClient? Client { get; init; }
 
 	/// <summary>Gets client information reported for this session, when available.</summary>
 	public string? ClientInfo { get; init; }
@@ -65,7 +65,7 @@ public sealed class Session
 	/// <param name="lifetime">How long the token remains valid after activity.</param>
 	public void ExtendExpiry(DateTimeOffset at, TimeSpan lifetime)
 	{
-		if (Type is ConnectionType.Api && EndedAt is null) _expiresAt = at + lifetime;
+		if (Type is SessionType.Api && EndedAt is null) _expiresAt = at + lifetime;
 	}
 
 	/// <summary>Ends this session at a moment for a specific reason.</summary>

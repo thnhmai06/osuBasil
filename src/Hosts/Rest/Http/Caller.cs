@@ -49,7 +49,7 @@ public static class Caller
 		var token = header["Bearer ".Length..].Trim();
 		if (token.Length == 0) return false;
 
-		var result = await registry.LoginWithTokenAsync(ConnectionType.Api, token, context.Ip(), null,
+		var result = await registry.LoginWithTokenAsync(SessionType.Api, token, context.Ip(), null,
 			context.RequestAborted);
 		if (result.Connection is not ApiConnection connection) return false;
 

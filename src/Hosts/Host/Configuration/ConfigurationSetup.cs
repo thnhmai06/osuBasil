@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Options;
 
-namespace Basil.Host;
+namespace Basil.Host.Configuration;
 
 /// <summary>Reads the configuration files that sit beside the executable.</summary>
 public static class ConfigurationSetup

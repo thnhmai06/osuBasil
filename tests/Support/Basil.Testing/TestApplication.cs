@@ -19,7 +19,7 @@ using Basil.Application.Scores.Runtime;
 using Basil.Application.Servers.Runtime;
 using Basil.Application.Users.Users;
 using Basil.Domain.Auth;
-using Basil.Domain.Bancho;
+using Basil.Domain.Client;
 using Basil.Domain.Common;
 using Basil.Domain.Moderation;
 using Basil.Domain.Users;
@@ -248,15 +248,15 @@ public sealed class TestApplication : IDisposable
 		return bot;
 	}
 
-	/// <summary>Creates a valid osu! client descriptor for Bancho and Tourney logins.</summary>
+	/// <summary>Creates a valid osu! client descriptor for Bancho and OsuTourney logins.</summary>
 	/// <returns>A stable client descriptor with valid fingerprint values.</returns>
-	public static BanchoClient CreateClient()
+	public static OsuClient CreateClient()
 	{
 		var hash = new Md5("0123456789abcdef0123456789abcdef");
-		return new BanchoClient(
-			new BanchoVersion(new DateOnly(2026, 1, 1), null, BanchoVersionStream.Stable),
-			new BanchoFingerprint(hash, new NetworkAdapters { Adapters = "runningunderwine", Hash = hash }, hash,
-				hash));
+		return new OsuClient(
+			new OsuVersion(new DateOnly(2026, 1, 1), null, OsuVersionStream.Stable),
+			new OsuFingerprint(hash, hash,
+				hash, new NetworkAdapters { Adapters = "runningunderwine", Hash = hash }));
 	}
 
 	/// <summary>Attempts login using a stored account name and deterministic password hash.</summary>
@@ -266,11 +266,11 @@ public sealed class TestApplication : IDisposable
 	/// <returns>The public login result.</returns>
 	/// <remarks>An IRC client signs in with a key: the password is ignored and a key is issued for the account.</remarks>
 	public Task<LoginResult> AttemptLoginAsync(string username, string password,
-		ConnectionType type = ConnectionType.Api)
+		SessionType type = SessionType.Api)
 	{
-		if (type is ConnectionType.Irc) return OpenIrcAsync(username);
+		if (type is SessionType.Irc) return OpenIrcAsync(username);
 
-		var client = type is ConnectionType.Osu or ConnectionType.Tourney ? CreateClient() : null;
+		var client = type is SessionType.Osu or SessionType.OsuTourney ? CreateClient() : null;
 		return Users.LoginAsync(new LoginAttempt(username, PasswordHash(password)), type, IPAddress.Loopback,
 			client, 0);
 	}
@@ -281,7 +281,7 @@ public sealed class TestApplication : IDisposable
 	/// <param name="password">The account password.</param>
 	/// <returns>The opened connection.</returns>
 	/// <exception cref="InvalidOperationException">The login did not succeed.</exception>
-	public async Task<Connection> LoginAsync(UserRecord user, ConnectionType type = ConnectionType.Api,
+	public async Task<Connection> LoginAsync(UserRecord user, SessionType type = SessionType.Api,
 		string password = "password")
 	{
 		var result = await AttemptLoginAsync(user.Value.Name, password, type);
@@ -316,12 +316,12 @@ public sealed class TestApplication : IDisposable
 		{
 			Id = Guid.NewGuid(),
 			User = record,
-			Type = ConnectionType.Irc,
+			Type = SessionType.Irc,
 			Ip = IPAddress.Loopback,
 			StartedAt = Clock.GetUtcNow(),
 			TokenHash = SHA256.HashData(Encoding.UTF8.GetBytes(key))
 		});
-		return await Users.LoginWithTokenAsync(ConnectionType.Irc, key, IPAddress.Loopback);
+		return await Users.LoginWithTokenAsync(SessionType.Irc, key, IPAddress.Loopback);
 	}
 
 	private static Md5 PasswordHash(string password)

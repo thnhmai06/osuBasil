@@ -5,6 +5,7 @@ using Basil.Domain.Users;
 using Basil.Infrastructure.Common;
 using Basil.Infrastructure.Common.Postgres;
 using Basil.Host;
+using Basil.Infrastructure.Common.Common;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;

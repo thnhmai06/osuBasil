@@ -1,3 +1,4 @@
+using Basil.Application.Common.Common;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Common.Tests;

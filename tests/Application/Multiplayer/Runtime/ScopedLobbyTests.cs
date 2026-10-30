@@ -304,7 +304,7 @@ public sealed class ScopedLobbyTests
 		Assert.True(room.IsClosed);
 	}
 
-	private static Task<(Room? Room, Result<RoomOutcome> Result)> OpenAsync(TestApplication app, Connection by,
+	private static Task<(Room? Room, Common.Common.Result<RoomOutcome> Result)> OpenAsync(TestApplication app, Connection by,
 		string name = "test room", bool isTournament = false, string password = "")
 	{
 		return app.Lobby.ScopeTo(by).OpenRoomAsync(name, password, isTournament, false,
@@ -359,7 +359,7 @@ public sealed class ScopedLobbyTests
 	public async Task CanViewAsync_APlayerWhoLeftAPrivateOpenRoom_LosesTheViewWhileItStaysOpen()
 	{
 		using var app = new TestApplication();
-		var creator = await app.LoginAsync(await app.CreateUserAsync("Creator", "password"), ConnectionType.Osu);
+		var creator = await app.LoginAsync(await app.CreateUserAsync("Creator", "password"), SessionType.Osu);
 		var (room, result) = await OpenAsync(app, creator);
 		Assert.True(result.IsOk);
 		Assert.True((await room!.ScopeTo(creator).Settings.ConfigureAsync(new RoomSettingsChange(IsPrivate: true),

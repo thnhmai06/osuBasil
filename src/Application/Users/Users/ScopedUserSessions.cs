@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using Basil.Application.Auth.Persistence;
 using Basil.Application.Common;
+using Basil.Application.Common.Common;
 using Basil.Application.Users.Connections;
 using Basil.Domain.Auth;
 using Basil.Domain.Moderation;
@@ -13,8 +14,8 @@ public sealed class ScopedUserSessions(ScopedUser scoped)
 {
 	private const int MaxLabelLength = 64;
 
-	private static readonly ConnectionType[] ClientTypes =
-		[ConnectionType.Osu, ConnectionType.Tourney, ConnectionType.Irc, ConnectionType.Api];
+	private static readonly SessionType[] ClientTypes =
+		[SessionType.Osu, SessionType.OsuTourney, SessionType.Irc, SessionType.Api];
 
 	/// <summary>Reads the sessions of this account.</summary>
 	/// <param name="page">Which part of the history to return.</param>
@@ -27,7 +28,7 @@ public sealed class ScopedUserSessions(ScopedUser scoped)
 	///     <see cref="UserPermissions.UserManageViewSessions" /> and is recorded in the moderation log.
 	/// </remarks>
 	public async Task<(Result<UserOutcome> Result, Page<SessionEntry>? Sessions)> ListAsync(PageRequest page,
-		SessionState state = SessionState.Any, IReadOnlyList<ConnectionType>? types = null,
+		SessionState state = SessionState.Any, IReadOnlyList<SessionType>? types = null,
 		CancellationToken cancellationToken = default)
 	{
 		if (!scoped.IsSelf && scoped.Guard(UserPermissions.UserManageViewSessions, false) is { } denied)
@@ -153,7 +154,7 @@ public sealed class ScopedUserSessions(ScopedUser scoped)
 		{
 			Id = Guid.NewGuid(),
 			User = scoped.User.Record,
-			Type = ConnectionType.Irc,
+			Type = SessionType.Irc,
 			Ip = scoped.By.Session.Ip,
 			ClientInfo = label,
 			StartedAt = scoped.User.Context.Clock.GetUtcNow(),

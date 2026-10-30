@@ -1,8 +1,7 @@
 using Makaretu.Dns;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
-namespace Basil.Host;
+namespace Basil.Host.Configuration;
 
 /// <summary>Answers multicast DNS queries for the server's domain and the sub-domains it serves, so a client on the same network finds it.</summary>
 internal sealed class LanAdvertiser(IOptions<ServerOptions> options, ILogger<LanAdvertiser> logger) : IHostedService, IDisposable

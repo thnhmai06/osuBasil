@@ -1,4 +1,4 @@
-namespace Basil.Infrastructure.Common;
+namespace Basil.Infrastructure.Common.Common;
 
 /// <summary>
 ///     Writes resident data to the database and changes the resident copy only after the write is committed, so that

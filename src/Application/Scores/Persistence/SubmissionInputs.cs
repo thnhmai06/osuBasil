@@ -1,4 +1,4 @@
-using Basil.Domain.Bancho;
+using Basil.Domain.Client;
 using Basil.Domain.Common;
 
 namespace Basil.Application.Scores.Persistence;
@@ -17,7 +17,7 @@ public sealed record BeatmapChecksums(Md5 Hash, Md5? StoryboardHash);
 /// <param name="BeatmapHash">The MD5 of the beatmap the client claims to have played.</param>
 public sealed record SubmittedClient(
 	string ClientHash,
-	BanchoFingerprint Fingerprint,
+	OsuFingerprint Fingerprint,
 	string UninstallId,
 	string DiskSignature,
 	string VersionDate,
