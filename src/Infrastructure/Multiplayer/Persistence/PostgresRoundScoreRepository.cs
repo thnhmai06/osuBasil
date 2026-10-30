@@ -38,6 +38,9 @@ internal sealed class PostgresRoundScoreRepository(
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<RoundScore>> ListAsync(Round round, CancellationToken cancellationToken = default)
 	{
+		// Taken before the database is read, so a relation whose write finishes during the read is in the snapshot or in
+		// the rows, never in neither.
+		var queued = _pending.Values.Where(pending => pending.Round.Equals(round)).ToList();
 		var rows = await reader.ReadAsync((MultiplayerDbContext context) => context.RoundScores
 			.Where(rs => rs.MatchId == round.Match.Id && rs.RoundNumber == round.Index)
 			.OrderBy(rs => rs.ScoreId)
@@ -49,8 +52,7 @@ internal sealed class PostgresRoundScoreRepository(
 				result.Add(new RoundScore(score, round, row.Team is { } team ? (GameTeam)team : null));
 
 		// A relation whose write is still queued is not in the database yet.
-		result.AddRange(_pending.Values.Where(pending => pending.Round.Equals(round) &&
-		                                                 result.All(stored => stored.Score.Id != pending.Score.Id)));
+		result.AddRange(queued.Where(pending => result.All(stored => stored.Score.Id != pending.Score.Id)));
 		return [.. result.OrderBy(roundScore => roundScore.Score.Id)];
 	}
 }
