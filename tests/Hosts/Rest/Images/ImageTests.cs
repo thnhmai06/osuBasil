@@ -51,6 +51,22 @@ public sealed class ImageTests(RestHostFixture fixture)
 	}
 
 	[Fact]
+	public async Task Avatar_WhosePictureCannotBeDecoded_IsNotFound()
+	{
+		var headerOnly = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "Assets", "Images", "seasonal-3500x2487-header.png"));
+		var (owner, id) = await fixture.SignInAsync("ImgBrokenAvatar");
+		using (owner)
+		using (var anon = Anonymous())
+		{
+			var status = await PutFileAsync(owner, $"/v1/users/{id}/avatar", headerOnly);
+			using var served = await anon.GetFromAsync("a", $"/{id}");
+
+			Assert.Equal(200, status);
+			Assert.Equal(404, (int)served.StatusCode);
+		}
+	}
+
+	[Fact]
 	public async Task Avatar_CanBeResizedByQuery()
 	{
 		var (owner, id) = await fixture.SignInAsync("ImgResize");
