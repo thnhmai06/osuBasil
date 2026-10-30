@@ -7,6 +7,7 @@ using SixLabors.ImageSharp.Formats.Bmp;
 using SixLabors.ImageSharp.Formats.Gif;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.Formats.Tiff;
 using SixLabors.ImageSharp.PixelFormats;
 
 namespace Basil.Infrastructure.Content.Tests.Capabilities;
@@ -45,6 +46,17 @@ public sealed class ImageSharpScreenshotInspectorTests
 	public async Task InspectAsync_ReturnsNullForAGif()
 	{
 		await using var content = Picture(64, 64, new GifEncoder());
+
+		var info = await _inspector.InspectAsync(content, Token);
+
+		Assert.Null(info);
+	}
+
+	/// <summary>A TIFF is not a picture the server accepts.</summary>
+	[Fact]
+	public async Task InspectAsync_ReturnsNullForATiff()
+	{
+		await using var content = Picture(64, 64, new TiffEncoder());
 
 		var info = await _inspector.InspectAsync(content, Token);
 
