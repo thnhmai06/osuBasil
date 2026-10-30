@@ -227,7 +227,7 @@ public sealed class ChatTests(IrcHostFixture fixture)
 
 		Assert.Equal($":irc.basil.test NOTICE ChFlood :{IrcReplies.ChatTooFast}", await irc.ExpectAsync("NOTICE"));
 		await irc.BarrierAsync();
-		for (var polls = 0; polls < 40 && Messages(osu).Count() < 10; polls++) await osu.PollAsync();
+		Assert.True(await osu.WaitUntilAsync(() => Messages(osu).Count() >= 10));
 		await osu.PollAsync();
 		Assert.Equal(10, Messages(osu).Count());
 	}
