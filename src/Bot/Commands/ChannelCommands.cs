@@ -90,9 +90,12 @@ internal sealed class ChannelCommands(Server server, GeneralChannelRegistry chan
 		CancellationToken cancellationToken)
 	{
 		if (!TryParse(options, out var change)) return await InvalidAsync(context, cancellationToken);
-		if (channels.Find(name) is not { } channel)
+
+		var (found, channel) = server.ScopeTo(context.By).Channels.Find(name);
+		if (channel is null)
 		{
-			await context.Reply(ChannelReplies.NotFound, new { name }, cancellationToken);
+			var (refusal, reason) = ChannelReplies.Of(found, name, ChannelReplies.Updated);
+			await context.Reply(refusal, reason, cancellationToken);
 			return false;
 		}
 
@@ -113,9 +116,11 @@ internal sealed class ChannelCommands(Server server, GeneralChannelRegistry chan
 
 	private async Task<bool> DeleteAsync(CommandContext context, string name, CancellationToken cancellationToken)
 	{
-		if (channels.Find(name) is not { } channel)
+		var (found, channel) = server.ScopeTo(context.By).Channels.Find(name);
+		if (channel is null)
 		{
-			await context.Reply(ChannelReplies.NotFound, new { name }, cancellationToken);
+			var (refusal, reason) = ChannelReplies.Of(found, name, ChannelReplies.Deleted);
+			await context.Reply(refusal, reason, cancellationToken);
 			return false;
 		}
 

@@ -28,5 +28,8 @@ public enum ChannelOutcome : byte
 	TargetSilenced,
 
 	/// <summary>The kind of channel does not let this connection read or write it.</summary>
-	AccessDenied
+	AccessDenied,
+
+	/// <summary>No channel has the name.</summary>
+	NotFound
 }

@@ -1,3 +1,4 @@
+using Basil.Application.Chat.Runtime;
 using Basil.Application.Common;
 using Basil.Domain.Chat;
 using Basil.Domain.Users;
@@ -30,5 +31,24 @@ public sealed class ScopedServerChannels
 		if (_scoped.Server.OpenChannel(record) is null) return ServerOutcome.NameTaken;
 		await chat.Channels.CreateOrUpdateAsync(record, cancellationToken);
 		return ServerOutcome.Ok;
+	}
+
+	/// <summary>Finds the general channel to manage under a name.</summary>
+	/// <param name="name">The channel name.</param>
+	/// <returns>
+	///     The open channel, NotFound when no open channel has that name, or a denial that names the missing permissions.
+	/// </returns>
+	/// <remarks>
+	///     Requires <see cref="UserPermissions.ChatManageChannels" />. The name is looked up only after the right is met,
+	///     so a connection without it is refused the same way whether or not the channel exists.
+	/// </remarks>
+	public (Result<ChannelOutcome> Result, GeneralChannel? Channel) Find(string name)
+	{
+		if (_scoped.Needs(UserPermissions.ChatManageChannels) is { } missing)
+			return (Result<ChannelOutcome>.Denied(missing), null);
+
+		return _scoped.Server.Context.Chat.Registry.Find(name) is { } channel
+			? (ChannelOutcome.Ok, channel)
+			: (ChannelOutcome.NotFound, null);
 	}
 }
