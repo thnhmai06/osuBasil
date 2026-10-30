@@ -1,4 +1,5 @@
 using Basil.Application.Common;
+using Basil.Application.Common.Common;
 using Basil.Application.Users.Users;
 using Basil.Domain.Auth;
 using Basil.Domain.Common;
@@ -37,7 +38,7 @@ public abstract class Connection(Session login, string token) : IActor
 	}
 
 	/// <summary>Gets the kind of connection.</summary>
-	public abstract ConnectionType Type { get; }
+	public abstract SessionType Type { get; }
 
 	/// <summary>Gets a value that indicates whether the connection is still open.</summary>
 	public bool IsOpen { get; internal set; }
@@ -71,7 +72,7 @@ public sealed class BanchoConnection : Connection
 	internal ConnectionContext Context { get; }
 
 	/// <inheritdoc />
-	public override ConnectionType Type => ConnectionType.Osu;
+	public override SessionType Type => SessionType.Osu;
 
 	/// <summary>Gets the client's UTC offset reported at login.</summary>
 	public int UtcOffset { get; }
@@ -129,7 +130,7 @@ public sealed class TourneyConnection : Connection
 	}
 
 	/// <inheritdoc />
-	public override ConnectionType Type => ConnectionType.Tourney;
+	public override SessionType Type => SessionType.OsuTourney;
 }
 
 /// <summary>A connection from an IRC client.</summary>
@@ -143,7 +144,7 @@ public sealed class IrcConnection : Connection
 	}
 
 	/// <inheritdoc />
-	public override ConnectionType Type => ConnectionType.Irc;
+	public override SessionType Type => SessionType.Irc;
 }
 
 /// <summary>A connection from a client of the HTTP API.</summary>
@@ -162,7 +163,7 @@ public sealed class ApiConnection : Connection
 	public TimeSpan TokenLifetime { get; }
 
 	/// <inheritdoc />
-	public override ConnectionType Type => ConnectionType.Api;
+	public override SessionType Type => SessionType.Api;
 }
 
 /// <summary>The server's own connection for BasilBot; no client is behind it.</summary>
@@ -176,7 +177,7 @@ public sealed class BotConnection : Connection
 	}
 
 	/// <inheritdoc />
-	public override ConnectionType Type => ConnectionType.Bot;
+	public override SessionType Type => SessionType.Bot;
 }
 
 /// <summary>
@@ -194,7 +195,7 @@ public sealed class OperatorConnection : Connection
 	}
 
 	/// <inheritdoc />
-	public override ConnectionType Type => ConnectionType.Bot;
+	public override SessionType Type => SessionType.Bot;
 
 	/// <inheritdoc />
 	public override UserPermissions EffectivePermissions(DateTimeOffset now)

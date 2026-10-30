@@ -1,9 +1,10 @@
 using System.Net;
 using Basil.Application.Content.Persistence;
-using Basil.Domain.Bancho;
+using Basil.Domain.Client;
 using Basil.Host.Bancho.Tests.Support;
 using Basil.Testing.Clients;
 using Microsoft.Extensions.DependencyInjection;
+using OsuClient = Basil.Testing.Clients.OsuClient;
 
 namespace Basil.Host.Bancho.Tests.Web;
 
@@ -49,7 +50,7 @@ public sealed class WebEndpointTests(BanchoHostFixture fixture)
 	{
 		var map = (await Host.ImportSampleAsync("Sets/padoru-standard.osz")).First();
 		using var client = await OnlineAsync("InfoByName");
-		var filename = map.Metadata.OsuFileName(map.Beatmapset.Metadata);
+		var filename = map.Metadata.GetFileName(map.Beatmapset.Metadata);
 
 		var (status, text) = await client.GetBeatmapInfoAsync(filename);
 
@@ -64,7 +65,7 @@ public sealed class WebEndpointTests(BanchoHostFixture fixture)
 		using var client = await OnlineAsync("LastFmUser");
 
 		var (_, clean) = await client.LastFmAsync("a0");
-		var (_, cheat) = await client.LastFmAsync($"a{(uint)BanchoFlags.HqAssembly}");
+		var (_, cheat) = await client.LastFmAsync($"a{(uint)OsuFlags.HqAssembly}");
 
 		Assert.Equal(string.Empty, clean);
 		Assert.Equal("-3", cheat);

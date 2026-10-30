@@ -1,7 +1,7 @@
 using System.Globalization;
 using Basil.Domain.Users;
 
-namespace Basil.Application.Common;
+namespace Basil.Application.Common.Common;
 
 /// <summary>
 ///     The result of a behaviour that can be refused: what happened, or which permissions the caller lacks.

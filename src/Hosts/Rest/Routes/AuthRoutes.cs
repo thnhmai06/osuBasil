@@ -59,7 +59,7 @@ internal static class AuthRoutes
 		}
 
 		var attempt = new LoginAttempt(request.Username, new Md5(Encoding.UTF8.GetBytes(request.Password)));
-		var result = await registry.LoginAsync(attempt, ConnectionType.Api, ip, null, 0, context.RequestAborted);
+		var result = await registry.LoginAsync(attempt, SessionType.Api, ip, null, 0, context.RequestAborted);
 		if (result.Connection is not { } connection)
 		{
 			if (result.Failure is LoginFailure.UnknownUser or LoginFailure.WrongPassword)

@@ -291,7 +291,7 @@ public sealed class UserCommandTests(CliFixture fixture)
 		using var client = new RestClient(fixture.Host.Url, fixture.Host.Domain);
 		var id = await client.LoginAsync(name);
 
-		var (_, listed) = await fixture.RunAsync($"users {id} sessions list --state online --types {(int)ConnectionType.Api}");
+		var (_, listed) = await fixture.RunAsync($"users {id} sessions list --state online --types {(int)SessionType.Api}");
 		var sessionId = listed.Split('\n').Select(line => line.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0]).First(word => Guid.TryParse(word, out _));
 		var (shown, shownText) = await fixture.RunAsync($"users {id} sessions {sessionId}");
 		var (closed, _) = await fixture.RunAsync($"users {id} sessions {sessionId} delete");

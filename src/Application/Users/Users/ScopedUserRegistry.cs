@@ -1,5 +1,6 @@
 using Basil.Application.Users.Persistence;
 using Basil.Application.Common;
+using Basil.Application.Common.Common;
 using Basil.Application.Users.Connections;
 using Basil.Domain.Common;
 using Basil.Domain.Users;

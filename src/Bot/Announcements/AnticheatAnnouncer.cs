@@ -5,7 +5,7 @@ using Basil.Application.Multiplayer.Runtime.Rooms;
 using Basil.Application.Servers.Runtime;
 using Basil.Application.Users.Users;
 using Basil.Bot.Replies;
-using Basil.Domain.Bancho;
+using Basil.Domain.Client;
 using Basil.Domain.Users;
 using Mediator;
 

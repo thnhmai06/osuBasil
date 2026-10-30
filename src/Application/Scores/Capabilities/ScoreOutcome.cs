@@ -5,6 +5,6 @@ namespace Basil.Application.Scores.Capabilities;
 
 /// <summary>The result of validating and recording a score submission.</summary>
 internal readonly record struct ScoreOutcome(
-	ScoreRejection? Rejection,
+	ScoreRejectionReason? Rejection,
 	ScoreRecord? Score,
 	UserStats? Stats);

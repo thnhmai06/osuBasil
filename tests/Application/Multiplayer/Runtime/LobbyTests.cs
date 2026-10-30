@@ -31,7 +31,7 @@ public sealed class LobbyTests
 		var setup = await RoomFixture.CreateAsync(app);
 		var observerUser = await app.CreateUserAsync("Observer", "password",
 			UserPermissionsGroups.Default | UserPermissions.RoomObserve);
-		var observer = (TourneyConnection)await app.LoginAsync(observerUser, ConnectionType.Tourney);
+		var observer = (TourneyConnection)await app.LoginAsync(observerUser, SessionType.OsuTourney);
 		Assert.True((await setup.Room.ScopeTo(observer).Members.ObserverJoinAsync(
 			TestContext.Current.CancellationToken)).IsOk);
 

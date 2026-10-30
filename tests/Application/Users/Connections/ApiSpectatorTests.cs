@@ -1,7 +1,7 @@
 using Basil.Application.Users.Connections;
 using Basil.Application.Users.Users;
 using Basil.Domain.Auth;
-using Basil.Domain.Bancho;
+using Basil.Domain.Client;
 using Basil.Domain.Users;
 using Basil.Testing;
 using Microsoft.Extensions.Logging.Abstractions;

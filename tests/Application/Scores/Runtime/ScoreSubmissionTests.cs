@@ -4,6 +4,7 @@ using Basil.Application.Multiplayer.Runtime;
 using Basil.Application.Multiplayer.Runtime.Events;
 using Basil.Application.Multiplayer.Runtime.Rooms;
 using Basil.Application.Scores.Runtime;
+using Basil.Domain.Client;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
@@ -26,7 +27,7 @@ public sealed class ScoreSubmissionTests
 
 	private static readonly BeatmapChecksums Checksums = new(ScoreSubmissionFixture.Beatmap, null);
 
-	private static Task<(Result<ScoreSubmissionOutcome> Result, ScoreRejection? Rejection)> SubmitAsync(
+	private static Task<(Common.Common.Result<ScoreSubmissionOutcome> Result, ScoreRejectionReason? Rejection)> SubmitAsync(
 		ScoreSubmissionFixture f, Submission submission, SubmittedClient? client = null,
 		BeatmapChecksums? beatmap = null, Stream? replay = null, bool unknownBeatmap = false)
 	{
@@ -59,6 +60,7 @@ public sealed class ScoreSubmissionTests
 		var submission = new Submission
 		{
 			Score = ScoreSubmissionFixture.PassedScore(),
+			Flags = OsuFlags.Clean,
 			HashByClient = new Md5("cc362f4892f70954e6f38d1c967ba2b1")
 		};
 
@@ -82,7 +84,7 @@ public sealed class ScoreSubmissionTests
 			beatmap: new BeatmapChecksums(ScoreSubmissionFixture.Beatmap, storyboard));
 
 		Assert.Equal(ScoreSubmissionOutcome.Ok, withStoryboard.Result.Outcome);
-		Assert.Equal(ScoreRejection.SubmissionHashMismatch, without.Rejection);
+		Assert.Equal(ScoreRejectionReason.SubmissionHashMismatch, without.Rejection);
 	}
 
 	// ----- permission and ownership -----
@@ -113,7 +115,7 @@ public sealed class ScoreSubmissionTests
 		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()), client);
 
 		Assert.Equal(ScoreSubmissionOutcome.Rejected, result.Outcome);
-		Assert.Equal(ScoreRejection.VersionMismatch, rejection);
+		Assert.Equal(ScoreRejectionReason.VersionMismatch, rejection);
 		AssertNothingRecorded(f);
 	}
 
@@ -124,13 +126,13 @@ public sealed class ScoreSubmissionTests
 		var genuine = ScoreSubmissionFixture.GenuineClient();
 		var client = genuine with
 		{
-			Fingerprint = genuine.Fingerprint with { OsuPathHash = new Md5("ffffffffffffffffffffffffffffffff") }
+			Fingerprint = genuine.Fingerprint with { PathHash = new Md5("ffffffffffffffffffffffffffffffff") }
 		};
 
 		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()), client);
 
 		Assert.Equal(ScoreSubmissionOutcome.Rejected, result.Outcome);
-		Assert.Equal(ScoreRejection.ClientHashMismatch, rejection);
+		Assert.Equal(ScoreRejectionReason.ClientHashMismatch, rejection);
 		AssertNothingRecorded(f);
 	}
 
@@ -143,7 +145,7 @@ public sealed class ScoreSubmissionTests
 		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()), client);
 
 		Assert.Equal(ScoreSubmissionOutcome.Rejected, result.Outcome);
-		Assert.Equal(ScoreRejection.UninstallerHashMismatch, rejection);
+		Assert.Equal(ScoreRejectionReason.UninstallerHashMismatch, rejection);
 		AssertNothingRecorded(f);
 	}
 
@@ -156,7 +158,7 @@ public sealed class ScoreSubmissionTests
 		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()), client);
 
 		Assert.Equal(ScoreSubmissionOutcome.Rejected, result.Outcome);
-		Assert.Equal(ScoreRejection.DiskSignatureHashMismatch, rejection);
+		Assert.Equal(ScoreRejectionReason.DiskSignatureHashMismatch, rejection);
 		AssertNothingRecorded(f);
 	}
 
@@ -165,12 +167,12 @@ public sealed class ScoreSubmissionTests
 	{
 		using var f = await ScoreSubmissionFixture.CreateAsync();
 		var score = ScoreSubmissionFixture.PassedScore();
-		var submission = new Submission { Score = score, HashByClient = new Md5("00000000000000000000000000000000") };
+		var submission = new Submission { Score = score, Flags = OsuFlags.Clean, HashByClient = new Md5("00000000000000000000000000000000") };
 
 		var (result, rejection) = await SubmitAsync(f, submission);
 
 		Assert.Equal(ScoreSubmissionOutcome.Rejected, result.Outcome);
-		Assert.Equal(ScoreRejection.SubmissionHashMismatch, rejection);
+		Assert.Equal(ScoreRejectionReason.SubmissionHashMismatch, rejection);
 		AssertNothingRecorded(f);
 	}
 
@@ -183,7 +185,7 @@ public sealed class ScoreSubmissionTests
 
 		var (_, rejection) = await SubmitAsync(f, tampered);
 
-		Assert.Equal(ScoreRejection.SubmissionHashMismatch, rejection);
+		Assert.Equal(ScoreRejectionReason.SubmissionHashMismatch, rejection);
 	}
 
 	[Fact]
@@ -195,7 +197,7 @@ public sealed class ScoreSubmissionTests
 		var (result, rejection) = await SubmitAsync(f, f.Genuine(ScoreSubmissionFixture.PassedScore()), client);
 
 		Assert.Equal(ScoreSubmissionOutcome.Rejected, result.Outcome);
-		Assert.Equal(ScoreRejection.BeatmapHashMismatch, rejection);
+		Assert.Equal(ScoreRejectionReason.BeatmapHashMismatch, rejection);
 		AssertNothingRecorded(f);
 	}
 
@@ -208,7 +210,7 @@ public sealed class ScoreSubmissionTests
 			unknownBeatmap: true);
 
 		Assert.Equal(ScoreSubmissionOutcome.Rejected, result.Outcome);
-		Assert.Equal(ScoreRejection.UnknownBeatmap, rejection);
+		Assert.Equal(ScoreRejectionReason.UnknownBeatmap, rejection);
 		AssertNothingRecorded(f);
 	}
 
@@ -220,6 +222,7 @@ public sealed class ScoreSubmissionTests
 		var genuine = ScoreSubmissionFixture.GenuineClient();
 		var badSubmission = new Submission
 		{
+			Flags = OsuFlags.Clean,
 			Score = ScoreSubmissionFixture.PassedScore(), HashByClient = new Md5("00000000000000000000000000000000")
 		};
 
@@ -230,19 +233,19 @@ public sealed class ScoreSubmissionTests
 		var fingerprint = await SubmitAsync(f, badSubmission, genuine with
 		{
 			DiskSignature = "x", UninstallId = "x",
-			Fingerprint = genuine.Fingerprint with { OsuPathHash = new Md5("ffffffffffffffffffffffffffffffff") }
+			Fingerprint = genuine.Fingerprint with { PathHash = new Md5("ffffffffffffffffffffffffffffffff") }
 		});
 		var version = await SubmitAsync(f, badSubmission, genuine with
 		{
 			DiskSignature = "x", UninstallId = "x", VersionDate = "20250101",
-			Fingerprint = genuine.Fingerprint with { OsuPathHash = new Md5("ffffffffffffffffffffffffffffffff") }
+			Fingerprint = genuine.Fingerprint with { PathHash = new Md5("ffffffffffffffffffffffffffffffff") }
 		});
 
-		Assert.Equal(ScoreRejection.SubmissionHashMismatch, beatmapAndHash.Rejection);
-		Assert.Equal(ScoreRejection.DiskSignatureHashMismatch, disk.Rejection);
-		Assert.Equal(ScoreRejection.UninstallerHashMismatch, uninstall.Rejection);
-		Assert.Equal(ScoreRejection.ClientHashMismatch, fingerprint.Rejection);
-		Assert.Equal(ScoreRejection.VersionMismatch, version.Rejection);
+		Assert.Equal(ScoreRejectionReason.SubmissionHashMismatch, beatmapAndHash.Rejection);
+		Assert.Equal(ScoreRejectionReason.DiskSignatureHashMismatch, disk.Rejection);
+		Assert.Equal(ScoreRejectionReason.UninstallerHashMismatch, uninstall.Rejection);
+		Assert.Equal(ScoreRejectionReason.ClientHashMismatch, fingerprint.Rejection);
+		Assert.Equal(ScoreRejectionReason.VersionMismatch, version.Rejection);
 	}
 
 	// ----- duplicates -----
@@ -257,7 +260,7 @@ public sealed class ScoreSubmissionTests
 		var (result, rejection) = await SubmitAsync(f, submission, replay: Replay(100));
 
 		Assert.Equal(ScoreSubmissionOutcome.Rejected, result.Outcome);
-		Assert.Equal(ScoreRejection.Duplicate, rejection);
+		Assert.Equal(ScoreRejectionReason.Duplicate, rejection);
 		Assert.Single(f.Scores);
 		Assert.Single(f.App.ScoreEvents.Events);
 		Assert.Empty(f.Replays);
@@ -520,7 +523,7 @@ public sealed class ScoreSubmissionTests
 			unknownBeatmap: true);
 
 		Assert.Equal(ScoreSubmissionOutcome.Rejected, result.Outcome);
-		Assert.Equal(ScoreRejection.UnknownBeatmap, rejection);
+		Assert.Equal(ScoreRejectionReason.UnknownBeatmap, rejection);
 	}
 
 	[Fact]
@@ -534,6 +537,6 @@ public sealed class ScoreSubmissionTests
 			ScoreSubmissionFixture.GenuineClient(other), unknownBeatmap: true);
 
 		Assert.Equal(ScoreSubmissionOutcome.Rejected, result.Outcome);
-		Assert.Equal(ScoreRejection.UnknownBeatmap, rejection);
+		Assert.Equal(ScoreRejectionReason.UnknownBeatmap, rejection);
 	}
 }

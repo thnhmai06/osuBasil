@@ -6,7 +6,7 @@ namespace Basil.Domain.Moderation;
 /// <summary>
 ///     An entry of the moderation log, identified by its id.
 /// </summary>
-public sealed class ModerationLog
+public sealed record ModerationLog
 {
 	/// <summary>Gets the unique identifier of the entry, assigned when it is stored.</summary>
 	public required long Id { get; init; }
@@ -16,7 +16,7 @@ public sealed class ModerationLog
 }
 
 /// <summary>A recorded moderation action, separate from its persistent identity.</summary>
-public sealed class ModerationData
+public sealed record ModerationData
 {
 	/// <summary>Gets the kind of moderation action that was recorded.</summary>
 	/// <exception cref="ArgumentOutOfRangeException">The value is not a defined action.</exception>
@@ -37,7 +37,7 @@ public sealed class ModerationData
 	public string? Reason
 	{
 		get;
-		set => field = value is { Length: > 2048 }
+		init => field = value is { Length: > 2048 }
 			? throw new ArgumentException("A moderation log reason cannot be longer than 2048 characters.",
 				nameof(value))
 			: value;

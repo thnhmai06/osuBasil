@@ -3,12 +3,13 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using Basil.Application.Common;
+using Basil.Application.Common.Common;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Connections;
 using Basil.Domain.Auth;
-using Basil.Domain.Bancho;
+using Basil.Domain.Client;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
@@ -142,7 +143,7 @@ public sealed class ScoreSubmissionFixture : IDisposable
 		var app = new TestApplication();
 		var user = await app.CreateUserAsync(name, Password, permissions);
 		var result = await app.Users.LoginAsync(
-			new LoginAttempt(name, new Md5(Encoding.UTF8.GetBytes(Password))), ConnectionType.Osu,
+			new LoginAttempt(name, new Md5(Encoding.UTF8.GetBytes(Password))), SessionType.Osu,
 			IPAddress.Loopback, LoginClient(), 0);
 		var client = Assert.IsType<BanchoConnection>(result.Connection);
 		return new ScoreSubmissionFixture(app, client, user);
@@ -150,13 +151,12 @@ public sealed class ScoreSubmissionFixture : IDisposable
 
 	/// <summary>Gets the client descriptor the account logged in with.</summary>
 	/// <returns>The client descriptor.</returns>
-	public static BanchoClient LoginClient()
+	public static OsuClient LoginClient()
 	{
 		var hash = new Md5("0123456789abcdef0123456789abcdef");
-		var fingerprint = new BanchoFingerprint(hash,
-			new NetworkAdapters { Adapters = "runningunderwine", Hash = hash },
-			Md5Of(UninstallId), Md5Of(DiskSignature));
-		return new BanchoClient(new BanchoVersion(new DateOnly(2026, 1, 1), null, BanchoVersionStream.Stable),
+		var fingerprint = new OsuFingerprint(hash,
+			Md5Of(UninstallId), Md5Of(DiskSignature), new NetworkAdapters { Adapters = "runningunderwine", Hash = hash });
+		return new OsuClient(new OsuVersion(new DateOnly(2026, 1, 1), null, OsuVersionStream.Stable),
 			fingerprint);
 	}
 
@@ -183,7 +183,7 @@ public sealed class ScoreSubmissionFixture : IDisposable
 	/// <returns>The submission.</returns>
 	public Submission Genuine(ScoreData score, Md5? storyboard = null)
 	{
-		return new Submission { Score = score, HashByClient = SubmissionChecksum(score, User.Value.Name, storyboard) };
+		return new Submission { Score = score, Flags = OsuFlags.Clean, HashByClient = SubmissionChecksum(score, User.Value.Name, storyboard) };
 	}
 
 	/// <summary>Computes the checksum the osu! client sends for a score (the legacy formula of the osu! server).</summary>

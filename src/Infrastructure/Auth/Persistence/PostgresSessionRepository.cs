@@ -1,6 +1,7 @@
 using System.Globalization;
 using Basil.Application.Auth.Persistence;
 using Basil.Application.Common;
+using Basil.Application.Common.Common;
 using Basil.Domain.Auth;
 using Basil.Domain.Users;
 using Basil.Infrastructure.Common.Postgres;
@@ -73,7 +74,7 @@ internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseR
 	}
 
 	/// <inheritdoc />
-	public async Task<StoredSession?> FindByTokenAsync(ConnectionType type, byte[] tokenHash, DateTimeOffset now,
+	public async Task<StoredSession?> FindByTokenAsync(SessionType type, byte[] tokenHash, DateTimeOffset now,
 		CancellationToken cancellationToken = default)
 	{
 		var at = now.ToUniversalTime();
@@ -87,7 +88,7 @@ internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseR
 	}
 
 	/// <inheritdoc />
-	public Task EndAsync(UserRecord user, Guid? only, Guid? except, IReadOnlyList<ConnectionType> types,
+	public Task EndAsync(UserRecord user, Guid? only, Guid? except, IReadOnlyList<SessionType> types,
 		DateTimeOffset at, SessionEndReason reason, bool requireReauthentication,
 		CancellationToken cancellationToken = default)
 	{
@@ -104,7 +105,7 @@ internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseR
 
 			// A device is marked even when its session had ended already: the saved password must stop working there.
 			if (requireReauthentication)
-				await query.Where(row => row.Type == ConnectionType.Osu || row.Type == ConnectionType.Tourney)
+				await query.Where(row => row.Type == SessionType.Osu || row.Type == SessionType.OsuTourney)
 					.ExecuteUpdateAsync(setters => setters.SetProperty(row => row.MustReauthenticate, true), token);
 		}));
 	}
@@ -178,7 +179,7 @@ internal sealed class PostgresSessionRepository(DatabaseWriter writer, DatabaseR
 			ClientDate = client?.Version.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
 			ClientRevision = client?.Version.Revision,
 			ClientStream = client is null ? null : (int?)client.Version.Stream,
-			OsuPathHash = client?.Fingerprint.OsuPathHash.HashValue,
+			OsuPathHash = client?.Fingerprint.PathHash.HashValue,
 			NetworkAdapters = client?.Fingerprint.NetworkAdapters.Adapters,
 			NetworkAdaptersHash = client?.Fingerprint.NetworkAdapters.Hash.HashValue,
 			UninstallHash = client?.Fingerprint.UninstallHash.HashValue,

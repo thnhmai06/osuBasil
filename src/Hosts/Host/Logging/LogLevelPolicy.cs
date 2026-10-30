@@ -1,3 +1,4 @@
+using Basil.Host.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace Basil.Host.Logging;

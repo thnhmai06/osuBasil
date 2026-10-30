@@ -1,4 +1,4 @@
-namespace Basil.Infrastructure.Common;
+namespace Basil.Infrastructure.Common.Common;
 
 /// <summary>Configures where the server keeps its data.</summary>
 public sealed class StorageOptions

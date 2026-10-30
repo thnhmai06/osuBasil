@@ -1,5 +1,6 @@
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Common;
+using Basil.Application.Common.Common;
 using Basil.Application.Users.Connections;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
@@ -39,7 +40,7 @@ public sealed class ScopedScoreSubmitter : Scoped<UserPermissions, BanchoConnect
 	///     recorded login. A submission whose checksum was already stored is refused. Only a passed play keeps its
 	///     replay, and only when the replay is at least 24 bytes long.
 	/// </remarks>
-	public async Task<(Result<ScoreSubmissionOutcome> Result, ScoreRejection? Rejection)> SubmitAsync(
+	public async Task<(Result<ScoreSubmissionOutcome> Result, ScoreRejectionReason? Rejection)> SubmitAsync(
 		Submission submission,
 		BeatmapChecksums? beatmap,
 		SubmittedClient client,
@@ -53,7 +54,7 @@ public sealed class ScopedScoreSubmitter : Scoped<UserPermissions, BanchoConnect
 		                     (_submitter.Acceptance.AcceptsUnknown(By.Record, client.BeatmapHash)
 			                     ? new BeatmapChecksums(client.BeatmapHash, null)
 			                     : null);
-		if (checkedBeatmap is null) return (ScoreSubmissionOutcome.Rejected, ScoreRejection.UnknownBeatmap);
+		if (checkedBeatmap is null) return (ScoreSubmissionOutcome.Rejected, ScoreRejectionReason.UnknownBeatmap);
 
 		var outcome = await _submitter.Recorder.ValidateAndRecordAsync(
 			By.Record, By.Session.Client!, submission, checkedBeatmap, client, replay, cancellationToken);

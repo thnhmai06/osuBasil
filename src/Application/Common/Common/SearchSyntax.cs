@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
 
-namespace Basil.Application.Common;
+namespace Basil.Application.Common.Common;
 
 /// <summary>Reads the osu! search syntax shared by the query records.</summary>
 public static partial class SearchSyntax

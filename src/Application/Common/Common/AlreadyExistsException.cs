@@ -1,4 +1,4 @@
-namespace Basil.Application.Common;
+namespace Basil.Application.Common.Common;
 
 /// <summary>
 ///     The exception thrown when a record cannot be created or changed because another record already has its unique

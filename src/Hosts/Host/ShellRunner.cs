@@ -2,6 +2,7 @@ using Basil.Host.Cli;
 using Basil.Host.Cli.Commands;
 using Basil.Host.Cli.Socket;
 using Basil.Infrastructure.Common;
+using Basil.Infrastructure.Common.Common;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

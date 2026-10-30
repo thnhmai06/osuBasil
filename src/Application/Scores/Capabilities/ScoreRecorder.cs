@@ -2,9 +2,10 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using Basil.Application.Common;
+using Basil.Application.Common.Common;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Users.Persistence;
-using Basil.Domain.Bancho;
+using Basil.Domain.Client;
 using Basil.Domain.Common;
 using Basil.Domain.Scores;
 using Basil.Domain.Users;
@@ -36,7 +37,7 @@ internal sealed class ScoreRecorder(
 	/// <returns>The rejection, or the stored score and updated statistics.</returns>
 	public async Task<ScoreOutcome> ValidateAndRecordAsync(
 		UserRecord player,
-		BanchoClient loginClient,
+		OsuClient loginClient,
 		Submission submission,
 		BeatmapChecksums checkedBeatmap,
 		SubmittedClient client,
@@ -54,7 +55,7 @@ internal sealed class ScoreRecorder(
 		}
 		catch (AlreadyExistsException)
 		{
-			return new ScoreOutcome(ScoreRejection.Duplicate, null, null);
+			return new ScoreOutcome(ScoreRejectionReason.Duplicate, null, null);
 		}
 
 		if (submission.Score.IsPassed && replay is { Length: >= MinReplayLength })
@@ -80,30 +81,30 @@ internal sealed class ScoreRecorder(
 	///     first mismatch the reason is returned and validation stops.
 	/// </remarks>
 	/// <param name="submission">The parsed submission.</param>
-	/// <param name="banchoClient">The osu! client the player logged in with.</param>
+	/// <param name="osuClient">The osu! client the player logged in with.</param>
 	/// <param name="beatmap">The MD5 and storyboard MD5 of the beatmap the score is checked against.</param>
 	/// <param name="playerName">The player's name as the server knows it.</param>
 	/// <param name="submittedClient">The osu! client information sent with the submission.</param>
 	/// <returns><see langword="null" /> if the submission is authentic; otherwise, the first reason it is rejected.</returns>
-	private static ScoreRejection? Validate(
+	private static ScoreRejectionReason? Validate(
 		Submission submission,
-		BanchoClient banchoClient,
+		OsuClient osuClient,
 		BeatmapChecksums beatmap,
 		string playerName,
 		SubmittedClient submittedClient)
 	{
 		var md5ByServer = ComputeSubmissionMd5();
 
-		if (submittedClient.VersionDate != banchoClient.Version.Date.ToString("yyyyMMdd", CultureInfo.InvariantCulture))
-			return ScoreRejection.VersionMismatch;
-		if (submittedClient.Fingerprint != banchoClient.Fingerprint) return ScoreRejection.ClientHashMismatch;
-		if (new Md5(Encoding.UTF8.GetBytes(submittedClient.UninstallId)) != banchoClient.Fingerprint.UninstallHash)
-			return ScoreRejection.UninstallerHashMismatch;
+		if (submittedClient.VersionDate != osuClient.Version.Date.ToString("yyyyMMdd", CultureInfo.InvariantCulture))
+			return ScoreRejectionReason.VersionMismatch;
+		if (submittedClient.Fingerprint != osuClient.Fingerprint) return ScoreRejectionReason.ClientHashMismatch;
+		if (new Md5(Encoding.UTF8.GetBytes(submittedClient.UninstallId)) != osuClient.Fingerprint.UninstallHash)
+			return ScoreRejectionReason.UninstallerHashMismatch;
 		if (new Md5(Encoding.UTF8.GetBytes(submittedClient.DiskSignature)) !=
-		    banchoClient.Fingerprint.DiskSignatureHash)
-			return ScoreRejection.DiskSignatureHashMismatch;
-		if (submission.HashByClient != md5ByServer) return ScoreRejection.SubmissionHashMismatch;
-		if (submittedClient.BeatmapHash != beatmap.Hash) return ScoreRejection.BeatmapHashMismatch;
+		    osuClient.Fingerprint.DiskSignatureHash)
+			return ScoreRejectionReason.DiskSignatureHashMismatch;
+		if (submission.HashByClient != md5ByServer) return ScoreRejectionReason.SubmissionHashMismatch;
+		if (submittedClient.BeatmapHash != beatmap.Hash) return ScoreRejectionReason.BeatmapHashMismatch;
 
 		return null;
 

@@ -1,7 +1,7 @@
 using System.Net;
 using System.Security.Cryptography.X509Certificates;
 
-namespace Basil.Host;
+namespace Basil.Host.Configuration;
 
 /// <summary>Makes Kestrel listen where the configuration says.</summary>
 public static class KestrelSetup

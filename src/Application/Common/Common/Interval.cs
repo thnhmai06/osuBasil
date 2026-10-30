@@ -1,4 +1,4 @@
-namespace Basil.Application.Common;
+namespace Basil.Application.Common.Common;
 
 /// <summary>A range of values; a missing bound leaves that side open.</summary>
 /// <param name="Min">The lower bound, or <see langword="null" /> for none.</param>

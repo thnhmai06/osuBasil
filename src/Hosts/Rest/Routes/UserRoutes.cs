@@ -10,6 +10,7 @@ using Basil.Host.Rest.Http;
 using Basil.Host.Shared.Views;
 using Basil.Host.Rest.Sse;
 using Basil.Application.Auth.Persistence;
+using Basil.Application.Common.Common;
 
 namespace Basil.Host.Rest.Routes;
 
@@ -243,7 +244,7 @@ internal static class UserRoutes
 
 		var kinds = types is null
 			? null
-			: Enum.GetValues<ConnectionType>().Where(t => (types.Value & (int)t) != 0).ToList();
+			: Enum.GetValues<SessionType>().Where(t => (types.Value & (int)t) != 0).ToList();
 		if (await context.ScopeAsync(id) is not { } scoped) return Api.NotFound("No such user.");
 
 		var (result, sessions) = await scoped.Sessions.ListAsync(page!, sessionState.Value, kinds, context.RequestAborted);

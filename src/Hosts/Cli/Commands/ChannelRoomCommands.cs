@@ -1,4 +1,5 @@
 using Basil.Application.Chat.Runtime;
+using Basil.Application.Common.Common;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Multiplayer.Runtime;
 using Basil.Application.Servers.Runtime;
@@ -176,7 +177,7 @@ internal static class ChannelRoomCommands
 	{
 		var page = call.Page();
 		var rooms = call.Get<Lobby>().Rooms.Values.OrderBy(room => room.Id).ToList();
-		call.PrintPage(new Basil.Application.Common.Page<RoomView>(
+		call.PrintPage(new Page<RoomView>(
 			[.. rooms.Skip(page.Offset).Take(page.Limit).Select(RoomView.Of)], rooms.Count), page);
 		return Task.FromResult(ExitCodes.Success);
 	}
@@ -216,7 +217,7 @@ internal static class ChannelRoomCommands
 			MatchQuery.Parse(call.Text("query") ?? string.Empty), page, call.CancellationToken);
 		if (!result.IsOk) return call.Refuse(result);
 
-		call.PrintPage(new Basil.Application.Common.Page<MatchView>([.. found!.Items.Select(MatchView.Of)], found.Total), page);
+		call.PrintPage(new Page<MatchView>([.. found!.Items.Select(MatchView.Of)], found.Total), page);
 		return ExitCodes.Success;
 	}
 

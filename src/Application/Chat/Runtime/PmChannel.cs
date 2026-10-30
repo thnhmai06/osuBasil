@@ -24,7 +24,7 @@ public sealed class PmChannel : Channel
 	/// <inheritdoc />
 	internal override bool CanRead(Connection connection, DateTimeOffset now)
 	{
-		return ReferenceEquals(connection.User, Owner) && connection.Type is not ConnectionType.Tourney;
+		return ReferenceEquals(connection.User, Owner) && connection.Type is not SessionType.OsuTourney;
 	}
 
 	/// <inheritdoc />

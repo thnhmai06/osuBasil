@@ -1,8 +1,7 @@
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Velopack;
 
-namespace Basil.Host;
+namespace Basil.Host.Configuration;
 
 /// <summary>Looks for a newer release when the server starts and reports it in the log; it never installs anything.</summary>
 internal sealed class UpdateChecker(IOptionsMonitor<UpdateOptions> options, ILogger<UpdateChecker> logger) : BackgroundService

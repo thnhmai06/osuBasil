@@ -97,7 +97,7 @@ public sealed class UserRegistryTests
 		using var app = new TestApplication();
 
 		await Assert.ThrowsAsync<ArgumentException>(() => app.Users.LoginAsync(
-			new LoginAttempt("unused", new Md5("0123456789abcdef0123456789abcdef")), ConnectionType.Bot,
+			new LoginAttempt("unused", new Md5("0123456789abcdef0123456789abcdef")), SessionType.Bot,
 			IPAddress.Loopback, null, 0, TestContext.Current.CancellationToken));
 	}
 
@@ -109,18 +109,18 @@ public sealed class UserRegistryTests
 
 		await Assert.ThrowsAsync<ArgumentException>(() => app.Users.LoginAsync(
 			new LoginAttempt("IrcByPassword", new Md5(System.Text.Encoding.UTF8.GetBytes("password"))),
-			ConnectionType.Irc, IPAddress.Loopback, null, 0, TestContext.Current.CancellationToken));
+			SessionType.Irc, IPAddress.Loopback, null, 0, TestContext.Current.CancellationToken));
 	}
 
 	[Fact]
 	public async Task LoginWithTokenAsync_OwnerRefusedByTheCaller_OpensNothingForAnOpenOrAStoredKey()
 	{
 		using var app = new TestApplication();
-		var opened = await app.LoginAsync(await app.CreateUserAsync("KeyClaimed", "password"), ConnectionType.Irc);
+		var opened = await app.LoginAsync(await app.CreateUserAsync("KeyClaimed", "password"), SessionType.Irc);
 
-		var refused = await app.Users.LoginWithTokenAsync(ConnectionType.Irc, opened.Token, IPAddress.Loopback,
+		var refused = await app.Users.LoginWithTokenAsync(SessionType.Irc, opened.Token, IPAddress.Loopback,
 			owner => owner.Value.Name == "SomeoneElse", TestContext.Current.CancellationToken);
-		var accepted = await app.Users.LoginWithTokenAsync(ConnectionType.Irc, opened.Token, IPAddress.Loopback,
+		var accepted = await app.Users.LoginWithTokenAsync(SessionType.Irc, opened.Token, IPAddress.Loopback,
 			owner => owner.Value.Name == "KeyClaimed", TestContext.Current.CancellationToken);
 
 		Assert.Equal(LoginFailure.InvalidToken, refused.Failure);
@@ -135,7 +135,7 @@ public sealed class UserRegistryTests
 		var api = await app.LoginAsync(user);
 		var (_, key, _) = await app.Users.Of(user).ScopeTo(api).Sessions.OpenIrcAsync("device", TestContext.Current.CancellationToken);
 
-		var refused = await app.Users.LoginWithTokenAsync(ConnectionType.Irc, key!, IPAddress.Loopback, _ => false,
+		var refused = await app.Users.LoginWithTokenAsync(SessionType.Irc, key!, IPAddress.Loopback, _ => false,
 			TestContext.Current.CancellationToken);
 
 		Assert.Equal(LoginFailure.InvalidToken, refused.Failure);
@@ -158,10 +158,10 @@ public sealed class UserRegistryTests
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("AlreadyOnline", "password");
-		await app.LoginAsync(user, ConnectionType.Osu);
+		await app.LoginAsync(user, SessionType.Osu);
 		app.Clock.Advance(TimeSpan.FromSeconds(9));
 
-		var result = await app.AttemptLoginAsync(user.Value.Name, "password", ConnectionType.Osu);
+		var result = await app.AttemptLoginAsync(user.Value.Name, "password", SessionType.Osu);
 
 		Assert.Equal(LoginFailure.AlreadyOnline, result.Failure);
 	}
@@ -171,10 +171,10 @@ public sealed class UserRegistryTests
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("ReplaceIdle", "password");
-		var old = await app.LoginAsync(user, ConnectionType.Osu);
+		var old = await app.LoginAsync(user, SessionType.Osu);
 		app.Clock.Advance(TimeSpan.FromSeconds(10));
 
-		var result = await app.AttemptLoginAsync(user.Value.Name, "password", ConnectionType.Osu);
+		var result = await app.AttemptLoginAsync(user.Value.Name, "password", SessionType.Osu);
 
 		Assert.True(result.Succeeded);
 		Assert.False(old.IsOpen);
@@ -190,15 +190,15 @@ public sealed class UserRegistryTests
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("NoTourney", "password", UserPermissionsGroups.Default);
 
-		var result = await app.AttemptLoginAsync(user.Value.Name, "password", ConnectionType.Tourney);
+		var result = await app.AttemptLoginAsync(user.Value.Name, "password", SessionType.OsuTourney);
 
 		Assert.Equal(LoginFailure.NoTourneyPermission, result.Failure);
 	}
 
 	[Theory]
-	[InlineData(ConnectionType.Osu)]
-	[InlineData(ConnectionType.Tourney)]
-	public async Task LoginAsync_OsuKindWithoutClient_ThrowsArgumentNullException(ConnectionType type)
+	[InlineData(SessionType.Osu)]
+	[InlineData(SessionType.OsuTourney)]
+	public async Task LoginAsync_OsuKindWithoutClient_ThrowsArgumentNullException(SessionType type)
 	{
 		using var app = new TestApplication();
 

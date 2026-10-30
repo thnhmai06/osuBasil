@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Common;
+using Basil.Application.Common.Common;
 using Basil.Domain.Beatmaps;
 using Basil.Infrastructure.Common.Postgres;
 using Microsoft.EntityFrameworkCore;
@@ -118,7 +119,7 @@ internal static class BeatmapQueryFilter
 
 		if (!string.IsNullOrWhiteSpace(query.FileName))
 		{
-			var pattern = LikePattern.Literal(BeatmapMetadata.NormalizeOsuFileName(query.FileName));
+			var pattern = LikePattern.Literal(BeatmapMetadata.NormalizeFileName(query.FileName));
 			// The name of the .osu file of a beatmap leaves out the characters a file name cannot hold.
 			beatmaps = beatmaps.Where(row => EF.Functions.ILike(
 				(row.Set.Artist + " - " + row.Set.Title + " (" + row.Set.Creator + ") [" + row.Version + "].osu")

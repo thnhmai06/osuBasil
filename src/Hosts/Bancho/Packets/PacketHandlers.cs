@@ -1,5 +1,6 @@
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Chat.Runtime;
+using Basil.Application.Common.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Multiplayer.Runtime;
 using Basil.Application.Scores.Persistence;
@@ -165,7 +166,7 @@ internal sealed partial class PacketHandlers(
 		for (var index = 0; index < request.Filenames.Count; index++)
 		{
 			var page = await beatmaps.ListAsync(new Basil.Application.Beatmaps.Persistence.BeatmapQuery(
-				FileName: request.Filenames[index]), new Basil.Application.Common.PageRequest(0, 1), cancellationToken);
+				FileName: request.Filenames[index]), new PageRequest(0, 1), cancellationToken);
 			if (page.Items.FirstOrDefault() is { } map)
 				entries.Add(new Protocol.Bancho.Models.Beatmaps.BeatmapInfoReplyEntry((short)index, map.Id,
 					map.Beatmapset.Id, 0, (byte)map.Beatmapset.Status, -1, -1, -1, -1, map.Hash.ToString()));

@@ -1,6 +1,7 @@
 using Basil.Application.Common;
+using Basil.Application.Common.Common;
 using Basil.Application.Users.Users;
-using Basil.Domain.Bancho;
+using Basil.Domain.Client;
 using Basil.Domain.Users;
 
 namespace Basil.Application.Users.Connections;

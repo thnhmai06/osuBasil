@@ -1,9 +1,10 @@
 using System.Net;
 using Basil.Application.Auth.Persistence;
 using Basil.Application.Common;
+using Basil.Application.Common.Common;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Auth;
-using Basil.Domain.Bancho;
+using Basil.Domain.Client;
 using Basil.Domain.Common;
 using Basil.Domain.Users;
 using Basil.Testing.Persistence;
@@ -35,7 +36,7 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 		{
 			Id = FirstId,
 			User = user,
-			Type = ConnectionType.Osu,
+			Type = SessionType.Osu,
 			Ip = IPAddress.Parse("192.0.2.10"),
 			Client = Client(),
 			StartedAt = First
@@ -51,7 +52,7 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 		var row = rows[0];
 		Assert.Equal(FirstId.ToString(), row.Text("id"));
 		Assert.Equal(user.Id, row.Number("user_id"));
-		Assert.Equal((int)ConnectionType.Osu, row.Number("type"));
+		Assert.Equal((int)SessionType.Osu, row.Number("type"));
 		Assert.Equal("192.0.2.10", row.Text("ip"));
 		Assert.Null(row["client_info"]);
 		Assert.Equal(First, row.Instant("started_at"));
@@ -63,7 +64,7 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 		Assert.False(row.Bool("must_reauthenticate"));
 		Assert.Equal("2026-01-02", row.Text("client_date"));
 		Assert.Equal(42, row.Number("client_revision"));
-		Assert.Equal((int)BanchoVersionStream.Beta, row.Number("client_stream"));
+		Assert.Equal((int)OsuVersionStream.Beta, row.Number("client_stream"));
 		Assert.Equal("0cc175b9c0f1b6a831c399e269772661", row.Text("osu_path_hash"));
 		Assert.Equal("adapter-one.adapter-two.", row.Text("network_adapters"));
 		Assert.Equal("92eb5ffee6ae2fec3ad71c777531578f", row.Text("network_adapters_hash"));
@@ -81,7 +82,7 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 		{
 			Id = FirstId,
 			User = user,
-			Type = ConnectionType.Api,
+			Type = SessionType.Api,
 			Ip = IPAddress.Parse("192.0.2.11"),
 			StartedAt = First
 		}, TestContext.Current.CancellationToken);
@@ -116,7 +117,7 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 
 		Assert.Equal(3, page.Total);
 		Assert.Equal(ThirdId, page.Items[0].Id);
-		Assert.Equal(ConnectionType.Osu, page.Items[0].Type);
+		Assert.Equal(SessionType.Osu, page.Items[0].Type);
 		Assert.Equal(Third, page.Items[0].StartedAt);
 		Assert.Equal(Second, page.Items[1].StartedAt);
 		Assert.Equal(First, page.Items[2].StartedAt);
@@ -147,7 +148,7 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 		{
 			Id = FirstId,
 			User = user,
-			Type = ConnectionType.Api,
+			Type = SessionType.Api,
 			Ip = IPAddress.Parse("192.0.2.12"),
 			StartedAt = First
 		};
@@ -176,7 +177,7 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 		return await Get<IUserRepository>().CreateAsync(new UserData { Name = name }, TestContext.Current.CancellationToken);
 	}
 
-	private Task RecordTokenAsync(UserRecord user, Guid id, ConnectionType type, byte[]? hash,
+	private Task RecordTokenAsync(UserRecord user, Guid id, SessionType type, byte[]? hash,
 		DateTimeOffset? expiresAt = null)
 	{
 		return Sessions.RecordAsync(new Session
@@ -196,9 +197,9 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 	public async Task A_token_finds_its_active_unexpired_session_of_its_kind()
 	{
 		var user = await UserAsync();
-		await RecordTokenAsync(user, FirstId, ConnectionType.Api, Hash, Third);
+		await RecordTokenAsync(user, FirstId, SessionType.Api, Hash, Third);
 
-		var found = await Sessions.FindByTokenAsync(ConnectionType.Api, Hash, Second, TestContext.Current.CancellationToken);
+		var found = await Sessions.FindByTokenAsync(SessionType.Api, Hash, Second, TestContext.Current.CancellationToken);
 
 		Assert.NotNull(found);
 		Assert.Equal(FirstId, found.Id);
@@ -211,24 +212,24 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 	public async Task A_token_finds_nothing_once_it_expired_ended_or_is_of_another_kind_or_hash()
 	{
 		var user = await UserAsync();
-		await RecordTokenAsync(user, FirstId, ConnectionType.Api, Hash, Second);
+		await RecordTokenAsync(user, FirstId, SessionType.Api, Hash, Second);
 		var cancel = TestContext.Current.CancellationToken;
 
-		Assert.Null(await Sessions.FindByTokenAsync(ConnectionType.Api, Hash, Second, cancel));
-		Assert.Null(await Sessions.FindByTokenAsync(ConnectionType.Irc, Hash, First, cancel));
-		Assert.Null(await Sessions.FindByTokenAsync(ConnectionType.Api, [1, 2, 3], First, cancel));
+		Assert.Null(await Sessions.FindByTokenAsync(SessionType.Api, Hash, Second, cancel));
+		Assert.Null(await Sessions.FindByTokenAsync(SessionType.Irc, Hash, First, cancel));
+		Assert.Null(await Sessions.FindByTokenAsync(SessionType.Api, [1, 2, 3], First, cancel));
 
-		await Sessions.EndAsync(user, null, null, [ConnectionType.Api], Second, SessionEndReason.Revoked, false, cancel);
-		Assert.Null(await Sessions.FindByTokenAsync(ConnectionType.Api, Hash, First, cancel));
+		await Sessions.EndAsync(user, null, null, [SessionType.Api], Second, SessionEndReason.Revoked, false, cancel);
+		Assert.Null(await Sessions.FindByTokenAsync(SessionType.Api, Hash, First, cancel));
 	}
 
 	[Fact]
 	public async Task A_key_without_an_expiry_never_expires()
 	{
 		var user = await UserAsync();
-		await RecordTokenAsync(user, FirstId, ConnectionType.Irc, Hash);
+		await RecordTokenAsync(user, FirstId, SessionType.Irc, Hash);
 
-		Assert.NotNull(await Sessions.FindByTokenAsync(ConnectionType.Irc, Hash, First.AddYears(5),
+		Assert.NotNull(await Sessions.FindByTokenAsync(SessionType.Irc, Hash, First.AddYears(5),
 			TestContext.Current.CancellationToken));
 	}
 
@@ -237,13 +238,13 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 	{
 		var user = await UserAsync();
 		var other = await UserAsync("other_user");
-		await RecordTokenAsync(user, FirstId, ConnectionType.Api, Hash);
-		await RecordTokenAsync(user, SecondId, ConnectionType.Irc, SHA([2]));
-		await RecordTokenAsync(user, ThirdId, ConnectionType.Api, SHA([3]));
-		await RecordTokenAsync(other, Guid.Parse("00000000-0000-0000-0000-000000000004"), ConnectionType.Api, SHA([4]));
+		await RecordTokenAsync(user, FirstId, SessionType.Api, Hash);
+		await RecordTokenAsync(user, SecondId, SessionType.Irc, SHA([2]));
+		await RecordTokenAsync(user, ThirdId, SessionType.Api, SHA([3]));
+		await RecordTokenAsync(other, Guid.Parse("00000000-0000-0000-0000-000000000004"), SessionType.Api, SHA([4]));
 		var cancel = TestContext.Current.CancellationToken;
 
-		await Sessions.EndAsync(user, null, FirstId, [ConnectionType.Api, ConnectionType.Irc], Third,
+		await Sessions.EndAsync(user, null, FirstId, [SessionType.Api, SessionType.Irc], Third,
 			SessionEndReason.Revoked, false, cancel);
 
 		var page = await Sessions.ListAsync(user, All, new PageRequest(0, 10), cancel);
@@ -261,11 +262,11 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 	public async Task Ending_one_session_leaves_the_others()
 	{
 		var user = await UserAsync();
-		await RecordTokenAsync(user, FirstId, ConnectionType.Api, Hash);
-		await RecordTokenAsync(user, SecondId, ConnectionType.Api, SHA([2]));
+		await RecordTokenAsync(user, FirstId, SessionType.Api, Hash);
+		await RecordTokenAsync(user, SecondId, SessionType.Api, SHA([2]));
 		var cancel = TestContext.Current.CancellationToken;
 
-		await Sessions.EndAsync(user, SecondId, null, [ConnectionType.Api], Third, SessionEndReason.Revoked, false, cancel);
+		await Sessions.EndAsync(user, SecondId, null, [SessionType.Api], Third, SessionEndReason.Revoked, false, cancel);
 
 		Assert.Null((await Sessions.GetAsync(user, FirstId, cancel))!.EndedAt);
 		Assert.Equal(Third, (await Sessions.GetAsync(user, SecondId, cancel))!.EndedAt);
@@ -276,7 +277,7 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 	{
 		var user = await UserAsync();
 		var other = await UserAsync("other_user");
-		await RecordTokenAsync(user, FirstId, ConnectionType.Api, Hash);
+		await RecordTokenAsync(user, FirstId, SessionType.Api, Hash);
 
 		Assert.Null(await Sessions.GetAsync(other, FirstId, TestContext.Current.CancellationToken));
 	}
@@ -287,9 +288,9 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 		var user = await UserAsync();
 		var cancel = TestContext.Current.CancellationToken;
 		await RecordAsync(user, First, FirstId);
-		await RecordTokenAsync(user, SecondId, ConnectionType.Api, Hash);
+		await RecordTokenAsync(user, SecondId, SessionType.Api, Hash);
 
-		await Sessions.EndAsync(user, null, null, [ConnectionType.Osu, ConnectionType.Api], Third,
+		await Sessions.EndAsync(user, null, null, [SessionType.Osu, SessionType.Api], Third,
 			SessionEndReason.Revoked, true, cancel);
 
 		var osu = (await Sessions.GetAsync(user, FirstId, cancel))!;
@@ -306,7 +307,7 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 		var cancel = TestContext.Current.CancellationToken;
 		await RecordAsync(user, First, FirstId);
 
-		await Sessions.EndAsync(user, null, null, [ConnectionType.Osu], Third, SessionEndReason.CredentialsChanged,
+		await Sessions.EndAsync(user, null, null, [SessionType.Osu], Third, SessionEndReason.CredentialsChanged,
 			false, cancel);
 
 		Assert.False((await Sessions.GetAsync(user, FirstId, cancel))!.MustReauthenticate);
@@ -318,7 +319,7 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 		var user = await UserAsync();
 		var cancel = TestContext.Current.CancellationToken;
 		await RecordAsync(user, First, FirstId);
-		await Sessions.EndAsync(user, null, null, [ConnectionType.Osu], Third, SessionEndReason.Revoked, true, cancel);
+		await Sessions.EndAsync(user, null, null, [SessionType.Osu], Third, SessionEndReason.Revoked, true, cancel);
 		var device = new DeviceId("4a8a08f09d37b73795649038408b5f33", "f97c5d29941bfb1b2fdab0874906ab82");
 
 		Assert.False(await Sessions.TakeReauthenticationAsync(user, device with { UninstallHash = "different" }, cancel));
@@ -331,13 +332,13 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 	{
 		var user = await UserAsync();
 		var cancel = TestContext.Current.CancellationToken;
-		await RecordTokenAsync(user, FirstId, ConnectionType.Api, Hash, Second);
+		await RecordTokenAsync(user, FirstId, SessionType.Api, Hash, Second);
 
 		await Sessions.WriteActivityAsync([new SessionActivity(FirstId, Third, Third.AddDays(7))], cancel);
 
 		var entry = (await Sessions.GetAsync(user, FirstId, cancel))!;
 		Assert.Equal(Third, entry.LastActiveAt);
-		var found = await Sessions.FindByTokenAsync(ConnectionType.Api, Hash, Third.AddDays(6), cancel);
+		var found = await Sessions.FindByTokenAsync(SessionType.Api, Hash, Third.AddDays(6), cancel);
 		Assert.Equal(Third.AddDays(7), found!.ExpiresAt);
 	}
 
@@ -346,11 +347,11 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 	{
 		var user = await UserAsync();
 		var cancel = TestContext.Current.CancellationToken;
-		await RecordTokenAsync(user, FirstId, ConnectionType.Api, Hash);
-		await RecordTokenAsync(user, SecondId, ConnectionType.Irc, SHA([2]));
+		await RecordTokenAsync(user, FirstId, SessionType.Api, Hash);
+		await RecordTokenAsync(user, SecondId, SessionType.Irc, SHA([2]));
 		await RecordAsync(user, First, ThirdId);
-		await Sessions.EndAsync(user, FirstId, null, [ConnectionType.Api], Second, SessionEndReason.LoggedOut, false, cancel);
-		await Sessions.EndAsync(user, ThirdId, null, [ConnectionType.Osu], Second, SessionEndReason.Revoked, true, cancel);
+		await Sessions.EndAsync(user, FirstId, null, [SessionType.Api], Second, SessionEndReason.LoggedOut, false, cancel);
+		await Sessions.EndAsync(user, ThirdId, null, [SessionType.Osu], Second, SessionEndReason.Revoked, true, cancel);
 
 		var deleted = await Sessions.DeleteEndedBeforeAsync(Third, cancel);
 
@@ -365,8 +366,8 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 	{
 		var user = await UserAsync();
 		var cancel = TestContext.Current.CancellationToken;
-		await RecordTokenAsync(user, FirstId, ConnectionType.Api, Hash);
-		await Sessions.EndAsync(user, FirstId, null, [ConnectionType.Api], Third, SessionEndReason.LoggedOut, false, cancel);
+		await RecordTokenAsync(user, FirstId, SessionType.Api, Hash);
+		await Sessions.EndAsync(user, FirstId, null, [SessionType.Api], Third, SessionEndReason.LoggedOut, false, cancel);
 
 		Assert.Equal(0, await Sessions.DeleteEndedBeforeAsync(Second, cancel));
 		Assert.NotNull(await Sessions.GetAsync(user, FirstId, cancel));
@@ -377,15 +378,15 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 	{
 		var user = await UserAsync();
 		var cancel = TestContext.Current.CancellationToken;
-		await RecordTokenAsync(user, FirstId, ConnectionType.Api, Hash, Third);
-		await RecordTokenAsync(user, SecondId, ConnectionType.Irc, SHA([2]));
-		await RecordTokenAsync(user, ThirdId, ConnectionType.Api, SHA([3]), Second);
-		await Sessions.EndAsync(user, SecondId, null, [ConnectionType.Irc], Second, SessionEndReason.Revoked, false, cancel);
+		await RecordTokenAsync(user, FirstId, SessionType.Api, Hash, Third);
+		await RecordTokenAsync(user, SecondId, SessionType.Irc, SHA([2]));
+		await RecordTokenAsync(user, ThirdId, SessionType.Api, SHA([3]), Second);
+		await Sessions.EndAsync(user, SecondId, null, [SessionType.Irc], Second, SessionEndReason.Revoked, false, cancel);
 		var now = Third.AddHours(-1);
 
 		var active = await Sessions.ListAsync(user, new SessionFilter(SessionState.Active, null, now), new PageRequest(0, 10), cancel);
 		var ended = await Sessions.ListAsync(user, new SessionFilter(SessionState.Ended, null, now), new PageRequest(0, 10), cancel);
-		var apiOnly = await Sessions.ListAsync(user, new SessionFilter(SessionState.Any, [ConnectionType.Api], now), new PageRequest(0, 10), cancel);
+		var apiOnly = await Sessions.ListAsync(user, new SessionFilter(SessionState.Any, [SessionType.Api], now), new PageRequest(0, 10), cancel);
 
 		Assert.Equal([FirstId], active.Items.Select(entry => entry.Id));
 		Assert.Equal([SecondId, ThirdId], ended.Items.Select(entry => entry.Id).Order());
@@ -406,7 +407,7 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 		{
 			Id = id,
 			User = user,
-			Type = ConnectionType.Osu,
+			Type = SessionType.Osu,
 			Ip = IPAddress.Parse("192.0.2.10"),
 			Client = Client(),
 			StartedAt = timestamp
@@ -422,18 +423,17 @@ public sealed class PostgresSessionRepositoryTests(PersistenceFixture container)
 	}
 
 	/// <summary>Builds the osu! client a login reports.</summary>
-	private static BanchoClient Client()
+	private static OsuClient Client()
 	{
-		return new BanchoClient(
-			new BanchoVersion(new DateOnly(2026, 1, 2), 42, BanchoVersionStream.Beta),
-			new BanchoFingerprint(
+		return new OsuClient(
+			new OsuVersion(new DateOnly(2026, 1, 2), 42, OsuVersionStream.Beta),
+			new OsuFingerprint(
 				new Md5("0cc175b9c0f1b6a831c399e269772661"),
-				new NetworkAdapters
+				new Md5("4a8a08f09d37b73795649038408b5f33"),
+				new Md5("f97c5d29941bfb1b2fdab0874906ab82"), new NetworkAdapters
 				{
 					Adapters = "adapter-one.adapter-two.",
 					Hash = new Md5("92eb5ffee6ae2fec3ad71c777531578f")
-				},
-				new Md5("4a8a08f09d37b73795649038408b5f33"),
-				new Md5("f97c5d29941bfb1b2fdab0874906ab82")));
+				}));
 	}
 }

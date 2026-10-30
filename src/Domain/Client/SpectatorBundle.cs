@@ -1,4 +1,15 @@
-namespace Basil.Domain.Bancho;
+namespace Basil.Domain.Client;
+
+/// <summary>The frames a player sent in one packet while being spectated.</summary>
+/// <param name="Action">What the player is doing.</param>
+/// <param name="Frames">The cursor and button samples, in time order.</param>
+/// <param name="Score">The running score at the end of the bundle.</param>
+/// <param name="Sequence">The position of the bundle in the stream the client sent.</param>
+public sealed record SpectatorBundle(
+	SpectatorAction Action,
+	IReadOnlyList<SpectatorFrame> Frames,
+	SpectatorScore Score,
+	int Sequence);
 
 /// <summary>What the player being spectated is doing.</summary>
 public enum SpectatorAction : byte
@@ -31,6 +42,9 @@ public enum SpectatorAction : byte
 	WatchingOther = 8
 }
 
+// TODO: Sử dụng dạng Object/Struct hóa có sẵn, chứ không flatten dữ liệu ở đây (2 below struct).
+// Ở Protocol sẽ lo liệu object truyền đi se ntn, ở đây Domain chỉ quan tâm nghiệp vụ.
+
 /// <summary>One cursor and button sample of a play.</summary>
 /// <param name="ButtonState">The osu! button bits pressed.</param>
 /// <param name="TaikoByte">The osu!taiko hit bits.</param>
@@ -55,14 +69,3 @@ public readonly record struct SpectatorFrame(byte ButtonState, byte TaikoByte, f
 /// <param name="CurrentHp">The player's health, from 0 to 254.</param>
 public readonly record struct SpectatorScore(int Time, int Id, int Num300, int Num100, int Num50, int NumGeki,
 	int NumKatu, int NumMiss, int TotalScore, int MaxCombo, int CurrentCombo, bool Perfect, int CurrentHp);
-
-/// <summary>The frames a player sent in one packet while being spectated.</summary>
-/// <param name="Action">What the player is doing.</param>
-/// <param name="Frames">The cursor and button samples, in time order.</param>
-/// <param name="Score">The running score at the end of the bundle.</param>
-/// <param name="Sequence">The position of the bundle in the stream the client sent.</param>
-public sealed record SpectatorBundle(
-	SpectatorAction Action,
-	IReadOnlyList<SpectatorFrame> Frames,
-	SpectatorScore Score,
-	int Sequence);

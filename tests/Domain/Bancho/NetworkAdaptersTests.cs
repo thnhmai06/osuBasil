@@ -1,4 +1,4 @@
-using Basil.Domain.Bancho;
+using Basil.Domain.Client;
 using Basil.Domain.Common;
 
 namespace Basil.Domain.Tests.Bancho;

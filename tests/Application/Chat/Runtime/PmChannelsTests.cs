@@ -15,7 +15,7 @@ public sealed class PmChannelsTests
 	{
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("PmOwner", "password");
-		var connection = await app.LoginAsync(record, ConnectionType.Irc);
+		var connection = await app.LoginAsync(record, SessionType.Irc);
 		Assert.Single(app.UserEvents.Events.OfType<UserConnectionOpened>());
 
 		var channel = app.PmChannels.Of(app.Users.Of(record));
@@ -28,8 +28,8 @@ public sealed class PmChannelsTests
 	{
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("ManyClients", "password");
-		var irc = await app.LoginAsync(record, ConnectionType.Irc);
-		var bancho = await app.LoginAsync(record, ConnectionType.Osu);
+		var irc = await app.LoginAsync(record, SessionType.Irc);
+		var bancho = await app.LoginAsync(record, SessionType.Osu);
 
 		var channel = app.PmChannels.Of(app.Users.Of(record));
 
@@ -43,7 +43,7 @@ public sealed class PmChannelsTests
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("Observer", "password",
 			UserPermissionsGroups.Default | UserPermissions.RoomObserve);
-		var tourney = await app.LoginAsync(record, ConnectionType.Tourney);
+		var tourney = await app.LoginAsync(record, SessionType.OsuTourney);
 
 		var channel = app.PmChannels.Of(app.Users.Of(record));
 
@@ -55,7 +55,7 @@ public sealed class PmChannelsTests
 	{
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("SameOwner", "password");
-		await app.LoginAsync(record, ConnectionType.Irc);
+		await app.LoginAsync(record, SessionType.Irc);
 		var owner = app.Users.Of(record);
 
 		var first = app.PmChannels.Of(owner);
@@ -82,7 +82,7 @@ public sealed class PmChannelsTests
 	{
 		using var app = new TestApplication();
 		var record = await app.CreateUserAsync("LeftOwner", "password");
-		var connection = await app.LoginAsync(record, ConnectionType.Irc);
+		var connection = await app.LoginAsync(record, SessionType.Irc);
 		var owner = app.Users.Of(record);
 		var channel = app.PmChannels.Of(owner);
 		app.Users.Close(connection, SessionEndReason.LoggedOut);

@@ -5,7 +5,7 @@ using Basil.Application.Users.Connections;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Users;
 using Basil.Domain.Auth;
-using Basil.Domain.Bancho;
+using Basil.Domain.Client;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Users;
@@ -52,7 +52,7 @@ internal sealed class BanchoLogin(
 		if (CountOpenConnections(ip) >= rules.Connections.PerIp)
 			return Fail(LoginFailureReason.ErrorOccurred, BanchoReplies.TooManyConnections);
 
-		var type = build.Stream == ClientStream.Tourney ? ConnectionType.Tourney : ConnectionType.Osu;
+		var type = build.Stream == ClientStream.Tourney ? SessionType.OsuTourney : SessionType.Osu;
 		LoginResult result;
 		try
 		{
@@ -74,17 +74,16 @@ internal sealed class BanchoLogin(
 		return (connection.Token, await WelcomeAsync(connection, cancellationToken));
 	}
 
-	private static bool TryParse(byte[] body, out LoginRequestBody request, out ClientBuild build, out BanchoClient client)
+	private static bool TryParse(byte[] body, out LoginRequestBody request, out ClientBuild build, out OsuClient client)
 	{
 		try
 		{
 			request = LoginRequestBody.Parse(body);
 			build = ClientBuild.Parse(request.OsuVersion);
-			client = new BanchoClient(
-				new BanchoVersion(build.Date, build.Revision, (BanchoVersionStream)(byte)build.Stream),
-				new BanchoFingerprint(new Md5(request.ClientHash.OsuPathHash),
-					new NetworkAdapters { Adapters = request.ClientHash.Adapters, Hash = new Md5(request.ClientHash.AdaptersHash) },
-					new Md5(request.ClientHash.UninstallHash), new Md5(request.ClientHash.DiskSignatureHash)));
+			client = new OsuClient(
+				new OsuVersion(build.Date, build.Revision, (OsuVersionStream)(byte)build.Stream),
+				new OsuFingerprint(new Md5(request.ClientHash.OsuPathHash),
+					new Md5(request.ClientHash.UninstallHash), new Md5(request.ClientHash.DiskSignatureHash), new NetworkAdapters { Adapters = request.ClientHash.Adapters, Hash = new Md5(request.ClientHash.AdaptersHash) }));
 			return true;
 		}
 		catch (Exception ex) when (ex is FormatException or ArgumentException)

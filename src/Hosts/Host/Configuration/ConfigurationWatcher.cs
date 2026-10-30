@@ -1,7 +1,6 @@
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Primitives;
 
-namespace Basil.Host;
+namespace Basil.Host.Configuration;
 
 /// <summary>
 ///     Notices when the configuration files change: the sections that are read once at start wait for the next start and

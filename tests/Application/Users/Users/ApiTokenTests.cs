@@ -25,7 +25,7 @@ public sealed class ApiTokenTests
 	private static CancellationToken Token => TestContext.Current.CancellationToken;
 
 	private static Task<LoginResult> OpenAsync(TestApplication app, string token,
-		ConnectionType type = ConnectionType.Api)
+		SessionType type = SessionType.Api)
 	{
 		return app.Users.LoginWithTokenAsync(type, token, IPAddress.Loopback, cancellationToken: Token);
 	}
@@ -51,9 +51,9 @@ public sealed class ApiTokenTests
 		var connection = await app.LoginAsync(user);
 		var sessions = app.Provider.GetRequiredService<ISessionRepository>();
 
-		var byHash = await sessions.FindByTokenAsync(ConnectionType.Api,
+		var byHash = await sessions.FindByTokenAsync(SessionType.Api,
 			SHA256.HashData(Encoding.UTF8.GetBytes(connection.Token)), app.Clock.GetUtcNow(), Token);
-		var byPlainToken = await sessions.FindByTokenAsync(ConnectionType.Api,
+		var byPlainToken = await sessions.FindByTokenAsync(SessionType.Api,
 			Encoding.UTF8.GetBytes(connection.Token), app.Clock.GetUtcNow(), Token);
 
 		Assert.Equal(connection.Session.Id, byHash!.Id);
@@ -232,7 +232,7 @@ public sealed class ApiTokenTests
 		using var app = new TestApplication();
 		var connection = await app.LoginAsync(await app.CreateUserAsync("Mixed", "password"));
 
-		var result = await OpenAsync(app, connection.Token, ConnectionType.Irc);
+		var result = await OpenAsync(app, connection.Token, SessionType.Irc);
 
 		Assert.Equal(LoginFailure.InvalidToken, result.Failure);
 	}
@@ -242,6 +242,6 @@ public sealed class ApiTokenTests
 	{
 		using var app = new TestApplication();
 
-		await Assert.ThrowsAsync<ArgumentException>(() => OpenAsync(app, "token", ConnectionType.Osu));
+		await Assert.ThrowsAsync<ArgumentException>(() => OpenAsync(app, "token", SessionType.Osu));
 	}
 }

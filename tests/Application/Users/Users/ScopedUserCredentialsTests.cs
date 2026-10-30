@@ -26,7 +26,7 @@ public sealed class ScopedUserCredentialsTests
 		return new Md5(Encoding.UTF8.GetBytes(password));
 	}
 
-	private static Task<LoginResult> OpenWithTokenAsync(TestApplication app, ConnectionType type, string token)
+	private static Task<LoginResult> OpenWithTokenAsync(TestApplication app, SessionType type, string token)
 	{
 		return app.Users.LoginWithTokenAsync(type, token, IPAddress.Loopback, cancellationToken: Token);
 	}
@@ -43,9 +43,9 @@ public sealed class ScopedUserCredentialsTests
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Changer", "old");
-		var current = await app.LoginAsync(user, ConnectionType.Api, "old");
-		var otherApi = await app.LoginAsync(user, ConnectionType.Api, "old");
-		var osu = await app.LoginAsync(user, ConnectionType.Osu, "old");
+		var current = await app.LoginAsync(user, SessionType.Api, "old");
+		var otherApi = await app.LoginAsync(user, SessionType.Api, "old");
+		var osu = await app.LoginAsync(user, SessionType.Osu, "old");
 		var key = await OpenIrcKeyAsync(app, current);
 
 		var result = await app.Users.Of(user).ScopeTo(current).Credentials
@@ -57,9 +57,9 @@ public sealed class ScopedUserCredentialsTests
 		Assert.True(current.IsOpen);
 		Assert.False(otherApi.IsOpen);
 		Assert.False(osu.IsOpen);
-		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, ConnectionType.Api, otherApi.Token)).Failure);
-		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, ConnectionType.Irc, key)).Failure);
-		Assert.True((await OpenWithTokenAsync(app, ConnectionType.Api, current.Token)).Succeeded);
+		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, SessionType.Api, otherApi.Token)).Failure);
+		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, SessionType.Irc, key)).Failure);
+		Assert.True((await OpenWithTokenAsync(app, SessionType.Api, current.Token)).Succeeded);
 	}
 
 	[Fact]
@@ -67,12 +67,12 @@ public sealed class ScopedUserCredentialsTests
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Everything", "old");
-		var current = await app.LoginAsync(user, ConnectionType.Api, "old");
+		var current = await app.LoginAsync(user, SessionType.Api, "old");
 
 		await app.Users.Of(user).ScopeTo(current).Credentials.ChangePasswordAsync(Hash("new"), Hash("old"), true, Token);
 
 		Assert.False(current.IsOpen);
-		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, ConnectionType.Api, current.Token)).Failure);
+		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, SessionType.Api, current.Token)).Failure);
 	}
 
 	[Fact]
@@ -80,8 +80,8 @@ public sealed class ScopedUserCredentialsTests
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Same", "old");
-		var current = await app.LoginAsync(user, ConnectionType.Api, "old");
-		var other = await app.LoginAsync(user, ConnectionType.Api, "old");
+		var current = await app.LoginAsync(user, SessionType.Api, "old");
+		var other = await app.LoginAsync(user, SessionType.Api, "old");
 
 		var result = await app.Users.Of(user).ScopeTo(current).Credentials
 			.ChangePasswordAsync(Hash("old"), Hash("old"), true, Token);
@@ -96,8 +96,8 @@ public sealed class ScopedUserCredentialsTests
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Wrong", "old");
-		var current = await app.LoginAsync(user, ConnectionType.Api, "old");
-		var other = await app.LoginAsync(user, ConnectionType.Api, "old");
+		var current = await app.LoginAsync(user, SessionType.Api, "old");
+		var other = await app.LoginAsync(user, SessionType.Api, "old");
 
 		var result = await app.Users.Of(user).ScopeTo(current).Credentials
 			.ChangePasswordAsync(Hash("new"), Hash("guess"), false, Token);
@@ -112,7 +112,7 @@ public sealed class ScopedUserCredentialsTests
 	{
 		using var app = new TestApplication();
 		var user = await app.CreateUserAsync("Missing", "old");
-		var current = await app.LoginAsync(user, ConnectionType.Api, "old");
+		var current = await app.LoginAsync(user, SessionType.Api, "old");
 
 		var result = await app.Users.Of(user).ScopeTo(current).Credentials.ChangePasswordAsync(Hash("new"), null,
 			cancellationToken: Token);
@@ -127,8 +127,8 @@ public sealed class ScopedUserCredentialsTests
 		using var app = new TestApplication();
 		var admin = await app.LoginAsync(await app.CreateUserAsync("Staff", "password", UserPermissionsGroups.All));
 		var user = await app.CreateUserAsync("Reset", "old");
-		var api = await app.LoginAsync(user, ConnectionType.Api, "old");
-		var osu = await app.LoginAsync(user, ConnectionType.Osu, "old");
+		var api = await app.LoginAsync(user, SessionType.Api, "old");
+		var osu = await app.LoginAsync(user, SessionType.Osu, "old");
 		var key = await OpenIrcKeyAsync(app, api);
 
 		var result = await app.Users.Of(user).ScopeTo(admin).Credentials.ChangePasswordAsync(Hash("new"), null,
@@ -138,7 +138,7 @@ public sealed class ScopedUserCredentialsTests
 		Assert.True(await app.VerifiesPasswordAsync(user, "new"));
 		Assert.False(api.IsOpen);
 		Assert.False(osu.IsOpen);
-		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, ConnectionType.Irc, key)).Failure);
+		Assert.Equal(LoginFailure.InvalidToken, (await OpenWithTokenAsync(app, SessionType.Irc, key)).Failure);
 		var entry = Assert.Single(app.ModerationEntries, e => e.Action == ModerationAction.ChangePassword);
 		Assert.Equal(admin.Record, entry.By);
 		Assert.Equal(user, entry.Target);
@@ -178,7 +178,7 @@ public sealed class ScopedUserCredentialsTests
 		using var app = new TestApplication();
 		await app.SetSettingsAsync(new ServerSettings { Locks = Locks.Profiles });
 		var user = await app.CreateUserAsync("Locked", "old");
-		var current = await app.LoginAsync(user, ConnectionType.Api, "old");
+		var current = await app.LoginAsync(user, SessionType.Api, "old");
 
 		var result = await app.Users.Of(user).ScopeTo(current).Credentials
 			.ChangePasswordAsync(Hash("new"), Hash("old"), false, Token);
@@ -193,7 +193,7 @@ public sealed class ScopedUserCredentialsTests
 		using var app = new TestApplication();
 		await app.SetSettingsAsync(new ServerSettings { Locks = Locks.Profiles });
 		var user = await app.CreateUserAsync("Manager", "old", UserPermissionsGroups.Default | UserPermissions.UserManage);
-		var current = await app.LoginAsync(user, ConnectionType.Api, "old");
+		var current = await app.LoginAsync(user, SessionType.Api, "old");
 
 		var result = await app.Users.Of(user).ScopeTo(current).Credentials
 			.ChangePasswordAsync(Hash("new"), Hash("old"), false, Token);

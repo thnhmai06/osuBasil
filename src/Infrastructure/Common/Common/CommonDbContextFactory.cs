@@ -1,7 +1,7 @@
 using Basil.Infrastructure.Common.Postgres;
 using Microsoft.EntityFrameworkCore.Design;
 
-namespace Basil.Infrastructure.Common;
+namespace Basil.Infrastructure.Common.Common;
 
 internal sealed class CommonDbContextFactory : IDesignTimeDbContextFactory<CommonDbContext>
 {

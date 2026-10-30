@@ -1,6 +1,6 @@
 using Basil.Application.Users.Connections;
 using Basil.Application.Common.Events;
-using Basil.Domain.Bancho;
+using Basil.Domain.Client;
 
 namespace Basil.Application.Anticheat.Runtime;
 
@@ -19,16 +19,16 @@ public sealed class AnticheatReporter
 	/// <summary>Reports the anticheat flags a game client sent.</summary>
 	/// <param name="player">The player's game client.</param>
 	/// <param name="flags">The flags the client reported.</param>
-	/// <returns>The reported flags that are signs of cheating; <see cref="BanchoFlags.Clean" /> when there are none.</returns>
+	/// <returns>The reported flags that are signs of cheating; <see cref="OsuFlags.Clean" /> when there are none.</returns>
 	/// <remarks>
 	///     This system operation needs no rights because the server itself calls it.
 	///     Nothing is blocked. When the flags show signs of cheating, one <see cref="AnticheatPlayerFlagged" /> carries
 	///     them and the player; whoever warns the room's chat, referees and creator finds the room itself.
 	/// </remarks>
-	public BanchoFlags Report(BanchoConnection player, BanchoFlags flags)
+	public OsuFlags Report(BanchoConnection player, OsuFlags flags)
 	{
-		var signs = flags & BanchoFlagsGroups.CheatSigns;
-		if (signs == BanchoFlags.Clean) return signs;
+		var signs = flags & OsuFlagsGroups.CheatSigns;
+		if (signs == OsuFlags.Clean) return signs;
 
 		_events.Publish(new AnticheatPlayerFlagged(player, signs));
 		return signs;

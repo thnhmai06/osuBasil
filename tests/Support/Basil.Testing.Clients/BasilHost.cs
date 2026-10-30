@@ -4,6 +4,7 @@ using Basil.Application.Auth.Persistence;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Beatmaps.Runtime;
+using Basil.Application.Common.Common;
 using Basil.Application.Servers.Runtime;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Chat;
@@ -131,7 +132,7 @@ public sealed class BasilHost : IAsyncDisposable
 	{
 		var registry = Services.GetRequiredService<UserRegistry>();
 		var attempt = new LoginAttempt(name, new Md5(Encoding.UTF8.GetBytes("password")));
-		var login = await registry.LoginAsync(attempt, ConnectionType.Api, IPAddress.Loopback, null, 0);
+		var login = await registry.LoginAsync(attempt, SessionType.Api, IPAddress.Loopback, null, 0);
 		var api = login.Connection ?? throw new InvalidOperationException($"Login failed: {login.Failure}.");
 		var (result, key, session) = await api.User.ScopeTo(api).Sessions.OpenIrcAsync(label);
 		registry.Close(api, SessionEndReason.LoggedOut);
@@ -147,7 +148,7 @@ public sealed class BasilHost : IAsyncDisposable
 	{
 		var registry = Services.GetRequiredService<UserRegistry>();
 		var attempt = new LoginAttempt(name, new Md5(Encoding.UTF8.GetBytes("password")));
-		var api = (await registry.LoginAsync(attempt, ConnectionType.Api, IPAddress.Loopback, null, 0)).Connection!;
+		var api = (await registry.LoginAsync(attempt, SessionType.Api, IPAddress.Loopback, null, 0)).Connection!;
 		await api.User.ScopeTo(api).Sessions.CloseAsync(_keySessions[key]);
 		registry.Close(api, SessionEndReason.LoggedOut);
 	}
@@ -190,7 +191,7 @@ public sealed class BasilHost : IAsyncDisposable
 		var result = await Services.GetRequiredService<Beatmapsets>().ImportAsync(archive);
 		if (result.Set is not null) return result.Beatmaps;
 		var existing = await Services.GetRequiredService<IBeatmapRepository>().ListAsync(
-			new BeatmapQuery(), new Basil.Application.Common.PageRequest(0, 1000));
+			new BeatmapQuery(), new PageRequest(0, 1000));
 		return existing.Items;
 	}
 

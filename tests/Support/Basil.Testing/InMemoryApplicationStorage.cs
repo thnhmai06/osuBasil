@@ -1,5 +1,6 @@
 using Basil.Application.Auth.Persistence;
 using Basil.Application.Common;
+using Basil.Application.Common.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Users.Persistence;
@@ -238,7 +239,7 @@ internal sealed class InMemorySessionRepository : ISessionRepository
 		return Task.FromResult(_entries.FirstOrDefault(entry => entry.Id == id && entry.User.Equals(user)));
 	}
 
-	public Task<StoredSession?> FindByTokenAsync(ConnectionType type, byte[] tokenHash, DateTimeOffset now,
+	public Task<StoredSession?> FindByTokenAsync(SessionType type, byte[] tokenHash, DateTimeOffset now,
 		CancellationToken cancellationToken = default)
 	{
 		var found = _entries.FirstOrDefault(entry => entry.Type == type && entry.EndedAt is null &&
@@ -251,7 +252,7 @@ internal sealed class InMemorySessionRepository : ISessionRepository
 				_tokens[found.Id].ExpiresAt));
 	}
 
-	public Task EndAsync(UserRecord user, Guid? only, Guid? except, IReadOnlyList<ConnectionType> types,
+	public Task EndAsync(UserRecord user, Guid? only, Guid? except, IReadOnlyList<SessionType> types,
 		DateTimeOffset at, SessionEndReason reason, bool requireReauthentication,
 		CancellationToken cancellationToken = default)
 	{
@@ -267,7 +268,7 @@ internal sealed class InMemorySessionRepository : ISessionRepository
 				EndedAt = entry.EndedAt ?? at,
 				EndReason = entry.EndReason ?? (entry.EndedAt is null ? reason : null),
 				MustReauthenticate = entry.MustReauthenticate ||
-				                     (requireReauthentication && entry.Type is ConnectionType.Osu or ConnectionType.Tourney)
+				                     (requireReauthentication && entry.Type is SessionType.Osu or SessionType.OsuTourney)
 			};
 		}
 

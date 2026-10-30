@@ -19,7 +19,7 @@ public static class DiagnosticsSample
 	/// <returns>The value of each category.</returns>
 	public static Dictionary<string, object> Create(RuntimeSampler runtime, UserRegistry registry, Lobby lobby, int openStreams)
 	{
-		int Count(ConnectionType type)
+		int Count(SessionType type)
 		{
 			return registry.Online.Values.Sum(user => user.Connections.Count(c => c.Type == type));
 		}
@@ -31,9 +31,9 @@ public static class DiagnosticsSample
 				usersOnline = registry.Online.Count, rooms = lobby.Rooms.Count,
 				roundsInProgress = lobby.Rooms.Values.Count(room => room.Rounds.InProgress), openStreams
 			},
-			["sessions"] = Enum.GetValues<ConnectionType>().ToDictionary(type => type.ToString().ToLowerInvariant(), Count),
-			["bancho"] = new { osu = Count(ConnectionType.Osu), tourney = Count(ConnectionType.Tourney) },
-			["irc"] = new { connections = Count(ConnectionType.Irc) },
+			["sessions"] = Enum.GetValues<SessionType>().ToDictionary(type => type.ToString().ToLowerInvariant(), Count),
+			["bancho"] = new { osu = Count(SessionType.Osu), tourney = Count(SessionType.OsuTourney) },
+			["irc"] = new { connections = Count(SessionType.Irc) },
 			["database"] = new { available = false },
 			["events"] = new { available = false }
 		};

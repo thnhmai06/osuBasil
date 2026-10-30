@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using Basil.Host.Cli.Commands;
 using Basil.Host.Cli.Socket;
 using Basil.Infrastructure.Common;
+using Basil.Infrastructure.Common.Common;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;

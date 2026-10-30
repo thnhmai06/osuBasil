@@ -1,6 +1,6 @@
 using System.Reflection;
 
-namespace Basil.Application.Common;
+namespace Basil.Application.Common.Common;
 
 /// <summary>
 ///     A short-lived capability over one object for one connection: the object's behaviour as that connection may do it.

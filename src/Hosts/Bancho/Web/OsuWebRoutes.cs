@@ -5,6 +5,7 @@ using Basil.Application.Anticheat.Runtime;
 using Basil.Application.Beatmaps.Capabilities;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Common;
+using Basil.Application.Common.Common;
 using Basil.Application.Content.Persistence;
 using Basil.Application.Scores.Persistence;
 using Basil.Application.Scores.Runtime;
@@ -12,8 +13,8 @@ using Basil.Application.Servers.Runtime;
 using Basil.Application.Users.Connections;
 using Basil.Application.Users.Persistence;
 using Basil.Application.Users.Users;
-using Basil.Domain.Bancho;
 using Basil.Domain.Beatmaps;
+using Basil.Domain.Client;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
@@ -146,7 +147,7 @@ internal static class OsuWebRoutes
 			var known = await beatmaps.GetAsync(beatmapHash, ct);
 			Md5? storyboard = Md5Text.TryParse(form["sbk"], out var sb) ? sb : (Md5?)null;
 			var submission = ToSubmission(data, beatmapHash);
-			anticheat.Report(client, submission.BanchoFlags);
+			anticheat.Report(client, submission.Flags);
 			await using var replay = OpenReplay(context);
 			var (result, _) = await submitter.ScopeTo(client).SubmitAsync(submission,
 				known is null ? null : new BeatmapChecksums(known.Hash, storyboard), submittedClient, replay, ct);
@@ -158,11 +159,10 @@ internal static class OsuWebRoutes
 		}
 	}
 
-	private static BanchoFingerprint Fingerprint(ClientHash hash)
+	private static OsuFingerprint Fingerprint(ClientHash hash)
 	{
-		return new BanchoFingerprint(new Md5(hash.OsuPathHash),
-			new NetworkAdapters { Adapters = hash.Adapters, Hash = new Md5(hash.AdaptersHash) },
-			new Md5(hash.UninstallHash), new Md5(hash.DiskSignatureHash));
+		return new OsuFingerprint(new Md5(hash.OsuPathHash),
+			new Md5(hash.UninstallHash), new Md5(hash.DiskSignatureHash), new NetworkAdapters { Adapters = hash.Adapters, Hash = new Md5(hash.AdaptersHash) });
 	}
 
 	private static Submission ToSubmission(ScoreSubmission data, Md5 beatmapHash)
@@ -171,7 +171,7 @@ internal static class OsuWebRoutes
 			new HitCounts(data.Num300, data.Num100, data.Num50, data.NumGeki, data.NumKatu, data.NumMiss),
 			data.TotalScore, (short)data.MaxCombo, (short)data.MaxCombo, ParseGrade(data.Grade), data.IsPassed,
 			data.IsFullCombo, data.Timestamp);
-		return new Submission { Score = score, BanchoFlags = (BanchoFlags)data.ClientFlags, HashByClient = new Md5(data.Checksum) };
+		return new Submission { Score = score, Flags = (OsuFlags)data.ClientFlags, HashByClient = new Md5(data.Checksum) };
 	}
 
 	private static Stream? OpenReplay(HttpContext context)
@@ -215,8 +215,8 @@ internal static class OsuWebRoutes
 		var b = query["b"].ToString();
 		// bancho.py: a leading "a" marks the flags the client detected; the rest is the flag bitmask.
 		if (!b.StartsWith('a') || !int.TryParse(b.AsSpan(1), out var flags)) return Text(string.Empty);
-		var signs = anticheat.Report(player, (BanchoFlags)flags);
-		return Text(signs == BanchoFlags.Clean ? string.Empty : "-3");
+		var signs = anticheat.Report(player, (OsuFlags)flags);
+		return Text(signs == OsuFlags.Clean ? string.Empty : "-3");
 	}
 
 	private static async Task<IResult> SearchAsync(HttpContext context, WebAuthentication auth,
