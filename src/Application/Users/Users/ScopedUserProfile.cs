@@ -74,12 +74,39 @@ public sealed class ScopedUserProfile(ScopedUser scoped)
 	/// <param name="image">The image, read from its current position; not disposed.</param>
 	/// <param name="cancellationToken">A token that cancels the operation.</param>
 	/// <returns>The outcome of setting the avatar.</returns>
-	/// <remarks>The same authority applies as to <see cref="RenameAsync" />.</remarks>
+	/// <remarks>
+	///     The same authority applies as to <see cref="RenameAsync" />. The image must be a PNG or JPEG picture within the
+	///     configured byte and pixel limits, told from its content, never from a name; a refused image leaves the previous
+	///     avatar untouched.
+	/// </remarks>
 	public async Task<Result<UserOutcome>> SetAvatarAsync(Stream image, CancellationToken cancellationToken = default)
 	{
 		if (await GuardAsync(cancellationToken) is { } refused) return refused;
 
-		await scoped.User.Context.Avatars.SaveAsync(scoped.User.Record, image, cancellationToken);
+		var context = scoped.User.Context;
+		var limits = (await context.Settings.GetAsync(cancellationToken)).Uploads;
+
+		using var memory = new MemoryStream();
+		var buffer = new byte[81920];
+		while (true)
+		{
+			var allowance = (int)Math.Min(buffer.Length, limits.AvatarMaxSize + 1 - memory.Length);
+			if (allowance == 0) break;
+			var read = await image.ReadAsync(buffer.AsMemory(0, allowance), cancellationToken);
+			if (read == 0) break;
+			memory.Write(buffer, 0, read);
+		}
+
+		if (memory.Length > limits.AvatarMaxSize) return UserOutcome.TooLarge;
+
+		memory.Position = 0;
+		var info = await context.Inspector.InspectAsync(memory, cancellationToken);
+		if (info is null || info.Width < 1 || info.Height < 1) return UserOutcome.InvalidImage;
+		if (info.Width > limits.AvatarMaxSide || info.Height > limits.AvatarMaxSide)
+			return UserOutcome.DimensionsTooLarge;
+
+		memory.Position = 0;
+		await context.Avatars.SaveAsync(scoped.User.Record, memory, cancellationToken);
 		return UserOutcome.Ok;
 	}
 

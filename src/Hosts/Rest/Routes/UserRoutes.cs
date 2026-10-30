@@ -66,7 +66,12 @@ internal static class UserRoutes
 		token.MapDelete("/{id:int}", DeleteAsync).WithSummary("Delete an account.");
 		token.MapPut("/{id:int}/avatar", PutAvatarAsync).DisableAntiforgery()
 			.WithSummary("Upload the avatar of an account as an image in the `file` field.")
-			.WithDescription("While the profiles area is locked only staff can change an avatar. The avatar is shown on the avatar host.");
+			.WithDescription("""
+				While the profiles area is locked only staff can change an avatar. The avatar is shown on the avatar host.
+
+				The file must be a PNG or JPEG picture within the configured size and pixel limits. Content that is not
+				such a picture, or that exceeds a limit, is refused with `422`.
+				""");
 		token.MapDelete("/{id:int}/avatar", DeleteAvatarAsync).WithSummary("Remove the avatar of an account.");
 
 		token.MapGet("/{id:int}/sessions", ListSessionsAsync).WithSummary("List the sessions of an account.")

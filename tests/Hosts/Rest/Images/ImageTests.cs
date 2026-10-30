@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Text;
 using Basil.Application.Beatmaps.Persistence;
 using Basil.Application.Content.Persistence;
 using Basil.Domain.Users;
@@ -75,6 +76,20 @@ public sealed class ImageTests(RestHostFixture fixture)
 			var big = new byte[6 * 1024 * 1024];
 
 			var status = await PutFileAsync(owner, $"/v1/users/{id}/avatar", big);
+
+			Assert.Equal(422, status);
+		}
+	}
+
+	[Fact]
+	public async Task Avatar_ThatIsNotAPicture_Answers422()
+	{
+		var (owner, id) = await fixture.SignInAsync("ImgNotPicture");
+		using (owner)
+		{
+			var html = Encoding.UTF8.GetBytes("<!doctype html><script>alert(1)</script>");
+
+			var status = await PutFileAsync(owner, $"/v1/users/{id}/avatar", html);
 
 			Assert.Equal(422, status);
 		}

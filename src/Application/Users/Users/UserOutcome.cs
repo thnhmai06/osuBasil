@@ -43,5 +43,14 @@ public enum UserOutcome : byte
 	InvalidLabel,
 
 	/// <summary>The country is not a valid country.</summary>
-	InvalidCountry
+	InvalidCountry,
+
+	/// <summary>The content is not a PNG or JPEG picture.</summary>
+	InvalidImage,
+
+	/// <summary>The picture is wider or taller than the allowed number of pixels.</summary>
+	DimensionsTooLarge,
+
+	/// <summary>The avatar is larger than the allowed size in bytes.</summary>
+	TooLarge
 }

@@ -19,7 +19,8 @@ public sealed class OutcomeErrorsTests
 		[UserOutcome.InvalidRestriction] = Invalid, [UserOutcome.Self] = Invalid, [UserOutcome.Deleted] = NotFound,
 		[UserOutcome.WrongPassword] = WrongPassword, [UserOutcome.InvalidName] = Invalid,
 		[UserOutcome.NameTaken] = Conflict, [UserOutcome.NotFound] = NotFound, [UserOutcome.Locked] = Locked,
-		[UserOutcome.NotSelf] = Forbidden, [UserOutcome.InvalidLabel] = Invalid, [UserOutcome.InvalidCountry] = Invalid
+		[UserOutcome.NotSelf] = Forbidden, [UserOutcome.InvalidLabel] = Invalid, [UserOutcome.InvalidCountry] = Invalid,
+		[UserOutcome.InvalidImage] = Invalid, [UserOutcome.DimensionsTooLarge] = Invalid, [UserOutcome.TooLarge] = Invalid
 	};
 
 	private static readonly Dictionary<RoomOutcome, ErrorKind> Rooms = new()
