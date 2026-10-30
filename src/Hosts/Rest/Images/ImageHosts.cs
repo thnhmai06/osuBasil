@@ -1,6 +1,7 @@
 using Basil.Application.Content.Persistence;
 using Basil.Host.Rest.Http;
 using Microsoft.AspNetCore.Http;
+using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Web.DependencyInjection;
 using SixLabors.ImageSharp.Web.Middleware;
 
@@ -58,6 +59,7 @@ public static class ImageHosts
 	public static IApplicationBuilder UseRestImages(this IApplicationBuilder app)
 	{
 		app.UseMiddleware<ImageRateLimitMiddleware>();
+		app.UseMiddleware<UndecodableImageMiddleware>();
 		return app.UseImageSharp();
 	}
 }
@@ -90,5 +92,22 @@ internal sealed class ImageRateLimitMiddleware(RequestDelegate next)
 
 		await next(context);
 		if (context.Response.StatusCode != StatusCodes.Status304NotModified) limiter.Record(key);
+	}
+}
+
+/// <summary>Answers 404 for a stored picture that cannot be decoded, because there is no image to serve.</summary>
+internal sealed class UndecodableImageMiddleware(RequestDelegate next)
+{
+	public async Task InvokeAsync(HttpContext context)
+	{
+		try
+		{
+			await next(context);
+		}
+		catch (Exception exception) when (exception is InvalidImageContentException or UnknownImageFormatException &&
+		                                  !context.Response.HasStarted)
+		{
+			context.Response.StatusCode = StatusCodes.Status404NotFound;
+		}
 	}
 }
