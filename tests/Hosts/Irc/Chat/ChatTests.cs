@@ -375,9 +375,8 @@ public sealed class ChatTests(IrcHostFixture fixture)
 		using var irc = await Host.SignInAsync("ChDouble");
 		using var osu = await Host.LoginOsuAsync("ChDoubleOsu");
 
-		await irc.SendAsync("NAMES #osu");
+		var names = await irc.NamesOfAsync("#osu");
 
-		var names = await irc.ExpectAsync("353");
-		Assert.Equal(1, names.Split(' ').Count(entry => entry.EndsWith("ChDoubleOsu", StringComparison.Ordinal)));
+		Assert.Equal(1, names.Count(entry => entry.EndsWith("ChDoubleOsu", StringComparison.Ordinal)));
 	}
 }
