@@ -139,7 +139,6 @@ live stream's self-seeded first event, the curated overview's fields, the one su
 * [`src/Basil.Server/Features/Diagnostics/DiagnosticRoutes.cs`](../../src/Basil.Server/Features/Diagnostics/DiagnosticRoutes.cs)
 * [`src/Basil.Server/Features/Diagnostics/DiagnosticsServiceCollectionExtensions.cs`](../../src/Basil.Server/Features/Diagnostics/DiagnosticsServiceCollectionExtensions.cs)
 * [`tests/Basil.Server.Tests/Features/Diagnostics/DiagnosticBroadcastServiceTests.cs`](../../tests/Basil.Server.Tests/Features/Diagnostics/DiagnosticBroadcastServiceTests.cs)
-* [`tests/Basil.IntegrationTests/DiagnosticEndpointTests.cs`](../../tests/Basil.IntegrationTests/DiagnosticEndpointTests.cs)
 
 ## See also
 
