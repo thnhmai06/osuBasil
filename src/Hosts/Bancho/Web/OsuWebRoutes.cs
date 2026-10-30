@@ -147,8 +147,8 @@ internal static class OsuWebRoutes
 			Md5? storyboard = Md5Text.TryParse(form["sbk"], out var sb) ? sb : (Md5?)null;
 			var submission = ToSubmission(data, beatmapHash);
 			anticheat.Report(client, submission.BanchoFlags);
-			var replay = OpenReplay(context);
-			var (result, rejection) = await submitter.ScopeTo(client).SubmitAsync(submission,
+			await using var replay = OpenReplay(context);
+			var (result, _) = await submitter.ScopeTo(client).SubmitAsync(submission,
 				known is null ? null : new BeatmapChecksums(known.Hash, storyboard), submittedClient, replay, ct);
 			return Text(result.IsOk ? "beatmapId:0|beatmapSetId:0|beatmapPlaycount:0|beatmapPasscount:0|approvedDate:\n" : "error: no");
 		}
@@ -204,7 +204,7 @@ internal static class OsuWebRoutes
 		if (form.Files.GetFile("ss") is not { } file) return Results.BadRequest();
 		await using var stream = file.OpenReadStream();
 		var (reference, result) = await server.ScopeTo(player).Screenshots.UploadAsync(stream, ct);
-		return result.IsOk ? Text(reference!.ToString()) : Text(string.Empty, result.Outcome == ServerOutcome.DimensionsTooLarge ? 413 : 400);
+		return result.IsOk ? Text(reference?.ToString() ?? string.Empty) : Text(string.Empty, result.Outcome == ServerOutcome.DimensionsTooLarge ? 413 : 400);
 	}
 
 	private static async Task<IResult> LastFmAsync(HttpContext context, WebAuthentication auth, AnticheatReporter anticheat,

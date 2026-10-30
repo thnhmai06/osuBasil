@@ -11,6 +11,7 @@ namespace Basil.Application.Multiplayer.Runtime.Rooms;
 /// <param name="Events">The publisher for room events.</param>
 /// <param name="Lobby">The lobby that holds the room.</param>
 /// <param name="Users">The questions a room asks about blocks between users.</param>
+/// <param name="Settings">The server settings that govern how a room runs, such as the round score wait.</param>
 internal sealed record RoomContext(
 	TimeProvider Clock,
 	IEventPublisher<RoomEvent> Events,
