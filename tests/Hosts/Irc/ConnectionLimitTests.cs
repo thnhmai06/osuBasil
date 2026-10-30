@@ -10,7 +10,11 @@ namespace Basil.Host.Irc.Tests;
 [Collection("IRC host")]
 public sealed class ConnectionLimitTests(IrcHostFixture fixture)
 {
-	private static readonly IPAddress SecondLoopback = IPAddress.Parse("127.0.0.2");
+	// Each test calls from addresses of its own, so connections that earlier tests are still closing do not count.
+	private static readonly IPAddress WithinLimit = IPAddress.Parse("127.20.0.1");
+	private static readonly IPAddress BeyondLimit = IPAddress.Parse("127.20.0.2");
+	private static readonly IPAddress FirstAddress = IPAddress.Parse("127.20.0.3");
+	private static readonly IPAddress SecondAddress = IPAddress.Parse("127.20.0.4");
 
 	private BasilHost Host => fixture.Host;
 
@@ -19,8 +23,8 @@ public sealed class ConnectionLimitTests(IrcHostFixture fixture)
 	{
 		await WithConnectionLimitAsync(2, async () =>
 		{
-			using var first = await IrcClient.ConnectAsync(Host);
-			using var second = await IrcClient.ConnectAsync(Host);
+			using var first = await IrcClient.ConnectAsync(Host, WithinLimit);
+			using var second = await IrcClient.ConnectAsync(Host, WithinLimit);
 
 			await AssertAcceptedAsync(first, "first");
 			await AssertAcceptedAsync(second, "second");
@@ -32,12 +36,12 @@ public sealed class ConnectionLimitTests(IrcHostFixture fixture)
 	{
 		await WithConnectionLimitAsync(2, async () =>
 		{
-			using var first = await IrcClient.ConnectAsync(Host);
-			using var second = await IrcClient.ConnectAsync(Host);
+			using var first = await IrcClient.ConnectAsync(Host, BeyondLimit);
+			using var second = await IrcClient.ConnectAsync(Host, BeyondLimit);
 			await AssertAcceptedAsync(first, "first");
 			await AssertAcceptedAsync(second, "second");
 
-			using var refused = await IrcClient.ConnectAsync(Host);
+			using var refused = await IrcClient.ConnectAsync(Host, BeyondLimit);
 
 			Assert.Equal($"ERROR :Closing Link: basil.test ({IrcReplies.TooManyConnections})",
 				await refused.ExpectAsync("ERROR"));
@@ -50,8 +54,8 @@ public sealed class ConnectionLimitTests(IrcHostFixture fixture)
 	{
 		await WithConnectionLimitAsync(1, async () =>
 		{
-			using var first = await IrcClient.ConnectAsync(Host);
-			using var elsewhere = await IrcClient.ConnectAsync(Host, SecondLoopback);
+			using var first = await IrcClient.ConnectAsync(Host, FirstAddress);
+			using var elsewhere = await IrcClient.ConnectAsync(Host, SecondAddress);
 
 			await AssertAcceptedAsync(first, "first address");
 			await AssertAcceptedAsync(elsewhere, "second address");
