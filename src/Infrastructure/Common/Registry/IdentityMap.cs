@@ -45,9 +45,15 @@ public sealed class IdentityMap<TKey, T> : WeakDictionary<TKey, T>
 			return live;
 
 		// The factory must always return a task: a load that fails synchronously leaves its exception cached in the
-		// Lazy under ExecutionAndPublication, so later callers could never reach the loader again.
+		// Lazy under ExecutionAndPublication, so later callers could never reach the loader again. The item is kept
+		// before the load completes, so a caller that arrives once the load is over finds it instead of loading again.
 		var loading = _loading.GetOrAdd(key, k =>
-			new Lazy<Task<T?>>(async () => await load(k), LazyThreadSafetyMode.ExecutionAndPublication));
+			new Lazy<Task<T?>>(async () =>
+			{
+				var stored = await load(k);
+				if (stored is not null) GetOrAdd(k, stored);
+				return stored;
+			}, LazyThreadSafetyMode.ExecutionAndPublication));
 		var task = loading.Value;
 		_ = task.ContinueWith(
 			_ => _loading.TryRemove(new KeyValuePair<TKey, Lazy<Task<T?>>>(key, loading)),
