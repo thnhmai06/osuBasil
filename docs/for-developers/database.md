@@ -146,11 +146,11 @@ new histories.
 
 ## Related code
 
-* `src/Infrastructure/Common/Postgres/` — `DatabaseWriter`, `DatabaseReader`, `DatabaseMigrator`, `ContextModel`
-* `src/Infrastructure/Common/Memory/` — `MemoryRepository`, `IdentityMap`, `WeakIndex`, `OwnedLists`
+* `src/Infrastructure/Common/Persistence/` — `DatabaseWriter`, `DatabaseReader`, `DatabaseMigrator`, `ContextModel`
+* `src/Infrastructure/Common/Registry/` — `MemoryRepository`, `IdentityMap`, `WeakIndex`, `OwnedLists`
 * `src/Infrastructure/<Module>/Persistence/` — the module's `DbContext`, the `XxxRow` types and the repositories
 * `src/Infrastructure/<Module>/Migrations/` — the module's migrations and their history table
-* `src/Infrastructure/Common/StorageStartup.cs` — migration and resident loading at startup; `AddBasilStorage()` registers the
+* `src/Infrastructure/Common/Workers/StorageStartup.cs` — migration and resident loading at startup; `AddBasilStorage()` registers the
   module migrations in the order above
 
 ## See also

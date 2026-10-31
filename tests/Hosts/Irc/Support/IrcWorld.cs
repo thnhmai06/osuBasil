@@ -33,7 +33,7 @@ internal static class IrcWorld
 		UserPrivileges write = UserPrivileges.None, bool autoJoin = false, string topic = "test topic",
 		bool visible = true)
 	{
-		host.Services.GetRequiredService<Basil.Application.Servers.Runtime.Server>().OpenChannel(new GeneralChannelRecord
+		host.Services.GetRequiredService<Basil.Application.Servers.Objects.Server>().OpenChannel(new GeneralChannelRecord
 		{
 			Name = name,
 			Value = new GeneralChannelData

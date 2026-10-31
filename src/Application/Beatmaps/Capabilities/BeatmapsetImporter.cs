@@ -1,4 +1,5 @@
 using Basil.Application.Beatmaps.Persistence;
+using Basil.Application.Beatmaps.Storage;
 
 namespace Basil.Application.Beatmaps.Capabilities;
 

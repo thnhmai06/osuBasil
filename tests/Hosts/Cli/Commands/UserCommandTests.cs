@@ -1,7 +1,8 @@
 using System.Text;
 using Basil.Application.Auth.Persistence;
 using Basil.Application.Users.Persistence;
-using Basil.Application.Users.Users;
+using Basil.Application.Users.Objects;
+using Basil.Application.Users.Registry;
 using Basil.Domain.Auth;
 using Basil.Domain.Common;
 using Basil.Domain.Users;

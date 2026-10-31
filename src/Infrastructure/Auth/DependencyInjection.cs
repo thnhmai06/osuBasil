@@ -1,6 +1,6 @@
 using Basil.Application.Auth.Persistence;
 using Basil.Infrastructure.Auth.Persistence;
-using Basil.Infrastructure.Common.Postgres;
+using Basil.Infrastructure.Common.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Infrastructure.Auth;

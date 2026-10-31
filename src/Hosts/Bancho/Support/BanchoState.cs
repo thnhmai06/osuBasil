@@ -1,5 +1,7 @@
-using Basil.Application.Users.Connections;
-using Basil.Application.Users.Users;
+using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Capabilities;
+using Basil.Application.Users.Objects;
+using Basil.Application.Users.Registry;
 using Basil.Protocol.Bancho.Wire.Packets;
 
 namespace Basil.Host.Bancho.Support;

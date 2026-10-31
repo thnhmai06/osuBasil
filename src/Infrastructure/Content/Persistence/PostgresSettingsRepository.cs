@@ -3,8 +3,8 @@ using System.Text.Json.Serialization;
 using Basil.Application.Content.Persistence;
 using Basil.Domain.Content;
 using Basil.Infrastructure.Common;
-using Basil.Infrastructure.Common.Common;
-using Basil.Infrastructure.Common.Postgres;
+using Basil.Infrastructure.Common.Registry;
+using Basil.Infrastructure.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 

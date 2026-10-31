@@ -8,8 +8,8 @@ using Basil.Application.Common.Common;
 using Basil.Domain.Beatmaps;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;
-using Basil.Infrastructure.Common.Memory;
-using Basil.Infrastructure.Common.Postgres;
+using Basil.Infrastructure.Common.Registry;
+using Basil.Infrastructure.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Beatmaps.Persistence;

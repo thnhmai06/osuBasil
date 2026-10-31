@@ -1,7 +1,9 @@
-using Basil.Application.Chat.Runtime;
-using Basil.Application.Multiplayer.Runtime;
-using Basil.Application.Users.Connections;
-using Basil.Application.Users.Users;
+using Basil.Application.Chat.Objects;
+using Basil.Application.Chat.Registry;
+using Basil.Application.Multiplayer.Capabilities;
+using Basil.Application.Multiplayer.Registry;
+using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Registry;
 using Basil.Host.Bancho.Support;
 
 namespace Basil.Host.Bancho.Packets;

@@ -1,8 +1,10 @@
-using Basil.Application.Chat.Runtime;
+using Basil.Application.Chat.Objects;
 using Basil.Application.Common;
 using Basil.Application.Common.Common;
-using Basil.Application.Users.Connections;
-using Basil.Application.Users.Users;
+using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Capabilities;
+using Basil.Application.Users.Objects;
+using Basil.Application.Users.Registry;
 using Basil.Host.Irc.Support;
 using Basil.Protocol.Irc;
 

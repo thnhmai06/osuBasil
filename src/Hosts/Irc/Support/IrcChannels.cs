@@ -1,5 +1,5 @@
 using System.Text;
-using Basil.Application.Chat.Runtime;
+using Basil.Application.Chat.Objects;
 using Basil.Domain.Users;
 using Basil.Protocol.Irc;
 

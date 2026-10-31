@@ -1,12 +1,13 @@
 using Basil.Application.Beatmaps.Persistence;
-using Basil.Application.Chat.Runtime;
+using Basil.Application.Chat.Registry;
 using Basil.Application.Common.Common;
 using Basil.Application.Content.Persistence;
-using Basil.Application.Multiplayer.Runtime;
+using Basil.Application.Multiplayer.Registry;
 using Basil.Application.Scores.Persistence;
-using Basil.Application.Users.Connections;
+using Basil.Application.Users.Objects.Connections;
 using Basil.Application.Users.Persistence;
-using Basil.Application.Users.Users;
+using Basil.Application.Users.Objects;
+using Basil.Application.Users.Registry;
 using Basil.Domain.Auth;
 using Basil.Domain.Common;
 using Basil.Domain.Mechanics;

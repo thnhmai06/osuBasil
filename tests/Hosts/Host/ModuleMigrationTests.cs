@@ -1,5 +1,5 @@
 using System.Reflection;
-using Basil.Infrastructure.Common.Postgres;
+using Basil.Infrastructure.Common.Persistence;
 using Basil.Testing.Persistence;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;

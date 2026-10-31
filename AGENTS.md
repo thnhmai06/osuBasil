@@ -351,17 +351,24 @@ Basil.Application.Common         shared application contracts and eventing     -
 Basil.Infrastructure.Common      shared database, memory, files and event     -> Application.Common, Domain
                                  dispatch infrastructure
 
-Basil.Application.<Module>       the module's ports and objects: Persistence/       -> Domain, Application.Common,
-                                 (repository and byte-storage ports, query           the Application projects of the
-                                 records), Capabilities/ (ports to external          modules it uses (below)
-                                 computation, public, and application logic
-                                 that needs no live object, internal) and
-                                 Runtime/ (live objects, scopes, contexts,
-                                 feature events, handlers); Add<Module>Application()
-Basil.Infrastructure.<Module>    the module's implementations: PostgreSQL,       -> its own Application,
-                                 files, osu! rulesets, FFMpegCore, ImageSharp,       Infrastructure.Common,
-                                 its DbContext and migrations, background work       Application.Common
-                                 (Add<Module>Infrastructure())
+Basil.Application.<Module>       the module's ports and objects, in folders by       -> Domain, Application.Common,
+                                 responsibility: Objects/ (live objects, contexts,    the Application projects of the
+                                 outcomes, event records), Registry/ (the objects     modules it uses (below)
+                                 kept in RAM), Capabilities/ (Scoped* views, ports
+                                 to external computation and the object-free logic
+                                 behind them), Services/ (services the system
+                                 provides: a contract and its implementation),
+                                 Persistence/ (repository ports, query records),
+                                 Storage/ (file-storage ports), Handlers/ (event
+                                 handlers), Workers/ (background runs);
+                                 Add<Module>Application()
+Basil.Infrastructure.<Module>    the module's implementations, in folders that        -> its own Application,
+                                 match those ports: Persistence/ (Postgres,           Infrastructure.Common,
+                                 DbContext, rows, migrations), Storage/ (files),      Application.Common
+                                 Capabilities/ (osu! rulesets, FFMpegCore,
+                                 ImageSharp, HTTP), Registry/ (memory primitives),
+                                 Workers/ (sweepers, watchers);
+                                 Add<Module>Infrastructure()
 Basil.Host.Shared               views and outcome-to-error mapping used      -> Application projects
                                  by the API and the console
 Basil.Protocol.Bancho            osu! client-server wire formats, score         -> external libraries only
@@ -422,17 +429,22 @@ an options type that the project using it owns; Application reads no configurati
 on Domain and external packages. `Infrastructure.Common` owns shared database, memory and file implementations and the
 event dispatcher; it depends on Domain, Application.Common and its external packages.
 
-Inside a module Application project, **Persistence/** holds the ports to the persistent outside of the process:
-repository and byte-storage contracts and query records. **Capabilities/** holds the ports to external
-computation (a capability with business meaning whose implementation needs external libraries: beatmapset reader,
-analyser, assets, mirror, screenshot inspector; these interfaces and the data they exchange are the only public
-types) and the application logic that needs no live object (account checks, beatmapset indexing, score validation and
-recording): it takes and returns records and plain results, never creates, receives or publishes an object or an
-event, and every such type is `internal`. **Runtime/** (for Users: `Users/` and `Connections/`) holds the live objects
-and what they do: runtime objects, registries, root objects, scopes, contexts, feature events, and every coordination
-between objects; it calls the services and publishes the events they leave to it. Each module's public
-`Add<Module>Application()` builds its contexts and objects; its `Add<Module>Infrastructure()` registers the
-implementations of its ports and its migration. Handlers stay `internal`; a module that has them grants
+Inside a module Application project each folder owns one kind of type. **Objects/** holds the live objects and what
+they do: runtime objects, their parts, the contexts they take their collaborators from, the outcome enum of each
+object, and the records of its events (`Objects/Events/`); every coordination between objects lives here, and it
+publishes the events that are left to the handlers. **Registry/** holds what keeps live objects in RAM and hands them
+out (`UserRegistry`, `Lobby`, the channel registries) and owns the operations on what it holds. **Capabilities/**
+holds the `Scoped*` views (the object's behaviour as one connection may do it), the ports to external computation (a
+capability with business meaning whose implementation needs external libraries: beatmapset reader, analyser, assets,
+mirror, screenshot inspector; these interfaces and the data they exchange are the only public types) and the
+application logic that needs no live object (account checks, beatmapset indexing, score validation and recording): it
+takes and returns records and plain results, never creates, receives or publishes an object or an event, and every
+such type is `internal`. **Services/** holds the services the system provides, a contract and its implementation
+(`IAnticheatReporter`); a helper that only serves one layer is not a service and stays with what implements it.
+**Persistence/** holds the repository ports and their query records, **Storage/** the file-storage ports,
+**Handlers/** the event handlers and **Workers/** the background runs.
+Each module's public `Add<Module>Application()` builds its contexts and objects; its `Add<Module>Infrastructure()`
+registers the implementations of its ports and its migration. Handlers stay `internal`; a module that has them grants
 `InternalsVisibleTo("Basil.Host")` (the generated Mediator code names them) and to its own test project, and
 nothing else is made visible. `Basil.Host` calls `AddBasil()`.
 
@@ -457,44 +469,83 @@ Infrastructure). The transports are `Basil.Host.Bancho` (osu! packets, polling a
 
 ### Application feature folders
 
-Application is sliced by module first, then by kind of type; namespace = project + folder (`Basil.Application.Chat.Runtime`).
-Application.Common owns shared values, paging/search syntax and event contracts/queue; Infrastructure.Common owns
-shared persistence and event delivery. In a module, `Persistence/` owns the persistent ports (repository and byte-storage
-contracts and query records), `Capabilities/` the capability ports (public) and object-free application logic (internal),
-`Runtime/` runtime objects, registries, scoped views, contexts, feature events and their coordination.
+Application is sliced by module first, then by folder of responsibility; namespace = project + folder
+(`Basil.Application.Chat.Objects`). Application.Common owns shared values, paging/search syntax and event
+contracts/queue; Infrastructure.Common owns shared persistence and event delivery.
+
+Every module uses these folders, and creates only the ones it needs:
+
+| Folder | Holds |
+|---|---|
+| `Objects/` | The module's live objects, their parts and contexts, each object's outcome enum, and its event records (`Objects/Events/`) |
+| `Registry/` | What keeps live objects in RAM and hands them out (`UserRegistry`, `Lobby`, the channel registries) |
+| `Capabilities/` | The `Scoped*` views, the ports to external computation, and the object-free logic that implements them |
+| `Services/` | Services the system provides: a contract and its implementation. Only what a module offers as a service belongs here |
+| `Persistence/` | The repository ports, their query records and the data both layers name |
+| `Storage/` | The file-storage ports (`IBeatmapsetStorage`, `IReplayStorage`, `IFaqStorage`, the avatars and menu assets) |
+| `Handlers/` | The event handlers of the module, one per concrete event type |
+| `Workers/` | The background runs the module declares (sweepers, watchers) |
+
+Infrastructure mirrors those ports: `Persistence/` for Postgres, `DbContext`, rows and migrations, `Storage/` for the
+file implementations, `Capabilities/` for what needs an external library, `Registry/` for the shared memory
+primitives and `Workers/` for the loops and hosted services. Tests mirror the same folders under `tests/`.
 
 ```text
-Users/         user and restriction repositories, UserQuery; login and registration
-               inputs; AccountService                                              (Capabilities)
-               User, UserContext, UserRegistry, ScopedUser*, LoginResult,
-               UserOutcome, user events                                            (Runtime)
-Connections/   Connection tree, ScopedBanchoConnection, ConnectionContext,
-               connection rules and outcomes, connection and restriction handlers (Runtime)
-Chat/          Channel tree, GeneralChannelRegistry, RoomChannels, PmChannels, SpectatorChannels;
-               IChannelRepository, ScopedChannel, ScopedGeneralChannel, events and results
-Multiplayer/   Lobby, Room, their parts and scopes; match, round and score repositories;
-               room and lobby events and results
-Beatmaps/      beatmap and beatmapset repositories and storage, capability ports;
-               Beatmapset, Beatmapsets, ScopedBeatmapset; BeatmapsetImporter and friends (Capabilities)
-Scores/        score, replay and stats repositories; score events; ScoreSubmitter and ScopedScoreSubmitter
-               (game clients submit scores); ScoreRecorder                           (Capabilities)
-Anticheat/     anticheat events; AnticheatReporter reports the flags a game client sends
-Content/       content repositories, storage ports and the screenshot inspector port
-Servers/       Server, ScopedServer, server contexts and server resources
+Users/         IUserRepository and friends, UserQuery, login inputs    (Persistence)
+               IUserAvatarStorage                                      (Storage)
+               User, UserContext, UserGrants, UserProfile, UserOutcome  (Objects)
+               Connection, ConnectionContext, ConnectionRules,
+               PlayerStatus                                            (Objects/Connections)
+               UserRegistry                                            (Registry)
+               AccountService, CredentialChecks, ScopedUser*,
+               ScopedBanchoConnection                                  (Capabilities)
+               ConnectionHandler, RestrictionHandler                   (Handlers)
+Chat/          IChannelRepository                                      (Persistence)
+               the channel tree, ChannelContext, ChannelOutcome,
+               ChannelEvents                                            (Objects)
+               GeneralChannelRegistry, RoomChannels, PmChannels,
+               SpectatorChannels                                       (Registry)
+               ScopedChannel, ScopedGeneralChannel                     (Capabilities)
+               the room, lobby, connection and spectator handlers      (Handlers)
+Multiplayer/   match, round, event and report repositories             (Persistence)
+               Room and its parts, RoomOutcome, the event records       (Objects)
+               Lobby, LobbyContext                                      (Registry)
+               ScopedLobby and the room's scopes                        (Capabilities)
+               MatchRecorder, ScoreHandler, the lobby handlers          (Handlers)
+Beatmaps/      beatmap and beatmapset repositories, import and scan
+               data                                                     (Persistence)
+               IBeatmapsetStorage                                       (Storage)
+               Beatmapset, Beatmapsets, contexts, outcomes, events      (Objects)
+               ScopedBeatmapset, the reader/analyser/mirror/assets
+               ports, and the importer, scanner and planner             (Capabilities)
+Scores/        score, stats repositories, submission inputs             (Persistence)
+               IReplayStorage                                           (Storage)
+               ScoreSubmitter, IScoreBeatmapAcceptance,
+               ScoreSubmissionOutcome, ScoreEvents                      (Objects)
+               ScopedScoreSubmitter, ScoreRecorder                      (Capabilities)
+Anticheat/     IAnticheatReporter, AnticheatReporter                    (Services)
+               AnticheatEvents                                          (Objects/Events)
+Content/       ISettingsRepository, IMenuBannerRepository,
+               ServerSettings                                           (Persistence)
+               the FAQ, menu, screenshot and seasonals storages          (Storage)
+               IScreenshotInspector                                     (Capabilities)
+Servers/       Server, ServerContext, ServerOutcome, ServerRecovery     (Objects)
+               ScopedServer and its parts                               (Capabilities)
 ```
 
-Feature event categories and handlers belong to the Runtime folder of their module; the shared event contract, publisher and queue
-belong to Application.Common. The dispatcher belongs to Infrastructure.Common; concrete handlers live in
-the module's Runtime folder or the consumer that owns them, including `Basil.Bot`. Host configuration
-(ports, TLS, data paths) belongs to the hosts. BasilBot commands and announcements are server features: a
-command is an entry point that uses the typist's scoped objects, and the bot only replies. Query **records**
-(the filter a repository applies, with `Parse` for the search syntax) belong to Persistence; routes and handlers
-that answer queries do not. Server settings changed at runtime (`ServerSettings`, owned by Content.Application) exist only while the
-server runs and are stored through `ISettingsRepository`; they are not Domain and not host configuration.
+Feature event **records** live under `Objects/Events/` of the module that owns the object they describe; the shared
+event contract, publisher and queue belong to Application.Common, and the dispatcher belongs to
+Infrastructure.Common's `Workers/`. Concrete handlers live in the module's `Handlers/` folder or in the consumer that
+owns them, including `Basil.Bot`. Host configuration (ports, TLS, data paths) belongs to the hosts. BasilBot commands
+and announcements are server features: a command is an entry point that uses the typist's scoped objects, and the bot
+only replies. Query **records** (the filter a repository applies, with `Parse` for the search syntax) belong to
+Persistence; routes and handlers that answer queries do not. Server settings changed at runtime (`ServerSettings`,
+owned by Content.Application) exist only while the server runs and are stored through `ISettingsRepository`; they are
+not Domain and not host configuration.
 
 * Common projects depend only on Domain and shared external packages. `Users`, `Connections`, `Beatmaps` and `Scores` do not depend on
   `Multiplayer` objects. Anticheat flags,
-  wherever they arrive (score submission, `lastfm.php`), are reported by the host through `AnticheatReporter.Report`,
+  wherever they arrive (score submission, `lastfm.php`), are reported by the host through `IAnticheatReporter.Report`,
   the single source of anticheat events; BasilBot turns them into chat warnings.
 * `Chat` references `Multiplayer`, and both reference `Users` and `Connections` (`Room.Host`, `Channel.Members`, the online
   `User`); treat them as one cluster. `Users` and `Connections` reference each other (a user holds its connections, a
@@ -649,11 +700,14 @@ the owner merges them into the skill later, nobody edits the skill silently.
 
 * **Read the IDE's suggestions** (see Code style): async overloads with the token in scope, LINQ where a loop reads as
   a sentence, return-switch over switch over if, ignore allocation hints and serializer-filled DTO reports.
-* **Services are logic without live objects.** In a layered backend, a service takes and returns records and plain
-  results, never receives or creates a runtime object, never publishes an event and has no public contract. Anything
-  that coordinates several objects is a method of the object that is acted on or of the registry that holds them
-  (`registry.LoginAsync`, `lobby.ReleaseAsync`, `scoreSubmitter.ScopeTo(connection).SubmitAsync`); a file full of former services
-  ending up as `Server.X` is the God Actor in disguise. This supersedes the old rule "one child service per part".
+* **Internal application logic is object-free; system Services are explicit contracts.** A helper that only implements a
+  capability takes and returns records and plain results, never receives or creates a runtime object and never
+  publishes an event. A service in a module's Services folder is different: it is a public system operation with a
+  contract and implementation. `IAnticheatReporter` is the explicit event-source exception: its purpose is to report
+  a live game's flags, and it is the single producer of anticheat events. Do not infer from this exception that internal
+  helpers belong in Services. Coordination between objects otherwise belongs to the object acted on or its registry
+  (`registry.LoginAsync`, `lobby.ReleaseAsync`, `scoreSubmitter.ScopeTo(connection).SubmitAsync`); a file full of
+  former helpers ending up as `Server.X` is the God Actor in disguise. This supersedes the old rule "one child service per part".
 * **Plain data that two layers both name in public signatures lives in the lower layer** (inputs, failure enums, import
   results), so the upper layer can expose it while the lower one stays internal.
 * **Flip a reference direction in stages with a temporary internal bridge interface** declared in the upper project:
@@ -763,9 +817,9 @@ Before considering a code change complete:
    "Application publishes events; Infrastructure only ships them". This applies to code written by delegated agents too: the orchestrator reviews it
    against these rules before accepting it. `User.Channels`, `User.Join(Channel)`,
    sessions emitting events, a handler that waits or serves several event types, and rules or timers on runtime models and
-   registries all got through review once; do not let them back in. Nor should a service that only wraps
-   a repository read, a service that takes, returns or creates a live object or publishes an event, a public
-   service contract, a contract name that reveals its mechanism, or a reference from a module's Infrastructure project to another module,
+   registries all got through review once; do not let them back in. Nor should an internal helper that only wraps
+   a repository read, an internal helper that takes, returns or creates a live object or publishes an event (except
+   the explicit `IAnticheatReporter` system service), a contract name that reveals its mechanism, or a reference from a module's Infrastructure project to another module,
    or any project reference outside the graph of the modules. Since the identity redesign, also
    reject: an action without a real `by`, authority decided by connection kind, a check on granted instead of
    effective permissions, a stored or configured `Privileges`, privileges used to grant anything, and a

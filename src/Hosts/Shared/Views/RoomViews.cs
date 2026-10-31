@@ -1,4 +1,4 @@
-using Basil.Application.Multiplayer.Runtime.Rooms;
+using Basil.Application.Multiplayer.Objects.Rooms;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Multiplayer;
 

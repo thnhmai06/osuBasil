@@ -1,6 +1,7 @@
 using System.Globalization;
-using Basil.Application.Users.Connections;
-using Basil.Application.Users.Users;
+using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects;
+using Basil.Application.Users.Registry;
 
 namespace Basil.Host.Cli.Commands;
 

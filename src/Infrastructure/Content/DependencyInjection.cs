@@ -1,10 +1,12 @@
 using Basil.Infrastructure.Common;
-using Basil.Infrastructure.Common.Postgres;
+using Basil.Infrastructure.Common.Persistence;
 using Basil.Application.Content.Capabilities;
 using Basil.Application.Content.Persistence;
-using Basil.Infrastructure.Common.Common;
+using Basil.Application.Content.Storage;
+using Basil.Infrastructure.Common.Registry;
 using Basil.Infrastructure.Content.Capabilities;
 using Basil.Infrastructure.Content.Persistence;
+using Basil.Infrastructure.Content.Storage;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Infrastructure.Content;

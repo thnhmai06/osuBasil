@@ -203,7 +203,7 @@ namespace Basil.Infrastructure.Multiplayer.Migrations
                     b.ToTable("round_scores", (string)null);
                 });
 
-            modelBuilder.Entity("Basil.Infrastructure.Common.Postgres.WriteTicketRow", b =>
+            modelBuilder.Entity("Basil.Infrastructure.Common.Persistence.WriteTicketRow", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")

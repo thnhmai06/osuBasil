@@ -1,6 +1,7 @@
 using Basil.Application.Content.Persistence;
 using Basil.Application.Users.Persistence;
-using Basil.Application.Users.Users;
+using Basil.Application.Users.Objects;
+using Basil.Application.Users.Registry;
 using Basil.Domain.Users;
 using Basil.Host.Bancho.Support;
 using Basil.Testing.Clients;

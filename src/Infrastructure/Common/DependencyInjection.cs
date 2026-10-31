@@ -1,8 +1,7 @@
 using Basil.Application.Common;
-using Basil.Infrastructure.Common.Common;
-using Basil.Infrastructure.Common.Events;
-using Basil.Infrastructure.Common.Files;
-using Basil.Infrastructure.Common.Postgres;
+using Basil.Infrastructure.Common.Persistence;
+using Basil.Infrastructure.Common.Workers;
+using Basil.Infrastructure.Common.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 

@@ -1,4 +1,4 @@
-using Basil.Infrastructure.Common.Postgres;
+using Basil.Infrastructure.Common.Persistence;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Infrastructure.Multiplayer.Persistence;
 using Microsoft.Extensions.DependencyInjection;

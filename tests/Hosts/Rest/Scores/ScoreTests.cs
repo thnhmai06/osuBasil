@@ -1,4 +1,5 @@
 using Basil.Application.Scores.Persistence;
+using Basil.Application.Scores.Storage;
 using Basil.Domain.Mechanics;
 using Basil.Domain.Scores;
 using Microsoft.Extensions.DependencyInjection;

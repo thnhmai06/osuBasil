@@ -1,5 +1,6 @@
-using Basil.Application.Multiplayer.Runtime.Events;
-using Basil.Application.Users.Users;
+using Basil.Application.Multiplayer.Objects.Events;
+using Basil.Application.Users.Objects;
+using Basil.Application.Users.Objects.Events;
 using Mediator;
 
 namespace Basil.Host.Logging;

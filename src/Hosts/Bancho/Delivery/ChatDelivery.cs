@@ -1,5 +1,5 @@
-using Basil.Application.Chat.Runtime;
-using Basil.Application.Users.Connections;
+using Basil.Application.Chat.Objects;
+using Basil.Application.Chat.Objects.Events;
 using Basil.Domain.Auth;
 using Basil.Host.Bancho.Support;
 using Mediator;

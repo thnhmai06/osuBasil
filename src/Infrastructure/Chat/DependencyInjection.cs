@@ -1,8 +1,8 @@
 using Basil.Application.Chat.Persistence;
 using Basil.Infrastructure.Chat.Persistence;
 using Basil.Infrastructure.Common;
-using Basil.Infrastructure.Common.Common;
-using Basil.Infrastructure.Common.Postgres;
+using Basil.Infrastructure.Common.Registry;
+using Basil.Infrastructure.Common.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Basil.Infrastructure.Chat;

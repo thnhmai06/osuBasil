@@ -1,6 +1,7 @@
 using System.Globalization;
 using Basil.Application.Content.Persistence;
-using Basil.Application.Users.Users;
+using Basil.Application.Users.Objects;
+using Basil.Application.Users.Registry;
 using Basil.Host.Rest.Sse;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.Extensions.Logging;

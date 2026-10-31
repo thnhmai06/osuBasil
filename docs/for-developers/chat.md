@@ -102,17 +102,17 @@ BasilBot is online with a permanent `User` and a `BotConnection` that the server
 
 ## Related code
 
-* [`Channel.cs`](../../src/Application/Chat/Runtime/Channel.cs): channel state, `ScopeTo` and the read and write rules each kind overrides
-* [`ScopedChannel.cs`](../../src/Application/Chat/Runtime/ScopedChannel.cs): join, part and post operations
-* [`ScopedGeneralChannel.cs`](../../src/Application/Chat/Runtime/ScopedGeneralChannel.cs): general-channel configuration and deletion
-* [`ScopedServerChannels.cs`](../../src/Application/Servers/Runtime/ScopedServerChannels.cs): general-channel creation, and the lookup of the channel to manage
-* [`ChannelOutcome.cs`](../../src/Application/Chat/Runtime/ChannelOutcome.cs): operation outcomes
-* [`GeneralChannelRegistry.cs`](../../src/Application/Chat/Runtime/GeneralChannelRegistry.cs): general-channel ownership and the automatic joins and parts
-* [`GeneralChannel.cs`](../../src/Application/Chat/Runtime/GeneralChannel.cs), [`PmChannel.cs`](../../src/Application/Chat/Runtime/PmChannel.cs), [`PmChannels.cs`](../../src/Application/Chat/Runtime/PmChannels.cs): general and private-message channels, and the private-message channel of each online user; [`GeneralChannelRecord.cs`](../../src/Domain/Chat/GeneralChannelRecord.cs): the stored general channel
-* [`RoomChannel.cs`](../../src/Application/Chat/Runtime/RoomChannel.cs), [`SpectatorChannel.cs`](../../src/Application/Chat/Runtime/SpectatorChannel.cs), [`SpectatorChannels.cs`](../../src/Application/Chat/Runtime/SpectatorChannels.cs): room and spectator channels, and the spectator channel of each watched client
-* [`User.cs`](../../src/Application/Users/Users/User.cs), [`ScopedUser.cs`](../../src/Application/Users/Users/ScopedUser.cs): the user's online state (away message, connections)
-* [`ScopedBanchoConnection.cs`](../../src/Application/Users/Connections/ScopedBanchoConnection.cs): spectator operations
-* [`Room.cs`](../../src/Application/Multiplayer/Runtime/Rooms/Room.cs), [`RoomCountdown.cs`](../../src/Application/Multiplayer/Runtime/Rooms/RoomCountdown.cs): room ownership and countdown
+* [`Channel.cs`](../../src/Application/Chat/Objects/Channel.cs): channel state, `ScopeTo` and the read and write rules each kind overrides
+* [`ScopedChannel.cs`](../../src/Application/Chat/Capabilities/ScopedChannel.cs): join, part and post operations
+* [`ScopedGeneralChannel.cs`](../../src/Application/Chat/Capabilities/ScopedGeneralChannel.cs): general-channel configuration and deletion
+* [`ScopedServerChannels.cs`](../../src/Application/Servers/Capabilities/ScopedServerChannels.cs): general-channel creation, and the lookup of the channel to manage
+* [`ChannelOutcome.cs`](../../src/Application/Chat/Objects/ChannelOutcome.cs): operation outcomes
+* [`GeneralChannelRegistry.cs`](../../src/Application/Chat/Registry/GeneralChannelRegistry.cs): general-channel ownership and the automatic joins and parts
+* [`GeneralChannel.cs`](../../src/Application/Chat/Objects/GeneralChannel.cs), [`PmChannel.cs`](../../src/Application/Chat/Objects/PmChannel.cs), [`PmChannels.cs`](../../src/Application/Chat/Registry/PmChannels.cs): general and private-message channels, and the private-message channel of each online user; [`GeneralChannelRecord.cs`](../../src/Domain/Chat/GeneralChannelRecord.cs): the stored general channel
+* [`RoomChannel.cs`](../../src/Application/Chat/Objects/RoomChannel.cs), [`SpectatorChannel.cs`](../../src/Application/Chat/Objects/SpectatorChannel.cs), [`SpectatorChannels.cs`](../../src/Application/Chat/Registry/SpectatorChannels.cs): room and spectator channels, and the spectator channel of each watched client
+* [`User.cs`](../../src/Application/Users/Objects/User.cs), [`ScopedUser.cs`](../../src/Application/Users/Capabilities/ScopedUser.cs): the user's online state (away message, connections)
+* [`ScopedBanchoConnection.cs`](../../src/Application/Users/Capabilities/ScopedBanchoConnection.cs): spectator operations
+* [`Room.cs`](../../src/Application/Multiplayer/Objects/Rooms/Room.cs), [`RoomCountdown.cs`](../../src/Application/Multiplayer/Objects/Rooms/RoomCountdown.cs): room ownership and countdown
 
 ## See also
 

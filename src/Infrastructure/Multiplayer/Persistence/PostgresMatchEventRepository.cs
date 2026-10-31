@@ -2,8 +2,8 @@ using System.Collections.Immutable;
 using Basil.Application.Multiplayer.Persistence;
 using Basil.Application.Users.Persistence;
 using Basil.Domain.Multiplayer;
-using Basil.Infrastructure.Common.Memory;
-using Basil.Infrastructure.Common.Postgres;
+using Basil.Infrastructure.Common.Registry;
+using Basil.Infrastructure.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace Basil.Infrastructure.Multiplayer.Persistence;

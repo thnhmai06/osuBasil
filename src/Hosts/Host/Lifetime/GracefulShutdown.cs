@@ -1,11 +1,12 @@
 using Basil.Application.Common.Events;
-using Basil.Application.Multiplayer.Runtime;
+using Basil.Application.Multiplayer.Capabilities;
+using Basil.Application.Multiplayer.Registry;
 using Basil.Host.Bancho.Support;
 using Basil.Host.Cli.Shutdown;
 using Basil.Host.Irc;
 using Basil.Host.Logging;
 using Basil.Host.Rest.Sse;
-using Basil.Infrastructure.Common.Postgres;
+using Basil.Infrastructure.Common.Persistence;
 using Microsoft.Extensions.Hosting;
 
 namespace Basil.Host.Lifetime;

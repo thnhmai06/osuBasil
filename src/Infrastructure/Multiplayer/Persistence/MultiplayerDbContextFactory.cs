@@ -1,4 +1,4 @@
-using Basil.Infrastructure.Common.Postgres;
+using Basil.Infrastructure.Common.Persistence;
 using Microsoft.EntityFrameworkCore.Design;
 
 namespace Basil.Infrastructure.Multiplayer.Persistence;

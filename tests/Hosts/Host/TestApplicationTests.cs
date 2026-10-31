@@ -1,5 +1,5 @@
-using Basil.Application.Users.Connections;
-using Basil.Application.Users.Users;
+using Basil.Application.Users.Objects.Connections;
+using Basil.Application.Users.Objects.Events;
 using Basil.Testing;
 
 namespace Basil.Host.Tests;

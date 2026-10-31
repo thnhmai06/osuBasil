@@ -22,7 +22,7 @@ namespace Basil.Infrastructure.Scores.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Basil.Infrastructure.Common.Postgres.WriteTicketRow", b =>
+            modelBuilder.Entity("Basil.Infrastructure.Common.Persistence.WriteTicketRow", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
